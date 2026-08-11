@@ -65,7 +65,9 @@ def _installer(args, paths: FoundryPaths) -> Installer:
 
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
-    paths = FoundryPaths.discover(args.home)
+    # --home uses SUPPRESS as its default, so it may be absent entirely —
+    # a bare `jarvis <cmd>` must resolve the default home, not crash.
+    paths = FoundryPaths.discover(getattr(args, "home", None))
     database = FoundryDatabase(paths.database)
     estop = EmergencyStop(paths.emergency_stop)
 

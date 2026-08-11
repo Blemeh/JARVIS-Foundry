@@ -14,8 +14,10 @@ import json
 import subprocess
 import sys
 import uuid
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
+from xml.sax.saxutils import escape as xml_escape
 
 from .database import FoundryDatabase
 from .events import Event
@@ -33,6 +35,15 @@ TASK_XML_TEMPLATE = """<?xml version="1.0" encoding="UTF-16"?>
     <LogonTrigger>
       <Enabled>true</Enabled>
     </LogonTrigger>
+    <TimeTrigger>
+      <StartBoundary>{start_boundary}</StartBoundary>
+      <Enabled>true</Enabled>
+      <Repetition>
+        <Interval>PT1M</Interval>
+        <Duration>P30D</Duration>
+        <StopAtDurationEnd>false</StopAtDurationEnd>
+      </Repetition>
+    </TimeTrigger>
   </Triggers>
   <Principals>
     <Principal id="Author">
@@ -123,6 +134,10 @@ class Installer:
         return result.returncode == 0
 
     def _append(self, event_type: str, payload: dict[str, Any], *, key: str) -> None:
+        # Self-heal: every event-emitting operation works even when the
+        # Foundry home was never initialized (F5: uninstall/activate on a
+        # fresh home crashed with "no such table: events").
+        self.database.initialize()
         self.database.append(Event.create(
             event_type, payload,
             source_type="supervisor", source_id="installer",
@@ -132,18 +147,34 @@ class Installer:
     # -- lifecycle ----------------------------------------------------------
 
     def _task_xml(self) -> str:
-        """The scheduled-task XML (logon trigger, hidden, restart-on-failure,
-        absolute executable path and explicit absolute --home argument).
+        """The scheduled-task XML (logon + repeating time trigger, hidden,
+        restart-on-failure, absolute executable path and explicit absolute
+        --home argument).
 
         The Task Scheduler XML schema (2004/02/mit/task) has no
         EnvironmentVariables node, so the deterministic environment is
         delivered as an explicit absolute --home argument; HERMES_HOME is
         recorded in the Foundry profile (the daemon never touches the live
-        Hermes home — adapter-level isolation)."""
+        Hermes home — adapter-level isolation).
+
+        Restart mechanism (empirical, 2026-08-12): Task Scheduler's
+        RestartOnFailure does NOT fire on this host for this task shape
+        (verified for on-demand interactive, time-triggered interactive and
+        on-demand S4U runs). Bounded auto-restart is delivered by a
+        repeating time trigger (PT1M, 30-day window) combined with
+        MultipleInstancesPolicy=IgnoreNew: while the daemon lives, every
+        tick is a no-op; after any death, the next tick (≤ 1 minute) starts
+        a fresh instance whose startup recovery reconciles durable state
+        (staging probe: hard-killed task restarted at the following ticks).
+        The repetition window is 30 days; reinstall refreshes it.
+        """
+        now = datetime.now()
+        start_boundary = (now - timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%S")
         return TASK_XML_TEMPLATE.format(
-            hermes_home=self.hermes_home,
-            python_exe=self.python_exe,
-            foundry_home=self.foundry_home,
+            hermes_home=xml_escape(str(self.hermes_home)),
+            python_exe=xml_escape(str(self.python_exe)),
+            foundry_home=xml_escape(str(self.foundry_home)),
+            start_boundary=start_boundary,
         )
 
     def install(self, *, force: bool = False) -> dict[str, Any]:

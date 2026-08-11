@@ -131,6 +131,19 @@ class HermesOneshotAdapter:
     #: live Hermes profile/home (never a valid hermes_home for a role session)
     LIVE_HERMES_HOME = Path(r"C:\Users\b\AppData\Local\hermes")
 
+    #: Router provider names -> Hermes CLI canonical provider ids. Verified
+    #: 2026-08-12 against the .h checkout's hermes_cli/models.py
+    #: normalize_provider() and hermes_cli/auth.py ProviderConfig registry:
+    #: "opencode_go" and "vertex_ai" are NOT CLI aliases — normalize_provider
+    #: passes them through unchanged and the CLI cannot resolve them. The
+    #: canonical ids are "opencode-go" and "vertex". The router keeps its own
+    #: names (they are the ledger/evidence vocabulary); the adapter translates
+    #: at the ONLY boundary that talks to the real CLI.
+    CLI_PROVIDER_IDS = {
+        "opencode_go": "opencode-go",
+        "vertex_ai": "vertex",
+    }
+
     def __init__(
         self,
         *,
@@ -181,7 +194,7 @@ class HermesOneshotAdapter:
         command = [
             self.python_exe, "-m", "hermes_cli.main", "-z",
             manifest.instructions or manifest.run_id,
-            "--provider", manifest.provider,
+            "--provider", self.CLI_PROVIDER_IDS.get(manifest.provider, manifest.provider),
             "--model", manifest.model,
         ]
         if usage_path is not None:

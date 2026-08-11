@@ -14,6 +14,18 @@ def _run(capsys, *argv: str) -> dict:
     return json.loads(capsys.readouterr().out)
 
 
+def test_commands_work_without_home_flag(tmp_path, monkeypatch):
+    # Pre-existing CLI bug found during the WP7 activation: --home uses
+    # argparse SUPPRESS, so a bare `jarvis <cmd>` crashed with
+    # AttributeError. Commands must resolve the default home instead.
+    monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
+    from jarvis_foundry.cli.main import main
+    assert main(["init"]) == 0
+    assert main(["status"]) == 0
+    assert main(["doctor"]) == 0
+    assert (tmp_path / "foundry.db").exists()
+
+
 def test_init_and_doctor_with_home_before_subcommand(tmp_path, capsys):
     assert _run(capsys, "--home", str(tmp_path), "init")["schema_version"] == SCHEMA_VERSION
     assert _run(capsys, "--home", str(tmp_path), "doctor")["database_quick_check"] == "ok"

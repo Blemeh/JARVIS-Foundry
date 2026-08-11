@@ -75,21 +75,19 @@ Repository truth beats chat summaries. Preserve all user and untracked work.
 
 ```yaml
 WP0: PASS
-WP1: ACTIVE / NOT_TESTED
-WP2: INACTIVE / NOT_TESTED
-WP3: INACTIVE / NOT_TESTED
-WP4: INACTIVE / NOT_TESTED
-WP5: INACTIVE / NOT_TESTED
-WP6: INACTIVE / NOT_TESTED
-WP7: INACTIVE / NOT_TESTED
-WP8: INACTIVE / NOT_TESTED
-v1_proving_resource: NOT_SELECTED
-v1_proving_mission: NOT_SELECTED
+WP1: PASS
+WP2: PASS
+WP3: PASS
+WP4: PASS
+WP5: PASS
+WP6: PASS
+WP7: PASS (activated 2026-08-11; recovery repairs verified 2026-08-12)
+WP8: ACTIVE / NOT_TESTED (entry preconditions; seven-day clock not started)
+v1_proving_resource: SELECTED (wfm-optimizer; registration at clock start)
+v1_proving_mission: DRAFTED (mission-wfm-optimizer; contract in
+  docs/evidence/WP8_MISSION_CONTRACT.md)
 trust_state: LAB
 ```
-
-Supporting code exists for parts of WP2 and WP3. That code does not activate
-those packages and does not constitute their gate evidence.
 
 Use verdicts exactly:
 
@@ -100,29 +98,26 @@ Use verdicts exactly:
 
 ## Active Work
 
-Active package: WP1.
+Active package: WP8 (seven-day acceptance gate).
 
 Continue in this order:
 
-1. Add schema version 3 with durable `agent_runs`, `evidence_bundles`,
-   `verification_verdicts`, and `budgets` projections.
-2. Add migration-forward and old-database compatibility tests.
-3. Add a subprocess crash fixture that dies between transaction statements;
-   reopen the database and prove no partial event or projection exists.
-4. Add event/projection reconciliation diagnostics with exact mismatch output.
-5. Add atomic evidence artifact hashing and storage below project-local `var`.
-6. Run the full Foundry tests and selected Hermes baseline tests.
-7. Perform an independent review against the architecture contract.
-8. Repair every finding, record WP1 PASS evidence, update `PROJECT_STATE.md`,
-   and activate WP2 automatically.
+1. Freeze the recovery evidence and create the coherent local checkpoint
+   commit (no push).
+2. Complete every entry precondition in `04_V1_ACCEPTANCE_GATE.md` §3 and
+   record them in `docs/evidence/WP8_ENTRY_PRECONDITIONS.md`.
+3. Start the seven-day clock atomically: append `system.start_build_recorded`
+   (received_at 2026-08-11T15:33:05Z), `project.registered`
+   (resource-wfm-optimizer) and `mission.created` (mission-wfm-optimizer)
+   to the live ledger; write `var/evidence/wp8-gate/CLOCK_START.json`.
+4. Provision the isolated Hermes dispatch home and prove one real oneshot
+   role dispatch (bounded, cost recorded).
+5. Execute `docs/evidence/WP8_GATE_EXECUTION_PLAN.md`: G1–G9, F1–F15, ≥10
+   independently verified action cycles on the mission repo, full
+   reconciliation, independent final review, gate verdict.
 
-WP2 already has tested starter code for Supervisor, leases, STOP, and doctor.
-Do not mark WP2 PASS until process termination, worker control, restart,
-reconciliation, tray, and hotkey requirements are proven.
-
-Do not perform WP2, WP3, WP7 installation, WP8 proving-project selection, or
-V2+ activation while WP1 remains ACTIVE, except for narrowly necessary test
-fixtures that cannot be mistaken for package activation.
+Do not perform V2+ activation while the V1 gate runs; do not push; do not
+weaken the gate; never let a builder certify its own work.
 
 ## Commands
 

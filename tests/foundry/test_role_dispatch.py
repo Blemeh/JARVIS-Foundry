@@ -509,7 +509,11 @@ def test_hermes_oneshot_command_surface_matches_real_cli(tmp_path, monkeypatch):
     assert command[3] == "-z"
     assert command[4] == "build the smallest correct change"  # prompt = -z VALUE
     assert "--role" not in command
-    assert "--provider" in command and "opencode_go" in command
+    # The router's provider name (opencode_go) is translated to the CLI's
+    # canonical id (opencode-go) at the adapter boundary — the raw name is
+    # NOT a CLI alias (verified against .h normalize_provider, 2026-08-12).
+    assert "--provider" in command and "opencode-go" in command
+    assert "opencode_go" not in command
     assert "--model" in command and "kimi-k2.7-code" in command
     assert "--usage-file" in command
     assert captured["env_home"] == str(isolated_home)  # isolated home, never live
@@ -517,6 +521,50 @@ def test_hermes_oneshot_command_surface_matches_real_cli(tmp_path, monkeypatch):
     assert captured["timeout"] == 60                   # bounded
     assert result.status == COMPLETED
     assert result.cost_usd == 0.0123                   # usage report parsed
+
+
+def test_hermes_oneshot_translates_router_providers_to_cli_ids(tmp_path, monkeypatch):
+    """Regression: every router provider name used by BUILTIN_ROLES must map
+    to a resolvable CLI provider id at the adapter boundary. Unknown names
+    pass through unchanged (fail-loud at the CLI rather than silent remap)."""
+    hermes_root = tmp_path / ".h"
+    hermes_root.mkdir()
+    isolated_home = tmp_path / "home"
+    isolated_home.mkdir()
+    adapter = HermesOneshotAdapter(
+        hermes_root=hermes_root, hermes_home=isolated_home,
+        enabled=True, timeout_seconds=60,
+    )
+
+    captured = []
+
+    def fake_run(command, *, cwd, env, capture_output, text, timeout):
+        captured.append(command)
+        return subprocess.CompletedProcess(command, 0, stdout="ok", stderr="")
+
+    monkeypatch.setattr("jarvis_foundry.roles.adapter.subprocess.run", fake_run)
+
+    for router_name, cli_id in adapter.CLI_PROVIDER_IDS.items():
+        manifest = ContextManifest(
+            run_id=f"run-{router_name}", role="verifier", mission_id="mission-1",
+            step_id=None, resource_id="resource-1", capability="verify",
+            provider=router_name, model="deepseek-v4-flash",
+            isolation_group="verifier",
+        )
+        adapter.dispatch(manifest, heartbeat=lambda: None)
+        provider_index = captured[-1].index("--provider") + 1
+        assert captured[-1][provider_index] == cli_id
+
+    # Unknown router names are NOT silently remapped — the CLI resolves them
+    # (or fails loudly) with the name as given.
+    manifest = ContextManifest(
+        run_id="run-unknown", role="verifier", mission_id="mission-1",
+        step_id=None, resource_id="resource-1", capability="verify",
+        provider="mystery_provider", model="m", isolation_group="verifier",
+    )
+    adapter.dispatch(manifest, heartbeat=lambda: None)
+    provider_index = captured[-1].index("--provider") + 1
+    assert captured[-1][provider_index] == "mystery_provider"
 
 
 def test_hermes_oneshot_usage_cost_absent_is_zero(tmp_path, monkeypatch):

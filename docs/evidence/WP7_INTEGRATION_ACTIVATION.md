@@ -1,7 +1,26 @@
 # WP7 Evidence — V1 Integration And Activation
 
-Status: **UNDER VERIFICATION** (independent verifier deleg_9c19e04a in flight)
+Status: **PASS + ACTIVATED** (gate closed 2026-08-11, continuation run)
 Updated: 2026-08-11
+
+## Gate Close Record
+
+- Two verification rounds: deleg_9c19e04a (round 1) FAIL on F5 (uninitialized-
+  DB crash) + two hardening observations — all repaired with regression
+  tests (F5 self-healing initialize, XML escaping, DEGRADED fail-loud);
+  deleg_efb7bafc (round 2) **PASS 7/7** (all defects reproduced fixed, no new
+  defects). One further pre-existing CLI bug (bare `jarvis <cmd>` crashed on
+  the SUPPRESSed --home) found during activation, fixed with a regression
+  test; freeze refreshed (194 tests).
+- Executive re-verification: full suite **194 passed** fresh; Hermes estop
+  baseline 24 passed; canonical DBs byte-unchanged; zero leftover tasks.
+- Frozen snapshot: var/evidence/wp7-gate/ (snapshot sha256
+  `c1b29c22fbfe2994ee0c3c33862d3b5afacd3fa7f6c5b3e5c2c581757fb50ee5`).
+- **Activation**: GATE_VERDICT.json latch written; `jarvis install --v1` +
+  `jarvis activate --v1` + `schtasks /run` — the real V1 Supervisor task
+  `JARVIS-Foundry-Supervisor` is installed, enabled, and RUNNING (lease held,
+  heartbeats every 30 s, supervisor_state RUNNING).
+- Full detail: `docs/evidence/WP7_GATE_REPORT.md`.
 
 ## Objective (CURRENT_WORK_PACKAGE.yaml)
 
@@ -45,26 +64,31 @@ already authorized activation).
 - Canonical DBs and live Hermes never touched; no V1 installation before the
   gate.
 
-## Test Inventory (190-test suite; WP7 = 10 new)
+## Test Inventory (194-test suite; WP7 = 14 new)
 
-- `test_installer.py` (10): full staging lifecycle on the REAL host
-  (install → disabled → activated → uninstall, events recorded), idempotent
-  uninstall, existing-task refusal + force replace, real-name guard (refused
-  without verdict / FAIL verdict / malformed verdict; allowed on PASS),
-  scope-proof inventory diff (host fully restored after uninstall), profile
-  write/remove, task XML contents (absolute paths, hidden, logon trigger,
-  restart), headless daemon cycles (start → restart → STOP freeze → resume,
-  3 started + 2 frozen events).
+- `test_installer.py` (13): full staging lifecycle on the REAL host
+  (install → disabled → activated → daemon restart → STOP freeze → resume →
+  uninstall, events recorded), idempotent uninstall, existing-task refusal +
+  force replace, real-name guard (refused without verdict / FAIL verdict /
+  malformed verdict; allowed on PASS), scope-proof inventory diff (host fully
+  restored), profile write/remove, task XML contents (absolute paths, hidden,
+  logon trigger, restart), uninitialized-DB uninstall (F5), XML escaping
+  (`&`-home registers), DEGRADED exit 1.
+- `test_cli.py` (1 new): bare commands without `--home` resolve the default
+  home instead of crashing (activation-path bug).
 
 ## Verification
 
-- Independent verifier deleg_9c19e04a (fresh isolated session, adversarial):
-  verdict pending — will be integrated here on completion.
-- Full suite: **190 passed** (fresh reproduction, this session).
+- Round 1 (deleg_9c19e04a): FAIL on F5 + hardening observations — repaired
+  (`subagent-summary-0-20260811_230823_045734.txt`).
+- Round 2 (deleg_efb7bafc): **PASS 7/7** — all repaired, no new defects
+  (`subagent-summary-0-20260811_231941_931961.txt`).
+- Full suite: **194 passed** (fresh reproduction, frozen state).
 
 ## Remaining Work
 
-- Integrate verifier report; repair any FAIL findings; re-run suites.
-- Freeze wp7-gate bundle; write WP7_GATE_REPORT.md; record WP7 PASS; then
-  the activation step: install the real V1 task and enable it (START BUILD
-  authorized), update PROJECT_STATE, activate WP8.
+- WP7 gate closed (PASS), V1 Supervisor installed + activated. Next: WP8
+  (seven-day acceptance) — select + register the highest-value reversible
+  proving project, run the G1-G9 / F1-F15 battery over a seven-day window
+  with forced restarts and at least ten useful verified cycles; the final
+  acceptance verdict is an owner-gated hold point (trust change + V2 queue).
