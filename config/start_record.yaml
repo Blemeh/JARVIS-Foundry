@@ -1,0 +1,30 @@
+schema_version: 1
+start_id: "start-20260811-173305"
+project: "JARVIS Foundry"
+command: "START BUILD"
+status: "ACTIVE"
+received_at: "2026-08-11T17:33:05+02:00"
+source_reference: "owner conversation directive"
+
+standing_mandate:
+  policy: "OPT_OUT_AUTONOMY"
+  owner_control: "VETO_AND_STOP"
+  per_task_approval: false
+  per_work_package_approval: false
+  per_version_approval: false
+  per_resource_approval: false
+
+initial_stage: "WP0"
+automatic_continuation: true
+next_stage_on_pass: "WP1"
+
+active_owner_vetoes: []
+active_owner_constraints: []
+
+integrity_requirements:
+  deterministic_stop: true
+  independent_verification: true
+  append_only_audit: true
+  rollback_before_promotion: true
+
+created_at: "2026-08-11T17:33:05+02:00"

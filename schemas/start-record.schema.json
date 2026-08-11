@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvis.local/schemas/start-record.schema.json",
+  "title": "JARVIS Start Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "start_id",
+    "project",
+    "command",
+    "status",
+    "standing_mandate",
+    "initial_stage",
+    "automatic_continuation",
+    "active_owner_vetoes",
+    "active_owner_constraints"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "start_id": { "type": "string", "minLength": 1 },
+    "project": { "const": "JARVIS Foundry" },
+    "command": { "const": "START BUILD" },
+    "status": { "enum": ["NOT_RECEIVED", "RECEIVED", "ACTIVE", "STOPPED"] },
+    "received_at": { "type": ["string", "null"], "format": "date-time" },
+    "source_reference": { "type": ["string", "null"] },
+    "standing_mandate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policy",
+        "owner_control",
+        "per_task_approval",
+        "per_work_package_approval",
+        "per_version_approval",
+        "per_resource_approval"
+      ],
+      "properties": {
+        "policy": { "const": "OPT_OUT_AUTONOMY" },
+        "owner_control": { "const": "VETO_AND_STOP" },
+        "per_task_approval": { "const": false },
+        "per_work_package_approval": { "const": false },
+        "per_version_approval": { "const": false },
+        "per_resource_approval": { "const": false }
+      }
+    },
+    "initial_stage": { "const": "WP0" },
+    "automatic_continuation": { "const": true },
+    "next_stage_on_pass": { "type": ["string", "null"] },
+    "active_owner_vetoes": { "type": "array", "items": { "type": "string" } },
+    "active_owner_constraints": { "type": "array", "items": { "type": "string" } },
+    "integrity_requirements": { "type": "object" },
+    "created_at": { "type": ["string", "null"], "format": "date-time" }
+  }
+}

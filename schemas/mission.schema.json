@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvis.local/schemas/mission.schema.json",
+  "title": "JARVIS Autonomous Mission",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "mission_id",
+    "objective",
+    "goal_ids",
+    "status",
+    "resource_ids",
+    "capabilities_required",
+    "owner_vetoes_checked",
+    "acceptance_criteria",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "mission_id": { "type": "string", "minLength": 1 },
+    "objective": { "type": "string", "minLength": 1 },
+    "goal_ids": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+    "status": {
+      "enum": ["CANDIDATE", "READY", "RUNNING", "WAITING", "VERIFYING", "REPAIRING", "SUCCEEDED", "FAILED", "BLOCKED", "VETOED", "CANCELLED", "FROZEN"]
+    },
+    "resource_ids": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "capabilities_required": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "owner_vetoes_checked": { "type": "array", "items": { "type": "string" } },
+    "acceptance_criteria": { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 1 },
+    "current_step_id": { "type": ["string", "null"] },
+    "last_event_id": { "type": ["string", "null"] },
+    "next_autonomous_action": { "type": ["string", "null"] },
+    "created_at": { "type": "string", "format": "date-time" },
+    "updated_at": { "type": "string", "format": "date-time" }
+  }
+}

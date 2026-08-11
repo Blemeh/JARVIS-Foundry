@@ -1,0 +1,31 @@
+schema_version: 1
+directive_id: "__REQUIRED__"
+status: "PROPOSED"
+issued_by: "Blendi Mehmeti"
+issued_at: null
+authenticated_by: null
+
+directive_type: "constraint"
+text: "__EXACT_OWNER_WORDING__"
+applies_to:
+  versions: []
+  missions: []
+  resources: []
+
+effect:
+  changes_standing_mandate: false
+  vetoes_added: []
+  vetoes_removed: []
+  constraints_added: []
+  constraints_removed: []
+  effective_at: null
+  expires_at: null
+
+provenance:
+  source_type: "owner_message"
+  source_reference: null
+  captured_by: null
+
+verification:
+  status: "UNVERIFIED"
+  evidence: []

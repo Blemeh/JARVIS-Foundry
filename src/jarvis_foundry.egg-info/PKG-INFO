@@ -1,0 +1,7 @@
+Metadata-Version: 2.4
+Name: jarvis-foundry
+Version: 0.1.0
+Summary: Durable autonomy kernel and independent supervisor for JARVIS Foundry
+Requires-Python: >=3.13
+Provides-Extra: dev
+Requires-Dist: pytest<10,>=9; extra == "dev"

@@ -1,0 +1,61 @@
+schema_version: 1
+status: "INACTIVE_EXAMPLE"
+
+policy:
+  availability_check_required: true
+  builder_verifier_provider_diversity_preferred: true
+  raw_credentials_in_context: false
+  billable_calls_enabled: false
+
+roles:
+  executive:
+    preferred_provider: "opencode_go"
+    preferred_model: "qwen3.8-max"
+    fallbacks: []
+    required_capabilities:
+      - "structured_reasoning"
+    maximum_cost_per_run_usd: 0
+    maximum_duration_seconds: "__REQUIRED__"
+    independence_group: "executive"
+
+  builder:
+    preferred_provider: "opencode_go"
+    preferred_model: "kimi-k2.7-code"
+    fallbacks: []
+    required_capabilities:
+      - "code"
+      - "tools"
+    maximum_cost_per_run_usd: 0
+    maximum_duration_seconds: "__REQUIRED__"
+    independence_group: "builder"
+
+  verifier:
+    preferred_provider: "__DIFFERENT_FROM_BUILDER_WHEN_POSSIBLE__"
+    preferred_model: "__VERIFY_AT_ACTIVATION__"
+    fallbacks: []
+    required_capabilities:
+      - "artifact_inspection"
+      - "adversarial_verification"
+    maximum_cost_per_run_usd: 0
+    maximum_duration_seconds: "__REQUIRED__"
+    independence_group: "verifier"
+
+  researcher:
+    preferred_provider: "opencode_go"
+    preferred_model: "deepseek-v4-pro"
+    fallbacks: []
+    required_capabilities:
+      - "research"
+    maximum_cost_per_run_usd: 0
+    maximum_duration_seconds: "__REQUIRED__"
+    independence_group: "research"
+
+  premium_reviewer:
+    preferred_provider: "vertex_ai"
+    preferred_model: "__VERIFY_AT_ACTIVATION__"
+    fallbacks: []
+    required_capabilities:
+      - "multimodal"
+    maximum_cost_per_run_usd: "__AUTONOMOUS_BUDGET_POLICY__"
+    maximum_duration_seconds: "__REQUIRED__"
+    independence_group: "premium"

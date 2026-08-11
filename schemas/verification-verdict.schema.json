@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvis.local/schemas/verification-verdict.schema.json",
+  "title": "JARVIS Independent Verification Verdict",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "verdict_id",
+    "mission_id",
+    "subject_type",
+    "subject_id",
+    "verdict",
+    "verifier",
+    "builder",
+    "independence",
+    "criteria",
+    "evidence",
+    "issued_at"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "verdict_id": { "type": "string", "minLength": 1 },
+    "mission_id": { "type": "string", "minLength": 1 },
+    "subject_type": { "enum": ["STEP", "ARTIFACT", "MISSION", "WORK_PACKAGE", "RELEASE"] },
+    "subject_id": { "type": "string", "minLength": 1 },
+    "verdict": { "enum": ["PASS", "FAIL", "BLOCKED", "NOT_TESTED"] },
+    "verifier": {
+      "type": "object",
+      "required": ["agent_id", "provider", "model", "session_id"]
+    },
+    "builder": {
+      "type": "object",
+      "required": ["agent_id", "provider", "model", "session_id"]
+    },
+    "independence": {
+      "type": "object",
+      "required": ["same_agent", "same_session", "same_provider", "limitations"],
+      "properties": {
+        "same_agent": { "const": false },
+        "same_session": { "const": false },
+        "same_provider": { "type": "boolean" },
+        "limitations": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "criteria": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+    "evidence": { "type": "array", "items": { "type": "string" } },
+    "disconfirming_attempts": { "type": "array", "items": { "type": "string" } },
+    "reason": { "type": ["string", "null"] },
+    "blocking_dependency": { "type": ["string", "null"] },
+    "issued_at": { "type": "string", "format": "date-time" }
+  }
+}

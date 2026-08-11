@@ -1,0 +1,54 @@
+schema_version: 1
+work_package_id: "WP7"
+status: "RUNNING"
+package_state: "ACTIVE"
+gate_verdict: "NOT_TESTED"
+later_packages: "INACTIVE_NOT_TESTED"
+objective: "Complete the V1 integration and activation gate: installer and uninstaller for ONLY the V1 Supervisor scheduled task, CLI, tray control, configuration, and Foundry profile; clean install, disabled state, activation, restart, STOP, resume, and uninstall all reproducible."
+expected_value: "JARVIS can install itself as a Windows logon scheduled task running the independent Supervisor (no Hermes dependency for STOP/recovery), expose CLI + tray/hotkey STOP, and uninstall cleanly — and after the gate PASSes, the already-recorded START BUILD event causes automatic installation and activation."
+target_resources:
+  - "JARVIS-Foundry"
+  - "Windows scheduled tasks (only the V1 Supervisor task name, e.g. JARVIS-Foundry-Supervisor)"
+  - "Foundry profile under the resolved HERMES_HOME"
+capabilities_required:
+  - "local_read"
+  - "local_project_write"
+  - "sqlite_wal"
+  - "subprocess"
+  - "windows_scheduled_task (new)"
+  - "mission_loop (WP5)"
+  - "obsidian_write_back (WP6)"
+active_owner_vetoes_checked: []
+expected_effects:
+  - "installer: creates the V1 Supervisor scheduled task (logon trigger, runs the Supervisor headlessly), writes the Foundry profile (config, start record, role mapping), records installation state durably"
+  - "uninstaller: removes the task and profile artifacts it owns; leaves user work untouched; reproducible"
+  - "CLI: install / uninstall / activate / deactivate / status / doctor extended with installation state"
+  - "activation: task enabled; deactivation: task disabled (not removed)"
+  - "restart: task restarts the Supervisor; state reconciles; no duplicate worker"
+  - "STOP (sentinel/CLI/tray/hotkey) works against the installed Supervisor with the same deterministic freeze"
+  - "resume: authenticated resume reorients and continues the mission from durable state"
+  - "installation is scoped: ONLY the V1 Supervisor task, CLI, tray, config, Foundry profile — nothing else on the host"
+risk_class: "C2"
+budget_estimate: 0
+acceptance_criteria:
+  - "Clean install -> disabled state -> activation -> restart -> STOP -> resume -> uninstall are all reproducible end-to-end (gate)."
+  - "The installer touches ONLY its own task name and profile paths; nothing else on the host is modified (verified by before/after inventory)."
+  - "The installed Supervisor runs without Hermes; STOP detection and freeze are independent (WP2 mechanisms carried over)."
+  - "Restart after activation reconciles state: no duplicate actions, one canonical mission state."
+  - "Uninstall removes the task and JARVIS-owned profile artifacts; the user's other files and tasks are untouched; uninstall is idempotent."
+  - "Real installation happens ONLY after this gate passes (START BUILD authorizes automatic activation)."
+  - "The whole gate runs in a staging task name first; the real V1 task name is installed only at activation, after gate PASS."
+tests_required:
+  - "tests/foundry/test_installer.py"
+  - "tests/foundry/test_activation.py"
+evidence_required:
+  - "docs/evidence/WP7_INTEGRATION_ACTIVATION.md"
+rollback_or_compensation: "Uninstaller removes exactly what the installer created (task + profile); staged task names for gate tests; before/after host inventory proves scope; canonical DBs and live Hermes never touched."
+stop_conditions:
+  - "active owner STOP"
+  - "secret exposure"
+  - "unexpected live-system mutation outside the installer's declared scope"
+  - "any V1 task installation before the gate passes"
+builder: "JARVIS executive (autonomous continuation run)"
+independent_verifier: "fresh isolated session; provider-diverse when available, otherwise same-provider with recorded limitation"
+next_package_on_pass: "WP8"
