@@ -25,6 +25,7 @@ def claim_event(claim_id="c1", statement="The retry loop caused the outage",
 
 
 def test_snapshot_created_projects_row(tmp_path):
+    from jarvis_foundry.migrations import SCHEMA_VERSION
     from jarvis_foundry.knowledge_snapshots import create_snapshot
     db = FoundryDatabase(tmp_path / "foundry.db")
     db.initialize()
@@ -35,7 +36,7 @@ def test_snapshot_created_projects_row(tmp_path):
     assert result["snapshot_id"].startswith("snap-")
     row = db.row("knowledge_snapshots", "snapshot_id", result["snapshot_id"])
     assert row["head_event_id"] == head
-    assert row["schema_version"] == 9
+    assert row["schema_version"] == SCHEMA_VERSION
     assert row["claims_count"] == 1
     assert result["path"].exists()
 
@@ -75,6 +76,7 @@ def test_verify_snapshot_detects_payload_tampering(tmp_path):
 
 
 def test_restore_from_snapshot_reopens_readonly(tmp_path):
+    from jarvis_foundry.migrations import SCHEMA_VERSION
     from jarvis_foundry.knowledge_snapshots import (create_snapshot,
                                                     open_snapshot_readonly)
     db = FoundryDatabase(tmp_path / "foundry.db")
@@ -90,7 +92,7 @@ def test_restore_from_snapshot_reopens_readonly(tmp_path):
         version = connection.execute(
             "SELECT COALESCE(MAX(version),0) FROM schema_migrations").fetchone()[0]
     assert count == 2  # snapshot content, not the live post-snapshot state
-    assert version == 9
+    assert version == SCHEMA_VERSION
     snapshot_db.close()
 
 
@@ -144,4 +146,4 @@ def test_schema_version_matches_code(tmp_path):
     with db.connect() as connection:
         version = connection.execute(
             "SELECT COALESCE(MAX(version),0) FROM schema_migrations").fetchone()[0]
-    assert version == SCHEMA_VERSION == 9
+    assert version == SCHEMA_VERSION
