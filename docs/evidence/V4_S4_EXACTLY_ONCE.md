@@ -4,7 +4,14 @@
 recovery
 **Commit:** `f1dd903` (fix(v4-s4): exactly-once verifier recovery)
 **Date:** 2026-08-13
-**Status:** IMPLEMENTED — independent verifier <PENDING>
+**Status:** CLOSED — independent verifier **PASS** (deleg_a3e54630,
+2026-08-13T00:32+02:00, 10 probes executed; 3 info-severity findings —
+docs-only HEAD move verified empty src/tests diff, LIKE-pattern id
+collision probe confirmed distinct ids, scratch artifacts in Temp only;
+verdict JSON archived at `var/evidence/v4-s4-exactly-once/verdict-deleg_
+a3e54630.json`, sha256 8cc17f04…). Ledger:
+`verification.passed:verdict-v4-s4-exactly-once:round1` +
+`evidence.created:v4-s4-exactly-once-close` (schema 16).
 
 ## Problem (observed, not assumed)
 
