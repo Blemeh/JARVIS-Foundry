@@ -10,7 +10,16 @@ membership (both claim ids in the mission's claims) + regression
 test_manifest_conflicts_are_mission_scoped. Minor accuracy items fixed:
 truncation-cap wording (the cap applies to the ACTIVE section;
 stale/conflicts are compact advisory sections), tautology in the
-truncation test. Verifier round-2 <PENDING>.
+truncation test. Verifier round-2 (deleg_7c4759fa) **PASS** — T1 19/19,
+T2 fix verified (old query proven to leak, new query closes it), T4
+honest; T3 artifact timing (the shared suite file was read mid-
+regeneration) resolved with a fresh stable-path artifact
+(var/evidence/wp9-slice2/suite-slice2-postfix.txt, EXIT=0, 267 tests).
+Ledger: verification.failed ×1 (repair-keyed, seq 4089) +
+verification.passed:verdict-wp9-slice2 (seq 4090) +
+evidence.created:wp9-slice2 (seq 4091). **Slice-2 CLOSED — PASS.**
+19/19 knowledge tests green; full suite 267 EXIT=0.
+Next: slice-3 (entity resolution) per the WP9 spec.
 
 ## Delivered (bounded slice-2 scope)
 
