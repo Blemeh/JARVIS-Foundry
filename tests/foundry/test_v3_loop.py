@@ -192,6 +192,33 @@ def test_loop_blocked_does_not_complete_mission(
     assert candidate == "APPROVED"
 
 
+def test_loop_selects_maintenance_candidate_when_signals_present(
+        db: FoundryDatabase, vault: Path, resource_root: Path):
+    from jarvis_foundry.v3_loop import run_one_loop
+    from jarvis_foundry.vault_indexer import sync_vault
+    sync_vault(db, vault)
+    # six unsupported claims with NO high-value terms → the maintenance
+    # signal (unsupported >= 5) creates the maintenance candidate, which
+    # clears the bar and is selected for REAL verification work
+    for i in range(6):
+        db.append(Event.create(
+            "knowledge.claim_recorded",
+            {"claim_id": f"claim-unsup{i}", "mission_id": "mission-wfm-optimizer",
+             "statement": f"The scheduler detail {i} is recorded.",
+             "claim_type": "fact", "confidence": 0.5,
+             "source": {"run_id": f"test:u{i}", "event_id": f"ghost{i}.md:abc"}},
+            source_type="test", source_id="test-suite",
+            idempotency_key=f"knowledge.claim_recorded:claim-unsup{i}"))
+    report = run_one_loop(
+        db, loop_id="t7", adapter=FakeHermesAdapter(), router=RoleRouter(),
+        resource_id="resource-test", vault_root=vault,
+        target_root=resource_root, max_items=10, max_bytes=20_000)
+    assert report["maintenance_candidate_created"] is True
+    assert report["maintenance"]["unsupported"] >= 6
+    assert report["outcome"] == "PASSED"
+    assert report["selected_candidate"] is not None
+
+
 def test_loop_records_outcome_and_reconciles(
         db: FoundryDatabase, vault: Path, resource_root: Path):
     from jarvis_foundry.reconcile import reconcile

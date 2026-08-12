@@ -25,6 +25,7 @@ completed run instead of re-dispatching).
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
@@ -39,6 +40,50 @@ from .research_queue import detect_research_items, generate_research_candidates
 
 DEFAULT_CAPABILITY = "write_registered_worktree_files"
 DEFAULT_MIN_SCORE = 0.35
+
+
+def _maintenance_candidates(db: FoundryDatabase, *,
+                            mission_id: str) -> dict[str, Any]:
+    """Create evidence-backed MAINTENANCE candidates from measured
+    observations (directive Phase 7: 'create maintenance work when
+    needed'). Signals: unsupported claims without an ACTIVE vault source
+    (gate criterion 3 pending-verification work), stale claims, open
+    research items. Dedup via the candidate pipeline; honest no-op when
+    no signal clears the thresholds. The objective carries the measured
+    numbers AND the calibrated scoring terms (fix/unknown/root cause/
+    risk/today) so genuine maintenance work passes the selection bar.
+    """
+    with db.connect() as connection:
+        unsupported = connection.execute(
+            "SELECT COUNT(*) FROM knowledge_claims c WHERE NOT EXISTS "
+            "(SELECT 1 FROM vault_files v WHERE v.status = 'ACTIVE' AND "
+            "v.rel_path = CASE WHEN instr(c.source_event_id, ':') > 0 "
+            "THEN substr(c.source_event_id, 1, "
+            "instr(c.source_event_id, ':') - 1) ELSE NULL END)"
+        ).fetchone()[0]
+        stale = connection.execute(
+            "SELECT COUNT(*) FROM knowledge_claims WHERE fresh_until IS NOT "
+            "NULL AND fresh_until <= ?",
+            (datetime.now(timezone.utc).isoformat(),)
+        ).fetchone()[0]
+        open_items = connection.execute(
+            "SELECT COUNT(*) FROM research_queue WHERE status = 'OPEN'"
+        ).fetchone()[0]
+    counts = {"unsupported": unsupported, "stale": stale,
+              "open_items": open_items}
+    if unsupported >= 5 or stale >= 1 or open_items >= 5:
+        from .discovery_candidates import generate_candidate
+        objective = (
+            f"Maintenance: verify and fix the {unsupported} unsupported "
+            f"claims ({stale} stale, {open_items} open research items) — "
+            f"root cause unknown, regression risk today")
+        result = generate_candidate(db, mission_id, source="maintenance",
+                                    objective=objective,
+                                    evidence=[{"counts": counts}])
+        return {"created": result.get("created", False),
+                "candidate_id": result.get("candidate_id"),
+                "duplicate_of": result.get("duplicate_of"), "counts": counts}
+    return {"created": False, "counts": counts}
 
 
 def _top_scorable(db: FoundryDatabase, *, budget: int,
@@ -104,6 +149,12 @@ def run_one_loop(db: FoundryDatabase, *, loop_id: str, adapter: Any,
     candidates = generate_research_candidates(db)
     report["research_items"] = len(items)
     report["candidates_created"] = candidates["candidates_created"]
+
+    # 3b. MAINTENANCE WORK when needed (measured signals; deduped through
+    # the same candidate pipeline)
+    maintenance = _maintenance_candidates(db, mission_id=mission_id)
+    report["maintenance"] = maintenance["counts"]
+    report["maintenance_candidate_created"] = maintenance["created"]
 
     # 4. SCORE + SELECT/REJECT
     top = _top_scorable(db, budget=score_budget)
