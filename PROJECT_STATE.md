@@ -5,8 +5,23 @@ This file is the current project truth.
 ```yaml
 project: JARVIS Foundry
 owner: Blendi Mehmeti
-state_version: 21
-updated_at: 2026-08-12
+state_version: 22
+updated_at: 2026-08-13
+
+phase: V4_CONTINUOUS_AUTONOMY ACTIVE — first gate evidence ACCUMULATING
+phase_status: V4 ACTIVATED per DIR-2026-08-12 completion condition item 11.
+  DIR-2026-08-12 12-hour autonomous duty window in progress (started
+  2026-08-12T23:15+02:00); truth-critical reliability slices closing with
+  independent verifier PASS each (see the V4 progress section below).
+  Owner STOP/veto/redirect fully live; no-push rule unchanged.
+v4_reliability_slices: MR-1 model routing CLOSED; S2 verifier truth CLOSED;
+  S3 lease/monotonicity CLOSED; S4 exactly-once resume CLOSED;
+  S1 support semantics CLOSED (the package's FIRST MISSION); S5 monitors
+  CLOSED (round-1 verifier FAIL -> repaired -> round-2 PASS); S6 scoring
+  context in verification. Suite 485 passed EXIT=0. Live schema v18.
+  Live: 954 claims (953 supported after S1), candidates 696 NEW / 233
+  SCORED / 3 EXECUTED / 2 SUPERSEDED, reconcile consistent (atomic
+  rebuilds converged 780 + 45 drift rows), daemon RUNNING, STOP false.
 
 phase: V2_KNOWLEDGE_BRAIN ACCEPTED (eng+op) + V3_DISCOVERY ACCEPTED
   (eng+op) — V4 ACTIVATED per DIR-2026-08-12 completion condition item 11
