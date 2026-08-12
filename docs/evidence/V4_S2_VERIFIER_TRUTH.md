@@ -4,7 +4,13 @@
 **Commit:** `e456c22` (fix(v4-s2): verifier truth — structured verdicts,
 never exit-code PASS)
 **Date:** 2026-08-12
-**Status:** IMPLEMENTED — independent verifier <PENDING>
+**Status:** CLOSED — independent verifier **PASS** (deleg_81eea974,
+2026-08-12T23:57+02:00, 10 probes executed; 2 info-severity findings —
+test-count nit in the brief and the documented changed-context
+EventConflict which V4-S4 addresses — verdict JSON archived at
+`var/evidence/v4-s2-verifier-truth/verdict-deleg_81eea974.json`, sha256
+a4bf96fe…). Ledger: `verification.passed:verdict-v4-s2-verifier-truth:
+round1` + `evidence.created:v4-s2-verifier-truth-close` (schema 16).
 
 ## Problem (observed, not assumed)
 
