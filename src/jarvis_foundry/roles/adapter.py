@@ -121,8 +121,17 @@ class HermesOneshotAdapter:
       profile); a missing/None home raises AdapterConfigurationError.
     - ``enabled`` defaults to False; dispatch raises ProviderUnavailable
       until the operator explicitly enables it in staging.
+    - ``python_exe`` must be an EXPLICIT interpreter whose site-packages
+      resolve the checkout's dependencies. The ``"python"`` default is
+      PATH-resolved and therefore host-fragile (FIND-2026-08-12-03: on the
+      proving host, Windows CreateProcess resolves it to the Foundry base
+      3.13, which cannot import the checkout's cp311 deps; the working
+      interpreter is the Hermes agent venv python). Deployments must pass
+      the agent-venv python explicitly.
     - Sessions are bounded by ``timeout_seconds``; the subprocess is killed
-      when the bound expires.
+      when the bound expires. An externally killed session returns FAILED
+      with ``error_class="hermes_oneshot_failed"`` and leaves no orphaned
+      processes (F2-live probe, 2026-08-12).
     - The adapter never adds Foundry tools/plugins to any Hermes session.
     """
 
