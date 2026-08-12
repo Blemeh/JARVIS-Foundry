@@ -125,6 +125,42 @@ def test_rebuild_reproduces_ingestions(tmp_path):
     assert row["status"] == "COMPLETED"
 
 
+def test_overlapping_delta_batch_no_conflict(tmp_path):
+    """Regression for verifier deleg_7eacf4e9 G2-b: re-ingesting a batch
+    that OVERLAPS unchanged docs (one doc removed/changed) must never
+    raise EventConflict on the unchanged docs — deterministic claim
+    payloads dedup them; only the delta claims are created."""
+    from jarvis_foundry.knowledge_ingestion import ingest_documents
+    db = FoundryDatabase(tmp_path / "foundry.db")
+    db.initialize()
+    ingest_documents(db, "mission-1", "markdown", "docs/pm-42.md", DOCS)
+    assert db.count("knowledge_claims") == 3
+    # overlapping batch: doc 0 unchanged, doc 1 changed, doc 2 dropped
+    delta = [dict(DOCS[0]), dict(DOCS[1], statement="DNS misconfiguration "
+                                                    "confirmed as contributory")]
+    result = ingest_documents(db, "mission-1", "markdown", "docs/pm-42.md",
+                              delta)
+    assert result["claims_created"] == 1
+    assert db.count("knowledge_claims") == 4
+
+
+def test_retry_after_failure_is_safe(tmp_path):
+    """A failed batch must be retryable: deterministic payloads dedup the
+    already-applied claims instead of crashing."""
+    from jarvis_foundry.knowledge_ingestion import ingest_documents
+    db = FoundryDatabase(tmp_path / "foundry.db")
+    db.initialize()
+    first = ingest_documents(db, "mission-1", "markdown", "docs/pm-42.md",
+                             DOCS[:2])
+    assert first["claims_created"] == 2
+    # simulate a retry after a failure: the full batch again (docs 0-1
+    # already applied) — must dedup, not conflict
+    retry = ingest_documents(db, "mission-1", "markdown", "docs/pm-42.md",
+                             DOCS)
+    assert retry["claims_created"] == 1
+    assert db.count("knowledge_claims") == 3
+
+
 def test_schema_version_matches_code(tmp_path):
     from jarvis_foundry.migrations import SCHEMA_VERSION
     db = FoundryDatabase(tmp_path / "foundry.db")

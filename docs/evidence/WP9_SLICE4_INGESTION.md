@@ -20,8 +20,13 @@ deleg_7c4759fa, deleg_01ebd46f).
    - whole-batch source_hash dedup: a completed ingestion with the same
      hash is a duplicate (no new claims, recorded as such);
    - CHANGED content → NEW claims; history is never rewritten;
+   - claim payloads are fully deterministic (per-doc content hashes in
+     source.run_id/event_id) — overlapping delta batches dedup the
+     unchanged docs instead of conflicting, and a failed batch is
+     retryable (already-applied claims dedup on retry);
    - batch recorded as queued → completed with counts (or failed with
-     errors; a raised error leaves no partial claims).
+     errors; a failed batch records NO completion and stays QUEUED —
+     partial claim events from a failed run are deduped on retry).
 4. Registries updated: PROJECTION_TABLES, reconcile key-column map,
    row/all/count allowlists.
 

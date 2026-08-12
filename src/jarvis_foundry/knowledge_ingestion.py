@@ -65,6 +65,12 @@ def ingest_documents(db: FoundryDatabase, mission_id: str, source_type: str,
     if not duplicate:
         for index, doc in enumerate(docs):
             claim_id = f"claim-{_doc_hash(doc)}"
+            # DETERMINISTIC payload (verifier deleg_7eacf4e9 G2-b): the
+            # per-run ingestion uuid must NOT leak into claim payloads —
+            # an unchanged doc re-appended in a later (overlapping) batch
+            # must dedup by idempotency key with an IDENTICAL payload,
+            # never raise EventConflict. run_id/event_id derive from the
+            # doc content, not the batch.
             event = Event.create(
                 "knowledge.claim_recorded",
                 {"claim_id": claim_id, "mission_id": mission_id,
@@ -72,8 +78,8 @@ def ingest_documents(db: FoundryDatabase, mission_id: str, source_type: str,
                  "claim_type": doc.get("claim_type", "fact"),
                  "confidence": doc.get("confidence", 0.5),
                  "fresh_until": doc.get("fresh_until"),
-                 "source": {"run_id": f"ingestion-{ingestion_id}",
-                            "event_id": f"{source_ref}:{index}"}},
+                 "source": {"run_id": f"doc-{_doc_hash(doc)}",
+                            "event_id": f"{source_ref}:{_doc_hash(doc)}"}},
                 source_type="supervisor", source_id="wp9-ingestion",
                 idempotency_key=f"knowledge.claim_recorded:{claim_id}")
             applied = db.append(event)
