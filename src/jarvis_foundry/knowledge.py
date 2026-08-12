@@ -34,6 +34,25 @@ _CONTRACTION_RE = re.compile(
     r"\b(" + "|".join(sorted(_CONTRACTIONS, key=len, reverse=True)) + r")\b")
 
 _NEGATION_TOKENS = frozenset({"not", "no", "never"})
+_DO_SUPPORT = frozenset({"do", "does", "did"})
+# 3rd-person-singular -> base for common verbs (bounded, deterministic;
+# used only for CORE COMPARISON in contradicts(), never for storage).
+# Covers the do-support family ("doesn't work" vs "works" —
+# verifier deleg_bb94028c R2). Past-tense normalization is out of
+# slice-1 scope (recorded future work).
+_INFLECTIONS: dict[str, str] = {
+    "works": "work", "runs": "run", "builds": "build", "tests": "test",
+    "fails": "fail", "passes": "pass", "uses": "use", "makes": "make",
+    "takes": "take", "gives": "give", "has": "have", "goes": "go",
+    "says": "say", "sees": "see", "knows": "know", "gets": "get",
+    "sets": "set", "puts": "put", "sends": "send", "needs": "need",
+    "wants": "want", "starts": "start", "stops": "stop", "opens": "open",
+    "closes": "close", "writes": "write", "reads": "read", "calls": "call",
+    "returns": "return", "breaks": "break", "fixes": "fix", "keeps": "keep",
+    "finds": "find", "shows": "show", "tells": "tell", "asks": "ask",
+    "answers": "answer", "does": "do", "tries": "try", "causes": "cause",
+    "produces": "produce", "provides": "provide", "contains": "contain",
+}
 _WHITESPACE = re.compile(r"\s+")
 _NON_ALNUM = re.compile(r"[^a-z0-9 ]")
 
@@ -59,12 +78,17 @@ def split_negation(statement: str) -> tuple[str, bool]:
 
     Negation markers are recognized at TOKEN level anywhere in the
     statement (leading or mid-string: 'not', 'never', "isn't", ...); the
-    core is the canonical form with negation tokens removed.
+    core is the canonical form with negation tokens removed, do-support
+    auxiliaries stripped, and the final verb's 3rd-person-singular
+    inflection normalized (bounded map) — so "doesn't work" and "works"
+    share the core "work".
     """
     canonical = canonicalize_statement(statement)
     tokens = canonical.split()
     kept = [t for t in tokens if t not in _NEGATION_TOKENS]
     negated = len(kept) != len(tokens)
+    kept = [t for t in kept if t not in _DO_SUPPORT]
+    kept = [_INFLECTIONS.get(t, t) for t in kept]
     return (" ".join(kept), negated)
 
 

@@ -81,6 +81,41 @@ def test_negation_variant_family_no_false_negatives(tmp_path):
             f"false positive for: {sibling!r}"
 
 
+def test_do_support_family_no_false_negatives(tmp_path):
+    """Regression for verifier deleg_bb94028c R2: do-support negations
+    must contradict the plain 3rd-person claim ("The system doesn't work"
+    vs "The system works" — exact-core equality previously left the
+    auxiliary and verb inflection unnormalized)."""
+    pairs = [
+        ("The system works", "The system doesn't work"),
+        ("The system works", "The system does not work"),
+        ("The system works", "The system doesnt work"),
+        ("The system fails", "The system doesn't fail"),
+        ("The build passes", "The build doesn't pass"),
+        ("The agent runs", "The agent doesn't run"),
+        ("She has a car", "She doesn't have a car"),
+    ]
+    for positive, variant in pairs:
+        db = FoundryDatabase(tmp_path / f"foundry-{abs(hash(variant)) % 100000}.db")
+        db.initialize()
+        db.append(claim_event(claim_id="p", statement=positive))
+        db.append(negation_event(claim_id="n", statement=variant))
+        rows = db.all("knowledge_contradictions")
+        assert len(rows) == 1, f"no contradiction: {positive!r} vs {variant!r}"
+        assert db.row("knowledge_claims", "claim_id", "p")["status"] == \
+            "CONTRADICTED"
+
+    # near-siblings with a DIFFERENT verb must stay clean
+    for sibling in ("The system starts", "The system works hard",
+                    "The system worked"):
+        db = FoundryDatabase(tmp_path / f"foundry-{abs(hash(sibling)) % 100000}.db")
+        db.initialize()
+        db.append(claim_event(claim_id="p", statement="The system works"))
+        db.append(negation_event(claim_id="n", statement=sibling))
+        assert db.count("knowledge_contradictions") == 0, \
+            f"false positive: {sibling!r}"
+
+
 def test_claim_recorded_projects_row_with_provenance(tmp_path):
     db = FoundryDatabase(tmp_path / "foundry.db")
     db.initialize()
