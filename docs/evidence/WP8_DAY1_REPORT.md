@@ -39,7 +39,7 @@ plus earlier 226-test run (`var/evidence/wp8-gate/step-8/foundry-suite-226.txt`)
 | F2 | Gateway termination | **PASS** (day 1, early; three complementary records: staged gateway killed while idle → dispatch independent [sibling, test_id F2]; real oneshot killed mid-run → FAILED, no orphans [sibling, F2-live]; staged gateway killed MID-SESSION → FAILED hermes_oneshot_failed, lease released, fresh-worker resume, 3 regression tests [this session, F2-active, step-9]) |
 | F3 | Builder kill after mutation | **PASS** (day 1, early; machinery + 9 tests) |
 | F4 | Windows restart | **PASS** (2026-08-12 ~09:49 owner reboot; supervisor auto-started from the task trigger in 1s, single lease, heartbeats resumed, ledger/WAL intact, reconcile consistent — evidence var/evidence/wp8-gate/f4-restart/F4_AFTER_STATE.json + fault_injection.completed:F4) |
-| F5–F13 | Network outage, provider unavail., auth, disk, corrupted event, duplicate delivery, Obsidian conflict, two agents, prompt injection | Scheduled days 2–5; several have suite-level coverage (idempotency, lease, Obsidian conflict, integrity) — execution on schedule |
+| F5–F13 | Network outage, provider unavail., auth, disk, corrupted event, duplicate delivery, Obsidian conflict, two agents, prompt injection | F12 **PASS** (day 2, early: second daemon → LeaseUnavailable, exit 1, zero events, lease untouched) · F13 **PASS** (day 3, early: hostile doc inert, illegal transitions rejected, fabricated events recorded-but-inert + 3 regressions). F5–F11 scheduled days 4–5; several have suite-level coverage |
 | F14 | Path escape | **PASS** (mission step-6) |
 | F15 | False success report | **PASS** (mission step-6; G6/step-7 lineages also exercise planted-claim rejection) |
 
