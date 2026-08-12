@@ -6,6 +6,7 @@ gate_verdict: "NOT_TESTED"
 later_packages: "INACTIVE_NOT_TESTED"
 objective: "Run the V1 seven-day acceptance gate (docs/architecture/04_V1_ACCEPTANCE_GATE.md): record every entry precondition, start the seven-day clock atomically in the live ledger, execute the G1–G9 functional matrix and F1–F15 fault injections on the selected proving mission (wfm-optimizer), complete at least ten independently verified action cycles, reconcile all state, and issue an independent gate verdict."
 expected_value: "PASS changes trust to TRUSTED_AUTONOMOUS, activates continuous V1 operation, and queues V2 automatically (the final acceptance verdict is an owner-gated hold point)."
+progress: "day 1 of 7; clock started 2026-08-12; 9 verified cycles closed (steps 1,2,3,5,6,7,8 + F1 + clock start). F3 closed this run (FAIL->repair->PASS with independent verifier round-2 PASS). F4 prepared, owner-resumable. Next: F2-class staged gateway kill, reconciliation + day-1 report."
 target_resources:
   - "C:\\Users\\b\\JARVIS\\v1-proving\\wfm-optimizer (new bounded mission repo; see docs/evidence/WP8_RESOURCE_SCORING.md and WP8_MISSION_CONTRACT.md)"
   - "live Foundry runtime (C:\\Users\\b\\AppData\\Local\\hermes\\foundry; task JARVIS-Foundry-Supervisor)"

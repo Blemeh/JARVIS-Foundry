@@ -5,7 +5,7 @@ This file is the current project truth.
 ```yaml
 project: JARVIS Foundry
 owner: Blendi Mehmeti
-state_version: 12
+state_version: 13
 updated_at: 2026-08-12
 
 phase: V1_AUTONOMY_KERNEL
@@ -62,7 +62,7 @@ work_package_verdicts:
   WP6: PASS
   WP7: PASS (activated; recovery repairs 2026-08-12 verified — see
         docs/evidence/WP7_RECOVERY_2026-08-12.md)
-  WP8: IN_PROGRESS (entry preconditions; clock not yet started)
+  WP8: IN_PROGRESS (day 1 of the seven-day clock; 9 verified cycles closed)
 
 autonomous_local_actions_after_start: true
 autonomous_obsidian_actions_after_capability_ready: true
@@ -72,7 +72,8 @@ autonomous_git_and_deployment_after_capability_ready: true
 autonomous_financial_actions_after_capability_ready: true
 autonomous_self_evolution_after_capability_ready: true
 
-next_event: WP8_CLOCK_START (after all entry preconditions are recorded)
+next_event: WP8_F2_CLASS (staged gateway kill) + reconciliation/day-1 report;
+  F4 remains owner-resumable (physical reboot)
 ```
 
 ## Completed
@@ -102,20 +103,33 @@ next_event: WP8_CLOCK_START (after all entry preconditions are recorded)
   - The real task was restored (00:55 local), daemon heartbeating every
     30 s, one singleton lease, reconcile consistent, live STOP freeze →
     resume proven.
+- WP8 day 1 (2026-08-12, this continuation): clock started (CLOCK_START.json
+  + ledger), steps 1–8 + F1 closed (9 verified cycles). **Step-8 (this
+  run):** plan-F3 fault injection (builder killed after mutation, before
+  result) — reproduced the recovery gap (stuck EXECUTING mission, reaper
+  never wired), repaired with `recover_stale_mission_state` (incident-scoped
+  atomic mission resume) + `append_events` + supervisor wiring; independent
+  verifier round-1 FAIL (F3-1..F3-4, all legitimate) → repaired → round-2
+  PASS (0 findings). Also fixed FIND-2026-08-12-02: installer `<LogonTrigger>`
+  now carries `<UserId>` so schtasks accepts the XML from automated
+  (cron) contexts (was "Access is denied"); 9 baseline installer failures →
+  17/17 green. Foundry suite 226 passed; mission suite 40; estop 24. Live
+  daemon restarted onto the new code (supervisor-54a43fb2), reconcile
+  consistent. Evidence: `docs/evidence/WP8_F3_FAULT_INJECTION.md` +
+  `var/evidence/wp8-gate/step-8/`.
 
 ## Current Reality
 
-WP8 (seven-day acceptance) is the active package: entry preconditions are
-being recorded (see `docs/evidence/WP8_ENTRY_PRECONDITIONS.md`); the seven-
-day clock has NOT started. Proving resource scored and selected (wfm-
-optimizer — `WP8_RESOURCE_SCORING.md`), mission contract drafted
-(`WP8_MISSION_CONTRACT.md`), gate execution plan written
-(`WP8_GATE_EXECUTION_PLAN.md`). Clock start appends the START BUILD record
-and the resource/mission registrations to the live ledger atomically, then
-the G1–G9 / F1–F15 battery and ≥10 independently verified action cycles run
-over seven PC-available days; the final acceptance verdict is an owner-gated
-hold point (PASS changes trust to TRUSTED_AUTONOMOUS, activates continuous
-operation, and queues V2 automatically).
+WP8 (seven-day acceptance) is the active package: **day 1 of the seven-day
+clock** (started 2026-08-12, CLOCK_START.json + ledger). Nine verified cycles
+closed: steps 1,2,3 (G6), F1 (live kill), steps 5,6 (F14/F15), 7 (leak
+vectors), 8 (F3 builder-kill recovery + installer fix — this run), plus the
+clock-start/dispatch probe cycle. F4 (Windows restart) is prepared but
+owner-resumable (the agent cannot execute a physical reboot; a real restart
+runs the scripted recovery verification). The G1–G9 / F1–F15 battery
+continues; the final acceptance verdict is an owner-gated hold point (PASS
+changes trust to TRUSTED_AUTONOMOUS, activates continuous operation, and
+queues V2 automatically).
 
 ## What Happens After START BUILD
 
