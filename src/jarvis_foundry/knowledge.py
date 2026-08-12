@@ -66,6 +66,25 @@ def expand_contractions(statement: str) -> str:
         lambda match: _CONTRACTIONS[match.group(0).lower()], statement.lower())
 
 
+_KIND_PREFIXES = ("handoff", "research", "vault", "repo", "system")
+
+
+def normalize_source_run_id(run_id: str) -> str:
+    """Collapse a doubled kind prefix in a source run id (V4-S1 hygiene).
+
+    The pre-V4-S1 ingestion generator emitted ``handoff:handoff:FILE.md:
+    <hash>`` for directory sources (the kind was prefixed twice). Applied
+    at the PROJECTION boundary — the derived ``source_run_id`` is clean
+    while the historical event payload is untouched (append-only), and a
+    rebuild reproduces the same normalized rows. 766 live claims carried
+    the malformed form (2026-08-12 probe)."""
+    for kind in _KIND_PREFIXES:
+        doubled = f"{kind}:{kind}:"
+        if run_id.startswith(doubled):
+            return run_id[len(kind) + 1:]
+    return run_id
+
+
 def canonicalize_statement(statement: str) -> str:
     """Lowercase, expand contractions, collapse whitespace, strip punctuation."""
     text = expand_contractions(statement)

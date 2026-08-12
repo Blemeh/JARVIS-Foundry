@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 
 
-SCHEMA_VERSION = 16
+SCHEMA_VERSION = 17
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -476,6 +476,41 @@ MIGRATIONS: dict[int, str] = {
         last_event_id TEXT NOT NULL,
         updated_at TEXT NOT NULL
     );
+    """,
+    17: """
+    -- V4-S1 (DIR-2026-08-12 item 5): candidates gain SUPERSEDED +
+    -- superseded_by for additive corrections (SQLite cannot ALTER CHECK
+    -- constraints — table rebuild, v9 idiom).
+    CREATE TABLE IF NOT EXISTS candidates_v17 (
+        candidate_id TEXT PRIMARY KEY,
+        mission_id TEXT NOT NULL,
+        source TEXT NOT NULL,
+        objective TEXT NOT NULL,
+        objective_canonical TEXT NOT NULL,
+        evidence_json TEXT NOT NULL DEFAULT '[]',
+        status TEXT NOT NULL DEFAULT 'NEW'
+            CHECK(status IN ('NEW', 'SCORED', 'APPROVED', 'REJECTED',
+                             'EXECUTED', 'SUPERSEDED')),
+        duplicate_of TEXT,
+        created_from TEXT,
+        superseded_by TEXT,
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    INSERT INTO candidates_v17(
+        candidate_id, mission_id, source, objective, objective_canonical,
+        evidence_json, status, duplicate_of, created_from, superseded_by,
+        last_event_id, updated_at)
+    SELECT candidate_id, mission_id, source, objective, objective_canonical,
+        evidence_json, status, duplicate_of, created_from, NULL,
+        last_event_id, updated_at
+    FROM candidates;
+    DROP TABLE candidates;
+    ALTER TABLE candidates_v17 RENAME TO candidates;
+    CREATE INDEX IF NOT EXISTS candidates_canonical
+        ON candidates(objective_canonical);
+    CREATE INDEX IF NOT EXISTS candidates_mission
+        ON candidates(mission_id);
     """,
 }
 

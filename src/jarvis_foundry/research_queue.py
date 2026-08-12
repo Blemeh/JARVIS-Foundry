@@ -23,7 +23,7 @@ from typing import Any
 from .database import FoundryDatabase
 from .discovery_candidates import generate_candidate
 from .events import Event
-from .vault_retrieval import note_support
+from .vault_retrieval import batch_support
 
 WEAK_THRESHOLD = 0.2
 LOW_VALUE_FLOOR = 0.1
@@ -48,17 +48,29 @@ def _existing_items(db: FoundryDatabase) -> set[tuple[str, str]]:
 def detect_research_items(db: FoundryDatabase, *,
                           weak_threshold: float = WEAK_THRESHOLD,
                           low_value_floor: float = LOW_VALUE_FLOOR,
-                          now: str | None = None) -> list[dict[str, Any]]:
+                          now: str | None = None,
+                          vault_root: str | Path | None = None,
+                          handoff_dir: str | Path | None = None,
+                          research_dirs: Iterable[str | Path] = (),
+                          repo_paths: Iterable[str | Path] = (),
+                          ) -> list[dict[str, Any]]:
     """Scan claims and create queue items (one per claim per reason).
 
     Returns the newly created items (projected rows). Re-scans are
-    no-ops for existing (claim, reason) pairs.
+    no-ops for existing (claim, reason) pairs. UNSUPPORTED is
+    source-kind-aware (V4-S1): the provided roots let handoff/repo
+    claims resolve their sources; without them those kinds report
+    UNSUPPORTED (no source = no support).
     """
     now = now or _now()
     existing = _existing_items(db)
     created_items: list[dict[str, Any]] = []
     claims = db.all("knowledge_claims")
     with db.connect() as connection:
+        support = batch_support(connection, claims, vault_root=vault_root,
+                                handoff_dir=handoff_dir,
+                                research_dirs=research_dirs,
+                                repo_paths=repo_paths)
         contradicted: set[str] = set()
         for row in connection.execute(
                 "SELECT claim_a_id FROM knowledge_contradictions "
@@ -73,7 +85,7 @@ def detect_research_items(db: FoundryDatabase, *,
                 reasons.append(("STALE", {"fresh_until": fresh_until}))
             if claim_id in contradicted:
                 reasons.append(("CONTRADICTED", {"contradiction": True}))
-            if note_support(connection, claim) == "UNSUPPORTED":
+            if support.get(claim_id) == "UNSUPPORTED":
                 reasons.append(("UNSUPPORTED", {
                     "source_event_id": claim.get("source_event_id")}))
             confidence = claim.get("confidence") or 0.0

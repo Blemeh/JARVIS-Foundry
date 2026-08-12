@@ -36,6 +36,7 @@ from .live_ingestion import run_ingestion_cycle
 from .mission.loop import MissionLoop
 from .mission.proposal import ProposalError
 from .reconcile import reconcile
+from .vault_retrieval import batch_support
 from .research_queue import detect_research_items, generate_research_candidates
 
 DEFAULT_CAPABILITY = "write_registered_worktree_files"
@@ -43,24 +44,31 @@ DEFAULT_MIN_SCORE = 0.35
 
 
 def _maintenance_candidates(db: FoundryDatabase, *,
-                            mission_id: str) -> dict[str, Any]:
+                            mission_id: str,
+                            vault_root: str | Path | None = None,
+                            handoff_dir: str | Path | None = None,
+                            research_dirs: Iterable[str | Path] = (),
+                            repo_paths: Iterable[str | Path] = (),
+                            ) -> dict[str, Any]:
     """Create evidence-backed MAINTENANCE candidates from measured
     observations (directive Phase 7: 'create maintenance work when
-    needed'). Signals: unsupported claims without an ACTIVE vault source
-    (gate criterion 3 pending-verification work), stale claims, open
+    needed'). Signals: unsupported claims (SOURCE-KIND-AWARE since
+    V4-S1 — the pre-S1 vault-only check falsely marked 894/920 live
+    handoff/repo/system claims UNSUPPORTED), stale claims, open
     research items. Dedup via the candidate pipeline; honest no-op when
     no signal clears the thresholds. The objective carries the measured
     numbers AND the calibrated scoring terms (fix/unknown/root cause/
     risk/today) so genuine maintenance work passes the selection bar.
     """
+    claims = db.all("knowledge_claims")
     with db.connect() as connection:
-        unsupported = connection.execute(
-            "SELECT COUNT(*) FROM knowledge_claims c WHERE NOT EXISTS "
-            "(SELECT 1 FROM vault_files v WHERE v.status = 'ACTIVE' AND "
-            "v.rel_path = CASE WHEN instr(c.source_event_id, ':') > 0 "
-            "THEN substr(c.source_event_id, 1, "
-            "instr(c.source_event_id, ':') - 1) ELSE NULL END)"
-        ).fetchone()[0]
+        support = batch_support(connection, claims, vault_root=vault_root,
+                                handoff_dir=handoff_dir,
+                                research_dirs=research_dirs,
+                                repo_paths=repo_paths)
+    unsupported = sum(1 for value in support.values()
+                      if value == "UNSUPPORTED")
+    with db.connect() as connection:
         stale = connection.execute(
             "SELECT COUNT(*) FROM knowledge_claims WHERE fresh_until IS NOT "
             "NULL AND fresh_until <= ?",
@@ -131,6 +139,7 @@ def run_one_loop(db: FoundryDatabase, *, loop_id: str, adapter: Any,
                  max_items: int = 40, max_bytes: int = 80_000,
                  vault_root: str | Path | None = None,
                  handoff_dir: str | Path | None = None,
+                 research_dirs: Iterable[str | Path] = (),
                  repo_paths: Iterable[str | Path] | None = None,
                  target_root: str | Path | None = None,
                  instructions_builder: Callable[[str, Path], str] | None = None,
@@ -154,14 +163,20 @@ def run_one_loop(db: FoundryDatabase, *, loop_id: str, adapter: Any,
     report["observed"] = {k: v["claims_created"] for k, v in cycle.items()}
 
     # 3. GENERATE CANDIDATE (research queue → discovery pipeline)
-    items = detect_research_items(db)
+    items = detect_research_items(db, vault_root=vault_root,
+                                  handoff_dir=handoff_dir,
+                                  research_dirs=research_dirs,
+                                  repo_paths=tuple(repo_paths or ()))
     candidates = generate_research_candidates(db)
     report["research_items"] = len(items)
     report["candidates_created"] = candidates["candidates_created"]
 
     # 3b. MAINTENANCE WORK when needed (measured signals; deduped through
     # the same candidate pipeline)
-    maintenance = _maintenance_candidates(db, mission_id=mission_id)
+    maintenance = _maintenance_candidates(
+        db, mission_id=mission_id, vault_root=vault_root,
+        handoff_dir=handoff_dir, research_dirs=research_dirs,
+        repo_paths=tuple(repo_paths or ()))
     report["maintenance"] = maintenance["counts"]
     report["maintenance_candidate_created"] = maintenance["created"]
 

@@ -380,9 +380,16 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             (payload.get("rollback_pointer"), event.event_id, event.recorded_at, payload["write_id"]),
         )
     elif event.event_type == "knowledge.claim_recorded":
-        from .knowledge import contradicts
+        from .knowledge import contradicts, normalize_source_run_id
 
         claim_id = payload["claim_id"]
+        run_id = payload.get("source", {}).get("run_id")
+        if run_id:
+            # V4-S1 hygiene: the malformed doubled prefix
+            # ("handoff:handoff:...") is normalized at the PROJECTION
+            # boundary — derived state is clean, history untouched,
+            # rebuilds reproduce the same rows.
+            run_id = normalize_source_run_id(run_id)
         connection.execute(
             """INSERT INTO knowledge_claims(
                 claim_id, mission_id, statement, claim_type, confidence,
@@ -393,7 +400,7 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
                 claim_id, payload["mission_id"], payload["statement"],
                 payload["claim_type"], payload.get("confidence", 0.5),
                 payload.get("fresh_until"),
-                payload.get("source", {}).get("run_id"),
+                run_id,
                 payload.get("source", {}).get("event_id"),
                 event.event_id, event.recorded_at,
             ),
@@ -601,6 +608,17 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             "UPDATE candidates SET status = 'REJECTED', evidence_json = ?, "
             "last_event_id = ?, updated_at = ? WHERE candidate_id = ?",
             (canonical_json([{"rejection_reason": payload.get("reason", "")}]),
+             event.event_id, event.recorded_at, payload["candidate_id"]))
+    elif event.event_type == "discovery.candidate_superseded":
+        # V4-S1 additive correction: a candidate whose premise was
+        # re-measured false is superseded — never deleted, never
+        # selected (selection scans NEW/SCORED only), history intact.
+        connection.execute(
+            "UPDATE candidates SET status = 'SUPERSEDED', superseded_by = ?, "
+            "evidence_json = ?, last_event_id = ?, updated_at = ? "
+            "WHERE candidate_id = ?",
+            (payload.get("superseded_by"),
+             canonical_json([{"reason": payload.get("reason", "")}]),
              event.event_id, event.recorded_at, payload["candidate_id"]))
     elif event.event_type == "discovery.candidate_outcome_recorded":
         connection.execute(

@@ -93,6 +93,23 @@ def generate_candidate(db: FoundryDatabase, mission_id: str, source: str,
             "duplicate_of": duplicate}
 
 
+def supersede_candidate(db: FoundryDatabase, candidate_id: str, *,
+                        superseded_by: str | None = None,
+                        reason: str = "") -> None:
+    """Additively supersede a candidate whose premise was re-measured
+    false (V4-S1 / DIR-2026-08-12 item 5: preserve history, supersede
+    polluted projections — never delete, never rewrite). The projection
+    flips the status to SUPERSEDED; selection scans NEW/SCORED only, so
+    a superseded candidate is never executed. Idempotent: identical
+    re-delivery dedupes on the event key."""
+    db.append(Event.create(
+        "discovery.candidate_superseded",
+        {"candidate_id": candidate_id, "superseded_by": superseded_by,
+         "reason": reason},
+        source_type="supervisor", source_id="knowledge-hygiene",
+        idempotency_key=f"discovery.candidate_superseded:{candidate_id}"))
+
+
 def score_candidate(db: FoundryDatabase, candidate_id: str) -> float:
     """Deterministic calibrated scoring; stores the weights."""
     with db.connect() as connection:
