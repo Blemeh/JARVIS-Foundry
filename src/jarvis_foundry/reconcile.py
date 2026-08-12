@@ -77,6 +77,7 @@ def _table_key_column(table: str) -> str:
         "knowledge_snapshots": "snapshot_id",
         "candidates": "candidate_id",
         "candidate_scores": "candidate_id",
+        "monitors": "monitor_id",
         "system_state": "singleton",
         "supervisor_state": "singleton",
     }

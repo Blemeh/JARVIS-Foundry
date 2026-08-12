@@ -26,6 +26,7 @@ PROJECTION_TABLES = (
     "knowledge_snapshots",
     "candidates",
     "candidate_scores",
+    "monitors",
 )
 
 
@@ -41,14 +42,32 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
         connection.execute(
             """INSERT INTO missions(
                 mission_id, objective, resource_id, state, acceptance_json,
-                next_action, last_event_id, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                next_action, created_from, last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 payload["mission_id"], payload["objective"], payload.get("resource_id"),
                 payload.get("state", "PLANNED"), canonical_json(payload["acceptance_criteria"]),
-                payload.get("next_action"), event.event_id, event.recorded_at,
+                payload.get("next_action"), payload.get("created_from"),
+                event.event_id, event.recorded_at,
             ),
         )
+    elif event.event_type == "mission.completed":
+        # V3 slice-2 wiring: a mission whose created_from is
+        # candidate:<id> auto-records the candidate outcome (prediction
+        # vs reality) and marks it EXECUTED.
+        row = connection.execute(
+            "SELECT created_from FROM missions WHERE mission_id = ?",
+            (payload["mission_id"],)).fetchone()
+        if row and row[0] and row[0].startswith("candidate:"):
+            candidate_id = row[0].split(":", 1)[1]
+            outcome = {"prediction": payload.get("objective"),
+                       "reality": payload.get("outcome", {})}
+            connection.execute(
+                "UPDATE candidates SET status = 'EXECUTED', evidence_json = ?, "
+                "last_event_id = ?, updated_at = ? WHERE candidate_id = ?",
+                (canonical_json([{"outcome": outcome}]), event.event_id,
+                 event.recorded_at, candidate_id),
+            )
     elif event.event_type == "mission.state_changed":
         row = connection.execute(
             "SELECT state FROM missions WHERE mission_id = ?", (payload["mission_id"],)
@@ -535,6 +554,32 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             "last_event_id = ?, updated_at = ? WHERE candidate_id = ?",
             (canonical_json([{"outcome": payload.get("outcome", {})}]),
              event.event_id, event.recorded_at, payload["candidate_id"]))
+
+    elif event.event_type == "discovery.monitor_registered":
+        connection.execute(
+            """INSERT INTO monitors(
+                monitor_id, mission_id, source_kind, source_ref,
+                poll_interval_s, enabled, last_poll_at, last_event_id,
+                updated_at
+            ) VALUES (?, ?, ?, ?, ?, 1, NULL, ?, ?)""",
+            (payload["monitor_id"], payload["mission_id"],
+             payload["source_kind"], payload["source_ref"],
+             payload.get("poll_interval_s", 300),
+             event.event_id, event.recorded_at),
+        )
+    elif event.event_type == "discovery.monitor_polled":
+        connection.execute(
+            "UPDATE monitors SET last_poll_at = ?, last_event_id = ?, "
+            "updated_at = ? WHERE monitor_id = ?",
+            (event.recorded_at, event.event_id, event.recorded_at,
+             payload["monitor_id"]),
+        )
+    elif event.event_type == "discovery.monitor_disabled":
+        connection.execute(
+            "UPDATE monitors SET enabled = 0, last_event_id = ?, "
+            "updated_at = ? WHERE monitor_id = ?",
+            (event.event_id, event.recorded_at, payload["monitor_id"]),
+        )
 
     if event.event_type.startswith("supervisor.") or event.event_type.startswith("emergency_stop."):
         status = {

@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 
 
-SCHEMA_VERSION = 10
+SCHEMA_VERSION = 11
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -364,6 +364,23 @@ MIGRATIONS: dict[int, str] = {
         last_event_id TEXT NOT NULL,
         updated_at TEXT NOT NULL
     );
+    """,
+    11: """
+    ALTER TABLE missions ADD COLUMN created_from TEXT;
+
+    CREATE TABLE IF NOT EXISTS monitors (
+        monitor_id TEXT PRIMARY KEY,
+        mission_id TEXT NOT NULL,
+        source_kind TEXT NOT NULL,
+        source_ref TEXT NOT NULL,
+        poll_interval_s INTEGER NOT NULL DEFAULT 300,
+        enabled INTEGER NOT NULL DEFAULT 1 CHECK(enabled IN (0, 1)),
+        last_poll_at TEXT,
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS monitors_mission
+        ON monitors(mission_id);
     """,
 }
 
