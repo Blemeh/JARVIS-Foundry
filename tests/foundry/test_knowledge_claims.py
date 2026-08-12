@@ -42,6 +42,45 @@ def negation_event(claim_id: str = "claim-2", statement: str = "The sky is not b
     )
 
 
+def test_negation_variant_family_no_false_negatives(tmp_path):
+    """Regression for verifier deleg_642b84b2 K1: the contraction family
+    and whitespace/punctuation/case variants MUST contradict the positive
+    claim (punctuation was previously stripped before token matching,
+    making 'isn't' tokens unreachable and apostrophe-free spellings
+    removing the copula)."""
+    positive = "The sky is blue"
+    negated_variants = [
+        "The sky is not blue",
+        "The sky is NOT blue",
+        "The sky is not   blue",
+        "The sky is not blue.",
+        "The sky isn't blue",
+        "The sky ISN'T blue",
+        "The sky isn't   blue.",
+        "The sky isnt blue",
+        "The sky is not blue!!",
+    ]
+    for variant in negated_variants:
+        db = FoundryDatabase(tmp_path / f"foundry-{abs(hash(variant)) % 100000}.db")
+        db.initialize()
+        db.append(claim_event(claim_id="p", statement=positive))
+        db.append(negation_event(claim_id="n", statement=variant))
+        rows = db.all("knowledge_contradictions")
+        assert len(rows) == 1, f"no contradiction for: {variant!r}"
+        assert db.row("knowledge_claims", "claim_id", "p")["status"] == \
+            "CONTRADICTED", f"positive not flagged for: {variant!r}"
+
+    # non-contradicting near-siblings must stay clean (no false positives)
+    for sibling in ("The sky is green", "The sky is not green",
+                    "The ocean is blue"):
+        db = FoundryDatabase(tmp_path / f"foundry-{abs(hash(sibling)) % 100000}.db")
+        db.initialize()
+        db.append(claim_event(claim_id="p", statement=positive))
+        db.append(negation_event(claim_id="n", statement=sibling))
+        assert db.count("knowledge_contradictions") == 0, \
+            f"false positive for: {sibling!r}"
+
+
 def test_claim_recorded_projects_row_with_provenance(tmp_path):
     db = FoundryDatabase(tmp_path / "foundry.db")
     db.initialize()

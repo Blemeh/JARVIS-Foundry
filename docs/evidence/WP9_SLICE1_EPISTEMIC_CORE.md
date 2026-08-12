@@ -1,7 +1,14 @@
 # WP9 — V2 Knowledge Brain, Slice-1: Epistemic Core
 
-Status: **IMPLEMENTED** (2026-08-12; tests green; independent verifier
-<PENDING>). WP9 package ACTIVE (docs/planning/CURRENT_WORK_PACKAGE.yaml).
+Status: **IMPLEMENTED + REPAIRED** (2026-08-12). Verifier round-1
+(deleg_642b84b2) FAIL: contraction false-negatives ("X isn't Y" did not
+contradict "X is Y" — punctuation stripping destroyed `n't` tokens before
+token matching; apostrophe-free spellings removed the copula) →
+REPAIRED (contraction expansion before canonicalization, word-boundary
+regex, copula-preserving `isnt -> is not` mappings) + regression
+`test_negation_variant_family_no_false_negatives` (9 negation variants +
+3 non-contradiction siblings). Verifier round-2 <PENDING>.
+WP9 package ACTIVE (docs/planning/CURRENT_WORK_PACKAGE.yaml).
 
 ## Delivered (bounded slice-1 scope)
 
@@ -18,12 +25,13 @@ Status: **IMPLEMENTED** (2026-08-12; tests green; independent verifier
    `knowledge.claim_superseded` (validates BOTH claims exist inside the
    transaction; missing → ValueError + rollback, F9 pattern).
 3. **Deterministic contradiction detection** (src/jarvis_foundry/knowledge.py):
-   token-level negation canonicalizer (`not/no/never/isn't/doesn't/...`),
-   core equality + exactly-one-negated ⇒ contradiction. String-level,
-   deterministic, test-driven — NO LLM inference (recorded future work).
-   Detection runs at record time (derived projection; no separate event —
-   deterministic under rebuild; both claims stay visible, statuses
-   flagged).
+   contraction expansion (word-boundary; `isn't/isnt -> is not`, ...
+   copula-preserving) + token-level negation canonicalizer
+   (`not/no/never`), core equality + exactly-one-negated ⇒ contradiction.
+   String-level, deterministic, test-driven — NO LLM inference (recorded
+   future work). Detection runs at record time (derived projection; no
+   separate event — deterministic under rebuild; both claims stay
+   visible, statuses flagged).
 4. **Queries**: `FoundryDatabase.row/all/count` bounded helpers
    (allowlisted tables; exact-match filters).
 5. **Reconcile integration**: key-column map + PROJECTION_TABLES include

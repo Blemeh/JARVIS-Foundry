@@ -12,16 +12,44 @@ from __future__ import annotations
 
 import re
 
-_NEGATION_TOKENS = frozenset(
-    {"not", "no", "never", "n't", "isn't", "doesn't", "don't", "can't",
-     "cannot", "wont", "won't", "isnt", "doesnt", "dont", "cant"})
+_CONTRACTIONS: dict[str, str] = {
+    # apostrophe forms (expanded BEFORE punctuation stripping, which would
+    # otherwise destroy the 'n't' token — verifier deleg_642b84b2 K1)
+    "isn't": "is not", "doesn't": "does not", "don't": "do not",
+    "can't": "can not", "won't": "will not", "couldn't": "could not",
+    "shouldn't": "should not", "wouldn't": "would not", "didn't": "did not",
+    "wasn't": "was not", "weren't": "were not", "aren't": "are not",
+    "hasn't": "has not", "haven't": "have not",
+    # apostrophe-free spellings (copula must survive: 'isnt' -> 'is not',
+    # never just 'isnt' removed, which would break core equality)
+    "isnt": "is not", "doesnt": "does not", "dont": "do not",
+    "cant": "can not", "cannot": "can not", "wont": "will not",
+    "couldnt": "could not", "shouldnt": "should not", "wouldnt": "would not",
+    "didnt": "did not", "wasnt": "was not", "werent": "were not",
+    "arent": "are not", "hasnt": "has not", "havent": "have not",
+    # suffix form (matches 'do n't' style splits; full forms above win first)
+    "n't": " not",
+}
+_CONTRACTION_RE = re.compile(
+    r"\b(" + "|".join(sorted(_CONTRACTIONS, key=len, reverse=True)) + r")\b")
+
+_NEGATION_TOKENS = frozenset({"not", "no", "never"})
 _WHITESPACE = re.compile(r"\s+")
 _NON_ALNUM = re.compile(r"[^a-z0-9 ]")
 
 
+def expand_contractions(statement: str) -> str:
+    """Expand English contractions to their 'not' forms (word boundaries).
+
+    Applied BEFORE punctuation stripping so apostrophe tokens survive.
+    """
+    return _CONTRACTION_RE.sub(
+        lambda match: _CONTRACTIONS[match.group(0).lower()], statement.lower())
+
+
 def canonicalize_statement(statement: str) -> str:
-    """Lowercase, collapse whitespace, strip punctuation."""
-    text = statement.strip().lower()
+    """Lowercase, expand contractions, collapse whitespace, strip punctuation."""
+    text = expand_contractions(statement)
     text = _NON_ALNUM.sub(" ", text)
     return _WHITESPACE.sub(" ", text).strip()
 
