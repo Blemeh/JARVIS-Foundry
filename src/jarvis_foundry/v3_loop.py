@@ -43,6 +43,48 @@ DEFAULT_CAPABILITY = "write_registered_worktree_files"
 DEFAULT_MIN_SCORE = 0.35
 
 
+def _ensure_monitors(db: FoundryDatabase, mission_id: str, *,
+                     vault_root: str | Path | None = None,
+                     handoff_dir: str | Path | None = None,
+                     research_dirs: Iterable[str | Path] = (),
+                     repo_paths: Iterable[str | Path] = (),
+                     ) -> dict[str, str]:
+    """Register (deduped) the REAL observed sources in the durable
+    monitors registry (DIR-2026-08-12 item 6: monitored-source
+    acceptance requires the registry, never direct ingestion alone).
+
+    Returns {source_kind: monitor_id}. Registration is idempotent:
+    an existing (source_kind, source_ref) row is reused. The ledger
+    (system) is always a monitored source; nothing else is invented
+    when no roots are provided.
+    """
+    from .discovery_monitors import register_monitor
+
+    sources: list[tuple[str, str]] = []
+    if vault_root:
+        sources.append(("vault", str(Path(vault_root).resolve())))
+    if handoff_dir:
+        sources.append(("handoffs", str(Path(handoff_dir).resolve())))
+    for directory in research_dirs:
+        sources.append(("research", str(Path(directory).resolve())))
+    for repo in repo_paths:
+        sources.append(("repo", str(Path(repo).resolve())))
+    sources.append(("system", "live-ledger"))
+    with db.connect() as connection:
+        existing = {
+            (row["source_kind"], row["source_ref"]): row["monitor_id"]
+            for row in connection.execute(
+                "SELECT monitor_id, source_kind, source_ref FROM monitors"
+            ).fetchall()}
+    monitor_ids: dict[str, str] = {}
+    for kind, ref in sources:
+        if (kind, ref) in existing:
+            monitor_ids[kind] = existing[(kind, ref)]
+        else:
+            monitor_ids[kind] = register_monitor(db, mission_id, kind, ref)
+    return monitor_ids
+
+
 def _maintenance_candidates(db: FoundryDatabase, *,
                             mission_id: str,
                             vault_root: str | Path | None = None,
@@ -179,6 +221,35 @@ def run_one_loop(db: FoundryDatabase, *, loop_id: str, adapter: Any,
         repo_paths=tuple(repo_paths or ()))
     report["maintenance"] = maintenance["counts"]
     report["maintenance_candidate_created"] = maintenance["created"]
+
+    # 3c. POLL THE DURABLE MONITOR REGISTRY (DIR-2026-08-12 item 6):
+    # every real observed source is registered (deduped) and polled
+    # through the registry every cycle — recorded last_poll_at +
+    # candidates_found; repeated polls dedup via canonical candidate
+    # detection. This runs BEFORE scoring so honest WAITING cycles
+    # still poll on schedule.
+    from .discovery_monitors import poll_monitor
+    monitor_ids = _ensure_monitors(
+        db, mission_id, vault_root=vault_root, handoff_dir=handoff_dir,
+        research_dirs=research_dirs, repo_paths=tuple(repo_paths or ()))
+    poll_items: list[dict[str, Any]] = []
+    for item in items[:max(1, int(max_items))]:
+        statement = (item.get("evidence") or {}).get("claim_statement") \
+            if isinstance(item.get("evidence"), dict) else None
+        poll_items.append({
+            "mission_id": mission_id,
+            "source": f"monitor:{item.get('reason', 'observation')}",
+            "objective": statement or item.get("claim_id", ""),
+            "evidence": [{"item_id": item.get("item_id"),
+                          "reason": item.get("reason")}]})
+    report["monitors"] = {}
+    for kind, monitor_id in monitor_ids.items():
+        result = poll_monitor(db, monitor_id, poll_items)
+        report["monitors"][kind] = {
+            "monitor_id": monitor_id,
+            "polled": True,
+            "items_seen": result["items_seen"],
+            "candidates_found": result["candidates_found"]}
 
     # 4. SCORE + SELECT/REJECT
     top = _top_scorable(db, budget=score_budget)
