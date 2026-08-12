@@ -10,7 +10,14 @@ verification self-attested from the file's own row) → REPAIRED:
 content sha256 recorded in the event/projection and verification
 cross-checks the FILE against the AUTHORITATIVE live-DB record
 (quick_check + sha256 + claims count), F7 rollback idempotency key now
-deterministic (one rollback per snapshot). Verifier round-2 <PENDING>.
+deterministic (one rollback per snapshot). Verifier round-2
+(deleg_23953faa) **PASS** — M1 45/45 (counts self-verified), M2 22/22
+probes, M3 suite 293 EXIT=0 + clean tree, M4 honest lineage.
+Ledger: verification.failed ×1 (repair-keyed, seq 4667) +
+verification.passed:verdict-wp9-slice5 (seq 4668) +
+evidence.created:wp9-slice5 (seq 4669). **Slice-5 CLOSED — PASS.**
+8/8 snapshot tests green; knowledge 45/45; full suite 293 EXIT=0.
+**ALL FIVE V2 SLICES CLOSED — the WP9 gate review is next.**
 
 ## Delivered (bounded slice-5 scope)
 
