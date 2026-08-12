@@ -21,9 +21,55 @@ import time
 from pathlib import Path
 
 from ..database import FoundryDatabase
+from ..events import Event, EventConflict
 from ..paths import FoundryPaths
 from .console import ConsoleControlHandler
 from .service import Supervisor
+
+#: Bounded retry: after this many consecutive heartbeat failures the daemon
+#: stops itself cleanly (lease released, ledger records the stop) so the
+#: repeating scheduled trigger restarts a fresh instance (F1/F-test class).
+MAX_CONSECUTIVE_FAILURES = 5
+
+
+def _record_degraded(supervisor: Supervisor, cause: str,
+                     details: dict[str, object], *,
+                     throttle: float, last_recorded_at: float) -> bool:
+    """Append a throttled ``supervisor.degraded`` event; never raises.
+
+    The degraded append must not take the loop down with it — if the ledger
+    itself is the problem, the failure is reported on stderr and the bounded
+    retry path decides the daemon's fate.
+    """
+    import time as _time
+    now = _time.monotonic()
+    if now - last_recorded_at < throttle:
+        return False
+    try:
+        supervisor.database.append(Event.create(
+            "supervisor.degraded",
+            {"instance_id": supervisor.instance_id,
+             "trust_state": "LAB",
+             "reason": cause,
+             "details": details},
+            source_type="supervisor", source_id=supervisor.instance_id,
+            idempotency_key=(
+                f"supervisor.degraded:{supervisor.instance_id}:{cause}"),
+        ))
+        return True
+    except EventConflict:
+        # Already recorded for this instance+cause (verifier OBS-1): the
+        # ledger keeps one row per cause per instance; this is not a
+        # failure — a fresh instance records its own events.
+        return True
+    except Exception as error:  # noqa: BLE001 — report, never propagate
+        print(json.dumps({
+            "supervisor": "DEGRADED_RECORD_FAILED",
+            "cause": cause,
+            "error_class": type(error).__name__,
+            "error": str(error)[:300],
+        }), flush=True)
+        return False
 
 
 def make_console_handler(supervisor: Supervisor) -> ConsoleControlHandler:
@@ -41,6 +87,85 @@ def make_console_handler(supervisor: Supervisor) -> ConsoleControlHandler:
         os._exit(0)
 
     return ConsoleControlHandler(on_event)
+
+
+def _heartbeat_loop(supervisor: Supervisor, interval: float, *,
+                    max_failures: int = MAX_CONSECUTIVE_FAILURES,
+                    stop_after: int | None = None) -> int:
+    """Exception-isolated heartbeat loop with cycle monitoring (step-5:
+    FIND-2026-08-12-01 repair — a wedged or failing cycle must be recorded
+    loudly and bounded, never persisted silently).
+
+    - a healthy cycle that takes > 3x the interval records a throttled
+      ``supervisor.degraded`` slow_cycle event (wedge class);
+    - a raising heartbeat records a throttled ``supervisor.degraded``
+      heartbeat_failure event and continues;
+    - after ``max_failures`` consecutive failures the daemon stops itself
+      cleanly (lease released, ``supervisor.stopped`` recorded) and returns
+      1, so the repeating scheduled trigger restarts a fresh instance;
+    - ``stop_after`` bounds the loop for tests (None = run forever).
+    """
+    failures = 0
+    last_degraded_at = 0.0
+    degraded_throttle = max(interval * 10, 120.0)
+    iterations = 0
+    while stop_after is None or iterations < stop_after:
+        iterations += 1
+        time.sleep(interval)
+        cycle_start = time.monotonic()
+        try:
+            state = supervisor.heartbeat()
+            failures = 0
+            cycle_seconds = time.monotonic() - cycle_start
+            if cycle_seconds > 3 * interval:
+                recorded = _record_degraded(
+                    supervisor, "slow_cycle",
+                    {"cycle_seconds": round(cycle_seconds, 1),
+                     "interval_seconds": interval},
+                    throttle=degraded_throttle,
+                    last_recorded_at=last_degraded_at)
+                if recorded:
+                    last_degraded_at = time.monotonic()
+        except Exception as error:  # noqa: BLE001 — the loop must survive
+            failures += 1
+            recorded = _record_degraded(
+                supervisor, "heartbeat_failure",
+                {"error_class": type(error).__name__,
+                 "error": str(error)[:300],
+                 "consecutive_failures": failures},
+                throttle=degraded_throttle,
+                last_recorded_at=last_degraded_at)
+            if recorded:
+                last_degraded_at = time.monotonic()
+            print(json.dumps({
+                "supervisor": "HEARTBEAT_FAILURE",
+                "consecutive_failures": failures,
+                "error_class": type(error).__name__,
+            }), flush=True)
+            if failures >= max_failures:
+                # Bounded retry: stop cleanly so the repeating trigger
+                # restarts a fresh instance (lease released, ledger records
+                # the stop). Never die silently mid-state — and never let
+                # the stop path itself mask the decision (verifier OBS-3).
+                print(json.dumps({
+                    "supervisor": "STOPPED_AFTER_FAILURES",
+                    "consecutive_failures": failures,
+                }), flush=True)
+                try:
+                    supervisor.stop()
+                except Exception as stop_error:  # noqa: BLE001
+                    print(json.dumps({
+                        "supervisor": "STOP_FAILED",
+                        "error_class": type(stop_error).__name__,
+                        "error": str(stop_error)[:300],
+                    }), flush=True)
+                return 1
+            continue
+        if state == "FROZEN":
+            # The STOP sentinel exists: stay alive as the watchdog, keep
+            # the frozen record fresh, and wait for resume/owner.
+            pass
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -71,20 +196,15 @@ def main(argv: list[str] | None = None) -> int:
         supervisor.stop()
         return 0
 
+    exit_code = 0
     try:
-        while True:
-            time.sleep(args.interval)
-            state = supervisor.heartbeat()
-            if state == "FROZEN":
-                # The STOP sentinel exists: stay alive as the watchdog, keep
-                # the frozen record fresh, and wait for resume/owner.
-                pass
+        exit_code = _heartbeat_loop(supervisor, args.interval)
     except KeyboardInterrupt:
         pass
     finally:
         supervisor.stop()
         console_handler.uninstall()
-    return 0
+    return exit_code
 
 
 if __name__ == "__main__":
