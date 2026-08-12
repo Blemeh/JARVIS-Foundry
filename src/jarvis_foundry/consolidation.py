@@ -165,6 +165,7 @@ def accept_consolidation(db: FoundryDatabase, service: ObsidianService,
         raise ValueError(
             f"consolidation {op_id} is {row['status']}; only VERIFIED ops "
             f"accept")
+    _assert_not_frozen(db, row["note_path"])
     content = _read_proposed(row)
     note_name = _note_name_from_path(row["note_path"])
     try:
@@ -187,6 +188,45 @@ def accept_consolidation(db: FoundryDatabase, service: ObsidianService,
 def _note_name_from_path(note_path: str) -> str:
     from pathlib import Path
     return Path(note_path).name
+
+
+def _assert_not_frozen(db: FoundryDatabase, note_path: str) -> None:
+    """Integrated-rollback freeze: while a rollback.triggered exists for
+    the note WITHOUT a completing rollback.completed, accepts on the note
+    are refused (the freeze stops further mutation before the restore).
+    """
+    with db.connect() as connection:
+        trigger = connection.execute(
+            "SELECT sequence FROM events WHERE event_type = "
+            "'rollback.triggered' AND json_extract(payload_json, "
+            "'$.note_path') = ? ORDER BY sequence DESC LIMIT 1",
+            (note_path,)).fetchone()
+        completed = connection.execute(
+            "SELECT sequence FROM events WHERE event_type = "
+            "'rollback.completed' AND json_extract(payload_json, "
+            "'$.note_path') = ? ORDER BY sequence DESC LIMIT 1",
+            (note_path,)).fetchone()
+    if trigger is not None and (completed is None
+                                or completed[0] < trigger[0]):
+        raise ValueError(
+            f"note {note_path} is FROZEN by an active rollback — further "
+            f"consolidation accepts are refused until the restore "
+            f"completes")
+
+
+def mark_consolidation_rolled_back(db: FoundryDatabase, op_id: str,
+                                   reason: str) -> bool:
+    """Flip an ACCEPTED consolidation op to ROLLED_BACK (used by the
+    integrated-rollback chain after the byte restore)."""
+    row = db.row("consolidation_ops", "op_id", op_id)
+    if row is None or row["status"] != "ACCEPTED":
+        return False
+    _record(db, op_id, "ROLLED_BACK", note_path=row["note_path"],
+            kind=row["kind"], before_hash=row["before_hash"],
+            after_hash=row["after_hash"], write_id=row["write_id"],
+            evidence={"reason": reason,
+                      "rolled_back_by": "integrated-rollback"})
+    return True
 
 
 def rollback_consolidation(db: FoundryDatabase, service: ObsidianService,
