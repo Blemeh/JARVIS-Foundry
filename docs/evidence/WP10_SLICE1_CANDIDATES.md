@@ -1,7 +1,16 @@
 # WP10 — V3 DISCOVERY AND BUILDING, Slice-1: Candidate Pipeline
 
-Status: **IMPLEMENTED** (2026-08-12; 9/9 tests green; independent
-verifier <PENDING>). WP10 ACTIVE (docs/planning/CURRENT_WORK_PACKAGE.yaml).
+Status: **IMPLEMENTED + REPAIRED** (2026-08-12). WP10 ACTIVE
+(docs/planning/CURRENT_WORK_PACKAGE.yaml). Verifier round-1
+(deleg_509a3730): P1 9/9 PASS, P2 all six adversarial probes PASS, P4
+PASS — P3 FAIL on TIMING: it read the suite artifact mid-regeneration
+(the first post-slice run exposed a draft-bug in three slice-5
+schema-version tests pinned to literal 9, broken by schema v10 —
+REPAIRED 9295b1f: de-pinned to version == SCHEMA_VERSION) and the HEAD
+pin was stale (9295b1f landed mid-verification). The verifier's OWN
+independent run: **302 passed, EXIT=0** at HEAD. The artifact has since
+been regenerated at HEAD 9295b1f (var/evidence/wp10-slice1/
+suite-slice1.txt, EXIT=0, zero FAILED). Verifier round-2 <PENDING>.
 
 ## Delivered (bounded slice-1 scope)
 
@@ -39,9 +48,9 @@ verifier <PENDING>). WP10 ACTIVE (docs/planning/CURRENT_WORK_PACKAGE.yaml).
   (higher-value > lower-value); approval → mission.created with the
   candidate id; rejection status; outcome tracking (EXECUTED +
   prediction/reality); rebuild determinism; schema version == code.
-- V1/V2 regression: knowledge 45/45 + all pre-existing tests green
-  (expect full suite EXIT=0, 302 tests).
-- Full suite: <PENDING> → var/evidence/wp10-slice1/suite-slice1.txt.
+- V1/V2 regression: knowledge 45/45 + all pre-existing tests green.
+- Full suite: EXIT=0 (302 tests) at HEAD 9295b1f →
+  var/evidence/wp10-slice1/suite-slice1.txt.
 
 ## Live-DB impact
 
