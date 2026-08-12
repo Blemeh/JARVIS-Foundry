@@ -6,6 +6,17 @@ enforces the standing provider-diversity preference (builder != verifier when
 the configuration makes it possible), and exposes deterministic availability
 semantics: preferred -> fallbacks -> BLOCKED.
 
+DIR-2026-08-12 MANDATORY INTERNAL MODEL ROUTING: every REAL JARVIS internal
+dispatch (builder, verifier, researcher, repairer, reviewer, planner,
+replacement worker, mission specialist, retry/recovery worker, live canary)
+must resolve to provider ``opencode_go`` + model ``deepseek-v4-flash`` with
+NO fallbacks. The owner's DeepSeek-only constraint overrides the provider
+diversity preference during this build window; a non-compliant role must be
+recorded BLOCKED, never substituted with another model. ``BUILTIN_ROLES``
+implements exactly this policy, and ``RoleRouter.enforce_directive_routing``
+rejects any configuration that deviates (used by the production wiring —
+``v3_loop.run_one_loop`` and the live loop drivers — before any mutation).
+
 The router is pure configuration logic; it never launches anything.
 """
 from __future__ import annotations
@@ -20,52 +31,57 @@ try:
 except ImportError:  # pragma: no cover - venv provides pyyaml
     yaml = None  # type: ignore[assignment]
 
+#: DIR-2026-08-12 mandatory internal model routing: the ONLY provider/model
+#: pair every real JARVIS role may resolve to, with no fallbacks.
+DIRECTIVE_PROVIDER = "opencode_go"
+DIRECTIVE_MODEL = "deepseek-v4-flash"
+
 BUILTIN_ROLES: dict[str, dict[str, Any]] = {
     "executive": {
-        "preferred_provider": "opencode_go",
-        "preferred_model": "deepseek-v4-flash",
+        "preferred_provider": DIRECTIVE_PROVIDER,
+        "preferred_model": DIRECTIVE_MODEL,
         "fallbacks": [],
         "independence_group": "executive",
         "required_capabilities": ["structured_reasoning"],
     },
     "builder": {
-        "preferred_provider": "opencode_go",
-        "preferred_model": "kimi-k2.7-code",
+        "preferred_provider": DIRECTIVE_PROVIDER,
+        "preferred_model": DIRECTIVE_MODEL,
         "fallbacks": [],
         "independence_group": "builder",
         "required_capabilities": ["code", "tools"],
     },
     "verifier": {
-        "preferred_provider": "opencode_go",
-        "preferred_model": "deepseek-v4-flash",
+        "preferred_provider": DIRECTIVE_PROVIDER,
+        "preferred_model": DIRECTIVE_MODEL,
         "fallbacks": [],
         "independence_group": "verifier",
         "required_capabilities": ["artifact_inspection", "adversarial_verification"],
     },
     "critic": {
-        "preferred_provider": "opencode_go",
-        "preferred_model": "deepseek-v4-pro",
+        "preferred_provider": DIRECTIVE_PROVIDER,
+        "preferred_model": DIRECTIVE_MODEL,
         "fallbacks": [],
         "independence_group": "critic",
         "required_capabilities": ["adversarial_review", "artifact_inspection"],
     },
     "repair": {
-        "preferred_provider": "opencode_go",
-        "preferred_model": "kimi-k2.7-code",
+        "preferred_provider": DIRECTIVE_PROVIDER,
+        "preferred_model": DIRECTIVE_MODEL,
         "fallbacks": [],
         "independence_group": "repair",
         "required_capabilities": ["code", "tools", "tests"],
     },
     "researcher": {
-        "preferred_provider": "opencode_go",
-        "preferred_model": "deepseek-v4-pro",
+        "preferred_provider": DIRECTIVE_PROVIDER,
+        "preferred_model": DIRECTIVE_MODEL,
         "fallbacks": [],
         "independence_group": "research",
         "required_capabilities": ["research"],
     },
     "premium_reviewer": {
-        "preferred_provider": "vertex_ai",
-        "preferred_model": "gemini-2.5-pro",
+        "preferred_provider": DIRECTIVE_PROVIDER,
+        "preferred_model": DIRECTIVE_MODEL,
         "fallbacks": [],
         "independence_group": "premium",
         "required_capabilities": ["multimodal"],
@@ -156,6 +172,30 @@ class RoleRouter:
     def provider_chain(self, role: str) -> tuple[str, ...]:
         return self.config(role).provider_chain()
 
+    def enforce_directive_routing(self) -> None:
+        """Reject any configuration that deviates from DIR-2026-08-12.
+
+        Every role must resolve to exactly ``DIRECTIVE_PROVIDER`` +
+        ``DIRECTIVE_MODEL`` with NO fallbacks; a non-compliant role may never
+        run — it must be recorded BLOCKED, never substituted with another
+        model. Raises RoleConfigurationError naming the offending roles.
+        Called by the production wiring (``v3_loop.run_one_loop`` and the
+        live loop drivers) BEFORE any mutation or dispatch.
+        """
+        offenders = sorted(
+            role for role, cfg in self._roles.items()
+            if cfg.preferred_provider != DIRECTIVE_PROVIDER
+            or cfg.preferred_model != DIRECTIVE_MODEL
+            or bool(cfg.fallbacks)
+        )
+        if offenders:
+            raise RoleConfigurationError(
+                "DIR-2026-08-12 mandatory model routing violated for roles "
+                f"{offenders}: every real JARVIS role must resolve to "
+                f"provider={DIRECTIVE_PROVIDER!r} model={DIRECTIVE_MODEL!r} "
+                "with no fallbacks; a non-compliant role must be recorded "
+                "BLOCKED, never substituted with another model")
+
     def prefer_diversity(self) -> bool:
         """Provider diversity (builder != verifier) is the standing preference.
 
@@ -164,6 +204,13 @@ class RoleRouter:
         preferred provider. This is consistent with ``diversity_resolution``:
         when this returns True, ``diversity_resolution(builder_provider)``
         can actually return a different provider.
+
+        NOTE (DIR-2026-08-12): during this build window the owner's
+        DeepSeek-only routing constraint overrides the diversity preference,
+        so the DEFAULT configuration returns False — verifier independence
+        is delivered through separate verifier sessions, read-only
+        verification of frozen artifacts and deterministic adversarial
+        probes, with the provider-diversity limitation recorded visibly.
         """
         builder = self._roles["builder"].provider_chain()
         verifier = self._roles["verifier"].provider_chain()

@@ -1,16 +1,30 @@
 schema_version: 1
 status: "INACTIVE_EXAMPLE"
 
+# DIR-2026-08-12 MANDATORY INTERNAL MODEL ROUTING: every REAL JARVIS
+# internal dispatch (executive, builder, verifier, critic, repair,
+# researcher, premium_reviewer, replacement workers, recovery workers,
+# live canaries) must resolve to provider "opencode_go" + model
+# "deepseek-v4-flash" with NO fallbacks. The owner's DeepSeek-only
+# constraint overrides provider-diversity preferences during this build
+# window; verifier independence is delivered through separate verifier
+# sessions, read-only verification of frozen artifacts and deterministic
+# adversarial probes. If deepseek-v4-flash is unavailable, the dispatch
+# is recorded BLOCKED — never substituted with another model.
+# RoleRouter.enforce_directive_routing() rejects any deviation; the
+# production wiring (v3_loop.run_one_loop, live loop drivers) calls it
+# before any mutation.
+
 policy:
   availability_check_required: true
-  builder_verifier_provider_diversity_preferred: true
+  builder_verifier_provider_diversity_preferred: false
   raw_credentials_in_context: false
   billable_calls_enabled: false
 
 roles:
   executive:
     preferred_provider: "opencode_go"
-    preferred_model: "qwen3.8-max"
+    preferred_model: "deepseek-v4-flash"
     fallbacks: []
     required_capabilities:
       - "structured_reasoning"
@@ -20,7 +34,7 @@ roles:
 
   builder:
     preferred_provider: "opencode_go"
-    preferred_model: "kimi-k2.7-code"
+    preferred_model: "deepseek-v4-flash"
     fallbacks: []
     required_capabilities:
       - "code"
@@ -30,8 +44,8 @@ roles:
     independence_group: "builder"
 
   verifier:
-    preferred_provider: "__DIFFERENT_FROM_BUILDER_WHEN_POSSIBLE__"
-    preferred_model: "__VERIFY_AT_ACTIVATION__"
+    preferred_provider: "opencode_go"
+    preferred_model: "deepseek-v4-flash"
     fallbacks: []
     required_capabilities:
       - "artifact_inspection"
@@ -40,9 +54,32 @@ roles:
     maximum_duration_seconds: "__REQUIRED__"
     independence_group: "verifier"
 
+  critic:
+    preferred_provider: "opencode_go"
+    preferred_model: "deepseek-v4-flash"
+    fallbacks: []
+    required_capabilities:
+      - "adversarial_review"
+      - "artifact_inspection"
+    maximum_cost_per_run_usd: 0
+    maximum_duration_seconds: "__REQUIRED__"
+    independence_group: "critic"
+
+  repair:
+    preferred_provider: "opencode_go"
+    preferred_model: "deepseek-v4-flash"
+    fallbacks: []
+    required_capabilities:
+      - "code"
+      - "tools"
+      - "tests"
+    maximum_cost_per_run_usd: 0
+    maximum_duration_seconds: "__REQUIRED__"
+    independence_group: "repair"
+
   researcher:
     preferred_provider: "opencode_go"
-    preferred_model: "deepseek-v4-pro"
+    preferred_model: "deepseek-v4-flash"
     fallbacks: []
     required_capabilities:
       - "research"
@@ -51,8 +88,8 @@ roles:
     independence_group: "research"
 
   premium_reviewer:
-    preferred_provider: "vertex_ai"
-    preferred_model: "__VERIFY_AT_ACTIVATION__"
+    preferred_provider: "opencode_go"
+    preferred_model: "deepseek-v4-flash"
     fallbacks: []
     required_capabilities:
       - "multimodal"

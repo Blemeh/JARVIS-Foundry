@@ -138,6 +138,13 @@ def run_one_loop(db: FoundryDatabase, *, loop_id: str, adapter: Any,
     """Run one complete real loop. Returns the loop report dict."""
     report: dict[str, Any] = {"loop_id": loop_id}
 
+    # 0. MANDATORY MODEL ROUTING (DIR-2026-08-12): every real role must
+    # resolve to opencode_go + deepseek-v4-flash with no fallbacks. A
+    # non-compliant router refuses the loop BEFORE any observation,
+    # mutation or dispatch (dispatch would have to be BLOCKED, never
+    # substituted with another model).
+    router.enforce_directive_routing()
+
     # 1+2. OBSERVE + RECORD EVIDENCE (live ingestion, bounded)
     cycle = run_ingestion_cycle(
         db, sources=["vault", "handoffs", "repo", "system"],
@@ -164,8 +171,12 @@ def run_one_loop(db: FoundryDatabase, *, loop_id: str, adapter: Any,
     selected = next((c for c in top if c["score"] >= min_score), None)
     if selected is None:
         report["outcome"] = "WAITING"
+        if top:
+            top_score = f"{top[0]['score']:.2f}"
+        else:
+            top_score = "none (no candidates scored in this pass)"
         report["reason"] = (f"no candidate scored >= {min_score} "
-                            f"(top {top[0]['score']:.2f} if any) — honest "
+                            f"(top {top_score}) — honest "
                             f"waiting, no invented work")
         return report
 
