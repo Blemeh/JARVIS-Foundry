@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 
 
-SCHEMA_VERSION = 13
+SCHEMA_VERSION = 14
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -423,6 +423,22 @@ MIGRATIONS: dict[int, str] = {
         last_event_id TEXT NOT NULL,
         updated_at TEXT NOT NULL
     );
+    """,
+    14: """
+    -- WP11 slice D (V2-OPERATIONAL): research queue items
+    -- (event-derived, reconcile-verified)
+    CREATE TABLE IF NOT EXISTS research_queue (
+        item_id TEXT PRIMARY KEY,
+        claim_id TEXT NOT NULL,
+        reason TEXT NOT NULL,
+        evidence_json TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'OPEN'
+            CHECK(status IN ('OPEN', 'CANDIDATE_CREATED', 'REJECTED')),
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS research_queue_status
+        ON research_queue(status);
     """,
 }
 

@@ -30,6 +30,7 @@ PROJECTION_TABLES = (
     "vault_files",
     "vault_sync_state",
     "ingestion_cursors",
+    "research_queue",
 )
 
 
@@ -677,6 +678,25 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
                 updated_at = excluded.updated_at""",
             (payload["source_kind"], payload["cursor"],
              event.event_id, event.recorded_at),
+        )
+
+    elif event.event_type == "research.queue_item_created":
+        connection.execute(
+            """INSERT INTO research_queue(
+                item_id, claim_id, reason, evidence_json, status,
+                last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (payload["item_id"], payload["claim_id"], payload["reason"],
+             canonical_json(payload.get("evidence", {})),
+             payload.get("status", "OPEN"),
+             event.event_id, event.recorded_at),
+        )
+    elif event.event_type == "research.queue_item_resolved":
+        connection.execute(
+            "UPDATE research_queue SET status = ?, evidence_json = ?, "
+            "last_event_id = ?, updated_at = ? WHERE item_id = ?",
+            (payload["status"], canonical_json(payload.get("evidence", {})),
+             event.event_id, event.recorded_at, payload["item_id"]),
         )
 
     if event.event_type.startswith("supervisor.") or event.event_type.startswith("emergency_stop."):

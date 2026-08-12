@@ -81,6 +81,7 @@ def _table_key_column(table: str) -> str:
         "vault_files": "rel_path",
         "vault_sync_state": "sync_id",
         "ingestion_cursors": "source_kind",
+        "research_queue": "item_id",
         "system_state": "singleton",
         "supervisor_state": "singleton",
     }
