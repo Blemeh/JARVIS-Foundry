@@ -1,13 +1,17 @@
 # WP9 — V2 Knowledge Brain, Slice-1: Epistemic Core
 
-Status: **IMPLEMENTED + REPAIRED** (2026-08-12). Verifier round-1
-(deleg_642b84b2) FAIL: contraction false-negatives ("X isn't Y" did not
-contradict "X is Y" — punctuation stripping destroyed `n't` tokens before
-token matching; apostrophe-free spellings removed the copula) →
-REPAIRED (contraction expansion before canonicalization, word-boundary
-regex, copula-preserving `isnt -> is not` mappings) + regression
-`test_negation_variant_family_no_false_negatives` (9 negation variants +
-3 non-contradiction siblings). Verifier round-2 <PENDING>.
+Status: **IMPLEMENTED + REPAIRED** (2026-08-12). Verifier round-1 —
+TWO independent verifiers, both FAIL on the same K1 defect:
+deleg_642b84b2 (contraction false-negatives: "X isn't Y" did not
+contradict "X is Y" — punctuation stripping destroyed `n't` tokens
+before token matching; apostrophe-free spellings removed the copula) and
+deleg_0d8aeb07 (same defect on the pinned commit, everything else PASS;
+explicitly recognized the fix at 97322a3). K2–K7 PASS in both. →
+REPAIRED (97322a3: contraction expansion before canonicalization,
+word-boundary regex, copula-preserving `isnt -> is not` mappings) +
+regression `test_negation_variant_family_no_false_negatives` (9
+negation variants + 3 non-contradiction siblings). Verifier round-2
+(deleg_22b8c3a9) <PENDING>.
 WP9 package ACTIVE (docs/planning/CURRENT_WORK_PACKAGE.yaml).
 
 ## Delivered (bounded slice-1 scope)
