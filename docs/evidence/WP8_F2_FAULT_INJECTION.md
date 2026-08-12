@@ -92,23 +92,30 @@ code change was required this step (test/evidence-only step).
 
 ## 6. Independent Verification
 
-- Verifier (fresh isolated session, same-provider limitation recorded per
-  contract §14.3; transcript in the delegation cache): verdict + findings
-  recorded in the ledger via the canonical verification machinery
-  (`verification.started` / `verification.passed`).
-- The verifier re-ran the focused tests, inspected the experiment summary,
-  the staged gateway artifact, the tasklist before/after diff, and the live
-  doctor/status state, and reviewed the bundle hashes.
+- Verifier **deleg_40968b66** (fresh isolated session, same-provider
+  limitation recorded per contract §14.3): **PASS — 0 findings**. All
+  assertions re-executed adversarially (tests, snapshot DB rows, manifest
+  hashes, tasklist diff interpretation, live doctor, CLI-surface parity with
+  `.h hermes_cli/_parser.py`). One informational note (F2-1): §7 events were
+  pending-by-design at verification time — resolved by the append in this
+  same transition (ledger rows 1083–1090).
+- Verdict recorded in the live ledger via the canonical verification
+  machinery (`verification.started` / `verification.passed`, verdict-step-9).
 
 ## 7. Ledger / Obsidian
 
-- Events appended to the LIVE ledger (source `wp8-executive`):
-  `step.created` (step-9), `step.ready`, `evidence.created` (bundle
-  wp8-step-9), `fault_injection.completed` (test_id F2, expected/observed/
-  evidence/notes), `step.completed`, `verification.started`,
-  `verification.passed`, `git.local_commit_created`.
-- V1 Obsidian projection updated after the accepted step (governed writes,
-  snapshot before/after in the ledger).
+- Events appended to the LIVE ledger (source `wp8-executive`, rows 1083–
+  1090): `step.created` (step-9), `step.ready`, `evidence.created` (bundle
+  wp8-step-9), `fault_injection.completed` (test_id F2-active,
+  expected/observed/evidence/notes), `step.completed`, `verification.started`,
+  `verification.passed` (verdict-step-9), `git.local_commit_created`
+  (d063511). Ledger count 1090, reconcile consistent.
+- The sibling session's records (same day): `fault_injection.completed`
+  test_id "F2" (staged gateway, idle/independence) and "F2-live" (real
+  oneshot kill), plus step-10/verdict-step-10, FIND-2026-08-12-03 — all
+  preserved; this step used non-colliding IDs.
+- V1 Obsidian projection updated after the accepted step (governed writes
+  02/04/07 COMPLETED, no conflicts; snapshots before/after in the ledger).
 
 ## 8. Rollback
 

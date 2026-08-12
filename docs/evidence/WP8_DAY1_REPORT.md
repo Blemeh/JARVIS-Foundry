@@ -1,14 +1,16 @@
 # JARVIS Foundry — WP8 Day-1 Gate Report (2026-08-12)
 
-Status: **DAY 1 COMPLETE — 11 verified cycles closed; gate continues on schedule**
+Status: **DAY 1 COMPLETE — 12 verified cycles closed; gate continues on schedule**
 Gate: `docs/architecture/04_V1_ACCEPTANCE_GATE.md` (seven-day window; clock
 started 2026-08-12; day 1 of 7)
-Execution: one 24h duty window (recovery + clock start + cycles), with a
-scheduled cron continuation run (05:05–06:45 local) and this session's
-reconciliation + F2 execution. Owner input: NONE (authenticated START BUILD
-mandate).
+Execution: one 24h duty window (recovery + clock start + cycles), a
+scheduled cron continuation run (05:05–06:45 local), this session's
+reconciliation + F2 execution, and a second parallel cron session that
+closed its F2-live/step-10 cycle and this report's first edition (see
+§5 concurrency note; the two sessions used non-colliding IDs throughout).
+Owner input: NONE (authenticated START BUILD mandate).
 
-## 1. Verified Cycles Closed (11)
+## 1. Verified Cycles Closed (12)
 
 | # | Cycle | Commit(s) | Verifier(s) | Outcome |
 |---|---|---|---|---|
@@ -21,19 +23,20 @@ mandate).
 | 7 | step-7 leak-vector sanitization | mission `5eaa6ee` + `290265d` | deleg_b6f54995 (FAIL) + deleg_698003c6 (PASS) | PASS (second FAIL→repair→PASS lineage) |
 | 8 | step-8 = plan F3 builder-kill recovery | Foundry `9ff56e8` | deleg_2b5a84e5 round-1 FAIL (4 findings) → round-2 PASS | PASS (reaper wiring, atomic resume, incident-scoped keys) |
 | 9 | FIND-2026-08-12-02 installer LogonTrigger UserId | Foundry `9ff56e8` | (in step-8 cycle) | PASS (226-test suite) |
-| 10 | step-10 F2-live adapter kill probe (this session) | Foundry `54d9520` (docs) | deleg_f49b07cb | PASS (5/5; real kill, FAILED, no orphans; FIND-03) |
-| 11 | F2 gateway termination (this session) | ledger event | live probe | PASS (staged gateway killed; dispatch independent; live gateway untouched) |
+| 10 | step-10 F2-live adapter kill probe | Foundry `54d9520` (adapter docstring) | deleg_f49b07cb | PASS (5/5; real kill, FAILED, no orphans; FIND-03) |
+| 11 | F2 gateway termination (idle/independence) | ledger event | live probe | PASS (staged gateway killed; dispatch independent; live gateway untouched) |
+| 12 | step-9 F2-active (this session): staged gateway killed MID-SESSION + resume | Foundry `d063511` (3 regression tests + F2 doc) | deleg_40968b66 | PASS (0 findings; FAILED hermes_oneshot_failed, lease released, resume; suite 229) |
 
-Mission repo: 40 tests green (`290265d`). Foundry repo: 226 tests green
-(sibling run `var/evidence/wp8-gate/step-8/foundry-suite-226.txt`), plus
-this session's fresh confirmations.
+Mission repo: 40 tests green (`290265d`). Foundry repo: 229 tests green
+(`var/evidence/wp8-gate/step-9/foundry-suite.txt`, 229 passed in 201.38 s),
+plus earlier 226-test run (`var/evidence/wp8-gate/step-8/foundry-suite-226.txt`).
 
 ## 2. Fault-Injection Matrix Status (F1–F15)
 
 | F | Item | Status |
 |---|---|---|
 | F1 | Supervisor kill (idle+active) | **PASS** (day 1; auto-restart ≤60 s, lease reclaimed once, no duplicates) |
-| F2 | Gateway termination | **PASS** (day 1, early: staged gateway killed, dispatch independent) |
+| F2 | Gateway termination | **PASS** (day 1, early; three complementary records: staged gateway killed while idle → dispatch independent [sibling, test_id F2]; real oneshot killed mid-run → FAILED, no orphans [sibling, F2-live]; staged gateway killed MID-SESSION → FAILED hermes_oneshot_failed, lease released, fresh-worker resume, 3 regression tests [this session, F2-active, step-9]) |
 | F3 | Builder kill after mutation | **PASS** (day 1, early; machinery + 9 tests) |
 | F4 | Windows restart | **PREPARED — blocked at execution** (Hermes hard-block on reboot; owner-resumable; post-reboot script in F4_RESTART_HANDOFF; do NOT retry from the agent) |
 | F5–F13 | Network outage, provider unavail., auth, disk, corrupted event, duplicate delivery, Obsidian conflict, two agents, prompt injection | Scheduled days 2–5; several have suite-level coverage (idempotency, lease, Obsidian conflict, integrity) — execution on schedule |
@@ -55,15 +58,18 @@ this session's fresh confirmations.
 
 ## 4. Runtime State (verified fresh this session)
 
-- Daemon: `supervisor-54a43fb2` (sibling restart onto step-8 code),
-  RUNNING, 30 s heartbeats, exactly one singleton lease, quick_check ok,
-  reconcile consistent (ledger 1034 events).
+- Daemon: `supervisor-54a43fb2` RUNNING, 30 s heartbeats, exactly one
+  singleton lease, quick_check ok, reconcile consistent (ledger 1090 events
+  after the step-9 append; rows 1083–1090 = step-9 chain).
 - Task: `JARVIS-Foundry-Supervisor` enabled, repeating trigger PT1M/P30D +
   IgnoreNew + LogonTrigger(UserId fix), one instance.
-- Repos: Foundry HEAD `54d9520` (clean); mission HEAD `290265d` (clean).
-- Obsidian V1 root: 8 governed notes; 02/07 maintained after every close.
+- Repos: Foundry HEAD `d063511` (this session's step-9 commit; clean);
+  mission HEAD `290265d` (clean).
+- Obsidian V1 root: 9 governed notes (00–07 + Audit); 02/04/07 maintained
+  after every close (02 refreshed to step-9/day-1 state this session).
 - Isolated dispatch home `var/wp8-hermes-home` (scoped credentials, secrets
-  never printed); dispatch path proven end-to-end (probes + F2-live + F2).
+  never printed); dispatch path proven end-to-end (probes + F2-live + F2 +
+  F2-active).
 
 ## 5. Day-1 Verification Discipline Notes
 
@@ -71,10 +77,21 @@ this session's fresh confirmations.
   verifier → commit only after PASS. Two FAIL→repair→PASS lineages (G6,
   step-7) + one FAIL→repair→PASS in step-8 — all genuine, unscripted.
 - Same-provider limitation recorded per verdict (opencode-go family).
+- **Concurrency incident (2026-08-12, documented honestly):** two cron
+  sessions ran the F2 scenario in parallel (~08:25–08:50 local). Collision
+  management was non-colliding IDs (step-9 vs step-10; test_id F2-active vs
+  F2/F2-live; FIND-03 supersede for an ID collision), preserved artifacts
+  (sibling's f3-live-probe.json left in the step-9 dir, excluded from its
+  manifest), one final day-1 report (this file, merged), and full git
+  reconciliation (HEAD 147ea5c → d063511; no conflicting commits). No
+  duplicate ledger event was created (idempotency keys); the ledger is
+  consistent at 1090 events. Lesson: concurrent slices must check for
+  sibling activity before choosing step/verdict/finding IDs (recommended
+  for RECOVERY_NOTES).
 - No push; local commits only; no paid/public/external actions; no AI
   generation in the mission repo (human-written code, per contract).
 - Ledger is machine truth; docs reconciled after every transition
-  (PROJECT_STATE v13→v14, CURRENT_WORK_PACKAGE, RECOVERY_NOTES,
+  (PROJECT_STATE v14→v15, CURRENT_WORK_PACKAGE, RECOVERY_NOTES,
   LOW_COST_CONTINUATION, marker).
 
 ## 6. Next (day 2+)
@@ -87,10 +104,16 @@ this session's fresh confirmations.
 ## 7. Evidence Index (day 1)
 
 - `var/evidence/wp8-gate/`: CLOCK_START.json, step-1..7 bundles, step-8
-  (F3 doc + suite), step-9 (F2 probe), step-10 (F2-live probe), f4-restart/
-  (before-state + task export), step-2-design.md.
+  (F3 doc + suite), step-9 (F2-active: experiment summary, staged gateway,
+  regression tests, tasklist diffs, manifest), step-10 (F2-live probe),
+  f4-restart/ (before-state + task export), step-2-design.md,
+  FREEZE_DAY1_MANIFEST.json (50 files, sha f82b577b; frozen before the
+  step-9 bundle, which carries its own manifest).
 - `docs/evidence/`: WP7_RECOVERY_2026-08-12.md, WP8_ENTRY_PRECONDITIONS.md,
-  WP8_G6_FAILURE_INJECTION.md, WP8_F3_FAULT_INJECTION.md, this report.
-- `docs/handoffs/`: CHECKPOINT_2026-08-12T0645.md (sibling),
-  CONTINUATION_2026-08-12T0350.md, F4_RESTART_HANDOFF_2026-08-12.md.
+  WP8_G6_FAILURE_INJECTION.md, WP8_F3_FAULT_INJECTION.md,
+  WP8_F2_FAULT_INJECTION.md (step-9, F2-active), this report.
+- `docs/handoffs/`: CHECKPOINT_2026-08-12T0645.md (05:05–06:45 run),
+  CHECKPOINT_2026-08-12T0850.md (day-1 close), CHECKPOINT_2026-08-12T0905.md
+  (step-9 close, this session), CONTINUATION_2026-08-12T0350.md,
+  F4_RESTART_HANDOFF_2026-08-12.md.
 - Verifier transcripts: `C:\Users\b\AppData\Local\hermes\cache\delegation\live\deleg_*`.

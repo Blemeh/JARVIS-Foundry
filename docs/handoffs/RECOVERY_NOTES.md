@@ -1,69 +1,78 @@
 # Durable Recovery Notes — Authoritative Resume Point
 
-Updated: 2026-08-12T06:45+02:00 (scheduled continuation run)
+Updated: 2026-08-12T09:05+02:00 (scheduled continuation run — step-9 close)
 Session: Hermes cron continuation (automated), START BUILD active.
 
 ## READ FIRST
 
-1. `PROJECT_STATE.md` — live state record (v13).
-2. `docs/handoffs/CHECKPOINT_2026-08-12T0645.md` — newest durable checkpoint.
-3. `docs/evidence/WP8_F3_FAULT_INJECTION.md` — step-8 (F3 + installer fix).
-4. `docs/evidence/WP8_ENTRY_PRECONDITIONS.md` — WP8 gate preconditions.
-5. This file — milestone log + resume mechanics.
+1. `PROJECT_STATE.md` — live state record (v15).
+2. `docs/evidence/WP8_DAY1_REPORT.md` — day-1 gate report (12 cycles).
+3. `docs/handoffs/CHECKPOINT_2026-08-12T0905.md` — newest durable checkpoint.
+4. `docs/evidence/WP8_F2_FAULT_INJECTION.md` — step-9 (F2-active) record.
+5. `docs/handoffs/CHECKPOINT_2026-08-12T0850.md` — sibling slice's day-1 close.
+6. This file — milestone log + resume mechanics.
 
 Repository truth beats chat summaries. Re-verify state at session start
 (`git status`, `tasklist | grep -i python`, task state, DB quick_check).
 
-## Current Truth (verified 2026-08-12 ~06:45)
+## Current Truth (verified 2026-08-12 ~09:05)
 
 - **Runtime healthy:** task `JARVIS-Foundry-Supervisor` Running; daemon
-  `supervisor-54a43fb2…` (restarted 06:03 local onto step-8 code),
-  heartbeats every 30 s, exactly one singleton lease, reconcile consistent
-  (799 events, quick_check ok, `doctor` clean).
+  `supervisor-54a43fb2` (same instance since 06:03 local), heartbeats every
+  30 s, exactly one singleton lease, reconcile consistent (1090 events,
+  quick_check ok, `doctor` clean, STOP false, no active workers).
 - **WP0–WP7 PASS** (WP7 activated; recovery repairs verified).
-- **WP8 day 1 of 7** — clock started 2026-08-12 (CLOCK_START.json + ledger
-  dd5234c6/a66fc238/6c8870f2). **9 verified cycles closed** (steps 1,2,3,5,6,
-  7,8 + F1 + clock start). **Step-8 closed this run:**
-  - F3 fault injection (builder kill after mutation, before result): defect
-    reproduced (mission stuck EXECUTING; reaper never wired into the
-    supervisor) → repair (`recover_stale_mission_state` incident-scoped
-    atomic resume, `append_events` batch API, supervisor `_reap_and_recover`
-    with degraded guard) → independent verifier round-1 FAIL (F3-1..F3-4) →
-    repair → round-2 PASS (0 findings). Foundry suite 226 passed.
-  - FIND-2026-08-12-02: installer LogonTrigger without UserId → schtasks
-    "Access is denied" from automated (cron) contexts. Fixed with explicit
-    `<UserId>`; 9 baseline failures → 17/17 installer tests green here.
-  - Evidence: `docs/evidence/WP8_F3_FAULT_INJECTION.md`,
-    `var/evidence/wp8-gate/step-8/` (suite + focused + baseline artifacts,
-    diag scripts, manifest). Foundry repo HEAD 9ff56e8 (clean). Mission repo
-    HEAD 290265d (clean, 40 tests green).
+- **WP8 day 1 of 7 CLOSED** — clock started 2026-08-12 (CLOCK_START.json +
+  ledger). **12 verified cycles**: steps 1,2,3(G6), F1, 5, 6(F14/F15), 7,
+  8(F3 machinery + installer fix), FIND-02, step-10 (F2-live), F2 (gateway
+  idle/independence), step-9 (F2-active — THIS slice).
+- **Step-9 (this slice) = F2-active fault injection:** staged Hermes gateway
+  (isolated hermes_cli package + isolated HERMES_HOME) EXTERNALLY terminated
+  mid-session (taskkill /F /T on real PID 33092) while dispatch in flight →
+  honest FAILED `hermes_oneshot_failed`, run row FAILED, role lease released,
+  fresh-worker resume COMPLETED, live gateway untouched (tasklist before/after
+  diff), live daemon heartbeats uninterrupted. 3 regression tests
+  (`tests/foundry/test_role_gateway_kill.py`); Foundry suite 229 passed
+  (201.38s); mission 40; estop 24. Independent verifier deleg_40968b66
+  **PASS 0 findings**. Commit d063511; ledger rows 1083–1090; Obsidian
+  02/04/07 governed writes. Bundle: `var/evidence/wp8-gate/step-9/` (manifest
+  9 artifacts).
+- **Concurrency incident (2026-08-12):** two cron slices ran the F2 scenario
+  in parallel (~08:25–08:50). Managed with non-colliding IDs (step-9 vs
+  step-10; F2-active vs F2/F2-live; FIND-2026-08-12-03 supersede), preserved
+  artifacts (sibling's f3-live-probe.json left in step-9 dir, excluded from
+  its manifest), merged day-1 report, git reconciled (HEAD 147ea5c → d063511,
+  no conflicts). **Lesson: before choosing step/verdict/finding IDs, check
+  for sibling activity (recent files/commits/ledger rows).**
+- Repos: Foundry HEAD `d063511` (this slice's commit; pending the docs
+  commit for this checkpoint — see below). Mission HEAD `290265d` (clean).
 - Live DB: `C:\Users\b\AppData\Local\hermes\foundry\foundry.db` (WAL;
   content is the invariant, hashes change with normal runtime events).
 
-## Milestones Completed (this run, 2026-08-12 05:05–06:45)
+## Milestones Completed (this slice, 2026-08-12 08:15–09:10)
 
-- [x] Fresh-state verification (git, task, daemon, DB, ledger 597 events).
-- [x] Baseline suite: 9 installer FAILURES reproduced ("Access is denied").
-- [x] Bisected to LogonTrigger UserId; fixed installer + regression test;
-      17/17 installer tests green (incl. real schtasks create in THIS
-      automated context).
-- [x] F3: reproduced stuck-EXECUTING defect; built recovery (incident-scoped
-      atomic mission resume + reaper wiring + degraded guard); 9 new tests.
-- [x] Full Foundry suite 226 passed; mission 40 passed; estop 24 passed.
-- [x] Live daemon restarted onto the new code; heartbeats/lease/reconcile
-      verified (supervisor-54a43fb2).
-- [x] Independent verifier round-1 FAIL (F3-1..F3-4) → repaired → round-2
-      PASS (0 findings); transcripts in the delegation cache.
-- [x] Ledger events appended (step-8 chain, 786→799 events); Obsidian 02/07
-      governed write-back; PROJECT_STATE v13, CURRENT_WORK_PACKAGE progress,
-      RECOVERY_NOTES, checkpoint — one coherent transition.
-- [ ] F2-class staged gateway kill (next cycle; dispatch is CLI-subprocess,
-      gateway-independent by design — prove with a STAGED gateway, never the
-      live one).
+- [x] Fresh-state verification (git, task, daemon, DB 975→993 events, ledger,
+      no STOP, no strays).
+- [x] Built the staged-gateway harness + 3 F2 regression tests (mid-session
+      kill, idle independence, resume); 3/3 green.
+- [x] Live F2 experiment on a CONSISTENT SNAPSHOT of the live DB: A idle
+      COMPLETED / B active external taskkill → FAILED hermes_oneshot_failed /
+      C resume COMPLETED; role leases 0; quick_check ok.
+- [x] Full Foundry suite 229 passed; mission 40; estop 24; tasklist diff
+      proves the live gateway/daemon untouched.
+- [x] Evidence doc WP8_F2_FAULT_INJECTION.md; bundle manifest (9 artifacts).
+- [x] Commit d063511 (tests + F2 doc). Independent verifier deleg_40968b66
+      PASS 0 findings (F2-1 informational: ledger events pending → appended
+      in the same transition).
+- [x] Ledger rows 1083–1090 (step-9 chain + fault_injection.completed
+      F2-active + verdict-step-9 PASS + commit event); Obsidian 02/04/07.
+- [x] Reconciled with the sibling slice's day-1 close: merged
+      WP8_DAY1_REPORT.md (12 cycles), PROJECT_STATE v15, CURRENT_WORK_PACKAGE,
+      this file, CHECKPOINT_2026-08-12T0905.md — one coherent transition.
+- [ ] F5–F13 on schedule (days 2–5): F12/F13 day 2–3; F5/F6/F7 day 4;
+      F8–F11 day 5 (per plan §3).
 - [ ] F4 remains BLOCKED/owner-resumable (physical reboot not executed by
       the agent; scripted verification ready in F4_RESTART_HANDOFF).
-- [ ] Reconciliation hardening + freeze + independent final review + day-1
-      gate report (docs/evidence/WP8_DAY1_REPORT.md).
 
 ## How To Resume (if this session is interrupted)
 
@@ -74,9 +83,14 @@ Repository truth beats chat summaries. Re-verify state at session start
    JARVIS-Foundry-Supervisor` (the repeating trigger also self-heals within
    ~2 min of any death). Never start a second daemon manually — the
    singleton lease prevents duplicates.
-3. Continue the gate plan: F2-class staged gateway kill, then reconciliation
-   + freeze + day-1 report; ≥10 verified cycles before the report.
-4. Never run duplicate builders. Never edit live Hermes or `.h` beyond
+3. Continue the gate plan: next fault injections per
+   `docs/evidence/WP8_GATE_EXECUTION_PLAN.md` §3 (F12/F13 day 2–3 first, then
+   F5/F6/F7 day 4, F8–F11 day 5). ≥10 verified cycles is already satisfied
+   (12); keep the discipline: builder → fresh verifier → commit only after
+   PASS; freeze every accepted step into `var/evidence/wp8-gate/step-<n>/`.
+4. Check for sibling activity before choosing new step/verdict/finding IDs
+   (recent commits, files, ledger rows) — concurrency incident 2026-08-12.
+5. Never run duplicate builders. Never edit live Hermes or `.h` beyond
    read-only overlays. Never modify the canonical DBs under var/evidence.
    Freeze before rollback. No pushes during the V1 gate.
 
@@ -89,7 +103,9 @@ Repository truth beats chat summaries. Re-verify state at session start
   `244d296646909aca1dd16c9759491da0ef4cd163`).
 - `var/staging-recovery/foundry.db` — live-DB copy used for the recovery
   rehearsal (content = incident state + one rehearsal cycle).
-- Evidence bundles: `var/evidence/wp1-gate/` … `var/evidence/wp8-gate/`.
+- Evidence bundles: `var/evidence/wp1-gate/` … `var/evidence/wp8-gate/`
+  (step-9 bundle is the newest; sibling's f3-live-probe.json preserved
+  inside it but excluded from its manifest).
 
 ## Running Commands
 
@@ -107,4 +123,5 @@ cd .h && HERMES_HOME="<root>\var\wp1-hermes-home" PYTHONPATH="$PWD;C:\Users\b\Ap
 
 Nothing is PASS until reproduced with fresh commands. Verifier reports are
 evidence to integrate, not claims to relay. F4 stays BLOCKED until a real
-reboot happens; never backdate it.
+reboot happens; never backdate it. The concurrency incident is documented,
+not hidden — future slices must check for siblings before choosing IDs.

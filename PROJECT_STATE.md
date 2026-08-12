@@ -5,12 +5,12 @@ This file is the current project truth.
 ```yaml
 project: JARVIS Foundry
 owner: Blendi Mehmeti
-state_version: 14
+state_version: 15
 updated_at: 2026-08-12
 
 phase: V1_AUTONOMY_KERNEL
 phase_status: WP8_IN_PROGRESS
-day1_closed: 2026-08-12 (11 verified cycles; F1/F2/F3/F14/F15 PASS; F4 prepared, owner-resumable; report docs/evidence/WP8_DAY1_REPORT.md)
+day1_closed: 2026-08-12 (12 verified cycles; F1/F2/F3/F14/F15 PASS; F4 prepared, owner-resumable; report docs/evidence/WP8_DAY1_REPORT.md; step-9 F2-active closed by the 08:25 cron slice — commit d063511, verifier deleg_40968b66 PASS)
 implementation_started: true
 start_command_received: true
 start_command_received_at: 2026-08-11T17:33:05+02:00
@@ -63,7 +63,9 @@ work_package_verdicts:
   WP6: PASS
   WP7: PASS (activated; recovery repairs 2026-08-12 verified — see
         docs/evidence/WP7_RECOVERY_2026-08-12.md)
-  WP8: IN_PROGRESS (day 1 of the seven-day clock; 9 verified cycles closed)
+  WP8: IN_PROGRESS (day 1 of the seven-day clock CLOSED; 12 verified cycles:
+        steps 1,2,3/G6, F1, 5, 6/F14/F15, 7, 8/F3, installer fix, F2-live,
+        F2 gateway, step-9 F2-active)
 
 autonomous_local_actions_after_start: true
 autonomous_obsidian_actions_after_capability_ready: true
@@ -73,8 +75,9 @@ autonomous_git_and_deployment_after_capability_ready: true
 autonomous_financial_actions_after_capability_ready: true
 autonomous_self_evolution_after_capability_ready: true
 
-next_event: WP8_F2_CLASS (staged gateway kill) + reconciliation/day-1 report;
-  F4 remains owner-resumable (physical reboot)
+next_event: WP8 day 2 — F5/F6/F7 on schedule (network/provider/auth fault
+  injection); F4 remains owner-resumable (physical reboot; scripted
+  verification ready). Day-1 closed: docs/evidence/WP8_DAY1_REPORT.md.
 ```
 
 ## Completed
@@ -104,9 +107,9 @@ next_event: WP8_F2_CLASS (staged gateway kill) + reconciliation/day-1 report;
   - The real task was restored (00:55 local), daemon heartbeating every
     30 s, one singleton lease, reconcile consistent, live STOP freeze →
     resume proven.
-- WP8 day 1 (2026-08-12, this continuation): clock started (CLOCK_START.json
-  + ledger), steps 1–8 + F1 closed (9 verified cycles). **Step-8 (this
-  run):** plan-F3 fault injection (builder killed after mutation, before
+- WP8 day 1 (2026-08-12): clock started (CLOCK_START.json + ledger);
+  steps 1–8 + F1 + F2-live + F2 + step-9 closed (**12 verified cycles**).
+  Step-8: plan-F3 fault injection (builder killed after mutation, before
   result) — reproduced the recovery gap (stuck EXECUTING mission, reaper
   never wired), repaired with `recover_stale_mission_state` (incident-scoped
   atomic mission resume) + `append_events` + supervisor wiring; independent
@@ -118,19 +121,33 @@ next_event: WP8_F2_CLASS (staged gateway kill) + reconciliation/day-1 report;
   daemon restarted onto the new code (supervisor-54a43fb2), reconcile
   consistent. Evidence: `docs/evidence/WP8_F3_FAULT_INJECTION.md` +
   `var/evidence/wp8-gate/step-8/`.
+- WP8 day 1, late (2026-08-12, two parallel cron slices): F2 closed from
+  three angles — sibling slice: F2-live (real oneshot kill, step-10,
+  FIND-2026-08-12-03, adapter python_exe docstring, commit 54d9520) and F2
+  idle/independence probe; this slice: **step-9 F2-active** — staged Hermes
+  gateway terminated MID-SESSION by external taskkill on the real PID,
+  honest FAILED `hermes_oneshot_failed`, role lease released, fresh-worker
+  resume, live gateway untouched (tasklist diff), 3 regression tests
+  (`tests/foundry/test_role_gateway_kill.py`), Foundry suite **229 passed**,
+  verifier deleg_40968b66 PASS 0 findings, commit d063511, ledger rows
+  1083–1090, Obsidian 02/04/07 governed writes. Concurrency incident
+  documented (non-colliding IDs; sibling artifact preserved). Day-1 report:
+  `docs/evidence/WP8_DAY1_REPORT.md` (12 cycles).
 
 ## Current Reality
 
 WP8 (seven-day acceptance) is the active package: **day 1 of the seven-day
-clock** (started 2026-08-12, CLOCK_START.json + ledger). Nine verified cycles
-closed: steps 1,2,3 (G6), F1 (live kill), steps 5,6 (F14/F15), 7 (leak
-vectors), 8 (F3 builder-kill recovery + installer fix — this run), plus the
+clock CLOSED** (started 2026-08-12, CLOCK_START.json + ledger). **12 verified
+cycles** closed: steps 1,2,3 (G6), F1 (live kill), steps 5,6 (F14/F15), 7
+(leak vectors), 8 (F3 builder-kill recovery + installer fix), FIND-02
+(installer), step-10 (F2-live), F2 (gateway idle/independence), step-9
+(F2-active staged mid-session kill + resume, this slice), plus the
 clock-start/dispatch probe cycle. F4 (Windows restart) is prepared but
 owner-resumable (the agent cannot execute a physical reboot; a real restart
 runs the scripted recovery verification). The G1–G9 / F1–F15 battery
-continues; the final acceptance verdict is an owner-gated hold point (PASS
-changes trust to TRUSTED_AUTONOMOUS, activates continuous operation, and
-queues V2 automatically).
+continues on schedule (F5–F13: days 2–5); the final acceptance verdict is an
+owner-gated hold point (PASS changes trust to TRUSTED_AUTONOMOUS, activates
+continuous operation, and queues V2 automatically).
 
 ## What Happens After START BUILD
 
