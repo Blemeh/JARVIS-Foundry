@@ -10,7 +10,9 @@ verdict). Gate tests use staging task names and never need the guard.
 """
 from __future__ import annotations
 
+import getpass
 import json
+import os
 import subprocess
 import sys
 import uuid
@@ -33,6 +35,7 @@ TASK_XML_TEMPLATE = """<?xml version="1.0" encoding="UTF-16"?>
   </RegistrationInfo>
   <Triggers>
     <LogonTrigger>
+      <UserId>{user_id}</UserId>
       <Enabled>true</Enabled>
     </LogonTrigger>
     <TimeTrigger>
@@ -73,6 +76,21 @@ TASK_XML_TEMPLATE = """<?xml version="1.0" encoding="UTF-16"?>
   </Actions>
 </Task>
 """
+
+
+def _current_user_id() -> str:
+    """The Task Scheduler logon-trigger user id (DOMAIN\\user or user).
+
+    An explicit UserId in the LogonTrigger is REQUIRED for task creation
+    from non-interactive contexts (cron/scheduled agent sessions): with a
+    user-less <LogonTrigger/> schtasks rejects the create with "Access is
+    denied" (probed 2026-08-12, FIND-2026-08-12-02). The same XML with the
+    current user id registers cleanly from both interactive and automated
+    contexts.
+    """
+    user = os.environ.get("USERNAME") or getpass.getuser()
+    computer = os.environ.get("COMPUTERNAME")
+    return f"{computer}\\{user}" if computer else user
 
 
 class InstallerError(RuntimeError):
@@ -174,6 +192,7 @@ class Installer:
             hermes_home=xml_escape(str(self.hermes_home)),
             python_exe=xml_escape(str(self.python_exe)),
             foundry_home=xml_escape(str(self.foundry_home)),
+            user_id=xml_escape(_current_user_id()),
             start_boundary=start_boundary,
         )
 

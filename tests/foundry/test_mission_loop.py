@@ -467,3 +467,95 @@ def test_commit_governed_by_policy_denial_blocks(tmp_path):
     assert git_out("rev-list", "--count", "HEAD", cwd=repository) == "1"
     mission = database.row("missions", "mission_id", "mission-1")
     assert mission["state"] == "BLOCKED"
+
+
+def test_f3_builder_killed_after_mutation_step_reclaimed_without_duplicates(tmp_path):
+    """F3 (plan): builder killed after mutation, before result.
+
+    The killed builder's durable aftermath: mission in EXECUTING, its run
+    row RUNNING with an expired role lease, and partial work left in the
+    worktree. The supervisor's deterministic recovery (reaper + mission
+    resume) must make the step re-claimable by a FRESH loop instance: one
+    fresh dispatch, one verified PASS, one commit, no duplicate events, and
+    the partial work preserved in the committed artifact.
+    """
+    from jarvis_foundry.roles.reaper import (
+        reap_stale_role_runs,
+        recover_stale_mission_state,
+        role_lease_key,
+    )
+
+    database, repository, policy, router = mission_fixture(tmp_path)
+
+    # --- durable aftermath of the killed builder -------------------------
+    # (exactly what a crashed dispatcher leaves: mission advanced to
+    # EXECUTING, agent_run.started appended, role lease held, then death)
+    for state, next_action in (("READY", "deliver feature X"),
+                               ("EXECUTING", "deliver feature X")):
+        database.append(Event.create(
+            "mission.state_changed",
+            {"mission_id": "mission-1", "state": state, "next_action": next_action},
+            source_type="supervisor", source_id="mission-loop",
+            idempotency_key=f"mission.state_changed:mission-1:{state}:run-killed",
+        ))
+    database.append(Event.create(
+        "agent_run.started",
+        {"run_id": "run-killed", "mission_id": "mission-1", "step_id": "step-1",
+         "role": "builder", "provider": "opencode_go", "model": "test-model",
+         "context_manifest_hash": "0" * 64, "tool_policy": []},
+        source_type="supervisor", source_id="role-dispatcher",
+        idempotency_key="agent_run.started:run-killed:opencode_go",
+    ))
+    with database.transaction() as connection:
+        connection.execute(
+            "INSERT INTO leases(lease_key, owner_id, expires_at, heartbeat_at) "
+            "VALUES (?, ?, ?, ?)",
+            (role_lease_key("builder", "mission-1", "step-1"), "run-killed",
+             "2000-01-01T00:00:00Z", "2000-01-01T00:00:00Z"),
+        )
+    # partial mutation: the builder's unfinished work survives on disk
+    (repository / "result.txt").write_text("partial\\n", encoding="utf-8")
+    assert git_out("status", "--porcelain", cwd=repository) != ""
+
+    # --- deterministic recovery ------------------------------------------
+    reaped = reap_stale_role_runs(database)
+    assert reaped == ["run-killed"]
+    recovered = recover_stale_mission_state(database)
+    assert recovered == ["mission-1"]
+    mission = database.row("missions", "mission_id", "mission-1")
+    assert mission["state"] == "ACTION_SELECTION"
+    assert mission["next_action"] == "deliver feature X"
+
+    # --- fresh loop instance re-claims the step --------------------------
+    fresh = MissionLoop(database, router, ScriptedAdapter(repository), policy=policy)
+    outcome = fresh.run_until_settled(
+        **step_kwargs(), commit_envelope=commit_envelope(repository))
+
+    assert outcome.outcome == PASSED
+    assert outcome.step_id == "step-1"
+    mission = database.row("missions", "mission_id", "mission-1")
+    assert mission["state"] == "ACTION_SELECTION"
+    # exactly one commit (baseline + the fresh worker's verified commit)
+    assert git_out("rev-list", "--count", "HEAD", cwd=repository) == "2"
+    # the partial work was preserved and finished deliberately
+    assert (repository / "result.txt").exists()
+    # exactly ONE completed BUILDER run for the step; the killed run FAILED.
+    # (repair/verifier role runs for the step are legitimate and separate)
+    with database.connect() as connection:
+        rows = connection.execute(
+            "SELECT run_id, status FROM agent_runs "
+            "WHERE step_id = 'step-1' AND role = 'builder' ORDER BY run_id"
+        ).fetchall()
+    assert len(rows) == 2
+    statuses = {r["run_id"]: r["status"] for r in rows}
+    assert statuses["run-killed"] == "FAILED"
+    fresh_builder_runs = [rid for rid, status in statuses.items()
+                          if rid != "run-killed" and status == "COMPLETED"]
+    assert len(fresh_builder_runs) == 1  # one fresh worker, one completion
+    # no duplicate recovery events: exactly ONE session-loss resume recorded
+    events = [e for e in database.events() if e.event_type == "mission.state_changed"]
+    session_loss_resumes = [e for e in events
+                            if e.payload.get("reason") == "resume_after_session_loss"
+                            and e.payload.get("state") == "ACTION_SELECTION"]
+    assert len(session_loss_resumes) == 1
+    assert database.quick_check() == "ok"

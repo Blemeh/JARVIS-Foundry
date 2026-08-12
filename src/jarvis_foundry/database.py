@@ -51,34 +51,50 @@ class FoundryDatabase:
             connection.close()
 
     def append(self, event: Event) -> tuple[int, bool]:
-        event.validate()
+        return self.append_events([event])[0]
+
+    def append_events(self, events: list[Event]) -> list[tuple[int, bool]]:
+        """Append multiple events atomically in ONE transaction.
+
+        Same idempotency semantics as ``append`` per event (identical
+        re-delivery dedupes; a changed payload under the same key raises
+        ``EventConflict`` and rolls back the WHOLE batch), but the batch is
+        all-or-nothing — used by deterministic recovery paths that must not
+        leave a partial transition (e.g. mission BLOCKED -> ACTION_SELECTION
+        resume) behind on a crash.
+        """
+        results: list[tuple[int, bool]] = []
         with self.transaction() as connection:
-            existing = connection.execute(
-                "SELECT sequence, event_id, event_type, payload_hash FROM events WHERE idempotency_key = ?",
-                (event.idempotency_key,),
-            ).fetchone()
-            if existing:
-                identical = (
-                    existing["event_type"] == event.event_type
-                    and existing["payload_hash"] == event.payload_hash
+            for event in events:
+                event.validate()
+                existing = connection.execute(
+                    "SELECT sequence, event_id, event_type, payload_hash FROM events WHERE idempotency_key = ?",
+                    (event.idempotency_key,),
+                ).fetchone()
+                if existing:
+                    identical = (
+                        existing["event_type"] == event.event_type
+                        and existing["payload_hash"] == event.payload_hash
+                    )
+                    if not identical:
+                        raise EventConflict(f"idempotency conflict for {event.idempotency_key}")
+                    results.append((int(existing["sequence"]), False))
+                    continue
+                cursor = connection.execute(
+                    """INSERT INTO events(
+                        event_id, event_type, occurred_at, recorded_at, source_type, source_id,
+                        correlation_id, causation_id, idempotency_key, schema_version,
+                        payload_json, payload_hash
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        event.event_id, event.event_type, event.occurred_at, event.recorded_at,
+                        event.source_type, event.source_id, event.correlation_id, event.causation_id,
+                        event.idempotency_key, event.schema_version, canonical_json(event.payload), event.payload_hash,
+                    ),
                 )
-                if not identical:
-                    raise EventConflict(f"idempotency conflict for {event.idempotency_key}")
-                return int(existing["sequence"]), False
-            cursor = connection.execute(
-                """INSERT INTO events(
-                    event_id, event_type, occurred_at, recorded_at, source_type, source_id,
-                    correlation_id, causation_id, idempotency_key, schema_version,
-                    payload_json, payload_hash
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    event.event_id, event.event_type, event.occurred_at, event.recorded_at,
-                    event.source_type, event.source_id, event.correlation_id, event.causation_id,
-                    event.idempotency_key, event.schema_version, canonical_json(event.payload), event.payload_hash,
-                ),
-            )
-            apply_event(connection, event)
-            return int(cursor.lastrowid), True
+                apply_event(connection, event)
+                results.append((int(cursor.lastrowid), True))
+        return results
 
     def events(self) -> list[Event]:
         with self.connect() as connection:

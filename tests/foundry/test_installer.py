@@ -254,6 +254,26 @@ def test_task_xml_contains_absolute_paths_and_home_argument(tmp_path):
         teardown(installer)
 
 
+def test_task_xml_logon_trigger_carries_user_id(tmp_path):
+    # Regression (FIND-2026-08-12-02): a user-less <LogonTrigger/> makes
+    # schtasks reject the create with "Access is denied" from non-interactive
+    # (automated agent) contexts, which would break autonomous reinstall.
+    # The logon trigger must carry an explicit UserId.
+    home, database, gate_verdict, installer = installer_fixture(tmp_path)
+    try:
+        xml = installer._task_xml()
+        assert "<UserId>" in xml and "</UserId>" in xml
+        # The user id must resolve to the running user's name (DOMAIN\user).
+        from jarvis_foundry.installer import _current_user_id
+        assert _current_user_id().split("\\")[-1].lower() in xml.lower()
+        # And the exact XML must register as a real task from THIS context
+        # (interactive or automated) — the probe that found the defect.
+        status = installer.install()
+        assert status["installed"] is True
+    finally:
+        teardown(installer)
+
+
 def test_task_xml_has_repeating_time_trigger_for_bounded_restart(tmp_path):
     # Task Scheduler's RestartOnFailure does not fire for this task shape on
     # this host (empirical probes 2026-08-12). Bounded auto-restart is
