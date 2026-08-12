@@ -47,11 +47,13 @@ def test_poll_monitor_feeds_candidates_with_dedup(tmp_path):
     assert first["candidates_found"] == 2
     second = poll_monitor(db, monitor_id, items)
     assert second["candidates_found"] == 0  # dedup via the pipeline
-    # duplicates are RECORDED as pointer rows (ledger discipline — the
-    # feed's repeat is evidence), but no NEW distinct candidates
+    # V4-S5 round 2 contract: repeats NEVER create rows — no duplicate
+    # rows at all (the coverage check skips already-covered objectives
+    # before the pipeline; duplicate rows would land REJECTED anyway
+    # and must never be selectable)
     rows = db.all("candidates")
-    assert len(rows) == 4
-    assert sum(1 for r in rows if r["duplicate_of"]) == 2
+    assert len(rows) == 2
+    assert all(r["duplicate_of"] is None for r in rows)
     row = db.row("monitors", "monitor_id", monitor_id)
     assert row["last_poll_at"] is not None
 

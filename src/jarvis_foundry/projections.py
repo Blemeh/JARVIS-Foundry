@@ -572,17 +572,29 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             )
 
     elif event.event_type == "discovery.candidate_generated":
+        # V4-S5 round 2 (deleg_71efdc9e HIGH): a duplicate records
+        # duplicate_of and CREATES NOTHING selectable — the row lands
+        # REJECTED (historical, visible, never selected). Before the
+        # fix, duplicates inserted as NEW and _top_scorable selected
+        # them as fresh work (duplicate missions with identical
+        # objectives were created by repeated polls).
+        duplicate_of = payload.get("duplicate_of")
+        status = "REJECTED" if duplicate_of else "NEW"
+        evidence = payload.get("evidence", [])
+        if duplicate_of:
+            evidence = [*evidence, {"duplicate_of": duplicate_of}]
         connection.execute(
             """INSERT INTO candidates(
                 candidate_id, mission_id, source, objective,
                 objective_canonical, evidence_json, status, duplicate_of,
                 created_from, last_event_id, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, 'NEW', ?, ?, ?, ?)""",
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (payload["candidate_id"], payload["mission_id"],
              payload["source"], payload["objective"],
              payload.get("objective_canonical", canonical_json(payload["objective"])),
-             canonical_json(payload.get("evidence", [])),
-             payload.get("duplicate_of"), payload.get("created_from"),
+             canonical_json(evidence),
+             status,
+             duplicate_of, payload.get("created_from"),
              event.event_id, event.recorded_at),
         )
     elif event.event_type == "discovery.candidate_scored":
@@ -640,6 +652,16 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
              event.event_id, event.recorded_at),
         )
     elif event.event_type == "discovery.monitor_polled":
+        # V4-S5 round 2 (deleg_71efdc9e LOW): a poll for an unknown
+        # monitor must fail the append atomically — no silent 0-row
+        # UPDATE (the ledger would record a poll that never happened).
+        known = connection.execute(
+            "SELECT 1 FROM monitors WHERE monitor_id = ?",
+            (payload["monitor_id"],)).fetchone()
+        if known is None:
+            raise ValueError(
+                f"discovery.monitor_polled references unknown monitor "
+                f"{payload['monitor_id']}")
         connection.execute(
             "UPDATE monitors SET last_poll_at = ?, last_event_id = ?, "
             "updated_at = ? WHERE monitor_id = ?",

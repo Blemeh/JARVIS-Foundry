@@ -79,6 +79,14 @@ def score_objective(objective: str, *, age_hours: float = 0.0,
     return score, weights
 
 
+def covered_objective(db: FoundryDatabase, objective: str) -> str | None:
+    """Whether the canonicalized objective is already covered by an
+    existing candidate or mission (V4-S5 round 2: the poll feed uses
+    this so repeated polls can never increase candidates). Returns the
+    covering candidate/mission id, or None."""
+    return _find_duplicate(db, canonicalize_statement(objective))
+
+
 def _find_duplicate(db: FoundryDatabase, canonical: str) -> str | None:
     with db.connect() as connection:
         row = connection.execute(

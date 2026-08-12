@@ -209,8 +209,54 @@ def run_one_loop(db: FoundryDatabase, *, loop_id: str, adapter: Any,
                                   handoff_dir=handoff_dir,
                                   research_dirs=research_dirs,
                                   repo_paths=tuple(repo_paths or ()))
-    candidates = generate_research_candidates(db)
     report["research_items"] = len(items)
+
+    # 3c. POLL THE DURABLE MONITOR REGISTRY (DIR-2026-08-12 item 6) —
+    # BEFORE the queue conversion, so genuinely new observations are
+    # generated through the registry: every real observed source is
+    # registered (deduped) and polled every cycle; the feed is the
+    # cycle's OPEN, non-empty, NOT-yet-covered research items. Repeated
+    # polls can never increase candidates (covered items are filtered
+    # out; the pipeline records duplicates as REJECTED — V4-S5 round 2,
+    # deleg_71efdc9e FAIL findings) and queue-REJECTED low-value items
+    # never resurrect (status filter). The poll key is the loop_id, so
+    # a crash-retried cycle dedupes while distinct cycles poll
+    # distinctly. Honest WAITING cycles still poll on schedule (this
+    # block runs before scoring).
+    from .discovery_candidates import covered_objective
+    from .discovery_monitors import poll_monitor
+    monitor_ids = _ensure_monitors(
+        db, mission_id, vault_root=vault_root, handoff_dir=handoff_dir,
+        research_dirs=research_dirs, repo_paths=tuple(repo_paths or ()))
+    poll_items: list[dict[str, Any]] = []
+    for item in items[:max(1, int(max_items))]:
+        if item.get("status") != "OPEN":
+            continue  # resolved/REJECTED items never resurrect
+        statement = (item.get("evidence") or {}).get("claim_statement") \
+            if isinstance(item.get("evidence"), dict) else None
+        objective = statement or item.get("claim_id", "")
+        if not objective or not str(objective).strip():
+            continue
+        if covered_objective(db, objective) is not None:
+            continue  # already covered — polls must not duplicate work
+        poll_items.append({
+            "mission_id": mission_id,
+            "source": f"monitor:{item.get('reason', 'observation')}",
+            "objective": objective,
+            "evidence": [{"item_id": item.get("item_id"),
+                          "reason": item.get("reason")}]})
+    report["monitors"] = {}
+    for kind, monitor_id in monitor_ids.items():
+        result = poll_monitor(db, monitor_id, poll_items, poll_key=loop_id)
+        report["monitors"][kind] = {
+            "monitor_id": monitor_id,
+            "polled": True,
+            "items_seen": result["items_seen"],
+            "candidates_found": result["candidates_found"]}
+
+    # the queue then resolves every remaining OPEN item (the
+    # poll-generated objectives resolve as already covered)
+    candidates = generate_research_candidates(db)
     report["candidates_created"] = candidates["candidates_created"]
 
     # 3b. MAINTENANCE WORK when needed (measured signals; deduped through
@@ -221,35 +267,6 @@ def run_one_loop(db: FoundryDatabase, *, loop_id: str, adapter: Any,
         repo_paths=tuple(repo_paths or ()))
     report["maintenance"] = maintenance["counts"]
     report["maintenance_candidate_created"] = maintenance["created"]
-
-    # 3c. POLL THE DURABLE MONITOR REGISTRY (DIR-2026-08-12 item 6):
-    # every real observed source is registered (deduped) and polled
-    # through the registry every cycle — recorded last_poll_at +
-    # candidates_found; repeated polls dedup via canonical candidate
-    # detection. This runs BEFORE scoring so honest WAITING cycles
-    # still poll on schedule.
-    from .discovery_monitors import poll_monitor
-    monitor_ids = _ensure_monitors(
-        db, mission_id, vault_root=vault_root, handoff_dir=handoff_dir,
-        research_dirs=research_dirs, repo_paths=tuple(repo_paths or ()))
-    poll_items: list[dict[str, Any]] = []
-    for item in items[:max(1, int(max_items))]:
-        statement = (item.get("evidence") or {}).get("claim_statement") \
-            if isinstance(item.get("evidence"), dict) else None
-        poll_items.append({
-            "mission_id": mission_id,
-            "source": f"monitor:{item.get('reason', 'observation')}",
-            "objective": statement or item.get("claim_id", ""),
-            "evidence": [{"item_id": item.get("item_id"),
-                          "reason": item.get("reason")}]})
-    report["monitors"] = {}
-    for kind, monitor_id in monitor_ids.items():
-        result = poll_monitor(db, monitor_id, poll_items)
-        report["monitors"][kind] = {
-            "monitor_id": monitor_id,
-            "polled": True,
-            "items_seen": result["items_seen"],
-            "candidates_found": result["candidates_found"]}
 
     # 4. SCORE + SELECT/REJECT
     top = _top_scorable(db, budget=score_budget)

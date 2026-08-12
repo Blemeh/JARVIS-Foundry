@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 
 
-SCHEMA_VERSION = 17
+SCHEMA_VERSION = 18
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -511,6 +511,15 @@ MIGRATIONS: dict[int, str] = {
         ON candidates(objective_canonical);
     CREATE INDEX IF NOT EXISTS candidates_mission
         ON candidates(mission_id);
+    """,
+    18: """
+    -- V4-S5 round 2 (deleg_71efdc9e INFO): the monitors registry gets a
+    -- UNIQUE(source_kind, source_ref) index — registration dedup is
+    -- race-safe at the schema level, not only in the app-layer query.
+    -- Safe on any existing data: the live table was empty at the audit
+    -- and registration is app-layer-deduped, so no duplicates can exist.
+    CREATE UNIQUE INDEX IF NOT EXISTS monitors_kind_ref
+        ON monitors(source_kind, source_ref);
     """,
 }
 

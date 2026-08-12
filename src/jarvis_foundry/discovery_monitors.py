@@ -35,9 +35,18 @@ def register_monitor(db: FoundryDatabase, mission_id: str, source_kind: str,
 
 
 def poll_monitor(db: FoundryDatabase, monitor_id: str,
-                 items: list[dict[str, Any]]) -> dict[str, Any]:
-    """Feed items into the candidate pipeline. Repeat polls dedup via
-    the pipeline's canonicalized objective detection."""
+                 items: list[dict[str, Any]], *,
+                 poll_key: str | None = None) -> dict[str, Any]:
+    """Feed items into the candidate pipeline.
+
+    Repeat polls dedup via the pipeline's canonicalized objective
+    detection (identical re-delivery finds 0 new candidates; the
+    pipeline never records duplicate rows as selectable work — V4-S5
+    round 2, deleg_71efdc9e FAIL findings). Items whose objective
+    canonicalizes empty are skipped (never fabricated); ``poll_key``
+    makes a crash-retried poll of the same cycle idempotent (the loop
+    passes its loop_id — distinct cycles poll distinctly).
+    """
     with db.connect() as connection:
         row = connection.execute(
             "SELECT enabled FROM monitors WHERE monitor_id = ?",
@@ -48,10 +57,16 @@ def poll_monitor(db: FoundryDatabase, monitor_id: str,
             f"rolled back")
     found = 0
     for item in items:
+        objective = item.get("objective")
+        if not objective or not str(objective).strip():
+            continue  # empty objectives never fabricate candidates
+        from .discovery_candidates import covered_objective
+        if covered_objective(db, str(objective)) is not None:
+            continue  # already covered — polls never duplicate work
         result = generate_candidate(
             db, item.get("mission_id", "mission-1"),
             item.get("source", "monitor-feed"),
-            item["objective"], item.get("evidence"))
+            objective, item.get("evidence"))
         if result["created"]:
             found += 1
     db.append(Event.create(
@@ -60,7 +75,7 @@ def poll_monitor(db: FoundryDatabase, monitor_id: str,
          "candidates_found": found},
         source_type="supervisor", source_id="wp10-discovery",
         idempotency_key=f"discovery.monitor_polled:{monitor_id}:"
-                        f"{uuid.uuid4().hex[:8]}"))
+                        f"{poll_key or uuid.uuid4().hex[:8]}"))
     return {"monitor_id": monitor_id, "items_seen": len(items),
             "candidates_found": found}
 
