@@ -1,6 +1,6 @@
 # Durable Recovery Notes — Authoritative Resume Point
 
-Updated: 2026-08-12T18:10+02:00 (alignment program start)
+Updated: 2026-08-12T18:25+02:00 (slice-2 closed; WP11 active)
 Session: JARVIS executive continuation (DIR-2026-08-12-master-plan-alignment;
 START BUILD active; duty window open-ended).
 
@@ -10,15 +10,18 @@ START BUILD active; duty window open-ended).
    directive (grounding; ledger seq 5486–5488).
 2. `docs/evidence/ALIGNMENT_2026-08-12_RECLASSIFICATION.md` — canonical
    two-gate version record (V1/V2/V3) + completion-condition tracker.
-3. `PROJECT_STATE.md` v18 — reconciled project truth.
-4. `docs/planning/CURRENT_WORK_PACKAGE.yaml` — WP10 slice-2 ACTIVE
-   (verifier pending); `docs/planning/WP11_V2_OPERATIONAL_WORK_PACKAGE.pending.yaml`
-   — next package.
+3. `PROJECT_STATE.md` v19 — reconciled project truth.
+4. `docs/planning/CURRENT_WORK_PACKAGE.yaml` — WP11 V2-OPERATIONAL ACTIVE;
+   slice design `docs/planning/V2_OPERATIONAL_DESIGN.md`.
 
 ## Current Truth (verified 2026-08-12 ~17:45)
 
-- **Git**: main @ HEAD, clean tree; alignment commit = the state
-  reconciliation + reclassification record (this commit).
+- **Git**: main @ HEAD, clean tree; slice-2 repair commit 89b7ca4
+  (round-1 FAIL → regression tests → round-2 PASS).
+- **WP10 slice-2**: **CLOSED — PASS** (deleg_verifier_slice2_adv_r2;
+  ledger 5830–5831; FAIL lineage 5639). Full suite 312 EXIT=0.
+- **WP11 V2-OPERATIONAL**: ACTIVE (CURRENT_WORK_PACKAGE.yaml; design
+  docs/planning/V2_OPERATIONAL_DESIGN.md). Next: slice A (vault indexing).
 - **Runtime**: Supervisor task `JARVIS-Foundry-Supervisor` RUNNING
   (repeating trigger); daemon heartbeating every 5 s; one singleton
   lease; supervisor_state RUNNING; STOP false (no sentinel file).
@@ -29,36 +32,30 @@ START BUILD active; duty window open-ended).
 - **Directive recorded**: seq 5486 (owner_directive.recorded), 5487
   (control.changed version-promotion-hold), 5488 (observation.started
   v1-reliability-window).
-- **WP10 slice-2**: IMPLEMENTED (b9d279a + fix ac65025), 310-test suite
-  EXIT=0 (artifact var/evidence/wp10-slice2/suite-slice2.txt, regenerated
-  17:47), verifier PENDING — dispatched against the frozen alignment HEAD.
-- **No active builders/verifiers** at inspection time (only the daemon).
+- **WP10 slice-2**: CLOSED — PASS (see above; FAIL lineage + repair
+  recorded in docs/evidence/WP10_SLICE2_MONITORS.md).
+- **No active builders/verifiers** (only the daemon).
 
 ## Exact Next Actions
 
-1. (In flight) WP10 slice-2 independent verifier → on PASS: ledger
-   verification.passed:verdict-wp10-slice2 + evidence.created:wp10-slice2,
-   slice-2 doc finalize (verifier id, ledger refs), archive
-   WP10_SLICE2_WORK_PACKAGE.closed.yaml, swap CURRENT_WORK_PACKAGE →
-   WP11 V2-OPERATIONAL. On FAIL: record FAIL, repair exact cause,
-   regression, regenerate evidence, fresh verifier.
-2. WP11 V2-OPERATIONAL integration — slices A–G (directive Phase 4):
-   A real Obsidian indexing → B whole-vault retrieval → C continuous
-   ingestion → D research queues → E real worker context → F governed
-   consolidation → G integrated rollback. TDD red→green per slice,
-   full suite green at each close, ledger events per slice, slice docs.
-3. V2 16-criterion operational gate: freeze HEAD → independent
-   adversarial verifier → PASS → ledger close → PROJECT_STATE v19
+1. **WP11 V2-OPERATIONAL slices A–G** (DIR-2026-08-12 Phase 4; design
+   docs/planning/V2_OPERATIONAL_DESIGN.md): A vault indexing → B
+   whole-vault retrieval → C continuous ingestion → D research queues →
+   E real worker context → F governed consolidation → G integrated
+   rollback. Per slice: TDD red→green, focused tests, full suite
+   EXIT=0, ledger events, slice doc, commit.
+2. V2 16-criterion operational gate: freeze HEAD → independent
+   adversarial verifier → PASS → ledger close → PROJECT_STATE v20
    (V2 promotion_state ELIGIBLE).
-4. Phase 5 evidence manifests for every gate (sanitized, committed,
+3. Phase 5 evidence manifests for every gate (sanitized, committed,
    hashed; private evidence stays local with committed hashes).
-5. Phase 7 V3 real loops: real monitored sources (vault changes, repo
+4. Phase 7 V3 real loops: real monitored sources (vault changes, repo
    events, handoffs, mission/system events), multiple complete loops on
    the registered wfm-optimizer resource, FAIL→repair→fresh-PASS,
    interrupted-build recovery, remote-Git reconcile (read-only),
    safe deployment-target reconcile (staging), maintenance work,
    next-mission selection.
-6. V3 gate → V4 activation only after V2 AND V3 both gates PASS.
+5. V3 gate → V4 activation only after V2 AND V3 both gates PASS.
 
 ## Commands
 

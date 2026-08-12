@@ -1,13 +1,14 @@
 # WP10 — V3 DISCOVERY AND BUILDING, Slice-2: Monitored Sources + Mission-Execution Wiring
 
-Status: **IMPLEMENTED + REPAIRED** (2026-08-12; 10/10 tests green — 8
-slice + 2 round-1 regressions; full suite 312 tests EXIT=0 —
-var/evidence/wp10-slice2/suite-slice2.txt sha256 5cf4bee5…; verifier
-round-2 <PENDING — dispatched against the frozen repair HEAD>).
-Slice-1 CLOSED — PASS (deleg_d70f796a; ledger 5100–5102). Per
-DIR-2026-08-12-master-plan-alignment: engineering status only; V3
-operational gate NOT_TESTED (canonical:
-docs/evidence/ALIGNMENT_2026-08-12_RECLASSIFICATION.md).
+Status: **CLOSED — PASS** (2026-08-12; round-2 verifier
+deleg_verifier_slice2_adv_r2; ledger verification.passed:verdict-wp10-slice2
+seq 5830 + evidence.created:wp10-slice2 seq 5831). 10/10 slice tests
+green; full suite 312 tests EXIT=0 (var/evidence/wp10-slice2/suite-slice2.txt,
+sha256 5cf4bee5…). Slice-1 CLOSED — PASS (deleg_d70f796a; ledger
+5100–5102). Per DIR-2026-08-12-master-plan-alignment: **ENGINEERING PASS
+only**; V3 operational gate NOT_TESTED (canonical:
+docs/evidence/ALIGNMENT_2026-08-12_RECLASSIFICATION.md). Work package
+archived: docs/planning/WP10_SLICE2_WORK_PACKAGE.closed.yaml.
 
 ## Round-1 FAIL lineage (verifier deleg_verifier_slice2_adv, 2026-08-12)
 
@@ -45,6 +46,24 @@ close without an explicit commit) and
 (ValueError + zero rows/events after rollback). Full suite 312 EXIT=0
 after the repair. Broader payload-schema validation for ALL event types
 remains a recorded residual (out of slice scope).
+
+## Round-2 verification (deleg_verifier_slice2_adv_r2) — PASS
+
+All criteria PASS. R1/R2 repairs A/B-discriminated: the OLD code
+(HEAD~1 projections.py loaded through a shim into the real append path)
+reproduces both defects (OperationalError on v10 mission.completed; raw
+KeyError for missing acceptance_criteria) while the NEW code no-ops
+safely / raises clean ValueErrors with atomic rollback, and the v11
+outcome wiring still works. Full contract re-probed (C1–C7): schema
+v11 fresh + v10→v11 upgrade, monitor lifecycle incl. canonical dedup +
+pointer rows + deliberate ValueErrors, rebuild/idempotency/EventConflict
+atomicity, registries + reconcile, artifact integrity (sha256 exact,
+EXIT=0, 312 dots; the 310→312 collect-only discriminator proves the
+suite ran the repaired tree), adversarial probes a–e. Verdict JSON:
+var/evidence/wp10-slice2/verdict-round2-deleg_verifier_slice2_adv.json
+(sha256 8db8209e…). Note: artifact mtime ~40 s before the repair commit
+(test-then-commit sequencing; validity established via the count
+discriminator + clean tree).
 
 ## Delivered (bounded slice-2 scope)
 

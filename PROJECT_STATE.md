@@ -5,7 +5,7 @@ This file is the current project truth.
 ```yaml
 project: JARVIS Foundry
 owner: Blendi Mehmeti
-state_version: 18
+state_version: 19
 updated_at: 2026-08-12
 
 phase: V2_KNOWLEDGE_BRAIN engineering ACCEPTED (operational pending) ->
@@ -24,19 +24,18 @@ v2_closed: 2026-08-12 (V2 KNOWLEDGE BRAIN ENGINEERING GATE PASS: five
   verifier FAIL rounds all repaired with regressions; gate review round-1
   FAIL (G3 truth correction) -> round-2 PASS (deleg_39ce6249); ledger
   verification.passed:verdict-wp9-gate seq 4846. OPERATIONAL GATE
-  NOT_TESTED — V2 promotion_state HOLD until the V2 operational
-  integration (WP11, directive Phase 4) passes its 16-criterion gate)
+  NOT_TESTED — V2 promotion_state HOLD until WP11 (V2-OPERATIONAL,
+  directive Phase 4) passes its 16-criterion gate)
 implementation_started: true
 start_command_received: true
 start_command_received_at: 2026-08-11T17:33:05+02:00
 active_version: V2 (engineering gate PASS; operational gate NOT_TESTED;
   promotion_state HOLD — see version_gates)
-active_work_package: WP10_V3_SLICE2_MONITORS (implemented; 310-test suite
-  EXIT=0; independent verifier PENDING — dispatched against the frozen
-  alignment HEAD; slice-1 archived as
-  docs/planning/WP10_SLICE1_WORK_PACKAGE.closed.yaml; next package after
-  slice-2 close: WP11 V2-OPERATIONAL, spec
-  docs/planning/WP11_V2_OPERATIONAL_WORK_PACKAGE.pending.yaml)
+active_work_package: WP11_V2_OPERATIONAL_INTEGRATION (ACTIVE —
+  docs/planning/CURRENT_WORK_PACKAGE.yaml; slice design
+  docs/planning/V2_OPERATIONAL_DESIGN.md; slices A-G then the
+  16-criterion gate; WP10 slices archived as
+  docs/planning/WP10_SLICE{1,2}_WORK_PACKAGE.closed.yaml)
 
 version_gates:
   V1: {engineering_gate: PASS, operational_gate: NOT_TESTED,
@@ -116,9 +115,10 @@ work_package_verdicts:
   WP9: ENGINEERING ACCEPTED (2026-08-12; five slices independently
         verified; gate review round-2 PASS; ledger 4846; OPERATIONAL
         GATE NOT_TESTED — promotion HOLD per DIR-2026-08-12)
-  WP10: IN PROGRESS — slice-1 CLOSED PASS (deleg_d70f796a; ledger
-        5100-5102); slice-2 IMPLEMENTED (suite 310 EXIT=0; verifier
-        PENDING); V3 operational gate NOT_TESTED
+  WP10: ENGINEERING CLOSED — slice-1 CLOSED PASS (deleg_d70f796a; ledger
+        5100-5102); slice-2 CLOSED PASS (round-1 FAIL deleg_verifier_slice2_adv
+        seq 5639 → repair 89b7ca4 → round-2 PASS deleg_verifier_slice2_adv_r2
+        seq 5830-5831); V3 operational gate NOT_TESTED
 
 autonomous_local_actions_after_start: true
 autonomous_obsidian_actions_after_capability_ready: true
@@ -128,14 +128,15 @@ autonomous_git_and_deployment_after_capability_ready: true
 autonomous_financial_actions_after_capability_ready: true
 autonomous_self_evolution_after_capability_ready: true
 
-next_event: ALIGNMENT PROGRAM (DIR-2026-08-12-master-plan-alignment):
-  1) finish WP10 slice-2 verification (verifier in flight; on PASS:
-  ledger close + docs finalize; on FAIL: repair + regression + fresh
-  verifier); 2) WP11 V2-OPERATIONAL integration (slices A-G, directive
-  Phase 4); 3) V2 16-criterion operational gate + independent verifier;
-  4) Phase 5 evidence manifests; 5) V3 real loops (Phase 7); 6) V4
-  activation only after both V2 and V3 gates PASS. VERSION PROMOTION
-  HOLD active until then.
+next_event: WP11 V2-OPERATIONAL INTEGRATION (DIR-2026-08-12 Phase 4):
+  slices A-G per docs/planning/V2_OPERATIONAL_DESIGN.md (A vault
+  indexing → B whole-vault retrieval → C continuous ingestion → D
+  research queues → E real worker context → F governed consolidation →
+  G integrated rollback), each with TDD + full suite + ledger events +
+  slice doc; then the 16-criterion V2 operational gate + independent
+  verifier → V2 ELIGIBLE; then Phase 5 evidence manifests; then V3 real
+  loops (Phase 7); V4 activation only after both V2 and V3 gates PASS.
+  VERSION PROMOTION HOLD active until then.
 ```
 
 ## Completed
@@ -200,8 +201,15 @@ next_event: ALIGNMENT PROGRAM (DIR-2026-08-12-master-plan-alignment):
 - WP10 (V3 Discovery) 2026-08-12: slice-1 candidate pipeline (schema v10)
   CLOSED — PASS (deleg_d70f796a; ledger 5100–5102; round-1 P3 timing
   finding repaired); slice-2 monitored sources + mission-execution wiring
-  (schema v11, commit b9d279a) + pre-v11 schema adaptation fix
-  (ac65025), 310-test suite EXIT=0, verifier PENDING.
+  (schema v11, commit b9d279a + pre-v11 fix ac65025) — round-1 verifier
+  FAIL (deleg_verifier_slice2_adv: C4 pre-v11 mission.completed crash +
+  C7d raw KeyError; ledger 5639) → repair commit 89b7ca4 + 2 regressions
+  (suite 312 EXIT=0) → round-2 PASS (deleg_verifier_slice2_adv_r2,
+  A/B-discriminated; ledger 5830–5831). ENGINEERING CLOSED; V3
+  operational gate NOT_TESTED.
+- WP11 (V2-OPERATIONAL) activated 2026-08-12 per DIR-2026-08-12 Phase 4:
+  slices A–G + 16-criterion V2 operational gate (design
+  docs/planning/V2_OPERATIONAL_DESIGN.md).
 
 ## Current Reality
 
@@ -217,9 +225,11 @@ back. V3 has an engineering-passed slice-1 and an implemented slice-2
 awaiting its verifier; its operational gate requires real monitored
 sources and multiple complete autonomous loops. The alignment program
 (PHASES 1–7 of the directive) is the current work; nothing is promoted
-and V4 stays inactive until both gates PASS per version. The daemon is
-healthy (5s cadence, one lease, live schema v10, 5400+ events, STOP
-false). Canonical reclassification record:
+and V4 stays inactive until both gates PASS per version. WP10 slice-2
+closed ENGINEERING PASS (round-1 FAIL → repair → round-2 PASS, ledger
+5639/5830–5831); WP11 V2-OPERATIONAL integration is ACTIVE (slices A–G).
+The daemon is healthy (5s cadence, one lease, live schema v10, 5800+
+events, STOP false). Canonical reclassification record:
 `docs/evidence/ALIGNMENT_2026-08-12_RECLASSIFICATION.md`; verbatim
 directive: `docs/evidence/OWNER_DIRECTIVE_2026-08-12_ALIGNMENT.md`.
 
