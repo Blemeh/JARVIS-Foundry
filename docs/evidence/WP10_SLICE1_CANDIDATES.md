@@ -10,7 +10,14 @@ REPAIRED 9295b1f: de-pinned to version == SCHEMA_VERSION) and the HEAD
 pin was stale (9295b1f landed mid-verification). The verifier's OWN
 independent run: **302 passed, EXIT=0** at HEAD. The artifact has since
 been regenerated at HEAD 9295b1f (var/evidence/wp10-slice1/
-suite-slice1.txt, EXIT=0, zero FAILED). Verifier round-2 <PENDING>.
+suite-slice1.txt, EXIT=0, zero FAILED). Verifier round-2
+(deleg_d70f796a) **PASS** — Q1 artifact EXIT=0 (302) at HEAD + clean
+tree, Q2 doc truthfulness; ROUND1_P3_CLOSED. Ledger:
+verification.failed ×1 (repair-keyed, seq 5100) +
+verification.passed:verdict-wp10-slice1 (seq 5101) +
+evidence.created:wp10-slice1 (seq 5102). **Slice-1 CLOSED — PASS.**
+9/9 candidate tests green; full suite 302 EXIT=0.
+Next: slice-2 (monitored sources + mission execution).
 
 ## Delivered (bounded slice-1 scope)
 
