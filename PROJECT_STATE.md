@@ -5,16 +5,23 @@ This file is the current project truth.
 ```yaml
 project: JARVIS Foundry
 owner: Blendi Mehmeti
-state_version: 16
+state_version: 17
 updated_at: 2026-08-12
 
-phase: V1_AUTONOMY_KERNEL
-phase_status: WP8_ACCEPTED
+phase: V1_AUTONOMY_KERNEL (accepted) -> V2_KNOWLEDGE_BRAIN ACCEPTED
+phase_status: V2_ACCEPTED -> V3_QUEUED
 day1_closed: 2026-08-12 (12 verified cycles; F1-F15 all PASS; independent
   reviews: round-1 FAIL -> round-2 FAIL -> round-3 PASS (deleg_8ee78c80);
   seven-day duration WAIVED by the owner (DIR-2026-08-12-seven-day-waiver,
   authenticated message 16242; ledger 1763+2143); gate report
   docs/evidence/WP8_GATE_REPORT.md)
+v2_closed: 2026-08-12 (V2 KNOWLEDGE BRAIN ACCEPTED: five slices, each
+  independently verified — slice-1 epistemic core (548b6bb6), slice-2
+  retrieval+manifests (7c4759fa), slice-3 entities (01ebd46f), slice-4
+  ingestion (3cce471c), slice-5 snapshots (23953faa); 8 recorded verifier
+  FAIL rounds all repaired with regressions; gate review round-1 FAIL
+  (G3 truth correction) -> round-2 PASS (deleg_39ce6249); ledger
+  verification.passed:verdict-wp9-gate seq 4846)
 implementation_started: true
 start_command_received: true
 start_command_received_at: 2026-08-11T17:33:05+02:00
@@ -70,9 +77,10 @@ work_package_verdicts:
   WP6: PASS
   WP7: PASS (activated; recovery repairs 2026-08-12 verified — see
         docs/evidence/WP7_RECOVERY_2026-08-12.md)
-  WP8: IN_PROGRESS (day 1 of the seven-day clock CLOSED; 12 verified cycles:
-        steps 1,2,3/G6, F1, 5, 6/F14/F15, 7, 8/F3, installer fix, F2-live,
-        F2 gateway, step-9 F2-active)
+  WP8: ACCEPTED (2026-08-12; independent round-3 PASS; trust
+        TRUSTED_AUTONOMOUS; waiver recorded)
+  WP9: ACCEPTED (2026-08-12; five slices independently verified;
+        gate review round-2 PASS; ledger 4846)
 
 autonomous_local_actions_after_start: true
 autonomous_obsidian_actions_after_capability_ready: true
