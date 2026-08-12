@@ -1,8 +1,9 @@
 # WP8 F6 — Provider/Model Outage During a Provider-Required Step
 
 Status: **PASS** (2026-08-12; FIND-2026-08-12-05 repaired; regressions +
-live staged experiment; independent verifier verdict recorded with the F5
-review / final gate review)
+live staged experiment; covered by the F5 verifier deleg_06704886 review
+(PASS; the whitelist extension it flagged was this finding's repair) +
+the final gate review)
 Gate: `docs/architecture/04_V1_ACCEPTANCE_GATE.md` §7 F6
 Execution: JARVIS executive continuation run (owner redirect 2026-08-12)
 Finding: **FIND-2026-08-12-05** (exit-0 `HTTP 401: Model … is not

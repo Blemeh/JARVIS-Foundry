@@ -1,61 +1,59 @@
 # Durable Recovery Notes — Authoritative Resume Point
 
-Updated: 2026-08-12T13:00+02:00 (round-1 review FAIL → repair queue executed)
+Updated: 2026-08-12T13:10+02:00 (round-2 review FAIL → round-3 repair set)
 Session: JARVIS executive continuation (owner redirect 2026-08-12), START
 BUILD active.
 
 ## READ FIRST
 
-1. `docs/evidence/WP8_GATE_REPORT.md` — gate report with the round-1 FAIL
-   and the executed repair table (this is the primary record now).
-2. `var/evidence/wp8-gate/final-review-deleg_acbc8ce5.json` — the review.
-3. `PROJECT_STATE.md` — v15 (state update only after an independent PASS).
-4. `docs/evidence/WP8_DAY1_REPORT.md` — F-matrix F1–F15 PASS (FIND-01
-   corrected to RETRACTED).
-5. `docs/handoffs/CHECKPOINT_2026-08-12T1158.md`.
+1. `docs/evidence/WP8_GATE_REPORT.md` — the primary gate record: round-1
+   FAIL (deleg_acbc8ce5), repair table, round-2 FAIL (deleg_1e6e9421),
+   round-3 repair set, B1 waiver truth.
+2. `var/evidence/wp8-gate/final-review-deleg_acbc8ce5.json` +
+   round-2 verdict (session store, deleg_1e6e9421).
+3. `PROJECT_STATE.md` v15 — state update ONLY after an independent PASS.
+4. `docs/evidence/WP8_DAY1_REPORT.md` — F-matrix F1–F15 PASS; FIND-01
+   retracted; F1 active-kill noted.
 
-## Current Truth (verified 2026-08-12 ~13:00)
+## Current Truth (verified 2026-08-12 ~13:10)
 
-- **Gate: NOT PASSED.** Independent final review deleg_acbc8ce5: FAIL
-  (2 blockers, 5 majors, 3 minors, 1 observation). Repair queue EXECUTED:
-  - STOP latency: run.py default 30s→5s; live daemon at 5s cadence; live
-    measurements CLI 4.21s / sentinel 5.07s (≤10s cap); regressions added;
-    evidence var/evidence/wp8-gate/stop-latency/.
-  - FIND-01: retracted with ledger evidence (continuous heartbeats
-    seq 130–183); evidence.created:find-01-retraction (seq 1528).
-  - G5: projection backfill (verifier_run_id) + 2 missing verdict chains
-    (f12-f13 deleg_5e15ee4a; f5-f6 deleg_06704886) → 12 rows; regression
-    test added.
-  - G7: governed notes 00/02/04/07 rewritten to TRUE state at the correct
-    root (…\Blendi — writer appends JARVIS/V1); content-freshness in
-    reconciliation; nested duplicates preserved (owner approval pending).
-  - Reconciliation re-run: READ-ONLY discipline proven; 10 PASS + 1
-    NOT_TESTED (surface 3 staging-only audit model, documented); run_at
-    real; F3 seq 1444 predates the run.
-  - F1 active-coordination kill: staged PASS (reap/recover/reclaim).
-  - Gate report written (docs/evidence/WP8_GATE_REPORT.md).
-- **Open item (owner input required — legitimate BLOCKED):** the seven-day
-  duration (04 §8.1). Options: (a) owner records an explicit waiver
-  directive, or (b) the clock continues (day 1 of 7) with the gate closed
-  after round-2 PASS at the earliest, and the final report records the
-  deviation. NO fake closure; V2 stays LOCKED.
-- Runtime: daemon on 5s cadence (restart onto the new default verified),
-  one lease, STOP false, reconcile consistent, live gateway untouched.
-- Ledger: 1560+ events; 12 verdict rows (10 PASS + FAIL wp8-gate + 2
-  repaired chains); fault_injection.completed F1–F13.
+- **Gate: NOT PASSED (round 1 + round 2 FAIL).** Round-2 verified the
+  substantive repairs (R1 STOP latency live ≤10s; R2 FIND-01 retraction
+  ledger-truthful; R3 12 verdict rows; R5 reconciliation read-only; R6 F1
+  active-kill) but FAILed on: (a) the seven-day waiver's reviewer-
+  verifiable authentication (the owner's in-session clarify response is
+  genuine but not FTS-visible; B1 corrected to AWAITING OWNER DIRECT
+  MESSAGE — no fabrication), (b) the ObsidianWriter root-doubling bug
+  RECURRING during the repair (now root-cause fixed: idempotent write_root
+  normalization + regression; surface 7 counts nested rows loudly), (c)
+  commit hygiene (round-3 commit includes everything: F5/F6 doc fixes,
+  checkpoint, DECISION_LOG, report edits), (d) the step-lifecycle minor
+  (now a documented deviation with the verified per-step matrix, m10).
+- **Round-3 repair set** (commit <PENDING>): policy.py normalization,
+  test_obsidian_write regression, reconciliation v3 (canonicality +
+  heartbeat-only read-only discipline + overall_note), gate report
+  corrections, RECOVERY_NOTES.
+- **Owner input pending (single item):** the seven-day waiver as a DIRECT
+  message from the owner (FTS-visible, reviewer-verifiable). Then the
+  correction records (evidence.created:waiver-authentication) + round-3
+  independent review.
+- Runtime: daemon RUNNING at 5s cadence (post-repair default), one lease,
+  STOP false, reconcile consistent; live gateway untouched; suite green
+  (obsidian+event_store 33 focused; full suite <PENDING rerun>).
 
 ## Next (exact)
 
-1. Full suite green (background run) → commit the repair set
-   (run.py, projections.py, test_stop_controls.py, test_event_store.py,
-   WP8_GATE_REPORT.md, day-1 corrections, RECOVERY_NOTES).
-2. Dispatch the ROUND-2 independent review (fresh adversarial session)
-   against the repair commit: STOP latency evidence, G7 freshness,
-   reconciliation re-run, G5 rows, FIND-01 retraction, F1 active-kill.
-3. On round-2 PASS + the seven-day decision: finalize the gate report,
-   PROJECT_STATE v16 (trust), WP9 V2 activation, V2 slice-1.
-4. On round-2 FAIL: repair its exact findings and re-verify (G6 loop).
-5. Checkpoint ~14:30; final handoff 17:15.
+1. Commit the round-3 repair set (this run).
+2. Owner direct message with the waiver text → record
+   evidence.created:waiver-authentication (grounding seq 1763) + owner
+   message verbatim in docs/evidence/OWNER_WAIVER_2026-08-12.md.
+3. Dispatch the ROUND-3 independent review (fresh adversarial session;
+   brief: R1–R6 re-verify + waiver authentication + root-cause fix +
+   clean tree + m10 closure).
+4. On round-3 PASS: ledger verification.passed:verdict-wp8-gate,
+   PROJECT_STATE v16 (trust), WP9 activation, V2 slice-1.
+5. On FAIL: repair its exact findings and re-verify.
+6. Checkpoint ~14:30; final handoff 17:15.
 
 ## Commands
 
@@ -67,6 +65,7 @@ cd "C:\Users\b\Documents\ChatGPT\Autonomous AI powered by Hoowen\JARVIS-Foundry"
 
 ## Honesty Rule
 
-Round-1 FAIL is recorded in the ledger (verification.failed:verdict-wp8-gate)
-and every repair is evidence-backed. Nothing advances on an unverified
-claim; the gate closes only on an independent PASS.
+Two independent reviews FAILed the gate; every finding is either repaired
+with evidence or recorded as an open owner item. Nothing advances on an
+unverified claim; the waiver is NOT treated as authenticated until the
+owner's direct message grounds it.

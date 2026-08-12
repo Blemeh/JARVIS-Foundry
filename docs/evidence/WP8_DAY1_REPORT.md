@@ -35,7 +35,7 @@ plus earlier 226-test run (`var/evidence/wp8-gate/step-8/foundry-suite-226.txt`)
 
 | F | Item | Status |
 |---|---|---|
-| F1 | Supervisor kill (idle+active) | **PASS** (day 1; auto-restart ≤60 s, lease reclaimed once, no duplicates) |
+| F1 | Supervisor kill (idle+active) | **PASS** (day 1; auto-restart ≤60 s, lease reclaimed once, no duplicates — plus the round-1 repair 2026-08-12: ACTIVE-COORDINATION kill probe, SIGKILL during an in-flight step (mission EXECUTING + live role run) → next instance reaped the stale role lease, recorded agent_run.failed:heartbeat_timeout, recovered the mission to ACTION_SELECTION, reclaimed the singleton — var/evidence/wp8-gate/f1-active-kill/) |
 | F2 | Gateway termination | **PASS** (day 1, early; three complementary records: staged gateway killed while idle → dispatch independent [sibling, test_id F2]; real oneshot killed mid-run → FAILED, no orphans [sibling, F2-live]; staged gateway killed MID-SESSION → FAILED hermes_oneshot_failed, lease released, fresh-worker resume, 3 regression tests [this session, F2-active, step-9]) |
 | F3 | Builder kill after mutation | **PASS** (day 1, early; machinery + 9 tests) |
 | F4 | Windows restart | **PASS** (2026-08-12 ~09:49 owner reboot; supervisor auto-started from the task trigger in 1s, single lease, heartbeats resumed, ledger/WAL intact, reconcile consistent — evidence var/evidence/wp8-gate/f4-restart/F4_AFTER_STATE.json + fault_injection.completed:F4) |

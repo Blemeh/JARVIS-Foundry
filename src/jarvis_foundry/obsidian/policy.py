@@ -44,7 +44,25 @@ class ObsidianWriter:
 
     def __init__(self, vault_root: str | Path, v1_write_root: str = "JARVIS/V1") -> None:
         self.vault = Path(vault_root).expanduser().resolve()
-        self.write_root = (self.vault / v1_write_root).resolve()
+        # Root-cause fix (review deleg_1e6e9421, R4): historical callers
+        # passed the governed dir itself (…/JARVIS/V1) or the JARVIS dir
+        # and the writer silently doubled/offset the path
+        # (…/JARVIS/V1/JARVIS/V1, …/JARVIS/JARVIS/V1). Normalize by path
+        # shape so all three caller classes resolve to the SAME governed
+        # dir deterministically:
+        #   root                -> root/JARVIS/V1
+        #   root/JARVIS         -> root/JARVIS/V1
+        #   root/JARVIS/V1      -> root/JARVIS/V1 (idempotent)
+        parts = [p for p in self.vault.parts if p not in ("/", "\\", "")]
+        tail = [p.lower() for p in parts[-2:]]
+        v1_parts = [p.lower() for p in v1_write_root.split("/")]
+        if tail == v1_parts:
+            write_root = self.vault                      # already the governed dir
+        elif tail[-1:] == v1_parts[-2:-1]:
+            write_root = self.vault / v1_write_root.split("/")[-1]   # root/JARVIS
+        else:
+            write_root = self.vault / v1_write_root
+        self.write_root = write_root.resolve()
         if self.write_root != self.vault and self.vault not in self.write_root.parents:
             raise ObsidianPolicyError(
                 f"v1_write_root must live inside the vault: {self.write_root}")

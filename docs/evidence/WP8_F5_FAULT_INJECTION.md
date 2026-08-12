@@ -1,7 +1,8 @@
 # WP8 F5 — Network Outage During a Provider-Required Step
 
 Status: **PASS** (2026-08-12; repair + regressions + live staged experiment;
-independent verifier `deleg_<pending>`)
+independent verifier `deleg_06704886` PASS, 0 findings — minor accuracy
+items closed: manifests generated, suite-run sequence documented)
 Gate: `docs/architecture/04_V1_ACCEPTANCE_GATE.md` §7 F5
 Execution: JARVIS executive continuation run (owner redirect 2026-08-12)
 Finding: **FIND-2026-08-12-04** (adapter exit-0 failure-report classification)
@@ -117,7 +118,12 @@ provider_unavailable / `run-f5-c` COMPLETED; role leases 0; quick_check ok;
 ## 8. Evidence Index
 
 - `var/evidence/wp8-gate/f5/`: run_f5_experiment.py, f5-experiment-summary.json,
-  foundry-suite.txt (full suite result), freeze manifest (sha256).
+  foundry-suite.txt (250 passed EXIT=0 on the quiescent rerun; see
+  suite-note.txt for the run sequence incl. the transient installer flake),
+  manifest.json (sha256 of all bundle artifacts + live-home key files,
+  generated post-experiment from untouched artifacts), verifier-deleg_06704886.json
+  (independent verifier verdict, PASS with minor findings all closed),
+  staging/ (snapshot DB + staged homes).
 - `tests/foundry/test_f5_network_outage.py` (6 regression tests).
 - Ledger: `fault_injection.completed:F5:2026-08-12` (+ verifier verdict
   events when the independent review records them).

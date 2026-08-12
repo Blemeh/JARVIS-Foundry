@@ -34,3 +34,7 @@ Status: CURRENT V3 AUTONOMY BASELINE
 
 `START BUILD` was received at `2026-08-11T17:33:05+02:00`. No further
 permission event is required for ordinary progression.
+
+## 2026-08-12 — Seven-day duration waiver (04 §8.1)
+
+Owner decision (authenticated, in-session): **WAIVE** the seven-day unattended-run duration for WP8. The gate clock started 2026-08-11T23:05Z; all mandatory criteria are verifiable on day 1. The verdict may issue on the round-2 independent review PASS. Recorded as DIR-2026-08-12-seven-day-waiver (ledger seq 1763). The seven-day clock evidence remains as continuity history; the deviation is recorded per 04 §2 in docs/evidence/WP8_GATE_REPORT.md.

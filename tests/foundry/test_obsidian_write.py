@@ -47,6 +47,23 @@ def write_row(database, write_id: str) -> dict:
     return database.row("obsidian_writes", "write_id", write_id)
 
 
+def test_write_root_normalization_idempotent_for_all_root_classes(tmp_path):
+    """R4 root-cause fix (review deleg_1e6e9421): the writer must resolve
+    the governed dir identically whether the caller passes the vault root,
+    the JARVIS dir, or the governed V1 dir itself — the doubling class of
+    bugs (…/V1/JARVIS/V1, …/JARVIS/JARVIS/V1) must be impossible."""
+    from jarvis_foundry.obsidian.policy import ObsidianWriter
+
+    vault = tmp_path / "vault"
+    (vault / "JARVIS" / "V1").mkdir(parents=True)
+    expected = (vault / "JARVIS" / "V1").resolve()
+    for root in (vault, vault / "JARVIS", vault / "JARVIS" / "V1"):
+        writer = ObsidianWriter(root)
+        assert writer.write_root == expected, f"{root} -> {writer.write_root}"
+        assert writer.note_path("02 - Active Mission.md") == \
+            expected / "02 - Active Mission.md"
+
+
 def test_v1_note_set_and_audit_dir_created(tmp_path):
     vault, writer, database, service = vault_fixture(tmp_path)
     assert writer.write_root.exists()
