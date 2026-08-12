@@ -33,3 +33,7 @@ Status: OPEN
 Any credible route to ignored owner veto, STOP failure, unrecoverable data loss,
 secret disclosure, unlawful action, hidden consequence, or audit destruction
 is severity one and blocks the affected capability until repaired.
+| RK-26 | Repeated polls / duplicate records inflate selectable candidates and create duplicate missions | High | Poll feed filtered (OPEN/non-empty/uncovered), poll key = loop_id, duplicates land REJECTED (projection), UNIQUE monitors index (v18). Verified: FAIL round (deleg_71efdc9e) → repair → PASS round (deleg_9decc685). |
+| RK-27 | Queue-REJECTED low-value items resurrect through alternate generation paths | Medium | Poll feed status filter (OPEN only); regression test proves only genuinely-OPEN signals surface. |
+| RK-28 | Projection drift accumulates when projection rules change (rows projected under older rules contradict the current rebuild) | Medium | Atomic rebuilds at every rule change (S1: 780 rows, S5-R1: 45 rows); reconcile-consistent verified after each close; rebuilds rehearsed on copies first. |
+| RK-29 | Case-insensitive filesystems / repo-name collisions misresolve claim sources | Low | Support requires content-hash + line-hash match (never fabricated support); collisions resolve false-negative (safe direction), documented. |

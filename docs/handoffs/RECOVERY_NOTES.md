@@ -1,83 +1,71 @@
 # Recovery Notes — JARVIS Foundry
 
-Authoritative resume point. Updated 2026-08-12 ~23:55+02:00 — **V4 duty
-window in progress** (DIR-2026-08-12, ~12h; owner away; silence = continue).
+Authoritative resume point. Updated 2026-08-13 ~01:50+02:00 — **V4 duty
+window in progress** (DIR-2026-08-12, ~12h; owner away; silence =
+continue).
 
 ## Current state
 
-- Branch `main`, HEAD `e456c22` (V4-S2 verifier truth) — clean tree
-  (docs/evidence/V4_S2_VERIFIER_TRUTH.md uncommitted).
-- **MR-1 CLOSED**: mandatory model routing fix (`bab5830`) — every role →
-  opencode_go + deepseek-v4-flash, no fallbacks; enforcement in
-  run_one_loop + live drivers; verifier deleg_debc2612 **PASS** (P1–P10);
-  ledger `verification.passed:verdict-v4-mr1-routing:round1` +
-  `evidence.created:v4-mr1-routing-close` (seq 14050–14051, schema 16).
-  Evidence: docs/evidence/V4_MR1_MODEL_ROUTING.md + var/evidence/v4-mr1-routing/.
-- **V4-S2 implemented** (`e456c22`, suite 429 EXIT=0): structured-verdict
-  parsing in HermesOneshotAdapter (exit-0 never PASS; missing verdict →
-  NOT_TESTED); loop verifier instructions demand `VERDICT:` line;
-  evidence bundles bind artifact sha256 hashes. Verifier deleg_81eea974
-  RUNNING (freeze: no src/tests edits until verdict).
-- Live system: daemon healthy (5s heartbeats, 1 lease, STOP false, schema
-  v16, ~14,050 events, 954 claims); candidates 3 EXECUTED / 233 SCORED /
-  696 NEW; monitors registry EMPTY (0 rows — R6 fix pending).
-- Live audit findings (all confirmed read-only; design in
-  docs/planning/V4_TRUTH_SLICES.md):
-  - R2a: heartbeats never renew leases → live sessions get reaped at
-    lease expiry (dispatcher + reaper).
-  - R2b: agent_runs projection not terminal-monotonic (late completed
-    flips FAILED→COMPLETED; started resets terminal rows).
-  - R3: interrupted verifier + same-run_id resume crashes (EventConflict
-    on agent_run.started) — no generic exactly-once resume.
-  - R4: completion truth verified OK live (3 COMPLETE ↔ 3 events ↔ 3
-    EXECUTED).
-  - R5: 766 live claims carry `handoff:handoff:` run_id duplication;
-    note_support only knows vault sources (894/920 UNSUPPORTED claims).
-  - R6: monitors registry unused; register+poll vault/handoffs/repo/system.
-  - R7: scoring lacks freshness/cooldown/source-trust terms.
-  - R8: docs to reconcile at close.
+- Branch `main`, src HEAD `19fbb17` (docs HEAD `bb4a4b5`) — clean tree.
+- **Six truth-critical slices CLOSED** (every close has an independent
+  adversarial verifier PASS + ledger events + evidence docs under
+  docs/evidence/ + artifacts under var/evidence/):
+  - **MR-1 routing** (bab5830/2939415, deleg_debc2612 PASS): every
+    internal role → opencode_go + deepseek-v4-flash, no fallbacks;
+    `enforce_directive_routing()` runs before any loop mutation.
+  - **S2 verifier truth** (e456c22/19ea656, deleg_81eea974 PASS):
+    structured verdicts (exit-0 never PASS → NOT_TESTED); artifact
+    hashes bound in evidence bundles.
+  - **S3 lease/monotonic** (7e02091/2db5bdd, deleg_18d9f7b0 PASS):
+    heartbeats renew session leases; agent_runs terminal-monotonic.
+  - **S4 exactly-once** (f1dd903/1eeede5, deleg_a3e54630 PASS): resume
+    never re-runs the builder; fresh verifier run id on interrupted/
+    reaped rows; dangling verdicts corrected additively.
+  - **S1 support semantics — the package's FIRST MISSION**
+    (982f472/f2e3ea3, deleg_12682a02 PASS 17 probes): source-kind-aware
+    support (vault/handoff/repo/system); projection-boundary run_id
+    normalization; migration v17 (SUPERSEDED); LIVE CLOSE: v17 +
+    atomic rebuild (14,945 events; 766 run_ids + 14 monotonicity rows
+    converged), support re-scan **953/954 (was 894 unsupported)**,
+    2 false-premise candidates superseded, reconcile 0 mismatches.
+  - **S5 monitors** (fea9167 → **R1 verifier FAIL** deleg_71efdc9e —
+    real findings (duplicate candidates/missions from repeated polls;
+    REJECTED-item resurrection; unknown-monitor polls; empty
+    objectives) → repaired at 19fbb17 → R2 verifier **PASS**
+    deleg_9decc685, 16 probes): poll feed filtered (OPEN/non-empty/
+    uncovered) before queue conversion; poll key = loop_id; duplicates
+    land REJECTED in the projection; unknown-monitor polls fail
+    atomically; migration v18 UNIQUE monitors index; LIVE CLOSE:
+    v18 + rebuild (15,490 events; 45 inert duplicate rows converged),
+    reconcile 0 mismatches.
+- **S6 scoring in flight**: bounded context factors (freshness/
+  cooldown/source-trust/evidence/similarity, all capped; threshold
+  0.35 unchanged) + frozen recorded scores (b2b50e2; suite 485
+  EXIT=0); verifier deleg_66e30870 RUNNING (freeze: no src/tests edits
+  until the verdict; docs-only work allowed).
+- Live system: daemon healthy (5s heartbeats, 1 lease, STOP false,
+  schema **v18**, ~15,490+ events, 954 claims, 953 supported);
+  candidates 3 EXECUTED / 2 SUPERSEDED / 233 SCORED / 696 NEW;
+  reconcile **consistent**; monitors registry still empty (the live
+  loop has not run since S5 — the m3 real-loop run registers them).
 
 ## If interrupted, resume with
 
-1. `git status` — expect clean at the S2-verifier commit.
-2. `./.venv/Scripts/python.exe -m pytest tests -q` (429 tests, EXIT=0).
-3. Read docs/planning/V4_TRUTH_SLICES.md (design) +
-   CURRENT_WORK_PACKAGE.yaml (V4_CONTINUOUS_AUTONOMY).
-4. Verify the deleg_81eea974 verdict landed (PASS expected); if FAIL,
-   repair exact findings → regression → re-verify. Then append the
-   ledger close (`var/evidence/close_v4_mr1.py` is the pattern).
-5. Implement V4-S3 (lease renewal + terminal monotonicity) → S4
-   (exactly-once resume) → S1 (support semantics — the package's named
-   FIRST MISSION) → S5 (monitors) → S6 (scoring + docs). Each: TDD red →
-   fix → focused → full suite → freeze → verifier → ledger close.
-6. After S1 lands: run a real live loop (var/evidence/v3_loops/
-   live_loop_driver.py — enforcement already wired) to (a) confirm the
-   ledger records deepseek-v4-flash for builder+verifier+recovery
-   (directive routing confirmation), (b) re-scan support on live claims,
-   (c) supersede false-UNSUPPORTED candidates additively.
-
-## Standing invariants (never violate)
-
-- Append-only ledger; no reset/clean/restore of existing work; no
-  fabricated PASS/evidence/consent; no push (no remotes); no cron
-  (owner paused all 2026-08-12); note content is UNTRUSTED data;
-  governed writes only through ObsidianService; live DB never replaced
-  while the daemon is active; builders never certify their own work;
-  independent adversarial verification with provider limitation
-  recorded; freeze discipline before every verifier dispatch; SCHEMA
-  check before any live-ledger append (currently 16 == code 16).
-- Owner control: STOP / pause / veto / redirect — silence means
-  continue. Owner-only blockers: mark OWNER_PENDING, continue
-  independent work, ask once.
-
-## Evidence indexes
-
-- MR-1 routing: docs/evidence/V4_MR1_MODEL_ROUTING.md,
-  var/evidence/v4-mr1-routing/ (verdict deleg_debc2612.json sha256
-  5ff10149…, suite-v4-mr1.txt, close_v4_mr1.py).
-- S2 verifier truth: docs/evidence/V4_S2_VERIFIER_TRUTH.md (status
-  <PENDING> until verdict), var/evidence/v4-s2-verifier-truth/.
-- Design: docs/planning/V4_TRUTH_SLICES.md (R1–R8 + slice plans).
-- Checkpoints: var/evidence/checkpoints/CHECKPOINT-2026-08-12T2338.md.
-- Prior gates: docs/evidence/WP11_V2_OPERATIONAL_GATE.md (PASS 16/16),
-  docs/evidence/WP12_V3_OPERATIONAL_GATE.md (PASS 6/6).
+1. `git status` — expect clean; `git log --oneline -12` for the chain.
+2. Read docs/handoffs/RECOVERY_NOTES.md (this file) +
+   docs/planning/V4_TRUTH_SLICES.md + CURRENT_WORK_PACKAGE.yaml.
+3. Check the deleg_66e30870 verdict (S6): if PASS → archive +
+   `var/evidence/close_v4_s6.py <id> <verdict.json> 19fbb17` (pattern:
+   close_v4_s5.py) → update V4_S6_SCORING.md status → commit. If FAIL
+   → repair exact findings → regression → re-verify (S5-R1 was the
+   same loop).
+4. R8 doc reconciliation (PROJECT_STATE v21 → v22, CURRENT_WORK_PACKAGE
+   FIRST MISSION done, DECISION_LOG append D-0xx, RISK_REGISTER
+   append) — the V4_TRUTH_SLICES R8 section lists the targets.
+5. **m3 (mandatory routing proof)**: run ONE real live loop via
+   var/evidence/v3_loops/live_loop_driver.py — the ledger must show
+   builder+verifier+recovery workers ALL deepseek-v4-flash (directive
+   routing item 8) AND the four monitors registered on the live DB.
+6. Continuous cadence (loop every ~15–30 min on the live backlog);
+   checkpoints every 60–90 min under var/evidence/checkpoints/;
+   final report + GPT-5.6 Sol audit handoff at window end (~11:15).
