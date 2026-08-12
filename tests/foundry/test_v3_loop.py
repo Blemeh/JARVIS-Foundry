@@ -90,9 +90,10 @@ def test_loop_runs_end_to_end(db: FoundryDatabase, vault: Path,
     assert report["selected_candidate"] is not None
     assert report["candidate_score"] >= 0.35
     assert report["reconciled"] is True
-    # mission lifecycle: created → READY → … → completed
+    # mission lifecycle: created → READY → … → COMPLETE (only a PASSED
+    # loop records mission.completed and advances the mission to COMPLETE)
     mission = db.row("missions", "mission_id", report["mission_id"])
-    assert mission["state"] == "ACTION_SELECTION"
+    assert mission["state"] == "COMPLETE"
     # the candidate is EXECUTED with the recorded outcome (prediction vs
     # reality wiring via created_from)
     row = db.row("candidates", "candidate_id", report["selected_candidate"])
@@ -164,6 +165,31 @@ def test_loop_idempotent_rerun_no_duplicate_missions(
         ).fetchone()[0]
     assert len(executed) == 2  # one EXECUTED candidate per loop
     assert missions == 2       # no duplicate missions for one candidate
+
+
+def test_loop_blocked_does_not_complete_mission(
+        db: FoundryDatabase, vault: Path, resource_root: Path):
+    from jarvis_foundry.v3_loop import run_one_loop
+    _seed_stale_claim(db, vault)
+    adapter = FakeHermesAdapter(fail_provider="opencode_go")
+    report = run_one_loop(
+        db, loop_id="t6", adapter=adapter, router=RoleRouter(),
+        resource_id="resource-test", vault_root=vault,
+        target_root=resource_root, max_items=10, max_bytes=20_000)
+    assert report["outcome"] == "BLOCKED"
+    assert report["mission_state"] == "BLOCKED"
+    # a BLOCKED mission must NOT be completed and must NOT mark the
+    # candidate EXECUTED (live-loop finding 2026-08-12 — fixed)
+    with db.connect() as connection:
+        completed = connection.execute(
+            "SELECT COUNT(*) FROM events WHERE event_type = "
+            "'mission.completed' AND payload_json LIKE ?",
+            (f"%{report['mission_id']}%",)).fetchone()[0]
+        candidate = connection.execute(
+            "SELECT status FROM candidates WHERE candidate_id = ?",
+            (report["selected_candidate"],)).fetchone()[0]
+    assert completed == 0
+    assert candidate == "APPROVED"
 
 
 def test_loop_records_outcome_and_reconciles(

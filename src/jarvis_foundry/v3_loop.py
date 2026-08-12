@@ -41,19 +41,26 @@ DEFAULT_CAPABILITY = "write_registered_worktree_files"
 DEFAULT_MIN_SCORE = 0.35
 
 
-def _top_scorable(db: FoundryDatabase, *, budget: int) -> list[dict[str, Any]]:
-    """NEW/SCORED candidates with their scores, best first (budget-bounded)."""
+def _top_scorable(db: FoundryDatabase, *, budget: int,
+                  score_cap: int = 100) -> list[dict[str, Any]]:
+    """The best-scored NEW/SCORED candidates (budget-bounded output).
+
+    Scores up to ``score_cap`` candidates so recent high-value claims
+    are not starved by rowid order (live-loop finding 2026-08-12: the
+    top-8-by-rowid scan missed the 'fix(wp11)…' repo claims).
+    """
     with db.connect() as connection:
         rows = connection.execute(
             "SELECT candidate_id, objective, status FROM candidates "
-            "WHERE status IN ('NEW', 'SCORED') ORDER BY rowid").fetchall()
+            "WHERE status IN ('NEW', 'SCORED') ORDER BY rowid "
+            f"LIMIT {max(1, int(score_cap))}").fetchall()
     scored: list[dict[str, Any]] = []
-    for row in rows[:budget]:
+    for row in rows:
         score = score_candidate(db, row[0])
         scored.append({"candidate_id": row[0], "objective": row[1],
                        "status": row[2], "score": score})
     scored.sort(key=lambda c: c["score"], reverse=True)
-    return scored
+    return scored[:max(1, int(budget))]
 
 
 def _default_instructions(objective: str, target: Path) -> str:
@@ -181,16 +188,27 @@ def run_one_loop(db: FoundryDatabase, *, loop_id: str, adapter: Any,
     rep = reconcile(db)
     report["reconciled"] = rep.consistent
 
-    # 9. MEASURE OUTCOME (mission.completed → candidate EXECUTED)
-    db.append(Event.create(
-        "mission.completed",
-        {"mission_id": new_mission, "objective": objective,
-         "outcome": {"loop_id": loop_id, "step_outcome": outcome.outcome,
-                     "run_id": outcome.run_id,
-                     "verdict_id": outcome.verdict_id,
-                     "candidate_id": candidate_id}},
-        source_type="supervisor", source_id="v3-loop",
-        idempotency_key=f"mission.completed:{new_mission}"))
+    # 9. MEASURE OUTCOME — ONLY on PASSED: a BLOCKED/FAILED mission must
+    # not record mission.completed nor mark the candidate EXECUTED (the
+    # candidate stays APPROVED so a later pass can still complete it;
+    # live-loop finding 2026-08-12: the first live loop recorded
+    # mission.completed for a BLOCKED mission — fixed here)
+    if outcome.outcome == "PASSED":
+        db.append(Event.create(
+            "mission.state_changed",
+            {"mission_id": new_mission, "state": "COMPLETE",
+             "next_action": None},
+            source_type="supervisor", source_id="v3-loop",
+            idempotency_key=f"mission.state_changed:{new_mission}:COMPLETE"))
+        db.append(Event.create(
+            "mission.completed",
+            {"mission_id": new_mission, "objective": objective,
+             "outcome": {"loop_id": loop_id, "step_outcome": outcome.outcome,
+                         "run_id": outcome.run_id,
+                         "verdict_id": outcome.verdict_id,
+                         "candidate_id": candidate_id}},
+            source_type="supervisor", source_id="v3-loop",
+            idempotency_key=f"mission.completed:{new_mission}"))
     row = db.row("missions", "mission_id", new_mission)
     report["mission_state"] = row["state"] if row else None
     report["outcome"] = outcome.outcome
