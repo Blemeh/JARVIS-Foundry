@@ -20,6 +20,8 @@ PROJECTION_TABLES = (
     "knowledge_claims",
     "knowledge_contradictions",
     "knowledge_manifests",
+    "knowledge_entities",
+    "knowledge_claim_entities",
 )
 
 
@@ -383,6 +385,55 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
                 int(bool(payload.get("truncated", 0))),
                 payload["manifest_hash"], event.event_id, event.recorded_at,
             ),
+        )
+
+    elif event.event_type == "knowledge.entity_registered":
+        connection.execute(
+            """INSERT INTO knowledge_entities(
+                entity_id, mission_id, canonical_name, aliases_json,
+                last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?)""",
+            (payload["entity_id"], payload["mission_id"],
+             payload["canonical_name"],
+             canonical_json(payload.get("aliases", [])),
+             event.event_id, event.recorded_at),
+        )
+    elif event.event_type == "knowledge.entity_alias_added":
+        row = connection.execute(
+            "SELECT aliases_json FROM knowledge_entities WHERE entity_id = ?",
+            (payload["entity_id"],)).fetchone()
+        if row is None:
+            raise ValueError(
+                f"knowledge.entity_alias_added requires an existing entity "
+                f"({payload.get('entity_id')}) — rolled back")
+        aliases = json.loads(row[0])
+        alias = payload["alias"]
+        if alias not in aliases:
+            aliases.append(alias)
+            connection.execute(
+                "UPDATE knowledge_entities SET aliases_json = ?, "
+                "last_event_id = ?, updated_at = ? WHERE entity_id = ?",
+                (canonical_json(aliases), event.event_id, event.recorded_at,
+                 payload["entity_id"]),
+            )
+    elif event.event_type == "knowledge.claim_entity_linked":
+        claim = connection.execute(
+            "SELECT claim_id FROM knowledge_claims WHERE claim_id = ?",
+            (payload["claim_id"],)).fetchone()
+        entity = connection.execute(
+            "SELECT entity_id FROM knowledge_entities WHERE entity_id = ?",
+            (payload["entity_id"],)).fetchone()
+        if claim is None or entity is None:
+            raise ValueError(
+                "knowledge.claim_entity_linked requires both the claim and "
+                f"the entity to exist (claim={payload.get('claim_id')}, "
+                f"entity={payload.get('entity_id')}) — rolled back")
+        connection.execute(
+            """INSERT OR IGNORE INTO knowledge_claim_entities(
+                claim_id, entity_id, role, last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?)""",
+            (payload["claim_id"], payload["entity_id"],
+             payload.get("role"), event.event_id, event.recorded_at),
         )
 
     if event.event_type.startswith("supervisor.") or event.event_type.startswith("emergency_stop."):
