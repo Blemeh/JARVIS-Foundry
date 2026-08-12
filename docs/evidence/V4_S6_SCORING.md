@@ -1,9 +1,20 @@
 # V4-S6 — Bounded, Fair Candidate Scoring + Doc Reconciliation (DIR items 7–8)
 
 **Slice:** V4_CONTINUOUS_AUTONOMY — truth-critical reliability
-**Commit:** <pending — code commit for the scoring context>
+**Commit:** `b2b50e2` (feat(v4-s6): bounded fair candidate scoring context
++ frozen recorded scores) — src HEAD 19fbb17
 **Date:** 2026-08-13
-**Status:** IMPLEMENTED — independent verifier <PENDING>
+**Status:** CLOSED — independent verifier **PASS** (deleg_66e30870,
+2026-08-13T01:48+02:00, 12 probe groups / 9 recorded probes; 3 INFO
+findings — the first suite-artifact attempt flaked 2 timing-sensitive
+supervisor-recovery tests under two-overlapping-pytest contention (both
+pass in isolation; the regenerated artifact is EXIT=0), ledger-relative
+freshness age (spec-compliant), previous-attempts reachability note;
+verdict JSON archived at `var/evidence/v4-s6-scoring/verdict-deleg_
+66e30870.json`, sha256 62899c1b…; clean suite artifact sha256
+ace669ad…). Ledger: `verification.passed:verdict-v4-s6-scoring:round1`
++ `evidence.created:v4-s6-scoring-close` (events 15,699→15,701, schema
+18).
 
 ## Problem (observed, not assumed)
 
