@@ -5,7 +5,14 @@ lease and reaper safety
 **Commit:** `7e02091` (fix(v4-s3): heartbeat lease renewal + terminal-state
 monotonicity)
 **Date:** 2026-08-12
-**Status:** IMPLEMENTED — independent verifier <PENDING>
+**Status:** CLOSED — independent verifier **PASS** (deleg_18d9f7b0,
+2026-08-13T00:14+02:00, 9 probes executed; 3 info-severity findings —
+docs-only HEAD move verified byte-identical (2adcf99), late-heartbeat
+bookkeeping on terminal rows, narrow benign reaper/renew race; verdict
+JSON archived at `var/evidence/v4-s3-lease-monotonic/verdict-deleg_
+18d9f7b0.json`, sha256 17d21ca1…). Ledger:
+`verification.passed:verdict-v4-s3-lease-monotonic:round1` +
+`evidence.created:v4-s3-lease-monotonic-close` (schema 16).
 
 ## Problem (observed, not assumed)
 
