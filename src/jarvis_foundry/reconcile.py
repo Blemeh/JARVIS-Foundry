@@ -70,6 +70,7 @@ def _table_key_column(table: str) -> str:
         "obsidian_writes": "write_id",
         "knowledge_claims": "claim_id",
         "knowledge_contradictions": "contradiction_id",
+        "knowledge_manifests": "manifest_id",
         "system_state": "singleton",
         "supervisor_state": "singleton",
     }

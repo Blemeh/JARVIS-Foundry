@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -226,6 +226,23 @@ MIGRATIONS: dict[int, str] = {
     );
     CREATE INDEX IF NOT EXISTS knowledge_contradictions_claims
         ON knowledge_contradictions(claim_a_id, claim_b_id);
+    """,
+    6: """
+    CREATE TABLE IF NOT EXISTS knowledge_manifests (
+        manifest_id TEXT PRIMARY KEY,
+        mission_id TEXT NOT NULL,
+        step_id TEXT,
+        objective_hash TEXT NOT NULL,
+        active_count INTEGER NOT NULL,
+        stale_count INTEGER NOT NULL,
+        conflict_count INTEGER NOT NULL,
+        truncated INTEGER NOT NULL DEFAULT 0 CHECK(truncated IN (0, 1)),
+        manifest_hash TEXT NOT NULL,
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS knowledge_manifests_mission
+        ON knowledge_manifests(mission_id);
     """,
 }
 

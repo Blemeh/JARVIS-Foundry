@@ -19,6 +19,7 @@ PROJECTION_TABLES = (
     "obsidian_writes",
     "knowledge_claims",
     "knowledge_contradictions",
+    "knowledge_manifests",
 )
 
 
@@ -365,6 +366,23 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             "WHERE claim_id = ?",
             (payload["superseded_by"], event.event_id, event.recorded_at,
              payload["claim_id"]),
+        )
+
+    elif event.event_type == "knowledge.context_manifest_generated":
+        connection.execute(
+            """INSERT INTO knowledge_manifests(
+                manifest_id, mission_id, step_id, objective_hash,
+                active_count, stale_count, conflict_count, truncated,
+                manifest_hash, last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                payload["manifest_id"], payload["mission_id"],
+                payload.get("step_id"), payload["objective_hash"],
+                payload["active_count"], payload.get("stale_count", 0),
+                payload.get("conflict_count", 0),
+                int(bool(payload.get("truncated", 0))),
+                payload["manifest_hash"], event.event_id, event.recorded_at,
+            ),
         )
 
     if event.event_type.startswith("supervisor.") or event.event_type.startswith("emergency_stop."):

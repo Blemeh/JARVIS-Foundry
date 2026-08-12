@@ -156,6 +156,7 @@ class FoundryDatabase:
             "budgets": "provider",
             "obsidian_writes": "write_id",
             "knowledge_claims": "claim_id",
+            "knowledge_manifests": "manifest_id",
         }
         if allowed.get(table) != key_column:
             raise ValueError("unsupported projection lookup")
