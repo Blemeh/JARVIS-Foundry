@@ -27,6 +27,8 @@ PROJECTION_TABLES = (
     "candidates",
     "candidate_scores",
     "monitors",
+    "vault_files",
+    "vault_sync_state",
 )
 
 
@@ -614,6 +616,53 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             "UPDATE monitors SET enabled = 0, last_event_id = ?, "
             "updated_at = ? WHERE monitor_id = ?",
             (event.event_id, event.recorded_at, payload["monitor_id"]),
+        )
+    elif event.event_type == "vault.file_indexed":
+        # WP11 slice A: upsert the file row; prior hashes stay in the
+        # event history (append-only), the row keeps the latest state.
+        connection.execute(
+            """INSERT INTO vault_files(
+                rel_path, content_sha256, size_bytes, mtime,
+                first_seen, last_synced, status, last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?)
+            ON CONFLICT(rel_path) DO UPDATE SET
+                content_sha256 = excluded.content_sha256,
+                size_bytes = excluded.size_bytes,
+                mtime = excluded.mtime,
+                last_synced = excluded.last_synced,
+                status = 'ACTIVE',
+                last_event_id = excluded.last_event_id,
+                updated_at = excluded.updated_at""",
+            (payload["rel_path"], payload["content_sha256"],
+             payload["size_bytes"], payload["mtime"],
+             event.recorded_at, event.recorded_at,
+             event.event_id, event.recorded_at),
+        )
+    elif event.event_type == "vault.file_removed":
+        connection.execute(
+            "UPDATE vault_files SET status = 'REMOVED', last_event_id = ?, "
+            "updated_at = ? WHERE rel_path = ?",
+            (event.event_id, event.recorded_at, payload["rel_path"]),
+        )
+    elif event.event_type == "vault.sync_completed":
+        connection.execute(
+            """INSERT INTO vault_sync_state(
+                sync_id, root, started_at, completed_at,
+                files_indexed, files_changed, files_removed, cursor,
+                last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(sync_id) DO UPDATE SET
+                completed_at = excluded.completed_at,
+                files_indexed = excluded.files_indexed,
+                files_changed = excluded.files_changed,
+                files_removed = excluded.files_removed,
+                cursor = excluded.cursor,
+                last_event_id = excluded.last_event_id,
+                updated_at = excluded.updated_at""",
+            (payload["sync_id"], payload["root"], payload["started_at"],
+             event.recorded_at, payload["files_indexed"],
+             payload["files_changed"], payload["files_removed"],
+             payload.get("cursor"), event.event_id, event.recorded_at),
         )
 
     if event.event_type.startswith("supervisor.") or event.event_type.startswith("emergency_stop."):

@@ -78,6 +78,8 @@ def _table_key_column(table: str) -> str:
         "candidates": "candidate_id",
         "candidate_scores": "candidate_id",
         "monitors": "monitor_id",
+        "vault_files": "rel_path",
+        "vault_sync_state": "sync_id",
         "system_state": "singleton",
         "supervisor_state": "singleton",
     }

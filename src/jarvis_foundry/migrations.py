@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 
 
-SCHEMA_VERSION = 11
+SCHEMA_VERSION = 12
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -381,6 +381,37 @@ MIGRATIONS: dict[int, str] = {
     );
     CREATE INDEX IF NOT EXISTS monitors_mission
         ON monitors(mission_id);
+    """,
+    12: """
+    -- WP11 slice A (V2-OPERATIONAL): vault indexing (files + sync records).
+    CREATE TABLE IF NOT EXISTS vault_files (
+        rel_path TEXT PRIMARY KEY,
+        content_sha256 TEXT NOT NULL,
+        size_bytes INTEGER NOT NULL,
+        mtime TEXT NOT NULL,
+        first_seen TEXT NOT NULL,
+        last_synced TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'ACTIVE'
+            CHECK(status IN ('ACTIVE', 'REMOVED')),
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS vault_files_status
+        ON vault_files(status);
+
+    -- run records for syncs (event-derived, reconcile-verified)
+    CREATE TABLE IF NOT EXISTS vault_sync_state (
+        sync_id TEXT PRIMARY KEY,
+        root TEXT NOT NULL,
+        started_at TEXT NOT NULL,
+        completed_at TEXT,
+        files_indexed INTEGER NOT NULL DEFAULT 0,
+        files_changed INTEGER NOT NULL DEFAULT 0,
+        files_removed INTEGER NOT NULL DEFAULT 0,
+        cursor TEXT,
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
     """,
 }
 
