@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 
 
-SCHEMA_VERSION = 9
+SCHEMA_VERSION = 10
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -335,6 +335,35 @@ MIGRATIONS: dict[int, str] = {
     );
     CREATE INDEX IF NOT EXISTS knowledge_snapshots_mission
         ON knowledge_snapshots(mission_id);
+    """,
+    10: """
+    CREATE TABLE IF NOT EXISTS candidates (
+        candidate_id TEXT PRIMARY KEY,
+        mission_id TEXT NOT NULL,
+        source TEXT NOT NULL,
+        objective TEXT NOT NULL,
+        objective_canonical TEXT NOT NULL,
+        evidence_json TEXT NOT NULL DEFAULT '[]',
+        status TEXT NOT NULL DEFAULT 'NEW'
+            CHECK(status IN ('NEW', 'SCORED', 'APPROVED', 'REJECTED',
+                             'EXECUTED')),
+        duplicate_of TEXT,
+        created_from TEXT,
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS candidates_canonical
+        ON candidates(objective_canonical);
+    CREATE INDEX IF NOT EXISTS candidates_mission
+        ON candidates(mission_id);
+
+    CREATE TABLE IF NOT EXISTS candidate_scores (
+        candidate_id TEXT PRIMARY KEY,
+        score REAL NOT NULL,
+        weights_json TEXT NOT NULL,
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
     """,
 }
 

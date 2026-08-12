@@ -24,6 +24,8 @@ PROJECTION_TABLES = (
     "knowledge_claim_entities",
     "knowledge_ingestions",
     "knowledge_snapshots",
+    "candidates",
+    "candidate_scores",
 )
 
 
@@ -488,6 +490,51 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
                 (payload["snapshot_id"], event.event_id, event.recorded_at,
                  claim_id),
             )
+
+    elif event.event_type == "discovery.candidate_generated":
+        connection.execute(
+            """INSERT INTO candidates(
+                candidate_id, mission_id, source, objective,
+                objective_canonical, evidence_json, status, duplicate_of,
+                created_from, last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, 'NEW', ?, ?, ?, ?)""",
+            (payload["candidate_id"], payload["mission_id"],
+             payload["source"], payload["objective"],
+             payload.get("objective_canonical", canonical_json(payload["objective"])),
+             canonical_json(payload.get("evidence", [])),
+             payload.get("duplicate_of"), payload.get("created_from"),
+             event.event_id, event.recorded_at),
+        )
+    elif event.event_type == "discovery.candidate_scored":
+        connection.execute(
+            "UPDATE candidates SET status = 'SCORED', last_event_id = ?, "
+            "updated_at = ? WHERE candidate_id = ?",
+            (event.event_id, event.recorded_at, payload["candidate_id"]))
+        connection.execute(
+            """INSERT OR REPLACE INTO candidate_scores(
+                candidate_id, score, weights_json, last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?)""",
+            (payload["candidate_id"], payload["score"],
+             canonical_json(payload.get("weights", {})),
+             event.event_id, event.recorded_at),
+        )
+    elif event.event_type == "discovery.candidate_approved":
+        connection.execute(
+            "UPDATE candidates SET status = 'APPROVED', last_event_id = ?, "
+            "updated_at = ? WHERE candidate_id = ?",
+            (event.event_id, event.recorded_at, payload["candidate_id"]))
+    elif event.event_type == "discovery.candidate_rejected":
+        connection.execute(
+            "UPDATE candidates SET status = 'REJECTED', evidence_json = ?, "
+            "last_event_id = ?, updated_at = ? WHERE candidate_id = ?",
+            (canonical_json([{"rejection_reason": payload.get("reason", "")}]),
+             event.event_id, event.recorded_at, payload["candidate_id"]))
+    elif event.event_type == "discovery.candidate_outcome_recorded":
+        connection.execute(
+            "UPDATE candidates SET status = 'EXECUTED', evidence_json = ?, "
+            "last_event_id = ?, updated_at = ? WHERE candidate_id = ?",
+            (canonical_json([{"outcome": payload.get("outcome", {})}]),
+             event.event_id, event.recorded_at, payload["candidate_id"]))
 
     if event.event_type.startswith("supervisor.") or event.event_type.startswith("emergency_stop."):
         status = {
