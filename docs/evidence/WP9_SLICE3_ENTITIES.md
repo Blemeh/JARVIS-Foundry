@@ -1,8 +1,10 @@
 # WP9 — V2 Knowledge Brain, Slice-3: Entity Resolution
 
-Status: **IMPLEMENTED** (2026-08-12; 8/8 tests green; independent
-verifier <PENDING>). Slices 1–2 CLOSED — PASS (deleg_548b6bb6,
-deleg_7c4759fa).
+Status: **CLOSED — PASS** (2026-08-12; verifier deleg_01ebd46f, FIRST
+round — 27/27 tests, all six adversarial probes green, suite 275 EXIT=0,
+clean tree; ledger verification.passed:verdict-wp9-slice3 seq 4202 +
+evidence.created:wp9-slice3 seq 4203). Slices 1–2 CLOSED — PASS
+(deleg_548b6bb6, deleg_7c4759fa). Next: slice-4 (continuous ingestion).
 
 ## Delivered (bounded slice-3 scope)
 
