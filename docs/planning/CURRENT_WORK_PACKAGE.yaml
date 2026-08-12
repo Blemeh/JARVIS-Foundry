@@ -1,79 +1,46 @@
-work_package_id: "V3_REAL_LOOPS"
-name: "V3 OPERATIONAL INTEGRATION — REAL LOOPS (directive Phase 7)"
+work_package_id: "V4_CONTINUOUS_AUTONOMY"
+name: "V4 — CONTINUOUS AUTONOMY (post-alignment steady state)"
 status: "ACTIVE"
 package_state: "ACTIVE"
-activated_at: "2026-08-12 (WP11 V2-OPERATIONAL CLOSED — PASS 16/16, ledger verification.passed:verdict-v2-operational:round2)"
+activated_at: "2026-08-12 (V3 OPERATIONAL GATE CLOSED — PASS 6/6, ledger verification.passed:verdict-v3-operational:round1; V4 activated per DIR-2026-08-12 completion condition item 11)"
 objective: >
-  Give V3 its missing OPERATIONAL proof: multiple complete real
-  autonomous loops on a real registered project with bounded scope —
-  OBSERVE (real monitored sources) → RECORD EVIDENCE → GENERATE CANDIDATE
-  → SCORE → SELECT/REJECT → CREATE MISSION → PLAN → DISPATCH SPECIALISTS
-  → RESEARCH/BUILD → TEST → INDEPENDENTLY VERIFY → ACCEPT/REPAIR/REJECT
-  → RECONCILE SIDE EFFECTS → MEASURE OUTCOME → UPDATE KNOWLEDGE →
-  SELECT NEXT ACTION — without owner prompting, ending at the V3
-  operational gate (engineering PASS already closed: slices 1-2).
+  Operate the complete JARVIS loop continuously: observe real state,
+  select the next valuable action from the live candidate backlog,
+  execute bounded missions through real workers, verify independently,
+  measure outcomes, update knowledge, and continue — without routine
+  owner approval, with STOP/veto/redirect fully live. V4's own
+  acceptance review comes at its first gate.
 authoritative_requirements:
-  - "OWNER_DIRECTIVE_2026-08-12_ALIGNMENT.md Phase 7 (loop list, real monitored sources, real registered project, FAIL→repair→fresh PASS, interrupted-build recovery without duplicate mutation, remote Git reconciliation, safe deployment-target reconciliation, maintenance work, next-mission selection)"
-  - "docs/planning/V2_OPERATIONAL_DESIGN.md (machinery to reuse: ingestion, retrieval, research queue, worker context)"
-  - "docs/architecture/02_ARCHITECTURE_CONTRACT.md"
-  - "AGENTS.md work-package contract"
+  - "OWNER_DIRECTIVE_2026-08-12_ALIGNMENT.md completion condition (all 12 items: state consistent, gates separate, V1 waiver explicit, V2 live integration done + operational PASS, durable manifests, moving-target verification eliminated, V3 multiple real loops + interruption/repair/Git/deploy reconciliation + operational PASS, V4 activated, original vision unchanged)"
+  - "AUTONOMY_MANDATE.md + 00_READ_FIRST.md + 01_NORTH_STAR.md + 02_ARCHITECTURE_CONTRACT.md"
 dependencies:
-  - "WP10 candidate pipeline + discovery monitors (schema v11)"
-  - "WP11 live knowledge (506 claims, 8 indexed vault notes, 400+ candidates, research queue, worker context + real oneshot dispatch path via RoleDispatcher)"
-  - "WP4 role dispatch (MissionLoop + RoleDispatcher + HermesOneshotAdapter, isolated .h checkout + isolated home)"
-  - "live daemon + Supervisor (healthy; STOP false)"
+  - "V2 knowledge brain (operational): 920+ claims, 8 indexed vault notes, retrieval + manifests + consolidation + integrated rollback"
+  - "V3 loop machinery: v3_loop.run_one_loop, MissionLoop + RoleDispatcher + HermesOneshotAdapter (isolated .h + var/wp8-hermes-home), maintenance-candidate generator"
+  - "live candidate backlog: 3 EXECUTED, 233 SCORED, 696 NEW"
 in_scope:
-  - "real monitored sources: vault file_indexed events, repo git-log, handoff files, system events (live ingestion cycles)"
-  - "multiple complete OBSERVE..SELECT-NEXT loops without owner prompting (>= 3 full loops)"
-  - "one real FAIL → repair → fresh PASS cycle (unscripted verifier)"
-  - "interrupted-build recovery without duplicate mutation (kill a real builder mid-run; resume exactly once)"
-  - "reconcile actual remote Git state (read-only fetch + comparison; NO push)"
-  - "reconcile an actual safe deployment target (staging home pattern; full suite in staging; NO push/deploy to live targets)"
-  - "create maintenance work when needed (vault/index/ingestion hygiene candidates)"
-  - "select another valuable mission after completion (scored candidate consumption)"
-  - "V3 operational gate: evidence table, frozen HEAD, sanitized manifest, independent adversarial verifier, ledger close"
+  - "continuous loop execution on the registered resource (bounded missions, real builders + verifiers, honest WAITING)"
+  - "FIRST MISSION: the support-semantics repair discovered by the V3 loops (894/920 claims marked UNSUPPORTED because the support test only matches ACTIVE vault_files sources — extend support to source-kind-aware checks: handoff files, repo commits, system events) — TDD, regression coverage, re-verify"
+  - "knowledge upkeep: vault re-syncs, ingestion cycles, research-queue drains, contradiction surfacing"
+  - "V4 first acceptance review gate (engineering + operational evidence, independent verifier)"
 out_of_scope:
-  - "V4 activation (requires V3 op PASS first)"
-  - "pushing/deploying to any remote (no-push rule unchanged)"
-  - "cron jobs (owner paused all cron 2026-08-12)"
-  - "unbounded budgets — every loop is bounded (items/bytes/duration)"
-domain_state_changes:
-  - "new events only via existing vocabularies (mission.*, agent_run.*, verification.*, knowledge.*, discovery.*, evidence.created) unless a slice design adds a documented one"
-  - "live DB stays schema v16 (no migrations expected; additive only if a slice design requires one, with documented initialize + before/after)"
-security:
-  - "note content UNTRUSTED (criterion 13 discipline unchanged)"
-  - "no secrets in evidence; private artifacts local + hashed"
-  - "no push, no cron, no live-target deploys"
+  - "pushing/deploying to remote systems (no-push rule unchanged; Foundry repo has NO remotes configured)"
+  - "cron jobs (owner paused all cron 2026-08-12; the daemon remains the only scheduler)"
+  - "re-opening the V1 seven-day waiver (observation window stays OPEN)"
 evidence:
-  - "per loop: ledger events (observe→select-next), builder/verifier identities, outcome + outcome measurement"
-  - "gate: V3 operational criteria table, frozen HEAD, sanitized manifest, independent verifier JSON archived"
-deterministic_vs_AI_boundary:
-  - "deterministic: monitors, scoring, dedup, mission lifecycle, verification gates, recovery, Git/deploy reconcile probes"
-  - "AI: mission execution via real workers (HermesOneshotAdapter through RoleDispatcher, recorded with identity)"
+  - "per mission: ledger events (mission.*, agent_run.*, verification.*, evidence.created), deliverable hashes, outcome records"
+  - "V4 acceptance review: evidence table, frozen HEAD, sanitized manifest, independent adversarial verifier"
 failure_recovery:
-  - "any loop FAIL → repair exact cause → regression → re-verify; freeze discipline before every verifier dispatch"
-  - "interrupted build → resume via durable run records (replay path) — no duplicate mutation"
-required_tests:
-  - "existing 378-suite stays green at every close"
-  - "new regression tests only for new machinery (loop wiring, monitor consumption, outcome measurement)"
+  - "mission FAIL/BLOCKED → repair exact cause → regression → fresh verifier (freeze discipline)"
+  - "interruption → durable run records + reclaimable steps (session_lost:step_reclaimable) → resume"
+  - "semantic rollback + integrated rollback for knowledge degradation"
 acceptance_criteria:
-  - ">= 3 complete real loops on mission-wfm-optimizer (registered project) without owner prompting"
-  - "FAIL→repair→fresh PASS cycle recorded with identities"
-  - "interrupted-build recovery proven (no duplicate mutation)"
-  - "remote Git + safe deployment-target reconciliation recorded"
-  - "next-mission selection after completion recorded"
-  - "V3 operational gate PASS via independent adversarial verifier → V4 activation decision"
-reconciliation:
-  - "loop events ↔ mission rows ↔ agent_runs ↔ verdicts ↔ outcome measurements ↔ PROJECT_STATE"
-exit_condition: >
-  V3 operational gate PASS recorded (verification.passed:verdict-v3-operational),
-  evidence manifest committed, PROJECT_STATE marks V3 promotion_state
-  ELIGIBLE, V4 activation decision documented for the owner.
+  - "the support-semantics repair mission PASSES with independent verification"
+  - "continuous loop cadence evidenced on the ledger (observe→select→execute→verify→learn) without owner prompting"
+  - "V4 acceptance review gate PASS (or explicit owner veto)"
 forbidden_implementation:
   - "no weakening of STOP/veto/append-only invariants"
-  - "no push/deploy to remote or live systems"
-  - "no fake busy work (honest WAITING when nothing valuable is scheduled)"
   - "no fabricated PASS/evidence/consent"
-  - "no duplicate mutation after interruption (replay must be exact)"
+  - "no fake busy work (honest WAITING when nothing valuable is scheduled)"
+  - "no push; no cron; no live-target deploys"
 builder: "jarvis executive (direct; no delegation of implementation)"
 verifier: "fresh independent adversarial subagent session(s), provider-diversity limitation recorded"

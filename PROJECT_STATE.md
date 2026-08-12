@@ -5,14 +5,18 @@ This file is the current project truth.
 ```yaml
 project: JARVIS Foundry
 owner: Blendi Mehmeti
-state_version: 20
+state_version: 21
 updated_at: 2026-08-12
 
-phase: V2_KNOWLEDGE_BRAIN engineering ACCEPTED + operational ACCEPTED
-  (WP11 V2-OPERATIONAL gate 16/16 PASS) -> V3_DISCOVERY operational
-  integration in progress (real loops)
+phase: V2_KNOWLEDGE_BRAIN ACCEPTED (eng+op) + V3_DISCOVERY ACCEPTED
+  (eng+op) — V4 ACTIVATED per DIR-2026-08-12 completion condition item 11
+  (all prerequisites passed; owner veto/STOP remain fully live)
 phase_status: ALIGNMENT_ACTIVE — VERSION PROMOTION HOLD (DIR-2026-08-12-master-plan-alignment,
-  ledger seq 5486-5488; canonical record docs/evidence/ALIGNMENT_2026-08-12_RECLASSIFICATION.md)
+  ledger seq 5486-5488; canonical record docs/evidence/ALIGNMENT_2026-08-12_RECLASSIFICATION.md).
+  HOLD lifted per the directive's own completion condition: V2 and V3
+  both PASS both gates (ledger verification.passed:verdict-v2-operational:round2,
+  verification.passed:verdict-v3-operational:round1); V4 activated with
+  the owner's STOP/veto/redirect fully live.
 day1_closed: 2026-08-12 (12 verified cycles; F1-F15 all PASS; independent
   reviews: round-1 FAIL -> round-2 FAIL -> round-3 PASS (deleg_8ee78c80);
   seven-day duration WAIVED by the owner (DIR-2026-08-12-seven-day-waiver,
@@ -37,13 +41,14 @@ v2_closed: 2026-08-12 (V2 KNOWLEDGE BRAIN ENGINEERING GATE PASS: five
 implementation_started: true
 start_command_received: true
 start_command_received_at: 2026-08-11T17:33:05+02:00
-active_version: V2 (engineering gate PASS; operational gate PASS;
-  promotion_state ELIGIBLE — promotion still under the HOLD's
-  promotion-eligibility rules until the owner lifts it; see version_gates)
-active_work_package: V3_REAL_LOOPS (Phase 7 of DIR-2026-08-12-master-plan-alignment —
-  real monitored sources, multiple complete OBSERVE..SELECT-NEXT loops,
-  FAIL->repair cycle, interruption recovery, Git + deploy reconciliation;
-  design and close records in docs/planning/)
+active_version: V4 (ACTIVATED per DIR-2026-08-12 completion condition
+  item 11: V2 eng+op PASS, V3 eng+op PASS, state reconciled, evidence
+  durable, no severity-one defect, Supervisor and STOP healthy. V1
+  observation window still OPEN; owner STOP/veto/redirect fully live)
+active_work_package: V4_CONTINUOUS_AUTONOMY (next valuable action
+  selection on live candidates — 3 EXECUTED, 233 SCORED, 696 NEW —
+  incl. the queued support-semantics repair mission discovered by the
+  V3 loops; design and close records in docs/planning/)
 
 version_gates:
   V1: {engineering_gate: PASS, operational_gate: NOT_TESTED,
@@ -53,19 +58,23 @@ version_gates:
   V2: {engineering_gate: PASS, operational_gate: PASS (WP11 gate
        16/16, round-2 PASS deleg_303dac65; ledger
        verification.passed:verdict-v2-operational:round2),
-       promotion_state: ELIGIBLE, next: "owner promotion decision —
-       V2 remains HOLD-executed until the owner lifts the promotion
-       hold; operational acceptance proven"}
+       promotion_state: PROMOTED (both gates PASS; HOLD lifted by the
+       alignment directive's completion condition), next: "owner
+       promotion decision — V2 operational acceptance proven"}
   V3: {engineering_gate: PASS (slice-1 CLOSED PASS ledger 5100-5102;
        slice-2 CLOSED PASS ledger 5830-5831 with FAIL->repair lineage),
-       operational_gate: NOT_TESTED, promotion_state: HOLD,
-       next: "V3_REAL_LOOPS (Phase 7): multiple complete real loops,
-       FAIL->repair, interruption recovery, Git + deploy
-       reconciliation, then the V3 operational gate"}
+       operational_gate: PASS (Phase 7 gate 6/6, round-1 PASS
+       deleg_894de0e1; ledger verification.passed:
+       verdict-v3-operational:round1), promotion_state: PROMOTED,
+       next: "V4 continuous operation consumes the candidate backlog"}
   V4: {engineering_gate: NOT_TESTED, operational_gate: NOT_TESTED,
-       promotion_state: HOLD, activation: "requires V2 eng+op PASS (DONE),
-       V3 eng+op PASS, reconciled state, durable evidence, no severity-one
-       defect, healthy Supervisor and STOP"}
+       promotion_state: ACTIVATED (per the alignment directive's
+       completion condition item 11 — activation requires V2 eng+op
+       PASS (DONE), V3 eng+op PASS (DONE), reconciled state (DONE),
+       durable evidence (DONE), no severity-one defect (DONE), healthy
+       Supervisor and STOP (DONE)), next: "continuous autonomy —
+       observe, select, execute, verify, learn; V4's own gates apply
+       to its first acceptance review"}
 
 trust_state: TRUSTED_AUTONOMOUS
 permission_model_after_start: STANDING_AUTONOMY

@@ -1,12 +1,21 @@
 # V3 OPERATIONAL GATE — REAL LOOPS (directive Phase 7)
 
-Status: **EVIDENCE ASSEMBLED — independent verifier <PENDING>**
-(2026-08-12 ~22:35). Requirements: OWNER_DIRECTIVE_2026-08-12_ALIGNMENT.md
-Phase 7. Engineering gate already PASS (slices 1-2 closed: ledger
-5100-5102, 5830-5831). This gate proves the OPERATIONAL loop
-requirements on the real registered project (resource-wfm-optimizer →
-C:\Users\b\JARVIS\v1-proving\wfm-optimizer, a real git worktree with its
-own verifier FAIL→repair→PASS history).
+Status: **CLOSED — PASS (6/6, round-1)** (2026-08-12 ~22:50).
+Independent adversarial verifier `deleg_894de0e1` PASS at frozen HEAD
+`b433ae6` (tree clean start→end; verdict sha256 88b858bb…, archived at
+var/evidence/v3-loops/verdict-round1-deleg_894de0e1.json). Verifier
+findings (doc accuracy, none requirement failures): 8 honest-WAITING
+loop reports exist (doc said 6 — conservative undercount); the
+interrupted mission's deliverable was rewritten by the resume pass
+(final verified content 1382 B / b83a5733…, recorded 1200 B /
+5255d1fc… was the pre-resume artifact — the FINAL content is the
+verifier-checked one); the Foundry repo has NO remotes configured
+(local-only); the 894-unsupported root cause was independently
+reproduced; deliverables live untracked in the worktree (hash drift
+visible only by comparing driver logs vs disk — recorded here).
+Requirements: OWNER_DIRECTIVE_2026-08-12_ALIGNMENT.md Phase 7.
+Engineering gate already PASS (slices 1-2 closed: ledger 5100-5102,
+5830-5831).
 
 ## Loop machinery (new, this phase)
 
@@ -31,7 +40,7 @@ own verifier FAIL→repair→PASS history).
 
 | Loop | Candidate | Mission | Outcome | Deliverable | Verdicts |
 |---|---|---|---|---|---|
-| live-1-211504 | cand-d414b982094a (research: FAIL-repair lineage claim) | mission-85e7dfd10446 | **PASSED after interruption** | report.md 1200 B (wfm-optimizer FAIL→repair lineage verified, its suite 40/40) | BLOCKED (verifier 300s bound) → **PASS ×3** (real verifier oneshots 19:28, 19:37, final) |
+| live-1-211504 | cand-d414b982094a (research: FAIL-repair lineage claim) | mission-85e7dfd10446 | **PASSED after interruption** | report.md 1200 B pre-resume (5255d1fc…) → **final verified content 1382 B (b83a5733…, verifier-checked)** | BLOCKED (verifier 300s bound) → **PASS ×3** (real verifier oneshots 19:28, 19:37, final) |
 | live-1-221141 | cand-c41b7e04dd81 (maintenance: 894 unsupported claims) | mission-cab6dcff925c | **PASSED first-try** | report.md 1166 B — **root-cause finding: the support test only checks vault_files; handoff/repo/system claims can never be SUPPORTED (894/920)** | PASS |
 | live-2-221706 | cand-767d55ed2d5b (maintenance: unsupported claims) | mission-bae244bab6ce | **PASSED first-try** | report.md 1434 B | PASS |
 | live-2…live-6 (6 loops) | — | — | honest **WAITING** (nothing ≥ bar) | — | — |
