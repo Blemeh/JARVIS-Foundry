@@ -5,19 +5,25 @@ This file is the current project truth.
 ```yaml
 project: JARVIS Foundry
 owner: Blendi Mehmeti
-state_version: 15
+state_version: 16
 updated_at: 2026-08-12
 
 phase: V1_AUTONOMY_KERNEL
-phase_status: WP8_IN_PROGRESS
-day1_closed: 2026-08-12 (12 verified cycles; F1/F2/F3/F14/F15 PASS; F4 prepared, owner-resumable; report docs/evidence/WP8_DAY1_REPORT.md; step-9 F2-active closed by the 08:25 cron slice — commit d063511, verifier deleg_40968b66 PASS)
+phase_status: WP8_ACCEPTED
+day1_closed: 2026-08-12 (12 verified cycles; F1-F15 all PASS; independent
+  reviews: round-1 FAIL -> round-2 FAIL -> round-3 PASS (deleg_8ee78c80);
+  seven-day duration WAIVED by the owner (DIR-2026-08-12-seven-day-waiver,
+  authenticated message 16242; ledger 1763+2143); gate report
+  docs/evidence/WP8_GATE_REPORT.md)
 implementation_started: true
 start_command_received: true
 start_command_received_at: 2026-08-11T17:33:05+02:00
-active_version: V1
-active_work_package: WP8
+active_version: V1 (accepted)
+active_work_package: WP9_V2_KNOWLEDGE_BRAIN (auto-queued per
+  DIR-2026-08-12-gate-progression; WP8 archived as
+  docs/planning/WP8_WORK_PACKAGE.closed.yaml)
 
-trust_state: LAB
+trust_state: TRUSTED_AUTONOMOUS
 permission_model_after_start: STANDING_AUTONOMY
 owner_control_model: VETO_AND_STOP
 per_task_approval: false
@@ -34,11 +40,12 @@ startup_task_created: true
 emergency_stop_installed: true
 
 capability_registry:
-  - local_event_store: READY_IN_STAGING
+  - local_event_store: READY
   - independent_supervisor: ACTIVE
   - sentinel_stop: ACTIVE
-  - registered_file_read: READY_IN_STAGING
-  - worktree_write: PROBING
+  - registered_file_read: READY
+  - worktree_write: READY
+  - obsidian_write_back: READY
 resource_registry:
   - id: hermes-development
     path: .h
@@ -136,18 +143,18 @@ next_event: WP8 day 2 — F5/F6/F7 on schedule (network/provider/auth fault
 
 ## Current Reality
 
-WP8 (seven-day acceptance) is the active package: **day 1 of the seven-day
-clock CLOSED** (started 2026-08-12, CLOCK_START.json + ledger). **12 verified
-cycles** closed: steps 1,2,3 (G6), F1 (live kill), steps 5,6 (F14/F15), 7
-(leak vectors), 8 (F3 builder-kill recovery + installer fix), FIND-02
-(installer), step-10 (F2-live), F2 (gateway idle/independence), step-9
-(F2-active staged mid-session kill + resume, this slice), plus the
-clock-start/dispatch probe cycle. F4 (Windows restart) is prepared but
-owner-resumable (the agent cannot execute a physical reboot; a real restart
-runs the scripted recovery verification). The G1–G9 / F1–F15 battery
-continues on schedule (F5–F13: days 2–5); the final acceptance verdict is an
-owner-gated hold point (PASS changes trust to TRUSTED_AUTONOMOUS, activates
-continuous operation, and queues V2 automatically).
+WP8 (seven-day acceptance) is **ACCEPTED** (2026-08-12; the seven-day
+duration was explicitly WAIVED by the owner — DIR-2026-08-12-seven-day-waiver,
+authenticated direct message, ledger 1763 + 2143). 12 verified cycles
+closed; F1–F15 all PASS; the F5–F11 fault-injection battery was executed
+in the 2026-08-12 continuation run (FIND-2026-08-12-04/-05 repaired in
+`adapter.py`); §9 reconciliation honest (10 PASS + 1 documented
+NOT_TESTED); three independent gate reviews: round-1 FAIL
+(deleg_acbc8ce5) → repairs → round-2 FAIL (deleg_1e6e9421) → repairs →
+**round-3 PASS (deleg_8ee78c80)**. Verdict recorded in the ledger
+(`verification.passed:verdict-wp8-gate`, seq 2910). Trust promoted to
+TRUSTED_AUTONOMOUS; WORKTREE_READY; **V2_KNOWLEDGE_BRAIN (WP9) queued and
+starting** (docs/planning/CURRENT_WORK_PACKAGE.yaml).
 
 ## What Happens After START BUILD
 

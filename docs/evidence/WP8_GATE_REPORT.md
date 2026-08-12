@@ -1,16 +1,14 @@
 # JARVIS Foundry V1 Gate Report — WP8
 
-Gate verdict: **FAIL (round 1)** — independent final review `deleg_acbc8ce5`
-2026-08-12; repair queue executed; round-2 review `deleg_1e6e9421` FAIL
-(2026-08-12: waiver authentication evidence, root-cause fix completeness,
-commit hygiene — all addressed in the round-3 repair set); round-3 verdict
-<PENDING>.
-Gate clock: started 2026-08-11T23:05Z (seven-day window; duration WAIVED
-by the owner — see B1; the waiver's reviewer-verifiable authentication is
-pending the owner's direct message, recorded openly).
+Gate verdict: **PASS** — independent review rounds: 1 FAIL
+(`deleg_acbc8ce5`) → 2 FAIL (`deleg_1e6e9421`) → **3 PASS
+(`deleg_8ee78c80`, 2026-08-12)**. Ledger `verification.passed:verdict-wp8-gate`
+seq 2910 (round-2 FAIL re-recorded as a second ledger event seq 2909,
+reviewer W10 minor). Gate clock: started 2026-08-11T23:05Z; seven-day
+duration WAIVED by the owner (DIR-2026-08-12-seven-day-waiver, authenticated
+message 16242; ledger 1763 + 2143; OWNER_WAIVER_2026-08-12.md).
 Mission: mission-wfm-optimizer (WP8_MISSION_CONTRACT.md); resource READY.
-Foundry baseline `d8d7015` → review-time HEAD `38971ee`; round-3 repair
-commit <PENDING>.
+Foundry baseline `d8d7015` → gate-close HEAD <PENDING COMMIT>.
 Specification hashes: 00 `69988c1f…`, 01 `0fce7fce…`, 02 `955ab4ee…`,
 03 `0d1a5a7a…`, 04 `91cac4b6…`, 05 `98aceb7d…`.
 
@@ -80,6 +78,14 @@ Three counts were inconsistent (12 report / 14 vault note / 9 verdict rows).
 
 ## Final Trust Decision
 
-<PENDING round-2 independent review. V1 is NOT trusted yet; trust_state
-remains LAB; V2_KNOWLEDGE_BRAIN remains QUEUED/LOCKED. The seven-day
-clock continues.>
+**PASS — trust promoted to TRUSTED_AUTONOMOUS (2026-08-12).**
+Independent review round-3 (deleg_8ee78c80) verified every criterion
+W1–W10 (full suite 248 EXIT=0 run by the reviewer; waiver authenticated
+at state.db message 16242; all round-1/2 findings closed; honest gate
+state confirmed open until this close). Ledger:
+`verification.passed:verdict-wp8-gate` seq 2910. PROJECT_STATE v16;
+V2_KNOWLEDGE_BRAIN (WP9) activated; slice-1 epistemic core starting.
+Residual risks (recorded, non-blocking): same-provider verifier
+limitation; heuristic failure-prefix whitelist; F8 disk-full simulation
+(admin limitation); staging-only audit model (documented deviation);
+environmental suite flakes (2 classes documented).
