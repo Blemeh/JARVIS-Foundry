@@ -7,8 +7,8 @@ and are referenced by sha256 — their loss or modification is detectable.
 
 ## Candidate
 
-- HEAD: `eca0124a3e2622cb0bea707a6341faffac9ff795`
-- Worktree: clean at freeze (verifier dispatched against this HEAD)
+- HEAD (round 1): `eca0124a3e2622cb0bea707a6341faffac9ff795`
+- HEAD (round 2, after C8/C9 repairs): `41eb9c6` — tree clean at freeze
 - Suite: 378 tests, EXIT=0 (command:
   `./.venv/Scripts/python.exe -m pytest tests/foundry -q --tb=short`;
   collect count: `pytest --collect-only -q | grep -oP ': \d+$' |
@@ -27,6 +27,13 @@ and are referenced by sha256 — their loss or modification is detectable.
 
 - `var/evidence/v2-operational-gate/gate-run-20260812T195113.txt` →
   `c0bfe268a55751b024442e7c658ba9ce67c21d40a741260025bf122c0e5e917b`
+- `var/evidence/v2-operational-gate/gate-run-20260812T202215.txt` →
+  `f843c31edab3959f197d123fc1499020d0dac5201d9e826ee624546a3cd62803`
+  (round-2 artifact; round-1 artifact `gate-run-20260812T195113.txt` →
+  `c0bfe268a55751b024442e7c658ba9ce67c21d40a741260025bf122c0e5e917b`)
+- `var/evidence/v2-operational-gate/verdict-round1-deleg_886d2cd4.json` →
+  `05c49d0c90e2ac128e63a92141a0934d6fe3a55df39ffaa5fe51c056fea52f5a`
+  (round-1 FAIL: C8 agent_run trace absent, C9 pristine-bytes disproven)
 - `var/evidence/wp10-slice2/suite-slice2.txt` →
   `5cf4bee5ed475d137766be227fffbb42f6025a2e2b9d20823cd7d3d8ad8d8147`
 - `var/evidence/wp10-slice2/verdict-round1-*.json` →
