@@ -90,14 +90,16 @@ def _top_scorable(db: FoundryDatabase, *, budget: int,
                   score_cap: int = 100) -> list[dict[str, Any]]:
     """The best-scored NEW/SCORED candidates (budget-bounded output).
 
-    Scores up to ``score_cap`` candidates so recent high-value claims
-    are not starved by rowid order (live-loop finding 2026-08-12: the
-    top-8-by-rowid scan missed the 'fix(wp11)…' repo claims).
+    Scores the NEWEST candidates first (rowid DESC): the loop selects
+    work from FRESH signals — maintenance candidates and new research
+    items — while older unconsumed candidates age out (they would have
+    been consumed if valuable). Live-loop findings 2026-08-12: an
+    ASC-by-rowid cap starved the newest high-value candidates twice.
     """
     with db.connect() as connection:
         rows = connection.execute(
             "SELECT candidate_id, objective, status FROM candidates "
-            "WHERE status IN ('NEW', 'SCORED') ORDER BY rowid "
+            "WHERE status IN ('NEW', 'SCORED') ORDER BY rowid DESC "
             f"LIMIT {max(1, int(score_cap))}").fetchall()
     scored: list[dict[str, Any]] = []
     for row in rows:
