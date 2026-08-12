@@ -37,6 +37,7 @@ from ..supervisor.leases import LeaseManager
 from .commit import CommitError, commit_after_pass
 from .proposal import Proposal, ProposalError, Waiting, propose_next_action
 from .verification import (
+    dangling_verdict_for_run,
     failed_verdict_count,
     latest_verdict_for_step,
     record_verification_outcome,
@@ -301,6 +302,39 @@ class MissionLoop:
         self._advance(mission_id, "VERIFYING", run_id=run_id)
         verifier_provider = self.router.diversity_resolution(result.provider)
         verifier_run_id = f"{run_id}-verify"
+
+        # DIR-2026-08-12 item 3 (exactly-once recovery): when this pass
+        # resumes a run whose builder COMPLETED earlier, verification may
+        # have been interrupted mid-flight. Recovery is state-aware and
+        # generic:
+        # (a) a STARTED verdict whose verifier run never reached a
+        #     terminal is corrected additively (verification.blocked:
+        #     interrupted; superseded) — never left dangling;
+        # (b) if the pass's verifier run row exists WITHOUT a terminal
+        #     status (interrupted RUNNING or reaped FAILED), the verifier
+        #     is dispatched under a FRESH run id — re-dispatching under
+        #     the old id would share the row with a possibly-live orphan
+        #     session, and its completion event would either conflict on
+        #     the started idempotency key or be blocked by the terminal
+        #     guard (S3);
+        # (c) a COMPLETED verifier row replays through the dispatcher (no
+        #     new session) — the builder is NEVER re-executed (its run
+        #     replays from the ledger: exactly-once mutation).
+        dangling = dangling_verdict_for_run(self.database, verifier_run_id)
+        if dangling is not None:
+            record_verification_outcome(
+                self.database, verdict_id=dangling["verdict_id"],
+                outcome="BLOCKED", findings=[], evidence={},
+                reason="verification pass interrupted before its outcome "
+                       "was recorded; superseded by the resumed pass")
+        verifier_row = self.database.row("agent_runs", "run_id", verifier_run_id)
+        if verifier_row is not None and verifier_row["status"] != "COMPLETED":
+            with self.database.connect() as connection:
+                attempt = connection.execute(
+                    "SELECT COUNT(*) FROM agent_runs WHERE run_id LIKE ?",
+                    (f"{run_id}-verify%",)).fetchone()[0]
+            verifier_run_id = f"{run_id}-verify-r{attempt}"
+
         start_verification(
             self.database,
             verdict_id=verdict_id,

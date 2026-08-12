@@ -119,3 +119,20 @@ def failed_verdict_count(database: FoundryDatabase, mission_id: str, step_id: st
             (mission_id, SUBJECT_STEP, step_id),
         ).fetchone()
     return int(row["count"])
+
+
+def dangling_verdict_for_run(database: FoundryDatabase,
+                             verifier_run_id: str) -> dict | None:
+    """The STARTED verdict whose verifier run never reached a terminal.
+
+    DIR-2026-08-12 item 3 (exactly-once recovery): a verification pass
+    interrupted between start and outcome leaves a STARTED verdict row
+    that would otherwise dangle forever. The resumed pass corrects it
+    additively (verification.blocked: interrupted; superseded)."""
+    with database.connect() as connection:
+        row = connection.execute(
+            "SELECT verdict_id, mission_id, subject_type, subject_id "
+            "FROM verification_verdicts "
+            "WHERE verifier_run_id = ? AND status = 'STARTED' "
+            "ORDER BY rowid LIMIT 1", (verifier_run_id,)).fetchone()
+    return dict(row) if row else None
