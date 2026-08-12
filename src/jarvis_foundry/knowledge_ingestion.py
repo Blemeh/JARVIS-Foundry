@@ -9,7 +9,8 @@ Deterministic + idempotent by construction:
   re-running the same batch creates identical claim ids (deduped by the
   event idempotency keys);
 - failures record status FAILED + errors (the batch is atomic per event
-  append — a raised error leaves no partial claims)."""
+  append; a failed batch records NO completion and stays QUEUED —
+  partial claim events from a failed run are deduped on retry)."""
 from __future__ import annotations
 
 import hashlib

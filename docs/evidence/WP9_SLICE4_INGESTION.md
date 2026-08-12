@@ -1,8 +1,18 @@
 # WP9 — V2 Knowledge Brain, Slice-4: Continuous Ingestion
 
-Status: **IMPLEMENTED** (2026-08-12; 8/8 tests green; independent
-verifier <PENDING>). Slices 1–3 CLOSED — PASS (deleg_548b6bb6,
-deleg_7c4759fa, deleg_01ebd46f).
+Status: **IMPLEMENTED + REPAIRED** (2026-08-12). Slices 1–3 CLOSED —
+PASS (deleg_548b6bb6, deleg_7c4759fa, deleg_01ebd46f). Verifier
+round-1 (deleg_7eacf4e9) FAIL: G1 schema-version test pinned to v7
+(broke at the v8 migration), G2-b overlapping delta batches crashed
+with EventConflict (per-run ingestion uuid leaked into claim payloads →
+unchanged docs re-appended with different payload hashes; retries
+poisoned), G3 suite artifact EXIT=1, G4 wording inaccuracies. →
+REPAIRED: a2e25e1 (de-pinned schema assertions to
+version == SCHEMA_VERSION), 8152ac6 (fully deterministic claim payloads
+— per-doc content hashes in source.run_id/event_id; unchanged docs
+dedup, delta-only claims, retries safe) + regressions
+test_overlapping_delta_batch_no_conflict + test_retry_after_failure_is_safe.
+Verifier round-2 (deleg_a18133f6) <PENDING>.
 
 ## Delivered (bounded slice-4 scope)
 
@@ -32,15 +42,16 @@ deleg_7c4759fa, deleg_01ebd46f).
 
 ## Evidence
 
-- Tests: `tests/foundry/test_knowledge_ingestion.py` — 8 tests (red
+- Tests: `tests/foundry/test_knowledge_ingestion.py` — 10 tests (red
   before implementation, green after): queue row; completed-hash
   idempotency; batch → 3 claims + counts; idempotent re-ingestion;
   changed doc → new claim (old preserved); failure → FAILED + errors;
-  rebuild determinism; schema v8.
-- Slices 1–3 regression: 27/27 knowledge tests still green (35/35
+  rebuild determinism; schema version == code; overlapping delta batch
+  (no conflict); retry after failure (safe dedup).
+- Slices 1–3 regression: 27/27 knowledge tests still green (37/37
   combined).
-- Full suite: <PENDING> (expect EXIT=0, 283 tests) →
-  var/evidence/wp9-slice4/suite-slice4.txt.
+- Full suite: EXIT=0 (287 tests) → var/evidence/wp9-slice4/
+  suite-slice4.txt.
 
 ## Live-DB impact
 
