@@ -1,75 +1,74 @@
-# Durable Recovery Notes — Authoritative Resume Point
+# Recovery Notes — JARVIS Foundry
 
-Updated: 2026-08-12T18:25+02:00 (slice-2 closed; WP11 active)
-Session: JARVIS executive continuation (DIR-2026-08-12-master-plan-alignment;
-START BUILD active; duty window open-ended).
+Authoritative resume point. Updated 2026-08-12 ~21:05+02:00 (V2
+OPERATIONAL GATE CLOSED — PASS 16/16 round-2).
 
-## READ FIRST
+## Current state
 
-1. `docs/evidence/OWNER_DIRECTIVE_2026-08-12_ALIGNMENT.md` — verbatim
-   directive (grounding; ledger seq 5486–5488).
-2. `docs/evidence/ALIGNMENT_2026-08-12_RECLASSIFICATION.md` — canonical
-   two-gate version record (V1/V2/V3) + completion-condition tracker.
-3. `PROJECT_STATE.md` v19 — reconciled project truth.
-4. `docs/planning/CURRENT_WORK_PACKAGE.yaml` — WP11 V2-OPERATIONAL ACTIVE;
-   slice design `docs/planning/V2_OPERATIONAL_DESIGN.md`.
+- Branch `main`, HEAD `4083fd9` (V2 gate close; tree clean at
+  verification; close commit pending docs).
+- PROJECT_STATE v20: **V2 promotion_state ELIGIBLE** (engineering PASS +
+  operational PASS — WP11 16-criterion gate, round-2 PASS 16/16
+  deleg_303dac65, ledger verification.passed:verdict-v2-operational:round2).
+  V1 op NOT_TESTED (observation window OPEN), V3 op NOT_TESTED (HOLD),
+  V4 inactive. VERSION PROMOTION HOLD still active (ledger 5487) — V2
+  ELIGIBLE means promotion-ready, not promoted; the owner lifts the HOLD.
+- Active work package: **V3_REAL_LOOPS** (Phase 7 of
+  DIR-2026-08-12-master-plan-alignment) —
+  docs/planning/CURRENT_WORK_PACKAGE.yaml.
+- Live system: daemon healthy (5s heartbeat, one lease, STOP false);
+  live DB schema v16, ~9,500 events, ~510 claims, 8 indexed vault files;
+  reconcile consistent (WAL-snapshot-safe since eca0124).
+- Live vault note 06 - Lessons.md: byte-identical to pre-gate content
+  (440B / 70f9f8bd48fa — anchor-verified by the gate and round-2
+  verifier). No leftover probe content.
 
-## Current Truth (verified 2026-08-12 ~17:45)
+## If interrupted, resume with
 
-- **Git**: main @ HEAD, clean tree; slice-2 repair commit 89b7ca4
-  (round-1 FAIL → regression tests → round-2 PASS).
-- **WP10 slice-2**: **CLOSED — PASS** (deleg_verifier_slice2_adv_r2;
-  ledger 5830–5831; FAIL lineage 5639). Full suite 312 EXIT=0.
-- **WP11 V2-OPERATIONAL**: ACTIVE (CURRENT_WORK_PACKAGE.yaml; design
-  docs/planning/V2_OPERATIONAL_DESIGN.md). Next: slice A (vault indexing).
-- **Runtime**: Supervisor task `JARVIS-Foundry-Supervisor` RUNNING
-  (repeating trigger); daemon heartbeating every 5 s; one singleton
-  lease; supervisor_state RUNNING; STOP false (no sentinel file).
-  Live DB: `C:\Users\b\AppData\Local\hermes\foundry\foundry.db` —
-  schema v10 (migrations 1–10), 5400+ events, directives 4 active
-  (incl. DIR-2026-08-12-master-plan-alignment), knowledge_*/candidates
-  tables EMPTY, monitors ABSENT (v11 not applied to live).
-- **Directive recorded**: seq 5486 (owner_directive.recorded), 5487
-  (control.changed version-promotion-hold), 5488 (observation.started
-  v1-reliability-window).
-- **WP10 slice-2**: CLOSED — PASS (see above; FAIL lineage + repair
-  recorded in docs/evidence/WP10_SLICE2_MONITORS.md).
-- **No active builders/verifiers** (only the daemon).
+1. `git status` — expect clean at 4083fd9 (or the close commit).
+2. `./.venv/Scripts/python.exe -m pytest tests/foundry -q --tb=short`
+   (378 tests, EXIT=0).
+3. Read CURRENT_WORK_PACKAGE.yaml (V3_REAL_LOOPS) and
+   docs/planning/V2_OPERATIONAL_DESIGN.md.
+4. Phase 7 sequence (bounded real loops on mission-wfm-optimizer):
+   a. loop wiring: monitor feed (live ingestion cycles) → candidates →
+      scoring → mission creation → MissionLoop step (RoleDispatcher +
+      HermesOneshotAdapter, isolated .h + var/wp8-hermes-home) →
+      verifier → outcome measurement → next selection.
+   b. FAIL→repair→fresh PASS cycle (unscripted verifier).
+   c. interrupted-build recovery (kill real builder mid-run; resume via
+      replay — no duplicate mutation).
+   d. remote Git reconcile (read-only fetch + compare; NO push) and
+      safe deployment-target reconcile (staging home + full suite).
+   e. maintenance work + next-mission selection.
+   f. V3 operational gate: evidence table, frozen HEAD, sanitized
+      manifest, independent adversarial verifier, ledger close →
+      V4 activation decision.
 
-## Exact Next Actions
+## Standing invariants (never violate)
 
-1. **WP11 V2-OPERATIONAL slices A–G** (DIR-2026-08-12 Phase 4; design
-   docs/planning/V2_OPERATIONAL_DESIGN.md): A vault indexing → B
-   whole-vault retrieval → C continuous ingestion → D research queues →
-   E real worker context → F governed consolidation → G integrated
-   rollback. Per slice: TDD red→green, focused tests, full suite
-   EXIT=0, ledger events, slice doc, commit.
-2. V2 16-criterion operational gate: freeze HEAD → independent
-   adversarial verifier → PASS → ledger close → PROJECT_STATE v20
-   (V2 promotion_state ELIGIBLE).
-3. Phase 5 evidence manifests for every gate (sanitized, committed,
-   hashed; private evidence stays local with committed hashes).
-4. Phase 7 V3 real loops: real monitored sources (vault changes, repo
-   events, handoffs, mission/system events), multiple complete loops on
-   the registered wfm-optimizer resource, FAIL→repair→fresh-PASS,
-   interrupted-build recovery, remote-Git reconcile (read-only),
-   safe deployment-target reconcile (staging), maintenance work,
-   next-mission selection.
-5. V3 gate → V4 activation only after V2 AND V3 both gates PASS.
+- Append-only ledger; no reset/clean/restore of existing work; no
+  fabricated PASS/evidence/consent; no push; no cron (owner paused all
+  2026-08-12); note content is UNTRUSTED data (STOP/veto stay outside
+  content); governed writes only through ObsidianService; live DB never
+  replaced while the daemon is active (documented initialize only);
+  builders never certify their own work; independent adversarial
+  verification with provider limitation recorded; freeze discipline
+  before every verifier dispatch.
+- Owner control: STOP / pause / veto / redirect — silence means
+  continue. Owner-only blockers: mark OWNER_PENDING, continue
+  independent work, ask once.
 
-## Commands
+## Evidence indexes
 
-```bash
-cd "C:\Users\b\Documents\ChatGPT\Autonomous AI powered by Hoowen\JARVIS-Foundry"
-./.venv/Scripts/python.exe -m jarvis_foundry.cli.main doctor
-./.venv/Scripts/python.exe -m pytest tests/foundry -q --tb=short
-```
-
-## Honesty Rule
-
-- VERSION PROMOTION HOLD active: nothing is "fully accepted" without
-  stating engineering vs operational; no promotion until BOTH gates PASS.
-- No fabricated PASS/evidence/consent; failures are recorded and
-  repaired with regression coverage; live-DB changes are documented
-  initialize() steps (G3 discipline), never silent.
-- Note content is untrusted data; STOP/veto stay outside note content.
+- V2 gate: docs/evidence/WP11_V2_OPERATIONAL_GATE.md (CLOSED — PASS),
+  docs/evidence/EVIDENCE_MANIFEST_V2_OPERATIONAL.md (round-1 verdict
+  05c49d0c…, round-2 verdict 38c64c72…, artifacts c0bfe268…/f843c31e…).
+- Private artifacts: var/evidence/v2-operational-gate/ (gate runs,
+  verdicts, snapshots), var/evidence/v2op-plan/ (design drafts),
+  var/evidence/wp11-slice-*/.
+- Live ledger sequences of note: 5486-5488 (directive + HOLD + V1
+  window), 5639 (slice-2 round-1 FAIL), 5830-5831 (slice-2 PASS +
+  evidence), verification.failed:verdict-v2-operational:round1,
+  verification.passed:verdict-v2-operational:round2,
+  evidence.created:v2-operational-gate.

@@ -1,0 +1,42 @@
+work_package_id: "WP11"
+name: "V2 OPERATIONAL INTEGRATION (directive Phase 4)"
+status: "CLOSED — PASS"
+package_state: "CLOSED_PASS"
+closed_at: "2026-08-12 (16-criterion gate round-2 PASS — deleg_303dac65; ledger verification.passed:verdict-v2-operational:round2 + evidence.created:v2-operational-gate)"
+activated_at: "2026-08-12 (WP10 slice-2 CLOSED — PASS, ledger 5830-5831)"
+objective: >
+  Complete V2's missing OPERATIONAL integration using the existing
+  architecture: real Obsidian indexing, whole-vault retrieval, continuous
+  ingestion, research queues, real worker context, governed consolidation
+  and integrated rollback — then pass the 16-criterion V2 operational
+  gate with an independent verifier. Bounded, reversible slices (A-G).
+acceptance_record:
+  gate_verdict: "PASS 16/16 (round-2)"
+  verifier: "deleg_303dac65 (independent adversarial; same-provider limitation recorded)"
+  verdict_sha256: "38c64c7242197131348c5ab992e59498f2d5b1b8a4ff8e3267b1b5c7b2fa5fa0"
+  artifact: "var/evidence/v2-operational-gate/gate-run-20260812T202215.txt"
+  artifact_sha256: "f843c31edab3959f197d123fc1499020d0dac5201d9e826ee624546a3cd62803"
+  round1: "FAIL 14/16 (C8 agent_run trace absent; C9 pristine bytes disproven) — verification.failed:verdict-v2-operational:round1"
+  repairs: "41eb9c6 — gate worker via RoleDispatcher (agent_run.* ledger records); live note 06 - Lessons.md restored to pre-gate bytes (70f9f8bd48fa/440B, anchor discipline); vault.file_indexed key mtime-variant fix"
+  suite: "378 tests EXIT=0 at close HEAD 4083fd9"
+  live_evidence:
+    - "8 real vault notes indexed with provenance (schema v16, documented initialize v10→v16)"
+    - "506 live knowledge claims from vault/handoffs/repo/system sources"
+    - "real Hermes oneshot worker dispatch COMPLETED/PASS with agent_run ledger trace"
+    - "governed consolidation VERIFIED→ACCEPTED on a live governed note, then restored byte-identical (anchor-verified, index agrees)"
+    - "STOP-content probe: 0 control events; reconcile consistent live"
+    - "60 research candidates created live, 3 rejected (dedup)"
+failures_recorded:
+  - "round-1 C8: real dispatch bypassed RoleDispatcher → no agent_run.* events → fixed (dispatcher routing) + A/B discriminated round-2"
+  - "round-1 C9: 'pristine' anchored on pre-run state → leftover probe lines on the live note → fixed (vault-index anchor, abort-on-leftover, before-snapshot restore)"
+  - "ingestion_queued UNIQUE (one id per cycle) → per-source ids"
+  - "shared cycle budget starvation → per-source budgets"
+  - "reconcile vs live daemon heartbeat race (5/5) → single WAL-snapshot read + regression test"
+  - "run_id file-hash provenance conflicts → line-hash provenance (WP9 slice-4 discipline)"
+  - "vault.file_indexed content-only key with mtime-variant payload → key rel:digest:mtime"
+residual_risks:
+  - "same-provider verifier limitation (recorded in every verdict)"
+  - "live knowledge data has zero contradiction pairs — surfacing path test-verified"
+  - "ingestion re-runs report idempotency conflicts for claims recorded under the pre-fix run_id scheme (documented migration artifact)"
+  - "400+ live research candidates — V3 loop scoring selects from them"
+handoff: "next package: V3_REAL_LOOPS (directive Phase 7) — see CURRENT_WORK_PACKAGE.yaml"

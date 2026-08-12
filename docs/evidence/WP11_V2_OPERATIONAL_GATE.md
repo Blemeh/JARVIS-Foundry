@@ -1,7 +1,12 @@
 # WP11 — V2 OPERATIONAL GATE (directive Phase 4 gate)
 
-Status: **ROUND-2 VERIFICATION IN FLIGHT** (2026-08-12). Round-1 FAIL
-(14/16) → repairs committed → fresh artifact → fresh verifier.
+Status: **CLOSED — PASS (16/16, round-2)** (2026-08-12). Round-1 FAIL
+(14/16) → repairs committed → fresh artifact → round-2 independent
+adversarial verifier **PASS 16/16** (`deleg_303dac65`, verdict sha256
+38c64c72…, tree clean start→end). Ledger: verification.failed:
+verdict-v2-operational:round1 → verification.passed:
+verdict-v2-operational:round2 + evidence.created:v2-operational-gate.
+PROJECT_STATE v20: V2 promotion_state **ELIGIBLE** (both gates PASS).
 Canonical requirements: OWNER_DIRECTIVE_2026-08-12_ALIGNMENT.md "V2
 OPERATIONAL GATE" criteria 1–16. Candidate HEAD: `92c31f3` (clean tree at
 dispatch). Live DB: schema v16, ~9,400 events, 506 real claims, 8 indexed
@@ -39,7 +44,7 @@ var/evidence/v2-operational-gate/verdict-round1-deleg_886d2cd4.json.
 | 13 | STOP and veto remain outside note content | live probe with STOP content → 0 control events; tests | PASS |
 | 14 | resource use is measured | cycle metrics (items/bytes/elapsed) in ingestion_completed events + artifact | PASS |
 | 15 | full regression suite passes | 378 tests EXIT=0 at candidate HEAD | PASS |
-| 16 | independent verifier reproduces the important claims | <PENDING — round-2 verifier dispatched against frozen HEAD 92c31f3> | PENDING |
+| 16 | independent verifier reproduces the important claims | **PASS** — round-2 verifier `deleg_303dac65`: 16/16 criteria reproduced (machinery re-probed on fresh temp DBs/vaults; live criteria re-derived read-only; C8/C9 repairs A/B-discriminated; reconcile consistent on copy + live twice; tree clean start→end at 4083fd9) | PASS |
 
 ## Live-DB impact record (G3 discipline)
 

@@ -5,11 +5,12 @@ This file is the current project truth.
 ```yaml
 project: JARVIS Foundry
 owner: Blendi Mehmeti
-state_version: 19
+state_version: 20
 updated_at: 2026-08-12
 
-phase: V2_KNOWLEDGE_BRAIN engineering ACCEPTED (operational pending) ->
-  V3_DISCOVERY engineering in progress (operational pending)
+phase: V2_KNOWLEDGE_BRAIN engineering ACCEPTED + operational ACCEPTED
+  (WP11 V2-OPERATIONAL gate 16/16 PASS) -> V3_DISCOVERY operational
+  integration in progress (real loops)
 phase_status: ALIGNMENT_ACTIVE — VERSION PROMOTION HOLD (DIR-2026-08-12-master-plan-alignment,
   ledger seq 5486-5488; canonical record docs/evidence/ALIGNMENT_2026-08-12_RECLASSIFICATION.md)
 day1_closed: 2026-08-12 (12 verified cycles; F1-F15 all PASS; independent
@@ -23,35 +24,47 @@ v2_closed: 2026-08-12 (V2 KNOWLEDGE BRAIN ENGINEERING GATE PASS: five
   slice-4 ingestion (3cce471c), slice-5 snapshots (23953faa); 8 recorded
   verifier FAIL rounds all repaired with regressions; gate review round-1
   FAIL (G3 truth correction) -> round-2 PASS (deleg_39ce6249); ledger
-  verification.passed:verdict-wp9-gate seq 4846. OPERATIONAL GATE
-  NOT_TESTED — V2 promotion_state HOLD until WP11 (V2-OPERATIONAL,
-  directive Phase 4) passes its 16-criterion gate)
+  verification.passed:verdict-wp9-gate seq 4846.
+  OPERATIONAL GATE PASS 2026-08-12 (WP11 V2-OPERATIONAL, directive Phase
+  4): slices A-G implemented and committed (80d3c38..07a36b7) with live
+  evidence — 8 real vault notes indexed, 506 live claims, real Hermes
+  worker dispatch with ledger trace, governed consolidation + integrated
+  rollback on a live note (restored byte-identical, anchor-verified).
+  16-criterion gate round-1 FAIL (C8 agent_run trace absent, C9 pristine
+  bytes) -> repairs 41eb9c6 -> round-2 PASS 16/16 (deleg_303dac65,
+  verdict sha256 38c64c72…; ledger verification.passed:
+  verdict-v2-operational:round2). V2 promotion_state ELIGIBLE)
 implementation_started: true
 start_command_received: true
 start_command_received_at: 2026-08-11T17:33:05+02:00
-active_version: V2 (engineering gate PASS; operational gate NOT_TESTED;
-  promotion_state HOLD — see version_gates)
-active_work_package: WP11_V2_OPERATIONAL_INTEGRATION (ACTIVE —
-  docs/planning/CURRENT_WORK_PACKAGE.yaml; slice design
-  docs/planning/V2_OPERATIONAL_DESIGN.md; slices A-G then the
-  16-criterion gate; WP10 slices archived as
-  docs/planning/WP10_SLICE{1,2}_WORK_PACKAGE.closed.yaml)
+active_version: V2 (engineering gate PASS; operational gate PASS;
+  promotion_state ELIGIBLE — promotion still under the HOLD's
+  promotion-eligibility rules until the owner lifts it; see version_gates)
+active_work_package: V3_REAL_LOOPS (Phase 7 of DIR-2026-08-12-master-plan-alignment —
+  real monitored sources, multiple complete OBSERVE..SELECT-NEXT loops,
+  FAIL->repair cycle, interruption recovery, Git + deploy reconciliation;
+  design and close records in docs/planning/)
 
 version_gates:
   V1: {engineering_gate: PASS, operational_gate: NOT_TESTED,
        promotion_state: HOLD, history: "promoted under authenticated
        seven-day waiver (ledger 1763+2143); accepted-under-waiver,
        NOT seven-day-reliability-proven", observation_window: OPEN}
-  V2: {engineering_gate: PASS, operational_gate: NOT_TESTED,
-       promotion_state: HOLD, next: "WP11 V2-OPERATIONAL integration
-       then 16-criterion operational gate"}
-  V3: {engineering_gate: IN_PROGRESS (slice-1 CLOSED PASS ledger
-       5100-5102; slice-2 implemented, verifier PENDING),
+  V2: {engineering_gate: PASS, operational_gate: PASS (WP11 gate
+       16/16, round-2 PASS deleg_303dac65; ledger
+       verification.passed:verdict-v2-operational:round2),
+       promotion_state: ELIGIBLE, next: "owner promotion decision —
+       V2 remains HOLD-executed until the owner lifts the promotion
+       hold; operational acceptance proven"}
+  V3: {engineering_gate: PASS (slice-1 CLOSED PASS ledger 5100-5102;
+       slice-2 CLOSED PASS ledger 5830-5831 with FAIL->repair lineage),
        operational_gate: NOT_TESTED, promotion_state: HOLD,
-       next: "real monitored sources + multiple complete loops"}
+       next: "V3_REAL_LOOPS (Phase 7): multiple complete real loops,
+       FAIL->repair, interruption recovery, Git + deploy
+       reconciliation, then the V3 operational gate"}
   V4: {engineering_gate: NOT_TESTED, operational_gate: NOT_TESTED,
-       promotion_state: HOLD, activation: "requires V2 eng+op PASS, V3
-       eng+op PASS, reconciled state, durable evidence, no severity-one
+       promotion_state: HOLD, activation: "requires V2 eng+op PASS (DONE),
+       V3 eng+op PASS, reconciled state, durable evidence, no severity-one
        defect, healthy Supervisor and STOP"}
 
 trust_state: TRUSTED_AUTONOMOUS
