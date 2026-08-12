@@ -22,6 +22,18 @@ in_scope:
   - "FIRST MISSION: the support-semantics repair discovered by the V3 loops (894/920 claims marked UNSUPPORTED because the support test only matches ACTIVE vault_files sources — extend support to source-kind-aware checks: handoff files, repo commits, system events) — TDD, regression coverage, re-verify"
   - "knowledge upkeep: vault re-syncs, ingestion cycles, research-queue drains, contradiction surfacing"
   - "V4 first acceptance review gate (engineering + operational evidence, independent verifier)"
+first_mission_status: "DONE — CLOSED 2026-08-13 (V4-S1, commit 982f472/f2e3ea3):
+  source-kind-aware support (vault/handoff/repo/system) + projection-boundary
+  run_id normalization + migration v17 (SUPERSEDED) + additive candidate
+  supersession; verifier deleg_12682a02 PASS (17 probes); LIVE CLOSE: v17 +
+  atomic projection rebuild (14,945 events), support re-scan 953/954 (was
+  894 unsupported), 2 false-premise candidates superseded, reconcile 0
+  mismatches. Evidence: docs/evidence/V4_S1_SUPPORT_SEMANTICS.md."
+reliability_slices_status: "MR-1/S2/S3/S4/S5 CLOSED (verifier PASS each;
+  S5 after a real round-1 FAIL -> repair -> round-2 PASS); S6 scoring
+  context in verification. Suite 485 EXIT=0; live schema v18; reconcile
+  consistent. Design + lineage: docs/planning/V4_TRUTH_SLICES.md +
+  docs/evidence/V4_*.md."
 out_of_scope:
   - "pushing/deploying to remote systems (no-push rule unchanged; Foundry repo has NO remotes configured)"
   - "cron jobs (owner paused all cron 2026-08-12; the daemon remains the only scheduler)"
