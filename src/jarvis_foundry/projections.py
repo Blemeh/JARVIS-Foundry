@@ -17,6 +17,8 @@ PROJECTION_TABLES = (
     "verification_verdicts",
     "budgets",
     "obsidian_writes",
+    "knowledge_claims",
+    "knowledge_contradictions",
 )
 
 
@@ -297,7 +299,75 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
                WHERE write_id = ?""",
             (payload.get("rollback_pointer"), event.event_id, event.recorded_at, payload["write_id"]),
         )
-    elif event.event_type.startswith("supervisor.") or event.event_type.startswith("emergency_stop."):
+    elif event.event_type == "knowledge.claim_recorded":
+        from .knowledge import contradicts
+
+        claim_id = payload["claim_id"]
+        connection.execute(
+            """INSERT INTO knowledge_claims(
+                claim_id, mission_id, statement, claim_type, confidence,
+                fresh_until, source_run_id, source_event_id, status,
+                superseded_by, last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ACCEPTED', NULL, ?, ?)""",
+            (
+                claim_id, payload["mission_id"], payload["statement"],
+                payload["claim_type"], payload.get("confidence", 0.5),
+                payload.get("fresh_until"),
+                payload.get("source", {}).get("run_id"),
+                payload.get("source", {}).get("event_id"),
+                event.event_id, event.recorded_at,
+            ),
+        )
+        # deterministic contradiction detection at record time: compare the
+        # new claim against every live ACCEPTED claim of the same type.
+        # Derived projection (no separate event) — deterministic under
+        # rebuild, both claims stay visible with statuses flagged.
+        statement = payload["statement"]
+        claim_type = payload["claim_type"]
+        rivals = connection.execute(
+            "SELECT claim_id, statement FROM knowledge_claims "
+            "WHERE claim_type = ? AND status = 'ACCEPTED' AND claim_id != ?",
+            (claim_type, claim_id),
+        ).fetchall()
+        for rival_id, rival_statement in rivals:
+            if contradicts(statement, rival_statement):
+                contradiction_id = f"contra:{claim_id}:{rival_id}"
+                reason = (f"negation pair within claim_type '{claim_type}': "
+                          f"'{statement}' vs '{rival_statement}'")
+                connection.execute(
+                    """INSERT OR IGNORE INTO knowledge_contradictions(
+                        contradiction_id, claim_a_id, claim_b_id, claim_type,
+                        reason, last_event_id, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                    (contradiction_id, claim_id, rival_id, claim_type,
+                     reason, event.event_id, event.recorded_at),
+                )
+                connection.execute(
+                    "UPDATE knowledge_claims SET status = 'CONTRADICTED', "
+                    "last_event_id = ?, updated_at = ? WHERE claim_id IN (?, ?)",
+                    (event.event_id, event.recorded_at, claim_id, rival_id),
+                )
+    elif event.event_type == "knowledge.claim_superseded":
+        target = connection.execute(
+            "SELECT claim_id FROM knowledge_claims WHERE claim_id = ?",
+            (payload["claim_id"],)).fetchone()
+        replacement = connection.execute(
+            "SELECT claim_id FROM knowledge_claims WHERE claim_id = ?",
+            (payload["superseded_by"],)).fetchone()
+        if target is None or replacement is None:
+            raise ValueError(
+                "knowledge.claim_superseded requires both the target claim "
+                f"({payload.get('claim_id')}) and the superseding claim "
+                f"({payload.get('superseded_by')}) to exist — rolled back")
+        connection.execute(
+            "UPDATE knowledge_claims SET status = 'SUPERSEDED', "
+            "superseded_by = ?, last_event_id = ?, updated_at = ? "
+            "WHERE claim_id = ?",
+            (payload["superseded_by"], event.event_id, event.recorded_at,
+             payload["claim_id"]),
+        )
+
+    if event.event_type.startswith("supervisor.") or event.event_type.startswith("emergency_stop."):
         status = {
             "supervisor.started": "RUNNING",
             "supervisor.heartbeat": "RUNNING",

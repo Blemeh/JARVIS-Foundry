@@ -68,6 +68,8 @@ def _table_key_column(table: str) -> str:
         "verification_verdicts": "verdict_id",
         "budgets": "provider",
         "obsidian_writes": "write_id",
+        "knowledge_claims": "claim_id",
+        "knowledge_contradictions": "contradiction_id",
         "system_state": "singleton",
         "supervisor_state": "singleton",
     }

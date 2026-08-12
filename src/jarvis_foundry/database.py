@@ -155,12 +155,34 @@ class FoundryDatabase:
             "verification_verdicts": "verdict_id",
             "budgets": "provider",
             "obsidian_writes": "write_id",
+            "knowledge_claims": "claim_id",
         }
         if allowed.get(table) != key_column:
             raise ValueError("unsupported projection lookup")
         with self.connect() as connection:
             row = connection.execute(f"SELECT * FROM {table} WHERE {key_column} = ?", (key,)).fetchone()
         return dict(row) if row else None
+
+    def all(self, table: str, **filters: object) -> list[dict[str, object]]:
+        """Bounded read helper for the projection tables (exact-match filters)."""
+        allowed = {"knowledge_claims", "knowledge_contradictions", "obsidian_writes"}
+        if table not in allowed:
+            raise ValueError("unsupported projection listing")
+        clauses, args = [], []
+        for column, value in filters.items():
+            clauses.append(f"{column} = ?")
+            args.append(value)
+        where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
+        with self.connect() as connection:
+            rows = connection.execute(f"SELECT * FROM {table}{where} ORDER BY rowid", args).fetchall()
+        return [dict(r) for r in rows]
+
+    def count(self, table: str) -> int:
+        allowed = {"knowledge_claims", "knowledge_contradictions", "obsidian_writes"}
+        if table not in allowed:
+            raise ValueError("unsupported projection count")
+        with self.connect() as connection:
+            return connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
 
     @staticmethod
     def _row_to_event(row: sqlite3.Row) -> Event:

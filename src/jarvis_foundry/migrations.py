@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -195,6 +195,37 @@ MIGRATIONS: dict[int, str] = {
         updated_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS obsidian_writes_note ON obsidian_writes(note_name);
+    """,
+    5: """
+    CREATE TABLE IF NOT EXISTS knowledge_claims (
+        claim_id TEXT PRIMARY KEY,
+        mission_id TEXT NOT NULL,
+        statement TEXT NOT NULL,
+        claim_type TEXT NOT NULL,
+        confidence REAL NOT NULL CHECK(confidence >= 0.0 AND confidence <= 1.0),
+        fresh_until TEXT,
+        source_run_id TEXT,
+        source_event_id TEXT,
+        status TEXT NOT NULL DEFAULT 'ACCEPTED'
+            CHECK(status IN ('ACCEPTED', 'CONTRADICTED', 'SUPERSEDED')),
+        superseded_by TEXT,
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS knowledge_claims_mission ON knowledge_claims(mission_id, claim_type);
+    CREATE INDEX IF NOT EXISTS knowledge_claims_status ON knowledge_claims(status);
+
+    CREATE TABLE IF NOT EXISTS knowledge_contradictions (
+        contradiction_id TEXT PRIMARY KEY,
+        claim_a_id TEXT NOT NULL,
+        claim_b_id TEXT NOT NULL,
+        claim_type TEXT NOT NULL,
+        reason TEXT NOT NULL,
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS knowledge_contradictions_claims
+        ON knowledge_contradictions(claim_a_id, claim_b_id);
     """,
 }
 
