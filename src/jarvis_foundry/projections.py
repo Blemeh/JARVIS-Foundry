@@ -22,6 +22,7 @@ PROJECTION_TABLES = (
     "knowledge_manifests",
     "knowledge_entities",
     "knowledge_claim_entities",
+    "knowledge_ingestions",
 )
 
 
@@ -434,6 +435,34 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             ) VALUES (?, ?, ?, ?, ?)""",
             (payload["claim_id"], payload["entity_id"],
              payload.get("role"), event.event_id, event.recorded_at),
+        )
+
+    elif event.event_type == "knowledge.ingestion_queued":
+        connection.execute(
+            """INSERT INTO knowledge_ingestions(
+                ingestion_id, mission_id, source_type, source_ref,
+                source_hash, status, claims_count, errors_json,
+                last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?, 'QUEUED', 0, '[]', ?, ?)""",
+            (payload["ingestion_id"], payload["mission_id"],
+             payload.get("source_type", "document"), payload["source_ref"],
+             payload["source_hash"], event.event_id, event.recorded_at),
+        )
+    elif event.event_type == "knowledge.ingestion_completed":
+        connection.execute(
+            "UPDATE knowledge_ingestions SET status = 'COMPLETED', "
+            "claims_count = ?, errors_json = ?, last_event_id = ?, "
+            "updated_at = ? WHERE ingestion_id = ?",
+            (payload.get("claims_count", 0), canonical_json(payload.get("errors", [])),
+             event.event_id, event.recorded_at, payload["ingestion_id"]),
+        )
+    elif event.event_type == "knowledge.ingestion_failed":
+        connection.execute(
+            "UPDATE knowledge_ingestions SET status = 'FAILED', "
+            "errors_json = ?, last_event_id = ?, updated_at = ? "
+            "WHERE ingestion_id = ?",
+            (canonical_json(payload.get("errors", [])), event.event_id,
+             event.recorded_at, payload["ingestion_id"]),
         )
 
     if event.event_type.startswith("supervisor.") or event.event_type.startswith("emergency_stop."):

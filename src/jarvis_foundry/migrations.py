@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 
 
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -266,6 +266,25 @@ MIGRATIONS: dict[int, str] = {
     );
     CREATE INDEX IF NOT EXISTS knowledge_claim_entities_entity
         ON knowledge_claim_entities(entity_id);
+    """,
+    8: """
+    CREATE TABLE IF NOT EXISTS knowledge_ingestions (
+        ingestion_id TEXT PRIMARY KEY,
+        mission_id TEXT NOT NULL,
+        source_type TEXT NOT NULL,
+        source_ref TEXT NOT NULL,
+        source_hash TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'QUEUED'
+            CHECK(status IN ('QUEUED', 'RUNNING', 'COMPLETED', 'FAILED')),
+        claims_count INTEGER NOT NULL DEFAULT 0,
+        errors_json TEXT NOT NULL DEFAULT '[]',
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS knowledge_ingestions_hash
+        ON knowledge_ingestions(source_hash);
+    CREATE INDEX IF NOT EXISTS knowledge_ingestions_mission
+        ON knowledge_ingestions(mission_id);
     """,
 }
 
