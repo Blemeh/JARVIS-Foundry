@@ -62,11 +62,16 @@ slice-2 (retrieval + bounded context manifests).
 
 ## Live-DB impact
 
-NONE — all smoke/knowledge events ran on throwaway/staging DBs. The live
-daemon DB is untouched by slice-1 (schema v5 will apply to the live DB on
-the next natural initialize; reconcile compares at SCHEMA_VERSION — the
-live daemon continues at v4 until its next restart, which is the normal
-deployment path).
+**CORRECTED (gate review deleg_d0a4244d G3):** no knowledge DATA was
+ever written to the live ledger (zero knowledge.* events; all
+knowledge_* tables EMPTY) — but the slice-closure tooling's
+initialize() DID apply the schema migrations to the live daemon DB
+(v5→v9, same-second with the closure ledger events; the daemon never
+restarted; gapless heartbeats; daemon healthy). The earlier "live DB
+untouched (schema v5 applies on the next natural initialize)" wording
+was wrong; the corrected truth is recorded in the ledger
+(evidence.created:wp9-gate-truth-correction, seq 4789) and docs.
+Additive DDL only; no rollback migration needed.
 
 ## Next
 

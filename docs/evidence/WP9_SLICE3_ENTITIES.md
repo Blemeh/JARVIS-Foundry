@@ -43,9 +43,15 @@ evidence.created:wp9-slice3 seq 4203). Slices 1–2 CLOSED — PASS
 
 ## Live-DB impact
 
-NONE — all slice-3 events ran on throwaway temp DBs in the tests; the
-live daemon DB stays at schema v4 until its next natural initialize
-(deployment path: v5→v6→v7 apply together at that point).
+**CORRECTED (gate review deleg_d0a4244d G3):** no knowledge DATA was
+ever written to the live ledger (zero knowledge.* events; all
+knowledge_* tables EMPTY) — but the slice-closure tooling's
+initialize() DID apply the schema migrations to the live daemon DB
+(v5→v9, same-second with the closure ledger events; the daemon never
+restarted; gapless heartbeats; daemon healthy). The earlier "live DB
+stays at schema v4" wording was wrong; the corrected truth is recorded
+in the ledger (evidence.created:wp9-gate-truth-correction, seq 4789)
+and docs. Additive DDL only; no rollback migration needed.
 
 ## Next
 
