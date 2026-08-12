@@ -150,3 +150,70 @@ def test_schema_version_matches_code(tmp_path):
         version = connection.execute(
             "SELECT COALESCE(MAX(version),0) FROM schema_migrations").fetchone()[0]
     assert version == SCHEMA_VERSION
+
+
+def test_mission_completed_pre_v11_schema_is_noop(tmp_path):
+    """Verifier deleg_verifier_slice2_adv C4: mission.completed against a
+    TRUE v10 schema (no missions.created_from column) must NOT crash —
+    the outcome wiring is a no-op there, same adaptation as
+    mission.created (commit ac65025 fixed only the created handler)."""
+    import sqlite3
+
+    from jarvis_foundry.migrations import migrate
+
+    path = tmp_path / "foundry.db"
+    connection = sqlite3.connect(path)
+    migrate(connection, "2026-08-12T00:00:00Z", target=10)
+    # bare sqlite3 connections run in legacy implicit-transaction mode:
+    # without an explicit commit, close() rolls the migration back
+    connection.commit()
+    connection.close()
+    db = FoundryDatabase(path)
+    # mission.created works on v10 (ac65025 fix)
+    db.append(Event.create(
+        "mission.created",
+        {"mission_id": "mission-v10", "step_id": "step-0",
+         "objective": "V10 mission", "role": "builder",
+         "acceptance_criteria": ["done"]},
+        source_type="test", source_id="test-suite",
+        idempotency_key="mission.created:mission-v10"))
+    # mission.completed must no-op, NOT raise OperationalError
+    db.append(Event.create(
+        "mission.completed",
+        {"mission_id": "mission-v10", "objective": "V10 mission",
+         "outcome": {"result": "done"}},
+        source_type="test", source_id="test-suite",
+        idempotency_key="mission.completed:mission-v10"))
+    with db.connect() as connection:
+        schema_max = connection.execute(
+            "SELECT COALESCE(MAX(version),0) FROM schema_migrations").fetchone()[0]
+        events = connection.execute(
+            "SELECT COUNT(*) FROM events").fetchone()[0]
+        candidates = connection.execute(
+            "SELECT COUNT(*) FROM candidates").fetchone()[0]
+    assert schema_max == 10
+    assert events == 2
+    assert candidates == 0
+
+
+def test_mission_created_missing_acceptance_criteria_clean_error(tmp_path):
+    """Verifier deleg_verifier_slice2_adv C7d: a missing mandatory payload
+    key must surface as a clean validation error (ValueError), never a raw
+    KeyError from deep inside the handler, and the append rolls back
+    atomically."""
+    db = FoundryDatabase(tmp_path / "foundry.db")
+    db.initialize()
+    with pytest.raises(ValueError, match="acceptance_criteria"):
+        db.append(Event.create(
+            "mission.created",
+            {"mission_id": "mission-bad", "step_id": "step-0",
+             "objective": "Bad mission", "role": "builder"},
+            source_type="test", source_id="test-suite",
+            idempotency_key="mission.created:mission-bad"))
+    with db.connect() as connection:
+        missions = connection.execute(
+            "SELECT COUNT(*) FROM missions").fetchone()[0]
+        events = connection.execute(
+            "SELECT COUNT(*) FROM events").fetchone()[0]
+    assert missions == 0
+    assert events == 0

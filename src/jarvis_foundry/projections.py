@@ -39,6 +39,12 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             (event.event_id, payload["received_at"]),
         )
     elif event.event_type == "mission.created":
+        # mandatory payload key: clean validation error (not a deep
+        # KeyError) — verifier deleg_verifier_slice2_adv C7d
+        if "acceptance_criteria" not in payload:
+            raise ValueError(
+                "mission.created requires acceptance_criteria "
+                "(mandatory payload key) — rolled back")
         # created_from exists only from schema v11 (ALTER ADD COLUMN);
         # the handler adapts so ledger replays against ANY schema
         # version work (mid-migration appends included)
@@ -73,6 +79,17 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
         # V3 slice-2 wiring: a mission whose created_from is
         # candidate:<id> auto-records the candidate outcome (prediction
         # vs reality) and marks it EXECUTED.
+        if "mission_id" not in payload:
+            raise ValueError(
+                "mission.completed requires mission_id "
+                "(mandatory payload key) — rolled back")
+        # created_from exists only from schema v11; on pre-v11 schemas
+        # the outcome wiring is a no-op (same adaptation as
+        # mission.created) — verifier deleg_verifier_slice2_adv C4
+        columns = {row[1] for row in connection.execute(
+            "PRAGMA table_info(missions)")}
+        if "created_from" not in columns:
+            return
         row = connection.execute(
             "SELECT created_from FROM missions WHERE mission_id = ?",
             (payload["mission_id"],)).fetchone()
