@@ -40,7 +40,9 @@ def test_hostile_doc_in_repo_is_inert_data(tmp_path: Path, db: FoundryDatabase) 
     # Nothing reacts to the file's existence: no events, no state rows.
     assert len(db.events()) == before
     with db.connect() as con:
-        assert con.execute("SELECT COUNT(*) FROM supervisor_state").fetchone()[0] >= 0
+        # exactly the initialize() baseline singleton row — no mutation
+        assert con.execute(
+            "SELECT COUNT(*) FROM supervisor_state").fetchone()[0] == 1
 
 
 def test_illegal_mission_transition_rejected_deterministically() -> None:
