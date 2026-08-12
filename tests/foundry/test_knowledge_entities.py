@@ -167,10 +167,13 @@ def test_rebuild_reproduces_entities_and_links(tmp_path):
         "canonical_name"] == "retry loop"
 
 
-def test_schema_v7_and_reconcile_keys(tmp_path):
+def test_schema_version_matches_code(tmp_path):
+    """The live schema version must equal the code's SCHEMA_VERSION
+    (version-agnostic — pinned literals broke at each migration)."""
+    from jarvis_foundry.migrations import SCHEMA_VERSION
     db = FoundryDatabase(tmp_path / "foundry.db")
     db.initialize()
     with db.connect() as connection:
         version = connection.execute(
             "SELECT COALESCE(MAX(version), 0) FROM schema_migrations").fetchone()[0]
-    assert version == 7
+    assert version == SCHEMA_VERSION

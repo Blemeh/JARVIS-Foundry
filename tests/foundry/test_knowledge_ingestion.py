@@ -125,10 +125,11 @@ def test_rebuild_reproduces_ingestions(tmp_path):
     assert row["status"] == "COMPLETED"
 
 
-def test_schema_v8_and_reconcile_keys(tmp_path):
+def test_schema_version_matches_code(tmp_path):
+    from jarvis_foundry.migrations import SCHEMA_VERSION
     db = FoundryDatabase(tmp_path / "foundry.db")
     db.initialize()
     with db.connect() as connection:
         version = connection.execute(
             "SELECT COALESCE(MAX(version), 0) FROM schema_migrations").fetchone()[0]
-    assert version == 8
+    assert version == SCHEMA_VERSION
