@@ -26,6 +26,9 @@ Status: OPEN
 | RK-20 | STOP or veto is weakened by self-evolution | Critical | Immutable external control and R3 fault tests. |
 | RK-21 | Automatic rollback increases damage | Critical | Freeze, reconcile, then targeted rollback. |
 | RK-22 | Owner cannot understand autonomous action | High | Evidence-linked reporting and command center. |
+| RK-23 | Version labels overstate operational reality | High | Two-gate model + reclassification record (D-026..D-030); promotion requires both gates. |
+| RK-24 | V2 operational integration mutates live vault/DB beyond the governed area | Critical | Governed-area-only writes, expected-hash conflicts, snapshot/rollback, documented initialize() steps, live-DB replacement forbidden while daemon active. |
+| RK-25 | Vault content (untrusted) influences control decisions | Critical | STOP/veto/directives remain outside note content; ingestion is data-only (gate criterion 13). |
 
 Any credible route to ignored owner veto, STOP failure, unrecoverable data loss,
 secret disclosure, unlawful action, hidden consequence, or audit destruction

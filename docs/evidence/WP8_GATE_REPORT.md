@@ -1,5 +1,13 @@
 # JARVIS Foundry V1 Gate Report — WP8
 
+> **HISTORICAL — ENGINEERING-GATE RECORD (2026-08-12).** Per
+> DIR-2026-08-12-master-plan-alignment this report documents the V1
+> ENGINEERING gate only. V1's OPERATIONAL gate is NOT_TESTED; the
+> seven-day duration waiver is preserved (accepted-under-waiver, not
+> "seven-day reliability proven"); the V1 reliability observation window
+> is OPEN (ledger seq 5488). Canonical current record:
+> docs/evidence/ALIGNMENT_2026-08-12_RECLASSIFICATION.md.
+
 Gate verdict: **PASS** — independent review rounds: 1 FAIL
 (`deleg_acbc8ce5`) → 2 FAIL (`deleg_1e6e9421`) → **3 PASS
 (`deleg_8ee78c80`, 2026-08-12)**. Ledger `verification.passed:verdict-wp8-gate`

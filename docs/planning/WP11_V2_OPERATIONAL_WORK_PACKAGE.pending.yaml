@@ -1,0 +1,73 @@
+work_package_id: "WP11"
+name: "V2 OPERATIONAL INTEGRATION (directive Phase 4)"
+status: "PENDING"
+package_state: "PENDING"
+activated_by: "DIR-2026-08-12-master-plan-alignment (ledger 5486-5488); activates when WP10 slice-2 closes"
+objective: >
+  Complete V2's missing OPERATIONAL integration using the existing
+  architecture: real Obsidian indexing, whole-vault retrieval, continuous
+  ingestion, research queues, real worker context, governed consolidation
+  and integrated rollback — then pass the 16-criterion V2 operational
+  gate with an independent verifier. Bounded, reversible slices (A-G).
+authoritative_requirements:
+  - "OWNER_DIRECTIVE_2026-08-12_ALIGNMENT.md Phase 4 (A-G) + V2 OPERATIONAL GATE criteria 1-16"
+  - "docs/architecture/02_ARCHITECTURE_CONTRACT.md (event sourcing, epistemic separation, governed write-back)"
+  - "docs/architecture/05_POST_V1_ROADMAP.md §V2 exit criteria"
+  - "AGENTS.md work-package contract (evidence, tests, reversibility, builder+verifier identities)"
+dependencies:
+  - "WP9 engineering core (knowledge_claims, contradictions, retrieve(), manifests, snapshots, semantic rollback)"
+  - "WP6 governed Obsidian write-back (ObsidianService + policy; vault C:\\Users\\b\\Blendi, governed area JARVIS\\V1)"
+  - "WP10 candidate pipeline (research-queue output feeds candidates)"
+  - "live daemon (schema v10; WP11 slices add tables via additive migrations on the NEXT documented initialize; never replace the live DB while the daemon is active)"
+in_scope:
+  - "A: vault indexer — bounded subset (governed JARVIS/V1 area, then read-only whole-vault pass), path+hash+provenance rows, incremental idempotent sync, restart-safe cursor"
+  - "B: retrieval over indexed vault + SQLite — mission/entity/time/confidence/source/type filters, bounded context, provenance+STALE+contradictions surfaced, FP/FN/leakage measurement API"
+  - "C: continuous ingestion — bounded sources (vault changes, repo commit events, handoff files, research artifacts, mission/system events); retry safety, dedup, restart recovery, measured bounded resources"
+  - "D: research queues — stale/contradicted/unsupported/weak claim detection → evidence-backed candidates → dedup against candidates+missions → reject low-value"
+  - "E: worker context — bounded manifests delivered to real workers (Hermes adapter oneshot sessions), manifest hash/worker/mission/sources/truncation recorded; replacement-worker reconstruction without chat history"
+  - "F: governed consolidation — reversible JARVIS-governed vault area only, originals+provenance preserved, expected-hash conflict protection (concurrent edits CONFLICT not overwrite), independent meaning verification before acceptance, semantic-degradation rollback"
+  - "G: integrated rollback — snapshot → mutation → degradation detection → freeze → byte restoration → projection rebuild → semantic reconciliation (append-only, deterministic idempotency)"
+  - "16-criterion V2 operational gate + independent adversarial verifier + ledger close"
+out_of_scope:
+  - "V4 activation (separate gate; requires V3 too)"
+  - "unbounded whole-vault mutation — consolidation is governed-area only"
+  - "pushing/deploying to remote systems (no-push rule unchanged)"
+  - "cron jobs (owner paused all cron 2026-08-12)"
+domain_state_changes:
+  - "schema v12+ (additive migrations): vault_files, vault_sync_state, research_queue, worker_manifests, consolidation_ops, rollback_ops (exact tables per slice design)"
+  - "new events: vault.file_indexed, vault.sync_completed, ingestion.batch_completed, research.candidate_generated, worker.manifest_delivered, consolidation.completed, rollback.completed (per-slice, F9 discipline)"
+  - "live DB: knowledge tables gain REAL data; live schema advances ONLY via documented initialize() steps (G3 discipline: record before/after)"
+security:
+  - "note content treated as UNTRUSTED data (no content-triggered control changes; STOP/veto stay outside note content — gate criterion 13)"
+  - "no secrets in evidence; private vault content stays local, hashes committed"
+  - "governed writes only through ObsidianService; expected-hash conflict protection"
+evidence:
+  - "per-slice: TDD red→green, focused tests, full suite EXIT=0, ledger events, slice doc, hashes"
+  - "gate: 16-criterion evidence table, frozen HEAD, sanitized evidence manifest (Phase 5), independent verifier JSON archived"
+deterministic_vs_AI_boundary:
+  - "deterministic: indexing, hashing, dedup, retrieval ranking, conflict detection, rollback mechanics, measurement"
+  - "AI: semantic meaning verification (consolidation acceptance, degradation detection) — executed via the existing verifier/worker machinery and recorded with identity, never silent"
+failure_recovery:
+  - "any slice FAIL → repair exact cause → regression → full suite → re-verify; freeze discipline (Phase 6) before every verifier dispatch"
+  - "semantic rollback of consolidation before acceptance (reversible by design)"
+required_tests:
+  - "per-slice contract tests (concrete per slice design): restart-safety, idempotent re-sync, FP/FN/leakage probes, retry/poisoned-queue, concurrent-edit conflict, byte+meaning restore, no-duplicate-mutation after restart"
+  - "full suite must stay green at every slice close (310 + N)"
+acceptance_criteria:
+  - "ALL 16 V2 operational gate criteria PASS with evidence (directive list)"
+  - "independent adversarial verifier reproduces the important claims"
+  - "full regression suite EXIT=0; ledger close events; PROJECT_STATE promotion V2 → ELIGIBLE"
+reconciliation:
+  - "vault files ↔ index rows (path+hash); index rows ↔ claims; claims ↔ retrieval results; manifests ↔ recorded deliveries; rollback ↔ restored bytes+rebuilt projections; live DB schema_migrations ↔ docs"
+exit_condition: >
+  V2 operational gate PASS recorded (verification.passed:verdict-v2-operational),
+  evidence manifest committed, PROJECT_STATE v19 marks V2 promotion_state
+  ELIGIBLE (both gates PASS), next package = V3 real loops (directive Phase 7).
+forbidden_implementation:
+  - "no weakening of STOP/veto/append-only invariants"
+  - "no model-judgment authority over owner control"
+  - "no whole-vault writes outside the governed area"
+  - "no live-DB replacement while the daemon is active"
+  - "no fabricated PASS/evidence/consent"
+builder: "jarvis executive (direct; no delegation of implementation)"
+verifier: "fresh independent adversarial subagent session(s), provider-diversity limitation recorded"

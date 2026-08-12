@@ -1,5 +1,12 @@
 # WP9 GATE — V2 exit evidence mapping (05 §5 exit criteria → evidence)
 
+> **HISTORICAL — ENGINEERING-GATE RECORD (2026-08-12).** Per
+> DIR-2026-08-12-master-plan-alignment this document maps the V2
+> ENGINEERING gate evidence. V2's OPERATIONAL gate is NOT_TESTED
+> (promotion_state HOLD); "V2 engineering core accepted; operational
+> acceptance pending." Canonical current record:
+> docs/evidence/ALIGNMENT_2026-08-12_RECLASSIFICATION.md.
+
 Draft — finalized when slice-5's verifier lands and the WP9 gate review
 dispatches.
 

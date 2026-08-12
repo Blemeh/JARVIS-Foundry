@@ -1,6 +1,6 @@
 # Requirements Traceability
 
-Status: V3 AUTONOMY BASELINE
+Status: ALIGNMENT BASELINE (DIR-2026-08-12-master-plan-alignment)
 
 | Requirement | Contract | Package | Evidence |
 |---|---|---|---|

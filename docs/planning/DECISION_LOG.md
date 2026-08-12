@@ -1,6 +1,6 @@
 # Decision Log
 
-Status: CURRENT V3 AUTONOMY BASELINE
+Status: ALIGNMENT BASELINE (DIR-2026-08-12-master-plan-alignment)
 
 | ID | Decision | Status | Consequence |
 |---|---|---|---|
@@ -38,3 +38,13 @@ permission event is required for ordinary progression.
 ## 2026-08-12 — Seven-day duration waiver (04 §8.1)
 
 Owner decision (authenticated, in-session): **WAIVE** the seven-day unattended-run duration for WP8. The gate clock started 2026-08-11T23:05Z; all mandatory criteria are verifiable on day 1. The verdict may issue on the round-2 independent review PASS. Recorded as DIR-2026-08-12-seven-day-waiver (ledger seq 1763). The seven-day clock evidence remains as continuity history; the deviation is recorded per 04 §2 in docs/evidence/WP8_GATE_REPORT.md.
+
+## 2026-08-12 — Master-plan alignment (DIR-2026-08-12-master-plan-alignment, ledger 5486–5488)
+
+| ID | Decision | Status | Consequence |
+|---|---|---|---|
+| D-026 | Every version carries separate engineering and operational gates; promotion requires BOTH PASS. | APPLIED | Unit-test green can no longer be labelled "accepted" without operational evidence. |
+| D-027 | VERSION PROMOTION HOLD on V1–V4 until the alignment work passes. | APPLIED | No promotion, no V4 activation; useful engineering continues. |
+| D-028 | V1 stays "accepted under authenticated waiver" — explicitly NOT "seven-day reliability proven"; a durable observation window (ledger 5488) accumulates the missing reliability evidence. | APPLIED | The waiver is not invalidated; the shortened proof is explicit. |
+| D-029 | V2 promotion_state HOLD; WP11 V2-OPERATIONAL (slices A–G + 16-criterion gate) is the next work package. | APPLIED | "V2 engineering core accepted; operational acceptance pending." |
+| D-030 | Historical state records are preserved and marked historical; truth corrections are additive (new records), never rewrites. | APPLIED | WP8/WP9/WP10 records stay; ALIGNMENT_2026-08-12_RECLASSIFICATION.md is canonical. |

@@ -1,5 +1,10 @@
 # V3 DISCOVERY AND BUILDING — Slice-1 Design (candidate pipeline)
 
+> **HISTORICAL DESIGN DOC.** Implemented as schema v10 (the design's
+> schema-v6 section was superseded during implementation — see
+> docs/evidence/WP10_SLICE1_CANDIDATES.md). Per
+> DIR-2026-08-12-master-plan-alignment, engineering-only.
+
 Design only; implementation starts after V2's gate PASS (05 §6 Entry:
 "V2 PASS queues V3 automatically"). Bounded, deterministic, test-driven.
 

@@ -1,5 +1,10 @@
 # WP10 — V3 DISCOVERY AND BUILDING, Slice-1: Candidate Pipeline
 
+> **HISTORICAL — SLICE-1 CLOSED (PASS).** Status line below reflects the
+> close-time state. Per DIR-2026-08-12-master-plan-alignment this is an
+> ENGINEERING PASS; V3 operational gate NOT_TESTED. Canonical current
+> record: docs/evidence/ALIGNMENT_2026-08-12_RECLASSIFICATION.md.
+
 Status: **IMPLEMENTED + REPAIRED** (2026-08-12). WP10 ACTIVE
 (docs/planning/CURRENT_WORK_PACKAGE.yaml). Verifier round-1
 (deleg_509a3730): P1 9/9 PASS, P2 all six adversarial probes PASS, P4

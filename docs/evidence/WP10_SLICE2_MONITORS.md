@@ -1,8 +1,12 @@
 # WP10 — V3 DISCOVERY AND BUILDING, Slice-2: Monitored Sources + Mission-Execution Wiring
 
-Status: **IMPLEMENTED** (2026-08-12; 8/8 tests green; independent
-verifier <PENDING>). Slice-1 CLOSED — PASS (deleg_d70f796a; ledger
-5100–5102).
+Status: **IMPLEMENTED** (2026-08-12; 8/8 tests green; full suite 310
+tests EXIT=0 — var/evidence/wp10-slice2/suite-slice2.txt; independent
+verifier <PENDING — dispatched against the frozen alignment HEAD>).
+Slice-1 CLOSED — PASS (deleg_d70f796a; ledger 5100–5102). Per
+DIR-2026-08-12-master-plan-alignment: engineering status only; V3
+operational gate NOT_TESTED (canonical:
+docs/evidence/ALIGNMENT_2026-08-12_RECLASSIFICATION.md).
 
 ## Delivered (bounded slice-2 scope)
 

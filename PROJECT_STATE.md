@@ -5,30 +5,55 @@ This file is the current project truth.
 ```yaml
 project: JARVIS Foundry
 owner: Blendi Mehmeti
-state_version: 17
+state_version: 18
 updated_at: 2026-08-12
 
-phase: V1_AUTONOMY_KERNEL (accepted) -> V2_KNOWLEDGE_BRAIN ACCEPTED
-phase_status: V2_ACCEPTED -> V3_QUEUED
+phase: V2_KNOWLEDGE_BRAIN engineering ACCEPTED (operational pending) ->
+  V3_DISCOVERY engineering in progress (operational pending)
+phase_status: ALIGNMENT_ACTIVE — VERSION PROMOTION HOLD (DIR-2026-08-12-master-plan-alignment,
+  ledger seq 5486-5488; canonical record docs/evidence/ALIGNMENT_2026-08-12_RECLASSIFICATION.md)
 day1_closed: 2026-08-12 (12 verified cycles; F1-F15 all PASS; independent
   reviews: round-1 FAIL -> round-2 FAIL -> round-3 PASS (deleg_8ee78c80);
   seven-day duration WAIVED by the owner (DIR-2026-08-12-seven-day-waiver,
   authenticated message 16242; ledger 1763+2143); gate report
   docs/evidence/WP8_GATE_REPORT.md)
-v2_closed: 2026-08-12 (V2 KNOWLEDGE BRAIN ACCEPTED: five slices, each
-  independently verified — slice-1 epistemic core (548b6bb6), slice-2
-  retrieval+manifests (7c4759fa), slice-3 entities (01ebd46f), slice-4
-  ingestion (3cce471c), slice-5 snapshots (23953faa); 8 recorded verifier
-  FAIL rounds all repaired with regressions; gate review round-1 FAIL
-  (G3 truth correction) -> round-2 PASS (deleg_39ce6249); ledger
-  verification.passed:verdict-wp9-gate seq 4846)
+v2_closed: 2026-08-12 (V2 KNOWLEDGE BRAIN ENGINEERING GATE PASS: five
+  slices, each independently verified — slice-1 epistemic core (548b6bb6),
+  slice-2 retrieval+manifests (7c4759fa), slice-3 entities (01ebd46f),
+  slice-4 ingestion (3cce471c), slice-5 snapshots (23953faa); 8 recorded
+  verifier FAIL rounds all repaired with regressions; gate review round-1
+  FAIL (G3 truth correction) -> round-2 PASS (deleg_39ce6249); ledger
+  verification.passed:verdict-wp9-gate seq 4846. OPERATIONAL GATE
+  NOT_TESTED — V2 promotion_state HOLD until the V2 operational
+  integration (WP11, directive Phase 4) passes its 16-criterion gate)
 implementation_started: true
 start_command_received: true
 start_command_received_at: 2026-08-11T17:33:05+02:00
-active_version: V1 (accepted)
-active_work_package: WP9_V2_KNOWLEDGE_BRAIN (auto-queued per
-  DIR-2026-08-12-gate-progression; WP8 archived as
-  docs/planning/WP8_WORK_PACKAGE.closed.yaml)
+active_version: V2 (engineering gate PASS; operational gate NOT_TESTED;
+  promotion_state HOLD — see version_gates)
+active_work_package: WP10_V3_SLICE2_MONITORS (implemented; 310-test suite
+  EXIT=0; independent verifier PENDING — dispatched against the frozen
+  alignment HEAD; slice-1 archived as
+  docs/planning/WP10_SLICE1_WORK_PACKAGE.closed.yaml; next package after
+  slice-2 close: WP11 V2-OPERATIONAL, spec
+  docs/planning/WP11_V2_OPERATIONAL_WORK_PACKAGE.pending.yaml)
+
+version_gates:
+  V1: {engineering_gate: PASS, operational_gate: NOT_TESTED,
+       promotion_state: HOLD, history: "promoted under authenticated
+       seven-day waiver (ledger 1763+2143); accepted-under-waiver,
+       NOT seven-day-reliability-proven", observation_window: OPEN}
+  V2: {engineering_gate: PASS, operational_gate: NOT_TESTED,
+       promotion_state: HOLD, next: "WP11 V2-OPERATIONAL integration
+       then 16-criterion operational gate"}
+  V3: {engineering_gate: IN_PROGRESS (slice-1 CLOSED PASS ledger
+       5100-5102; slice-2 implemented, verifier PENDING),
+       operational_gate: NOT_TESTED, promotion_state: HOLD,
+       next: "real monitored sources + multiple complete loops"}
+  V4: {engineering_gate: NOT_TESTED, operational_gate: NOT_TESTED,
+       promotion_state: HOLD, activation: "requires V2 eng+op PASS, V3
+       eng+op PASS, reconciled state, durable evidence, no severity-one
+       defect, healthy Supervisor and STOP"}
 
 trust_state: TRUSTED_AUTONOMOUS
 permission_model_after_start: STANDING_AUTONOMY
@@ -53,6 +78,9 @@ capability_registry:
   - registered_file_read: READY
   - worktree_write: READY
   - obsidian_write_back: READY
+  - knowledge_brain_engineering: READY (operational integration pending)
+  - discovery_candidate_pipeline: READY (slice-1)
+  - monitored_sources: READY (slice-2, engineering)
 resource_registry:
   - id: hermes-development
     path: .h
@@ -66,6 +94,11 @@ v1_proving_mission: DRAFTED (mission-wfm-optimizer; contract in
   docs/evidence/WP8_MISSION_CONTRACT.md; ledger registration at clock start)
 active_owner_vetoes: []
 active_owner_constraints: []
+active_directives:
+  - DIR-2026-08-12-gate-progression (redirect; active)
+  - DIR-2026-08-12-seven-day-waiver (waive; active)
+  - DIR-2026-08-12-window-extension (extend_duty_window; active)
+  - DIR-2026-08-12-master-plan-alignment (align; active; ledger 5486)
 
 work_package_verdicts:
   WP0: PASS
@@ -77,10 +110,15 @@ work_package_verdicts:
   WP6: PASS
   WP7: PASS (activated; recovery repairs 2026-08-12 verified — see
         docs/evidence/WP7_RECOVERY_2026-08-12.md)
-  WP8: ACCEPTED (2026-08-12; independent round-3 PASS; trust
-        TRUSTED_AUTONOMOUS; waiver recorded)
-  WP9: ACCEPTED (2026-08-12; five slices independently verified;
-        gate review round-2 PASS; ledger 4846)
+  WP8: ACCEPTED-under-waiver (2026-08-12; independent round-3 PASS;
+        trust TRUSTED_AUTONOMOUS; waiver recorded; OPERATIONAL GATE
+        NOT_TESTED — V1 reliability observation window OPEN, ledger 5488)
+  WP9: ENGINEERING ACCEPTED (2026-08-12; five slices independently
+        verified; gate review round-2 PASS; ledger 4846; OPERATIONAL
+        GATE NOT_TESTED — promotion HOLD per DIR-2026-08-12)
+  WP10: IN PROGRESS — slice-1 CLOSED PASS (deleg_d70f796a; ledger
+        5100-5102); slice-2 IMPLEMENTED (suite 310 EXIT=0; verifier
+        PENDING); V3 operational gate NOT_TESTED
 
 autonomous_local_actions_after_start: true
 autonomous_obsidian_actions_after_capability_ready: true
@@ -90,9 +128,14 @@ autonomous_git_and_deployment_after_capability_ready: true
 autonomous_financial_actions_after_capability_ready: true
 autonomous_self_evolution_after_capability_ready: true
 
-next_event: WP8 day 2 — F5/F6/F7 on schedule (network/provider/auth fault
-  injection); F4 remains owner-resumable (physical reboot; scripted
-  verification ready). Day-1 closed: docs/evidence/WP8_DAY1_REPORT.md.
+next_event: ALIGNMENT PROGRAM (DIR-2026-08-12-master-plan-alignment):
+  1) finish WP10 slice-2 verification (verifier in flight; on PASS:
+  ledger close + docs finalize; on FAIL: repair + regression + fresh
+  verifier); 2) WP11 V2-OPERATIONAL integration (slices A-G, directive
+  Phase 4); 3) V2 16-criterion operational gate + independent verifier;
+  4) Phase 5 evidence manifests; 5) V3 real loops (Phase 7); 6) V4
+  activation only after both V2 and V3 gates PASS. VERSION PROMOTION
+  HOLD active until then.
 ```
 
 ## Completed
@@ -148,26 +191,44 @@ next_event: WP8 day 2 — F5/F6/F7 on schedule (network/provider/auth fault
   1083–1090, Obsidian 02/04/07 governed writes. Concurrency incident
   documented (non-colliding IDs; sibling artifact preserved). Day-1 report:
   `docs/evidence/WP8_DAY1_REPORT.md` (12 cycles).
+- WP9 (V2 Knowledge Brain) 2026-08-12: five slices implemented with TDD
+  and independently verified (see v2_closed above); gate review round-1
+  FAIL (G3: live-DB schema drift truth correction — closure scripts had
+  applied v5→v9 to the live daemon DB) → additive truth correction →
+  round-2 PASS (deleg_39ce6249; ledger 4846–4847). Live knowledge_*
+  tables exist but are EMPTY (no operational data yet).
+- WP10 (V3 Discovery) 2026-08-12: slice-1 candidate pipeline (schema v10)
+  CLOSED — PASS (deleg_d70f796a; ledger 5100–5102; round-1 P3 timing
+  finding repaired); slice-2 monitored sources + mission-execution wiring
+  (schema v11, commit b9d279a) + pre-v11 schema adaptation fix
+  (ac65025), 310-test suite EXIT=0, verifier PENDING.
 
 ## Current Reality
 
-WP8 (seven-day acceptance) is **ACCEPTED** (2026-08-12; the seven-day
-duration was explicitly WAIVED by the owner — DIR-2026-08-12-seven-day-waiver,
-authenticated direct message, ledger 1763 + 2143). 12 verified cycles
-closed; F1–F15 all PASS; the F5–F11 fault-injection battery was executed
-in the 2026-08-12 continuation run (FIND-2026-08-12-04/-05 repaired in
-`adapter.py`); §9 reconciliation honest (10 PASS + 1 documented
-NOT_TESTED); three independent gate reviews: round-1 FAIL
-(deleg_acbc8ce5) → repairs → round-2 FAIL (deleg_1e6e9421) → repairs →
-**round-3 PASS (deleg_8ee78c80)**. Verdict recorded in the ledger
-(`verification.passed:verdict-wp8-gate`, seq 2910). Trust promoted to
-TRUSTED_AUTONOMOUS; WORKTREE_READY; **V2_KNOWLEDGE_BRAIN (WP9) queued and
-starting** (docs/planning/CURRENT_WORK_PACKAGE.yaml).
+The 2026-08-12 master-plan alignment directive (ledger 5486–5488) put a
+VERSION PROMOTION HOLD on V1–V4 and reclassified the versions under a
+two-gate model (engineering vs operational). V1 was accepted under the
+owner's authenticated seven-day waiver — that remains valid, and V1's
+multi-day reliability proof is now an explicit OPEN observation window,
+not a completed claim. V2's engineering core is accepted; its operational
+gate is NOT_TESTED because the live knowledge tables hold no data and no
+real vault has been indexed, retrieved, ingested, consolidated or rolled
+back. V3 has an engineering-passed slice-1 and an implemented slice-2
+awaiting its verifier; its operational gate requires real monitored
+sources and multiple complete autonomous loops. The alignment program
+(PHASES 1–7 of the directive) is the current work; nothing is promoted
+and V4 stays inactive until both gates PASS per version. The daemon is
+healthy (5s cadence, one lease, live schema v10, 5400+ events, STOP
+false). Canonical reclassification record:
+`docs/evidence/ALIGNMENT_2026-08-12_RECLASSIFICATION.md`; verbatim
+directive: `docs/evidence/OWNER_DIRECTIVE_2026-08-12_ALIGNMENT.md`.
 
 ## What Happens After START BUILD
 
-The program advances through WP0-WP8 and later V2-V7 without asking for
-phase-by-phase permission. It discovers resources, verifies capabilities,
-builds, tests, repairs, promotes, expands, and self-improves automatically.
+The program advances through the alignment phases and later V2-V7 without
+asking for phase-by-phase permission. It reconciles truth, integrates the
+missing V2 operational surfaces, runs real V3 loops, verifies
+independently, promotes only on both-gate PASS, and self-improves
+automatically.
 
 The owner receives reports and may veto or STOP at any time.

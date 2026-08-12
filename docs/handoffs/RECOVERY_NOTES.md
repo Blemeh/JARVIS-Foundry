@@ -1,59 +1,64 @@
 # Durable Recovery Notes — Authoritative Resume Point
 
-Updated: 2026-08-12T13:10+02:00 (round-2 review FAIL → round-3 repair set)
-Session: JARVIS executive continuation (owner redirect 2026-08-12), START
-BUILD active.
+Updated: 2026-08-12T18:10+02:00 (alignment program start)
+Session: JARVIS executive continuation (DIR-2026-08-12-master-plan-alignment;
+START BUILD active; duty window open-ended).
 
 ## READ FIRST
 
-1. `docs/evidence/WP8_GATE_REPORT.md` — the primary gate record: round-1
-   FAIL (deleg_acbc8ce5), repair table, round-2 FAIL (deleg_1e6e9421),
-   round-3 repair set, B1 waiver truth.
-2. `var/evidence/wp8-gate/final-review-deleg_acbc8ce5.json` +
-   round-2 verdict (session store, deleg_1e6e9421).
-3. `PROJECT_STATE.md` v15 — state update ONLY after an independent PASS.
-4. `docs/evidence/WP8_DAY1_REPORT.md` — F-matrix F1–F15 PASS; FIND-01
-   retracted; F1 active-kill noted.
+1. `docs/evidence/OWNER_DIRECTIVE_2026-08-12_ALIGNMENT.md` — verbatim
+   directive (grounding; ledger seq 5486–5488).
+2. `docs/evidence/ALIGNMENT_2026-08-12_RECLASSIFICATION.md` — canonical
+   two-gate version record (V1/V2/V3) + completion-condition tracker.
+3. `PROJECT_STATE.md` v18 — reconciled project truth.
+4. `docs/planning/CURRENT_WORK_PACKAGE.yaml` — WP10 slice-2 ACTIVE
+   (verifier pending); `docs/planning/WP11_V2_OPERATIONAL_WORK_PACKAGE.pending.yaml`
+   — next package.
 
-## Current Truth (verified 2026-08-12 ~13:10)
+## Current Truth (verified 2026-08-12 ~17:45)
 
-- **Gate: NOT PASSED (round 1 + round 2 FAIL).** Round-2 verified the
-  substantive repairs (R1 STOP latency live ≤10s; R2 FIND-01 retraction
-  ledger-truthful; R3 12 verdict rows; R5 reconciliation read-only; R6 F1
-  active-kill) but FAILed on: (a) the seven-day waiver's reviewer-
-  verifiable authentication (the owner's in-session clarify response is
-  genuine but not FTS-visible; B1 corrected to AWAITING OWNER DIRECT
-  MESSAGE — no fabrication), (b) the ObsidianWriter root-doubling bug
-  RECURRING during the repair (now root-cause fixed: idempotent write_root
-  normalization + regression; surface 7 counts nested rows loudly), (c)
-  commit hygiene (round-3 commit includes everything: F5/F6 doc fixes,
-  checkpoint, DECISION_LOG, report edits), (d) the step-lifecycle minor
-  (now a documented deviation with the verified per-step matrix, m10).
-- **Round-3 repair set** (commit <PENDING>): policy.py normalization,
-  test_obsidian_write regression, reconciliation v3 (canonicality +
-  heartbeat-only read-only discipline + overall_note), gate report
-  corrections, RECOVERY_NOTES.
-- **Owner input pending (single item):** the seven-day waiver as a DIRECT
-  message from the owner (FTS-visible, reviewer-verifiable). Then the
-  correction records (evidence.created:waiver-authentication) + round-3
-  independent review.
-- Runtime: daemon RUNNING at 5s cadence (post-repair default), one lease,
-  STOP false, reconcile consistent; live gateway untouched; suite green
-  (obsidian+event_store 33 focused; full suite <PENDING rerun>).
+- **Git**: main @ HEAD, clean tree; alignment commit = the state
+  reconciliation + reclassification record (this commit).
+- **Runtime**: Supervisor task `JARVIS-Foundry-Supervisor` RUNNING
+  (repeating trigger); daemon heartbeating every 5 s; one singleton
+  lease; supervisor_state RUNNING; STOP false (no sentinel file).
+  Live DB: `C:\Users\b\AppData\Local\hermes\foundry\foundry.db` —
+  schema v10 (migrations 1–10), 5400+ events, directives 4 active
+  (incl. DIR-2026-08-12-master-plan-alignment), knowledge_*/candidates
+  tables EMPTY, monitors ABSENT (v11 not applied to live).
+- **Directive recorded**: seq 5486 (owner_directive.recorded), 5487
+  (control.changed version-promotion-hold), 5488 (observation.started
+  v1-reliability-window).
+- **WP10 slice-2**: IMPLEMENTED (b9d279a + fix ac65025), 310-test suite
+  EXIT=0 (artifact var/evidence/wp10-slice2/suite-slice2.txt, regenerated
+  17:47), verifier PENDING — dispatched against the frozen alignment HEAD.
+- **No active builders/verifiers** at inspection time (only the daemon).
 
-## Next (exact)
+## Exact Next Actions
 
-1. Commit the round-3 repair set (this run).
-2. Owner direct message with the waiver text → record
-   evidence.created:waiver-authentication (grounding seq 1763) + owner
-   message verbatim in docs/evidence/OWNER_WAIVER_2026-08-12.md.
-3. Dispatch the ROUND-3 independent review (fresh adversarial session;
-   brief: R1–R6 re-verify + waiver authentication + root-cause fix +
-   clean tree + m10 closure).
-4. On round-3 PASS: ledger verification.passed:verdict-wp8-gate,
-   PROJECT_STATE v16 (trust), WP9 activation, V2 slice-1.
-5. On FAIL: repair its exact findings and re-verify.
-6. Checkpoint ~14:30; final handoff 17:15.
+1. (In flight) WP10 slice-2 independent verifier → on PASS: ledger
+   verification.passed:verdict-wp10-slice2 + evidence.created:wp10-slice2,
+   slice-2 doc finalize (verifier id, ledger refs), archive
+   WP10_SLICE2_WORK_PACKAGE.closed.yaml, swap CURRENT_WORK_PACKAGE →
+   WP11 V2-OPERATIONAL. On FAIL: record FAIL, repair exact cause,
+   regression, regenerate evidence, fresh verifier.
+2. WP11 V2-OPERATIONAL integration — slices A–G (directive Phase 4):
+   A real Obsidian indexing → B whole-vault retrieval → C continuous
+   ingestion → D research queues → E real worker context → F governed
+   consolidation → G integrated rollback. TDD red→green per slice,
+   full suite green at each close, ledger events per slice, slice docs.
+3. V2 16-criterion operational gate: freeze HEAD → independent
+   adversarial verifier → PASS → ledger close → PROJECT_STATE v19
+   (V2 promotion_state ELIGIBLE).
+4. Phase 5 evidence manifests for every gate (sanitized, committed,
+   hashed; private evidence stays local with committed hashes).
+5. Phase 7 V3 real loops: real monitored sources (vault changes, repo
+   events, handoffs, mission/system events), multiple complete loops on
+   the registered wfm-optimizer resource, FAIL→repair→fresh-PASS,
+   interrupted-build recovery, remote-Git reconcile (read-only),
+   safe deployment-target reconcile (staging), maintenance work,
+   next-mission selection.
+6. V3 gate → V4 activation only after V2 AND V3 both gates PASS.
 
 ## Commands
 
@@ -65,7 +70,9 @@ cd "C:\Users\b\Documents\ChatGPT\Autonomous AI powered by Hoowen\JARVIS-Foundry"
 
 ## Honesty Rule
 
-Two independent reviews FAILed the gate; every finding is either repaired
-with evidence or recorded as an open owner item. Nothing advances on an
-unverified claim; the waiver is NOT treated as authenticated until the
-owner's direct message grounds it.
+- VERSION PROMOTION HOLD active: nothing is "fully accepted" without
+  stating engineering vs operational; no promotion until BOTH gates PASS.
+- No fabricated PASS/evidence/consent; failures are recorded and
+  repaired with regression coverage; live-DB changes are documented
+  initialize() steps (G3 discipline), never silent.
+- Note content is untrusted data; STOP/veto stay outside note content.

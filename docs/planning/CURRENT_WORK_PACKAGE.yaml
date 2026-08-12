@@ -1,31 +1,29 @@
-work_package_id: "WP10"
-name: "V3 DISCOVERY AND BUILDING — slice-1: candidate pipeline"
+work_package_id: "WP10-SLICE2"
+name: "V3 DISCOVERY AND BUILDING — slice-2: monitored sources + mission-execution wiring"
 status: "ACTIVE"
 package_state: "ACTIVE"
 objective: >
-  Continuous discovery loop: monitor/observe sources produce CANDIDATES
-  with evidence; duplicate detection (canonicalized objective hash vs
-  existing candidates plus missions); calibrated deterministic scoring
-  (registry-driven weights: strategic fit, value, information gain,
-  urgency, confidence, effort, cost, risk, reversibility, opportunity
-  cost); approved candidates become MISSIONS (mission.created with the
-  candidate as source); outcome tracking (predictions vs reality after
-  mission completion).
+  Monitored sources: register/poll/disable monitors that feed items into
+  the candidate pipeline (repeat polls dedup via canonical-objective
+  detection; duplicates recorded as pointer rows). Mission-execution
+  wiring: mission.completed auto-records candidate outcomes (prediction
+  vs reality) for missions created from candidates.
 bounded_deliverables:
-  - "schema v10: candidates + candidate_scores"
-  - "events: discovery.candidate_generated, discovery.candidate_scored, discovery.candidate_approved (creates mission), discovery.candidate_rejected"
-  - "module: discovery_candidates.py (deterministic dedup + scoring)"
-  - "tests: test_discovery_candidates.py (8 tests, TDD)"
-entry_criteria: "WP9 (V2) gate PASS (independent review)"
+  - "schema v11: monitors table + missions.created_from (ALTER ADD COLUMN)"
+  - "events: discovery.monitor_registered, discovery.monitor_polled, discovery.monitor_disabled; mission.completed outcome wiring"
+  - "module: discovery_monitors.py (register/poll/disable)"
+  - "tests: test_discovery_monitors.py (8 tests, TDD)"
+entry_criteria: "WP10 slice-1 CLOSED — PASS (ledger 5100-5102)"
 exit_criteria: >
-  candidate pipeline verified: generation to dedup to scoring to mission
-  creation with evidence; outcome tracking wired to mission.completed;
-  independent verifier PASS; full suite green.
+  monitored-source lifecycle verified (register → poll → dedup → disable),
+  candidate outcome wiring verified, independent verifier PASS, full suite
+  green (310 tests EXIT=0).
 gate_verdict: "NOT_TESTED"
-dependencies: ["WP9 knowledge brain (claims/manifests feed candidates)"]
+verifier: "PENDING (dispatched against the frozen alignment HEAD)"
+dependencies: ["WP10 slice-1 candidate pipeline (schema v10)"]
 integration_points:
-  - "knowledge_claims: candidate statements recorded as claims (provenance)"
-  - "missions: mission.created carries candidate_id"
-  - "manifest: candidate context via build_context_manifest"
-  - "ledger: all pipeline events append-only, F9 rollback discipline"
-design_ref: "temp/V3_SLICE1_DESIGN.md (repo copy after activation)"
+  - "candidates: polls feed candidate generation with canonical dedup"
+  - "missions: created_from provenance + completion outcome recording"
+  - "ledger: all pipeline events append-only"
+design_ref: "docs/planning/V3_SLICE1_DESIGN.md (slice-2 section in docs/evidence/WP10_SLICE2_MONITORS.md)"
+close_record: "ledger verification.passed:verdict-wp10-slice2 + evidence.created:wp10-slice2 (PENDING)"
