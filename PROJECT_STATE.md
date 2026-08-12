@@ -5,11 +5,12 @@ This file is the current project truth.
 ```yaml
 project: JARVIS Foundry
 owner: Blendi Mehmeti
-state_version: 13
+state_version: 14
 updated_at: 2026-08-12
 
 phase: V1_AUTONOMY_KERNEL
 phase_status: WP8_IN_PROGRESS
+day1_closed: 2026-08-12 (11 verified cycles; F1/F2/F3/F14/F15 PASS; F4 prepared, owner-resumable; report docs/evidence/WP8_DAY1_REPORT.md)
 implementation_started: true
 start_command_received: true
 start_command_received_at: 2026-08-11T17:33:05+02:00
