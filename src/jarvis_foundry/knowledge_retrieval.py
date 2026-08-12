@@ -131,9 +131,12 @@ def build_context_manifest(connection: sqlite3.Connection, mission_id: str,
 
     conflicts_raw = connection.execute(
         "SELECT claim_a_id, claim_b_id, claim_type, reason "
-        "FROM knowledge_contradictions WHERE claim_type IN ("
-        "SELECT DISTINCT claim_type FROM knowledge_claims WHERE mission_id = ?)"
-        " ORDER BY rowid", (mission_id,)).fetchall()
+        "FROM knowledge_contradictions "
+        "WHERE claim_a_id IN (SELECT claim_id FROM knowledge_claims "
+        "WHERE mission_id = ?) "
+        "AND claim_b_id IN (SELECT claim_id FROM knowledge_claims "
+        "WHERE mission_id = ?) "
+        "ORDER BY rowid", (mission_id, mission_id)).fetchall()
     conflicts = [dict(row) for row in conflicts_raw]
 
     manifest = Manifest(

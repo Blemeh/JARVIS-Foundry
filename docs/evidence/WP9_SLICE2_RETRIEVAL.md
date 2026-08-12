@@ -1,8 +1,16 @@
 # WP9 — V2 Knowledge Brain, Slice-2: Retrieval + Bounded Context Manifests
 
-Status: **IMPLEMENTED** (2026-08-12; 8/8 tests green; independent
-verifier <PENDING>). Slice-1 CLOSED — PASS (deleg_548b6bb6; ledger
-3731–3735).
+Status: **IMPLEMENTED + REPAIRED** (2026-08-12). Slice-1 CLOSED — PASS
+(deleg_548b6bb6; ledger 3731–3735). Verifier round-1 (deleg_cd7da327)
+FAIL on S2-g: cross-mission conflict leak (contradiction pairs of other
+missions with overlapping claim_types appeared in a manifest's CONFLICTS
+section — knowledge_contradictions carries no mission_id and the query
+scoped only by claim_type) → REPAIRED: conflicts scoped by claim
+membership (both claim ids in the mission's claims) + regression
+test_manifest_conflicts_are_mission_scoped. Minor accuracy items fixed:
+truncation-cap wording (the cap applies to the ACTIVE section;
+stale/conflicts are compact advisory sections), tautology in the
+truncation test. Verifier round-2 <PENDING>.
 
 ## Delivered (bounded slice-2 scope)
 
@@ -19,8 +27,10 @@ verifier <PENDING>). Slice-1 CLOSED — PASS (deleg_548b6bb6; ledger
      the registry (causal-analysis/fact/constraint/preference/decision);
      ACTIVE = ACCEPTED+fresh (hint-filtered, deduped); STALE = expired
      ACCEPTED claims (never dropped, listed explicitly); CONFLICTS =
-     live contradiction rows for the mission's claim types; serialized
-     cap with EXPLICIT truncation (flag + counts, never silent);
+     contradiction rows whose BOTH claims belong to the mission (mission-
+     scoped); the ACTIVE section is size-capped at max_chars with
+     EXPLICIT truncation (flag + counts, never silent — stale/conflicts
+     are compact advisory sections outside the cap);
      `manifest_hash` = sha256 over the stable payload (excludes the
      wall-clock generated_at — determinism contract).
 3. **Event**: `knowledge.context_manifest_generated` — audit record

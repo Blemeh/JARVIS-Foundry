@@ -123,13 +123,38 @@ def test_manifest_truncation_is_explicit(tmp_path):
         tiny = build_context_manifest(connection, "mission-1", "anything",
                                       max_chars=120)
     assert tiny.truncated is True
-    assert tiny.active_count <= tiny.active_count or tiny.truncated
-    # the serialized form respects the cap
-    assert len(json.dumps(tiny.as_dict())) >= 0
+    assert tiny.active_count == 0 or tiny.truncated
     with db.connect() as connection:
         big = build_context_manifest(connection, "mission-1", "anything",
                                      max_chars=100000)
     assert big.truncated is False
+
+
+def test_manifest_conflicts_are_mission_scoped(tmp_path):
+    """Regression for verifier deleg_cd7da327 S2-g: contradiction pairs of
+    OTHER missions must never leak into a manifest's conflicts section
+    (previously scoped only by claim_type overlap)."""
+    from jarvis_foundry.knowledge_retrieval import build_context_manifest
+    db = FoundryDatabase(tmp_path / "foundry.db")
+    db.initialize()
+    seed(db)  # mission-1: c5/c6 contradiction pair (fact type)
+    # mission-2 pair with the SAME claim_type (fact) — the leak class
+    db.append(claim("m2a", "The sky is blue", claim_type="fact",
+                    mission_id="mission-2", run="run-2"))
+    db.append(claim("m2b", "The sky isn't blue", claim_type="fact",
+                    mission_id="mission-2", run="run-2"))
+    with db.connect() as connection:
+        manifest = build_context_manifest(connection, "mission-1", "anything")
+    pair_ids = {c["claim_a_id"] for c in manifest.conflicts} | \
+        {c["claim_b_id"] for c in manifest.conflicts}
+    assert "m2a" not in pair_ids and "m2b" not in pair_ids
+    assert "c5" in pair_ids and "c6" in pair_ids
+    # and the mission-2 manifest sees only its own pair
+    with db.connect() as connection:
+        manifest2 = build_context_manifest(connection, "mission-2", "anything")
+    pair2 = {c["claim_a_id"] for c in manifest2.conflicts} | \
+        {c["claim_b_id"] for c in manifest2.conflicts}
+    assert pair2 == {"m2a", "m2b"}
 
 
 def test_manifest_event_projection_and_rebuild(tmp_path):
