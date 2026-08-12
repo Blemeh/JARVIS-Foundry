@@ -1,6 +1,15 @@
-"""WP1 event/projection reconciliation diagnostics tests."""
+"""WP1 event/projection reconciliation diagnostics tests.
 
+Regression (V2-operational gate 2026-08-12): reconcile must read the
+events AND the compared rows from ONE WAL snapshot — a concurrent
+writer appending supervisor heartbeats mid-reconcile must not fabricate
+supervisor_state mismatches (the old multi-connection reconcile raced
+5/5 runs against the live daemon).
+"""
 from __future__ import annotations
+
+import threading
+import time
 
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.events import Event
@@ -200,3 +209,27 @@ def test_reconcile_reports_null_float_mismatch_without_crashing(tmp_path):
         and mismatch["actual"] is None
         for mismatch in report.mismatches
     )
+
+
+def test_reconcile_consistent_under_concurrent_writer(tmp_path):
+    """Regression (V2-operational gate): a concurrent writer appending
+    supervisor heartbeats mid-reconcile must NOT fabricate
+    supervisor_state mismatches — reconcile reads one WAL snapshot."""
+    database = seeded_database(tmp_path)
+
+    def heartbeat_writer() -> None:
+        for i in range(20):
+            database.append(Event.create(
+                "supervisor.heartbeat",
+                {"trust_state": "LAB"},
+                source_type="supervisor", source_id="writer",
+                idempotency_key=f"supervisor.heartbeat:conc-{i}"))
+            time.sleep(0.01)
+
+    thread = threading.Thread(target=heartbeat_writer, daemon=True)
+    thread.start()
+    for _ in range(8):
+        report = reconcile(database)
+        assert report.consistent, report.mismatches
+    thread.join()
+    assert reconcile(database).consistent

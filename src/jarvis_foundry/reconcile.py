@@ -111,81 +111,93 @@ def reconcile(database: FoundryDatabase) -> ReconciliationReport:
             },
         )
 
-    events = database.events()
-    integrity_failures: list[dict[str, Any]] = []
-    for event in events:
-        try:
-            event.validate()
-        except EventIntegrityError as error:
-            integrity_failures.append({
-                "event_id": event.event_id,
-                "event_type": event.event_type,
-                "error": str(error),
-            })
+    # ONE connection + ONE deferred read transaction for the events read
+    # AND every live-row read: WAL gives a reader a stable snapshot once
+    # the transaction begins, so the rebuild and the compared rows come
+    # from the SAME instant — a live daemon appending heartbeats
+    # mid-reconcile can no longer advance supervisor_state between
+    # separate per-table connections and fabricate mismatches
+    # (V2-operational gate 2026-08-12: supervisor_state raced 5/5 runs
+    # while the daemon heartbeated every 5s)
+    with database.connect() as snapshot:
+        snapshot.execute("BEGIN")  # deferred: stable WAL snapshot, no write lock
+        rows = snapshot.execute(
+            "SELECT * FROM events ORDER BY sequence").fetchall()
+        events = [database._row_to_event(row) for row in rows]
 
-    if integrity_failures:
-        # The ledger is untrusted: any projection comparison against a rebuild
-        # from unverified events would be meaningless.
-        return ReconciliationReport(
-            consistent=False,
-            event_count=len(events),
-            integrity_failures=integrity_failures,
-        )
-
-    rebuilt = sqlite3.connect(":memory:")
-
-    try:
-        rebuilt.row_factory = sqlite3.Row
-        migrate(rebuilt, "1970-01-01T00:00:00Z")
-        reset(rebuilt)
+        integrity_failures: list[dict[str, Any]] = []
         for event in events:
-            apply_event(rebuilt, event)
+            try:
+                event.validate()
+            except EventIntegrityError as error:
+                integrity_failures.append({
+                    "event_id": event.event_id,
+                    "event_type": event.event_type,
+                    "error": str(error),
+                })
 
-        mismatches: list[dict[str, Any]] = []
-        unexpected_rows: list[dict[str, Any]] = []
-        missing_rows: list[dict[str, Any]] = []
+        if integrity_failures:
+            # The ledger is untrusted: any projection comparison against
+            # a rebuild from unverified events would be meaningless.
+            return ReconciliationReport(
+                consistent=False,
+                event_count=len(events),
+                integrity_failures=integrity_failures,
+            )
 
-        for table in (*PROJECTION_TABLES, *DERIVED_TABLES):
-            key_column = _table_key_column(table)
-            with database.connect() as live:
-                live_rows = _rows_by_key(live, table)
-            rebuilt_rows = _rows_by_key(rebuilt, table)
+        rebuilt = sqlite3.connect(":memory:")
 
-            for key, rebuilt_row in rebuilt_rows.items():
-                live_row = live_rows.get(key)
-                if live_row is None:
-                    missing_rows.append({"table": table, "key_column": key_column, "key": key})
-                    continue
-                for column, expected in rebuilt_row.items():
-                    actual = live_row.get(column)
-                    if _values_differ(column, expected, actual):
-                        mismatches.append({
-                            "table": table,
-                            "key_column": key_column,
-                            "key": key,
-                            "column": column,
-                            "expected": _json_safe(expected),
-                            "actual": _json_safe(actual),
-                        })
-            for key in live_rows.keys() - rebuilt_rows.keys():
-                unexpected_rows.append({"table": table, "key_column": key_column, "key": key})
+        try:
+            rebuilt.row_factory = sqlite3.Row
+            migrate(rebuilt, "1970-01-01T00:00:00Z")
+            reset(rebuilt)
+            for event in events:
+                apply_event(rebuilt, event)
 
-        consistent = (
-            not integrity_failures
-            and not mismatches
-            and not unexpected_rows
-            and not missing_rows
-        )
-        return ReconciliationReport(
-            consistent=consistent,
-            event_count=len(events),
-            integrity_failures=integrity_failures,
-            mismatches=mismatches,
-            unexpected_rows=unexpected_rows,
-            missing_rows=missing_rows,
-        )
-    finally:
-        rebuilt.close()
+            mismatches: list[dict[str, Any]] = []
+            unexpected_rows: list[dict[str, Any]] = []
+            missing_rows: list[dict[str, Any]] = []
+
+            for table in (*PROJECTION_TABLES, *DERIVED_TABLES):
+                key_column = _table_key_column(table)
+                live_rows = _rows_by_key(snapshot, table)
+                rebuilt_rows = _rows_by_key(rebuilt, table)
+
+                for key, rebuilt_row in rebuilt_rows.items():
+                    live_row = live_rows.get(key)
+                    if live_row is None:
+                        missing_rows.append({"table": table, "key_column": key_column, "key": key})
+                        continue
+                    for column, expected in rebuilt_row.items():
+                        actual = live_row.get(column)
+                        if _values_differ(column, expected, actual):
+                            mismatches.append({
+                                "table": table,
+                                "key_column": key_column,
+                                "key": key,
+                                "column": column,
+                                "expected": _json_safe(expected),
+                                "actual": _json_safe(actual),
+                            })
+                for key in live_rows.keys() - rebuilt_rows.keys():
+                    unexpected_rows.append({"table": table, "key_column": key_column, "key": key})
+
+            consistent = (
+                not integrity_failures
+                and not mismatches
+                and not unexpected_rows
+                and not missing_rows
+            )
+            return ReconciliationReport(
+                consistent=consistent,
+                event_count=len(events),
+                integrity_failures=integrity_failures,
+                mismatches=mismatches,
+                unexpected_rows=unexpected_rows,
+                missing_rows=missing_rows,
+            )
+        finally:
+            rebuilt.close()
 
 
 def _values_differ(column: str, expected: Any, actual: Any) -> bool:

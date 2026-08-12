@@ -97,8 +97,11 @@ def _claims_for_note(db: FoundryDatabase, note_path: str,
     clauses = ["source_event_id = ?", "source_event_id LIKE ?"]
     args: list[str] = [note_path, f"{note_path}:%"]
     if note_name:
+        # covers both relative forms: "JARVIS/V1/<name>" and "<name>"
         clauses.append("source_event_id LIKE ?")
         args.append(f"%/{note_name}:%")
+        clauses.append("source_event_id LIKE ?")
+        args.append(f"{note_name}:%")
     with db.connect() as connection:
         rows = connection.execute(
             f"SELECT claim_id FROM knowledge_claims WHERE "

@@ -46,8 +46,13 @@ def _claim_id_for_line(rel_path: str, line: str, *,
     return f"claim-{_sha(f'{mission_id}|{rel_path}|{line}')[:16]}"
 
 
-def _source_run_id(kind: str, rel_path: str, file_hash: str) -> str:
-    return f"{kind}:{rel_path}:{file_hash}"
+def _source_run_id(kind: str, rel_path: str, line: str) -> str:
+    # PER-LINE content-derived run id: stable across file edits so an
+    # unchanged line re-appended after a file change dedups with an
+    # IDENTICAL payload (the file-hash variant conflicted — WP9 slice-4
+    # discipline: every dedup-key payload field must be content-derived
+    # from the line, never from the file/run state)
+    return f"{kind}:{rel_path}:{_sha(line)[:16]}"
 
 
 def _last_file_hash(db: FoundryDatabase, kind: str,
@@ -65,14 +70,14 @@ def _last_file_hash(db: FoundryDatabase, kind: str,
 
 
 def _ingest_lines(db: FoundryDatabase, mission_id: str, kind: str,
-                  rel_path: str, text: str, file_hash: str,
-                  *, source_id: str, limit: int,
+                  rel_path: str, text: str, *,
+                  source_id: str, limit: int,
                   ) -> tuple[int, int, int, list[str]]:
     """Append one claim per extracted statement (savepoint-isolated batch).
 
     Returns (statements, created, errors, error_messages). Idempotent:
-    unchanged lines dedup by content-derived claim ids; changed lines
-    create NEW claims (history preserved).
+    unchanged lines dedup by content-derived claim ids AND identical
+    payloads; changed lines create NEW claims (history preserved).
     """
     statements = extract_statements(text)
     statements = statements[:limit] if limit else statements
@@ -89,8 +94,7 @@ def _ingest_lines(db: FoundryDatabase, mission_id: str, kind: str,
                     {"claim_id": claim_id, "mission_id": mission_id,
                      "statement": line, "claim_type": "fact",
                      "confidence": 0.5,
-                     "source": {"run_id": _source_run_id(
-                                    kind, rel_path, file_hash),
+                     "source": {"run_id": _source_run_id(kind, rel_path, line),
                                 "event_id": f"{rel_path}:{_sha(line)[:16]}"}},
                     source_type="supervisor", source_id=source_id,
                     idempotency_key=f"knowledge.claim_recorded:{claim_id}")
@@ -135,11 +139,8 @@ def _vault_source(db: FoundryDatabase, *, root: Path, mission_id: str,
         if bytes_read > max_bytes:
             capped = True
             break
-        file_hash = _sha(text)
-        if _last_file_hash(db, "vault", rel) == file_hash:
-            continue  # unchanged since last ingestion
         n, c, e, msgs = _ingest_lines(
-            db, mission_id, "vault", rel, text, file_hash,
+            db, mission_id, "vault", rel, text,
             source_id=source_id, limit=budget["items"])
         items_seen += n
         created += c
@@ -181,11 +182,8 @@ def _dir_source(db: FoundryDatabase, *, kind: str, directory: Path,
         if bytes_read > max_bytes:
             capped = True
             break
-        file_hash = _sha(text)
-        if _last_file_hash(db, kind, rel) == file_hash:
-            continue
         n, c, e, msgs = _ingest_lines(
-            db, mission_id, kind, rel, text, file_hash,
+            db, mission_id, kind, rel, text,
             source_id=source_id, limit=budget["items"])
         items_seen += n
         created += c
@@ -326,11 +324,14 @@ def run_ingestion_cycle(db: FoundryDatabase, *,
     Returns per-source reports with claims_created/errors/metrics.
     Restart-safe: unchanged content dedups; cursors bound event scans.
     """
-    budget = {"items": max(1, int(max_items))}
     cycle_id = f"ingest-{uuid.uuid4().hex[:12]}"
     started = time.monotonic()
     reports: dict[str, Any] = {}
     for kind in sources:
+        # per-source budget: each source is bounded independently (the
+        # total is measured in the report; a busy source never starves
+        # the others)
+        budget = {"items": max(1, int(max_items))}
         if kind == "vault":
             if vault_root is None:
                 continue
@@ -367,16 +368,19 @@ def run_ingestion_cycle(db: FoundryDatabase, *,
         report["metrics"]["elapsed_ms"] = round(
             (time.monotonic() - started) * 1000, 1)
         reports[kind] = report
+        # per-source ingestion ids: the ingestion_queued/completed handler
+        # inserts the payload ingestion_id (UNIQUE) — one id per source
+        source_ingestion_id = f"{cycle_id}:{kind}"
         db.append(Event.create(
             "knowledge.ingestion_queued",
-            {"ingestion_id": cycle_id, "mission_id": mission_id,
+            {"ingestion_id": source_ingestion_id, "mission_id": mission_id,
              "source_type": kind, "source_ref": f"cycle-{cycle_id}",
              "source_hash": ""},
             source_type="supervisor", source_id=source_id,
             idempotency_key=f"knowledge.ingestion_queued:{cycle_id}:{kind}"))
         db.append(Event.create(
             "knowledge.ingestion_completed",
-            {"ingestion_id": cycle_id, "claims_count":
+            {"ingestion_id": source_ingestion_id, "claims_count":
              report["claims_created"], "errors": report["errors"],
              "metrics": report["metrics"]},
             source_type="supervisor", source_id=source_id,
