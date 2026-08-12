@@ -50,7 +50,7 @@ Verifier round-2 (deleg_a18133f6) <PENDING>.
   (no conflict); retry after failure (safe dedup).
 - Slices 1–3 regression: 27/27 knowledge tests still green (37/37
   combined).
-- Full suite: EXIT=0 (287 tests) → var/evidence/wp9-slice4/
+- Full suite: EXIT=0 (285 tests) → var/evidence/wp9-slice4/
   suite-slice4.txt.
 
 ## Live-DB impact
