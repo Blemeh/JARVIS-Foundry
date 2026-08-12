@@ -216,10 +216,20 @@ class RoleDispatcher:
                 )
                 self._start_run(manifest, provider, model)
                 tried.append(provider)
+
+                def _beat(rid: str = run_id) -> None:
+                    # DIR-2026-08-12 item 2: every heartbeat renews the
+                    # session lease — a live, heartbeating process must
+                    # never be reaped. A lease that cannot be renewed
+                    # (reaped/gone) raises LeaseUnavailable: the session
+                    # cannot complete durably and fails honestly.
+                    self._heartbeat(rid)
+                    self.leases.renew(lease_key, rid, duration_seconds)
+
                 try:
                     result = self.adapter.dispatch(
                         manifest,
-                        heartbeat=lambda rid=run_id: self._heartbeat(rid),
+                        heartbeat=_beat,
                     )
                 except ProviderUnavailable as error:
                     last_error = error

@@ -184,6 +184,12 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             ),
         )
     elif event.event_type == "agent_run.started":
+        # DIR-2026-08-12 item 2: a COMPLETED run never regresses to
+        # RUNNING. FAILED rows MAY be re-started — the dispatcher's
+        # provider-fallback chain records attempt failures
+        # (provider_unavailable:<provider>) before re-starting under the
+        # next provider; the run row legitimately walks
+        # RUNNING -> FAILED -> RUNNING -> COMPLETED within one dispatch.
         connection.execute(
             """INSERT INTO agent_runs(
                 run_id, mission_id, step_id, role, provider, model,
@@ -195,7 +201,8 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
                 context_manifest_hash=excluded.context_manifest_hash,
                 tool_policy_json=excluded.tool_policy_json,
                 status='RUNNING', last_event_id=excluded.last_event_id,
-                updated_at=excluded.updated_at""",
+                updated_at=excluded.updated_at
+            WHERE agent_runs.status IN ('RUNNING', 'FAILED')""",
             (
                 payload["run_id"], payload["mission_id"], payload.get("step_id"),
                 payload["role"], payload.get("provider"), payload.get("model"),
@@ -210,10 +217,13 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             (event.recorded_at, event.event_id, event.recorded_at, payload["run_id"]),
         )
     elif event.event_type == "agent_run.completed":
+        # DIR-2026-08-12 item 2: terminal states are MONOTONIC — a run
+        # already marked FAILED (e.g. reaped) never becomes COMPLETED, no
+        # matter when a late completion event lands.
         connection.execute(
             """UPDATE agent_runs SET status = 'COMPLETED', finished_at = ?,
                result_json = ?, cost_json = ?, failure_class = NULL,
-               last_event_id = ?, updated_at = ? WHERE run_id = ?""",
+               last_event_id = ?, updated_at = ? WHERE run_id = ? AND status != 'FAILED'""",
             (
                 event.recorded_at, canonical_json(payload.get("result", {})),
                 canonical_json(payload.get("cost", {})), event.event_id, event.recorded_at,
@@ -221,9 +231,12 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             ),
         )
     elif event.event_type == "agent_run.failed":
+        # DIR-2026-08-12 item 2: a COMPLETED run never regresses to FAILED
+        # via a late failure event (e.g. a reaper event that lands after
+        # the completion event in the stream).
         connection.execute(
             """UPDATE agent_runs SET status = 'FAILED', finished_at = ?, failure_class = ?,
-               last_event_id = ?, updated_at = ? WHERE run_id = ?""",
+               last_event_id = ?, updated_at = ? WHERE run_id = ? AND status != 'COMPLETED'""",
             (event.recorded_at, payload.get("failure_class"), event.event_id, event.recorded_at, payload["run_id"]),
         )
     elif event.event_type == "evidence.created":

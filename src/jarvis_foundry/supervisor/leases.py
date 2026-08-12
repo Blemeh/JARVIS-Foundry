@@ -38,3 +38,24 @@ class LeaseManager:
             )
             return cursor.rowcount == 1
 
+    def renew(self, lease_key: str, owner_id: str, duration_seconds: int) -> None:
+        """Extend the owner's lease to now + duration (heartbeat renewal).
+
+        DIR-2026-08-12 item 2: a live worker/verifier must heartbeat AND
+        renew its lease while running so the reaper never reaps a live
+        process. Raises LeaseUnavailable when the lease is not held by the
+        owner (or is gone) — a session whose lease cannot be renewed
+        cannot complete durably and must fail honestly.
+        """
+        now = utc_now()
+        expires = isoformat(now + timedelta(seconds=duration_seconds))
+        with self.database.transaction() as connection:
+            cursor = connection.execute(
+                "UPDATE leases SET expires_at = ?, heartbeat_at = ? "
+                "WHERE lease_key = ? AND owner_id = ?",
+                (expires, isoformat(now), lease_key, owner_id),
+            )
+            if cursor.rowcount == 0:
+                raise LeaseUnavailable(
+                    f"lease {lease_key} is not held by {owner_id} (cannot renew)")
+
