@@ -29,6 +29,7 @@ PROJECTION_TABLES = (
     "monitors",
     "vault_files",
     "vault_sync_state",
+    "ingestion_cursors",
 )
 
 
@@ -663,6 +664,19 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
              event.recorded_at, payload["files_indexed"],
              payload["files_changed"], payload["files_removed"],
              payload.get("cursor"), event.event_id, event.recorded_at),
+        )
+
+    elif event.event_type == "ingestion.cursor_updated":
+        connection.execute(
+            """INSERT INTO ingestion_cursors(
+                source_kind, cursor, last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?)
+            ON CONFLICT(source_kind) DO UPDATE SET
+                cursor = excluded.cursor,
+                last_event_id = excluded.last_event_id,
+                updated_at = excluded.updated_at""",
+            (payload["source_kind"], payload["cursor"],
+             event.event_id, event.recorded_at),
         )
 
     if event.event_type.startswith("supervisor.") or event.event_type.startswith("emergency_stop."):

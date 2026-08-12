@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 
 
-SCHEMA_VERSION = 12
+SCHEMA_VERSION = 13
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -409,6 +409,17 @@ MIGRATIONS: dict[int, str] = {
         files_changed INTEGER NOT NULL DEFAULT 0,
         files_removed INTEGER NOT NULL DEFAULT 0,
         cursor TEXT,
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    """,
+    13: """
+    -- WP11 slice C (V2-OPERATIONAL): per-source ingestion cursors
+    -- (event-derived, reconcile-verified, bounds event scans so a
+    -- restart never re-scans the whole ledger)
+    CREATE TABLE IF NOT EXISTS ingestion_cursors (
+        source_kind TEXT PRIMARY KEY,
+        cursor TEXT NOT NULL,
         last_event_id TEXT NOT NULL,
         updated_at TEXT NOT NULL
     );

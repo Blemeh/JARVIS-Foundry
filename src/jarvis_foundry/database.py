@@ -165,6 +165,7 @@ class FoundryDatabase:
             "monitors": "monitor_id",
             "vault_files": "rel_path",
             "vault_sync_state": "sync_id",
+            "ingestion_cursors": "source_kind",
         }
         if allowed.get(table) != key_column:
             raise ValueError("unsupported projection lookup")
@@ -177,7 +178,8 @@ class FoundryDatabase:
         allowed = {"knowledge_claims", "knowledge_contradictions", "obsidian_writes",
                    "knowledge_manifests", "knowledge_entities", "knowledge_claim_entities",
                    "knowledge_ingestions", "knowledge_snapshots", "candidates",
-                   "candidate_scores", "monitors", "vault_files", "vault_sync_state"}
+                   "candidate_scores", "monitors", "vault_files",
+                   "vault_sync_state", "ingestion_cursors"}
         if table not in allowed:
             raise ValueError("unsupported projection listing")
         clauses, args = [], []
@@ -193,7 +195,8 @@ class FoundryDatabase:
         allowed = {"knowledge_claims", "knowledge_contradictions", "obsidian_writes",
                    "knowledge_manifests", "knowledge_entities", "knowledge_claim_entities",
                    "knowledge_ingestions", "knowledge_snapshots", "candidates",
-                   "candidate_scores", "monitors", "vault_files", "vault_sync_state"}
+                   "candidate_scores", "monitors", "vault_files",
+                   "vault_sync_state", "ingestion_cursors"}
         if table not in allowed:
             raise ValueError("unsupported projection count")
         with self.connect() as connection:

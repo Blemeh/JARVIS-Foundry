@@ -80,6 +80,7 @@ def _table_key_column(table: str) -> str:
         "monitors": "monitor_id",
         "vault_files": "rel_path",
         "vault_sync_state": "sync_id",
+        "ingestion_cursors": "source_kind",
         "system_state": "singleton",
         "supervisor_state": "singleton",
     }
