@@ -12,7 +12,15 @@ version == SCHEMA_VERSION), 8152ac6 (fully deterministic claim payloads
 — per-doc content hashes in source.run_id/event_id; unchanged docs
 dedup, delta-only claims, retries safe) + regressions
 test_overlapping_delta_batch_no_conflict + test_retry_after_failure_is_safe.
-Verifier round-2 (deleg_a18133f6) <PENDING>.
+Verifier round-2 (deleg_a18133f6) **PASS** on H1–H3, FAIL on H4 (doc
+lineage missing) → docs repairs 9fbfc14 + b21f4ab (lineage + count
+285 collect-verified) → round-2b (deleg_47a4d674) J1 count FAIL →
+b21f4ab fix → round-2c (deleg_3cce471c) **PASS**. Ledger:
+verification.failed ×1 (repair-keyed, seq 4476) +
+verification.passed:verdict-wp9-slice4 (seq 4477) +
+evidence.created:wp9-slice4 (seq 4478). **Slice-4 CLOSED — PASS.**
+10/10 ingestion tests green; full suite 285 EXIT=0.
+Next: slice-5 (snapshots/backup/restore/semantic rollback).
 
 ## Delivered (bounded slice-4 scope)
 
