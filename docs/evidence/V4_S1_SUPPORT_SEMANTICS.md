@@ -1,66 +1,88 @@
 # V4-S1 — Support Semantics + Provenance Hygiene (DIR-2026-08-12 items 4–5)
 
 **Slice:** V4_CONTINUOUS_AUTONOMY — the package's named FIRST MISSION
-(support-semantics repair discovered by the V3 loops)
-**Commit:** <PENDING>
-**Date:** 2026-08-12
-**Status:** PLANNED — live data sized; implementation after S2/S3/S4
+**Commit:** `982f472` (feat(v4-s1): source-kind-aware claim support +
+provenance hygiene)
+**Date:** 2026-08-13
+**Status:** CLOSED — independent verifier **PASS** (deleg_12682a02,
+2026-08-13T00:53+02:00, 17 probes; 5 info-severity findings — all
+documented legacy contracts or safe-direction behavior (registry-only
+mode, case-insensitive FS with content verification, symlink probe
+blocked by Windows privilege but guard code-verified, repo basename
+collision = false negative never fabricated support, working-tree doc);
+verdict JSON archived at `var/evidence/v4-s1-support/verdict-deleg_
+12682a02.json`, sha256 7e79fd57…).
+**LIVE CLOSE:** schema 16→17; atomic projection rebuild over 14,945
+events (converged 766 knowledge_claims run_id rows + 14 agent_runs
+monotonicity rows; reconcile consistent, 0 mismatches); support re-scan
+**953/954 SUPPORTED (1 unsupported — was 894)**: the false premise is
+re-measured; cand-e93f2a83a072 + cand-00d0b3a03872 superseded
+additively; ledger `verification.passed:verdict-v4-s1-support:round1` +
+`evidence.created:v4-s1-support-close` (events 14,945→14,953, schema
+17); daemon healthy, heartbeats resumed within 2 beats. Backup:
+`var/evidence/v4-s1-support/live-before-s1-close.db` (sha256
+641b98f5…).
 
-## Problem (measured, not assumed — read-only live probes 2026-08-12T23:40–23:55)
+## Problem (measured, not assumed)
 
-1. `note_support` (vault_retrieval.py:39-52) marks a claim SUPPORTED only
-   when its source event maps to an ACTIVE `vault_files` row. Claims from
-   handoff/repo/system sources can never be supported by that check.
-   Live counts: 954 claims = 26 vault + 766 handoff + 69 repo + 93
-   system. The maintenance signal (v3_loop._maintenance_candidates) uses
-   the same vault-only SQL → 894 claims falsely UNSUPPORTED →
-   maintenance missions (cand-c41b7e04dd81, cand-767d55ed2d5b EXECUTED;
-   cand-e93f2a83a072 "813", cand-00d0b3a03872 "853" still SCORED/OPEN).
-2. Malformed provenance: 766 live claims carry `handoff:handoff:FILE.md`
-   run_ids (live_ingestion._source_run_id double-prefixes when the rel
-   path already carries the kind prefix).
-
-## Honest re-scan results (what the fix will produce)
-
-- handoff: 766 claims / 18 unique files — ALL 18 files exist in
-  docs/handoffs (existence check); line-hash re-derivation to verify.
-- repo: 69/69 commit shas present in the bounded git log.
-- system: 93/93 event sequences present on the ledger.
-- vault: 25/26 line-hash matches; 1 changed line; 0 missing files.
-- Post-fix unsupported ≈ 1 (the changed vault line) vs 894 before —
-  the old check's false-positive rate was ~99.9%.
+1. `note_support` only knew vault sources: a claim was SUPPORTED iff its
+   source event mapped to an ACTIVE `vault_files` row. Live counts (954
+   claims = 26 vault + 766 handoff + 69 repo + 93 system): the
+   maintenance signal therefore counted 894/920 claims UNSUPPORTED —
+   yet every referenced source EXISTS (repo 69/69 shas in the bounded
+   log, system 93/93 events on the ledger, handoff 18/18 files in
+   docs/handoffs, vault 25/26 line hashes still present). The old
+   check's false-positive rate was ~99.9%; two open maintenance
+   candidates (cand-e93f2a83a072 "813", cand-00d0b3a03872 "853") rest on
+   the false premise.
+2. 766 live claims carry the malformed doubled run_id `handoff:handoff:`
+   (the ingestion generator prefixed the kind twice for directory
+   sources).
 
 ## Repair
 
-1. `note_support(connection, claim, *, vault_root, handoff_dir,
-   research_dirs, repo_paths)` — kind-aware (vault registry ACTIVE +
-   line-hash; handoff/research file exists + line-hash; repo commit in
-   bounded git log; system event on ledger); batched variant with a
-   per-call file cache for retrieve_vault + detect_research_items.
-2. `_source_run_id` — no double prefix (`handoff:FILE.md:sha`).
-3. Projection normalization at the knowledge_claims boundary
-   (deterministic; rebuild reproduces clean rows; history untouched).
-4. `_maintenance_candidates` — kind-aware signal (roots threaded through
-   run_one_loop); honest no-op when nothing clears the bar.
-5. Migration v17: candidates CHECK widened with 'SUPERSEDED' +
-   `superseded_by TEXT` (table rebuild; rehearsed on a live-DB COPY
-   first — never the live DB until verified); new event
-   `discovery.candidate_superseded` (additive correction); the two open
-   false-premise candidates (e93f2a83a072, 00d0b3a03872) superseded
-   with the re-scan evidence as reason.
-6. Live close: re-scan support on the LIVE claims (staged ledger
-   appends), ledger evidence events, doc reconciliation.
+1. **Source-kind-aware support** (`vault_retrieval.py`): `note_support`/
+   `batch_support` resolve SUPPORT by kind — vault (registry ACTIVE;
+   with the root: on-disk hash == index hash AND the referenced line
+   hash exists), handoff/research (file exists + line hash; dir missing
+   = UNSUPPORTED), repo (commit in the bounded git log, depth 2000,
+   basename match), system (event sequence on the ledger); unknown or
+   unverifiable = UNSUPPORTED. Per-call cache: each file read/extracted
+   once, each repo log fetched once. Path-escape guards on every file
+   resolution.
+2. **Threading**: `retrieve_vault`, `detect_research_items`,
+   `_maintenance_candidates` take the roots; `run_one_loop` gained
+   `research_dirs` and passes everything through — the loop's signals
+   are honest again.
+3. **Provenance hygiene**: `normalize_source_run_id` applied at the
+   PROJECTION boundary (derived rows clean, event payloads untouched,
+   rebuilds deterministic). The generator is intentionally NOT changed:
+   altering the payload shape would break the content-derived dedup key
+   for re-ingested files (WP9 slice-4 lesson).
+4. **Additive supersession**: migration v17 rebuilds `candidates` with
+   the status CHECK widened by `SUPERSEDED` + `superseded_by`;
+   `discovery.candidate_superseded` event + projection; idempotent
+   `supersede_candidate`; selection scans NEW/SCORED only, so a
+   superseded candidate is never executed. The two false-premise open
+   candidates are superseded at the live close with the re-scan
+   evidence as the reason.
 
-## Tests (planned)
+## Tests (21 new)
 
-- per-kind support matrices (vault ACTIVE/missing/changed; handoff
-  exists/changed/missing/dir-None; repo present/absent/unknown-repo;
-  system present/absent; unknown prefix)
-- run_id format regression; projection normalization regression
-- maintenance signal: seeded false-UNSUPPORTED claims stop generating
-  candidates after the fix; genuine unsupported still detected
-- migration v17 on a v16 copy (data preserved, CHECK widened,
-  SUPERSEDED accepted, EXECUTED/APPROVED rows intact)
-- supersession event: projection flips SCORED→SUPERSEDED, selection
-  scans exclude SUPERSEDED, dedup idempotent
-- retrieve_vault/detect_research_items root threading
+- `test_support_semantics.py` (18): per-kind support matrices
+  (vault ACTIVE/changed-line/missing-registry; handoff exists/changed/
+  missing/no-dir; repo present/unknown-sha/no-repo; system present/
+  missing; unknown prefix; batch over mixed kinds), run_id
+  normalization (doubled handoff/research fixed, single prefixes
+  untouched, historical payload preserved).
+- `test_candidate_supersession.py` (3): supersede flips + excludes from
+  selection; idempotent re-delivery; v16→v17 migration (v16 CHECK
+  rejection A/B, rows preserved, widened CHECK accepts SUPERSEDED).
+
+## Evidence
+
+- Full suite: 462 passed EXIT=0 (was 441) — artifact regenerated at
+  `var/evidence/v4-s1-support/suite-v4-s1.txt`.
+- Live re-scan + supersession + v17 application are the LIVE-CLOSE
+  step, rehearsed on a copy first (see the close record).
+- Next: independent adversarial verifier (freeze discipline).
