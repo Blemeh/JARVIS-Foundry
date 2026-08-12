@@ -78,7 +78,7 @@ def sync_vault(db: FoundryDatabase, vault_root: str | Path,
                 {"rel_path": rel, "content_sha256": digest,
                  "size_bytes": size, "mtime": mtime},
                 source_type="supervisor", source_id=source_id,
-                idempotency_key=f"vault.file_indexed:{rel}:{digest}"))
+                idempotency_key=f"vault.file_indexed:{rel}:{digest}:{mtime}"))
             indexed += 1
         elif current != digest:
             db.append(Event.create(
@@ -86,7 +86,7 @@ def sync_vault(db: FoundryDatabase, vault_root: str | Path,
                 {"rel_path": rel, "content_sha256": digest,
                  "size_bytes": size, "mtime": mtime},
                 source_type="supervisor", source_id=source_id,
-                idempotency_key=f"vault.file_indexed:{rel}:{digest}"))
+                idempotency_key=f"vault.file_indexed:{rel}:{digest}:{mtime}"))
             changed += 1
 
     for rel in known:
