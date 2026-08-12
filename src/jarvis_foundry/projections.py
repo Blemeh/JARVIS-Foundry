@@ -470,12 +470,14 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
         connection.execute(
             """INSERT INTO knowledge_snapshots(
                 snapshot_id, mission_id, scope, head_event_id,
-                schema_version, claims_count, path, last_event_id, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                schema_version, claims_count, content_sha256, path,
+                last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (payload["snapshot_id"], payload["mission_id"],
              payload.get("scope", "knowledge"), payload["head_event_id"],
              payload["schema_version"], payload.get("claims_count", 0),
-             payload["path"], event.event_id, event.recorded_at),
+             payload.get("content_sha256", ""), payload["path"],
+             event.event_id, event.recorded_at),
         )
     elif event.event_type == "knowledge.claims_rolled_back":
         for claim_id in payload.get("claim_ids", []):

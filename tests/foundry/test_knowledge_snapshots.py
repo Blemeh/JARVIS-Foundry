@@ -47,7 +47,31 @@ def test_snapshot_backup_file_is_restorable(tmp_path):
     db.initialize()
     db.append(claim_event())
     result = create_snapshot(db, "mission-1", "knowledge", tmp_path / "snap")
-    assert verify_snapshot(result["path"], result["snapshot_id"]) is True
+    assert verify_snapshot(db, result["snapshot_id"]) is True
+
+
+def test_verify_snapshot_detects_payload_tampering(tmp_path):
+    """Regression for verifier deleg_9ecde3af F2: content-level corruption
+    (payload byte flips that pass quick_check) must fail verification via
+    the content sha256 cross-check."""
+    from jarvis_foundry.knowledge_snapshots import (create_snapshot,
+                                                    verify_snapshot)
+    db = FoundryDatabase(tmp_path / "foundry.db")
+    db.initialize()
+    db.append(claim_event())
+    result = create_snapshot(db, "mission-1", "knowledge", tmp_path / "snap")
+    assert verify_snapshot(db, result["snapshot_id"]) is True
+    # flip bytes inside a payload region (claim statement text)
+    data = bytearray(result["path"].read_bytes())
+    marker = b"The retry loop caused the outage"
+    idx = data.find(marker)
+    assert idx >= 0, "payload marker not found"
+    data[idx] = ord("X") if data[idx] != ord("X") else ord("Y")
+    result["path"].write_bytes(bytes(data))
+    assert verify_snapshot(db, result["snapshot_id"]) is False
+    # structural damage also fails
+    result["path"].write_bytes(result["path"].read_bytes()[: len(result["path"].read_bytes()) // 2])
+    assert verify_snapshot(db, result["snapshot_id"]) is False
 
 
 def test_restore_from_snapshot_reopens_readonly(tmp_path):

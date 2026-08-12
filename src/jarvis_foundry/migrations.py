@@ -328,6 +328,7 @@ MIGRATIONS: dict[int, str] = {
         head_event_id INTEGER NOT NULL,
         schema_version INTEGER NOT NULL,
         claims_count INTEGER NOT NULL DEFAULT 0,
+        content_sha256 TEXT NOT NULL DEFAULT '',
         path TEXT NOT NULL,
         last_event_id TEXT NOT NULL,
         updated_at TEXT NOT NULL

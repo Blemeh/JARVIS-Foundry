@@ -1,8 +1,16 @@
 # WP9 — V2 Knowledge Brain, Slice-5: Snapshots / Backup / Restore / Semantic Rollback
 
-Status: **IMPLEMENTED** (2026-08-12; 8/8 tests green; independent
-verifier <PENDING>). Slices 1–4 CLOSED — PASS (deleg_548b6bb6,
-deleg_7c4759fa, deleg_01ebd46f, deleg_3cce471c).
+Status: **IMPLEMENTED + REPAIRED** (2026-08-12). Slices 1–4 CLOSED —
+PASS (deleg_548b6bb6, deleg_7c4759fa, deleg_01ebd46f, deleg_3cce471c).
+Verifier round-1 (deleg_9ecde3af) FAIL: F1 test-count overstatements
+(7→8 snapshot tests, 44→45 combined, 292→293 suite — corrected by the
+tampering regression + honest counts), F2 verify_snapshot did not
+detect CONTENT corruption (payload byte flips passed quick_check;
+verification self-attested from the file's own row) → REPAIRED:
+content sha256 recorded in the event/projection and verification
+cross-checks the FILE against the AUTHORITATIVE live-DB record
+(quick_check + sha256 + claims count), F7 rollback idempotency key now
+deterministic (one rollback per snapshot). Verifier round-2 <PENDING>.
 
 ## Delivered (bounded slice-5 scope)
 
@@ -20,14 +28,17 @@ deleg_7c4759fa, deleg_01ebd46f, deleg_3cce471c).
      the source of truth; rebuild reproduces the flags).
 3. **`knowledge_snapshots.py`**:
    - `create_snapshot` — measures the ledger head + schema + counts,
-     records the event, then writes a CONSISTENT file-level backup via
-     the SQLite backup API.
-   - `verify_snapshot` — quick_check + the file carries its own snapshot
-     row.
+     writes a CONSISTENT file-level backup via the SQLite backup API,
+     then records the event WITH the file's content sha256.
+   - `verify_snapshot(db, snapshot_id)` — cross-checks the file against
+     the authoritative live-DB record: quick_check (structural) +
+     content sha256 + claims count; any tampering (payload or
+     structural) fails.
    - `open_snapshot_readonly` — read-only restore verification (never
      mutates the snapshot; the live DB is never restored onto).
    - `semantic_rollback` — validates the snapshot exists (F9 rollback
-     pattern), flags the claims ROLLED_BACK with reason.
+     pattern), flags the claims ROLLED_BACK with reason; deterministic
+     idempotency key (one rollback per snapshot).
 4. Registries updated: PROJECTION_TABLES, reconcile key-column map,
    row/all/count allowlists.
 
@@ -35,15 +46,16 @@ deleg_7c4759fa, deleg_01ebd46f, deleg_3cce471c).
 
 - Tests: `tests/foundry/test_knowledge_snapshots.py` — 8 tests (red
   before implementation, green after): snapshot row + head/counts;
-  restorable backup (verify_snapshot); read-only restore with
-  post-snapshot mutation isolation (snapshot content, not live state);
-  semantic rollback flags + history preserved (statement intact);
-  rollback validation (missing snapshot → raise + rollback);
-  rebuild reproduces snapshots + flags; schema version == code.
+  restorable backup (verify_snapshot); payload-tampering + structural
+  corruption detection (content sha256 regression); read-only restore
+  with post-snapshot mutation isolation; semantic rollback flags +
+  history preserved; rollback validation (missing snapshot → raise +
+  rollback); rebuild reproduces snapshots + flags; schema version ==
+  code.
 - Slices 1–4 regression: 37/37 knowledge tests still green (45/45
   combined).
-- Full suite: <PENDING> (expect EXIT=0, 293 tests) →
-  var/evidence/wp9-slice5/suite-slice5.txt.
+- Full suite: EXIT=0 (293 tests) → var/evidence/wp9-slice5/
+  suite-slice5.txt.
 
 ## Live-DB impact
 

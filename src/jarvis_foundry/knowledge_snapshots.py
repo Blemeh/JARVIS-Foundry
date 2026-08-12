@@ -12,6 +12,7 @@ Bounded by design:
   flags)."""
 from __future__ import annotations
 
+import hashlib
 import sqlite3
 import uuid
 from pathlib import Path
@@ -55,46 +56,57 @@ def create_snapshot(db: FoundryDatabase, mission_id: str, scope: str,
             "SELECT COALESCE(MAX(version), 0) FROM schema_migrations").fetchone()[0]
         claims = connection.execute(
             "SELECT COUNT(*) FROM knowledge_claims").fetchone()[0]
-
-    # record FIRST so the backup file is self-describing (carries its own
-    # knowledge_snapshots row -> verify_snapshot can validate it)
-    db.append(Event.create(
-        "knowledge.snapshot_created",
-        {"snapshot_id": snapshot_id, "mission_id": mission_id,
-         "scope": scope, "head_event_id": head,
-         "schema_version": version, "claims_count": claims,
-         "path": str(snapshot_path)},
-        source_type="supervisor", source_id="wp9-snapshots",
-        idempotency_key=f"knowledge.snapshot_created:{snapshot_id}"))
-
-    with db.connect() as connection:
         # consistent file-level backup (SQLite backup API)
         dest = sqlite3.connect(snapshot_path)
         try:
             connection.backup(dest)
         finally:
             dest.close()
+    content_sha = hashlib.sha256(snapshot_path.read_bytes()).hexdigest()
+
+    # record AFTER the backup so the event carries the file checksum —
+    # verification cross-checks the FILE against the authoritative
+    # ledger-projected record (never self-attests from the file's own row;
+    # verifier deleg_9ecde3af F2)
+    db.append(Event.create(
+        "knowledge.snapshot_created",
+        {"snapshot_id": snapshot_id, "mission_id": mission_id,
+         "scope": scope, "head_event_id": head,
+         "schema_version": version, "claims_count": claims,
+         "content_sha256": content_sha, "path": str(snapshot_path)},
+        source_type="supervisor", source_id="wp9-snapshots",
+        idempotency_key=f"knowledge.snapshot_created:{snapshot_id}"))
     return {"snapshot_id": snapshot_id, "path": snapshot_path,
             "head_event_id": head}
 
 
-def verify_snapshot(path: Path, snapshot_id: str) -> bool:
-    """Integrity check: quick_check + the recorded snapshot_id matches
-    the file's knowledge_snapshots row (when the file carries it)."""
+def verify_snapshot(db: FoundryDatabase, snapshot_id: str) -> bool:
+    """Integrity check against the AUTHORITATIVE live-DB record:
+    quick_check (structural) + content sha256 + claims count must all
+    match the recorded snapshot row. Any payload tampering or structural
+    damage fails verification."""
     try:
+        with db.connect() as connection:
+            row = connection.execute(
+                "SELECT path, claims_count, content_sha256 "
+                "FROM knowledge_snapshots WHERE snapshot_id = ?",
+                (snapshot_id,)).fetchone()
+        if row is None:
+            return False
+        path, expected_claims, expected_sha = row
         conn = sqlite3.connect(f"file:{Path(path).as_posix()}?mode=ro",
                                uri=True)
         try:
-            ok = conn.execute("PRAGMA quick_check").fetchone()[0] == "ok"
-            if not ok:
+            if conn.execute("PRAGMA quick_check").fetchone()[0] != "ok":
                 return False
-            row = conn.execute(
-                "SELECT snapshot_id FROM knowledge_snapshots "
-                "WHERE snapshot_id = ?", (snapshot_id,)).fetchone()
-            return row is not None
+            claims = conn.execute(
+                "SELECT COUNT(*) FROM knowledge_claims").fetchone()[0]
         finally:
             conn.close()
-    except sqlite3.Error:
+        if claims != expected_claims:
+            return False
+        return hashlib.sha256(Path(path).read_bytes()).hexdigest() == expected_sha
+    except (sqlite3.Error, OSError, ValueError):
         return False
 
 
@@ -105,7 +117,9 @@ def open_snapshot_readonly(path: Path) -> SnapshotReader:
 def semantic_rollback(db: FoundryDatabase, mission_id: str, snapshot_id: str,
                       claim_ids: list[str], reason: str) -> int:
     """Flag the given claims ROLLED_BACK (append-only; history preserved).
-    Validates the snapshot exists; raises + rolls back otherwise."""
+    Validates the snapshot exists; raises + rolls back otherwise.
+    Deterministic idempotency key: one rollback per snapshot (verifier
+    deleg_9ecde3af F7)."""
     with db.connect() as connection:
         row = connection.execute(
             "SELECT snapshot_id FROM knowledge_snapshots "
@@ -119,6 +133,5 @@ def semantic_rollback(db: FoundryDatabase, mission_id: str, snapshot_id: str,
         {"snapshot_id": snapshot_id, "mission_id": mission_id,
          "claim_ids": claim_ids, "reason": reason},
         source_type="supervisor", source_id="wp9-snapshots",
-        idempotency_key=f"knowledge.claims_rolled_back:{snapshot_id}:"
-                        f"{uuid.uuid4().hex[:8]}"))
+        idempotency_key=f"knowledge.claims_rolled_back:{snapshot_id}"))
     return len(claim_ids)
