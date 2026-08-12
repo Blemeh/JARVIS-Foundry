@@ -19,6 +19,7 @@ session is launched; workers never invoke Hermes directly.
 """
 from __future__ import annotations
 
+import json
 import os
 import re
 import subprocess
@@ -281,14 +282,58 @@ class HermesOneshotAdapter:
             # BLOCKED/provider_unavailable state (WP8 F5/F6).
             raise ProviderUnavailable(
                 f"oneshot reported provider failure (exit 0): {first_line[:200]}")
+        # DIR-2026-08-12 verifier truth: the verdict must be an EXPLICIT
+        # STRUCTURED VERDICT in the session output, never the exit code.
+        # Missing/ambiguous output is NOT_TESTED — never PASS.
+        verdict = self._structured_verdict(process.stdout)
+        if verdict is None:
+            verdict = VERDICT_NOT_TESTED
+            note = ("[adapter] no structured verdict found in the session "
+                    "output (expected a line 'VERDICT: PASS | FAIL | "
+                    "BLOCKED | NOT_TESTED' within the first 20 lines) — "
+                    "recorded NOT_TESTED, never PASS")
+        else:
+            note = ""
+        evidence = (process.stdout or "").strip()[-2000:]
+        if note:
+            evidence = f"{evidence}\n{note}" if evidence else note
         return RoleResult(
             run_id=manifest.run_id, role=manifest.role, status=COMPLETED,
             provider=manifest.provider, model=manifest.model,
-            verdict=VERDICT_PASS,
-            evidence=(process.stdout or "").strip()[-2000:],
+            verdict=verdict,
+            evidence=(evidence,),
             cost_usd=cost_usd,
             started_at=isoformat(utc_now()), finished_at=isoformat(utc_now()),
         )
+
+    #: Structured-verdict line: ``VERDICT: PASS|FAIL|BLOCKED|NOT_TESTED``
+    #: (word-boundary: "PASSED" never matches "PASS").
+    _VERDICT_LINE = re.compile(
+        r"^\s*VERDICT\s*:\s*(PASS|FAIL|BLOCKED|NOT_TESTED)\b", re.IGNORECASE)
+    _VERDICT_VALUES = {"PASS", "FAIL", "BLOCKED", "NOT_TESTED"}
+
+    @classmethod
+    def _structured_verdict(cls, stdout: str) -> str | None:
+        """Extract the explicit verdict from the session output.
+
+        Deterministic and bounded to the first 20 lines: (1) a line
+        matching ``VERDICT: <value>``; (2) a JSON object line with a
+        valid ``verdict`` field. Returns None when no explicit verdict
+        exists — the caller must record NOT_TESTED, never PASS.
+        """
+        for line in (stdout or "").splitlines()[:20]:
+            match = cls._VERDICT_LINE.match(line)
+            if match:
+                return match.group(1).upper()
+            stripped = line.strip()
+            if stripped.startswith("{") and stripped.endswith("}"):
+                try:
+                    value = str(json.loads(stripped).get("verdict", "")).upper()
+                except ValueError:
+                    continue
+                if value in cls._VERDICT_VALUES:
+                    return value
+        return None
 
     @staticmethod
     def _read_usage_cost(usage_path: Path | None) -> float:

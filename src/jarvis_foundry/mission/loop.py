@@ -49,6 +49,29 @@ BLOCKED_OUTCOME = "BLOCKED"
 WAITING_OUTCOME = "WAITING"
 
 
+def _hash_target(target: Path, *, limit: int = 50) -> dict[str, str]:
+    """sha256 of every file under the step target (bounded) — binds the
+    verified verdict to the frozen artifact hashes (DIR-2026-08-12 item 1).
+    Paths are relative, forward-slash normalized; unreadable files are
+    skipped (their absence from the map is visible in the bundle)."""
+    hashes: dict[str, str] = {}
+    if not target.is_dir():
+        return hashes
+    import hashlib
+    import itertools
+    for path in itertools.islice(target.rglob("*"), limit * 8):
+        if not path.is_file():
+            continue
+        rel = str(path.relative_to(target)).replace("\\", "/")
+        try:
+            hashes[rel] = hashlib.sha256(path.read_bytes()).hexdigest()
+        except OSError:
+            continue
+        if len(hashes) >= limit:
+            break
+    return hashes
+
+
 @dataclass(frozen=True, slots=True)
 class StepOutcome:
     outcome: str  # PASSED | FAILED | BLOCKED | WAITING
@@ -178,6 +201,7 @@ class MissionLoop:
         commit_state: dict[str, Any] | None,
         criteria: list[str],
         role: str,
+        artifact_hashes: dict[str, str] | None = None,
     ) -> None:
         bundle_id = f"bundle-{uuid.uuid4().hex[:12]}"
         event = Event.create(
@@ -193,7 +217,7 @@ class MissionLoop:
                 "final_diff": {"stat": (commit_state or {}).get("diff_stat")},
                 "files_changed": (commit_state or {}).get("files_changed", []),
                 "commands_run": ["jarvis_foundry mission loop step dispatch"],
-                "artifact_hashes": {},
+                "artifact_hashes": artifact_hashes or {},
                 "after_state": {"head": (commit_state or {}).get("commit_head")},
                 "uncertainty": {},
                 "rollback_proof": {"kind": "git_reset_soft_available", "note": "commit is local-only in the registered worktree"},
@@ -303,7 +327,12 @@ class MissionLoop:
             step_id=step_id,
             run_id=verifier_run_id,
             provider_override=verifier_provider,
-            instructions=f"independently verify step {step_id} of {mission_id}",
+            instructions=(
+                f"independently verify step {step_id} of {mission_id}: "
+                "inspect the frozen artifact directly and confirm each "
+                "criterion. End your response with a line: "
+                "VERDICT: PASS | FAIL | BLOCKED | NOT_TESTED "
+                "(NOT_TESTED when you cannot determine a verdict)."),
         )
         if verifier.status != COMPLETED:
             record_verification_outcome(
@@ -357,6 +386,7 @@ class MissionLoop:
                 mission_id=mission_id, step_id=step_id, run_id=run_id,
                 verdict_id=verdict_id, commit_state=commit_state, criteria=criteria,
                 role=role,
+                artifact_hashes=_hash_target(target),
             )
             self._advance(mission_id, "ACTION_SELECTION", next_action=None, run_id=run_id)
             return StepOutcome(

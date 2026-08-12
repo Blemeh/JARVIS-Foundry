@@ -92,6 +92,7 @@ def main() -> int:
 
     print("[staged-gateway] session transcript for %s (%s/%s)"
           % (args.prompt[:80], args.provider, args.model))
+    print("VERDICT: PASS")  # V4-S2: healthy sessions emit the structured verdict
     if args.usage_file:
         Path(args.usage_file).write_text(json.dumps({
             "estimated_cost_usd": 0.0042, "model": args.model,
