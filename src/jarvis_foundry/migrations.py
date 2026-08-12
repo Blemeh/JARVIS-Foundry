@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 
 
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 9
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -285,6 +285,55 @@ MIGRATIONS: dict[int, str] = {
         ON knowledge_ingestions(source_hash);
     CREATE INDEX IF NOT EXISTS knowledge_ingestions_mission
         ON knowledge_ingestions(mission_id);
+    """,
+    9: """
+    -- ROLLED_BACK status + rolled_back_by require a knowledge_claims
+    -- rebuild (SQLite cannot alter CHECK constraints).
+    CREATE TABLE IF NOT EXISTS knowledge_claims_v9 (
+        claim_id TEXT PRIMARY KEY,
+        mission_id TEXT NOT NULL,
+        statement TEXT NOT NULL,
+        claim_type TEXT NOT NULL,
+        confidence REAL NOT NULL CHECK(confidence >= 0.0 AND confidence <= 1.0),
+        fresh_until TEXT,
+        source_run_id TEXT,
+        source_event_id TEXT,
+        status TEXT NOT NULL DEFAULT 'ACCEPTED'
+            CHECK(status IN ('ACCEPTED', 'CONTRADICTED', 'SUPERSEDED',
+                             'ROLLED_BACK')),
+        superseded_by TEXT,
+        rolled_back_by TEXT,
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    INSERT INTO knowledge_claims_v9(
+        claim_id, mission_id, statement, claim_type, confidence,
+        fresh_until, source_run_id, source_event_id, status,
+        superseded_by, rolled_back_by, last_event_id, updated_at)
+    SELECT claim_id, mission_id, statement, claim_type, confidence,
+        fresh_until, source_run_id, source_event_id, status,
+        superseded_by, NULL, last_event_id, updated_at
+    FROM knowledge_claims;
+    DROP TABLE knowledge_claims;
+    ALTER TABLE knowledge_claims_v9 RENAME TO knowledge_claims;
+    CREATE INDEX IF NOT EXISTS knowledge_claims_mission
+        ON knowledge_claims(mission_id, claim_type);
+    CREATE INDEX IF NOT EXISTS knowledge_claims_status
+        ON knowledge_claims(status);
+
+    CREATE TABLE IF NOT EXISTS knowledge_snapshots (
+        snapshot_id TEXT PRIMARY KEY,
+        mission_id TEXT NOT NULL,
+        scope TEXT NOT NULL,
+        head_event_id INTEGER NOT NULL,
+        schema_version INTEGER NOT NULL,
+        claims_count INTEGER NOT NULL DEFAULT 0,
+        path TEXT NOT NULL,
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS knowledge_snapshots_mission
+        ON knowledge_snapshots(mission_id);
     """,
 }
 

@@ -23,6 +23,7 @@ PROJECTION_TABLES = (
     "knowledge_entities",
     "knowledge_claim_entities",
     "knowledge_ingestions",
+    "knowledge_snapshots",
 )
 
 
@@ -464,6 +465,27 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             (canonical_json(payload.get("errors", [])), event.event_id,
              event.recorded_at, payload["ingestion_id"]),
         )
+
+    elif event.event_type == "knowledge.snapshot_created":
+        connection.execute(
+            """INSERT INTO knowledge_snapshots(
+                snapshot_id, mission_id, scope, head_event_id,
+                schema_version, claims_count, path, last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (payload["snapshot_id"], payload["mission_id"],
+             payload.get("scope", "knowledge"), payload["head_event_id"],
+             payload["schema_version"], payload.get("claims_count", 0),
+             payload["path"], event.event_id, event.recorded_at),
+        )
+    elif event.event_type == "knowledge.claims_rolled_back":
+        for claim_id in payload.get("claim_ids", []):
+            connection.execute(
+                "UPDATE knowledge_claims SET status = 'ROLLED_BACK', "
+                "rolled_back_by = ?, last_event_id = ?, updated_at = ? "
+                "WHERE claim_id = ?",
+                (payload["snapshot_id"], event.event_id, event.recorded_at,
+                 claim_id),
+            )
 
     if event.event_type.startswith("supervisor.") or event.event_type.startswith("emergency_stop."):
         status = {

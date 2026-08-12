@@ -159,6 +159,7 @@ class FoundryDatabase:
             "knowledge_manifests": "manifest_id",
             "knowledge_entities": "entity_id",
             "knowledge_ingestions": "ingestion_id",
+            "knowledge_snapshots": "snapshot_id",
         }
         if allowed.get(table) != key_column:
             raise ValueError("unsupported projection lookup")
@@ -170,7 +171,7 @@ class FoundryDatabase:
         """Bounded read helper for the projection tables (exact-match filters)."""
         allowed = {"knowledge_claims", "knowledge_contradictions", "obsidian_writes",
                    "knowledge_manifests", "knowledge_entities", "knowledge_claim_entities",
-                   "knowledge_ingestions"}
+                   "knowledge_ingestions", "knowledge_snapshots"}
         if table not in allowed:
             raise ValueError("unsupported projection listing")
         clauses, args = [], []
@@ -185,7 +186,7 @@ class FoundryDatabase:
     def count(self, table: str) -> int:
         allowed = {"knowledge_claims", "knowledge_contradictions", "obsidian_writes",
                    "knowledge_manifests", "knowledge_entities", "knowledge_claim_entities",
-                   "knowledge_ingestions"}
+                   "knowledge_ingestions", "knowledge_snapshots"}
         if table not in allowed:
             raise ValueError("unsupported projection count")
         with self.connect() as connection:

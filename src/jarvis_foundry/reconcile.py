@@ -74,6 +74,7 @@ def _table_key_column(table: str) -> str:
         "knowledge_entities": "entity_id",
         "knowledge_claim_entities": "claim_id",
         "knowledge_ingestions": "ingestion_id",
+        "knowledge_snapshots": "snapshot_id",
         "system_state": "singleton",
         "supervisor_state": "singleton",
     }
