@@ -12,8 +12,14 @@ do-support false-negatives ("The system doesn't work" did not contradict
 inflection unnormalized) → REPAIRED (1181fd3: do/does/did stripped +
 bounded 3rd-person-singular inflection map on all core tokens +
 do-support regression; past-tense normalization recorded out of scope).
-Round-2c (deleg_548b6bb6) <PENDING>. 10/10 knowledge tests green.
-WP9 package ACTIVE (docs/planning/CURRENT_WORK_PACKAGE.yaml).
+Round-2c (deleg_548b6bb6) **PASS** — 10/10 tests (junit-authoritative),
+12/12 probe matrix, clean tree md5 == 1181fd3, both findings closed via
+old-code A/B discrimination. Ledger: verification.failed ×3 (repair-
+keyed, seq 3731–3733) + verification.passed:verdict-wp9-slice1 (seq
+3734) + evidence.created:wp9-slice1 (seq 3735). **Slice-1 CLOSED —
+PASS.** 10/10 knowledge tests green; full suite 258 EXIT=0.
+WP9 package ACTIVE (docs/planning/CURRENT_WORK_PACKAGE.yaml). Next:
+slice-2 (retrieval + bounded context manifests).
 
 ## Delivered (bounded slice-1 scope)
 
