@@ -5,8 +5,20 @@
 the continuous loop) → **repaired at `19fbb17`** (fix(v4-s5-r1): poll
 integrity)
 **Date:** 2026-08-13
-**Status:** ROUND 1 VERIFIER **FAIL** (deleg_71efdc9e — real findings,
-repaired) → ROUND 2 VERIFIER <PENDING at 19fbb17>
+**Status:** CLOSED — round 1 verifier **FAIL** (deleg_71efdc9e, 15
+probes — real findings, all repaired at 19fbb17) → round 2 verifier
+**PASS** (deleg_9decc685, 16 probes; 3 INFO findings — loud
+EventConflict on changed poll payloads, ledger-craft trust boundary
+with no in-repo path, byte-identical docs-only HEAD move; verdict JSON
+archived at `var/evidence/v4-s5-monitors/verdict-deleg_9decc685.json`).
+**LIVE CLOSE:** schema 17→18 (UNIQUE monitors index); the S5-R1
+projection change (duplicates → REJECTED) left 45 inert duplicate rows
+projected under the old rules — atomic projection rebuild over 15,490
+events converged them; **reconcile consistent, 0 mismatches**; ledger
+`verification.passed:verdict-v4-s5-monitors:round2` +
+`evidence.created:v4-s5-monitors-close` (events 15,472→15,474); daemon
+healthy. No live duplicate missions ever existed (the 18 duplicate rows
+were never scored or selected — verified before the rebuild).
 
 ## Round-1 findings (deleg_71efdc9e) and the repair
 
