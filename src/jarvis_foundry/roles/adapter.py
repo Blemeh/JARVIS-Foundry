@@ -20,6 +20,7 @@ session is launched; workers never invoke Hermes directly.
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import tempfile
 import uuid
@@ -153,6 +154,35 @@ class HermesOneshotAdapter:
         "vertex_ai": "vertex",
     }
 
+    #: First-line prefixes the real Hermes CLI prints to STDOUT when a
+    #: oneshot exhausts its provider retries WITHOUT exiting non-zero
+    #: (verified 2026-08-12 against .h agent/conversation_loop.py —
+    #: `_final_response = "API call failed after {N} retries: {summary}"`,
+    #: the billing variant, "Invalid API response after {N} retries: ...",
+    #: "Request payload too large ...", "Context length exceeded ...",
+    #: "Model generated invalid tool call: ...", "Response truncated due
+    #: to output length limit", and observed "HTTP 401: Model <id> is not
+    #: supported" — FIND-2026-08-12-04/-05 — all emitted as the session's
+    #: final response with exit code 0). exit 0 + these prefixes means the
+    #: session NEVER produced a result (transport failure, billing block,
+    #: model not supported): classify as provider unavailability so the
+    #: router fallback chain engages and exhaustion becomes an honest
+    #: BLOCKED state — never a fabricated COMPLETED with the error text as
+    #: "evidence" (WP8 F5/F6: outages must not advance a mission).
+    FAILURE_REPORT_PREFIXES = (
+        "API call failed after ",
+        "Billing or credits exhausted:",
+        "Invalid API response after ",
+        "Request payload too large",
+        "Context length exceeded",
+        "Model generated invalid tool call:",
+        "Response truncated due to output length limit",
+    )
+
+    #: Matches the observed "HTTP 401: Model X is not supported" /
+    #: "HTTP 429: ..." exit-0 error lines (status code + separator).
+    _FAILURE_REPORT_HTTP = re.compile(r"^HTTP \d{3}[:\s]")
+
     def __init__(
         self,
         *,
@@ -240,6 +270,17 @@ class HermesOneshotAdapter:
                 cost_usd=cost_usd,
                 started_at=isoformat(utc_now()), finished_at=isoformat(utc_now()),
             )
+        first_line = ((process.stdout or "").strip().splitlines() or [""])[0]
+        if (first_line.startswith(self.FAILURE_REPORT_PREFIXES)
+                or self._FAILURE_REPORT_HTTP.match(first_line)):
+            # The oneshot ran but the provider was unreachable (network
+            # outage / billing block / model not supported): the CLI
+            # reports it on STDOUT with exit 0. Raise so the dispatcher
+            # engages the provider fallback chain; with no fallback
+            # configured the step lands in an honest
+            # BLOCKED/provider_unavailable state (WP8 F5/F6).
+            raise ProviderUnavailable(
+                f"oneshot reported provider failure (exit 0): {first_line[:200]}")
         return RoleResult(
             run_id=manifest.run_id, role=manifest.role, status=COMPLETED,
             provider=manifest.provider, model=manifest.model,
