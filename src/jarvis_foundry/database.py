@@ -168,6 +168,7 @@ class FoundryDatabase:
             "ingestion_cursors": "source_kind",
             "research_queue": "item_id",
             "worker_manifests": "manifest_id",
+            "consolidation_ops": "op_id",
         }
         if allowed.get(table) != key_column:
             raise ValueError("unsupported projection lookup")
@@ -182,7 +183,7 @@ class FoundryDatabase:
                    "knowledge_ingestions", "knowledge_snapshots", "candidates",
                    "candidate_scores", "monitors", "vault_files",
                    "vault_sync_state", "ingestion_cursors", "research_queue",
-                   "worker_manifests"}
+                   "worker_manifests", "consolidation_ops"}
         if table not in allowed:
             raise ValueError("unsupported projection listing")
         clauses, args = [], []
@@ -200,7 +201,7 @@ class FoundryDatabase:
                    "knowledge_ingestions", "knowledge_snapshots", "candidates",
                    "candidate_scores", "monitors", "vault_files",
                    "vault_sync_state", "ingestion_cursors", "research_queue",
-                   "worker_manifests"}
+                   "worker_manifests", "consolidation_ops"}
         if table not in allowed:
             raise ValueError("unsupported projection count")
         with self.connect() as connection:

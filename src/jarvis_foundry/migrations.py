@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 
 
-SCHEMA_VERSION = 15
+SCHEMA_VERSION = 16
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -457,6 +457,25 @@ MIGRATIONS: dict[int, str] = {
     );
     CREATE INDEX IF NOT EXISTS worker_manifests_run
         ON worker_manifests(run_id);
+    """,
+    16: """
+    -- WP11 slice F (V2-OPERATIONAL): governed consolidation operations
+    -- (event-derived, reconcile-verified)
+    CREATE TABLE IF NOT EXISTS consolidation_ops (
+        op_id TEXT PRIMARY KEY,
+        note_path TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'PROPOSED'
+            CHECK(status IN ('PROPOSED', 'VERIFIED', 'ACCEPTED',
+                             'REJECTED', 'ROLLED_BACK')),
+        before_hash TEXT NOT NULL,
+        after_hash TEXT,
+        write_id TEXT,
+        verified_by TEXT,
+        evidence_json TEXT NOT NULL DEFAULT '{}',
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
     """,
 }
 

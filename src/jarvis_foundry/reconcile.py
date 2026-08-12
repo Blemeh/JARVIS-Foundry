@@ -83,6 +83,7 @@ def _table_key_column(table: str) -> str:
         "ingestion_cursors": "source_kind",
         "research_queue": "item_id",
         "worker_manifests": "manifest_id",
+        "consolidation_ops": "op_id",
         "system_state": "singleton",
         "supervisor_state": "singleton",
     }

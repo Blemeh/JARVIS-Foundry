@@ -32,6 +32,7 @@ PROJECTION_TABLES = (
     "ingestion_cursors",
     "research_queue",
     "worker_manifests",
+    "consolidation_ops",
 )
 
 
@@ -712,6 +713,31 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
              payload["manifest_hash"],
              canonical_json(payload.get("sources", {})),
              canonical_json(payload.get("truncation", {})),
+             event.event_id, event.recorded_at),
+        )
+
+    elif event.event_type.startswith("consolidation."):
+        # one upsert handler for the whole op lifecycle — replaying the
+        # events in order reproduces every transition deterministically
+        connection.execute(
+            """INSERT INTO consolidation_ops(
+                op_id, note_path, kind, status, before_hash, after_hash,
+                write_id, verified_by, evidence_json,
+                last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(op_id) DO UPDATE SET
+                status = excluded.status,
+                after_hash = excluded.after_hash,
+                write_id = excluded.write_id,
+                verified_by = excluded.verified_by,
+                evidence_json = excluded.evidence_json,
+                last_event_id = excluded.last_event_id,
+                updated_at = excluded.updated_at""",
+            (payload["op_id"], payload["note_path"], payload["kind"],
+             payload["status"], payload["before_hash"],
+             payload.get("after_hash"), payload.get("write_id"),
+             payload.get("verified_by"),
+             canonical_json(payload.get("evidence", {})),
              event.event_id, event.recorded_at),
         )
 
