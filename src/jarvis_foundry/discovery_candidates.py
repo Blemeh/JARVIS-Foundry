@@ -15,6 +15,7 @@ Bounded, deterministic, test-driven:
 from __future__ import annotations
 
 import json
+import math
 import uuid
 from typing import Any
 
@@ -38,19 +39,43 @@ def _count_terms(objective: str, terms: tuple[str, ...]) -> int:
     return sum(1 for term in terms if term in lower)
 
 
-def score_objective(objective: str) -> tuple[float, dict[str, Any]]:
-    """Calibrated deterministic score in [0, 1] + the weights used."""
+def score_objective(objective: str, *, age_hours: float = 0.0,
+                    previous_attempts: int = 0, source_trust: float = 1.0,
+                    evidence_items: int = 0,
+                    similar_missions: int = 0) -> tuple[float, dict[str, Any]]:
+    """Calibrated deterministic score in [0, 1] + the weights used.
+
+    V4-S6 (DIR-2026-08-12 item 7): bounded context factors —
+    freshness (exponential decay, 1-week horizon), cooldown for
+    previous attempts (cap 5), source trust (multiplier around 1.0),
+    evidence richness (cap 5 items) and mission-similarity penalty
+    (cap 3). Every factor is clamped; the base [0,1] calibration is
+    unchanged; thresholds are never lowered (the loop's min_score
+    stays 0.35 — the selection bar is the same, the ORDER is fairer).
+    """
     value = min(1.0, 0.15 + 0.12 * _count_terms(objective, VALUE_TERMS))
     information = min(1.0, 0.1 + 0.2 * _count_terms(objective, INFORMATION_TERMS))
     urgency = min(1.0, 0.05 + 0.2 * _count_terms(objective, URGENCY_TERMS))
     effort_penalty = min(0.3, 0.1 * _count_terms(objective, EFFORT_TERMS))
     cost_penalty = min(0.3, 0.1 * _count_terms(objective, _COSTLY_TERMS))
+    freshness = math.exp(-max(0.0, float(age_hours)) / 168.0)  # 1-week decay
+    freshness_bonus = round(0.05 * freshness, 4)
+    cooldown = round(0.03 * min(max(0, int(previous_attempts)), 5), 4)
+    trust = max(0.5, min(1.0, float(source_trust)))
+    trust_adjust = round((trust - 1.0) * 0.04, 4)
+    evidence_bonus = round(0.01 * min(max(0, int(evidence_items)), 5), 4)
+    similarity = round(0.02 * min(max(0, int(similar_missions)), 3), 4)
     score = round(max(0.0, min(1.0, 0.55 * value + 0.2 * information +
                                0.25 * urgency - effort_penalty -
-                               cost_penalty)), 4)
+                               cost_penalty + freshness_bonus +
+                               evidence_bonus - cooldown - similarity +
+                               trust_adjust)), 4)
     weights = {"value": value, "information_gain": information,
                "urgency": urgency, "effort_penalty": effort_penalty,
-               "cost_penalty": cost_penalty}
+               "cost_penalty": cost_penalty,
+               "freshness": freshness_bonus, "cooldown_penalty": cooldown,
+               "source_trust": trust, "evidence_bonus": evidence_bonus,
+               "similarity_penalty": similarity}
     return score, weights
 
 
@@ -111,21 +136,116 @@ def supersede_candidate(db: FoundryDatabase, candidate_id: str, *,
 
 
 def score_candidate(db: FoundryDatabase, candidate_id: str) -> float:
-    """Deterministic calibrated scoring; stores the weights."""
+    """Deterministic calibrated scoring; stores the weights.
+
+    V4-S6 context (bounded and fair, DIR-2026-08-12 item 7): the score
+    is computed from the candidate's OWN state — age (freshness decay),
+    source (trust), evidence richness, previous attempts (cooldown:
+    same-objective missions/candidates) and similar missions. SCORED
+    candidates are FROZEN: the recorded score is returned and nothing
+    is re-appended — context drift (age, new attempts) can never
+    re-score a recorded candidate, so the live loop's per-cycle
+    re-scan cannot EventConflict (the scored event is append-once).
+    """
     with db.connect() as connection:
         row = connection.execute(
-            "SELECT objective FROM candidates WHERE candidate_id = ?",
+            "SELECT score FROM candidate_scores WHERE candidate_id = ?",
             (candidate_id,)).fetchone()
-    if row is None:
+        if row is not None:
+            return float(row[0])  # frozen: historical score, additive
+        candidate = connection.execute(
+            "SELECT objective, source, evidence_json FROM candidates "
+            "WHERE candidate_id = ?", (candidate_id,)).fetchone()
+    if candidate is None:
         raise ValueError(f"score_candidate requires an existing candidate "
                          f"({candidate_id}) — rolled back")
-    score, weights = score_objective(row[0])
+    objective, source, evidence_json = (
+        candidate[0], candidate[1], candidate[2] or "[]")
+    context = _score_context(db, candidate_id, objective, source,
+                             evidence_json)
+    score, weights = score_objective(objective, **context)
+    weights["context"] = {k: v for k, v in context.items()
+                          if k != "source_trust"}
     db.append(Event.create(
         "discovery.candidate_scored",
         {"candidate_id": candidate_id, "score": score, "weights": weights},
         source_type="supervisor", source_id="wp10-discovery",
         idempotency_key=f"discovery.candidate_scored:{candidate_id}"))
     return score
+
+
+_SOURCE_TRUST = {
+    "vault": 1.0, "system": 1.0, "repo": 0.95, "handoffs": 0.9,
+    "maintenance": 0.9, "research_queue": 0.85,
+}
+
+
+def _score_context(db: FoundryDatabase, candidate_id: str, objective: str,
+                   source: str, evidence_json: str) -> dict[str, Any]:
+    """The bounded, deterministic context factors for one candidate."""
+    canonical = canonicalize_statement(objective)
+    now_iso = _now_iso(db)
+    created_at = None
+    previous_attempts = 0
+    similar = 0
+    with db.connect() as connection:
+        row = connection.execute(
+            "SELECT recorded_at FROM events WHERE event_type = "
+            "'discovery.candidate_generated' AND payload_json LIKE ? "
+            "ORDER BY sequence LIMIT 1",
+            (f'%"candidate_id":"{candidate_id}"%',)).fetchone()
+        if row:
+            created_at = row[0]
+        for mission in connection.execute(
+                "SELECT mission_id, objective FROM missions ORDER BY rowid"
+        ).fetchall():
+            mission_canonical = canonicalize_statement(mission[1])
+            if mission_canonical == canonical:
+                previous_attempts += 1
+            elif _token_overlap(canonical, mission_canonical) >= 0.6:
+                similar += 1
+        executed = connection.execute(
+            "SELECT objective_canonical FROM candidates WHERE status = "
+            "'EXECUTED'").fetchall()
+        for row in executed:
+            if row[0] == canonical:
+                previous_attempts += 1
+    try:
+        evidence_items = len(json.loads(evidence_json or "[]"))
+    except (TypeError, ValueError):
+        evidence_items = 0
+    age_hours = 0.0
+    if created_at:
+        try:
+            from datetime import datetime
+            created = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+            now = datetime.fromisoformat(now_iso.replace("Z", "+00:00"))
+            age_hours = max(0.0, (now - created).total_seconds() / 3600.0)
+        except ValueError:
+            age_hours = 0.0
+    return {
+        "age_hours": age_hours,
+        "previous_attempts": min(previous_attempts, 5),
+        "source_trust": _SOURCE_TRUST.get(source, 0.85),
+        "evidence_items": min(evidence_items, 5),
+        "similar_missions": min(similar, 3),
+    }
+
+
+def _now_iso(db: FoundryDatabase) -> str:
+    with db.connect() as connection:
+        row = connection.execute(
+            "SELECT recorded_at FROM events ORDER BY sequence DESC LIMIT 1"
+        ).fetchone()
+    return row[0] if row else "1970-01-01T00:00:00Z"
+
+
+def _token_overlap(first: str, second: str) -> float:
+    if not first or not second:
+        return 0.0
+    a = set(first.split())
+    b = set(second.split())
+    return len(a & b) / max(1.0, len(a))
 
 
 def approve_candidate(db: FoundryDatabase, candidate_id: str,
