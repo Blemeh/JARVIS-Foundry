@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 
 
-SCHEMA_VERSION = 14
+SCHEMA_VERSION = 15
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -439,6 +439,24 @@ MIGRATIONS: dict[int, str] = {
     );
     CREATE INDEX IF NOT EXISTS research_queue_status
         ON research_queue(status);
+    """,
+    15: """
+    -- WP11 slice E (V2-OPERATIONAL): worker context manifest deliveries
+    -- (event-derived, reconcile-verified)
+    CREATE TABLE IF NOT EXISTS worker_manifests (
+        manifest_id TEXT PRIMARY KEY,
+        run_id TEXT NOT NULL,
+        worker TEXT NOT NULL,
+        mission_id TEXT NOT NULL,
+        objective TEXT NOT NULL,
+        manifest_hash TEXT NOT NULL,
+        sources_json TEXT NOT NULL,
+        truncation_json TEXT NOT NULL,
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS worker_manifests_run
+        ON worker_manifests(run_id);
     """,
 }
 

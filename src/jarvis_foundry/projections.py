@@ -31,6 +31,7 @@ PROJECTION_TABLES = (
     "vault_sync_state",
     "ingestion_cursors",
     "research_queue",
+    "worker_manifests",
 )
 
 
@@ -697,6 +698,21 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             "last_event_id = ?, updated_at = ? WHERE item_id = ?",
             (payload["status"], canonical_json(payload.get("evidence", {})),
              event.event_id, event.recorded_at, payload["item_id"]),
+        )
+
+    elif event.event_type == "worker.manifest_delivered":
+        connection.execute(
+            """INSERT INTO worker_manifests(
+                manifest_id, run_id, worker, mission_id, objective,
+                manifest_hash, sources_json, truncation_json,
+                last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (payload["manifest_id"], payload["run_id"], payload["worker"],
+             payload["mission_id"], payload["objective"],
+             payload["manifest_hash"],
+             canonical_json(payload.get("sources", {})),
+             canonical_json(payload.get("truncation", {})),
+             event.event_id, event.recorded_at),
         )
 
     if event.event_type.startswith("supervisor.") or event.event_type.startswith("emergency_stop."):

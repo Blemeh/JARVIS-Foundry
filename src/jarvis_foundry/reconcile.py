@@ -82,6 +82,7 @@ def _table_key_column(table: str) -> str:
         "vault_sync_state": "sync_id",
         "ingestion_cursors": "source_kind",
         "research_queue": "item_id",
+        "worker_manifests": "manifest_id",
         "system_state": "singleton",
         "supervisor_state": "singleton",
     }
