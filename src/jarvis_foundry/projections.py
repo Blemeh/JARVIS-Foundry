@@ -199,10 +199,12 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
     elif event.event_type == "verification.passed":
         connection.execute(
             """UPDATE verification_verdicts SET status = 'PASS', verdict = 'PASS',
+               verifier_run_id = COALESCE(?, verifier_run_id),
                findings_json = ?, evidence_json = ?, missing_proof_json = ?,
                scope_violations_json = ?, issued_at = ?, last_event_id = ?, updated_at = ?
                WHERE verdict_id = ?""",
             (
+                payload.get("verifier_run_id"),
                 canonical_json(payload.get("findings", [])),
                 canonical_json(payload.get("evidence", {})),
                 canonical_json(payload.get("missing_proof", [])),
@@ -213,9 +215,11 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
     elif event.event_type == "verification.failed":
         connection.execute(
             """UPDATE verification_verdicts SET status = 'FAIL', verdict = 'FAIL',
+               verifier_run_id = COALESCE(?, verifier_run_id),
                findings_json = ?, repair_requirements_json = ?, scope_violations_json = ?,
                issued_at = ?, last_event_id = ?, updated_at = ? WHERE verdict_id = ?""",
             (
+                payload.get("verifier_run_id"),
                 canonical_json(payload.get("findings", [])),
                 canonical_json(payload.get("repair_requirements", [])),
                 canonical_json(payload.get("scope_violations", [])),

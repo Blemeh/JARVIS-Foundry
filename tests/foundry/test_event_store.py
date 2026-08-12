@@ -395,6 +395,44 @@ def test_evidence_bundle_projection_and_rebuild(tmp_path):
     assert database.row("evidence_bundles", "bundle_id", "bundle-1") == bundle
 
 
+def test_verification_passed_backfills_verifier_run_id(tmp_path):
+    """G5 repair (review deleg_acbc8ce5): when the started event carried a
+    placeholder verifier id, a later passed event WITH the real id must
+    backfill the row (the row previously kept the placeholder forever)."""
+    database = FoundryDatabase(tmp_path / "foundry.db")
+    database.initialize()
+    database.append(Event.create(
+        "verification.started",
+        {"verdict_id": "verdict-backfill", "mission_id": "mission-1",
+         "subject_type": "STEP", "subject_id": "step-1",
+         "verifier_run_id": "verifier-step-1-pending"},
+        source_type="test", source_id="test-suite",
+        idempotency_key="verification.started:verdict-backfill",
+    ))
+    database.append(Event.create(
+        "verification.passed",
+        {"verdict_id": "verdict-backfill", "verdict": "PASS",
+         "verifier_run_id": "deleg_real1234",
+         "findings": [], "missing_proof": [], "scope_violations": []},
+        source_type="test", source_id="test-suite",
+        idempotency_key="verification.passed:verdict-backfill",
+    ))
+    with database.connect() as connection:
+        row = connection.execute(
+            "SELECT status, verdict, verifier_run_id FROM verification_verdicts "
+            "WHERE verdict_id = 'verdict-backfill'").fetchone()
+    assert row["status"] == "PASS"
+    assert row["verdict"] == "PASS"
+    assert row["verifier_run_id"] == "deleg_real1234"
+    # rebuild reproduces the same row (projection is deterministic)
+    database.rebuild_projections()
+    with database.connect() as connection:
+        row = connection.execute(
+            "SELECT verifier_run_id FROM verification_verdicts "
+            "WHERE verdict_id = 'verdict-backfill'").fetchone()
+    assert row["verifier_run_id"] == "deleg_real1234"
+
+
 def test_verification_verdict_projection_and_rebuild(tmp_path):
     database = FoundryDatabase(tmp_path / "foundry.db")
     database.initialize()

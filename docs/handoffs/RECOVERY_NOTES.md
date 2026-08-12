@@ -1,66 +1,61 @@
 # Durable Recovery Notes — Authoritative Resume Point
 
-Updated: 2026-08-12T13:00+02:00 (six-hour continuation run — F5–F11 closed)
+Updated: 2026-08-12T13:00+02:00 (round-1 review FAIL → repair queue executed)
 Session: JARVIS executive continuation (owner redirect 2026-08-12), START
-BUILD active, STANDING_AUTONOMY.
+BUILD active.
 
 ## READ FIRST
 
-1. `PROJECT_STATE.md` — live state record (v15; v16 follows the gate verdict).
-2. `docs/evidence/WP8_DAY1_REPORT.md` — day-1 report; F-matrix now F1–F15 all PASS.
-3. `docs/handoffs/CHECKPOINT_2026-08-12T0905.md` + this file.
-4. `docs/evidence/WP8_F5_FAULT_INJECTION.md` … `WP8_F11_FAULT_INJECTION.md`
-   (this run's seven fault injections).
-5. `var/evidence/wp8-gate/RECONCILIATION_WP8.json` — gate-end reconciliation (10/10 PASS).
+1. `docs/evidence/WP8_GATE_REPORT.md` — gate report with the round-1 FAIL
+   and the executed repair table (this is the primary record now).
+2. `var/evidence/wp8-gate/final-review-deleg_acbc8ce5.json` — the review.
+3. `PROJECT_STATE.md` — v15 (state update only after an independent PASS).
+4. `docs/evidence/WP8_DAY1_REPORT.md` — F-matrix F1–F15 PASS (FIND-01
+   corrected to RETRACTED).
+5. `docs/handoffs/CHECKPOINT_2026-08-12T1158.md`.
 
-## Current Truth (verified 2026-08-12 ~12:45)
+## Current Truth (verified 2026-08-12 ~13:00)
 
-- **Runtime healthy:** task `JARVIS-Foundry-Supervisor` Running; daemon
-  `supervisor-cf252c64` (post-reboot instance, F4), 30 s heartbeats, one
-  singleton lease, reconcile consistent, STOP false, no active workers.
-  Live Hermes gateway + codex-router untouched (never targeted).
-- **WP0–WP7 PASS**; **WP8 in progress**: day 1 of 7 clock running; 12 day-1
-  cycles + **this run closed F5–F11** (all PASS):
-  - F5 network outage — FIND-2026-08-12-04 (exit-0 failure report classified
-    ProviderUnavailable); repair `be18d29`; verifier deleg_06704886 PASS 0 findings.
-  - F6 model outage — FIND-2026-08-12-05 (HTTP 401 model-not-supported);
-    whitelist extended; fallback/honest-waiting proven.
-  - F7 expired auth — real 401 denied; no secret leaks; reauth resumes.
-  - F8 disk full — bounded quota simulation (SQLITE_FULL shim; real VHD needs
-    admin — recorded; WAL pragmas empirically absorb quota on this host).
-  - F9 corrupted event write — interrupted txn atomic; tamper/forge rejected
-    with rollback; deterministic rebuild (TEST db).
-  - F10 duplicate delivery — dedup → one transition/commit/wake; changed
-    payload → EventConflict.
-  - F11 concurrent Obsidian edit — conflict; both versions preserved (temp vault).
-  - Ledger: fault_injection.completed F1–F13 all present (F3 completion event
-    was missing and was appended during reconciliation — repair, not backdate);
-    F5/F6/F7/F8/F9/F10/F11 at sequences ~1409–1444; owner directive
-    DIR-2026-08-12-gate-progression recorded (directives table, active).
-  - Reconciliation §9: **10/10 PASS** (RECONCILIATION_WP8.json).
-- Foundry HEAD `be18d29` (F5/F6 repair + 12 regressions; suite 250 passed
-  EXIT=0 on the rerun; one transient flake in test_installer
-  test_task_restarts_after_hard_kill_via_repeating_trigger — passes in
-  isolation, live daemon untouched, re-run green). Mission HEAD `290265d` (clean).
-- Full suite: 250 tests (229 + 12 F5/F6 + 9? — count via --collect-only on the
-  current tree before citing).
+- **Gate: NOT PASSED.** Independent final review deleg_acbc8ce5: FAIL
+  (2 blockers, 5 majors, 3 minors, 1 observation). Repair queue EXECUTED:
+  - STOP latency: run.py default 30s→5s; live daemon at 5s cadence; live
+    measurements CLI 4.21s / sentinel 5.07s (≤10s cap); regressions added;
+    evidence var/evidence/wp8-gate/stop-latency/.
+  - FIND-01: retracted with ledger evidence (continuous heartbeats
+    seq 130–183); evidence.created:find-01-retraction (seq 1528).
+  - G5: projection backfill (verifier_run_id) + 2 missing verdict chains
+    (f12-f13 deleg_5e15ee4a; f5-f6 deleg_06704886) → 12 rows; regression
+    test added.
+  - G7: governed notes 00/02/04/07 rewritten to TRUE state at the correct
+    root (…\Blendi — writer appends JARVIS/V1); content-freshness in
+    reconciliation; nested duplicates preserved (owner approval pending).
+  - Reconciliation re-run: READ-ONLY discipline proven; 10 PASS + 1
+    NOT_TESTED (surface 3 staging-only audit model, documented); run_at
+    real; F3 seq 1444 predates the run.
+  - F1 active-coordination kill: staged PASS (reap/recover/reclaim).
+  - Gate report written (docs/evidence/WP8_GATE_REPORT.md).
+- **Open item (owner input required — legitimate BLOCKED):** the seven-day
+  duration (04 §8.1). Options: (a) owner records an explicit waiver
+  directive, or (b) the clock continues (day 1 of 7) with the gate closed
+  after round-2 PASS at the earliest, and the final report records the
+  deviation. NO fake closure; V2 stays LOCKED.
+- Runtime: daemon on 5s cadence (restart onto the new default verified),
+  one lease, STOP false, reconcile consistent, live gateway untouched.
+- Ledger: 1560+ events; 12 verdict rows (10 PASS + FAIL wp8-gate + 2
+  repaired chains); fault_injection.completed F1–F13.
 
-## Next (exact continuation)
+## Next (exact)
 
-1. **Independent final review** of the whole WP8 gate (fresh isolated
-   verifier session; adversarial brief; read-only; JSON verdict) against
-   frozen HEAD `be18d29` + the F5–F11 evidence set.
-2. On PASS: write `docs/evidence/WP8_GATE_REPORT.md` (one row per mandatory
-   criterion + fault table + reconciliation), update PROJECT_STATE v16
-   (trust TRUSTED_AUTONOMOUS, capability WORKTREE_READY, V2 queued),
-   CURRENT_WORK_PACKAGE.yaml → WP9/V2 package, ledger verdict events,
-   Obsidian 02/04/07 governed writes.
-3. **V2_KNOWLEDGE_BRAIN**: create the work package (spec first) and start
-   its first bounded implementation task with tests + evidence.
-4. Continue V3→V7 automatically after each independent gate PASS (owner
-   directive DIR-2026-08-12-gate-progression).
-5. Day-7 hold: the seven-day clock continues as runtime continuity evidence;
-   the final gate report records it.
+1. Full suite green (background run) → commit the repair set
+   (run.py, projections.py, test_stop_controls.py, test_event_store.py,
+   WP8_GATE_REPORT.md, day-1 corrections, RECOVERY_NOTES).
+2. Dispatch the ROUND-2 independent review (fresh adversarial session)
+   against the repair commit: STOP latency evidence, G7 freshness,
+   reconciliation re-run, G5 rows, FIND-01 retraction, F1 active-kill.
+3. On round-2 PASS + the seven-day decision: finalize the gate report,
+   PROJECT_STATE v16 (trust), WP9 V2 activation, V2 slice-1.
+4. On round-2 FAIL: repair its exact findings and re-verify (G6 loop).
+5. Checkpoint ~14:30; final handoff 17:15.
 
 ## Commands
 
@@ -68,14 +63,10 @@ BUILD active, STANDING_AUTONOMY.
 cd "C:\Users\b\Documents\ChatGPT\Autonomous AI powered by Hoowen\JARVIS-Foundry"
 ./.venv/Scripts/python.exe -m jarvis_foundry.cli.main doctor
 ./.venv/Scripts/python.exe -m pytest tests/foundry -q --tb=short
-cd "C:\Users\b\JARVIS\v1-proving\wfm-optimizer" && \
-"C:\Users\b\Documents\ChatGPT\Autonomous AI powered by Hoowen\JARVIS-Foundry\.venv\Scripts\python.exe" -m pytest tests -q --tb=short
 ```
 
 ## Honesty Rule
 
-Nothing is PASS until reproduced with fresh commands. The F5 verifier
-(deleg_06704886) PASSed the repair; the gate verdict awaits the final
-independent review. F4 was verified on the real reboot (~09:49); no
-backdating anywhere. `var/` bundles are on-disk evidence (gitignored by
-design); docs/evidence carries the durable records.
+Round-1 FAIL is recorded in the ledger (verification.failed:verdict-wp8-gate)
+and every repair is evidence-backed. Nothing advances on an unverified
+claim; the gate closes only on an independent PASS.

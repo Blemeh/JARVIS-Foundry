@@ -168,14 +168,23 @@ def _heartbeat_loop(supervisor: Supervisor, interval: float, *,
     return 0
 
 
-def main(argv: list[str] | None = None) -> int:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="jarvis-supervisor")
     parser.add_argument("--home", type=Path, default=argparse.SUPPRESS,
                         help="override the Foundry state directory")
-    parser.add_argument("--interval", type=float, default=30.0,
-                        help="heartbeat interval in seconds")
+    parser.add_argument("--interval", type=float, default=5.0,
+                        help="heartbeat/STOP-sentinel poll interval in seconds "
+                             "(gate 04 Sec 6 caps STOP detection latency at "
+                             "10s; the 30s default previously made >10s "
+                             "detection the norm — FIND-2026-08-12-06, "
+                             "review deleg_acbc8ce5)")
     parser.add_argument("--once", action="store_true",
                         help="run a single start+heartbeat cycle and exit")
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
     args = parser.parse_args(argv)
 
     paths = FoundryPaths.discover(getattr(args, "home", None))

@@ -45,16 +45,20 @@ plus earlier 226-test run (`var/evidence/wp8-gate/step-8/foundry-suite-226.txt`)
 
 ## 3. Findings Recorded This Gate (all resolved or scoped)
 
-- FIND-2026-08-12-01: 21-min heartbeat-event stall (unexplained transient) →
-  repaired (resilient loop, step-5) + observability.
+- FIND-2026-08-12-01: 21-min heartbeat-event stall claim → **RETRACTED
+  2026-08-12** (independent review deleg_acbc8ce5: the ledger shows
+  continuous 30s heartbeats seq 130–183 across the claimed window — the
+  recorded "no heartbeat rows" claim is disproven by the ledger;
+  evidence.created:find-01-retraction; the step-5 defensive machinery
+  (slow_cycle > 3×interval, consecutive-failure bounds) remains in place
+  and test-proven).
 - FIND-2026-08-12-02: installer LogonTrigger UserId (automated installs) →
   repaired (step-8).
 - FIND-2026-08-12-03: adapter python_exe default resolution-fragility →
   documented (deployment contract; docstring; renumbered from a collision
   with -02).
 - Residual: F4 physical reboot (owner action); same-provider verifier
-  limitation (recorded in every verdict); 21-min wedge root cause remains
-  unexplained but observable+bounded.
+  limitation (recorded in every verdict); FIND-01 retracted (see above).
 
 ## 4. Runtime State (verified fresh this session)
 

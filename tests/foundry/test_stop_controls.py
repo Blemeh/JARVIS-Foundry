@@ -41,6 +41,100 @@ def _wait_until(predicate, timeout: float = 10.0) -> bool:
     return False
 
 
+def test_default_interval_meets_stop_latency_cap():
+    """Gate 04 Sec 6 caps STOP detection latency at 10s; the supervisor's
+    sentinel poll cadence is the interval (review deleg_acbc8ce5 measured
+    24s at the old 30s default — FIND-2026-08-12-06). The default must
+    keep detection inside the cap."""
+    from jarvis_foundry.supervisor.run import build_parser
+    args = build_parser().parse_args([])
+    assert args.interval <= 5.0
+    # explicit override remains possible
+    assert build_parser().parse_args(["--interval", "30"]).interval == 30.0
+
+
+def test_stop_detection_latency_within_cap_staged(tmp_path):
+    """Real supervisor subprocess at the compliant cadence: sentinel ->
+    emergency_stop.frozen within 10s; resume (sentinel clear) continues
+    the same loop. Staging home only — the live daemon is untouched."""
+    import json
+    import sqlite3
+    import subprocess
+
+    from jarvis_foundry.database import FoundryDatabase
+
+    home = tmp_path / "home"
+    home.mkdir()
+    database = FoundryDatabase(home / "foundry.db")
+    database.initialize()
+    estop = EmergencyStop(home / "EMERGENCY_STOP")
+
+    proc = subprocess.Popen(
+        [sys.executable, "-m", "jarvis_foundry.supervisor.run",
+         "--home", str(home), "--interval", "1"],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    try:
+        started = json.loads(proc.stdout.readline().strip())
+        assert started["supervisor"] == "RUNNING"
+
+        def frozen_latency():
+            activate = time.monotonic()
+            estop.activate("staged latency test", source="cli")
+            deadline = activate + 15.0
+            while time.monotonic() < deadline:
+                conn = sqlite3.connect(f"file:{home / 'foundry.db'}?mode=ro",
+                                       uri=True)
+                row = conn.execute(
+                    "SELECT MAX(occurred_at) FROM events "
+                    "WHERE event_type = 'emergency_stop.frozen'").fetchone()
+                conn.close()
+                if row and row[0]:
+                    return time.monotonic() - activate
+                time.sleep(0.1)
+            return None
+
+        latency = None
+        deadline = time.monotonic() + 20.0
+        while time.monotonic() < deadline and latency is None:
+            latency = frozen_latency()
+        assert latency is not None, "emergency_stop.frozen never recorded"
+        assert latency <= 10.0, f"STOP detection {latency:.1f}s > 10s cap"
+
+        # resume: clearing the sentinel lets the same loop continue
+        estop.clear()
+        assert _wait_until(lambda: not estop.active()) is True
+        def heartbeat_after_freeze():
+            conn = sqlite3.connect(f"file:{home / 'foundry.db'}?mode=ro",
+                                   uri=True)
+            row = conn.execute(
+                "SELECT COUNT(*) FROM events WHERE event_type = "
+                "'supervisor.heartbeat' AND occurred_at > ?",
+                (estop.read().get("at", "") if estop.read() else "",)).fetchone()
+            conn.close()
+            return row[0]
+        # a heartbeat after the frozen event proves the loop resumed
+        conn = sqlite3.connect(f"file:{home / 'foundry.db'}?mode=ro", uri=True)
+        frozen_at = conn.execute(
+            "SELECT MAX(occurred_at) FROM events WHERE event_type = "
+            "'emergency_stop.frozen'").fetchone()[0]
+        conn.close()
+        assert _wait_until(lambda: _heartbeat_count_after(home, frozen_at) >= 1,
+                           timeout=15.0) is True
+    finally:
+        proc.terminate()
+        proc.wait(timeout=10)
+
+
+def _heartbeat_count_after(home, occurred_at) -> int:
+    import sqlite3
+    conn = sqlite3.connect(f"file:{home / 'foundry.db'}?mode=ro", uri=True)
+    row = conn.execute(
+        "SELECT COUNT(*) FROM events WHERE event_type = 'supervisor.heartbeat' "
+        "AND occurred_at > ?", (occurred_at,)).fetchone()
+    conn.close()
+    return row[0]
+
+
 def test_hotkey_writes_sentinel_with_hotkey_source(tmp_path):
     stop_path = tmp_path / "EMERGENCY_STOP"
     with StopControls(stop_path) as controls:
