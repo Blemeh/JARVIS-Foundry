@@ -39,18 +39,36 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             (event.event_id, payload["received_at"]),
         )
     elif event.event_type == "mission.created":
-        connection.execute(
-            """INSERT INTO missions(
-                mission_id, objective, resource_id, state, acceptance_json,
-                next_action, created_from, last_event_id, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        # created_from exists only from schema v11 (ALTER ADD COLUMN);
+        # the handler adapts so ledger replays against ANY schema
+        # version work (mid-migration appends included)
+        columns = {row[1] for row in connection.execute(
+            "PRAGMA table_info(missions)")}
+        base = (
+            "INSERT INTO missions(mission_id, objective, resource_id, "
+            "state, acceptance_json, next_action, last_event_id, "
+            "updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 payload["mission_id"], payload["objective"], payload.get("resource_id"),
                 payload.get("state", "PLANNED"), canonical_json(payload["acceptance_criteria"]),
-                payload.get("next_action"), payload.get("created_from"),
-                event.event_id, event.recorded_at,
+                payload.get("next_action"), event.event_id, event.recorded_at,
             ),
         )
+        if "created_from" in columns:
+            connection.execute(
+                "INSERT INTO missions(mission_id, objective, resource_id, "
+                "state, acceptance_json, next_action, created_from, "
+                "last_event_id, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    payload["mission_id"], payload["objective"], payload.get("resource_id"),
+                    payload.get("state", "PLANNED"),
+                    canonical_json(payload["acceptance_criteria"]),
+                    payload.get("next_action"), payload.get("created_from"),
+                    event.event_id, event.recorded_at,
+                ),
+            )
+        else:
+            connection.execute(*base)
     elif event.event_type == "mission.completed":
         # V3 slice-2 wiring: a mission whose created_from is
         # candidate:<id> auto-records the candidate outcome (prediction
