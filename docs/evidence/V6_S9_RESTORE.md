@@ -126,3 +126,23 @@ probes. R1-R7 all PASS; 2 LOW + 4 INFO.
 
 Round-2: fresh verifier with A/B discrimination dispatched after this
 commit.
+
+## 10. Round-2 verdict (deleg_8c75c4d2, PASS — A/B discriminated)
+
+T1 orphan reap PASS (OLD lacks list/reap; NEW has both; probe: late
+orphaned + reaped, candidate refused, STOP-blocked, unlink on first
+attempt, retries bounded at 3); T2 race exception family PASS (OLD
+bare restore_from call; NEW wraps -> RestoreError; monkeypatched
+OperationalError -> RestoreError, DB untouched); T3 connection-leak
+root cause PASS (backup_to/verify/data_loss_analysis explicit close();
+gc scan: ZERO open connections to point files); T4 documented + no
+regression PASS (regression tests present, focused 14/14, suite 877
+EXIT=0 sha256
+aab6a5189999a4aa7c644820cf488c607eab6c3a472b58e84bf587247632789d,
+collect-only 877, runtime v29 planned_json consistent, live v20 zero
+restore.% events, both checkouts pristine). Verdict JSON:
+var/evidence/v6-s9/verdict-deleg_8c75c4d2-r2.json (harness-truncated;
+verdict + criteria recovered, prose summary covers the tail keys).
+
+**S9 CLOSED — PASS (rounds 1+2).** Next: S10 (autonomous improvement
+discovery).
