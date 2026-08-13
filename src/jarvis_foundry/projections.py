@@ -48,6 +48,7 @@ PROJECTION_TABLES = (
     "canaries",
     "promotions",
     "release_control",
+    "restore_points",
 )
 
 
@@ -1438,6 +1439,41 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             raise ValueError(
                 f"{event.event_type} has no RUNNING canary "
                 f"{payload['canary_id']} — rolled back")
+    elif event.event_type == "restore.point_created":
+        for key in ("point_id", "label", "path", "sha256",
+                    "schema_version", "event_count", "controller"):
+            if key not in payload:
+                raise ValueError(
+                    f"restore.point_created requires {key} "
+                    "(mandatory payload key) — rolled back")
+        connection.execute(
+            """INSERT OR IGNORE INTO restore_points(
+                point_id, label, path, sha256, schema_version,
+                event_count, status, controller, created_at,
+                last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, 'CREATED', ?, ?, ?, ?)""",
+            (payload["point_id"], payload["label"], payload["path"],
+             payload["sha256"], payload["schema_version"],
+             payload["event_count"], payload["controller"],
+             event.recorded_at, event.event_id, event.recorded_at),
+        )
+    elif event.event_type == "restore.executed":
+        for key in ("point_id", "before_events", "after_events",
+                    "lost_events", "controller"):
+            if key not in payload:
+                raise ValueError(
+                    f"restore.executed requires {key} "
+                    "(mandatory payload key) — rolled back")
+        cursor = connection.execute(
+            """UPDATE restore_points SET status = 'EXECUTED',
+               last_event_id = ?, updated_at = ?
+               WHERE point_id = ?""",
+            (event.event_id, event.recorded_at, payload["point_id"]),
+        )
+        if cursor.rowcount == 0:
+            raise ValueError(
+                f"restore.executed references unknown point "
+                f"{payload['point_id']} — rolled back")
     elif event.event_type == "release.promotion_intent":
         for key in ("promotion_id", "release_id", "verification_id",
                     "baseline_run_id", "candidate_run_id", "risk_class",

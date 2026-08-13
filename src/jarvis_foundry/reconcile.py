@@ -100,6 +100,7 @@ def _table_key_column(table: str) -> str:
         "canaries": "canary_id",
         "promotions": "promotion_id",
         "release_control": "id",
+        "restore_points": "point_id",
         "system_state": "singleton",
         "supervisor_state": "singleton",
     }

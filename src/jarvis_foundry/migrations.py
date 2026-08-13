@@ -5,7 +5,7 @@ import sqlite3
 from .v4_schema import ensure_v4_tables
 
 
-SCHEMA_VERSION = 28
+SCHEMA_VERSION = 29
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -749,7 +749,6 @@ MIGRATIONS: dict[int, str] = {
         controller TEXT NOT NULL,
         trigger TEXT,
         reason TEXT,
-        planned_json TEXT,
         created_at TEXT NOT NULL,
         finished_at TEXT,
         last_event_id TEXT NOT NULL,
@@ -760,6 +759,23 @@ MIGRATIONS: dict[int, str] = {
         frozen INTEGER NOT NULL DEFAULT 0,
         frozen_reason TEXT,
         frozen_at TEXT,
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    """,
+    29: """
+    ALTER TABLE promotions ADD COLUMN planned_json TEXT;
+    CREATE TABLE IF NOT EXISTS restore_points (
+        point_id TEXT PRIMARY KEY,
+        label TEXT NOT NULL,
+        path TEXT NOT NULL,
+        sha256 TEXT NOT NULL,
+        schema_version INTEGER NOT NULL,
+        event_count INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'CREATED'
+            CHECK(status IN ('CREATED', 'VERIFIED', 'EXECUTED')),
+        controller TEXT NOT NULL,
+        created_at TEXT NOT NULL,
         last_event_id TEXT NOT NULL,
         updated_at TEXT NOT NULL
     );
