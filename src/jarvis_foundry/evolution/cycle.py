@@ -139,7 +139,8 @@ def run_cycle(
         risk_class=risk_class, migrations=[],
         verdicts=[], controller=controller)
     set_slot(database, "live", genesis, reason="genesis",
-             controller=controller)
+             controller=controller,
+             transition_id=f"{cycle_id}:genesis")
     try:
         # 2. isolated build (root must be OUTSIDE the runtime home —
         # a sibling of it, per the S3 builder's live-like-surface rule)
@@ -171,7 +172,8 @@ def run_cycle(
             risk_class=risk_class, migrations=[], verdicts=[],
             controller=controller)
         set_slot(database, "candidate", candidate,
-                 reason="candidate", controller=controller)
+                 reason="candidate", controller=controller,
+                 transition_id=f"{cycle_id}:candidate")
 
         # 4. evaluation: baseline + candidate on the same workload
         workload_id = register_workload(

@@ -112,3 +112,19 @@ build gate; rollback after promotion (outcome_regression -> quarantine
 controller refused; STOP blocks; unknown improvement refused;
 projection/schema integrity (pinned to the imported SCHEMA_VERSION
 constant >= 31).
+
+## 9. Verifier findings — repair record (deleg_dbaf806e, PASS)
+
+Verdict JSON: var/evidence/v6-s11/verdict-deleg_dbaf806e.json. 13
+scenarios. C1-C7 all PASS; 1 MEDIUM + 1 LOW + 3 INFO.
+
+| Severity | Finding | Resolution |
+|---|---|---|
+| MEDIUM | Identical-content re-run: a SECOND cycle with the SAME improvement and bit-identical candidate content auto-rejected ("release X is not in the candidate slot"). Root cause: content-derived release ids + un-namespaced set_slot transitions — cycle 2's slot moves dedupe against cycle 1's (state-diverged no-op). Fail-closed, no corruption. | REPAIRED: run_cycle namespaces BOTH arena transitions per cycle (transition_id = "<cycle_id>:genesis" / "<cycle_id>:candidate") — the second cycle's slot moves re-apply; both cycles promote with distinct cycle/promotion ids. Regression: test_second_identical_cycle_promotes. |
+| LOW | Arena-reset side effect: every cycle re-points live=genesis at start; after a REJECTED second cycle the final pointer state is live=genesis with the previously promoted release in previous. | RESOLVED BY THE SAME REPAIR (namespaced genesis transition makes the arena reset real — live re-points to the NEW genesis); the arena-local semantics are documented: live reflects the LATEST cycle's arena, and the previous pointer preserves the prior promoted release (auditable). |
+| INFO | Extra (e): two cycles with distinct improvements create two distinct genesis releases, both promoted, 4 manifests, reconcile consistent — ACCEPTABLE isolated-arena design. | RECORDED. |
+| INFO | C3 rejection reason names "quality" alongside "correctness" — consistent with compare_evaluations semantics. | RECORDED. |
+| INFO | Extra (d) arithmetic: "both PROMOTED" holds only for differing candidate content pre-repair. | RECORDED. |
+
+Round-2: fresh verifier with A/B discrimination dispatched after this
+commit.

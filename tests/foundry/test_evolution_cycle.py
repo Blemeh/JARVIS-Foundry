@@ -253,3 +253,28 @@ def test_projection_and_schema(db: FoundryDatabase, tmp_path: Path) -> None:
             "SELECT MAX(version) FROM schema_migrations").fetchone()[0]
     assert version == SCHEMA_VERSION  # pinned to the constant, >= 31
     assert SCHEMA_VERSION >= 31
+
+
+# ---------------------------------------------------------------------------
+# round-1 repairs (deleg_dbaf806e findings: identical-content re-run
+# collisions on un-namespaced slot transitions)
+# ---------------------------------------------------------------------------
+
+def test_second_identical_cycle_promotes(db: FoundryDatabase,
+                                         tmp_path: Path) -> None:
+    """S11 r1 (MEDIUM): TWO cycles with bit-identical content on the
+    SAME DB both promote — the arena transitions are namespaced per
+    cycle (transition_id), so the second cycle's slot moves re-apply
+    instead of deduping against the first (state-diverged no-op)."""
+    args = _cycle_args(db, tmp_path, risk="R1")
+    first = run_cycle(db, **args)  # type: ignore[arg-type]
+    assert first["outcome"] == "promoted"
+    second = run_cycle(db, **args)  # type: ignore[arg-type]
+    assert second["outcome"] == "promoted", second.get("reason")
+    assert second["cycle_id"] != first["cycle_id"]
+    assert second["promotion_id"] != first["promotion_id"]
+    # the arena reset re-pointed live to the second cycle's candidate
+    assert slot_pointers(db)["live"] == second["candidate_release_id"]
+    assert db.count("cycles") == 2
+    assert db.count("promotions") == 2
+    assert reconcile(db).consistent is True
