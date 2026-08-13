@@ -79,7 +79,8 @@ def _candidate(action_id: str = "act-1", *, score: float = 0.5,
                connector_id: str = "conn-a",
                target: str = "sys-browser",
                capability: str = "write",
-               expected_effect: str = "create notes.txt") -> ActionCandidate:
+               expected_effect: str = "create notes.txt",
+               goal_alignment: str = "mission-1") -> ActionCandidate:
     return ActionCandidate(
         action_id=action_id, action_kind="file.write",
         target_resources=(target,), capability=capability,
@@ -87,7 +88,7 @@ def _candidate(action_id: str = "act-1", *, score: float = 0.5,
         expected_effects=(expected_effect,),
         before_state_capture={"ref": "snap-1", "hash": "h-before"},
         score=score, connector_id=connector_id,
-        goal_alignment="mission-1")
+        goal_alignment=goal_alignment)
 
 
 def _mission_setup(db: FoundryDatabase) -> None:
@@ -294,3 +295,91 @@ def test_identity_is_transparent(db: FoundryDatabase) -> None:
         ).fetchone()
     import json
     assert json.loads(row[0])["identity"] == IDENTITY
+
+
+# ---------------------------------------------------------------------------
+# S7 round-1 verifier (deleg_0b2cbd47) regressions: M1/M2 + LOW + I1
+# ---------------------------------------------------------------------------
+
+def test_rerun_produces_no_outcome_drift(db: FoundryDatabase) -> None:
+    """M1: an idempotent re-delivery must NOT append duplicate
+    mission.outcome.recorded events — the re-delivery result carries
+    the RECORDED details (after_state/cost), so learn()'s payload-hash
+    key matches the original event and dedupes."""
+    _mission_setup(db)
+    store = _FakeStore()
+    candidates = [_candidate()]
+    run_mission(db, "mission-1", "run-1", candidates,
+                perform_map={"conn-a": store.perform})
+    run_mission(db, "mission-1", "run-1", candidates,
+                perform_map={"conn-a": store.perform})
+    db.rebuild_projections()
+    run_mission(db, "mission-1", "run-1", candidates,
+                perform_map={"conn-a": store.perform})
+    with db.connect() as connection:
+        outcomes = connection.execute(
+            "SELECT COUNT(*) FROM events WHERE event_type = "
+            "'mission.outcome.recorded'").fetchone()[0]
+        with_consequence = connection.execute(
+            "SELECT COUNT(*) FROM events WHERE event_type = "
+            "'mission.outcome.recorded' AND json_extract(payload_json, "
+            "'$.consequence') IS NOT NULL").fetchone()[0]
+    assert outcomes == 1  # no drift across runs + rebuild
+    assert with_consequence == 1  # the recorded consequence is kept
+
+
+def test_secret_like_candidate_refused_at_boundary(db: FoundryDatabase) -> None:
+    """M2: secret-like free-text candidate fields are refused at the
+    mission-loop ingestion boundary — the candidate is REFUSED in
+    isolation and the ledger never carries the secret text."""
+    _mission_setup(db)
+    store = _FakeStore()
+    evil = _candidate(action_id="act-evil",
+                      goal_alignment="api_key=sk-live-1234")
+    with pytest.raises(ValueError):
+        build_envelope(evil, mission_id="mission-1", run_id="run-1")
+    result = run_mission(db, "mission-1", "run-1", [evil],
+                         perform_map={"conn-a": store.perform})
+    assert result["results"][0]["outcome"] == "REFUSED"
+    assert store.calls == 0
+    with db.connect() as connection:
+        rows = connection.execute(
+            "SELECT payload_json FROM events WHERE payload_json LIKE "
+            "'%sk-live-1234%'").fetchall()
+    assert rows == []  # the secret never entered the ledger
+
+
+def test_fresh_execution_result_shape_uniform(db: FoundryDatabase) -> None:
+    """LOW: a fresh execution carries performed=True and the recorded
+    cost like every other path."""
+    _mission_setup(db)
+    store = _FakeStore()
+    result = run_mission(db, "mission-1", "run-1", [_candidate()],
+                         perform_map={"conn-a": store.perform})
+    detail = result["results"][0]
+    assert detail["performed"] is True
+    assert "cost" in detail
+
+
+def test_foreign_envelope_does_not_burn_capability(db: FoundryDatabase) -> None:
+    """I1: an envelope whose ticket is out of scope must be refused
+    BEFORE the capability is consumed — a foreign envelope never burns
+    a legitimate capability."""
+    _mission_setup(db)
+    store = _FakeStore()
+    candidate = _candidate()
+    envelope = build_envelope(candidate, mission_id="mission-1",
+                              run_id="run-1")
+    capability_id = authorize(db, envelope)
+    # same action_id, foreign mission — the ticket is out of scope
+    foreign = build_envelope(candidate, mission_id="mission-999",
+                             run_id="run-1")
+    with pytest.raises(PermissionError):
+        execute(db, foreign, capability_id, connector_id="conn-a",
+                perform=store.perform)
+    with db.connect() as connection:
+        used = connection.execute(
+            "SELECT COUNT(*) FROM events WHERE event_type = "
+            "'capability.used'").fetchone()[0]
+    assert used == 0  # nothing consumed by the refused attempt
+    assert store.calls == 0

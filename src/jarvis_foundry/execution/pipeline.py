@@ -67,7 +67,30 @@ class ActionCandidate:
 def build_envelope(candidate: ActionCandidate, *, mission_id: str,
                    run_id: str) -> ActionEnvelope:
     """The deterministic envelope for a candidate (broker-contract
-    fields fully populated; step 0 of the pipeline)."""
+    fields fully populated; step 0 of the pipeline).
+
+    Ingestion boundary guard (S7 verifier deleg_0b2cbd47 M2): free-text
+    candidate fields are written into the envelope and the ledger
+    verbatim — secret-like content is REFUSED here, exactly like the
+    S1 registry boundary (_reject_secrets), so secrets can never enter
+    the append-only stream through the mission loop.
+    """
+    from ..control.redaction import contains_secret_like
+    free_text = {
+        "goal_alignment": candidate.goal_alignment,
+        "expected_effect": candidate.expected_effect,
+        "expected_effects": " ".join(candidate.expected_effects),
+        "before_state_capture": str(candidate.before_state_capture),
+        "action_kind": candidate.action_kind,
+        "capability": candidate.capability,
+        **{f"target:{i}": t for i, t in enumerate(candidate.target_resources)},
+    }
+    for field, value in free_text.items():
+        if contains_secret_like(value):
+            raise ValueError(
+                f"candidate {candidate.action_id} field {field} carries "
+                "secret-like content — refused at the mission-loop "
+                "boundary (secrets never enter the ledger)")
     return ActionEnvelope(
         action_id=candidate.action_id,
         mission_id=mission_id,
@@ -223,14 +246,36 @@ def execute(database: FoundryDatabase, envelope: ActionEnvelope,
     state = effect_state(database, key)
     if state["status"] in (COMPLETED, FAILED, FROZEN):
         return {"outcome": state["status"], "action_key": key,
-                "performed": False, "reaped": False}
+                "performed": False, "reaped": False,
+                "after_state": state.get("after_state"),
+                "cost": state.get("cost"),
+                "failure_reason": state.get("failure_reason"),
+                "frozen_reason": state.get("frozen_reason")}
     if state["status"] == STARTED:
         # crash between start and completion: the driver reaps to FROZEN
         # and performs nothing — no authority consumption for a no-op
         return execute_effect(database, envelope=envelope,
                               connector_id=connector_id, perform=perform,
                               stop_path=stop_path)
-    target = resolve_envelope_targets(database, envelope)[0]
+    # Fresh execution: the S6 ticket/STOP/veto gates run BEFORE the
+    # capability is consumed (S7 verifier deleg_0b2cbd47 I1 — a foreign
+    # envelope must never burn a legitimate capability), then the
+    # capability proves the scoped authority at execution time.
+    from ..control.broker import (emergency_stop_reason, matching_veto_reason,
+                                  normalize_action_kind,
+                                  require_allowance_for_envelope,
+                                  veto_identities_for)
+    require_allowance_for_envelope(database, envelope)
+    stop = emergency_stop_reason(database, stop_path)
+    if stop:
+        raise PermissionError(f"effect execution stopped: {stop}")
+    targets = resolve_envelope_targets(database, envelope)
+    veto = matching_veto_reason(
+        database, veto_identities_for(
+            envelope, normalize_action_kind(envelope.action_kind), targets))
+    if veto:
+        raise PermissionError(f"effect execution vetoed: {veto}")
+    target = targets[0]
     try:
         use_capability(
             database, capability_id,
@@ -241,9 +286,14 @@ def execute(database: FoundryDatabase, envelope: ActionEnvelope,
     except CapabilityError as exc:
         raise PermissionError(
             f"capability {capability_id} refused at execution: {exc}")
-    return execute_effect(database, envelope=envelope,
-                          connector_id=connector_id, perform=perform,
-                          stop_path=stop_path)
+    executed = execute_effect(database, envelope=envelope,
+                              connector_id=connector_id, perform=perform,
+                              stop_path=stop_path)
+    # uniform result shape (LOW deleg_0b2cbd47): fresh executions carry
+    # performed/cost like every other path
+    executed.setdefault("performed", True)
+    executed.setdefault("cost", dict(envelope.budget_estimate))
+    return executed
 
 
 def reconcile(database: FoundryDatabase, action_key: str, *,
@@ -317,8 +367,14 @@ def run_candidate(
     """One candidate through the full pipeline. Outage isolation: any
     failure in this candidate returns a REFUSED/FAILED result — it can
     never raise into the mission loop or block other candidates."""
-    envelope = build_envelope(candidate, mission_id=mission_id,
-                              run_id=run_id)
+    try:
+        envelope = build_envelope(candidate, mission_id=mission_id,
+                                  run_id=run_id)
+    except ValueError as exc:
+        result = {"action_id": candidate.action_id,
+                  "outcome": _REFUSED, "reason": redact_text(str(exc))}
+        learn(database, mission_id, candidate.action_id, result)
+        return result
     try:
         capability_id = authorize(database, envelope, budget=budget,
                                   stop_path=stop_path)
@@ -366,17 +422,34 @@ def run_mission(
     from ..effects import effect_identity, effect_state
     for candidate in sorted(candidates,
                             key=lambda c: (-c.score, c.action_id)):
+        try:
+            envelope = build_envelope(candidate, mission_id=mission_id,
+                                      run_id=run_id)
+        except ValueError as exc:
+            # boundary refusal (M2): a secret-bearing candidate is
+            # REFUSED in isolation — it can never crash the mission
+            result = {"action_id": candidate.action_id,
+                      "outcome": _REFUSED,
+                      "reason": redact_text(str(exc))}
+            results.append(result)
+            learn(database, mission_id, candidate.action_id, result)
+            continue
         # Idempotent re-delivery FIRST: a terminal effect's recorded
         # outcome returns even under STOP (STOP blocks NEW work — it can
-        # never un-do or re-run completed effects).
-        envelope = build_envelope(candidate, mission_id=mission_id,
-                                  run_id=run_id)
+        # never un-do or re-run completed effects). The result carries
+        # the RECORDED details so learn()'s payload-hash key matches the
+        # original outcome event (no event drift — S7 verifier
+        # deleg_0b2cbd47 M1).
         key, _, _, _ = effect_identity(database, envelope)
         state = effect_state(database, key)
         if state["status"] in (COMPLETED, FAILED, FROZEN):
             result = {"action_id": candidate.action_id,
                       "outcome": state["status"], "action_key": key,
-                      "performed": False, "reaped": False}
+                      "performed": False, "reaped": False,
+                      "after_state": state.get("after_state"),
+                      "cost": state.get("cost"),
+                      "failure_reason": state.get("failure_reason"),
+                      "frozen_reason": state.get("frozen_reason")}
             results.append(result)
             learn(database, mission_id, candidate.action_id, result)
             continue
