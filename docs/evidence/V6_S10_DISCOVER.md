@@ -125,3 +125,28 @@ verifier dispatched.
 
 Round-2: fresh verifier with A/B discrimination dispatched after this
 commit.
+
+## 10. Round-2 verdict (deleg_e00e7cc4, PASS — A/B discriminated)
+
+U1 escaped-quote secret guard PASS (NEW catches the escaped shape and
+refuses with zero events; redact replaces the value; OLD derives the
+candidate — flaw reproduced from a git-archived old package; the
+systems.py mirror is in agreement); U2 handler type validation PASS
+(NEW rolls back "abc" counts with zero events/rows; OLD persisted TEXT
+'abc' — flaw reproduced); U3 all-or-nothing recording PASS (NEW leaves
+zero records/events on a mixed list; OLD left 1 partial record —
+flaw reproduced); U4 no regression PASS (3 regressions green, focused
+16/16, keyword families 37 passed, suite 893 EXIT=0 sha256
+f8895404dcecf11ca7b50992f4e51a0f6ce95de909b5ce5de895702cc6b82ae7,
+collect-only 893, runtime v30 consistent, live v20 zero V6-vocab
+events with 1232 V5-era discovery.* pre-phase, both checkouts
+pinned). Verdict JSON:
+var/evidence/v6-s10/verdict-deleg_e00e7cc4-r2.json, sha256
+61697583d7828d38a95ceba7d3c349baa6128e9d4dec22b909d42a2907318038.
+INFO: the round-1 bypass is specific to the canonical_json-escaped
+shape (the plain shape was always caught); the redaction output keeps
+the leading quote (cosmetic, value fully replaced).
+
+**S10 CLOSED — PASS (round 1 FAIL -> repairs -> round 2 PASS — the
+first FAIL-repair cycle of the build, exactly per D-032).**
+Next: S11 (R0/R1/R2 cycles + R3 fault proof — the end-to-end ladder).
