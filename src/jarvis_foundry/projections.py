@@ -50,6 +50,7 @@ PROJECTION_TABLES = (
     "release_control",
     "restore_points",
     "discovery_runs",
+    "cycles",
 )
 
 
@@ -1498,6 +1499,53 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
              payload["controller"], event.recorded_at, event.event_id,
              event.recorded_at),
         )
+    elif event.event_type == "cycle.started":
+        for key in ("cycle_id", "improvement_id", "controller"):
+            if key not in payload:
+                raise ValueError(
+                    f"cycle.started requires {key} "
+                    "(mandatory payload key) — rolled back")
+        connection.execute(
+            """INSERT OR IGNORE INTO cycles(
+                cycle_id, improvement_id, outcome, controller,
+                created_at, last_event_id, updated_at
+            ) VALUES (?, ?, 'rejected', ?, ?, ?, ?)""",
+            (payload["cycle_id"], payload["improvement_id"],
+             payload["controller"], event.recorded_at, event.event_id,
+             event.recorded_at),
+        )
+    elif event.event_type == "cycle.completed":
+        for key in ("cycle_id", "improvement_id", "outcome",
+                    "controller"):
+            if key not in payload:
+                raise ValueError(
+                    f"cycle.completed requires {key} "
+                    "(mandatory payload key) — rolled back")
+        if payload["outcome"] not in ("promoted", "rejected"):
+            raise ValueError(
+                f"cycle.completed unknown outcome "
+                f"{payload['outcome']} — rolled back")
+        cursor = connection.execute(
+            """UPDATE cycles SET outcome = ?, reason = ?,
+               promotion_id = ?, canary_id = ?, verification_id = ?,
+               baseline_run_id = ?, candidate_run_id = ?, build_id = ?,
+               candidate_release_id = ?, genesis_release_id = ?,
+               workload_id = ?, last_event_id = ?, updated_at = ?
+               WHERE cycle_id = ?""",
+            (payload["outcome"], payload.get("reason"),
+             payload.get("promotion_id"), payload.get("canary_id"),
+             payload.get("verification_id"),
+             payload.get("baseline_run_id"),
+             payload.get("candidate_run_id"), payload.get("build_id"),
+             payload.get("candidate_release_id"),
+             payload.get("genesis_release_id"),
+             payload.get("workload_id"), event.event_id,
+             event.recorded_at, payload["cycle_id"]),
+        )
+        if cursor.rowcount == 0:
+            raise ValueError(
+                f"cycle.completed references unknown cycle "
+                f"{payload['cycle_id']} — rolled back")
     elif event.event_type == "release.promotion_intent":
         for key in ("promotion_id", "release_id", "verification_id",
                     "baseline_run_id", "candidate_run_id", "risk_class",
