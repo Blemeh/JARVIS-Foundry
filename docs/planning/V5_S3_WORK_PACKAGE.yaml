@@ -21,7 +21,7 @@ dependencies:
   - "V5-S1 systems registry (credential systems registered with honest capability states)"
   - "V5-S2 broker (capability issuance is broker step 9; S3 wires the real issuance)"
 in_scope (draft):
-  - "src/jarvis_foundry/control/capabilities.py (new): Capability dataclass (capability_id, mission_id, agent_run_id, target, action, scopes, expires_at), issue_capability (deterministic, bound, short-lived), revoke_capability (immediate on STOP/veto), capability state machine (ISSUED -> USED/EXPIRED/REVOKED)"
+  - "src/jarvis_foundry/control/capability_broker.py (new; the V4 control/capabilities.py module is untouched): Capability dataclass (capability_id, mission_id, agent_run_id, target, action, scopes, expires_at), issue_capability (deterministic, bound, short-lived), revoke_capability (immediate on STOP/veto), capability state machine (ISSUED -> USED/EXPIRED/REVOKED)"
   - "S2 carried findings: F1 — broker veto-target grammar: bare system id must match (add bare id to _matching_veto identities + regression for both spellings); F2 — non-finite budget-estimate guard (math.isfinite -> NOT_READY) + regression"
   - "redaction: deterministic secret-pattern redactor for stdout/errors/artifacts/summaries (reuse systems._SECRET_PATTERN family); secret identifier/outcome events (capability.issued/used/revoked carry ids, never values)"
   - "provider authentication: resolution-at-execution contract — the broker stores NO plaintext; a registered credentials system declares readiness honestly; real provider auth is S8 (no credentials exist on this host — honest NOT_READY/BLOCKED)"

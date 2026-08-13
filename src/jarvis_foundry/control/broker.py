@@ -37,6 +37,7 @@ decision, no execution — a worker can never bypass the broker.
 from __future__ import annotations
 
 import json
+import math
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -87,6 +88,73 @@ def resolve_canonical_target(target: str | Path) -> Path:
     if resolved == resolved.parent:
         raise ValueError(f"drive or filesystem root is not a target: {raw!r}")
     return resolved
+
+
+def resolve_envelope_targets(database: FoundryDatabase,
+                             envelope: ActionEnvelope) -> tuple[str, ...]:
+    """Resolve an envelope's target resources to canonical identities
+    ("system:<id>" or "file:<resolved path>"). Raises ValueError on any
+    unresolvable/fuzzy target — the caller maps that to INVALID_TARGET.
+    Shared by the broker (step 2) and the capability broker (binding)."""
+    refs: tuple[str, ...] = envelope.target_resources
+    if not refs and envelope.target is not None:
+        refs = (str(envelope.target),)
+    if not refs:
+        raise ValueError("no target resources declared")
+    resolved: list[str] = []
+    for ref in refs:
+        with database.connect() as connection:
+            registered = connection.execute(
+                "SELECT 1 FROM systems WHERE system_id = ?",
+                (ref,)).fetchone() is not None
+        if registered:
+            resolved.append(f"system:{ref}")
+            continue
+        path = resolve_canonical_target(ref)  # raises ValueError
+        resolved.append(f"file:{path}")
+    return tuple(resolved)
+
+
+def emergency_stop_reason(database: FoundryDatabase,
+                          stop_path: str | Path | None) -> str | None:
+    """Shared deterministic emergency-stop read (contract §9): stop
+    marker, active STOP_EVERYTHING directive, FROZEN/SUSPENDED
+    supervisor. Used by the broker AND the capability broker so the two
+    can never disagree about what a STOP means."""
+    if stop_path is not None and Path(stop_path).exists():
+        return "emergency stop marker is present"
+    with database.connect() as connection:
+        stopped = connection.execute(
+            "SELECT directive_id FROM directives "
+            "WHERE active = 1 AND command_type = 'STOP_EVERYTHING'"
+        ).fetchone()
+        if stopped:
+            return f"STOP_EVERYTHING directive {stopped[0]} is active"
+        state = connection.execute(
+            "SELECT status FROM supervisor_state WHERE singleton = 1"
+        ).fetchone()
+    if state is not None and state[0] in ("FROZEN", "SUSPENDED"):
+        return f"supervisor is {state[0]}"
+    return None
+
+
+def matching_veto_reason(database: FoundryDatabase,
+                         identities: set[str]) -> str | None:
+    """Shared deterministic veto read (contract §5.3): the first active
+    VETO_ACTION / STOP_MISSION directive whose target matches one of the
+    identities returns its directive id. Used by the broker AND the
+    capability broker."""
+    with database.connect() as connection:
+        rows = connection.execute(
+            "SELECT directive_id, command_type, target FROM directives "
+            "WHERE active = 1"
+        ).fetchall()
+    for row in rows:
+        if row["command_type"] in ("VETO_ACTION", "STOP_MISSION") and \
+                row["target"] in identities:
+            return (f"active {row['command_type']} directive "
+                    f"{row['directive_id']} matches")
+    return None
 
 
 @dataclass(frozen=True, slots=True)
@@ -218,42 +286,10 @@ class PolicyBroker:
         return None
 
     def _emergency_stop_active(self) -> str | None:
-        if self.stop_path is not None and Path(self.stop_path).exists():
-            return "emergency stop marker is present"
-        with self.database.connect() as connection:
-            stopped = connection.execute(
-                "SELECT directive_id FROM directives "
-                "WHERE active = 1 AND command_type = 'STOP_EVERYTHING'"
-            ).fetchone()
-            if stopped:
-                return f"STOP_EVERYTHING directive {stopped[0]} is active"
-            state = connection.execute(
-                "SELECT status FROM supervisor_state WHERE singleton = 1"
-            ).fetchone()
-        if state is not None and state[0] in ("FROZEN", "SUSPENDED"):
-            return f"supervisor is {state[0]}"
-        return None
+        return emergency_stop_reason(self.database, self.stop_path)
 
     def _resolve_targets(self, envelope: ActionEnvelope) -> tuple[str, ...]:
-        refs: tuple[str, ...] = envelope.target_resources
-        if not refs and envelope.target is not None:
-            refs = (str(envelope.target),)
-        if not refs:
-            raise ValueError("no target resources declared")
-        resolved: list[str] = []
-        for ref in refs:
-            if self._system_registered(ref):
-                resolved.append(f"system:{ref}")
-                continue
-            path = resolve_canonical_target(ref)  # raises ValueError
-            resolved.append(f"file:{path}")
-        return tuple(resolved)
-
-    def _system_registered(self, system_id: str) -> bool:
-        with self.database.connect() as connection:
-            return connection.execute(
-                "SELECT 1 FROM systems WHERE system_id = ?",
-                (system_id,)).fetchone() is not None
+        return resolve_envelope_targets(self.database, envelope)
 
     def _registration_gap(self, envelope: ActionEnvelope,
                           targets: tuple[str, ...]) -> str | None:
@@ -291,17 +327,12 @@ class PolicyBroker:
         if envelope.resource_id:
             identities.add(envelope.resource_id)
         identities.update(targets)
-        with self.database.connect() as connection:
-            rows = connection.execute(
-                "SELECT directive_id, command_type, target FROM directives "
-                "WHERE active = 1"
-            ).fetchall()
-        for row in rows:
-            if row["command_type"] in ("VETO_ACTION", "STOP_MISSION") and \
-                    row["target"] in identities:
-                return (f"active {row['command_type']} directive "
-                        f"{row['directive_id']} matches")
-        return None
+        # F1 (S2 verifier deleg_6c96be6d): a veto on the BARE system id
+        # must match the resolved prefixed identity and vice versa.
+        for target in targets:
+            if target.startswith("system:"):
+                identities.add(target.split(":", 1)[1])
+        return matching_veto_reason(self.database, identities)
 
     def _capability_readiness(self, envelope: ActionEnvelope,
                               targets: tuple[str, ...]) -> str | None:
@@ -369,6 +400,13 @@ class PolicyBroker:
             if limit is None:
                 return (BrokerDecision.NOT_READY,
                         f"no budget policy for {key} — fail closed")
+            if not math.isfinite(value):
+                # F2 (S2 verifier deleg_6c96be6d): NaN compares False
+                # against every limit — a non-finite estimate can never
+                # be budgeted, so it fails closed deterministically.
+                return (BrokerDecision.NOT_READY,
+                        f"non-finite budget estimate for {key} — fail "
+                        "closed")
             if value > limit:
                 return (BrokerDecision.BUDGET_EXCEEDED,
                         f"budget {key} {value} exceeds the limit {limit}")

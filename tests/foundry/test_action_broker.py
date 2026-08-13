@@ -381,6 +381,44 @@ def test_budget_unknown_estimate_key_fail_closed(db: FoundryDatabase,
     assert result.decision is BrokerDecision.NOT_READY
 
 
+def test_budget_non_finite_estimate_fail_closed(db: FoundryDatabase,
+                                                tmp_path: Path) -> None:
+    """F2 (S2 verifier deleg_6c96be6d): NaN compares False against every
+    limit, so a non-finite estimate must fail closed deterministically."""
+    import math
+    _register_browser(db)
+    result = _broker(db, tmp_path).decide(_envelope(
+        budget_estimate={"usd": float("nan")}), budget={"usd": 5.0})
+    assert result.decision is BrokerDecision.NOT_READY
+    assert "non-finite" in result.reason
+
+
+def test_veto_on_bare_system_id_matches(db: FoundryDatabase,
+                                        tmp_path: Path) -> None:
+    """F1 (S2 verifier deleg_6c96be6d): a VETO_ACTION on the BARE system
+    id must match the resolved prefixed identity."""
+    _register_browser(db)
+    db.append(Event.create(
+        "owner_directive.recorded",
+        {"directive_id": "dir-bare", "command_type": "VETO_ACTION",
+         "target": "sys-browser", "exact_text": "veto the browser system",
+         "reason": "test"},
+        source_type="owner", source_id="test",
+        idempotency_key="owner_directive.recorded:dir-bare"))
+    result = _broker(db, tmp_path).decide(_envelope())
+    assert result.decision is BrokerDecision.VETOED
+    # and the prefixed spelling still matches too
+    db.append(Event.create(
+        "owner_directive.recorded",
+        {"directive_id": "dir-prefixed", "command_type": "VETO_ACTION",
+         "target": "system:sys-browser", "exact_text": "veto prefixed",
+         "reason": "test"},
+        source_type="owner", source_id="test",
+        idempotency_key="owner_directive.recorded:dir-prefixed"))
+    assert _broker(db, tmp_path).decide(_envelope()).decision is \
+        BrokerDecision.VETOED
+
+
 def test_budget_precedes_recovery(db: FoundryDatabase, tmp_path: Path) -> None:
     """Step 6 runs before step 7: BUDGET_EXCEEDED outranks
     MISSING_RECOVERY_PATH."""
