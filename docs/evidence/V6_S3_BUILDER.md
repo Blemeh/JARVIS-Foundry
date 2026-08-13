@@ -123,3 +123,26 @@ imported SCHEMA_VERSION constant >= 23).
 
 Round-2: fresh verifier with A/B discrimination dispatched after this
 commit.
+
+## 9. Round-2 verdict (deleg_9c761ab5, PASS — A/B discriminated)
+
+Fresh round-2 verifier: D1 decoy-DB detection PASS (old code had the
+startswith exclusion; new code fails builds on foundry.db AND
+foundry.db.backup decoys while clean builds COMPLETE); D2 junction
+pruning PASS (reparse-point detection empirically True on a real
+junction, False on normal dirs; junction content never hashed); D3
+ancestor-root refusal PASS; D4 accepted boundaries documented
+accurately + isolated lab DB carries zero credentials (sk- scan on the
+lab ledger: zero hits; broad regex hits on the LIVE DB are path
+substrings like 'task-0.log' in pre-existing V5 payloads, not
+credentials); D5 no regression (18/18 focused, suite 778 EXIT=0 sha256
+1056f7f1ae6fc946792073ed6d93deae819ebb10c1b0cd2ef47dfd0848e15b0a,
+collect-only 778, runtime v23 consistent, live v20 zero V6 events,
+both checkouts unchanged). Verdict JSON:
+var/evidence/v6-s3/verdict-deleg_9c761ab5-r2.json,
+sha256 19b15bcbca6f977398a572dbb7f8e48f9b2ec7b0aaa4c9e9e7980c6cfc5e12a4.
+3 INFO observations recorded (junction-write boundary scope; live-DB
+path-substring matches; lab ledger still at 0 events). None blocking.
+
+**S3 CLOSED — PASS (rounds 1+2).** Next: S4 (reproducible evaluation
+laboratory).
