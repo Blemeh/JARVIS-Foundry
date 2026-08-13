@@ -179,6 +179,7 @@ class FoundryDatabase:
             "candidate_builds": "build_id",
             "evaluation_runs": "run_id",
             "verifications": "verification_id",
+            "shadow_runs": "run_id",
         }
         if allowed.get(table) != key_column:
             raise ValueError("unsupported projection lookup")
@@ -194,7 +195,7 @@ class FoundryDatabase:
                    "candidate_scores", "monitors", "vault_files",
                    "vault_sync_state", "ingestion_cursors", "research_queue",
                    "worker_manifests", "consolidation_ops"}
-        allowed.update({"cost_measurements", "briefing_outbox", "voice_interactions", "control_nonces", "improvement_records", "release_manifests", "release_slots", "candidate_builds", "evaluation_runs", "verifications"})
+        allowed.update({"cost_measurements", "briefing_outbox", "voice_interactions", "control_nonces", "improvement_records", "release_manifests", "release_slots", "candidate_builds", "evaluation_runs", "verifications", "shadow_runs"})
         if table not in allowed:
             raise ValueError("unsupported projection listing")
         clauses, args = [], []
@@ -213,7 +214,7 @@ class FoundryDatabase:
                    "candidate_scores", "monitors", "vault_files",
                    "vault_sync_state", "ingestion_cursors", "research_queue",
                    "worker_manifests", "consolidation_ops"}
-        allowed.update({"cost_measurements", "briefing_outbox", "voice_interactions", "control_nonces", "improvement_records", "release_manifests", "release_slots", "candidate_builds", "evaluation_runs", "verifications"})
+        allowed.update({"cost_measurements", "briefing_outbox", "voice_interactions", "control_nonces", "improvement_records", "release_manifests", "release_slots", "candidate_builds", "evaluation_runs", "verifications", "shadow_runs"})
         if table not in allowed:
             raise ValueError("unsupported projection count")
         with self.connect() as connection:

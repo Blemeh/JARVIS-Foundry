@@ -5,7 +5,7 @@ import sqlite3
 from .v4_schema import ensure_v4_tables
 
 
-SCHEMA_VERSION = 25
+SCHEMA_VERSION = 26
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -687,6 +687,26 @@ MIGRATIONS: dict[int, str] = {
         evidence_refs_json TEXT NOT NULL DEFAULT '[]',
         verdict_hash TEXT,
         same_provider_limitation INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    """,
+    26: """
+    CREATE TABLE IF NOT EXISTS shadow_runs (
+        run_id TEXT PRIMARY KEY,
+        improvement_id TEXT NOT NULL,
+        candidate_release_id TEXT NOT NULL,
+        status TEXT NOT NULL
+            CHECK(status IN ('RUNNING', 'COMPLETED', 'FAILED')),
+        decisions_count INTEGER NOT NULL DEFAULT 0,
+        divergences_json TEXT NOT NULL DEFAULT '[]',
+        zero_live_effects INTEGER NOT NULL DEFAULT 0,
+        stop_observed INTEGER NOT NULL DEFAULT 0,
+        live_attempts INTEGER NOT NULL DEFAULT 0,
+        blocked_attempts INTEGER NOT NULL DEFAULT 0,
+        input_hash TEXT NOT NULL DEFAULT '',
+        reason TEXT,
         created_at TEXT NOT NULL,
         last_event_id TEXT NOT NULL,
         updated_at TEXT NOT NULL

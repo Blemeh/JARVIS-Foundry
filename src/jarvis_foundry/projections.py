@@ -44,6 +44,7 @@ PROJECTION_TABLES = (
     "candidate_builds",
     "evaluation_runs",
     "verifications",
+    "shadow_runs",
 )
 
 
@@ -1302,6 +1303,73 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
                 f"verification.verdict_recorded has no REQUESTED "
                 f"verification {payload['verification_id']} — rolled "
                 "back (forgery or double verdict)")
+    elif event.event_type == "shadow.run_started":
+        for key in ("run_id", "improvement_id", "candidate_release_id",
+                    "controller", "stop_observed"):
+            if key not in payload:
+                raise ValueError(
+                    f"shadow.run_started requires {key} "
+                    "(mandatory payload key) — rolled back")
+        connection.execute(
+            """INSERT OR IGNORE INTO shadow_runs(
+                run_id, improvement_id, candidate_release_id, status,
+                stop_observed, created_at, last_event_id, updated_at
+            ) VALUES (?, ?, ?, 'RUNNING', ?, ?, ?, ?)""",
+            (payload["run_id"], payload["improvement_id"],
+             payload["candidate_release_id"],
+             int(bool(payload["stop_observed"])),
+             event.recorded_at, event.event_id, event.recorded_at),
+        )
+    elif event.event_type == "shadow.run_completed":
+        for key in ("run_id", "decisions_count", "divergences",
+                    "zero_live_effects", "stop_observed",
+                    "live_attempts", "blocked_attempts", "input_hash"):
+            if key not in payload:
+                raise ValueError(
+                    f"shadow.run_completed requires {key} "
+                    "(mandatory payload key) — rolled back")
+        cursor = connection.execute(
+            """UPDATE shadow_runs SET status = 'COMPLETED',
+               decisions_count = ?, divergences_json = ?,
+               zero_live_effects = ?, stop_observed = ?,
+               live_attempts = ?, blocked_attempts = ?,
+               input_hash = ?, last_event_id = ?, updated_at = ?
+               WHERE run_id = ? AND status = 'RUNNING'""",
+            (payload["decisions_count"],
+             canonical_json(payload["divergences"]),
+             int(bool(payload["zero_live_effects"])),
+             int(bool(payload["stop_observed"])),
+             payload["live_attempts"], payload["blocked_attempts"],
+             payload["input_hash"], event.event_id,
+             event.recorded_at, payload["run_id"]),
+        )
+        if cursor.rowcount == 0:
+            raise ValueError(
+                f"shadow.run_completed has no RUNNING run "
+                f"{payload['run_id']} — rolled back")
+    elif event.event_type == "shadow.run_failed":
+        for key in ("run_id", "reason", "stop_observed",
+                    "decisions_count", "live_attempts",
+                    "blocked_attempts"):
+            if key not in payload:
+                raise ValueError(
+                    f"shadow.run_failed requires {key} "
+                    "(mandatory payload key) — rolled back")
+        cursor = connection.execute(
+            """UPDATE shadow_runs SET status = 'FAILED',
+               reason = ?, stop_observed = ?,
+               decisions_count = ?, live_attempts = ?,
+               blocked_attempts = ?, last_event_id = ?, updated_at = ?
+               WHERE run_id = ? AND status = 'RUNNING'""",
+            (payload["reason"], int(bool(payload["stop_observed"])),
+             payload["decisions_count"], payload["live_attempts"],
+             payload["blocked_attempts"], event.event_id,
+             event.recorded_at, payload["run_id"]),
+        )
+        if cursor.rowcount == 0:
+            raise ValueError(
+                f"shadow.run_failed has no RUNNING run "
+                f"{payload['run_id']} — rolled back")
     elif event.event_type == "release.slot_changed":
         for key in ("slot", "release_id", "previous_release_id",
                     "reason", "controller"):
