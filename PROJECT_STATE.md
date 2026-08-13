@@ -291,3 +291,24 @@ independently, promotes only on both-gate PASS, and self-improves
 automatically.
 
 The owner receives reports and may veto or STOP at any time.
+
+## V6 activation — additive reconciliation (2026-08-13, D-030)
+
+The V4-era sections above are historical records and are NOT rewritten.
+
+- V5 MULTI-SYSTEM INTELLIGENCE: ACCEPTED — FINAL GATE PASS
+  (docs/evidence/V5_ACCEPTANCE.md; verifier deleg_686f3477; close commit
+  06ae51b; ledger verification.passed:v5-acceptance seq 26354 +
+  capability.matrix.recorded seq 26355 + evidence.created seq 26356;
+  schema v20; suite 710 EXIT=0 at close; conn-fs the only real READY
+  connector; 6 online kinds BLOCKED/resumable; provider reconciliation
+  NOT_TESTED).
+- V6 CONTINUOUS SELF-EVOLUTION: ACTIVATED 2026-08-13 by the authenticated
+  owner directive (docs/planning/V6_MASTER_PROMPT.md, matched verbatim in
+  session). Construction is isolated on branch v6-self-evolution (worktree
+  JARVIS-Foundry-V6, base fa4e65f) with its own venv, runtime DB and
+  evidence; the live Supervisor daemon, live DB (schema v20), main checkout,
+  `.h` and the parallel V4 Command Center worktree/preview are preserved and
+  untouched by construction. S0-S13 per docs/planning/V6_SLICE_MANIFEST.md;
+  engineering + operational acceptance per V6_MASTER_PLAN.md S12; V7 is NOT
+  implemented in this phase (handoff only).

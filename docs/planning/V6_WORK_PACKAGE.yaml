@@ -1,0 +1,65 @@
+work_package_id: V6_CONTINUOUS_SELF_EVOLUTION
+phase: V6
+status: ACTIVE
+activated_by: authenticated owner directive (docs/planning/V6_MASTER_PROMPT.md,
+  received 2026-08-13 as a direct session message matching the file verbatim)
+canonical_requirement: R-EVO-01
+primary_risks: [RK-12, RK-20, RK-21]
+objective: >
+  Build and prove continuous self-evolution: measured problem/opportunity ->
+  frozen hypothesis -> isolated candidate -> independent verification ->
+  shadow -> canary -> promote/reject -> measure outcome -> keep/repair/roll
+  back -> learn, across R0-R3 risk classes, with automatic rollback and no
+  owner approval queue.
+
+paths:
+  worktree: C:\Users\b\Documents\ChatGPT\Autonomous AI powered by Hoowen\JARVIS-Foundry-V6
+  branch: v6-self-evolution (base fa4e65f)
+  runtime: <worktree>\.venv (Python 3.13.5, pytest 9.1.1)
+  runtime_db: <worktree>\var\v6-runtime\v6.db (isolated; never the live DB)
+  evidence: <worktree>\var\evidence\v6-sN\
+  docs: docs/evidence/V6_SN_*.md, docs/planning/V6_*.md
+  live_db: C:\Users\b\AppData\Local\hermes\foundry\foundry.db (READ-ONLY; schema v20;
+    27,086 events at S0 snapshot; sha256 1e1d72a019c64d333ba70c21ee7498ebfa26eec1fc2f9b08b4e13798c2038656)
+  protected: main checkout untracked owner files (V5_SOL_HIGH_HARDENING_*,
+    V5_MASTER_PROMPT.md, V5_READ_FIRST.md); .h; V4 worktree JARVIS-Foundry-V4-command-center
+
+capabilities_required:
+  - git worktree/branch isolation
+  - python 3.13 venv + pytest
+  - sqlite read-only inspection (mode=ro) and disposable copies
+  - independent verifier sessions (fresh isolated, adversarial briefs, JSON verdicts)
+  - worker routing opencode_go/deepseek-v4-flash, fallbacks forbidden (D-031)
+
+evidence_and_acceptance: per V6_SLICE_MANIFEST.md slice gates; final acceptance
+  per V6_MASTER_PLAN.md section 5 S12 (engineering + operational) and the
+  directive's operational minimums (3 cycles, 2 promotions with measured
+  improvement, 1 real R1 promotion, 1 bounded R2 canary+promotion, 1 broken
+  candidate auto-rejected or rolled back, no live damage, no self-certification,
+  fresh independent final PASS).
+
+tests: TDD per slice; focused + full suite (719 collected at S0 baseline);
+  disposable migration/replay/reconcile/fault checks; A/B discriminating
+  regressions on every FAIL->repair; frozen artifacts with hashes.
+
+cost_and_resource_use:
+  runtime: local python/pytest only; no paid provider calls for the machinery
+  verifiers: Hermes delegation sessions (same-provider limitation recorded)
+  disks: disposable venv + var/ evidence (bounded)
+
+reversibility_and_rollback:
+  construction_rollback: delete worktree + branch (no live mutation during
+    S0-S12; zero live rollback needed)
+  candidate_rollback: S8 machinery (freeze -> terminate -> restore -> validate
+    -> reconcile -> record) with previous release retained
+  schema_rollback: S9 restore points + rehearsals on copies
+
+stop_conditions:
+  - authenticated owner STOP/veto/redirect (immediate)
+  - genuine technical blocker (recorded BLOCKED, resumable)
+  - unrepaired severity-one integrity risk
+  - final V6 gate + V7 handoff (V7 not implemented)
+
+builder_identity: executor session (Hermes, opencode_go/deepseek-v4-flash)
+verifier_identity: fresh independent adversarial verifier per slice (new
+  isolated session; same-provider limitation recorded per D-031/D-032)
