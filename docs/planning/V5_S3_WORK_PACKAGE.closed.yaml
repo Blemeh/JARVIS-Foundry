@@ -1,6 +1,12 @@
 work_package: V5_MULTI_SYSTEM_INTELLIGENCE
 slice: "3 — Scoped capability and credential broker"
-status: ACTIVE
+status: CLOSED_PASS
+closed_at: 2026-08-13
+close_evidence:
+  - "round-1 verifier deleg_deff8b38 FAIL (2 MEDIUM + 2 LOW) -> repairs 02da6af (bare-id veto on capability use, quoted-key JSON redaction, agent-run-id required) -> round-2 verifier deleg_d661002c PASS (8 probe groups, 69/69 checks, A/B discrimination)"
+  - "verdict JSONs archived (FAIL ad2c5c7d…, PASS ba8a2221…); ledger verification.passed (seq 22899, round-1 key label — D-037 class, verifier_run_id is the true identity) + evidence.created:v5-s3-capabilities-close (seq 22900)"
+  - "suite 604 passed EXIT=0; live schema stays v19; V4 control/capabilities.py byte-identical (clobber recovered)"
+  - "docs/evidence/V5_S3_CAPABILITIES.md CLOSED with FAIL lineage + repairs"
 activated_by: "V5-S2 CLOSED PASS (verification.passed:verdict-v5-s2-broker:round1, seq 22385)"
 date: 2026-08-13
 objective: >

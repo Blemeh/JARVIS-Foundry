@@ -1,0 +1,37 @@
+work_package: V5_MULTI_SYSTEM_INTELLIGENCE
+slice: "4 — Connector contract, registry, health, quota, and routing"
+status: ACTIVE
+activated_by: "V5-S3 CLOSED PASS (verification.passed seq 22899; live schema v19)"
+date: 2026-08-13
+objective: >
+  Make systems pluggable and isolate connector failures: a versioned
+  connector contract with read/write/execute/communicate/external-effect
+  action semantics, a durable connector registry with capability
+  declarations, technical probes, health samples, quota/cost accounting,
+  and degraded/disabled states; connector-specific retry policy and
+  automatic rerouting ONLY among verified, policy-allowed connectors;
+  local deterministic fake connectors for tests; NO claim of online
+  connector readiness without a real interface, auth, and evidence.
+authoritative_requirements:
+  - "05_POST_V1_ROADMAP.md §8 (connector registry with read/write/execute/communicate/external-effect semantics; per-connector health, quota, cost, rerouting; connector outages do not stop unrelated missions)"
+  - "V5_MASTER_PROMPT.md §6 V5-S4 (gate probes: one connector failure must not stop unrelated work; quota and budget exhaustion; reroute; disable/re-enable; capability mismatch; STOP; contract version/replay)"
+  - "02_ARCHITECTURE_CONTRACT.md §6 and §5.2 (capability states; resource registry)"
+  - "R-EXT-01 (no provider evidence without a real provider)"
+dependencies:
+  - "V5-S1 systems registry (system.registered catalog + probes + system_actions journal)"
+  - "V5-S2 broker (capability readiness + budget gates consume connector state)"
+  - "V5-S3 capability broker (connector operations get scoped capabilities)"
+in_scope (draft):
+  - "src/jarvis_foundry/connectors/contract.py (new): ConnectorSpec (connector_id, kind, version, declared actions with semantics read/write/execute/communicate/external_effect, capability states, retry policy), versioned contract validation, action-semantics declaration (addresses S2 verifier F3 — per-kind declared semantics, the structural fix for declaration spoofing)"
+  - "src/jarvis_foundry/connectors/registry.py (new): register_connector (append-only events connector.registered/health_sample/quota_recorded), health state machine (HEALTHY/DEGRADED/DISABLED/UNKNOWN), quota/cost accounting, disable/enable, connector-specific retry policy"
+  - "src/jarvis_foundry/connectors/fakes.py (new): local deterministic fake connectors for tests + honest registration of any genuinely available local connector (none exist beyond the registry itself — honest NOT_READY records)"
+  - "routing: reroute only among verified, policy-allowed connectors (deterministic selector; outage isolation — one connector's failure never blocks unrelated connectors)"
+  - "tests/foundry/test_connectors.py: outage isolation, quota/budget exhaustion, reroute, disable/re-enable, capability mismatch, STOP, contract version/replay"
+out_of_scope (draft):
+  - "real online connectors with real credentials (S8; none available — honest NOT_READY/BLOCKED records)"
+  - "cross-system entity resolution (S5), effect execution/reconciliation (S6), loop wiring (S7)"
+  - "V6 self-evolution"
+evidence_gate: "focused green -> full suite EXIT=0 -> freeze -> independent adversarial verifier -> ledger close (verification.passed:verdict-v5-s4-connectors:round1 + evidence.created) -> slice 5"
+constraints: "no-push; STOP/veto live; append-only; no live-DB migration unless required (raw events preferred); live DB untouched; all internal dispatches opencode_go + deepseek-v4-flash"
+failure_recovery: "FAIL -> repair exact cause -> regression -> fresh frozen verifier round"
+rollback: "single commit revert; no schema change; events append-only"
