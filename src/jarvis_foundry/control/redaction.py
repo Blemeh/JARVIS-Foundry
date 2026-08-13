@@ -12,19 +12,22 @@ import re
 from typing import Any
 
 #: same pattern family as src/jarvis_foundry/systems.py (the API-boundary
-#: refusal guard) — key[:=]value assignments for secret-like keys. The
-#: value runs to the next comma/semicolon/newline so multi-token values
-#: (e.g. PEM blocks) are fully replaced.
+#: refusal guard) — key[:=]value assignments for secret-like keys, with
+#: optional JSON quoting around the key and value (S3 verifier
+#: deleg_deff8b38: '"token": "abc"' must redact exactly like 'token=abc').
+#: The value runs to the next comma/semicolon/newline or closing quote so
+#: multi-token values (e.g. PEM blocks) are fully replaced.
 _SECRET_PATTERN = re.compile(
     r"(api[_-]?key|token|password|passwd|secret|private[_-]?key|"
-    r"authorization|bearer)\s*[:=]\s*[^,;\n]+", re.IGNORECASE)
+    r"authorization|bearer)\s*\"?\s*[:=]\s*\"?[^,;\n\"]*\"?",
+    re.IGNORECASE)
 
 
 def redact_text(text: str) -> str:
     """Replace secret-like assignments with ``<key>=[REDACTED]``.
 
-    ``api_key=sk-live-1234`` -> ``api_key=[REDACTED]``;
-    ``Authorization: Bearer xyz`` -> ``Authorization=[REDACTED]``.
+    ``api_key=<value>`` -> ``api_key=[REDACTED]`` (quoted JSON keys and
+    values included: ``"token": "abc"`` -> ``"token=[REDACTED]"``).
     Values are never echoed; the key label is kept for debuggability.
     """
     if not text:

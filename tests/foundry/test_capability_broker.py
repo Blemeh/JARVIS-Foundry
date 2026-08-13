@@ -164,8 +164,12 @@ def test_use_outside_scope_refused(db: FoundryDatabase,
                                    override: dict[str, str],
                                    reason: str) -> None:
     capability_id = _issue(db)
+    context = {"agent_run_id": "run-1", "mission_id": "mission-1",
+               "action_kind": "browser.navigate",
+               "target": "system:sys-browser"}
+    context.update(override)
     with pytest.raises(CapabilityError) as exc:
-        use_capability(db, capability_id, now=T0, **override)
+        use_capability(db, capability_id, now=T0, **context)
     assert reason in str(exc.value)
 
 
@@ -217,6 +221,48 @@ def test_use_veto_revokes(db: FoundryDatabase) -> None:
     assert "veto" in str(exc.value)
 
 
+def test_use_veto_on_bare_system_id_revokes(db: FoundryDatabase) -> None:
+    """MEDIUM (S3 verifier deleg_deff8b38): a VETO_ACTION on the BARE
+    system id must deny capability use exactly as it denies the
+    envelope — the F1 fix applies to use_capability too."""
+    capability_id = _issue(db)  # bound to target system:sys-browser
+    db.append(Event.create(
+        "owner_directive.recorded",
+        {"directive_id": "dir-bare", "command_type": "VETO_ACTION",
+         "target": "sys-browser", "exact_text": "veto the browser system",
+         "reason": "t"},
+        source_type="owner", source_id="test",
+        idempotency_key="owner_directive.recorded:dir-bare"))
+    with pytest.raises(CapabilityError) as exc:
+        use_capability(db, capability_id, now=T0, agent_run_id="run-1",
+                       mission_id="mission-1",
+                       action_kind="browser.navigate",
+                       target="system:sys-browser")
+    assert "veto" in str(exc.value)
+    # and the prefixed spelling still revokes too
+    db.append(Event.create(
+        "owner_directive.recorded",
+        {"directive_id": "dir-prefixed", "command_type": "VETO_ACTION",
+         "target": "system:sys-browser", "exact_text": "veto prefixed",
+         "reason": "t"},
+        source_type="owner", source_id="test",
+        idempotency_key="owner_directive.recorded:dir-prefixed"))
+    with pytest.raises(CapabilityError):
+        use_capability(db, capability_id, now=T0, agent_run_id="run-1",
+                       mission_id="mission-1",
+                       action_kind="browser.navigate",
+                       target="system:sys-browser")
+
+
+def test_use_requires_agent_run_id(db: FoundryDatabase) -> None:
+    """LOW (S3 verifier deleg_deff8b38): a use that presents NO run
+    context cannot be checked against the binding — refused."""
+    capability_id = _issue(db)
+    with pytest.raises(CapabilityError) as exc:
+        use_capability(db, capability_id, now=T0, mission_id="mission-1")
+    assert "agent run id" in str(exc.value)
+
+
 def test_explicit_revoke(db: FoundryDatabase) -> None:
     capability_id = _issue(db)
     revoke_capability(db, capability_id, reason="owner revoked", now=T0)
@@ -266,6 +312,25 @@ def test_provider_auth_ready_returns_identifier_only(
 ])
 def test_redact_text_matrix(raw: str, expected: str) -> None:
     assert redact_text(raw) == expected
+
+
+@pytest.mark.parametrize("raw", [
+    '{"token": "abc123"}',
+    '{"api_key": "sk-live-9"}',
+    '{"Authorization": "Bearer xyz"}',
+    'payload={"password": "hunter2"}',
+])
+def test_redact_text_quoted_json(raw: str) -> None:
+    """MEDIUM (S3 verifier deleg_deff8b38): quoted-key JSON — the most
+    common serialization on stdout/logs/errors/evidence — must redact
+    exactly like the bare form, and the scan must detect it."""
+    redacted = redact_text(raw)
+    assert "[REDACTED]" in redacted
+    for secret in ("abc123", "sk-live-9", "xyz", "hunter2"):
+        assert secret not in redacted
+    assert contains_secret_like(raw)
+    # the redacted form still carries the key label (debuggability) — the
+    # scan is a conservative tripwire and flags any assignment form
 
 
 @pytest.mark.parametrize("benign", [

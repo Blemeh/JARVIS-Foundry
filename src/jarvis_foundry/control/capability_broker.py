@@ -215,13 +215,25 @@ def use_capability(
             "'$.capability_id') = ?", (capability_id,)).fetchone()
     binding = json.loads(issued["payload_json"])
     bound_targets = binding["target"].split(",")
-    veto = matching_veto_reason(database, {
-        "GLOBAL", binding["action_kind"], binding["mission_id"],
-        binding["target"], *bound_targets,
-    })
+    veto_identities = {"GLOBAL", binding["action_kind"],
+                       binding["mission_id"], binding["target"],
+                       *bound_targets}
+    # F1 carry (S3 verifier deleg_deff8b38): a veto on the BARE system id
+    # must deny capability use exactly as it denies the envelope — the
+    # broker's F1 fix applies to use_capability too. (Loop variable is
+    # deliberately NOT named ``target`` — it would shadow the presented
+    # target parameter below.)
+    for bound in bound_targets:
+        if bound.startswith("system:"):
+            veto_identities.add(bound.split(":", 1)[1])
+    veto = matching_veto_reason(database, veto_identities)
     if veto:
         raise CapabilityError(
             f"capability {capability_id} revoked by veto: {veto}")
+    if agent_run_id is None:
+        raise CapabilityError(
+            f"capability {capability_id} use requires the agent run id — "
+            "forwarding cannot be verified without it")
     if mission_id is not None and mission_id != binding["mission_id"]:
         raise CapabilityError(
             f"capability {capability_id} is bound to mission "
