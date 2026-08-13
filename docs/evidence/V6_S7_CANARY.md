@@ -116,3 +116,20 @@ ticks refused after); candidate cannot terminate or extend; STOP
 terminates running canary; stale reaping (and active not reaped);
 projection/schema integrity (pinned to the imported SCHEMA_VERSION
 constant >= 27).
+
+## 8. Verifier findings — repair record (deleg_b8bf3e0b, PASS)
+
+Verdict JSON: var/evidence/v6-s7/verdict-deleg_b8bf3e0b.json (recovered
+from the harness-truncated summary; verdict PASS + C1-C7 PASS). 41
+adversarial probes.
+
+| Severity | Finding | Resolution |
+|---|---|---|
+| LOW | Out-of-order cycles ACCEPTED (cycle 5 then 2 -> RUNNING, last_tick_cycle rewinds): no monotonic guard; duration/reap math hazard for a misbehaving controller. | REPAIRED: ticks must be strictly after the last ticked cycle (monotonic guard); equal or earlier cycles refused. Regression: test_out_of_order_cycle_refused. |
+| INFO | The verifier brief's C3 arithmetic slip: 5 errors / 0.05 traffic = error_rate 100.0, not 1.0 (outcome identical — both breach the 0.05 threshold). | RECORDED: brief arithmetic corrected in this doc; the recomputed-health behavior is unchanged. |
+| INFO | The controller check is a substring blocklist ("candidate"), not an identity registry. | ACCEPTED documented boundary: the live deployment binds the real Supervisor process identity at the adapter boundary; the machinery enforces the convention. |
+| INFO | Raw event writers can forge canary.completed (the projection trusts the stream; reconcile stays consistent) — the PROMOTION GATE fails closed (forged completion -> canary_completed_successfully False). | ACCEPTED: fail-closed gate is the contract (C5 verified). |
+| INFO | reap_stale_canaries with max_cycles_without_tick=0 reaps anything not ticked in the current cycle (incl. freshly started canaries). | ACCEPTED: semantics match the docstring; callers use positive windows. |
+
+Round-2: fresh verifier with A/B discrimination dispatched after this
+commit.

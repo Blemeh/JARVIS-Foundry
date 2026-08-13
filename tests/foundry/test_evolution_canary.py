@@ -370,3 +370,30 @@ def test_projection_and_schema(db: FoundryDatabase) -> None:
             "SELECT MAX(version) FROM schema_migrations").fetchone()[0]
     assert version == SCHEMA_VERSION  # pinned to the constant, >= 27
     assert SCHEMA_VERSION >= 27
+
+
+# ---------------------------------------------------------------------------
+# round-1 repair (deleg_b8bf3e0b finding: out-of-order cycles)
+# ---------------------------------------------------------------------------
+
+def test_out_of_order_cycle_refused(db: FoundryDatabase) -> None:
+    """S7 r1 (LOW): ticks must be monotonic — a cycle not after the
+    last ticked cycle is refused (a misbehaving controller cannot
+    rewind last_tick_cycle or corrupt duration math)."""
+    improvement_id = _improvement(db)
+    release_id = _release(db, improvement_id)
+    canary_id = _start(db, improvement_id, release_id)
+    canary_tick(db, canary_id=canary_id, cycle=5, traffic_served=0.05,
+                errors=0, latency_s=0.5, cost_usd=0.01,
+                controller=CONTROLLER)
+    with pytest.raises(CanaryError):
+        canary_tick(db, canary_id=canary_id, cycle=5,
+                    traffic_served=0.05, errors=0, latency_s=0.5,
+                    cost_usd=0.01, controller=CONTROLLER)
+    with pytest.raises(CanaryError):
+        canary_tick(db, canary_id=canary_id, cycle=2,
+                    traffic_served=0.05, errors=0, latency_s=0.5,
+                    cost_usd=0.01, controller=CONTROLLER)
+    row = db.row("canaries", "canary_id", canary_id)
+    assert row is not None and row["last_tick_cycle"] == 5
+    assert row["cycles_run"] == 1

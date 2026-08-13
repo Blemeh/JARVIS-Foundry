@@ -132,6 +132,11 @@ def canary_tick(
              "stopped")
     _require(isinstance(cycle, int) and cycle > 0,
              "cycle must be a positive integer")
+    last_tick = int(row["last_tick_cycle"] or 0)
+    _require(cycle > last_tick,
+             f"cycle {cycle} is not after the last ticked cycle "
+             f"{last_tick} — out-of-order ticks are refused "
+             "(monotonic guard)")
     _require(isinstance(traffic_served, (int, float))
              and 0.0 <= traffic_served <= 1.0,
              "traffic_served must be in [0, 1]")
