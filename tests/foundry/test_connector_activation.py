@@ -261,3 +261,43 @@ def test_secret_content_refused_in_fs_effect(db: FoundryDatabase,
             "SELECT payload_json FROM events WHERE payload_json LIKE "
             "'%token=abc123%'").fetchall()
     assert rows == []
+
+
+# ---------------------------------------------------------------------------
+# S8 verifier (deleg_19385768) regressions: MEDIUM thread-safety + LOW
+# ---------------------------------------------------------------------------
+
+def test_fs_connector_concurrent_appends_serialized(scratch: Path) -> None:
+    """MEDIUM: concurrent performs on the same file never lose bytes —
+    the connector serializes with its lock."""
+    import threading as _threading
+    fs = FsConnector(scratch)
+    errors: list[BaseException] = []
+
+    def append_many(worker: int) -> None:
+        try:
+            for _ in range(120):
+                fs.perform("log.txt", f"w{worker}\n", action="file.append")
+        except BaseException as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    threads = [_threading.Thread(target=append_many, args=(i,))
+               for i in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert errors == []
+    lines = (scratch / "log.txt").read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 240  # every byte survived
+    assert sorted(set(lines)) == ["w0", "w1"]
+
+
+def test_mini_gate_unknown_connector_deterministic(db: FoundryDatabase,
+                                                   scratch: Path) -> None:
+    """LOW: mini_gate on an unknown id returns a deterministic NOT_READY
+    row — never an exception."""
+    gate = mini_gate(db, "conn-ghost", root=scratch)
+    assert gate["status"] == "NOT_READY"
+    assert gate["identity"] is False
+    assert gate["connector_id"] == "conn-ghost"

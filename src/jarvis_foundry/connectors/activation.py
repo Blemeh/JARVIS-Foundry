@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -48,13 +49,16 @@ class FsConnector:
     root. Canonicalization refuses every escape: '../' segments,
     absolute paths outside the root, symlinks out of the root, and
     unknown action kinds. The after-state is a content hash (the S6
-    after-state capture contract)."""
+    after-state capture contract). All performs are serialized by a
+    per-connector lock (S8 verifier deleg_19385768 MEDIUM: concurrent
+    appends lost bytes — a real interface must be thread-safe)."""
 
     def __init__(self, root: str | Path) -> None:
         self.root = Path(root).resolve()
         if not self.root.is_dir():
             raise ValueError(f"connector root {self.root} is not a "
                              "directory")
+        self._lock = threading.Lock()
 
     def _resolve(self, ref: str) -> Path:
         if not ref or ref != ref.strip():
@@ -70,6 +74,11 @@ class FsConnector:
         """The pipeline perform signature: (ref, payload) -> after-state
         hash. Reads return the content; writes/append/delete mutate and
         return the content hash of the resulting file."""
+        with self._lock:
+            return self._perform_unlocked(ref, payload, action=action)
+
+    def _perform_unlocked(self, ref: str, payload: str | None, *,
+                          action: str) -> str:
         if action not in _ACTIONS:
             raise ValueError(f"connector {FS_CONNECTOR_ID} does not "
                              f"declare action {action}")
@@ -191,7 +200,9 @@ def mini_gate(database: FoundryDatabase, connector_id: str, *,
               root: str | Path | None = None) -> dict[str, Any]:
     """The per-connector mini-gate matrix: identity, declared action
     semantics, capability states, a REAL health probe, quota, and the
-    honest provider-reconciliation status."""
+    honest provider-reconciliation status. Unknown connector ids return
+    a deterministic NOT_READY row (S8 verifier deleg_19385768 LOW —
+    never an exception)."""
     spec = None
     with database.connect() as connection:
         rows = connection.execute(
@@ -224,7 +235,22 @@ def mini_gate(database: FoundryDatabase, connector_id: str, *,
             probe_ok = _probe_root(database, Path(root)) is not None
         except Exception:  # noqa: BLE001 — a failed probe is honest data
             probe_ok = False
-    status_row = connector_status(database, connector_id)
+    try:
+        status_row = connector_status(database, connector_id)
+    except Exception:  # noqa: BLE001 — unknown id: deterministic row
+        return {
+            "connector_id": connector_id,
+            "identity": False,
+            "declared_actions": {},
+            "semantics_gaps": {"unknown": "connector not registered"},
+            "capabilities": {},
+            "health": "UNKNOWN",
+            "quota": None,
+            "disabled": None,
+            "real_probe": bool(probe_ok),
+            "provider_reconciliation": "NOT_TESTED",
+            "status": "NOT_READY",
+        }
     ready = (status_row.get("health") == "HEALTHY"
              and not status_row.get("disabled") and probe_ok)
     return {
