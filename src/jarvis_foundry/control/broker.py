@@ -481,6 +481,12 @@ def record_decision(database: FoundryDatabase, envelope: ActionEnvelope,
         "budget_estimate": envelope.budget_estimate,
         "credential_requirements": list(envelope.credential_requirements),
         "created_at": envelope.created_at,
+        # S6 round-2 (deleg_fd714bbc M3): the decision record carries
+        # the effect PAYLOAD identity so executors can verify the
+        # envelope they run is the envelope that was decided.
+        "expected_effect": envelope.expected_effect,
+        "expected_effects": list(envelope.expected_effects),
+        "before_state_capture": envelope.before_state_capture,
     }
     event = Event.create(
         "action.decided",
@@ -560,6 +566,17 @@ def require_allowance_for_envelope(database: FoundryDatabase,
     if dict(payload.get("budget_estimate", {})) != \
             dict(envelope.budget_estimate):
         mismatches.append("budget estimate")
+    # S6 round-2 (deleg_fd714bbc M3): the effect PAYLOAD identity must
+    # match too — expected_effect, expected_effects, before-state —
+    # exactly the fields effect_identity hashes into the action key.
+    if payload.get("expected_effect") != envelope.expected_effect:
+        mismatches.append("expected effect")
+    if list(payload.get("expected_effects", ())) != \
+            list(envelope.expected_effects):
+        mismatches.append("expected effects")
+    if dict(payload.get("before_state_capture", {})) != \
+            dict(envelope.before_state_capture):
+        mismatches.append("before-state capture")
     if mismatches:
         raise PermissionError(
             f"action {envelope.action_id} ticket scope mismatch — the "

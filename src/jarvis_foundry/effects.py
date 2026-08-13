@@ -80,10 +80,25 @@ def _event_payloads(database: FoundryDatabase, event_type: str,
                     action_key: str) -> list[dict[str, Any]]:
     with database.connect() as connection:
         rows = connection.execute(
-            "SELECT payload_json FROM events WHERE event_type = ? AND "
-            "json_extract(payload_json, '$.action_key') = ? "
+            "SELECT payload_json, sequence FROM events WHERE event_type = ? "
+            "AND json_extract(payload_json, '$.action_key') = ? "
             "ORDER BY sequence", (event_type, action_key)).fetchall()
-    return [json.loads(row[0]) for row in rows]
+    return [dict(json.loads(row[0]), _sequence=row[1]) for row in rows]
+
+
+def _terminal_events(payloads: dict[str, list[dict[str, Any]]]) \
+        -> tuple[str, dict[str, Any]] | None:
+    """The FIRST terminal event in sequence order — mirrors the
+    projection's transition guards (each terminal transition applies
+    only from STARTED, so the first terminal event wins)."""
+    candidates = [(event["_sequence"], kind)
+                  for kind in ("system.action_completed",
+                               "system.action_failed", "effect.frozen")
+                  for event in payloads[kind]]
+    if not candidates:
+        return None
+    _, kind = min(candidates)
+    return kind, payloads[kind][0]
 
 
 def effect_state(database: FoundryDatabase,
@@ -111,14 +126,24 @@ def effect_state(database: FoundryDatabase,
     # journal-row truth when present; otherwise derive from the events
     state["status"] = journal["status"] if journal is not None else STARTED
     if journal is None:
+        mismatch = _event_payloads(database, "effect.reconcile_mismatch",
+                                   action_key)
+        if mismatch:
+            state["status"] = FROZEN  # strongest: applies to any terminal
+        else:
+            terminal = _terminal_events({
+                "system.action_completed": completed,
+                "system.action_failed": failed,
+                "effect.frozen": frozen,
+            })
+            if terminal is not None:
+                state["status"] = {
+                    "system.action_completed": COMPLETED,
+                    "system.action_failed": FAILED,
+                    "effect.frozen": FROZEN,
+                }[terminal[0]]
         if compensated:
             state["status"] = FROZEN
-        elif frozen:
-            state["status"] = FROZEN
-        elif completed:
-            state["status"] = COMPLETED
-        elif failed:
-            state["status"] = FAILED
     if started:
         state["before_state"] = started[-1].get("before_state_capture")
         state["expected_effects"] = started[-1].get("expected_effects")

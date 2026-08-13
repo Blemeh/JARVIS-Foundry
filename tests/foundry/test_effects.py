@@ -513,6 +513,97 @@ def test_changed_observations_record_history(db: FoundryDatabase) -> None:
     assert compensated == 2
 
 
+@pytest.mark.parametrize("override", [
+    {"expected_effect": "DELETE everything.txt"},   # foreign payload
+    {"before_state_capture": {"ref": "snap-9", "hash": "h-other"}},
+    {"expected_effects": ("delete everything.txt",)},
+])
+def test_foreign_payload_under_ticket_refused(db: FoundryDatabase,
+                                              override: dict[str, object]) -> None:
+    """M3 round-2 (deleg_fd714bbc): an envelope that differs ONLY in
+    the effect PAYLOAD identity cannot execute under an existing
+    ticket — the payload is exactly what the action key hashes."""
+    _register_system(db)
+    _register_connector(db)
+    _allow(db)  # ticket for the default payload
+    foreign = _envelope(action_id="act-s6-1", **override)
+    store = _FakeStore()
+    with pytest.raises(PermissionError) as exc:
+        _run(db, store, foreign)
+    assert "scope mismatch" in str(exc.value)
+    assert store.calls == 0
+
+
+def test_derived_terminal_matches_projection_when_both_terminal(
+        db: FoundryDatabase) -> None:
+    """INFO round-2 (deleg_fd714bbc): with BOTH terminal events in the
+    ledger and the journal row missing, the event-derived state must
+    match what the projection replays — the FIRST terminal event in
+    sequence order wins (later terminal transitions no-op on a
+    non-STARTED row)."""
+    _register_system(db)
+    _register_connector(db)
+    envelope = _allow(db, action_id="act-ord",
+                      expected_effect="create ordered.txt")
+    from jarvis_foundry.systems import record_external_action
+    key, system_id, target_ref, effect_hash = effect_identity(db, envelope)
+    record_external_action(db, system_id, target_ref, effect_hash,
+                           kind="file.write", started=True)
+    # completed first, failed LAST (the projection: completed locks the
+    # row; the late failed no-ops -> FAILED would be wrong)
+    db.append(Event.create(
+        "system.action_completed",
+        {"action_key": key, "system_id": system_id, "target_ref": target_ref,
+         "payload_hash": effect_hash, "kind": "file.write"},
+        source_type="connector", source_id="conn-fs",
+        idempotency_key=f"{key}.completed.before"))
+    db.append(Event.create(
+        "system.action_failed",
+        {"action_key": key, "system_id": system_id, "target_ref": target_ref,
+         "payload_hash": effect_hash, "kind": "file.write"},
+        source_type="connector", source_id="conn-fs",
+        idempotency_key=f"{key}.failed.after"))
+    with db.connect() as connection:
+        connection.execute("DELETE FROM system_actions WHERE action_key = ?",
+                           (key,))
+    derived = effect_state(db, key)
+    db.rebuild_projections()
+    with db.connect() as connection:
+        row = connection.execute(
+            "SELECT status FROM system_actions WHERE action_key = ?",
+            (key,)).fetchone()
+    assert derived["status"] == row[0] == "COMPLETED"
+    # and the mirror case: failed first, completed last -> FAILED
+    store = _FakeStore()
+    envelope_b = _allow(db, action_id="act-ord2",
+                        expected_effect="create ordered2.txt")
+    key_b, system_b, target_b, hash_b = effect_identity(db, envelope_b)
+    record_external_action(db, system_b, target_b, hash_b,
+                           kind="file.write", started=True)
+    db.append(Event.create(
+        "system.action_failed",
+        {"action_key": key_b, "system_id": system_b, "target_ref": target_b,
+         "payload_hash": hash_b, "kind": "file.write"},
+        source_type="connector", source_id="conn-fs",
+        idempotency_key=f"{key_b}.failed.before"))
+    db.append(Event.create(
+        "system.action_completed",
+        {"action_key": key_b, "system_id": system_b, "target_ref": target_b,
+         "payload_hash": hash_b, "kind": "file.write"},
+        source_type="connector", source_id="conn-fs",
+        idempotency_key=f"{key_b}.completed.after"))
+    with db.connect() as connection:
+        connection.execute("DELETE FROM system_actions WHERE action_key = ?",
+                           (key_b,))
+    derived_b = effect_state(db, key_b)
+    db.rebuild_projections()
+    with db.connect() as connection:
+        row_b = connection.execute(
+            "SELECT status FROM system_actions WHERE action_key = ?",
+            (key_b,)).fetchone()
+    assert derived_b["status"] == row_b[0] == "FAILED"
+
+
 # ---------------------------------------------------------------------------
 # durability: migration v20 + rebuild
 # ---------------------------------------------------------------------------
