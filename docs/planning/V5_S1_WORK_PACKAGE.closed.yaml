@@ -1,6 +1,13 @@
 work_package: V5_MULTI_SYSTEM_INTELLIGENCE
 slice: "1 — System Registry (catalog + capability + policy + effect journal)"
-status: ACTIVE
+status: CLOSED_PASS
+closed_at: 2026-08-13
+close_evidence:
+  - "independent verifier deleg_d7639766 PASS (24 probes) — verdict JSON var/evidence/v5-s1-systems/verdict-deleg_d7639766.json (sha256 eb8ac515…)"
+  - "ledger verification.passed:verdict-v5-s1-systems:round1 (seq 22079) + evidence.created:v5-s1-systems-close (seq 22080)"
+  - "live schema v18 -> v19 (rehearsed on a WAL-safe live copy; reconcile consistent, 0 mismatches; data preserved)"
+  - "suite 507 passed EXIT=0 (var/evidence/v5-s1-systems/suite-v5-s1-close.txt); focused 22/22"
+  - "docs/evidence/V5_S1_SYSTEMS.md CLOSED with full finding-resolution table"
 activated_by: "V4 acceptance gate PASS (verification.passed:verdict-v4-acceptance-gate:round1, 2026-08-13) — roadmap §8 'V4 PASS queues V5 automatically'"
 date: 2026-08-13
 objective: >
@@ -23,5 +30,6 @@ scope:
 out_of_scope:
   - "real adapters (browser/cloud/comm/calendar), credential brokering, provider-side evidence, V6 self-evolution"
   - "slice 2: registry wired into the loop's action selection (capability-gated)"
-evidence_gate: "focused green -> full suite -> freeze -> independent adversarial verifier -> ledger close (verification.passed:verdict-v5-s1-systems:round1) -> slice 2"
+evidence_gate: "focused green -> full suite -> freeze -> independent adversarial verifier (deleg_d7639766 PASS, 24 probes) -> ledger close (verification.passed:verdict-v5-s1-systems:round1, seq 22079) -> next slice"
 constraints: "no-push unchanged; STOP/veto live; live-DB migrations rehearsed on copies; append-only ledger; all internal dispatches opencode_go + deepseek-v4-flash"
+next_slice: "V5-S2 — ActionEnvelope and deterministic policy broker (architecture contract §7; 15-step order, 7 return codes)"
