@@ -106,3 +106,18 @@ rejection, rollback — all REAL S11 cycles); one-promotion-only FAILS
 CLOSED; acceptance archives (row + event); candidate controller
 refused; projection/schema integrity (pinned to the imported
 SCHEMA_VERSION constant >= 32).
+
+## 9. Verifier findings — resolution record (deleg_057b415e, PASS)
+
+Verdict JSON: var/evidence/v6-s12/verdict-deleg_057b415e.json. 13
+scenarios. A1-A7 all PASS; 1 LOW + 3 INFO.
+
+| Severity | Finding | Resolution |
+|---|---|---|
+| LOW | record_acceptance docstring claims content-derived dedupe; the run id is a uuid (the archive is append-only). | FIXED: docstring corrected (the code was right; each acceptance is a distinct archived gate). |
+| INFO | Extra (a): relaxed minimums (min_cycles=1, min_promotions=0) on an EMPTY ledger still fail closed — the r1/r2/rejections/rollbacks minimums are fixed; params are effective at 0/0. | RECORDED (the gate is MORE fail-closed than the brief assumed). |
+| INFO | r2_canary_promotions counts any promoted cycle with a canary_id — canary SUCCESS is enforced upstream by the S7 gate inside run_cycle (a failed canary never promotes). | RECORDED. |
+| INFO | Harness sibling-deletion trap (self-inflicted scratch cleanup) — no impact. | RECORDED. |
+
+No round-2 needed (LOW was doc-only; INFOs recorded). **S12 CLOSED —
+PASS.** Next: S13 (closure + V7 handoff).

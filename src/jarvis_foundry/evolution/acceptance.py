@@ -152,8 +152,10 @@ def record_acceptance(database: FoundryDatabase, *, report: dict[str, Any],
                       controller: str,
                       source_type: str = "supervisor",
                       source_id: str = "v6") -> str:
-    """Archive an acceptance report (event + row). Re-delivery dedupes
-    on the content-derived run id."""
+    """Archive an acceptance report (event + row). The archive is
+    APPEND-ONLY: every gate gets a fresh uuid run id (S12 verifier
+    deleg_057b415e — the docstring previously mis-claimed content-
+    derived dedupe; each acceptance is a distinct archived gate)."""
     _require_controller(controller)
     run_id = "acceptance-" + uuid.uuid4().hex[:12]
     database.append(Event.create(
