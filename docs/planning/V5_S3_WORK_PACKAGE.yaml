@@ -1,0 +1,37 @@
+work_package: V5_MULTI_SYSTEM_INTELLIGENCE
+slice: "3 — Scoped capability and credential broker"
+status: ACTIVE
+activated_by: "V5-S2 CLOSED PASS (verification.passed:verdict-v5-s2-broker:round1, seq 22385)"
+date: 2026-08-13
+objective: >
+  Give workers narrow, expiring authority without exposing reusable
+  secrets: short-lived capabilities bound to mission, agent run,
+  target, action, and expiry; immediate revocation on STOP/veto;
+  provider authentication resolved at execution time and NEVER copied
+  into prompts, mission records, logs, evidence, or notes; redaction of
+  secret-like material from stdout, errors, artifacts, and summaries;
+  secret IDENTIFIER and outcome recorded without secret VALUES;
+  prevention of worker forwarding or persistence of credentials;
+  honest NOT_READY/BLOCKED when no real credential or interface exists.
+authoritative_requirements:
+  - "02_ARCHITECTURE_CONTRACT.md §8 (credential and capability broker: no plaintext in prompts/mission records; narrowest short-lived capability; bound to mission/agent run/target/expiry; redaction; identifier-not-value records; no forwarding/persistence; denied after STOP/veto)"
+  - "V5_MASTER_PROMPT.md §6 V5-S3 (gate probes: expiry, replay, scope escalation, STOP revocation, redaction, prompt/log/ledger scans, unavailable-provider handling)"
+  - "R-SEC-02 (workers do not receive unnecessary raw secrets), R-AUT-04, RK-08 (secrets leak through prompts or logs)"
+dependencies:
+  - "V5-S1 systems registry (credential systems registered with honest capability states)"
+  - "V5-S2 broker (capability issuance is broker step 9; S3 wires the real issuance)"
+in_scope (draft):
+  - "src/jarvis_foundry/control/capabilities.py (new): Capability dataclass (capability_id, mission_id, agent_run_id, target, action, scopes, expires_at), issue_capability (deterministic, bound, short-lived), revoke_capability (immediate on STOP/veto), capability state machine (ISSUED -> USED/EXPIRED/REVOKED)"
+  - "S2 carried findings: F1 — broker veto-target grammar: bare system id must match (add bare id to _matching_veto identities + regression for both spellings); F2 — non-finite budget-estimate guard (math.isfinite -> NOT_READY) + regression"
+  - "redaction: deterministic secret-pattern redactor for stdout/errors/artifacts/summaries (reuse systems._SECRET_PATTERN family); secret identifier/outcome events (capability.issued/used/revoked carry ids, never values)"
+  - "provider authentication: resolution-at-execution contract — the broker stores NO plaintext; a registered credentials system declares readiness honestly; real provider auth is S8 (no credentials exist on this host — honest NOT_READY/BLOCKED)"
+  - "tests/foundry/test_capability_broker.py: expiry (past/now/future), replay (same capability twice), scope escalation (capability used outside its bound action/target refused), STOP revocation (marker/directive/FROZEN revoke immediately), redaction matrix + prompt/log/ledger scans, unavailable provider -> NOT_READY, worker persistence/forwarding refused"
+out_of_scope (draft):
+  - "real provider authentication and online connectors (S8)"
+  - "connector health/quota/routing (S4)"
+  - "effect execution/reconciliation (S6)"
+  - "V6 self-evolution"
+evidence_gate: "focused green -> full suite EXIT=0 -> freeze -> independent adversarial verifier (expiry/replay/escalation/revocation/redaction/scan probes) -> ledger close (verification.passed:verdict-v5-s3-capabilities:round1 + evidence.created) -> slice 4"
+constraints: "no-push; STOP/veto live; append-only; NO migration unless needed (raw capability events preferred); live DB untouched; all internal dispatches opencode_go + deepseek-v4-flash"
+failure_recovery: "FAIL -> repair exact cause -> regression -> fresh frozen verifier round; no live-state impact until S7 wiring"
+rollback: "single commit revert; no schema change; events append-only"

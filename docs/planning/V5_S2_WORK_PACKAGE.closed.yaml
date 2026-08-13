@@ -1,6 +1,13 @@
 work_package: V5_MULTI_SYSTEM_INTELLIGENCE
 slice: "2 — ActionEnvelope and deterministic policy broker"
-status: ACTIVE
+status: CLOSED_PASS
+closed_at: 2026-08-13
+close_evidence:
+  - "independent verifier deleg_6c96be6d PASS (10 probe groups) — verdict JSON var/evidence/v5-s2-broker/verdict-deleg_6c96be6d.json (sha256 ac7fee21…)"
+  - "ledger verification.passed:verdict-v5-s2-broker:round1 (seq 22385) + evidence.created:v5-s2-broker-close (seq 22386); live schema stays v19"
+  - "suite 561 passed EXIT=0 (var/evidence/v5-s2-broker/suite-v5-s2.txt); focused 54/54 (verifier re-run)"
+  - "rehearsal: live-copy reconcile consistent before+after full rebuild (22,255 events)"
+  - "docs/evidence/V5_S2_BROKER.md CLOSED with findings table; F1 (bare-system-id veto grammar) + F2 (NaN budget guard) carried to S3; F3 (declaration-spoofing) recorded limitation, structural fix in S4 connector contract"
 activated_by: "V5-S1 CLOSED PASS (verification.passed:verdict-v5-s1-systems:round1, seq 22079; live schema v19)"
 date: 2026-08-13
 objective: >
