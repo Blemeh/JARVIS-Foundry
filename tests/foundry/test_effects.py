@@ -408,6 +408,112 @@ def test_reconcile_requires_terminal_effect(db: FoundryDatabase) -> None:
 
 
 # ---------------------------------------------------------------------------
+# S6 round-1 verifier (deleg_2d03fb7f) regressions: M1/M2/M3 + L1
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("veto_target", [
+    "system:sys-browser",  # resolved spelling
+    "GLOBAL",
+    "mission-1",           # mission id
+])
+def test_fresh_veto_blocks_execution(db: FoundryDatabase,
+                                     veto_target: str) -> None:
+    """M1: a fresh VETO_ACTION between ticket and execution must block
+    on EVERY identity the broker honors — resolved spelling, GLOBAL,
+    and mission — not just the raw target resources."""
+    _register_system(db)
+    _register_connector(db)
+    envelope = _allow(db)
+    db.append(Event.create(
+        "owner_directive.recorded",
+        {"directive_id": "dir-fresh", "command_type": "VETO_ACTION",
+         "target": veto_target, "exact_text": f"veto {veto_target}",
+         "reason": "t"},
+        source_type="owner", source_id="test",
+        idempotency_key=f"owner_directive.recorded:dir-fresh-{veto_target}"))
+    store = _FakeStore()
+    with pytest.raises(PermissionError) as exc:
+        _run(db, store, envelope)
+    assert "veto" in str(exc.value)
+    assert store.calls == 0
+
+
+def test_missing_journal_row_still_reaps_crash(db: FoundryDatabase) -> None:
+    """M2: with a STARTED event in the ledger but the journal row
+    missing (rebuild-only state), the driver must NOT re-perform — the
+    event is the durable truth and the crash-reap engages."""
+    _register_system(db)
+    _register_connector(db)
+    envelope = _allow(db)
+    store = _FakeStore()
+    from jarvis_foundry.systems import record_external_action
+    key, system_id, target_ref, effect_hash = effect_identity(db, envelope)
+    record_external_action(db, system_id, target_ref, effect_hash,
+                           kind="file.write", started=True)
+    # simulate the rebuild-only window: journal row missing, event kept
+    with db.connect() as connection:
+        connection.execute("DELETE FROM system_actions WHERE action_key = ?",
+                           (key,))
+    result = _run(db, store, envelope)
+    assert store.calls == 0  # never re-performed (R-IDM-01)
+    assert result["outcome"] == "FROZEN"
+    state = effect_state(db, key)
+    assert state["status"] == "FROZEN"
+    # the projection catches up on rebuild and stays FROZEN
+    db.rebuild_projections()
+    with db.connect() as connection:
+        row = connection.execute(
+            "SELECT status FROM system_actions WHERE action_key = ?",
+            (key,)).fetchone()
+    assert row is not None and row[0] == "FROZEN"
+
+
+def test_cross_mission_ticket_reuse_refused(db: FoundryDatabase) -> None:
+    """M3: an envelope from ANOTHER mission cannot execute under an
+    existing ticket — ticket scope is never silently widened."""
+    _register_system(db)
+    _register_connector(db)
+    envelope = _allow(db)  # ticket for mission-1
+    foreign = _envelope(action_id="act-s6-1", mission_id="mission-999",
+                        expected_effect="create notes.txt")
+    store = _FakeStore()
+    with pytest.raises(PermissionError) as exc:
+        _run(db, store, foreign)
+    assert "scope mismatch" in str(exc.value)
+    assert store.calls == 0
+
+
+def test_changed_observations_record_history(db: FoundryDatabase) -> None:
+    """L1: a changed reconcile claim or compensation ref under the SAME
+    effect key records NEW append-only history instead of crashing with
+    EventConflict; identical re-delivery still dedupes."""
+    _register_system(db)
+    _register_connector(db)
+    envelope = _allow(db)
+    store = _FakeStore()
+    key = _run(db, store, envelope)["action_key"]
+    # two different mismatching provider observations -> both recorded
+    first = reconcile_effect(db, key, provider_state={"exists": False})
+    second = reconcile_effect(db, key,
+                              provider_state={"exists": False,
+                                              "content_hash": "h-x"})
+    assert first["reconciled"] is False and second["reconciled"] is False
+    with db.connect() as connection:
+        mismatches = connection.execute(
+            "SELECT COUNT(*) FROM events WHERE event_type = "
+            "'effect.reconcile_mismatch'").fetchone()[0]
+    assert mismatches == 2  # both observations are history
+    # two different compensation refs -> both recorded
+    compensate_effect(db, key, compensation_ref="undo-1")
+    compensate_effect(db, key, compensation_ref="undo-2")
+    with db.connect() as connection:
+        compensated = connection.execute(
+            "SELECT COUNT(*) FROM events WHERE event_type = "
+            "'effect.compensated'").fetchone()[0]
+    assert compensated == 2
+
+
+# ---------------------------------------------------------------------------
 # durability: migration v20 + rebuild
 # ---------------------------------------------------------------------------
 

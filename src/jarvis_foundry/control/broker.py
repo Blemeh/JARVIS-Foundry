@@ -138,6 +138,30 @@ def emergency_stop_reason(database: FoundryDatabase,
     return None
 
 
+def veto_identities_for(envelope: ActionEnvelope, canonical_kind: str,
+                        targets: tuple[str, ...]) -> set[str]:
+    """The FULL veto identity set for an envelope — shared by the
+    broker's gate AND every executor-side re-check (S6 verifier
+    deleg_2d03fb7f M1: the effect driver must enforce the SAME veto
+    semantics as decide(), including GLOBAL, mission, resolved
+    spellings, and F1 bare ids)."""
+    identities = {"GLOBAL", envelope.action_id, envelope.mission_id,
+                  canonical_kind}
+    if envelope.capability:
+        identities.add(envelope.capability)
+    if envelope.resource_id:
+        identities.add(envelope.resource_id)
+    if envelope.expected_effect:
+        identities.add(envelope.expected_effect)
+    identities.update(targets)
+    # F1 (S2 verifier deleg_6c96be6d): a veto on the BARE system id
+    # must match the resolved prefixed identity and vice versa.
+    for target in targets:
+        if target.startswith("system:"):
+            identities.add(target.split(":", 1)[1])
+    return identities
+
+
 def matching_veto_reason(database: FoundryDatabase,
                          identities: set[str]) -> str | None:
     """Shared deterministic veto read (contract §5.3): the first active
@@ -320,19 +344,9 @@ class PolicyBroker:
 
     def _matching_veto(self, envelope: ActionEnvelope, canonical_kind: str,
                        targets: tuple[str, ...]) -> str | None:
-        identities = {"GLOBAL", envelope.action_id, envelope.mission_id,
-                      canonical_kind}
-        if envelope.capability:
-            identities.add(envelope.capability)
-        if envelope.resource_id:
-            identities.add(envelope.resource_id)
-        identities.update(targets)
-        # F1 (S2 verifier deleg_6c96be6d): a veto on the BARE system id
-        # must match the resolved prefixed identity and vice versa.
-        for target in targets:
-            if target.startswith("system:"):
-                identities.add(target.split(":", 1)[1])
-        return matching_veto_reason(self.database, identities)
+        return matching_veto_reason(
+            self.database, veto_identities_for(envelope, canonical_kind,
+                                               targets))
 
     def _capability_readiness(self, envelope: ActionEnvelope,
                               targets: tuple[str, ...]) -> str | None:
@@ -502,3 +516,51 @@ def require_allowance(database: FoundryDatabase, action_id: str) -> None:
         raise PermissionError(
             f"action {action_id} was not allowed ({decision}) — refusing "
             "execution")
+
+
+def require_allowance_for_envelope(database: FoundryDatabase,
+                                   envelope: ActionEnvelope) -> None:
+    """Envelope-scoped ticket check (S6 verifier deleg_2d03fb7f M3).
+
+    The ALLOW ticket must exist AND the envelope being executed must
+    match the envelope that was actually decided: mission, canonical
+    action kind, target resources, capabilities, idempotency key, and
+    budget estimate. A foreign envelope under an existing ticket is
+    refused — ticket scope is never silently widened.
+    """
+    require_allowance(database, envelope.action_id)
+    with database.connect() as connection:
+        row = connection.execute(
+            "SELECT payload_json FROM events WHERE event_type = "
+            "'action.decided' AND json_extract(payload_json, '$.action_id') "
+            "= ? ORDER BY sequence DESC LIMIT 1", (envelope.action_id,)
+        ).fetchone()
+    payload = json.loads(row["payload_json"])
+    mismatches: list[str] = []
+    if payload.get("mission_id") != envelope.mission_id:
+        mismatches.append("mission")
+    if payload.get("action_kind") != normalize_action_kind(
+            envelope.action_kind):
+        mismatches.append("action kind")
+    # the decision recorded the RESOLVED targets — resolve the executed
+    # envelope the same way before comparing
+    try:
+        resolved_targets = resolve_envelope_targets(database, envelope)
+    except ValueError as exc:
+        raise PermissionError(
+            f"action {envelope.action_id} ticket scope mismatch — the "
+            f"executed envelope's targets do not resolve: {exc}")
+    if list(payload.get("target_resources", ())) != list(resolved_targets):
+        mismatches.append("targets")
+    if list(payload.get("capabilities_required", ())) != \
+            list(envelope.capabilities_required):
+        mismatches.append("capabilities")
+    if payload.get("idempotency_key") != envelope.idempotency_key:
+        mismatches.append("idempotency key")
+    if dict(payload.get("budget_estimate", {})) != \
+            dict(envelope.budget_estimate):
+        mismatches.append("budget estimate")
+    if mismatches:
+        raise PermissionError(
+            f"action {envelope.action_id} ticket scope mismatch — the "
+            f"executed envelope differs on: {', '.join(mismatches)}")

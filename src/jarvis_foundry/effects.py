@@ -21,7 +21,7 @@ from .control.broker import (BrokerDecision, PolicyBroker,
 from .control.redaction import redact_text
 from .database import FoundryDatabase
 from .domain import ActionEnvelope
-from .events import Event, canonical_json
+from .events import Event, canonical_json, payload_hash
 from .systems import external_action_key
 
 STARTED = "STARTED"
@@ -90,42 +90,67 @@ def effect_state(database: FoundryDatabase,
                  action_key: str) -> dict[str, Any]:
     """Derived effect state: journal status + before/after state,
     failure reason, freeze/compensation events — rebuilt from the
-    append-only stream, identical after replay."""
+    append-only stream, identical after replay.
+
+    The events are the durable truth: when the journal ROW is missing
+    but the events exist (rebuild-only window, §10.4 — S6 verifier
+    deleg_2d03fb7f M2), the state derives from the events so a crash
+    can never be mistaken for a fresh effect (which would re-perform).
+    """
     state: dict[str, Any] = {"action_key": action_key}
     journal = _journal_row(database, action_key)
-    if journal is None:
+    started = _event_payloads(database, "system.action_started", action_key)
+    completed = _event_payloads(database, "system.action_completed",
+                                action_key)
+    failed = _event_payloads(database, "system.action_failed", action_key)
+    frozen = _event_payloads(database, "effect.frozen", action_key)
+    compensated = _event_payloads(database, "effect.compensated", action_key)
+    if journal is None and not started:
         state["status"] = "UNKNOWN"
         return state
-    state["status"] = journal["status"]
-    started = _event_payloads(database, "system.action_started", action_key)
+    # journal-row truth when present; otherwise derive from the events
+    state["status"] = journal["status"] if journal is not None else STARTED
+    if journal is None:
+        if compensated:
+            state["status"] = FROZEN
+        elif frozen:
+            state["status"] = FROZEN
+        elif completed:
+            state["status"] = COMPLETED
+        elif failed:
+            state["status"] = FAILED
     if started:
         state["before_state"] = started[-1].get("before_state_capture")
         state["expected_effects"] = started[-1].get("expected_effects")
-    completed = _event_payloads(database, "system.action_completed",
-                                action_key)
     if completed:
         state["after_state"] = completed[-1].get("after_state")
         state["cost"] = completed[-1].get("cost")
-    failed = _event_payloads(database, "system.action_failed", action_key)
     if failed:
         state["failure_reason"] = failed[-1].get("reason")
         if "after_state" in failed[-1]:
             state["after_state"] = failed[-1]["after_state"]
-    frozen = _event_payloads(database, "effect.frozen", action_key)
     if frozen:
         state["frozen_reason"] = frozen[-1].get("reason")
-    compensated = _event_payloads(database, "effect.compensated", action_key)
     if compensated:
         state["compensation_ref"] = compensated[-1].get("compensation_ref")
     return state
 
 
 def _append(database: FoundryDatabase, event_type: str, payload: dict[str, Any],
-            key_suffix: str) -> None:
+            key_suffix: str, *, full_payload_key: bool = False) -> None:
+    """Append an effect event. ``full_payload_key`` events (frozen/
+    compensated/reconciled/mismatch) record a CHANGED observation as
+    NEW history instead of an EventConflict (S6 verifier deleg_2d03fb7f
+    L1) while identical re-delivery still dedupes."""
+    if full_payload_key:
+        key = f"{payload['action_key']}.{key_suffix}." \
+              f"{payload_hash(payload)}"
+    else:
+        key = f"{payload['action_key']}.{key_suffix}"
     database.append(Event.create(
         event_type, payload,
         source_type="supervisor", source_id="v5-effect-driver",
-        idempotency_key=f"{payload['action_key']}.{key_suffix}"))
+        idempotency_key=key))
 
 
 def execute_effect(
@@ -147,15 +172,19 @@ def execute_effect(
     refusal -> start journal -> perform -> completion or failed journal.
     Failure reasons are redacted; financial consequences are recorded.
     """
-    from .control.broker import (emergency_stop_reason, matching_veto_reason,
-                                 normalize_action_kind, require_allowance)
-    require_allowance(database, envelope.action_id)
+    from .control.broker import (emergency_stop_reason,
+                                 matching_veto_reason,
+                                 normalize_action_kind,
+                                 require_allowance_for_envelope,
+                                 veto_identities_for)
+    require_allowance_for_envelope(database, envelope)
     stop = emergency_stop_reason(database, stop_path)
     if stop:
         raise PermissionError(f"effect execution stopped: {stop}")
-    veto = matching_veto_reason(database, {
-        normalize_action_kind(envelope.action_kind), envelope.action_id,
-        *envelope.target_resources, *envelope.capabilities_required})
+    targets = resolve_envelope_targets(database, envelope)
+    veto = matching_veto_reason(
+        database, veto_identities_for(
+            envelope, normalize_action_kind(envelope.action_kind), targets))
     if veto:
         raise PermissionError(f"effect execution vetoed: {veto}")
     key, system_id, target_ref, effect_hash = effect_identity(
@@ -236,7 +265,8 @@ def freeze_effect(database: FoundryDatabase, action_key: str, *,
             f"effect {action_key} is {state['status']} — freeze only "
             "applies to STARTED effects")
     _append(database, "effect.frozen", {
-        "action_key": action_key, "reason": reason}, "frozen")
+        "action_key": action_key, "reason": reason}, "frozen",
+        full_payload_key=True)
 
 
 def compensate_effect(database: FoundryDatabase, action_key: str, *,
@@ -251,7 +281,7 @@ def compensate_effect(database: FoundryDatabase, action_key: str, *,
             "only applies to FROZEN effects")
     _append(database, "effect.compensated", {
         "action_key": action_key, "compensation_ref": compensation_ref},
-        "compensated")
+        "compensated", full_payload_key=True)
 
 
 def reconcile_effect(database: FoundryDatabase, action_key: str, *,
@@ -276,14 +306,15 @@ def reconcile_effect(database: FoundryDatabase, action_key: str, *,
     if matches:
         _append(database, "effect.reconciled", {
             "action_key": action_key,
-            "provider_claim": provider_state}, "reconciled")
+            "provider_claim": provider_state}, "reconciled",
+            full_payload_key=True)
         return {"reconciled": True, "action_key": action_key}
     _append(database, "effect.reconcile_mismatch", {
         "action_key": action_key,
         "local_claim": claimed, "provider_claim": provider_state},
-        "reconcile-mismatch")
+        "reconcile-mismatch", full_payload_key=True)
     _append(database, "effect.frozen", {
         "action_key": action_key,
         "reason": "provider reconciliation mismatch — effect frozen "
-                  "for review"}, "frozen.reconcile")
+                  "for review"}, "frozen.reconcile", full_payload_key=True)
     return {"reconciled": False, "action_key": action_key}
