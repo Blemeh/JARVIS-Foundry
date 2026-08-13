@@ -373,3 +373,67 @@ def test_projection_and_schema(db: FoundryDatabase, tmp_path: Path) -> None:
             "SELECT MAX(version) FROM schema_migrations").fetchone()[0]
     assert version == SCHEMA_VERSION  # pinned to the constant, >= 23
     assert SCHEMA_VERSION >= 23
+
+
+# ---------------------------------------------------------------------------
+# round-2 repairs (deleg_df8957c2 findings)
+# ---------------------------------------------------------------------------
+
+def test_register_ancestor_of_runtime_home_refused(
+        db: FoundryDatabase, tmp_path: Path) -> None:
+    """S3 r2: a root that CONTAINS the runtime home is refused (its
+    subtree would include the DB — builds could write beside it)."""
+    with pytest.raises(BuilderError):
+        register_candidate_root(db, tmp_path, controller="v6-s3-test")
+
+
+def test_decoy_db_file_in_parent_detected(
+        db: FoundryDatabase, tmp_path: Path) -> None:
+    """S3 r2: the outside-write exclusion is the EXACT runtime-DB
+    family — a decoy foundry.db or foundry.db.backup written by the
+    candidate is a new parent entry and fails the build."""
+    root = tmp_path / "candidate-a"
+    register_candidate_root(db, root, controller="v6-s3-test")
+    for decoy in ("foundry.db", "foundry.db.backup"):
+        clean = tmp_path / f"candidate-{len(decoy)}"
+        register_candidate_root(db, clean, controller="v6-s3-test")
+        script = _write_script(
+            clean, "decoy.py",
+            "import pathlib\n"
+            f"pathlib.Path(r'{tmp_path.as_posix()}/{decoy}').write_text('x')\n")
+        build_id = build_candidate(
+            db, improvement_id=_improvement(db),
+            build_command=[PY, str(script)],
+            candidate_root=clean, controller="v6-s3-test")
+        row = db.row("candidate_builds", "build_id", build_id)
+        assert row is not None and row["status"] == "FAILED"
+        assert "outside write" in (row["reason"] or "")
+
+
+def test_symlink_content_not_hashed_as_artifact(
+        db: FoundryDatabase, tmp_path: Path) -> None:
+    """S3 r2: symlinks/junctions inside the root are never hashed as
+    artifacts (their content lives outside the root)."""
+    root = tmp_path / "candidate-a"
+    register_candidate_root(db, root, controller="v6-s3-test")
+    outside_dir = tmp_path / "outside-content"
+    outside_dir.mkdir()
+    (outside_dir / "evil.txt").write_text("secret outside bytes")
+    link = root / "link"
+    try:
+        os.system(f'cmd /c mklink /J "{link}" "{outside_dir}" >nul 2>&1')
+    except Exception:  # noqa: BLE001 — junction may be unavailable
+        pytest.skip("junctions unavailable on this host")
+    if not link.exists():
+        pytest.skip("junction creation failed")
+    script = _write_script(root, "build.py", _OK_SCRIPT)
+    build_id = build_candidate(db, improvement_id=_improvement(db),
+                               build_command=[PY, str(script)],
+                               candidate_root=root,
+                               controller="v6-s3-test")
+    row = db.row("candidate_builds", "build_id", build_id)
+    assert row is not None and row["status"] == "COMPLETED"
+    artifacts = json.loads(row["artifact_hashes_json"])
+    assert not any(name.startswith("link/") for name in artifacts)
+    assert "link" not in artifacts
+    assert "out.txt" in artifacts

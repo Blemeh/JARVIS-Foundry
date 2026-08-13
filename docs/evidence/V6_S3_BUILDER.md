@@ -109,3 +109,17 @@ runtime home inside root, no DB path); stale marker reaped then build
 proceeds; live marker refuses concurrent build; parallel builds on
 distinct roots isolated; projection/schema integrity (pinned to the
 imported SCHEMA_VERSION constant >= 23).
+
+## 8. Verifier findings — repair record (deleg_df8957c2, PASS)
+
+| Severity | Finding | Resolution |
+|---|---|---|
+| MEDIUM | The candidate can discover and READ the runtime DB read-only by scanning the root's parent (roots are filesystem siblings of the runtime home). Env-level isolation holds; filesystem containment does not. | ACCEPTED documented boundary: the reachable DB is the ISOLATED lab DB only — the LIVE DB lives at HERMES_HOME\foundry, unreachable from candidate roots; the lab ledger carries no credentials (secret-scanned at every boundary); sqlite mode=ro only. S8's release gate re-verifies everything a candidate claims. |
+| LOW | Outside-write scan excluded any name startswith the DB filename (decoy foundry.db / foundry.db.backup undetected). | REPAIRED: the exclusion is removed entirely — the runtime DB and its WAL/-shm live in the runtime home, which can never be a root's parent (overlap refusal); ANY new parent entry now fails the build. Regressions: test_decoy_db_file_in_parent_detected. |
+| LOW | Junction escapes to non-parent targets undetected; rglob hashed junction content (outside bytes). | REPAIRED (partial): _artifact_hashes now prunes reparse points (symlinks AND junctions — is_symlink() misses junctions on this Python build, so FILE_ATTRIBUTE_REPARSE_POINT via ctypes) before descent; junction content is never hashed as an artifact. Junction WRITES to non-parent targets remain best-effort-documented (detection covers the root's parent). Regression: test_symlink_content_not_hashed_as_artifact. |
+| INFO | Registering an ANCESTOR of the runtime home was not refused (a root containing the DB dir). | REPAIRED: overlap refusal now covers inside/equal/ancestor. Regression: test_register_ancestor_of_runtime_home_refused. |
+| INFO | Same root re-registration with a DIFFERENT controller → EventConflict (fail-closed, one event). | ACCEPTED: the root binding is identity; a conflicting controller re-registration correctly refuses. Recorded. |
+| INFO | V6 runtime ledger empty at machinery stage; outside-write scan detects parent-entry CREATES only (modifies/deletes and nested writes into an existing sibling subdir are outside the scan's contract). | ACCEPTED documented boundary. |
+
+Round-2: fresh verifier with A/B discrimination dispatched after this
+commit.

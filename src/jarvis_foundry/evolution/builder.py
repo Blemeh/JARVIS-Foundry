@@ -68,10 +68,12 @@ def register_candidate_root(
              "controller identity must be a non-empty string")
     resolved = Path(root).expanduser().resolve()
     runtime_home = _runtime_home(database)
-    if resolved == runtime_home or runtime_home in resolved.parents:
+    if (resolved == runtime_home or runtime_home in resolved.parents
+            or resolved in runtime_home.parents):
         raise BuilderError(
-            f"candidate root {resolved} is inside the runtime home "
-            f"{runtime_home} — refused (live-like surface)")
+            f"candidate root {resolved} overlaps the runtime home "
+            f"{runtime_home} (inside, equal, or an ancestor of it) — "
+            "refused (live-like surface)")
     resolved.mkdir(parents=True, exist_ok=True)
     event = Event.create(
         "candidate_root.registered",
@@ -112,17 +114,37 @@ def _process_alive(pid: int) -> bool:
         return False
 
 
+def _is_reparse_point(path: Path) -> bool:
+    """True for symlinks AND junctions. Python's is_symlink() does not
+    classify junctions on every Windows build (verified empirically on
+    3.13.5), so reparse points are detected via their NTFS attribute."""
+    if sys.platform != "win32":
+        return path.is_symlink()
+    import ctypes
+    attrs = ctypes.windll.kernel32.GetFileAttributesW(str(path))
+    if attrs == 0xFFFFFFFF:  # INVALID_FILE_ATTRIBUTES
+        return False
+    return bool(attrs & 0x400)  # FILE_ATTRIBUTE_REPARSE_POINT
+
+
 def _artifact_hashes(root: Path) -> dict[str, str]:
-    """Hash every regular file under the root except the build marker
-    and the candidate runtime home (deliverables only)."""
+    """Hash every regular file under the root except the build marker,
+    the candidate runtime home, and anything reachable through a
+    symlink/junction (reparse points are pruned before descent — their
+    content lives outside the root and is never hashed or trusted)."""
     hashes: dict[str, str] = {}
-    for path in sorted(root.rglob("*")):
-        if not path.is_file():
-            continue
-        rel = path.relative_to(root).as_posix()
-        if rel == MARKER_NAME or rel.startswith(RUNTIME_HOME_NAME + "/"):
-            continue
-        hashes[rel] = hashlib.sha256(path.read_bytes()).hexdigest()
+    for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
+        dirpath_path = Path(dirpath)
+        dirnames[:] = [name for name in dirnames
+                       if not _is_reparse_point(dirpath_path / name)]
+        for filename in filenames:
+            path = dirpath_path / filename
+            if _is_reparse_point(path):
+                continue
+            rel = path.relative_to(root).as_posix()
+            if rel == MARKER_NAME or rel.startswith(RUNTIME_HOME_NAME + "/"):
+                continue
+            hashes[rel] = hashlib.sha256(path.read_bytes()).hexdigest()
     return hashes
 
 
@@ -197,7 +219,6 @@ def build_candidate(
     parent_before = {
         entry.name for entry in Path(root.parent).iterdir()
     } if root.parent.is_dir() else set()
-    db_name = Path(database.path).name
 
     started = isoformat()
     t0 = time.monotonic()
@@ -218,9 +239,12 @@ def build_candidate(
     parent_after = {
         entry.name for entry in Path(root.parent).iterdir()
     } if root.parent.is_dir() else set()
-    outside = sorted(
-        name for name in (parent_after - parent_before)
-        if not name.startswith(db_name))  # WAL/-shm of the runtime DB
+    # any NEW entry in the root's parent is an outside write. The
+    # runtime DB and its WAL/-shm live in the runtime home — a root's
+    # parent can never legitimately contain them (roots overlapping
+    # the runtime home are refused at registration), so no exclusion
+    # is needed and a decoy foundry.db in the parent IS detected.
+    outside = sorted(parent_after - parent_before)
     if outside:
         reason = f"outside write detected: {', '.join(outside)}"
         exit_code = exit_code if exit_code is not None else 0
