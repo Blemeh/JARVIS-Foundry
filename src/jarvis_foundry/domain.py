@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
 from typing import Any
+
+
+ARTIFACT_NAME_PATTERN = re.compile(r"^[A-Za-z0-9._-]+$")
 
 
 class MissionState(StrEnum):
@@ -112,4 +116,3 @@ class PolicyVerdict:
     reason: str
     resolved_target: Path | None = None
     matched_veto_ids: tuple[str, ...] = ()
-

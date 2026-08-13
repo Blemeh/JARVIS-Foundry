@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import sqlite3
 
-from .domain import require_transition
+from .domain import ARTIFACT_NAME_PATTERN, require_transition
 from .events import Event, canonical_json
 
 PROJECTION_TABLES = (
@@ -1088,6 +1088,33 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
                     f"release.manifest_recorded rollback target "
                     f"{payload['rollback_target']} does not exist — "
                     "rolled back")
+        for name in payload["artifact_hashes"]:
+            if not ARTIFACT_NAME_PATTERN.match(name):
+                raise ValueError(
+                    f"release.manifest_recorded artifact name {name!r} "
+                    "is not a plain file name — rolled back")
+        existing = connection.execute(
+            "SELECT artifact_hashes_json, source_commit, "
+            "improvement_id, risk_class FROM release_manifests "
+            "WHERE release_id = ?",
+            (payload["release_id"],)).fetchone()
+        if existing is not None:
+            identity = canonical_json({
+                "artifact_hashes": payload["artifact_hashes"],
+                "source_commit": payload["source_commit"],
+                "improvement_id": payload["improvement_id"],
+                "risk_class": payload["risk_class"]})
+            if identity != canonical_json({
+                    "artifact_hashes":
+                        json.loads(existing["artifact_hashes_json"]),
+                    "source_commit": existing["source_commit"],
+                    "improvement_id": existing["improvement_id"],
+                    "risk_class": existing["risk_class"]}):
+                raise ValueError(
+                    f"release.manifest_recorded conflicts with the "
+                    f"immutable manifest {payload['release_id']} "
+                    "(same release id, different content) — rolled "
+                    "back")
         connection.execute(
             """INSERT OR IGNORE INTO release_manifests(
                 release_id, source_commit, artifact_hashes_json,

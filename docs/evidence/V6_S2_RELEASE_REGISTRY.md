@@ -43,7 +43,11 @@ LIVE SYSTEMS CHANGED: NONE (verified read-only at close time)
 TESTS: 18 new S2 tests + S1 regression (18) + FULL SUITE 755 passed
   EXIT=0 (316.07s; var/evidence/v6-s2/suite-v6-s2-full.txt,
   sha256 1f863b31bd196e10934882bd956ee2bc5164b2a892c0bb213d02ecef585eaf90)
-VERIFIER: <fill after dispatch>
+VERIFIER: round-1 deleg_a18e9d68 — PASS (R1-R7, 53/53 adversarial
+  probes; verdict JSON var/evidence/v6-s2/verdict-deleg_a18e9d68.json,
+  sha256 c3f0e9369c7fb17668fa722b91a7244abbc337d1b6115c3c4d8958434bbb0012;
+  2 LOW + 3 INFO, all repaired/resolved in §8) → round-2 fresh verifier
+  dispatched after the repair commit (A/B discrimination)
 EVIDENCE: var/evidence/v6-s2/ (suite artifacts, verdict JSON);
   var/v6-runtime/v6.db (isolated runtime, schema v22, consistent)
 CANARY: none (machinery slice)
@@ -111,3 +115,16 @@ history preserved; rollback without previous refused; quarantine
 preserves history; verify_manifest detects tampering + missing files;
 verify_manifest unknown release refused; projection/schema integrity
 (pins to the imported SCHEMA_VERSION constant >= 22).
+
+## 8. Round-1 verifier findings — repair record (deleg_a18e9d68, PASS)
+
+| Severity | Finding | Repair (this commit) |
+|---|---|---|
+| LOW | verify_manifest performs no path containment on declared artifact names: a manifest declaring `../outside_secret.txt` reads a file OUTSIDE artifact_root (boolean oracle only, no exfiltration). | Artifact names are now validated at registration (`ARTIFACT_NAME_PATTERN` in domain.py: plain file names only — no separators, no `..`, no drive letters) AND re-checked in verify_manifest (containment defense, False without reading); the projection handler refuses bad names from raw writers (transaction rollback). Regressions: test_artifact_name_path_escape_refused, test_verify_manifest_containment_defense (legacy-row + raw-writer paths). |
+| LOW | Slot idempotency key (slot, release, previous) cannot distinguish a genuine re-delivery from a LATER distinct transition repeating the same triple (live c→g→c→g conflicts). Fail-closed (no corruption), workaround existed. | `set_slot(..., transition_id=None)` escape hatch: an explicit transition_id gives a distinct key per transition while same-id re-delivery still dedupes and same-id different-payload still conflicts. Regression: test_slot_oscillation_with_transition_ids. |
+| INFO | promote_candidate lacked the already-live guard: promoting a live release recorded 3 redundant events and previous==live. | promote_candidate now refuses when the candidate is already live. Regression: test_promote_already_live_refused. |
+| INFO | A raw `release.manifest_recorded` with a NEW key but the same release_id and different content was accepted into the ledger (projection INSERT OR IGNORE kept the row immutable, but two conflicting events existed). | The projection handler now compares the identity fields (artifact_hashes/source_commit/improvement_id/risk_class) against the existing immutable row and raises (rollback) on conflict. Regression: test_manifest_same_id_different_content_rolled_back. |
+| INFO | Positive evidence: mid-batch EventConflict injection proved promote/append_events atomicity (0 leaked events); full re-delivery of a promote batch deduped (created=False x3). | Recorded; crash-window recovery semantics hold. |
+
+Round-2: fresh independent verifier with A/B discrimination (round-1
+commit 269bdef vs the repaired tree) dispatched after this commit.

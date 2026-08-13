@@ -32,6 +32,7 @@ from pathlib import Path
 from typing import Any
 
 from ..database import FoundryDatabase
+from ..domain import ARTIFACT_NAME_PATTERN
 from ..events import Event, canonical_json, payload_hash
 from .records import RISK_ORDER, improvement_eligibility
 
@@ -39,6 +40,11 @@ SLOTS = ("live", "candidate", "previous", "quarantine")
 
 _HEX40 = re.compile(r"^[0-9a-f]{40}$")
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
+#: Artifact names are plain file names inside the artifact root: no
+#: path separators, no dot-dot, no drive letters, no backslashes.
+#: Anything else is refused at registration (verify_manifest also
+#: re-checks containment; fail closed both ways).
+_ARTIFACT_NAME = ARTIFACT_NAME_PATTERN
 
 
 class ReleaseError(ValueError):
@@ -79,8 +85,10 @@ def register_release(
     _require(isinstance(artifact_hashes, dict) and artifact_hashes,
              "artifact_hashes must be a non-empty mapping")
     for name, digest in artifact_hashes.items():
-        _require(isinstance(name, str) and name.strip(),
-                 "artifact names must be non-empty strings")
+        _require(isinstance(name, str) and _ARTIFACT_NAME.match(name),
+                 f"artifact name {name!r} must be a plain file name "
+                 "(no path separators, no '..', no drive letters) — "
+                 "refused")
         _require(isinstance(digest, str) and _HEX64.match(digest),
                  f"artifact hash for {name!r} must be a 64-char sha256 "
                  "hex string")
@@ -163,10 +171,20 @@ def slot_pointers(database: FoundryDatabase) -> dict[str, str | None]:
 def set_slot(
     database: FoundryDatabase, slot: str, release_id: str | None, *,
     reason: str, controller: str,
+    transition_id: str | None = None,
     source_type: str = "supervisor", source_id: str = "v6",
 ) -> None:
-    """Point a slot at a release (or clear it). Idempotent per
-    (slot, release_id, previous) transition."""
+    """Point a slot at a release (or clear it).
+
+    Default idempotency: the key binds (slot, release_id, previous),
+    so re-delivery of the SAME transition dedupes and a genuinely new
+    transition records new history. For oscillating histories where a
+    later distinct transition would repeat an earlier triple (e.g.
+    live c -> g -> c -> g), pass an explicit ``transition_id`` (a
+    uuid) so the new transition gets its own key; re-delivery with the
+    SAME transition_id dedupes, a changed payload under the same
+    transition_id conflicts (correct).
+    """
     _require(slot in SLOTS, f"unknown slot {slot!r} — refused")
     _require(isinstance(reason, str) and reason.strip(),
              "reason must be a non-empty string")
@@ -179,13 +197,17 @@ def set_slot(
     previous = slot_pointers(database)[slot]
     if previous == release_id:
         return  # semantic no-op: the slot already points at the target
+    if transition_id is not None:
+        idempotency_key = f"release.slot_changed:{slot}:{transition_id}"
+    else:
+        idempotency_key = _slot_key(slot, release_id, previous)
     event = Event.create(
         "release.slot_changed",
         {"slot": slot, "release_id": release_id,
          "previous_release_id": previous, "reason": reason,
          "controller": controller},
         source_type=source_type, source_id=source_id,
-        idempotency_key=_slot_key(slot, release_id, previous))
+        idempotency_key=idempotency_key)
     database.append(event)
 
 
@@ -205,6 +227,9 @@ def promote_candidate(
     _require(pointers["candidate"] == candidate_release_id,
              f"release {candidate_release_id} is not in the candidate "
              "slot — refused")
+    _require(pointers["live"] != candidate_release_id,
+             f"release {candidate_release_id} is already live — "
+             "promotion refused")
     _require(isinstance(verdicts, list) and verdicts,
              "promotion requires at least one verification verdict — "
              "refused")
@@ -344,7 +369,14 @@ def verify_manifest(database: FoundryDatabase, release_id: str,
     root = Path(artifact_root)
     report: dict[str, bool] = {}
     for name, digest in declared.items():
-        path = root / name
+        # defense in depth: containment re-check at verification time
+        if not _ARTIFACT_NAME.match(name):
+            report[name] = False
+            continue
+        path = (root / name).resolve()
+        if root.resolve() not in path.parents:
+            report[name] = False
+            continue
         if not path.is_file():
             report[name] = False
             continue

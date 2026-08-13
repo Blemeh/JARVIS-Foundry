@@ -411,3 +411,150 @@ def test_projection_and_schema(db: FoundryDatabase) -> None:
             "SELECT MAX(version) FROM schema_migrations").fetchone()[0]
     assert version == SCHEMA_VERSION  # pinned to the constant, >= 22
     assert SCHEMA_VERSION >= 22
+
+
+# ---------------------------------------------------------------------------
+# round-2 repairs (deleg_a18e9d68 findings)
+# ---------------------------------------------------------------------------
+
+def test_artifact_name_path_escape_refused(db: FoundryDatabase) -> None:
+    """S2 r2 LOW-1: artifact names with path separators, '..' or drive
+    letters are refused at registration (verify_manifest containment)."""
+    for bad in ("../outside_secret.txt", "a/b.txt", "C:/evil.txt",
+                "a" + chr(92) + "b.txt", "/abs.txt"):
+        with pytest.raises(ReleaseError):
+            register_release(  # type: ignore[arg-type]
+                db, **_manifest(artifact_hashes={bad: "b" * 64}),
+                improvement_id=_eligible_improvement_id(db),
+                controller=CONTROLLER)
+    assert db.count("release_manifests") == 0
+
+
+def test_verify_manifest_containment_defense(
+        db: FoundryDatabase, tmp_path: Path) -> None:
+    """S2 r2 LOW-1: a LEGACY manifest row that somehow declares an
+    escaping artifact name verifies False without reading outside the
+    root (defense in depth for rows predating the name validation)."""
+    outside = tmp_path / "outside_secret.txt"
+    outside.write_bytes(b"secret bytes")
+    root = tmp_path / "artifacts"
+    root.mkdir()
+    (root / "real.bin").write_bytes(b"real")
+    real_hash = hashlib.sha256(b"real").hexdigest()
+    # simulate a legacy row: direct SQL insert, bypassing API + handler
+    import json as _json
+    with db.connect() as connection:
+        connection.execute(
+            """INSERT INTO release_manifests(
+                release_id, source_commit, artifact_hashes_json,
+                dependencies_json, runtime_identity_json,
+                parent_release_id, improvement_id, risk_class,
+                migrations_json, verdicts_json, rollback_target,
+                created_at, last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            ("release-legacy-000001", "a" * 40,
+             _json.dumps({"../outside_secret.txt": real_hash,
+                          "real.bin": real_hash}),
+             "[]", "{}", None, "improvement-legacy-000001", "R2",
+             "[]", "[]", None, "2026-08-13T00:00:00Z", "evt-legacy",
+             "2026-08-13T00:00:00Z"))
+        connection.commit()
+    # the legacy row must NOT be readable by the orphaned callers, but
+    # verify_manifest must fail closed on it: no read outside the root
+    report = verify_manifest(db, "release-legacy-000001", root)
+    assert report == {"../outside_secret.txt": False, "real.bin": True}
+    # raw-writer path is closed too: the handler refuses bad names
+    from jarvis_foundry.events import Event
+    with pytest.raises(Exception):
+        db.append(Event.create(
+            "release.manifest_recorded",
+            {"release_id": "release-raw-000001", "source_commit": "a" * 40,
+             "artifact_hashes": {"../escape.txt": "0" * 64},
+             "dependencies": [], "runtime_identity": {},
+             "parent_release_id": None, "improvement_id": "improvement-x",
+             "risk_class": "R2", "migrations": [], "verdicts": [],
+             "rollback_target": None, "controller": CONTROLLER},
+            source_type="supervisor", source_id="v6-s2-r2",
+            idempotency_key="release.manifest_recorded:release-raw-000001"))
+
+
+def test_slot_oscillation_with_transition_ids(db: FoundryDatabase) -> None:
+    """S2 r2 LOW-2: oscillating histories record every distinct
+    transition when an explicit transition_id is supplied."""
+    improvement_id = _eligible_improvement_id(db)
+    a = register_release(db, **_manifest(),  # type: ignore[arg-type]
+                         improvement_id=improvement_id,
+                         controller=CONTROLLER)
+    b = register_release(  # type: ignore[arg-type]
+        db, **_manifest(source_commit="e" * 40,
+                        artifact_hashes={"code.tar.gz": "f" * 64},
+                        parent_release_id=a),
+        improvement_id=improvement_id, controller=CONTROLLER)
+    set_slot(db, "live", a, reason="genesis", controller=CONTROLLER)
+    set_slot(db, "live", b, reason="promote", controller=CONTROLLER,
+             transition_id="t-1")
+    set_slot(db, "live", a, reason="rollback", controller=CONTROLLER,
+             transition_id="t-2")
+    set_slot(db, "live", b, reason="re-promote", controller=CONTROLLER,
+             transition_id="t-3")
+    assert slot_pointers(db)["live"] == b
+    events = [e for e in db.events()
+              if e.event_type == "release.slot_changed"
+              and e.payload["slot"] == "live"]
+    assert len(events) == 4
+    # re-delivery of the same transition_id dedupes
+    set_slot(db, "live", b, reason="re-promote", controller=CONTROLLER,
+             transition_id="t-3")
+    assert len([e for e in db.events()
+                if e.event_type == "release.slot_changed"
+                and e.payload["slot"] == "live"]) == 4
+
+
+def test_promote_already_live_refused(db: FoundryDatabase) -> None:
+    """S2 r2 INFO-3: promoting a release that is already live is
+    refused instead of recording redundant history."""
+    improvement_id = _eligible_improvement_id(db)
+    genesis = register_release(  # type: ignore[arg-type]
+        db, **_manifest(), improvement_id=improvement_id,
+        controller=CONTROLLER)
+    set_slot(db, "live", genesis, reason="genesis", controller=CONTROLLER)
+    set_slot(db, "candidate", genesis, reason="stale", controller=CONTROLLER)
+    with pytest.raises(ReleaseError):
+        promote_candidate(db, genesis, controller=CONTROLLER,
+                          verdicts=[{"verifier_run_id": "run-9",
+                                     "verdict": "PASS",
+                                     "criteria": "x"}],
+                          reason="already live")
+    assert slot_pointers(db)["live"] == genesis
+    assert slot_pointers(db)["previous"] is None
+
+
+def test_manifest_same_id_different_content_rolled_back(
+        db: FoundryDatabase) -> None:
+    """S2 r2 INFO-4: a raw-writer event with the same release_id but
+    different content is rolled back by the projection handler."""
+    from jarvis_foundry.events import Event
+    improvement_id = _eligible_improvement_id(db)
+    release_id = register_release(  # type: ignore[arg-type]
+        db, **_manifest(), improvement_id=improvement_id,
+        controller=CONTROLLER)
+    row = db.row("release_manifests", "release_id", release_id)
+    assert row is not None
+    with pytest.raises(Exception):
+        db.append(Event.create(
+            "release.manifest_recorded",
+            {"release_id": release_id, "source_commit": "9" * 40,
+             "artifact_hashes": {"other.bin": "8" * 64},
+             "dependencies": [], "runtime_identity": {},
+             "parent_release_id": None, "improvement_id": improvement_id,
+             "risk_class": "R2", "migrations": [], "verdicts": [],
+             "rollback_target": None, "controller": CONTROLLER},
+            source_type="supervisor", source_id="v6-s2-r2",
+            idempotency_key=f"release.manifest_recorded:{release_id}:raw"))
+    # the immutable row is untouched and the conflicting event absent
+    after = db.row("release_manifests", "release_id", release_id)
+    assert after["source_commit"] == row["source_commit"]
+    assert after["artifact_hashes_json"] == row["artifact_hashes_json"]
+    events = [e for e in db.events()
+              if e.event_type == "release.manifest_recorded"]
+    assert len(events) == 1
