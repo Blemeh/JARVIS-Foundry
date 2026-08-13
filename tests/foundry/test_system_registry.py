@@ -141,6 +141,42 @@ def test_frozen_supervisor_blocks(db, tmp_path):
         db, "browser.navigate", stop_path=tmp_path / "EMERGENCY_STOP") is False
 
 
+def test_reconciled_after_frozen_blocks_until_started(db, tmp_path):
+    """A reconciled STOP is STILL a freeze: the projection moves the
+    supervisor to SUSPENDED, which blocks until supervisor.started
+    reopens the gate (fail-closed — verifier deleg_d7639766 P2(d))."""
+    db.append(Event.create(
+        "emergency_stop.frozen", {"instance_id": "i-1"},
+        source_type="test", source_id="test",
+        idempotency_key="emergency_stop.frozen:i-1"))
+    db.append(Event.create(
+        "emergency_stop.reconciled", {"instance_id": "i-1"},
+        source_type="test", source_id="test",
+        idempotency_key="emergency_stop.reconciled:i-1"))
+    assert systems_allowed_by_policy(
+        db, "browser.navigate", stop_path=tmp_path / "EMERGENCY_STOP") is False
+    # the gate reopens only through an explicit supervisor.started
+    db.append(Event.create(
+        "supervisor.started", {"instance_id": "i-1", "trust_state": "LAB"},
+        source_type="test", source_id="test",
+        idempotency_key="supervisor.started:i-1"))
+    assert systems_allowed_by_policy(
+        db, "browser.navigate", stop_path=tmp_path / "EMERGENCY_STOP") is True
+
+
+def test_plain_stopped_supervisor_state_not_blocking(db, tmp_path):
+    """A plain STOPPED supervisor row (precursor state, no freeze event)
+    is not an emergency STOP: the gate blocks only FROZEN/SUSPENDED
+    states and active stop/veto directives (verifier deleg_d7639766
+    P2(e))."""
+    with db.connect() as connection:
+        connection.execute(
+            "UPDATE supervisor_state SET status = 'STOPPED' "
+            "WHERE singleton = 1")
+    assert systems_allowed_by_policy(
+        db, "browser.navigate", stop_path=tmp_path / "EMERGENCY_STOP") is True
+
+
 # ---------------------------------------------------------------------------
 # exit evidence 2: retries never duplicate external effects
 # ---------------------------------------------------------------------------

@@ -95,7 +95,9 @@ def systems_allowed_by_policy(db: FoundryDatabase, action_kind: str, *,
     - no stop marker (when a path is provided),
     - no active STOP_EVERYTHING directive,
     - no active VETO_ACTION matching the action kind,
-    - the supervisor is not FROZEN/STOPPED/SUSPENDED.
+    - the supervisor is not FROZEN or SUSPENDED (a plain STOPPED
+      precursor state is not a freeze; a reconciled STOP stays
+      SUSPENDED until supervisor.started reopens the gate).
     """
     if stop_path is not None and Path(stop_path).exists():
         return False
