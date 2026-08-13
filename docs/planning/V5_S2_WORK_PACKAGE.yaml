@@ -1,0 +1,36 @@
+work_package: V5_MULTI_SYSTEM_INTELLIGENCE
+slice: "2 — ActionEnvelope and deterministic policy broker"
+status: ACTIVE
+activated_by: "V5-S1 CLOSED PASS (verification.passed:verdict-v5-s1-systems:round1, seq 22079; live schema v19)"
+date: 2026-08-13
+objective: >
+  Ensure every material action passes deterministic control before
+  execution: implement the architecture contract §7 ActionEnvelope
+  fields and the exact 15-step processing order, with a broker that
+  returns exactly one of ALLOW / VETOED / NOT_READY /
+  MISSING_RECOVERY_PATH / BUDGET_EXCEEDED / EMERGENCY_STOPPED /
+  INVALID_TARGET. An LLM may explain a decision but may never override
+  it. Also resolves the S1 verifier LOW finding P9(b): action-kind
+  canonicalization so case/whitespace/separator variants cannot bypass
+  a VETO_ACTION.
+authoritative_requirements:
+  - "02_ARCHITECTURE_CONTRACT.md §7 (ActionEnvelope fields + 15-step order + 7 broker codes)"
+  - "V5_MASTER_PROMPT.md §6 V5-S2 (gate probes: STOP/veto race, invalid target, missing recovery, budget, stale before-state, duplicate envelope, worker bypass)"
+  - "R-AUT-04 (owner veto and STOP immediate), R-IDM-01 (retries cannot duplicate effects), R-SEC-01/02"
+dependencies:
+  - "V5-S1 system registry (systems catalog; capability states; effect journal)"
+  - "existing ActionPolicy/action_decisions projection (V4) stays untouched"
+in_scope:
+  - "domain.py: extend ActionEnvelope with the contract §7 fields (defaults keep V4 callers intact); add BrokerDecision enum (exactly the 7 codes)"
+  - "src/jarvis_foundry/control/broker.py (new): normalize_action_kind, resolve_canonical_target, PolicyBroker.decide (15-step order), record_decision (action.decided event, full-payload idempotency keys), require_allowance (executor ticket check)"
+  - "tests/foundry/test_action_broker.py: normalization matrix, 7-code matrix + precedence, STOP/veto race, duplicate envelope, worker-bypass refusal, budget/recovery/verification contract, rebuild determinism"
+out_of_scope:
+  - "credential brokering (S3), connectors (S4), effect execution/reconciliation (S6), loop wiring (S7)"
+  - "changing the V4 ActionPolicy contract or its action_decisions projection"
+  - "any migration (raw action.decided events — no new projection; live schema stays v19)"
+evidence_gate: "focused green -> full suite EXIT=0 -> freeze -> independent adversarial verifier -> ledger close (verification.passed:verdict-v5-s2-broker:round1 + evidence.created) -> slice 3"
+constraints: "no-push; STOP/veto live; append-only ledger; live DB untouched (no migration); all internal dispatches opencode_go + deepseek-v4-flash"
+failure_recovery:
+  - "FAIL -> repair exact cause -> regression -> fresh frozen verifier round"
+  - "no live-state impact: this slice appends events only when the loop uses it (not wired until S7)"
+rollback: "single commit revert; no schema change; events append-only"
