@@ -364,22 +364,96 @@ def test_fresh_execution_result_shape_uniform(db: FoundryDatabase) -> None:
 def test_foreign_envelope_does_not_burn_capability(db: FoundryDatabase) -> None:
     """I1: an envelope whose ticket is out of scope must be refused
     BEFORE the capability is consumed — a foreign envelope never burns
-    a legitimate capability."""
+    a legitimate capability. The TRUE discriminating shape: SAME
+    mission/run/kind/target (S3 binding identical — the S3 scope check
+    passes on the baseline), DIFFERENT idempotency key (the S6 ticket
+    scope must refuse)."""
     _mission_setup(db)
     store = _FakeStore()
     candidate = _candidate()
     envelope = build_envelope(candidate, mission_id="mission-1",
                               run_id="run-1")
     capability_id = authorize(db, envelope)
-    # same action_id, foreign mission — the ticket is out of scope
-    foreign = build_envelope(candidate, mission_id="mission-999",
-                             run_id="run-1")
+    # The discriminating shape: same S3 binding (mission/run/kind/
+    # target), a DIFFERENT envelope identity with NO ticket — on the
+    # round-1 baseline the S3 scope check PASSED and burned the
+    # capability before the driver's ticket check refused; the repair
+    # refuses at the ticket gate FIRST (used stays 0).
+    no_ticket = build_envelope(_candidate(action_id="act-x"),
+                               mission_id="mission-1", run_id="run-1")
     with pytest.raises(PermissionError):
-        execute(db, foreign, capability_id, connector_id="conn-a",
+        execute(db, no_ticket, capability_id, connector_id="conn-a",
                 perform=store.perform)
     with db.connect() as connection:
         used = connection.execute(
             "SELECT COUNT(*) FROM events WHERE event_type = "
             "'capability.used'").fetchone()[0]
     assert used == 0  # nothing consumed by the refused attempt
+    assert store.calls == 0
+    # the legitimate envelope still executes afterwards
+    execute(db, envelope, capability_id, connector_id="conn-a",
+            perform=store.perform)
+    assert store.calls == 1
+
+
+def test_unregistered_system_candidate_isolated(db: FoundryDatabase) -> None:
+    """M2′ round-2: an unregistered-system candidate is SKIPPED in
+    isolation — run_mission never crashes on it, healthy candidates
+    still run."""
+    _mission_setup(db)
+    store = _FakeStore()
+    result = run_mission(
+        db, "mission-1", "run-1",
+        candidates=[_candidate(action_id="act-ghost", target="sys-ghost"),
+                    _candidate(action_id="act-ok")],
+        perform_map={"conn-a": store.perform})
+    outcomes = {r["action_id"]: r["outcome"] for r in result["results"]}
+    assert outcomes["act-ghost"] == "NOT_READY"  # isolated skip
+    assert "not registered" in [r["reason"] for r in result["results"]
+                                if r["action_id"] == "act-ghost"][0]
+    assert outcomes["act-ok"] == "COMPLETED"
+    assert store.calls == 1
+
+
+def test_failed_redelivery_no_drift(db: FoundryDatabase) -> None:
+    """M1′ round-2: a FAILED effect's fresh outcome and its re-delivery
+    record IDENTICAL learn payloads (cost from the journal, one source
+    of truth) — exactly one mission.outcome.recorded."""
+    _mission_setup(db)
+    store = _FakeStore()
+    store.fail_with = RuntimeError("boom")
+    candidates = [_candidate(action_id="act-fail",
+                             expected_effect="create fail.txt")]
+    run_mission(db, "mission-1", "run-1", candidates,
+                perform_map={"conn-a": store.perform})
+    store.fail_with = None  # re-delivery must NOT re-perform
+    run_mission(db, "mission-1", "run-1", candidates,
+                perform_map={"conn-a": store.perform})
+    with db.connect() as connection:
+        outcomes = connection.execute(
+            "SELECT COUNT(*) FROM events WHERE event_type = "
+            "'mission.outcome.recorded'").fetchone()[0]
+    assert outcomes == 1  # no drift for FAILED either
+
+
+def test_reap_result_shape_uniform(db: FoundryDatabase) -> None:
+    """LOW round-2: the crash-reap result carries performed=False and
+    cost like every other path."""
+    _mission_setup(db)
+    store = _FakeStore()
+    candidate = _candidate()
+    envelope = build_envelope(candidate, mission_id="mission-1",
+                              run_id="run-1")
+    authorize(db, envelope)
+    from jarvis_foundry.effects import effect_identity
+    from jarvis_foundry.systems import record_external_action
+    key, system_id, target_ref, effect_hash = effect_identity(db, envelope)
+    record_external_action(db, system_id, target_ref, effect_hash,
+                           kind="file.write", started=True)
+    result = run_mission(db, "mission-1", "run-1", [candidate],
+                         perform_map={"conn-a": store.perform})
+    detail = result["results"][0]
+    assert detail["outcome"] == "FROZEN"
+    assert detail["performed"] is False
+    assert "cost" in detail
     assert store.calls == 0

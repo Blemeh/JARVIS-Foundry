@@ -83,6 +83,7 @@ def build_envelope(candidate: ActionCandidate, *, mission_id: str,
         "before_state_capture": str(candidate.before_state_capture),
         "action_kind": candidate.action_kind,
         "capability": candidate.capability,
+        "budget_estimate": " ".join(candidate.budget_estimate),
         **{f"target:{i}": t for i, t in enumerate(candidate.target_resources)},
     }
     for field, value in free_text.items():
@@ -253,10 +254,14 @@ def execute(database: FoundryDatabase, envelope: ActionEnvelope,
                 "frozen_reason": state.get("frozen_reason")}
     if state["status"] == STARTED:
         # crash between start and completion: the driver reaps to FROZEN
-        # and performs nothing — no authority consumption for a no-op
-        return execute_effect(database, envelope=envelope,
-                              connector_id=connector_id, perform=perform,
-                              stop_path=stop_path)
+        # and performs nothing — no authority consumption for a no-op.
+        # Normalized here (early return): same shape as every other path.
+        reaped = execute_effect(database, envelope=envelope,
+                                connector_id=connector_id, perform=perform,
+                                stop_path=stop_path)
+        reaped["performed"] = False
+        reaped.setdefault("cost", None)
+        return reaped
     # Fresh execution: the S6 ticket/STOP/veto gates run BEFORE the
     # capability is consumed (S7 verifier deleg_0b2cbd47 I1 — a foreign
     # envelope must never burn a legitimate capability), then the
@@ -289,10 +294,15 @@ def execute(database: FoundryDatabase, envelope: ActionEnvelope,
     executed = execute_effect(database, envelope=envelope,
                               connector_id=connector_id, perform=perform,
                               stop_path=stop_path)
-    # uniform result shape (LOW deleg_0b2cbd47): fresh executions carry
-    # performed/cost like every other path
-    executed.setdefault("performed", True)
-    executed.setdefault("cost", dict(envelope.budget_estimate))
+    # Uniform result shape from ONE source of truth (S7 round-2
+    # deleg_8b1eef76 M1′): cost/after_state are derived from the journal
+    # exactly like the re-delivery path — a fresh FAILED and its
+    # re-delivery record IDENTICAL learn payloads (no drift).
+    state = effect_state(database, executed["action_key"])
+    executed["performed"] = not bool(executed.get("reaped"))
+    executed["cost"] = state.get("cost")
+    if "after_state" not in executed or executed["after_state"] is None:
+        executed["after_state"] = state.get("after_state")
     return executed
 
 
@@ -440,7 +450,26 @@ def run_mission(
         # the RECORDED details so learn()'s payload-hash key matches the
         # original outcome event (no event drift — S7 verifier
         # deleg_0b2cbd47 M1).
-        key, _, _, _ = effect_identity(database, envelope)
+        # Eligibility BEFORE identity resolution (S7 round-2
+        # deleg_8b1eef76 M2′): effect_identity raises on unresolvable
+        # targets — an unregistered-system candidate must be SKIPPED in
+        # isolation, never crash the mission.
+        gap = _eligible(database, candidate)
+        if gap is not None:
+            result = {"action_id": candidate.action_id,
+                      "outcome": _SKIPPED, "reason": gap}
+            results.append(result)
+            learn(database, mission_id, candidate.action_id, result)
+            continue
+        try:
+            key, _, _, _ = effect_identity(database, envelope)
+        except ValueError as exc:
+            result = {"action_id": candidate.action_id,
+                      "outcome": _REFUSED,
+                      "reason": redact_text(str(exc))}
+            results.append(result)
+            learn(database, mission_id, candidate.action_id, result)
+            continue
         state = effect_state(database, key)
         if state["status"] in (COMPLETED, FAILED, FROZEN):
             result = {"action_id": candidate.action_id,
@@ -457,13 +486,6 @@ def run_mission(
         if stop:
             result = {"action_id": candidate.action_id,
                       "outcome": _REFUSED, "reason": f"STOP: {stop}"}
-            results.append(result)
-            learn(database, mission_id, candidate.action_id, result)
-            continue
-        gap = _eligible(database, candidate)
-        if gap is not None:
-            result = {"action_id": candidate.action_id,
-                      "outcome": _SKIPPED, "reason": gap}
             results.append(result)
             learn(database, mission_id, candidate.action_id, result)
             continue
