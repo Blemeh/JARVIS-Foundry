@@ -1,6 +1,12 @@
 work_package: V5_MULTI_SYSTEM_INTELLIGENCE
 slice: "4 — Connector contract, registry, health, quota, and routing"
-status: ACTIVE
+status: CLOSED_PASS
+closed_at: 2026-08-13
+close_evidence:
+  - "independent verifier deleg_761e4d85 PASS (12 probe groups, 83/83 checks) — verdict JSON var/evidence/v5-s4-connectors/verdict-deleg_761e4d85.json (sha256 becdc5bc…)"
+  - "verifier LOW (reroute reason misattribution) repaired in 5876cff with regression; suite 634 EXIT=0"
+  - "ledger verification.passed:verdict-v5-s4-connectors:round1 (seq 23171) + evidence.created:v5-s4-connectors-close (seq 23172); live schema stays v19"
+  - "docs/evidence/V5_S4_CONNECTORS.md CLOSED with findings table"
 activated_by: "V5-S3 CLOSED PASS (verification.passed seq 22899; live schema v19)"
 date: 2026-08-13
 objective: >
