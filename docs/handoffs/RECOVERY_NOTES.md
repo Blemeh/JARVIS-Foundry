@@ -1,6 +1,6 @@
 # Recovery Notes — JARVIS Foundry
 
-Authoritative resume point. Updated 2026-08-13 ~02:10+02:00 — **V4 duty
+Authoritative resume point. Updated 2026-08-13 ~02:30+02:00 — **V4 duty
 window in progress** (DIR-2026-08-12, ~12h; owner away; silence =
 continue).
 
@@ -41,9 +41,10 @@ continue).
 - **S6 scoring CLOSED** (b2b50e2, deleg_66e30870 PASS, ledger
   15,699→15,701): bounded context factors + frozen recorded scores;
   threshold 0.35 unchanged.
-- **V4 ACCEPTANCE GATE IN REVIEW**: report docs/evidence/
-  V4_ACCEPTANCE_GATE.md; round-1 gate verifier deleg_a241797f RUNNING
-  (freeze: no src/tests edits until the verdict).
+- **V4 ACCEPTANCE GATE CLOSED — PASS 3/3 round-1** (deleg_a241797f,
+  15 probes; 2 MEDIUM stale-snapshot totals corrected additively,
+  4 LOW/INFO recorded; ledger verification.passed:verdict-v4-acceptance-
+  gate:round1 + evidence.created, 16,113→16,115; DECISION_LOG D-037).
 - **Real live loops**: 2 executed (01:59, 02:05) — honest WAITING
   both (no bar-clearing candidate; no invented work); 4 monitors
   registered+polled on the live DB; routing proof by construction
@@ -60,11 +61,14 @@ continue).
 1. `git status` — expect clean; `git log --oneline -12` for the chain.
 2. Read docs/handoffs/RECOVERY_NOTES.md (this file) +
    docs/planning/V4_TRUTH_SLICES.md + CURRENT_WORK_PACKAGE.yaml.
-3. Check the deleg_a241797f gate verdict: PASS → archive +
-   ledger close (verification.passed:verdict-v4-acceptance-gate:roundN
-   + evidence.created) → update V4_ACCEPTANCE_GATE.md → commit →
-   activate the next justified phase. FAIL → repair exact findings →
-   regression → re-verify (the S5-R1 loop was the same discipline).
+3. Continue the loop cadence (~30-45 min): `./.venv/Scripts/python.exe
+   var/evidence/v3_loops/live_loop_driver.py 1`. If a candidate clears
+   the bar or a mission blocks, capture the ledger rows (the routing
+   proof — see V4_M3_REAL_LOOP.md); every loop report lands in
+   var/evidence/v3-loops/.
+4. Checkpoints every 60-90 min; finalize docs/handoffs/
+   DUTY_WINDOW_FINAL_REPORT.md at window end (~11:15) for the
+   GPT-5.6 Sol audit.
 4. R8 doc reconciliation (PROJECT_STATE v21 → v22, CURRENT_WORK_PACKAGE
    FIRST MISSION done, DECISION_LOG append D-0xx, RISK_REGISTER
    append) — the V4_TRUTH_SLICES R8 section lists the targets.
