@@ -414,13 +414,15 @@ class PolicyBroker:
             if limit is None:
                 return (BrokerDecision.NOT_READY,
                         f"no budget policy for {key} — fail closed")
-            if not math.isfinite(value):
-                # F2 (S2 verifier deleg_6c96be6d): NaN compares False
-                # against every limit — a non-finite estimate can never
-                # be budgeted, so it fails closed deterministically.
+            if not isinstance(value, (int, float)) or not math.isfinite(value):
+                # F2 (S2 verifier deleg_6c96be6d) + M-C (S7 verifier
+                # deleg_204ef719): NaN compares False against every limit
+                # and a non-numeric estimate raises TypeError in
+                # isfinite — both fail closed deterministically, never
+                # crash the caller.
                 return (BrokerDecision.NOT_READY,
-                        f"non-finite budget estimate for {key} — fail "
-                        "closed")
+                        f"non-numeric or non-finite budget estimate for "
+                        f"{key} — fail closed")
             if value > limit:
                 return (BrokerDecision.BUDGET_EXCEEDED,
                         f"budget {key} {value} exceeds the limit {limit}")

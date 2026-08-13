@@ -17,6 +17,7 @@ from jarvis_foundry.connectors.contract import ConnectorSpec
 from jarvis_foundry.connectors.registry import (disable_connector,
                                                 record_health_sample,
                                                 register_connector)
+from jarvis_foundry.control.broker import BrokerDecision, PolicyBroker
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.events import Event
 from jarvis_foundry.execution.pipeline import (
@@ -80,7 +81,9 @@ def _candidate(action_id: str = "act-1", *, score: float = 0.5,
                target: str = "sys-browser",
                capability: str = "write",
                expected_effect: str = "create notes.txt",
-               goal_alignment: str = "mission-1") -> ActionCandidate:
+               goal_alignment: str = "mission-1",
+               budget_estimate: dict[str, float] | None = None
+               ) -> ActionCandidate:
     return ActionCandidate(
         action_id=action_id, action_kind="file.write",
         target_resources=(target,), capability=capability,
@@ -88,7 +91,8 @@ def _candidate(action_id: str = "act-1", *, score: float = 0.5,
         expected_effects=(expected_effect,),
         before_state_capture={"ref": "snap-1", "hash": "h-before"},
         score=score, connector_id=connector_id,
-        goal_alignment=goal_alignment)
+        goal_alignment=goal_alignment,
+        budget_estimate=budget_estimate or {})
 
 
 def _mission_setup(db: FoundryDatabase) -> None:
@@ -408,9 +412,11 @@ def test_unregistered_system_candidate_isolated(db: FoundryDatabase) -> None:
                     _candidate(action_id="act-ok")],
         perform_map={"conn-a": store.perform})
     outcomes = {r["action_id"]: r["outcome"] for r in result["results"]}
-    assert outcomes["act-ghost"] == "NOT_READY"  # isolated skip
-    assert "not registered" in [r["reason"] for r in result["results"]
-                                if r["action_id"] == "act-ghost"][0]
+    # identity resolution raises first for an unresolvable target — the
+    # candidate is REFUSED in isolation (never a crash, never a skip)
+    assert outcomes["act-ghost"] == "REFUSED"
+    assert [r["reason"] for r in result["results"]
+            if r["action_id"] == "act-ghost"][0]
     assert outcomes["act-ok"] == "COMPLETED"
     assert store.calls == 1
 
@@ -457,3 +463,73 @@ def test_reap_result_shape_uniform(db: FoundryDatabase) -> None:
     assert detail["performed"] is False
     assert "cost" in detail
     assert store.calls == 0
+
+
+# ---------------------------------------------------------------------------
+# S7 round-3 verifier (deleg_204ef719) regressions: M-A / M-B / M-C
+# ---------------------------------------------------------------------------
+
+def test_budget_secret_key_label_refused(db: FoundryDatabase) -> None:
+    """M-A: budget_estimate KEY LABELS with secret-like names are
+    refused at the boundary (probed as key=value form) — a bare
+    'api_key' label must never reach the ledger."""
+    _mission_setup(db)
+    candidate = _candidate(budget_estimate={"api_key": 5})
+    with pytest.raises(ValueError):
+        build_envelope(candidate, mission_id="mission-1", run_id="run-1")
+    store = _FakeStore()
+    result = run_mission(db, "mission-1", "run-1", [candidate],
+                         perform_map={"conn-a": store.perform})
+    assert result["results"][0]["outcome"] == "REFUSED"
+    assert store.calls == 0
+    with db.connect() as connection:
+        rows = connection.execute(
+            "SELECT payload_json FROM events WHERE payload_json LIKE "
+            "'%api_key%'").fetchall()
+    assert rows == []
+
+
+def test_degraded_redelivery_stays_idempotent(db: FoundryDatabase) -> None:
+    """M-B: a COMPLETED effect re-delivered while its connector is
+    DEGRADED returns the RECORDED outcome (idempotent re-delivery
+    FIRST) — never NOT_READY, never a second outcome event."""
+    _mission_setup(db)
+    store = _FakeStore()
+    candidates = [_candidate()]
+    run_mission(db, "mission-1", "run-1", candidates,
+                perform_map={"conn-a": store.perform})
+    record_health_sample(db, "conn-a", "DEGRADED")  # connector now down
+    result = run_mission(db, "mission-1", "run-1", candidates,
+                         perform_map={"conn-a": store.perform})
+    assert result["results"][0]["outcome"] == "COMPLETED"
+    assert result["results"][0]["performed"] is False
+    with db.connect() as connection:
+        outcomes = connection.execute(
+            "SELECT COUNT(*) FROM events WHERE event_type = "
+            "'mission.outcome.recorded'").fetchone()[0]
+    assert outcomes == 1
+
+
+def test_non_numeric_budget_isolated(db: FoundryDatabase) -> None:
+    """M-C: a candidate with a non-numeric budget VALUE fails closed at
+    the broker (NOT_READY, never a TypeError) and is REFUSED in
+    isolation — healthy candidates still run."""
+    _mission_setup(db)
+    store = _FakeStore()
+    bad = _candidate(action_id="act-bad",
+                     budget_estimate={"usd": "sk-live-9999"})
+    # broker level: deterministic NOT_READY, never a crash
+    envelope = build_envelope(bad, mission_id="mission-1", run_id="run-1")
+    outcome = PolicyBroker(db).decide(envelope, budget={"usd": 100.0})
+    assert outcome.decision == BrokerDecision.NOT_READY
+    assert "non-numeric" in outcome.reason
+    # mission level: isolated refusal, healthy candidate still runs
+    result = run_mission(
+        db, "mission-1", "run-1",
+        candidates=[bad, _candidate(action_id="act-ok")],
+        budget={"usd": 100.0},
+        perform_map={"conn-a": store.perform})
+    outcomes = {r["action_id"]: r["outcome"] for r in result["results"]}
+    assert outcomes["act-bad"] == "REFUSED"
+    assert outcomes["act-ok"] == "COMPLETED"
+    assert store.calls == 1

@@ -83,7 +83,10 @@ def build_envelope(candidate: ActionCandidate, *, mission_id: str,
         "before_state_capture": str(candidate.before_state_capture),
         "action_kind": candidate.action_kind,
         "capability": candidate.capability,
-        "budget_estimate": " ".join(candidate.budget_estimate),
+        # budget KEYS probed as key=value form (round-3 deleg_204ef719
+        # M-A): a bare 'api_key' label does not match the assignment
+        # pattern — the key label itself is the guard target
+        **{f"budget:{key}": f"{key}=x" for key in candidate.budget_estimate},
         **{f"target:{i}": t for i, t in enumerate(candidate.target_resources)},
     }
     for field, value in free_text.items():
@@ -393,6 +396,12 @@ def run_candidate(
                   "outcome": _REFUSED, "reason": str(exc)}
         learn(database, mission_id, candidate.action_id, result)
         return result
+    except Exception as exc:  # noqa: BLE001 — per-candidate isolation
+        result = {"action_id": candidate.action_id,
+                  "outcome": _REFUSED,
+                  "reason": redact_text(str(exc))}
+        learn(database, mission_id, candidate.action_id, result)
+        return result
     try:
         executed = execute(database, envelope, capability_id,
                            connector_id=connector_id, perform=perform,
@@ -450,17 +459,11 @@ def run_mission(
         # the RECORDED details so learn()'s payload-hash key matches the
         # original outcome event (no event drift — S7 verifier
         # deleg_0b2cbd47 M1).
-        # Eligibility BEFORE identity resolution (S7 round-2
-        # deleg_8b1eef76 M2′): effect_identity raises on unresolvable
-        # targets — an unregistered-system candidate must be SKIPPED in
-        # isolation, never crash the mission.
-        gap = _eligible(database, candidate)
-        if gap is not None:
-            result = {"action_id": candidate.action_id,
-                      "outcome": _SKIPPED, "reason": gap}
-            results.append(result)
-            learn(database, mission_id, candidate.action_id, result)
-            continue
+        # Identity resolution BEFORE the terminal check (round-2 M2′:
+        # it raises on unresolvable targets — wrapped, never crashes),
+        # then idempotent re-delivery FIRST (round-3 deleg_204ef719 M-B:
+        # a terminal effect's recorded outcome returns even under a
+        # degraded connector or STOP — eligibility must NOT precede it).
         try:
             key, _, _, _ = effect_identity(database, envelope)
         except ValueError as exc:
@@ -486,6 +489,13 @@ def run_mission(
         if stop:
             result = {"action_id": candidate.action_id,
                       "outcome": _REFUSED, "reason": f"STOP: {stop}"}
+            results.append(result)
+            learn(database, mission_id, candidate.action_id, result)
+            continue
+        gap = _eligible(database, candidate)
+        if gap is not None:
+            result = {"action_id": candidate.action_id,
+                      "outcome": _SKIPPED, "reason": gap}
             results.append(result)
             learn(database, mission_id, candidate.action_id, result)
             continue
