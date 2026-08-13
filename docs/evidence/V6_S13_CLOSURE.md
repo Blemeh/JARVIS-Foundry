@@ -136,3 +136,34 @@ reconcile_consistent True; event_integrity_ok True; passed True.
 - The evidence trail (suite artifacts + verdict JSONs) lives in the
   gitignored var/ dir, referenced from the V6_SLICE_MANIFEST and the
   per-slice docs; the final verifier cross-checks the artifacts.
+
+## 11. Final verdict + disposition (deleg_1bba41a6, PASS — 15m50s, 73 probes)
+
+F1-F7 all PASS: runtime ledger truth (schema 32, exactly 2 acceptance
+runs with the exact reports, zero pollution); evidence trail complete
+for all 13 slices (suite artifacts 719->912 + PASS verdicts, S10's
+round-1 FAIL preserved); docs + strict suite monotonicity; FRESH full
+suite re-run 912 passed EXIT=0 (410.02s) + S12 artifact sha256 exact
+match + focused 193 passed; live isolation (v20, zero V6 vocabulary,
+main checkout fa4e65f + the 4 protected files); handoff doc complete;
+no drift (worktree clean at 0996d02). Verdict JSON:
+var/evidence/v6-s13/verdict-deleg_1bba41a6-final.json, sha256
+05e6ef4d763c6764fb51272356123170d5a104c13ab05d9e5531d2f682a4b262.
+Extras: acceptance reproduction, end-to-end ladder at schema 32,
+raw-append refusal (no forged rows), zero pollution on the runtime
+copy.
+
+Disposition of the 2 LOWs:
+
+| Severity | Finding | Resolution |
+|---|---|---|
+| LOW (F2-1) | S3 r1 (deleg_df8957c2) and S7 r1 (deleg_b8bf3e0b) verdict JSONs were never archived (only r2 files existed), while V6_S7_CANARY.md references the r1 file. | ARCHIVED: reconstructed verdict JSONs (recovery protocol — findings from the skeleton report + prose, recovery_note embedded) at var/evidence/v6-s3/verdict-deleg_df8957c2.json (sha256 5a54399f…) and var/evidence/v6-s7/verdict-deleg_b8bf3e0b.json (sha256 1f4fca77…). The S7 doc reference now resolves. |
+| LOW (F7-1) | The .h boundary reference (244d2966, from WP0) is unverifiable FROM THE V6 WORKTREE — the .h checkout lives in the MAIN checkout. | RECORDED as a boundary limitation: .h was verified pristine at V6 session start from the main checkout (read-only git checks); the final verifier's read-only scope could not reach it from the V6 worktree. Re-verifiable from the main checkout at any time; no V6 action touches it. |
+
+INFOs recorded: archived verdict JSONs are verbatim harness output
+(recovered via the documented ladder where truncated); live-DB
+isolation is content-level under continuous host writes; the closure
+doc honestly predates the final verdict; same-provider limitation
+structurally 1 (D-031).
+
+**V6 CLOSED — PASS (final verdict deleg_1bba41a6).**
