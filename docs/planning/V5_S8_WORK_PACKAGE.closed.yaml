@@ -1,7 +1,13 @@
 work_package: V5_MULTI_SYSTEM_INTELLIGENCE
 slice: "8 — Available-connector activation and provider evidence"
-status: ACTIVE
-activated_by: "V5-S7 CLOSED PASS (verification.passed:verdict-v5-s7-loop:round1 seq 25670)"
+status: CLOSED_PASS
+closed_at: 2026-08-13
+close_evidence:
+  - "round-2 verifier deleg_e14d91ce PASS (round-1 PASS with MEDIUM+LOW repaired in a26eba0; A/B proven)"
+  - "LIVE activation: conn-fs READY (real probe, dedicated root C:\\Users\\b\\AppData\\Local\\hermes\\foundry\\connector-root), 6 online kinds BLOCKED durable+resumable, provider reconciliation NOT_TESTED"
+  - "live ledger: verification.passed:verdict-v5-s8-activation:round1 (schema 20)"
+  - "suite 710 EXIT=0 (var/evidence/v5-s8-activation/suite-v5-s8-r2.txt); rehearsal consistent"
+  - "docs/evidence/V5_S8_ACTIVATION.md (round-1 PASS findings + repairs + round-2 close)"
 date: 2026-08-13
 objective: >
   Activate ONLY those concrete local/online connectors whose real
