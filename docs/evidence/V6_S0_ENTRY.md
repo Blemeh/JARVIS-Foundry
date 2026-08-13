@@ -34,14 +34,17 @@ FILES CHANGED: docs/planning/V6_SLICE_MANIFEST.md (new); docs/planning/
 LIVE SYSTEMS CHANGED: NONE (no writes to the live DB, no sentinel, no
   processes started/stopped, no main-checkout change)
 TESTS: baseline full suite 719 passed EXIT=0
-  (var/evidence/v6-s0/suite-v6-s0-baseline.txt, sha256 2bbeaea3985f12a2d8
-  470059721e342f010e3534a40f5cd3abce7313a723b8bf); collect-only 719 tests
-VERIFIER: fresh independent adversarial verifier (dispatched after this
-  commit; JSON verdict archived in var/evidence/v6-s0/)
+  (var/evidence/v6-s0/suite-v6-s0-baseline.txt,
+  sha256 2bbeaea3985f12a2d8470059721e342f010e3534a40f5cd3abce7313a723b8bf);
+  collect-only 719 tests
+VERIFIER: deleg_769a4941 — PASS (G1-G7 + directive match; verdict JSON
+  archived var/evidence/v6-s0/verdict-deleg_769a4941.json,
+  sha256 ba6c8bdaf67104b99315593e511a4bbf006cb710b2d2889fdad47c7bcc8a7f72;
+  findings MEDIUM x1 + LOW x2 + INFO x2, all resolved additively below)
 EVIDENCE: var/evidence/v6-s0/live_inspect_v6.py (read-only inspector,
   output v6-s0-live-inspect.json); var/evidence/v6-s0/live-snapshot-v20.db
-  (27,086 events, sha256 1e1d72a019c64d333ba70c21ee7498ebfa26eec1fc2f9b08b
-  4e13798c2038656)
+  (27,086 events,
+  sha256 1e1d72a019c64d333ba70c21ee7498ebfa26eec1fc2f9b08b4e13798c2038656)
 CANARY: none (no candidate)
 PROMOTION OR ROLLBACK: none (S0 is the frozen V6 base; rollback = delete
   worktree + branch)
@@ -139,3 +142,16 @@ record was rewritten (D-030).
 Baseline reproducible (inspector + snapshot + suite artifact recorded);
 no unresolved owner conflict; live and parallel state preserved; V6 fully
 isolated. S1 is the next slice.
+
+## 8. Verifier findings — additive resolution (deleg_769a4941, PASS)
+
+Verdict JSON archived at var/evidence/v6-s0/verdict-deleg_769a4941.json
+(sha256 ba6c8bdaf67104b99315593e511a4bbf006cb710b2d2889fdad47c7bcc8a7f72).
+
+| Severity | Finding | Resolution |
+|---|---|---|
+| MEDIUM | G2's reference table list named 37 tables but the live DB has 33 — briefing_outbox, control_nonces, cost_measurements, voice_interactions are V4-integration tables present in code only (lazy feature tables, 53 refs in 9 files), NOT in the live v20 DB. SAFE direction: the actual set is a strict subset, and the S0-captured snapshot has the identical 33-table set (nothing added or removed between capture and verification). | Clarified: live table set = 33 (v20); the 4 V4-integration tables deploy only with their future migrations. No live schema change. |
+| LOW | G6 wording "worktree at fa4e65f": worktree HEAD is actually the S0 commit 6aa5d52 (parent fa4e65f; the branch advanced by the single S0 docs commit). Isolation property unaffected. | Clarified: worktree HEAD = 6aa5d52, base fa4e65f. |
+| LOW | The S0 entry doc's sha256 values were wrapped across line breaks, breaking exact-string greppability (weak hash chaining). | Fixed: both hashes (snapshot 1e1d72a0…38656, suite 2bbeaea3…b8bf) now appear as single unbroken lines in §TESTS/§EVIDENCE above; verdict JSON hash added. |
+| INFO | Detached worktree C:/tmp/v5-merge-test @ 453847c exists in the main repo's worktree list — predates this session, outside V6 scope, untouched. | Recorded; no action. |
+| INFO | The optional G4 pytest re-run was intentionally skipped (would write .pytest_cache/__pycache__ and violate the read-only mandate); venv sanity confirmed (Python 3.13.5); artifact hash + content independently verified instead. | Recorded; accepted. |
