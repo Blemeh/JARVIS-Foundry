@@ -93,6 +93,7 @@ def _table_key_column(table: str) -> str:
         "improvement_records": "improvement_id",
         "release_manifests": "release_id",
         "release_slots": "slot",
+        "candidate_builds": "build_id",
         "system_state": "singleton",
         "supervisor_state": "singleton",
     }

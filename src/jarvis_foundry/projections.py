@@ -41,6 +41,7 @@ PROJECTION_TABLES = (
     "improvement_records",
     "release_manifests",
     "release_slots",
+    "candidate_builds",
 )
 
 
@@ -1133,6 +1134,67 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
              canonical_json(payload["verdicts"]),
              payload.get("rollback_target"), event.recorded_at,
              event.event_id, event.recorded_at),
+        )
+    elif event.event_type == "candidate.build_started":
+        for key in ("build_id", "improvement_id", "candidate_root",
+                    "command_hash"):
+            if key not in payload:
+                raise ValueError(
+                    f"candidate.build_started requires {key} "
+                    "(mandatory payload key) — rolled back")
+        connection.execute(
+            """INSERT OR IGNORE INTO candidate_builds(
+                build_id, improvement_id, candidate_root, status,
+                started_at, last_event_id, updated_at
+            ) VALUES (?, ?, ?, 'BUILDING', ?, ?, ?)""",
+            (payload["build_id"], payload["improvement_id"],
+             payload["candidate_root"], event.recorded_at,
+             event.event_id, event.recorded_at),
+        )
+    elif event.event_type in ("candidate.build_completed",
+                              "candidate.build_failed"):
+        for key in ("build_id", "exit_code"):
+            if key not in payload:
+                raise ValueError(
+                    f"{event.event_type} requires {key} "
+                    "(mandatory payload key) — rolled back")
+        status = ("COMPLETED" if event.event_type ==
+                  "candidate.build_completed" else "FAILED")
+        cursor = connection.execute(
+            """UPDATE candidate_builds SET status = ?, exit_code = ?,
+               artifact_hashes_json = ?, reason = ?, finished_at = ?,
+               last_event_id = ?, updated_at = ?
+               WHERE build_id = ?""",
+            (status, payload["exit_code"],
+             canonical_json(payload.get("artifact_hashes", {})),
+             payload.get("reason"), event.recorded_at,
+             event.event_id, event.recorded_at, payload["build_id"]),
+        )
+        if cursor.rowcount == 0:
+            raise ValueError(
+                f"{event.event_type} references unknown build "
+                f"{payload['build_id']} — rolled back")
+    elif event.event_type == "candidate.build_reaped":
+        for key in ("build_id", "reason"):
+            if key not in payload:
+                raise ValueError(
+                    f"candidate.build_reaped requires {key} "
+                    "(mandatory payload key) — rolled back")
+        connection.execute(
+            """INSERT OR IGNORE INTO candidate_builds(
+                build_id, improvement_id, candidate_root, status,
+                reason, finished_at, last_event_id, updated_at
+            ) VALUES (?, '', '', 'REAPED', ?, ?, ?, ?)""",
+            (payload["build_id"], payload["reason"], event.recorded_at,
+             event.event_id, event.recorded_at),
+        )
+        connection.execute(
+            """UPDATE candidate_builds SET status = 'REAPED',
+               reason = ?, finished_at = ?, last_event_id = ?,
+               updated_at = ?
+               WHERE build_id = ? AND status = 'BUILDING'""",
+            (payload["reason"], event.recorded_at, event.event_id,
+             event.recorded_at, payload["build_id"]),
         )
     elif event.event_type == "release.slot_changed":
         for key in ("slot", "release_id", "previous_release_id",

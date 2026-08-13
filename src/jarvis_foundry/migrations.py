@@ -5,7 +5,7 @@ import sqlite3
 from .v4_schema import ensure_v4_tables
 
 
-SCHEMA_VERSION = 22
+SCHEMA_VERSION = 23
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -631,6 +631,22 @@ MIGRATIONS: dict[int, str] = {
         release_id TEXT,
         updated_at TEXT NOT NULL,
         last_event_id TEXT NOT NULL
+    );
+    """,
+    23: """
+    CREATE TABLE IF NOT EXISTS candidate_builds (
+        build_id TEXT PRIMARY KEY,
+        improvement_id TEXT NOT NULL,
+        candidate_root TEXT NOT NULL,
+        status TEXT NOT NULL
+            CHECK(status IN ('BUILDING', 'COMPLETED', 'FAILED', 'REAPED')),
+        exit_code INTEGER,
+        artifact_hashes_json TEXT NOT NULL DEFAULT '{}',
+        reason TEXT,
+        started_at TEXT,
+        finished_at TEXT,
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
     );
     """,
 }
