@@ -230,15 +230,21 @@ def select_connector(
 
     # preferred connector first when it qualifies (reroute otherwise)
     if preferred is not None:
-        for connector_id, spec in candidates:
-            if connector_id == preferred:
-                gap = _qualifies(connector_id, spec)
-                if gap is None:
-                    return RoutingOutcome(spec, "selected")
-                preferred_gap = gap
-        else:
+        preferred_entry = next(
+            ((cid, spec) for cid, spec in candidates if cid == preferred),
+            None)
+        if preferred_entry is None:
             preferred_gap = (f"preferred connector {preferred} is not "
                              "registered or does not declare the action")
+        else:
+            # S4 verifier deleg_761e4d85 LOW: the old for/else ALWAYS
+            # executed its else (no break) and misattributed the reroute
+            # cause when the preferred connector IS registered but fails
+            # a gate — the gap text now names the real reason.
+            preferred_gap = _qualifies(preferred_entry[0],
+                                       preferred_entry[1])
+            if preferred_gap is None:
+                return RoutingOutcome(preferred_entry[1], "selected")
         for connector_id, spec in candidates:
             if connector_id == preferred:
                 continue

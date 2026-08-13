@@ -226,6 +226,28 @@ def test_reroute_when_preferred_fails(db: FoundryDatabase) -> None:
     assert "conn-a" in outcome.reason
 
 
+def test_reroute_reason_names_the_real_gap(db: FoundryDatabase) -> None:
+    """S4 verifier deleg_761e4d85 LOW: when the preferred connector IS
+    registered but fails a gate, the reroute reason must name the real
+    gap — not claim the connector is unregistered."""
+    register_connector(db, _spec("conn-a"))
+    register_connector(db, _spec("conn-b"))
+    record_health_sample(db, "conn-a", "DEGRADED")
+    record_health_sample(db, "conn-b", "HEALTHY")
+    outcome = select_connector(db, "file.read", preferred="conn-a",
+                               capabilities_required=("read",))
+    assert outcome.connector.connector_id == "conn-b"
+    assert "DEGRADED" in outcome.reason
+    assert "not registered" not in outcome.reason
+    # quota-exhausted preferred: same truthful attribution
+    record_quota_use(db, "conn-b", used=10, limit=10)
+    outcome = select_connector(db, "file.read", preferred="conn-b",
+                               capabilities_required=("read",))
+    assert outcome.connector is None
+    assert "quota" in outcome.reason
+    assert "not registered" not in outcome.reason
+
+
 def test_quota_exhaustion_blocks_selection(db: FoundryDatabase) -> None:
     register_connector(db, _spec())
     record_health_sample(db, "conn-fs", "HEALTHY")
