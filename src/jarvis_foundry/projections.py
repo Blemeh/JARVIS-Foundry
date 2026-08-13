@@ -46,6 +46,8 @@ PROJECTION_TABLES = (
     "verifications",
     "shadow_runs",
     "canaries",
+    "promotions",
+    "release_control",
 )
 
 
@@ -1436,6 +1438,101 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             raise ValueError(
                 f"{event.event_type} has no RUNNING canary "
                 f"{payload['canary_id']} — rolled back")
+    elif event.event_type == "release.promotion_intent":
+        for key in ("promotion_id", "release_id", "verification_id",
+                    "baseline_run_id", "candidate_run_id", "risk_class",
+                    "planned", "controller"):
+            if key not in payload:
+                raise ValueError(
+                    f"release.promotion_intent requires {key} "
+                    "(mandatory payload key) — rolled back")
+        connection.execute(
+            """INSERT OR IGNORE INTO promotions(
+                promotion_id, release_id, verification_id, canary_id,
+                baseline_run_id, candidate_run_id, risk_class, status,
+                controller, created_at, last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'INTENT', ?, ?, ?, ?)""",
+            (payload["promotion_id"], payload["release_id"],
+             payload["verification_id"], payload.get("canary_id"),
+             payload["baseline_run_id"], payload["candidate_run_id"],
+             payload["risk_class"], payload["controller"],
+             event.recorded_at, event.event_id, event.recorded_at),
+        )
+    elif event.event_type == "release.promoted":
+        for key in ("promotion_id", "release_id", "controller"):
+            if key not in payload:
+                raise ValueError(
+                    f"release.promoted requires {key} "
+                    "(mandatory payload key) — rolled back")
+        cursor = connection.execute(
+            """UPDATE promotions SET status = 'PROMOTED',
+               finished_at = ?, last_event_id = ?, updated_at = ?
+               WHERE promotion_id = ? AND status = 'INTENT'""",
+            (event.recorded_at, event.event_id, event.recorded_at,
+             payload["promotion_id"]),
+        )
+        if cursor.rowcount == 0:
+            raise ValueError(
+                f"release.promoted has no INTENT promotion "
+                f"{payload['promotion_id']} — rolled back")
+    elif event.event_type == "release.rolled_back":
+        for key in ("promotion_id", "trigger", "reason", "from", "to",
+                    "controller"):
+            if key not in payload:
+                raise ValueError(
+                    f"release.rolled_back requires {key} "
+                    "(mandatory payload key) — rolled back")
+        if payload["trigger"] not in (
+                "stop", "veto", "lost_heartbeat", "health_failure",
+                "invariant_violation", "outcome_regression",
+                "evidence_mismatch", "schema_incompatibility",
+                "absent_effect", "verifier_contradiction", "manual"):
+            raise ValueError(
+                f"release.rolled_back unknown trigger "
+                f"{payload['trigger']} — rolled back")
+        cursor = connection.execute(
+            """UPDATE promotions SET status = 'ROLLED_BACK',
+               trigger = ?, reason = ?, finished_at = ?,
+               last_event_id = ?, updated_at = ?
+               WHERE promotion_id = ?
+                 AND status IN ('INTENT', 'PROMOTED')""",
+            (payload["trigger"], payload["reason"], event.recorded_at,
+             event.event_id, event.recorded_at,
+             payload["promotion_id"]),
+        )
+        if cursor.rowcount == 0:
+            raise ValueError(
+                f"release.rolled_back has no promotable promotion "
+                f"{payload['promotion_id']} — rolled back")
+    elif event.event_type == "release.frozen":
+        for key in ("reason", "controller"):
+            if key not in payload:
+                raise ValueError(
+                    f"release.frozen requires {key} "
+                    "(mandatory payload key) — rolled back")
+        connection.execute(
+            """INSERT INTO release_control(id, frozen, frozen_reason,
+                frozen_at, last_event_id, updated_at)
+               VALUES (1, 1, ?, ?, ?, ?)
+               ON CONFLICT(id) DO UPDATE SET frozen = 1,
+                frozen_reason = excluded.frozen_reason,
+                frozen_at = excluded.frozen_at,
+                last_event_id = excluded.last_event_id,
+                updated_at = excluded.updated_at""",
+            (payload["reason"], event.recorded_at, event.event_id,
+             event.recorded_at),
+        )
+    elif event.event_type == "release.unfrozen":
+        connection.execute(
+            """INSERT INTO release_control(id, frozen, last_event_id,
+                updated_at)
+               VALUES (1, 0, ?, ?)
+               ON CONFLICT(id) DO UPDATE SET frozen = 0,
+                frozen_reason = NULL, frozen_at = NULL,
+                last_event_id = excluded.last_event_id,
+                updated_at = excluded.updated_at""",
+            (event.event_id, event.recorded_at),
+        )
     elif event.event_type == "release.slot_changed":
         for key in ("slot", "release_id", "previous_release_id",
                     "reason", "controller"):

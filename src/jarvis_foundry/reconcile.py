@@ -98,6 +98,8 @@ def _table_key_column(table: str) -> str:
         "verifications": "verification_id",
         "shadow_runs": "run_id",
         "canaries": "canary_id",
+        "promotions": "promotion_id",
+        "release_control": "id",
         "system_state": "singleton",
         "supervisor_state": "singleton",
     }

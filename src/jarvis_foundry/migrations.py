@@ -5,7 +5,7 @@ import sqlite3
 from .v4_schema import ensure_v4_tables
 
 
-SCHEMA_VERSION = 27
+SCHEMA_VERSION = 28
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -731,6 +731,34 @@ MIGRATIONS: dict[int, str] = {
         reason TEXT,
         started_at TEXT NOT NULL,
         finished_at TEXT,
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    """,
+    28: """
+    CREATE TABLE IF NOT EXISTS promotions (
+        promotion_id TEXT PRIMARY KEY,
+        release_id TEXT NOT NULL,
+        verification_id TEXT NOT NULL,
+        canary_id TEXT,
+        baseline_run_id TEXT NOT NULL,
+        candidate_run_id TEXT NOT NULL,
+        risk_class TEXT NOT NULL,
+        status TEXT NOT NULL
+            CHECK(status IN ('INTENT', 'PROMOTED', 'ROLLED_BACK')),
+        controller TEXT NOT NULL,
+        trigger TEXT,
+        reason TEXT,
+        created_at TEXT NOT NULL,
+        finished_at TEXT,
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS release_control (
+        id INTEGER PRIMARY KEY CHECK(id = 1),
+        frozen INTEGER NOT NULL DEFAULT 0,
+        frozen_reason TEXT,
+        frozen_at TEXT,
         last_event_id TEXT NOT NULL,
         updated_at TEXT NOT NULL
     );
