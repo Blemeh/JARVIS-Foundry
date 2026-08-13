@@ -51,6 +51,7 @@ PROJECTION_TABLES = (
     "restore_points",
     "discovery_runs",
     "cycles",
+    "acceptance_runs",
 )
 
 
@@ -1498,6 +1499,32 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
              payload["candidates_count"], payload["recorded_count"],
              payload["controller"], event.recorded_at, event.event_id,
              event.recorded_at),
+        )
+    elif event.event_type == "acceptance.completed":
+        for key in ("run_id", "passed", "report_json", "controller"):
+            if key not in payload:
+                raise ValueError(
+                    f"acceptance.completed requires {key} "
+                    "(mandatory payload key) — rolled back")
+        if not isinstance(payload["passed"], bool):
+            raise ValueError(
+                "acceptance.completed passed must be a boolean — "
+                "rolled back")
+        try:
+            import json as _json
+            _json.loads(payload["report_json"])
+        except (ValueError, TypeError):
+            raise ValueError(
+                "acceptance.completed report_json must be valid JSON — "
+                "rolled back") from None
+        connection.execute(
+            """INSERT OR IGNORE INTO acceptance_runs(
+                run_id, passed, report_json, controller, created_at,
+                last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (payload["run_id"], int(payload["passed"]),
+             payload["report_json"], payload["controller"],
+             event.recorded_at, event.event_id, event.recorded_at),
         )
     elif event.event_type == "cycle.started":
         for key in ("cycle_id", "improvement_id", "controller"):

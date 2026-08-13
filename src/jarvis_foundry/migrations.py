@@ -5,7 +5,7 @@ import sqlite3
 from .v4_schema import ensure_v4_tables
 
 
-SCHEMA_VERSION = 31
+SCHEMA_VERSION = 32
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -808,6 +808,17 @@ MIGRATIONS: dict[int, str] = {
         candidate_release_id TEXT,
         genesis_release_id TEXT,
         workload_id TEXT,
+        controller TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    """,
+    32: """
+    CREATE TABLE IF NOT EXISTS acceptance_runs (
+        run_id TEXT PRIMARY KEY,
+        passed INTEGER NOT NULL,
+        report_json TEXT NOT NULL,
         controller TEXT NOT NULL,
         created_at TEXT NOT NULL,
         last_event_id TEXT NOT NULL,
