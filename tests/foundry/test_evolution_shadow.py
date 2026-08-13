@@ -334,3 +334,98 @@ def test_projection_and_schema(db: FoundryDatabase, tmp_path: Path) -> None:
             "SELECT MAX(version) FROM schema_migrations").fetchone()[0]
     assert version == SCHEMA_VERSION  # pinned to the constant, >= 26
     assert SCHEMA_VERSION >= 26
+
+
+# ---------------------------------------------------------------------------
+# round-2 repairs (deleg_1b787321 findings)
+# ---------------------------------------------------------------------------
+
+def test_pre_attempt_proposals_preserved(db: FoundryDatabase,
+                                         tmp_path: Path) -> None:
+    """S6 r2 (MEDIUM): proposals made BEFORE a capability attempt are
+    recorded — history preserved on the failure path."""
+    improvement_id = _improvement(db)
+    release_id = _release(db, improvement_id)
+
+    def propose_then_attempt(case: Path, sink: object) -> None:
+        sink.propose(  # type: ignore[attr-defined]
+            decision="first thought", expected_effect="draft",
+            cost_usd=0.0)
+        sink.propose(  # type: ignore[attr-defined]
+            decision="second thought", expected_effect="draft2",
+            cost_usd=0.0)
+        sink.use_capability(  # type: ignore[attr-defined]
+            "live.file.write", {"path": "C:/live/state.txt"})
+
+    with pytest.raises(ShadowError):
+        shadow_run(db, improvement_id=improvement_id,
+                   candidate_release_id=release_id,
+                   decision_fn=propose_then_attempt,
+                   inputs_dir=_inputs(tmp_path), controller="v6-s6-test")
+    runs = db.all("shadow_runs")
+    assert runs and runs[0]["status"] == "FAILED"
+    assert runs[0]["decisions_count"] == 2  # both proposals preserved
+    proposed = [e for e in db.events()
+                if e.event_type == "shadow.decision_proposed"]
+    assert len(proposed) == 2
+    assert "shadow.live_effect_attempted" in {
+        e.event_type for e in db.events()}
+
+
+def test_empty_inputs_no_orphan_row(db: FoundryDatabase,
+                                    tmp_path: Path) -> None:
+    """S6 r2 (LOW): an empty inputs dir refuses BEFORE run_started —
+    no orphaned RUNNING row."""
+    improvement_id = _improvement(db)
+    release_id = _release(db, improvement_id)
+    empty = tmp_path / "empty-inputs"
+    empty.mkdir()
+    with pytest.raises(ShadowError):
+        shadow_run(db, improvement_id=improvement_id,
+                   candidate_release_id=release_id,
+                   decision_fn=_propose_only_decision,
+                   inputs_dir=empty, controller="v6-s6-test")
+    assert db.count("shadow_runs") == 0
+    assert not any(e.event_type == "shadow.run_started"
+                   for e in db.events())
+
+
+def test_missing_baseline_uncomparable(db: FoundryDatabase,
+                                       tmp_path: Path) -> None:
+    """S6 r2 (LOW): cases beyond the baseline length are recorded as
+    UNCOMPARABLE, never as asserted differences."""
+    improvement_id = _improvement(db)
+    release_id = _release(db, improvement_id)
+    baseline = [{"decision": f"respond to case-{i}.txt",
+                 "expected_effect": f"draft reply for case-{i}.txt",
+                 "cost_usd": 0.0} for i in range(2)]  # 2 of 3 cases
+    run_id = shadow_run(
+        db, improvement_id=improvement_id,
+        candidate_release_id=release_id,
+        decision_fn=_propose_only_decision,
+        inputs_dir=_inputs(tmp_path, count=3),
+        baseline_decisions=baseline, controller="v6-s6-test")
+    row = db.row("shadow_runs", "run_id", run_id)
+    divergences = __import__("json").loads(row["divergences_json"])
+    assert len(divergences) == 1
+    assert divergences[0]["kinds"] == ["uncomparable"]
+
+
+def test_nested_inputs_are_cases(db: FoundryDatabase,
+                                 tmp_path: Path) -> None:
+    """S6 r2 (INFO e): every FILE under the inputs tree is a case —
+    nested files are executed too."""
+    improvement_id = _improvement(db)
+    release_id = _release(db, improvement_id)
+    inputs = _inputs(tmp_path, count=2)
+    nested = inputs / "sub"
+    nested.mkdir()
+    (nested / "deep.txt").write_text("deep", encoding="utf-8")
+    run_id = shadow_run(
+        db, improvement_id=improvement_id,
+        candidate_release_id=release_id,
+        decision_fn=_propose_only_decision,
+        inputs_dir=inputs, controller="v6-s6-test")
+    row = db.row("shadow_runs", "run_id", run_id)
+    assert row is not None and row["status"] == "COMPLETED"
+    assert row["decisions_count"] == 3  # 2 top-level + 1 nested

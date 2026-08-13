@@ -122,6 +122,11 @@ def shadow_run(
             target = run_dir / path.relative_to(inputs)
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(path, target)
+    # every FILE under the inputs tree is a case (nested included);
+    # a refusal here happens BEFORE run_started — no orphaned RUNNING
+    # row can exist
+    cases = sorted(path for path in run_dir.rglob("*") if path.is_file())
+    _require(cases, "inputs dir contains no files")
 
     stopped = _stop_active(database, stop_check)
     database.append(Event.create(
@@ -149,20 +154,38 @@ def shadow_run(
     db_before = _file_hash(Path(database.path))
     marker_before = _file_hash(marker_path) if marker_path else None
 
-    cases = sorted(run_dir.iterdir()) if run_dir.is_dir() else []
-    _require(cases, "inputs dir contains no files")
     decisions_count = 0
     live_attempts = 0
     blocked_attempts = 0
     divergences: list[dict[str, Any]] = []
     failed_reason: str | None = None
+
+    def _flush_proposals(sink: ShadowSink, case_name: str) -> str | None:
+        """Record every proposal made so far (history preserved even on
+        a later capability attempt) and secret-scan each."""
+        nonlocal decisions_count
+        for proposal_index, proposal in enumerate(sink.proposals):
+            if contains_secret_like(canonical_json(proposal)):
+                return ("proposal contains secret-like content "
+                        "— refused at the boundary")
+            database.append(Event.create(
+                "shadow.decision_proposed",
+                {"run_id": run_id, "case": case_name,
+                 "proposal_index": proposal_index, **proposal,
+                 "controller": controller},
+                source_type=source_type, source_id=source_id,
+                idempotency_key=("shadow.decision_proposed:"
+                                 f"{run_id}:{case_name}:"
+                                 f"{proposal_index}")))
+            decisions_count += 1
+        return None
+
     for index, case in enumerate(cases):
-        if not case.is_file():
-            continue
         sink = ShadowSink()
         try:
             decision_fn(case, sink)
         except _ShadowLiveEffect as attempt:
+            flush_error = _flush_proposals(sink, case.name)
             live_attempts += 1
             database.append(Event.create(
                 "shadow.live_effect_attempted",
@@ -177,6 +200,7 @@ def shadow_run(
                 "effect violated")
             break
         except _ShadowBlockedConnector as attempt:
+            flush_error = _flush_proposals(sink, case.name)
             blocked_attempts += 1
             database.append(Event.create(
                 "shadow.blocked_connector_attempted",
@@ -190,29 +214,19 @@ def shadow_run(
                 f"blocked connector attempt: {attempt.capability} — "
                 "blocked connectors are never usable in shadow mode")
             break
-        for proposal_index, proposal in enumerate(sink.proposals):
-            if contains_secret_like(canonical_json(proposal)):
-                failed_reason = ("proposal contains secret-like content "
-                                 "— refused at the boundary")
-                break
-            database.append(Event.create(
-                "shadow.decision_proposed",
-                {"run_id": run_id, "case": case.name,
-                 "proposal_index": proposal_index, **proposal,
-                 "controller": controller},
-                source_type=source_type, source_id=source_id,
-                idempotency_key=("shadow.decision_proposed:"
-                                 f"{run_id}:{case.name}:"
-                                 f"{proposal_index}")))
-            decisions_count += 1
-        if failed_reason:
+        flush_error = _flush_proposals(sink, case.name)
+        if flush_error:
+            failed_reason = flush_error
             break
         if baseline_decisions is not None:
-            baseline = baseline_decisions[index] if index < len(
-                baseline_decisions) else {}
+            if index >= len(baseline_decisions):
+                divergences.append({"case": case.name,
+                                    "kinds": ["uncomparable"]})
+                continue
+            baseline = baseline_decisions[index]
             kinds: list[str] = []
-            if baseline.get("decision") != sink.proposals[0].get(
-                    "decision") if sink.proposals else False:
+            if sink.proposals and baseline.get("decision") != \
+                    sink.proposals[0].get("decision"):
                 kinds.append("decision")
             if sink.proposals and baseline.get("expected_effect") != \
                     sink.proposals[0].get("expected_effect"):

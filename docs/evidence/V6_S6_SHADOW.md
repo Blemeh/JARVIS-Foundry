@@ -105,3 +105,22 @@ unknown improvement / unknown release refused; tampered inputs bound
 honestly (input_hash of the actual bytes used); secret proposal
 refused with zero decision events; projection/schema integrity (pinned
 to the imported SCHEMA_VERSION constant >= 26).
+
+## 8. Verifier findings — repair record (deleg_1b787321, PASS)
+
+Verdict JSON: var/evidence/v6-s6/verdict-deleg_1b787321.json,
+sha256 e3f51971fb66d15671b9bdd38efb7b09b0b7ae9a829fa9f7f10f207eff4537ee.
+13 probes; Z1-Z7 PASS.
+
+| Severity | Finding | Resolution |
+|---|---|---|
+| MEDIUM | Pre-attempt proposals were DROPPED on a capability attempt (the proposal flush loop was skipped on the exception path): decisions_count=0 despite 3 proposals before the attempt. | REPAIRED: _flush_proposals runs on EVERY path (success + both exception paths) — pre-attempt proposals are recorded (history preserved), then the attempt event, then run_failed. Regression: test_pre_attempt_proposals_preserved. |
+| LOW | Cases beyond the baseline length were recorded as FULLY divergent (kinds decision/expected_effect/cost from comparing against {}), asserting differences where no baseline exists. | REPAIRED: missing baseline entries are recorded as kind "uncomparable" (no asserted difference). Regression: test_missing_baseline_uncomparable. |
+| LOW | Empty-inputs refusal fired AFTER shadow.run_started — orphaned RUNNING row with no terminal event. | REPAIRED: the file-count validation now runs BEFORE run_started (no row is created on refusal); the check counts FILES (a dir with only a subdir now refuses). Regressions: test_empty_inputs_no_orphan_row, test_nested_inputs_are_cases. |
+| LOW | Z1's DB-file byte-identity is WAL-mediated: appends sit in the uncheckpointed WAL, so the main DB file can be byte-identical even with new events; a wal_checkpoint between the hashes would flip zero_live_effects to 0. | ACCEPTED documented boundary: the sink refusal IS the zero-effect guarantee; the DB-file hash is belt-and-braces (WAL-contingent); the live MARKER file hash is the strong external proof. Documented in the S6 doc. |
+| INFO | (b) Direct filesystem writes from inside decision_fn bypass the sink: a write to the live marker is detected via hash (zero_live_effects=0, run still COMPLETES); a write to an unhased path is undetected. | ACCEPTED documented boundary (harness-level isolation; the sink is the contract; S7 canary bounds candidate processes). |
+| INFO | (e) Nested subdir files were copied+hashed but NOT executed as cases; a dir containing only a subdir passed the zero-files check. | REPAIRED with the file-count validation: every FILE under the inputs tree is a case (nested included). |
+| INFO | (c) Distinct run ids/rows per run. (Z5-note) A secret in a LATER case keeps earlier clean proposals (fail-closed on the violating proposal, earlier decisions recorded). | ACCEPTED: sequential fail-closed history. |
+
+Round-2: fresh verifier with A/B discrimination dispatched after this
+commit.
