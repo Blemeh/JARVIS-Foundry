@@ -1450,12 +1450,14 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             """INSERT OR IGNORE INTO promotions(
                 promotion_id, release_id, verification_id, canary_id,
                 baseline_run_id, candidate_run_id, risk_class, status,
-                controller, created_at, last_event_id, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'INTENT', ?, ?, ?, ?)""",
+                controller, planned_json, created_at, last_event_id,
+                updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'INTENT', ?, ?, ?, ?, ?)""",
             (payload["promotion_id"], payload["release_id"],
              payload["verification_id"], payload.get("canary_id"),
              payload["baseline_run_id"], payload["candidate_run_id"],
              payload["risk_class"], payload["controller"],
+             canonical_json(payload["planned"]),
              event.recorded_at, event.event_id, event.recorded_at),
         )
     elif event.event_type == "release.promoted":

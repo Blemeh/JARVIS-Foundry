@@ -181,6 +181,9 @@ def promote_release(
     pointers = slot_pointers(database)
     old_live = pointers["live"]
     old_previous = pointers["previous"]
+    _require(old_live != candidate_release_id,
+             f"release {candidate_release_id} is already live — "
+             "promotion refused (already-live guard)")
     promotion_id = "promotion-" + uuid.uuid4().hex[:12]
     batch = [
         Event.create(
@@ -292,10 +295,22 @@ def rollback_release(
 
 
 def recover_promotions(database: FoundryDatabase, *,
-                       controller: str) -> list[str]:
+                       controller: str,
+                       veto_check: Callable[[], bool] | None = None,
+                       ) -> list[str]:
     """Crash recovery: INTENT promotions (intent event without a
     promoted event) are re-driven to completion by re-applying the
-    same idempotent batch (slot events dedupe; promoted lands)."""
+    same namespaced batch with the SAME reason strings promote_release
+    used (identical payloads under identical keys dedupe; a crash
+    AFTER the slot batch but BEFORE promoted completes cleanly).
+
+    Recovery re-checks current state before re-driving (the gates
+    were passed at intent time, but the world may have moved):
+    - frozen releases, an active STOP sentinel, or a vetoed state
+      SKIP recovery (the INTENT stays pending, audit-visible);
+    - a release that is no longer in the candidate slot AND not
+      already live (e.g. moved to quarantine post-crash) is SKIPPED —
+      the supervisor decides its fate."""
     _require(_controller_ok(controller),
              "only the Supervisor (controller) can recover promotions")
     recovered: list[str] = []
@@ -304,19 +319,28 @@ def recover_promotions(database: FoundryDatabase, *,
             continue
         promotion_id = str(row["promotion_id"])
         release_id = str(row["release_id"])
+        if is_frozen(database) or _stop_active(database):
+            continue  # world is stopped — leave INTENT pending
+        if veto_check is not None and veto_check():
+            continue
         pointers = slot_pointers(database)
-        old_live = pointers["live"]
-        old_previous = pointers["previous"]
+        if release_id not in (pointers["candidate"], pointers["live"]):
+            continue  # slot state moved post-crash — supervisor decides
+        import json as _json
+        planned = _json.loads(str(row["planned_json"]))
+        planned_previous = planned.get("previous")
+        current_previous = pointers["previous"]
         batch = [
-            _slot_event("previous", old_live, old_previous,
-                        "recovery re-applies the retained previous",
+            _slot_event("previous", planned_previous,
+                        current_previous,
+                        "promotion retains the exact previous release",
                         controller, namespace=promotion_id),
-            _slot_event("live", release_id, old_live,
-                        "crash recovery completes the promotion",
-                        controller, namespace=promotion_id),
-            _slot_event("candidate", None, release_id,
-                        "candidate slot cleared (recovery)", controller,
+            _slot_event("live", release_id, pointers["live"],
+                        "atomic promotion", controller,
                         namespace=promotion_id),
+            _slot_event("candidate", None, release_id,
+                        "candidate slot cleared by promotion",
+                        controller, namespace=promotion_id),
             Event.create(
                 "release.promoted",
                 {"promotion_id": promotion_id, "release_id": release_id,

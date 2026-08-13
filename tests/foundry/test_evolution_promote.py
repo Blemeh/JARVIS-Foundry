@@ -543,3 +543,130 @@ def test_projection_and_schema(db: FoundryDatabase, tmp_path: Path) -> None:
             "SELECT MAX(version) FROM schema_migrations").fetchone()[0]
     assert version == SCHEMA_VERSION  # pinned to the constant, >= 28
     assert SCHEMA_VERSION >= 28
+
+
+# -----------------------------------...[truncated]
+
+
+# ---------------------------------------------------------------------------
+# round-1 repairs (deleg_bbce3e0a findings: recovery dedupe/state/freeze,
+# already-live guard)
+# ---------------------------------------------------------------------------
+
+def test_promote_refused_when_already_live(db: FoundryDatabase,
+                                           tmp_path: Path) -> None:
+    """S8 r1 (MEDIUM): an already-live release cannot be promoted
+    again even if the candidate slot is re-set."""
+    setup = _promotable(db, tmp_path, risk="R0")
+    promote_release(db, candidate_release_id=setup["candidate"],
+                    verification_id=setup["verification_id"],
+                    baseline_run_id=setup["baseline_run_id"],
+                    candidate_run_id=setup["candidate_run_id"],
+                    controller=CONTROLLER)
+    # re-set the candidate slot to the now-live release
+    set_slot(db, "candidate", setup["candidate"],
+             reason="candidate", controller=CONTROLLER,
+             transition_id="re-set-after-live")
+    with pytest.raises(PromoteError):
+        promote_release(db, candidate_release_id=setup["candidate"],
+                        verification_id=setup["verification_id"],
+                        baseline_run_id=setup["baseline_run_id"],
+                        candidate_run_id=setup["candidate_run_id"],
+                        controller=CONTROLLER)
+    assert slot_pointers(db)["live"] == setup["candidate"]
+
+
+def test_recovery_skips_when_frozen_or_moved(db: FoundryDatabase,
+                                             tmp_path: Path) -> None:
+    """S8 r1 (MEDIUM x2): recovery re-checks the world — frozen
+    releases and releases moved out of the candidate slot post-crash
+    are left INTENT, not promoted."""
+    setup = _promotable(db, tmp_path, risk="R0")
+    from jarvis_foundry.events import Event
+    promotion_id = "promotion-" + "b" * 12
+    db.append(Event.create(
+        "release.promotion_intent",
+        {"promotion_id": promotion_id,
+         "release_id": setup["candidate"],
+         "verification_id": setup["verification_id"],
+         "canary_id": None,
+         "baseline_run_id": setup["baseline_run_id"],
+         "candidate_run_id": setup["candidate_run_id"],
+         "risk_class": "R1",
+         "planned": {"previous": setup["genesis"],
+                     "live": setup["candidate"], "candidate": None},
+         "controller": CONTROLLER},
+        source_type="supervisor", source_id="v6",
+        idempotency_key=f"release.promotion_intent:{promotion_id}"))
+    # frozen world: recovery skips
+    freeze_active(db, reason="investigation", controller=CONTROLLER)
+    assert recover_promotions(db, controller=CONTROLLER) == []
+    assert promotion_status(db, promotion_id) == "INTENT"
+    unfreeze_active(db, controller=CONTROLLER)
+    # moved world: the release left the candidate slot post-crash
+    set_slot(db, "candidate", None, reason="move",
+             controller=CONTROLLER)
+    set_slot(db, "quarantine", setup["candidate"],
+             reason="move", controller=CONTROLLER)
+    assert recover_promotions(db, controller=CONTROLLER) == []
+    assert promotion_status(db, promotion_id) == "INTENT"
+    # restore the slot: recovery now completes it
+    set_slot(db, "candidate", setup["candidate"],
+             reason="candidate", controller=CONTROLLER,
+             transition_id="back-to-candidate")
+    recovered = recover_promotions(db, controller=CONTROLLER)
+    assert promotion_id in recovered
+    assert promotion_status(db, promotion_id) == "PROMOTED"
+    assert slot_pointers(db)["live"] == setup["candidate"]
+    assert slot_pointers(db)["previous"] == setup["genesis"]
+
+
+def test_recovery_after_slot_batch_applied_is_clean(
+        db: FoundryDatabase, tmp_path: Path) -> None:
+    """S8 r1 (MEDIUM): a crash AFTER the slot batch but BEFORE
+    promoted — recovery completes with dedupe, not EventConflict, and
+    the previous pointer is NOT corrupted (planned.previous governs)."""
+    setup = _promotable(db, tmp_path, risk="R0")
+    promotion_id = promote_release(
+        db, candidate_release_id=setup["candidate"],
+        verification_id=setup["verification_id"],
+        baseline_run_id=setup["baseline_run_id"],
+        candidate_run_id=setup["candidate_run_id"],
+        controller=CONTROLLER)
+    # simulate the crash: roll back the promoted event only — the slot
+    # batch stays applied. Rebuild the world: recovery sees an INTENT
+    # whose release is already live.
+    from jarvis_foundry.events import Event
+    events_before = len(db.events())
+    row = db.row("promotions", "promotion_id", promotion_id)
+    # remove the promoted row (crash before the handler ran) and the
+    # promoted event is already gone; instead simulate: append the
+    # intent WITHOUT the promoted event by re-driving recovery on a
+    # FRESH intent whose slot batch is already applied:
+    events = [e for e in db.events()
+              if e.event_type == "release.promoted"
+              and e.payload["promotion_id"] == promotion_id]
+    assert len(events) == 1
+    # delete the promoted event + row to simulate the crash window
+    with db.connect() as connection:
+        connection.execute(
+            "DELETE FROM events WHERE idempotency_key = ?",
+            (f"release.promoted:{promotion_id}",))
+        connection.execute(
+            "UPDATE promotions SET status = 'INTENT', finished_at = NULL "
+            "WHERE promotion_id = ?", (promotion_id,))
+    assert promotion_status(db, promotion_id) == "INTENT"
+    assert slot_pointers(db)["live"] == setup["candidate"]
+    recovered = recover_promotions(db, controller=CONTROLLER)
+    assert promotion_id in recovered
+    assert promotion_status(db, promotion_id) == "PROMOTED"
+    # pointers intact — previous is the ORIGINAL genesis, not the
+    # already-live candidate
+    assert slot_pointers(db)["live"] == setup["candidate"]
+    assert slot_pointers(db)["previous"] == setup["genesis"]
+    # dedupe: the live/candidate slot events were NOT re-created
+    promoted_count = sum(1 for e in db.events()
+                         if e.event_type == "release.promoted"
+                         and e.payload["promotion_id"] == promotion_id)
+    assert promoted_count == 1
+    assert len(db.events()) <= events_before + 2  # +1 previous echo + promoted

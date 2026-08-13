@@ -749,6 +749,7 @@ MIGRATIONS: dict[int, str] = {
         controller TEXT NOT NULL,
         trigger TEXT,
         reason TEXT,
+        planned_json TEXT,
         created_at TEXT NOT NULL,
         finished_at TEXT,
         last_event_id TEXT NOT NULL,

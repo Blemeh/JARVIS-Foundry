@@ -117,3 +117,24 @@ frozen; rollback without previous refuses; trigger vocabulary enforced
 rounds); post-rollback reconcile consistent; candidate cannot roll
 back; projection/schema integrity (pinned to the imported
 SCHEMA_VERSION constant >= 28; lazy release_control row).
+
+## 9. Verifier findings — repair record (deleg_bbce3e0a, PASS)
+
+Verdict JSON: var/evidence/v6-s8/verdict-deleg_bbce3e0a.json. 40
+probes, 6 batteries (A-G + X extras). P1-P7 all PASS; 4 MEDIUM + 2
+LOW + 2 INFO.
+
+| Severity | Finding | Resolution |
+|---|---|---|
+| MEDIUM | Recovery re-applies slot events with DIFFERENT reason strings under the same namespaced keys — a crash AFTER the slot batch but BEFORE promoted conflicts (EventConflict, INTENT stuck; fail-closed, no corruption). | REPAIRED: recovery now re-applies the batch with the EXACT reason strings promote_release used, so identical payloads under identical keys dedupe; the previous pointer is governed by the intent's planned.previous (never the current live). Regressions: test_recovery_after_slot_batch_applied_is_clean. |
+| MEDIUM | Recovery ignores current slot state: a release moved to quarantine post-crash is still promoted. | REPAIRED: recovery skips INTENTs whose release is neither in the candidate slot nor already live — the supervisor decides. Regression: test_recovery_skips_when_frozen_or_moved. |
+| MEDIUM | Recovery ignores the freeze flag (and STOP/veto). | REPAIRED: recovery skips INTENTs while frozen, STOP active, or vetoed (veto_check param). Regression: test_recovery_skips_when_frozen_or_moved. |
+| MEDIUM | promote_release has no live != candidate guard: an already-live release re-set into the candidate slot can be promoted again. | REPAIRED: already-live guard in promote_release. Regression: test_promote_refused_when_already_live. |
+| LOW | verification.verdict_recorded accepts a RAW-written self-certified verdict (row VERDICTED PASS) — the promotion gate still refuses via is_trusted_verdict, so the trust boundary holds. | ACCEPTED documented boundary (S5 design: gate-time session comparison; the record FUNCTION refuses self-certification — only raw event writers can forge, and the gate holds). |
+| INFO | Post-rollback reconcile check runs after the batch commits (advisory, not atomic); only reachable with pre-existing projection inconsistency. | RECORDED (already in the S8 UNRESOLVED RISKS section). |
+| INFO | Live-DB byte-identity not claimed (host writes continuously); content-level isolation asserted instead. | RECORDED (same practice as S6/S7). |
+| INFO | Probe-side arithmetic slip (E1 delta 7 vs 3) — the claim-relevant re-application check passed. | RECORDED. |
+
+Note: planned_json was added to the promotions projection (migration 28
+DDL + handler); the already-migrated V6 runtime DB receives it via the
+migration-29 ALTER (S9).
