@@ -1,55 +1,57 @@
-# Recovery Notes — JARVIS Foundry (CHECKPOINT 2026-08-13 ~10:57)
+# Recovery Notes — JARVIS Foundry (CHECKPOINT 2026-08-13 ~12:10)
 
-**Session state: V5 MASTER AUTONOMY SESSION ACTIVE** (owner's
-V5_MASTER_PROMPT.md). Resume point: this file + git log + the V5 slice
-manifest (`docs/planning/V5_SLICE_MANIFEST.md`).
+**Session state: V5 MASTER AUTONOMY SESSION ACTIVE.** Resume point:
+this file + git log + `docs/planning/V5_SLICE_MANIFEST.md`.
 
 ## Repository state
 
-- HEAD `28156f0` (feat(v5-s2) — ActionEnvelope + policy broker).
-  Previous: `8497cc2` (V5-S1 CLOSED), `8426558` (S1 repairs),
-  `213fb06` (V5-S0), `7e54bbc` (handoff).
-- Working tree: CLEAN except the OWNER'S two untracked brief files —
-  `docs/planning/V5_MASTER_PROMPT.md` + `V5_READ_FIRST.md`. NEVER
-  commit/move them (owner's files).
-- V5-S1 CLOSED PASS: verifier deleg_d7639766 (24 probes); repairs
-  `8426558`; live close seq 22079-22080; live schema v18→v19
-  (rehearsed on WAL-safe copy); suite 505→507.
-- V5-S2 (this commit): ActionEnvelope contract fields + BrokerDecision
-  (7 codes) + control/broker.py (15-step PolicyBroker.decide,
-  normalize_action_kind, resolve_canonical_target, record_decision,
-  require_allowance) + 54 tests; suite 561 EXIT=0; rehearsal
-  (live-copy reconcile consistent, 22,255 events). **Verifier
-  deleg_6c96be6d RUNNING** at frozen HEAD 28156f0 — verdict pending;
-  NO src/tests edits until it lands.
-  - On PASS: extract verdict → update docs/evidence/V5_S2_BROKER.md →
-    close script (close_v5_s1.py is the model; verdict id
-    `verdict-v5-s2-broker:round1`; live events only, NO migration —
-    live stays v19) → archive V5_S2_WORK_PACKAGE.yaml →
-    V5_S2_WORK_PACKAGE.closed.yaml → commit → S3.
-  - On FAIL: repair exact findings → regression → re-verify from a
-    fresh frozen state.
+- HEAD `d0ee0dc` (feat(v5-s5) — correlation). Full V5 lineage:
+  `213fb06` S0 → `e6ac89f/8426558/8497cc2` S1 CLOSED → `28156f0/2d4ea6e`
+  S2 CLOSED → `d7753b9/02da6af/c204c91` S3 CLOSED (FAIL→repair→PASS) →
+  `5fae064/5876cff/1627e3d` S4 CLOSED → `d0ee0dc` S5 (feat).
+- Working tree: CLEAN except the OWNER'S two untracked brief files
+  (`docs/planning/V5_MASTER_PROMPT.md` + `V5_READ_FIRST.md`) — NEVER
+  commit/move them.
+- **V5-S5 verifier deleg_dfaec04d RUNNING** at frozen HEAD d0ee0dc
+  (suite 650 EXIT=0, rehearsal consistent). NO src/tests edits until
+  the verdict lands.
+  - On PASS: extract verdict → docs/evidence/V5_S5_CORRELATION.md →
+    close (var/evidence/close_v5_s5.py; verdict id
+    verdict-v5-s5-correlation:round1; live events only, schema stays
+    v19) → archive V5_S5_WORK_PACKAGE.yaml → promote S6 → commit → S6.
+  - On FAIL: repair exact findings → regression → fresh frozen round.
 
-## Live system (verified 10:37–10:53)
+## Slice status (ledger)
 
-- Daemon RUNNING (supervisor-6d250614…), 5s heartbeats, STOP false,
-  no stop marker, no active STOP_EVERYTHING/VETO; live schema **v19**
-  (systems + system_actions tables live, 0 rows — registry not yet
-  used); ~22,255 events; 1,052 claims; 4 monitors polled; reconcile
-  consistent (re-checked on a live snapshot at 10:53).
-- Cadence keeper (old session's subagent deleg_4ea0c87e): loops at
-  10:05 + 10:45 observed — honest WAITING (top 0.25 < 0.3), 8 scored,
-  0 candidates; loops +80m/+120m (~11:20, ~12:00) still to come;
-  artifacts in var/evidence/v3-loops/live-loops-*.json.
+| Slice | Verdict | Ledger | Suite |
+|---|---|---|---|
+| S0 entry | docs | — | — |
+| S1 systems | PASS deleg_d7639766 (24 probes) | 22079–80, v18→v19 | 507 |
+| S2 broker | PASS deleg_6c96be6d (10 groups) | 22385–86 | 561 |
+| S3 capabilities | FAIL deleg_deff8b38 → PASS deleg_d661002c (r2) | 22899–900 | 604 |
+| S4 connectors | PASS deleg_761e4d85 (83/83) | 23171–72 | 634 |
+| S5 correlation | deleg_dfaec04d RUNNING | — | 650 |
+| S6 effects | next | — | — |
+| S7 loop wiring | after S6 | — | — |
+| S8 connector activation | after S7 (no real credentials — honest NOT_TESTED) | — | — |
+| S9 final gate + V6 handoff | last | — | — |
 
-## Next steps (V5 phase)
+## Live system (verified 12:05)
 
-1. S2 verdict → close → commit → S3 (scoped capability + credential
-   broker: short-lived capabilities bound to mission/run/target/expiry,
-   redaction, revocation on STOP/veto, honest NOT_READY).
-2. S4 connectors → S5 entities/correlation → S6 effect execution/
-   reconciliation → S7 loop wiring → S8 real-connector activation →
-   S9 final gate + V6 handoff. Full plan: docs/planning/
-   V5_SLICE_MANIFEST.md.
-3. Checkpoints: var/evidence/checkpoints/; keep this file current at
-   every slice boundary.
+- Daemon RUNNING (supervisor-6d250614…), 5 s heartbeats, STOP false,
+  no stop marker/veto; live schema **v19**; ~23,200 events; reconcile
+  consistent (checked on snapshots at every slice close); 4 monitors
+  polled; cadence loops honest WAITING (top 0.25 < 0.3).
+
+## Known phase-wide notes
+
+- Owner's briefs untracked; no-push (no remotes); every close appends
+  verification.passed + evidence.created to the LIVE ledger (schema
+  stays v19 through S5 — no slice migration since S1).
+- Verifier family: DeepSeek only (owner constraint); independence via
+  fresh sessions + frozen artifacts.
+- S2 F1/F2 carried → resolved in S3; S2 F3 (declaration spoofing) →
+  structural fix in S4 (check_action_semantics); broker/capability/
+  registry NOT wired into live missions until S7.
+- Checkpoints: var/evidence/checkpoints/ + this file at every slice
+  boundary; keep both current.

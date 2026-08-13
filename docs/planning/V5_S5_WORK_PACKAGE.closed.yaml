@@ -1,6 +1,12 @@
 work_package: V5_MULTI_SYSTEM_INTELLIGENCE
 slice: "5 — Cross-system entities and event correlation"
-status: ACTIVE
+status: CLOSED_PASS
+closed_at: 2026-08-13
+close_evidence:
+  - "independent verifier deleg_dfaec04d PASS (8 probe groups, 75/75 checks incl. R-SEC-01 forge-control gate) — verdict JSON var/evidence/v5-s5-correlation/verdict-deleg_dfaec04d.json (sha256 61d6eadb…)"
+  - "5 INFO findings recorded (re-registration ref-set replacement, TOCTOU inert in single-writer ledger, self-correlation default, __init__ nit fixed, tree clean)"
+  - "ledger verification.passed:verdict-v5-s5-correlation:round1 (seq 23401) + evidence.created:v5-s5-correlation-close (seq 23402); live schema stays v19"
+  - "docs/evidence/V5_S5_CORRELATION.md CLOSED; suite 650 EXIT=0"
 activated_by: "V5-S4 CLOSED PASS (verification.passed:verdict-v5-s4-connectors:round1, seq 23171)"
 date: 2026-08-13
 objective: >
