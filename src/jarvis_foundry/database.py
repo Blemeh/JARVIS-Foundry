@@ -124,11 +124,17 @@ class FoundryDatabase:
     def backup_to(self, target: str | Path) -> Path:
         destination_path = Path(target).expanduser().resolve()
         destination_path.parent.mkdir(parents=True, exist_ok=True)
-        with self.connect() as source, sqlite3.connect(destination_path) as destination:
-            source.backup(destination)
-            result = destination.execute("PRAGMA quick_check").fetchone()[0]
-            if result != "ok":
-                raise sqlite3.DatabaseError(f"backup integrity check failed: {result}")
+        destination = sqlite3.connect(destination_path)
+        try:
+            with self.connect() as source:
+                source.backup(destination)
+                result = destination.execute(
+                    "PRAGMA quick_check").fetchone()[0]
+                if result != "ok":
+                    raise sqlite3.DatabaseError(
+                        f"backup integrity check failed: {result}")
+        finally:
+            destination.close()
         return destination_path
 
     def restore_from(self, source_path: str | Path) -> int:

@@ -109,3 +109,20 @@ refused; interrupted-restore recovery (transactional restore +
 fresh reopen verifies clean + executed record survives); projection/
 schema integrity (pinned to the imported SCHEMA_VERSION constant >=
 29; planned_json present via migration 29).
+
+## 9. Verifier findings — repair record (deleg_c22bd424, PASS)
+
+Verdict JSON: var/evidence/v6-s9/verdict-deleg_c22bd424.json. 26/26
+probes. R1-R7 all PASS; 2 LOW + 4 INFO.
+
+| Severity | Finding | Resolution |
+|---|---|---|
+| LOW | Restore-to-older orphans the NEWER point's FILE (its row rolls back; the file survives unreferenced) — no listing/reap. | REPAIRED: list_orphaned_points + reap_orphaned_points (controller-only, STOP-blocked, bounded unlink retries for transient AV/indexer locks). Regressions: test_orphaned_points_listed_and_reaped. |
+| LOW | The point-file race (deleted between verify and restore) surfaced as raw sqlite3.OperationalError, not RestoreError. | REPAIRED: restore_from_point wraps the backup-API call and re-raises as RestoreError (documented family), DB untouched. Regression: test_restore_source_race_fails_closed. |
+| INFO | Transient Windows PermissionError deleting fresh point files (AV/indexer) — resolved with gc+retry. | ROOT-CAUSED + REPAIRED: leaked sqlite3.Connection objects (the `with sqlite3.connect(...)` pattern commits but never closes; cycles defer GC) held the point files — explicit close() added in backup_to (database.py) and the point-opening paths (verify/data-loss analysis); the reaper keeps bounded retries as belt-and-braces. |
+| INFO | LIVE DB actively host-written (events grew 30567->30630); content-level isolation holds. | RECORDED. |
+| INFO | Extra (a) probe arithmetic (restored-to-B == 4, not 5). | RECORDED. |
+| INFO | R4 analysis-record semantics: the executed event's lost_events IS the record; ordering proven by injected-failure probe. | RECORDED. |
+
+Round-2: fresh verifier with A/B discrimination dispatched after this
+commit.

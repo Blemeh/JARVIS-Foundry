@@ -111,14 +111,17 @@ def verify_restore_point(database: FoundryDatabase, point_id: str) -> bool:
             return False
         if _file_sha256(path) != str(row["sha256"]):
             return False
-        with sqlite3.connect(f"file:{path.as_posix()}?mode=ro",
-                             uri=True) as connection:
+        connection = sqlite3.connect(
+            f"file:{path.as_posix()}?mode=ro", uri=True)
+        try:
             if str(connection.execute(
                     "PRAGMA quick_check").fetchone()[0]) != "ok":
                 return False
             version = connection.execute(
                 "SELECT COALESCE(MAX(version), 0) "
                 "FROM schema_migrations").fetchone()[0]
+        finally:
+            connection.close()
         if int(version) > SCHEMA_VERSION:
             return False  # a NEWER schema cannot be restored backward
         if int(row["schema_version"]) != int(version):
@@ -135,8 +138,9 @@ def data_loss_analysis(database: FoundryDatabase, point_id: str
     row = _point_meta(database, point_id)
     current = len(database.events())
     point_events = int(row["event_count"])
-    with sqlite3.connect(f"file:{Path(str(row['path'])).as_posix()}?mode=ro",
-                         uri=True) as connection:
+    connection = sqlite3.connect(
+        f"file:{Path(str(row['path'])).as_posix()}?mode=ro", uri=True)
+    try:
         table_deltas: dict[str, int] = {}
         for table in ("improvement_records", "release_manifests",
                       "release_slots", "candidate_builds",
@@ -150,6 +154,8 @@ def data_loss_analysis(database: FoundryDatabase, point_id: str
                 continue
             if current_rows != point_rows:
                 table_deltas[table] = current_rows - point_rows
+    finally:
+        connection.close()
     return {
         "point_id": point_id,
         "current_events": current,
@@ -157,6 +163,48 @@ def data_loss_analysis(database: FoundryDatabase, point_id: str
         "lost_events": max(0, current - point_events),
         "table_deltas": table_deltas,
     }
+
+
+def list_orphaned_points(database: FoundryDatabase) -> list[str]:
+    """Point FILES whose records were rolled back by a restore (the
+    file survives unreferenced; the row is gone). These are inert but
+    accumulate — the controller reaps them."""
+    points_dir = Path(database.path).parent / "restore-points"
+    if not points_dir.is_dir():
+        return []
+    rows = {str(r["point_id"]) for r in database.all("restore_points")}
+    return sorted(
+        path.name[:-3] for path in points_dir.glob("point-*.db")
+        if path.name[:-3] not in rows)
+
+
+def reap_orphaned_points(database: FoundryDatabase, *,
+                         controller: str) -> list[str]:
+    """Delete unreferenced point files (restore-to-older leaves them
+    behind). Controller-only; STOP blocks."""
+    _require(_controller_ok(controller),
+             "only the Supervisor (controller) can reap orphaned "
+             "points")
+    _require(not _stop_active(database),
+             "stop active — no state changes under STOP")
+    reaped: list[str] = []
+    points_dir = Path(database.path).parent / "restore-points"
+    for point_id in list_orphaned_points(database):
+        target = points_dir / f"{point_id}.db"
+        removed = False
+        for attempt in range(3):  # transient AV/indexer locks resolve
+            try:
+                target.unlink()
+                removed = True
+                break
+            except OSError:
+                import gc
+                import time
+                gc.collect()
+                time.sleep(0.25)
+        if removed:
+            reaped.append(point_id)
+    return reaped
 
 
 def restore_from_point(
@@ -179,7 +227,14 @@ def restore_from_point(
     row = _point_meta(database, point_id)
     analysis = data_loss_analysis(database, point_id)
     before = len(database.events())
-    restored = database.restore_from(Path(str(row["path"])))
+    try:
+        restored = database.restore_from(Path(str(row["path"])))
+    except (sqlite3.DatabaseError, OSError) as exc:
+        # the point file can vanish between verify and restore (race);
+        # fail closed with the documented exception family
+        raise RestoreError(
+            f"restore source {row['path']} unreadable during restore "
+            f"({exc}) — refused, DB untouched") from exc
     # the point's own record was created AFTER the snapshot, so the
     # restored state does not contain it — re-append the point_created
     # event (same key + payload) so the executed event can mark it

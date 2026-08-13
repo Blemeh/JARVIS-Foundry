@@ -17,6 +17,8 @@ from jarvis_foundry.evolution.restore import (
     RestoreError,
     create_restore_point,
     data_loss_analysis,
+    list_orphaned_points,
+    reap_orphaned_points,
     rehearse_restore,
     restore_from_point,
     verify_restore_point,
@@ -231,3 +233,54 @@ def test_projection_and_schema(db: FoundryDatabase) -> None:
         columns = [r[1] for r in connection.execute(
             "PRAGMA table_info(promotions)")]
     assert "planned_json" in columns
+
+
+# ---------------------------------------------------------------------------
+# round-1 repairs (deleg_c22bd424 findings: orphaned point files, race
+# exception family)
+# ---------------------------------------------------------------------------
+
+def test_orphaned_points_listed_and_reaped(db: FoundryDatabase) -> None:
+    """S9 r1 (LOW): a point created AFTER a snapshot loses its ROW on
+    restore-to-older but its FILE survives — orphan listing + reaping
+    keeps the restore-points dir clean."""
+    _fill(db, 2)
+    early = create_restore_point(db, label="early",
+                                 controller=CONTROLLER)
+    _fill(db, 2)
+    late = create_restore_point(db, label="late",
+                                controller=CONTROLLER)
+    # restore to the EARLY point: the late point's row rolls back
+    restore_from_point(db, point_id=early, controller=CONTROLLER)
+    late_row = db.row("restore_points", "point_id", late)
+    assert late_row is None  # row rolled back with the restore
+    orphans = list_orphaned_points(db)
+    assert late in orphans
+    assert early not in orphans
+    reaped = reap_orphaned_points(db, controller=CONTROLLER)
+    assert late in reaped
+    assert list_orphaned_points(db) == []
+    assert verify_restore_point(db, late) is False  # row+file gone
+
+
+def test_restore_source_race_fails_closed(db: FoundryDatabase,
+                                          monkeypatch) -> None:
+    """S9 r1 (LOW): a point file vanishing BETWEEN verify and restore
+    surfaces as RestoreError (documented family), never a raw
+    sqlite3.OperationalError, and the DB is untouched."""
+    import sqlite3
+    from jarvis_foundry.database import FoundryDatabase as FD
+    _fill(db, 1)
+    point_id = create_restore_point(db, label="race",
+                                    controller=CONTROLLER)
+    original = FD.restore_from
+    def boom(self, source_path):
+        raise sqlite3.OperationalError("unable to open database file")
+    monkeypatch.setattr(FD, "restore_from", boom)
+    try:
+        with pytest.raises(RestoreError):
+            restore_from_point(db, point_id=point_id,
+                               controller=CONTROLLER)
+    finally:
+        monkeypatch.setattr(FD, "restore_from", original)
+    assert len(db.events()) == 2  # probe + point event, no executed
