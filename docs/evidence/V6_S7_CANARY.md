@@ -133,3 +133,25 @@ adversarial probes.
 
 Round-2: fresh verifier with A/B discrimination dispatched after this
 commit.
+
+## 9. Round-2 verdict (deleg_8c1e5871, PASS — A/B discriminated)
+
+Fresh round-2 verifier: K1 monotonic cycle guard PASS (A/B both ways:
+the OLD code accepts cycle 5->2 and rewinds last_tick_cycle with
+cycles_run=2 — the round-1 flaw reproduced from a %TEMP% copy of the
+old package; the NEW code refuses 5->5 and 5->2 with CanaryError
+naming the guard, counters pinned at 5/1, exactly 1 canary.tick event,
+and accepts 5->6); K2 documented boundaries PASS (all four recorded);
+K3 no regression PASS (19 focused green, suite 844 EXIT=0 sha256
+13f4942ce0f994c46202cb6e6702fe995c12786664a6ef27e8fd9b0fb87c33cb,
+collect-only 844, runtime v27 consistent, live v20 zero canary events,
+both checkouts unchanged). Verdict JSON:
+var/evidence/v6-s7/verdict-deleg_8c1e5871-r2.json,
+sha256 bbe9081530f2191178c6948d8e17fa5cb2211829657529c14cfb9247d1d1cabf.
+INFO observations: live-DB growth is supervisor.heartbeat traffic
+(content-level isolation holds); duplicate-cycle ticks on the OLD code
+were silently deduped by the idempotency key (the substantive flaw was
+the rewind); read-only sqlite opens touch only -wal/-shm sidecars.
+
+**S7 CLOSED — PASS (rounds 1+2).** Next: S8 (atomic promotion and
+automatic rollback).
