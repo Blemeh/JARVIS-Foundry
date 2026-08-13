@@ -102,3 +102,19 @@ violation (correctness); comparison refusals (missing run, kind
 mismatch, different workload, unknown improvement); bad subject kind /
 empty command refused; projection/schema integrity (pinned to the
 imported SCHEMA_VERSION constant >= 24).
+
+## 8. Verifier findings — additive resolution (deleg_6af4e3ae, PASS)
+
+Verdict JSON: var/evidence/v6-s4/verdict-deleg_6af4e3ae.json,
+sha256 436cf5fb7f3053371d9d851c8dbc4e6efd49e576ebe9583da165ba5224da94ef.
+44/44 adversarial probes; L1-L7 PASS.
+
+| Severity | Finding | Resolution |
+|---|---|---|
+| LOW | output_hashes are sha256 of raw captured stdout; on Windows, Python text-mode pipes translate \n to \r\n so hashes of identical commands differ across OS hosts (recorded hashes verified to match the ACTUAL captured bytes on this host). | ACCEPTED documented boundary: output hashes bind the byte-exact capture on the HOST (subprocess runs in bytes mode — no translation by the lab); cross-OS subject output variance is subject-level and out of the per-host determinism contract (cross-machine reproducibility is S9 restoration scope). |
+| LOW | Adding NEW files to a registered workload input dir after registration is silently ignored (run executes exactly the registered set; added files never run) rather than refused. | ACCEPTED documented contract: the frozen workload IS the registered set (registered-bytes contract). MODIFICATIONS to registered files fail closed at run time (copy re-hash refusal); additions are not part of the frozen workload and never run — a changed input set requires re-registration (new workload id). |
+| INFO | run_evaluation leaves per-run scratch dirs (lab-scratch/<run_id>) under the DB parent after completion. | ACCEPTED: run dirs are the executed-copy evidence (hashed copies of the exact inputs + case outputs); bounded by run count; retention is intentional. |
+| INFO | Live DB total events 28,495 vs 26,356 at V5 close — benign post-close daemon activity; zero V6-type events (no scope bleed). | Recorded. |
+| INFO | Full 792-test re-run not repeated by the verifier (artifact hash + tail + collect-only is the gate evidence). | Recorded; accepted. |
+
+**S4 CLOSED — PASS.** Next: S5 (independent verifier boundary).
