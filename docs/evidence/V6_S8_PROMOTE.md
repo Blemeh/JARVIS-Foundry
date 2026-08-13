@@ -121,8 +121,9 @@ SCHEMA_VERSION constant >= 28; lazy release_control row).
 ## 9. Verifier findings — repair record (deleg_bbce3e0a, PASS)
 
 Verdict JSON: var/evidence/v6-s8/verdict-deleg_bbce3e0a.json. 40
-probes, 6 batteries (A-G + X extras). P1-P7 all PASS; 4 MEDIUM + 2
-LOW + 2 INFO.
+probes, 6 batteries (A-G + X extras). P1-P7 all PASS; 4 MEDIUM + 1
+LOW + 3 INFO (per the authoritative verdict JSON; the prose summary's
+severity split differed, the doc table below is faithful to the JSON).
 
 | Severity | Finding | Resolution |
 |---|---|---|
@@ -138,3 +139,31 @@ LOW + 2 INFO.
 Note: planned_json was added to the promotions projection (migration 28
 DDL + handler); the already-migrated V6 runtime DB receives it via the
 migration-29 ALTER (S9).
+
+## 10. Round-2 verdict (deleg_273dccbf, PASS — A/B discriminated)
+
+Q1 recovery dedupe-clean reasons PASS (NEW completes the
+crash-after-batch recovery with NO EventConflict — identical reason
+strings dedupe; OLD raised EventConflict on candidate:clear and stayed
+INTENT); Q2 world-state re-checks PASS (frozen/STOP/veto/quarantine
+all skip; completes after the world returns; OLD promoted while frozen
+and from quarantine); Q3 already-live guard PASS (OLD double-promoted
+and CORRUPTED previous to the candidate; NEW refuses); Q4 planned
+previous PASS (planned_json in migration-28 DDL + handler, absent in
+6589000; previous stays genesis); Q5 documented + no regression PASS
+(3 regression tests, focused 19/19, suite 863 EXIT=0 sha256
+d8bfd4a42f44aaa98d5d2fb0f52fd7235ecd1172c66b9f5dab04c9f3528b883c,
+collect-only 863, runtime v28 consistent zero events, live v20 zero
+S8-family, both checkouts unchanged). Verdict JSON:
+var/evidence/v6-s8/verdict-deleg_273dccbf-r2.json, sha256
+35f1c6808e27130ace0548f3d9d4dc1d6906729fe6b35999eacc0ee9fa072f01.
+INFO observations recorded: (1) in the crash-after-batch scenario the
+recovery appends one harmless previous-echo event (idempotent value;
+live/candidate slot events truly dedupe — the regression test's
+event-count bound accounts for it); (2) the doc prose severity split
+corrected above to match the verdict JSON; (3) schema version is
+tracked in schema_migrations (MAX(version)), not PRAGMA user_version
+(0) — mechanism confirmed.
+
+**S8 CLOSED — PASS (rounds 1+2).** Next: S9 (schema/state compatibility
+and restoration).
