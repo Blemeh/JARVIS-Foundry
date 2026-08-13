@@ -125,3 +125,23 @@ were recovered from the delivered summary prose
 
 Round-2: fresh verifier with A/B discrimination dispatched after this
 commit.
+
+## 9. Round-2 verdict (deleg_f74c21d1, PASS — A/B discriminated)
+
+Fresh round-2 verifier: E1 hex artifact hashes PASS (A/B: old length-
+only, new _HEX64; z*64 and A*64 refused, lowercase hex accepted); E2
+frozen-criteria membership PASS (foreign criterion refused, status
+stays REQUESTED; subset verdict accepted); E3 trusted-gate shape check
+PASS (5 malformed identities -> False); E4 claim precision PASS (doc
+records V6 verification.requested/verdict_recorded only; live DB has 77
+legacy V5 verification.passed/started/failed/blocked events, zero V6);
+E5 no regression PASS (4 regression tests, focused 19/19, suite 811
+EXIT=0 sha256 db75e2e4c2b9496b427799113a3a5478ae11d51c60a8896c627453c0b958d28a,
+collect-only 811, runtime v25 consistent, live v20 zero V6 events, both
+checkouts unchanged). 17/17 probes. Verdict JSON:
+var/evidence/v6-s5/verdict-deleg_f74c21d1-r2.json (harness-truncated
+tail; recovery note appended — verdict value + per-criterion statuses
+complete). Round-1 findings fully closed (2 MEDIUM repaired, 1 LOW
+repaired, 1 LOW accepted-as-designed).
+
+**S5 CLOSED — PASS (rounds 1+2).** Next: S6 (zero-effect shadow mode).
