@@ -3,6 +3,11 @@
 **Window:** DIR-2026-08-12 12-hour autonomous duty (2026-08-12T23:15 →
 2026-08-13T11:15+02:00). **Report status:** ACCUMULATING (final
 numbers at window end; structural content complete).
+**Session note:** the Hermes session was suspended ~04:35→08:19
+(machine/app pause); the Foundry daemon was unaffected — heartbeats
+continuous (1,305 beats, max gap 7.1s), events 17,008→20,339, claims
+1,046, supervisor RUNNING. Cadence loops 1-6 pre-gap (01:59-04:13),
+loop 7 at 08:20 post-gap — all honest WAITING.
 **Audience:** the owner and the GPT-5.6 Sol audit session.
 
 ## 1. Mandate and boundaries (recap)
