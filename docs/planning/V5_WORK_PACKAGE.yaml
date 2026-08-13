@@ -1,0 +1,27 @@
+work_package: V5_MULTI_SYSTEM_INTELLIGENCE
+slice: "1 — System Registry (catalog + capability + policy + effect journal)"
+status: ACTIVE
+activated_by: "V4 acceptance gate PASS (verification.passed:verdict-v4-acceptance-gate:round1, 2026-08-13) — roadmap §8 'V4 PASS queues V5 automatically'"
+date: 2026-08-13
+objective: >
+  V5 outcome: JARVIS coordinates accessible local and online systems as one
+  organization (files, projects, browsers, communications, calendars, cloud
+  storage, repositories, services, data systems). Slice 1 builds the durable
+  SYSTEM REGISTRY — the catalog + capability + policy + effect-journal
+  substrate every later V5 adapter uses — with NO live external connections
+  (none available: no credentials; no-push rule unchanged; capability states
+  are honest READY/NOT_READY/NOT_TESTED, never fabricated).
+exit_evidence:
+  - "Revocation and STOP immediately block new actions: systems_allowed_by_policy consults supervisor_state + action policy; STOP/frozen/vetoed -> False (regression tests)"
+  - "Retries do not duplicate external effects: every external effect carries an idempotency key bound to (system, target, payload-hash); duplicate delivery dedupes (regression tests)"
+  - "Secrets do not appear in prompts/logs/notes/reports: the registry refuses secret-like capability/probe payloads (api_key/token/password/secret/private_key patterns) at the API boundary; a ledger-scan test asserts no such payloads exist"
+scope:
+  - "src/jarvis_foundry/systems.py: register_system, probe_system, systems_allowed_by_policy, external_action_key, record_external_action; secret-pattern guard"
+  - "migration v19: systems + system_actions tables (action journal UNIQUE(system_id, target_ref, payload_hash))"
+  - "projections: system.registered, system.probe_recorded, system.action_started/completed/failed"
+  - "tests/foundry/test_system_registry.py: policy gate, effect keys, dedup, secret guard, honest readiness, ledger scan"
+out_of_scope:
+  - "real adapters (browser/cloud/comm/calendar), credential brokering, provider-side evidence, V6 self-evolution"
+  - "slice 2: registry wired into the loop's action selection (capability-gated)"
+evidence_gate: "focused green -> full suite -> freeze -> independent adversarial verifier -> ledger close (verification.passed:verdict-v5-s1-systems:round1) -> slice 2"
+constraints: "no-push unchanged; STOP/veto live; live-DB migrations rehearsed on copies; append-only ledger; all internal dispatches opencode_go + deepseek-v4-flash"

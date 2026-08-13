@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 
 
-SCHEMA_VERSION = 18
+SCHEMA_VERSION = 19
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -520,6 +520,37 @@ MIGRATIONS: dict[int, str] = {
     -- and registration is app-layer-deduped, so no duplicates can exist.
     CREATE UNIQUE INDEX IF NOT EXISTS monitors_kind_ref
         ON monitors(source_kind, source_ref);
+    """,
+    19: """
+    -- V5-S1 (Multi-System Intelligence): the durable system registry —
+    -- the catalog + external-effect journal (retries never duplicate
+    -- effects: UNIQUE on system+target+payload-hash).
+    CREATE TABLE IF NOT EXISTS systems (
+        system_id TEXT PRIMARY KEY,
+        kind TEXT NOT NULL,
+        name TEXT NOT NULL,
+        capabilities_json TEXT NOT NULL DEFAULT '{}',
+        probe_ref TEXT,
+        readiness TEXT NOT NULL DEFAULT 'NOT_TESTED'
+            CHECK(readiness IN ('READY', 'UNREADY', 'NOT_TESTED')),
+        last_probe_at TEXT,
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS system_actions (
+        action_key TEXT PRIMARY KEY,
+        system_id TEXT NOT NULL,
+        target_ref TEXT NOT NULL,
+        payload_hash TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'STARTED'
+            CHECK(status IN ('STARTED', 'COMPLETED', 'FAILED')),
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        UNIQUE(system_id, target_ref, payload_hash)
+    );
+    CREATE INDEX IF NOT EXISTS system_actions_system
+        ON system_actions(system_id, status);
     """,
 }
 

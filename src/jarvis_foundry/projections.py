@@ -27,6 +27,8 @@ PROJECTION_TABLES = (
     "candidates",
     "candidate_scores",
     "monitors",
+    "systems",
+    "system_actions",
     "vault_files",
     "vault_sync_state",
     "ingestion_cursors",
@@ -668,6 +670,73 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             (event.recorded_at, event.event_id, event.recorded_at,
              payload["monitor_id"]),
         )
+    elif event.event_type == "system.registered":
+        # V5-S1: the durable system catalog (Multi-System Intelligence).
+        connection.execute(
+            """INSERT INTO systems(
+                system_id, kind, name, capabilities_json, probe_ref,
+                readiness, last_probe_at, last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?, 'NOT_TESTED', NULL, ?, ?)""",
+            (payload["system_id"], payload["kind"], payload["name"],
+             canonical_json(payload.get("capabilities", {})),
+             payload.get("probe_ref"), event.event_id, event.recorded_at),
+        )
+    elif event.event_type == "system.probe_recorded":
+        # readiness is honest: any FAILED probe -> UNREADY; all-READY ->
+        # READY; otherwise the previous state stands (NOT_TESTED). The
+        # probed capabilities are merged into the catalog row.
+        known = connection.execute(
+            "SELECT capabilities_json FROM systems WHERE system_id = ?",
+            (payload["system_id"],)).fetchone()
+        if known is None:
+            raise ValueError(
+                f"system.probe_recorded references unknown system "
+                f"{payload['system_id']}")
+        results = payload.get("results", {})
+        if "FAILED" in results.values():
+            readiness = "UNREADY"
+        elif results and all(v == "READY" for v in results.values()):
+            readiness = "READY"
+        else:
+            readiness = None
+        capabilities = json.loads(known[0] or "{}")
+        capabilities.update(results)
+        if readiness:
+            connection.execute(
+                "UPDATE systems SET readiness = ?, capabilities_json = ?, "
+                "last_probe_at = ?, last_event_id = ?, updated_at = ? "
+                "WHERE system_id = ?",
+                (readiness, canonical_json(capabilities), event.recorded_at,
+                 event.event_id, event.recorded_at, payload["system_id"]))
+        else:
+            connection.execute(
+                "UPDATE systems SET capabilities_json = ?, last_probe_at = ?, "
+                "last_event_id = ?, updated_at = ? WHERE system_id = ?",
+                (canonical_json(capabilities), event.recorded_at,
+                 event.event_id, event.recorded_at, payload["system_id"]))
+    elif event.event_type == "system.action_started":
+        # V5 exit evidence 2: the journal row is UNIQUE on
+        # (system_id, target_ref, payload_hash) — a retried delivery of
+        # the same effect dedupes at the projection level too.
+        connection.execute(
+            """INSERT OR IGNORE INTO system_actions(
+                action_key, system_id, target_ref, payload_hash, kind,
+                status, last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?, 'STARTED', ?, ?)""",
+            (payload["action_key"], payload["system_id"],
+             payload["target_ref"], payload["payload_hash"],
+             payload.get("kind", ""), event.event_id, event.recorded_at),
+        )
+    elif event.event_type == "system.action_completed":
+        connection.execute(
+            "UPDATE system_actions SET status = 'COMPLETED', "
+            "last_event_id = ?, updated_at = ? WHERE action_key = ?",
+            (event.event_id, event.recorded_at, payload["action_key"]))
+    elif event.event_type == "system.action_failed":
+        connection.execute(
+            "UPDATE system_actions SET status = 'FAILED', "
+            "last_event_id = ?, updated_at = ? WHERE action_key = ?",
+            (event.event_id, event.recorded_at, payload["action_key"]))
     elif event.event_type == "discovery.monitor_disabled":
         connection.execute(
             "UPDATE monitors SET enabled = 0, last_event_id = ?, "
