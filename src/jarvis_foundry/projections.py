@@ -6,7 +6,6 @@ import sqlite3
 from .domain import require_transition
 from .events import Event, canonical_json
 
-
 PROJECTION_TABLES = (
     "missions",
     "resources",
@@ -40,6 +39,8 @@ PROJECTION_TABLES = (
     "voice_interactions",
     "control_nonces",
     "improvement_records",
+    "release_manifests",
+    "release_slots",
 )
 
 
@@ -1059,6 +1060,88 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
                WHERE improvement_id = ?""",
             (payload["risk_class"], event.event_id, event.recorded_at,
              payload["improvement_id"]),
+        )
+    elif event.event_type == "release.manifest_recorded":
+        for key in ("release_id", "source_commit", "artifact_hashes",
+                    "dependencies", "runtime_identity",
+                    "parent_release_id", "improvement_id", "risk_class",
+                    "migrations", "verdicts", "rollback_target"):
+            if key not in payload:
+                raise ValueError(
+                    f"release.manifest_recorded requires {key} "
+                    "(mandatory payload key) — rolled back")
+        if payload.get("parent_release_id") is not None:
+            parent = connection.execute(
+                "SELECT 1 FROM release_manifests WHERE release_id = ?",
+                (payload["parent_release_id"],)).fetchone()
+            if parent is None:
+                raise ValueError(
+                    f"release.manifest_recorded parent "
+                    f"{payload['parent_release_id']} does not exist — "
+                    "rolled back")
+        if payload.get("rollback_target") is not None:
+            target = connection.execute(
+                "SELECT 1 FROM release_manifests WHERE release_id = ?",
+                (payload["rollback_target"],)).fetchone()
+            if target is None:
+                raise ValueError(
+                    f"release.manifest_recorded rollback target "
+                    f"{payload['rollback_target']} does not exist — "
+                    "rolled back")
+        connection.execute(
+            """INSERT OR IGNORE INTO release_manifests(
+                release_id, source_commit, artifact_hashes_json,
+                dependencies_json, runtime_identity_json,
+                parent_release_id, improvement_id, risk_class,
+                migrations_json, verdicts_json, rollback_target,
+                created_at, last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (payload["release_id"], payload["source_commit"],
+             canonical_json(payload["artifact_hashes"]),
+             canonical_json(payload["dependencies"]),
+             canonical_json(payload["runtime_identity"]),
+             payload.get("parent_release_id"),
+             payload["improvement_id"], payload["risk_class"],
+             canonical_json(payload["migrations"]),
+             canonical_json(payload["verdicts"]),
+             payload.get("rollback_target"), event.recorded_at,
+             event.event_id, event.recorded_at),
+        )
+    elif event.event_type == "release.slot_changed":
+        for key in ("slot", "release_id", "previous_release_id",
+                    "reason", "controller"):
+            if key not in payload:
+                raise ValueError(
+                    f"release.slot_changed requires {key} "
+                    "(mandatory payload key) — rolled back")
+        if payload["slot"] not in ("live", "candidate", "previous",
+                                   "quarantine"):
+            raise ValueError(
+                f"release.slot_changed unknown slot "
+                f"{payload['slot']} — rolled back")
+        if not payload["reason"] or not payload["controller"]:
+            raise ValueError(
+                "release.slot_changed requires a non-empty reason and "
+                "controller — rolled back")
+        if payload["release_id"] is not None:
+            exists = connection.execute(
+                "SELECT 1 FROM release_manifests WHERE release_id = ?",
+                (payload["release_id"],)).fetchone()
+            if exists is None:
+                raise ValueError(
+                    f"release.slot_changed release "
+                    f"{payload['release_id']} does not exist — rolled "
+                    "back")
+        connection.execute(
+            """INSERT INTO release_slots(
+                slot, release_id, updated_at, last_event_id
+            ) VALUES (?, ?, ?, ?)
+            ON CONFLICT(slot) DO UPDATE SET
+                release_id = excluded.release_id,
+                updated_at = excluded.updated_at,
+                last_event_id = excluded.last_event_id""",
+            (payload["slot"], payload["release_id"], event.recorded_at,
+             event.event_id),
         )
 
     if event.event_type.startswith("supervisor.") or event.event_type.startswith("emergency_stop."):

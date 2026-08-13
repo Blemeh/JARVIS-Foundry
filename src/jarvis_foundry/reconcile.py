@@ -91,6 +91,8 @@ def _table_key_column(table: str) -> str:
         "voice_interactions": "interaction_id",
         "control_nonces": "nonce",
         "improvement_records": "improvement_id",
+        "release_manifests": "release_id",
+        "release_slots": "slot",
         "system_state": "singleton",
         "supervisor_state": "singleton",
     }

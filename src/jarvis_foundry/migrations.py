@@ -5,7 +5,7 @@ import sqlite3
 from .v4_schema import ensure_v4_tables
 
 
-SCHEMA_VERSION = 21
+SCHEMA_VERSION = 22
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -606,6 +606,31 @@ MIGRATIONS: dict[int, str] = {
         created_at TEXT NOT NULL,
         last_event_id TEXT NOT NULL,
         updated_at TEXT NOT NULL
+    );
+    """,
+    22: """
+    CREATE TABLE IF NOT EXISTS release_manifests (
+        release_id TEXT PRIMARY KEY,
+        source_commit TEXT NOT NULL,
+        artifact_hashes_json TEXT NOT NULL,
+        dependencies_json TEXT NOT NULL,
+        runtime_identity_json TEXT NOT NULL,
+        parent_release_id TEXT,
+        improvement_id TEXT NOT NULL,
+        risk_class TEXT NOT NULL,
+        migrations_json TEXT NOT NULL,
+        verdicts_json TEXT NOT NULL,
+        rollback_target TEXT,
+        created_at TEXT NOT NULL,
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS release_slots (
+        slot TEXT PRIMARY KEY
+            CHECK(slot IN ('live', 'candidate', 'previous', 'quarantine')),
+        release_id TEXT,
+        updated_at TEXT NOT NULL,
+        last_event_id TEXT NOT NULL
     );
     """,
 }
