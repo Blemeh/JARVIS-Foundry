@@ -1,6 +1,6 @@
 # Recovery Notes — JARVIS Foundry
 
-Authoritative resume point. Updated 2026-08-13 ~01:50+02:00 — **V4 duty
+Authoritative resume point. Updated 2026-08-13 ~02:10+02:00 — **V4 duty
 window in progress** (DIR-2026-08-12, ~12h; owner away; silence =
 continue).
 
@@ -38,11 +38,17 @@ continue).
     atomically; migration v18 UNIQUE monitors index; LIVE CLOSE:
     v18 + rebuild (15,490 events; 45 inert duplicate rows converged),
     reconcile 0 mismatches.
-- **S6 scoring in flight**: bounded context factors (freshness/
-  cooldown/source-trust/evidence/similarity, all capped; threshold
-  0.35 unchanged) + frozen recorded scores (b2b50e2; suite 485
-  EXIT=0); verifier deleg_66e30870 RUNNING (freeze: no src/tests edits
-  until the verdict; docs-only work allowed).
+- **S6 scoring CLOSED** (b2b50e2, deleg_66e30870 PASS, ledger
+  15,699→15,701): bounded context factors + frozen recorded scores;
+  threshold 0.35 unchanged.
+- **V4 ACCEPTANCE GATE IN REVIEW**: report docs/evidence/
+  V4_ACCEPTANCE_GATE.md; round-1 gate verifier deleg_a241797f RUNNING
+  (freeze: no src/tests edits until the verdict).
+- **Real live loops**: 2 executed (01:59, 02:05) — honest WAITING
+  both (no bar-clearing candidate; no invented work); 4 monitors
+  registered+polled on the live DB; routing proof by construction
+  (first real dispatch pending a bar-clearing candidate —
+  V4_M3_REAL_LOOP.md).
 - Live system: daemon healthy (5s heartbeats, 1 lease, STOP false,
   schema **v18**, ~15,490+ events, 954 claims, 953 supported);
   candidates 3 EXECUTED / 2 SUPERSEDED / 233 SCORED / 696 NEW;
@@ -54,11 +60,11 @@ continue).
 1. `git status` — expect clean; `git log --oneline -12` for the chain.
 2. Read docs/handoffs/RECOVERY_NOTES.md (this file) +
    docs/planning/V4_TRUTH_SLICES.md + CURRENT_WORK_PACKAGE.yaml.
-3. Check the deleg_66e30870 verdict (S6): if PASS → archive +
-   `var/evidence/close_v4_s6.py <id> <verdict.json> 19fbb17` (pattern:
-   close_v4_s5.py) → update V4_S6_SCORING.md status → commit. If FAIL
-   → repair exact findings → regression → re-verify (S5-R1 was the
-   same loop).
+3. Check the deleg_a241797f gate verdict: PASS → archive +
+   ledger close (verification.passed:verdict-v4-acceptance-gate:roundN
+   + evidence.created) → update V4_ACCEPTANCE_GATE.md → commit →
+   activate the next justified phase. FAIL → repair exact findings →
+   regression → re-verify (the S5-R1 loop was the same discipline).
 4. R8 doc reconciliation (PROJECT_STATE v21 → v22, CURRENT_WORK_PACKAGE
    FIRST MISSION done, DECISION_LOG append D-0xx, RISK_REGISTER
    append) — the V4_TRUTH_SLICES R8 section lists the targets.
