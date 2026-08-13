@@ -1,15 +1,18 @@
-# V4 Command Center Integration Manifest (pre-merge)
+# V4 Command Center + V5 Integration Manifest
 
-Status: **CANDIDATE — OWNER INTEGRATION REQUIRED**
+Status: **PASS — VERIFIED SOURCE INTEGRATION; RUNTIME PROMOTION NOT PERFORMED**
 
 - Base commit: `d07327eab983ae6d86db9e11c60733ab6320e124`
-- V5 checkpoint: `NOT_OBTAINED — active V5 checkout contains untracked work`
+- Frozen V5 checkpoint: `598024d142803eb8f53d0e3a145419c5e991b282`
 - V4 branch: `codex/v4-command-center`
-- V4 implementation commit: see the clean branch `HEAD` recorded at handoff
-  (the manifest intentionally avoids a self-referential commit hash)
-- Worktree: `JARVIS-Foundry-V4-command-center`
+- V4 implementation commit: `6270a21b30bd81f5068e8bf3910f947a38ee7fe8`
+- Verified merge commit: `a09fee3b61e3bd4f6d445ab0bbc88b775eebe1f0`
+- Integration branch: `codex/v4-v5-integrated`
+- Isolated verification worktree: `%LOCALAPPDATA%\Temp\v4cc-merge-check`
 - Live runtime/database: untouched; no live migration, connector, sender,
   voice listener, or scheduler started
+- Active source-checkout untracked V5 planning/hardening documents: preserved
+  unchanged through the merge
 
 ## Candidate files
 
@@ -23,35 +26,42 @@ Status: **CANDIDATE — OWNER INTEGRATION REQUIRED**
 - projection/database/migration/reconcile wiring and V4 tests
 - status/evidence/decision-log clarification documents
 
-## Verification run
+## Verification run on the exact merged artifact
 
-- `pytest -q tests/foundry/test_migrations.py tests/foundry/test_event_store.py
-  tests/foundry/test_reconcile.py tests/foundry/test_cli.py
-  tests/foundry/test_action_policy.py tests/foundry/test_action_broker.py
-  tests/foundry/test_v4_command_center.py` — **PASS**
-- `pytest -q tests/foundry/test_v4_command_center.py` — **PASS (5/5)**
+- Complete combined V4 + V5 suite — **PASS (719/719)**.
+- Windows scheduled hard-kill/restart regression — **PASS** from a disposable
+  candidate-local virtual environment, proving the restarted child loaded the
+  merged artifact rather than the main checkout's pre-merge editable package.
+- Focused V4 Command Center and STOP suites — **PASS (16/16)**.
 - `python -m compileall -q src` — **PASS**
-- smoke: briefing duplicate, authenticated STOP, voice fixture, snapshot —
-  **PASS**
-- full suite from this branch — **NOT_TESTED to completion** (bounded run
-  exceeded the available execution window; rerun from a frozen checkpoint)
+- Direct mission/event record routes, unknown-record 404, briefing duplicate,
+  authenticated STOP, voice fixture, and durable snapshot — **PASS**.
+- `git diff --check` reports only pre-existing/documentation whitespace and the
+  upstream Tektur license line; no merge conflict or runtime failure.
+
+The first full-suite attempt exposed an environment mismatch: the scheduled
+child used the main checkout's editable package and therefore loaded pre-merge
+V5 code after restart. The same regression and the complete suite passed when
+run from a candidate-local environment containing this exact merge. No product
+code was changed to hide that diagnostic.
 
 ## Known limitations and rollback
 
-- Real STT/TTS provider capability is `BLOCKED/NOT_TESTED`; fixtures do not
-  prove live voice completion.
-- No frozen V5 checkpoint is available yet; do not rebase or merge until the
-  owner freezes the active V5 tree.
-- Rollback is worktree-local: remove this branch/worktree or revert only V4
-  commits after preserving the manifest. Do not reset or clean the active V5
-  checkout.
+- Real STT/TTS provider capability remains `BLOCKED/NOT_TESTED`; fixtures do
+  not prove live voice completion, so the original roadmap-V4 live-voice
+  criterion is not relabeled PASS.
+- Online connector/provider reconciliation limitations recorded by V5 remain
+  unchanged.
+- Source rollback is two explicit reverts after preserving later work: revert
+  this manifest-close commit, then revert merge `a09fee3`. Do not reset or
+  clean the active checkout.
+- Runtime rollback is not required because no runtime promotion occurred.
 
-## Required next integration actions
+## Remaining runtime promotion actions
 
-1. Obtain an exact clean/frozen V5 HEAD from the owner-controlled checkpoint.
-2. Rebase this branch onto that commit without touching active untracked V5
-   files.
-3. Rerun the complete V4 and V5 suites, migration/restart/reconcile/STOP
-   checks, and independent adversarial verification from frozen artifacts.
-4. Stop before merge; candidate/canary promotion requires explicit owner
-   authorization.
+1. Keep source integration separate from deployment.
+2. Rehearse any live-home migration and restart on a copied candidate home.
+3. Promote through a candidate/canary slot with an explicit reversible runtime
+   procedure; a source merge does not update the running Supervisor or Hermes.
+4. Keep external delivery and live voice disabled until their independent
+   provider gates pass.
