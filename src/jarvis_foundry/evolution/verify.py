@@ -13,6 +13,7 @@ promotion verdict for itself (builder-session verdicts are refused).
 """
 from __future__ import annotations
 
+import re
 import uuid
 from typing import Any
 
@@ -23,6 +24,7 @@ from ..events import Event, canonical_json, payload_hash
 VERDICTS = ("PASS", "FAIL", "BLOCKED", "NOT_TESTED")
 DIRECTIVE_PROVIDER = "opencode_go"
 DIRECTIVE_MODEL = "deepseek-v4-flash"
+_HEX64 = re.compile(r"^[0-9a-f]{64}$")
 
 
 class VerificationError(ValueError):
@@ -64,9 +66,9 @@ def record_verification_request(
     _require(isinstance(artifacts, dict) and artifacts,
              "artifacts must be a non-empty mapping of name -> sha256")
     for name, digest in artifacts.items():
-        _require(isinstance(digest, str) and len(digest) == 64,
-                 f"artifact hash for {name!r} must be a 64-char sha256 "
-                 "hex string")
+        _require(isinstance(digest, str) and _HEX64.match(digest),
+                 f"artifact hash for {name!r} must be a 64-char "
+                 "lowercase hex sha256 — refused")
     _require(isinstance(controller, str) and controller.strip(),
              "controller identity must be a non-empty string")
     _require(_identity_ok(builder_identity),
@@ -130,12 +132,18 @@ def record_verification_verdict(
     _require(isinstance(criteria_results, list) and criteria_results,
              "structured verdict requires per-criterion results — "
              "exit-code-zero alone is NOT_TESTED (D-032)")
+    import json as _json
+    request_criteria = _json.loads(request["criteria_json"])
     for result in criteria_results:
         _require(isinstance(result, dict)
                  and result.get("criterion")
                  and result.get("status") in VERDICTS,
                  "each criterion result needs a criterion and a "
                  "status in PASS/FAIL/BLOCKED/NOT_TESTED")
+        _require(result["criterion"] in request_criteria,
+                 f"criterion {result['criterion']!r} is not part of the "
+                 "verification request's frozen criteria — refused "
+                 "(frozen-criteria contract)")
     _require(isinstance(findings, list), "findings must be a list")
     _require(_identity_ok(verifier_identity),
              "verifier identity must resolve to the directive "
@@ -193,7 +201,12 @@ def verification_status(database: FoundryDatabase,
 def is_trusted_verdict(database: FoundryDatabase, verification_id: str,
                        builder_identity: dict[str, Any]) -> bool:
     """The promotion gate: TRUE only for a VERDICTED PASS whose
-    verifier session differs from the builder's session."""
+    verifier session differs from the builder's session. A malformed
+    builder identity is never trusted (fails closed)."""
+    if not isinstance(builder_identity, dict) or \
+            not isinstance(builder_identity.get("session_id"), str) or \
+            not builder_identity["session_id"].strip():
+        return False
     row = _requested(database, verification_id)
     if row is None or row["status"] != "VERDICTED":
         return False

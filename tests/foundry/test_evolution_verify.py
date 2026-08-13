@@ -310,3 +310,63 @@ def test_projection_and_schema(db: FoundryDatabase) -> None:
             "SELECT MAX(version) FROM schema_migrations").fetchone()[0]
     assert version == SCHEMA_VERSION  # pinned to the constant, >= 25
     assert SCHEMA_VERSION >= 25
+
+
+# ---------------------------------------------------------------------------
+# round-2 repairs (deleg_036ee808 findings)
+# ---------------------------------------------------------------------------
+
+def test_non_hex_artifact_hash_refused(db: FoundryDatabase) -> None:
+    """S5 r2 (MEDIUM): artifact hashes must be 64-char LOWERCASE HEX —
+    a 64-char non-hex value is refused."""
+    improvement_id = _improvement(db)
+    with pytest.raises(VerificationError):
+        _request(db, improvement_id, artifacts={"suite.txt": "z" * 64})
+    with pytest.raises(VerificationError):
+        _request(db, improvement_id, artifacts={"suite.txt": "A" * 64})
+    assert len(db.events()) == 1  # only the improvement record
+
+
+def test_foreign_criterion_in_verdict_refused(db: FoundryDatabase) -> None:
+    """S5 r2 (MEDIUM): verdict criteria_results must be members of the
+    request's frozen criteria list."""
+    improvement_id = _improvement(db)
+    verification_id = _request(db, improvement_id)
+    foreign = _verdict(verification_id)
+    foreign["criteria_results"] = [  # type: ignore[assignment]
+        {"criterion": "criterion-99: invented", "status": "PASS",
+         "evidence_hash": "b" * 64},
+    ]
+    with pytest.raises(VerificationError):
+        record_verification_verdict(db, **foreign)  # type: ignore[arg-type]
+    assert verification_status(db, verification_id) == "REQUESTED"
+
+
+def test_dropped_criterion_in_verdict_accepted(db: FoundryDatabase) -> None:
+    """S5 r2: a verdict may verify a SUBSET of the frozen criteria
+    (each verified criterion must be a member; unverified criteria
+    remain pending for other verifiers)."""
+    improvement_id = _improvement(db)
+    verification_id = _request(db, improvement_id)
+    subset = _verdict(verification_id)
+    subset["criteria_results"] = [  # type: ignore[assignment]
+        {"criterion": "criterion-1: suite green", "status": "PASS",
+         "evidence_hash": "b" * 64},
+    ]
+    record_verification_verdict(db, **subset)  # type: ignore[arg-type]
+    assert verification_status(db, verification_id) == "VERDICTED"
+
+
+def test_trusted_verdict_malformed_builder_identity(
+        db: FoundryDatabase) -> None:
+    """S5 r2 (LOW): is_trusted_verdict fails closed on a malformed
+    builder identity (no session_id / wrong type / empty)."""
+    improvement_id = _improvement(db)
+    verification_id = _request(db, improvement_id)
+    record_verification_verdict(db, **_verdict(verification_id))  # type: ignore[arg-type]
+    for bad in (None, {}, {"session_id": ""}, {"session_id": 42},
+                "session-builder-1"):
+        assert is_trusted_verdict(db, verification_id,
+                                  builder_identity=bad) is False  # type: ignore[arg-type]
+    assert is_trusted_verdict(db, verification_id,
+                              builder_identity=DIRECTIVE_IDENTITY) is True

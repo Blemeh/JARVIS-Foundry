@@ -106,3 +106,22 @@ identity refused (D-031); same-provider limitation recorded honestly;
 trusted-verdict helper (PASS/distinct session True; unknown False; FAIL
 False); projection/schema integrity (pinned to the imported
 SCHEMA_VERSION constant >= 25).
+
+## 8. Verifier findings — repair record (deleg_036ee808, PASS)
+
+Verdict JSON archived (var/evidence/v6-s5/verdict-deleg_036ee808.json) —
+the delegation harness truncated the JSON at 8760 chars; the verdict
+value (PASS) and per-criterion statuses (V1-V7 PASS) plus all findings
+were recovered from the delivered summary prose
+(verdict-recovery-note.txt). 19 adversarial probes; V1-V7 PASS.
+
+| Severity | Finding | Resolution |
+|---|---|---|
+| MEDIUM | criteria_results criteria are NOT membership-checked against the request's frozen criteria (foreign criteria accepted; dropped criteria accepted — still hash-bound and detectable). | REPAIRED: every criteria_results criterion must be a MEMBER of the request's criteria list; a SUBSET verdict (some criteria unverified) remains allowed — each verified criterion must be a member. Regressions: test_foreign_criterion_in_verdict_refused, test_dropped_criterion_in_verdict_accepted. |
+| MEDIUM | Artifact hash validation is length-only: a 64-char NON-hex value (e.g. 'z'*64) was accepted (records.py uses a strict hex regex; verify.py did not). | REPAIRED: _HEX64 (^[0-9a-f]{64}$) enforced at request time. Regression: test_non_hex_artifact_hash_refused. |
+| LOW | Session comparison is exact-match (prefix/suffix variants pass self-certification). | ACCEPTED as designed: exact-match is the identity semantics — a different session string IS a different identity; documented. |
+| LOW | is_trusted_verdict does not shape-check builder_identity (any dict with a session_id works). | REPAIRED: fails closed on malformed/empty/missing session_id. Regression: test_trusted_verdict_malformed_builder_identity. |
+| LOW | The brief claim "zero verification.% events" on the LIVE DB was imprecise: V5-era verification.passed/failed events exist in the live ledger (the claim's substance is V6 machinery events). | REPAIRED (claim precision): the live-DB claim is stated as zero V6 verification.requested/verdict_recorded events; V5 verification.* vocabulary is pre-existing. |
+
+Round-2: fresh verifier with A/B discrimination dispatched after this
+commit.
