@@ -1,0 +1,36 @@
+work_package: V5_MULTI_SYSTEM_INTELLIGENCE
+slice: "7 — Mission-loop integration and autonomous operation"
+status: ACTIVE
+activated_by: "V5-S6 CLOSED PASS (verification.passed:verdict-v5-s6-effects:round1, seq 24137; live schema v20)"
+date: 2026-08-13
+objective: >
+  Make the V5 substrate usable by JARVIS's autonomous mission loop
+  without bypassing deterministic control: wire only gate-passed
+  registry/policy/capability/identity/reconciliation services into
+  action selection; expose capability readiness and policy outcomes to
+  the executive as facts (never overridable permissions); route
+  eligible local and verified online work through ActionEnvelope;
+  isolate connector outages and continue unrelated safe missions;
+  record predictions, costs, actual effects, verification, and
+  outcomes; transparent JARVIS identity for representational actions;
+  no external or financial action unless the full capability,
+  consequence, provider-evidence, and owner-control path is READY.
+authoritative_requirements:
+  - "V5_MASTER_PROMPT.md §6 V5-S7 (gate probes: end-to-end observe -> select -> envelope -> authorize -> execute -> reconcile -> verify -> learn; interruption/resume; connector outage isolation; STOP during queued/in-flight work; no duplicate mission/effect)"
+  - "02_ARCHITECTURE_CONTRACT.md §7 (the full envelope pipeline), §11 (epistemic records/outcomes), §9 (STOP)"
+  - "roadmap §8 (transparent JARVIS identity; autonomous operation when capability exists)"
+  - "AUTONOMY_MANDATE.md (standing autonomy, owner control)"
+dependencies:
+  - "S1 systems registry, S2 broker, S3 capability broker, S4 connectors, S5 correlation, S6 effect driver"
+in_scope (draft):
+  - "src/jarvis_foundry/loop.py (new): the mission-loop executor — observe (correlated context manifest) -> select (candidate actions scored deterministically) -> envelope (build with broker contract fields) -> authorize (decide + record_decision + capability issuance) -> execute (execute_effect via the selected connector) -> reconcile (journal + provider evidence) -> verify -> learn (outcome events). Reuses the existing mission-loop machinery where it exists (candidate scoring, cadence loops) WITHOUT duplicating it"
+  - "integration points: broker + capability broker + connector registry + correlation manifests + effect driver wired into ONE observable loop; connector outages isolate (a failed connector never stops unrelated missions); STOP blocks queued AND in-flight work; interruption/resume is deterministic (journal is the resume point)"
+  - "JARVIS identity: representational actions carry the identity record (transparent, recorded)"
+  - "tests/foundry/test_mission_loop_v5.py: end-to-end one-shot mission through the full pipeline; outage isolation mid-mission; STOP during queued work; STOP during in-flight effect; interruption+resume (crash between STARTED and COMPLETED -> reap); no duplicate mission/effect; identity record present"
+out_of_scope (draft):
+  - "real online connectors with credentials (S8; none available)"
+  - "V6 self-evolution"
+evidence_gate: "focused green -> full suite EXIT=0 -> freeze -> independent adversarial verifier -> ledger close (verification.passed:verdict-v5-s7-loop:round1 + evidence.created) -> slice 8"
+constraints: "no-push; STOP/veto live; append-only; no live-DB migration unless required (v20 stays); live DB untouched; all internal dispatches opencode_go + deepseek-v4-flash"
+failure_recovery: "FAIL -> repair exact cause -> regression -> fresh frozen verifier round"
+rollback: "single commit revert; no schema change; events append-only"

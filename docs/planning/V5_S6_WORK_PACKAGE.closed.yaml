@@ -1,6 +1,12 @@
 work_package: V5_MULTI_SYSTEM_INTELLIGENCE
 slice: "6 — External-effect execution, idempotency, and reconciliation"
-status: ACTIVE
+status: CLOSED_PASS
+closed_at: 2026-08-13
+close_evidence:
+  - "round-1 deleg_2d03fb7f FAIL (3 MEDIUM + 1 LOW) -> repairs a2af060 -> round-2 deleg_fd714bbc FAIL (M3 payload dimension + INFO) -> repairs 832ee95 -> round-3 deleg_875fbfc2 PASS (7 probe groups, 40+ probes, A/B vs a2af060)"
+  - "verdict JSONs archived (FAIL b9cd0c50…, FAIL 62058cd4…, PASS 3d851e21…); ledger verification.passed:verdict-v5-s6-effects:round1 (seq 24137) + evidence.created:v5-s6-effects-close (seq 24138)"
+  - "v20 applied LIVE (rehearsed on a WAL-safe copy: 23,598 events preserved, consistent before+after rebuild); live schema 19 -> 20"
+  - "suite 677 EXIT=0; docs/evidence/V5_S6_EFFECTS.md CLOSED with FAIL lineage + repairs"
 activated_by: "V5-S5 CLOSED PASS (verification.passed:verdict-v5-s5-correlation:round1, seq 23401)"
 date: 2026-08-13
 objective: >
