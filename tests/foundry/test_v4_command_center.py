@@ -121,6 +121,39 @@ def test_local_command_center_server_is_read_only_projection(db: FoundryDatabase
         server.close()
 
 
+def test_command_center_exposes_direct_durable_record_routes(db: FoundryDatabase, tmp_path: Path) -> None:
+    import json
+    from urllib.error import HTTPError
+    from urllib.request import urlopen
+
+    created = Event.create(
+        "mission.created",
+        {"mission_id": "m-direct", "objective": "inspect evidence", "acceptance_criteria": ["trace"], "state": "PLANNED"},
+        source_type="supervisor", source_id="test", idempotency_key="mission.created:m-direct",
+    )
+    db.append(created)
+    server = CommandCenterServer(db, stop_path=tmp_path / "STOP")
+    server.start()
+    try:
+        base = f"http://{server.address[0]}:{server.address[1]}"
+        with urlopen(f"{base}/api/record/mission/m-direct", timeout=3) as response:
+            mission = json.loads(response.read())
+        assert mission["status"] == "FOUND"
+        assert mission["record"]["mission_id"] == "m-direct"
+        with urlopen(f"{base}/api/record/event/{created.event_id}", timeout=3) as response:
+            event = json.loads(response.read())
+        assert event["status"] == "FOUND"
+        assert event["record"]["event_id"] == created.event_id
+        try:
+            urlopen(f"{base}/api/record/mission/not-found", timeout=3)
+        except HTTPError as error:
+            assert error.code == 404
+        else:
+            raise AssertionError("missing durable record returned success")
+    finally:
+        server.close()
+
+
 def test_local_control_endpoint_is_authenticated_and_fail_closed(db: FoundryDatabase, tmp_path: Path) -> None:
     import json
     from urllib.error import HTTPError

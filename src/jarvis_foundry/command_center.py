@@ -13,6 +13,7 @@ from html import escape
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote, unquote
 
 from .database import FoundryDatabase
 from .owner_controls import OwnerAuthenticationError, OwnerControlService, OwnerReplayError
@@ -250,6 +251,22 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
+        if route.startswith("/api/record/"):
+            parts = route.split("/")
+            if len(parts) != 5 or parts[2] != "record" or parts[3] not in {"mission", "event"} or not parts[4]:
+                self.send_error(404)
+                return
+            snapshot = build_snapshot(self.database, stop_path=self.stop_path, timeline_limit=self.timeline_limit)
+            record_kind, record_id = parts[3], unquote(parts[4])
+            if record_kind == "mission":
+                record = next((item for item in snapshot["missions"] if str(item.get("mission_id")) == record_id), None)
+            else:
+                record = next((item for item in snapshot["timeline"] if str(item.get("event_id")) == record_id), None)
+            if record is None:
+                self._json_response({"status": "NOT_FOUND", "kind": record_kind, "id": record_id}, status=404)
+                return
+            self._json_response({"status": "FOUND", "kind": record_kind, "record": record}, status=200)
+            return
         if route not in {"/", "/api/command-center", "/api/timeline"}:
             self.send_error(404)
             return
@@ -333,19 +350,19 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
             return "neutral"
 
         mission_cards = "".join(
-            f"""<tr>
-              <td><a class='record-link' href='/api/command-center' aria-label='Open durable record for {safe(m.get("mission_id"))}'>{safe(m.get("mission_id"))}</a></td>
-              <td><span class='status {tone(m.get("state"))}'><i></i>{safe(m.get("state"))}</span></td>
-              <td class='objective'>{safe(m.get("objective"))}</td>
-              <td class='next-action'>{safe(m.get("next_action"))}</td>
-            </tr>"""
+            f"""<article class='mission-thread {tone(m.get('state'))}'>
+              <div class='mission-thread-head'><a class='record-link' href='/api/record/mission/{quote(str(m.get("mission_id", "")), safe="")}' aria-label='Open durable mission record for {safe(m.get("mission_id"))}'>{safe(m.get("mission_id"))}</a><span class='status {tone(m.get("state"))}'><i></i>{safe(m.get("state"))}</span></div>
+              <h3>{safe(m.get("objective"))}</h3>
+              <div class='mission-thread-foot'><span>next vector</span><strong>{safe(m.get("next_action"))}</strong></div>
+              <div class='mission-progress' aria-label='Mission progress measurement unavailable'><span>progress UNKNOWN / state-derived signal only</span></div>
+            </article>"""
             for m in missions
-        ) or "<tr><td colspan='4' class='empty'>No durable missions recorded. JARVIS is honestly waiting.</td></tr>"
+        ) or "<article class='mission-thread empty'>No durable missions recorded. JARVIS is honestly waiting.</article>"
 
         timeline = "".join(
             f"""<li class='timeline-event {tone(e.get("summary"))}'>
               <div class='timeline-node' aria-hidden='true'></div>
-              <div class='event-head'><a href='/api/timeline'>EVT-{int(e["sequence"]):04d}</a><time>{safe(str(e.get("recorded_at", ""))[11:19], "--:--:--")}</time></div>
+              <div class='event-head'><a href='/api/record/event/{quote(str(e.get("event_id", "")), safe="")}' aria-label='Open durable event record {safe(e.get("event_id"))}'>EVT-{int(e["sequence"]):04d}</a><time>{safe(str(e.get("recorded_at", ""))[11:19], "--:--:--")}</time></div>
               <strong>{safe(e.get("event_type"))}</strong>
               <p>{safe(e.get("summary"), "No summary recorded")}</p>
               <span class='evidence-count'>{len(e.get("evidence_refs", []))} linked record{'s' if len(e.get("evidence_refs", [])) != 1 else ''}</span>
@@ -376,69 +393,70 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
 <style>
 @font-face{{font-family:"Tektur";src:url('/assets/Tektur.ttf') format('truetype');font-weight:400 900;font-display:swap}}
 :root{{
-  --void:#03070a;--panel:#071016;--panel-raised:#0a151c;--line:#23414b;--line-hot:#3a6875;
-  --text:#edfafa;--muted:#9cb6bc;--dim:#77939b;--signal:#64f4d2;--cyan:#75ddff;
-  --amber:#ffc66b;--red:#ff7777;--focus:0 0 0 3px rgba(117,221,255,.30)
+  --void:#02040a;--panel:#07101c;--panel-raised:#0b1928;--line:#1a3751;--line-hot:#2a6382;
+  --text:#effcff;--muted:#9fc5d7;--dim:#7093a7;--signal:#8affef;--cyan:#66d9ff;
+  --violet:#9b8cff;--amber:#ffd071;--red:#ff7189;--focus:0 0 0 3px rgba(102,217,255,.34)
 }}
 *{{box-sizing:border-box}}
 html{{background:var(--void);scroll-behavior:smooth}}
 body{{margin:0;min-width:320px;background:var(--void);color:var(--text);font:500 14px/1.5 "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif}}
-body::before{{content:"";position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle at 78% -10%,rgba(47,177,185,.12),transparent 34%),linear-gradient(180deg,rgba(255,255,255,.018),transparent 22%);z-index:-1}}
+body::before{{content:"";position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 9%,rgba(79,167,255,.20),transparent 30%),radial-gradient(ellipse at 88% 70%,rgba(115,73,255,.10),transparent 34%),linear-gradient(180deg,rgba(255,255,255,.025),transparent 22%);z-index:-1}}
 ::selection{{background:var(--signal);color:#03221c}}
 a{{color:inherit;text-decoration-color:var(--line-hot);text-underline-offset:4px}}
 a:hover{{color:var(--signal)}}
 :focus-visible{{outline:none;box-shadow:var(--focus);border-radius:4px}}
 .shell{{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100vh}}
-.rail{{position:sticky;top:0;height:100vh;padding:24px 18px;border-right:1px solid var(--line);background:#060b10;display:flex;flex-direction:column}}
+.rail{{position:sticky;top:0;height:100vh;padding:24px 18px;border-right:1px solid var(--line);background:linear-gradient(180deg,#030710,#061323 58%,#050913);display:flex;flex-direction:column}}
 .brand{{display:flex;align-items:center;gap:12px;padding:4px 6px 28px}}
-.brand-mark{{width:34px;height:34px;position:relative;display:grid;place-items:center;border:1px solid var(--signal);clip-path:polygon(20% 0,80% 0,100% 20%,100% 80%,80% 100%,20% 100%,0 80%,0 20%)}}
-.brand-mark::before{{content:"";width:9px;height:9px;border:2px solid var(--signal);border-radius:50%;box-shadow:0 0 18px rgba(100,244,210,.45)}}
+.brand-mark{{width:34px;height:34px;position:relative;display:grid;place-items:center;border:1px solid var(--signal);clip-path:polygon(20% 0,80% 0,100% 20%,100% 80%,80% 100%,20% 100%,0 80%,0 20%);box-shadow:0 0 30px rgba(138,255,239,.18)}}
+.brand-mark::before{{content:"";width:9px;height:9px;border:2px solid var(--signal);border-radius:50%;box-shadow:0 0 18px rgba(138,255,239,.65)}}
 .brand strong,.identity h1,.command-copy h2,.goal-panel blockquote,.panel-head h2{{font-family:"Tektur","Segoe UI",sans-serif}}.brand strong{{display:block;font-size:15px;letter-spacing:.08em}}.brand small{{color:var(--muted);font-size:10px;letter-spacing:.16em}}
 nav{{display:grid;gap:5px}}nav a{{display:flex;align-items:center;gap:11px;padding:10px 11px;color:var(--muted);text-decoration:none;border-radius:8px;border:1px solid transparent}}
 nav a::before{{content:"";width:6px;height:6px;border:1px solid currentColor;transform:rotate(45deg)}}nav a.active{{color:var(--text);background:var(--panel);border-color:var(--line)}}nav a.active::before{{background:var(--signal);border-color:var(--signal)}}
 .rail-foot{{margin-top:auto;padding:14px 10px 4px;border-top:1px solid var(--line);color:var(--muted);font-size:11px}}.rail-foot b{{display:block;color:var(--signal);margin-bottom:3px}}
 .main{{min-width:0}}
-.topbar{{min-height:72px;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 30px;border-bottom:1px solid var(--line);background:rgba(5,8,12,.88);position:sticky;top:0;z-index:10;backdrop-filter:blur(14px)}}
+.topbar{{min-height:72px;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 30px;border-bottom:1px solid var(--line);background:rgba(2,4,10,.72);position:sticky;top:0;z-index:10;backdrop-filter:blur(18px)}}
 .identity h1{{font-size:17px;margin:0;letter-spacing:.06em}}.identity p{{margin:2px 0 0;color:var(--muted);font-size:11px}}
 .top-signals{{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}}
 .status{{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;font:700 10px/1.2 ui-monospace,"Cascadia Mono",monospace;letter-spacing:.07em;text-transform:uppercase}}
 .status i{{width:6px;height:6px;border-radius:50%;background:var(--dim)}}.status.nominal{{color:var(--signal)}}.status.nominal i{{background:var(--signal);box-shadow:0 0 9px rgba(100,244,210,.6)}}.status.caution{{color:var(--amber)}}.status.caution i{{background:var(--amber)}}.status.critical{{color:var(--red)}}.status.critical i{{background:var(--red)}}.status.neutral{{color:var(--muted)}}
 .stop-state{{border:1px solid var(--line);padding:8px 12px;border-radius:8px;background:var(--panel)}}.stop-state.critical{{border-color:rgba(255,107,107,.55)}}
 .content{{padding:28px 30px 48px;max-width:1680px;margin:0 auto}}
-.downlink{{position:relative;border:1px solid var(--line-hot);background:var(--panel);clip-path:polygon(0 18px,18px 0,calc(100% - 18px) 0,100% 18px,100% calc(100% - 18px),calc(100% - 18px) 100%,18px 100%,0 calc(100% - 18px));box-shadow:0 28px 80px rgba(0,0,0,.3)}}
+.downlink{{position:relative;border:1px solid var(--line-hot);background:linear-gradient(145deg,rgba(12,30,50,.95),rgba(3,9,18,.98) 75%);clip-path:polygon(0 18px,18px 0,calc(100% - 18px) 0,100% 18px,100% calc(100% - 18px),calc(100% - 18px) 100%,18px 100%,0 calc(100% - 18px));box-shadow:0 28px 80px rgba(0,0,0,.46),0 0 90px rgba(66,145,255,.08)}}
 .downlink::before,.downlink::after{{content:"";position:absolute;z-index:2;pointer-events:none;background:var(--signal)}}.downlink::before{{height:1px;width:82px;top:0;left:28px}}.downlink::after{{width:1px;height:82px;top:28px;left:0}}
 .calibration{{height:26px;border-bottom:1px solid var(--line);background:repeating-linear-gradient(90deg,transparent 0 23px,var(--line-hot) 23px 24px);position:relative}}.calibration::after{{content:"JARVIS / OWNER DOWNLINK / LEDGER PROJECTION";position:absolute;left:26px;top:6px;background:var(--panel);padding:0 10px;color:var(--dim);font:700 9px ui-monospace,monospace;letter-spacing:.12em}}
 .mission-control{{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,.55fr);border-bottom:1px solid var(--line)}}
-.command-field{{min-height:268px;border-right:1px solid var(--line);background:linear-gradient(145deg,#0b151d,#071017 72%);padding:28px;position:relative;overflow:hidden}}
-.command-field::after{{content:"";position:absolute;right:-54px;top:-84px;width:250px;height:250px;border:1px solid rgba(100,244,210,.13);border-radius:50%;box-shadow:0 0 0 34px rgba(100,244,210,.025),0 0 0 68px rgba(100,244,210,.018)}}
-.command-copy{{position:relative;z-index:1;max-width:760px}}.command-copy h2{{font-size:31px;line-height:1.1;letter-spacing:-.025em;margin:10px 0 12px;max-width:18ch}}.command-copy>p{{color:var(--muted);max-width:64ch;margin:0 0 24px}}
+.command-field{{min-height:300px;border-right:1px solid var(--line);background:linear-gradient(145deg,rgba(12,29,48,.85),rgba(5,14,27,.5) 72%);padding:34px 34px 28px;position:relative;overflow:hidden}}
+.command-field::after{{content:"";position:absolute;right:-28px;top:-112px;width:380px;height:380px;border:1px solid rgba(102,217,255,.16);border-radius:50%;box-shadow:0 0 0 18px rgba(102,217,255,.035),0 0 0 78px rgba(102,217,255,.028),0 0 0 142px rgba(155,140,255,.022)}}
+.command-copy{{position:relative;z-index:1;max-width:760px}}.command-copy h2{{font-size:43px;line-height:1.02;letter-spacing:-.035em;margin:10px 0 14px;max-width:16ch;text-shadow:0 0 30px rgba(102,217,255,.16)}}.command-copy>p{{color:var(--muted);max-width:58ch;margin:0 0 24px}}
 .signal-label{{font:700 10px/1.2 ui-monospace,"Cascadia Mono",monospace;letter-spacing:.14em;color:var(--signal);text-transform:uppercase}}
 .directive-box{{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;max-width:760px;background:#050b10;border:1px solid var(--line);border-radius:10px;padding:11px 13px}}
 .directive-box svg{{width:17px;height:17px;stroke:var(--cyan)}}.directive-box input{{min-width:0;border:0;background:transparent;color:var(--muted);font:inherit;outline:0}}.directive-box button{{border:1px solid var(--line);background:var(--panel-raised);color:var(--dim);border-radius:7px;padding:8px 12px;font:700 10px ui-monospace,monospace;letter-spacing:.07em}}.directive-box button:disabled{{cursor:not-allowed}}
 .preview-note{{display:flex;align-items:center;gap:8px;margin-top:10px;color:var(--amber);font-size:11px}}
-.goal-panel{{padding:26px 22px;display:flex;flex-direction:column;justify-content:space-between}}
-.goal-panel blockquote{{font-size:18px;line-height:1.35;margin:14px 0 22px;color:var(--text)}}.goal-meta{{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding-top:16px;border-top:1px solid var(--line)}}.datum span{{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.1em}}.datum b{{display:block;margin-top:4px;font:700 15px ui-monospace,monospace}}
-.telemetry{{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border-bottom:1px solid var(--line);background:var(--panel)}}
+.goal-panel{{padding:28px 24px;display:flex;flex-direction:column;justify-content:space-between;background:linear-gradient(180deg,rgba(11,26,46,.62),rgba(5,12,23,.34))}}
+.goal-panel blockquote{{font-size:22px;line-height:1.25;margin:14px 0 22px;color:var(--text)}}.goal-meta{{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding-top:16px;border-top:1px solid var(--line)}}.datum span{{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.1em}}.datum b{{display:block;margin-top:4px;font:700 15px ui-monospace,monospace}}
+  .core-orbit{{width:172px;height:172px;margin:2px auto 12px;position:relative;display:grid;place-items:center;border:1px solid rgba(102,217,255,.32);border-radius:50%;box-shadow:0 0 42px rgba(102,217,255,.11),inset 0 0 36px rgba(102,217,255,.08);animation:core-pulse 5.6s ease-in-out 2}}.core-orbit::before,.core-orbit::after{{content:"";position:absolute;border:1px solid rgba(155,140,255,.28);border-radius:50%;transform:rotate(34deg)}}.core-orbit::before{{inset:20px -14px;animation:orbit-drift 7s ease-in-out 2}}.core-orbit::after{{inset:-14px 20px;transform:rotate(-34deg);animation:orbit-drift-reverse 7s ease-in-out 2}}.core-orbit .core{{width:66px;height:66px;border:1px solid var(--signal);border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle,rgba(138,255,239,.22),rgba(9,23,39,.88) 64%);box-shadow:0 0 24px rgba(138,255,239,.32),inset 0 0 16px rgba(138,255,239,.3);font:700 9px ui-monospace,monospace;letter-spacing:.1em;color:var(--signal);z-index:1;animation:core-glow 2.8s ease-in-out 4}}.core-orbit .orbit-dot{{position:absolute;width:7px;height:7px;border-radius:50%;background:var(--cyan);box-shadow:0 0 12px var(--cyan);top:10px;left:83px}}.core-orbit .orbit-dot.two{{top:auto;left:auto;right:17px;bottom:41px;background:var(--violet);box-shadow:0 0 12px var(--violet)}}
+.telemetry{{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border-bottom:1px solid var(--line);background:rgba(5,15,28,.82)}}
 .telemetry article{{padding:17px 19px;min-width:0}}.telemetry article+article{{border-left:1px solid var(--line)}}.telemetry span{{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.11em}}.telemetry strong{{display:block;font:650 24px/1.1 ui-monospace,"Cascadia Mono",monospace;margin:7px 0 4px;overflow-wrap:anywhere}}.telemetry small{{color:var(--dim);font-size:10px}}
 .operations{{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(340px,.65fr);align-items:start}}
-.panel{{background:var(--panel);overflow:hidden}}.operations>.panel:first-child{{border-right:1px solid var(--line)}}
+.panel{{background:rgba(5,14,26,.82);overflow:hidden}}.operations>.panel:first-child{{border-right:1px solid var(--line)}}
 .panel-head{{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:18px 20px;border-bottom:1px solid var(--line)}}.panel-head h2{{font-size:14px;letter-spacing:.06em;margin:0}}.panel-head p{{margin:2px 0 0;color:var(--muted);font-size:11px}}.panel-head a{{font:700 10px ui-monospace,monospace;color:var(--cyan)}}
-.table-wrap{{overflow:auto}}table{{width:100%;border-collapse:collapse;min-width:760px}}th{{color:var(--dim);font:700 9px ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase}}th,td{{text-align:left;padding:15px 18px;border-bottom:1px solid var(--line);vertical-align:top}}tbody tr:last-child td{{border-bottom:0}}tbody tr:hover{{background:rgba(108,217,255,.025)}}td{{font-size:12px}}td.objective{{color:var(--text);max-width:360px}}td.next-action{{color:var(--muted);max-width:280px}}.record-link{{font:650 11px ui-monospace,monospace;color:var(--cyan);text-decoration:none}}.empty{{color:var(--muted);padding:28px;text-align:center}}
+ .mission-list{{display:grid;gap:1px}}.mission-thread{{position:relative;padding:18px 20px 16px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,rgba(102,217,255,.025),transparent 72%);overflow:hidden}}.mission-thread::before{{content:"";position:absolute;left:0;top:0;bottom:0;width:1px;background:var(--cyan);opacity:.55}}.mission-thread.critical::before{{background:var(--red)}}.mission-thread.caution::before{{background:var(--amber)}}.mission-thread-head,.mission-thread-foot{{display:flex;align-items:center;justify-content:space-between;gap:16px}}.mission-thread h3{{font-family:"Tektur","Segoe UI",sans-serif;font-size:17px;line-height:1.18;font-weight:600;margin:10px 0 14px;max-width:62ch}}.mission-thread-foot{{justify-content:flex-start;color:var(--dim);font:700 9px ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase}}.mission-thread-foot strong{{color:var(--muted);font-size:10px;letter-spacing:0;text-transform:none;font-weight:500}}.mission-progress{{margin-top:14px;color:var(--dim);font:700 9px ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase}}.mission-progress span{{display:block}}
 .timeline-panel{{max-height:720px;overflow:auto}}.timeline-list{{list-style:none;margin:0;padding:7px 20px 20px 46px}}.timeline-event{{position:relative;padding:14px 0 16px;border-bottom:1px solid var(--line)}}.timeline-event:last-child{{border-bottom:0}}.timeline-event::before{{content:"";position:absolute;left:-24px;top:0;bottom:0;width:1px;background:var(--line)}}.timeline-node{{position:absolute;left:-28px;top:20px;width:9px;height:9px;border:2px solid var(--signal);background:var(--panel);transform:rotate(45deg)}}.timeline-event:first-child .timeline-node{{animation:signal-breathe 2.8s ease-in-out 2}}.timeline-event.caution .timeline-node{{border-color:var(--amber)}}.timeline-event.critical .timeline-node{{border-color:var(--red)}}.event-head{{display:flex;justify-content:space-between;gap:8px;font:700 9px ui-monospace,monospace;color:var(--dim)}}.event-head a{{color:var(--cyan);text-decoration:none}}.timeline-event strong{{display:block;font:650 11px ui-monospace,monospace;margin:6px 0 3px;color:var(--text)}}.timeline-event p{{margin:0;color:var(--muted);font-size:11px;line-height:1.45}}.evidence-count{{display:inline-block;margin-top:8px;color:var(--signal);font:700 9px ui-monospace,monospace;text-transform:uppercase;letter-spacing:.06em}}
 .footer{{display:flex;justify-content:space-between;gap:20px;padding:15px 26px;color:var(--dim);font-size:10px;border-top:1px solid var(--line)}}.footer a{{color:var(--muted)}}
-@keyframes signal-breathe{{0%,100%{{box-shadow:0 0 0 rgba(100,244,210,0)}}50%{{box-shadow:0 0 12px rgba(100,244,210,.42)}}}}
+ @keyframes signal-breathe{{0%,100%{{box-shadow:0 0 0 rgba(138,255,239,0)}}50%{{box-shadow:0 0 12px rgba(138,255,239,.42)}}}}@keyframes core-pulse{{0%,100%{{box-shadow:0 0 42px rgba(102,217,255,.11),inset 0 0 36px rgba(102,217,255,.08)}}50%{{box-shadow:0 0 72px rgba(102,217,255,.24),inset 0 0 52px rgba(102,217,255,.14)}}}}@keyframes core-glow{{0%,100%{{transform:scale(1)}}50%{{transform:scale(1.035)}}}}@keyframes orbit-drift{{0%,100%{{transform:rotate(34deg) scale(1)}}50%{{transform:rotate(39deg) scale(1.035)}}}}@keyframes orbit-drift-reverse{{0%,100%{{transform:rotate(-34deg) scale(1)}}50%{{transform:rotate(-39deg) scale(1.035)}}}}
 @media(max-width:1120px){{.shell{{grid-template-columns:78px minmax(0,1fr)}}.rail{{padding:22px 12px}}.brand-copy,nav span,.rail-foot span{{display:none}}.brand{{justify-content:center}}nav a{{justify-content:center;padding:12px}}.mission-control,.operations{{grid-template-columns:1fr}}.command-field,.operations>.panel:first-child{{border-right:0;border-bottom:1px solid var(--line)}}.telemetry{{grid-template-columns:repeat(3,1fr)}}.telemetry article:nth-child(4){{border-left:0;border-top:1px solid var(--line)}}.telemetry article:nth-child(5){{border-top:1px solid var(--line)}}}}
-@media(max-width:700px){{.shell{{display:block}}.rail{{position:static;height:auto;padding:10px 14px;display:flex;flex-direction:row;align-items:center;border-right:0;border-bottom:1px solid var(--line)}}.brand{{padding:0;margin-right:auto}}.brand-copy{{display:block}}nav{{display:flex;overflow:auto}}nav a{{padding:9px}}nav a:not(.active){{display:none}}.rail-foot{{display:none}}.topbar{{padding:11px 14px;align-items:center}}.identity p{{display:none}}.top-signals{{gap:7px}}.top-signals>.status:not(.stop-state){{display:none}}.stop-state{{padding:7px 9px}}.content{{padding:14px 10px 28px}}.downlink{{clip-path:polygon(0 12px,12px 0,calc(100% - 12px) 0,100% 12px,100% calc(100% - 12px),calc(100% - 12px) 100%,12px 100%,0 calc(100% - 12px))}}.calibration::after{{left:12px;font-size:8px}}.mission-control{{display:block}}.goal-panel{{border-top:1px solid var(--line)}}.command-field{{min-height:0;padding:22px 18px}}.command-copy h2{{font-size:25px}}.directive-box{{grid-template-columns:auto minmax(0,1fr);overflow:hidden}}.directive-box input{{text-overflow:ellipsis}}.directive-box button{{display:none}}.telemetry{{grid-template-columns:1fr 1fr}}.telemetry article:nth-child(n){{border-left:0;border-top:1px solid var(--line)}}.telemetry article:nth-child(odd){{border-right:1px solid var(--line)}}.telemetry article:first-child,.telemetry article:nth-child(2){{border-top:0}}.operations{{display:block}}.timeline-panel{{max-height:none}}.panel-head{{padding:15px 16px}}.table-wrap{{overflow:visible}}table{{min-width:0}}thead{{display:none}}tbody,tbody tr,tbody td{{display:block}}tbody tr{{padding:15px 16px;border-bottom:1px solid var(--line)}}tbody tr:last-child{{border-bottom:0}}tbody td{{padding:0;border:0;max-width:none!important}}tbody td+td{{margin-top:9px}}td.objective{{font-size:13px}}td.next-action{{color:var(--muted)}}td.next-action::before{{content:"Next · ";color:var(--dim);font:700 9px ui-monospace,monospace;text-transform:uppercase;letter-spacing:.08em}}.footer{{display:block}}.footer span{{display:block;margin-bottom:7px}}}}
-@media(prefers-reduced-motion:reduce){{html{{scroll-behavior:auto}}.timeline-node{{animation:none;box-shadow:0 0 0 2px rgba(100,244,210,.12)}}}}
+@media(max-width:700px){{.shell{{display:block}}.rail{{position:static;height:auto;padding:10px 14px;display:flex;flex-direction:row;align-items:center;border-right:0;border-bottom:1px solid var(--line)}}.brand{{padding:0;margin-right:auto}}.brand-copy{{display:block}}nav{{display:flex;overflow:auto}}nav a{{padding:9px}}nav a:not(.active){{display:none}}.rail-foot{{display:none}}.topbar{{padding:11px 14px;align-items:center}}.identity p{{display:none}}.top-signals{{gap:7px}}.top-signals>.status:not(.stop-state){{display:none}}.stop-state{{padding:7px 9px}}.content{{padding:14px 10px 28px}}.downlink{{clip-path:polygon(0 12px,12px 0,calc(100% - 12px) 0,100% 12px,100% calc(100% - 12px),calc(100% - 12px) 100%,12px 100%,0 calc(100% - 12px))}}.calibration::after{{left:12px;font-size:8px}}.mission-control{{display:block}}.goal-panel{{border-top:1px solid var(--line)}}.command-field{{min-height:0;padding:26px 18px 22px}}.command-copy h2{{font-size:32px}}.directive-box{{grid-template-columns:auto minmax(0,1fr);overflow:hidden}}.directive-box input{{text-overflow:ellipsis}}.directive-box button{{display:none}}.telemetry{{grid-template-columns:1fr 1fr}}.telemetry article:nth-child(n){{border-left:0;border-top:1px solid var(--line)}}.telemetry article:nth-child(odd){{border-right:1px solid var(--line)}}.telemetry article:first-child,.telemetry article:nth-child(2){{border-top:0}}.operations{{display:block}}.timeline-panel{{max-height:none}}.panel-head{{padding:15px 16px}}.mission-thread{{padding:17px 16px}}.mission-thread h3{{font-size:16px}}.footer{{display:block}}.footer span{{display:block;margin-bottom:7px}}}}
+ @media(prefers-reduced-motion:reduce){{html{{scroll-behavior:auto}}.timeline-node,.core-orbit,.core-orbit::before,.core-orbit::after,.core-orbit .core{{animation:none}}.timeline-node{{box-shadow:0 0 0 2px rgba(138,255,239,.12)}}}}
 </style>
 </head>
 <body>
 <!--
-THESIS: JARVIS is an evidence-bearing telemetry observatory, not a generic card dashboard.
-OWN-WORLD: Deep instrument black, precise aqua signal light, amber/red exceptions, clipped geometry, and ledger-linked telemetry.
-STORY: The owner sees system safety first, scans current intent and missions, then follows the event spine into evidence.
-FIRST VIEWPORT: A narrow command rail frames an owner-link field, live goal, five cross-check metrics, and the beginning of mission operations.
-FORM: Satellite downlink dossier, seventh grounded direction; seed 452115cf. Signature motion is restrained live-signal illumination.
+THESIS: JARVIS is a living command core for an autonomous institution, not a dashboard waiting for clicks.
+OWN-WORLD: Deep space-black, electric cyan and violet orbit light, cinematic radial depth, spatial telemetry planes, and ledger-linked signals.
+STORY: The owner speaks an intent, the JARVIS core reveals the active system posture, and mission vectors radiate outward into evidence.
+FIRST VIEWPORT: A cinematic command core anchors an Owner Link, current goal, orbit telemetry, mission vectors, and a scrollable evidence stream.
+FORM: 2100 autonomous command deck, user-pinned Iron Man JARVIS direction; seed f99526de was overruled by the explicit brief. Signature motion is a living core pulse and orbit drift.
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
 -->
 <div class='shell'>
@@ -466,7 +484,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
       <section class='mission-control' aria-labelledby='owner-link-title'>
         <div class='command-field'>
           <div class='command-copy'>
-            <h2 id='owner-link-title'>Tell JARVIS what matters. It handles the rest.</h2>
+            <h2 id='owner-link-title'>What should JARVIS move next?</h2>
             <p>Goals, constraints, vetoes, pause, resume, and deterministic STOP enter one audited control path. Routine operation continues without becoming an approval queue.</p>
             <div class='directive-box' aria-label='Owner communication preview'>
               <svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='M12 3v18M8 7.5C8 5.6 9.8 4 12 4s4 1.6 4 3.5V12c0 2.2-1.8 4-4 4s-4-1.8-4-4V7.5Z' stroke-width='1.6'/><path d='M5 12a7 7 0 0 0 14 0M9 21h6' stroke-width='1.6'/></svg>
@@ -477,7 +495,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
           </div>
         </div>
         <aside class='goal-panel' aria-label='Current owner intent'>
-          <div><blockquote>{safe(goal)}</blockquote></div>
+          <div><div class='core-orbit' aria-hidden='true'><span class='orbit-dot'></span><span class='orbit-dot two'></span><span class='core'>JARVIS</span></div><blockquote>{safe(goal)}</blockquote></div>
           <div class='goal-meta'><div class='datum'><span>Constraints</span><b>{constraint_count:02d}</b></div><div class='datum'><span>Trust state</span><b>{safe(health.get("trust_state"))}</b></div></div>
         </aside>
       </section>
@@ -491,7 +509,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
       <div class='operations'>
         <section class='panel' id='missions'>
           <header class='panel-head'><div><h2>Mission operations</h2><p>Current intent, execution state, and next action from durable records.</p></div><span class='status {tone(briefing_status)}'><i></i>Briefing {safe(briefing_status)}</span></header>
-          <div class='table-wrap'><table><thead><tr><th>Mission record</th><th>State</th><th>Objective</th><th>Next action</th></tr></thead><tbody>{mission_cards}</tbody></table></div>
+          <div class='mission-list'>{mission_cards}</div>
         </section>
         <aside class='panel timeline-panel' id='timeline'>
           <header class='panel-head'><div><h2>Decision signal</h2><p>Newest ledger events first.</p></div><a href='/api/timeline'>OPEN JSON</a></header>
