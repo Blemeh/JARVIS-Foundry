@@ -124,3 +124,26 @@ sha256 e3f51971fb66d15671b9bdd38efb7b09b0b7ae9a829fa9f7f10f207eff4537ee.
 
 Round-2: fresh verifier with A/B discrimination dispatched after this
 commit.
+
+## 9. Round-2 verdict (deleg_72b9f61f, PASS — A/B discriminated)
+
+Fresh round-2 verifier: G1 pre-attempt proposal history PASS (A/B: old
+lacks _flush_proposals; new flushes on success + both exception paths;
+2 proposals then a live attempt -> FAILED decisions_count=2, 2
+decision_proposed + 1 live_effect_attempted events); G2 uncomparable
+baseline gaps PASS (missing baseline -> ["uncomparable"], full matching
+baseline -> [], genuine text diff -> ["decision"]); G3 no orphaned
+RUNNING rows PASS (empty and subdir-only dirs refuse with ZERO rows and
+ZERO run_started events; nested files executed, decisions_count=3); G4
+documented boundaries all present; G5 no regression (14 focused green,
+suite 825 EXIT=0 sha256 c57fde5d9d6b77fa92f079081c3255c4ab7c336a1e80e71fcb7f92b4018c969e,
+collect-only 825, runtime v26 consistent, live v20 zero V6 events,
+both checkouts unchanged). Verdict JSON:
+var/evidence/v6-s6/verdict-deleg_72b9f61f-r2.json,
+sha256 4908fceed5d66c29e9acc275e0ff9e651c323386464446d4eca19f2046320cb1.
+3 INFO observations (suite artifact as gate evidence; runtime ledger
+empty at machinery stage; live verification.* events are V5-era).
+None blocking.
+
+**S6 CLOSED — PASS (rounds 1+2).** Next: S7 (Supervisor-owned canary
+controller).
