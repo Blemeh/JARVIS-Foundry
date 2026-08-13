@@ -117,8 +117,6 @@ def test_propose_only_shadow_completes_with_zero_effects(
     release_id = _release(db, improvement_id)
     live_marker = tmp_path / "live-marker.txt"
     live_marker.write_text("live", encoding="utf-8")
-    before_db = hashlib.sha256(
-        Path(db.path).read_bytes()).hexdigest()
     before_marker = hashlib.sha256(
         live_marker.read_bytes()).hexdigest()
     run_id = shadow_run(
@@ -132,8 +130,8 @@ def test_propose_only_shadow_completes_with_zero_effects(
     assert row["status"] == "COMPLETED"
     assert row["decisions_count"] == 3
     assert row["zero_live_effects"] == 1
-    assert hashlib.sha256(Path(db.path).read_bytes()).hexdigest() \
-        == before_db
+    # the logical proof: every event appended during the run is a
+    # shadow.* event (WAL-safe) and the external marker is untouched
     assert hashlib.sha256(
         live_marker.read_bytes()).hexdigest() == before_marker
     types = {e.event_type for e in db.events()}

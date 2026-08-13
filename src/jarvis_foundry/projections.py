@@ -45,6 +45,7 @@ PROJECTION_TABLES = (
     "evaluation_runs",
     "verifications",
     "shadow_runs",
+    "canaries",
 )
 
 
@@ -1370,6 +1371,71 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             raise ValueError(
                 f"shadow.run_failed has no RUNNING run "
                 f"{payload['run_id']} — rolled back")
+    elif event.event_type == "canary.started":
+        for key in ("canary_id", "improvement_id",
+                    "candidate_release_id", "traffic_share",
+                    "duration_cycles", "max_cost_usd",
+                    "health_thresholds", "controller"):
+            if key not in payload:
+                raise ValueError(
+                    f"canary.started requires {key} "
+                    "(mandatory payload key) — rolled back")
+        connection.execute(
+            """INSERT OR IGNORE INTO canaries(
+                canary_id, improvement_id, candidate_release_id,
+                status, traffic_share, duration_cycles, max_cost_usd,
+                health_thresholds_json, started_at, last_event_id,
+                updated_at
+            ) VALUES (?, ?, ?, 'RUNNING', ?, ?, ?, ?, ?, ?, ?)""",
+            (payload["canary_id"], payload["improvement_id"],
+             payload["candidate_release_id"], payload["traffic_share"],
+             payload["duration_cycles"], payload["max_cost_usd"],
+             canonical_json(payload["health_thresholds"]),
+             event.recorded_at, event.event_id, event.recorded_at),
+        )
+    elif event.event_type == "canary.tick":
+        for key in ("canary_id", "cycle", "traffic_served", "errors",
+                    "latency_s", "cost_usd", "error_rate", "healthy",
+                    "regression_observed", "invariant_violated",
+                    "controller"):
+            if key not in payload:
+                raise ValueError(
+                    f"canary.tick requires {key} "
+                    "(mandatory payload key) — rolled back")
+        cursor = connection.execute(
+            """UPDATE canaries SET cycles_run = cycles_run + 1,
+               last_tick_cycle = ?, total_cost_usd =
+                   total_cost_usd + ?, total_errors = total_errors + ?,
+               last_health = ?, last_event_id = ?, updated_at = ?
+               WHERE canary_id = ? AND status = 'RUNNING'""",
+            (payload["cycle"], payload["cost_usd"], payload["errors"],
+             int(bool(payload["healthy"])), event.event_id,
+             event.recorded_at, payload["canary_id"]),
+        )
+        if cursor.rowcount == 0:
+            raise ValueError(
+                f"canary.tick has no RUNNING canary "
+                f"{payload['canary_id']} — rolled back")
+    elif event.event_type in ("canary.terminated", "canary.completed",
+                              "canary.reaped"):
+        for key in ("canary_id", "reason", "controller"):
+            if key not in payload:
+                raise ValueError(
+                    f"{event.event_type} requires {key} "
+                    "(mandatory payload key) — rolled back")
+        status = ("COMPLETED" if event.event_type == "canary.completed"
+                  else "TERMINATED")
+        cursor = connection.execute(
+            """UPDATE canaries SET status = ?, reason = ?,
+               finished_at = ?, last_event_id = ?, updated_at = ?
+               WHERE canary_id = ? AND status = 'RUNNING'""",
+            (status, payload["reason"], event.recorded_at,
+             event.event_id, event.recorded_at, payload["canary_id"]),
+        )
+        if cursor.rowcount == 0:
+            raise ValueError(
+                f"{event.event_type} has no RUNNING canary "
+                f"{payload['canary_id']} — rolled back")
     elif event.event_type == "release.slot_changed":
         for key in ("slot", "release_id", "previous_release_id",
                     "reason", "controller"):

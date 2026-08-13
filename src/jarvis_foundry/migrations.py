@@ -5,7 +5,7 @@ import sqlite3
 from .v4_schema import ensure_v4_tables
 
 
-SCHEMA_VERSION = 26
+SCHEMA_VERSION = 27
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -708,6 +708,29 @@ MIGRATIONS: dict[int, str] = {
         input_hash TEXT NOT NULL DEFAULT '',
         reason TEXT,
         created_at TEXT NOT NULL,
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    """,
+    27: """
+    CREATE TABLE IF NOT EXISTS canaries (
+        canary_id TEXT PRIMARY KEY,
+        improvement_id TEXT NOT NULL,
+        candidate_release_id TEXT NOT NULL,
+        status TEXT NOT NULL
+            CHECK(status IN ('RUNNING', 'COMPLETED', 'TERMINATED')),
+        traffic_share REAL NOT NULL,
+        duration_cycles INTEGER NOT NULL,
+        max_cost_usd REAL NOT NULL,
+        health_thresholds_json TEXT NOT NULL,
+        cycles_run INTEGER NOT NULL DEFAULT 0,
+        last_tick_cycle INTEGER,
+        total_cost_usd REAL NOT NULL DEFAULT 0,
+        total_errors INTEGER NOT NULL DEFAULT 0,
+        last_health INTEGER NOT NULL DEFAULT 1,
+        reason TEXT,
+        started_at TEXT NOT NULL,
+        finished_at TEXT,
         last_event_id TEXT NOT NULL,
         updated_at TEXT NOT NULL
     );

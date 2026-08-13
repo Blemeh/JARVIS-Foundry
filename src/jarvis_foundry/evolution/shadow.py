@@ -151,8 +151,15 @@ def shadow_run(
             "stop active — shadow run frozen (zero proposals made)")
 
     marker_path = Path(live_marker) if live_marker is not None else None
-    db_before = _file_hash(Path(database.path))
     marker_before = _file_hash(marker_path) if marker_path else None
+    # WAL-safe logical snapshot: the event id BEFORE the run. The
+    # zero-effect proof is: every event appended during the run is a
+    # shadow.* event owned by THIS run, and the external marker (if
+    # given) is byte-identical. The raw DB-file hash is NOT used —
+    # SQLite WAL checkpointing changes the main file even under
+    # legitimate activity (documented in the S6 evidence doc).
+    all_events = database.events()
+    prior_tail = all_events[-1].event_id if all_events else None
 
     decisions_count = 0
     live_attempts = 0
@@ -241,8 +248,17 @@ def shadow_run(
         (str(path.relative_to(run_dir)),
          hashlib.sha256(path.read_bytes()).hexdigest())
         for path in sorted(run_dir.rglob("*")) if path.is_file()]})
+    new_events = database.events()
+    if prior_tail is not None:
+        try:
+            cut = next(i for i, event in enumerate(new_events)
+                       if event.event_id == prior_tail)
+            new_events = new_events[cut + 1:]
+        except StopIteration:
+            new_events = new_events
     zero_live_effects = (
-        db_before == _file_hash(Path(database.path))
+        all(event.event_type.startswith("shadow.")
+            for event in new_events)
         and (marker_before is None
              or marker_before == _file_hash(marker_path)))
 

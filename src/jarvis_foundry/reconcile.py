@@ -97,6 +97,7 @@ def _table_key_column(table: str) -> str:
         "evaluation_runs": "run_id",
         "verifications": "verification_id",
         "shadow_runs": "run_id",
+        "canaries": "canary_id",
         "system_state": "singleton",
         "supervisor_state": "singleton",
     }
