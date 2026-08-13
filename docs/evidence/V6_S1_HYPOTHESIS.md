@@ -51,7 +51,11 @@ TESTS: 18 new S1 tests + focused neighbor suites (migrations, event
   `version == 20` (assert now `version >= 20` — v20's FROZEN-rebuild
   effect must persist at any later schema; the literal-pin class from
   the V2 gate).
-VERIFIER: <fill after dispatch>
+VERIFIER: deleg_135261fd — PASS (H1-H6, 25 adversarial probes on
+  disposable scratch DBs; verdict JSON archived
+  var/evidence/v6-s1/verdict-deleg_135261fd.json,
+  sha256 2569ef474a78db6ff53bb69e839c7022440158878ce8fe0471289995fd36e78b;
+  1 LOW + 3 INFO findings, all resolved additively in §8)
 EVIDENCE: var/evidence/v6-s1/ (suite artifacts, verdict JSON);
   var/v6-runtime/v6.db (isolated runtime, schema v21, consistent)
 CANARY: none (machinery slice)
@@ -117,3 +121,14 @@ refusal; reason/record requirements for raises; secret-like rejection +
 zero ledger hits; eligibility unknown/incomplete fail-closed; all
 projection touch points + rebuild determinism; schema version pinned to
 the imported constant (≥21).
+
+## 8. Verifier findings — additive resolution (deleg_135261fd, PASS)
+
+| Severity | Finding | Resolution |
+|---|---|---|
+| LOW | workload.hash regex is lowercase-only `[0-9a-f]{64}`: a 64-char UPPERCASE hex sha256 is refused (probed). Deterministic fail-closed strictness. | ACCEPTED as deliberate strictness: sha256 hexdigest conventions are lowercase; refusing uppercase is the fail-closed direction and keeps the hash contract byte-exact. Recorded here so the strictness is a documented decision, not an accident. |
+| INFO | First probe run showed 10 apparent FAILs — root-caused as harness artifacts (absolute-count assertions on a shared scratch DB + content-derived id dedupe collisions); fresh-DB-per-probe rerun passed 25/25. | Recorded; no code issue. |
+| INFO | Full 737 suite not re-run by the verifier (agreed protocol: pinned sha256 + tail evidence, collect-only cross-check 737, S1 file re-run 18 passed). | Recorded; accepted. |
+| INFO | Scratch probe scripts left in %TEMP% (v6s1_adv_probe*.py, v6s1_adv_h5.py); all scratch DBs deleted. | Recorded; no repo impact. |
+
+**S1 CLOSED — PASS.** Next: S2 (immutable release registry and slots).
