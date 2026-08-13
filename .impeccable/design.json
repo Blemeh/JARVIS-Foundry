@@ -1,0 +1,124 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-13T16:15:00+02:00",
+  "title": "Design System: JARVIS Command Center",
+  "extensions": {
+    "colorMeta": {
+      "instrument-void": { "role": "neutral", "displayName": "Instrument Void", "canonical": "#03070a", "tonalRamp": ["oklch(15% 0.014 220)", "oklch(25% 0.014 220)", "oklch(37% 0.014 220)", "oklch(49% 0.014 220)", "oklch(61% 0.014 220)", "oklch(73% 0.014 220)", "oklch(85% 0.014 220)", "oklch(95% 0.014 220)"] },
+      "downlink-panel": { "role": "neutral", "displayName": "Downlink Panel", "canonical": "#071016", "tonalRamp": ["oklch(15% 0.018 230)", "oklch(25% 0.018 230)", "oklch(37% 0.018 230)", "oklch(49% 0.018 230)", "oklch(61% 0.018 230)", "oklch(73% 0.018 230)", "oklch(85% 0.018 230)", "oklch(95% 0.018 230)"] },
+      "raised-instrument": { "role": "neutral", "displayName": "Raised Instrument", "canonical": "#0a151c", "tonalRamp": ["oklch(15% 0.022 230)", "oklch(25% 0.022 230)", "oklch(37% 0.022 230)", "oklch(49% 0.022 230)", "oklch(61% 0.022 230)", "oklch(73% 0.022 230)", "oklch(85% 0.022 230)", "oklch(95% 0.022 230)"] },
+      "structural-line": { "role": "neutral", "displayName": "Structural Line", "canonical": "#23414b", "tonalRamp": ["oklch(15% 0.035 220)", "oklch(25% 0.035 220)", "oklch(37% 0.035 220)", "oklch(49% 0.035 220)", "oklch(61% 0.035 220)", "oklch(73% 0.035 220)", "oklch(85% 0.035 220)", "oklch(95% 0.035 220)"] },
+      "active-line": { "role": "neutral", "displayName": "Active Line", "canonical": "#3a6875", "tonalRamp": ["oklch(15% 0.045 215)", "oklch(25% 0.045 215)", "oklch(37% 0.045 215)", "oklch(49% 0.045 215)", "oklch(61% 0.045 215)", "oklch(73% 0.045 215)", "oklch(85% 0.045 215)", "oklch(95% 0.045 215)"] },
+      "telemetry-white": { "role": "neutral", "displayName": "Telemetry White", "canonical": "#edfafa", "tonalRamp": ["oklch(15% 0.012 195)", "oklch(25% 0.012 195)", "oklch(37% 0.012 195)", "oklch(49% 0.012 195)", "oklch(61% 0.012 195)", "oklch(73% 0.012 195)", "oklch(85% 0.012 195)", "oklch(95% 0.012 195)"] },
+      "telemetry-muted": { "role": "neutral", "displayName": "Telemetry Muted", "canonical": "#9cb6bc", "tonalRamp": ["oklch(15% 0.025 210)", "oklch(25% 0.025 210)", "oklch(37% 0.025 210)", "oklch(49% 0.025 210)", "oklch(61% 0.025 210)", "oklch(73% 0.025 210)", "oklch(85% 0.025 210)", "oklch(95% 0.025 210)"] },
+      "telemetry-dim": { "role": "neutral", "displayName": "Telemetry Dim", "canonical": "#77939b", "tonalRamp": ["oklch(15% 0.028 210)", "oklch(25% 0.028 210)", "oklch(37% 0.028 210)", "oklch(49% 0.028 210)", "oklch(61% 0.028 210)", "oklch(73% 0.028 210)", "oklch(85% 0.028 210)", "oklch(95% 0.028 210)"] },
+      "verified-signal": { "role": "primary", "displayName": "Verified Signal", "canonical": "#64f4d2", "tonalRamp": ["oklch(15% 0.12 170)", "oklch(25% 0.12 170)", "oklch(37% 0.12 170)", "oklch(49% 0.12 170)", "oklch(61% 0.12 170)", "oklch(73% 0.12 170)", "oklch(85% 0.12 170)", "oklch(95% 0.12 170)"] },
+      "evidence-link": { "role": "secondary", "displayName": "Evidence Link", "canonical": "#75ddff", "tonalRamp": ["oklch(15% 0.11 220)", "oklch(25% 0.11 220)", "oklch(37% 0.11 220)", "oklch(49% 0.11 220)", "oklch(61% 0.11 220)", "oklch(73% 0.11 220)", "oklch(85% 0.11 220)", "oklch(95% 0.11 220)"] },
+      "caution-amber": { "role": "tertiary", "displayName": "Caution Amber", "canonical": "#ffc66b", "tonalRamp": ["oklch(15% 0.12 75)", "oklch(25% 0.12 75)", "oklch(37% 0.12 75)", "oklch(49% 0.12 75)", "oklch(61% 0.12 75)", "oklch(73% 0.12 75)", "oklch(85% 0.12 75)", "oklch(95% 0.12 75)"] },
+      "critical-red": { "role": "tertiary", "displayName": "Critical Red", "canonical": "#ff7777", "tonalRamp": ["oklch(15% 0.14 25)", "oklch(25% 0.14 25)", "oklch(37% 0.14 25)", "oklch(49% 0.14 25)", "oklch(61% 0.14 25)", "oklch(73% 0.14 25)", "oklch(85% 0.14 25)", "oklch(95% 0.14 25)"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Instrument Display", "purpose": "Owner intent and the single dominant command statement." },
+      "title": { "displayName": "System Title", "purpose": "Product, panel, and subsystem names." },
+      "body": { "displayName": "Operational Body", "purpose": "Calm explanatory text and next actions." },
+      "measurement": { "displayName": "Telemetry Measurement", "purpose": "Counts, costs, states, and durable measurements." },
+      "label": { "displayName": "Provenance Label", "purpose": "Status, timestamps, table headings, and ledger identifiers." }
+    },
+    "shadows": [
+      { "name": "apparatus-depth", "value": "0 28px 80px rgba(0,0,0,.30)", "purpose": "Broad ambient depth beneath the continuous downlink frame only." },
+      { "name": "keyboard-focus", "value": "0 0 0 3px rgba(117,221,255,.30)", "purpose": "Visible keyboard focus for interactive controls and links." },
+      { "name": "nominal-lamp", "value": "0 0 9px rgba(100,244,210,.60)", "purpose": "Restrained live glow on nominal status lamps." }
+    ],
+    "motion": [
+      { "name": "newest-event-breathe", "value": "signal-breathe 2.8s ease-in-out 2", "purpose": "Finite illumination on the newest ledger event only." },
+      { "name": "reduced-motion-equivalent", "value": "animation: none; box-shadow: 0 0 0 2px rgba(100,244,210,.12)", "purpose": "Static state-preserving replacement when reduced motion is requested." }
+    ],
+    "breakpoints": [
+      { "name": "compact-rail", "value": "1120px" },
+      { "name": "mobile-downlink", "value": "700px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Locked Command Button",
+      "kind": "button",
+      "refersTo": "command-button-locked",
+      "description": "Explicitly communicates that authenticated owner control is unavailable.",
+      "html": "<button class=\"ds-command-button\" disabled>CHANNEL LOCKED</button>",
+      "css": ".ds-command-button{border:1px solid #23414b;background:#0a151c;color:#77939b;border-radius:7px;padding:8px 12px;font:700 10px 'Cascadia Mono',ui-monospace,monospace;letter-spacing:.07em}.ds-command-button:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(117,221,255,.30)}.ds-command-button:disabled{cursor:not-allowed}"
+    },
+    {
+      "name": "Directive Field",
+      "kind": "input",
+      "refersTo": "directive-field",
+      "description": "Audited owner-link preview with a quiet dark field and evidence-cyan microphone glyph.",
+      "html": "<label class=\"ds-directive\"><svg viewBox=\"0 0 24 24\" fill=\"none\" aria-hidden=\"true\"><path d=\"M12 3v18M8 7.5C8 5.6 9.8 4 12 4s4 1.6 4 3.5V12c0 2.2-1.8 4-4 4s-4-1.8-4-4V7.5Z\"/><path d=\"M5 12a7 7 0 0 0 14 0M9 21h6\"/></svg><input value=\"Owner console preview\" readonly></label>",
+      "css": ".ds-directive{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:12px;background:#03070a;border:1px solid #23414b;border-radius:10px;padding:11px 13px}.ds-directive svg{width:17px;height:17px;stroke:#75ddff;stroke-width:1.6}.ds-directive input{min-width:0;border:0;background:transparent;color:#9cb6bc;font:500 14px/1.5 'Segoe UI',sans-serif;outline:0}.ds-directive:focus-within{box-shadow:0 0 0 3px rgba(117,221,255,.30)}"
+    },
+    {
+      "name": "Active Command Navigation",
+      "kind": "nav",
+      "refersTo": "navigation-active",
+      "description": "Rail destination with a diamond signal marker and connected panel fill.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-item ds-active\" href=\"#\"><i></i><span>Command</span></a><a class=\"ds-nav-item\" href=\"#\"><i></i><span>Missions</span></a></nav>",
+      "css": ".ds-nav{display:grid;gap:5px;background:#060b10;padding:12px}.ds-nav-item{display:flex;align-items:center;gap:11px;padding:10px 11px;color:#9cb6bc;text-decoration:none;border-radius:8px;border:1px solid transparent;font:500 14px/1.5 'Segoe UI',sans-serif}.ds-nav-item i{width:6px;height:6px;border:1px solid currentColor;transform:rotate(45deg)}.ds-nav-item:hover{color:#64f4d2}.ds-nav-item:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(117,221,255,.30)}.ds-nav-item.ds-active{color:#edfafa;background:#071016;border-color:#23414b}.ds-nav-item.ds-active i{background:#64f4d2;border-color:#64f4d2}"
+    },
+    {
+      "name": "Operational Status",
+      "kind": "chip",
+      "refersTo": "status-nominal",
+      "description": "Text-and-lamp state encoding with semantically fixed nominal, caution, and critical variants.",
+      "html": "<div class=\"ds-status-row\"><span class=\"ds-status ds-nominal\"><i></i>NOMINAL</span><span class=\"ds-status ds-caution\"><i></i>UNKNOWN</span><span class=\"ds-status ds-critical\"><i></i>STOP</span></div>",
+      "css": ".ds-status-row{display:flex;gap:16px;flex-wrap:wrap;background:#071016;padding:16px}.ds-status{display:inline-flex;align-items:center;gap:7px;font:700 10px/1.2 'Cascadia Mono',ui-monospace,monospace;letter-spacing:.07em}.ds-status i{width:6px;height:6px;border-radius:50%;background:currentColor}.ds-nominal{color:#64f4d2}.ds-nominal i{box-shadow:0 0 9px rgba(100,244,210,.6)}.ds-caution{color:#ffc66b}.ds-critical{color:#ff7777}"
+    },
+    {
+      "name": "Downlink Dossier",
+      "kind": "card",
+      "refersTo": null,
+      "description": "The signature continuous chamfered apparatus with calibration and ledger provenance.",
+      "html": "<section class=\"ds-downlink\"><div class=\"ds-calibration\">JARVIS / OWNER DOWNLINK / LEDGER PROJECTION</div><div class=\"ds-downlink-body\"><strong>MISSION OPERATIONS</strong><p>Durable projection · ledger head 004281</p><a href=\"#\">INSPECT EVIDENCE</a></div></section>",
+      "css": ".ds-downlink{position:relative;color:#edfafa;background:#071016;border:1px solid #3a6875;clip-path:polygon(0 18px,18px 0,calc(100% - 18px) 0,100% 18px,100% calc(100% - 18px),calc(100% - 18px) 100%,18px 100%,0 calc(100% - 18px));box-shadow:0 28px 80px rgba(0,0,0,.3)}.ds-downlink:before{content:'';position:absolute;top:0;left:28px;width:82px;height:1px;background:#64f4d2}.ds-calibration{padding:7px 26px;border-bottom:1px solid #23414b;color:#77939b;font:700 9px 'Cascadia Mono',monospace;letter-spacing:.12em}.ds-downlink-body{padding:24px}.ds-downlink strong{font:700 14px Tektur,'Segoe UI',sans-serif;letter-spacing:.06em}.ds-downlink p{color:#9cb6bc;font:500 12px/1.5 'Segoe UI',sans-serif}.ds-downlink a{color:#75ddff;font:700 10px 'Cascadia Mono',monospace;text-underline-offset:4px}.ds-downlink a:hover{color:#64f4d2}.ds-downlink a:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(117,221,255,.30)}"
+    },
+    {
+      "name": "Newest Decision Signal",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "A ledger event on the evidence spine with finite newest-event illumination.",
+      "html": "<article class=\"ds-event\"><i class=\"ds-node\"></i><small>SEQ 004281 · 16:04:22</small><strong>VERIFIER VERDICT RECORDED</strong><p>Independent evidence accepted for the current mission.</p><a href=\"#\">3 EVIDENCE RECORDS</a></article>",
+      "css": "@keyframes ds-signal-breathe{0%,100%{box-shadow:0 0 0 rgba(100,244,210,0)}50%{box-shadow:0 0 12px rgba(100,244,210,.42)}}.ds-event{position:relative;padding:14px 16px 16px 32px;color:#edfafa;background:#071016;border-bottom:1px solid #23414b;font-family:'Segoe UI',sans-serif}.ds-event:before{content:'';position:absolute;left:12px;top:0;bottom:0;width:1px;background:#23414b}.ds-node{position:absolute;left:8px;top:20px;width:9px;height:9px;border:2px solid #64f4d2;background:#071016;transform:rotate(45deg);animation:ds-signal-breathe 2.8s ease-in-out 2}.ds-event small{display:block;color:#77939b;font:700 9px 'Cascadia Mono',monospace}.ds-event strong{display:block;margin:6px 0 3px;font:650 11px 'Cascadia Mono',monospace}.ds-event p{margin:0;color:#9cb6bc;font-size:11px;line-height:1.45}.ds-event a{display:inline-block;margin-top:8px;color:#64f4d2;font:700 9px 'Cascadia Mono',monospace;text-decoration:none}@media(prefers-reduced-motion:reduce){.ds-node{animation:none;box-shadow:0 0 0 2px rgba(100,244,210,.12)}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Evidence-Bearing Telemetry Observatory",
+    "overview": "JARVIS inhabits a deep instrument-black world: a satellite downlink dossier built to expose operational truth, not decorate it. Dense telemetry feels deliberate and calm because hierarchy comes from a continuous frame, precise type roles, measured dividers, and provenance links rather than a field of interchangeable cards.\n\nThe visual story always begins with safety posture and owner intent, passes through missions and cross-check measurements, and terminates in an evidence-bearing event spine. Science-fiction character comes from clipped telemetry geometry, calibration marks, and restrained signal light; it never obscures uncertainty, exceptions, or ledger lineage.",
+    "keyCharacteristics": [
+      "One continuous chamfered downlink frame rather than a collection of floating cards.",
+      "Aqua means verified or live signal; cyan means inspectable linkage; amber and red are reserved for exceptions.",
+      "Display type names systems and intent, Segoe carries explanation, and monospace carries measurements and provenance.",
+      "Operational density remains readable through explicit grouping, hairline structure, and honest unknown states.",
+      "Motion is rare, finite, and reducible: only the newest event receives restrained illumination."
+    ],
+    "rules": [
+      { "name": "The Semantic Signal Rule", "body": "Aqua, cyan, amber, and red must retain their operational meanings; never use them as arbitrary decoration.", "section": "colors" },
+      { "name": "The Unknown Is Visible Rule", "body": "Unknown or unavailable values use explicit text and caution treatment, never a false zero or a success color.", "section": "colors" },
+      { "name": "The Three-Instrument Rule", "body": "Tektur names, Segoe explains, monospace measures; do not blur these roles.", "section": "typography" },
+      { "name": "The First-Viewport Rule", "body": "Safety posture, owner intent, the command channel, cross-check telemetry, and the beginning of mission operations must read as one downlink surface before secondary detail.", "section": "layout" },
+      { "name": "The One Apparatus Rule", "body": "Elevate the continuous downlink frame, not every internal region.", "section": "elevation" },
+      { "name": "The Clipped Geometry Rule", "body": "Use chamfers and diamond nodes to signal infrastructure; reserve ordinary rounded rectangles for interactive controls.", "section": "shapes" }
+    ],
+    "dos": [
+      "Do preserve a single continuous apparatus with hairline internal divisions and ledger-linked records.",
+      "Do place state text beside every colored lamp and keep unknown, unavailable, blocked, and untested values explicit.",
+      "Do use Tektur for system identity, Segoe for explanation, and monospace for measurements and provenance.",
+      "Do maintain the 1120px and 700px structural transitions and the reduced-motion equivalent for newest-event illumination.",
+      "Do use cyan links to make the evidence spine inspectable from every material operational claim."
+    ],
+    "donts": [
+      "Don't turn the observatory into a generic grid of floating cards, pills, gradients, or decorative metrics.",
+      "Don't use aqua, amber, or red without their verified, caution, and critical meanings.",
+      "Don't imply success with missing data, substitute zero for unknown, or remove provenance to simplify a view.",
+      "Don't animate the whole timeline, loop signal motion indefinitely, or depend on motion to convey state.",
+      "Don't let science-fiction styling reduce contrast, keyboard focus, mobile access, or operational candor."
+    ]
+  }
+}

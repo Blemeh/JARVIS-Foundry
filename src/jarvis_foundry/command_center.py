@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import threading
 from datetime import datetime, timezone
+from html import escape
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
@@ -239,11 +240,20 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
     timeline_limit: int = 200
 
     def do_GET(self) -> None:  # noqa: N802
-        if self.path.split("?", 1)[0] not in {"/", "/api/command-center", "/api/timeline"}:
+        route = self.path.split("?", 1)[0]
+        if route == "/assets/Tektur.ttf":
+            body = (Path(__file__).with_name("assets") / "Tektur.ttf").read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type", "font/ttf")
+            self.send_header("Cache-Control", "public, max-age=86400")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        if route not in {"/", "/api/command-center", "/api/timeline"}:
             self.send_error(404)
             return
         snapshot = build_snapshot(self.database, stop_path=self.stop_path, timeline_limit=self.timeline_limit)
-        route = self.path.split("?", 1)[0]
         if route == "/":
             body = self._html(snapshot).encode("utf-8")
             content_type = "text/html; charset=utf-8"
@@ -300,24 +310,200 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
 
     @staticmethod
     def _html(snapshot: dict[str, Any]) -> str:
-        """Small dependency-free local view; all values come from JSON state."""
+        """Dependency-free telemetry observatory; all values come from durable state."""
         stop = snapshot["stop"]["active"]
         health = snapshot["health"]
         cost = snapshot["costs"]
-        rows = "".join(
-            f"<tr><td>{m.get('mission_id','')}</td><td>{m.get('state','')}</td><td>{m.get('objective','')}</td><td>{m.get('next_action') or 'UNKNOWN'}</td></tr>"
-            for m in snapshot["missions"][:20]
-        ) or "<tr><td colspan='4'>No durable missions recorded</td></tr>"
+        controls = snapshot["controls"]
+        missions = snapshot["missions"][:20]
+        timeline_events = snapshot["timeline"][-16:][::-1]
+        unknown = "UNKNOWN"
+
+        def safe(value: Any, fallback: str = unknown) -> str:
+            return escape(str(value if value not in (None, "") else fallback))
+
+        def tone(value: Any) -> str:
+            normalized = str(value or unknown).upper()
+            if normalized in {"PASS", "PASSED", "RUNNING", "READY", "CLEAR", "COMPLETED", "MEASURED", "EXECUTING"}:
+                return "nominal"
+            if normalized in {"BLOCKED", "FAILED", "FAIL", "ACTIVE", "STOPPED", "FROZEN"}:
+                return "critical"
+            if normalized in {"VERIFYING", "UNKNOWN", "NOT_TESTED", "NOT_AVAILABLE", "DEGRADED"}:
+                return "caution"
+            return "neutral"
+
+        mission_cards = "".join(
+            f"""<tr>
+              <td><a class='record-link' href='/api/command-center' aria-label='Open durable record for {safe(m.get("mission_id"))}'>{safe(m.get("mission_id"))}</a></td>
+              <td><span class='status {tone(m.get("state"))}'><i></i>{safe(m.get("state"))}</span></td>
+              <td class='objective'>{safe(m.get("objective"))}</td>
+              <td class='next-action'>{safe(m.get("next_action"))}</td>
+            </tr>"""
+            for m in missions
+        ) or "<tr><td colspan='4' class='empty'>No durable missions recorded. JARVIS is honestly waiting.</td></tr>"
+
         timeline = "".join(
-            f"<li><code>#{e['sequence']} {e['event_type']}</code> {e.get('summary','')} <small>evidence: {len(e.get('evidence_refs', []))}</small></li>"
-            for e in snapshot["timeline"][-20:][::-1]
-        ) or "<li>No events recorded</li>"
-        return f"""<!doctype html><html lang='en'><meta charset='utf-8'><title>JARVIS Command Center</title>
-<style>body{{font:15px system-ui;background:#10151c;color:#e9eef5;max-width:1200px;margin:2rem auto;padding:0 1rem}}h1{{color:#7dd3fc}}.grid{{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem}}.card{{background:#19222d;border:1px solid #334155;border-radius:8px;padding:1rem}}.danger{{color:#fca5a5}}table{{width:100%;border-collapse:collapse}}td,th{{padding:.45rem;border-bottom:1px solid #334155;text-align:left}}code{{color:#a7f3d0}}small{{color:#94a3b8}}</style>
-<h1>JARVIS Command Center</h1><p>Ledger head <b>{snapshot['source_of_truth']['ledger_head_sequence']}</b> · generated {snapshot['generated_at']}</p>
-<div class='grid'><div class='card'>Supervisor<br><b>{health.get('supervisor_status','UNKNOWN')}</b><br>Trust: {health.get('trust_state','UNKNOWN')}</div><div class='card'>STOP<br><b class='{'danger' if stop else ''}'>{'ACTIVE' if stop else 'CLEAR'}</b><br>Independent sentinel path</div><div class='card'>Degraded<br><b>{'YES' if health.get('degraded') else 'NO'}</b><br>Stale leases: {len(health.get('stale_leases', []))}</div><div class='card'>Measured cost<br><b>{cost.get('measured_actual_total_usd')}</b><br>Unknown measurements: {cost.get('unknown_measurements')}</div></div>
-<h2>Missions</h2><table><tr><th>Mission</th><th>State</th><th>Objective</th><th>Next action</th></tr>{rows}</table>
-<h2>Decision timeline</h2><ol>{timeline}</ol><p><small>Every material item links to ledger event/evidence references in <a href='/api/timeline'>the JSON timeline</a>.</small></p>
+            f"""<li class='timeline-event {tone(e.get("summary"))}'>
+              <div class='timeline-node' aria-hidden='true'></div>
+              <div class='event-head'><a href='/api/timeline'>EVT-{int(e["sequence"]):04d}</a><time>{safe(str(e.get("recorded_at", ""))[11:19], "--:--:--")}</time></div>
+              <strong>{safe(e.get("event_type"))}</strong>
+              <p>{safe(e.get("summary"), "No summary recorded")}</p>
+              <span class='evidence-count'>{len(e.get("evidence_refs", []))} linked record{'s' if len(e.get("evidence_refs", [])) != 1 else ''}</span>
+            </li>"""
+            for e in timeline_events
+        ) or "<li class='empty'>No ledger events recorded.</li>"
+
+        goal = controls["goals"][0].get("exact_text") if controls["goals"] else "No active owner goal"
+        constraint_count = len(controls["constraints"])
+        active_workers = sum(1 for worker in snapshot["workers"] if worker.get("status") == "RUNNING")
+        verified = sum(1 for verdict in snapshot["verification"] if verdict.get("status") == "PASS")
+        blocked = len(snapshot["recovery"]["blocked_missions"])
+        briefing_status = snapshot["briefings"][0].get("status") if snapshot["briefings"] else "NOT_AVAILABLE"
+        voice_status = snapshot["voice"][0].get("status") if snapshot["voice"] else "NOT_TESTED"
+        cost_value = cost.get("measured_actual_total_usd", unknown)
+        cost_display = f"${float(cost_value):.2f}" if isinstance(cost_value, (float, int)) else safe(cost_value)
+        stop_label = "ACTIVE" if stop else "CLEAR"
+        degraded_label = "DEGRADED" if health.get("degraded") else "NOMINAL"
+        generated = safe(snapshot["generated_at"])
+
+        return f"""<!doctype html>
+<html lang='en'>
+<head>
+<meta charset='utf-8'>
+<meta name='viewport' content='width=device-width,initial-scale=1'>
+<meta name='color-scheme' content='dark'>
+<title>JARVIS Command Center</title>
+<style>
+@font-face{{font-family:"Tektur";src:url('/assets/Tektur.ttf') format('truetype');font-weight:400 900;font-display:swap}}
+:root{{
+  --void:#03070a;--panel:#071016;--panel-raised:#0a151c;--line:#23414b;--line-hot:#3a6875;
+  --text:#edfafa;--muted:#9cb6bc;--dim:#77939b;--signal:#64f4d2;--cyan:#75ddff;
+  --amber:#ffc66b;--red:#ff7777;--focus:0 0 0 3px rgba(117,221,255,.30)
+}}
+*{{box-sizing:border-box}}
+html{{background:var(--void);scroll-behavior:smooth}}
+body{{margin:0;min-width:320px;background:var(--void);color:var(--text);font:500 14px/1.5 "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif}}
+body::before{{content:"";position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle at 78% -10%,rgba(47,177,185,.12),transparent 34%),linear-gradient(180deg,rgba(255,255,255,.018),transparent 22%);z-index:-1}}
+::selection{{background:var(--signal);color:#03221c}}
+a{{color:inherit;text-decoration-color:var(--line-hot);text-underline-offset:4px}}
+a:hover{{color:var(--signal)}}
+:focus-visible{{outline:none;box-shadow:var(--focus);border-radius:4px}}
+.shell{{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100vh}}
+.rail{{position:sticky;top:0;height:100vh;padding:24px 18px;border-right:1px solid var(--line);background:#060b10;display:flex;flex-direction:column}}
+.brand{{display:flex;align-items:center;gap:12px;padding:4px 6px 28px}}
+.brand-mark{{width:34px;height:34px;position:relative;display:grid;place-items:center;border:1px solid var(--signal);clip-path:polygon(20% 0,80% 0,100% 20%,100% 80%,80% 100%,20% 100%,0 80%,0 20%)}}
+.brand-mark::before{{content:"";width:9px;height:9px;border:2px solid var(--signal);border-radius:50%;box-shadow:0 0 18px rgba(100,244,210,.45)}}
+.brand strong,.identity h1,.command-copy h2,.goal-panel blockquote,.panel-head h2{{font-family:"Tektur","Segoe UI",sans-serif}}.brand strong{{display:block;font-size:15px;letter-spacing:.08em}}.brand small{{color:var(--muted);font-size:10px;letter-spacing:.16em}}
+nav{{display:grid;gap:5px}}nav a{{display:flex;align-items:center;gap:11px;padding:10px 11px;color:var(--muted);text-decoration:none;border-radius:8px;border:1px solid transparent}}
+nav a::before{{content:"";width:6px;height:6px;border:1px solid currentColor;transform:rotate(45deg)}}nav a.active{{color:var(--text);background:var(--panel);border-color:var(--line)}}nav a.active::before{{background:var(--signal);border-color:var(--signal)}}
+.rail-foot{{margin-top:auto;padding:14px 10px 4px;border-top:1px solid var(--line);color:var(--muted);font-size:11px}}.rail-foot b{{display:block;color:var(--signal);margin-bottom:3px}}
+.main{{min-width:0}}
+.topbar{{min-height:72px;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 30px;border-bottom:1px solid var(--line);background:rgba(5,8,12,.88);position:sticky;top:0;z-index:10;backdrop-filter:blur(14px)}}
+.identity h1{{font-size:17px;margin:0;letter-spacing:.06em}}.identity p{{margin:2px 0 0;color:var(--muted);font-size:11px}}
+.top-signals{{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}}
+.status{{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;font:700 10px/1.2 ui-monospace,"Cascadia Mono",monospace;letter-spacing:.07em;text-transform:uppercase}}
+.status i{{width:6px;height:6px;border-radius:50%;background:var(--dim)}}.status.nominal{{color:var(--signal)}}.status.nominal i{{background:var(--signal);box-shadow:0 0 9px rgba(100,244,210,.6)}}.status.caution{{color:var(--amber)}}.status.caution i{{background:var(--amber)}}.status.critical{{color:var(--red)}}.status.critical i{{background:var(--red)}}.status.neutral{{color:var(--muted)}}
+.stop-state{{border:1px solid var(--line);padding:8px 12px;border-radius:8px;background:var(--panel)}}.stop-state.critical{{border-color:rgba(255,107,107,.55)}}
+.content{{padding:28px 30px 48px;max-width:1680px;margin:0 auto}}
+.downlink{{position:relative;border:1px solid var(--line-hot);background:var(--panel);clip-path:polygon(0 18px,18px 0,calc(100% - 18px) 0,100% 18px,100% calc(100% - 18px),calc(100% - 18px) 100%,18px 100%,0 calc(100% - 18px));box-shadow:0 28px 80px rgba(0,0,0,.3)}}
+.downlink::before,.downlink::after{{content:"";position:absolute;z-index:2;pointer-events:none;background:var(--signal)}}.downlink::before{{height:1px;width:82px;top:0;left:28px}}.downlink::after{{width:1px;height:82px;top:28px;left:0}}
+.calibration{{height:26px;border-bottom:1px solid var(--line);background:repeating-linear-gradient(90deg,transparent 0 23px,var(--line-hot) 23px 24px);position:relative}}.calibration::after{{content:"JARVIS / OWNER DOWNLINK / LEDGER PROJECTION";position:absolute;left:26px;top:6px;background:var(--panel);padding:0 10px;color:var(--dim);font:700 9px ui-monospace,monospace;letter-spacing:.12em}}
+.mission-control{{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,.55fr);border-bottom:1px solid var(--line)}}
+.command-field{{min-height:268px;border-right:1px solid var(--line);background:linear-gradient(145deg,#0b151d,#071017 72%);padding:28px;position:relative;overflow:hidden}}
+.command-field::after{{content:"";position:absolute;right:-54px;top:-84px;width:250px;height:250px;border:1px solid rgba(100,244,210,.13);border-radius:50%;box-shadow:0 0 0 34px rgba(100,244,210,.025),0 0 0 68px rgba(100,244,210,.018)}}
+.command-copy{{position:relative;z-index:1;max-width:760px}}.command-copy h2{{font-size:31px;line-height:1.1;letter-spacing:-.025em;margin:10px 0 12px;max-width:18ch}}.command-copy>p{{color:var(--muted);max-width:64ch;margin:0 0 24px}}
+.signal-label{{font:700 10px/1.2 ui-monospace,"Cascadia Mono",monospace;letter-spacing:.14em;color:var(--signal);text-transform:uppercase}}
+.directive-box{{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;max-width:760px;background:#050b10;border:1px solid var(--line);border-radius:10px;padding:11px 13px}}
+.directive-box svg{{width:17px;height:17px;stroke:var(--cyan)}}.directive-box input{{min-width:0;border:0;background:transparent;color:var(--muted);font:inherit;outline:0}}.directive-box button{{border:1px solid var(--line);background:var(--panel-raised);color:var(--dim);border-radius:7px;padding:8px 12px;font:700 10px ui-monospace,monospace;letter-spacing:.07em}}.directive-box button:disabled{{cursor:not-allowed}}
+.preview-note{{display:flex;align-items:center;gap:8px;margin-top:10px;color:var(--amber);font-size:11px}}
+.goal-panel{{padding:26px 22px;display:flex;flex-direction:column;justify-content:space-between}}
+.goal-panel blockquote{{font-size:18px;line-height:1.35;margin:14px 0 22px;color:var(--text)}}.goal-meta{{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding-top:16px;border-top:1px solid var(--line)}}.datum span{{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.1em}}.datum b{{display:block;margin-top:4px;font:700 15px ui-monospace,monospace}}
+.telemetry{{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border-bottom:1px solid var(--line);background:var(--panel)}}
+.telemetry article{{padding:17px 19px;min-width:0}}.telemetry article+article{{border-left:1px solid var(--line)}}.telemetry span{{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.11em}}.telemetry strong{{display:block;font:650 24px/1.1 ui-monospace,"Cascadia Mono",monospace;margin:7px 0 4px;overflow-wrap:anywhere}}.telemetry small{{color:var(--dim);font-size:10px}}
+.operations{{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(340px,.65fr);align-items:start}}
+.panel{{background:var(--panel);overflow:hidden}}.operations>.panel:first-child{{border-right:1px solid var(--line)}}
+.panel-head{{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:18px 20px;border-bottom:1px solid var(--line)}}.panel-head h2{{font-size:14px;letter-spacing:.06em;margin:0}}.panel-head p{{margin:2px 0 0;color:var(--muted);font-size:11px}}.panel-head a{{font:700 10px ui-monospace,monospace;color:var(--cyan)}}
+.table-wrap{{overflow:auto}}table{{width:100%;border-collapse:collapse;min-width:760px}}th{{color:var(--dim);font:700 9px ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase}}th,td{{text-align:left;padding:15px 18px;border-bottom:1px solid var(--line);vertical-align:top}}tbody tr:last-child td{{border-bottom:0}}tbody tr:hover{{background:rgba(108,217,255,.025)}}td{{font-size:12px}}td.objective{{color:var(--text);max-width:360px}}td.next-action{{color:var(--muted);max-width:280px}}.record-link{{font:650 11px ui-monospace,monospace;color:var(--cyan);text-decoration:none}}.empty{{color:var(--muted);padding:28px;text-align:center}}
+.timeline-panel{{max-height:720px;overflow:auto}}.timeline-list{{list-style:none;margin:0;padding:7px 20px 20px 46px}}.timeline-event{{position:relative;padding:14px 0 16px;border-bottom:1px solid var(--line)}}.timeline-event:last-child{{border-bottom:0}}.timeline-event::before{{content:"";position:absolute;left:-24px;top:0;bottom:0;width:1px;background:var(--line)}}.timeline-node{{position:absolute;left:-28px;top:20px;width:9px;height:9px;border:2px solid var(--signal);background:var(--panel);transform:rotate(45deg)}}.timeline-event:first-child .timeline-node{{animation:signal-breathe 2.8s ease-in-out 2}}.timeline-event.caution .timeline-node{{border-color:var(--amber)}}.timeline-event.critical .timeline-node{{border-color:var(--red)}}.event-head{{display:flex;justify-content:space-between;gap:8px;font:700 9px ui-monospace,monospace;color:var(--dim)}}.event-head a{{color:var(--cyan);text-decoration:none}}.timeline-event strong{{display:block;font:650 11px ui-monospace,monospace;margin:6px 0 3px;color:var(--text)}}.timeline-event p{{margin:0;color:var(--muted);font-size:11px;line-height:1.45}}.evidence-count{{display:inline-block;margin-top:8px;color:var(--signal);font:700 9px ui-monospace,monospace;text-transform:uppercase;letter-spacing:.06em}}
+.footer{{display:flex;justify-content:space-between;gap:20px;padding:15px 26px;color:var(--dim);font-size:10px;border-top:1px solid var(--line)}}.footer a{{color:var(--muted)}}
+@keyframes signal-breathe{{0%,100%{{box-shadow:0 0 0 rgba(100,244,210,0)}}50%{{box-shadow:0 0 12px rgba(100,244,210,.42)}}}}
+@media(max-width:1120px){{.shell{{grid-template-columns:78px minmax(0,1fr)}}.rail{{padding:22px 12px}}.brand-copy,nav span,.rail-foot span{{display:none}}.brand{{justify-content:center}}nav a{{justify-content:center;padding:12px}}.mission-control,.operations{{grid-template-columns:1fr}}.command-field,.operations>.panel:first-child{{border-right:0;border-bottom:1px solid var(--line)}}.telemetry{{grid-template-columns:repeat(3,1fr)}}.telemetry article:nth-child(4){{border-left:0;border-top:1px solid var(--line)}}.telemetry article:nth-child(5){{border-top:1px solid var(--line)}}}}
+@media(max-width:700px){{.shell{{display:block}}.rail{{position:static;height:auto;padding:10px 14px;display:flex;flex-direction:row;align-items:center;border-right:0;border-bottom:1px solid var(--line)}}.brand{{padding:0;margin-right:auto}}.brand-copy{{display:block}}nav{{display:flex;overflow:auto}}nav a{{padding:9px}}nav a:not(.active){{display:none}}.rail-foot{{display:none}}.topbar{{padding:11px 14px;align-items:center}}.identity p{{display:none}}.top-signals{{gap:7px}}.top-signals>.status:not(.stop-state){{display:none}}.stop-state{{padding:7px 9px}}.content{{padding:14px 10px 28px}}.downlink{{clip-path:polygon(0 12px,12px 0,calc(100% - 12px) 0,100% 12px,100% calc(100% - 12px),calc(100% - 12px) 100%,12px 100%,0 calc(100% - 12px))}}.calibration::after{{left:12px;font-size:8px}}.mission-control{{display:block}}.goal-panel{{border-top:1px solid var(--line)}}.command-field{{min-height:0;padding:22px 18px}}.command-copy h2{{font-size:25px}}.directive-box{{grid-template-columns:auto minmax(0,1fr);overflow:hidden}}.directive-box input{{text-overflow:ellipsis}}.directive-box button{{display:none}}.telemetry{{grid-template-columns:1fr 1fr}}.telemetry article:nth-child(n){{border-left:0;border-top:1px solid var(--line)}}.telemetry article:nth-child(odd){{border-right:1px solid var(--line)}}.telemetry article:first-child,.telemetry article:nth-child(2){{border-top:0}}.operations{{display:block}}.timeline-panel{{max-height:none}}.panel-head{{padding:15px 16px}}.table-wrap{{overflow:visible}}table{{min-width:0}}thead{{display:none}}tbody,tbody tr,tbody td{{display:block}}tbody tr{{padding:15px 16px;border-bottom:1px solid var(--line)}}tbody tr:last-child{{border-bottom:0}}tbody td{{padding:0;border:0;max-width:none!important}}tbody td+td{{margin-top:9px}}td.objective{{font-size:13px}}td.next-action{{color:var(--muted)}}td.next-action::before{{content:"Next · ";color:var(--dim);font:700 9px ui-monospace,monospace;text-transform:uppercase;letter-spacing:.08em}}.footer{{display:block}}.footer span{{display:block;margin-bottom:7px}}}}
+@media(prefers-reduced-motion:reduce){{html{{scroll-behavior:auto}}.timeline-node{{animation:none;box-shadow:0 0 0 2px rgba(100,244,210,.12)}}}}
+</style>
+</head>
+<body>
+<!--
+THESIS: JARVIS is an evidence-bearing telemetry observatory, not a generic card dashboard.
+OWN-WORLD: Deep instrument black, precise aqua signal light, amber/red exceptions, clipped geometry, and ledger-linked telemetry.
+STORY: The owner sees system safety first, scans current intent and missions, then follows the event spine into evidence.
+FIRST VIEWPORT: A narrow command rail frames an owner-link field, live goal, five cross-check metrics, and the beginning of mission operations.
+FORM: Satellite downlink dossier, seventh grounded direction; seed 452115cf. Signature motion is restrained live-signal illumination.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
+-->
+<div class='shell'>
+  <aside class='rail'>
+    <div class='brand'><div class='brand-mark' aria-hidden='true'></div><div class='brand-copy'><strong>JARVIS</strong><small>COMMAND CENTER</small></div></div>
+    <nav aria-label='Primary navigation'>
+      <a class='active' href='#overview'><span>Command</span></a>
+      <a href='#missions'><span>Missions</span></a>
+      <a href='#timeline'><span>Timeline</span></a>
+      <a href='/api/command-center'><span>Evidence API</span></a>
+    </nav>
+    <div class='rail-foot'><b>LOCAL CANDIDATE</b><span>Durable projection only<br>No live connectors</span></div>
+  </aside>
+  <main class='main'>
+    <header class='topbar'>
+      <div class='identity'><h1>Command Center</h1><p>Append-only operational projection · generated {generated}</p></div>
+      <div class='top-signals'>
+        <span class='status {tone(health.get("supervisor_status"))}'><i></i>Supervisor {safe(health.get("supervisor_status"))}</span>
+        <span class='stop-state status {tone(stop_label)}'><i></i>STOP {stop_label}</span>
+      </div>
+    </header>
+    <div class='content' id='overview'>
+      <div class='downlink'>
+      <div class='calibration' aria-hidden='true'></div>
+      <section class='mission-control' aria-labelledby='owner-link-title'>
+        <div class='command-field'>
+          <div class='command-copy'>
+            <h2 id='owner-link-title'>Tell JARVIS what matters. It handles the rest.</h2>
+            <p>Goals, constraints, vetoes, pause, resume, and deterministic STOP enter one audited control path. Routine operation continues without becoming an approval queue.</p>
+            <div class='directive-box' aria-label='Owner communication preview'>
+              <svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='M12 3v18M8 7.5C8 5.6 9.8 4 12 4s4 1.6 4 3.5V12c0 2.2-1.8 4-4 4s-4-1.8-4-4V7.5Z' stroke-width='1.6'/><path d='M5 12a7 7 0 0 0 14 0M9 21h6' stroke-width='1.6'/></svg>
+              <input value='Owner console preview — authentication is not configured' readonly aria-label='Owner directive preview status'>
+              <button type='button' disabled>CHANNEL LOCKED</button>
+            </div>
+            <div class='preview-note'><span class='status caution'><i></i>{safe(voice_status)}</span> Real English STT/TTS remains explicitly gated.</div>
+          </div>
+        </div>
+        <aside class='goal-panel' aria-label='Current owner intent'>
+          <div><blockquote>{safe(goal)}</blockquote></div>
+          <div class='goal-meta'><div class='datum'><span>Constraints</span><b>{constraint_count:02d}</b></div><div class='datum'><span>Trust state</span><b>{safe(health.get("trust_state"))}</b></div></div>
+        </aside>
+      </section>
+      <section class='telemetry' aria-label='Operational cross-check'>
+        <article><span>System posture</span><strong class='status {tone(degraded_label)}'><i></i>{degraded_label}</strong><small>{len(health.get("stale_leases", []))} stale leases</small></article>
+        <article><span>Active workers</span><strong>{active_workers:02d}</strong><small>{len(snapshot["workers"])} durable run records</small></article>
+        <article><span>Verified</span><strong>{verified:02d}</strong><small>independent verdicts passed</small></article>
+        <article><span>Blocked work</span><strong>{blocked:02d}</strong><small>reclaimable mission records</small></article>
+        <article><span>Measured cost</span><strong>{cost_display}</strong><small>{cost.get("unknown_measurements", 0)} unknown measurements</small></article>
+      </section>
+      <div class='operations'>
+        <section class='panel' id='missions'>
+          <header class='panel-head'><div><h2>Mission operations</h2><p>Current intent, execution state, and next action from durable records.</p></div><span class='status {tone(briefing_status)}'><i></i>Briefing {safe(briefing_status)}</span></header>
+          <div class='table-wrap'><table><thead><tr><th>Mission record</th><th>State</th><th>Objective</th><th>Next action</th></tr></thead><tbody>{mission_cards}</tbody></table></div>
+        </section>
+        <aside class='panel timeline-panel' id='timeline'>
+          <header class='panel-head'><div><h2>Decision signal</h2><p>Newest ledger events first.</p></div><a href='/api/timeline'>OPEN JSON</a></header>
+          <ol class='timeline-list'>{timeline}</ol>
+        </aside>
+      </div>
+      <footer class='footer'><span>Ledger head {snapshot['source_of_truth']['ledger_head_sequence']} · {snapshot['source_of_truth']['event_count']} append-only events</span><a href='/api/command-center'>Inspect complete durable projection</a></footer>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
 </html>"""
 
     def log_message(self, *_args: Any) -> None:
