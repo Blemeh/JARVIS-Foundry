@@ -128,3 +128,26 @@ verify_manifest unknown release refused; projection/schema integrity
 
 Round-2: fresh independent verifier with A/B discrimination (round-1
 commit 269bdef vs the repaired tree) dispatched after this commit.
+
+## 9. Round-2 verdict (deleg_a57e4d94, PASS — A/B discriminated)
+
+Round-2 fresh verifier, 20/20 scratch probes: F1 artifact containment
+PASS (old code had zero name validation — new code refuses all three
+escape shapes at registration; legacy-row probe with the DECOY's real
+hash proves verify_manifest reports False without reading outside;
+handler refuses raw-writer escapes); F2 transition_id PASS (old has no
+parameter; oscillation c→g→c→g with t-1..t-3 records all four
+transitions, same-id re-delivery dedupes, same-id different payload
+conflicts); F3 already-live guard PASS; F4 same-id/different-content
+rollback PASS (one manifest_recorded event, row byte-identical); F5 no
+regression PASS (23/23 focused, suite 760 EXIT=0 sha256
+6e9de82808b224aa6aa91d77846236e0818af0cff00d04d815c012eb824d37ac,
+collect-only 760, runtime v22 consistent, live v20 zero events, main
+untouched, worktree clean). Verdict JSON:
+var/evidence/v6-s2/verdict-deleg_a57e4d94-r2.json,
+sha256 1d090454332437ac0522600ec99704c42ac34ea1c11e1a6b221c7577bd0e6ecc.
+3 INFO observations recorded (CR-terminated -q progress lines; runtime
+DB empty ledger at machinery stage; containment defense-in-depth
+structure). None blocking.
+
+**S2 CLOSED — PASS (rounds 1+2).** Next: S3 (isolated candidate builder).
