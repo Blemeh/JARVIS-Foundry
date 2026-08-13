@@ -42,6 +42,7 @@ PROJECTION_TABLES = (
     "release_manifests",
     "release_slots",
     "candidate_builds",
+    "evaluation_runs",
 )
 
 
@@ -1196,6 +1197,53 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             (payload["reason"], event.recorded_at, event.event_id,
              event.recorded_at, payload["build_id"]),
         )
+    elif event.event_type == "evaluation.run_started":
+        for key in ("run_id", "workload_id", "subject_kind",
+                    "subject_identity", "command_hash"):
+            if key not in payload:
+                raise ValueError(
+                    f"evaluation.run_started requires {key} "
+                    "(mandatory payload key) — rolled back")
+        connection.execute(
+            """INSERT OR IGNORE INTO evaluation_runs(
+                run_id, workload_id, subject_kind, subject_identity,
+                command_hash, input_hash, created_at, last_event_id,
+                updated_at
+            ) VALUES (?, ?, ?, ?, ?, '', ?, ?, ?)""",
+            (payload["run_id"], payload["workload_id"],
+             payload["subject_kind"], payload["subject_identity"],
+             payload["command_hash"], event.recorded_at,
+             event.event_id, event.recorded_at),
+        )
+    elif event.event_type == "evaluation.run_completed":
+        for key in ("run_id", "workload_id", "subject_kind",
+                    "subject_identity", "command_hash", "input_hash",
+                    "exit_code", "duration_s", "error_rate", "cost_usd",
+                    "case_results", "output_hashes",
+                    "nondeterminism_handling"):
+            if key not in payload:
+                raise ValueError(
+                    f"evaluation.run_completed requires {key} "
+                    "(mandatory payload key) — rolled back")
+        cursor = connection.execute(
+            """UPDATE evaluation_runs SET input_hash = ?, exit_code = ?,
+               duration_s = ?, error_rate = ?, cost_usd = ?,
+               case_results_json = ?, output_hashes_json = ?,
+               nondeterminism_handling = ?, last_event_id = ?,
+               updated_at = ?
+               WHERE run_id = ?""",
+            (payload["input_hash"], payload["exit_code"],
+             payload["duration_s"], payload["error_rate"],
+             payload["cost_usd"],
+             canonical_json(payload["case_results"]),
+             canonical_json(payload["output_hashes"]),
+             payload["nondeterminism_handling"], event.event_id,
+             event.recorded_at, payload["run_id"]),
+        )
+        if cursor.rowcount == 0:
+            raise ValueError(
+                f"evaluation.run_completed references unknown run "
+                f"{payload['run_id']} — rolled back")
     elif event.event_type == "release.slot_changed":
         for key in ("slot", "release_id", "previous_release_id",
                     "reason", "controller"):
