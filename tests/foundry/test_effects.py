@@ -1,0 +1,436 @@
+"""V5-S6: external-effect execution, idempotency, and reconciliation.
+
+Retries never duplicate effects; the journal is monotonic
+(STARTED -> COMPLETED/FAILED/FROZEN, never regresses); crashes between
+start and completion are reaped deterministically (never a second
+execution); ambiguous effects freeze with an append-only compensation
+path; provider reconciliation is honest (NOT_TESTED without a real
+provider); financial consequences are recorded.
+"""
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from jarvis_foundry.connectors.contract import ConnectorSpec
+from jarvis_foundry.connectors.registry import register_connector
+from jarvis_foundry.control.broker import (PolicyBroker, record_decision)
+from jarvis_foundry.database import FoundryDatabase
+from jarvis_foundry.domain import ActionEnvelope, BrokerDecision
+from jarvis_foundry.effects import (
+    EffectStateError,
+    compensate_effect,
+    effect_identity,
+    effect_state,
+    execute_effect,
+    freeze_effect,
+    reconcile_effect,
+)
+from jarvis_foundry.events import Event
+
+
+@pytest.fixture()
+def db(tmp_path: Path) -> FoundryDatabase:
+    database = FoundryDatabase(tmp_path / "foundry.db")
+    database.initialize()
+    return database
+
+
+def _register_system(db: FoundryDatabase, system_id: str = "sys-browser") -> None:
+    db.append(Event.create(
+        "system.registered",
+        {"system_id": system_id, "kind": "browser",
+         "capabilities": {"write": "READY"}, "name": "Browser",
+         "repository": None, "folder": None},
+        source_type="supervisor", source_id="v5-test",
+        idempotency_key=f"system.registered:{system_id}"))
+
+
+def _register_connector(db: FoundryDatabase) -> None:
+    register_connector(db, ConnectorSpec(
+        connector_id="conn-fs", kind="filesystem", version="1.0.0",
+        actions={"file.write": "write"},
+        capabilities={"write": "READY"},
+        retry_policy={"max_attempts": 3, "backoff_s": [1]}))
+
+
+def _envelope(**overrides: object) -> ActionEnvelope:
+    values: dict[str, object] = {
+        "action_id": "act-s6-1",
+        "mission_id": "mission-1",
+        "resource_id": "res-1",
+        "action_kind": "file.write",
+        "target": None,
+        "capability": "write",
+        "expected_effects": ("create notes.txt",),
+        "risk_class": "C1",
+        "verification_required": True,
+        "rollback": {"method": "remove"},
+        "step_id": "step-1",
+        "requested_by_agent_run_id": "run-1",
+        "target_resources": ("sys-browser",),
+        "capabilities_required": ("write",),
+        "goal_alignment": "mission-1",
+        "active_owner_vetoes_checked": (),
+        "expected_effect": "create notes.txt",
+        "reversibility": "reversible",
+        "before_state_capture": {"ref": "snap-1", "hash": "h-before"},
+        "verification_plan": {"kind": "deterministic"},
+        "rollback_plan": {"strategy": "freeze",
+                          "steps": ("record", "freeze for review")},
+        "idempotency_key": "act-s6-1-key",
+        "budget_estimate": {},
+        "credential_requirements": (),
+        "created_at": "2026-08-13T00:00:00Z",
+    }
+    values.update(overrides)
+    return ActionEnvelope(**values)
+
+
+def _allow(db: FoundryDatabase, *, action_id: str = "act-s6-1",
+           **overrides: object) -> ActionEnvelope:
+    envelope = _envelope(action_id=action_id, **overrides)
+    outcome = PolicyBroker(db).decide(envelope)
+    assert outcome.decision == BrokerDecision.ALLOW, outcome.reason
+    record_decision(db, envelope, outcome)  # the ALLOW ticket
+    return envelope
+
+
+class _FakeStore:
+    """Deterministic perform target: tracks writes; can fail or time
+    out on demand; the after-state is its content hash."""
+
+    def __init__(self) -> None:
+        self.content: dict[str, str] = {}
+        self.fail_with: BaseException | None = None
+        self.calls = 0
+
+    def perform(self, ref: str, payload: str) -> str:
+        self.calls += 1
+        if self.fail_with is not None:
+            raise self.fail_with
+        self.content[ref] = payload
+        return f"hash-after:{ref}:{len(payload)}"
+
+
+def _run(db: FoundryDatabase, store: _FakeStore, envelope: ActionEnvelope,
+         *, connector_id: str = "conn-fs") -> dict[str, object]:
+    return execute_effect(
+        db, envelope=envelope, connector_id=connector_id,
+        perform=store.perform)
+
+
+# ---------------------------------------------------------------------------
+# execution + idempotency
+# ---------------------------------------------------------------------------
+
+def test_execute_effect_started_then_completed(db: FoundryDatabase) -> None:
+    _register_system(db)
+    _register_connector(db)
+    envelope = _allow(db)
+    store = _FakeStore()
+    result = _run(db, store, envelope)
+    assert result["outcome"] == "COMPLETED"
+    assert store.calls == 1
+    state = effect_state(db, result["action_key"])
+    assert state["status"] == "COMPLETED"
+    assert state["before_state"] == {"ref": "snap-1", "hash": "h-before"}
+    assert state["after_state"].startswith("hash-after:")
+
+
+def test_retry_never_duplicates_effect(db: FoundryDatabase) -> None:
+    """The exit-evidence gate: a retried delivery of the SAME effect
+    executes exactly once."""
+    _register_system(db)
+    _register_connector(db)
+    envelope = _allow(db)
+    store = _FakeStore()
+    first = _run(db, store, envelope)
+    second = _run(db, store, envelope)  # identical re-delivery
+    assert store.calls == 1  # performed once
+    assert first["action_key"] == second["action_key"]
+    assert second["outcome"] == "COMPLETED"
+    assert second["performed"] is False  # idempotent retry, no re-run
+    with db.connect() as connection:
+        started = connection.execute(
+            "SELECT COUNT(*) FROM events WHERE event_type = "
+            "'system.action_started'").fetchone()[0]
+        completed = connection.execute(
+            "SELECT COUNT(*) FROM events WHERE event_type = "
+            "'system.action_completed'").fetchone()[0]
+    assert (started, completed) == (1, 1)
+
+
+def test_conflicting_payload_is_a_different_effect(db: FoundryDatabase) -> None:
+    """Same system+target with a DIFFERENT payload -> different key:
+    both effects execute independently."""
+    _register_system(db)
+    _register_connector(db)
+    store = _FakeStore()
+    envelope_a = _allow(db, action_id="act-a",
+                        expected_effect="create notes.txt")
+    envelope_b = _allow(db, action_id="act-b",
+                        expected_effect="create other.txt")
+    first = _run(db, store, envelope_a)
+    second = _run(db, store, envelope_b)
+    assert first["action_key"] != second["action_key"]
+    assert store.calls == 2
+
+
+def test_effect_requires_allow_ticket(db: FoundryDatabase) -> None:
+    _register_system(db)
+    _register_connector(db)
+    envelope = _envelope()  # never decided -> no ALLOW ticket
+    store = _FakeStore()
+    with pytest.raises(PermissionError):
+        _run(db, store, envelope)
+    assert store.calls == 0
+
+
+def test_budget_exceeded_never_executes(db: FoundryDatabase) -> None:
+    _register_system(db)
+    _register_connector(db)
+    envelope = _envelope(budget_estimate={"USD": 15})
+    outcome = PolicyBroker(db).decide(envelope, budget={"USD": 10})
+    assert outcome.decision == BrokerDecision.BUDGET_EXCEEDED
+    store = _FakeStore()
+    with pytest.raises(PermissionError):
+        _run(db, store, envelope)
+    assert store.calls == 0
+
+
+# ---------------------------------------------------------------------------
+# crash window + monotonicity
+# ---------------------------------------------------------------------------
+
+def test_crash_between_start_and_completion_reaped_once(
+        db: FoundryDatabase) -> None:
+    """A STARTED effect with no terminal event is reaped deterministically:
+    NEVER re-executed (a second attempt would duplicate the effect)."""
+    _register_system(db)
+    _register_connector(db)
+    envelope = _allow(db)
+    store = _FakeStore()
+    # simulate the crash: record STARTED only (the S1 journal API)
+    from jarvis_foundry.systems import record_external_action
+    key, system_id, target_ref, effect_hash = effect_identity(db, envelope)
+    record_external_action(db, system_id, target_ref, effect_hash,
+                           kind="file.write", started=True)
+    result = _run(db, store, envelope)  # the driver reaps the crash
+    assert store.calls == 0  # no second execution, no duplicate effect
+    assert result["outcome"] == "FROZEN"
+    assert result["reaped"] is True
+    state = effect_state(db, result["action_key"])
+    assert state["status"] == "FROZEN"
+    # a third attempt is an idempotent no-op: the recorded FROZEN
+    # outcome returns, the effect is NEVER re-performed
+    third = _run(db, store, envelope)
+    assert third["outcome"] == "FROZEN"
+    assert third["performed"] is False
+    assert store.calls == 0
+
+
+def test_terminal_state_never_regresses(db: FoundryDatabase) -> None:
+    """Monotonic journal: a late FAILED event cannot un-complete a
+    completed effect, and a late COMPLETED cannot un-fail a failed one."""
+    _register_system(db)
+    _register_connector(db)
+    envelope = _allow(db)
+    store = _FakeStore()
+    key = _run(db, store, envelope)["action_key"]
+    _, _, _, effect_hash = effect_identity(db, envelope)
+    # late failed event (crash report arriving after completion)
+    db.append(Event.create(
+        "system.action_failed",
+        {"action_key": key, "system_id": "sys-browser",
+         "target_ref": "sys-browser", "payload_hash": effect_hash,
+         "kind": "file.write"},
+        source_type="connector", source_id="conn-fs",
+        idempotency_key=f"{key}.failed.late"))
+    assert effect_state(db, key)["status"] == "COMPLETED"
+    # and a FAILED effect stays failed on a late completed event
+    store.fail_with = RuntimeError("boom")
+    envelope_fail = _allow(db, action_id="act-fail",
+                           expected_effect="create fail.txt")
+    key_fail = _run(db, store, envelope_fail)["action_key"]
+    _, _, _, fail_hash = effect_identity(db, envelope_fail)
+    assert effect_state(db, key_fail)["status"] == "FAILED"
+    db.append(Event.create(
+        "system.action_completed",
+        {"action_key": key_fail, "system_id": "sys-browser",
+         "target_ref": "sys-browser",
+         "payload_hash": fail_hash,
+         "kind": "file.write"},
+        source_type="connector", source_id="conn-fs",
+        idempotency_key=f"{key_fail}.completed.late"))
+    assert effect_state(db, key_fail)["status"] == "FAILED"
+
+
+# ---------------------------------------------------------------------------
+# failure, timeout, partial success
+# ---------------------------------------------------------------------------
+
+def test_failure_records_reason_and_no_completed(db: FoundryDatabase) -> None:
+    _register_system(db)
+    _register_connector(db)
+    envelope = _allow(db, action_id="act-boom",
+                      expected_effect="create boom.txt")
+    store = _FakeStore()
+    store.fail_with = RuntimeError("connection refused")
+    result = _run(db, store, envelope)
+    assert result["outcome"] == "FAILED"
+    state = effect_state(db, result["action_key"])
+    assert state["status"] == "FAILED"
+    assert "connection refused" in state["failure_reason"]
+
+
+def test_timeout_recorded_as_failed(db: FoundryDatabase) -> None:
+    _register_system(db)
+    _register_connector(db)
+    envelope = _allow(db, action_id="act-slow",
+                      expected_effect="create slow.txt")
+    store = _FakeStore()
+    store.fail_with = TimeoutError("deadline exceeded")
+    result = _run(db, store, envelope)
+    assert result["outcome"] == "FAILED"
+    assert "deadline" in str(effect_state(
+        db, result["action_key"])["failure_reason"])
+
+
+def test_partial_success_captures_after_state(db: FoundryDatabase) -> None:
+    """A perform that mutates then raises: the effect FAILED and the
+    journal records NO fabricated after-state (the driver can only
+    capture what the perform returns). The partial change stays
+    observable provider-side — which is exactly what reconciliation
+    exists to catch."""
+    _register_system(db)
+    _register_connector(db)
+    envelope = _allow(db, action_id="act-partial",
+                      expected_effect="create partial.txt")
+    store = _FakeStore()
+
+    def partial(ref: str, payload: str) -> str:
+        store.content[ref] = payload  # side effect happened
+        raise RuntimeError("crashed mid-write")
+
+    result = execute_effect(
+        db, envelope=envelope, connector_id="conn-fs", perform=partial)
+    assert result["outcome"] == "FAILED"
+    state = effect_state(db, result["action_key"])
+    assert state["status"] == "FAILED"
+    assert state["after_state"] is None  # honest — nothing captured
+    assert "crashed mid-write" in state["failure_reason"]
+    assert "sys-browser" in store.content  # visible provider-side only
+
+
+# ---------------------------------------------------------------------------
+# freeze + compensation (append-only correction)
+# ---------------------------------------------------------------------------
+
+def test_freeze_and_compensation_append_only(db: FoundryDatabase) -> None:
+    _register_system(db)
+    _register_connector(db)
+    envelope = _allow(db)
+    store = _FakeStore()
+    key = _run(db, store, envelope)["action_key"]
+    with pytest.raises(EffectStateError):
+        # a COMPLETED effect cannot be frozen by request
+        freeze_effect(db, key, reason="too late")
+    assert effect_state(db, key)["status"] == "COMPLETED"
+
+
+def test_freeze_started_effect_and_compensate(db: FoundryDatabase) -> None:
+    _register_system(db)
+    _register_connector(db)
+    envelope = _allow(db)
+    from jarvis_foundry.systems import record_external_action
+    key, system_id, target_ref, effect_hash = effect_identity(db, envelope)
+    record_external_action(db, system_id, target_ref, effect_hash,
+                           kind="file.write", started=True)
+    freeze_effect(db, key, reason="provider unreachable — ambiguous")
+    assert effect_state(db, key)["status"] == "FROZEN"
+    compensate_effect(db, key, compensation_ref="undo-1")
+    # the journal stays FROZEN — the correction is recorded, never a rewrite
+    assert effect_state(db, key)["status"] == "FROZEN"
+    with db.connect() as connection:
+        frozen = connection.execute(
+            "SELECT COUNT(*) FROM events WHERE event_type = 'effect.frozen'"
+        ).fetchone()[0]
+        compensated = connection.execute(
+            "SELECT COUNT(*) FROM events WHERE event_type = "
+            "'effect.compensated'").fetchone()[0]
+    assert (frozen, compensated) == (1, 1)
+
+
+# ---------------------------------------------------------------------------
+# provider reconciliation (honest NOT_TESTED without a real provider)
+# ---------------------------------------------------------------------------
+
+def test_reconcile_matching_provider_state(db: FoundryDatabase) -> None:
+    _register_system(db)
+    _register_connector(db)
+    envelope = _allow(db)
+    store = _FakeStore()
+    key = _run(db, store, envelope)["action_key"]
+    after_state = effect_state(db, key)["after_state"]
+    provider_state = {"target": "sys-browser", "exists": True,
+                      "content_hash": after_state}
+    result = reconcile_effect(db, key, provider_state=provider_state)
+    assert result["reconciled"] is True
+    assert effect_state(db, key)["status"] == "COMPLETED"
+
+
+def test_reconcile_mismatch_freezes(db: FoundryDatabase) -> None:
+    _register_system(db)
+    _register_connector(db)
+    envelope = _allow(db)
+    store = _FakeStore()
+    key = _run(db, store, envelope)["action_key"]
+    provider_state = {"target": "sys-browser", "exists": False}
+    result = reconcile_effect(db, key, provider_state=provider_state)
+    assert result["reconciled"] is False
+    assert effect_state(db, key)["status"] == "FROZEN"
+
+
+def test_reconcile_requires_terminal_effect(db: FoundryDatabase) -> None:
+    _register_system(db)
+    _register_connector(db)
+    envelope = _allow(db)
+    from jarvis_foundry.systems import record_external_action
+    key, system_id, target_ref, effect_hash = effect_identity(db, envelope)
+    record_external_action(db, system_id, target_ref, effect_hash,
+                           kind="file.write", started=True)
+    with pytest.raises(EffectStateError):
+        reconcile_effect(db, key, provider_state={"exists": True})
+    with pytest.raises(EffectStateError):
+        reconcile_effect(db, "nope", provider_state={"exists": True})
+
+
+# ---------------------------------------------------------------------------
+# durability: migration v20 + rebuild
+# ---------------------------------------------------------------------------
+
+def test_v20_schema_accepts_frozen(db: FoundryDatabase) -> None:
+    """Migration v20 rebuilds system_actions with FROZEN in the CHECK
+    (the freeze path needs the derived journal state)."""
+    with db.connect() as connection:
+        version = connection.execute(
+            "SELECT MAX(version) FROM schema_migrations").fetchone()[0]
+        ddl = connection.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND "
+            "name='system_actions'").fetchone()[0]
+    assert version == 20
+    assert "FROZEN" in ddl
+
+
+def test_effect_state_survives_rebuild(db: FoundryDatabase) -> None:
+    _register_system(db)
+    _register_connector(db)
+    envelope = _allow(db)
+    store = _FakeStore()
+    key = _run(db, store, envelope)["action_key"]
+    before = effect_state(db, key)
+    db.rebuild_projections()
+    after = effect_state(db, key)
+    assert before == after

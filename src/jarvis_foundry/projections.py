@@ -728,14 +728,35 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
              payload.get("kind", ""), event.event_id, event.recorded_at),
         )
     elif event.event_type == "system.action_completed":
+        # V5-S6 monotonicity: a terminal journal state never regresses —
+        # a late completed event cannot un-fail a failed effect (the
+        # event is append-only history; the derived state is guarded).
         connection.execute(
             "UPDATE system_actions SET status = 'COMPLETED', "
-            "last_event_id = ?, updated_at = ? WHERE action_key = ?",
+            "last_event_id = ?, updated_at = ? WHERE action_key = ? "
+            "AND status = 'STARTED'",
             (event.event_id, event.recorded_at, payload["action_key"]))
     elif event.event_type == "system.action_failed":
         connection.execute(
             "UPDATE system_actions SET status = 'FAILED', "
-            "last_event_id = ?, updated_at = ? WHERE action_key = ?",
+            "last_event_id = ?, updated_at = ? WHERE action_key = ? "
+            "AND status = 'STARTED'",
+            (event.event_id, event.recorded_at, payload["action_key"]))
+    elif event.event_type == "effect.frozen":
+        # explicit freeze request: only a STARTED effect freezes
+        connection.execute(
+            "UPDATE system_actions SET status = 'FROZEN', "
+            "last_event_id = ?, updated_at = ? WHERE action_key = ? "
+            "AND status = 'STARTED'",
+            (event.event_id, event.recorded_at, payload["action_key"]))
+    elif event.event_type == "effect.reconcile_mismatch":
+        # provider disagreement is stronger than a request: a terminal
+        # completion/failure claim that the provider contradicts moves
+        # to FROZEN for review (never back to STARTED — monotonic).
+        connection.execute(
+            "UPDATE system_actions SET status = 'FROZEN', "
+            "last_event_id = ?, updated_at = ? WHERE action_key = ? "
+            "AND status IN ('COMPLETED', 'FAILED')",
             (event.event_id, event.recorded_at, payload["action_key"]))
     elif event.event_type == "discovery.monitor_disabled":
         connection.execute(

@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 
 
-SCHEMA_VERSION = 19
+SCHEMA_VERSION = 20
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -549,6 +549,35 @@ MIGRATIONS: dict[int, str] = {
         updated_at TEXT NOT NULL,
         UNIQUE(system_id, target_ref, payload_hash)
     );
+    CREATE INDEX IF NOT EXISTS system_actions_system
+        ON system_actions(system_id, status);
+    """,
+    20: """
+    -- V5-S6: the effect journal gains the FROZEN state (compensation
+    -- and freeze path for ambiguous effects). Table rebuild, since
+    -- SQLite cannot ALTER a CHECK constraint, the rebuild preserves
+    -- every row.
+    CREATE TABLE system_actions_v20 (
+        action_key TEXT PRIMARY KEY,
+        system_id TEXT NOT NULL,
+        target_ref TEXT NOT NULL,
+        payload_hash TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'STARTED'
+            CHECK(status IN ('STARTED', 'COMPLETED', 'FAILED', 'FROZEN')),
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        UNIQUE(system_id, target_ref, payload_hash)
+    );
+    INSERT INTO system_actions_v20(
+        action_key, system_id, target_ref, payload_hash, kind, status,
+        last_event_id, updated_at
+    )
+    SELECT action_key, system_id, target_ref, payload_hash, kind, status,
+        last_event_id, updated_at
+    FROM system_actions;
+    DROP TABLE system_actions;
+    ALTER TABLE system_actions_v20 RENAME TO system_actions;
     CREATE INDEX IF NOT EXISTS system_actions_system
         ON system_actions(system_id, status);
     """,
