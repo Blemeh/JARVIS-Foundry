@@ -101,6 +101,7 @@ def _table_key_column(table: str) -> str:
         "promotions": "promotion_id",
         "release_control": "id",
         "restore_points": "point_id",
+        "discovery_runs": "run_id",
         "system_state": "singleton",
         "supervisor_state": "singleton",
     }

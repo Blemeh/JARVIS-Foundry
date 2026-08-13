@@ -143,7 +143,7 @@ def _runs(db: FoundryDatabase, tmp_path: Path, improvement_id: str,
     baseline_cmd = [sys.executable, "-c",
                     "import pathlib,sys,time\n"
                     "pathlib.Path(sys.argv[1]).read_text()\n"
-                    "time.sleep(0.05)\n"]
+                    "time.sleep(0.3)\n"]
     candidate_cmd = [sys.executable, "-c",
                      "import pathlib,sys\n"
                      "pathlib.Path(sys.argv[1]).read_text()\n"]

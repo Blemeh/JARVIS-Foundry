@@ -5,7 +5,7 @@ import sqlite3
 from .v4_schema import ensure_v4_tables
 
 
-SCHEMA_VERSION = 29
+SCHEMA_VERSION = 30
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -774,6 +774,18 @@ MIGRATIONS: dict[int, str] = {
         event_count INTEGER NOT NULL,
         status TEXT NOT NULL DEFAULT 'CREATED'
             CHECK(status IN ('CREATED', 'VERIFIED', 'EXECUTED')),
+        controller TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    """,
+    30: """
+    CREATE TABLE IF NOT EXISTS discovery_runs (
+        run_id TEXT PRIMARY KEY,
+        sources_hash TEXT NOT NULL,
+        candidates_count INTEGER NOT NULL,
+        recorded_count INTEGER NOT NULL,
         controller TEXT NOT NULL,
         created_at TEXT NOT NULL,
         last_event_id TEXT NOT NULL,
