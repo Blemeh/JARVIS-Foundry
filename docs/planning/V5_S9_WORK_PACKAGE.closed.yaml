@@ -1,7 +1,12 @@
 work_package: V5_MULTI_SYSTEM_INTELLIGENCE
 slice: "9 — Full V5 acceptance, independent gate, capability matrix, V6 handoff"
-status: ACTIVE
-activated_by: "V5-S8 CLOSED PASS (verification.passed:verdict-v5-s8-activation:round1; conn-fs READY live)"
+status: CLOSED_PASS
+closed_at: 2026-08-13
+close_evidence:
+  - "FINAL gate verifier deleg_686f3477 PASS (6 probe groups; 1 LOW + 3 INFO, none blocking)"
+  - "live ledger: verification.passed:v5-acceptance seq 26354 + capability.matrix.recorded seq 26355 + evidence.created:v5-acceptance-close seq 26356 (schema 20)"
+  - "V5 ACCEPTED — docs/evidence/V5_ACCEPTANCE.md (per-slice chain, matrix, honest limitations); docs/handoffs/V6_HANDOFF.md delivered"
+  - "secret scans: repo 2 intentional fixtures, ledger 0 hits (verifier-confirmed)"
 date: 2026-08-13
 objective: >
   Close V5: an independent FINAL gate reviews the whole V5 evidence

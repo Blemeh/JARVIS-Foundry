@@ -1,8 +1,9 @@
 # V6 Handoff — after V5 Final Acceptance
 
-**Status: READY (drafted; finalizes on the V5 gate PASS)**
-**Frozen baseline:** commit `e2d20a6` (or the gate-close commit) —
-branch `main`, schema v20.
+**Status: DELIVERED** (2026-08-13 — V5 FINAL GATE PASS, deleg_686f3477)
+**Frozen baseline:** commit `27745dc` + close commit (this handoff's
+commit) — branch `main`, schema v20, live ledger 26,356 events
+(`verification.passed:v5-acceptance` seq 26354).
 
 ## What V5 delivered (the substrate V6 builds on)
 

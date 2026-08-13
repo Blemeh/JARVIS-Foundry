@@ -1,7 +1,16 @@
 # V5 — Multi-System Intelligence: Final Acceptance
 
-**Status: GATE IN PROGRESS** (2026-08-13)
-**Baseline commit:** `e2d20a6` (all slices S0-S8 CLOSED PASS)
+**Status: ACCEPTED — FINAL GATE PASS** (2026-08-13)
+**Baseline commit:** `27745dc` (gate prep) → `…` (close commit)
+**Final gate verifier:** `deleg_686f3477` — **PASS** (6 probe groups;
+1 LOW + 3 INFO, none blocking; `var/evidence/v5-s9-gate/verdict-deleg_686f3477.json`).
+Gate findings (recorded additively, D-037 class): the S2/S3
+evidence.created doc hashes reference unrecoverable intermediate
+drafts (hygiene — every verdict/suite/rehearsal hash verifies
+exactly); D-037 vs D-038 naming explained in V5_S3_CAPABILITIES.md;
+the S8 ledger range is 26151-26163 (26150 is a heartbeat); the legacy
+`systems` table row is untouched per the V4-modules policy (V5
+registration lives in ledger events).
 
 ## Per-slice evidence chain
 
@@ -59,8 +68,10 @@ NOT_TESTED records.
 
 ## Gate evidence
 
-- Full-repo secret scan: see `var/evidence/v5-s9-gate/secret-scan-repo.txt`
-- Full-ledger read-only scan: see `var/evidence/v5-s9-gate/secret-scan-ledger.txt`
-- Independent FINAL gate verdict: pending `deleg_…` (this doc
-  finalizes on PASS: `verification.passed:v5-acceptance` +
-  `evidence.created:v5-acceptance-close` on the live ledger).
+- Full-repo secret scan: `var/evidence/v5-s9-gate/secret-scan-repo.txt`
+  (2 hits — both intentional refusal-test fixtures, verifier-confirmed)
+- Full-ledger read-only scan: `var/evidence/v5-s9-gate/secret-scan-ledger.txt`
+  (0 hits; the gate verifier's own scan of 26,288 payloads: 0 unmasked)
+- Independent FINAL gate: `deleg_686f3477` **PASS** → live ledger
+  `verification.passed:v5-acceptance` + `capability.matrix.recorded` +
+  `evidence.created:v5-acceptance-close`.
