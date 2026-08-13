@@ -176,6 +176,18 @@ next_event: WP11 V2-OPERATIONAL INTEGRATION (DIR-2026-08-12 Phase 4):
   VERSION PROMOTION HOLD active until then.
 ```
 
+## Roadmap V4 Command Center track (additive clarification)
+
+The directive-defined V4 continuous-autonomy/reliability package and the
+original roadmap V4 product surface are separate gates. The former's historical
+and live evidence remains authoritative and is not rewritten. The latter
+(Command Center, decision timeline, cost/resource visibility, owner controls,
+recovery/degraded mode, briefings, and English voice) was incomplete/not tested
+at the start of the isolated `codex/v4-command-center` branch and is being
+implemented under the separate gate in
+`docs/evidence/V4_ROADMAP_SURFACE_STATUS.md`. This clarification is additive;
+it does not promote roadmap V4 or alter any ledger event.
+
 ## Completed
 
 - WP0–WP6 PASS: as recorded in v11 (see git history for the full records;

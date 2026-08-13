@@ -35,6 +35,10 @@ PROJECTION_TABLES = (
     "research_queue",
     "worker_manifests",
     "consolidation_ops",
+    "cost_measurements",
+    "briefing_outbox",
+    "voice_interactions",
+    "control_nonces",
 )
 
 
@@ -880,8 +884,104 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
              payload["status"], payload["before_hash"],
              payload.get("after_hash"), payload.get("write_id"),
              payload.get("verified_by"),
-             canonical_json(payload.get("evidence", {})),
+            canonical_json(payload.get("evidence", {})),
+            event.event_id, event.recorded_at),
+        )
+
+    elif event.event_type == "resource.usage_recorded":
+        # Cost/resource data is truthful by construction: absent provider
+        # measurements are persisted as UNKNOWN/NOT_AVAILABLE, never zero.
+        status = payload.get("status", "UNKNOWN")
+        if status not in {"MEASURED", "UNKNOWN", "NOT_AVAILABLE", "NOT_TESTED"}:
+            raise ValueError(f"invalid cost measurement status: {status}")
+        connection.execute(
+            """INSERT INTO cost_measurements(
+                measurement_id, mission_id, run_id, provider, model, status,
+                input_tokens, output_tokens, total_tokens, estimated_cost_usd,
+                actual_cost_usd, duration_ms, resource_json, failure_class,
+                evidence_json, recorded_at, last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(measurement_id) DO UPDATE SET
+                status=excluded.status, input_tokens=excluded.input_tokens,
+                output_tokens=excluded.output_tokens, total_tokens=excluded.total_tokens,
+                estimated_cost_usd=excluded.estimated_cost_usd,
+                actual_cost_usd=excluded.actual_cost_usd, duration_ms=excluded.duration_ms,
+                resource_json=excluded.resource_json, failure_class=excluded.failure_class,
+                evidence_json=excluded.evidence_json, last_event_id=excluded.last_event_id,
+                updated_at=excluded.updated_at""",
+            (payload["measurement_id"], payload.get("mission_id"), payload.get("run_id"),
+             payload.get("provider"), payload.get("model"), status,
+             payload.get("input_tokens"), payload.get("output_tokens"), payload.get("total_tokens"),
+             payload.get("estimated_cost_usd"), payload.get("actual_cost_usd"),
+             payload.get("duration_ms"), canonical_json(payload.get("resource", {})),
+             payload.get("failure_class"), canonical_json(payload.get("evidence", {})),
+             payload.get("recorded_at", event.recorded_at), event.event_id, event.recorded_at),
+        )
+
+    elif event.event_type == "briefing.planned":
+        connection.execute(
+            """INSERT INTO briefing_outbox(
+                briefing_id, briefing_key, kind, period_key, status,
+                payload_json, evidence_json, attempt_count, idempotency_key,
+                last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, 'PLANNED', ?, ?, 0, ?, ?, ?)
+            ON CONFLICT(briefing_key) DO NOTHING""",
+            (payload["briefing_id"], payload["briefing_key"], payload["kind"],
+             payload["period_key"], canonical_json(payload.get("briefing", {})),
+             canonical_json(payload.get("evidence", {})), payload["idempotency_key"],
              event.event_id, event.recorded_at),
+        )
+    elif event.event_type == "briefing.claimed":
+        connection.execute(
+            """UPDATE briefing_outbox SET status = 'CLAIMED',
+                attempt_count = attempt_count + 1, last_event_id = ?, updated_at = ?
+                WHERE briefing_id = ? AND status IN ('PLANNED', 'FAILED')""",
+            (event.event_id, event.recorded_at, payload["briefing_id"]),
+        )
+    elif event.event_type == "briefing.delivered":
+        connection.execute(
+            """UPDATE briefing_outbox SET status = 'DELIVERED', delivered_at = ?,
+                last_event_id = ?, updated_at = ? WHERE briefing_id = ?
+                AND status IN ('CLAIMED', 'PLANNED')""",
+            (event.recorded_at, event.event_id, event.recorded_at, payload["briefing_id"]),
+        )
+    elif event.event_type == "briefing.failed":
+        connection.execute(
+            """UPDATE briefing_outbox SET status = ?, failure_reason = ?,
+                last_event_id = ?, updated_at = ? WHERE briefing_id = ?
+                AND status != 'DELIVERED'""",
+            (payload.get("status", "FAILED"), payload.get("reason"),
+             event.event_id, event.recorded_at, payload["briefing_id"]),
+        )
+
+    elif event.event_type == "voice.interaction_recorded":
+        connection.execute(
+            """INSERT INTO voice_interactions(
+                interaction_id, auth_status, language, transcript, response_text,
+                stt_provider, tts_provider, command_type, directive_id, status,
+                audio_metadata_json, evidence_json, last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(interaction_id) DO UPDATE SET
+                auth_status=excluded.auth_status, language=excluded.language,
+                transcript=excluded.transcript, response_text=excluded.response_text,
+                stt_provider=excluded.stt_provider, tts_provider=excluded.tts_provider,
+                command_type=excluded.command_type, directive_id=excluded.directive_id,
+                status=excluded.status, audio_metadata_json=excluded.audio_metadata_json,
+                evidence_json=excluded.evidence_json, last_event_id=excluded.last_event_id,
+                updated_at=excluded.updated_at""",
+            (payload["interaction_id"], payload["auth_status"], payload.get("language"),
+             payload.get("transcript"), payload.get("response_text"), payload.get("stt_provider"),
+             payload.get("tts_provider"), payload.get("command_type"), payload.get("directive_id"),
+             payload["status"], canonical_json(payload.get("audio_metadata", {})),
+             canonical_json(payload.get("evidence", {})), event.event_id, event.recorded_at),
+        )
+    elif event.event_type == "owner_control.nonce_used":
+        connection.execute(
+            """INSERT OR IGNORE INTO control_nonces(
+                nonce, command_hash, issued_at, used_at, last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?)""",
+            (payload["nonce"], payload["command_hash"], payload["issued_at"],
+             payload.get("used_at", event.recorded_at), event.event_id, event.recorded_at),
         )
 
     if event.event_type.startswith("supervisor.") or event.event_type.startswith("emergency_stop."):

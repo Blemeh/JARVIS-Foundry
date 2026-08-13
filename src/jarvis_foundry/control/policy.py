@@ -37,6 +37,13 @@ class ActionPolicy:
     def evaluate(self, envelope: ActionEnvelope) -> PolicyVerdict:
         if self.stop_path.exists():
             return PolicyVerdict(ActionDecision.STOPPED, "emergency stop is active")
+        with self.database.connect() as connection:
+            paused = connection.execute(
+                "SELECT directive_id FROM directives WHERE active = 1 AND command_type = 'PAUSE' "
+                "ORDER BY updated_at DESC LIMIT 1"
+            ).fetchone()
+        if paused:
+            return PolicyVerdict(ActionDecision.STOPPED, f"owner pause directive {paused[0]} is active")
         validation_error = _validate_envelope(envelope)
         if validation_error:
             return PolicyVerdict(ActionDecision.NOT_READY, validation_error)

@@ -125,10 +125,13 @@ def emergency_stop_reason(database: FoundryDatabase,
         return "emergency stop marker is present"
     with database.connect() as connection:
         stopped = connection.execute(
-            "SELECT directive_id FROM directives "
-            "WHERE active = 1 AND command_type = 'STOP_EVERYTHING'"
+            "SELECT directive_id, command_type FROM directives "
+            "WHERE active = 1 AND command_type IN ('STOP_EVERYTHING', 'PAUSE') "
+            "ORDER BY updated_at DESC LIMIT 1"
         ).fetchone()
         if stopped:
+            if stopped[1] == "PAUSE":
+                return f"PAUSE directive {stopped[0]} is active"
             return f"STOP_EVERYTHING directive {stopped[0]} is active"
         state = connection.execute(
             "SELECT status FROM supervisor_state WHERE singleton = 1"
