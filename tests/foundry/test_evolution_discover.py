@@ -231,3 +231,73 @@ def test_projection_and_schema(db: FoundryDatabase) -> None:
             "SELECT MAX(version) FROM schema_migrations").fetchone()[0]
     assert version == SCHEMA_VERSION  # pinned to the constant, >= 30
     assert SCHEMA_VERSION >= 30
+
+
+# ---------------------------------------------------------------------------
+# round-1 repairs (deleg_b65820c2 FAIL findings: secret-guard escaping
+# asymmetry, handler type validation, all-or-nothing recording)
+# ---------------------------------------------------------------------------
+
+def test_escaped_quote_secret_shape_refused(db: FoundryDatabase) -> None:
+    """S10 r1 (MEDIUM, D2): canonical_json escapes quotes inside string
+    values — '"api_key": "abc123"' must ALSO be caught by the
+    secret guard (the S1/S5/S9/S10 shared redaction pattern now spans
+    backslash-escaped quotes)."""
+    import json as _json
+    from jarvis_foundry.events import canonical_json
+    from jarvis_foundry.control.redaction import contains_secret_like
+    # the exact shape the verifier used: a secret inside a STRING value
+    payload = {"observation": '"api_key": "abc123"'}
+    encoded = canonical_json(payload)
+    assert "\\" in encoded or '\\"' in encoded  # quotes escaped
+    assert contains_secret_like(encoded) is True  # now caught
+    with pytest.raises(DiscoveryError):
+        candidate_improvements(
+            db,
+            sources={"guardrail_breaches": [{
+                "guardrail": "cost",
+                "detail": '"api_key": "abc123"',
+                "evidence_ref": "var/evidence/v6-s10/secret.txt",
+            }]},
+            controller=CONTROLLER)
+    assert len(db.events()) == 0
+
+
+def test_handler_rejects_non_numeric_counts(db: FoundryDatabase) -> None:
+    """S10 r1 (MEDIUM, D6): raw discovery.observed with a
+    non-numeric candidates_count/recorded_count is rolled back."""
+    from jarvis_foundry.events import Event
+    with pytest.raises(ValueError):
+        db.append(Event.create(
+            "discovery.observed",
+            {"run_id": "discovery-abcdef123456",
+             "sources_hash": "c" * 64, "candidates_count": "abc",
+             "recorded_count": 1, "controller": CONTROLLER},
+            source_type="supervisor", source_id="v6",
+            idempotency_key="discovery.observed:discovery-abcdef123456"))
+    assert db.count("discovery_runs") == 0
+    assert len(db.events()) == 0  # full rollback
+    with pytest.raises(ValueError):
+        db.append(Event.create(
+            "discovery.observed",
+            {"run_id": "discovery-abcdef123456",
+             "sources_hash": "c" * 64, "candidates_count": True,
+             "recorded_count": 1, "controller": CONTROLLER},
+            source_type="supervisor", source_id="v6",
+            idempotency_key="discovery.observed:discovery-abcdef123456"))
+    assert db.count("discovery_runs") == 0
+
+
+def test_mixed_candidate_list_all_or_nothing(db: FoundryDatabase) -> None:
+    """S10 r1 (LOW, D7): a [valid, invalid] candidate list records
+    NOTHING — all candidates are validated before any is recorded."""
+    valid = candidate_improvements(db, sources=METRIC_OBS,
+                                   controller=CONTROLLER)[0]
+    invalid = dict(valid)
+    del invalid["evidence_refs"]  # fabricated-looking candidate
+    with pytest.raises(DiscoveryError):
+        record_discovered_improvements(
+            db, candidates=[valid, invalid], sources=METRIC_OBS,
+            controller=CONTROLLER)
+    assert db.count("improvement_records") == 0  # NOTHING recorded
+    assert len(db.events()) == 0

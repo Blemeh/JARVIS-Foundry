@@ -105,3 +105,23 @@ discovery_runs row); identical re-run dedupes (zero new events);
 discovered improvements immediately eligible (S1 gate); projection/
 schema integrity (pinned to the imported SCHEMA_VERSION constant >=
 30).
+
+## 9. Verifier findings — repair record (deleg_b65820c2, round-1 FAIL)
+
+Verdict JSON: var/evidence/v6-s10/verdict-deleg_b65820c2.json. 40+
+probes. D1/D3/D4/D5/D7 PASS; **D2 FAIL (MEDIUM) + D6 FAIL (MEDIUM)**;
+1 LOW + 2 INFO. This is the FIRST FAIL gate of the V6 build — the
+adversarial process caught two genuine gaps. Per D-032: verdict
+preserved, discriminating regressions added, repairs applied, fresh
+verifier dispatched.
+
+| Severity | Finding | Resolution |
+|---|---|---|
+| MEDIUM (D2) | The secret guard is bypassed by the QUOTED-ASSIGNMENT shape inside a string value: canonical_json escapes quotes, so `\"api_key\": \"abc123\"` (the escaped form) evades contains_secret_like — the regex's optional quote cannot span the backslash. | REPAIRED at the ROOT (shared pattern): control/redaction.py _SECRET_PATTERN now allows `\?\"?` before the colon and value (both copies — the systems.py mirror updated too, keeping the boundaries in agreement). Regression: test_escaped_quote_secret_shape_refused. |
+| MEDIUM (D6) | The discovery.observed handler checks key presence only — a raw append with candidates_count="abc" persisted (SQLite INTEGER affinity + INSERT OR IGNORE). | REPAIRED: handler type-validates candidates_count/recorded_count (int, not bool) — rolled back. Regressions: test_handler_rejects_non_numeric_counts. |
+| LOW (D7) | A mixed [valid, invalid] candidate list recorded the valid candidate before refusing at the invalid one — partial state. | REPAIRED: record_discovered_improvements validates ALL candidates before recording ANY (all-or-nothing). Regression: test_mixed_candidate_list_all_or_nothing. |
+| INFO | D5 claim wording: the LIVE DB carries 1232 V5-era discovery.* events (pre-S10) — the claim should read "zero V6 discovery.observed events". | RECORDED + doc wording corrected (the V6 vocabulary is discovery.observed/improvement.recorded). |
+| INFO | Probe hygiene: runtime/live DBs only touched via scratch copies. | RECORDED. |
+
+Round-2: fresh verifier with A/B discrimination dispatched after this
+commit.

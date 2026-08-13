@@ -1482,6 +1482,12 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
                 raise ValueError(
                     f"discovery.observed requires {key} "
                     "(mandatory payload key) — rolled back")
+        for key in ("candidates_count", "recorded_count"):
+            if not isinstance(payload[key], int) or isinstance(
+                    payload[key], bool):
+                raise ValueError(
+                    f"discovery.observed {key} must be an integer — "
+                    "rolled back (S10 verifier deleg_b65820c2)")
         connection.execute(
             """INSERT OR IGNORE INTO discovery_runs(
                 run_id, sources_hash, candidates_count, recorded_count,

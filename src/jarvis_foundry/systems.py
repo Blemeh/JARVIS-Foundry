@@ -28,7 +28,7 @@ from .events import Event
 #: secret-like assignments refused at the API boundary (exit evidence 3)
 _SECRET_PATTERN = re.compile(
     r"(api[_-]?key|token|password|passwd|secret|private[_-]?key|"
-    r"authorization|bearer)\s*[:=]", re.IGNORECASE)
+    r"authorization|bearer)\\?\"?\s*[:=]", re.IGNORECASE)
 
 _READINESS = frozenset({"READY", "UNREADY", "NOT_TESTED"})
 _PROBE_STATES = frozenset({"READY", "FAILED", "NOT_TESTED"})

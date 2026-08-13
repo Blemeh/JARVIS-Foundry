@@ -15,11 +15,14 @@ from typing import Any
 #: refusal guard) — key[:=]value assignments for secret-like keys, with
 #: optional JSON quoting around the key and value (S3 verifier
 #: deleg_deff8b38: '"token": "abc"' must redact exactly like 'token=abc').
+#: A backslash may precede the quote (canonical_json escapes quotes
+#: inside string values: '"api_key": "abc123"' inside a JSON string
+#: becomes \"api_key\": \"abc123\") — S10 verifier deleg_b65820c2.
 #: The value runs to the next comma/semicolon/newline or closing quote so
 #: multi-token values (e.g. PEM blocks) are fully replaced.
 _SECRET_PATTERN = re.compile(
     r"(api[_-]?key|token|password|passwd|secret|private[_-]?key|"
-    r"authorization|bearer)\s*\"?\s*[:=]\s*\"?[^,;\n\"]*\"?",
+    r"authorization|bearer)\\?\"?\s*[:=]\s*\\?\"?[^,;\n\"]*\"?",
     re.IGNORECASE)
 
 

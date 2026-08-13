@@ -198,15 +198,31 @@ def record_discovered_improvements(
     source_type: str = "supervisor", source_id: str = "v6",
 ) -> list[str]:
     """Record the discovered candidates as improvements (S1 machinery)
-    and record the discovery run. Identical re-runs dedupe."""
+    and record the discovery run. Identical re-runs dedupe. ALL
+    candidates are validated BEFORE any is recorded (all-or-nothing —
+    a mixed valid/invalid list never leaves partial state; S10
+    verifier deleg_b65820c2)."""
     _require(_controller_ok(controller),
              "only the Supervisor (controller) can record discovery "
              "results")
-    recorded: list[str] = []
-    for candidate in candidates:
+    _require(isinstance(candidates, list), "candidates must be a list")
+    for candidate in candidates:  # validate ALL first
+        _require(isinstance(candidate, dict),
+                 "each candidate must be a mapping")
         _require("evidence_refs" in candidate and candidate[
             "evidence_refs"], "candidate without evidence refs is "
             "refused — never record fabricated problems")
+        _require("problem" in candidate and isinstance(
+            candidate["problem"], str) and candidate["problem"].strip(),
+            "candidate problem must be a non-empty string")
+        _require("baseline_metric" in candidate and isinstance(
+            candidate["baseline_metric"], dict),
+            "candidate baseline_metric must be a mapping")
+        _require("mmi" in candidate and isinstance(candidate["mmi"],
+                                                   dict),
+                 "candidate mmi must be a mapping")
+    recorded: list[str] = []
+    for candidate in candidates:
         improvement_id = record_improvement(
             database, problem=candidate["problem"],
             evidence_refs=candidate["evidence_refs"],
