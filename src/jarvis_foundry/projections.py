@@ -43,6 +43,7 @@ PROJECTION_TABLES = (
     "release_slots",
     "candidate_builds",
     "evaluation_runs",
+    "verifications",
 )
 
 
@@ -1244,6 +1245,63 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             raise ValueError(
                 f"evaluation.run_completed references unknown run "
                 f"{payload['run_id']} — rolled back")
+    elif event.event_type == "verification.requested":
+        for key in ("verification_id", "improvement_id", "subject_ref",
+                    "criteria", "artifacts", "builder_identity",
+                    "controller"):
+            if key not in payload:
+                raise ValueError(
+                    f"verification.requested requires {key} "
+                    "(mandatory payload key) — rolled back")
+        connection.execute(
+            """INSERT OR IGNORE INTO verifications(
+                verification_id, improvement_id, subject_ref, status,
+                criteria_json, artifacts_json, builder_identity_json,
+                created_at, last_event_id, updated_at
+            ) VALUES (?, ?, ?, 'REQUESTED', ?, ?, ?, ?, ?, ?)""",
+            (payload["verification_id"], payload["improvement_id"],
+             payload["subject_ref"],
+             canonical_json(payload["criteria"]),
+             canonical_json(payload["artifacts"]),
+             canonical_json(payload["builder_identity"]),
+             event.recorded_at, event.event_id, event.recorded_at),
+        )
+    elif event.event_type == "verification.verdict_recorded":
+        for key in ("verification_id", "verdict", "criteria_results",
+                    "findings", "verifier_identity", "evidence_refs",
+                    "verdict_hash", "same_provider_limitation"):
+            if key not in payload:
+                raise ValueError(
+                    f"verification.verdict_recorded requires {key} "
+                    "(mandatory payload key) — rolled back")
+        if payload["verdict"] not in ("PASS", "FAIL", "BLOCKED",
+                                      "NOT_TESTED"):
+            raise ValueError(
+                f"verification.verdict_recorded invalid verdict "
+                f"{payload['verdict']} — rolled back")
+        cursor = connection.execute(
+            """UPDATE verifications SET status = 'VERDICTED',
+               verdict = ?, criteria_results_json = ?,
+               findings_json = ?, verifier_identity_json = ?,
+               evidence_refs_json = ?, verdict_hash = ?,
+               same_provider_limitation = ?, last_event_id = ?,
+               updated_at = ?
+               WHERE verification_id = ? AND status = 'REQUESTED'""",
+            (payload["verdict"],
+             canonical_json(payload["criteria_results"]),
+             canonical_json(payload["findings"]),
+             canonical_json(payload["verifier_identity"]),
+             canonical_json(payload["evidence_refs"]),
+             payload["verdict_hash"],
+             int(bool(payload["same_provider_limitation"])),
+             event.event_id, event.recorded_at,
+             payload["verification_id"]),
+        )
+        if cursor.rowcount == 0:
+            raise ValueError(
+                f"verification.verdict_recorded has no REQUESTED "
+                f"verification {payload['verification_id']} — rolled "
+                "back (forgery or double verdict)")
     elif event.event_type == "release.slot_changed":
         for key in ("slot", "release_id", "previous_release_id",
                     "reason", "controller"):

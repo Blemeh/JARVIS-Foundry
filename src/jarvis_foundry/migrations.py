@@ -5,7 +5,7 @@ import sqlite3
 from .v4_schema import ensure_v4_tables
 
 
-SCHEMA_VERSION = 24
+SCHEMA_VERSION = 25
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -665,6 +665,28 @@ MIGRATIONS: dict[int, str] = {
         case_results_json TEXT NOT NULL DEFAULT '[]',
         output_hashes_json TEXT NOT NULL DEFAULT '{}',
         nondeterminism_handling TEXT NOT NULL DEFAULT 'not_seeded',
+        created_at TEXT NOT NULL,
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    """,
+    25: """
+    CREATE TABLE IF NOT EXISTS verifications (
+        verification_id TEXT PRIMARY KEY,
+        improvement_id TEXT NOT NULL,
+        subject_ref TEXT NOT NULL,
+        status TEXT NOT NULL
+            CHECK(status IN ('REQUESTED', 'VERDICTED')),
+        verdict TEXT,
+        criteria_json TEXT NOT NULL DEFAULT '[]',
+        artifacts_json TEXT NOT NULL DEFAULT '{}',
+        criteria_results_json TEXT NOT NULL DEFAULT '[]',
+        findings_json TEXT NOT NULL DEFAULT '[]',
+        verifier_identity_json TEXT NOT NULL DEFAULT '{}',
+        builder_identity_json TEXT NOT NULL DEFAULT '{}',
+        evidence_refs_json TEXT NOT NULL DEFAULT '[]',
+        verdict_hash TEXT,
+        same_provider_limitation INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
         last_event_id TEXT NOT NULL,
         updated_at TEXT NOT NULL
