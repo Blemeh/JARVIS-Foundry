@@ -106,7 +106,7 @@ def systems_allowed_by_policy(db: FoundryDatabase, action_kind: str, *,
             "SELECT command_type, target FROM directives WHERE active = 1"
         ).fetchall()
         for row in directives:
-            if row["command_type"] == "STOP_EVERYTHING":
+            if row["command_type"] in ("STOP_EVERYTHING", "PAUSE"):
                 return False
             if row["command_type"] in ("VETO_ACTION", "STOP_MISSION") and \
                     row["target"] in ("GLOBAL", action_kind):

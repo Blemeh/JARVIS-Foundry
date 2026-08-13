@@ -86,6 +86,10 @@ def _table_key_column(table: str) -> str:
         "research_queue": "item_id",
         "worker_manifests": "manifest_id",
         "consolidation_ops": "op_id",
+        "cost_measurements": "measurement_id",
+        "briefing_outbox": "briefing_id",
+        "voice_interactions": "interaction_id",
+        "control_nonces": "nonce",
         "system_state": "singleton",
         "supervisor_state": "singleton",
     }

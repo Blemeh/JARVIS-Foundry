@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import sqlite3
 
+from .v4_schema import ensure_v4_tables
+
 
 SCHEMA_VERSION = 20
 
@@ -638,4 +640,11 @@ def migrate(connection: sqlite3.Connection, now: str, *, target: int | None = No
             "INSERT OR IGNORE INTO schema_migrations(version, applied_at) VALUES (?, ?)",
             (version, now),
         )
+    # Roadmap-V4 tables are additive projections.  They intentionally do not
+    # advance the historical migration number: an isolated candidate can add
+    # them to a schema-v20 copy without rewriting V5's migration history.
+    # Keep the additive tables available on schema-target copies too.  This
+    # makes isolated migration/rebuild tests safe without changing the
+    # historical schema_migrations sequence.
+    ensure_v4_tables(connection)
     return destination
