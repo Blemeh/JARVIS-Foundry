@@ -1,9 +1,14 @@
 # V4 ACCEPTANCE GATE — CONTINUOUS AUTONOMY (first gate review)
 
-Status: **IN REVIEW — round-1 verifier dispatched** (2026-08-13).
-Engineering + operational evidence below; frozen HEAD for the review:
-`5b22066` (docs) / src `19fbb17` — the verifier evaluates the src/tests
-tree byte-identical to 19fbb17.
+Status: **CLOSED — PASS (3/3, round-1)** (2026-08-13 ~02:20).
+Independent adversarial gate verifier `deleg_a241797f` **PASS** at
+frozen src HEAD `19fbb17` (docs `d15adae`; tree clean start→end).
+Verifier findings: 2 MEDIUM (stale live-state snapshot totals — the
+semantic claims hold; corrected above), 4 LOW/INFO (label + artifact
+reference + doc-hash notes — preserved additively, see below). Verdict
+JSON archived at `var/evidence/v4-acceptance-gate/verdict-deleg_
+a241797f.json`; ledger `verification.passed:verdict-v4-acceptance-
+gate:round1` + `evidence.created:v4-acceptance-gate-close`.
 
 ## Gate criteria (CURRENT_WORK_PACKAGE.yaml)
 
@@ -31,19 +36,49 @@ red-green verified). Two suite artifacts flaked once under
 two-overlapping-pytest contention (supervisor-recovery timing tests;
 pass in isolation; regenerated artifacts EXIT=0 — documented).
 
-## Live system state (2026-08-13 ~02:10, verified read-only)
+## Live system state (2026-08-13 ~02:10 — gate-verifier RE-MEASURED
+## 02:20; the verifier's numbers supersede the draft's snapshot)
 
 - Schema **v18** (v17 + v18 migrations applied live after copy
-  rehearsals); events 15,701+; claims 954 (953 supported); candidates
-  696 NEW / 233 SCORED / 3 EXECUTED / 2 SUPERSEDED (+2 this phase:
-  1 vault-poll candidate, 1 duplicate REJECTED record).
-- **Reconcile consistent, 0 mismatches** (atomic rebuilds converged 780
-  + 45 drift rows across the S1/S5 closes — derived-state corrections,
-  events never rewritten).
-- Monitors registry: 4 real sources registered + polled (first live
-  loop 01:59).
+  rehearsals); events 15,983 at the verifier's read; claims **999**
+  (998 supported / 1 unsupported — the S1 semantic claim "894 → 1
+  unsupported" holds exactly; the draft's 954/953 was the S1-close
+  snapshot and is superseded); candidates **678 NEW / 232 SCORED /
+  3 EXECUTED / 2 SUPERSEDED / 19 REJECTED** (the REJECTED rows are
+  duplicate records — 18 pre-existing from the old projection + 1 from
+  the 01:59 loop — never selectable by design; the draft's 696/233 was
+  the V3-gate snapshot and is superseded).
+- **Reconcile consistent, 0 mismatches** (verifier re-ran it
+  read-only: event_count 15,983, integrity_failures 0, version_mismatch
+  none; atomic rebuilds converged 780 + 45 drift rows across the
+  S1/S5 closes — derived-state corrections, events never rewritten).
+- Monitors registry: 4 real sources registered + polled (2 live loop
+  cycles; 8 discovery.monitor_polled events).
 - Supervisor RUNNING, 5s heartbeats, 1 lease, STOP false, no veto.
 - Daemon survived both rebuild windows (≤2 missed beats each).
+
+## Gate-verifier findings — additive corrections (deleg_a241797f, PASS)
+
+1. MEDIUM: the draft's live-state totals were the S1/V3 snapshots, not
+   a 02:10 re-measure — corrected above with the verifier's numbers.
+2. LOW: the S5 round-2 close event carries the label
+   `verdict-v4-s5-monitors:round1` (close script's key) while docs say
+   round2 — the verifier identity (deleg_9decc685), PASS status and
+   the verdict-JSON hash are correct; the historical event is
+   preserved as-is (append-only; label discrepancy recorded here and
+   in DECISION_LOG D-037).
+3. LOW: the S5 R2 evidence.created references the pre-fix suite
+   artifact (suite-v4-s5.txt, 468) rather than suite-v4-s5-r1.txt
+   (485) — historical event preserved; the 485 EXIT=0 is corroborated
+   by both suite-v4-s5-r1.txt and suite-v4-s6.txt.
+4. INFO: "388 session start" is un-evidenced in-repo; the artifact
+   progression is 414→429→438→441→462→468→485 (all EXIT=0).
+5. INFO: honest-WAITING loops ≥ 8 (the WP12 "6" was a conservative
+   undercount, documented by the V3 verifier).
+6. INFO: ledger doc artifact hashes for MR-1/S1/S6 no longer match the
+   on-disk docs (R8 edits after close — expected); all verdict/rescan/
+   backup hashes DO match the ledger (verifier evidence integrity
+   holds).
 
 ## Doc reconciliation (R8)
 
