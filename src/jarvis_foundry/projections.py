@@ -39,6 +39,7 @@ PROJECTION_TABLES = (
     "briefing_outbox",
     "voice_interactions",
     "control_nonces",
+    "improvement_records",
 )
 
 
@@ -982,6 +983,82 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             ) VALUES (?, ?, ?, ?, ?, ?)""",
             (payload["nonce"], payload["command_hash"], payload["issued_at"],
              payload.get("used_at", event.recorded_at), event.event_id, event.recorded_at),
+        )
+    elif event.event_type == "improvement.recorded":
+        for key in ("improvement_id", "problem", "evidence_refs",
+                    "provenance", "hypothesis", "expected_mechanism",
+                    "baseline_metric", "mmi", "guardrails", "workload",
+                    "observation", "risk_class", "risk_class_declared",
+                    "surfaces", "budget", "reversibility"):
+            if key not in payload:
+                raise ValueError(
+                    f"improvement.recorded requires {key} "
+                    "(mandatory payload key) — rolled back")
+        if payload.get("supersedes") is not None:
+            exists = connection.execute(
+                "SELECT 1 FROM improvement_records WHERE improvement_id = ?",
+                (payload["supersedes"],)).fetchone()
+            if exists is None:
+                raise ValueError(
+                    f"improvement.recorded supersedes target "
+                    f"{payload['supersedes']} does not exist — rolled back")
+        connection.execute(
+            """INSERT OR IGNORE INTO improvement_records(
+                improvement_id, state, problem, evidence_refs_json,
+                provenance_json, hypothesis, expected_mechanism,
+                baseline_metric_json, mmi_json, guardrails_json,
+                workload_json, observation_json, risk_class,
+                risk_class_declared, surfaces_json, budget_json,
+                reversibility_json, supersedes, created_at, last_event_id,
+                updated_at
+            ) VALUES (?, 'FROZEN', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                ?, ?, ?, ?, ?, ?)""",
+            (payload["improvement_id"], payload["problem"],
+             canonical_json(payload["evidence_refs"]),
+             canonical_json(payload["provenance"]), payload["hypothesis"],
+             payload["expected_mechanism"],
+             canonical_json(payload["baseline_metric"]),
+             canonical_json(payload["mmi"]),
+             canonical_json(payload["guardrails"]),
+             canonical_json(payload["workload"]),
+             canonical_json(payload["observation"]),
+             payload["risk_class"], payload["risk_class_declared"],
+             canonical_json(payload["surfaces"]),
+             canonical_json(payload["budget"]),
+             canonical_json(payload["reversibility"]),
+             payload.get("supersedes"), event.recorded_at,
+             event.event_id, event.recorded_at),
+        )
+    elif event.event_type == "improvement.risk_raised":
+        for key in ("improvement_id", "risk_class", "risk_class_previous",
+                    "reason"):
+            if key not in payload:
+                raise ValueError(
+                    f"improvement.risk_raised requires {key} "
+                    "(mandatory payload key) — rolled back")
+        if not payload["reason"]:
+            raise ValueError(
+                "improvement.risk_raised requires a non-empty reason — "
+                "rolled back")
+        current = connection.execute(
+            "SELECT risk_class FROM improvement_records "
+            "WHERE improvement_id = ?",
+            (payload["improvement_id"],)).fetchone()
+        if current is None:
+            raise ValueError(
+                f"improvement.risk_raised target "
+                f"{payload['improvement_id']} does not exist — rolled back")
+        order = ("R0", "R1", "R2", "R3")
+        if order.index(payload["risk_class"]) <= order.index(current[0]):
+            raise ValueError(
+                "improvement.risk_raised is not strictly ascending — "
+                "rolled back")
+        connection.execute(
+            """UPDATE improvement_records SET risk_class = ?,
+               last_event_id = ?, updated_at = ?
+               WHERE improvement_id = ?""",
+            (payload["risk_class"], event.event_id, event.recorded_at,
+             payload["improvement_id"]),
         )
 
     if event.event_type.startswith("supervisor.") or event.event_type.startswith("emergency_stop."):

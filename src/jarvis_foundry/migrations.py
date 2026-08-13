@@ -5,7 +5,7 @@ import sqlite3
 from .v4_schema import ensure_v4_tables
 
 
-SCHEMA_VERSION = 20
+SCHEMA_VERSION = 21
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -582,6 +582,31 @@ MIGRATIONS: dict[int, str] = {
     ALTER TABLE system_actions_v20 RENAME TO system_actions;
     CREATE INDEX IF NOT EXISTS system_actions_system
         ON system_actions(system_id, status);
+    """,
+    21: """
+    CREATE TABLE IF NOT EXISTS improvement_records (
+        improvement_id TEXT PRIMARY KEY,
+        state TEXT NOT NULL CHECK(state = 'FROZEN'),
+        problem TEXT NOT NULL,
+        evidence_refs_json TEXT NOT NULL,
+        provenance_json TEXT NOT NULL,
+        hypothesis TEXT NOT NULL,
+        expected_mechanism TEXT NOT NULL,
+        baseline_metric_json TEXT NOT NULL,
+        mmi_json TEXT NOT NULL,
+        guardrails_json TEXT NOT NULL,
+        workload_json TEXT NOT NULL,
+        observation_json TEXT NOT NULL,
+        risk_class TEXT NOT NULL,
+        risk_class_declared TEXT NOT NULL,
+        surfaces_json TEXT NOT NULL,
+        budget_json TEXT NOT NULL,
+        reversibility_json TEXT NOT NULL,
+        supersedes TEXT,
+        created_at TEXT NOT NULL,
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
     """,
 }
 

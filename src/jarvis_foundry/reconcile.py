@@ -90,6 +90,7 @@ def _table_key_column(table: str) -> str:
         "briefing_outbox": "briefing_id",
         "voice_interactions": "interaction_id",
         "control_nonces": "nonce",
+        "improvement_records": "improvement_id",
         "system_state": "singleton",
         "supervisor_state": "singleton",
     }

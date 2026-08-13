@@ -617,7 +617,7 @@ def test_v20_schema_accepts_frozen(db: FoundryDatabase) -> None:
         ddl = connection.execute(
             "SELECT sql FROM sqlite_master WHERE type='table' AND "
             "name='system_actions'").fetchone()[0]
-    assert version == 20
+    assert version >= 20  # v20's rebuild effect must persist at any later schema
     assert "FROZEN" in ddl
 
 
