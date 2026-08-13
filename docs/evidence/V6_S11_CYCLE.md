@@ -128,3 +128,28 @@ scenarios. C1-C7 all PASS; 1 MEDIUM + 1 LOW + 3 INFO.
 
 Round-2: fresh verifier with A/B discrimination dispatched after this
 commit.
+
+## 10. Round-2 verdict (deleg_ffaeccaf, PASS — A/B discriminated)
+
+V1 namespaced arena transitions PASS (OLD has un-namespaced set_slot
+calls; NEW namespaces both; live probe: two bit-identical cycles on
+one DB -> BOTH promoted, distinct cycle/promotion ids, live == second
+candidate, cycles=2, promotions=2, reconcile consistent; OLD-code
+probe: second cycle rejected "not in the candidate slot" — flaw
+reproduced); V2 arena-reset semantics PASS (event stream shows the
+namespaced genesis transition for cycle 2; prior promotion row +
+manifest intact/auditable); V3 no regression PASS (regression test
+present, focused 10/10, S8 promote/canary/registry 61/61, suite 903
+EXIT=0 sha256
+ec87942777aabe1ee1d3a4e71b84617765ac6d32a146ec95f6feda9952c42749,
+collect-only 903, runtime v31 consistent, live v20 zero cycle.%
+events of 31,778, both checkouts pinned). Verdict JSON:
+var/evidence/v6-s11/verdict-deleg_ffaeccaf-r2.json, sha256
+35c540d21e01ab5039c3962e23669df4812d6cd1f429da98e31948bf1cff438c.
+INFO: content-derived release identity means cycle-2's candidate id is
+byte-identical to cycle-1's by design (the transition_id is the
+discriminator); promotion lineage previous=genesis reflects the arena
+reset.
+
+**S11 CLOSED — PASS (rounds 1+2).** Next: S12 (engineering +
+operational acceptance).
