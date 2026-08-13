@@ -128,3 +128,22 @@ OWNER VETO OR INPUT REQUIRED: NONE | TECHNICALLY_BLOCKED_REASON
 `BLOCKED` means progress is technically impossible because of a missing
 credential, required physical act, unavailable external dependency, or
 contradictory owner directives. It never means `waiting for permission`.
+
+## 8. V6 Self-Evolution Task Routing
+
+When a task, directive, recovery session, or agent assignment concerns V6,
+self-evolution, candidate releases, release slots, shadow operation, canaries,
+automatic promotion, or automatic rollback, the agent must read these files
+completely before planning or changing anything:
+
+1. `docs/planning/V6_READ_FIRST.md`;
+2. `docs/planning/V6_MASTER_PLAN.md`;
+3. `docs/planning/V6_MASTER_PROMPT.md`;
+4. `docs/evidence/V5_ACCEPTANCE.md`;
+5. `docs/handoffs/V6_HANDOFF.md`.
+
+The V6 planning files are anti-drift controls. Their presence does not by
+itself activate V6, mutate the live runtime, or authorize an agent to ignore a
+newer authenticated owner STOP, veto, pause, redirect, or constraint. The V6
+entry protocol must verify current Git, runtime, database, worktree, parallel
+V4, and evidence state before any mutation.
