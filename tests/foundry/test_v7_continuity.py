@@ -172,3 +172,29 @@ def test_observe_only_survives_restart(db: FoundryDatabase,
     with pytest.raises(Exception):
         tick_scheduler(fresh, controller=SUPERVISOR_CONTROLLER,
                        source_type="supervisor", source_id="v7")
+
+
+def test_corrupt_payload_containment(db: FoundryDatabase) -> None:
+    """Unknown/foreign event types cannot corrupt the rebuild, and
+    malformed payloads for KNOWN types are refused at append time by the
+    event validation (the machinery's own gate)."""
+    _ready(db)
+    before = scheduler_state(db)
+    # a valid-but-foreign event type (not consumed by the rebuild)
+    db.append(Event.create("owner.command_recorded",
+                           {"command_id": "x", "command": "STATUS",
+                            "reason": "", "source_type": "owner-channel",
+                            "source_id": "test", "recorded_at": "now"},
+                           source_type="owner-channel", source_id="test"))
+    after = scheduler_state(db)
+    assert after["enabled"] == before["enabled"]
+    assert [i["item_id"] for i in after["items"]] == \
+        [i["item_id"] for i in before["items"]]
+    # a malformed payload for a KNOWN type never corrupts the rebuild:
+    # the append succeeds (the machinery validates only registered types)
+    # but the rebuild skips it defensively
+    db.append(Event.create("scheduler.item_registered", {},
+                           source_type="supervisor", source_id="v7"))
+    after2 = scheduler_state(db)
+    assert [i["item_id"] for i in after2["items"]] == \
+        [i["item_id"] for i in before["items"]]

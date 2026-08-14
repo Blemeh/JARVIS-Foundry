@@ -37,11 +37,12 @@ in every supervisor gate of scheduler/portfolio/capabilities/gates).
 FILES_PROCESSES_DATABASES_AND_EXTERNAL_STATE_CHANGED: 1 new test file +
 4 module hardenings + this report; no live state touched.
 TESTS_RECONCILIATION_RESTORE_AND_FAULTS: focused 7/7 (54 with the V7
-affected suites); full suite <fill after run>.
+affected suites); full suite 985 passed EXIT=0 (438.79 s; artifact
+var/evidence/v7-s12/suite-v7-s12-full.txt, sha256 8e8d15a4…).
 VERIFIER_AND_STRUCTURED_VERDICT: <fill after dispatch — fresh independent
 adversarial verifier, opencode_go/deepseek-v4-flash, no fallback>
 EVIDENCE_PATHS_AND_HASHES: tests/foundry/test_v7_continuity.py; the four
-hardened modules; var/evidence/v7-s12/suite-v7-s12-full.txt (<hash>).
+hardened modules; var/evidence/v7-s12/suite-v7-s12-full.txt (8e8d15a4…).
 REAL_EFFECT_PROVIDER_REFERENCE_AND_AFTER_STATE: N/A (fault suite).
 ROLLBACK_COMPENSATION_OR_CONTAINMENT: git revert; the hardening is
 additive (gates refuse under STOP — strictly safer).

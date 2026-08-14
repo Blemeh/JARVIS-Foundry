@@ -57,20 +57,27 @@ def _rebuild(database: FoundryDatabase) -> SchedulerState:
         elif event.event_type == "scheduler.disabled":
             state.enabled = False
         elif event.event_type == "scheduler.item_registered":
-            payload = event.payload
-            item = ScheduleItem(
-                item_id=payload["item_id"],
-                priority=int(payload.get("priority", 5)),
-                cooldown_seconds=float(payload.get("cooldown_seconds", 60.0)),
-                budget_usd=float(payload.get("budget_usd", 0.0)),
-                deadline=payload.get("deadline"),
-                sequence=_stream_index)
+            try:
+                payload = event.payload
+                item = ScheduleItem(
+                    item_id=payload["item_id"],
+                    priority=int(payload.get("priority", 5)),
+                    cooldown_seconds=float(payload.get("cooldown_seconds", 60.0)),
+                    budget_usd=float(payload.get("budget_usd", 0.0)),
+                    deadline=payload.get("deadline"),
+                    sequence=_stream_index)
+            except (KeyError, TypeError, ValueError):
+                continue  # defensive: a malformed record never corrupts
             state.items = [i for i in state.items
                            if i.item_id != item.item_id]
             state.items.append(item)
         elif event.event_type == "scheduler.item_fired":
+            try:
+                item_id = event.payload["item_id"]
+            except (KeyError, TypeError):
+                continue
             for item in state.items:
-                if item.item_id == event.payload["item_id"]:
+                if item.item_id == item_id:
                     item.last_fired_at = event.payload.get("fired_at")
         elif event.event_type == "supervisor.degraded":
             last_degraded = _stream_index
