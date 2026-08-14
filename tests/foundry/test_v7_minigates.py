@@ -38,7 +38,9 @@ def db(tmp_path: Path) -> FoundryDatabase:
 def test_all_six_families_are_declared(db: FoundryDatabase) -> None:
     expected = {"research", "monitoring", "local-computer",
                 "git", "deployment", "cloud"}
-    assert set(FAMILIES) == expected
+    # S11's owner families extend the table at import time; the S10
+    # families must always be present (superset check)
+    assert expected.issubset(set(FAMILIES))
     for family in expected:
         policy = family_policy(db, family)
         assert policy["family"] == family
