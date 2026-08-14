@@ -16,10 +16,15 @@ BASE_COMMIT_AND_DIFF: main bf1a874 (S5 close); the daemon start command
 unchanged (same venv + same --home) — the editable install means the
 restart loads the exact frozen release source.
 LIVE_RELEASE_PROCESS_AND_DATABASE: THE LIVE DATABASE WAS MIGRATED v20->v32
-ON 2026-08-14 ~10:24Z through the daemon's initialize() — the exact package
-rehearsed in S2 (v21-v32, 0.03 s measured on copies; additive DDL only).
-The previous (pre-merge) executable is preserved at git fa4e65f with the
-S0 baseline suite artifact as its proof; the v20 restore point is
+ON 2026-08-14 AT 10:21:03.476073Z — ALL 12 VERSIONS v21-v32 STAMPED IN ONE
+ATOMIC RUN (schema_migrations evidence) through the daemon's initialize()
+— the exact package rehearsed in S2 (additive DDL only; 0.03 s measured on
+copies). The migrating daemon instance then crashed at lease acquisition
+(concurrent task launches — the lease-conflict path proven in S3), and the
+repeating trigger settled the durable RUNNING instance at 10:27:26.057509Z
+(started event = current instance supervisor-31c804e4). The previous
+(pre-merge) executable is preserved at git fa4e65f with the S0 baseline
+suite artifact as its proof; the v20 restore point is
 var/evidence/v7-s6/live-v20-restore-point.db (sha256 2b0f9a66...).
 CAPABILITIES_AND_READINESS: unchanged local capabilities; evolution
 observe-only (cycles=0 on the live ledger).
@@ -79,24 +84,41 @@ OWNER_INPUT_REQUIRED: NONE
 
 ## 1. Adoption timeline (2026-08-14, all times Z)
 
-| Time | Event |
+| Time (Z) | Event |
 |---|---|
 | 10:19 | live state captured (schema 20, 40,412 events; v20 restore point 2b0f9a66…) |
 | 10:22 | copy rehearsal on a fresh live copy: v20→v32, reconcile consistent, quick_check ok |
 | 10:23 | pre-merge daemon stopped (4 pids) |
-| 10:23-24 | task enabled + run → daemon starts on the frozen release → **live ledger migrated v20→v32** |
-| 10:24-27 | validation: RUNNING + fresh heartbeats; directives 4/4; V4 tables 934/4/1071; cycles 0 |
-| 10:27 | fault injection: daemon killed → the repeating trigger AUTO-RESTARTED it (started 10:27:26Z) → schema stays 32, no re-migration, no started storm |
+| 10:21:03 | **live ledger migrated v20→v32** — v21-v32 all stamped in ONE atomic run (schema_migrations evidence) by the first task-launched daemon |
+| 10:21-10:27 | interim daemon instances crashed at lease acquisition (concurrent task launches, lease-conflict path S3-proven); the repeating trigger kept retrying |
+| 10:27:26 | durable RUNNING instance started (supervisor-31c804e4; started event 10:27:26.057509Z) — heartbeats continuous since |
 | 10:30 | post-adoption deep validation on a fresh copy: quick_check ok, fk_check [], 40,477/40,477 events verified, **reconcile consistent, mismatches []** |
-| after | task triggers enabled (Next Run Time active), daemon RUNNING — previously safe operation resumed |
+| after | task triggers enabled (Next Run Time active, repeating ~60s), daemon RUNNING — previously safe operation resumed |
+
+NOTE (additive correction, S6 verifier round 1 deleg_bab5f9d9): the adoption
+script's adoption-report.json contains two `ok:false` step flags that are
+SCRIPT-THRESHOLD BUGS, not defects: (a) "events preserved" compared the
+count immediately after the kill (no new daemon had started yet — counts
+equal by timing, not by loss), (b) "started events bounded" used a
+fresh-DB threshold (<=3) against the live ledger's 30-hour history
+(17 started events total — normal). Both were fixed in adopt-live.py and
+re-validated (5-minute window check passed).
 
 ## 2. Key evidence numbers
 
 - Migration package: the S2-rehearsed v21-v32 (additive DDL; 0.03 s on copies).
-- Events: 40,436 (pre-stop) → 40,441 (post-stop) → 40,477+ (post-adoption; daemon heartbeats) — no loss, no duplicates.
+- Events: capture 40,412 (10:19Z) → adoption run saw 40,436/40,441 →
+  post-adoption copy 40,477 (10:30Z) → 40,552+ (verifier, 10:34Z) — no
+  loss, no duplicates (dup event_id=0, dup sequence=0, gaps=0, null
+  payload_hash=0 on the verifier's fresh copy).
 - Reconcile at v32 on the live data: consistent, zero mismatches (the fa4e65f-era defect — reconcile crash on v20 — is resolved by adoption).
 - Restore points: v20 DB snapshot (2b0f9a66…, schema 20 verified), previous executable = git fa4e65f + S0 baseline artifact, task XML byte-exact, config hash.
 - Evolution observe-only: cycles table on the live ledger = 0; no scheduler enabled.
+- Host cleanup (round-1 C3): stray pytest temp-home daemons (killed once,
+  but their leftover test scheduled task JF-WP7Gate-test_tas-49923 kept
+  restarting them) — the test task was deleted and the daemons killed;
+  0 pytest-home supervisor processes remain; the V4-era preview servers
+  (temp-home base64 launches) are pre-existing and untouched.
 
 ## 3. Verifier
 
