@@ -33,12 +33,13 @@ adjusted the S10 coherence test to the import-time extension semantics
 FILES_PROCESSES_DATABASES_AND_EXTERNAL_STATE_CHANGED: 2 new files + 2
 test adjustments + this report; no live state touched.
 TESTS_RECONCILIATION_RESTORE_AND_FAULTS: focused 6/6 (14 with the S10
-suite); full suite <fill after run>.
+suite); full suite 978 passed EXIT=0 (423.07 s; artifact
+var/evidence/v7-s11/suite-v7-s11-full.txt, sha256 f00187cb…).
 VERIFIER_AND_STRUCTURED_VERDICT: <fill after dispatch — fresh independent
 adversarial verifier, opencode_go/deepseek-v4-flash, no fallback>
 EVIDENCE_PATHS_AND_HASHES: src/jarvis_foundry/gates/owner_families.py;
 tests/foundry/test_v7_owner_families.py; var/evidence/v7-s11/suite-v7-s11-full.txt
-(<hash>).
+(f00187cb…).
 REAL_EFFECT_PROVIDER_REFERENCE_AND_AFTER_STATE: N/A (declarative policy;
 no online effect; providers pending owner credentials).
 ROLLBACK_COMPENSATION_OR_CONTAINMENT: git revert; effectful classes remain
