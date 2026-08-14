@@ -1,0 +1,295 @@
+{
+  "schema": "jarvis-r2-verifier-round5-verdict-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R2",
+  "repair_round": 5,
+  "verifier_model": "deepseek-v4-flash via codex-router",
+  "verdict": "FAIL",
+  "generated_utc": "2026-08-14T23:05:24Z",
+  "frozen_base": {
+    "baseline_commit": "93a3ddc0965dfaf3e4cb9dc0952467bd5250520a",
+    "branch": "main",
+    "audited_repo": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
+    "remaster_worktree": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry-Remaster",
+    "remaster_branch": "remaster/post-v7-purpose",
+    "remaster_head": "074e192ef20bfd0859c99ebabc54ea8772aeff0a"
+  },
+  "fail_sha256s": [
+    {
+      "round": 1,
+      "sha256": "1e8bd740950dafbb83f092473af57628f63f14f3b39192ea21bee7b22c2688d3",
+      "size": 16514,
+      "path": "docs/remaster/evidence/r2/R2_VERIFIER_ROUND1_VERDICT_DSV4.json"
+    },
+    {
+      "round": 2,
+      "sha256": "0ffbd83380eab133bb3ccb7a4f0e7ae50e8f2b6aea0305f4b7204bb2d2ecd8a3",
+      "size": 19128,
+      "path": "docs/remaster/evidence/r2/R2_VERIFIER_ROUND2_VERDICT_DSV4.json"
+    },
+    {
+      "round": 3,
+      "sha256": "2936d6ada761c428aeaa3e2dca176f6918f415d21ee1a75bb4ef195d8355c734",
+      "size": 16729,
+      "path": "docs/remaster/evidence/r2/R2_VERIFIER_ROUND3_VERDICT_DSV4.json"
+    },
+    {
+      "round": 4,
+      "sha256": "2e699715ef0153217356a0b6f69c6f21ca35512dd1ac9aed09f69e7df34fec9e",
+      "size": 16006,
+      "path": "docs/remaster/evidence/r2/R2_VERIFIER_ROUND4_VERDICT_DSV4.json"
+    }
+  ],
+  "criteria": [
+    {
+      "id": "C01",
+      "status": "PASS",
+      "evidence": {
+        "summary": "Disposition map has 187/187 entries, each with non-empty disposition, owner, and phase; 187 unique paths. Inventory has 187 modules = 99 source + 85 test + 3 test_support; normalized inventory path set is byte-identical to the disposition map path set.",
+        "command": "C:\\Python313\\python.exe -B JSON validation of R2_DISPOSITION_MAP.json and R2_MODULE_INVENTORY.json",
+        "output": "dm_entries=187 dm_missing_fields_count=0 dm_unique_paths=187; inv_modules=187 counts={source_modules:99,test_files:88,test_support_files:3,total:187}; kinds={source:99,test:85,test_support:3}; same_set=True (inventory_relative_count=187); dispositions={KEEP:7,REFACTOR:139,REWRITE:32,DELETE:2,NOT_IMPLEMENTED:4,UNSAFE:3}",
+        "paths": [
+          "docs/remaster/evidence/r2/R2_DISPOSITION_MAP.json",
+          "docs/remaster/evidence/r2/R2_MODULE_INVENTORY.json"
+        ],
+        "hashes": {
+          "R2_DISPOSITION_MAP.json": "2dd93cbc6f226bad9414eabc00d6ca7c68c1eeab21de62af695c1a0a6066d1ad",
+          "R2_MODULE_INVENTORY.json": "f0e0b0299176fffe5e9032eebedba49a2aad67502b9727cc5a808d49b1b6fcc3"
+        }
+      }
+    },
+    {
+      "id": "C02",
+      "status": "FAIL",
+      "evidence": {
+        "summary": "Canonical auditor, all 80 node-start ranges, the R2-F012 AST breakdown (92 equality + 10 in-set literals, 2 overlap, 100 distinct union), family counts (portfolio.* 7, connector.* 3, correlation.* 3), and the 41-item unhandled list reproduce. Residual evidence-accuracy defect: R2-F028 cites systems.py:53-56 as 'registers probes', but register_system is 46-64 and probe_system is 67-88; lines 53-56 are the tail of register_system's docstring plus two setup statements and contain no probe registration. The range start 53 is not an AST node start, so the canonical auditor silently skips it and cannot detect the mismatch.",
+        "auditor_command": "C:\\Python313\\python.exe -B scripts\\remaster\\r2\\audit_r2_spans.py",
+        "auditor_output": "80 OK lines followed by checked=80 mismatches=0; process exit code 0; zero PROSE_MISMATCH lines; zero STALE_PROSE lines",
+        "independent_ast_audit": "Independent AST recomputation of all structured ranges: 80 node-start ranges checked, 0 mismatches; 54 ranges do not start at an AST node start (statement/module/exception ranges); no missing .py files. Independent prose scan of measured_evidence against AST node spans: 0 mismatches for node-start prose ranges.",
+        "prose_spot_checks": {
+          "R2-F013_configure_owner": "command_center.py:548-553 matches AST span configure_owner 548-553",
+          "R2-F017_enable_scheduler": "enable_scheduler (117-123) matches AST span enable_scheduler 117-123",
+          "R2-F028_reconciliation_matrix": "capabilities/registry.py:143-145 matches AST span reconciliation_matrix 143-145",
+          "R2-F012_breakdown": "92 equality literals + 10 in-set literals, overlap 2, union 100 distinct; unhandled family counts portfolio.* 7, connector.* 3, correlation.* 3; 41 unhandled after subtracting 4 startswith-family-covered types from 45 raw unhandled",
+          "PROJECTION_TABLES": "45 table names (projections.py:9-55)"
+        },
+        "residual_defect": "R2-F028 measured_evidence says 'systems.py:53-56 registers probes' and the structured line_ranges are [[53,56]]. Source read shows line 53 = 'never fabricated. Secret-like values are refused.' (docstring), line 55-56 = 'capabilities = capabilities or {}' and '_reject_secrets(...)' inside register_system (46-64). probe_system (67-88) records system.probe_recorded events. No node starts at line 53, so audit_r2_spans.py cannot check this range.",
+        "paths": [
+          "docs/remaster/evidence/r2/R2_FORENSIC_FINDINGS.json",
+          "docs/remaster/evidence/r2/R2_METRICS.json",
+          "scripts/remaster/r2/audit_r2_spans.py"
+        ],
+        "hashes": {
+          "R2_FORENSIC_FINDINGS.json": "73a39d1ef8662f0d4de3f461aeba0a9349db0ec1b0c76eb56115817b14b01094",
+          "R2_METRICS.json": "b13559096fd8487eb68754070535207063b94dab2ecd168f6a963c8a29064ac7",
+          "audit_r2_spans.py": "6d5608b0cd33b768d23f8a0203bba45718445fc441c7c0882aaa45d8ca3186f4"
+        }
+      }
+    },
+    {
+      "id": "C03",
+      "status": "PASS",
+      "evidence": {
+        "summary": "All 30 findings carry a non-empty r0_cross_ref (30/30). Sampled refs resolve in FINDINGS.jsonl: R2-F002->R0-F016, R2-F003->R0-F017, R2-F017->R0-F004, R2-F018->R0-F004, R2-F021->R0-F015 (all CONFIRMED, OPEN_REWRITE/OPEN_REPAIR). R0_DISPOSITION_MAP.md is subsystem-level and contains no finding IDs, so contradiction checking was performed against R0 registry dispositions; scheduler/portfolio/ledger REWRITE dispositions are consistent with the map, and no sampled cross-reference contradicts it.",
+        "command": "python field completeness and registry resolution over R2_FORENSIC_FINDINGS.json, FINDINGS.jsonl, R0_DISPOSITION_MAP.md",
+        "output": "findings_count=30 missing_r0_cross_ref=[]; R0 registry rows 22 (R0-F001..R0-F022) all parse; sampled R0 IDs resolve; no contradiction found",
+        "paths": [
+          "docs/remaster/evidence/r2/R2_FORENSIC_FINDINGS.json",
+          "docs/remaster/FINDINGS.jsonl",
+          "docs/remaster/R0_DISPOSITION_MAP.md"
+        ],
+        "hashes": {
+          "R2_FORENSIC_FINDINGS.json": "73a39d1ef8662f0d4de3f461aeba0a9349db0ec1b0c76eb56115817b14b01094",
+          "FINDINGS.jsonl": "453f871ca59311ebcf4e18b824ef38532da1b78aafd1ba789f832ca4f6060798",
+          "R0_DISPOSITION_MAP.md": "12ec66f6bfafc20932850cf2f8c8e29ee8239e0207648e5566bbbb11f1964a84"
+        }
+      }
+    },
+    {
+      "id": "C04",
+      "status": "PASS",
+      "evidence": {
+        "summary": "No system repair: main checkout has only the six known untracked owner/planning docs and no tracked modifications; remaster worktree contains only FINDINGS.jsonl modification plus untracked R2 evidence, work package, disposition markdown, and scripts. No src/ or tests/foundry changes in either repository.",
+        "command": "git status --short in JARVIS-Foundry and JARVIS-Foundry-Remaster; git rev-parse HEAD",
+        "main_output": "HEAD 93a3ddc0965dfaf3e4cb9dc0952467bd5250520a; status = six untracked files: docs/handoffs/V5_SOL_HIGH_HARDENING_PROMPT.md, docs/handoffs/V5_SOL_HIGH_HARDENING_REPORT.md, docs/planning/POST_V7_CODEX_SOL_REMASTER_GOAL.md, docs/planning/V5_MASTER_PROMPT.md, docs/planning/V5_READ_FIRST.md, docs/planning/V7_MASTER_PROMPT.md",
+        "remaster_output": "HEAD 074e192ef20bfd0859c99ebabc54ea8772aeff0a; status = M docs/remaster/FINDINGS.jsonl; ?? docs/remaster/R2_DISPOSITION_MAP.md; ?? docs/remaster/evidence/r2/; ?? docs/remaster/work_packages/R2_WORK_PACKAGE.json; ?? scripts/remaster/r2/; no src/ or tests/foundry entries",
+        "paths": [
+          "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
+          "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry-Remaster"
+        ]
+      }
+    },
+    {
+      "id": "C05",
+      "status": "PASS",
+      "evidence": {
+        "summary": "Live boundary confirmed read-only: JARVIS-Foundry-Supervisor Running, Hermes_Gateway Ready, Hermes processes present. Verifier performed no live/protected writes and did not touch the daemon, database, scheduled tasks, processes, or ports.",
+        "command": "Get-ScheduledTask and Get-Process (read-only)",
+        "output": "JARVIS-Foundry-Supervisor State=Running; Hermes_Gateway State=Ready; Hermes PIDs 4060, 11180, 12308, 17148, 18060, 18124",
+        "paths": []
+      }
+    },
+    {
+      "id": "C06",
+      "status": "PASS",
+      "evidence": {
+        "summary": "No unclassified code/test/migration/adapter/capability/live path remains by the disposition map: 187/187 unique paths carry exactly one valid disposition, one owner, and one phase; inventory and disposition path sets are identical.",
+        "command": "python validation of R2_DISPOSITION_MAP.json and R2_MODULE_INVENTORY.json",
+        "output": "count=187 unique_paths=187 missing_fields=0; same_set=True; dispositions KEEP 7, REFACTOR 139, REWRITE 32, DELETE 2, NOT_IMPLEMENTED 4, UNSAFE 3",
+        "paths": [
+          "docs/remaster/evidence/r2/R2_DISPOSITION_MAP.json"
+        ],
+        "hashes": {
+          "R2_DISPOSITION_MAP.json": "2dd93cbc6f226bad9414eabc00d6ca7c68c1eeab21de62af695c1a0a6066d1ad"
+        }
+      }
+    },
+    {
+      "id": "C07",
+      "status": "FAIL",
+      "evidence": {
+        "summary": "Every mechanical reproduction succeeds: auditor checked=80 mismatches=0 exit 0 with no prose/stale lines; frozen counter files=88 word_boundary=311 substring=344 twice with byte-identical output c40f857cc2f5395df40f3c03a8bec7aba5e030fb5c3705d54faf7aa945207c46/9381; work package counter block binds script 27290bc9f1aef792a40b69cf3a112f904e03e1482b9e872f70053b99aed463f1/2327 and output c40f857c.../9381 separately with no swapped metadata; all four preserved FAIL verdicts byte-identical; tracked coverage 99 src py + 88 test py + 397 total; registry 65 rows with R2-F001..R2-F034 and no duplicates. The classification gate does not reproduce because C02 fails on R2-F028's systems.py:53-56 evidence inaccuracy.",
+        "auditor_command": "C:\\Python313\\python.exe -B scripts\\remaster\\r2\\audit_r2_spans.py",
+        "auditor_output": "checked=80 mismatches=0; exit 0; no PROSE_MISMATCH; no STALE_PROSE",
+        "counter_run1": "files=88 word_boundary=311 substring=344; exit 0; output sha256 c40f857cc2f5395df40f3c03a8bec7aba5e030fb5c3705d54faf7aa945207c46 size 9381",
+        "counter_run2": "files=88 word_boundary=311 substring=344; exit 0; output sha256 c40f857cc2f5395df40f3c03a8bec7aba5e030fb5c3705d54faf7aa945207c46 size 9381; IDENTICAL=True",
+        "work_package_counter_block": "script_size=2327 script_sha256=27290bc9f1aef792a40b69cf3a112f904e03e1482b9e872f70053b99aed463f1; output_size=9381 output_sha256=c40f857cc2f5395df40f3c03a8bec7aba5e030fb5c3705d54faf7aa945207c46; separate fields, not swapped; both match disk",
+        "preserved_verdicts": [
+          "round1 1e8bd740950dafbb83f092473af57628f63f14f3b39192ea21bee7b22c2688d3 (16514)",
+          "round2 0ffbd83380eab133bb3ccb7a4f0e7ae50e8f2b6aea0305f4b7204bb2d2ecd8a3 (19128)",
+          "round3 2936d6ada761c428aeaa3e2dca176f6918f415d21ee1a75bb4ef195d8355c734 (16729)",
+          "round4 2e699715ef0153217356a0b6f69c6f21ca35512dd1ac9aed09f69e7df34fec9e (16006)"
+        ],
+        "coverage": "git ls-files: src/*.py=99 tests/foundry/*.py=88 tracked_total=397",
+        "gate_failure": "C02 FAIL: R2-F028 cites systems.py:53-56 as 'registers probes'; actual probe recording is probe_system 67-88, register_system is 46-64, and lines 53-56 are docstring tail plus setup statements; range start 53 is not an AST node start, so the canonical auditor skips it",
+        "paths": [
+          "docs/remaster/work_packages/R2_WORK_PACKAGE.json",
+          "scripts/remaster/r2/measure_test_references.py",
+          "docs/remaster/evidence/r2/R2_TEST_REFERENCE_COUNTS.json",
+          "docs/remaster/evidence/r2/R2_VERIFIER_ROUND1_VERDICT_DSV4.json",
+          "docs/remaster/evidence/r2/R2_VERIFIER_ROUND2_VERDICT_DSV4.json",
+          "docs/remaster/evidence/r2/R2_VERIFIER_ROUND3_VERDICT_DSV4.json",
+          "docs/remaster/evidence/r2/R2_VERIFIER_ROUND4_VERDICT_DSV4.json"
+        ],
+        "hashes": {
+          "R2_WORK_PACKAGE.json": "0d42bd3c0596a41d27f9fb8e0a4a8f681163c40a2462653a17aba7de5df459b9",
+          "measure_test_references.py": "27290bc9f1aef792a40b69cf3a112f904e03e1482b9e872f70053b99aed463f1",
+          "R2_TEST_REFERENCE_COUNTS.json": "c40f857cc2f5395df40f3c03a8bec7aba5e030fb5c3705d54faf7aa945207c46"
+        }
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "R2-EVID-R5-001",
+      "severity": "S2",
+      "title": "R2-F028 systems.py:53-56 does not register probes and is invisible to the canonical auditor",
+      "reproduction": "R2-F028 measured_evidence says 'systems.py:53-56 registers probes' with structured line_ranges [[53,56]]. Independent source read of the frozen baseline shows register_system is AST span 46-64 and probe_system is AST span 67-88; lines 53-56 are the tail of register_system's docstring ('never fabricated. Secret-like values are refused.'), then 'capabilities = capabilities or {}' and '_reject_secrets(...)'. No probe registration occurs at 53-56; system.probe_recorded is created in probe_system at 67-88. audit_r2_spans.py only checks ranges whose start is an AST node start, so range 53-56 is skipped (one of 54 non-node-start ranges) and checked=80 mismatches=0 cannot detect it. This is the same evidence-accuracy defect class as rounds 1-4.",
+      "invariant": "AST-exact, semantically accurate evidence: every cited structured and prose range must correspond to a node span or a documented statement range whose content actually supports the finding claim.",
+      "evidence_paths": [
+        "docs/remaster/evidence/r2/R2_FORENSIC_FINDINGS.json",
+        "src/jarvis_foundry/systems.py"
+      ]
+    },
+    {
+      "id": "R2-EVID-R5-002",
+      "severity": "S3",
+      "title": "R2 event-coverage count method is undocumented and method-dependent",
+      "reproduction": "R2-F012 and R2_METRICS.json claim 'Source creates 113 distinct event_type values'. Independent AST/raw scans of Event.create literal first arguments in src find 112 distinct values. A deterministic partial static resolution (112 literals plus direct helper call-site literal canary.completed) reproduces exactly 113, matching the frozen metric; a fuller static resolution of helper/method call sites and defaults yields 123+, and the total is not stable across resolution rules. build_r2_evidence.py hardcodes 113 in event_coverage without a reproducible computation. The unhandled count 41 and all family counts (portfolio.* 7, connector.* 3, correlation.* 3) reproduce exactly and do not depend on this ambiguity.",
+      "invariant": "Reproducible evidence: every numeric claim must have a documented, script-generated counting method and exact command output.",
+      "evidence_paths": [
+        "docs/remaster/evidence/r2/R2_FORENSIC_FINDINGS.json",
+        "docs/remaster/evidence/r2/R2_METRICS.json",
+        "scripts/remaster/r2/build_r2_evidence.py"
+      ]
+    }
+  ],
+  "status_summary": "Round 5 reproduced every mechanical gate: canonical auditor checked=80 mismatches=0 exit 0 (no PROSE_MISMATCH/STALE_PROSE), frozen counter 88/311/344 twice byte-identical, work package counter bindings correct and separate, all four FAIL verdicts byte-identical, 99/88/397 tracked coverage, inventory 99+85+3=187 identical to disposition map 187/187 valid disposition/owner/phase, FINDINGS.jsonl parseable with R2-F001..R2-F034 and no duplicates, R2-F031..F034 repair records with regressions, R0 cross-refs 30/30 non-empty and sampled refs resolve, no src/test changes in either repo, and live boundary untouched (Supervisor Running, Gateway Ready). Verdict FAIL because a residual prose/structured evidence inaccuracy remains: R2-F028 cites systems.py:53-56 as 'registers probes', while probe registration is probe_system 67-88 and register_system is 46-64; the range start is not an AST node start, so the canonical auditor skips it. A secondary low-severity risk: the 113 created-event-types figure is method-dependent and hardcoded rather than script-generated, although a deterministic partial-resolution method does reproduce it exactly.",
+  "evidence_paths_and_hashes": {
+    "docs/remaster/evidence/r2/R2_FORENSIC_FINDINGS.json": {
+      "sha256": "73a39d1ef8662f0d4de3f461aeba0a9349db0ec1b0c76eb56115817b14b01094",
+      "size": 53143
+    },
+    "docs/remaster/evidence/r2/R2_MODULE_INVENTORY.json": {
+      "sha256": "f0e0b0299176fffe5e9032eebedba49a2aad67502b9727cc5a808d49b1b6fcc3",
+      "size": 437195
+    },
+    "docs/remaster/evidence/r2/R2_METRICS.json": {
+      "sha256": "b13559096fd8487eb68754070535207063b94dab2ecd168f6a963c8a29064ac7",
+      "size": 13885
+    },
+    "docs/remaster/evidence/r2/R2_SUMMARY.md": {
+      "sha256": "2b52e26eb2c621bf6ef0cd34999cba5d268bb9f8c7354528f085deba0dfc708b",
+      "size": 4342
+    },
+    "docs/remaster/evidence/r2/R2_DISPOSITION_MAP.json": {
+      "sha256": "2dd93cbc6f226bad9414eabc00d6ca7c68c1eeab21de62af695c1a0a6066d1ad",
+      "size": 34678
+    },
+    "docs/remaster/R2_DISPOSITION_MAP.md": {
+      "sha256": "c78589f90b90c5d548cf98adbab9100b382303015981896aad6170582cbd5a5c",
+      "size": 2234
+    },
+    "docs/remaster/FINDINGS.jsonl": {
+      "sha256": "453f871ca59311ebcf4e18b824ef38532da1b78aafd1ba789f832ca4f6060798",
+      "size": 35094
+    },
+    "docs/remaster/work_packages/R2_WORK_PACKAGE.json": {
+      "sha256": "0d42bd3c0596a41d27f9fb8e0a4a8f681163c40a2462653a17aba7de5df459b9",
+      "size": 6071
+    },
+    "docs/remaster/evidence/r2/R2_TEST_REFERENCE_COUNTS.json": {
+      "sha256": "c40f857cc2f5395df40f3c03a8bec7aba5e030fb5c3705d54faf7aa945207c46",
+      "size": 9381
+    },
+    "docs/remaster/evidence/r2/R2_VERIFIER_ROUND1_VERDICT_DSV4.json": {
+      "sha256": "1e8bd740950dafbb83f092473af57628f63f14f3b39192ea21bee7b22c2688d3",
+      "size": 16514
+    },
+    "docs/remaster/evidence/r2/R2_VERIFIER_ROUND2_VERDICT_DSV4.json": {
+      "sha256": "0ffbd83380eab133bb3ccb7a4f0e7ae50e8f2b6aea0305f4b7204bb2d2ecd8a3",
+      "size": 19128
+    },
+    "docs/remaster/evidence/r2/R2_VERIFIER_ROUND3_VERDICT_DSV4.json": {
+      "sha256": "2936d6ada761c428aeaa3e2dca176f6918f415d21ee1a75bb4ef195d8355c734",
+      "size": 16729
+    },
+    "docs/remaster/evidence/r2/R2_VERIFIER_ROUND4_VERDICT_DSV4.json": {
+      "sha256": "2e699715ef0153217356a0b6f69c6f21ca35512dd1ac9aed09f69e7df34fec9e",
+      "size": 16006
+    },
+    "scripts/remaster/r2/audit_r2_spans.py": {
+      "sha256": "6d5608b0cd33b768d23f8a0203bba45718445fc441c7c0882aaa45d8ca3186f4",
+      "size": 4383
+    },
+    "scripts/remaster/r2/measure_test_references.py": {
+      "sha256": "27290bc9f1aef792a40b69cf3a112f904e03e1482b9e872f70053b99aed463f1",
+      "size": 2327
+    },
+    "scripts/remaster/r2/measure_repo.py": {
+      "sha256": "1f82324adf3b2c3f12938e6feffa2550f5b5b18b681942e57a34e39af1d6d5b6",
+      "size": 13025
+    },
+    "scripts/remaster/r2/build_r2_evidence.py": {
+      "sha256": "1e8f082a2f79be405c80eb24778de1bfe125b67a43e25ad9ceb9ab593c402a7b",
+      "size": 60747
+    },
+    "scripts/remaster/r2/repair_r2_evidence.py": {
+      "sha256": "23d7f1b3c2d8cf67fa2577ebef5dca5c7bdfba79900340584a7c6f2a64902050",
+      "size": 8211
+    },
+    "scripts/remaster/r2/repair_r2_evidence_round3.py": {
+      "sha256": "fd050754b5a180618f65675e1b9182ec4d572be0be6be78605cf0e91db196523",
+      "size": 4324
+    },
+    "scripts/remaster/r2/repair_r2_evidence_round4.py": {
+      "sha256": "7b88e3c0b958653e9d7f3b7e595ddb4bdf0921a2d8807440368b8abb42e68814",
+      "size": 4444
+    },
+    "scripts/remaster/r2/repair_r2_evidence_round5.py": {
+      "sha256": "83c9cdb95726b763febed0be40387dad49c57ff57ba5646bcf7dae309e1a2997",
+      "size": 3277
+    }
+  },
+  "next_action": "Root must repair R2-F028: cite probe_system (systems.py:67-88) or register_system (systems.py:46-64) for the probe/system registration claim instead of 53-56, update any dependent prose, and re-freeze. The canonical auditor should also be extended to validate non-node-start prose/statement ranges or at least emit them for manual review, so a residual range like systems.py:53-56 cannot pass as 80/0. Document and script the event-type counting method behind created_event_types=113 (or correct the hardcoded figure), then submit round 6 for a fresh independent adversarial re-run."
+}

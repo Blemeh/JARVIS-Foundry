@@ -1,0 +1,1320 @@
+{
+  "schema": "jarvis-r2-disposition-map-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R2",
+  "baseline_commit": "93a3ddc0965dfaf3e4cb9dc0952467bd5250520a",
+  "generated_utc": "2026-08-14T20:02:56.0756622Z",
+  "generated_by": "root disposition owner binding over R2 module inventory",
+  "note": "Every source module, test file, and support file receives exactly one action (disposition) and one owner (R4-R12 phase gate). UNSAFE/DELETE/NOT_IMPLEMENTED are safe in this stage because the live path is observe-only and remains frozen until R12 adoption.",
+  "entries": [
+    {
+      "path": "src/jarvis_foundry/__init__.py",
+      "kind": "source",
+      "disposition": "KEEP",
+      "owner": "root",
+      "phase": "R0"
+    },
+    {
+      "path": "src/jarvis_foundry/artifacts.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "evidence-custodian",
+      "phase": "R3"
+    },
+    {
+      "path": "src/jarvis_foundry/briefings.py",
+      "kind": "source",
+      "disposition": "NOT_IMPLEMENTED",
+      "owner": "owner-experience",
+      "phase": "R10"
+    },
+    {
+      "path": "src/jarvis_foundry/capabilities/__init__.py",
+      "kind": "source",
+      "disposition": "REWRITE",
+      "owner": "security",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/capabilities/registry.py",
+      "kind": "source",
+      "disposition": "REWRITE",
+      "owner": "security",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/cli/__init__.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "runtime-executive",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/cli/main.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "runtime-executive",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/clock.py",
+      "kind": "source",
+      "disposition": "KEEP",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/command_center.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "owner-experience",
+      "phase": "R10"
+    },
+    {
+      "path": "src/jarvis_foundry/connectors/activation.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "adapters",
+      "phase": "R9"
+    },
+    {
+      "path": "src/jarvis_foundry/connectors/contract.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "adapters",
+      "phase": "R9"
+    },
+    {
+      "path": "src/jarvis_foundry/connectors/fakes.py",
+      "kind": "source",
+      "disposition": "DELETE",
+      "owner": "adapters",
+      "phase": "R9"
+    },
+    {
+      "path": "src/jarvis_foundry/connectors/registry.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "adapters",
+      "phase": "R9"
+    },
+    {
+      "path": "src/jarvis_foundry/consolidation.py",
+      "kind": "source",
+      "disposition": "UNSAFE",
+      "owner": "memory",
+      "phase": "R6"
+    },
+    {
+      "path": "src/jarvis_foundry/control/__init__.py",
+      "kind": "source",
+      "disposition": "KEEP",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/control/action_envelope.py",
+      "kind": "source",
+      "disposition": "REWRITE",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/control/broker.py",
+      "kind": "source",
+      "disposition": "REWRITE",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/control/capabilities.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/control/capability_broker.py",
+      "kind": "source",
+      "disposition": "REWRITE",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/control/policy.py",
+      "kind": "source",
+      "disposition": "REWRITE",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/control/redaction.py",
+      "kind": "source",
+      "disposition": "KEEP",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/control/registration.py",
+      "kind": "source",
+      "disposition": "REWRITE",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/correlation/__init__.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "intelligence",
+      "phase": "R7"
+    },
+    {
+      "path": "src/jarvis_foundry/correlation/entities.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "intelligence",
+      "phase": "R7"
+    },
+    {
+      "path": "src/jarvis_foundry/correlation/events.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "intelligence",
+      "phase": "R7"
+    },
+    {
+      "path": "src/jarvis_foundry/database.py",
+      "kind": "source",
+      "disposition": "REWRITE",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/discovery_candidates.py",
+      "kind": "source",
+      "disposition": "REWRITE",
+      "owner": "intelligence",
+      "phase": "R7"
+    },
+    {
+      "path": "src/jarvis_foundry/discovery_monitors.py",
+      "kind": "source",
+      "disposition": "REWRITE",
+      "owner": "intelligence",
+      "phase": "R7"
+    },
+    {
+      "path": "src/jarvis_foundry/domain.py",
+      "kind": "source",
+      "disposition": "REWRITE",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/effects.py",
+      "kind": "source",
+      "disposition": "REWRITE",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/events.py",
+      "kind": "source",
+      "disposition": "REWRITE",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/evolution/__init__.py",
+      "kind": "source",
+      "disposition": "KEEP",
+      "owner": "evolution",
+      "phase": "R11"
+    },
+    {
+      "path": "src/jarvis_foundry/evolution/acceptance.py",
+      "kind": "source",
+      "disposition": "REWRITE",
+      "owner": "evolution",
+      "phase": "R11"
+    },
+    {
+      "path": "src/jarvis_foundry/evolution/builder.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "evolution",
+      "phase": "R11"
+    },
+    {
+      "path": "src/jarvis_foundry/evolution/canary.py",
+      "kind": "source",
+      "disposition": "REWRITE",
+      "owner": "evolution",
+      "phase": "R11"
+    },
+    {
+      "path": "src/jarvis_foundry/evolution/cycle.py",
+      "kind": "source",
+      "disposition": "REWRITE",
+      "owner": "evolution",
+      "phase": "R11"
+    },
+    {
+      "path": "src/jarvis_foundry/evolution/discover.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "evolution",
+      "phase": "R11"
+    },
+    {
+      "path": "src/jarvis_foundry/evolution/lab.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "evolution",
+      "phase": "R11"
+    },
+    {
+      "path": "src/jarvis_foundry/evolution/portfolio.py",
+      "kind": "source",
+      "disposition": "REWRITE",
+      "owner": "evolution",
+      "phase": "R11"
+    },
+    {
+      "path": "src/jarvis_foundry/evolution/promote.py",
+      "kind": "source",
+      "disposition": "REWRITE",
+      "owner": "evolution",
+      "phase": "R11"
+    },
+    {
+      "path": "src/jarvis_foundry/evolution/records.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "evolution",
+      "phase": "R11"
+    },
+    {
+      "path": "src/jarvis_foundry/evolution/registry.py",
+      "kind": "source",
+      "disposition": "REWRITE",
+      "owner": "evolution",
+      "phase": "R11"
+    },
+    {
+      "path": "src/jarvis_foundry/evolution/restore.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "evolution",
+      "phase": "R11"
+    },
+    {
+      "path": "src/jarvis_foundry/evolution/scheduler.py",
+      "kind": "source",
+      "disposition": "REWRITE",
+      "owner": "evolution",
+      "phase": "R11"
+    },
+    {
+      "path": "src/jarvis_foundry/evolution/shadow.py",
+      "kind": "source",
+      "disposition": "REWRITE",
+      "owner": "evolution",
+      "phase": "R11"
+    },
+    {
+      "path": "src/jarvis_foundry/evolution/verify.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "evolution",
+      "phase": "R11"
+    },
+    {
+      "path": "src/jarvis_foundry/execution/pipeline.py",
+      "kind": "source",
+      "disposition": "REWRITE",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/gates/__init__.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "test-architecture",
+      "phase": "R3"
+    },
+    {
+      "path": "src/jarvis_foundry/gates/minigates.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "test-architecture",
+      "phase": "R3"
+    },
+    {
+      "path": "src/jarvis_foundry/gates/owner_families.py",
+      "kind": "source",
+      "disposition": "DELETE",
+      "owner": "test-architecture",
+      "phase": "R3"
+    },
+    {
+      "path": "src/jarvis_foundry/installer.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "release-engineering",
+      "phase": "R12"
+    },
+    {
+      "path": "src/jarvis_foundry/integrated_rollback.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "data-recovery",
+      "phase": "R5"
+    },
+    {
+      "path": "src/jarvis_foundry/knowledge.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "memory",
+      "phase": "R6"
+    },
+    {
+      "path": "src/jarvis_foundry/knowledge_entities.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "memory",
+      "phase": "R6"
+    },
+    {
+      "path": "src/jarvis_foundry/knowledge_extract.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "memory",
+      "phase": "R6"
+    },
+    {
+      "path": "src/jarvis_foundry/knowledge_ingestion.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "memory",
+      "phase": "R6"
+    },
+    {
+      "path": "src/jarvis_foundry/knowledge_retrieval.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "memory",
+      "phase": "R6"
+    },
+    {
+      "path": "src/jarvis_foundry/knowledge_snapshots.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "memory",
+      "phase": "R6"
+    },
+    {
+      "path": "src/jarvis_foundry/live_ingestion.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "memory",
+      "phase": "R6"
+    },
+    {
+      "path": "src/jarvis_foundry/migrations.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "data-recovery",
+      "phase": "R5"
+    },
+    {
+      "path": "src/jarvis_foundry/mission/__init__.py",
+      "kind": "source",
+      "disposition": "REWRITE",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/mission/commit.py",
+      "kind": "source",
+      "disposition": "REWRITE",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/mission/loop.py",
+      "kind": "source",
+      "disposition": "REWRITE",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/mission/proposal.py",
+      "kind": "source",
+      "disposition": "REWRITE",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/mission/verification.py",
+      "kind": "source",
+      "disposition": "REWRITE",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/obsidian/__init__.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "memory",
+      "phase": "R6"
+    },
+    {
+      "path": "src/jarvis_foundry/obsidian/policy.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "memory",
+      "phase": "R6"
+    },
+    {
+      "path": "src/jarvis_foundry/obsidian/snapshots.py",
+      "kind": "source",
+      "disposition": "UNSAFE",
+      "owner": "memory",
+      "phase": "R6"
+    },
+    {
+      "path": "src/jarvis_foundry/obsidian/writer.py",
+      "kind": "source",
+      "disposition": "UNSAFE",
+      "owner": "memory",
+      "phase": "R6"
+    },
+    {
+      "path": "src/jarvis_foundry/owner_controls.py",
+      "kind": "source",
+      "disposition": "REWRITE",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/paths.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "runtime-executive",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/projections.py",
+      "kind": "source",
+      "disposition": "REWRITE",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/reconcile.py",
+      "kind": "source",
+      "disposition": "REWRITE",
+      "owner": "data-recovery",
+      "phase": "R5"
+    },
+    {
+      "path": "src/jarvis_foundry/reporting/__init__.py",
+      "kind": "source",
+      "disposition": "KEEP",
+      "owner": "owner-experience",
+      "phase": "R10"
+    },
+    {
+      "path": "src/jarvis_foundry/reporting/briefing.py",
+      "kind": "source",
+      "disposition": "NOT_IMPLEMENTED",
+      "owner": "owner-experience",
+      "phase": "R10"
+    },
+    {
+      "path": "src/jarvis_foundry/research_queue.py",
+      "kind": "source",
+      "disposition": "NOT_IMPLEMENTED",
+      "owner": "intelligence",
+      "phase": "R7"
+    },
+    {
+      "path": "src/jarvis_foundry/roles/__init__.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "worker-gateway",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/roles/adapter.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "worker-gateway",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/roles/dispatcher.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "worker-gateway",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/roles/manifest.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "worker-gateway",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/roles/reaper.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "worker-gateway",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/roles/results.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "worker-gateway",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/roles/router.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "worker-gateway",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/supervisor/__init__.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "runtime-executive",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/supervisor/console.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "runtime-executive",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/supervisor/controls.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/supervisor/estop.py",
+      "kind": "source",
+      "disposition": "KEEP",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/supervisor/evolution_control.py",
+      "kind": "source",
+      "disposition": "REWRITE",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/supervisor/leases.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/supervisor/run.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "runtime-executive",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/supervisor/service.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "runtime-executive",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/supervisor/worker.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "runtime-executive",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/systems.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "adapters",
+      "phase": "R9"
+    },
+    {
+      "path": "src/jarvis_foundry/v3_loop.py",
+      "kind": "source",
+      "disposition": "REWRITE",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "src/jarvis_foundry/v4_schema.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "data-recovery",
+      "phase": "R5"
+    },
+    {
+      "path": "src/jarvis_foundry/vault_indexer.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "memory",
+      "phase": "R6"
+    },
+    {
+      "path": "src/jarvis_foundry/vault_retrieval.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "memory",
+      "phase": "R6"
+    },
+    {
+      "path": "src/jarvis_foundry/voice.py",
+      "kind": "source",
+      "disposition": "NOT_IMPLEMENTED",
+      "owner": "owner-experience",
+      "phase": "R10"
+    },
+    {
+      "path": "src/jarvis_foundry/worker_context.py",
+      "kind": "source",
+      "disposition": "REFACTOR",
+      "owner": "worker-gateway",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/conftest.py",
+      "kind": "test_support",
+      "disposition": "REFACTOR",
+      "owner": "test-architecture",
+      "phase": "R3"
+    },
+    {
+      "path": "tests/foundry/crash_fixture.py",
+      "kind": "test_support",
+      "disposition": "REFACTOR",
+      "owner": "test-architecture",
+      "phase": "R3"
+    },
+    {
+      "path": "tests/foundry/supervisor_fixture.py",
+      "kind": "test_support",
+      "disposition": "REFACTOR",
+      "owner": "test-architecture",
+      "phase": "R3"
+    },
+    {
+      "path": "tests/foundry/test_action_broker.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_action_policy.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_adapter_verdict.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "worker-gateway",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_artifacts.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "evidence-custodian",
+      "phase": "R3"
+    },
+    {
+      "path": "tests/foundry/test_candidate_supersession.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "intelligence",
+      "phase": "R7"
+    },
+    {
+      "path": "tests/foundry/test_capability_broker.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "security",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_capability_states.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "security",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_cli.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "runtime-executive",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_connector_activation.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "adapters",
+      "phase": "R9"
+    },
+    {
+      "path": "tests/foundry/test_connectors.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "adapters",
+      "phase": "R9"
+    },
+    {
+      "path": "tests/foundry/test_console_events.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "owner-experience",
+      "phase": "R10"
+    },
+    {
+      "path": "tests/foundry/test_consolidation.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "memory",
+      "phase": "R6"
+    },
+    {
+      "path": "tests/foundry/test_correlation.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "intelligence",
+      "phase": "R7"
+    },
+    {
+      "path": "tests/foundry/test_crash_recovery.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_directive_model_routing.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_discovery_candidates.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "intelligence",
+      "phase": "R7"
+    },
+    {
+      "path": "tests/foundry/test_discovery_monitors.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "intelligence",
+      "phase": "R7"
+    },
+    {
+      "path": "tests/foundry/test_effects.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_event_store.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_evolution_acceptance.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "evolution",
+      "phase": "R11"
+    },
+    {
+      "path": "tests/foundry/test_evolution_builder.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "evolution",
+      "phase": "R11"
+    },
+    {
+      "path": "tests/foundry/test_evolution_canary.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "evolution",
+      "phase": "R11"
+    },
+    {
+      "path": "tests/foundry/test_evolution_cycle.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "evolution",
+      "phase": "R11"
+    },
+    {
+      "path": "tests/foundry/test_evolution_discover.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "evolution",
+      "phase": "R11"
+    },
+    {
+      "path": "tests/foundry/test_evolution_lab.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "evolution",
+      "phase": "R11"
+    },
+    {
+      "path": "tests/foundry/test_evolution_promote.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "evolution",
+      "phase": "R11"
+    },
+    {
+      "path": "tests/foundry/test_evolution_records.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "evolution",
+      "phase": "R11"
+    },
+    {
+      "path": "tests/foundry/test_evolution_registry.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "evolution",
+      "phase": "R11"
+    },
+    {
+      "path": "tests/foundry/test_evolution_restore.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "evolution",
+      "phase": "R11"
+    },
+    {
+      "path": "tests/foundry/test_evolution_shadow.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "evolution",
+      "phase": "R11"
+    },
+    {
+      "path": "tests/foundry/test_evolution_verify.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "evolution",
+      "phase": "R11"
+    },
+    {
+      "path": "tests/foundry/test_exactly_once_resume.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_f13_injection_data.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_f5_network_outage.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_f6_provider_outage.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_installer.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "release-engineering",
+      "phase": "R12"
+    },
+    {
+      "path": "tests/foundry/test_integrated_rollback.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "data-recovery",
+      "phase": "R5"
+    },
+    {
+      "path": "tests/foundry/test_knowledge_claims.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "memory",
+      "phase": "R6"
+    },
+    {
+      "path": "tests/foundry/test_knowledge_entities.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "memory",
+      "phase": "R6"
+    },
+    {
+      "path": "tests/foundry/test_knowledge_ingestion.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "memory",
+      "phase": "R6"
+    },
+    {
+      "path": "tests/foundry/test_knowledge_retrieval.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "memory",
+      "phase": "R6"
+    },
+    {
+      "path": "tests/foundry/test_knowledge_snapshots.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "memory",
+      "phase": "R6"
+    },
+    {
+      "path": "tests/foundry/test_lease_renewal.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_live_ingestion.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "memory",
+      "phase": "R6"
+    },
+    {
+      "path": "tests/foundry/test_migrations.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "data-recovery",
+      "phase": "R5"
+    },
+    {
+      "path": "tests/foundry/test_mission_loop.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_monitor_loop.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "intelligence",
+      "phase": "R7"
+    },
+    {
+      "path": "tests/foundry/test_monitor_poll_integrity.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "intelligence",
+      "phase": "R7"
+    },
+    {
+      "path": "tests/foundry/test_obsidian_rollback.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "memory",
+      "phase": "R6"
+    },
+    {
+      "path": "tests/foundry/test_obsidian_write.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "memory",
+      "phase": "R6"
+    },
+    {
+      "path": "tests/foundry/test_path_boundaries.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "security",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_pipeline.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_projection_monotonic.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_reconcile.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "data-recovery",
+      "phase": "R5"
+    },
+    {
+      "path": "tests/foundry/test_registration.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "security",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_research_queue.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "intelligence",
+      "phase": "R7"
+    },
+    {
+      "path": "tests/foundry/test_role_dispatch.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "worker-gateway",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_role_gateway_kill.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "worker-gateway",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_role_manifest.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "worker-gateway",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_role_reaper.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "worker-gateway",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_role_routing.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "worker-gateway",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_scoring_context.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "intelligence",
+      "phase": "R7"
+    },
+    {
+      "path": "tests/foundry/test_stop_controls.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_supervisor.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "runtime-executive",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_supervisor_loop_resilience.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "runtime-executive",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_supervisor_recovery.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "runtime-executive",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_support_semantics.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_system_registry.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "adapters",
+      "phase": "R9"
+    },
+    {
+      "path": "tests/foundry/test_v3_loop.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_v4_command_center.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "owner-experience",
+      "phase": "R10"
+    },
+    {
+      "path": "tests/foundry/test_v7_briefing.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "owner-experience",
+      "phase": "R10"
+    },
+    {
+      "path": "tests/foundry/test_v7_capabilities.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "security",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_v7_continuity.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_v7_minigates.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "test-architecture",
+      "phase": "R3"
+    },
+    {
+      "path": "tests/foundry/test_v7_owner_families.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "test-architecture",
+      "phase": "R3"
+    },
+    {
+      "path": "tests/foundry/test_v7_portfolio.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "runtime-executive",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_v7_restore_sidecar_regression.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "data-recovery",
+      "phase": "R5"
+    },
+    {
+      "path": "tests/foundry/test_v7_scheduler.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "runtime-executive",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_v7_supervisor_adoption.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "runtime-executive",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_vault_indexer.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "memory",
+      "phase": "R6"
+    },
+    {
+      "path": "tests/foundry/test_vault_retrieval.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "memory",
+      "phase": "R6"
+    },
+    {
+      "path": "tests/foundry/test_verification_loop.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_verifier_truth.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "trusted-kernel",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_worker_context.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "worker-gateway",
+      "phase": "R4"
+    },
+    {
+      "path": "tests/foundry/test_worker_control.py",
+      "kind": "test",
+      "disposition": "REFACTOR",
+      "owner": "worker-gateway",
+      "phase": "R4"
+    }
+  ]
+}

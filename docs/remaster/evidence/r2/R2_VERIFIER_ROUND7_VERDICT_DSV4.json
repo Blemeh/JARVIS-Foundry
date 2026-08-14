@@ -1,0 +1,341 @@
+{
+  "schema": "jarvis-r2-verifier-round7-verdict-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R2",
+  "repair_round": 7,
+  "verifier_model": "deepseek-v4-flash via codex-router",
+  "verdict": "PASS",
+  "generated_utc": "2026-08-14T21:23:51Z",
+  "frozen_base": {
+    "baseline_commit": "93a3ddc0965dfaf3e4cb9dc0952467bd5250520a",
+    "baseline_tree": "2e1df6190b0d032372ae46e6a59bef22ddac57e3",
+    "branch": "main",
+    "audited_repo": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
+    "remaster_worktree": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry-Remaster",
+    "remaster_branch": "remaster/post-v7-purpose",
+    "remaster_head": "074e192ef20bfd0859c99ebabc54ea8772aeff0a"
+  },
+  "fail_sha256s": [
+    {
+      "round": 1,
+      "path": "docs/remaster/evidence/r2/R2_VERIFIER_ROUND1_VERDICT_DSV4.json",
+      "sha256": "1e8bd740950dafbb83f092473af57628f63f14f3b39192ea21bee7b22c2688d3",
+      "size": 16514
+    },
+    {
+      "round": 2,
+      "path": "docs/remaster/evidence/r2/R2_VERIFIER_ROUND2_VERDICT_DSV4.json",
+      "sha256": "0ffbd83380eab133bb3ccb7a4f0e7ae50e8f2b6aea0305f4b7204bb2d2ecd8a3",
+      "size": 19128
+    },
+    {
+      "round": 3,
+      "path": "docs/remaster/evidence/r2/R2_VERIFIER_ROUND3_VERDICT_DSV4.json",
+      "sha256": "2936d6ada761c428aeaa3e2dca176f6918f415d21ee1a75bb4ef195d8355c734",
+      "size": 16729
+    },
+    {
+      "round": 4,
+      "path": "docs/remaster/evidence/r2/R2_VERIFIER_ROUND4_VERDICT_DSV4.json",
+      "sha256": "2e699715ef0153217356a0b6f69c6f21ca35512dd1ac9aed09f69e7df34fec9e",
+      "size": 16006
+    },
+    {
+      "round": 5,
+      "path": "docs/remaster/evidence/r2/R2_VERIFIER_ROUND5_VERDICT_DSV4.json",
+      "sha256": "4492f0daa71bae95588ddfdafeb57759066e28764004a493b8a8d4df7af8b304",
+      "size": 21298
+    },
+    {
+      "round": 6,
+      "path": "docs/remaster/evidence/r2/R2_VERIFIER_ROUND6_VERDICT_DSV4.json",
+      "sha256": "789d37ff7a82e0edbc549764d83a33b904c7c714878148891ea438de10e6d26c",
+      "size": 21800
+    }
+  ],
+  "criteria": [
+    {
+      "id": "C01",
+      "status": "PASS",
+      "evidence": {
+        "paths": [
+          "docs/remaster/evidence/r2/R2_MODULE_INVENTORY.json",
+          "docs/remaster/evidence/r2/R2_DISPOSITION_MAP.json",
+          "docs/remaster/R2_DISPOSITION_MAP.md"
+        ],
+        "command_outputs": [
+          "git ls-files in main baseline: src/**/*.py=99, tests/foundry/*.py=88, tracked total=397.",
+          "R2_MODULE_INVENTORY.json modules=187; module kinds source=99 test=85 test_support=3; counts source_modules=99 test_files=88 test_support_files=3 total=187 (99+85+3=187 and 85+3=88).",
+          "R2_DISPOSITION_MAP.json entries=187, unique paths=187, inventory relative path set equals disposition path set with 0 missing and 0 extra.",
+          "Every disposition entry has non-empty disposition, owner, and phase; dispositions are KEEP/REFACTOR/REWRITE/DELETE/NOT_IMPLEMENTED/UNSAFE only; kinds source/test/test_support only."
+        ],
+        "hashes": {
+          "R2_MODULE_INVENTORY.json": "f0e0b0299176fffe5e9032eebedba49a2aad67502b9727cc5a808d49b1b6fcc3",
+          "R2_DISPOSITION_MAP.json": "2dd93cbc6f226bad9414eabc00d6ca7c68c1eeab21de62af695c1a0a6066d1ad",
+          "R2_DISPOSITION_MAP.md": "c78589f90b90c5d548cf98adbab9100b382303015981896aad6170582cbd5a5c"
+        }
+      }
+    },
+    {
+      "id": "C02",
+      "status": "PASS",
+      "evidence": {
+        "paths": [
+          "scripts/remaster/r2/audit_r2_spans.py",
+          "scripts/remaster/r2/classify_r2_ranges.py",
+          "docs/remaster/evidence/r2/R2_FORENSIC_FINDINGS.json"
+        ],
+        "command_outputs": [
+          "C:\\Python313\\python.exe -B scripts\\remaster\\r2\\audit_r2_spans.py: printed 161 OK lines then checked=161 mismatches=0, exit code 0; output contains no PROSE_MISMATCH, no STALE_PROSE, no NO_KIND.",
+          "C:\\Python313\\python.exe -B scripts\\remaster\\r2\\classify_r2_ranges.py: classified=161 node=81 line=80, exit code 0.",
+          "Independent reclassification: recomputed AST function/class starts for every cited .py path and found 0 mismatches between stored kind and independently derived kind, and node ends match AST end_lineno.",
+          "All 161 ranges are {start,end,kind} objects; 30 findings each carry severity, explicit paths, affected invariants, disposition, measured_evidence, and r0_cross_ref."
+        ],
+        "hashes": {
+          "audit_r2_spans.py": "165a8ff8bc6feedd6cdd6a97be1c1d39727c15d47d564bfc6f1bf58558d70ebb",
+          "classify_r2_ranges.py": "5ddaf3b99e0b37d36a48b99db8020215496e63edab66d1656b18432f58b71d15",
+          "R2_FORENSIC_FINDINGS.json": "e61bc4ca89534e4b2596d2219a922c9cdb6ab20cc5046b8744bb8b2a973bc2cc"
+        }
+      }
+    },
+    {
+      "id": "C03",
+      "status": "PASS",
+      "evidence": {
+        "paths": [
+          "docs/remaster/evidence/r2/R2_FORENSIC_FINDINGS.json"
+        ],
+        "command_outputs": [
+          "30/30 findings have non-empty r0_cross_ref.",
+          "Finding ids are exactly R2-F001..R2-F030 with no duplicates; every cross-ref is a non-empty R0 identifier string."
+        ],
+        "hashes": {
+          "R2_FORENSIC_FINDINGS.json": "e61bc4ca89534e4b2596d2219a922c9cdb6ab20cc5046b8744bb8b2a973bc2cc"
+        }
+      }
+    },
+    {
+      "id": "C04",
+      "status": "PASS",
+      "evidence": {
+        "paths": [
+          "scripts/remaster/r2/BUILD_R2_EVIDENCE_SUPERSEDED.md",
+          "docs/remaster/work_packages/R2_WORK_PACKAGE.json"
+        ],
+        "command_outputs": [
+          "Main checkout git status --short: exactly six untracked owner planning/handoff docs and nothing else; no src/ or tests/foundry changes.",
+          "Remaster worktree git status --short: only FINDINGS.jsonl modified plus untracked docs/remaster/evidence/r2/, docs/remaster/work_packages/R2_WORK_PACKAGE.json, docs/remaster/R2_DISPOSITION_MAP.md, scripts/remaster/r2/; no src/ or tests/foundry changes.",
+          "BUILD_R2_EVIDENCE_SUPERSEDED.md exists, status RETIRED, explicitly says do not run and that running build_r2_evidence.py is forbidden by the frozen work package stop conditions.",
+          "Work package stop_conditions includes 'running build_r2_evidence.py'; retired_generator block records the script plus marker and reason.",
+          "Searched R2_FORENSIC_FINDINGS.json, R2_METRICS.json, R2_SUMMARY.md, R2_MODULE_INVENTORY.json, R2_DISPOSITION_MAP.json for 'build_r2_evidence': zero references, so no authoritative evidence points to the retired generator."
+        ],
+        "hashes": {
+          "BUILD_R2_EVIDENCE_SUPERSEDED.md": "714b71cf5adc9156fc216fe56f54dcdc7cc7fd020d7a97b6195a7ed7caf7c71c",
+          "R2_WORK_PACKAGE.json": "ecc81a2857f364cf1d17dc76b3eae3508089a489aa4f0562f570248f025e7d54"
+        }
+      }
+    },
+    {
+      "id": "C05",
+      "status": "PASS",
+      "evidence": {
+        "paths": [
+          "docs/remaster/evidence/r2/R2_DISPOSITION_MAP.json",
+          "docs/remaster/evidence/r2/R2_SUMMARY.md"
+        ],
+        "command_outputs": [
+          "Scheduled task JARVIS-Foundry-Supervisor state=Running; Hermes_Gateway state=Ready (read-only Get-ScheduledTask).",
+          "Supervisor processes present: two python.exe processes running '.venv\\Scripts\\python.exe -m jarvis_foundry.supervisor.run --home C:\\Users\\b\\AppData\\Local\\hermes\\foundry' (read-only Win32_Process query).",
+          "No service, task, database, process, port, scheduled task, or live/protected state was modified during verification.",
+          "Disposition map classifies live-path modules as REWRITE/UNSAFE and summary describes R2 as forensic inventory only; no repair performed."
+        ],
+        "hashes": {
+          "R2_DISPOSITION_MAP.json": "2dd93cbc6f226bad9414eabc00d6ca7c68c1eeab21de62af695c1a0a6066d1ad",
+          "R2_SUMMARY.md": "f695764c3ee1062f4aa9246b64543fc79d5c6ac83c02d99fdc3f46ade78c9550"
+        }
+      }
+    },
+    {
+      "id": "C06",
+      "status": "PASS",
+      "evidence": {
+        "paths": [
+          "docs/remaster/evidence/r2/R2_DISPOSITION_MAP.json",
+          "docs/remaster/evidence/r2/R2_MODULE_INVENTORY.json"
+        ],
+        "command_outputs": [
+          "187/187 inventory modules have a disposition and exactly one disposition entry in the disposition map; no path is missing or duplicated.",
+          "Every disposition entry has a valid disposition, non-empty owner, and non-empty phase; inventory kinds are source/test/test_support with 0 unclassified entries.",
+          "All 30 findings carry disposition and affected invariants; audit reports 0 NO_KIND ranges."
+        ],
+        "hashes": {
+          "R2_DISPOSITION_MAP.json": "2dd93cbc6f226bad9414eabc00d6ca7c68c1eeab21de62af695c1a0a6066d1ad",
+          "R2_MODULE_INVENTORY.json": "f0e0b0299176fffe5e9032eebedba49a2aad67502b9727cc5a808d49b1b6fcc3"
+        }
+      }
+    },
+    {
+      "id": "C07",
+      "status": "PASS",
+      "evidence": {
+        "paths": [
+          "scripts/remaster/r2/audit_r2_spans.py",
+          "scripts/remaster/r2/classify_r2_ranges.py",
+          "scripts/remaster/r2/measure_event_types.py",
+          "scripts/remaster/r2/measure_test_references.py",
+          "docs/remaster/evidence/r2/R2_SUMMARY.md",
+          "docs/remaster/FINDINGS.jsonl"
+        ],
+        "command_outputs": [
+          "audit_r2_spans.py: checked=161 mismatches=0, exit 0, no PROSE_MISMATCH/STALE_PROSE/NO_KIND.",
+          "classify_r2_ranges.py: classified=161 node=81 line=80, exit 0; output file byte-identical (hash unchanged).",
+          "measure_event_types.py run twice: created=112 handled=100 prefixes=3 unhandled=41 both runs; output byte-identical (5387f509... unchanged); R2_METRICS.json event_coverage.created_event_types=112 with census_method pointing to measure_event_types.py and R2_EVENT_TYPE_COUNTS.json; R2-F012 prose matches 112/100/3/41.",
+          "measure_test_references.py run twice: files=88 word_boundary=311 substring=344 both runs; output byte-identical (c40f857c... unchanged).",
+          "R2_SUMMARY.md has no stale claims: no '34-99', no '95 exact', no '130-141', and the only '113' occurrence is inside the allowed cli/main.py:48-113 range; supervisor/service.py is cited as 34-65 start and 67-90 heartbeat; R2-F012 summary says 41 of 112.",
+          "Independent AST spot checks passed for register_system 46-64, pyproject.toml 1-24, reconciliation_matrix 143-145, configure_owner 548-553, reset 1729-1740, _last_file_hash 58-69, _advance 160-193, FakeConnector 18-55, PolicyBroker 195-459, issue_capability 68-109, Supervisor.start 34-65, Supervisor.heartbeat 67-90.",
+          "All six preserved FAIL verdicts byte-identical to the contract hashes (rounds 1-6 listed in fail_sha256s).",
+          "FINDINGS.jsonl parses as 67 JSON records, contains R2-F001..R2-F036 with no duplicate ids, and R2-F031..R2-F036 each record repair plus regression fields."
+        ],
+        "hashes": {
+          "R2_EVENT_TYPE_COUNTS.json": "5387f5093cf3b3c210b0cf33d86da34678fa5afe52c63af4925affe690ca6eed",
+          "R2_TEST_REFERENCE_COUNTS.json": "c40f857cc2f5395df40f3c03a8bec7aba5e030fb5c3705d54faf7aa945207c46",
+          "R2_SUMMARY.md": "f695764c3ee1062f4aa9246b64543fc79d5c6ac83c02d99fdc3f46ade78c9550",
+          "FINDINGS.jsonl": "908c4270c5ef0424130269b8a5b3084a4fb7ea00e4d9e6019b7711da92b651e5"
+        }
+      }
+    }
+  ],
+  "findings": [],
+  "status_summary": {
+    "verdict": "PASS",
+    "adversarial_attempts": [
+      "Re-ran all frozen deterministic tools with the pinned interpreter and compared outputs and output-file hashes before/after.",
+      "Independently parsed the baseline AST for every cited range and reclassified all 161 ranges; 0 discrepancies.",
+      "Independently AST-verified 11 named node ranges plus pyproject.toml 1-24; all exact.",
+      "Checked summary prose for stale tokens, the allowed cli/main.py:48-113 exception, Supervisor 34-65/67-90 citation, and 41 of 112 wording.",
+      "Recomputed git coverage, disposition coverage, inventory counts, registry uniqueness, and retired-generator references.",
+      "Read-only live-boundary inspection of scheduled tasks and supervisor processes."
+    ],
+    "no_new_defects": true,
+    "residual_risks": [
+      "measure_event_types.py is intentionally literal-based and method-dependent; the evidence explicitly pins and documents this, so the count is reproducible but not an exhaustive dynamic census.",
+      "audit_r2_spans.py matches a cited node end against any AST node starting at the cited start; ambiguity would require two AST nodes sharing one start line, which does not occur in any of the 161 ranges.",
+      "Registry R2-F036 prose intentionally quotes the round-6 stale claims (113, 34-99) as the defect record; the stale-token gate correctly applies to R2_SUMMARY.md and finding measured_evidence, not to the registry defect narrative."
+    ]
+  },
+  "evidence_paths_and_hashes": {
+    "docs/remaster/evidence/r2/R2_DISPOSITION_MAP.json": {
+      "sha256": "2dd93cbc6f226bad9414eabc00d6ca7c68c1eeab21de62af695c1a0a6066d1ad",
+      "size": 34678
+    },
+    "docs/remaster/evidence/r2/R2_EVENT_TYPE_COUNTS.json": {
+      "sha256": "5387f5093cf3b3c210b0cf33d86da34678fa5afe52c63af4925affe690ca6eed",
+      "size": 1778
+    },
+    "docs/remaster/evidence/r2/R2_FORENSIC_FINDINGS.json": {
+      "sha256": "e61bc4ca89534e4b2596d2219a922c9cdb6ab20cc5046b8744bb8b2a973bc2cc",
+      "size": 60761
+    },
+    "docs/remaster/evidence/r2/R2_METRICS.json": {
+      "sha256": "433209032e5afd5e1b63900974b63fcbf2ffaab08a9799302b71fd0a79fb2851",
+      "size": 14097
+    },
+    "docs/remaster/evidence/r2/R2_MODULE_INVENTORY.json": {
+      "sha256": "f0e0b0299176fffe5e9032eebedba49a2aad67502b9727cc5a808d49b1b6fcc3",
+      "size": 437195
+    },
+    "docs/remaster/evidence/r2/R2_SUMMARY.md": {
+      "sha256": "f695764c3ee1062f4aa9246b64543fc79d5c6ac83c02d99fdc3f46ade78c9550",
+      "size": 4370
+    },
+    "docs/remaster/evidence/r2/R2_TEST_REFERENCE_COUNTS.json": {
+      "sha256": "c40f857cc2f5395df40f3c03a8bec7aba5e030fb5c3705d54faf7aa945207c46",
+      "size": 9381
+    },
+    "docs/remaster/evidence/r2/R2_VERIFIER_ROUND1_VERDICT_DSV4.json": {
+      "sha256": "1e8bd740950dafbb83f092473af57628f63f14f3b39192ea21bee7b22c2688d3",
+      "size": 16514
+    },
+    "docs/remaster/evidence/r2/R2_VERIFIER_ROUND2_VERDICT_DSV4.json": {
+      "sha256": "0ffbd83380eab133bb3ccb7a4f0e7ae50e8f2b6aea0305f4b7204bb2d2ecd8a3",
+      "size": 19128
+    },
+    "docs/remaster/evidence/r2/R2_VERIFIER_ROUND3_VERDICT_DSV4.json": {
+      "sha256": "2936d6ada761c428aeaa3e2dca176f6918f415d21ee1a75bb4ef195d8355c734",
+      "size": 16729
+    },
+    "docs/remaster/evidence/r2/R2_VERIFIER_ROUND4_VERDICT_DSV4.json": {
+      "sha256": "2e699715ef0153217356a0b6f69c6f21ca35512dd1ac9aed09f69e7df34fec9e",
+      "size": 16006
+    },
+    "docs/remaster/evidence/r2/R2_VERIFIER_ROUND5_VERDICT_DSV4.json": {
+      "sha256": "4492f0daa71bae95588ddfdafeb57759066e28764004a493b8a8d4df7af8b304",
+      "size": 21298
+    },
+    "docs/remaster/evidence/r2/R2_VERIFIER_ROUND6_VERDICT_DSV4.json": {
+      "sha256": "789d37ff7a82e0edbc549764d83a33b904c7c714878148891ea438de10e6d26c",
+      "size": 21800
+    },
+    "docs/remaster/work_packages/R2_WORK_PACKAGE.json": {
+      "sha256": "ecc81a2857f364cf1d17dc76b3eae3508089a489aa4f0562f570248f025e7d54",
+      "size": 7697
+    },
+    "docs/remaster/R2_DISPOSITION_MAP.md": {
+      "sha256": "c78589f90b90c5d548cf98adbab9100b382303015981896aad6170582cbd5a5c",
+      "size": 2234
+    },
+    "docs/remaster/FINDINGS.jsonl": {
+      "sha256": "908c4270c5ef0424130269b8a5b3084a4fb7ea00e4d9e6019b7711da92b651e5",
+      "size": 38339
+    },
+    "scripts/remaster/r2/audit_r2_spans.py": {
+      "sha256": "165a8ff8bc6feedd6cdd6a97be1c1d39727c15d47d564bfc6f1bf58558d70ebb",
+      "size": 5627
+    },
+    "scripts/remaster/r2/classify_r2_ranges.py": {
+      "sha256": "5ddaf3b99e0b37d36a48b99db8020215496e63edab66d1656b18432f58b71d15",
+      "size": 2568
+    },
+    "scripts/remaster/r2/measure_event_types.py": {
+      "sha256": "8cfddfcd9ed9b8145a06bd04b76274d717594725fdc1764ef0251099fa5e6482",
+      "size": 4771
+    },
+    "scripts/remaster/r2/measure_test_references.py": {
+      "sha256": "27290bc9f1aef792a40b69cf3a112f904e03e1482b9e872f70053b99aed463f1",
+      "size": 2327
+    },
+    "scripts/remaster/r2/measure_repo.py": {
+      "sha256": "1f82324adf3b2c3f12938e6feffa2550f5b5b18b681942e57a34e39af1d6d5b6",
+      "size": 13025
+    },
+    "scripts/remaster/r2/BUILD_R2_EVIDENCE_SUPERSEDED.md": {
+      "sha256": "714b71cf5adc9156fc216fe56f54dcdc7cc7fd020d7a97b6195a7ed7caf7c71c",
+      "size": 1255
+    },
+    "scripts/remaster/r2/build_r2_evidence.py": {
+      "sha256": "1e8f082a2f79be405c80eb24778de1bfe125b67a43e25ad9ceb9ab593c402a7b",
+      "size": 60747
+    },
+    "scripts/remaster/r2/repair_r2_evidence.py": {
+      "sha256": "23d7f1b3c2d8cf67fa2577ebef5dca5c7bdfba79900340584a7c6f2a64902050",
+      "size": 8211
+    },
+    "scripts/remaster/r2/repair_r2_evidence_round3.py": {
+      "sha256": "fd050754b5a180618f65675e1b9182ec4d572be0be6be78605cf0e91db196523",
+      "size": 4324
+    },
+    "scripts/remaster/r2/repair_r2_evidence_round4.py": {
+      "sha256": "7b88e3c0b958653e9d7f3b7e595ddb4bdf0921a2d8807440368b8abb42e68814",
+      "size": 4444
+    },
+    "scripts/remaster/r2/repair_r2_evidence_round5.py": {
+      "sha256": "83c9cdb95726b763febed0be40387dad49c57ff57ba5646bcf7dae309e1a2997",
+      "size": 3277
+    },
+    "scripts/remaster/r2/repair_r2_evidence_round6.py": {
+      "sha256": "e7f51dd035c765a89bebb9e08e80db76cb2ddfb19ee3c316b1db57c3c5be1e66",
+      "size": 3370
+    }
+  },
+  "next_action": "R2 evidence gate passes all C01-C07. Keep all frozen artifacts and the six preserved FAIL verdicts byte-identical; proceed to the next authorized remaster phase without modifying the live daemon, database, scheduled tasks, or protected state."
+}

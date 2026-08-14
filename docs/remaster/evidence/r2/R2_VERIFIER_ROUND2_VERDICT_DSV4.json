@@ -1,0 +1,298 @@
+{
+  "schema": "jarvis-r2-verifier-round2-verdict-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R2",
+  "repair_round": 2,
+  "verifier_model": "deepseek-v4-flash via codex-router",
+  "verdict": "FAIL",
+  "generated_utc": "2026-08-14T20:30:12Z",
+  "frozen_base": {
+    "branch": "main",
+    "commit": "93a3ddc0965dfaf3e4cb9dc0952467bd5250520a",
+    "tree": "2e1df6190b0d032372ae46e6a59bef22ddac57e3",
+    "audited_worktree": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry",
+    "remaster_worktree": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster",
+    "remaster_head": "074e192ef20bfd0859c99ebabc54ea8772aeff0a",
+    "remaster_tree": "575a25e3685dd2ac540593b6d309fa93e9fe61c8"
+  },
+  "round1_fail_sha256": "1E8BD740950DAFBB83F092473AF57628F63F14F3B39192EA21BEE7B22C2688D3",
+  "criteria": [
+    {
+      "id": "C01",
+      "status": "PASS",
+      "evidence": {
+        "paths": [
+          "docs/remaster/evidence/r2/R2_MODULE_INVENTORY.json",
+          "docs/remaster/evidence/r2/R2_DISPOSITION_MAP.json",
+          "docs/remaster/R2_DISPOSITION_MAP.md"
+        ],
+        "hashes": {
+          "R2_MODULE_INVENTORY.json": "f0e0b0299176fffe5e9032eebedba49a2aad67502b9727cc5a808d49b1b6fcc3",
+          "R2_DISPOSITION_MAP.json": "2dd93cbc6f226bad9414eabc00d6ca7c68c1eeab21de62af695c1a0a6066d1ad",
+          "R2_DISPOSITION_MAP.md": "c78589f90b90c5d548cf98adbab9100b382303015981896aad6170582cbd5a5c"
+        },
+        "command_outputs": [
+          "git ls-files 'src/jarvis_foundry/*.py' = 99; git ls-files 'tests/foundry/*.py' = 88; git ls-files '*.py' = 187; zero tracked .py outside those trees.",
+          "R2_MODULE_INVENTORY.json has 187 entries = 99 source + 85 test + 3 test_support; R2_DISPOSITION_MAP.json has 187 entries with exactly one disposition, owner, and phase each.",
+          "Every disposition is in {KEEP,REFACTOR,REWRITE,DELETE,NOT_IMPLEMENTED,UNSAFE}; zero entries missing owner/phase. Distribution reproduced: KEEP 7, REFACTOR 139, REWRITE 32, DELETE 2, NOT_IMPLEMENTED 4, UNSAFE 3.",
+          "Inventory paths are absolute; after normalizing to repository-relative paths the inventory and disposition path sets are identical."
+        ]
+      }
+    },
+    {
+      "id": "C02",
+      "status": "FAIL",
+      "evidence": {
+        "paths": [
+          "docs/remaster/evidence/r2/R2_FORENSIC_FINDINGS.json",
+          "docs/remaster/evidence/r2/R2_METRICS.json",
+          "docs/remaster/evidence/r2/R2_SUMMARY.md",
+          "docs/remaster/evidence/r2/R2_VERIFIER_ROUND1_VERDICT_DSV4.json"
+        ],
+        "hashes": {
+          "R2_FORENSIC_FINDINGS.json": "5ad839cf6d29df52112a6f045d3ff2d0d37c0a560fff14ce792750601cf705da",
+          "R2_METRICS.json": "b13559096fd8487eb68754070535207063b94dab2ecd168f6a963c8a29064ac7",
+          "R2_SUMMARY.md": "64a5895c29e801054a73bd71a210efd9f201a33d3e0009c730145c43531fc21b",
+          "R2_VERIFIER_ROUND1_VERDICT_DSV4.json": "1e8bd740950dafbb83f092473af57628f63f14f3b39192ea21bee7b22c2688d3"
+        },
+        "command_outputs": [
+          "30 findings R2-F001..R2-F030, unique; totals 9 S1 / 12 S2 / 9 S3; every finding has paths, affected_invariants, disposition, and measured_evidence.",
+          "FAIL: R2-F011 still cites src/jarvis_foundry/events.py line_ranges [[73,81]] and measured_evidence 'Event.validate (events.py:73-81)'; AST shows validate spans 73-82. '73-81' is on the frozen no-stale list and round-1 R2V-D06 explicitly named R2-F011, but repair_r2_evidence.py never corrected it.",
+          "FAIL: R2-F011 measured_evidence says 'PRAGMA foreign_keys=ON (database.py:28)'; the PRAGMA is at database.py:23 and line 28 is 'return connection'.",
+          "FAIL (measurement wording): R2-F001/R2-F012 claim '91 event_type equality branches plus 10 literal types inside 3 in-tuple/set branches (100 distinct handled types)'; fresh AST over apply_event gives 92 equality comparison literals plus 10 in-set literals with 2 overlaps (canary.completed, candidate.build_completed), union = 100. The metric exact_handled=100 is correct; the 91-branch breakdown does not recompute.",
+          "MISMATCH (method): R2-F005/F006 claim 344 substring / 311 word-boundary test references for the 17 executive entry points; my independent method (occurrences in concatenated text of all 88 tests/foundry/*.py files; substring count and regex \\b word-boundary count) yields 331 substring / 298 word-boundary. Recorded as method difference per frozen scope; the claim is not independently reproducible without the root's exact method.",
+          "All corrected spans on the frozen recompute list reproduce (see C07); no other frozen stale string (130-141, 48-119, 48-167, 281-318, 91-99, 75-79, 28-31, 72-89, 574-585, 573-585, 44-68, 343 match, 95 exact, 67-99) appears in findings/metrics/summary."
+        ]
+      }
+    },
+    {
+      "id": "C03",
+      "status": "PASS",
+      "evidence": {
+        "paths": [
+          "docs/remaster/FINDINGS.jsonl",
+          "docs/remaster/R0_DISPOSITION_MAP.md",
+          "docs/remaster/evidence/r2/R2_FORENSIC_FINDINGS.json"
+        ],
+        "hashes": {
+          "FINDINGS.jsonl": "f8a19744b86fb9e22e0ce3132063d57c0c868567806a273fa7fca3dc46d93097",
+          "R2_FORENSIC_FINDINGS.json": "5ad839cf6d29df52112a6f045d3ff2d0d37c0a560fff14ce792750601cf705da"
+        },
+        "command_outputs": [
+          "Registry contains R0-F001..R0-F022, R1-F001..R1-F009, R2-F001..R2-F031 with no duplicate IDs.",
+          "Every full R2 r0_cross_ref ID exists in the registry. Multi-value 'R0-F001/F003/F018' uses shorthand; R0-F001, R0-F003, and R0-F018 all exist.",
+          "No contradiction with R0 dispositions: ledger REWRITE (R0-F015/R0-F016), migrations REFACTOR, capability broker REWRITE, command center REFACTOR, scheduler/portfolio REWRITE, voice/briefings NOT_IMPLEMENTED, financial DELETE, knowledge REFACTOR, monitors/research REWRITE-or-NOT_IMPLEMENTED.",
+          "Round-1 C03 example checks also hold: R2-F001->R0-F016, R2-F011->R0-F015, R2-F013->R0-F008, R2-F019->R0-F009, R2-F014->R0-F004."
+        ]
+      }
+    },
+    {
+      "id": "C04",
+      "status": "PASS",
+      "evidence": {
+        "paths": [
+          "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry",
+          "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster"
+        ],
+        "hashes": {},
+        "command_outputs": [
+          "Main HEAD = 93a3ddc0965dfaf3e4cb9dc0952467bd5250520a, tree = 2e1df6190b0d032372ae46e6a59bef22ddac57e3; git status --short shows exactly six untracked owner docs (docs/handoffs/V5_SOL_HIGH_HARDENING_PROMPT.md, V5_SOL_HIGH_HARDENING_REPORT.md, docs/planning/POST_V7_CODEX_SOL_REMASTER_GOAL.md, V5_MASTER_PROMPT.md, V5_READ_FIRST.md, V7_MASTER_PROMPT.md) and zero tracked modifications.",
+          "Remaster HEAD = 074e192ef20bfd0859c99ebabc54ea8772aeff0a; git status --short shows only docs/remaster/FINDINGS.jsonl modified plus untracked docs/remaster/R2_DISPOSITION_MAP.md, docs/remaster/evidence/r2/, docs/remaster/work_packages/R2_WORK_PACKAGE.json, scripts/remaster/r2/; git diff --name-only = docs/remaster/FINDINGS.jsonl only.",
+          "No src/ or tests/foundry file is modified or added in either repo; verifier wrote only its verdict file inside the remaster worktree."
+        ]
+      }
+    },
+    {
+      "id": "C05",
+      "status": "PASS",
+      "evidence": {
+        "paths": [],
+        "hashes": {},
+        "command_outputs": [
+          "Read-only Get-ScheduledTask: \\JARVIS-Foundry-Supervisor State=Running; \\Hermes_Gateway State=Ready; both protected tasks present.",
+          "Get-ScheduledTaskInfo (read-only): JARVIS-Foundry-Supervisor LastRunTime=2026-08-14T20:28:05Z, LastTaskResult=2147946720, NextRunTime=2026-08-14T20:29:04Z; Hermes_Gateway LastRunTime=2026-08-13T02:46:51Z, LastTaskResult=0, NextRunTime empty.",
+          "Process query only: supervisor daemons present via JARVIS-Foundry\\.venv python running 'python -m jarvis_foundry.supervisor.run --home C:\\Users\\b\\AppData\\Local\\hermes\\foundry' (PIDs 21636 and 17052); hermes-agent gateway python also present (PID 8172). No start/stop/mutation performed.",
+          "Live-path modules remain classified: supervisor/run.py, supervisor/service.py, installer.py, cli/main.py = REFACTOR; projections.py, database.py, events.py, effects.py, mission/loop.py, v3_loop.py, execution/pipeline.py, control/broker.py = REWRITE; consolidation.py, obsidian/snapshots.py, obsidian/writer.py = UNSAFE."
+        ]
+      }
+    },
+    {
+      "id": "C06",
+      "status": "PASS",
+      "evidence": {
+        "paths": [
+          "docs/remaster/evidence/r2/R2_DISPOSITION_MAP.json",
+          "docs/remaster/evidence/r2/R2_MODULE_INVENTORY.json"
+        ],
+        "hashes": {
+          "R2_DISPOSITION_MAP.json": "2dd93cbc6f226bad9414eabc00d6ca7c68c1eeab21de62af695c1a0a6066d1ad",
+          "R2_MODULE_INVENTORY.json": "f0e0b0299176fffe5e9032eebedba49a2aad67502b9727cc5a808d49b1b6fcc3"
+        },
+        "command_outputs": [
+          "187/187 disposition entries classified; zero missing or unclassified; every entry has nonempty disposition, owner, and phase; no disposition outside the allowed set.",
+          "Git Python file set (99 source + 88 test/support) is fully covered; inventory path set equals disposition path set after path normalization; schemas and live entry paths are covered via module-level dispositions and findings.",
+          "Owner totals reproduce the map: trusted-kernel 46, runtime-executive 15, worker-gateway 16, security 7, data-recovery 8, memory 25, intelligence 14, adapters 8, owner-experience 8, evolution 27, release-engineering 2, test-architecture 8, evidence-custodian 2, root 1."
+        ]
+      }
+    },
+    {
+      "id": "C07",
+      "status": "FAIL",
+      "evidence": {
+        "paths": [
+          "docs/remaster/work_packages/R2_WORK_PACKAGE.json",
+          "docs/remaster/evidence/r2/R2_VERIFIER_ROUND1_VERDICT_DSV4.json",
+          "docs/remaster/evidence/r2/R2_FORENSIC_FINDINGS.json",
+          "docs/remaster/evidence/r2/R2_METRICS.json"
+        ],
+        "hashes": {
+          "R2_WORK_PACKAGE.json": "e7186ea6e592825173c18dc0a91f1a0fe0d2914f587868637002f772a9476e0c",
+          "R2_VERIFIER_ROUND1_VERDICT_DSV4.json": "1e8bd740950dafbb83f092473af57628f63f14f3b39192ea21bee7b22c2688d3",
+          "R2_FORENSIC_FINDINGS.json": "5ad839cf6d29df52112a6f045d3ff2d0d37c0a560fff14ce792750601cf705da",
+          "R2_METRICS.json": "b13559096fd8487eb68754070535207063b94dab2ecd168f6a963c8a29064ac7"
+        },
+        "spans": {
+          "database.py": {
+            "rebuild_projections": [104, 112],
+            "backup_to": [124, 138],
+            "busy_timeout": 24
+          },
+          "voice.py": {
+            "FixtureSTT": [40, 45],
+            "FixtureTTS": [48, 51],
+            "_COMMAND_PATTERNS_start": 54
+          },
+          "projections.py": {
+            "total_lines": 1740,
+            "apply_event": [58, 1726],
+            "PROJECTION_TABLES": 45
+          },
+          "supervisor/evolution_control.py": {
+            "EvolutionControl": [48, 215],
+            "run_cycle_call_site": 122,
+            "promote_release_call_site": 161
+          },
+          "events.py": {
+            "Event.create": [44, 71],
+            "validate": [73, 82]
+          },
+          "research_queue.py": {
+            "detect_research_items": [48, 117]
+          },
+          "control/capability_broker.py": {
+            "resolve_provider_auth": [281, 324]
+          },
+          "command_center.py": {
+            "_safe_table": [91, 97],
+            "build_snapshot": [100, 233]
+          },
+          "supervisor/service.py": {
+            "heartbeat": [67, 90]
+          },
+          "briefings.py": {
+            "deliver_local": [75, 77]
+          },
+          "supervisor/run.py": {
+            "_heartbeat_with_lock_retry": [92, 113]
+          },
+          "migrations.py": {
+            "UNIQUE_system_id_target_ref_payload_hash": [552, 572],
+            "v20_block": [557, 585]
+          },
+          "evolution/cycle.py": {
+            "run_evaluation_call_sites": [182, 186],
+            "promote_release_call_site": 230
+          },
+          "v3_loop.py": {
+            "detect_research_items_call_site": 208,
+            "poll_monitor_call_site": 250
+          },
+          "handler_count": {
+            "equality_distinct": 92,
+            "in_set_literals": 10,
+            "in_set_branches": 3,
+            "overlap": ["canary.completed", "candidate.build_completed"],
+            "distinct_handled": 100
+          }
+        },
+        "command_outputs": [
+          "Work package SHA-256 = e7186ea6e592825173c18dc0a91f1a0fe0d2914f587868637002f772a9476e0c (size 4218) matching the frozen scope; every frozen_evidence hash/size declared in the work package matches disk byte-for-byte.",
+          "Round-1 FAIL verdict SHA-256 = 1E8BD740950DAFBB83F092473AF57628F63F14F3B39192EA21BEE7B22C2688D3, size 16514: byte-identical to the pinned value.",
+          "All corrected spans listed in the frozen scope recompute exactly against main 93a3ddc; R2-F006 wording now states no caller reachable from the installed watchdog path and lists the exact unreachable call sites.",
+          "Metrics reproduce: exact_handled=100, unhandled_count=41 (41 listed types), PROJECTION_TABLES=45, apply_event tail 1715-1726 has no else/raise.",
+          "FAIL: the frozen no-stale requirement fails because '73-81' remains in R2-F011; the repaired handler breakdown (91 equality) and test-reference counts (344/311) are not reproducible under my independent methods (see C02)."
+        ]
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "R2V2-D01",
+      "severity": "S2",
+      "title": "R2-F011 still carries the stale Event.validate range events.py:73-81",
+      "reproduction": "R2_FORENSIC_FINDINGS.json R2-F011 paths line_ranges = [[73,81]] and measured_evidence contains 'Event.validate (events.py:73-81)'. AST of src/jarvis_foundry/events.py: validate spans 73-82. Round-1 verdict R2V-D06 explicitly listed R2-F011 as affected, but scripts/remaster/r2/repair_r2_evidence.py only corrected R2-F021, so R2-F011 was missed.",
+      "invariant": "evidence accuracy; no stale range remains (frozen R2 requirement)"
+    },
+    {
+      "id": "R2V2-D02",
+      "severity": "S3",
+      "title": "R2-F011 cites PRAGMA foreign_keys=ON at database.py:28; actual line is 23",
+      "reproduction": "measured_evidence: 'PRAGMA foreign_keys=ON (database.py:28) cannot enforce constraints that do not exist.' Source line 23 is connection.execute('PRAGMA foreign_keys = ON'); line 28 is 'return connection'.",
+      "invariant": "evidence accuracy"
+    },
+    {
+      "id": "R2V2-D03",
+      "severity": "S3",
+      "title": "Repaired handler breakdown '91 equality branches + 10 in-set literals' does not recompute",
+      "reproduction": "Fresh AST of apply_event: 92 distinct equality literals, 10 distinct in-set literals across 3 In branches, 2 literals present in both (canary.completed, candidate.build_completed), distinct union = 100. The metric exact_handled=100 is confirmed; the corrected F001/F012 wording (91 + 10 = 100) is arithmetically and measurably inexact.",
+      "invariant": "measured-evidence arithmetic"
+    },
+    {
+      "id": "R2V2-D04",
+      "severity": "S3",
+      "title": "Test-reference counts are not independently reproducible (344/311 vs 331/298)",
+      "reproduction": "Root claim: 344 substring / 311 word-boundary across tests. My independent method over all 88 tracked tests/foundry/*.py files (concatenated text; substring occurrences of the 17 entry-point names; word-boundary = regex \\bname\\b) gives 331 substring / 298 word-boundary. The frozen scope requires method-honest counts and a flag when methods differ; recorded as a mismatch requiring the root's exact method or a reproducible definition.",
+      "invariant": "evidence reproducibility"
+    }
+  ],
+  "status_summary": "The classification gate and system/live boundaries reproduce cleanly: 99/88/187 tracked Python coverage, inventory 99+85+3=187, disposition 187/187 with valid owner/phase/disposition, 30 findings 9/12/9, 100 distinct handled event types, 41 unhandled, 45 PROJECTION_TABLES, R0 cross-references resolved, no source/test/live repair, and round-1 FAIL byte-identical. Every corrected span in the frozen recompute list matches source exactly. Verdict is FAIL because C02/C07 evidence accuracy is still broken: R2-F011 retains events.py:73-81 (explicitly stale and explicitly flagged in round 1), cites foreign_keys at database.py:28 instead of 23, the repaired 91-branch handler breakdown does not recompute (92+10-2=100), and the 344/311 test-reference counts are not reproducible by an independent method (mine: 331/298). No disposition is weakened and no source or live state was modified.",
+  "evidence_paths_and_hashes": {
+    "docs/remaster/work_packages/R2_WORK_PACKAGE.json": {
+      "sha256": "e7186ea6e592825173c18dc0a91f1a0fe0d2914f587868637002f772a9476e0c",
+      "size": 4218
+    },
+    "docs/remaster/evidence/r2/R2_VERIFIER_ROUND1_VERDICT_DSV4.json": {
+      "sha256": "1e8bd740950dafbb83f092473af57628f63f14f3b39192ea21bee7b22c2688d3",
+      "size": 16514
+    },
+    "docs/remaster/evidence/r2/R2_FORENSIC_FINDINGS.json": {
+      "sha256": "5ad839cf6d29df52112a6f045d3ff2d0d37c0a560fff14ce792750601cf705da",
+      "size": 52799
+    },
+    "docs/remaster/evidence/r2/R2_MODULE_INVENTORY.json": {
+      "sha256": "f0e0b0299176fffe5e9032eebedba49a2aad67502b9727cc5a808d49b1b6fcc3",
+      "size": 437195
+    },
+    "docs/remaster/evidence/r2/R2_METRICS.json": {
+      "sha256": "b13559096fd8487eb68754070535207063b94dab2ecd168f6a963c8a29064ac7",
+      "size": 13885
+    },
+    "docs/remaster/evidence/r2/R2_SUMMARY.md": {
+      "sha256": "64a5895c29e801054a73bd71a210efd9f201a33d3e0009c730145c43531fc21b",
+      "size": 4263
+    },
+    "docs/remaster/evidence/r2/R2_DISPOSITION_MAP.json": {
+      "sha256": "2dd93cbc6f226bad9414eabc00d6ca7c68c1eeab21de62af695c1a0a6066d1ad",
+      "size": 34678
+    },
+    "docs/remaster/R2_DISPOSITION_MAP.md": {
+      "sha256": "c78589f90b90c5d548cf98adbab9100b382303015981896aad6170582cbd5a5c",
+      "size": 2234
+    },
+    "docs/remaster/FINDINGS.jsonl": {
+      "sha256": "f8a19744b86fb9e22e0ce3132063d57c0c868567806a273fa7fca3dc46d93097",
+      "size": 30121
+    }
+  },
+  "next_action": "Repair the remaining evidence-accuracy defects before promotion: update R2-F011 to events.py:73-82 and PRAGMA foreign_keys at database.py:23; correct the handler breakdown to 92 equality literals + 10 in-set literals with 2 overlaps (distinct union 100) or provide the exact counting method; define and record a reproducible test-reference counting method or replace the 344/311 claim with the method-matched count; register the follow-up repair in FINDINGS.jsonl; then run a fresh independent verifier. Do not weaken any disposition, do not edit source/live state, and do not modify frozen artifacts outside the repair scope."
+}

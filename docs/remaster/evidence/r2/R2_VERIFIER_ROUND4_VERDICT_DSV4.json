@@ -1,0 +1,233 @@
+{
+  "schema": "jarvis-r2-verifier-round4-verdict-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R2",
+  "repair_round": 4,
+  "verifier_model": "deepseek-v4-flash via codex-router",
+  "verdict": "FAIL",
+  "generated_utc": "2026-08-14T20:51:06Z",
+  "frozen_base": {
+    "baseline_commit": "93a3ddc0965dfaf3e4cb9dc0952467bd5250520a",
+    "baseline_tree": "2e1df6190b0d032372ae46e6a59bef22ddac57e3",
+    "branch": "main",
+    "audited_repo": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
+    "remaster_worktree": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry-Remaster"
+  },
+  "fail_sha256s": [
+    {
+      "round": 1,
+      "sha256": "1e8bd740950dafbb83f092473af57628f63f14f3b39192ea21bee7b22c2688d3",
+      "size": 16514,
+      "path": "docs/remaster/evidence/r2/R2_VERIFIER_ROUND1_VERDICT_DSV4.json"
+    },
+    {
+      "round": 2,
+      "sha256": "0ffbd83380eab133bb3ccb7a4f0e7ae50e8f2b6aea0305f4b7204bb2d2ecd8a3",
+      "size": 19128,
+      "path": "docs/remaster/evidence/r2/R2_VERIFIER_ROUND2_VERDICT_DSV4.json"
+    },
+    {
+      "round": 3,
+      "sha256": "2936d6ada761c428aeaa3e2dca176f6918f415d21ee1a75bb4ef195d8355c734",
+      "size": 16729,
+      "path": "docs/remaster/evidence/r2/R2_VERIFIER_ROUND3_VERDICT_DSV4.json"
+    }
+  ],
+  "criteria": [
+    {
+      "id": "C01",
+      "status": "PASS",
+      "evidence": {
+        "summary": "187/187 tracked source/test/support files have exactly one disposition, owner, and phase in the disposition map; inventory reproduces 99 source + 88 test + 3 support = 187.",
+        "command": "python JSON validation of R2_DISPOSITION_MAP.json and R2_MODULE_INVENTORY.json",
+        "output": "disposition count=187 missing_fields=0 bad_dispositions=0 unique_paths=187; inventory counts source_modules=99 test_files=88 test_support_files=3 total=187 modules=187 unique_paths=187",
+        "paths": [
+          "docs/remaster/evidence/r2/R2_DISPOSITION_MAP.json",
+          "docs/remaster/evidence/r2/R2_MODULE_INVENTORY.json"
+        ],
+        "hashes": {
+          "R2_DISPOSITION_MAP.json": "2dd93cbc6f226bad9414eabc00d6ca7c68c1eeab21de62af695c1a0a6066d1ad",
+          "R2_MODULE_INVENTORY.json": "f0e0b0299176fffe5e9032eebedba49a2aad67502b9727cc5a808d49b1b6fcc3"
+        }
+      }
+    },
+    {
+      "id": "C02",
+      "status": "FAIL",
+      "evidence": {
+        "summary": "Canonical auditor reproduces checked=80 mismatches=0 exit 0 and every structured AST spot-check passes, but current findings still contain stale non-AST-exact ranges in measured_evidence prose and R2-F012 contradicts the required 92/10/2/100 breakdown.",
+        "auditor_command": "C:\\Python313\\python.exe -B scripts\\remaster\\r2\\audit_r2_spans.py",
+        "auditor_output": "80 OK lines followed by checked=80 mismatches=0; process exit code 0",
+        "independent_ast_spot_checks": {
+          "reset": "1729-1740",
+          "_last_file_hash": "58-69",
+          "_advance": "160-193",
+          "configure_owner": "548-553",
+          "FakeConnector": "18-55",
+          "enable_scheduler": "117-123",
+          "DispatchError": "40-41",
+          "reconciliation_matrix": "143-145",
+          "PolicyBroker": "195-459",
+          "issue_capability": "68-109",
+          "register_capability": "66-86",
+          "Supervisor.start": "34-65",
+          "Supervisor.heartbeat": "67-90",
+          "test_installer_hard_kill": "306-378",
+          "test_role_gateway_kill_resume": "269-327"
+        },
+        "independent_structured_audit": "134 structured ranges total; 80 node-start ranges checked with 0 mismatches; 54 statement-level ranges skipped by the node-start method; 0 missing files",
+        "stale_phrase_scan": "SimpleMatch scan excluding preserved verdicts hit R2_FORENSIC_FINDINGS.json line 947 (R2-F013 'configure_owner (command_center.py:548-552)'), line 1134 (R2-F017 'enable_scheduler (117-124)'), line 1621 (R2-F028 'capabilities/registry.py:143-148 builds a reconciliation matrix')",
+        "handler_breakdown": "independent AST of apply_event 58-1726: equality literals=92, in-set literals=10, overlap=2, union=100; R2-F012 still says 91 equality branches and correlation.* (2), but actual unhandled correlation types are 3",
+        "paths": [
+          "docs/remaster/evidence/r2/R2_FORENSIC_FINDINGS.json",
+          "docs/remaster/evidence/r2/R2_METRICS.json",
+          "scripts/remaster/r2/audit_r2_spans.py"
+        ],
+        "hashes": {
+          "R2_FORENSIC_FINDINGS.json": "7a9047c433629be5a7cfbb7ff5228786ff2cc3c2b1dc5239f3bf38d07bbb941d",
+          "R2_METRICS.json": "b13559096fd8487eb68754070535207063b94dab2ecd168f6a963c8a29064ac7",
+          "audit_r2_spans.py": "e46c38ca96f4a670bc9869681c5d0cbd681b67c532268ae4fb58579078e8af4f"
+        }
+      }
+    },
+    {
+      "id": "C03",
+      "status": "NOT_TESTED",
+      "evidence": {
+        "summary": "18 of 30 findings carry r0_cross_ref and every referenced R0 ID exists in FINDINGS.jsonl with no contradiction found; 12 findings have no r0_cross_ref, so full R0 mapping cannot be confirmed.",
+        "command": "python field completeness check over R2_FORENSIC_FINDINGS.json and FINDINGS.jsonl",
+        "output": "missing r0_cross_ref for R2-F002, R2-F003, R2-F004, R2-F015, R2-F017, R2-F018, R2-F021, R2-F022, R2-F026, R2-F027, R2-F028, R2-F030; all present R0 refs resolve in registry",
+        "paths": [
+          "docs/remaster/evidence/r2/R2_FORENSIC_FINDINGS.json",
+          "docs/remaster/FINDINGS.jsonl"
+        ],
+        "hashes": {
+          "R2_FORENSIC_FINDINGS.json": "7a9047c433629be5a7cfbb7ff5228786ff2cc3c2b1dc5239f3bf38d07bbb941d",
+          "FINDINGS.jsonl": "08928d6ae71805533b01396b359ca973525415bdd8aae10268ff08c2fdf4e8ea"
+        }
+      }
+    },
+    {
+      "id": "C04",
+      "status": "PASS",
+      "evidence": {
+        "summary": "No system repair: main checkout has only six untracked owner docs and no source/test changes; remaster worktree has only modified FINDINGS.jsonl plus untracked R2 evidence, work package, and scripts; no src/ or tests/foundry changes.",
+        "command": "git status --short in JARVIS-Foundry and JARVIS-Foundry-Remaster",
+        "main_output": "six untracked files only: V5_SOL_HIGH_HARDENING_PROMPT.md, V5_SOL_HIGH_HARDENING_REPORT.md, POST_V7_CODEX_SOL_REMASTER_GOAL.md, V5_MASTER_PROMPT.md, V5_READ_FIRST.md, V7_MASTER_PROMPT.md under docs/handoffs and docs/planning",
+        "remaster_output": "M docs/remaster/FINDINGS.jsonl; untracked docs/remaster/R2_DISPOSITION_MAP.md, docs/remaster/evidence/r2/, docs/remaster/work_packages/R2_WORK_PACKAGE.json, scripts/remaster/r2/",
+        "paths": [
+          "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
+          "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry-Remaster"
+        ]
+      }
+    },
+    {
+      "id": "C05",
+      "status": "PASS",
+      "evidence": {
+        "summary": "Live boundary confirmed read-only and untouched: JARVIS-Foundry-Supervisor Running, Hermes_Gateway Ready, Hermes processes present; verifier performed no live writes.",
+        "command": "Get-ScheduledTask and Get-Process (read-only)",
+        "output": "JARVIS-Foundry-Supervisor State=Running; Hermes_Gateway State=Ready; Hermes PIDs 4060, 11180, 12308, 17148, 18060, 18124",
+        "paths": []
+      }
+    },
+    {
+      "id": "C06",
+      "status": "PASS",
+      "evidence": {
+        "summary": "No unclassified code/test/migration/adapter/capability/live path remains by the disposition map: 187/187 unique paths carry one valid disposition, one owner, one phase; live path is classified REWRITE/UNSAFE.",
+        "command": "python validation of R2_DISPOSITION_MAP.json",
+        "output": "count=187 unique_paths=187 missing_fields=0 bad_dispositions=0",
+        "paths": [
+          "docs/remaster/evidence/r2/R2_DISPOSITION_MAP.json"
+        ],
+        "hashes": {
+          "R2_DISPOSITION_MAP.json": "2dd93cbc6f226bad9414eabc00d6ca7c68c1eeab21de62af695c1a0a6066d1ad"
+        }
+      }
+    },
+    {
+      "id": "C07",
+      "status": "FAIL",
+      "evidence": {
+        "summary": "Auditor (80/0 exit 0), counter (88/311/344 twice byte-identical), work-package bindings, and preserved FAIL verdict hashes reproduce exactly; classification gate fails because stale-phrase absence and the AST-precise handler breakdown do not hold.",
+        "counter_run1": "files=88 word_boundary=311 substring=344; exit 0; output sha256 c40f857cc2f5395df40f3c03a8bec7aba5e030fb5c3705d54faf7aa945207c46 size 9381",
+        "counter_run2": "files=88 word_boundary=311 substring=344; exit 0; same sha256 c40f857cc2f5395df40f3c03a8bec7aba5e030fb5c3705d54faf7aa945207c46 size 9381; IDENTICAL=YES",
+        "work_package_counter_block": "script sha256 27290bc9f1aef792a40b69cf3a112f904e03e1482b9e872f70053b99aed463f1 size 2327 matches measure_test_references.py; output sha256 c40f857cc2f5395df40f3c03a8bec7aba5e030fb5c3705d54faf7aa945207c46 size 9381 matches R2_TEST_REFERENCE_COUNTS.json; fields not swapped",
+        "preserved_verdicts": [
+          "round1 1e8bd740950dafbb83f092473af57628f63f14f3b39192ea21bee7b22c2688d3 (16514)",
+          "round2 0ffbd83380eab133bb3ccb7a4f0e7ae50e8f2b6aea0305f4b7204bb2d2ecd8a3 (19128)",
+          "round3 2936d6ada761c428aeaa3e2dca176f6918f415d21ee1a75bb4ef195d8355c734 (16729)"
+        ],
+        "gate_failure": "stale ranges 548-552, 117-124, 143-148 remain in R2_FORENSIC_FINDINGS.json measured_evidence; R2-F012 breakdown 91/10 contradicts required 92/10/2/100",
+        "paths": [
+          "docs/remaster/work_packages/R2_WORK_PACKAGE.json",
+          "scripts/remaster/r2/measure_test_references.py",
+          "docs/remaster/evidence/r2/R2_TEST_REFERENCE_COUNTS.json"
+        ],
+        "hashes": {
+          "R2_WORK_PACKAGE.json": "86df7986ab678baf2e841450f5981db71baf3dec54fadba7fb93b9eb529435ea",
+          "measure_test_references.py": "27290bc9f1aef792a40b69cf3a112f904e03e1482b9e872f70053b99aed463f1",
+          "R2_TEST_REFERENCE_COUNTS.json": "c40f857cc2f5395df40f3c03a8bec7aba5e030fb5c3705d54faf7aa945207c46"
+        }
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "R2-EVID-001",
+      "severity": "S2",
+      "title": "Residual stale, non-AST-exact ranges remain in R2_FORENSIC_FINDINGS.json measured_evidence",
+      "reproduction": "SimpleMatch scan of 548-552, 117-124, 143-148 excluding preserved verdicts hits R2_FORENSIC_FINDINGS.json lines 947 (R2-F013), 1134 (R2-F017), 1621 (R2-F028). Independent AST reads show configure_owner 548-553, enable_scheduler 117-123, reconciliation_matrix 143-145. Structured line_ranges are corrected; prose is not; the canonical auditor checks only structured ranges, so 80/0 does not cover these.",
+      "invariant": "AST-exact evidence: every cited range in every evidence field must match the AST node span; no stale range may remain in current artifacts.",
+      "evidence_paths": [
+        "docs/remaster/evidence/r2/R2_FORENSIC_FINDINGS.json"
+      ]
+    },
+    {
+      "id": "R2-EVID-002",
+      "severity": "S2",
+      "title": "R2-F012 handler breakdown contradicts gate C02 and R2-F001",
+      "reproduction": "Independent AST of apply_event (58-1726) counts 92 equality literals + 10 in-set literals, 2 overlap, union 100. R2-F012 still says 91 equality branches plus 10 literal types in 3 in-set branches and correlation.* (2); actual unhandled correlation types are 3 (entity_ref_added, entity_registered, manifest_generated).",
+      "invariant": "Internally consistent, AST-precise evidence: all findings must agree on the 100 distinct handler union and exact unhandled-type counts.",
+      "evidence_paths": [
+        "docs/remaster/evidence/r2/R2_FORENSIC_FINDINGS.json",
+        "docs/remaster/evidence/r2/R2_METRICS.json"
+      ]
+    },
+    {
+      "id": "R2-EVID-003",
+      "severity": "S3",
+      "title": "C03 R0 cross-reference coverage is incomplete (12 of 30 findings)",
+      "reproduction": "Field completeness check: R2-F002, R2-F003, R2-F004, R2-F015, R2-F017, R2-F018, R2-F021, R2-F022, R2-F026, R2-F027, R2-F028, R2-F030 carry no r0_cross_ref; the 18 mapped findings resolve to registry IDs without observed contradiction.",
+      "invariant": "Every R2 finding maps to R0 evidence without contradiction, or explicitly documents why no R0 mapping applies.",
+      "evidence_paths": [
+        "docs/remaster/evidence/r2/R2_FORENSIC_FINDINGS.json",
+        "docs/remaster/FINDINGS.jsonl"
+      ]
+    }
+  ],
+  "status_summary": "FAIL. Auditor reproduces checked=80 mismatches=0 exit 0 with all 14 independent AST spot-checks matching; counter reproduces 88/311/344 twice byte-identical; work package binds script 27290bc9.../2327 and output c40f857c.../9381 separately; all three FAIL verdicts byte-identical; coverage 99+88=187, disposition/inventory 187/187, registry 64 rows R2-F001..R2-F033 no duplicates, git state and live boundary pass. Gate still fails: stale ranges 548-552/117-124/143-148 remain in R2_FORENSIC_FINDINGS.json prose, R2-F012 contradicts the required 92/10/2/100 handler breakdown, and R0 cross-reference coverage is incomplete. C02 FAIL, C03 NOT_TESTED, C07 FAIL.",
+  "evidence_paths_and_hashes": {
+    "docs/remaster/work_packages/R2_WORK_PACKAGE.json": "86df7986ab678baf2e841450f5981db71baf3dec54fadba7fb93b9eb529435ea",
+    "docs/remaster/FINDINGS.jsonl": "08928d6ae71805533b01396b359ca973525415bdd8aae10268ff08c2fdf4e8ea",
+    "docs/remaster/R2_DISPOSITION_MAP.md": "c78589f90b90c5d548cf98adbab9100b382303015981896aad6170582cbd5a5c",
+    "docs/remaster/evidence/r2/R2_FORENSIC_FINDINGS.json": "7a9047c433629be5a7cfbb7ff5228786ff2cc3c2b1dc5239f3bf38d07bbb941d",
+    "docs/remaster/evidence/r2/R2_MODULE_INVENTORY.json": "f0e0b0299176fffe5e9032eebedba49a2aad67502b9727cc5a808d49b1b6fcc3",
+    "docs/remaster/evidence/r2/R2_METRICS.json": "b13559096fd8487eb68754070535207063b94dab2ecd168f6a963c8a29064ac7",
+    "docs/remaster/evidence/r2/R2_SUMMARY.md": "2b52e26eb2c621bf6ef0cd34999cba5d268bb9f8c7354528f085deba0dfc708b",
+    "docs/remaster/evidence/r2/R2_DISPOSITION_MAP.json": "2dd93cbc6f226bad9414eabc00d6ca7c68c1eeab21de62af695c1a0a6066d1ad",
+    "docs/remaster/evidence/r2/R2_TEST_REFERENCE_COUNTS.json": "c40f857cc2f5395df40f3c03a8bec7aba5e030fb5c3705d54faf7aa945207c46",
+    "docs/remaster/evidence/r2/R2_VERIFIER_ROUND1_VERDICT_DSV4.json": "1e8bd740950dafbb83f092473af57628f63f14f3b39192ea21bee7b22c2688d3",
+    "docs/remaster/evidence/r2/R2_VERIFIER_ROUND2_VERDICT_DSV4.json": "0ffbd83380eab133bb3ccb7a4f0e7ae50e8f2b6aea0305f4b7204bb2d2ecd8a3",
+    "docs/remaster/evidence/r2/R2_VERIFIER_ROUND3_VERDICT_DSV4.json": "2936d6ada761c428aeaa3e2dca176f6918f415d21ee1a75bb4ef195d8355c734",
+    "scripts/remaster/r2/audit_r2_spans.py": "e46c38ca96f4a670bc9869681c5d0cbd681b67c532268ae4fb58579078e8af4f",
+    "scripts/remaster/r2/measure_test_references.py": "27290bc9f1aef792a40b69cf3a112f904e03e1482b9e872f70053b99aed463f1",
+    "scripts/remaster/r2/measure_repo.py": "1f82324adf3b2c3f12938e6feffa2550f5b5b18b681942e57a34e39af1d6d5b6",
+    "scripts/remaster/r2/build_r2_evidence.py": "1e8f082a2f79be405c80eb24778de1bfe125b67a43e25ad9ceb9ab593c402a7b",
+    "scripts/remaster/r2/repair_r2_evidence.py": "23d7f1b3c2d8cf67fa2577ebef5dca5c7bdfba79900340584a7c6f2a64902050",
+    "scripts/remaster/r2/repair_r2_evidence_round3.py": "fd050754b5a180618f65675e1b9182ec4d572be0be6be78605cf0e91db196523",
+    "scripts/remaster/r2/repair_r2_evidence_round4.py": "7b88e3c0b958653e9d7f3b7e595ddb4bdf0921a2d8807440368b8abb42e68814"
+  },
+  "next_action": "Root must repair remaining prose evidence only: replace stale ranges in R2_FORENSIC_FINDINGS.json measured_evidence (R2-F013 to 548-553, R2-F017 to 117-123, R2-F028 to 143-145); align R2-F012 with the 92/10/2/100 AST union and correct correlation.* to 3; add or explicitly justify r0_cross_ref for 12 unmapped findings; re-freeze hashes. Round 5 must re-run auditor, counter, work-package, verdict-hash, and full prose stale-range checks."
+}

@@ -1,0 +1,92 @@
+{
+  "schema": "jarvis-r2-final-closure-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R2",
+  "title": "R2 architecture and code forensics final closure",
+  "status": "PASS",
+  "generated_utc": "2026-08-14T22:40:00Z",
+  "generated_by": "root evidence custodian",
+  "frozen_base": {
+    "commit": "93a3ddc0965dfaf3e4cb9dc0952467bd5250520a",
+    "branch": "main",
+    "audited_worktree": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry",
+    "remaster_worktree": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster"
+  },
+  "verifier_history": [
+    {
+      "round": 1,
+      "verdict": "FAIL",
+      "path": "docs/remaster/evidence/r2/R2_VERIFIER_ROUND1_VERDICT_DSV4.json",
+      "sha256": "1e8bd740950dafbb83f092473af57628f63f14f3b39192ea21bee7b22c2688d3",
+      "defects": "inaccurate line ranges and counts in R2 forensic evidence"
+    },
+    {
+      "round": 2,
+      "verdict": "FAIL",
+      "path": "docs/remaster/evidence/r2/R2_VERIFIER_ROUND2_VERDICT_DSV4.json",
+      "sha256": "0ffbd83380eab133bb3ccb7a4f0e7ae50e8f2b6aea0305f4b7204bb2d2ecd8a3",
+      "defects": "stale R2-F011 span, wrong PRAGMA line, non-AST handler breakdown, non-reproducible counts"
+    },
+    {
+      "round": 3,
+      "verdict": "FAIL",
+      "path": "docs/remaster/evidence/r2/R2_VERIFIER_ROUND3_VERDICT_DSV4.json",
+      "sha256": "2936d6ada761c428aeaa3e2dca176f6918f415d21ee1a75bb4ef195d8355c734",
+      "defects": "work package counter metadata swap plus residual non-AST-exact ranges"
+    },
+    {
+      "round": 4,
+      "verdict": "FAIL",
+      "path": "docs/remaster/evidence/r2/R2_VERIFIER_ROUND4_VERDICT_DSV4.json",
+      "sha256": "2e699715ef0153217356a0b6f69c6f21ca35512dd1ac9aed09f69e7df34fec9e",
+      "defects": "prose stale ranges, R2-F012 family count errors, missing R0 cross-refs"
+    },
+    {
+      "round": 5,
+      "verdict": "FAIL",
+      "path": "docs/remaster/evidence/r2/R2_VERIFIER_ROUND5_VERDICT_DSV4.json",
+      "sha256": "4492f0daa71bae95588ddfdafeb57759066e28764004a493b8a8d4df7af8b304",
+      "defects": "mid-function systems.py citation invisible to auditor; method-dependent created count"
+    },
+    {
+      "round": 6,
+      "verdict": "FAIL",
+      "path": "docs/remaster/evidence/r2/R2_VERIFIER_ROUND6_VERDICT_DSV4.json",
+      "sha256": "789d37ff7a82e0edbc549764d83a33b904c7c714878148891ea438de10e6d26c",
+      "defects": "summary stale prose; stale evidence generator not retired"
+    },
+    {
+      "round": 7,
+      "verdict": "PASS",
+      "path": "docs/remaster/evidence/r2/R2_VERIFIER_ROUND7_VERDICT_DSV4.json",
+      "sha256": "cc00d0bcb3295e7c400087eda0c5da9fa4316791f747ae6eb07095393ffde6a3",
+      "criteria_pass": 7,
+      "new_defects": 0
+    }
+  ],
+  "gate_tools": {
+    "span_audit": "checked=161 mismatches=0 (node AST-exact, line bounds, prose, stale tokens, kind presence)",
+    "range_classifier": "classified=161 node=81 line=80",
+    "test_counter": "files=88 word_boundary=311 substring=344, byte-identical across reruns",
+    "event_census": "created=112 handled=100 prefixes=3 unhandled=41, byte-identical across reruns"
+  },
+  "findings_closed": {
+    "R2-F001..R2-F030": "forensic findings, disposition action + CLOSED_VERIFIED_R2_ROUND7",
+    "R2-F031..R2-F036": "evidence-accuracy repairs, CLOSED_VERIFIED_R2_ROUND7"
+  },
+  "disposition_map": {
+    "path": "docs/remaster/evidence/r2/R2_DISPOSITION_MAP.json",
+    "entries": 187,
+    "all_have_owner_and_phase": true,
+    "summary": "KEEP 7, REFACTOR 139, REWRITE 32, DELETE 2, NOT_IMPLEMENTED 4, UNSAFE 3"
+  },
+  "retired_generator": "scripts/remaster/r2/build_r2_evidence.py (superseded marker; must not be run)",
+  "commit_scope": [
+    "docs/remaster/evidence/r2/**",
+    "docs/remaster/R2_DISPOSITION_MAP.md",
+    "docs/remaster/work_packages/R2_WORK_PACKAGE.json",
+    "scripts/remaster/r2/**",
+    "docs/remaster/FINDINGS.jsonl"
+  ],
+  "next_action": "Create the scoped local R2 commit; then proceed to R3 professional engineering foundation."
+}

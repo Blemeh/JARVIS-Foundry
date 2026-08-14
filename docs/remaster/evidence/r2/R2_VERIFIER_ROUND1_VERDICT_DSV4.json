@@ -1,0 +1,247 @@
+{
+  "schema": "jarvis-r2-verifier-round1-verdict-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R2",
+  "verifier_model": "deepseek-v4-flash via codex-router",
+  "verdict": "FAIL",
+  "generated_utc": "2026-08-14T20:16:10Z",
+  "frozen_base": {
+    "branch": "main",
+    "commit": "93a3ddc0965dfaf3e4cb9dc0952467bd5250520a",
+    "tree": "2e1df6190b0d032372ae46e6a59bef22ddac57e3",
+    "audited_worktree": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry",
+    "remaster_worktree": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster",
+    "remaster_head": "074e192ef20bfd0859c99ebabc54ea8772aeff0a"
+  },
+  "criteria": [
+    {
+      "id": "C01",
+      "status": "PASS",
+      "evidence": {
+        "paths": [
+          "docs/remaster/evidence/r2/R2_MODULE_INVENTORY.json",
+          "docs/remaster/evidence/r2/R2_DISPOSITION_MAP.json",
+          "docs/remaster/R2_DISPOSITION_MAP.md"
+        ],
+        "hashes": {
+          "R2_MODULE_INVENTORY.json": "f0e0b0299176fffe5e9032eebedba49a2aad67502b9727cc5a808d49b1b6fcc3",
+          "R2_DISPOSITION_MAP.json": "2dd93cbc6f226bad9414eabc00d6ca7c68c1eeab21de62af695c1a0a6066d1ad"
+        },
+        "command_outputs": [
+          "git ls-files 'src/jarvis_foundry/*.py' = 99; git ls-files 'tests/foundry/*.py' = 88; git ls-files '*.py' = 187; no tracked .py outside those trees.",
+          "R2_MODULE_INVENTORY.json: 187 modules = 99 source + 85 test + 3 test_support (conftest.py, crash_fixture.py, supervisor_fixture.py).",
+          "R2_DISPOSITION_MAP.json: 187 entries; path set exactly equals git+inventory path set; every entry has nonempty disposition in {KEEP,REFACTOR,REWRITE,DELETE,NOT_IMPLEMENTED,UNSAFE}, nonempty owner, nonempty phase; disposition values match inventory per path.",
+          "Distribution: REFACTOR 139, REWRITE 32, KEEP 7, NOT_IMPLEMENTED 4, UNSAFE 3, DELETE 2."
+        ]
+      }
+    },
+    {
+      "id": "C02",
+      "status": "FAIL",
+      "evidence": {
+        "paths": [
+          "docs/remaster/evidence/r2/R2_FORENSIC_FINDINGS.json",
+          "docs/remaster/evidence/r2/R2_DISPOSITION_MAP.json"
+        ],
+        "hashes": {
+          "R2_FORENSIC_FINDINGS.json": "c02ff3784a6aec152ab2fbb263020072be6654b4730684d010ad0915fc88b5fd"
+        },
+        "command_outputs": [
+          "All 30 findings present with ids R2-F001..R2-F030, unique; totals 9 S1 / 12 S2 / 9 S3; every finding has id, severity, title, nonempty paths with line_ranges, affected_invariants, and disposition in the allowed set.",
+          "Owner+phase are not fields on findings; they are satisfied for every classified module in R2_DISPOSITION_MAP.json (187/187 nonempty).",
+          "FAIL (evidence accuracy): R2-F001/F012/F023 cite database.py:130-141 for rebuild_projections; AST shows rebuild_projections at 104-112 and lines 130-141 are backup_to internals.",
+          "FAIL (evidence accuracy): R2-F005/F020 cite voice.py:48-59 for FixtureTTS; AST shows FixtureTTS at 48-51 and lines 52-58 are unrelated _COMMAND_PATTERNS.",
+          "FAIL (evidence accuracy): R2-F022 cites busy_timeout at database.py:28-31 (actual PRAGMA busy_timeout at line 24) and heartbeat lock retry at run.py:72-89 (actual _heartbeat_with_lock_retry at line 92).",
+          "FAIL (measured claim): R2-F006 says zero runtime callers and only test/docstring references, but real source call sites exist inside unreachable modules: evolution_control.py:122 run_cycle, evolution_control.py:161 promote_release, cycle.py:182/186 run_evaluation, cycle.py:230 promote_release, v3_loop.py:208 detect_research_items, v3_loop.py:250 poll_monitor.",
+          "FAIL (arithmetic): F001/metrics claim 95 exact event_type handlers; fresh AST count is 100 distinct handled types (91 equality branches + 10 types in 3 in-tuple/set branches)."
+        ]
+      }
+    },
+    {
+      "id": "C03",
+      "status": "PASS",
+      "evidence": {
+        "paths": [
+          "docs/remaster/evidence/r2/R2_FORENSIC_FINDINGS.json",
+          "docs/remaster/FINDINGS.jsonl",
+          "docs/remaster/R0_DISPOSITION_MAP.md"
+        ],
+        "hashes": {
+          "R2_FORENSIC_FINDINGS.json": "c02ff3784a6aec152ab2fbb263020072be6654b4730684d010ad0915fc88b5fd",
+          "FINDINGS.jsonl": "6021ae46c2f69cf969c87ca44dd8d9b629a215723f0c36904e63c6952c550810"
+        },
+        "command_outputs": [
+          "FINDINGS.jsonl contains R0-F001..R0-F022 and R1-F001..R1-F009; every R2 r0_cross_ref token exists (multi-ref values split on '/').",
+          "Checked examples: R2-F001 -> R0-F016, R2-F011 -> R0-F015, R2-F013 -> R0-F008, R2-F019 -> R0-F009, R2-F014 -> R0-F004.",
+          "No contradiction with R0 dispositions: OPEN_REWRITE maps to REWRITE/UNSAFE; OPEN_IMPLEMENT maps to NOT_IMPLEMENTED; OPEN_DELETE_DENY maps to DELETE; OPEN_REPAIR maps to REWRITE; R2-F024 KEEP maps to R1-F003/R1-F004 KEEP+RECLASSIFY context."
+        ]
+      }
+    },
+    {
+      "id": "C04",
+      "status": "PASS",
+      "evidence": {
+        "paths": [
+          "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry",
+          "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster"
+        ],
+        "hashes": {},
+        "command_outputs": [
+          "Main HEAD = 93a3ddc0965dfaf3e4cb9dc0952467bd5250520a; status --short shows exactly six untracked owner docs (docs/handoffs/V5_SOL_HIGH_HARDENING_PROMPT.md, V5_SOL_HIGH_HARDENING_REPORT.md, docs/planning/POST_V7_CODEX_SOL_REMASTER_GOAL.md, V5_MASTER_PROMPT.md, V5_READ_FIRST.md, V7_MASTER_PROMPT.md) and zero tracked modifications (git diff --name-only empty).",
+          "Remaster HEAD = 074e192ef20bfd0859c99ebabc54ea8772aeff0a; status shows only docs/remaster/FINDINGS.jsonl modified plus untracked docs/remaster/R2_DISPOSITION_MAP.md, docs/remaster/evidence/r2/, docs/remaster/work_packages/R2_WORK_PACKAGE.json, scripts/remaster/r2/; git diff --name-only = docs/remaster/FINDINGS.jsonl only.",
+          "Remaster tracks 108 src entries and no tests/foundry or src file is modified in either repo; verifier wrote only the verdict file inside the repos."
+        ]
+      }
+    },
+    {
+      "id": "C05",
+      "status": "PASS",
+      "evidence": {
+        "paths": [],
+        "hashes": {},
+        "command_outputs": [
+          "Read-only Get-ScheduledTask: \\JARVIS-Foundry-Supervisor State=Running; \\Hermes_Gateway State=Ready. Both protected tasks still exist.",
+          "Get-ScheduledTaskInfo (read-only): JARVIS-Foundry-Supervisor LastRunTime=2026-08-14T20:16:05Z, LastTaskResult=2147946720, NextRunTime=2026-08-14T20:17:04Z; Hermes_Gateway LastRunTime=2026-08-13T02:46:51Z, LastTaskResult=0, NextRunTime empty.",
+          "Process query only: 12 python processes observed, including JARVIS-Foundry .venv python (PID 21636) and hermes-agent venv python (PID 8172); no start/stop or mutation performed.",
+          "Live-path modules are classified: supervisor/run.py, supervisor/service.py, installer.py, cli/main.py = REFACTOR (R0 map says watchdog base REFACTOR); projections.py, database.py, events.py, effects.py, mission/loop.py, v3_loop.py, execution/pipeline.py, control/broker.py = REWRITE; 3 modules UNSAFE (consolidation.py, obsidian/snapshots.py, obsidian/writer.py)."
+        ]
+      }
+    },
+    {
+      "id": "C06",
+      "status": "PASS",
+      "evidence": {
+        "paths": [
+          "docs/remaster/evidence/r2/R2_DISPOSITION_MAP.json",
+          "docs/remaster/evidence/r2/R2_MODULE_INVENTORY.json"
+        ],
+        "hashes": {
+          "R2_DISPOSITION_MAP.json": "2dd93cbc6f226bad9414eabc00d6ca7c68c1eeab21de62af695c1a0a6066d1ad",
+          "R2_MODULE_INVENTORY.json": "f0e0b0299176fffe5e9032eebedba49a2aad67502b9727cc5a808d49b1b6fcc3"
+        },
+        "command_outputs": [
+          "187/187 entries classified; zero missing, zero unclassified; every entry has nonempty disposition, owner, phase; no disposition outside the allowed set.",
+          "No code, test, migration, adapter, capability, or live path remains unclassified: git Python file set is exactly covered (99 source + 88 test files), schemas and live entry paths are covered via module-level dispositions and findings."
+        ]
+      }
+    },
+    {
+      "id": "C07",
+      "status": "PASS",
+      "evidence": {
+        "paths": [
+          "docs/remaster/work_packages/R2_WORK_PACKAGE.json",
+          "docs/remaster/evidence/r2/R2_FORENSIC_FINDINGS.json",
+          "docs/remaster/evidence/r2/R2_MODULE_INVENTORY.json",
+          "docs/remaster/evidence/r2/R2_METRICS.json",
+          "docs/remaster/evidence/r2/R2_SUMMARY.md",
+          "docs/remaster/evidence/r2/R2_DISPOSITION_MAP.json",
+          "docs/remaster/R2_DISPOSITION_MAP.md",
+          "docs/remaster/FINDINGS.jsonl"
+        ],
+        "hashes": {
+          "R2_WORK_PACKAGE.json": "97d286b2d27acdfda862406b33903ad1b4c82ed72357bd69c4df02f63928dd2a",
+          "R2_FORENSIC_FINDINGS.json": "c02ff3784a6aec152ab2fbb263020072be6654b4730684d010ad0915fc88b5fd",
+          "R2_MODULE_INVENTORY.json": "f0e0b0299176fffe5e9032eebedba49a2aad67502b9727cc5a808d49b1b6fcc3",
+          "R2_METRICS.json": "02058604958380dd69491e3efd8419e40445b1405b1bdafc82da310f6035f2b4",
+          "R2_SUMMARY.md": "039f761f4be65bc7b2005fcd0a2dc4958a5729dc52ab0ebc3bfe4ee638bd0738",
+          "R2_DISPOSITION_MAP.json": "2dd93cbc6f226bad9414eabc00d6ca7c68c1eeab21de62af695c1a0a6066d1ad",
+          "R2_DISPOSITION_MAP.md": "c78589f90b90c5d548cf98adbab9100b382303015981896aad6170582cbd5a5c",
+          "FINDINGS.jsonl": "6021ae46c2f69cf969c87ca44dd8d9b629a215723f0c36904e63c6952c550810"
+        },
+        "command_outputs": [
+          "Fresh SHA-256 and byte sizes recomputed for every frozen evidence artifact and the work package; all match the hashes/sizes declared in R2_WORK_PACKAGE.json.",
+          "Coverage gate independently reproduced: 99/88/187 tracked Python files, inventory/disposition bijection, 41 unhandled event types exactly matching R2_METRICS list, 45 PROJECTION_TABLES, projections.py total 1740 lines, apply_event 58-1726, no top-level else/raise tail.",
+          "Key AST spans reproduced: run_step 236-453, run_one_loop 175-382, run_cycle 76-254, execute_effect 181-279, tick_scheduler 156-246, select_projects 170-199, run_mission 430-515, promote_release 168-222, shadow_run 93-291, poll_monitor 37-80, VoiceGateway 61-150, EvolutionControl 48-215.",
+          "Caveat recorded under C02: several measured line references and the 95-vs-100 handler count did not reproduce exactly; classification outcomes and dispositions are unaffected."
+        ]
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "R2V-D01",
+      "severity": "S3",
+      "title": "rebuild_projections line reference is wrong in three findings",
+      "reproduction": "AST parse of src/jarvis_foundry/database.py: FunctionDef rebuild_projections spans 104-112; source lines 130-141 are backup_to internals (source.backup(destination), PRAGMA quick_check). R2-F001, R2-F012, and R2-F023 cite database.py:130-141.",
+      "invariant": "evidence accuracy / verifier reproducibility",
+      "affected_findings": ["R2-F001", "R2-F012", "R2-F023"]
+    },
+    {
+      "id": "R2V-D02",
+      "severity": "S3",
+      "title": "FixtureTTS line reference includes unrelated code",
+      "reproduction": "AST parse of src/jarvis_foundry/voice.py: FixtureTTS spans 48-51; lines 52-58 are _COMMAND_PATTERNS. R2-F005 and R2-F020 cite voice.py:48-59. FixtureSTT cited 40-46, actual 40-45.",
+      "invariant": "evidence accuracy",
+      "affected_findings": ["R2-F005", "R2-F020"]
+    },
+    {
+      "id": "R2V-D03",
+      "severity": "S2",
+      "title": "R2-F006 measured evidence overstates zero runtime callers",
+      "reproduction": "Source scan finds real call sites inside unreachable executive modules: supervisor/evolution_control.py:122 cycle_mod.run_cycle, :161 promote_mod.promote_release; evolution/cycle.py:182 and :186 run_evaluation, :230 promote_release; v3_loop.py:208 detect_research_items, :250 poll_monitor. Test-side substring count for the 17 listed names is 346, not 343.",
+      "invariant": "evidence truthfulness; disposition unchanged (REWRITE) because no call is reachable from the installed supervisor entry path",
+      "affected_findings": ["R2-F006"]
+    },
+    {
+      "id": "R2V-D04",
+      "severity": "S3",
+      "title": "R2-F022 cites wrong lines for retry controls",
+      "reproduction": "src/jarvis_foundry/database.py line 24 has PRAGMA busy_timeout = 10000 (claim 28-31); supervisor/run.py _heartbeat_with_lock_retry starts at line 92 (claim 72-89); migrations.py system_actions UNIQUE is at line 572 (claim 574-585).",
+      "invariant": "evidence accuracy",
+      "affected_findings": ["R2-F022"]
+    },
+    {
+      "id": "R2V-D05",
+      "severity": "S3",
+      "title": "Projection handler count is 100, not 95",
+      "reproduction": "Fresh AST/text count of apply_event: 91 event.event_type == branches plus 10 literal types inside 3 in-tuple/set branches (action.* 5, candidate.build_* 2, canary.* 3) = 100 distinct handled types; R2_METRICS event_coverage.exact_handled=95 and R2-F001 claim 95. The 41-type unhandled list and 45 PROJECTION_TABLES reproduce exactly.",
+      "invariant": "measured-evidence arithmetic",
+      "affected_findings": ["R2-F001", "R2-F012"]
+    },
+    {
+      "id": "R2V-D06",
+      "severity": "S3",
+      "title": "Several finding line ranges are truncated or shifted",
+      "reproduction": "EvolutionControl actual 48-215 vs cited 48-167; Event.create 44-71 vs 44-68 and validate 73-82 vs 73-81; detect_research_items 48-117 vs 48-119; resolve_provider_auth 281-324 vs 281-318; _safe_table 91-97 vs 91-99; supervisor heartbeat 67-90 vs 67-99; deliver_local 75-77 vs 75-79.",
+      "invariant": "evidence precision",
+      "affected_findings": ["R2-F006", "R2-F011", "R2-F013", "R2-F016", "R2-F021", "R2-F026"]
+    }
+  ],
+  "status_summary": "Hash recomputation, inventory coverage, disposition completeness, R0 cross-references, registry consistency, no-repair state, and live boundary all verified clean. The classification gate itself reproduces (187/187 modules, 9/12/9 findings, 41 unhandled event types). Verdict is FAIL because C02 evidence accuracy is not met: multiple findings cite line ranges that point at unrelated code, one S1 finding's measured evidence is contradicted by real call sites in unreachable modules, and the exact handler count is 100 rather than 95. These defects do not change any disposition and no source or live state was modified.",
+  "evidence_paths_and_hashes": {
+    "docs/remaster/work_packages/R2_WORK_PACKAGE.json": {
+      "sha256": "97d286b2d27acdfda862406b33903ad1b4c82ed72357bd69c4df02f63928dd2a",
+      "size": 3338
+    },
+    "docs/remaster/evidence/r2/R2_FORENSIC_FINDINGS.json": {
+      "sha256": "c02ff3784a6aec152ab2fbb263020072be6654b4730684d010ad0915fc88b5fd",
+      "size": 53788
+    },
+    "docs/remaster/evidence/r2/R2_MODULE_INVENTORY.json": {
+      "sha256": "f0e0b0299176fffe5e9032eebedba49a2aad67502b9727cc5a808d49b1b6fcc3",
+      "size": 437195
+    },
+    "docs/remaster/evidence/r2/R2_METRICS.json": {
+      "sha256": "02058604958380dd69491e3efd8419e40445b1405b1bdafc82da310f6035f2b4",
+      "size": 14342
+    },
+    "docs/remaster/evidence/r2/R2_SUMMARY.md": {
+      "sha256": "039f761f4be65bc7b2005fcd0a2dc4958a5729dc52ab0ebc3bfe4ee638bd0738",
+      "size": 4124
+    },
+    "docs/remaster/evidence/r2/R2_DISPOSITION_MAP.json": {
+      "sha256": "2dd93cbc6f226bad9414eabc00d6ca7c68c1eeab21de62af695c1a0a6066d1ad",
+      "size": 34678
+    },
+    "docs/remaster/R2_DISPOSITION_MAP.md": {
+      "sha256": "c78589f90b90c5d548cf98adbab9100b382303015981896aad6170582cbd5a5c",
+      "size": 2234
+    },
+    "docs/remaster/FINDINGS.jsonl": {
+      "sha256": "6021ae46c2f69cf969c87ca44dd8d9b629a215723f0c36904e63c6952c550810",
+      "size": 28380
+    }
+  },
+  "next_action": "Builder must correct the R2 measured evidence before promotion: rebuild_projections database.py:104-112; FixtureTTS voice.py:48-51; busy_timeout database.py:24; heartbeat lock retry run.py:92+; exact handler count 100; reword R2-F006 to 'no callers reachable from the installed supervisor entry path' with the unreachable wrapper call sites listed; normalize truncated line ranges. No disposition changes are required. Then re-run a fresh independent verifier against the corrected evidence; do not edit any frozen R2 artifact or FINDINGS.jsonl in this round."
+}

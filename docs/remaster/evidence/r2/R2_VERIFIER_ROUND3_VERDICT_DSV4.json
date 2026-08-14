@@ -1,0 +1,193 @@
+{
+  "schema": "jarvis-r2-verifier-round3-verdict-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R2",
+  "repair_round": 3,
+  "verifier_model": "deepseek-v4-flash via codex-router",
+  "verdict": "FAIL",
+  "generated_utc": "2026-08-14T20:41:26Z",
+  "frozen_base": {
+    "branch": "main",
+    "commit": "93a3ddc0965dfaf3e4cb9dc0952467bd5250520a",
+    "audited_worktree": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry",
+    "remaster_worktree": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster"
+  },
+  "round1_fail_sha256": "1e8bd740950dafbb83f092473af57628f63f14f3b39192ea21bee7b22c2688d3",
+  "round2_fail_sha256": "0ffbd83380eab133bb3ccb7a4f0e7ae50e8f2b6aea0305f4b7204bb2d2ecd8a3",
+  "criteria": [
+    {
+      "id": "C01",
+      "status": "PASS",
+      "evidence": {
+        "inventory": "R2_MODULE_INVENTORY.json sha256=f0e0b0299176fffe5e9032eebedba49a2aad67502b9727cc5a808d49b1b6fcc3 size=437195; 187 entries (source=99, test=85, test_support=3); 99+85+3=187; unique paths",
+        "disposition_map": "R2_DISPOSITION_MAP.json sha256=2dd93cbc6f226bad9414eabc00d6ca7c68c1eeab21de62af695c1a0a6066d1ad size=34678; 187 entries; every entry has non-empty path/kind/disposition/owner/phase; all 187 dispositions valid (KEEP/REFACTOR/REWRITE/DELETE/NOT_IMPLEMENTED/UNSAFE/KEEP+HARDEN); inventory and disposition path sets identical after normalization",
+        "tracked_coverage": "git ls-files in audited main checkout: 397 tracked files, src/*.py=99, tests/foundry/*.py=88; no tracked .py file is missing from the disposition map; the 9 additional src/ files are non-py (README.md, egg-info metadata, assets)"
+      }
+    },
+    {
+      "id": "C02",
+      "status": "FAIL",
+      "evidence": {
+        "corrected_spans_recompute": "Every corrected span in the round-3 list recomputed by fresh AST (ast.parse end_lineno) and line reads against main checkout: database.py rebuild_projections 104-112, PRAGMA foreign_keys line 23, busy_timeout line 24; voice.py FixtureSTT 40-45, FixtureTTS 48-51, _COMMAND_PATTERNS line 54; projections.py apply_event 58-1726; EvolutionControl 48-215; events.py Event.create 44-71, validate 73-82; detect_research_items 48-117; resolve_provider_auth 281-324; _safe_table 91-97; heartbeat 67-90; deliver_local 75-77; _heartbeat_with_lock_retry 92-113; migrations.py UNIQUE 552 and 572, v20 block 557-585; call sites evolution_control.py 122/161, cycle.py 182/186/230, v3_loop.py 208/250 all match exactly",
+        "handler_breakdown": "Fresh AST census of apply_event: 92 literal elements in event_type equality comparisons + 10 literal elements inside 3 in-tuple comparisons; overlap=2; distinct union=100; 3 startswith families (consolidation., emergency_stop., supervisor.); PROJECTION_TABLES=45; R2_METRICS.json event_coverage.exact_handled=100, created_event_types=113, unhandled_count=41",
+        "residual_span_defects": "Other finding line ranges do NOT independently recompute against source: R2-F001 reset cited 1729-1739 but AST and inventory both record reset 1729-1740; R2-F015 _last_file_hash cited 58-64 but AST/inventory 58-69; R2-F007 _advance cited 160-190 but AST 160-193; R2-F013 configure_owner cited 548-552 but AST 548-553; R2-F005/R2-F015 FakeConnector cited 18-60 but AST/inventory 18-55; R2-F006/R2-F017 enable_scheduler cited 117-124 but AST/inventory 117-123; R2-F015 DispatchError cited 40-42 but AST/inventory 40-41; R2-F028 reconciliation_matrix cited 143-148 but AST 143-145",
+        "findings_structure": "R2_FORENSIC_FINDINGS.json sha256=acb040811a7f20d083918969d1e36a9552c019f2d867b2c484fc6171bfbb8ca4; 30 findings (9 S1, 12 S2, 9 S3) each with id/severity/title/paths/measured_evidence/affected_invariants/disposition; no duplicate IDs"
+      }
+    },
+    {
+      "id": "C03",
+      "status": "PASS",
+      "evidence": {
+        "cross_refs_exist": "All R2 r0_cross_ref values resolve to existing registry IDs: R0-F001..R0-F022 and R1-F001..R1-F009 are all present in docs/remaster/FINDINGS.jsonl (63 parsed JSONL lines, no duplicate IDs)",
+        "no_contradiction": "R2 dispositions align with referenced R0/R1 dispositions, e.g. R2-F006/REWRITE->R0-F004 OPEN_REWRITE, R2-F019/REWRITE->R0-F009 OPEN_REWRITE, R2-F029/DELETE->R0-F014 OPEN_DELETE_DENY, R2-F005/NOT_IMPLEMENTED->R0-F012 OPEN_IMPLEMENT, R2-F024/KEEP->R1-F003/F004 CLOSED_VERIFIED_R1_ROUND2"
+      }
+    },
+    {
+      "id": "C04",
+      "status": "PASS",
+      "evidence": {
+        "main_git": "main checkout HEAD=93a3ddc0965dfaf3e4cb9dc0952467bd5250520a; git status --short shows only six untracked owner docs (docs/handoffs/V5_SOL_HIGH_HARDENING_PROMPT.md, V5_SOL_HIGH_HARDENING_REPORT.md, docs/planning/POST_V7_CODEX_SOL_REMASTER_GOAL.md, V5_MASTER_PROMPT.md, V5_READ_FIRST.md, V7_MASTER_PROMPT.md); no tracked modifications",
+        "remaster_git": "remaster worktree git status --short: M docs/remaster/FINDINGS.jsonl (+32 R2 registry lines) plus untracked docs/remaster/R2_DISPOSITION_MAP.md, docs/remaster/evidence/r2/, docs/remaster/work_packages/R2_WORK_PACKAGE.json, scripts/remaster/r2/; no src/ or tests/foundry/ changes",
+        "byte_identity": "All target src modules are content-identical between main and remaster modulo CRLF/LF normalization required by .gitattributes (*.py eol=crlf); git reports no tracked src/test modification in either repo"
+      }
+    },
+    {
+      "id": "C05",
+      "status": "PASS",
+      "evidence": {
+        "scheduled_tasks": "\\JARVIS-Foundry-Supervisor state=Running; \\Hermes_Gateway state=Ready (Get-ScheduledTask, read-only)",
+        "processes": "Supervisor processes present: PID 21636 and PID 17052 running python -m jarvis_foundry.supervisor.run --home C:\\Users\\b\\AppData\\Local\\hermes\\foundry; Hermes desktop/gateway processes present; read-only inspection only, no live/protected modification performed"
+      }
+    },
+    {
+      "id": "C06",
+      "status": "PASS",
+      "evidence": {
+        "classification_gate": "187/187 tracked Python modules classified: 99 source + 85 test + 3 test support; every tracked tests/foundry/*.py and src/*.py has exactly one disposition/owner/phase in R2_DISPOSITION_MAP.json; no unclassified code, test, migration (migrations.py KEEP), adapter (roles/adapter.py REFACTOR, connectors/* REFACTOR/NOT_IMPLEMENTED), capability (capabilities/registry.py REWRITE, control/capability_broker.py REWRITE), or live supervisor path remains"
+      }
+    },
+    {
+      "id": "C07",
+      "status": "FAIL",
+      "evidence": {
+        "counter_rerun": "Ran C:\\Python313\\python.exe -B scripts\\remaster\\r2\\measure_test_references.py twice; both runs printed 'files=88 word_boundary=311 substring=344'; R2_TEST_REFERENCE_COUNTS.json sha256=c40f857cc2f5395df40f3c03a8bec7aba5e030fb5c3705d54faf7aa945207c46 size=9381 before run, after run 1, and after run 2 (byte-identical, deterministic); an independent reimplementation over the same 88 test files and 17 names also gives 88/311/344",
+        "stale_phrases_absent": "Scan of R2_SUMMARY.md, R2_FORENSIC_FINDINGS.json, R2_METRICS.json, R2_MODULE_INVENTORY.json, R2_DISPOSITION_MAP.json, R2_DISPOSITION_MAP.md, R2_TEST_REFERENCE_COUNTS.json found zero hits for all stale phrases ('130-141','48-119','48-167','281-318','91-99','75-79','28-31','72-89','574-585','573-585','44-68','73-81','343 match','95 exact','67-99','344 substring matches, word-boundary 311','word-boundary method: 311','91 event_type equality')",
+        "fail_verdicts_identical": "R2_VERIFIER_ROUND1_VERDICT_DSV4.json sha256=1e8bd740950dafbb83f092473af57628f63f14f3b39192ea21bee7b22c2688d3 size=16514 and R2_VERIFIER_ROUND2_VERDICT_DSV4.json sha256=0ffbd83380eab133bb3ccb7a4f0e7ae50e8f2b6aea0305f4b7204bb2d2ecd8a3 size=19128 are byte-identical to the required preserved hashes",
+        "frozen_work_package_counter_metadata_defect": "R2_WORK_PACKAGE.json (sha256=70df6321efee975a4a5ccdcf9a550e7b8b03df03c18e1381f0df6bac2376a777 size=4906) counter block claims script sha256=c40f857cc2f5395df40f3c03a8bec7aba5e030fb5c3705d54faf7aa945207c46 size=9381; those values are the R2_TEST_REFERENCE_COUNTS.json output, not the script. Actual scripts/remaster/r2/measure_test_references.py is sha256=27290bc9f1aef792a40b69cf3a112f904e03e1482b9e872f70053b99aed463f1 size=2327, so the frozen counter artifact binding is inaccurate"
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "R2V3-D01",
+      "severity": "S2",
+      "title": "Frozen work package swaps the counter script hash/size with the counts JSON hash/size",
+      "reproduction": "docs/remaster/work_packages/R2_WORK_PACKAGE.json counter block: script=scripts/remaster/r2/measure_test_references.py, sha256=c40f857cc2f5395df40f3c03a8bec7aba5e030fb5c3705d54faf7aa945207c46, size=9381. SHA256/size of R2_TEST_REFERENCE_COUNTS.json = c40f857c.../9381. SHA256/size of the actual script = 27290bc9f1aef792a40b69cf3a112f904e03e1482b9e872f70053b99aed463f1/2327.",
+      "invariant": "frozen artifact binding; evidence accuracy"
+    },
+    {
+      "id": "R2V3-D02",
+      "severity": "S3",
+      "title": "R2-F001 cites reset at projections.py:1729-1739; AST and the module inventory record 1729-1740",
+      "reproduction": "R2_FORENSIC_FINDINGS.json R2-F001 line_ranges=[[58,1726],[1729,1739]] and measured_evidence 'reset spans 1729-1739'. ast.parse end_lineno for reset is 1740 (final connection.execute close paren at line 1740); R2_MODULE_INVENTORY.json also records reset end_lineno 1740.",
+      "invariant": "line-range accuracy; no truncated range remains"
+    },
+    {
+      "id": "R2V3-D03",
+      "severity": "S3",
+      "title": "R2-F015 cites _last_file_hash at live_ingestion.py:58-64; actual span is 58-69",
+      "reproduction": "R2-F015 dead-code candidate _last_file_hash line_ranges=[[58,64]]. AST and inventory record _last_file_hash 58-69; lines 65-69 contain the SQL args, row check, and return, so the range is truncated by 5 code lines.",
+      "invariant": "line-range accuracy"
+    },
+    {
+      "id": "R2V3-D04",
+      "severity": "S3",
+      "title": "R2-F007 cites MissionLoop._advance at mission/loop.py:160-190; actual span is 160-193",
+      "reproduction": "R2-F007 line_ranges=[[160,190]]. AST _advance ends 193; lines 191-193 contain idempotency_key=key and self.database.append(event), so the cited range drops real code.",
+      "invariant": "line-range accuracy"
+    },
+    {
+      "id": "R2V3-D05",
+      "severity": "S3",
+      "title": "R2-F013 cites configure_owner at command_center.py:548-552; actual span is 548-553",
+      "reproduction": "R2-F013 line_ranges=[[548,552]]. AST configure_owner ends 553; line 553 self._handler.owner_id = owner_id is real code omitted by the cited range.",
+      "invariant": "line-range accuracy"
+    },
+    {
+      "id": "R2V3-D06",
+      "severity": "S3",
+      "title": "Residual trailing-blank-line ranges in findings do not match AST/inventory spans",
+      "reproduction": "R2-F005 and R2-F015 cite FakeConnector 18-60 (AST/inventory 18-55); R2-F006 and R2-F017 cite enable_scheduler 117-124 (AST/inventory 117-123); R2-F015 cites DispatchError 40-42 (AST/inventory 40-41); R2-F028 cites reconciliation_matrix 143-148 (AST 143-145; 146-147 blank, 148 starts matrix_complete). These ranges include trailing blank lines or adjacent def starts and are not AST-precise under the same standard used for the corrected spans.",
+      "invariant": "line-range accuracy; evidence reproducibility"
+    }
+  ],
+  "status_summary": "Fresh independent round-3 verification reproduces the repaired claims: every corrected span recomputes exactly by AST and line reads (24 span/line targets), the handler census is exactly 92 equality literals + 10 in-set literals with 2 overlap and 100 distinct union, exact_handled=100, the frozen counter reruns twice byte-identically (files=88 word_boundary=311 substring=344) and matches an independent reimplementation, no stale phrasing remains in findings/summary, both FAIL verdicts are byte-identical to the preserved hashes, coverage is 99 src py + 88 test py with inventory 99+85+3=187 and disposition 187/187 valid, R0/R1 cross-references resolve without contradiction, and git/live boundaries are unmodified (main: six untracked owner docs; remaster: R2 evidence/work-package/scripts only; \\JARVIS-Foundry-Supervisor Running, \\Hermes_Gateway Ready, supervisor processes present). Verdict is FAIL because frozen evidence accuracy is still broken: the work package's counter block misstates the frozen script hash/size (script is 27290bc9.../2327, not c40f857c.../9381 which is the counts JSON), and several cited line ranges do not independently recompute against source (reset 1729-1739 vs 1729-1740, _last_file_hash 58-64 vs 58-69, _advance 160-190 vs 160-193, configure_owner 548-552 vs 548-553, plus trailing-blank ranges for FakeConnector, enable_scheduler, DispatchError, reconciliation_matrix). No disposition was weakened and no source or live state was modified.",
+  "evidence_paths_and_hashes": {
+    "docs/remaster/work_packages/R2_WORK_PACKAGE.json": {
+      "sha256": "70df6321efee975a4a5ccdcf9a550e7b8b03df03c18e1381f0df6bac2376a777",
+      "size": 4906
+    },
+    "docs/remaster/evidence/r2/R2_VERIFIER_ROUND1_VERDICT_DSV4.json": {
+      "sha256": "1e8bd740950dafbb83f092473af57628f63f14f3b39192ea21bee7b22c2688d3",
+      "size": 16514
+    },
+    "docs/remaster/evidence/r2/R2_VERIFIER_ROUND2_VERDICT_DSV4.json": {
+      "sha256": "0ffbd83380eab133bb3ccb7a4f0e7ae50e8f2b6aea0305f4b7204bb2d2ecd8a3",
+      "size": 19128
+    },
+    "docs/remaster/evidence/r2/R2_FORENSIC_FINDINGS.json": {
+      "sha256": "acb040811a7f20d083918969d1e36a9552c019f2d867b2c484fc6171bfbb8ca4",
+      "size": 53102
+    },
+    "docs/remaster/evidence/r2/R2_MODULE_INVENTORY.json": {
+      "sha256": "f0e0b0299176fffe5e9032eebedba49a2aad67502b9727cc5a808d49b1b6fcc3",
+      "size": 437195
+    },
+    "docs/remaster/evidence/r2/R2_METRICS.json": {
+      "sha256": "b13559096fd8487eb68754070535207063b94dab2ecd168f6a963c8a29064ac7",
+      "size": 13885
+    },
+    "docs/remaster/evidence/r2/R2_SUMMARY.md": {
+      "sha256": "2b52e26eb2c621bf6ef0cd34999cba5d268bb9f8c7354528f085deba0dfc708b",
+      "size": 4342
+    },
+    "docs/remaster/evidence/r2/R2_DISPOSITION_MAP.json": {
+      "sha256": "2dd93cbc6f226bad9414eabc00d6ca7c68c1eeab21de62af695c1a0a6066d1ad",
+      "size": 34678
+    },
+    "docs/remaster/R2_DISPOSITION_MAP.md": {
+      "sha256": "c78589f90b90c5d548cf98adbab9100b382303015981896aad6170582cbd5a5c",
+      "size": 2234
+    },
+    "docs/remaster/evidence/r2/R2_TEST_REFERENCE_COUNTS.json": {
+      "sha256": "c40f857cc2f5395df40f3c03a8bec7aba5e030fb5c3705d54faf7aa945207c46",
+      "size": 9381,
+      "note": "byte-identical before run, after run 1, and after run 2 of the frozen counter"
+    },
+    "docs/remaster/FINDINGS.jsonl": {
+      "sha256": "21e5d758328ad228e4adff1672727796ed7bdf73535e19cc94e626d4bca9b08c",
+      "size": 31652
+    },
+    "scripts/remaster/r2/measure_test_references.py": {
+      "sha256": "27290bc9f1aef792a40b69cf3a112f904e03e1482b9e872f70053b99aed463f1",
+      "size": 2327
+    },
+    "scripts/remaster/r2/repair_r2_evidence.py": {
+      "sha256": "23d7f1b3c2d8cf67fa2577ebef5dca5c7bdfba79900340584a7c6f2a64902050",
+      "size": 8211
+    },
+    "scripts/remaster/r2/repair_r2_evidence_round3.py": {
+      "sha256": "fd050754b5a180618f65675e1b9182ec4d572be0be6be78605cf0e91db196523",
+      "size": 4324
+    },
+    "scripts/remaster/r2/measure_repo.py": {
+      "sha256": "1f82324adf3b2c3f12938e6feffa2550f5b5b18b681942e57a34e39af1d6d5b6",
+      "size": 13025
+    },
+    "scripts/remaster/r2/build_r2_evidence.py": {
+      "sha256": "1e8f082a2f79be405c80eb24778de1bfe125b67a43e25ad9ceb9ab593c402a7b",
+      "size": 60747
+    }
+  },
+  "next_action": "Repair the remaining frozen-evidence accuracy defects before promotion: correct the R2 work package counter block to the actual script hash/size (27290bc9f1aef792a40b69cf3a112f904e03e1482b9e872f70053b99aed463f1, 2327 bytes) or otherwise bind the script and output distinctly; update the residual truncated/trailing ranges to the AST/inventory spans (reset 1729-1740, _last_file_hash 58-69, _advance 160-193, configure_owner 548-553, FakeConnector 18-55, enable_scheduler 117-123, DispatchError 40-41, reconciliation_matrix 143-145); register the follow-up repair in FINDINGS.jsonl; then run a fresh independent verifier. Do not weaken any disposition, do not edit source/live state, and do not modify frozen artifacts outside the repair scope."
+}

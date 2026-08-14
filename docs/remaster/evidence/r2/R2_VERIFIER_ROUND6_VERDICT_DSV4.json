@@ -1,0 +1,320 @@
+{
+  "schema": "jarvis-r2-verifier-round6-verdict-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R2",
+  "repair_round": 6,
+  "verifier_model": "deepseek-v4-flash via codex-router",
+  "verdict": "FAIL",
+  "generated_utc": "2026-08-14T21:17:16Z",
+  "frozen_base": {
+    "baseline_commit": "93a3ddc0965dfaf3e4cb9dc0952467bd5250520a",
+    "baseline_tree": "2e1df6190b0d032372ae46e6a59bef22ddac57e3",
+    "branch": "main",
+    "audited_repo": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
+    "remaster_worktree": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry-Remaster",
+    "remaster_branch": "remaster/post-v7-purpose",
+    "remaster_head": "074e192ef20bfd0859c99ebabc54ea8772aeff0a"
+  },
+  "fail_sha256s": [
+    {
+      "round": 1,
+      "path": "docs/remaster/evidence/r2/R2_VERIFIER_ROUND1_VERDICT_DSV4.json",
+      "sha256": "1e8bd740950dafbb83f092473af57628f63f14f3b39192ea21bee7b22c2688d3",
+      "size": 16514
+    },
+    {
+      "round": 2,
+      "path": "docs/remaster/evidence/r2/R2_VERIFIER_ROUND2_VERDICT_DSV4.json",
+      "sha256": "0ffbd83380eab133bb3ccb7a4f0e7ae50e8f2b6aea0305f4b7204bb2d2ecd8a3",
+      "size": 19128
+    },
+    {
+      "round": 3,
+      "path": "docs/remaster/evidence/r2/R2_VERIFIER_ROUND3_VERDICT_DSV4.json",
+      "sha256": "2936d6ada761c428aeaa3e2dca176f6918f415d21ee1a75bb4ef195d8355c734",
+      "size": 16729
+    },
+    {
+      "round": 4,
+      "path": "docs/remaster/evidence/r2/R2_VERIFIER_ROUND4_VERDICT_DSV4.json",
+      "sha256": "2e699715ef0153217356a0b6f69c6f21ca35512dd1ac9aed09f69e7df34fec9e",
+      "size": 16006
+    },
+    {
+      "round": 5,
+      "path": "docs/remaster/evidence/r2/R2_VERIFIER_ROUND5_VERDICT_DSV4.json",
+      "sha256": "4492f0daa71bae95588ddfdafeb57759066e28764004a493b8a8d4df7af8b304",
+      "size": 21298
+    }
+  ],
+  "criteria": [
+    {
+      "id": "C01",
+      "status": "PASS",
+      "evidence": {
+        "paths": [
+          "docs/remaster/evidence/r2/R2_MODULE_INVENTORY.json",
+          "docs/remaster/evidence/r2/R2_DISPOSITION_MAP.json",
+          "docs/remaster/R2_DISPOSITION_MAP.md"
+        ],
+        "hashes": {
+          "R2_MODULE_INVENTORY.json": "f0e0b0299176fffe5e9032eebedba49a2aad67502b9727cc5a808d49b1b6fcc3",
+          "R2_DISPOSITION_MAP.json": "2dd93cbc6f226bad9414eabc00d6ca7c68c1eeab21de62af695c1a0a6066d1ad"
+        },
+        "command_outputs": [
+          "git ls-files: src/jarvis_foundry/*.py=99; tests/foundry/*.py=88; git ls-files '*.py'=187; tracked total=397; zero tracked .py outside src/jarvis_foundry or tests/foundry.",
+          "R2_MODULE_INVENTORY.json modules=187 (source 99, test 85, test_support 3); counts field source_modules=99 test_files=88 test_support_files=3 total=187.",
+          "R2_DISPOSITION_MAP.json entries=187 unique_paths=187; normalized inventory path set equals disposition path set (True); per-path inventory disposition equals map disposition (0 mismatches).",
+          "Dispositions: KEEP 7, REFACTOR 139, REWRITE 32, DELETE 2, NOT_IMPLEMENTED 4, UNSAFE 3; every entry has non-empty disposition, owner, and phase; owners total 187 (root 1, evidence-custodian 2, owner-experience 8, security 7, runtime-executive 15, trusted-kernel 46, adapters 8, memory 25, intelligence 14, evolution 27, test-architecture 8, release-engineering 2, data-recovery 8, worker-gateway 16)."
+        ]
+      }
+    },
+    {
+      "id": "C02",
+      "status": "PASS",
+      "evidence": {
+        "paths": [
+          "docs/remaster/evidence/r2/R2_FORENSIC_FINDINGS.json",
+          "docs/remaster/evidence/r2/R2_METRICS.json",
+          "scripts/remaster/r2/audit_r2_spans.py",
+          "scripts/remaster/r2/classify_r2_ranges.py"
+        ],
+        "hashes": {
+          "R2_FORENSIC_FINDINGS.json": "e61bc4ca89534e4b2596d2219a922c9cdb6ab20cc5046b8744bb8b2a973bc2cc",
+          "R2_METRICS.json": "433209032e5afd5e1b63900974b63fcbf2ffaab08a9799302b71fd0a79fb2851",
+          "audit_r2_spans.py": "165a8ff8bc6feedd6cdd6a97be1c1d39727c15d47d564bfc6f1bf58558d70ebb",
+          "classify_r2_ranges.py": "5ddaf3b99e0b37d36a48b99db8020215496e63edab66d1656b18432f58b71d15"
+        },
+        "command_outputs": [
+          "C:\\Python313\\python.exe -B scripts\\remaster\\r2\\audit_r2_spans.py -> 161 OK lines then 'checked=161 mismatches=0'; exit code 0; zero PROSE_MISMATCH, zero STALE_PROSE, zero NO_KIND, zero MISSING_NODE, zero LINE_BOUNDS.",
+          "C:\\Python313\\python.exe -B scripts\\remaster\\r2\\classify_r2_ranges.py -> 'classified=161 node=81 line=80'; exit 0; findings hash before e61bc4ca89534e4b2596d2219a922c9cdb6ab20cc5046b8744bb8b2a973bc2cc and after identical (byte-identical rewrite).",
+          "Independent AST audit (fresh script, not the canonical auditor): 161 checks, 0 mismatches, node=81 line=80, prose mismatches=[]; every structured range is a {start,end,kind} object with kind node or line.",
+          "Independent handler breakdown of apply_event: equality literals=92, in-tuple/set literals=10, overlap=2, distinct union=100; prefix families with event_type receiver: consolidation., emergency_stop., supervisor. (the extra candidate: startswith found independently is on row[0], not event_type, so it is correctly excluded).",
+          "Spot checks all AST-exact: systems.py register_system 46-64, capabilities/registry.py reconciliation_matrix 143-145, command_center.py configure_owner 548-553, projections.py reset 1729-1740, live_ingestion.py _last_file_hash 58-69, mission/loop.py _advance 160-193, connectors/fakes.py FakeConnector 18-55, control/broker.py PolicyBroker 195-459, control/capability_broker.py issue_capability 68-109, supervisor/service.py start 34-65 and heartbeat 67-90.",
+          "pyproject.toml line count=24; R2-F004 range is 1-24."
+        ]
+      }
+    },
+    {
+      "id": "C03",
+      "status": "PASS",
+      "evidence": {
+        "paths": [
+          "docs/remaster/evidence/r2/R2_FORENSIC_FINDINGS.json",
+          "docs/remaster/FINDINGS.jsonl"
+        ],
+        "hashes": {
+          "R2_FORENSIC_FINDINGS.json": "e61bc4ca89534e4b2596d2219a922c9cdb6ab20cc5046b8744bb8b2a973bc2cc",
+          "FINDINGS.jsonl": "97dd8759da0a89cdffac25d802c78170a745b0d2af07146d9963bd5503fdefab"
+        },
+        "command_outputs": [
+          "All 30 findings carry a non-empty r0_cross_ref (30/30); 7 use the explicit R2-ONLY marker (R2-F004, R2-F015, R2-F022, R2-F026, R2-F027, R2-F028, R2-F030).",
+          "25 R0/R1 reference tokens across findings all resolve in FINDINGS.jsonl; zero missing. Referenced R0 rows are OPEN_REWRITE/OPEN_REPAIR/OPEN_IMPLEMENT/OPEN_DELETE_DENY and R1 rows CLOSED_VERIFIED_R1_ROUND2; no contradiction with the R0 map was found.",
+          "FINDINGS.jsonl parses as 66 rows; R2-F001..R2-F035 all present; no duplicate IDs; R2-F031..R2-F035 each record repair + regression text with disposition REPAIRED_PENDING_VERIFY."
+        ]
+      }
+    },
+    {
+      "id": "C04",
+      "status": "PASS",
+      "evidence": {
+        "paths": [
+          "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
+          "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry-Remaster"
+        ],
+        "hashes": {},
+        "command_outputs": [
+          "Main HEAD=93a3ddc0965dfaf3e4cb9dc0952467bd5250520a; status --short shows exactly six untracked owner docs (V5_SOL_HIGH_HARDENING_PROMPT.md, V5_SOL_HIGH_HARDENING_REPORT.md, POST_V7_CODEX_SOL_REMASTER_GOAL.md, V5_MASTER_PROMPT.md, V5_READ_FIRST.md, V7_MASTER_PROMPT.md); git diff --name-only empty (zero tracked modifications).",
+          "Remaster HEAD=074e192ef20bfd0859c99ebabc54ea8772aeff0a; status --short shows M docs/remaster/FINDINGS.jsonl plus untracked docs/remaster/R2_DISPOSITION_MAP.md, docs/remaster/evidence/r2/, docs/remaster/work_packages/R2_WORK_PACKAGE.json, scripts/remaster/r2/; git diff --name-only = docs/remaster/FINDINGS.jsonl only.",
+          "No src/ or tests/foundry file is modified in either repository; the only repo writes during this round were the canonical idempotent evidence regenerators (byte-identical) and this verdict file."
+        ]
+      }
+    },
+    {
+      "id": "C05",
+      "status": "PASS",
+      "evidence": {
+        "paths": [],
+        "hashes": {},
+        "command_outputs": [
+          "Get-ScheduledTask (read-only): JARVIS-Foundry-Supervisor State=Running; Hermes_Gateway State=Ready.",
+          "Get-Process python (read-only): 12 processes observed, including JARVIS-Foundry .venv python (PID 21636) and hermes-agent venv python (PID 8172); no start/stop/mutation performed.",
+          "No daemon, database, scheduled task, process, port, provider, or network action was taken; R2 live-path modules remain classified: supervisor/run.py, supervisor/service.py, installer.py, cli/main.py REFACTOR; projections.py, database.py, events.py, effects.py, mission/loop.py, v3_loop.py, execution/pipeline.py, control/broker.py REWRITE; consolidation.py, obsidian/snapshots.py, obsidian/writer.py UNSAFE."
+        ]
+      }
+    },
+    {
+      "id": "C06",
+      "status": "PASS",
+      "evidence": {
+        "paths": [
+          "docs/remaster/evidence/r2/R2_DISPOSITION_MAP.json",
+          "docs/remaster/evidence/r2/R2_MODULE_INVENTORY.json"
+        ],
+        "hashes": {
+          "R2_DISPOSITION_MAP.json": "2dd93cbc6f226bad9414eabc00d6ca7c68c1eeab21de62af695c1a0a6066d1ad",
+          "R2_MODULE_INVENTORY.json": "f0e0b0299176fffe5e9032eebedba49a2aad67502b9727cc5a808d49b1b6fcc3"
+        },
+        "command_outputs": [
+          "187/187 unique paths carry exactly one valid disposition, one owner, and one phase; zero missing fields; zero paths outside the allowed disposition set.",
+          "Git Python coverage is exactly covered: 99 source modules + 88 test files = 187 inventory/disposition entries; no tracked .py outside those trees; schemas/config and live entry paths are covered through module dispositions and findings."
+        ]
+      }
+    },
+    {
+      "id": "C07",
+      "status": "FAIL",
+      "evidence": {
+        "paths": [
+          "docs/remaster/work_packages/R2_WORK_PACKAGE.json",
+          "docs/remaster/evidence/r2/R2_FORENSIC_FINDINGS.json",
+          "docs/remaster/evidence/r2/R2_METRICS.json",
+          "docs/remaster/evidence/r2/R2_SUMMARY.md",
+          "docs/remaster/evidence/r2/R2_EVENT_TYPE_COUNTS.json",
+          "docs/remaster/evidence/r2/R2_TEST_REFERENCE_COUNTS.json",
+          "docs/remaster/evidence/r2/R2_VERIFIER_ROUND1_VERDICT_DSV4.json",
+          "docs/remaster/evidence/r2/R2_VERIFIER_ROUND2_VERDICT_DSV4.json",
+          "docs/remaster/evidence/r2/R2_VERIFIER_ROUND3_VERDICT_DSV4.json",
+          "docs/remaster/evidence/r2/R2_VERIFIER_ROUND4_VERDICT_DSV4.json",
+          "docs/remaster/evidence/r2/R2_VERIFIER_ROUND5_VERDICT_DSV4.json",
+          "docs/remaster/FINDINGS.jsonl"
+        ],
+        "hashes": {
+          "R2_WORK_PACKAGE.json": "ecc211ccfad999f8f778708a16322b03f7997511e81f853bdc308a4a5d1cda4d",
+          "R2_FORENSIC_FINDINGS.json": "e61bc4ca89534e4b2596d2219a922c9cdb6ab20cc5046b8744bb8b2a973bc2cc",
+          "R2_METRICS.json": "433209032e5afd5e1b63900974b63fcbf2ffaab08a9799302b71fd0a79fb2851",
+          "R2_SUMMARY.md": "2b52e26eb2c621bf6ef0cd34999cba5d268bb9f8c7354528f085deba0dfc708b",
+          "R2_EVENT_TYPE_COUNTS.json": "5387f5093cf3b3c210b0cf33d86da34678fa5afe52c63af4925affe690ca6eed",
+          "R2_TEST_REFERENCE_COUNTS.json": "c40f857cc2f5395df40f3c03a8bec7aba5e030fb5c3705d54faf7aa945207c46",
+          "FINDINGS.jsonl": "97dd8759da0a89cdffac25d802c78170a745b0d2af07146d9963bd5503fdefab"
+        },
+        "command_outputs": [
+          "audit_r2_spans.py: checked=161 mismatches=0, exit 0, no PROSE_MISMATCH/STALE_PROSE/NO_KIND.",
+          "classify_r2_ranges.py: classified=161 node=81 line=80, exit 0, findings byte-identical.",
+          "measure_test_references.py run 1: files=88 word_boundary=311 substring=344; run 2 identical; output hash c40f857cc2f5395df40f3c03a8bec7aba5e030fb5c3705d54faf7aa945207c46 size 9381 both runs (byte-identical).",
+          "measure_event_types.py run 1: created=112 handled=100 prefixes=3 unhandled=41; run 2 identical; output hash 5387f5093cf3b3c210b0cf33d86da34678fa5afe52c63af4925affe690ca6eed size 1778 both runs (byte-identical).",
+          "Independent censuses reproduce: created=112, handled=100 (92 equality + 10 in-set, 2 overlap), 3 event_type prefix families, unhandled=41 with the exact 41-type list; test references 88/311/344.",
+          "All five preserved FAIL verdicts are byte-identical to the work-package hashes/sizes (round1 1e8bd740.../16514, round2 0ffbd833.../19128, round3 2936d6ad.../16729, round4 2e699715.../16006, round5 4492f0da.../21298).",
+          "All frozen artifact hashes/sizes recomputed after the tool runs and match R2_WORK_PACKAGE.json exactly.",
+          "FAIL: the frozen R2_SUMMARY.md (hash pinned in the work package) still contains superseded claims that contradict the reproduced census: line 22 '41 of 113 created event types have no projection' (census and metrics are 112) and line 19 'supervisor/service.py:34-99' (AST-exact findings spans are 34-65 and 67-90). The round-6 repair updated findings/metrics but left the summary stale, so the repaired evidence set is internally inconsistent and the classification gate does not reproduce as a coherent claim set."
+        ]
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "R2-EVID-R6-001",
+      "severity": "S2",
+      "title": "Frozen R2_SUMMARY.md still carries superseded 113-event and supervisor/service.py:34-99 claims",
+      "reproduction": "Select-String over docs/remaster/evidence/r2/R2_SUMMARY.md: line 22 says '41 of 113 created event types have no projection' and line 19 says the installed path ends at 'supervisor/service.py:34-99'. The frozen canonical census measure_event_types.py prints created=112 handled=100 prefixes=3 unhandled=41 twice and R2_METRICS.json event_coverage.created_event_types=112 with census_method referencing the script; R2_FORENSIC_FINDINGS R2-F014 cites Supervisor.start 34-65 and heartbeat 67-90, both independently AST-confirmed. The round-6 repair script repair_r2_evidence_round6.py edits only findings and metrics, so the summary was left stale while the work package freezes its hash (2b52e26eb2c621bf6ef0cd34999cba5d268bb9f8c7354528f085deba0dfc708b, 4342 bytes).",
+      "invariant": "evidence accuracy and internal consistency across every frozen R2 artifact; the repaired claim set must not retain the superseded event count or non-AST-exact supervisor range",
+      "affected_artifacts": [
+        "docs/remaster/evidence/r2/R2_SUMMARY.md",
+        "docs/remaster/evidence/r2/R2_METRICS.json",
+        "docs/remaster/evidence/r2/R2_EVENT_TYPE_COUNTS.json",
+        "docs/remaster/evidence/r2/R2_FORENSIC_FINDINGS.json"
+      ]
+    },
+    {
+      "id": "R2-EVID-R6-002",
+      "severity": "S3",
+      "title": "build_r2_evidence.py still hardcodes the superseded 113/95/stale-range evidence, so regeneration would reintroduce stale claims",
+      "reproduction": "rg in scripts/remaster/r2/build_r2_evidence.py finds line 334 'Source creates 113 distinct event_type values; projections.py handles 95 exact types...' with database.py:130-141 and family counts portfolio.* (8)/capability.* (4)/correlation.* (2); line 368 'heartbeat (service.py:67-99)'; lines 722-723 event_coverage created_event_types=113; lines 855/858 summary text with supervisor/service.py:34-99 and '41 of 113 created event types'. This generator is unchanged from round 5 (hash 1e8f082a2f79be405c80eb24778de1bfe125b67a43e25ad9ceb9ab593c402a7b, 60747 bytes) and would overwrite the repaired findings/metrics/summary with the old values if rerun.",
+      "invariant": "reproducible evidence: every generator that writes frozen evidence must agree with the canonical census scripts (measure_event_types.py, measure_test_references.py) or be retired; no latent stale generator may remain in the frozen tooling",
+      "affected_artifacts": [
+        "scripts/remaster/r2/build_r2_evidence.py",
+        "docs/remaster/evidence/r2/R2_FORENSIC_FINDINGS.json",
+        "docs/remaster/evidence/r2/R2_METRICS.json",
+        "docs/remaster/evidence/r2/R2_SUMMARY.md"
+      ]
+    }
+  ],
+  "status_summary": "Every mechanical gate reproduced cleanly: canonical auditor checked=161 mismatches=0 exit 0 with no PROSE_MISMATCH/STALE_PROSE/NO_KIND; classifier 161 = 81 node + 80 line with byte-identical findings; test counter 88/311/344 twice byte-identical (c40f857c.../9381); event census 112/100/3/41 twice byte-identical (5387f509.../1778); independent AST audit 161/0 and independent event/test censuses match; all five FAIL verdicts byte-identical; coverage 99+85+3=187 with disposition map 187/187 valid; registry 66 rows parse with R2-F001..R2-F035 and no duplicates; R2-F031..F035 record repairs with regressions; R0 cross-refs 30/30 with all R0/R1 tokens resolving; no src/test changes in either repo; live boundary untouched (Supervisor Running, Gateway Ready). Verdict is FAIL because the frozen R2_SUMMARY.md still contradicts the pinned census with '41 of 113 created event types' and the non-AST-exact 'supervisor/service.py:34-99', and the frozen builder build_r2_evidence.py still hardcodes the superseded 113/95/stale-range values. These are residual evidence-accuracy defects of the same class that failed rounds 1-5; no disposition, source, or live state was changed.",
+  "evidence_paths_and_hashes": {
+    "docs/remaster/work_packages/R2_WORK_PACKAGE.json": {
+      "sha256": "ecc211ccfad999f8f778708a16322b03f7997511e81f853bdc308a4a5d1cda4d",
+      "size": 7053
+    },
+    "docs/remaster/evidence/r2/R2_FORENSIC_FINDINGS.json": {
+      "sha256": "e61bc4ca89534e4b2596d2219a922c9cdb6ab20cc5046b8744bb8b2a973bc2cc",
+      "size": 60761
+    },
+    "docs/remaster/evidence/r2/R2_MODULE_INVENTORY.json": {
+      "sha256": "f0e0b0299176fffe5e9032eebedba49a2aad67502b9727cc5a808d49b1b6fcc3",
+      "size": 437195
+    },
+    "docs/remaster/evidence/r2/R2_METRICS.json": {
+      "sha256": "433209032e5afd5e1b63900974b63fcbf2ffaab08a9799302b71fd0a79fb2851",
+      "size": 14097
+    },
+    "docs/remaster/evidence/r2/R2_SUMMARY.md": {
+      "sha256": "2b52e26eb2c621bf6ef0cd34999cba5d268bb9f8c7354528f085deba0dfc708b",
+      "size": 4342
+    },
+    "docs/remaster/evidence/r2/R2_DISPOSITION_MAP.json": {
+      "sha256": "2dd93cbc6f226bad9414eabc00d6ca7c68c1eeab21de62af695c1a0a6066d1ad",
+      "size": 34678
+    },
+    "docs/remaster/R2_DISPOSITION_MAP.md": {
+      "sha256": "c78589f90b90c5d548cf98adbab9100b382303015981896aad6170582cbd5a5c",
+      "size": 2234
+    },
+    "docs/remaster/evidence/r2/R2_TEST_REFERENCE_COUNTS.json": {
+      "sha256": "c40f857cc2f5395df40f3c03a8bec7aba5e030fb5c3705d54faf7aa945207c46",
+      "size": 9381
+    },
+    "docs/remaster/evidence/r2/R2_EVENT_TYPE_COUNTS.json": {
+      "sha256": "5387f5093cf3b3c210b0cf33d86da34678fa5afe52c63af4925affe690ca6eed",
+      "size": 1778
+    },
+    "docs/remaster/FINDINGS.jsonl": {
+      "sha256": "97dd8759da0a89cdffac25d802c78170a745b0d2af07146d9963bd5503fdefab",
+      "size": 36846
+    },
+    "docs/remaster/evidence/r2/R2_VERIFIER_ROUND1_VERDICT_DSV4.json": {
+      "sha256": "1e8bd740950dafbb83f092473af57628f63f14f3b39192ea21bee7b22c2688d3",
+      "size": 16514
+    },
+    "docs/remaster/evidence/r2/R2_VERIFIER_ROUND2_VERDICT_DSV4.json": {
+      "sha256": "0ffbd83380eab133bb3ccb7a4f0e7ae50e8f2b6aea0305f4b7204bb2d2ecd8a3",
+      "size": 19128
+    },
+    "docs/remaster/evidence/r2/R2_VERIFIER_ROUND3_VERDICT_DSV4.json": {
+      "sha256": "2936d6ada761c428aeaa3e2dca176f6918f415d21ee1a75bb4ef195d8355c734",
+      "size": 16729
+    },
+    "docs/remaster/evidence/r2/R2_VERIFIER_ROUND4_VERDICT_DSV4.json": {
+      "sha256": "2e699715ef0153217356a0b6f69c6f21ca35512dd1ac9aed09f69e7df34fec9e",
+      "size": 16006
+    },
+    "docs/remaster/evidence/r2/R2_VERIFIER_ROUND5_VERDICT_DSV4.json": {
+      "sha256": "4492f0daa71bae95588ddfdafeb57759066e28764004a493b8a8d4df7af8b304",
+      "size": 21298
+    },
+    "scripts/remaster/r2/audit_r2_spans.py": {
+      "sha256": "165a8ff8bc6feedd6cdd6a97be1c1d39727c15d47d564bfc6f1bf58558d70ebb",
+      "size": 5627
+    },
+    "scripts/remaster/r2/classify_r2_ranges.py": {
+      "sha256": "5ddaf3b99e0b37d36a48b99db8020215496e63edab66d1656b18432f58b71d15",
+      "size": 2568
+    },
+    "scripts/remaster/r2/measure_event_types.py": {
+      "sha256": "8cfddfcd9ed9b8145a06bd04b76274d717594725fdc1764ef0251099fa5e6482",
+      "size": 4771
+    },
+    "scripts/remaster/r2/measure_test_references.py": {
+      "sha256": "27290bc9f1aef792a40b69cf3a112f904e03e1482b9e872f70053b99aed463f1",
+      "size": 2327
+    },
+    "scripts/remaster/r2/repair_r2_evidence_round6.py": {
+      "sha256": "e7f51dd035c765a89bebb9e08e80db76cb2ddfb19ee3c316b1db57c3c5be1e66",
+      "size": 3370
+    },
+    "scripts/remaster/r2/build_r2_evidence.py": {
+      "sha256": "1e8f082a2f79be405c80eb24778de1bfe125b67a43e25ad9ceb9ab593c402a7b",
+      "size": 60747
+    }
+  },
+  "next_action": "Builder must repair the remaining evidence-accuracy defects before round 7: update R2_SUMMARY.md so the event-coverage sentence says 112 (consistent with measure_event_types.py and R2_METRICS.json) and replace 'supervisor/service.py:34-99' with the AST-exact '34-65/67-90' or equivalent, then re-freeze the summary hash in R2_WORK_PACKAGE.json. Either update build_r2_evidence.py to derive created_event_types/handled/test counts from measure_event_types.py and measure_test_references.py outputs (or remove the stale hardcoded generator), and confirm no superseded 113/95/130-141/67-99 text remains anywhere in the frozen R2 tooling and evidence. No disposition changes are required; no source or live state was modified."
+}

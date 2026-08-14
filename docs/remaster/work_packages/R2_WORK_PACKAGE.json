@@ -1,0 +1,174 @@
+{
+  "schema": "jarvis-r2-work-package-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R2",
+  "repair_round": 7,
+  "title": "Architecture and code forensics disposition gate (repaired after verifier rounds 1-6 FAIL)",
+  "status": "FROZEN_FOR_VERIFIER",
+  "frozen_base": {
+    "branch": "main",
+    "remaster_worktree": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster",
+    "audited_worktree": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry",
+    "commit": "93a3ddc0965dfaf3e4cb9dc0952467bd5250520a"
+  },
+  "audit_method": "read-only git/AST/source scans; no repo mutation; no live writes",
+  "verifier_fails": [
+    {
+      "round": 1,
+      "path": "docs/remaster/evidence/r2/R2_VERIFIER_ROUND1_VERDICT_DSV4.json",
+      "sha256": "1e8bd740950dafbb83f092473af57628f63f14f3b39192ea21bee7b22c2688d3",
+      "size": 16514
+    },
+    {
+      "round": 2,
+      "path": "docs/remaster/evidence/r2/R2_VERIFIER_ROUND2_VERDICT_DSV4.json",
+      "sha256": "0ffbd83380eab133bb3ccb7a4f0e7ae50e8f2b6aea0305f4b7204bb2d2ecd8a3",
+      "size": 19128
+    },
+    {
+      "round": 3,
+      "path": "docs/remaster/evidence/r2/R2_VERIFIER_ROUND3_VERDICT_DSV4.json",
+      "sha256": "2936d6ada761c428aeaa3e2dca176f6918f415d21ee1a75bb4ef195d8355c734",
+      "size": 16729
+    },
+    {
+      "round": 4,
+      "path": "docs/remaster/evidence/r2/R2_VERIFIER_ROUND4_VERDICT_DSV4.json",
+      "sha256": "2e699715ef0153217356a0b6f69c6f21ca35512dd1ac9aed09f69e7df34fec9e",
+      "size": 16006
+    },
+    {
+      "round": 5,
+      "path": "docs/remaster/evidence/r2/R2_VERIFIER_ROUND5_VERDICT_DSV4.json",
+      "sha256": "4492f0daa71bae95588ddfdafeb57759066e28764004a493b8a8d4df7af8b304",
+      "size": 21298
+    },
+    {
+      "round": 6,
+      "path": "docs/remaster/evidence/r2/R2_VERIFIER_ROUND6_VERDICT_DSV4.json",
+      "sha256": "789d37ff7a82e0edbc549764d83a33b904c7c714878148891ea438de10e6d26c",
+      "size": 21800
+    }
+  ],
+  "repair_records": [
+    {
+      "round": 1,
+      "script": "scripts/remaster/r2/repair_r2_evidence.py",
+      "finding": "R2-F031"
+    },
+    {
+      "round": 2,
+      "script": "scripts/remaster/r2/repair_r2_evidence_round3.py",
+      "finding": "R2-F032"
+    },
+    {
+      "round": 3,
+      "script": "scripts/remaster/r2/repair_r2_evidence_round4.py",
+      "finding": "R2-F033"
+    },
+    {
+      "round": 4,
+      "script": "scripts/remaster/r2/repair_r2_evidence_round5.py",
+      "finding": "R2-F034"
+    },
+    {
+      "round": 5,
+      "script": "scripts/remaster/r2/repair_r2_evidence_round6.py",
+      "finding": "R2-F035"
+    },
+    {
+      "round": 6,
+      "script": "manual: R2_SUMMARY.md prose + BUILD_R2_EVIDENCE_SUPERSEDED.md",
+      "finding": "R2-F036"
+    }
+  ],
+  "retired_generator": {
+    "script": "scripts/remaster/r2/build_r2_evidence.py",
+    "marker": "scripts/remaster/r2/BUILD_R2_EVIDENCE_SUPERSEDED.md",
+    "reason": "hardcodes disproven measurements; must not be run"
+  },
+  "tools": {
+    "span_audit": {
+      "script": "scripts/remaster/r2/audit_r2_spans.py",
+      "expected": "checked=161 mismatches=0, no PROSE_MISMATCH, no STALE_PROSE, no NO_KIND"
+    },
+    "range_classifier": {
+      "script": "scripts/remaster/r2/classify_r2_ranges.py",
+      "expected": "classified=161 node=81 line=80"
+    },
+    "test_counter": {
+      "expected": "files=88 word_boundary=311 substring=344",
+      "script": "scripts/remaster/r2/measure_test_references.py",
+      "output": "docs/remaster/evidence/r2/R2_TEST_REFERENCE_COUNTS.json"
+    },
+    "event_census": {
+      "expected": "created=112 handled=100 prefixes=3 unhandled=41",
+      "script": "scripts/remaster/r2/measure_event_types.py",
+      "output": "docs/remaster/evidence/r2/R2_EVENT_TYPE_COUNTS.json"
+    }
+  },
+  "frozen_evidence": {
+    "findings": {
+      "path": "docs/remaster/evidence/r2/R2_FORENSIC_FINDINGS.json",
+      "sha256": "e61bc4ca89534e4b2596d2219a922c9cdb6ab20cc5046b8744bb8b2a973bc2cc",
+      "size": 60761
+    },
+    "inventory": {
+      "path": "docs/remaster/evidence/r2/R2_MODULE_INVENTORY.json",
+      "sha256": "f0e0b0299176fffe5e9032eebedba49a2aad67502b9727cc5a808d49b1b6fcc3",
+      "size": 437195
+    },
+    "metrics": {
+      "path": "docs/remaster/evidence/r2/R2_METRICS.json",
+      "sha256": "433209032e5afd5e1b63900974b63fcbf2ffaab08a9799302b71fd0a79fb2851",
+      "size": 14097
+    },
+    "summary": {
+      "path": "docs/remaster/evidence/r2/R2_SUMMARY.md",
+      "sha256": "f695764c3ee1062f4aa9246b64543fc79d5c6ac83c02d99fdc3f46ade78c9550",
+      "size": 4370
+    },
+    "disposition_map": {
+      "path": "docs/remaster/evidence/r2/R2_DISPOSITION_MAP.json",
+      "sha256": "2dd93cbc6f226bad9414eabc00d6ca7c68c1eeab21de62af695c1a0a6066d1ad",
+      "size": 34678
+    },
+    "disposition_md": {
+      "path": "docs/remaster/R2_DISPOSITION_MAP.md",
+      "sha256": "c78589f90b90c5d548cf98adbab9100b382303015981896aad6170582cbd5a5c",
+      "size": 2234
+    },
+    "test_counts": {
+      "path": "docs/remaster/evidence/r2/R2_TEST_REFERENCE_COUNTS.json",
+      "sha256": "c40f857cc2f5395df40f3c03a8bec7aba5e030fb5c3705d54faf7aa945207c46",
+      "size": 9381
+    },
+    "event_counts": {
+      "path": "docs/remaster/evidence/r2/R2_EVENT_TYPE_COUNTS.json",
+      "sha256": "5387f5093cf3b3c210b0cf33d86da34678fa5afe52c63af4925affe690ca6eed",
+      "size": 1778
+    },
+    "findings_registry": {
+      "path": "docs/remaster/FINDINGS.jsonl",
+      "sha256": "908c4270c5ef0424130269b8a5b3084a4fb7ea00e4d9e6019b7711da92b651e5",
+      "size": 38339
+    }
+  },
+  "gate_criteria": {
+    "C01": "Every tracked source module, test file, and test support file in the frozen baseline has exactly one disposition and one owner in R2_DISPOSITION_MAP.json (187/187).",
+    "C02": "Every R2 forensic finding carries severity, explicit node/line-classified path evidence, affected invariant, and disposition; audit_r2_spans.py reports checked=161 mismatches=0 with no PROSE_MISMATCH/STALE_PROSE/NO_KIND; the AST-precise handler breakdown holds.",
+    "C03": "Every R2 finding carries an explicit r0_cross_ref (30/30); no cross-reference contradicts the R0 map.",
+    "C04": "No system repair was performed: main checkout and remaster worktree contain no source/test changes outside the frozen evidence scope; build_r2_evidence.py is retired and must not be run.",
+    "C05": "The live V7 daemon, database, scheduled tasks, and processes were not modified; R2 is forensic-only and the live path is explicitly classified as REWRITE/UNSAFE until R12.",
+    "C06": "No unclassified code, test, migration, adapter, capability, or live path remains after applying the disposition map.",
+    "C07": "Fresh independent verifier round 7 re-runs audit_r2_spans.py (161/0), classify_r2_ranges.py (161 = 81 node + 80 line), measure_test_references.py twice (88/311/344, byte-identical), measure_event_types.py twice (112/100/3/41, byte-identical), confirms R2_SUMMARY.md has no stale claims, confirms build_r2_evidence.py is retired, confirms all six FAIL verdicts byte-identical, and reproduces the classification gate."
+  },
+  "stop_conditions": [
+    "any system repair or source edit during verification",
+    "any live/protected state change",
+    "any weakening of an R2 finding severity or disposition without new evidence",
+    "any unclassified module/test/migration/adapter/capability/live path",
+    "running build_r2_evidence.py"
+  ],
+  "builder_status": "NOT_TESTED until fresh independent verifier round 7 PASS"
+}

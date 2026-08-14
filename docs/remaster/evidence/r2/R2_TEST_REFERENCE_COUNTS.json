@@ -1,0 +1,387 @@
+{
+  "method": {
+    "files_scanned": 88,
+    "names": [
+      "tick_scheduler",
+      "enable_scheduler",
+      "select_projects",
+      "run_one_loop",
+      "run_step",
+      "run_mission",
+      "run_candidate",
+      "run_cycle",
+      "promote_release",
+      "shadow_run",
+      "run_evaluation",
+      "sync_vault",
+      "ingest_documents",
+      "detect_research_items",
+      "generate_briefing",
+      "CommandCenterServer",
+      "EvolutionControl"
+    ],
+    "substring_pattern": "tick_scheduler|enable_scheduler|select_projects|run_one_loop|run_step|run_mission|run_candidate|run_cycle|promote_release|shadow_run|run_evaluation|sync_vault|ingest_documents|detect_research_items|generate_briefing|CommandCenterServer|EvolutionControl",
+    "test_root": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry\\tests\\foundry",
+    "word_boundary_pattern": "\\b(?:tick_scheduler|enable_scheduler|select_projects|run_one_loop|run_step|run_mission|run_candidate|run_cycle|promote_release|shadow_run|run_evaluation|sync_vault|ingest_documents|detect_research_items|generate_briefing|CommandCenterServer|EvolutionControl)\\b"
+  },
+  "per_file": {
+    "conftest.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "crash_fixture.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "supervisor_fixture.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_action_broker.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_action_policy.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_adapter_verdict.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_artifacts.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_candidate_supersession.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_capability_broker.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_capability_states.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_cli.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_connector_activation.py": {
+      "substring": 6,
+      "word_boundary": 6
+    },
+    "test_connectors.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_console_events.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_consolidation.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_correlation.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_crash_recovery.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_directive_model_routing.py": {
+      "substring": 7,
+      "word_boundary": 5
+    },
+    "test_discovery_candidates.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_discovery_monitors.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_effects.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_event_store.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_evolution_acceptance.py": {
+      "substring": 7,
+      "word_boundary": 7
+    },
+    "test_evolution_builder.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_evolution_canary.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_evolution_cycle.py": {
+      "substring": 13,
+      "word_boundary": 13
+    },
+    "test_evolution_discover.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_evolution_lab.py": {
+      "substring": 21,
+      "word_boundary": 21
+    },
+    "test_evolution_promote.py": {
+      "substring": 24,
+      "word_boundary": 24
+    },
+    "test_evolution_records.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_evolution_registry.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_evolution_restore.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_evolution_shadow.py": {
+      "substring": 32,
+      "word_boundary": 17
+    },
+    "test_evolution_verify.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_exactly_once_resume.py": {
+      "substring": 3,
+      "word_boundary": 3
+    },
+    "test_f13_injection_data.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_f5_network_outage.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_f6_provider_outage.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_installer.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_integrated_rollback.py": {
+      "substring": 2,
+      "word_boundary": 2
+    },
+    "test_knowledge_claims.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_knowledge_entities.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_knowledge_ingestion.py": {
+      "substring": 18,
+      "word_boundary": 16
+    },
+    "test_knowledge_retrieval.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_knowledge_snapshots.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_lease_renewal.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_live_ingestion.py": {
+      "substring": 2,
+      "word_boundary": 2
+    },
+    "test_migrations.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_mission_loop.py": {
+      "substring": 7,
+      "word_boundary": 7
+    },
+    "test_monitor_loop.py": {
+      "substring": 6,
+      "word_boundary": 6
+    },
+    "test_monitor_poll_integrity.py": {
+      "substring": 4,
+      "word_boundary": 4
+    },
+    "test_obsidian_rollback.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_obsidian_write.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_path_boundaries.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_pipeline.py": {
+      "substring": 25,
+      "word_boundary": 25
+    },
+    "test_projection_monotonic.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_reconcile.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_registration.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_research_queue.py": {
+      "substring": 24,
+      "word_boundary": 24
+    },
+    "test_role_dispatch.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_role_gateway_kill.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_role_manifest.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_role_reaper.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_role_routing.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_scoring_context.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_stop_controls.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_supervisor.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_supervisor_loop_resilience.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_supervisor_recovery.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_support_semantics.py": {
+      "substring": 8,
+      "word_boundary": 8
+    },
+    "test_system_registry.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_v3_loop.py": {
+      "substring": 18,
+      "word_boundary": 18
+    },
+    "test_v4_command_center.py": {
+      "substring": 4,
+      "word_boundary": 4
+    },
+    "test_v7_briefing.py": {
+      "substring": 12,
+      "word_boundary": 12
+    },
+    "test_v7_capabilities.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_v7_continuity.py": {
+      "substring": 10,
+      "word_boundary": 10
+    },
+    "test_v7_minigates.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_v7_owner_families.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_v7_portfolio.py": {
+      "substring": 4,
+      "word_boundary": 4
+    },
+    "test_v7_restore_sidecar_regression.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_v7_scheduler.py": {
+      "substring": 27,
+      "word_boundary": 27
+    },
+    "test_v7_supervisor_adoption.py": {
+      "substring": 34,
+      "word_boundary": 20
+    },
+    "test_vault_indexer.py": {
+      "substring": 15,
+      "word_boundary": 15
+    },
+    "test_vault_retrieval.py": {
+      "substring": 2,
+      "word_boundary": 2
+    },
+    "test_verification_loop.py": {
+      "substring": 0,
+      "word_boundary": 0
+    },
+    "test_verifier_truth.py": {
+      "substring": 7,
+      "word_boundary": 7
+    },
+    "test_worker_context.py": {
+      "substring": 2,
+      "word_boundary": 2
+    },
+    "test_worker_control.py": {
+      "substring": 0,
+      "word_boundary": 0
+    }
+  },
+  "schema": "jarvis-r2-test-reference-counts-v1",
+  "totals": {
+    "files": 88,
+    "substring": 344,
+    "word_boundary": 311
+  }
+}

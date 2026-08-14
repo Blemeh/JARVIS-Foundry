@@ -1,0 +1,459 @@
+{
+  "schema": "jarvis-r2-metrics-v1",
+  "baseline_commit": "93a3ddc0965dfaf3e4cb9dc0952467bd5250520a",
+  "baseline_tree": "2e1df6190b0d032372ae46e6a59bef22ddac57e3",
+  "generated_at": "2026-08-14T19:54:24+00:00",
+  "generated_by": "R2_ARCHITECTURE_AND_CODE_FORENSICS_AUDITOR (deepseek-v4-flash via codex router)",
+  "repo_scale": {
+    "tracked_files": 397,
+    "tracked_by_top_dir": {
+      ".editorconfig": 1,
+      ".gitattributes": 1,
+      ".gitignore": 1,
+      ".impeccable": 4,
+      "AGENTS.md": 1,
+      "DESIGN.md": 1,
+      "HERMES.md": 1,
+      "IDEA.md": 1,
+      "PRODUCT.md": 1,
+      "PROJECT_STATE.md": 1,
+      "README.md": 1,
+      "config": 8,
+      "docs": 169,
+      "pyproject.toml": 1,
+      "schemas": 7,
+      "scripts": 1,
+      "src": 108,
+      "tests": 89
+    },
+    "src_modules": 99,
+    "test_files": 88
+  },
+  "sloc_by_dir": {
+    "src/jarvis_foundry": {
+      "files": 34,
+      "total_lines": 8454,
+      "code_lines": 7495
+    },
+    "src/jarvis_foundry/capabilities": {
+      "files": 2,
+      "total_lines": 152,
+      "code_lines": 127
+    },
+    "src/jarvis_foundry/cli": {
+      "files": 2,
+      "total_lines": 118,
+      "code_lines": 104
+    },
+    "src/jarvis_foundry/connectors": {
+      "files": 4,
+      "total_lines": 762,
+      "code_lines": 664
+    },
+    "src/jarvis_foundry/control": {
+      "files": 8,
+      "total_lines": 1268,
+      "code_lines": 1055
+    },
+    "src/jarvis_foundry/correlation": {
+      "files": 3,
+      "total_lines": 239,
+      "code_lines": 208
+    },
+    "src/jarvis_foundry/evolution": {
+      "files": 15,
+      "total_lines": 3952,
+      "code_lines": 3468
+    },
+    "src/jarvis_foundry/execution": {
+      "files": 1,
+      "total_lines": 515,
+      "code_lines": 443
+    },
+    "src/jarvis_foundry/gates": {
+      "files": 3,
+      "total_lines": 161,
+      "code_lines": 139
+    },
+    "src/jarvis_foundry/mission": {
+      "files": 5,
+      "total_lines": 781,
+      "code_lines": 676
+    },
+    "src/jarvis_foundry/obsidian": {
+      "files": 4,
+      "total_lines": 511,
+      "code_lines": 429
+    },
+    "src/jarvis_foundry/reporting": {
+      "files": 2,
+      "total_lines": 140,
+      "code_lines": 119
+    },
+    "src/jarvis_foundry/roles": {
+      "files": 7,
+      "total_lines": 1239,
+      "code_lines": 1039
+    },
+    "src/jarvis_foundry/supervisor": {
+      "files": 9,
+      "total_lines": 1281,
+      "code_lines": 1071
+    },
+    "tests/foundry": {
+      "files": 88,
+      "total_lines": 21747,
+      "code_lines": 17454
+    }
+  },
+  "src_totals": {
+    "total_lines": 19573,
+    "code_lines": 17037
+  },
+  "test_totals": {
+    "total_lines": 21747,
+    "code_lines": 17454
+  },
+  "function_metrics": {
+    "11-20": 546,
+    "1-10": 901,
+    "21-40": 306,
+    "41-80": 83,
+    "81-160": 18,
+    "161+": 6
+  },
+  "top_20_functions_by_lines": [
+    {
+      "lines": 1669,
+      "module": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/src/jarvis_foundry/projections.py",
+      "name": "apply_event",
+      "lineno": 58,
+      "end_lineno": 1726
+    },
+    {
+      "lines": 218,
+      "module": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/src/jarvis_foundry/mission/loop.py",
+      "name": "run_step",
+      "lineno": 236,
+      "end_lineno": 453
+    },
+    {
+      "lines": 208,
+      "module": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/src/jarvis_foundry/v3_loop.py",
+      "name": "run_one_loop",
+      "lineno": 175,
+      "end_lineno": 382
+    },
+    {
+      "lines": 199,
+      "module": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/src/jarvis_foundry/evolution/shadow.py",
+      "name": "shadow_run",
+      "lineno": 93,
+      "end_lineno": 291
+    },
+    {
+      "lines": 197,
+      "module": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/src/jarvis_foundry/command_center.py",
+      "name": "_html",
+      "lineno": 329,
+      "end_lineno": 525
+    },
+    {
+      "lines": 179,
+      "module": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/src/jarvis_foundry/evolution/cycle.py",
+      "name": "run_cycle",
+      "lineno": 76,
+      "end_lineno": 254
+    },
+    {
+      "lines": 134,
+      "module": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/src/jarvis_foundry/command_center.py",
+      "name": "build_snapshot",
+      "lineno": 100,
+      "end_lineno": 233
+    },
+    {
+      "lines": 122,
+      "module": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/src/jarvis_foundry/evolution/builder.py",
+      "name": "build_candidate",
+      "lineno": 151,
+      "end_lineno": 272
+    },
+    {
+      "lines": 114,
+      "module": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/src/jarvis_foundry/connectors/registry.py",
+      "name": "select_connector",
+      "lineno": 153,
+      "end_lineno": 266
+    },
+    {
+      "lines": 114,
+      "module": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/src/jarvis_foundry/roles/dispatcher.py",
+      "name": "dispatch",
+      "lineno": 155,
+      "end_lineno": 268
+    },
+    {
+      "lines": 110,
+      "module": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/src/jarvis_foundry/evolution/discover.py",
+      "name": "_one_candidate",
+      "lineno": 54,
+      "end_lineno": 163
+    },
+    {
+      "lines": 102,
+      "module": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/src/jarvis_foundry/evolution/lab.py",
+      "name": "run_evaluation",
+      "lineno": 120,
+      "end_lineno": 221
+    },
+    {
+      "lines": 100,
+      "module": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/src/jarvis_foundry/reconcile.py",
+      "name": "reconcile",
+      "lineno": 121,
+      "end_lineno": 220
+    },
+    {
+      "lines": 99,
+      "module": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/src/jarvis_foundry/effects.py",
+      "name": "execute_effect",
+      "lineno": 181,
+      "end_lineno": 279
+    },
+    {
+      "lines": 94,
+      "module": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/src/jarvis_foundry/control/broker.py",
+      "name": "decide",
+      "lineno": 206,
+      "end_lineno": 299
+    },
+    {
+      "lines": 93,
+      "module": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/src/jarvis_foundry/evolution/registry.py",
+      "name": "register_release",
+      "lineno": 65,
+      "end_lineno": 157
+    },
+    {
+      "lines": 92,
+      "module": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/src/jarvis_foundry/roles/adapter.py",
+      "name": "dispatch",
+      "lineno": 216,
+      "end_lineno": 307
+    },
+    {
+      "lines": 91,
+      "module": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/src/jarvis_foundry/evolution/scheduler.py",
+      "name": "tick_scheduler",
+      "lineno": 156,
+      "end_lineno": 246
+    },
+    {
+      "lines": 90,
+      "module": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/tests/foundry/test_event_store.py",
+      "name": "test_verification_verdict_projection_and_rebuild",
+      "lineno": 436,
+      "end_lineno": 525
+    },
+    {
+      "lines": 90,
+      "module": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/tests/foundry/test_mission_loop.py",
+      "name": "test_f3_builder_killed_after_mutation_step_reclaimed_without_duplicates",
+      "lineno": 472,
+      "end_lineno": 561
+    }
+  ],
+  "exception_handlers": {
+    "BaseException": 9,
+    "FileNotFoundError": 3,
+    "Exception": 29,
+    "json.JSONDecodeError": 1,
+    "OwnerReplayError": 2,
+    "OwnerAuthenticationError": 2,
+    "(ValueError, TypeError, json.JSONDecodeError)": 1,
+    "OSError": 15,
+    "ObsidianConflictError": 2,
+    "(ValueError, TypeError)": 2,
+    "ValueError": 15,
+    "(TypeError, ValueError)": 3,
+    "TimeoutError": 1,
+    "(OSError, ProcessLookupError)": 1,
+    "subprocess.TimeoutExpired": 4,
+    "(ValueError, OSError)": 1,
+    "ImprovementError": 1,
+    "RestoreError": 1,
+    "(sqlite3.DatabaseError, OSError, ValueError)": 1,
+    "(sqlite3.DatabaseError, OSError)": 1,
+    "(KeyError, TypeError, ValueError)": 2,
+    "(KeyError, TypeError)": 1,
+    "_ShadowLiveEffect": 1,
+    "_ShadowBlockedConnector": 1,
+    "StopIteration": 1,
+    "CapabilityError": 1,
+    "PermissionError": 2,
+    "(OSError, ValueError)": 1,
+    "(sqlite3.Error, OSError, ValueError)": 1,
+    "(OSError, subprocess.SubprocessError)": 2,
+    "CommitError": 1,
+    "EventIntegrityError": 1,
+    "(OSError, ValueError, TypeError)": 1,
+    "ProviderUnavailable": 1,
+    "ImportError": 1,
+    "(OSError, json.JSONDecodeError)": 1,
+    "EventConflict": 2,
+    "KeyboardInterrupt": 1,
+    "_sqlite3.OperationalError": 1,
+    "sqlite3.IntegrityError": 1,
+    "RegistrationError": 1,
+    "LeaseUnavailable": 1,
+    "HTTPError": 2
+  },
+  "exception_handlers_total": 123,
+  "typing_metrics": {
+    "functions_total": 1860,
+    "functions_with_params": 1701,
+    "functions_all_params_and_return_annotated": 1440,
+    "functions_any_annotation": 1418,
+    "functions_return_annotated": 1343,
+    "functions_with_params_untyped": 401,
+    "typed_module_vars": 11
+  },
+  "marker_counts": {
+    "todo_fixme_xxx_hack": 0
+  },
+  "test_metrics": {
+    "test_functions": 920,
+    "fixtures": 60,
+    "parametrize": 15,
+    "files_with_monkeypatch_or_capsys": 7,
+    "files_with_tmp_path": 84,
+    "sleep_calls": 28,
+    "fixed_port_hits": 0,
+    "env_access": 44,
+    "network_import_hits": 19,
+    "subprocess_hits": 68,
+    "sqlite_literal_db_paths": 0,
+    "chdir_hits": 0
+  },
+  "event_coverage": {
+    "created_event_types": 112,
+    "exact_handled": 100,
+    "prefix_families": [
+      "consolidation.",
+      "emergency_stop.",
+      "supervisor."
+    ],
+    "unhandled_count": 41,
+    "unhandled_types": [
+      "action.decided",
+      "briefing.recorded",
+      "brokerage.decision",
+      "brokerage.waiting",
+      "candidate_root.registered",
+      "capability.issued",
+      "capability.registered",
+      "capability.revoked",
+      "capability.used",
+      "connector.activated",
+      "connector.activation_blocked",
+      "connector.discovered",
+      "correlation.entity_ref_added",
+      "correlation.entity_registered",
+      "correlation.manifest_generated",
+      "effect.reconcile_not_tested",
+      "evaluation.comparison_recorded",
+      "evaluation.workload_registered",
+      "evolution.mode_changed",
+      "gate.decision",
+      "mission.outcome.recorded",
+      "owner.command_recorded",
+      "pipeline.verification.recorded",
+      "portfolio.conflict",
+      "portfolio.decision",
+      "portfolio.deferred",
+      "portfolio.project_registered",
+      "portfolio.reprioritized",
+      "portfolio.status_changed",
+      "portfolio.unknown",
+      "scheduler.disabled",
+      "scheduler.enabled",
+      "scheduler.item_deferred",
+      "scheduler.item_fired",
+      "scheduler.item_missed",
+      "scheduler.item_registered",
+      "scheduler.suspended",
+      "scheduler.tick",
+      "shadow.blocked_connector_attempted",
+      "shadow.decision_proposed",
+      "shadow.live_effect_attempted"
+    ],
+    "census_method": "scripts/remaster/r2/measure_event_types.py; evidence docs/remaster/evidence/r2/R2_EVENT_TYPE_COUNTS.json; counts are literal-based and method-dependent (exhaustive resolution yields more)"
+  },
+  "migrations": {
+    "schema_version": 32,
+    "migration_count": 32,
+    "foreign_keys": 0,
+    "triggers": 0,
+    "event_header_hash_chain": false
+  },
+  "quality_gates": {
+    "ci_configs": [],
+    "mypy_config": false,
+    "ruff_config": false,
+    "coverage_config": false,
+    "mutmut_config": false,
+    "pytest_addopts": "-q"
+  },
+  "dead_code_candidates": [
+    {
+      "name": "DispatchError",
+      "defined_in": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/src/jarvis_foundry/roles/dispatcher.py",
+      "src_refs_after_def": 0
+    },
+    {
+      "name": "FakeConnector",
+      "defined_in": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/src/jarvis_foundry/connectors/fakes.py",
+      "src_refs_after_def": 0
+    },
+    {
+      "name": "_last_file_hash",
+      "defined_in": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/src/jarvis_foundry/live_ingestion.py",
+      "src_refs_after_def": 0
+    },
+    {
+      "name": "_latest",
+      "defined_in": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/src/jarvis_foundry/integrated_rollback.py",
+      "src_refs_after_def": 0
+    },
+    {
+      "name": "make_hermes_adapter",
+      "defined_in": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/src/jarvis_foundry/roles/adapter.py",
+      "src_refs_after_def": 0
+    }
+  ],
+  "live_source_drift": {
+    "editable_pth": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/src",
+    "scheduled_command": "python -m jarvis_foundry.supervisor.run --home <foundry_home>",
+    "console_script": "jarvis = jarvis_foundry.cli.main:main"
+  },
+  "unreachable_executive_entries": [
+    "evolution/scheduler.py tick_scheduler",
+    "evolution/portfolio.py select_projects",
+    "v3_loop.py run_one_loop",
+    "mission/loop.py MissionLoop.run_step",
+    "execution/pipeline.py run_mission",
+    "execution/pipeline.py run_candidate",
+    "evolution/cycle.py run_cycle",
+    "evolution/promote.py promote_release",
+    "evolution/shadow.py shadow_run",
+    "evolution/lab.py run_evaluation",
+    "vault_indexer.py sync_vault",
+    "knowledge_ingestion.py ingest_documents",
+    "research_queue.py detect_research_items",
+    "reporting/briefing.py generate_briefing",
+    "voice.py VoiceGateway",
+    "command_center.py CommandCenterServer",
+    "supervisor/evolution_control.py EvolutionControl"
+  ]
+}
