@@ -92,7 +92,33 @@ OWNER_INPUT_REQUIRED: NONE
 | database-write | row read-back + event count |
 | schedule-write | task query read-back |
 
-## 3. Verifier
+## 3. Verifier — round 1 deleg_64027f96 FAIL (C1, 2 MEDIUM) → round 2 deleg_ec3a4be2 PASS
 
-<fill after dispatch — fresh independent adversarial verifier,
-opencode_go/deepseek-v4-flash, no fallback>
+Round-1: C2-C5 PASS; C1 FAIL — the test file + package __init__ were
+untracked (only registry.py had landed in 7160597). Repaired additively:
+commit 9cb06e0 (exactly the 3 claimed files) + report corrected.
+
+Round-2 verdict JSON: `%TEMP%\v7s9-verdict-r2-foundry.json` (early-skeleton
+protocol; verdict PASS, criteria R1-R4 all PASS):
+
+- R1 PASS: 9cb06e0 contains exactly the 3 claimed files; registry.py in
+  7160597 with the sha256 content-hash key, byte-identical through HEAD;
+  git status = exactly the 5 protected untracked files (8 -> 5);
+  HEAD 3fc7276 = the parent's S10 commit (diff = only the 4 S10 files —
+  expected parent activity, no S9 drift).
+- R2 PASS: independent probe confirmed lowest-risk deterministic
+  brokerage, recorded decisions with reasons, honest brokerage.waiting,
+  unknown effect class refused, supervisor-only gates, 15-row matrix,
+  sha256 dedup cross-process stable.
+- R3 PASS: 9/9 tests pass (run twice); suite artifact sha256 matches
+  79a0eb02…; 964 passed EXIT=0.
+- R4 PASS: live schema 32, heartbeat 3.3s fresh, no EMERGENCY_STOP,
+  task Enabled/Running, ports up; corrected report matches artifacts.
+- Observations (non-defects): pytest -q summary cosmetic; one leftover
+  schtasks entry from the suite's restart test (test residue); the live
+  capability.matrix.recorded event (seq 26355) is pre-S9 V5 data — S9
+  touched no live state.
+
+**S9 CLOSED — PASS** (capability registry + brokerage + effect
+reconciliation matrix; 9 TDD tests; suite 964 EXIT=0; live untouched).
+Next: S10 verifier window.
