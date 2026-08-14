@@ -94,7 +94,32 @@ OWNER_INPUT_REQUIRED: NONE
 7. decisions carry reasons + controller identity (no routine owner prompts)
 8. status changes are reversible and Supervisor-only
 
-## 3. Verifier
+## 3. Verifier — deleg_7cacb0af, PASS (fresh independent adversarial session)
 
-<fill after dispatch — fresh independent adversarial verifier,
-opencode_go/deepseek-v4-flash, no fallback>
+Verdict JSON: `%TEMP%\v7s7-verdict-adversarial.json` (early-skeleton
+protocol; verdict PASS, criteria C1-C6 all PASS with per-criterion
+evidence).
+
+- C1 PASS: HEAD 6f8d7f7, exactly 5 files; 5 protected owner docs only in
+  status, hashes 5/5 OK; evolution/ diff vs a595e61 = only the two new
+  modules.
+- C2/C3 PASS: _rebuild replays the event stream; degraded suspension
+  derived from event order; default DISABLED; _controller_gate on every
+  mutating entry in both modules; caps/cooldown/deadline/budget
+  deferrals/suspension/idempotent fires; full governed portfolio field
+  set; deterministic scoring (PAUSED=-inf); no owner-prompt path; zero
+  imports of the new modules elsewhere (not wired, as claimed).
+- C4 PASS: 18/18 tests pass on the verifier's own run; tests genuinely
+  discriminating (cooldown window, suspension + recovery, idempotency,
+  restart replay).
+- C5 PASS: suite artifact sha256 89075074…, 948 passed EXIT=0.
+- C6 PASS: live schema 32, daemon RUNNING heartbeat fresh, task Enabled,
+  no STOP, ports up; report claims match.
+- Findings: INFO only (948-vs-954 collection delta reconciled via git
+  archive of a595e61; the briefing test file appeared during the audit =
+  parent's concurrent S8 prep, recorded as parent activity). Integrity
+  concerns: none. Scope violations: none.
+
+**S7 CLOSED — PASS** (event-first scheduler + portfolio executive; 18 TDD
+tests; suite 948 EXIT=0; live untouched; scheduler observe-only until
+enablement). Next: S8 — owner Command Center, briefings, EN/SQ voice.
