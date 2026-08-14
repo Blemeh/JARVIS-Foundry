@@ -95,14 +95,17 @@ OWNER_INPUT_REQUIRED: NONE
 | 10:30 | post-adoption deep validation on a fresh copy: quick_check ok, fk_check [], 40,477/40,477 events verified, **reconcile consistent, mismatches []** |
 | after | task triggers enabled (Next Run Time active, repeating ~60s), daemon RUNNING — previously safe operation resumed |
 
-NOTE (additive correction, S6 verifier round 1 deleg_bab5f9d9): the adoption
-script's adoption-report.json contains two `ok:false` step flags that are
-SCRIPT-THRESHOLD BUGS, not defects: (a) "events preserved" compared the
-count immediately after the kill (no new daemon had started yet — counts
-equal by timing, not by loss), (b) "started events bounded" used a
-fresh-DB threshold (<=3) against the live ledger's 30-hour history
-(17 started events total — normal). Both were fixed in adopt-live.py and
-re-validated (5-minute window check passed).
+NOTE (additive corrections, S6 verifier rounds): round 1 (deleg_bab5f9d9)
+flagged report-truth mismatches; round 2 (deleg_c56f6b3f) found the
+adoption-report.json actually carried FOUR ok:false flags, not two, with a
+directives-predicate bug still in adopt-live.py. ALL FOUR were fixed in
+adopt-live.py (idempotent precheck accepting schema 20/32; events-growth
+poll instead of fixed sleeps; directives counted by the 4 known
+directive_ids; differential started-event check) and the adoption was
+RE-RUN CLEAN: 21/21 steps ok, EXIT=0 (adoption-report.json,
+adoption-run-final.txt, final schema 32, 40,786 events at 10:58Z). The
+four flags were all script bugs, never data or runtime faults — the live
+migration and daemon were unaffected.
 
 ## 2. Key evidence numbers
 
