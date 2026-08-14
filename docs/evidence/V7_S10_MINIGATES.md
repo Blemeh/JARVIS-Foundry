@@ -30,13 +30,14 @@ ACTIONS_TAKEN: implemented gates/minigates.py (TDD; 8 tests green; sha256
 digests from the start — the S8 F1 repair applied preemptively).
 FILES_PROCESSES_DATABASES_AND_EXTERNAL_STATE_CHANGED: 3 new files + this
 report; no live state touched.
-TESTS_RECONCILIATION_RESTORE_AND_FAULTS: focused 8/8; full suite
-<fill after run>.
+TESTS_RECONCILIATION_RESTORE_AND_FAULTS: focused 8/8; full suite 972
+passed EXIT=0 (423.27 s; artifact var/evidence/v7-s10/suite-v7-s10-full.txt,
+sha256 4e807bea…).
 VERIFIER_AND_STRUCTURED_VERDICT: <fill after dispatch — fresh independent
 adversarial verifier, opencode_go/deepseek-v4-flash, no fallback>
 EVIDENCE_PATHS_AND_HASHES: src/jarvis_foundry/gates/minigates.py;
 tests/foundry/test_v7_minigates.py; var/evidence/v7-s10/suite-v7-s10-full.txt
-(<hash>).
+(4e807bea…).
 REAL_EFFECT_PROVIDER_REFERENCE_AND_AFTER_STATE: N/A (declarative policy;
 no online effect).
 ROLLBACK_COMPENSATION_OR_CONTAINMENT: git revert; gate decisions are
