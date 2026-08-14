@@ -123,7 +123,38 @@ migration and daemon were unaffected.
   0 pytest-home supervisor processes remain; the V4-era preview servers
   (temp-home base64 launches) are pre-existing and untouched.
 
-## 3. Verifier
+## 3. Verifier — round 1 deleg_bab5f9d9 FAIL → round 2 deleg_c56f6b3f FAIL → round 3 deleg_f1a5f77f PASS
 
-<fill after dispatch — fresh independent adversarial verifier,
-opencode_go/deepseek-v4-flash, no fallback>
+Round-3 verdict JSON: `%TEMP%\v7s6-verdict-r3-r3.json` (early-skeleton
+protocol; verdict PASS, criteria R1-R4 all PASS with per-criterion
+evidence).
+
+- R1 PASS: adoption-report.json 21/21 ok:true, zero ok:false (directives
+  [(4,)]; started delta <= 2 with started_delta=0; precheck schema=32
+  accepted); adoption-run-final.txt matches; all four script predicates
+  verified fixed in adopt-live.py; the leftover test task deleted;
+  0 pytest-home supervisor processes.
+- R2 PASS: doc matches the artifacts — migration timestamp 10:21:03.476073Z
+  (verified against schema_migrations recorded_at), artifact-bound event
+  counts (post-adoption copy 40,477; live 40,786+), the interim
+  lease-conflict crashes and the durable instance at 10:27:26.057509Z
+  (started event verified), disclosed script flags, honest host-cleanup.
+- R3 PASS: live schema 32, one atomic stamp; fresh copy: verify_event_
+  integrity == count, reconcile consistent mismatches [], quick_check ok,
+  fk_check []; daemon RUNNING heartbeat < 2 min on the frozen-release
+  command (new pids); task Enabled + Next Run Time set; cycles=0;
+  4/4 directives active; V4 tables intact; no EMERGENCY_STOP; restore
+  point sha256 2b0f9a66… schema 20; task XML hash matches live-state.json;
+  ports 8765-8769 listening.
+- R4 PASS: HEAD d3b8fe5 (doc-only); 5 protected untracked files hashes
+  match; src/ unchanged since bf1a874 (at audit time — the parent's
+  concurrent S7 implementation work was observed and recorded as parent
+  activity, INFO).
+- Findings: 3 LOW + 2 INFO only (daemon-instance churn during the
+  re-run fault injection; concurrent S7 test runners; report wording).
+  Integrity concerns: none material. Scope violations: none.
+
+**S6 CLOSED — PASS** (live ledger migrated v20->v32 through the rehearsed
+package; daemon on the frozen release under the resumed task cadence;
+reconcile consistent with zero mismatches; fault-injection recovery
+proven; 3 verifier rounds, all findings repaired additively). Next: S7.
