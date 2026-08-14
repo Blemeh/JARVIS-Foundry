@@ -19,6 +19,7 @@ from jarvis_foundry.events import Event
 from jarvis_foundry.supervisor.evolution_control import (
     SUPERVISOR_CONTROLLER, EvolutionControlError,
 )
+from jarvis_foundry.supervisor.estop import EmergencyStop
 
 PortfolioError = EvolutionControlError
 
@@ -54,9 +55,11 @@ def _require(condition: bool, message: str) -> None:
         raise PortfolioError(message)
 
 
-def _gate(controller: str) -> None:
+def _gate(database: FoundryDatabase, controller: str) -> None:
     _require(controller == SUPERVISOR_CONTROLLER,
              "only the Supervisor can manage the portfolio")
+    _require(not EmergencyStop(database.path.parent / "EMERGENCY_STOP").active(),
+             "STOP sentinel active")
 
 
 def _rebuild(database: FoundryDatabase) -> dict[str, Project]:
@@ -104,7 +107,7 @@ def register_project(database: FoundryDatabase, *, controller: str,
                      status: str = "PLANNED",
                      provenance: dict[str, object] | None = None,
                      source_type: str, source_id: str) -> str:
-    _gate(controller)
+    _gate(database, controller)
     payload = {
         "project_id": project_id, "name": name,
         "goals": list(goals or []), "dependencies": list(dependencies or []),
@@ -167,7 +170,7 @@ def score_projects(database: FoundryDatabase) -> list[dict[str, Any]]:
 def select_projects(database: FoundryDatabase, *, controller: str,
                     available_slots: int, source_type: str,
                     source_id: str) -> list[dict[str, Any]]:
-    _gate(controller)
+    _gate(database, controller)
     ranked = score_projects(database)
     selected: list[dict[str, Any]] = []
     remaining = available_slots
@@ -199,7 +202,7 @@ def select_projects(database: FoundryDatabase, *, controller: str,
 def _status_change(database: FoundryDatabase, project_id: str, status: str,
                    *, controller: str, reason: str,
                    source_type: str, source_id: str) -> str:
-    _gate(controller)
+    _gate(database, controller)
     _ = _rebuild(database).get(project_id) or _require(
         False, f"unknown project: {project_id}")
     event = Event.create(
@@ -229,7 +232,7 @@ def resume_project(database: FoundryDatabase, project_id: str, *,
 def reprioritize_project(database: FoundryDatabase, project_id: str, *,
                          priority_bump: float, controller: str,
                          source_type: str, source_id: str) -> str:
-    _gate(controller)
+    _gate(database, controller)
     _ = _rebuild(database).get(project_id) or _require(
         False, f"unknown project: {project_id}")
     event = Event.create(
@@ -245,7 +248,7 @@ def reprioritize_project(database: FoundryDatabase, project_id: str, *,
 def record_unknown(database: FoundryDatabase, question_id: str, question: str,
                    *, controller: str, source_type: str,
                    source_id: str) -> str:
-    _gate(controller)
+    _gate(database, controller)
     event = Event.create(
         "portfolio.unknown",
         {"question_id": question_id, "question": question,
@@ -258,7 +261,7 @@ def record_unknown(database: FoundryDatabase, question_id: str, question: str,
 def record_conflict(database: FoundryDatabase, conflict_id: str,
                     description: str, *, controller: str,
                     source_type: str, source_id: str) -> str:
-    _gate(controller)
+    _gate(database, controller)
     event = Event.create(
         "portfolio.conflict",
         {"conflict_id": conflict_id, "description": description,

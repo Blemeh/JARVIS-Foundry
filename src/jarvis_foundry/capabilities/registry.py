@@ -18,6 +18,7 @@ from jarvis_foundry.events import Event
 from jarvis_foundry.supervisor.evolution_control import (
     SUPERVISOR_CONTROLLER, EvolutionControlError,
 )
+from jarvis_foundry.supervisor.estop import EmergencyStop
 
 CapabilityError = EvolutionControlError
 
@@ -46,9 +47,11 @@ def _require(condition: bool, message: str) -> None:
         raise CapabilityError(message)
 
 
-def _gate(controller: str) -> None:
+def _gate(database: FoundryDatabase, controller: str) -> None:
     _require(controller == SUPERVISOR_CONTROLLER,
              "only the Supervisor can manage the capability registry")
+    _require(not EmergencyStop(database.path.parent / "EMERGENCY_STOP").active(),
+             "STOP sentinel active")
 
 
 def _rebuild(database: FoundryDatabase) -> dict[str, dict[str, Any]]:
@@ -65,7 +68,7 @@ def register_capability(database: FoundryDatabase, *, capability_id: str,
                         effect_class: str, risk: str,
                         verification_hint: str, controller: str,
                         source_type: str, source_id: str) -> str:
-    _gate(controller)
+    _gate(database, controller)
     _require(effect_class in _EFFECT_MATRIX,
              f"unknown effect class: {effect_class}")
     payload = {
@@ -101,7 +104,7 @@ def discover_capabilities(database: FoundryDatabase, *,
 def broker_mission_need(database: FoundryDatabase, *, need_id: str,
                         surfaces: list[str], controller: str,
                         source_type: str, source_id: str) -> list[str]:
-    _gate(controller)
+    _gate(database, controller)
     matches = [cap for cap in discover_capabilities(database)
                if any(s in cap["surfaces"] for s in surfaces)]
     matches.sort(key=lambda c: (c["risk"], c["capability_id"]))

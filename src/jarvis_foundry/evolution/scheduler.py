@@ -19,6 +19,7 @@ from jarvis_foundry.events import Event
 from jarvis_foundry.supervisor.evolution_control import (
     SUPERVISOR_CONTROLLER, EvolutionControlError,
 )
+from jarvis_foundry.supervisor.estop import EmergencyStop
 
 SchedulerError = EvolutionControlError
 
@@ -99,14 +100,16 @@ def scheduler_state(database: FoundryDatabase) -> dict[str, Any]:
     }
 
 
-def _controller_gate(controller: str) -> None:
+def _controller_gate(database: FoundryDatabase, controller: str) -> None:
     _require(controller == SUPERVISOR_CONTROLLER,
              "only the Supervisor can control the scheduler")
+    _require(not EmergencyStop(database.path.parent / "EMERGENCY_STOP").active(),
+             "STOP sentinel active")
 
 
 def enable_scheduler(database: FoundryDatabase, *, controller: str,
                      source_type: str, source_id: str) -> str:
-    _controller_gate(controller)
+    _controller_gate(database, controller)
     event = Event.create(
         "scheduler.enabled", {"controller": controller},
         source_type=source_type, source_id=source_id)
@@ -115,7 +118,7 @@ def enable_scheduler(database: FoundryDatabase, *, controller: str,
 
 def disable_scheduler(database: FoundryDatabase, *, controller: str,
                       source_type: str, source_id: str) -> str:
-    _controller_gate(controller)
+    _controller_gate(database, controller)
     event = Event.create(
         "scheduler.disabled", {"controller": controller},
         source_type=source_type, source_id=source_id)
@@ -127,7 +130,7 @@ def register_schedule_item(
         cooldown_seconds: float = 60.0, budget_usd: float = 0.0,
         deadline: str | None = None, controller: str,
         source_type: str, source_id: str) -> str:
-    _controller_gate(controller)
+    _controller_gate(database, controller)
     payload = {
         "item_id": item_id, "priority": int(priority),
         "cooldown_seconds": float(cooldown_seconds),
@@ -148,7 +151,7 @@ def tick_scheduler(
         max_concurrent: int = 1, total_budget_usd: float | None = None,
         now_override: float | None = None,
         source_type: str, source_id: str) -> list[str]:
-    _controller_gate(controller)
+    _controller_gate(database, controller)
     state = _rebuild(database)
     _require(state.enabled, "the scheduler is disabled (observe-only)")
 

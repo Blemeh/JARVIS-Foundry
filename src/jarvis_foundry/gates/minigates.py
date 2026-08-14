@@ -16,6 +16,7 @@ from jarvis_foundry.events import Event
 from jarvis_foundry.supervisor.evolution_control import (
     SUPERVISOR_CONTROLLER, EvolutionControlError,
 )
+from jarvis_foundry.supervisor.estop import EmergencyStop
 
 GateError = EvolutionControlError
 
@@ -56,9 +57,11 @@ def _require(condition: bool, message: str) -> None:
         raise GateError(message)
 
 
-def _gate(controller: str) -> None:
+def _gate(database: FoundryDatabase, controller: str) -> None:
     _require(controller == SUPERVISOR_CONTROLLER,
              "only the Supervisor can invoke gates")
+    _require(not EmergencyStop(database.path.parent / "EMERGENCY_STOP").active(),
+             "STOP sentinel active")
 
 
 def family_policy(database: FoundryDatabase, family: str) -> dict[str, Any]:
@@ -72,7 +75,7 @@ def family_policy(database: FoundryDatabase, family: str) -> dict[str, Any]:
 def gate_operation(database: FoundryDatabase, *, family: str,
                    operation: str, controller: str, params: dict[str, Any],
                    source_type: str, source_id: str) -> dict[str, Any]:
-    _gate(controller)
+    _gate(database, controller)
     _require(family in FAMILIES, f"unknown family: {family}")
     policy = FAMILIES[family]
     if operation in policy["read_only_classes"]:
