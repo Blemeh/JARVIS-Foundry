@@ -89,6 +89,30 @@ def make_console_handler(supervisor: Supervisor) -> ConsoleControlHandler:
     return ConsoleControlHandler(on_event)
 
 
+def _heartbeat_with_lock_retry(
+        supervisor, *,
+        backoffs_s: tuple[float, ...] = (0.5, 1.0, 2.0, 4.0, 8.0)) -> str:
+    """V7-S5 promotion (cycle-r3b): retry a heartbeat on transient sqlite
+    'database is locked' errors. The busy_timeout is 10 s, so any lock
+    error that surfaces already outlasted it; the retry budget
+    (0.5+1+2+4+8 = 15.5 s) covers locks that clear shortly after the busy
+    window — such a heartbeat never counts a failure. Persistent errors
+    raise after the bounded retries and are counted exactly as before."""
+    import sqlite3 as _sqlite3
+    last_error = None
+    for backoff_s in backoffs_s:
+        try:
+            return supervisor.heartbeat()
+        except _sqlite3.OperationalError as error:
+            if "locked" not in str(error):
+                raise
+            last_error = error
+            time.sleep(backoff_s)
+    if last_error is not None:
+        raise last_error
+    return supervisor.heartbeat()
+
+
 def _heartbeat_loop(supervisor: Supervisor, interval: float, *,
                     max_failures: int = MAX_CONSECUTIVE_FAILURES,
                     stop_after: int | None = None) -> int:
@@ -114,7 +138,7 @@ def _heartbeat_loop(supervisor: Supervisor, interval: float, *,
         time.sleep(interval)
         cycle_start = time.monotonic()
         try:
-            state = supervisor.heartbeat()
+            state = _heartbeat_with_lock_retry(supervisor)
             failures = 0
             cycle_seconds = time.monotonic() - cycle_start
             if cycle_seconds > 3 * interval:

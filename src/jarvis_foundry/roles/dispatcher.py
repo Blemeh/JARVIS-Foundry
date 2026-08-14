@@ -60,6 +60,8 @@ class RoleDispatcher:
         self.source_type = source_type
         self.source_id = source_id
         self.heartbeat_interval_seconds = heartbeat_interval_seconds
+        self.startup_grace_seconds = 30  # V7-S5 promotion (cycle-r2b):
+        # cover adapter boot before the first session heartbeat
         self._heartbeat_count: dict[str, int] = {}
 
     # -- durable events -----------------------------------------------------
@@ -195,7 +197,8 @@ class RoleDispatcher:
 
         # 2. lease
         try:
-            self.leases.acquire(lease_key, run_id, duration_seconds)
+            self.leases.acquire(lease_key, run_id,
+                               duration_seconds + self.startup_grace_seconds)
         except Exception as error:
             self._fail_run(run_id, "lease_unavailable", str(error))
             return RoleResult(
