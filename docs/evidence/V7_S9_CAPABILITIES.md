@@ -11,9 +11,10 @@ effect reconciliation matrix mapping every capability to its effect class
 and reconciliation method.
 AUTHORITY_AND_ACTIVE_CONTROLS: owner directive V7_FULL_AUTONOMOUS_OPERATION;
 S0-S8 all CLOSED PASS; brokerage Supervisor-only; discovery/reads open.
-BASE_COMMIT_AND_DIFF: main 7160597 (S8 close, which carried the S9
-implementation files) -> +src/jarvis_foundry/capabilities/registry.py,
-+tests/foundry/test_v7_capabilities.py + this report.
+BASE_COMMIT_AND_DIFF: main 7160597 (S8 close; carried the S9 registry
+module) -> +src/jarvis_foundry/capabilities/__init__.py,
++tests/foundry/test_v7_capabilities.py (committed with this close) +
+this report.
 LIVE_RELEASE_PROCESS_AND_DATABASE: live ledger schema 32, daemon RUNNING
 on the frozen release, task cadence active — untouched by this slice.
 CAPABILITIES_AND_READINESS: capability records (ledger events, content-
@@ -35,8 +36,9 @@ BUDGET_QUOTA_AND_COST: 0.0 (no provider calls).
 ACTIONS_TAKEN: implemented capabilities/registry.py (TDD; 9 tests green
 first run); the S8 F1 sha256 repair covered this module before its
 verification.
-FILES_PROCESSES_DATABASES_AND_EXTERNAL_STATE_CHANGED: 2 new files (committed
-with the S8 F1 fix); this report; no live state touched.
+FILES_PROCESSES_DATABASES_AND_EXTERNAL_STATE_CHANGED: 3 files total
+(registry.py landed with the S8 F1 fix; __init__.py + the test file with
+this close); this report; no live state touched.
 TESTS_RECONCILIATION_RESTORE_AND_FAULTS: focused 9/9; full suite 964
 passed EXIT=0 (424.03 s; artifact var/evidence/v7-s9/suite-v7-s9-full.txt,
 sha256 79a0eb02…); matrix completeness enforced; honest WAITING on
