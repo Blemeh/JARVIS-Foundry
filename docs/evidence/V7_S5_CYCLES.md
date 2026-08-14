@@ -13,7 +13,7 @@ controller "supervisor" pinned by evolution_control (S3); STOP sentinel
 active; evolution machinery accepted V6 (S1) unchanged; every verdict
 recorded by a fresh independent verifier through the machinery (no
 self-certification).
-BASE_COMMIT_AND_DIFF: main 6fd10bc (S3/S4 close) -> 7 promoted changes
+BASE_COMMIT_AND_DIFF: main 6fd10bc (S3/S4 close) -> 3 promoted changes
 landed on main (R1 regression test, dispatcher grace, run.py retry) + this
 report. All cycle state on var/v7-runtime/v7.db and var/candidate-roots/.
 LIVE_RELEASE_PROCESS_AND_DATABASE: untouched (live v20, daemon pre-merge,
@@ -81,6 +81,10 @@ OWNER_INPUT_REQUIRED: NONE
 | cycle-094eb26bf95a | improvement-8637c5e55cd2 | R3 | COMPLETED | stale stage | — | — | REJECTED (stale — corrected during prep) | honest re-stage discipline |
 | cycle-cd78a27782fb | improvement-8637c5e55cd2 | R3 | COMPLETED | 1.0 -> 0.0 | PASS 20260814_120048_v7s5r3b | canary-de9d8cfa787e (2 ticks healthy) | **PROMOTED** promotion-5a60e1917787 | heartbeat lock retry: 1 failure -> 0 failures |
 
+(Orphaned canary-46f5b9696c36 = the COMPLETED canary of the first r2b
+complete attempt that hit the frozen-gate refusal; the retry used a fresh
+canary. Recorded, honest history.)
+
 Rollback exercised: `rollback_release(trigger=outcome_regression, reason="S5 rollback exercise")`
 on promotion-f3becf8f1b97 — live -> previous, candidate quarantined, freeze-first
 recorded; the freeze was then lifted (unfreeze) before the r2b promotion
@@ -109,7 +113,32 @@ recorded; the freeze was then lifted (unfreeze) before the r2b promotion
    (backoffs 0.5,1,2,4,8 = 15.5s >= 10s busy_timeout) wired into the
    heartbeat loop beat call (verbatim from the cycle-r3b candidate).
 
-## 4. Slice verifier
+## 4. Slice verifier — deleg_dda6b777, PASS (fresh independent adversarial session)
 
-<fill after dispatch — fresh independent adversarial verifier,
-opencode_go/deepseek-v4-flash, no fallback>
+Verdict JSON: `%TEMP%\v7s5-slice-verdict-indep.json` (early-skeleton protocol;
+verdict PASS, criteria C1-C6 all PASS with per-criterion evidence).
+
+- C1 PASS: 9 cycles = 3 promoted + 6 rejected exactly as recorded (aborted
+  preps have only cycle.started events); rollback fully evidenced (events
+  71-75: freeze -> quarantine -> restore, trigger outcome_regression);
+  3 PASS / 2 FAIL / 1 REQUESTED verifications, every verifier session
+  distinct from the builders; improvement_records = 6 rows (the brief said
+  5; the extra improvement-023a0ec23c72 is the legitimate pre-S5 discovery
+  record — recorded additively).
+- C2 PASS: promoted test sha256 a55a5117… == candidate root == release
+  manifest; dispatcher grace + run.py retry match the candidate semantics;
+  all compile; promoted test passes 2/2.
+- C3 PASS: suite hash eb67c455…, 930 passed EXIT=0.
+- C4 PASS: all three A/B pairs 1.0/exit1 -> 0.0/exit0; 4 auto-rejections;
+  rollback with state restoration; workloads hash-bound.
+- C5 PASS: live v20 untouched, daemons alive, ports up, no STOP, all cron
+  jobs disabled; live evidence events verified present.
+- C6 PASS: HEAD ce93c6b (4-file close commit); 5 protected files hashes
+  match; report truth confirmed.
+- Findings: 5 INFO/LOW only (extra discovery record; wording; verifier
+  session id spelling in reasons; orphaned canary naming; interpreter
+  comparison artifacts). Integrity concerns: none. Scope violations: none.
+
+**S5 CLOSED — PASS** (3 real promotions + 4 rejections + rollback exercised;
+minimum-truth matrix fully evidenced; suite 930 EXIT=0; live state
+untouched). Next: S6 — atomic live schema + Supervisor adoption.
