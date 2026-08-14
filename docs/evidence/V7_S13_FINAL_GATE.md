@@ -1,7 +1,7 @@
 # V7-S13 — FINAL ENGINEERING + OPERATIONAL + PERPETUAL-OPERATION GATE
 
 ```text
-STATUS: <fill on close> (independent final verifier appended on close)
+STATUS: PASS — CLOSED (independent final verifier deleg_27d3c23e, structured PASS)
 PHASE: V7_FULL_AUTONOMOUS_OPERATION
 SLICE: S13 — final engineering + operational + perpetual-operation gate
 OBJECTIVE: the truthful final gate over the WHOLE V7 program: every slice
@@ -112,7 +112,38 @@ resume / reprieve) is always live via the recorded owner commands.
    recorded verdict — no self-certification, no moving criteria.
 6. The owner can stop everything at any time with one word: STOP.
 
-## 3. Verifier
+## 3. Verifier — deleg_27d3c23e, PASS (the FINAL-GATE independent adversarial session)
 
-<fill after dispatch — fresh independent adversarial verifier,
-opencode_go/deepseek-v4-flash, no fallback>
+Verdict JSON: `%TEMP%\v7s13-verdict-deepseek-v4-flash.json` (early-skeleton
+protocol; verdict PASS, criteria C1-C6 all PASS).
+
+- C1 PASS: all 13 slice reports committed on main; status lines of ALL
+  13 checked directly, verifier IDs match exactly; FAIL->PASS lineages
+  real (S3, S6 ×3 rounds, S9); zero STATUS: FAIL remains.
+- C2 PASS: suite sha256 8e8d15a4… exact; 985 passed EXIT=0; monotonic
+  719->…->985; HEAD c589d3b; exactly the 5 protected untracked files
+  byte-identical to protected-files.sha256; S5/S6 evidence secret-scan
+  clean (binary-DB false positives + task-XML LogonType only).
+- C3 PASS: live schema 32, ONE atomic v21-v32 stamp 10:21:03.476073Z;
+  fresh WAL-safe copy: verify_event_integrity == count, reconcile
+  consistent mismatches [], quick_check ok, fk_check []; daemon RUNNING
+  on the frozen release, heartbeat < 2 min; task Enabled + Next Run Time;
+  cycles=0 observe-only; 4/4 directives; no EMERGENCY_STOP; ports up.
+- C4 PASS: runtime ledger cycle outcomes (3 promoted, 4 completed
+  rejections, 2 aborted preps), 3 promotions (f3becf8f1b97 ROLLED_BACK
+  by the exercised rollback, 12659107bee5, 5a60e1917787), canaries
+  COMPLETED, verifications 3 PASS/2 FAIL/1 REQUESTED with distinct
+  verifier identities, improvement records frozen, briefing.recorded
+  EN+SQ with sha256 hashes.
+- C5 PASS: the report's claims and the six-point perpetual-operation
+  model match the verified state.
+- C6 PASS: no unresolved findings anywhere; the only REQUESTED
+  verification is the documented stale stage (honest); no STOP sentinel
+  or post-08-12 emergency.stop events.
+- Findings: none blocking (port-ownership + duplicate-process
+  observations only). Integrity concerns: none. Scope violations: none.
+
+**S13 CLOSED — PASS. THE V7 PROGRAM IS COMPLETE: 13/13 SLICES CLOSED
+PASS, SUITE 985 EXIT=0, LIVE SYSTEM ADOPTED AND HEALTHY.
+PERPETUAL_AUTONOMOUS_OPERATION IS DECLARED** (operating model in
+section 2).
