@@ -1,0 +1,23 @@
+{
+  "after_state": {
+    "sha256": "6d87bc91aa758f5953142fb8e95ce03d2d1749492085e4e79bbd379cd4c5e329",
+    "size": 214,
+    "state": "USEFUL_EFFECT_VERIFIED"
+  },
+  "before_state": {
+    "sha256": "28fc0bba25c6587d9b3a8be597b2caf74d5d22b47040251d0ec9e76ad8e3a922",
+    "size": 198,
+    "state": "BEFORE"
+  },
+  "criterion_ids": [
+    "J10-S01"
+  ],
+  "journey_id": "J10",
+  "operation": "actual temporary-directory digital file effect",
+  "phase": "INPUT",
+  "proof_dimension": "release_and_gate_identity",
+  "requirement_id": "J10-E01",
+  "restoration_verified": true,
+  "schema": "jarvis-reference-evidence-artifact-v1",
+  "target_id": "candidate-release-slot"
+}

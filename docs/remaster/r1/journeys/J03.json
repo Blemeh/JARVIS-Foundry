@@ -1,0 +1,77 @@
+{
+  "schema": "jarvis-purpose-journey-v1",
+  "contract_version": "1.0.0",
+  "journey_id": "J03",
+  "name": "Real-source monitoring and useful change detection",
+  "purpose": "Observe an identified real source on a restart-safe cadence, distinguish a meaningful change from noise, and create one traceable useful response without duplicate alerts or stale-source claims.",
+  "inputs": [
+    {"name": "monitored_source", "type": "object", "required": true, "example": {"source_id": "project-health-feed", "locator": "owner-controlled health document", "freshness_seconds": 900}},
+    {"name": "prior_snapshot", "type": "object", "required": true, "example": {"content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "observed_value": "healthy"}},
+    {"name": "current_snapshot", "type": "object", "required": true, "example": {"content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "observed_value": "regression detected"}}
+  ],
+  "preconditions": [
+    {"id": "J03-P01", "statement": "The monitored source identity and acquisition method are independently resolvable.", "check": "source.identity_resolved && source.capture_method_recorded"},
+    {"id": "J03-P02", "statement": "Prior and current snapshots are timestamped, hashed, and within the declared freshness policy.", "check": "snapshots.all(hash && timestamp) && current.is_fresh"},
+    {"id": "J03-P03", "statement": "The cadence and deduplication key are durable before observation begins.", "check": "monitor.cadence_durable && monitor.idempotency_key_present"}
+  ],
+  "canonical_targets": [
+    {"target_id": "project-health-monitor", "kind": "monitored_source", "identity": "project-health-feed@owner-controlled", "authorization_scope": "read-only acceptance source snapshots"},
+    {"target_id": "change-candidate-record", "kind": "durable_candidate", "identity": "candidate/project-health-regression", "authorization_scope": "isolated acceptance ledger and candidate files"}
+  ],
+  "budget": {"max_elapsed_ms": 7000, "max_calls": 4, "max_tokens": 2000, "max_effects": 3, "max_cost_usd": 0},
+  "required_evidence": [
+    {"id": "J03-E01", "kind": "identified_source_snapshot_pair", "phase": "SOURCE", "proof_dimension": "real_source_identity", "criterion_ids": ["J03-S01"], "min_count": 1},
+    {"id": "J03-E02", "kind": "monitor_before_state", "phase": "BEFORE", "proof_dimension": "cadence_before_state", "criterion_ids": ["J03-S02", "J03-S04"], "min_count": 1},
+    {"id": "J03-E03", "kind": "useful_change_after_state", "phase": "AFTER", "proof_dimension": "useful_change_effect", "criterion_ids": ["J03-S01", "J03-S02", "J03-S03"], "min_count": 1},
+    {"id": "J03-E04", "kind": "monitor_restart_receipt", "phase": "RECOVERY", "proof_dimension": "cadence_recovery", "criterion_ids": ["J03-S02", "J03-S03"], "min_count": 1},
+    {"id": "J03-E05", "kind": "candidate_rollback_receipt", "phase": "ROLLBACK", "proof_dimension": "change_rollback", "criterion_ids": ["J03-S04"], "min_count": 1},
+    {"id": "J03-E06", "kind": "independent_change_verdict", "phase": "VERIFICATION", "proof_dimension": "actor_independence", "criterion_ids": ["J03-S01", "J03-S02", "J03-S03", "J03-S04"], "min_count": 1}
+  ],
+  "success_criteria": [
+    {"id": "J03-S01", "statement": "The accepted change is supported by identified fresh before-and-current source snapshots rather than a fixture or model assertion."},
+    {"id": "J03-S02", "statement": "Exactly one durable candidate is created for the meaningful change and repeated observations remain idempotent."},
+    {"id": "J03-S03", "statement": "The resulting candidate explains owner value, source provenance, uncertainty, and why the change is actionable."},
+    {"id": "J03-S04", "statement": "A corrupt observation or failed downstream write can restore the previous monitor cursor and candidate state."}
+  ],
+  "unacceptable_outcomes": [
+    {"id": "J03-U01", "statement": "Fixture, stale, or unidentifiable source data is labeled as a current real-source observation.", "fail_code": "FALSE_REAL_SOURCE"},
+    {"id": "J03-U02", "statement": "The same source change creates duplicate candidates, alerts, or downstream effects.", "fail_code": "DUPLICATE_CHANGE_EFFECT"},
+    {"id": "J03-U03", "statement": "A heartbeat or unchanged value is promoted as useful work merely to show activity.", "fail_code": "MEANINGLESS_ACTIVITY"}
+  ],
+  "intervention_rules": [
+    {"trigger": "Source freshness expires or identity cannot be resolved", "response": "Do not claim a change; record the source as degraded with retry metadata", "status": "NOT_TESTED"},
+    {"trigger": "External source is unavailable after bounded retries", "response": "Keep the monitor resumable and continue unrelated journeys", "status": "BLOCKED"},
+    {"trigger": "Authenticated STOP arrives before candidate creation", "response": "Persist the observation cursor and refuse the candidate effect", "status": "WAITING"}
+  ],
+  "failure_injections": [
+    {"id": "J03-F01", "inject": "Return a stale snapshot with a valid-looking content hash", "expected_response": "Freshness validation rejects current-change proof"},
+    {"id": "J03-F02", "inject": "Replay the same changed snapshot twice after a restart", "expected_response": "One idempotency key yields exactly one candidate record"},
+    {"id": "J03-F03", "inject": "Crash after source capture and before cursor advancement", "expected_response": "Recovery reconciles the snapshot and advances the cursor without duplicate effect"}
+  ],
+  "recovery": {
+    "requirements": ["Recover the last durable monitor cursor and source snapshot hashes", "Reconcile any candidate created before the crash by idempotency key", "Resume cadence without skipping or duplicating the change"],
+    "evidence_required": ["J03-E03", "J03-E04"],
+    "max_elapsed_ms": 7000
+  },
+  "rollback": {
+    "requirements": ["Restore the previous monitor cursor when the observation is invalid", "Remove only the isolated unaccepted candidate effect while preserving its rejection record"],
+    "evidence_required": ["J03-E02", "J03-E05"],
+    "restoration_target": "last valid monitor cursor and accepted candidate set"
+  },
+  "proof_dimensions": ["real_source_identity", "cadence_before_state", "useful_change_effect", "cadence_recovery", "change_rollback", "actor_independence"],
+  "executable_requirements": {
+    "actor_independence": true,
+    "stop_veto": true,
+    "provenance": true,
+    "freshness": true,
+    "uncertainty": true,
+    "contradictions_preserved": true,
+    "usefulness": true,
+    "idempotency": true,
+    "after_state": true,
+    "compensation": false,
+    "recovery": true,
+    "rollback": true,
+    "allowed_effect_classes": ["read_only_monitoring", "candidate_persistence"]
+  }
+}

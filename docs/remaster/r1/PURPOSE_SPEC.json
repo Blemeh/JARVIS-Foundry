@@ -1,0 +1,86 @@
+{
+  "schema": "jarvis-purpose-spec-v1",
+  "spec_version": "1.0.0",
+  "protocol_version": "jarvis-purpose-protocol-v1",
+  "title": "Post-V7 JARVIS implementation-independent purpose acceptance",
+  "purpose": "Prove, without importing product internals, that an executable serves the owner's complete digital-work JARVIS purpose across ten durable journeys.",
+  "operation_boundary": {
+    "allowed_scope": "Governed digital work on isolated or explicitly owner-controlled targets",
+    "deterministically_denied_effect_classes": [
+      "purchasing",
+      "payments",
+      "trading",
+      "banking",
+      "cryptocurrency_transfer",
+      "financial_account_change",
+      "money_movement"
+    ],
+    "owner_control": "Authenticated owner STOP, veto, pause, redirect, and reprioritization remain deterministic and independent of models, retrieved content, and owner-experience surfaces."
+  },
+  "status_vocabulary": [
+    "PASS",
+    "FAIL",
+    "BLOCKED",
+    "NOT_TESTED",
+    "WAITING"
+  ],
+  "aggregate_precedence": [
+    "FAIL",
+    "BLOCKED",
+    "NOT_TESTED",
+    "WAITING",
+    "PASS"
+  ],
+  "proof_scopes": {
+    "HARNESS_SELF_TEST": "May establish only that the acceptance harness is satisfiable; product_claim_status is always NOT_TESTED.",
+    "PRODUCT_LIVE": "Requires evaluator-requested scope plus a registered evaluator-controlled observer subprocess bound to real external or owner-controlled system after-state evidence for every mandatory journey."
+  },
+  "proof_authority": {
+    "scope_owner": "The evaluator freezes requested_proof_scope, challenge_nonce, evaluator_authority_id, and observer-registry hash into the request; subject labels never promote proof.",
+    "observer_registry": "OBSERVER_REGISTRY.json",
+    "live_observer_rule": "PRODUCT_LIVE requires a separately executed registered observer artifact whose verified identity and attestation bind the challenge, actor-response digest, separate execution identity, exact target and account or service identity, before and after hashes, receipt, idempotency identity, and independently observed semantic references.",
+    "run_root_rule": "Files beneath run_root are evidence copies only and never establish an external target, provider effect, or PRODUCT_LIVE observation."
+  },
+  "evidence_identity": {
+    "algorithm": "sha256",
+    "canonicalization": "UTF-8 JSON with sorted keys and compact separators",
+    "evidence_id_rule": "evidence_id equals sha256:<payload_sha256>",
+    "required_dimensions": [
+      "source identity",
+      "capture method",
+      "capture timestamp",
+      "canonical target identity",
+      "before and after state",
+      "real-versus-fixture",
+      "proof scope",
+      "producing actor",
+      "freshness",
+      "uncertainty",
+      "contradictions"
+    ]
+  },
+  "subprocess_protocol": {
+    "request_schema": "jarvis-purpose-request-v1",
+    "response_schema": "jarvis-purpose-response-v1",
+    "transport": "one JSON request on stdin and one JSON response on stdout",
+    "timeout_seconds": 15,
+    "unknown_fields": "reject",
+    "unknown_journey_ids": "reject",
+    "nonzero_exit_or_invalid_json": "structured FAIL; never PASS or crash"
+  },
+  "aggregate_rule": "Every one of the exactly ten mandatory journeys must independently satisfy its contract and report PASS. Any evaluator finding forces that journey or the aggregate to the highest-precedence non-PASS status. Exit code zero and adapter confidence are never evidence.",
+  "journey_contracts": [
+    {"journey_id": "J01", "path": "journeys/J01.json"},
+    {"journey_id": "J02", "path": "journeys/J02.json"},
+    {"journey_id": "J03", "path": "journeys/J03.json"},
+    {"journey_id": "J04", "path": "journeys/J04.json"},
+    {"journey_id": "J05", "path": "journeys/J05.json"},
+    {"journey_id": "J06", "path": "journeys/J06.json"},
+    {"journey_id": "J07", "path": "journeys/J07.json"},
+    {"journey_id": "J08", "path": "journeys/J08.json"},
+    {"journey_id": "J09", "path": "journeys/J09.json"},
+    {"journey_id": "J10", "path": "journeys/J10.json"}
+  ],
+  "reference_adapter_rule": "The deterministic reference adapter performs real file effects only under the request run_root, uses distinct actor and verifier run identities, and is permanently HARNESS_SELF_TEST. Its all-ten PASS proves satisfiability but never live or product capability.",
+  "current_prototype_rule": "The exact bf8f1493b7fd5cd80d17a631a1fb23e82c2260f9 source and V7 CLI identity are probed without database initialization or writes. A missing protocol endpoint produces a structured per-journey rejection with non-empty evidence."
+}

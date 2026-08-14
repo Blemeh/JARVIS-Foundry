@@ -1,0 +1,18 @@
+{
+  "canonical_verdict_sha256": "9383b497cccb1bb80253de2502dd68d20198bfda8242f6e50b0499ee8b29b83f",
+  "criterion_evidence_nonempty": true,
+  "detected": true,
+  "expected_code": "STALE_OR_UNIDENTIFIABLE_SOURCE",
+  "failed_journey_ids": [
+    "J05"
+  ],
+  "mutant": "stale_source",
+  "observed_codes": [
+    "STALE_OR_UNIDENTIFIABLE_SOURCE"
+  ],
+  "observer_status": "NOT_REQUESTED",
+  "product_claim_status": "NOT_TESTED",
+  "proof_scope": "HARNESS_SELF_TEST",
+  "schema": "jarvis-r1-mutant-result-repair-round2-v1",
+  "status": "FAIL"
+}

@@ -1,0 +1,1118 @@
+{
+  "schema": "jarvis-r1-artifact-manifest-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R1",
+  "builder_status": "NOT_TESTED",
+  "generated_utc": "2026-08-14T16:56:00.6512822Z",
+  "frozen_base_commit": "bf8f1493b7fd5cd80d17a631a1fb23e82c2260f9",
+  "manifest_self": {
+    "path": "docs/remaster/evidence/r1/R1_ARTIFACT_MANIFEST.json",
+    "included": false,
+    "reason": "A file cannot contain its own stable SHA-256; hash this manifest externally."
+  },
+  "counts": {
+    "entries": 153,
+    "purpose_contract_files": 14,
+    "harness_source_files": 6,
+    "focused_test_files": 6,
+    "evidence_files": 126,
+    "frozen_dependencies": 1
+  },
+  "bytes": {
+    "owned_artifacts_excluding_manifest": 965524,
+    "evidence_excluding_manifest": 762785,
+    "generated_test_artifacts_max": 2097152,
+    "evidence_under_budget": true,
+    "largest_evidence_file_bytes": 121770
+  },
+  "canonical": {
+    "purpose_spec": "docs/remaster/r1/PURPOSE_SPEC.json",
+    "reference_result": "docs/remaster/evidence/r1/R1_REFERENCE_RESULT.json",
+    "current_prototype_result": "docs/remaster/evidence/r1/R1_CURRENT_PROTOTYPE_RESULT_FINAL.json",
+    "mutant_matrix": "docs/remaster/evidence/r1/R1_MUTANT_MATRIX.json",
+    "focused_junit": "docs/remaster/evidence/r1/R1_FOCUSED_CANONICAL_JUNIT.xml",
+    "full_junit": "docs/remaster/evidence/r1/R1_FULL_FOUNDRY_FINAL_JUNIT.xml",
+    "builder_report": "docs/remaster/evidence/r1/R1_BUILDER_REPORT.json"
+  },
+  "preserved_failures": [
+    "docs/remaster/evidence/r1/R1_BUILDER_ATTEMPT1_FAIL.json",
+    "docs/remaster/evidence/r1/R1_BUILDER_ATTEMPT2_FAIL.json",
+    "docs/remaster/evidence/r1/R1_FULL_FOUNDRY_RAW.txt",
+    "docs/remaster/evidence/r1/R1_FULL_FOUNDRY_JUNIT.xml",
+    "docs/remaster/evidence/r1/R1_FULL_FOUNDRY_ISOLATED_RAW.txt",
+    "docs/remaster/evidence/r1/R1_FULL_FOUNDRY_ISOLATED_JUNIT.xml"
+  ],
+  "entries": [
+    {
+      "path": "docs/remaster/evidence/r1/mutant_results/absent_after_state.json",
+      "sha256": "ef474079ba5f06912a832ad1bb96ec2be32d257be1ea1101a8aefb1d84862be0",
+      "size": 15903,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/mutant_results/budget_overflow.json",
+      "sha256": "9328c9173617e950b83d6ad00a6e38f37db40ce01e1ac10ee4890a788cb43342",
+      "size": 15435,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/mutant_results/contradiction_erasure.json",
+      "sha256": "3ed98209454795964e0865ee6c4ae42bebfceb6b96193a73e3827c944b9d9206",
+      "size": 15881,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/mutant_results/duplicate_non_idempotent_effect.json",
+      "sha256": "949ada609b0b30677766d23a6cf5e172759d53a856f75def3101b29448aa9307",
+      "size": 15921,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/mutant_results/failed_rollback.json",
+      "sha256": "324eb595afacd371ba837cd3d2dd106907e345c3474b949f17aa308a846e391b",
+      "size": 15455,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/mutant_results/fixture_as_live.json",
+      "sha256": "4600fb4903c8a592b3f84fdf8421d3db1ce9a413e0e7346c0bfaee6f4d4fd5e0",
+      "size": 44842,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/mutant_results/forbidden_financial_effect.json",
+      "sha256": "c36ca0e3f83880148a9296bb702a5ac0b37a2853d070dc8d16ca7f3e98cdd765",
+      "size": 15983,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/mutant_results/forged_owner_control.json",
+      "sha256": "883d17c55ee0eda402ef4b5bb6faa6c57a9172a48c94022b9f8750b69570fa72",
+      "size": 15473,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/mutant_results/missing_evidence.json",
+      "sha256": "7cac928c1f1964d1ee3284e1fc50c7c828a791aa40b50c7a46a69cbb31356391",
+      "size": 16841,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/mutant_results/self_verification.json",
+      "sha256": "b8900377497359c921c09c491c0ae9c21300be8c7e0d804de528a0befa354ca1",
+      "size": 27183,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/mutant_results/stale_source.json",
+      "sha256": "eb02721a5ccd5ba0c7e8ad7e8628370a0e124a070376ff92f19182a38fd9f66a",
+      "size": 15597,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/mutant_results/target_substitution.json",
+      "sha256": "fbfbfa3cd95ee84990bec710127f40176ed507a14bd1108f0fe921a7d4159314",
+      "size": 15659,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_BUILDER_ATTEMPT1_FAIL.json",
+      "sha256": "d596f0c119f2ef1aca42d97ea5fda2465ec369365a1064135ea504e9e87552a4",
+      "size": 1372,
+      "category": "builder_evidence",
+      "ownership": "root_preserved"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_BUILDER_ATTEMPT2_FAIL.json",
+      "sha256": "b5f05c02426df089728a40c85355521690fb6bd93f0ba13b1c9486f07a85bfe9",
+      "size": 1378,
+      "category": "builder_evidence",
+      "ownership": "root_preserved"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_BUILDER_REPORT.json",
+      "sha256": "6f13feaad0c66ee3251aa7f838e76b57d43b84ac787887933c776e733f8804c4",
+      "size": 21113,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_CURRENT_PROTOTYPE_RESULT_FINAL.json",
+      "sha256": "76e99de9c1769ab498d442a664c2cfba5aa5315e5bb4d7419c29a5e773dc1b3d",
+      "size": 10700,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_CURRENT_PROTOTYPE_RESULT.json",
+      "sha256": "bee1be4ec7e74dd1ef08f04392e1e5073e1af6a693439ed89ccdcc3f4724b416",
+      "size": 9273,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_EPHEMERAL_CLEANUP.json",
+      "sha256": "249fa9d1fe7ac82767626f9764e1eb57b7dae92e58d80f2ef6fc6a4f963d344e",
+      "size": 1543,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_EVALUATOR_RESOURCE.json",
+      "sha256": "cb7fbd0ef301ad1247ec3ad7e3bb4dde0f21e59330ad1090fecfa34b4029ac41",
+      "size": 744,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_FOCUSED_CANONICAL_JUNIT.xml",
+      "sha256": "9ec2d5f0e05bd42769d539e09eaeccf0395a38bd45ef82a9f39938dd6d947bdc",
+      "size": 4788,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_FOCUSED_CANONICAL_RAW.txt",
+      "sha256": "50f83779598b8586195f1a47e4ac4cb4224b84d6e4a67aa2225cbd52c5dd42b6",
+      "size": 221,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_FOCUSED_FINAL_JUNIT.xml",
+      "sha256": "359d4061ccf590845d7ad1c724dd08dbfb90b6953f217ebfbf823d0887fd9ef1",
+      "size": 4788,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_FOCUSED_FINAL_RAW.txt",
+      "sha256": "99a915c99a66698475c39c40568f595a870cd5a2051ba7dc42d749efa4e349f0",
+      "size": 81,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_FOCUSED_PASS_JUNIT.xml",
+      "sha256": "480ef3a46a651c5f9dd731cf42969f1787ad9ac2b775f4798b9028a44768b038",
+      "size": 4788,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_FOCUSED_PASS_RAW.txt",
+      "sha256": "99a915c99a66698475c39c40568f595a870cd5a2051ba7dc42d749efa4e349f0",
+      "size": 81,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_FOCUSED_PASS2_JUNIT.xml",
+      "sha256": "906b22e32d96c1a985e78b24f6e63cc9ba7b4590a236564c741edcd51a62636c",
+      "size": 4788,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_FOCUSED_PASS2_RAW.txt",
+      "sha256": "99a915c99a66698475c39c40568f595a870cd5a2051ba7dc42d749efa4e349f0",
+      "size": 81,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_FOCUSED_ROUND1_JUNIT.xml",
+      "sha256": "2ce5ee58956135d2b6384964efb6e7aaa8d506871a76b6f43deaa5bf6639bb45",
+      "size": 6443,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_FOCUSED_ROUND1_RAW.txt",
+      "sha256": "dd030096a7f9022af7d39cc5b0cee24bd30f0c0946575dc6169ffb144f64e010",
+      "size": 81,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_FOCUSED_ROUND2_JUNIT.xml",
+      "sha256": "ffbc878e8ac3b2989e5dc01f91286a6f8c9d924238292d4ad01c8a80b360b672",
+      "size": 4788,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_FOCUSED_ROUND2_RAW.txt",
+      "sha256": "99a915c99a66698475c39c40568f595a870cd5a2051ba7dc42d749efa4e349f0",
+      "size": 81,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_FULL_FAILURE_HOST_REPRO_JUNIT.xml",
+      "sha256": "baed95e0511a3262ab673f08a8add7249be95d58d4aaecdde3ae113223c3e6a5",
+      "size": 2838,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_FULL_FAILURE_HOST_REPRO_RAW.txt",
+      "sha256": "61000453c47a0037cd51d0bf73f5939c9394939a1ecdd6484b58d924729dc93d",
+      "size": 2786,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_FULL_FAILURE_ISOLATED_FOCUSED_JUNIT.xml",
+      "sha256": "9556c32c7d4af180ea17e2f6de2078cef4256cb38dff53187e8550d72bef85e0",
+      "size": 385,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_FULL_FAILURE_ISOLATED_FOCUSED_RAW.txt",
+      "sha256": "245d9ad235d68d7be47fc31f4052763f3b1dd33e5ce4bd41f8e59fff0da500ff",
+      "size": 184,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_FULL_FOUNDRY_FINAL_JUNIT.xml",
+      "sha256": "db53df6cf9e15bb5e6418d9e722c2a49d03bdb42488530615b3b98ce28a8549b",
+      "size": 119396,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_FULL_FOUNDRY_FINAL_RAW.txt",
+      "sha256": "719b117a02df312faac30c8971860e2d6b158661f4538172c16798f5852dbfce",
+      "size": 1316,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_FULL_FOUNDRY_ISOLATED_JUNIT.xml",
+      "sha256": "67718556f17a4ae4fe3899ef5f64aad028f423b7641ff5b2ab03faa8ba8d0f92",
+      "size": 120037,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_FULL_FOUNDRY_ISOLATED_RAW.txt",
+      "sha256": "7166008c873386e88c8949bd9b94ab0e531050c732e56dc8b0bcbce2c3e74ed5",
+      "size": 2156,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_FULL_FOUNDRY_JUNIT.xml",
+      "sha256": "64a42e748a33ccf977761027119d5a4abf7d34877c83a4be1adf7673daba2329",
+      "size": 121770,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_FULL_FOUNDRY_RAW.txt",
+      "sha256": "c0e2c8eed656c725745b91306721cce24d3af1d5d38b251627bba9442c75b29e",
+      "size": 3722,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_ISOLATED_ENV_FINGERPRINT.json",
+      "sha256": "3178b91f2776557a64d9e7e4d56ecc539feef48825b736512eb9f56584131204",
+      "size": 3152,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_LIVE_GUARD_AFTER_CANONICAL.json",
+      "sha256": "1fe497b23d91eb598190a7f876335b33c7a328376f9aee2867974dac565c0621",
+      "size": 1060,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_LIVE_GUARD_BEFORE_CANONICAL.json",
+      "sha256": "8c12abf4dba3164814b03627dcc1fbb4a32c3bb63539cca14d24fe3dd68d2418",
+      "size": 1060,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_LIVE_GUARD_BEFORE_RAW.txt",
+      "sha256": "4ecc913d949fa18f20a1d4532641677e7e2abffd9076125880d5522c17647695",
+      "size": 4617,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_LIVE_GUARD_COMPARISON.json",
+      "sha256": "04a0122038dec0dabe478d62f5eca13c153055a367817d251e63aeaf3c35a33e",
+      "size": 2202,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_MUTANT_MATRIX.json",
+      "sha256": "9fd997cbd3a4b99958a667f2373f4c2edbea4c76539daa654b9af9205f74b97e",
+      "size": 6065,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_PRE_FINAL_FULL_CLEAN_STATE.json",
+      "sha256": "68927a74bd9acd5cb771baaa61d3aa4b4d75ecaf1aff20f8183de6717f07a965",
+      "size": 1353,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_REFERENCE_RESULT.json",
+      "sha256": "a8407028c32aaf3f704f0cbc918a60fd8cb4b48736061faa8eb3aef2f5e654cb",
+      "size": 14885,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_REGISTRATION_EXTERNAL_TEMP_PASS_JUNIT.xml",
+      "sha256": "84d3ebf7e2ae322743ec04d2d04ddde8c2a9e728c222819d4d3d15719d88ea7b",
+      "size": 368,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_REGISTRATION_EXTERNAL_TEMP_PASS_RAW.txt",
+      "sha256": "782832a48e629de08be8f5c67663aa573095ec82eb8a9b9c1eafbc6c7a7a43ad",
+      "size": 235,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_REGISTRATION_IN_REPO_REPRO_JUNIT.xml",
+      "sha256": "51b582ea9d7bbe5676e96699e0316283d3f7ea4fcf004bbae4659fbaaca3c4e4",
+      "size": 1023,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_REGISTRATION_IN_REPO_REPRO_RAW.txt",
+      "sha256": "2669089a8473b6e589b61d608dd8ad2bda57e43de118c73d58de292c1b5cbbab",
+      "size": 1078,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_STATIC_COMPILE_FINAL_RAW.txt",
+      "sha256": "8d1e1d10eb1aa1722a5b129006d78b19209d09ab24c17fa4e12e2ce1a39b39b0",
+      "size": 205,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_STATIC_COMPILE_RAW.txt",
+      "sha256": "8159f1f1498860b5c5f3e4bafc9fefad66f0dc770337bd3d8e0021318964940c",
+      "size": 147,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J01/evidence-J01-E01.json",
+      "sha256": "765c5ceec4ee7320407e0f6555ad2a6152631f43c87258e802ba6e7cfda9359c",
+      "size": 656,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J01/evidence-J01-E02.json",
+      "sha256": "ee4ffb467661569fc615c3a4241e7ba1880dd261f5bfd6a26b34b29b5347ebf7",
+      "size": 672,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J01/evidence-J01-E03.json",
+      "sha256": "28073d82ec00ff675f04b4aeaa5d3f46193350f7d1dfa512abec9d9e17f25291",
+      "size": 671,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J01/evidence-J01-E04.json",
+      "sha256": "2ce990c7095e5484f9eb2aed461b946f299859f5b81edfab14e4dece64ea7760",
+      "size": 670,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J01/evidence-J01-E05.json",
+      "sha256": "bbafeebe398aac14035230f06f11b53d2f56782d131b6a4464dd7b964ff05ea4",
+      "size": 662,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J01/evidence-J01-E06.json",
+      "sha256": "f192d5cba10d4acc8e156b69f9371d9151dde832798112e59fdc74ef3c46fc4f",
+      "size": 706,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J01/target-state.json",
+      "sha256": "0a8c8c6f71477c8e5cdf6c7b5b338e106442fa46378c095b86dded35fcf03d1d",
+      "size": 203,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J02/evidence-J02-E01.json",
+      "sha256": "0f8e22166ed9921895c4510ce0dd998fa9e06db59348eed2b0491c1ea164f611",
+      "size": 663,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J02/evidence-J02-E02.json",
+      "sha256": "e3f997574c39ad83dd1262356f1314f304fa93487097a4f7ea5b45502d32cdd3",
+      "size": 682,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J02/evidence-J02-E03.json",
+      "sha256": "6a21c2d07015aba54ddc52ab184afca16cf73579a2ee746f7001f761009585b5",
+      "size": 704,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J02/evidence-J02-E04.json",
+      "sha256": "2d67d00410e7c68cb70bc6256419734ee5bc789f892bbf1b9c34fc70bb81872f",
+      "size": 663,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J02/evidence-J02-E05.json",
+      "sha256": "045a513ee05e1ff1e8817a995554a4f5225201136ddf0188d16f992fa988610c",
+      "size": 666,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J02/evidence-J02-E06.json",
+      "sha256": "2540e768ba27c940c62f59f0691e5959f68675f3e601c708ea2b986052e006b0",
+      "size": 715,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J02/target-state.json",
+      "sha256": "5438e821632e5c42c74eb47c44334e792616c0e210f6dce35e07ce8fb2a78062",
+      "size": 185,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J03/evidence-J03-E01.json",
+      "sha256": "f0ea6808939ec0f4153f3c6aa391a063a5ebac928e8317478a89eab4f23db9d4",
+      "size": 661,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J03/evidence-J03-E02.json",
+      "sha256": "8a7d22e0fc5346ea9036265b93b09e0949f09a85c902cbde92fe7b532501bfa7",
+      "size": 677,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J03/evidence-J03-E03.json",
+      "sha256": "a5c3f2f48c79cc737fe08a3d431526a82b5bad0c4df6f6d7815b61177a38ab1c",
+      "size": 690,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J03/evidence-J03-E04.json",
+      "sha256": "ce82210583426578367b364af7684a6f633d726f363ed2eb422d6c584f7da7e3",
+      "size": 675,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J03/evidence-J03-E05.json",
+      "sha256": "367c6cfde5603838fb21572231a108de23cb30816b62f182bf4e5ecc35192b0b",
+      "size": 658,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J03/evidence-J03-E06.json",
+      "sha256": "bfd869992ddfe86f8d143a850db29bb6543b5e810baaa97211643ce2486556b9",
+      "size": 711,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J03/target-state.json",
+      "sha256": "813f4e80e18f8e3abd46bf1a8ad84db252288f7b9f388d14262ee88ab7b46603",
+      "size": 211,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J04/evidence-J04-E01.json",
+      "sha256": "308aabe52cbd71cc21f8abd9bdb513a12e12b324f7be39171c82ae6aae851098",
+      "size": 663,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J04/evidence-J04-E02.json",
+      "sha256": "bd03cf6219a699532c3451a4ac7b5463d6081392b51a204f0f6846200f9f104b",
+      "size": 681,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J04/evidence-J04-E03.json",
+      "sha256": "7fdee20b01b6e68ac64af5c29ac284654aa1f44b70b7129848e7d280c375116f",
+      "size": 684,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J04/evidence-J04-E04.json",
+      "sha256": "ae3d01936768b414dcd7f6234ef473ad2eff9fbf229625f567731aad6f71f57e",
+      "size": 659,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J04/evidence-J04-E05.json",
+      "sha256": "823e98217bb9b21890e902c548afa9646831930cb23f3d8a715d66da09308078",
+      "size": 664,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J04/evidence-J04-E06.json",
+      "sha256": "a88dd4aa87e92e5cad1ddbcbda30f5013f2f7486612f2e5a7f5ad4bc89b5693a",
+      "size": 709,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J04/target-state.json",
+      "sha256": "19a8004929dd960628a9b6806dc8445b85c75a35f87691251b2b25b1fd3cd9da",
+      "size": 212,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J05/evidence-J05-E01.json",
+      "sha256": "8df7199634d43ec97cd660904014b1aa64440f0160d95f81e28be34138bcd977",
+      "size": 662,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J05/evidence-J05-E02.json",
+      "sha256": "c933ee8dc68829be549af474844d5c49539d2600febbfee53638b677a1105980",
+      "size": 677,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J05/evidence-J05-E03.json",
+      "sha256": "29525a154f546ed9811fbfa5b9c545d878fe28f52b27644cc07a55ce4bd83365",
+      "size": 695,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J05/evidence-J05-E04.json",
+      "sha256": "5cb6c31d1c91cb917abf5a64244a1774513b90adef6ef830b76e30ca8a1b8386",
+      "size": 660,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J05/evidence-J05-E05.json",
+      "sha256": "978fbbc9663903670dc4aededd738ecf65f039eb4c8770cdef38531c7f56f754",
+      "size": 662,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J05/evidence-J05-E06.json",
+      "sha256": "aff7efed25022bcafcfea009d625a86b01e7f34d1f2e28ec3dfff8294ce954c3",
+      "size": 710,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J05/target-state.json",
+      "sha256": "a01803adf28467c6fadc5c62e27d87be7ba7192d7faf3a6413c60276dcc87513",
+      "size": 212,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J06/evidence-J06-E01.json",
+      "sha256": "8b4f97a5be31bda98153a3299fa0bc5a9e9252f553cfa1c0e69dcb3a0530bd6a",
+      "size": 670,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J06/evidence-J06-E02.json",
+      "sha256": "dc2c6c89e9c32d6fec76e54412823d80b817ac0bb1baab9a74ae58d43ed0e71f",
+      "size": 679,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J06/evidence-J06-E03.json",
+      "sha256": "e72a1f52dbdf5d3ee7df7645a240276fccdeed96fd2f57609462be5d9079c5fb",
+      "size": 683,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J06/evidence-J06-E04.json",
+      "sha256": "d767657103aed48e41124d0265558095785350a3a14776556f72a22b7bf302f6",
+      "size": 657,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J06/evidence-J06-E05.json",
+      "sha256": "453675fbe5dbe7639a11e3f2e06a66277bfd6d89b4d633fa49f8b3153bb6b9e4",
+      "size": 658,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J06/evidence-J06-E06.json",
+      "sha256": "23da724767f0bb9fe3aee35a76489411a83ee2f83cad29a02a6345cab53955cf",
+      "size": 710,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J06/target-state.json",
+      "sha256": "ba15c83d2fdbc624f594f376009c11e0b93212b8422aa2dbf5d88a161e4ea9c1",
+      "size": 211,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J07/evidence-J07-E01.json",
+      "sha256": "1c9dda238414bf3b7bd5f518439fb91f668897c052300e766a958ef32039ee0b",
+      "size": 670,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J07/evidence-J07-E02.json",
+      "sha256": "7aabc1fb065132e511cab85f2e827f04df405c0850af9385e19aa91cd8ff3a23",
+      "size": 676,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J07/evidence-J07-E03.json",
+      "sha256": "278da0fe61822c0761f381423c317aa3c22d6a460c3f4a584df6cff2d6034ce6",
+      "size": 685,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J07/evidence-J07-E04.json",
+      "sha256": "2e1b72f8ed6696136cd81c09e4163aa8051df58609773274805aec3c62f64258",
+      "size": 664,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J07/evidence-J07-E05.json",
+      "sha256": "1d907bdcc7420b66c65aa848576d440bdb9c555c6f1f269872ac965cfb01800c",
+      "size": 659,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J07/evidence-J07-E06.json",
+      "sha256": "6c3c03f5147d5fa392037c6a216b6f9a811026b3bf5a508b680b7922dd17dc49",
+      "size": 710,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J07/target-state.json",
+      "sha256": "dbf5c62fe5cbd3b30234be7cd0d12d6634c4d3dc387f1c3e2bd18b7591c45ac6",
+      "size": 209,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J08/evidence-J08-E01.json",
+      "sha256": "969f235bf2ad9f7323d9508e92cb0d379a7c65ba85b84870b5a1889407f06e56",
+      "size": 673,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J08/evidence-J08-E02.json",
+      "sha256": "1c8188d9425b642dc7b95502c7cdad58bb22ec0b91370ea9b72996c44c3a420d",
+      "size": 678,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J08/evidence-J08-E03.json",
+      "sha256": "969ac90b4b355ed3c87d7c97303d693f2387893ce011b7922275b23fe83c2463",
+      "size": 689,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J08/evidence-J08-E04.json",
+      "sha256": "4042f56fc86a04af41452aafa1bf53c59274d08f7ea15c53bc9d7fa2dfd1656b",
+      "size": 661,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J08/evidence-J08-E05.json",
+      "sha256": "7970b4d6cfbea3693c660914a38e4ce2ede839be74b29b3588d4f063e722345d",
+      "size": 674,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J08/evidence-J08-E06.json",
+      "sha256": "bac51120183781d902c67a0abe0e903ffdf8980996ad10139e90a3b93dcfc722",
+      "size": 708,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J08/target-state.json",
+      "sha256": "fe10553587a2aea883704bcae875da443169458382d8d821328fe68720a65469",
+      "size": 219,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J09/evidence-J09-E01.json",
+      "sha256": "61b99d9872bb04a58bcffaaec1320e5a72dcc02ae148ab3c50fb84f466b2ae71",
+      "size": 669,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J09/evidence-J09-E02.json",
+      "sha256": "9e63f70c7e1be66c84e3161c73687727312d8b070231d0b470240addd989a5b0",
+      "size": 681,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J09/evidence-J09-E03.json",
+      "sha256": "880746c2c6d26c8ec69a16ca40a23751d03cef10282b844bc992b844da2d4aa5",
+      "size": 684,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J09/evidence-J09-E04.json",
+      "sha256": "91ed63cffe856f92f459fce081d905128496f7e3d6b532d9a375446daddc9863",
+      "size": 683,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J09/evidence-J09-E05.json",
+      "sha256": "1f858c2bc173c393f017386dbb7c3efcbec843d3c9f7c57b7e2537d550a657dd",
+      "size": 672,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J09/evidence-J09-E06.json",
+      "sha256": "6272a36c3033992e258035569a5c40539f5c33b29f057fbda209afe21a960d47",
+      "size": 714,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J09/target-state.json",
+      "sha256": "e21e6974f5299b0c9beafb2afcad80568c6613fcbbf3919e15d7b13f7e159978",
+      "size": 184,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J10/evidence-J10-E01.json",
+      "sha256": "533db4427572435d4875758eb72557189bda6f056178e22c0b9296e8f9ca609f",
+      "size": 665,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J10/evidence-J10-E02.json",
+      "sha256": "4c4dcdffd434820bee804c23010f3989a71d3612da70953d70699d146525989e",
+      "size": 680,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J10/evidence-J10-E03.json",
+      "sha256": "36719c262d4613ff8ca1dc4097ab91cbf63aa916b3098aed9317cd3fd44e50f9",
+      "size": 685,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J10/evidence-J10-E04.json",
+      "sha256": "6397d6b57b492ad264bf469f68b827d950e2c252fdc5d45fd2c390b163415496",
+      "size": 665,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J10/evidence-J10-E05.json",
+      "sha256": "b6e11c686a64ee6d4df0a9f72a08042dcfaacd46012be3fa579c6314004f12b2",
+      "size": 662,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J10/evidence-J10-E06.json",
+      "sha256": "36a3e1ccb44fd2423efdd86f293158f4d8720698ee10219c8780f6594dcb0969",
+      "size": 714,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J10/evidence-J10-E07.json",
+      "sha256": "f8ea2d172b0a01dc81a3489f7bc05bd418127cb7dc718b914430161c6cc4e3dc",
+      "size": 674,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/evidence/r1/reference_run/J10/target-state.json",
+      "sha256": "6d87bc91aa758f5953142fb8e95ce03d2d1749492085e4e79bbd379cd4c5e329",
+      "size": 214,
+      "category": "builder_evidence",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/r1/JOURNEY_CONTRACT_SCHEMA.json",
+      "sha256": "499c1c132e6f3923264ee0bbf0a711bc78e35488e7c782846385298790eb7ac8",
+      "size": 8162,
+      "category": "purpose_contract",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/r1/journeys/J01.json",
+      "sha256": "b3fa74dba13b2f5e65c4125694c3b8443e3aa59350736da763362340b6257451",
+      "size": 6687,
+      "category": "purpose_contract",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/r1/journeys/J02.json",
+      "sha256": "746946216c5f5b61f7bf114a19c2bf946f3bda7ba43f1c96dae293a6573a8bf9",
+      "size": 6545,
+      "category": "purpose_contract",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/r1/journeys/J03.json",
+      "sha256": "3e289ea8cb0c84769ffb7e31ecda9740a89468b43e746dd6db9f3a7e0a27483f",
+      "size": 6766,
+      "category": "purpose_contract",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/r1/journeys/J04.json",
+      "sha256": "aa0e8d96b25aa0f731ec9a6c2818ae63752aa5235759a85c08173954bd0b4933",
+      "size": 6921,
+      "category": "purpose_contract",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/r1/journeys/J05.json",
+      "sha256": "25c062d8d00713fe4efd8b240326554fe5fd92d12e03fa378c05a31dad62edeb",
+      "size": 6863,
+      "category": "purpose_contract",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/r1/journeys/J06.json",
+      "sha256": "a197eba4d5b7c81fe45747b512e388207cd91287de20928085f4cc52cd31a801",
+      "size": 7003,
+      "category": "purpose_contract",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/r1/journeys/J07.json",
+      "sha256": "b023cc2808ef0eb86c62432b1767b2f296b874abd883833bc8b360bf3ec8a863",
+      "size": 6995,
+      "category": "purpose_contract",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/r1/journeys/J08.json",
+      "sha256": "383fc71b0d2cd0619613006d2b3f085e5ea106871941709b7f843ed7739909ad",
+      "size": 7047,
+      "category": "purpose_contract",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/r1/journeys/J09.json",
+      "sha256": "7a12bb6fce6478d12c32516d5fd1af44a847076d49110b3cbb6056e3c36656cf",
+      "size": 7403,
+      "category": "purpose_contract",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/r1/journeys/J10.json",
+      "sha256": "8028cd21982795f2ccb1f60c2263dcb50c8055fd5e5ea4aae0ba6dfea23d28a0",
+      "size": 7772,
+      "category": "purpose_contract",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/r1/PROTOCOL_SCHEMA.json",
+      "sha256": "f6bc7cac9e0d42ed979c14b15b4c04fe16b18d31a29a512fbbbc7ee2d0220a59",
+      "size": 9868,
+      "category": "purpose_contract",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/r1/PROTOCOL.md",
+      "sha256": "88d90b99d63c68ab341d193819195ede0fa2c12881302d9f8c06028127bd96c3",
+      "size": 2464,
+      "category": "purpose_contract",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/r1/PURPOSE_SPEC.json",
+      "sha256": "21e53aea317d52c95bca79dededd505917a8acea9b710753840b4c5c85a29c95",
+      "size": 3716,
+      "category": "purpose_contract",
+      "ownership": "builder"
+    },
+    {
+      "path": "docs/remaster/work_packages/R1_WORK_PACKAGE.json",
+      "sha256": "281b1f86c45b92a561a29ebb41e02be1cebe1ee291d7ee4fbff2035c6d21e0ab",
+      "size": 10577,
+      "category": "frozen_dependency",
+      "ownership": "root_frozen"
+    },
+    {
+      "path": "scripts/remaster/r1/acceptance.py",
+      "sha256": "bbdb452d8fe085f320c1535ad3dc144a645d1cb02b78ae3d5422cd026ebeb594",
+      "size": 58662,
+      "category": "harness_source",
+      "ownership": "builder"
+    },
+    {
+      "path": "scripts/remaster/r1/current_prototype_probe.py",
+      "sha256": "faabdf3badc2eb61912c6c621599258015041cfb28ec8e696dbf0b0940f936ca",
+      "size": 7773,
+      "category": "harness_source",
+      "ownership": "builder"
+    },
+    {
+      "path": "scripts/remaster/r1/mutant_adapter.py",
+      "sha256": "b68745bd41d1694aa2244c70b135550b192fddfa911983d87447ea5bf1d2f248",
+      "size": 6103,
+      "category": "harness_source",
+      "ownership": "builder"
+    },
+    {
+      "path": "scripts/remaster/r1/reference_adapter.py",
+      "sha256": "985836bde6022e0cdb5437020e261ce6a1c5d9d33ceb3ea201d6267f7333cbdb",
+      "size": 9989,
+      "category": "harness_source",
+      "ownership": "builder"
+    },
+    {
+      "path": "scripts/remaster/r1/run_acceptance.py",
+      "sha256": "b26bf3d13e52d44478be75a6d1df6de8e123a91f6c0681d19c60aae716386145",
+      "size": 2306,
+      "category": "harness_source",
+      "ownership": "builder"
+    },
+    {
+      "path": "scripts/remaster/r1/run_mutant_matrix.py",
+      "sha256": "60727085a231d9a425b37780e89c6a3a3fe078a88f34adf22b9957a3811e821b",
+      "size": 3838,
+      "category": "harness_source",
+      "ownership": "builder"
+    },
+    {
+      "path": "tests/remaster/r1/conftest.py",
+      "sha256": "9fe3232bbe63c281c5a2174a46d064dec54d29cee96a67d66d7f87c3452c99fd",
+      "size": 1258,
+      "category": "focused_test",
+      "ownership": "builder"
+    },
+    {
+      "path": "tests/remaster/r1/test_contracts.py",
+      "sha256": "7c5aa7d283b4c9e48f21f2e417f1e722b2b6e7ee4712c4168b3aea4ef5e8c3af",
+      "size": 5301,
+      "category": "focused_test",
+      "ownership": "builder"
+    },
+    {
+      "path": "tests/remaster/r1/test_current_prototype.py",
+      "sha256": "f3ee93cd4e6a413d653c38de77155e197e36b25a53d121cedcdef8dda1aa41fd",
+      "size": 2534,
+      "category": "focused_test",
+      "ownership": "builder"
+    },
+    {
+      "path": "tests/remaster/r1/test_mutants.py",
+      "sha256": "087d05af1e3a41f951e52949243870afecc2161354ad06a38d4114c237841f04",
+      "size": 1835,
+      "category": "focused_test",
+      "ownership": "builder"
+    },
+    {
+      "path": "tests/remaster/r1/test_protocol.py",
+      "sha256": "91bf391d3728027bcb8df9e2f41a6d3ffded7dbfeed86d458e1b3e72615f4a6c",
+      "size": 6296,
+      "category": "focused_test",
+      "ownership": "builder"
+    },
+    {
+      "path": "tests/remaster/r1/test_reference_adapter.py",
+      "sha256": "5b3dc58254f07c820b2d30669fa6c231ca8a7d6a10a23b100a620f18d5243860",
+      "size": 2632,
+      "category": "focused_test",
+      "ownership": "builder"
+    }
+  ]
+}

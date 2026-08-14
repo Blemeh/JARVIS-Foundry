@@ -1,0 +1,6 @@
+.................................                                        [100%]
+
+COMMAND_EXIT=0
+WALL_SECONDS=8.984
+BASETEMP=C:\Users\b\AppData\Local\Temp\jarvis-r1-builder-r3-focused-canonical
+PYTHONDONTWRITEBYTECODE=1

@@ -1,0 +1,42 @@
+{
+  "schema": "jarvis-remaster-work-package-dispatch-addendum-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R1",
+  "repair_round": 2,
+  "dispatch": 2,
+  "status": "FROZEN",
+  "purpose": "Authorize a fresh non-concurrent replacement builder after repair dispatch 1 produced no checkpoint or deliverable, without changing or weakening the original repair work package.",
+  "authoritative_repair_package": {
+    "path": "docs/remaster/work_packages/R1_REPAIR_ROUND2_WORK_PACKAGE.json",
+    "sha256": "900880bcf510425d41a5714257cc6cd66f0cfcbd1a0affe9905835e50017ef09",
+    "size": 12028,
+    "requirements_changed": false
+  },
+  "new_frozen_inputs": [
+    {
+      "path": "docs/remaster/evidence/r1/R1_BUILDER_REPAIR_ATTEMPT1_FAIL.json",
+      "sha256": "cf8fec5c8a423893ffe8695e00d8df3e18b43a412c83e6c9d6837a93dcfe79b6",
+      "size": 1447,
+      "required_state": "FAIL_PRESERVED_UNCHANGED"
+    },
+    {
+      "path": "docs/remaster/FINDINGS.jsonl",
+      "sha256": "c3d232e6589b2f58aab2dfff55732ac162d83aef5d901050d53411f3be302f26",
+      "size": 13868,
+      "required_records": [
+        "R1-F006",
+        "R1-F007",
+        "R1-F008"
+      ]
+    }
+  ],
+  "single_writer_guard": {
+    "previous_builder": "/root/r1_builder_repair_r2",
+    "previous_builder_state": "INTERRUPTED",
+    "previous_builder_owned_files_changed": 0,
+    "partial_output_reuse_allowed": false,
+    "replacement_must_be_fresh_context": true
+  },
+  "ownership_and_stop_conditions": "All ownership, immutable evidence, tests, resources, stop conditions, output naming, and acceptance criteria in the authoritative repair package remain mandatory and unchanged. The replacement builder must additionally preserve this addendum and the failed-dispatch record, and include both in the round-2 artifact manifest.",
+  "builder_status": "NOT_TESTED until a fresh independent verifier passes every original and repair criterion"
+}

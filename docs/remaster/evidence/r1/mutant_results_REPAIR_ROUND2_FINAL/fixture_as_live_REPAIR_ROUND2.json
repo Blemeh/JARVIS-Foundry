@@ -1,0 +1,29 @@
+{
+  "canonical_verdict_sha256": "32a429bdb99100a187d87231227f830e89e80443fc17be1f68ce8893d86f0752",
+  "criterion_evidence_nonempty": true,
+  "detected": true,
+  "expected_code": "FIXTURE_AS_LIVE",
+  "failed_journey_ids": [
+    "J01",
+    "J02",
+    "J03",
+    "J04",
+    "J05",
+    "J06",
+    "J07",
+    "J08",
+    "J09",
+    "J10"
+  ],
+  "mutant": "fixture_as_live",
+  "observed_codes": [
+    "FIXTURE_AS_LIVE",
+    "PROOF_SCOPE_MISMATCH",
+    "SUBJECT_PROOF_SCOPE_MISMATCH"
+  ],
+  "observer_status": "NOT_REQUESTED",
+  "product_claim_status": "NOT_TESTED",
+  "proof_scope": "HARNESS_SELF_TEST",
+  "schema": "jarvis-r1-mutant-result-repair-round2-v1",
+  "status": "FAIL"
+}

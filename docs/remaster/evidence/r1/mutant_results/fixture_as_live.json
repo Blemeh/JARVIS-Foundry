@@ -1,0 +1,1130 @@
+{
+  "adapter_process": {
+    "exit_code": 0,
+    "stderr_present": false,
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "timed_out": false
+  },
+  "contract_manifest": [
+    {
+      "journey_id": "J01",
+      "path": "journeys/J01.json",
+      "sha256": "3421098d53f6db25210cfc36bdb77046d52658e376fe10869bc191e8522656c0"
+    },
+    {
+      "journey_id": "J02",
+      "path": "journeys/J02.json",
+      "sha256": "965cd81ee56b034f91d1ea58191ba4a7c7598305fb391548109d6d2173fa2fa0"
+    },
+    {
+      "journey_id": "J03",
+      "path": "journeys/J03.json",
+      "sha256": "9351a7c772c8991ef83b529f72161bd1206e6c9075d4a7567781350adbc7de7a"
+    },
+    {
+      "journey_id": "J04",
+      "path": "journeys/J04.json",
+      "sha256": "78f5f6658fcc1292ce2427a713fd6f73810bcf11dbf9f3bb8a23fb04153cfb4a"
+    },
+    {
+      "journey_id": "J05",
+      "path": "journeys/J05.json",
+      "sha256": "4d1560cb3ab9a740be804567658d7b75c6630a5cf24ce6de401b696563bdf977"
+    },
+    {
+      "journey_id": "J06",
+      "path": "journeys/J06.json",
+      "sha256": "ff92429a401fd0e5a9065b8a69dd43a4dfe5090adc0350be389bd5b538948487"
+    },
+    {
+      "journey_id": "J07",
+      "path": "journeys/J07.json",
+      "sha256": "df019c43689f74167f0f20fbfcdad0cd84a8f1551d2590a9ba47cb6e78efe3c7"
+    },
+    {
+      "journey_id": "J08",
+      "path": "journeys/J08.json",
+      "sha256": "3d2d1a2aff663354dc16bdbeeee4829e6a19799628fde7ad157029b611db8b16"
+    },
+    {
+      "journey_id": "J09",
+      "path": "journeys/J09.json",
+      "sha256": "5c1ef4e41dc56516b2f4af96e655a1935db7920d3471c66d0a8a09f2c6446ef5"
+    },
+    {
+      "journey_id": "J10",
+      "path": "journeys/J10.json",
+      "sha256": "73b6c4236036b2a9425b25d42315c663ba360d892a0f6f899f75b983148f9726"
+    }
+  ],
+  "findings": [
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J01].evidence[0].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J01].evidence[1].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J01].evidence[2].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J01].evidence[3].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J01].evidence[4].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J01].evidence[5].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J02].evidence[0].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J02].evidence[1].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J02].evidence[2].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J02].evidence[3].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J02].evidence[4].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J02].evidence[5].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J03].evidence[0].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J03].evidence[1].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J03].evidence[2].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J03].evidence[3].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J03].evidence[4].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J03].evidence[5].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J04].evidence[0].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J04].evidence[1].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J04].evidence[2].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J04].evidence[3].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J04].evidence[4].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J04].evidence[5].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J05].evidence[0].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J05].evidence[1].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J05].evidence[2].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J05].evidence[3].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J05].evidence[4].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J05].evidence[5].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J06].evidence[0].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J06].evidence[1].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J06].evidence[2].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J06].evidence[3].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J06].evidence[4].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J06].evidence[5].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J07].evidence[0].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J07].evidence[1].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J07].evidence[2].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J07].evidence[3].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J07].evidence[4].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J07].evidence[5].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J08].evidence[0].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J08].evidence[1].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J08].evidence[2].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J08].evidence[3].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J08].evidence[4].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J08].evidence[5].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J09].evidence[0].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J09].evidence[1].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J09].evidence[2].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J09].evidence[3].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J09].evidence[4].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J09].evidence[5].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J10].evidence[0].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J10].evidence[1].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J10].evidence[2].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J10].evidence[3].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J10].evidence[4].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J10].evidence[5].payload.real_or_fixture"
+    },
+    {
+      "code": "FIXTURE_AS_LIVE",
+      "evidence_ids": [],
+      "message": "product-live proof requires real external after-state",
+      "path": "response.journeys[J10].evidence[6].payload.real_or_fixture"
+    }
+  ],
+  "journeys": [
+    {
+      "criterion_evidence": {
+        "J01-S01": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:2860168d6ebbf0fbe37b8404262aedb4a5f2f79d81f30ee938ecb63391f717c9",
+          "sha256:5a161ca186091ea4a1552c981c450bef7fcd05d8822790df8fe152d538510b4e",
+          "sha256:9ad711b3bb815d638e6799b323416fadb4177aa2cb280b9904c2a60384a6f770"
+        ],
+        "J01-S02": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:5a161ca186091ea4a1552c981c450bef7fcd05d8822790df8fe152d538510b4e",
+          "sha256:81304845324df594dacb9c78ad3056c2c560a8523a0b582552bd47f1a9fbbfca",
+          "sha256:9ad711b3bb815d638e6799b323416fadb4177aa2cb280b9904c2a60384a6f770",
+          "sha256:e35c555b5831bd6b57ca8f6ec741c8877e22698cab4618f59ac0c9311356e101"
+        ],
+        "J01-S03": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:81304845324df594dacb9c78ad3056c2c560a8523a0b582552bd47f1a9fbbfca",
+          "sha256:9ad711b3bb815d638e6799b323416fadb4177aa2cb280b9904c2a60384a6f770",
+          "sha256:e35c555b5831bd6b57ca8f6ec741c8877e22698cab4618f59ac0c9311356e101"
+        ],
+        "J01-S04": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:9ad711b3bb815d638e6799b323416fadb4177aa2cb280b9904c2a60384a6f770",
+          "sha256:9f3d1fc9e4d72d993e1f0ef0f10895e2ea5fb3ecd184b342ff93e58075c7638c"
+        ]
+      },
+      "findings": [
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J01].evidence[0].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J01].evidence[1].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J01].evidence[2].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J01].evidence[3].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J01].evidence[4].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J01].evidence[5].payload.real_or_fixture"
+        }
+      ],
+      "journey_id": "J01",
+      "status": "FAIL"
+    },
+    {
+      "criterion_evidence": {
+        "J02-S01": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:262f3d475876fde832813b0ccd26521ecda4ec9456e93d9d446ead190c117767",
+          "sha256:32fafff533867cbcae689e767e0e5a279ae1bb71d0c608d0080f944ec0eb7284",
+          "sha256:613896f416613c2db8a9f129f59aea03d93f88435f35c75e179263c053673c5b"
+        ],
+        "J02-S02": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:262f3d475876fde832813b0ccd26521ecda4ec9456e93d9d446ead190c117767",
+          "sha256:32fafff533867cbcae689e767e0e5a279ae1bb71d0c608d0080f944ec0eb7284",
+          "sha256:97e69677d6ffe60fc9657d24299f0989e536cc9ea017b593c35787dc233646be",
+          "sha256:cde7e523c6a6a88e118146d2d40db1f3657605b6f2599182e07de59040fd2c80"
+        ],
+        "J02-S03": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:262f3d475876fde832813b0ccd26521ecda4ec9456e93d9d446ead190c117767",
+          "sha256:32fafff533867cbcae689e767e0e5a279ae1bb71d0c608d0080f944ec0eb7284"
+        ],
+        "J02-S04": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:262f3d475876fde832813b0ccd26521ecda4ec9456e93d9d446ead190c117767",
+          "sha256:66903cb8d20fa536d2aaba8d149182781097e01f86d6a3355b454e013cc2094d",
+          "sha256:97e69677d6ffe60fc9657d24299f0989e536cc9ea017b593c35787dc233646be"
+        ]
+      },
+      "findings": [
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J02].evidence[0].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J02].evidence[1].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J02].evidence[2].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J02].evidence[3].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J02].evidence[4].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J02].evidence[5].payload.real_or_fixture"
+        }
+      ],
+      "journey_id": "J02",
+      "status": "FAIL"
+    },
+    {
+      "criterion_evidence": {
+        "J03-S01": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:018084e5ee3c6e1136514ff1b0d35f1efb0637f07ff1a54b0dacad49bfb54e9c",
+          "sha256:8621cbd7a3457472b3fae15d97075a44ddba957d151621475ed004cec849bbea",
+          "sha256:e055f7fdadfe5ff9b3505d6dae222f36683f2495d0c32ffcfdc5fbfe54cff7b8"
+        ],
+        "J03-S02": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:8621cbd7a3457472b3fae15d97075a44ddba957d151621475ed004cec849bbea",
+          "sha256:c2fb04951cf0e4495737828903ba3a6bca7fc40dc2021bd2e38ce8fbcbfebf5a",
+          "sha256:e055f7fdadfe5ff9b3505d6dae222f36683f2495d0c32ffcfdc5fbfe54cff7b8",
+          "sha256:e6fe2dfb548fbef2696233b5704c9ba323a17965b0ae6f11ece55718aedc2aa6"
+        ],
+        "J03-S03": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:8621cbd7a3457472b3fae15d97075a44ddba957d151621475ed004cec849bbea",
+          "sha256:c2fb04951cf0e4495737828903ba3a6bca7fc40dc2021bd2e38ce8fbcbfebf5a",
+          "sha256:e055f7fdadfe5ff9b3505d6dae222f36683f2495d0c32ffcfdc5fbfe54cff7b8"
+        ],
+        "J03-S04": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:2b6477203bfe56fd9281e5b60d3fe446a5d8dc642f1112b9835a8be1e21a5835",
+          "sha256:e055f7fdadfe5ff9b3505d6dae222f36683f2495d0c32ffcfdc5fbfe54cff7b8",
+          "sha256:e6fe2dfb548fbef2696233b5704c9ba323a17965b0ae6f11ece55718aedc2aa6"
+        ]
+      },
+      "findings": [
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J03].evidence[0].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J03].evidence[1].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J03].evidence[2].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J03].evidence[3].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J03].evidence[4].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J03].evidence[5].payload.real_or_fixture"
+        }
+      ],
+      "journey_id": "J03",
+      "status": "FAIL"
+    },
+    {
+      "criterion_evidence": {
+        "J04-S01": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:046c0a3cf217936bc7a992c070f722922f255afa2b5ca27b096a63106a391813",
+          "sha256:0f14fd1803e829fc6e466ed7a486b4e5f3ad516d4aa01159d504f4e9c55c16e5",
+          "sha256:a86162ae31c37f89d3438c01a4823ffec4436ba58e41657af7efba81b6d5f1ce"
+        ],
+        "J04-S02": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:046c0a3cf217936bc7a992c070f722922f255afa2b5ca27b096a63106a391813",
+          "sha256:6cba950a502ad759052864804240e2882e97af4cc26a32448b2f0715039f8bb2",
+          "sha256:a86162ae31c37f89d3438c01a4823ffec4436ba58e41657af7efba81b6d5f1ce"
+        ],
+        "J04-S03": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:046c0a3cf217936bc7a992c070f722922f255afa2b5ca27b096a63106a391813",
+          "sha256:3ea2f8a6a13df2c7904286822b3c3810cd3a4515aa4ae949bdc1816ea856efdd",
+          "sha256:6cba950a502ad759052864804240e2882e97af4cc26a32448b2f0715039f8bb2"
+        ],
+        "J04-S04": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:046c0a3cf217936bc7a992c070f722922f255afa2b5ca27b096a63106a391813",
+          "sha256:480e20c6b6515698bfd3570acad82265cbed629c0290c2c21dd932fab1093e9f"
+        ]
+      },
+      "findings": [
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J04].evidence[0].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J04].evidence[1].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J04].evidence[2].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J04].evidence[3].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J04].evidence[4].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J04].evidence[5].payload.real_or_fixture"
+        }
+      ],
+      "journey_id": "J04",
+      "status": "FAIL"
+    },
+    {
+      "criterion_evidence": {
+        "J05-S01": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:83d60447eb2ece8239494661c7c3fb68926c4454ba395a14975056c7c61c0a50",
+          "sha256:86fe14646ecfcf5afe644f1f74f986dc8af1a53a6f6a22aea91d57bc3279130c",
+          "sha256:db31a206e18a86b2724d2796984c11fb0a1915d3ee009db1b2cbe8f4558c7830"
+        ],
+        "J05-S02": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:83d60447eb2ece8239494661c7c3fb68926c4454ba395a14975056c7c61c0a50",
+          "sha256:a154a041f9ea7567752dc7027bba05a69ac88d34e14264dac7fe23ec23a390fd",
+          "sha256:db31a206e18a86b2724d2796984c11fb0a1915d3ee009db1b2cbe8f4558c7830",
+          "sha256:e3fd2b2bab2b9b58f5be928dd71da0582a05a2324aad8968358c36773c758c49"
+        ],
+        "J05-S03": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:83d60447eb2ece8239494661c7c3fb68926c4454ba395a14975056c7c61c0a50",
+          "sha256:db31a206e18a86b2724d2796984c11fb0a1915d3ee009db1b2cbe8f4558c7830"
+        ],
+        "J05-S04": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:2d56c87549ca878e55e0d214d48a2cf08df5f2457900a6c488a7301f4866a1ae",
+          "sha256:83d60447eb2ece8239494661c7c3fb68926c4454ba395a14975056c7c61c0a50",
+          "sha256:a154a041f9ea7567752dc7027bba05a69ac88d34e14264dac7fe23ec23a390fd"
+        ]
+      },
+      "findings": [
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J05].evidence[0].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J05].evidence[1].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J05].evidence[2].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J05].evidence[3].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J05].evidence[4].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J05].evidence[5].payload.real_or_fixture"
+        }
+      ],
+      "journey_id": "J05",
+      "status": "FAIL"
+    },
+    {
+      "criterion_evidence": {
+        "J06-S01": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:546b711174b8867210fa5700a881c149f29e1db26655a2924ebe7cbfc548df17",
+          "sha256:85b48e8ca4e00e91a9076df92fc712bde77d6a9ce668b02a20f88994affe6877",
+          "sha256:c70e533923c78eb6527056033cbe0adf930f0c2cd2afbea9639dde3af19a59d2"
+        ],
+        "J06-S02": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:5367ed4081253a74da225fa8365f16efa3ee309ce9e2f2c746d1f40b9b105043",
+          "sha256:c70e533923c78eb6527056033cbe0adf930f0c2cd2afbea9639dde3af19a59d2"
+        ],
+        "J06-S03": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:5367ed4081253a74da225fa8365f16efa3ee309ce9e2f2c746d1f40b9b105043",
+          "sha256:882a7391947e7657b7882abf3186fd299ac3720a264abb1ded4d049d62b3d580",
+          "sha256:c70e533923c78eb6527056033cbe0adf930f0c2cd2afbea9639dde3af19a59d2"
+        ],
+        "J06-S04": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:546b711174b8867210fa5700a881c149f29e1db26655a2924ebe7cbfc548df17",
+          "sha256:c70e533923c78eb6527056033cbe0adf930f0c2cd2afbea9639dde3af19a59d2",
+          "sha256:deede9931814c2e251511fdbee305194275ceb5e097870e46136ffb2d7a85f9c"
+        ]
+      },
+      "findings": [
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J06].evidence[0].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J06].evidence[1].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J06].evidence[2].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J06].evidence[3].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J06].evidence[4].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J06].evidence[5].payload.real_or_fixture"
+        }
+      ],
+      "journey_id": "J06",
+      "status": "FAIL"
+    },
+    {
+      "criterion_evidence": {
+        "J07-S01": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:15972fbcc7036074905c8c44294bb7812edb15d3715516ba1880dd03fb10edbf",
+          "sha256:63352065e98934f11dcc2856e8a4919a349026656500af310ddc2b6a187600c0",
+          "sha256:c609e76699eef5984ab61d56d1927a8292f436c317e0aee1bfdf4ef20bf23c47"
+        ],
+        "J07-S02": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:15972fbcc7036074905c8c44294bb7812edb15d3715516ba1880dd03fb10edbf",
+          "sha256:63352065e98934f11dcc2856e8a4919a349026656500af310ddc2b6a187600c0",
+          "sha256:6ef94690d711b7f4d1014bd799f5cb4595514333c81967376667fdcb1e9f7d74"
+        ],
+        "J07-S03": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:15972fbcc7036074905c8c44294bb7812edb15d3715516ba1880dd03fb10edbf",
+          "sha256:6ef94690d711b7f4d1014bd799f5cb4595514333c81967376667fdcb1e9f7d74",
+          "sha256:8193ac58796285fa6957040503431deae5ccc07cf4ec51f71efcc2b443da0394"
+        ],
+        "J07-S04": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:15972fbcc7036074905c8c44294bb7812edb15d3715516ba1880dd03fb10edbf",
+          "sha256:39f04a01d8cd14c1fddda145b555ef7d86c95398cd375f93511d9dc352492077"
+        ]
+      },
+      "findings": [
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J07].evidence[0].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J07].evidence[1].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J07].evidence[2].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J07].evidence[3].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J07].evidence[4].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J07].evidence[5].payload.real_or_fixture"
+        }
+      ],
+      "journey_id": "J07",
+      "status": "FAIL"
+    },
+    {
+      "criterion_evidence": {
+        "J08-S01": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:4584b2771c15d0ca94adad6a99c0fb32f831bfdbeff09fc5cd3df5d4f55d4fb3",
+          "sha256:5627746db99b90f780fc3ba53e8535234704433cc43c9879b85268e0a4390622",
+          "sha256:56698942e0f511bad29aa69eb37f2471c52db7b47c64438df7df9e0e6d1d2f56"
+        ],
+        "J08-S02": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:4584b2771c15d0ca94adad6a99c0fb32f831bfdbeff09fc5cd3df5d4f55d4fb3",
+          "sha256:a54230c306dbc32aa6f4bdb2a027fb02bbaeca1cbe3ab26c6a5a54603857d8a9"
+        ],
+        "J08-S03": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:1836355379daacd3452c032c0b3967dcd48c5d627916fefa850166dd6a2e36db",
+          "sha256:4584b2771c15d0ca94adad6a99c0fb32f831bfdbeff09fc5cd3df5d4f55d4fb3",
+          "sha256:a54230c306dbc32aa6f4bdb2a027fb02bbaeca1cbe3ab26c6a5a54603857d8a9"
+        ],
+        "J08-S04": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:4584b2771c15d0ca94adad6a99c0fb32f831bfdbeff09fc5cd3df5d4f55d4fb3",
+          "sha256:5627746db99b90f780fc3ba53e8535234704433cc43c9879b85268e0a4390622",
+          "sha256:7f2f6abe3ad3d54771abd40af99eaff634ca1e1a7bc3d00a990ab9b5030af3ed"
+        ]
+      },
+      "findings": [
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J08].evidence[0].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J08].evidence[1].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J08].evidence[2].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J08].evidence[3].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J08].evidence[4].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J08].evidence[5].payload.real_or_fixture"
+        }
+      ],
+      "journey_id": "J08",
+      "status": "FAIL"
+    },
+    {
+      "criterion_evidence": {
+        "J09-S01": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:64f382f29dc1206ea8e841ecdb6af676733060a52c17a1ca9bf35a86a17f5522",
+          "sha256:8787c8e1628085bf6dd30e2c5ed0413d5744f837dd91e46451776ddfccdca636",
+          "sha256:a33e691e26e8662061384332089a97caca746ff20808e93037e187275718339e"
+        ],
+        "J09-S02": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:7fa4c7859f1c17fba46a83b1447e874dd133f19c2a6a02ba3dbab018e1c0e4a4",
+          "sha256:a33e691e26e8662061384332089a97caca746ff20808e93037e187275718339e",
+          "sha256:cefdd1295b4745dc8ea6b408b43f084596b8f6241736ea431f6fbcd774196b5f"
+        ],
+        "J09-S03": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:7fa4c7859f1c17fba46a83b1447e874dd133f19c2a6a02ba3dbab018e1c0e4a4",
+          "sha256:a33e691e26e8662061384332089a97caca746ff20808e93037e187275718339e",
+          "sha256:cefdd1295b4745dc8ea6b408b43f084596b8f6241736ea431f6fbcd774196b5f"
+        ],
+        "J09-S04": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:3209674b84837ccd3ce02bafd492ca3422f9a0a03a20e019ce84707f1ab70dd3",
+          "sha256:8787c8e1628085bf6dd30e2c5ed0413d5744f837dd91e46451776ddfccdca636",
+          "sha256:a33e691e26e8662061384332089a97caca746ff20808e93037e187275718339e"
+        ]
+      },
+      "findings": [
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J09].evidence[0].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J09].evidence[1].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J09].evidence[2].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J09].evidence[3].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J09].evidence[4].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J09].evidence[5].payload.real_or_fixture"
+        }
+      ],
+      "journey_id": "J09",
+      "status": "FAIL"
+    },
+    {
+      "criterion_evidence": {
+        "J10-S01": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:427c6b7c2423195affcc2ba88ea58a6b1890daf50ff9e4a8c8096609ef661ec7",
+          "sha256:7634e2fb50ffaf6276bc0ac97826c02b35b25dd71f3112b0af34c0e8259e273f",
+          "sha256:8979384578cd8486c19fc3f5e1af113793cd8793962b89bca067d4f157f385a5"
+        ],
+        "J10-S02": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:5b6e390162ee259755d28d06aea42c42bb806f36da7f9528143fc8e318df73c6",
+          "sha256:8979384578cd8486c19fc3f5e1af113793cd8793962b89bca067d4f157f385a5",
+          "sha256:b7b608ff45136eb3b6a0b823fea8aecec0b782fa5e4543102b017a9d0e09a1ba"
+        ],
+        "J10-S03": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:2645839e08cec9e2a47f657b27cf7990ac2f874c9a8a172c9acfc2816dba23b2",
+          "sha256:5b6e390162ee259755d28d06aea42c42bb806f36da7f9528143fc8e318df73c6",
+          "sha256:8979384578cd8486c19fc3f5e1af113793cd8793962b89bca067d4f157f385a5"
+        ],
+        "J10-S04": [
+          "finding:FIXTURE_AS_LIVE",
+          "sha256:0f805fbc6fd28d6e7754f43d33708d94e315b183020879f1a19edb45d870f9ab",
+          "sha256:7634e2fb50ffaf6276bc0ac97826c02b35b25dd71f3112b0af34c0e8259e273f",
+          "sha256:8979384578cd8486c19fc3f5e1af113793cd8793962b89bca067d4f157f385a5",
+          "sha256:b7b608ff45136eb3b6a0b823fea8aecec0b782fa5e4543102b017a9d0e09a1ba"
+        ]
+      },
+      "findings": [
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J10].evidence[0].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J10].evidence[1].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J10].evidence[2].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J10].evidence[3].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J10].evidence[4].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J10].evidence[5].payload.real_or_fixture"
+        },
+        {
+          "code": "FIXTURE_AS_LIVE",
+          "evidence_ids": [],
+          "message": "product-live proof requires real external after-state",
+          "path": "response.journeys[J10].evidence[6].payload.real_or_fixture"
+        }
+      ],
+      "journey_id": "J10",
+      "status": "FAIL"
+    }
+  ],
+  "product_claim_status": "FAIL",
+  "proof_scope": "PRODUCT_LIVE",
+  "protocol_version": "jarvis-purpose-protocol-v1",
+  "qualification": "PRODUCT_PURPOSE_EVALUATION",
+  "request_id": "r1-purpose-canonical-request-v1",
+  "run_confinement": {
+    "cleanup": "completed",
+    "temporary": true
+  },
+  "schema": "jarvis-purpose-verdict-v1",
+  "status": "FAIL",
+  "subject": {
+    "adapter_id": "r1-deterministic-reference-adapter",
+    "system_identity": "R1_REFERENCE_FILE_SYSTEM",
+    "system_release": "reference-file-effects-v1"
+  }
+}

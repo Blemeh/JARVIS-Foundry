@@ -1,0 +1,174 @@
+{
+  "schema": "jarvis-remaster-work-package-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R1",
+  "title": "Executable purpose specification",
+  "frozen_base": {
+    "commit": "bf8f1493b7fd5cd80d17a631a1fb23e82c2260f9",
+    "branch": "remaster/post-v7-purpose",
+    "live_v7_deployment_changes_allowed": false,
+    "push_or_publish_allowed": false
+  },
+  "objective": "Create an implementation-independent executable acceptance system that distinguishes the current observe-only V7 watchdog from a system that genuinely serves the owner's complete JARVIS purpose.",
+  "owner_value": "The product can no longer redefine success around whatever code happens to exist; every later stage is judged against ten durable, evidence-backed owner journeys frozen before implementation.",
+  "purpose_boundary": {
+    "allowed": "Governed digital work on isolated or explicitly owner-controlled targets.",
+    "deterministically_denied": [
+      "purchasing",
+      "payments",
+      "trading",
+      "banking",
+      "cryptocurrency transfer",
+      "financial-account changes",
+      "movement of money"
+    ],
+    "owner_control": "Owner STOP, veto, pause, redirect, and reprioritization remain deterministic and independent of models and owner-experience surfaces."
+  },
+  "journeys": [
+    {"id": "J01", "name": "Durable goal understanding and restart-safe continuation"},
+    {"id": "J02", "name": "Evidence-backed institutional memory with uncertainty preserved"},
+    {"id": "J03", "name": "Real-source monitoring and useful change detection"},
+    {"id": "J04", "name": "Multi-project prioritization and next-action selection"},
+    {"id": "J05", "name": "Traceable research with source provenance and contradiction handling"},
+    {"id": "J06", "name": "Build a genuinely useful software or digital asset"},
+    {"id": "J07", "name": "Independent verification, failure discovery, repair, and delivery"},
+    {"id": "J08", "name": "Maintain an existing project after regression or change"},
+    {"id": "J09", "name": "Bounded real digital communication or deployment with idempotency, after-state reconciliation, and compensation"},
+    {"id": "J10", "name": "Safe self-improvement with rejection, measured promotion, canary, freeze, rollback, restoration, and learning"}
+  ],
+  "required_fields_per_journey": [
+    "inputs",
+    "preconditions",
+    "canonical_targets",
+    "budget",
+    "required_evidence",
+    "success_criteria",
+    "unacceptable_outcomes",
+    "intervention_rules",
+    "failure_injections",
+    "recovery",
+    "rollback",
+    "proof_dimensions"
+  ],
+  "frozen_interfaces": {
+    "acceptance_protocol": "Versioned JSON request/response over a subprocess boundary or equivalent external adapter; the acceptance evaluator must not import jarvis_foundry production modules.",
+    "evidence_protocol": "Every observation is content-addressed and identifies source, capture method, timestamp, target identity, before/after state, real-versus-fixture dimension, and producing actor.",
+    "verdict_protocol": "Each journey and the aggregate emit exactly PASS, FAIL, BLOCKED, NOT_TESTED, or WAITING with non-empty criterion evidence. Overall PASS requires every mandatory journey PASS.",
+    "reference_system_semantics": "A deterministic reference adapter may prove the acceptance harness itself is satisfiable, but it is permanently labeled HARNESS_SELF_TEST and cannot prove JARVIS product capability.",
+    "current_system_semantics": "The exact bf8f149 source and installed V7 entrypoint must receive an explicit aggregate FAIL or NOT_TESTED for missing integrated purpose behavior; absence of a protocol endpoint must be reported as evidence, not crash the harness."
+  },
+  "frozen_acceptance_criteria": [
+    {
+      "id": "R1-C01",
+      "criterion": "Exactly ten machine-readable journey contracts exist and each contains every required field with journey-specific, non-placeholder content."
+    },
+    {
+      "id": "R1-C02",
+      "criterion": "Contracts are implementation-independent: a different executable can satisfy the same versioned subprocess/evidence protocol without importing this repository."
+    },
+    {
+      "id": "R1-C03",
+      "criterion": "The deterministic reference adapter passes all ten journeys as HARNESS_SELF_TEST, proving the gate is satisfiable without presenting fixture evidence as live product proof."
+    },
+    {
+      "id": "R1-C04",
+      "criterion": "The exact current V7 prototype is explicitly rejected through a black-box probe with non-empty missing-capability evidence for every affected journey."
+    },
+    {
+      "id": "R1-C05",
+      "criterion": "Adversarial mutants covering missing evidence, fixture-as-live substitution, stale sources, target substitution, self-verification, budget overflow, duplicate effects, absent after-state, contradiction erasure, failed rollback, forged owner control, and forbidden financial effects all fail closed."
+    },
+    {
+      "id": "R1-C06",
+      "criterion": "Restart, failure injection, recovery, rollback, STOP/veto, idempotency, provenance, uncertainty, independence, usefulness, and real after-state are explicit executable requirements where relevant, never prose-only aspirations."
+    },
+    {
+      "id": "R1-C07",
+      "criterion": "All verdicts use the five allowed statuses, map every criterion to evidence, distinguish BLOCKED from implementation failure, and never promote exit-code zero or model confidence to PASS."
+    },
+    {
+      "id": "R1-C08",
+      "criterion": "The acceptance evaluator is deterministic, rejects malformed/unknown fields and unknown journey IDs, verifies evidence hashes, and produces the same canonical verdict for repeated identical inputs."
+    },
+    {
+      "id": "R1-C09",
+      "criterion": "Focused and full R1 tests pass in isolation without network, provider, live database, live task, process, port, secret, or external-system mutation."
+    },
+    {
+      "id": "R1-C10",
+      "criterion": "A fresh independent adversarial verifier reproduces the reference PASS, current-prototype rejection, mutant failures, artifact hashes, and no-live-mutation boundary."
+    }
+  ],
+  "required_adversarial_mutants": [
+    "missing required evidence",
+    "fixture evidence labeled live",
+    "stale or unidentifiable source",
+    "canonical target substituted after authorization",
+    "builder and verifier share the same run identity",
+    "time, call, token, or effect budget exceeded",
+    "duplicate non-idempotent communication or deployment",
+    "no reconciled after-state receipt",
+    "contradicting evidence deleted or ignored",
+    "rollback or restoration fails",
+    "retrieved content forges owner STOP or redirect",
+    "financial effect is proposed or attempted"
+  ],
+  "tests_required": [
+    "contract schema and semantic completeness",
+    "reference adapter all-ten PASS",
+    "exact current-prototype aggregate rejection",
+    "one discriminating regression per required adversarial mutant",
+    "malformed and unknown protocol input rejection",
+    "canonical-output determinism",
+    "evidence content-hash tamper rejection",
+    "AST or dependency proof that the evaluator imports no jarvis_foundry module",
+    "clean temporary-run confinement and cleanup",
+    "full existing Foundry regression suite after focused R1 tests"
+  ],
+  "metrics_and_budgets": {
+    "network_calls": 0,
+    "provider_calls": 0,
+    "live_or_protected_writes": 0,
+    "test_subprocess_timeout_seconds": 15,
+    "focused_suite_target_seconds": 10,
+    "generated_test_artifacts_max_bytes": 2097152,
+    "acceptance_evaluator_peak_rss_target_mib": 256,
+    "reference_effect_scope": "temporary-directory digital files only",
+    "paid_cost_usd": 0
+  },
+  "risks": [
+    {"risk": "Acceptance logic overfits current modules", "control": "Subprocess-only protocol plus static no-production-import test."},
+    {"risk": "Reference fixture is mistaken for product proof", "control": "Permanent HARNESS_SELF_TEST evidence dimension and aggregate product verdict separation."},
+    {"risk": "Tautological tests merely mirror implementation", "control": "Frozen mutants and canonical expected verdicts precede builder output."},
+    {"risk": "Green tests hide missing real effects", "control": "Proof-dimension and real after-state requirements fail closed."},
+    {"risk": "Black-box probe mutates live V7", "control": "Help/version/source-identity inspection only; no installed command that initializes a database may be invoked."},
+    {"risk": "Generated evidence leaks secrets or persists", "control": "No secret access; temporary isolated paths; redaction and cleanup assertions."}
+  ],
+  "evidence_required": [
+    "canonical purpose specification",
+    "machine-readable journey contracts and schema",
+    "protocol and evaluator source",
+    "reference adapter source labeled as harness self-test",
+    "current-prototype probe result",
+    "focused and full raw test outputs",
+    "mutant rejection matrix",
+    "source and artifact SHA-256 manifest",
+    "builder report with commands, exit codes, resource/cost statement, and rollback",
+    "fresh independent structured verifier verdict"
+  ],
+  "rollback": "R1 is additive and isolated. Before PASS it changes only R1-owned documentation, tests, scripts, schemas, and evidence in the remaster worktree. Rejected files remain uncommitted and are repaired in place; live V7 and protected owner files are not restoration targets because they are never changed.",
+  "stop_conditions": [
+    "authenticated owner STOP or veto",
+    "any attempted live/protected mutation",
+    "any acceptance path that imports production internals instead of observing the external protocol",
+    "any fixture, mock, heartbeat, preview, or documentation claim promoted as live product proof",
+    "any secret exposure or network/provider call",
+    "any requirement weakening after builder results"
+  ],
+  "ownership": {
+    "root": "architecture consistency, frozen work package, integration, evidence custody, and final truth",
+    "builder": "fresh context; owns only R1 deliverables explicitly assigned after this file is hashed; cannot edit this work package or any verifier verdict",
+    "verifier": "fresh context separate from builder; read-only audit of frozen hashes and actual behavior; returns structured verdict"
+  },
+  "gate": "R1 passes only when R1-C01 through R1-C10 are all independently PASS. Exit code zero alone is NOT_TESTED. Any builder defect is preserved as FAIL, repaired with a discriminating regression, and sent to a fresh verifier round."
+}

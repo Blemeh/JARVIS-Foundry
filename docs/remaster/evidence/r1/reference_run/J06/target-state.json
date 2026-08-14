@@ -1,0 +1,10 @@
+{
+  "journey_id": "J06",
+  "schema": "jarvis-reference-target-state-v1",
+  "sequence": 1,
+  "state": "USEFUL_EFFECT_VERIFIED",
+  "target_ids": [
+    "isolated-asset-worktree",
+    "health-report-artifact"
+  ]
+}

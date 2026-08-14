@@ -1,0 +1,23 @@
+{
+  "after_state": {
+    "sha256": "19a8004929dd960628a9b6806dc8445b85c75a35f87691251b2b25b1fd3cd9da",
+    "size": 212,
+    "state": "USEFUL_EFFECT_VERIFIED"
+  },
+  "before_state": {
+    "sha256": "d1832e827bb7d708e7b1002c3f4ced26871c24b896a68b116e0687409f48845a",
+    "size": 196,
+    "state": "BEFORE"
+  },
+  "criterion_ids": [
+    "J04-S01"
+  ],
+  "journey_id": "J04",
+  "operation": "actual temporary-directory digital file effect",
+  "phase": "INPUT",
+  "proof_dimension": "portfolio_provenance",
+  "requirement_id": "J04-E01",
+  "restoration_verified": true,
+  "schema": "jarvis-reference-evidence-artifact-v1",
+  "target_id": "portfolio-decision-record"
+}

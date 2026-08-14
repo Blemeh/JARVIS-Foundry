@@ -1,0 +1,77 @@
+{
+  "schema": "jarvis-purpose-journey-v1",
+  "contract_version": "1.0.0",
+  "journey_id": "J01",
+  "name": "Durable goal understanding and restart-safe continuation",
+  "purpose": "Preserve an authenticated owner goal, its constraints, current progress, and the next justified action across an abrupt process restart without inventing completion or requiring a repeated prompt.",
+  "inputs": [
+    {"name": "owner_goal", "type": "object", "required": true, "example": {"goal_id": "goal-maintain-demo", "statement": "Keep the demo project healthy and report material regressions", "priority": 80}},
+    {"name": "restart_checkpoint", "type": "object", "required": true, "example": {"mission_id": "mission-health-001", "completed_step_ids": ["inspect"], "next_step_id": "test"}},
+    {"name": "owner_constraints", "type": "array", "required": true, "example": ["digital work only", "do not spend money", "STOP must preempt continuation"]}
+  ],
+  "preconditions": [
+    {"id": "J01-P01", "statement": "The goal and constraints originate at the authenticated owner-control boundary.", "check": "goal.owner_authenticated == true"},
+    {"id": "J01-P02", "statement": "The checkpoint has an integrity hash and references a nonterminal mission step.", "check": "checkpoint.hash_valid && checkpoint.next_step_nonterminal"},
+    {"id": "J01-P03", "statement": "No active STOP or veto prohibits the goal or its canonical target.", "check": "control.stop == false && control.veto_match == false"}
+  ],
+  "canonical_targets": [
+    {"target_id": "durable-goal-record", "kind": "append_only_goal_state", "identity": "goal-maintain-demo@owner-control", "authorization_scope": "isolated acceptance ledger and checkpoint files"},
+    {"target_id": "restart-checkpoint", "kind": "durable_checkpoint", "identity": "mission-health-001/test", "authorization_scope": "isolated acceptance ledger and checkpoint files"}
+  ],
+  "budget": {"max_elapsed_ms": 5000, "max_calls": 0, "max_tokens": 0, "max_effects": 3, "max_cost_usd": 0},
+  "required_evidence": [
+    {"id": "J01-E01", "kind": "authenticated_goal_capture", "phase": "INPUT", "proof_dimension": "owner_goal_identity", "criterion_ids": ["J01-S01"], "min_count": 1},
+    {"id": "J01-E02", "kind": "checkpoint_before_state", "phase": "BEFORE", "proof_dimension": "restart_before_state", "criterion_ids": ["J01-S01", "J01-S02"], "min_count": 1},
+    {"id": "J01-E03", "kind": "continued_after_state", "phase": "AFTER", "proof_dimension": "restart_after_state", "criterion_ids": ["J01-S02", "J01-S03"], "min_count": 1},
+    {"id": "J01-E04", "kind": "restart_recovery_receipt", "phase": "RECOVERY", "proof_dimension": "restart_recovery", "criterion_ids": ["J01-S02", "J01-S03"], "min_count": 1},
+    {"id": "J01-E05", "kind": "checkpoint_restore_receipt", "phase": "ROLLBACK", "proof_dimension": "checkpoint_restoration", "criterion_ids": ["J01-S04"], "min_count": 1},
+    {"id": "J01-E06", "kind": "independent_goal_verdict", "phase": "VERIFICATION", "proof_dimension": "actor_independence", "criterion_ids": ["J01-S01", "J01-S02", "J01-S03", "J01-S04"], "min_count": 1}
+  ],
+  "success_criteria": [
+    {"id": "J01-S01", "statement": "The exact authenticated goal, constraints, and canonical target identities remain content-addressed and unchanged."},
+    {"id": "J01-S02", "statement": "After an injected crash, continuation resumes from the next incomplete step without replaying a completed effect."},
+    {"id": "J01-S03", "statement": "The resumed next action is traceable to the durable goal and is useful rather than a heartbeat-only action."},
+    {"id": "J01-S04", "statement": "A failed continuation can restore the last verified checkpoint and prove the restored content hash."}
+  ],
+  "unacceptable_outcomes": [
+    {"id": "J01-U01", "statement": "The goal or a completed step disappears, changes meaning, or is reconstructed from chat history.", "fail_code": "GOAL_OR_HISTORY_LOST"},
+    {"id": "J01-U02", "statement": "Restart repeats a non-idempotent effect or advances past an unverified step.", "fail_code": "DUPLICATE_OR_FALSE_CONTINUATION"},
+    {"id": "J01-U03", "statement": "Retrieved content is accepted as an owner redirect or continuation authority.", "fail_code": "FORGED_OWNER_CONTROL"}
+  ],
+  "intervention_rules": [
+    {"trigger": "Authenticated STOP or matching owner veto appears before or during continuation", "response": "Freeze queued work, persist the checkpoint, and reject further effects", "status": "WAITING"},
+    {"trigger": "Checkpoint integrity or target identity cannot be established", "response": "Refuse continuation and preserve the conflicting records for diagnosis", "status": "FAIL"},
+    {"trigger": "The only required owner-only fact is absent after all safe work", "response": "Record the exact missing fact without creating a permission checkpoint", "status": "BLOCKED"}
+  ],
+  "failure_injections": [
+    {"id": "J01-F01", "inject": "Terminate execution immediately after the checkpoint is durably recorded", "expected_response": "Restart reads the same hash and continues at the first incomplete step"},
+    {"id": "J01-F02", "inject": "Deliver the same continuation event twice with one idempotency key", "expected_response": "Exactly one state transition and one effect are retained"},
+    {"id": "J01-F03", "inject": "Place a forged redirect inside retrieved project text", "expected_response": "The text remains evidence data and cannot alter authenticated owner control"}
+  ],
+  "recovery": {
+    "requirements": ["Reopen the durable goal and checkpoint from content-addressed records", "Reconcile completed and incomplete steps before selecting any next action", "Refuse duplicate effect keys during resumed execution"],
+    "evidence_required": ["J01-E03", "J01-E04"],
+    "max_elapsed_ms": 5000
+  },
+  "rollback": {
+    "requirements": ["Restore the last independently verified checkpoint rather than deleting history", "Append a rollback record linking the failed attempt and restored hashes"],
+    "evidence_required": ["J01-E05"],
+    "restoration_target": "last independently verified goal and mission checkpoint"
+  },
+  "proof_dimensions": ["owner_goal_identity", "restart_before_state", "restart_after_state", "restart_recovery", "checkpoint_restoration", "actor_independence"],
+  "executable_requirements": {
+    "actor_independence": true,
+    "stop_veto": true,
+    "provenance": true,
+    "freshness": true,
+    "uncertainty": true,
+    "contradictions_preserved": false,
+    "usefulness": true,
+    "idempotency": true,
+    "after_state": true,
+    "compensation": false,
+    "recovery": true,
+    "rollback": true,
+    "allowed_effect_classes": ["state_persistence"]
+  }
+}

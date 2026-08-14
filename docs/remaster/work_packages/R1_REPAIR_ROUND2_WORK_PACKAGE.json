@@ -1,0 +1,178 @@
+{
+  "schema": "jarvis-remaster-repair-work-package-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R1",
+  "repair_round": 2,
+  "title": "Close forged live-proof and unsupported-status acceptance gaps",
+  "frozen_base": {
+    "commit": "bf8f1493b7fd5cd80d17a631a1fb23e82c2260f9",
+    "branch": "remaster/post-v7-purpose",
+    "live_v7_deployment_changes_allowed": false,
+    "push_or_publish_allowed": false
+  },
+  "frozen_inputs": [
+    {
+      "path": "docs/remaster/work_packages/R1_WORK_PACKAGE.json",
+      "sha256": "281b1f86c45b92a561a29ebb41e02be1cebe1ee291d7ee4fbff2035c6d21e0ab",
+      "size": 10577
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_VERIFIER_ROUND1_FAIL.json",
+      "sha256": "3892937cf840bcd718e4c0b5974333522f2538d17ac01682c75709ef6dc5f3a2",
+      "size": 17123
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_BUILDER_REPORT.json",
+      "sha256": "6f13feaad0c66ee3251aa7f838e76b57d43b84ac787887933c776e733f8804c4",
+      "size": 21113
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_ARTIFACT_MANIFEST.json",
+      "sha256": "b527667816e006259a437b2db566ba2afcf85e5d68dfcad36386715c0592f1ee",
+      "size": 42563
+    },
+    {
+      "path": "docs/remaster/FINDINGS.jsonl",
+      "sha256": "c8b274bd5d3431a2c8fefcf3aa9420951344232e754aa2d70fa946289443e5b5",
+      "size": 12992
+    }
+  ],
+  "objective": "Repair R1 without weakening any frozen journey or status rule so an adapter cannot certify its own fixtures as live product proof and cannot assert BLOCKED, NOT_TESTED, WAITING, or FAIL without status-specific semantics and evidence.",
+  "confirmed_findings": [
+    {
+      "id": "R1-F006",
+      "severity": "S1",
+      "summary": "A relabeled and rehashed TEMP-only reference response receives PRODUCT_LIVE PASS for all ten journeys because scope, source, target, actor, verifier, and outcome truth are adapter assertions."
+    },
+    {
+      "id": "R1-F007",
+      "severity": "S2",
+      "summary": "Bare BLOCKED, NOT_TESTED, and WAITING status flips are accepted with unchanged PASS evidence and no reason, dependency, wait event, resume condition, or unexecuted criteria."
+    }
+  ],
+  "mandatory_repairs": {
+    "proof_authority": [
+      "Requested proof scope is evaluator-owned and frozen into the request; an adapter response cannot promote HARNESS_SELF_TEST to PRODUCT_LIVE.",
+      "HARNESS_SELF_TEST remains permanently product_claim_status NOT_TESTED even when every journey passes.",
+      "PRODUCT_LIVE must fail closed unless an evaluator-controlled, registered independent observer or external SystemAdapter.inspect subprocess supplies an attestation bound to the exact observer artifact identity, challenge nonce, canonical target identity, account or service identity, before state, after state, effect or provider receipt, idempotency key where relevant, and actor-response digest.",
+      "The subject adapter cannot supply, select, or self-register its own live observer identity. Actor and verifier identities must be issued or verified by separate evaluator-controlled execution contexts; different strings alone are insufficient.",
+      "A file beneath run_root can only be an evidence copy. It can never itself establish a PRODUCT_LIVE external target or effect.",
+      "PRODUCT_LIVE semantic requirements such as restart, duplicate-delivery prevention, failure injection, recovery, rollback, compensation, usefulness, and after-state inspection cannot be satisfied solely by adapter booleans or a list of claimed injection IDs. They require independently observed, target-bound evidence or attestation fields validated by the evaluator.",
+      "R1 need not claim or fabricate a positive live product run. If no registered live observer exists in this slice, the live route must deterministically reject the claim while exposing the external observer interface later stages must satisfy."
+    ],
+    "status_semantics": [
+      "Every non-PASS journey status has a strict status-detail object with a controlled reason code, human-readable explanation, and criterion-specific evidence references.",
+      "BLOCKED identifies a concrete unavailable external dependency, observation proving unavailability, retry policy, and unblock condition; missing implementation or protocol behavior remains FAIL.",
+      "WAITING identifies a durable wait event, event source, resume condition, and bounded next-check or event-driven resumption semantics.",
+      "NOT_TESTED names the exact unexecuted criterion IDs and why they were not exercised; it cannot coexist with unchanged evidence claiming those criteria passed.",
+      "FAIL identifies the failed criterion or protocol/implementation reason and cannot be an unexplained word.",
+      "PASS cannot carry a non-PASS status detail, and all status-detail objects reject unknown fields and dangling evidence IDs."
+    ],
+    "protocol_and_contracts": [
+      "Update the public JSON schemas, protocol documentation, purpose specification, evaluator, reference adapter, mutant adapter, CLI, and journey contracts only as needed to make these controls machine-enforced.",
+      "Preserve exactly J01 through J10, every original success criterion, the deterministic financial-action denial, owner STOP/veto independence, and the original five status words and aggregate precedence.",
+      "Keep the evaluator and tests free of jarvis_foundry imports and production initializers. The external observer boundary must also be subprocess-only or an equally implementation-independent external interface."
+    ]
+  },
+  "mandatory_regressions": [
+    {
+      "id": "R1-R2-T01",
+      "test": "Starting from the canonical reference response, relabel proof scope PRODUCT_LIVE and every payload REAL_EXTERNAL_EFFECT, assign distinct self-asserted actor/verifier IDs, recompute every payload hash and criterion link, and require deterministic FAIL with a dedicated proof-authority code."
+    },
+    {
+      "id": "R1-R2-T02",
+      "test": "Even when the caller requests PRODUCT_LIVE, no registered evaluator-controlled observer or an observer supplied by the subject must yield deterministic FAIL; no run-root artifact may satisfy the observer requirement."
+    },
+    {
+      "id": "R1-R2-T03",
+      "test": "Rehashed source-locator, target-receipt, actor-identity, verifier-identity, outcome-boolean, and failure-injection-list spoofs each fail for their intended semantic reason."
+    },
+    {
+      "id": "R1-R2-T04",
+      "test": "Blind J01 flips to BLOCKED, NOT_TESTED, WAITING, and FAIL with unchanged PASS evidence each fail strict validation."
+    },
+    {
+      "id": "R1-R2-T05",
+      "test": "Valid controlled examples for BLOCKED, NOT_TESTED, WAITING, and FAIL retain their exact status only when all status-specific fields and evidence links are valid; invalid or unknown fields fail closed."
+    },
+    {
+      "id": "R1-R2-T06",
+      "test": "The canonical reference still passes exactly ten journeys only as HARNESS_SELF_TEST_ONLY with product claim NOT_TESTED, and the exact current prototype remains rejected ten of ten."
+    },
+    {
+      "id": "R1-R2-T07",
+      "test": "All original twelve frozen mutants still fail for their intended codes and every added proof-authority/status mutant also fails without relying on generic adapter crashes."
+    },
+    {
+      "id": "R1-R2-T08",
+      "test": "Repeated identical inputs, fixed evaluator-issued authority, and fixed observer evidence produce byte-identical canonical verdicts."
+    }
+  ],
+  "acceptance_gate": [
+    {
+      "id": "R1-R2-C01",
+      "criterion": "R1-F006 is repaired by evaluator-owned proof scope and an independently bound live-observer interface; the exact verifier exploit and strengthened identity/source/target/outcome spoofs fail closed."
+    },
+    {
+      "id": "R1-R2-C02",
+      "criterion": "R1-F007 is repaired by strict status-specific schemas and semantic evidence; blind non-PASS status flips fail while controlled valid examples retain the intended status."
+    },
+    {
+      "id": "R1-R2-C03",
+      "criterion": "All original R1-C01 through R1-C08 remain satisfied without weaker contracts, fewer journeys, weaker mutants, fixture promotion, production imports, or status vocabulary changes."
+    },
+    {
+      "id": "R1-R2-C04",
+      "criterion": "Focused R1 tests meet the ten-second target, all collected repository tests pass in an external-TEMP isolated interpreter, and any test-count delta from the 985-test baseline is entirely explained by new R1 regressions."
+    },
+    {
+      "id": "R1-R2-C05",
+      "criterion": "All previous failed-attempt, full-suite-failure, and verifier-round-1 evidence remains byte-identical and a new round-2 report, canonical results, raw/JUnit outputs, and closed manifest are created under distinct filenames."
+    },
+    {
+      "id": "R1-R2-C06",
+      "criterion": "No network, provider, secret, live database, protected task/process/port, commit, push, publish, or paid action occurs; controlled temporary staging tasks from the existing test suite are fully removed."
+    },
+    {
+      "id": "R1-R2-C07",
+      "criterion": "A fresh verifier round reproduces every original R1 criterion, both repairs, all strengthened mutants, exact artifact closure, the full test suite, resource limits, and the no-live-mutation boundary."
+    }
+  ],
+  "tests_and_resources": {
+    "focused_suite_target_seconds": 10,
+    "full_suite_baseline_tests": 985,
+    "full_suite_rule": "All collected tests pass; count may exceed 985 only by the exact number of new R1 regression cases.",
+    "network_calls": 0,
+    "provider_calls": 0,
+    "live_or_protected_writes": 0,
+    "generated_r1_evidence_cumulative_max_bytes": 2097152,
+    "acceptance_evaluator_peak_rss_target_mib": 256,
+    "paid_cost_usd": 0
+  },
+  "evidence_and_lineage": {
+    "immutable_prior_evidence": [
+      "docs/remaster/evidence/r1/R1_BUILDER_ATTEMPT1_FAIL.json",
+      "docs/remaster/evidence/r1/R1_BUILDER_ATTEMPT2_FAIL.json",
+      "docs/remaster/evidence/r1/R1_VERIFIER_ROUND1_FAIL.json",
+      "docs/remaster/evidence/r1/R1_BUILDER_REPORT.json",
+      "docs/remaster/evidence/r1/R1_ARTIFACT_MANIFEST.json",
+      "all existing R1 raw, JUnit, current, reference, mutant, cleanup, and guard evidence"
+    ],
+    "new_output_naming": "Use ROUND2 or REPAIR_ROUND2 filenames. Do not overwrite or silently replace any prior evidence file.",
+    "new_manifest_rule": "Create a round-2 manifest that binds the complete current R1 deliverable set, both frozen work packages, every preserved prior evidence artifact, the verifier FAIL, and all new repair artifacts. The manifest excludes only itself and states that the round-1 manifest is historical rather than a current-path closure claim.",
+    "builder_status": "NOT_TESTED until a fresh independent verifier passes every mandatory original and repair criterion."
+  },
+  "ownership": {
+    "root": "Frozen work packages, global FINDINGS disposition, integration, evidence custody, commit decision, and final truth.",
+    "builder": "May edit docs/remaster/r1, scripts/remaster/r1, tests/remaster/r1, and create new ROUND2 evidence only. It must not edit either work package, FINDINGS.jsonl, any prior evidence file, verifier verdict, production source, existing Foundry tests, protected main, or live state.",
+    "verifier": "Fresh context after repair; read-only audit of exact round-2 hashes and behavior."
+  },
+  "stop_conditions": [
+    "any weakening or deletion of an original R1 journey, criterion, mutant, status, financial boundary, or STOP/veto requirement",
+    "any overwrite or omission of prior failure evidence",
+    "any PRODUCT_LIVE path that trusts subject-supplied labels, hashes, identities, booleans, run-root files, or observer registration",
+    "any production import or initializer in the evaluator, tests, or observer boundary",
+    "any secret, network, provider, live/protected, paid, commit, push, or publish action",
+    "any inability to close R1-F006 or R1-F007 with discriminating tests"
+  ]
+}

@@ -1,0 +1,497 @@
+{
+  "schema": "jarvis-r1-builder-evidence-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R1",
+  "builder_round": 3,
+  "builder_status": "NOT_TESTED",
+  "status_reason": "R1-C01 through R1-C09 have builder-produced evidence, but a builder cannot certify the independent R1-C10 gate. A fresh verifier must reproduce and adjudicate the complete package.",
+  "frozen_base": {
+    "commit": "bf8f1493b7fd5cd80d17a631a1fb23e82c2260f9",
+    "tree": "1313e272bc51db2a5cbadd719e8fdcfbec306635",
+    "branch": "remaster/post-v7-purpose",
+    "work_package": "docs/remaster/work_packages/R1_WORK_PACKAGE.json",
+    "work_package_sha256": "281b1f86c45b92a561a29ebb41e02be1cebe1ee291d7ee4fbff2035c6d21e0ab",
+    "work_package_size": 10577,
+    "work_package_unchanged": true
+  },
+  "required_reading": [
+    {
+      "path": "AGENTS.md",
+      "sha256": "8cf59a2a7f60250018868fe11589d37820942bab94030ff89e6dad91de681f9f",
+      "size": 5476
+    },
+    {
+      "path": "IDEA.md",
+      "sha256": "d08fc2c68643c104da82d7df98258eda2b5ae258c5311368427a7fd2bff4a82e",
+      "size": 1276
+    },
+    {
+      "path": "PROJECT_STATE.md",
+      "sha256": "7be035db638c595690bf14d7a4e9410755b7a6f15c4536acd77bce4325ffe214",
+      "size": 17677
+    },
+    {
+      "path": "docs/governance/AUTONOMY_MANDATE.md",
+      "sha256": "8131f0dd12767d1dae91545b2d43f1e9ed3191cff1456f90cee036a0566a4b00",
+      "size": 6068
+    },
+    {
+      "path": "docs/architecture/00_READ_FIRST.md",
+      "sha256": "7f63fdcba8b1d5af84361d17b34944ddbd49c3e1fb426c30746cf849d31538ef",
+      "size": 6770
+    },
+    {
+      "path": "docs/architecture/02_ARCHITECTURE_CONTRACT.md",
+      "sha256": "20b5f4e1e56271302975a670d316b1e3737ea58095f0f6a6dd7594840677fa5d",
+      "size": 28411
+    },
+    {
+      "path": "docs/remaster/R0_SCOPE_AND_SLICE_PLAN.md",
+      "sha256": "ef790bd37ac0c032d8a1479e735b734c2d0f68f6dad105327f4c6bcd13d73af6",
+      "size": 6997
+    },
+    {
+      "path": "docs/remaster/work_packages/R1_WORK_PACKAGE.json",
+      "sha256": "281b1f86c45b92a561a29ebb41e02be1cebe1ee291d7ee4fbff2035c6d21e0ab",
+      "size": 10577
+    },
+    {
+      "path": "C:/Users/b/.codex/attachments/0a862c79-2a76-4789-9e72-e01b156cbc34/pasted-text-1.txt",
+      "sha256": "28873450cead21ba3dd4960c243e1ef3b26a316e7b338a1aaaf36e7dc426df92",
+      "size": 34221
+    }
+  ],
+  "scope": {
+    "new_files_only": true,
+    "owned_roots": [
+      "docs/remaster/r1",
+      "docs/remaster/evidence/r1",
+      "scripts/remaster/r1",
+      "tests/remaster/r1"
+    ],
+    "production_and_existing_test_diff_empty": true,
+    "production_diff_command": "git diff --exit-code -- src tests/foundry pyproject.toml",
+    "production_diff_exit": 0,
+    "commit_created": false,
+    "push_or_publish_performed": false,
+    "live_v7_deployment_changed": false
+  },
+  "source_deliverables": [
+    "docs/remaster/r1/PURPOSE_SPEC.json",
+    "docs/remaster/r1/JOURNEY_CONTRACT_SCHEMA.json",
+    "docs/remaster/r1/PROTOCOL_SCHEMA.json",
+    "docs/remaster/r1/PROTOCOL.md",
+    "docs/remaster/r1/journeys/J01.json",
+    "docs/remaster/r1/journeys/J02.json",
+    "docs/remaster/r1/journeys/J03.json",
+    "docs/remaster/r1/journeys/J04.json",
+    "docs/remaster/r1/journeys/J05.json",
+    "docs/remaster/r1/journeys/J06.json",
+    "docs/remaster/r1/journeys/J07.json",
+    "docs/remaster/r1/journeys/J08.json",
+    "docs/remaster/r1/journeys/J09.json",
+    "docs/remaster/r1/journeys/J10.json",
+    "scripts/remaster/r1/acceptance.py",
+    "scripts/remaster/r1/reference_adapter.py",
+    "scripts/remaster/r1/mutant_adapter.py",
+    "scripts/remaster/r1/run_acceptance.py",
+    "scripts/remaster/r1/current_prototype_probe.py",
+    "scripts/remaster/r1/run_mutant_matrix.py",
+    "tests/remaster/r1/conftest.py",
+    "tests/remaster/r1/test_contracts.py",
+    "tests/remaster/r1/test_reference_adapter.py",
+    "tests/remaster/r1/test_mutants.py",
+    "tests/remaster/r1/test_protocol.py",
+    "tests/remaster/r1/test_current_prototype.py"
+  ],
+  "canonical_results": {
+    "purpose_bundle": {
+      "journeys": 10,
+      "contract_json_files": 10,
+      "schema_json_files": 3,
+      "status": "EVIDENCED"
+    },
+    "reference": {
+      "path": "docs/remaster/evidence/r1/R1_REFERENCE_RESULT.json",
+      "aggregate_status": "PASS",
+      "journey_passes": 10,
+      "proof_scope": "HARNESS_SELF_TEST",
+      "qualification": "HARNESS_SELF_TEST_ONLY",
+      "product_claim_status": "NOT_TESTED",
+      "actual_effect_scope": "temporary-directory JSON file effects only"
+    },
+    "current_prototype": {
+      "path": "docs/remaster/evidence/r1/R1_CURRENT_PROTOTYPE_RESULT_FINAL.json",
+      "aggregate_status": "FAIL",
+      "journey_failures": 10,
+      "nonempty_evidence_per_journey": true,
+      "source_identity_match": true,
+      "protocol_endpoint_present": false,
+      "installed_entrypoint_invoked": false,
+      "database_files_created": 0,
+      "repository_status_unchanged": true
+    },
+    "mutants": {
+      "path": "docs/remaster/evidence/r1/R1_MUTANT_MATRIX.json",
+      "required": 12,
+      "rejected": 12,
+      "all_rejected": true
+    }
+  },
+  "criteria_evidence": {
+    "R1-C01": {
+      "builder_observation": "EVIDENCED",
+      "evidence": [
+        "docs/remaster/r1/PURPOSE_SPEC.json",
+        "docs/remaster/r1/JOURNEY_CONTRACT_SCHEMA.json",
+        "docs/remaster/r1/journeys/J01.json through J10.json",
+        "tests/remaster/r1/test_contracts.py"
+      ]
+    },
+    "R1-C02": {
+      "builder_observation": "EVIDENCED",
+      "evidence": [
+        "docs/remaster/r1/PROTOCOL.md",
+        "docs/remaster/r1/PROTOCOL_SCHEMA.json",
+        "scripts/remaster/r1/run_acceptance.py",
+        "docs/remaster/evidence/r1/R1_STATIC_COMPILE_FINAL_RAW.txt"
+      ]
+    },
+    "R1-C03": {
+      "builder_observation": "EVIDENCED",
+      "evidence": [
+        "scripts/remaster/r1/reference_adapter.py",
+        "docs/remaster/evidence/r1/R1_REFERENCE_RESULT.json",
+        "tests/remaster/r1/test_reference_adapter.py"
+      ]
+    },
+    "R1-C04": {
+      "builder_observation": "EVIDENCED",
+      "evidence": [
+        "scripts/remaster/r1/current_prototype_probe.py",
+        "docs/remaster/evidence/r1/R1_CURRENT_PROTOTYPE_RESULT_FINAL.json",
+        "tests/remaster/r1/test_current_prototype.py"
+      ]
+    },
+    "R1-C05": {
+      "builder_observation": "EVIDENCED",
+      "evidence": [
+        "scripts/remaster/r1/mutant_adapter.py",
+        "scripts/remaster/r1/run_mutant_matrix.py",
+        "docs/remaster/evidence/r1/R1_MUTANT_MATRIX.json",
+        "tests/remaster/r1/test_mutants.py"
+      ]
+    },
+    "R1-C06": {
+      "builder_observation": "EVIDENCED",
+      "evidence": [
+        "docs/remaster/r1/journeys/J01.json through J10.json",
+        "scripts/remaster/r1/acceptance.py",
+        "tests/remaster/r1/test_contracts.py",
+        "tests/remaster/r1/test_mutants.py"
+      ]
+    },
+    "R1-C07": {
+      "builder_observation": "EVIDENCED",
+      "evidence": [
+        "docs/remaster/r1/PURPOSE_SPEC.json",
+        "scripts/remaster/r1/acceptance.py",
+        "tests/remaster/r1/test_protocol.py"
+      ]
+    },
+    "R1-C08": {
+      "builder_observation": "EVIDENCED",
+      "evidence": [
+        "scripts/remaster/r1/acceptance.py",
+        "tests/remaster/r1/test_protocol.py",
+        "tests/remaster/r1/test_reference_adapter.py",
+        "docs/remaster/evidence/r1/R1_STATIC_COMPILE_FINAL_RAW.txt"
+      ]
+    },
+    "R1-C09": {
+      "builder_observation": "EVIDENCED_WITH_STAGING_DISCLOSURE",
+      "evidence": [
+        "docs/remaster/evidence/r1/R1_FOCUSED_CANONICAL_RAW.txt",
+        "docs/remaster/evidence/r1/R1_FOCUSED_CANONICAL_JUNIT.xml",
+        "docs/remaster/evidence/r1/R1_FULL_FOUNDRY_FINAL_RAW.txt",
+        "docs/remaster/evidence/r1/R1_FULL_FOUNDRY_FINAL_JUNIT.xml",
+        "docs/remaster/evidence/r1/R1_LIVE_GUARD_COMPARISON.json",
+        "docs/remaster/evidence/r1/R1_EPHEMERAL_CLEANUP.json",
+        "docs/remaster/evidence/r1/R1_EVALUATOR_RESOURCE.json"
+      ],
+      "disclosure": "The pre-existing Foundry installer regression suite intentionally creates uniquely named staging Windows tasks and short-lived staging supervisor processes. No live or protected task/process/DB was changed; every JF-WP7Gate task and isolated process was absent after teardown, and protected task/process identities were unchanged."
+    },
+    "R1-C10": {
+      "builder_observation": "NOT_TESTED",
+      "evidence": [],
+      "reason": "Reserved for a fresh independent verifier; the builder is not authorized to certify it."
+    }
+  },
+  "commands": [
+    {
+      "id": "focused-canonical",
+      "command": "C:/Python313/python.exe -m pytest tests/remaster/r1 -q --basetemp=C:/Users/b/AppData/Local/Temp/jarvis-r1-builder-r3-focused-canonical --junitxml=docs/remaster/evidence/r1/R1_FOCUSED_CANONICAL_JUNIT.xml",
+      "exit_code": 0,
+      "tests": 33,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "wall_seconds": 8.984,
+      "junit_seconds": 8.302,
+      "raw": "docs/remaster/evidence/r1/R1_FOCUSED_CANONICAL_RAW.txt",
+      "junit": "docs/remaster/evidence/r1/R1_FOCUSED_CANONICAL_JUNIT.xml"
+    },
+    {
+      "id": "static-compile-final",
+      "command": "C:/Python313/python.exe - (AST parse/compile, JSON parse, dependency, frozen-hash, and whitespace assertions)",
+      "exit_code": 0,
+      "python_files": 12,
+      "json_files": 13,
+      "contracts_validated": 10,
+      "wall_seconds": 0.8,
+      "raw": "docs/remaster/evidence/r1/R1_STATIC_COMPILE_FINAL_RAW.txt"
+    },
+    {
+      "id": "reference-canonical",
+      "command": "C:/Python313/python.exe -B scripts/remaster/r1/run_acceptance.py --purpose-root docs/remaster/r1 --evaluation-time 2030-01-01T00:00:00Z --run-root docs/remaster/evidence/r1/reference_run --output docs/remaster/evidence/r1/R1_REFERENCE_RESULT.json -- C:/Python313/python.exe -B scripts/remaster/r1/reference_adapter.py",
+      "exit_code": 0,
+      "journeys": 10,
+      "journey_passes": 10,
+      "wall_seconds": 0.448
+    },
+    {
+      "id": "current-prototype-final",
+      "command": "C:/Python313/python.exe -B scripts/remaster/r1/current_prototype_probe.py --repo . --expected-commit bf8f1493b7fd5cd80d17a631a1fb23e82c2260f9 --python C:/Python313/python.exe --installed-entrypoint C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/.venv/Scripts/jarvis.exe --run-root docs/remaster/evidence/r1/current_probe_final_run --output docs/remaster/evidence/r1/R1_CURRENT_PROTOTYPE_RESULT_FINAL.json",
+      "exit_code": 1,
+      "expected_nonzero_rejection": true,
+      "journeys": 10,
+      "journey_failures": 10,
+      "wall_seconds": 0.905
+    },
+    {
+      "id": "mutant-matrix",
+      "command": "C:/Python313/python.exe -B scripts/remaster/r1/run_mutant_matrix.py --python C:/Python313/python.exe --purpose-root docs/remaster/r1 --script-root scripts/remaster/r1 --evaluation-time 2030-01-01T00:00:00Z --output-root docs/remaster/evidence/r1/mutant_results --matrix-output docs/remaster/evidence/r1/R1_MUTANT_MATRIX.json",
+      "exit_code": 0,
+      "mutants": 12,
+      "rejected": 12,
+      "wall_seconds": 4.558
+    },
+    {
+      "id": "full-host-first",
+      "command": "C:/Python313/python.exe -m pytest tests/foundry -q --junitxml=docs/remaster/evidence/r1/R1_FULL_FOUNDRY_JUNIT.xml",
+      "exit_code": 1,
+      "tests": 985,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0,
+      "wall_seconds": 484.253,
+      "raw": "docs/remaster/evidence/r1/R1_FULL_FOUNDRY_RAW.txt",
+      "junit": "docs/remaster/evidence/r1/R1_FULL_FOUNDRY_JUNIT.xml"
+    },
+    {
+      "id": "host-failure-exact-reproduction",
+      "command": "C:/Python313/python.exe -m pytest tests/foundry/test_installer.py::test_task_restarts_after_hard_kill_via_repeating_trigger -q --basetemp=docs/remaster/evidence/r1/host-repro-pytest-tmp --junitxml=docs/remaster/evidence/r1/R1_FULL_FAILURE_HOST_REPRO_JUNIT.xml",
+      "exit_code": 1,
+      "tests": 1,
+      "failures": 1,
+      "wall_seconds": 151.507,
+      "raw": "docs/remaster/evidence/r1/R1_FULL_FAILURE_HOST_REPRO_RAW.txt",
+      "junit": "docs/remaster/evidence/r1/R1_FULL_FAILURE_HOST_REPRO_JUNIT.xml"
+    },
+    {
+      "id": "isolated-environment-create",
+      "command": "C:/Python313/python.exe -m venv --without-pip --system-site-packages docs/remaster/evidence/r1/.r1-test-venv",
+      "exit_code": 0,
+      "wall_seconds": 0.236,
+      "network_used": false,
+      "install_command_used": false,
+      "fingerprint": "docs/remaster/evidence/r1/R1_ISOLATED_ENV_FINGERPRINT.json",
+      "removed_after_testing": true
+    },
+    {
+      "id": "isolated-installer-focused",
+      "command": "<isolated-venv>/Scripts/python.exe -m pytest tests/foundry/test_installer.py::test_task_restarts_after_hard_kill_via_repeating_trigger -q --basetemp=docs/remaster/evidence/r1/isolated-focus-pytest-tmp --junitxml=docs/remaster/evidence/r1/R1_FULL_FAILURE_ISOLATED_FOCUSED_JUNIT.xml",
+      "exit_code": 0,
+      "tests": 1,
+      "failures": 0,
+      "wall_seconds": 129.511,
+      "expected_task": "JF-WP7Gate-test_tas-13893",
+      "task_absent_after": true
+    },
+    {
+      "id": "isolated-full-in-repository-temp",
+      "command": "<isolated-venv>/Scripts/python.exe -m pytest tests/foundry -q --basetemp=docs/remaster/evidence/r1/isolated-full-pytest-tmp --junitxml=docs/remaster/evidence/r1/R1_FULL_FOUNDRY_ISOLATED_JUNIT.xml",
+      "exit_code": 1,
+      "tests": 985,
+      "failures": 1,
+      "wall_seconds": 456.299,
+      "expected_restart_task": "JF-WP7Gate-test_tas-12253",
+      "raw": "docs/remaster/evidence/r1/R1_FULL_FOUNDRY_ISOLATED_RAW.txt",
+      "junit": "docs/remaster/evidence/r1/R1_FULL_FOUNDRY_ISOLATED_JUNIT.xml"
+    },
+    {
+      "id": "registration-in-repository-reproduction",
+      "command": "<isolated-venv>/Scripts/python.exe -m pytest tests/foundry/test_registration.py::test_inspection_of_non_repository_raises -q --basetemp=docs/remaster/evidence/r1/isolated-registration-inrepo-repro-tmp --junitxml=docs/remaster/evidence/r1/R1_REGISTRATION_IN_REPO_REPRO_JUNIT.xml",
+      "exit_code": 1,
+      "tests": 1,
+      "failures": 1,
+      "wall_seconds": 1.4
+    },
+    {
+      "id": "registration-external-temp-control",
+      "command": "<isolated-venv>/Scripts/python.exe -m pytest tests/foundry/test_registration.py::test_inspection_of_non_repository_raises -q --basetemp=C:/Users/b/AppData/Local/Temp/jarvis-r1-builder-r3-registration-repro --junitxml=docs/remaster/evidence/r1/R1_REGISTRATION_EXTERNAL_TEMP_PASS_JUNIT.xml",
+      "exit_code": 0,
+      "tests": 1,
+      "failures": 0,
+      "wall_seconds": 0.899
+    },
+    {
+      "id": "full-final-external-temp",
+      "command": "<isolated-venv>/Scripts/python.exe -m pytest tests/foundry -q --basetemp=C:/Users/b/AppData/Local/Temp/jarvis-r1-builder-r3-full-final --junitxml=docs/remaster/evidence/r1/R1_FULL_FOUNDRY_FINAL_JUNIT.xml",
+      "exit_code": 0,
+      "tests": 985,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "wall_seconds": 451.65,
+      "junit_seconds": 450.679,
+      "expected_restart_task": "JF-WP7Gate-test_tas-17792",
+      "task_absent_after": true,
+      "raw": "docs/remaster/evidence/r1/R1_FULL_FOUNDRY_FINAL_RAW.txt",
+      "junit": "docs/remaster/evidence/r1/R1_FULL_FOUNDRY_FINAL_JUNIT.xml"
+    },
+    {
+      "id": "evaluator-peak-working-set",
+      "command": "C:/Python313/python.exe -B scripts/remaster/r1/run_acceptance.py <canonical reference adapter>, monitored with Start-Process -WindowStyle Hidden",
+      "exit_code": 0,
+      "wall_seconds": 0.695,
+      "peak_working_set_bytes": 20557824,
+      "peak_working_set_mib": 19.605,
+      "target_mib": 256,
+      "within_target": true,
+      "evidence": "docs/remaster/evidence/r1/R1_EVALUATOR_RESOURCE.json"
+    }
+  ],
+  "focused_timing_history": [
+    {
+      "output_prefix": "R1_FOCUSED_ROUND1",
+      "tests": 43,
+      "failures": 0,
+      "wall_seconds": 14.197,
+      "target_met": false
+    },
+    {
+      "output_prefix": "R1_FOCUSED_ROUND2",
+      "tests": 33,
+      "failures": 0,
+      "wall_seconds": 10.288,
+      "target_met": false
+    },
+    {
+      "output_prefix": "R1_FOCUSED_FINAL",
+      "tests": 33,
+      "failures": 0,
+      "wall_seconds": 10.304,
+      "target_met": false
+    },
+    {
+      "output_prefix": "R1_FOCUSED_PASS",
+      "tests": 33,
+      "failures": 0,
+      "wall_seconds": 9.078,
+      "target_met": true
+    },
+    {
+      "output_prefix": "R1_FOCUSED_PASS2",
+      "tests": 33,
+      "failures": 0,
+      "wall_seconds": 8.971,
+      "target_met": true,
+      "preceded_full_suite": true
+    },
+    {
+      "output_prefix": "R1_FOCUSED_CANONICAL",
+      "tests": 33,
+      "failures": 0,
+      "wall_seconds": 8.984,
+      "target_met": true,
+      "final_confirmation": true
+    }
+  ],
+  "preserved_full_suite_diagnostics": [
+    {
+      "classification": "DETERMINISTIC_TEST_ENVIRONMENT_FAILURE_NOT_R1_OR_PRODUCTION_DEFECT",
+      "failing_node": "tests/foundry/test_installer.py::test_task_restarts_after_hard_kill_via_repeating_trigger",
+      "first_full_result": "984 passed, 1 failed",
+      "exact_reproduction": "1 failed at the same singleton-lease assertion",
+      "cause": "The host interpreter C:/Python313/python.exe cannot import the src-layout jarvis_foundry package without the pytest parent's process-local PYTHONPATH. Task Scheduler launches that interpreter from a service boundary that does not carry the parent's PYTHONPATH, so no runtime database or lease appears.",
+      "discriminating_control": "The same exact node passed in the no-pip isolated environment whose .pth made the exact source importable to the scheduled child.",
+      "not_flaky": true,
+      "not_r1_induced": true,
+      "production_and_existing_test_diff_empty": true,
+      "raw_and_junit_preserved": true
+    },
+    {
+      "classification": "DETERMINISTIC_BUILDER_BASETEMP_CONFIGURATION_FAILURE_NOT_R1_OR_PRODUCTION_DEFECT",
+      "failing_node": "tests/foundry/test_registration.py::test_inspection_of_non_repository_raises",
+      "first_full_result": "984 passed, 1 failed",
+      "cause": "The explicit isolated full-suite basetemp was placed beneath this Git worktree. The test's plain directory was therefore inside an ancestor Git repository, so git rev-parse correctly found the remaster root and the non-repository premise was false.",
+      "discriminating_ab": "The exact node failed with an in-repository basetemp in 1.400 seconds and passed with an external pytest temp in 0.899 seconds.",
+      "clean_state_before_final": "docs/remaster/evidence/r1/R1_PRE_FINAL_FULL_CLEAN_STATE.json",
+      "not_flaky": true,
+      "not_order_dependent": true,
+      "not_r1_induced": true,
+      "raw_and_junit_preserved": true
+    }
+  ],
+  "resources_and_boundaries": {
+    "network_calls": 0,
+    "provider_calls": 0,
+    "paid_cost_usd": 0,
+    "secret_reads": 0,
+    "port_mutations": 0,
+    "live_or_protected_database_writes": 0,
+    "live_or_protected_task_mutations": 0,
+    "live_or_protected_process_mutations": 0,
+    "temporary_staging_tasks_created_by_existing_foundry_suite": true,
+    "temporary_staging_tasks_remaining": 0,
+    "isolated_test_processes_remaining": 0,
+    "protected_tasks_unchanged": true,
+    "protected_supervisor_processes_unchanged": true,
+    "builder_owned_pycache_directories_remaining": 0,
+    "pre_existing_production_pycache_touched": false,
+    "generated_evidence_bytes_before_manifest": 762785,
+    "generated_test_artifact_budget_bytes": 2097152,
+    "artifact_budget_met": true,
+    "evaluator_peak_working_set_mib": 19.605,
+    "evaluator_peak_target_mib": 256
+  },
+  "live_guard": {
+    "before": "docs/remaster/evidence/r1/R1_LIVE_GUARD_BEFORE_CANONICAL.json",
+    "after": "docs/remaster/evidence/r1/R1_LIVE_GUARD_AFTER_CANONICAL.json",
+    "comparison": "docs/remaster/evidence/r1/R1_LIVE_GUARD_COMPARISON.json",
+    "protected_task_xml_hashes_unchanged": true,
+    "protected_supervisor_pid_creation_identity_unchanged": true,
+    "test_task_prefix_remaining": []
+  },
+  "cleanup": {
+    "evidence": "docs/remaster/evidence/r1/R1_EPHEMERAL_CLEANUP.json",
+    "ephemeral_venv_removed": true,
+    "external_full_pytest_tree_removed": true,
+    "prior_failure_pytest_trees_removed": true,
+    "owned_bytecode_caches_removed": true,
+    "raw_junit_and_environment_fingerprint_retained": true
+  },
+  "rollback": {
+    "kind": "ADDITIVE_UNCOMMITTED_R1_ONLY",
+    "procedure": "Remove only builder-created files under docs/remaster/r1, scripts/remaster/r1, tests/remaster/r1, and builder-created evidence under docs/remaster/evidence/r1 while preserving R1_BUILDER_ATTEMPT1_FAIL.json and R1_BUILDER_ATTEMPT2_FAIL.json. Never alter the frozen work package or live/protected JARVIS state.",
+    "live_restoration_required": false,
+    "commit_or_push_reversal_required": false
+  },
+  "artifact_manifest": "docs/remaster/evidence/r1/R1_ARTIFACT_MANIFEST.json",
+  "verifier_handoff": {
+    "required": true,
+    "builder_may_certify_gate": false,
+    "required_next_status": "Fresh verifier adjudicates R1-C01 through R1-C10 from frozen hashes and actual behavior."
+  }
+}

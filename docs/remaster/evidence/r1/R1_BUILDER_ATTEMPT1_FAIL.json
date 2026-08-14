@@ -1,0 +1,30 @@
+{
+  "schema": "jarvis-remaster-builder-attempt-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R1",
+  "attempt": 1,
+  "builder_identity": "/root/r1_builder",
+  "builder_route": "opencode-go/deepseek-v4-flash",
+  "frozen_base": "bf8f1493b7fd5cd80d17a631a1fb23e82c2260f9",
+  "frozen_work_package": {
+    "path": "docs/remaster/work_packages/R1_WORK_PACKAGE.json",
+    "sha256": "281b1f86c45b92a561a29ebb41e02be1cebe1ee291d7ee4fbff2035c6d21e0ab",
+    "size": 10577,
+    "builder_verified": true
+  },
+  "recorded_at": "2026-08-14T17:17:12.8875571+02:00",
+  "status": "FAIL",
+  "failure": "The initial builder turn completed with an empty final response and no deliverable after required reading; the exact interruption cause is UNKNOWN.",
+  "diagnostic_followup": {
+    "required_reading_completed": true,
+    "read_only_inspection_only": true,
+    "files_written": 0,
+    "commands_that_mutated_product_or_live_state": 0,
+    "implementation_started": false,
+    "commit_or_push": false,
+    "live_or_protected_mutation": false
+  },
+  "partial_work_reused": false,
+  "repair_condition": "Dispatch the unchanged frozen work package to a fresh builder context. Reuse no implementation output because none exists.",
+  "stage_impact": "R1 remains NOT_TESTED. This failed builder dispatch is preserved and cannot be counted as implementation or verification evidence."
+}

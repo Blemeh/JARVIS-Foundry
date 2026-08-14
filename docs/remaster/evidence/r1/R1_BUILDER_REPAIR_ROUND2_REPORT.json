@@ -1,0 +1,204 @@
+{
+  "schema": "jarvis-r1-builder-repair-round2-report-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R1",
+  "repair_round": 2,
+  "title": "Repair round 2 implementation closure report",
+  "generated_utc": "2026-08-14T19:28:17.3958851Z",
+  "generated_by": "root evidence custodian",
+  "builder_identity": "R1 builder repair r2b (fresh non-concurrent context, dispatch 2)",
+  "builder_status": "NOT_TESTED",
+  "builder_status_reason": "The replacement builder completed the implementation and evidence set, but independent verification has not yet passed; a fresh adversarial verifier must reproduce every mandatory original and repair criterion before this package may be committed.",
+  "frozen_inputs": [
+    {
+      "path": "docs/remaster/work_packages/R1_REPAIR_ROUND2_WORK_PACKAGE.json",
+      "sha256": "900880BCF510425D41A5714257CC6CD66F0CFCBD1A0AFFE9905835E50017EF09",
+      "size": 12028
+    },
+    {
+      "path": "docs/remaster/work_packages/R1_REPAIR_ROUND2_DISPATCH2_ADDENDUM.json",
+      "sha256": "F3CD611480F9521DE5410122CEE14267CC19D0D07AD456C8121C7C320C907026",
+      "size": 1910
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_BUILDER_REPAIR_ATTEMPT1_FAIL.json",
+      "sha256": "cf8fec5c8a423893ffe8695e00d8df3e18b43a412c83e6c9d6837a93dcfe79b6",
+      "size": 1447
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_VERIFIER_ROUND1_FAIL.json",
+      "sha256": "3892937CF840BCD718E4C0B5974333522F2538D17AC01682C75709EF6DC5F3A2",
+      "size": 17123
+    },
+    {
+      "path": "docs/remaster/FINDINGS.jsonl",
+      "sha256": "C3D232E6589B2F58AAB2DFFF55732AC162D83AEF5D901050D53411F3BE302F26",
+      "size": 13868
+    }
+  ],
+  "frozen_base": {
+    "commit": "bf8f1493b7fd5cd80d17a631a1fb23e82c2260f9",
+    "branch": "remaster/post-v7-purpose",
+    "live_v7_deployment_changes_allowed": false,
+    "push_or_publish_allowed": false
+  },
+  "repairs_implemented": {
+    "proof_authority": [
+      "Requested proof scope is evaluator-owned and frozen into the request; adapters can no longer promote HARNESS_SELF_TEST evidence to PRODUCT_LIVE.",
+      "HARNESS_SELF_TEST remains product_claim_status NOT_TESTED even when all ten journeys pass.",
+      "PRODUCT_LIVE fails closed without an evaluator-validated observer registration bound to a canonical artifact hash; the observer interface is subprocess-only and implementation-independent.",
+      "The observer registry is frozen (empty in this slice), so the live route deterministically rejects claims while exposing the external observer contract.",
+      "PRODUCT_LIVE source identity requires an independently observed non-file system reference; run-root files are evidence copies only.",
+      "Actor and verifier identities are evaluator-issued; distinct self-asserted strings are insufficient."
+    ],
+    "status_semantics": [
+      "Every non-PASS journey status requires a strict status-detail object with controlled reason code, human-readable explanation, and criterion-specific evidence references.",
+      "BLOCKED requires a concrete unavailable external dependency, observation proving unavailability, retry policy, and unblock condition.",
+      "WAITING requires a durable wait event, event source, resume condition, and bounded next-check or event-driven resumption semantics.",
+      "NOT_TESTED names the exact unexecuted criterion IDs and cannot coexist with evidence claiming those criteria passed.",
+      "FAIL identifies the failed criterion or protocol/implementation reason; PASS cannot carry a non-PASS status detail; unknown fields and dangling evidence IDs are rejected."
+    ]
+  },
+  "test_and_evidence_results": {
+    "focused_suite": {
+      "tests": 41,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "wall_seconds": 9.64,
+      "junit": {
+        "path": "docs/remaster/evidence/r1/R1_FOCUSED_REPAIR_ROUND2_AUTHORITATIVE_JUNIT.xml",
+        "sha256": "3EED8D019E77230AC76013EC0C90A16EA59BDB2EA7E72DDDCFF01EAD83477FC4",
+        "size": 5911
+      },
+      "raw": {
+        "path": "docs/remaster/evidence/r1/R1_FOCUSED_REPAIR_ROUND2_AUTHORITATIVE_RAW.txt",
+        "sha256": "4248B4E299EB5E8603E421FF73AD64FAEFE4B84DB55D5A2A42ECF5B9697CD936",
+        "size": 99
+      },
+      "timing_confirmations": 5,
+      "timing_target_seconds": 10,
+      "timing_met": true
+    },
+    "mutants": {
+      "required": 23,
+      "frozen_original": 12,
+      "added_round2": 11,
+      "rejected": 23,
+      "all_rejected": true,
+      "matrix": {
+        "path": "docs/remaster/evidence/r1/R1_MUTANT_MATRIX_REPAIR_ROUND2_FINAL.json",
+        "sha256": "B42F13472A6E3B3F8B0A8473E931F736DE4C4A5AAD51BEEA63F405260EC2C3AE",
+        "size": 17418
+      }
+    },
+    "full_repository_suite": {
+      "tests": 993,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "wall_seconds": 453.014,
+      "baseline_tests": 985,
+      "round2_delta_tests": 8,
+      "delta_exact": true,
+      "environment": "isolated venv (no pip, system site packages), .pth imports remaster src for scheduled children, external basetemp outside any Git repository, network_calls=0",
+      "junit": {
+        "path": "docs/remaster/evidence/r1/R1_FULL_REPOSITORY_REPAIR_ROUND2_JUNIT.xml",
+        "sha256": "1455E1B8CA5090FF4109B3E07A6872889CEDDCB8373D7091174ABB4A6FFD4FD7",
+        "size": 120526
+      },
+      "raw": {
+        "path": "docs/remaster/evidence/r1/R1_FULL_REPOSITORY_REPAIR_ROUND2_RAW.txt",
+        "sha256": "178563A895F0AC2BFDAB0FC4D699E5C145910C258D9F35EAFDB0652665C36510",
+        "size": 1134
+      },
+      "fingerprint": {
+        "path": "docs/remaster/evidence/r1/R1_ISOLATED_ENV_FINGERPRINT_REPAIR_ROUND2.json",
+        "sha256": "64E34A58706E3E9944023B6C5F212B1FA272A4246B5D4AA2376A992827504547",
+        "size": 2107
+      }
+    },
+    "spoof_rejection": {
+      "path": "docs/remaster/evidence/r1/R1_PRODUCT_LIVE_SPOOF_RESULT_REPAIR_ROUND2_FINAL.json",
+      "sha256": "8FD2D0E7D19F653DF2532CDC8CB6D6919734BCE3AF018C2E0EC287F4C5037827",
+      "size": 96585,
+      "outcome": "deterministic FAIL with proof-authority finding; relabelled TEMP-only evidence cannot become PRODUCT_LIVE"
+    },
+    "status_matrix": {
+      "path": "docs/remaster/evidence/r1/R1_STATUS_MATRIX_REPAIR_ROUND2.json",
+      "sha256": "525B062ECD5D4EE91A3D4C4AF201A82B1198B6E0D2F14F4034A61AD81946B980",
+      "size": 3572
+    },
+    "reference_and_current": {
+      "reference": {
+        "path": "docs/remaster/evidence/r1/R1_REFERENCE_RESULT_REPAIR_ROUND2.json",
+        "sha256": "3F26B2E466736EE753AF2D7715506D0868AEDA995028B84AB6E7647BF1843F85",
+        "size": 15669,
+        "claim": "HARNESS_SELF_TEST_ONLY, product claim NOT_TESTED"
+      },
+      "current_prototype": {
+        "path": "docs/remaster/evidence/r1/R1_CURRENT_PROTOTYPE_RESULT_REPAIR_ROUND2.json",
+        "sha256": "76E99DE9C1769AB498D442A664C2CFBA5AA5315E5BB4D7419C29A5E773DC1B3D",
+        "size": 10700,
+        "claim": "rejected ten of ten without database write"
+      }
+    },
+    "static_and_resource": {
+      "static_compile": {
+        "path": "docs/remaster/evidence/r1/R1_STATIC_REPAIR_ROUND2_RAW.txt",
+        "sha256": "EB1BB8232398763713BF3B473D58FBB618F310CF86711F2EC2B6378A14B74027",
+        "size": 161
+      },
+      "evaluator_resource": {
+        "path": "docs/remaster/evidence/r1/R1_EVALUATOR_RESOURCE_REPAIR_ROUND2.json",
+        "sha256": "770C0FAF163F720967D6EF7233BE1A912FE7A697B18358697F639C8FEF676AA0",
+        "size": 728,
+        "peak_working_set_mib": 22.348,
+        "target_mib": 256,
+        "within_target": true
+      }
+    },
+    "evidence_budget": {
+      "cumulative_max_bytes": 2097152,
+      "current_total_bytes": 1618968,
+      "current_total_mib": 1.544,
+      "within_budget": true,
+      "compaction_record": {
+        "path": "docs/remaster/evidence/r1/R1_EVIDENCE_COMPACTION_REPAIR_ROUND2.json",
+        "sha256": "5F3DF6343CA99D31062E5CF249E1420F02A16065C75C83C2E138723F13C97433",
+        "size": 1322
+      }
+    },
+    "live_and_cleanup_guard": {
+      "live_guard": {
+        "path": "docs/remaster/evidence/r1/R1_LIVE_GUARD_BEFORE_REPAIR_ROUND2.json",
+        "sha256": "B22DF93B10EC0387A077FD6B4A5C8D400BF895D3A36946B726763DB49A7A0C8A",
+        "size": 1223,
+        "protected_tasks_unchanged": true,
+        "staging_tasks": []
+      },
+      "cleanup": "temporary venv, external pytest basetemp, and isolated scheduled tasks removed after the runs; only fingerprints and raw results remain"
+    }
+  },
+  "root_gap_closure": {
+    "finding": "R1-F009",
+    "detail": "The frozen repair package required a round-2 report and closed round-2 manifest under distinct filenames; the builder did not emit either. Root evidence custodian created this report and R1_ARTIFACT_MANIFEST_REPAIR_ROUND2.json from the frozen evidence set without altering any builder artifact.",
+    "status": "REPAIRED_PENDING_VERIFY"
+  },
+  "ownership": {
+    "builder_owned_paths_edited": [
+      "docs/remaster/r1",
+      "scripts/remaster/r1",
+      "tests/remaster/r1",
+      "docs/remaster/evidence/r1 new ROUND2 files only"
+    ],
+    "immutable_prior_evidence": true,
+    "production_source_changed": false,
+    "existing_foundry_tests_changed": false,
+    "commits_made": false,
+    "network_calls": 0,
+    "provider_calls": 0,
+    "paid_cost_usd": 0
+  },
+  "next_action": "Dispatch a fresh adversarial verifier against the exact round-2 manifest hashes; commit R1 only after an independent structured PASS."
+}

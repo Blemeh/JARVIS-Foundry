@@ -1,0 +1,23 @@
+{
+  "after_state": {
+    "sha256": "5438e821632e5c42c74eb47c44334e792616c0e210f6dce35e07ce8fb2a78062",
+    "size": 185,
+    "state": "USEFUL_EFFECT_VERIFIED"
+  },
+  "before_state": {
+    "sha256": "44230d427636979684fadb8d1739ee39ffe77e851c3f5347bdc6bc276fe46083",
+    "size": 169,
+    "state": "BEFORE"
+  },
+  "criterion_ids": [
+    "J02-S04"
+  ],
+  "journey_id": "J02",
+  "operation": "actual temporary-directory digital file effect",
+  "phase": "ROLLBACK",
+  "proof_dimension": "memory_restoration",
+  "requirement_id": "J02-E05",
+  "restoration_verified": true,
+  "schema": "jarvis-reference-evidence-artifact-v1",
+  "target_id": "institutional-memory-record"
+}

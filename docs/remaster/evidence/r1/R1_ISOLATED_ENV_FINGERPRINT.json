@@ -1,0 +1,50 @@
+{
+  "created_utc": "2026-08-14T16:20:28.6138961Z",
+  "creation_command": "C:\\Python313\\python.exe -m venv --without-pip --system-site-packages <owned-evidence-target>",
+  "creation_exit": 0,
+  "creation_wall_seconds": 0.236,
+  "network_used": false,
+  "install_command_used": false,
+  "ephemeral": true,
+  "remove_after_runs": true,
+  "python": {
+    "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r1\\.r1-test-venv\\Scripts\\python.exe",
+    "sha256": "935016795f3e6908e75acbc2040a01e2e4cdb494a57c42f63a0d6eedb2372256",
+    "size": 254800,
+    "version": "3.13.5 (tags/v3.13.5:6cb20a2, Jun 11 2025, 16:15:46) [MSC v.1943 64 bit (AMD64)]",
+    "prefix": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r1\\.r1-test-venv"
+  },
+  "pth": {
+    "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r1\\.r1-test-venv\\Lib\\site-packages\\r1_remaster_src.pth",
+    "sha256": "1917e7dd7f92dc4ca694ecac2cdb7205fdad1e6042161090be270b5b2b89987d",
+    "size": 154,
+    "content": "import sys; sys.dont_write_bytecode=True; sys.path.insert(0, r'C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\src')"
+  },
+  "pyvenv_cfg": {
+    "sha256": "9838553ca42f8f20b42862b9170fbdd10a63a6a479e323c2e21e03d8e091960a",
+    "size": 319,
+    "content": "home = C:\\Python313\r\ninclude-system-site-packages = true\r\nversion = 3.13.5\r\nexecutable = C:\\Python313\\python.exe\r\ncommand = C:\\Python313\\python.exe -m venv --without-pip --system-site-packages C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r1\\.r1-test-venv\r\n"
+  },
+  "pytest_version": "9.0.3",
+  "foundry_import": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\src\\jarvis_foundry\\__init__.py",
+  "sys_path": [
+    "",
+    "C:\\Python313\\python313.zip",
+    "C:\\Python313\\DLLs",
+    "C:\\Python313\\Lib",
+    "C:\\Python313",
+    "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r1\\.r1-test-venv",
+    "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r1\\.r1-test-venv\\Lib\\site-packages",
+    "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\src",
+    "C:\\Users\\b\\AppData\\Roaming\\Python\\Python313\\site-packages",
+    "C:\\Python313\\Lib\\site-packages"
+  ],
+  "pythonhashseed": "0",
+  "expected_focused_restart_task": "JF-WP7Gate-test_tas-13893",
+  "expected_full_restart_task": "JF-WP7Gate-test_tas-12253",
+  "environment_file_count": 10,
+  "environment_bytes": 520983.0,
+  "dont_write_bytecode": true,
+  "external_full_basetemp": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r1-builder-r3-full-final",
+  "expected_external_full_restart_task": "JF-WP7Gate-test_tas-17792"
+}

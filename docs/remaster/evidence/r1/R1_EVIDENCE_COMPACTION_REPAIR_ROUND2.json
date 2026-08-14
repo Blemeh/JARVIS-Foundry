@@ -1,0 +1,30 @@
+{
+  "schema": "jarvis-r1-evidence-compaction-repair-round2-v1",
+  "status": "COMPLETED",
+  "reason": "A newly generated noncanonical Round-2 matrix wrote verbose full verdicts and exceeded the cumulative 2 MiB R1 evidence budget. Only those same-turn generated outputs were removed before their compact canonical replacement.",
+  "removed": [
+    {
+      "path": "docs/remaster/evidence/r1/mutant_results_REPAIR_ROUND2",
+      "kind": "directory",
+      "file_count": 23,
+      "bytes": 978957,
+      "canonical_inventory_sha256": "3b64970c6e1d46f8529e117c6fdc484cd7776b43c8f394634972464ed4361ab1",
+      "absent_after_cleanup": true
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_MUTANT_MATRIX_REPAIR_ROUND2.json",
+      "kind": "file",
+      "size": 14980,
+      "sha256": "877087430da6de2cab502c5cd4f63744afe325bc7a71c77c1f3091f82028655f",
+      "absent_after_cleanup": true
+    }
+  ],
+  "preservation": {
+    "pre_dispatch_artifacts_removed": 0,
+    "prior_fail_verdicts_or_attempts_removed": 0,
+    "prior_raw_or_junit_removed": 0,
+    "final_round2_spoof_removed": false
+  },
+  "recoverable": false,
+  "replacement": "Compact canonical mutant summaries retain expected and observed codes, failed journeys, proof status, nonempty criterion-evidence truth, and the SHA-256 of each full canonical verdict."
+}

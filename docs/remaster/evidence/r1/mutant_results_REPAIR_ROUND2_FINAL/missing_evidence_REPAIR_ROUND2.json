@@ -1,0 +1,20 @@
+{
+  "canonical_verdict_sha256": "3ec6c6800c512fa9c7de07d5376276b717afc3bfad4a4df65ade967e3ee02e86",
+  "criterion_evidence_nonempty": true,
+  "detected": true,
+  "expected_code": "MISSING_REQUIRED_EVIDENCE",
+  "failed_journey_ids": [
+    "J01"
+  ],
+  "mutant": "missing_evidence",
+  "observed_codes": [
+    "CRITERION_EVIDENCE_INVALID",
+    "MISSING_REQUIRED_EVIDENCE",
+    "PROOF_DIMENSION_MISSING"
+  ],
+  "observer_status": "NOT_REQUESTED",
+  "product_claim_status": "NOT_TESTED",
+  "proof_scope": "HARNESS_SELF_TEST",
+  "schema": "jarvis-r1-mutant-result-repair-round2-v1",
+  "status": "FAIL"
+}

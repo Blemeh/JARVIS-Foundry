@@ -1,0 +1,514 @@
+{
+  "all_rejected": true,
+  "evaluation_time": "2030-01-01T00:00:00Z",
+  "mutants": [
+    {
+      "canonical_verdict_sha256": "3ec6c6800c512fa9c7de07d5376276b717afc3bfad4a4df65ade967e3ee02e86",
+      "detected": true,
+      "expected_code": "MISSING_REQUIRED_EVIDENCE",
+      "failed_journey_ids": [
+        "J01"
+      ],
+      "mutant": "missing_evidence",
+      "observed_codes": [
+        "CRITERION_EVIDENCE_INVALID",
+        "MISSING_REQUIRED_EVIDENCE",
+        "PROOF_DIMENSION_MISSING"
+      ],
+      "result_path": "mutant_results_REPAIR_ROUND2_FINAL/missing_evidence_REPAIR_ROUND2.json",
+      "result_sha256": "817606ebf7b112f8eb2c8b77a1220054415d3cd6d0a283ce07fa1c98ada4a210",
+      "result_size": 597,
+      "status": "FAIL"
+    },
+    {
+      "canonical_verdict_sha256": "32a429bdb99100a187d87231227f830e89e80443fc17be1f68ce8893d86f0752",
+      "detected": true,
+      "expected_code": "FIXTURE_AS_LIVE",
+      "failed_journey_ids": [
+        "J01",
+        "J02",
+        "J03",
+        "J04",
+        "J05",
+        "J06",
+        "J07",
+        "J08",
+        "J09",
+        "J10"
+      ],
+      "mutant": "fixture_as_live",
+      "observed_codes": [
+        "FIXTURE_AS_LIVE",
+        "PROOF_SCOPE_MISMATCH",
+        "SUBJECT_PROOF_SCOPE_MISMATCH"
+      ],
+      "result_path": "mutant_results_REPAIR_ROUND2_FINAL/fixture_as_live_REPAIR_ROUND2.json",
+      "result_sha256": "16a4e17e0812789f89d8a568c92d085aca8548b8d32171f6daaefb6324e41523",
+      "result_size": 674,
+      "status": "FAIL"
+    },
+    {
+      "canonical_verdict_sha256": "9383b497cccb1bb80253de2502dd68d20198bfda8242f6e50b0499ee8b29b83f",
+      "detected": true,
+      "expected_code": "STALE_OR_UNIDENTIFIABLE_SOURCE",
+      "failed_journey_ids": [
+        "J05"
+      ],
+      "mutant": "stale_source",
+      "observed_codes": [
+        "STALE_OR_UNIDENTIFIABLE_SOURCE"
+      ],
+      "result_path": "mutant_results_REPAIR_ROUND2_FINAL/stale_source_REPAIR_ROUND2.json",
+      "result_sha256": "1f89daec9b7a4af42b2b31bee9aea8ff0ade820e441d53ce69827931dcea4cc2",
+      "result_size": 538,
+      "status": "FAIL"
+    },
+    {
+      "canonical_verdict_sha256": "12999fc4dc94dcea470dcf6f84f09b671a55a39b63daa576733a8f56462f44cb",
+      "detected": true,
+      "expected_code": "CANONICAL_TARGET_SUBSTITUTED",
+      "failed_journey_ids": [
+        "J04"
+      ],
+      "mutant": "target_substitution",
+      "observed_codes": [
+        "CANONICAL_TARGET_SUBSTITUTED"
+      ],
+      "result_path": "mutant_results_REPAIR_ROUND2_FINAL/target_substitution_REPAIR_ROUND2.json",
+      "result_sha256": "2f670c41767464bca469686a96dec1d19215b8ab98abaac722f9b4d09a2a38c7",
+      "result_size": 541,
+      "status": "FAIL"
+    },
+    {
+      "canonical_verdict_sha256": "0a6a2f1c54229ce68f863fd9e81f33305757b49aaf0c2b0ce13fbd5648bfee38",
+      "detected": true,
+      "expected_code": "SELF_VERIFICATION",
+      "failed_journey_ids": [
+        "J01",
+        "J02",
+        "J03",
+        "J04",
+        "J05",
+        "J06",
+        "J07",
+        "J08",
+        "J09",
+        "J10"
+      ],
+      "mutant": "self_verification",
+      "observed_codes": [
+        "ACTOR_IDENTITY_MISMATCH",
+        "SELF_VERIFICATION"
+      ],
+      "result_path": "mutant_results_REPAIR_ROUND2_FINAL/self_verification_REPAIR_ROUND2.json",
+      "result_sha256": "0c35562751c704ec348b13f451c1176cd53e68486e7a4590c93c5cab2e6f0a12",
+      "result_size": 647,
+      "status": "FAIL"
+    },
+    {
+      "canonical_verdict_sha256": "be2d8a05189edcfdec36a0674842a8f64e4c2e3f16e9813c2b82874b146d8832",
+      "detected": true,
+      "expected_code": "BUDGET_OVERFLOW",
+      "failed_journey_ids": [
+        "J06"
+      ],
+      "mutant": "budget_overflow",
+      "observed_codes": [
+        "BUDGET_OVERFLOW"
+      ],
+      "result_path": "mutant_results_REPAIR_ROUND2_FINAL/budget_overflow_REPAIR_ROUND2.json",
+      "result_sha256": "7c0ec13dd242f95b79e1c4cb638536ce7b53f02b4f17391c051f41658b5d2a14",
+      "result_size": 511,
+      "status": "FAIL"
+    },
+    {
+      "canonical_verdict_sha256": "a3f27d7abd04eb8317d921cebf11295b0295c91fdf0c1aea71ee8dceae09822c",
+      "detected": true,
+      "expected_code": "DUPLICATE_NON_IDEMPOTENT_EFFECT",
+      "failed_journey_ids": [
+        "J09"
+      ],
+      "mutant": "duplicate_non_idempotent_effect",
+      "observed_codes": [
+        "DUPLICATE_NON_IDEMPOTENT_EFFECT"
+      ],
+      "result_path": "mutant_results_REPAIR_ROUND2_FINAL/duplicate_non_idempotent_effect_REPAIR_ROUND2.json",
+      "result_sha256": "5b2c439c0639f0e14ed4a0e60e27af9c3650e3e5236d6379839cb5fb30addc6c",
+      "result_size": 559,
+      "status": "FAIL"
+    },
+    {
+      "canonical_verdict_sha256": "78c440adff673d059aa6633a840d986f96e1cd5dd8fd6524e6773cd101010530",
+      "detected": true,
+      "expected_code": "ABSENT_AFTER_STATE",
+      "failed_journey_ids": [
+        "J08"
+      ],
+      "mutant": "absent_after_state",
+      "observed_codes": [
+        "ABSENT_AFTER_STATE"
+      ],
+      "result_path": "mutant_results_REPAIR_ROUND2_FINAL/absent_after_state_REPAIR_ROUND2.json",
+      "result_sha256": "c27d37a7bb2e973091de3845a48d654287fef542efe81bc733ee4a9e7dfdcc6f",
+      "result_size": 520,
+      "status": "FAIL"
+    },
+    {
+      "canonical_verdict_sha256": "528a0eed99e610a9adced296363677749fc06332984a3e1c69e18e02fc8d3734",
+      "detected": true,
+      "expected_code": "CONTRADICTION_ERASED",
+      "failed_journey_ids": [
+        "J02"
+      ],
+      "mutant": "contradiction_erasure",
+      "observed_codes": [
+        "CONTRADICTION_ERASED"
+      ],
+      "result_path": "mutant_results_REPAIR_ROUND2_FINAL/contradiction_erasure_REPAIR_ROUND2.json",
+      "result_sha256": "efdeec2d0c2615c3cd4f28692514dff17923d13160aa95c18169c43efb90ed86",
+      "result_size": 527,
+      "status": "FAIL"
+    },
+    {
+      "canonical_verdict_sha256": "1c80f4a8567532f4e9db5e9d8317c00d02caa8ae7e94c43014f30e8030c95c9e",
+      "detected": true,
+      "expected_code": "ROLLBACK_FAILED",
+      "failed_journey_ids": [
+        "J10"
+      ],
+      "mutant": "failed_rollback",
+      "observed_codes": [
+        "ROLLBACK_FAILED"
+      ],
+      "result_path": "mutant_results_REPAIR_ROUND2_FINAL/failed_rollback_REPAIR_ROUND2.json",
+      "result_sha256": "3a677af158a78511a3fbc850018ad6ab32e3fa2fc8ec84f436fdc780f099834f",
+      "result_size": 511,
+      "status": "FAIL"
+    },
+    {
+      "canonical_verdict_sha256": "b59712760054880dadc0ba009c6fcc54403dfdfad5ba30659af3880c9ac00b5c",
+      "detected": true,
+      "expected_code": "FORGED_OWNER_CONTROL",
+      "failed_journey_ids": [
+        "J01"
+      ],
+      "mutant": "forged_owner_control",
+      "observed_codes": [
+        "FORGED_OWNER_CONTROL"
+      ],
+      "result_path": "mutant_results_REPAIR_ROUND2_FINAL/forged_owner_control_REPAIR_ROUND2.json",
+      "result_sha256": "4e6993c040c4d5dcdea678293bfcb6d93ebbe95ff505241fd8e53f3d681449bf",
+      "result_size": 526,
+      "status": "FAIL"
+    },
+    {
+      "canonical_verdict_sha256": "41a119105aafb739c4d1325d480bbd0578221b0fc53dffd29c645281a27ca660",
+      "detected": true,
+      "expected_code": "FORBIDDEN_FINANCIAL_EFFECT",
+      "failed_journey_ids": [
+        "J09"
+      ],
+      "mutant": "forbidden_financial_effect",
+      "observed_codes": [
+        "DISALLOWED_EFFECT_CLASS",
+        "FORBIDDEN_FINANCIAL_EFFECT"
+      ],
+      "result_path": "mutant_results_REPAIR_ROUND2_FINAL/forbidden_financial_effect_REPAIR_ROUND2.json",
+      "result_sha256": "40308281dc0f5184d12ac8b6e1e38b2083778920135c5186b9ae81a1e55ae76d",
+      "result_size": 575,
+      "status": "FAIL"
+    },
+    {
+      "canonical_verdict_sha256": "12cf71124b15228bd23e3d1725a512b443f309bb4c420740663a8dcc380f6a94",
+      "detected": true,
+      "expected_code": "PRODUCT_LIVE_OBSERVER_REQUIRED",
+      "failed_journey_ids": [
+        "J01",
+        "J02",
+        "J03",
+        "J04",
+        "J05",
+        "J06",
+        "J07",
+        "J08",
+        "J09",
+        "J10"
+      ],
+      "mutant": "product_live_relabel_rehash",
+      "observed_codes": [
+        "PRODUCT_LIVE_OBSERVER_REQUIRED",
+        "UNTRUSTED_LIVE_ACTOR_IDENTITY",
+        "UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+        "UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+        "UNTRUSTED_LIVE_SOURCE",
+        "UNTRUSTED_LIVE_TARGET_RECEIPT",
+        "UNTRUSTED_LIVE_VERIFIER_IDENTITY"
+      ],
+      "result_path": "mutant_results_REPAIR_ROUND2_FINAL/product_live_relabel_rehash_REPAIR_ROUND2.json",
+      "result_sha256": "b47afebc6348ba426470ff17aeb32d5260ac69f2fbc83fce2497e67e3db6115c",
+      "result_size": 867,
+      "status": "FAIL"
+    },
+    {
+      "canonical_verdict_sha256": "933d149778a20758fb5191b992774605e09592277456be45d0b9ec1b2c4b4446",
+      "detected": true,
+      "expected_code": "UNTRUSTED_LIVE_SOURCE",
+      "failed_journey_ids": [
+        "J01",
+        "J02",
+        "J03",
+        "J04",
+        "J05",
+        "J06",
+        "J07",
+        "J08",
+        "J09",
+        "J10"
+      ],
+      "mutant": "live_source_locator_spoof",
+      "observed_codes": [
+        "PRODUCT_LIVE_OBSERVER_REQUIRED",
+        "UNTRUSTED_LIVE_ACTOR_IDENTITY",
+        "UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+        "UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+        "UNTRUSTED_LIVE_SOURCE",
+        "UNTRUSTED_LIVE_TARGET_RECEIPT",
+        "UNTRUSTED_LIVE_VERIFIER_IDENTITY"
+      ],
+      "result_path": "mutant_results_REPAIR_ROUND2_FINAL/live_source_locator_spoof_REPAIR_ROUND2.json",
+      "result_sha256": "d29aacd1a8382069edeea5d95e6868d0067d8aa8254769013a879f6e395b00e9",
+      "result_size": 856,
+      "status": "FAIL"
+    },
+    {
+      "canonical_verdict_sha256": "82b62f9dd3dbcf4baaa061125ef3e9f1c04872467d3c9897d6d3c76cdba5afd8",
+      "detected": true,
+      "expected_code": "UNTRUSTED_LIVE_TARGET_RECEIPT",
+      "failed_journey_ids": [
+        "J01",
+        "J02",
+        "J03",
+        "J04",
+        "J05",
+        "J06",
+        "J07",
+        "J08",
+        "J09",
+        "J10"
+      ],
+      "mutant": "live_target_receipt_spoof",
+      "observed_codes": [
+        "PRODUCT_LIVE_OBSERVER_REQUIRED",
+        "UNTRUSTED_LIVE_ACTOR_IDENTITY",
+        "UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+        "UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+        "UNTRUSTED_LIVE_SOURCE",
+        "UNTRUSTED_LIVE_TARGET_RECEIPT",
+        "UNTRUSTED_LIVE_VERIFIER_IDENTITY"
+      ],
+      "result_path": "mutant_results_REPAIR_ROUND2_FINAL/live_target_receipt_spoof_REPAIR_ROUND2.json",
+      "result_sha256": "dc44da2644e6b555cced76dd022fe942fab938731890ad7ce270898c53b8d65c",
+      "result_size": 864,
+      "status": "FAIL"
+    },
+    {
+      "canonical_verdict_sha256": "4f9c36bfd0ec87184136653342b94356d64996cfbc961d9bf69cf758992a09c7",
+      "detected": true,
+      "expected_code": "UNTRUSTED_LIVE_ACTOR_IDENTITY",
+      "failed_journey_ids": [
+        "J01",
+        "J02",
+        "J03",
+        "J04",
+        "J05",
+        "J06",
+        "J07",
+        "J08",
+        "J09",
+        "J10"
+      ],
+      "mutant": "live_actor_identity_spoof",
+      "observed_codes": [
+        "PRODUCT_LIVE_OBSERVER_REQUIRED",
+        "UNTRUSTED_LIVE_ACTOR_IDENTITY",
+        "UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+        "UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+        "UNTRUSTED_LIVE_SOURCE",
+        "UNTRUSTED_LIVE_TARGET_RECEIPT",
+        "UNTRUSTED_LIVE_VERIFIER_IDENTITY"
+      ],
+      "result_path": "mutant_results_REPAIR_ROUND2_FINAL/live_actor_identity_spoof_REPAIR_ROUND2.json",
+      "result_sha256": "94a699013357e57938a67d1cf1cf7b9db370c0168ae1df3b5c3566bf2b529098",
+      "result_size": 864,
+      "status": "FAIL"
+    },
+    {
+      "canonical_verdict_sha256": "1a8894c27ae773c2b5aa9d1039126647200c1876bc667ef6e5f2dc1f94483825",
+      "detected": true,
+      "expected_code": "UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+      "failed_journey_ids": [
+        "J01",
+        "J02",
+        "J03",
+        "J04",
+        "J05",
+        "J06",
+        "J07",
+        "J08",
+        "J09",
+        "J10"
+      ],
+      "mutant": "live_verifier_identity_spoof",
+      "observed_codes": [
+        "PRODUCT_LIVE_OBSERVER_REQUIRED",
+        "UNTRUSTED_LIVE_ACTOR_IDENTITY",
+        "UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+        "UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+        "UNTRUSTED_LIVE_SOURCE",
+        "UNTRUSTED_LIVE_TARGET_RECEIPT",
+        "UNTRUSTED_LIVE_VERIFIER_IDENTITY"
+      ],
+      "result_path": "mutant_results_REPAIR_ROUND2_FINAL/live_verifier_identity_spoof_REPAIR_ROUND2.json",
+      "result_sha256": "a8e53e33cd6acc6f8f3daedd4517830ce8d68f8f2b1d1081ce75030a44d9f12b",
+      "result_size": 870,
+      "status": "FAIL"
+    },
+    {
+      "canonical_verdict_sha256": "8385cbfd15f7c41b3425bc91a88b0bcce2ae9fc4947ca0634f67d1fe5f1db394",
+      "detected": true,
+      "expected_code": "UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+      "failed_journey_ids": [
+        "J01",
+        "J02",
+        "J03",
+        "J04",
+        "J05",
+        "J06",
+        "J07",
+        "J08",
+        "J09",
+        "J10"
+      ],
+      "mutant": "live_outcome_boolean_spoof",
+      "observed_codes": [
+        "PRODUCT_LIVE_OBSERVER_REQUIRED",
+        "UNTRUSTED_LIVE_ACTOR_IDENTITY",
+        "UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+        "UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+        "UNTRUSTED_LIVE_SOURCE",
+        "UNTRUSTED_LIVE_TARGET_RECEIPT",
+        "UNTRUSTED_LIVE_VERIFIER_IDENTITY"
+      ],
+      "result_path": "mutant_results_REPAIR_ROUND2_FINAL/live_outcome_boolean_spoof_REPAIR_ROUND2.json",
+      "result_sha256": "9558893cb8106d0f6685344caf79ad71826bc4129bbd3ab7a3a205624b301139",
+      "result_size": 868,
+      "status": "FAIL"
+    },
+    {
+      "canonical_verdict_sha256": "3d6e9268175653629fbf29345e2c35fdb6a1d4740220230c116d6a3a2861cd4f",
+      "detected": true,
+      "expected_code": "UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+      "failed_journey_ids": [
+        "J01",
+        "J02",
+        "J03",
+        "J04",
+        "J05",
+        "J06",
+        "J07",
+        "J08",
+        "J09",
+        "J10"
+      ],
+      "mutant": "live_failure_injection_list_spoof",
+      "observed_codes": [
+        "PRODUCT_LIVE_OBSERVER_REQUIRED",
+        "UNTRUSTED_LIVE_ACTOR_IDENTITY",
+        "UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+        "UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+        "UNTRUSTED_LIVE_SOURCE",
+        "UNTRUSTED_LIVE_TARGET_RECEIPT",
+        "UNTRUSTED_LIVE_VERIFIER_IDENTITY"
+      ],
+      "result_path": "mutant_results_REPAIR_ROUND2_FINAL/live_failure_injection_list_spoof_REPAIR_ROUND2.json",
+      "result_sha256": "fe10163cd11bdf79eea5454eda3c3511895d6f445371a77bb42a7adba84d4a1c",
+      "result_size": 885,
+      "status": "FAIL"
+    },
+    {
+      "canonical_verdict_sha256": "cd08770e5d5cc9d0041e700adf6df58db39aeab1c6ab77963063e50c67f27037",
+      "detected": true,
+      "expected_code": "STATUS_DETAIL_REQUIRED",
+      "failed_journey_ids": [
+        "J01"
+      ],
+      "mutant": "blind_status_fail",
+      "observed_codes": [
+        "NONPASS_CONTRADICTS_SUCCESS_OUTCOME",
+        "STATUS_DETAIL_REQUIRED"
+      ],
+      "result_path": "mutant_results_REPAIR_ROUND2_FINAL/blind_status_fail_REPAIR_ROUND2.json",
+      "result_sha256": "912757611f854ffce79d343ad37607467563ef9d4b25230e5949765ed539a9bc",
+      "result_size": 570,
+      "status": "FAIL"
+    },
+    {
+      "canonical_verdict_sha256": "87fe7b87effd670bbb737ad5ea6c4b5c32172c8f87aa4e08560661237bdb55f8",
+      "detected": true,
+      "expected_code": "STATUS_DETAIL_REQUIRED",
+      "failed_journey_ids": [
+        "J01"
+      ],
+      "mutant": "blind_status_blocked",
+      "observed_codes": [
+        "NONPASS_CONTRADICTS_SUCCESS_OUTCOME",
+        "STATUS_DETAIL_REQUIRED"
+      ],
+      "result_path": "mutant_results_REPAIR_ROUND2_FINAL/blind_status_blocked_REPAIR_ROUND2.json",
+      "result_sha256": "39f3a9b37a2213967680155fca63b29cefc2cf24f3697ea11ae7fb370bc4677c",
+      "result_size": 573,
+      "status": "FAIL"
+    },
+    {
+      "canonical_verdict_sha256": "ca58a83f3c5037a9da6da62c13c1e796a3f52ed6b98818c1b4d74bfe5ef01741",
+      "detected": true,
+      "expected_code": "STATUS_DETAIL_REQUIRED",
+      "failed_journey_ids": [
+        "J01"
+      ],
+      "mutant": "blind_status_not_tested",
+      "observed_codes": [
+        "NONPASS_CONTRADICTS_SUCCESS_OUTCOME",
+        "STATUS_DETAIL_REQUIRED"
+      ],
+      "result_path": "mutant_results_REPAIR_ROUND2_FINAL/blind_status_not_tested_REPAIR_ROUND2.json",
+      "result_sha256": "8cda82396728b5cbd5d273787f3cf288803a178564bb348ba8dc03df5fba45ca",
+      "result_size": 576,
+      "status": "FAIL"
+    },
+    {
+      "canonical_verdict_sha256": "8547f4e44c3c3301cf3cc7d56cb7bb4960a295614321c24d32e9f69f8abe1acd",
+      "detected": true,
+      "expected_code": "STATUS_DETAIL_REQUIRED",
+      "failed_journey_ids": [
+        "J01"
+      ],
+      "mutant": "blind_status_waiting",
+      "observed_codes": [
+        "NONPASS_CONTRADICTS_SUCCESS_OUTCOME",
+        "STATUS_DETAIL_REQUIRED"
+      ],
+      "result_path": "mutant_results_REPAIR_ROUND2_FINAL/blind_status_waiting_REPAIR_ROUND2.json",
+      "result_sha256": "004af9c8d677fb1fce5849e8331acd5beb92ed6f10db5257ac9a180b43d28679",
+      "result_size": 573,
+      "status": "FAIL"
+    }
+  ],
+  "preserved_frozen_mutants": 12,
+  "program": "POST_V7_JARVIS_REMASTER",
+  "rejected_mutants": 23,
+  "required_mutants": 23,
+  "round2_mutants": 11,
+  "schema": "jarvis-r1-mutant-matrix-v2",
+  "stage": "R1"
+}

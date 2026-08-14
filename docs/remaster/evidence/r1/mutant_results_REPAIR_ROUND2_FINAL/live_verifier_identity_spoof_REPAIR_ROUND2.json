@@ -1,0 +1,33 @@
+{
+  "canonical_verdict_sha256": "1a8894c27ae773c2b5aa9d1039126647200c1876bc667ef6e5f2dc1f94483825",
+  "criterion_evidence_nonempty": true,
+  "detected": true,
+  "expected_code": "UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+  "failed_journey_ids": [
+    "J01",
+    "J02",
+    "J03",
+    "J04",
+    "J05",
+    "J06",
+    "J07",
+    "J08",
+    "J09",
+    "J10"
+  ],
+  "mutant": "live_verifier_identity_spoof",
+  "observed_codes": [
+    "PRODUCT_LIVE_OBSERVER_REQUIRED",
+    "UNTRUSTED_LIVE_ACTOR_IDENTITY",
+    "UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+    "UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+    "UNTRUSTED_LIVE_SOURCE",
+    "UNTRUSTED_LIVE_TARGET_RECEIPT",
+    "UNTRUSTED_LIVE_VERIFIER_IDENTITY"
+  ],
+  "observer_status": "ABSENT",
+  "product_claim_status": "FAIL",
+  "proof_scope": "PRODUCT_LIVE",
+  "schema": "jarvis-r1-mutant-result-repair-round2-v1",
+  "status": "FAIL"
+}

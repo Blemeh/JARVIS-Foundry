@@ -1,0 +1,36 @@
+{
+  "schema": "jarvis-r1-live-guard-repair-round2-v1",
+  "captured_utc": "2026-08-14T18:28:49.2737303+00:00",
+  "phase": "BEFORE_FULL_SUITE",
+  "protected_tasks": [
+    {
+      "task_name": "\\JARVIS-Foundry-Supervisor",
+      "exists": true,
+      "status": "Running",
+      "xml_sha256": "765ab1c0953fc71e3b774691da6c489ececb8f92fe710fc5d6e177af36e7aa59",
+      "xml_chars": 1670
+    },
+    {
+      "task_name": "\\Hermes_Gateway",
+      "exists": true,
+      "status": "Ready",
+      "xml_sha256": "06c1cf7c6228f4ebce3ed43279a275d32fbb2be5b77b41cba96f3f3c3ce0299f",
+      "xml_chars": 1438
+    }
+  ],
+  "protected_supervisor_processes": [
+    {
+      "pid": 17052,
+      "creation_date_utc": "2026-08-14T11:02:06.5419790Z",
+      "executable": "C:\\Python313\\python.exe",
+      "command_sha256": "824e09a3ea8d12f38d8fe7fa93cf602e0229c190dea3692e023837963cb9a8e9"
+    },
+    {
+      "pid": 21636,
+      "creation_date_utc": "2026-08-14T11:02:05.8337620Z",
+      "executable": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry\\.venv\\Scripts\\python.exe",
+      "command_sha256": "824e09a3ea8d12f38d8fe7fa93cf602e0229c190dea3692e023837963cb9a8e9"
+    }
+  ],
+  "staging_task_names": []
+}

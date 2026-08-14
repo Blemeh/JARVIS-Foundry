@@ -1,0 +1,18 @@
+{
+  "canonical_verdict_sha256": "a3f27d7abd04eb8317d921cebf11295b0295c91fdf0c1aea71ee8dceae09822c",
+  "criterion_evidence_nonempty": true,
+  "detected": true,
+  "expected_code": "DUPLICATE_NON_IDEMPOTENT_EFFECT",
+  "failed_journey_ids": [
+    "J09"
+  ],
+  "mutant": "duplicate_non_idempotent_effect",
+  "observed_codes": [
+    "DUPLICATE_NON_IDEMPOTENT_EFFECT"
+  ],
+  "observer_status": "NOT_REQUESTED",
+  "product_claim_status": "NOT_TESTED",
+  "proof_scope": "HARNESS_SELF_TEST",
+  "schema": "jarvis-r1-mutant-result-repair-round2-v1",
+  "status": "FAIL"
+}

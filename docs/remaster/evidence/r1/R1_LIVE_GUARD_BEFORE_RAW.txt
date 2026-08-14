@@ -1,0 +1,106 @@
+{
+  "captured_utc": "2026-08-14T16:18:58.9764811Z",
+  "matching_tasks": [
+    {
+      "task_name": "\\Hermes_Gateway",
+      "status": "Ready",
+      "xml_sha256": "8f410ea850c1d682138e21502ec761ce41c2186894b4b54fabc053e39d154b81"
+    },
+    {
+      "task_name": "\\JARVIS-Foundry-Supervisor",
+      "status": "Running",
+      "xml_sha256": "fdf06e1ef9f42c0f8f8bfed5081b0c59a6fdcba2203e221e4d4e32e02cbd7c3c"
+    },
+    {
+      "task_name": "\\JARVIS-Foundry-Supervisor",
+      "status": "Running",
+      "xml_sha256": "fdf06e1ef9f42c0f8f8bfed5081b0c59a6fdcba2203e221e4d4e32e02cbd7c3c"
+    }
+  ],
+  "matching_processes": [
+    {
+      "pid": 456,
+      "creation_date": "08/13/2026 23:30:50",
+      "executable": "C:\\Users\\b\\AppData\\Local\\hermes\\hermes-agent\\apps\\desktop\\release\\win-unpacked\\Hermes.exe",
+      "command_sha256": "60a24022d913fcc2041e601eb40b7abb1dbd14eb834a979820806de4d97438c4"
+    },
+    {
+      "pid": 4060,
+      "creation_date": "08/14/2026 11:23:51",
+      "executable": "C:\\Users\\b\\AppData\\Local\\hermes\\hermes-agent\\apps\\desktop\\release\\win-unpacked\\Hermes.exe",
+      "command_sha256": "4ac86ee4151934576b3e91884147a017fb9a6ff18a0cba89805b5b9d77c08493"
+    },
+    {
+      "pid": 8172,
+      "creation_date": "08/13/2026 08:18:39",
+      "executable": "C:\\Users\\b\\AppData\\Local\\hermes\\hermes-agent\\venv\\Scripts\\python.exe",
+      "command_sha256": "72a2bc499ce1a9051e9fa15e84696bca52f5694b429640d28d462328433f12d3"
+    },
+    {
+      "pid": 11180,
+      "creation_date": "08/13/2026 08:18:37",
+      "executable": "C:\\Users\\b\\AppData\\Local\\hermes\\hermes-agent\\apps\\desktop\\release\\win-unpacked\\Hermes.exe",
+      "command_sha256": "547cdb4bab3a418b95b2d168e691f70fdfdfab0158b6b27bc7adc0ce82cebd6b"
+    },
+    {
+      "pid": 11712,
+      "creation_date": "08/14/2026 15:36:03",
+      "executable": "C:\\Program Files\\Sublime Text\\sublime_text.exe",
+      "command_sha256": "b257d2b658bf8ebfe4719ae41f1aacbb18ca98cbc04a940cf943d49569bfb17e"
+    },
+    {
+      "pid": 12308,
+      "creation_date": "08/13/2026 08:18:43",
+      "executable": "C:\\Users\\b\\AppData\\Local\\hermes\\hermes-agent\\apps\\desktop\\release\\win-unpacked\\Hermes.exe",
+      "command_sha256": "b4c3c25425f45322f2f2d6d144edbfc8549a88d8bcf695917b5904530f3b9b60"
+    },
+    {
+      "pid": 17052,
+      "creation_date": "08/14/2026 13:02:06",
+      "executable": "C:\\Python313\\python.exe",
+      "command_sha256": "824e09a3ea8d12f38d8fe7fa93cf602e0229c190dea3692e023837963cb9a8e9"
+    },
+    {
+      "pid": 17148,
+      "creation_date": "08/13/2026 08:18:37",
+      "executable": "C:\\Users\\b\\AppData\\Local\\hermes\\hermes-agent\\apps\\desktop\\release\\win-unpacked\\Hermes.exe",
+      "command_sha256": "b8a7f7c57f87aa0016ae0dc9ca442b524042f0d1e6aa2e7b49d516691e8c19a5"
+    },
+    {
+      "pid": 18060,
+      "creation_date": "08/13/2026 08:18:37",
+      "executable": "C:\\Users\\b\\AppData\\Local\\hermes\\hermes-agent\\apps\\desktop\\release\\win-unpacked\\Hermes.exe",
+      "command_sha256": "6cd3c53264d89dc9b866651a48a2f3e1b16f1c4b5dc68abc270b8cfcd26ec7fb"
+    },
+    {
+      "pid": 18124,
+      "creation_date": "08/13/2026 08:18:26",
+      "executable": "C:\\Users\\b\\AppData\\Local\\hermes\\hermes-agent\\apps\\desktop\\release\\win-unpacked\\Hermes.exe",
+      "command_sha256": "7350fa16fe46925d558b94b6f98650627bc60e1376e02774a3f745068a2d6797"
+    },
+    {
+      "pid": 21500,
+      "creation_date": "08/13/2026 04:47:15",
+      "executable": "C:\\Program Files\\nodejs\\node.exe",
+      "command_sha256": "ae175b14647b7d6c14f15ab37728f9d869407ac40944ebf41b1fe62abbbe39c5"
+    },
+    {
+      "pid": 21636,
+      "creation_date": "08/14/2026 13:02:05",
+      "executable": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry\\.venv\\Scripts\\python.exe",
+      "command_sha256": "824e09a3ea8d12f38d8fe7fa93cf602e0229c190dea3692e023837963cb9a8e9"
+    },
+    {
+      "pid": 21776,
+      "creation_date": "08/13/2026 08:18:39",
+      "executable": "C:\\Users\\b\\AppData\\Roaming\\uv\\python\\cpython-3.11-windows-x86_64-none\\python.exe",
+      "command_sha256": "fe0a09b1859175547c034222bf2eed9bb115626c79eeac624869603a0d9589a3"
+    },
+    {
+      "pid": 21912,
+      "creation_date": "08/14/2026 18:18:57",
+      "executable": "C:\\Program Files\\WindowsApps\\Microsoft.PowerShell_7.6.4.0_x64__8wekyb3d8bbwe\\pwsh.exe",
+      "command_sha256": "15dfd107930ca2fdc45e4f7f261a110f22e3960d1709fe8391dfb48a53c17c04"
+    }
+  ]
+}

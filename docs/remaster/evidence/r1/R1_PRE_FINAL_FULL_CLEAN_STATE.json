@@ -1,0 +1,34 @@
+{
+  "captured_utc": "2026-08-14T16:35:04.5143728Z",
+  "jf_wp7gate_tasks": [],
+  "isolated_venv_processes": [],
+  "builder_pytest_temp_paths": [
+    {
+      "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r1\\host-repro-pytest-tmp",
+      "exists": false
+    },
+    {
+      "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r1\\isolated-focus-pytest-tmp",
+      "exists": false
+    },
+    {
+      "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r1\\isolated-full-pytest-tmp",
+      "exists": false
+    },
+    {
+      "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r1\\isolated-registration-inrepo-repro-tmp",
+      "exists": false
+    },
+    {
+      "path": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r1-builder-r3-registration-repro",
+      "exists": false
+    },
+    {
+      "path": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r1-builder-r3-full-final",
+      "exists": false
+    }
+  ],
+  "all_test_tasks_absent": true,
+  "all_venv_processes_absent": true,
+  "all_prior_and_final_temps_absent": true
+}

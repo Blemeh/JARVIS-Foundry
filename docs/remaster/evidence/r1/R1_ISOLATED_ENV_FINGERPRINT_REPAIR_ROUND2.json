@@ -1,0 +1,43 @@
+{
+  "schema": "jarvis-r1-isolated-environment-repair-round2-v1",
+  "creation_command": "C:/Python313/python.exe -B -m venv --without-pip --system-site-packages C:/Users/b/AppData/Local/Temp/jarvis-r1-repair-round2-full-env-agent-r2b",
+  "creation_exit": 0,
+  "creation_wall_seconds": 0.128,
+  "network_used": false,
+  "install_command_used": false,
+  "ephemeral": true,
+  "remove_after_runs": true,
+  "python": {
+    "path": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r1-repair-round2-full-env-agent-r2b\\Scripts\\python.exe",
+    "sha256": "935016795f3e6908e75acbc2040a01e2e4cdb494a57c42f63a0d6eedb2372256",
+    "size": 254800,
+    "version": "3.13.5",
+    "prefix": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r1-repair-round2-full-env-agent-r2b"
+  },
+  "pth": {
+    "path": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r1-repair-round2-full-env-agent-r2b\\Lib\\site-packages\\r1_remaster_src_REPAIR_ROUND2.pth",
+    "sha256": "1917e7dd7f92dc4ca694ecac2cdb7205fdad1e6042161090be270b5b2b89987d",
+    "size": 154,
+    "content": "import sys; sys.dont_write_bytecode=True; sys.path.insert(0, r'C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\src')"
+  },
+  "pyvenv_cfg": {
+    "sha256": "8f79e0c285fbbb436f3825972c0f9ee6e406671b6ab0c3d179c5a16eb30b29a3",
+    "size": 267,
+    "include_system_site_packages": true,
+    "without_pip": true,
+    "pip_scripts_present": 0,
+    "system_pip_importable_but_not_invoked": true
+  },
+  "pytest_version": "9.0.3",
+  "foundry_import": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\src\\jarvis_foundry\\__init__.py",
+  "pythonhashseed": "0",
+  "dont_write_bytecode": true,
+  "environment_file_count": 10,
+  "environment_bytes": 520897,
+  "external_full_basetemp": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r1-repair-round2-full-basetemp-agent-r2b",
+  "collection_command": "<isolated-python> -B -m pytest --collect-only tests/foundry tests/remaster/r1/test_round2_repairs.py",
+  "collected_tests": 993,
+  "baseline_tests": 985,
+  "round2_delta_tests": 8,
+  "delta_exact": true
+}

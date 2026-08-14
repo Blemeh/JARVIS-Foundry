@@ -1,0 +1,23 @@
+{
+  "after_state": {
+    "sha256": "fe10553587a2aea883704bcae875da443169458382d8d821328fe68720a65469",
+    "size": 219,
+    "state": "USEFUL_EFFECT_VERIFIED"
+  },
+  "before_state": {
+    "sha256": "5106c5b0ef46b54b560c1d5cfc13dc085dc9cb3e0f4c65e6f61fe05d399a7caf",
+    "size": 203,
+    "state": "BEFORE"
+  },
+  "criterion_ids": [
+    "J08-S01"
+  ],
+  "journey_id": "J08",
+  "operation": "actual temporary-directory digital file effect",
+  "phase": "SOURCE",
+  "proof_dimension": "regression_provenance",
+  "requirement_id": "J08-E01",
+  "restoration_verified": true,
+  "schema": "jarvis-reference-evidence-artifact-v1",
+  "target_id": "demo-service-maintenance-worktree"
+}

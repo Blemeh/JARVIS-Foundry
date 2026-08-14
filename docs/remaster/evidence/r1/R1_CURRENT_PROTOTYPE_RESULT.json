@@ -1,0 +1,231 @@
+{
+  "aggregate_reason": "The exact current prototype lacks the required external purpose protocol; no journey can be proven through an integrated black-box path.",
+  "frozen_source": {
+    "actual_commit": "bf8f1493b7fd5cd80d17a631a1fb23e82c2260f9",
+    "expected_commit": "bf8f1493b7fd5cd80d17a631a1fb23e82c2260f9",
+    "identity_match": true,
+    "tree": "1313e272bc51db2a5cbadd719e8fdcfbec306635"
+  },
+  "journeys": [
+    {
+      "evidence": [
+        {
+          "basis": {
+            "commit": "bf8f1493b7fd5cd80d17a631a1fb23e82c2260f9",
+            "database_state_unchanged": true,
+            "entrypoint": "jarvis_foundry.cli.main:main",
+            "help_exit_code": 0,
+            "help_sha256": "c23db02093819a2d09610133b18764e41c661472cb6025eb87bf1d39d08a295b",
+            "protocol_endpoint_present": false,
+            "repository_status_unchanged": true,
+            "tree": "1313e272bc51db2a5cbadd719e8fdcfbec306635"
+          },
+          "kind": "MISSING_VERSIONED_PURPOSE_ENDPOINT",
+          "observation": "Exact bf8f1493 V7-derived CLI exposes no jarvis-purpose-protocol-v1 endpoint, so J01 integrated behavior cannot be exercised."
+        }
+      ],
+      "journey_id": "J01",
+      "status": "FAIL"
+    },
+    {
+      "evidence": [
+        {
+          "basis": {
+            "commit": "bf8f1493b7fd5cd80d17a631a1fb23e82c2260f9",
+            "database_state_unchanged": true,
+            "entrypoint": "jarvis_foundry.cli.main:main",
+            "help_exit_code": 0,
+            "help_sha256": "c23db02093819a2d09610133b18764e41c661472cb6025eb87bf1d39d08a295b",
+            "protocol_endpoint_present": false,
+            "repository_status_unchanged": true,
+            "tree": "1313e272bc51db2a5cbadd719e8fdcfbec306635"
+          },
+          "kind": "MISSING_VERSIONED_PURPOSE_ENDPOINT",
+          "observation": "Exact bf8f1493 V7-derived CLI exposes no jarvis-purpose-protocol-v1 endpoint, so J02 integrated behavior cannot be exercised."
+        }
+      ],
+      "journey_id": "J02",
+      "status": "FAIL"
+    },
+    {
+      "evidence": [
+        {
+          "basis": {
+            "commit": "bf8f1493b7fd5cd80d17a631a1fb23e82c2260f9",
+            "database_state_unchanged": true,
+            "entrypoint": "jarvis_foundry.cli.main:main",
+            "help_exit_code": 0,
+            "help_sha256": "c23db02093819a2d09610133b18764e41c661472cb6025eb87bf1d39d08a295b",
+            "protocol_endpoint_present": false,
+            "repository_status_unchanged": true,
+            "tree": "1313e272bc51db2a5cbadd719e8fdcfbec306635"
+          },
+          "kind": "MISSING_VERSIONED_PURPOSE_ENDPOINT",
+          "observation": "Exact bf8f1493 V7-derived CLI exposes no jarvis-purpose-protocol-v1 endpoint, so J03 integrated behavior cannot be exercised."
+        }
+      ],
+      "journey_id": "J03",
+      "status": "FAIL"
+    },
+    {
+      "evidence": [
+        {
+          "basis": {
+            "commit": "bf8f1493b7fd5cd80d17a631a1fb23e82c2260f9",
+            "database_state_unchanged": true,
+            "entrypoint": "jarvis_foundry.cli.main:main",
+            "help_exit_code": 0,
+            "help_sha256": "c23db02093819a2d09610133b18764e41c661472cb6025eb87bf1d39d08a295b",
+            "protocol_endpoint_present": false,
+            "repository_status_unchanged": true,
+            "tree": "1313e272bc51db2a5cbadd719e8fdcfbec306635"
+          },
+          "kind": "MISSING_VERSIONED_PURPOSE_ENDPOINT",
+          "observation": "Exact bf8f1493 V7-derived CLI exposes no jarvis-purpose-protocol-v1 endpoint, so J04 integrated behavior cannot be exercised."
+        }
+      ],
+      "journey_id": "J04",
+      "status": "FAIL"
+    },
+    {
+      "evidence": [
+        {
+          "basis": {
+            "commit": "bf8f1493b7fd5cd80d17a631a1fb23e82c2260f9",
+            "database_state_unchanged": true,
+            "entrypoint": "jarvis_foundry.cli.main:main",
+            "help_exit_code": 0,
+            "help_sha256": "c23db02093819a2d09610133b18764e41c661472cb6025eb87bf1d39d08a295b",
+            "protocol_endpoint_present": false,
+            "repository_status_unchanged": true,
+            "tree": "1313e272bc51db2a5cbadd719e8fdcfbec306635"
+          },
+          "kind": "MISSING_VERSIONED_PURPOSE_ENDPOINT",
+          "observation": "Exact bf8f1493 V7-derived CLI exposes no jarvis-purpose-protocol-v1 endpoint, so J05 integrated behavior cannot be exercised."
+        }
+      ],
+      "journey_id": "J05",
+      "status": "FAIL"
+    },
+    {
+      "evidence": [
+        {
+          "basis": {
+            "commit": "bf8f1493b7fd5cd80d17a631a1fb23e82c2260f9",
+            "database_state_unchanged": true,
+            "entrypoint": "jarvis_foundry.cli.main:main",
+            "help_exit_code": 0,
+            "help_sha256": "c23db02093819a2d09610133b18764e41c661472cb6025eb87bf1d39d08a295b",
+            "protocol_endpoint_present": false,
+            "repository_status_unchanged": true,
+            "tree": "1313e272bc51db2a5cbadd719e8fdcfbec306635"
+          },
+          "kind": "MISSING_VERSIONED_PURPOSE_ENDPOINT",
+          "observation": "Exact bf8f1493 V7-derived CLI exposes no jarvis-purpose-protocol-v1 endpoint, so J06 integrated behavior cannot be exercised."
+        }
+      ],
+      "journey_id": "J06",
+      "status": "FAIL"
+    },
+    {
+      "evidence": [
+        {
+          "basis": {
+            "commit": "bf8f1493b7fd5cd80d17a631a1fb23e82c2260f9",
+            "database_state_unchanged": true,
+            "entrypoint": "jarvis_foundry.cli.main:main",
+            "help_exit_code": 0,
+            "help_sha256": "c23db02093819a2d09610133b18764e41c661472cb6025eb87bf1d39d08a295b",
+            "protocol_endpoint_present": false,
+            "repository_status_unchanged": true,
+            "tree": "1313e272bc51db2a5cbadd719e8fdcfbec306635"
+          },
+          "kind": "MISSING_VERSIONED_PURPOSE_ENDPOINT",
+          "observation": "Exact bf8f1493 V7-derived CLI exposes no jarvis-purpose-protocol-v1 endpoint, so J07 integrated behavior cannot be exercised."
+        }
+      ],
+      "journey_id": "J07",
+      "status": "FAIL"
+    },
+    {
+      "evidence": [
+        {
+          "basis": {
+            "commit": "bf8f1493b7fd5cd80d17a631a1fb23e82c2260f9",
+            "database_state_unchanged": true,
+            "entrypoint": "jarvis_foundry.cli.main:main",
+            "help_exit_code": 0,
+            "help_sha256": "c23db02093819a2d09610133b18764e41c661472cb6025eb87bf1d39d08a295b",
+            "protocol_endpoint_present": false,
+            "repository_status_unchanged": true,
+            "tree": "1313e272bc51db2a5cbadd719e8fdcfbec306635"
+          },
+          "kind": "MISSING_VERSIONED_PURPOSE_ENDPOINT",
+          "observation": "Exact bf8f1493 V7-derived CLI exposes no jarvis-purpose-protocol-v1 endpoint, so J08 integrated behavior cannot be exercised."
+        }
+      ],
+      "journey_id": "J08",
+      "status": "FAIL"
+    },
+    {
+      "evidence": [
+        {
+          "basis": {
+            "commit": "bf8f1493b7fd5cd80d17a631a1fb23e82c2260f9",
+            "database_state_unchanged": true,
+            "entrypoint": "jarvis_foundry.cli.main:main",
+            "help_exit_code": 0,
+            "help_sha256": "c23db02093819a2d09610133b18764e41c661472cb6025eb87bf1d39d08a295b",
+            "protocol_endpoint_present": false,
+            "repository_status_unchanged": true,
+            "tree": "1313e272bc51db2a5cbadd719e8fdcfbec306635"
+          },
+          "kind": "MISSING_VERSIONED_PURPOSE_ENDPOINT",
+          "observation": "Exact bf8f1493 V7-derived CLI exposes no jarvis-purpose-protocol-v1 endpoint, so J09 integrated behavior cannot be exercised."
+        }
+      ],
+      "journey_id": "J09",
+      "status": "FAIL"
+    },
+    {
+      "evidence": [
+        {
+          "basis": {
+            "commit": "bf8f1493b7fd5cd80d17a631a1fb23e82c2260f9",
+            "database_state_unchanged": true,
+            "entrypoint": "jarvis_foundry.cli.main:main",
+            "help_exit_code": 0,
+            "help_sha256": "c23db02093819a2d09610133b18764e41c661472cb6025eb87bf1d39d08a295b",
+            "protocol_endpoint_present": false,
+            "repository_status_unchanged": true,
+            "tree": "1313e272bc51db2a5cbadd719e8fdcfbec306635"
+          },
+          "kind": "MISSING_VERSIONED_PURPOSE_ENDPOINT",
+          "observation": "Exact bf8f1493 V7-derived CLI exposes no jarvis-purpose-protocol-v1 endpoint, so J10 integrated behavior cannot be exercised."
+        }
+      ],
+      "journey_id": "J10",
+      "status": "FAIL"
+    }
+  ],
+  "mutation_guard": {
+    "bytecode_writes_disabled": true,
+    "database_files_created": 0,
+    "database_state_unchanged": true,
+    "probe_class": "GIT_ENTRYPOINT_AND_HELP_ONLY",
+    "product_database_command_invoked": false,
+    "repository_status_unchanged": true
+  },
+  "product_identity": {
+    "console_script": "jarvis",
+    "entrypoint": "jarvis_foundry.cli.main:main",
+    "help_exit_code": 0,
+    "help_sha256": "c23db02093819a2d09610133b18764e41c661472cb6025eb87bf1d39d08a295b",
+    "protocol_endpoint": "jarvis-purpose-protocol-v1",
+    "protocol_endpoint_present": false
+  },
+  "program": "POST_V7_JARVIS_REMASTER",
+  "schema": "jarvis-current-prototype-probe-v1",
+  "stage": "R1",
+  "status": "FAIL"
+}

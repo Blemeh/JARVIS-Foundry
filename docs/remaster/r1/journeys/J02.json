@@ -1,0 +1,76 @@
+{
+  "schema": "jarvis-purpose-journey-v1",
+  "contract_version": "1.0.0",
+  "journey_id": "J02",
+  "name": "Evidence-backed institutional memory with uncertainty preserved",
+  "purpose": "Ingest source material into institutional memory while keeping observation, evidence, claim, uncertainty, contradiction, provenance, and later correction distinct and recoverable.",
+  "inputs": [
+    {"name": "source_snapshot", "type": "object", "required": true, "example": {"source_id": "owner-note-demo", "content": "Release date may be Tuesday", "captured_at": "2030-01-01T00:00:00Z"}},
+    {"name": "contradicting_snapshot", "type": "object", "required": true, "example": {"source_id": "calendar-demo", "content": "Release date is Wednesday", "captured_at": "2030-01-01T00:00:30Z"}},
+    {"name": "memory_query", "type": "string", "required": true, "example": "What is the release date and how certain are we?"}
+  ],
+  "preconditions": [
+    {"id": "J02-P01", "statement": "Both source snapshots have stable identities, capture methods, timestamps, and content hashes.", "check": "sources.all(identity && method && timestamp && hash)"},
+    {"id": "J02-P02", "statement": "The governed memory target has a captured before hash and a recoverable snapshot.", "check": "memory.before_hash_valid && memory.snapshot_restorable"},
+    {"id": "J02-P03", "statement": "Source text is classified as untrusted evidence rather than owner authority.", "check": "sources.authority_class == UNTRUSTED_DATA"}
+  ],
+  "canonical_targets": [
+    {"target_id": "institutional-memory-record", "kind": "governed_memory_bundle", "identity": "memory/release-date-demo", "authorization_scope": "isolated governed memory acceptance area"}
+  ],
+  "budget": {"max_elapsed_ms": 6000, "max_calls": 0, "max_tokens": 0, "max_effects": 4, "max_cost_usd": 0},
+  "required_evidence": [
+    {"id": "J02-E01", "kind": "source_provenance_bundle", "phase": "SOURCE", "proof_dimension": "source_provenance", "criterion_ids": ["J02-S01"], "min_count": 1},
+    {"id": "J02-E02", "kind": "memory_before_snapshot", "phase": "BEFORE", "proof_dimension": "governed_before_state", "criterion_ids": ["J02-S02", "J02-S04"], "min_count": 1},
+    {"id": "J02-E03", "kind": "contradiction_preserving_after_state", "phase": "AFTER", "proof_dimension": "contradiction_and_uncertainty", "criterion_ids": ["J02-S01", "J02-S02", "J02-S03"], "min_count": 1},
+    {"id": "J02-E04", "kind": "index_recovery_receipt", "phase": "RECOVERY", "proof_dimension": "memory_recovery", "criterion_ids": ["J02-S02"], "min_count": 1},
+    {"id": "J02-E05", "kind": "byte_restore_receipt", "phase": "ROLLBACK", "proof_dimension": "memory_restoration", "criterion_ids": ["J02-S04"], "min_count": 1},
+    {"id": "J02-E06", "kind": "independent_semantic_verdict", "phase": "VERIFICATION", "proof_dimension": "actor_independence", "criterion_ids": ["J02-S01", "J02-S02", "J02-S03", "J02-S04"], "min_count": 1}
+  ],
+  "success_criteria": [
+    {"id": "J02-S01", "statement": "Both supporting and contradicting sources remain separately addressable with provenance, timestamps, freshness, and uncertainty."},
+    {"id": "J02-S02", "statement": "The governed memory write and index survive restart without duplicate claims or a changed canonical target."},
+    {"id": "J02-S03", "statement": "The query answer exposes the unresolved Tuesday-versus-Wednesday contradiction instead of presenting either as certain fact."},
+    {"id": "J02-S04", "statement": "Failed semantic verification restores the previous bytes and preserves an additive record of the rejected write."}
+  ],
+  "unacceptable_outcomes": [
+    {"id": "J02-U01", "statement": "Contradicting evidence is deleted, ignored, or silently collapsed into one confident claim.", "fail_code": "CONTRADICTION_ERASED"},
+    {"id": "J02-U02", "statement": "A stale or unidentifiable source supports a current memory answer.", "fail_code": "STALE_OR_UNIDENTIFIABLE_SOURCE"},
+    {"id": "J02-U03", "statement": "A rollback changes the prior bytes or removes immutable evidence history.", "fail_code": "MEMORY_ROLLBACK_FAILED"}
+  ],
+  "intervention_rules": [
+    {"trigger": "Source identity, hash, or capture time is missing or stale", "response": "Quarantine the source and keep the affected claim explicitly unverified", "status": "FAIL"},
+    {"trigger": "A source needed to resolve the contradiction is externally unavailable", "response": "Preserve both claims and expose the exact unresolved dependency", "status": "BLOCKED"},
+    {"trigger": "Authenticated STOP arrives during a governed memory write", "response": "Freeze after the atomic boundary and reconcile before any resume", "status": "WAITING"}
+  ],
+  "failure_injections": [
+    {"id": "J02-F01", "inject": "Crash after the note write but before the search index update", "expected_response": "Recovery reconciles the index from the content-addressed governed write"},
+    {"id": "J02-F02", "inject": "Mark the older source current while omitting its source identifier", "expected_response": "Freshness and identity validation reject the affected criterion"},
+    {"id": "J02-F03", "inject": "Attempt to delete the contradicting Wednesday evidence", "expected_response": "The evaluator fails contradiction preservation and retains the prior evidence file"}
+  ],
+  "recovery": {
+    "requirements": ["Reconcile governed note bytes, evidence records, claims, and search index after restart", "Retain both sides of every unresolved contradiction with their original hashes", "Avoid duplicate ingestion for a repeated source snapshot"],
+    "evidence_required": ["J02-E03", "J02-E04"],
+    "max_elapsed_ms": 6000
+  },
+  "rollback": {
+    "requirements": ["Restore the exact pre-write bytes and verify the restored hash", "Append a rejection record without deleting the attempted claim or its evidence"],
+    "evidence_required": ["J02-E02", "J02-E05"],
+    "restoration_target": "content-addressed governed memory bytes and prior index state"
+  },
+  "proof_dimensions": ["source_provenance", "governed_before_state", "contradiction_and_uncertainty", "memory_recovery", "memory_restoration", "actor_independence"],
+  "executable_requirements": {
+    "actor_independence": true,
+    "stop_veto": true,
+    "provenance": true,
+    "freshness": true,
+    "uncertainty": true,
+    "contradictions_preserved": true,
+    "usefulness": true,
+    "idempotency": true,
+    "after_state": true,
+    "compensation": false,
+    "recovery": true,
+    "rollback": true,
+    "allowed_effect_classes": ["governed_memory_write"]
+  }
+}

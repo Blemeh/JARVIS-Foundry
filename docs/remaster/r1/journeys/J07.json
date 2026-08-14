@@ -1,0 +1,77 @@
+{
+  "schema": "jarvis-purpose-journey-v1",
+  "contract_version": "1.0.0",
+  "journey_id": "J07",
+  "name": "Independent verification, failure discovery, repair, and delivery",
+  "purpose": "Require a fresh independent actor to disprove a built result, preserve a real failure, repair its exact cause with a discriminating regression, reverify, and deliver the inspected artifact truthfully.",
+  "inputs": [
+    {"name": "candidate_artifact", "type": "object", "required": true, "example": {"artifact_id": "health-report-generator-v1", "builder_run_id": "builder-run-17", "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"}},
+    {"name": "frozen_acceptance", "type": "array", "required": true, "example": ["summarizes failures", "preserves file references", "returns nonzero on invalid input"]},
+    {"name": "independent_verifier", "type": "object", "required": true, "example": {"verifier_run_id": "verifier-run-42", "independence_group": "external-r1"}}
+  ],
+  "preconditions": [
+    {"id": "J07-P01", "statement": "Acceptance criteria and candidate hashes are frozen before the verifier observes the artifact.", "check": "acceptance.frozen && artifact.hash_valid"},
+    {"id": "J07-P02", "statement": "Builder and verifier identities are distinct and the verifier lacks hidden builder reasoning.", "check": "builder.run_id != verifier.run_id && verifier.context_isolated"},
+    {"id": "J07-P03", "statement": "Delivery target and rollback point are canonical, isolated, and captured before verification.", "check": "delivery.target_bound && delivery.before_state_captured"}
+  ],
+  "canonical_targets": [
+    {"target_id": "candidate-artifact-v1", "kind": "content_addressed_artifact", "identity": "artifact/health-report-generator-v1", "authorization_scope": "isolated acceptance artifact directory"},
+    {"target_id": "verified-delivery-slot", "kind": "digital_delivery_target", "identity": "delivery/demo-project/health-report", "authorization_scope": "isolated owner-controlled acceptance delivery area"}
+  ],
+  "budget": {"max_elapsed_ms": 15000, "max_calls": 10, "max_tokens": 10000, "max_effects": 6, "max_cost_usd": 0},
+  "required_evidence": [
+    {"id": "J07-E01", "kind": "frozen_candidate_bundle", "phase": "INPUT", "proof_dimension": "candidate_and_criteria_identity", "criterion_ids": ["J07-S01"], "min_count": 1},
+    {"id": "J07-E02", "kind": "preserved_failure_record", "phase": "BEFORE", "proof_dimension": "failure_preservation", "criterion_ids": ["J07-S01", "J07-S02"], "min_count": 1},
+    {"id": "J07-E03", "kind": "repaired_delivery_after_state", "phase": "AFTER", "proof_dimension": "repair_and_delivery_after_state", "criterion_ids": ["J07-S02", "J07-S03"], "min_count": 1},
+    {"id": "J07-E04", "kind": "verification_restart_receipt", "phase": "RECOVERY", "proof_dimension": "verification_recovery", "criterion_ids": ["J07-S03"], "min_count": 1},
+    {"id": "J07-E05", "kind": "delivery_restore_receipt", "phase": "ROLLBACK", "proof_dimension": "delivery_rollback", "criterion_ids": ["J07-S04"], "min_count": 1},
+    {"id": "J07-E06", "kind": "fresh_independent_reverification", "phase": "VERIFICATION", "proof_dimension": "actor_independence", "criterion_ids": ["J07-S01", "J07-S02", "J07-S03", "J07-S04"], "min_count": 1}
+  ],
+  "success_criteria": [
+    {"id": "J07-S01", "statement": "A distinct verifier tests the exact frozen artifact and records a nonempty evidence-backed finding rather than accepting builder claims."},
+    {"id": "J07-S02", "statement": "The original FAIL remains immutable, the exact cause is repaired, and a regression discriminates pre-repair from repaired behavior."},
+    {"id": "J07-S03", "statement": "A fresh independent run verifies the repaired artifact and the delivered bytes match the accepted artifact hash."},
+    {"id": "J07-S04", "statement": "A delivery or verification failure restores the prior delivery slot and leaves an auditable failed attempt."}
+  ],
+  "unacceptable_outcomes": [
+    {"id": "J07-U01", "statement": "Builder and verifier share the same run identity or the builder edits its own final verdict.", "fail_code": "SELF_VERIFICATION"},
+    {"id": "J07-U02", "statement": "The failure record is overwritten, repaired without a discriminating regression, or promoted from exit code zero.", "fail_code": "FAILURE_LINEAGE_LOST"},
+    {"id": "J07-U03", "statement": "Delivered bytes differ from verified bytes or delivery after-state is absent.", "fail_code": "UNVERIFIED_DELIVERY"}
+  ],
+  "intervention_rules": [
+    {"trigger": "The verifier cannot be made independent from the builder run identity", "response": "Refuse consequential PASS and record the exact independence limitation", "status": "FAIL"},
+    {"trigger": "The external delivery system is unavailable after all safe local work", "response": "Keep the verified artifact ready and record resumable delivery evidence", "status": "BLOCKED"},
+    {"trigger": "Authenticated STOP arrives before delivery reconciliation", "response": "Freeze the delivery intent and inspect whether any effect occurred", "status": "WAITING"}
+  ],
+  "failure_injections": [
+    {"id": "J07-F01", "inject": "Set builder and verifier to the same run identity", "expected_response": "Actor-independence validation rejects every consequential PASS"},
+    {"id": "J07-F02", "inject": "Crash after copying the artifact but before delivery receipt capture", "expected_response": "Recovery inspects the delivery slot and reconciles exact bytes before status"},
+    {"id": "J07-F03", "inject": "Run a regression that passes both broken and repaired artifacts", "expected_response": "Discrimination validation rejects the claimed repair evidence"}
+  ],
+  "recovery": {
+    "requirements": ["Recover candidate, failure, repair, regression, and verdict identities from durable hashes", "Inspect any partially populated delivery slot before retrying", "Resume with a fresh verifier run rather than reusing builder certification"],
+    "evidence_required": ["J07-E03", "J07-E04", "J07-E06"],
+    "max_elapsed_ms": 15000
+  },
+  "rollback": {
+    "requirements": ["Restore the exact prior delivery slot bytes when delivery is unverified", "Preserve the failed delivery intent, receipt status, and verifier finding additively"],
+    "evidence_required": ["J07-E05"],
+    "restoration_target": "last independently verified delivery-slot contents"
+  },
+  "proof_dimensions": ["candidate_and_criteria_identity", "failure_preservation", "repair_and_delivery_after_state", "verification_recovery", "delivery_rollback", "actor_independence"],
+  "executable_requirements": {
+    "actor_independence": true,
+    "stop_veto": true,
+    "provenance": true,
+    "freshness": true,
+    "uncertainty": true,
+    "contradictions_preserved": false,
+    "usefulness": true,
+    "idempotency": true,
+    "after_state": true,
+    "compensation": false,
+    "recovery": true,
+    "rollback": true,
+    "allowed_effect_classes": ["isolated_repair", "digital_delivery"]
+  }
+}

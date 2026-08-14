@@ -1,0 +1,28 @@
+{
+  "schema": "jarvis-remaster-builder-attempt-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R1",
+  "repair_round": 2,
+  "repair_attempt": 1,
+  "builder_identity": "/root/r1_builder_repair_r2",
+  "builder_route": "opencode-go/deepseek-v4-flash",
+  "frozen_base": "bf8f1493b7fd5cd80d17a631a1fb23e82c2260f9",
+  "frozen_repair_work_package": {
+    "path": "docs/remaster/work_packages/R1_REPAIR_ROUND2_WORK_PACKAGE.json",
+    "sha256": "900880bcf510425d41a5714257cc6cd66f0cfcbd1a0affe9905835e50017ef09",
+    "size": 12028,
+    "unchanged_after_attempt": true
+  },
+  "recorded_at": "2026-08-14T19:34:40.7839495+02:00",
+  "status": "FAIL",
+  "failure": "The fresh repair builder remained running without a required-reading checkpoint, tool-visible deliverable, or response to two bounded status requests and was interrupted before replacement to preserve single-writer ownership.",
+  "diagnostic": {
+    "builder_owned_files_changed_after_dispatch": 0,
+    "partial_work_reused": false,
+    "commit_or_push": false,
+    "live_or_protected_mutation_observed": false,
+    "exact_internal_cause": "UNKNOWN"
+  },
+  "repair_condition": "Preserve this failed dispatch, keep the repair package unchanged, and send it to a fresh non-concurrent builder context. The interrupted builder must not be resumed while replacement ownership is active.",
+  "stage_impact": "R1 remains FAIL. No repair implementation or verification evidence was produced."
+}

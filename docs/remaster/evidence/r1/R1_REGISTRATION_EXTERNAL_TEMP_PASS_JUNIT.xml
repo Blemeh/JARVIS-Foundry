@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="0.205" timestamp="2026-08-14T18:32:45.664103+02:00" hostname="DESKTOP-42E0DQE"><testcase classname="tests.foundry.test_registration" name="test_inspection_of_non_repository_raises" time="0.111" /></testsuite></testsuites>

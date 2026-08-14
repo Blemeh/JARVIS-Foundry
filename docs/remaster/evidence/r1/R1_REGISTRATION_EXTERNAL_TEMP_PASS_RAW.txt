@@ -1,0 +1,6 @@
+.                                                                        [100%]
+
+COMMAND_EXIT=0
+WALL_SECONDS=0.899
+BASETEMP_LOCATION=EXTERNAL_PYTEST_TEMP
+BASETEMP=C:\Users\b\AppData\Local\Temp\jarvis-r1-builder-r3-registration-repro

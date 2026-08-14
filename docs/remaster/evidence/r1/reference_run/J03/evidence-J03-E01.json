@@ -1,0 +1,23 @@
+{
+  "after_state": {
+    "sha256": "813f4e80e18f8e3abd46bf1a8ad84db252288f7b9f388d14262ee88ab7b46603",
+    "size": 211,
+    "state": "USEFUL_EFFECT_VERIFIED"
+  },
+  "before_state": {
+    "sha256": "26418af6f046371ebd52b08b6359c153cab964221866e61510bd29673e34f184",
+    "size": 195,
+    "state": "BEFORE"
+  },
+  "criterion_ids": [
+    "J03-S01"
+  ],
+  "journey_id": "J03",
+  "operation": "actual temporary-directory digital file effect",
+  "phase": "SOURCE",
+  "proof_dimension": "real_source_identity",
+  "requirement_id": "J03-E01",
+  "restoration_verified": true,
+  "schema": "jarvis-reference-evidence-artifact-v1",
+  "target_id": "project-health-monitor"
+}

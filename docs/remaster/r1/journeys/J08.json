@@ -1,0 +1,77 @@
+{
+  "schema": "jarvis-purpose-journey-v1",
+  "contract_version": "1.0.0",
+  "journey_id": "J08",
+  "name": "Maintain an existing project after regression or change",
+  "purpose": "Detect a real regression or environmental change in a previously accepted project, diagnose its upstream cause, repair only the affected target, and restore verified service without erasing prior truth.",
+  "inputs": [
+    {"name": "accepted_project_state", "type": "object", "required": true, "example": {"project_id": "demo-service", "release_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "health": "PASS"}},
+    {"name": "regression_signal", "type": "object", "required": true, "example": {"source_id": "ci-run-204", "failed_check": "python313-install", "captured_at": "2030-01-01T00:00:00Z"}},
+    {"name": "maintenance_target", "type": "object", "required": true, "example": {"repository_id": "demo-service-repo", "owned_paths": ["compat/", "tests/compat/"]}}
+  ],
+  "preconditions": [
+    {"id": "J08-P01", "statement": "The prior accepted release, verification evidence, and operating baseline remain content-addressed.", "check": "prior_release.hash_valid && prior_verdict.evidence_nonempty"},
+    {"id": "J08-P02", "statement": "The regression signal is fresh, reproducible, and linked to the canonical project identity.", "check": "signal.fresh && signal.reproduced && signal.project_id_matches"},
+    {"id": "J08-P03", "statement": "Dirty work, deployment state, and a restoration point are captured before maintenance changes.", "check": "target.before_manifest && target.restore_point_verified"}
+  ],
+  "canonical_targets": [
+    {"target_id": "demo-service-maintenance-worktree", "kind": "isolated_maintenance_workspace", "identity": "demo-service-repo/maintenance-python313", "authorization_scope": "owned compatibility and regression-test paths only"},
+    {"target_id": "demo-service-release", "kind": "owner_controlled_digital_service", "identity": "demo-service/release-slot", "authorization_scope": "isolated acceptance release slot"}
+  ],
+  "budget": {"max_elapsed_ms": 15000, "max_calls": 10, "max_tokens": 10000, "max_effects": 7, "max_cost_usd": 0},
+  "required_evidence": [
+    {"id": "J08-E01", "kind": "regression_reproduction", "phase": "SOURCE", "proof_dimension": "regression_provenance", "criterion_ids": ["J08-S01"], "min_count": 1},
+    {"id": "J08-E02", "kind": "project_before_manifest", "phase": "BEFORE", "proof_dimension": "maintenance_before_state", "criterion_ids": ["J08-S01", "J08-S04"], "min_count": 1},
+    {"id": "J08-E03", "kind": "repaired_service_after_state", "phase": "AFTER", "proof_dimension": "maintenance_after_state", "criterion_ids": ["J08-S02", "J08-S03"], "min_count": 1},
+    {"id": "J08-E04", "kind": "maintenance_restart_receipt", "phase": "RECOVERY", "proof_dimension": "maintenance_recovery", "criterion_ids": ["J08-S03"], "min_count": 1},
+    {"id": "J08-E05", "kind": "release_restore_receipt", "phase": "ROLLBACK", "proof_dimension": "maintenance_rollback", "criterion_ids": ["J08-S04"], "min_count": 1},
+    {"id": "J08-E06", "kind": "independent_maintenance_verdict", "phase": "VERIFICATION", "proof_dimension": "actor_independence", "criterion_ids": ["J08-S01", "J08-S02", "J08-S03", "J08-S04"], "min_count": 1}
+  ],
+  "success_criteria": [
+    {"id": "J08-S01", "statement": "The regression is reproduced from fresh evidence and traced to a specific upstream cause rather than a guessed symptom."},
+    {"id": "J08-S02", "statement": "The bounded repair and discriminating regression restore the affected function while prior accepted behavior remains green."},
+    {"id": "J08-S03", "statement": "The repaired release after-state is independently inspected and duplicate maintenance events remain idempotent."},
+    {"id": "J08-S04", "statement": "A failed maintenance release restores the last accepted executable and state while preserving the incident timeline."}
+  ],
+  "unacceptable_outcomes": [
+    {"id": "J08-U01", "statement": "Maintenance changes an unrelated project, overwrites dirty work, or repairs a symptom without reproducing the cause.", "fail_code": "UNBOUNDED_MAINTENANCE"},
+    {"id": "J08-U02", "statement": "A green focused test is treated as restored service without actual after-state inspection.", "fail_code": "MISSING_MAINTENANCE_AFTER_STATE"},
+    {"id": "J08-U03", "statement": "Retry or restart applies the repair or release effect more than once.", "fail_code": "DUPLICATE_MAINTENANCE_EFFECT"}
+  ],
+  "intervention_rules": [
+    {"trigger": "The regression cannot be reproduced from current identified evidence", "response": "Do not mutate; record NOT_REPRODUCED evidence and monitor for a fresh signal", "status": "NOT_TESTED"},
+    {"trigger": "A required external dependency or credential prevents every safe repair path", "response": "Keep the project on the last accepted release and record the exact dependency", "status": "BLOCKED"},
+    {"trigger": "Authenticated STOP arrives during maintenance release", "response": "Freeze new effects, inspect the release slot, and reconcile before resume", "status": "WAITING"}
+  ],
+  "failure_injections": [
+    {"id": "J08-F01", "inject": "Crash after the repaired files are written but before verification", "expected_response": "Recovery identifies unverified bytes and resumes verification without duplicate patching"},
+    {"id": "J08-F02", "inject": "Return a successful test exit while withholding the service after-state receipt", "expected_response": "The evaluator rejects restored-service PASS"},
+    {"id": "J08-F03", "inject": "Corrupt the new release immediately after pointer change", "expected_response": "Rollback restores the prior accepted release and verifies its health"}
+  ],
+  "recovery": {
+    "requirements": ["Recover the incident, reproduction, patch, test, and release states after restart", "Inspect whether a release effect occurred before retrying it", "Resume from the first unverified step under the original idempotency key"],
+    "evidence_required": ["J08-E03", "J08-E04"],
+    "max_elapsed_ms": 15000
+  },
+  "rollback": {
+    "requirements": ["Restore the last independently accepted release and associated state snapshot", "Verify restored health and preserve the failed maintenance incident additively"],
+    "evidence_required": ["J08-E02", "J08-E05"],
+    "restoration_target": "last independently accepted demo-service release and state"
+  },
+  "proof_dimensions": ["regression_provenance", "maintenance_before_state", "maintenance_after_state", "maintenance_recovery", "maintenance_rollback", "actor_independence"],
+  "executable_requirements": {
+    "actor_independence": true,
+    "stop_veto": true,
+    "provenance": true,
+    "freshness": true,
+    "uncertainty": true,
+    "contradictions_preserved": false,
+    "usefulness": true,
+    "idempotency": true,
+    "after_state": true,
+    "compensation": false,
+    "recovery": true,
+    "rollback": true,
+    "allowed_effect_classes": ["isolated_maintenance_write", "isolated_release"]
+  }
+}

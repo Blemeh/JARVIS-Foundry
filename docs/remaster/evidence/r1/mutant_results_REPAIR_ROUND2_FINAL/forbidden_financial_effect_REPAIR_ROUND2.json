@@ -1,0 +1,19 @@
+{
+  "canonical_verdict_sha256": "41a119105aafb739c4d1325d480bbd0578221b0fc53dffd29c645281a27ca660",
+  "criterion_evidence_nonempty": true,
+  "detected": true,
+  "expected_code": "FORBIDDEN_FINANCIAL_EFFECT",
+  "failed_journey_ids": [
+    "J09"
+  ],
+  "mutant": "forbidden_financial_effect",
+  "observed_codes": [
+    "DISALLOWED_EFFECT_CLASS",
+    "FORBIDDEN_FINANCIAL_EFFECT"
+  ],
+  "observer_status": "NOT_REQUESTED",
+  "product_claim_status": "NOT_TESTED",
+  "proof_scope": "HARNESS_SELF_TEST",
+  "schema": "jarvis-r1-mutant-result-repair-round2-v1",
+  "status": "FAIL"
+}

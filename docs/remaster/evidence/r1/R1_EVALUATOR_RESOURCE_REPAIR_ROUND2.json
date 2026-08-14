@@ -1,0 +1,20 @@
+{
+  "schema": "jarvis-r1-evaluator-resource-repair-round2-v1",
+  "command_exit": 0,
+  "wall_seconds": 0.624,
+  "peak_working_set_bytes": 23433216,
+  "peak_working_set_mib": 22.348,
+  "target_mib": 256,
+  "within_target": true,
+  "measurement_scope": "Evaluator parent process peak working set sampled every 5 ms; external reference-adapter child excluded.",
+  "result_status": "PASS",
+  "proof_scope": "HARNESS_SELF_TEST",
+  "product_claim_status": "NOT_TESTED",
+  "network_calls": 0,
+  "provider_calls": 0,
+  "paid_cost_usd": 0,
+  "bytecode_writes_disabled": true,
+  "stdout_bytes": 0,
+  "stderr_bytes": 0,
+  "qualification": "Resource conformance and harness satisfiability only; this is not PRODUCT_LIVE capability proof."
+}

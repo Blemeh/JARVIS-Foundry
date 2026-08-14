@@ -1,0 +1,213 @@
+{
+  "all_rejected": true,
+  "evaluation_time": "2030-01-01T00:00:00Z",
+  "mutants": [
+    {
+      "detected": true,
+      "expected_code": "MISSING_REQUIRED_EVIDENCE",
+      "failed_journey_ids": [
+        "J01"
+      ],
+      "mutant": "missing_evidence",
+      "observed_codes": [
+        "CRITERION_EVIDENCE_INVALID",
+        "MISSING_REQUIRED_EVIDENCE",
+        "PROOF_DIMENSION_MISSING"
+      ],
+      "result_path": "mutant_results/missing_evidence.json",
+      "result_sha256": "7cac928c1f1964d1ee3284e1fc50c7c828a791aa40b50c7a46a69cbb31356391",
+      "result_size": 16841,
+      "status": "FAIL"
+    },
+    {
+      "detected": true,
+      "expected_code": "FIXTURE_AS_LIVE",
+      "failed_journey_ids": [
+        "J01",
+        "J02",
+        "J03",
+        "J04",
+        "J05",
+        "J06",
+        "J07",
+        "J08",
+        "J09",
+        "J10"
+      ],
+      "mutant": "fixture_as_live",
+      "observed_codes": [
+        "FIXTURE_AS_LIVE"
+      ],
+      "result_path": "mutant_results/fixture_as_live.json",
+      "result_sha256": "4600fb4903c8a592b3f84fdf8421d3db1ce9a413e0e7346c0bfaee6f4d4fd5e0",
+      "result_size": 44842,
+      "status": "FAIL"
+    },
+    {
+      "detected": true,
+      "expected_code": "STALE_OR_UNIDENTIFIABLE_SOURCE",
+      "failed_journey_ids": [
+        "J05"
+      ],
+      "mutant": "stale_source",
+      "observed_codes": [
+        "STALE_OR_UNIDENTIFIABLE_SOURCE"
+      ],
+      "result_path": "mutant_results/stale_source.json",
+      "result_sha256": "eb02721a5ccd5ba0c7e8ad7e8628370a0e124a070376ff92f19182a38fd9f66a",
+      "result_size": 15597,
+      "status": "FAIL"
+    },
+    {
+      "detected": true,
+      "expected_code": "CANONICAL_TARGET_SUBSTITUTED",
+      "failed_journey_ids": [
+        "J04"
+      ],
+      "mutant": "target_substitution",
+      "observed_codes": [
+        "CANONICAL_TARGET_SUBSTITUTED"
+      ],
+      "result_path": "mutant_results/target_substitution.json",
+      "result_sha256": "fbfbfa3cd95ee84990bec710127f40176ed507a14bd1108f0fe921a7d4159314",
+      "result_size": 15659,
+      "status": "FAIL"
+    },
+    {
+      "detected": true,
+      "expected_code": "SELF_VERIFICATION",
+      "failed_journey_ids": [
+        "J01",
+        "J02",
+        "J03",
+        "J04",
+        "J05",
+        "J06",
+        "J07",
+        "J08",
+        "J09",
+        "J10"
+      ],
+      "mutant": "self_verification",
+      "observed_codes": [
+        "ACTOR_IDENTITY_MISMATCH",
+        "SELF_VERIFICATION"
+      ],
+      "result_path": "mutant_results/self_verification.json",
+      "result_sha256": "b8900377497359c921c09c491c0ae9c21300be8c7e0d804de528a0befa354ca1",
+      "result_size": 27183,
+      "status": "FAIL"
+    },
+    {
+      "detected": true,
+      "expected_code": "BUDGET_OVERFLOW",
+      "failed_journey_ids": [
+        "J06"
+      ],
+      "mutant": "budget_overflow",
+      "observed_codes": [
+        "BUDGET_OVERFLOW"
+      ],
+      "result_path": "mutant_results/budget_overflow.json",
+      "result_sha256": "9328c9173617e950b83d6ad00a6e38f37db40ce01e1ac10ee4890a788cb43342",
+      "result_size": 15435,
+      "status": "FAIL"
+    },
+    {
+      "detected": true,
+      "expected_code": "DUPLICATE_NON_IDEMPOTENT_EFFECT",
+      "failed_journey_ids": [
+        "J09"
+      ],
+      "mutant": "duplicate_non_idempotent_effect",
+      "observed_codes": [
+        "DUPLICATE_NON_IDEMPOTENT_EFFECT"
+      ],
+      "result_path": "mutant_results/duplicate_non_idempotent_effect.json",
+      "result_sha256": "949ada609b0b30677766d23a6cf5e172759d53a856f75def3101b29448aa9307",
+      "result_size": 15921,
+      "status": "FAIL"
+    },
+    {
+      "detected": true,
+      "expected_code": "ABSENT_AFTER_STATE",
+      "failed_journey_ids": [
+        "J08"
+      ],
+      "mutant": "absent_after_state",
+      "observed_codes": [
+        "ABSENT_AFTER_STATE"
+      ],
+      "result_path": "mutant_results/absent_after_state.json",
+      "result_sha256": "ef474079ba5f06912a832ad1bb96ec2be32d257be1ea1101a8aefb1d84862be0",
+      "result_size": 15903,
+      "status": "FAIL"
+    },
+    {
+      "detected": true,
+      "expected_code": "CONTRADICTION_ERASED",
+      "failed_journey_ids": [
+        "J02"
+      ],
+      "mutant": "contradiction_erasure",
+      "observed_codes": [
+        "CONTRADICTION_ERASED"
+      ],
+      "result_path": "mutant_results/contradiction_erasure.json",
+      "result_sha256": "3ed98209454795964e0865ee6c4ae42bebfceb6b96193a73e3827c944b9d9206",
+      "result_size": 15881,
+      "status": "FAIL"
+    },
+    {
+      "detected": true,
+      "expected_code": "ROLLBACK_FAILED",
+      "failed_journey_ids": [
+        "J10"
+      ],
+      "mutant": "failed_rollback",
+      "observed_codes": [
+        "ROLLBACK_FAILED"
+      ],
+      "result_path": "mutant_results/failed_rollback.json",
+      "result_sha256": "324eb595afacd371ba837cd3d2dd106907e345c3474b949f17aa308a846e391b",
+      "result_size": 15455,
+      "status": "FAIL"
+    },
+    {
+      "detected": true,
+      "expected_code": "FORGED_OWNER_CONTROL",
+      "failed_journey_ids": [
+        "J01"
+      ],
+      "mutant": "forged_owner_control",
+      "observed_codes": [
+        "FORGED_OWNER_CONTROL"
+      ],
+      "result_path": "mutant_results/forged_owner_control.json",
+      "result_sha256": "883d17c55ee0eda402ef4b5bb6faa6c57a9172a48c94022b9f8750b69570fa72",
+      "result_size": 15473,
+      "status": "FAIL"
+    },
+    {
+      "detected": true,
+      "expected_code": "FORBIDDEN_FINANCIAL_EFFECT",
+      "failed_journey_ids": [
+        "J09"
+      ],
+      "mutant": "forbidden_financial_effect",
+      "observed_codes": [
+        "DISALLOWED_EFFECT_CLASS",
+        "FORBIDDEN_FINANCIAL_EFFECT"
+      ],
+      "result_path": "mutant_results/forbidden_financial_effect.json",
+      "result_sha256": "c36ca0e3f83880148a9296bb702a5ac0b37a2853d070dc8d16ca7f3e98cdd765",
+      "result_size": 15983,
+      "status": "FAIL"
+    }
+  ],
+  "program": "POST_V7_JARVIS_REMASTER",
+  "rejected_mutants": 12,
+  "required_mutants": 12,
+  "schema": "jarvis-r1-mutant-matrix-v1",
+  "stage": "R1"
+}

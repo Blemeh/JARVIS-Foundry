@@ -1,0 +1,23 @@
+{
+  "after_state": {
+    "sha256": "ba15c83d2fdbc624f594f376009c11e0b93212b8422aa2dbf5d88a161e4ea9c1",
+    "size": 211,
+    "state": "USEFUL_EFFECT_VERIFIED"
+  },
+  "before_state": {
+    "sha256": "689234b4fd8a80c6da5a72e9e69de855f09b803e61fb87f88d86f4c4cc30225a",
+    "size": 195,
+    "state": "BEFORE"
+  },
+  "criterion_ids": [
+    "J06-S03"
+  ],
+  "journey_id": "J06",
+  "operation": "actual temporary-directory digital file effect",
+  "phase": "RECOVERY",
+  "proof_dimension": "build_recovery",
+  "requirement_id": "J06-E04",
+  "restoration_verified": true,
+  "schema": "jarvis-reference-evidence-artifact-v1",
+  "target_id": "health-report-artifact"
+}

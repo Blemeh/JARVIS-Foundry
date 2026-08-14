@@ -1,0 +1,77 @@
+{
+  "schema": "jarvis-purpose-journey-v1",
+  "contract_version": "1.0.0",
+  "journey_id": "J04",
+  "name": "Multi-project prioritization and next-action selection",
+  "purpose": "Compare real candidate work across multiple owner projects, preserve tradeoffs and uncertainty, and select one useful next action whose target and budget remain bound after authorization.",
+  "inputs": [
+    {"name": "project_portfolio", "type": "array", "required": true, "example": [{"project_id": "alpha", "goal_value": 80, "urgency": 30}, {"project_id": "beta", "goal_value": 60, "urgency": 90}]},
+    {"name": "candidate_actions", "type": "array", "required": true, "example": [{"candidate_id": "alpha-test", "project_id": "alpha", "expected_value": 60}, {"candidate_id": "beta-repair", "project_id": "beta", "expected_value": 85}]},
+    {"name": "resource_constraints", "type": "object", "required": true, "example": {"elapsed_ms": 8000, "maximum_effects": 2, "paid_cost_usd": 0}}
+  ],
+  "preconditions": [
+    {"id": "J04-P01", "statement": "Each project and candidate has a stable identity, goal link, evidence link, and current lifecycle state.", "check": "portfolio.all(identity && goal_link && evidence_link && state)"},
+    {"id": "J04-P02", "statement": "Scoring inputs include value, urgency, risk, information gain, cost, reversibility, and opportunity cost.", "check": "scores.dimensions_complete == true"},
+    {"id": "J04-P03", "statement": "Owner constraints and STOP/veto state are evaluated before any target is selected.", "check": "control.checked_before_selection == true"}
+  ],
+  "canonical_targets": [
+    {"target_id": "portfolio-decision-record", "kind": "append_only_decision", "identity": "portfolio/next-action/decision-001", "authorization_scope": "isolated acceptance decision ledger"},
+    {"target_id": "beta-repair-candidate", "kind": "mission_candidate", "identity": "project-beta/candidate-beta-repair", "authorization_scope": "isolated project-beta acceptance target"}
+  ],
+  "budget": {"max_elapsed_ms": 8000, "max_calls": 2, "max_tokens": 3000, "max_effects": 2, "max_cost_usd": 0},
+  "required_evidence": [
+    {"id": "J04-E01", "kind": "portfolio_input_snapshot", "phase": "INPUT", "proof_dimension": "portfolio_provenance", "criterion_ids": ["J04-S01"], "min_count": 1},
+    {"id": "J04-E02", "kind": "alternatives_before_state", "phase": "BEFORE", "proof_dimension": "alternatives_and_tradeoffs", "criterion_ids": ["J04-S01", "J04-S02"], "min_count": 1},
+    {"id": "J04-E03", "kind": "bound_selection_after_state", "phase": "AFTER", "proof_dimension": "canonical_selection_target", "criterion_ids": ["J04-S02", "J04-S03"], "min_count": 1},
+    {"id": "J04-E04", "kind": "decision_restart_receipt", "phase": "RECOVERY", "proof_dimension": "decision_recovery", "criterion_ids": ["J04-S03"], "min_count": 1},
+    {"id": "J04-E05", "kind": "selection_rollback_receipt", "phase": "ROLLBACK", "proof_dimension": "selection_rollback", "criterion_ids": ["J04-S04"], "min_count": 1},
+    {"id": "J04-E06", "kind": "independent_portfolio_verdict", "phase": "VERIFICATION", "proof_dimension": "actor_independence", "criterion_ids": ["J04-S01", "J04-S02", "J04-S03", "J04-S04"], "min_count": 1}
+  ],
+  "success_criteria": [
+    {"id": "J04-S01", "statement": "The decision records every eligible alternative, score input, uncertainty, dependency, and opportunity cost."},
+    {"id": "J04-S02", "statement": "The selected beta repair is explainably higher value under the frozen inputs and remains bound to its canonical target."},
+    {"id": "J04-S03", "statement": "Restart or duplicate selection produces one durable next-action decision and never two executing missions."},
+    {"id": "J04-S04", "statement": "Invalidated evidence restores the prior portfolio state and records a superseding decision instead of rewriting history."}
+  ],
+  "unacceptable_outcomes": [
+    {"id": "J04-U01", "statement": "The selected performer substitutes a different project, repository, recipient, or target after authorization.", "fail_code": "CANONICAL_TARGET_SUBSTITUTED"},
+    {"id": "J04-U02", "statement": "Scoring hides an eligible alternative, uncertainty, budget overflow, or opportunity cost.", "fail_code": "OPAQUE_OR_INCOMPLETE_SELECTION"},
+    {"id": "J04-U03", "statement": "No valuable action exists but the system invents busy work instead of reporting honest waiting.", "fail_code": "INVENTED_BUSY_WORK"}
+  ],
+  "intervention_rules": [
+    {"trigger": "No eligible action has positive evidence-backed value within constraints", "response": "Emit a durable honest waiting decision and schedule the next evidence event", "status": "WAITING"},
+    {"trigger": "A required external fact for all high-value candidates is unavailable", "response": "Record the shared dependency and continue any independent safe work", "status": "BLOCKED"},
+    {"trigger": "Selected target identity differs at execution time", "response": "Refuse the action and require a new evidence-backed decision", "status": "FAIL"}
+  ],
+  "failure_injections": [
+    {"id": "J04-F01", "inject": "Swap the selected target from project beta to project alpha after authorization", "expected_response": "Canonical target validation refuses execution and emits a target mismatch"},
+    {"id": "J04-F02", "inject": "Replay the same portfolio-selection event after restart", "expected_response": "The idempotency key resolves to the existing decision and mission"},
+    {"id": "J04-F03", "inject": "Increase the selected action's effect budget beyond the frozen maximum", "expected_response": "Budget enforcement refuses the action before any effect"}
+  ],
+  "recovery": {
+    "requirements": ["Reload portfolio inputs and the accepted decision from their content hashes", "Reconcile any mission dispatch against the single decision idempotency key", "Re-score only when an input version actually changes"],
+    "evidence_required": ["J04-E03", "J04-E04"],
+    "max_elapsed_ms": 8000
+  },
+  "rollback": {
+    "requirements": ["Return the selected candidate to its exact pre-dispatch state when authorization fails", "Append a superseding decision that references the rejected decision and evidence"],
+    "evidence_required": ["J04-E02", "J04-E05"],
+    "restoration_target": "pre-selection portfolio state and nonexecuting candidate lifecycle"
+  },
+  "proof_dimensions": ["portfolio_provenance", "alternatives_and_tradeoffs", "canonical_selection_target", "decision_recovery", "selection_rollback", "actor_independence"],
+  "executable_requirements": {
+    "actor_independence": true,
+    "stop_veto": true,
+    "provenance": true,
+    "freshness": true,
+    "uncertainty": true,
+    "contradictions_preserved": false,
+    "usefulness": true,
+    "idempotency": true,
+    "after_state": true,
+    "compensation": false,
+    "recovery": true,
+    "rollback": true,
+    "allowed_effect_classes": ["portfolio_decision", "mission_dispatch"]
+  }
+}

@@ -1,0 +1,6 @@
+.                                                                        [100%]
+
+COMMAND_EXIT=0
+WALL_SECONDS=129.511
+PYTHONPATH_PRESENT=False
+EXPECTED_TASK=JF-WP7Gate-test_tas-13893

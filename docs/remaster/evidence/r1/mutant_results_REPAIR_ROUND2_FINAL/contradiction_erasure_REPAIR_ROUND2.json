@@ -1,0 +1,18 @@
+{
+  "canonical_verdict_sha256": "528a0eed99e610a9adced296363677749fc06332984a3e1c69e18e02fc8d3734",
+  "criterion_evidence_nonempty": true,
+  "detected": true,
+  "expected_code": "CONTRADICTION_ERASED",
+  "failed_journey_ids": [
+    "J02"
+  ],
+  "mutant": "contradiction_erasure",
+  "observed_codes": [
+    "CONTRADICTION_ERASED"
+  ],
+  "observer_status": "NOT_REQUESTED",
+  "product_claim_status": "NOT_TESTED",
+  "proof_scope": "HARNESS_SELF_TEST",
+  "schema": "jarvis-r1-mutant-result-repair-round2-v1",
+  "status": "FAIL"
+}

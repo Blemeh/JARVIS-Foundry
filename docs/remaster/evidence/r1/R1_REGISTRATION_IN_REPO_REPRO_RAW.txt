@@ -1,0 +1,24 @@
+F                                                                        [100%]
+================================== FAILURES ===================================
+__________________ test_inspection_of_non_repository_raises ___________________
+
+tmp_path = WindowsPath('C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry-Remaster/docs/remaster/evidence/r1/isolated-registration-inrepo-repro-tmp/test_inspection_of_non_reposit0')
+
+    def test_inspection_of_non_repository_raises(tmp_path):
+        plain = tmp_path / "plain"
+        plain.mkdir()
+        try:
+            inspect_git_resource(plain)
+            raised = False
+        except RegistrationError:
+            raised = True
+>       assert raised is True
+E       assert False is True
+
+tests\foundry\test_registration.py:130: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/foundry/test_registration.py::test_inspection_of_non_repository_raises
+
+COMMAND_EXIT=1
+WALL_SECONDS=1.400
+BASETEMP_LOCATION=INSIDE_REPOSITORY

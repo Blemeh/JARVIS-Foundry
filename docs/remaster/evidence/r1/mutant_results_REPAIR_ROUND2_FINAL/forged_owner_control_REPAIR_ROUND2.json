@@ -1,0 +1,18 @@
+{
+  "canonical_verdict_sha256": "b59712760054880dadc0ba009c6fcc54403dfdfad5ba30659af3880c9ac00b5c",
+  "criterion_evidence_nonempty": true,
+  "detected": true,
+  "expected_code": "FORGED_OWNER_CONTROL",
+  "failed_journey_ids": [
+    "J01"
+  ],
+  "mutant": "forged_owner_control",
+  "observed_codes": [
+    "FORGED_OWNER_CONTROL"
+  ],
+  "observer_status": "NOT_REQUESTED",
+  "product_claim_status": "NOT_TESTED",
+  "proof_scope": "HARNESS_SELF_TEST",
+  "schema": "jarvis-r1-mutant-result-repair-round2-v1",
+  "status": "FAIL"
+}

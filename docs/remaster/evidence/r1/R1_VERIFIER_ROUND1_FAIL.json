@@ -1,0 +1,385 @@
+{
+  "schema": "jarvis-remaster-verifier-verdict-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R1",
+  "verifier_round": 1,
+  "verifier": {
+    "identity": "/root/r1_independent_verifier",
+    "context": "Fresh read-only adversarial context, separate from the round-3 builder",
+    "same_model_provider_limitation": "Provider and model identities were not independently exposed. Different-provider independence is NOT_PROVEN; only fresh-context independence is confirmed."
+  },
+  "overall_verdict": "FAIL",
+  "decisive_reason": "The evaluator accepts adapter-self-asserted PRODUCT_LIVE evidence. Relabeling and rehashing TEMP-only reference artifacts produced product PASS for all ten journeys without any external target, effect, provider, or independent observation.",
+  "frozen_hashes_checked": {
+    "docs/remaster/work_packages/R1_WORK_PACKAGE.json": {
+      "sha256": "281b1f86c45b92a561a29ebb41e02be1cebe1ee291d7ee4fbff2035c6d21e0ab",
+      "size": 10577,
+      "match": true
+    },
+    "docs/remaster/r1/PURPOSE_SPEC.json": {
+      "sha256": "21e53aea317d52c95bca79dededd505917a8acea9b710753840b4c5c85a29c95",
+      "size": 3716,
+      "match": true
+    },
+    "docs/remaster/evidence/r1/R1_BUILDER_ATTEMPT1_FAIL.json": {
+      "sha256": "d596f0c119f2ef1aca42d97ea5fda2465ec369365a1064135ea504e9e87552a4",
+      "size": 1372,
+      "match": true
+    },
+    "docs/remaster/evidence/r1/R1_BUILDER_ATTEMPT2_FAIL.json": {
+      "sha256": "b5f05c02426df089728a40c85355521690fb6bd93f0ba13b1c9486f07a85bfe9",
+      "size": 1378,
+      "match": true
+    },
+    "docs/remaster/evidence/r1/R1_REFERENCE_RESULT.json": {
+      "sha256": "a8407028c32aaf3f704f0cbc918a60fd8cb4b48736061faa8eb3aef2f5e654cb",
+      "size": 14885,
+      "match": true
+    },
+    "docs/remaster/evidence/r1/R1_CURRENT_PROTOTYPE_RESULT_FINAL.json": {
+      "sha256": "76e99de9c1769ab498d442a664c2cfba5aa5315e5bb4d7419c29a5e773dc1b3d",
+      "size": 10700,
+      "match": true
+    },
+    "docs/remaster/evidence/r1/R1_MUTANT_MATRIX.json": {
+      "sha256": "9fd997cbd3a4b99958a667f2373f4c2edbea4c76539daa654b9af9205f74b97e",
+      "size": 6065,
+      "match": true
+    },
+    "docs/remaster/evidence/r1/R1_FOCUSED_CANONICAL_JUNIT.xml": {
+      "sha256": "9ec2d5f0e05bd42769d539e09eaeccf0395a38bd45ef82a9f39938dd6d947bdc",
+      "size": 4788,
+      "match": true
+    },
+    "docs/remaster/evidence/r1/R1_FULL_FOUNDRY_FINAL_JUNIT.xml": {
+      "sha256": "db53df6cf9e15bb5e6418d9e722c2a49d03bdb42488530615b3b98ce28a8549b",
+      "size": 119396,
+      "match": true
+    },
+    "docs/remaster/evidence/r1/R1_BUILDER_REPORT.json": {
+      "sha256": "6f13feaad0c66ee3251aa7f838e76b57d43b84ac787887933c776e733f8804c4",
+      "size": 21113,
+      "match": true
+    },
+    "docs/remaster/evidence/r1/R1_ARTIFACT_MANIFEST.json": {
+      "sha256": "b527667816e006259a437b2db566ba2afcf85e5d68dfcad36386715c0592f1ee",
+      "size": 42563,
+      "match": true
+    },
+    "docs/remaster/FINDINGS.jsonl": {
+      "sha256": "65247339c20e389b7387c23bf710d33ebd1c7c4247c8d76649547eab4f76324f",
+      "size": 10886,
+      "match": true
+    }
+  },
+  "criteria": {
+    "R1-C01": {
+      "status": "PASS",
+      "primary_evidence": "Exactly J01-J10 exist. All ten contracts parsed strictly, contain every frozen field, use journey-specific non-placeholder content, and have independently recomputed canonical hashes."
+    },
+    "R1-C02": {
+      "status": "PASS",
+      "primary_evidence": "The runner accepts an arbitrary subprocess command without a shell. AST inspection of all 12 R1 Python files found zero jarvis_foundry imports and zero dynamic import/eval sites."
+    },
+    "R1-C03": {
+      "status": "FAIL",
+      "primary_evidence": "The canonical reference passed 10/10 only as HARNESS_SELF_TEST, but its identical TEMP artifacts were accepted as PRODUCT_LIVE after changing labels and recomputing hashes. The harness therefore does not enforce the promised fixture/live boundary."
+    },
+    "R1-C04": {
+      "status": "PASS",
+      "primary_evidence": "The exact bf8f1493 prototype probe returned exit 1 and 10/10 journey FAIL with nonempty missing-endpoint evidence. Installed entrypoint invocation was false, database files created was zero, and repository status was unchanged."
+    },
+    "R1-C05": {
+      "status": "FAIL",
+      "primary_evidence": "The frozen 12/12 mutants were rejected, but fixture_as_live retains the explicit FIXTURE label. A stronger semantically equivalent mutant using self-asserted REAL_EXTERNAL_EFFECT labels passed all journeys, so the matrix does not discriminate real proof from relabeled fixture proof."
+    },
+    "R1-C06": {
+      "status": "FAIL",
+      "primary_evidence": "Failure injection, recovery, rollback, usefulness, independence, real after-state, and control are accepted from adapter booleans, listed injection IDs, arbitrary source labels, and TEMP files. The evaluator does not independently execute or inspect these semantic requirements."
+    },
+    "R1-C07": {
+      "status": "FAIL",
+      "primary_evidence": "Changing only J01 status to BLOCKED, NOT_TESTED, or WAITING preserved that aggregate status with zero findings, unchanged PASS evidence, and no reason or blocker field. Genuine blockers/waits cannot be distinguished from implementation failure or unsupported assertions."
+    },
+    "R1-C08": {
+      "status": "FAIL",
+      "primary_evidence": "Structural hash, path, schema, unknown-field, and determinism checks work, but evidence authenticity fails. Rehashed self-assertions produce a canonical product PASS with no external trust anchor or independently bound observer."
+    },
+    "R1-C09": {
+      "status": "NOT_TESTED",
+      "primary_evidence": "The independent focused suite passed 33/33 in 8.886 seconds under external TEMP with bytecode and cache disabled. The independent 985-test reproduction was intentionally not run after the decisive semantic FAIL. Builder JUnit evidence reports 985/0 but is not independent reproduction."
+    },
+    "R1-C10": {
+      "status": "PASS",
+      "primary_evidence": "This fresh verifier independently reproduced manifest closure, reference 10/10 harness PASS, current-prototype 10/10 rejection, frozen 12/12 mutant rejection, artifact identities, resource limits, and the no-mutation boundary. The adversarial reproduction disproved the overall R1 gate."
+    }
+  },
+  "manifest_closure": {
+    "status": "PASS",
+    "declared_entries": 153,
+    "unique_entries": 153,
+    "actual_allowed_files_including_manifest": 154,
+    "missing": [],
+    "extra": [],
+    "hash_or_size_errors": [],
+    "category_counts": {
+      "builder_evidence": 126,
+      "focused_test": 6,
+      "frozen_dependency": 1,
+      "harness_source": 6,
+      "purpose_contract": 14
+    },
+    "owned_bytes_excluding_manifest_and_frozen_dependency": 965524,
+    "evidence_bytes_excluding_manifest": 762785,
+    "before_after_byte_mtime_inventory_sha256": "0fc332369d6dc34a7b9e4bda44b2c9954889f87b40c1dc977926b6bc69d3ea53"
+  },
+  "independent_command_results": {
+    "reference": {
+      "status": "PASS",
+      "exit_code": 0,
+      "wall_seconds": 0.481,
+      "journeys_passed": 10,
+      "proof_scope": "HARNESS_SELF_TEST",
+      "qualification": "HARNESS_SELF_TEST_ONLY",
+      "product_claim_status": "NOT_TESTED",
+      "findings": 0,
+      "generated_files": 71,
+      "confinement": "OS_TEMP"
+    },
+    "current_prototype": {
+      "status": "FAIL",
+      "exit_code": 1,
+      "wall_seconds": 0.898,
+      "journeys_failed": 10,
+      "identity_match": true,
+      "protocol_endpoint_present": false,
+      "installed_entrypoint_invoked": false,
+      "database_files_created": 0,
+      "repository_unchanged": true
+    },
+    "frozen_mutants": {
+      "status": "PASS",
+      "exit_code": 0,
+      "wall_seconds": 4.637,
+      "required": 12,
+      "rejected": 12,
+      "all_expected_codes_observed": true
+    },
+    "product_live_spoof": {
+      "status": "FAIL",
+      "meaning": "The adversarial test succeeded in bypassing the gate",
+      "evaluator_status": "PASS",
+      "product_claim_status": "PASS",
+      "proof_scope": "PRODUCT_LIVE",
+      "journeys_passed": 10,
+      "findings": 0,
+      "artifacts": 71,
+      "all_artifacts_under_os_temp": true,
+      "external_target_observed": false,
+      "network_or_provider_used": false,
+      "actor_and_verifier_ids_distinct": true,
+      "temp_cleanup_confirmed": true
+    },
+    "status_provenance_probe": {
+      "status": "FAIL",
+      "asserted_statuses_accepted_without_reason": [
+        "BLOCKED",
+        "NOT_TESTED",
+        "WAITING"
+      ],
+      "findings_for_each": 0,
+      "blocker_or_wait_reason_field_present": false,
+      "temp_cleanup_confirmed": true
+    },
+    "focused_suite": {
+      "status": "PASS",
+      "exit_code": 0,
+      "tests": 33,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "wall_seconds": 8.886,
+      "external_basetemp": true,
+      "cache_disabled": true,
+      "bytecode_disabled": true
+    },
+    "full_suite_985": {
+      "status": "NOT_TESTED",
+      "reason": "Stopped before staging-task execution after a decisive mandatory semantic FAIL.",
+      "builder_artifact_observed": {
+        "tests": 985,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "junit_seconds": 450.679
+      }
+    },
+    "resource_probe": {
+      "status": "PASS",
+      "exit_code": 0,
+      "wall_seconds": 0.501,
+      "peak_working_set_mib": 20.949,
+      "target_mib": 256,
+      "measurement_scope": "Evaluator parent process; external adapter excluded",
+      "temp_cleanup_confirmed": true
+    }
+  },
+  "preserved_failure_lineage": {
+    "status": "PASS",
+    "host_full": {
+      "tests": 985,
+      "passed": 984,
+      "failed": 1,
+      "node": "tests.foundry.test_installer::test_task_restarts_after_hard_kill_via_repeating_trigger"
+    },
+    "host_exact_reproduction": {
+      "tests": 1,
+      "failed": 1
+    },
+    "isolated_focused_control": {
+      "tests": 1,
+      "passed": 1
+    },
+    "isolated_in_repository_full": {
+      "tests": 985,
+      "passed": 984,
+      "failed": 1,
+      "node": "tests.foundry.test_registration::test_inspection_of_non_repository_raises"
+    },
+    "registration_ab": {
+      "in_repository_basetemp": "FAIL",
+      "external_basetemp": "PASS"
+    },
+    "final_builder_full": {
+      "tests": 985,
+      "passed": 985,
+      "failed": 0
+    },
+    "qualification": "Raw and JUnit artifacts are hash-bound and internally consistent. The expensive scheduled-task/full-suite cases were not independently re-executed in this failed verifier round."
+  },
+  "findings_adjudication": {
+    "registry_integrity": {
+      "status": "PASS",
+      "records": 27,
+      "unique_ids": 27,
+      "r0_ids": "R0-F001..R0-F022",
+      "r1_ids": "R1-F001..R1-F005",
+      "r0_f019_through_f022_closed_by_round3": true
+    },
+    "R1-F001": {
+      "status": "PASS",
+      "closure": "Attempt-1 failure is hash-bound; frozen package remained exact; no attempt-1 deliverable entered the successful artifact set."
+    },
+    "R1-F002": {
+      "status": "PASS",
+      "closure": "Attempt-2 failure is hash-bound; no overlapping partial output appears in the exact manifest; the frozen package remained exact."
+    },
+    "R1-F003": {
+      "status": "NOT_TESTED",
+      "closure": "Builder A/B and final JUnit evidence are consistent, but the required independent isolated scheduled-child/full-suite reproduction was not executed after decisive gate failure."
+    },
+    "R1-F004": {
+      "status": "NOT_TESTED",
+      "closure": "The preserved in-repository FAIL and external-TEMP PASS artifacts are consistent, but the verifier did not recreate the in-worktree fixture or full-suite boundary."
+    },
+    "R1-F005": {
+      "status": "PASS",
+      "closure": "All embedded contract hashes were independently recomputed from canonical JSON; the exact regression passed in the 33-test focused suite."
+    }
+  },
+  "fresh_findings": [
+    {
+      "id": "R1-F006",
+      "severity": "S1",
+      "status": "CONFIRMED",
+      "registry_presence": false,
+      "finding": "Untrusted adapters can self-assert PRODUCT_LIVE, REAL_EXTERNAL_EFFECT, source identity, target state, actor independence, and outcome booleans. Rehashing TEMP-only reference evidence then yields all-ten product PASS.",
+      "affected_invariants": [
+        "real after-state",
+        "independent verification",
+        "fixture/live separation",
+        "purpose acceptance integrity",
+        "target identity",
+        "no self-certification"
+      ]
+    },
+    {
+      "id": "R1-F007",
+      "severity": "S2",
+      "status": "CONFIRMED",
+      "registry_presence": false,
+      "finding": "BLOCKED, NOT_TESTED, and WAITING are unvalidated adapter assertions with no mandatory reason, dependency, wait event, resume condition, or status-specific evidence.",
+      "affected_invariants": [
+        "truthful status",
+        "BLOCKED classification",
+        "resumability",
+        "no silent implementation failure"
+      ]
+    }
+  ],
+  "exact_repair_conditions": [
+    "Preserve this verifier FAIL before changing the implementation and register R1-F006 and R1-F007 durably.",
+    "Make requested proof scope evaluator-owned and frozen in the request. An adapter must not promote itself from HARNESS_SELF_TEST to PRODUCT_LIVE.",
+    "Require PRODUCT_LIVE evidence to be verified by an evaluator-controlled registered observer or SystemAdapter.inspect path bound to canonical target identity, account/service identity, challenge nonce, before state, after state, idempotency key, and external receipt.",
+    "Do not allow a file beneath run_root to qualify as the external target. It may be an evidence copy only; the evaluator must independently inspect the actual target.",
+    "Replace string inequality of actor_run_id and verifier_run_id with independently issued identities or attestations bound to separate execution contexts and frozen artifacts.",
+    "Make semantic journey requirements executable: actual restart, duplicate delivery, failure injection, recovery, rollback, compensation, usefulness, and after-state checks cannot be satisfied by booleans or merely listing injection IDs.",
+    "Add a regression that starts from the canonical reference response, changes proof scope to PRODUCT_LIVE, changes every payload to REAL_EXTERNAL_EFFECT, assigns distinct self-asserted actor/verifier IDs, rehashes and relinks every record, and requires deterministic FAIL with a dedicated untrusted-live-proof code.",
+    "Add rehashed source-locator, target-receipt, actor-identity, and verifier-identity spoof mutants. They must fail for the intended semantic reason while the canonical reference remains HARNESS_SELF_TEST_ONLY.",
+    "Extend the protocol with status-specific reason codes and evidence. BLOCKED requires an identified unavailable external dependency; WAITING requires a durable wait event/resume condition; NOT_TESTED requires named unexecuted criteria; implementation/protocol failure remains FAIL.",
+    "Add regressions proving that blind status flips to BLOCKED, NOT_TESTED, or WAITING are rejected.",
+    "After repair, rerun the focused suite, the isolated external-TEMP 985-test suite, all strengthened mutants, resource checks, exact manifest closure, protected-state guards, and a fresh independent verifier round."
+  ],
+  "resource_limits": {
+    "focused_suite_target_seconds": 10,
+    "focused_suite_wall_seconds": 8.886,
+    "focused_target_met": true,
+    "generated_evidence_bytes": 762785,
+    "generated_evidence_limit_bytes": 2097152,
+    "evidence_budget_met": true,
+    "fresh_evaluator_peak_mib": 20.949,
+    "peak_limit_mib": 256,
+    "memory_target_met": true,
+    "network_calls": 0,
+    "provider_calls": 0,
+    "paid_cost_usd": 0,
+    "secret_values_read_or_emitted": 0
+  },
+  "no_mutation_statement": {
+    "status": "PASS",
+    "workspace_r1_byte_and_mtime_inventory_unchanged": true,
+    "production_or_existing_test_diff": [],
+    "protected_tasks": {
+      "JARVIS-Foundry-Supervisor": {
+        "state": "Running",
+        "xml_sha256": "fdf06e1ef9f42c0f8f8bfed5081b0c59a6fdcba2203e221e4d4e32e02cbd7c3c",
+        "unchanged": true
+      },
+      "Hermes_Gateway": {
+        "state": "Ready",
+        "xml_sha256": "8f410ea850c1d682138e21502ec761ce41c2186894b4b54fabc053e39d154b81",
+        "unchanged": true
+      }
+    },
+    "protected_supervisor_processes": [
+      {
+        "pid": 17052,
+        "creation_time": "2026-08-14T13:02:06+02:00",
+        "unchanged": true
+      },
+      {
+        "pid": 21636,
+        "creation_time": "2026-08-14T13:02:05+02:00",
+        "unchanged": true
+      }
+    ],
+    "jf_wp7gate_tasks_remaining": 0,
+    "verifier_temp_roots_remaining": 0,
+    "r1_pycache_directories_remaining": 0,
+    "live_database_opened_or_written_by_verifier": false,
+    "protected_ports_mutated": false,
+    "network_or_provider_calls": false,
+    "commit_stage_push_or_publish": false,
+    "note": "Concurrent live Supervisor heartbeat/database advancement is external to this verifier and was not treated as verifier mutation."
+  }
+}

@@ -1,0 +1,2223 @@
+{
+  "adapter_process": {
+    "exit_code": 0,
+    "stderr_present": false,
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "timed_out": false
+  },
+  "contract_manifest": [
+    {
+      "journey_id": "J01",
+      "path": "journeys/J01.json",
+      "sha256": "3421098d53f6db25210cfc36bdb77046d52658e376fe10869bc191e8522656c0"
+    },
+    {
+      "journey_id": "J02",
+      "path": "journeys/J02.json",
+      "sha256": "965cd81ee56b034f91d1ea58191ba4a7c7598305fb391548109d6d2173fa2fa0"
+    },
+    {
+      "journey_id": "J03",
+      "path": "journeys/J03.json",
+      "sha256": "9351a7c772c8991ef83b529f72161bd1206e6c9075d4a7567781350adbc7de7a"
+    },
+    {
+      "journey_id": "J04",
+      "path": "journeys/J04.json",
+      "sha256": "78f5f6658fcc1292ce2427a713fd6f73810bcf11dbf9f3bb8a23fb04153cfb4a"
+    },
+    {
+      "journey_id": "J05",
+      "path": "journeys/J05.json",
+      "sha256": "4d1560cb3ab9a740be804567658d7b75c6630a5cf24ce6de401b696563bdf977"
+    },
+    {
+      "journey_id": "J06",
+      "path": "journeys/J06.json",
+      "sha256": "ff92429a401fd0e5a9065b8a69dd43a4dfe5090adc0350be389bd5b538948487"
+    },
+    {
+      "journey_id": "J07",
+      "path": "journeys/J07.json",
+      "sha256": "df019c43689f74167f0f20fbfcdad0cd84a8f1551d2590a9ba47cb6e78efe3c7"
+    },
+    {
+      "journey_id": "J08",
+      "path": "journeys/J08.json",
+      "sha256": "3d2d1a2aff663354dc16bdbeeee4829e6a19799628fde7ad157029b611db8b16"
+    },
+    {
+      "journey_id": "J09",
+      "path": "journeys/J09.json",
+      "sha256": "5c1ef4e41dc56516b2f4af96e655a1935db7920d3471c66d0a8a09f2c6446ef5"
+    },
+    {
+      "journey_id": "J10",
+      "path": "journeys/J10.json",
+      "sha256": "73b6c4236036b2a9425b25d42315c663ba360d892a0f6f899f75b983148f9726"
+    }
+  ],
+  "findings": [
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J01].evidence[0].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J01].evidence[1].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J01].evidence[2].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J01].evidence[3].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J01].evidence[4].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J01].evidence[5].payload.source.locator"
+    },
+    {
+      "code": "PRODUCT_LIVE_OBSERVER_REQUIRED",
+      "evidence_ids": [],
+      "message": "no valid evaluator-controlled registered observer attestation exists",
+      "path": "response.journeys[J01]"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "subject source claims lack independent observation",
+      "path": "response.journeys[J01].evidence"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_TARGET_RECEIPT",
+      "evidence_ids": [],
+      "message": "subject receipts lack independent target-bound observation",
+      "path": "response.journeys[J01].target_receipts"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_ACTOR_IDENTITY",
+      "evidence_ids": [],
+      "message": "subject actor labels do not establish evaluator-issued execution identity",
+      "path": "response.journeys[J01].adapter"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+      "evidence_ids": [],
+      "message": "subject verifier labels do not establish an independent observer execution",
+      "path": "response.journeys[J01].adapter"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+      "evidence_ids": [],
+      "message": "subject outcome fields lack independent semantic receipts",
+      "path": "response.journeys[J01].outcome"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+      "evidence_ids": [],
+      "message": "listed injection IDs lack independent observation receipts",
+      "path": "response.journeys[J01].failure_injections_exercised"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J02].evidence[0].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J02].evidence[1].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J02].evidence[2].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J02].evidence[3].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J02].evidence[4].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J02].evidence[5].payload.source.locator"
+    },
+    {
+      "code": "PRODUCT_LIVE_OBSERVER_REQUIRED",
+      "evidence_ids": [],
+      "message": "no valid evaluator-controlled registered observer attestation exists",
+      "path": "response.journeys[J02]"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "subject source claims lack independent observation",
+      "path": "response.journeys[J02].evidence"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_TARGET_RECEIPT",
+      "evidence_ids": [],
+      "message": "subject receipts lack independent target-bound observation",
+      "path": "response.journeys[J02].target_receipts"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_ACTOR_IDENTITY",
+      "evidence_ids": [],
+      "message": "subject actor labels do not establish evaluator-issued execution identity",
+      "path": "response.journeys[J02].adapter"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+      "evidence_ids": [],
+      "message": "subject verifier labels do not establish an independent observer execution",
+      "path": "response.journeys[J02].adapter"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+      "evidence_ids": [],
+      "message": "subject outcome fields lack independent semantic receipts",
+      "path": "response.journeys[J02].outcome"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+      "evidence_ids": [],
+      "message": "listed injection IDs lack independent observation receipts",
+      "path": "response.journeys[J02].failure_injections_exercised"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J03].evidence[0].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J03].evidence[1].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J03].evidence[2].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J03].evidence[3].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J03].evidence[4].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J03].evidence[5].payload.source.locator"
+    },
+    {
+      "code": "PRODUCT_LIVE_OBSERVER_REQUIRED",
+      "evidence_ids": [],
+      "message": "no valid evaluator-controlled registered observer attestation exists",
+      "path": "response.journeys[J03]"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "subject source claims lack independent observation",
+      "path": "response.journeys[J03].evidence"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_TARGET_RECEIPT",
+      "evidence_ids": [],
+      "message": "subject receipts lack independent target-bound observation",
+      "path": "response.journeys[J03].target_receipts"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_ACTOR_IDENTITY",
+      "evidence_ids": [],
+      "message": "subject actor labels do not establish evaluator-issued execution identity",
+      "path": "response.journeys[J03].adapter"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+      "evidence_ids": [],
+      "message": "subject verifier labels do not establish an independent observer execution",
+      "path": "response.journeys[J03].adapter"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+      "evidence_ids": [],
+      "message": "subject outcome fields lack independent semantic receipts",
+      "path": "response.journeys[J03].outcome"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+      "evidence_ids": [],
+      "message": "listed injection IDs lack independent observation receipts",
+      "path": "response.journeys[J03].failure_injections_exercised"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J04].evidence[0].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J04].evidence[1].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J04].evidence[2].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J04].evidence[3].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J04].evidence[4].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J04].evidence[5].payload.source.locator"
+    },
+    {
+      "code": "PRODUCT_LIVE_OBSERVER_REQUIRED",
+      "evidence_ids": [],
+      "message": "no valid evaluator-controlled registered observer attestation exists",
+      "path": "response.journeys[J04]"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "subject source claims lack independent observation",
+      "path": "response.journeys[J04].evidence"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_TARGET_RECEIPT",
+      "evidence_ids": [],
+      "message": "subject receipts lack independent target-bound observation",
+      "path": "response.journeys[J04].target_receipts"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_ACTOR_IDENTITY",
+      "evidence_ids": [],
+      "message": "subject actor labels do not establish evaluator-issued execution identity",
+      "path": "response.journeys[J04].adapter"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+      "evidence_ids": [],
+      "message": "subject verifier labels do not establish an independent observer execution",
+      "path": "response.journeys[J04].adapter"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+      "evidence_ids": [],
+      "message": "subject outcome fields lack independent semantic receipts",
+      "path": "response.journeys[J04].outcome"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+      "evidence_ids": [],
+      "message": "listed injection IDs lack independent observation receipts",
+      "path": "response.journeys[J04].failure_injections_exercised"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J05].evidence[0].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J05].evidence[1].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J05].evidence[2].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J05].evidence[3].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J05].evidence[4].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J05].evidence[5].payload.source.locator"
+    },
+    {
+      "code": "PRODUCT_LIVE_OBSERVER_REQUIRED",
+      "evidence_ids": [],
+      "message": "no valid evaluator-controlled registered observer attestation exists",
+      "path": "response.journeys[J05]"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "subject source claims lack independent observation",
+      "path": "response.journeys[J05].evidence"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_TARGET_RECEIPT",
+      "evidence_ids": [],
+      "message": "subject receipts lack independent target-bound observation",
+      "path": "response.journeys[J05].target_receipts"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_ACTOR_IDENTITY",
+      "evidence_ids": [],
+      "message": "subject actor labels do not establish evaluator-issued execution identity",
+      "path": "response.journeys[J05].adapter"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+      "evidence_ids": [],
+      "message": "subject verifier labels do not establish an independent observer execution",
+      "path": "response.journeys[J05].adapter"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+      "evidence_ids": [],
+      "message": "subject outcome fields lack independent semantic receipts",
+      "path": "response.journeys[J05].outcome"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+      "evidence_ids": [],
+      "message": "listed injection IDs lack independent observation receipts",
+      "path": "response.journeys[J05].failure_injections_exercised"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J06].evidence[0].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J06].evidence[1].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J06].evidence[2].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J06].evidence[3].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J06].evidence[4].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J06].evidence[5].payload.source.locator"
+    },
+    {
+      "code": "PRODUCT_LIVE_OBSERVER_REQUIRED",
+      "evidence_ids": [],
+      "message": "no valid evaluator-controlled registered observer attestation exists",
+      "path": "response.journeys[J06]"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "subject source claims lack independent observation",
+      "path": "response.journeys[J06].evidence"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_TARGET_RECEIPT",
+      "evidence_ids": [],
+      "message": "subject receipts lack independent target-bound observation",
+      "path": "response.journeys[J06].target_receipts"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_ACTOR_IDENTITY",
+      "evidence_ids": [],
+      "message": "subject actor labels do not establish evaluator-issued execution identity",
+      "path": "response.journeys[J06].adapter"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+      "evidence_ids": [],
+      "message": "subject verifier labels do not establish an independent observer execution",
+      "path": "response.journeys[J06].adapter"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+      "evidence_ids": [],
+      "message": "subject outcome fields lack independent semantic receipts",
+      "path": "response.journeys[J06].outcome"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+      "evidence_ids": [],
+      "message": "listed injection IDs lack independent observation receipts",
+      "path": "response.journeys[J06].failure_injections_exercised"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J07].evidence[0].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J07].evidence[1].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J07].evidence[2].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J07].evidence[3].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J07].evidence[4].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J07].evidence[5].payload.source.locator"
+    },
+    {
+      "code": "PRODUCT_LIVE_OBSERVER_REQUIRED",
+      "evidence_ids": [],
+      "message": "no valid evaluator-controlled registered observer attestation exists",
+      "path": "response.journeys[J07]"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "subject source claims lack independent observation",
+      "path": "response.journeys[J07].evidence"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_TARGET_RECEIPT",
+      "evidence_ids": [],
+      "message": "subject receipts lack independent target-bound observation",
+      "path": "response.journeys[J07].target_receipts"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_ACTOR_IDENTITY",
+      "evidence_ids": [],
+      "message": "subject actor labels do not establish evaluator-issued execution identity",
+      "path": "response.journeys[J07].adapter"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+      "evidence_ids": [],
+      "message": "subject verifier labels do not establish an independent observer execution",
+      "path": "response.journeys[J07].adapter"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+      "evidence_ids": [],
+      "message": "subject outcome fields lack independent semantic receipts",
+      "path": "response.journeys[J07].outcome"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+      "evidence_ids": [],
+      "message": "listed injection IDs lack independent observation receipts",
+      "path": "response.journeys[J07].failure_injections_exercised"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J08].evidence[0].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J08].evidence[1].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J08].evidence[2].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J08].evidence[3].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J08].evidence[4].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J08].evidence[5].payload.source.locator"
+    },
+    {
+      "code": "PRODUCT_LIVE_OBSERVER_REQUIRED",
+      "evidence_ids": [],
+      "message": "no valid evaluator-controlled registered observer attestation exists",
+      "path": "response.journeys[J08]"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "subject source claims lack independent observation",
+      "path": "response.journeys[J08].evidence"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_TARGET_RECEIPT",
+      "evidence_ids": [],
+      "message": "subject receipts lack independent target-bound observation",
+      "path": "response.journeys[J08].target_receipts"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_ACTOR_IDENTITY",
+      "evidence_ids": [],
+      "message": "subject actor labels do not establish evaluator-issued execution identity",
+      "path": "response.journeys[J08].adapter"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+      "evidence_ids": [],
+      "message": "subject verifier labels do not establish an independent observer execution",
+      "path": "response.journeys[J08].adapter"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+      "evidence_ids": [],
+      "message": "subject outcome fields lack independent semantic receipts",
+      "path": "response.journeys[J08].outcome"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+      "evidence_ids": [],
+      "message": "listed injection IDs lack independent observation receipts",
+      "path": "response.journeys[J08].failure_injections_exercised"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J09].evidence[0].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J09].evidence[1].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J09].evidence[2].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J09].evidence[3].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J09].evidence[4].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J09].evidence[5].payload.source.locator"
+    },
+    {
+      "code": "PRODUCT_LIVE_OBSERVER_REQUIRED",
+      "evidence_ids": [],
+      "message": "no valid evaluator-controlled registered observer attestation exists",
+      "path": "response.journeys[J09]"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "subject source claims lack independent observation",
+      "path": "response.journeys[J09].evidence"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_TARGET_RECEIPT",
+      "evidence_ids": [],
+      "message": "subject receipts lack independent target-bound observation",
+      "path": "response.journeys[J09].target_receipts"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_ACTOR_IDENTITY",
+      "evidence_ids": [],
+      "message": "subject actor labels do not establish evaluator-issued execution identity",
+      "path": "response.journeys[J09].adapter"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+      "evidence_ids": [],
+      "message": "subject verifier labels do not establish an independent observer execution",
+      "path": "response.journeys[J09].adapter"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+      "evidence_ids": [],
+      "message": "subject outcome fields lack independent semantic receipts",
+      "path": "response.journeys[J09].outcome"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+      "evidence_ids": [],
+      "message": "listed injection IDs lack independent observation receipts",
+      "path": "response.journeys[J09].failure_injections_exercised"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J10].evidence[0].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J10].evidence[1].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J10].evidence[2].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J10].evidence[3].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J10].evidence[4].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J10].evidence[5].payload.source.locator"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+      "path": "response.journeys[J10].evidence[6].payload.source.locator"
+    },
+    {
+      "code": "PRODUCT_LIVE_OBSERVER_REQUIRED",
+      "evidence_ids": [],
+      "message": "no valid evaluator-controlled registered observer attestation exists",
+      "path": "response.journeys[J10]"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_SOURCE",
+      "evidence_ids": [],
+      "message": "subject source claims lack independent observation",
+      "path": "response.journeys[J10].evidence"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_TARGET_RECEIPT",
+      "evidence_ids": [],
+      "message": "subject receipts lack independent target-bound observation",
+      "path": "response.journeys[J10].target_receipts"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_ACTOR_IDENTITY",
+      "evidence_ids": [],
+      "message": "subject actor labels do not establish evaluator-issued execution identity",
+      "path": "response.journeys[J10].adapter"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+      "evidence_ids": [],
+      "message": "subject verifier labels do not establish an independent observer execution",
+      "path": "response.journeys[J10].adapter"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+      "evidence_ids": [],
+      "message": "subject outcome fields lack independent semantic receipts",
+      "path": "response.journeys[J10].outcome"
+    },
+    {
+      "code": "UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+      "evidence_ids": [],
+      "message": "listed injection IDs lack independent observation receipts",
+      "path": "response.journeys[J10].failure_injections_exercised"
+    }
+  ],
+  "journeys": [
+    {
+      "criterion_evidence": {
+        "J01-S01": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:4243226d719915357c4eb81907f4f017204c415c42b072c09fb233a1a8a3b283",
+          "sha256:6138597ce69d3761b5bb364db8b662e1a372436c5c526b669c555c108cfbf071",
+          "sha256:ee3d3ce684b511066550b3dcb472bdd766a9182537972ae60a76077a9f051985"
+        ],
+        "J01-S02": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:0cec2becbed43e7a526c2ec1515eb7cf198dc06821e2a28dadf98926da9f7dbb",
+          "sha256:4243226d719915357c4eb81907f4f017204c415c42b072c09fb233a1a8a3b283",
+          "sha256:6138597ce69d3761b5bb364db8b662e1a372436c5c526b669c555c108cfbf071",
+          "sha256:a58c39c4bfd19f891511e50020a8c6d302669a82284ef380a6826561cbd3fb4a"
+        ],
+        "J01-S03": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:0cec2becbed43e7a526c2ec1515eb7cf198dc06821e2a28dadf98926da9f7dbb",
+          "sha256:6138597ce69d3761b5bb364db8b662e1a372436c5c526b669c555c108cfbf071",
+          "sha256:a58c39c4bfd19f891511e50020a8c6d302669a82284ef380a6826561cbd3fb4a"
+        ],
+        "J01-S04": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:6138597ce69d3761b5bb364db8b662e1a372436c5c526b669c555c108cfbf071",
+          "sha256:d7746eb7bf4a1b17765e9741d6cfe81d5382437933a312a7ce8e0ac7e96183f4"
+        ]
+      },
+      "findings": [
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J01].evidence[0].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J01].evidence[1].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J01].evidence[2].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J01].evidence[3].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J01].evidence[4].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J01].evidence[5].payload.source.locator"
+        },
+        {
+          "code": "PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "evidence_ids": [],
+          "message": "no valid evaluator-controlled registered observer attestation exists",
+          "path": "response.journeys[J01]"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "subject source claims lack independent observation",
+          "path": "response.journeys[J01].evidence"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "evidence_ids": [],
+          "message": "subject receipts lack independent target-bound observation",
+          "path": "response.journeys[J01].target_receipts"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "evidence_ids": [],
+          "message": "subject actor labels do not establish evaluator-issued execution identity",
+          "path": "response.journeys[J01].adapter"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "evidence_ids": [],
+          "message": "subject verifier labels do not establish an independent observer execution",
+          "path": "response.journeys[J01].adapter"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "evidence_ids": [],
+          "message": "subject outcome fields lack independent semantic receipts",
+          "path": "response.journeys[J01].outcome"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "evidence_ids": [],
+          "message": "listed injection IDs lack independent observation receipts",
+          "path": "response.journeys[J01].failure_injections_exercised"
+        }
+      ],
+      "journey_id": "J01",
+      "status": "FAIL"
+    },
+    {
+      "criterion_evidence": {
+        "J02-S01": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:47b722425ccc841962bd4f6861b999932755e9af005551326a3d32de856438bc",
+          "sha256:883c3b4230153716ea9fa6c4554426b0d74d84e1db9260e0c4f1a7c17ae3604e",
+          "sha256:ebc97c8a4fe1a45a3f344d4765c602cff9bc16866879508efb34fb1cde32979c"
+        ],
+        "J02-S02": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:47b722425ccc841962bd4f6861b999932755e9af005551326a3d32de856438bc",
+          "sha256:7332569ffb49b380cbaf88d54831103cd5e7f28de402d2fa3eda651cedbf111b",
+          "sha256:883c3b4230153716ea9fa6c4554426b0d74d84e1db9260e0c4f1a7c17ae3604e",
+          "sha256:e7d9ec65f56cff39334de4af47d992e4f44b0cd062afe0de7b4756922e361cd5"
+        ],
+        "J02-S03": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:47b722425ccc841962bd4f6861b999932755e9af005551326a3d32de856438bc",
+          "sha256:883c3b4230153716ea9fa6c4554426b0d74d84e1db9260e0c4f1a7c17ae3604e"
+        ],
+        "J02-S04": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:04b272f40d6af98552278f041ce48f0e566d21f38276770293155d11475c963d",
+          "sha256:883c3b4230153716ea9fa6c4554426b0d74d84e1db9260e0c4f1a7c17ae3604e",
+          "sha256:e7d9ec65f56cff39334de4af47d992e4f44b0cd062afe0de7b4756922e361cd5"
+        ]
+      },
+      "findings": [
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J02].evidence[0].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J02].evidence[1].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J02].evidence[2].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J02].evidence[3].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J02].evidence[4].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J02].evidence[5].payload.source.locator"
+        },
+        {
+          "code": "PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "evidence_ids": [],
+          "message": "no valid evaluator-controlled registered observer attestation exists",
+          "path": "response.journeys[J02]"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "subject source claims lack independent observation",
+          "path": "response.journeys[J02].evidence"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "evidence_ids": [],
+          "message": "subject receipts lack independent target-bound observation",
+          "path": "response.journeys[J02].target_receipts"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "evidence_ids": [],
+          "message": "subject actor labels do not establish evaluator-issued execution identity",
+          "path": "response.journeys[J02].adapter"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "evidence_ids": [],
+          "message": "subject verifier labels do not establish an independent observer execution",
+          "path": "response.journeys[J02].adapter"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "evidence_ids": [],
+          "message": "subject outcome fields lack independent semantic receipts",
+          "path": "response.journeys[J02].outcome"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "evidence_ids": [],
+          "message": "listed injection IDs lack independent observation receipts",
+          "path": "response.journeys[J02].failure_injections_exercised"
+        }
+      ],
+      "journey_id": "J02",
+      "status": "FAIL"
+    },
+    {
+      "criterion_evidence": {
+        "J03-S01": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:032c653225f69b22aababe5914b4b99f26a6b950eaed26ee77023072115060f2",
+          "sha256:63f9366b0eb492b1216e7a3ef1f64a5fb287f8984392d6e8e9e5b638f87f14ea",
+          "sha256:8bb851e6db4e30333b095b3849e86e7ce00b01f1383f69df7cf2d16e61de173e"
+        ],
+        "J03-S02": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:032c653225f69b22aababe5914b4b99f26a6b950eaed26ee77023072115060f2",
+          "sha256:63f9366b0eb492b1216e7a3ef1f64a5fb287f8984392d6e8e9e5b638f87f14ea",
+          "sha256:6fcb10f8a6aaebec2d22cad4a591070d5d3d21f281f11ced5bd6d4915d4b91bd",
+          "sha256:9ab41fa20831202498af651d8a20f8d25d8fc8031d47a732b9342170f3641309"
+        ],
+        "J03-S03": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:032c653225f69b22aababe5914b4b99f26a6b950eaed26ee77023072115060f2",
+          "sha256:63f9366b0eb492b1216e7a3ef1f64a5fb287f8984392d6e8e9e5b638f87f14ea",
+          "sha256:6fcb10f8a6aaebec2d22cad4a591070d5d3d21f281f11ced5bd6d4915d4b91bd"
+        ],
+        "J03-S04": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:1c9bc542d6e818b36ba9d99587d29eff519799cadd22c61465a255b92d8deabb",
+          "sha256:63f9366b0eb492b1216e7a3ef1f64a5fb287f8984392d6e8e9e5b638f87f14ea",
+          "sha256:9ab41fa20831202498af651d8a20f8d25d8fc8031d47a732b9342170f3641309"
+        ]
+      },
+      "findings": [
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J03].evidence[0].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J03].evidence[1].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J03].evidence[2].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J03].evidence[3].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J03].evidence[4].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J03].evidence[5].payload.source.locator"
+        },
+        {
+          "code": "PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "evidence_ids": [],
+          "message": "no valid evaluator-controlled registered observer attestation exists",
+          "path": "response.journeys[J03]"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "subject source claims lack independent observation",
+          "path": "response.journeys[J03].evidence"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "evidence_ids": [],
+          "message": "subject receipts lack independent target-bound observation",
+          "path": "response.journeys[J03].target_receipts"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "evidence_ids": [],
+          "message": "subject actor labels do not establish evaluator-issued execution identity",
+          "path": "response.journeys[J03].adapter"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "evidence_ids": [],
+          "message": "subject verifier labels do not establish an independent observer execution",
+          "path": "response.journeys[J03].adapter"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "evidence_ids": [],
+          "message": "subject outcome fields lack independent semantic receipts",
+          "path": "response.journeys[J03].outcome"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "evidence_ids": [],
+          "message": "listed injection IDs lack independent observation receipts",
+          "path": "response.journeys[J03].failure_injections_exercised"
+        }
+      ],
+      "journey_id": "J03",
+      "status": "FAIL"
+    },
+    {
+      "criterion_evidence": {
+        "J04-S01": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:254983bb60e7eb53bda43fc6cea52bf78ef5c9a58577544cf6d53374211f2638",
+          "sha256:28c49dbbc90de7274ec77d62df3d54bfaf0454b384209b59c78fd4fe2112ddaf",
+          "sha256:e4fba6099d2814b645c65bccc3b3d2b8866613c7a2e9e5d3b81b4afaaccd5255"
+        ],
+        "J04-S02": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:28c49dbbc90de7274ec77d62df3d54bfaf0454b384209b59c78fd4fe2112ddaf",
+          "sha256:325529c48c397d1f63a7f2d5ff33db0fd072a8fe1f5ef988ac2a10b439879782",
+          "sha256:e4fba6099d2814b645c65bccc3b3d2b8866613c7a2e9e5d3b81b4afaaccd5255"
+        ],
+        "J04-S03": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:28c49dbbc90de7274ec77d62df3d54bfaf0454b384209b59c78fd4fe2112ddaf",
+          "sha256:325529c48c397d1f63a7f2d5ff33db0fd072a8fe1f5ef988ac2a10b439879782",
+          "sha256:7fd567ef8017764d67a7e71b04414351f87236eca3aa9b021ecd61cfeb76c924"
+        ],
+        "J04-S04": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:28c49dbbc90de7274ec77d62df3d54bfaf0454b384209b59c78fd4fe2112ddaf",
+          "sha256:c2ffcec91258a5114c2dd076746b53da4708e5823ac7dfcfd4c64478cd9b7476"
+        ]
+      },
+      "findings": [
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J04].evidence[0].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J04].evidence[1].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J04].evidence[2].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J04].evidence[3].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J04].evidence[4].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J04].evidence[5].payload.source.locator"
+        },
+        {
+          "code": "PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "evidence_ids": [],
+          "message": "no valid evaluator-controlled registered observer attestation exists",
+          "path": "response.journeys[J04]"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "subject source claims lack independent observation",
+          "path": "response.journeys[J04].evidence"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "evidence_ids": [],
+          "message": "subject receipts lack independent target-bound observation",
+          "path": "response.journeys[J04].target_receipts"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "evidence_ids": [],
+          "message": "subject actor labels do not establish evaluator-issued execution identity",
+          "path": "response.journeys[J04].adapter"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "evidence_ids": [],
+          "message": "subject verifier labels do not establish an independent observer execution",
+          "path": "response.journeys[J04].adapter"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "evidence_ids": [],
+          "message": "subject outcome fields lack independent semantic receipts",
+          "path": "response.journeys[J04].outcome"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "evidence_ids": [],
+          "message": "listed injection IDs lack independent observation receipts",
+          "path": "response.journeys[J04].failure_injections_exercised"
+        }
+      ],
+      "journey_id": "J04",
+      "status": "FAIL"
+    },
+    {
+      "criterion_evidence": {
+        "J05-S01": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:368c04810317df7864a6e3d68a68e3ebd3ce47b7f7f0cc6e76727c02a81d4437",
+          "sha256:77ab75f90c4bb88833a63a3ff57faa4408607181862f66eef586fb946ecd0cf8",
+          "sha256:eaffc1c3a9923318460fd4bdebafe6e602ec13f0c769b102ad5b6c9808970e59"
+        ],
+        "J05-S02": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:5a4ba54f65cbb53eb5b1e06d131c80762b99551dbb4670e8b3b69c750a12e045",
+          "sha256:6d589a07a6a29d6d17988bc1ebeba2821ffbd831934fd6dec2b3fecace28ec94",
+          "sha256:77ab75f90c4bb88833a63a3ff57faa4408607181862f66eef586fb946ecd0cf8",
+          "sha256:eaffc1c3a9923318460fd4bdebafe6e602ec13f0c769b102ad5b6c9808970e59"
+        ],
+        "J05-S03": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:77ab75f90c4bb88833a63a3ff57faa4408607181862f66eef586fb946ecd0cf8",
+          "sha256:eaffc1c3a9923318460fd4bdebafe6e602ec13f0c769b102ad5b6c9808970e59"
+        ],
+        "J05-S04": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:5a4ba54f65cbb53eb5b1e06d131c80762b99551dbb4670e8b3b69c750a12e045",
+          "sha256:77ab75f90c4bb88833a63a3ff57faa4408607181862f66eef586fb946ecd0cf8",
+          "sha256:cf3734b1a07099747912c226fa9341c554e1f21f4c3ca7d6b15d3f9a44e223ca"
+        ]
+      },
+      "findings": [
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J05].evidence[0].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J05].evidence[1].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J05].evidence[2].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J05].evidence[3].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J05].evidence[4].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J05].evidence[5].payload.source.locator"
+        },
+        {
+          "code": "PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "evidence_ids": [],
+          "message": "no valid evaluator-controlled registered observer attestation exists",
+          "path": "response.journeys[J05]"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "subject source claims lack independent observation",
+          "path": "response.journeys[J05].evidence"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "evidence_ids": [],
+          "message": "subject receipts lack independent target-bound observation",
+          "path": "response.journeys[J05].target_receipts"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "evidence_ids": [],
+          "message": "subject actor labels do not establish evaluator-issued execution identity",
+          "path": "response.journeys[J05].adapter"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "evidence_ids": [],
+          "message": "subject verifier labels do not establish an independent observer execution",
+          "path": "response.journeys[J05].adapter"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "evidence_ids": [],
+          "message": "subject outcome fields lack independent semantic receipts",
+          "path": "response.journeys[J05].outcome"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "evidence_ids": [],
+          "message": "listed injection IDs lack independent observation receipts",
+          "path": "response.journeys[J05].failure_injections_exercised"
+        }
+      ],
+      "journey_id": "J05",
+      "status": "FAIL"
+    },
+    {
+      "criterion_evidence": {
+        "J06-S01": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:45038f8776b7924f1881d4655892d57d751394b9fdd6caaf310ff68674f7321d",
+          "sha256:a368fc2cb2ee26e11abfa0ff20ffad89fdeac7647948e5fd1f1aeed7ad7019f9",
+          "sha256:da8af21293af34d7d8663f8090b0a29331f9c6a53a2d4f7ab9393df82519b341"
+        ],
+        "J06-S02": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:7f00d4ff2c24de81aab2169d4194402fadd9f729ad8814f330cc8f8a9c8f03c8",
+          "sha256:da8af21293af34d7d8663f8090b0a29331f9c6a53a2d4f7ab9393df82519b341"
+        ],
+        "J06-S03": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:7f00d4ff2c24de81aab2169d4194402fadd9f729ad8814f330cc8f8a9c8f03c8",
+          "sha256:da8af21293af34d7d8663f8090b0a29331f9c6a53a2d4f7ab9393df82519b341",
+          "sha256:f5b76a7d9bdaac150004fd2f61ed759bfb9268cd603bbc3498d2b3310ab06dc9"
+        ],
+        "J06-S04": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:a368fc2cb2ee26e11abfa0ff20ffad89fdeac7647948e5fd1f1aeed7ad7019f9",
+          "sha256:aa8ea6021b2029b5262e95276a91a8600a66604ff177b97d8b375d0ef4570450",
+          "sha256:da8af21293af34d7d8663f8090b0a29331f9c6a53a2d4f7ab9393df82519b341"
+        ]
+      },
+      "findings": [
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J06].evidence[0].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J06].evidence[1].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J06].evidence[2].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J06].evidence[3].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J06].evidence[4].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J06].evidence[5].payload.source.locator"
+        },
+        {
+          "code": "PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "evidence_ids": [],
+          "message": "no valid evaluator-controlled registered observer attestation exists",
+          "path": "response.journeys[J06]"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "subject source claims lack independent observation",
+          "path": "response.journeys[J06].evidence"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "evidence_ids": [],
+          "message": "subject receipts lack independent target-bound observation",
+          "path": "response.journeys[J06].target_receipts"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "evidence_ids": [],
+          "message": "subject actor labels do not establish evaluator-issued execution identity",
+          "path": "response.journeys[J06].adapter"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "evidence_ids": [],
+          "message": "subject verifier labels do not establish an independent observer execution",
+          "path": "response.journeys[J06].adapter"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "evidence_ids": [],
+          "message": "subject outcome fields lack independent semantic receipts",
+          "path": "response.journeys[J06].outcome"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "evidence_ids": [],
+          "message": "listed injection IDs lack independent observation receipts",
+          "path": "response.journeys[J06].failure_injections_exercised"
+        }
+      ],
+      "journey_id": "J06",
+      "status": "FAIL"
+    },
+    {
+      "criterion_evidence": {
+        "J07-S01": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:201b820dd7925ae2685cb53c154b0e70a0db754f49e139960342959af5c4522d",
+          "sha256:2867e33271253dd6033e8742aa4d918b2e48f86e95d1bd7fbbfadc24809cd970",
+          "sha256:cc825f15c68caae2b0026abd27fcb3df0df58f2767f4101a74b0192d50977f8a"
+        ],
+        "J07-S02": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:2867e33271253dd6033e8742aa4d918b2e48f86e95d1bd7fbbfadc24809cd970",
+          "sha256:6c71cb36d039e5ca7eaca0428c759650b1b2e5400ccce5a9602925b6b3124496",
+          "sha256:cc825f15c68caae2b0026abd27fcb3df0df58f2767f4101a74b0192d50977f8a"
+        ],
+        "J07-S03": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:2867e33271253dd6033e8742aa4d918b2e48f86e95d1bd7fbbfadc24809cd970",
+          "sha256:6c71cb36d039e5ca7eaca0428c759650b1b2e5400ccce5a9602925b6b3124496",
+          "sha256:b384f7cd5ee2783eea1cd5313b767ad43501b6d5fcefd7bec6de52af8af66219"
+        ],
+        "J07-S04": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:2867e33271253dd6033e8742aa4d918b2e48f86e95d1bd7fbbfadc24809cd970",
+          "sha256:40b00d1857676d85c81aea7e4e47969594ef8ce641132b33755200da611493d4"
+        ]
+      },
+      "findings": [
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J07].evidence[0].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J07].evidence[1].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J07].evidence[2].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J07].evidence[3].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J07].evidence[4].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J07].evidence[5].payload.source.locator"
+        },
+        {
+          "code": "PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "evidence_ids": [],
+          "message": "no valid evaluator-controlled registered observer attestation exists",
+          "path": "response.journeys[J07]"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "subject source claims lack independent observation",
+          "path": "response.journeys[J07].evidence"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "evidence_ids": [],
+          "message": "subject receipts lack independent target-bound observation",
+          "path": "response.journeys[J07].target_receipts"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "evidence_ids": [],
+          "message": "subject actor labels do not establish evaluator-issued execution identity",
+          "path": "response.journeys[J07].adapter"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "evidence_ids": [],
+          "message": "subject verifier labels do not establish an independent observer execution",
+          "path": "response.journeys[J07].adapter"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "evidence_ids": [],
+          "message": "subject outcome fields lack independent semantic receipts",
+          "path": "response.journeys[J07].outcome"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "evidence_ids": [],
+          "message": "listed injection IDs lack independent observation receipts",
+          "path": "response.journeys[J07].failure_injections_exercised"
+        }
+      ],
+      "journey_id": "J07",
+      "status": "FAIL"
+    },
+    {
+      "criterion_evidence": {
+        "J08-S01": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:75a7e6625065a63d5849077850b8bbf985a796efff41bad7902af6d6464d7783",
+          "sha256:ce498eb4000c7b21094591d6fccc233c123cefb83508efd6d212d464d9901d8f",
+          "sha256:d406d4b8e8eadaf8989a19b2fec14f4e22a02acacc0a0e7d4f474b8668bc1a9e"
+        ],
+        "J08-S02": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:063ce6f4cac7625e28d5ac400516a0909f06fe69d610875572de41fbd8888d6d",
+          "sha256:ce498eb4000c7b21094591d6fccc233c123cefb83508efd6d212d464d9901d8f"
+        ],
+        "J08-S03": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:063ce6f4cac7625e28d5ac400516a0909f06fe69d610875572de41fbd8888d6d",
+          "sha256:60accfdb2c8248c06cbb079ad34c286477be20e606b53cf327affebfd56ebf10",
+          "sha256:ce498eb4000c7b21094591d6fccc233c123cefb83508efd6d212d464d9901d8f"
+        ],
+        "J08-S04": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:961490f607da037cc4e580114fde39a68f8295b8e0e6029cb58802fe1926aa7a",
+          "sha256:ce498eb4000c7b21094591d6fccc233c123cefb83508efd6d212d464d9901d8f",
+          "sha256:d406d4b8e8eadaf8989a19b2fec14f4e22a02acacc0a0e7d4f474b8668bc1a9e"
+        ]
+      },
+      "findings": [
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J08].evidence[0].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J08].evidence[1].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J08].evidence[2].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J08].evidence[3].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J08].evidence[4].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J08].evidence[5].payload.source.locator"
+        },
+        {
+          "code": "PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "evidence_ids": [],
+          "message": "no valid evaluator-controlled registered observer attestation exists",
+          "path": "response.journeys[J08]"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "subject source claims lack independent observation",
+          "path": "response.journeys[J08].evidence"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "evidence_ids": [],
+          "message": "subject receipts lack independent target-bound observation",
+          "path": "response.journeys[J08].target_receipts"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "evidence_ids": [],
+          "message": "subject actor labels do not establish evaluator-issued execution identity",
+          "path": "response.journeys[J08].adapter"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "evidence_ids": [],
+          "message": "subject verifier labels do not establish an independent observer execution",
+          "path": "response.journeys[J08].adapter"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "evidence_ids": [],
+          "message": "subject outcome fields lack independent semantic receipts",
+          "path": "response.journeys[J08].outcome"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "evidence_ids": [],
+          "message": "listed injection IDs lack independent observation receipts",
+          "path": "response.journeys[J08].failure_injections_exercised"
+        }
+      ],
+      "journey_id": "J08",
+      "status": "FAIL"
+    },
+    {
+      "criterion_evidence": {
+        "J09-S01": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:558ec7044f40bebc8c20c5d9ad9824d53f1cc7577917d38993d35eb9759cda56",
+          "sha256:dec9f544b4e124dcc2bf3a89f1aa17f95214f903cc23a5c831d008a37092e576",
+          "sha256:e3964640529766d74a0c337d0d3a80c9e2203b9ada24178ac516a84e0e0bb326"
+        ],
+        "J09-S02": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:23b2590599dc6a59b702c66c21c88321bd8042c021d80720d48d4d47f92d4ef2",
+          "sha256:dec9f544b4e124dcc2bf3a89f1aa17f95214f903cc23a5c831d008a37092e576",
+          "sha256:e30cd1e5a329dec21e0113f32f147a81adbcb6abc79dcbfc2a29e84181d33dcc"
+        ],
+        "J09-S03": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:23b2590599dc6a59b702c66c21c88321bd8042c021d80720d48d4d47f92d4ef2",
+          "sha256:dec9f544b4e124dcc2bf3a89f1aa17f95214f903cc23a5c831d008a37092e576",
+          "sha256:e30cd1e5a329dec21e0113f32f147a81adbcb6abc79dcbfc2a29e84181d33dcc"
+        ],
+        "J09-S04": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:db5869681f050ba6d1e120971f8c626b4cb32aafdb682c5d53f0540646e4ba5e",
+          "sha256:dec9f544b4e124dcc2bf3a89f1aa17f95214f903cc23a5c831d008a37092e576",
+          "sha256:e3964640529766d74a0c337d0d3a80c9e2203b9ada24178ac516a84e0e0bb326"
+        ]
+      },
+      "findings": [
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J09].evidence[0].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J09].evidence[1].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J09].evidence[2].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J09].evidence[3].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J09].evidence[4].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J09].evidence[5].payload.source.locator"
+        },
+        {
+          "code": "PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "evidence_ids": [],
+          "message": "no valid evaluator-controlled registered observer attestation exists",
+          "path": "response.journeys[J09]"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "subject source claims lack independent observation",
+          "path": "response.journeys[J09].evidence"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "evidence_ids": [],
+          "message": "subject receipts lack independent target-bound observation",
+          "path": "response.journeys[J09].target_receipts"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "evidence_ids": [],
+          "message": "subject actor labels do not establish evaluator-issued execution identity",
+          "path": "response.journeys[J09].adapter"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "evidence_ids": [],
+          "message": "subject verifier labels do not establish an independent observer execution",
+          "path": "response.journeys[J09].adapter"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "evidence_ids": [],
+          "message": "subject outcome fields lack independent semantic receipts",
+          "path": "response.journeys[J09].outcome"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "evidence_ids": [],
+          "message": "listed injection IDs lack independent observation receipts",
+          "path": "response.journeys[J09].failure_injections_exercised"
+        }
+      ],
+      "journey_id": "J09",
+      "status": "FAIL"
+    },
+    {
+      "criterion_evidence": {
+        "J10-S01": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:158228e6cbaea29fd67b7b01174c2052ad3673c36977745b51c6ebfff1713b31",
+          "sha256:16e143aad559df962719699f80d4bb13cb391e7c8371c0901814aedd8062f050",
+          "sha256:1ce66ffe31152f53448fa7b04d749d13e5cffc454760bb2ee63a4286bf33b8ad"
+        ],
+        "J10-S02": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:16e143aad559df962719699f80d4bb13cb391e7c8371c0901814aedd8062f050",
+          "sha256:5961409471c65bc40bbf839e271fe6df147911ffe579d92eb5d86735b66768c5",
+          "sha256:8b4aa1d784bbabed26979ff8717e25589d6fc6419f9830e0a2ac70a8c55774a0"
+        ],
+        "J10-S03": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:0e2ff044d856ff1a40368c264779e5f3776a17c89e7daaba3912e8c5ed45b249",
+          "sha256:16e143aad559df962719699f80d4bb13cb391e7c8371c0901814aedd8062f050",
+          "sha256:5961409471c65bc40bbf839e271fe6df147911ffe579d92eb5d86735b66768c5"
+        ],
+        "J10-S04": [
+          "finding:PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "finding:UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "finding:UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "finding:UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "finding:UNTRUSTED_LIVE_SOURCE",
+          "finding:UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "finding:UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "sha256:158228e6cbaea29fd67b7b01174c2052ad3673c36977745b51c6ebfff1713b31",
+          "sha256:16e143aad559df962719699f80d4bb13cb391e7c8371c0901814aedd8062f050",
+          "sha256:3e15513fa45c29047fc7282780bb257b2eaecbf9c194225940517c1f5ec217ec",
+          "sha256:8b4aa1d784bbabed26979ff8717e25589d6fc6419f9830e0a2ac70a8c55774a0"
+        ]
+      },
+      "findings": [
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J10].evidence[0].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J10].evidence[1].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J10].evidence[2].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J10].evidence[3].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J10].evidence[4].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J10].evidence[5].payload.source.locator"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "PRODUCT_LIVE source identity requires an independently observed non-file system reference",
+          "path": "response.journeys[J10].evidence[6].payload.source.locator"
+        },
+        {
+          "code": "PRODUCT_LIVE_OBSERVER_REQUIRED",
+          "evidence_ids": [],
+          "message": "no valid evaluator-controlled registered observer attestation exists",
+          "path": "response.journeys[J10]"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_SOURCE",
+          "evidence_ids": [],
+          "message": "subject source claims lack independent observation",
+          "path": "response.journeys[J10].evidence"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_TARGET_RECEIPT",
+          "evidence_ids": [],
+          "message": "subject receipts lack independent target-bound observation",
+          "path": "response.journeys[J10].target_receipts"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_ACTOR_IDENTITY",
+          "evidence_ids": [],
+          "message": "subject actor labels do not establish evaluator-issued execution identity",
+          "path": "response.journeys[J10].adapter"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_VERIFIER_IDENTITY",
+          "evidence_ids": [],
+          "message": "subject verifier labels do not establish an independent observer execution",
+          "path": "response.journeys[J10].adapter"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_OUTCOME_ASSERTION",
+          "evidence_ids": [],
+          "message": "subject outcome fields lack independent semantic receipts",
+          "path": "response.journeys[J10].outcome"
+        },
+        {
+          "code": "UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION",
+          "evidence_ids": [],
+          "message": "listed injection IDs lack independent observation receipts",
+          "path": "response.journeys[J10].failure_injections_exercised"
+        }
+      ],
+      "journey_id": "J10",
+      "status": "FAIL"
+    }
+  ],
+  "product_claim_status": "FAIL",
+  "proof_authority": {
+    "actor_artifact_sha256": "48b9b7b321c1bde85f336954d123f71c4b274899acdb9929b3848a2160a98578",
+    "actor_execution_identity": "sha256:37aaaf1055bcecb1df17bed168b88180cd5aa9b59329d7854fc89e087d7a1340",
+    "actor_response_sha256": "fe6466c70dcb65f14e13b5d772b7ee1621bdd34ecaf718c6a66e597dff2b8af1",
+    "challenge_nonce_sha256": "c0d246080caa8b6fdb6d749c7a4c35264b75811cae208fa62d7b0438d10868a7",
+    "evaluator_authority_id": "r1-round2-canonical-evaluator-authority",
+    "observer_artifact_sha256": null,
+    "observer_execution_identity": null,
+    "observer_id": null,
+    "observer_registry_sha256": "84c7cd1e63afc97a6e8ba536c31506f990f3da419d76d52b9fb9f6c022872fd3",
+    "observer_status": "ABSENT",
+    "scope_source": "EVALUATOR_REQUEST"
+  },
+  "proof_scope": "PRODUCT_LIVE",
+  "protocol_version": "jarvis-purpose-protocol-v1",
+  "qualification": "PRODUCT_PURPOSE_EVALUATION",
+  "request_id": "r1-purpose-canonical-request-v1",
+  "run_confinement": {
+    "cleanup": "caller_owned",
+    "temporary": false
+  },
+  "schema": "jarvis-purpose-verdict-v1",
+  "status": "FAIL",
+  "subject": {
+    "adapter_id": "r1-deterministic-reference-adapter",
+    "system_identity": "R1_REFERENCE_FILE_SYSTEM",
+    "system_release": "reference-file-effects-v1"
+  }
+}

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="150.788" timestamp="2026-08-14T18:15:28.269560+02:00" hostname="DESKTOP-42E0DQE"><testcase classname="tests.foundry.test_installer" name="test_task_restarts_after_hard_kill_via_repeating_trigger" time="150.504"><failure message="AssertionError: daemon did not take the singleton lease&#10;assert None is not None">tmp_path = WindowsPath('C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry-Remaster/docs/remaster/evidence/r1/host-repro-pytest-tmp/test_task_restarts_after_hard_0')
+
+    def test_task_restarts_after_hard_kill_via_repeating_trigger(tmp_path):
+        """Live staging regression for the bounded-restart mechanism (F1 shape):
+        a hard-killed task instance is restarted by the next repeating-trigger
+        tick, and the DB recovers deterministically (no duplicate, one canonical
+        state). Takes up to ~2.5 minutes by design (tick interval is 1 minute)."""
+        import subprocess
+        import time
+    
+        home, database, gate_verdict, installer = installer_fixture(tmp_path)
+        try:
+            installer.install()
+            # The daemon's --home is installer.foundry_home, so its durable
+            # state (lease, events) lives in foundry-home/foundry.db.
+            runtime_db = FoundryDatabase(home / "foundry.db")
+            # The repeating trigger fires within ~1 minute; start the daemon via
+            # the scheduler so IgnoreNew semantics apply.
+            result = subprocess.run(
+                ["schtasks", "/run", "/tn", installer.task_name],
+                capture_output=True, text=True, timeout=60)
+            assert result.returncode == 0, result.stderr
+    
+            def daemon_lease_owner() -&gt; str | None:
+                if not runtime_db.path.exists():
+                    return None
+                with runtime_db.connect() as connection:
+                    row = connection.execute(
+                        "SELECT owner_id FROM leases WHERE lease_key = 'supervisor:singleton'"
+                    ).fetchone()
+                return row["owner_id"] if row else None
+    
+            # Wait for the daemon to start and hold the singleton lease.
+            deadline = time.monotonic() + 150
+            while time.monotonic() &lt; deadline and daemon_lease_owner() is None:
+                time.sleep(2)
+            first_owner = daemon_lease_owner()
+&gt;           assert first_owner is not None, "daemon did not take the singleton lease"
+E           AssertionError: daemon did not take the singleton lease
+E           assert None is not None
+
+tests\foundry\test_installer.py:341: AssertionError</failure></testcase></testsuite></testsuites>

@@ -1,0 +1,9 @@
+{
+  "journey_id": "J02",
+  "schema": "jarvis-reference-target-state-v1",
+  "sequence": 1,
+  "state": "USEFUL_EFFECT_VERIFIED",
+  "target_ids": [
+    "institutional-memory-record"
+  ]
+}

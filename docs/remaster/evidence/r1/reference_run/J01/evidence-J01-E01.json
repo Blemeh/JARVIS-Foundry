@@ -1,0 +1,23 @@
+{
+  "after_state": {
+    "sha256": "0a8c8c6f71477c8e5cdf6c7b5b338e106442fa46378c095b86dded35fcf03d1d",
+    "size": 203,
+    "state": "USEFUL_EFFECT_VERIFIED"
+  },
+  "before_state": {
+    "sha256": "ce06689632d6440af80ef8b036d55b8a474eac0a5271fde31d6b5e2c88428ab0",
+    "size": 187,
+    "state": "BEFORE"
+  },
+  "criterion_ids": [
+    "J01-S01"
+  ],
+  "journey_id": "J01",
+  "operation": "actual temporary-directory digital file effect",
+  "phase": "INPUT",
+  "proof_dimension": "owner_goal_identity",
+  "requirement_id": "J01-E01",
+  "restoration_verified": true,
+  "schema": "jarvis-reference-evidence-artifact-v1",
+  "target_id": "durable-goal-record"
+}

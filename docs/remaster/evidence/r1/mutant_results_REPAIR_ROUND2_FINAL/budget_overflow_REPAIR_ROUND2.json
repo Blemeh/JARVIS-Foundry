@@ -1,0 +1,18 @@
+{
+  "canonical_verdict_sha256": "be2d8a05189edcfdec36a0674842a8f64e4c2e3f16e9813c2b82874b146d8832",
+  "criterion_evidence_nonempty": true,
+  "detected": true,
+  "expected_code": "BUDGET_OVERFLOW",
+  "failed_journey_ids": [
+    "J06"
+  ],
+  "mutant": "budget_overflow",
+  "observed_codes": [
+    "BUDGET_OVERFLOW"
+  ],
+  "observer_status": "NOT_REQUESTED",
+  "product_claim_status": "NOT_TESTED",
+  "proof_scope": "HARNESS_SELF_TEST",
+  "schema": "jarvis-r1-mutant-result-repair-round2-v1",
+  "status": "FAIL"
+}

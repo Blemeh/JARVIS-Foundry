@@ -1,0 +1,43 @@
+{
+  "schema_version": "r1.ephemeral-cleanup.v1",
+  "removed_utc": "2026-08-14T16:44:15.516431+00:00",
+  "targets": [
+    {
+      "path": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r1-builder-r3-full-final",
+      "existed": true,
+      "files": 3601,
+      "bytes": 513779432
+    },
+    {
+      "path": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r1-builder-r3-full-final-hermes",
+      "existed": false,
+      "files": 0,
+      "bytes": 0
+    },
+    {
+      "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r1\\.r1-test-venv",
+      "existed": true,
+      "files": 10,
+      "bytes": 520983
+    }
+  ],
+  "bytecode_cleanup_utc": "2026-08-14T16:50:33.8891512Z",
+  "builder_owned_bytecode_targets": [
+    {
+      "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\scripts\\remaster\\r1\\__pycache__",
+      "files": 3,
+      "bytes": 88534,
+      "absent_after_cleanup": true
+    },
+    {
+      "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\tests\\remaster\\r1\\__pycache__",
+      "files": 6,
+      "bytes": 88226,
+      "absent_after_cleanup": true
+    }
+  ],
+  "pre_existing_production_bytecode_cache_untouched": "src/jarvis_foundry/__pycache__",
+  "all_absent": true,
+  "recoverable": false,
+  "reason": "Only exact builder-created ephemeral test infrastructure was removed; all raw, JUnit, diagnostic, and environment-fingerprint evidence was retained."
+}

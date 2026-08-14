@@ -1,0 +1,18 @@
+{
+  "canonical_verdict_sha256": "78c440adff673d059aa6633a840d986f96e1cd5dd8fd6524e6773cd101010530",
+  "criterion_evidence_nonempty": true,
+  "detected": true,
+  "expected_code": "ABSENT_AFTER_STATE",
+  "failed_journey_ids": [
+    "J08"
+  ],
+  "mutant": "absent_after_state",
+  "observed_codes": [
+    "ABSENT_AFTER_STATE"
+  ],
+  "observer_status": "NOT_REQUESTED",
+  "product_claim_status": "NOT_TESTED",
+  "proof_scope": "HARNESS_SELF_TEST",
+  "schema": "jarvis-r1-mutant-result-repair-round2-v1",
+  "status": "FAIL"
+}

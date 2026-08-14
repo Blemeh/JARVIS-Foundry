@@ -1,0 +1,24 @@
+{
+  "after_state": {
+    "sha256": "dbf5c62fe5cbd3b30234be7cd0d12d6634c4d3dc387f1c3e2bd18b7591c45ac6",
+    "size": 209,
+    "state": "USEFUL_EFFECT_VERIFIED"
+  },
+  "before_state": {
+    "sha256": "6ce973de6a019b3cc8578fc8c2db84e0f8551b64f3e09fb549bae1bd0ff157c8",
+    "size": 193,
+    "state": "BEFORE"
+  },
+  "criterion_ids": [
+    "J07-S01",
+    "J07-S02"
+  ],
+  "journey_id": "J07",
+  "operation": "actual temporary-directory digital file effect",
+  "phase": "BEFORE",
+  "proof_dimension": "failure_preservation",
+  "requirement_id": "J07-E02",
+  "restoration_verified": true,
+  "schema": "jarvis-reference-evidence-artifact-v1",
+  "target_id": "verified-delivery-slot"
+}

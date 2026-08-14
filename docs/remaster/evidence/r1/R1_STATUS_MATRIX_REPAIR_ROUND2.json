@@ -1,0 +1,96 @@
+{
+  "blind_flips_rejected": true,
+  "controlled_statuses_preserved": true,
+  "evaluation_time": "2030-01-01T00:00:00Z",
+  "product_claim_status": "NOT_TESTED",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "proof_scope": "HARNESS_SELF_TEST",
+  "rows": [
+    {
+      "aggregate_status": "FAIL",
+      "asserted_status": "BLOCKED",
+      "case": "BLIND_FLIP",
+      "evaluated_status": "FAIL",
+      "finding_codes": [
+        "NONPASS_CONTRADICTS_SUCCESS_OUTCOME",
+        "STATUS_DETAIL_REQUIRED"
+      ],
+      "response_sha256": "4e37cf65eb99c8e40231eecff52192237476f9abde8e23b37827331165e2dac1",
+      "verdict_sha256": "877d4a38aca49f704cd212ad936b552fa7140f9405cc8368d2412140abd62a27"
+    },
+    {
+      "aggregate_status": "FAIL",
+      "asserted_status": "NOT_TESTED",
+      "case": "BLIND_FLIP",
+      "evaluated_status": "FAIL",
+      "finding_codes": [
+        "NONPASS_CONTRADICTS_SUCCESS_OUTCOME",
+        "STATUS_DETAIL_REQUIRED"
+      ],
+      "response_sha256": "0993dbe88ccf214a9ed40cf1b669144dd66d51e4873f90a57fb3a8183f15fc83",
+      "verdict_sha256": "6e95dd3516c3a8b5ce125d942b1c189ff3b1c597590f9140efd38b605b703f38"
+    },
+    {
+      "aggregate_status": "FAIL",
+      "asserted_status": "WAITING",
+      "case": "BLIND_FLIP",
+      "evaluated_status": "FAIL",
+      "finding_codes": [
+        "NONPASS_CONTRADICTS_SUCCESS_OUTCOME",
+        "STATUS_DETAIL_REQUIRED"
+      ],
+      "response_sha256": "bb8686d5d3a494c0f50afbf94013cdb81eb9d4bad86d1024d7cdb42bbf4125e3",
+      "verdict_sha256": "97a94bda744bea8f6e7d9d7dc056d8772ebec9acb562f3cc554e014539fb2bdd"
+    },
+    {
+      "aggregate_status": "FAIL",
+      "asserted_status": "FAIL",
+      "case": "BLIND_FLIP",
+      "evaluated_status": "FAIL",
+      "finding_codes": [
+        "NONPASS_CONTRADICTS_SUCCESS_OUTCOME",
+        "STATUS_DETAIL_REQUIRED"
+      ],
+      "response_sha256": "c28d4436f6f8cf1e7d51ecccc1325148f793b3bd439e15d78087f91eccd60642",
+      "verdict_sha256": "556b5ca8c5796e4e35a93bfc8c27c96f0bf995001335d266f77871fadefbf58a"
+    },
+    {
+      "aggregate_status": "BLOCKED",
+      "asserted_status": "BLOCKED",
+      "case": "CONTROLLED_VALID",
+      "evaluated_status": "BLOCKED",
+      "finding_codes": [],
+      "response_sha256": "3c6bfe22567150793c38d22fae01e74c009367171a33d99b9b404b5be7df0fb3",
+      "verdict_sha256": "bc8fbc443a7cf5e54ac3dd3680600e73f297df22554b8a1adfbd7200db3d1105"
+    },
+    {
+      "aggregate_status": "NOT_TESTED",
+      "asserted_status": "NOT_TESTED",
+      "case": "CONTROLLED_VALID",
+      "evaluated_status": "NOT_TESTED",
+      "finding_codes": [],
+      "response_sha256": "6b5f2a90a680a276fbe83b85a6789e36f786f08e2ca01a48fd5297a081b81887",
+      "verdict_sha256": "a6057e9ce9ba991b335984240ab971e1b8476003ea4a24d976e9ade132d2bf9d"
+    },
+    {
+      "aggregate_status": "WAITING",
+      "asserted_status": "WAITING",
+      "case": "CONTROLLED_VALID",
+      "evaluated_status": "WAITING",
+      "finding_codes": [],
+      "response_sha256": "0d8fb59676021e7b3ee6d55d4406a4e815c4cd014d957817797e8aa1b076ec5a",
+      "verdict_sha256": "d3d9d86148e4600183add3345e337f6c85b59c82c2d3aadfe7813de87f0c5051"
+    },
+    {
+      "aggregate_status": "FAIL",
+      "asserted_status": "FAIL",
+      "case": "CONTROLLED_VALID",
+      "evaluated_status": "FAIL",
+      "finding_codes": [],
+      "response_sha256": "edcf35b687209b1d8bd680cf74f81470f50d3082f9d2aea551b5f74303d1f020",
+      "verdict_sha256": "6fa23e0a3eab787f520cb70e0d74f1d602e17016025396a09fbbbe94e549ac95"
+    }
+  ],
+  "schema": "jarvis-r1-status-matrix-repair-round2-v1",
+  "stage": "R1"
+}

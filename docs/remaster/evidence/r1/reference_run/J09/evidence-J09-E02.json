@@ -1,0 +1,24 @@
+{
+  "after_state": {
+    "sha256": "e21e6974f5299b0c9beafb2afcad80568c6613fcbbf3919e15d7b13f7e159978",
+    "size": 184,
+    "state": "USEFUL_EFFECT_VERIFIED"
+  },
+  "before_state": {
+    "sha256": "6d9718e924c39c10e9be561376100bc98a9a0683b209b4bd42bef33dcd067056",
+    "size": 168,
+    "state": "BEFORE"
+  },
+  "criterion_ids": [
+    "J09-S01",
+    "J09-S04"
+  ],
+  "journey_id": "J09",
+  "operation": "actual temporary-directory digital file effect",
+  "phase": "BEFORE",
+  "proof_dimension": "external_before_state",
+  "requirement_id": "J09-E02",
+  "restoration_verified": true,
+  "schema": "jarvis-reference-evidence-artifact-v1",
+  "target_id": "owner-demo-deployment-slot"
+}

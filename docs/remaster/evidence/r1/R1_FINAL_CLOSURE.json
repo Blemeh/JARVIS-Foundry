@@ -1,0 +1,82 @@
+{
+  "schema": "jarvis-r1-final-closure-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R1",
+  "title": "R1 executable purpose specification final closure",
+  "status": "PASS",
+  "generated_utc": "2026-08-14T20:30:00Z",
+  "generated_by": "root evidence custodian",
+  "frozen_base": {
+    "commit": "bf8f1493b7fd5cd80d17a631a1fb23e82c2260f9",
+    "branch": "remaster/post-v7-purpose",
+    "live_v7_deployment_changes_allowed": false,
+    "push_or_publish_allowed": false
+  },
+  "gate_summary": {
+    "round1_verifier": "FAIL",
+    "round1_fail": {
+      "path": "docs/remaster/evidence/r1/R1_VERIFIER_ROUND1_FAIL.json",
+      "sha256": "3892937cf840bcd718e4c0b5974333522f2538d17ac01682c75709ef6dc5f3a2"
+    },
+    "round2_builder": "implementation complete, evidence closed by root (R1-F009)",
+    "round2_verifiers": "two fresh independent verifiers, both PASS"
+  },
+  "verifier_verdicts": [
+    {
+      "path": "docs/remaster/evidence/r1/R1_VERIFIER_ROUND2_VERDICT_TERRA.json",
+      "sha256": "A2108962F505413C0D88E94003811C6BEF7A8EBB6C9966D8CCFC36A0B8A941D2",
+      "size": 17279,
+      "verifier_model": "gpt-5.6-terra",
+      "verdict": "PASS",
+      "criteria_pass": 7,
+      "full_suite": "993 passed, 0 failed, independently rerun in isolated recipe",
+      "note": "Independently reproduced the R1-F006 relabel/rehash exploit and the R1-F007 blind status flip; both fail closed."
+    },
+    {
+      "path": "docs/remaster/evidence/r1/R1_VERIFIER_ROUND2_VERDICT_DSV4.json",
+      "sha256": "1A702F5B9DC2FFBCE6D1C0034028DFD80F4EFAFC113C9C2D1C98C73C0E41AD31",
+      "size": 18919,
+      "verifier_model": "deepseek-v4-flash via codex-router",
+      "verdict": "PASS",
+      "criteria_pass": 7,
+      "full_suite": "993 passed, 0 failed, independently rerun in isolated recipe",
+      "note": "Confirmed 227/227 manifest closure, exact 985+8 delta, no production drift, live boundary unchanged."
+    }
+  ],
+  "artifact_manifest": {
+    "path": "docs/remaster/evidence/r1/R1_ARTIFACT_MANIFEST_REPAIR_ROUND2.json",
+    "sha256": "6A46198165333FE3E0AF804D6D7A92E47F191A7EC03FC878C56E3FA407392F5A",
+    "size": 49221,
+    "entries": 227,
+    "entries_matched": 227,
+    "entries_mismatched": 0
+  },
+  "findings_closed": {
+    "R1-F001": "CLOSED_VERIFIED_R1_ROUND2",
+    "R1-F002": "CLOSED_VERIFIED_R1_ROUND2",
+    "R1-F003": "CLOSED_VERIFIED_R1_ROUND2",
+    "R1-F004": "CLOSED_VERIFIED_R1_ROUND2",
+    "R1-F005": "CLOSED_VERIFIED_R1_ROUND2",
+    "R1-F006": "CLOSED_VERIFIED_R1_ROUND2",
+    "R1-F007": "CLOSED_VERIFIED_R1_ROUND2",
+    "R1-F008": "CLOSED_VERIFIED_R1_ROUND2",
+    "R1-F009": "CLOSED_VERIFIED_R1_ROUND2"
+  },
+  "evidence_budget": {
+    "cumulative_max_bytes": 2097152,
+    "verified_below_budget": true
+  },
+  "commit_scope": [
+    "docs/remaster/r1/**",
+    "docs/remaster/evidence/r1/**",
+    "docs/remaster/work_packages/**",
+    "scripts/remaster/r1/**",
+    "tests/remaster/r1/**",
+    "docs/remaster/FINDINGS.jsonl"
+  ],
+  "excluded_from_commit": [
+    "docs/remaster/evidence/r2/** (R2 stage, separate scoped commit)",
+    "scripts/remaster/r2/** (R2 stage, separate scoped commit)"
+  ],
+  "next_action": "Create the scoped local R1 commit; then proceed to R2 disposition-map closure and subsequent slices."
+}

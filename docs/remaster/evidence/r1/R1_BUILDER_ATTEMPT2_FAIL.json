@@ -1,0 +1,27 @@
+{
+  "schema": "jarvis-remaster-builder-attempt-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R1",
+  "attempt": 2,
+  "builder_identity": "/root/r1_builder_r2",
+  "builder_route": "opencode-go/deepseek-v4-flash",
+  "frozen_base": "bf8f1493b7fd5cd80d17a631a1fb23e82c2260f9",
+  "frozen_work_package": {
+    "path": "docs/remaster/work_packages/R1_WORK_PACKAGE.json",
+    "sha256": "281b1f86c45b92a561a29ebb41e02be1cebe1ee291d7ee4fbff2035c6d21e0ab",
+    "size": 10577,
+    "unchanged_after_attempt": true
+  },
+  "recorded_at": "2026-08-14T17:28:51.1644684+02:00",
+  "status": "FAIL",
+  "failure": "Fresh builder round 2 remained running without a checkpoint, tool-visible deliverable, or owned file after multiple bounded waits and two explicit status requests; the root interrupted it before replacement to prevent concurrent ownership.",
+  "diagnostic": {
+    "builder_owned_files_at_interrupt": 0,
+    "partial_work_reused": false,
+    "commit_or_push": false,
+    "live_or_protected_mutation_observed": false,
+    "exact_internal_cause": "UNKNOWN"
+  },
+  "repair_condition": "Use a fresh non-concurrent builder context with the unchanged work-package hash. The interrupted context must remain stopped and must not be resumed while replacement ownership is active.",
+  "stage_impact": "R1 remains NOT_TESTED. No implementation or verification evidence was produced."
+}

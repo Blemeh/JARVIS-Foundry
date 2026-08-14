@@ -1,0 +1,169 @@
+{
+  "schema": "jarvis-r1-verifier-round2-verdict-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R1",
+  "repair_round": 2,
+  "verifier_model": "gpt-5.6-terra",
+  "verifier": {
+    "identity": "/root/r1_verifier_round2_terra",
+    "model": "gpt-5.6-terra",
+    "context": "Fresh independent adversarial verifier; every frozen file read-only; only this verdict file written.",
+    "verifier_model": "gpt-5.6-terra"
+  },
+  "verdict": "PASS",
+  "generated_utc": "2026-08-14T19:47:55.7133000Z",
+  "frozen_base": {
+    "commit": "bf8f1493b7fd5cd80d17a631a1fb23e82c2260f9",
+    "branch": "remaster/post-v7-purpose",
+    "frozen_v7_closure_commit": "93a3ddc",
+    "head_unmoved": true
+  },
+  "manifest_verified": {
+    "path": "docs/remaster/evidence/r1/R1_ARTIFACT_MANIFEST_REPAIR_ROUND2.json",
+    "sha256": "6A46198165333FE3E0AF804D6D7A92E47F191A7EC03FC878C56E3FA407392F5A",
+    "size": 49221,
+    "entries_total": 227,
+    "entries_matched": 227,
+    "entries_mismatched": 0,
+    "strict_parse_duplicate_keys": 0,
+    "category_counts_verified": {
+      "purpose_and_contract": 15,
+      "evidence": 195,
+      "work_packages": 3,
+      "harness_scripts": 6,
+      "tests": 7,
+      "findings_registry": 1
+    },
+    "disk_closure": "excludes only itself; no unlisted files in the six frozen families",
+    "binds_round2_work_package": true,
+    "binds_dispatch_addendum": true,
+    "binds_round1_verifier_fail": true,
+    "round1_manifest_marked_historical_pre_repair": true
+  },
+  "criteria": [
+    {
+      "id": "C01",
+      "criterion": "R1-F006 repaired: evaluator-owned proof scope, hash-bound observer registry, subprocess-only observer interface, run-root files evidence-copy-only, HARNESS_SELF_TEST forever NOT_TESTED, PRODUCT_LIVE fail-closed; exact relabel/rehash exploit fails.",
+      "status": "PASS",
+      "evidence": [
+        "Independent exploit adapter rebuilt in temp (C:/Users/b/AppData/Local/Temp/jarvis-verifier-r2-exploit/exploit_adapter.py, sha256 41988531c683c8714fca30aa89f96a22a34bfc2d6a3b029eee23a80b0d323e48) from the frozen reference response shape with proof_scope=PRODUCT_LIVE, real_or_fixture=REAL_EXTERNAL_EFFECT, live source locators, self-asserted actor/verifier identities, re-hashed evidence and re-linked criterion_evidence.",
+        "CLI run through frozen scripts/remaster/r1/run_acceptance.py --proof-scope PRODUCT_LIVE with frozen empty registry (docs/remaster/r1/OBSERVER_REGISTRY.json registrations=[]): verdict status FAIL, product_claim_status FAIL, all 10 journeys FAIL, qualification PRODUCT_PURPOSE_EVALUATION, proof_authority.observer_status ABSENT, scope_source EVALUATOR_REQUEST, observer_registry_sha256 84c7cd1e63afc97a6e8ba536c31506f990f3da419d76d52b9fb9f6c022872fd3 equals on-disk registry hash.",
+        "Dedicated proof-authority finding PRODUCT_LIVE_OBSERVER_REQUIRED present in all 10 journeys, plus UNTRUSTED_LIVE_SOURCE, UNTRUSTED_LIVE_TARGET_RECEIPT, UNTRUSTED_LIVE_ACTOR_IDENTITY, UNTRUSTED_LIVE_VERIFIER_IDENTITY, UNTRUSTED_LIVE_OUTCOME_ASSERTION, UNTRUSTED_LIVE_FAILURE_INJECTION_ASSERTION (10 each).",
+        "Determinism: two identical CLI runs produced byte-identical verdicts (both sha256 b50e2628c5299fe56b185b29552c03316af26f3fad8a9ec839792fb6ed3f5b96, 63147 bytes), CLI exit code 1.",
+        "Unmodified frozen reference adapter under HARNESS_SELF_TEST: all-ten PASS but product_claim_status NOT_TESTED, qualification HARNESS_SELF_TEST_ONLY, 0 findings (verdict sha256 f8edcf654cd81835297c0665fe71042405ad36ae4d2caf9e905382aa244d3e54).",
+        "tests/remaster/r1/test_round2_repairs.py 8/8 passed including the exact relabel/rehash exploit test, per-claim UNTRUSTED_LIVE_* mutant tests, self-registration rejection, and byte-deterministic rejection test."
+      ]
+    },
+    {
+      "id": "C02",
+      "criterion": "R1-F007 repaired: strict status-detail semantics; bare BLOCKED/NOT_TESTED/WAITING accepted with unchanged PASS evidence rejected; controlled valid non-PASS examples retain exact status.",
+      "status": "PASS",
+      "evidence": [
+        "Independent probe (frozen acceptance.evaluate_response, HARNESS_SELF_TEST): bare BLOCKED on journey J01 with unchanged PASS evidence and status_detail null -> journey FAIL with STATUS_DETAIL_REQUIRED and NONPASS_CONTRADICTS_SUCCESS_OUTCOME, aggregate status FAIL.",
+        "tests/remaster/r1/test_round2_repairs.py: test_blind_nonpass_status_flips_are_rejected (BLOCKED/NOT_TESTED/WAITING/FAIL all rejected with STATUS_DETAIL_REQUIRED), test_valid_controlled_nonpass_statuses_retain_exact_status (valid controlled examples keep exact status, no findings), test_status_detail_rejects_unknown_fields_and_dangling_evidence (UNKNOWN_FIELD, DANGLING_STATUS_EVIDENCE).",
+        "Status vocabulary unchanged at exactly five words (tests/remaster/r1/test_protocol.py::test_status_vocabulary_is_exactly_five_words passed)."
+      ]
+    },
+    {
+      "id": "C03",
+      "criterion": "All original R1 criteria remain satisfied: no weaker contracts, fewer journeys, weaker mutants, fixture promotion, production imports, or status vocabulary changes.",
+      "status": "PASS",
+      "evidence": [
+        "Focused suite (external basetemp, -p no:cacheprovider): 41 passed, 0 failed, exit 0; pytest-reported duration 8.85s; process wall 9788-9896 ms across three runs. Breakdown 33 original + 8 round-2 regressions.",
+        "Original coverage passed: 10 journey contracts, exactly 12 frozen mutant classes, 5-word status vocabulary, byte-deterministic reference verdicts, temporary-run removal, no production imports (test_protocol.py::test_evaluator_and_adapters_have_no_product_module_imports).",
+        "rg \"jarvis_foundry\" under scripts/remaster/r1 and tests/remaster/r1 shows only negative assertions (test_current_prototype.py:61, test_protocol.py:131,133) and the subprocess --help probe (current_prototype_probe.py:92); zero import statements.",
+        "Full 993-test suite passed (see C04), confirming no weaker contracts or regressions across tests/foundry."
+      ]
+    },
+    {
+      "id": "C04",
+      "criterion": "Focused R1 tests under 10s; all collected repository tests pass in an external-TEMP isolated interpreter; test-count delta from 985 baseline exactly the 8 new regressions.",
+      "status": "PASS",
+      "evidence": [
+        "Frozen artifact docs/remaster/evidence/r1/R1_FULL_REPOSITORY_REPAIR_ROUND2_JUNIT.xml (sha256 1455e1b8ca5090ff4109b3e07a6872889ceddcb8373d7091174abb4a6ffd4fd7, 120526 bytes) parses: testsuite tests=993 failures=0 errors=0 skipped=0 time=453.014; 993 testcase elements.",
+        "Baseline: docs/remaster/evidence/r1/R1_FULL_FOUNDRY_FINAL_JUNIT.xml tests=985 failures=0; delta 993-985=8 equals exactly the 8 regressions in tests/remaster/r1/test_round2_repairs.py.",
+        "Fingerprint recipe reproduced byte-exactly: venv --without-pip --system-site-packages (python.exe sha256 935016795f3e6908e75acbc2040a01e2e4cdb494a57c42f63a0d6eedb2372256, 254800 bytes, 3.13.5), .pth inserting repo src (sha256 1917e7dd7f92dc4ca694ecac2cdb7205fdad1e6042161090be270b5b2b89987d, 154 bytes), PYTHONHASHSEED=0, external basetemp, no network.",
+        "Independent isolated rerun: 993 passed, 0 failed, 0 errors, 0 skipped, time 446.370s, exit 0; my junit sha256 c8434e619b60301650d96ef748358cc1616f345bb4f7997377d4ca6ee6582a99 (120526 bytes); testcase set identical to the frozen artifact (993/993 same classname+name).",
+        "Raw output: C:/Users/b/AppData/Local/Temp/jarvis-verifier-r2-full-raw.txt (sha256 178563a895f0ac2bfdab0fc4d699e5c145910c258d9f35eafdb0652665c36510); collect-only in isolated venv: 993 tests / 86 files (sha256 d1431a450df17f9388b87481130dd2097aa047cd326e5d1e9d9ec70db832bf4d)."
+      ]
+    },
+    {
+      "id": "C05",
+      "criterion": "All previous failed-attempt, full-suite-failure, and verifier-round-1 evidence remains byte-identical; new round-2 report, canonical results, raw/JUnit outputs, and closed manifest created under distinct filenames.",
+      "status": "PASS",
+      "evidence": [
+        "All 227 manifest entries recomputed from disk: 227/227 SHA-256 and size matches, 0 mismatches, 0 missing.",
+        "Round-1 manifest docs/remaster/evidence/r1/R1_ARTIFACT_MANIFEST.json on-disk sha256 b527667816e006259a437b2db566ba2afcf85e5d68dfcad36386715c0592f1ee / 42563 bytes equals the declared HISTORICAL_PRE_REPAIR binding in the round-2 manifest.",
+        "docs/remaster/evidence/r1/R1_BUILDER_ATTEMPT1_FAIL.json on-disk sha256 d596f0c119f2ef1aca42d97ea5fda2465ec369365a1064135ea504e9e87552a4 equals the round-1 verifier frozen hash.",
+        "docs/remaster/evidence/r1/R1_VERIFIER_ROUND1_FAIL.json present with overall_verdict FAIL and the R1-F006 decisive reason, bound by the round-2 manifest.",
+        "Tracked diff in the frozen repo is only docs/remaster/FINDINGS.jsonl (+13/-4), the documented findings-registry update (R1-F006 S1 CONFIRMED, R1-F007 S2 CONFIRMED records present).",
+        "Round-2 work package (sha256 900880bcf510425d41a5714257cc6cd66f0cfcbd1a0affe9905835e50017ef09, 12028 bytes) and dispatch addendum (sha256 f3cd611480f9521de5410122cee14267cc19d0d07ad456c8121c7c320c907026, 1910 bytes) match declarations; addendum binds the package hash and FINDINGS records R1-F006/R1-F007/R1-F008.",
+        "All round-2 outputs (report, spoof results, raw/JUnit, manifest) use distinct REPAIR_ROUND2 filenames; manifest disk closure confirms no unlisted files and self-exclusion."
+      ]
+    },
+    {
+      "id": "C06",
+      "criterion": "No network, provider, secret, live database, protected task/process/port, commit, push, publish, or paid action; controlled temporary staging tasks fully removed.",
+      "status": "PASS",
+      "evidence": [
+        "Frozen repo HEAD unchanged at bf8f1493b7fd5cd80d17a631a1fb23e82c2260f9 throughout; no commits or pushes by verifier; all verification artifacts written only to C:/Users/b/AppData/Local/Temp (external).",
+        "Harness is standard-library only and runs adapters with a sanitized environment stripping SECRET/TOKEN/PASSWORD/API_KEY/AUTH/COOKIE/CREDENTIAL variables; no network or provider calls observed; no paid actions.",
+        "Protected scheduled tasks unchanged in state: \\JARVIS-Foundry-Supervisor exists and Running, \\Hermes_Gateway exists and Ready (read-only schtasks /query /fo LIST /v).",
+        "Supervisor processes byte-identical to the guard baseline: PID 17052 (C:\\Python313\\python.exe) and PID 21636 (JARVIS-Foundry .venv python) both alive with command-line sha256 824e09a3ea8d12f38d8fe7fa93cf602e0229c190dea3692e023837963cb9a8e9, matching R1_LIVE_GUARD_BEFORE_REPAIR_ROUND2.json exactly.",
+        "Read-only task XML captures (raw bytes): supervisor C:/Users/b/AppData/Local/Temp/jarvis-verifier-r2-live-supervisor.xml sha256 729653ce1300784c8d54947fd65d294c08a2125c01fe3383451907968e90e56a (1714 bytes), hermes C:/Users/b/AppData/Local/Temp/jarvis-verifier-r2-live-hermes.xml sha256 8d919b462e31dfaa58cb012be9a86811c00a686a99b24387a2ea9d15af4aa390 (1477 bytes). Byte-hash equality against the guard JSON stored hashes was not re-derivable because the stored values used a different capture normalization; parsed semantic identity (action command/arguments/trigger, task state, status) matches the guard record exactly.",
+        "No staging or synthetic scheduled tasks exist: task-name scan for jarvis/foundry/staging/remaster/r1 returns only the protected \\JARVIS-Foundry-Supervisor, both before and after the verifier full-suite run.",
+        "Sibling main repo C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry read-only status: HEAD 93a3ddc (V7 closure), no tracked modifications, only pre-existing untracked planning/handoff docs; no R1 remaster files present."
+      ]
+    },
+    {
+      "id": "C07",
+      "criterion": "Fresh verifier round reproduces every original R1 criterion, both repairs, all strengthened mutants, exact artifact closure, the full test suite, resource limits, and the no-live-mutation boundary.",
+      "status": "PASS",
+      "evidence": [
+        "This verdict is that fresh adversarial round: C01-C06 above were reproduced independently from disk/temp with recomputed hashes and reruns, not trusted from builder or root claims.",
+        "Exact artifact closure: 227/227 entries recomputed and matched; disk closure excludes only the manifest itself; category counts exact.",
+        "All 8 round-2 regressions plus all 33 original R1 tests pass (41/41, 8.85s pytest time); full 993-test repository suite independently rerun and passing (446.370s, exit 0, identical testcase set).",
+        "Strengthened mutants: 12 frozen classes plus 6 new PRODUCT_LIVE spoof classes covered by test_mutants.py (13 params) and test_round2_repairs.py mutant matrix checks; all fail closed.",
+        "Resource limit: frozen claim R1_EVALUATOR_RESOURCE_REPAIR_ROUND2.json peak 22.348 MiB (23433216 bytes) vs 256 MiB target within_target true; verifier independent sample on the focused reference run measured evaluator peak working set 2.668 MiB (2797568 bytes), well under the claim and the target.",
+        "Evidence budget: total bytes of the six frozen families = 1692513 bytes < 2097152 (2 MiB) limit."
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "id": "V2R2-OBS-01",
+      "severity": "INFO",
+      "reproduction": "An untracked file scripts/remaster/r2/measure_repo.py (12855 bytes) appeared in the frozen repo during verification (created 2026-08-14 21:43:36 local, last write 21:45:06 local). It is a read-only R2 repository measurement script, is not referenced by any R1 test or harness script, is outside the six frozen R1 families, and is not part of the round-2 manifest. It was not created or modified by this verifier; it is attributed to a concurrent actor and is left untouched.",
+      "affected_invariant": "Frozen scope containment (workspace concurrency observation, not a repair defect)",
+      "impact": "None on R1 repair round 2 acceptance; manifest disk closure, source-drift check, and all criteria remain PASS."
+    },
+    {
+      "id": "V2R2-OBS-02",
+      "severity": "INFO",
+      "reproduction": "Scheduled-task XML byte-hash equality against the guard JSON stored hashes could not be re-derived: verifier raw captures hash to 729653ce... (supervisor) and 8d919b46... (hermes) with byte counts 1714/1477 vs stored 765ab1c0.../1670 chars and 06c1cf7c.../1438 chars, a capture-normalization difference. Semantic identity (task action, arguments, trigger, state, status) and exact process identity (PIDs 17052/21636, command sha256 824e09a3...) match the guard baseline.",
+      "affected_invariant": "No-live-mutation boundary evidence precision",
+      "impact": "No live mutation indicated; criterion C06 still PASS on the stronger exact-process and semantic-task evidence."
+    }
+  ],
+  "status_summary": "verdict=PASS; criteria C01..C07 all PASS with non-empty independent evidence; no new defects. Manifest and both frozen work-package files hash-match declarations; 227/227 manifest entries match disk; independent exploit reproduction fails closed with PRODUCT_LIVE_OBSERVER_REQUIRED and six UNTRUSTED_LIVE_* findings; independent 993-test isolated rerun passes with zero failures; no source drift, no live mutation, no commits, no network, evidence budget 1692513/2097152 bytes.",
+  "evidence_paths_and_hashes": {
+    "frozen_manifest": "6A46198165333FE3E0AF804D6D7A92E47F191A7EC03FC878C56E3FA407392F5A",
+    "frozen_work_package": "900880BCF510425D41A5714257CC6CD66F0CFCBD1A0AFFE9905835E50017EF09",
+    "frozen_dispatch_addendum": "F3CD611480F9521DE5410122CEE14267CC19D0D07AD456C8121C7C320C907026",
+    "frozen_full_junit": "1455E1B8CA5090FF4109B3E07A6872889CEDDCB8373D7091174ABB4A6FFD4FD7",
+    "verifier_exploit_adapter": "41988531c683c8714fca30aa89f96a22a34bfc2d6a3b029eee23a80b0d323e48",
+    "verifier_exploit_verdict_a": "b50e2628c5299fe56b185b29552c03316af26f3fad8a9ec839792fb6ed3f5b96",
+    "verifier_exploit_verdict_b": "b50e2628c5299fe56b185b29552c03316af26f3fad8a9ec839792fb6ed3f5b96",
+    "verifier_reference_harness_verdict": "f8edcf654cd81835297c0665fe71042405ad36ae4d2caf9e905382aa244d3e54",
+    "verifier_focused_verbose_raw": "9c2b15657f9045a7cda303b40b6c5be766d6071fa9f47508fcd599bb5666355d",
+    "verifier_full_rerun_junit": "c8434e619b60301650d96ef748358cc1616f345bb4f7997377d4ca6ee6582a99",
+    "verifier_full_rerun_raw": "178563a895f0ac2bfdab0fc4d699e5c145910c258d9f35eafdb0652665c36510",
+    "verifier_isolated_collect": "d1431a450df17f9388b87481130dd2097aa047cd326e5d1e9d9ec70db832bf4d",
+    "verifier_pth": "1917e7dd7f92dc4ca694ecac2cdb7205fdad1e6042161090be270b5b2b89987d",
+    "verifier_venv_python": "935016795f3e6908e75acbc2040a01e2e4cdb494a57c42f63a0d6eedb2372256",
+    "verifier_live_supervisor_xml": "729653ce1300784c8d54947fd65d294c08a2125c01fe3383451907968e90e56a",
+    "verifier_live_hermes_xml": "8d919b462e31dfaa58cb012be9a86811c00a686a99b24387a2ea9d15af4aa390",
+    "temp_base": "C:/Users/b/AppData/Local/Temp/jarvis-verifier-r2-*"
+  },
+  "next_action": "No repair action required. Preserve all frozen R1 evidence unchanged; archive this verdict with the round-2 evidence set. For R2, note the concurrent appearance of scripts/remaster/r2/measure_repo.py and decide whether it belongs to the R2 manifest boundary."
+}

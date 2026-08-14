@@ -1,0 +1,19 @@
+{
+  "schema": "jarvis-r1-evaluator-resource-v1",
+  "command_exit": 0,
+  "wall_seconds": 0.695,
+  "peak_working_set_bytes": 20557824,
+  "peak_working_set_mib": 19.605,
+  "target_mib": 256,
+  "within_target": true,
+  "measurement_scope": "Evaluator parent process peak working set; the external reference-adapter subprocess is excluded.",
+  "result_status": "PASS",
+  "proof_scope": "HARNESS_SELF_TEST",
+  "product_claim_status": "NOT_TESTED",
+  "network_calls": 0,
+  "provider_calls": 0,
+  "paid_cost_usd": 0,
+  "temporary_run_cleanup": "completed",
+  "external_temp_removed": true,
+  "qualification": "This resource measurement demonstrates only evaluator resource conformance and harness satisfiability; it is not product capability proof."
+}
