@@ -37,14 +37,15 @@ first run); the S8 F1 sha256 repair covered this module before its
 verification.
 FILES_PROCESSES_DATABASES_AND_EXTERNAL_STATE_CHANGED: 2 new files (committed
 with the S8 F1 fix); this report; no live state touched.
-TESTS_RECONCILIATION_RESTORE_AND_FAULTS: focused 9/9; full suite
-<fill after run>; matrix completeness enforced; honest WAITING on
+TESTS_RECONCILIATION_RESTORE_AND_FAULTS: focused 9/9; full suite 964
+passed EXIT=0 (424.03 s; artifact var/evidence/v7-s9/suite-v7-s9-full.txt,
+sha256 79a0eb02…); matrix completeness enforced; honest WAITING on
 unmatched needs; registration dedup (content hash).
 VERIFIER_AND_STRUCTURED_VERDICT: <fill after dispatch — fresh independent
 adversarial verifier, opencode_go/deepseek-v4-flash, no fallback>
 EVIDENCE_PATHS_AND_HASHES: src/jarvis_foundry/capabilities/registry.py;
 tests/foundry/test_v7_capabilities.py; var/evidence/v7-s9/suite-v7-s9-full.txt
-(<hash>).
+(79a0eb02…).
 REAL_EFFECT_PROVIDER_REFERENCE_AND_AFTER_STATE: N/A (no online effect;
 the registry is the durable after-state).
 ROLLBACK_COMPENSATION_OR_CONTAINMENT: git revert; capability records are
