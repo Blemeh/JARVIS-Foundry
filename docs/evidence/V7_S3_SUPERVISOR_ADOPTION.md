@@ -104,7 +104,23 @@ release-pointer authorization flows through the controller-gated entry points
 (promote/rollback) and the Supervisor's adapter. Recorded here so the S13
 gate can re-check it explicitly.
 
-## 4. Verifier
+## 4. Verifier — round 1: deleg_bb1a6605, FAIL (1 MEDIUM) → repaired
 
-<fill after dispatch — fresh independent adversarial verifier,
-opencode_go/deepseek-v4-flash, no fallback>
+Round-1 verdict JSON: `%TEMP%\v7s3-verdict-v7s3.json` (early-skeleton
+protocol; verdict FAIL, C1/C3/C4/C5 PASS, C2 and C6 FAIL on ONE claim; 19
+API calls, ~313 s).
+
+| Severity | Finding | Resolution |
+|---|---|---|
+| MEDIUM (C2) | `EvolutionControl.reap_stale_canaries` was arity-broken: called `canary_mod.reap_stale_canaries(db)` without the machinery's required `current_cycle` / `max_cycles_without_tick` / `controller` kwargs → TypeError on use; fail-closed (no safety hole) but non-functional and untested | REPAIRED: adapter now threads `current_cycle`, `max_cycles_without_tick`, and `controller=SUPERVISOR_CONTROLLER` through; added read-only `canary_status`; two discriminating regression tests added (`test_adapter_reap_stale_canaries_works` — old code raised TypeError here; `test_adapter_reaps_hung_canary` — a seeded RUNNING canary is TERMINATED without cooperation); 16/16 focused green; full suite re-run below |
+| INFO | `record_improvement` has no machinery controller param — adapter call correct | RECORDED |
+| INFO | 6th untracked file = V7_S4_DISCOVERY.md (parent S4 prep) | RECORDED — additive |
+| INFO | task XML has Enabled=false while Status shows Running (running instance predates the disable) | RECORDED — consistent with the S1 hold |
+
+Round-2 verifier: <fill after dispatch — fresh independent adversarial
+verifier with ROUND_2_FINDINGS_CLOSED criterion + old-code A/B
+discrimination>
+
+## 6. Final status
+
+<fill after round-2 verdict>

@@ -245,6 +245,45 @@ def test_stop_sentinel_freezes_supervisor_at_startup(tmp_path: Path) -> None:
     assert frozen[0].payload["stop_id"] == "s3-freeze"
 
 
+def test_adapter_reap_stale_canaries_works(
+        control: EvolutionControl, db: FoundryDatabase) -> None:
+    # ROUND-2 A/B REGRESSION (verifier deleg_bb1a6605 C2): the first adapter
+    # version called the machinery without current_cycle /
+    # max_cycles_without_tick / controller and raised TypeError. The fixed
+    # adapter must return a list (empty here — no canaries) without raising.
+    control.enable(controller=SUPERVISOR_CONTROLLER)
+    reaped = control.reap_stale_canaries(
+        controller=SUPERVISOR_CONTROLLER,
+        current_cycle=10, max_cycles_without_tick=2)
+    assert reaped == []
+
+
+def test_adapter_reaps_hung_canary(
+        control: EvolutionControl, db: FoundryDatabase) -> None:
+    # a RUNNING canary that has not ticked for > max_cycles_without_tick
+    # cycles is terminated by the controller WITHOUT candidate cooperation
+    control.enable(controller=SUPERVISOR_CONTROLLER)
+    with db.connect() as c:
+        c.execute("BEGIN IMMEDIATE")
+        c.execute(
+            "INSERT INTO canaries(canary_id, improvement_id, "
+            "candidate_release_id, status, traffic_share, duration_cycles, "
+            "max_cost_usd, health_thresholds_json, cycles_run, "
+            "last_tick_cycle, total_cost_usd, total_errors, last_health, "
+            "started_at, last_event_id, updated_at) VALUES (?, ?, ?, "
+            "'RUNNING', 0.1, 5, "
+            "0.0, '{\"error_rate_max\": 0.1, \"latency_max_s\": 1.0}', 2, 1, "
+            "0.0, 0, 1, '2026-08-14T00:00:00Z', 'ev-1', "
+            "'2026-08-14T00:00:00Z')",
+            ("canary-hung-1", "improvement-x", "release-y"))
+        c.execute("COMMIT")
+    reaped = control.reap_stale_canaries(
+        controller=SUPERVISOR_CONTROLLER,
+        current_cycle=10, max_cycles_without_tick=2)
+    assert reaped == ["canary-hung-1"]
+    assert control.canary_status("canary-hung-1") == "TERMINATED"
+
+
 def test_duplicate_event_delivery_is_idempotent(
         db: FoundryDatabase) -> None:
     from jarvis_foundry.events import Event

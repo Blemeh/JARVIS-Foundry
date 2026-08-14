@@ -67,6 +67,9 @@ class EvolutionControl:
     def slot_pointers(self) -> dict[str, str | None]:
         return registry_mod.slot_pointers(self._database)
 
+    def canary_status(self, canary_id: str) -> str:
+        return canary_mod.canary_status(self._database, canary_id)
+
     def _stop_active(self) -> bool:
         return (Path(self._database.path).parent / "EMERGENCY_STOP").exists()
 
@@ -134,9 +137,14 @@ class EvolutionControl:
         return canary_mod.terminate_canary(
             self._database, controller=SUPERVISOR_CONTROLLER, **kwargs)
 
-    def reap_stale_canaries(self, *, controller: str) -> list[str]:
+    def reap_stale_canaries(self, *, controller: str,
+                            current_cycle: int,
+                            max_cycles_without_tick: int) -> list[str]:
         self._gate(controller)
-        return canary_mod.reap_stale_canaries(self._database)
+        return canary_mod.reap_stale_canaries(
+            self._database, current_cycle=current_cycle,
+            max_cycles_without_tick=max_cycles_without_tick,
+            controller=SUPERVISOR_CONTROLLER)
 
     def freeze(self, *, reason: str, controller: str) -> None:
         self._gate(controller)
