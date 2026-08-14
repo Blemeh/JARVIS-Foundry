@@ -1,0 +1,48 @@
+{
+  "verdict": "FAIL",
+  "verification_id": "verification-fbf758cf0c3b",
+  "cycle": "r3",
+  "verifier_session": "20260814_114545_ae1538",
+  "criteria": {
+    "guardrail correctness: no behavior regression": "FAIL",
+    "guardrail cost: no paid calls": "PASS",
+    "guardrail latency: no latency regression": "PASS",
+    "guardrail safety: no live mutation": "PASS"
+  },
+  "findings": [
+    {
+      "severity": "HIGH",
+      "id": "F-1",
+      "text": "candidate.py is non-executable: compile() raises SyntaxError at line 29 ('from __future__ imports must occur at the beginning of the file') because the second module-level docstring block is a stray expression statement before the future import. ast.parse passes, so the AST-only build gate (build-0754a3254ef9) reported COMPLETED while the artifact cannot run. Deterministic on any CPython; reproduced by the verifier."
+    },
+    {
+      "severity": "HIGH",
+      "id": "F-2",
+      "text": "Candidate artifact does not implement the described production patch: _heartbeat_with_lock_retry appears nowhere in candidate.py (only in its docstring); the --code flag is parsed but never read, so baseline and candidate legs execute identical code against the same unpatched src tree; the patched src/ tree that prepare-candidate-roots.py prepare_r3() would create is absent from the candidate root (prepared.marker present, src/ missing). Patch fidelity check FAILS."
+    },
+    {
+      "severity": "HIGH",
+      "id": "F-3",
+      "text": "Recorded candidate evaluation run run-e3436b3eb293 FAILED: exit_code 1, error_rate 1.0, duration_s 0.083, stdout empty (output hash e3b0c442... = sha256 of empty string). The claimed expectation (0 failures, exit 0, error_rate 0.0) is contradicted by the ledger AND by the verifier's independent reproduction (SyntaxError, exit 1). MMI (decrease >= 0.5) not met: delta = 0.0. The A/B does not discriminate; no improvement demonstrated."
+    },
+    {
+      "severity": "MEDIUM",
+      "id": "F-4",
+      "text": "Same defect class as the R2 cycle's F-1 HIGH finding (verification-25ec223e7bcf, verdict FAIL): the double-docstring-before-future-import structure was carried into the R3 candidate unchanged; the pattern was not corrected between cycles."
+    },
+    {
+      "severity": "INFO",
+      "id": "INDEP-SAME-PROVIDER",
+      "text": "Verifier shares provider/model with builder (opencode_go/deepseek-v4-flash); same-provider limitation D-031 applies. All evidence reproduced independently from artifacts and ledgers (read-only)."
+    }
+  ],
+  "integrity_concerns": [
+    "Release manifest release-b181d13ff4f4 artifact_hashes_json matches the on-disk candidate.py raw-bytes sha256 (7f9db7916cd5213c02795a96de23693a74a6f41d9ae6594cf3637d64918b55b6) — hashes are honest; the artifact itself is defective.",
+    "Improvement record (improvement-8637c5e55cd2) and baseline run are consistent with the ledger and with verifier reproduction; the candidate never executed, so the improvement cannot be demonstrated by this A/B.",
+    "verification-fbf758cf0c3b was REQUESTED with no prior verdict; this is the first verdict recorded for cycle r3."
+  ],
+  "scope_violations": [
+    "None. Verifier made no modifications to the repo, v7.db, or live foundry.db (all reads mode=ro); probe runs used temp homes only; no subagents dispatched."
+  ],
+  "independence_note": "same-provider limitation (D-031)"
+}

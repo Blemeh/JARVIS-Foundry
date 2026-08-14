@@ -1,0 +1,133 @@
+{
+  "schema": "jarvis-remaster-claim-register-v1",
+  "baseline_commit": "93a3ddc0965dfaf3e4cb9dc0952467bd5250520a",
+  "semantic_verdict": "DOES_NOT_YET_SERVE_PURPOSE",
+  "claims": [
+    {
+      "id": "R0-C001",
+      "claim": "V7 has 13 of 13 slices independently closed PASS.",
+      "classification": ["DOCUMENTED"],
+      "verdict": "FAIL",
+      "evidence": "The preserved S3 round-2 JSON is PENDING_EVIDENCE_COMPLETE; several reports retain verdict placeholders."
+    },
+    {
+      "id": "R0-C002",
+      "claim": "The final verifier passed exact commit 93a3ddc.",
+      "classification": ["DOCUMENTED"],
+      "verdict": "FAIL",
+      "evidence": "The final verdict records c589d3b; 93a3ddc was committed afterward."
+    },
+    {
+      "id": "R0-C003",
+      "claim": "The seven-day proving program completed.",
+      "classification": ["DOCUMENTED"],
+      "verdict": "FAIL",
+      "evidence": "DIR-2026-08-12-seven-day-waiver waived the duration; the S13 draft says the window was open-ended."
+    },
+    {
+      "id": "R0-C004",
+      "claim": "Perpetual autonomous operation is live.",
+      "classification": ["DOCUMENTED", "CODE_PRESENT"],
+      "verdict": "FAIL",
+      "evidence": "The live executable reaches only watchdog behavior; the live ledger has zero cycles, actions, briefings, or scheduler events."
+    },
+    {
+      "id": "R0-C005",
+      "claim": "The live Supervisor is healthy.",
+      "classification": ["LIVE_OBSERVED", "ENABLED_NOW"],
+      "verdict": "PASS",
+      "evidence": "RUNNING/LAB state, matching singleton lease, and current heartbeats were observed."
+    },
+    {
+      "id": "R0-C006",
+      "claim": "The live process is an immutable 93a3ddc deployment.",
+      "classification": ["DOCUMENTED"],
+      "verdict": "FAIL",
+      "evidence": "It started before 93a3ddc and imports through an editable .pth into mutable main source."
+    },
+    {
+      "id": "R0-C007",
+      "claim": "Three promotions and rollback prove live self-evolution.",
+      "classification": ["ISOLATED_PROVEN"],
+      "verdict": "FAIL",
+      "evidence": "Those rows exist only in isolated v7.db; the live ledger has cycles=0 and promotions=0."
+    },
+    {
+      "id": "R0-C008",
+      "claim": "The Command Center is live on ports 8765 through 8769.",
+      "classification": ["LIVE_OBSERVED"],
+      "verdict": "FAIL",
+      "evidence": "The listeners are stale V4 preview processes backed by a temporary preview database."
+    },
+    {
+      "id": "R0-C009",
+      "claim": "Scheduled bilingual briefings are owner-delivered.",
+      "classification": ["DOCUMENTED", "ISOLATED_PROVEN"],
+      "verdict": "FAIL",
+      "evidence": "Four briefing.recorded events exist only in isolated v7.db; live briefing_outbox=0 and no receipt exists."
+    },
+    {
+      "id": "R0-C010",
+      "claim": "English and Albanian voice are operational.",
+      "classification": ["DOCUMENTED", "TEST_PROVEN"],
+      "verdict": "NOT_TESTED",
+      "evidence": "Source contains fixture STT/TTS only, no Albanian command path, live voice_interactions=0, and final owner-channel delivery was unverifiable."
+    },
+    {
+      "id": "R0-C011",
+      "claim": "Provider usage and cost were zero.",
+      "classification": ["DOCUMENTED"],
+      "verdict": "FAIL",
+      "evidence": "Hermes made substantial model calls and an OpenAI TTS call; 0.0 is an unpriced ledger value, not billing proof."
+    },
+    {
+      "id": "R0-C012",
+      "claim": "Real effects are enabled and reconciled.",
+      "classification": ["CODE_PRESENT"],
+      "verdict": "NOT_TESTED",
+      "evidence": "Live system_actions=0 and no effect intent, receipt, inspection, reconciliation, or compensation event exists."
+    },
+    {
+      "id": "R0-C013",
+      "claim": "Real-source monitors are operating every 300 seconds.",
+      "classification": ["DOCUMENTED", "LIVE_OBSERVED"],
+      "verdict": "FAIL",
+      "evidence": "All four enabled monitor rows last polled on 2026-08-13; source polling accepts supplied items rather than accessing a source."
+    },
+    {
+      "id": "R0-C014",
+      "claim": "Hermes Gateway is live because its task last result is zero.",
+      "classification": ["DOCUMENTED"],
+      "verdict": "FAIL",
+      "evidence": "No gateway process exists and PID/lock/state files are stale; only the WhatsApp bridge is healthy."
+    },
+    {
+      "id": "R0-C015",
+      "claim": "The live database is physically consistent.",
+      "classification": ["LIVE_OBSERVED"],
+      "verdict": "PASS",
+      "evidence": "Integrity check, payload hash recomputation, JSON parsing, idempotency uniqueness, and sequence continuity passed."
+    },
+    {
+      "id": "R0-C016",
+      "claim": "The live ledger is database-enforced append-only immutable history.",
+      "classification": ["DOCUMENTED", "CODE_PRESENT"],
+      "verdict": "NOT_TESTED",
+      "evidence": "The schema has zero foreign keys/triggers and payload hashes do not chain event headers, ordering, or deletion."
+    },
+    {
+      "id": "R0-C017",
+      "claim": "Current status documentation is canonical live truth.",
+      "classification": ["DOCUMENTED"],
+      "verdict": "FAIL",
+      "evidence": "PROJECT_STATE claims TRUSTED_AUTONOMOUS while live supervisor_state is LAB and V7 purpose paths are disabled."
+    },
+    {
+      "id": "R0-C018",
+      "claim": "Financial capabilities may remain available under older governance.",
+      "classification": ["DOCUMENTED"],
+      "verdict": "FAIL",
+      "evidence": "The authenticated Post-V7 directive supersedes that authority and requires deterministic denial of all money movement/account changes."
+    }
+  ]
+}

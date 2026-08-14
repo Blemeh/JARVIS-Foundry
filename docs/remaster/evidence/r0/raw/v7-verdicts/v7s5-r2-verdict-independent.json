@@ -1,0 +1,45 @@
+{
+ "verification_id": "verification-25ec223e7bcf",
+ "verdict": "FAIL",
+ "verifier_session": "deleg-v7s5-r2-verifier-independent",
+ "verdict_hash": "a3244dfac78929b695f27c963b6800bde6bad156370928922c27b5fefdece4a7",
+ "criteria": {
+  "guardrail correctness: no behavior regression": "FAIL",
+  "guardrail cost: no paid calls": "PASS",
+  "guardrail latency: no latency regression": "PASS",
+  "guardrail safety: no live mutation": "PASS"
+ },
+ "findings": [
+  {
+   "id": "F-1",
+   "severity": "HIGH",
+   "text": "candidate.py is non-executable: compile() raises SyntaxError at line 31 ('from __future__ imports must occur at the beginning of the file') because the second module-level docstring block is a stray expression statement before the future import. Deterministic on any CPython; reproduced independently (exit 1, empty stdout)."
+  },
+  {
+   "id": "F-2",
+   "severity": "HIGH",
+   "text": "Improvement not demonstrated: ledger candidate run run-70a047035b9b records exit_code 1, error_rate 1.0, duration 0.083s, output hash e3b0c442... (sha256 of empty output) \u2014 identical failure signature to my independent reproduction. A/B does not discriminate; role_session_failure_rate stays 1.0; MMI decrease 0.0 < required 0.5."
+  },
+  {
+   "id": "F-3",
+   "severity": "MEDIUM",
+   "text": "candidate_builds build-910dd5d6c5f3 recorded COMPLETED/exit 0 for a non-executable artifact (artifact hash 93bf31ca... matches on-disk file). Build validation appears to accept ast.parse-level checks; recommend compile()-level gate."
+  },
+  {
+   "id": "F-4",
+   "severity": "LOW",
+   "text": "Ledger baseline run output hash 0d094edf... does not byte-match my reproduced baseline stdout (1ce5f033.../a93e4426...); exit code, error_rate and duration consistent (reaped, exit 1, ~4.3s)."
+  },
+  {
+   "id": "F-5",
+   "severity": "LOW",
+   "text": "release_manifests runtime_identity_json records python 3.13.5 while local venv is 3.11.15; the SyntaxError is interpreter-independent so the verdict is unaffected."
+  }
+ ],
+ "integrity_concerns": [
+  "candidate.py non-executable (SyntaxError line 31) despite build COMPLETED record"
+ ],
+ "scope_violations": [],
+ "independence_note": "same-provider limitation (D-031): verifier and builder both opencode_go/deepseek-v4-flash",
+ "recorded_at_utc": "2026-08-14T09:49:15.850564+00:00"
+}

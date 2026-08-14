@@ -1,0 +1,103 @@
+{
+  "schema": "jarvis-remaster-verifier-verdict-v1",
+  "stage": "R0",
+  "round": 2,
+  "verifier_identity": "/root/r0_independent_verifier_r2",
+  "verifier_context": "Fresh delegated verifier context. Verification was strictly adversarial and stopped promptly after dispositive mandatory failures.",
+  "independence_limitation": "Procedural context separation exists, but same-model/provider diversity was not established. This is not provider/model-independent verification.",
+  "verdict": "FAIL",
+  "semantic_conclusion": {
+    "verdict": "DOES_NOT_YET_SERVE_PURPOSE",
+    "status": "SUPPORTED",
+    "primary_evidence": "Current read-only live database inspection showed cycles=0, promotions=0, release_manifests=0, release_slots=0, system_actions=0, action_decisions=0, briefing_outbox=0, voice_interactions=0, budgets=0, cost_measurements=0, acceptance_runs=0, and restore_points=0. The only live Foundry daemon was the RUNNING/LAB Supervisor watchdog."
+  },
+  "criteria": [
+    {
+      "id": "R0-C1",
+      "criterion": "Exact Git, protected-file, process, task, port, database, provider, capability, STOP/veto, release, and evidence identity is represented without promoting inference to fact.",
+      "status": "PASS",
+      "primary_evidence": "Main and remaster HEAD independently resolved to 93a3ddc0965dfaf3e4cb9dc0952467bd5250520a. Main contained only the six expected untracked protected files, whose hashes matched the manifest. Supervisor PIDs 21636/17052 used the main editable venv; task state was Running/IgnoreNew with one-minute repetition and 0x800710E0 repeated-launch result. Ports 8765-8769 were command-center preview processes backed by the temporary V4 preview DB; no 8780-8784 listener existed. Live SQLite was opened with mode=ro and query_only=1 and reported RUNNING/LAB, a matching singleton lease, no release records, and no effect records. No STOP or EMERGENCY_STOP file existed in the live home."
+    },
+    {
+      "id": "R0-C2",
+      "criterion": "V7 commit, verdict, artifact lineage, and contradictions are reproducible.",
+      "status": "NOT_TESTED",
+      "primary_evidence": "The preserved round-1 FAIL hash matched, and all 22 raw V7 verdict plus two final-transcript files matched their manifest hashes. Full semantic re-derivation of every V7 lineage contradiction was not completed after the restore-set defect made R0 FAIL dispositive; no round-1 PASS criterion was reused."
+    },
+    {
+      "id": "R0-C3",
+      "criterion": "Tests, mocks, isolated ledgers, previews, heartbeats, and documentation are not represented as live purpose proof.",
+      "status": "PASS",
+      "primary_evidence": "Fresh read-only comparison showed the isolated V7 DB had cycles=9, promotions=3, canaries=3, release_manifests=11, and release_slots=4, while the live DB had zero in every corresponding operational table. Preview listener command lines explicitly referenced the temporary preview DB. The baseline classifies these as isolated or preview evidence rather than live-purpose proof."
+    },
+    {
+      "id": "R0-C4",
+      "criterion": "Disposition coverage is complete and the slice plan preserves the full purpose scope, budgets, and risks.",
+      "status": "PASS",
+      "primary_evidence": "The disposition map covers Git, runtime, STOP/control, scheduler, portfolio, mission/effect paths, capabilities, adapters, research, memory, owner surfaces, evolution, evidence, tests, and canonical documentation. The slice plan retains all ten integrated purpose journeys through R0-R12, defines twelve preliminary resource/performance thresholds and twelve explicit risk/control pairs, and retains an unwaived seven-day final operation gate."
+    },
+    {
+      "id": "R0-C5",
+      "criterion": "Restore artifacts are hash-bound and verifiably readable.",
+      "status": "FAIL",
+      "primary_evidence": "All 41 manifest-referenced hashes matched; both database backups returned quick_check=ok and integrity_check=ok with manifest counts; scheduled-task XML was 3346-byte UTF-16LE with BOM and passed strict XmlReader parsing; the source ZIP was readable and contained all 397 baseline paths. However, the restore directory contains four additional unmanifested artifacts: live-foundry-r0.db-shm (32768 bytes), live-foundry-r0.db-wal (0 bytes), isolated-v7-r0.db-shm (32768 bytes), and isolated-v7-r0.db-wal (0 bytes). The actual restore-set contents are therefore not fully manifest-bound. Additionally, 391 of 397 ZIP file bytes did not reproduce their Git blob IDs because export-time text conversion occurred; the manifest does not disclose or bind that transformation."
+    },
+    {
+      "id": "R0-C6",
+      "criterion": "No live or protected state was changed.",
+      "status": "NOT_TESTED",
+      "primary_evidence": "No main/protected hash, Git HEAD, task configuration, process, port, provider, or external-system mutation attributable to this verifier was observed. The live snapshot count advanced from 42874 to 43058 events while the RUNNING/LAB watchdog continued heartbeating. Existing frozen-copy SQLite SHM mtimes advanced during required mode=ro/query_only reads, so strict no-file-mutation of the isolated construction evidence cannot be certified."
+    },
+    {
+      "id": "R0-C7",
+      "criterion": "Every observed defect is present in FINDINGS.jsonl.",
+      "status": "FAIL",
+      "primary_evidence": "FINDINGS.jsonl contains R0-F001 through R0-F019 but contains neither the four unmanifested SQLite sidecars nor the source-archive byte-transformation limitation. The durable registry is therefore incomplete."
+    }
+  ],
+  "findings": [
+    {
+      "id": "R0-R2-F001",
+      "severity": "S2",
+      "finding": "The actual restore directory contains four SQLite sidecars absent from R0_BASELINE_MANIFEST.json, so the restore-set identity is incomplete.",
+      "reproduction": "Enumerate every file under var/remaster/r0/restore and compare its absolute path with every manifest object containing path and sha256. Ten files exist in the directory, but only six restore-root files are represented.",
+      "repair": "Preserve this FAIL; add the defect to FINDINGS.jsonl; generate a fresh restore unit whose directory contains only declared artifacts, or explicitly declare and hash every required sidecar. Validate frozen backups without producing mutable SHM/WAL residue, freeze the new manifest and scope hashes, then dispatch a fresh verifier."
+    },
+    {
+      "id": "R0-R2-F002",
+      "severity": "S2",
+      "finding": "The ZIP is path-complete but not byte-exact to the recorded baseline Git tree because export-time text conversion changed 391 of 397 blob identities.",
+      "reproduction": "Read every ZIP entry, calculate its Git blob ID as SHA1('blob ' + byte_length + NUL + bytes), and compare against git ls-tree -r 93a3ddc. The ZIP has 397 files and no missing/extra paths, but only six file blobs match exactly.",
+      "repair": "Either replace it with a byte-exact Git restore artifact such as a verified bundle/object-preserving archive, or explicitly document and deterministically verify the export-attribute transformation with a per-entry hash manifest. Add the limitation to FINDINGS.jsonl."
+    }
+  ],
+  "hashes_checked": {
+    "supplied_scope_result": "8/8 MATCH",
+    "manifest_referenced_paths_result": "41/41 MATCH",
+    "raw_v7_preservation_result": "22/22 verdict files and 2/2 final-transcript files MATCH"
+  },
+  "round1_fail_preservation": {
+    "status": "PASS",
+    "primary_evidence": "R0_VERIFIER_ROUND1_FAIL.json is present at the supplied SHA-256, retains verdict FAIL, records the changed capture-script hash and UTF-16 repair, requires fresh verification, and none of its PASS criteria were reused."
+  },
+  "secret_values_not_copied": {
+    "status": "NOT_TESTED",
+    "primary_evidence": "The capture implementation records .env key names and auth/config metadata rather than copying those source files, and the manifest declares values_copied=false. An exhaustive literal-secret comparison across every copied raw transcript, verdict, database, profile, and ZIP entry was not completed before dispositive failure."
+  },
+  "live_protected_mutation_statement": {
+    "main_or_protected_mutation_observed": false,
+    "live_process_task_port_provider_external_mutation_observed": false,
+    "expected_concurrent_live_change": "Supervisor heartbeats continued and live event count increased.",
+    "construction_isolation": "All R0 construction files remained under the remaster worktree, but existing SQLite SHM metadata changed during frozen-copy reads; strict total no-file-mutation is not certified."
+  },
+  "exact_repair_conditions": [
+    "Preserve both R0_VERIFIER_ROUND1_FAIL.json and this round-2 FAIL without rewriting history.",
+    "Register R0-R2-F001 and R0-R2-F002 durably in FINDINGS.jsonl.",
+    "Create a fresh deterministic restore directory containing only manifest-declared files, or hash and classify every SQLite sidecar explicitly.",
+    "Validate frozen database backups using a method that combines mode=ro and PRAGMA query_only=ON with immutable/no-sidecar behavior.",
+    "Provide a byte-exact Git restore artifact, or disclose and verify every deterministic source-archive transformation.",
+    "Complete an exhaustive secret-value non-copy comparison without emitting secret material.",
+    "Freeze new hashes for every changed scope file and artifact.",
+    "Dispatch a fresh verifier context and reuse no criterion result from rounds 1 or 2."
+  ]
+}

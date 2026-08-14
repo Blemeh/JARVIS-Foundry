@@ -1,0 +1,431 @@
+{
+  "artifacts": {
+    "final_verifier_transcript": [
+      {
+        "mtime_utc": "2026-08-14T12:50:47.696316+00:00",
+        "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r0\\raw\\v7-final-verifier\\task-0.log",
+        "sha256": "2f63ab183c1063237e4932080104a36ea13949b12ffee73e190addee5e106658",
+        "size": 36807,
+        "source": "C:\\Users\\b\\AppData\\Local\\hermes\\cache\\delegation\\live\\deleg_27d3c23e\\task-0.log"
+      },
+      {
+        "mtime_utc": "2026-08-14T12:50:47.691636+00:00",
+        "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r0\\raw\\v7-final-verifier\\subagent-summary-0-20260814_145047_691636.txt",
+        "sha256": "2af953267b59bccb06b0b22768f0ab89cb66551dc02cfc29306ff510dcfec462",
+        "size": 7491,
+        "source": "C:\\Users\\b\\AppData\\Local\\hermes\\cache\\delegation\\subagent-summary-0-20260814_145047_691636.txt"
+      }
+    ],
+    "foundry_profile": {
+      "mtime_utc": "2026-08-11T22:55:04.498228+00:00",
+      "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\var\\remaster\\r0\\restore\\foundry-profile.yaml",
+      "sha256": "732d3040c8b8aef81ee5026ba5e44a46ac73c8f6ca7fd81eb2561a061ac65f0a",
+      "size": 293,
+      "source": "C:\\Users\\b\\AppData\\Local\\hermes\\foundry\\foundry-profile.yaml"
+    },
+    "isolated_v7_database": {
+      "backup_integrity_check": "ok",
+      "backup_quick_check": "ok",
+      "mtime_utc": "2026-08-14T13:58:19.697856+00:00",
+      "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\var\\remaster\\r0\\restore\\isolated-v7-r0.db",
+      "sha256": "486ca6f12f677070412a64ab265376d315465668ebd7553077b2d5111a409c63",
+      "size": 790528,
+      "source": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry\\var\\v7-runtime\\v7.db",
+      "source_quick_check": "ok",
+      "table_counts": {
+        "acceptance_runs": 0,
+        "action_decisions": 0,
+        "agent_runs": 0,
+        "briefing_outbox": 0,
+        "budgets": 0,
+        "canaries": 3,
+        "candidates": 0,
+        "cost_measurements": 0,
+        "cycles": 9,
+        "directives": 0,
+        "events": 158,
+        "knowledge_claims": 0,
+        "missions": 0,
+        "monitors": 0,
+        "promotions": 3,
+        "release_manifests": 11,
+        "research_queue": 0,
+        "restore_points": 0,
+        "system_actions": 0,
+        "voice_interactions": 0
+      }
+    },
+    "live_database": {
+      "backup_integrity_check": "ok",
+      "backup_quick_check": "ok",
+      "mtime_utc": "2026-08-14T13:58:18.487212+00:00",
+      "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\var\\remaster\\r0\\restore\\live-foundry-r0.db",
+      "sha256": "3d6b2ed1ed132b719cded10d2c978004b22c6d520e141f7d788866ee865d3fab",
+      "size": 30773248,
+      "source": "C:\\Users\\b\\AppData\\Local\\hermes\\foundry\\foundry.db",
+      "source_quick_check": "ok",
+      "table_counts": {
+        "acceptance_runs": 0,
+        "action_decisions": 0,
+        "agent_runs": 11,
+        "briefing_outbox": 0,
+        "budgets": 0,
+        "canaries": 0,
+        "candidates": 934,
+        "cost_measurements": 0,
+        "cycles": 0,
+        "directives": 4,
+        "events": 42874,
+        "knowledge_claims": 1071,
+        "missions": 4,
+        "monitors": 4,
+        "promotions": 0,
+        "release_manifests": 0,
+        "research_queue": 929,
+        "restore_points": 0,
+        "system_actions": 0,
+        "voice_interactions": 0
+      }
+    },
+    "live_dependency_freeze": {
+      "mtime_utc": "2026-08-14T13:58:21.102499+00:00",
+      "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\var\\remaster\\r0\\restore\\live-venv-pip-freeze.txt",
+      "sha256": "d932191c105acd260281251ead26cb4d39507d6822a5aa76470a73092a3d9232",
+      "size": 412
+    },
+    "scheduled_task": {
+      "mtime_utc": "2026-08-14T14:04:38.371165+00:00",
+      "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\var\\remaster\\r0\\restore\\JARVIS-Foundry-Supervisor.xml",
+      "sha256": "f0961842a53c6e8b29b229dd0dd0e5d692eae2870640e1d3af22fa665bea2267",
+      "size": 3346
+    },
+    "source_bundle": {
+      "heads": [
+        "93a3ddc0965dfaf3e4cb9dc0952467bd5250520a refs/heads/main"
+      ],
+      "mtime_utc": "2026-08-14T14:21:51.025283+00:00",
+      "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\var\\remaster\\r0\\restore\\jarvis-foundry-93a3ddc.bundle",
+      "sha256": "26d273553941830aa078716a80b9efc7d69473a395085b7804e764e41a948602",
+      "size": 1901624,
+      "verify": "exit_0"
+    },
+    "v7_verdicts": [
+      {
+        "mtime_utc": "2026-08-14T08:13:59.330962+00:00",
+        "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r0\\raw\\v7-verdicts\\v7s0-verdict-adv-verifier.json",
+        "sha256": "47248499377ce0fe720099c768225e3fb3945b8c135d665fbaeca4ed4e6e389e",
+        "size": 10364,
+        "source": "C:\\Users\\b\\AppData\\Local\\Temp\\v7s0-verdict-adv-verifier.json"
+      },
+      {
+        "mtime_utc": "2026-08-14T08:29:47.914331+00:00",
+        "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r0\\raw\\v7-verdicts\\v7s1-verdict-adv-verifier.json",
+        "sha256": "ddc4e7f82b5b4561b92f28ed6c68ddb8077022ec774d2e1404d3426e2eb7b8b6",
+        "size": 7825,
+        "source": "C:\\Users\\b\\AppData\\Local\\Temp\\v7s1-verdict-adv-verifier.json"
+      },
+      {
+        "mtime_utc": "2026-08-14T12:09:19.714131+00:00",
+        "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r0\\raw\\v7-verdicts\\v7s10-verdict-verifier.json",
+        "sha256": "a073ba8d079166883abf5f2e7999f040957326035292892c660ea5607dd6c94f",
+        "size": 6415,
+        "source": "C:\\Users\\b\\AppData\\Local\\Temp\\v7s10-verdict-verifier.json"
+      },
+      {
+        "mtime_utc": "2026-08-14T12:22:20.481766+00:00",
+        "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r0\\raw\\v7-verdicts\\v7s11-verdict-adversarial.json",
+        "sha256": "28b0d692f5683181c517e1970e80af98c89525f1fa75a5d2abb78119fe44f9ae",
+        "size": 6316,
+        "source": "C:\\Users\\b\\AppData\\Local\\Temp\\v7s11-verdict-adversarial.json"
+      },
+      {
+        "mtime_utc": "2026-08-14T12:42:09.508311+00:00",
+        "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r0\\raw\\v7-verdicts\\v7s12-verdict-deepseek-v4-flash.json",
+        "sha256": "14dc641a1ccd8320284edcc060ab8efc9ce54a5494a6b77d1ed95fc890184f32",
+        "size": 5494,
+        "source": "C:\\Users\\b\\AppData\\Local\\Temp\\v7s12-verdict-deepseek-v4-flash.json"
+      },
+      {
+        "mtime_utc": "2026-08-14T12:50:29.876753+00:00",
+        "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r0\\raw\\v7-verdicts\\v7s13-verdict-deepseek-v4-flash.json",
+        "sha256": "c79c4de318f97849f89d2d42c33869a7898aac597a2d5d8df91d3bc1f31e560b",
+        "size": 3789,
+        "source": "C:\\Users\\b\\AppData\\Local\\Temp\\v7s13-verdict-deepseek-v4-flash.json"
+      },
+      {
+        "mtime_utc": "2026-08-14T08:47:40.866404+00:00",
+        "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r0\\raw\\v7-verdicts\\v7s2-verdict-verifier.json",
+        "sha256": "6675d3ac5f71564a1afb1b1f9ea6b1368ed1dd632347854fd3705e5fde13dee6",
+        "size": 7143,
+        "source": "C:\\Users\\b\\AppData\\Local\\Temp\\v7s2-verdict-verifier.json"
+      },
+      {
+        "mtime_utc": "2026-08-14T09:23:29.820972+00:00",
+        "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r0\\raw\\v7-verdicts\\v7s3-verdict-r2-indep.json",
+        "sha256": "f460a79aee00abb803fb0f21c1b5ac2bdd67a260b0b77ff6c38257af2d75542e",
+        "size": 1153,
+        "source": "C:\\Users\\b\\AppData\\Local\\Temp\\v7s3-verdict-r2-indep.json"
+      },
+      {
+        "mtime_utc": "2026-08-14T09:11:53.978520+00:00",
+        "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r0\\raw\\v7-verdicts\\v7s3-verdict-v7s3.json",
+        "sha256": "ec8d5fabf7bc0e0a88c263eac655c8f52882355e3f3499bd79b47ac5d8374eb4",
+        "size": 7016,
+        "source": "C:\\Users\\b\\AppData\\Local\\Temp\\v7s3-verdict-v7s3.json"
+      },
+      {
+        "mtime_utc": "2026-08-14T09:26:44.054081+00:00",
+        "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r0\\raw\\v7-verdicts\\v7s4-verdict-verifier.json",
+        "sha256": "7f8efa3c5c5a4b581e909dea59f65c2a023246b357709ac616fadf794d6a561a",
+        "size": 8230,
+        "source": "C:\\Users\\b\\AppData\\Local\\Temp\\v7s4-verdict-verifier.json"
+      },
+      {
+        "mtime_utc": "2026-08-14T09:47:31.574362+00:00",
+        "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r0\\raw\\v7-verdicts\\v7s5-r1-verdict-indep.json",
+        "sha256": "0a35a37b983c9ae605bc84fd3d6f880855004892a92e14afcb07d014d293aa66",
+        "size": 834,
+        "source": "C:\\Users\\b\\AppData\\Local\\Temp\\v7s5-r1-verdict-indep.json"
+      },
+      {
+        "mtime_utc": "2026-08-14T09:49:15.848483+00:00",
+        "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r0\\raw\\v7-verdicts\\v7s5-r2-verdict-independent.json",
+        "sha256": "abd1c527d9bae657b52390ff9e78a3145b288da982349332fdf9b010a4250d73",
+        "size": 2363,
+        "source": "C:\\Users\\b\\AppData\\Local\\Temp\\v7s5-r2-verdict-independent.json"
+      },
+      {
+        "mtime_utc": "2026-08-14T09:52:41.769973+00:00",
+        "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r0\\raw\\v7-verdicts\\v7s5-r3-verdict-indep.json",
+        "sha256": "aa6882a0ef48b67572a919fbcd705343c5b10340cddd1d83a26d80b7181476a0",
+        "size": 3395,
+        "source": "C:\\Users\\b\\AppData\\Local\\Temp\\v7s5-r3-verdict-indep.json"
+      },
+      {
+        "mtime_utc": "2026-08-14T10:00:41.293780+00:00",
+        "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r0\\raw\\v7-verdicts\\v7s5-r3b-verdict-independent.json",
+        "sha256": "04623e1360b31b9f2e98c837a4e40a07f45340cc4425fbfe2cb962e595c6df6a",
+        "size": 4061,
+        "source": "C:\\Users\\b\\AppData\\Local\\Temp\\v7s5-r3b-verdict-independent.json"
+      },
+      {
+        "mtime_utc": "2026-08-14T10:17:16.622918+00:00",
+        "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r0\\raw\\v7-verdicts\\v7s5-slice-verdict-indep.json",
+        "sha256": "a33b682b2b423c1f37386c5bda17868bcb9c952fd16457dc0987d68daa089d60",
+        "size": 6536,
+        "source": "C:\\Users\\b\\AppData\\Local\\Temp\\v7s5-slice-verdict-indep.json"
+      },
+      {
+        "mtime_utc": "2026-08-14T10:36:28.987921+00:00",
+        "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r0\\raw\\v7-verdicts\\v7s6-verdict-indy.json",
+        "sha256": "77bf08d0f0b765529f714ee4ec2eab1dd0a2ddf8e212656f35bd7d81edf09ee3",
+        "size": 8347,
+        "source": "C:\\Users\\b\\AppData\\Local\\Temp\\v7s6-verdict-indy.json"
+      },
+      {
+        "mtime_utc": "2026-08-14T10:49:39.714171+00:00",
+        "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r0\\raw\\v7-verdicts\\v7s6-verdict-r2-adversarial.json",
+        "sha256": "d4298a99d481ed31bf7fc9c49d3c5a15ae30fafb18f8e0f9e5e81b83fef4b703",
+        "size": 6099,
+        "source": "C:\\Users\\b\\AppData\\Local\\Temp\\v7s6-verdict-r2-adversarial.json"
+      },
+      {
+        "mtime_utc": "2026-08-14T11:09:10.068539+00:00",
+        "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r0\\raw\\v7-verdicts\\v7s6-verdict-r3-r3.json",
+        "sha256": "c3a5f7b2a421856d3e760bc6d36080ef533ded3ef82e8a0318147dac620f08e9",
+        "size": 7103,
+        "source": "C:\\Users\\b\\AppData\\Local\\Temp\\v7s6-verdict-r3-r3.json"
+      },
+      {
+        "mtime_utc": "2026-08-14T11:22:28.711815+00:00",
+        "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r0\\raw\\v7-verdicts\\v7s7-verdict-adversarial.json",
+        "sha256": "9d4a6d3238827f5b3a4228d8d05e721409b66e26f482064e7f6f282fb22659e1",
+        "size": 6474,
+        "source": "C:\\Users\\b\\AppData\\Local\\Temp\\v7s7-verdict-adversarial.json"
+      },
+      {
+        "mtime_utc": "2026-08-14T11:42:47.809859+00:00",
+        "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r0\\raw\\v7-verdicts\\v7s8-verdict-s8-verifier.json",
+        "sha256": "94ce523a0c11ec9ab8f14e86f07cb9e0be621428f3964c947db522e7a514fe91",
+        "size": 5539,
+        "source": "C:\\Users\\b\\AppData\\Local\\Temp\\v7s8-verdict-s8-verifier.json"
+      },
+      {
+        "mtime_utc": "2026-08-14T11:57:00.861152+00:00",
+        "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r0\\raw\\v7-verdicts\\v7s9-verdict-adversarial.json",
+        "sha256": "38527ded5ce5684ff7920edf06f70087e1527611526b5616ddfa45f6461891b9",
+        "size": 8754,
+        "source": "C:\\Users\\b\\AppData\\Local\\Temp\\v7s9-verdict-adversarial.json"
+      },
+      {
+        "mtime_utc": "2026-08-14T12:02:11.041496+00:00",
+        "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r0\\raw\\v7-verdicts\\v7s9-verdict-r2-foundry.json",
+        "sha256": "035718d97ce3e848ca8f5e35867248cbfb7aa4b511dfd88d8d06099c74b3a261",
+        "size": 1528,
+        "source": "C:\\Users\\b\\AppData\\Local\\Temp\\v7s9-verdict-r2-foundry.json"
+      }
+    ]
+  },
+  "baseline_commit": "93a3ddc0965dfaf3e4cb9dc0952467bd5250520a",
+  "baseline_tree": "2e1df6190b0d032372ae46e6a59bef22ddac57e3",
+  "branch": "remaster/post-v7-purpose",
+  "captured_at_utc": "2026-08-14T13:58:17.656357+00:00",
+  "editable_path_files": [
+    {
+      "content": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry\\src",
+      "mtime_utc": "2026-08-11T15:56:52.841453+00:00",
+      "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry\\.venv\\Lib\\site-packages\\__editable__.jarvis_foundry-0.1.0.pth",
+      "sha256": "dbdd3d7b66db76d72f6bbec236996ce3e2b13bb8a0f7d04789652cc7cd4c5026",
+      "size": 81
+    }
+  ],
+  "live_executable_metadata": {
+    "mtime_utc": "2025-06-11T16:10:24+00:00",
+    "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry\\.venv\\Scripts\\python.exe",
+    "sha256": "935016795f3e6908e75acbc2040a01e2e4cdb494a57c42f63a0d6eedb2372256",
+    "size": 254800
+  },
+  "protected_owner_files": [
+    {
+      "mtime_utc": "2026-08-13T10:49:20.940480+00:00",
+      "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry\\docs\\handoffs\\V5_SOL_HIGH_HARDENING_PROMPT.md",
+      "sha256": "8fa3fa2a1ff2855d110808705a1c7cb70456dbce21f9f302711a218a4b7e034a",
+      "size": 11811
+    },
+    {
+      "mtime_utc": "2026-08-13T10:49:20.938971+00:00",
+      "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry\\docs\\handoffs\\V5_SOL_HIGH_HARDENING_REPORT.md",
+      "sha256": "c173d7ce1eb8e99ae70d80f27e7cbe3974b194d907f01527c3388fdeba8fba68",
+      "size": 18306
+    },
+    {
+      "mtime_utc": "2026-08-14T13:35:09.067822+00:00",
+      "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry\\docs\\planning\\POST_V7_CODEX_SOL_REMASTER_GOAL.md",
+      "sha256": "6471af3c2162bc505f175aa25685aa531c770f804dd9a66d2c14bf65387d63b5",
+      "size": 33898
+    },
+    {
+      "mtime_utc": "2026-08-13T08:23:44.017224+00:00",
+      "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry\\docs\\planning\\V5_MASTER_PROMPT.md",
+      "sha256": "d807330f77908d6e50576296b1fc5d02a729d73d075c059cb7ca2c7bde793149",
+      "size": 25124
+    },
+    {
+      "mtime_utc": "2026-08-13T08:23:44.015716+00:00",
+      "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry\\docs\\planning\\V5_READ_FIRST.md",
+      "sha256": "67591fd0b05aca5c02253f3adb49909e071893b994d0ce469cbcd66c75aab073",
+      "size": 12344
+    },
+    {
+      "mtime_utc": "2026-08-14T07:36:24.156405+00:00",
+      "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry\\docs\\planning\\V7_MASTER_PROMPT.md",
+      "sha256": "3b1682c6376077d931b78bada50a864334e794659426de24cae2fdf48b776f17",
+      "size": 28050
+    }
+  ],
+  "provider_configuration": {
+    "config_metadata": {
+      "mtime_utc": "2026-08-12T11:31:36.400032+00:00",
+      "path": "C:\\Users\\b\\AppData\\Local\\hermes\\config.yaml",
+      "sha256": "ff1b2951905b584943b1472ffa37787d29fe0e8f73eae01c3deb62ded38c49cd",
+      "size": 8068
+    },
+    "selected_non_secret_values": {
+      "agent.reasoning_effort": "max",
+      "delegation.reasoning_effort": "ultra",
+      "model.api_mode": "chat_completions",
+      "model.base_url": "https://opencode.ai/zen/go/v1",
+      "model.default": "deepseek-v4-flash",
+      "model.provider": "opencode-go",
+      "proxy.enabled": "false",
+      "stt.enabled": "true",
+      "stt.language": "en",
+      "stt.provider": "openai",
+      "tts.provider": "openai",
+      "tts.use_gateway": "true"
+    }
+  },
+  "restore_directory_inventory": [
+    {
+      "mtime_utc": "2026-08-11T22:55:04.498228+00:00",
+      "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\var\\remaster\\r0\\restore\\foundry-profile.yaml",
+      "sha256": "732d3040c8b8aef81ee5026ba5e44a46ac73c8f6ca7fd81eb2561a061ac65f0a",
+      "size": 293
+    },
+    {
+      "mtime_utc": "2026-08-14T13:58:19.697856+00:00",
+      "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\var\\remaster\\r0\\restore\\isolated-v7-r0.db",
+      "sha256": "486ca6f12f677070412a64ab265376d315465668ebd7553077b2d5111a409c63",
+      "size": 790528
+    },
+    {
+      "mtime_utc": "2026-08-14T14:21:51.025283+00:00",
+      "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\var\\remaster\\r0\\restore\\jarvis-foundry-93a3ddc.bundle",
+      "sha256": "26d273553941830aa078716a80b9efc7d69473a395085b7804e764e41a948602",
+      "size": 1901624
+    },
+    {
+      "mtime_utc": "2026-08-14T14:04:38.371165+00:00",
+      "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\var\\remaster\\r0\\restore\\JARVIS-Foundry-Supervisor.xml",
+      "sha256": "f0961842a53c6e8b29b229dd0dd0e5d692eae2870640e1d3af22fa665bea2267",
+      "size": 3346
+    },
+    {
+      "mtime_utc": "2026-08-14T13:58:18.487212+00:00",
+      "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\var\\remaster\\r0\\restore\\live-foundry-r0.db",
+      "sha256": "3d6b2ed1ed132b719cded10d2c978004b22c6d520e141f7d788866ee865d3fab",
+      "size": 30773248
+    },
+    {
+      "mtime_utc": "2026-08-14T13:58:21.102499+00:00",
+      "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\var\\remaster\\r0\\restore\\live-venv-pip-freeze.txt",
+      "sha256": "d932191c105acd260281251ead26cb4d39507d6822a5aa76470a73092a3d9232",
+      "size": 412
+    }
+  ],
+  "schema": "jarvis-remaster-r0-baseline-v1",
+  "secret_metadata": {
+    "artifact_value_scan": {
+      "artifacts_scanned": 30,
+      "candidate_secret_values": 3,
+      "match_count": 0,
+      "matches": [],
+      "plaintext_emitted": false
+    },
+    "auth": {
+      "mtime_utc": "2026-08-14T12:19:59.494094+00:00",
+      "path": "C:\\Users\\b\\AppData\\Local\\hermes\\auth.json",
+      "sha256": "b73d0d18c204946a8cc3da040dd658c0f31ee8575c6afd7650e6ac3d691f7692",
+      "size": 10475
+    },
+    "env": {
+      "key_names": [
+        "BROWSERBASE_ADVANCED_STEALTH",
+        "BROWSERBASE_PROXIES",
+        "BROWSER_INACTIVITY_TIMEOUT",
+        "BROWSER_SESSION_TIMEOUT",
+        "HASS_URL",
+        "HERMES_CUA_DRIVER_CMD",
+        "IMAGE_TOOLS_DEBUG",
+        "MOA_TOOLS_DEBUG",
+        "OPENCODE_GO_API_KEY",
+        "TERMINAL_ENV",
+        "TERMINAL_LIFETIME_SECONDS",
+        "TERMINAL_MODAL_IMAGE",
+        "TERMINAL_TIMEOUT",
+        "VISION_TOOLS_DEBUG",
+        "WEB_TOOLS_DEBUG",
+        "WHATSAPP_ALLOWED_USERS",
+        "WHATSAPP_ENABLED",
+        "WHATSAPP_HOME_CHANNEL",
+        "WHATSAPP_HOME_CHANNEL_THREAD_ID",
+        "WHATSAPP_MODE"
+      ],
+      "mtime_utc": "2026-08-11T18:14:53.518074+00:00",
+      "path": "C:\\Users\\b\\AppData\\Local\\hermes\\.env",
+      "sha256": "82069d1f4a6518a3d5ae64a00b65994e25483f66dd1bbd956d1b493d6b0acfd0",
+      "size": 25238
+    },
+    "values_copied": false
+  }
+}

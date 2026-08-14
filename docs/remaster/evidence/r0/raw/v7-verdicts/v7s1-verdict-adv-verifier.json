@@ -1,0 +1,47 @@
+{
+  "verdict": "PASS",
+  "auditor": "adv-verifier (independent, read-only)",
+  "criteria": {
+    "C1": {
+      "status": "PASS",
+      "evidence": "git rev-parse HEAD=a1a33e17f76bc3ed4d65b707ab3a1ab3eefbeb26, HEAD^=22a59cab7113762b7ac2210eb1688b61f994ccfb, HEAD^^{tree}=dceaa5a5bff42971e816ed18e003594944514840 (parent tree == accepted V6 tree; the brief's literal HEAD^{tree}==dceaa… expectation is arithmetically impossible — HEAD is the non-empty S0 doc commit, tree=001a766e2…; intent holds). git log --oneline fa4e65f..HEAD=38. V6 worktree clean at 22a59ca (branch v6-self-evolution). Protected 5/5 hashes match var/evidence/v7-s0/protected-files.sha256. git status porcelain = 6 untracked (5 protected + docs/evidence/V7_S1_RELEASE.md, the report under audit — same 'report counts as one' pattern as V7-S0)."
+    },
+    "C2": {
+      "status": "PASS",
+      "evidence": "sha256sum suite-v7-s1-full.txt = 9caa0f426b920142a53590abddce615729faaec7e93aa74689dace5c37eb2f5f (exact match); tail literally ends '912 passed in 412.05s (0:06:52)' + 'EXIT=0' (exit code self-bound inside the hashed artifact). No re-run performed (artifact+tail sufficient per brief)."
+    },
+    "C3": {
+      "status": "PASS",
+      "evidence": "manifests.json sha256 = 8c680b147c7d5816d79c47e888ff172e48a3d631be086bfd40f101b4cdde4d44 (exact). Recomputed and matched: suite-v7-s1-full.txt 9caa0f42…, suite-v7-s0-baseline.txt f2ab6d9a…, verdict-deleg_1bba41a6-final.json 05e6ef4d…, v6-runtime-v6.db c52cfd35…, pyproject.toml d7f76e67…, foundry-profile.yaml 732d3040…. Runtime fields match live tools queried fresh: python 3.13.5, pytest 9.1.1, git 2.50.1.windows.1, node v24.19.0. Findings: main_head/main_head_tree EMPTY strings; venv_packages [] (report claims 'full venv package freeze'); frozen_at 10:35+02:00 postdates all primary evidence (ledger events 08:23:09Z=10:23:09+02:00, file mtimes 10:22-10:24)."
+    },
+    "C4": {
+      "status": "PASS",
+      "evidence": "v7.db copy (no sidecars existed; opened scratch copy mode=ro): MAX(version)=32; exactly 6 events = 1 improvement.recorded (key improvement-c4f21554bf73) + 2 release.manifest_recorded (release-77c3f7bb2e2f source_commit fa4e65fa07d05f0195872f6e3624dba993ae80e5, migrations []; release-f4b93134f608 source_commit 22a59cab7113762b7ac2210eb1688b61f994ccfb, migrations [21..32], rollback_target release-77c3f7bb2e2f) + 3 release.slot_changed (live/candidate/previous, transition_id 093dc918…). improvement_records row c4f21554bf73: state FROZEN, risk_class R3, baseline_metric_json name 'main-reconcile-crash-on-v20', mmi_json direction 'decrease', surfaces include database+migrations. release_slots: live=release-77c3f7bb2e2f, candidate=release-f4b93134f608, previous=release-77c3f7bb2e2f, no quarantine row (=null). cycles: 0 rows. release_control: 0 rows (lazily-seeded singleton; no freeze — consistent with design). Registry artifact hash for verdict-deleg_6ca5671e.json = 47248499377ce0fe720099c768225e3fb3945b8c135d665fbaeca4ed4e6e389e == sha256 of actual %TEMP%\\v7s0-verdict-adv-verifier.json (cross-validated)."
+    },
+    "C5": {
+      "status": "PASS",
+      "evidence": "Live DB (mode=ro URI only; deep checks on sqlite3-backup-API copy): MAX(version)=20, 20 migration rows, quick_check=ok on copy, verify_event_integrity(copy)=39100 (no exception), payload-hash convention 0/39100 mismatches; events growing 39099→39111 across probes (daemon live). supervisor_state: instance supervisor-6d250614-686b-4f56-8293-a9dd98b3771d, status RUNNING, trust LAB, heartbeat age 1.26s at probe, advancing ~5s cadence. wmic: PIDs 11484/13012 alive (python.exe, creation 2026-08-13T02:46:20/23Z, cmdline '.venv python -m jarvis_foundry.supervisor.run --home %LOCALAPPDATA%\\hermes\\foundry' — pre-merge load). schtasks JARVIS-Foundry-Supervisor: Next Run Time N/A, Scheduled Task State Disabled, Status Running. No EMERGENCY_STOP sentinel under %LOCALAPPDATA%\\hermes\\foundry. Ports 8765-8769 all LISTENING."
+    },
+    "C6": {
+      "status": "PASS",
+      "evidence": "Protected files 5/5 sha256 == S0 manifest. V6 worktree clean at 22a59ca. V4 worktree HEAD 6270a21b30bd81f5068e8bf3910f947a38ee7fe8, clean. Only JF task present: JF-WP7Gate-test_tas-49923 (transient pytest artifact — XML Arguments point at %TEMP%\\pytest-of-b\\pytest-778\\test_task_restarts_after_hard_0\\foundry-home; explicitly anticipated by brief; no live effect). Finding: .h boundary commit 244d296646909aca1dd16c9759491da0ef4cd163 is ABSENT from every local object store (cat-file fails in MAIN, V6, V4, v5-merge-test; no .h worktree; packed-refs negative; reflog 1 unrelated mention) — unverifiable historical reference, substitution evidence: V6-S13 F7-1 documented this exact limitation; S0 recorded pristine at entry; S1 lists it only as untouched target."
+    },
+    "C7": {
+      "status": "PASS",
+      "evidence": "Report cross-check vs fresh evidence: parent-tree equality dceaa5a5b… PROVEN; '37 accepted commits' ✓; '51 files, +11,488/-16 vs fa4e65f' ✓ (matches git diff --stat fa4e65f..22a59ca); suite 912/EXIT=0/412.05s + hash ✓; baseline 719 EXIT=0 ✓; registry ids/slots/migrations v21-v32/rollback_target ✓; live schema v20 + daemon RUNNING + task triggers N/A ✓; daemon instance supervisor-6d250614 pre-merge ✓. Mismatches/overstatements: 'clean except 5 untracked' (6 fresh — report itself), 'main head + tree frozen' and 'full venv package freeze' (manifest fields empty), 'loaded at 02:46:51Z' vs wmic 02:46:20.993Z (+31s, still pre-merge), '3 events: …=6 events' wording slip (count correct), task Last Run Time 10:15:05 AM postdates claimed 10:10 disable (no new process exists — no live effect), live events 39,047@check vs 39,111 now (monotonic growth consistent)."
+    }
+  },
+  "findings": [
+    "LOW: git status shows 6 untracked, not 5 — 6th is the report under audit (docs/evidence/V7_S1_RELEASE.md, to be committed after verdict fill-in per its own '<fill after dispatch>' placeholder); identical to documented V7-S0 'report counts as one' pattern.",
+    "INFO: brief's literal C1 expectation HEAD^{tree}==dceaa5a5b… is arithmetically impossible (HEAD is the non-empty S0 doc commit); the true exact-source proof HEAD^^{tree}==dceaa5a5b… holds — brief arithmetic slip, intent verified.",
+    "LOW: manifests.json source.main_head and main_head_tree are empty strings although the report claims the manifest freezes 'main head + tree'; also dependencies.venv_packages=[] although the report claims 'full venv package freeze' — dependency/config freeze is partial (pyproject hash + profile hash only).",
+    "LOW: manifests.json frozen_at 2026-08-14T10:35:00+02:00 postdates every observable write (ledger events 10:23:09+02:00, file mtimes 10:22-10:24) — nominal/declared timestamp inconsistent with primary evidence.",
+    "LOW: .h boundary commit 244d2966… absent from all local object stores and no .h checkout exists — unverifiable historical reference (substitution evidence: V6-S13 F7-1, S0 entry record; report lists it as untouched only).",
+    "INFO: supervisor task Last Run Time 8/14/2026 10:15:05 AM postdates the claimed 10:10 trigger-disable; no third daemon process exists (only the two Aug-13 PIDs), so no live impact — likely scheduler/manual attempt artifact.",
+    "INFO: report 'loaded at 2026-08-13T02:46:51Z' vs wmic creation 2026-08-13T02:46:20.993615+120 (~31s earlier; still pre-merge; source-of-truth difference).",
+    "INFO: report '3 events: improvement.recorded + 2 release.manifest_recorded + 3 slot_changed = 6 events' — wording slip; the ledger holds exactly 6 events as listed."
+  ],
+  "integrity_concerns": [],
+  "scope_violations": [],
+  "independence_note": "same-provider limitation (D-031): opencode_go/deepseek-v4-flash — procedural independence only"
+}

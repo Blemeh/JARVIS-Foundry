@@ -1,0 +1,42 @@
+{
+  "verdict": "PASS",
+  "slice": "V7-S5",
+  "verifier": "independent-slice-verifier-v7s5",
+  "provider": "opencode_go/deepseek-v4-flash",
+  "criteria": {
+    "C1": {
+      "status": "PASS",
+      "evidence": "v7.db(mode=ro, schema 32): cycles=9 (3 promoted: 08cdac7dd9ca/ea562ead353d, d75fbcc5f0bc/3aa86c612e7d, cd78a27782fb/8637c5e55cd2; 4 rejected w/ reasons verification FAIL x2, stale stage, build failed; 2 reason-NULL aborted preps 00bdf295567b/5016691e3b5d with ONLY cycle.started events seq 11/17, zero cycle.completed); promotions: f3becf8f1b97 ROLLED_BACK trigger=outcome_regression (events 71-75 freeze->quarantine->restore->release.rolled_back), 12659107bee5 + 5a60e1917787 PROMOTED with canaries b3659302533f/de9d8cfa787e COMPLETED cycles_run 2; canary-46f5b9696c36 orphaned COMPLETED (events 124-127, no promotion ref); verifications 3 PASS (921af9cfd243,e682af067003,da9637041e67), 2 FAIL (25ec223e7bcf,fbf758cf0c3b), 1 REQUESTED never-verdicted (062a07e3898f); all verifier sessions differ from builder v7-cycle-builder-* (no self-certification); improvement_records=6 (brief said 5; extra 023a0ec23c72 legit discovery record 09:09:23Z pre-S5-window, all FROZEN w/ baseline/MMI/guardrails; refs live-ledger 10990/11348/14946 + V7_S2 doc verified present in live db)"
+    },
+    "C2": {
+      "status": "PASS",
+      "evidence": "sha256(tests/foundry/test_v7_restore_sidecar_regression.py)=a55a5117e0be8e0854b88a8e14280a7fab7ff7f984bef555676558f1e1fe1d53 == candidate root cycle-r1-restore-test file == release_manifests[release-a7cba1619292].artifact_hashes_json; dispatcher.py line 63 startup_grace_seconds=30 in __init__ + line 201 duration_seconds+self.startup_grace_seconds == r2b candidate semantics (grace=30, lease+grace); run.py lines 92-110 _heartbeat_with_lock_retry backoffs (0.5,1.0,2.0,4.0,8.0) wired at beat call line 141 == r3b candidate (lines 89-139); py_compile OK all 3; promoted test runs green (2 passed locally)"
+    },
+    "C3": {
+      "status": "PASS",
+      "evidence": "sha256(suite-v7-s5-full.txt)=eb67c4551648c2f7bfe0859693b881fb47e0828c0d0b3b9bba762441362eb84f (matches brief); tail: '930 passed in 421.33s (0:07:01)' + 'EXIT=0'"
+    },
+    "C4": {
+      "status": "PASS",
+      "evidence": ">=3 complete durable cycles: 3 promoted cycles ledger-recorded; >=2 promotions w/ measured improvement: evaluation_runs show 1.0/exit1 -> 0.0/exit0 for (27739517735d->d299339898e3), (09b114031b00->04ad0504271a), (b11449297362->400161b9b20e), deltas -1.0 recorded in evaluation.comparison_recorded; >=1 real R1 promotion: f3becf8f1b97 (test hash-bound, landed); >=1 bounded R2/R3 canary+promotion: b3659302533f & de9d8cfa787e 2 ticks healthy error_rate 0.0; >=1 broken candidate rejected automatically: 4 rejections (r1b build failed, r2/r3 verification FAIL, r3b stale stage); rollback exercised w/ state restoration: release.frozen->quarantine->previous restored->release.rolled_back(trigger outcome_regression), slots: live=f593853da97d, quarantine=a7cba1619292; no self-certification (distinct verifier sessions), criteria frozen pre-build, workloads hash-bound (workload-r1/r2/r3 hashes == improvement workload_json)"
+    },
+    "C5": {
+      "status": "PASS",
+      "evidence": "live foundry.db mode=ro: schema_migrations top version 20 (unchanged); daemons 11484/13012 alive (python, 8/13/2026); ports 8765-8769 all LISTENING (8765:9268,8766:8884,8767:18544,8768:11772,8769:11824); supervisor_state RUNNING heartbeat 2026-08-14T10:13:21Z; no EMERGENCY_STOP directive (4 active directives, none stop); cron jobs.json: 3 jobs ALL disabled incl 'JARVIS Foundry continuous executive' (supervisor trigger N/A); live events 10990/11348/14946 verified present (agent_run.failed x2, supervisor.degraded database is locked)"
+    },
+    "C6": {
+      "status": "PASS",
+      "evidence": "HEAD=ce93c6b59ade9c9a80ec98f3e38f41e0f047badd (brief ce93c6b); close commit diff 6fd10bc..ce93c6b = exactly 4 files (V7_S5_CYCLES.md, dispatcher.py, run.py, test_v7_restore_sidecar_regression.py); git status: only 5 untracked owner files (V5_SOL_HIGH_HARDENING_PROMPT/REPORT, V5_MASTER_PROMPT, V5_READ_FIRST, V7_MASTER_PROMPT); all 5 sha256 == protected-files.sha256 (8fa3fa2a..., c173d7ce..., d807330f..., 67591fd0..., 3b1682c6...); report status line 'PASS - CLOSED (independent slice verifier appended on close)'; section 4 placeholder '<fill after dispatch...' present (expected); all cycle/promotion/canary/verdict/error-rate/suite claims match fresh ledger evidence"
+    }
+  },
+  "findings": [
+    {"id": "F-1", "severity": "INFO", "text": "improvement_records ledger contains 6 rows, not the 5 stated in the verification brief; extra row improvement-023a0ec23c72 (discovery record, 2026-08-14T09:09:23Z, pre-dates S5 first cycle 09:42) is a legitimate FROZEN record with baseline_metric/MMI/guardrails and evidence_refs live-ledger:events:10990+11348 - honest ledger state, brief expectation inaccurate"},
+    {"id": "F-2", "severity": "INFO", "text": "Report header says '7 promoted changes landed on main' but the close commit contains exactly 3 promoted source files + the report (4 files); likely wording slip (dispatcher diff = 5 insertions + 2 deletions = 7 line changes)"},
+    {"id": "F-3", "severity": "INFO", "text": "r2/r3 verifier session ids recorded inconsistently between cycle.reason (deleg-3ce4fb83 / deleg-b89e8abb) and verifications.verifier_identity_json (deleg-v7s5-r2-verifier-independent / 20260814_114545_ae1538); both distinct from builders so no self-certification, but identity string divergence noted"},
+    {"id": "F-4", "severity": "INFO", "text": "canary-46f5b9696c36 (orphaned COMPLETED, events 124-127, same release as b3659302533f, completed 09:58:18.676 before retry canary 09:58:44.997) is visible in ledger/events but not named in the report; consistent with frozen-gate retry (release.frozen 09:49:12 from rollback exercise, unfreeze 09:58:45.079)"},
+    {"id": "F-5", "severity": "LOW", "text": "release_manifests runtime_identity_json records python 3.13.5; venv python is 3.13.5 so the 3.11.15-vs-3.13.5 LOWs in prior verifier findings are comparison artifacts of the system interpreter, not manifest errors (matches brief note)"}
+  ],
+  "integrity_concerns": [],
+  "scope_violations": [],
+  "independence_note": "same-provider limitation (D-031): opencode_go/deepseek-v4-flash - procedural independence only; all evidence derived fresh from v7.db (mode=ro), live foundry.db (mode=ro), git, filesystem; no repo/DB/process/task mutations; no subagents dispatched"
+}

@@ -1,0 +1,256 @@
+{
+  "schema": "jarvis-remaster-verifier-verdict-v1",
+  "stage": "R0",
+  "round": 3,
+  "verifier": {
+    "identity": "/root/r0_independent_verifier_r3",
+    "role": "fresh independent adversarial verifier",
+    "method": "strictly read-only workspace/live-state inspection, static source analysis, SQLite URI reads, Git plumbing, and isolated Git-bundle clone verification",
+    "model_context": {
+      "agent": "Codex",
+      "root_directive_model": "GPT-5.6 Sol at max reasoning",
+      "serving_model_attestation": "The delegated verifier cannot independently inspect serving-model telemetry.",
+      "same_model_provider_limitation": true,
+      "independence": "Fresh-context and procedural independence only; not model/provider independence."
+    }
+  },
+  "overall_verdict": "PASS",
+  "semantic_conclusion": {
+    "r0_gate": "PASS",
+    "system_purpose_status": "DOES_NOT_YET_SERVE_PURPOSE",
+    "meaning": "R0 successfully freezes and reconciles the entry truth. It does not promote V7 to original-purpose acceptance, authorize live enablement, or convert tests, isolated construction evidence, previews, or heartbeats into autonomous-purpose proof."
+  },
+  "criteria": {
+    "R0-C1": {
+      "status": "PASS",
+      "evidence": [
+        "Main and remaster HEAD independently resolve to 93a3ddc0965dfaf3e4cb9dc0952467bd5250520a with tree 2e1df6190b0d032372ae46e6a59bef22ddac57e3.",
+        "All six protected owner files match their represented SHA-256 identities and remained untracked and byte/mtime stable.",
+        "The scheduled task definition, executable, editable .pth, two Supervisor processes, task cadence, ports, stale previews, Hermes Gateway absence, databases, provider configuration, capability limitations, STOP/veto state, release-table emptiness, and evidence identities are represented.",
+        "Supervisor PIDs 21636 and 17052 retained their original 2026-08-14T11:02:05/06Z start times and exact command-line fingerprint; the task definition fingerprint remained 765ab1c0953fc71e3b774691da6c489ececb8f92fe710fc5d6e177af36e7aa59.",
+        "Ports 8765-8769 remained preview processes using the 2026-08-13 temporary preview database; no live Foundry Command Center port was inferred from their presence.",
+        "The live ledger remained RUNNING/LAB with four active directives, one singleton lease, no current STOP sentinel/veto, and zero durable releases, actions, cycles, briefings, voice interactions, budgets, or cost measurements.",
+        "Manifest capture time and baseline wording make external auth/env/config hashes point-in-time metadata rather than copied restore-artifact identities; current-path drift is reported separately."
+      ]
+    },
+    "R0-C2": {
+      "status": "PASS",
+      "evidence": [
+        "All 24 preserved raw V7 files were independently hashed: 22 verdict JSON files plus two final-verifier transcript files, 169076 bytes total, aggregate path-size-hash fingerprint dfd19234ae330a60d233b880efb7fdad07b3cb03613dbdd5aa99581188d51f5a.",
+        "All 60 surviving original var/evidence/v7-s* files were independently hashed: 117055955 bytes, aggregate path-size-hash fingerprint 891a1e361f29e2716b281815bdbedcef515597045eb442bc0fff608f5612ffd8.",
+        "The final verifier audited c589d3b1053d1447ebc70704578b649d1fe53437, tree 13dc82b6ccfa011905c959ea863d471cab4bcaa0. Final commit 93a3ddc was created afterward and changed V7_S13_FINAL_GATE.md by 35 additions and four deletions.",
+        "Preserved S3 round-2 verdict f460a79aee00abb803fb0f21c1b5ac2bdd67a260b0b77ff6c38257af2d75542e is PENDING_EVIDENCE_COMPLETE with every criterion in_progress; no separate structured S3 round-2 PASS exists.",
+        "The explicit seven-day duration waiver and D-028 statement that seven-day reliability was not proven contradict S13 and Hermes message 37637, which declared the seven-day program complete.",
+        "Hermes message 37637 has SHA-256 b1caf09b095011bae9cde94a5799055e1d4eba56d136f7d497a6b0b0375f6eba; message 37639 has SHA-256 d23d15e5367b072eaf9f18458996608d82eb0a1cfe3074b4d5503ba63f2b23c2 and immediately states scheduler, portfolio, gates, and briefings are not wired into the live daemon.",
+        "The isolated ledger contains nine cycles, three promotions, three canaries, eleven release manifests, and four recorded briefings; the live ledger contains zero of those operational records and zero system actions.",
+        "The listening preview database contains only 20 events, last recorded 2026-08-13T13:40:19.187930Z, versus more than 43000 current live events. It is not the live Command Center.",
+        "The exact V7 session records 604 model calls, 1494216 input tokens, 552569 output tokens, 176343424 cache-read tokens, and 231539 reasoning tokens while cost status remains unknown/none and numeric estimates remain 0.0. A text_to_speech tool invocation naming OpenAI is recorded before the final message. Thus zero ledger cost is not provider billing reconciliation.",
+        "Eleven suite files survive. No distinct suite exists for S2, S4, or S6, and no V7-S13 evidence directory exists; this contradiction is preserved rather than repaired by inference."
+      ]
+    },
+    "R0-C3": {
+      "status": "PASS",
+      "evidence": [
+        "The evidence-dimension matrix separates DOCUMENTED, CODE_PRESENT, TEST_PROVEN, ISOLATED_PROVEN, LIVE_OBSERVED, LIVE_EFFECT_PROVEN, ENABLED_NOW, and USEFUL_TO_OWNER.",
+        "Tests, fixtures, recorded briefings, isolated cycles/releases, stale previews, and Supervisor heartbeats are not represented as live original-purpose proof.",
+        "Current source reachability independently confirms that the installed entrypoint reaches reconciliation, lease, STOP checking, reaping, and heartbeat behavior only; scheduler, portfolio, discovery, mission execution, execution pipeline, Command Center, briefing, voice, research, knowledge ingestion, and evolution paths have no installed caller."
+      ]
+    },
+    "R0-C4": {
+      "status": "PASS",
+      "evidence": [
+        "The disposition map covers governance, ledger/projections, Supervisor/STOP/directives, scheduler/portfolio/mission, effects/broker/connectors, research/memory/Obsidian, Command Center/briefing/voice, evolution, tests/evidence, status, and documentation.",
+        "The R0-R12 plan contains all 13 stages, preserves the full IDEA.md end state and all ten purpose journeys, and retains the digital-only/no-money boundary.",
+        "Twelve preliminary performance/resource thresholds and twelve initial risks/stop conditions are frozen before implementation results.",
+        "R12 retains a real, unwaived seven-day final purpose run and explicitly forbids replacing elapsed-time evidence with a waiver."
+      ]
+    },
+    "R0-C5": {
+      "status": "PASS",
+      "evidence": [
+        "The restore directory contains exactly six files, zero subdirectories, no hidden/unmanifested files, and only the default :$DATA stream.",
+        "Every restore size and SHA-256 matches the manifest.",
+        "Both SQLite artifacts passed quick_check and integrity_check through mode=ro&immutable=1 with PRAGMA query_only=ON; bytes, hashes, mtimes, file count, and sidecar inventory were unchanged.",
+        "The task XML is 3346 bytes, SHA-256 f0961842a53c6e8b29b229dd0dd0e5d692eae2870640e1d3af22fa665bea2267, has an FF FE BOM, strictly decodes as UTF-16LE, strictly parses with DTD prohibited, and is semantically equal to the current task definition.",
+        "The Git bundle verifies as complete SHA-1 history. A fresh isolated clone reproduced commit 93a3ddc, tree 2e1df619, all 218 commits, 2152 reachable objects, and all 397 final-tree entries; strict fsck reported no integrity error.",
+        "The sole clone notice was an unborn local master because the bundle has no symbolic HEAD; origin/main was exact. The exact verifier temp directory was removed and confirmed absent."
+      ],
+      "restore_inventory": [
+        {
+          "name": "foundry-profile.yaml",
+          "size": 293,
+          "sha256": "732d3040c8b8aef81ee5026ba5e44a46ac73c8f6ca7fd81eb2561a061ac65f0a"
+        },
+        {
+          "name": "isolated-v7-r0.db",
+          "size": 790528,
+          "sha256": "486ca6f12f677070412a64ab265376d315465668ebd7553077b2d5111a409c63"
+        },
+        {
+          "name": "jarvis-foundry-93a3ddc.bundle",
+          "size": 1901624,
+          "sha256": "26d273553941830aa078716a80b9efc7d69473a395085b7804e764e41a948602"
+        },
+        {
+          "name": "JARVIS-Foundry-Supervisor.xml",
+          "size": 3346,
+          "sha256": "f0961842a53c6e8b29b229dd0dd0e5d692eae2870640e1d3af22fa665bea2267"
+        },
+        {
+          "name": "live-foundry-r0.db",
+          "size": 30773248,
+          "sha256": "3d6b2ed1ed132b719cded10d2c978004b22c6d520e141f7d788866ee865d3fab"
+        },
+        {
+          "name": "live-venv-pip-freeze.txt",
+          "size": 412,
+          "sha256": "d932191c105acd260281251ead26cb4d39507d6822a5aa76470a73092a3d9232"
+        }
+      ],
+      "database_validation": {
+        "live_restore": {
+          "quick_check": "ok",
+          "integrity_check": "ok",
+          "events": 42874,
+          "missions": 4,
+          "agent_runs": 11,
+          "monitors": 4,
+          "candidates": 934,
+          "research_queue": 929,
+          "knowledge_claims": 1071,
+          "directives": 4,
+          "operational_tables_zero": true
+        },
+        "isolated_v7_restore": {
+          "quick_check": "ok",
+          "integrity_check": "ok",
+          "events": 158,
+          "cycles": 9,
+          "promotions": 3,
+          "canaries": 3,
+          "release_manifests": 11,
+          "system_actions": 0,
+          "voice_interactions": 0,
+          "cost_measurements": 0,
+          "missions": 0
+        }
+      }
+    },
+    "R0-C6": {
+      "status": "PASS",
+      "evidence": [
+        "Start/end main and remaster HEAD/tree were identical.",
+        "All protected hashes, sizes, and mtimes were identical at verifier start/end.",
+        "The scheduled-task definition fingerprint, action, settings, and process identities were unchanged. LastRunTime/NextRunTime advanced normally under the existing minute trigger.",
+        "Supervisor PIDs and port ownership were stable; no gateway or new Command Center process appeared.",
+        "Restore inventory, hashes, sizes, mtimes, streams, and sidecar absence were unchanged.",
+        "Current env, auth, and provider-config hashes were unchanged from verifier start to end. The auth mismatch existed before this verifier began.",
+        "The first verifier live read saw 43439 events and 38422 heartbeats; the end read saw 43589 events and 38572 heartbeats. The exact +150 delta consists of expected Supervisor heartbeat activity under the same singleton owner.",
+        "Each SQLite read had unchanged database/WAL/SHM metadata immediately before and after the read. No verifier-attributable live or protected mutation occurred."
+      ]
+    },
+    "R0-C7": {
+      "status": "PASS",
+      "evidence": [
+        "FINDINGS.jsonl contains exactly 22 valid, contiguous records R0-F001 through R0-F022.",
+        "All V7 truth defects R0-F001 through R0-F018 remain durably CONFIRMED with explicit future dispositions.",
+        "R0-F019 through R0-F022 durably preserve the round-1/round-2 defects and repairs; round 3 independently verified strict UTF-16LE XML, immutable sidecar-free DB reads, exact-object Git bundle restoration, and exhaustive non-emitting secret comparison.",
+        "Round-1 FAIL SHA-256 22c2261b2aaad22f3a93bb0817dc9411f79545a6bacb64740432e5fe0e6208f4 and round-2 FAIL SHA-256 ae4c31f8cda554bfbfbcd576d0c602e88d6530cb5cfbced19e44a353a9901352 remain unaltered.",
+        "Round 3 found no additional reproducible defect requiring a new durable finding."
+      ]
+    }
+  },
+  "scope_validation": {
+    "files_expected": 9,
+    "files_matching": 9,
+    "files_mismatching": 0,
+    "hashes": {
+      "docs/remaster/R0_TRUTH_BASELINE.md": "5e1d1cecee1f1b9abc5e7ed1bdca5d04a643d70d81dfc8f31f11fe0a9fadd8e7",
+      "docs/remaster/R0_CLAIM_CONTRADICTION_REGISTER.json": "6233850aa1628ba01728e54b5e8fb061f7cfc2c32cbbfb17688dd9b2c511392d",
+      "docs/remaster/R0_DISPOSITION_MAP.md": "12ec66f6bfafc20932850cf2f8c8e29ee8239e0207648e5566bbbb11f1964a84",
+      "docs/remaster/R0_SCOPE_AND_SLICE_PLAN.md": "ef790bd37ac0c032d8a1479e735b734c2d0f68f6dad105327f4c6bcd13d73af6",
+      "docs/remaster/FINDINGS.jsonl": "b5250cc0438c446eb344390b93d7770f6aa5ed4e30a954b01472405deefbc14c",
+      "docs/remaster/evidence/r0/R0_BASELINE_MANIFEST.json": "52f4a69d6cd708f6097c7a7da1c4e4909f774d77db10e41aa6fa93b7c85df5ef",
+      "docs/remaster/evidence/r0/R0_VERIFIER_ROUND1_FAIL.json": "22c2261b2aaad22f3a93bb0817dc9411f79545a6bacb64740432e5fe0e6208f4",
+      "docs/remaster/evidence/r0/R0_VERIFIER_ROUND2_FAIL.json": "ae4c31f8cda554bfbfbcd576d0c602e88d6530cb5cfbced19e44a353a9901352",
+      "scripts/remaster/capture_r0_baseline.py": "4c15a11c207ce3e0c477e2a9f11b961c83d8dd9f1e3ce8d0f5e68de0187d4558"
+    },
+    "json_validation": {
+      "json_files_valid": 26,
+      "json_files_total": 26,
+      "jsonl_records_valid": 22,
+      "jsonl_records_total": 22
+    }
+  },
+  "manifest_validation": {
+    "metadata_records": 47,
+    "unique_referenced_objects": 41,
+    "current_path_matches": 40,
+    "current_path_mismatches": 1,
+    "missing": 0,
+    "non_secret_source_objects_matching": "38/38",
+    "mutable_secret_provider_sources_matching": "2/3",
+    "sole_mismatch": {
+      "path": "C:\\Users\\b\\AppData\\Local\\hermes\\auth.json",
+      "capture_sha256": "b73d0d18c204946a8cc3da040dd658c0f31ee8575c6afd7650e6ac3d691f7692",
+      "current_sha256": "bc64b7be1ee53992adad3c4fa2528b86a13f35973d0fb50801c9ab7ba06ee022",
+      "capture_size": 10475,
+      "current_size": 10475,
+      "classification": "capture-time mutable external-source drift",
+      "verifier_start_end_current_hash_equal": true,
+      "artifact_failure": false
+    },
+    "time_bounded_semantics_adequate": true,
+    "reason": "The manifest has an explicit captured_at_utc timestamp, each external source has capture metadata, and the baseline states that secret values were not copied and only point-in-time hashes/metadata/key names were recorded."
+  },
+  "secret_non_copy_result": {
+    "plaintext_emitted": false,
+    "authorized_candidate_count": 3,
+    "authorized_value_fingerprints": [
+      "778e9932d0076fba",
+      "c61890372055b91b",
+      "f3f5bcf5577fa7d3"
+    ],
+    "current_deliverables": {
+      "files_scanned": 39,
+      "matches": 0,
+      "matched_files": 0
+    },
+    "capture_artifact_set": {
+      "files_scanned": 30,
+      "matches_against_current_authorized_values": 0,
+      "manifest_recorded_candidate_count": 3,
+      "manifest_recorded_files_scanned": 30,
+      "manifest_recorded_matches": 0,
+      "capture_algorithm_and_counts_validated": true
+    },
+    "caveat": "The capture-time auth file rotated after capture, so the superseded literal token set is intentionally unavailable. The historical scan is therefore a timestamped capture assertion; the current authorized set was independently derived and exhaustively compared."
+  },
+  "findings": [
+    {"id":"R0-F001","severity":"S1","status":"CONFIRMED","disposition":"OPEN_REPAIR","summary":"Final V7 verifier audited c589d3b, not final commit 93a3ddc."},
+    {"id":"R0-F002","severity":"S2","status":"CONFIRMED","disposition":"OPEN_REPAIR","summary":"Claimed S3 round-2 PASS artifact is PENDING_EVIDENCE_COMPLETE."},
+    {"id":"R0-F003","severity":"S1","status":"CONFIRMED","disposition":"OPEN_REPAIR","summary":"V7 declared seven-day/perpetual completion despite the duration waiver and no unwaived run."},
+    {"id":"R0-F004","severity":"S1","status":"CONFIRMED","disposition":"OPEN_REWRITE","summary":"Installed Supervisor reaches watchdog behavior only."},
+    {"id":"R0-F005","severity":"S1","status":"CONFIRMED","disposition":"OPEN_REWRITE","summary":"Live task imports mutable editable main source without immutable release binding."},
+    {"id":"R0-F006","severity":"S2","status":"CONFIRMED","disposition":"OPEN_REWRITE","summary":"Enabled monitors are stale and do not poll real sources."},
+    {"id":"R0-F007","severity":"S1","status":"CONFIRMED","disposition":"OPEN_REWRITE","summary":"Legacy mission execution bypasses the newer ActionEnvelope/effect pipeline."},
+    {"id":"R0-F008","severity":"S1","status":"CONFIRMED","disposition":"OPEN_REWRITE","summary":"Caller-supplied performer/worktree is not bound to the authorized canonical target."},
+    {"id":"R0-F009","severity":"S1","status":"CONFIRMED","disposition":"OPEN_REWRITE","summary":"Self-evolution uses manufactured hashes/fixed evidence and is not trustworthy release proof."},
+    {"id":"R0-F010","severity":"S2","status":"CONFIRMED","disposition":"OPEN_REPAIR","summary":"Command Center ports are stale V4 previews."},
+    {"id":"R0-F011","severity":"S2","status":"CONFIRMED","disposition":"OPEN_REPAIR","summary":"Hermes Gateway reports task success while no gateway process exists."},
+    {"id":"R0-F012","severity":"S2","status":"CONFIRMED","disposition":"OPEN_IMPLEMENT","summary":"Briefing/voice proof is fixture or record-only without owner receipt."},
+    {"id":"R0-F013","severity":"S2","status":"CONFIRMED","disposition":"OPEN_IMPLEMENT","summary":"Provider usage and cost are unaccounted; numeric zero is not reconciliation."},
+    {"id":"R0-F014","severity":"S1","status":"CONFIRMED","disposition":"OPEN_DELETE_DENY","summary":"Historical financial authority conflicts with the current no-money directive."},
+    {"id":"R0-F015","severity":"S1","status":"CONFIRMED","disposition":"OPEN_REWRITE","summary":"Ledger relationships lack DB constraints and event-header hash chaining."},
+    {"id":"R0-F016","severity":"S2","status":"CONFIRMED","disposition":"OPEN_REWRITE","summary":"Projection dispatcher silently ignores unknown events."},
+    {"id":"R0-F017","severity":"S2","status":"CONFIRMED","disposition":"OPEN_REPAIR","summary":"Command Center converts broad DB failures into empty arrays."},
+    {"id":"R0-F018","severity":"S2","status":"CONFIRMED","disposition":"OPEN_REWRITE","summary":"Canonical TRUSTED_AUTONOMOUS status conflicts with live LAB/observe-only truth."},
+    {"id":"R0-F019","severity":"S2","status":"CONFIRMED","disposition":"REPAIRED_PENDING_VERIFY","round3_repair_verification":"PASS","summary":"Scheduled-task XML encoding repair verified."},
+    {"id":"R0-F020","severity":"S2","status":"CONFIRMED","disposition":"REPAIRED_PENDING_VERIFY","round3_repair_verification":"PASS","summary":"Immutable SQLite validation and closed sidecar-free restore set verified."},
+    {"id":"R0-F021","severity":"S2","status":"CONFIRMED","disposition":"REPAIRED_PENDING_VERIFY","round3_repair_verification":"PASS","summary":"Object-preserving Git bundle replacement verified."},
+    {"id":"R0-F022","severity":"S2","status":"CONFIRMED","disposition":"REPAIRED_PENDING_VERIFY","round3_repair_verification":"PASS","summary":"Exhaustive non-emitting sensitive-value comparison verified."}
+  ],
+  "round3_new_findings": [],
+  "live_protected_mutation_statement": "No verifier-attributable live or protected mutation occurred. The only live drift was the existing Supervisor's expected heartbeat/checkpoint activity; the only manifest current-path mismatch was auth-source rotation already present at verifier start.",
+  "repair_conditions": []
+}

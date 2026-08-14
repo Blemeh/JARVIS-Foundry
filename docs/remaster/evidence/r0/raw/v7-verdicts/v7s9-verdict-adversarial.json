@@ -1,0 +1,49 @@
+{
+  "verdict": "FAIL",
+  "criteria": {
+    "C1": {
+      "status": "FAIL",
+      "evidence": "HEAD=c8ece11bb79ff96ad49b27ed1d8a985442e23a89 (match). registry.py IS in 7160597 (149 lines added) with the sha256 fix present (hashlib.sha256(json.dumps(sort_keys)) idempotency key, lines 77-81); working tree == committed blob (no M). DISPROVEN sub-claims: (a) tests/foundry/test_v7_capabilities.py is NOT in 7160597 — `git log -- tests/foundry/test_v7_capabilities.py` empty, file untracked at HEAD; only docs commits (ba5b5f3, c8ece11) follow 7160597. Report lines 14-16/38 claim the test file was carried by 7160597 / '2 new files (committed with the S8 F1 fix)' — only registry.py was actually committed; capabilities/__init__.py (empty) is also untracked. (b) git status shows 8 untracked entries, not 'ONLY the 5 protected': 5 protected (all sha256 OK vs var/evidence/v7-s0/protected-files.sha256, re-verified start+end) + src/jarvis_foundry/capabilities/__init__.py + tests/foundry/test_v7_capabilities.py (slice's own, uncommitted) + tests/foundry/test_v7_minigates.py (concurrent S10 prep, mtime 13:53:17). No tracked file modified at any point."
+    },
+    "C2": {
+      "status": "PASS",
+      "evidence": "register_capability records capability.registered ledger events with full governed field set (capability_id,name,family,surfaces,effect_class,risk,verification_hint,controller) rebuilt via _rebuild from the event stream. _gate(controller==SUPERVISOR_CONTROLLER=='supervisor', verified in evolution_control.py:35) on register+broker; discovery/matrix reads ungated. Brokerage deterministic: matches sorted by (risk,capability_id), picks [0]; probe: two caps on surface 'net' R3 vs R0 -> chose caps.risk.low, decision payload reason='lowest risk among surface matches' risk=R0. Unmatched -> brokerage.waiting reason='no-matching-capability' (probe-confirmed). _EFFECT_MATRIX exactly 15 rows; probe listed all 15 classes == report section 2 verbatim. Unknown effect class refused at registration (line 69-70; test + probe EvolutionControlError). Dedup: idempotency_key capability.registered:{id}:{sha256[:8]} over canonical JSON; CROSS-PROCESS PROBE: P1 register count=1, fresh subprocess re-register identical -> '1 1' (1 event, 1 capability) — S8 F1 repair genuinely present in this module."
+    },
+    "C3": {
+      "status": "PASS",
+      "evidence": "`.venv/Scripts/python.exe -m pytest tests/foundry/test_v7_capabilities.py -v -p no:cacheprovider` (PYTHONDONTWRITEBYTECODE=1): 'collected 9 items ... 9 passed in 1.08s', exit 0. Exactly 9 test functions mapping 1:1 to the report's 9-gate matrix. Discrimination verified by inspection: decision recorded+payload asserted (need_id,capability_id), unmatched->WAITING reason asserted =='no-matching-capability', matrix completeness (matrix_complete + per-cap row non-empty reconciliation), orphan refusal (pytest.raises on unknown effect_class), dedup (event count==1 after re-registration), both supervisor gates (register+broker refusal), discovery family/surface filters. Gap (INFO): lowest-risk-first ordering not exercised by the test file itself (only one surface match per need) — covered by my independent probe instead."
+    },
+    "C4": {
+      "status": "PASS",
+      "evidence": "sha256sum var/evidence/v7-s9/suite-v7-s9-full.txt = 79a0eb023e02061349a127bae7e80662de7983aa62e8cdb3843e32b26abf0c15 (exact match to brief+report). Tail: '964 passed in 424.03s (0:07:04)' and 'EXIT=0' present. Arithmetic corroboration: 954 (V7-S8 suite at 5e8f201) + 1 (7160597 cross-process dedup regression in test_v7_briefing.py) + 9 (S9) = 964."
+    },
+    "C5": {
+      "status": "PASS",
+      "evidence": "Live DB probed ONLY via file:...?mode=ro (never opened rw; no FoundryDatabase/initialize): schema_migrations MAX(version)=32, user_version=0 (app reads schema_migrations — prior-slice known quirk). supervisor_state status=RUNNING, last_heartbeat_at=2026-08-14T11:55:32.924123Z age=1.1s (<2min). events COUNT 41417->41418 over 2s (daemon live). system_state start_active=1. directives=4. EMERGENCY_STOP sentinel absent at %LOCALAPPDATA%/hermes/foundry/EMERGENCY_STOP (and no capability.registered/brokerage.* events on live ledger — only 1 pre-existing capability.matrix.recorded; S9 left no trace). Task JARVIS-Foundry-Supervisor: State=Running, NextRunTime=8/14/2026 1:56:04 PM, LastRunTime=1:55:05 PM, LastTaskResult=2147946720 (0x800710E0 = benign running). Ports 8765-8769 ALL listening on 127.0.0.1 (PIDs 9268,8884,18544,11772,11824). Daemon pair running: python.exe PIDs 21636+17052 '-m jarvis_foundry.supervisor.run --home C:\\Users\\b\\AppData\\Local\\hermes\\foundry'. Report truth: status line 'PASS (independent verifier verdict appended on close)' (line 4) and section 3 '<fill after dispatch — fresh independent adversarial verifier, opencode_go/deepseek-v4-flash, no fallback>' placeholder (lines 93-96) present as expected; 9 tests / 15-row matrix / suite 964 EXIT=0 424.03s / sha256 79a0eb02... claims all match fresh evidence — EXCEPT the commit-placement lines (see C1)."
+    }
+  },
+  "findings": [
+    {"severity": "MEDIUM", "criterion": "C1", "finding": "tests/foundry/test_v7_capabilities.py is NOT present in commit 7160597 (git log for the path is empty; file is untracked at HEAD). The report's BASE_COMMIT_AND_DIFF ('+tests/foundry/test_v7_capabilities.py') and FILES_PROCESSES ('2 new files (committed with the S8 F1 fix)') misstate its status: only registry.py actually landed in 7160597. capabilities/__init__.py (empty) is likewise uncommitted. Substance unaffected (file exists and passes 9/9); repair = commit both files and correct the report wording.", "resolution": "parent"},
+    {"severity": "MEDIUM", "criterion": "C1", "finding": "git status at audit start showed 8 untracked entries, not 'ONLY the 5 protected untracked owner files': the 5 protected hashes all verify OK (manifest dir-anchored and root-recomputed), plus slice's own uncommitted capabilities/__init__.py + test_v7_capabilities.py, plus test_v7_minigates.py (S10 prep).", "resolution": "parent"},
+    {"severity": "INFO", "criterion": "C1", "finding": "Concurrent mutation DURING audit (V7-S7 pattern): src/jarvis_foundry/gates/minigates.py ('V7-S10 — capability-family mini-gates') + tests/foundry/test_v7_minigates.py appeared at 13:53, AFTER the suite artifact (13:52:26) and report last edit (13:52:46). Audited commit stayed immutable: no tracked file modified (status re-checked at end), protected hashes re-verified OK at end.", "resolution": "parent"},
+    {"severity": "INFO", "criterion": "C2", "finding": "Risk ordering in brokerage sorts by the risk STRING (R0..R3 lexicographic == severity order for this vocabulary, so correct today, but implicit). Test file does not itself exercise lowest-risk-first (only one surface match per need); verified by independent probe instead.", "resolution": "document"},
+    {"severity": "INFO", "criterion": "C5", "finding": "Live ledger holds exactly one capability-family event: capability.matrix.recorded x1 (pre-existing, predates S9; different vocabulary than this module's capability.registered/brokerage.*). Zero S9-family events on live ledger — consistent with report's 'no live state touched'.", "resolution": "none"}
+  ],
+  "integrity_concerns": [
+    "Live DB probed read-only (mode=ro URI); read-only opens on a WAL DB can create/touch -shm/-wal sidecars and mtime — sidecars already existed and are host-owned (foundry.db-wal 4.1MB, actively written by daemon); content verified read-only, no byte-identity claimed. No repo files created or modified by the verifier (probe scripts + scratch DBs in %TEMP% only; PYTHONDONTWRITEBYTECODE + -p no:cacheprovider on pytest run)."
+  ],
+  "scope_violations": [
+    "None. No repo/process/task/DB modified; no subagents dispatched; focused pytest used only isolated temp DBs (safe by construction); live DB never opened rw."
+  ],
+  "independence_note": "same-provider limitation (D-031): opencode_go/deepseek-v4-flash — procedural independence only",
+  "verifier": "slice-level independent adversarial verifier, V7-S9",
+  "evidence_artifacts": {
+    "suite_sha256": "79a0eb023e02061349a127bae7e80662de7983aa62e8cdb3843e32b26abf0c15",
+    "focused_pytest": "9 passed in 1.08s, exit 0",
+    "cross_process_dedup": "P1 count=1; fresh-interpreter re-register -> '1 1'",
+    "brokerage_probe": "chose caps.risk.low (R0) over caps.risk.high (R3); reason 'lowest risk among surface matches'",
+    "waiting_probe": "[] with reason 'no-matching-capability'",
+    "matrix": "15 rows, exact class list match vs report",
+    "live": "schema 32; heartbeat 1.1s; events 41417->41418; task Running NextRunTime set; ports 8765-8769 listening; EMERGENCY_STOP absent"
+  }
+}

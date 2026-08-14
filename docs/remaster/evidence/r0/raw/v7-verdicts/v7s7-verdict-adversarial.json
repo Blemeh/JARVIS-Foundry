@@ -1,0 +1,40 @@
+{
+  "verdict": "PASS",
+  "audited_slice": "V7-S7 event-first scheduler + portfolio executive",
+  "criteria": {
+    "C1": {
+      "status": "PASS",
+      "evidence": "HEAD=6f8d7f7ba267a188077fe2810b632357db52a733; commit 6f8d7f7 contains EXACTLY 5 files (1034 insertions, 0 deletions): scheduler.py, portfolio.py, test_v7_scheduler.py, test_v7_portfolio.py, V7_S7_EXECUTIVE.md. git status at audit start: ONLY the 5 protected untracked owner docs. protected-files.sha256: 5/5 OK (checked from var/evidence/v7-s0 dir; independently recomputed sha256 match recorded values). git diff a595e61..6f8d7f7 --stat touches only the 5 files; src/jarvis_foundry/evolution/ at 6f8d7f7 = a595e61 + scheduler.py + portfolio.py only (13 other modules byte-identical); zero untracked files in evolution/. NOTE: mid-audit, untracked S8 files appeared (tests/foundry/test_v7_briefing.py mtime 13:16:42, src/jarvis_foundry/reporting/) - concurrent S8 build; no tracked file changed."
+    },
+    "C2": {
+      "status": "PASS",
+      "evidence": "scheduler.py: _rebuild(L47-79) replays scheduler.enabled/disabled/item_registered/item_fired and derives suspension from stream order (last_degraded > last_heartbeat -> suspended_reason='degraded'; fresh heartbeat clears). Default DISABLED (SchedulerState(enabled=False), L36-39). _controller_gate(controller==SUPERVISOR_CONTROLLER) invoked in enable(L107)/disable(L116)/register(L128)/tick(L149). tick: max_concurrent cap (L206), total_budget_usd cap -> deferral reason 'budget' (L208-218), cooldown -> deferral reason 'cooldown' (L178-189), deadline expiry -> item_missed, never fired late (L190-199), degraded suspension blocks firing and records scheduler.suspended (L155-171), idempotent fires (cooldown-backed last_fired_at + idempotency_key item_id:fired_at, L219-225). Only 5 files changed vs a595e61; no other machinery modified."
+    },
+    "C3": {
+      "status": "PASS",
+      "evidence": "portfolio.py: governed field set (project_id,name,goals,dependencies,risks,costs_usd,capacity_slots,deadline,ev,urgency,information_gain,reversibility,opportunity_cost,status,provenance) in register payload (L106-117) and Project dataclass (L30-47); ledger events portfolio.project_registered/status_changed/reprioritized/decision/deferred/unknown/conflict; _gate enforced in register(L105)/select(L168)/pause+resume via _status_change(L200)/reprioritize(L230)/record_unknown(L246)/record_conflict(L259); deterministic scoring (linear SCORE_WEIGHTS, PAUSED=-inf ranks last, tie-break project_id, L145-162); selection respects available_slots, records portfolio.decision with reason + portfolio.deferred 'capacity' (L165-194); no owner-prompt code path exists; unknowns/conflicts recorded, no resolution logic."
+    },
+    "C4": {
+      "status": "PASS",
+      "evidence": "Ran ./.venv/Scripts/python.exe -m pytest tests/foundry/test_v7_scheduler.py tests/foundry/test_v7_portfolio.py -q: EXIT=0, '18 passed in 2.63s' (verbose run; repo addopts '-q' suppressed the summary in quiet capture). Collected 18 = 11 scheduler + 7 portfolio (report says 10+8 - totals correct, split mismatch is cosmetic). Discriminating: cooldown test (tick fires, +10s deferred with reason, +61s fires again); suspension test (degraded event -> fired==[], scheduler.suspended reason='degraded' recorded; fresh heartbeat -> fires); idempotency (3 ticks -> exactly 1 item_fired); restart-safety (replays all events with occurred_at/idempotency_key into fresh DB -> same enabled state + items); budget cap defers due item; deadline -> missed only; priority+concurrency (fires item-4,item-3 with max_concurrent=2); non-supervisor controllers raise SchedulerError/PortfolioError throughout."
+    },
+    "C5": {
+      "status": "PASS",
+      "evidence": "sha256sum var/evidence/v7-s7/suite-v7-s7-full.txt = 8907507462557589fd0855e6cdcc8b2307249b55f7ff34224abb9eb0d512fb89 (EXACT match); tail: '948 passed in 421.88s (0:07:01)' + 'EXIT=0'. Truthfulness reconciled: a595e61 tests/foundry collects 930; 930+18(S7)=948 EXACT. Current tree collects 954 because untracked S8 test file test_v7_briefing.py (6 tests, created 13:16:42 AFTER the suite) is now collected. Artifact is authentic for its tree state; claim truthful."
+    },
+    "C6": {
+      "status": "PASS",
+      "evidence": "Live DB opened ONLY via mode=ro URI: schema_migrations max=32 (2026-08-14T10:21:03.476073Z); supervisor_state RUNNING/trust LAB; heartbeat 0.3s old (11:21:57Z, ~5s cadence, seq 40938+); restart chain: supervisor.stopped 10:22:44 -> started 10:23:25 -> continuous heartbeats; no emergency_stop since 2026-08-12; system_state start_active=1 (START active, no STOP sentinel); ports 8765-8769 all LISTENING (127.0.0.1); task \\JARVIS-Foundry-Supervisor: Status Running, Next Run Time 8/14/2026 1:18:04 PM, Last Run 1:17:05 PM, runs repo venv 'python -m jarvis_foundry.supervisor.run', Last Result 0x800710E0 (task-already-running, benign with repeating trigger). Report claims verified: 18 tests total, gate matrices match source, suite 948 EXIT=0 + sha256 prefix 89075074..., observe-only scheduler default, decision-only portfolio, no daemon wiring (zero imports of evolution.scheduler/portfolio elsewhere in src/). Status line EXACT: 'PASS (independent verifier verdict appended on close)'; section 3 placeholder EXACT: '<fill after dispatch - fresh independent adversarial verifier, opencode_go/deepseek-v4-flash, no fallback>'."
+    }
+  },
+  "findings": [
+    "Suite count fully reconciled: 948 = 930 (a595e61 collection, verified via temp git archive) + 18 S7 tests. No discrepancy.",
+    "Current tree collects 954: +6 from untracked S8 in-progress tests/foundry/test_v7_briefing.py (mtime 13:16:42, post-suite) - S8 work package building concurrently.",
+    "Report's per-file split '10 scheduler + 8 portfolio' vs actual 11+7 (total 18 correct; scheduler gate 2 spans enable+disable tests; portfolio gate 8 folded into pause/resume test) - cosmetic, all gates covered.",
+    "Concurrent S8 mutation during audit: untracked tests/foundry/test_v7_briefing.py + src/jarvis_foundry/reporting/ appeared mid-verification; S7 commit immutable, no tracked file changed.",
+    "Task Last Result 0x800710E0 (0x10E0 'task is currently running') expected for a repeating ~60s trigger while the daemon holds the lease."
+  ],
+  "integrity_concerns": [],
+  "scope_violations": [],
+  "independence_note": "same-provider limitation (D-031): opencode_go/deepseek-v4-flash - procedural independence only"
+}

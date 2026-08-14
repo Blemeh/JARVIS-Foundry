@@ -1,0 +1,22 @@
+{
+ "verdict": "PASS",
+ "criteria": {
+  "guardrail correctness: no behavior regression": "PASS",
+  "guardrail cost: no paid calls": "PASS",
+  "guardrail latency: no latency regression": "PASS",
+  "guardrail safety: no live mutation": "PASS"
+ },
+ "criteria_evidence_hash": "f909d57718b7fe7bc2f38211abdeb85ce09f32337afa11457c08f263454de4ae",
+ "findings": [
+  {
+   "severity": "INFO",
+   "id": "INDEP-SAME-PROVIDER",
+   "text": "Verifier shares provider/model with builder (opencode_go/deepseek-v4-flash); same-provider limitation D-031 applies. All evidence reproduced independently from artifacts/ledger."
+  }
+ ],
+ "integrity_concerns": [],
+ "scope_violations": [],
+ "independence_note": "same-provider limitation (D-031)",
+ "recorded_at": "2026-08-14T09:47:31.580572+00:00",
+ "verifier_session": "indep-125b1f2e"
+}

@@ -1,0 +1,47 @@
+{
+  "verdict": "FAIL",
+  "slice": "V7-S6 atomic live schema + Supervisor adoption",
+  "audited_at": "2026-08-14T10:35Z",
+  "criteria": {
+    "C1": {
+      "status": "PASS",
+      "evidence": "Live DB (mode=ro): schema_migrations COUNT=32 MAX=32 DISTINCT=32; v21-v32 all stamped 2026-08-14T10:21:03.476073Z (ONE atomic run, no re-migration); 19 rows <v20; all v21-v32 tables present (improvement_records, release_manifests, canaries, cycles, release_slots, restore_points; 48 tables). Fresh WAL-safe copy (backup API): quick_check ok, fk_check [], dup event_id=0, dup sequence=0, sequence gaps=0, null payload_hash=0, verify_event_integrity=40524/40524, reconcile consistent=True mismatches=[] integrity_failures=[] (fa4e65f-era defect resolved). Events 40552 at 10:34Z, growing; supervisor.heartbeat continuous (35495 total, 5s cadence, latest 10:34:35). NOTE: migration actual time 10:21:03Z not doc's ~10:24Z (see C5)."
+    },
+    "C2": {
+      "status": "PASS",
+      "evidence": "Live pair PIDs 14496+9928 cmd='.venv\\Scripts\\python.exe -m jarvis_foundry.supervisor.run --home C:\\Users\\b\\AppData\\Local\\hermes\\foundry' (editable venv->src, Python 3.13.5); old pids 11484/13012 dead (wmic empty); adoption-report pids 22556/15080/7748/21968 also gone. supervisor_state singleton RUNNING/LAB last_heartbeat_at 10:34:35.386301Z = 4.6s before check (10:34:39Z) <2min; instance supervisor-31c804e4 == started event 10:27:26.057509Z. Task JARVIS-Foundry-Supervisor: Enabled, Status Running, Next Run 8/14/2026 12:35:04 PM, Last Run 12:35:04 (repeating ~60s trigger firing), command = frozen release. No EMERGENCY_STOP sentinel (file absent; 4 emergency_stop.frozen events all Aug 11-12 pre-S6)."
+    },
+    "C3": {
+      "status": "FAIL",
+      "evidence": "cycles=0 (observe-only) PASS; directives 4/4 active=1 (redirect/waive/extend_duty_window/align) PASS; candidates=934 monitors=4 knowledge_claims=1071 PASS; no new scheduled tasks (only JARVIS-Foundry-Supervisor) PASS. FAIL: 2 orphaned supervisor processes running on pytest temp home (PIDs 12452, 18172, CreationDate 2026-08-14 12:30:14 local = 10:30:14Z, home C:\\Users\\b\\AppData\\Local\\Temp\\pytest-of-b\\pytest-778\\test_task_restarts_after_hard_0\\foundry-home; no pytest.exe parent). Criterion 'none remain running on pytest temp homes' FALSE at audit time; they spawned 1 min AFTER the S6 doc commit (10:29:18Z) so the doc's 'killed stray pytest leftovers' was true at commit but the final state is not clean. Also observed (pre-existing, not S6): V4-era preview command-center servers on temp homes."
+    },
+    "C4": {
+      "status": "PASS",
+      "evidence": "live-v20-restore-point.db sha256=2b0f9a66c097eab2865910671c1c2bce6f547ef5dbf50d139bb2ced80d350110 EXACT match; schema_max=20, events=40412 == live-state.json capture (schema 20, 40412) => genuine pre-migration v20 snapshot; quick_check ok. task-JARVIS-Foundry-Supervisor.xml sha256=ea615b9dc0813784972e0c451951046665ea2fb79547e10ee53e7b3f7f31e6e6 EXACT match to live-state.json task_xml.sha256; foundry-profile.yaml sha256=732d3040c8b8aef81ee5026ba5e44a46ac73c8f6ca7fd81eb2561a061ac65f0a EXACT match to live-state.json config.sha256. git fa4e65f exists ('Merge branch main into codex/v4-v5-integrated'); S0 baseline artifact var/evidence/v7-s0/suite-v7-s0-baseline.txt exists."
+    },
+    "C5": {
+      "status": "FAIL",
+      "evidence": "TRUE claims reproduced: live schema 32; post-adoption-copy.db = EXACTLY 40477 events (deep-validation number), schema 32, quick_check ok; reconcile consistent zero mismatches; trigger auto-restart started event EXISTS at 2026-08-14T10:27:26.057509Z, instance == current supervisor_state instance, schema stayed 32 through all starts (single migration stamp set, no re-migration); task enabled + daemon RUNNING at close; started events today = 3 total (10:22:44, 10:23:25, 10:27:26), 1 in the restart window => no storm. DISCREPANCIES: (1) migration time: doc '~10:24Z through daemon initialize()' vs actual stamp 10:21:03.476073Z, ~7s after old daemon's last heartbeat (10:20:56.054642Z), ZERO events 10:21:03-10:22:44, NO supervisor.started event for the migrating process (first post-migration start 10:22:44.552716Z, which stopped 51ms later; then 10:23:25); migration unattributable to any recorded daemon boot; doc timeline (stop 10:23, migrate 10:23-24) contradicted by ledger. (2) Event numbers: doc '40,436 (pre-stop) -> 40,441 (post-stop)' vs adoption-report.json '40462->40466' vs ledger (40444 @10:23:00, 40451 @10:24:00, 40466 @10:26:00; 40441 == exactly the migration-time count) — no artifact pair matches the doc. (3) adoption-report.json contains 4 ok:false steps (precheck v20, events-preserved, directives-intact, started-storm) — all check-script defects (wrong predicate command_type='owner_directive' vs actual redirect/waive/align/extend_duty_window; datetime('now') format mismatch 'T' vs ' ' counting all 17 of today's started events; stale pre-migration expectation) and adopt-live.py exited 1 (all(ok)=False) — doc presents validation as all-OK without disclosing FAIL flags or exit code. (4) 'killed stray pytest leftovers' untrue at audit (see C3). (5) '0.03 s package' vs S2-recorded 0.018 s (trivial). Section-3 placeholder and status line present as expected."
+    },
+    "C6": {
+      "status": "PASS",
+      "evidence": "HEAD b6bf5023e6bd288a8132ed1d84ab292f6d62294c = doc commit; contains ONLY docs/evidence/V7_S6_ADOPTION.md (1 file, +104). git status: exactly 5 untracked protected owner files, all 5 sha256 EXACT match var/evidence/v7-s0/protected-files.sha256 (8fa3fa2a..., c173d7ce..., d807330f..., 67591fd0..., 3b1682c6...). git diff bf1a874..b6bf502 -- src/ pyproject.toml = EMPTY (SRC-UNCHANGED, frozen release source intact). Branch main."
+    }
+  },
+  "findings": [
+    "F1 (C5, MEDIUM): Migration timestamp mismatch — live ledger migrated at 10:21:03.476073Z, not ~10:24Z; no daemon started event corresponds to the migrating process (zero events 10:21:03-10:22:44; first post-migration started 10:22:44.552716Z which self-stopped 51ms later). Doc's stop-then-migrate timeline (10:23 -> 10:23-24) is not supported by the ledger (old daemon heartbeats end 10:20:56; adoption-report's own stop at ~10:24:5x killed pids 22556/15080/7748/21968).",
+    "F2 (C5, MEDIUM): Event-number claims '40,436 (pre-stop) -> 40,441 (post-stop)' match NO artifact: adoption-report.json says 40462->40466; ledger shows 40444@10:23, 40451@10:24, 40466@10:26; 40,441 equals exactly the count at migration time, suggesting misattributed measurements.",
+    "F3 (C5, LOW-MEDIUM): adoption-report.json records 4 failing check steps (precheck v20, events preserved, directives intact, started storm) and adopt-live.py exited non-zero; doc presents the adoption as fully successful without disclosing these (they are demonstrably check-script bugs — directives 4/4 verified directly, started events today=3, events grew with full integrity — but the disclosure gap stands).",
+    "F4 (C3, MEDIUM): 2 orphaned supervisor processes (PIDs 12452/18172) running on pytest temp home pytest-778, created 10:30:14Z (after doc commit 10:29:18Z); 'killed stray pytest temp-home leftovers' is false at audit time; no pytest parent -> orphaned.",
+    "F5 (C2/C6, INFO): Task Last Result 0x800700E0 (ERROR_SINGLE_INSTANCE_APP) on each repeating-trigger firing while daemon runs — expected behavior, not a fault.",
+    "F6 (C1, INFO): '0.03 s migration' (S6 doc) vs '0.018 s' (S2 doc) — measurement variance only."
+  ],
+  "integrity_concerns": [
+    "None for the live ledger: 40524/40524 verify_event_integrity, reconcile consistent, quick_check ok, fk_check [], zero dupes/gaps/null payload hashes on a fresh WAL-safe copy. No event loss or duplication. v20-era event vocabulary (supervisor.heartbeat) functioning continuously."
+  ],
+  "scope_violations": [
+    "C3: stray supervisor processes on pytest temp home (PIDs 12452, 18172) — outside the live home but explicitly in scope of the criterion; spawned post-commit.",
+    "Observed pre-existing (not S6-attributable): V4-era preview command-center servers (C:\\Python313 base64 launches on %TEMP%\\jarvis-v4-preview-20260813-154014) still running on temp homes."
+  ],
+  "independence_note": "same-provider limitation (D-031): opencode_go/deepseek-v4-flash — procedural independence only"
+}

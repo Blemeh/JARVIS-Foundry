@@ -1,0 +1,40 @@
+{
+  "verdict": "PASS",
+  "criteria": {
+    "C1": {
+      "status": "PASS",
+      "evidence": "rehearsal-run.txt last line 'EXIT=0' (line 11); S1 after=32/events_preserved=True/reconcile_consistent=True/integrity_events=39245; S2 schema_stable+events_stable True; S3 'all recovered = True' with 12/12 boundaries (20..31) all recovered_schema=32+events_preserved; S3b rolled_back 25/recovered 32/events_preserved True; S4a version refusal (live 20 vs expected 32, consistent False); S4b schema_unchanged+events_unchanged True+quick_check ok; S5a restored_schema=20/events_equal_snapshot=True/sha 557a0909...; S5b point_verified True+slot_restored_exactly True; S6 measurements. rehearsal-report.json parses; programmatic ast.literal_eval comparison of all 8 printed scenario dicts vs JSON: ALL OK. supplemental-report.json: integrity_check 'ok', foreign_key_check [], schema 32, table_count 51, index_count 77, both config hashes 64-hex non-empty. INFO: no literal 'PASS' tokens in run txt - PASS inferred from field values + EXIT=0 (script design: prints dicts, asserts S3 via 'ok' flag)."
+    },
+    "C2": {
+      "status": "PASS",
+      "evidence": "Live DB opened ONLY via file:...?mode=ro URI: MAX(schema_migrations.version)=20, 20 rows, integrity_check ok; supervisor_state 1 row RUNNING trust LAB, heartbeat ages 0.2s then 2.1s across 12s apart samples (refreshing); wmic: PIDs 11484+13012 alive, both '-m jarvis_foundry.supervisor.run --home ...foundry'; schtasks JARVIS-Foundry-Supervisor: Scheduled Task State Disabled, Next Run Time N/A; no EMERGENCY_STOP (ls|grep exit 1); ports 8765-8769 LISTENING; events grew 39291->39294 over 16s; live db 28,344,320 B > rehearsal-time 28,323,840 B; -wal 490,312 B present (report's wal_sidecars_present True confirmed). INFO: 8765 has two listeners (9268, 3720); sidecars pre-existed (daemon-owned), none created by audit."
+    },
+    "C3": {
+      "status": "PASS",
+      "evidence": "py_compile OK for rehearse-migration.py AND supplemental-probes.py (cfile->%TEMP%, zero writes into repo; evidence dir listing unchanged after); scenario labels S1,S2,S3,S3b,S4a,S4b,S5a,S5b,S6 in script match run-txt lines 1-9 exactly; correct-restore procedure present at L208-226 (wal_checkpoint(TRUNCATE) -> gc+retry unlink of -wal/-shm -> shutil.copyfile from snapshot), plus the leaked-connection close discipline; WAL sidecar trap honestly documented in script docstring (L8-11), S5a procedure field, and report section 2 item 1."
+    },
+    "C4": {
+      "status": "PASS",
+      "evidence": "Report claims cross-checked against artifacts: 0.018 s (JSON+run txt+report agree); 39,245 events at S1; snapshot sha256 557a0909...; profile hash 732d3040... independently recomputed from live %LOCALAPPDATA%\\hermes\\foundry\\foundry-profile.yaml = exact match; 12/12 boundaries; 51 tables/77 indexes (supplemental a_deep_integrity); 'no live changes' corroborated by C2 battery. FINDING-1: task_xml_sha256 8a1f45ca does not verify the archived file (on-disk = 5316c816, CRLF) nor the live schtasks /xml output; it matches only the LF-normalized in-memory string (python universal-newlines decode + write_text CRLF re-translation). Archived XML is semantically identical to live task definition (whitespace-stripped byte equality) - restore content sound, hash binding broken."
+    },
+    "C5": {
+      "status": "PASS",
+      "evidence": "git rev-parse HEAD = 65572323828524d3811087239b18822550b38033 (6557232, 'docs(v7-s1): accepted V6 integration...' S1 close); git status --porcelain: exactly 6 untracked = 5 protected owner docs (docs/handoffs/V5_SOL_HIGH_HARDENING_{PROMPT,REPORT}.md, docs/planning/V5_MASTER_PROMPT.md, V5_READ_FIRST.md, V7_MASTER_PROMPT.md) + docs/evidence/V7_S2_MIGRATION_REHEARSAL.md; V7_S0_ENTRY.md + V7_S1_RELEASE.md NOT untracked (committed, confirming brief's NOTE); protected-file hashes 5/5 match var/evidence/v7-s0/protected-files.sha256 (8fa3fa2a, c173d7ce, d807330f, 67591fd0, 3b1682c6); V6 worktree (JARVIS-Foundry-V6) HEAD = 22a59cab7113762b7ac2210eb1688b61f994ccfb, porcelain EMPTY (clean); var/ gitignored (.gitignore:13)."
+    },
+    "C6": {
+      "status": "PASS",
+      "evidence": "supplemental b_old_executable_on_migrated.stdout = 'OLD RECONCILE OK consistent= True' + 'mismatches 0 missing 0 unexpected 0' (exact match to claim); post_probe events 39231, schema 32, improvement_records_rows 0 (exact match); assessment text equals report section 2 item 3 characterization ('benign today... prohibited after the first evolution event; S6 terminates old daemon first; rollback = snapshot restore + old executable together'). Fair reading: probe demonstrates reconcile passes with 0/0/0 only because the copy holds no V6-vocabulary events, and old reconcile left improvement_records untouched (0 rows); prohibition is a sound policy inference from old code's inability to know v32 tables (static, documented)."
+    }
+  },
+  "findings": [
+    {"severity": "LOW-MEDIUM", "id": "F1", "criterion": "C4", "text": "task_xml_sha256 (8a1f45ca...) recorded in supplemental-report.json and cited in the S2 report does not bind the archived artifact: on-disk task-JARVIS-Foundry-Supervisor.xml hashes to 5316c816 (write_text CRLF translation) and the live schtasks /xml output differs again (ea615b9d raw; its lines carry a \\r\\n\\r quirk). 8a1f45ca matches ONLY the LF-normalized in-memory string. The archived XML is semantically identical to the live definition (whitespace-stripped equality) and declares encoding='UTF-16' while being UTF-8 bytes - restore content is sound, but the hash binding is broken and a strict parser honoring the declaration would reject the file. Recommend re-recording the hash over the on-disk bytes (or a pinned normalization) and fixing the encoding declaration."},
+    {"severity": "INFO", "id": "F2", "criterion": "C1", "text": "rehearsal-run.txt contains no literal PASS tokens; PASS is inferred from printed field values + EXIT=0. Consistent with script design (only S3 prints an explicit boolean verdict), but the brief's 'contains PASS results' phrasing is satisfied by inference."},
+    {"severity": "INFO", "id": "F3", "criterion": "C2", "text": "Port 8765 shows two listeners (PIDs 9268, 3720) while 8766-8769 each have one; ports block 8765-8769 all LISTENING as claimed. Event counts across artifacts (39231 supplemental < 39245 S1 < 39291 live-now) are consistent with continuous growth; supplemental ran before rehearsal (file timestamps 10:38/10:39 vs 10:40/10:41)."}
+  ],
+  "integrity_concerns": [
+    "F1 (task XML hash binding) is the only artifact-level integrity defect found; all other hashes (snapshot 557a0909, profile 732d3040, protected files 5/5) reproduce exactly from primary sources.",
+    "Live DB probed only via mode=ro URI; -wal/-shm sidecars pre-existed (daemon-owned, 490,312 B -wal growing); no new artifacts attributable to this audit. Rehearsal evidence shows the correct WAL sidecar trap was learned empirically and encoded into the S6 procedure."
+  ],
+  "scope_violations": [],
+  "independence_note": "same-provider limitation (D-031): opencode_go/deepseek-v4-flash — procedural independence only"
+}

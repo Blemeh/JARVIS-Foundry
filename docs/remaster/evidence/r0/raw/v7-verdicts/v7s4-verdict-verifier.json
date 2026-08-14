@@ -1,0 +1,65 @@
+{
+  "verdict": "PASS",
+  "criteria": {
+    "C1": {
+      "status": "PASS",
+      "evidence": "Live DB opened mode=ro URI only, single read transaction (WAL snapshot). schema_migrations MAX(version)=20. agent_run.failed: EXACTLY 2 events at sequence 10990 (failure_class=timeout, detail 'session exceeded 300s bound') and 11348 (failure_class=heartbeat_timeout). supervisor.degraded: EXACTLY 1 at sequence 14946, reason=heartbeat_failure, details.error='database is locked', error_class=OperationalError. verification.failed: 13 events (seqs 164,373,1479,2909,3731,3732,3733,4089,4476,4667,5100,5639,9149), ALL 13 have a later verification.passed (45 passed total) — closure holds. discovery.candidate_scored: 237 events, MAX(occurred_at)=2026-08-12T23:59:27.670567Z. discovery.monitor_polled: 52 events, MAX(occurred_at)=2026-08-13T10:06:04.484722Z. candidates: 934 total = 678 NEW + 232 SCORED + 19 REJECTED + 3 EXECUTED + 2 SUPERSEDED. knowledge_claims: 1071 rows, 1071 stale (all fresh_until NULL — satisfies '<now or NULL'). All report numbers reproduce exactly."
+    },
+    "C2": {
+      "status": "PASS",
+      "evidence": "var/v7-runtime/v7.db opened mode=ro URI. schema_migrations MAX(version)=32. improvement_records EXACTLY 3 rows: improvement-c4f21554bf73 (adoption base, problem mentions 'V7 adoption base...no such table: cost_measurements'), improvement-023a0ec23c72 (problem mentions 'verify-role worker session'), improvement-9e684edeb0f7 (problem mentions 'supervisor.heartbeat'). DISCREPANCY: 023a0ec23c72 risk_class=R3 (declared R3, frozen R3), NOT R2 as briefed/reported — see finding F1 (safety-conservative direction; substance of C2 reproduces). 9e684edeb0f7 risk_class=R3 as briefed. discovery_runs EXACTLY 1 row: candidates_count=2, recorded_count=2, controller='supervisor', sources_hash=13a6a3a25fe6.... Events present: 3 improvement.recorded + 1 discovery.observed (run event; brief's name 'discovery.run' is imprecise — actual V6-S10 vocabulary is discovery.observed, see finding F2). cycles: 0 rows. Total events=9 (matches report)."
+    },
+    "C3": {
+      "status": "PASS",
+      "evidence": "discovery-report.json dedup_check.identical_rerun_returned_same_ids=true. Independent re-run: %TEMP% copy of v7.db via sqlite3 backup API (C:/Users/b/AppData/Local/Temp/v7s4-verif-dedup/copy.db); candidate_improvements with the verbatim S4 observation inputs derived 2 candidates with evidence_refs live-ledger:events:10990+11348 and live-ledger:events:14946; record_discovered_improvements(same candidates, same sources, controller=supervisor, source_type=supervisor, source_id=v7) returned EXACTLY [improvement-023a0ec23c72, improvement-9e684edeb0f7]; improvement_records 3->3 (no new rows), discovery_runs 1->1 (no new run). Original ledger untouched (mtime 11:09 unchanged; my probe-created 0-byte -wal/-shm removed after content re-verify)."
+    },
+    "C4": {
+      "status": "PASS",
+      "evidence": "discovery-report.json: 5 observations -> 2 CANDIDATE + 3 WAITING; all 3 WAITING entries carry substantive, honest reasons (all-13-closed; pre-adoption V4 machinery bound to S6; 1071 stale claims bound to S6). Report evidence refs match C1 live facts (events 10990+11348, 14946, 13-closed, 678/934 + 52 polls, 1071 stale). No live mutation: live DB still schema v20; daemon RUNNING (python.exe -m jarvis_foundry.supervisor.run --home live home, PIDs 11484+13012, -wal growing); task triggers N/A (schtasks JARVIS-Foundry-Supervisor XML <Settings><Enabled>false</Enabled>); no EMERGENCY_STOP file (foundry home + repo scan); ports 8765,8766,8767,8768,8769 all LISTENING on 127.0.0.1. Report's frozen-risk labels for candidate 1 are wrong (R2 vs actual R3) — finding F1."
+    },
+    "C5": {
+      "status": "PASS",
+      "evidence": "git branch=main; HEAD=4e49d2d6556e99c3b73100da7e004b30553ece87 (S3-close/repair commit, a V7 slice commit); V7 doc commits present in history: a1a33e1 (v7-s0), 6557232 (v7-s1), 547b177 (v7-s2), 91b2143 (v7-s3), 4e49d2d (v7-s3 fix). git status --porcelain: exactly 6 untracked files — 5 protected owner files + docs/evidence/V7_S4_DISCOVERY.md (expected, uncommitted); ZERO tracked modifications. sha256 of all 5 protected files match var/evidence/v7-s0/protected-files.sha256 byte-for-byte (8fa3fa2a..., c173d7ce..., d807330f..., 67591fd0..., 3b1682c6...)."
+    }
+  },
+  "findings": [
+    {
+      "severity": "MEDIUM",
+      "id": "F1",
+      "title": "Risk-class mislabel: improvement-023a0ec23c72 is frozen R3, not R2",
+      "detail": "Report (V7_S4_DISCOVERY.md lines 31, 78, 89: 'frozen R2/R3 risk classes', '(R2)', 'risk R2 (roles/mission surfaces)') and the verifier brief (C2: risk_class R2) both state R2. Primary evidence from the ledger: risk_class=R3 AND risk_class_declared=R3 for improvement-023a0ec23c72 (surfaces src/jarvis_foundry/roles + mission). The classifier did not force it — the declared value itself was R3. Deviation is fail-closed in the safety direction (R3 is stricter than R2; both R2/R3 require canary before promotion), so no operational or safety hole. Graded PASS per precedent (brief-expected-outcome-wrong + fail-closed direction is not a criterion failure) but recorded: S5/S6 planning must use ledger risk_class (R3), and the report's risk labels are factually incorrect and should be corrected at close."
+    },
+    {
+      "severity": "LOW",
+      "id": "F2",
+      "title": "Brief's event name 'discovery.run' is imprecise — actual vocabulary is 'discovery.observed'",
+      "detail": "The ledger's discovery-run event is discovery.observed (key discovery.observed:discovery-13a6a3a25fe6) per the V6-S10 vocabulary; there is no event_type 'discovery.run'. The run row (discovery_runs) and its event are present, so the C2 substance holds; naming in the brief/report should say discovery.observed."
+    },
+    {
+      "severity": "INFO",
+      "id": "F3",
+      "title": "Two live supervisor daemon processes share the live foundry home",
+      "detail": "wmic shows PIDs 11484 and 13012 both running '.venv\\Scripts\\python.exe -m jarvis_foundry.supervisor.run --home C:\\Users\\b\\AppData\\Local\\hermes\\foundry'. Pre-existing live state, predates S4 (S4 ran no live code), not caused by this slice — operator awareness only (possibly parent+child; not investigated as it is out of slice scope)."
+    },
+    {
+      "severity": "INFO",
+      "id": "F4",
+      "title": "Transient scheduled task JF-WP7Gate-test_tas-49923 is a pytest artifact",
+      "detail": "XML Arguments point at %TEMP%\\pytest-of-b\\pytest-778\\test_task_restarts_after_hard_0\\foundry-home — a test artifact, not a live trigger. CSV Status 'Running' for JARVIS-Foundry-Supervisor is misleading; XML <Enabled>false</Enabled> is authoritative (triggers N/A confirmed)."
+    },
+    {
+      "severity": "INFO",
+      "id": "F5",
+      "title": "Live event count stable across 2s sample (39762->39762); daemon liveness proven by process + WAL growth",
+      "detail": "The 2-second double-count did not grow (heartbeat interval likely longer); liveness independently confirmed via wmic process listing and foundry.db-wal growth (1,219,552 bytes at 11:25). Not a criterion issue."
+    }
+  ],
+  "integrity_concerns": [
+    "F1 is the only report-vs-artifact integrity discrepancy found: the S4 report misstates the frozen risk class of candidate 1 (R2 vs actual R3). Safety-conservative, no impact on gating, but must be corrected at slice close and in the S5 brief.",
+    "Probe hygiene disclosed: my mode=ro URI opens of v7.db created a 0-byte -wal and -shm beside it (expected SQLite behavior on a WAL DB); both removed after content re-verification (schema 32, 3 improvements, 1 run, 0 cycles, 9 events via immutable=1 read); v7.db mtime unchanged (11:09). Live foundry.db touched only via mode=ro URI reads inside one transaction — never FoundryDatabase/initialize."
+  ],
+  "scope_violations": [
+    "None. Read-only audit: no repo files, DBs (live or isolated), processes, or scheduled tasks were modified; the disabled JARVIS-Foundry-Supervisor task was not re-enabled; no subagents dispatched."
+  ],
+  "independence_note": "same-provider limitation (D-031): opencode_go/deepseek-v4-flash — procedural independence only"
+}

@@ -1,0 +1,21 @@
+{
+  "verdict": "PASS",
+  "criteria": {
+    "C1": {"status": "PASS", "evidence": "13/13 slice reports committed on main (git ls-files); all status lines verified directly (S0 deleg_6ca5671e, S1 deleg_719b3c49, S2 deleg_237a2435, S3 r2 deleg_ac992376 after r1 deleg_bb1a6605 FAIL, S4 deleg_e52adaf2, S5 deleg_dda6b777, S6 r3 deleg_f1a5f77f after 2 FAIL rounds, S7 deleg_7cacb0af, S8 deleg_1df5a225 F1 repaired, S9 r2 deleg_ec3a4be2 after r1 deleg_64027f96 FAIL, S10 deleg_e9c0f4e4, S11 deleg_c0ebfcfd, S12 deleg_4a696b3d); no STATUS: FAIL remains"},
+    "C2": {"status": "PASS", "evidence": "sha256 8e8d15a4bfba3eb96ebd93abc2a0f654f2fc72c354bc7e76c806a8dba44f993a exact; tail '985 passed in 438.79s' + 'EXIT=0'; monotonic 719->912->926/928->930->948->954->964->972->978->985; HEAD c589d3b1053d1447ebc70704578b649d1fe53437 main; status = only 5 protected untracked files, hashes byte-identical; S5/S6 evidence secret scan clean"},
+    "C3": {"status": "PASS", "evidence": "schema_migrations max=32, v21-v32 single atomic stamp 2026-08-14T10:21:03.476073Z; WAL-safe copy: quick_check ok, integrity_check ok, fk_check [], verify_event_integrity 42030==count, reconcile consistent mismatches []; daemon RUNNING on frozen release (venv .pth->repo src, task cmd exact, heartbeat events every ~5s fresh); task Enabled/Running/NextRunTime/PT1M trigger; live cycles=0; scheduler.enabled event absent (observe-only); 4/4 directives active; no STOP sentinel; ports 8765-8769 listening (see finding F1)"},
+    "C4": {"status": "PASS", "evidence": "cycles 3 promoted (08cdac7dd9ca,d75fbcc5f0bc,cd78a27782fb) + 4 completed rejections + 2 aborted preps; promotions f3becf8f1b97 ROLLED_BACK (S5 exercise), 12659107bee5/5a60e1917787 PROMOTED; canaries 3 COMPLETED; verifications 3 PASS/2 FAIL/1 REQUESTED (062a07e3898f stale); verifier sessions distinct from builders, same_provider_limitation=1; improvement_records FROZEN w/ hashes; briefing.recorded EN+SQ x2 with content_hash=sha256(content)[:8] — recomputed digest 5abbf0e3 matches latest pair, text matches ledger counts"},
+    "C5": {"status": "PASS", "evidence": "report claims all match fresh evidence (13/13, suite 985, schema 32 RUNNING, observe-only, 4/4 directives, no STOP, rollback paths v20/fa4e65f); perpetual model 6 points consistent; section 3 placeholder present; STATUS '<fill on close...>' as expected for parent update"},
+    "C6": {"status": "PASS", "evidence": "no unresolved FAIL/OPEN in any slice report; only abandoned verification 062a07e3898f (REQUESTED, stale stage, documented); no emergency.stop events after 2026-08-12 (all emergency_stop.frozen <= 08-12T10:23:51Z; supervisor.stopped 08-14T10:22:44Z is normal post-migration restart)"}
+  },
+  "findings": [
+    "F1 (INFO): ports 8765-8769 are held by stale V4-preview CommandCenterServer processes (base64 launch, %TEMP%\\jarvis-v4-preview-20260813-154014\\preview.db), not the V7 daemon; criterion factually met, V7 daemon is port-less by design; cleanup recommended",
+    "F2 (INFO): two supervisor daemon processes with identical frozen-release command line (started 1s apart); single lease holder supervisor-6f25cdff, single heartbeat source; no conflict observed",
+    "F3 (INFO): task Last Result 0x800710e0 on last trigger firing — artifact of repeating trigger firing while instance already running; liveness proven by 5s heartbeats",
+    "F4 (INFO): leases/supervisor_state projection heartbeat lags events ledger (~3 min); projection cadence, not daemon stall",
+    "F5 (INFO): S13 STATUS line reads '<fill on close...>' — parent appends verdict post-dispatch as expected"
+  ],
+  "integrity_concerns": [],
+  "scope_violations": [],
+  "independence_note": "same-provider limitation (D-031): opencode_go/deepseek-v4-flash — procedural independence only"
+}

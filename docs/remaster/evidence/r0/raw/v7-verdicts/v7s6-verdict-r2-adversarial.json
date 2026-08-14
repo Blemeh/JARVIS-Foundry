@@ -1,0 +1,35 @@
+{
+  "verdict": "FAIL",
+  "round": 2,
+  "verifier": "adversarial-r2 (opencode_go/deepseek-v4-flash)",
+  "criteria": {
+    "R1": {
+      "status": "PASS",
+      "evidence": "schtasks /query /tn JF-WP7Gate-test_tas-49923 -> 'ERROR: The system cannot find the file specified' (task deleted). Full Win32_Process inventory (all python.exe/python3.exe): zero command lines containing pytest/pytest-of; no pytest temp homes. Only supervisor.run processes = 2 pids (14496 venv python, parent=svchost/2744=Task Scheduler, created 10:27:05Z; 9928 child C:\\Python313, created 10:27:06Z), both '.venv\\Scripts\\python.exe -m jarvis_foundry.supervisor.run --home C:\\Users\\b\\AppData\\Local\\hermes\\foundry' — live home only. Full task list: no JF-WP7Gate-test or any pytest/WP7 task."
+    },
+    "R2": {
+      "status": "FAIL",
+      "evidence": "PASS parts: live schema_migrations v21-v32 all recorded_at 2026-08-14T10:21:03.476073Z (one atomic stamp; v1-v20 prior stamps unchanged) == doc claim; post-adoption-copy.db = exactly 40,477 events (verify_event_integrity 40477/40477, reconcile consistent, mismatches none, quick_check ok, schema 32); live 40,705 > 40,552 at 10:47:31Z and growing; restore point 40,412 events/schema 20/sha256 2b0f9a66c097eab2865910671c1c2bce6f547ef5dbf50d139bb2ced80d350110; host-cleanup claim honest (0 pytest processes; test task deleted; 5 V4 preview servers confirmed pre-existing base64 temp-home launches dated 2026-08-13 15:41-16:43). FAIL parts: doc states report 'contains two ok:false step flags' but artifact adoption-report.json contains FOUR ok:false flags (precheck live schema v20 schema=32; events preserved 40466->40466; directives intact [(0,)]; started events bounded started=17); the two extra flags are undisclosed; 'directives intact [(0,)]' contradicts the doc's directives-PASS narrative — cause is script predicate bug (WHERE command_type='owner_directive' matches zero rows; live directives use redirect/waive/extend_duty_window/align) STILL present in fixed adopt-live.py lines 181-183 (live truth = 4/4 active, independently verified); doc's 'adoption run saw 40,436/40,441' is not artifact-bound (surviving artifact: precheck 40462 -> 40466 -> final 40466)."
+    },
+    "R3": {
+      "status": "PASS",
+      "evidence": "Live schema 32; v21-v32 one atomic stamp 10:21:03.476073Z. Fresh WAL-safe backup of post-adoption-copy.db: quick_check ok, verify_event_integrity 40477/40477, reconcile consistent=True mismatches=null; independent SQL on copies: dup event_id 0, dup sequence 0, gaps 0, null payload_hash 0. Daemon RUNNING heartbeat < 2 min: last_heartbeat_at 10:47:28.6Z vs clock 10:47:31Z (3s), instance supervisor-31c804e4-d672-4344-a5de-e55a6a091949 trust LAB, lease expires 10:48:58 renewing ~90s, max_seq 40,705 at 10:47:31Z. Task: Scheduled Task State=Enabled, Status=Running, Next Run Time 8/14 12:44:04 PM, Task To Run = exact frozen-release command, Last Result 0x800710E0 (trigger fired against already-running instance). cycles table empty (observe-only). 4/4 directives active=1. candidates 934, monitors 4, knowledge_claims 1071. No EMERGENCY_STOP file in live home. Restore point sha256 exact + schema 20. Task XML sha256 ea615b9dc0813784972e0c451951046665ea2fb79547e10ee53e7b3f7f31e6e6 == live-state.json task_xml.sha256. git status = exactly the 5 protected untracked docs; src/ diff bf1a874..HEAD empty; editable .pth -> repo src (frozen release). Started events 18 total over 30+h (no storm; 17 at 10:26 report + durable 10:27:26)."
+    },
+    "R4": {
+      "status": "PASS",
+      "evidence": "HEAD = 404a596287fe13371dbb9f6143997ef7a4a94bb3; bf1a874..HEAD touches only docs/evidence/V7_S6_ADOPTION.md (doc-only). Full schtasks list: no new JARVIS/foundry/pytest tasks (only JARVIS-Foundry-Supervisor and pre-existing Hermes_Gateway). Ports 8765-8769 all LISTENING on 127.0.0.1, owners = V4 preview servers created 2026-08-13 (pre-existing). Full python inventory: codex-router litellm (Aug13 04:46), hermes serve (Aug13 08:18), 5 preview servers (Aug13 15:41-16:43), daemon 2 pids (today 10:27Z), verifier shells — no new stray processes, no pytest processes."
+    }
+  },
+  "findings": [
+    "RESIDUAL C5-CLASS (R2): docs/evidence/V7_S6_ADOPTION.md (404a596) claims adoption-report.json 'contains two ok:false step flags' — the artifact contains FOUR. Two extra flags undisclosed: 'precheck live schema v20 (schema=32)' and 'directives intact ([(0,)])'. The directives flag contradicts the doc's directives-PASS claim; its cause is a query-predicate bug (command_type='owner_directive' matches 0 rows; live directives use redirect/waive/extend_duty_window/align) that remains unfixed in adopt-live.py (lines 181-183). Live outcome is nonetheless correct (4/4 active directives, verified independently)."
+  ],
+  "integrity_concerns": [
+    "Daemon process tree = 2 pids; child 9928 runs C:\\Python313\\python.exe (venv base interpreter per pyvenv.cfg home=C:\\Python313) with identical cmdline; spawn mechanism not found in supervisor src (WorkerController.spawn has no callers in supervisor package) — functionally benign (single lease, single instance, single heartbeat source) but child's import mechanism not fully explained.",
+    "Task Last Result 0x800710E0 while Status=Running — consistent with the repeating PT1M trigger firing against an always-running instance (design intent: auto-restart cadence).",
+    "schtasks lists JARVIS-Foundry-Supervisor twice = two trigger blocks (AtLogon + OneTime repeating PT1M/720h) of one task, matching evidence XML Interval PT1M; not a duplicate registration.",
+    "adoption-report.json 'supervisor RUNNING + fresh heartbeat' steps logged the pre-kill heartbeat (10:25:11Z); script's RUNNING check was trivially satisfied — live truth verified independently.",
+    "Report-truth nit: doc's 'adoption run saw 40,436/40,441' not reproducible from any surviving artifact (report artifact: 40462->40466->40466)."
+  ],
+  "scope_violations": [],
+  "independence_note": "same-provider limitation (D-031): opencode_go/deepseek-v4-flash — procedural independence only"
+}

@@ -1,0 +1,13 @@
+{
+  "verdict": "PASS",
+  "criteria": {
+    "R1": {"status": "PASS", "evidence": "9cb06e0 contains exactly 3 files (report +12/-5, __init__.py 0B, test +178); registry.py in 7160597 with hashlib.sha256 key (line 81), byte-identical to HEAD; HEAD=3fc7276 (parent S10, 9cb06e0 ancestor; diff 9cb06e0..HEAD = 4 S10 files only); git status = exactly 5 untracked files, all hashes match protected-files.sha256"},
+    "R2": {"status": "PASS", "evidence": "registry.py reviewed + independent temp-DB probe: full governed field payload, supervisor gates on register+broker, deterministic lowest-risk (risk,capability_id) with recorded decisions, honest WAITING, 15-row _EFFECT_MATRIX, unknown class refused, sha256 content dedup"},
+    "R3": {"status": "PASS", "evidence": "pytest -v: 9/9 named tests PASSED, '9 passed in 1.02s', exit 0 (run twice); suite sha256 79a0eb023e02061349a127bae7e80662de7983aa62e8cdb3843e32b26abf0c15 exact; tail '964 passed in 424.03s' + 'EXIT=0'"},
+    "R4": {"status": "PASS", "evidence": "DB mode=ro schema 32; supervisor RUNNING heartbeat 3.3s old; no EMERGENCY_STOP (release_control empty, last stop events 08-12); schtasks JARVIS-Foundry-Supervisor Enabled+Running+NextRun 2:01:04PM; ports 8765-8769 LISTENING; report STATUS line + section-3 placeholder + corrected BASE_COMMIT/FILES match artifacts"}
+  },
+  "findings": [],
+  "integrity_concerns": [],
+  "scope_violations": [],
+  "independence_note": "same-provider limitation (D-031): opencode_go/deepseek-v4-flash — procedural independence only"
+}

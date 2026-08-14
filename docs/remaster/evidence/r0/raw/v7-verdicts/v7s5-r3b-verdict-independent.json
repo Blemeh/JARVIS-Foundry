@@ -1,0 +1,62 @@
+{
+  "verdict": "PASS",
+  "criteria": {
+    "guardrail correctness: no behavior regression": {
+      "status": "PASS",
+      "evidence_hash": "b388a613bfdc7bf838de2da61e5773724d7b93e7a0491f783b093f1eff738fd3"
+    },
+    "guardrail cost: no paid calls": {
+      "status": "PASS",
+      "evidence_hash": "6e9e4fb5e10665230d65a279da57c479f2546869ab5629b5383a7fd162695649"
+    },
+    "guardrail latency: no latency regression": {
+      "status": "PASS",
+      "evidence_hash": "104ed8892a175f87d9eba31b85030730dded3a0c621823f9f0d25962ca58c98f"
+    },
+    "guardrail safety: no live mutation": {
+      "status": "PASS",
+      "evidence_hash": "51b810d11854c79edea607863999923711909083b50183b5364c19af5068b83c"
+    }
+  },
+  "findings": [
+    {
+      "id": "V-1",
+      "severity": "INFO",
+      "text": "Patch fidelity PASS (programmatic, AST-extracted): candidate.py's _heartbeat_loop is byte-identical to production run.py's loop after normalizing the single beat call (_heartbeat_with_lock_retry(supervisor) -> supervisor.heartbeat()); _heartbeat_with_lock_retry present in candidate only (run.py occurrence count 0; git diff src/ vs HEAD empty). Backoffs (0.5,1,2,4,8) sum 15.5s >= 10s busy_timeout (PRAGMA busy_timeout=10000 in database.py)."
+    },
+    {
+      "id": "V-2",
+      "severity": "INFO",
+      "text": "A/B reproduced independently by verifier: baseline probe exit 1 with 1 heartbeat_failure (OperationalError) vs candidate.py exit 0 with 0 failures; MMI delta 1.0 >= 0.5 (baseline_metric heartbeat_lock_failure_rate 1.0 -> 0.0). Candidate compiles (py_compile + ast.parse both OK; future-import is line 1, fixing CYCLE-3 F-1)."
+    },
+    {
+      "id": "V-3",
+      "severity": "INFO",
+      "text": "Ledger records consistent: improvement-8637c5e55cd2 problem heartbeat_failure on 'database is locked' (evidence_refs include live-ledger:events:14946), risk R3, surfaces supervisor+database; run-b11449297362 exit 1 error_rate 1.0 (13.611s), run-400161b9b20e exit 0 error_rate 0.0 (13.738s); release-f593853da97d artifact hash aebe5256... == sha256(candidate.py) == build artifact hash == verification artifacts_json hash; build-5a9d193b0ea0 COMPLETED exit 0."
+    },
+    {
+      "id": "V-4",
+      "severity": "INFO",
+      "text": "Live ledger evidence verified: foundry.db sequence 14946 = supervisor.degraded, reason heartbeat_failure, error 'database is locked', error_class OperationalError, consecutive_failures 1, occurred 2026-08-12T22:55:37Z; exactly 1 such event ever. Live DB schema version 20 (schema_migrations top row); supervisor_state RUNNING with heartbeats at sequences >= 40175; EMERGENCY_STOP sentinel absent. Read-only access only."
+    },
+    {
+      "id": "V-5",
+      "severity": "INFO",
+      "text": "CYCLE-3 rejection addressed: prior HIGH findings F-1 (future-import ordering SyntaxError) and F-2 (helper never wired; --code ignored; patched src/ absent) are resolved in this artifact: future import first line, helper defined and wired at the beat site, artifact self-contained flat probe. The --code flag is parsed but not branched on (candidate artifact always runs the patched loop; the baseline leg runs the separate unpatched probe) \u2014 design wart, not a defect, A/B discriminates as specified."
+    },
+    {
+      "id": "INDEP-SAME-PROVIDER",
+      "severity": "INFO",
+      "text": "Verifier shares provider/model with builder (opencode_go/deepseek-v4-flash); same-provider limitation D-031 applies. All evidence reproduced independently from artifacts and ledgers (read-only); verifier session differs from builder session v7-cycle-builder-r3b."
+    }
+  ],
+  "integrity_concerns": [],
+  "scope_violations": [],
+  "independence_note": "same-provider limitation (D-031)",
+  "meta": {
+    "cycle": "r3b",
+    "verification_id": "verification-da9637041e67",
+    "candidate_sha256": "aebe5256878f6597d71cd959b25e9ff3540930588ac8ba841c307e9ce1873d7d",
+    "workload_case_sha256": "451d15a2895989601bdfb189fbe0ed308b6ac84d15d8434e74e05a2226e5997d"
+  }
+}

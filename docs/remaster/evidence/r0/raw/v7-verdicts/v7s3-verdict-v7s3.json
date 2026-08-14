@@ -1,0 +1,50 @@
+{
+  "verdict": "FAIL",
+  "slice": "V7-S3 Supervisor adoption",
+  "repo": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
+  "criteria": {
+    "C1": {
+      "status": "PASS",
+      "evidence": "HEAD=91b2143fad1dc942e8e4b92e0950c1c8fc7afd62 (claimed 91b2143). git show --name-status: exactly 3 added files (docs/evidence/V7_S3_SUPERVISOR_ADOPTION.md, src/jarvis_foundry/supervisor/evolution_control.py, tests/foundry/test_v7_supervisor_adoption.py; 617 insertions). git status: 5 protected untracked files, sha256 recomputed all match var/evidence/v7-s0/protected-files.sha256 (8fa3fa2a..., c173d7ce..., d807330f..., 67591fd0..., 3b1682c6...). INFO: a 6th untracked file docs/evidence/V7_S4_DISCOVERY.md appeared post-S3 (parent S4 prep, not protected, not committed, not part of S3 commit)."
+    },
+    "C2": {
+      "status": "FAIL",
+      "evidence": "15/15 effectful methods call self._gate(controller) (verified by grep, line-numbered). 13/15 pass controller=SUPERVISOR_CONTROLLER to machinery. Default mode='observe' (__init__ line 51). enable/disable -> _set_mode -> _require_supervisor + append evolution.mode_changed (lines 75-95). _gate checks controller==supervisor, mode=='active', EMERGENCY_STOP sentinel (lines 106-113). Read-only mode()/is_frozen()/slot_pointers() ungated (lines 61-68). git diff 547b177..91b2143 -- src/jarvis_foundry/evolution = EMPTY (machinery untouched). DISPROVEN SUB-ITEM: reap_stale_canaries calls canary_mod.reap_stale_canaries(self._database) passing NOTHING; machinery signature requires current_cycle, max_cycles_without_tick, controller (canary.py:219-223). Fresh probe: EvolutionControl(db).reap_stale_canaries(controller='supervisor') -> TypeError missing 3 required keyword-only arguments; machinery control leg with full args -> OK []. Method non-functional, never passes SUPERVISOR_CONTROLLER, no test covers it. record_improvement: machinery has NO controller parameter (records.py:187-205) -> adapter call correct; criterion wording inapplicable there (INFO)."
+    },
+    "C3": {
+      "status": "PASS",
+      "evidence": "Fresh run: PYTHONDONTWRITEBYTECODE=1 .venv/Scripts/python -m pytest tests/foundry/test_v7_supervisor_adoption.py -p no:cacheprovider -> '14 passed in 3.32s', exit 0. File contains exactly 14 test functions; all claimed areas covered (observe default+refusal, read-only allowed, enable/disable supervisor-only, mode_changed ledger [active,observe], adapter pinning, machinery candidate refusals incl. set_slot provenance NOTE comment lines 147-150, frozen-blocks-promotion, STOP blocks ops, --once x3 distinct instance ids + clean lease, FROZEN startup + emergency_stop.frozen, idempotent duplicate delivery, candidate termination refusal, bare-process drive). COVERAGE GAP (ties to C2): reap_stale_canaries adapter path exercised by zero tests."
+    },
+    "C4": {
+      "status": "PASS",
+      "evidence": "sha256sum var/evidence/v7-s3/suite-v7-s3-full.txt = fae98016f5a9622598724d0ff49c29628a35c704cae129272b19064fe2645be1 (exact match to claimed). Tail (tr -d CR): '926 passed in 414.30s (0:06:54)' + 'EXIT=0'. Independent collect-only of tests/foundry = 926 nodes (sum of per-file counts) — reproduces N=926."
+    },
+    "C5": {
+      "status": "PASS",
+      "evidence": "Live DB opened mode=ro URI only: MAX(version) FROM schema_migrations=20, 20 rows. supervisor_state: status RUNNING, last_heartbeat_at 2026-08-14T09:09:21.073504Z, age 3.9s (<2min). events 39582->39590 across separate probes (daemon live). Daemon PIDs 11484 and 13012 ALIVE via wmic, both: python.exe -m jarvis_foundry.supervisor.run --home 'C:\\Users\\b\\AppData\\Local\\hermes\\foundry'. Task JARVIS-Foundry-Supervisor exists; XML Settings Enabled=false -> triggers (LogonTrigger+TimeTrigger) disabled -> 'N/A (disabled)' HOLDS (INFO: schtasks CSV Status column shows 'Running' for a disabled task). EMERGENCY_STOP sentinel absent. Ports 8765-8769 LISTENING (INFO: owners are 6 V4-preview CommandCenterServer processes 3720/9268/8884/18544/11772/11824 on %TEMP%\\jarvis-v4-preview DB, not the V7 daemon; 8765 has two listeners)."
+    },
+    "C6": {
+      "status": "FAIL",
+      "evidence": "Verified TRUE: '14 tests' (14 collected/passed), 'affected 227/227' (fresh derivation: 12 evolution_* files 193 + 3 supervisor_* files 20 + v7_supervisor_adoption 14 = 227 EXACTLY), '926 full' + 'EXIT=0' (artifact tail + collect-only), sha256 fae98016... (exact), 'no machinery changes' (empty diff vs 547b177), 'set_slot provenance boundary documented in report §3' (lines 100-105) AND 'in test comments' (lines 147-150). DISPROVEN: report §1 lines 77-80 'controller identity pinned to supervisor on EVERY effectful entry point (run_cycle, start_canary/canary_tick/terminate/reap, ...)' — the reap path raises TypeError before any machinery call (fresh probe), so the 'pinned on every entry point' claim is false as written."
+    }
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "MEDIUM",
+      "claim": "C2 checklist + report §1: reap_stale_canaries must pass SUPERVISOR_CONTROLLER to machinery; 'pinned on EVERY effectful entry point'",
+      "evidence": "evolution_control.py:137-139 calls canary_mod.reap_stale_canaries(self._database) with no args; machinery requires current_cycle/max_cycles_without_tick/controller. Probe: TypeError 'missing 3 required keyword-only arguments: current_cycle, max_cycles_without_tick, controller'. Control leg (machinery with full args, controller=supervisor) -> OK [].",
+      "impact": "Adapter method non-functional (dead path raising TypeError). Fail-closed: no unauthorized effect possible (TypeError precedes any machinery call; machinery itself refuses non-supervisor controllers). Functional gap for the Supervisor operator, not a safety hole.",
+      "untested": "Zero of the 14 tests exercise control.reap_stale_canaries.",
+      "repair": "One-line fix: pass current_cycle/max_cycles_without_tick through the adapter signature and controller=SUPERVISOR_CONTROLLER to the machinery; add a regression test exercising the adapter reap path (observe-refusal + active-mode success + candidate refusal)."
+    }
+  ],
+  "integrity_concerns": [
+    "None found: commit contents exact, protected hashes bind, machinery pristine vs 547b177, suite artifact hash+tail+count bind, live DB schema/state/processes consistent with claims. Mode=ro URI reads only; WAL sidecars pre-existed (host daemon-owned).",
+    "INFO: docs/evidence/V7_S4_DISCOVERY.md untracked since S3 close (parent activity; mirrors V7-S0 'report counts as one' pattern)."
+  ],
+  "scope_violations": [
+    "None by this verifier: read-only git/live-DB probes, temp-only writes (%TEMP% probe scripts, pytest temp homes), no repo modifications (git status re-checked; only pre-existing untracked docs), no live process/task/DB mutations, no subagents dispatched, no task re-enablement."
+  ],
+  "independence_note": "same-provider limitation (D-031): opencode_go/deepseek-v4-flash — procedural independence only"
+}

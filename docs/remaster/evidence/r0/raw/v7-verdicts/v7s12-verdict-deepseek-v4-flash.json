@@ -1,0 +1,42 @@
+{
+  "verdict": "PASS",
+  "slice": "V7-S12 cross-system containment and continuity fault suite",
+  "verifier": "independent adversarial slice verifier (opencode_go/deepseek-v4-flash)",
+  "audited_at_utc": "2026-08-14T12:41Z",
+  "criteria": {
+    "C1_source_truth": {
+      "status": "PASS",
+      "evidence": "HEAD=34149fdceaf576c313ada6593fe0d70000ccaac4 (S11 CLOSED PASS commit). b7aa0bb feat(v7-s12) touches EXACTLY 6 files: docs/evidence/V7_S12_CONTINUITY.md, src/jarvis_foundry/capabilities/registry.py, src/jarvis_foundry/evolution/portfolio.py, src/jarvis_foundry/evolution/scheduler.py, src/jarvis_foundry/gates/minigates.py, tests/foundry/test_v7_continuity.py (290+/17-). a9e6ce8 (defensive rebuild + corrupt-payload test + suite 985 artifact bound; scheduler.py+test+report) is an ancestor of HEAD. git status at audit start: EXACTLY the 5 protected untracked files; all 5 sha256 match var/evidence/v7-s0/protected-files.sha256 byte-for-byte."
+    },
+    "C2_hardening_truth": {
+      "status": "PASS",
+      "evidence": "scheduler.py L110-114 _controller_gate(database, controller) contains _require(not EmergencyStop(database.path.parent / 'EMERGENCY_STOP').active(), 'STOP sentinel active') after the controller check; called by enable_scheduler(L119), disable_scheduler(L128), register_schedule_item(L140), tick_scheduler(L161). portfolio.py _gate(database,controller) L58-61 with STOP check, called at L110/173/205/235/251/264. capabilities/registry.py _gate L50-53 with STOP check, called L71/L107. gates/minigates.py _gate L60-63 with STOP check, called L78. All gates receive the database. _rebuild defensive: item_registered wrapped try/except (KeyError,TypeError,ValueError)->continue (L60-70); item_fired try/except (KeyError,TypeError)->continue (L75-78) — malformed payloads skipped, rebuild never crashes."
+    },
+    "C3_tests": {
+      "status": "PASS",
+      "evidence": "Fresh run: .venv python -m pytest tests/foundry/test_v7_continuity.py -v (addopts neutralized): 7 named tests all PASSED, '7 passed in 13.13s', exit 0. Discrimination: restart replay asserts enabled+item preserved and fired count unchanged (no double fires); lock test holds BEGIN IMMEDIATE 12s > 10s busy_timeout -> tick raises, zero fired events, next tick fires exactly 1; duplicate re-delivery (same idempotency_key) no-op; append_events conflict -> EventConflict raised and event count unchanged (full rollback); STOP sentinel activate -> enable_scheduler refuses (would pass pre-hardening since controller check alone passed); observe-only: no enable -> tick refused before AND after restart; corrupt payload: foreign event type + malformed scheduler.item_registered {} leave rebuild state identical."
+    },
+    "C4_suite_artifact": {
+      "status": "PASS",
+      "evidence": "sha256sum var/evidence/v7-s12/suite-v7-s12-full.txt = 8e8d15a4bfba3eb96ebd93abc2a0f654f2fc72c354bc7e76c806a8dba44f993a (exact match). Tail: '985 passed in 438.79s (0:07:18)' then 'EXIT=0' (grep count 1). Full 985-test re-run not repeated (timebox); focused 7-suite re-run live instead."
+    },
+    "C5_live_untouched_and_report_truth": {
+      "status": "PASS",
+      "evidence": "Live DB opened ONLY via sqlite mode=ro URI: schema_migrations MAX(version)=32 with 32 rows (schema 32; PRAGMA user_version=0 is a red herring — migrations table authoritative). supervisor_state: status RUNNING, instance supervisor-6f25cdff-7982-49c4-86b3-ca6ebe58103b, last_heartbeat_at 2026-08-14T12:39:28Z; NOW_UTC 12:40:27Z -> 59s < 2min; heartbeats every ~5s (seq 41936-41940). Windows task JARVIS-Foundry-Supervisor: Scheduled Task State=Enabled, Status=Running, Next Run Time 8/14/2026 2:40:04 PM. Ports 8765-8769 all LISTENING on 127.0.0.1. No EMERGENCY_STOP in live home (C:/Users/b/AppData/Local/hermes/foundry/) nor anywhere in repo. Report truth: status line exactly 'PASS (independent verifier verdict appended on close)'; VERIFIER_AND_STRUCTURED_VERDICT and section 3 both still carry the '<fill after dispatch — fresh independent adversarial verifier, opencode_go/deepseek-v4-flash, no fallback>' placeholder (parent updates on close — expected). Report's claims (7 tests, 4-gate STOP hardening, defensive rebuild, 985 EXIT=0 artifact) all match fresh evidence."
+    }
+  },
+  "findings": [
+    "HEAD==34149fd, S12 commits b7aa0bb (exactly 6 files) + a9e6ce8 in history — source truth confirmed",
+    "STOP-sentinel check present and wired inside every supervisor gate of all four modules; _rebuild type-gated and skip-safe",
+    "7/7 continuity tests re-run live and pass (13.13s), each discriminating against pre-hardening behavior",
+    "Suite artifact hash + tail (985 passed / EXIT=0) verified",
+    "Live system fully intact: schema 32, daemon RUNNING (heartbeat 59s), task Enabled+Next Run set, 5 ports listening, no sentinel"
+  ],
+  "integrity_concerns": [
+    "docs/evidence/V7_S13_FINAL_GATE.md appeared as a 6th untracked file mid-audit (parent-side S13 dispatch); not created by this verifier; the 5 protected files unchanged and hash-matched",
+    "pytest -q summary line suppressed when stdout redirected on this host (pytest 9 non-tty behavior) — mitigated via -v named-test run; suite artifact tail verified independently",
+    "Full 985-test suite not re-executed within timebox; artifact hash + tail + focused re-run used instead"
+  ],
+  "scope_violations": [],
+  "independence_note": "same-provider limitation (D-031): opencode_go/deepseek-v4-flash — procedural independence only"
+}
