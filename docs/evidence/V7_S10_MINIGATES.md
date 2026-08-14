@@ -73,7 +73,32 @@ OWNER_INPUT_REQUIRED: NONE
 | deployment | dry_run, status | deploy, rollback, scale |
 | cloud | list_resources, status | create_resource, delete_resource, modify_resource |
 
-## 3. Verifier
+## 3. Verifier — deleg_e9c0f4e4, PASS (fresh independent adversarial session)
 
-<fill after dispatch — fresh independent adversarial verifier,
-opencode_go/deepseek-v4-flash, no fallback>
+Verdict JSON: `%TEMP%\v7s10-verdict-verifier.json` (early-skeleton
+protocol; verdict PASS, criteria C1-C5 all PASS).
+
+- C1 PASS: 3fc7276 = exactly the 4 claimed files; byte-identity through
+  HEAD; protected hashes 5/5 OK (audit start and end); HEAD drift = two
+  attributed parent commits (S9 close, S11 feat), none touching S10.
+- C2 PASS: 6 families with read/effectful tables; supervisor-only gate
+  proven with a VALID operation (cloud/list_resources + candidate-1 ->
+  GateError); deny-by-default with recorded reasons; unknown family/op
+  raises with 0 decisions recorded; gate.decision carries all 7 fields;
+  idempotency key = sha256(json.dumps(params, sort_keys=True))[:8] —
+  cross-process dedupe PROVEN (subprocess re-issue returned the original
+  sequence).
+- C3 PASS: 8/8 tests; probes independently re-proved each property.
+- C4 PASS: suite sha256 4e807bea… exact match; 972 passed EXIT=0.
+- C5 PASS: live schema 32, daemon RUNNING heartbeat 4.4s, task Running
+  with NextRunTime set (0x800710E0 benign), no STOP, ports up; report
+  claims match.
+- Findings: 4 LOW + 2 INFO, none blocking (stale HEAD pin in the brief;
+  S11's issubset relaxation post-suite; untracked 6->5 during audit;
+  one weakly-discriminating test — the code property independently
+  proven by the verifier's own probe). Integrity concerns: none. Scope
+  violations: none.
+
+**S10 CLOSED — PASS** (12-family-capable gate table with S11 extension;
+8 TDD tests; suite 972 EXIT=0; cross-process dedupe proven; live
+untouched). Next: S11 verifier window.
