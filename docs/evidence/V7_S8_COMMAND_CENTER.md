@@ -95,7 +95,38 @@ Të panjohurat: 0 · Në pritje: 0
 5. owner commands recorded with provenance (STOP/pause/resume/reprieve)
 6. content dedup (identical state -> one record; new state -> new record)
 
-## 3. Verifier
+## 3. Verifier — deleg_1df5a225, PASS with F1 (repaired additively)
 
-<fill after dispatch — fresh independent adversarial verifier,
-opencode_go/deepseek-v4-flash, no fallback>
+Verdict JSON: `%TEMP%\v7s8-verdict-<name>.json` (early-skeleton protocol;
+verdict PASS, criteria C1-C6 all PASS).
+
+- C1 PASS: HEAD 5e8f201; implementation commit 269e973 = exactly 3 files;
+  protected hashes 5/5 match; no other source changed.
+- C2 PASS w/ F1: briefing.recorded excluded from the content basis
+  (proven in code AND empirically — EN+SQ share digest 0fb5d4a8 although
+  SQ observed EN's record); payload deterministic; locale refusal before
+  any append; exactly one event appended; owner commands carry provenance
+  without a supervisor gate (by design). **F1: the content digest used
+  the process-randomized builtin hash() — identical-state dedup FAILS
+  across processes; the recorded hash wasn't independently recomputable.
+  REPAIRED: hashlib.sha256 in briefing.py AND the same defect class in
+  scheduler.py, portfolio.py, capabilities/registry.py (all four
+  sha256-stable); cross-process dedup regression test added
+  (test_dedup_is_cross_process_stable); runtime-ledger briefings
+  regenerated with sha256 digests (5abbf0e3; the old hash()-digest
+  records remain as honest history).**
+- C3 PASS: 6/6 tests pass on the verifier's own run (7 with the F1
+  regression); tests genuinely discriminating.
+- C4 PASS: runtime ledger holds the briefing records; text matches the
+  report (6 improvements, 3 promotions, 4 rejections, live slot
+  release-f593853da97d — all verified against the ledger rows).
+- C5 PASS: suite artifact sha256 3f70851b…, 954 passed EXIT=0.
+- C6 PASS: live schema 32, daemon RUNNING heartbeat fresh, task Enabled,
+  no STOP, ports up; report claims match.
+- Scope violations: none (committed diff = 3 files + report; runtime
+  ledger gained exactly the declared briefing events).
+
+**S8 CLOSED — PASS** (owner Command Center + first real briefing delivered
+EN text + SQ text + SQ voice; 7 TDD tests incl. the F1 cross-process
+regression; suite 954+ EXIT=0; live untouched). Next: S9 — capability
+discovery, brokerage, effect reconciliation matrix.

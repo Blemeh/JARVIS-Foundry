@@ -8,6 +8,8 @@ the owner's authority, never the supervisor's.
 """
 from __future__ import annotations
 
+import hashlib
+
 import json
 from typing import Any
 
@@ -62,7 +64,7 @@ def generate_briefing(database: FoundryDatabase, *, locale: str,
     if locale not in _LOCALES:
         raise BriefingError(f"unsupported locale: {locale}")
     content = _briefing_content(database)
-    digest = f"{hash(content) & 0xFFFFFFFF:08x}"
+    digest = hashlib.sha256(content.encode("utf-8")).hexdigest()[:8]
     text = _render(database, locale)
     payload = {"locale": locale, "text": text, "content_hash": digest}
     event = Event.create(

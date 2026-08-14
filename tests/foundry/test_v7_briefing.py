@@ -126,3 +126,25 @@ def test_identical_state_dedupes_briefings(db: FoundryDatabase) -> None:
     generate_briefing(db, locale="en",
                       source_type="supervisor", source_id="v7")
     assert briefing_count(db) == 2  # changed state -> new briefing
+
+
+def test_dedup_is_cross_process_stable(db: FoundryDatabase) -> None:
+    """F1 regression (S8 verifier): the content digest must NOT use the
+    process-randomized builtin hash() — an identical briefing generated
+    in a SEPARATE process must dedupe to the same record."""
+    import subprocess
+    import sys
+    _seed(db)
+    generate_briefing(db, locale="en",
+                      source_type="supervisor", source_id="v7")
+    code = (
+        "import sys; sys.path.insert(0, 'src'); "
+        "from jarvis_foundry.database import FoundryDatabase; "
+        "from jarvis_foundry.reporting.briefing import generate_briefing; "
+        "db = FoundryDatabase(r'{}'); "
+        "generate_briefing(db, locale='en', "
+        "source_type='supervisor', source_id='v7')"
+    ).format(db.path)  # noqa: SLF001 (test-only access)
+    subprocess.run([sys.executable, "-c", code], check=True,
+                   capture_output=True, cwd=str(Path(__file__).parents[2]))
+    assert briefing_count(db) == 1  # cross-process dedup held

@@ -7,6 +7,8 @@ enable event.
 """
 from __future__ import annotations
 
+import hashlib
+
 import json
 from dataclasses import dataclass, field
 from typing import Any
@@ -136,7 +138,7 @@ def register_schedule_item(
     event = Event.create(
         "scheduler.item_registered", payload,
         idempotency_key=f"scheduler.item_registered:{item_id}:"
-                        f"{hash(content) & 0xFFFFFFFF:08x}",
+                        f"{hashlib.sha256(content.encode('utf-8')).hexdigest()[:8]}",
         source_type=source_type, source_id=source_id)
     return str(database.append(event)[0])
 
