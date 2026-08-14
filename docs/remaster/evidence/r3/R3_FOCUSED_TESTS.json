@@ -1,0 +1,10 @@
+{
+  "schema": "jarvis-r3-focused-tests-v1",
+  "exit_code": 0,
+  "wall_seconds": 14.627,
+  "summary_line": "26 passed in 13.80s",
+  "raw_output": "R3_FOCUSED_TESTS_RAW.txt",
+  "raw_output_sha256": "cd1d8be477856fec844396f3d0152c474865b2a452cd874524edbb2f07ff4fb0",
+  "junit_output": "R3_FOCUSED_TESTS_JUNIT.xml",
+  "junit_sha256": "b6c7d0e749c5cdd0fe283c4202add9b0b20463d40cfb05fb6da21cc38e3437e7"
+}

@@ -1,0 +1,77 @@
+{
+  "schema": "jarvis-r3-verification-package-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R3",
+  "repair_round": 5,
+  "status": "FROZEN_FOR_VERIFIER",
+  "generated_utc": "2026-08-14T23:29:23.1865329Z",
+  "frozen_base": {
+    "baseline_source_commit": "93a3ddc0965dfaf3e4cb9dc0952467bd5250520a",
+    "commit": "fddeab0",
+    "branch": "remaster/post-v7-purpose"
+  },
+  "builder_package": {
+    "manifest": {
+      "note": "hash bound by the artifact manifest; verifier recomputes from disk",
+      "path": "docs/remaster/evidence/r3/R3_ARTIFACT_MANIFEST.json"
+    },
+    "report": {
+      "note": "hash bound by the artifact manifest; verifier recomputes from disk",
+      "path": "docs/remaster/evidence/r3/R3_BUILDER_REPORT.json"
+    }
+  },
+  "findings_registry": {
+    "note": "hash bound by the artifact manifest; verifier recomputes from disk",
+    "path": "docs/remaster/FINDINGS.jsonl"
+  },
+  "stable_leaf_evidence": {
+    "focused_junit": {
+      "path": "docs/remaster/evidence/r3/R3_FOCUSED_TESTS_JUNIT.xml",
+      "sha256": "b6c7d0e749c5cdd0fe283c4202add9b0b20463d40cfb05fb6da21cc38e3437e7",
+      "size": 4937
+    },
+    "mutation": {
+      "path": "docs/remaster/evidence/r3/R3_MUTATION.json",
+      "sha256": "e948538c5ebab724152e73207f4564c1de7c6f41c0c7c6ee299744a3917e6701",
+      "size": 380
+    },
+    "coverage": {
+      "path": "docs/remaster/evidence/r3/R3_COVERAGE.json",
+      "sha256": "640c760dbbf2baf4bb2165ea1f5d1f3c823bd03f31070e7577a6b0abd7c8b0f9",
+      "size": 713
+    },
+    "confinement": {
+      "path": "docs/remaster/evidence/r3/R3_ARTIFACT_CONFINEMENT.json",
+      "sha256": "fc4441a3ca7870dfa551d1fef141c51a92c4e4223a7293712a7b3df851335671",
+      "size": 499
+    },
+    "typing_owned": {
+      "path": "docs/remaster/evidence/r3/R3_TYPING_OWNED.json",
+      "sha256": "3694bcb11e20fbdfe31fd151fef51924a9f6d95cc05298f0d3946628d3286dc1",
+      "size": 1395
+    },
+    "bandit": {
+      "path": "docs/remaster/evidence/r3/R3_BANDIT.json",
+      "sha256": "a626e8a1255a5405e2e462215938e93cec79749b643ffba36e08b635d28652f2",
+      "size": 337
+    }
+  },
+  "closure_contract": {
+    "tool": "scripts/remaster/r3/reproduce_closure.py",
+    "manifest_expected": "68 entries = 67 real + 1 self-referential report marker; all real entries hash-match disk",
+    "confinement_expected": "passed=true, manifest_failures=0, hidden=0, budget under 4 MiB",
+    "idempotency": "must print IDEMPOTENT=True and exit 0 on two separate invocations"
+  },
+  "verifier_required": [
+    "recompute every hash from disk (this package is advisory; the artifact manifest is authoritative)",
+    "re-run reproduce_closure.py twice (IDEMPOTENT=True, exit 0)",
+    "re-run mypy owned (24 files, 0 errors)",
+    "re-run bandit (LOW 39 MED 12 HIGH 0)",
+    "re-run focused tests (26 passed)",
+    "re-run mutation (12/12)",
+    "re-run coverage (29.832%)",
+    "re-run architecture (2) / no-silent (4)",
+    "confirm R3-F037..F046 in registry",
+    "confirm no live/protected change"
+  ]
+}

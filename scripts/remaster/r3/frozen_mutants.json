@@ -1,0 +1,138 @@
+{
+  "schema": "jarvis-r3-frozen-mutant-manifest-v1",
+  "frozen": true,
+  "mutants": [
+    {
+      "id": "R3-M01",
+      "target": "src/jarvis_foundry/events.py",
+      "anchor": "return hashlib.sha256(canonical_json(payload).encode(\"utf-8\")).hexdigest()",
+      "replacement": "return \"0\" * 64",
+      "pytest_args": [
+        "tests/remaster/r3/test_event_ledger.py::test_payload_hash_is_content_derived"
+      ],
+      "expected_test": "test_payload_hash_is_content_derived",
+      "reason": "payload hashes must be content-derived"
+    },
+    {
+      "id": "R3-M02",
+      "target": "src/jarvis_foundry/events.py",
+      "anchor": "if not self.event_id or not self.event_type or \".\" not in self.event_type:",
+      "replacement": "if False:",
+      "pytest_args": [
+        "tests/remaster/r3/test_event_ledger.py::test_invalid_event_is_rejected"
+      ],
+      "expected_test": "test_invalid_event_is_rejected",
+      "reason": "invalid event identity must fail closed"
+    },
+    {
+      "id": "R3-M03",
+      "target": "src/jarvis_foundry/database.py",
+      "anchor": "if not identical:",
+      "replacement": "if identical:",
+      "pytest_args": [
+        "tests/remaster/r3/test_event_ledger.py::test_duplicate_event_is_idempotent"
+      ],
+      "expected_test": "test_duplicate_event_is_idempotent",
+      "reason": "identical re-delivery must dedupe, never conflict"
+    },
+    {
+      "id": "R3-M04",
+      "target": "src/jarvis_foundry/projections.py",
+      "anchor": "for table in PROJECTION_TABLES:",
+      "replacement": "for table in []:",
+      "pytest_args": [
+        "tests/remaster/r3/test_projection_idempotency.py::test_projection_rebuild_is_idempotent"
+      ],
+      "expected_test": "test_projection_rebuild_is_idempotent",
+      "reason": "projection rebuild must reset state before deterministic replay"
+    },
+    {
+      "id": "R3-M05",
+      "target": "src/jarvis_foundry/owner_controls.py",
+      "anchor": "if used:",
+      "replacement": "if False:",
+      "pytest_args": [
+        "tests/remaster/r3/test_owner_controls.py::test_owner_nonce_replay_is_rejected"
+      ],
+      "expected_test": "test_owner_nonce_replay_is_rejected",
+      "reason": "owner command nonces must be single-use"
+    },
+    {
+      "id": "R3-M06",
+      "target": "src/jarvis_foundry/owner_controls.py",
+      "anchor": "if command_type == \"STOP_EVERYTHING\" and self.stop is not None:",
+      "replacement": "if False:",
+      "pytest_args": [
+        "tests/remaster/r3/test_owner_controls.py::test_owner_stop_writes_sentinel"
+      ],
+      "expected_test": "test_owner_stop_writes_sentinel",
+      "reason": "authenticated STOP_EVERYTHING must activate the filesystem sentinel"
+    },
+    {
+      "id": "R3-M07",
+      "target": "src/jarvis_foundry/supervisor/estop.py",
+      "anchor": "return self.path.exists()",
+      "replacement": "return False",
+      "pytest_args": [
+        "tests/remaster/r3/test_owner_controls.py::test_stop_sentinel_active_and_clear"
+      ],
+      "expected_test": "test_stop_sentinel_active_and_clear",
+      "reason": "emergency stop sentinel presence must be observable"
+    },
+    {
+      "id": "R3-M08",
+      "target": "src/jarvis_foundry/errors.py",
+      "anchor": "class IntegrityError(JarvisError):",
+      "replacement": "class IntegrityError(ValueError):",
+      "pytest_args": [
+        "tests/remaster/r3/test_errors.py::test_errors_taxonomy"
+      ],
+      "expected_test": "test_errors_taxonomy",
+      "reason": "all taxonomy errors must share the JarvisError base"
+    },
+    {
+      "id": "R3-M09",
+      "target": "src/jarvis_foundry/observability.py",
+      "anchor": "return f\"{parent}:{new_record_id()}\"",
+      "replacement": "return parent",
+      "pytest_args": [
+        "tests/remaster/r3/test_observability.py::test_correlation_helpers"
+      ],
+      "expected_test": "test_correlation_helpers",
+      "reason": "child correlation ids must be distinct from their parent"
+    },
+    {
+      "id": "R3-M10",
+      "target": "scripts/remaster/r3/architecture_rules.py",
+      "anchor": "if is_kernel(rel):",
+      "replacement": "if False:",
+      "pytest_args": [
+        "tests/remaster/r3/test_gate_scripts.py::test_architecture_rules_reject_kernel_to_adapter"
+      ],
+      "expected_test": "test_architecture_rules_reject_kernel_to_adapter",
+      "reason": "kernel-to-adapter imports must be reported"
+    },
+    {
+      "id": "R3-M11",
+      "target": "scripts/remaster/r3/secret_scan.py",
+      "anchor": "{24,}",
+      "replacement": "{1000,}",
+      "pytest_args": [
+        "tests/remaster/r3/test_gate_scripts.py::test_secret_scan_detects_generic_assignment"
+      ],
+      "expected_test": "test_secret_scan_detects_generic_assignment",
+      "reason": "generic secret assignments must be detected"
+    },
+    {
+      "id": "R3-M12",
+      "target": "scripts/remaster/r3/no_silent_failure.py",
+      "anchor": "if not is_kernel(rel):",
+      "replacement": "if True:",
+      "pytest_args": [
+        "tests/remaster/r3/test_gate_scripts.py::test_no_silent_failure_flags_broad_handler"
+      ],
+      "expected_test": "test_no_silent_failure_flags_broad_handler",
+      "reason": "broad exception handlers in the trusted kernel must be flagged"
+    }
+  ]
+}

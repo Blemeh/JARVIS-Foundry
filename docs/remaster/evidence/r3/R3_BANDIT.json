@@ -1,0 +1,13 @@
+{
+  "schema": "jarvis-r3-bandit-v1",
+  "exit_code": 1,
+  "wall_seconds": 2.738,
+  "severity_counts": {
+    "LOW": 39,
+    "MEDIUM": 12
+  },
+  "high_findings": 0,
+  "zero_critical_or_high": true,
+  "raw_output": "R3_BANDIT_RAW.txt",
+  "raw_output_sha256": "06636194a345590ecaf11baff9bf43550b39206a4398eeae2b3496458fd305ae"
+}

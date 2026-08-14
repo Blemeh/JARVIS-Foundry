@@ -1,0 +1,409 @@
+{
+  "schema": "jarvis-r3-verifier-round4-verdict-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R3",
+  "repair_round": 4,
+  "verifier_model": "deepseek-v4-flash via codex-router",
+  "verdict": "FAIL",
+  "generated_utc": "2026-08-14T23:21:19.2991423Z",
+  "frozen_base": {
+    "commit": "fddeab0",
+    "branch": "remaster/post-v7-purpose",
+    "baseline_source_commit": "93a3ddc0965dfaf3e4cb9dc0952467bd5250520a",
+    "worktree": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster",
+    "work_package": {
+      "path": "docs/remaster/work_packages/R3_WORK_PACKAGE.json",
+      "sha256": "e6a73b5b878b143ceaba24568ad01781925ca5e8d5a63d81925b2353f858e65b",
+      "size": 10208
+    },
+    "verification_package": {
+      "path": "docs/remaster/work_packages/R3_VERIFICATION_PACKAGE.json",
+      "sha256": "c477917e2821d30d64eff4582da9ac8b159f6ef5d8745fd52dec18f7fcab37ed",
+      "size": 3207
+    }
+  },
+  "fail_sha256s": {
+    "round1": "3d8c6a6f2665779003d29baa59a691c98f6cc01df65766424952a81217933076",
+    "round2": "f8d0a566b01c2ddcb59cfb8d21803a8b8f8ceb77632df4531153a2186b034db5",
+    "round3": "e4b1797f5ddb2ba31167f669da5124ee933d9df913d02fe86da2fe3780387068"
+  },
+  "criteria": [
+    {
+      "id": "R3-C01",
+      "status": "FAIL",
+      "evidence": [
+        "docs/remaster/evidence/r3/R3_ARTIFACT_MANIFEST.json",
+        "docs/remaster/evidence/r3/R3_BUILDER_REPORT.json",
+        "docs/remaster/evidence/r3/R3_ARTIFACT_CONFINEMENT.json",
+        "docs/remaster/work_packages/R3_VERIFICATION_PACKAGE.json",
+        ".github/workflows/windows-ci.yml"
+      ],
+      "detail": "Mandatory FAIL. The frozen manifest binds docs/remaster/work_packages/R3_VERIFICATION_PACKAGE.json as 6efbe5ce042cde04a427d41af089f0c1d4cb50fe49c52fc0bebfcf108489117d/3300, but disk is c477917e2821d30d64eff4582da9ac8b159f6ef5d8745fd52dec18f7fcab37ed/3207. A fresh artifact_confinement.py run reports passed=false, manifest_failures=1, hidden=0, budget under 4 MiB, reproduction exits [0,0]. Re-running reproduce_closure.py or close_r3_evidence.py from current disk yields report bf191645e2cd558558a0faac8586bc9d718461b1c5892348906f90933e5fb3f0 and manifest 943251c20f79e2a0a6158206e717e06be3c4da0ca7c42a4c08069983ba3d586c, not the frozen d859716d1cabbe3fe2b7f8aa28bc2d5ac47534c58840d19e77f1fbdba7f35438/3bc57aab056d232b551a470ee9734e514fca275f99be5d6e9563b89e802cec35. The verification package was refreshed after the final closure (mtimes: manifest 01:11:34, package 01:12:00, FINDINGS 01:12:11) without a final closure, so the frozen closure no longer binds disk. CI workflow and all gate commands are otherwise present."
+    },
+    {
+      "id": "R3-C02",
+      "status": "FAIL",
+      "evidence": [
+        "docs/remaster/evidence/r3/R3_RUFF_BASELINE.json",
+        "docs/remaster/evidence/r3/R3_RUFF_BASELINE_RAW.txt",
+        "docs/remaster/evidence/r3/R3_RUFF_OWNED.json"
+      ],
+      "detail": "Honest recorded baseline reproduced: whole-repo ruff check exit 1 with 499 violations, ruff format exit 1 (recorded 200 files would be reformatted); R3-owned files clean (check 0, format 0). Thresholds unchanged; disposition REPAIR_IN_R4. Non-blocking per round-1 adjudication."
+    },
+    {
+      "id": "R3-C03",
+      "status": "FAIL",
+      "evidence": [
+        "docs/remaster/evidence/r3/R3_TYPING_BASELINE.json",
+        "docs/remaster/evidence/r3/R3_MYPY_TRUSTED_KERNEL_RAW.txt",
+        "docs/remaster/evidence/r3/R3_MYPY_WHOLE_REPO_RAW.txt",
+        "docs/remaster/evidence/r3/R3_TYPING_OWNED.json"
+      ],
+      "detail": "Honest recorded baseline reproduced: trusted-kernel mypy strict errors=10, whole-repo errors=248, whole-repo AST any-annotated=1440/1715, fully annotated=1222/1715. R3-owned strict set now passes independently (24 files, 0 errors). Threshold unchanged; disposition REPAIR_IN_R4. Non-blocking per round-1 adjudication."
+    },
+    {
+      "id": "R3-C04",
+      "status": "PASS",
+      "evidence": [
+        "docs/remaster/evidence/r3/R3_BANDIT.json",
+        "docs/remaster/evidence/r3/R3_PIP_AUDIT.json",
+        "docs/remaster/evidence/r3/R3_SECRET_SCAN.json"
+      ],
+      "detail": "Fresh runs reproduce: bandit LOW=39 MEDIUM=12 HIGH=0; pip-audit scanned 43 dependencies with 0 vulnerable; secret scan scanned 785 files, 10 fixture matches classified, real_matches=0, comparison_identical=true."
+    },
+    {
+      "id": "R3-C05",
+      "status": "FAIL",
+      "evidence": [
+        "docs/remaster/evidence/r3/R3_COVERAGE.json",
+        "docs/remaster/evidence/r3/R3_COVERAGE_JSON.json"
+      ],
+      "detail": "Honest recorded baseline reproduced exactly: trusted-kernel branch coverage 29.832% (142/476), line coverage 53.226%, threshold 95.0 unchanged. Disposition REPAIR_IN_R4. Non-blocking per round-1 adjudication."
+    },
+    {
+      "id": "R3-C06",
+      "status": "PASS",
+      "evidence": [
+        "tests/remaster/r3",
+        "docs/remaster/evidence/r3/R3_FOCUSED_TESTS.json",
+        "docs/remaster/evidence/r3/R3_FOCUSED_TESTS_JUNIT.xml"
+      ],
+      "detail": "Focused suite reproduced fresh: 26 passed, exit 0. Ledger, projection idempotency, and owner-control hypothesis/state-machine tests included."
+    },
+    {
+      "id": "R3-C07",
+      "status": "PASS",
+      "evidence": [
+        "docs/remaster/evidence/r3/R3_MUTATION.json",
+        "scripts/remaster/r3/frozen_mutants.json"
+      ],
+      "detail": "Fresh mutation run reproduces 12/12 killed with full-baseline exit 0; A/B proof enforced by the frozen manifest."
+    },
+    {
+      "id": "R3-C08",
+      "status": "PASS",
+      "evidence": [
+        "docs/remaster/evidence/r3/R3_ARCHITECTURE_RULES.json",
+        "scripts/remaster/r3/architecture_rules.py"
+      ],
+      "detail": "Fresh run reproduces exactly 2 R3-ARCH-02 violations in src/jarvis_foundry/reporting/briefing.py (imports jarvis_foundry.database and jarvis_foundry.events); recorded as REPAIR_IN_R4 findings with exact paths."
+    },
+    {
+      "id": "R3-C09",
+      "status": "PASS",
+      "evidence": [
+        ".github/workflows/windows-ci.yml",
+        "scripts/remaster/r3/make_quality.ps1"
+      ],
+      "detail": "Windows CI workflow exists on windows-latest with Python 3.13 and explicit ruff, mypy owned/baseline, bandit, pip-audit, secret scan, architecture, no-silent, mutation subset, coverage, focused tests, and artifact-confinement steps; portable make_quality.ps1 present."
+    },
+    {
+      "id": "R3-C10",
+      "status": "FAIL",
+      "evidence": [
+        "docs/remaster/evidence/r3/R3_ARTIFACT_CONFINEMENT.json",
+        "docs/remaster/evidence/r3/R3_ARTIFACT_MANIFEST.json",
+        "docs/remaster/work_packages/R3_VERIFICATION_PACKAGE.json"
+      ],
+      "detail": "Mandatory FAIL. Frozen R3_ARTIFACT_CONFINEMENT.json records passed=true, manifest_failures=0, evidence_bytes=2964843, but a fresh no-record run against current disk reports passed=false, manifest_failures=1, hidden=0, evidence_bytes=2986060 within 4194304, reproduction exits [0,0]. The single failure is the verification package binding (see R3-VF-205)."
+    },
+    {
+      "id": "R3-C11",
+      "status": "PASS",
+      "evidence": [
+        "src/jarvis_foundry/errors.py",
+        "src/jarvis_foundry/observability.py",
+        "docs/remaster/evidence/r3/R3_NO_SILENT_FAILURE.json",
+        "docs/remaster/evidence/r3/R3_FOCUSED_TESTS.json"
+      ],
+      "detail": "errors.py and observability.py are new additive typed modules with tests; fresh no-silent-failure run reproduces exactly 4 broad-handler findings (database.py:36, database.py:47, effects.py:261, supervisor/controls.py:219), all recorded with disposition REPAIR_IN_R4; R3-owned modules have zero broad handlers."
+    },
+    {
+      "id": "R3-C12",
+      "status": "PASS",
+      "evidence": [
+        "docs/remaster/evidence/r3/R3_LIVE_GUARD_BEFORE.json",
+        "docs/remaster/evidence/r3/R3_LIVE_GUARD_AFTER.json",
+        "docs/remaster/evidence/r3/R3_LIVE_GUARD_COMPARISON.json"
+      ],
+      "detail": "Frozen guards show JARVIS-Foundry-Supervisor Running and Hermes_Gateway Ready with 2 supervisor processes; fresh read-only capture at 2026-08-14T23:19:39.221Z has identical task XML hashes and identical process identities (pids 21636, 17052). No live/protected writes, provider calls, commits, or pushes were made. Network use limited to pinned install and pip-audit OSV advisory lookup."
+    }
+  ],
+  "deliverables": [
+    {
+      "id": "R3-D01",
+      "status": "PASS",
+      "evidence": [
+        "requirements-dev.txt",
+        "scripts/remaster/r3/make_venv.ps1",
+        "docs/remaster/evidence/r3/R3_INSTALL.json"
+      ]
+    },
+    {
+      "id": "R3-D02",
+      "status": "PASS",
+      "evidence": [
+        "docs/remaster/evidence/r3/R3_RUFF_OWNED.json",
+        "docs/remaster/evidence/r3/R3_RUFF_OWNED_RAW.txt",
+        "docs/remaster/evidence/r3/R3_RUFF_BASELINE.json"
+      ],
+      "detail": "Fresh ruff owned check=0 format=0; whole-repo baseline 499 violations recorded honestly."
+    },
+    {
+      "id": "R3-D03",
+      "status": "PASS",
+      "evidence": [
+        "docs/remaster/evidence/r3/R3_TYPING_OWNED.json",
+        "docs/remaster/evidence/r3/R3_TYPING_BASELINE.json",
+        "docs/remaster/evidence/r3/R3_MYPY_OWNED_RAW.txt"
+      ],
+      "detail": "Owned strict gate now passes: fresh typing_measure --mode owned exit 0/errors 0 over 24 files including reproduce_closure.py and diff_evidence_reports.py; independent mypy --strict direct run over the same 24-file set also exit 0/errors 0. Legacy whole-repo/trusted-kernel baselines remain honestly recorded."
+    },
+    {
+      "id": "R3-D04",
+      "status": "PASS",
+      "evidence": [
+        "docs/remaster/evidence/r3/R3_BANDIT.json",
+        "docs/remaster/evidence/r3/R3_PIP_AUDIT.json",
+        "docs/remaster/evidence/r3/R3_SECRET_SCAN.json"
+      ]
+    },
+    {
+      "id": "R3-D05",
+      "status": "PASS",
+      "evidence": [
+        "docs/remaster/evidence/r3/R3_COVERAGE.json",
+        "docs/remaster/evidence/r3/R3_COVERAGE_JSON.json"
+      ],
+      "detail": "Coverage harness runs and records the honest 29.832% branch baseline with threshold unchanged at 95.0."
+    },
+    {
+      "id": "R3-D06",
+      "status": "PASS",
+      "evidence": [
+        "tests/remaster/r3",
+        "docs/remaster/evidence/r3/R3_FOCUSED_TESTS.json"
+      ]
+    },
+    {
+      "id": "R3-D07",
+      "status": "PASS",
+      "evidence": [
+        "docs/remaster/evidence/r3/R3_MUTATION.json",
+        "scripts/remaster/r3/frozen_mutants.json"
+      ]
+    },
+    {
+      "id": "R3-D08",
+      "status": "PASS",
+      "evidence": [
+        "scripts/remaster/r3/architecture_rules.py",
+        "docs/remaster/evidence/r3/R3_ARCHITECTURE_RULES.json"
+      ]
+    },
+    {
+      "id": "R3-D09",
+      "status": "PASS",
+      "evidence": [
+        ".github/workflows/windows-ci.yml",
+        "scripts/remaster/r3/make_quality.ps1"
+      ]
+    },
+    {
+      "id": "R3-D10",
+      "status": "FAIL",
+      "evidence": [
+        "docs/remaster/evidence/r3/R3_ARTIFACT_CONFINEMENT.json",
+        "docs/remaster/evidence/r3/R3_ARTIFACT_MANIFEST.json",
+        "docs/remaster/work_packages/R3_VERIFICATION_PACKAGE.json"
+      ],
+      "detail": "Frozen confinement evidence is not reproducible against current disk: fresh run passed=false, manifest_failures=1 (verification package binding), hidden=0, budget under limit."
+    },
+    {
+      "id": "R3-D11",
+      "status": "PASS",
+      "evidence": [
+        "src/jarvis_foundry/errors.py",
+        "src/jarvis_foundry/observability.py",
+        "docs/remaster/evidence/r3/R3_NO_SILENT_FAILURE.json",
+        "docs/remaster/evidence/r3/R3_FOCUSED_TESTS.json"
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "id": "R3-VF-205",
+      "severity": "S1",
+      "title": "Frozen manifest binds a stale verification package; fresh confinement and frozen closure hashes are not reproducible",
+      "detail": "R3_ARTIFACT_MANIFEST.json (3bc57aab056d232b551a470ee9734e514fca275f99be5d6e9563b89e802cec35, 66 entries = 65 real + 1 self-referential report) has exactly one hash/size mismatch: entry docs/remaster/work_packages/R3_VERIFICATION_PACKAGE.json binds 6efbe5ce042cde04a427d41af089f0c1d4cb50fe49c52fc0bebfcf108489117d/3300 while disk is c477917e2821d30d64eff4582da9ac8b159f6ef5d8745fd52dec18f7fcab37ed/3207. File mtimes show the package and FINDINGS.jsonl were refreshed at 01:12:00/01:12:11 after the closure wrote report/manifest at 01:11:34, and no final closure was run. Consequences: (1) fresh artifact_confinement.py without R3_RECORD_EVIDENCE returns passed=false, manifest_failures=1, hidden=0, evidence_bytes=2986060 under 4194304, reproduction exits [0,0]; (2) reproduce_closure.py run twice as separate invocations prints IDEMPOTENT=True, exit 0, but produces report bf191645e2cd558558a0faac8586bc9d718461b1c5892348906f90933e5fb3f0 and manifest 943251c20f79e2a0a6158206e717e06be3c4da0ca7c42a4c08069983ba3d586c on every run, not the frozen d859716d1cabbe3fe2b7f8aa28bc2d5ac47534c58840d19e77f1fbdba7f35438/3bc57aab056d232b551a470ee9734e514fca275f99be5d6e9563b89e802cec35; a direct close_r3_evidence.py run exits 0 with the same non-frozen hashes and final check passed=true only against the regenerated state. The recorded confinement evidence (passed=true, failures=[], evidence_bytes=2964843) is also stale: it predates the round-3 verdict, typing/bandit refresh, and final closure. This breaks the round-3 repair claim that the frozen closure binds current disk.",
+      "evidence": [
+        "docs/remaster/evidence/r3/R3_ARTIFACT_MANIFEST.json",
+        "docs/remaster/work_packages/R3_VERIFICATION_PACKAGE.json",
+        "docs/remaster/evidence/r3/R3_ARTIFACT_CONFINEMENT.json",
+        "scripts/remaster/r3/reproduce_closure.py",
+        "scripts/remaster/r3/close_r3_evidence.py",
+        "scripts/remaster/r3/build_evidence.py"
+      ]
+    },
+    {
+      "id": "R3-VF-206",
+      "severity": "S3",
+      "title": "Verification package still embeds a stale findings-registry hash (residual R3-VF-203)",
+      "detail": "R3_VERIFICATION_PACKAGE.json (c477917e2821d30d64eff4582da9ac8b159f6ef5d8745fd52dec18f7fcab37ed) key_evidence.findings_registry embeds sha256 5671be7250234b84f8d87a86af45341937b97e2ea017de3a7330b9cb2757d30e/size 46531, but disk FINDINGS.jsonl is 554504317d7c598d1180e51d5d9a327faba4ae1a8acb3f9bfe7258bae823cced/size 48038 (it includes R3-F045, added after the package refresh). All eight other embedded builder/key hashes match disk exactly: report d859716d..., manifest 3bc57aab..., focused junit b6c7d0e7..., mutation e948538c..., coverage 640c760d..., confinement fc4441a3..., typing owned 3694bcb1..., bandit a626e8a1.... The R3-VF-203 hash-freshness defect is therefore only partially closed.",
+      "evidence": [
+        "docs/remaster/work_packages/R3_VERIFICATION_PACKAGE.json",
+        "docs/remaster/FINDINGS.jsonl"
+      ]
+    }
+  ],
+  "status_summary": {
+    "overall_verdict": "FAIL",
+    "verdict_reason": "Two mandatory verification items fail: (1) R3-C01/R3-C10 - the frozen artifact manifest does not bind current disk (one mismatch on R3_VERIFICATION_PACKAGE.json), so fresh artifact confinement reports passed=false/manifest_failures=1 and re-running the deterministic closure produces report bf191645.../manifest 943251c2... instead of the frozen d859716d.../3bc57aab...; (2) R3-VF-203 is not fully closed - the verification package embeds a stale FINDINGS.jsonl hash (5671be72.../46531 vs disk 55450431.../48038). R3-VF-201 (manifest completeness) and R3-VF-202 (owned mypy 24 files/0 errors) and R3-VF-204 (bandit LOW 39) are confirmed closed.",
+    "idempotency_result": "Internal PASS, frozen-hash reproduction FAIL. reproduce_closure.py run twice as separate invocations (each running close_r3_evidence.py twice): IDEMPOTENT=True, exit 0 on both, stable report bf191645e2cd558558a0faac8586bc9d718461b1c5892348906f90933e5fb3f0 and manifest 943251c20f79e2a0a6158206e717e06be3c4da0ca7c42a4c08069983ba3d586c. Direct close_r3_evidence.py run: exit 0, same hashes, final check passed=true, manifest entries=66 bad=0 against the regenerated state. The frozen hashes d859716d1cabbe3fe2b7f8aa28bc2d5ac47534c58840d19e77f1fbdba7f35438/3bc57aab056d232b551a470ee9734e514fca275f99be5d6e9563b89e802cec35 are NOT reproduced because the verification package was refreshed after the closure.",
+    "manifest_result": "66 entries = 65 real + 1 SELF_REFERENTIAL_REPORT marker. 64 real entries hash+size match disk; 1 mismatch: R3_VERIFICATION_PACKAGE.json (manifest 6efbe5ce.../3300 vs disk c477917e.../3207). Includes diff_evidence_reports.py and reproduce_closure.py (R3-VF-201 closed), both work packages, close_r3_evidence.py, install_evidence.py, all 34 evidence files, and round-1/2/3 verdicts.",
+    "confinement_result": "FAIL on frozen state: passed=false, manifest_failures=1, hidden=0, evidence_bytes=2986060 within 4194304, reproduction compile/collect exits [0,0]. Frozen R3_ARTIFACT_CONFINEMENT.json (passed=true, manifest_failures=0, evidence_bytes=2964843) is stale relative to current disk.",
+    "gate_results": {
+      "focused_pytest": "PASS 26 passed (exit 0)",
+      "mutation": "PASS 12/12 killed, baseline_exit=0",
+      "ruff_owned": "PASS check=0 format=0",
+      "mypy_owned": "PASS exit 0 errors=0 over 24 files; direct mypy --strict also exit 0/errors 0",
+      "architecture": "2 violations recorded (gate flags by design)",
+      "no_silent_failure": "4 findings recorded (gate flags by design)",
+      "bandit": "PASS LOW=39 MEDIUM=12 HIGH=0",
+      "pip_audit": "PASS 0 vulnerable of 43 scanned",
+      "secret_scan": "PASS 0 real matches of 785 files, comparison_identical=true",
+      "coverage": "PASS harness; honest baseline 29.832% branch (142/476) / 53.226% line vs 95.0 threshold"
+    },
+    "baselines_reproduced": {
+      "ruff_whole_repo": 499,
+      "mypy_trusted_kernel": 10,
+      "mypy_whole_repo": 248,
+      "ast_any_annotated": "1440/1715",
+      "ast_fully_annotated": "1222/1715"
+    },
+    "c02_c03_c05_adjudication": "R3-C02/C03/C05 FAIL statuses are honest recorded baselines (whole-repo ruff 499, trusted-kernel mypy strict 10, branch coverage 29.832%) with thresholds unchanged and disposition REPAIR_IN_R4; per round-1 adjudication they are non-blocking for the R3 tooling foundation. They do not drive this FAIL verdict.",
+    "live_boundary": "PASS - fresh read-only capture matches frozen guards: JARVIS-Foundry-Supervisor Running, Hermes_Gateway Ready, same task XML hashes, same two supervisor process identities. No live/protected writes, provider calls, commits, or pushes by builder or verifier.",
+    "registry_result": "PASS - FINDINGS.jsonl parses as 76 unique JSONL rows with no duplicate IDs; R3-F037 through R3-F045 each present exactly once.",
+    "verification_package_result": "8 of 9 embedded builder/key hashes match disk; key_evidence.findings_registry stale (5671be72.../46531 vs disk 55450431.../48038).",
+    "system_repair_check": "PASS - remaster HEAD fddeab0; tracked diff limited to FINDINGS.jsonl and pyproject.toml R3 additions; untracked files are the R3 additions (.github/, docs/remaster/evidence/r3/, R3 work packages, requirements-dev.txt, scripts/remaster/r3/, new src modules errors.py/observability.py, tests/remaster/r3/); no edits to existing src modules, tests/foundry, or R1/R2 evidence. Main repo HEAD 93a3ddc with exactly six untracked owner docs and no other changes."
+  },
+  "evidence_paths_and_hashes": {
+    "docs/remaster/work_packages/R3_WORK_PACKAGE.json": {
+      "sha256": "e6a73b5b878b143ceaba24568ad01781925ca5e8d5a63d81925b2353f858e65b",
+      "size": 10208
+    },
+    "docs/remaster/work_packages/R3_VERIFICATION_PACKAGE.json": {
+      "sha256": "c477917e2821d30d64eff4582da9ac8b159f6ef5d8745fd52dec18f7fcab37ed",
+      "size": 3207
+    },
+    "docs/remaster/evidence/r3/R3_BUILDER_REPORT.json": {
+      "sha256": "d859716d1cabbe3fe2b7f8aa28bc2d5ac47534c58840d19e77f1fbdba7f35438",
+      "size": 22421
+    },
+    "docs/remaster/evidence/r3/R3_ARTIFACT_MANIFEST.json": {
+      "sha256": "3bc57aab056d232b551a470ee9734e514fca275f99be5d6e9563b89e802cec35",
+      "size": 13798
+    },
+    "docs/remaster/evidence/r3/R3_ARTIFACT_CONFINEMENT.json": {
+      "sha256": "fc4441a3ca7870dfa551d1fef141c51a92c4e4223a7293712a7b3df851335671",
+      "size": 499
+    },
+    "docs/remaster/evidence/r3/R3_VERIFIER_ROUND1_VERDICT_DSV4.json": {
+      "sha256": "3d8c6a6f2665779003d29baa59a691c98f6cc01df65766424952a81217933076",
+      "size": 45343
+    },
+    "docs/remaster/evidence/r3/R3_VERIFIER_ROUND2_VERDICT_DSV4.json": {
+      "sha256": "f8d0a566b01c2ddcb59cfb8d21803a8b8f8ceb77632df4531153a2186b034db5",
+      "size": 29576
+    },
+    "docs/remaster/evidence/r3/R3_VERIFIER_ROUND3_VERDICT_DSV4.json": {
+      "sha256": "e4b1797f5ddb2ba31167f669da5124ee933d9df913d02fe86da2fe3780387068",
+      "size": 20425
+    },
+    "docs/remaster/FINDINGS.jsonl": {
+      "sha256": "554504317d7c598d1180e51d5d9a327faba4ae1a8acb3f9bfe7258bae823cced",
+      "size": 48038
+    },
+    "docs/remaster/evidence/r3/R3_TYPING_OWNED.json": {
+      "sha256": "3694bcb11e20fbdfe31fd151fef51924a9f6d95cc05298f0d3946628d3286dc1",
+      "size": 1395
+    },
+    "docs/remaster/evidence/r3/R3_TYPING_BASELINE.json": {
+      "sha256": "e7ddb409bc403f70a5b58384b96804bbeed2c7c4594a88eecbf4378b0e34fe8a",
+      "size": 2528
+    },
+    "docs/remaster/evidence/r3/R3_MYPY_OWNED_RAW.txt": {
+      "sha256": "653c24af21ad3bc4a8cf9a6ba237261490a6dc0b9703ef71eef912330b8ca539",
+      "size": 45
+    },
+    "docs/remaster/evidence/r3/R3_BANDIT.json": {
+      "sha256": "a626e8a1255a5405e2e462215938e93cec79749b643ffba36e08b635d28652f2",
+      "size": 337
+    },
+    "docs/remaster/evidence/r3/R3_PIP_AUDIT.json": {
+      "sha256": "93d7b0f842e46e407d2f94575f97fbbfdfbc542852dbe896ebe7a3021c9d2ee8",
+      "size": 440
+    },
+    "docs/remaster/evidence/r3/R3_FOCUSED_TESTS.json": {
+      "sha256": "39c41321ac1ce63b4b07f64203a5d5713cab7cc7e7f39a1511e58da965d3422c",
+      "size": 409
+    },
+    "docs/remaster/evidence/r3/R3_FOCUSED_TESTS_JUNIT.xml": {
+      "sha256": "b6c7d0e749c5cdd0fe283c4202add9b0b20463d40cfb05fb6da21cc38e3437e7",
+      "size": 4937
+    },
+    "docs/remaster/evidence/r3/R3_MUTATION.json": {
+      "sha256": "e948538c5ebab724152e73207f4564c1de7c6f41c0c7c6ee299744a3917e6701",
+      "size": 380
+    },
+    "docs/remaster/evidence/r3/R3_COVERAGE.json": {
+      "sha256": "640c760dbbf2baf4bb2165ea1f5d1f3c823bd03f31070e7577a6b0abd7c8b0f9",
+      "size": 713
+    },
+    "docs/remaster/evidence/r3/R3_COVERAGE_JSON.json": {
+      "sha256": "dbd242701b440b04f4abf2e99980f5704c99e0b5283b5ab3cdaebd4cad8ac4e8",
+      "size": 91404
+    },
+    "docs/remaster/evidence/r3/R3_ARCHITECTURE_RULES.json": {
+      "sha256": "53f1c472c5e1836c162b8c143b404f745eba0a2f51a31f6e3eb2079db6ac6ef9",
+      "size": 732
+    },
+    "docs/remaster/evidence/r3/R3_NO_SILENT_FAILURE.json": {
+      "sha256": "6f0f9a71888322062442fc9fa290b53e6ca99f10b50c5451765ad30ca20c296e",
+      "size": 1253
+    },
+    "docs/remaster/evidence/r3/R3_SECRET_SCAN.json": {
+      "sha256": "74564b36c558c0de7f60709d5ba0ec56496b16a545d854f2f557650837f3b508",
+      "size": 364
+    },
+    "docs/remaster/evidence/r3/R3_RUFF_OWNED.json": {
+      "sha256": "76d8cb32663ad393ac5b3a797b89cad52dcd13aa0dc3248943418d22052dd173",
+      "size": 390
+    },
+    "docs/remaster/evidence/r3/R3_RUFF_BASELINE.json": {
+      "sha256": "327174f2880964520dcb47d1ec3b86fb8f7d6aafcdeb533c69fedbecd7815d04",
+      "size": 632
+    }
+  },
+  "next_action": "Do not promote R3. Root must refresh the closure after the verification package and registry changes: run close_r3_evidence.py only after R3_VERIFICATION_PACKAGE.json and FINDINGS.jsonl are final, regenerate artifact confinement evidence in record mode, and confirm the frozen report/manifest/confinement hashes bind disk exactly (expected new pair reproducible by reproduce_closure.py twice). Refresh key_evidence.findings_registry in R3_VERIFICATION_PACKAGE.json to 554504317d7c598d1180e51d5d9a327faba4ae1a8acb3f9bfe7258bae823cced/48038, then re-run the closure so the manifest binds the refreshed package (c477917e2821d30d64eff4582da9ac8b159f6ef5d8745fd52dec18f7fcab37ed/3207). A fresh verifier round 5 must then reproduce the new frozen hashes, IDEMPOTENT=True with frozen-pair equality, manifest 65/65 real matches, confinement passed=true/manifest_failures=0, and verification package 9/9 embedded hashes matching disk."
+}

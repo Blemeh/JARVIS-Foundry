@@ -1,0 +1,12 @@
+{
+  "schema": "jarvis-r3-mutation-v1",
+  "manifest": "scripts/remaster/r3/frozen_mutants.json",
+  "manifest_sha256": "9e7e47c774f8ea386eb01cdecd8a0ed66338c29bf0ca4e92d83c8986cb16c729",
+  "baseline_tests": "full_baseline",
+  "baseline_exit_code": 0,
+  "baseline_wall_seconds": 16.725,
+  "killed": 12,
+  "total": 12,
+  "score_percent": 100.0,
+  "wall_seconds": 61.773
+}

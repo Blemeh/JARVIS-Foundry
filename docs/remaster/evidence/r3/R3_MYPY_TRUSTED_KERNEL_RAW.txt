@@ -1,0 +1,11 @@
+src\jarvis_foundry\supervisor\controls.py:211: error: Function is missing a type annotation for one or more parameters  [no-untyped-def]
+src\jarvis_foundry\supervisor\controls.py:282: error: Function is missing a type annotation for one or more parameters  [no-untyped-def]
+src\jarvis_foundry\supervisor\controls.py:296: error: Returning Any from function declared to return "int"  [no-any-return]
+src\jarvis_foundry\supervisor\controls.py:298: error: Function is missing a type annotation for one or more parameters  [no-untyped-def]
+src\jarvis_foundry\supervisor\controls.py:320: error: Function is missing a type annotation for one or more parameters  [no-untyped-def]
+src\jarvis_foundry\projections.py:1711: error: Incompatible types in assignment (expression has type "str | None", variable has type "str")  [assignment]
+src\jarvis_foundry\database.py:96: error: Argument 1 to "int" has incompatible type "int | None"; expected "str | Buffer | SupportsInt | SupportsIndex | SupportsTrunc"  [arg-type]
+src\jarvis_foundry\database.py:234: error: Returning Any from function declared to return "int"  [no-any-return]
+src\jarvis_foundry\control\policy.py:67: error: Item "None" of "Path | None" has no attribute "expanduser"  [union-attr]
+src\jarvis_foundry\effects.py:19: error: Module "jarvis_foundry.control.broker" does not explicitly export attribute "BrokerDecision"  [attr-defined]
+Found 10 errors in 5 files (checked 15 source files)

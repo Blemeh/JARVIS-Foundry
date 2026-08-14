@@ -21,4 +21,38 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests/foundry"]
 addopts = "-q"
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+exclude = [".git", ".venv", "docs/remaster/evidence"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+strict = true
+python_version = "3.13"
+show_error_codes = true
+warn_unused_configs = true
+exclude = ["docs/", ".git/", "var/"]
+mypy_path = ["src", "scripts/remaster/r3"]
+
+[tool.coverage.run]
+branch = true
+source = ["src/jarvis_foundry"]
+concurrency = ["thread"]
+relative_files = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
+
+[tool.bandit]
+exclude_dirs = ["tests", ".git", ".venv", "var", "docs", "__pycache__"]
 

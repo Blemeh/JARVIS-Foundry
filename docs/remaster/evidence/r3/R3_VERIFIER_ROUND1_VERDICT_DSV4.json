@@ -1,0 +1,1019 @@
+{
+  "schema": "jarvis-r3-verifier-round1-verdict-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R3",
+  "verifier_model": "deepseek-v4-flash via codex-router",
+  "verifier_role": "FRESH_INDEPENDENT_ADVERSARIAL_VERIFIER",
+  "verdict": "PASS",
+  "generated_utc": "2026-08-14T22:39:08Z",
+  "frozen_base": {
+    "branch": "remaster/post-v7-purpose",
+    "commit": "fddeab0",
+    "baseline_source_commit": "93a3ddc0965dfaf3e4cb9dc0952467bd5250520a",
+    "work_package": {
+      "path": "docs/remaster/work_packages/R3_WORK_PACKAGE.json",
+      "sha256": "E6A73B5B878B143CEABA24568AD01781925CA5E8D5A63D81925B2353F858E65B",
+      "size": 10208
+    },
+    "verification_package": {
+      "path": "docs/remaster/work_packages/R3_VERIFICATION_PACKAGE.json",
+      "sha256": "6EFBE5CE042CDE04A427D41AF089F0C1D4CB50FE49C52FC0BEBFCF108489117D",
+      "size": 3300
+    },
+    "builder_report": {
+      "path": "docs/remaster/evidence/r3/R3_BUILDER_REPORT.json",
+      "sha256": "D309FDF5B4E78E1DF4052540F91922AD760104DC5517FB80DD9639F302FAAF73",
+      "size": 22565
+    },
+    "artifact_manifest": {
+      "path": "docs/remaster/evidence/r3/R3_ARTIFACT_MANIFEST.json",
+      "sha256": "842F76E930B0408B5EA2905E4C8587D45A5A21C9F01784608C1C6723466FC1BC",
+      "size": 11689
+    }
+  },
+  "criteria": [
+    {
+      "id": "R3-C01",
+      "status": "PASS",
+      "evidence": [
+        {
+          "path": "requirements-dev.txt",
+          "sha256": "379F90C96A77DFC35B7731B87DECDD40019DD5F960F5F49BC13A34DB22659894"
+        },
+        {
+          "path": ".github/workflows/windows-ci.yml",
+          "sha256": "59FE660270C6DCDDAA6970A2BC09669180A734931F7DB9FFC16F2EA61A92DC14"
+        },
+        {
+          "path": "scripts/remaster/r3/make_quality.ps1",
+          "sha256": "F1ED6418A3C11EDB54B23C3D4B37630786FA9106D8A24F9BE7ABB1BC639D5A2A"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_ARTIFACT_CONFINEMENT.json",
+          "sha256": "B2D3D8EA674612B99ADEDEE1192FB7F35640F995A09DFE7D58C6417CC9C4E2C1"
+        }
+      ],
+      "reproduced_output": "requirements-dev.txt, windows-ci.yml, make_quality.ps1 present; artifact_confinement reproduced passed=true; every gate ran from committed lock in isolated venv.",
+      "notes": []
+    },
+    {
+      "id": "R3-C02",
+      "status": "FAIL",
+      "evidence": [
+        {
+          "path": "docs/remaster/evidence/r3/R3_RUFF_BASELINE.json",
+          "sha256": "327174F2880964520DCB47D1EC3B86FB8F7D6AAFCDEB533C69FEDBECD7815D04"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_RUFF_OWNED.json",
+          "sha256": "76D8CB32663AD393AC5B3A797B89CAD52DCD13AA0DC3248943418D22052DD173"
+        }
+      ],
+      "reproduced_output": "ruff owned: exit 0 All checks passed; whole-repo baseline re-run: check_exit=1 errors=499 format_exit=1 (frozen claim: 200 files would be reformatted).",
+      "notes": [
+        "Honest recorded baseline REPAIR_IN_R4; thresholds never lowered; non-blocking for R3 tooling stage (see adjudication)."
+      ]
+    },
+    {
+      "id": "R3-C03",
+      "status": "FAIL",
+      "evidence": [
+        {
+          "path": "docs/remaster/evidence/r3/R3_TYPING_BASELINE.json",
+          "sha256": "E7DDB409BC403F70A5B58384B96804BBEED2C7C4594A88EECBF4378B0E34FE8A"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_TYPING_OWNED.json",
+          "sha256": "E949E3B7F337C4EFC9FD33ED0C4269EC10E970D594F19F16BB411B1A47AFEE7F"
+        }
+      ],
+      "reproduced_output": "mypy owned strict: exit 0, no issues in 21 source files; frozen baseline: trusted-kernel errors=10, whole-repo errors=248, AST any-annotated=1440/1715, fully=1222/1715, 100_percent_typed_public_interfaces=false.",
+      "notes": [
+        "Honest recorded baseline REPAIR_IN_R4; strictness never lowered; non-blocking for R3 tooling stage (see adjudication)."
+      ]
+    },
+    {
+      "id": "R3-C04",
+      "status": "PASS",
+      "evidence": [
+        {
+          "path": "docs/remaster/evidence/r3/R3_BANDIT.json",
+          "sha256": "C5B5B79744316BF08013DFBB072C186BC70389BD88E72DB23BDC67DEF7D81D0A"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_PIP_AUDIT.json",
+          "sha256": "93D7B0F842E46E407D2F94575F97FBBFDFBC542852DBE896EBE7A3021C9D2EE8"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_SECRET_SCAN.json",
+          "sha256": "74564B36C558C0DE7F60709D5BA0EC56496B16A545D854F2F557650837F3B508"
+        }
+      ],
+      "reproduced_output": "bandit re-run severities LOW=34 MEDIUM=12 HIGH=0; pip-audit re-run scanned=43 vulnerable=0; secret scan re-run total_matches=10 classified_fixtures=10 real_matches=0 comparison_identical=true (files_scanned is environment-dependent 751-802 due to generated hypothesis/cache files; frozen 793).",
+      "notes": []
+    },
+    {
+      "id": "R3-C05",
+      "status": "FAIL",
+      "evidence": [
+        {
+          "path": "docs/remaster/evidence/r3/R3_COVERAGE.json",
+          "sha256": "640C760DBBF2BAF4BB2165EA1F5D1F3C823BD03F31070E7577A6B0ABD7C8B0F9"
+        }
+      ],
+      "reproduced_output": "coverage_gate re-run: branch coverage 29.832% (142/476) line 53.226% pytest_exit=0; threshold_percent=95.0 unchanged; below_threshold=true.",
+      "notes": [
+        "Honest recorded baseline REPAIR_IN_R4; threshold never lowered; integration remains gated; non-blocking for R3 tooling stage (see adjudication)."
+      ]
+    },
+    {
+      "id": "R3-C06",
+      "status": "PASS",
+      "evidence": [
+        {
+          "path": "docs/remaster/evidence/r3/R3_FOCUSED_TESTS_JUNIT.xml",
+          "sha256": "B6C7D0E749C5CDD0FE283C4202ADD9B0B20463D40CFB05FB6DA21CC38E3437E7"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_FOCUSED_TESTS.json",
+          "sha256": "39C41321AC1CE63B4B07F64203A5D5713CAB7CC7E7F39A1511E58DA965D3422C"
+        }
+      ],
+      "reproduced_output": "focused suite re-run: 26 passed, exit 0; explicit hypothesis files test_event_ledger.py/test_projection_idempotency.py/test_owner_controls.py re-run: 12 passed, exit 0; junit tests=26 failures=0 errors=0.",
+      "notes": []
+    },
+    {
+      "id": "R3-C07",
+      "status": "PASS",
+      "evidence": [
+        {
+          "path": "docs/remaster/evidence/r3/R3_MUTATION.json",
+          "sha256": "E948538C5EBAB724152E73207F4564C1DE7C6F41C0C7C6EE299744A3917E6701"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_MUTATION_RAW.json",
+          "sha256": "0B3FA37F68A191775F9E7DA8E62C224553C38B06A026DA25C9365D300198C8BC"
+        },
+        {
+          "path": "scripts/remaster/r3/frozen_mutants.json",
+          "sha256": "9E7E47C774F8EA386EB01CDECD8A0ED66338C29BF0CA4E92D83C8986CB16C729"
+        }
+      ],
+      "reproduced_output": "mutation_run.py re-run: mutation score 12/12 killed baseline_exit=0 wall=61.017s (script reported 60.343s), exit 0.",
+      "notes": []
+    },
+    {
+      "id": "R3-C08",
+      "status": "PASS",
+      "evidence": [
+        {
+          "path": "docs/remaster/evidence/r3/R3_ARCHITECTURE_RULES.json",
+          "sha256": "53F1C472C5E1836C162B8C143B404F745EBA0A2F51A31F6E3EB2079DB6AC6EF9"
+        }
+      ],
+      "reproduced_output": "architecture_rules.py re-run: exactly 2 violations: briefing.py -> jarvis_foundry.database, briefing.py -> jarvis_foundry.events (R3-ARCH-02), exit 1 as expected.",
+      "notes": []
+    },
+    {
+      "id": "R3-C09",
+      "status": "PASS",
+      "evidence": [
+        {
+          "path": ".github/workflows/windows-ci.yml",
+          "sha256": "59FE660270C6DCDDAA6970A2BC09669180A734931F7DB9FFC16F2EA61A92DC14"
+        },
+        {
+          "path": "scripts/remaster/r3/make_quality.ps1",
+          "sha256": "F1ED6418A3C11EDB54B23C3D4B37630786FA9106D8A24F9BE7ABB1BC639D5A2A"
+        }
+      ],
+      "reproduced_output": "windows-ci.yml exists with Setup Python 3.13 and explicit per-gate steps; make_quality.ps1 runs the same 14-step quality sequence.",
+      "notes": []
+    },
+    {
+      "id": "R3-C10",
+      "status": "PASS",
+      "evidence": [
+        {
+          "path": "docs/remaster/evidence/r3/R3_ARTIFACT_CONFINEMENT.json",
+          "sha256": "B2D3D8EA674612B99ADEDEE1192FB7F35640F995A09DFE7D58C6417CC9C4E2C1"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_ARTIFACT_MANIFEST.json",
+          "sha256": "842F76E930B0408B5EA2905E4C8587D45A5A21C9F01784608C1C6723466FC1BC"
+        }
+      ],
+      "reproduced_output": "artifact_confinement.py re-run: passed=true manifest_failures=0 hidden=0 budget={evidence_bytes:2888600,budget_bytes:4194304,within_budget:true} reproduction_exit=[0,0], exit 0.",
+      "notes": [
+        "Frozen confinement record states evidence_bytes=2888919; fresh json+txt measurement is 2888600 (319-byte stale budget figure, S3 finding R3-VF-001); within_budget and passed=true unchanged."
+      ]
+    },
+    {
+      "id": "R3-C11",
+      "status": "PASS",
+      "evidence": [
+        {
+          "path": "src/jarvis_foundry/errors.py",
+          "sha256": "744F624C4FF3C44F31215BB702BF11C88C410396B6447E192E33C3C608517D0B"
+        },
+        {
+          "path": "src/jarvis_foundry/observability.py",
+          "sha256": "97CE0D4099C3463248E7093289B8576E013631CD35670109D6BA5AA15F9DB7DC"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_NO_SILENT_FAILURE.json",
+          "sha256": "6F0F9A71888322062442FC9FA290B53E6CA99F10B50C5451765AD30CA20C296E"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_FOCUSED_TESTS_JUNIT.xml",
+          "sha256": "B6C7D0E749C5CDD0FE283C4202ADD9B0B20463D40CFB05FB6DA21CC38E3437E7"
+        }
+      ],
+      "reproduced_output": "errors.py/observability.py exist, typed (mypy owned exit 0), covered by passing tests; no_silent_failure.py re-run: 4 recorded findings (database.py:36, database.py:47, effects.py:261, supervisor/controls.py:219), none unrecorded.",
+      "notes": []
+    },
+    {
+      "id": "R3-C12",
+      "status": "PASS",
+      "evidence": [
+        {
+          "path": "docs/remaster/evidence/r3/R3_LIVE_GUARD_BEFORE.json",
+          "sha256": "A41819E30A6C6981F3F11CC5B4D4262920E57DAF583C236A6581A36C4F9D4773"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_LIVE_GUARD_AFTER.json",
+          "sha256": "C286030C242A770C2F1074ADE0DDFA08AE3DB2B094CE5B53278329543B1D4291"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_LIVE_GUARD_COMPARISON.json",
+          "sha256": "7C251B2D3B88191206E7A13197374770DC8E2512B861185A9B454F18318AAEB6"
+        }
+      ],
+      "reproduced_output": "Tasks: JARVIS-Foundry-Supervisor Running, Hermes_Gateway Ready; pids 21636/17052 present with command_sha256=824e09a3ea8d12f38d8fe7fa93cf602e0229c190dea3692e023837963cb9a8e9 and creation dates matching guard; no threshold lowering; git status remaster shows only R3 additions + FINDINGS registry + pyproject config; main shows only 6 untracked owner docs; HEAD unchanged fddeab0; no commit/push.",
+      "notes": []
+    }
+  ],
+  "deliverables": [
+    {
+      "id": "R3-D01",
+      "status": "PASS",
+      "evidence": [
+        {
+          "path": "requirements-dev.txt",
+          "sha256": "379F90C96A77DFC35B7731B87DECDD40019DD5F960F5F49BC13A34DB22659894"
+        },
+        {
+          "path": "scripts/remaster/r3/make_venv.ps1",
+          "sha256": "4FFCAF7A45881283861EED82D4531D3762B27B2F2CE929A46ED28197C911888F"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_INSTALL.json",
+          "sha256": "650548A544202E8C83E199C63F05CB125759BD990F80384DB4168D237EA8F7BF"
+        }
+      ],
+      "notes": "Isolated venv reproduces pinned tool versions (Python 3.13.5, pytest 9.0.3, hypothesis 6.165.8)."
+    },
+    {
+      "id": "R3-D02",
+      "status": "PASS",
+      "evidence": [
+        {
+          "path": "docs/remaster/evidence/r3/R3_RUFF_OWNED.json",
+          "sha256": "76D8CB32663AD393AC5B3A797B89CAD52DCD13AA0DC3248943418D22052DD173"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_RUFF_BASELINE.json",
+          "sha256": "327174F2880964520DCB47D1EC3B86FB8F7D6AAFCDEB533C69FEDBECD7815D04"
+        }
+      ],
+      "notes": "Owned check/format exit 0; honest whole-repo baseline 499 recorded."
+    },
+    {
+      "id": "R3-D03",
+      "status": "PASS",
+      "evidence": [
+        {
+          "path": "docs/remaster/evidence/r3/R3_TYPING_OWNED.json",
+          "sha256": "E949E3B7F337C4EFC9FD33ED0C4269EC10E970D594F19F16BB411B1A47AFEE7F"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_TYPING_BASELINE.json",
+          "sha256": "E7DDB409BC403F70A5B58384B96804BBEED2C7C4594A88EECBF4378B0E34FE8A"
+        }
+      ],
+      "notes": "Owned strict mypy 0 errors; honest trusted-kernel 10 / whole-repo 248 baselines recorded."
+    },
+    {
+      "id": "R3-D04",
+      "status": "PASS",
+      "evidence": [
+        {
+          "path": "docs/remaster/evidence/r3/R3_BANDIT.json",
+          "sha256": "C5B5B79744316BF08013DFBB072C186BC70389BD88E72DB23BDC67DEF7D81D0A"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_PIP_AUDIT.json",
+          "sha256": "93D7B0F842E46E407D2F94575F97FBBFDFBC542852DBE896EBE7A3021C9D2EE8"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_SECRET_SCAN.json",
+          "sha256": "74564B36C558C0DE7F60709D5BA0EC56496B16A545D854F2F557650837F3B508"
+        }
+      ],
+      "notes": "High=0, vulnerable=0, real_matches=0; secret scan non-emitting."
+    },
+    {
+      "id": "R3-D05",
+      "status": "PASS",
+      "evidence": [
+        {
+          "path": "docs/remaster/evidence/r3/R3_COVERAGE.json",
+          "sha256": "640C760DBBF2BAF4BB2165EA1F5D1F3C823BD03F31070E7577A6B0ABD7C8B0F9"
+        }
+      ],
+      "notes": "29.832% branch / 53.226% line measured honestly; 95% threshold unchanged."
+    },
+    {
+      "id": "R3-D06",
+      "status": "PASS",
+      "evidence": [
+        {
+          "path": "docs/remaster/evidence/r3/R3_FOCUSED_TESTS.json",
+          "sha256": "39C41321AC1CE63B4B07F64203A5D5713CAB7CC7E7F39A1511E58DA965D3422C"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_FOCUSED_TESTS_JUNIT.xml",
+          "sha256": "B6C7D0E749C5CDD0FE283C4202ADD9B0B20463D40CFB05FB6DA21CC38E3437E7"
+        }
+      ],
+      "notes": "26 passed / 0 failed reproduced."
+    },
+    {
+      "id": "R3-D07",
+      "status": "PASS",
+      "evidence": [
+        {
+          "path": "docs/remaster/evidence/r3/R3_MUTATION.json",
+          "sha256": "E948538C5EBAB724152E73207F4564C1DE7C6F41C0C7C6EE299744A3917E6701"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_MUTATION_RAW.json",
+          "sha256": "0B3FA37F68A191775F9E7DA8E62C224553C38B06A026DA25C9365D300198C8BC"
+        }
+      ],
+      "notes": "12/12 killed, baseline exit 0, A/B proof per mutant."
+    },
+    {
+      "id": "R3-D08",
+      "status": "PASS",
+      "evidence": [
+        {
+          "path": "docs/remaster/evidence/r3/R3_ARCHITECTURE_RULES.json",
+          "sha256": "53F1C472C5E1836C162B8C143B404F745EBA0A2F51A31F6E3EB2079DB6AC6EF9"
+        }
+      ],
+      "notes": "2 exact violations listed with paths; gate exits 1 until repaired."
+    },
+    {
+      "id": "R3-D09",
+      "status": "PASS",
+      "evidence": [
+        {
+          "path": ".github/workflows/windows-ci.yml",
+          "sha256": "59FE660270C6DCDDAA6970A2BC09669180A734931F7DB9FFC16F2EA61A92DC14"
+        },
+        {
+          "path": "scripts/remaster/r3/make_quality.ps1",
+          "sha256": "F1ED6418A3C11EDB54B23C3D4B37630786FA9106D8A24F9BE7ABB1BC639D5A2A"
+        }
+      ],
+      "notes": "Windows CI + portable quality script match and are explicit."
+    },
+    {
+      "id": "R3-D10",
+      "status": "PASS",
+      "evidence": [
+        {
+          "path": "docs/remaster/evidence/r3/R3_ARTIFACT_CONFINEMENT.json",
+          "sha256": "B2D3D8EA674612B99ADEDEE1192FB7F35640F995A09DFE7D58C6417CC9C4E2C1"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_ARTIFACT_MANIFEST.json",
+          "sha256": "842F76E930B0408B5EA2905E4C8587D45A5A21C9F01784608C1C6723466FC1BC"
+        }
+      ],
+      "notes": "passed=true, manifest failures 0, budget within 4 MiB."
+    },
+    {
+      "id": "R3-D11",
+      "status": "PASS",
+      "evidence": [
+        {
+          "path": "src/jarvis_foundry/errors.py",
+          "sha256": "744F624C4FF3C44F31215BB702BF11C88C410396B6447E192E33C3C608517D0B"
+        },
+        {
+          "path": "src/jarvis_foundry/observability.py",
+          "sha256": "97CE0D4099C3463248E7093289B8576E013631CD35670109D6BA5AA15F9DB7DC"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_NO_SILENT_FAILURE.json",
+          "sha256": "6F0F9A71888322062442FC9FA290B53E6CA99F10B50C5451765AD30CA20C296E"
+        }
+      ],
+      "notes": "Typed owned modules with passing tests; no unrecorded silent-failure finding."
+    }
+  ],
+  "findings": [
+    {
+      "id": "R3-VF-001",
+      "severity": "S3",
+      "title": "Frozen confinement budget figure is stale by 319 bytes",
+      "invariant": "evidence accuracy / internal consistency of R3_ARTIFACT_CONFINEMENT.json",
+      "reproduction": "Re-ran scripts/remaster/r3/artifact_confinement.py in isolated venv: budget.evidence_bytes=2888600 (json+txt measurement), but frozen R3_ARTIFACT_CONFINEMENT.json records 2888919. All 56 manifest entries still hash-match (no file content changed); delta equals prior stale confinement file size minus current 499-byte file (818-499).",
+      "impact": "passed=true, manifest_failures=0, within_budget=true all remain valid (2,888,600 < 4,194,304). No criterion flips; the recorded byte total is stale evidence.",
+      "disposition": "REPORT_ONLY; do not edit frozen evidence in this round. R4 should regenerate the confinement record and rebind hashes if record mode is used."
+    }
+  ],
+  "status_summary": {
+    "verdict": "PASS",
+    "mandatory_criteria_pass": [
+      "R3-C01",
+      "R3-C04",
+      "R3-C06",
+      "R3-C07",
+      "R3-C08",
+      "R3-C09",
+      "R3-C10",
+      "R3-C11",
+      "R3-C12"
+    ],
+    "honest_baseline_criteria_fail": [
+      "R3-C02",
+      "R3-C03",
+      "R3-C05"
+    ],
+    "adjudication": {
+      "question": "Do honest FAIL baselines (ruff 499, kernel mypy 10, coverage 29.832%) block R3 as a stage, or is R3 deliverable-pass as the tooling foundation?",
+      "decision": "R3 stage is deliverable-pass with honest recorded baselines; the FAIL criteria are NOT judged mandatory-pass for R3 and do not flip the stage verdict.",
+      "reasoning": [
+        "Work package objective states R3 installs/enforces the professional engineering foundation and does NOT rewrite the trusted kernel (that is R4).",
+        "C05 explicitly defines the below-threshold outcome as a recorded finding with exact numbers and integration remaining gated (threshold never lowered), which is exactly what the builder did.",
+        "C02 records pre-existing violations as findings rather than silent skips; C03 records whole-repo and trusted-kernel baselines honestly; both are REPAIR_IN_R4.",
+        "C07 explicitly defers the 90% mutation score gate to the rebuilt R4 kernel; the harness is required to work now, and it does (12/12 killed).",
+        "No threshold was lowered: coverage threshold 95.0 unchanged, mypy strict unchanged, ruff config unchanged.",
+        "All R3-owned gates and all mandatory criteria (C01, C04, C06-C12) were independently reproduced as PASS; gates fail closed on the honest baselines and block later integration until R4 repair.",
+        "No live/protected writes, no commits, no provider calls, no secret leakage, and no manufactured PASS were found."
+      ]
+    },
+    "reproduced_checks": {
+      "manifest_56_entries": "56/56 hash+size match; 0 missing; 0 mismatches; no duplicate paths",
+      "focused_pytest": "26 passed, 0 failed, exit 0",
+      "hypothesis_explicit": "12 passed, 0 failed, exit 0",
+      "mutation": "12/12 killed, baseline_exit=0, wall 61.017s",
+      "ruff_owned": "exit 0",
+      "ruff_baseline": "errors=499, format_exit=1",
+      "mypy_owned": "exit 0, 21 files",
+      "mypy_baseline": "trusted_kernel=10, whole_repo=248, AST any=1440/1715, fully=1222/1715",
+      "coverage": "29.832% (142/476) branch, 53.226% line, threshold 95.0 unchanged, below_threshold=true",
+      "architecture_rules": "2 violations (briefing.py -> database, -> events)",
+      "no_silent_failure": "4 findings (database.py:36,47; effects.py:261; supervisor/controls.py:219)",
+      "bandit": "HIGH=0, LOW=34, MEDIUM=12",
+      "pip_audit": "43 scanned, 0 vulnerable",
+      "secret_scan": "10 matches, 10 classified fixtures, real_matches=0, comparison_identical=true, non-emitting digests",
+      "artifact_confinement": "passed=true, manifest_failures=0, hidden=0, budget within 4 MiB",
+      "git_remaster": "only R3 additions: FINDINGS.jsonl append (6 R3 lines), pyproject.toml config, .github/, requirements-dev.txt, scripts/remaster/r3/, tests/remaster/r3/, src errors/observability, work packages, evidence/r3; no edits to existing src modules, tests/foundry, R1/R2 evidence",
+      "git_main": "exactly 6 untracked owner docs; HEAD 93a3ddc0965dfaf3e4cb9dc0952467bd5250520a unchanged",
+      "live_boundary": "JARVIS-Foundry-Supervisor Running, Hermes_Gateway Ready, pids 21636/17052 present with matching command_sha256=824e09a3ea8d12f38d8fe7fa93cf602e0229c190dea3692e023837963cb9a8e9; unchanged vs before/after",
+      "registry": "FINDINGS.jsonl parses 73/73 lines, includes R3-F037..F042, no duplicate IDs"
+    },
+    "stale_binding_closure": "R3-F037 root closure verified: manifest binds R3_ARTIFACT_CONFINEMENT.json sha256 b2d3d8ea674612b99adedee1192fb7f35640f995a09dfe7d58c6417cc9c4e2c1 = on-disk hash = verification-package key_evidence hash; no current aa272ec7 binding remains except the historical FINDINGS text.",
+    "observations": [
+      "R3_SECRET_SCAN files_scanned varies across verifier reruns (751-802 vs frozen 793) because generated hypothesis/cache files are scanned; real_matches=0 and match digests are stable.",
+      "Evidence dir fresh totals: json+txt 2,888,600 bytes; all files including junit 2,893,537 bytes; both well under 4 MiB."
+    ]
+  },
+  "evidence_paths_and_hashes": {
+    "manifest_recomputed": {
+      "total": 56,
+      "matched": 56,
+      "entries": [
+        {
+          "path": ".github/workflows/windows-ci.yml",
+          "kind": "source",
+          "sha256": "59FE660270C6DCDDAA6970A2BC09669180A734931F7DB9FFC16F2EA61A92DC14",
+          "size": 3268,
+          "manifest_sha256": "59fe660270c6dcddaa6970a2bc09669180a734931f7db9ffc16f2ea61a92dc14",
+          "manifest_size": 3268,
+          "match": true
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_ARCHITECTURE_RULES.json",
+          "kind": "evidence",
+          "sha256": "53F1C472C5E1836C162B8C143B404F745EBA0A2F51A31F6E3EB2079DB6AC6EF9",
+          "size": 732,
+          "manifest_sha256": "53f1c472c5e1836c162b8c143b404f745eba0a2f51a31f6e3eb2079db6ac6ef9",
+          "manifest_size": 732,
+          "match": true
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_ARTIFACT_CONFINEMENT.json",
+          "kind": "evidence",
+          "sha256": "B2D3D8EA674612B99ADEDEE1192FB7F35640F995A09DFE7D58C6417CC9C4E2C1",
+          "size": 499,
+          "manifest_sha256": "b2d3d8ea674612b99adedee1192fb7f35640f995a09dfe7d58c6417cc9c4e2c1",
+          "manifest_size": 499,
+          "match": true
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_BANDIT.json",
+          "kind": "evidence",
+          "sha256": "C5B5B79744316BF08013DFBB072C186BC70389BD88E72DB23BDC67DEF7D81D0A",
+          "size": 337,
+          "manifest_sha256": "c5b5b79744316bf08013dfbb072c186bc70389bd88e72db23bdc67def7d81d0a",
+          "manifest_size": 337,
+          "match": true
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_BANDIT_RAW.txt",
+          "kind": "evidence",
+          "sha256": "A8F7982473C627557FD5274709FD5EE0DE09C966A3AEF5F3CE862B89BF553432",
+          "size": 332,
+          "manifest_sha256": "a8f7982473c627557fd5274709fd5ee0de09c966a3aef5f3ce862b89bf553432",
+          "manifest_size": 332,
+          "match": true
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_COVERAGE.json",
+          "kind": "evidence",
+          "sha256": "640C760DBBF2BAF4BB2165EA1F5D1F3C823BD03F31070E7577A6B0ABD7C8B0F9",
+          "size": 713,
+          "manifest_sha256": "640c760dbbf2baf4bb2165ea1f5d1f3c823bd03f31070e7577a6b0abd7c8b0f9",
+          "manifest_size": 713,
+          "match": true
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_COVERAGE_JSON.json",
+          "kind": "evidence",
+          "sha256": "DBD242701B440B04F4ABF2E99980F5704C99E0B5283B5AB3CDAEBD4CAD8AC4E8",
+          "size": 91404,
+          "manifest_sha256": "dbd242701b440b04f4abf2e99980f5704c99e0b5283b5ab3cdaebd4cad8ac4e8",
+          "manifest_size": 91404,
+          "match": true
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_COVERAGE_RAW.txt",
+          "kind": "evidence",
+          "sha256": "25AF47E64B4A5B5D7AC92106593106D9AEE727D16669C0EC6FEB8E89660E8CA2",
+          "size": 326449,
+          "manifest_sha256": "25af47e64b4a5b5d7ac92106593106d9aee727d16669c0ec6feb8e89660e8ca2",
+          "manifest_size": 326449,
+          "match": true
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_FOCUSED_TESTS.json",
+          "kind": "evidence",
+          "sha256": "39C41321AC1CE63B4B07F64203A5D5713CAB7CC7E7F39A1511E58DA965D3422C",
+          "size": 409,
+          "manifest_sha256": "39c41321ac1ce63b4b07f64203a5d5713cab7cc7e7f39a1511e58da965d3422c",
+          "manifest_size": 409,
+          "match": true
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_FOCUSED_TESTS_JUNIT.xml",
+          "kind": "evidence",
+          "sha256": "B6C7D0E749C5CDD0FE283C4202ADD9B0B20463D40CFB05FB6DA21CC38E3437E7",
+          "size": 4937,
+          "manifest_sha256": "b6c7d0e749c5cdd0fe283c4202add9b0b20463d40cfb05fb6da21cc38e3437e7",
+          "manifest_size": 4937,
+          "match": true
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_FOCUSED_TESTS_RAW.txt",
+          "kind": "evidence",
+          "sha256": "CD1D8BE477856FEC844396F3D0152C474865B2A452CD874524EDBB2F07FF4FB0",
+          "size": 102,
+          "manifest_sha256": "cd1d8be477856fec844396f3d0152c474865b2a452cd874524edbb2f07ff4fb0",
+          "manifest_size": 102,
+          "match": true
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_INSTALL.json",
+          "kind": "evidence",
+          "sha256": "650548A544202E8C83E199C63F05CB125759BD990F80384DB4168D237EA8F7BF",
+          "size": 7298,
+          "manifest_sha256": "650548a544202e8c83e199c63f05cb125759bd990f80384db4168d237ea8f7bf",
+          "manifest_size": 7298,
+          "match": true
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_LIVE_GUARD_AFTER.json",
+          "kind": "evidence",
+          "sha256": "C286030C242A770C2F1074ADE0DDFA08AE3DB2B094CE5B53278329543B1D4291",
+          "size": 1057,
+          "manifest_sha256": "c286030c242a770c2f1074ade0ddfa08ae3db2b094ce5b53278329543b1d4291",
+          "manifest_size": 1057,
+          "match": true
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_LIVE_GUARD_BEFORE.json",
+          "kind": "evidence",
+          "sha256": "A41819E30A6C6981F3F11CC5B4D4262920E57DAF583C236A6581A36C4F9D4773",
+          "size": 1057,
+          "manifest_sha256": "a41819e30a6c6981f3f11cc5b4d4262920e57daf583c236a6581a36c4f9d4773",
+          "manifest_size": 1057,
+          "match": true
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_LIVE_GUARD_COMPARISON.json",
+          "kind": "evidence",
+          "sha256": "7C251B2D3B88191206E7A13197374770DC8E2512B861185A9B454F18318AAEB6",
+          "size": 245,
+          "manifest_sha256": "7c251b2d3b88191206e7a13197374770dc8e2512b861185a9b454f18318aaeb6",
+          "manifest_size": 245,
+          "match": true
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_MUTATION.json",
+          "kind": "evidence",
+          "sha256": "E948538C5EBAB724152E73207F4564C1DE7C6F41C0C7C6EE299744A3917E6701",
+          "size": 380,
+          "manifest_sha256": "e948538c5ebab724152e73207f4564c1de7c6f41c0c7c6ee299744a3917e6701",
+          "manifest_size": 380,
+          "match": true
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_MUTATION_RAW.json",
+          "kind": "evidence",
+          "sha256": "0B3FA37F68A191775F9E7DA8E62C224553C38B06A026DA25C9365D300198C8BC",
+          "size": 4898,
+          "manifest_sha256": "0b3fa37f68a191775f9e7da8e62c224553c38b06a026da25c9365d300198c8bc",
+          "manifest_size": 4898,
+          "match": true
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_MYPY_OWNED_RAW.txt",
+          "kind": "evidence",
+          "sha256": "A3EE8CC563D620855A76E1C43ED6F1118B5D68435D0C1B38B01AE7646398501F",
+          "size": 45,
+          "manifest_sha256": "a3ee8cc563d620855a76e1c43ed6f1118b5d68435d0c1b38b01ae7646398501f",
+          "manifest_size": 45,
+          "match": true
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_MYPY_TRUSTED_KERNEL_RAW.txt",
+          "kind": "evidence",
+          "sha256": "1A8077774B5D84E06B4BEF996C0B385C23C3BE6575DAB0767390F9D6F80EB1F6",
+          "size": 1454,
+          "manifest_sha256": "1a8077774b5d84e06b4bef996c0b385c23c3be6575dab0767390f9d6f80eb1f6",
+          "manifest_size": 1454,
+          "match": true
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_MYPY_WHOLE_REPO_RAW.txt",
+          "kind": "evidence",
+          "sha256": "B0FD03477D6D24C6ACA1B21E5B3D14DC8A63E36BBF32ABA09EB29F699E3D984D",
+          "size": 36670,
+          "manifest_sha256": "b0fd03477d6d24c6aca1b21e5b3d14dc8a63e36bbf32aba09eb29f699e3d984d",
+          "manifest_size": 36670,
+          "match": true
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_NO_SILENT_FAILURE.json",
+          "kind": "evidence",
+          "sha256": "6F0F9A71888322062442FC9FA290B53E6CA99F10B50C5451765AD30CA20C296E",
+          "size": 1253,
+          "manifest_sha256": "6f0f9a71888322062442fc9fa290b53e6ca99f10b50c5451765ad30ca20c296e",
+          "manifest_size": 1253,
+          "match": true
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_PIP_AUDIT.json",
+          "kind": "evidence",
+          "sha256": "93D7B0F842E46E407D2F94575F97FBBFDFBC542852DBE896EBE7A3021C9D2EE8",
+          "size": 440,
+          "manifest_sha256": "93d7b0f842e46e407d2f94575f97fbbfdfbc542852dbe896ebe7a3021c9d2ee8",
+          "manifest_size": 440,
+          "match": true
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_PIP_AUDIT_RAW.txt",
+          "kind": "evidence",
+          "sha256": "C8672E756AE2B1C1009FC5896614D07F8A45C9BE1FF40397BD041E303BAF3F9C",
+          "size": 2530,
+          "manifest_sha256": "c8672e756ae2b1c1009fc5896614d07f8a45c9be1ff40397bd041e303baf3f9c",
+          "manifest_size": 2530,
+          "match": true
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_RUFF_BASELINE.json",
+          "kind": "evidence",
+          "sha256": "327174F2880964520DCB47D1EC3B86FB8F7D6AAFCDEB533C69FEDBECD7815D04",
+          "size": 632,
+          "manifest_sha256": "327174f2880964520dcb47d1ec3b86fb8f7d6aafcdeb533c69fedbecd7815d04",
+          "manifest_size": 632,
+          "match": true
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_RUFF_BASELINE_RAW.txt",
+          "kind": "evidence",
+          "sha256": "D0E49C0E812B6E8BAC3B2AEAC27390BB43D4EBDC617446996CCEDC75A3E8FC02",
+          "size": 2367648,
+          "manifest_sha256": "d0e49c0e812b6e8bac3b2aeac27390bb43d4ebdc617446996ccedc75a3e8fc02",
+          "manifest_size": 2367648,
+          "match": true
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_RUFF_OWNED.json",
+          "kind": "evidence",
+          "sha256": "76D8CB32663AD393AC5B3A797B89CAD52DCD13AA0DC3248943418D22052DD173",
+          "size": 390,
+          "manifest_sha256": "76d8cb32663ad393ac5b3a797b89cad52dcd13aa0dc3248943418d22052dd173",
+          "manifest_size": 390,
+          "match": true
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_RUFF_OWNED_RAW.txt",
+          "kind": "evidence",
+          "sha256": "5C442B3092A3F7DF4C434F2BDFCA993E650B1AA93E14EA726821A5008730E6B1",
+          "size": 79,
+          "manifest_sha256": "5c442b3092a3f7df4c434f2bdfca993e650b1aa93e14ea726821a5008730e6b1",
+          "manifest_size": 79,
+          "match": true
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_SECRET_SCAN.json",
+          "kind": "evidence",
+          "sha256": "74564B36C558C0DE7F60709D5BA0EC56496B16A545D854F2F557650837F3B508",
+          "size": 364,
+          "manifest_sha256": "74564b36c558c0de7f60709d5ba0ec56496b16a545d854f2f557650837f3b508",
+          "manifest_size": 364,
+          "match": true
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_SECRET_SCAN_RAW.json",
+          "kind": "evidence",
+          "sha256": "FC6D80812D4AA4E58697CF0E276D76F7C5B08B4303D6E6858A10754551C2EDA6",
+          "size": 3157,
+          "manifest_sha256": "fc6d80812d4aa4e58697cf0e276d76f7c5b08b4303d6e6858a10754551c2eda6",
+          "manifest_size": 3157,
+          "match": true
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_TYPING_BASELINE.json",
+          "kind": "evidence",
+          "sha256": "E7DDB409BC403F70A5B58384B96804BBEED2C7C4594A88EECBF4378B0E34FE8A",
+          "size": 2528,
+          "manifest_sha256": "e7ddb409bc403f70a5b58384b96804bbeed2c7c4594a88eecbf4378b0e34fe8a",
+          "manifest_size": 2528,
+          "match": true
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_TYPING_OWNED.json",
+          "kind": "evidence",
+          "sha256": "E949E3B7F337C4EFC9FD33ED0C4269EC10E970D594F19F16BB411B1A47AFEE7F",
+          "size": 1244,
+          "manifest_sha256": "e949e3b7f337c4efc9fd33ed0c4269ec10e970d594f19f16bb411b1a47afee7f",
+          "manifest_size": 1244,
+          "match": true
+        },
+        {
+          "path": "pyproject.toml",
+          "kind": "source",
+          "sha256": "46F9A9F03A688CCEEEE0D48ADFD9457EE6686E4EAD4CAC1B353BF368DAE106A3",
+          "size": 1234,
+          "manifest_sha256": "46f9a9f03a688cceeee0d48adfd9457ee6686e4ead4cac1b353bf368dae106a3",
+          "manifest_size": 1234,
+          "match": true
+        },
+        {
+          "path": "requirements-dev.txt",
+          "kind": "source",
+          "sha256": "379F90C96A77DFC35B7731B87DECDD40019DD5F960F5F49BC13A34DB22659894",
+          "size": 654,
+          "manifest_sha256": "379f90c96a77dfc35b7731b87decdd40019dd5f960f5f49bc13a34db22659894",
+          "manifest_size": 654,
+          "match": true
+        },
+        {
+          "path": "scripts/remaster/r3/architecture_rules.py",
+          "kind": "source",
+          "sha256": "3ADA17BEF0C8F4B449FF043DA2E86F94516835628B2121ACD95E2B1185EA17D5",
+          "size": 6845,
+          "manifest_sha256": "3ada17bef0c8f4b449ff043da2e86f94516835628b2121acd95e2b1185ea17d5",
+          "manifest_size": 6845,
+          "match": true
+        },
+        {
+          "path": "scripts/remaster/r3/artifact_confinement.py",
+          "kind": "source",
+          "sha256": "2456A3CEF09BCC3BFBAE5B91E7FD941A080608CDE8D6773ABE8C11B740AB7E44",
+          "size": 8393,
+          "manifest_sha256": "2456a3cef09bcc3bfbae5b91e7fd941a080608cde8d6773abe8c11b740ab7e44",
+          "manifest_size": 8393,
+          "match": true
+        },
+        {
+          "path": "scripts/remaster/r3/build_evidence.py",
+          "kind": "source",
+          "sha256": "8FB6C7C76236A29F4359DFC8302363160DEB9A8919DA732D5C6B358D299B7982",
+          "size": 20484,
+          "manifest_sha256": "8fb6c7c76236a29f4359dfc8302363160deb9a8919da732d5c6b358d299b7982",
+          "manifest_size": 20484,
+          "match": true
+        },
+        {
+          "path": "scripts/remaster/r3/common.py",
+          "kind": "source",
+          "sha256": "658E9A89C85A42AF9C8151A042AC94646B8BBE41B7CF295158A951A46E756851",
+          "size": 2808,
+          "manifest_sha256": "658e9a89c85a42af9c8151a042ac94646b8bbe41b7cf295158a951a46e756851",
+          "manifest_size": 2808,
+          "match": true
+        },
+        {
+          "path": "scripts/remaster/r3/coverage_gate.py",
+          "kind": "source",
+          "sha256": "EB2B2461E2F60E1767D05F43F15E166189BE6F9E76C540A3228F254C270A8A0A",
+          "size": 4590,
+          "manifest_sha256": "eb2b2461e2f60e1767d05f43f15e166189be6f9e76c540a3228f254c270a8a0a",
+          "manifest_size": 4590,
+          "match": true
+        },
+        {
+          "path": "scripts/remaster/r3/external_gates.py",
+          "kind": "source",
+          "sha256": "0887E2EB8EDBFEB97013B1ADCB3FA329AB9AFE454C2180820908E6A7AE3F2567",
+          "size": 9648,
+          "manifest_sha256": "0887e2eb8edbfeb97013b1adcb3fa329ab9afe454c2180820908e6a7ae3f2567",
+          "manifest_size": 9648,
+          "match": true
+        },
+        {
+          "path": "scripts/remaster/r3/frozen_mutants.json",
+          "kind": "source",
+          "sha256": "9E7E47C774F8EA386EB01CDECD8A0ED66338C29BF0CA4E92D83C8986CB16C729",
+          "size": 5257,
+          "manifest_sha256": "9e7e47c774f8ea386eb01cdecd8a0ed66338c29bf0ca4e92d83c8986cb16c729",
+          "manifest_size": 5257,
+          "match": true
+        },
+        {
+          "path": "scripts/remaster/r3/live_guard.py",
+          "kind": "source",
+          "sha256": "2226E7980C07D352B5A1382E3505E57F4A00170CDCD7E93BB303B6A7372E7A30",
+          "size": 5422,
+          "manifest_sha256": "2226e7980c07d352b5a1382e3505e57f4a00170cdcd7e93bb303b6a7372e7a30",
+          "manifest_size": 5422,
+          "match": true
+        },
+        {
+          "path": "scripts/remaster/r3/make_quality.ps1",
+          "kind": "source",
+          "sha256": "F1ED6418A3C11EDB54B23C3D4B37630786FA9106D8A24F9BE7ABB1BC639D5A2A",
+          "size": 2344,
+          "manifest_sha256": "f1ed6418a3c11edb54b23c3d4b37630786fa9106d8a24f9be7abb1bc639d5a2a",
+          "manifest_size": 2344,
+          "match": true
+        },
+        {
+          "path": "scripts/remaster/r3/make_venv.ps1",
+          "kind": "source",
+          "sha256": "4FFCAF7A45881283861EED82D4531D3762B27B2F2CE929A46ED28197C911888F",
+          "size": 1709,
+          "manifest_sha256": "4ffcaf7a45881283861eed82d4531d3762b27b2f2ce929a46ed28197c911888f",
+          "manifest_size": 1709,
+          "match": true
+        },
+        {
+          "path": "scripts/remaster/r3/mutation_run.py",
+          "kind": "source",
+          "sha256": "162BB4C893C5D406CEE7A0327F12151F5E8EE6AAFD02EB70BAD835FABA612A36",
+          "size": 6465,
+          "manifest_sha256": "162bb4c893c5d406cee7a0327f12151f5e8ee6aafd02eb70bad835faba612a36",
+          "manifest_size": 6465,
+          "match": true
+        },
+        {
+          "path": "scripts/remaster/r3/no_silent_failure.py",
+          "kind": "source",
+          "sha256": "2D99348FDFC2EC94F5AB5B1A1DD929091159112A7F6CCF56F1E0B9C46D518340",
+          "size": 3419,
+          "manifest_sha256": "2d99348fdfc2ec94f5ab5b1a1dd929091159112a7f6ccf56f1e0b9c46d518340",
+          "manifest_size": 3419,
+          "match": true
+        },
+        {
+          "path": "scripts/remaster/r3/secret_scan.py",
+          "kind": "source",
+          "sha256": "5AFDAADE037D3F70B3F123520592ABB4B2AF303C06BB7C08AAE731C66664A56D",
+          "size": 6252,
+          "manifest_sha256": "5afdaade037d3f70b3f123520592abb4b2af303c06bb7c08aae731c66664a56d",
+          "manifest_size": 6252,
+          "match": true
+        },
+        {
+          "path": "scripts/remaster/r3/typing_measure.py",
+          "kind": "source",
+          "sha256": "1504B54956921286120AF8545D3DDC7D894625BE78F63B78E75C381396AE6D22",
+          "size": 8189,
+          "manifest_sha256": "1504b54956921286120af8545d3ddc7d894625be78f63b78e75c381396ae6d22",
+          "manifest_size": 8189,
+          "match": true
+        },
+        {
+          "path": "src/jarvis_foundry/errors.py",
+          "kind": "source",
+          "sha256": "744F624C4FF3C44F31215BB702BF11C88C410396B6447E192E33C3C608517D0B",
+          "size": 4467,
+          "manifest_sha256": "744f624c4ff3c44f31215bb702bf11c88c410396b6447e192e33c3c608517d0b",
+          "manifest_size": 4467,
+          "match": true
+        },
+        {
+          "path": "src/jarvis_foundry/observability.py",
+          "kind": "source",
+          "sha256": "97CE0D4099C3463248E7093289B8576E013631CD35670109D6BA5AA15F9DB7DC",
+          "size": 5044,
+          "manifest_sha256": "97ce0d4099c3463248e7093289b8576e013631cd35670109d6ba5aa15f9db7dc",
+          "manifest_size": 5044,
+          "match": true
+        },
+        {
+          "path": "tests/remaster/r3/conftest.py",
+          "kind": "source",
+          "sha256": "91F777571BC744957095E0DF7DDE35429BD83671536047627EA3C8A2B2725598",
+          "size": 233,
+          "manifest_sha256": "91f777571bc744957095e0df7dde35429bd83671536047627ea3c8a2b2725598",
+          "manifest_size": 233,
+          "match": true
+        },
+        {
+          "path": "tests/remaster/r3/test_errors.py",
+          "kind": "source",
+          "sha256": "7B3E1F5625C9B406CE837DD4B001FBBBC692AFEE4C095063A56B05529AA3BB78",
+          "size": 1594,
+          "manifest_sha256": "7b3e1f5625c9b406ce837dd4b001fbbbc692afee4c095063a56b05529aa3bb78",
+          "manifest_size": 1594,
+          "match": true
+        },
+        {
+          "path": "tests/remaster/r3/test_event_ledger.py",
+          "kind": "source",
+          "sha256": "742C8DA4E5A9FDEC4B1DF9F3B19FAA71AAF28FAB810A488A39D61DC446CF45CB",
+          "size": 5989,
+          "manifest_sha256": "742c8da4e5a9fdec4b1df9f3b19faa71aaf28fab810a488a39d61dc446cf45cb",
+          "manifest_size": 5989,
+          "match": true
+        },
+        {
+          "path": "tests/remaster/r3/test_gate_scripts.py",
+          "kind": "source",
+          "sha256": "4D606222716E7A49F7CF685144B512CFC9BD4C1FE64C1922E531A1F6C259FAC5",
+          "size": 2864,
+          "manifest_sha256": "4d606222716e7a49f7cf685144b512cfc9bd4c1fe64c1922e531a1f6c259fac5",
+          "manifest_size": 2864,
+          "match": true
+        },
+        {
+          "path": "tests/remaster/r3/test_observability.py",
+          "kind": "source",
+          "sha256": "DC15436398A3CCAF2D8DA7792105A77E8B61BD495D84D2D667E1277B29D750CD",
+          "size": 2314,
+          "manifest_sha256": "dc15436398a3ccaf2d8da7792105a77e8b61bd495d84d2d667e1277b29d750cd",
+          "manifest_size": 2314,
+          "match": true
+        },
+        {
+          "path": "tests/remaster/r3/test_owner_controls.py",
+          "kind": "source",
+          "sha256": "E31FA30E9FA4E06B8076FB754D0C73441B7E9F12A9AAE63F526F336EB5F62A89",
+          "size": 5256,
+          "manifest_sha256": "e31fa30e9fa4e06b8076fb754d0c73441b7e9f12a9aae63f526f336eb5f62a89",
+          "manifest_size": 5256,
+          "match": true
+        },
+        {
+          "path": "tests/remaster/r3/test_projection_idempotency.py",
+          "kind": "source",
+          "sha256": "B7B5148D8C0E9890AEA369CF9EA6B194BB2C2203F5A96AE614BCFCCD9037874D",
+          "size": 2417,
+          "manifest_sha256": "b7b5148d8c0e9890aea369cf9ea6b194bb2c2203f5a96ae614bcfccd9037874d",
+          "manifest_size": 2417,
+          "match": true
+        }
+      ]
+    },
+    "findings_registry": {
+      "path": "docs/remaster/FINDINGS.jsonl",
+      "sha256": "9677A666F5774C0FDBE7378E89458FA795D3AFE6ACA1B931E0DA328557A5E4DA",
+      "size": 43650
+    },
+    "confinement": {
+      "path": "docs/remaster/evidence/r3/R3_ARTIFACT_CONFINEMENT.json",
+      "sha256": "B2D3D8EA674612B99ADEDEE1192FB7F35640F995A09DFE7D58C6417CC9C4E2C1",
+      "size": 499
+    }
+  },
+  "next_action": "Close R3 as deliverable-pass with honest recorded baselines. R4 must repair whole-repo ruff (499), trusted-kernel mypy strict (10), trusted-kernel branch coverage to >=95% (29.832% now), architecture violations (2), and no-silent-failure handlers (4); regenerate the confinement budget figure (R3-VF-001) if evidence is rebuilt, and keep all thresholds unchanged."
+}

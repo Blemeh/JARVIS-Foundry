@@ -1,0 +1,31 @@
+{
+  "captured_utc": "2026-08-14T22:13:40.305+00:00",
+  "protected_tasks": [
+    {
+      "task_name": "JARVIS-Foundry-Supervisor",
+      "exists": true,
+      "status": "Running",
+      "xml_sha256": "7c5ea4fbf5158610cb8016a8b91d10303e5b6f15a615085f52e12a9e1ab9a880"
+    },
+    {
+      "task_name": "Hermes_Gateway",
+      "exists": true,
+      "status": "Ready",
+      "xml_sha256": "5d2a3789b1a8f5ab91bc6d319af46515615892266a6186f0c01a0e89263cca44"
+    }
+  ],
+  "protected_supervisor_processes": [
+    {
+      "pid": 21636,
+      "creation_date": "08/14/2026 13:02:05",
+      "executable": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry\\.venv\\Scripts\\python.exe",
+      "command_sha256": "824e09a3ea8d12f38d8fe7fa93cf602e0229c190dea3692e023837963cb9a8e9"
+    },
+    {
+      "pid": 17052,
+      "creation_date": "08/14/2026 13:02:06",
+      "executable": "C:\\Python313\\python.exe",
+      "command_sha256": "824e09a3ea8d12f38d8fe7fa93cf602e0229c190dea3692e023837963cb9a8e9"
+    }
+  ]
+}

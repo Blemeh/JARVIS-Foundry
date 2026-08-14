@@ -1,0 +1,70 @@
+{
+  "schema": "jarvis-r3-typing-baseline-v1",
+  "trusted_kernel": {
+    "label": "trusted_kernel",
+    "files": [
+      "src/jarvis_foundry/events.py",
+      "src/jarvis_foundry/projections.py",
+      "src/jarvis_foundry/database.py",
+      "src/jarvis_foundry/owner_controls.py",
+      "src/jarvis_foundry/effects.py",
+      "src/jarvis_foundry/errors.py",
+      "src/jarvis_foundry/observability.py",
+      "src/jarvis_foundry/control/action_envelope.py",
+      "src/jarvis_foundry/control/broker.py",
+      "src/jarvis_foundry/control/capability_broker.py",
+      "src/jarvis_foundry/control/policy.py",
+      "src/jarvis_foundry/control/registration.py",
+      "src/jarvis_foundry/supervisor/estop.py",
+      "src/jarvis_foundry/supervisor/leases.py",
+      "src/jarvis_foundry/supervisor/controls.py"
+    ],
+    "exit_code": 1,
+    "wall_seconds": 0.517,
+    "error_count": 10,
+    "raw_output": "R3_MYPY_TRUSTED_KERNEL_RAW.txt",
+    "raw_output_sha256": "1a8077774b5d84e06b4bef996c0b385c23c3be6575dab0767390f9d6f80eb1f6",
+    "ast": {
+      "scope": "trusted_kernel",
+      "python_files": 15,
+      "functions_total": 119,
+      "functions_with_params": 94,
+      "functions_any_annotation": 119,
+      "functions_all_params_and_return_annotated": 91,
+      "untyped_with_params": -25
+    },
+    "100_percent_typed_public_interfaces": false
+  },
+  "whole_repo": {
+    "label": "whole_repo",
+    "files": [
+      "src/jarvis_foundry"
+    ],
+    "exit_code": 1,
+    "wall_seconds": 0.421,
+    "error_count": 248,
+    "raw_output": "R3_MYPY_WHOLE_REPO_RAW.txt",
+    "raw_output_sha256": "b0fd03477d6d24c6aca1b21e5b3d14dc8a63e36bbf32aba09eb29f699e3d984d",
+    "ast": {
+      "scope": "whole_repo",
+      "python_files": 189,
+      "functions_total": 1882,
+      "functions_with_params": 1715,
+      "functions_any_annotation": 1440,
+      "functions_all_params_and_return_annotated": 1222,
+      "untyped_with_params": 275
+    }
+  },
+  "r2_comparison": {
+    "r2_reported": "1440/1701 parameterized functions annotated",
+    "current_any_annotation": "1440/1715",
+    "current_all_params_and_return_annotated": "1222/1715"
+  },
+  "finding": {
+    "id": "R3-F-TYPING",
+    "severity": "S2",
+    "disposition": "REPAIR_IN_R4",
+    "title": "Trusted kernel is not 100% typed under mypy strict",
+    "evidence": "trusted_kernel mypy strict errors=10; whole_repo mypy strict errors=248; whole-repo AST any-annotated=1440/1715; fully annotated=1222/1715"
+  }
+}

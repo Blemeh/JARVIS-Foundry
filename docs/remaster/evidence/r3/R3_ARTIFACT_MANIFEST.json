@@ -1,0 +1,426 @@
+{
+  "schema": "jarvis-r3-artifact-manifest-v1",
+  "generated_utc": "2026-08-15T00:50:00+00:00",
+  "artifacts": [
+    {
+      "path": "pyproject.toml",
+      "sha256": "46f9a9f03a688cceeee0d48adfd9457ee6686e4ead4cac1b353bf368dae106a3",
+      "size": 1234,
+      "kind": "source"
+    },
+    {
+      "path": "requirements-dev.txt",
+      "sha256": "379f90c96a77dfc35b7731b87decdd40019dd5f960f5f49bc13a34db22659894",
+      "size": 654,
+      "kind": "source"
+    },
+    {
+      "path": ".github/workflows/windows-ci.yml",
+      "sha256": "59fe660270c6dcddaa6970a2bc09669180a734931f7db9ffc16f2ea61a92dc14",
+      "size": 3268,
+      "kind": "source"
+    },
+    {
+      "path": "src/jarvis_foundry/errors.py",
+      "sha256": "744f624c4ff3c44f31215bb702bf11c88c410396b6447e192e33c3c608517d0b",
+      "size": 4467,
+      "kind": "source"
+    },
+    {
+      "path": "src/jarvis_foundry/observability.py",
+      "sha256": "97ce0d4099c3463248e7093289b8576e013631cd35670109d6ba5aa15f9db7dc",
+      "size": 5044,
+      "kind": "source"
+    },
+    {
+      "path": "scripts/remaster/r3/common.py",
+      "sha256": "658e9a89c85a42af9c8151a042ac94646b8bbe41b7cf295158a951a46e756851",
+      "size": 2808,
+      "kind": "source"
+    },
+    {
+      "path": "scripts/remaster/r3/make_venv.ps1",
+      "sha256": "4ffcaf7a45881283861eed82d4531d3762b27b2f2ce929a46ed28197c911888f",
+      "size": 1709,
+      "kind": "source"
+    },
+    {
+      "path": "scripts/remaster/r3/make_quality.ps1",
+      "sha256": "f1ed6418a3c11edb54b23c3d4b37630786fa9106d8a24f9be7abb1bc639d5a2a",
+      "size": 2344,
+      "kind": "source"
+    },
+    {
+      "path": "scripts/remaster/r3/secret_scan.py",
+      "sha256": "5afdaade037d3f70b3f123520592abb4b2af303c06bb7c08aae731c66664a56d",
+      "size": 6252,
+      "kind": "source"
+    },
+    {
+      "path": "scripts/remaster/r3/architecture_rules.py",
+      "sha256": "3ada17bef0c8f4b449ff043da2e86f94516835628b2121acd95e2b1185ea17d5",
+      "size": 6845,
+      "kind": "source"
+    },
+    {
+      "path": "scripts/remaster/r3/no_silent_failure.py",
+      "sha256": "2d99348fdfc2ec94f5ab5b1a1dd929091159112a7f6ccf56f1e0b9c46d518340",
+      "size": 3419,
+      "kind": "source"
+    },
+    {
+      "path": "scripts/remaster/r3/typing_measure.py",
+      "sha256": "1504b54956921286120af8545d3ddc7d894625be78f63b78e75c381396ae6d22",
+      "size": 8189,
+      "kind": "source"
+    },
+    {
+      "path": "scripts/remaster/r3/coverage_gate.py",
+      "sha256": "eb2b2461e2f60e1767d05f43f15e166189be6f9e76c540a3228f254c270a8a0a",
+      "size": 4590,
+      "kind": "source"
+    },
+    {
+      "path": "scripts/remaster/r3/mutation_run.py",
+      "sha256": "162bb4c893c5d406cee7a0327f12151f5e8ee6aafd02eb70bad835faba612a36",
+      "size": 6465,
+      "kind": "source"
+    },
+    {
+      "path": "scripts/remaster/r3/frozen_mutants.json",
+      "sha256": "9e7e47c774f8ea386eb01cdecd8a0ed66338c29bf0ca4e92d83c8986cb16c729",
+      "size": 5257,
+      "kind": "source"
+    },
+    {
+      "path": "scripts/remaster/r3/artifact_confinement.py",
+      "sha256": "521feb9b8386eff20ff04fbcee20a33c9d6f5074f23c2131574c2c45dc5d6c3a",
+      "size": 8689,
+      "kind": "source"
+    },
+    {
+      "path": "scripts/remaster/r3/external_gates.py",
+      "sha256": "0887e2eb8edbfeb97013b1adcb3fa329ab9afe454c2180820908e6a7ae3f2567",
+      "size": 9648,
+      "kind": "source"
+    },
+    {
+      "path": "scripts/remaster/r3/live_guard.py",
+      "sha256": "2226e7980c07d352b5a1382e3505e57f4a00170cdcd7e93bb303b6a7372e7a30",
+      "size": 5422,
+      "kind": "source"
+    },
+    {
+      "path": "scripts/remaster/r3/build_evidence.py",
+      "sha256": "ee35e12be92d186d5d5fa8b21c07c66f7c163ab559cf4766592f8f2397b07379",
+      "size": 23596,
+      "kind": "source"
+    },
+    {
+      "path": "tests/remaster/r3/conftest.py",
+      "sha256": "91f777571bc744957095e0df7dde35429bd83671536047627ea3c8a2b2725598",
+      "size": 233,
+      "kind": "source"
+    },
+    {
+      "path": "tests/remaster/r3/test_errors.py",
+      "sha256": "7b3e1f5625c9b406ce837dd4b001fbbbc692afee4c095063a56b05529aa3bb78",
+      "size": 1594,
+      "kind": "source"
+    },
+    {
+      "path": "tests/remaster/r3/test_observability.py",
+      "sha256": "dc15436398a3ccaf2d8da7792105a77e8b61bd495d84d2d667e1277b29d750cd",
+      "size": 2314,
+      "kind": "source"
+    },
+    {
+      "path": "tests/remaster/r3/test_event_ledger.py",
+      "sha256": "742c8da4e5a9fdec4b1df9f3b19faa71aaf28fab810a488a39d61dc446cf45cb",
+      "size": 5989,
+      "kind": "source"
+    },
+    {
+      "path": "tests/remaster/r3/test_projection_idempotency.py",
+      "sha256": "b7b5148d8c0e9890aea369cf9ea6b194bb2c2203f5a96ae614bcfccd9037874d",
+      "size": 2417,
+      "kind": "source"
+    },
+    {
+      "path": "tests/remaster/r3/test_owner_controls.py",
+      "sha256": "e31fa30e9fa4e06b8076fb754d0c73441b7e9f12a9aae63f526f336eb5f62a89",
+      "size": 5256,
+      "kind": "source"
+    },
+    {
+      "path": "tests/remaster/r3/test_gate_scripts.py",
+      "sha256": "4d606222716e7a49f7cf685144b512cfc9bd4c1fe64c1922e531a1f6c259fac5",
+      "size": 2864,
+      "kind": "source"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_ARCHITECTURE_RULES.json",
+      "sha256": "53f1c472c5e1836c162b8c143b404f745eba0a2f51a31f6e3eb2079db6ac6ef9",
+      "size": 732,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_ARTIFACT_CONFINEMENT.json",
+      "sha256": "fc4441a3ca7870dfa551d1fef141c51a92c4e4223a7293712a7b3df851335671",
+      "size": 499,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_BANDIT.json",
+      "sha256": "a626e8a1255a5405e2e462215938e93cec79749b643ffba36e08b635d28652f2",
+      "size": 337,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_BANDIT_RAW.txt",
+      "sha256": "06636194a345590ecaf11baff9bf43550b39206a4398eeae2b3496458fd305ae",
+      "size": 332,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_COVERAGE.json",
+      "sha256": "640c760dbbf2baf4bb2165ea1f5d1f3c823bd03f31070e7577a6b0abd7c8b0f9",
+      "size": 713,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_COVERAGE_JSON.json",
+      "sha256": "dbd242701b440b04f4abf2e99980f5704c99e0b5283b5ab3cdaebd4cad8ac4e8",
+      "size": 91404,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_COVERAGE_RAW.txt",
+      "sha256": "25af47e64b4a5b5d7ac92106593106d9aee727d16669c0ec6feb8e89660e8ca2",
+      "size": 326449,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_FINAL_CLOSURE.json",
+      "sha256": "892bd9dd2b5ed8813a4dee4ebaf219810ce79b18d104e17de218ee230903ab0a",
+      "size": 2992,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_FOCUSED_TESTS.json",
+      "sha256": "39c41321ac1ce63b4b07f64203a5d5713cab7cc7e7f39a1511e58da965d3422c",
+      "size": 409,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_FOCUSED_TESTS_JUNIT.xml",
+      "sha256": "b6c7d0e749c5cdd0fe283c4202add9b0b20463d40cfb05fb6da21cc38e3437e7",
+      "size": 4937,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_FOCUSED_TESTS_RAW.txt",
+      "sha256": "cd1d8be477856fec844396f3d0152c474865b2a452cd874524edbb2f07ff4fb0",
+      "size": 102,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_INSTALL.json",
+      "sha256": "650548a544202e8c83e199c63f05cb125759bd990f80384db4168d237ea8f7bf",
+      "size": 7298,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_LIVE_GUARD_AFTER.json",
+      "sha256": "c286030c242a770c2f1074ade0ddfa08ae3db2b094ce5b53278329543b1d4291",
+      "size": 1057,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_LIVE_GUARD_BEFORE.json",
+      "sha256": "a41819e30a6c6981f3f11cc5b4d4262920e57daf583c236a6581a36c4f9d4773",
+      "size": 1057,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_LIVE_GUARD_COMPARISON.json",
+      "sha256": "7c251b2d3b88191206e7a13197374770dc8e2512b861185a9b454f18318aaeb6",
+      "size": 245,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_MUTATION.json",
+      "sha256": "e948538c5ebab724152e73207f4564c1de7c6f41c0c7c6ee299744a3917e6701",
+      "size": 380,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_MUTATION_RAW.json",
+      "sha256": "0b3fa37f68a191775f9e7da8e62c224553c38b06a026da25c9365d300198c8bc",
+      "size": 4898,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_MYPY_OWNED_RAW.txt",
+      "sha256": "653c24af21ad3bc4a8cf9a6ba237261490a6dc0b9703ef71eef912330b8ca539",
+      "size": 45,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_MYPY_TRUSTED_KERNEL_RAW.txt",
+      "sha256": "1a8077774b5d84e06b4bef996c0b385c23c3be6575dab0767390f9d6f80eb1f6",
+      "size": 1454,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_MYPY_WHOLE_REPO_RAW.txt",
+      "sha256": "b0fd03477d6d24c6aca1b21e5b3d14dc8a63e36bbf32aba09eb29f699e3d984d",
+      "size": 36670,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_NO_SILENT_FAILURE.json",
+      "sha256": "6f0f9a71888322062442fc9fa290b53e6ca99f10b50c5451765ad30ca20c296e",
+      "size": 1253,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_PIP_AUDIT.json",
+      "sha256": "93d7b0f842e46e407d2f94575f97fbbfdfbc542852dbe896ebe7a3021c9d2ee8",
+      "size": 440,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_PIP_AUDIT_RAW.txt",
+      "sha256": "c8672e756ae2b1c1009fc5896614d07f8a45c9be1ff40397bd041e303baf3f9c",
+      "size": 2530,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_RUFF_BASELINE.json",
+      "sha256": "327174f2880964520dcb47d1ec3b86fb8f7d6aafcdeb533c69fedbecd7815d04",
+      "size": 632,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_RUFF_BASELINE_RAW.txt",
+      "sha256": "d0e49c0e812b6e8bac3b2aeac27390bb43d4ebdc617446996ccedc75a3e8fc02",
+      "size": 2367648,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_RUFF_OWNED.json",
+      "sha256": "76d8cb32663ad393ac5b3a797b89cad52dcd13aa0dc3248943418d22052dd173",
+      "size": 390,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_RUFF_OWNED_RAW.txt",
+      "sha256": "5c442b3092a3f7df4c434f2bdfca993e650b1aa93e14ea726821a5008730e6b1",
+      "size": 79,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_SECRET_SCAN.json",
+      "sha256": "74564b36c558c0de7f60709d5ba0ec56496b16a545d854f2f557650837f3b508",
+      "size": 364,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_SECRET_SCAN_RAW.json",
+      "sha256": "fc6d80812d4aa4e58697cf0e276d76f7c5b08b4303d6e6858a10754551c2eda6",
+      "size": 3157,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_TYPING_BASELINE.json",
+      "sha256": "e7ddb409bc403f70a5b58384b96804bbeed2c7c4594a88eecbf4378b0e34fe8a",
+      "size": 2528,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_TYPING_OWNED.json",
+      "sha256": "3694bcb11e20fbdfe31fd151fef51924a9f6d95cc05298f0d3946628d3286dc1",
+      "size": 1395,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_VERIFIER_ROUND1_VERDICT_DSV4.json",
+      "sha256": "3d8c6a6f2665779003d29baa59a691c98f6cc01df65766424952a81217933076",
+      "size": 45343,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_VERIFIER_ROUND2_VERDICT_DSV4.json",
+      "sha256": "f8d0a566b01c2ddcb59cfb8d21803a8b8f8ceb77632df4531153a2186b034db5",
+      "size": 29576,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_VERIFIER_ROUND3_VERDICT_DSV4.json",
+      "sha256": "e4b1797f5ddb2ba31167f669da5124ee933d9df913d02fe86da2fe3780387068",
+      "size": 20425,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_VERIFIER_ROUND4_VERDICT_DSV4.json",
+      "sha256": "a3c1b5a16879ef438a958202e1cef265421785654f3c93960eb8f74a73b31ddd",
+      "size": 24448,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_VERIFIER_ROUND5_VERDICT_DSV4.json",
+      "sha256": "4047673cbeffda07bce5fd75018d3f8bd45bfeb62b8cff5dc355b72b98f726c5",
+      "size": 24300,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/evidence/r3/R3_BUILDER_REPORT.json",
+      "sha256": "SELF_REFERENTIAL_REPORT",
+      "size": 0,
+      "kind": "evidence"
+    },
+    {
+      "path": "docs/remaster/work_packages/R3_WORK_PACKAGE.json",
+      "sha256": "e6a73b5b878b143ceaba24568ad01781925ca5e8d5a63d81925b2353f858e65b",
+      "size": 10208,
+      "kind": "source"
+    },
+    {
+      "path": "docs/remaster/work_packages/R3_VERIFICATION_PACKAGE.json",
+      "sha256": "117100bbcbb8e0e51fcc38c3aaa890d1ad972bc819ac9e18a16be22eea820b20",
+      "size": 3085,
+      "kind": "source"
+    },
+    {
+      "path": "scripts/remaster/r3/close_r3_evidence.py",
+      "sha256": "436730ad5b2fd8ca2b7c78c60715c9a208532fdb59739da75e9cbb9297a6fb9b",
+      "size": 3400,
+      "kind": "source"
+    },
+    {
+      "path": "scripts/remaster/r3/install_evidence.py",
+      "sha256": "2d7e31e5364aa3d6fa4a1299266d5b03c95dd26cfb5ac13ed1135fd4d0bef106",
+      "size": 2437,
+      "kind": "source"
+    },
+    {
+      "path": "scripts/remaster/r3/diff_evidence_reports.py",
+      "sha256": "dacb44d7415fe2f47e58880adbe447b89fd66fc3ad6f2566818b2868c585bd18",
+      "size": 1193,
+      "kind": "source"
+    },
+    {
+      "path": "scripts/remaster/r3/reproduce_closure.py",
+      "sha256": "84db28b59bdf0c6a8dc220255d64f96448c77024233149c1c6e6911b3d992dcc",
+      "size": 2699,
+      "kind": "source"
+    },
+    {
+      "path": "docs/remaster/FINDINGS.jsonl",
+      "sha256": "b267918e15e5a3922be3347f85767cb8fe1c6503a16e0fa3bcbd2fd1aaf0dbc3",
+      "size": 49458,
+      "kind": "evidence"
+    }
+  ]
+}

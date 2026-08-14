@@ -1,0 +1,22 @@
+{
+  "schema": "jarvis-r3-ruff-baseline-v1",
+  "check": {
+    "exit_code": 1,
+    "wall_seconds": 0.439,
+    "error_count": 499
+  },
+  "format": {
+    "exit_code": 1,
+    "wall_seconds": 0.794,
+    "would_reformat_files": 200
+  },
+  "finding": {
+    "id": "R3-F-RUFF",
+    "severity": "S3",
+    "disposition": "REPAIR_IN_R4",
+    "title": "Pre-existing ruff violations remain in legacy source",
+    "evidence": "ruff check exit=1 error_count=499; format --check exit=1"
+  },
+  "raw_output": "R3_RUFF_BASELINE_RAW.txt",
+  "raw_output_sha256": "d0e49c0e812b6e8bac3b2aeac27390bb43d4ebdc617446996ccedc75a3e8fc02"
+}

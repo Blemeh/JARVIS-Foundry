@@ -1,0 +1,22 @@
+{
+  "schema": "jarvis-r3-artifact-confinement-v1",
+  "manifest_checks": {
+    "failures": []
+  },
+  "cleaned_owned_generated": [],
+  "hidden_generated": {
+    "problems": []
+  },
+  "budget": {
+    "evidence_bytes": 2964843,
+    "budget_bytes": 4194304,
+    "within_budget": true
+  },
+  "reproduction": {
+    "compile_exit_code": 0,
+    "collect_exit_code": 0,
+    "collected_tests_line": "tests/remaster/r3/test_errors.py: 3",
+    "wall_seconds": 2.276
+  },
+  "passed": true
+}

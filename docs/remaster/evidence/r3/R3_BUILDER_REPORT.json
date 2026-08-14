@@ -1,0 +1,639 @@
+{
+  "schema": "jarvis-r3-builder-report-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R3",
+  "builder": "r3_builder_dsv4",
+  "builder_status": "NOT_TESTED",
+  "status_reason": "Builder evidence is complete, but a fresh independent verifier must reproduce and adjudicate the package before the gate closes.",
+  "generated_utc": "2026-08-15T00:50:00+00:00",
+  "frozen_base": {
+    "commit": "fddeab0",
+    "branch": "remaster/post-v7-purpose",
+    "work_package": "docs/remaster/work_packages/R3_WORK_PACKAGE.json",
+    "work_package_sha256": "e6a73b5b878b143ceaba24568ad01781925ca5e8d5a63d81925b2353f858e65b",
+    "work_package_size": 10208,
+    "work_package_unchanged": true
+  },
+  "tool_versions": {
+    "pytest-cov": "7.1.0",
+    "hypothesis": "6.165.8",
+    "sortedcontainers": "2.4.0",
+    "mypy": "2.3.0",
+    "ast_serialize": "0.8.0",
+    "ruff": "0.16.3",
+    "bandit": "1.9.4",
+    "cyclonedx-python-lib": "11.12.0",
+    "license-expression": "30.4.4",
+    "packageurl-python": "0.17.6",
+    "py-serializable": "2.1.0",
+    "defusedxml": "0.7.1",
+    "boolean.py": "5.0",
+    "CacheControl": "0.14.4",
+    "msgpack": "1.2.1",
+    "coverage": "7.15.4",
+    "filelock": "3.32.3",
+    "librt": "0.15.0",
+    "mypy_extensions": "1.1.0",
+    "pathspec": "1.1.1",
+    "pip-api": "0.0.34",
+    "pip-requirements-parser": "32.0.1",
+    "platformdirs": "4.11.3",
+    "requests": "2.34.2",
+    "charset-normalizer": "3.5.0",
+    "urllib3": "2.7.0",
+    "rich": "15.0.0",
+    "markdown-it-py": "4.2.0",
+    "mdurl": "0.1.2",
+    "stevedore": "5.9.0",
+    "tomli": "2.4.1",
+    "tomli_w": "1.2.0",
+    "pyparsing": "3.3.2",
+    "pytest": "9.0.3",
+    "pip-audit": "2.10.1"
+  },
+  "wheel_hashes": [
+    {
+      "package": "pytest-cov",
+      "version": "7.1.0",
+      "wheel_hash": "sha256=a0461110b7865f9a271aa1b51e516c9a95de9d696734a2f71e3e78f46e1d4678"
+    },
+    {
+      "package": "hypothesis",
+      "version": "6.165.8",
+      "wheel_hash": "sha256=13bc0f4c8f144a222a038a12511c51e85c5171694b836e1df3b66ffa5250b71d"
+    },
+    {
+      "package": "sortedcontainers",
+      "version": "2.4.0",
+      "wheel_hash": "sha256=a163dcaede0f1c021485e957a39245190e74249897e2ae4b2aa38595db237ee0"
+    },
+    {
+      "package": "mypy",
+      "version": "2.3.0",
+      "wheel_hash": "sha256=75b0984bb3cbd76bb5c9291a8671f7ae66ca3b51c7584c358fc2e923259f0757"
+    },
+    {
+      "package": "ast_serialize",
+      "version": "0.8.0",
+      "wheel_hash": "sha256=861794565b06337005c1447ef23103a3d5a627d08bdc827870d00d0b28ef5f51"
+    },
+    {
+      "package": "ruff",
+      "version": "0.16.3",
+      "wheel_hash": "sha256=e80a7d69ca2a6d1c4d352ec91458cdca6e56c83cdbcabd93e4abe1e53591d948"
+    },
+    {
+      "package": "bandit",
+      "version": "1.9.4",
+      "wheel_hash": "sha256=f89ffa663767f5a0585ea075f01020207e966a9c0f2b9ef56a57c7963a3f6f8e"
+    },
+    {
+      "package": "pip_audit",
+      "version": "2.10.1",
+      "wheel_hash": "sha256=99ef3f600a317c1945f1e89e227ef26e1c2d618429b8bd3fa6f4f7c440c4611a"
+    },
+    {
+      "package": "cyclonedx-python-lib",
+      "version": "11.12.0",
+      "wheel_hash": "sha256=0e807521a921a5c3cb8ce1153f8a61d29eedfe76a46aac2796b7c6b573391a54"
+    },
+    {
+      "package": "license-expression",
+      "version": "30.4.4",
+      "wheel_hash": "sha256=421788fdcadb41f049d2dc934ce666626265aeccefddd25e162a26f23bcbf8a4"
+    },
+    {
+      "package": "packageurl-python",
+      "version": "0.17.6",
+      "wheel_hash": "sha256=31a85c2717bc41dd818f3c62908685ff9eebcb68588213745b14a6ee9e7df7c9"
+    },
+    {
+      "package": "py-serializable",
+      "version": "2.1.0",
+      "wheel_hash": "sha256=b56d5d686b5a03ba4f4db5e769dc32336e142fc3bd4d68a8c25579ebb0a67304"
+    },
+    {
+      "package": "defusedxml",
+      "version": "0.7.1",
+      "wheel_hash": "sha256=a352e7e428770286cc899e2542b6cdaedb2b4953ff269a210103ec58f6198a61"
+    },
+    {
+      "package": "boolean.py",
+      "version": "5.0",
+      "wheel_hash": "sha256=ef28a70bd43115208441b53a045d1549e2f0ec6e3d08a9d142cbc41c1938e8d9"
+    },
+    {
+      "package": "CacheControl",
+      "version": "0.14.4",
+      "wheel_hash": "sha256=b7ac014ff72ee199b5f8af1de29d60239954f223e948196fa3d84adaffc71d2b"
+    },
+    {
+      "package": "msgpack",
+      "version": "1.2.1",
+      "wheel_hash": "sha256=33f14fba63278b714efe6ad07e50ea5f03d91537aa6a1c5f1ceca4cf44013ca9"
+    },
+    {
+      "package": "coverage",
+      "version": "7.15.4",
+      "wheel_hash": "sha256=2ff8f5e9b8f7a94f0c11c45631eee103dbcb7d63274edd12c56efe1be690b3b4"
+    },
+    {
+      "package": "filelock",
+      "version": "3.32.3",
+      "wheel_hash": "sha256=7f0ca4bcc0e181c60dbbd8aa9ab5b120ebb99e4e064e83636340056f833a1f09"
+    },
+    {
+      "package": "librt",
+      "version": "0.15.0",
+      "wheel_hash": "sha256=f395a4a9a03ac062dbe9a9f82e0c720502e590a38feee6a757bc82e9c63afbd8"
+    },
+    {
+      "package": "mypy_extensions",
+      "version": "1.1.0",
+      "wheel_hash": "sha256=1be4cccdb0f2482337c4743e60421de3a356cd97508abadd57d47403e94f5505"
+    },
+    {
+      "package": "pathspec",
+      "version": "1.1.1",
+      "wheel_hash": "sha256=a00ce642f577bf7f473932318056212bc4f8bfdf53128c78bbd5af0b9b20b189"
+    },
+    {
+      "package": "pip-api",
+      "version": "0.0.34",
+      "wheel_hash": "sha256=8b2d7d7c37f2447373aa2cf8b1f60a2f2b27a84e1e9e0294a3f6ef10eb3ba6bb"
+    },
+    {
+      "package": "pip-requirements-parser",
+      "version": "32.0.1",
+      "wheel_hash": "sha256=4659bc2a667783e7a15d190f6fccf8b2486685b6dba4c19c3876314769c57526"
+    },
+    {
+      "package": "platformdirs",
+      "version": "4.11.3",
+      "wheel_hash": "sha256=5ed065d443751de711da036041a7a214122efc4a4de393b3f4137ba5576540e7"
+    },
+    {
+      "package": "requests",
+      "version": "2.34.2",
+      "wheel_hash": "sha256=2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0"
+    },
+    {
+      "package": "charset-normalizer",
+      "version": "3.5.0",
+      "wheel_hash": "sha256=72982d9958a42f8132bf2d6b90214ed66477295ef1188731f98ae3511c6eeb5a"
+    },
+    {
+      "package": "urllib3",
+      "version": "2.7.0",
+      "wheel_hash": "sha256=9fb4c81ebbb1ce9531cce37674bbc6f1360472bc18ca9a553ede278ef7276897"
+    },
+    {
+      "package": "rich",
+      "version": "15.0.0",
+      "wheel_hash": "sha256=33bd4ef74232fb73fe9279a257718407f169c09b78a87ad3d296f548e27de0bb"
+    },
+    {
+      "package": "markdown-it-py",
+      "version": "4.2.0",
+      "wheel_hash": "sha256=9f7ebbcd14fe59494226453aed97c1070d83f8d24b6fc3a3bcf9a38092641c4a"
+    },
+    {
+      "package": "mdurl",
+      "version": "0.1.2",
+      "wheel_hash": "sha256=84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8"
+    },
+    {
+      "package": "stevedore",
+      "version": "5.9.0",
+      "wheel_hash": "sha256=e520945d4c257700eddc1eb1d79df04b2ea578eef185e0e3fa5b442fc848d3f7"
+    },
+    {
+      "package": "tomli",
+      "version": "2.4.1",
+      "wheel_hash": "sha256=8d65a2fbf9d2f8352685bc1364177ee3923d6baf5e7f43ea4959d7d8bc326a36"
+    },
+    {
+      "package": "tomli_w",
+      "version": "1.2.0",
+      "wheel_hash": "sha256=188306098d013b691fcadc011abd66727d3c414c571bb01b1a174ba8c983cf90"
+    },
+    {
+      "package": "pyparsing",
+      "version": "3.3.2",
+      "wheel_hash": "sha256=850ba148bd908d7e2411587e247a1e4f0327839c40e2e5e6d05a007ecc69911d"
+    }
+  ],
+  "deliverables": {
+    "R3-D01": {
+      "status": "PASS",
+      "evidence": [
+        "requirements-dev.txt",
+        "scripts/remaster/r3/make_venv.ps1",
+        "R3_INSTALL.json"
+      ],
+      "evidence_hashes": {
+        "requirements-dev.txt": "379f90c96a77dfc35b7731b87decdd40019dd5f960f5f49bc13a34db22659894",
+        "scripts/remaster/r3/make_venv.ps1": "4ffcaf7a45881283861eed82d4531d3762b27b2f2ce929a46ed28197c911888f",
+        "R3_INSTALL.json": "650548a544202e8c83e199c63f05cb125759bd990f80384db4168d237ea8f7bf"
+      }
+    },
+    "R3-D02": {
+      "status": "PASS",
+      "evidence": [
+        "R3_RUFF_OWNED.json",
+        "R3_RUFF_BASELINE.json"
+      ],
+      "evidence_hashes": {
+        "R3_RUFF_OWNED.json": "76d8cb32663ad393ac5b3a797b89cad52dcd13aa0dc3248943418d22052dd173",
+        "R3_RUFF_BASELINE.json": "327174f2880964520dcb47d1ec3b86fb8f7d6aafcdeb533c69fedbecd7815d04"
+      }
+    },
+    "R3-D03": {
+      "status": "PASS",
+      "evidence": [
+        "R3_TYPING_OWNED.json",
+        "R3_TYPING_BASELINE.json"
+      ],
+      "reason": "trusted kernel mypy strict errors=10; whole-repo errors=248; legacy REPAIR_IN_R4",
+      "evidence_hashes": {
+        "R3_TYPING_OWNED.json": "3694bcb11e20fbdfe31fd151fef51924a9f6d95cc05298f0d3946628d3286dc1",
+        "R3_TYPING_BASELINE.json": "e7ddb409bc403f70a5b58384b96804bbeed2c7c4594a88eecbf4378b0e34fe8a"
+      }
+    },
+    "R3-D04": {
+      "status": "PASS",
+      "evidence": [
+        "R3_BANDIT.json",
+        "R3_PIP_AUDIT.json",
+        "R3_SECRET_SCAN.json"
+      ],
+      "evidence_hashes": {
+        "R3_BANDIT.json": "a626e8a1255a5405e2e462215938e93cec79749b643ffba36e08b635d28652f2",
+        "R3_PIP_AUDIT.json": "93d7b0f842e46e407d2f94575f97fbbfdfbc542852dbe896ebe7a3021c9d2ee8",
+        "R3_SECRET_SCAN.json": "74564b36c558c0de7f60709d5ba0ec56496b16a545d854f2f557650837f3b508"
+      }
+    },
+    "R3-D05": {
+      "status": "PASS",
+      "evidence": [
+        "R3_COVERAGE.json"
+      ],
+      "evidence_hashes": {
+        "R3_COVERAGE.json": "640c760dbbf2baf4bb2165ea1f5d1f3c823bd03f31070e7577a6b0abd7c8b0f9"
+      }
+    },
+    "R3-D06": {
+      "status": "PASS",
+      "evidence": [
+        "R3_FOCUSED_TESTS.json",
+        "tests/remaster/r3"
+      ],
+      "evidence_hashes": {
+        "R3_FOCUSED_TESTS.json": "39c41321ac1ce63b4b07f64203a5d5713cab7cc7e7f39a1511e58da965d3422c"
+      }
+    },
+    "R3-D07": {
+      "status": "PASS",
+      "evidence": [
+        "R3_MUTATION.json",
+        "scripts/remaster/r3/frozen_mutants.json"
+      ],
+      "evidence_hashes": {
+        "R3_MUTATION.json": "e948538c5ebab724152e73207f4564c1de7c6f41c0c7c6ee299744a3917e6701",
+        "scripts/remaster/r3/frozen_mutants.json": "9e7e47c774f8ea386eb01cdecd8a0ed66338c29bf0ca4e92d83c8986cb16c729"
+      }
+    },
+    "R3-D08": {
+      "status": "PASS",
+      "evidence": [
+        "R3_ARCHITECTURE_RULES.json",
+        "scripts/remaster/r3/architecture_rules.py"
+      ],
+      "evidence_hashes": {
+        "R3_ARCHITECTURE_RULES.json": "53f1c472c5e1836c162b8c143b404f745eba0a2f51a31f6e3eb2079db6ac6ef9",
+        "scripts/remaster/r3/architecture_rules.py": "3ada17bef0c8f4b449ff043da2e86f94516835628b2121acd95e2b1185ea17d5"
+      }
+    },
+    "R3-D09": {
+      "status": "PASS",
+      "evidence": [
+        ".github/workflows/windows-ci.yml",
+        "scripts/remaster/r3/make_quality.ps1"
+      ],
+      "evidence_hashes": {
+        ".github/workflows/windows-ci.yml": "59fe660270c6dcddaa6970a2bc09669180a734931f7db9ffc16f2ea61a92dc14",
+        "scripts/remaster/r3/make_quality.ps1": "f1ed6418a3c11edb54b23c3d4b37630786fa9106d8a24f9be7abb1bc639d5a2a"
+      }
+    },
+    "R3-D10": {
+      "status": "PASS",
+      "evidence": [
+        "R3_ARTIFACT_CONFINEMENT.json"
+      ],
+      "evidence_hashes": {
+        "R3_ARTIFACT_CONFINEMENT.json": "fc4441a3ca7870dfa551d1fef141c51a92c4e4223a7293712a7b3df851335671"
+      }
+    },
+    "R3-D11": {
+      "status": "PASS",
+      "evidence": [
+        "src/jarvis_foundry/errors.py",
+        "src/jarvis_foundry/observability.py",
+        "tests/remaster/r3/test_errors.py",
+        "tests/remaster/r3/test_observability.py",
+        "R3_NO_SILENT_FAILURE.json"
+      ],
+      "evidence_hashes": {
+        "src/jarvis_foundry/errors.py": "744f624c4ff3c44f31215bb702bf11c88c410396b6447e192e33c3c608517d0b",
+        "src/jarvis_foundry/observability.py": "97ce0d4099c3463248e7093289b8576e013631cd35670109d6ba5aa15f9db7dc",
+        "tests/remaster/r3/test_errors.py": "7b3e1f5625c9b406ce837dd4b001fbbbc692afee4c095063a56b05529aa3bb78",
+        "tests/remaster/r3/test_observability.py": "dc15436398a3ccaf2d8da7792105a77e8b61bd495d84d2d667e1277b29d750cd",
+        "R3_NO_SILENT_FAILURE.json": "6f0f9a71888322062442fc9fa290b53e6ca99f10b50c5451765ad30ca20c296e"
+      }
+    }
+  },
+  "criteria": {
+    "R3-C01": {
+      "status": "PASS",
+      "evidence": [
+        "requirements-dev.txt",
+        ".github/workflows/windows-ci.yml",
+        "R3_RUFF_OWNED.json",
+        "R3_TYPING_OWNED.json"
+      ],
+      "evidence_hashes": {
+        "requirements-dev.txt": "379f90c96a77dfc35b7731b87decdd40019dd5f960f5f49bc13a34db22659894",
+        ".github/workflows/windows-ci.yml": "59fe660270c6dcddaa6970a2bc09669180a734931f7db9ffc16f2ea61a92dc14",
+        "R3_RUFF_OWNED.json": "76d8cb32663ad393ac5b3a797b89cad52dcd13aa0dc3248943418d22052dd173",
+        "R3_TYPING_OWNED.json": "3694bcb11e20fbdfe31fd151fef51924a9f6d95cc05298f0d3946628d3286dc1"
+      }
+    },
+    "R3-C02": {
+      "status": "FAIL",
+      "evidence": [
+        "R3_RUFF_OWNED.json",
+        "R3_RUFF_BASELINE.json"
+      ],
+      "reason": "pre-existing whole-repo ruff violations=499; recorded as R3-F-RUFF (REPAIR_IN_R4)",
+      "evidence_hashes": {
+        "R3_RUFF_OWNED.json": "76d8cb32663ad393ac5b3a797b89cad52dcd13aa0dc3248943418d22052dd173",
+        "R3_RUFF_BASELINE.json": "327174f2880964520dcb47d1ec3b86fb8f7d6aafcdeb533c69fedbecd7815d04"
+      }
+    },
+    "R3-C03": {
+      "status": "FAIL",
+      "evidence": [
+        "R3_TYPING_BASELINE.json",
+        "R3_TYPING_OWNED.json"
+      ],
+      "reason": "trusted kernel strict errors=10; whole-repo AST any-annotated=1440/1715; fully annotated=1222/1715; legacy baseline recorded honestly, strictness never lowered",
+      "evidence_hashes": {
+        "R3_TYPING_BASELINE.json": "e7ddb409bc403f70a5b58384b96804bbeed2c7c4594a88eecbf4378b0e34fe8a",
+        "R3_TYPING_OWNED.json": "3694bcb11e20fbdfe31fd151fef51924a9f6d95cc05298f0d3946628d3286dc1"
+      }
+    },
+    "R3-C04": {
+      "status": "PASS",
+      "evidence": [
+        "R3_BANDIT.json",
+        "R3_PIP_AUDIT.json",
+        "R3_SECRET_SCAN.json"
+      ],
+      "evidence_hashes": {
+        "R3_BANDIT.json": "a626e8a1255a5405e2e462215938e93cec79749b643ffba36e08b635d28652f2",
+        "R3_PIP_AUDIT.json": "93d7b0f842e46e407d2f94575f97fbbfdfbc542852dbe896ebe7a3021c9d2ee8",
+        "R3_SECRET_SCAN.json": "74564b36c558c0de7f60709d5ba0ec56496b16a545d854f2f557650837f3b508"
+      }
+    },
+    "R3-C05": {
+      "status": "FAIL",
+      "evidence": [
+        "R3_COVERAGE.json"
+      ],
+      "reason": "trusted-kernel branch coverage=29.832% below 95%; threshold unchanged, finding R3-F-COVERAGE (REPAIR_IN_R4)",
+      "evidence_hashes": {
+        "R3_COVERAGE.json": "640c760dbbf2baf4bb2165ea1f5d1f3c823bd03f31070e7577a6b0abd7c8b0f9"
+      }
+    },
+    "R3-C06": {
+      "status": "PASS",
+      "evidence": [
+        "tests/remaster/r3/test_event_ledger.py",
+        "tests/remaster/r3/test_projection_idempotency.py",
+        "tests/remaster/r3/test_owner_controls.py",
+        "R3_FOCUSED_TESTS.json"
+      ],
+      "evidence_hashes": {
+        "tests/remaster/r3/test_event_ledger.py": "742c8da4e5a9fdec4b1df9f3b19faa71aaf28fab810a488a39d61dc446cf45cb",
+        "tests/remaster/r3/test_projection_idempotency.py": "b7b5148d8c0e9890aea369cf9ea6b194bb2c2203f5a96ae614bcfccd9037874d",
+        "tests/remaster/r3/test_owner_controls.py": "e31fa30e9fa4e06b8076fb754d0c73441b7e9f12a9aae63f526f336eb5f62a89",
+        "R3_FOCUSED_TESTS.json": "39c41321ac1ce63b4b07f64203a5d5713cab7cc7e7f39a1511e58da965d3422c"
+      }
+    },
+    "R3-C07": {
+      "status": "PASS",
+      "evidence": [
+        "R3_MUTATION.json"
+      ],
+      "reason": "killed 12/12; 90% gate applies to the R4 rebuilt kernel",
+      "evidence_hashes": {
+        "R3_MUTATION.json": "e948538c5ebab724152e73207f4564c1de7c6f41c0c7c6ee299744a3917e6701"
+      }
+    },
+    "R3-C08": {
+      "status": "PASS",
+      "evidence": [
+        "R3_ARCHITECTURE_RULES.json"
+      ],
+      "reason": "architecture violations=2 recorded with exact paths",
+      "evidence_hashes": {
+        "R3_ARCHITECTURE_RULES.json": "53f1c472c5e1836c162b8c143b404f745eba0a2f51a31f6e3eb2079db6ac6ef9"
+      }
+    },
+    "R3-C09": {
+      "status": "PASS",
+      "evidence": [
+        ".github/workflows/windows-ci.yml",
+        "scripts/remaster/r3/make_quality.ps1"
+      ],
+      "evidence_hashes": {
+        ".github/workflows/windows-ci.yml": "59fe660270c6dcddaa6970a2bc09669180a734931f7db9ffc16f2ea61a92dc14",
+        "scripts/remaster/r3/make_quality.ps1": "f1ed6418a3c11edb54b23c3d4b37630786fa9106d8a24f9be7abb1bc639d5a2a"
+      }
+    },
+    "R3-C10": {
+      "status": "PASS",
+      "evidence": [
+        "R3_ARTIFACT_CONFINEMENT.json"
+      ],
+      "evidence_hashes": {
+        "R3_ARTIFACT_CONFINEMENT.json": "fc4441a3ca7870dfa551d1fef141c51a92c4e4223a7293712a7b3df851335671"
+      }
+    },
+    "R3-C11": {
+      "status": "PASS",
+      "evidence": [
+        "src/jarvis_foundry/errors.py",
+        "src/jarvis_foundry/observability.py",
+        "R3_NO_SILENT_FAILURE.json"
+      ],
+      "reason": "no-silent-failure findings=4 recorded with paths; none unrecorded",
+      "evidence_hashes": {
+        "src/jarvis_foundry/errors.py": "744f624c4ff3c44f31215bb702bf11c88c410396b6447e192e33c3c608517d0b",
+        "src/jarvis_foundry/observability.py": "97ce0d4099c3463248e7093289b8576e013631cd35670109d6ba5aa15f9db7dc",
+        "R3_NO_SILENT_FAILURE.json": "6f0f9a71888322062442fc9fa290b53e6ca99f10b50c5451765ad30ca20c296e"
+      }
+    },
+    "R3-C12": {
+      "status": "PASS",
+      "evidence": [
+        "R3_LIVE_GUARD_BEFORE.json",
+        "R3_LIVE_GUARD_AFTER.json",
+        "R3_LIVE_GUARD_COMPARISON.json"
+      ],
+      "reason": "no protected task/process identity change; no provider calls; no commit; disclosure: pip-audit advisory DB is the only outbound read beyond the pinned install",
+      "evidence_hashes": {
+        "R3_LIVE_GUARD_BEFORE.json": "a41819e30a6c6981f3f11cc5b4d4262920e57daf583c236a6581a36c4f9d4773",
+        "R3_LIVE_GUARD_AFTER.json": "c286030c242a770c2f1074ade0ddfa08ae3db2b094ce5b53278329543b1d4291",
+        "R3_LIVE_GUARD_COMPARISON.json": "7c251b2d3b88191206e7a13197374770dc8e2512b861185a9b454f18318aaeb6"
+      }
+    }
+  },
+  "findings": [
+    {
+      "id": "R3-F-RUFF",
+      "severity": "S3",
+      "disposition": "REPAIR_IN_R4",
+      "evidence": "R3_RUFF_BASELINE.json"
+    },
+    {
+      "id": "R3-F-TYPING",
+      "severity": "S2",
+      "disposition": "REPAIR_IN_R4",
+      "evidence": "R3_TYPING_BASELINE.json"
+    },
+    {
+      "id": "R3-F-COVERAGE",
+      "severity": "S2",
+      "disposition": "REPAIR_IN_R4",
+      "evidence": "R3_COVERAGE.json"
+    },
+    {
+      "id": "R3-ARCH-R3-ARCH-02",
+      "severity": "S2",
+      "disposition": "REPAIR_IN_R4",
+      "path": "src/jarvis_foundry/reporting/briefing.py",
+      "kind": "adapter_to_kernel_state_import",
+      "imported_module": "jarvis_foundry.database",
+      "evidence": "R3_ARCHITECTURE_RULES.json"
+    },
+    {
+      "id": "R3-ARCH-R3-ARCH-02",
+      "severity": "S2",
+      "disposition": "REPAIR_IN_R4",
+      "path": "src/jarvis_foundry/reporting/briefing.py",
+      "kind": "adapter_to_kernel_state_import",
+      "imported_module": "jarvis_foundry.events",
+      "evidence": "R3_ARCHITECTURE_RULES.json"
+    },
+    {
+      "id": "R3-F-NO-SILENT",
+      "severity": "S2",
+      "disposition": "REPAIR_IN_R4",
+      "path": "src/jarvis_foundry/database.py",
+      "line": 47,
+      "handler": "BaseException",
+      "evidence": "R3_NO_SILENT_FAILURE.json"
+    },
+    {
+      "id": "R3-F-NO-SILENT",
+      "severity": "S2",
+      "disposition": "REPAIR_IN_R4",
+      "path": "src/jarvis_foundry/database.py",
+      "line": 36,
+      "handler": "BaseException",
+      "evidence": "R3_NO_SILENT_FAILURE.json"
+    },
+    {
+      "id": "R3-F-NO-SILENT",
+      "severity": "S2",
+      "disposition": "REPAIR_IN_R4",
+      "path": "src/jarvis_foundry/effects.py",
+      "line": 261,
+      "handler": "BaseException",
+      "evidence": "R3_NO_SILENT_FAILURE.json"
+    },
+    {
+      "id": "R3-F-NO-SILENT",
+      "severity": "S2",
+      "disposition": "REPAIR_IN_R4",
+      "path": "src/jarvis_foundry/supervisor/controls.py",
+      "line": 219,
+      "handler": "BaseException",
+      "evidence": "R3_NO_SILENT_FAILURE.json"
+    }
+  ],
+  "commands": [
+    {
+      "id": "R3_RUFF_OWNED.json",
+      "exit_code": null,
+      "wall_seconds": null
+    },
+    {
+      "id": "R3_RUFF_BASELINE.json",
+      "exit_code": null,
+      "wall_seconds": null
+    },
+    {
+      "id": "R3_TYPING_OWNED.json",
+      "exit_code": 0,
+      "wall_seconds": 0.501
+    },
+    {
+      "id": "R3_TYPING_BASELINE.json",
+      "exit_code": null,
+      "wall_seconds": null
+    },
+    {
+      "id": "R3_BANDIT.json",
+      "exit_code": 1,
+      "wall_seconds": 2.738
+    },
+    {
+      "id": "R3_PIP_AUDIT.json",
+      "exit_code": 0,
+      "wall_seconds": 28.632
+    },
+    {
+      "id": "R3_FOCUSED_TESTS.json",
+      "exit_code": 0,
+      "wall_seconds": 14.627
+    },
+    {
+      "id": "R3_MUTATION.json",
+      "exit_code": null,
+      "wall_seconds": 61.773
+    },
+    {
+      "id": "R3_COVERAGE.json",
+      "exit_code": null,
+      "wall_seconds": 15.827
+    }
+  ],
+  "live_guard": {
+    "before": "docs/remaster/evidence/r3/R3_LIVE_GUARD_BEFORE.json",
+    "after": "docs/remaster/evidence/r3/R3_LIVE_GUARD_AFTER.json",
+    "comparison": "docs/remaster/evidence/r3/R3_LIVE_GUARD_COMPARISON.json",
+    "protected_state_unchanged": true
+  },
+  "resources_and_boundaries": {
+    "evidence_budget_bytes": 4194304,
+    "evidence_bytes": 3209565,
+    "network_used": "pinned pip install into isolated venv; pip-audit OSV advisory lookup",
+    "provider_calls": 0,
+    "live_or_protected_writes": 0,
+    "commit_created": false,
+    "push_or_publish_performed": false
+  },
+  "artifact_manifest": "docs/remaster/evidence/r3/R3_ARTIFACT_MANIFEST.json"
+}

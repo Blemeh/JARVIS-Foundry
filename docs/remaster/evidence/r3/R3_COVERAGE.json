@@ -1,0 +1,22 @@
+{
+  "schema": "jarvis-r3-coverage-v1",
+  "branch_percent": 29.832,
+  "branches_covered": 142,
+  "branches_total": 476,
+  "line_percent": 53.226,
+  "lines_covered": 462,
+  "lines_total": 868,
+  "threshold_percent": 95.0,
+  "below_threshold": true,
+  "finding": {
+    "id": "R3-F-COVERAGE",
+    "severity": "S2",
+    "disposition": "REPAIR_IN_R4",
+    "title": "Trusted-kernel branch coverage is below the 95% threshold",
+    "evidence": "branch coverage 29.832% (142/476 branches); threshold stays 95.0%"
+  },
+  "pytest_exit_code": 0,
+  "wall_seconds": 15.827,
+  "raw_output": "R3_COVERAGE_RAW.txt",
+  "raw_output_sha256": "25af47e64b4a5b5d7ac92106593106d9aee727d16669c0ec6feb8e89660e8ca2"
+}

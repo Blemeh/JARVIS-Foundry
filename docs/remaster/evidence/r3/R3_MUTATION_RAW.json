@@ -1,0 +1,146 @@
+{
+  "schema": "jarvis-r3-mutation-v1",
+  "manifest": "scripts/remaster/r3/frozen_mutants.json",
+  "manifest_sha256": "9e7e47c774f8ea386eb01cdecd8a0ed66338c29bf0ca4e92d83c8986cb16c729",
+  "baseline_tests": "full_baseline",
+  "baseline_exit_code": 0,
+  "baseline_wall_seconds": 16.725,
+  "killed": 12,
+  "total": 12,
+  "score_percent": 100.0,
+  "results": [
+    {
+      "id": "R3-M01",
+      "target": "src/jarvis_foundry/events.py",
+      "status": "KILLED",
+      "baseline_exit_code": 0,
+      "mutant_exit_code": 1,
+      "expected_test_present": true,
+      "intended_reason": "payload hashes must be content-derived",
+      "baseline_wall_seconds": 1.736,
+      "mutant_wall_seconds": 1.779
+    },
+    {
+      "id": "R3-M02",
+      "target": "src/jarvis_foundry/events.py",
+      "status": "KILLED",
+      "baseline_exit_code": 0,
+      "mutant_exit_code": 1,
+      "expected_test_present": true,
+      "intended_reason": "invalid event identity must fail closed",
+      "baseline_wall_seconds": 1.812,
+      "mutant_wall_seconds": 1.867
+    },
+    {
+      "id": "R3-M03",
+      "target": "src/jarvis_foundry/database.py",
+      "status": "KILLED",
+      "baseline_exit_code": 0,
+      "mutant_exit_code": 1,
+      "expected_test_present": true,
+      "intended_reason": "identical re-delivery must dedupe, never conflict",
+      "baseline_wall_seconds": 1.88,
+      "mutant_wall_seconds": 1.948
+    },
+    {
+      "id": "R3-M04",
+      "target": "src/jarvis_foundry/projections.py",
+      "status": "KILLED",
+      "baseline_exit_code": 0,
+      "mutant_exit_code": 1,
+      "expected_test_present": true,
+      "intended_reason": "projection rebuild must reset state before deterministic replay",
+      "baseline_wall_seconds": 1.961,
+      "mutant_wall_seconds": 2.021
+    },
+    {
+      "id": "R3-M05",
+      "target": "src/jarvis_foundry/owner_controls.py",
+      "status": "KILLED",
+      "baseline_exit_code": 0,
+      "mutant_exit_code": 1,
+      "expected_test_present": true,
+      "intended_reason": "owner command nonces must be single-use",
+      "baseline_wall_seconds": 1.925,
+      "mutant_wall_seconds": 1.93
+    },
+    {
+      "id": "R3-M06",
+      "target": "src/jarvis_foundry/owner_controls.py",
+      "status": "KILLED",
+      "baseline_exit_code": 0,
+      "mutant_exit_code": 1,
+      "expected_test_present": true,
+      "intended_reason": "authenticated STOP_EVERYTHING must activate the filesystem sentinel",
+      "baseline_wall_seconds": 1.889,
+      "mutant_wall_seconds": 1.963
+    },
+    {
+      "id": "R3-M07",
+      "target": "src/jarvis_foundry/supervisor/estop.py",
+      "status": "KILLED",
+      "baseline_exit_code": 0,
+      "mutant_exit_code": 1,
+      "expected_test_present": true,
+      "intended_reason": "emergency stop sentinel presence must be observable",
+      "baseline_wall_seconds": 1.796,
+      "mutant_wall_seconds": 1.786
+    },
+    {
+      "id": "R3-M08",
+      "target": "src/jarvis_foundry/errors.py",
+      "status": "KILLED",
+      "baseline_exit_code": 0,
+      "mutant_exit_code": 1,
+      "expected_test_present": true,
+      "intended_reason": "all taxonomy errors must share the JarvisError base",
+      "baseline_wall_seconds": 1.733,
+      "mutant_wall_seconds": 1.707
+    },
+    {
+      "id": "R3-M09",
+      "target": "src/jarvis_foundry/observability.py",
+      "status": "KILLED",
+      "baseline_exit_code": 0,
+      "mutant_exit_code": 1,
+      "expected_test_present": true,
+      "intended_reason": "child correlation ids must be distinct from their parent",
+      "baseline_wall_seconds": 1.764,
+      "mutant_wall_seconds": 1.717
+    },
+    {
+      "id": "R3-M10",
+      "target": "scripts/remaster/r3/architecture_rules.py",
+      "status": "KILLED",
+      "baseline_exit_code": 0,
+      "mutant_exit_code": 1,
+      "expected_test_present": true,
+      "intended_reason": "kernel-to-adapter imports must be reported",
+      "baseline_wall_seconds": 1.631,
+      "mutant_wall_seconds": 1.711
+    },
+    {
+      "id": "R3-M11",
+      "target": "scripts/remaster/r3/secret_scan.py",
+      "status": "KILLED",
+      "baseline_exit_code": 0,
+      "mutant_exit_code": 1,
+      "expected_test_present": true,
+      "intended_reason": "generic secret assignments must be detected",
+      "baseline_wall_seconds": 1.664,
+      "mutant_wall_seconds": 1.708
+    },
+    {
+      "id": "R3-M12",
+      "target": "scripts/remaster/r3/no_silent_failure.py",
+      "status": "KILLED",
+      "baseline_exit_code": 0,
+      "mutant_exit_code": 1,
+      "expected_test_present": true,
+      "intended_reason": "broad exception handlers in the trusted kernel must be flagged",
+      "baseline_wall_seconds": 1.623,
+      "mutant_wall_seconds": 1.728
+    }
+  ],
+  "wall_seconds": 61.773
+}

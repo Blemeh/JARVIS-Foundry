@@ -1,0 +1,22 @@
+{
+  "schema": "jarvis-r3-architecture-rules-v1",
+  "total_violations": 2,
+  "violations": [
+    {
+      "rule": "R3-ARCH-02",
+      "kind": "adapter_to_kernel_state_import",
+      "path": "src/jarvis_foundry/reporting/briefing.py",
+      "imported_module": "jarvis_foundry.database",
+      "reason": "adapter must not import kernel internals that mutate canonical state"
+    },
+    {
+      "rule": "R3-ARCH-02",
+      "kind": "adapter_to_kernel_state_import",
+      "path": "src/jarvis_foundry/reporting/briefing.py",
+      "imported_module": "jarvis_foundry.events",
+      "reason": "adapter must not import kernel internals that mutate canonical state"
+    }
+  ],
+  "wall_seconds": 0.374,
+  "exit_code": 1
+}

@@ -1,0 +1,11 @@
+{
+  "schema": "jarvis-r3-pip-audit-v1",
+  "exit_code": 0,
+  "wall_seconds": 28.632,
+  "dependencies_scanned": 43,
+  "vulnerable_packages": 0,
+  "vulnerable_dependencies": [],
+  "network_note": "pip-audit may fetch the OSV advisory database to resolve vulnerability data for the locked toolchain",
+  "raw_output": "R3_PIP_AUDIT_RAW.txt",
+  "raw_output_sha256": "c8672e756ae2b1c1009fc5896614d07f8a45c9be1ff40397bd041e303baf3f9c"
+}

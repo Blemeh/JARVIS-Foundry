@@ -1,0 +1,578 @@
+{
+  "schema": "jarvis-r3-verifier-round2-verdict-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R3",
+  "repair_round": 2,
+  "verifier_model": "deepseek-v4-flash via codex-router",
+  "verifier_role": "FRESH_INDEPENDENT_ADVERSARIAL_VERIFIER",
+  "verdict": "FAIL",
+  "generated_utc": "2026-08-14T22:48:04Z",
+  "frozen_base": {
+    "branch": "remaster/post-v7-purpose",
+    "commit": "fddeab0c4c3b5fc78b67818f4e6e98fc25c18885",
+    "baseline_source_commit": "93a3ddc0965dfaf3e4cb9dc0952467bd5250520a",
+    "work_package": {
+      "path": "docs/remaster/work_packages/R3_WORK_PACKAGE.json",
+      "stated_sha256": "E6A73B5B878B143CEABA24568AD01781925CA5E8D5A63D81925B2353F858E65B",
+      "stated_size": 10208
+    },
+    "verification_package": {
+      "path": "docs/remaster/work_packages/R3_VERIFICATION_PACKAGE.json",
+      "stated_sha256": "6EFBE5CE042CDE04A427D41AF089F0C1D4CB50FE49C52FC0BEBFCF108489117D",
+      "stated_size": 3300
+    },
+    "builder_report": {
+      "path": "docs/remaster/evidence/r3/R3_BUILDER_REPORT.json",
+      "stated_sha256": "AB95274ED5C151EE770B3753A5030329B7D3A6860D708463B147E319E3411981",
+      "stated_size": 22565
+    },
+    "artifact_manifest": {
+      "path": "docs/remaster/evidence/r3/R3_ARTIFACT_MANIFEST.json",
+      "stated_sha256": "7183BAB2E23ABF80310B49C584EC697736C36FFA4009D31E42847EE9F85A08D8",
+      "stated_size": 11918
+    },
+    "confinement": {
+      "path": "docs/remaster/evidence/r3/R3_ARTIFACT_CONFINEMENT.json",
+      "stated_sha256": "11CB3D310DB629BC6AEBCA0CAA496A9C4EC715D6BEAB9B7117038E2FB169A116A",
+      "stated_size": 499
+    }
+  },
+  "round1_verdict_sha256": "3D8C6A6F2665779003D29BAA59A691C98F6CC01DF65766424952A81217933076",
+  "criteria": [
+    {
+      "id": "R3-C01",
+      "status": "FAIL",
+      "evidence": [
+        {
+          "path": "requirements-dev.txt",
+          "sha256": "379f90c96a77dfc35b7731b87decdd40019dd5f960f5f49bc13a34db22659894"
+        },
+        {
+          "path": ".github/workflows/windows-ci.yml",
+          "sha256": "59fe660270c6dcddaa6970a2bc09669180a734931f7db9ffc16f2ea61a92dc14"
+        },
+        {
+          "path": "scripts/remaster/r3/make_quality.ps1",
+          "sha256": "f1ed6418a3c11edb54b23c3d4b37630786fa9106d8a24f9be7abb1bc639d5a2a"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_ARTIFACT_CONFINEMENT.json",
+          "sha256": "11cb3d310db629bc6aebe0caa496a9c4ec715d6beab9b7117038e2fb169a116a"
+        }
+      ],
+      "reproduced_output": "requirements-dev.txt, windows-ci.yml, make_quality.ps1 present; artifact_confinement reproduced passed=true manifest_failures=0 hidden=0 budget=2934172/4194304 reproduction_exit=[0,0]. Mandatory tooling gate does not reproduce: external_gates.py --mode ruff-owned exits 1 (check=1 format=1).",
+      "notes": [
+        "R3_RUFF_OWNED.json is cited as C01 evidence and still claims passed=true, but the current owned file set fails ruff check/format (I001 and F401 in scripts/remaster/r3/close_r3_evidence.py).",
+        "Whole-repo ruff baseline now reproduces 501 errors, not the frozen 499."
+      ]
+    },
+    {
+      "id": "R3-C02",
+      "status": "FAIL",
+      "evidence": [
+        {
+          "path": "docs/remaster/evidence/r3/R3_RUFF_BASELINE.json",
+          "sha256": "327174f2880964520dcb47d1ec3b86fb8f7d6aafcdeb533c69fedbecd7815d04"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_RUFF_OWNED.json",
+          "sha256": "76d8cb32663ad393ac5b3a797b89cad52dcd13aa0dc3248943418d22052dd173"
+        }
+      ],
+      "reproduced_output": "ruff owned: check=1 format=1 (close_r3_evidence.py I001 import-sort, F401 unused sys, format diff at line 72); ruff whole-repo baseline: check_exit=1 errors=501 format_exit=1; frozen R3_RUFF_BASELINE.json records 499.",
+      "notes": [
+        "Honest baseline category adjudicated non-blocking for R3 in round 1, and thresholds are unchanged, but the frozen counts are now stale: the root repair itself introduced 2 new violations, so the baseline drifted 499 to 501.",
+        "The owned-file regression is blocking because R3-D02 requires owned ruff exit 0."
+      ]
+    },
+    {
+      "id": "R3-C03",
+      "status": "FAIL",
+      "evidence": [
+        {
+          "path": "docs/remaster/evidence/r3/R3_TYPING_BASELINE.json",
+          "sha256": "e7ddb409bc403f70a5b58384b96804bbeed2c7c4594a88eecbf4378b0e34fe8a"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_TYPING_OWNED.json",
+          "sha256": "e949e3b7f337c4efc9fd33ed0c4269ec10e970d594f19f16bb411b1a47afee7f"
+        }
+      ],
+      "reproduced_output": "mypy owned strict: exit=0 errors=0; typing baseline: kernel_errors=10 repo_errors=248 ast_annotated=1440/1715 fully_annotated=1222/1715; exact match to frozen evidence.",
+      "notes": [
+        "Honest recorded baseline REPAIR_IN_R4; strictness never lowered; non-blocking per round-1 adjudication."
+      ]
+    },
+    {
+      "id": "R3-C04",
+      "status": "PASS",
+      "evidence": [
+        {
+          "path": "docs/remaster/evidence/r3/R3_BANDIT.json",
+          "sha256": "c5b5b79744316bf08013dfbb072c186bc70389bd88e72db23bdc67def7d81d0a"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_PIP_AUDIT.json",
+          "sha256": "93d7b0f842e46e407d2f94575f97fbbfdfbc542852dbe896ebe7a3021c9d2ee8"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_SECRET_SCAN.json",
+          "sha256": "74564b36c558c0de7f60709d5ba0ec56496b16a545d854f2f557650837f3b508"
+        }
+      ],
+      "reproduced_output": "bandit re-run high=0 (LOW=37 MEDIUM=12; frozen records LOW=34 MEDIUM=12); pip-audit re-run exit=0 scanned=43 vulnerable=0; secret scan re-run files_scanned=753 total_matches=10 classified_fixtures=10 real_matches=0 comparison_identical=true.",
+      "notes": [
+        "Bandit severity counts drifted because the new R3 closure scripts are now scanned; high/critical remains 0 so the criterion still passes (S3 evidence drift tracked as R3-VF-006)."
+      ]
+    },
+    {
+      "id": "R3-C05",
+      "status": "FAIL",
+      "evidence": [
+        {
+          "path": "docs/remaster/evidence/r3/R3_COVERAGE.json",
+          "sha256": "640c760dbbf2baf4bb2165ea1f5d1f3c823bd03f31070e7577a6b0abd7c8b0f9"
+        }
+      ],
+      "reproduced_output": "coverage_gate re-run: branch 29.832% (142/476), line 53.226%, pytest_exit=0; threshold constant 95.0 unchanged; below_threshold=true; exact match to frozen evidence.",
+      "notes": [
+        "Honest recorded baseline REPAIR_IN_R4; threshold never lowered; non-blocking per round-1 adjudication."
+      ]
+    },
+    {
+      "id": "R3-C06",
+      "status": "PASS",
+      "evidence": [
+        {
+          "path": "docs/remaster/evidence/r3/R3_FOCUSED_TESTS.json",
+          "sha256": "39c41321ac1ce63b4b07f64203a5d5713cab7cc7e7f39a1511e58da965d3422c"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_FOCUSED_TESTS_JUNIT.xml",
+          "sha256": "b6c7d0e749c5cdd0fe283c4202add9b0b20463d40cfb05fb6da21cc38e3437e7"
+        }
+      ],
+      "reproduced_output": "venv python -B -m pytest tests/remaster/r3 -p no:cacheprovider --basetemp C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r3-verifier-r2-basetemp -q -> 26 passed, 0 failed, exit 0.",
+      "notes": []
+    },
+    {
+      "id": "R3-C07",
+      "status": "PASS",
+      "evidence": [
+        {
+          "path": "docs/remaster/evidence/r3/R3_MUTATION.json",
+          "sha256": "e948538c5ebab724152e73207f4564c1de7c6f41c0c7c6ee299744a3917e6701"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_MUTATION_RAW.json",
+          "sha256": "0b3fa37f68a191775f9e7da8e62c224553c38b06a026da25c9365d300198c8bc"
+        },
+        {
+          "path": "scripts/remaster/r3/frozen_mutants.json",
+          "sha256": "9e7e47c774f8ea386eb01cdecd8a0ed66338c29bf0ca4e92d83c8986cb16c729"
+        }
+      ],
+      "reproduced_output": "mutation_run.py re-run: mutation score 12/12 killed baseline_exit=0 wall=62.238s, exit 0.",
+      "notes": []
+    },
+    {
+      "id": "R3-C08",
+      "status": "PASS",
+      "evidence": [
+        {
+          "path": "docs/remaster/evidence/r3/R3_ARCHITECTURE_RULES.json",
+          "sha256": "53f1c472c5e1836c162b8c143b404f745eba0a2f51a31f6e3eb2079db6ac6ef9"
+        }
+      ],
+      "reproduced_output": "architecture_rules.py re-run: exactly 2 violations, both R3-ARCH-02 in src/jarvis_foundry/reporting/briefing.py (imports jarvis_foundry.database and jarvis_foundry.events), exit 1 as expected.",
+      "notes": []
+    },
+    {
+      "id": "R3-C09",
+      "status": "PASS",
+      "evidence": [
+        {
+          "path": ".github/workflows/windows-ci.yml",
+          "sha256": "59fe660270c6dcddaa6970a2bc09669180a734931f7db9ffc16f2ea61a92dc14"
+        },
+        {
+          "path": "scripts/remaster/r3/make_quality.ps1",
+          "sha256": "f1ed6418a3c11edb54b23c3d4b37630786fa9106d8a24f9be7abb1bc639d5a2a"
+        }
+      ],
+      "reproduced_output": "windows-ci.yml contains the 14-step quality sequence (ruff, mypy, bandit, pip-audit, secret scan, architecture, no-silent-failure, mutation subset, coverage, focused tests, confinement); make_quality.ps1 matches the same sequence.",
+      "notes": []
+    },
+    {
+      "id": "R3-C10",
+      "status": "PASS",
+      "evidence": [
+        {
+          "path": "docs/remaster/evidence/r3/R3_ARTIFACT_CONFINEMENT.json",
+          "sha256": "11cb3d310db629bc6aebe0caa496a9c4ec715d6beab9b7117038e2fb169a116a"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_ARTIFACT_MANIFEST.json",
+          "sha256": "1ff6dccedfe1206eba4da4589764ff0893f39988db5a5beaff3c307e96432c1a"
+        }
+      ],
+      "reproduced_output": "artifact_confinement.py (no R3_RECORD_EVIDENCE): passed=true manifest_failures=0 hidden=0 budget.evidence_bytes=2934172 (within 4194304) reproduction_exit=[0,0], exit 0; manifest 57/57 entries hash+size matched disk.",
+      "notes": [
+        "R3-VF-001 is resolved: fresh json+txt evidence_bytes now equals the frozen confinement record (2934172).",
+        "The manifest content requirement (builder report and work packages must be entries) is NOT met; tracked as blocking finding R3-VF-004."
+      ]
+    },
+    {
+      "id": "R3-C11",
+      "status": "PASS",
+      "evidence": [
+        {
+          "path": "src/jarvis_foundry/errors.py",
+          "sha256": "744f624c4ff3c44f31215bb702bf11c88c410396b6447e192e33c3c608517d0b"
+        },
+        {
+          "path": "src/jarvis_foundry/observability.py",
+          "sha256": "97ce0d4099c3463248e7093289b8576e013631cd35670109d6ba5aa15f9db7dc"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_NO_SILENT_FAILURE.json",
+          "sha256": "6f0f9a71888322062442fc9fa290b53e6ca99f10b50c5451765ad30ca20c296e"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_FOCUSED_TESTS_JUNIT.xml",
+          "sha256": "b6c7d0e749c5cdd0fe283c4202add9b0b20463d40cfb05fb6da21cc38e3437e7"
+        }
+      ],
+      "reproduced_output": "errors.py and observability.py exist, pass mypy strict (owned exit 0), and are covered by the passing 26-test suite; no_silent_failure.py re-run: 4 findings (database.py:36, database.py:47, effects.py:261, supervisor/controls.py:219), none unrecorded.",
+      "notes": []
+    },
+    {
+      "id": "R3-C12",
+      "status": "PASS",
+      "evidence": [
+        {
+          "path": "docs/remaster/evidence/r3/R3_LIVE_GUARD_BEFORE.json",
+          "sha256": "a41819e30a6c6981f3f11cc5b4d4262920e57daf583c236a6581a36c4f9d4773"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_LIVE_GUARD_AFTER.json",
+          "sha256": "c286030c242a770c2f1074ade0ddfa08ae3db2b094ce5b53278329543b1d4291"
+        },
+        {
+          "path": "docs/remaster/evidence/r3/R3_LIVE_GUARD_COMPARISON.json",
+          "sha256": "7c251b2d3b88191206e7a13197374770dc8e2512b861185a9b454f18318aaeb6"
+        }
+      ],
+      "reproduced_output": "Read-only live capture at 2026-08-14T22:47:03Z: JARVIS-Foundry-Supervisor Running (xml_sha256 7c5ea4fb...), Hermes_Gateway Ready (xml_sha256 5d2a3789...); supervisor pids 21636/17052 present with command_sha256 824e09a3... and creation dates matching the frozen guard exactly.",
+      "notes": [
+        "No task, process, database, port, provider, or commit was touched; git status after verification still shows only R3 additions in the remaster and the six untracked owner docs in main."
+      ]
+    }
+  ],
+  "deliverables": [
+    {
+      "id": "R3-D01",
+      "status": "PASS",
+      "evidence": [
+        "requirements-dev.txt",
+        "scripts/remaster/r3/make_venv.ps1",
+        "docs/remaster/evidence/r3/R3_INSTALL.json"
+      ],
+      "notes": "Isolated venv at C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r3-venv runs all pinned gates (Python 3.13.5, pytest 9.0.3, hypothesis 6.165.8)."
+    },
+    {
+      "id": "R3-D02",
+      "status": "FAIL",
+      "evidence": [
+        "docs/remaster/evidence/r3/R3_RUFF_OWNED.json",
+        "docs/remaster/evidence/r3/R3_RUFF_BASELINE.json"
+      ],
+      "notes": "Owned ruff no longer reproduces exit 0: close_r3_evidence.py fails I001/F401 and format check; frozen R3_RUFF_OWNED.json is stale."
+    },
+    {
+      "id": "R3-D03",
+      "status": "PASS",
+      "evidence": [
+        "docs/remaster/evidence/r3/R3_TYPING_OWNED.json",
+        "docs/remaster/evidence/r3/R3_TYPING_BASELINE.json"
+      ],
+      "notes": "Owned strict mypy exit 0 errors=0; honest baselines 10/248 reproduced exactly."
+    },
+    {
+      "id": "R3-D04",
+      "status": "PASS",
+      "evidence": [
+        "docs/remaster/evidence/r3/R3_BANDIT.json",
+        "docs/remaster/evidence/r3/R3_PIP_AUDIT.json",
+        "docs/remaster/evidence/r3/R3_SECRET_SCAN.json"
+      ],
+      "notes": "high=0, vulnerable=0, real_matches=0 reproduced."
+    },
+    {
+      "id": "R3-D05",
+      "status": "PASS",
+      "evidence": [
+        "docs/remaster/evidence/r3/R3_COVERAGE.json"
+      ],
+      "notes": "Coverage harness reproduces 29.832% branch / 53.226% line; threshold unchanged."
+    },
+    {
+      "id": "R3-D06",
+      "status": "PASS",
+      "evidence": [
+        "docs/remaster/evidence/r3/R3_FOCUSED_TESTS.json",
+        "docs/remaster/evidence/r3/R3_FOCUSED_TESTS_JUNIT.xml"
+      ],
+      "notes": "26 passed / 0 failed reproduced."
+    },
+    {
+      "id": "R3-D07",
+      "status": "PASS",
+      "evidence": [
+        "docs/remaster/evidence/r3/R3_MUTATION.json",
+        "docs/remaster/evidence/r3/R3_MUTATION_RAW.json"
+      ],
+      "notes": "12/12 killed, baseline exit 0 reproduced."
+    },
+    {
+      "id": "R3-D08",
+      "status": "PASS",
+      "evidence": [
+        "docs/remaster/evidence/r3/R3_ARCHITECTURE_RULES.json"
+      ],
+      "notes": "Exactly 2 violations with exact paths reproduced."
+    },
+    {
+      "id": "R3-D09",
+      "status": "PASS",
+      "evidence": [
+        ".github/workflows/windows-ci.yml",
+        "scripts/remaster/r3/make_quality.ps1"
+      ],
+      "notes": "CI and portable quality script present and aligned."
+    },
+    {
+      "id": "R3-D10",
+      "status": "PASS",
+      "evidence": [
+        "docs/remaster/evidence/r3/R3_ARTIFACT_CONFINEMENT.json",
+        "docs/remaster/evidence/r3/R3_ARTIFACT_MANIFEST.json"
+      ],
+      "notes": "passed=true, 57/57 manifest match, hidden=0, budget 2934172 within 4 MiB; manifest completeness defect tracked separately (R3-VF-004)."
+    },
+    {
+      "id": "R3-D11",
+      "status": "PASS",
+      "evidence": [
+        "src/jarvis_foundry/errors.py",
+        "src/jarvis_foundry/observability.py",
+        "docs/remaster/evidence/r3/R3_NO_SILENT_FAILURE.json"
+      ],
+      "notes": "Typed owned modules with passing tests; 4 no-silent-failure findings all recorded."
+    }
+  ],
+  "findings": [
+    {
+      "id": "R3-VF-002",
+      "severity": "S1",
+      "title": "R3 evidence closure is not idempotent and cannot reproduce the frozen report/manifest hashes",
+      "invariant": "evidence closure stability / artifact identity",
+      "reproduction": "Ran scripts/remaster/r3/close_r3_evidence.py twice with the isolated venv. Run 1 exit 0: report 357b6ab1da116bd45012b43a1becacb0744aafa053bde14ba8dbb8feab64fee4, manifest b7746d4e321863a371faf0ea49d9a0edb75eb1c83b5e32057f4b2598517cf4c2, confinement 11cb3d310db629bc6aebe0caa496a9c4ec715d6beab9b7117038e2fb169a116a. Run 2 exit 0: report b3032edef56a0445c1cdb73e049c594f158f7bbe6aadf6e96434c973b5524e7a, manifest 1ff6dccedfe1206eba4da4589764ff0893f39988db5a5beaff3c307e96432c1a, confinement unchanged.",
+      "impact": "Report and manifest are byte-different between run 1 and run 2 and both differ from the frozen stated hashes (AB95274E..., 7183BAB2...). The R3-F043 idempotent-closure claim is false: build_evidence.py embeds datetime.now() timestamps into both files, so every run rewrites them. Only the confinement evidence is stable.",
+      "disposition": "REPAIR_REQUIRED_BEFORE_PROMOTION; R4/next round must make generated_utc deterministic for frozen artifacts or record content digests independent of wall-clock timestamps, then re-freeze report/manifest."
+    },
+    {
+      "id": "R3-VF-003",
+      "severity": "S1",
+      "title": "Ruff owned gate fails after the root repair; frozen ruff evidence and baselines are stale",
+      "invariant": "owned lint gate / honest baseline accuracy",
+      "reproduction": "venv python -B scripts/remaster/r3/external_gates.py --mode ruff-owned -> check=1 format=1. Diagnostics: scripts/remaster/r3/close_r3_evidence.py line 11 I001 (import block un-sorted), line 16 F401 (sys imported but unused), format check would reformat line 72. Whole-repo baseline re-run: errors=501 (frozen R3_RUFF_BASELINE.json records 499).",
+      "impact": "R3-D02 and the mandatory owned lint expectation (ruff owned exit 0) fail on the exact HEAD frozen scope. The repair script itself introduced the new violations, so C02 frozen baseline 499 is also stale (now 501).",
+      "disposition": "REPAIR_REQUIRED_BEFORE_PROMOTION; fix close_r3_evidence.py lint/format, regenerate ruff owned and baseline evidence, rebind manifest/report."
+    },
+    {
+      "id": "R3-VF-004",
+      "severity": "S2",
+      "title": "Manifest omits required entries and the final report binds a stale manifest hash",
+      "invariant": "manifest completeness / report-manifest atomicity",
+      "reproduction": "Manifest has 57 entries but does not contain docs/remaster/evidence/r3/R3_BUILDER_REPORT.json, docs/remaster/work_packages/R3_WORK_PACKAGE.json, or docs/remaster/work_packages/R3_VERIFICATION_PACKAGE.json (all required by the verifier instructions); it also omits R3-created scripts/remaster/r3/close_r3_evidence.py and install_evidence.py. After run 2, R3_BUILDER_REPORT.json deliverables.R3-D10.evidence_hashes.R3_ARTIFACT_MANIFEST.json=86a1e47b65066c7a55ad2c57008757a751270283afa738f91abe98e7a501720d but the on-disk manifest sha256 is 1ff6dccedfe1206eba4da4589764ff0893f39988db5a5beaff3c307e96432c1a.",
+      "impact": "The explicit verifier requirement that the manifest include the builder report and work packages is unmet, and the report-to-manifest binding is still non-atomic (the same defect class R3-F043 claimed to close), because build_evidence.py writes the report before it writes the replacement manifest.",
+      "disposition": "REPAIR_REQUIRED_BEFORE_PROMOTION; manifest schema must bind report/work packages (or the requirement must be changed explicitly), and report generation must bind the final manifest it ships."
+    },
+    {
+      "id": "R3-VF-005",
+      "severity": "S3",
+      "title": "Frozen verification package contains stale inner hashes and entry counts",
+      "invariant": "work package internal consistency",
+      "reproduction": "R3_VERIFICATION_PACKAGE.json (hash 6efbe5ce... matches disk) records builder manifest 842f76e9.../11689 and report d309fdf5.../22565, but the frozen scope states 7183bab2.../11918 and ab95274e.../22565; it records findings registry 9677a666.../43650 while the current registry is 3b82621f.../44973 (R3-F043 added after freeze); it instructs verifying 56 manifest entries while the frozen manifest has 57.",
+      "impact": "No gate flips; the package is documentation that is internally stale relative to the frozen artifacts it governs. It was not edited (frozen).",
+      "disposition": "REPORT_ONLY; R4 should regenerate the verification package only as part of a fresh freeze cycle and keep inner hashes in sync."
+    },
+    {
+      "id": "R3-VF-006",
+      "severity": "S3",
+      "title": "Bandit severity counts drift because new R3 scripts are scanned",
+      "invariant": "evidence accuracy",
+      "reproduction": "bandit re-run: LOW=37 MEDIUM=12 HIGH=0; frozen R3_BANDIT.json records LOW=34 MEDIUM=12 HIGH=0. Delta comes from close_r3_evidence.py and related new scripts now present under scripts/remaster/r3.",
+      "impact": "high_findings=0 and the gate pass are unchanged, so R3-C04/D04 still pass; the frozen severity counts are stale evidence.",
+      "disposition": "REPORT_ONLY; regenerate R3_BANDIT.json during the next closure so recorded severity counts match the committed source set."
+    }
+  ],
+  "status_summary": {
+    "verdict": "FAIL",
+    "idempotency_result": {
+      "run1_exit": 0,
+      "run2_exit": 0,
+      "run1_report_sha256": "357b6ab1da116bd45012b43a1becacb0744aafa053bde14ba8dbb8feab64fee4",
+      "run2_report_sha256": "b3032edef56a0445c1cdb73e049c594f158f7bbe6aadf6e96434c973b5524e7a",
+      "run1_manifest_sha256": "b7746d4e321863a371faf0ea49d9a0edb75eb1c83b5e32057f4b2598517cf4c2",
+      "run2_manifest_sha256": "1ff6dccedfe1206eba4da4589764ff0893f39988db5a5beaff3c307e96432c1a",
+      "confinement_sha256_both_runs": "11cb3d310db629bc6aebe0caa496a9c4ec715d6beab9b7117038e2fb169a116a",
+      "byte_identical_between_runs": false,
+      "frozen_hashes_reproduced": false,
+      "conclusion": "Both runs exit 0 and the final consistency check passes, but the required byte-identical run-1/run-2 hashes do not hold; report and manifest drift on every run."
+    },
+    "mandatory_criteria_pass": [
+      "R3-C04",
+      "R3-C06",
+      "R3-C07",
+      "R3-C08",
+      "R3-C09",
+      "R3-C10",
+      "R3-C11",
+      "R3-C12"
+    ],
+    "mandatory_criteria_fail": [
+      "R3-C01 (owned lint foundation no longer reproduces; frozen evidence stale)",
+      "R3-C02 (honest baseline category, but frozen 499 now reproduces as 501)",
+      "R3-C03 (honest baseline, reproduced exactly; non-blocking)",
+      "R3-C05 (honest baseline, reproduced exactly; non-blocking)"
+    ],
+    "adjudication_C02_C03_C05": {
+      "decision": "C03 and C05 remain honest recorded baselines exactly as adjudicated in round 1: trusted-kernel mypy strict 10 and branch coverage 29.832% reproduce exactly, thresholds never lowered, REPAIR_IN_R4. C02 is also non-blocking as a baseline category, but the frozen 499 count no longer reproduces (501) because the R3 repair introduced new violations.",
+      "threshold_checks": {
+        "ruff_config_unchanged": true,
+        "mypy_strict_unchanged": true,
+        "coverage_threshold_unchanged": true,
+        "coverage_threshold_value": 95.0
+      },
+      "overall_verdict_basis": "Overall verdict is FAIL for mandatory verifier requirements independent of the C02/C03/C05 adjudication: owned ruff exit 0 did not reproduce (R3-VF-003), closure idempotency/byte-identity failed and frozen report/manifest drifted (R3-VF-002), and the manifest omitted required entries while the report bound a stale manifest hash (R3-VF-004)."
+    },
+    "reproduction_highlights": {
+      "focused_tests": "26 passed, 0 failed, exit 0",
+      "mutation": "12/12 killed, baseline exit 0",
+      "ruff_owned": "FAIL check=1 format=1",
+      "ruff_whole_repo": "501 errors (frozen 499)",
+      "mypy_owned": "exit 0, 0 errors",
+      "mypy_baseline": "kernel 10, whole-repo 248, AST 1440/1715",
+      "architecture": "2 violations",
+      "no_silent_failure": "4 findings",
+      "bandit": "HIGH 0 (LOW 37, MEDIUM 12)",
+      "pip_audit": "0 vulnerable of 43 scanned",
+      "secret_scan": "0 real of 10 matches (10 fixtures)",
+      "coverage": "branch 29.832% (142/476), line 53.226%, threshold 95.0, below_threshold true",
+      "confinement": "passed=true manifest_failures=0 hidden=0 budget 2934172 within 4 MiB",
+      "round1_verdict": "byte-identical 3d8c6a6f... and present in manifest",
+      "registry": "parses 74 lines, contains R3-F037..F043, no duplicate IDs",
+      "git_boundary": "remaster only R3 additions; main only six untracked owner docs; no commit/push",
+      "live_boundary": "tasks Running/Ready with matching xml hashes; supervisor pids/command hashes unchanged"
+    }
+  },
+  "evidence_paths_and_hashes": {
+    "docs/remaster/work_packages/R3_WORK_PACKAGE.json": {
+      "sha256": "e6a73b5b878b143ceaba24568ad01781925ca5e8d5a63d81925b2353f858e65b",
+      "size": 10208
+    },
+    "docs/remaster/work_packages/R3_VERIFICATION_PACKAGE.json": {
+      "sha256": "6efbe5ce042cde04a427d41af089f0c1d4cb50fe49c52fc0bebfcf108489117d",
+      "size": 3300
+    },
+    "docs/remaster/evidence/r3/R3_BUILDER_REPORT.json": {
+      "sha256": "b3032edef56a0445c1cdb73e049c594f158f7bbe6aadf6e96434c973b5524e7a",
+      "size": 22565,
+      "note": "Changed by the authorized idempotency re-runs; frozen stated hash was ab95274ed5c151ee770b3753a5030329b7d3a6860d708463b147e319e3411981."
+    },
+    "docs/remaster/evidence/r3/R3_ARTIFACT_MANIFEST.json": {
+      "sha256": "1ff6dccedfe1206eba4da4589764ff0893f39988db5a5beaff3c307e96432c1a",
+      "size": 11918,
+      "note": "Changed by the authorized idempotency re-runs; frozen stated hash was 7183bab2e23abf80310b49c584ec697736c36ffa4009d31e42847ee9f85a08d8."
+    },
+    "docs/remaster/evidence/r3/R3_ARTIFACT_CONFINEMENT.json": {
+      "sha256": "11cb3d310db629bc6aebe0caa496a9c4ec715d6beab9b7117038e2fb169a116a",
+      "size": 499
+    },
+    "docs/remaster/evidence/r3/R3_VERIFIER_ROUND1_VERDICT_DSV4.json": {
+      "sha256": "3d8c6a6f2665779003d29baa59a691c98f6cc01df65766424952a81217933076",
+      "size": 45343
+    },
+    "docs/remaster/evidence/r3/R3_RUFF_OWNED.json": {
+      "sha256": "76d8cb32663ad393ac5b3a797b89cad52dcd13aa0dc3248943418d22052dd173",
+      "size": 390
+    },
+    "docs/remaster/evidence/r3/R3_RUFF_BASELINE.json": {
+      "sha256": "327174f2880964520dcb47d1ec3b86fb8f7d6aafcdeb533c69fedbecd7815d04",
+      "size": 632
+    },
+    "docs/remaster/evidence/r3/R3_TYPING_OWNED.json": {
+      "sha256": "e949e3b7f337c4efc9fd33ed0c4269ec10e970d594f19f16bb411b1a47afee7f",
+      "size": 1244
+    },
+    "docs/remaster/evidence/r3/R3_TYPING_BASELINE.json": {
+      "sha256": "e7ddb409bc403f70a5b58384b96804bbeed2c7c4594a88eecbf4378b0e34fe8a",
+      "size": 2528
+    },
+    "docs/remaster/evidence/r3/R3_ARCHITECTURE_RULES.json": {
+      "sha256": "53f1c472c5e1836c162b8c143b404f745eba0a2f51a31f6e3eb2079db6ac6ef9",
+      "size": 732
+    },
+    "docs/remaster/evidence/r3/R3_NO_SILENT_FAILURE.json": {
+      "sha256": "6f0f9a71888322062442fc9fa290b53e6ca99f10b50c5451765ad30ca20c296e",
+      "size": 1253
+    },
+    "docs/remaster/evidence/r3/R3_BANDIT.json": {
+      "sha256": "c5b5b79744316bf08013dfbb072c186bc70389bd88e72db23bdc67def7d81d0a",
+      "size": 337
+    },
+    "docs/remaster/evidence/r3/R3_PIP_AUDIT.json": {
+      "sha256": "93d7b0f842e46e407d2f94575f97fbbfdfbc542852dbe896ebe7a3021c9d2ee8",
+      "size": 440
+    },
+    "docs/remaster/evidence/r3/R3_SECRET_SCAN.json": {
+      "sha256": "74564b36c558c0de7f60709d5ba0ec56496b16a545d854f2f557650837f3b508",
+      "size": 364
+    },
+    "docs/remaster/evidence/r3/R3_COVERAGE.json": {
+      "sha256": "640c760dbbf2baf4bb2165ea1f5d1f3c823bd03f31070e7577a6b0abd7c8b0f9",
+      "size": 713
+    },
+    "docs/remaster/evidence/r3/R3_MUTATION.json": {
+      "sha256": "e948538c5ebab724152e73207f4564c1de7c6f41c0c7c6ee299744a3917e6701",
+      "size": 380
+    },
+    "docs/remaster/evidence/r3/R3_FOCUSED_TESTS.json": {
+      "sha256": "39c41321ac1ce63b4b07f64203a5d5713cab7cc7e7f39a1511e58da965d3422c",
+      "size": 409
+    },
+    "docs/remaster/evidence/r3/R3_FOCUSED_TESTS_JUNIT.xml": {
+      "sha256": "b6c7d0e749c5cdd0fe283c4202add9b0b20463d40cfb05fb6da21cc38e3437e7",
+      "size": 4937
+    },
+    "docs/remaster/evidence/r3/R3_LIVE_GUARD_BEFORE.json": {
+      "sha256": "a41819e30a6c6981f3f11cc5b4d4262920e57daf583c236a6581a36c4f9d4773",
+      "size": 1057
+    },
+    "docs/remaster/evidence/r3/R3_LIVE_GUARD_AFTER.json": {
+      "sha256": "c286030c242a770c2f1074ade0ddfa08ae3db2b094ce5b53278329543b1d4291",
+      "size": 1057
+    },
+    "docs/remaster/evidence/r3/R3_LIVE_GUARD_COMPARISON.json": {
+      "sha256": "7c251b2d3b88191206e7a13197374770dc8e2512b861185a9b454f18318aaeb6",
+      "size": 245
+    },
+    "docs/remaster/FINDINGS.jsonl": {
+      "sha256": "3b82621f83a5fb55f0b078fa5ea11b79182764b559209617c88daa68bf10084a",
+      "size": 44973
+    }
+  },
+  "next_action": "Do not promote R3. Root must (1) make the closure deterministic by removing wall-clock timestamps from frozen report/manifest content or separating content digests from timestamps, (2) fix ruff check/format violations in scripts/remaster/r3/close_r3_evidence.py, (3) regenerate ruff owned and whole-repo baseline evidence (501 errors) and rebind the report/manifest so the final report binds the final manifest, (4) extend the manifest to bind the builder report and both work packages (and the two unbound R3 source scripts) or obtain an explicit scope change, then submit for a fresh verifier round. C03/C05 and the C02 baseline category remain non-blocking honest baselines with thresholds unchanged."
+}

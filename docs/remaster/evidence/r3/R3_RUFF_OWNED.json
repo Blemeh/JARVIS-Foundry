@@ -1,0 +1,16 @@
+{
+  "schema": "jarvis-r3-ruff-owned-v1",
+  "check": {
+    "exit_code": 0,
+    "wall_seconds": 0.316,
+    "error_lines": 1
+  },
+  "format": {
+    "exit_code": 0,
+    "wall_seconds": 0.315,
+    "would_reformat_files": 1
+  },
+  "passed": true,
+  "raw_output": "R3_RUFF_OWNED_RAW.txt",
+  "raw_output_sha256": "5c442b3092a3f7df4c434f2bdfca993e650b1aa93e14ea726821a5008730e6b1"
+}

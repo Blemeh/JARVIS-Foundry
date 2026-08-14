@@ -1,0 +1,214 @@
+{
+  "schema": "jarvis-r3-install-v1",
+  "recipe": "C:/Python313/python.exe -B -m venv --without-pip --system-site-packages C:/Users/b/AppData/Local/Temp/jarvis-r3-venv; .pth inserts repo src; host pip install --python <venv-python> -r requirements-dev.txt",
+  "tool_versions": {
+    "pytest-cov": "7.1.0",
+    "hypothesis": "6.165.8",
+    "sortedcontainers": "2.4.0",
+    "mypy": "2.3.0",
+    "ast_serialize": "0.8.0",
+    "ruff": "0.16.3",
+    "bandit": "1.9.4",
+    "cyclonedx-python-lib": "11.12.0",
+    "license-expression": "30.4.4",
+    "packageurl-python": "0.17.6",
+    "py-serializable": "2.1.0",
+    "defusedxml": "0.7.1",
+    "boolean.py": "5.0",
+    "CacheControl": "0.14.4",
+    "msgpack": "1.2.1",
+    "coverage": "7.15.4",
+    "filelock": "3.32.3",
+    "librt": "0.15.0",
+    "mypy_extensions": "1.1.0",
+    "pathspec": "1.1.1",
+    "pip-api": "0.0.34",
+    "pip-requirements-parser": "32.0.1",
+    "platformdirs": "4.11.3",
+    "requests": "2.34.2",
+    "charset-normalizer": "3.5.0",
+    "urllib3": "2.7.0",
+    "rich": "15.0.0",
+    "markdown-it-py": "4.2.0",
+    "mdurl": "0.1.2",
+    "stevedore": "5.9.0",
+    "tomli": "2.4.1",
+    "tomli_w": "1.2.0",
+    "pyparsing": "3.3.2",
+    "pytest": "9.0.3",
+    "pip-audit": "2.10.1"
+  },
+  "wheel_hashes": [
+    {
+      "package": "pytest-cov",
+      "version": "7.1.0",
+      "wheel_hash": "sha256=a0461110b7865f9a271aa1b51e516c9a95de9d696734a2f71e3e78f46e1d4678"
+    },
+    {
+      "package": "hypothesis",
+      "version": "6.165.8",
+      "wheel_hash": "sha256=13bc0f4c8f144a222a038a12511c51e85c5171694b836e1df3b66ffa5250b71d"
+    },
+    {
+      "package": "sortedcontainers",
+      "version": "2.4.0",
+      "wheel_hash": "sha256=a163dcaede0f1c021485e957a39245190e74249897e2ae4b2aa38595db237ee0"
+    },
+    {
+      "package": "mypy",
+      "version": "2.3.0",
+      "wheel_hash": "sha256=75b0984bb3cbd76bb5c9291a8671f7ae66ca3b51c7584c358fc2e923259f0757"
+    },
+    {
+      "package": "ast_serialize",
+      "version": "0.8.0",
+      "wheel_hash": "sha256=861794565b06337005c1447ef23103a3d5a627d08bdc827870d00d0b28ef5f51"
+    },
+    {
+      "package": "ruff",
+      "version": "0.16.3",
+      "wheel_hash": "sha256=e80a7d69ca2a6d1c4d352ec91458cdca6e56c83cdbcabd93e4abe1e53591d948"
+    },
+    {
+      "package": "bandit",
+      "version": "1.9.4",
+      "wheel_hash": "sha256=f89ffa663767f5a0585ea075f01020207e966a9c0f2b9ef56a57c7963a3f6f8e"
+    },
+    {
+      "package": "pip_audit",
+      "version": "2.10.1",
+      "wheel_hash": "sha256=99ef3f600a317c1945f1e89e227ef26e1c2d618429b8bd3fa6f4f7c440c4611a"
+    },
+    {
+      "package": "cyclonedx-python-lib",
+      "version": "11.12.0",
+      "wheel_hash": "sha256=0e807521a921a5c3cb8ce1153f8a61d29eedfe76a46aac2796b7c6b573391a54"
+    },
+    {
+      "package": "license-expression",
+      "version": "30.4.4",
+      "wheel_hash": "sha256=421788fdcadb41f049d2dc934ce666626265aeccefddd25e162a26f23bcbf8a4"
+    },
+    {
+      "package": "packageurl-python",
+      "version": "0.17.6",
+      "wheel_hash": "sha256=31a85c2717bc41dd818f3c62908685ff9eebcb68588213745b14a6ee9e7df7c9"
+    },
+    {
+      "package": "py-serializable",
+      "version": "2.1.0",
+      "wheel_hash": "sha256=b56d5d686b5a03ba4f4db5e769dc32336e142fc3bd4d68a8c25579ebb0a67304"
+    },
+    {
+      "package": "defusedxml",
+      "version": "0.7.1",
+      "wheel_hash": "sha256=a352e7e428770286cc899e2542b6cdaedb2b4953ff269a210103ec58f6198a61"
+    },
+    {
+      "package": "boolean.py",
+      "version": "5.0",
+      "wheel_hash": "sha256=ef28a70bd43115208441b53a045d1549e2f0ec6e3d08a9d142cbc41c1938e8d9"
+    },
+    {
+      "package": "CacheControl",
+      "version": "0.14.4",
+      "wheel_hash": "sha256=b7ac014ff72ee199b5f8af1de29d60239954f223e948196fa3d84adaffc71d2b"
+    },
+    {
+      "package": "msgpack",
+      "version": "1.2.1",
+      "wheel_hash": "sha256=33f14fba63278b714efe6ad07e50ea5f03d91537aa6a1c5f1ceca4cf44013ca9"
+    },
+    {
+      "package": "coverage",
+      "version": "7.15.4",
+      "wheel_hash": "sha256=2ff8f5e9b8f7a94f0c11c45631eee103dbcb7d63274edd12c56efe1be690b3b4"
+    },
+    {
+      "package": "filelock",
+      "version": "3.32.3",
+      "wheel_hash": "sha256=7f0ca4bcc0e181c60dbbd8aa9ab5b120ebb99e4e064e83636340056f833a1f09"
+    },
+    {
+      "package": "librt",
+      "version": "0.15.0",
+      "wheel_hash": "sha256=f395a4a9a03ac062dbe9a9f82e0c720502e590a38feee6a757bc82e9c63afbd8"
+    },
+    {
+      "package": "mypy_extensions",
+      "version": "1.1.0",
+      "wheel_hash": "sha256=1be4cccdb0f2482337c4743e60421de3a356cd97508abadd57d47403e94f5505"
+    },
+    {
+      "package": "pathspec",
+      "version": "1.1.1",
+      "wheel_hash": "sha256=a00ce642f577bf7f473932318056212bc4f8bfdf53128c78bbd5af0b9b20b189"
+    },
+    {
+      "package": "pip-api",
+      "version": "0.0.34",
+      "wheel_hash": "sha256=8b2d7d7c37f2447373aa2cf8b1f60a2f2b27a84e1e9e0294a3f6ef10eb3ba6bb"
+    },
+    {
+      "package": "pip-requirements-parser",
+      "version": "32.0.1",
+      "wheel_hash": "sha256=4659bc2a667783e7a15d190f6fccf8b2486685b6dba4c19c3876314769c57526"
+    },
+    {
+      "package": "platformdirs",
+      "version": "4.11.3",
+      "wheel_hash": "sha256=5ed065d443751de711da036041a7a214122efc4a4de393b3f4137ba5576540e7"
+    },
+    {
+      "package": "requests",
+      "version": "2.34.2",
+      "wheel_hash": "sha256=2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0"
+    },
+    {
+      "package": "charset-normalizer",
+      "version": "3.5.0",
+      "wheel_hash": "sha256=72982d9958a42f8132bf2d6b90214ed66477295ef1188731f98ae3511c6eeb5a"
+    },
+    {
+      "package": "urllib3",
+      "version": "2.7.0",
+      "wheel_hash": "sha256=9fb4c81ebbb1ce9531cce37674bbc6f1360472bc18ca9a553ede278ef7276897"
+    },
+    {
+      "package": "rich",
+      "version": "15.0.0",
+      "wheel_hash": "sha256=33bd4ef74232fb73fe9279a257718407f169c09b78a87ad3d296f548e27de0bb"
+    },
+    {
+      "package": "markdown-it-py",
+      "version": "4.2.0",
+      "wheel_hash": "sha256=9f7ebbcd14fe59494226453aed97c1070d83f8d24b6fc3a3bcf9a38092641c4a"
+    },
+    {
+      "package": "mdurl",
+      "version": "0.1.2",
+      "wheel_hash": "sha256=84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8"
+    },
+    {
+      "package": "stevedore",
+      "version": "5.9.0",
+      "wheel_hash": "sha256=e520945d4c257700eddc1eb1d79df04b2ea578eef185e0e3fa5b442fc848d3f7"
+    },
+    {
+      "package": "tomli",
+      "version": "2.4.1",
+      "wheel_hash": "sha256=8d65a2fbf9d2f8352685bc1364177ee3923d6baf5e7f43ea4959d7d8bc326a36"
+    },
+    {
+      "package": "tomli_w",
+      "version": "1.2.0",
+      "wheel_hash": "sha256=188306098d013b691fcadc011abd66727d3c414c571bb01b1a174ba8c983cf90"
+    },
+    {
+      "package": "pyparsing",
+      "version": "3.3.2",
+      "wheel_hash": "sha256=850ba148bd908d7e2411587e247a1e4f0327839c40e2e5e6d05a007ecc69911d"
+    }
+  ],
+  "wheel_hash_note": "pytest==9.0.3 was already importable from the base system site-packages, so the pinned-install report contains no wheel hash for it; all other pinned packages have report hashes."
+}

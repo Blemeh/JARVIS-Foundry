@@ -1,0 +1,149 @@
+{
+  "schema": "jarvis-remaster-work-package-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R3",
+  "title": "Professional engineering foundation: reproducible gates, quality tooling, Windows CI",
+  "status": "FROZEN",
+  "generated_utc": "2026-08-14T22:45:00Z",
+  "frozen_base": {
+    "commit": "fddeab0",
+    "branch": "remaster/post-v7-purpose",
+    "worktree": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster",
+    "baseline_source_commit": "93a3ddc0965dfaf3e4cb9dc0952467bd5250520a",
+    "live_v7_deployment_changes_allowed": false,
+    "push_or_publish_allowed": false,
+    "live_daemon_database_tasks_processes_ports": "protected, untouched"
+  },
+  "objective": "Install and enforce the professional engineering foundation in the isolated remaster worktree so later slices are measured automatically and integration is blocked on broken code, architecture, types, security, tests, or mutation resistance. R3 does NOT rewrite the trusted kernel (that is R4).",
+  "owner_value": "Deterministic reproducible environments, lint, strict typing, security/dependency/secret scanning, branch coverage, property/state testing, mutation A/B proof, architecture dependency rules, Windows-native CI, artifact confinement, structured logging/metrics, and an explicit error taxonomy - all runnable locally and in CI with honest status.",
+  "ownership": {
+    "builder": "May edit pyproject.toml, .github/, requirements lock files, scripts/remaster/r3/** (new tools), src/jarvis_foundry/errors.py and src/jarvis_foundry/observability.py (new additive modules only), docs/remaster/evidence/r3/** (new evidence), and tests/remaster/r3/** (new gate tests). Must NOT edit the frozen work package, FINDINGS.jsonl, any prior evidence, R1/R2 scripts, protected main checkout, existing tests/foundry files, or live state.",
+    "root": "Evidence custody, findings registry, commit decision, final truth.",
+    "verifier": "Fresh independent context after the builder freezes evidence."
+  },
+  "mandatory_deliverables": [
+    {
+      "id": "R3-D01",
+      "item": "Deterministic dependency environment",
+      "detail": "Commit a lock file (requirements-dev.txt compiled by pip-tools or uv.lock) pinning exact versions: pytest, pytest-cov, hypothesis, mypy, ruff, bandit, pip-audit, and any tool actually used. Add scripts/remaster/r3/make_venv.ps1 that creates an isolated venv from the lock without network when cache is present. Record the install recipe and tool versions in evidence."
+    },
+    {
+      "id": "R3-D02",
+      "item": "Formatting and linting",
+      "detail": "Add [tool.ruff] (line-length 100, target py313) and [tool.ruff.format] to pyproject.toml. ruff check + format must run clean on the files owned by this slice. For pre-existing source, run format/check and record any remaining violations as findings (do not silently skip them)."
+    },
+    {
+      "id": "R3-D03",
+      "item": "Strict static typing",
+      "detail": "Add [tool.mypy] strict config. Define the trusted kernel module set (ledger/events/projections/database, owner controls, supervisor control primitives, effects, control/*, errors, observability). Gate: 100% typed public interfaces on the trusted kernel; measure and report the legacy whole-repo typing baseline honestly (R2 measured 1440/1701 parameterized functions annotated)."
+    },
+    {
+      "id": "R3-D04",
+      "item": "Security, dependency, and secret scanning",
+      "detail": "Bandit scan with a committed config; pip-audit on the locked environment; a non-emitting secret-value comparison script (pattern: R0/R1) plus a pattern scan. Zero critical/high findings or documented external blocker. No secret value is ever written to evidence."
+    },
+    {
+      "id": "R3-D05",
+      "item": "Branch/condition coverage",
+      "detail": "Add [tool.coverage.run] with branch=true and a coverage gate script that measures trusted-kernel branch coverage honestly and fails integration below threshold after R4; record the current baseline number as a finding if below 95% (do not lower the threshold)."
+    },
+    {
+      "id": "R3-D06",
+      "item": "Property-based and state-machine tests",
+      "detail": "Add hypothesis-based tests under tests/remaster/r3/ for at least: event ledger append/replay determinism, projection idempotency, and an owner-control state machine (STOP/veto/pause/resume transitions). Each property must be runnable in CI and locally."
+    },
+    {
+      "id": "R3-D07",
+      "item": "Mutation testing with A/B proof",
+      "detail": "Build scripts/remaster/r3/mutation_run.py driven by a frozen mutant manifest (curated mutants of the trusted kernel and gate scripts). Each mutant is A/B proven: baseline tests pass on clean code, mutant is rejected for the intended reason. Record honest killed/total score."
+    },
+    {
+      "id": "R3-D08",
+      "item": "Architecture dependency rules",
+      "detail": "Build scripts/remaster/r3/architecture_rules.py: an AST import checker enforcing that trusted kernel modules cannot import connectors/adapters/UI, and that adapters cannot mutate canonical kernel state directly (reject at gate). Record violations as findings."
+    },
+    {
+      "id": "R3-D09",
+      "item": "Windows-native CI plus portable checks",
+      "detail": "Add .github/workflows/windows-ci.yml running on windows-latest with Python 3.13 (matching the real host) executing: ruff, mypy, bandit, pip-audit, secret scan, architecture rules, mutation subset, coverage, focused tests, artifact-confinement check. Add a portable make-quality script usable locally."
+    },
+    {
+      "id": "R3-D10",
+      "item": "Generated-artifact confinement and clean-checkout verification",
+      "detail": "A script that verifies the remaster evidence artifacts are reproducible from committed sources and that a clean checkout reproduces the gate results (no hidden generated files outside declared paths)."
+    },
+    {
+      "id": "R3-D11",
+      "item": "Structured logging, metrics, tracing, and error taxonomy",
+      "detail": "Add src/jarvis_foundry/errors.py with a typed error taxonomy (IntegrityError, AuthorityError, EffectError, RecoveryError, BlockedError, NotImplementedError variant) and src/jarvis_foundry/observability.py with structured record/correlation helpers. No existing module is refactored in R3; a no-silent-failure check flags broad except handlers in the trusted kernel as findings."
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "R3-C01",
+      "criterion": "Every quality command (lint, type, security, secret, architecture, coverage, mutation, repro, lock) is reproducible locally from the committed lock and runs in the Windows CI workflow."
+    },
+    {
+      "id": "R3-C02",
+      "criterion": "Ruff check and format pass on all committed files; any pre-existing violation is a recorded finding, not a silent skip."
+    },
+    {
+      "id": "R3-C03",
+      "criterion": "Mypy strict runs with a defined trusted-kernel module set; trusted-kernel public interfaces are 100% typed; whole-repo typing baseline is measured and recorded honestly."
+    },
+    {
+      "id": "R3-C04",
+      "criterion": "Bandit and pip-audit produce zero critical/high findings, or an explicit recorded external blocker; secret scan reports zero matches non-emittingly."
+    },
+    {
+      "id": "R3-C05",
+      "criterion": "Branch coverage measures the trusted kernel honestly; if below 95%, the finding is recorded with the exact measured number and integration remains gated (threshold never lowered)."
+    },
+    {
+      "id": "R3-C06",
+      "criterion": "Hypothesis property/state tests run and pass on the R3-scoped code; the ledger/projection/owner-control properties exist and are CI-included."
+    },
+    {
+      "id": "R3-C07",
+      "criterion": "Mutation runner executes the frozen manifest with A/B proof and reports killed/total honestly; score is measured and recorded (90% gate applies to the rebuilt trusted kernel after R4, but the harness must work now)."
+    },
+    {
+      "id": "R3-C08",
+      "criterion": "Architecture rules reject kernel->adapter imports and adapter->kernel-state mutation; violations are listed as findings with exact paths."
+    },
+    {
+      "id": "R3-C09",
+      "criterion": "Windows CI workflow exists, matches host Python 3.13, and each step is explicit; portable make-quality script matches."
+    },
+    {
+      "id": "R3-C10",
+      "criterion": "Generated-artifact confinement and clean-checkout reproducibility are scripted and pass on the frozen evidence set."
+    },
+    {
+      "id": "R3-C11",
+      "criterion": "errors.py and observability.py exist, are typed, and are covered by tests; no silent-failure finding in the trusted kernel is unrecorded."
+    },
+    {
+      "id": "R3-C12",
+      "criterion": "No network beyond the isolated tooling install, no provider calls, no live/protected writes, no commit/push by the builder, no secret leakage, and no weakening of any threshold to manufacture PASS."
+    }
+  ],
+  "resources_and_constraints": {
+    "python": "C:\\Python313\\python.exe (3.13.5)",
+    "isolated_venv": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r3-venv (created by make_venv.ps1, removable)",
+    "network_allowed": "only for installing the pinned dev tools into the isolated venv; record exact versions and hashes",
+    "evidence_budget_bytes": 4194304,
+    "timeout": "bounded; every long gate must print WALL_SECONDS and EXIT_CODE",
+    "live_guard": "capture protected task/process state before and after like R1_R2 evidence"
+  },
+  "status_contract": "PASS | FAIL | BLOCKED | NOT_TESTED | WAITING only; exit code zero alone is NOT_TESTED; every PASS needs non-empty evidence.",
+  "stop_conditions": [
+    "any change to the frozen work package or prior evidence",
+    "any edit to existing tests/foundry, protected main checkout, or live state",
+    "any commit or push by the builder",
+    "any secret value written to evidence",
+    "any lowering of the 95% branch / 90% mutation / 100% typed thresholds",
+    "any unrecorded gate failure presented as PASS"
+  ],
+  "builder_status": "NOT_TESTED until a fresh independent verifier passes every mandatory criterion"
+}
