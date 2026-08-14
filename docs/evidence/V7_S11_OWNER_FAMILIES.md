@@ -68,7 +68,32 @@ owner-supplied).
 Coherence invariants: 12-family union; no S11 class collides with any S10
 class; no collisions inside S11.
 
-## 2. Verifier
+## 2. Verifier — deleg_c0ebfcfd, PASS (fresh independent adversarial session)
 
-<fill after dispatch — fresh independent adversarial verifier,
-opencode_go/deepseek-v4-flash, no fallback>
+Verdict JSON: `%TEMP%\v7s11-verdict-adversarial.json` (early-skeleton
+protocol; verdict PASS, criteria C1-C5 all PASS).
+
+- C1 PASS: 52f5e49 = exactly 4 files; 263b951 binds the artifact;
+  protected hashes OK (start and end); the S12 commit landed mid-audit
+  (attributed parent activity — no S11 files touched).
+- C2 PASS: exactly 6 families; import-time idempotent registration
+  (12-family table); ALL 36 S11 classes probed independently — 14 reads
+  allowed, 22 effectful denied with reason + recorded; unknown op/family
+  and non-supervisor raise; 12-family union coherent (0 collisions);
+  sha256 key verified by recomputation AND cross-process dedupe.
+- C3 PASS: 14/14 tests (live tree + clean-HEAD archive rerun);
+  discriminating; independent all-class probe 36/36.
+- C4 PASS: suite sha256 f00187cb… exact; 978 passed EXIT=0; archive
+  collect = exactly 978 (truthful for its tree state).
+- C5 PASS: live schema 32, heartbeat 2.7s, daemon pair on the frozen
+  release, task Running with NextRunTime set (0x800710E0 benign), ports
+  up; gate.decision count on live = 0 (S11 untouched); report claims
+  match.
+- Findings: 4 LOW/INFO (S12 mid-audit commit attributed; report wording;
+  the S12 doc's intermediate 7-tests claim — the final S12 carries the
+  7th test; suite arithmetic). Integrity concerns: none. Scope
+  violations: none.
+
+**S11 CLOSED — PASS** (communications/calendar/accounts/services/
+purchases/finance gate families; 6 TDD tests; 12-family coherent union;
+suite 978 EXIT=0; live untouched). Next: S12 verifier window.
