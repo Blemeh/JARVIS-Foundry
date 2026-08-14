@@ -82,7 +82,32 @@ from V6) is active: `_require(not EmergencyStop(db.path.parent /
 "EMERGENCY_STOP").active(), "STOP sentinel active")` in every supervisor
 gate. Strictly additive (refuses more, never less).
 
-## 3. Verifier
+## 3. Verifier — deleg_4a696b3d, PASS (fresh independent adversarial session)
 
-<fill after dispatch — fresh independent adversarial verifier,
-opencode_go/deepseek-v4-flash, no fallback>
+Verdict JSON: `%TEMP%\v7s12-verdict-deepseek-v4-flash.json` (early-skeleton
+protocol; verdict PASS, criteria C1-C5 all PASS).
+
+- C1 PASS: HEAD 34149fd; b7aa0bb = exactly 6 files (report + 4 hardened
+  modules + the fault test); a9e6ce8 an ancestor; git status = only the
+  5 protected untracked files; hashes byte-for-byte.
+- C2 PASS: scheduler gate (L110-114) = controller + EmergencyStop
+  sentinel check, called by enable/disable/register/tick; portfolio
+  (6 call sites), registry (2), minigates (1) all receive the database;
+  _rebuild defensively skips malformed item_registered/item_fired
+  payloads (KeyError/TypeError/ValueError guarded).
+- C3 PASS: 7/7 tests on the verifier's own run (13.13s); discrimination
+  proven (restart replay no double fires; 12s lock > 10s busy_timeout ->
+  clean raise + recovery with exactly 1 fire; idempotent re-delivery;
+  batch rollback; STOP refusal; observe-only across restart; malformed
+  payloads never corrupt).
+- C4 PASS: suite sha256 8e8d15a4… exact; 985 passed EXIT=0.
+- C5 PASS: live schema 32, daemon RUNNING heartbeat fresh, task Enabled
+  with NextRunTime, no EMERGENCY_STOP in the live home, ports up; report
+  claims match.
+- Findings: none blocking (mid-audit S13 doc appearance + a pytest
+  output-redirection quirk, both documented). Integrity concerns: none.
+  Scope violations: none.
+
+**S12 CLOSED — PASS** (continuity fault suite + STOP-sentinel hardening in
+every V7 gate + defensive rebuild; 7 TDD tests; suite 985 EXIT=0; live
+untouched). Next: S13 — the final gate.
