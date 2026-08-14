@@ -117,10 +117,24 @@ API calls, ~313 s).
 | INFO | 6th untracked file = V7_S4_DISCOVERY.md (parent S4 prep) | RECORDED — additive |
 | INFO | task XML has Enabled=false while Status shows Running (running instance predates the disable) | RECORDED — consistent with the S1 hold |
 
-Round-2 verifier: <fill after dispatch — fresh independent adversarial
-verifier with ROUND_2_FINDINGS_CLOSED criterion + old-code A/B
-discrimination>
+Round-2 verifier: deleg_ac992376 — **PASS** (fresh independent adversarial
+session, A/B discrimination): (a) adapter `reap_stale_canaries` now requires
+`current_cycle` + `max_cycles_without_tick` and threads them +
+`controller=SUPERVISOR_CONTROLLER`; (b) fresh test run 16/16 EXIT=0; (c) A/B
+proven by the verifier's own scratch probe: the OLD call shape raises
+`TypeError: missing 3 required keyword-only arguments`, the NEW shape reaped
+a seeded RUNNING canary (last_tick_cycle=1 @ cycle 10, max=2) → TERMINATED,
+while a fresh canary control (last_tick_cycle=9) stayed RUNNING — real
+reaping semantics, not a stub. R2: suite artifact hash exact (2e0514ce…),
+928 passed EXIT=0, evolution machinery byte-identical to 547b177, protected
+files 5/5. R3: all 15 effectful methods gate + pin; canary_status read-only
+ungated (same class as mode/is_frozen); repair diff minimal (+12/−2). R4:
+live untouched (v20, daemons alive, ports up, no STOP). R5: report truthful.
+Findings: none. Verdict JSON: `%TEMP%\v7s3-verdict-r2-indep.json`.
 
 ## 6. Final status
 
-<fill after round-2 verdict>
+**S3 CLOSED — PASS** (round-1 FAIL deleg_bb1a6605 → repair 4e49d2d → round-2
+PASS deleg_ac992376; suite 928 EXIT=0; live state untouched; the evolution
+control plane is wired, observe-only by default, Supervisor-pinned and
+STOP-gated).
