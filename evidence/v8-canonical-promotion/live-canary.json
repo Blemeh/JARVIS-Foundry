@@ -1,0 +1,17 @@
+{
+ "advisory_labeled": true,
+ "block_revisions": 13,
+ "budget_governance_survives": true,
+ "executive_governance": true,
+ "lifecycle": "STALE",
+ "lifecycle_before_stale": "STALE",
+ "memory_written": "390747f68ba84a40",
+ "recall_contains": true,
+ "recall_hits": 1,
+ "reconcile_consistent": true,
+ "reconcile_mismatches": 0,
+ "reused_existing": true,
+ "stale_flagged": true,
+ "validation_stamp": "curation",
+ "verifier_no_tier_c": true
+}
