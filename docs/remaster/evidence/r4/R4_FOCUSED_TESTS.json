@@ -1,0 +1,10 @@
+{
+  "schema": "jarvis-r4-focused-tests-v1",
+  "exit_code": 0,
+  "wall_seconds": 27.481,
+  "summary_line": "101 passed in 26.73s",
+  "raw_output": "R4_FOCUSED_TESTS_RAW.txt",
+  "raw_output_sha256": "2b7a6e8d4d8acbcf05ec31b425d2747a2f0265918cc95fff155594843ab5a353",
+  "junit_output": "R4_FOCUSED_TESTS_JUNIT.xml",
+  "junit_sha256": "1a8f42d26cdf71b08ff3138550b730e247855f4a087a917626fb81e10caf7a62"
+}

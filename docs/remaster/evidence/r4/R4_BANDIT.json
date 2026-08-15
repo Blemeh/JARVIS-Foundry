@@ -1,0 +1,12 @@
+{
+  "schema": "jarvis-r4-bandit-v1",
+  "exit_code": 1,
+  "wall_seconds": 0.966,
+  "severity_counts": {
+    "LOW": 5
+  },
+  "critical_or_high_findings": 0,
+  "zero_critical_or_high": true,
+  "raw_output": "R4_BANDIT_RAW.txt",
+  "raw_output_sha256": "2a638e1d6e1b5f702afe2f68c72c36559cdeb6b28a4dc2115ff226e3d98e1ddc"
+}

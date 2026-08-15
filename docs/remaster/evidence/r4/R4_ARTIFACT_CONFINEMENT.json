@@ -1,0 +1,21 @@
+{
+  "schema": "jarvis-r4-artifact-confinement-v1",
+  "manifest_checks": {
+    "failures": []
+  },
+  "hidden_generated": {
+    "problems": []
+  },
+  "budget": {
+    "evidence_bytes": 337451,
+    "budget_bytes": 8388608,
+    "within_budget": true
+  },
+  "reproduction": {
+    "compile_exit_code": 0,
+    "collect_exit_code": 0,
+    "collected_tests_line": "",
+    "wall_seconds": 2.076
+  },
+  "passed": true
+}

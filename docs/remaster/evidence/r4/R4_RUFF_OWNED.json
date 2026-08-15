@@ -1,0 +1,18 @@
+{
+  "schema": "jarvis-r4-ruff-owned-v1",
+  "exit_code": 0,
+  "wall_seconds": 0.639,
+  "check": {
+    "exit_code": 0,
+    "wall_seconds": 0.318,
+    "error_lines": 1
+  },
+  "format": {
+    "exit_code": 0,
+    "wall_seconds": 0.321,
+    "would_reformat_files": 1
+  },
+  "passed": true,
+  "raw_output": "R4_RUFF_OWNED_RAW.txt",
+  "raw_output_sha256": "b78d29be2840b433fd3bac31e50ab8fa2c0cb7e097afa6e7f4750ceb442fdede"
+}

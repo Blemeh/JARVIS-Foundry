@@ -1,0 +1,5 @@
+identical_replay=True
+events=9
+chain_valid=True
+restart_identical=True
+unknown_event_refused=True

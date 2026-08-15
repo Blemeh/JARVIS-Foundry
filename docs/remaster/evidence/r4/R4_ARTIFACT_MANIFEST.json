@@ -1,0 +1,443 @@
+{
+  "schema": "jarvis-r4-artifact-manifest-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R4",
+  "generated_utc": "2026-08-15T04:30:00Z",
+  "artifacts": [
+    {
+      "path": "docs/remaster/evidence/r4/R4_ARCHITECTURE_RULES.json",
+      "sha256": "814d43d54dd77bc3497a4d0b4a634e3d341b557dd07f6cb4155810f28fc18c72",
+      "bytes": 145
+    },
+    {
+      "path": "docs/remaster/evidence/r4/R4_ARTIFACT_CONFINEMENT.json",
+      "sha256": "80983b7a38b12b15c23528f3370393b87c1d5d91037dab3cdc531e7682d2cc8c",
+      "bytes": 429
+    },
+    {
+      "path": "docs/remaster/evidence/r4/R4_BANDIT.json",
+      "sha256": "22b8f0c88993b564f7f567ca6e834e80e48dde891bba67c52afa95e8669a79ca",
+      "bytes": 329
+    },
+    {
+      "path": "docs/remaster/evidence/r4/R4_BANDIT_RAW.txt",
+      "sha256": "2a638e1d6e1b5f702afe2f68c72c36559cdeb6b28a4dc2115ff226e3d98e1ddc",
+      "bytes": 266
+    },
+    {
+      "path": "docs/remaster/evidence/r4/R4_BUILDER_REPORT.json",
+      "sha256": "SELF_REFERENTIAL_REPORT",
+      "bytes": 10626
+    },
+    {
+      "path": "docs/remaster/evidence/r4/R4_COVERAGE.json",
+      "sha256": "dca32c666ef62559e053a9a5809148e339b85d1de2fe757fc84d76b2db1473d7",
+      "bytes": 678
+    },
+    {
+      "path": "docs/remaster/evidence/r4/R4_COVERAGE_JSON.json",
+      "sha256": "a221eb8e8eadc99b3118f35b021380cdf519697a777fd04a1a146806730440e4",
+      "bytes": 291806
+    },
+    {
+      "path": "docs/remaster/evidence/r4/R4_COVERAGE_RAW.txt",
+      "sha256": "2bfdf5a14cee37707113926045e6ba18284f36e8674deafd5c2c02c40a95bc0d",
+      "bytes": 1789
+    },
+    {
+      "path": "docs/remaster/evidence/r4/R4_FINDINGS.json",
+      "sha256": "4da4a9544f02c5d7afc71e2f9501ed2693a507448707460dc6fbcc50061c6db5",
+      "bytes": 2648
+    },
+    {
+      "path": "docs/remaster/evidence/r4/R4_FOCUSED_TESTS.json",
+      "sha256": "354ab08f69b3de03ee96781614d93ae224dd02d27bdbef4a913348e8041dde0d",
+      "bytes": 410
+    },
+    {
+      "path": "docs/remaster/evidence/r4/R4_FOCUSED_TESTS_JUNIT.xml",
+      "sha256": "1a8f42d26cdf71b08ff3138550b730e247855f4a087a917626fb81e10caf7a62",
+      "bytes": 14346
+    },
+    {
+      "path": "docs/remaster/evidence/r4/R4_FOCUSED_TESTS_RAW.txt",
+      "sha256": "2b7a6e8d4d8acbcf05ec31b425d2747a2f0265918cc95fff155594843ab5a353",
+      "bytes": 184
+    },
+    {
+      "path": "docs/remaster/evidence/r4/R4_FULL_SUITE.json",
+      "sha256": "a64fb00cf3c6df9e110f9debb58ca9abc23f6293109a66aa8b14747c52c77bba",
+      "bytes": 556
+    },
+    {
+      "path": "docs/remaster/evidence/r4/R4_FULL_SUITE_JUNIT.xml",
+      "sha256": "efab90204319d2a461301d068faa6eb71873a0406c4fef8af43625936ff1325d",
+      "bytes": 138148
+    },
+    {
+      "path": "docs/remaster/evidence/r4/R4_FULL_SUITE_RAW.txt",
+      "sha256": "3675d18f85a11da6368a8e23b68af6cfc7545a8ed56d7399efe49bbdf9842349",
+      "bytes": 1296
+    },
+    {
+      "path": "docs/remaster/evidence/r4/R4_LIVE_GUARD_AFTER.json",
+      "sha256": "a0c7c4b03de993eb92c3529e472317d7379abe567b62443c7936e1fb744d8996",
+      "bytes": 1057
+    },
+    {
+      "path": "docs/remaster/evidence/r4/R4_LIVE_GUARD_BEFORE.json",
+      "sha256": "2b80bc49f7569b1a85dc0d181e5adaddbb68d8fe0f4f2c8f6b18a7323a23e833",
+      "bytes": 1057
+    },
+    {
+      "path": "docs/remaster/evidence/r4/R4_LIVE_GUARD_COMPARISON.json",
+      "sha256": "1ddfc4c8b87569e907f8e514a81e8859d46e73e185f75737d5fd51e0170f8a5d",
+      "bytes": 245
+    },
+    {
+      "path": "docs/remaster/evidence/r4/R4_MUTATION.json",
+      "sha256": "de9f7b49d961be1b41cb7f88436ea51a569573de7506a6cd85573f30c77035f4",
+      "bytes": 399
+    },
+    {
+      "path": "docs/remaster/evidence/r4/R4_MUTATION_RAW.json",
+      "sha256": "aedda772d89b1c5ff502c7ef96f9de2097d6bdad041ae4e877cad10145ec7984",
+      "bytes": 7798
+    },
+    {
+      "path": "docs/remaster/evidence/r4/R4_MYPY.json",
+      "sha256": "f7f7fc1580f59990394ae8ab9e5d2277b97e64e4ac43568a0e0e0afed75f3b67",
+      "bytes": 371
+    },
+    {
+      "path": "docs/remaster/evidence/r4/R4_MYPY_RAW.txt",
+      "sha256": "3913a002322c533dc9cfa9c7be484492492e93f3bb62cecb40fce458ed50db38",
+      "bytes": 45
+    },
+    {
+      "path": "docs/remaster/evidence/r4/R4_NO_SILENT_FAILURE.json",
+      "sha256": "f029062a19cef090a47a3fc7d4a9a29f31a320d085f3988c143f9b0359283005",
+      "bytes": 140
+    },
+    {
+      "path": "docs/remaster/evidence/r4/R4_REPLAY.json",
+      "sha256": "71ad8d35f75a5d65423acdfc69f8443a281881c544b4239eb65fb895446899b7",
+      "bytes": 377
+    },
+    {
+      "path": "docs/remaster/evidence/r4/R4_REPLAY_RAW.txt",
+      "sha256": "166e5b65106b68d53446a658a586c50b557720c8c4700682c541e2d3fcf31f8a",
+      "bytes": 101
+    },
+    {
+      "path": "docs/remaster/evidence/r4/R4_RUFF_OWNED.json",
+      "sha256": "2a90059cc0c0a7ae725d9b4b0df6dbab90586b6eebdc680fcd721d1c099d6b21",
+      "bytes": 435
+    },
+    {
+      "path": "docs/remaster/evidence/r4/R4_RUFF_OWNED_RAW.txt",
+      "sha256": "b78d29be2840b433fd3bac31e50ab8fa2c0cb7e097afa6e7f4750ceb442fdede",
+      "bytes": 79
+    },
+    {
+      "path": "docs/remaster/evidence/r4/R4_SECRET_SCAN.json",
+      "sha256": "a9cccbf9adbb48a7b01b8db7528109f43fd92af1715deaf5620a190717b2f251",
+      "bytes": 237
+    },
+    {
+      "path": "docs/remaster/evidence/r4/R4_SECRET_SCAN_RAW.json",
+      "sha256": "526b00befef4a59d921a11fc4a25ae1c58793a6a60b2f91eb1f134233ad789c7",
+      "bytes": 255
+    },
+    {
+      "path": "docs/remaster/evidence/r4/R4_TYPED_INTERFACES.json",
+      "sha256": "cf2853516ce9dbb5522d666e698a94ccd0751a49a90849e7bd4ca46402d1045d",
+      "bytes": 368
+    },
+    {
+      "path": "docs/remaster/evidence/r4/R4_VERIFIER_ROUND1_VERDICT_DSV4.json",
+      "sha256": "45d7a2fdc43a32f0300bb93af2e6ae02956cceacdac6045a215f2150cef35b17",
+      "bytes": 24345
+    },
+    {
+      "path": "docs/remaster/evidence/r4/R4_VERIFIER_ROUND2_VERDICT_DSV4.json",
+      "sha256": "551543452835b99ff46d860864afc66327ef12e7f826c5ba74afb53cd4b834f1",
+      "bytes": 25689
+    },
+    {
+      "path": "scripts/remaster/r4/architecture_rules.py",
+      "sha256": "622c5f253ead352318262d1b90bc6026e7453ffdb4d7360b2f268ba03f4b4cd0",
+      "bytes": 4144
+    },
+    {
+      "path": "scripts/remaster/r4/artifact_confinement.py",
+      "sha256": "ae4095f802bfd59d971ce7d6c97eb78885f632a61dfcfa471db4024737742ecd",
+      "bytes": 6950
+    },
+    {
+      "path": "scripts/remaster/r4/build_evidence.py",
+      "sha256": "73b4f62765924a4a79c17228bc0a82838e256c657164aa2ac4ccd616e0552103",
+      "bytes": 16510
+    },
+    {
+      "path": "scripts/remaster/r4/common.py",
+      "sha256": "d6ffeec7accb5551c4f0c8ca368ba00f25a610eb400e99bdeb39598adbff6fcb",
+      "bytes": 2965
+    },
+    {
+      "path": "scripts/remaster/r4/coverage_gate.py",
+      "sha256": "0e69d955cd3ef1ed09b57fb3bfc769a27f7f98a9e242069690b5c8e58ee758cb",
+      "bytes": 3901
+    },
+    {
+      "path": "scripts/remaster/r4/external_gates.py",
+      "sha256": "1736e1bac5ff2d2b0b7a3d58cf887b44395c75cb40961b81f45e8df5e3279487",
+      "bytes": 7840
+    },
+    {
+      "path": "scripts/remaster/r4/frozen_mutants.json",
+      "sha256": "8abfb49c7a8993f10970424e89f501148a16ef1aad0f6a088b805753378c7bf6",
+      "bytes": 9073
+    },
+    {
+      "path": "scripts/remaster/r4/live_guard.py",
+      "sha256": "c27cceadce5efb1ce953d4606ebb233958aa9a599087769ad95ee16800274ae7",
+      "bytes": 5194
+    },
+    {
+      "path": "scripts/remaster/r4/make_venv.ps1",
+      "sha256": "55b91f5d87336975917beeb4c8b7ddb7f22dbb3dd1f9919a1362a5dea6c79edd",
+      "bytes": 1681
+    },
+    {
+      "path": "scripts/remaster/r4/mutation_run.py",
+      "sha256": "8e388c3e444152c99360fbc193b0726f7fc176463e9f4779a54a79eb3843b55e",
+      "bytes": 6098
+    },
+    {
+      "path": "scripts/remaster/r4/no_silent_failure.py",
+      "sha256": "f193782d6406bdd67a5a271bf442f257c9da64f50fd0dad66a6ffdc59e63aa21",
+      "bytes": 2285
+    },
+    {
+      "path": "scripts/remaster/r4/replay_gate.py",
+      "sha256": "03e5991e3fff563379a2e8535de61398a06d3de844786b15f5a8bdd3d811b201",
+      "bytes": 7243
+    },
+    {
+      "path": "scripts/remaster/r4/secret_scan.py",
+      "sha256": "91550295099d1b5b7f37152e87d95f3ac84ae3b2ca905332e0a3a25209fc454c",
+      "bytes": 3240
+    },
+    {
+      "path": "scripts/remaster/r4/typing_measure.py",
+      "sha256": "df0af2e10484762dfe9ec908cfdff012d6dc288f314c1da2a58586e495a2bb85",
+      "bytes": 4229
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/__init__.py",
+      "sha256": "284ab87d2b7e4c3912a50ecd1052ff7fd26eea2eee3a4bf5e3078ce70a0d3991",
+      "bytes": 93
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/canonical.py",
+      "sha256": "6c026dfcc22026f2c9e6e29e2509250a85f2097ce16cee4a71ec141f1a49d90f",
+      "bytes": 1246
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/capabilities.py",
+      "sha256": "b932a9ed528949a34d53427e3e33b1a33d7282b408d183c7081216f8b12d07f4",
+      "bytes": 5669
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/clock.py",
+      "sha256": "d80dee4779903ad3a431d296379df01d05d06b108c0dddd493532ef92e01f0a6",
+      "bytes": 752
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/effects.py",
+      "sha256": "cb432ee7f94c67612e92624fa901c657eb56b56a0756bcc74a10e742c59eb700",
+      "bytes": 14490
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/errors.py",
+      "sha256": "b9fd917cc4abc29d41db54cf8dbb0cbc9b94b902c81dc2b4a328fac64983b697",
+      "bytes": 2530
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/events.py",
+      "sha256": "ea520091345ed9c657446f9a027ee09f456d149c831f863c0fbfe10c7066785b",
+      "bytes": 5796
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/evidence.py",
+      "sha256": "2116f048a932d050818ef309960af3f7a0dd6068c0428f7bb52c197aefb62978",
+      "bytes": 1927
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/ids.py",
+      "sha256": "e0084eb615a803c5b6350aaebde69b628b41cd3b5703fe7aab2d21cf3eda26a1",
+      "bytes": 499
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/ledger.py",
+      "sha256": "74278546a9ac2d7d116ee5e0820f0dabbf810a5e16d74f79c7ccf5d30d52dd24",
+      "bytes": 13106
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/owner_control.py",
+      "sha256": "9ddae2a16c95eb282fa8c15167033f5cf4034bf03fcbe7533a711479d6770572",
+      "bytes": 9649
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/policy.py",
+      "sha256": "5442822f6c91685c20412c50d52efcbd03191a42b89aec267af45d37f6639527",
+      "bytes": 2701
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/ports.py",
+      "sha256": "2d7fb1d8e6e4ec56e30f52a46dc77f9e3cd66733ad0c3ef5230f1da9164b5e32",
+      "bytes": 4615
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/projections.py",
+      "sha256": "368a0d2eab8a6dde1a401967f3b14a6a988b12466f62e76dcabebe569721eb59",
+      "bytes": 6765
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/records.py",
+      "sha256": "666b422c2e97e34d0c3e10f033492daaf2e2a22b2e680bfabccf3dc4a90229ee",
+      "bytes": 12968
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/releases.py",
+      "sha256": "e2486c4d5d6865c3928dd7042dda40b552b1a4085b9a91ee90402b13a1795530",
+      "bytes": 8501
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/secrets.py",
+      "sha256": "a93523e2ed7b6adf69e2a478e6f676c6c36280be4024e262e496b617846bd9c0",
+      "bytes": 5574
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/state_machines.py",
+      "sha256": "b19799861922d7d155fad5525bd3df7d16f0c2c4512089ca5900906501128b6a",
+      "bytes": 10575
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/supervisor.py",
+      "sha256": "90bb713a002f70ac004779bc33b7331f7485b8c77ece2289a7e0198f9558c42e",
+      "bytes": 12915
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/system_adapter.py",
+      "sha256": "d3d9fee4399d07784b4cbeb5ac2fe45973b57c83abab6c907fe769b43ea8da09",
+      "bytes": 1029
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/timeutil.py",
+      "sha256": "d644cc703f60335108ab74d5f0406cdded61b94db93c8d5f64e75fd43f95d692",
+      "bytes": 709
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/worker_gateway.py",
+      "sha256": "b29da44c6e9f96f1c16e3fa88c49779cfcf1022ade09087d325e5041d39899b7",
+      "bytes": 5353
+    },
+    {
+      "path": "tests/remaster/r4/conftest.py",
+      "sha256": "e32ed2cfc9d70e7e1e21655597e29c0f9cf40e55711856556426378d8501ddb7",
+      "bytes": 191
+    },
+    {
+      "path": "tests/remaster/r4/test_capabilities.py",
+      "sha256": "cc7b0a1b744984776160f393bbc178f31c41d8e30f420fbb4e8a52c90c5754d1",
+      "bytes": 3040
+    },
+    {
+      "path": "tests/remaster/r4/test_clock_ids.py",
+      "sha256": "98bb7c1d10a3bb2abac95a6092c282324b65137c9cdabeebb8bfd6ae93ec5c85",
+      "bytes": 1117
+    },
+    {
+      "path": "tests/remaster/r4/test_evidence.py",
+      "sha256": "d9fb74ea1e4e30d1b265d0ab295fe54bf03f06e85dccac96838825efa1526752",
+      "bytes": 2270
+    },
+    {
+      "path": "tests/remaster/r4/test_ledger.py",
+      "sha256": "e79af3e540b292844d0ce52cd1b277f9be22678b6b1ae57c54981d258c478b1a",
+      "bytes": 11396
+    },
+    {
+      "path": "tests/remaster/r4/test_owner_control.py",
+      "sha256": "33fe41b284733c6caede6a2c2868d65f50088f0bba5ed1d817c0a62b26cf0347",
+      "bytes": 6296
+    },
+    {
+      "path": "tests/remaster/r4/test_policy.py",
+      "sha256": "252d1819944da3d6186bf95b446b8f90b7d6503f5fd0668f4e50c7ef3d664909",
+      "bytes": 2414
+    },
+    {
+      "path": "tests/remaster/r4/test_projections.py",
+      "sha256": "9e57412864a5df7738c5f88cce03eb2a0c7f1d86ada8d984bed26096516ef488",
+      "bytes": 4798
+    },
+    {
+      "path": "tests/remaster/r4/test_r4_coverage_edges.py",
+      "sha256": "39609bca528d8cc88ad028b6d9bf88fa4746406ea4bb02b972869157f845c178",
+      "bytes": 15697
+    },
+    {
+      "path": "tests/remaster/r4/test_r4_effects.py",
+      "sha256": "a02229b5e4a2728dc2b60e0a89ff89c35bff4fc3d268008355fdfdd6150526e1",
+      "bytes": 4898
+    },
+    {
+      "path": "tests/remaster/r4/test_r4_errors.py",
+      "sha256": "3de1d0fd9ba7e99fef1e86497941188b62a066630d107b6d316bbd1b3172a586",
+      "bytes": 1983
+    },
+    {
+      "path": "tests/remaster/r4/test_r4_supervisor.py",
+      "sha256": "ca29a2590114777f9e78819330add11bf2b411eb51ad5c13d847d5c11d911073",
+      "bytes": 3479
+    },
+    {
+      "path": "tests/remaster/r4/test_records_ports.py",
+      "sha256": "151ec39c92027bfd1d052c37261b6f2e81a82efc9eb04f86fe730a8f65af34f6",
+      "bytes": 5647
+    },
+    {
+      "path": "tests/remaster/r4/test_releases.py",
+      "sha256": "883fb84cecde1235a6b44ecb1b79439b6c9abaa35258007e364ea049953386e0",
+      "bytes": 3492
+    },
+    {
+      "path": "tests/remaster/r4/test_replay_gate.py",
+      "sha256": "550d3f1cea212df9eb0c778ebfdf6d097a7cbb013839b817eb9aa9b3834ae9a9",
+      "bytes": 2686
+    },
+    {
+      "path": "tests/remaster/r4/test_secrets.py",
+      "sha256": "e1f84ed0a15865443095197c3b156e85c6690a6e14718c7d13fd357ac33f6e63",
+      "bytes": 2113
+    },
+    {
+      "path": "tests/remaster/r4/test_state_machines.py",
+      "sha256": "ef0970bf817f3ec44be41e9f8074384dde0dab7dd342fe49050f140b5b57549c",
+      "bytes": 5050
+    },
+    {
+      "path": "tests/remaster/r4/test_system_adapter.py",
+      "sha256": "3614eaf4f57634c00cc220443078c4184fede688ff8d789fca6ab4029b3abd36",
+      "bytes": 1094
+    },
+    {
+      "path": "tests/remaster/r4/test_worker_gateway.py",
+      "sha256": "3c540e1fbebbc3528875882135cd30fc69a1d782976716217bb0f90ba668076b",
+      "bytes": 3391
+    }
+  ]
+}

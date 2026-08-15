@@ -8,6 +8,7 @@
 *.p12
 credentials.*
 secrets.*
+!src/jarvis_foundry/kernel/secrets.py
 
 # Runtime state must never be committed
 var/

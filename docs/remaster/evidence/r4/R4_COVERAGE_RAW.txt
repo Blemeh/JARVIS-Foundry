@@ -1,0 +1,26 @@
+........................................................................ [ 71%]
+.............................                                            [100%]
+============================== warnings summary ===============================
+tests/remaster/r4/test_ledger.py::test_append_replay_determinism_property
+  C:\Python313\Lib\json\decoder.py:361: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x000001C698737D30>
+    obj, end = self.scan_once(s, idx)
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/remaster/r4/test_ledger.py::test_append_replay_determinism_property
+  C:\Python313\Lib\json\decoder.py:361: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x000001C698737100>
+    obj, end = self.scan_once(s, idx)
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/remaster/r4/test_ledger.py::test_append_replay_determinism_property
+  C:\Python313\Lib\json\decoder.py:361: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x000001C698737970>
+    obj, end = self.scan_once(s, idx)
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=============================== tests coverage ================================
+_______________ coverage: platform win32, python 3.13.5-final-0 _______________
+
+Coverage JSON written to file r4_coverage_tmp.json

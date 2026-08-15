@@ -1,0 +1,11 @@
+{
+  "schema": "jarvis-r4-mypy-v1",
+  "files": [
+    "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry-Remaster/src/jarvis_foundry/kernel"
+  ],
+  "exit_code": 0,
+  "wall_seconds": 0.341,
+  "error_count": 0,
+  "raw_output": "R4_MYPY_RAW.txt",
+  "raw_output_sha256": "3913a002322c533dc9cfa9c7be484492492e93f3bb62cecb40fce458ed50db38"
+}

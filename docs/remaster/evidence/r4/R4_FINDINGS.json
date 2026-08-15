@@ -1,0 +1,78 @@
+{
+  "schema": "jarvis-r4-findings-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R4",
+  "generated_utc": "2026-08-15T04:30:00Z",
+  "findings": [
+    {
+      "id": "R4-F-001",
+      "severity": "S2",
+      "disposition": "RESOLVED_IN_R4",
+      "title": "Trusted kernel now passes mypy strict with 100% typed public interfaces",
+      "evidence": "R4_MYPY.json, R4_TYPED_INTERFACES.json"
+    },
+    {
+      "id": "R4-F-002",
+      "severity": "S2",
+      "disposition": "RESOLVED_IN_R4",
+      "title": "Trusted kernel branch coverage is at or above the 95% threshold",
+      "evidence": "R4_COVERAGE.json"
+    },
+    {
+      "id": "R4-F-003",
+      "severity": "S3",
+      "disposition": "REMAINS_OUTSIDE_R4_SCOPE",
+      "title": "Legacy whole-repo ruff violations remain in non-R4 source",
+      "evidence": "R4_RUFF_OWNED.json"
+    },
+    {
+      "id": "R4-F-004",
+      "severity": "S2",
+      "disposition": "REMAINS_OUTSIDE_R4_SCOPE",
+      "title": "Legacy broad exception handlers remain in non-R4 source modules",
+      "evidence": "R4_NO_SILENT_FAILURE.json"
+    },
+    {
+      "id": "R4-F-005",
+      "severity": "S3",
+      "disposition": "RECORDED",
+      "title": "Frozen package 993-test quote is superseded by exact collection at HEAD",
+      "evidence": "baseline collection at b8e8a58: tests/foundry=985, tests/remaster/r3=26; R4_FULL_SUITE.json records the exact full-suite count"
+    },
+    {
+      "id": "R4-F-006",
+      "severity": "S3",
+      "disposition": "RECORDED_DESIGN",
+      "title": "Protocol-only ports.py is excluded from branch coverage totals",
+      "evidence": "R4_COVERAGE.json exclusion_reason"
+    },
+    {
+      "id": "R4-K-001",
+      "severity": "S2",
+      "disposition": "RESOLVED",
+      "title": "Ledger overwrote recorded_at, making header hashes non-deterministic",
+      "evidence": "src/jarvis_foundry/kernel/ledger.py"
+    },
+    {
+      "id": "R4-K-002",
+      "severity": "S2",
+      "disposition": "RESOLVED",
+      "title": "Owner RESUME did not clear pause/stop durable state",
+      "evidence": "src/jarvis_foundry/kernel/owner_control.py"
+    },
+    {
+      "id": "R4-K-003",
+      "severity": "S2",
+      "disposition": "RESOLVED",
+      "title": "Secrets metadata insert referenced undefined variables",
+      "evidence": "src/jarvis_foundry/kernel/secrets.py"
+    },
+    {
+      "id": "R4-K-004",
+      "severity": "S2",
+      "disposition": "RESOLVED",
+      "title": "Release promote accepted duplicate promotion silently",
+      "evidence": "src/jarvis_foundry/kernel/releases.py"
+    }
+  ]
+}

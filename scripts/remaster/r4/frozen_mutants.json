@@ -1,0 +1,190 @@
+{
+  "schema": "jarvis-r4-frozen-mutants-v1",
+  "target_package": "src/jarvis_foundry/kernel",
+  "mutants": [
+    {
+      "id": "R4-M01",
+      "target": "src/jarvis_foundry/kernel/ledger.py",
+      "anchor": "previous_hash = str(previous[\"header_hash\"]) if previous is not None else None",
+      "replacement": "previous_hash = None",
+      "reason": "break header hash chaining between events",
+      "expected_test": "test_append_read_replay_and_subscribe",
+      "pytest_args": ["tests/remaster/r4/test_ledger.py::test_append_read_replay_and_subscribe"]
+    },
+    {
+      "id": "R4-M02",
+      "target": "src/jarvis_foundry/kernel/ledger.py",
+      "anchor": "header_hash = final.header_hash_for(sequence, previous_hash)",
+      "replacement": "header_hash = final.payload_hash",
+      "reason": "write a wrong header hash that verification recomputes differently",
+      "expected_test": "test_chain_verification_detects_tampering",
+      "pytest_args": ["tests/remaster/r4/test_ledger.py::test_chain_verification_detects_tampering"]
+    },
+    {
+      "id": "R4-M03",
+      "target": "src/jarvis_foundry/kernel/events.py",
+      "anchor": "if missing:",
+      "replacement": "if False:",
+      "reason": "accept events missing required payload keys",
+      "expected_test": "test_invalid_event_is_rejected_by_registry_and_payload_check",
+      "pytest_args": ["tests/remaster/r4/test_ledger.py::test_invalid_event_is_rejected_by_registry_and_payload_check"]
+    },
+    {
+      "id": "R4-M04",
+      "target": "src/jarvis_foundry/kernel/events.py",
+      "anchor": "return canonical_hash(payload)",
+      "replacement": "return \"0\" * 64",
+      "reason": "make payload hashes content-independent",
+      "expected_test": "test_payload_hash_is_content_derived",
+      "pytest_args": ["tests/remaster/r4/test_ledger.py::test_payload_hash_is_content_derived"]
+    },
+    {
+      "id": "R4-M05",
+      "target": "src/jarvis_foundry/kernel/owner_control.py",
+      "anchor": "if channel_id != self._owner_channel:",
+      "replacement": "if False:",
+      "reason": "accept commands from any channel",
+      "expected_test": "test_owner_wrong_channel_and_stop_gate_clear_missing",
+      "pytest_args": [
+        "tests/remaster/r4/test_r4_coverage_edges.py::test_owner_wrong_channel_and_stop_gate_clear_missing"
+      ]
+    },
+    {
+      "id": "R4-M06",
+      "target": "src/jarvis_foundry/kernel/owner_control.py",
+      "anchor": "if used is not None:",
+      "replacement": "if False:",
+      "reason": "allow nonce replay",
+      "expected_test": "test_owner_nonce_replay_is_rejected",
+      "pytest_args": ["tests/remaster/r4/test_owner_control.py::test_owner_nonce_replay_is_rejected"]
+    },
+    {
+      "id": "R4-M07",
+      "target": "src/jarvis_foundry/kernel/policy.py",
+      "anchor": "if envelope.action_class in self._financial:\n            raise FinancialActionDeniedError(",
+      "replacement": "if False:",
+      "reason": "allow financial action classes through authorize",
+      "expected_test": "test_financial_action_classes_are_deterministically_denied",
+      "pytest_args": ["tests/remaster/r4/test_policy.py::test_financial_action_classes_are_deterministically_denied"]
+    },
+    {
+      "id": "R4-M08",
+      "target": "src/jarvis_foundry/kernel/policy.py",
+      "anchor": "decision=\"DENIED\",\n            reason=\"default deny: no policy rule matches\"",
+      "replacement": "decision=\"ALLOWED\",\n            reason=\"default deny: no policy rule matches\"",
+      "reason": "default-allow unlisted action classes",
+      "expected_test": "test_deterministic_allow_and_deny",
+      "pytest_args": ["tests/remaster/r4/test_policy.py::test_deterministic_allow_and_deny"]
+    },
+    {
+      "id": "R4-M09",
+      "target": "src/jarvis_foundry/kernel/capabilities.py",
+      "anchor": "return \"/\".join(part.lower() for part in parts)",
+      "replacement": "return \"/\".join(parts)",
+      "reason": "skip canonical target normalization",
+      "expected_test": "test_issue_verify_expiry_and_scope",
+      "pytest_args": ["tests/remaster/r4/test_capabilities.py::test_issue_verify_expiry_and_scope"]
+    },
+    {
+      "id": "R4-M10",
+      "target": "src/jarvis_foundry/kernel/capabilities.py",
+      "anchor": "if iso_compare(grant.expires_at, at) <= 0:",
+      "replacement": "if iso_compare(grant.expires_at, at) < 0:",
+      "reason": "treat grants as valid exactly at expiry",
+      "expected_test": "test_grant_exactly_at_expiry_is_refused",
+      "pytest_args": [
+        "tests/remaster/r4/test_capabilities.py::test_grant_exactly_at_expiry_is_refused"
+      ]
+    },
+    {
+      "id": "R4-M11",
+      "target": "src/jarvis_foundry/kernel/secrets.py",
+      "anchor": "re.compile(r\"sk-[A-Za-z0-9_\\-./+=]{8,}\"),",
+      "replacement": "re.compile(r\"sk-[A-Za-z0-9_\\-./+=]{30,}\"),",
+      "reason": "narrow the redaction pattern so short tokens survive",
+      "expected_test": "test_redaction_helper_is_deterministic_and_non_emitting",
+      "pytest_args": ["tests/remaster/r4/test_secrets.py::test_redaction_helper_is_deterministic_and_non_emitting"]
+    },
+    {
+      "id": "R4-M12",
+      "target": "src/jarvis_foundry/kernel/effects.py",
+      "anchor": "if existing is not None and existing.status in {\"SUCCEEDED\", \"COMPENSATED\"}:",
+      "replacement": "if False:",
+      "reason": "re-execute completed effects instead of honoring idempotency",
+      "expected_test": "test_submit_execute_and_idempotent_duplicate",
+      "pytest_args": ["tests/remaster/r4/test_r4_effects.py::test_submit_execute_and_idempotent_duplicate"]
+    },
+    {
+      "id": "R4-M13",
+      "target": "src/jarvis_foundry/kernel/supervisor.py",
+      "anchor": "if existing is not None:",
+      "replacement": "if False:",
+      "reason": "allow duplicate launches for the same worker",
+      "expected_test": "test_duplicate_launch_refused_by_lease",
+      "pytest_args": ["tests/remaster/r4/test_r4_supervisor.py::test_duplicate_launch_refused_by_lease"]
+    },
+    {
+      "id": "R4-M14",
+      "target": "src/jarvis_foundry/kernel/supervisor.py",
+      "anchor": "if running_count >= self._max_running:",
+      "replacement": "if False:",
+      "reason": "ignore supervisor capacity",
+      "expected_test": "test_backpressure_returns_honest_waiting",
+      "pytest_args": ["tests/remaster/r4/test_r4_supervisor.py::test_backpressure_returns_honest_waiting"]
+    },
+    {
+      "id": "R4-M15",
+      "target": "src/jarvis_foundry/kernel/releases.py",
+      "anchor": "self._persist(release_id, ReleaseStage.QUARANTINED.value)",
+      "replacement": "pass",
+      "reason": "do not quarantine a release after failed promotion",
+      "expected_test": "test_failure_injection_quarantines_and_duplicate_is_refused",
+      "pytest_args": ["tests/remaster/r4/test_releases.py::test_failure_injection_quarantines_and_duplicate_is_refused"]
+    },
+    {
+      "id": "R4-M16",
+      "target": "src/jarvis_foundry/kernel/evidence.py",
+      "anchor": "if verifier_id == evidence.producer:",
+      "replacement": "if False:",
+      "reason": "allow self-certification",
+      "expected_test": "test_verifier_identity_is_separate_and_no_self_certification",
+      "pytest_args": ["tests/remaster/r4/test_evidence.py::test_verifier_identity_is_separate_and_no_self_certification"]
+    },
+    {
+      "id": "R4-M17",
+      "target": "src/jarvis_foundry/kernel/projections.py",
+      "anchor": "if not handled:",
+      "replacement": "if False:",
+      "reason": "silently ignore events unknown to all projections",
+      "expected_test": "test_unknown_event_refusal_is_exhaustive",
+      "pytest_args": ["tests/remaster/r4/test_projections.py::test_unknown_event_refusal_is_exhaustive"]
+    },
+    {
+      "id": "R4-M18",
+      "target": "src/jarvis_foundry/kernel/state_machines.py",
+      "anchor": "if allowed is None or action not in allowed:",
+      "replacement": "if True:",
+      "reason": "refuse every state transition",
+      "expected_test": "test_goal_machine_transitions",
+      "pytest_args": ["tests/remaster/r4/test_state_machines.py::test_goal_machine_transitions"]
+    },
+    {
+      "id": "R4-M19",
+      "target": "src/jarvis_foundry/kernel/clock.py",
+      "anchor": "return self._value.isoformat(timespec=\"seconds\").replace(\"+00:00\", \"Z\")",
+      "replacement": "return self._value.isoformat(timespec=\"milliseconds\").replace(\"+00:00\", \"Z\")",
+      "reason": "change deterministic clock output format",
+      "expected_test": "test_fixed_clock_is_injectable_and_deterministic",
+      "pytest_args": ["tests/remaster/r4/test_clock_ids.py::test_fixed_clock_is_injectable_and_deterministic"]
+    },
+    {
+      "id": "R4-M20",
+      "target": "src/jarvis_foundry/kernel/worker_gateway.py",
+      "anchor": "if len(encoded) > self._max_context_bytes:",
+      "replacement": "if False:",
+      "reason": "allow unbounded worker contexts",
+      "expected_test": "test_context_size_limit_is_refused",
+      "pytest_args": ["tests/remaster/r4/test_worker_gateway.py::test_context_size_limit_is_refused"]
+    }
+  ]
+}

@@ -1,0 +1,343 @@
+{
+  "schema": "jarvis-r4-verifier-round1-verdict-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R4",
+  "verifier_model": "deepseek-v4-flash via codex-router",
+  "verdict": "PASS",
+  "generated_utc": "2026-08-15T01:24:00Z",
+  "frozen_base": {
+    "commit": "b8e8a58af2080247898d9d879363cd2b8f820f2c",
+    "branch": "remaster/post-v7-purpose",
+    "worktree": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster",
+    "baseline_source_commit": "93a3ddc0965dfaf3e4cb9dc0952467bd5250520a",
+    "work_package": "docs/remaster/work_packages/R4_WORK_PACKAGE.json",
+    "work_package_sha256": "3f924df0ad4c2e03625f9d7fcb767d247d2d592b59f85fadbed1648843341396",
+    "work_package_bytes": 9701,
+    "live_state_read_only_compared": {
+      "JARVIS-Foundry-Supervisor": "Running",
+      "Hermes_Gateway": "Ready",
+      "supervisor_pids_observed": [21636, 17052],
+      "matches_r4_live_guard": true
+    }
+  },
+  "verifier_tooling": {
+    "python": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r3-venv\\Scripts\\python.exe (3.13.5)",
+    "pytest": "9.0.3",
+    "pytest-cov": "7.1.0",
+    "hypothesis": "6.165.8",
+    "mypy": "2.3.0",
+    "ruff": "0.16.3",
+    "bandit": "1.9.4",
+    "coverage": "7.15.4",
+    "evidence_writes": "none",
+    "commit_or_push": "none"
+  },
+  "criteria": [
+    {
+      "id": "R4-C01",
+      "status": "PASS",
+      "evidence": [
+        "Kernel package exists and compiles: src/jarvis_foundry/kernel/** (22 files); compileall in clean temp mirror exit 0.",
+        "All 13 mandatory records present and dataclass-typed: OwnerDirective, Goal, Mission, MissionStep, ActionEnvelope, CapabilityGrant, EffectIntent, EffectReceipt, ReconciliationResult, EvidenceRecord, VerifierVerdict, ReleaseRecord, IncidentRecord (records.py RECORD_TYPES; test_records_ports.py).",
+        "All 8 mandatory port families present as Protocols/classes: LedgerPort, OwnerControlPort, SupervisorPort, WorkerGatewayPort, CapabilityBrokerPort, SystemAdapterPort, ReleaseControllerPort, ClockPort+IdPort (ports.py).",
+        "Independent probe: import and introspection of RECORD_TYPES and ports succeeded; all records typed."
+      ]
+    },
+    {
+      "id": "R4-C02",
+      "status": "PASS",
+      "evidence": [
+        "src/jarvis_foundry/kernel/ledger.py: SCHEMA includes BEFORE UPDATE and BEFORE DELETE triggers on ledger_events and event_kinds, CHECK constraints on payload json, payload_hash/header_hash length 64, UNIQUE(event_id), UNIQUE(event_type, idempotency_key), FK to event_kinds.",
+        "Independent probe: raw SQL UPDATE raised sqlite3.IntegrityError 'ledger is append-only: update refused'; DELETE raised 'ledger is append-only: delete refused'.",
+        "Independent probe: dir(Ledger) public API has append/read/replay/subscribe/verify_chain/head_hash/next_sequence only; no update/delete/mutate/remove/upsert method.",
+        "Independent probe: unknown event kind refused with UnknownEventError; registered financial event kind refused with FinancialActionDeniedError.",
+        "header_hash_for() chains sequence, header fields, payload_hash, and previous_hash; verify_chain recomputes and reports problems; test_chain_verification_detects_tampering passes.",
+        "Adversarial residual risk recorded as finding R4-V-001 (raw connection can drop triggers); does not change this criterion because no public mutation API exists and no non-kernel path can import kernel state."
+      ]
+    },
+    {
+      "id": "R4-C03",
+      "status": "PASS",
+      "evidence": [
+        "src/jarvis_foundry/kernel/projections.py: ProjectionRegistry registers named versioned handlers; ProjectionDispatcher replays every event through every handler.event_types() and raises ProjectionUnknownEventError when no handler applies (exhaustive refusal).",
+        "Independent probe: replay of a fixed ledger twice produced byte-identical snapshot_bytes (REPLAY_IDENTICAL True).",
+        "Independent probe: ledger unknown event refused at projection dispatch (PROJECTION_UNKNOWN REFUSED True).",
+        "test_projections.py and test_replay_gate.py cover deterministic byte-identical replay, restart identity, unknown-event refusal; hypothesis property tests pass.",
+        "replay_gate.py reproduction: identical_replay=True events=9 chain_valid=True restart_identical=True unknown_event_refused=True, exit 0."
+      ]
+    },
+    {
+      "id": "R4-C04",
+      "status": "PASS",
+      "evidence": [
+        "src/jarvis_foundry/kernel/owner_control.py: HMAC-SHA256 signed commands, channel must equal owner channel, nonce UNIQUE in owner_directives table plus in-transaction check, STOP/PAUSE/VETO/REDIRECT/REPRIORITIZE/RESUME durable, RESUME clears active STOP/PAUSE and stop sentinel.",
+        "Independent review + focused tests: wrong channel rejected, forged signature rejected, nonce replay raises NonceReplayError, crash injection leaves no partial directive, restart preserves directives.",
+        "Mutations R4-M05/R4-M06 (accept any channel, allow nonce replay) were killed with expected tests present.",
+        "R4_FOCUSED_TESTS.json includes owner-control tests; R4_REPLAY.json replay gate exit 0."
+      ]
+    },
+    {
+      "id": "R4-C05",
+      "status": "PASS",
+      "evidence": [
+        "src/jarvis_foundry/kernel/supervisor.py: durable supervisor_state/supervisor_leases/supervisor_waiting tables; start/heartbeat/acquire_lease/release_lease/advance_waiting/recover with expiry-based recovery and capacity backpressure.",
+        "test_r4_supervisor.py covers start/heartbeat, duplicate launch refusal, lease expiry recovery, WAITING backpressure, waiting advancement, restart stale-lease recovery.",
+        "Mutations R4-M13/R4-M14 (allow duplicate launch, ignore capacity) killed.",
+        "Independent probe: duplicate release of same worker is idempotent (event-id dedupe)."
+      ]
+    },
+    {
+      "id": "R4-C06",
+      "status": "PASS",
+      "evidence": [
+        "src/jarvis_foundry/kernel/state_machines.py: typed StrEnum machines for Goal, Mission, MissionStep, Effect, Release, Incident with deterministic transition maps and refusal of invalid transitions.",
+        "test_state_machines.py covers every machine and crash-between-transitions durability; mutation R4-M18 killed (refuse every transition).",
+        "R4_FOCUSED_TESTS_JUNIT.xml: test_goal_machine_transitions, test_mission_machine_transitions, test_mission_step_machine_transitions, test_effect_machine_transitions, test_release_machine_transitions, test_incident_machine_transitions all present and passing."
+      ]
+    },
+    {
+      "id": "R4-C07",
+      "status": "PASS",
+      "evidence": [
+        "src/jarvis_foundry/kernel/policy.py: default-deny PolicyEngine; FINANCIAL_ACTION_CLASSES tuple; decide() returns DENIED for financial classes; authorize() raises FinancialActionDeniedError.",
+        "src/jarvis_foundry/kernel/ledger.py: append/append_with_connection refuse financial event kinds.",
+        "test_policy.py covers deterministic allow/deny, financial denial, default deny and scope matching; mutations R4-M07/R4-M08 killed.",
+        "Independent probe: financial ledger event and financial action envelope both refused."
+      ]
+    },
+    {
+      "id": "R4-C08",
+      "status": "PASS",
+      "evidence": [
+        "src/jarvis_foundry/kernel/capabilities.py: canonical_target normalization, scoped expiring grants, verify() refuses revoked/expired grants and target substitution; revoke durable.",
+        "src/jarvis_foundry/kernel/secrets.py: metadata-only broker; no secret value accepted or stored; Redaction non-emitting; assert_non_emitting.",
+        "test_capabilities.py and test_secrets.py cover issue/verify/expiry/revoke/substitution refusal and metadata lookup/redaction; mutations R4-M09/R4-M10/R4-M11 killed.",
+        "Independent probe: target substitution refused (CapabilityError)."
+      ]
+    },
+    {
+      "id": "R4-C09",
+      "status": "PASS",
+      "evidence": [
+        "src/jarvis_foundry/kernel/effects.py: durable effect_intents/effect_receipts/reconciliations; submit idempotent; execute honors SUCCEEDED/COMPENSATED receipts; inspect/reconcile/compensate; recover() resumes PREPARED/EXECUTING/FAILED intents.",
+        "test_r4_effects.py covers submit/execute idempotency, inspect/missing intent, partial-success compensation, crash between prepare and execute, restart durability; mutation R4-M12 killed (re-execute completed effects).",
+        "RecordingSystemAdapter and RejectingSystemAdapter provide deterministic and fail-closed adapter behavior (system_adapter.py)."
+      ]
+    },
+    {
+      "id": "R4-C10",
+      "status": "PASS",
+      "evidence": [
+        "src/jarvis_foundry/kernel/evidence.py: bind_artifacts computes per-artifact sha256; verify_artifacts compares sets and digests; issue_verdict refuses verifier_id == evidence.producer; verify_verdict requires separate identity, matching evidence_id, matching artifact hashes, status in {PASS, FAIL}.",
+        "Independent probe: self-certification refused (EvidenceError); verify_verdict True for independent verifier; tampered artifact returns False.",
+        "test_evidence.py covers artifact binding/tampering, separate verifier identity, verdict against tampered evidence; mutation R4-M16 killed (allow self-certification)."
+      ]
+    },
+    {
+      "id": "R4-C11",
+      "status": "PASS",
+      "evidence": [
+        "src/jarvis_foundry/kernel/releases.py: release registry with create/enter_lab/shadow/canary/promote/freeze/rollback/restore/quarantine; stage transitions enforced by ReleaseMachine; duplicate promotion refused; hook failure quarantines.",
+        "test_releases.py covers full lifecycle, rollback/restore/quarantine, invalid transition and missing release, failure injection quarantine, restart preservation; mutation R4-M15 killed (do not quarantine after failed promotion).",
+        "R4_FOCUSED_TESTS_JUNIT.xml shows test_releases.py 5/5 passing."
+      ]
+    },
+    {
+      "id": "R4-C12",
+      "status": "PASS",
+      "evidence": [
+        "All gates R4-G01..G10 independently reproduced PASS with non-empty evidence (see gate entries below).",
+        "Full suite independently run: venv python -B -m pytest tests/foundry tests/remaster/r3 tests/remaster/r4 -p no:cacheprovider --basetemp C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r4-verifier-basetemp -q -> exit 0, 1111 tests, 0 failed.",
+        "Confinement independently re-run: passed=true, manifest_failures=0, hidden=0, evidence JSON/TXT budget 337452 bytes (under 8388608), reproduction compile/collect exit [0,0].",
+        "Live guard: JARVIS-Foundry-Supervisor Running, Hermes_Gateway Ready, PIDs 21636/17052 observed and matching R4_LIVE_GUARD_BEFORE/AFTER; no live writes.",
+        "Git boundary: remaster status contains only R4 work package, kernel, tests, scripts, evidence; main has only the six pre-existing untracked owner docs; FINDINGS.jsonl unchanged; no commit/push."
+      ]
+    },
+    {
+      "id": "R4-G01",
+      "status": "PASS",
+      "evidence": [
+        "Independent run: mypy strict on src/jarvis_foundry/kernel -> 'Success: no issues found in 22 source files', exit 0.",
+        "typing_measure.py independent run: 290 functions, 199 parameterized, 0 untyped, all return annotations, 100_percent_typed_public_interfaces=true, exit 0.",
+        "Evidence: docs/remaster/evidence/r4/R4_MYPY.json sha256 f7f7fc1580f59990394ae8ab9e5d2277b97e64e4ac43568a0e0e0afed75f3b67; R4_TYPED_INTERFACES.json sha256 cf2853516ce9dbb5522d666e698a94ccd0751a49a90849e7bd4ca46402d1045d."
+      ]
+    },
+    {
+      "id": "R4-G02",
+      "status": "PASS",
+      "evidence": [
+        "Independent coverage_gate.py run: kernel branch coverage 100.0% (202/202), line 98.318% (1578/1605), pytest exit 0, threshold 95%, exit 0.",
+        "ports.py excluded as Protocol-only (no executable branches); 27 uncovered lines are straight-line wrappers/test adapter methods/defensive raises, not uncovered branches.",
+        "Evidence: R4_COVERAGE.json sha256 5245d68f1eff9c1764a8fb2098f3f0883082e79eec3674a169872244b43d56a4; R4_COVERAGE_RAW.txt sha256 51226ffd6fd7df8ccec29e2a51a111aac1f72463d6196cf8feeff88c27b9f4ad."
+      ]
+    },
+    {
+      "id": "R4-G03",
+      "status": "PASS",
+      "evidence": [
+        "Independent mutation_run.py run: mutation score 20/20 killed, baseline_exit=0, wall 82.672s, exit 0.",
+        "A/B methodology verified from source: each mutant applied to a temp mirror; killed requires baseline exit 0, mutant exit != 0, and expected_test name present in mutant output.",
+        "Frozen mutants manifest sha256 8abfb49c7a8993f10970424e89f501148a16ef1aad0f6a088b805753378c7bf6; R4_MUTATION.json sha256 0ff4f05c689351ea33a692031069e55e1b45df05a31144fcbbdf722a1a4b514a; R4_MUTATION_RAW.json sha256 9fe59494c9fa85db33725b13eb0fc4afe1d362103de42f3524d3916511bbb7c8."
+      ]
+    },
+    {
+      "id": "R4-G04",
+      "status": "PASS",
+      "evidence": [
+        "Independent no_silent_failure.py run: no-silent-failure findings: 0, exit 0 (AST scan for bare except / BaseException / Exception across all 22 kernel modules).",
+        "Evidence: R4_NO_SILENT_FAILURE.json sha256 f029062a19cef090a47a3fc7d4a9a29f31a320d085f3988c143f9b0359283005."
+      ]
+    },
+    {
+      "id": "R4-G05",
+      "status": "PASS",
+      "evidence": [
+        "Independent bandit run on src/jarvis_foundry/kernel + scripts/remaster/r4: 5 LOW findings (subprocess in gate scripts), 0 MEDIUM/HIGH/CRITICAL; bandit exit 1 is expected for low-only and gate passes on zero critical/high.",
+        "Independent secret_scan.py run: files_scanned=53, real_matches=0, exit 0.",
+        "Evidence: R4_BANDIT.json sha256 22b8f0c88993b564f7f567ca6e834e80e48dde891bba67c52afa95e8669a79ca; R4_SECRET_SCAN.json sha256 a9cccbf9adbb48a7b01b8db7528109f43fd92af1715deaf5620a190717b2f251."
+      ]
+    },
+    {
+      "id": "R4-G06",
+      "status": "PASS",
+      "evidence": [
+        "Independent ruff check on all 53 R4-owned files: 'All checks passed!', exit 0.",
+        "Independent ruff format --check on all 53 R4-owned files: '53 files already formatted', exit 0.",
+        "Evidence: R4_RUFF_OWNED.json sha256 2a90059cc0c0a7ae725d9b4b0df6dbab90586b6eebdc680fcd721d1c099d6b21."
+      ]
+    },
+    {
+      "id": "R4-G07",
+      "status": "PASS",
+      "evidence": [
+        "Independent architecture_rules.py run: architecture violations: 0, exit 0.",
+        "Independent rg scan: no imports of jarvis_foundry.kernel anywhere under src outside src/jarvis_foundry/kernel; no kernel imports of connectors/command_center/voice/reporting/roles.",
+        "Evidence: R4_ARCHITECTURE_RULES.json sha256 814d43d54dd77bc3497a4d0b4a634e3d341b557dd07f6cb4155810f28fc18c72."
+      ]
+    },
+    {
+      "id": "R4-G08",
+      "status": "PASS",
+      "evidence": [
+        "Independent full suite run: exit 0; 1111 tests passed, 0 failed (985 tests/foundry + 26 tests/remaster/r3 + 100 tests/remaster/r4), wall about 8 minutes with basetemp outside repo.",
+        "Independent collection counts: tests/foundry=985, tests/remaster/r3=26, tests/remaster/r4=100.",
+        "Builder junit cross-check: R4_FULL_SUITE_JUNIT.xml tests=1111 failures=0 errors=0; R4_FOCUSED_TESTS_JUNIT.xml tests=100 failures=0 errors=0.",
+        "Evidence: R4_FULL_SUITE.json sha256 9187e3503e50ca14ad51947ef04f29976a54ffa554ff563d80812e9744b21375."
+      ]
+    },
+    {
+      "id": "R4-G09",
+      "status": "PASS",
+      "evidence": [
+        "Independent replay_gate.py run: identical_replay=True events=9 chain_valid=True restart_identical=True unknown_event_refused=True, exit 0.",
+        "Independent probe: same fixed sequence appended twice produced byte-identical projection snapshots; unknown event refused at both ledger and projection dispatcher.",
+        "Evidence: R4_REPLAY.json sha256 71ad8d35f75a5d65423acdfc69f8443a281881c544b4239eb65fb895446899b7; R4_REPLAY_RAW.txt sha256 166e5b65106b68d53446a658a586c50b557720c8c4700682c541e2d3fcf31f8a."
+      ]
+    },
+    {
+      "id": "R4-G10",
+      "status": "PASS",
+      "evidence": [
+        "Independent introspection: 13 records present and dataclass-typed; 8 mandatory port families present as Protocols/classes; test_records_ports.py covers existence, roundtrips, and deterministic hashes.",
+        "Focused tests include test_records_ports.py 4 tests and mandatory behavior tests for every record/port family; R4_FOCUSED_TESTS_JUNIT.xml shows 100/100 passing.",
+        "Evidence: R4_TYPED_INTERFACES.json sha256 cf2853516ce9dbb5522d666e698a94ccd0751a49a90849e7bd4ca46402d1045d; R4_FOCUSED_TESTS.json sha256 fc9d341c02615e3dcb1ec72a6194c104f3074930ff1fd6dff3458f8cf4afe27b."
+      ]
+    }
+  ],
+  "deliverables": {
+    "R4-D01": "PASS",
+    "R4-D02": "PASS",
+    "R4-D03": "PASS",
+    "R4-D04": "PASS",
+    "R4-D05": "PASS",
+    "R4-D06": "PASS",
+    "R4-D07": "PASS",
+    "R4-D08": "PASS",
+    "R4-D09": "PASS",
+    "R4-D10": "PASS",
+    "R4-D11": "PASS",
+    "R4-D12": "PASS",
+    "R4-D13": "PASS",
+    "note": "Every deliverable's claimed PASS is backed by the focused suite (100 tests), replay gate, typed-interface gate, and mypy gate; no deliverable failed in independent reproduction."
+  },
+  "findings": [
+    {
+      "id": "R4-V-001",
+      "severity": "S3",
+      "title": "Raw SQLite handles exposed by Ledger.connect()/transaction() can drop append-only triggers",
+      "reproduction": "ledger.connect(); DROP TRIGGER ledger_events_no_update; DROP TRIGGER ledger_events_no_delete; then UPDATE/DELETE on ledger_events succeeded in an isolated temp database.",
+      "invariant": "Canonical ledger state must not be mutable by any caller.",
+      "adjudication": "Not a criterion failure: Ledger public API has no mutation method, DB triggers enforce append-only during normal use, and no adapter/UI/voice/retrieved-content module imports kernel state (architecture gate clean). Recommendation: restrict connect()/transaction() to kernel-internal use or add a schema-owner guard in a later hardening pass.",
+      "status": "RESIDUAL_RISK"
+    },
+    {
+      "id": "R4-V-002",
+      "severity": "S3",
+      "title": "Frozen confinement record reports evidence_bytes 337451; independent recomputation is 337452",
+      "reproduction": "artifact_confinement.check_budget() over docs/remaster/evidence/r4 JSON+TXT returns 337452 while frozen R4_ARTIFACT_CONFINEMENT.json records 337451.",
+      "invariant": "Evidence budget accounting must be reproducible and within 8 MiB.",
+      "adjudication": "All 84 manifest hashes and sizes still match disk exactly; difference of 1 byte is immaterial and both values are far below the 8388608 budget. No gate impact; record for evidence-hygiene reconciliation.",
+      "status": "RESIDUAL_RISK"
+    },
+    {
+      "id": "R4-V-003",
+      "severity": "S3",
+      "title": "Full-suite raw text omits an explicit '1111 passed' summary line",
+      "reproduction": "pytest -q -q output (pyproject addopts adds -q) prints progress only; R4_FULL_SUITE_RAW.txt ends at 100% with no summary line; exact count is only available from the junit file.",
+      "invariant": "Every PASS must carry non-empty, unambiguous evidence.",
+      "adjudication": "Independent run exit 0 plus junit tests=1111 failures=0 and independent collection 985+26+100 confirm the claim; builder's R4-F-005 already documents the baseline-quote supersession. No gate impact.",
+      "status": "RESIDUAL_RISK"
+    },
+    {
+      "id": "R4-V-004",
+      "severity": "S3",
+      "title": "27 kernel lines remain uncovered at 98.318% line coverage (branch 100%)",
+      "reproduction": "R4_COVERAGE_JSON.json missing lines: owner wrapper methods (owner_control.py 212-265), RecordingSystemAdapter.inspect/reconcile (effects.py 95-100), ReleaseProjectionHandler/IncidentProjectionHandler.apply (projections.py 129-151), plus defensive raises (events.py, ledger.py, supervisor.py).",
+      "invariant": "No security-critical branch may be uncovered.",
+      "adjudication": "All uncovered statements are straight-line wrappers, test-only adapter methods, or defensive error paths with no branches; branch coverage is 100.0% (202/202). No criterion failure.",
+      "status": "RESIDUAL_RISK"
+    }
+  ],
+  "status_summary": {
+    "overall": "PASS",
+    "criteria_passed": 12,
+    "criteria_failed": 0,
+    "gates_passed": 10,
+    "gates_failed": 0,
+    "new_defects_requiring_repair": 0,
+    "residual_risks": 4,
+    "frozen_hashes_recomputed": "all four frozen scope files match the parent-supplied hashes",
+    "manifest_recheck": "84/84 real artifacts matched sha256 and size on disk; 1 self-referential report entry skipped",
+    "confinement_recheck": "passed=true manifest_failures=0 hidden=0 budget_within=true reproduction_exit=[0,0]",
+    "full_suite_recheck": "1111 passed, 0 failed, exit 0",
+    "live_boundary": "JARVIS-Foundry-Supervisor Running; Hermes_Gateway Ready; PIDs 21636/17052 unchanged vs R4_LIVE_GUARD_BEFORE/AFTER",
+    "git_boundary": "remaster: only R4 additions and R4 work package; main: only the six pre-existing untracked owner docs; FINDINGS.jsonl untouched; no commit/push",
+    "registry_boundary": "docs/remaster/FINDINGS.jsonl was not modified; R4 findings remain only in R4_FINDINGS.json"
+  },
+  "evidence_paths_and_hashes": {
+    "docs/remaster/work_packages/R4_WORK_PACKAGE.json": "3f924df0ad4c2e03625f9d7fcb767d247d2d592b59f85fadbed1648843341396",
+    "docs/remaster/evidence/r4/R4_BUILDER_REPORT.json": "21102762a53c72031b73f98b4c94ff07a492c0278fdaf269fd1a5425da88a4ba",
+    "docs/remaster/evidence/r4/R4_ARTIFACT_MANIFEST.json": "bd9ec6564279e8212175ea9536fb9b744def63d817e93af53d237808fa72f5fe",
+    "docs/remaster/evidence/r4/R4_FINDINGS.json": "4da4a9544f02c5d7afc71e2f9501ed2693a507448707460dc6fbcc50061c6db5",
+    "docs/remaster/evidence/r4/R4_ARTIFACT_CONFINEMENT.json": "80983b7a38b12b15c23528f3370393b87c1d5d91037dab3cdc531e7682d2cc8c",
+    "docs/remaster/evidence/r4/R4_MYPY.json": "f7f7fc1580f59990394ae8ab9e5d2277b97e64e4ac43568a0e0e0afed75f3b67",
+    "docs/remaster/evidence/r4/R4_TYPED_INTERFACES.json": "cf2853516ce9dbb5522d666e698a94ccd0751a49a90849e7bd4ca46402d1045d",
+    "docs/remaster/evidence/r4/R4_COVERAGE.json": "5245d68f1eff9c1764a8fb2098f3f0883082e79eec3674a169872244b43d56a4",
+    "docs/remaster/evidence/r4/R4_MUTATION.json": "0ff4f05c689351ea33a692031069e55e1b45df05a31144fcbbdf722a1a4b514a",
+    "docs/remaster/evidence/r4/R4_MUTATION_RAW.json": "9fe59494c9fa85db33725b13eb0fc4afe1d362103de42f3524d3916511bbb7c8",
+    "docs/remaster/evidence/r4/R4_NO_SILENT_FAILURE.json": "f029062a19cef090a47a3fc7d4a9a29f31a320d085f3988c143f9b0359283005",
+    "docs/remaster/evidence/r4/R4_BANDIT.json": "22b8f0c88993b564f7f567ca6e834e80e48dde891bba67c52afa95e8669a79ca",
+    "docs/remaster/evidence/r4/R4_SECRET_SCAN.json": "a9cccbf9adbb48a7b01b8db7528109f43fd92af1715deaf5620a190717b2f251",
+    "docs/remaster/evidence/r4/R4_RUFF_OWNED.json": "2a90059cc0c0a7ae725d9b4b0df6dbab90586b6eebdc680fcd721d1c099d6b21",
+    "docs/remaster/evidence/r4/R4_ARCHITECTURE_RULES.json": "814d43d54dd77bc3497a4d0b4a634e3d341b557dd07f6cb4155810f28fc18c72",
+    "docs/remaster/evidence/r4/R4_FOCUSED_TESTS.json": "fc9d341c02615e3dcb1ec72a6194c104f3074930ff1fd6dff3458f8cf4afe27b",
+    "docs/remaster/evidence/r4/R4_FULL_SUITE.json": "9187e3503e50ca14ad51947ef04f29976a54ffa554ff563d80812e9744b21375",
+    "docs/remaster/evidence/r4/R4_REPLAY.json": "71ad8d35f75a5d65423acdfc69f8443a281881c544b4239eb65fb895446899b7",
+    "docs/remaster/evidence/r4/R4_LIVE_GUARD_BEFORE.json": "2b80bc49f7569b1a85dc0d181e5adaddbb68d8fe0f4f2c8f6b18a7323a23e833",
+    "docs/remaster/evidence/r4/R4_LIVE_GUARD_AFTER.json": "a0c7c4b03de993eb92c3529e472317d7379abe567b62443c7936e1fb744d8996",
+    "docs/remaster/evidence/r4/R4_LIVE_GUARD_COMPARISON.json": "1ddfc4c8b87569e907f8e514a81e8859d46e73e185f75737d5fd51e0170f8a5d",
+    "scripts/remaster/r4/frozen_mutants.json": "8abfb49c7a8993f10970424e89f501148a16ef1aad0f6a088b805753378c7bf6",
+    "docs/remaster/evidence/r4/R4_VERIFIER_ROUND1_VERDICT_DSV4.json": "computed-at-write"
+  },
+  "next_action": "R4 is PASS under fresh independent adversarial verification. Do not commit or push; preserve the remaster worktree for root custody. Recommended next step: root reviews residual risks R4-V-001..V-004, then proceeds to R5 with this verdict as the frozen R4 evidence."
+}

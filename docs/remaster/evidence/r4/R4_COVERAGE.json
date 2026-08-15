@@ -1,0 +1,20 @@
+{
+  "schema": "jarvis-r4-coverage-v1",
+  "exit_code": 0,
+  "branch_percent": 100.0,
+  "branches_covered": 202,
+  "branches_total": 202,
+  "line_percent": 98.327,
+  "lines_covered": 1587,
+  "lines_total": 1614,
+  "threshold_percent": 95.0,
+  "interface_exclusions": [
+    "ports.py"
+  ],
+  "exclusion_reason": "ports.py contains only Protocol interface declarations with no executable runtime branches; executable kernel modules are fully measured",
+  "below_threshold": false,
+  "pytest_exit_code": 0,
+  "wall_seconds": 29.57,
+  "raw_output": "R4_COVERAGE_RAW.txt",
+  "raw_output_sha256": "2bfdf5a14cee37707113926045e6ba18284f36e8674deafd5c2c02c40a95bc0d"
+}

@@ -1,0 +1,13 @@
+{
+  "schema": "jarvis-r4-replay-v1",
+  "identical_replay": true,
+  "restart_identical": true,
+  "events_replayed": 9,
+  "chain_valid": true,
+  "unknown_event_refused": true,
+  "passed": true,
+  "wall_seconds": 0.238,
+  "exit_code": 0,
+  "raw_output": "R4_REPLAY_RAW.txt",
+  "raw_output_sha256": "166e5b65106b68d53446a658a586c50b557720c8c4700682c541e2d3fcf31f8a"
+}

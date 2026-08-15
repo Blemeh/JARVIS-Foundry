@@ -1,0 +1,12 @@
+{
+  "schema": "jarvis-r4-full-suite-v1",
+  "exit_code": 0,
+  "wall_seconds": 479.562,
+  "passed": 1112,
+  "failed": 0,
+  "collected_baseline_note": "baseline at HEAD b8e8a58: tests/foundry=985, tests/remaster/r3=26; frozen package quote of 993 is superseded by exact collection",
+  "raw_output": "R4_FULL_SUITE_RAW.txt",
+  "raw_output_sha256": "3675d18f85a11da6368a8e23b68af6cfc7545a8ed56d7399efe49bbdf9842349",
+  "junit_output": "R4_FULL_SUITE_JUNIT.xml",
+  "junit_sha256": "efab90204319d2a461301d068faa6eb71873a0406c4fef8af43625936ff1325d"
+}

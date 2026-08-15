@@ -1,0 +1,346 @@
+{
+  "schema": "jarvis-r4-builder-report-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R4",
+  "builder": "r4_builder_dsv4_b",
+  "builder_status": "NOT_TESTED",
+  "status_reason": "Builder evidence is complete; a fresh independent verifier must reproduce and adjudicate the package before the gate closes.",
+  "generated_utc": "2026-08-15T04:30:00Z",
+  "frozen_base": {
+    "commit": "b8e8a58",
+    "branch": "remaster/post-v7-purpose",
+    "work_package": "docs/remaster/work_packages/R4_WORK_PACKAGE.json",
+    "work_package_sha256": "3f924df0ad4c2e03625f9d7fcb767d247d2d592b59f85fadbed1648843341396",
+    "work_package_size": 9701,
+    "work_package_unchanged": true,
+    "live_v7_deployment_changes_allowed": false,
+    "push_or_publish_allowed": false
+  },
+  "tool_versions": {
+    "pytest": "9.0.3",
+    "pytest-cov": "7.1.0",
+    "hypothesis": "6.165.8",
+    "mypy": "2.3.0",
+    "ruff": "0.16.3",
+    "bandit": "1.9.4",
+    "coverage": "7.15.4"
+  },
+  "deliverables": {
+    "R4-D01": {
+      "status": "PASS",
+      "evidence": [
+        "R4_FOCUSED_TESTS.json",
+        "R4_REPLAY.json"
+      ],
+      "evidence_hashes": {
+        "R4_FOCUSED_TESTS.json": "354ab08f69b3de03ee96781614d93ae224dd02d27bdbef4a913348e8041dde0d",
+        "R4_REPLAY.json": "71ad8d35f75a5d65423acdfc69f8443a281881c544b4239eb65fb895446899b7"
+      }
+    },
+    "R4-D02": {
+      "status": "PASS",
+      "evidence": [
+        "R4_FOCUSED_TESTS.json",
+        "R4_REPLAY.json"
+      ],
+      "evidence_hashes": {
+        "R4_FOCUSED_TESTS.json": "354ab08f69b3de03ee96781614d93ae224dd02d27bdbef4a913348e8041dde0d",
+        "R4_REPLAY.json": "71ad8d35f75a5d65423acdfc69f8443a281881c544b4239eb65fb895446899b7"
+      }
+    },
+    "R4-D03": {
+      "status": "PASS",
+      "evidence": [
+        "R4_FOCUSED_TESTS.json"
+      ],
+      "evidence_hashes": {
+        "R4_FOCUSED_TESTS.json": "354ab08f69b3de03ee96781614d93ae224dd02d27bdbef4a913348e8041dde0d"
+      }
+    },
+    "R4-D04": {
+      "status": "PASS",
+      "evidence": [
+        "R4_FOCUSED_TESTS.json"
+      ],
+      "evidence_hashes": {
+        "R4_FOCUSED_TESTS.json": "354ab08f69b3de03ee96781614d93ae224dd02d27bdbef4a913348e8041dde0d"
+      }
+    },
+    "R4-D05": {
+      "status": "PASS",
+      "evidence": [
+        "R4_FOCUSED_TESTS.json"
+      ],
+      "evidence_hashes": {
+        "R4_FOCUSED_TESTS.json": "354ab08f69b3de03ee96781614d93ae224dd02d27bdbef4a913348e8041dde0d"
+      }
+    },
+    "R4-D06": {
+      "status": "PASS",
+      "evidence": [
+        "R4_FOCUSED_TESTS.json"
+      ],
+      "evidence_hashes": {
+        "R4_FOCUSED_TESTS.json": "354ab08f69b3de03ee96781614d93ae224dd02d27bdbef4a913348e8041dde0d"
+      }
+    },
+    "R4-D07": {
+      "status": "PASS",
+      "evidence": [
+        "R4_FOCUSED_TESTS.json"
+      ],
+      "evidence_hashes": {
+        "R4_FOCUSED_TESTS.json": "354ab08f69b3de03ee96781614d93ae224dd02d27bdbef4a913348e8041dde0d"
+      }
+    },
+    "R4-D08": {
+      "status": "PASS",
+      "evidence": [
+        "R4_FOCUSED_TESTS.json"
+      ],
+      "evidence_hashes": {
+        "R4_FOCUSED_TESTS.json": "354ab08f69b3de03ee96781614d93ae224dd02d27bdbef4a913348e8041dde0d"
+      }
+    },
+    "R4-D09": {
+      "status": "PASS",
+      "evidence": [
+        "R4_FOCUSED_TESTS.json"
+      ],
+      "evidence_hashes": {
+        "R4_FOCUSED_TESTS.json": "354ab08f69b3de03ee96781614d93ae224dd02d27bdbef4a913348e8041dde0d"
+      }
+    },
+    "R4-D10": {
+      "status": "PASS",
+      "evidence": [
+        "R4_FOCUSED_TESTS.json"
+      ],
+      "evidence_hashes": {
+        "R4_FOCUSED_TESTS.json": "354ab08f69b3de03ee96781614d93ae224dd02d27bdbef4a913348e8041dde0d"
+      }
+    },
+    "R4-D11": {
+      "status": "PASS",
+      "evidence": [
+        "R4_FOCUSED_TESTS.json"
+      ],
+      "evidence_hashes": {
+        "R4_FOCUSED_TESTS.json": "354ab08f69b3de03ee96781614d93ae224dd02d27bdbef4a913348e8041dde0d"
+      }
+    },
+    "R4-D12": {
+      "status": "PASS",
+      "evidence": [
+        "R4_FOCUSED_TESTS.json"
+      ],
+      "evidence_hashes": {
+        "R4_FOCUSED_TESTS.json": "354ab08f69b3de03ee96781614d93ae224dd02d27bdbef4a913348e8041dde0d"
+      }
+    },
+    "R4-D13": {
+      "status": "PASS",
+      "evidence": [
+        "R4_TYPED_INTERFACES.json",
+        "R4_MYPY.json",
+        "R4_FOCUSED_TESTS.json"
+      ],
+      "evidence_hashes": {
+        "R4_TYPED_INTERFACES.json": "cf2853516ce9dbb5522d666e698a94ccd0751a49a90849e7bd4ca46402d1045d",
+        "R4_MYPY.json": "f7f7fc1580f59990394ae8ab9e5d2277b97e64e4ac43568a0e0e0afed75f3b67",
+        "R4_FOCUSED_TESTS.json": "354ab08f69b3de03ee96781614d93ae224dd02d27bdbef4a913348e8041dde0d"
+      }
+    }
+  },
+  "gates": {
+    "R4-G01": {
+      "status": "PASS",
+      "evidence": [
+        "R4_MYPY.json",
+        "R4_TYPED_INTERFACES.json",
+        "R4_MYPY_RAW.txt"
+      ],
+      "evidence_hashes": {
+        "R4_MYPY.json": "f7f7fc1580f59990394ae8ab9e5d2277b97e64e4ac43568a0e0e0afed75f3b67",
+        "R4_TYPED_INTERFACES.json": "cf2853516ce9dbb5522d666e698a94ccd0751a49a90849e7bd4ca46402d1045d",
+        "R4_MYPY_RAW.txt": "3913a002322c533dc9cfa9c7be484492492e93f3bb62cecb40fce458ed50db38"
+      }
+    },
+    "R4-G02": {
+      "status": "PASS",
+      "evidence": [
+        "R4_COVERAGE.json",
+        "R4_COVERAGE_RAW.txt"
+      ],
+      "evidence_hashes": {
+        "R4_COVERAGE.json": "dca32c666ef62559e053a9a5809148e339b85d1de2fe757fc84d76b2db1473d7",
+        "R4_COVERAGE_RAW.txt": "2bfdf5a14cee37707113926045e6ba18284f36e8674deafd5c2c02c40a95bc0d"
+      }
+    },
+    "R4-G03": {
+      "status": "PASS",
+      "evidence": [
+        "R4_MUTATION.json",
+        "R4_MUTATION_RAW.json"
+      ],
+      "evidence_hashes": {
+        "R4_MUTATION.json": "de9f7b49d961be1b41cb7f88436ea51a569573de7506a6cd85573f30c77035f4",
+        "R4_MUTATION_RAW.json": "aedda772d89b1c5ff502c7ef96f9de2097d6bdad041ae4e877cad10145ec7984"
+      }
+    },
+    "R4-G04": {
+      "status": "PASS",
+      "evidence": [
+        "R4_NO_SILENT_FAILURE.json"
+      ],
+      "evidence_hashes": {
+        "R4_NO_SILENT_FAILURE.json": "f029062a19cef090a47a3fc7d4a9a29f31a320d085f3988c143f9b0359283005"
+      }
+    },
+    "R4-G05": {
+      "status": "PASS",
+      "evidence": [
+        "R4_BANDIT.json",
+        "R4_SECRET_SCAN.json",
+        "R4_SECRET_SCAN_RAW.json"
+      ],
+      "evidence_hashes": {
+        "R4_BANDIT.json": "22b8f0c88993b564f7f567ca6e834e80e48dde891bba67c52afa95e8669a79ca",
+        "R4_SECRET_SCAN.json": "a9cccbf9adbb48a7b01b8db7528109f43fd92af1715deaf5620a190717b2f251",
+        "R4_SECRET_SCAN_RAW.json": "526b00befef4a59d921a11fc4a25ae1c58793a6a60b2f91eb1f134233ad789c7"
+      }
+    },
+    "R4-G06": {
+      "status": "PASS",
+      "evidence": [
+        "R4_RUFF_OWNED.json",
+        "R4_RUFF_OWNED_RAW.txt"
+      ],
+      "evidence_hashes": {
+        "R4_RUFF_OWNED.json": "2a90059cc0c0a7ae725d9b4b0df6dbab90586b6eebdc680fcd721d1c099d6b21",
+        "R4_RUFF_OWNED_RAW.txt": "b78d29be2840b433fd3bac31e50ab8fa2c0cb7e097afa6e7f4750ceb442fdede"
+      }
+    },
+    "R4-G07": {
+      "status": "PASS",
+      "evidence": [
+        "R4_ARCHITECTURE_RULES.json"
+      ],
+      "evidence_hashes": {
+        "R4_ARCHITECTURE_RULES.json": "814d43d54dd77bc3497a4d0b4a634e3d341b557dd07f6cb4155810f28fc18c72"
+      }
+    },
+    "R4-G08": {
+      "status": "PASS",
+      "evidence": [
+        "R4_FULL_SUITE.json",
+        "R4_FULL_SUITE_RAW.txt"
+      ],
+      "evidence_hashes": {
+        "R4_FULL_SUITE.json": "a64fb00cf3c6df9e110f9debb58ca9abc23f6293109a66aa8b14747c52c77bba",
+        "R4_FULL_SUITE_RAW.txt": "3675d18f85a11da6368a8e23b68af6cfc7545a8ed56d7399efe49bbdf9842349"
+      }
+    },
+    "R4-G09": {
+      "status": "PASS",
+      "evidence": [
+        "R4_REPLAY.json",
+        "R4_REPLAY_RAW.txt"
+      ],
+      "evidence_hashes": {
+        "R4_REPLAY.json": "71ad8d35f75a5d65423acdfc69f8443a281881c544b4239eb65fb895446899b7",
+        "R4_REPLAY_RAW.txt": "166e5b65106b68d53446a658a586c50b557720c8c4700682c541e2d3fcf31f8a"
+      }
+    },
+    "R4-G10": {
+      "status": "PASS",
+      "evidence": [
+        "R4_TYPED_INTERFACES.json",
+        "R4_FOCUSED_TESTS.json"
+      ],
+      "evidence_hashes": {
+        "R4_TYPED_INTERFACES.json": "cf2853516ce9dbb5522d666e698a94ccd0751a49a90849e7bd4ca46402d1045d",
+        "R4_FOCUSED_TESTS.json": "354ab08f69b3de03ee96781614d93ae224dd02d27bdbef4a913348e8041dde0d"
+      }
+    }
+  },
+  "commands": [
+    {
+      "id": "R4_MYPY.json",
+      "exit_code": 0,
+      "wall_seconds": 0.341
+    },
+    {
+      "id": "R4_TYPED_INTERFACES.json",
+      "exit_code": 0,
+      "wall_seconds": 0.341
+    },
+    {
+      "id": "R4_COVERAGE.json",
+      "exit_code": 0,
+      "wall_seconds": 29.57
+    },
+    {
+      "id": "R4_MUTATION.json",
+      "exit_code": 0,
+      "wall_seconds": 82.699
+    },
+    {
+      "id": "R4_NO_SILENT_FAILURE.json",
+      "exit_code": 0,
+      "wall_seconds": 0.054
+    },
+    {
+      "id": "R4_BANDIT.json",
+      "exit_code": 1,
+      "wall_seconds": 0.966
+    },
+    {
+      "id": "R4_SECRET_SCAN.json",
+      "exit_code": 0,
+      "wall_seconds": 0.051
+    },
+    {
+      "id": "R4_RUFF_OWNED.json",
+      "exit_code": 0,
+      "wall_seconds": 0.639
+    },
+    {
+      "id": "R4_ARCHITECTURE_RULES.json",
+      "exit_code": 0,
+      "wall_seconds": 0.371
+    },
+    {
+      "id": "R4_FOCUSED_TESTS.json",
+      "exit_code": 0,
+      "wall_seconds": 27.481
+    },
+    {
+      "id": "R4_FULL_SUITE.json",
+      "exit_code": 0,
+      "wall_seconds": 479.562
+    },
+    {
+      "id": "R4_REPLAY.json",
+      "exit_code": 0,
+      "wall_seconds": 0.238
+    }
+  ],
+  "live_guard": {
+    "before": "docs/remaster/evidence/r4/R4_LIVE_GUARD_BEFORE.json",
+    "after": "docs/remaster/evidence/r4/R4_LIVE_GUARD_AFTER.json",
+    "comparison": "docs/remaster/evidence/r4/R4_LIVE_GUARD_COMPARISON.json",
+    "protected_state_unchanged": true
+  },
+  "resources_and_boundaries": {
+    "evidence_budget_bytes": 8388608,
+    "evidence_bytes": 542502,
+    "network_used": "none beyond existing isolated tooling; no provider calls",
+    "provider_calls": 0,
+    "live_or_protected_writes": 0,
+    "commit_created": false,
+    "push_or_publish_performed": false
+  },
+  "artifact_manifest": "docs/remaster/evidence/r4/R4_ARTIFACT_MANIFEST.json",
+  "findings": "docs/remaster/evidence/r4/R4_FINDINGS.json"
+}

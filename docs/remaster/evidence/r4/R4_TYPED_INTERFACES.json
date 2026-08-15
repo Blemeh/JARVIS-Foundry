@@ -1,0 +1,12 @@
+{
+  "schema": "jarvis-r4-typed-interfaces-v1",
+  "exit_code": 0,
+  "wall_seconds": 0.341,
+  "functions_total": 290,
+  "functions_with_params": 199,
+  "functions_any_annotation": 290,
+  "functions_fully_annotated": 199,
+  "untyped_parameterized_functions": 0,
+  "all_functions_have_return_annotations": true,
+  "100_percent_typed_public_interfaces": true
+}

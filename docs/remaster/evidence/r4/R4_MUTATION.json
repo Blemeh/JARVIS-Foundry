@@ -1,0 +1,13 @@
+{
+  "schema": "jarvis-r4-mutation-v1",
+  "exit_code": 0,
+  "manifest": "scripts/remaster/r4/frozen_mutants.json",
+  "manifest_sha256": "8abfb49c7a8993f10970424e89f501148a16ef1aad0f6a088b805753378c7bf6",
+  "baseline_tests": "full_baseline",
+  "baseline_exit_code": 0,
+  "baseline_wall_seconds": 30.144,
+  "killed": 20,
+  "total": 20,
+  "score_percent": 100.0,
+  "wall_seconds": 82.699
+}

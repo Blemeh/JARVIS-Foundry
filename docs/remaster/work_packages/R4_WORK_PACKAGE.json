@@ -1,0 +1,185 @@
+{
+  "schema": "jarvis-remaster-work-package-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R4",
+  "title": "Clean trusted-kernel reconstruction",
+  "status": "FROZEN",
+  "generated_utc": "2026-08-15T03:30:00Z",
+  "frozen_base": {
+    "commit": "b8e8a58",
+    "branch": "remaster/post-v7-purpose",
+    "worktree": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster",
+    "baseline_source_commit": "93a3ddc0965dfaf3e4cb9dc0952467bd5250520a",
+    "live_v7_deployment_changes_allowed": false,
+    "push_or_publish_allowed": false,
+    "live_daemon_database_tasks_processes_ports": "protected, untouched"
+  },
+  "objective": "Rewrite rather than patch the security/correctness-critical trusted kernel in the isolated remaster worktree so it is understandable, typed, deterministic, and independently verified. R4 must satisfy every R4 gate from the owner directive and must not weaken any R3 threshold.",
+  "r2_dispositions_governing_r4": "All R2 REWRITE/UNSAFE/REPAIR_IN_R4 dispositions on trusted-kernel modules are the reconstruction backlog; R2 dispositions are authoritative for ownership (trusted-kernel, runtime-executive, security, data-recovery, worker-gateway owners).",
+  "mandatory_typed_records": [
+    "OwnerDirective",
+    "Goal",
+    "Mission",
+    "MissionStep",
+    "ActionEnvelope",
+    "CapabilityGrant",
+    "EffectIntent",
+    "EffectReceipt",
+    "ReconciliationResult",
+    "EvidenceRecord",
+    "VerifierVerdict",
+    "ReleaseRecord",
+    "IncidentRecord"
+  ],
+  "mandatory_ports_interfaces": [
+    "Ledger: append/read/replay/subscribe; no arbitrary mutation",
+    "OwnerControl: authenticated commands outside retrieved content",
+    "Supervisor: durable selection and state advancement",
+    "WorkerGateway: bounded context in; proposal/result/evidence out",
+    "CapabilityBroker: deterministic scoped grants",
+    "SystemAdapter: prepare/execute/inspect/reconcile/compensate",
+    "ReleaseController: freeze/canary/promote/rollback/restore",
+    "Clock/IDs: injectable and deterministic under test"
+  ],
+  "mandatory_rewrites": [
+    "Append-only event ledger with event-header hash chaining, DB constraints, no arbitrary mutation; unknown-event refusal",
+    "Deterministic projections as versioned, registered, focused handlers with exhaustive unknown-event refusal and replay determinism",
+    "Owner authority, directives, STOP, veto, pause, resume, redirect, reprioritize",
+    "Supervisor lifecycle, scheduling, leases, recovery, backpressure, waiting",
+    "Goal, portfolio, mission, step, effect, release, and incident state machines",
+    "Deterministic policy and ActionEnvelope authorization",
+    "Capability issue/expiry/revocation and canonical target identity",
+    "Secrets brokerage and redaction",
+    "Effect intent, idempotency, receipt, inspect, reconcile, compensate",
+    "Evidence bundles and independent verifier verdicts",
+    "Release registry: build, lab, shadow, canary, promotion, freeze, rollback, restore, quarantine"
+  ],
+  "boundary_rules": [
+    "Hermes, workers, candidates, adapters, UI, voice, notes, and retrieved content cannot mutate canonical state or bypass the kernel",
+    "Financial action classes absent or deterministically denied",
+    "Existing V1-V7 event rows are preserved unchanged (replay compatibility is R5; R4 must not rewrite history)",
+    "The protected main checkout and live daemon are never touched"
+  ],
+  "ownership": {
+    "builder": "May create/edit NEW kernel source under src/jarvis_foundry/kernel/** (or the equivalent new trusted-kernel package), new tests under tests/remaster/r4/**, R4 scripts under scripts/remaster/r4/**, and R4 evidence under docs/remaster/evidence/r4/**. May add additive compatibility readers for legacy modules but must NOT edit existing src/jarvis_foundry modules except where an existing module is a NEW file with the same name and R2 marks it REWRITE (then it must be replaced wholesale with tests-first). Must NOT edit R1/R2/R3 evidence, FINDINGS.jsonl, work packages, tests/foundry, pyproject tool thresholds (may add R4 sections only), or protected main.",
+    "root": "Evidence custody, findings registry, commit decision, final truth.",
+    "verifier": "Fresh independent context after builder freeze."
+  },
+  "tests_first_requirement": [
+    "Write failing/discriminating tests before implementation for every state machine and port",
+    "Every trusted transition tested for success, refusal, duplicate, crash, restart, and recovery",
+    "Property-based tests for ledger append/replay determinism and projection idempotency",
+    "Mutation A/B proof via the R3 mutation harness on the new kernel"
+  ],
+  "mandatory_gates": [
+    {
+      "id": "R4-G01",
+      "gate": "100% typed public interfaces on the trusted kernel (mypy strict, zero errors on R4 kernel modules)"
+    },
+    {
+      "id": "R4-G02",
+      "gate": "At least 95% branch coverage on the trusted kernel (coverage gate, threshold never lowered)"
+    },
+    {
+      "id": "R4-G03",
+      "gate": "At least 90% mutation score on the trusted kernel (R3 mutation harness A/B proof)"
+    },
+    {
+      "id": "R4-G04",
+      "gate": "Zero unreviewed broad exception handlers in the trusted kernel (no_silent_failure gate clean on R4 kernel)"
+    },
+    {
+      "id": "R4-G05",
+      "gate": "Zero critical/high security findings on the R4 kernel (bandit + secret scan)"
+    },
+    {
+      "id": "R4-G06",
+      "gate": "Ruff check and format clean on all R4-owned files",
+    },
+    {
+      "id": "R4-G07",
+      "gate": "Architecture rules enforced: kernel modules cannot import adapters/connectors/UI/voice; adapters cannot import kernel internals to mutate state",
+    },
+    {
+      "id": "R4-G08",
+      "gate": "Full repository test suite green in the isolated environment (existing 993-test baseline plus R4 tests; delta explained exactly)"
+    },
+    {
+      "id": "R4-G09",
+      "gate": "Deterministic replay: replaying the complete historical ledger from sequence one produces identical projections and refuses unknown events",
+    },
+    {
+      "id": "R4-G10",
+      "gate": "Every mandatory typed record and port exists, is typed, and is covered by focused tests"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "R4-C01",
+      "criterion": "The new trusted kernel package exists and compiles; all mandatory records and ports are present and typed."
+    },
+    {
+      "id": "R4-C02",
+      "criterion": "Ledger is append-only with header hash chaining and DB constraints; no arbitrary mutation API exists; unknown events are refused."
+    },
+    {
+      "id": "R4-C03",
+      "criterion": "Projection dispatcher is versioned/registered/focused with exhaustive unknown-event refusal and byte-identical replay determinism."
+    },
+    {
+      "id": "R4-C04",
+      "criterion": "OwnerControl enforces authenticated STOP/veto/pause/resume/redirect/reprioritize outside retrieved content; anti-replay nonces; all transitions tested."
+    },
+    {
+      "id": "R4-C05",
+      "criterion": "Supervisor lifecycle, leases, recovery, backpressure, and waiting are durable and tested for crash/restart/duplicate-launch."
+    },
+    {
+      "id": "R4-C06",
+      "criterion": "Goal/mission/step/effect/release/incident state machines are typed, deterministic, and fully transition-tested."
+    },
+    {
+      "id": "R4-C07",
+      "criterion": "Policy and ActionEnvelope authorization is deterministic; financial action classes are absent or deterministically denied."
+    },
+    {
+      "id": "R4-C08",
+      "criterion": "CapabilityBroker issues scoped expiring grants and refuses target substitution; secrets brokerage never writes secret values and redacts evidence."
+    },
+    {
+      "id": "R4-C09",
+      "criterion": "EffectIntent/EffectReceipt with idempotency, inspect, reconcile, and compensation are tested including partial success and crash."
+    },
+    {
+      "id": "R4-C10",
+      "criterion": "EvidenceRecord and VerifierVerdict bind artifact hashes and separate verifier identity; no self-certification path exists."
+    },
+    {
+      "id": "R4-C11",
+      "criterion": "ReleaseController freeze/canary/promote/rollback/restore/quarantine transitions are tested with failure injection."
+    },
+    {
+      "id": "R4-C12",
+      "criterion": "Gates R4-G01..G10 pass with honest evidence; full suite green; no live/protected mutation; no commit/push by the builder."
+    }
+  ],
+  "status_contract": "PASS | FAIL | BLOCKED | NOT_TESTED | WAITING only; exit code zero alone is NOT_TESTED; every PASS needs non-empty evidence.",
+  "resources_and_constraints": {
+    "python": "C:\\Python313\\python.exe (3.13.5)",
+    "isolated_venv": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r3-venv (R3 tooling; may create a sibling R4 venv if needed)",
+    "network_allowed": "only for pinned dev-tool installs into an isolated venv; no provider calls",
+    "evidence_budget_bytes": 8388608,
+    "timeout": "bounded; every long gate prints WALL_SECONDS and EXIT_CODE",
+    "live_guard": "capture protected task/process state before and after like R3"
+  },
+  "stop_conditions": [
+    "any change to prior evidence, FINDINGS.jsonl, or frozen work packages",
+    "any edit to existing src modules other than wholesale R2-REWRITE replacements with tests-first",
+    "any edit to tests/foundry, protected main, or live state",
+    "any commit or push by the builder",
+    "any secret value written to evidence",
+    "any lowering of 95% branch / 90% mutation / 100% typed thresholds",
+    "any unrecorded gate failure presented as PASS"
+  ],
+  "builder_status": "NOT_TESTED until a fresh independent verifier passes every mandatory criterion"
+}
