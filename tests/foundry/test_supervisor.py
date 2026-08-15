@@ -38,6 +38,40 @@ def test_second_live_supervisor_cannot_take_lease(tmp_path):
         second.acquire("supervisor:singleton", "two", 90)
 
 
+def test_supervisor_takeover_during_active_stop_does_not_collide(tmp_path):
+    """A fresh supervisor instance taking over WHILE the STOP sentinel is
+    active must be able to heartbeat (frozen watchdog) — the
+    emergency_stop.frozen event is keyed per (stop_id, instance_id), so a
+    takeover never collides with the previous instance's frozen record.
+    (Found during V8 canonical promotion: takeover hit EventConflict and
+    crashed the heartbeat loop.)"""
+    database = FoundryDatabase(tmp_path / "foundry.db")
+    stop_path = tmp_path / "EMERGENCY_STOP"
+    EmergencyStop(stop_path).activate("takeover drill")
+
+    first = Supervisor(database, stop_path, instance_id="supervisor-first")
+    assert first.start() == "FROZEN"
+    assert first.heartbeat() == "FROZEN"
+
+    # the first instance dies without releasing anything (force-kill);
+    # its lease expires after the TTL, then a NEW instance takes over
+    # under the same active STOP
+    from jarvis_foundry.clock import isoformat
+    from datetime import timedelta
+    with database.transaction() as conn:
+        conn.execute(
+            "UPDATE leases SET expires_at=? WHERE lease_key='supervisor:singleton'",
+            (isoformat(utc_now() - timedelta(seconds=1)),))
+    second = Supervisor(database, stop_path, instance_id="supervisor-second")
+    assert second.start() == "FROZEN"
+    assert second.heartbeat() == "FROZEN"  # must not raise EventConflict
+    assert second.heartbeat() == "FROZEN"
+
+    frozen = [e for e in database.events()
+              if e.event_type == "emergency_stop.frozen"]
+    assert len(frozen) >= 3  # first instance + second instance records both
+
+
 def test_expired_lease_is_reclaimed_once(tmp_path):
     database = FoundryDatabase(tmp_path / "foundry.db")
     database.initialize()

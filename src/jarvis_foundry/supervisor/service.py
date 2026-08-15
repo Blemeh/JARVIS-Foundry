@@ -76,7 +76,7 @@ class Supervisor:
                 "emergency_stop.frozen",
                 {"instance_id": self.instance_id, "stop_id": stop["stop_id"], "reason": stop["reason"]},
                 source_type="supervisor", source_id=self.instance_id,
-                idempotency_key=f"emergency_stop.frozen:{stop['stop_id']}",
+                idempotency_key=f"emergency_stop.frozen:{stop['stop_id']}:{self.instance_id}",
             ))
             return "FROZEN"
         self._reap_and_recover()
