@@ -51,7 +51,16 @@ Migration v33 (`src/jarvis_foundry/migrations.py`): `tier_c_memories`, `tier_c_m
 
 ## 12. Independent verification
 
-Dispatch: fresh isolated verifier (same model family — **INDEPENDENCE_REDUCED**, stated per contract; provider diversity unavailable: Copilot 403, Nous 404, OpenRouter uncredentialed). Verifier receives this report, the full diff, schema delta, migration/rollback evidence, suite output, probes, benchmark, shadow, canary, known limitations. Verdict: see the verifier report.
+Verifier round 1 (deleg_c6bdda26, fresh isolated session; same model family — INDEPENDENCE_REDUCED, recorded): **FAIL with 3 genuine defect clusters**, all repaired at the root with regression tests:
+
+- **F1/F2/F3 (HIGH)** — tier_c revision integrity: `INSERT OR REPLACE` + FK CASCADE silently destroyed revision history on block updates; AUTOINCREMENT revision ids made `rebuild_projections()` non-idempotent and broke `reconcile` (false-negative on fresh DBs with Tier C activity). Repaired: history-preserving `ON CONFLICT DO UPDATE` upserts in all five projection handlers; deterministic TEXT revision ids (= event ids, replay-stable); children-first reset/restore delete order; reconcile now `consistent=True` on Tier C activity (regression: `test_block_history_grows_with_updates`, `test_memory_revision_history_survives_rebuild`, `test_reconcile_consistent_with_tier_c_activity`).
+- **F4 (HIGH)** — ContextCompiler crashed (OperationalError) when tier_c tables are missing instead of degrading to governance-only. Repaired: Tier C sections wrapped; `tier_c_unavailable` note; governance always delivered (regression: `test_compiler_degrades_when_tier_c_missing`). The migration rehearsal's missing-table step now genuinely degrades in all 9 scenarios.
+- **F5 (MEDIUM)** — evidence files were gitignored and regenerated per run. Repaired: scripts write evidence only with `--record`; evidence committed; rehearsal output made deterministic (no timestamps) (regression: `test_evidence_scripts_need_record_flag`).
+- **F6 (MEDIUM)** — budget was advisory with floors. Repaired: Tier C budget = remaining after Tier A/B, no floor; under starvation ALL Tier C drops and is recorded (regression: `test_compiler_tier_c_budget_is_remaining_after_tier_ab`).
+
+Verifier also confirmed PASS on all safety-critical criteria: C1 truth precedence, C2 lifecycle bypass, C3 secret gate, C4 divergence/markerless, C5 compiler isolation, C7 rehearsal, C8 suite/scripts, C9 classic contract, C10 isolation. Its full report: `%TEMP%\v8-verify-probe\REPORT.md`.
+
+Certification round (fresh verifier) after repairs: see addendum below.
 
 ## 13. Isolation
 
