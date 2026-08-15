@@ -1,0 +1,13 @@
+{
+  "exit_code": 0,
+  "junit_output": "R7_FULL_SUITE_PART1_JUNIT.xml + R7_FULL_SUITE_PART2_JUNIT.xml",
+  "junit_sha256": [
+    "0c99216388bfd0c6e7f55cab471b85d9afd34603fdfdae6e0c2793df37fe2bbb",
+    "f042b6d83ef81828306e5449da5cab48e87f78877a5928f1bfcbdcb10deacde2"
+  ],
+  "raw_output": "R7_FULL_SUITE_RAW.txt",
+  "raw_output_sha256": "ef5281dcc020cfeabf0bbaec4e04210230d8d73d17c18c48fdf15e3714b42f67",
+  "schema": "jarvis-r7-full-suite-v1",
+  "summary_line": "...............................................................          [100%]",
+  "wall_seconds": 460.958
+}

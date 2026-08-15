@@ -1,0 +1,11 @@
+{
+  "schema": "jarvis-remaster-owner-redirect-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "recorded_utc": "2026-08-15T16:10:00Z",
+  "owner_command": "skip r6",
+  "channel": "authenticated owner redirect in the active remaster task",
+  "effect": "The R6 verifier loop is stopped immediately. R6 work (src/jarvis_foundry/kernel/memory, scripts/remaster/r6, tests/remaster/r6, docs/remaster/evidence/r6, R6_WORK_PACKAGE.json) is preserved uncommitted in the remaster worktree and is NOT claimed as PASS.",
+  "r6_status": "DEFERRED_BY_OWNER_REDIRECT (not PASS, not FAIL-closed-by-verifier; rounds 1-13 were FAIL, round 14 was interrupted by this redirect)",
+  "r6_evidence": "docs/remaster/evidence/r6/R6_VERIFIER_ROUND{1..13}_VERDICT_DSV4.json preserved; R6_VERIFIER_ROUND14_VERDICT_DSV4.json was NOT written because the verifier was interrupted before completion.",
+  "next_action": "Proceed immediately to R7 (goals, portfolio, discovery, research, monitoring) per the frozen directive. R6 may be revisited later only under a further authenticated owner instruction."
+}

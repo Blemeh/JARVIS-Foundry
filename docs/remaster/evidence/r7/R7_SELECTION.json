@@ -1,0 +1,135 @@
+{
+  "canonical_target_refusal": true,
+  "decision": {
+    "alternatives": [
+      {
+        "candidate_id": "cand-11d1ef18f372",
+        "dimensions": {
+          "cost": 0.0,
+          "information_gain": 0.075,
+          "opportunity_cost": 0.015,
+          "reversibility": 0.09,
+          "risk": 0.03,
+          "uncertainty": 0.04,
+          "urgency": 0.13,
+          "value": 0.21
+        },
+        "opportunity_cost": 0.3,
+        "reason": "deterministic weighted score 0.4200 from 1 evidence refs for bounded_review",
+        "total_score": 0.42,
+        "tradeoffs": [
+          "value 0.70 meets or beats project baseline",
+          "opportunity cost 0.30"
+        ],
+        "uncertainty": 0.2
+      },
+      {
+        "candidate_id": "cand-ac1d5c942523",
+        "dimensions": {
+          "cost": 0.0,
+          "information_gain": 0.075,
+          "opportunity_cost": 0.015,
+          "reversibility": 0.09,
+          "risk": 0.03,
+          "uncertainty": 0.04,
+          "urgency": 0.13,
+          "value": 0.21
+        },
+        "opportunity_cost": 0.3,
+        "reason": "deterministic weighted score 0.4200 from 1 evidence refs for bounded_review",
+        "total_score": 0.42,
+        "tradeoffs": [
+          "value 0.70 meets or beats project baseline",
+          "opportunity cost 0.30"
+        ],
+        "uncertainty": 0.2
+      },
+      {
+        "candidate_id": "cand-b89145255fe5",
+        "dimensions": {
+          "cost": 0.0,
+          "information_gain": 0.075,
+          "opportunity_cost": 0.015,
+          "reversibility": 0.09,
+          "risk": 0.03,
+          "uncertainty": 0.04,
+          "urgency": 0.13,
+          "value": 0.21
+        },
+        "opportunity_cost": 0.3,
+        "reason": "deterministic weighted score 0.4200 from 1 evidence refs for bounded_review",
+        "total_score": 0.42,
+        "tradeoffs": [
+          "value 0.70 meets or beats project baseline",
+          "opportunity cost 0.30"
+        ],
+        "uncertainty": 0.2
+      },
+      {
+        "candidate_id": "cand-fd1c271f32a3",
+        "dimensions": {
+          "cost": 0.0,
+          "information_gain": 0.075,
+          "opportunity_cost": 0.015,
+          "reversibility": 0.09,
+          "risk": 0.03,
+          "uncertainty": 0.04,
+          "urgency": 0.13,
+          "value": 0.21
+        },
+        "opportunity_cost": 0.3,
+        "reason": "deterministic weighted score 0.4200 from 1 evidence refs for bounded_review",
+        "total_score": 0.42,
+        "tradeoffs": [
+          "value 0.70 meets or beats project baseline",
+          "opportunity cost 0.30"
+        ],
+        "uncertainty": 0.2
+      }
+    ],
+    "canonical_target": "C:\\Users\\b\\Documents\\OperatorOS",
+    "control_hash": "59ea90e394e0f5d9824e08e5b5b09dfc069542aa5bedae62223f646b6ec20ae6",
+    "decision_id": "decision-18083004475cd045",
+    "portfolio_hash": "716c51515de4e52f83c719282848db418b0d803ec13bb04164c6d7177b8d2ccc",
+    "project_id": "operators",
+    "reason": "selected cand-11d1ef18f372 at score 0.4200 from 4 scored alternatives; target bound to C:\\Users\\b\\Documents\\OperatorOS",
+    "selected_candidate_id": "cand-11d1ef18f372",
+    "status": "SELECTED",
+    "uncertainty": {
+      "cand-11d1ef18f372": 0.2,
+      "cand-ac1d5c942523": 0.2,
+      "cand-b89145255fe5": 0.2,
+      "cand-fd1c271f32a3": 0.2
+    }
+  },
+  "determinism": {
+    "duplicate_decision_id": "decision-18083004475cd045",
+    "restart_decision_id": "decision-18083004475cd045",
+    "restart_store": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r7-builder\\proving\\portfolio-selection"
+  },
+  "evidence_utc": "2026-08-15T16:30:00Z",
+  "exit_code": 0,
+  "honest_waiting": {
+    "alternative_count": 1,
+    "reason": "no evidence-backed valuable action is eligible; honest WAITING",
+    "selected_candidate_id": null,
+    "status": "WAITING",
+    "zero_value_alternative_ids": [
+      "cand-zero-value"
+    ],
+    "zero_value_recorded": true,
+    "zero_value_uncertainty_recorded": true
+  },
+  "passed": true,
+  "pause_resume": {
+    "paused_alternative_count": 3,
+    "paused_decision_status": "SELECTED",
+    "paused_excluded": true,
+    "paused_project": "jarvis-foundry",
+    "resumed_alternative_count": 4,
+    "resumed_decision_status": "SELECTED"
+  },
+  "schema": "jarvis-r7-selection-v1",
+  "staging_hash": "806f23f15887f8d6804f543509f77a1c03cca980039712c72e37f0fe87f3cdf6",
+  "wall_seconds": 0.0
+}

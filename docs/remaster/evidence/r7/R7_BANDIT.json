@@ -1,0 +1,8 @@
+{
+  "exit_code": 0,
+  "passed": true,
+  "raw_output": "R7_BANDIT_RAW.txt",
+  "raw_output_sha256": "cab6e58db7eb342c8eb03f60980dbec408cf69654a8d13d19bb76fd203d48b2e",
+  "schema": "jarvis-r7-bandit-v1",
+  "wall_seconds": 0.764
+}

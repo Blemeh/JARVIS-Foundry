@@ -1,0 +1,52 @@
+{
+  "captured_utc": "2026-08-15T18:42:27.5001057Z",
+  "files": {
+    "foundry-profile.yaml": {
+      "sha256": "732d3040c8b8aef81ee5026ba5e44a46ac73c8f6ca7fd81eb2561a061ac65f0a",
+      "size": 293
+    },
+    "foundry.db": {
+      "sha256": "8d0195b89a5f5332ce0587d34a65138095a384bbc3ac7c5a351e57ebb95ff1b8",
+      "size": 44220416
+    }
+  },
+  "protected_main": {
+    "head": "93a3ddc0965dfaf3e4cb9dc0952467bd5250520a",
+    "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry",
+    "status_sha256": "a5dbb95de1154038d12901d9f6e7c1d1a6d143fad51ff234f7b4fe30b4368611"
+  },
+  "protected_supervisor_processes": [
+    {
+      "command_sha256": "824e09a3ea8d12f38d8fe7fa93cf602e0229c190dea3692e023837963cb9a8e9",
+      "creation_date": "08/14/2026 13:02:05",
+      "executable": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry\\.venv\\Scripts\\python.exe",
+      "pid": 21636
+    },
+    {
+      "command_sha256": "824e09a3ea8d12f38d8fe7fa93cf602e0229c190dea3692e023837963cb9a8e9",
+      "creation_date": "08/14/2026 13:02:06",
+      "executable": "C:\\Python313\\python.exe",
+      "pid": 17052
+    }
+  ],
+  "protected_tasks": [
+    {
+      "exists": true,
+      "status": "Running",
+      "task_name": "JARVIS-Foundry-Supervisor",
+      "xml_sha256": "7c5ea4fbf5158610cb8016a8b91d10303e5b6f15a615085f52e12a9e1ab9a880"
+    },
+    {
+      "exists": true,
+      "status": "Ready",
+      "task_name": "Hermes_Gateway",
+      "xml_sha256": "5d2a3789b1a8f5ab91bc6d319af46515615892266a6186f0c01a0e89263cca44"
+    }
+  ],
+  "vault": {
+    "file_count": 93,
+    "manifest_sha256": "3e07caa0373d0589c17692fd27221e164fee9062a111860a28ccdbbeec2c3266",
+    "path": "C:\\Users\\b\\Blendi",
+    "total_bytes": 142035
+  }
+}

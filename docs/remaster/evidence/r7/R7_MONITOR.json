@@ -1,0 +1,46 @@
+{
+  "baseline": {
+    "changed": false,
+    "content_hash": "be6819aca96b287dda12636791ad260f37fddd09f0cbf3709c049bea8b47194f"
+  },
+  "change": {
+    "after_hash": "3020d83ff8d9f99daf6fd8120d782d42c48d891ceffc5f968fb40b2e3563a756",
+    "candidate_id": "cand-836441374a0b",
+    "change_id": "change-f328b859b687",
+    "changed": true,
+    "duplicate_of": null,
+    "meaningful": true,
+    "reason": "meaningful change produced exactly one candidate"
+  },
+  "duplicate_suppression": {
+    "change_count": 1,
+    "discovery_count": 1,
+    "unchanged_changed": false
+  },
+  "evidence_utc": "2026-08-15T16:30:00Z",
+  "exit_code": 0,
+  "passed": true,
+  "restart": {
+    "cursor_content_hash": "3020d83ff8d9f99daf6fd8120d782d42c48d891ceffc5f968fb40b2e3563a756",
+    "replayed_candidate_id": "cand-836441374a0b",
+    "replayed_changed": false
+  },
+  "rollback": {
+    "reason": "corrupt observation probe",
+    "rejected_candidate": "cand-836441374a0b",
+    "restored_content_hash": "be6819aca96b287dda12636791ad260f37fddd09f0cbf3709c049bea8b47194f",
+    "source_id": "monitor-health"
+  },
+  "schema": "jarvis-r7-monitor-v1",
+  "source": {
+    "mutable_proving_path": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r7-builder\\proving\\monitor-sources\\monitor-health.txt",
+    "source_path": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r7-builder\\staged\\projects\\jarvis-foundry\\git_status.txt"
+  },
+  "staging_hash": "806f23f15887f8d6804f543509f77a1c03cca980039712c72e37f0fe87f3cdf6",
+  "stale_probe": {
+    "changed": false,
+    "reason": "stale capture 2026-08-15T16:00:00Z outside freshness 60s",
+    "stale": true
+  },
+  "wall_seconds": 0.0
+}

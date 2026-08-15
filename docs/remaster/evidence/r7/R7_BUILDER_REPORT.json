@@ -1,0 +1,216 @@
+{
+  "artifact_confinement": {
+    "confined": true,
+    "confinement_violations": [],
+    "porcelain_line_count": 12,
+    "pre_existing_baseline_entries": [
+      " M docs/remaster/FINDINGS.jsonl",
+      "?? docs/remaster/OWNER_REDIRECT_R6_DEFERRED.json",
+      "?? docs/remaster/evidence/r6/",
+      "?? docs/remaster/work_packages/R6_WORK_PACKAGE.json",
+      "?? scripts/remaster/r6/",
+      "?? src/jarvis_foundry/kernel/memory/",
+      "?? tests/remaster/r6/"
+    ]
+  },
+  "artifact_manifest": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r7\\R7_ARTIFACT_MANIFEST.json",
+  "builder": "r7_builder_dsv4",
+  "builder_status": "NOT_TESTED",
+  "deliverables": {
+    "R7-D01": {
+      "evidence": [
+        "R7_JOURNEY.json"
+      ],
+      "evidence_hashes": {
+        "R7_JOURNEY.json": "289cbf25d1e372ea0186f30dbf22b0b6b10fe517f06e2eadc42ed5bad54ed9fa"
+      },
+      "status": "PASS"
+    },
+    "R7-D02": {
+      "evidence": [
+        "R7_SELECTION.json"
+      ],
+      "evidence_hashes": {
+        "R7_SELECTION.json": "571d5c52b6bc02040d5529d2a6e6ffde427e099592b933e2565a63b2a7af3e4f"
+      },
+      "status": "PASS"
+    },
+    "R7-D03": {
+      "evidence": [
+        "R7_DISCOVERY.json"
+      ],
+      "evidence_hashes": {
+        "R7_DISCOVERY.json": "0abf4e8673975826b801f2d5fe8b9a3e07d1aed8536b83732828c7a8b0d9840d"
+      },
+      "status": "PASS"
+    },
+    "R7-D04": {
+      "evidence": [
+        "R7_RESEARCH.json"
+      ],
+      "evidence_hashes": {
+        "R7_RESEARCH.json": "54ae7a4f59d1f0ba3cd4dbebb32ca6256585a8360f1e26e2faf2f99caaeb6191"
+      },
+      "status": "PASS"
+    },
+    "R7-D05": {
+      "evidence": [
+        "R7_MONITOR.json"
+      ],
+      "evidence_hashes": {
+        "R7_MONITOR.json": "66f45c81cdcdc5a826de0aba31a44e519a4ccbcc612e80508aca39fcead539d2"
+      },
+      "status": "PASS"
+    },
+    "R7-D06": {
+      "evidence": [
+        "R7_JOURNEY.json"
+      ],
+      "evidence_hashes": {
+        "R7_JOURNEY.json": "289cbf25d1e372ea0186f30dbf22b0b6b10fe517f06e2eadc42ed5bad54ed9fa"
+      },
+      "status": "PASS"
+    },
+    "R7-D07": {
+      "evidence": [
+        "R7_JOURNEY.json"
+      ],
+      "evidence_hashes": {
+        "R7_JOURNEY.json": "289cbf25d1e372ea0186f30dbf22b0b6b10fe517f06e2eadc42ed5bad54ed9fa"
+      },
+      "status": "PASS"
+    }
+  },
+  "findings": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r7\\R7_FINDINGS.json",
+  "focused_tests_status": "PASS",
+  "frozen_base": {
+    "branch": "remaster/post-v7-purpose",
+    "commit": "7bdadd85f4c943bf5da4f771238ea515d7cc3fa0",
+    "live_v7_deployment_changes_allowed": false,
+    "push_or_publish_allowed": false,
+    "work_package": "docs/remaster/work_packages/R7_WORK_PACKAGE.json",
+    "work_package_sha256": "025122426C9985386BD5BA0857E89915ABD804A50E6C73241D064C03F52E07E4",
+    "work_package_unchanged": true
+  },
+  "full_suite": {
+    "evidence": [
+      "R7_FULL_SUITE.json",
+      "R7_FULL_SUITE_RAW.txt",
+      "R7_FULL_SUITE_PART1_JUNIT.xml",
+      "R7_FULL_SUITE_PART2_JUNIT.xml"
+    ],
+    "evidence_hashes": {
+      "R7_FULL_SUITE.json": "e51836a4db36c5b496c85f8b8ad0cc5e10946daee82a9ab0f7cc52296f585264",
+      "R7_FULL_SUITE_PART1_JUNIT.xml": "0c99216388bfd0c6e7f55cab471b85d9afd34603fdfdae6e0c2793df37fe2bbb",
+      "R7_FULL_SUITE_PART2_JUNIT.xml": "f042b6d83ef81828306e5449da5cab48e87f78877a5928f1bfcbdcb10deacde2",
+      "R7_FULL_SUITE_RAW.txt": "ef5281dcc020cfeabf0bbaec4e04210230d8d73d17c18c48fdf15e3714b42f67"
+    },
+    "status": "PASS",
+    "summary_line": "...............................................................          [100%]"
+  },
+  "gates": {
+    "R7-G01": {
+      "evidence": [
+        "R7_SELECTION.json"
+      ],
+      "evidence_hashes": {
+        "R7_SELECTION.json": "571d5c52b6bc02040d5529d2a6e6ffde427e099592b933e2565a63b2a7af3e4f"
+      },
+      "status": "PASS"
+    },
+    "R7-G02": {
+      "evidence": [
+        "R7_MONITOR.json"
+      ],
+      "evidence_hashes": {
+        "R7_MONITOR.json": "66f45c81cdcdc5a826de0aba31a44e519a4ccbcc612e80508aca39fcead539d2"
+      },
+      "status": "PASS"
+    },
+    "R7-G03": {
+      "evidence": [
+        "R7_DISCOVERY.json"
+      ],
+      "evidence_hashes": {
+        "R7_DISCOVERY.json": "0abf4e8673975826b801f2d5fe8b9a3e07d1aed8536b83732828c7a8b0d9840d"
+      },
+      "status": "PASS"
+    },
+    "R7-G04": {
+      "evidence": [
+        "R7_RESEARCH.json"
+      ],
+      "evidence_hashes": {
+        "R7_RESEARCH.json": "54ae7a4f59d1f0ba3cd4dbebb32ca6256585a8360f1e26e2faf2f99caaeb6191"
+      },
+      "status": "PASS"
+    },
+    "R7-G05": {
+      "evidence": [
+        "R7_RESTART.json"
+      ],
+      "evidence_hashes": {
+        "R7_RESTART.json": "a3bc1423de457cd9760249d8b60e630a4774d80ed728f6ebdfeed918c69b0a76"
+      },
+      "status": "PASS"
+    },
+    "R7-G06": {
+      "evidence": [
+        "R7_FULL_SUITE.json",
+        "R7_STATIC.json",
+        "R7_SECRET_SCAN.json",
+        "R7_PRIVACY.json",
+        "R7_LIVE_GUARD_COMPARISON.json"
+      ],
+      "evidence_hashes": {
+        "R7_BANDIT.json": "4ac3d1c3691e837d903ee362bf751893dc2dc3f5eb252434ae290dce8ae6802d",
+        "R7_FULL_SUITE.json": "e51836a4db36c5b496c85f8b8ad0cc5e10946daee82a9ab0f7cc52296f585264",
+        "R7_LIVE_GUARD_AFTER.json": "ea0c4773090a0cdcc06d4b721b261ce13c773b11e536e41ecc923b4a49734c9d",
+        "R7_LIVE_GUARD_BEFORE.json": "c8c92865aacd0b6bc25c8b65862225ecf4b1aca4f2e4b2ada2dc1192dd4d131e",
+        "R7_LIVE_GUARD_COMPARISON.json": "3915975cd2156014c094c9faeb8cbe74945df34055be58a99834259beef7f5da",
+        "R7_MYPY.json": "b329acbe93556c972985af50a74be8d2654128a1ec1737ad778fa03cbedcc840",
+        "R7_PRIVACY.json": "04f608da49734428e3ab35169207689724b3e36031dcf0a8c117c913c8f86218",
+        "R7_RUFF.json": "dca2aa9f274d3e9265ccde6aaf11d48e972cd48d11db11e69c921337ead1b0cd",
+        "R7_SECRET_SCAN.json": "8010e673ca85f2de50f1dc91d02a65b2ad966237588c767113d6e23392db4333",
+        "R7_STATIC.json": "7e11e779a78b59845e34c90231cfea8282bf6dcedc38e3e1d3b1b7ba732cfbe4"
+      },
+      "status": "PASS"
+    }
+  },
+  "generated_utc": "2026-08-15T16:30:00Z",
+  "live_guard": {
+    "after": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r7\\R7_LIVE_GUARD_AFTER.json",
+    "after_sha256": "ea0c4773090a0cdcc06d4b721b261ce13c773b11e536e41ecc923b4a49734c9d",
+    "before": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r7\\R7_LIVE_GUARD_BEFORE.json",
+    "before_sha256": "c8c92865aacd0b6bc25c8b65862225ecf4b1aca4f2e4b2ada2dc1192dd4d131e",
+    "comparison": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r7\\R7_LIVE_GUARD_COMPARISON.json",
+    "comparison_sha256": "3915975cd2156014c094c9faeb8cbe74945df34055be58a99834259beef7f5da",
+    "protected_state_unchanged": true
+  },
+  "privacy_passed": true,
+  "program": "POST_V7_JARVIS_REMASTER",
+  "resources_and_boundaries": {
+    "commit_created": false,
+    "evidence_budget_bytes": 8388608,
+    "evidence_bytes": 277229,
+    "evidence_under_budget": true,
+    "live_or_protected_writes": 0,
+    "network_used": "one bounded read-only public research probe; no provider calls",
+    "provider_calls": 0,
+    "push_or_publish_performed": false
+  },
+  "schema": "jarvis-r7-builder-report-v1",
+  "secret_scan_passed": true,
+  "stage": "R7",
+  "static_analysis_status": "PASS",
+  "status_reason": "Builder evidence is complete; a fresh independent verifier must reproduce and adjudicate the package before the gate closes.",
+  "tool_versions": {
+    "bandit": "1.9.4",
+    "coverage": "7.15.4",
+    "hypothesis": "6.165.8",
+    "mypy": "2.3.0",
+    "pytest": "9.0.3",
+    "pytest-cov": "7.1.0",
+    "ruff": "0.16.3"
+  }
+}

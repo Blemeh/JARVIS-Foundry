@@ -1,0 +1,33 @@
+{
+  "evidence": {
+    "file_count": 24,
+    "full_body_leaks": [],
+    "private_category_mentions": []
+  },
+  "excluded_categories": [
+    "00 - Inbox",
+    "01 - Identity",
+    "05 - Personal",
+    "08 - Archive",
+    "90 - Logs",
+    ".obsidian"
+  ],
+  "exit_code": 0,
+  "passed": true,
+  "projects_staged": [
+    "jarvis-foundry",
+    "leadgen",
+    "operators",
+    "pivotlens"
+  ],
+  "schema": "jarvis-r7-privacy-v1",
+  "vault": {
+    "available": true,
+    "body_staged_count": 12,
+    "excluded_present": false,
+    "file_count": 79,
+    "forbidden_bodies": [],
+    "staged_body_bytes": 10354
+  },
+  "wall_seconds": 0.0
+}

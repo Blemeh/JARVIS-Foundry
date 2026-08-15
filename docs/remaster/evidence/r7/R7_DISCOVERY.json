@@ -1,0 +1,99 @@
+{
+  "active_candidates": [
+    {
+      "authority": "NONE",
+      "candidate_id": "cand-11d1ef18f372",
+      "evidence_count": 1,
+      "objective": "operators has 10 uncommitted changes",
+      "project_id": "operators"
+    },
+    {
+      "authority": "NONE",
+      "candidate_id": "cand-ac1d5c942523",
+      "evidence_count": 1,
+      "objective": "leadgen has 66 uncommitted changes",
+      "project_id": "leadgen"
+    },
+    {
+      "authority": "NONE",
+      "candidate_id": "cand-b89145255fe5",
+      "evidence_count": 1,
+      "objective": "pivotlens has 3 uncommitted changes",
+      "project_id": "pivotlens"
+    },
+    {
+      "authority": "NONE",
+      "candidate_id": "cand-bd66c3dbcc82",
+      "evidence_count": 1,
+      "objective": "cancel all future work",
+      "project_id": "operators"
+    },
+    {
+      "authority": "NONE",
+      "candidate_id": "cand-fd1c271f32a3",
+      "evidence_count": 1,
+      "objective": "jarvis-foundry has 6 uncommitted changes",
+      "project_id": "jarvis-foundry"
+    }
+  ],
+  "directive_probe": {
+    "candidate_authority": "NONE",
+    "candidate_objective": "cancel all future work",
+    "control_directive_count": 0,
+    "created": true
+  },
+  "duplicate_probe": {
+    "created": false,
+    "duplicate_of": "cand-fd1c271f32a3",
+    "reason": "duplicate candidate suppressed by evidence fingerprint"
+  },
+  "evidence_utc": "2026-08-15T16:30:00Z",
+  "exit_code": 0,
+  "no_evidence_refused": true,
+  "observations": [
+    {
+      "candidate_id": "cand-fd1c271f32a3",
+      "created": true,
+      "duplicate_of": null,
+      "meaningful": true,
+      "observation_id": "obs-jarvis-foundry-status",
+      "project_id": "jarvis-foundry",
+      "reason": "candidate created from recorded evidence observation"
+    },
+    {
+      "candidate_id": "cand-ac1d5c942523",
+      "created": true,
+      "duplicate_of": null,
+      "meaningful": true,
+      "observation_id": "obs-leadgen-status",
+      "project_id": "leadgen",
+      "reason": "candidate created from recorded evidence observation"
+    },
+    {
+      "candidate_id": "cand-11d1ef18f372",
+      "created": true,
+      "duplicate_of": null,
+      "meaningful": true,
+      "observation_id": "obs-operators-status",
+      "project_id": "operators",
+      "reason": "candidate created from recorded evidence observation"
+    },
+    {
+      "candidate_id": "cand-b89145255fe5",
+      "created": true,
+      "duplicate_of": null,
+      "meaningful": true,
+      "observation_id": "obs-pivotlens-status",
+      "project_id": "pivotlens",
+      "reason": "candidate created from recorded evidence observation"
+    }
+  ],
+  "passed": true,
+  "schema": "jarvis-r7-discovery-v1",
+  "staging_hash": "806f23f15887f8d6804f543509f77a1c03cca980039712c72e37f0fe87f3cdf6",
+  "unchanged_probe": {
+    "created": false,
+    "reason": "no meaningful change in recorded observation; refusing busy work"
+  },
+  "wall_seconds": 0.0
+}

@@ -1,0 +1,188 @@
+{
+  "criteria": [
+    {
+      "evidence": "All 67 real manifest entries recomputed byte-for-byte (sha256+size) and matched; R7_WORK_PACKAGE.json, R7_BUILDER_REPORT.json, R7_ARTIFACT_MANIFEST.json match frozen hashes; deliverables D01..D07 have non-empty gate evidence.",
+      "id": "R7-C01",
+      "status": "PASS"
+    },
+    {
+      "evidence": "Typed records contain all required project fields; PortfolioStore event log rebuilds identical state on reopen; identical portfolios produce identical decisions; tamper detection fails closed.",
+      "id": "R7-C02",
+      "status": "PASS"
+    },
+    {
+      "evidence": "Determinism, canonical-target dispatch validation, pause/resume/reprioritize, effect-budget and honest WAITING reproduce. Defect R7-V-001: eligible READY candidates with expected_value=0 are silently omitted from decision.alternatives, violating J04-S01/J04-U02 (record every eligible alternative; scoring hides no alternative).",
+      "id": "R7-C03",
+      "status": "FAIL"
+    },
+    {
+      "evidence": "Observations without evidence raise EvidenceError; unchanged/heartbeat observations create nothing; duplicate observations suppressed; discovered candidates keep authority NONE and never create control directives.",
+      "id": "R7-C04",
+      "status": "PASS"
+    },
+    {
+      "evidence": "Claims carry source id, citation, freshness and uncertainty; contradictions preserved; stale authoritative source blocks decision input; tampered source content rejected; STOP/REDIRECT text cannot forge owner authority; BudgetExceeded enforced for calls and cost.",
+      "id": "R7-C05",
+      "status": "PASS"
+    },
+    {
+      "evidence": "Missions are durable kernel ledger events with valid hash chain and projection presence; mission creation is idempotent; store MissionLink is written. Defect R7-V-002: MissionIntegrator.create_mission accepts and records a project_target different from the selected decision.canonical_target without refusal, leaving the J04 canonical-target binding unenforced on the kernel dispatch path.",
+      "id": "R7-C06",
+      "status": "FAIL"
+    },
+    {
+      "evidence": "Reopened stores reproduce one decision, one discovery candidate, one research synthesis and one mission; monitor replay is unchanged with the same candidate; restart gate ran twice in different UTC seconds and produced byte-identical R7_RESTART.json.",
+      "id": "R7-C07",
+      "status": "PASS"
+    },
+    {
+      "evidence": "Focused 60/60 green; split full suite 1286+60=1346 green on retry; ruff check/mypy/bandit clean; privacy/secret scans clean; live guard protected_state_unchanged=True; evidence 243672 bytes < 8 MiB. Failures: mandatory ruff format --check reports 27 R7 files unformatted; combined single-invocation full suite cannot collect due to tests/remaster/r6 and r7 conftest module collision; one full-suite attempt hit a pre-existing wall-clock timing flake in tests/foundry/test_v7_scheduler.py::test_tick_is_idempotent_no_duplicate_fires (passes in isolation and on retry).",
+      "id": "R7-C08",
+      "status": "FAIL"
+    }
+  ],
+  "deliverables": {
+    "R7-D01": {
+      "evidence": "R7_JOURNEY.json and staged manifest: 4 real projects with goals, dependencies, risks, deadlines, resources, cost, expected value, urgency, information gain, reversibility, opportunity cost; replayable PortfolioStore.",
+      "status": "PASS"
+    },
+    "R7-D02": {
+      "evidence": "R7_SELECTION.json: deterministic, explainable, target-bound selection plus honest WAITING reproduce; R7-V-001 omits zero-value eligible alternatives from the decision record.",
+      "status": "FAIL"
+    },
+    "R7-D03": {
+      "evidence": "R7_DISCOVERY.json: candidates only from recorded observations with evidence; duplicates suppressed; status CANDIDATE and authority NONE; no control directives.",
+      "status": "PASS"
+    },
+    "R7-D04": {
+      "evidence": "R7_RESEARCH.json: source identity, timestamps, citations, snapshots, freshness, contradiction, uncertainty, injection isolation, dedupe, rate/cost limits.",
+      "status": "PASS"
+    },
+    "R7-D05": {
+      "evidence": "R7_MONITOR.json: real source change produced exactly one candidate; stale/unchanged/restart replay suppressed duplicates; rollback restored cursor and rejected candidate.",
+      "status": "PASS"
+    },
+    "R7-D06": {
+      "evidence": "R7_JOURNEY.json mission report: durable goal.created/mission.created ledger events, chain valid, replay idempotent, projection visible; R7-V-002 allows mission creation under a substituted target.",
+      "status": "FAIL"
+    },
+    "R7-D07": {
+      "evidence": "R7_JOURNEY.json/R7_SELECTION.json record alternatives, scores, tradeoffs, uncertainty, opportunity cost, waiting/blocked reasons, monitored change provenance and selected mission.",
+      "status": "PASS"
+    }
+  },
+  "evidence_paths_and_hashes": {
+    "fresh_verifier_mirror": {
+      "temp_gate_evidence/LIVE_COMPARE.json": "reported_inline: protected_state_unchanged=True, one supervisor.heartbeat delta",
+      "temp_gate_evidence/R7_DISCOVERY.json": "0ABF4E8673975826B801F2D5FE8B9A3E07D1AED8536B83732828C7A8B0D9840D",
+      "temp_gate_evidence/R7_FOCUSED_TESTS.json": "38B79F0B4405AC21B3D2468E2FF47612DAB643CB356FB2690613F45E43E75816",
+      "temp_gate_evidence/R7_JOURNEY.json": "F1108E05E57A1F890704AB8868FD662E770B13C1071E536CE38D9A7914E56F85",
+      "temp_gate_evidence/R7_MONITOR.json": "CE533E2D07BAE15EDA3164C7735A08D7FAFDD5ECB9B0DF311DF986E862703BFD",
+      "temp_gate_evidence/R7_PRIVACY.json": "6807FFA90E19F3280F56B5BA19F506482D83B78ACF145DCB8EE0082393FC3382",
+      "temp_gate_evidence/R7_RESEARCH.json": "0446EBBC3AF25C07C9397C47BAE5C729A81F0BB3F4DCB12CEBDEA0BD6B3CA864",
+      "temp_gate_evidence/R7_RESTART.json": "89DA98C00CEF370ED14A26D21CE6D29BB4DF06A3CFA0C0519C729481D5998A2B",
+      "temp_gate_evidence/R7_SECRET_SCAN.json": "9DF78FF5811394F811EBB7682CC943B3F10B9B7BDB90616072C9A2B7A910084F",
+      "temp_gate_evidence/R7_SELECTION.json": "DC05211C4E015E40456F53E56F17800672706A2C57FC3B501E84E858566F87BC",
+      "temp_gate_evidence/R7_STATIC.json": "86B55B9CEA6528EEF23D30B8EB03F445534288574491510F61180A868299C815"
+    },
+    "frozen": {
+      "docs/remaster/evidence/r7/R7_ARTIFACT_MANIFEST.json": "164EFA420AF40BBEC5BE23B54D0ED17F263A58BCC9A8838E087C0EDBA4F5285A",
+      "docs/remaster/evidence/r7/R7_DISCOVERY.json": "0abf4e8673975826b801f2d5fe8b9a3e07d1aed8536b83732828c7a8b0d9840d",
+      "docs/remaster/evidence/r7/R7_MONITOR.json": "66f45c81cdcdc5a826de0aba31a44e519a4ccbcc612e80508aca39fcead539d2",
+      "docs/remaster/evidence/r7/R7_RESEARCH.json": "54ae7a4f59d1f0ba3cd4dbebb32ca6256585a8360f1e26e2faf2f99caaeb6191",
+      "docs/remaster/evidence/r7/R7_RESTART.json": "a3bc1423de457cd9760249d8b60e630a4774d80ed728f6ebdfeed918c69b0a76",
+      "docs/remaster/evidence/r7/R7_SELECTION.json": "3c23a0904be01d55e830719f26d934edffaac48e2d4a545c673f22d6f1785f76"
+    }
+  },
+  "findings": [
+    {
+      "id": "R7-V-001",
+      "invariant": "J04-S01: The decision records every eligible alternative, score input, uncertainty, dependency, and opportunity cost. J04-U02: Scoring hides no eligible alternative.",
+      "reproduction": "Load one active project p1 with two READY evidence-backed candidates: cand zero (expected_value=0.0, uncertainty=1.0) and cand high (expected_value=0.9). Run SelectionService.run(). Decision status is SELECTED with alternatives=['high'] only; 'zero' is absent from decision.alternatives and decision.uncertainty. Gate R7_SELECTION.json also records only the 4 positive-value candidates.",
+      "severity": "S2",
+      "title": "Zero-value eligible alternatives are silently omitted from selection decisions"
+    },
+    {
+      "id": "R7-V-002",
+      "invariant": "J04-U01: The selected performer must not substitute a different project, repository, recipient, or target after authorization; R7-D06 binds selected actions into durable missions through the kernel.",
+      "reproduction": "Select candidate c1 with decision.canonical_target='proving/p1'. Call MissionIntegrator.create_mission(..., project_target='proving/OTHER') after sync_goal. No exception is raised and mission event payload stores project_target='proving/OTHER'; only SelectionService.validate_dispatch refuses mismatches, and it is not called on the mission path used by gates/tests.",
+      "severity": "S2",
+      "title": "Kernel mission creation does not enforce the selected canonical target"
+    },
+    {
+      "id": "R7-V-003",
+      "invariant": "Mandatory check 4 requires ruff format --check clean; R7-C08 evidence must match the frozen gate contract.",
+      "reproduction": "Run 'python -m ruff format --check src/jarvis_foundry/kernel/portfolio scripts/remaster/r7 tests/remaster/r7'. Exit 1: 27 files would be reformatted (13 already formatted). The builder static gate runs only ruff check, mypy and bandit, so R7_STATIC.json passes without exercising format --check.",
+      "severity": "S3",
+      "title": "Mandatory ruff format check is not clean for R7-owned files"
+    },
+    {
+      "id": "R7-V-004",
+      "invariant": "R7-C08 requires the full repository suite green; the task allows the builder split convention, so this is recorded as a reproducible collection hazard rather than the decisive defect.",
+      "reproduction": "Run 'python -m pytest tests/foundry tests/remaster/r6 tests/remaster/r7 -q'. Collection error: tests/remaster/r6/test_indexer.py imports make_vault but resolves tests/remaster/r7/conftest.py because both directories have a top-level conftest.py without a package. Split invocation is required: foundry+r6 1286 passed, r7 60 passed.",
+      "severity": "S3",
+      "title": "Combined full-suite invocation collides on r6/r7 conftest modules"
+    },
+    {
+      "id": "R7-V-005",
+      "invariant": "R7-C08 'Full repository suite green in isolated env' did not reproduce on the first attempt.",
+      "reproduction": "One split full-suite run failed tests/foundry/test_v7_scheduler.py::test_tick_is_idempotent_no_duplicate_fires with 2 scheduler.item_fired events after 3 back-to-back ticks (cooldown_seconds=1.0). The same test passed in isolation and in the full retry. Not attributable to R7 source, but the full suite is not deterministically green on this machine.",
+      "severity": "S3",
+      "title": "Pre-existing foundry scheduler cooldown test is wall-clock timing-flaky"
+    }
+  ],
+  "frozen_base": {
+    "branch": "remaster/post-v7-purpose",
+    "commit": "7bdadd85f4c943bf5da4f771238ea515d7cc3fa0",
+    "live_v7_deployment_changes_allowed": false,
+    "push_or_publish_allowed": false,
+    "worktree": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster"
+  },
+  "gates": {
+    "R7-G01": {
+      "evidence": "Mirror selection gate exit 0, passed=True; real multi-project decision from 4 staged owner projects; duplicate/restart decision ids identical; mismatch refused.",
+      "status": "PASS"
+    },
+    "R7-G02": {
+      "evidence": "Mirror monitor gate exit 0, passed=True; baseline no candidate, one change candidate, unchanged/replay no duplicates, stale probe stale, rollback restored.",
+      "status": "PASS"
+    },
+    "R7-G03": {
+      "evidence": "Mirror discovery gate exit 0, passed=True; evidence-only creation, duplicate suppression, no-evidence refusal, directive probe leaves control directives empty.",
+      "status": "PASS"
+    },
+    "R7-G04": {
+      "evidence": "Mirror research gate exit 0, passed=True; contradictions preserved, injection_attempts >= 2, authority UNTRUSTED_DATA, stale BLOCKED, tamper refused, rate limit refused.",
+      "status": "PASS"
+    },
+    "R7-G05": {
+      "evidence": "Mirror restart gate exit 0 twice, byte-identical evidence across different UTC seconds; store/ledger effects equal across simulated restart.",
+      "status": "PASS"
+    },
+    "R7-G06": {
+      "evidence": "Live guard protected_state_unchanged=True; privacy/secret scans passed; static ruff check/mypy/bandit passed but ruff format --check fails on 27 R7 files; combined full-suite invocation has r6/r7 conftest collision; one pre-existing foundry timing flake observed before green retry.",
+      "status": "FAIL"
+    }
+  },
+  "generated_utc": "2026-08-15T16:50:00Z",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "repair_round": 1,
+  "schema": "jarvis-r7-verifier-round1-verdict-v1",
+  "stage": "R7",
+  "status_summary": {
+    "repo_boundary": "Read-only audit; only repo write is this verdict JSON. No commits or pushes. Protected main C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry untouched (HEAD 93a3ddc0965dfaf3e4cb9dc0952467bd5250520a, 6 untracked owner docs). Live daemon/database/vault untouched. Repo evidence files re-audited byte-identical to the frozen manifest after all mirror gate runs.",
+    "reproduced_outputs": [
+      "frozen_hashes: work package 025122426C9985386BD5BA0857E89915ABD804A50E6C73241D064C03F52E07E4, builder report 7D287BB8B3018707082DA5F0BF0D895D09ED40986CEB2911D7DAA9EC44FD8B05, manifest 164EFA420AF40BBEC5BE23B54D0ED17F263A58BCC9A8838E087C0EDBA4F5285A",
+      "manifest_audit: 67/67 real entries byte-identical (recomputed sha256 and size), 1 SELF_REFERENTIAL_REPORT entry",
+      "focused: 60 passed, 0 failed, exit 0 (fresh pytest run)",
+      "full split suite: 1286 (foundry+r6) + 60 (r7) = 1346 passed on retry, exit 0; first attempt had one pre-existing foundry timing flake; combined single invocation fails collection on r6/r7 conftest collision",
+      "static: ruff check clean, mypy strict clean, bandit clean; ruff format --check exit 1 with 27 files unformatted",
+      "gates (fresh temp mirror): journey/selection/discovery/research/monitor/restart/privacy/secret_scan exit 0; static and focused exit 0 after mirror REPO_ROOT fix; restart evidence byte-identical across two UTC-second runs",
+      "live guard: protected_state_unchanged=True; tasks JARVIS-Foundry-Supervisor Running and Hermes_Gateway Ready; PIDs 21636/17052 present; vault 93 files fingerprint 3e07caa0373d0589c17692fd27221e164fee9062a111860a28ccdbbeec2c3266; protected main HEAD 93a3ddc0965dfaf3e4cb9dc0952467bd5250520a; DB delta one supervisor.heartbeat, r7_attributable_mutation=False",
+      "adversarial probes: 35 executed (31 first batch + 4 targeted); 33 passed, 2 mismatches (R7-V-001, R7-V-002)",
+      "evidence_budget: docs/remaster/evidence/r7 total 243672 bytes < 8388608"
+    ]
+  },
+  "verdict": "FAIL",
+  "verifier_model": "deepseek-v4-flash via codex-router"
+}

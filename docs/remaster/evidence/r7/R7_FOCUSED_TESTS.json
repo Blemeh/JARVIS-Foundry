@@ -1,0 +1,10 @@
+{
+  "exit_code": 0,
+  "junit_output": "R7_FOCUSED_TESTS_JUNIT.xml",
+  "junit_sha256": "38a98944cc272da12d2ea4ace164ad932a14f986ca7fa1805a2078ea96110848",
+  "raw_output": "R7_FOCUSED_TESTS_RAW.txt",
+  "raw_output_sha256": "d1165593326534ae1179e968aa9d6fed67a64c64c64f68908305774132880441",
+  "schema": "jarvis-r7-focused-tests-v1",
+  "summary_line": "...............................................................          [100%]",
+  "wall_seconds": 6.194
+}

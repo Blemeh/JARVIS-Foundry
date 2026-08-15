@@ -1,0 +1,234 @@
+{
+  "schema": "jarvis-r7-verifier-round3-verdict-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R7",
+  "repair_round": 3,
+  "verifier_model": "deepseek-v4-flash via codex-router",
+  "generated_utc": "2026-08-15T19:16:14Z",
+  "frozen_base": {
+    "commit": "7bdadd85f4c943bf5da4f771238ea515d7cc3fa0",
+    "branch": "remaster/post-v7-purpose",
+    "worktree": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster",
+    "protected_main": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry at 93a3ddc0965dfaf3e4cb9dc0952467bd5250520a with 6 untracked owner docs (untouched)",
+    "r6_status": "OWNER_DEFERRED, untouched by this verifier"
+  },
+  "criteria": [
+    {
+      "id": "R7-C01",
+      "status": "PASS",
+      "evidence": "All seven deliverables have non-empty repo evidence with hashes bound by R7_ARTIFACT_MANIFEST.json; frozen hashes reproduced byte-for-byte: work package 025122426C9985386BD5BA0857E89915ABD804A50E6C73241D064C03F52E07E4 (8667 bytes), builder report D8C52BB7CE25BA358D1B381C748D725F921C73FBD7210F4F4463E414C6AEB5CD (8127 bytes), manifest 6FBC80D2880310CC4057E701EA88E2B74D0C8D893E7BE84E08E0C6745EEC1697 (13063 bytes)."
+    },
+    {
+      "id": "R7-C02",
+      "status": "PASS",
+      "evidence": "Manifest audit: 72 entries (71 real + 1 SELF_REFERENTIAL_REPORT builder report); all 71 real entries recomputed sha256+size with 0 mismatches; typed PortfolioProject records carry all required fields; PortfolioStore reopen rebuilt identical state_hash (probe p-f1), tamper rejected fail-closed (p-f2), restore_bytes reproduced identical state (p-f3); selection deterministic and idempotent (mirror selection gate, tests)."
+    },
+    {
+      "id": "R7-C03",
+      "status": "PASS",
+      "evidence": "Selection probes: WAITING records every eligible alternative including expected_value=0.0 with uncertainty (s-a1); SELECTED records zero-value plus valuable alternatives and only the valuable candidate wins (s-a2); dispatch mismatch refused (s-a3); mirror selection gate exit 0 passed=True with 4 alternatives, honest WAITING, zero-value recorded, pause/resume and target refusal reproduced."
+    },
+    {
+      "id": "R7-C04",
+      "status": "PASS",
+      "evidence": "Discovery probes: no-evidence observation raises EvidenceError (d-c1); STOP/REDIRECT observation sanitized to evidence-backed objective with authority NONE and zero control directives (d-c2); mirror discovery gate exit 0 passed=True with 4 created, duplicate suppressed, no-evidence and unchanged refused."
+    },
+    {
+      "id": "R7-C05",
+      "status": "PASS",
+      "evidence": "Research probes: contradiction pair preserved with 2 claims and UNTRUSTED_DATA authority (r-d1); stale authoritative source BLOCKED (r-d2); tampered content refused with IntegrityError (r-d3); call budget enforced with BudgetExceeded (r-d4); injection attempts counted with no authority forgery. Monitor probes: one real change = exactly one candidate (m-e1); unchanged/replay no duplicates (m-e2); stale no change (m-e3); rollback restores cursor and rejects candidate (m-e4). Mirror research/monitor gates exit 0 passed=True."
+    },
+    {
+      "id": "R7-C06",
+      "status": "PASS",
+      "evidence": "Mission probes: create_mission without expected_target raises TypeError (m-b1); project_target != expected_target refused with zero mission.created events (m-b2); matching target creates one mission with chain valid (m-b3); gate_helpers.mission_integration_report passes expected_target from the decision on the real dispatch path (m-b4) and refuses a forged substituted-target decision (m-b5). Journey gate reproduced durable goal/mission ledger records with replay idempotency."
+    },
+    {
+      "id": "R7-C07",
+      "status": "PASS",
+      "evidence": "Mirror restart gate ran twice in different wall-clock seconds (21:14:03Z and 21:14:07Z) producing byte-identical R7_RESTART.json (sha256 34026D47EB11B94E8DAA4165379418B37BDC44C2050147B3FFFDED1E17085501, 1339 bytes both runs); monitor restart replay produced no duplicate candidate (m-e2); restart suite test green."
+    },
+    {
+      "id": "R7-C08",
+      "status": "PASS",
+      "evidence": "Focused tests/remaster/r7: 63 passed exit 0. Split convention: tests/foundry+tests/remaster/r6 1286 passed exit 0 (junit), tests/remaster/r7 63 passed exit 0. Mandatory combined invocation tests/foundry+tests/remaster/r6+tests/remaster/r7 ran green exit 0 (1349 collected: 985 foundry + 301 r6 + 63 r7; no ImportError/conftest collision, no collection errors). r6+r7 collect-only: 364 collected exit 0. Static: ruff check clean, ruff format --check clean (40 files), mypy strict clean (13 files), bandit source kernel clean exit 0; R7_STATIC.json contains a ruff_format subgate that ran format --check. Evidence dir 277229 bytes < 8388608. Live guard protected_state_unchanged=True, r7_attributable_mutation=False. All 22 adversarial probes passed. One residual S3 bandit advisory on expanded scripts+tests scope is documented in findings and does not contradict the mandatory frozen gates."
+    }
+  ],
+  "deliverables": [
+    {
+      "id": "R7-D01",
+      "status": "PASS",
+      "evidence": "R7_JOURNEY.json plus staged manifest: 4 real owner projects staged read-only with required portfolio fields; replayable PortfolioStore and deterministic reopen."
+    },
+    {
+      "id": "R7-D02",
+      "status": "PASS",
+      "evidence": "R7_SELECTION.json + probes s-a1/s-a2/s-a3: explainable selection records every eligible alternative with tradeoffs and uncertainty, picks one canonical-target-bound winner, pause/resume/reprioritize supported, honest WAITING emitted when no valuable action exists."
+    },
+    {
+      "id": "R7-D03",
+      "status": "PASS",
+      "evidence": "R7_DISCOVERY.json + probe d-c1/d-c2: candidates created only from recorded evidence observations; duplicates suppressed; candidates never become directives; authority NONE."
+    },
+    {
+      "id": "R7-D04",
+      "status": "PASS",
+      "evidence": "R7_RESEARCH.json + probes r-d1..r-d4: source identity, timestamps, citations, snapshots, freshness, contradiction, uncertainty, injection isolation, dedupe and rate/cost limits reproduced."
+    },
+    {
+      "id": "R7-D05",
+      "status": "PASS",
+      "evidence": "R7_MONITOR.json + probes m-e1..m-e4: one real change = one traceable candidate; unchanged/stale/restart replay no duplicates; rollback restores cursor and rejects candidate."
+    },
+    {
+      "id": "R7-D06",
+      "status": "PASS",
+      "evidence": "R7_JOURNEY.json mission report + probes m-b1..m-b5: selected actions create durable kernel mission records via R4 ledger with valid chain, replay idempotency and reconciled target truth; expected_target now required and enforced on the gate dispatch path."
+    },
+    {
+      "id": "R7-D07",
+      "status": "PASS",
+      "evidence": "R7_JOURNEY.json, R7_SELECTION.json, R7_MONITOR.json, R7_RESEARCH.json record alternatives, scores, tradeoffs, uncertainty, opportunity cost, waiting/blocked reasons, change provenance and selected mission; every claim carries evidence paths and hashes."
+    }
+  ],
+  "gates": [
+    {
+      "id": "R7-G01",
+      "status": "PASS",
+      "evidence": "Mirror selection gate exit 0 passed=True: real multi-project decision with 4 alternatives, deterministic duplicate and restart decision ids, target mismatch refused, honest WAITING with zero-value alternative recorded."
+    },
+    {
+      "id": "R7-G02",
+      "status": "PASS",
+      "evidence": "Mirror monitor gate exit 0 passed=True: baseline no candidate, one change = one candidate, unchanged/replay no duplicates, stale probe stale, rollback restored cursor."
+    },
+    {
+      "id": "R7-G03",
+      "status": "PASS",
+      "evidence": "Mirror discovery gate exit 0 passed=True: evidence-only creation, duplicate suppression, no-evidence refusal, unchanged refusal, STOP/REDIRECT sanitized with authority NONE and zero directives."
+    },
+    {
+      "id": "R7-G04",
+      "status": "PASS",
+      "evidence": "Mirror research gate exit 0 passed=True: contradictions preserved (2), authority UNTRUSTED_DATA, stale authoritative source BLOCKED, tamper refused, call budget refused, public probe OK or BLOCKED without fabricated evidence."
+    },
+    {
+      "id": "R7-G05",
+      "status": "PASS",
+      "evidence": "Mirror restart gate exit 0 twice in different wall-clock seconds (21:14:03Z, 21:14:07Z) with byte-identical R7_RESTART.json sha256 34026D47EB11B94E8DAA4165379418B37BDC44C2050147B3FFFDED1E17085501; store/ledger effects equal across simulated restart."
+    },
+    {
+      "id": "R7-G06",
+      "status": "PASS",
+      "evidence": "Full suite green (focused 63, split 1286+63, combined 1349, all exit 0); evidence 277229 bytes < 8 MiB; mirror static/privacy/secret_scan/focused gates exit 0 passed=True; live guard protected_state_unchanged=True with main/vault/tasks/processes unchanged and r7_attributable_mutation=False (live db delta 4 rows, all supervisor.heartbeat, historical rows preserved); repo evidence byte-identical to frozen manifest after all mirror runs."
+    }
+  ],
+  "findings": [
+    {
+      "id": "R7-V3R3-001",
+      "severity": "S3",
+      "title": "Expanded bandit scope over scripts and tests is not exit-0 clean (advisory only)",
+      "invariant": "Verifier instruction requested bandit over src/jarvis_foundry/kernel/portfolio, scripts/remaster/r7 and tests/remaster/r7; the frozen mandatory gates require no bandit scope and the committed bandit config excludes tests.",
+      "reproduction": "python -m bandit -r src\\jarvis_foundry\\kernel\\portfolio scripts\\remaster\\r7 tests\\remaster\\r7 -q exits 1 with 169 Low + 1 Medium + 0 High + 0 Critical findings: B101 assert usage in tests (excluded by committed [tool.bandit] exclude_dirs including tests), B404/B603/B607 subprocess advisories with fixed command lists in scripts, B105 false positive on literal PASS status strings, and B310 urlopen in gate_helpers.public_probe for the bounded read-only public probe. Source-kernel-only bandit (the R7_STATIC.json subgate) reproduces exit 0 and is the program's accepted bandit gate; R7_BANDIT_RAW.txt has no findings.",
+      "probe_ids": [
+        "bandit-all",
+        "bandit-source"
+      ]
+    },
+    {
+      "id": "R7-V-005",
+      "severity": "S3",
+      "title": "Pre-existing tests/foundry scheduler whole-second timing flake (classified, not reproduced)",
+      "invariant": "tests/foundry is protected and must remain untouched; any flake in test_tick_is_idempotent_no_duplicate_fires is a pre-existing whole-second cooldown race, not an R7 defect.",
+      "reproduction": "git diff HEAD -- tests/foundry is empty and test_v7_scheduler.py is unmodified; the combined and split suite runs both passed green on first attempt this round, so the flake did not reproduce. Classification is honest and no edits were made.",
+      "probe_ids": [
+        "git-diff-foundry",
+        "combined",
+        "split-foundry-r6"
+      ]
+    }
+  ],
+  "prior_findings_closure": [
+    {
+      "id": "R7-V-001",
+      "status": "CLOSED",
+      "evidence": "Probes s-a1/s-a2: zero-value and below-threshold alternatives are recorded in SELECTED and WAITING decisions with uncertainty; only expected_value > 0 winners above the value threshold can win."
+    },
+    {
+      "id": "R7-V-002",
+      "status": "CLOSED",
+      "evidence": "Probes m-b1/m-b2/m-b3: create_mission requires expected_target (TypeError on omission), refuses project_target != expected_target with no mission event, and persists the enforced target on success."
+    },
+    {
+      "id": "R7-V-003",
+      "status": "CLOSED",
+      "evidence": "ruff format --check clean at repo root (40 files already formatted); R7_STATIC.json includes subgate ruff_format with raw output R7_RUFF_FORMAT_RAW.txt (sha256 1E78EAC5AA29F9A621BE1E11533F615369AFE4C5BE7F09649AC4252D7E8C7526) and exit 0."
+    },
+    {
+      "id": "R7-V-004",
+      "status": "CLOSED",
+      "evidence": "Mandatory combined invocation tests/foundry+tests/remaster/r6+tests/remaster/r7 collected 1349 and ran green exit 0 with no ImportError/conftest collision or collection errors; r6+r7 collect-only collected 364 exit 0."
+    },
+    {
+      "id": "R7-V-006",
+      "status": "CLOSED",
+      "evidence": "Probe s-a1: WAITING decision records the zero-value candidate and its uncertainty (alternatives=[cand-zero], uncertainty={cand-zero: 1.0}); mirror selection gate waiting probe also records it."
+    },
+    {
+      "id": "R7-V-007",
+      "status": "CLOSED",
+      "evidence": "Probes m-b1/m-b4/m-b5: expected_target is required by MissionIntegrator and gate_helpers.mission_integration_report passes it from the decision on the real journey/restart dispatch path; forged substitution is refused."
+    },
+    {
+      "id": "R7-V-008",
+      "status": "CLOSED",
+      "evidence": "Combined full invocation green (1349) and direct r6+r7 collect-only 364 exit 0 prove the top-level conftest module collision no longer reproduces."
+    }
+  ],
+  "status_summary": {
+    "reproduced_outputs": [
+      "frozen_hashes: work package 025122426C9985386BD5BA0857E89915ABD804A50E6C73241D064C03F52E07E4 (8667), builder report D8C52BB7CE25BA358D1B381C748D725F921C73FBD7210F4F4463E414C6AEB5CD (8127), manifest 6FBC80D2880310CC4057E701EA88E2B74D0C8D893E7BE84E08E0C6745EEC1697 (13063)",
+      "manifest_audit: 72 entries, 71 real recomputed sha256+size with 0 mismatches, 1 SELF_REFERENTIAL_REPORT builder report; evidence r7 total 277229 bytes < 8388608",
+      "focused: tests/remaster/r7 63 passed exit 0 (junit 63, 0 failures/errors)",
+      "split convention: tests/foundry+tests/remaster/r6 1286 passed exit 0 (junit); tests/remaster/r7 63 passed exit 0; both first-attempt green, no scheduler flake reproduced",
+      "combined mandatory: tests/foundry+tests/remaster/r6+tests/remaster/r7 green exit 0; collect-only 1349 = 985 foundry + 301 r6 + 63 r7, no collection errors; r6+r7 collect-only 364 exit 0",
+      "static: ruff check clean; ruff format --check clean (40 files); mypy strict clean (13 files); bandit source kernel exit 0; expanded bandit scripts+tests exit 1 advisory-only (169 Low, 1 Medium, 0 High/Critical) documented as S3",
+      "mirror gates (fresh temp scripts mirror, patched EVIDENCE_DIR, JARVIS_R7_TEMP set): stage_sources/journey/selection/discovery/research/monitor/restart/privacy/secret_scan/focused_tests/static all exit 0 with passed=True; static mirror reproduced ruff_format subgate",
+      "restart determinism: two runs in different wall-clock seconds produced byte-identical R7_RESTART.json sha256 34026D47EB11B94E8DAA4165379418B37BDC44C2050147B3FFFDED1E17085501 (1339 bytes)",
+      "live guard: protected_state_unchanged=True; protected main/vault/tasks/processes unchanged; live db event delta 4 supervisor.heartbeat rows, historical rows preserved, r7_attributable_mutation=False",
+      "adversarial probes: 22/22 passed (selection 3, missions 5, discovery 2, research 4, monitor 4, store 3, control 1), results at C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r3-verify\\probes\\probe_results_r3.json",
+      "repo evidence re-audit after all mirror/live-guard runs: 71 real manifest entries still byte-identical, 0 mismatches"
+    ],
+    "repo_boundary": "Read-only audit; the only repo write is this verdict JSON. No commits or pushes. Protected main C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry untouched at 93a3ddc0965dfaf3e4cb9dc0952467bd5250520a with its 6 untracked owner docs. Live daemon/database/vault untouched; live guard observed only 4 supervisor.heartbeat rows with r7_attributable_mutation=False. R6 files (tests/remaster/r6, src/jarvis_foundry/kernel/memory, docs/remaster/evidence/r6, R6_WORK_PACKAGE.json, OWNER_REDIRECT_R6_DEFERRED.json) left unmodified. git status --porcelain --untracked-files=all shows only expected entries: modified docs/remaster/FINDINGS.jsonl, R6 deferred files, and R7 untracked files; no stray files."
+  },
+  "evidence_paths_and_hashes": {
+    "frozen": {
+      "docs/remaster/work_packages/R7_WORK_PACKAGE.json": "025122426C9985386BD5BA0857E89915ABD804A50E6C73241D064C03F52E07E4",
+      "docs/remaster/evidence/r7/R7_BUILDER_REPORT.json": "D8C52BB7CE25BA358D1B381C748D725F921C73FBD7210F4F4463E414C6AEB5CD",
+      "docs/remaster/evidence/r7/R7_ARTIFACT_MANIFEST.json": "6FBC80D2880310CC4057E701EA88E2B74D0C8D893E7BE84E08E0C6745EEC1697"
+    },
+    "repo_evidence": {
+      "docs/remaster/evidence/r7/R7_SELECTION.json": "571D5C52B6BC02040D5529D2A6E6FFDE427E099592B933E2565A63B2A7AF3E4F",
+      "docs/remaster/evidence/r7/R7_JOURNEY.json": "289CBF25D1E372EA0186F30DBF22B0B6B10FE517F06E2EADC42ED5BAD54ED9FA",
+      "docs/remaster/evidence/r7/R7_DISCOVERY.json": "0ABF4E8673975826B801F2D5FE8B9A3E07D1AED8536B83732828C7A8B0D9840D",
+      "docs/remaster/evidence/r7/R7_RESEARCH.json": "54AE7A4F59D1F0BA3CD4DBEBB32CA6256585A8360F1E26E2FAF2F99CAAEB6191",
+      "docs/remaster/evidence/r7/R7_MONITOR.json": "66F45C81CDCDC5A826DE0ABA31A44E519A4CCBCC612E80508ACA39FCEAD539D2",
+      "docs/remaster/evidence/r7/R7_RESTART.json": "A3BC1423DE457CD9760249D8B60E630A4774D80ED728F6EBDFEED918C69B0A76",
+      "docs/remaster/evidence/r7/R7_STATIC.json": "7E11E779A78B59845E34C90231CFEA8282BF6DCEDC38E3E1D3B1B7BA732CFBE4",
+      "docs/remaster/evidence/r7/R7_FOCUSED_TESTS.json": "04B145B67DD4E6A9614DCD41C83A764A5E00E3AB0B64C1B0085344310956BC9E",
+      "docs/remaster/evidence/r7/R7_FULL_SUITE.json": "E51836A4DB36C5B496C85F8B8AD0CC5E10946DAEE82A9AB0F7CC52296F585264",
+      "docs/remaster/evidence/r7/R7_SECRET_SCAN.json": "8010E673CA85F2DE50F1DC91D02A65B2AD966237588C767113D6E23392DB4333",
+      "docs/remaster/evidence/r7/R7_PRIVACY.json": "04F608DA49734428E3AB35169207689724B3E36031DCF0A8C117C913C8F86218",
+      "docs/remaster/evidence/r7/R7_LIVE_GUARD_COMPARISON.json": "3915975CD2156014C094C9FAEB8CBE74945DF34055BE58A99834259BEEF7F5DA"
+    },
+    "fresh_verifier_mirror": {
+      "temp evidence R7_RESTART.json": "34026D47EB11B94E8DAA4165379418B37BDC44C2050147B3FFFDED1E17085501 (byte-identical across two UTC-second runs)",
+      "temp evidence R7_LIVE_GUARD_COMPARISON.json": "B3C8809576591E0B3A134F8AC0C482D9B6A6C55950A520C75CE39C33F3EB7690 (protected_state_unchanged=True, r7_attributable_mutation=False)",
+      "temp evidence R7_STATIC.json": "C9C67A789A14E74E2FA1AA59EEFC4FAD210B9D333E89E0B24E15FBDFE5B43A27 (ruff_format subgate passed=True)",
+      "adversarial_probes_r3.py": "FBE9C78FBE22DDF559F774D993B59A04D0BDDC77887B540294356543EA964002",
+      "probe_results_r3.json": "77C1AAA4E778B840283A11158983E63293AD1D6D87467D0D7AB171A7A876C6CA (22/22 passed)",
+      "mirror root": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r3-verify\\gates\\scripts-mirror with patched EVIDENCE_DIR and JARVIS_R7_TEMP"
+    }
+  },
+  "verdict": "PASS"
+}

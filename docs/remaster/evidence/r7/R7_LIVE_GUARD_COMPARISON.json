@@ -1,0 +1,36 @@
+{
+  "after": "2026-08-15T18:50:51.6595249Z",
+  "before": "2026-08-15T18:42:27.5001057Z",
+  "file_unchanged": {
+    "foundry-profile.yaml": true,
+    "foundry.db": false
+  },
+  "live_db_provenance": {
+    "after_event_count": 63441,
+    "before_event_count": 63341,
+    "event_delta": 100,
+    "extra_event_types": [
+      "supervisor.heartbeat"
+    ],
+    "extra_rows_supervisor_only": true,
+    "historical_rows_preserved_unchanged": true,
+    "r7_attributable_mutation": false,
+    "testable": true
+  },
+  "live_wal_activity_expected": {
+    "foundry.db-shm": {
+      "after_sha256": "c8263e7b1e207c5c5a76d1574b13cfb12d6f730fc0cde2fa3f081f8cfb193fea",
+      "before_sha256": null
+    },
+    "foundry.db-wal": {
+      "after_sha256": "32b3484f1894fb06fe2dc16b1a3cbcb8afebc9da63a09ca5b819b9251c03076c",
+      "before_sha256": null
+    }
+  },
+  "processes_unchanged": true,
+  "protected_main_unchanged": true,
+  "protected_state_unchanged": true,
+  "schema": "jarvis-r7-live-guard-comparison-v1",
+  "tasks_unchanged": true,
+  "vault_unchanged": true
+}

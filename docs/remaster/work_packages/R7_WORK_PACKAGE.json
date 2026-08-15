@@ -1,0 +1,150 @@
+{
+  "schema": "jarvis-remaster-work-package-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R7",
+  "title": "Goals, portfolio, discovery, research, and monitoring",
+  "status": "FROZEN",
+  "generated_utc": "2026-08-15T16:15:00Z",
+  "frozen_base": {
+    "commit": "7bdadd8",
+    "branch": "remaster/post-v7-purpose",
+    "worktree": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster",
+    "baseline_source_commit": "93a3ddc0965dfaf3e4cb9dc0952467bd5250520a",
+    "live_v7_deployment_changes_allowed": false,
+    "push_or_publish_allowed": false,
+    "live_daemon_database_tasks_processes_ports": "protected, untouched"
+  },
+  "objective": "Make JARVIS genuinely choose the next valuable action across real owner projects: model durable goals, projects, dependencies, risks, deadlines, resources, cost, expected value, urgency, information gain, reversibility, and opportunity cost; discover work only from recorded evidence and observations; operate real research and monitor interfaces with provenance, freshness, contradiction handling, prompt-injection isolation, dedupe, and restart-safe cadence; and turn useful findings into traceable mission candidates through the durable kernel - never into directives, busy work, or duplicates.",
+  "governed_proving_area": {
+    "purpose": "Real owner project metadata and real monitored sources are used in an isolated proving area under C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r7-*; no live daemon, database, vault, or protected main state is touched.",
+    "privacy_boundary": "Evidence records identities, hashes, timestamps, provenance, and non-sensitive excerpts only. Retrieved content is always UNTRUSTED_DATA and can never become owner authority.",
+    "source_roots": [
+      "C:\\Users\\b\\Documents\\LeadGen",
+      "C:\\Users\\b\\Documents\\OperatorOS",
+      "C:\\Users\\b\\Documents\\Claude\\pivotlens",
+      "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry",
+      "C:\\Users\\b\\Blendi (Obsidian vault, representative owner-authorized sample)"
+    ]
+  },
+  "mandatory_deliverables": [
+    {
+      "id": "R7-D01",
+      "item": "Portfolio model with real goals and projects",
+      "detail": "Typed portfolio records for real owner projects with goal links, dependencies, risks, deadlines, resources, cost, expected value, urgency, information gain, reversibility, and opportunity cost; durable and replayable."
+    },
+    {
+      "id": "R7-D02",
+      "item": "Explainable next-action selection",
+      "detail": "Selection scores every eligible alternative, records tradeoffs and uncertainty, and picks one useful next action bound to a canonical project target; pause/resume/reprioritize supported; honest WAITING when nothing valuable exists."
+    },
+    {
+      "id": "R7-D03",
+      "item": "Evidence-only discovery",
+      "detail": "Work is discovered only from recorded observations/evidence; discoveries become traceable mission candidates through the durable kernel, never directives; duplicates are suppressed."
+    },
+    {
+      "id": "R7-D04",
+      "item": "Real research interface",
+      "detail": "Research uses identified sources with source identity, timestamps, citations, snapshots, freshness, corroboration, contradiction, uncertainty, prompt-injection isolation, dedupe, rate/cost limits, and restart-safe cadence."
+    },
+    {
+      "id": "R7-D05",
+      "item": "Real monitor interface",
+      "detail": "Monitors observe identified real sources on a restart-safe cadence, detect meaningful changes, and create one traceable candidate per change without duplicate alerts or stale-source claims."
+    },
+    {
+      "id": "R7-D06",
+      "item": "Mission candidate integration through the durable kernel",
+      "detail": "Selected actions and discoveries create durable Mission/MissionStep records via the R4 kernel (append-only ledger, projections), reconciled with Git/filesystem truth where applicable."
+    },
+    {
+      "id": "R7-D07",
+      "item": "Owner-useful evidence and explanations",
+      "detail": "Decisions explain why a candidate won/lost, what changed in monitored sources, what is uncertain, what is blocked/waiting, and what the next useful action is; every claim carries evidence."
+    }
+  ],
+  "mandatory_gates": [
+    {
+      "id": "R7-G01",
+      "gate": "Real multi-project decisions: a real portfolio produces a durable, explainable, non-duplicated selection with provenance"
+    },
+    {
+      "id": "R7-G02",
+      "gate": "Monitored changes: a real monitored source change produces exactly one traceable mission candidate, with stale/duplicate suppression"
+    },
+    {
+      "id": "R7-G03",
+      "gate": "Discovery-only evidence: no work is invented without an observation; busy-work loops fail closed; honest WAITING is emitted"
+    },
+    {
+      "id": "R7-G04",
+      "gate": "Research integrity: provenance/freshness/contradiction/uncertainty preserved; retrieved content cannot forge authority; rate/cost limits enforced"
+    },
+    {
+      "id": "R7-G05",
+      "gate": "Restart-safe cadence: research/monitor/selection resume after restart without duplicate effects"
+    },
+    {
+      "id": "R7-G06",
+      "gate": "No live/protected mutation; evidence under 8 MiB; full suite green in isolated env"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "R7-C01",
+      "criterion": "R7-D01..D07 each PASS with non-empty evidence (paths, hashes, command outputs)."
+    },
+    {
+      "id": "R7-C02",
+      "criterion": "Portfolio model holds real projects with all required fields; decisions are deterministic and replayable."
+    },
+    {
+      "id": "R7-C03",
+      "criterion": "Selection is explainable: alternatives, scores, tradeoffs, uncertainty, and opportunity cost recorded; one bound action; pause/resume/reprioritize works; honest WAITING when no valuable action exists."
+    },
+    {
+      "id": "R7-C04",
+      "criterion": "Discovery creates candidates only from recorded observations; duplicates suppressed; candidates never become directives."
+    },
+    {
+      "id": "R7-C05",
+      "criterion": "Research and monitoring preserve provenance, freshness, citations, snapshots, contradiction, uncertainty; prompt-injection cannot forge owner authority; dedupe and rate/cost limits enforced."
+    },
+    {
+      "id": "R7-C06",
+      "criterion": "Selected actions and discovered work create durable kernel missions; mission truth reconciled with project/Git/filesystem truth where applicable."
+    },
+    {
+      "id": "R7-C07",
+      "criterion": "Restart-safe cadence: a simulated restart produces no duplicate monitors, candidates, or missions."
+    },
+    {
+      "id": "R7-C08",
+      "criterion": "Full repository suite green in isolated env; evidence under budget; no live/protected touch; adversarial verifier reproduces all criteria."
+    }
+  ],
+  "ownership": {
+    "builder": "May create scripts/remaster/r7/**, tests/remaster/r7/**, docs/remaster/evidence/r7/**, docs/remaster/work_packages/R7_WORK_PACKAGE.json, and new additive source under src/jarvis_foundry/kernel/portfolio/** (or an additive r7 package). Must NOT edit existing kernel modules, tests/foundry, R1-R6 evidence, FINDINGS.jsonl, live vault, or protected main.",
+    "root": "Evidence custody, findings registry, commit decision, final truth.",
+    "verifier": "Fresh independent context after builder freeze."
+  },
+  "resources_and_constraints": {
+    "python": "C:\\Python313\\python.exe",
+    "isolated_venv": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r3-venv (reuse)",
+    "proving_area": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r7-*",
+    "network_allowed": "only pinned dev-tool installs into the isolated venv and real read-only source fetch for research/monitor probes (rate/cost-limited, never mutating the target); no provider calls",
+    "evidence_budget_bytes": 8388608,
+    "timeout": "bounded; every long gate prints WALL_SECONDS and EXIT_CODE"
+  },
+  "status_contract": "PASS | FAIL | BLOCKED | NOT_TESTED | WAITING only; exit code zero alone is NOT_TESTED; every PASS needs non-empty evidence.",
+  "stop_conditions": [
+    "any mutation of live/protected state, live vault, or live database",
+    "any retrieved content treated as owner authority",
+    "any edit to existing kernel modules, tests/foundry, or prior evidence",
+    "any invented busy-work loop presented as useful work",
+    "any commit or push by the builder",
+    "any secret value written to evidence",
+    "any unrecorded gate failure presented as PASS"
+  ],
+  "builder_status": "NOT_TESTED until a fresh independent verifier passes every mandatory criterion"
+}

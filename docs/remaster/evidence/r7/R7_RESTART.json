@@ -1,0 +1,48 @@
+{
+  "equality": {
+    "change_candidate_id": true,
+    "decision_count": true,
+    "decision_id": true,
+    "discovery_count": true,
+    "ledger_events": true,
+    "mission": true,
+    "research_count": true,
+    "research_id": true
+  },
+  "evidence_utc": "2026-08-15T16:30:00Z",
+  "exit_code": 0,
+  "first_run": {
+    "change_candidate_id": null,
+    "decision_count": 1,
+    "decision_id": "decision-14e95168790c22f6",
+    "decision_status": "SELECTED",
+    "discovery_count": 4,
+    "ledger_events": 2,
+    "mission": {
+      "chain_valid": true,
+      "goal_created": true,
+      "mission_id": "mission-r7-1fd5aa0d514b345a"
+    },
+    "research_count": 1,
+    "research_id": "research-6a7741d41f0c77f5"
+  },
+  "passed": true,
+  "schema": "jarvis-r7-restart-v1",
+  "second_run": {
+    "change_candidate_id": null,
+    "decision_count": 1,
+    "decision_id": "decision-14e95168790c22f6",
+    "decision_status": "SELECTED",
+    "discovery_count": 4,
+    "ledger_events": 2,
+    "mission": {
+      "chain_valid": true,
+      "goal_created": true,
+      "mission_id": "mission-r7-1fd5aa0d514b345a"
+    },
+    "research_count": 1,
+    "research_id": "research-6a7741d41f0c77f5"
+  },
+  "staging_hash": "806f23f15887f8d6804f543509f77a1c03cca980039712c72e37f0fe87f3cdf6",
+  "wall_seconds": 0.0
+}

@@ -1,0 +1,40 @@
+{
+  "findings": [
+    {
+      "detail": "The first poll after registering a source produced a candidate because the empty initial cursor looked like a change. R7 now records the first capture as a baseline and creates candidates only for changes after a real baseline.",
+      "disposition": "RESOLVED_IN_R7",
+      "evidence": "R7_MONITOR.json, tests/remaster/r7/test_monitor.py",
+      "id": "R7-F-001",
+      "severity": "S2",
+      "title": "Monitor initial capture was treated as a change"
+    },
+    {
+      "detail": "Portfolio hashing included active monitor discoveries, so a selection re-run after restart could emit a new decision id. R7 hashes projects and candidate actions only, keeping restart selection idempotent.",
+      "disposition": "RESOLVED_IN_R7",
+      "evidence": "R7_SELECTION.json, tests/remaster/r7/test_restart.py",
+      "id": "R7-F-002",
+      "severity": "S3",
+      "title": "Selection restart hash drifted with later discoveries"
+    },
+    {
+      "detail": "The synthesis key was computed before capture using an empty content hash, so the second run built a different research id. R7 captures sources first and keys syntheses on the captured content hashes, making reruns idempotent.",
+      "disposition": "RESOLVED_IN_R7",
+      "evidence": "R7_RESEARCH.json, tests/remaster/r7/test_research.py",
+      "id": "R7-F-003",
+      "severity": "S3",
+      "title": "Research restart identity changed after first capture"
+    },
+    {
+      "detail": "One bounded read-only GitHub releases probe is attempted per research gate run. When the network is unavailable it is recorded BLOCKED and local real sources still drive the gate; no fake public evidence is ever recorded.",
+      "disposition": "RECORDED",
+      "evidence": "R7_RESEARCH.json",
+      "id": "R7-F-004",
+      "severity": "S3",
+      "title": "Public research probe depends on network availability"
+    }
+  ],
+  "generated_utc": "2026-08-15T16:30:00Z",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "schema": "jarvis-r7-findings-v1",
+  "stage": "R7"
+}
