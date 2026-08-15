@@ -7,7 +7,7 @@ name = "jarvis-foundry"
 version = "0.1.0"
 description = "Durable autonomy kernel and independent supervisor for JARVIS Foundry"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = ["pyyaml>=6.0"]
 
 [project.optional-dependencies]
 dev = ["pytest>=9,<10"]
