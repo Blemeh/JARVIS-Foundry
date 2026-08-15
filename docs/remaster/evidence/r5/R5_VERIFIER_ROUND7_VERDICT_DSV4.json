@@ -1,0 +1,273 @@
+{
+  "schema": "jarvis-r5-verifier-round7-verdict-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R5",
+  "repair_round": 7,
+  "verifier": "r5_verifier_round7_dsv4",
+  "verifier_model": "deepseek-v4-flash via codex-router",
+  "verdict": "PASS",
+  "generated_utc": "2026-08-15T07:11:33Z",
+  "frozen_base": {
+    "remaster_worktree": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry-Remaster",
+    "remaster_commit": "c72b32f25fa7c5d1dbcbb4c2d24fde8748fb2853",
+    "remaster_branch": "remaster/post-v7-purpose",
+    "baseline_source": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
+    "baseline_source_commit": "93a3ddc0965dfaf3e4cb9dc0952467bd5250520a",
+    "isolated_venv": "C:/Users/b/AppData/Local/Temp/jarvis-r3-venv/Scripts/python.exe",
+    "live_db": "C:/Users/b/AppData/Local/hermes/foundry/foundry.db (mode=ro copies only)",
+    "work_package_sha256": "06de651feab98dd7f5fb2c23db322244045ff32ba4855a200e6a08605c6ca74c",
+    "builder_report_sha256": "8c3fe2a0ca93689c917914f55ef8ab5caa9f324b3efdb3f2dd7b6b21271e78de",
+    "artifact_manifest_sha256": "9894137d2aca9537b545853038b57b895397a8e53e54472ad348c888229b9f22"
+  },
+  "fail_sha256s": [
+    "bcc2e07ac63e067f4e7806a1e0f4628c4317191cb4d98f681812eaa320f4e865",
+    "45ff8710ce04880076eb4512df6a3ef14faffe9095d5d0229000d562286e20af",
+    "2208590be900fe21ff9af9590c4ba690bb81c3b59b54da06b9649f34cbd31726",
+    "9eaa7603b473ac83c4401507fcd96ca1e91431493b2c999beed922127a5b6402",
+    "d2d1e9c41b07af7fc5eac1d9bb16677f3bb11cb4d8d4c8f48a61e56ec8bc6a96",
+    "fea7a8d6e3cac9b7a05e96bab46811659714025ead7bc00517897e115b165a25"
+  ],
+  "criteria": [
+    {
+      "id": "R5-C01",
+      "status": "PASS",
+      "evidence": [
+        "all 68 real manifest entries hash+size-match disk (69 total = 68 real + 1 SELF_REFERENTIAL_REPORT); work package 06de651f, builder report 8c3fe2a0, manifest 9894137d all recomputed and match the frozen scope",
+        "rounds 1-6 verdicts byte-identical and manifest-bound: bcc2e07a / 45ff8710 / 2208590b / 9eaa7603 / d2d1e9c4 / fea7a8d6",
+        "D01 preservation fresh: byte_identical=True on all three samples, row streams ee85e859 (live 51,444) / 8ac0adf6 (R0 42,874) / 9f418459 (isolated 158), zero sidecars; raw 74ef1094 matches frozen",
+        "D02 focused tests 34 passed exit 0; reader NULL-causation regression present and reproduced",
+        "D03 replay deterministic twice on the 51,444-row snapshot; raw 8ad807d3 byte-identical across runs and identical to frozen",
+        "D04 independent invariants PASS on all three samples; raw f4a83298 matches frozen",
+        "D05 correction rehearsal additive-only and ledger-documented; raw f8808128 matches frozen",
+        "D06 fresh migration reproduces the frozen evidence: live fingerprint 69c66169, isolated idempotent, 8/8 interruption boundaries resume with hashes_match=True, rollback restores original bytes with previous-release readability; raw 06f1fb85 byte-identical to frozen",
+        "D07 fresh restore reproduced twice with byte-identical restore points: passed=true, live_database 3d6b2ed1, WAL/SHM present, executable 93501679 real, events=42874, aggregate a9559b2e matches frozen R5_RESTORE.json",
+        "D08 cutover rehearsal zero loss/duplication on live and isolated; raw 1481bfe0 matches frozen"
+      ]
+    },
+    {
+      "id": "R5-C02",
+      "status": "PASS",
+      "evidence": [
+        "replay_gate reproduced twice to separate temp outputs: live_snapshot 51,444 rows refused=0 chain_valid=True projection_ok=True repeated_identical=True head=972967aea1c6570ea8580b909e04f92ec1015bb3d9eef0ed99c102792381232a; live_r0_frozen 42,874 rows head=961e94724ca5acb41257b6f780ef93d9cfcfd33b28c8670564974f5edb21c7d9; isolated_v7_frozen 158 rows head=6765f6e73efa4cb00cc1b711e362f64613d2ee812e0c24cd73e34a63221f7fe7",
+        "raw 8ad807d3 byte-identical across both runs and identical to frozen R5_REPLAY_RAW.txt; JSON content identical across runs except wall_seconds and the temp raw filename",
+        "unknown-row refusal reproduced: event type mystery.kind is not in the historical compatibility catalog",
+        "independent NULL probe on the frozen 51,444-row live copy via LegacyEventsReader: 51,444/51,444 NULL causation rows read back as None and 0 rows read as the string None"
+      ]
+    },
+    {
+      "id": "R5-C03",
+      "status": "PASS",
+      "evidence": [
+        "corrections_gate reproduced PASS fresh: all three samples invariants_ok=True refusals=0",
+        "mechanism rehearsal legacy_unchanged=True correction_appended=True ledger_documents=True; raw f8808128 matches frozen R5_CORRECTIONS_RAW.txt exactly; corrections additive-only with zero real historical defects"
+      ]
+    },
+    {
+      "id": "R5-C04",
+      "status": "PASS",
+      "evidence": [
+        "migration_gate reproduced PASS fresh on the frozen 51,444-row snapshot: live idempotent=True baseline_fingerprint=69c661694e97a3890e6c0f29d7586cadc01072ba1b42642a01d5d672c574510d; isolated idempotent=True",
+        "interruption matrix at all 8 boundaries (PREPARE, READ, CONVERT, LEDGER, PROJECT, CORRECT, CUTOVER, COMPLETE): interrupted=True resume_exit=0 hashes_match=True",
+        "rollback: rollback_restores_original_bytes=True previous_release_readable=True",
+        "head hashes match the frozen evidence: live 972967aea1c6570ea8580b909e04f92ec1015bb3d9eef0ed99c102792381232a, isolated 6765f6e73efa4cb00cc1b711e362f64613d2ee812e0c24cd73e34a63221f7fe7; raw 06f1fb85 byte-identical to frozen"
+      ]
+    },
+    {
+      "id": "R5-C05",
+      "status": "PASS",
+      "evidence": [
+        "restore_gate reproduced PASS twice in record mode to temp outputs: passed=true restore_verified=True previous_release_readable=True events=42874 bundle_verify_exit=0 clone_exit=0 task_utf16_parses=True config_yaml_parses=True",
+        "restore unit includes live_database 3d6b2ed1 (frozen R0, 30,773,248 bytes), live WAL (0 bytes) and SHM (32,768 bytes) sidecars, isolated DB 486ca6f1 with WAL/SHM sidecars, executable 93501679 (real 254,800-byte python.exe), config 732d3040, task f0961842, bundle 26d27355, secrets metadata, and 22 evidence components (21 leaf JSONs + executable metadata)",
+        "restore-point manifest and restore report are byte-identical across run 1 and run 2; fresh aggregate a9559b2ee9880599db045cd949f6b538d8dff61986c318319d42d536b0c2d4d5 is reproducible and equals the frozen R5_RESTORE.json aggregate; outer JSON differs only in wall_seconds",
+        "fresh restore point binds R5_PRESERVATION.json a16c047f (row streams 8ac0adf6 live / 9f418459 isolated) and R5_MIGRATION.json be78371f (heads 972967ae live / 6765f6e7 isolated) and includes R5_VERIFIER_ROUND5_VERDICT_DSV4.json d2d1e9c4 and R5_VERIFIER_ROUND6_VERDICT_DSV4.json fea7a8d6",
+        "R5-V6-001 closure ordering verified repaired: frozen R5_RESTORE.json hash ef6d8d62 matches disk, is manifest-bound, and is reproducible from the frozen closure"
+      ]
+    },
+    {
+      "id": "R5-C06",
+      "status": "PASS",
+      "evidence": [
+        "cutover_gate reproduced PASS fresh: live lossless=True duplicate_free=True clean=True chain_valid=True idempotent=True; isolated lossless=True duplicate_free=True clean=True idempotent=True",
+        "raw 1481bfe0 matches frozen R5_CUTOVER_RAW.txt exactly; zero legacy-only ids, zero r4-only ids, zero duplicated ids"
+      ]
+    },
+    {
+      "id": "R5-C07",
+      "status": "PASS",
+      "evidence": [
+        "fresh focused suite: 34 passed, 0 failures/errors/skips, exit 0",
+        "fresh full suite with the frozen scope (tests/foundry + tests/remaster/r3 + r4 + r5): 1146 passed, 0 failures/errors/skips, exit 0; fresh JUnit suite tests=1146; all 16 progress lines byte-identical to frozen R5_FULL_SUITE_RAW.txt (my captured raw additionally appends the duration summary line, which the frozen capture omits)",
+        "a broader pytest tests collection also picks up 41 out-of-scope tests/remaster/r1 tests; one R1 test (test_exact_current_prototype_is_rejected_without_database_write) fails deterministically because it hard-codes expected commit bf8f1493 while the frozen R5 worktree HEAD is c72b32f; R1 tests are excluded from the frozen R5 full-suite scope and this is not R5-owned or R5-caused",
+        "mypy strict kernel reproduced: 0 errors, 33 source files, raw 0d42646f byte-identical to frozen",
+        "ruff check clean raw a4443afd matches frozen; ruff format --check clean (53 files for kernel+scripts+tests, exit 0)",
+        "fresh bandit over the full R5-owned closure: 23 files including refresh_suite_evidence.py, 0 HIGH, 0 MEDIUM, 16 LOW (fresh raw bc2fa81e); frozen bandit evidence still predates the script (22 files, LOW 14, hash 3d2d212c) - recorded as new finding R5-V7-001",
+        "secret scan fresh: 70 owned files, 0 matches; fresh secret-scan JSON 5f0c8c93 is byte-identical to frozen (R5-V6-004 repair verified present)",
+        "no protected-baseline files are modified by R5; the out-of-scope R1 behavior is outside R5 ownership"
+      ]
+    },
+    {
+      "id": "R5-C08",
+      "status": "PASS",
+      "evidence": [
+        "git status --short in remaster unchanged by verification except this verdict file: only R5 additions (docs/remaster/evidence/r5/, work_packages/R5_WORK_PACKAGE.json, scripts/remaster/r5/, src/jarvis_foundry/kernel/compat/, tests/remaster/r5/) plus FINDINGS.jsonl modified with R5-F049/R5-F050; HEAD c72b32f25fa7c5d1dbcbb4c2d24fde8748fb2853 unchanged; no commits created",
+        "git status --short in protected main: exactly six untracked owner docs; HEAD 93a3ddc0965dfaf3e4cb9dc0952467bd5250520a unchanged",
+        "evidence under budget: evidence dir 406,960 bytes < 8,388,608; secret scan 0 matches",
+        "frozen live guard comparison: protected_state_unchanged=True, tasks_unchanged=True, processes_unchanged=True, r5_attributable_mutation=False (live DB growth is supervisor.heartbeat only)",
+        "all verifier gate outputs written under C:/Users/b/AppData/Local/Temp/jarvis-r7-verifier; the only repo write is this verdict file"
+      ]
+    },
+    {
+      "id": "R5-G01",
+      "status": "PASS",
+      "evidence": [
+        "replay deterministic and byte-identical across two fresh gate runs (raw 8ad807d3 identical run-to-run and identical to frozen); unknown rows fail closed",
+        "live head 972967ae on the 51,444-row snapshot, frozen R0 head 961e9472, isolated head 6765f6e7; NULL causation preserved 51,444/51,444"
+      ]
+    },
+    {
+      "id": "R5-G02",
+      "status": "PASS",
+      "evidence": [
+        "fresh preservation gate: all three samples byte_identical=True sidecars_created=[]; row-stream hashes ee85e859/8ac0adf6/9f418459 match frozen evidence",
+        "corrections rehearsal leaves legacy rows byte-identical and is additive-only"
+      ]
+    },
+    {
+      "id": "R5-G03",
+      "status": "PASS",
+      "evidence": [
+        "fresh migration rehearsal: idempotent on live (fingerprint 69c66169) and isolated samples, interruption at all 8 boundaries with resume matching baseline hashes, rollback restores original bytes, previous release readable; raw and head hashes match the frozen evidence"
+      ]
+    },
+    {
+      "id": "R5-G04",
+      "status": "PASS",
+      "evidence": [
+        "full restoration verified twice on copies: passed=true restore_verified=True events=42874, bundle verify/clone exit 0, task/config parse, 22 evidence components, live_database 3d6b2ed1, WAL/SHM sidecars, real executable 93501679",
+        "fresh restore-point aggregate a9559b2e is byte-identical across runs and equals the frozen R5_RESTORE.json aggregate; frozen restore point binds the current preservation/migration evidence and rounds 1-6 verdicts"
+      ]
+    },
+    {
+      "id": "R5-G05",
+      "status": "PASS",
+      "evidence": [
+        "cutover rehearsal reproduced fresh with zero legacy-only ids, zero r4-only ids, zero duplicated ids, chain valid, clean reconciliation, idempotent signatures matching on live and isolated samples; raw matches frozen"
+      ]
+    },
+    {
+      "id": "R5-G06",
+      "status": "PASS",
+      "evidence": [
+        "frozen live-guard comparison evidence: protected_state_unchanged=True, tasks_unchanged=True, processes_unchanged=True, r5_attributable_mutation=False",
+        "no live/protected writes, task changes, process changes, commits, or pushes observed; live DB read only via mode=ro copies; evidence 406,960 bytes under 8 MiB; secret scan 0 matches; all verifier gate outputs written to temp only"
+      ]
+    }
+  ],
+  "deliverables": {
+    "R5-D01": {
+      "status": "PASS",
+      "evidence": [
+        "preservation gate reproduced: byte-identical sample files before/after reads, zero -wal/-shm sidecars created, no history mutation; row-stream hashes ee85e859/8ac0adf6/9f418459 match frozen fresh evidence"
+      ]
+    },
+    "R5-D02": {
+      "status": "PASS",
+      "evidence": [
+        "readers.py preserves SQL NULL causation_id as None; independent fresh live-copy probe: 51,444/51,444 NULL causation rows read as None, 0 rows as the string None",
+        "regression test test_reader_preserves_null_causation_id exists; fresh focused suite 34 passed"
+      ]
+    },
+    "R5-D03": {
+      "status": "PASS",
+      "evidence": [
+        "replay deterministic across two fresh gate runs on the 51,444-row live snapshot and both frozen samples; raw byte-identical and identical to frozen"
+      ]
+    },
+    "R5-D04": {
+      "status": "PASS",
+      "evidence": [
+        "independent invariants reproduced fresh: zero sequence gaps, zero duplicate event ids/idempotency keys, zero payload-hash mismatches, projection invariants ok on all three samples"
+      ]
+    },
+    "R5-D05": {
+      "status": "PASS",
+      "evidence": [
+        "correction mechanism additive-only and ledger-documented; fresh rehearsal legacy_unchanged=True correction_appended=True ledger_documents=True; raw matches frozen; zero real historical defects"
+      ]
+    },
+    "R5-D06": {
+      "status": "PASS",
+      "evidence": [
+        "fresh migration rehearsal covers idempotency, all 8 interruption boundaries with resume, and byte-identical rollback with previous-release readability; head hashes match frozen evidence (972967ae live, 6765f6e7 isolated)"
+      ]
+    },
+    "R5-D07": {
+      "status": "PASS",
+      "evidence": [
+        "fresh restore rehearsed twice and is reproducible: passed=true events=42874, live_database 3d6b2ed1, WAL/SHM, real executable 93501679, 22 evidence components, aggregate a9559b2e byte-identical across runs and equal to the frozen restore point; binds current preservation a16c047f and migration be78371f evidence"
+      ]
+    },
+    "R5-D08": {
+      "status": "PASS",
+      "evidence": [
+        "dual-run/cutover rehearsal reproduced fresh: zero loss, zero duplication, clean reconciliation, chain valid, idempotent signatures match on both samples; raw matches frozen"
+      ]
+    }
+  },
+  "findings": [
+    {
+      "id": "R5-V7-001",
+      "severity": "S4",
+      "title": "Claimed bandit regeneration is still absent: frozen bandit raw still predates refresh_suite_evidence.py",
+      "reproduction": "frozen R5_BANDIT_RAW.json generated_at 2026-08-15T02:55:31Z scans 22 files with LOW=14 and has no refresh_suite_evidence.py metric; R5_STATIC.json still binds raw 3d2d212c and R5_ARTIFACT_MANIFEST.json still binds the same stale hash; fresh bandit over scripts/remaster/r5 + src/jarvis_foundry/kernel/compat scans 23 files including refresh_suite_evidence.py and records 0 HIGH, 0 MEDIUM, 16 LOW (fresh raw bc2fa81e)",
+      "invariant": "static evidence must cover the final R5-owned closure that the manifest binds",
+      "effect": "Evidence hygiene only; the mandatory 0 HIGH/0 MEDIUM bandit gate reproduces fresh, but the claimed repair for R5-V6-002 is not present in the frozen evidence"
+    },
+    {
+      "id": "R5-V7-002",
+      "severity": "S4",
+      "title": "Claimed FINDINGS prose repair is absent: registry still cites superseded closure hashes",
+      "reproduction": "FINDINGS.jsonl sha256 25e69e5d is byte-identical to round 6; R5-F049 still cites report b23d7a10/manifest aef3d2ad and R5-F050 still cites ad96b0c5/022b96e2 instead of the current frozen closure 8c3fe2a0/9894137d; R5-F049 and R5-F050 are present as required",
+      "invariant": "registry entries reflect the frozen closure hashes",
+      "effect": "Registry hygiene only; the claimed cosmetic repair for R5-V6-003 is not present, and the verifier cannot edit FINDINGS.jsonl"
+    }
+  ],
+  "status_summary": "PASS: every mandatory criterion and gate passes with fresh, non-empty evidence. The round-6 closure-ordering defect (R5-V6-001) is genuinely repaired: fresh record-mode restore_gate runs are internally byte-identical (aggregate a9559b2e), reproduce the frozen R5_RESTORE.json exactly apart from wall_seconds, bind the current preservation (8ac0adf6 live / 9f418459 isolated) and migration (972967ae live / 6765f6e7 isolated) hashes plus the round-5 and round-6 verdicts, and include live_database 3d6b2ed1, WAL/SHM sidecars, and the real executable 93501679 with events=42874. Replay is deterministic twice (raw 8ad807d3), NULL causation is preserved 51,444/51,444 with zero string None, cutover shows zero loss/duplication, migration reproduces 8/8 interruption resumes with byte-identical rollback, focused tests are 34/34, the frozen-scope full suite is 1146/1146 exit 0, mypy strict is 0 errors, ruff check+format are clean, bandit is 0 high/medium, secret scan is 70 files / 0 matches, and the frozen-scope manifest is 68 real + 1 self with zero hash/size mismatches. Two claimed S4 hygiene repairs are absent and recorded as new findings: frozen bandit evidence still omits refresh_suite_evidence.py (R5-V7-001) and FINDINGS.jsonl still cites superseded closure hashes (R5-V7-002); neither violates a mandatory criterion. A broader pytest tests run additionally collected 41 out-of-scope R1 tests of which one failed deterministically because it hard-codes commit bf8f1493 versus the frozen R5 worktree HEAD c72b32f; R1 tests are not part of the frozen R5 full-suite scope and this is not R5-caused.",
+  "evidence_paths_and_hashes": {
+    "docs/remaster/work_packages/R5_WORK_PACKAGE.json": "06de651feab98dd7f5fb2c23db322244045ff32ba4855a200e6a08605c6ca74c",
+    "docs/remaster/evidence/r5/R5_BUILDER_REPORT.json": "8c3fe2a0ca93689c917914f55ef8ab5caa9f324b3efdb3f2dd7b6b21271e78de",
+    "docs/remaster/evidence/r5/R5_ARTIFACT_MANIFEST.json": "9894137d2aca9537b545853038b57b895397a8e53e54472ad348c888229b9f22 (68 real entries + 1 SELF_REFERENTIAL_REPORT, all hash+size-match disk)",
+    "docs/remaster/evidence/r5/R5_VERIFIER_ROUND1_VERDICT_DSV4.json": "bcc2e07ac63e067f4e7806a1e0f4628c4317191cb4d98f681812eaa320f4e865",
+    "docs/remaster/evidence/r5/R5_VERIFIER_ROUND2_VERDICT_DSV4.json": "45ff8710ce04880076eb4512df6a3ef14faffe9095d5d0229000d562286e20af",
+    "docs/remaster/evidence/r5/R5_VERIFIER_ROUND3_VERDICT_DSV4.json": "2208590be900fe21ff9af9590c4ba690bb81c3b59b54da06b9649f34cbd31726",
+    "docs/remaster/evidence/r5/R5_VERIFIER_ROUND4_VERDICT_DSV4.json": "9eaa7603b473ac83c4401507fcd96ca1e91431493b2c999beed922127a5b6402",
+    "docs/remaster/evidence/r5/R5_VERIFIER_ROUND5_VERDICT_DSV4.json": "d2d1e9c41b07af7fc5eac1d9bb16677f3bb11cb4d8d4c8f48a61e56ec8bc6a96",
+    "docs/remaster/evidence/r5/R5_VERIFIER_ROUND6_VERDICT_DSV4.json": "fea7a8d6e3cac9b7a05e96bab46811659714025ead7bc00517897e115b165a25",
+    "docs/remaster/FINDINGS.jsonl": "25e69e5d0792428ece811d282a8984f6093f74af7e5f8de1402a728f42d0695b (contains R5-F049 and R5-F050; repair text still cites superseded closure hashes, finding R5-V7-002)",
+    "frozen_r0_live_db": "3d6b2ed1ed132b719cded10d2c978004b22c6d520e141f7d788866ee865d3fab",
+    "frozen_live_snapshot_51444_rows": "0cda34d9ee5340c239c0a3f2750a951401e093e72961f2ac2af25ff51bc163c7 (C:/Users/b/AppData/Local/Temp/jarvis-r5-work/live-foundry-r5.db)",
+    "fresh_preservation": "PRESERVATION.json 7c7e3ae1 / raw 74ef1094 (byte-identical to frozen; row streams ee85e859 live, 8ac0adf6 R0, 9f418459 isolated)",
+    "fresh_replay": "REPLAY_RUN1.json 89e46626 / REPLAY_RUN2.json 62970c9f, raw 8ad807d3 byte-identical across runs and identical to frozen; content differs only in wall_seconds and raw filename",
+    "fresh_invariants": "INVARIANTS.json b0764190 / raw f4a83298 (matches frozen)",
+    "fresh_corrections": "CORRECTIONS.json 05189d9a / raw f8808128 (matches frozen)",
+    "fresh_cutover": "CUTOVER.json 46a515ee / raw 1481bfe0 (matches frozen)",
+    "fresh_migration": "MIGRATION.json 88941616 / raw 06f1fb85 (byte-identical to frozen; live fingerprint 69c66169, heads 972967ae/6765f6e7, 8/8 interruption resumes, rollback ok)",
+    "fresh_restore_runs": "RESTORE_RUN1.json bf1dd3bb / RESTORE_RUN2.json 69fa105c, raw 39e97c81 byte-identical across runs and identical to frozen; aggregate a9559b2e equals frozen; outer JSON differs only in wall_seconds",
+    "fresh_restore_point_aggregate": "a9559b2ee9880599db045cd949f6b538d8dff61986c318319d42d536b0c2d4d5",
+    "frozen_focused_junit": "93df24153fd7fae7a9008afa2001e95968d5dff856240558d90ef661b32ab7ef (tests=34, failures=0)",
+    "frozen_full_suite_junit": "a32d3fa412af5a111aef808b7df547467963d7e496f9df2f2354e0b639f183ae (tests=1146, failures=0)",
+    "fresh_full_suite_junit": "fresh C:/Users/b/AppData/Local/Temp/jarvis-r7-verifier/full-scope.xml (suite tests=1146, failures=0, exit 0)",
+    "fresh_full_suite_raw": "C:/Users/b/AppData/Local/Temp/jarvis-r7-verifier/full-scope.raw (16 progress lines byte-identical to frozen R5_FULL_SUITE_RAW.txt 4f4a25c0; my capture appends the duration summary line that the frozen capture omits)",
+    "mypy_raw": "0d42646ff848fddea83e113f5e72c066dc050fc901c93d17176142ab98c966e9 (fresh byte-identical, 0 errors / 33 files)",
+    "ruff_check_raw": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0 (fresh matches frozen)",
+    "ruff_format_check": "53 files already formatted, exit 0 (fresh)",
+    "frozen_bandit_raw": "3d2d212cb92d57822bfc27e5fc48213ec4aa51ac9886479971fa2939ee28535b (0 HIGH, 0 MEDIUM, 14 LOW, 22 files; omits refresh_suite_evidence.py; stale, finding R5-V7-001)",
+    "fresh_bandit_r5owned": "bc2fa81e45fdf77ab7f7e475c47efb0b5713d9dc30b1b51da1088719308c48ce (0 HIGH, 0 MEDIUM, 16 LOW, 23 files incl refresh_suite_evidence.py)",
+    "secret_scan": "fresh SECRET.json 5f0c8c93 / raw scanned=70 matches=0 (byte-identical to frozen R5_SECRET_SCAN.json)",
+    "fresh_null_probe": "51,444/51,444 NULL causation -> None, 0 rows as string None (frozen 51,444-row live copy)",
+    "frozen_live_guard_comparison": "a4d02dc66bbd594c5a2bd854b6d22997d1a050e1c12b17140f1483390045bac2 (protected_state_unchanged=True)",
+    "out_of_scope_r1_test": "tests/remaster/r1/test_current_prototype.py::test_exact_current_prototype_is_rejected_without_database_write fails because it hard-codes commit bf8f1493 while the frozen R5 worktree HEAD is c72b32f; excluded from the frozen R5 full-suite scope",
+    "verifier_temp_outputs": "C:/Users/b/AppData/Local/Temp/jarvis-r7-verifier (all gate outputs); work copies under C:/Users/b/AppData/Local/Temp/jarvis-r5-work; only repo write is this verdict file"
+  },
+  "next_action": "Mandatory criteria are PASS; before round 8, repair the two S4 hygiene items: (1) regenerate R5_BANDIT_RAW.json and R5_STATIC.json over the full 23-file R5-owned closure so the bandit raw includes refresh_suite_evidence.py (0 HIGH, 0 MEDIUM, 16 LOW), and (2) update FINDINGS.jsonl R5-F049/R5-F050 repair prose to the final closure hashes (8c3fe2a0 report / 9894137d manifest) or clearly label the cited hashes as historical. Regenerate R5_ARTIFACT_MANIFEST.json and R5_BUILDER_REPORT.json last so every entry binds the fresh bandit/registry closure, then re-verify. Keep all R5-owned files and protected baseline untouched."
+}

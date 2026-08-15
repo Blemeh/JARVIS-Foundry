@@ -1,0 +1,227 @@
+{
+  "schema": "jarvis-r5-verifier-round1-verdict-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R5",
+  "verifier": "r5_verifier_round1_dsv4",
+  "verifier_model": "deepseek-v4-flash via codex-router",
+  "verdict": "FAIL",
+  "generated_utc": "2026-08-15T03:25:28Z",
+  "frozen_base": {
+    "remaster_worktree": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster",
+    "remaster_commit": "c72b32f25fa7c5d1dbcbb4c2d24fde8748fb2853",
+    "remaster_branch": "remaster/post-v7-purpose",
+    "baseline_source": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry",
+    "baseline_source_commit": "93a3ddc0965dfaf3e4cb9dc0952467bd5250520a",
+    "isolated_venv": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r3-venv\\Scripts\\python.exe",
+    "live_db": "C:\\Users\\b\\AppData\\Local\\hermes\\foundry\\foundry.db (mode=ro copies only)"
+  },
+  "criteria": [
+    {
+      "id": "R5-C01",
+      "status": "FAIL",
+      "evidence": [
+        "R5-D02 FAIL: readers.py converts every NULL causation_id to the literal string 'None'; fresh read-only live copy has 52,315/52,315 rows with SQL NULL causation_id and 0 rows with literal 'None', while read_events() returns causation_id='None' for all 52,315 converted events",
+        "R5-D07 FAIL: restore rehearsal omits a WAL component and captures the executable only as metadata JSON; restored DB bytes (builder temp copy 3faa69c30366521827495f8b6bcb85f36f50dca1e06a0008c15b2907793df12f) do not match the frozen R0 manifest hash (3d6b2ed1ed132b719cded10d2c978004b22c6d520e141f7d788866ee865d3fab)",
+        "all other R5-D01..D08 reproduced PASS; see deliverables"
+      ]
+    },
+    {
+      "id": "R5-C02",
+      "status": "PASS",
+      "evidence": [
+        "replay_gate.py reproduced PASS: live_snapshot rows=51444 refused=0 chain_valid=True projection_ok=True repeated_identical=True head=673442455c14189a30d675062e0c4c88c339ee4b819dde1dd8d14f359af6d41d; live_r0_frozen rows=42874 head=6459808bdcb618a72031b31d54d50e414f186bc6f622eec5f8c7769983d0e3f7; isolated_v7_frozen rows=158 head=9896432d323871ce97cd6c45dda7db72d53fb856c95b626f433a6b2c24d22c31",
+        "independent fresh-copy probe: two replay_legacy runs on a 52,315-row read-only copy both returned ledger_content_sha256=1eb6c5fcba7e6bfbaf1e95f60d10123d3cbb437729e5a083cccda377096b4a1e and projection snapshot dc4903bfc23fddf035568d36b2d152c1053d098b3f0704f2efa1db0d082a7399; replay_signature equal; source bytes unchanged after two replays",
+        "invariants reproduced: zero sequence gaps, zero duplicate event ids/idempotency keys, zero payload-hash mismatches, projection invariants ok on all three samples"
+      ]
+    },
+    {
+      "id": "R5-C03",
+      "status": "PASS",
+      "evidence": [
+        "independent probe on frozen R0 copy (42,874 events): appended CorrectionLedger R5V-IND-001, ledger grew 42,874 -> 42,875 by exactly one compat.correction.recorded event; source row stream sha256 and source file bytes unchanged; ledger.verify_chain().valid=True",
+        "corrections_gate.py reproduced: all three samples invariants_ok=True with zero refusals; mechanism rehearsal legacy_unchanged=True correction_appended=True ledger_documents=True",
+        "R5_FINDINGS.json hash f8ad63e39ef237c4d72ea6b50217bca498e5eaaa540bd7e9a951ea7c7ea454de records zero real historical defects"
+      ]
+    },
+    {
+      "id": "R5-C04",
+      "status": "PASS",
+      "evidence": [
+        "migration_gate.py reproduced PASS (wall 556.619s): live idempotent=True, isolated idempotent=True; interruption matrix at all 8 boundaries (PREPARE, READ, CONVERT, LEDGER, PROJECT, CORRECT, CUTOVER, COMPLETE) each interrupted=True exit=42 resume_exit=0 artifact_hashes_match_baseline=True",
+        "rollback rehearsal reproduced: rollback_restores_original_bytes=True previous_release_readable=True",
+        "note: full interruption matrix is exercised on the isolated V7 158-row sample; the live 51,444-row sample is exercised for idempotency, LEDGER interruption/resume, and rollback only"
+      ]
+    },
+    {
+      "id": "R5-C05",
+      "status": "FAIL",
+      "evidence": [
+        "restore_gate.py reproduced PASS by its own definition (restore_verified=True previous_release_readable=True events=42874 bundle_verify_exit=0 clone_exit=0 task_utf16_parses=True config_yaml_parses=True, wall 2.822s)",
+        "mandatory recovery unit is incomplete: no WAL component exists in the restore point; executable is restored only as executable-metadata.json, not the executable artifact; the restored DB component bytes do not match the frozen R0 manifest hash (see R5-C01 evidence)",
+        "restore evidence component count is not reproducible: builder recorded 19 evidence components; a fresh run against the frozen artifact set records 18"
+      ]
+    },
+    {
+      "id": "R5-C06",
+      "status": "PASS",
+      "evidence": [
+        "cutover_gate.py reproduced PASS (wall 237.066s): live legacy_count=51454 r4_count=51454 matched=51454 lossless=True duplicate_free=True reconciliation_clean=True chain_valid=True idempotent_signatures_match=True; isolated legacy_count=163 r4_count=163 matched=163 lossless=True duplicate_free=True reconciliation_clean=True idempotent_signatures_match=True"
+      ]
+    },
+    {
+      "id": "R5-C07",
+      "status": "PASS",
+      "evidence": [
+        "venv python -B -m pytest tests/foundry tests/remaster/r3 tests/remaster/r4 tests/remaster/r5 -p no:cacheprovider --basetemp C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r5-verifier-basetemp -q exited 0 with 100% progress and zero failures (about 10 minutes)",
+        "focused pytest tests/remaster/r5 reproduced: 33 passed"
+      ]
+    },
+    {
+      "id": "R5-C08",
+      "status": "PASS",
+      "evidence": [
+        "git status --short in remaster: only R5 additions (docs/remaster/evidence/r5/, docs/remaster/work_packages/R5_WORK_PACKAGE.json, scripts/remaster/r5/, src/jarvis_foundry/kernel/compat/, tests/remaster/r5/); git diff --stat HEAD empty; no commits created",
+        "git status --short in protected main: only six untracked owner docs; HEAD 93a3ddc0965dfaf3e4cb9dc0952467bd5250520a unchanged",
+        "live boundary: JARVIS-Foundry-Supervisor Running and Hermes_Gateway Ready with XML sha256 7c5ea4fbf5158610cb8016a8b91d10303e5b6f15a615085f52e12a9e1ab9a880 / 5d2a3789b1a8f5ab91bc6d319af46515615892266a6186f0c01a0e89263cca44, matching R5_LIVE_GUARD evidence; supervisor processes 21636/17052 with creation dates and command hash 824e09a3ea8d12f38d8fe7fa93cf602e0229c190dea3692e023837963cb9a8e9 unchanged",
+        "live DB provenance via read-only SQLite backup: builder snapshot 51,444 rows -> fresh copy 52,315 rows, delta 871 rows all supervisor.heartbeat, historical prefix event_id/event_type/payload_hash identical; foundry-profile.yaml hash 732d3040c8b8aef81ee5026ba5e44a46ac73c8f6ca7fd81eb2561a061ac65f0a unchanged",
+        "evidence budget: manifest sizes sum 409,936 bytes under 8,388,608; secret scan 0 matches; FINDINGS.jsonl tracked at HEAD c72b32f with no diff and no R5 lines (79 lines, last R4 entry)"
+      ]
+    },
+    {
+      "id": "R5-G01",
+      "status": "PASS",
+      "evidence": [
+        "replay_gate.py reproduced PASS with head hashes identical to builder evidence for all three samples",
+        "independent fresh-copy double replay byte-identical (ledger_content_sha256 and projection snapshot identical) and source untouched",
+        "unknown catalog type refusal reproduced: 'mystery.kind' refused with reason 'not in the historical compatibility catalog'"
+      ]
+    },
+    {
+      "id": "R5-G02",
+      "status": "PASS",
+      "evidence": [
+        "preservation_gate.py reproduced PASS: all three samples byte_identical=True sidecars_created=[] with row_stream sha256 710a0c62fdcd4dfe3a40761d8fc406f404558d95378df808a08e6eb5b0134949 (51,444), b79e9382318561ea00cf1b1de9d3aa348797076a256dd0e4235cc048fe294c81 (42,874), 71339b9ecd80d30b5790059c9ab67c9a1b0a2ea4bfb4feb70cf9a6c360f05f64 (158)",
+        "correction probes confirmed source rows and file bytes unchanged after reads and after additive correction append"
+      ]
+    },
+    {
+      "id": "R5-G03",
+      "status": "PASS",
+      "evidence": [
+        "migration_gate.py reproduced PASS: fresh-run idempotency on live and isolated samples, interruption at all 8 boundaries with resume matching baseline hashes, rollback restores original bytes, previous release readable (see R5-C04 evidence)"
+      ]
+    },
+    {
+      "id": "R5-G04",
+      "status": "FAIL",
+      "evidence": [
+        "restore rehearsal passes its internal checks but does not cover the mandated unit: no WAL component, executable is metadata-only, restored DB bytes differ from the frozen R0 manifest hash, and the recorded 19 evidence components are not reproducible from the frozen artifact set (fresh run records 18)",
+        "previous-release readability and bundle verify/clone do pass on the included components (events=42874, exit 0/0)"
+      ]
+    },
+    {
+      "id": "R5-G05",
+      "status": "PASS",
+      "evidence": [
+        "cutover_gate.py reproduced PASS with zero legacy-only ids, zero r4-only ids, zero duplicated ids, chain valid, and matching idempotency signatures on live and isolated samples (see R5-C06 evidence)"
+      ]
+    },
+    {
+      "id": "R5-G06",
+      "status": "PASS",
+      "evidence": [
+        "no live/protected writes observed; tasks and supervisor processes unchanged; live DB growth is supervisor-only; evidence under 8 MiB; secret scan clean; no commit/push; FINDINGS.jsonl untouched",
+        "limitation: live foundry.db/foundry.db-wal/foundry.db-shm direct file hashes could not be recomputed now because the files are exclusively locked by the daemon; provenance was verified via a mode=ro SQLite backup instead"
+      ]
+    }
+  ],
+  "deliverables": {
+    "R5-D01": {
+      "status": "PASS",
+      "evidence": [
+        "preservation gate reproduced: all sample DB files byte-identical before/after reads, zero -wal/-shm sidecars created, row stream hashes match builder evidence"
+      ]
+    },
+    "R5-D02": {
+      "status": "FAIL",
+      "evidence": [
+        "readers are versioned (migration 1..32, row schema 1), read-only (mode=ro, query_only), fail closed on unknown tables/columns/schema versions/bad JSON/hash mismatch/malformed types; however mapping fidelity is broken: readers.py converts SQL NULL causation_id to literal 'None', so all 52,315 live rows (and all R0/V7 rows) convert to causation_id='None' in the R4 LedgerEvent shape",
+        "focused tests pass 33/33 but none assert causation_id preservation"
+      ]
+    },
+    "R5-D03": {
+      "status": "PASS",
+      "evidence": [
+        "replay is deterministic and byte-identical across repeated runs on all samples including a fresh 52,315-row live copy; source untouched"
+      ]
+    },
+    "R5-D04": {
+      "status": "PASS",
+      "evidence": [
+        "independent row and projection-state invariants reproduced; projection checks never compare against legacy dispatcher output"
+      ]
+    },
+    "R5-D05": {
+      "status": "PASS",
+      "evidence": [
+        "correction mechanism is additive-only and ledger-documented; zero real historical defects found in frozen samples; independent probe confirmed source rows untouched"
+      ]
+    },
+    "R5-D06": {
+      "status": "PASS",
+      "evidence": [
+        "migration idempotency, interruption at every boundary with resume, and byte-identical rollback reproduced (wall 556.619s)"
+      ]
+    },
+    "R5-D07": {
+      "status": "FAIL",
+      "evidence": [
+        "restore point omits WAL and includes only executable metadata, not the executable; restored DB bytes do not match frozen R0 manifest hash; evidence component count drifted (19 recorded vs 18 reproducible)"
+      ]
+    },
+    "R5-D08": {
+      "status": "PASS",
+      "evidence": [
+        "dual-run/cutover rehearsal reproduced: zero loss, zero duplication, clean reconciliation, chain valid, idempotent (wall 237.066s)"
+      ]
+    }
+  },
+  "findings": [
+    {
+      "id": "R5-V1-001",
+      "severity": "S2",
+      "title": "Compatibility reader converts NULL causation_id to literal string 'None' for every legacy event",
+      "reproduction": "Fresh mode=ro copy of live foundry.db: SQL shows 52,315/52,315 events with causation_id IS NULL and 0 with 'None'; LegacyEventsReader.read_events() returns causation_id='None' for all 52,315 events; same defect applies to the 42,874-row R0 and 158-row V7 samples. Root cause: src/jarvis_foundry/kernel/compat/readers.py _row_from_sqlite uses str(row['causation_id']).",
+      "invariant": "nullable-field fidelity: SQL NULL must remain None in the R4 LedgerEvent shape; the converted ledger and header chain must not fabricate string values",
+      "effect": "Every converted event in replay/migration carries causation_id='None', changing semantic content of the migrated ledger even though source rows are byte-identical and replay remains deterministic; no test or invariant checks causation_id"
+    },
+    {
+      "id": "R5-V1-002",
+      "severity": "S3",
+      "title": "Restore recovery unit does not cover the mandated executable/DB/WAL unit and does not match frozen R0 hashes",
+      "reproduction": "restore_gate.py restore point contains config, dependency_freeze, evidence_*, executable_metadata, isolated_v7_database, live_database, secrets_metadata, source_bundle, task; no WAL component and no executable binary component. Builder temp live-foundry-r0.db sha256 3faa69c30366521827495f8b6bcb85f36f50dca1e06a0008c15b2907793df12f differs from frozen R0 manifest hash 3d6b2ed1ed132b719cded10d2c978004b22c6d520e141f7d788866ee865d3fab (row content identical).",
+      "invariant": "recovery-unit completeness: executable + DB + WAL + config + task + secrets metadata + evidence; restored bytes match the frozen restore point",
+      "effect": "R5-D07/R5-G04/R5-C05 cannot be accepted as full restoration evidence; recorded 19 evidence components are not reproducible from the frozen artifact set (fresh run: 18)"
+    },
+    {
+      "id": "R5-V1-003",
+      "severity": "S4",
+      "title": "Manifest confinement misses generated bytecode and file-count drift",
+      "reproduction": "R5-owned paths contain 21 __pycache__ .pyc files (for example scripts/remaster/r5/__pycache__/common.cpython-313.pyc, src/jarvis_foundry/kernel/compat/__pycache__/*.pyc, tests/remaster/r5/__pycache__/*.pyc) not listed in the 62-entry manifest; secret scan file count drifted (builder 64, verifier 63) between runs.",
+      "invariant": "artifact confinement completeness and deterministic owned-file enumeration",
+      "effect": "Evidence hygiene only; no claim-correctness impact on replay/migration/cutover results"
+    }
+  ],
+  "status_summary": "FAIL: 6/8 gates PASS (R5-G01, G02, G03, G05, G06 PASS; R5-G04 FAIL) and 6/8 deliverables PASS (R5-D01, D03, D04, D05, D06, D08 PASS; R5-D02 and R5-D07 FAIL). All executable gates were independently reproduced: focused tests 33/33, full suite exit 0, mypy strict 0 errors, ruff clean, bandit 0 high/medium, secret scan 0, replay/migration/cutover/restore gates PASS by their own definitions. Overall FAIL is mandatory because the compatibility mapping corrupts NULL causation_id on every converted row and the restore rehearsal omits the WAL/executable components required by the frozen work package.",
+  "evidence_paths_and_hashes": {
+    "docs/remaster/work_packages/R5_WORK_PACKAGE.json": "06DE651FEAB98DD7F5FB2C23DB322244045FF32BA4855A200E6A08605C6CA74C",
+    "docs/remaster/evidence/r5/R5_BUILDER_REPORT.json": "908541c5cf7cce58d1a5749b75a2047e7a503c8df8c33caff6acd7fcd654e005",
+    "docs/remaster/evidence/r5/R5_ARTIFACT_MANIFEST.json": "d400b06fa2bbff7c7e27d659f07a6a7355e504059d87f9e6272a63b5247c28e5",
+    "docs/remaster/evidence/r5/R5_FINDINGS.json": "f8ad63e39ef237c4d72ea6b50217bca498e5eaaa540bd7e9a951ea7c7ea454de",
+    "docs/remaster/FINDINGS.jsonl": "tracked at HEAD c72b32f, zero diff, no R5 lines",
+    "frozen_r0_live_db": "3d6b2ed1ed132b719cded10d2c978004b22c6d520e141f7d788866ee865d3fab",
+    "builder_temp_live_db": "3faa69c30366521827495f8b6bcb85f36f50dca1e06a0008c15b2907793df12f",
+    "verifier_temp_outputs": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r5-verifier-replay.json, jarvis-r5-verifier-migration.json, jarvis-r5-verifier-cutover.json, jarvis-r5-verifier-restore.json, jarvis-r5-verifier-preservation.json, jarvis-r5-verifier-bandit.json, jarvis-r5-verifier-secret.json"
+  },
+  "next_action": "Builder must repair before round 2: (1) preserve SQL NULL causation_id as None in LegacyEventsReader with regression tests asserting causation_id fidelity, (2) extend the restore point to a real recovery unit including a WAL-safe DB/WAL component and executable artifact or explicit executable provenance, bind the restored unit to the frozen R0 hashes, regenerate evidence, then re-freeze and re-run all gates. Verifier temp evidence under C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r5-verifier-* can be re-inspected; do not treat this verdict as approval to commit or touch live state."
+}

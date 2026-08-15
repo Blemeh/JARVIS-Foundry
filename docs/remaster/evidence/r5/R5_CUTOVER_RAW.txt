@@ -1,0 +1,2 @@
+live: lossless=True duplicate_free=True clean=True chain_valid=True idempotent=True
+isolated: lossless=True duplicate_free=True clean=True idempotent=True

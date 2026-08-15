@@ -1,0 +1,4 @@
+live_snapshot: rows=51444 refused=0 chain_valid=True projection_ok=True repeated_identical=True head=972967aea1c6570ea8580b909e04f92ec1015bb3d9eef0ed99c102792381232a
+live_r0_frozen: rows=42874 refused=0 chain_valid=True projection_ok=True repeated_identical=True head=961e94724ca5acb41257b6f780ef93d9cfcfd33b28c8670564974f5edb21c7d9
+isolated_v7_frozen: rows=158 refused=0 chain_valid=True projection_ok=True repeated_identical=True head=6765f6e73efa4cb00cc1b711e362f64613d2ee812e0c24cd73e34a63221f7fe7
+unknown_row_refusal: refused=True reason=event type 'mystery.kind' is not in the historical compatibility catalog

@@ -1,0 +1,49 @@
+{
+  "exit_code": 0,
+  "passed": true,
+  "raw_output": "R5_PRESERVATION_RAW.txt",
+  "raw_output_sha256": "74ef1094f4c13eaf1c034e63940d66510fa29df1a7b76692bf6daafa4cd21c4d",
+  "samples": {
+    "isolated_v7_frozen": {
+      "byte_identical": true,
+      "file_sha256_after": "829b558e1b0a6b8d19b28ec1fa0790d2c470458b7047c2e3f30d982972789a20",
+      "file_sha256_before": "829b558e1b0a6b8d19b28ec1fa0790d2c470458b7047c2e3f30d982972789a20",
+      "row_count": 158,
+      "row_stream_sha256": "9f418459da2c4d2e389527c3ecf245f4e46ed38b6fd3f2f3a0efcd299d0367f9",
+      "sidecars_after": [],
+      "sidecars_before": [],
+      "sidecars_created_during_read": [],
+      "size_after": 790528,
+      "size_before": 790528,
+      "source": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r5-work\\isolated-v7-r0.db"
+    },
+    "live_r0_frozen": {
+      "byte_identical": true,
+      "file_sha256_after": "3faa69c30366521827495f8b6bcb85f36f50dca1e06a0008c15b2907793df12f",
+      "file_sha256_before": "3faa69c30366521827495f8b6bcb85f36f50dca1e06a0008c15b2907793df12f",
+      "row_count": 42874,
+      "row_stream_sha256": "8ac0adf651f89cd7343f3018f3f0bb9f9a63e26fc3c7650cf0fed90cf14a38e8",
+      "sidecars_after": [],
+      "sidecars_before": [],
+      "sidecars_created_during_read": [],
+      "size_after": 30773248,
+      "size_before": 30773248,
+      "source": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r5-work\\live-foundry-r0.db"
+    },
+    "live_snapshot": {
+      "byte_identical": true,
+      "file_sha256_after": "0cda34d9ee5340c239c0a3f2750a951401e093e72961f2ac2af25ff51bc163c7",
+      "file_sha256_before": "0cda34d9ee5340c239c0a3f2750a951401e093e72961f2ac2af25ff51bc163c7",
+      "row_count": 51444,
+      "row_stream_sha256": "ee85e8593e399b71ebc482df6a82962102e39ca77bddcfe15b2e0d82d2086a5e",
+      "sidecars_after": [],
+      "sidecars_before": [],
+      "sidecars_created_during_read": [],
+      "size_after": 36405248,
+      "size_before": 36405248,
+      "source": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r5-work\\live-foundry-r5.db"
+    }
+  },
+  "schema": "jarvis-r5-preservation-v1",
+  "wall_seconds": 4.632
+}

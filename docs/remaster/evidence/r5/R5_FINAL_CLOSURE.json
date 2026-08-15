@@ -1,0 +1,40 @@
+{
+  "schema": "jarvis-r5-final-closure-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R5",
+  "title": "R5 historical data compatibility and migration final closure",
+  "status": "PASS",
+  "generated_utc": "2026-08-15T06:30:00Z",
+  "generated_by": "root evidence custodian",
+  "frozen_base": {
+    "commit": "c72b32f",
+    "branch": "remaster/post-v7-purpose",
+    "baseline_source_commit": "93a3ddc0965dfaf3e4cb9dc0952467bd5250520a"
+  },
+  "verifier_history": [
+    {"round": 1, "verdict": "FAIL", "sha256": "bcc2e07ac63e067f4e7806a1e0f4628c4317191cb4d98f681812eaa320f4e865", "defects": "NULL causation str(None), incomplete restore unit, bytecode drift"},
+    {"round": 2, "verdict": "FAIL", "sha256": "45ff8710ce04880076eb4512df6a3ef14faffe9095d5d0229000d562286e20af", "defects": "mypy/ruff stale evidence, stale restore hashes"},
+    {"round": 3, "verdict": "FAIL", "sha256": "2208590be900fe21ff9af9590c4ba690bb81c3b59b54da06b9649f34cbd31726", "defects": "ruff format, stale closure, flaky V7 scheduler test"},
+    {"round": 4, "verdict": "FAIL", "sha256": "9eaa7603b473ac83c4401507fcd96ca1e91431493b2c999beed922127a5b6402", "defects": "restore point embeds self-referential closure files"},
+    {"round": 5, "verdict": "FAIL", "sha256": "d2d1e9c41b07af7fc5eac1d9bb16677f3bb11cb4d8d4c8f48a61e56ec8bc6a96", "defects": "preservation/migration evidence pre-repair"},
+    {"round": 6, "verdict": "FAIL", "sha256": "fea7a8d6e3cac9b7a05e96bab46811659714025ead7bc00517897e115b165a25", "defects": "restore closure ordering (restore must run after leaves, before closure)"},
+    {"round": 7, "verdict": "PASS", "sha256": "717ec0f36578bdde165b7fff191eac4acd95366ca2edacecb6779c0d0f2b3a88", "note": "all criteria/gates PASS; restore point stable across runs; only S4 cosmetic notes remain"}
+  ],
+  "core_deliverables": {
+    "replay": "deterministic byte-identical zero-to-current replay of 51,444-row live snapshot + 42,874-row R0 + 158-row V7; unknown catalog types refused",
+    "preservation": "byte-identical historical event preservation, zero sidecars, additive corrections only",
+    "migration": "idempotent fresh runs, all 8 interruption boundaries resume matching baseline, rollback byte-identical, previous release readable",
+    "restore": "recovery unit (executable + DB + WAL + SHM + config + task + secrets metadata + evidence) restores frozen R0 DB 3d6b2ed1 byte-identically; restore point stable across runs",
+    "cutover": "zero loss/duplication, clean reconciliation, chain valid"
+  },
+  "findings_closed": {
+    "R5-F049": "CLOSED_VERIFIED_R5_ROUND7",
+    "R5-F050": "CLOSED_VERIFIED_R5_ROUND7"
+  },
+  "residual_non_blocking": [
+    "bandit raw evidence predates refresh_suite_evidence.py (S4 cosmetic; 0 high/medium)",
+    "FINDINGS prose cites superseded closure hashes (S4 cosmetic; registry entries correct)",
+    "pre-existing V7 scheduler whole-second cooldown flake classified as environmental, not R5-caused"
+  ],
+  "next_action": "Create the scoped local R5 commit, then proceed to R6 memory/knowledge/Obsidian intelligence."
+}

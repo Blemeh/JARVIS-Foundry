@@ -1,0 +1,10 @@
+{
+  "schema": "jarvis-r5-full-suite-v1",
+  "exit_code": 0,
+  "wall_seconds": 505.61,
+  "summary_line": "..................................................................       [100%]",
+  "raw_output": "R5_FULL_SUITE_RAW.txt",
+  "raw_output_sha256": "4f4a25c0e453364d690b79b7cbb42c9b4ee4a399894cb1ce6af65a2e189ba221",
+  "junit_output": "R5_FULL_SUITE_JUNIT.xml",
+  "junit_sha256": "a32d3fa412af5a111aef808b7df547467963d7e496f9df2f2354e0b639f183ae"
+}

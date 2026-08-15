@@ -1,0 +1,4 @@
+live_snapshot: invariants_ok=True refusals=0
+live_r0_frozen: invariants_ok=True refusals=0
+isolated_v7_frozen: invariants_ok=True refusals=0
+rehearsal: legacy_unchanged=True correction_appended=True ledger_documents=True

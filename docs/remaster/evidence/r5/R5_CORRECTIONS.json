@@ -1,0 +1,40 @@
+{
+  "audit": {
+    "isolated_v7_frozen": {
+      "event_count": 158,
+      "invariants_ok": true,
+      "refusal_reasons": [],
+      "source": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r5-work\\isolated-v7-r0.db"
+    },
+    "live_r0_frozen": {
+      "event_count": 42874,
+      "invariants_ok": true,
+      "refusal_reasons": [],
+      "source": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r5-work\\live-foundry-r0.db"
+    },
+    "live_snapshot": {
+      "event_count": 51444,
+      "invariants_ok": true,
+      "refusal_reasons": [],
+      "source": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r5-work\\live-foundry-r5.db"
+    }
+  },
+  "exit_code": 0,
+  "historical_defects_found": 0,
+  "mechanism_rehearsal": {
+    "correction_event_appended": true,
+    "correction_payload_evidence_ref": "scripts/remaster/r5/corrections_gate.py",
+    "correction_payload_reason": "mechanism rehearsal only; no real historical correction required",
+    "ledger_documents_correction": true,
+    "ledger_event_count_after": 3,
+    "ledger_event_count_before": 2,
+    "legacy_file_sha256_after": "12fcd1f13127e40fd7b8703df5fb3cdf3c86fd2ef2d8ede5c61a9493edb72734",
+    "legacy_file_sha256_before": "12fcd1f13127e40fd7b8703df5fb3cdf3c86fd2ef2d8ede5c61a9493edb72734",
+    "legacy_rows_unchanged": true
+  },
+  "passed": true,
+  "raw_output": "R5_CORRECTIONS_RAW.txt",
+  "raw_output_sha256": "f8808128a56d1705df9af7ba67e683ef37cf3d405d3473a035614f36604875a3",
+  "schema": "jarvis-r5-corrections-v1",
+  "wall_seconds": 4.134
+}

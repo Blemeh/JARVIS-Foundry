@@ -1,0 +1,17 @@
+{
+  "bandit_exit": 1,
+  "bandit_exit_explained": "exit 1 due to low-severity subprocess/XML scanner notices in gate scripts; zero high/medium findings",
+  "bandit_high_or_medium": 0,
+  "bandit_raw": "R5_BANDIT_RAW.json",
+  "bandit_raw_sha256": "3d2d212cb92d57822bfc27e5fc48213ec4aa51ac9886479971fa2939ee28535b",
+  "bandit_severity_counts": {
+    "LOW": 14
+  },
+  "mypy_exit": 0,
+  "mypy_raw": "R5_MYPY_RAW.txt",
+  "mypy_raw_sha256": "0d42646ff848fddea83e113f5e72c066dc050fc901c93d17176142ab98c966e9",
+  "ruff_exit": 0,
+  "ruff_raw": "R5_RUFF_RAW.txt",
+  "ruff_raw_sha256": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0",
+  "schema": "jarvis-r5-static-v1"
+}

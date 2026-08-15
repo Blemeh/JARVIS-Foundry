@@ -1,0 +1,247 @@
+{
+  "artifact_manifest": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r5\\R5_ARTIFACT_MANIFEST.json",
+  "builder": "r5_builder_dsv4",
+  "builder_status": "NOT_TESTED",
+  "commands": [
+    {
+      "exit_code": 0,
+      "id": "R5_REPLAY.json",
+      "wall_seconds": 88.239
+    },
+    {
+      "exit_code": 0,
+      "id": "R5_PRESERVATION.json",
+      "wall_seconds": 4.632
+    },
+    {
+      "exit_code": 0,
+      "id": "R5_INVARIANTS.json",
+      "wall_seconds": 43.314
+    },
+    {
+      "exit_code": 0,
+      "id": "R5_CORRECTIONS.json",
+      "wall_seconds": 4.134
+    },
+    {
+      "exit_code": 0,
+      "id": "R5_MIGRATION.json",
+      "wall_seconds": 671.039
+    },
+    {
+      "exit_code": 0,
+      "id": "R5_CUTOVER.json",
+      "wall_seconds": 170.341
+    },
+    {
+      "exit_code": 0,
+      "id": "R5_RESTORE.json",
+      "wall_seconds": 3.757
+    },
+    {
+      "exit_code": 0,
+      "id": "R5_FOCUSED_TESTS.json",
+      "wall_seconds": 9.372
+    },
+    {
+      "exit_code": 0,
+      "id": "R5_FULL_SUITE.json",
+      "wall_seconds": 505.61
+    },
+    {
+      "exit_code": 0,
+      "id": "R5_LIVE_GUARD_COMPARISON.json",
+      "wall_seconds": null
+    }
+  ],
+  "deliverables": {
+    "R5-D01": {
+      "evidence": [
+        "R5_PRESERVATION.json"
+      ],
+      "evidence_hashes": {
+        "R5_PRESERVATION.json": "a16c047f3e43964e98d5f5f4cb62a8954745ba2987f99b7ea3f309b50961c5b7"
+      },
+      "status": "PASS"
+    },
+    "R5-D02": {
+      "evidence": [
+        "R5_FOCUSED_TESTS.json"
+      ],
+      "evidence_hashes": {
+        "R5_FOCUSED_TESTS.json": "13c79db24b231569ec40c104744193d67edbef64a7e1c1c0447e4f97af632119"
+      },
+      "status": "PASS"
+    },
+    "R5-D03": {
+      "evidence": [
+        "R5_REPLAY.json"
+      ],
+      "evidence_hashes": {
+        "R5_REPLAY.json": "eeaf3a12ef94bbb39ebac7b77b486db6855c1090caa334d3501889fd088f591e"
+      },
+      "status": "PASS"
+    },
+    "R5-D04": {
+      "evidence": [
+        "R5_INVARIANTS.json"
+      ],
+      "evidence_hashes": {
+        "R5_INVARIANTS.json": "7f1f958597db1abf5260c963b6e8e3faa18a362225b87f799479c8d3f5b3aba5"
+      },
+      "status": "PASS"
+    },
+    "R5-D05": {
+      "evidence": [
+        "R5_CORRECTIONS.json"
+      ],
+      "evidence_hashes": {
+        "R5_CORRECTIONS.json": "93d346320f6d2040784bb3628c777470f72584af325df06166d32c95d16b08c7"
+      },
+      "status": "PASS"
+    },
+    "R5-D06": {
+      "evidence": [
+        "R5_MIGRATION.json"
+      ],
+      "evidence_hashes": {
+        "R5_MIGRATION.json": "be78371f8822ad6c3d9e21ee06021aa03aa0f3a5946fd75552bda6dfedf31886"
+      },
+      "status": "PASS"
+    },
+    "R5-D07": {
+      "evidence": [
+        "R5_RESTORE.json"
+      ],
+      "evidence_hashes": {
+        "R5_RESTORE.json": "ef6d8d62973465588a4d5eb04f1dbfcdc6ff9b0373c65f8bb7eb0140a7661619"
+      },
+      "status": "PASS"
+    },
+    "R5-D08": {
+      "evidence": [
+        "R5_CUTOVER.json"
+      ],
+      "evidence_hashes": {
+        "R5_CUTOVER.json": "9926cd2c1af1d8417292328bb9e551aa2bbd7e15ce6c4803110e0622895464dd"
+      },
+      "status": "PASS"
+    }
+  },
+  "findings": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r5\\R5_FINDINGS.json",
+  "focused_tests_status": "PASS",
+  "frozen_base": {
+    "branch": "remaster/post-v7-purpose",
+    "commit": "c72b32f",
+    "live_v7_deployment_changes_allowed": false,
+    "push_or_publish_allowed": false,
+    "work_package": "docs/remaster/work_packages/R5_WORK_PACKAGE.json",
+    "work_package_sha256": "06DE651FEAB98DD7F5FB2C23DB322244045FF32BA4855A200E6A08605C6CA74C"
+  },
+  "full_suite": {
+    "evidence": [
+      "R5_FULL_SUITE.json",
+      "R5_FULL_SUITE_RAW.txt",
+      "R5_FULL_SUITE_JUNIT.xml"
+    ],
+    "evidence_hashes": {
+      "R5_FULL_SUITE.json": "bbea9680a580e42c6bfc0174b998d5d581586af625aa2fcea24ba24ac6d40629",
+      "R5_FULL_SUITE_JUNIT.xml": "a32d3fa412af5a111aef808b7df547467963d7e496f9df2f2354e0b639f183ae",
+      "R5_FULL_SUITE_RAW.txt": "4f4a25c0e453364d690b79b7cbb42c9b4ee4a399894cb1ce6af65a2e189ba221"
+    },
+    "status": "PASS",
+    "summary_line": "..................................................................       [100%]"
+  },
+  "gates": {
+    "R5-G01": {
+      "evidence": [
+        "R5_REPLAY.json"
+      ],
+      "evidence_hashes": {
+        "R5_REPLAY.json": "eeaf3a12ef94bbb39ebac7b77b486db6855c1090caa334d3501889fd088f591e"
+      },
+      "status": "PASS"
+    },
+    "R5-G02": {
+      "evidence": [
+        "R5_PRESERVATION.json"
+      ],
+      "evidence_hashes": {
+        "R5_PRESERVATION.json": "a16c047f3e43964e98d5f5f4cb62a8954745ba2987f99b7ea3f309b50961c5b7"
+      },
+      "status": "PASS"
+    },
+    "R5-G03": {
+      "evidence": [
+        "R5_MIGRATION.json"
+      ],
+      "evidence_hashes": {
+        "R5_MIGRATION.json": "be78371f8822ad6c3d9e21ee06021aa03aa0f3a5946fd75552bda6dfedf31886"
+      },
+      "status": "PASS"
+    },
+    "R5-G04": {
+      "evidence": [
+        "R5_RESTORE.json"
+      ],
+      "evidence_hashes": {
+        "R5_RESTORE.json": "ef6d8d62973465588a4d5eb04f1dbfcdc6ff9b0373c65f8bb7eb0140a7661619"
+      },
+      "status": "PASS"
+    },
+    "R5-G05": {
+      "evidence": [
+        "R5_CUTOVER.json"
+      ],
+      "evidence_hashes": {
+        "R5_CUTOVER.json": "9926cd2c1af1d8417292328bb9e551aa2bbd7e15ce6c4803110e0622895464dd"
+      },
+      "status": "PASS"
+    },
+    "R5-G06": {
+      "evidence": [
+        "R5_LIVE_GUARD_COMPARISON.json"
+      ],
+      "evidence_hashes": {
+        "R5_LIVE_GUARD_AFTER.json": "69f63b8d6e710eb0aa50f9a228ec0bf952b14f79ba3100c18a2c432ff7e54fce",
+        "R5_LIVE_GUARD_BEFORE.json": "37ee03d323c4470ce0cac833be7155034a64072d105e0e2ff40527870a32d64e",
+        "R5_LIVE_GUARD_COMPARISON.json": "a4d02dc66bbd594c5a2bd854b6d22997d1a050e1c12b17140f1483390045bac2"
+      },
+      "status": "PASS"
+    }
+  },
+  "generated_utc": "2026-08-15T00:00:00Z",
+  "live_guard": {
+    "after": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r5\\R5_LIVE_GUARD_AFTER.json",
+    "after_sha256": "69f63b8d6e710eb0aa50f9a228ec0bf952b14f79ba3100c18a2c432ff7e54fce",
+    "before": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r5\\R5_LIVE_GUARD_BEFORE.json",
+    "before_sha256": "37ee03d323c4470ce0cac833be7155034a64072d105e0e2ff40527870a32d64e",
+    "comparison": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r5\\R5_LIVE_GUARD_COMPARISON.json",
+    "comparison_sha256": "a4d02dc66bbd594c5a2bd854b6d22997d1a050e1c12b17140f1483390045bac2",
+    "protected_state_unchanged": true
+  },
+  "program": "POST_V7_JARVIS_REMASTER",
+  "resources_and_boundaries": {
+    "commit_created": false,
+    "evidence_budget_bytes": 8388608,
+    "evidence_bytes": 406960,
+    "evidence_under_budget": true,
+    "live_or_protected_writes": 0,
+    "network_used": "none beyond existing isolated tooling; no provider calls",
+    "provider_calls": 0,
+    "push_or_publish_performed": false
+  },
+  "schema": "jarvis-r5-builder-report-v1",
+  "secret_scan_passed": true,
+  "stage": "R5",
+  "status_reason": "Builder evidence is complete; a fresh independent verifier must reproduce and adjudicate the package before the gate closes.",
+  "tool_versions": {
+    "bandit": "1.9.4",
+    "coverage": "7.15.4",
+    "hypothesis": "6.165.8",
+    "mypy": "2.3.0",
+    "pytest": "9.0.3",
+    "pytest-cov": "7.1.0",
+    "ruff": "0.16.3"
+  }
+}

@@ -1,0 +1,271 @@
+{
+  "schema": "jarvis-r5-verifier-round3-verdict-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R5",
+  "repair_round": 3,
+  "verifier": "r5_verifier_round3_dsv4",
+  "verifier_model": "deepseek-v4-flash via codex-router",
+  "verdict": "FAIL",
+  "generated_utc": "2026-08-15T04:26:38Z",
+  "frozen_base": {
+    "remaster_worktree": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster",
+    "remaster_commit": "c72b32f25fa7c5d1dbcbb4c2d24fde8748fb2853",
+    "remaster_branch": "remaster/post-v7-purpose",
+    "baseline_source": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry",
+    "baseline_source_commit": "93a3ddc0965dfaf3e4cb9dc0952467bd5250520a",
+    "isolated_venv": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r3-venv\\Scripts\\python.exe",
+    "live_db": "C:\\Users\\b\\AppData\\Local\\hermes\\foundry\\foundry.db (mode=ro copies only)",
+    "work_package_sha256": "06DE651FEAB98DD7F5FB2C23DB322244045FF32BA4855A200E6A08605C6CA74C",
+    "builder_report_sha256": "E09691800B6EB9790F64266EE5AAB557CBCF1C5F33948EB0812E702420809571",
+    "artifact_manifest_sha256": "DCA729E513FCE068912FF89980490CD8792D8D49DCBAB3F730F83E349D5D9CE2"
+  },
+  "fail_sha256s": [
+    "bcc2e07ac63e067f4e7806a1e0f4628c4317191cb4d98f681812eaa320f4e865",
+    "45ff8710ce04880076eb4512df6a3ef14faffe9095d5d0229000d562286e20af"
+  ],
+  "criteria": [
+    {
+      "id": "R5-C01",
+      "status": "FAIL",
+      "evidence": [
+        "all 63 real manifest entries hash+size-match disk and the manifest itself recomputes to dca729e5; work package 06de651f, builder report e0969180, round-1 bcc2e07a and round-2 45ff8710 are byte-identical to frozen values",
+        "R5-D07 FAIL: frozen R5_RESTORE.json restore point binds stale evidence hashes (evidence_01 BUILDER_REPORT b23d7a10 vs disk e0969180; evidence_14 RESTORE 58517594 vs disk 2e4fed81) and its aggregate e9fd2267 is not reproducible (fresh record-mode aggregate bb33113a)",
+        "R5-D01 evidence stale: frozen R5_PRESERVATION.json row streams 710a0c62/b79e9382/71339b9e are pre-repair; fresh preservation run records ee85e859/8ac0adf6/9f418459",
+        "R5-D06 evidence stale: frozen R5_MIGRATION.json baseline heads 67344245/9896432d are pre-repair and contradict the regenerated R5_REPLAY.json (live 972967ae, isolated 6765f6e7); fresh migration run records 972967ae/6765f6e7",
+        "R5-D02 evidence stale: frozen R5_FOCUSED_TESTS_JUNIT.xml records 33 tests with no test_reader_preserves_null_causation_id; fresh focused suite collects and passes 34"
+      ]
+    },
+    {
+      "id": "R5-C02",
+      "status": "PASS",
+      "evidence": [
+        "replay_gate.py reproduced PASS twice to separate temp outputs: live_snapshot rows=51444 refused=0 chain_valid=True projection_ok=True repeated_identical=True head=972967aea1c6570ea8580b909e04f92ec1015bb3d9eef0ed99c102792381232a; live_r0_frozen rows=42874 head=961e94724ca5acb41257b6f780ef93d9cfcfd33b28c8670564974f5edb21c7d9; isolated_v7_frozen rows=158 head=6765f6e73efa4cb00cc1b711e362f64613d2ee812e0c24cd73e34a63221f7fe7",
+        "both runs produced byte-identical raw output (8ad807d3, matching frozen R5_REPLAY_RAW.txt), identical primary ledger_content_sha256 8bf06131 and projection_snapshot_sha256 8d1f3dc5",
+        "unknown-row refusal reproduced: event type 'mystery.kind' is not in the historical compatibility catalog",
+        "independent fresh mode=ro live copy (52,905 rows): two replay_legacy runs repeated_identical=True head=7d9792b2, ledger dc829060, projection 2fd3c198, source bytes unchanged (afc7dc8b)"
+      ]
+    },
+    {
+      "id": "R5-C03",
+      "status": "PASS",
+      "evidence": [
+        "corrections_gate.py reproduced PASS fresh: all three samples invariants_ok=True refusals=0",
+        "mechanism rehearsal legacy_unchanged=True correction_appended=True ledger_documents=True; corrections remain additive-only with zero real historical defects"
+      ]
+    },
+    {
+      "id": "R5-C04",
+      "status": "PASS",
+      "evidence": [
+        "migration_gate.py reproduced PASS fresh (wall about 7 minutes): live idempotent=True baseline_fingerprint=69c661694e97a3890e6c0f29d7586cadc01072ba1b42642a01d5d672c574510d; isolated idempotent=True",
+        "interruption matrix at all 8 boundaries (PREPARE, READ, CONVERT, LEDGER, PROJECT, CORRECT, CUTOVER, COMPLETE): interrupted=True resume_exit=0 hashes_match=True",
+        "rollback: rollback_restores_original_bytes=True previous_release_readable=True",
+        "caveat: frozen R5_MIGRATION.json baseline artifact hashes are stale (live head 67344245, isolated head 9896432d) and do not match the fresh run (972967ae, 6765f6e7); see R5-V3-001"
+      ]
+    },
+    {
+      "id": "R5-C05",
+      "status": "FAIL",
+      "evidence": [
+        "fresh record-mode restore rehearsal passes functionally: passed=true restore_verified=True previous_release_readable=True events=42874 bundle_verify_exit=0 clone_exit=0 task_utf16_parses=True config_yaml_parses=True restored_evidence_components=20",
+        "fresh unit includes live_database sha256 3d6b2ed1ed132b719cded10d2c978004b22c6d520e141f7d788866ee865d3fab (frozen R0), live/isolated WAL+SHM sidecars, executable python.exe sha256 935016795f3e6908e75acbc2040a01e2e4cdb494a57c42f63a0d6eedb2372256 (real binary, 254,800 bytes), config, task, bundle, freeze, secrets metadata, and evidence",
+        "frozen restore-point hashes are NOT reproducible: R5_RESTORE.json binds evidence_01 BUILDER_REPORT b23d7a10/7955 (disk e0969180/7956), evidence_14 RESTORE 58517594/23619 (disk 2e4fed81/24382), aggregate e9fd2267; fresh run binds e0969180/2e4fed81 and aggregate bb33113a"
+      ]
+    },
+    {
+      "id": "R5-C06",
+      "status": "PASS",
+      "evidence": [
+        "cutover_gate.py reproduced PASS fresh: live lossless=True duplicate_free=True clean=True chain_valid=True idempotent=True signature d103ac9688d86db6765fb597cc96088c9b18dde6dac52dd5001a998fad5d8754; isolated lossless=True duplicate_free=True clean=True chain_valid=True idempotent=True signature 5d308a512c2b8ea815208d96247d45fe1f9de159a55e854c0a96ae962510e571"
+      ]
+    },
+    {
+      "id": "R5-C07",
+      "status": "FAIL",
+      "evidence": [
+        "fresh focused suite: 34 passed (frozen evidence records 33 and omits test_reader_preserves_null_causation_id; fresh JUnit d257769d has tests=34)",
+        "fresh full suite (tests/foundry tests/remaster/r3 tests/remaster/r4 tests/remaster/r5) FAILED 2/2 runs on tests/foundry/test_v7_scheduler.py::test_tick_is_idempotent_no_duplicate_fires: assert len(_events(db,'scheduler.item_fired')) == 1, saw 2; second run was standalone with no concurrent gates",
+        "scheduler flake root cause: tick_scheduler cooldown compares whole-second timestamps (calendar.timegm(utctimetuple())) against cooldown_seconds=1.0, so back-to-back ticks straddling a UTC second boundary fire twice; isolated loop reproduced 1/40 failures",
+        "mypy strict reproduced: 0 errors, 33 source files (raw 0d42646f matches frozen R5_MYPY_RAW.txt)",
+        "ruff check reproduced clean (raw a4443afd matches frozen R5_RUFF_RAW.txt), but ruff format --check FAILS: src/jarvis_foundry/kernel/compat/readers.py:178:27 would be reformatted (1 file, 51 already formatted), so check+format is not clean",
+        "bandit reproduced: 0 HIGH, 0 MEDIUM, 14 LOW (matches frozen R5_BANDIT_RAW.json); secret scan 0 matches (fresh scanned=65 vs frozen evidence 64, see R5-V3-005)"
+      ]
+    },
+    {
+      "id": "R5-C08",
+      "status": "PASS",
+      "evidence": [
+        "git status --short in remaster unchanged from start except this verdict file: only R5 additions (docs/remaster/evidence/r5/, work_packages/R5_WORK_PACKAGE.json, scripts/remaster/r5/, src/jarvis_foundry/kernel/compat/, tests/remaster/r5/) plus FINDINGS.jsonl modified for R5-F049; no commits created",
+        "git status --short in protected main: exactly six untracked owner docs; HEAD 93a3ddc0965dfaf3e4cb9dc0952467bd5250520a unchanged",
+        "live boundary: JARVIS-Foundry-Supervisor Running and Hermes_Gateway Ready; supervisor processes 21636/17052 present with creation 2026-08-14 13:02:05/06",
+        "evidence under budget: evidence dir 313,533 bytes, manifest size sum 460,750 bytes, both under 8,388,608; FINDINGS.jsonl contains R5-F049 (hash cffb9fa2)",
+        "all verifier gate outputs written under C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r5-r3 and the fresh live copy under jarvis-r5-r3-live-copy; the only repo write is this verdict file"
+      ]
+    },
+    {
+      "id": "R5-G01",
+      "status": "PASS",
+      "evidence": [
+        "replay deterministic and byte-identical across two fresh gate runs on all three frozen samples and across two independent runs on a fresh 52,905-row live copy; unknown rows fail closed",
+        "head/ledger/projection hashes in fresh replay match the regenerated frozen R5_REPLAY.json"
+      ]
+    },
+    {
+      "id": "R5-G02",
+      "status": "PASS",
+      "evidence": [
+        "fresh preservation gate: all three samples byte_identical=True sidecars_created=[]; corrections rehearsal leaves legacy rows byte-identical",
+        "caveat: frozen R5_PRESERVATION.json row-stream hashes are stale (see R5-V3-001)"
+      ]
+    },
+    {
+      "id": "R5-G03",
+      "status": "PASS",
+      "evidence": [
+        "fresh migration rehearsal: idempotent on live and isolated samples, interruption at all 8 boundaries with resume matching baseline hashes, rollback restores original bytes, previous release readable",
+        "caveat: frozen R5_MIGRATION.json baseline artifact hashes are stale (see R5-V3-001)"
+      ]
+    },
+    {
+      "id": "R5-G04",
+      "status": "FAIL",
+      "evidence": [
+        "fresh restore rehearsal itself passes (restore_verified=True events=42874, bundle verify/clone exit 0, task/config parse, 20 evidence components, live_database 3d6b2ed1, WAL/SHM, real executable)",
+        "the frozen R5_RESTORE.json restore point is not reproducible from the frozen artifact set: evidence_01 and evidence_14 hashes and the aggregate differ on a fresh record-mode run, so the restored unit does not match the frozen restore-point hashes"
+      ]
+    },
+    {
+      "id": "R5-G05",
+      "status": "PASS",
+      "evidence": [
+        "cutover rehearsal reproduced fresh with zero legacy-only ids, zero r4-only ids, zero duplicated ids, chain valid, clean reconciliation, and matching idempotency signatures on live and isolated samples"
+      ]
+    },
+    {
+      "id": "R5-G06",
+      "status": "PASS",
+      "evidence": [
+        "no live/protected writes, task changes, process changes, commits, or pushes observed; live DB only read via a mode=ro SQLite backup; evidence under 8 MiB; secret scan clean (0 real matches)",
+        "all verifier gate outputs were written to C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r5-r3 and C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r5-r3-live-copy (never into the repo); the only repo write is this verdict file"
+      ]
+    }
+  ],
+  "deliverables": {
+    "R5-D01": {
+      "status": "PASS",
+      "evidence": [
+        "fresh preservation gate: byte-identical sample files before/after reads, zero -wal/-shm sidecars created, no history mutation",
+        "frozen row-stream hashes stale (710a0c62/b79e9382/71339b9e vs fresh ee85e859/8ac0adf6/9f418459); see R5-V3-001"
+      ]
+    },
+    "R5-D02": {
+      "status": "PASS",
+      "evidence": [
+        "readers.py now preserves SQL NULL causation_id as None; independent fresh live-copy probe: 52,905/52,905 SQL NULL causation rows read back as causation_id is None and 0 rows read as 'None' string; correlation_id has 0 SQL NULLs",
+        "regression test test_reader_preserves_null_causation_id exists and passes; fresh focused suite 34 passed",
+        "frozen focused-tests evidence is stale (33 tests, no NULL regression); see R5-V3-002"
+      ]
+    },
+    "R5-D03": {
+      "status": "PASS",
+      "evidence": [
+        "replay deterministic across two fresh gate runs on all frozen samples and a fresh 52,905-row live copy; source bytes unchanged"
+      ]
+    },
+    "R5-D04": {
+      "status": "PASS",
+      "evidence": [
+        "independent invariants reproduced fresh: zero sequence gaps, zero duplicate event ids/idempotency keys, zero payload-hash mismatches, projection invariants ok on all three samples; snapshots match frozen R5_INVARIANTS.json"
+      ]
+    },
+    "R5-D05": {
+      "status": "PASS",
+      "evidence": [
+        "correction mechanism additive-only and ledger-documented; fresh rehearsal legacy_unchanged=True correction_appended=True ledger_documents=True; zero real historical defects"
+      ]
+    },
+    "R5-D06": {
+      "status": "PASS",
+      "evidence": [
+        "fresh migration rehearsal covers idempotency, all 8 interruption boundaries with resume, and byte-identical rollback with previous-release readability",
+        "frozen R5_MIGRATION.json baseline hashes stale (live 67344245 vs fresh 972967ae, isolated 9896432d vs fresh 6765f6e7); see R5-V3-001"
+      ]
+    },
+    "R5-D07": {
+      "status": "FAIL",
+      "evidence": [
+        "functional repair is present in the script: fresh run restores live_database 3d6b2ed1 (frozen R0), WAL/SHM sidecars, real executable binary, and all evidence; passed=true events=42874",
+        "frozen R5_RESTORE.json was not regenerated after the final builder report: its restore point binds evidence_01 b23d7a10 and evidence_14 58517594 and aggregate e9fd2267, which are not reproducible from the frozen artifact set (fresh bb33113a), so the recovery-unit evidence cannot be accepted as frozen"
+      ]
+    },
+    "R5-D08": {
+      "status": "PASS",
+      "evidence": [
+        "dual-run/cutover rehearsal reproduced fresh: zero loss, zero duplication, clean reconciliation, chain valid, idempotent on live and isolated samples"
+      ]
+    }
+  },
+  "findings": [
+    {
+      "id": "R5-V3-001",
+      "severity": "S2",
+      "title": "Frozen preservation/migration/restore evidence still binds pre-repair hashes; R5-V2-003 is not repaired in the closure",
+      "reproduction": "R5_PRESERVATION.json row streams 710a0c62/b79e9382/71339b9e vs fresh ee85e859/8ac0adf6/9f418459; R5_MIGRATION.json baseline heads 67344245/9896432d vs fresh 972967ae/6765f6e7 (which match the regenerated R5_REPLAY.json); R5_RESTORE.json aggregate e9fd2267 with evidence_01 b23d7a10 and evidence_14 58517594 vs fresh aggregate bb33113a with e0969180/2e4fed81",
+      "invariant": "closure ordering: every evidence file must be generated from the final repaired source, with restore LAST so its restore point binds the final evidence hashes",
+      "effect": "R5-C01/R5-C05/R5-G04 cannot PASS on frozen evidence; a fresh verifier cannot reproduce the frozen bytes even though every gate passes functionally"
+    },
+    {
+      "id": "R5-V3-002",
+      "severity": "S4",
+      "title": "Focused and full-suite evidence still record pre-repair counts; R5-V2-004 is not repaired in evidence",
+      "reproduction": "frozen R5_FOCUSED_TESTS_JUNIT.xml records tests=33 with no test_reader_preserves_null_causation_id; fresh focused suite collects and passes 34. Frozen R5_FULL_SUITE_JUNIT.xml records tests=1145; fresh full suite collects 1146",
+      "invariant": "evidence freshness relative to the source snapshot",
+      "effect": "Evidence hygiene only; fresh focused suite is stable and green"
+    },
+    {
+      "id": "R5-V3-003",
+      "severity": "S3",
+      "title": "ruff format is not clean on the repaired readers.py:178",
+      "reproduction": "venv python -B -m ruff format --check --no-cache src/jarvis_foundry/kernel scripts/remaster/r5 tests/remaster/r5 -> src/jarvis_foundry/kernel/compat/readers.py:178:27 would be reformatted (1 file would be reformatted, 51 files already formatted); exit 1",
+      "invariant": "ruff check AND format clean over scripts/remaster/r5 and kernel/compat, as required by the R5 verifier checklist",
+      "effect": "R5_RUFF_RAW.txt only proves ruff check (a4443afd reproduces clean); the mandatory check+format gate fails, so the static evidence does not cover the full claim"
+    },
+    {
+      "id": "R5-V3-004",
+      "severity": "S2",
+      "title": "Fresh full suite is not reproducibly green: scheduler cooldown test fires twice when ticks straddle a UTC second boundary",
+      "reproduction": "two fresh full-suite runs (first concurrent with migration/cutover, second standalone) both failed tests/foundry/test_v7_scheduler.py::test_tick_is_idempotent_no_duplicate_fires with len(_events(db,'scheduler.item_fired')) == 2 vs expected 1; isolated loop of the same test failed 1/40 runs",
+      "invariant": "full suite stays green in the isolated env (R5-C07); evidence must be reproducible",
+      "effect": "The protected-baseline test is timing-flaky because tick_scheduler cooldown uses whole-second timestamps (calendar.timegm(dt.utctimetuple())) against cooldown_seconds=1.0, so back-to-back ticks spanning a second boundary duplicate the fire. Not caused by R5-owned code (R5 focused suite is stable 34/34), but the frozen full-suite green claim is not reproducible and C07 cannot PASS"
+    },
+    {
+      "id": "R5-V3-005",
+      "severity": "S4",
+      "title": "Secret-scan evidence file count and FINDINGS registry closure hashes are stale",
+      "reproduction": "frozen R5_SECRET_SCAN evidence records scanned=64; fresh owned_r5_files scan counts 65 (includes R5_ARTIFACT_MANIFEST.json), matches=0 in both. FINDINGS.jsonl R5-F049 repair text references superseded closure hashes (report b23d7a10, manifest aef3d2ad, '62 real + 1 self') while the frozen round-3 closure is e0969180/dca729e5 with 63 real + 1 self",
+      "invariant": "evidence hygiene: owned-file enumeration and registry entries reflect the frozen closure",
+      "effect": "No secret-risk or gate-claim impact; registry and scan evidence lag the final closure (verifier cannot edit FINDINGS.jsonl)"
+    }
+  ],
+  "status_summary": "FAIL: repaired functionality is present (NULL causation preserved on a fresh 52,905-row live copy; restore unit functionally complete with live_database 3d6b2ed1, WAL/SHM, real executable, passed=true events=42874; replay deterministic and byte-identical; migration idempotent with all 8 interruption boundaries and byte-identical rollback; cutover zero-loss/duplicate-free; focused tests 34/34; mypy strict 0 errors; ruff check clean; bandit 0 high/medium; secret scan 0 matches). Mandatory closure and evidence freshness are NOT repaired: R5-V2-003 remains open for preservation/migration/restore evidence (frozen files still bind pre-repair hashes and R5_RESTORE.json's restore point is not reproducible), R5-V2-004 remains open in evidence (focused 33, full 1145), ruff format fails on readers.py:178, and a fresh full suite fails 2/2 on the protected-baseline scheduler idempotency flake (1/40 in isolation). Mandatory criteria R5-C01, R5-C05, R5-C07, R5-G04 FAIL; all other criteria and gates PASS with fresh evidence.",
+  "evidence_paths_and_hashes": {
+    "docs/remaster/work_packages/R5_WORK_PACKAGE.json": "06de651feab98dd7f5fb2c23db322244045ff32ba4855a200e6a08605c6ca74c",
+    "docs/remaster/evidence/r5/R5_BUILDER_REPORT.json": "e09691800b6eb9790f64266ee5aab557cbcf1c5f33948eb0812e702420809571",
+    "docs/remaster/evidence/r5/R5_ARTIFACT_MANIFEST.json": "dca729e513fce068912ff89980490cd8792d8d49dcbab3f730f83e349d5d9ce2",
+    "docs/remaster/evidence/r5/R5_VERIFIER_ROUND1_VERDICT_DSV4.json": "bcc2e07ac63e067f4e7806a1e0f4628c4317191cb4d98f681812eaa320f4e865",
+    "docs/remaster/evidence/r5/R5_VERIFIER_ROUND2_VERDICT_DSV4.json": "45ff8710ce04880076eb4512df6a3ef14faffe9095d5d0229000d562286e20af",
+    "docs/remaster/evidence/r5/R5_FINDINGS.json": "f8ad63e39ef237c4d72ea6b50217bca498e5eaaa540bd7e9a951ea7c7ea454de",
+    "docs/remaster/FINDINGS.jsonl": "cffb9fa27252c9743af7e780d67b78feb37c7b64c1effd72432e16fe783101c5 (contains R5-F049 REPAIRED_PENDING_VERIFY; registry repair text still cites b23d7a10/aef3d2ad closure)",
+    "frozen_r0_live_db": "3d6b2ed1ed132b719cded10d2c978004b22c6d520e141f7d788866ee865d3fab",
+    "fresh_live_copy_52905_rows": "afc7dc8b0710414d0d9aaad94d372469b512dd1f5633f74da3efee9f75015abb (C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r5-r3-live-copy\\foundry-copy.db)",
+    "frozen_restore_aggregate": "e9fd22678505c3a71505749bb43d440f79bbde8dfb51c568d84a207e27a3eea6 (not reproducible; fresh bb33113ab892d53789950bc10f196ed5753a6e77a5282af8757f5c31915c569d)",
+    "frozen_focused_tests_junit": "72ae1244061c5c92021c7f5d2a76243612976dd2ddc8fbe337d2e9e6a5e0cb44 (tests=33)",
+    "fresh_focused_tests_junit": "d257769d6f193226c83c1efcc7f8c22eb85ec4db24f7baadc6bdaa918bdc1316 (tests=34, NULL regression included)",
+    "frozen_full_suite_junit": "5c685d5c6be8f7e87577b08f62d658c598a8f6a30fb0086820c571fefe2ae4eb (tests=1145)",
+    "fresh_full_suite_junit_failed": "189dcd4c14466c9271bb22fce6efa28a15bd157ede93359c586a89f8011f7d3a (tests=1146, failures=1 on test_tick_is_idempotent_no_duplicate_fires)",
+    "verifier_temp_outputs": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r5-r3\\R5_REPLAY_R3_RUN1.json (436ed753), R5_REPLAY_R3_RUN2.json (2c0d2d21), R5_PRESERVATION_R3.json (ca9716a4), R5_RESTORE_R3.json (271a90c8), R5_INVARIANTS_R3.json (d0a24266), R5_CORRECTIONS_R3.json (43f8ddea), R5_CUTOVER_R3.json (8cf2ce08), R5_MIGRATION_R3.json (da48eb9d), R5_BANDIT_R3.json (237d2976), R5_SECRET_R3.json (704ea063), R5_RUFF_FORMAT_R3.txt (ab280100), R5_MYPY_R3.txt (0d42646f)",
+    "fresh_full_suite": "1146 collected, exit 1: baseline flake test_tick_is_idempotent_no_duplicate_fires failed 2/2 full runs and 1/40 isolated loop runs",
+    "fresh_focused_suite": "34 passed (stable), exit 0"
+  },
+  "next_action": "Builder must repair before round 4: (1) run ruff format on readers.py:178 and re-verify mypy strict/ruff check/format/bandit/secret scan; (2) regenerate preservation and migration evidence from the final source, then re-run restore_gate LAST so R5_RESTORE.json binds the final builder report and self hashes and the aggregate is reproducible; (3) regenerate focused (34) and full-suite JUnit/raw evidence from fresh runs; (4) regenerate R5_ARTIFACT_MANIFEST.json and R5_BUILDER_REPORT.json after the last evidence write and re-verify all entries; (5) update FINDINGS.jsonl R5-F049 to the final closure hashes (verifier cannot edit it); (6) either repair the protected-baseline scheduler cooldown test/implementation or record the full-suite flake as a known non-R5 defect with mitigation before claiming R5-C07; do not commit or touch live/protected state."
+}

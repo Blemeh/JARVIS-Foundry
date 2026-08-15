@@ -1,0 +1,351 @@
+{
+  "file_count": 69,
+  "files": [
+    {
+      "path": "docs/remaster/evidence/r5/R5_BANDIT_RAW.json",
+      "sha256": "3d2d212cb92d57822bfc27e5fc48213ec4aa51ac9886479971fa2939ee28535b",
+      "size": 22979
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_BANDIT_STDERR.txt",
+      "sha256": "e12427b29236c5877c1ce4af0591147ee8c5cb45de59de1b7186477628299e24",
+      "size": 156
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_CORRECTIONS.json",
+      "sha256": "93d346320f6d2040784bb3628c777470f72584af325df06166d32c95d16b08c7",
+      "size": 1546
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_CORRECTIONS_RAW.txt",
+      "sha256": "f8808128a56d1705df9af7ba67e683ef37cf3d405d3473a035614f36604875a3",
+      "size": 225
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_CUTOVER.json",
+      "sha256": "9926cd2c1af1d8417292328bb9e551aa2bbd7e15ce6c4803110e0622895464dd",
+      "size": 2059
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_CUTOVER_RAW.txt",
+      "sha256": "1481bfe0bfdff62b679e28aabf301146e99ab6afe6f359bc8bdd7f965f235050",
+      "size": 157
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_FOCUSED_TESTS.json",
+      "sha256": "13c79db24b231569ec40c104744193d67edbef64a7e1c1c0447e4f97af632119",
+      "size": 468
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_FOCUSED_TESTS_JUNIT.xml",
+      "sha256": "93df24153fd7fae7a9008afa2001e95968d5dff856240558d90ef661b32ab7ef",
+      "size": 4313
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_FOCUSED_TESTS_RAW.txt",
+      "sha256": "6179731ff4ad19fa7040e4573f9de5a74938c9a72eebdf8981224b6eb3617539",
+      "size": 81
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_FULL_SUITE.json",
+      "sha256": "bbea9680a580e42c6bfc0174b998d5d581586af625aa2fcea24ba24ac6d40629",
+      "size": 460
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_FULL_SUITE_JUNIT.xml",
+      "sha256": "a32d3fa412af5a111aef808b7df547467963d7e496f9df2f2354e0b639f183ae",
+      "size": 143485
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_FULL_SUITE_RAW.txt",
+      "sha256": "4f4a25c0e453364d690b79b7cbb42c9b4ee4a399894cb1ce6af65a2e189ba221",
+      "size": 1296
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_INVARIANTS.json",
+      "sha256": "7f1f958597db1abf5260c963b6e8e3faa18a362225b87f799479c8d3f5b3aba5",
+      "size": 8406
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_INVARIANTS_RAW.txt",
+      "sha256": "f4a83298c24c7d3b81b47ec6242c4825ce7e94e0440cc10f8a4ebd72c253d06c",
+      "size": 467
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_LIVE_GUARD_AFTER.json",
+      "sha256": "69f63b8d6e710eb0aa50f9a228ec0bf952b14f79ba3100c18a2c432ff7e54fce",
+      "size": 1635
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_LIVE_GUARD_BEFORE.json",
+      "sha256": "37ee03d323c4470ce0cac833be7155034a64072d105e0e2ff40527870a32d64e",
+      "size": 1635
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_LIVE_GUARD_COMPARISON.json",
+      "sha256": "a4d02dc66bbd594c5a2bd854b6d22997d1a050e1c12b17140f1483390045bac2",
+      "size": 1184
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_MIGRATION.json",
+      "sha256": "be78371f8822ad6c3d9e21ee06021aa03aa0f3a5946fd75552bda6dfedf31886",
+      "size": 10588
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_MIGRATION_RAW.txt",
+      "sha256": "06f1fb85760ac70f71404bd3b726381e841167ca5afbfc8a2e00700566123504",
+      "size": 756
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_MYPY_RAW.txt",
+      "sha256": "0d42646ff848fddea83e113f5e72c066dc050fc901c93d17176142ab98c966e9",
+      "size": 45
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_PRESERVATION.json",
+      "sha256": "a16c047f3e43964e98d5f5f4cb62a8954745ba2987f99b7ea3f309b50961c5b7",
+      "size": 2169
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_PRESERVATION_RAW.txt",
+      "sha256": "74ef1094f4c13eaf1c034e63940d66510fa29df1a7b76692bf6daafa4cd21c4d",
+      "size": 454
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_REPLAY.json",
+      "sha256": "eeaf3a12ef94bbb39ebac7b77b486db6855c1090caa334d3501889fd088f591e",
+      "size": 22874
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_REPLAY_RAW.txt",
+      "sha256": "8ad807d36c1233de5f8795dbd3617a20419ac7410f78f454fc5adaead57f6aeb",
+      "size": 620
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_RESTORE.json",
+      "sha256": "ef6d8d62973465588a4d5eb04f1dbfcdc6ff9b0373c65f8bb7eb0140a7661619",
+      "size": 25977
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_RESTORE_RAW.txt",
+      "sha256": "39e97c815aa8122173828ad0cada0a9b3fa4dafaf4fd307dfc8de94ea476146b",
+      "size": 184
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_RUFF_RAW.txt",
+      "sha256": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0",
+      "size": 20
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_SECRET_SCAN.json",
+      "sha256": "5f0c8c93f0ac223a451e76763e1b7529379ba6f252aa443ddbbdd5119aeb4e19",
+      "size": 107
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_SECRET_SCAN_RAW.txt",
+      "sha256": "5837e761678ee61087a2356df6f2fa4addeabfa3de16e70c84228709ea28d48a",
+      "size": 22
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_STATIC.json",
+      "sha256": "67725a36220c8af2ac56c9a79699935f58c394fb363845aa1bbd5b9626842003",
+      "size": 694
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_VERIFIER_ROUND1_VERDICT_DSV4.json",
+      "sha256": "bcc2e07ac63e067f4e7806a1e0f4628c4317191cb4d98f681812eaa320f4e865",
+      "size": 17109
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_VERIFIER_ROUND2_VERDICT_DSV4.json",
+      "sha256": "45ff8710ce04880076eb4512df6a3ef14faffe9095d5d0229000d562286e20af",
+      "size": 19658
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_VERIFIER_ROUND3_VERDICT_DSV4.json",
+      "sha256": "2208590be900fe21ff9af9590c4ba690bb81c3b59b54da06b9649f34cbd31726",
+      "size": 22576
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_VERIFIER_ROUND4_VERDICT_DSV4.json",
+      "sha256": "9eaa7603b473ac83c4401507fcd96ca1e91431493b2c999beed922127a5b6402",
+      "size": 21266
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_VERIFIER_ROUND5_VERDICT_DSV4.json",
+      "sha256": "d2d1e9c41b07af7fc5eac1d9bb16677f3bb11cb4d8d4c8f48a61e56ec8bc6a96",
+      "size": 23461
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_VERIFIER_ROUND6_VERDICT_DSV4.json",
+      "sha256": "fea7a8d6e3cac9b7a05e96bab46811659714025ead7bc00517897e115b165a25",
+      "size": 25353
+    },
+    {
+      "path": "scripts/remaster/r5/build_evidence.py",
+      "sha256": "923c1bcc392960f85356f498ff6118b0948505c8d8cf6f7b2e8c8b970ae2892d",
+      "size": 14704
+    },
+    {
+      "path": "scripts/remaster/r5/common.py",
+      "sha256": "3098c88c22a4f88facba64ecec437c6921adad75465bf5bc5defc6431d59b639",
+      "size": 3060
+    },
+    {
+      "path": "scripts/remaster/r5/corrections_gate.py",
+      "sha256": "4efa286869110c67a3e129d5c8cf111e620227202fffad9e1a098a0d2f063a76",
+      "size": 6718
+    },
+    {
+      "path": "scripts/remaster/r5/cutover_gate.py",
+      "sha256": "4e7d8a5af5fe9c95c696096eaf96c168af550a4cba0da6c5ee243fd69f77edac",
+      "size": 3496
+    },
+    {
+      "path": "scripts/remaster/r5/invariants_gate.py",
+      "sha256": "248261bf72ad74e897c6e50541b1cdbaa78b36fb02d5b6a7d823e4723cb0cd3b",
+      "size": 2445
+    },
+    {
+      "path": "scripts/remaster/r5/live_guard.py",
+      "sha256": "d7b83e62fea31697f85de553e09184bab9bab5e7f73c460ebeaf0eda06f2b523",
+      "size": 8939
+    },
+    {
+      "path": "scripts/remaster/r5/migration_gate.py",
+      "sha256": "5065b69e1f645e05342e8b469a3a12636976af8cac453cf8b6851311ef26816b",
+      "size": 5246
+    },
+    {
+      "path": "scripts/remaster/r5/preservation_gate.py",
+      "sha256": "a664132cee88f838872e23b6b52c726ca258629064040903177bc1f845f53007",
+      "size": 3269
+    },
+    {
+      "path": "scripts/remaster/r5/refresh_suite_evidence.py",
+      "sha256": "e0d9c782f58f4722e3f9d45416e0fb854ea90a8e88a9cc84b5ec65bedd5543da",
+      "size": 2604
+    },
+    {
+      "path": "scripts/remaster/r5/replay_gate.py",
+      "sha256": "ff69fe8579f2bb2bd6957493072b0039dbb686542774cc9cd00eeeed2498be0b",
+      "size": 4743
+    },
+    {
+      "path": "scripts/remaster/r5/restore_gate.py",
+      "sha256": "00922025a27c27f2d011aae6dcc20403d207a2fcb41af32fb0bd32d40ba9cb73",
+      "size": 9489
+    },
+    {
+      "path": "scripts/remaster/r5/secret_scan.py",
+      "sha256": "f63fbd8edb945e8dc6b868259e523dc47011c7f0c2bce3537f9c3cf0c468b5b4",
+      "size": 2040
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/compat/__init__.py",
+      "sha256": "1ca1ba2f799b582c3e4c5feac7c6ce69f2349799a15b426d8fbc0e1d74debcd3",
+      "size": 2268
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/compat/corrections.py",
+      "sha256": "2c24d81bf9168069352853e6b74680fcb52c08bcaa8fe0fdb8c3707450a77dc3",
+      "size": 4942
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/compat/cutover.py",
+      "sha256": "e4094b7f8b4319f9b4478b117768cd6a6267f2eb183f036916a072b4b8352005",
+      "size": 6090
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/compat/errors.py",
+      "sha256": "19058105ed0dfeeeaf4ee5575dc7ee12a27d7fd3baf35adabc19738c3fdbf462",
+      "size": 953
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/compat/invariants.py",
+      "sha256": "5d4d86e287111c2d6ad9f70ed21e1875897b1b36c32e0e74bb526c2010c9b11d",
+      "size": 6431
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/compat/migrations.py",
+      "sha256": "aa6e747f7cb4f14077cb047a358e8b04b084e84555ba0cd61cc52db647c774c7",
+      "size": 15580
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/compat/projections.py",
+      "sha256": "4dcf6cf6d0f203b174c9cc80424ce17b06c847169e60720b19d8426c4ec93fbd",
+      "size": 1962
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/compat/readers.py",
+      "sha256": "69959958907f57f5ced2b5bdb009e6bee1739e440121e09668368c103e68f5b1",
+      "size": 9862
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/compat/registry.py",
+      "sha256": "bebbe659cb31825a4a52affbdc2c4583d0814f747ba4ef1541bc5635a9aa10a6",
+      "size": 3689
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/compat/replay.py",
+      "sha256": "38a40fa70e55dfc5c0c0fef9dd84fee54d8eb0a4e08d222f7ae8c3763f521c98",
+      "size": 8995
+    },
+    {
+      "path": "src/jarvis_foundry/kernel/compat/restore.py",
+      "sha256": "ba14d8af2c6ff6558abf9dd0750652eff4808d3abe8143e600ffffe959e22faf",
+      "size": 7907
+    },
+    {
+      "path": "tests/remaster/r5/conftest.py",
+      "sha256": "47545d030fb01d322552e60ee73f19433b819058a3c74d9a0aaa6faa303d8a02",
+      "size": 4314
+    },
+    {
+      "path": "tests/remaster/r5/test_corrections.py",
+      "sha256": "787f9b363008cbec51fe54f5e14b19558e7a314a96be4b4214102dcbd644eac8",
+      "size": 3362
+    },
+    {
+      "path": "tests/remaster/r5/test_cutover.py",
+      "sha256": "e3cc50a7c6411ea4e1f370ed5fe64df418ff55c7208f1befe2c95475a18a30e5",
+      "size": 1494
+    },
+    {
+      "path": "tests/remaster/r5/test_invariants.py",
+      "sha256": "090c5c3eae99f056dc7997e874c22c2555874dfa8e625f22a30e7cafcf39fb80",
+      "size": 4450
+    },
+    {
+      "path": "tests/remaster/r5/test_r5_migrations.py",
+      "sha256": "e05e3fa684165f92f87fbe998a833cc514e655c9cdc6e0a7207d69e70e558ee0",
+      "size": 2268
+    },
+    {
+      "path": "tests/remaster/r5/test_readers.py",
+      "sha256": "6e28c5d93a8f44e080f76de4fc2f94472624435e3b8fea4b02a9752a6f5067a0",
+      "size": 5324
+    },
+    {
+      "path": "tests/remaster/r5/test_replay.py",
+      "sha256": "9ef40d8fa2253890e4a6adff7e1ede641fa2a8954f3b5914b82b50cd04092e03",
+      "size": 2683
+    },
+    {
+      "path": "tests/remaster/r5/test_restore.py",
+      "sha256": "ce6b4cac5c09d348d1dec0da173497590c83ebc996971aaf206226cffa033fc5",
+      "size": 2550
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_BUILDER_REPORT.json",
+      "sha256": "SELF_REFERENTIAL_REPORT",
+      "size": 7874
+    },
+    {
+      "path": "docs/remaster/evidence/r5/R5_FINDINGS.json",
+      "sha256": "f8ad63e39ef237c4d72ea6b50217bca498e5eaaa540bd7e9a951ea7c7ea454de",
+      "size": 1938
+    }
+  ],
+  "schema": "jarvis-r5-artifact-manifest-v1"
+}

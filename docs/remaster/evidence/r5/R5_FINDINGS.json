@@ -1,0 +1,40 @@
+{
+  "findings": [
+    {
+      "detail": "Live snapshot 51,444 rows, frozen R0 live 42,874 rows, and isolated V7 158 rows all pass independent invariants with zero sequence gaps, zero duplicates, zero payload-hash mismatches, and zero malformed rows; the correction ledger therefore records zero real corrections.",
+      "disposition": "RECORDED",
+      "evidence": "R5_CORRECTIONS.json",
+      "id": "R5-F-001",
+      "severity": "S3",
+      "title": "No historical data defects found in any frozen sample"
+    },
+    {
+      "detail": "R5 builds the missing R4 header-hash chain deterministically in an isolated ledger copy while preserving legacy rows byte-identical; correctness is proven by chain reports and independent invariants.",
+      "disposition": "RECORDED",
+      "evidence": "R5_REPLAY.json",
+      "id": "R5-F-002",
+      "severity": "S2",
+      "title": "Legacy events table lacks header-chain/triggers (R0-F015 carryover)"
+    },
+    {
+      "detail": "Replay output is compared only against independently defined row and projection-state invariants, never against the legacy 1,670-line projection dispatcher.",
+      "disposition": "RECORDED",
+      "evidence": "R5_INVARIANTS.json",
+      "id": "R5-F-003",
+      "severity": "S3",
+      "title": "R5 does not trust legacy projection output"
+    },
+    {
+      "detail": "New additive kernel/compat readers map legacy rows to LedgerEvent with fail-closed refusal; zero-to-current replay is deterministic and byte-identical across repeated runs.",
+      "disposition": "RESOLVED_IN_R5",
+      "evidence": "R5_FOCUSED_TESTS.json, R5_REPLAY.json",
+      "id": "R5-F-004",
+      "severity": "S3",
+      "title": "Versioned compatibility readers and deterministic replay implemented"
+    }
+  ],
+  "generated_utc": "2026-08-15T00:00:00Z",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "schema": "jarvis-r5-findings-v1",
+  "stage": "R5"
+}

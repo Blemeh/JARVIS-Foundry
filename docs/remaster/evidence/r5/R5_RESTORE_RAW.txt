@@ -1,0 +1,5 @@
+restore_verified=True
+previous_release_readable=True events=42874
+bundle_verify_exit=0 clone_exit=0
+task_utf16_parses=True config_yaml_parses=True
+restored_evidence_components=22

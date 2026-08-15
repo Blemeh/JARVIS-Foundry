@@ -1,0 +1,149 @@
+{
+  "schema": "jarvis-remaster-work-package-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R5",
+  "title": "Historical data compatibility, migration, replay, reconcile, and restore",
+  "status": "FROZEN",
+  "generated_utc": "2026-08-15T04:30:00Z",
+  "frozen_base": {
+    "commit": "c72b32f",
+    "branch": "remaster/post-v7-purpose",
+    "worktree": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster",
+    "baseline_source_commit": "93a3ddc0965dfaf3e4cb9dc0952467bd5250520a",
+    "live_v7_deployment_changes_allowed": false,
+    "push_or_publish_allowed": false,
+    "live_daemon_database_tasks_processes_ports": "protected, untouched"
+  },
+  "objective": "Prove deterministic zero-to-current replay of the complete V1-V7 historical ledger, versioned compatibility readers, additive corrections, rehearsed migrations with interruption boundaries on WAL-safe live copies, and verified full restoration as one recovery unit - without rewriting history and without touching the live database.",
+  "primary_evidence_sources": [
+    "Live Foundry home database: C:\\Users\\b\\AppData\\Local\\hermes\\foundry\\foundry.db (READ-ONLY copies only)",
+    "R0 restore bundle: docs/remaster/evidence/r0 (frozen DB backups, git bundle)",
+    "Historical event rows: preserved V1-V7 event tables (claims to reconcile, never rewrite)",
+    "R4 kernel ledger/projections: src/jarvis_foundry/kernel/** (compatibility readers must map legacy rows to the new ledger without mutation)"
+  ],
+  "mandatory_deliverables": [
+    {
+      "id": "R5-D01",
+      "item": "Preserve every V1-V7 event unchanged",
+      "detail": "Byte-identical preservation of historical event rows; no rewrite, no backfill, no deletion. Any correction is recorded additively with a correction event."
+    },
+    {
+      "id": "R5-D02",
+      "item": "Versioned compatibility readers",
+      "detail": "Readers for each historical schema version that map legacy rows into the R4 kernel's LedgerEvent shape without mutating source tables; unknown/unsupported rows fail closed with explicit reason."
+    },
+    {
+      "id": "R5-D03",
+      "item": "Deterministic zero-to-current replay",
+      "detail": "Replay the complete historical ledger from sequence one through the R4 kernel projections; result must be byte-identical across repeated runs and independent of host ordering."
+    },
+    {
+      "id": "R5-D04",
+      "item": "Independently defined invariants",
+      "detail": "Compare replay output against independently defined invariants (event count, chain integrity, projection state invariants), not just old projection output."
+    },
+    {
+      "id": "R5-D05",
+      "item": "Additive corrections",
+      "detail": "Corrections to historical data are recorded as new events only; no history mutation; a correction ledger documents each correction event with reason and evidence."
+    },
+    {
+      "id": "R5-D06",
+      "item": "Rehearsed migrations with interruption boundaries",
+      "detail": "Every migration rehearsed on WAL-safe live copies: before/after states, interruption at each step, resume, idempotency, downgrade/rollback boundary, and previous-release readability."
+    },
+    {
+      "id": "R5-D07",
+      "item": "Recovery unit consistency",
+      "detail": "Executable, DB, WAL, config, task, secrets metadata, and evidence restore points kept consistent as one recovery unit; full restoration verified."
+    },
+    {
+      "id": "R5-D08",
+      "item": "No loss or duplication during dual-run/cutover",
+      "detail": "Prove no events are lost or duplicated during the rehearsal of dual-run/cutover against copies; idempotency and integrity verified."
+    }
+  ],
+  "mandatory_gates": [
+    {
+      "id": "R5-G01",
+      "gate": "Complete historical ledger replays deterministically from sequence one with zero unexplained mismatch and byte-identical repeated results"
+    },
+    {
+      "id": "R5-G02",
+      "gate": "Every historical event row is preserved byte-identical; corrections are additive-only"
+    },
+    {
+      "id": "R5-G03",
+      "gate": "Every migration runs twice with identical results (idempotent), survives interruption at every boundary, and can roll back to the previous release"
+    },
+    {
+      "id": "R5-G04",
+      "gate": "Full restoration (executable + DB + WAL + config + task + secrets metadata + evidence) verified on a copy; previous-release readability proven"
+    },
+    {
+      "id": "R5-G05",
+      "gate": "Zero events lost or duplicated in dual-run/cutover rehearsal; integrity constraints hold"
+    },
+    {
+      "id": "R5-G06",
+      "gate": "No live/protected state touched; all work on read-only copies; evidence budget under 8 MiB"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "R5-C01",
+      "criterion": "R5-D01..D08 each PASS with non-empty evidence (paths, hashes, command outputs)."
+    },
+    {
+      "id": "R5-C02",
+      "criterion": "Replay of the live-copy ledger (or the largest available historical sample) produces identical results on two independent runs and satisfies the independently defined invariants."
+    },
+    {
+      "id": "R5-C03",
+      "criterion": "Correction events are appended, never applied in place; the correction ledger documents each with reason and evidence."
+    },
+    {
+      "id": "R5-C04",
+      "criterion": "Migration rehearsal covers interruption at every step with resume and rollback; downgrade boundary proven on a copy."
+    },
+    {
+      "id": "R5-C05",
+      "criterion": "Restore rehearsed end-to-end on a copy; the restored unit matches the frozen restore-point hashes."
+    },
+    {
+      "id": "R5-C06",
+      "criterion": "Dual-run/cutover rehearsal shows no loss or duplication and reports a clean reconciliation."
+    },
+    {
+      "id": "R5-C07",
+      "criterion": "Full repository test suite stays green in the isolated env with the R4 kernel (no regressions); any delta explained exactly."
+    },
+    {
+      "id": "R5-C08",
+      "criterion": "No live database, task, process, port, or protected file touched; evidence under budget; builder does not commit/push."
+    }
+  ],
+  "ownership": {
+    "builder": "May create scripts/remaster/r5/**, tests/remaster/r5/**, docs/remaster/evidence/r5/**, and additive compatibility source under src/jarvis_foundry/kernel/compat/** (new files only). May read the live-copy DB via mode=ro copies in the isolated temp area. Must NOT edit existing kernel modules, tests/foundry, R1-R4 evidence, FINDINGS.jsonl, work packages, or the live/protected main.",
+    "root": "Evidence custody, findings registry, commit decision, final truth.",
+    "verifier": "Fresh independent context after builder freeze."
+  },
+  "resources_and_constraints": {
+    "python": "C:\\Python313\\python.exe",
+    "isolated_venv": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r3-venv (reuse) or a sibling R5 venv",
+    "db_copies": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r5-* (mode=ro copies; never the live DB)",
+    "network_allowed": "only pinned dev-tool installs into the isolated venv; no provider calls",
+    "evidence_budget_bytes": 8388608,
+    "timeout": "bounded; every long gate prints WALL_SECONDS and EXIT_CODE"
+  },
+  "status_contract": "PASS | FAIL | BLOCKED | NOT_TESTED | WAITING only; exit code zero alone is NOT_TESTED; every PASS needs non-empty evidence.",
+  "stop_conditions": [
+    "any mutation of live/protected state or the live database",
+    "any rewrite/backfill/delete of historical event rows",
+    "any edit to existing kernel modules, tests/foundry, or prior evidence",
+    "any commit or push by the builder",
+    "any secret value written to evidence",
+    "any unrecorded gate failure presented as PASS"
+  ],
+  "builder_status": "NOT_TESTED until a fresh independent verifier passes every mandatory criterion"
+}

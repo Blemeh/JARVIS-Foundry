@@ -1,0 +1,68 @@
+{
+  "exit_code": 0,
+  "isolated": {
+    "first": {
+      "chain_valid": true,
+      "duplicate_free": true,
+      "duplicated_ids": [],
+      "idempotency_signature": "5d308a512c2b8ea815208d96247d45fe1f9de159a55e854c0a96ae962510e571",
+      "legacy_count": 163,
+      "legacy_only_ids": [],
+      "lossless": true,
+      "matched_ids": 163,
+      "r4_count": 163,
+      "r4_only_ids": [],
+      "reconciliation_clean": true
+    },
+    "idempotent_signatures_match": true,
+    "sample": "isolated",
+    "second": {
+      "chain_valid": true,
+      "duplicate_free": true,
+      "duplicated_ids": [],
+      "idempotency_signature": "5d308a512c2b8ea815208d96247d45fe1f9de159a55e854c0a96ae962510e571",
+      "legacy_count": 163,
+      "legacy_only_ids": [],
+      "lossless": true,
+      "matched_ids": 163,
+      "r4_count": 163,
+      "r4_only_ids": [],
+      "reconciliation_clean": true
+    }
+  },
+  "live": {
+    "first": {
+      "chain_valid": true,
+      "duplicate_free": true,
+      "duplicated_ids": [],
+      "idempotency_signature": "d103ac9688d86db6765fb597cc96088c9b18dde6dac52dd5001a998fad5d8754",
+      "legacy_count": 51454,
+      "legacy_only_ids": [],
+      "lossless": true,
+      "matched_ids": 51454,
+      "r4_count": 51454,
+      "r4_only_ids": [],
+      "reconciliation_clean": true
+    },
+    "idempotent_signatures_match": true,
+    "sample": "live",
+    "second": {
+      "chain_valid": true,
+      "duplicate_free": true,
+      "duplicated_ids": [],
+      "idempotency_signature": "d103ac9688d86db6765fb597cc96088c9b18dde6dac52dd5001a998fad5d8754",
+      "legacy_count": 51454,
+      "legacy_only_ids": [],
+      "lossless": true,
+      "matched_ids": 51454,
+      "r4_count": 51454,
+      "r4_only_ids": [],
+      "reconciliation_clean": true
+    }
+  },
+  "passed": true,
+  "raw_output": "R5_CUTOVER_RAW.txt",
+  "raw_output_sha256": "1481bfe0bfdff62b679e28aabf301146e99ab6afe6f359bc8bdd7f965f235050",
+  "schema": "jarvis-r5-cutover-v1",
+  "wall_seconds": 170.341
+}

@@ -1,0 +1,11 @@
+live: idempotent=True baseline_fingerprint=69c661694e97a3890e6c0f29d7586cadc01072ba1b42642a01d5d672c574510d
+isolated: idempotent=True
+interrupt PREPARE: interrupted=True resume_exit=0 hashes_match=True
+interrupt READ: interrupted=True resume_exit=0 hashes_match=True
+interrupt CONVERT: interrupted=True resume_exit=0 hashes_match=True
+interrupt LEDGER: interrupted=True resume_exit=0 hashes_match=True
+interrupt PROJECT: interrupted=True resume_exit=0 hashes_match=True
+interrupt CORRECT: interrupted=True resume_exit=0 hashes_match=True
+interrupt CUTOVER: interrupted=True resume_exit=0 hashes_match=True
+interrupt COMPLETE: interrupted=True resume_exit=0 hashes_match=True
+rollback: restores_original_bytes=True previous_release_readable=True
