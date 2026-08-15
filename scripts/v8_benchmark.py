@@ -154,8 +154,10 @@ def main() -> int:
         _seed_verdict_fail(db)
         _seed_claim(db, "Supervisor exits with 0xC000013A: console handler fixed it")
         results[name] = builder(db)
-    EVIDENCE.parent.mkdir(parents=True, exist_ok=True)
-    EVIDENCE.write_text(json.dumps(results, indent=1, sort_keys=True), encoding="utf-8")
+    if "--record" in sys.argv:
+        EVIDENCE.parent.mkdir(parents=True, exist_ok=True)
+        EVIDENCE.write_text(json.dumps(results, indent=1, sort_keys=True), encoding="utf-8")
+        print(f"evidence recorded: {EVIDENCE}")
     print(json.dumps(results, indent=1, sort_keys=True))
     ok = (results["A"]["truth_precedence"] == "PASS"
           and results["B"]["truth_precedence"] == "FAIL"

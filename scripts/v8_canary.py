@@ -124,8 +124,10 @@ def main() -> int:
     for mission_id, objective in missions:
         report["runs"].append({"mission": mission_id,
                                "steps": canary(db, root, mission_id, objective)})
-    EVIDENCE.parent.mkdir(parents=True, exist_ok=True)
-    EVIDENCE.write_text(json.dumps(report, indent=1, sort_keys=True), encoding="utf-8")
+    if "--record" in sys.argv:
+        EVIDENCE.parent.mkdir(parents=True, exist_ok=True)
+        EVIDENCE.write_text(json.dumps(report, indent=1, sort_keys=True), encoding="utf-8")
+        print(f"evidence recorded: {EVIDENCE}")
     print(json.dumps(report, indent=1, sort_keys=True))
     violations = []
     for run in report["runs"]:

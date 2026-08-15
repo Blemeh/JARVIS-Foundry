@@ -172,7 +172,6 @@ class ContextCompiler:
         if not lines:
             return None, dropped
         return "\n".join(lines), dropped
-
     def _recall_section(self, objective: str, limit: int) -> str | None:
         hits = self.recall.recall(objective, limit=limit)
         if not hits:
@@ -225,26 +224,35 @@ class ContextCompiler:
                          f"hash={item.get('content_hash', '?')}")
         sections["evidence"] = ev_lines
 
-        # 3) Tier B knowledge (bounded)
+        # 3) Tier B knowledge (bounded; production manifest machinery)
         tier_b_budget = max(400, budget_chars // 3)
         sections["tier_b_knowledge"] = self._tier_b_section(mission_id, objective, tier_b_budget)
 
-        # 4) Tier C — advisory, role-gated, budget-droppable
-        if tier_c_enabled:
-            core_budget = max(200, budget_chars // 4)
-            core, core_dropped = self._core_section(core_budget)
-            if core:
-                sections["core_memory"] = "ADVISORY — " + core
-            dropped.extend(core_dropped)
-            if role != "verifier":
-                recalled = self._recall_section(objective, limit=5)
-                if recalled:
-                    sections["recalled_experience"] = "ADVISORY RECALL (context, not authority):\n" + recalled
-                procs = self._procedures_section(objective, limit=3)
-                if procs:
-                    sections["procedures"] = "ADVISORY PROCEDURES (experiential guidance):\n" + procs
-            else:
-                notes.append("verifier role: Tier C recall excluded (verifier independence)")
+        # 4) Tier C — advisory, role-gated, budget-droppable. Budget =
+        #    whatever remains after Tier A/B (no floor: under starvation ALL
+        #    Tier C is dropped, recorded, never silently truncated).
+        used_so_far = sum(len(v) for v in sections.values())
+        tier_c_budget = max(0, budget_chars - used_so_far)
+        if tier_c_enabled and tier_c_budget > 0:
+            try:
+                core, core_dropped = self._core_section(tier_c_budget)
+                if core:
+                    sections["core_memory"] = "ADVISORY — " + core
+                dropped.extend(core_dropped)
+                if role != "verifier":
+                    recalled = self._recall_section(objective, limit=5)
+                    if recalled:
+                        sections["recalled_experience"] = "ADVISORY RECALL (context, not authority):\n" + recalled
+                    procs = self._procedures_section(objective, limit=3)
+                    if procs:
+                        sections["procedures"] = "ADVISORY PROCEDURES (experiential guidance):\n" + procs
+                else:
+                    notes.append("verifier role: Tier C recall excluded (verifier independence)")
+            except Exception as exc:
+                # Tier C failure degrades memory, never control (audit K)
+                notes.append(f"tier_c_unavailable: {type(exc).__name__}")
+        elif tier_c_enabled:
+            notes.append("tier_c budget exhausted after Tier A/B sections")
         else:
             notes.append("tier_c disabled for this package")
 

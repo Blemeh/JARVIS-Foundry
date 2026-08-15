@@ -369,8 +369,10 @@ def main() -> int:
     t11_git_db_divergence()
     t12_markerless_revert()
     t13_restart_recovery()
-    EVIDENCE.parent.mkdir(parents=True, exist_ok=True)
-    EVIDENCE.write_text(json.dumps(RESULTS, indent=1, sort_keys=True), encoding="utf-8")
+    if "--record" in sys.argv:
+        EVIDENCE.parent.mkdir(parents=True, exist_ok=True)
+        EVIDENCE.write_text(json.dumps(RESULTS, indent=1, sort_keys=True), encoding="utf-8")
+        print(f"evidence recorded: {EVIDENCE}")
     fails = [r for r in RESULTS if r["verdict"] == "FAIL"]
     print(f"ADVERSARIAL: {sum(1 for r in RESULTS if r['verdict']=='PASS')} PASS, "
           f"{len(fails)} FAIL, "

@@ -138,8 +138,10 @@ def main() -> int:
         measure(db, vault_root, "builder", "supervisor exit code"),
         measure(db, vault_root, "verifier", "verify the supervisor fix"),
     ]
-    EVIDENCE.parent.mkdir(parents=True, exist_ok=True)
-    EVIDENCE.write_text(json.dumps(rows, indent=1, sort_keys=True), encoding="utf-8")
+    if "--record" in sys.argv:
+        EVIDENCE.parent.mkdir(parents=True, exist_ok=True)
+        EVIDENCE.write_text(json.dumps(rows, indent=1, sort_keys=True), encoding="utf-8")
+        print(f"evidence recorded: {EVIDENCE}")
     print(json.dumps(rows, indent=1, sort_keys=True))
     ok = all(
         r["governance_present"] and r["directive_present"]

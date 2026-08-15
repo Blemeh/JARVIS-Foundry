@@ -1,0 +1,29 @@
+{
+ "A": {
+  "context_chars": 303,
+  "false_memory_defense": "PASS",
+  "history_preserved": true,
+  "recall_latency_ms": 7.28,
+  "truth_precedence": "PASS",
+  "verifier_label": "no builder memory channel exists (isolated by construction)"
+ },
+ "B": {
+  "context_chars": 50,
+  "false_memory_defense": "FAIL",
+  "history_preserved": false,
+  "recall_latency_ms": 0.003,
+  "truth_precedence": "FAIL",
+  "verifier_label": "shared blocks inject builder memory into verifier context unlabeled"
+ },
+ "C": {
+  "context_chars": 470,
+  "false_memory_defense": "PASS",
+  "false_memory_promotion": "ADVISORY_ACCEPTED",
+  "false_memory_section": "not_in_context",
+  "history_preserved": true,
+  "recall_hits": 1,
+  "recall_latency_ms": 1.523,
+  "truth_precedence": "PASS",
+  "verifier_label": "UNVERIFIED_BUILDER_CLAIM"
+ }
+}

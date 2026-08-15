@@ -1,4 +1,3 @@
-evidence/
 *.pyc
 __pycache__/
 .venv/

@@ -247,8 +247,7 @@ def main() -> int:
     empty.mkdir()
     sources.insert(0, {"label": "empty-fresh", "path": str(empty / "db.sqlite"),
                        "empty": True})
-    report: dict = {"started_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
-                    "scenarios": []}
+    report: dict = {"scenarios": []}
     for source in sources:
         scenario_work = work / source["label"].replace("/", "_")
         scenario_work.mkdir()
@@ -257,8 +256,10 @@ def main() -> int:
         except Exception as exc:  # one broken source must not kill the run
             report["scenarios"].append({
                 "source": source["label"], "steps": {"scenario_error": str(exc)}})
-    EVIDENCE.parent.mkdir(parents=True, exist_ok=True)
-    EVIDENCE.write_text(json.dumps(report, indent=1, sort_keys=True), encoding="utf-8")
+    if "--record" in sys.argv:
+        EVIDENCE.parent.mkdir(parents=True, exist_ok=True)
+        EVIDENCE.write_text(json.dumps(report, indent=1, sort_keys=True), encoding="utf-8")
+        print(f"evidence recorded: {EVIDENCE}")
     print(json.dumps(report, indent=1, sort_keys=True))
     # verdict line
     failures = []

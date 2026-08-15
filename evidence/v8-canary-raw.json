@@ -1,0 +1,103 @@
+{
+ "rollback_criteria": [
+  "truth violation (memory overriding a verdict)",
+  "STOP not honored in governance",
+  "verifier contamination (Tier C recall in verifier context)",
+  "divergence silently discarded"
+ ],
+ "runs": [
+  {
+   "mission": "M-CAN-1",
+   "steps": {
+    "builder_recall": {
+     "promotion": "CORE",
+     "recalled": true
+    },
+    "context_compilation": {
+     "ok": true,
+     "used": 270
+    },
+    "manifest_contract": {
+     "matches": true,
+     "recorded": true
+    },
+    "procedure_use": {
+     "found": false
+    },
+    "restart_recovery": {
+     "memory_survives": true,
+     "state": "CORE"
+    },
+    "verifier_context": {
+     "governance_present": true,
+     "no_tier_c_recall": true
+    },
+    "versioning": {
+     "committed": true
+    }
+   }
+  },
+  {
+   "mission": "M-CAN-2",
+   "steps": {
+    "builder_recall": {
+     "promotion": "CORE",
+     "recalled": true
+    },
+    "context_compilation": {
+     "ok": true,
+     "used": 372
+    },
+    "manifest_contract": {
+     "matches": true,
+     "recorded": true
+    },
+    "procedure_use": {
+     "found": true
+    },
+    "restart_recovery": {
+     "memory_survives": true,
+     "state": "CORE"
+    },
+    "verifier_context": {
+     "governance_present": true,
+     "no_tier_c_recall": true
+    },
+    "versioning": {
+     "committed": true
+    }
+   }
+  },
+  {
+   "mission": "M-CAN-3",
+   "steps": {
+    "builder_recall": {
+     "promotion": "CORE",
+     "recalled": true
+    },
+    "context_compilation": {
+     "ok": true,
+     "used": 270
+    },
+    "manifest_contract": {
+     "matches": true,
+     "recorded": true
+    },
+    "procedure_use": {
+     "found": false
+    },
+    "restart_recovery": {
+     "memory_survives": true,
+     "state": "CORE"
+    },
+    "verifier_context": {
+     "governance_present": true,
+     "no_tier_c_recall": true
+    },
+    "versioning": {
+     "committed": true
+    }
+   }
+  }
+ ]
+}

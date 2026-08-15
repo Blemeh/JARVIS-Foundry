@@ -52,12 +52,14 @@ PROJECTION_TABLES = (
     "discovery_runs",
     "cycles",
     "acceptance_runs",
-    # V8 hybrid memory: Tier C is event-derived like every other projection
-    "tier_c_memories",
+    # V8 hybrid memory: Tier C is event-derived like every other projection.
+    # reset() deletes children BEFORE parents (revision rows carry NO ACTION
+    # FKs so history can never be cascade-destroyed silently).
     "tier_c_memory_revisions",
     "tier_c_validations",
-    "tier_c_blocks",
+    "tier_c_memories",
     "tier_c_block_revisions",
+    "tier_c_blocks",
     "tier_c_procedures",
 )
 
@@ -1733,11 +1735,16 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             )
     elif event.event_type == "memory.observed":
         connection.execute(
-            """INSERT OR REPLACE INTO tier_c_memories (
+            """INSERT INTO tier_c_memories (
                  memory_id, mission_id, agent_run_id, created_by, mem_type, scope, content,
                  source_ids_json, evidence_ids_json, confidence, state, created_at,
                  last_verified, expires_at, context_cost_chars, last_event_id, updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+               ON CONFLICT(memory_id) DO UPDATE SET
+                 content=excluded.content, source_ids_json=excluded.source_ids_json,
+                 evidence_ids_json=excluded.evidence_ids_json,
+                 confidence=excluded.confidence, expires_at=excluded.expires_at,
+                 last_event_id=excluded.last_event_id, updated_at=excluded.updated_at""",
             (payload["memory_id"], payload.get("mission_id", ""), payload.get("agent_run_id"),
              payload.get("created_by", "worker"), payload.get("mem_type", "episodic"),
              payload.get("scope", "role"), payload["content"],
@@ -1758,16 +1765,20 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             (payload["to"], event.recorded_at, event.event_id, event.recorded_at,
              payload.get("supersedes"), payload.get("contradicts"), payload["memory_id"]))
         connection.execute(
-            "INSERT INTO tier_c_memory_revisions (memory_id, content, state, actor, reason, changed_at) "
-            "VALUES (?,?,?,?,?,?)",
-            (payload["memory_id"], payload.get("content_before") or (row["content"] if row else ""),
+            "INSERT INTO tier_c_memory_revisions (revision_id, memory_id, content, state, actor, reason, changed_at) "
+            "VALUES (?,?,?,?,?,?,?)",
+            (event.event_id, payload["memory_id"],
+             payload.get("content_before") or (row["content"] if row else ""),
              payload.get("from", ""), payload.get("actor", "memory-service"),
              payload.get("reason", ""), event.recorded_at))
     elif event.event_type == "memory.validation_passed":
         connection.execute(
-            """INSERT OR REPLACE INTO tier_c_validations (
+            """INSERT INTO tier_c_validations (
                  memory_id, verdict_json, validated_by, validated_at, last_event_id)
-               VALUES (?,?,?,?,?)""",
+               VALUES (?,?,?,?,?)
+               ON CONFLICT(memory_id) DO UPDATE SET
+                 verdict_json=excluded.verdict_json, validated_by=excluded.validated_by,
+                 validated_at=excluded.validated_at, last_event_id=excluded.last_event_id""",
             (payload["memory_id"], canonical_json(payload.get("verdict") or {}),
              payload.get("validated_by", "curation"), event.recorded_at, event.event_id))
     elif event.event_type == "memory.quarantined":
@@ -1779,32 +1790,41 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             "WHERE memory_id=?",
             (event.recorded_at, event.event_id, event.recorded_at, payload["memory_id"]))
         connection.execute(
-            "INSERT INTO tier_c_memory_revisions (memory_id, content, state, actor, reason, changed_at) "
-            "VALUES (?,?,?,?,?,?)",
-            (payload["memory_id"], row["content"] if row else "", "QUARANTINED",
+            "INSERT INTO tier_c_memory_revisions (revision_id, memory_id, content, state, actor, reason, changed_at) "
+            "VALUES (?,?,?,?,?,?,?)",
+            (event.event_id, payload["memory_id"], row["content"] if row else "", "QUARANTINED",
              payload.get("actor", "defense"), payload.get("reason", ""), event.recorded_at))
     elif event.event_type == "block.updated":
         connection.execute(
-            """INSERT OR REPLACE INTO tier_c_blocks (
+            """INSERT INTO tier_c_blocks (
                  label, value, char_limit, read_only, description, owner, revision,
                  last_event_id, updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?)""",
+               VALUES (?,?,?,?,?,?,?,?,?)
+               ON CONFLICT(label) DO UPDATE SET
+                 value=excluded.value, char_limit=excluded.char_limit,
+                 read_only=excluded.read_only, description=excluded.description,
+                 owner=excluded.owner, revision=excluded.revision,
+                 last_event_id=excluded.last_event_id, updated_at=excluded.updated_at""",
             (payload["label"], payload.get("value", ""), payload.get("char_limit", 2000),
              int(bool(payload.get("read_only", False))), payload.get("description", ""),
              payload.get("owner", "owner"), payload.get("revision", 0),
              event.event_id, event.recorded_at))
         connection.execute(
-            "INSERT INTO tier_c_block_revisions (label, value, actor, reason, changed_at) "
-            "VALUES (?,?,?,?,?)",
-            (payload["label"], payload.get("value", ""), payload.get("actor", "memory-service"),
-             payload.get("reason", ""), event.recorded_at))
+            "INSERT INTO tier_c_block_revisions (revision_id, label, value, actor, reason, changed_at) "
+            "VALUES (?,?,?,?,?,?)",
+            (event.event_id, payload["label"], payload.get("value", ""),
+             payload.get("actor", "memory-service"), payload.get("reason", ""),
+             event.recorded_at))
     elif event.event_type == "procedure.created":
         connection.execute(
-            """INSERT OR REPLACE INTO tier_c_procedures (
+            """INSERT INTO tier_c_procedures (
                  procedure_id, name, description, body, trigger_terms_json, scope, state,
                  confidence, source_ids_json, evidence_ids_json, mission_id, created_by,
                  created_at, last_verified, expires_at, last_event_id, updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+               ON CONFLICT(procedure_id) DO UPDATE SET
+                 body=excluded.body, state=excluded.state, confidence=excluded.confidence,
+                 last_event_id=excluded.last_event_id, updated_at=excluded.updated_at""",
             (payload["procedure_id"], payload.get("name", ""), payload.get("description", ""),
              payload.get("body", ""), canonical_json(payload.get("trigger_terms") or []),
              payload.get("scope", "role"), payload.get("state", "ACTIVE"),

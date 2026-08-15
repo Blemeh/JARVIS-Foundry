@@ -72,9 +72,9 @@ def test_empty_db_rebuild_works(lab):
     mid = lab.promote("rebuildable lesson")
     lab.git.commit_all("curation", "seed")
     with lab.db.transaction() as conn:
-        for table in ("tier_c_memories", "tier_c_memory_revisions",
-                      "tier_c_validations", "tier_c_blocks",
-                      "tier_c_block_revisions", "tier_c_procedures"):
+        for table in ("tier_c_memory_revisions", "tier_c_validations",
+                      "tier_c_memories", "tier_c_block_revisions",
+                      "tier_c_blocks", "tier_c_procedures"):
             conn.execute(f"DELETE FROM {table}")
     lab.git.restore()  # empty DB is the canonical rebuild precondition
     assert lab.memories.get(mid)["state"] == "CORE"

@@ -861,8 +861,8 @@ MIGRATIONS: dict[int, str] = {
     CREATE INDEX IF NOT EXISTS tier_c_memories_mission ON tier_c_memories(mission_id);
 
     CREATE TABLE IF NOT EXISTS tier_c_memory_revisions (
-        revision_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        memory_id TEXT NOT NULL REFERENCES tier_c_memories(memory_id) ON DELETE CASCADE,
+        revision_id TEXT PRIMARY KEY,
+        memory_id TEXT NOT NULL REFERENCES tier_c_memories(memory_id),
         content TEXT NOT NULL,
         state TEXT NOT NULL,
         actor TEXT NOT NULL,
@@ -870,10 +870,10 @@ MIGRATIONS: dict[int, str] = {
         changed_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS tier_c_memory_revisions_memory
-        ON tier_c_memory_revisions(memory_id, revision_id);
+        ON tier_c_memory_revisions(memory_id, changed_at);
 
     CREATE TABLE IF NOT EXISTS tier_c_validations (
-        memory_id TEXT PRIMARY KEY REFERENCES tier_c_memories(memory_id) ON DELETE CASCADE,
+        memory_id TEXT PRIMARY KEY REFERENCES tier_c_memories(memory_id),
         verdict_json TEXT NOT NULL,
         validated_by TEXT NOT NULL,
         validated_at TEXT NOT NULL,
@@ -893,15 +893,15 @@ MIGRATIONS: dict[int, str] = {
     );
 
     CREATE TABLE IF NOT EXISTS tier_c_block_revisions (
-        revision_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        label TEXT NOT NULL REFERENCES tier_c_blocks(label) ON DELETE CASCADE,
+        revision_id TEXT PRIMARY KEY,
+        label TEXT NOT NULL REFERENCES tier_c_blocks(label),
         value TEXT NOT NULL,
         actor TEXT NOT NULL,
         reason TEXT NOT NULL,
         changed_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS tier_c_block_revisions_label
-        ON tier_c_block_revisions(label, revision_id);
+        ON tier_c_block_revisions(label, changed_at);
 
     CREATE TABLE IF NOT EXISTS tier_c_procedures (
         procedure_id TEXT PRIMARY KEY,

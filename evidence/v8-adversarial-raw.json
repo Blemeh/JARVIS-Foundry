@@ -1,0 +1,72 @@
+[
+ {
+  "detail": "Tier A/B current truth wins under 6 attack memories",
+  "probe": "T1 TRUTH INTEGRITY",
+  "verdict": "PASS"
+ },
+ {
+  "detail": "raw transitions rejected (stamp gate)",
+  "probe": "T2 LIFECYCLE BYPASS",
+  "verdict": "PASS"
+ },
+ {
+  "detail": "false claim cannot manufacture PASS; labeled only",
+  "probe": "T3 BUILDER/VERIFIER CONTAMINATION",
+  "verdict": "PASS"
+ },
+ {
+  "detail": "commit blocked + audit event; git head empty",
+  "probe": "T4 SECRET PERSISTENCE",
+  "verdict": "PASS"
+ },
+ {
+  "detail": "content remains untrusted data; directives intact",
+  "probe": "T5 PROMPT INJECTION",
+  "verdict": "PASS"
+ },
+ {
+  "detail": "expired experience labeled STALE; history retained",
+  "probe": "T6 FRESHNESS",
+  "verdict": "PASS"
+ },
+ {
+  "detail": "recall degrades safely (L2)",
+  "probe": "T7 MALFORMED TIMESTAMPS",
+  "verdict": "PASS"
+ },
+ {
+  "detail": "flagged=True first_kept=False",
+  "probe": "T8 CONTRADICTION PRESERVATION",
+  "verdict": "PASS"
+ },
+ {
+  "detail": "not detected by negation-only detector; documented limitation (production knowledge_contradictions is the authoritative Tier B mechanism)",
+  "probe": "T8b ANTONYM REVERSAL (semantic)",
+  "verdict": "INFO"
+ },
+ {
+  "detail": "governance/directives survive budget=150; tier_c dropped first",
+  "probe": "T9 CONTEXT STARVATION",
+  "verdict": "PASS"
+ },
+ {
+  "detail": "honest boundary: lexical dedup at the gate (semantic dedup NOT claimed)",
+  "probe": "T10 DUPLICATES",
+  "verdict": "PASS"
+ },
+ {
+  "detail": "divergence detected; destructive revert blocked",
+  "probe": "T11 GIT/DB DIVERGENCE",
+  "verdict": "PASS"
+ },
+ {
+  "detail": "fail-closed unless explicit force",
+  "probe": "T12 MARKERLESS REVERT",
+  "verdict": "PASS"
+ },
+ {
+  "detail": "interrupted acceptance reconciles; truth intact",
+  "probe": "T13 RESTART/RECOVERY",
+  "verdict": "PASS"
+ }
+]

@@ -217,6 +217,12 @@ class TierCGitVersioning:
         """Rebuild tier_c tables from the checked-out manifests. Column
         keys are data, never SQL (audit repair L1: whitelist enforced)."""
         with self.db.transaction() as conn:
+            # children before parents (NO ACTION FKs: history can never be
+            # silently cascade-destroyed)
+            for table in ("tier_c_memory_revisions", "tier_c_validations",
+                          "tier_c_memories", "tier_c_block_revisions",
+                          "tier_c_blocks", "tier_c_procedures"):
+                conn.execute(f"DELETE FROM {table}")
             for table, allowed in ALLOWED_COLUMNS.items():
                 manifest = self.git_dir / f"{table}.json"
                 rows: list[dict[str, Any]] = []
@@ -228,7 +234,6 @@ class TierCGitVersioning:
                             raise ValueError(
                                 f"manifest {table}.json has unknown columns "
                                 f"{sorted(unknown)}; restore refused")
-                conn.execute(f"DELETE FROM {table}")
                 for row in rows:
                     columns = ", ".join(row.keys())
                     marks = ", ".join("?" for _ in row)
