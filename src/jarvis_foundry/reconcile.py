@@ -106,6 +106,13 @@ def _table_key_column(table: str) -> str:
         "acceptance_runs": "run_id",
         "system_state": "singleton",
         "supervisor_state": "singleton",
+        # V8 hybrid memory: Tier C projections reconcile like everything else
+        "tier_c_memories": "memory_id",
+        "tier_c_memory_revisions": "revision_id",
+        "tier_c_validations": "memory_id",
+        "tier_c_blocks": "label",
+        "tier_c_block_revisions": "revision_id",
+        "tier_c_procedures": "procedure_id",
     }
     return key_columns[table]
 

@@ -24,7 +24,7 @@ from jarvis_foundry.database import FoundryDatabase
 
 
 def _fresh_db(tmp_path: Path) -> tuple[Path, int]:
-    """A schema-32 DB with a marker row and its own event count."""
+    """A current-schema (v33) DB with a marker row and its own event count."""
     home = tmp_path / "db-home"
     home.mkdir()
     db_path = home / "foundry.db"
@@ -123,7 +123,7 @@ def test_sidecar_aware_restore_restores_exact_state(tmp_path: Path) -> None:
     db_path, event_count = _fresh_db(tmp_path)
     snapshot = tmp_path / "snapshot.db"
     _snapshot(db_path, snapshot)
-    assert _state(snapshot)["schema"] == 32
+    assert _state(snapshot)["schema"] == 33
 
     _mutate(db_path)
     assert _state(db_path)["live_slot"] == ("MUTATED",)
@@ -144,7 +144,7 @@ def test_sidecar_aware_restore_restores_exact_state(tmp_path: Path) -> None:
     assert _sidecars(db_path) == [], (
         "a clean restore leaves no -wal/-shm sidecars behind")
     restored = _state(db_path)
-    assert restored["schema"] == 32
+    assert restored["schema"] == 33
     assert restored["live_slot"] == (None,), (
         "sidecar-aware restore must return the exact snapshot truth")
     assert restored["quick_check"] == "ok"
