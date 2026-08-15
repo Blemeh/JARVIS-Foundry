@@ -51,16 +51,18 @@ Migration v33 (`src/jarvis_foundry/migrations.py`): `tier_c_memories`, `tier_c_m
 
 ## 12. Independent verification
 
-Verifier round 1 (deleg_c6bdda26, fresh isolated session; same model family — INDEPENDENCE_REDUCED, recorded): **FAIL with 3 genuine defect clusters**, all repaired at the root with regression tests:
+**Verifier round 1** (deleg_c6bdda26, fresh isolated session; same model family — INDEPENDENCE_REDUCED, recorded): FAIL with 3 genuine defect clusters, all repaired at the root with regression tests:
 
-- **F1/F2/F3 (HIGH)** — tier_c revision integrity: `INSERT OR REPLACE` + FK CASCADE silently destroyed revision history on block updates; AUTOINCREMENT revision ids made `rebuild_projections()` non-idempotent and broke `reconcile` (false-negative on fresh DBs with Tier C activity). Repaired: history-preserving `ON CONFLICT DO UPDATE` upserts in all five projection handlers; deterministic TEXT revision ids (= event ids, replay-stable); children-first reset/restore delete order; reconcile now `consistent=True` on Tier C activity (regression: `test_block_history_grows_with_updates`, `test_memory_revision_history_survives_rebuild`, `test_reconcile_consistent_with_tier_c_activity`).
-- **F4 (HIGH)** — ContextCompiler crashed (OperationalError) when tier_c tables are missing instead of degrading to governance-only. Repaired: Tier C sections wrapped; `tier_c_unavailable` note; governance always delivered (regression: `test_compiler_degrades_when_tier_c_missing`). The migration rehearsal's missing-table step now genuinely degrades in all 9 scenarios.
-- **F5 (MEDIUM)** — evidence files were gitignored and regenerated per run. Repaired: scripts write evidence only with `--record`; evidence committed; rehearsal output made deterministic (no timestamps) (regression: `test_evidence_scripts_need_record_flag`).
+- **F1/F2/F3 (HIGH)** — tier_c revision integrity: `INSERT OR REPLACE` + FK CASCADE silently destroyed revision history on block updates; AUTOINCREMENT revision ids made `rebuild_projections()` non-idempotent and broke `reconcile` (false-negative on fresh DBs with Tier C activity). Repaired: history-preserving `ON CONFLICT DO UPDATE` upserts in all five projection handlers; deterministic TEXT revision ids (= event ids, replay-stable); children-first reset/restore delete order; reconcile now `consistent=True` on Tier C activity (regressions: `test_block_history_grows_with_updates`, `test_memory_revision_history_survives_rebuild`, `test_reconcile_consistent_with_tier_c_activity`).
+- **F4 (HIGH)** — ContextCompiler crashed (OperationalError) when tier_c tables are missing instead of degrading to governance-only. Repaired: Tier C sections wrapped; `tier_c_unavailable` note; governance always delivered (regression: `test_compiler_degrades_when_tier_c_missing`).
+- **F5 (MEDIUM)** — evidence files were gitignored and regenerated per run. Repaired: scripts write evidence only with `--record`; evidence committed; rehearsal output made deterministic (regression: `test_evidence_scripts_need_record_flag`).
 - **F6 (MEDIUM)** — budget was advisory with floors. Repaired: Tier C budget = remaining after Tier A/B, no floor; under starvation ALL Tier C drops and is recorded (regression: `test_compiler_tier_c_budget_is_remaining_after_tier_ab`).
 
-Verifier also confirmed PASS on all safety-critical criteria: C1 truth precedence, C2 lifecycle bypass, C3 secret gate, C4 divergence/markerless, C5 compiler isolation, C7 rehearsal, C8 suite/scripts, C9 classic contract, C10 isolation. Its full report: `%TEMP%\v8-verify-probe\REPORT.md`.
+Verifier round 1 also confirmed PASS on all safety-critical criteria (truth precedence, lifecycle bypass, secret gate, divergence/markerless, compiler isolation, rehearsal, suite/scripts, classic contract, isolation). Report: `%TEMP%\v8-verify-probe\REPORT.md`.
 
-Certification round (fresh verifier) after repairs: see addendum below.
+**Certification round** (deleg_9ef4907e, ANOTHER fresh isolated session, 524s): **VERDICT PASS — all 9 criteria closed**. Independently reproduced: block history 1→4 revisions preserved across rebuilds (revision_id = event ids); reconcile `consistent=True` before AND after `rebuild_projections()`; compiler degrades with `tier_c_unavailable` and no exception; budget honesty (used=450 @ budget=120, no false `used<=budget` claim); evidence byte-identical across plain script runs + all 6 files tracked in git + rehearsal deterministic; full suite 1026/0-fail/EXIT=0 independently collected AND run; rebuild integrity (rows byte-identical, stamps preserved, CORE retained); isolation intact (canonical 93a3ddc + 6 untracked, lab 3aa18f2, live daemon heartbeats only); code review found no new defects (only cosmetic/pre-existing observations: UUID-lexicographic revision ordering, recall not char-capped within the Tier C sub-budget, validation stamps last-wins per memory — all documented design). Report: `%TEMP%\v8-cert-final\report.md`.
+
+**INDEPENDENCE: REDUCED** (fresh isolated sessions; no cross-provider model available — Copilot 403, Nous Portal 404, OpenRouter uncredentialed; recorded honestly per contract).
 
 ## 13. Isolation
 
@@ -79,4 +81,44 @@ Worktree `C:\Users\b\Documents\ChatGPT\Autonomous AI powered by Hoowen\JARVIS-Fo
 
 ## 16. Final verdict
 
-PENDING independent verification. See the verifier report and final verdict addendum.
+**PASS**
+
+```text
+PROJECT:                  JARVIS × Letta Hybrid Memory
+PRODUCTION STRATEGY:      NATIVE_JARVIS
+LETTA RUNTIME:            NOT INTEGRATED
+RISK CLASS:               R2
+
+CANONICAL BASE:           93a3ddc0965dfaf3e4cb9dc0952467bd5250520a
+LAB REFERENCE:            3aa18f28edd31c2b504074f5dfd041ad2d2fe448
+INTEGRATION WORKTREE:     JARVIS-Foundry-V8-HybridMemory
+CANDIDATE COMMIT:         08429416915ea4ea8d2f5ad1b57cb646db82b6dd (pre-verdict; final commit supersedes)
+
+ARCHITECTURE MAPPING:     PASS
+SCHEMA DELTA:             PASS
+FORWARD MIGRATION:        PASS
+ROLLBACK / RESTORE:       PASS
+INTERRUPTION RECOVERY:    PASS
+FULL JARVIS SUITE:        PASS (1026, 0 fail, EXIT=0)
+HYBRID MEMORY TESTS:      PASS (41)
+ADVERSARIAL PROBES:       PASS (13 PASS / 0 FAIL / 1 INFO)
+BENCHMARK:                PASS (A=PASS / B=FAIL / C=PASS)
+SHADOW MODE:              PASS
+CANARY:                   PASS (3 missions)
+INDEPENDENT VERIFIER:     PASS (2 rounds; certification round 9/9 criteria)
+INDEPENDENCE:             REDUCED (fresh isolated sessions; no cross-provider model available)
+
+CANONICAL MUTATION:       NO
+LIVE DAMAGE:              NONE
+UNRESOLVED CRITICAL:      0
+UNRESOLVED HIGH:          0
+KNOWN LIMITATIONS:        lexical-only recall/dedup/contradiction detection;
+                          scanner is config (defense-in-depth, not proof);
+                          recall linear scan (FTS at scale, out of scope);
+                          revisions() UUID-lexicographic ordering (cosmetic)
+
+FINAL VERDICT:            PASS
+MERGE STATE:              READY_FOR_MERGE
+```
+
+`READY_FOR_MERGE` means the candidate is proven. Canonical JARVIS has NOT been merged — the merge is an owner decision on the canonical repo.
