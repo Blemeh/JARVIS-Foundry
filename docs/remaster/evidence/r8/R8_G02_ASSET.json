@@ -1,0 +1,29 @@
+{
+  "asset_file_hashes_match": true,
+  "asset_files": [
+    "docs/health.md",
+    "tests/test_regression_edges.py"
+  ],
+  "diff_name_only": [
+    "docs/health.md",
+    "src/alpha_ledger/__pycache__/__init__.cpython-313.pyc",
+    "src/alpha_ledger/__pycache__/store.cpython-313.pyc",
+    "test-results.xml",
+    "tests/__pycache__/test_regression_edges.cpython-313-pytest-9.0.3.pyc",
+    "tests/__pycache__/test_store.cpython-313-pytest-9.0.3.pyc",
+    "tests/test_regression_edges.py"
+  ],
+  "exit_code": 0,
+  "independent_pytest_exit_code": 0,
+  "independent_pytest_summary": "10 passed in 0.27s",
+  "lifecycle_complete": true,
+  "mission_link_binds_accepted_event": true,
+  "not_a_toy": {
+    "files_created": 2,
+    "test_count_claimed": "10 passed in 0.31s"
+  },
+  "passed": true,
+  "schema": "jarvis-r8-g02-asset-v1",
+  "tests_passed": true,
+  "wall_seconds": 0.79
+}

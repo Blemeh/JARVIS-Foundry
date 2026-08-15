@@ -1,0 +1,57 @@
+{
+  "acceptance_criteria": [
+    "machine-readable worker result",
+    "real diff inspection",
+    "fresh verifier PASS",
+    "ledger lifecycle complete",
+    "source repo unchanged"
+  ],
+  "allowed_mutation": [
+    "tests/",
+    "docs/",
+    "src/"
+  ],
+  "branch": "r8/mission-r8c-waiting",
+  "candidate_id": "candidate-mission-r8c-waiting",
+  "decision_id": "decision-mission-r8c-waiting",
+  "evidence_dir": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r8\\machinery",
+  "forbidden_mutation": [
+    ".git/",
+    "protected/**",
+    "live/**",
+    "vault/**"
+  ],
+  "goal_id": "goal-mission-r8c-waiting",
+  "kind": "waiting",
+  "known_verified_state": {
+    "program": "POST_V7_JARVIS_REMASTER",
+    "source": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r8-builder\\projects\\alpha_ledger",
+    "stage": "R8"
+  },
+  "mission_id": "mission-r8c-waiting",
+  "next_action": "await a new useful mission",
+  "objective": "complete R8 mission mission-r8c-waiting",
+  "proving_root": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r8-builder",
+  "python": "C:/Users/b/AppData/Local/Temp/jarvis-r3-venv/Scripts/python.exe",
+  "relevant_previous_failures": [
+    "prior R8 builder returned empty final and no files"
+  ],
+  "repair_finding_id": "",
+  "reproduced_test_command": "",
+  "required_evidence": [
+    "worker_result.json",
+    "mission_report.json",
+    "diff.json"
+  ],
+  "required_tests": [
+    "pytest tests -q"
+  ],
+  "role": "builder",
+  "rollback_expectation": "changes confined to isolated clone; restore demonstrated",
+  "snapshot_untracked": false,
+  "source_project": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r8-builder\\projects\\alpha_ledger",
+  "timeout_seconds": 2400,
+  "worker_id": "worker-mission-r8c-waiting",
+  "worker_module": "jarvis_foundry.orchestration.workers.asset_builder",
+  "worker_spec": {}
+}

@@ -1,0 +1,145 @@
+{
+  "schema": "jarvis-remaster-work-package-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R8",
+  "title": "Autonomous digital production organization: build, verify, repair, maintain, deliver",
+  "status": "FROZEN",
+  "generated_utc": "2026-08-15T20:10:00Z",
+  "frozen_base": {
+    "commit": "9a514d9cae48e9d6f3384c3b42a433a77daa80c4",
+    "branch": "remaster/post-v7-purpose",
+    "worktree": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster",
+    "baseline_source_commit": "93a3ddc0965dfaf3e4cb9dc0952467bd5250520a",
+    "live_v7_deployment_changes_allowed": false,
+    "push_or_publish_allowed": false,
+    "live_daemon_database_tasks_processes_ports": "protected, untouched",
+    "r6_status": "OWNER_REDIRECT_R6_DEFERRED (never reopen; R6 trees remain uncommitted and untouched)"
+  },
+  "objective": "Build the autonomous digital production organization that removes the owner from the multi-agent copy/paste loop: JARVIS inspects an existing project, preserves dirty user work, creates an isolated worktree/branch, constructs bounded mission context, dispatches the appropriate builder, ingests the actual structured result, inspects the actual diff/artifact, independently verifies, records findings, generates a repair mission, dispatches a fresh repair worker, reverifies, accepts/rejects, reconciles Git/filesystem/ledger/deployed truth, then determines the next useful action and continues. Prove both (A) one genuinely useful nontrivial digital asset completed end-to-end and (B) one real maintenance/regression repair on existing work. No toy demo, no add() test, no worker prose, no green-number-only evidence counts.",
+  "governed_proving_area": {
+    "purpose": "All real effects run in isolated proving worktrees/clones under C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r8-*; owner projects are cloned/read only, never mutated in place; no live daemon, database, vault, or protected main state is touched.",
+    "privacy_boundary": "Evidence records identities, hashes, diffs summaries, timestamps, provenance, and non-sensitive excerpts only. Retrieved/model content is never owner authority.",
+    "real_source_projects": [
+      "C:\\Users\\b\\Documents\\LeadGen",
+      "C:\\Users\\b\\Documents\\OperatorOS",
+      "C:\\Users\\b\\Documents\\Claude\\pivotlens",
+      "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry"
+    ]
+  },
+  "mandatory_deliverables": [
+    {
+      "id": "R8-D01",
+      "item": "Orchestration kernel (autonomous production machinery)",
+      "detail": "New additive module(s) under src/jarvis_foundry/orchestration/** implementing: inspect existing project (git/fs state), preserve dirty untracked work, create isolated worktree/branch (clone into proving area; source repos untouched), construct bounded mission context (MISSION/CURRENT STEP/ROLE/OBJECTIVE/KNOWN VERIFIED STATE/RELEVANT PREVIOUS FAILURES/ALLOWED MUTATION/FORBIDDEN MUTATION/ACCEPTANCE CRITERIA/REQUIRED TESTS/REQUIRED EVIDENCE/ROLLBACK EXPECTATION/RESULT CONTRACT), dispatch a builder (real subprocess against the isolated venv, not a mock), ingest a machine-readable worker result (status/claims/files_changed/commands_run/tests/evidence/artifacts/external_effects/blockers/uncertainty/recommended_next_action), inspect the actual diff/artifact, record findings, generate a repair mission, dispatch a fresh repair worker, reverify, accept/reject, reconcile Git/filesystem/ledger truth, determine next useful action. All mission lifecycle transitions are durable kernel ledger events with projections. The system must honestly emit WAITING when nothing useful is available."
+    },
+    {
+      "id": "R8-D02",
+      "item": "Proven real asset A",
+      "detail": "One genuinely useful nontrivial digital asset completed end-to-end by the R8 machinery itself (not by the builder agent manually): the machinery selects a real bounded mission, dispatches a worker in an isolated worktree, inspects the real diff, verifies with tests, records durable ledger truth, and accepts. The asset must be real and useful (e.g., a real regression suite, a real documentation/health artifact, a real fix), never an add() toy."
+    },
+    {
+      "id": "R8-D03",
+      "item": "Proven real maintenance/regression repair B",
+      "detail": "One real maintenance/regression repair on existing work, executed through the same machinery: a real defect (in the R7 kernel surface or in a cloned owner project) is reproduced, a repair mission is dispatched to a FRESH repair worker (different from the builder that found it), the repair is regression-tested, re-verified by a fresh verifier, and accepted/rejected with durable records."
+    },
+    {
+      "id": "R8-D04",
+      "item": "Durable mission/verification ledger",
+      "detail": "Every mission lifecycle event (DISPATCHED, RESULT_INGESTED, INSPECTED, FINDINGS_RECORDED, REPAIR_DISPATCHED, REVERIFIED, ACCEPTED, REJECTED, WAITING) is an append-only kernel ledger event with valid hash chain and projections; MissionLink-style store links record candidate->decision->mission lineage; findings are recorded in a structured registry."
+    },
+    {
+      "id": "R8-D05",
+      "item": "Machine-ingestible worker contract and result schema",
+      "detail": "A typed worker contract (as above) and a result schema with required fields; worker output is validated fail-closed (malformed results are rejected and recorded, never silently accepted); prose is never canonical truth."
+    },
+    {
+      "id": "R8-D06",
+      "item": "Owner-useful evidence and explanations",
+      "detail": "Evidence records for each mission: exact commands, files_changed, diff summaries, test outputs, before/after hashes, verification verdicts, findings, reconciliation results, and the next autonomous action."
+    }
+  ],
+  "mandatory_gates": [
+    {
+      "id": "R8-G01",
+      "gate": "Isolated worktree/branch machinery: real project inspected, dirty untracked work preserved and reported, isolated clone/worktree created, source repo untouched (hash/status before == after)."
+    },
+    {
+      "id": "R8-G02",
+      "gate": "Real asset A: the machinery completed a nontrivial digital asset end-to-end; the actual diff and artifacts are inspected and verified (real test outputs, real files, no toy)."
+    },
+    {
+      "id": "R8-G03",
+      "gate": "Real repair B: a real defect was reproduced, repaired by a fresh worker, regression-tested, re-verified, and accepted; before/after evidence exists."
+    },
+    {
+      "id": "R8-G04",
+      "gate": "Independent verification: no builder certifies its own work; every consequential result reaches a fresh verifier recorded in the ledger; rejections are recorded."
+    },
+    {
+      "id": "R8-G05",
+      "gate": "Reconciliation: Git/filesystem/ledger truth reconciled for accepted missions; restore/rollback path demonstrated at least once; no accepted mission without reconciliation."
+    },
+    {
+      "id": "R8-G06",
+      "gate": "No live/protected mutation: source projects, protected main, live daemon/db/vault untouched; evidence under 8 MiB; full repo suite green in the isolated venv; ruff check + format --check + mypy strict + bandit clean for R8-owned source."
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "R8-C01",
+      "criterion": "R8-D01..D06 each PASS with non-empty evidence (paths, hashes, command outputs, real diffs)."
+    },
+    {
+      "id": "R8-C02",
+      "criterion": "Isolated worktree machinery proves source-repo non-mutation and dirty-work preservation with before/after hashes."
+    },
+    {
+      "id": "R8-C03",
+      "criterion": "Real asset A: actual diff/artifact inspected; tests green; not a toy."
+    },
+    {
+      "id": "R8-C04",
+      "criterion": "Real repair B: reproduced defect, fresh repair worker, regression test, fresh reverification, acceptance record."
+    },
+    {
+      "id": "R8-C05",
+      "criterion": "Mission lifecycle and findings are durable kernel records; malformed worker results fail closed."
+    },
+    {
+      "id": "R8-C06",
+      "criterion": "Reconciliation and rollback demonstrated; WAITING emitted honestly when no useful mission exists."
+    },
+    {
+      "id": "R8-C07",
+      "criterion": "Full repository suite green; R8-owned files pass ruff check/format/mypy strict/bandit; evidence under budget; no protected mutation."
+    },
+    {
+      "id": "R8-C08",
+      "criterion": "Fresh independent verifier reproduces every criterion and finds no new S1/S2 defect."
+    }
+  ],
+  "ownership": {
+    "builder": "May create src/jarvis_foundry/orchestration/**, scripts/remaster/r8/**, tests/remaster/r8/**, docs/remaster/evidence/r8/**, docs/remaster/work_packages/R8_WORK_PACKAGE.json, and R8_FINDINGS.json under evidence/r8. May NOT edit existing kernel modules (src/jarvis_foundry/kernel/**), tests/foundry, tests/remaster/r6, scripts/remaster/r6, src/jarvis_foundry/kernel/memory, prior evidence (r0-r7), FINDINGS.jsonl (root-owned), R6 files, protected main, or any owner project in place. R8 source may IMPORT existing kernel modules read-only; any discovered real defect in existing kernel code is repaired ONLY if the builder also supplies an R8-owned regression test and records the finding (root approves any cross-surface kernel edit after inspection).",
+    "root": "Evidence custody, findings registry, commit decision, final truth, cross-surface repair approval.",
+    "verifier": "Fresh independent context after builder freeze."
+  },
+  "resources_and_constraints": {
+    "python": "C:\\Python313\\python.exe",
+    "isolated_venv": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r3-venv (reuse)",
+    "proving_area": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r8-*",
+    "network_allowed": "none (offline); real effects are local git/clone/test/diff effects only",
+    "evidence_budget_bytes": 8388608,
+    "timeout": "bounded; every long gate prints WALL_SECONDS and EXIT_CODE"
+  },
+  "status_contract": "PASS | FAIL | BLOCKED | NOT_TESTED | WAITING only; exit code zero alone is NOT_TESTED; every PASS needs non-empty evidence.",
+  "stop_conditions": [
+    "any mutation of live/protected state, live vault, live database, protected main, or any owner project in place",
+    "any worker result accepted without validation or independent verification",
+    "any toy/add() demo presented as real proof",
+    "any edit to existing kernel modules without root approval",
+    "any commit or push by the builder to protected repos",
+    "any secret value written to evidence",
+    "any unrecorded gate failure presented as PASS"
+  ],
+  "builder_status": "NOT_TESTED until a fresh independent verifier passes every mandatory criterion"
+}

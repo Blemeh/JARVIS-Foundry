@@ -1,0 +1,19 @@
+{
+  "schema": "jarvis-r8-progress-v1",
+  "checkpoint": "R8_PROGRESS_02",
+  "generated_utc": "2026-08-15T19:56:00Z",
+  "milestone": "Real machinery missions completed: asset A accepted, repair B accepted, WAITING emitted",
+  "status": "IN_PROGRESS",
+  "notes": [
+    "Asset A: isolated clone of alpha_ledger proving project; worker created real 8-case regression suite plus health artifact; inspected via real diff; 10 tests passed; fresh verifier PASS; ledger lifecycle complete; accepted; reconciliation and rollback restored.",
+    "Repair B: genuine R8 verifier completeness defect reproduced at candidate baseline; fresh repair worker modified verify.py; regression and repro tests passed; fresh verifier PASS; accepted; accepted artifact hash matches worktree source hash.",
+    "WAITING: mission-r8c-waiting emitted honest mission.waiting ledger event.",
+    "Malformed-result fail-closed proof runs in gate G04."
+  ],
+  "evidence_paths": {
+    "asset_a": "docs/remaster/evidence/r8/R8_MISSION_ASSET_A.json",
+    "repair_b": "docs/remaster/evidence/r8/R8_MISSION_REPAIR_B.json",
+    "waiting": "docs/remaster/evidence/r8/R8_MISSION_WAITING.json",
+    "machinery_summary": "docs/remaster/evidence/r8/R8_MACHINERY_REPORT.json"
+  }
+}

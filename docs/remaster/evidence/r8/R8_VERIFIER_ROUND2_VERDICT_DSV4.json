@@ -1,0 +1,363 @@
+{
+  "schema": "jarvis-r8-verifier-round2-verdict-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R8",
+  "repair_round": 2,
+  "verifier_model": "deepseek-v4-flash via codex-router",
+  "generated_utc": "2026-08-15T22:03:26Z",
+  "frozen_base": {
+    "commit": "9a514d9cae48e9d6f3384c3b42a433a77daa80c4",
+    "branch": "remaster/post-v7-purpose",
+    "worktree": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster",
+    "baseline_source_commit": "93a3ddc0965dfaf3e4cb9dc0952467bd5250520a",
+    "work_package_sha256": "B7CDAE97A2D0BA7B6A14C2C160975428A974FD2E3F7FADD61E00D60939611627",
+    "builder_report_sha256": "45A5CB3CDD822C83007480172CC2C43F147150065FAEB0E19918A677D122B7B0",
+    "artifact_manifest_sha256": "2EA65920079F9A89264C58FABE9AB425A4FC9A8D38CC98550D26E756233C48AD"
+  },
+  "criteria": [
+    {
+      "id": "R8-C01",
+      "status": "PASS",
+      "evidence": [
+        "Frozen hashes reproduced byte-for-byte: work package 10703, builder report 8313, artifact manifest 20022.",
+        "Manifest audit: 106 entries = 105 real + 1 SELF_REFERENTIAL_REPORT; all 105 real entries recomputed sha256+size with 0 mismatches and 0 missing; no duplicate paths; only on-disk extras are the manifest and builder report themselves.",
+        "R8-D01..D06 each PASS with non-empty evidence paths, hashes, command outputs, real diffs, and fresh mirror reproduction."
+      ]
+    },
+    {
+      "id": "R8-C02",
+      "status": "PASS",
+      "evidence": [
+        "Fresh mirror gate_g01 passed=True: source tree_hash/porcelain/head unchanged before/after, alpha dirty NOTES.md preserved, isolated clone on r8/g01 at source head.",
+        "Owner/protected repos byte-identical before/after mirror including HEAD and full porcelain hashes (LeadGen, OperatorOS, pivotlens, protected main)."
+      ]
+    },
+    {
+      "id": "R8-C03",
+      "status": "PASS",
+      "evidence": [
+        "Real asset A reproduced in fresh mirror: worker created tests/test_regression_edges.py (2621 bytes, sha c79250d5f8a0c95e4d337ac85c3261dcfd9a4369d97b758507522954da6d73e9) and docs/health.md (590 bytes, sha ebeee927664484923791f725fc83e59d3a7cec391c253ac45637bd5db1a022f9); 10 tests passed in isolated clone; diff inspected; lifecycle complete; rollback restored.",
+        "Frozen asset report matches: ACCEPTED, verdict PASS, fresh verifier distinct, integrity_clean true, source_after_unchanged true."
+      ]
+    },
+    {
+      "id": "R8-C04",
+      "status": "PASS",
+      "evidence": [
+        "Real repair B reproduced in fresh mirror: candidate verify.py reverted to stub, repro test 1 passed after repair, regression 1 passed, worker distinct, lifecycle repair_dispatched/reverified/accepted, accepted artifact sha a750aa66632397bf6b8a5f4821223a23981ebcbb07b91cb221a20b5d0348547e size 5393.",
+        "Repo source verify.py hash matches accepted artifact; regression coverage in tests/remaster/r8/test_verify.py."
+      ]
+    },
+    {
+      "id": "R8-C05",
+      "status": "PASS",
+      "evidence": [
+        "Ledger r8_ledger.db: 19 events, chain valid, head ee4460f5b43abc5617a082a128121916f1e5c5d563751ec0ee92c7792747c061; fresh mirror 19 events chain valid.",
+        "Malformed worker result REJECTED with mission.malformed_rejected and no acceptance; R8-V-004 drive/NUL/URI path rejection closed at validation and end-to-end.",
+        "Residual S3 evidence-accuracy items documented: R8-V-001 baseline porcelain list and R8-V-002 evidence_bytes claim are not reproducible; neither contradicts a mandatory behavioral contract."
+      ]
+    },
+    {
+      "id": "R8-C06",
+      "status": "PASS",
+      "evidence": [
+        "Fresh mirror g05 passed=True: asset and repair reconciliation/rollback restored, independent restore baseline hash matches.",
+        "WAITING emitted honestly: mission-r8c-waiting status WAITING, reason recorded, mission.waiting ledger event present."
+      ]
+    },
+    {
+      "id": "R8-C07",
+      "status": "PASS",
+      "evidence": [
+        "Repo focused 34 passed exit 0; split suites foundry+r6+r7 1349 passed, r8 34 passed, combined 1383 passed, all exit 0, JUnit 0 errors/0 failures, no collection/conftest/ImportError.",
+        "Repo static: ruff check 0, ruff format --check 0, mypy --strict 0 in 21 source files, bandit over orchestration 0; mirror static passed=True with MYPYPATH repo context (round-1 environmental kernel-import note).",
+        "Evidence dir 637701 bytes < 8388608 budget; live guard wrap protected_state_unchanged=True and r8_attributable_mutation=False."
+      ]
+    },
+    {
+      "id": "R8-C08",
+      "status": "PASS",
+      "evidence": [
+        "Fresh independent verifier reproduced frozen hashes, 105-entry manifest, focused/full suites, static gates, fresh mirror machinery/gates, live guard, ledger chain, malformed fail-closed, drive-path end-to-end rejection, MissionLink lineage, reconciliation/rollback, dirty-work preservation, and honest WAITING.",
+        "No new S1/S2 defect found; unresolved S3 advisories R8-V-001 and R8-V-002 do not contradict the mandatory contract and are documented as residual evidence-accuracy issues."
+      ]
+    }
+  ],
+  "deliverables": {
+    "R8-D01": {
+      "status": "PASS",
+      "evidence": [
+        "R8_MACHINERY_REPORT.json hash c8d9a55585d39f19103f6ea49ff6dcd79f0c3914d44b1da790deacd4529283c8 plus fresh mirror machinery run: inspect -> isolated clone/branch -> bounded mission context -> real subprocess dispatch -> machine-readable result -> fail-closed validation -> diff/hash inspection -> findings -> repair mission -> fresh repair worker -> reverify -> accept -> reconcile -> rollback -> WAITING.",
+        "Mission context files contain all required bounded sections; durable ledger events and projections present."
+      ]
+    },
+    "R8-D02": {
+      "status": "PASS",
+      "evidence": [
+        "R8_MISSION_ASSET_A.json hash 54cee4f5fa04630c297265a521263fe2ca9d7f565a13f571bc5ba328e1327115: real 10-test regression suite plus health doc, diff inspected, tests green, accepted with full lifecycle.",
+        "Fresh mirror reproduced identical artifact content hashes."
+      ]
+    },
+    "R8-D03": {
+      "status": "PASS",
+      "evidence": [
+        "R8_MISSION_REPAIR_B.json hash d02c7fed4c3e2e7ccf3cf5a52500a3bca8dbd12fb9f1675e777ae6554a7d0315: verifier completeness stub defect reproduced, fresh repair worker, regression tests, reverified, accepted; applied source hash equals accepted artifact.",
+        "Fresh mirror reproduced the same fixed verify.py hash."
+      ]
+    },
+    "R8-D04": {
+      "status": "PASS",
+      "evidence": [
+        "r8_ledger.db 19 append-only events, valid chain, lifecycle snapshots and lineage projections; R8_FINDINGS.json structured registry.",
+        "MissionLink now operationally written: repo r8_store has 2 mission_links; fresh mirror r8_store has 2 mission_links with headers matching each mission's own accepted ledger event. Residual S3: frozen store rows were regenerated against the final ledger and both record the final head hash, while fresh-mirror code behavior records the accepted-event header."
+      ]
+    },
+    "R8-D05": {
+      "status": "PASS",
+      "evidence": [
+        "Typed worker contract and schema with required fields; malformed results rejected with structured WorkerResultError reasons.",
+        "Drive/backslash/root/URI/NUL paths rejected in files_changed, evidence, artifacts, and test evidence_path; fresh-verifier subprocess writes structured REJECTED verdict instead of crashing; end-to-end REJECTED with no acceptance."
+      ]
+    },
+    "R8-D06": {
+      "status": "PASS",
+      "evidence": [
+        "Mission reports contain exact commands, files_changed, diff summaries, test outputs, before/after hashes, verification verdicts, findings, reconciliation, and next autonomous action.",
+        "R8_MISSION_ASSET_A.json and R8_MISSION_REPAIR_B.json hashes verified against frozen manifest."
+      ]
+    }
+  },
+  "gates": {
+    "R8-G01": {
+      "status": "PASS",
+      "evidence": [
+        "Fresh mirror g01 passed=True: source unchanged, NOTES.md preserved, isolated clone branch r8/g01 at source head.",
+        "Frozen R8_G01_ISOLATION.json hash 52187ba3ffce445ffa053db34fb35ff05d25b6179b8e4b2a4798ba327553f09c."
+      ]
+    },
+    "R8-G02": {
+      "status": "PASS",
+      "evidence": [
+        "Fresh mirror g02 passed=True: asset files exist and hashes match, independent pytest 10 passed, lifecycle complete, not_a_toy files_created 2.",
+        "Frozen R8_G02_ASSET.json hash 3484680c99b16a394cb3a4db7fe9ce13d1ff1a71f81baa5b2f1678614a9945ca."
+      ]
+    },
+    "R8-G03": {
+      "status": "PASS",
+      "evidence": [
+        "Fresh mirror g03 passed=True: defect reproduced, fresh worker distinct, regression passed, fixed method present, lifecycle complete, before/after hashes differ.",
+        "Frozen R8_G03_REPAIR.json hash fcfcdbf7c25dd10eef6ef671a4b573b56450d932d9f184702cf2bd36872e0783."
+      ]
+    },
+    "R8-G04": {
+      "status": "PASS",
+      "evidence": [
+        "Fresh mirror g04 passed=True: fresh verifier subprocess recorded for both missions, malformed mission REJECTED with mission.malformed_rejected and no acceptance.",
+        "Frozen R8_G04_VERIFICATION.json hash 0e19b443ef8c7a0d8a9382fe3fff0759b73ae8d2381fa33306dcbd677fb56694."
+      ]
+    },
+    "R8-G05": {
+      "status": "PASS",
+      "evidence": [
+        "Fresh mirror g05 passed=True: asset and repair reconciled true, ledger chains valid, independent restore matches baseline, rollback restored.",
+        "Frozen R8_G05_RECONCILIATION.json hash e25554792c352da775f7e271197df52e2a93d9f21153603619309ab057f70855."
+      ]
+    },
+    "R8-G06": {
+      "status": "PASS",
+      "evidence": [
+        "Fresh mirror full_suite exit 0 (JUnit 1349/34/1383, 0 errors/failures), focused 34 exit 0, static passed=True with ruff/format/mypy/bandit subgates, secret scan 0 findings, privacy 0 leaks.",
+        "Live guard wrap protected_state_unchanged=True, r8_attributable_mutation=False, protected main/vault/tasks/files unchanged; evidence under budget."
+      ]
+    }
+  },
+  "findings": [
+    {
+      "id": "R8-V-001",
+      "severity": "S3",
+      "status": "NOT_REPAIRED",
+      "title": "Builder baseline porcelain claim still not reproducible",
+      "invariant": "pre_existing_baseline_entries must reflect actual tracked/untracked state at freeze time",
+      "reproduction": [
+        "Report still lists ' M docs/remaster/FINDINGS.jsonl' and '?? docs/remaster/OWNER_REDIRECT_R6_DEFERRED.json' as pre-existing baseline entries.",
+        "git ls-files shows OWNER_REDIRECT_R6_DEFERRED.json tracked at HEAD; git diff --name-status for FINDINGS.jsonl is empty; actual porcelain contains neither line.",
+        "scripts/remaster/r8/build_evidence.py still hard-codes PRE_EXISTING_BASELINE instead of deriving it; actual porcelain count 10 matches but 2 reported entries are stale and 4 R8-owned entries are absent from the pre-existing list.",
+        "Boundary remains clean (10 expected untracked trees, zero tracked diffs), so this is evidence accuracy, not mutation."
+      ],
+      "probe_ids": [
+        "probe_v001_v002.py",
+        "git status --porcelain",
+        "git ls-files",
+        "git diff --name-status",
+        "build_evidence.py PRE_EXISTING_BASELINE"
+      ]
+    },
+    {
+      "id": "R8-V-002",
+      "severity": "S3",
+      "status": "NOT_REPAIRED",
+      "title": "Builder evidence_bytes claim still not reproducible",
+      "invariant": "evidence_bytes must deterministically equal on-disk evidence bytes",
+      "reproduction": [
+        "Repo evidence dir on disk is 637701 bytes; report claims evidence_bytes 637580; delta 121 bytes.",
+        "Byte-identical temp replay of the evidence tree and build_evidence.py produced stored evidence_bytes 637424 and final dir 637545 bytes, confirming the count is path-dependent and not a deterministic on-disk metric.",
+        "Root cause in build_evidence.py: evidence_bytes() is computed before the final report write that adds artifact_manifest_verification (report grows from 8192 placeholder to 8313), so the recorded count excludes the final report bytes.",
+        "Mandatory budget criterion still passes in reality: 637701 < 8388608."
+      ],
+      "probe_ids": [
+        "probe_v001_v002.py",
+        "evidence_dir byte walk",
+        "byte-identical temp replay with R8_RECORD_EVIDENCE=1",
+        "build_evidence.py evidence_bytes ordering"
+      ]
+    },
+    {
+      "id": "R8-V-003",
+      "severity": "S3",
+      "status": "CLOSED",
+      "title": "MissionLink store empty operationally",
+      "invariant": "accepted machinery missions must write MissionLink lineage into the PortfolioStore",
+      "reproduction": [
+        "Repo r8_store/state.json now records 2 mission_links with candidate/decision/goal ids and ledger hashes; events.jsonl contains both link records; sequence 2.",
+        "Fresh mirror r8_store has 2 mission_links; each ledger_header_hash matches that mission's own mission.accepted event header (asset dd08b894..., repair 0d2a5b35...); ledger chain valid 19.",
+        "Residual evidence note: frozen store rows were regenerated after the final ledger and both record final head ee4460f5..., not their accepted-event headers; fresh machinery and orchestrator code write the accepted-event header correctly."
+      ],
+      "probe_ids": [
+        "r8_store/state.json + events.jsonl read",
+        "r8_ledger.db replay/verify_chain",
+        "fresh mirror PortfolioStore.mission_links() header-match probe"
+      ]
+    },
+    {
+      "id": "R8-V-004",
+      "severity": "S3",
+      "status": "CLOSED",
+      "title": "Worker result schema accepts absolute drive-letter paths",
+      "invariant": "absolute drive, URI, backslash, root, and NUL paths must be rejected fail-closed with structured reasons",
+      "reproduction": [
+        "ensure_relative_safe now rejects C:/evil/x.py, C:\\evil\\x.py, /evil/x.py, \\evil\\x.py, file:///evil/x.py, a:b.py, and a NUL byte; valid relative paths still accepted.",
+        "validate_worker_result raises WorkerResultError for files_changed/evidence/artifacts/tests evidence_path drive paths with structured reasons.",
+        "End-to-end orchestrator probe with a worker claiming C:/evil/x.py: status REJECTED, reasons ['files_changed[0].path invalid: drive/URI path refused: ...'], mission.malformed_rejected ledger event, no mission.accepted, chain valid, source unchanged.",
+        "Fresh verify_cli subprocess with malformed input exits 1 and writes a structured REJECTED verdict file (no traceback crash)."
+      ],
+      "probe_ids": [
+        "probe_schema.py",
+        "probe_e2e_drive.py",
+        "tests/remaster/r8/test_schemas.py::test_windows_drive_path_is_rejected"
+      ]
+    },
+    {
+      "id": "R8-V-005",
+      "severity": "S4",
+      "status": "COSMETIC_ONLY",
+      "title": "Full-suite raw outputs omit pytest summary lines",
+      "invariant": "raw suite evidence should contain the authoritative pass/fail summary",
+      "reproduction": [
+        "R8_FULL_SUITE_RAW.txt and focused raw contain only progress-dot lines; no 'N passed' summary line.",
+        "Counts remain authoritative and reproduced from JUnit XML: repo 1349/34/1383 and mirror 1349/34/1383, 0 errors/failures, exit codes 0.",
+        "Mirror raw sha 871886326531d38e7884039d03ae1d617a757d8359836b0dc947a0657b7d4d8f matches frozen raw, confirming the omission is stable and cosmetic."
+      ],
+      "probe_ids": [
+        "R8_FULL_SUITE_RAW.txt read",
+        "JUnit suite count extraction",
+        "fresh mirror full_suite raw hash"
+      ]
+    },
+    {
+      "id": "R8-V2-001",
+      "severity": "S3",
+      "status": "RESIDUAL",
+      "title": "Frozen MissionLink rows do not point at accepted-event headers",
+      "invariant": "operational MissionLink ledger_header_hash should identify the accepted ledger event for that mission",
+      "reproduction": [
+        "Repo r8_store rows for both accepted missions record ledger_header_hash ee4460f5b43abc5617a082a128121916f1e5c5d563751ec0ee92c7792747c061, which is the final ledger head (mission.malformed_rejected), not either mission.accepted header (5451741a... and 76d297cf...).",
+        "Fresh mirror run records the correct accepted-event headers, and the current orchestrator uses self.ledger.head_hash immediately after appending mission.accepted.",
+        "Frozen evidence appears to have been regenerated against the final 19-event ledger without re-running the accepted missions; lineage content is still present and contract behavior is proven by fresh mirror."
+      ],
+      "probe_ids": [
+        "r8_store state/events read",
+        "r8_ledger.db accepted-event header extraction",
+        "fresh mirror accepted-header match probe"
+      ]
+    }
+  ],
+  "status_summary": {
+    "verdict": "PASS",
+    "reproduced_outputs": {
+      "frozen_hashes": "R8_WORK_PACKAGE.json B7CDAE97A2D0BA7B6A14C2C160975428A974FD2E3F7FADD61E00D60939611627 10703; R8_BUILDER_REPORT.json 45A5CB3CDD822C83007480172CC2C43F147150065FAEB0E19918A677D122B7B0 8313; R8_ARTIFACT_MANIFEST.json 2EA65920079F9A89264C58FABE9AB425A4FC9A8D38CC98550D26E756233C48AD 20022",
+      "manifest": "106 entries = 105 real + 1 SELF_REFERENTIAL_REPORT; 0 mismatches (sha256 and size); 0 missing; evidence dir 637701 bytes < 8388608",
+      "focused_tests": "34 passed exit 0; JUnit 34 tests 0 errors 0 failures",
+      "full_suites": "foundry+r6+r7 1349 passed exit 0; r8 34 passed exit 0; combined 1383 passed exit 0; no collection/conftest/ImportError errors",
+      "static": "ruff check 0; ruff format --check 0; mypy --strict 0 in 21 source files; bandit orchestration 0",
+      "gate_mirror": "proving_project exit 0; run_machinery exit 0 (asset ACCEPTED, repair ACCEPTED, waiting WAITING); g01..g05 all passed=True exit 0; static passed=True exit 0 (MYPYPATH repo context; mirror-without-MYPYPATH surfaces 3 pre-existing kernel mypy errors, same environmental note as round 1); focused 34 exit 0; full_suite exit 0; secret_scan passed=True; privacy passed=True",
+      "live_guard": "protected_state_unchanged=True main=True vault=True tasks=True processes=True r8_attributable_mutation=False",
+      "adversarial_closure": "R8-V-004 closed at validation and end-to-end; R8-V-003 closed operationally (2 MissionLinks; fresh mirror headers match accepted events); ledger 19 events chain valid; malformed REJECTED no acceptance; asset A and repair B real and reproduced; rollback restore matches baseline; dirty work preserved; WAITING honest; source/protected/owner repos unchanged",
+      "findings_closure": "R8-V-001 NOT_REPAIRED (hard-coded baseline list); R8-V-002 NOT_REPAIRED (evidence_bytes computed before final report write; 637580 vs on-disk 637701; temp replay 637424 vs 637545); R8-V-003 CLOSED; R8-V-004 CLOSED; R8-V-005 cosmetic; R8-V2-001 residual frozen MissionLink header provenance"
+    },
+    "repo_boundary": {
+      "worktree": "git status --porcelain shows exactly 10 expected untracked entries (R6 trees, R8 work package, R8-owned trees); zero tracked diffs; HEAD 9a514d9cae48e9d6f3384c3b42a433a77daa80c4 unchanged; FINDINGS.jsonl hash c75a0919b34b5e8624e9ad924c62a4efcfc00fa1 unchanged",
+      "protected_main": "HEAD 93a3ddc0965dfaf3e4cb9dc0952467bd5250520a and porcelain hash d62ff54e3404f22fb401be80c950937ae4fc9818a4e41dcf95cb9a68640bd9f2 identical before/after",
+      "owner_projects": "LeadGen and OperatorOS porcelain+HEAD identical before/after; pivotlens non-git tree unchanged; dirty work preserved",
+      "live_daemon_db_vault": "live guard wrap protected_state_unchanged=True; vault file count 95 and manifest unchanged; r8_attributable_mutation=False",
+      "commits_pushes": "none by verifier; only repo write is docs/remaster/evidence/r8/R8_VERIFIER_ROUND2_VERDICT_DSV4.json"
+    }
+  },
+  "evidence_paths_and_hashes": {
+    "frozen": {
+      "docs/remaster/work_packages/R8_WORK_PACKAGE.json": {
+        "sha256": "B7CDAE97A2D0BA7B6A14C2C160975428A974FD2E3F7FADD61E00D60939611627",
+        "size": 10703
+      },
+      "docs/remaster/evidence/r8/R8_BUILDER_REPORT.json": {
+        "sha256": "45A5CB3CDD822C83007480172CC2C43F147150065FAEB0E19918A677D122B7B0",
+        "size": 8313
+      },
+      "docs/remaster/evidence/r8/R8_ARTIFACT_MANIFEST.json": {
+        "sha256": "2EA65920079F9A89264C58FABE9AB425A4FC9A8D38CC98550D26E756233C48AD",
+        "size": 20022
+      }
+    },
+    "repo_evidence": {
+      "note": "Post-mirror re-audit reproduced all 105 real manifest entries byte-for-byte; evidence dir 637701 bytes; worktree boundary unchanged",
+      "R8_MACHINERY_REPORT.json": "c8d9a55585d39f19103f6ea49ff6dcd79f0c3914d44b1da790deacd4529283c8",
+      "R8_MISSION_ASSET_A.json": "54cee4f5fa04630c297265a521263fe2ca9d7f565a13f571bc5ba328e1327115",
+      "R8_MISSION_REPAIR_B.json": "d02c7fed4c3e2e7ccf3cf5a52500a3bca8dbd12fb9f1675e777ae6554a7d0315",
+      "R8_MISSION_WAITING.json": "9768026a84897168adaf588e8b7389698f40e043292e39c9e78d8c37cae20447",
+      "R8_FINDINGS.json": "264054a651cec35cccab6c137a184526b24ec34917c6451a57e0a691c9b55e98",
+      "R8_STATIC.json": "be54970a2241133076aa0da2801d3da4f281db62f7d061a7b1a77bc33d77fef8",
+      "R8_FULL_SUITE.json": "acd78a8b4f3acaefffe9664c77010ea31d9041b97e75eb0de3c444c11bd956dc",
+      "R8_FULL_SUITE_RAW.txt": "871886326531d38e7884039d03ae1d617a757d8359836b0dc947a0657b7d4d8f",
+      "R8_FOCUSED_TESTS.json": "5bea172b58bd0337b8bc8b178d94985216e3052b29eac35ba78aedd91b0a1be2",
+      "R8_G01_ISOLATION.json": "52187ba3ffce445ffa053db34fb35ff05d25b6179b8e4b2a4798ba327553f09c",
+      "R8_G02_ASSET.json": "3484680c99b16a394cb3a4db7fe9ce13d1ff1a71f81baa5b2f1678614a9945ca",
+      "R8_G03_REPAIR.json": "fcfcdbf7c25dd10eef6ef671a4b573b56450d932d9f184702cf2bd36872e0783",
+      "R8_G04_VERIFICATION.json": "0e19b443ef8c7a0d8a9382fe3fff0759b73ae8d2381fa33306dcbd677fb56694",
+      "R8_G05_RECONCILIATION.json": "e25554792c352da775f7e271197df52e2a93d9f21153603619309ab057f70855",
+      "R8_LIVE_GUARD_BEFORE.json": "0a29a1094c649e3ef3972abda62a86db2c460f1354f28feee5d6b44943ad5858",
+      "R8_LIVE_GUARD_AFTER.json": "a31cf9c392eb09ba61bb02f2a73b42d896370150a669a4c74e35900f64c28011",
+      "R8_LIVE_GUARD_COMPARISON.json": "87aa82403dae79423568c5fc8cdfec94be7846fd83bbacacfc16955e3142173f"
+    },
+    "fresh_verifier_mirror": {
+      "path": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r8-verifier2-mirror",
+      "evidence_dir": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r8-verifier2-evidence",
+      "proving_area": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r8-verifier2-proving",
+      "file_count": 55,
+      "total_bytes": 550194,
+      "key_files": {
+        "R8_STATIC.json": "8CAE833D6082C81595150C8E98C869966D7423750E433B97D2E8F02415E5959D",
+        "R8_FULL_SUITE.json": "FC7AE5DA46EF83039C7BD25944D028CE75475397CD3D2BCA4434705750815941",
+        "R8_FULL_SUITE_RAW.txt": "871886326531D38E7884039D03AE1D617A757D8359836B0DC947A0657B7D4D8F",
+        "R8_FOCUSED_TESTS.json": "7B03AF68565560A062FFA131D53730798B61EFEB70895A341ABB97B95897D3CF",
+        "R8_G01_ISOLATION.json": "1224B855F6EA9D67187F169D8AEBCCD4F69E8E2B253EEC9A399BD71F2D372887",
+        "R8_G02_ASSET.json": "2999AF978E45A6A9AF1C70E51222367B105276A9B0C61FC88EF8BF61B0A735C6",
+        "R8_G03_REPAIR.json": "607860185D33459C995709B23F4430442A0E73E977FC2BE6B0650FE9075DC0FF",
+        "R8_G04_VERIFICATION.json": "18E352C6CB51A583525F1706D2C04595AB981778A75B27EC6CEC3B1C3D8326B0",
+        "R8_G05_RECONCILIATION.json": "5C1E7580CD49C5E0F9D8FFBB5B186360AB2253C69548CCD8344F8070E37A5BEC",
+        "R8_SECRET_SCAN.json": "FDA908CDABD14B6A36A25697ABC15DC91B4DE98EDCAF2C51D8A41D7F97FA7545",
+        "R8_PRIVACY.json": "C4E23206E8EDA23070E2256D9F5CA7E7E9DF15211BC47CA1E39DD1EFF96697B6",
+        "R8_LIVE_GUARD_COMPARISON.json": "DE6DAEF32EB1150D0985F2F2F6EE735FA783CAC55357ED53CAFD7B02B6BC01C3"
+      }
+    }
+  },
+  "verdict": "PASS"
+}

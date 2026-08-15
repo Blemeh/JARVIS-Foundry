@@ -1,0 +1,81 @@
+{
+  "ACCEPTANCE CRITERIA": [
+    "machine-readable worker result",
+    "real diff inspection",
+    "fresh verifier PASS",
+    "ledger lifecycle complete",
+    "source repo unchanged"
+  ],
+  "ALLOWED MUTATION": [
+    "tests/",
+    "docs/",
+    "src/"
+  ],
+  "CURRENT STEP": "REPAIR",
+  "DISPATCH": {
+    "clone": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r8-builder\\projects\\r8_orchestration_candidate",
+    "proving_root": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r8-builder",
+    "python": "C:/Users/b/AppData/Local/Temp/jarvis-r3-venv/Scripts/python.exe",
+    "worker_id": "worker-mission-r8b-repair",
+    "worker_module": "jarvis_foundry.orchestration.workers.repair_worker"
+  },
+  "FORBIDDEN MUTATION": [
+    ".git/",
+    "protected/**",
+    "live/**",
+    "vault/**"
+  ],
+  "KNOWN VERIFIED STATE": {
+    "program": "POST_V7_JARVIS_REMASTER",
+    "source": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r8-builder\\projects\\r8_orchestration_candidate",
+    "stage": "R8"
+  },
+  "MISSION": "complete R8 mission mission-r8b-repair",
+  "OBJECTIVE": "complete R8 mission mission-r8b-repair",
+  "RELEVANT PREVIOUS FAILURES": [
+    "prior R8 builder returned empty final and no files"
+  ],
+  "REQUIRED EVIDENCE": [
+    "worker_result.json",
+    "mission_report.json",
+    "diff.json"
+  ],
+  "REQUIRED TESTS": [
+    "pytest tests/test_verify_repro.py -q",
+    "pytest tests -q"
+  ],
+  "RESULT CONTRACT": {
+    "fields": [
+      "status",
+      "claims",
+      "files_changed",
+      "commands_run",
+      "tests",
+      "evidence",
+      "artifacts",
+      "external_effects",
+      "blockers",
+      "uncertainty",
+      "recommended_next_action"
+    ],
+    "prose_is_not_truth": true,
+    "validation": "fail-closed; malformed results are REJECTED and recorded"
+  },
+  "ROLE": "builder",
+  "ROLLBACK EXPECTATION": "changes confined to isolated clone; restore demonstrated",
+  "WORKER SPEC": {
+    "regression_command": [
+      "pytest",
+      "tests",
+      "-q"
+    ],
+    "reproduce_command": [
+      "pytest",
+      "tests/test_verify_repro.py",
+      "-q"
+    ],
+    "target_file": "src/jarvis_foundry/orchestration/verify.py",
+    "transform_id": "verifier_recompute"
+  },
+  "mission_id": "mission-r8b-repair"
+}

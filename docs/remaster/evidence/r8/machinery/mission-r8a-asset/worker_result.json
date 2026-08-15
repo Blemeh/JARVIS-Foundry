@@ -1,0 +1,47 @@
+{
+  "artifacts": [
+    "docs/health.md"
+  ],
+  "blockers": [],
+  "claims": {
+    "asset_type": "regression_suite",
+    "files_created": 2
+  },
+  "commands_run": [
+    "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r3-venv\\Scripts\\python.exe -m pytest tests -q --junitxml=test-results.xml"
+  ],
+  "evidence": [
+    "test-results.xml"
+  ],
+  "external_effects": {
+    "live_state": 0,
+    "owner_projects": 0,
+    "protected_repos": 0
+  },
+  "files_changed": [
+    {
+      "action": "added",
+      "path": "tests/test_regression_edges.py",
+      "sha256": "c79250d5f8a0c95e4d337ac85c3261dcfd9a4369d97b758507522954da6d73e9",
+      "size": 2621
+    },
+    {
+      "action": "added",
+      "path": "docs/health.md",
+      "sha256": "ebeee927664484923791f725fc83e59d3a7cec391c253ac45637bd5db1a022f9",
+      "size": 590
+    }
+  ],
+  "recommended_next_action": "machinery verification and acceptance",
+  "status": "PASS",
+  "tests": [
+    {
+      "evidence_path": "test-results.xml",
+      "exit_code": 0,
+      "name": "pytest tests -q",
+      "passed": true,
+      "summary": "10 passed in 0.31s"
+    }
+  ],
+  "uncertainty": "low"
+}

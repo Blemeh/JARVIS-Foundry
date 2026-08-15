@@ -1,0 +1,319 @@
+{
+  "dispatch": {
+    "command": [
+      "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r3-venv\\Scripts\\python.exe",
+      "-m",
+      "jarvis_foundry.orchestration.workers.repair_worker",
+      "--mission",
+      "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r8\\machinery\\mission-r8b-repair\\mission_context.json",
+      "--clone",
+      "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r8-builder\\clones\\mission-r8b-repair",
+      "--result",
+      "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r8\\machinery\\mission-r8b-repair\\worker_result.json"
+    ],
+    "exit_code": 0,
+    "output_tail": "{\"artifacts\": [], \"blockers\": [], \"claims\": {\"defect_reproduced\": true, \"target_file\": \"src/jarvis_foundry/orchestration/verify.py\", \"transform_id\": \"verifier_recompute\"}, \"commands_run\": [\"C:\\\\Users\\\\b\\\\AppData\\\\Local\\\\Temp\\\\jarvis-r3-venv\\\\Scripts\\\\python.exe pytest tests/test_verify_repro.py -q\", \"C:\\\\Users\\\\b\\\\AppData\\\\Local\\\\Temp\\\\jarvis-r3-venv\\\\Scripts\\\\python.exe pytest tests -q\"], \"evidence\": [\"repair-reproduce.txt\", \"repair-regression.txt\"], \"external_effects\": {\"live_state\": 0, \"owner_projects\": 0, \"protected_repos\": 0}, \"files_changed\": [{\"action\": \"modified\", \"path\": \"src/jarvis_foundry/orchestration/verify.py\", \"sha256\": \"a750aa66632397bf6b8a5f4821223a23981ebcbb07b91cb221a20b5d0348547e\", \"size\": 5393}], \"recommended_next_action\": \"machinery reverification and acceptance\", \"status\": \"PASS\", \"tests\": [{\"evidence_path\": \"repair-reproduce.txt\", \"exit_code\": 0, \"name\": \"pytest tests/test_verify_repro.py -q\", \"passed\": true, \"summary\": \"1 passed in 0.71s\"}, {\"evidence_path\": \"repair-regression.txt\", \"exit_code\": 0, \"name\": \"pytest tests -q\", \"passed\": true, \"summary\": \"1 passed in 0.71s\"}], \"uncertainty\": \"low\"}\n",
+    "wall_seconds": 3.868
+  },
+  "evidence_hashes": {
+    "dispatch_stdout.txt": "f783bd83eea040a06eaf9950bade8c6d1c31a694df63e56946d0835328dee7a3",
+    "mission_context.json": "4d021cfc881df195f9dd06edccf16f4bf7a30eb83171c099e199314cec3a5580",
+    "verdict.json": "4d3580b79645f8d47976248b3f26a81fc22f1811b1e4aed01608d18f1d9fd067",
+    "worker_result.json": "5f801fe25e01aa75434ab09f9ed7217fc6712aff6e5c391f7ce847e909c80815"
+  },
+  "generated_utc": "2026-08-15T22:10:13Z",
+  "inspection": {
+    "actual_files": {
+      "src/jarvis_foundry/orchestration/verify.py": {
+        "sha256": "a750aa66632397bf6b8a5f4821223a23981ebcbb07b91cb221a20b5d0348547e",
+        "size": 5393
+      }
+    },
+    "claimed_files": {
+      "src/jarvis_foundry/orchestration/verify.py": {
+        "action": "modified",
+        "path": "src/jarvis_foundry/orchestration/verify.py",
+        "sha256": "a750aa66632397bf6b8a5f4821223a23981ebcbb07b91cb221a20b5d0348547e",
+        "size": 5393
+      }
+    },
+    "clone": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r8-builder\\clones\\mission-r8b-repair",
+    "diff": {
+      "clone": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r8-builder\\clones\\mission-r8b-repair",
+      "diff_full": "diff --git a/repair-regression.txt b/repair-regression.txt\nnew file mode 100644\nindex 0000000..be111bc\n--- /dev/null\n+++ b/repair-regression.txt\n@@ -0,0 +1,2 @@\n+.                                                                        [100%]\n+1 passed in 0.71s\ndiff --git a/repair-reproduce.txt b/repair-reproduce.txt\nnew file mode 100644\nindex 0000000..112d79e\n--- /dev/null\n+++ b/repair-reproduce.txt\n@@ -0,0 +1,43 @@\n+F                                                                        [100%]\n+================================== FAILURES ===================================\n+___________________ test_verifier_rejects_unclaimed_changes ___________________\n+\n+tmp_path = WindowsPath('C:/Users/b/AppData/Local/Temp/pytest-of-b/pytest-2066/test_verifier_rejects_unclaime0')\n+\n+    def test_verifier_rejects_unclaimed_changes(tmp_path: Path) -> None:\n+        repo = _repo(tmp_path)\n+        claimed = FileChange(\n+            path=\"a.txt\",\n+            action=\"modified\",\n+            sha256=sha256_file(repo / \"a.txt\"),\n+            size=(repo / \"a.txt\").stat().st_size,\n+        )\n+        result = WorkerResult(\n+            status=\"PASS\",\n+            claims={},\n+            files_changed=(claimed,),\n+            commands_run=(),\n+            tests=(),\n+            evidence=(),\n+            artifacts=(),\n+            external_effects={},\n+            blockers=(),\n+            uncertainty=\"low\",\n+            recommended_next_action=\"none\",\n+        )\n+        verifier = Verifier(\n+            python=Path(\"python\"),\n+            verifier_id=\"repro-verifier\",\n+            verified_at=\"2026-08-15T20:30:00Z\",\n+            proving_root=tmp_path,\n+        )\n+        verdict = verifier.verify(repo, result, [])\n+>       assert any(issue.field == \"completeness\" for issue in verdict.issues), str(verdict.to_dict())\n+E       AssertionError: {'verdict': 'PASS', 'issues': [], 'verifier_id': 'repro-verifier', 'verified_at': '2026-08-15T20:30:00Z', 'test_evidence': {}}\n+E       assert False\n+E        +  where False = any(<generator object test_verifier_rejects_unclaimed_changes.<locals>.<genexpr> at 0x000002535BBD58A0>)\n+\n+tests\\test_verify_repro.py:55: AssertionError\n+=========================== short test summary info ===========================\n+FAILED tests/test_verify_repro.py::test_verifier_rejects_unclaimed_changes - ...\n+1 failed in 0.77s\ndiff --git a/src/jarvis_foundry/__pycache__/__init__.cpython-313.pyc b/src/jarvis_foundry/__pycache__/__init__.cpython-313.pyc\nnew file mode 100644\nindex 0000000..a6bb6d2\nBinary files /dev/null and b/src/jarvis_foundry/__pycache__/__init__.cpython-313.pyc differ\ndiff --git a/src/jarvis_foundry/__pycache__/clock.cpython-313.pyc b/src/jarvis_foundry/__pycache__/clock.cpython-313.pyc\nnew file mode 100644\nindex 0000000..6e2200f\nBinary files /dev/null and b/src/jarvis_foundry/__pycache__/clock.cpython-313.pyc differ\ndiff --git a/src/jarvis_foundry/__pycache__/database.cpython-313.pyc b/src/jarvis_foundry/__pycache__/database.cpython-313.pyc\nnew file mode 100644\nindex 0000000..b0da907\nBinary files /dev/null and b/src/jarvis_foundry/__pycache__/database.cpython-313.pyc differ\ndiff --git a/src/jarvis_foundry/__pycache__/domain.cpython-313.pyc b/src/jarvis_foundry/__pycache__/domain.cpython-313.pyc\nnew file mode 100644\nindex 0000000..842d529\nBinary files /dev/null and b/src/jarvis_foundry/__pycache__/domain.cpython-313.pyc differ\ndiff --git a/src/jarvis_foundry/__pycache__/events.cpython-313.pyc b/src/jarvis_foundry/__pycache__/events.cpython-313.pyc\nnew file mode 100644\nindex 0000000..74dc0d5\nBinary files /dev/null and b/src/jarvis_foundry/__pycache__/events.cpython-313.pyc differ\ndiff --git a/src/jarvis_foundry/__pycache__/migrations.cpython-313.pyc b/src/jarvis_foundry/__pycache__/migrations.cpython-313.pyc\nnew file mode 100644\nindex 0000000..04cb05e\nBinary files /dev/null and b/src/jarvis_foundry/__pycache__/migrations.cpython-313.pyc differ\ndiff --git a/src/jarvis_foundry/__pycache__/projections.cpython-313.pyc b/src/jarvis_foundry/__pycache__/projections.cpython-313.pyc\nnew file mode 100644\nindex 0000000..4d9e12c\nBinary files /dev/null and b/src/jarvis_foundry/__pycache__/projections.cpython-313.pyc differ\ndiff --git a/src/jarvis_foundry/__pycache__/v4_schema.cpython-313.pyc b/src/jarvis_foundry/__pycache__/v4_schema.cpython-313.pyc\nnew file mode 100644\nindex 0000000..9195bc7\nBinary files /dev/null and b/src/jarvis_foundry/__pycache__/v4_schema.cpython-313.pyc differ\ndiff --git a/src/jarvis_foundry/kernel/__pycache__/__init__.cpython-313.pyc b/src/jarvis_foundry/kernel/__pycache__/__init__.cpython-313.pyc\nnew file mode 100644\nindex 0000000..19e720e\nBinary files /dev/null and b/src/jarvis_foundry/kernel/__pycache__/__init__.cpython-313.pyc differ\ndiff --git a/src/jarvis_foundry/kernel/__pycache__/canonical.cpython-313.pyc b/src/jarvis_foundry/kernel/__pycache__/canonical.cpython-313.pyc\nnew file mode 100644\nindex 0000000..b90ccef\nBinary files /dev/null and b/src/jarvis_foundry/kernel/__pycache__/canonical.cpython-313.pyc differ\ndiff --git a/src/jarvis_foundry/orchestration/__pycache__/__init__.cpython-313.pyc b/src/jarvis_foundry/orchestration/__pycache__/__init__.cpython-313.pyc\nnew file mode 100644\nindex 0000000..390ede1\nBinary files /dev/null and b/src/jarvis_foundry/orchestration/__pycache__/__init__.cpython-313.pyc differ\ndiff --git a/src/jarvis_foundry/orchestration/__pycache__/dispatcher.cpython-313.pyc b/src/jarvis_foundry/orchestration/__pycache__/dispatcher.cpython-313.pyc\nnew file mode 100644\nindex 0000000..4afdea4\nBinary files /dev/null and b/src/jarvis_foundry/orchestration/__pycache__/dispatcher.cpython-313.pyc differ\ndiff --git a/src/jarvis_foundry/orchestration/__pycache__/git_ops.cpython-313.pyc b/src/jarvis_foundry/orchestration/__pycache__/git_ops.cpython-313.pyc\nnew file mode 100644\nindex 0000000..41e84a4\nBinary files /dev/null and b/src/jarvis_foundry/orchestration/__pycache__/git_ops.cpython-313.pyc differ\ndiff --git a/src/jarvis_foundry/orchestration/__pycache__/mission_context.cpython-313.pyc b/src/jarvis_foundry/orchestration/__pycache__/mission_context.cpython-313.pyc\nnew file mode 100644\nindex 0000000..25a60d4\nBinary files /dev/null and b/src/jarvis_foundry/orchestration/__pycache__/mission_context.cpython-313.pyc differ\ndiff --git a/src/jarvis_foundry/orchestration/__pycache__/paths.cpython-313.pyc b/src/jarvis_foundry/orchestration/__pycache__/paths.cpython-313.pyc\nnew file mode 100644\nindex 0000000..f05806a\nBinary files /dev/null and b/src/jarvis_foundry/orchestration/__pycache__/paths.cpython-313.pyc differ\ndiff --git a/src/jarvis_foundry/orchestration/__pycache__/schemas.cpython-313.pyc b/src/jarvis_foundry/orchestration/__pycache__/schemas.cpython-313.pyc\nnew file mode 100644\nindex 0000000..9b2df38\nBinary files /dev/null and b/src/jarvis_foundry/orchestration/__pycache__/schemas.cpython-313.pyc differ\ndiff --git a/src/jarvis_foundry/orchestration/__pycache__/verify.cpython-313.pyc b/src/jarvis_foundry/orchestration/__pycache__/verify.cpython-313.pyc\nnew file mode 100644\nindex 0000000..d99ba62\nBinary files /dev/null and b/src/jarvis_foundry/orchestration/__pycache__/verify.cpython-313.pyc differ\ndiff --git a/src/jarvis_foundry/orchestration/verify.py b/src/jarvis_foundry/orchestration/verify.py\nindex b26bf24..ea5d9c5 100644\n--- a/src/jarvis_foundry/orchestration/verify.py\n+++ b/src/jarvis_foundry/orchestration/verify.py\n@@ -125,5 +125,20 @@ class Verifier:\n         return evidence\n \n     def _check_completeness(self, clone: Path, result: WorkerResult) -> list[VerifierIssue]:\n-        # R8 repair B target: initial implementation trusts worker claims.\n-        return []\n+        actual = untracked_and_changed_files(clone, proving_root=self._proving_root)\n+        actual = {path: entry for path, entry in actual.items() if path not in set(result.evidence)}\n+        claims = {change.path: change for change in result.files_changed}\n+        unclaimed = [path for path in actual if path not in claims]\n+        missing = [\n+            path\n+            for path, change in claims.items()\n+            if change.action != \"deleted\" and path not in actual\n+        ]\n+        issues = [\n+            VerifierIssue(\"completeness\", f\"unclaimed change: {path}\") for path in sorted(unclaimed)\n+        ]\n+        issues += [\n+            VerifierIssue(\"completeness\", f\"claimed file missing: {path}\")\n+            for path in sorted(missing)\n+        ]\n+        return issues\ndiff --git a/tests/__pycache__/test_verify_repro.cpython-313-pytest-9.0.3.pyc b/tests/__pycache__/test_verify_repro.cpython-313-pytest-9.0.3.pyc\nnew file mode 100644\nindex 0000000..548144c\nBinary files /dev/null and b/tests/__pycache__/test_verify_repro.cpython-313-pytest-9.0.3.pyc differ\n",
+      "diff_name_only": [
+        "repair-regression.txt",
+        "repair-reproduce.txt",
+        "src/jarvis_foundry/__pycache__/__init__.cpython-313.pyc",
+        "src/jarvis_foundry/__pycache__/clock.cpython-313.pyc",
+        "src/jarvis_foundry/__pycache__/database.cpython-313.pyc",
+        "src/jarvis_foundry/__pycache__/domain.cpython-313.pyc",
+        "src/jarvis_foundry/__pycache__/events.cpython-313.pyc",
+        "src/jarvis_foundry/__pycache__/migrations.cpython-313.pyc",
+        "src/jarvis_foundry/__pycache__/projections.cpython-313.pyc",
+        "src/jarvis_foundry/__pycache__/v4_schema.cpython-313.pyc",
+        "src/jarvis_foundry/kernel/__pycache__/__init__.cpython-313.pyc",
+        "src/jarvis_foundry/kernel/__pycache__/canonical.cpython-313.pyc",
+        "src/jarvis_foundry/orchestration/__pycache__/__init__.cpython-313.pyc",
+        "src/jarvis_foundry/orchestration/__pycache__/dispatcher.cpython-313.pyc",
+        "src/jarvis_foundry/orchestration/__pycache__/git_ops.cpython-313.pyc",
+        "src/jarvis_foundry/orchestration/__pycache__/mission_context.cpython-313.pyc",
+        "src/jarvis_foundry/orchestration/__pycache__/paths.cpython-313.pyc",
+        "src/jarvis_foundry/orchestration/__pycache__/schemas.cpython-313.pyc",
+        "src/jarvis_foundry/orchestration/__pycache__/verify.cpython-313.pyc",
+        "src/jarvis_foundry/orchestration/verify.py",
+        "tests/__pycache__/test_verify_repro.cpython-313-pytest-9.0.3.pyc"
+      ],
+      "diff_stat": " repair-regression.txt                              |   2 +\n repair-reproduce.txt                               |  43 +++++++++++++++++++++\n .../__pycache__/__init__.cpython-313.pyc           | Bin 0 -> 468 bytes\n .../__pycache__/clock.cpython-313.pyc              | Bin 0 -> 1553 bytes\n .../__pycache__/database.cpython-313.pyc           | Bin 0 -> 15498 bytes\n .../__pycache__/domain.cpython-313.pyc             | Bin 0 -> 6441 bytes\n .../__pycache__/events.cpython-313.pyc             | Bin 0 -> 3721 bytes\n .../__pycache__/migrations.cpython-313.pyc         | Bin 0 -> 33556 bytes\n .../__pycache__/projections.cpython-313.pyc        | Bin 0 -> 84988 bytes\n .../__pycache__/v4_schema.cpython-313.pyc          | Bin 0 -> 3630 bytes\n .../kernel/__pycache__/__init__.cpython-313.pyc    | Bin 0 -> 362 bytes\n .../kernel/__pycache__/canonical.cpython-313.pyc   | Bin 0 -> 2674 bytes\n .../__pycache__/__init__.cpython-313.pyc           | Bin 0 -> 378 bytes\n .../__pycache__/dispatcher.cpython-313.pyc         | Bin 0 -> 4163 bytes\n .../__pycache__/git_ops.cpython-313.pyc            | Bin 0 -> 8829 bytes\n .../__pycache__/mission_context.cpython-313.pyc    | Bin 0 -> 7567 bytes\n .../__pycache__/paths.cpython-313.pyc              | Bin 0 -> 7622 bytes\n .../__pycache__/schemas.cpython-313.pyc            | Bin 0 -> 10486 bytes\n .../__pycache__/verify.cpython-313.pyc             | Bin 0 -> 7614 bytes\n src/jarvis_foundry/orchestration/verify.py         |  19 ++++++++-\n .../test_verify_repro.cpython-313-pytest-9.0.3.pyc | Bin 0 -> 3886 bytes\n 21 files changed, 62 insertions(+), 2 deletions(-)\n",
+      "status_porcelain": [
+        " M src/jarvis_foundry/orchestration/verify.py",
+        "?? repair-regression.txt",
+        "?? repair-reproduce.txt",
+        "?? src/jarvis_foundry/__pycache__/__init__.cpython-313.pyc",
+        "?? src/jarvis_foundry/__pycache__/clock.cpython-313.pyc",
+        "?? src/jarvis_foundry/__pycache__/database.cpython-313.pyc",
+        "?? src/jarvis_foundry/__pycache__/domain.cpython-313.pyc",
+        "?? src/jarvis_foundry/__pycache__/events.cpython-313.pyc",
+        "?? src/jarvis_foundry/__pycache__/migrations.cpython-313.pyc",
+        "?? src/jarvis_foundry/__pycache__/projections.cpython-313.pyc",
+        "?? src/jarvis_foundry/__pycache__/v4_schema.cpython-313.pyc",
+        "?? src/jarvis_foundry/kernel/__pycache__/__init__.cpython-313.pyc",
+        "?? src/jarvis_foundry/kernel/__pycache__/canonical.cpython-313.pyc",
+        "?? src/jarvis_foundry/orchestration/__pycache__/__init__.cpython-313.pyc",
+        "?? src/jarvis_foundry/orchestration/__pycache__/dispatcher.cpython-313.pyc",
+        "?? src/jarvis_foundry/orchestration/__pycache__/git_ops.cpython-313.pyc",
+        "?? src/jarvis_foundry/orchestration/__pycache__/mission_context.cpython-313.pyc",
+        "?? src/jarvis_foundry/orchestration/__pycache__/paths.cpython-313.pyc",
+        "?? src/jarvis_foundry/orchestration/__pycache__/schemas.cpython-313.pyc",
+        "?? src/jarvis_foundry/orchestration/__pycache__/verify.cpython-313.pyc",
+        "?? tests/__pycache__/test_verify_repro.cpython-313-pytest-9.0.3.pyc"
+      ],
+      "tree_hash": "70cbf1988e726249f83d348fc80fc1cc49376a85d192ebe3b8fc5f244264ca5a"
+    },
+    "diff_summary_hash": "c7b5a7bb44f68946cd4066af5063cce04670ccae19b5d264e71050633d9d8b4e",
+    "integrity_clean": true,
+    "integrity_issues": {
+      "claimed_missing": [],
+      "hash_mismatches": [],
+      "unclaimed_changes": []
+    }
+  },
+  "kind": "repair",
+  "ledger": {
+    "chain_valid": true,
+    "events": [
+      {
+        "event_id": "evt-mission-r8a-asset-dispatch-01",
+        "event_type": "mission.dispatched",
+        "sequence": 1
+      },
+      {
+        "event_id": "evt-mission-r8a-asset-ingested-02",
+        "event_type": "mission.result_ingested",
+        "sequence": 2
+      },
+      {
+        "event_id": "evt-mission-r8a-asset-inspected-03",
+        "event_type": "mission.inspected",
+        "sequence": 3
+      },
+      {
+        "event_id": "evt-mission-r8a-asset-findings-04",
+        "event_type": "mission.findings_recorded",
+        "sequence": 4
+      },
+      {
+        "event_id": "evt-mission-r8a-asset-reverified-05",
+        "event_type": "mission.reverified",
+        "sequence": 5
+      },
+      {
+        "event_id": "evt-mission-r8a-asset-decision-06",
+        "event_type": "mission.accepted",
+        "sequence": 6
+      },
+      {
+        "event_id": "evt-mission-r8a-asset-reconciled-07",
+        "event_type": "mission.reconciled",
+        "sequence": 7
+      },
+      {
+        "event_id": "evt-mission-r8a-asset-rollback-08",
+        "event_type": "mission.rollback_demonstrated",
+        "sequence": 8
+      },
+      {
+        "event_id": "evt-mission-r8b-repair-dispatch-01",
+        "event_type": "mission.repair_dispatched",
+        "sequence": 9
+      },
+      {
+        "event_id": "evt-mission-r8b-repair-ingested-02",
+        "event_type": "mission.result_ingested",
+        "sequence": 10
+      },
+      {
+        "event_id": "evt-mission-r8b-repair-inspected-03",
+        "event_type": "mission.inspected",
+        "sequence": 11
+      },
+      {
+        "event_id": "evt-mission-r8b-repair-findings-04",
+        "event_type": "mission.findings_recorded",
+        "sequence": 12
+      },
+      {
+        "event_id": "evt-mission-r8b-repair-reverified-05",
+        "event_type": "mission.reverified",
+        "sequence": 13
+      },
+      {
+        "event_id": "evt-mission-r8b-repair-decision-06",
+        "event_type": "mission.accepted",
+        "sequence": 14
+      },
+      {
+        "event_id": "evt-mission-r8b-repair-reconciled-07",
+        "event_type": "mission.reconciled",
+        "sequence": 15
+      },
+      {
+        "event_id": "evt-mission-r8b-repair-rollback-08",
+        "event_type": "mission.rollback_demonstrated",
+        "sequence": 16
+      }
+    ],
+    "head_hash": "0218d10fb930c9e3d98dd97b52f470c14138d1a14abd5ba3d677d5efbee11428"
+  },
+  "mission_id": "mission-r8b-repair",
+  "recommended_next_action": "emit honest WAITING",
+  "reconciliation": {
+    "git_porcelain_hash": "9024a06fc209ac245a3ae8d6f7e52bded2fb9a09e9e0dc800ec6fa72dcfc1d07",
+    "git_tree_hash": "70cbf1988e726249f83d348fc80fc1cc49376a85d192ebe3b8fc5f244264ca5a",
+    "ledger_chain_valid": true,
+    "ledger_head_hash": "7c948d26512ae8ec84eb643ff96380c857add20d32ccac73f450089cafa6328d",
+    "ledger_sequence_count": 14,
+    "mission_event_count": 6,
+    "mission_event_types": [
+      "mission.accepted",
+      "mission.findings_recorded",
+      "mission.inspected",
+      "mission.repair_dispatched",
+      "mission.result_ingested",
+      "mission.reverified"
+    ],
+    "reconciled": true
+  },
+  "rollback": {
+    "accepted_tree_hash": "70cbf1988e726249f83d348fc80fc1cc49376a85d192ebe3b8fc5f244264ca5a",
+    "baseline_tree_hash": "e3b70d1fc9575b64553c95a9a6b4330d8230cb3a51dc3b427a40fedae23ddd15",
+    "reapplied_tree_hash": "70cbf1988e726249f83d348fc80fc1cc49376a85d192ebe3b8fc5f244264ca5a",
+    "reapply_matches_accepted": true,
+    "restore_matches_baseline": true,
+    "restored": true,
+    "restored_tree_hash": "e3b70d1fc9575b64553c95a9a6b4330d8230cb3a51dc3b427a40fedae23ddd15"
+  },
+  "schema": "jarvis-r8-mission-report-v1",
+  "source_after_unchanged": true,
+  "source_before": {
+    "branch": "master",
+    "captured_at": "2026-08-15T22:09:57Z",
+    "dirty_report": {
+      "porcelain": [],
+      "porcelain_count": 0,
+      "untracked": [],
+      "untracked_count": 0
+    },
+    "exists": true,
+    "head": "c7afa57d5e10b4115fa3fc2cbbf13adf3a21c5b5",
+    "is_git_repo": true,
+    "path": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r8-builder\\projects\\r8_orchestration_candidate",
+    "porcelain": [],
+    "tree_hash": "1fbe99b69f6812920a3ab2ebbfcacdec2bf660d556e39bed99353775eafc4550",
+    "untracked": []
+  },
+  "status": "ACCEPTED",
+  "verdict": {
+    "issues": [],
+    "test_evidence": {
+      "required-test-1": {
+        "command": [
+          "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r3-venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "tests/test_verify_repro.py",
+          "-q"
+        ],
+        "exit_code": 0,
+        "output_tail": ".                                                                        [100%]\n1 passed in 0.70s\n",
+        "wall_seconds": 1.213
+      },
+      "required-test-2": {
+        "command": [
+          "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r3-venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "tests",
+          "-q"
+        ],
+        "exit_code": 0,
+        "output_tail": ".                                                                        [100%]\n1 passed in 0.70s\n",
+        "wall_seconds": 1.213
+      }
+    },
+    "verdict": "PASS",
+    "verified_at": "2026-08-15T22:10:05Z",
+    "verifier_id": "fresh-verifier-mission-r8b-repair"
+  },
+  "wall_seconds": 16.282,
+  "worker_id": "worker-mission-r8b-repair",
+  "worker_result": {
+    "artifacts": [],
+    "blockers": [],
+    "claims": {
+      "defect_reproduced": true,
+      "target_file": "src/jarvis_foundry/orchestration/verify.py",
+      "transform_id": "verifier_recompute"
+    },
+    "commands_run": [
+      "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r3-venv\\Scripts\\python.exe pytest tests/test_verify_repro.py -q",
+      "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r3-venv\\Scripts\\python.exe pytest tests -q"
+    ],
+    "evidence": [
+      "repair-reproduce.txt",
+      "repair-regression.txt"
+    ],
+    "external_effects": {
+      "live_state": 0,
+      "owner_projects": 0,
+      "protected_repos": 0
+    },
+    "files_changed": [
+      {
+        "action": "modified",
+        "path": "src/jarvis_foundry/orchestration/verify.py",
+        "sha256": "a750aa66632397bf6b8a5f4821223a23981ebcbb07b91cb221a20b5d0348547e",
+        "size": 5393
+      }
+    ],
+    "recommended_next_action": "machinery reverification and acceptance",
+    "status": "PASS",
+    "tests": [
+      {
+        "evidence_path": "repair-reproduce.txt",
+        "exit_code": 0,
+        "name": "pytest tests/test_verify_repro.py -q",
+        "passed": true,
+        "summary": "1 passed in 0.71s"
+      },
+      {
+        "evidence_path": "repair-regression.txt",
+        "exit_code": 0,
+        "name": "pytest tests -q",
+        "passed": true,
+        "summary": "1 passed in 0.71s"
+      }
+    ],
+    "uncertainty": "low"
+  }
+}

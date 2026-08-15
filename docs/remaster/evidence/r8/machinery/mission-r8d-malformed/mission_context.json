@@ -1,0 +1,52 @@
+{
+  "ACCEPTANCE CRITERIA": [
+    "result must be rejected"
+  ],
+  "ALLOWED MUTATION": [
+    "tests/"
+  ],
+  "CURRENT STEP": "ASSET",
+  "DISPATCH": {
+    "clone": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r8-builder\\projects\\alpha_ledger",
+    "proving_root": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r8-builder",
+    "python": "C:/Users/b/AppData/Local/Temp/jarvis-r3-venv/Scripts/python.exe",
+    "worker_id": "worker-mission-r8d-malformed",
+    "worker_module": "jarvis_foundry.orchestration.workers.malformed_worker"
+  },
+  "FORBIDDEN MUTATION": [
+    "protected/"
+  ],
+  "KNOWN VERIFIED STATE": {},
+  "MISSION": "prove malformed result fails closed",
+  "OBJECTIVE": "prove malformed result fails closed",
+  "RELEVANT PREVIOUS FAILURES": [],
+  "REQUIRED EVIDENCE": [
+    "worker_result.json"
+  ],
+  "REQUIRED TESTS": [
+    "pytest tests -q"
+  ],
+  "RESULT CONTRACT": {
+    "fields": [
+      "status",
+      "claims",
+      "files_changed",
+      "commands_run",
+      "tests",
+      "evidence",
+      "artifacts",
+      "external_effects",
+      "blockers",
+      "uncertainty",
+      "recommended_next_action"
+    ],
+    "prose_is_not_truth": true,
+    "validation": "fail-closed; malformed results are REJECTED and recorded"
+  },
+  "ROLE": "builder",
+  "ROLLBACK EXPECTATION": "none",
+  "WORKER SPEC": {
+    "asset_type": "regression_suite"
+  },
+  "mission_id": "mission-r8d-malformed"
+}

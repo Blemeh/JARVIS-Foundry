@@ -1,0 +1,69 @@
+{
+  "asset_reconciliation": {
+    "git_porcelain_hash": "22a5f3086ac07695d6b8838dad924ab8eb608731f96d41eb474d9c138d46ce86",
+    "git_tree_hash": "c39835ce7c6abd31892261c68ff27ff8ea0be3006639b8421b724ba0488f10c5",
+    "ledger_chain_valid": true,
+    "ledger_head_hash": "b17393dcd0c9223885bd0f7a489e474644eb670e559713eb21d057748f59a9cb",
+    "ledger_sequence_count": 6,
+    "mission_event_count": 6,
+    "mission_event_types": [
+      "mission.accepted",
+      "mission.dispatched",
+      "mission.findings_recorded",
+      "mission.inspected",
+      "mission.result_ingested",
+      "mission.reverified"
+    ],
+    "reconciled": true
+  },
+  "asset_rollback": {
+    "accepted_tree_hash": "c39835ce7c6abd31892261c68ff27ff8ea0be3006639b8421b724ba0488f10c5",
+    "baseline_tree_hash": "bfb2ba4a2c42c764b8af6d4f642afdf23bb8e990f2e3ce85d64d86b18b1f43be",
+    "reapplied_tree_hash": "c39835ce7c6abd31892261c68ff27ff8ea0be3006639b8421b724ba0488f10c5",
+    "reapply_matches_accepted": true,
+    "restore_matches_baseline": true,
+    "restored": true,
+    "restored_tree_hash": "bfb2ba4a2c42c764b8af6d4f642afdf23bb8e990f2e3ce85d64d86b18b1f43be"
+  },
+  "exit_code": 0,
+  "independent_restore": {
+    "baseline_hash": "bfb2ba4a2c42c764b8af6d4f642afdf23bb8e990f2e3ce85d64d86b18b1f43be",
+    "matches": true,
+    "restored_hash": "bfb2ba4a2c42c764b8af6d4f642afdf23bb8e990f2e3ce85d64d86b18b1f43be"
+  },
+  "ledger_truth": {
+    "asset_chain_valid": true,
+    "asset_event_count": 8,
+    "repair_chain_valid": true,
+    "repair_event_count": 16
+  },
+  "passed": true,
+  "repair_reconciliation": {
+    "git_porcelain_hash": "9024a06fc209ac245a3ae8d6f7e52bded2fb9a09e9e0dc800ec6fa72dcfc1d07",
+    "git_tree_hash": "70cbf1988e726249f83d348fc80fc1cc49376a85d192ebe3b8fc5f244264ca5a",
+    "ledger_chain_valid": true,
+    "ledger_head_hash": "7c948d26512ae8ec84eb643ff96380c857add20d32ccac73f450089cafa6328d",
+    "ledger_sequence_count": 14,
+    "mission_event_count": 6,
+    "mission_event_types": [
+      "mission.accepted",
+      "mission.findings_recorded",
+      "mission.inspected",
+      "mission.repair_dispatched",
+      "mission.result_ingested",
+      "mission.reverified"
+    ],
+    "reconciled": true
+  },
+  "repair_rollback": {
+    "accepted_tree_hash": "70cbf1988e726249f83d348fc80fc1cc49376a85d192ebe3b8fc5f244264ca5a",
+    "baseline_tree_hash": "e3b70d1fc9575b64553c95a9a6b4330d8230cb3a51dc3b427a40fedae23ddd15",
+    "reapplied_tree_hash": "70cbf1988e726249f83d348fc80fc1cc49376a85d192ebe3b8fc5f244264ca5a",
+    "reapply_matches_accepted": true,
+    "restore_matches_baseline": true,
+    "restored": true,
+    "restored_tree_hash": "e3b70d1fc9575b64553c95a9a6b4330d8230cb3a51dc3b427a40fedae23ddd15"
+  },
+  "schema": "jarvis-r8-g05-reconciliation-v1",
+  "wall_seconds": 0.087
+}

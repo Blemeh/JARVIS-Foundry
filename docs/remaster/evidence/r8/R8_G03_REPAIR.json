@@ -1,0 +1,21 @@
+{
+  "after_sha256": "a750aa66632397bf6b8a5f4821223a23981ebcbb07b91cb221a20b5d0348547e",
+  "before_sha256": "99207c7961f794c6cef27a1be936bfc0cc2f7386dcd2791ae9b6016053362014",
+  "defect_reproduced": true,
+  "exit_code": 0,
+  "fixed_method_present": true,
+  "fresh_worker_distinct": true,
+  "lifecycle_has_accepted": true,
+  "lifecycle_has_repair_dispatched": true,
+  "lifecycle_has_reverified": true,
+  "mission_link_binds_accepted_event": true,
+  "passed": true,
+  "producing_builder_worker_id": "worker-mission-r8a-asset",
+  "real_content_change": true,
+  "regression_exit_code": 0,
+  "regression_test_passed": true,
+  "repair_worker_id": "worker-mission-r8b-repair",
+  "reproduced_test_command": "pytest tests/test_verify_repro.py -q",
+  "schema": "jarvis-r8-g03-repair-v1",
+  "wall_seconds": 0.006
+}

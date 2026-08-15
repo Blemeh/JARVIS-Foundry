@@ -1,0 +1,28 @@
+{
+  "alpha_dirty_report": {
+    "porcelain": [
+      "?? NOTES.md"
+    ],
+    "porcelain_count": 1,
+    "untracked": [
+      "NOTES.md"
+    ],
+    "untracked_count": 1
+  },
+  "alpha_dirty_untracked_preserved": true,
+  "asset_mission_isolated": true,
+  "exit_code": 0,
+  "independent_clone": {
+    "branch": "r8/g01",
+    "clone_head": "f7e9583f76820d7e8ab773c2ed5b221dc55abe03",
+    "source_head_before": "f7e9583f76820d7e8ab773c2ed5b221dc55abe03",
+    "source_porcelain_unchanged": true,
+    "source_tree_hash_after": "546921ab306577516706b18e3f0df142ca159a4f6bb4777b488a96a0662f4187",
+    "source_tree_hash_before": "546921ab306577516706b18e3f0df142ca159a4f6bb4777b488a96a0662f4187",
+    "source_unchanged": true
+  },
+  "passed": true,
+  "repair_mission_isolated": true,
+  "schema": "jarvis-r8-g01-isolation-v1",
+  "wall_seconds": 0.932
+}

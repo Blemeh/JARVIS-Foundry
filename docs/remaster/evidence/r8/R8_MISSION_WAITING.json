@@ -1,0 +1,11 @@
+{
+  "generated_utc": "2026-08-15T22:10:13Z",
+  "kind": "waiting",
+  "ledger_head_hash": "01d911c03b39bba9008dcf4e6be1b10e9a15afcbd088e6f7fec571b2eeca880d",
+  "mission_id": "mission-r8c-waiting",
+  "next_action": "await a new useful mission",
+  "reason": "no new useful mission exists after accepted R8 missions",
+  "schema": "jarvis-r8-mission-report-v1",
+  "status": "WAITING",
+  "wall_seconds": 0.016
+}

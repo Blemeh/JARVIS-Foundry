@@ -1,0 +1,24 @@
+{
+  "schema": "jarvis-r8-progress-v1",
+  "checkpoint": "R8_PROGRESS_03",
+  "generated_utc": "2026-08-15T20:10:00Z",
+  "milestone": "All R8 gates green before final evidence closure",
+  "status": "IN_PROGRESS",
+  "gates": {
+    "R8-G01": "PASS",
+    "R8-G02": "PASS",
+    "R8-G03": "PASS",
+    "R8-G04": "PASS",
+    "R8-G05": "PASS",
+    "static": "PASS",
+    "focused_tests": "PASS",
+    "full_suite": "PASS",
+    "secret_scan": "PASS",
+    "privacy": "PASS",
+    "live_guard": "PASS (protected main/db/vault/tasks unchanged; one live daemon PID recycled with identical command hash)"
+  },
+  "notes": [
+    "R8-F-001 repaired through the machinery and accepted; worktree verify.py is byte-identical to the accepted artifact.",
+    "Next: build R8_BUILDER_REPORT.json and R8_ARTIFACT_MANIFEST.json with R8_RECORD_EVIDENCE=1."
+  ]
+}

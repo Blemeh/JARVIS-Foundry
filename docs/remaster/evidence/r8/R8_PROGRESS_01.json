@@ -1,0 +1,22 @@
+{
+  "schema": "jarvis-r8-progress-v1",
+  "checkpoint": "R8_PROGRESS_01",
+  "generated_utc": "2026-08-15T20:35:00Z",
+  "milestone": "Orchestration package, workers, gate scripts, and regression tests scaffolded",
+  "status": "IN_PROGRESS",
+  "notes": [
+    "R8 orchestration package implemented under src/jarvis_foundry/orchestration.",
+    "Workers implemented: asset_builder, repair_worker, malformed_worker.",
+    "R8 gate scripts implemented under scripts/remaster/r8.",
+    "R8 focused tests implemented; 30/31 green.",
+    "Genuine defect reproduced: R8-F-001 verifier completeness check is a stub; test_verify.py::test_verifier_rejects_unclaimed_changes fails.",
+    "Next: create proving projects, run machinery missions A/B/waiting, repair defect, run gates."
+  ],
+  "key_file_hashes": {
+    "src/jarvis_foundry/orchestration/verify.py": "91074A13990D93391B9BF7E274E28AD0B465D87053650980D360F8286E8AA249",
+    "src/jarvis_foundry/orchestration/orchestrator.py": "038AA11A34F0168F6AB1148C7586F90F969328D968EE5F4DCDC8FE035CC5753F",
+    "scripts/remaster/r8/common.py": "DA3CA71DCC17EC7DD088A6C0ACF10AB502775854A832E41603C8BDDA097F9A8",
+    "tests/remaster/r8/test_verify.py": "02BA7D0F504240C516AEEC287509042CD0625389D6B87077675D8A6ECBAB2AEF"
+  },
+  "focused_test_summary": "30 passed, 1 failed (intentional defect reproduction R8-F-001)"
+}

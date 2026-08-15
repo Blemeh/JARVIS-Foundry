@@ -1,0 +1,30 @@
+{
+  "records": {
+    "mission_link:mission-r8a-asset": {
+      "key": "mission_link:mission-r8a-asset",
+      "record": {
+        "candidate_id": "candidate-mission-r8a-asset",
+        "created_at": "2026-08-15T22:09:56Z",
+        "decision_id": "decision-mission-r8a-asset",
+        "goal_id": "goal-mission-r8a-asset",
+        "ledger_event_id": "mission.accepted:mission-r8a-asset",
+        "ledger_header_hash": "b17393dcd0c9223885bd0f7a489e474644eb670e559713eb21d057748f59a9cb",
+        "mission_id": "mission-r8a-asset"
+      }
+    },
+    "mission_link:mission-r8b-repair": {
+      "key": "mission_link:mission-r8b-repair",
+      "record": {
+        "candidate_id": "candidate-mission-r8b-repair",
+        "created_at": "2026-08-15T22:10:08Z",
+        "decision_id": "decision-mission-r8b-repair",
+        "goal_id": "goal-mission-r8b-repair",
+        "ledger_event_id": "mission.accepted:mission-r8b-repair",
+        "ledger_header_hash": "7c948d26512ae8ec84eb643ff96380c857add20d32ccac73f450089cafa6328d",
+        "mission_id": "mission-r8b-repair"
+      }
+    }
+  },
+  "sequence": 2,
+  "state_hash": "4caccdbdb59b39b8ddaf1076f8c475239ca26ac7de4de1bb0ab9009b1c014e2f"
+}

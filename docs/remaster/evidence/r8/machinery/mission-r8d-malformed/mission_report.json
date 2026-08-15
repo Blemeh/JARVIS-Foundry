@@ -1,0 +1,126 @@
+{
+  "dispatch_exit_code": 0,
+  "dispatch_output": "",
+  "dispatch_wall_seconds": 0.115,
+  "generated_utc": "2026-08-15T22:10:17Z",
+  "kind": "asset",
+  "ledger": {
+    "chain_valid": true,
+    "events": [
+      {
+        "event_id": "evt-mission-r8a-asset-dispatch-01",
+        "event_type": "mission.dispatched",
+        "sequence": 1
+      },
+      {
+        "event_id": "evt-mission-r8a-asset-ingested-02",
+        "event_type": "mission.result_ingested",
+        "sequence": 2
+      },
+      {
+        "event_id": "evt-mission-r8a-asset-inspected-03",
+        "event_type": "mission.inspected",
+        "sequence": 3
+      },
+      {
+        "event_id": "evt-mission-r8a-asset-findings-04",
+        "event_type": "mission.findings_recorded",
+        "sequence": 4
+      },
+      {
+        "event_id": "evt-mission-r8a-asset-reverified-05",
+        "event_type": "mission.reverified",
+        "sequence": 5
+      },
+      {
+        "event_id": "evt-mission-r8a-asset-decision-06",
+        "event_type": "mission.accepted",
+        "sequence": 6
+      },
+      {
+        "event_id": "evt-mission-r8a-asset-reconciled-07",
+        "event_type": "mission.reconciled",
+        "sequence": 7
+      },
+      {
+        "event_id": "evt-mission-r8a-asset-rollback-08",
+        "event_type": "mission.rollback_demonstrated",
+        "sequence": 8
+      },
+      {
+        "event_id": "evt-mission-r8b-repair-dispatch-01",
+        "event_type": "mission.repair_dispatched",
+        "sequence": 9
+      },
+      {
+        "event_id": "evt-mission-r8b-repair-ingested-02",
+        "event_type": "mission.result_ingested",
+        "sequence": 10
+      },
+      {
+        "event_id": "evt-mission-r8b-repair-inspected-03",
+        "event_type": "mission.inspected",
+        "sequence": 11
+      },
+      {
+        "event_id": "evt-mission-r8b-repair-findings-04",
+        "event_type": "mission.findings_recorded",
+        "sequence": 12
+      },
+      {
+        "event_id": "evt-mission-r8b-repair-reverified-05",
+        "event_type": "mission.reverified",
+        "sequence": 13
+      },
+      {
+        "event_id": "evt-mission-r8b-repair-decision-06",
+        "event_type": "mission.accepted",
+        "sequence": 14
+      },
+      {
+        "event_id": "evt-mission-r8b-repair-reconciled-07",
+        "event_type": "mission.reconciled",
+        "sequence": 15
+      },
+      {
+        "event_id": "evt-mission-r8b-repair-rollback-08",
+        "event_type": "mission.rollback_demonstrated",
+        "sequence": 16
+      },
+      {
+        "event_id": "evt-mission-r8c-waiting-waiting-01",
+        "event_type": "mission.waiting",
+        "sequence": 17
+      },
+      {
+        "event_id": "evt-mission-r8d-malformed-dispatch-01",
+        "event_type": "mission.dispatched",
+        "sequence": 18
+      },
+      {
+        "event_id": "evt-mission-r8d-malformed-malformed-02",
+        "event_type": "mission.malformed_rejected",
+        "sequence": 19
+      }
+    ],
+    "head_hash": "c852ff5f843556d0697af8bb167ba1bd6560dabab8532dce02b0a162a1f8b2f4"
+  },
+  "ledger_head_hash": "c852ff5f843556d0697af8bb167ba1bd6560dabab8532dce02b0a162a1f8b2f4",
+  "mission_id": "mission-r8d-malformed",
+  "rejection_reasons": [
+    "missing required keys: ['artifacts', 'blockers', 'commands_run', 'evidence', 'external_effects', 'files_changed', 'tests']",
+    "files_changed must be a list",
+    "commands_run must be a list of strings",
+    "tests must be a list",
+    "evidence must be a list of strings",
+    "artifacts must be a list of strings",
+    "external_effects must be an object",
+    "blockers must be a list of strings"
+  ],
+  "schema": "jarvis-r8-mission-report-v1",
+  "source_unchanged": true,
+  "status": "REJECTED",
+  "wall_seconds": 1.107,
+  "worker_id": "worker-mission-r8d-malformed",
+  "worker_result_hash": "767eaa369f6d9884aaf969ba478e7dedca675e27e1fa186dd3e21ce1d96ea452"
+}

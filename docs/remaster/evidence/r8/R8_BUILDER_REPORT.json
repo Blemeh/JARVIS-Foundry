@@ -1,0 +1,214 @@
+{
+  "artifact_confinement": {
+    "baseline_entries_missing": [],
+    "confined": true,
+    "confinement_violations": [],
+    "porcelain_line_count": 10,
+    "pre_existing_baseline_entries": [
+      "?? docs/remaster/evidence/r6/",
+      "?? docs/remaster/work_packages/R6_WORK_PACKAGE.json",
+      "?? docs/remaster/work_packages/R8_WORK_PACKAGE.json",
+      "?? scripts/remaster/r6/",
+      "?? src/jarvis_foundry/kernel/memory/",
+      "?? tests/remaster/r6/"
+    ]
+  },
+  "artifact_manifest": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r8\\R8_ARTIFACT_MANIFEST.json",
+  "artifact_manifest_verification": {
+    "checked": 106,
+    "manifest_file_count": 107,
+    "mismatches": []
+  },
+  "builder": "r8_builder_fresh",
+  "builder_status": "NOT_TESTED",
+  "deliverables": {
+    "R8-D01": {
+      "evidence": [
+        "R8_MACHINERY_REPORT.json"
+      ],
+      "evidence_hashes": {
+        "R8_MACHINERY_REPORT.json": "95ab7fdb68b396b347aa306ca9f8d6536c11187d522f61aab377863ecd1d0bb7"
+      },
+      "status": "PASS"
+    },
+    "R8-D02": {
+      "evidence": [
+        "R8_MISSION_ASSET_A.json"
+      ],
+      "evidence_hashes": {
+        "R8_MISSION_ASSET_A.json": "43cdf0ca3c2befa7d2433c5891811bf952b87d1e9f272104aa6aaaee9927822f"
+      },
+      "status": "PASS"
+    },
+    "R8-D03": {
+      "evidence": [
+        "R8_MISSION_REPAIR_B.json"
+      ],
+      "evidence_hashes": {
+        "R8_MISSION_REPAIR_B.json": "d262ce6d67987d2bf09f998e88aa21dd2ad56f6679bb1e479df2206fcf6d26d3"
+      },
+      "status": "PASS"
+    },
+    "R8-D04": {
+      "evidence": [
+        "R8_MACHINERY_REPORT.json"
+      ],
+      "evidence_hashes": {
+        "R8_MACHINERY_REPORT.json": "95ab7fdb68b396b347aa306ca9f8d6536c11187d522f61aab377863ecd1d0bb7"
+      },
+      "status": "PASS"
+    },
+    "R8-D05": {
+      "evidence": [
+        "R8_G04_VERIFICATION.json"
+      ],
+      "evidence_hashes": {
+        "R8_G04_VERIFICATION.json": "f0fbf5058748aa3fd07d42a41a5d438b55285e5e072d0809ca5216d9fc0af428"
+      },
+      "status": "PASS"
+    },
+    "R8-D06": {
+      "evidence": [
+        "R8_MISSION_ASSET_A.json"
+      ],
+      "evidence_hashes": {
+        "R8_MISSION_ASSET_A.json": "43cdf0ca3c2befa7d2433c5891811bf952b87d1e9f272104aa6aaaee9927822f"
+      },
+      "status": "PASS"
+    }
+  },
+  "findings": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r8\\R8_FINDINGS.json",
+  "focused_tests_status": "PASS",
+  "frozen_base": {
+    "branch": "remaster/post-v7-purpose",
+    "commit": "9a514d9cae48e9d6f3384c3b42a433a77daa80c4",
+    "live_v7_deployment_changes_allowed": false,
+    "push_or_publish_allowed": false,
+    "work_package": "docs/remaster/work_packages/R8_WORK_PACKAGE.json",
+    "work_package_sha256": "B7CDAE97A2D0BA7B6A14C2C160975428A974FD2E3F7FADD61E00D60939611627",
+    "work_package_unchanged": true
+  },
+  "full_suite": {
+    "evidence": [
+      "R8_FULL_SUITE.json",
+      "R8_FULL_SUITE_RAW.txt",
+      "R8_FULL_SUITE_PART1_JUNIT.xml",
+      "R8_FULL_SUITE_PART2_JUNIT.xml",
+      "R8_FULL_SUITE_COMBINED_JUNIT.xml"
+    ],
+    "evidence_hashes": {
+      "R8_FULL_SUITE.json": "da7f0b7268dddc0878ef153a58f52ae6780c62e7d2ec9abac064c494c62b0861",
+      "R8_FULL_SUITE_COMBINED_JUNIT.xml": "9d41504b262160c198db4e7b3baff57c270072a10cc3cb73944b71835f83f80f",
+      "R8_FULL_SUITE_PART1_JUNIT.xml": "18eea472100e165bdb627f0c13ad9f473d13f15478fe8ecf06fa0fee4138594c",
+      "R8_FULL_SUITE_PART2_JUNIT.xml": "e1f1e56c3b7001b7afced75bbf9167c4f09d8cd824fa21d3dbfbf52999bd1c42",
+      "R8_FULL_SUITE_RAW.txt": "871886326531d38e7884039d03ae1d617a757d8359836b0dc947a0657b7d4d8f"
+    },
+    "status": "PASS",
+    "summary_line": "...............                                                          [100%]"
+  },
+  "gates": {
+    "R8-G01": {
+      "evidence": [
+        "R8_G01_ISOLATION.json"
+      ],
+      "evidence_hashes": {
+        "R8_G01_ISOLATION.json": "11faf047b463759ebcad068e164bf02ad36b312ed90258880120c31d36ce210a"
+      },
+      "status": "PASS"
+    },
+    "R8-G02": {
+      "evidence": [
+        "R8_G02_ASSET.json"
+      ],
+      "evidence_hashes": {
+        "R8_G02_ASSET.json": "0f184a1e7f73f1db8298c97fc39d6113837668274c30e87f603390a7b0f2ca01"
+      },
+      "status": "PASS"
+    },
+    "R8-G03": {
+      "evidence": [
+        "R8_G03_REPAIR.json"
+      ],
+      "evidence_hashes": {
+        "R8_G03_REPAIR.json": "054aa6a826b223e6789da2dbde5e61174737f1ec594ab38aa571f5720419cfa0"
+      },
+      "status": "PASS"
+    },
+    "R8-G04": {
+      "evidence": [
+        "R8_G04_VERIFICATION.json"
+      ],
+      "evidence_hashes": {
+        "R8_G04_VERIFICATION.json": "f0fbf5058748aa3fd07d42a41a5d438b55285e5e072d0809ca5216d9fc0af428"
+      },
+      "status": "PASS"
+    },
+    "R8-G05": {
+      "evidence": [
+        "R8_G05_RECONCILIATION.json"
+      ],
+      "evidence_hashes": {
+        "R8_G05_RECONCILIATION.json": "15f18f53b5c68a3e5ed7451d528eb1e8573200e99d64850473e8db937ca372fe"
+      },
+      "status": "PASS"
+    },
+    "R8-G06": {
+      "evidence": [
+        "R8_FULL_SUITE.json",
+        "R8_STATIC.json",
+        "R8_SECRET_SCAN.json",
+        "R8_PRIVACY.json",
+        "R8_LIVE_GUARD_COMPARISON.json"
+      ],
+      "evidence_hashes": {
+        "R8_BANDIT.json": "342dbe4a2f8b56929b7ba13344858a4522c19340bcda25bf6de743fba9fe91c7",
+        "R8_FULL_SUITE.json": "da7f0b7268dddc0878ef153a58f52ae6780c62e7d2ec9abac064c494c62b0861",
+        "R8_LIVE_GUARD_AFTER.json": "59e79947eaea98556da8708b277580017e3fda845e618eae708e992db176ef9b",
+        "R8_LIVE_GUARD_BEFORE.json": "1e3e6b161772f0bc74bf07a94189a893443307b0b03643f136bdea4bf2db24a1",
+        "R8_LIVE_GUARD_COMPARISON.json": "9beaf5f7f5240e3c7afcc5ae6412565dd2771806e4f36f4ef56c252bf71d484c",
+        "R8_MYPY.json": "44090dee449445da17a0a8b30a4ddddc5c24e4f9b20655d96b5fb131d720e399",
+        "R8_PRIVACY.json": "d2d5a7604ad9774ed027c7ff1c538f5aea991de3be27c9572fc9ee1fb0844b2c",
+        "R8_RUFF.json": "34af08158fd3d9b3784f223b28a582badf3b7c3760aece610ac116fac5e822f7",
+        "R8_SECRET_SCAN.json": "7f4d26bb6537eae54f30bf92f1713f56bc34e537397c75275792dbdadd69b9e4",
+        "R8_STATIC.json": "1c6aeadd92d5ba4c7208016fc741d5a57ec6834a7d4cf7b41dd88737a5c6f496"
+      },
+      "status": "PASS"
+    }
+  },
+  "generated_utc": "2026-08-15T20:30:00Z",
+  "live_guard": {
+    "after": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r8\\R8_LIVE_GUARD_AFTER.json",
+    "after_sha256": "59e79947eaea98556da8708b277580017e3fda845e618eae708e992db176ef9b",
+    "before": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r8\\R8_LIVE_GUARD_BEFORE.json",
+    "before_sha256": "1e3e6b161772f0bc74bf07a94189a893443307b0b03643f136bdea4bf2db24a1",
+    "comparison": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r8\\R8_LIVE_GUARD_COMPARISON.json",
+    "comparison_sha256": "9beaf5f7f5240e3c7afcc5ae6412565dd2771806e4f36f4ef56c252bf71d484c",
+    "protected_state_unchanged": true
+  },
+  "privacy_passed": true,
+  "program": "POST_V7_JARVIS_REMASTER",
+  "resources_and_boundaries": {
+    "commit_created": false,
+    "evidence_budget_bytes": 8388608,
+    "evidence_bytes": 631639,
+    "evidence_under_budget": true,
+    "live_or_protected_writes": 0,
+    "network_used": "none",
+    "provider_calls": 0,
+    "push_or_publish_performed": false
+  },
+  "schema": "jarvis-r8-builder-report-v1",
+  "secret_scan_passed": true,
+  "stage": "R8",
+  "static_analysis_status": "PASS",
+  "status_reason": "Builder evidence is complete; a fresh independent verifier must reproduce and adjudicate the package before the gate closes.",
+  "tool_versions": {
+    "bandit": "1.9.4",
+    "coverage": "7.15.4",
+    "hypothesis": "6.165.8",
+    "mypy": "2.3.0",
+    "pytest": "9.0.3",
+    "pytest-cov": "7.1.0",
+    "ruff": "0.16.3"
+  }
+}

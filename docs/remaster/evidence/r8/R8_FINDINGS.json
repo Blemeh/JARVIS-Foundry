@@ -1,0 +1,80 @@
+{
+  "findings": [
+    {
+      "detail": "The first R8 verifier implementation checked claimed file hashes and reran required tests, but its completeness check was a stub, so a PASS worker result could omit real changed files and still be accepted. The adversarial regression test reproduced the defect, repair mission R8-B dispatched a fresh repair worker that replaced the stub with an actual-vs-claims completeness check, the mission was reverified and accepted, and the identical accepted artifact was applied to the R8-owned source.",
+      "disposition": "RESOLVED_IN_R8",
+      "evidence": "R8_MISSION_REPAIR_B.json, R8_G03_REPAIR.json, test_verify.py",
+      "id": "R8-F-001",
+      "severity": "S2",
+      "title": "Initial verifier trusted worker completeness claims"
+    },
+    {
+      "detail": "Bandit runs clean on the mandatory orchestration source gate; a separate advisory run over scripts/remaster/r8 is recorded in R8_STATIC.json and is not part of the mandatory gate.",
+      "disposition": "RECORDED",
+      "evidence": "R8_STATIC.json",
+      "id": "R8-F-002",
+      "severity": "S3",
+      "title": "Bandit advisory scope includes R8 gate scripts"
+    },
+    {
+      "detail": "Rollback restoration in the proving area initially failed on read-only git object files on Windows. R8 path clearing now chmods read-only files before removal, confined to the proving root.",
+      "disposition": "RECORDED",
+      "evidence": "paths.py, R8_G05_RECONCILIATION.json",
+      "id": "R8-F-003",
+      "severity": "S3",
+      "title": "Windows read-only git objects require read-only-safe clear"
+    },
+    {
+      "detail": "Round-2 verifier found PRE_EXISTING_BASELINE listed FINDINGS.jsonl and OWNER_REDIRECT_R6_DEFERRED.json as dirty although they are committed clean at the R7 PASS HEAD. The baseline now lists only genuinely pre-existing entries (R6 deferred trees and the R8 work package), and _confinement records baseline_entries_missing when any listed entry is absent, so the claim is self-checked against live porcelain.",
+      "disposition": "REPAIRED_IN_R8_ROUND3",
+      "evidence": "R8_BUILDER_REPORT.json artifact_confinement",
+      "id": "R8-V-001",
+      "severity": "S3",
+      "title": "Builder baseline porcelain claim was not reproducible"
+    },
+    {
+      "detail": "Round-2 verifier measured evidence_bytes 637580 claimed vs 637701 on disk, non-deterministic across replays. evidence_bytes() is now defined as the total of all evidence files EXCLUDING the self-referential builder report and the artifact manifest, so the value is stable before/after the final closure writes and reproducible by the verifier.",
+      "disposition": "REPAIRED_IN_R8_ROUND3",
+      "evidence": "R8_BUILDER_REPORT.json resources_and_boundaries",
+      "id": "R8-V-002",
+      "severity": "S3",
+      "title": "evidence_bytes claim was not reproducible"
+    },
+    {
+      "detail": "The orchestrator now appends a MissionLink on every accepted mission, bound to the accepted-event ledger header; the shared r8_store persists lineage for accepted asset and repair missions (round-2 verifier confirmed).",
+      "disposition": "CLOSED_VERIFIED_R8_ROUND2",
+      "evidence": "r8_store/events.jsonl, tests/remaster/r8/test_orchestrator.py",
+      "id": "R8-V-003",
+      "severity": "S3",
+      "title": "MissionLink store was empty operationally"
+    },
+    {
+      "detail": "ensure_relative_safe now refuses drive/URI forms (':') and NUL bytes; evidence/artifacts lists are path-validated fail-closed; regression tests and round-2 verifier probes confirm structured WorkerResultError rejection and an end-to-end REJECTED mission with no acceptance and no verifier crash.",
+      "disposition": "CLOSED_VERIFIED_R8_ROUND2",
+      "evidence": "paths.py, schemas.py, tests/remaster/r8/test_schemas.py",
+      "id": "R8-V-004",
+      "severity": "S3",
+      "title": "Worker result schema accepted Windows drive-letter paths"
+    },
+    {
+      "detail": "Cosmetic: R8_FULL_SUITE_RAW.txt does not include the final 'N passed' lines; JUnit counts and exit codes are authoritative and were reproduced green.",
+      "disposition": "RECORDED",
+      "evidence": "R8_FULL_SUITE.json, R8_FULL_SUITE_PART1/2/COMBINED_JUNIT.xml",
+      "id": "R8-V-005",
+      "severity": "S4",
+      "title": "Full-suite raw outputs omit pytest summary lines"
+    },
+    {
+      "detail": "The shared mission ledger is append-idempotent, so the round-2 machinery rerun appended no new events and both MissionLinks captured the same final chain head instead of each mission's accepted-event header. The machinery evidence was regenerated from a clean ledger/store so links bind the accepted-event headers; a gate assertion checks per-mission link headers against the acceptance event header.",
+      "disposition": "REPAIRED_IN_R8_ROUND3",
+      "evidence": "R8_MISSION_ASSET_A.json, R8_MISSION_REPAIR_B.json, r8_store/events.jsonl",
+      "id": "R8-V2-001",
+      "severity": "S3",
+      "title": "Frozen store links recorded the final ledger head"
+    }
+  ],
+  "generated_utc": "2026-08-15T20:30:00Z",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "schema": "jarvis-r8-findings-v1",
+  "stage": "R8"
+}
