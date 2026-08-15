@@ -52,6 +52,13 @@ PROJECTION_TABLES = (
     "discovery_runs",
     "cycles",
     "acceptance_runs",
+    # V8 hybrid memory: Tier C is event-derived like every other projection
+    "tier_c_memories",
+    "tier_c_memory_revisions",
+    "tier_c_validations",
+    "tier_c_blocks",
+    "tier_c_block_revisions",
+    "tier_c_procedures",
 )
 
 
@@ -1724,6 +1731,95 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
                    last_heartbeat_at = ?, last_event_id = ? WHERE singleton = 1""",
                 (payload.get("instance_id"), status, trust, event.recorded_at, event.event_id),
             )
+    elif event.event_type == "memory.observed":
+        connection.execute(
+            """INSERT OR REPLACE INTO tier_c_memories (
+                 memory_id, mission_id, agent_run_id, created_by, mem_type, scope, content,
+                 source_ids_json, evidence_ids_json, confidence, state, created_at,
+                 last_verified, expires_at, context_cost_chars, last_event_id, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (payload["memory_id"], payload.get("mission_id", ""), payload.get("agent_run_id"),
+             payload.get("created_by", "worker"), payload.get("mem_type", "episodic"),
+             payload.get("scope", "role"), payload["content"],
+             canonical_json(payload.get("source_ids") or []),
+             canonical_json(payload.get("evidence_ids") or []),
+             max(0.0, min(1.0, payload.get("confidence", 0.5))),
+             "OBSERVED", event.recorded_at, event.recorded_at,
+             payload.get("expires_at"), len(payload["content"]),
+             event.event_id, event.recorded_at))
+    elif event.event_type == "memory.transition":
+        row = connection.execute(
+            "SELECT content FROM tier_c_memories WHERE memory_id=?",
+            (payload["memory_id"],)).fetchone()
+        connection.execute(
+            "UPDATE tier_c_memories SET state=?, last_verified=?, last_event_id=?, updated_at=?, "
+            "supersedes=COALESCE(?, supersedes), contradicts=COALESCE(?, contradicts) "
+            "WHERE memory_id=?",
+            (payload["to"], event.recorded_at, event.event_id, event.recorded_at,
+             payload.get("supersedes"), payload.get("contradicts"), payload["memory_id"]))
+        connection.execute(
+            "INSERT INTO tier_c_memory_revisions (memory_id, content, state, actor, reason, changed_at) "
+            "VALUES (?,?,?,?,?,?)",
+            (payload["memory_id"], payload.get("content_before") or (row["content"] if row else ""),
+             payload.get("from", ""), payload.get("actor", "memory-service"),
+             payload.get("reason", ""), event.recorded_at))
+    elif event.event_type == "memory.validation_passed":
+        connection.execute(
+            """INSERT OR REPLACE INTO tier_c_validations (
+                 memory_id, verdict_json, validated_by, validated_at, last_event_id)
+               VALUES (?,?,?,?,?)""",
+            (payload["memory_id"], canonical_json(payload.get("verdict") or {}),
+             payload.get("validated_by", "curation"), event.recorded_at, event.event_id))
+    elif event.event_type == "memory.quarantined":
+        row = connection.execute(
+            "SELECT content FROM tier_c_memories WHERE memory_id=?",
+            (payload["memory_id"],)).fetchone()
+        connection.execute(
+            "UPDATE tier_c_memories SET state='ARCHIVED', last_verified=?, last_event_id=?, updated_at=? "
+            "WHERE memory_id=?",
+            (event.recorded_at, event.event_id, event.recorded_at, payload["memory_id"]))
+        connection.execute(
+            "INSERT INTO tier_c_memory_revisions (memory_id, content, state, actor, reason, changed_at) "
+            "VALUES (?,?,?,?,?,?)",
+            (payload["memory_id"], row["content"] if row else "", "QUARANTINED",
+             payload.get("actor", "defense"), payload.get("reason", ""), event.recorded_at))
+    elif event.event_type == "block.updated":
+        connection.execute(
+            """INSERT OR REPLACE INTO tier_c_blocks (
+                 label, value, char_limit, read_only, description, owner, revision,
+                 last_event_id, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?)""",
+            (payload["label"], payload.get("value", ""), payload.get("char_limit", 2000),
+             int(bool(payload.get("read_only", False))), payload.get("description", ""),
+             payload.get("owner", "owner"), payload.get("revision", 0),
+             event.event_id, event.recorded_at))
+        connection.execute(
+            "INSERT INTO tier_c_block_revisions (label, value, actor, reason, changed_at) "
+            "VALUES (?,?,?,?,?)",
+            (payload["label"], payload.get("value", ""), payload.get("actor", "memory-service"),
+             payload.get("reason", ""), event.recorded_at))
+    elif event.event_type == "procedure.created":
+        connection.execute(
+            """INSERT OR REPLACE INTO tier_c_procedures (
+                 procedure_id, name, description, body, trigger_terms_json, scope, state,
+                 confidence, source_ids_json, evidence_ids_json, mission_id, created_by,
+                 created_at, last_verified, expires_at, last_event_id, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (payload["procedure_id"], payload.get("name", ""), payload.get("description", ""),
+             payload.get("body", ""), canonical_json(payload.get("trigger_terms") or []),
+             payload.get("scope", "role"), payload.get("state", "ACTIVE"),
+             max(0.0, min(1.0, payload.get("confidence", 0.5))),
+             canonical_json(payload.get("source_ids") or []),
+             canonical_json(payload.get("evidence_ids") or []),
+             payload.get("mission_id", ""), payload.get("created_by", "worker"),
+             event.recorded_at, event.recorded_at, payload.get("expires_at"),
+             event.event_id, event.recorded_at))
+    elif event.event_type == "procedure.updated":
+        connection.execute(
+            """UPDATE tier_c_procedures SET state=?, last_verified=?, last_event_id=?, updated_at=?,
+               supersedes=COALESCE(?, supersedes) WHERE procedure_id=?""",
+            (payload.get("state", "ACTIVE"), event.recorded_at, event.event_id,
+             event.recorded_at, payload.get("supersedes"), payload["procedure_id"]))
 
 
 def reset(connection: sqlite3.Connection) -> None:

@@ -5,7 +5,7 @@ import sqlite3
 from .v4_schema import ensure_v4_tables
 
 
-SCHEMA_VERSION = 32
+SCHEMA_VERSION = 33
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -824,6 +824,107 @@ MIGRATIONS: dict[int, str] = {
         last_event_id TEXT NOT NULL,
         updated_at TEXT NOT NULL
     );
+    """,
+    33: """
+    -- V8 hybrid memory (R2): additive Tier C experiential memory
+    -- Design source: JARVIS-Lab/jarvis-hybrid-memory FINAL_AUDIT/08
+    -- Tier C is advisory: no FK into Tier A/B tables. Authority flows
+    -- downward only. Rows are event-derived (last_event_id UNIQUE per row).
+    CREATE TABLE IF NOT EXISTS tier_c_memories (
+        memory_id TEXT PRIMARY KEY,
+        mission_id TEXT NOT NULL DEFAULT '',
+        agent_run_id TEXT,
+        created_by TEXT NOT NULL DEFAULT 'unknown',
+        mem_type TEXT NOT NULL CHECK(mem_type IN ('core', 'episodic', 'procedural')),
+        scope TEXT NOT NULL DEFAULT 'role',
+        content TEXT NOT NULL,
+        source_ids_json TEXT NOT NULL DEFAULT '[]',
+        evidence_ids_json TEXT NOT NULL DEFAULT '[]',
+        confidence REAL NOT NULL CHECK(confidence >= 0.0 AND confidence <= 1.0),
+        state TEXT NOT NULL CHECK(state IN ('OBSERVED', 'CANDIDATE_MEMORY', 'VALIDATING',
+            'ACCEPTED_EXPERIENCE', 'CORE', 'EXTERNAL', 'PROCEDURAL', 'STALE',
+            'SUPERSEDED', 'ARCHIVED')),
+        created_at TEXT NOT NULL,
+        last_verified TEXT,
+        expires_at TEXT,
+        supersedes TEXT,
+        contradicts TEXT,
+        importance REAL NOT NULL DEFAULT 0.5,
+        context_cost_chars INTEGER NOT NULL DEFAULT 0,
+        promotion_reason TEXT,
+        last_event_id TEXT NOT NULL UNIQUE,
+        updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS tier_c_memories_state ON tier_c_memories(state);
+    CREATE INDEX IF NOT EXISTS tier_c_memories_scope_state ON tier_c_memories(scope, state);
+    CREATE INDEX IF NOT EXISTS tier_c_memories_expires ON tier_c_memories(expires_at);
+    CREATE INDEX IF NOT EXISTS tier_c_memories_mission ON tier_c_memories(mission_id);
+
+    CREATE TABLE IF NOT EXISTS tier_c_memory_revisions (
+        revision_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        memory_id TEXT NOT NULL REFERENCES tier_c_memories(memory_id) ON DELETE CASCADE,
+        content TEXT NOT NULL,
+        state TEXT NOT NULL,
+        actor TEXT NOT NULL,
+        reason TEXT NOT NULL,
+        changed_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS tier_c_memory_revisions_memory
+        ON tier_c_memory_revisions(memory_id, revision_id);
+
+    CREATE TABLE IF NOT EXISTS tier_c_validations (
+        memory_id TEXT PRIMARY KEY REFERENCES tier_c_memories(memory_id) ON DELETE CASCADE,
+        verdict_json TEXT NOT NULL,
+        validated_by TEXT NOT NULL,
+        validated_at TEXT NOT NULL,
+        last_event_id TEXT NOT NULL UNIQUE
+    );
+
+    CREATE TABLE IF NOT EXISTS tier_c_blocks (
+        label TEXT PRIMARY KEY,
+        value TEXT NOT NULL DEFAULT '',
+        char_limit INTEGER NOT NULL CHECK(char_limit > 0),
+        read_only INTEGER NOT NULL DEFAULT 0 CHECK(read_only IN (0, 1)),
+        description TEXT NOT NULL DEFAULT '',
+        owner TEXT NOT NULL DEFAULT 'owner',
+        revision INTEGER NOT NULL DEFAULT 0,
+        last_event_id TEXT NOT NULL UNIQUE,
+        updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS tier_c_block_revisions (
+        revision_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        label TEXT NOT NULL REFERENCES tier_c_blocks(label) ON DELETE CASCADE,
+        value TEXT NOT NULL,
+        actor TEXT NOT NULL,
+        reason TEXT NOT NULL,
+        changed_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS tier_c_block_revisions_label
+        ON tier_c_block_revisions(label, revision_id);
+
+    CREATE TABLE IF NOT EXISTS tier_c_procedures (
+        procedure_id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        body TEXT NOT NULL,
+        trigger_terms_json TEXT NOT NULL DEFAULT '[]',
+        scope TEXT NOT NULL DEFAULT 'role',
+        state TEXT NOT NULL CHECK(state IN ('ACTIVE', 'STALE', 'SUPERSEDED', 'ARCHIVED')),
+        confidence REAL NOT NULL DEFAULT 0.5 CHECK(confidence >= 0.0 AND confidence <= 1.0),
+        source_ids_json TEXT NOT NULL DEFAULT '[]',
+        evidence_ids_json TEXT NOT NULL DEFAULT '[]',
+        mission_id TEXT NOT NULL DEFAULT '',
+        created_by TEXT NOT NULL DEFAULT 'unknown',
+        created_at TEXT NOT NULL,
+        last_verified TEXT,
+        expires_at TEXT,
+        supersedes TEXT,
+        last_event_id TEXT NOT NULL UNIQUE,
+        updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS tier_c_procedures_state ON tier_c_procedures(state);
+    CREATE INDEX IF NOT EXISTS tier_c_procedures_scope ON tier_c_procedures(scope);
     """,
 }
 
