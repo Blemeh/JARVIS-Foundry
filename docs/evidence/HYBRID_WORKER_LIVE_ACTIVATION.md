@@ -92,7 +92,14 @@ mandate; no substitutions, no fallbacks).
   removed and a regression test prevents recurrence.
 - No credential value appears in probe reports, the live database, or any
   committed file (`sk-[A-Za-z0-9]{16,}` scans clean across the repo and the
-  retained probe evidence).
+  retained probe evidence). Two prior independent reviews each found and
+  the hardening closed a real leak class:
+  1. a retained disposable OpenHands session event held the value (deleted;
+     adapters now redact all captured output and scrub disposable run-state
+     on every exit path);
+  2. 12 pre-existing gitignored wp8-gate staging `.env` files held the value
+     (value redacted in place to `<REDACTED>` on 2026-08-16; the files are
+     retained as historical evidence with the secret removed).
 
 ## Tests
 
