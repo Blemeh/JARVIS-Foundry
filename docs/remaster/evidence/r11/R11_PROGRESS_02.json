@@ -1,0 +1,251 @@
+{
+  "evidence": [
+    {
+      "path": "R11_BANDIT.json",
+      "sha256": "559b83b90b5f975850d1fe290cadcbdfdacbbb4867c6a23a81a0f1f1430b6f97",
+      "size": 237
+    },
+    {
+      "path": "R11_BANDIT_RAW.txt",
+      "sha256": "1790d26e687004f43d1a0b7acf5948f75fe981919c374b30ef521520ade3cfd5",
+      "size": 2463
+    },
+    {
+      "path": "R11_CYCLE_01.json",
+      "sha256": "ef6a0e6e1ae43925ed0c534e0a4733b9ec27b98d49dea13ab983b4be66ce9e75",
+      "size": 4912
+    },
+    {
+      "path": "R11_CYCLE_02.json",
+      "sha256": "bc8e234bbb9dfcc4f49e5f48053c9f804ba7fa9c0d41ade55e1a59ec888f6f4a",
+      "size": 4907
+    },
+    {
+      "path": "R11_CYCLE_03.json",
+      "sha256": "1b51b95ee834a1c0e6befdd5663c6e5221f9549fc4044f8e758e3c3234e063a6",
+      "size": 2016
+    },
+    {
+      "path": "R11_CYCLE_04.json",
+      "sha256": "881efd19f6cde0e088c93fbe88e69aca9f2340f162f9430c052207e20083b399",
+      "size": 5120
+    },
+    {
+      "path": "R11_CYCLES.json",
+      "sha256": "e48e74cb03d732c3fb8319dfdecb1b344ae2d7f221acd022f9219a34aac250e3",
+      "size": 88297
+    },
+    {
+      "path": "R11_FOCUSED_TESTS.json",
+      "sha256": "ac2c9401248354d03865528113f1d4e7d478ce0215c31bf00826e5a8350f3295",
+      "size": 472
+    },
+    {
+      "path": "R11_FOCUSED_TESTS_JUNIT.xml",
+      "sha256": "c9e1f0816bd552e95651fe482ec989478838344585a8f578f668aabedd00b092",
+      "size": 1898
+    },
+    {
+      "path": "R11_FOCUSED_TESTS_RAW.txt",
+      "sha256": "7fbe072bd6c74a7b0b55ddd2583fc288534b9dfe428b8a0f002c2ecdfb8dc490",
+      "size": 81
+    },
+    {
+      "path": "R11_FULL_SUITE.json",
+      "sha256": "bf684f89fff274e4df0b4c941384eb4ccadd49f5deffaf4218aa1163ca169827",
+      "size": 1054
+    },
+    {
+      "path": "R11_FULL_SUITE_COMBINED_JUNIT.xml",
+      "sha256": "cb64f3e56d29e7bf2a648cd28d0977193190b34239700c3aa7877203a918037c",
+      "size": 194895
+    },
+    {
+      "path": "R11_FULL_SUITE_PART1_JUNIT.xml",
+      "sha256": "9260694511d9c8ca08831768d5090916bb553a42b9cd1a3bf5d43d9b5e996a87",
+      "size": 193250
+    },
+    {
+      "path": "R11_FULL_SUITE_PART2_JUNIT.xml",
+      "sha256": "39b6e83e7e491a3fb7b323cfd875637dc9fe4198e8ad3fcb7723bfe655cb981f",
+      "size": 1898
+    },
+    {
+      "path": "R11_FULL_SUITE_RAW.txt",
+      "sha256": "ac2870476ef3befb555bee433b2cfd7a47c745b2d6b6fa5717b1f6afea008cfc",
+      "size": 3598
+    },
+    {
+      "path": "R11_G01_CYCLES.json",
+      "sha256": "d2d6618c44ccdde60c68f90df55901ebc165efad9a1d1db62703f51b650a26ef",
+      "size": 1740
+    },
+    {
+      "path": "R11_G02_PROMOTIONS.json",
+      "sha256": "1ff1c5900f42757c74c5724148a7726b5e571756620a7c2bbf2de499be9e5c53",
+      "size": 1321
+    },
+    {
+      "path": "R11_G03_REJECTION.json",
+      "sha256": "8fb654371c54e6360eba4bf23652076d59a287e1dfca563c41518a7320d20d64",
+      "size": 930
+    },
+    {
+      "path": "R11_G04_INDEPENDENT.json",
+      "sha256": "ee3f06660d6859a1a2b6373d48499c99c4e1f32e719f6ac4e7334ba7713ae98d",
+      "size": 1096
+    },
+    {
+      "path": "R11_G05_SUPERVISOR.json",
+      "sha256": "908eedfeb2db73934f6889bc0a73c82e461692ecedbbdc232bc6a716f0ab71b7",
+      "size": 3127
+    },
+    {
+      "path": "R11_G06_RESTART.json",
+      "sha256": "dd8352a1bee0f10787ef748f14bbe4bdebf2aff34e9e6f9f730d61de2c7541ce",
+      "size": 2343
+    },
+    {
+      "path": "R11_LIFECYCLE_EVENTS.json",
+      "sha256": "a7e04bf9cf7b47fbb44d1dc3a67c0ab7e00c1cb0dee0761393e40a206261acc5",
+      "size": 43831
+    },
+    {
+      "path": "R11_LIVE_GUARD_AFTER.json",
+      "sha256": "d74fac23812af83fd9b1916fe192017797dece8f213d68ce4f2eb99095112f38",
+      "size": 2105
+    },
+    {
+      "path": "R11_LIVE_GUARD_BEFORE.json",
+      "sha256": "7bcaeeccaa6401636dece0d6bca119ad70d1d62af8e0a703c014a57791e38227",
+      "size": 2107
+    },
+    {
+      "path": "R11_LIVE_GUARD_COMPARISON.json",
+      "sha256": "2adb04ed2a9578ab96959b49ba5195fbff1673b1ead2c5b532050efaf5de97b9",
+      "size": 1410
+    },
+    {
+      "path": "R11_LIVE_GUARD_FULLWINDOW_AFTER.json",
+      "sha256": "5bb0e4b59ac0962592a76fcc0efa4bd24d31b1622b948eda8b055f967d035778",
+      "size": 2107
+    },
+    {
+      "path": "R11_LIVE_GUARD_FULLWINDOW_BEFORE.json",
+      "sha256": "4c19aec01a7a1b1ebf33a4e01a2b9ac2d0dba4aba19f50e27e45e076e0fbf76a",
+      "size": 2602
+    },
+    {
+      "path": "R11_LIVE_GUARD_FULLWINDOW_COMPARISON.json",
+      "sha256": "83564ba37dc00d7f860a4d6ef0b7333ba97c28e1246797bbe9b185927dad227a",
+      "size": 1330
+    },
+    {
+      "path": "R11_MYPY.json",
+      "sha256": "7f85cc7499cbbcb108f9eacc3a2dd763ce7b49c9f3651978db548004159188a9",
+      "size": 232
+    },
+    {
+      "path": "R11_MYPY_RAW.txt",
+      "sha256": "7aefcacc6d445354a115cf76fcdea696165be7ad8cf9b86a60ea98727c6e96f6",
+      "size": 44
+    },
+    {
+      "path": "R11_PRIVACY.json",
+      "sha256": "c3621ca244c64e0ece8da97d4c16b834454a2228c7a0972e83b3ebb89f1550d3",
+      "size": 376
+    },
+    {
+      "path": "R11_PROBES.json",
+      "sha256": "cb001b8baf6009740d61959682f2f60daab723467fc34deaef74d1bae6a8ec95",
+      "size": 5756
+    },
+    {
+      "path": "R11_PROGRESS_01.json",
+      "sha256": "6cffddf176d2b3459b896a277eeacef9501d0c00466cbcda0186078f341826ac",
+      "size": 7951
+    },
+    {
+      "path": "R11_RESTART.json",
+      "sha256": "7a8ebbe7600b1255fca83f311f23ac8f991e453a7e639edd891a84996a72e5ba",
+      "size": 1178
+    },
+    {
+      "path": "R11_ROLLBACK.json",
+      "sha256": "b9ba3e600de36202bfddbd329f4d65cb2dadb327e453fc6405be150c4bfc4c05",
+      "size": 1960
+    },
+    {
+      "path": "R11_RUFF.json",
+      "sha256": "48874d040a89829172efed884e8bd419d098ee152a55f623c2af1a609c3f26be",
+      "size": 233
+    },
+    {
+      "path": "R11_RUFF_FORMAT.json",
+      "sha256": "7d37e17a2b0f351496c07bd77b83f81558fa2ef5d455e588c508825e68ee2747",
+      "size": 247
+    },
+    {
+      "path": "R11_RUFF_FORMAT_RAW.txt",
+      "sha256": "8139dfe2551079957c776913bbcaf1c768e218314f327bd0bfc1ff416a6cdca0",
+      "size": 28
+    },
+    {
+      "path": "R11_RUFF_RAW.txt",
+      "sha256": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0",
+      "size": 20
+    },
+    {
+      "path": "R11_SECRET_SCAN.json",
+      "sha256": "f244894d227f1419c9c5c63e022a08ea5275361c67233f54de2c16c94c6728d3",
+      "size": 302
+    },
+    {
+      "path": "R11_SECRET_SCAN_RAW.json",
+      "sha256": "f61f5039699e433fdfd684dcbfbdaa5d6cf9e8a05509f27976115670741ce2ab",
+      "size": 565
+    },
+    {
+      "path": "R11_STATIC.json",
+      "sha256": "a35a6552a315b4d79f39cad6364b174444b10c4ec853ce40d744c47db0646176",
+      "size": 1250
+    },
+    {
+      "path": "R11_STORE_SNAPSHOT.json",
+      "sha256": "71ded8be80d74494da12666cd47c1e1df03ca1c0fc954222fb34b6a8b248814c",
+      "size": 22653
+    },
+    {
+      "path": "R11_VERIFIER_REPRODUCTION.json",
+      "sha256": "480c2003ca62d54a3c0042f7fc47f94190ea5ccf8752486e5fab051ed062135d",
+      "size": 943
+    },
+    {
+      "path": "R11_WAITING.json",
+      "sha256": "6ef7575785676b5e6d43b62bb711ede70c398f10b1786f8a16f4da03986e7760",
+      "size": 604
+    }
+  ],
+  "evidence_bytes": 615489,
+  "evidence_files": 45,
+  "evidence_utc": "2026-08-16T18:00:00Z",
+  "git_exit_code": 0,
+  "git_porcelain": [
+    "?? docs/remaster/evidence/r11/",
+    "?? docs/remaster/evidence/r6/",
+    "?? docs/remaster/work_packages/R11_WORK_PACKAGE.json",
+    "?? docs/remaster/work_packages/R6_WORK_PACKAGE.json",
+    "?? scripts/remaster/r11/",
+    "?? scripts/remaster/r6/",
+    "?? src/jarvis_foundry/evolution_live/",
+    "?? src/jarvis_foundry/kernel/memory/",
+    "?? tests/remaster/r11/",
+    "?? tests/remaster/r6/"
+  ],
+  "index": 2,
+  "note": "final evidence closure prep",
+  "recorded_utc": "2026-08-16T05:57:58Z",
+  "schema": "jarvis-r11-progress-v1",
+  "temp_base": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r11-builder",
+  "temp_exists": true
+}

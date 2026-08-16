@@ -1,0 +1,56 @@
+{
+  "findings": [
+    {
+      "detail": "R11 real cycles mutate only real bounded micro-target code inside isolated git clones under JARVIS_R11_TEMP.  No live daemon, database, vault, protected main, or owner project is touched; live guards record protected_state_unchanged=True.",
+      "disposition": "RECORDED",
+      "evidence": "R11_CYCLES.json, R11_LIVE_GUARD_COMPARISON.json",
+      "id": "R11-F-001",
+      "severity": "S3",
+      "title": "Real proving candidates are isolated fixture code changes"
+    },
+    {
+      "detail": "Each candidate is verified by python -m jarvis_foundry.evolution_live.verifier in a fresh temp clone; the engine refuses any verifier identity that matches the candidate, and the G04 gate re-runs the full reproduction subprocess.",
+      "disposition": "RECORDED",
+      "evidence": "R11_VERIFIER_REPRODUCTION.json, R11_G04_INDEPENDENT.json",
+      "id": "R11-F-002",
+      "severity": "S3",
+      "title": "Independent verification is a fresh subprocess"
+    },
+    {
+      "detail": "Final candidate risk is the max of the declared class and classify_risk(surfaces); unknown surfaces fail closed to R3. No R11 code edits the V6 classifier.",
+      "disposition": "RECORDED",
+      "evidence": "R11_CYCLES.json",
+      "id": "R11-F-003",
+      "severity": "S3",
+      "title": "Risk classifier reused read-only from V6 evolution records"
+    },
+    {
+      "detail": "R11-G01..G06 reproduce the required evidence, but the final builder_status stays NOT_TESTED until a fresh independent verifier reproduces every criterion from the frozen package.",
+      "disposition": "RECORDED",
+      "evidence": "R11_BUILDER_REPORT.json",
+      "id": "R11-V-001",
+      "severity": "S3",
+      "title": "Builder status remains NOT_TESTED until fresh independent adjudication"
+    },
+    {
+      "detail": "R11_PROGRESS_*.json are incremental working artifacts; evidence_bytes() and the manifest exclude them so the closed package matches the on-disk payload byte-for-byte.",
+      "disposition": "RECORDED",
+      "evidence": "R11_ARTIFACT_MANIFEST.json",
+      "id": "R11-V-002",
+      "severity": "S4",
+      "title": "Progress checkpoints excluded from closure evidence"
+    },
+    {
+      "detail": "The live-guard comparison bracketing the full repository suite observed the protected process command set change from 4 to 2 (unrelated live supervisor processes stopping); r11_attributable_mutation was False and protected files, main, tasks, and vault were unchanged.  A quiet-window before/after/compare after all R11 work recorded protected_state_unchanged=True; the full-window captures are preserved as R11_LIVE_GUARD_FULLWINDOW_*.",
+      "disposition": "RECORDED",
+      "evidence": "R11_LIVE_GUARD_FULLWINDOW_COMPARISON.json, R11_LIVE_GUARD_COMPARISON.json",
+      "id": "R11-V-003",
+      "severity": "S4",
+      "title": "External supervisor process drift during the long full-suite window"
+    }
+  ],
+  "generated_utc": "2026-08-16T18:00:00Z",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "schema": "jarvis-r11-findings-v1",
+  "stage": "R11"
+}

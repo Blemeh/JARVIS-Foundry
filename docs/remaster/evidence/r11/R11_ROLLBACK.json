@@ -1,0 +1,57 @@
+{
+  "baseline_repo": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r11-builder\\proving\\repos\\baseline",
+  "candidate_id": "c1",
+  "candidate_release_id": "release-r11-cycle-01-candidate",
+  "cycle_id": "r11-cycle-01",
+  "independent_probe_ok": true,
+  "prior_release_id": "release-r11-cycle-01-baseline",
+  "restore": {
+    "after_hash": "f438d56017701096b5203ad81b6f8547351780f7633c02da35a65abb4cce0854",
+    "before_hash": "f82bf0c46fa91d5c41425bc2da208fdff99fcfe6eeebda767dac5d1f04d58efa",
+    "candidate_release_tree_hash": "f438d56017701096b5203ad81b6f8547351780f7633c02da35a65abb4cce0854",
+    "live_metrics_after_restore": {
+      "behavior_passed": 2,
+      "behavior_total": 4,
+      "probe": {
+        "checks": {
+          "pipeline_dedupe": false,
+          "pipeline_none_safe": false,
+          "score_non_negative": true,
+          "split_clean": true
+        },
+        "passed": 2,
+        "total": 4
+      },
+      "probe_exit_code": 0,
+      "pytest_exit_code": 1,
+      "pytest_failed": 2,
+      "pytest_passed": 6
+    },
+    "restores_candidate_release": true
+  },
+  "rollback": {
+    "after_hash": "f82bf0c46fa91d5c41425bc2da208fdff99fcfe6eeebda767dac5d1f04d58efa",
+    "before_hash": "f438d56017701096b5203ad81b6f8547351780f7633c02da35a65abb4cce0854",
+    "live_metrics_after_rollback": {
+      "behavior_passed": 0,
+      "behavior_total": 4,
+      "probe": {
+        "checks": {
+          "pipeline_dedupe": false,
+          "pipeline_none_safe": false,
+          "score_non_negative": false,
+          "split_clean": false
+        },
+        "passed": 0,
+        "total": 4
+      },
+      "probe_exit_code": 0,
+      "pytest_exit_code": 1,
+      "pytest_failed": 6,
+      "pytest_passed": 2
+    },
+    "prior_release_tree_hash": "f82bf0c46fa91d5c41425bc2da208fdff99fcfe6eeebda767dac5d1f04d58efa",
+    "restores_prior_release": true
+  },
+  "schema": "jarvis-r11-rollback-v1"
+}

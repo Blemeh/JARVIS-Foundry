@@ -1,0 +1,18 @@
+{
+  "evidence_bytes": 196586,
+  "evidence_file_count": 29,
+  "excluded_categories": [
+    "00 - Inbox",
+    "01 - Identity",
+    "05 - Personal",
+    "08 - Archive",
+    "90 - Logs",
+    ".obsidian"
+  ],
+  "exit_code": 0,
+  "passed": true,
+  "path_leaks": [],
+  "private_category_mentions": [],
+  "schema": "jarvis-r11-privacy-v1",
+  "wall_seconds": 0.017
+}

@@ -1,0 +1,255 @@
+{
+  "schema": "jarvis-r11-verifier-round1-verdict-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R11",
+  "repair_round": 1,
+  "verifier_model": "deepseek-v4-flash via codex-router",
+  "generated_utc": "2026-08-16T07:28:27Z",
+  "frozen_base": {
+    "branch": "remaster/post-v7-purpose",
+    "commit": "9999fb3e3bee658c2c2a7995b6a7b7c613a7f896",
+    "work_package": "docs/remaster/work_packages/R11_WORK_PACKAGE.json",
+    "work_package_sha256": "9512BAAC8CF0DD902E82E46A9E7B8ED9D837A6BA5C62A2E7607427B865EC6ABE",
+    "work_package_size": 9837,
+    "protected_main": "2f7360e742559e051109e04ef7f3a82cc64cc2d2",
+    "protected_main_unchanged": true
+  },
+  "criteria": {
+    "R11-C01": {
+      "id": "R11-C01",
+      "status": "PASS",
+      "evidence": "R11-D01..D06 each PASS with non-empty evidence: R11_CYCLES.json, R11_CYCLE_01..04.json, R11_LIFECYCLE_EVENTS.json (41 events, chain valid), R11_VERIFIER_REPRODUCTION.json, R11_ROLLBACK.json, R11_RESTART.json, R11_WAITING.json, R11_PROBES.json, all hash-bound in the frozen manifest."
+    },
+    "R11-C02": {
+      "id": "R11-C02",
+      "status": "PASS",
+      "evidence": "4 complete real cycles (r11-cycle-01, r11-cycle-02, r11-cycle-03, r11-cycle-restart) with durable lifecycle events; 41 ledger events, chain valid, unique event ids; fresh mirror reproduce_cycles produced the same 4 cycles with 41 valid-chain events."
+    },
+    "R11-C03": {
+      "id": "R11-C03",
+      "status": "PASS",
+      "evidence": "3 measured successful promotions: c1 R1 (baseline 2 passed/6 failed to candidate 6 passed/2 failed), c2 R2 (2/6 to 4/4), c4 restart cycle R1 (2/6 to 6/2); at least 1 R1 (2 promoted R1) and 1 bounded R2 (1 promoted R2); live before/after hashes differ for every promotion."
+    },
+    "R11-C04": {
+      "id": "R11-C04",
+      "status": "PASS",
+      "evidence": "c3 broken core candidate rejected (verdict FAIL, no improvement, delta 0); failed_history/r11-cycle-03 preserved on disk with failure_hash 80d9efd41c4a80988c4311fdcc486686fc1c5434481ea16ef59dc5f225a360eb matching evidence; delete_failed_history probe refused and history still exists; no failed_history_deleted event in the ledger."
+    },
+    "R11-C05": {
+      "id": "R11-C05",
+      "status": "PASS",
+      "evidence": "Every candidate independently verified by a fresh verifier subprocess with no candidate context: verdict files record verifier ids r11-fresh-verifier-30b64a1a41, 71a29b6454, c50b116ccf, a8af041e7c; ledger independently_verified events have source_type independent_verifier only; engine refuses candidate verifier identities; R11_VERIFIER_REPRODUCTION.json passed=True with cycles=4 promoted=3 rejected=1 and ledger_event_count=41; mirror g04 passed=True."
+    },
+    "R11-C06": {
+      "id": "R11-C06",
+      "status": "PASS",
+      "evidence": "R11_ROLLBACK.json: rollback before f438d56017701096b5203ad81b6f8547351780f7633c02da35a65abb4cce0854 to after f82bf0c46fa91d5c41425bc2da208fdff99fcfe6eeebda767dac5d1f04d58efa (prior release restored, metrics 2 passed); restore back to f438d560 (candidate release restored, metrics 6 passed); independent_probe_ok=true; R11_PROBES.json records 14/14 durable refusals covering all 10 forbidden candidate operations plus 4 frozen supervisor guard refusals; failed history and evidence file preserved."
+    },
+    "R11-C07": {
+      "id": "R11-C07",
+      "status": "PASS",
+      "evidence": "R11_RESTART.json: simulated restart after isolate resumed at evaluate, clone effect replayed without duplicate, 21 journal effect ids all unique; R11_WAITING.json: first call created the waiting event, two replay/restart calls created 0 duplicates, honest_waiting=true, no busy-work; fresh mirror reproduced both."
+    },
+    "R11-C08": {
+      "id": "R11-C08",
+      "status": "PASS",
+      "evidence": "Focused suite 13 passed exit 0; split full suites green and mandatory combined 1483 passed exit 0 with no collection/ImportError/conftest errors; ruff check, ruff format --check, mypy strict, bandit all clean; evidence dir 651597 bytes < 8388608; protected main HEAD 2f7360e unchanged; fresh independent verifier reproduced every criterion and found no new S1/S2."
+    }
+  },
+  "deliverables": {
+    "R11-D01": {
+      "id": "R11-D01",
+      "status": "PASS",
+      "evidence": "src/jarvis_foundry/evolution_live/** implements the full lifecycle with durable kernel ledger events; only Supervisor can promote/rollback/restore; candidates cannot certify/promote/relax/erase/self-terminate (probes 14/14 refused); WAITING emitted honestly; 41-event ledger chain validated directly against the proving DB."
+    },
+    "R11-D02": {
+      "id": "R11-D02",
+      "status": "PASS",
+      "evidence": "4 real cycles on real bounded micro-target code in isolated git clones; measured before/after behavior (pytest + probe): 3 promotions (2 R1, 1 R2), 1 rejection with failed history preserved; direct tree-hash and ledger verification of the proving store reproduced every release hash."
+    },
+    "R11-D03": {
+      "id": "R11-D03",
+      "status": "PASS",
+      "evidence": "Each candidate evaluation verified by a fresh verifier subprocess from a fresh baseline clone with only the verification request; verdict files and ledger source_type independent_verifier prove no self-certification; R11_VERIFIER_REPRODUCTION.json and mirror g04 reproduce all four cycles plus rollback/restore."
+    },
+    "R11-D04": {
+      "id": "R11-D04",
+      "status": "PASS",
+      "evidence": "R11_ROLLBACK.json shows real rollback to prior baseline release f82bf0c4 (metrics 2 passed/6 failed) and restore of candidate release f438d560 (metrics 6 passed/2 failed); before/after hashes differ; independent_probe_ok=true; direct release meta.json hashes and live tree hash matched evidence; fresh mirror reproduced rollback/restore."
+    },
+    "R11-D05": {
+      "id": "R11-D05",
+      "status": "PASS",
+      "evidence": "R11_RESTART.json: no duplicate events/effects after simulated restart (clone effect status replayed, journal unique); R11_WAITING.json: honest WAITING when no useful improvement exists, idempotent across two restart replays; fresh mirror reproduced restart and waiting."
+    },
+    "R11-D06": {
+      "id": "R11-D06",
+      "status": "PASS",
+      "evidence": "Per-cycle evidence complete: observation, hypothesis, candidate diff/patch hashes, baseline and candidate metrics, verifier verdict, promotion/rejection decision, live before/after hashes, outcome measurement, learned next action, rollback/restore hashes; R11_CYCLE_01..04.json match R11_CYCLES.json records byte-for-byte."
+    }
+  },
+  "gates": {
+    "R11-G01": {
+      "id": "R11-G01",
+      "status": "PASS",
+      "evidence": "Mirror gate_g01 passed=True cycles=4; every cycle has full lifecycle events; ledger chain valid (41 events); WAITING created and replay not duplicated."
+    },
+    "R11-G02": {
+      "id": "R11-G02",
+      "status": "PASS",
+      "evidence": "Mirror gate_g02 passed=True promoted=3 r1=2 r2=1; every promotion measured before/after and independently verified; rollback/restore evidence present."
+    },
+    "R11-G03": {
+      "id": "R11-G03",
+      "status": "PASS",
+      "evidence": "Mirror gate_g03 passed=True rejected=1; rejected candidate not promoted; failed history preserved on disk and delete refusal durable."
+    },
+    "R11-G04": {
+      "id": "R11-G04",
+      "status": "PASS",
+      "evidence": "Mirror gate_g04 passed=True; fresh verifier subprocess r11-fresh-verifier-reproduction passed=True cycles=4 promoted=3 rejected=1 ledger_event_count=41; no builder/candidate self-certification."
+    },
+    "R11-G05": {
+      "id": "R11-G05",
+      "status": "PASS",
+      "evidence": "Mirror gate_g05 passed=True refusals=10; rollback/restore before/after hashes differ; Supervisor owns promote/rollback/restore (ledger source_type supervisor); failed history and evidence preserved."
+    },
+    "R11-G06": {
+      "id": "R11-G06",
+      "status": "PASS",
+      "evidence": "Mirror gate_g06 passed=True evidence_bytes=611030 confined=True porcelain_line_count=10; restart no duplicate effect; full suite, focused tests, static, secret scan, privacy, live guard all true."
+    }
+  },
+  "findings": [
+    {
+      "id": "R11VER-001",
+      "severity": "S3",
+      "title": "Real proving candidates are isolated fixture code changes",
+      "invariant": "Real evolution must mutate real code and measure real behavior without touching live/protected systems",
+      "reproduction": "All 4 cycles mutate real micro_target code in isolated git clones under JARVIS_R11_TEMP; baseline probe fails 4/4 and baseline pytest 2/6, candidates measurably improve or fail; no live daemon/db/vault/protected main touched; mirrors reproduced identical counts and metrics.",
+      "probe_ids": ["PB-CYCLES-MIRROR", "PB-LIVE-GUARD", "PB-BOUNDARY"]
+    },
+    {
+      "id": "R11VER-002",
+      "severity": "S3",
+      "title": "Independent verification is a fresh subprocess with no candidate context",
+      "invariant": "No candidate may certify or promote itself; verifier must be independent and fresh",
+      "reproduction": "Each request rebuilds the candidate from a fresh baseline clone via python -m jarvis_foundry.evolution_live.verifier; ledger records source_type independent_verifier; engine refuses verifier ids equal to candidate ids; R11_VERIFIER_REPRODUCTION.json and mirror g04 passed with fresh ids.",
+      "probe_ids": ["PB-VERIFIER-FRESH", "PB-MIRROR-G04"]
+    },
+    {
+      "id": "R11VER-003",
+      "severity": "S4",
+      "title": "Mirror static and confinement need mirror-local tool config and a git-backed mirror",
+      "invariant": "Mirror gates must reproduce repo truth without editing repo source or evidence",
+      "reproduction": "A temp copy outside the repo lacks pyproject.toml, so ruff used default line length and mypy lost config (mirror-only artifact; identical files pass in repo). Fixing only the mirror-local pyproject (ruff/mypy/bandit kept, pytest addopts removed to avoid summary suppression) plus MYPYPATH made static pass; g06 confinement requires a git-backed mirror whose porcelain matches the 10 expected untracked trees. Final clone mirror reproduced all gates exit 0; no repo source or evidence changed.",
+      "probe_ids": ["PB-STATIC-REPO", "PB-STATIC-MIRROR", "PB-MIRROR-G06"]
+    },
+    {
+      "id": "R11VER-004",
+      "severity": "S4",
+      "title": "Pytest summary lines are suppressed by double -q in captured raw evidence",
+      "invariant": "JUnit counts and exit codes remain authoritative where raw output lacks a final N passed summary",
+      "reproduction": "Repo pytest config addopts=-q plus CLI -q suppresses the summary in captured focused/full raw files; JUnit and fresh runs confirm 13 focused and 1483 combined with 0 failures/errors; mirror with addopts removed printed exact 13 passed and 1483 passed.",
+      "probe_ids": ["PB-FOCUSED-13", "PB-FULL-COMBINED", "PB-JUNIT-COUNTS"]
+    },
+    {
+      "id": "R11VER-005",
+      "severity": "S4",
+      "title": "External live supervisor process drift is documented and not R11-attributable",
+      "invariant": "Protected-state comparison must not mask attributable mutation",
+      "reproduction": "Builder full-window comparison observed 4->2 unrelated supervisor processes and recorded protected_state_unchanged=False with r11_attributable_mutation=False; quiet-window comparison and both fresh mirror windows recorded protected_state_unchanged=True and r11_attributable_mutation=False with no KeyError.",
+      "probe_ids": ["PB-LIVE-GUARD", "PB-MIRROR-LIVEGUARD"]
+    },
+    {
+      "id": "R11VER-006",
+      "severity": "S4",
+      "title": "Pre-existing tests/foundry scheduler flake not observed in this round",
+      "invariant": "Known timing flakiness must be classified honestly and never edited away",
+      "reproduction": "Split part1 (foundry + r6..r10) and mandatory combined 1483 passed on first independent attempts; no tests/foundry file was edited; if the known whole-second flake appears on future retries it must be retried untouched.",
+      "probe_ids": ["PB-FULL-PART1", "PB-FULL-COMBINED"]
+    }
+  ],
+  "status_summary": {
+    "reproduced_outputs": [
+      "frozen hashes byte-for-byte: R11_WORK_PACKAGE.json 9512BAAC8CF0DD902E82E46A9E7B8ED9D837A6BA5C62A2E7607427B865EC6ABE/9837; R11_BUILDER_REPORT.json F31CF469830BDAF5EFD084F6AC57B5BEFDF6CAE5796D487F9B77252E458C7A81/8182; R11_ARTIFACT_MANIFEST.json 5E8F5D993D294C2A8F9E768BB236336950FEFA09E862E1527C6B06774AAEA3B0/16729",
+      "manifest audit: 90 entries (89 real + 1 SELF_REFERENTIAL_REPORT), 0 hash/size mismatches; self size 8182 equals on-disk report; no R11_PROGRESS_* entries bound; evidence dir total 651597 < 8388608; report resources_and_boundaries.evidence_bytes=610678 equals independent sum excluding report+manifest+PROGRESS files",
+      "focused suite: python -m pytest tests/remaster/r11 -q exit 0; 13 dots; JUnit 13 testcases, 0 failures, 0 errors; override run printed 13 passed in 38.74s",
+      "full suites: split part1 (tests/foundry + r6 + r7 + r8 + r9 + r10) exit 0; part2 (tests/remaster/r11) exit 0; mandatory combined 1483 passed in 477.15s exit 0; no collection/ImportError/conftest errors",
+      "static: ruff check exit 0, ruff format --check exit 0, mypy strict exit 0 (8 source files), bandit exit 0; R11_STATIC.json includes ruff_format subgate passed",
+      "real cycles: 4 complete, 3 measured promotions (2 R1, 1 R2), 1 rejection; baseline 2 passed/6 failed to candidate 6 passed/2 failed (c1/restart), 2/6 to 4/4 (c2), broken c3 rejected; fresh mirror produce_cycles reproduced counts and metrics exactly",
+      "independent verification: every promoted candidate had a fresh verifier subprocess verdict; R11_VERIFIER_REPRODUCTION.json passed=True cycles=4 promoted=3 rejected=1 ledger_event_count=41; mirror g04 passed=True",
+      "rollback/restore: rollback f438d560 -> f82bf0c4 restores prior baseline (2 passed); restore f82bf0c4 -> f438d560 restores candidate (6 passed); before/after hashes differ; independent_probe_ok=true; release meta.json and live tree hash re-probed directly and matched",
+      "supervisor probes: probe_self_certification.py rerun passed=True 14/14 refusals covering all 10 forbidden candidate operations; failed history and evidence file preserved; probe store ledger 16 events chain valid",
+      "restart-safe + WAITING: clone effect replayed without duplicate, 21 unique journal effects, resumed at evaluate; WAITING created once, two restart replays created 0 duplicates, honest_waiting=true",
+      "mirror gates: run_cycles 0, probe_self_certification 0, static 0, focused_tests 0, full_suite 0 (1483 passed in 498.50s), secret_scan 0, privacy_gate 0, g01 0, g02 0, g03 0, g04 0, g05 0, g06 0 (confined=True)",
+      "live guard: two mirror windows protected_state_unchanged=True, r11_attributable_mutation=False, no KeyError",
+      "repo evidence re-audit after mirror: 89 real manifest entries recomputed, 0 mismatches (byte-identical)",
+      "boundary: porcelain remains the expected untracked trees only; protected main HEAD 2f7360e742559e051109e04ef7f3a82cc64cc2d2 unchanged; no live mutation; no commits/pushes by verifier"
+    ],
+    "repo_boundary": {
+      "worktree": "remaster/post-v7-purpose at 9999fb3e3bee658c2c2a7995b6a7b7c613a7f896",
+      "porcelain_unchanged": true,
+      "only_verifier_repo_write": "docs/remaster/evidence/r11/R11_VERIFIER_ROUND1_VERDICT_DSV4.json",
+      "protected_main_unchanged": true,
+      "live_state_unchanged_in_mirror_windows": true,
+      "commits_or_pushes_by_verifier": false
+    }
+  },
+  "evidence_paths_and_hashes": {
+    "frozen": {
+      "docs/remaster/work_packages/R11_WORK_PACKAGE.json": "9512BAAC8CF0DD902E82E46A9E7B8ED9D837A6BA5C62A2E7607427B865EC6ABE",
+      "docs/remaster/evidence/r11/R11_BUILDER_REPORT.json": "F31CF469830BDAF5EFD084F6AC57B5BEFDF6CAE5796D487F9B77252E458C7A81",
+      "docs/remaster/evidence/r11/R11_ARTIFACT_MANIFEST.json": "5E8F5D993D294C2A8F9E768BB236336950FEFA09E862E1527C6B06774AAEA3B0"
+    },
+    "repo_evidence": {
+      "docs/remaster/evidence/r11/R11_CYCLES.json": "e48e74cb03d732c3fb8319dfdecb1b344ae2d7f221acd022f9219a34aac250e3",
+      "docs/remaster/evidence/r11/R11_LIFECYCLE_EVENTS.json": "a7e04bf9cf7b47fbb44d1dc3a67c0ab7e00c1cb0dee0761393e40a206261acc5",
+      "docs/remaster/evidence/r11/R11_CYCLE_01.json": "ef6a0e6e1ae43925ed0c534e0a4733b9ec27b98d49dea13ab983b4be66ce9e75",
+      "docs/remaster/evidence/r11/R11_CYCLE_02.json": "bc8e234bbb9dfcc4f49e5f48053c9f804ba7fa9c0d41ade55e1a59ec888f6f4a",
+      "docs/remaster/evidence/r11/R11_CYCLE_03.json": "1b51b95ee834a1c0e6befdd5663c6e5221f9549fc4044f8e758e3c3234e063a6",
+      "docs/remaster/evidence/r11/R11_CYCLE_04.json": "881efd19f6cde0e088c93fbe88e69aca9f2340f162f9430c052207e20083b399",
+      "docs/remaster/evidence/r11/R11_ROLLBACK.json": "b9ba3e600de36202bfddbd329f4d65cb2dadb327e453fc6405be150c4bfc4c05",
+      "docs/remaster/evidence/r11/R11_PROBES.json": "cb001b8baf6009740d61959682f2f60daab723467fc34deaef74d1bae6a8ec95",
+      "docs/remaster/evidence/r11/R11_VERIFIER_REPRODUCTION.json": "480c2003ca62d54a3c0042f7fc47f94190ea5ccf8752486e5fab051ed062135d",
+      "docs/remaster/evidence/r11/R11_G01_CYCLES.json": "d2d6618c44ccdde60c68f90df55901ebc165efad9a1d1db62703f51b650a26ef",
+      "docs/remaster/evidence/r11/R11_G02_PROMOTIONS.json": "1ff1c5900f42757c74c5724148a7726b5e571756620a7c2bbf2de499be9e5c53",
+      "docs/remaster/evidence/r11/R11_G03_REJECTION.json": "8fb654371c54e6360eba4bf23652076d59a287e1dfca563c41518a7320d20d64",
+      "docs/remaster/evidence/r11/R11_G04_INDEPENDENT.json": "ee3f06660d6859a1a2b6373d48499c99c4e1f32e719f6ac4e7334ba7713ae98d",
+      "docs/remaster/evidence/r11/R11_G05_SUPERVISOR.json": "908eedfeb2db73934f6889bc0a73c82e461692ecedbbdc232bc6a716f0ab71b7",
+      "docs/remaster/evidence/r11/R11_G06_RESTART.json": "956b8f7ae0b3bd6f4b8edddd70f8e0de66fadc55b50d8f8e49e04d155f3aae55",
+      "docs/remaster/evidence/r11/R11_STATIC.json": "bed2ec2ab8e616f28c4568d5696e7b9001fe61b7df72fb28eb5c0c3f4128729f",
+      "docs/remaster/evidence/r11/R11_FOCUSED_TESTS.json": "ac2c9401248354d03865528113f1d4e7d478ce0215c31bf00826e5a8350f3295",
+      "docs/remaster/evidence/r11/R11_FULL_SUITE.json": "bf684f89fff274e4df0b4c941384eb4ccadd49f5deffaf4218aa1163ca169827",
+      "docs/remaster/evidence/r11/R11_SECRET_SCAN.json": "f244894d227f1419c9c5c63e022a08ea5275361c67233f54de2c16c94c6728d3",
+      "docs/remaster/evidence/r11/R11_PRIVACY.json": "c3621ca244c64e0ece8da97d4c16b834454a2228c7a0972e83b3ebb89f1550d3",
+      "docs/remaster/evidence/r11/R11_LIVE_GUARD_COMPARISON.json": "2adb04ed2a9578ab96959b49ba5195fbff1673b1ead2c5b532050efaf5de97b9",
+      "docs/remaster/evidence/r11/R11_RESTART.json": "7a8ebbe7600b1255fca83f311f23ac8f991e453a7e639edd891a84996a72e5ba",
+      "docs/remaster/evidence/r11/R11_WAITING.json": "6ef7575785676b5e6d43b62bb711ede70c398f10b1786f8a16f4da03986e7760"
+    },
+    "fresh_verifier_mirror": {
+      "root": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r11-verifier-round1b",
+      "R11_CYCLES.json": "0e1d448115917b36e46a7de6a885635fdcc6a3c23f36ade45b63a9d5b0c52bdd",
+      "R11_VERIFIER_REPRODUCTION.json": "f442f2a0af1b86990806129e573b8a14617b78d3871dfd74b56ec86db4ed130c",
+      "R11_ROLLBACK.json": "ff0708efc44583417c13df572df0bafb6bcfa55ca84e47bbf9a982cd5fc83f54",
+      "R11_PROBES.json": "aba58fcfda6d34b644c99f18c0145f8a25d8bba6a30ef760a80e0c34fdc556f7",
+      "R11_STATIC.json": "a8b2ed50347cde69857acfd99e2150d42395ffa7984c07bbd8b039c1311cace1",
+      "R11_FOCUSED_TESTS.json": "0a3eca18a71bb7fbf00507c433dd81568ab9c3a22ce8ae0797dd363e625506d6",
+      "R11_FULL_SUITE.json": "64787bccd882c7109b866e93fd70aa61a6e2efdaa5f7585232397d9886ad23d5",
+      "R11_SECRET_SCAN.json": "4fec496b434815ac7c910140b1754c62186eff6971fe43c0663b3a9da8372d1c",
+      "R11_PRIVACY.json": "479ecc01d7b9d0963e842f4965cf1ca773e9560606e541a873be9c91c6488ea6",
+      "R11_G01_CYCLES.json": "13ef6a26f807572ed25cbcf5e3d0c9a0e6dd527ed2acb93107ee45ecc18fa904",
+      "R11_G02_PROMOTIONS.json": "19a2dfe82c9795dc85e485e529540425b03a0567edc7e9b61c02b386cd19938d",
+      "R11_G03_REJECTION.json": "bdffdfb7f6bf8562a6c35ac39775974a5fbe3c69acde9ced121effe5c939a3f8",
+      "R11_G04_INDEPENDENT.json": "0ea185c22231d8450bb6190af04c0bcd5ef92d0c5762d4e1742d1efd4c9815bf",
+      "R11_G05_SUPERVISOR.json": "2206f9ccb2e1487bbf97ab48ed3467ba181339b3bd513937a269c7d37912dfce",
+      "R11_G06_RESTART.json": "713643b92fce56f404660a3c396e6aa5c6403efaf2f07549408b290d65716dc9",
+      "R11_LIVE_GUARD_BEFORE.json": "979820d273adcd61a1c0ef1059cb2a7fb71db4f2a947332a26cb1cda6270995e",
+      "R11_LIVE_GUARD_AFTER.json": "4d459b0560d2325c9579934ad6b5411b3c83e397d12bc2723be4d8ad88c1525b",
+      "R11_LIVE_GUARD_COMPARISON.json": "fcd4318fd66bc03c04c5bc7bc8b5fee5f1b9aacbd0a1deace3f8585fd399fe80",
+      "R11_RESTART.json": "ef7d3be733df7d692e136c2d8305f6d5b2a936894bb09c5889dc8103b6ae7aed",
+      "R11_WAITING.json": "6ef7575785676b5e6d43b62bb711ede70c398f10b1786f8a16f4da03986e7760"
+    }
+  },
+  "verdict": "PASS"
+}

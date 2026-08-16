@@ -1,0 +1,55 @@
+{
+  "checks": {
+    "cycle_count_at_least_3": true,
+    "event_ids_unique": true,
+    "every_cycle_has_full_lifecycle": true,
+    "ledger_chain_valid": true,
+    "lifecycle_events_durable": true,
+    "waiting_created": true,
+    "waiting_honest": true,
+    "waiting_replay_not_duplicated": true
+  },
+  "counts": {
+    "cycles": 4,
+    "promoted": 3,
+    "r1_promotions": 2,
+    "r2_promotions": 1,
+    "rejected": 1
+  },
+  "cycle_checks": {
+    "r11-cycle-01": true,
+    "r11-cycle-02": true,
+    "r11-cycle-03": true,
+    "r11-cycle-restart": true
+  },
+  "evidence": [
+    "R11_CYCLES.json",
+    "R11_LIFECYCLE_EVENTS.json",
+    "R11_WAITING.json"
+  ],
+  "evidence_utc": "2026-08-16T18:00:00Z",
+  "exit_code": 0,
+  "ledger": {
+    "chain_valid": true,
+    "event_count": 41,
+    "head_hash": "90e5e50b30c848d3a6643a282ca897661f2b68b1d73f72d09c80681c530ec199",
+    "path": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r11-builder\\proving\\stores\\stores\\ledger.db"
+  },
+  "passed": true,
+  "schema": "jarvis-r11-g01-cycles-v1",
+  "waiting": {
+    "created_first_call": true,
+    "duplicate_events": 0,
+    "event_id": "r11-evolution_live.waiting-r11-after-real-cycles-43718b473773b344",
+    "honest_waiting": true,
+    "replay_after_restart_created": false,
+    "schema": "jarvis-r11-waiting-v1",
+    "second_restart_replay_created": false,
+    "waiting": {
+      "cadence_key": "r11-after-real-cycles",
+      "next_action": "Stand by for the next owner-directed opportunity; no busy-work.",
+      "reason": "No new useful improvement candidate exists after four real cycles; all bounded improvements are promoted or preserved in failed history."
+    }
+  },
+  "wall_seconds": 0.012
+}

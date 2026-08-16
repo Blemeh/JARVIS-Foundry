@@ -1,0 +1,31 @@
+{
+  "evidence_bytes": 394550,
+  "evidence_file_count": 33,
+  "evidence_under_budget": true,
+  "expected_work_package_sha256": "9512baac8cf0dd902e82e46a9e7b8ed9d837a6ba5c62a2e7607427b865ec6abe",
+  "focused_tests": {
+    "exit_code": 0,
+    "summary": ""
+  },
+  "generated_utc": "2026-08-16T05:49:47Z",
+  "passed": true,
+  "reproduction": {
+    "counts": {
+      "cycles": 4,
+      "promoted": 3,
+      "r1_promotions": 2,
+      "r2_promotions": 1,
+      "rejected": 1
+    },
+    "cycle_verdicts_ok": true,
+    "ledger_chain_valid": true,
+    "ledger_event_count": 41,
+    "restart_no_duplicate_effect": true,
+    "rollback_independent_probe_ok": true,
+    "waiting_honest": true
+  },
+  "schema": "jarvis-r11-fresh-verifier-reproduction-v1",
+  "verifier_id": "r11-fresh-verifier-reproduction",
+  "wall_seconds": 70.279,
+  "work_package_sha256": "9512baac8cf0dd902e82e46a9e7b8ed9d837a6ba5c62a2e7607427b865ec6abe"
+}

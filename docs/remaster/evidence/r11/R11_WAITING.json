@@ -1,0 +1,14 @@
+{
+  "created_first_call": true,
+  "duplicate_events": 0,
+  "event_id": "r11-evolution_live.waiting-r11-after-real-cycles-43718b473773b344",
+  "honest_waiting": true,
+  "replay_after_restart_created": false,
+  "schema": "jarvis-r11-waiting-v1",
+  "second_restart_replay_created": false,
+  "waiting": {
+    "cadence_key": "r11-after-real-cycles",
+    "next_action": "Stand by for the next owner-directed opportunity; no busy-work.",
+    "reason": "No new useful improvement candidate exists after four real cycles; all bounded improvements are promoted or preserved in failed history."
+  }
+}

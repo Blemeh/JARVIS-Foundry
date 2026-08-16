@@ -1,0 +1,76 @@
+{
+  "checks": {
+    "artifact_confinement": true,
+    "evidence_under_budget": true,
+    "focused_tests": true,
+    "full_suite": true,
+    "isolate_effect_replayed_not_duplicated": true,
+    "live_guard": true,
+    "no_duplicate_effect_journal_entries": true,
+    "privacy": true,
+    "restart_simulated": true,
+    "resumed_after_isolate": true,
+    "secret_scan": true,
+    "static": true,
+    "waiting_not_duplicated_after_restart": true
+  },
+  "confinement": {
+    "baseline_entries_missing": [],
+    "confined": true,
+    "confinement_violations": [],
+    "porcelain_line_count": 10
+  },
+  "evidence": [
+    "R11_RESTART.json",
+    "R11_WAITING.json",
+    "R11_STATIC.json",
+    "R11_FOCUSED_TESTS.json",
+    "R11_FULL_SUITE.json",
+    "R11_SECRET_SCAN.json",
+    "R11_PRIVACY.json",
+    "R11_LIVE_GUARD_COMPARISON.json"
+  ],
+  "evidence_budget_bytes": 8388608,
+  "evidence_bytes": 607540,
+  "evidence_utc": "2026-08-16T18:00:00Z",
+  "exit_code": 0,
+  "passed": true,
+  "restart": {
+    "journal_effect_ids": [
+      "baseline-release:r11-cycle-01",
+      "baseline-release:r11-cycle-02",
+      "baseline-release:r11-cycle-restart",
+      "canary:r11-cycle-01",
+      "canary:r11-cycle-02",
+      "canary:r11-cycle-restart",
+      "candidate-release:r11-cycle-01",
+      "candidate-release:r11-cycle-02",
+      "candidate-release:r11-cycle-restart",
+      "clone:r11-cycle-01",
+      "clone:r11-cycle-02",
+      "clone:r11-cycle-03",
+      "clone:r11-cycle-restart",
+      "promote-live:r11-cycle-01",
+      "promote-live:r11-cycle-02",
+      "promote-live:r11-cycle-restart",
+      "restore:r11-cycle-01",
+      "rollback:r11-cycle-01",
+      "shadow:r11-cycle-01",
+      "shadow:r11-cycle-02",
+      "shadow:r11-cycle-restart"
+    ],
+    "journal_effects_total": 21,
+    "live_tree_hash_after_all": "f438d56017701096b5203ad81b6f8547351780f7633c02da35a65abb4cce0854",
+    "restart_cycle": {
+      "clone_effect_status": "applied",
+      "clone_effect_status_after_restart": "replayed",
+      "clone_replayed_without_duplicate_effect": true,
+      "event_count_before_restart": 31,
+      "resumed_at_stage": "evaluate",
+      "simulated": true
+    },
+    "schema": "jarvis-r11-restart-v1"
+  },
+  "schema": "jarvis-r11-g06-restart-v1",
+  "wall_seconds": 0.08
+}

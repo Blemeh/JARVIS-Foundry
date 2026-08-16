@@ -1,0 +1,30 @@
+{
+  "checks": {
+    "every_candidate_independently_verified": true,
+    "fresh_reproduction_subprocess": true,
+    "no_builder_self_certification": true,
+    "reproduction_passed": true,
+    "verdicts_recorded_by_verifier_source": true
+  },
+  "evidence": [
+    "R11_VERIFIER_REPRODUCTION.json"
+  ],
+  "evidence_utc": "2026-08-16T18:00:00Z",
+  "exit_code": 0,
+  "passed": true,
+  "per_candidate_checks": {
+    "r11-cycle-01": true,
+    "r11-cycle-02": true,
+    "r11-cycle-03": true,
+    "r11-cycle-restart": true
+  },
+  "schema": "jarvis-r11-g04-independent-v1",
+  "verdict_path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r11\\R11_VERIFIER_REPRODUCTION.json",
+  "verdict_sha256": "480c2003ca62d54a3c0042f7fc47f94190ea5ccf8752486e5fab051ed062135d",
+  "verifier_subprocess": {
+    "exit_code": 0,
+    "stderr_tail": "",
+    "stdout_tail": "verifier r11-fresh-verifier-reproduction: passed=True cycles=4 promoted=3 rejected=1 evidence_bytes=394550 tests=0\n"
+  },
+  "wall_seconds": 70.422
+}

@@ -1,0 +1,140 @@
+{
+  "schema": "jarvis-remaster-work-package-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R11",
+  "title": "Controlled self-evolution with durable, independently verified cycles",
+  "status": "FROZEN",
+  "generated_utc": "2026-08-16T08:10:00Z",
+  "frozen_base": {
+    "commit": "9999fb3e3bee658c2c2a7995b6a7b7c613a7f896",
+    "branch": "remaster/post-v7-purpose",
+    "worktree": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster",
+    "protected_main": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry (external V8 promotion commits advanced HEAD to 2f7360e; remaster live guards remained protected_state_unchanged within their windows)",
+    "live_v7_deployment_changes_allowed": false,
+    "push_or_publish_allowed": false,
+    "live_daemon_database_tasks_processes_ports": "protected, untouched",
+    "r6_status": "OWNER_REDIRECT_R6_DEFERRED (never reopen; R6 trees remain uncommitted and untouched)"
+  },
+  "objective": "Build and prove controlled self-evolution: OBSERVATION -> HYPOTHESIS -> ISOLATED CANDIDATE -> EVALUATION -> INDEPENDENT VERIFICATION -> SHADOW -> CANARY -> PROMOTE OR REJECT -> MEASURE OUTCOME -> LEARN -> ROLLBACK/RESTORE WHEN NEEDED. A candidate may NEVER certify itself, promote itself, lower its risk classification, rewrite its acceptance criteria, widen its authority, increase its own budget, disable STOP, delete failed history, erase evidence, or control its own termination. Supervisor owns promotion/freeze/rollback/restore. Prove real durable cycles: at least 3 complete real evolution cycles; at least 2 measured successful promotions; at least 1 real R1 (low-risk) promotion; at least 1 bounded R2 promotion; at least 1 broken or non-improving candidate rejected; real rollback/restoration evidence; measured before/after outcomes; restart-safe cadence; honest WAITING when no useful improvement exists.",
+  "governed_proving_area": {
+    "purpose": "All evolution effects run in isolated proving stores under C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r11-*; candidates are real code/behavior changes evaluated against a real measured baseline in the isolated clone; no live daemon, database, vault, protected main, or owner project in place is touched.",
+    "privacy_boundary": "Evidence records identities, hashes, timestamps, provenance, measured outcomes, and non-sensitive excerpts only; no credentials/secrets in evidence.",
+    "existing_machinery": "Read-only imports from src/jarvis_foundry/evolution (records, registry, builder, lab, verify, shadow, canary, promote, restore, discover, cycle, acceptance) and supervisor/evolution_control.py where available; R11 adds a bounded additive proving harness + durable ledger lifecycle events; the R8 orchestration verify protocol and R4 kernel ledger are reused read-only."
+  },
+  "mandatory_deliverables": [
+    {
+      "id": "R11-D01",
+      "item": "Evolution lifecycle engine with Supervisor ownership",
+      "detail": "Additive module(s) under src/jarvis_foundry/evolution_live/** implementing the full cycle with durable ledger events: OBSERVED -> HYPOTHESIZED -> CANDIDATE_ISOLATED -> EVALUATED -> INDEPENDENTLY_VERIFIED -> SHADOWED -> CANARY_READY -> PROMOTED or REJECTED -> OUTCOME_MEASURED -> LEARNED -> ROLLED_BACK/RESTORED; WAITING emitted honestly. Only the Supervisor identity can promote/freeze/rollback/restore; a candidate can never certify/promote/relax/erase/self-terminate."
+    },
+    {
+      "id": "R11-D02",
+      "item": "Real measured evolution cycles",
+      "detail": "At least 3 complete real cycles on real bounded code/behavior candidates in an isolated clone, with measured before/after outcomes (real test/behavior metrics), at least 2 measured successful promotions, at least 1 R1 promotion, at least 1 bounded R2 promotion, and at least 1 broken/non-improving candidate rejected with failed-history preserved."
+    },
+    {
+      "id": "R11-D03",
+      "item": "Independent verification per candidate",
+      "detail": "Every candidate evaluation is verified by a fresh independent verifier (subprocess, no candidate context) before promotion; the verifier records verdict + evidence; self-certification impossible."
+    },
+    {
+      "id": "R11-D04",
+      "item": "Rollback / restore",
+      "detail": "Real rollback/restoration evidence: a promoted candidate is rolled back and the prior release/baseline restored with before/after hashes; restore is independently proven."
+    },
+    {
+      "id": "R11-D05",
+      "item": "Restart-safe cadence and honest WAITING",
+      "detail": "Evolution state survives simulated restart with no duplicate effects; when no useful improvement exists, an honest WAITING record is emitted (never busy-work)."
+    },
+    {
+      "id": "R11-D06",
+      "item": "Owner-useful evidence and explanations",
+      "detail": "Per-cycle evidence: observation, hypothesis, candidate diff, evaluation metrics, verifier verdict, promotion/rejection decision, before/after measurement, rollback/restore hashes, and the exact next autonomous action."
+    }
+  ],
+  "mandatory_gates": [
+    {
+      "id": "R11-G01",
+      "gate": "At least 3 complete real evolution cycles with durable ledger lifecycle events; WAITING emitted honestly when no useful improvement exists."
+    },
+    {
+      "id": "R11-G02",
+      "gate": "At least 2 measured successful promotions, including at least 1 real R1 promotion and at least 1 bounded R2 promotion; measured before/after outcomes."
+    },
+    {
+      "id": "R11-G03",
+      "gate": "At least 1 broken or non-improving candidate rejected with failed-history preserved (never deleted)."
+    },
+    {
+      "id": "R11-G04",
+      "gate": "Independent verification: no candidate certifies/promotes itself; a fresh verifier reproduces every cycle and the rollback/restore."
+    },
+    {
+      "id": "R11-G05",
+      "gate": "Real rollback/restoration evidence with before/after hashes; Supervisor owns promotion/freeze/rollback/restore; candidates cannot widen authority/increase budget/disable STOP/erase evidence/control termination (probes prove each refusal)."
+    },
+    {
+      "id": "R11-G06",
+      "gate": "Restart-safe cadence proven (no duplicate effects); full repo suite green; static clean; no protected mutation; evidence under 8 MiB."
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "R11-C01",
+      "criterion": "R11-D01..D06 each PASS with non-empty evidence (per-cycle reports, hashes, verifier verdicts, rollback/restore hashes)."
+    },
+    {
+      "id": "R11-C02",
+      "criterion": "At least 3 complete real cycles with durable lifecycle events."
+    },
+    {
+      "id": "R11-C03",
+      "criterion": "At least 2 measured successful promotions (>=1 R1, >=1 bounded R2) with measured before/after outcomes."
+    },
+    {
+      "id": "R11-C04",
+      "criterion": "At least 1 broken/non-improving candidate rejected; failed history preserved."
+    },
+    {
+      "id": "R11-C05",
+      "criterion": "Every candidate independently verified before promotion; no self-certification."
+    },
+    {
+      "id": "R11-C06",
+      "criterion": "Real rollback/restore demonstrated with before/after hashes; Supervisor ownership probes pass (candidate cannot promote/relax/widen/increase-budget/disable-STOP/erase/self-terminate)."
+    },
+    {
+      "id": "R11-C07",
+      "criterion": "Restart-safe cadence and honest WAITING proven."
+    },
+    {
+      "id": "R11-C08",
+      "criterion": "Full repository suite green; R11-owned files pass ruff check/format/mypy strict/bandit; evidence under budget; no protected mutation; fresh independent verifier reproduces every criterion and finds no new S1/S2."
+    }
+  ],
+  "ownership": {
+    "builder": "May create src/jarvis_foundry/evolution_live/**, scripts/remaster/r11/**, tests/remaster/r11/**, docs/remaster/evidence/r11/**, docs/remaster/work_packages/R11_WORK_PACKAGE.json, and R11_FINDINGS.json under evidence/r11. May NOT edit existing kernel modules, tests/foundry, tests/remaster/r6-r10, scripts/remaster/r6-r10, src/jarvis_foundry/kernel/memory, src/jarvis_foundry/evolution/**, supervisor/evolution_control.py, prior evidence (r0-r10), FINDINGS.jsonl (root-owned), PROGRAM_STATE.md, R6 files, protected main, or any owner project in place. R11 source may IMPORT existing evolution/kernel/orchestration modules read-only.",
+    "root": "Evidence custody, findings registry, commit decision, final truth.",
+    "verifier": "Fresh independent context after builder freeze."
+  },
+  "resources_and_constraints": {
+    "python": "C:\\Python313\\python.exe",
+    "isolated_venv": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r3-venv (reuse)",
+    "proving_area": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r11-*",
+    "network_allowed": "none",
+    "evidence_budget_bytes": 8388608,
+    "timeout": "bounded; every long gate prints WALL_SECONDS and EXIT_CODE"
+  },
+  "status_contract": "PASS | FAIL | BLOCKED | NOT_TESTED | WAITING only; exit code zero alone is NOT_TESTED; every PASS needs non-empty evidence.",
+  "stop_conditions": [
+    "any mutation of live/protected state, live vault, live database, protected main, or any owner project in place",
+    "any candidate certifying/promoting itself, relaxing its own risk class, rewriting its acceptance criteria, widening authority, increasing its own budget, disabling STOP, deleting failed history, erasing evidence, or controlling termination",
+    "any evolution event not durable in the kernel ledger",
+    "any fake/mock candidate presented as real evolution",
+    "any secret value written to evidence",
+    "any commit or push by the builder to protected repos",
+    "any unrecorded gate failure presented as PASS"
+  ],
+  "builder_status": "NOT_TESTED until a fresh independent verifier passes every mandatory criterion"
+}

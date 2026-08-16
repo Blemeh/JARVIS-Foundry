@@ -1,0 +1,456 @@
+{
+  "file_count": 90,
+  "files": [
+    {
+      "path": "docs/remaster/evidence/r11/R11_BANDIT.json",
+      "sha256": "aea95ae44397e4f1c65607d41fcec32ea16b8ec99a48f829b65980f9324eda8c",
+      "size": 237
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_BANDIT_RAW.txt",
+      "sha256": "1790d26e687004f43d1a0b7acf5948f75fe981919c374b30ef521520ade3cfd5",
+      "size": 2463
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_CYCLES.json",
+      "sha256": "e48e74cb03d732c3fb8319dfdecb1b344ae2d7f221acd022f9219a34aac250e3",
+      "size": 88297
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_CYCLE_01.json",
+      "sha256": "ef6a0e6e1ae43925ed0c534e0a4733b9ec27b98d49dea13ab983b4be66ce9e75",
+      "size": 4912
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_CYCLE_02.json",
+      "sha256": "bc8e234bbb9dfcc4f49e5f48053c9f804ba7fa9c0d41ade55e1a59ec888f6f4a",
+      "size": 4907
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_CYCLE_03.json",
+      "sha256": "1b51b95ee834a1c0e6befdd5663c6e5221f9549fc4044f8e758e3c3234e063a6",
+      "size": 2016
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_CYCLE_04.json",
+      "sha256": "881efd19f6cde0e088c93fbe88e69aca9f2340f162f9430c052207e20083b399",
+      "size": 5120
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_FOCUSED_TESTS.json",
+      "sha256": "ac2c9401248354d03865528113f1d4e7d478ce0215c31bf00826e5a8350f3295",
+      "size": 472
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_FOCUSED_TESTS_JUNIT.xml",
+      "sha256": "c9e1f0816bd552e95651fe482ec989478838344585a8f578f668aabedd00b092",
+      "size": 1898
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_FOCUSED_TESTS_RAW.txt",
+      "sha256": "7fbe072bd6c74a7b0b55ddd2583fc288534b9dfe428b8a0f002c2ecdfb8dc490",
+      "size": 81
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_FULL_SUITE.json",
+      "sha256": "bf684f89fff274e4df0b4c941384eb4ccadd49f5deffaf4218aa1163ca169827",
+      "size": 1054
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_FULL_SUITE_COMBINED_JUNIT.xml",
+      "sha256": "cb64f3e56d29e7bf2a648cd28d0977193190b34239700c3aa7877203a918037c",
+      "size": 194895
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_FULL_SUITE_PART1_JUNIT.xml",
+      "sha256": "9260694511d9c8ca08831768d5090916bb553a42b9cd1a3bf5d43d9b5e996a87",
+      "size": 193250
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_FULL_SUITE_PART2_JUNIT.xml",
+      "sha256": "39b6e83e7e491a3fb7b323cfd875637dc9fe4198e8ad3fcb7723bfe655cb981f",
+      "size": 1898
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_FULL_SUITE_RAW.txt",
+      "sha256": "ac2870476ef3befb555bee433b2cfd7a47c745b2d6b6fa5717b1f6afea008cfc",
+      "size": 3598
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_G01_CYCLES.json",
+      "sha256": "d2d6618c44ccdde60c68f90df55901ebc165efad9a1d1db62703f51b650a26ef",
+      "size": 1740
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_G02_PROMOTIONS.json",
+      "sha256": "1ff1c5900f42757c74c5724148a7726b5e571756620a7c2bbf2de499be9e5c53",
+      "size": 1321
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_G03_REJECTION.json",
+      "sha256": "8fb654371c54e6360eba4bf23652076d59a287e1dfca563c41518a7320d20d64",
+      "size": 930
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_G04_INDEPENDENT.json",
+      "sha256": "ee3f06660d6859a1a2b6373d48499c99c4e1f32e719f6ac4e7334ba7713ae98d",
+      "size": 1096
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_G05_SUPERVISOR.json",
+      "sha256": "908eedfeb2db73934f6889bc0a73c82e461692ecedbbdc232bc6a716f0ab71b7",
+      "size": 3127
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_G06_RESTART.json",
+      "sha256": "956b8f7ae0b3bd6f4b8edddd70f8e0de66fadc55b50d8f8e49e04d155f3aae55",
+      "size": 2342
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_LIFECYCLE_EVENTS.json",
+      "sha256": "a7e04bf9cf7b47fbb44d1dc3a67c0ab7e00c1cb0dee0761393e40a206261acc5",
+      "size": 43831
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_LIVE_GUARD_AFTER.json",
+      "sha256": "d74fac23812af83fd9b1916fe192017797dece8f213d68ce4f2eb99095112f38",
+      "size": 2105
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_LIVE_GUARD_BEFORE.json",
+      "sha256": "7bcaeeccaa6401636dece0d6bca119ad70d1d62af8e0a703c014a57791e38227",
+      "size": 2107
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_LIVE_GUARD_COMPARISON.json",
+      "sha256": "2adb04ed2a9578ab96959b49ba5195fbff1673b1ead2c5b532050efaf5de97b9",
+      "size": 1410
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_LIVE_GUARD_FULLWINDOW_AFTER.json",
+      "sha256": "5bb0e4b59ac0962592a76fcc0efa4bd24d31b1622b948eda8b055f967d035778",
+      "size": 2107
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_LIVE_GUARD_FULLWINDOW_BEFORE.json",
+      "sha256": "4c19aec01a7a1b1ebf33a4e01a2b9ac2d0dba4aba19f50e27e45e076e0fbf76a",
+      "size": 2602
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_LIVE_GUARD_FULLWINDOW_COMPARISON.json",
+      "sha256": "83564ba37dc00d7f860a4d6ef0b7333ba97c28e1246797bbe9b185927dad227a",
+      "size": 1330
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_MYPY.json",
+      "sha256": "77252f14f6ed328a3d022b66a03d594ea9b2144da5720b1a0847004b87a327c1",
+      "size": 233
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_MYPY_RAW.txt",
+      "sha256": "7aefcacc6d445354a115cf76fcdea696165be7ad8cf9b86a60ea98727c6e96f6",
+      "size": 44
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_PRIVACY.json",
+      "sha256": "c3621ca244c64e0ece8da97d4c16b834454a2228c7a0972e83b3ebb89f1550d3",
+      "size": 376
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_PROBES.json",
+      "sha256": "cb001b8baf6009740d61959682f2f60daab723467fc34deaef74d1bae6a8ec95",
+      "size": 5756
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_RESTART.json",
+      "sha256": "7a8ebbe7600b1255fca83f311f23ac8f991e453a7e639edd891a84996a72e5ba",
+      "size": 1178
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_ROLLBACK.json",
+      "sha256": "b9ba3e600de36202bfddbd329f4d65cb2dadb327e453fc6405be150c4bfc4c05",
+      "size": 1960
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_RUFF.json",
+      "sha256": "035f2942a15544c48ef83f7240e0a36721d770065795e8dbea5775b96782f2e0",
+      "size": 233
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_RUFF_FORMAT.json",
+      "sha256": "e71eef691a01e557aeeb18dfdc35578747b48ea71d21d1963eb512fceb72bd88",
+      "size": 247
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_RUFF_FORMAT_RAW.txt",
+      "sha256": "8139dfe2551079957c776913bbcaf1c768e218314f327bd0bfc1ff416a6cdca0",
+      "size": 28
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_RUFF_RAW.txt",
+      "sha256": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0",
+      "size": 20
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_SECRET_SCAN.json",
+      "sha256": "f244894d227f1419c9c5c63e022a08ea5275361c67233f54de2c16c94c6728d3",
+      "size": 302
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_SECRET_SCAN_RAW.json",
+      "sha256": "f61f5039699e433fdfd684dcbfbdaa5d6cf9e8a05509f27976115670741ce2ab",
+      "size": 565
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_STATIC.json",
+      "sha256": "bed2ec2ab8e616f28c4568d5696e7b9001fe61b7df72fb28eb5c0c3f4128729f",
+      "size": 1251
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_STORE_SNAPSHOT.json",
+      "sha256": "71ded8be80d74494da12666cd47c1e1df03ca1c0fc954222fb34b6a8b248814c",
+      "size": 22653
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_VERIFIER_REPRODUCTION.json",
+      "sha256": "480c2003ca62d54a3c0042f7fc47f94190ea5ccf8752486e5fab051ed062135d",
+      "size": 943
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_WAITING.json",
+      "sha256": "6ef7575785676b5e6d43b62bb711ede70c398f10b1786f8a16f4da03986e7760",
+      "size": 604
+    },
+    {
+      "path": "scripts/remaster/r11/build_evidence.py",
+      "sha256": "49654a8907b656c5221ccfd5a9002ce2f9d63d5bd9349afaae7bfd2db46a2015",
+      "size": 17895
+    },
+    {
+      "path": "scripts/remaster/r11/checkpoint.py",
+      "sha256": "36e8d1a37a6b1ae29cf1ed6e72cc29fd465e3c61954406115ac1a67524f9f503",
+      "size": 1983
+    },
+    {
+      "path": "scripts/remaster/r11/common.py",
+      "sha256": "5b337039c44b3ca9cd17c4e62cbd1e378fd50f3a518cfdd9281133f116ced785",
+      "size": 5227
+    },
+    {
+      "path": "scripts/remaster/r11/fixtures/micro_target/README.md",
+      "sha256": "6230d26adf689c81c9adc1929de9ef951c7d8dc48158ff0f9e5ced7f7ea38869",
+      "size": 563
+    },
+    {
+      "path": "scripts/remaster/r11/fixtures/micro_target/config/__init__.py",
+      "sha256": "c55c3df5c4f15c5929029acbdc26d19ec038bc4fa9a76210d77a98fa7ab7f34b",
+      "size": 50
+    },
+    {
+      "path": "scripts/remaster/r11/fixtures/micro_target/config/values.py",
+      "sha256": "4ab7e23189908bc3a62022d330262230fa5f7df6b6ad291d0088606793d73c18",
+      "size": 174
+    },
+    {
+      "path": "scripts/remaster/r11/fixtures/micro_target/core.py",
+      "sha256": "9b3a2d43bd564f2ade578e828563e1f984c82d0d9262a68f4aeb3c3ec0b4c2a8",
+      "size": 619
+    },
+    {
+      "path": "scripts/remaster/r11/fixtures/micro_target/patches/c1_config.py",
+      "sha256": "abf2532671ddc74e3046788defa57385986e2e72dc432ab206b2e74cad0d24f4",
+      "size": 182
+    },
+    {
+      "path": "scripts/remaster/r11/fixtures/micro_target/patches/c2_workflow.py",
+      "sha256": "0842c9a1eafa9002a4ce08ce191620d58cd1719894ed7586ea2486be5f07accf",
+      "size": 616
+    },
+    {
+      "path": "scripts/remaster/r11/fixtures/micro_target/patches/c3_broken_core.py",
+      "sha256": "c0f91f4815468082d610ee771b03c83146ae75f8b5179a38d2418d9e10b3d592",
+      "size": 356
+    },
+    {
+      "path": "scripts/remaster/r11/fixtures/micro_target/probe.py",
+      "sha256": "c8e74a401d3a79c1372e0f6553e935d1d4713ff836744bd18fec6d80e5e43a0d",
+      "size": 1031
+    },
+    {
+      "path": "scripts/remaster/r11/fixtures/micro_target/tests/test_micro_target.py",
+      "sha256": "398705159c8fe661c9c662ad7598bd12a2968d786e239ff17fd530a81635262b",
+      "size": 1251
+    },
+    {
+      "path": "scripts/remaster/r11/fixtures/micro_target/workflow.py",
+      "sha256": "aa4a388ff4457bfb7792a783ab433d0ab9426566205fbf919a4686025701d707",
+      "size": 312
+    },
+    {
+      "path": "scripts/remaster/r11/focused_tests.py",
+      "sha256": "873a6fdd3ee0b25f26b64e267426bdf0712fdc5c0da3c47dcacfa513048dacea",
+      "size": 1554
+    },
+    {
+      "path": "scripts/remaster/r11/full_suite.py",
+      "sha256": "8e7bd25b9fbca0f10a4d0a61a36f9af2b43c7507c1561974911c06f1c8139287",
+      "size": 3725
+    },
+    {
+      "path": "scripts/remaster/r11/gate_g01_cycles.py",
+      "sha256": "294a33602fe876535fe8b80df8a1b57b807a4066fa7bd085a4724597597eda1e",
+      "size": 2976
+    },
+    {
+      "path": "scripts/remaster/r11/gate_g02_promotions.py",
+      "sha256": "2c4c41c7e327f91d7a835c5d931fc9bea7a615688694b7446df14d5a3e46402d",
+      "size": 2927
+    },
+    {
+      "path": "scripts/remaster/r11/gate_g03_rejection.py",
+      "sha256": "3301f350e8d904ad66c6081e5eb786be7eee150d5559f5e3d219b189eb146744",
+      "size": 3080
+    },
+    {
+      "path": "scripts/remaster/r11/gate_g04_independent.py",
+      "sha256": "3a41d07631ab5b2b1e39844e00edab2364efafee8cd20bb761747f609050c99d",
+      "size": 3555
+    },
+    {
+      "path": "scripts/remaster/r11/gate_g05_supervisor.py",
+      "sha256": "941ccf471fdf8d3a1e0e8ae48133452e2d971886414972b9153a7c2be6d46181",
+      "size": 2957
+    },
+    {
+      "path": "scripts/remaster/r11/gate_g06_restart.py",
+      "sha256": "a490ae9e1942e8116f9045d1da3d96f42931ee234ad2511ba7cfa6c1ea2de280",
+      "size": 4774
+    },
+    {
+      "path": "scripts/remaster/r11/live_guard.py",
+      "sha256": "78e609e4bca9a142a80073a8e8cfdac6e445aa77035adaeb99831c622d9dcfd1",
+      "size": 10720
+    },
+    {
+      "path": "scripts/remaster/r11/privacy_gate.py",
+      "sha256": "2e2c5d0ae0ef22d804021e9185712b9bb7d960939a9fa09a0fd15ae4b44ed909",
+      "size": 2379
+    },
+    {
+      "path": "scripts/remaster/r11/probe_self_certification.py",
+      "sha256": "324c7f8b9b5a59b98917978c00187178a817b2dcc8eb204cfe043169651dac78",
+      "size": 2065
+    },
+    {
+      "path": "scripts/remaster/r11/run_cycles.py",
+      "sha256": "dc458bd53cd548c3bfa1b176bb98ef92eaa99409a55596b3742194597373fea8",
+      "size": 33812
+    },
+    {
+      "path": "scripts/remaster/r11/secret_scan.py",
+      "sha256": "78b53b04a81c916b4d3562641b70c77499ea619e16d605bdb5be5f1371df79c0",
+      "size": 4008
+    },
+    {
+      "path": "scripts/remaster/r11/static.py",
+      "sha256": "41909696872ab2a1808d6a7f09632267ea1a8eea569ec9353140d43df758e28c",
+      "size": 2550
+    },
+    {
+      "path": "scripts/remaster/r11/verifier.py",
+      "sha256": "7f9f623b73e24faa7040efc08b4b14c4459b5a2fdd93da0cd35ca53c3ee95a99",
+      "size": 4909
+    },
+    {
+      "path": "src/jarvis_foundry/evolution_live/__init__.py",
+      "sha256": "663cb867bb9462b8b6e49c11ae6570f269beb90459f59953349e78c71173999a",
+      "size": 1633
+    },
+    {
+      "path": "src/jarvis_foundry/evolution_live/engine.py",
+      "sha256": "6d1da0f11763da60b341f982a028fe9941bc7420ee3ca4a13ba2d0891bc03217",
+      "size": 23800
+    },
+    {
+      "path": "src/jarvis_foundry/evolution_live/events.py",
+      "sha256": "127a4414a958103391e565a1ef13714cb1c9d914e91351fb1fef33907fcd846c",
+      "size": 4686
+    },
+    {
+      "path": "src/jarvis_foundry/evolution_live/lifecycle.py",
+      "sha256": "42c59bb68c0e97bcd76e594dbc488708cff98178e81a0a20e598a1e54db29f27",
+      "size": 5743
+    },
+    {
+      "path": "src/jarvis_foundry/evolution_live/probes.py",
+      "sha256": "9d11d2d63d1e78433e8cf514236e25506fb8591bcc1234f0fbddc6f0835f6293",
+      "size": 10642
+    },
+    {
+      "path": "src/jarvis_foundry/evolution_live/projections.py",
+      "sha256": "0752ff9e39684e1a08eaf0bd0fc64b563ad48536989c5cf3ec052a3681ab17f8",
+      "size": 3106
+    },
+    {
+      "path": "src/jarvis_foundry/evolution_live/store.py",
+      "sha256": "32b6ca461102bf07967851c4ed69432eddf7af1be983667c88355eab7f78b5c3",
+      "size": 9003
+    },
+    {
+      "path": "src/jarvis_foundry/evolution_live/verifier.py",
+      "sha256": "c24d34af17a218640bcb86d3fc7c40239d5bebd9764859c54118b5a748f98cb4",
+      "size": 7704
+    },
+    {
+      "path": "tests/remaster/r11/r11_helpers.py",
+      "sha256": "8e658e81e71962d27961685520b1b82e55a4084b1e0a4561aa720024789e4b79",
+      "size": 1241
+    },
+    {
+      "path": "tests/remaster/r11/test_events_projections.py",
+      "sha256": "e3edfe5b7ad9581086b5977826d4c9c00a6ee75b574f7f4bb079fb20e53722d9",
+      "size": 1901
+    },
+    {
+      "path": "tests/remaster/r11/test_lifecycle.py",
+      "sha256": "0da35a201eb447c0a5fd31b2cc5f13bd5a3cf7a9f93674c383b83aae0387e7bf",
+      "size": 4887
+    },
+    {
+      "path": "tests/remaster/r11/test_probes.py",
+      "sha256": "86a01c0341861269ed5ac888aee83393817bd695b2108e29ae47922b22ba2561",
+      "size": 1032
+    },
+    {
+      "path": "tests/remaster/r11/test_real_cycle.py",
+      "sha256": "885b6b438dd89de93cfed6cdb454ee84c744f9249e2ce682301fffa90ba3444f",
+      "size": 1164
+    },
+    {
+      "path": "tests/remaster/r11/test_restart_safe.py",
+      "sha256": "f2657752dd7aa678d5aeef3921359597933c4ee71f9bc050eae60c2e87eb4b0c",
+      "size": 1224
+    },
+    {
+      "path": "tests/remaster/r11/test_rollback_restore.py",
+      "sha256": "c169688de535fdf81cad77c6f31ae8d6f8341e524d41217b85971a4d396e7df3",
+      "size": 1607
+    },
+    {
+      "path": "tests/remaster/r11/test_verifier_independent.py",
+      "sha256": "550bd4933704aa0904b6147563e41b760e9e5e919304793ca3352ff2e27c6eb9",
+      "size": 3091
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_BUILDER_REPORT.json",
+      "sha256": "SELF_REFERENTIAL_REPORT",
+      "size": 8182
+    },
+    {
+      "path": "docs/remaster/evidence/r11/R11_FINDINGS.json",
+      "sha256": "999904ab1e6086a9d05c4bae3c6814dfee2fe8d99badd7689607bfddc8684c9a",
+      "size": 3139
+    }
+  ],
+  "schema": "jarvis-r11-artifact-manifest-v1"
+}

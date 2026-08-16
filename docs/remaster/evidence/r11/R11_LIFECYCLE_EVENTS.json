@@ -1,0 +1,1213 @@
+{
+  "chain_valid": true,
+  "event_count": 41,
+  "events": [
+    {
+      "event_id": "r11-evolution_live.observed-r11-cycle-01-dd534c97b5d50c39",
+      "event_type": "evolution_live.observed",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "baseline_hash": "5b7503b52846d2a14ea848ee298740015b210427f6580f0e72c94c8713b52c82",
+        "baseline_ref": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r11-builder\\proving\\repos\\baseline",
+        "cycle_id": "r11-cycle-01",
+        "observation": "Baseline behavior probe fails 4/4 checks"
+      },
+      "payload_hash": "dd534c97b5d50c396c5c29b5dbbb5f4e84251f6656945cb7b19704f2d68d5954",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.hypothesized-r11-cycle-01-29ad3a3a0e8f1643",
+      "event_type": "evolution_live.hypothesized",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "acceptance_criteria": [
+          "artifacts_hash_match",
+          "candidate_pytest_improves",
+          "behavior_no_regression"
+        ],
+        "authority_scope": {
+          "allowed_operations": [
+            "replace_file"
+          ],
+          "targets": [
+            "fixtures/micro_target/config/values.py"
+          ]
+        },
+        "budget": {
+          "capability_scope": [
+            "fixtures/micro_target"
+          ],
+          "max_cost_usd": 0.0
+        },
+        "candidate_id": "c1",
+        "cycle_id": "r11-cycle-01",
+        "frozen": true,
+        "hypothesis": "Enabling the already-wired config flags makes the real parsing/scoring behavior correct and measurable.",
+        "risk_class": "R1",
+        "surfaces": [
+          "fixtures/micro_target/config/values.py"
+        ]
+      },
+      "payload_hash": "29ad3a3a0e8f164300d0d3f1b95ac8646f2e02965ed5fed7cd53f0c06f2f0ebf",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.candidate_isolated-r11-cycle-01-5d471af7d809dda5",
+      "event_type": "evolution_live.candidate_isolated",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "artifact_hashes": {
+          "config/values.py": "abf2532671ddc74e3046788defa57385986e2e72dc432ab206b2e74cad0d24f4"
+        },
+        "candidate_id": "c1",
+        "cycle_id": "r11-cycle-01",
+        "isolation_clone_hash": "6fd1c22d8e85b77732345009f95c6a0f2b269edaf58313e30f526a77e0167693",
+        "patch_hash": "abf2532671ddc74e3046788defa57385986e2e72dc432ab206b2e74cad0d24f4"
+      },
+      "payload_hash": "5d471af7d809dda55fe7c6b8de6ca8d51f645b44bcbecc6a91573d8f1ffa5273",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.evaluated-r11-cycle-01-5b5cbcfdd7245428",
+      "event_type": "evolution_live.evaluated",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "baseline_metrics": {
+          "behavior_passed": 0,
+          "behavior_total": 4,
+          "probe": {
+            "checks": {
+              "pipeline_dedupe": false,
+              "pipeline_none_safe": false,
+              "score_non_negative": false,
+              "split_clean": false
+            },
+            "passed": 0,
+            "total": 4
+          },
+          "probe_exit_code": 0,
+          "pytest_exit_code": 1,
+          "pytest_failed": 6,
+          "pytest_passed": 2
+        },
+        "candidate_id": "c1",
+        "candidate_metrics": {
+          "behavior_passed": 2,
+          "behavior_total": 4,
+          "probe": {
+            "checks": {
+              "pipeline_dedupe": false,
+              "pipeline_none_safe": false,
+              "score_non_negative": true,
+              "split_clean": true
+            },
+            "passed": 2,
+            "total": 4
+          },
+          "probe_exit_code": 0,
+          "pytest_exit_code": 1,
+          "pytest_failed": 2,
+          "pytest_passed": 6
+        },
+        "cycle_id": "r11-cycle-01",
+        "delta": 4,
+        "guardrails_ok": true,
+        "improvement": true
+      },
+      "payload_hash": "5b5cbcfdd724542827d6ccdcbc3ea37d96b4da3c58d142acaf5dbb2726d66f0b",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.independently_verified-r11-cycle-01-d8cd4d646697620a",
+      "event_type": "evolution_live.independently_verified",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "candidate_id": "c1",
+        "cycle_id": "r11-cycle-01",
+        "evidence_refs": [
+          "verification\\r11-cycle-01\\verdict.json"
+        ],
+        "verdict": "PASS",
+        "verification_request_hash": "70760bee6c7a1667b921f4f75594abe264e0b0e21ddc009cbd3bf7596be1640c",
+        "verifier_id": "r11-fresh-verifier-30b64a1a41"
+      },
+      "payload_hash": "d8cd4d646697620a03d34fe87564072deb35d7859b819289365f10d207b3d861",
+      "source_id": "r11-fresh-verifier-30b64a1a41",
+      "source_type": "independent_verifier"
+    },
+    {
+      "event_id": "r11-evolution_live.shadowed-r11-cycle-01-35083a678dfaa999",
+      "event_type": "evolution_live.shadowed",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "candidate_id": "c1",
+        "cycle_id": "r11-cycle-01",
+        "shadow_checks": {
+          "behavior_passed": 2,
+          "behavior_total": 4,
+          "probe": {
+            "checks": {
+              "pipeline_dedupe": false,
+              "pipeline_none_safe": false,
+              "score_non_negative": true,
+              "split_clean": true
+            },
+            "passed": 2,
+            "total": 4
+          },
+          "probe_exit_code": 0,
+          "pytest_exit_code": 1,
+          "pytest_failed": 2,
+          "pytest_passed": 6
+        },
+        "shadow_hash": "27b45024ddcd6aef72949d97c3213adb1729a614400020ac6506b90b60c40cbd"
+      },
+      "payload_hash": "35083a678dfaa99911d234a72a6754443947da9b9dd044563e984b476d3280d8",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.canary_ready-r11-cycle-01-27458d19fc32836e",
+      "event_type": "evolution_live.canary_ready",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "canary_checks": {
+          "behavior_passed": 2,
+          "behavior_total": 4,
+          "probe": {
+            "checks": {
+              "pipeline_dedupe": false,
+              "pipeline_none_safe": false,
+              "score_non_negative": true,
+              "split_clean": true
+            },
+            "passed": 2,
+            "total": 4
+          },
+          "probe_exit_code": 0,
+          "pytest_exit_code": 1,
+          "pytest_failed": 2,
+          "pytest_passed": 6
+        },
+        "canary_hash": "27b45024ddcd6aef72949d97c3213adb1729a614400020ac6506b90b60c40cbd",
+        "candidate_id": "c1",
+        "cycle_id": "r11-cycle-01",
+        "ready": true
+      },
+      "payload_hash": "27458d19fc32836e3ea0373a13a640f4149fe79be7a1310cb0173cb637dd4109",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.promoted-r11-cycle-01-e9af3b838e6c061f",
+      "event_type": "evolution_live.promoted",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "artifact_hashes": {
+          "config/values.py": "abf2532671ddc74e3046788defa57385986e2e72dc432ab206b2e74cad0d24f4"
+        },
+        "candidate_id": "c1",
+        "cycle_id": "r11-cycle-01",
+        "live_after_hash": "f438d56017701096b5203ad81b6f8547351780f7633c02da35a65abb4cce0854",
+        "live_before_hash": "602e35a92eec4bc0a2ec6ae113f07bfc6933322fb69fe8dee416e5a67217e2a2",
+        "outcome_after": {
+          "behavior_passed": 2,
+          "behavior_total": 4,
+          "probe": {
+            "checks": {
+              "pipeline_dedupe": false,
+              "pipeline_none_safe": false,
+              "score_non_negative": true,
+              "split_clean": true
+            },
+            "passed": 2,
+            "total": 4
+          },
+          "probe_exit_code": 0,
+          "pytest_exit_code": 1,
+          "pytest_failed": 2,
+          "pytest_passed": 6
+        },
+        "outcome_before": {
+          "behavior_passed": 0,
+          "behavior_total": 4,
+          "probe": {
+            "checks": {
+              "pipeline_dedupe": false,
+              "pipeline_none_safe": false,
+              "score_non_negative": false,
+              "split_clean": false
+            },
+            "passed": 0,
+            "total": 4
+          },
+          "probe_exit_code": 0,
+          "pytest_exit_code": 1,
+          "pytest_failed": 6,
+          "pytest_passed": 2
+        },
+        "release_id": "release-r11-cycle-01-candidate"
+      },
+      "payload_hash": "e9af3b838e6c061f5277d6b18b27af5d2aa8993a07a5c4a4fe13c61da0637c5c",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.outcome_measured-r11-cycle-01-d796f59b4c07fef4",
+      "event_type": "evolution_live.outcome_measured",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "candidate_id": "c1",
+        "cycle_id": "r11-cycle-01",
+        "delta": 4,
+        "outcome": "promoted",
+        "outcome_after": {
+          "behavior_passed": 2,
+          "behavior_total": 4,
+          "probe": {
+            "checks": {
+              "pipeline_dedupe": false,
+              "pipeline_none_safe": false,
+              "score_non_negative": true,
+              "split_clean": true
+            },
+            "passed": 2,
+            "total": 4
+          },
+          "probe_exit_code": 0,
+          "pytest_exit_code": 1,
+          "pytest_failed": 2,
+          "pytest_passed": 6
+        },
+        "outcome_before": {
+          "behavior_passed": 0,
+          "behavior_total": 4,
+          "probe": {
+            "checks": {
+              "pipeline_dedupe": false,
+              "pipeline_none_safe": false,
+              "score_non_negative": false,
+              "split_clean": false
+            },
+            "passed": 0,
+            "total": 4
+          },
+          "probe_exit_code": 0,
+          "pytest_exit_code": 1,
+          "pytest_failed": 6,
+          "pytest_passed": 2
+        }
+      },
+      "payload_hash": "d796f59b4c07fef43e9ddd84d1e01a601f0e65977da74ab8c60df9a8e5a11e40",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.learned-r11-cycle-01-5c3d49771411caa8",
+      "event_type": "evolution_live.learned",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "candidate_id": "c1",
+        "cycle_id": "r11-cycle-01",
+        "insight": "Real candidate improved measured behavior; promotion is reversible via the prior baseline release.",
+        "next_action": "Measure outcome in the promoted release, then continue cadence."
+      },
+      "payload_hash": "5c3d49771411caa8fb7fe453cd77a2768465b17f73f1cb91b5e170e965177a29",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.observed-r11-cycle-02-da3a87c5f5672e2f",
+      "event_type": "evolution_live.observed",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "baseline_hash": "f82bf0c46fa91d5c41425bc2da208fdff99fcfe6eeebda767dac5d1f04d58efa",
+        "baseline_ref": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r11-builder\\proving\\repos\\baseline",
+        "cycle_id": "r11-cycle-02",
+        "observation": "Pipeline keeps duplicates and crashes on None"
+      },
+      "payload_hash": "da3a87c5f5672e2fedec33461892a743f06a9580cc71cb01f27746ea3dcdb643",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.hypothesized-r11-cycle-02-4dbc82864facdaa5",
+      "event_type": "evolution_live.hypothesized",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "acceptance_criteria": [
+          "artifacts_hash_match",
+          "candidate_pytest_improves",
+          "behavior_no_regression"
+        ],
+        "authority_scope": {
+          "allowed_operations": [
+            "replace_file"
+          ],
+          "targets": [
+            "fixtures/micro_target/workflow.py"
+          ]
+        },
+        "budget": {
+          "capability_scope": [
+            "fixtures/micro_target"
+          ],
+          "max_cost_usd": 0.0
+        },
+        "candidate_id": "c2",
+        "cycle_id": "r11-cycle-02",
+        "frozen": true,
+        "hypothesis": "Pipeline workflow should deduplicate records and tolerate None entries without changing ordering semantics.",
+        "risk_class": "R2",
+        "surfaces": [
+          "fixtures/micro_target/workflow.py"
+        ]
+      },
+      "payload_hash": "4dbc82864facdaa561ab42b9f5507639c1231ab5da24b2b1148981db350f1646",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.candidate_isolated-r11-cycle-02-1323e0ff914d1c80",
+      "event_type": "evolution_live.candidate_isolated",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "artifact_hashes": {
+          "workflow.py": "0842c9a1eafa9002a4ce08ce191620d58cd1719894ed7586ea2486be5f07accf"
+        },
+        "candidate_id": "c2",
+        "cycle_id": "r11-cycle-02",
+        "isolation_clone_hash": "acd11f63c64fb98c70206b1ebef13ecc9dcfe39807e1e203d20ce9f0a6f19235",
+        "patch_hash": "0842c9a1eafa9002a4ce08ce191620d58cd1719894ed7586ea2486be5f07accf"
+      },
+      "payload_hash": "1323e0ff914d1c805ffdeb5d80b0bc45288ff439a4e5c893f7cfbf7ae88415b5",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.evaluated-r11-cycle-02-9ef077be067b44a3",
+      "event_type": "evolution_live.evaluated",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "baseline_metrics": {
+          "behavior_passed": 0,
+          "behavior_total": 4,
+          "probe": {
+            "checks": {
+              "pipeline_dedupe": false,
+              "pipeline_none_safe": false,
+              "score_non_negative": false,
+              "split_clean": false
+            },
+            "passed": 0,
+            "total": 4
+          },
+          "probe_exit_code": 0,
+          "pytest_exit_code": 1,
+          "pytest_failed": 6,
+          "pytest_passed": 2
+        },
+        "candidate_id": "c2",
+        "candidate_metrics": {
+          "behavior_passed": 2,
+          "behavior_total": 4,
+          "probe": {
+            "checks": {
+              "pipeline_dedupe": true,
+              "pipeline_none_safe": true,
+              "score_non_negative": false,
+              "split_clean": false
+            },
+            "passed": 2,
+            "total": 4
+          },
+          "probe_exit_code": 0,
+          "pytest_exit_code": 1,
+          "pytest_failed": 4,
+          "pytest_passed": 4
+        },
+        "cycle_id": "r11-cycle-02",
+        "delta": 2,
+        "guardrails_ok": true,
+        "improvement": true
+      },
+      "payload_hash": "9ef077be067b44a3394b5c46d5bca0579a60a4af8b498afaefe7d1f20510a6a7",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.independently_verified-r11-cycle-02-a8c6c17368f27951",
+      "event_type": "evolution_live.independently_verified",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "candidate_id": "c2",
+        "cycle_id": "r11-cycle-02",
+        "evidence_refs": [
+          "verification\\r11-cycle-02\\verdict.json"
+        ],
+        "verdict": "PASS",
+        "verification_request_hash": "2b64d541ce08adc3ddcc9c8e5a9221772b3ce38aed38498858acf33e4084f168",
+        "verifier_id": "r11-fresh-verifier-71a29b6454"
+      },
+      "payload_hash": "a8c6c17368f27951af876bb9b8b2ce8b2e066fc3b004f49b6da2c2e6a42f469d",
+      "source_id": "r11-fresh-verifier-71a29b6454",
+      "source_type": "independent_verifier"
+    },
+    {
+      "event_id": "r11-evolution_live.shadowed-r11-cycle-02-846a109d55f2544a",
+      "event_type": "evolution_live.shadowed",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "candidate_id": "c2",
+        "cycle_id": "r11-cycle-02",
+        "shadow_checks": {
+          "behavior_passed": 2,
+          "behavior_total": 4,
+          "probe": {
+            "checks": {
+              "pipeline_dedupe": true,
+              "pipeline_none_safe": true,
+              "score_non_negative": false,
+              "split_clean": false
+            },
+            "passed": 2,
+            "total": 4
+          },
+          "probe_exit_code": 0,
+          "pytest_exit_code": 1,
+          "pytest_failed": 4,
+          "pytest_passed": 4
+        },
+        "shadow_hash": "f2d648355b446af1af014c87890b61e62eba84e9af07648796baea982239ef7d"
+      },
+      "payload_hash": "846a109d55f2544a39e98aae88b961f268450800f928fe95e662bf456a3c7b32",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.canary_ready-r11-cycle-02-e55a538b00772ddb",
+      "event_type": "evolution_live.canary_ready",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "canary_checks": {
+          "behavior_passed": 2,
+          "behavior_total": 4,
+          "probe": {
+            "checks": {
+              "pipeline_dedupe": true,
+              "pipeline_none_safe": true,
+              "score_non_negative": false,
+              "split_clean": false
+            },
+            "passed": 2,
+            "total": 4
+          },
+          "probe_exit_code": 0,
+          "pytest_exit_code": 1,
+          "pytest_failed": 4,
+          "pytest_passed": 4
+        },
+        "canary_hash": "f2d648355b446af1af014c87890b61e62eba84e9af07648796baea982239ef7d",
+        "candidate_id": "c2",
+        "cycle_id": "r11-cycle-02",
+        "ready": true
+      },
+      "payload_hash": "e55a538b00772ddb5070d6cf20dafb04c75242f5bfa84a6c711725155d24c845",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.promoted-r11-cycle-02-0ff037e9fbb07ad4",
+      "event_type": "evolution_live.promoted",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "artifact_hashes": {
+          "workflow.py": "0842c9a1eafa9002a4ce08ce191620d58cd1719894ed7586ea2486be5f07accf"
+        },
+        "candidate_id": "c2",
+        "cycle_id": "r11-cycle-02",
+        "live_after_hash": "fb8758f7921ebc361f3032bc47bfd1bcf36305c94e9db499990d97c5e1f5104f",
+        "live_before_hash": "f438d56017701096b5203ad81b6f8547351780f7633c02da35a65abb4cce0854",
+        "outcome_after": {
+          "behavior_passed": 2,
+          "behavior_total": 4,
+          "probe": {
+            "checks": {
+              "pipeline_dedupe": true,
+              "pipeline_none_safe": true,
+              "score_non_negative": false,
+              "split_clean": false
+            },
+            "passed": 2,
+            "total": 4
+          },
+          "probe_exit_code": 0,
+          "pytest_exit_code": 1,
+          "pytest_failed": 4,
+          "pytest_passed": 4
+        },
+        "outcome_before": {
+          "behavior_passed": 0,
+          "behavior_total": 4,
+          "probe": {
+            "checks": {
+              "pipeline_dedupe": false,
+              "pipeline_none_safe": false,
+              "score_non_negative": false,
+              "split_clean": false
+            },
+            "passed": 0,
+            "total": 4
+          },
+          "probe_exit_code": 0,
+          "pytest_exit_code": 1,
+          "pytest_failed": 6,
+          "pytest_passed": 2
+        },
+        "release_id": "release-r11-cycle-02-candidate"
+      },
+      "payload_hash": "0ff037e9fbb07ad4ac731b3462ea25e0ef33354bf398c5bfd4f763b6739879bc",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.outcome_measured-r11-cycle-02-12bdcfebba60a192",
+      "event_type": "evolution_live.outcome_measured",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "candidate_id": "c2",
+        "cycle_id": "r11-cycle-02",
+        "delta": 2,
+        "outcome": "promoted",
+        "outcome_after": {
+          "behavior_passed": 2,
+          "behavior_total": 4,
+          "probe": {
+            "checks": {
+              "pipeline_dedupe": true,
+              "pipeline_none_safe": true,
+              "score_non_negative": false,
+              "split_clean": false
+            },
+            "passed": 2,
+            "total": 4
+          },
+          "probe_exit_code": 0,
+          "pytest_exit_code": 1,
+          "pytest_failed": 4,
+          "pytest_passed": 4
+        },
+        "outcome_before": {
+          "behavior_passed": 0,
+          "behavior_total": 4,
+          "probe": {
+            "checks": {
+              "pipeline_dedupe": false,
+              "pipeline_none_safe": false,
+              "score_non_negative": false,
+              "split_clean": false
+            },
+            "passed": 0,
+            "total": 4
+          },
+          "probe_exit_code": 0,
+          "pytest_exit_code": 1,
+          "pytest_failed": 6,
+          "pytest_passed": 2
+        }
+      },
+      "payload_hash": "12bdcfebba60a1927dd8be5259c45dc7a56537873b2422adcc131a3722702a7a",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.learned-r11-cycle-02-375a546682d50e47",
+      "event_type": "evolution_live.learned",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "candidate_id": "c2",
+        "cycle_id": "r11-cycle-02",
+        "insight": "Real candidate improved measured behavior; promotion is reversible via the prior baseline release.",
+        "next_action": "Measure outcome in the promoted release, then continue cadence."
+      },
+      "payload_hash": "375a546682d50e4771d6d3537faf63781b3cabbc0263db36e1e5ea7d4cb5787c",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.observed-r11-cycle-03-a36d96507d5372a9",
+      "event_type": "evolution_live.observed",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "baseline_hash": "f82bf0c46fa91d5c41425bc2da208fdff99fcfe6eeebda767dac5d1f04d58efa",
+        "baseline_ref": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r11-builder\\proving\\repos\\baseline",
+        "cycle_id": "r11-cycle-03",
+        "observation": "No useful improvement; rejection probe"
+      },
+      "payload_hash": "a36d96507d5372a97dc754396ec0f0647d690c4a61f003f24c026181f68cba48",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.hypothesized-r11-cycle-03-efed23268a4d1505",
+      "event_type": "evolution_live.hypothesized",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "acceptance_criteria": [
+          "artifacts_hash_match",
+          "candidate_pytest_improves",
+          "behavior_no_regression"
+        ],
+        "authority_scope": {
+          "allowed_operations": [
+            "replace_file"
+          ],
+          "targets": [
+            "fixtures/micro_target/core.py"
+          ]
+        },
+        "budget": {
+          "capability_scope": [
+            "fixtures/micro_target"
+          ],
+          "max_cost_usd": 0.0
+        },
+        "candidate_id": "c3",
+        "cycle_id": "r11-cycle-03",
+        "frozen": true,
+        "hypothesis": "A deliberately broken core candidate that must be rejected and preserved in failed history.",
+        "risk_class": "R3",
+        "surfaces": [
+          "fixtures/micro_target/core.py"
+        ]
+      },
+      "payload_hash": "efed23268a4d1505b0474f74f885ff3741d8dbb8ef61dd594d661d99c473de4f",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.candidate_isolated-r11-cycle-03-cf23e61595d85567",
+      "event_type": "evolution_live.candidate_isolated",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "artifact_hashes": {
+          "core.py": "c0f91f4815468082d610ee771b03c83146ae75f8b5179a38d2418d9e10b3d592"
+        },
+        "candidate_id": "c3",
+        "cycle_id": "r11-cycle-03",
+        "isolation_clone_hash": "a3930c9234f5d5209e8042ef6a2b520e6bd7c7da850ec2b98df2cae2194dd529",
+        "patch_hash": "c0f91f4815468082d610ee771b03c83146ae75f8b5179a38d2418d9e10b3d592"
+      },
+      "payload_hash": "cf23e61595d85567e5725b61050a3d65819b5e9dd03bf4702750d8b6bb087cef",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.evaluated-r11-cycle-03-62585ebfd40e3efb",
+      "event_type": "evolution_live.evaluated",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "baseline_metrics": {
+          "behavior_passed": 0,
+          "behavior_total": 4,
+          "probe": {
+            "checks": {
+              "pipeline_dedupe": false,
+              "pipeline_none_safe": false,
+              "score_non_negative": false,
+              "split_clean": false
+            },
+            "passed": 0,
+            "total": 4
+          },
+          "probe_exit_code": 0,
+          "pytest_exit_code": 1,
+          "pytest_failed": 6,
+          "pytest_passed": 2
+        },
+        "candidate_id": "c3",
+        "candidate_metrics": {
+          "behavior_passed": 0,
+          "behavior_total": 0,
+          "probe": {
+            "checks": {},
+            "passed": 0,
+            "total": 0
+          },
+          "probe_exit_code": 1,
+          "pytest_exit_code": 1,
+          "pytest_failed": 6,
+          "pytest_passed": 2
+        },
+        "cycle_id": "r11-cycle-03",
+        "delta": 0,
+        "guardrails_ok": true,
+        "improvement": false
+      },
+      "payload_hash": "62585ebfd40e3efb9b498967678cdf6a478477f54d76ecc12d7af8703c889f77",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.independently_verified-r11-cycle-03-e36dfcf35bd6e43e",
+      "event_type": "evolution_live.independently_verified",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "candidate_id": "c3",
+        "cycle_id": "r11-cycle-03",
+        "evidence_refs": [
+          "verification\\r11-cycle-03\\verdict.json"
+        ],
+        "verdict": "FAIL",
+        "verification_request_hash": "0f143721c34edb03df09d0fbc25ce6bdeeef026687857de3fc6831a1d6dee76b",
+        "verifier_id": "r11-fresh-verifier-c50b116ccf"
+      },
+      "payload_hash": "e36dfcf35bd6e43ebddfbcddf81d128afd102496a75aeda307a3bed757978efe",
+      "source_id": "r11-fresh-verifier-c50b116ccf",
+      "source_type": "independent_verifier"
+    },
+    {
+      "event_id": "r11-evolution_live.rejected-r11-cycle-03-63b0b651ad9a0253",
+      "event_type": "evolution_live.rejected",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "candidate_id": "c3",
+        "cycle_id": "r11-cycle-03",
+        "failed_history_ref": "failed_history/r11-cycle-03",
+        "failure_hash": "80d9efd41c4a80988c4311fdcc486686fc1c5434481ea16ef59dc5f225a360eb",
+        "reason": "candidate did not improve real measured behavior"
+      },
+      "payload_hash": "63b0b651ad9a0253680d4304d1c18108bd77e9f21171a5c95d44cfeaada2214f",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.outcome_measured-r11-cycle-03-5569e7ea1681834a",
+      "event_type": "evolution_live.outcome_measured",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "candidate_id": "c3",
+        "cycle_id": "r11-cycle-03",
+        "delta": 0,
+        "outcome": "rejected",
+        "outcome_after": {
+          "behavior_passed": 0,
+          "behavior_total": 0,
+          "probe": {
+            "checks": {},
+            "passed": 0,
+            "total": 0
+          },
+          "probe_exit_code": 1,
+          "pytest_exit_code": 1,
+          "pytest_failed": 6,
+          "pytest_passed": 2
+        },
+        "outcome_before": {
+          "behavior_passed": 0,
+          "behavior_total": 4,
+          "probe": {
+            "checks": {
+              "pipeline_dedupe": false,
+              "pipeline_none_safe": false,
+              "score_non_negative": false,
+              "split_clean": false
+            },
+            "passed": 0,
+            "total": 4
+          },
+          "probe_exit_code": 0,
+          "pytest_exit_code": 1,
+          "pytest_failed": 6,
+          "pytest_passed": 2
+        }
+      },
+      "payload_hash": "5569e7ea1681834a04e5713269fdbf7964d102a829a421fd35450ec19109c4b3",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.learned-r11-cycle-03-05c92a419f7b53b1",
+      "event_type": "evolution_live.learned",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "candidate_id": "c3",
+        "cycle_id": "r11-cycle-03",
+        "insight": "Rejected: candidate did not improve real measured behavior",
+        "next_action": "Failed history is preserved; no retry in this cadence."
+      },
+      "payload_hash": "05c92a419f7b53b18420bd10901b3211db25c79101955449082bde02162123b3",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.observed-r11-cycle-restart-5d73c619a80773dc",
+      "event_type": "evolution_live.observed",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "baseline_hash": "f82bf0c46fa91d5c41425bc2da208fdff99fcfe6eeebda767dac5d1f04d58efa",
+        "baseline_ref": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r11-builder\\proving\\repos\\baseline",
+        "cycle_id": "r11-cycle-restart",
+        "observation": "Restart-safe cadence probe"
+      },
+      "payload_hash": "5d73c619a80773dc03fe1b408f0e69b7a673bed9e03316a70cab54c208b9c348",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.hypothesized-r11-cycle-restart-526460ca195fe130",
+      "event_type": "evolution_live.hypothesized",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "acceptance_criteria": [
+          "artifacts_hash_match",
+          "candidate_pytest_improves",
+          "behavior_no_regression"
+        ],
+        "authority_scope": {
+          "allowed_operations": [
+            "replace_file"
+          ],
+          "targets": [
+            "fixtures/micro_target/config/values.py"
+          ]
+        },
+        "budget": {
+          "capability_scope": [
+            "fixtures/micro_target"
+          ],
+          "max_cost_usd": 0.0
+        },
+        "candidate_id": "c4",
+        "cycle_id": "r11-cycle-restart",
+        "frozen": true,
+        "hypothesis": "Restart-safety cycle: the same real config candidate must resume without duplicate effects after a simulated restart.",
+        "risk_class": "R1",
+        "surfaces": [
+          "fixtures/micro_target/config/values.py"
+        ]
+      },
+      "payload_hash": "526460ca195fe130927647a1ca958082135fc8c89e189838da9e5c8ef8cc4e46",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.candidate_isolated-r11-cycle-restart-e0c78c635f1afd62",
+      "event_type": "evolution_live.candidate_isolated",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "artifact_hashes": {
+          "config/values.py": "abf2532671ddc74e3046788defa57385986e2e72dc432ab206b2e74cad0d24f4"
+        },
+        "candidate_id": "c4",
+        "cycle_id": "r11-cycle-restart",
+        "isolation_clone_hash": "6fd1c22d8e85b77732345009f95c6a0f2b269edaf58313e30f526a77e0167693",
+        "patch_hash": "abf2532671ddc74e3046788defa57385986e2e72dc432ab206b2e74cad0d24f4"
+      },
+      "payload_hash": "e0c78c635f1afd62747c274336b0ebefbb0e20afc1abe1e2826b8fd7989273f7",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.evaluated-r11-cycle-restart-cfa5094a2110218c",
+      "event_type": "evolution_live.evaluated",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "baseline_metrics": {
+          "behavior_passed": 0,
+          "behavior_total": 4,
+          "probe": {
+            "checks": {
+              "pipeline_dedupe": false,
+              "pipeline_none_safe": false,
+              "score_non_negative": false,
+              "split_clean": false
+            },
+            "passed": 0,
+            "total": 4
+          },
+          "probe_exit_code": 0,
+          "pytest_exit_code": 1,
+          "pytest_failed": 6,
+          "pytest_passed": 2
+        },
+        "candidate_id": "c4",
+        "candidate_metrics": {
+          "behavior_passed": 2,
+          "behavior_total": 4,
+          "probe": {
+            "checks": {
+              "pipeline_dedupe": false,
+              "pipeline_none_safe": false,
+              "score_non_negative": true,
+              "split_clean": true
+            },
+            "passed": 2,
+            "total": 4
+          },
+          "probe_exit_code": 0,
+          "pytest_exit_code": 1,
+          "pytest_failed": 2,
+          "pytest_passed": 6
+        },
+        "cycle_id": "r11-cycle-restart",
+        "delta": 4,
+        "guardrails_ok": true,
+        "improvement": true
+      },
+      "payload_hash": "cfa5094a2110218cede7ea6f6fd73b6471c5f441662b925d776c0a308724dcca",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.independently_verified-r11-cycle-restart-ae37faa3dc7dd260",
+      "event_type": "evolution_live.independently_verified",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "candidate_id": "c4",
+        "cycle_id": "r11-cycle-restart",
+        "evidence_refs": [
+          "verification\\r11-cycle-restart\\verdict.json"
+        ],
+        "verdict": "PASS",
+        "verification_request_hash": "88cceb01c2b2fc66db919fd234eb648afc1a25ee01b7c3d57d11f55f1a07d38a",
+        "verifier_id": "r11-fresh-verifier-a8af041e7c"
+      },
+      "payload_hash": "ae37faa3dc7dd260d1d32be23591ccee13f3e475b7e829bf6d95fe100bceed74",
+      "source_id": "r11-fresh-verifier-a8af041e7c",
+      "source_type": "independent_verifier"
+    },
+    {
+      "event_id": "r11-evolution_live.shadowed-r11-cycle-restart-1e9c2baba411648c",
+      "event_type": "evolution_live.shadowed",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "candidate_id": "c4",
+        "cycle_id": "r11-cycle-restart",
+        "shadow_checks": {
+          "behavior_passed": 2,
+          "behavior_total": 4,
+          "probe": {
+            "checks": {
+              "pipeline_dedupe": false,
+              "pipeline_none_safe": false,
+              "score_non_negative": true,
+              "split_clean": true
+            },
+            "passed": 2,
+            "total": 4
+          },
+          "probe_exit_code": 0,
+          "pytest_exit_code": 1,
+          "pytest_failed": 2,
+          "pytest_passed": 6
+        },
+        "shadow_hash": "27b45024ddcd6aef72949d97c3213adb1729a614400020ac6506b90b60c40cbd"
+      },
+      "payload_hash": "1e9c2baba411648ca6c0ac5912cdf26806b2a3132cbaf9737497d7222ee67f86",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.canary_ready-r11-cycle-restart-31b2eb8dd4c88bd0",
+      "event_type": "evolution_live.canary_ready",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "canary_checks": {
+          "behavior_passed": 2,
+          "behavior_total": 4,
+          "probe": {
+            "checks": {
+              "pipeline_dedupe": false,
+              "pipeline_none_safe": false,
+              "score_non_negative": true,
+              "split_clean": true
+            },
+            "passed": 2,
+            "total": 4
+          },
+          "probe_exit_code": 0,
+          "pytest_exit_code": 1,
+          "pytest_failed": 2,
+          "pytest_passed": 6
+        },
+        "canary_hash": "27b45024ddcd6aef72949d97c3213adb1729a614400020ac6506b90b60c40cbd",
+        "candidate_id": "c4",
+        "cycle_id": "r11-cycle-restart",
+        "ready": true
+      },
+      "payload_hash": "31b2eb8dd4c88bd0ffb0dc0030646dc1a14eb8a9fbbf9470f8c9f488ca1aae76",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.promoted-r11-cycle-restart-1d38d2342021f992",
+      "event_type": "evolution_live.promoted",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "artifact_hashes": {
+          "config/values.py": "abf2532671ddc74e3046788defa57385986e2e72dc432ab206b2e74cad0d24f4"
+        },
+        "candidate_id": "c4",
+        "cycle_id": "r11-cycle-restart",
+        "live_after_hash": "f438d56017701096b5203ad81b6f8547351780f7633c02da35a65abb4cce0854",
+        "live_before_hash": "fb8758f7921ebc361f3032bc47bfd1bcf36305c94e9db499990d97c5e1f5104f",
+        "outcome_after": {
+          "behavior_passed": 2,
+          "behavior_total": 4,
+          "probe": {
+            "checks": {
+              "pipeline_dedupe": false,
+              "pipeline_none_safe": false,
+              "score_non_negative": true,
+              "split_clean": true
+            },
+            "passed": 2,
+            "total": 4
+          },
+          "probe_exit_code": 0,
+          "pytest_exit_code": 1,
+          "pytest_failed": 2,
+          "pytest_passed": 6
+        },
+        "outcome_before": {
+          "behavior_passed": 0,
+          "behavior_total": 4,
+          "probe": {
+            "checks": {
+              "pipeline_dedupe": false,
+              "pipeline_none_safe": false,
+              "score_non_negative": false,
+              "split_clean": false
+            },
+            "passed": 0,
+            "total": 4
+          },
+          "probe_exit_code": 0,
+          "pytest_exit_code": 1,
+          "pytest_failed": 6,
+          "pytest_passed": 2
+        },
+        "release_id": "release-r11-cycle-restart-candidate"
+      },
+      "payload_hash": "1d38d2342021f99253f41a054a14d2c3321707ac8f6b22dc7b47adacca49e10a",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.outcome_measured-r11-cycle-restart-88b552665c996199",
+      "event_type": "evolution_live.outcome_measured",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "candidate_id": "c4",
+        "cycle_id": "r11-cycle-restart",
+        "delta": 4,
+        "outcome": "promoted",
+        "outcome_after": {
+          "behavior_passed": 2,
+          "behavior_total": 4,
+          "probe": {
+            "checks": {
+              "pipeline_dedupe": false,
+              "pipeline_none_safe": false,
+              "score_non_negative": true,
+              "split_clean": true
+            },
+            "passed": 2,
+            "total": 4
+          },
+          "probe_exit_code": 0,
+          "pytest_exit_code": 1,
+          "pytest_failed": 2,
+          "pytest_passed": 6
+        },
+        "outcome_before": {
+          "behavior_passed": 0,
+          "behavior_total": 4,
+          "probe": {
+            "checks": {
+              "pipeline_dedupe": false,
+              "pipeline_none_safe": false,
+              "score_non_negative": false,
+              "split_clean": false
+            },
+            "passed": 0,
+            "total": 4
+          },
+          "probe_exit_code": 0,
+          "pytest_exit_code": 1,
+          "pytest_failed": 6,
+          "pytest_passed": 2
+        }
+      },
+      "payload_hash": "88b552665c996199e81de033969762d2d0e9b0fd02ecf5c48afe9e50437757d3",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.learned-r11-cycle-restart-7a9a2f3036a854d7",
+      "event_type": "evolution_live.learned",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "candidate_id": "c4",
+        "cycle_id": "r11-cycle-restart",
+        "insight": "Real candidate improved measured behavior; promotion is reversible via the prior baseline release.",
+        "next_action": "Measure outcome in the promoted release, then continue cadence."
+      },
+      "payload_hash": "7a9a2f3036a854d75cddb494cfcfa524715149eaa57e5f611d1f0f3cb13b7b1b",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.rolled_back-r11-cycle-01-365262d06309c8fc",
+      "event_type": "evolution_live.rolled_back",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "after_hash": "f82bf0c46fa91d5c41425bc2da208fdff99fcfe6eeebda767dac5d1f04d58efa",
+        "before_hash": "f438d56017701096b5203ad81b6f8547351780f7633c02da35a65abb4cce0854",
+        "candidate_id": "c1",
+        "cycle_id": "r11-cycle-01",
+        "prior_release_id": "release-r11-cycle-01-baseline",
+        "release_id": "release-r11-cycle-01-candidate"
+      },
+      "payload_hash": "365262d06309c8fc024f532f6949e6eae8819d789541f91ac2875237cb204379",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.restored-r11-cycle-01-dd5f55369419feaf",
+      "event_type": "evolution_live.restored",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "after_hash": "f438d56017701096b5203ad81b6f8547351780f7633c02da35a65abb4cce0854",
+        "before_hash": "f82bf0c46fa91d5c41425bc2da208fdff99fcfe6eeebda767dac5d1f04d58efa",
+        "candidate_id": "c1",
+        "cycle_id": "r11-cycle-01",
+        "release_id": "release-r11-cycle-01-candidate"
+      },
+      "payload_hash": "dd5f55369419feaf8c779bb9f589c8d975f1b512c6c915c75f29739d64835b82",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    },
+    {
+      "event_id": "r11-evolution_live.waiting-r11-after-real-cycles-43718b473773b344",
+      "event_type": "evolution_live.waiting",
+      "occurred_at": "2026-08-16T18:00:00Z",
+      "payload": {
+        "cadence_key": "r11-after-real-cycles",
+        "next_action": "Stand by for the next owner-directed opportunity; no busy-work.",
+        "reason": "No new useful improvement candidate exists after four real cycles; all bounded improvements are promoted or preserved in failed history."
+      },
+      "payload_hash": "43718b473773b34495a7f91c17d464a98f19856c4e1262ccd071445ebfd5cb59",
+      "source_id": "r11",
+      "source_type": "supervisor"
+    }
+  ],
+  "evidence_utc": "2026-08-16T18:00:00Z",
+  "head_hash": "90e5e50b30c848d3a6643a282ca897661f2b68b1d73f72d09c80681c530ec199",
+  "schema": "jarvis-r11-lifecycle-events-v1"
+}

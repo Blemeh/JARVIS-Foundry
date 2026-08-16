@@ -1,0 +1,50 @@
+{
+  "checks": {
+    "at_least_1_bounded_r2_promotion": true,
+    "at_least_1_r1_promotion": true,
+    "at_least_2_measured_promotions": true,
+    "every_promotion_measured_before_after": true,
+    "promotions_independently_verified": true,
+    "rollback_restore_evidence_present": true
+  },
+  "evidence": [
+    "R11_CYCLES.json",
+    "R11_ROLLBACK.json"
+  ],
+  "evidence_utc": "2026-08-16T18:00:00Z",
+  "exit_code": 0,
+  "passed": true,
+  "promoted_cycles": [
+    {
+      "baseline_pytest_passed": 2,
+      "candidate_pytest_passed": 6,
+      "cycle_id": "r11-cycle-01",
+      "live_outcome_pytest_passed": 6,
+      "risk_class": "R1",
+      "verdict": "PASS"
+    },
+    {
+      "baseline_pytest_passed": 2,
+      "candidate_pytest_passed": 4,
+      "cycle_id": "r11-cycle-02",
+      "live_outcome_pytest_passed": 4,
+      "risk_class": "R2",
+      "verdict": "PASS"
+    },
+    {
+      "baseline_pytest_passed": 2,
+      "candidate_pytest_passed": 6,
+      "cycle_id": "r11-cycle-restart",
+      "live_outcome_pytest_passed": 6,
+      "risk_class": "R1",
+      "verdict": "PASS"
+    }
+  ],
+  "promotion_checks": {
+    "r11-cycle-01": true,
+    "r11-cycle-02": true,
+    "r11-cycle-restart": true
+  },
+  "schema": "jarvis-r11-g02-promotions-v1",
+  "wall_seconds": 0.002
+}

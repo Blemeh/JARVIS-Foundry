@@ -1,0 +1,166 @@
+{
+  "cycle": {
+    "baseline_metrics": {
+      "behavior_passed": 0,
+      "behavior_total": 4,
+      "probe": {
+        "checks": {
+          "pipeline_dedupe": false,
+          "pipeline_none_safe": false,
+          "score_non_negative": false,
+          "split_clean": false
+        },
+        "passed": 0,
+        "total": 4
+      },
+      "probe_exit_code": 0,
+      "pytest_exit_code": 1,
+      "pytest_failed": 6,
+      "pytest_passed": 2
+    },
+    "canary": {
+      "canary_hash": "27b45024ddcd6aef72949d97c3213adb1729a614400020ac6506b90b60c40cbd",
+      "checks": {
+        "behavior_passed": 2,
+        "behavior_total": 4,
+        "probe": {
+          "checks": {
+            "pipeline_dedupe": false,
+            "pipeline_none_safe": false,
+            "score_non_negative": true,
+            "split_clean": true
+          },
+          "passed": 2,
+          "total": 4
+        },
+        "probe_exit_code": 0,
+        "pytest_exit_code": 1,
+        "pytest_failed": 2,
+        "pytest_passed": 6
+      },
+      "ready": true
+    },
+    "candidate_id": "c1",
+    "candidate_metrics": {
+      "behavior_passed": 2,
+      "behavior_total": 4,
+      "probe": {
+        "checks": {
+          "pipeline_dedupe": false,
+          "pipeline_none_safe": false,
+          "score_non_negative": true,
+          "split_clean": true
+        },
+        "passed": 2,
+        "total": 4
+      },
+      "probe_exit_code": 0,
+      "pytest_exit_code": 1,
+      "pytest_failed": 2,
+      "pytest_passed": 6
+    },
+    "cycle_id": "r11-cycle-01",
+    "delta": 4,
+    "effects": [
+      {
+        "effect_id": "clone:r11-cycle-01",
+        "result_hash": "6fd1c22d8e85b77732345009f95c6a0f2b269edaf58313e30f526a77e0167693",
+        "status": "applied"
+      },
+      {
+        "effect_id": "shadow:r11-cycle-01",
+        "result_hash": "27b45024ddcd6aef72949d97c3213adb1729a614400020ac6506b90b60c40cbd",
+        "status": "applied"
+      },
+      {
+        "effect_id": "canary:r11-cycle-01",
+        "result_hash": "27b45024ddcd6aef72949d97c3213adb1729a614400020ac6506b90b60c40cbd",
+        "status": "applied"
+      },
+      {
+        "effect_id": "baseline-release:r11-cycle-01",
+        "result_hash": "f82bf0c46fa91d5c41425bc2da208fdff99fcfe6eeebda767dac5d1f04d58efa",
+        "status": "applied"
+      },
+      {
+        "effect_id": "candidate-release:r11-cycle-01",
+        "result_hash": "f438d56017701096b5203ad81b6f8547351780f7633c02da35a65abb4cce0854",
+        "status": "applied"
+      },
+      {
+        "effect_id": "promote-live:r11-cycle-01",
+        "result_hash": "f438d56017701096b5203ad81b6f8547351780f7633c02da35a65abb4cce0854",
+        "status": "applied"
+      }
+    ],
+    "improvement": true,
+    "outcome": "promoted",
+    "promotion": {
+      "live_after_hash": "f438d56017701096b5203ad81b6f8547351780f7633c02da35a65abb4cce0854",
+      "live_before_hash": "602e35a92eec4bc0a2ec6ae113f07bfc6933322fb69fe8dee416e5a67217e2a2",
+      "live_outcome": {
+        "behavior_passed": 2,
+        "behavior_total": 4,
+        "probe": {
+          "checks": {
+            "pipeline_dedupe": false,
+            "pipeline_none_safe": false,
+            "score_non_negative": true,
+            "split_clean": true
+          },
+          "passed": 2,
+          "total": 4
+        },
+        "probe_exit_code": 0,
+        "pytest_exit_code": 1,
+        "pytest_failed": 2,
+        "pytest_passed": 6
+      },
+      "prior_release_id": "release-r11-cycle-01-baseline",
+      "release_id": "release-r11-cycle-01-candidate"
+    },
+    "restart": {
+      "clone_effect_status": "applied",
+      "resumed_at_stage": null,
+      "simulated": false
+    },
+    "risk_class": "R1",
+    "shadow": {
+      "checks": {
+        "behavior_passed": 2,
+        "behavior_total": 4,
+        "probe": {
+          "checks": {
+            "pipeline_dedupe": false,
+            "pipeline_none_safe": false,
+            "score_non_negative": true,
+            "split_clean": true
+          },
+          "passed": 2,
+          "total": 4
+        },
+        "probe_exit_code": 0,
+        "pytest_exit_code": 1,
+        "pytest_failed": 2,
+        "pytest_passed": 6
+      },
+      "shadow_hash": "27b45024ddcd6aef72949d97c3213adb1729a614400020ac6506b90b60c40cbd"
+    },
+    "surfaces": [
+      "fixtures/micro_target/config/values.py"
+    ],
+    "verification": {
+      "checks": {
+        "artifacts_hash_match": true,
+        "behavior_no_regression": true,
+        "candidate_pytest_improves": true
+      },
+      "evidence_ref": "verification\\r11-cycle-01\\verdict.json",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "verifier_id": "r11-fresh-verifier-30b64a1a41"
+    }
+  },
+  "evidence_utc": "2026-08-16T18:00:00Z",
+  "schema": "jarvis-r11-cycle-v1"
+}

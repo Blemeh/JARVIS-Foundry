@@ -1,0 +1,74 @@
+{
+  "cycle": {
+    "baseline_metrics": {
+      "behavior_passed": 0,
+      "behavior_total": 4,
+      "probe": {
+        "checks": {
+          "pipeline_dedupe": false,
+          "pipeline_none_safe": false,
+          "score_non_negative": false,
+          "split_clean": false
+        },
+        "passed": 0,
+        "total": 4
+      },
+      "probe_exit_code": 0,
+      "pytest_exit_code": 1,
+      "pytest_failed": 6,
+      "pytest_passed": 2
+    },
+    "candidate_id": "c3",
+    "candidate_metrics": {
+      "behavior_passed": 0,
+      "behavior_total": 0,
+      "probe": {
+        "checks": {},
+        "passed": 0,
+        "total": 0
+      },
+      "probe_exit_code": 1,
+      "pytest_exit_code": 1,
+      "pytest_failed": 6,
+      "pytest_passed": 2
+    },
+    "cycle_id": "r11-cycle-03",
+    "delta": 0,
+    "effects": [
+      {
+        "effect_id": "clone:r11-cycle-03",
+        "result_hash": "a3930c9234f5d5209e8042ef6a2b520e6bd7c7da850ec2b98df2cae2194dd529",
+        "status": "applied"
+      }
+    ],
+    "improvement": false,
+    "outcome": "rejected",
+    "rejection": {
+      "failed_history_ref": "failed_history/r11-cycle-03",
+      "failure_hash": "80d9efd41c4a80988c4311fdcc486686fc1c5434481ea16ef59dc5f225a360eb",
+      "reason": "candidate did not improve real measured behavior"
+    },
+    "restart": {
+      "clone_effect_status": "applied",
+      "resumed_at_stage": null,
+      "simulated": false
+    },
+    "risk_class": "R3",
+    "surfaces": [
+      "fixtures/micro_target/core.py"
+    ],
+    "verification": {
+      "checks": {
+        "artifacts_hash_match": true,
+        "behavior_no_regression": true,
+        "candidate_pytest_improves": false
+      },
+      "evidence_ref": "verification\\r11-cycle-03\\verdict.json",
+      "exit_code": 1,
+      "verdict": "FAIL",
+      "verifier_id": "r11-fresh-verifier-c50b116ccf"
+    }
+  },
+  "evidence_utc": "2026-08-16T18:00:00Z",
+  "schema": "jarvis-r11-cycle-v1"
+}

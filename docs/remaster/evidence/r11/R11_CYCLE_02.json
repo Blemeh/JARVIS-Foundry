@@ -1,0 +1,166 @@
+{
+  "cycle": {
+    "baseline_metrics": {
+      "behavior_passed": 0,
+      "behavior_total": 4,
+      "probe": {
+        "checks": {
+          "pipeline_dedupe": false,
+          "pipeline_none_safe": false,
+          "score_non_negative": false,
+          "split_clean": false
+        },
+        "passed": 0,
+        "total": 4
+      },
+      "probe_exit_code": 0,
+      "pytest_exit_code": 1,
+      "pytest_failed": 6,
+      "pytest_passed": 2
+    },
+    "canary": {
+      "canary_hash": "f2d648355b446af1af014c87890b61e62eba84e9af07648796baea982239ef7d",
+      "checks": {
+        "behavior_passed": 2,
+        "behavior_total": 4,
+        "probe": {
+          "checks": {
+            "pipeline_dedupe": true,
+            "pipeline_none_safe": true,
+            "score_non_negative": false,
+            "split_clean": false
+          },
+          "passed": 2,
+          "total": 4
+        },
+        "probe_exit_code": 0,
+        "pytest_exit_code": 1,
+        "pytest_failed": 4,
+        "pytest_passed": 4
+      },
+      "ready": true
+    },
+    "candidate_id": "c2",
+    "candidate_metrics": {
+      "behavior_passed": 2,
+      "behavior_total": 4,
+      "probe": {
+        "checks": {
+          "pipeline_dedupe": true,
+          "pipeline_none_safe": true,
+          "score_non_negative": false,
+          "split_clean": false
+        },
+        "passed": 2,
+        "total": 4
+      },
+      "probe_exit_code": 0,
+      "pytest_exit_code": 1,
+      "pytest_failed": 4,
+      "pytest_passed": 4
+    },
+    "cycle_id": "r11-cycle-02",
+    "delta": 2,
+    "effects": [
+      {
+        "effect_id": "clone:r11-cycle-02",
+        "result_hash": "acd11f63c64fb98c70206b1ebef13ecc9dcfe39807e1e203d20ce9f0a6f19235",
+        "status": "applied"
+      },
+      {
+        "effect_id": "shadow:r11-cycle-02",
+        "result_hash": "f2d648355b446af1af014c87890b61e62eba84e9af07648796baea982239ef7d",
+        "status": "applied"
+      },
+      {
+        "effect_id": "canary:r11-cycle-02",
+        "result_hash": "f2d648355b446af1af014c87890b61e62eba84e9af07648796baea982239ef7d",
+        "status": "applied"
+      },
+      {
+        "effect_id": "baseline-release:r11-cycle-02",
+        "result_hash": "f82bf0c46fa91d5c41425bc2da208fdff99fcfe6eeebda767dac5d1f04d58efa",
+        "status": "applied"
+      },
+      {
+        "effect_id": "candidate-release:r11-cycle-02",
+        "result_hash": "fb8758f7921ebc361f3032bc47bfd1bcf36305c94e9db499990d97c5e1f5104f",
+        "status": "applied"
+      },
+      {
+        "effect_id": "promote-live:r11-cycle-02",
+        "result_hash": "fb8758f7921ebc361f3032bc47bfd1bcf36305c94e9db499990d97c5e1f5104f",
+        "status": "applied"
+      }
+    ],
+    "improvement": true,
+    "outcome": "promoted",
+    "promotion": {
+      "live_after_hash": "fb8758f7921ebc361f3032bc47bfd1bcf36305c94e9db499990d97c5e1f5104f",
+      "live_before_hash": "f438d56017701096b5203ad81b6f8547351780f7633c02da35a65abb4cce0854",
+      "live_outcome": {
+        "behavior_passed": 2,
+        "behavior_total": 4,
+        "probe": {
+          "checks": {
+            "pipeline_dedupe": true,
+            "pipeline_none_safe": true,
+            "score_non_negative": false,
+            "split_clean": false
+          },
+          "passed": 2,
+          "total": 4
+        },
+        "probe_exit_code": 0,
+        "pytest_exit_code": 1,
+        "pytest_failed": 4,
+        "pytest_passed": 4
+      },
+      "prior_release_id": "release-r11-cycle-02-baseline",
+      "release_id": "release-r11-cycle-02-candidate"
+    },
+    "restart": {
+      "clone_effect_status": "applied",
+      "resumed_at_stage": null,
+      "simulated": false
+    },
+    "risk_class": "R2",
+    "shadow": {
+      "checks": {
+        "behavior_passed": 2,
+        "behavior_total": 4,
+        "probe": {
+          "checks": {
+            "pipeline_dedupe": true,
+            "pipeline_none_safe": true,
+            "score_non_negative": false,
+            "split_clean": false
+          },
+          "passed": 2,
+          "total": 4
+        },
+        "probe_exit_code": 0,
+        "pytest_exit_code": 1,
+        "pytest_failed": 4,
+        "pytest_passed": 4
+      },
+      "shadow_hash": "f2d648355b446af1af014c87890b61e62eba84e9af07648796baea982239ef7d"
+    },
+    "surfaces": [
+      "fixtures/micro_target/workflow.py"
+    ],
+    "verification": {
+      "checks": {
+        "artifacts_hash_match": true,
+        "behavior_no_regression": true,
+        "candidate_pytest_improves": true
+      },
+      "evidence_ref": "verification\\r11-cycle-02\\verdict.json",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "verifier_id": "r11-fresh-verifier-71a29b6454"
+    }
+  },
+  "evidence_utc": "2026-08-16T18:00:00Z",
+  "schema": "jarvis-r11-cycle-v1"
+}

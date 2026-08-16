@@ -1,0 +1,32 @@
+{
+  "checks": {
+    "at_least_1_rejected": true,
+    "candidate_delete_refused_and_preserved": true,
+    "failed_history_never_deleted": true,
+    "failed_history_preserved_on_disk": true,
+    "failed_history_refs_and_hashes_present": true,
+    "rejected_candidate_not_promoted": true
+  },
+  "evidence": [
+    "R11_CYCLES.json",
+    "R11_PROBES.json"
+  ],
+  "evidence_utc": "2026-08-16T18:00:00Z",
+  "exit_code": 0,
+  "passed": true,
+  "rejected_cycles": [
+    {
+      "cycle_id": "r11-cycle-03",
+      "failed_history_ref": "failed_history/r11-cycle-03",
+      "failure_hash": "80d9efd41c4a80988c4311fdcc486686fc1c5434481ea16ef59dc5f225a360eb",
+      "reason": "candidate did not improve real measured behavior",
+      "risk_class": "R3",
+      "verdict": "FAIL"
+    }
+  ],
+  "rejection_checks": {
+    "r11-cycle-03": true
+  },
+  "schema": "jarvis-r11-g03-rejection-v1",
+  "wall_seconds": 0.008
+}
