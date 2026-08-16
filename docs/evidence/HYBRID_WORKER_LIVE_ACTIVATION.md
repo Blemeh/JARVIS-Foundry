@@ -1,8 +1,8 @@
 # HYBRID WORKER LIVE ACTIVATION
 
-Status: candidate integration proven on the live canonical runtime; pending
-independent activation review before `config/worker_routing.yaml` flips to
-ACTIVE.
+Status: live runtime activation proven and independently reviewed;
+`config/worker_routing.yaml` is ACTIVE (the driver only runs cycles when
+explicitly launched — nothing auto-starts it).
 
 ## Scope
 
