@@ -1,8 +1,8 @@
 # JARVIS FOUNDRY - AUTOMATIC CAPABILITY ROADMAP
 
-Version: 3.0
-Status: QUEUED FOR AUTOMATIC PROGRESSION AFTER START BUILD
-Date: 2026-08-11
+Version: 3.1
+Status: SEQUENCE COMPLETE - SUPERSEDED IN PART (all stages implemented; see §14)
+Date: 2026-08-11 (status header reconciled 2026-08-16)
 Owner control: VETO AND STOP
 
 ## 1. Purpose
@@ -376,8 +376,8 @@ owner directive makes progress technically impossible.
 
 ## 14. Current State
 
-| Stage | Current state | Transition behavior after START BUILD |
-|---|---|---|
+| Stage | Current state | Transition behavior after START BUILD | Evidence status (2026-08-16) |
+|---|---|---|---|
 | Foundation | Complete for review | Starts WP0 automatically | PROVEN_CURRENT — WP0 gate PASS |
 | V1 Autonomy Kernel | Design intent recorded 2026-08-11 | Builds through WP0-WP8 | **IMPLEMENTED_AND_PROVEN** — WP0–WP8 gates, V7 adoption, live runtime; the V1 7-day proving duration was waived by owner directive 2026-08-12 (docs/evidence/OWNER_WAIVER_2026-08-12.md); the design intent is conformance-mapped in 03_V1_AUTONOMY_KERNEL_SPEC.md |
 | V2 Knowledge Brain | Queued | Starts after V1 PASS | **IMPLEMENTED_AND_PROVEN** — WP9–WP12 slices, V2/V3 operational gates, knowledge claims/retrieval/consolidation live; extended by V8 Hybrid Memory |
