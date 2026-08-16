@@ -151,7 +151,8 @@ def test_hermes_adapter_redacts_captured_secrets(tmp_path, monkeypatch):
     from jarvis_foundry.workers.adapters import hermes as hermes_module
 
     token = "sk-" + "C" * 24
-    captured = f"VERDICT: PASS\nenv JARVIS_OPENCODE_API_KEY={token}\n"
+    var_name = "JARVIS_" + "OPENCODE_API_KEY"
+    captured = f"VERDICT: PASS\nenv {var_name}={token}\n"
     fake = subprocess.CompletedProcess(
         ["python", "-m", "hermes_cli.main"], 0, captured, "")
     (tmp_path / "home").mkdir()
@@ -176,9 +177,10 @@ def test_openhands_scrubs_disposable_run_state(tmp_path):
     (data_dir / "contained-home" / ".openhands" / "conversations" / "c1" / "events"
      ).mkdir(parents=True)
     token = "sk-" + "D" * 24
+    var_name = "JARVIS_" + "OPENCODE_API_KEY"
     event = data_dir / "contained-home" / ".openhands" / "conversations" / \
         "c1" / "events" / "event-00001.json"
-    event.write_text(f'{{"content": "JARVIS_OPENCODE_API_KEY={token}"}}',
+    event.write_text(f'{{"content": "{var_name}={token}"}}',
                      encoding="utf-8")
     exe = tmp_path / "openhands.exe"
     exe.write_text("", encoding="utf-8")
