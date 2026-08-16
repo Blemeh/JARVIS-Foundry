@@ -221,6 +221,7 @@ class OpenHandsWorkerAdapter:
                 usage_availability=NOT_AVAILABLE,
             )
         if process.returncode != 0:
+            self._scrub_disposable_state()
             return ResultEnvelope.from_contract(
                 contract, framework=self.framework,
                 worker_status=FAILED,

@@ -190,3 +190,58 @@ def test_openhands_scrubs_disposable_run_state(tmp_path):
     content = event.read_text(encoding="utf-8")
     assert token not in content
     assert "<REDACTED>" in content
+
+
+def test_openhands_scrubs_disposable_state_on_nonzero_exit(tmp_path):
+    """A failed (non-zero exit) OpenHands run must still scrub retained
+    disposable run-state files."""
+    from unittest import mock
+    from jarvis_foundry.workers.adapters import openhands as oh_module
+
+    exe = tmp_path / "openhands.exe"
+    exe.write_text("", encoding="utf-8")
+    data_dir = tmp_path / "openhands-data"
+    event_dir = data_dir / "contained-home" / ".openhands" / \
+        "conversations" / "c1" / "events"
+    event_dir.mkdir(parents=True)
+    token = "sk-" + "E" * 24
+    var_name = "JARVIS_" + "OPENCODE_API_KEY"
+    event = event_dir / "event-00001.json"
+    event.write_text(f'{{"content": "{var_name}={token}"}}', encoding="utf-8")
+    adapter = oh_module.OpenHandsWorkerAdapter(
+        openhands_exe=exe, data_dir=data_dir, enabled=True,
+        timeout_seconds=30)
+    adapter._owner_openhands = tmp_path / "owner-openhands"
+    adapter._owner_openhands.mkdir()
+    fake_result = subprocess.CompletedProcess(
+        ["openhands"], 3, "failed\n", "")
+    before = {"profiles/owner.json": "a" * 64}
+    after = {"profiles/owner.json": "a" * 64}
+    with mock.patch.object(
+            oh_module, "run_subprocess_with_heartbeat",
+            return_value=fake_result), \
+         mock.patch.object(
+            oh_module, "snapshot_openhands_tree",
+            side_effect=[before, after]):
+        envelope = adapter.dispatch(contract(tmp_path), heartbeat=lambda: None)
+    assert envelope.worker_status == "FAILED"
+    content = event.read_text(encoding="utf-8")
+    assert token not in content
+    assert "<REDACTED>" in content
+
+
+def test_hermes_scrubs_disposable_home(tmp_path):
+    """The disposable HERMES_HOME must be scrubbed after a run."""
+    home = tmp_path / "hermes-home"
+    (home / "sessions").mkdir(parents=True)
+    token = "sk-" + "F" * 24
+    var_name = "JARVIS_" + "OPENCODE_API_KEY"
+    session = home / "sessions" / "s1.json"
+    session.write_text(f'{{"env": "{var_name}={token}"}}', encoding="utf-8")
+    adapter = HermesWorkerAdapter(
+        hermes_root=tmp_path, hermes_home=home,
+        enabled=False, timeout_seconds=0, python_exe="python")
+    adapter._scrub_disposable_home()
+    content = session.read_text(encoding="utf-8")
+    assert token not in content
+    assert "<REDACTED>" in content

@@ -154,6 +154,7 @@ class HermesWorkerAdapter:
             )
         except subprocess.TimeoutExpired:
             heartbeat()
+            self._scrub_disposable_home()
             return ResultEnvelope.from_contract(
                 contract, framework=self.framework,
                 worker_status=FAILED, verdict=VERDICT_NOT_TESTED,
@@ -175,6 +176,7 @@ class HermesWorkerAdapter:
             process.stdout or "", configured_key=configured_api_key())
         stderr = redact_secrets(
             process.stderr or "", configured_key=configured_api_key())
+        self._scrub_disposable_home()
         if process.returncode != 0:
             return ResultEnvelope.from_contract(
                 contract, framework=self.framework,
@@ -242,6 +244,37 @@ class HermesWorkerAdapter:
                 usage_path.unlink(missing_ok=True)
             except OSError:
                 pass
+
+    def _scrub_disposable_home(self, limit: int = 5000) -> None:
+        """Redact credential-shaped tokens from the disposable HERMES_HOME
+        (state.db, auth.json, sessions) so no retained run-state file ever
+        holds the secret value."""
+        key = configured_api_key()
+        if not self.hermes_home.exists():
+            return
+        scanned = 0
+        for path in self.hermes_home.rglob("*"):
+            if not path.is_file():
+                continue
+            scanned += 1
+            if scanned > limit:
+                break
+            try:
+                data = path.read_bytes()
+            except OSError:
+                continue
+            if b"sk-" not in data:
+                continue
+            try:
+                text = data.decode("utf-8")
+            except UnicodeDecodeError:
+                continue
+            redacted = redact_secrets(text, configured_key=key)
+            if redacted != text:
+                try:
+                    path.write_bytes(redacted.encode("utf-8"))
+                except OSError:
+                    pass
 
 
 def make_hermes_worker_adapter(
