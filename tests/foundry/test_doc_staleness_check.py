@@ -25,10 +25,25 @@ def test_current_state_names_real_head_and_schema():
     import subprocess as sp
     head = sp.run(["git", "-C", str(REPO), "rev-parse", "HEAD"],
                   capture_output=True, text=True, check=True).stdout.strip()
-    parent = sp.run(["git", "-C", str(REPO), "rev-parse", "HEAD^"],
-                    capture_output=True, text=True).stdout.strip()
     text = (REPO / "docs" / "CURRENT_STATE.md").read_text(encoding="utf-8")
-    assert head[:7] in text or head in text or parent[:7] in text or parent in text
+    found = head[:7] in text or head in text
+    if not found:
+        # doc-only walk: a pin one or more doc commits behind is still valid
+        sha = head
+        for _ in range(10):
+            changed = sp.run(["git", "-C", str(REPO), "show", "--name-only", "--format=", sha],
+                             capture_output=True, text=True).stdout.splitlines()
+            if not changed or any(not p_.startswith("docs/") for p_ in changed):
+                break
+            parent = sp.run(["git", "-C", str(REPO), "rev-parse", f"{sha}^"],
+                            capture_output=True, text=True).stdout.strip()
+            if not parent or parent == sha:
+                break
+            sha = parent
+            if sha[:7] in text or sha in text:
+                found = True
+                break
+    assert found
     sys.path.insert(0, str(REPO / "src"))
     from jarvis_foundry.migrations import SCHEMA_VERSION
     assert f"v{SCHEMA_VERSION}" in text or str(SCHEMA_VERSION) in text

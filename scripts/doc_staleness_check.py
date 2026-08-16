@@ -52,15 +52,29 @@ def main() -> int:
     schema = _schema_version()
     text = CURRENT_STATE.read_text(encoding="utf-8")
 
-    # The doc is committed AT head; its claim describes the tree it ships in,
-    # so the claim may equal HEAD or HEAD^ (the last write). Any other commit
-    # (code, schema, gates) makes the claim stale until the doc is updated.
-    parent = subprocess.run(
-        ["git", "-C", str(REPO), "rev-parse", "HEAD^"],
-        capture_output=True, text=True).stdout.strip()
-    claimed = head[:7] in text or head in text or parent[:7] in text or parent in text
-    if not claimed:
-        failures.append(f"CURRENT_STATE.md does not name current HEAD {head[:7]} (or its parent)")
+    # The doc is committed AT head; its pin describes the tree it ships in.
+    # Walk HEAD backwards over DOC-ONLY commits (a doc commit does not change
+    # the described system); the pin must match one of them. Any NON-doc
+    # commit after the pin makes it stale until the doc is updated.
+    pin_ok = False
+    sha = head
+    for _ in range(10):
+        if sha[:7] in text or sha in text:
+            pin_ok = True
+            break
+        changed = subprocess.run(
+            ["git", "-C", str(REPO), "show", "--name-only", "--format=", sha],
+            capture_output=True, text=True).stdout.splitlines()
+        if not changed or any(not p.startswith("docs/") for p in changed):
+            break  # first non-doc commit: stop walking
+        parent = subprocess.run(
+            ["git", "-C", str(REPO), "rev-parse", f"{sha}^"],
+            capture_output=True, text=True).stdout.strip()
+        if not parent or parent == sha:
+            break
+        sha = parent
+    if not pin_ok:
+        failures.append(f"CURRENT_STATE.md does not name current HEAD {head[:7]} (doc-only walk)")
     if f"v{schema}" not in text and str(schema) not in text:
         failures.append(f"CURRENT_STATE.md does not name current schema v{schema}")
 
