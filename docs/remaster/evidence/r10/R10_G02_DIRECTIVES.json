@@ -1,0 +1,43 @@
+{
+  "after_control_hash": "a003bce8713bf7403616ab06a76d668e0ddbf3afd6d47e5bccf070f89a92ed82",
+  "before_control_hash": "59ea90e394e0f5d9824e08e5b5b09dfc069542aa5bedae62223f646b6ec20ae6",
+  "checks": {
+    "all_command_types_present": true,
+    "control_state_changed": true,
+    "ledger_count": true,
+    "replay_idempotent": true,
+    "resume_clears_stop": true,
+    "six_commands_recorded": true,
+    "stop_active_after_stop": true,
+    "stop_survives_ui_failure": true
+  },
+  "evidence": [
+    "R10_DIRECTIVE_TRANSITIONS.json",
+    "R10_G02_DIRECTIVES.json"
+  ],
+  "evidence_utc": "2026-08-16T12:00:00Z",
+  "exit_code": 0,
+  "final_control_hash": "708dd2eaece818977b965945b12693dd1ea66eae2567d3f75cc4785c34ee9161",
+  "passed": true,
+  "schema": "jarvis-r10-g02-directives-v1",
+  "transitions_output": "R10_DIRECTIVE_TRANSITIONS.json",
+  "transitions_sha256": "25ad4d4aa28ae12a332fdbd41131bbba155e4f4fac65ca65d5c93515dc7c17ef",
+  "ui_failure_summary": {
+    "applied_status": "APPLIED",
+    "control_after_kill": {
+      "authority": "PortfolioControl/ControlState + hash-bound directive ledger",
+      "control_hash": "ba8dc04249649b43f993211df25fc4586fc653edad9cff501d340cc5357d5cca",
+      "directive_count": 1,
+      "ledger_event_count": 1,
+      "ledger_sha256": "25e7fa3d92b3e25790bdc7cea7b7754d8021a679bafff120684706f236d50170",
+      "paused_projects": [],
+      "redirects": [],
+      "stop_active": true,
+      "ui_authority": false,
+      "vetoed_candidates": [],
+      "voice_authority": false
+    },
+    "stop_survives_ui_failure": true
+  },
+  "wall_seconds": 1.099
+}

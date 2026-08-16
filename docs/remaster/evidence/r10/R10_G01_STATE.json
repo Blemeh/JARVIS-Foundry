@@ -1,0 +1,43 @@
+{
+  "checks": {
+    "candidate_decisions": true,
+    "capabilities": true,
+    "costs_section": true,
+    "decision_effect_timeline": true,
+    "evidence_drilldown": true,
+    "evidence_index": true,
+    "findings": true,
+    "health": true,
+    "incidents": true,
+    "missions": true,
+    "next_actions": true,
+    "projects": true,
+    "rejected_alternatives": true,
+    "releases": true,
+    "resources": true,
+    "source_is_isolated_proving": true,
+    "timeline": true,
+    "verification": true,
+    "waiting_blockers": true,
+    "workers": true
+  },
+  "drilldown": {
+    "evidence_refs_count": 1,
+    "json_hash": "a53e7f7a90236ff2938e2eb6d1b9684a41098122bbb08374035a68be070b9f2b",
+    "json_hash_length": 64,
+    "kind": "missions",
+    "provenance_count": 1,
+    "record_id": "mission-r8a-asset"
+  },
+  "evidence": [
+    "R10_STATE_SNAPSHOT.json"
+  ],
+  "evidence_utc": "2026-08-16T12:00:00Z",
+  "exit_code": 0,
+  "passed": true,
+  "schema": "jarvis-r10-g01-state-v1",
+  "snapshot_output": "R10_STATE_SNAPSHOT.json",
+  "snapshot_sha256": "17ac1ed071334035f5038b1f1beb487442f8d891863069f65ac91a8e356323cf",
+  "snapshot_size": 539989,
+  "wall_seconds": 0.075
+}

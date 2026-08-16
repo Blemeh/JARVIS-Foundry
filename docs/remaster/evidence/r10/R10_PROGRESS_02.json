@@ -1,0 +1,126 @@
+{
+  "evidence": [
+    {
+      "path": "R10_BRIEFING_EN.txt",
+      "sha256": "560f22afde691f9b62d6d920398dcf93b490b93e1e9c4d412837c763f8932185",
+      "size": 715
+    },
+    {
+      "path": "R10_BRIEFING_SQ.txt",
+      "sha256": "88768bc214daf3d1a5c3a7b180ab209c2cddfaf1231f8114d84063c3d58c9b33",
+      "size": 718
+    },
+    {
+      "path": "R10_BRIEFINGS.json",
+      "sha256": "a8d274b0571b20b5bbd1a3c74e549ec839e8868a6abdf6723beabe3bdf7d6d45",
+      "size": 5402
+    },
+    {
+      "path": "R10_DIRECTIVE_TRANSITIONS.json",
+      "sha256": "6be189fe4a61289eb5742eb9c9f4ad2281570059fb2639168191eaa602901a24",
+      "size": 6355
+    },
+    {
+      "path": "R10_G01_STATE.json",
+      "sha256": "0bd035df7404be97604868d78e75592d1c2eaff0558c425aef949d30eaa849a4",
+      "size": 1212
+    },
+    {
+      "path": "R10_G02_DIRECTIVES.json",
+      "sha256": "7467c813077254b9aa1b7ddf51c69d297ba35b2294978beb40e18ff1b30c27a2",
+      "size": 1627
+    },
+    {
+      "path": "R10_G03_BRIEFINGS.json",
+      "sha256": "ed44c991dd3a3820e5e63e845943dd0450800955c6f7f2c8879f1c1260fdb5e0",
+      "size": 1033
+    },
+    {
+      "path": "R10_G04_LANGUAGES.json",
+      "sha256": "3dbd6c0f2e307ca3b5ddcdb5a58e12cd6c25fc6b4ecfe0cf8698b58b7e0f1e92",
+      "size": 1309
+    },
+    {
+      "path": "R10_G05_VOICE.json",
+      "sha256": "814a143e8f0289db90323f20d9682d2bcd9c1fde0598b013b2b97b0b47dbdb8b",
+      "size": 879
+    },
+    {
+      "path": "R10_G06_VISUAL.json",
+      "sha256": "aa38d08e535908cd21ea27d2e2f6030a8e42ce231fb808f69ee69fc707d55e1b",
+      "size": 4836
+    },
+    {
+      "path": "R10_LANGUAGES_EN.html",
+      "sha256": "1e63f9eb0e6f522dac600c52555dfea57005a4690ceb194f96b7457c4f862edb",
+      "size": 570295
+    },
+    {
+      "path": "R10_LANGUAGES_SQ.html",
+      "sha256": "7594937ed97e04f13d3970850bfbf5713e0ae788696042740c82db297bbe07e6",
+      "size": 570818
+    },
+    {
+      "path": "R10_PROGRESS_01.json",
+      "sha256": "d88cf6ff2e1b043329a2f7cbb93bdf26e848e227c351d722a60cd5334981fdeb",
+      "size": 834
+    },
+    {
+      "path": "R10_SEED.json",
+      "sha256": "f7f34544b536e67181b9c20c151eb615df1a63f095d8d63963805abfd7a71a01",
+      "size": 475
+    },
+    {
+      "path": "R10_STATE_SNAPSHOT.json",
+      "sha256": "7caf1025358641b3118f40ad290d25351238638195dd47016871c98be24f901c",
+      "size": 549072
+    },
+    {
+      "path": "R10_VISUAL_DESKTOP.png",
+      "sha256": "a2eeb1e4b2b01dfc04d94401ff1da78aff9a04e84b7b2e468f0ad0a0ab6ce682",
+      "size": 43717
+    },
+    {
+      "path": "R10_VISUAL_DOM_AUDIT.json",
+      "sha256": "a29153738fcde5f5b2d13e09257c7ad05225bd1dfdf0fb05adab84ea1606ae80",
+      "size": 1073
+    },
+    {
+      "path": "R10_VISUAL_DOM_DUMP.html",
+      "sha256": "e28e43d19d9fb7d8ae9aa2486044b93a1e8d112c40379e7c3f4c00801a5109a8",
+      "size": 4060
+    },
+    {
+      "path": "R10_VISUAL_MOBILE.png",
+      "sha256": "bf95a2672d8372c00586ee755dba2aa3e0fe3e02373c04b92ac01ef926578052",
+      "size": 16368
+    },
+    {
+      "path": "R10_VOICE_PROBE.json",
+      "sha256": "b45277d2ad544894fd8df00e9a8a1a6bbe3af5d3bf5e822d683b1d7fb8f08bb6",
+      "size": 2947
+    }
+  ],
+  "evidence_bytes": 1783745,
+  "evidence_files": 20,
+  "evidence_utc": "2026-08-16T12:00:00Z",
+  "git_exit_code": 0,
+  "git_porcelain": [
+    "?? docs/remaster/evidence/r10/",
+    "?? docs/remaster/evidence/r6/",
+    "?? docs/remaster/work_packages/R10_WORK_PACKAGE.json",
+    "?? docs/remaster/work_packages/R6_WORK_PACKAGE.json",
+    "?? scripts/remaster/r10/",
+    "?? scripts/remaster/r6/",
+    "?? src/jarvis_foundry/command_center/",
+    "?? src/jarvis_foundry/kernel/memory/",
+    "?? tests/remaster/r10/",
+    "?? tests/remaster/r6/"
+  ],
+  "index": 2,
+  "note": "All R10 gate scripts and focused suite green; static lint clean",
+  "recorded_utc": "2026-08-16T02:48:28Z",
+  "schema": "jarvis-r10-progress-v1",
+  "temp_base": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r10-builder",
+  "temp_exists": true
+}

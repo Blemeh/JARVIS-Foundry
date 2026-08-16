@@ -1,0 +1,308 @@
+{
+  "schema": "jarvis-r10-verifier-round2-verdict-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R10",
+  "repair_round": 2,
+  "verifier_model": "deepseek-v4-flash via codex-router",
+  "generated_utc": "2026-08-16T05:07:05Z",
+  "frozen_base": {
+    "branch": "remaster/post-v7-purpose",
+    "commit": "35c3b9a5f4d6dc2277de58aceae0797ce74323b2",
+    "worktree": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster",
+    "work_package": "docs/remaster/work_packages/R10_WORK_PACKAGE.json",
+    "work_package_sha256": "D26B272ABEA57F19916943EE2BD70BF239E8241282E9FC0A31090C7D09D9EFA0",
+    "work_package_size": 9858
+  },
+  "criteria": [
+    {
+      "id": "R10-C01",
+      "status": "PASS",
+      "evidence": [
+        "R10_BUILDER_REPORT.json deliverables R10-D01..D06 all PASS with evidence_hashes; non-empty screenshots, DOM audit, directive transitions, language outputs, and voice receipts reproduced independently",
+        "Fresh mirror gate outputs R10_G01..R10_G06 all passed=True; manifest recompute 81 real entries 0 mismatches"
+      ]
+    },
+    {
+      "id": "R10-C02",
+      "status": "PASS",
+      "evidence": [
+        "R10_G01_STATE.json passed=True checks=20/20 (repo and fresh mirror); R10_STATE_SNAPSHOT.json shows goals=4 projects=4 missions=3 decisions=2 rejected=4 workers=3 verification=2 findings=110 releases=3 capabilities=6 incidents=34 waiting=4 next_actions=3 timeline=157 evidence=182",
+        "R10_G06_VISUAL.json passed=True checks=7/7 with real Chrome; desktop 1440x1000 English and mobile 390x844 Albanian screenshots; mirror desktop/mobile PNG hashes byte-identical to frozen evidence"
+      ]
+    },
+    {
+      "id": "R10-C03",
+      "status": "PASS",
+      "evidence": [
+        "R10_G02_DIRECTIVES.json passed=True checks=8/8 in repo and fresh mirror; STOP/VETO/PAUSE/RESUME/REPRIORITIZE/REDIRECT append hash-bound ledger events and update durable control state",
+        "Fresh mirror STOP-during-UI-failure probe: applied_status=APPLIED, control_after_kill.stop_active=true, ui_authority=false, stop_survives_ui_failure=true; test_stop_survives_ui_failure_via_durable_store passed"
+      ]
+    },
+    {
+      "id": "R10-C04",
+      "status": "PASS",
+      "evidence": [
+        "R10_G03_BRIEFINGS.json passed=True checks=12/12 (repo and fresh mirror); six categories present in English and Albanian; per-language content hashes differ",
+        "tests/remaster/r10/test_briefings.py 6/6 passed in focused suite"
+      ]
+    },
+    {
+      "id": "R10-C05",
+      "status": "PASS",
+      "evidence": [
+        "R10_G04_LANGUAGES.json passed=True checks=8/8 (repo and fresh mirror); EN and SQ pages and briefing endpoints 200; unsupported language 400",
+        "Independent probe: SQ briefing body contains 'Faza r9 statusi:', 'Totali i matur ne USD eshte', 'Mbajeni te mbyllur paketen e provave', 'matje buxheti', 'Faturat reale STT/TTS:', 'Shenjat e shendetit:' and contains none of the banned English template fragments; en/sq content hashes differ (f2e9365e... vs 3ee0b052...); SQ page labels are genuine Albanian"
+      ]
+    },
+    {
+      "id": "R10-C06",
+      "status": "PASS",
+      "evidence": [
+        "R10_G05_VOICE.json passed=True classification=TTS_ONLY mock_stt_tts_used=false; R10_VOICE_PROBE.json engine=System.Speech sapi_available=true with real WAV receipts (en f8f9f2c7..., sq f22d5ea4..., RIFF 82737070); STT recognized_text empty so no STT claim is made",
+        "Fresh mirror probe_voice.py exit 0 classification=TTS_ONLY mock_used=false"
+      ]
+    },
+    {
+      "id": "R10-C07",
+      "status": "PASS",
+      "evidence": [
+        "R10_G06_VISUAL.json passed=True checks=7/7: http endpoints, visual_inspected, dom_audit_passed (10/10), provider_failure_banner_rendered, empty_state_rendered, restart_reconciliation, stale_and_degraded_flags_in_state",
+        "tests/remaster/r10/test_languages.py::test_render_index_marks_empty_stale_degraded_provider_states and test_state.py stale/degraded/provider tests passed"
+      ]
+    },
+    {
+      "id": "R10-C08",
+      "status": "PASS",
+      "evidence": [
+        "Focused suite: 32 collected, 32 passed, 0 failures/errors, exit 0 (repo fresh run and frozen R10_FOCUSED_TESTS_JUNIT.xml tests=32)",
+        "Full suites: repo split part1 (tests/foundry+r6+r7+r8+r9) exit 0, part2 (r10) exit 0; repo combined all six dirs exit 0; frozen JUnit counts 1438/32/1470 all 0 failures/errors; fresh mirror retry full_suite exit 0 (first mirror combined attempt hit the known pre-existing tests/foundry scheduler whole-second flake, classified below)",
+        "Static: ruff check PASS, ruff format --check PASS, mypy strict PASS (repo, no issues in 11 files), bandit PASS; CSS linter honestly NOT_TESTED (toolchain absent)",
+        "Evidence budget: on-disk evidence dir 2240130 bytes < 8388608; report evidence_bytes 2195724 independently recomputed and equal (excluding report, manifest, and R10_PROGRESS_* files)",
+        "No protected mutation: live guard clean window protected_state_unchanged=True r10_attributable_mutation=False; protected main HEAD 2f7360e unchanged; remaster porcelain contains only the expected untracked trees"
+      ]
+    }
+  ],
+  "deliverables": [
+    {
+      "id": "R10-D01",
+      "status": "PASS",
+      "evidence": "R10_G01_STATE.json, R10_STATE_SNAPSHOT.json, R10_VISUAL_DESKTOP.png, R10_VISUAL_MOBILE.png, R10_VISUAL_DOM_DUMP.html, R10_VISUAL_DOM_AUDIT.json; real Chrome rendering, drill-down, timeline, states"
+    },
+    {
+      "id": "R10-D02",
+      "status": "PASS",
+      "evidence": "R10_G02_DIRECTIVES.json, R10_DIRECTIVE_TRANSITIONS.json; durable ledger/PortfolioControl authority, UI not authority, STOP survives killed UI process"
+    },
+    {
+      "id": "R10-D03",
+      "status": "PASS",
+      "evidence": "R10_G03_BRIEFINGS.json, R10_BRIEFING_EN.txt, R10_BRIEFING_SQ.txt, R10_BRIEFINGS.json; six categories, evidence refs resolve, genuinely localized per-language body"
+    },
+    {
+      "id": "R10-D04",
+      "status": "PASS",
+      "evidence": "R10_G04_LANGUAGES.json, R10_LANGUAGES_EN.html, R10_LANGUAGES_SQ.html; real HTTP interaction in English and Albanian, unsupported language rejected"
+    },
+    {
+      "id": "R10-D05",
+      "status": "PASS",
+      "evidence": "R10_G05_VOICE.json, R10_VOICE_PROBE.json; TTS_ONLY with real System.Speech WAV receipts, mock_used=false, no STT claim"
+    },
+    {
+      "id": "R10-D06",
+      "status": "PASS",
+      "evidence": "Screenshots, DOM/accessibility audit, directive transitions, language outputs, voice receipts, exact next autonomous action in R10_STATE_SNAPSHOT.json ('dispatch real repair B on the recorded verifier defect')"
+    }
+  ],
+  "gates": [
+    {
+      "id": "R10-G01",
+      "status": "PASS",
+      "evidence": "R10_G01_STATE.json passed=True 20/20 repo and fresh mirror; isolated proving stores; evidence drill-down json_hash length 64, provenance_count>0, evidence_refs_count>0; decision/effect timeline"
+    },
+    {
+      "id": "R10-G02",
+      "status": "PASS",
+      "evidence": "R10_G02_DIRECTIVES.json passed=True 8/8 repo and fresh mirror; six durable commands; replay idempotent; ledger_count=8; STOP survives UI failure with ui_authority=false"
+    },
+    {
+      "id": "R10-G03",
+      "status": "PASS",
+      "evidence": "R10_G03_BRIEFINGS.json passed=True 12/12 repo and fresh mirror; English and Albanian briefings from durable state with resolving evidence refs"
+    },
+    {
+      "id": "R10-G04",
+      "status": "PASS",
+      "evidence": "R10_G04_LANGUAGES.json passed=True 8/8 repo and fresh mirror; real EN/SQ pages and briefings; R10-V-102 language regression probes clean"
+    },
+    {
+      "id": "R10-G05",
+      "status": "PASS",
+      "evidence": "R10_G05_VOICE.json passed=True classification=TTS_ONLY mock_stt_tts_used=false; real SAPI probe with receipts"
+    },
+    {
+      "id": "R10-G06",
+      "status": "PASS",
+      "evidence": "R10_G06_VISUAL.json passed=True 7/7 repo and fresh mirror; full suites green; static clean; secret scan/privacy gate passed; live guard clean; evidence under 8 MiB"
+    }
+  ],
+  "findings": [
+    {
+      "id": "R10-V-101",
+      "severity": "S2",
+      "disposition": "CONFIRMED_REPAIRED",
+      "title": "Incremental progress file excluded from the frozen manifest and evidence_bytes",
+      "invariant": "The frozen artifact manifest must match on-disk evidence byte-for-byte, with R10_PROGRESS_*.json excluded from both the manifest and evidence_bytes accounting.",
+      "reproduction": "Recomputed sha256+size for all 81 real manifest entries: 0 mismatches; self-referential report size 8416 equals on-disk R10_BUILDER_REPORT.json; no R10_PROGRESS_* entry in the manifest; 4 progress files on disk are excluded by evidence_bytes(); report evidence_bytes=2195724 equals independent recomputation; evidence dir total 2240130 < 8388608.",
+      "probe_ids": ["manifest-recompute", "evidence-bytes-compute"]
+    },
+    {
+      "id": "R10-V-102",
+      "severity": "S2",
+      "disposition": "CONFIRMED_REPAIRED",
+      "title": "Albanian briefing/page body is genuinely localized with no English template fragments",
+      "invariant": "SQ briefing body sentences and page labels must be real Albanian; only record data values may remain in the source language; en/sq content hashes must differ.",
+      "reproduction": "Independent read of R10_BRIEFING_SQ.txt and R10_BRIEFINGS.json: all required Albanian fragments present, all banned English fragments absent, hashes differ (f2e9365e... vs 3ee0b052...); SQ page contains genuine Albanian labels (Statusi hits are Albanian, not English templates); fresh mirror gate_g03 passed 12/12 and gate_g04 passed 8/8; test_briefings.py and test_languages.py green.",
+      "probe_ids": ["briefing-fragments", "language-hashes", "sq-page-labels", "mirror-g03", "mirror-g04"]
+    },
+    {
+      "id": "R10-V-103",
+      "severity": "S2",
+      "disposition": "CONFIRMED_REPAIRED",
+      "title": "Live guard fails closed when the DB snapshot is missing",
+      "invariant": "_live_db_provenance must always include r10_attributable_mutation (True when untestable); compare must not KeyError; clean before/after/compare must record protected_state_unchanged=True and r10_attributable_mutation=False.",
+      "reproduction": "Fresh mirror clean window: before/after/compare exit 0, protected_state_unchanged=True, testable=True, r10_attributable_mutation=False, no KeyError; adversarial missing-snapshot probe (empty JARVIS_R10_TEMP): testable=False, r10_attributable_mutation=True, protected_state_unchanged=False, exit 1, no KeyError.",
+      "probe_ids": ["live-guard-window", "live-guard-failclosed"]
+    },
+    {
+      "id": "V2-F-001",
+      "severity": "S4",
+      "disposition": "ENVIRONMENT_NOTE",
+      "title": "Mirror mypy shows legacy-module errors without MYPYPATH workaround",
+      "invariant": "The fresh mirror must not masquerade a mirror-only import-resolution artifact as an R10 source defect.",
+      "reproduction": "Repo mypy strict: 'Success: no issues found in 11 source files' (repeated, including --no-incremental with fresh cache). Mirror mypy on a byte-identical src tree reports 3 errors in legacy modules (projections.py:1711, database.py:96/234); setting MYPYPATH to the repo src makes the mirror static gate pass (round-1 documented workaround).",
+      "probe_ids": ["repo-mypy-strict", "mirror-mypy-env", "mirror-static-with-mypypath"]
+    },
+    {
+      "id": "V2-F-002",
+      "severity": "S4",
+      "disposition": "RECORDED",
+      "title": "Known pre-existing tests/foundry scheduler whole-second flake observed in mirror combined run",
+      "invariant": "No R10 source or test edit may mask timing flakiness in protected tests/foundry.",
+      "reproduction": "First fresh mirror full_suite combined attempt: 1 failure in tests/foundry/test_v7_scheduler.py::test_tick_is_idempotent_no_duplicate_fires (assert 2 == 1, whole-second cooldown race); part1 1438 and part2 32 both green. Untouched retry: combined 1470 all green, full_suite exit 0.",
+      "probe_ids": ["mirror-full-suite-attempt1", "mirror-full-suite-retry"]
+    },
+    {
+      "id": "V2-F-003",
+      "severity": "S4",
+      "disposition": "ENVIRONMENT_NOTE",
+      "title": "Gate scripts hardcode the builder proving temp root",
+      "invariant": "The mirror must be read-only on repo evidence and must localize only temp/evidence paths.",
+      "reproduction": "Copied mirror scripts still contain literal C:/Users/b/AppData/Local/Temp/jarvis-r10-builder proving roots; mirror-local path normalization (round-1 pattern) was required for safe_clear and fresh proving stores. No repo script was modified; repo evidence untouched.",
+      "probe_ids": ["mirror-path-normalization"]
+    },
+    {
+      "id": "V2-F-004",
+      "severity": "S4",
+      "disposition": "RECORDED",
+      "title": "Pytest summary lines are omitted from raw full-suite evidence",
+      "invariant": "JUnit counts and exit codes are authoritative where raw output lacks a final 'N passed' summary.",
+      "reproduction": "R10_FULL_SUITE_RAW.txt ends at the [100%] progress line; frozen JUnit and fresh runs independently confirm 1438/32/1470 with 0 failures/errors.",
+      "probe_ids": ["junit-counts"]
+    },
+    {
+      "id": "V2-F-005",
+      "severity": "S4",
+      "disposition": "RECORDED",
+      "title": "CSS linter and axe are honestly NOT_TESTED in the available toolchain",
+      "invariant": "Toolchain absences must be recorded, not papered over.",
+      "reproduction": "R10_STATIC.json css_linter status NOT_TESTED with note 'no CSS linter installed'; R10_G06_VISUAL.json records the 10-check in-page DOM audit as the accessibility evidence because Playwright/axe are unavailable. Neither contradicts the frozen contract, which allows honest NOT_TESTED.",
+      "probe_ids": ["static-subgates", "dom-audit"]
+    }
+  ],
+  "status_summary": {
+    "reproduced_outputs": {
+      "frozen_hashes": "PASS: work package D26B272ABEA57F19916943EE2BD70BF239E8241282E9FC0A31090C7D09D9EFA0/9858; builder report C012F2F791BC4524E882BD4822280C353E1EF065013778CA69FC60159A0AB59B/8416; manifest 1741228A1C0AC91A31460779D6E776B0BC8FE35F40C0BAAE18CCF04B31170935/15095",
+      "manifest_audit": "82 entries (81 real + 1 SELF_REFERENTIAL_REPORT); 0 mismatches; self size equals report size; no R10_PROGRESS_* entries; progress files excluded from evidence_bytes",
+      "evidence_budget": "evidence dir 2240130 bytes < 8388608; report evidence_bytes 2195724 independently recomputed and equal",
+      "focused_suite": "32 passed, 0 failures/errors, exit 0 (fresh repo run and frozen JUnit)",
+      "full_suite_split": "repo part1 exit 0 (1438), part2 exit 0 (32); frozen JUnit 0 failures/errors",
+      "full_suite_combined": "repo combined exit 0 (1470, 0 failures/errors); fresh mirror retry full_suite exit 0 (1438/32/1470)",
+      "static": "ruff PASS, ruff format PASS, mypy strict PASS (11 files), bandit PASS, JS node check PASS, CSS linter NOT_TESTED",
+      "language": "SQ briefing body genuine Albanian; no English template fragments; en/sq content hashes differ; gate_g03 12/12 and gate_g04 8/8 in fresh mirror",
+      "live_guard": "clean window protected_state_unchanged=True r10_attributable_mutation=False; missing-snapshot probe fails closed with r10_attributable_mutation=True and no KeyError",
+      "directives": "gate_g02 8/8 in fresh mirror; STOP survives UI failure; ui_authority=false in durable state",
+      "voice": "TTS_ONLY, mock_used=false, real System.Speech WAV receipts; no STT claim",
+      "visual": "real Chrome desktop EN and mobile SQ screenshots; mirror PNGs byte-identical to frozen; DOM audit 10/10; empty/stale/degraded/provider/restart states evidenced",
+      "mirror_gates": "seed_proving 0, probe_voice 0, gate_g01 20/20, gate_g02 8/8, gate_g03 12/12, gate_g04 8/8, gate_g06 7/7, static 0, focused_tests 0, full_suite 0 (retry), secret_scan 0, privacy_gate 0"
+    },
+    "repo_boundary": {
+      "repo_write": "only docs/remaster/evidence/r10/R10_VERIFIER_ROUND2_VERDICT_DSV4.json was written",
+      "commits_pushes": "none",
+      "remaster_porcelain": "expected untracked trees only: docs/remaster/evidence/r10/, docs/remaster/evidence/r6/, docs/remaster/work_packages/R10_WORK_PACKAGE.json, docs/remaster/work_packages/R6_WORK_PACKAGE.json, scripts/remaster/r10/, scripts/remaster/r6/, src/jarvis_foundry/command_center/, src/jarvis_foundry/kernel/memory/, tests/remaster/r10/, tests/remaster/r6/",
+      "protected_main": "HEAD 2f7360e742559e051109e04ef7f3a82cc64cc2d2 unchanged; no .git mutation",
+      "live_daemon_db": "no mutation; live guard window foundry.db and foundry-profile.yaml hashes unchanged; only expected live WAL/SHM churn observed",
+      "tests_foundry": "not edited; retried the known scheduler flake rather than modifying it"
+    }
+  },
+  "evidence_paths_and_hashes": {
+    "frozen": {
+      "docs/remaster/work_packages/R10_WORK_PACKAGE.json": {"sha256": "D26B272ABEA57F19916943EE2BD70BF239E8241282E9FC0A31090C7D09D9EFA0", "size": 9858},
+      "docs/remaster/evidence/r10/R10_BUILDER_REPORT.json": {"sha256": "C012F2F791BC4524E882BD4822280C353E1EF065013778CA69FC60159A0AB59B", "size": 8416},
+      "docs/remaster/evidence/r10/R10_ARTIFACT_MANIFEST.json": {"sha256": "1741228A1C0AC91A31460779D6E776B0BC8FE35F40C0BAAE18CCF04B31170935", "size": 15095}
+    },
+    "repo_evidence": {
+      "docs/remaster/evidence/r10/R10_G01_STATE.json": "6a8e977e85b4ade85444273dc724d19838b3047f0eb170b877cc92222f4888ee",
+      "docs/remaster/evidence/r10/R10_G02_DIRECTIVES.json": "c462bc7b78339f6d1982e8b7c65310705a827f178f4209132af74899326ac637",
+      "docs/remaster/evidence/r10/R10_G03_BRIEFINGS.json": "a2578633deabbf84e0a034198ee64e7ebc502828adaa579434b8231b5e183f89",
+      "docs/remaster/evidence/r10/R10_G04_LANGUAGES.json": "fbeeeb652f3f6b7e5012a25e4da48b27338a3f23e573a38a664302c3728ac023",
+      "docs/remaster/evidence/r10/R10_G05_VOICE.json": "c44b748b1f8773ccd34a784b8692aa7ed8ed0b183d3c6793ca6304c4eedc1140",
+      "docs/remaster/evidence/r10/R10_G06_VISUAL.json": "022bee22e4c50892bc9722d4a27ee5c18ae129cbc871849672aec7b68f06d48c",
+      "docs/remaster/evidence/r10/R10_BRIEFING_EN.txt": "2209f0951c4c1466bb5e1880c9b586febea1541e3b1fc4009c8ffad70b095318",
+      "docs/remaster/evidence/r10/R10_BRIEFING_SQ.txt": "487b32fe2bcd7880947ef477fe07dddd349f1fd67abc16463e6aa3abd570c036",
+      "docs/remaster/evidence/r10/R10_LANGUAGES_EN.html": "51696abd5f89894952bf9b84da9e99f54a782c8caaa92a11275ff187190017ac",
+      "docs/remaster/evidence/r10/R10_LANGUAGES_SQ.html": "5d5634bfa6f33a9cd3456b9807adf7fde590aa3e3c74bb9c167c56d2f58935d3",
+      "docs/remaster/evidence/r10/R10_VISUAL_DESKTOP.png": "a2eeb1e4b2b01dfc04d94401ff1da78aff9a04e84b7b2e468f0ad0a0ab6ce682",
+      "docs/remaster/evidence/r10/R10_VISUAL_MOBILE.png": "bf95a2672d8372c00586ee755dba2aa3e0fe3e02373c04b92ac01ef926578052",
+      "docs/remaster/evidence/r10/R10_VISUAL_DOM_AUDIT.json": "a29153738fcde5f5b2d13e09257c7ad05225bd1dfdf0fb05adab84ea1606ae80",
+      "docs/remaster/evidence/r10/R10_LIVE_GUARD_BEFORE.json": "18862001db1a791ada310655a2e6acec9bb39954daef03f923be0acdcf4dce30",
+      "docs/remaster/evidence/r10/R10_LIVE_GUARD_AFTER.json": "01072cbc5c4c200003879fd76170ebe031990aa3681ad2632e74f1517554120e",
+      "docs/remaster/evidence/r10/R10_LIVE_GUARD_COMPARISON.json": "94435cc5a7b17c4e9c3b4332da52d3b0e87565055d67fa41d79e49e25986bbd2",
+      "docs/remaster/evidence/r10/R10_FULL_SUITE.json": "8a9c670493534c67418525e8be2edf529b3b84d704ad21c9c56fbbd1771e012b",
+      "docs/remaster/evidence/r10/R10_STATIC.json": "c1482f3bf5649886e3fe52a025f2fefeabdb1e4f30d9a46736d39a33f74b3966",
+      "docs/remaster/evidence/r10/R10_FOCUSED_TESTS.json": "c7986f08203204ccafa8f6b7df116336acdc57a474b14f068c001dc3ffb78ac0",
+      "docs/remaster/evidence/r10/R10_SECRET_SCAN.json": "e8260817e1a5d0e8d18ab3ae2aa626f879cfbd7e7666fb4fed7b609ede304e22",
+      "docs/remaster/evidence/r10/R10_PRIVACY.json": "e60f6cd7377243712b2f06fd219c750a52d87338ca57c24a242f7231a8d32fc1",
+      "docs/remaster/evidence/r10/R10_VOICE_PROBE.json": "b45277d2ad544894fd8df00e9a8a1a6bbe3af5d3bf5e822d683b1d7fb8f08bb6",
+      "note": "All 81 real manifest entries recomputed and byte-identical; hashes shown are the verified manifest values."
+    },
+    "fresh_verifier_mirror": {
+      "root": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r10-verifier-round2",
+      "patch": "mirror-local EVIDENCE_DIR and JARVIS_R10_TEMP/proving-path normalization only; no repo script changed",
+      "docs/remaster/evidence/r10/R10_G01_STATE.json": "9776ffc6db74fe402788004f6f6ea55b681fb872ea2e54321e2e439bbbb48cbc",
+      "docs/remaster/evidence/r10/R10_G02_DIRECTIVES.json": "e8a4894aebb137c2276225caef9564dfde26a224c367b74171166fd78259552e",
+      "docs/remaster/evidence/r10/R10_G03_BRIEFINGS.json": "337d4b989bc96e2914e9f17fa135e4db1b0b2bbffb919a8464858e76a283cf75",
+      "docs/remaster/evidence/r10/R10_G04_LANGUAGES.json": "730d2e2688d2023f6557c044205c2f22afb8e4acd5addb5cc5d6ba07528cd8b0",
+      "docs/remaster/evidence/r10/R10_G05_VOICE.json": "85c428171c8ea763c1f74fc23bbd342537a2fc748ac0dcbe520570702b6f72b9",
+      "docs/remaster/evidence/r10/R10_G06_VISUAL.json": "a626ad37b979e3d720dc3d513b96268d1c2867f728a64cbcff1504c3d4b80d54",
+      "docs/remaster/evidence/r10/R10_BRIEFING_EN.txt": "560f22afde691f9b62d6d920398dcf93b490b93e1e9c4d412837c763f8932185",
+      "docs/remaster/evidence/r10/R10_BRIEFING_SQ.txt": "9535609cccda197d7a32096dad26e9de1e9334320ec1bcd9a8314cb95f5b90c6",
+      "docs/remaster/evidence/r10/R10_LANGUAGES_EN.html": "835ba004664d07f5d1aa53f1b67ff3d1550d2d37b247f48d6a3821bdde2a3424",
+      "docs/remaster/evidence/r10/R10_LANGUAGES_SQ.html": "2ea6c95fcb8fa049783bd35ff56d33b0ae01987fb8db10a9a7c9822d35c5aeba",
+      "docs/remaster/evidence/r10/R10_VISUAL_DESKTOP.png": "a2eeb1e4b2b01dfc04d94401ff1da78aff9a04e84b7b2e468f0ad0a0ab6ce682",
+      "docs/remaster/evidence/r10/R10_VISUAL_MOBILE.png": "bf95a2672d8372c00586ee755dba2aa3e0fe3e02373c04b92ac01ef926578052",
+      "docs/remaster/evidence/r10/R10_VISUAL_DOM_AUDIT.json": "a29153738fcde5f5b2d13e09257c7ad05225bd1dfdf0fb05adab84ea1606ae80",
+      "docs/remaster/evidence/r10/R10_LIVE_GUARD_BEFORE.json": "a46fcf6e8d21af97fa5b43e9f01b9c34e62d8c4c2f05d3ecd30871ac691f0006",
+      "docs/remaster/evidence/r10/R10_LIVE_GUARD_AFTER.json": "a17ca65b0a76fd67570945af03acf95625548d26db40e5081fcca1ee67d85a23",
+      "docs/remaster/evidence/r10/R10_LIVE_GUARD_COMPARISON.json": "b02e083a08eb324b0342c858af56f1292ead02950ca1cd5d2c7241870555da09",
+      "docs/remaster/evidence/r10/R10_FULL_SUITE.json": "dbbdf0483800628053b01633b99a9da25742869f6d17a115a9078f79c2f3da3a",
+      "docs/remaster/evidence/r10/R10_STATIC.json": "0d6ba6a709f898448dc3dc5fbb28dda16b34c79e7716e93386e23aa642809ff6",
+      "docs/remaster/evidence/r10/R10_FOCUSED_TESTS.json": "765c5cd43499f4dcc0f48cfd4608ef940beb8127d469eaada5c7bbe7c5226fbc",
+      "docs/remaster/evidence/r10/R10_SECRET_SCAN.json": "d397da5c17da0fe1470c400dc8c62796c0abaa8bb01a8637a097fc1206f4ada9",
+      "docs/remaster/evidence/r10/R10_PRIVACY.json": "c25b9ecc31de23705cb11ddbe8e6e067e4d7ba38e0e5431af7259b32139b94fe",
+      "docs/remaster/evidence/r10/R10_VOICE_PROBE.json": "fc76ba623e77564f941cceb6ef74a3d188a219de26302f38d3d4e3f2b050ec03",
+      "fail_closed_probe": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r10-verifier-round2\\failclosed-comparison.json"
+    }
+  },
+  "verdict": "PASS"
+}

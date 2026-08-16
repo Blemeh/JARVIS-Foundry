@@ -1,0 +1,141 @@
+{
+  "schema": "jarvis-remaster-work-package-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R10",
+  "title": "Command Center, briefings, English, Albanian, and voice",
+  "status": "FROZEN",
+  "generated_utc": "2026-08-16T04:30:00Z",
+  "frozen_base": {
+    "commit": "35c3b9a5f4d6dc2277de58aceae0797ce74323b2",
+    "branch": "remaster/post-v7-purpose",
+    "worktree": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster",
+    "protected_main": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry (external V8 promotion commits advanced HEAD to 2f7360e during R9; remaster live guards remained protected_state_unchanged within their windows)",
+    "live_v7_deployment_changes_allowed": false,
+    "push_or_publish_allowed": false,
+    "live_daemon_database_tasks_processes_ports": "protected, untouched",
+    "r6_status": "OWNER_REDIRECT_R6_DEFERRED (never reopen; R6 trees remain uncommitted and untouched)"
+  },
+  "objective": "Build the real owner experience: a Command Center that shows goals, projects, missions, candidate decisions, rejected alternatives, current workers, verification, findings, releases, capabilities, costs, resources, evidence, health, incidents, waiting/blockers, and next autonomous actions; evidence drill-down and a durable decision/effect timeline; owner controls STOP/VETO/PAUSE/RESUME/REPRIORITIZE/REDIRECT operating through the SAME canonical durable directive system (the UI is not authority; voice is not authority; Hermes is not authority; failure of any of them cannot remove Supervisor control). Briefings distinguish FACT / UNCERTAINTY / RECOMMENDATION / ACTION / COST / MISSING_EVIDENCE. Prove real English interaction, real Albanian interaction, and voice against a real configured provider/interface when available (mock STT/TTS is never real voice proof). Visually inspect the actual UI and test responsive layout, accessibility, empty state, stale state, degraded state, provider failure, restart, reconciliation, and STOP during UI failure.",
+  "governed_proving_area": {
+    "purpose": "The Command Center renders from REAL durable kernel/ledger state produced by the remaster gates (R7 portfolio/missions, R8 orchestration missions, R9 capabilities) read from isolated proving stores; owner directive controls mutate ONLY the isolated proving directive store, never live Supervisor state.",
+    "privacy_boundary": "Evidence records identities, hashes, timestamps, provenance, and non-sensitive excerpts only; no credentials/secrets in UI or evidence.",
+    "interaction_languages": ["English (real)", "Albanian (real)"],
+    "voice": "REAL configured provider/interface ONLY if available in this environment (e.g., Windows SAPI / local speech interface); otherwise honestly NOT_TESTED; mock STT/TTS is never real voice proof."
+  },
+  "mandatory_deliverables": [
+    {
+      "id": "R10-D01",
+      "item": "Command Center UI",
+      "detail": "A real usable web UI (served locally) showing: goals, projects, missions, candidate decisions, rejected alternatives, current workers, verification, findings, releases, capabilities, costs, resources, evidence, health, incidents, waiting/blockers, next autonomous actions; evidence drill-down and a durable decision/effect timeline. Visually inspected (screenshots), responsive, accessible, with empty/stale/degraded/provider-failure states."
+    },
+    {
+      "id": "R10-D02",
+      "item": "Canonical directive control",
+      "detail": "Owner controls STOP / VETO / PAUSE / RESUME / REPRIORITIZE / REDIRECT operate through the same canonical durable directive system (ledger events + portfolio ControlState), NOT through UI-local state; the UI merely renders and submits; a UI failure cannot remove Supervisor control; STOP during UI failure proven."
+    },
+    {
+      "id": "R10-D03",
+      "item": "Briefings",
+      "detail": "Briefings distinguish FACT / UNCERTAINTY / RECOMMENDATION / ACTION / COST / MISSING_EVIDENCE and are generated from durable state with evidence references; at least one English and one Albanian briefing proven."
+    },
+    {
+      "id": "R10-D04",
+      "item": "English and Albanian interaction",
+      "detail": "Real interaction in both languages: the Command Center and briefing endpoints accept English and Albanian and return correct language output (not machine-translated mock); proven with real fixtures and tests."
+    },
+    {
+      "id": "R10-D05",
+      "item": "Voice (honest)",
+      "detail": "If a real configured voice interface is available, prove real STT/TTS with receipts; otherwise record NOT_TESTED with a real interface probe. Mock STT/TTS is never presented as real voice proof."
+    },
+    {
+      "id": "R10-D06",
+      "item": "Owner-useful evidence and explanations",
+      "detail": "Evidence records for the UI (screenshots, DOM/accessibility checks, state transitions), the directive system, briefings, languages, and voice status; exact next autonomous action."
+    }
+  ],
+  "mandatory_gates": [
+    {
+      "id": "R10-G01",
+      "gate": "Command Center renders real durable state (goals/projects/missions/decisions/findings/capabilities/costs/health/waiting/next actions) with evidence drill-down and decision/effect timeline; visually inspected."
+    },
+    {
+      "id": "R10-G02",
+      "gate": "Owner controls STOP/VETO/PAUSE/RESUME/REPRIORITIZE/REDIRECT flow through the canonical durable directive system and take effect in the rendered state; UI failure cannot remove Supervisor control; STOP during UI failure proven."
+    },
+    {
+      "id": "R10-G03",
+      "gate": "Briefings distinguish FACT/UNCERTAINTY/RECOMMENDATION/ACTION/COST/MISSING_EVIDENCE; at least one English and one Albanian briefing proven from durable state."
+    },
+    {
+      "id": "R10-G04",
+      "gate": "Real English and Albanian interaction proven; language correctness verified, not mock."
+    },
+    {
+      "id": "R10-G05",
+      "gate": "Voice: real provider proof if available, otherwise honest NOT_TESTED with real interface probe; mock never presented as real."
+    },
+    {
+      "id": "R10-G06",
+      "gate": "Responsive layout, accessibility, empty/stale/degraded/provider-failure states, restart, reconciliation tested; full repo suite green; static clean; no protected mutation; evidence under 8 MiB."
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "R10-C01",
+      "criterion": "R10-D01..D06 each PASS with non-empty evidence (screenshots, DOM/accessibility outputs, state transitions, language outputs, voice receipts)."
+    },
+    {
+      "id": "R10-C02",
+      "criterion": "Command Center renders from real durable state with evidence drill-down and timeline; visually inspected across viewports."
+    },
+    {
+      "id": "R10-C03",
+      "criterion": "Directive controls are canonical and durable; UI failure cannot remove Supervisor control; STOP during UI failure proven."
+    },
+    {
+      "id": "R10-C04",
+      "criterion": "Briefings distinguish the six categories and are proven in English and Albanian."
+    },
+    {
+      "id": "R10-C05",
+      "criterion": "Real English and Albanian interaction proven; language correctness verified."
+    },
+    {
+      "id": "R10-C06",
+      "criterion": "Voice honestly classified (ACTIVE with real receipts or NOT_TESTED with real interface probe); no mock voice claim."
+    },
+    {
+      "id": "R10-C07",
+      "criterion": "Responsive/accessibility/empty/stale/degraded/provider-failure/restart/reconciliation tested with evidence."
+    },
+    {
+      "id": "R10-C08",
+      "criterion": "Full repository suite green; R10-owned files pass ruff check/format/mypy strict/bandit (or the UI toolchain equivalent); evidence under budget; no protected mutation; fresh independent verifier reproduces every criterion."
+    }
+  ],
+  "ownership": {
+    "builder": "May create src/jarvis_foundry/command_center/**, scripts/remaster/r10/**, tests/remaster/r10/**, docs/remaster/evidence/r10/**, docs/remaster/work_packages/R10_WORK_PACKAGE.json, and R10_FINDINGS.json under evidence/r10. May NOT edit existing kernel modules, tests/foundry, tests/remaster/r6-r9, scripts/remaster/r6-r9, src/jarvis_foundry/kernel/memory, prior evidence (r0-r9), FINDINGS.jsonl (root-owned), PROGRAM_STATE.md, R6 files, protected main, or any owner project in place. R10 source may IMPORT existing kernel/portfolio/orchestration/capabilities_live modules read-only.",
+    "root": "Evidence custody, findings registry, commit decision, final truth.",
+    "verifier": "Fresh independent context after builder freeze."
+  },
+  "resources_and_constraints": {
+    "python": "C:\\Python313\\python.exe",
+    "isolated_venv": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r3-venv (reuse)",
+    "proving_area": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r10-*",
+    "network_allowed": "none for external providers; voice uses a LOCAL real interface only if present (e.g., Windows SAPI); otherwise NOT_TESTED",
+    "evidence_budget_bytes": 8388608,
+    "timeout": "bounded; every long gate prints WALL_SECONDS and EXIT_CODE"
+  },
+  "status_contract": "PASS | FAIL | BLOCKED | NOT_TESTED | WAITING only; exit code zero alone is NOT_TESTED; every PASS needs non-empty evidence.",
+  "stop_conditions": [
+    "any mutation of live/protected state, live vault, live database, protected main, or any owner project in place",
+    "any UI/voice authority claim (UI/voice/Hermes are never authority)",
+    "any mock STT/TTS presented as real voice proof",
+    "any language output presented as real without correctness verification",
+    "any secret value written to evidence",
+    "any commit or push by the builder to protected repos",
+    "any unrecorded gate failure presented as PASS"
+  ],
+  "builder_status": "NOT_TESTED until a fresh independent verifier passes every mandatory criterion"
+}

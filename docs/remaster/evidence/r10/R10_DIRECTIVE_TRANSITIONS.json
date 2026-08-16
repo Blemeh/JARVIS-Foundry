@@ -1,0 +1,199 @@
+{
+  "transitions": [
+    {
+      "command_matches": true,
+      "command_type": "STOP",
+      "reason": "stop everything",
+      "receipt": {
+        "created": true,
+        "directive_id": "directive-stop-g02-0",
+        "event_id": "r10-directive-g02-0",
+        "sequence": 1
+      },
+      "state_after": {
+        "authority": "PortfolioControl/ControlState + hash-bound directive ledger",
+        "control_hash": "ba8dc04249649b43f993211df25fc4586fc653edad9cff501d340cc5357d5cca",
+        "directive_count": 1,
+        "paused_projects": [],
+        "redirects": [],
+        "stop_active": true,
+        "ui_authority": false,
+        "vetoed_candidates": [],
+        "voice_authority": false
+      },
+      "target": "GLOBAL",
+      "value": ""
+    },
+    {
+      "command_matches": true,
+      "command_type": "VETO",
+      "reason": "veto candidate",
+      "receipt": {
+        "created": true,
+        "directive_id": "directive-veto-g02-1",
+        "event_id": "r10-directive-g02-1",
+        "sequence": 2
+      },
+      "state_after": {
+        "authority": "PortfolioControl/ControlState + hash-bound directive ledger",
+        "control_hash": "69ffdf1eda5d4f15fd333aa25f42a2c7e8953d84cf785b1a45ed348dacb80efc",
+        "directive_count": 2,
+        "paused_projects": [],
+        "redirects": [],
+        "stop_active": true,
+        "ui_authority": false,
+        "vetoed_candidates": [
+          "cand-11d1ef18f372"
+        ],
+        "voice_authority": false
+      },
+      "target": "cand-11d1ef18f372",
+      "value": ""
+    },
+    {
+      "command_matches": true,
+      "command_type": "PAUSE",
+      "reason": "pause operators",
+      "receipt": {
+        "created": true,
+        "directive_id": "directive-pause-g02-2",
+        "event_id": "r10-directive-g02-2",
+        "sequence": 3
+      },
+      "state_after": {
+        "authority": "PortfolioControl/ControlState + hash-bound directive ledger",
+        "control_hash": "ecf4c32bf2ee1061e641b70e122e6dc9a92ff6cadb033b515b973dc629dc024b",
+        "directive_count": 3,
+        "paused_projects": [
+          "operators"
+        ],
+        "redirects": [],
+        "stop_active": true,
+        "ui_authority": false,
+        "vetoed_candidates": [
+          "cand-11d1ef18f372"
+        ],
+        "voice_authority": false
+      },
+      "target": "operators",
+      "value": ""
+    },
+    {
+      "command_matches": true,
+      "command_type": "RESUME",
+      "reason": "resume all",
+      "receipt": {
+        "created": true,
+        "directive_id": "directive-resume-g02-3",
+        "event_id": "r10-directive-g02-3",
+        "sequence": 4
+      },
+      "state_after": {
+        "authority": "PortfolioControl/ControlState + hash-bound directive ledger",
+        "control_hash": "692a8f08dfb64ee925c6cf36325d861dd9d5cffbb5cd60a1761f31c6450d2a4c",
+        "directive_count": 4,
+        "paused_projects": [],
+        "redirects": [],
+        "stop_active": false,
+        "ui_authority": false,
+        "vetoed_candidates": [
+          "cand-11d1ef18f372"
+        ],
+        "voice_authority": false
+      },
+      "target": "GLOBAL",
+      "value": ""
+    },
+    {
+      "command_matches": true,
+      "command_type": "REPRIORITIZE",
+      "reason": "boost priority",
+      "receipt": {
+        "created": true,
+        "directive_id": "directive-reprioritize-g02-4",
+        "event_id": "r10-directive-g02-4",
+        "sequence": 5
+      },
+      "state_after": {
+        "authority": "PortfolioControl/ControlState + hash-bound directive ledger",
+        "control_hash": "c5ae41d261342637f05ec976f6b0107713288fe58ea953f4437a816bbf4b90a7",
+        "directive_count": 5,
+        "paused_projects": [],
+        "redirects": [],
+        "stop_active": false,
+        "ui_authority": false,
+        "vetoed_candidates": [
+          "cand-11d1ef18f372"
+        ],
+        "voice_authority": false
+      },
+      "target": "cand-11d1ef18f372",
+      "value": "2"
+    },
+    {
+      "command_matches": true,
+      "command_type": "REDIRECT",
+      "reason": "redirect target",
+      "receipt": {
+        "created": true,
+        "directive_id": "directive-redirect-g02-5",
+        "event_id": "r10-directive-g02-5",
+        "sequence": 6
+      },
+      "state_after": {
+        "authority": "PortfolioControl/ControlState + hash-bound directive ledger",
+        "control_hash": "a003bce8713bf7403616ab06a76d668e0ddbf3afd6d47e5bccf070f89a92ed82",
+        "directive_count": 6,
+        "paused_projects": [],
+        "redirects": [
+          {
+            "directive_id": "directive-redirect-g02-5",
+            "new_target": "proving/operators",
+            "project_id": "operators",
+            "reason": "redirect target",
+            "recorded_at": "2026-08-16T12:00:00Z"
+          }
+        ],
+        "stop_active": false,
+        "ui_authority": false,
+        "vetoed_candidates": [
+          "cand-11d1ef18f372"
+        ],
+        "voice_authority": false
+      },
+      "target": "operators",
+      "value": "proving/operators"
+    }
+  ],
+  "ui_failure": {
+    "applied_status": "APPLIED",
+    "control_after_kill": {
+      "authority": "PortfolioControl/ControlState + hash-bound directive ledger",
+      "control_hash": "ba8dc04249649b43f993211df25fc4586fc653edad9cff501d340cc5357d5cca",
+      "directive_count": 1,
+      "ledger_event_count": 1,
+      "ledger_sha256": "25e7fa3d92b3e25790bdc7cea7b7754d8021a679bafff120684706f236d50170",
+      "paused_projects": [],
+      "redirects": [],
+      "stop_active": true,
+      "ui_authority": false,
+      "vetoed_candidates": [],
+      "voice_authority": false
+    },
+    "control_before_kill": {
+      "authority": "PortfolioControl/ControlState + hash-bound directive ledger",
+      "control_hash": "ba8dc04249649b43f993211df25fc4586fc653edad9cff501d340cc5357d5cca",
+      "directive_count": 1,
+      "paused_projects": [],
+      "redirects": [],
+      "stop_active": true,
+      "ui_authority": false,
+      "vetoed_candidates": [],
+      "voice_authority": false
+    },
+    "directive_id": "directive-stop-g02-ui-stop",
+    "server_pid": 31352,
+    "stop_survives_ui_failure": true,
+    "ui_process_killed": true
+  }
+}

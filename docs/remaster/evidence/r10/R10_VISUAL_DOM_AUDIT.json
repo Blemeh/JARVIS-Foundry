@@ -1,0 +1,56 @@
+{
+  "check_count": 10,
+  "checks": [
+    {
+      "detail": "h1 count=1",
+      "id": "single-h1",
+      "passed": true
+    },
+    {
+      "detail": "main present",
+      "id": "main-landmark",
+      "passed": true
+    },
+    {
+      "detail": "nav present",
+      "id": "nav-landmark",
+      "passed": true
+    },
+    {
+      "detail": "header present",
+      "id": "header-landmark",
+      "passed": true
+    },
+    {
+      "detail": "footer present",
+      "id": "footer-landmark",
+      "passed": true
+    },
+    {
+      "detail": "unnamed buttons=0",
+      "id": "buttons-named",
+      "passed": true
+    },
+    {
+      "detail": "unlabelled inputs=0",
+      "id": "inputs-labelled",
+      "passed": true
+    },
+    {
+      "detail": "bad links=0",
+      "id": "links-valid",
+      "passed": true
+    },
+    {
+      "detail": "duplicate ids=",
+      "id": "unique-ids",
+      "passed": true
+    },
+    {
+      "detail": "bad images=0",
+      "id": "images-alt",
+      "passed": true
+    }
+  ],
+  "passed": true
+}

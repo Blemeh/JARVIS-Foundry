@@ -1,0 +1,47 @@
+{
+  "checks": {
+    "albanian_briefing_ok": true,
+    "albanian_page_content": true,
+    "albanian_page_ok": true,
+    "english_briefing_ok": true,
+    "english_page_content": true,
+    "english_page_ok": true,
+    "per_language_content": true,
+    "unsupported_language_rejected": true
+  },
+  "endpoints": {
+    "albanian_briefing": {
+      "status": 200
+    },
+    "albanian_page": {
+      "html": "R10_LANGUAGES_SQ.html",
+      "status": 200
+    },
+    "english_briefing": {
+      "status": 200
+    },
+    "english_page": {
+      "html": "R10_LANGUAGES_EN.html",
+      "status": 200
+    },
+    "unsupported_language": {
+      "body": "{\"reason\": \"unsupported language\", \"status\": \"MALFORMED\"}",
+      "status": 400
+    }
+  },
+  "evidence": [
+    "R10_LANGUAGES_EN.html",
+    "R10_LANGUAGES_SQ.html"
+  ],
+  "evidence_utc": "2026-08-16T12:00:00Z",
+  "exit_code": 0,
+  "outputs": {
+    "albanian_html": "R10_LANGUAGES_SQ.html",
+    "albanian_html_sha256": "5d5634bfa6f33a9cd3456b9807adf7fde590aa3e3c74bb9c167c56d2f58935d3",
+    "english_html": "R10_LANGUAGES_EN.html",
+    "english_html_sha256": "51696abd5f89894952bf9b84da9e99f54a782c8caaa92a11275ff187190017ac"
+  },
+  "passed": true,
+  "schema": "jarvis-r10-g04-languages-v1",
+  "wall_seconds": 0.261
+}

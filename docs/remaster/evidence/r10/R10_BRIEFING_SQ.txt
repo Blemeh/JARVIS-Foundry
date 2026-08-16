@@ -1,0 +1,7 @@
+Përmbledhja e Supervizorit - JARVIS Foundry
+- Fakt: Faza r9 statusi: NOT_TESTED në commit-in 445cd92161f6; 2 misione të pranuara, 3 aftësi aktive, 2 vendime portfolio.
+- Pasiguri: Totali i matur në USD është UNKNOWN; klasifikimi i zërit është NOT_TESTED.
+- Rekomandim: Mbajeni të mbyllur paketën e provave të ndërtuesit R10 dhe dorëzojeni te një verifikues i pavarur përpara se të vazhdoni te R11.
+- Veprim: dispatch real repair B on the recorded verifier defect
+- Kosto: 0 matje buxheti; matje të panjohura: 0. Nuk ka fatura reale USD nga ofruesi në provat R7-R9; shumat mbeten të panjohura
+- Dëshmi e munguar: Faturat reale STT/TTS: NOT_TESTED; fatura USD nga ofruesi: asnjë. Shenjat e shëndetit: e degraduar=True, dështim i ofruesit=True.

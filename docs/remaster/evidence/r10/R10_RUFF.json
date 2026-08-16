@@ -1,0 +1,8 @@
+{
+  "exit_code": 0,
+  "passed": true,
+  "raw_output": "R10_RUFF_RAW.txt",
+  "raw_output_sha256": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0",
+  "schema": "jarvis-r10-ruff-v1",
+  "wall_seconds": 0.234
+}

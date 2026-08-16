@@ -1,0 +1,17 @@
+{
+  "candidates": 6,
+  "capabilities": 6,
+  "decisions": 2,
+  "evidence_utc": "2026-08-16T12:00:00Z",
+  "exit_code": 0,
+  "findings": 110,
+  "missions": 3,
+  "passed": true,
+  "portfolio_events": 17,
+  "projects": 4,
+  "proving_root": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r10-builder",
+  "releases": 3,
+  "schema": "jarvis-r10-seed-gate-v1",
+  "state_hash": "a8859bdfcff0ad1fbaeb6aaf5a684aa8f473f6595f1bf61bfa26cec5d31857fd",
+  "wall_seconds": 0.157
+}

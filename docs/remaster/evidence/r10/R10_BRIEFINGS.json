@@ -1,0 +1,106 @@
+{
+  "albanian": {
+    "categories": [
+      {
+        "category": "Fakt",
+        "text": "Faza r9 statusi: NOT_TESTED n\u00eb commit-in 445cd92161f6; 2 misione t\u00eb pranuara, 3 aft\u00ebsi aktive, 2 vendime portfolio.",
+        "title": "Gjendja e q\u00ebndrueshme e faz\u00ebs"
+      },
+      {
+        "category": "Pasiguri",
+        "text": "Totali i matur n\u00eb USD \u00ebsht\u00eb UNKNOWN; klasifikimi i z\u00ebrit \u00ebsht\u00eb NOT_TESTED.",
+        "title": "Kostot dhe pasiguria e z\u00ebrit"
+      },
+      {
+        "category": "Rekomandim",
+        "text": "Mbajeni t\u00eb mbyllur paket\u00ebn e provave t\u00eb nd\u00ebrtuesit R10 dhe dor\u00ebzojeni te nj\u00eb verifikues i pavarur p\u00ebrpara se t\u00eb vazhdoni te R11.",
+        "title": "Vazhdo programin e ngrir\u00eb"
+      },
+      {
+        "category": "Veprim",
+        "text": "dispatch real repair B on the recorded verifier defect",
+        "title": "Veprimi tjet\u00ebr autonom"
+      },
+      {
+        "category": "Kosto",
+        "text": "0 matje buxheti; matje t\u00eb panjohura: 0. Nuk ka fatura reale USD nga ofruesi n\u00eb provat R7-R9; shumat mbeten t\u00eb panjohura",
+        "title": "Gjendja e kostove"
+      },
+      {
+        "category": "D\u00ebshmi e munguar",
+        "text": "Faturat reale STT/TTS: NOT_TESTED; fatura USD nga ofruesi: asnj\u00eb. Shenjat e sh\u00ebndetit: e degraduar=True, d\u00ebshtim i ofruesit=True.",
+        "title": "Faturat reale q\u00eb mungojn\u00eb"
+      }
+    ],
+    "content_hash": "3ee0b05256ed9452a52190e9a9fddc31dcb97f4cd79f04bc9c99da8b3676c5e2",
+    "evidence_refs": [
+      {
+        "json_hash": "82db5d62b58daf7dece401098fe26c3f8d81719ef1afd10cc06285ed179bddcb",
+        "kind": "releases",
+        "record_id": "r9"
+      },
+      {
+        "json_hash": "24693111f7a58edb5e11b1f41641a030955768db83834ca47223263e4b54f9bd",
+        "kind": "next_actions",
+        "record_id": "mission-mission-r8a-asset"
+      }
+    ],
+    "lang": "sq",
+    "rendered_lang": "sq",
+    "schema": "jarvis-r10-briefing-v1",
+    "text": "P\u00ebrmbledhja e Supervizorit - JARVIS Foundry\n- Fakt: Faza r9 statusi: NOT_TESTED n\u00eb commit-in 445cd92161f6; 2 misione t\u00eb pranuara, 3 aft\u00ebsi aktive, 2 vendime portfolio.\n- Pasiguri: Totali i matur n\u00eb USD \u00ebsht\u00eb UNKNOWN; klasifikimi i z\u00ebrit \u00ebsht\u00eb NOT_TESTED.\n- Rekomandim: Mbajeni t\u00eb mbyllur paket\u00ebn e provave t\u00eb nd\u00ebrtuesit R10 dhe dor\u00ebzojeni te nj\u00eb verifikues i pavarur p\u00ebrpara se t\u00eb vazhdoni te R11.\n- Veprim: dispatch real repair B on the recorded verifier defect\n- Kosto: 0 matje buxheti; matje t\u00eb panjohura: 0. Nuk ka fatura reale USD nga ofruesi n\u00eb provat R7-R9; shumat mbeten t\u00eb panjohura\n- D\u00ebshmi e munguar: Faturat reale STT/TTS: NOT_TESTED; fatura USD nga ofruesi: asnj\u00eb. Shenjat e sh\u00ebndetit: e degraduar=True, d\u00ebshtim i ofruesit=True.",
+    "title": "P\u00ebrmbledhja e Supervizorit - JARVIS Foundry"
+  },
+  "english": {
+    "categories": [
+      {
+        "category": "Fact",
+        "text": "Stage r9 status: NOT_TESTED at commit 445cd92161f6; 2 accepted missions, 3 active capabilities, 2 portfolio decisions.",
+        "title": "Durable stage state"
+      },
+      {
+        "category": "Uncertainty",
+        "text": "Measured USD total is UNKNOWN; voice classification is NOT_TESTED.",
+        "title": "Costs and voice uncertainty"
+      },
+      {
+        "category": "Recommendation",
+        "text": "Keep the R10 builder evidence package closed and submit it to a fresh independent verifier before proceeding to R11.",
+        "title": "Continue the frozen program"
+      },
+      {
+        "category": "Action",
+        "text": "dispatch real repair B on the recorded verifier defect",
+        "title": "Next autonomous action"
+      },
+      {
+        "category": "Cost",
+        "text": "0 budget measurements; unknown measurements: 0. No real provider USD receipts exist in R7-R9 evidence; amounts stay UNKNOWN",
+        "title": "Cost posture"
+      },
+      {
+        "category": "Missing evidence",
+        "text": "Real STT/TTS receipts: NOT_TESTED; provider USD receipts: none. Health flags: degraded=True, provider_failure=True.",
+        "title": "Missing real receipts"
+      }
+    ],
+    "content_hash": "f2e9365eb56f71f2b46f9ca4ddafbedbc2b455182357c0fa98faf04102154f0a",
+    "evidence_refs": [
+      {
+        "json_hash": "82db5d62b58daf7dece401098fe26c3f8d81719ef1afd10cc06285ed179bddcb",
+        "kind": "releases",
+        "record_id": "r9"
+      },
+      {
+        "json_hash": "24693111f7a58edb5e11b1f41641a030955768db83834ca47223263e4b54f9bd",
+        "kind": "next_actions",
+        "record_id": "mission-mission-r8a-asset"
+      }
+    ],
+    "lang": "en",
+    "rendered_lang": "en",
+    "schema": "jarvis-r10-briefing-v1",
+    "text": "Supervisor briefing - JARVIS Foundry\n- Fact: Stage r9 status: NOT_TESTED at commit 445cd92161f6; 2 accepted missions, 3 active capabilities, 2 portfolio decisions.\n- Uncertainty: Measured USD total is UNKNOWN; voice classification is NOT_TESTED.\n- Recommendation: Keep the R10 builder evidence package closed and submit it to a fresh independent verifier before proceeding to R11.\n- Action: dispatch real repair B on the recorded verifier defect\n- Cost: 0 budget measurements; unknown measurements: 0. No real provider USD receipts exist in R7-R9 evidence; amounts stay UNKNOWN\n- Missing evidence: Real STT/TTS receipts: NOT_TESTED; provider USD receipts: none. Health flags: degraded=True, provider_failure=True.",
+    "title": "Supervisor briefing - JARVIS Foundry"
+  }
+}

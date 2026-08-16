@@ -1,0 +1,57 @@
+{
+  "exit_code": 0,
+  "passed": true,
+  "schema": "jarvis-r10-static-v1",
+  "subgates": {
+    "bandit": {
+      "exit_code": 0,
+      "passed": true,
+      "raw_output": "R10_BANDIT_RAW.txt",
+      "raw_output_sha256": "05bb4c54d98501153b3ec2d6f170a1156745f1ca0ad1ff6aff6b8bbb3663a90c",
+      "schema": "jarvis-r10-bandit-v1",
+      "wall_seconds": 0.542
+    },
+    "bandit_scripts_advisory": {
+      "exit_code": 1,
+      "note": "advisory only; mandatory bandit gate covers command_center source",
+      "passed": false
+    },
+    "css_linter": {
+      "exit_code": -1,
+      "note": "no CSS linter installed in the R10 toolchain",
+      "passed": false,
+      "status": "NOT_TESTED"
+    },
+    "javascript_node_check": {
+      "exit_code": 0,
+      "output": "",
+      "passed": true,
+      "status": "PASS"
+    },
+    "mypy": {
+      "exit_code": 0,
+      "passed": true,
+      "raw_output": "R10_MYPY_RAW.txt",
+      "raw_output_sha256": "ce32e21ee307d2da61637151f2f239cf8568be270711ff04e8e3025805ab7f57",
+      "schema": "jarvis-r10-mypy-v1",
+      "wall_seconds": 0.381
+    },
+    "ruff": {
+      "exit_code": 0,
+      "passed": true,
+      "raw_output": "R10_RUFF_RAW.txt",
+      "raw_output_sha256": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0",
+      "schema": "jarvis-r10-ruff-v1",
+      "wall_seconds": 0.234
+    },
+    "ruff_format": {
+      "exit_code": 0,
+      "passed": true,
+      "raw_output": "R10_RUFF_FORMAT_RAW.txt",
+      "raw_output_sha256": "a6b88871775f65b3c42559ed341f1212d4b3a9ab5110c4d87f8e9a9eb44e0332",
+      "schema": "jarvis-r10-ruff_format-v1",
+      "wall_seconds": 0.233
+    }
+  },
+  "wall_seconds": 1.94
+}

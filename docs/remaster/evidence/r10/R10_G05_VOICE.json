@@ -1,0 +1,24 @@
+{
+  "classification": "TTS_ONLY",
+  "evidence": [
+    "R10_VOICE_PROBE.json"
+  ],
+  "evidence_utc": "2026-08-16T12:00:00Z",
+  "exit_code": 0,
+  "mock_stt_tts_used": false,
+  "note": "ACTIVE/TTS_ONLY means a real System.Speech receipt exists; NOT_TESTED means no real local interface receipt was produced; mock STT/TTS is never presented as real voice proof",
+  "passed": true,
+  "probe": {
+    "engine": "System.Speech",
+    "raw_output_sha256": "b45277d2ad544894fd8df00e9a8a1a6bbe3af5d3bf5e822d683b1d7fb8f08bb6",
+    "receipt_hashes": {
+      "en": "f8f9f2c70e0c3632924c04c66a28cd8115b013bfdef27c3af9e44e54bf2d5f44",
+      "sq": "f22d5ea476f50ecc9e03dd141710f2d7b84aa32614b0286d00ab493b8096ddb4"
+    },
+    "sapi_available": true,
+    "stt_available": true,
+    "tts_available": true
+  },
+  "schema": "jarvis-r10-g05-voice-v1",
+  "wall_seconds": 0.498
+}

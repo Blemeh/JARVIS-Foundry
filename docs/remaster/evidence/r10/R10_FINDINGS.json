@@ -1,0 +1,80 @@
+{
+  "findings": [
+    {
+      "detail": "The R10 contract creates src/jarvis_foundry/command_center/ as an additive package. Python resolves the package before the sibling command_center.py module, so the package __init__ loads the legacy module under a private alias and re-exports build_snapshot, decision_timeline, and CommandCenterServer. tests/foundry and briefings.py keep the exact same public API without editing the legacy module.",
+      "disposition": "RECORDED",
+      "evidence": "src/jarvis_foundry/command_center/__init__.py",
+      "id": "R10-F-001",
+      "severity": "S3",
+      "title": "Command Center package shadows the legacy command_center.py module"
+    },
+    {
+      "detail": "The probe invokes System.Speech directly. If no recognizer/voice receipt is produced the classification is NOT_TESTED (or TTS_ONLY when only real TTS succeeds); mock STT/TTS is never presented as real voice proof.",
+      "disposition": "ENVIRONMENT_NOTE",
+      "evidence": "R10_G05_VOICE.json, R10_VOICE_PROBE.json",
+      "id": "R10-F-002",
+      "severity": "S3",
+      "title": "Voice is honestly classified by a real local SAPI probe"
+    },
+    {
+      "detail": "Playwright and axe are not installed and network is disabled, so screenshots and DOM dumps use the installed Chrome/Edge headless binary and the page runs a real in-page DOM accessibility audit (landmarks, labels, unique ids, button names). The toolchain status is recorded honestly.",
+      "disposition": "RECORDED",
+      "evidence": "R10_G06_VISUAL.json, R10_VISUAL_DOM_AUDIT.json",
+      "id": "R10-F-003",
+      "severity": "S3",
+      "title": "Visual evidence uses real Chrome headless; axe is unavailable"
+    },
+    {
+      "detail": "R10-G01..G06 reproduce the required evidence, but the final builder_status stays NOT_TESTED until a fresh independent verifier reproduces every criterion from the frozen package.",
+      "disposition": "RECORDED",
+      "evidence": "R10_BUILDER_REPORT.json",
+      "id": "R10-V-001",
+      "severity": "S3",
+      "title": "Builder status remains NOT_TESTED until fresh independent adjudication"
+    },
+    {
+      "detail": "Cosmetic: R10_FULL_SUITE_RAW.txt may omit final 'N passed' lines; JUnit counts and exit codes are authoritative.",
+      "disposition": "RECORDED",
+      "evidence": "R10_FULL_SUITE.json",
+      "id": "R10-V-002",
+      "severity": "S4",
+      "title": "Full-suite raw outputs may omit pytest summary lines"
+    },
+    {
+      "detail": "R10_STATE_SNAPSHOT.json is the full isolated-proving projection so a verifier can reproduce drill-down and timeline checks without re-running the seeder; it stays inside the 8 MiB evidence budget.",
+      "disposition": "RECORDED",
+      "evidence": "R10_STATE_SNAPSHOT.json",
+      "id": "R10-NEW-001",
+      "severity": "S4",
+      "title": "Evidence snapshot carries the full durable projection"
+    },
+    {
+      "detail": "R10_PROGRESS_04.json existed in the evidence dir but was absent from the artifact manifest, so evidence_bytes did not equal the on-disk total and the closed package was not byte-identical to the manifest. Progress checkpoints are incremental working artifacts, not closure evidence; evidence_bytes() and the manifest scan now exclude R10_PROGRESS_*.json, and the regenerated manifest matches the on-disk payload byte-for-byte.",
+      "disposition": "REPAIRED_IN_R10_ROUND2",
+      "evidence": "R10_ARTIFACT_MANIFEST.json, R10_BUILDER_REPORT.json",
+      "id": "R10-V-101",
+      "severity": "S2",
+      "title": "Incremental progress file excluded from the frozen manifest"
+    },
+    {
+      "detail": "The SQ briefing body sentences ('Keep the R10 builder evidence package closed', 'Measured USD total is', 'accepted missions, ...') were English under Albanian labels; gates and tests only asserted labels/titles. The briefing generator now emits genuinely localized per-language body text for every category (data values such as record titles remain in their source language), and the G03/G04 gates plus regression tests assert no English template fragments appear in the SQ body.",
+      "disposition": "REPAIRED_IN_R10_ROUND2",
+      "evidence": "R10_BRIEFING_SQ.txt, R10_BRIEFINGS.json, gate_g03_briefings.py",
+      "id": "R10-V-102",
+      "severity": "S2",
+      "title": "Albanian briefing/page body contained English template sentences"
+    },
+    {
+      "detail": "live_guard.py compare read provenance['r10_attributable_mutation'] even when _live_db_provenance returned testable=False (snapshot missing), raising KeyError instead of recording an honest FAIL. The provenance now always includes r10_attributable_mutation (True when untestable, fail-closed), and a clean before/after/compare run now records protected_state_unchanged=True with r10_attributable_mutation=False.",
+      "disposition": "REPAIRED_IN_R10_ROUND2",
+      "evidence": "R10_LIVE_GUARD_COMPARISON.json, live_guard.py",
+      "id": "R10-V-103",
+      "severity": "S2",
+      "title": "Live-guard compare did not fail closed on a missing DB snapshot"
+    }
+  ],
+  "generated_utc": "2026-08-16T12:00:00Z",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "schema": "jarvis-r10-findings-v1",
+  "stage": "R10"
+}

@@ -1,0 +1,164 @@
+{
+  "checks": {
+    "dom_audit_passed": true,
+    "empty_state_rendered": true,
+    "http_endpoints": true,
+    "provider_failure_banner_rendered": true,
+    "restart_reconciliation": true,
+    "stale_and_degraded_flags_in_state": true,
+    "visual_inspected": true
+  },
+  "empty_state": {
+    "empty_banner_rendered": true,
+    "empty_page_status": 200,
+    "empty_text_rendered": true
+  },
+  "evidence_files": [
+    "R10_VISUAL_DESKTOP.png",
+    "R10_VISUAL_MOBILE.png",
+    "R10_VISUAL_DOM_DUMP.html",
+    "R10_VISUAL_DOM_AUDIT.json"
+  ],
+  "evidence_utc": "2026-08-16T12:00:00Z",
+  "exit_code": 0,
+  "http_checks": {
+    "briefing_en": {
+      "bytes": 2276,
+      "sha256": "ac965b802483a6991ee08644a7fa64e4b704e9f50b8f89c04f5869fd8fc12563",
+      "status": 200
+    },
+    "briefing_sq": {
+      "bytes": 2407,
+      "sha256": "e048ec9f1ddefa91e321c6fb18936492a23bad80a5251247d5fc1981f7ea2089",
+      "status": 200
+    },
+    "evidence_drilldown": {
+      "bytes": 3646,
+      "sha256": "b16404b7b72395bfa04c406eecf108e4329c2eeb89b22a90f8d6f777c0197d6f",
+      "status": 200
+    },
+    "health": {
+      "bytes": 96,
+      "sha256": "9105d62263cb74de1ec3230d67db0856ab8d279a6e9d45eea44a89799ccfa472",
+      "status": 200
+    },
+    "page_en": {
+      "bytes": 564351,
+      "sha256": "327c77804edd179f0231c97ebd67f92240091305080a8433c0ec1b6956cb6308",
+      "status": 200
+    },
+    "page_sq": {
+      "bytes": 564924,
+      "sha256": "04f188d5963562abeda7180f60c99d907cb856e97627b8d3167f6ec561f94117",
+      "status": 200
+    },
+    "state": {
+      "bytes": 423699,
+      "sha256": "6f55b89773f52fe0f42e59c3511a3704b9acf08a294eefa45e4223f143023bb0",
+      "status": 200
+    }
+  },
+  "passed": true,
+  "restart_reconciliation": {
+    "directive_applied": true,
+    "ledger_verify_after_reopen": true,
+    "paused_after_reopen": true,
+    "state_after_reopen": {
+      "authority": "PortfolioControl/ControlState + hash-bound directive ledger",
+      "control_hash": "a57cb60417dccd1ded665480c5a70ece6f5f6a825788ce8702186ab88580a180",
+      "directive_count": 1,
+      "paused_projects": [
+        "operators"
+      ],
+      "redirects": [],
+      "stop_active": false,
+      "ui_authority": false,
+      "vetoed_candidates": [],
+      "voice_authority": false
+    }
+  },
+  "schema": "jarvis-r10-g06-visual-v1",
+  "visual": {
+    "browser": {
+      "available": true,
+      "desktop": {
+        "exit_code": 0,
+        "screenshot": "R10_VISUAL_DESKTOP.png",
+        "sha256": "a2eeb1e4b2b01dfc04d94401ff1da78aff9a04e84b7b2e468f0ad0a0ab6ce682",
+        "size": 43717,
+        "wall_seconds": 0.877
+      },
+      "dom_dump": {
+        "audit": {
+          "check_count": 10,
+          "checks": [
+            {
+              "detail": "h1 count=1",
+              "id": "single-h1",
+              "passed": true
+            },
+            {
+              "detail": "main present",
+              "id": "main-landmark",
+              "passed": true
+            },
+            {
+              "detail": "nav present",
+              "id": "nav-landmark",
+              "passed": true
+            },
+            {
+              "detail": "header present",
+              "id": "header-landmark",
+              "passed": true
+            },
+            {
+              "detail": "footer present",
+              "id": "footer-landmark",
+              "passed": true
+            },
+            {
+              "detail": "unnamed buttons=0",
+              "id": "buttons-named",
+              "passed": true
+            },
+            {
+              "detail": "unlabelled inputs=0",
+              "id": "inputs-labelled",
+              "passed": true
+            },
+            {
+              "detail": "bad links=0",
+              "id": "links-valid",
+              "passed": true
+            },
+            {
+              "detail": "duplicate ids=",
+              "id": "unique-ids",
+              "passed": true
+            },
+            {
+              "detail": "bad images=0",
+              "id": "images-alt",
+              "passed": true
+            }
+          ],
+          "passed": true
+        },
+        "audit_output": "R10_VISUAL_DOM_AUDIT.json",
+        "exit_code": 0,
+        "output": "R10_VISUAL_DOM_DUMP.html",
+        "sha256": "e28e43d19d9fb7d8ae9aa2486044b93a1e8d112c40379e7c3f4c00801a5109a8"
+      },
+      "mobile": {
+        "exit_code": 0,
+        "screenshot": "R10_VISUAL_MOBILE.png",
+        "sha256": "bf95a2672d8372c00586ee755dba2aa3e0fe3e02373c04b92ac01ef926578052",
+        "size": 16368,
+        "wall_seconds": 0.651
+      },
+      "path": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+    }
+  },
+  "wall_seconds": 3.567
+}

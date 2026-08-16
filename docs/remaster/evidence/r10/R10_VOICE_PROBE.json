@@ -1,0 +1,59 @@
+{
+  "classification": "TTS_ONLY",
+  "mock_used": false,
+  "policy": "mock STT/TTS is never presented as real voice proof",
+  "probe": {
+    "engine": "System.Speech",
+    "exit_code": 0,
+    "probe_utc": "2026-08-16T12:00:00Z",
+    "raw_errors": [],
+    "raw_output": "{\"engine\":\"System.Speech\",\"sapi_available\":true,\"tts\":{\"available\":true,\"voices\":[{\"name\":\"Microsoft David Desktop\",\"culture\":\"en-US\",\"gender\":\"Male\",\"age\":\"Adult\"},{\"name\":\"Microsoft Zira Desktop\",\"culture\":\"en-US\",\"gender\":\"Female\",\"age\":\"Adult\"}],\"receipts\":[{\"language\":\"en\",\"text\":\"JARVIS Command Center probe.\",\"wav\":\"C:\\\\\\\\Users\\\\\\\\b\\\\\\\\AppData\\\\\\\\Local\\\\\\\\Temp\\\\\\\\jarvis-r10-builder\\\\\\\\audio\\\\sapi-tts-en.wav\",\"size\":110036,\"sha256\":\"f8f9f2c70e0c3632924c04c66a28cd8115b013bfdef27c3af9e44e54bf2d5f44\",\"riff_header\":\"82737070\"},{\"language\":\"sq\",\"text\":\"Qendra e komand\u00c3\u00abs JARVIS.\",\"wav\":\"C:\\\\\\\\Users\\\\\\\\b\\\\\\\\AppData\\\\\\\\Local\\\\\\\\Temp\\\\\\\\jarvis-r10-builder\\\\\\\\audio\\\\sapi-tts-sq.wav\",\"size\":110918,\"sha256\":\"f22d5ea476f50ecc9e03dd141710f2d7b84aa32614b0286d00ab493b8096ddb4\",\"riff_header\":\"82737070\"}]},\"stt\":{\"available\":true,\"recognizer\":\"MS-1033-80-DESK\",\"recognized_text\":\"\",\"confidence\":0},\"raw_errors\":[]}\n",
+    "sapi_available": true,
+    "stt": {
+      "available": true,
+      "confidence": 0,
+      "recognized_text": "",
+      "recognizer": "MS-1033-80-DESK"
+    },
+    "tts": {
+      "available": true,
+      "receipts": [
+        {
+          "language": "en",
+          "riff_header": "82737070",
+          "sha256": "f8f9f2c70e0c3632924c04c66a28cd8115b013bfdef27c3af9e44e54bf2d5f44",
+          "size": 110036,
+          "text": "JARVIS Command Center probe.",
+          "wav": "C:\\\\Users\\\\b\\\\AppData\\\\Local\\\\Temp\\\\jarvis-r10-builder\\\\audio\\sapi-tts-en.wav"
+        },
+        {
+          "language": "sq",
+          "riff_header": "82737070",
+          "sha256": "f22d5ea476f50ecc9e03dd141710f2d7b84aa32614b0286d00ab493b8096ddb4",
+          "size": 110918,
+          "text": "Qendra e komand\u00c3\u00abs JARVIS.",
+          "wav": "C:\\\\Users\\\\b\\\\AppData\\\\Local\\\\Temp\\\\jarvis-r10-builder\\\\audio\\sapi-tts-sq.wav"
+        }
+      ],
+      "voices": [
+        {
+          "age": "Adult",
+          "culture": "en-US",
+          "gender": "Male",
+          "name": "Microsoft David Desktop"
+        },
+        {
+          "age": "Adult",
+          "culture": "en-US",
+          "gender": "Female",
+          "name": "Microsoft Zira Desktop"
+        }
+      ]
+    },
+    "wav_sha256": {
+      "en": "f8f9f2c70e0c3632924c04c66a28cd8115b013bfdef27c3af9e44e54bf2d5f44",
+      "sq": "f22d5ea476f50ecc9e03dd141710f2d7b84aa32614b0286d00ab493b8096ddb4"
+    }
+  },
+  "schema": "jarvis-r10-voice-probe-v1"
+}

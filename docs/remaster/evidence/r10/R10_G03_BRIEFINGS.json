@@ -1,0 +1,34 @@
+{
+  "checks": {
+    "en_correct_language": true,
+    "evidence_refs_present": true,
+    "evidence_refs_resolve": true,
+    "from_durable_state": true,
+    "no_albanian_leak_in_en": true,
+    "no_english_header_in_sq": true,
+    "per_language_content": true,
+    "six_categories_en": true,
+    "six_categories_sq": true,
+    "sq_body_has_no_english_templates": true,
+    "sq_body_is_albanian": true,
+    "sq_correct_language": true
+  },
+  "evidence": [
+    "R10_BRIEFING_EN.txt",
+    "R10_BRIEFING_SQ.txt",
+    "R10_BRIEFINGS.json"
+  ],
+  "evidence_utc": "2026-08-16T12:00:00Z",
+  "exit_code": 0,
+  "outputs": {
+    "albanian": "R10_BRIEFING_SQ.txt",
+    "albanian_sha256": "487b32fe2bcd7880947ef477fe07dddd349f1fd67abc16463e6aa3abd570c036",
+    "english": "R10_BRIEFING_EN.txt",
+    "english_sha256": "2209f0951c4c1466bb5e1880c9b586febea1541e3b1fc4009c8ffad70b095318",
+    "json": "R10_BRIEFINGS.json",
+    "json_sha256": "1644b40331c84f376345c8af13da5d5ae272e91edbb2c7b71a5113213c3de0dc"
+  },
+  "passed": true,
+  "schema": "jarvis-r10-g03-briefings-v1",
+  "wall_seconds": 0.055
+}
