@@ -1,9 +1,15 @@
 # JARVIS FOUNDRY V1 - AUTONOMY KERNEL SPECIFICATION
 
-Version: 1.1
-Status: DECISION-COMPLETE AUTONOMY PLAN - WP1 ACTIVE
+Version: 1.2
+Status: HISTORICAL SPECIFICATION - IMPLEMENTATION COMPLETE (conformance: docs/CAPABILITY_MATRIX.md)
 Parent architecture: JARVIS Foundry V3
-Date: 2026-08-11
+Date: 2026-08-11 (status header reconciled 2026-08-16)
+
+> **Reading rule:** this document is the original V1 build specification,
+> preserved for auditability. The autonomy kernel it specifies is
+> IMPLEMENTED and gate-proven (WP0–WP8, V7 adoption, live runtime).
+> Current truth: `../CURRENT_STATE.md`. Old status lines below are
+> HISTORICAL.
 
 ## 1. V1 Objective
 

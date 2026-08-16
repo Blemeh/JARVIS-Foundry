@@ -1,8 +1,15 @@
 # JARVIS FOUNDRY V1 - ACCEPTANCE GATE
 
-Version: 1.1
-Status: BINDING V1 EVIDENCE GATE - PRECONDITIONS IN PROGRESS
-Date: 2026-08-11
+Version: 1.2
+Status: HISTORICAL GATE DEFINITION - CRITERIA MAPPED (see docs/CAPABILITY_MATRIX.md)
+Date: 2026-08-11 (status header reconciled 2026-08-16)
+
+> **Reading rule:** the original gate criteria below are preserved for
+> auditability. Their current disposition: the 7-day proving DURATION was
+> waived by the authenticated owner directive 2026-08-12
+> (docs/evidence/OWNER_WAIVER_2026-08-12.md); every V1 criterion maps to
+> PROVEN or SUPERSEDED_BY_STRONGER_EVIDENCE in the capability matrix
+> (V1 row). Do not read this file as the current gate.
 
 ## 1. Gate Purpose
 

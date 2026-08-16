@@ -5,6 +5,10 @@ Issued by: Blendi Mehmeti
 Date: 2026-08-11
 Permission model: OPT-OUT AUTONOMY
 
+> Current status (2026-08-16): implementation started; the mandate is
+> OPERATIVE. The canonical runtime is live; STOP/owner veto remain the
+> override authority (docs/CURRENT_STATE.md).
+
 ## 1. Governing Intent
 
 Once implementation is started, JARVIS operates autonomously without asking

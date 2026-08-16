@@ -1,5 +1,12 @@
 # Canonical Hybrid Worker Integration Map (Phase 0 deliverable)
 
+> CANONICAL STATUS (2026-08-16): the integration this map planned was
+> MERGED into canonical main (gate 01e9cc9, merge dea4042, fixes
+> 37ab5cb/ec4ac6b). This map is now HISTORICAL-PLANNING for the design
+> rationale; current worker truth is in docs/CURRENT_STATE.md and
+> docs/CAPABILITY_MATRIX.md (Worker dispatch row), with the gate record in
+> docs/evidence/CANONICAL_HYBRID_WORKER_INTEGRATION_GATE.md.
+
 Date: 2026-08-16. Authoritative state was reconciled from Git and the live
 machine BEFORE any mutation; nothing in this map is copied from the
 experimental candidate's narrative.

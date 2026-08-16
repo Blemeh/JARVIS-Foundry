@@ -1,8 +1,13 @@
 # JARVIS FOUNDRY - NORTH STAR
 
-Version: 2.0
+Version: 2.1
 Status: END-STATE VISION - NOT IMPLEMENTATION SCOPE
-Date: 2026-08-11
+Date: 2026-08-11 (status header reconciled 2026-08-16)
+
+> **Reading rule:** this document describes the END STATE. What is
+> CURRENTLY IMPLEMENTED is recorded in `../CURRENT_STATE.md` and
+> `../CAPABILITY_MATRIX.md`. Do not read the North Star as an
+> implementation-status claim.
 
 ## 1. Product Definition
 

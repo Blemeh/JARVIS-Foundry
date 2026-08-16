@@ -1,8 +1,8 @@
-# JARVIS FOUNDRY V3 - READ FIRST
+# JARVIS FOUNDRY - READ FIRST
 
-Version: 3.0
-Status: CANONICAL AUTONOMY-FIRST PLAN - BUILD ACTIVE
-Date: 2026-08-11
+Version: 4.0
+Status: CURRENT ENTRY POINT — IMPLEMENTATION LIVE (see docs/CURRENT_STATE.md)
+Date: 2026-08-11 (status header reconciled 2026-08-16)
 Owner: Blendi Mehmeti
 System identity: JARVIS
 Runtime foundation: Hermes Agent
@@ -19,26 +19,33 @@ It prevents two forms of drift:
 
 Sequencing is technical. It is not a chain of permission requests.
 
-The current documentation task has not started implementation. When the owner
-issues `START BUILD` once, the program continues across work packages and
-versions automatically until the owner vetoes, redirects, pauses, or stops it.
+**Current implementation truth:** the autonomy kernel, knowledge brain,
+command center, multi-system layer, self-evolution, full autonomous
+operation (V1–V7), and Hybrid Memory (V8) are IMPLEMENTED and running in
+canonical. See `../CURRENT_STATE.md` (what exists now) and
+`../CAPABILITY_MATRIX.md` (per-capability status with evidence). Older
+version documents describe the original plan and are HISTORICAL where
+they conflict with those two files.
 
 ## 2. Canonical Documents
 
 Read in this order:
 
+0. `../CURRENT_STATE.md` (current truth — anti-staleness surface)
 1. `../governance/AUTONOMY_MANDATE.md`
 2. `00_READ_FIRST.md`
 3. `01_NORTH_STAR.md`
 4. `02_ARCHITECTURE_CONTRACT.md`
-5. `03_V1_AUTONOMY_KERNEL_SPEC.md`
-6. `04_V1_ACCEPTANCE_GATE.md`
-7. `05_POST_V1_ROADMAP.md`
+5. `03_V1_AUTONOMY_KERNEL_SPEC.md` (historical specification + conformance header)
+6. `04_V1_ACCEPTANCE_GATE.md` (historical gate + criterion mapping)
+7. `05_POST_V1_ROADMAP.md` (reality-based stage status)
 
 The standing mandate overrides every earlier permission-first statement.
 Words such as `authority`, `enrollment`, `approval`, `allowed`, and `denied`
 must be interpreted under V3 as internal capability state or an active owner
 veto, never as a reason to ask permission.
+
+Documentation maintenance is contractual: see `../ARCHITECTURE_DOCUMENTATION_CONTRACT.md`.
 
 ## 3. Precedence
 

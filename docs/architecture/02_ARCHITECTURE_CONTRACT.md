@@ -1,8 +1,12 @@
 # JARVIS FOUNDRY - ARCHITECTURE CONTRACT
 
-Version: 3.0
-Status: BINDING AUTONOMY-FIRST CONTRACT - BUILD ACTIVE
-Date: 2026-08-11
+Version: 4.0
+Status: BINDING AUTONOMY-FIRST CONTRACT - IMPLEMENTATION LIVE
+Date: 2026-08-11 (status header reconciled 2026-08-16)
+
+> Current-state reading rule: this contract is binding and permanent.
+> Implementation status lives in `../CURRENT_STATE.md` and
+> `../CAPABILITY_MATRIX.md`.
 
 ## 1. Contract Purpose
 
@@ -26,6 +30,37 @@ The contract governs:
 - recovery;
 - self-evolution;
 - auditability.
+
+## 1a. Established Tier Architecture (V8, canonical)
+
+The canonical implementation has legitimately established the following
+permanent structure (schema v33):
+
+```text
+TIER A — AUTHORITATIVE OPERATIONAL TRUTH       (ledger, events, STOP, directives,
+                                              verdicts, evidence, missions)
+          ↓ outranks
+TIER B — GOVERNED EPISTEMIC KNOWLEDGE          (knowledge_claims, contradictions,
+                                              freshness, manifests)
+          ↓ outranks
+TIER C — EXPERIENTIAL MEMORY                   (tier_c_* tables, event-derived:
+                                              lifecycle with validation stamps,
+                                              blocks, recall, procedures,
+                                              curation, defense, git versioning,
+                                              context compiler)
+          ↓ influences only
+MODEL / AGENT JUDGMENT
+```
+
+Binding properties:
+
+- Tier C is ADVISORY context, never authority: it cannot create directives,
+alter STOP, replace evidence, change verdicts, or certify builders.
+- Tier C rows are projections of ledger events (event-derived), never a
+second source of truth.
+- No authority path upward from Tier C.
+- The Letta runtime is NOT integrated; Letta-derived mechanics are embodied
+natively (NATIVE_JARVIS decision, recorded in the V8 final verdict).
 
 ## 2. Non-Negotiable Invariants
 

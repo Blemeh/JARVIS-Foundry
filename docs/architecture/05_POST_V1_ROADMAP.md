@@ -378,15 +378,26 @@ owner directive makes progress technically impossible.
 
 | Stage | Current state | Transition behavior after START BUILD |
 |---|---|---|
-| Foundation | Complete for review | Starts WP0 automatically |
-| V1 Autonomy Kernel | Designed, not built | Builds through WP0-WP8 |
-| V2 Knowledge Brain | Queued | Starts after V1 PASS |
-| V3 Discovery And Building | Queued | Starts after V2 PASS |
-| V4 Command Center | Queued | Starts after V3 PASS |
-| V5 Multi-System Intelligence | Queued | Starts after V4 PASS |
-| V6 Continuous Self-Evolution | Queued | Starts after V5 PASS |
-| V7 Full Autonomous Operation | Queued | Starts after V6 PASS |
-| Continuous evolution | Permanent | Never stops on task completion |
+| Foundation | Complete for review | Starts WP0 automatically | PROVEN_CURRENT — WP0 gate PASS |
+| V1 Autonomy Kernel | Design intent recorded 2026-08-11 | Builds through WP0-WP8 | **IMPLEMENTED_AND_PROVEN** — WP0–WP8 gates, V7 adoption, live runtime; the V1 7-day proving duration was waived by owner directive 2026-08-12 (docs/evidence/OWNER_WAIVER_2026-08-12.md); the design intent is conformance-mapped in 03_V1_AUTONOMY_KERNEL_SPEC.md |
+| V2 Knowledge Brain | Queued | Starts after V1 PASS | **IMPLEMENTED_AND_PROVEN** — WP9–WP12 slices, V2/V3 operational gates, knowledge claims/retrieval/consolidation live; extended by V8 Hybrid Memory |
+| V3 Discovery And Building | Queued | Starts after V2 PASS | **IMPLEMENTED_AND_PROVEN (discovery) / PARTIAL (building)** — discovery runs + cycles + V3 operational gate PASS; candidate-building surfaced via V6 machinery, not a standalone V3 builder stage |
+| V4 Command Center | Queued | Starts after V3 PASS | **IMPLEMENTED_AND_PROVEN** — V4 gate + S1–S6 (model routing, verifier truth, lease monotonicity, exactly-once, monitors, scoring) + V7_S8 |
+| V5 Multi-System Intelligence | Queued | Starts after V4 PASS | **IMPLEMENTED_AND_PROVEN** — V5 gate + S0–S8 (systems, broker, capabilities, connectors, correlation, effects, activation) |
+| V6 Continuous Self-Evolution | Queued | Starts after V5 PASS | **IMPLEMENTED_AND_PROVEN** — V6 gate + S0–S13 (builder/lab/verifier, shadow, canary, promote, restore, discovery, cycles, acceptance) |
+| V7 Full Autonomous Operation | Queued | Starts after V6 PASS | **IMPLEMENTED_AND_PROVEN** — V7 gate + S0–S13; FINAL GATE PASS (13/13 slices, suite 985 EXIT=0, PERPETUAL_AUTONOMOUS_OPERATION declared) |
+| Continuous evolution | Permanent | Never stops on task completion | PROVEN_CURRENT — continuation + continuity slices (V7_S12), live supervisor continues operating |
 
-Current execution remains not started because the owner has not yet issued the
-single `START BUILD` instruction.
+The automatic stage sequence above is COMPLETE: every queued stage has since
+been implemented and gate-passed (see docs/evidence/ and
+docs/CAPABILITY_MATRIX.md for per-slice records). The "queued" rows are
+HISTORICAL (written 2026-08-11, before implementation). Post-V8 additions:
+Hybrid Memory (promoted 2f7360e) and the canonical Worker system (merged
+dea4042, gate 01e9cc9) extend the platform; the owner-declared next program
+is the Post-V7 Remaster (docs/planning/POST_V7_CODEX_SOL_REMASTER_GOAL.md),
+which starts from this proven baseline.
+
+Current execution status: SUPERSEDED (2026-08-16) — the single `START BUILD`
+instruction was issued and the entire sequence V1→V7 executed and gate-passed;
+the canonical runtime is live. See `../CURRENT_STATE.md` for current truth and
+`../CAPABILITY_MATRIX.md` for per-capability status.
