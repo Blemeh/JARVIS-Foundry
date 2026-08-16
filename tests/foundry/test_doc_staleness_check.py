@@ -25,8 +25,10 @@ def test_current_state_names_real_head_and_schema():
     import subprocess as sp
     head = sp.run(["git", "-C", str(REPO), "rev-parse", "HEAD"],
                   capture_output=True, text=True, check=True).stdout.strip()
+    parent = sp.run(["git", "-C", str(REPO), "rev-parse", "HEAD^"],
+                    capture_output=True, text=True).stdout.strip()
     text = (REPO / "docs" / "CURRENT_STATE.md").read_text(encoding="utf-8")
-    assert head[:7] in text or head in text
+    assert head[:7] in text or head in text or parent[:7] in text or parent in text
     sys.path.insert(0, str(REPO / "src"))
     from jarvis_foundry.migrations import SCHEMA_VERSION
     assert f"v{SCHEMA_VERSION}" in text or str(SCHEMA_VERSION) in text

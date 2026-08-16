@@ -9,7 +9,7 @@ for "what exists now" claims; the architecture contract wins for binding invaria
 Last reconciled: 2026-08-16 (documentation truth remaster)
 
 ```text
-CURRENT CANONICAL HEAD:      d75a622 (main; docs-truth remaster commit)
+CURRENT CANONICAL HEAD:      4552dc7 (main; docs-truth remaster commit)
 LETTA PROMOTION ANCESTOR:    2f7360e742559e051109e04ef7f3a82cc64cc2d2 (still an ancestor of HEAD)
 PRE-V8 HISTORICAL BASELINE:  93a3ddc0965dfaf3e4cb9dc0952467bd5250520a (historical only — do not reset to it)
 CURRENT SCHEMA:              v33 (six additive tier_c_* tables; event-derived)

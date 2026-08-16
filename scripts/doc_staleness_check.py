@@ -52,8 +52,15 @@ def main() -> int:
     schema = _schema_version()
     text = CURRENT_STATE.read_text(encoding="utf-8")
 
-    if head[:7] not in text and head not in text:
-        failures.append(f"CURRENT_STATE.md does not name current HEAD {head[:7]}")
+    # The doc is committed AT head; its claim describes the tree it ships in,
+    # so the claim may equal HEAD or HEAD^ (the last write). Any other commit
+    # (code, schema, gates) makes the claim stale until the doc is updated.
+    parent = subprocess.run(
+        ["git", "-C", str(REPO), "rev-parse", "HEAD^"],
+        capture_output=True, text=True).stdout.strip()
+    claimed = head[:7] in text or head in text or parent[:7] in text or parent in text
+    if not claimed:
+        failures.append(f"CURRENT_STATE.md does not name current HEAD {head[:7]} (or its parent)")
     if f"v{schema}" not in text and str(schema) not in text:
         failures.append(f"CURRENT_STATE.md does not name current schema v{schema}")
 
