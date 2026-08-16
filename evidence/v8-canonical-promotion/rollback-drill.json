@@ -1,0 +1,46 @@
+{
+ "steps": {
+  "forward_migration": 33,
+  "live_schema": 33,
+  "post_migration_schema": 33,
+  "pre_v8_events": 66324,
+  "pre_v8_quick_check": "ok",
+  "pre_v8_schema": 32,
+  "pre_v8_source": "C:\\Users\\b\\AppData\\Local\\Temp\\v8-promotion-recovery\\pre-v8-foundry-backup.sqlite",
+  "pre_v8_stop_directives": [
+   "redirect",
+   "waive",
+   "extend_duty_window",
+   "align"
+  ],
+  "previous_executable": {
+   "returncode": 0,
+   "stderr": "",
+   "stdout": "schema 32\nquick_check ok\nevents 66324"
+  },
+  "previous_executable_initialize": {
+   "returncode": 0,
+   "stderr": "",
+   "stdout": "init 33"
+  },
+  "restored_events": 66324,
+  "restored_has_tier_c": false,
+  "restored_quick_check": "ok",
+  "restored_schema": 32,
+  "restored_stop_directives": [
+   "redirect",
+   "waive",
+   "extend_duty_window",
+   "align"
+  ],
+  "tier_c_activity_verified": true,
+  "tier_c_tables": [
+   "tier_c_block_revisions",
+   "tier_c_blocks",
+   "tier_c_memories",
+   "tier_c_memory_revisions",
+   "tier_c_procedures",
+   "tier_c_validations"
+  ]
+ }
+}

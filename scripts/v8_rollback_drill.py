@@ -8,9 +8,21 @@ previous behavior + STOP state + no orphan Tier C.
 Rollback strategy: RESTORE-FROM-BACKUP (no reverse migration exists; v33
 is additive and the ledger is Tier C's source of truth, so the pre-V8
 backup is the authoritative restore artifact).
+
+Modes:
+- PRE-promotion (default): snapshots the live DB (schema 32) as the
+  pre-V8 copy. Passes while the live DB is still v32.
+- POST-promotion (--pre-v8-source <path>): the live DB is already v33, so
+  the pre-V8 copy must be the verified recovery artifact (e.g.
+  C:/Users/b/AppData/Local/Temp/v8-promotion-recovery/pre-v8-foundry-backup.sqlite).
+  The drill then proves the full restore chain against the ACTUAL
+  recovery artifact. When the live DB is v33 and no source is given, the
+  drill FAILS with a clear message (pre-promotion premises no longer hold)
+  rather than silently testing the wrong thing.
 """
 from __future__ import annotations
 
+import argparse
 import json
 import pathlib
 import shutil
@@ -25,6 +37,12 @@ CANONICAL_ROOT = pathlib.Path(
     r"C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry")
 CANONICAL_VENV_PY = CANONICAL_ROOT / ".venv" / "Scripts" / "python.exe"
 LIVE_DB = pathlib.Path(r"C:/Users/b/AppData/Local/hermes/foundry/foundry.db")
+
+
+def _live_schema() -> int:
+    with sqlite3.connect(f"file:{LIVE_DB}?mode=ro", uri=True) as con:
+        return int(con.execute(
+            "SELECT COALESCE(MAX(version),0) FROM schema_migrations").fetchone()[0])
 
 
 def backup_live(target: pathlib.Path) -> None:
@@ -43,14 +61,39 @@ def backup_live(target: pathlib.Path) -> None:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description="V8 rollback drill")
+    parser.add_argument("--pre-v8-source", type=pathlib.Path, default=None,
+                        help="verified pre-V8 backup to use as the pre-V8 copy "
+                             "(required once the live DB is already v33)")
+    parser.add_argument("--record", action="store_true",
+                        help="write the evidence JSON to evidence/v8-canonical-promotion/")
+    args = parser.parse_args()
+
     work = pathlib.Path(tempfile.mkdtemp(prefix="v8-rollback-"))
     report: dict = {"strategy": "RESTORE-FROM-BACKUP (no reverse migration; "
                                 "v33 is additive, ledger is Tier C's source of truth)"}
     steps: dict = {}
 
-    # 1) pre-V8 copy of the REAL live DB
-    pre = work / "pre-v8.sqlite"
-    backup_live(pre)
+    # 1) pre-V8 copy: live snapshot (pre-promotion) OR the verified recovery
+    #    artifact (post-promotion)
+    live_schema = _live_schema()
+    steps["live_schema"] = live_schema
+    if args.pre_v8_source is not None:
+        if not args.pre_v8_source.exists():
+            print(f"ROLLBACK DRILL FAIL: --pre-v8-source not found: {args.pre_v8_source}")
+            return 1
+        pre = work / "pre-v8.sqlite"
+        shutil.copy2(args.pre_v8_source, pre)
+        steps["pre_v8_source"] = str(args.pre_v8_source)
+    elif live_schema == 32:
+        pre = work / "pre-v8.sqlite"
+        backup_live(pre)
+        steps["pre_v8_source"] = "live-snapshot"
+    else:
+        print("ROLLBACK DRILL FAIL: live DB is already schema %d; pass "
+              "--pre-v8-source <verified pre-V8 backup> (post-promotion mode) "
+              "or run this drill on a pre-promotion machine." % live_schema)
+        return 1
     with sqlite3.connect(pre) as con:
         steps["pre_v8_schema"] = con.execute(
             "SELECT MAX(version) FROM schema_migrations").fetchone()[0]
@@ -139,9 +182,11 @@ def main() -> int:
         "returncode": run2.returncode, "stdout": run2.stdout.strip(),
         "stderr": run2.stderr.strip()[-300:] if run2.stderr else ""}
 
-    EVIDENCE.parent.mkdir(parents=True, exist_ok=True)
-    EVIDENCE.write_text(json.dumps({"steps": steps}, indent=1, sort_keys=True),
-                        encoding="utf-8")
+    if "--record" in sys.argv:
+        EVIDENCE.parent.mkdir(parents=True, exist_ok=True)
+        EVIDENCE.write_text(json.dumps({"steps": steps}, indent=1, sort_keys=True),
+                            encoding="utf-8")
+        print(f"evidence recorded: {EVIDENCE}")
     print(json.dumps({"steps": steps}, indent=1, sort_keys=True))
 
     ok = (steps["pre_v8_schema"] == 32
