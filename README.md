@@ -1,80 +1,93 @@
 # JARVIS Foundry
 
-JARVIS Foundry is the project workspace for a persistent autonomous digital
-organization built around Hermes, Obsidian, specialist AI workers, durable
-state, independent verification, continuous building, and self-evolution.
+**A persistent autonomous AI institution — an always-on digital organization that plans, builds, verifies, repairs, and improves itself on your own machine.**
 
-## Current State
+JARVIS Foundry is the project workspace and runtime for JARVIS, an autonomous personal AI organization built around [Hermes Agent](https://hermes-agent.nousresearch.com), Obsidian, and specialist AI workers. JARVIS runs continuously — even while the owner is away — with institutional memory, durable evidence, independent verification, and the ability to keep selecting and executing the next valuable action without waiting for prompts or routine permission.
+
+Part of the Hoowen platform family.
+
+> The goal is the science-fiction JARVIS experience: an always-active digital company, research laboratory, builder, operator, and self-improving second brain running on a Windows computer.
+
+## Status
 
 ```text
-PROJECT PHASE: V1 AUTONOMY KERNEL
-IMPLEMENTATION: STARTED
-RUNTIME: PROJECT-LOCAL STAGING
-ACTIVE VERSION: V1 / WP1
-TRUST: LAB
-PERMISSION MODEL: STANDING_AUTONOMY
-OWNER CONTROL MODEL: VETO_AND_STOP
+PHASE:        V4 CONTINUOUS AUTONOMY — ACTIVE
+V5:           MULTI-SYSTEM INTELLIGENCE — ACCEPTED (final gate PASS)
+V6:           CONTINUOUS SELF-EVOLUTION — ACTIVATED, in isolated construction
+TRUST STATE:  TRUSTED_AUTONOMOUS (project-local staging runtime only)
+PERMISSION:   STANDING AUTONOMY — owner manages by exception (veto + STOP)
+SUITE:        710 tests passing (EXIT=0) at the V5 acceptance close
 ```
 
-The owner issued `START BUILD` on 2026-08-11. The repository now contains the
-durable event store, projections, resource registration, action policy,
-leases, sentinel STOP, local CLI, and an independent Supervisor. The runtime
-is being proven in project-local staging before automatic background install.
+This is an early-stage, research-grade system. The runtime operates in **project-local staging only** — nothing is installed system-wide and no external service is connected. The owner started the build on 2026-08-11 with a single `START BUILD` instruction; since then the program has advanced through work packages and version gates, with every phase independently verified. Current project truth always lives in [`PROJECT_STATE.md`](PROJECT_STATE.md).
 
-## Start Here
+## How it works
 
-Every human or agent reads these files in order:
+- **Append-only event ledger (source of truth).** Every material action is an event in a durable, monotonically sequenced SQLite ledger. Projections are derived views, never trusted as truth, and are periodically reconciled against the ledger.
+- **Deterministic Supervisor (source of control).** An independent supervisor runs outside the LLM stack: heartbeats, leases, and a sentinel **STOP** that works even with no LLM, UI, provider, or network — and freezes before any rollback.
+- **Specialist workers with brokered capabilities.** Work is dispatched to role-based workers (builder, verifier, reaper, orchestrator, …) through a capability broker. Workers receive scoped capabilities, not raw credentials. Model roles stay abstract; providers are configurable.
+- **Evidence gates, not claims.** Every phase ends in an acceptance gate: tests, fault injection (killed daemons, killed gateways, network and provider outages), adversarial independent verification, and reconciliation. Builders never certify their own consequential work. `UNKNOWN`, `NOT_AVAILABLE`, and `NOT_TESTED` are first-class results.
+- **Obsidian as long-term memory.** The vault is indexed, retrieved, and written back through governed writes with snapshots, provenance, conflict handling, and integrated rollback — the institutional brain of the organization.
+- **Continuous self-improvement.** Candidate releases, canaries, shadow runs, verification, and automatic rollback. The system improves its own agents, prompts, tools, and workflows after evidence, within owner constraints.
+- **JARVIS Command Center (in progress).** A local web console that projects live state — missions, workers, decisions, evidence, costs, health — straight from the ledger. It is explicitly *not* a second source of truth.
 
-1. `PROJECT_STATE.md`
-2. `IDEA.md`
-3. `docs/governance/AUTONOMY_MANDATE.md`
-4. `AGENTS.md`
-5. `docs/architecture/00_READ_FIRST.md`
-6. `docs/architecture/02_ARCHITECTURE_CONTRACT.md`
-7. `docs/architecture/03_V1_AUTONOMY_KERNEL_SPEC.md`
-8. `docs/architecture/04_V1_ACCEPTANCE_GATE.md`
-9. `docs/planning/PREBUILD_CHECKLIST.md`
-10. `docs/handoffs/LOW_COST_CONTINUATION.md`
-
-The full destination is in `docs/architecture/01_NORTH_STAR.md`. The staged
-roadmap describes automatic capability growth, not permission checkpoints.
-
-## Repository Map
+## Repository layout
 
 ```text
 JARVIS-Foundry/
-|-- AGENTS.md                 Binding instructions for coding agents
-|-- HERMES.md                 Hermes integration boundary
-|-- PROJECT_STATE.md          Current project truth
-|-- docs/
-|   |-- architecture/        Canonical architecture and staged capabilities
-|   |-- governance/          Standing mandate and integrity rules
-|   |-- planning/            Evidence gates, risks, and build sequence
-|   `-- operations/          STOP, recovery, incident, and restore contracts
-|-- config/                  Runtime configuration and templates
-|-- schemas/                 Machine-readable data contracts
-|-- src/jarvis_foundry/      Executable autonomy kernel
-|-- scripts/                 Reserved for deterministic tooling
-`-- tests/                   Unit, fault, and acceptance tests
+├── AGENTS.md / HERMES.md        Binding instructions for coding agents; Hermes boundary
+├── DESIGN.md / IDEA.md / PRODUCT.md
+├── PROJECT_STATE.md             Current project truth
+├── src/jarvis_foundry/          The autonomy kernel (Python)
+├── tests/foundry/               Unit, fault-injection, and acceptance tests
+├── config/                      Runtime configuration + templates
+├── schemas/                     Machine-readable contracts
+├── scripts/                     Deterministic tooling
+└── docs/
+    ├── architecture/            Canonical architecture (00_READ_FIRST → 05_POST_V1_ROADMAP)
+    ├── governance/              Autonomy mandate, constitution, action policy, secrets policy
+    ├── planning/                Work packages, checklists, risk register, decision log
+    ├── operations/              Emergency STOP, backup/restore, incident response
+    ├── evidence/                Gate reports, fault injections, verifier verdicts, directives
+    └── handoffs/                Continuation checkpoints
 ```
 
-## Build Launch
+## Getting started
 
-The owner has given the one launch instruction: `START BUILD`. It is not
-repeated for every phase. The build program now:
+Requires **Python 3.13+ on Windows** (the kernel is built and proven on Windows — console-control handling and Task Scheduler integration are part of it).
 
-1. audits the real environment;
-2. resolves Hermes, Obsidian, providers, projects, and available resources;
-3. builds WP1 through WP8 in order;
-4. verifies each gate independently;
-5. repairs failures and retries;
-6. activates the accepted kernel;
-7. continues automatically through the capability roadmap;
-8. reports progress without asking permission;
-9. stops or redirects immediately when the owner vetoes.
+```bash
+git clone https://github.com/Blemeh/JARVIS-Foundry.git
+cd JARVIS-Foundry
+python -m venv .venv
+.venv\Scripts\activate
+pip install -e ".[dev]"
+jarvis --help        # CLI entry point
+pytest               # full test suite
+```
 
-## Design Principle
+This is a personal autonomy system in staging. Running it wires up a local daemon, ledger, and scheduled supervisor on the host. Read [`docs/governance/AUTONOMY_MANDATE.md`](docs/governance/AUTONOMY_MANDATE.md) and [`docs/operations/EMERGENCY_STOP_AND_RECOVERY.md`](docs/operations/EMERGENCY_STOP_AND_RECOVERY.md) before running anything.
 
-JARVIS acts by default. Evidence determines readiness. The owner manages by
-exception through goals, constraints, vetoes, and STOP, not through routine
-approval requests.
+## Design principles
+
+- **Acts by default.** One standing `START BUILD`; the owner manages by exception through goals, constraints, vetoes, and STOP — not approval queues.
+- **Evidence determines readiness.** Nothing promotes without both engineering and operational gate evidence.
+- **Durable truth before convenience.** Real measurements, honest unknowns, provenance for every decision.
+- **Safety is deterministic.** The Supervisor and STOP are independent of the LLM, the UI, the provider, and the network.
+
+## Documentation
+
+Start with [`docs/architecture/00_READ_FIRST.md`](docs/architecture/00_READ_FIRST.md), then the north star in [`docs/architecture/01_NORTH_STAR.md`](docs/architecture/01_NORTH_STAR.md) and the architecture contract in [`docs/architecture/02_ARCHITECTURE_CONTRACT.md`](docs/architecture/02_ARCHITECTURE_CONTRACT.md). Governance lives in [`docs/governance/`](docs/governance/); the full evidence trail — gates, fault injections, verifier verdicts, owner directives — lives in [`docs/evidence/`](docs/evidence/).
+
+## Version history
+
+- **V1 — Autonomy kernel:** durable event store, projections, leases, sentinel STOP, local CLI, independent Supervisor. Accepted under a seven-day reliability waiver; observation window still open.
+- **V2 — Knowledge brain:** Obsidian vault indexing, retrieval, ingestion, consolidation, integrated rollback. Engineering + operational gates PASS.
+- **V3 — Discovery:** candidate pipeline from monitored sources, mission-execution wiring. Engineering + operational gates PASS.
+- **V4 — Continuous autonomy:** reliability slices (model routing, verifier truth, lease monotonicity, exactly-once resume, support semantics, monitors, scoring) plus the Command Center surface. Active.
+- **V5 — Multi-system intelligence:** systems, broker, capabilities, connectors, correlation, effects, activation loop. Accepted — final gate PASS.
+- **V6 — Continuous self-evolution:** candidate releases, canaries, shadow runs, promotion, restore. Activated; in isolated construction.
+
+## License
+
+No license has been selected for this repository yet. Until one is added, standard copyright applies and all rights are reserved by the owner.
