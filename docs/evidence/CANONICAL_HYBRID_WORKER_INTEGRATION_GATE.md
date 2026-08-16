@@ -4,6 +4,10 @@
 STATUS: PASS (canonical gate 18/18; fresh independent adversarial review PASS)
 CANONICAL START HEAD: e715b812dc49a04e1a0294b8dbd18c48abacb9f8
 INTEGRATION BRANCH: integration/canonical-hybrid-worker
+INTEGRATION COMMIT: 01e9cc9 (rebased onto current canonical main 2f7360e7;
+                    canonical main advanced externally via v8 promotion
+                    commits 4e50f49 + 2f7360e during the mission — docs/
+                    scripts/evidence only, zero overlap with this branch)
 PROVIDER: direct OpenCode Go (https://opencode.ai/zen/go/v1)
 MODEL: deepseek-v4-flash (owner mandate; no substitutions)
 ```
