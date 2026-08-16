@@ -1,0 +1,69 @@
+---
+# Canonical hybrid worker runtime activation configuration.
+#
+# Consumed by `jarvis -m jarvis_foundry.runtime.worker_loop --config
+# config/worker_routing.yaml`. Explicit and auditable by design: the driver
+# refuses to run cycles while `enabled` is false, and the owner model
+# mandate (opencode_go + deepseek-v4-flash, no fallbacks) is enforced at
+# load time. The API credential is NEVER stored here; adapters consume
+# JARVIS_OPENCODE_API_KEY / JARVIS_OPENCODE_BASE_URL from the process
+# environment.
+schema_version: 1
+status: "ACTIVE"            # proven live 2026-08-16; see docs/evidence/HYBRID_WORKER_LIVE_ACTIVATION.md
+enabled: true               # driver only runs cycles when explicitly launched
+
+mission_id: "mission-wfm-optimizer"
+resource_id: "resource-wfm-optimizer"
+capability: "write_registered_worktree_files"
+
+provider: "opencode_go"
+model: "deepseek-v4-flash"
+
+runtime_state_root: "var/worker-runtime"
+
+hermes:
+  enabled: true              # proven live: isolated .h + disposable home
+  root: ".h"                # isolated development checkout (never live install)
+  python_exe: "C:\\Users\\b\\AppData\\Local\\hermes\\hermes-agent\\venv\\Scripts\\python.exe"
+  timeout_seconds: 900
+
+openhands:
+  enabled: true              # proven live: containment PASS (completed + forced termination)
+  exe: "C:\\Users\\b\\Documents\\JARVIS-Lab\\.uv\\bin\\openhands.exe"
+  timeout_seconds: 900
+
+readiness:
+  hermes:
+    state: "READY"
+    note: "isolated .h checkout + disposable HERMES_HOME; live install refused"
+    evidence: ["canonical-hybrid-worker-integration-2026-08-16"]
+  openhands:
+    state: "READY"
+    note: "containment proven live 2026-08-16: disposable home, zero owner ~/.openhands violations (completed + forced termination)"
+    evidence:
+      - "containment-probe-completed-run-2026-08-16"
+      - "containment-probe-forced-termination-2026-08-16"
+
+role_signals:
+  builder:
+    bounded: true
+    explicit_acceptance: true
+    tests_available: true
+    narrow_scope: true
+    reversible: true
+  repair:
+    ambiguous: true
+    root_cause_required: true
+    recovery: true
+  verifier:
+    bounded: true
+    explicit_acceptance: true
+    tests_available: true
+    narrow_scope: true
+
+verification:
+  max_repairs: 2
+
+stop_integration:
+  sentinel_path: "foundry/EMERGENCY_STOP"
+  pause_directives: true

@@ -247,6 +247,8 @@ class MissionLoop:
         run_id: str | None = None,
         commit_envelope: ActionEnvelope | None = None,
         verification_criteria: list[str] | None = None,
+        expected_artifacts: tuple[str, ...] = (),
+        forbidden_paths: tuple[str, ...] = (),
     ) -> StepOutcome:
         """One dispatch + verify cycle for a mission step.
 
@@ -264,6 +266,7 @@ class MissionLoop:
         mission = self._mission(mission_id)
         state = str(mission["state"])
         role = "repair" if state == "REPAIRING" else "builder"
+        attempt = failed_verdict_count(self.database, mission_id, step_id) + 1
 
         # D2: envelope contract validated BEFORE any dispatch — unknown step/
         # capability/rollback and out-of-root targets are rejected here, never
@@ -291,6 +294,15 @@ class MissionLoop:
             step_id=step_id,
             run_id=run_id,
             instructions=instructions,
+            expected_artifacts=expected_artifacts,
+            # Only carry criteria in the manifest when the caller explicitly
+            # provided them: default steps keep byte-identical manifest
+            # hashes (historical replay semantics unchanged).
+            verification_criteria=(
+                tuple(verification_criteria)
+                if verification_criteria is not None else ()),
+            forbidden_paths=forbidden_paths,
+            attempt=attempt,
         )
         if result.status != COMPLETED:
             self._advance(mission_id, "BLOCKED", run_id=run_id)
@@ -367,6 +379,12 @@ class MissionLoop:
                 "criterion. End your response with a line: "
                 "VERDICT: PASS | FAIL | BLOCKED | NOT_TESTED "
                 "(NOT_TESTED when you cannot determine a verdict)."),
+            expected_artifacts=expected_artifacts,
+            verification_criteria=(
+                tuple(verification_criteria)
+                if verification_criteria is not None else ()),
+            forbidden_paths=forbidden_paths,
+            attempt=attempt,
         )
         if verifier.status != COMPLETED:
             record_verification_outcome(
@@ -465,6 +483,8 @@ class MissionLoop:
         risk_class: str = "C1",
         commit_envelope: ActionEnvelope | None = None,
         verification_criteria: list[str] | None = None,
+        expected_artifacts: tuple[str, ...] = (),
+        forbidden_paths: tuple[str, ...] = (),
     ) -> StepOutcome:
         """Run the step through FAIL -> repair cycles until PASSED, BLOCKED,
         or WAITING — never looping beyond the durable repair budget."""
@@ -475,6 +495,8 @@ class MissionLoop:
                 expected_effects=expected_effects, rollback=rollback,
                 risk_class=risk_class, commit_envelope=commit_envelope,
                 verification_criteria=verification_criteria,
+                expected_artifacts=expected_artifacts,
+                forbidden_paths=forbidden_paths,
             )
             if outcome.outcome != FAILED:
                 return outcome

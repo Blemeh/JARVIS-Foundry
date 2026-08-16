@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 from pathlib import Path
 from typing import Any, Callable
@@ -50,12 +51,21 @@ from ..isolation import (
     diff_openhands_containment,
     snapshot_openhands_tree,
 )
-from .base import AdapterConfigurationError, ProviderUnavailable
+from .base import (
+    AdapterConfigurationError,
+    ProviderUnavailable,
+    configured_api_key,
+    redact_secrets,
+    run_subprocess_with_heartbeat,
+)
 
 
 class OpenHandsWorkerAdapter:
     #: Owner pre-existing OpenHands state; never a valid disposable data dir.
     LIVE_OPENHANDS = Path.home() / ".openhands"
+
+    _VERDICT_SEARCH = re.compile(
+        r"VERDICT\s*:\s*(PASS|FAIL|BLOCKED|NOT_TESTED)\b", re.IGNORECASE)
 
     def __init__(
         self,
@@ -145,18 +155,18 @@ class OpenHandsWorkerAdapter:
         # run so any probe-owned write after is detectable as a violation.
         before_owner = snapshot_openhands_tree(self._owner_openhands)
         try:
-            process = subprocess.run(
+            process = run_subprocess_with_heartbeat(
                 command,
                 cwd=str(contract.working_root),
                 env=env,
-                capture_output=True,
-                text=True,
+                timeout_seconds=self.timeout_seconds,
+                heartbeat=heartbeat,
                 encoding="utf-8",
                 errors="replace",
-                timeout=self.timeout_seconds,
             )
         except subprocess.TimeoutExpired:
             heartbeat()
+            self._scrub_disposable_state()
             after_owner = snapshot_openhands_tree(self._owner_openhands)
             violations = diff_openhands_containment(
                 before_owner, after_owner, home_root=self._owner_openhands)
@@ -184,17 +194,21 @@ class OpenHandsWorkerAdapter:
         # Phase 3 containment diff: the pre-run snapshot above is the
         # baseline; any new/removed/modified entry in the owner state after
         # the run forces a fail-closed BLOCKED result.
-        events = self._parse_jsonl(process.stdout or "")
+        stdout = redact_secrets(
+            process.stdout or "", configured_key=configured_api_key())
+        events = self._parse_jsonl(stdout)
         model_actual = contract.model
         for event in events:
             model = event.get("model") or (event.get("payload") or {}).get("model")
             if model:
                 model_actual = str(model).removeprefix("openai/")
                 break
+        verdict = self._structured_verdict(stdout)
         after_owner = snapshot_openhands_tree(self._owner_openhands)
         containment_violations = diff_openhands_containment(
             before_owner, after_owner, home_root=self._owner_openhands)
         if containment_violations:
+            self._scrub_disposable_state()
             return ResultEnvelope.from_contract(
                 contract, framework=self.framework,
                 worker_status=BLOCKED, verdict=VERDICT_NOT_TESTED,
@@ -207,12 +221,15 @@ class OpenHandsWorkerAdapter:
                 usage_availability=NOT_AVAILABLE,
             )
         if process.returncode != 0:
+            self._scrub_disposable_state()
             return ResultEnvelope.from_contract(
                 contract, framework=self.framework,
                 worker_status=FAILED,
                 verdict=VERDICT_FAIL if contract.role == "verifier" else VERDICT_NOT_TESTED,
                 claimed_outcome="OpenHands CLI exited non-zero",
-                summary=(process.stderr or process.stdout or "")[-800:],
+                summary=redact_secrets(
+                    process.stderr or stdout,
+                    configured_key=configured_api_key())[-800:],
                 started_at=started,
                 model_actual=model_actual,
                 exit_state=f"EXIT_{process.returncode}",
@@ -222,10 +239,11 @@ class OpenHandsWorkerAdapter:
         warning = ""
         if statuses & {"error", "agent_state_changed"}:
             warning = "openhands reported error/state events; evidence must be reconciled"
-        summary_tail = (process.stdout or "").strip()[-2000:]
+        summary_tail = stdout.strip()[-2000:]
+        self._scrub_disposable_state()
         return ResultEnvelope.from_contract(
             contract, framework=self.framework,
-            worker_status=COMPLETED, verdict=VERDICT_NOT_TESTED,
+            worker_status=COMPLETED, verdict=verdict,
             claimed_outcome="OpenHands session completed",
             summary=summary_tail,
             model_actual=model_actual,
@@ -247,6 +265,52 @@ class OpenHandsWorkerAdapter:
             except json.JSONDecodeError:
                 continue
         return rows
+
+    def _scrub_disposable_state(self, limit: int = 5000) -> None:
+        """Redact credential-shaped tokens from disposable run-state files
+        (contained-home conversation events, editor history, etc.) so no
+        retained artifact ever holds the secret value."""
+        key = configured_api_key()
+        if not self.data_dir.exists():
+            return
+        scanned = 0
+        for path in self.data_dir.rglob("*"):
+            if not path.is_file():
+                continue
+            scanned += 1
+            if scanned > limit:
+                break
+            try:
+                data = path.read_bytes()
+            except OSError:
+                continue
+            if b"sk-" not in data:
+                continue
+            try:
+                text = data.decode("utf-8")
+            except UnicodeDecodeError:
+                continue
+            redacted = redact_secrets(text, configured_key=key)
+            if redacted != text:
+                try:
+                    path.write_bytes(redacted.encode("utf-8"))
+                except OSError:
+                    pass
+
+    @classmethod
+    def _structured_verdict(cls, stdout: str) -> str:
+        """Parse an explicit structured verdict from the session output.
+
+        The verifier instructions require a final ``VERDICT: PASS | FAIL |
+        BLOCKED | NOT_TESTED`` line; the adapter scans the session output
+        (JSONL event payloads included). Missing output is NOT_TESTED —
+        never PASS.
+        """
+        for line in (stdout or "").splitlines()[:200]:
+            match = cls._VERDICT_SEARCH.search(line)
+            if match:
+                return match.group(1).upper()
+        return VERDICT_NOT_TESTED
 
 
 def make_openhands_worker_adapter(

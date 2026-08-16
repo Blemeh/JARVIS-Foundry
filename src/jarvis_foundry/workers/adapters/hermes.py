@@ -38,7 +38,13 @@ from ..envelope import (
     VERDICT_NOT_TESTED,
     ResultEnvelope,
 )
-from .base import AdapterConfigurationError, ProviderUnavailable
+from .base import (
+    AdapterConfigurationError,
+    ProviderUnavailable,
+    configured_api_key,
+    redact_secrets,
+    run_subprocess_with_heartbeat,
+)
 
 
 class HermesWorkerAdapter:
@@ -120,6 +126,13 @@ class HermesWorkerAdapter:
         env = {
             **os.environ,
             "HERMES_HOME": str(self.hermes_home),
+            # The session must operate INSIDE the contract working root so
+            # every write lands in the worker's allowed scope. The checkout
+            # code is resolved via PYTHONPATH (prepended before site-packages),
+            # never by the process cwd (live finding 2026-08-16: cwd=.h let a
+            # probe session write hello.txt into the checkout).
+            "PYTHONPATH": str(self.hermes_root) + os.pathsep
+                         + os.environ.get("PYTHONPATH", ""),
         }
         command = [
             self.python_exe, "-m", "hermes_cli.main", "-z",
@@ -132,16 +145,16 @@ class HermesWorkerAdapter:
         if usage_path is not None:
             command += ["--usage-file", str(usage_path)]
         try:
-            process = subprocess.run(
+            process = run_subprocess_with_heartbeat(
                 command,
-                cwd=str(self.hermes_root),
+                cwd=str(contract.working_root),
                 env=env,
-                capture_output=True,
-                text=True,
-                timeout=self.timeout_seconds,
+                timeout_seconds=self.timeout_seconds,
+                heartbeat=heartbeat,
             )
         except subprocess.TimeoutExpired:
             heartbeat()
+            self._scrub_disposable_home()
             return ResultEnvelope.from_contract(
                 contract, framework=self.framework,
                 worker_status=FAILED, verdict=VERDICT_NOT_TESTED,
@@ -159,30 +172,35 @@ class HermesWorkerAdapter:
             heartbeat()
         cost = self._read_usage_cost(usage_path)
         usage_availability = "available" if cost not in (0.0, None) else NOT_AVAILABLE
+        stdout = redact_secrets(
+            process.stdout or "", configured_key=configured_api_key())
+        stderr = redact_secrets(
+            process.stderr or "", configured_key=configured_api_key())
+        self._scrub_disposable_home()
         if process.returncode != 0:
             return ResultEnvelope.from_contract(
                 contract, framework=self.framework,
                 worker_status=FAILED,
                 verdict=VERDICT_FAIL if contract.role == "verifier" else VERDICT_NOT_TESTED,
                 claimed_outcome="Hermes CLI exited non-zero",
-                summary=(process.stderr or process.stdout or "").strip()[-500:],
+                summary=(stderr or stdout or "").strip()[-500:],
                 started_at=started,
                 exit_state=f"EXIT_{process.returncode}",
                 usage_cost=cost if usage_availability == "available" else NOT_AVAILABLE,
                 usage_availability=usage_availability,
             )
-        first_line = ((process.stdout or "").strip().splitlines() or [""])[0]
+        first_line = (stdout.strip().splitlines() or [""])[0]
         if (first_line.startswith(self.FAILURE_REPORT_PREFIXES)
                 or self._FAILURE_REPORT_HTTP.match(first_line)):
             raise ProviderUnavailable(
                 f"oneshot reported provider failure (exit 0): {first_line[:200]}")
-        verdict = self._structured_verdict(process.stdout)
+        verdict = self._structured_verdict(stdout)
         note = ""
         if verdict is None:
             verdict = VERDICT_NOT_TESTED
             note = ("[adapter] no structured verdict found in the session "
                     "output — recorded NOT_TESTED, never PASS")
-        evidence = (process.stdout or "").strip()[-2000:]
+        evidence = stdout.strip()[-2000:]
         if note:
             evidence = f"{evidence}\n{note}" if evidence else note
         return ResultEnvelope.from_contract(
@@ -226,6 +244,37 @@ class HermesWorkerAdapter:
                 usage_path.unlink(missing_ok=True)
             except OSError:
                 pass
+
+    def _scrub_disposable_home(self, limit: int = 5000) -> None:
+        """Redact credential-shaped tokens from the disposable HERMES_HOME
+        (state.db, auth.json, sessions) so no retained run-state file ever
+        holds the secret value."""
+        key = configured_api_key()
+        if not self.hermes_home.exists():
+            return
+        scanned = 0
+        for path in self.hermes_home.rglob("*"):
+            if not path.is_file():
+                continue
+            scanned += 1
+            if scanned > limit:
+                break
+            try:
+                data = path.read_bytes()
+            except OSError:
+                continue
+            if b"sk-" not in data:
+                continue
+            try:
+                text = data.decode("utf-8")
+            except UnicodeDecodeError:
+                continue
+            redacted = redact_secrets(text, configured_key=key)
+            if redacted != text:
+                try:
+                    path.write_bytes(redacted.encode("utf-8"))
+                except OSError:
+                    pass
 
 
 def make_hermes_worker_adapter(

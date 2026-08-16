@@ -58,6 +58,16 @@ def git_changed_files(root: Path) -> tuple[str, ...]:
     return tuple(sorted(set(changed)))
 
 
+_CACHE_SEGMENTS = ("__pycache__", ".pytest_cache", ".mypy_cache")
+
+
+def _is_machine_cache(rel: str) -> bool:
+    """Deterministic tool caches must not condemn a worker's real work."""
+    parts = Path(rel).parts
+    return (any(part in _CACHE_SEGMENTS for part in parts)
+            or rel.endswith(".pyc"))
+
+
 def file_hashes(paths: tuple[Path, ...], *, limit: int = 200) -> dict[str, str]:
     hashes: dict[str, str] = {}
     for path in paths:
@@ -135,6 +145,7 @@ class EvidenceReconciler:
         test_commands: tuple[str, ...] = (),
         expected_artifact_hashes: dict[str, str] | None = None,
         persistence_scan_roots: tuple[Path, ...] = (),
+        delta_baseline: tuple[str, ...] | None = None,
     ) -> EvidenceReport:
         root = contract.working_root.resolve()
         mismatches: list[str] = []
@@ -149,6 +160,9 @@ class EvidenceReconciler:
 
         observed_diff_hash = git_diff_hash(root)
         observed_changed = git_changed_files(root)
+        meaningful_changed = tuple(
+            rel for rel in observed_changed
+            if not _is_machine_cache(rel))
 
         if envelope.worker_status != "COMPLETED":
             mismatches.append(
@@ -172,12 +186,26 @@ class EvidenceReconciler:
         # Claimed changes must match observed reality (B3 false-success rule:
         # claim "done" with no real change is a mismatch).
         claimed = set(envelope.files_changed)
-        observed_set = set(observed_changed)
-        unrecorded = sorted(observed_set - claimed)
-        if claimed != observed_set:
-            mismatches.append(
-                "claimed files_changed disagree with observed worktree diff "
-                f"(claimed={sorted(claimed)}, observed={sorted(observed_changed)})")
+        observed_set = set(meaningful_changed)
+        if delta_baseline is not None:
+            # Delta mode (verifier role): the worker is only accountable for
+            # changes IT introduced since the captured baseline; the
+            # builder's uncommitted work is not the verifier's claim.
+            own_changes = observed_set - set(delta_baseline)
+            unrecorded = sorted(own_changes - claimed)
+            if claimed != own_changes:
+                mismatches.append(
+                    "claimed files_changed disagree with the worker's own "
+                    f"delta (claimed={sorted(claimed)}, "
+                    f"observed delta={sorted(own_changes)})")
+        else:
+            unrecorded = sorted(observed_set - claimed)
+            if claimed != observed_set:
+                mismatches.append(
+                    "claimed files_changed disagree with observed worktree "
+                    "diff "
+                    f"(claimed={sorted(claimed)}, "
+                    f"observed={sorted(observed_changed)})")
 
         # Diff hash honesty: a claimed diff hash must match the observed one.
         if envelope.diff_hash and envelope.diff_hash != observed_diff_hash:
