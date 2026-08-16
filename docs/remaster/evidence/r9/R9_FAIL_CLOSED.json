@@ -1,0 +1,79 @@
+{
+  "all_no_partial_effect": true,
+  "generated_utc": "2026-08-16T06:00:00Z",
+  "probes": [
+    {
+      "after_state_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "before_state_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "missing_credential",
+      "no_partial_effect": true,
+      "outcome": "REFUSED",
+      "reason": "missing credential refused",
+      "retry_after_seconds": null
+    },
+    {
+      "after_state_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "before_state_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "expired",
+      "no_partial_effect": true,
+      "outcome": "REFUSED",
+      "reason": "credential unavailable; expired refused",
+      "retry_after_seconds": null
+    },
+    {
+      "after_state_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "before_state_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "revoked",
+      "no_partial_effect": true,
+      "outcome": "REFUSED",
+      "reason": "credential unavailable; revoked refused",
+      "retry_after_seconds": null
+    },
+    {
+      "after_state_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "before_state_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "quota",
+      "no_partial_effect": true,
+      "outcome": "DEFERRED",
+      "reason": "quota exceeded; deferred",
+      "retry_after_seconds": 60
+    },
+    {
+      "after_state_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "before_state_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "rate",
+      "no_partial_effect": true,
+      "outcome": "DEFERRED",
+      "reason": "rate exceeded; deferred",
+      "retry_after_seconds": 5
+    },
+    {
+      "after_state_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "before_state_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "malformed_receipt",
+      "no_partial_effect": true,
+      "outcome": "NOT_ACCEPTED",
+      "reason": "provider receipt missing required fields; not accepted",
+      "retry_after_seconds": null
+    },
+    {
+      "after_state_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "before_state_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "unknown_target",
+      "no_partial_effect": true,
+      "outcome": "REFUSED",
+      "reason": "unknown account or target refused",
+      "retry_after_seconds": null
+    },
+    {
+      "after_state_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "before_state_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "financial",
+      "no_partial_effect": true,
+      "outcome": "DENIED",
+      "reason": "financial action always denied; no capability or code path exists: payment",
+      "retry_after_seconds": null
+    }
+  ],
+  "schema": "jarvis-r9-fail-closed-v1"
+}

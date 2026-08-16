@@ -1,0 +1,200 @@
+{
+  "schema": "jarvis-r9-verifier-round1-verdict-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R9",
+  "repair_round": 1,
+  "verifier_model": "deepseek-v4-flash via codex-router",
+  "generated_utc": "2026-08-16T00:50:00Z",
+  "frozen_base": {
+    "branch": "remaster/post-v7-purpose",
+    "commit": "445cd92161f6e9cebaefdfdc30ab49cc5a8964aa",
+    "work_package_sha256": "F6582580BDD5ED27689957A4DF832A81D902CE82AD6AB8FE9364960D8AEFFC5C"
+  },
+  "criteria": {
+    "R9-C01": {
+      "status": "PASS",
+      "evidence": "R9_D01..D06 all pass; see deliverables; R9_LIFECYCLE.json, R9_CANARY_*.json, R9_FAIL_CLOSED.json, R9_CREDENTIALS.json, R9_UNAVAILABLE.json all non-empty and hash-bound"
+    },
+    "R9-C02": {
+      "status": "PASS",
+      "evidence": "Fresh canary_runner produced ACTIVE only for files/git/services with real before/after + receipt + reconciliation; browser NOT_TESTED, communication/calendar BLOCKED; illegal activation and no-proof activation refused in fresh gate_g01; ledger chain valid; 3 ACTIVE states and 3 honest unavailable states reproduced"
+    },
+    "R9-C03": {
+      "status": "PASS",
+      "evidence": "Fresh gate_g02 passed scope-allowed, scope-substitution refused, expired refused, revoked refused, unknown-account refused; R9_CREDENTIALS.json records all secret_value=[REDACTED] and 64-hex fingerprints; exact synthetic values not present in any evidence; brokerage store exists only under R9 proving temps and is not committed"
+    },
+    "R9-C04": {
+      "status": "PASS",
+      "evidence": "Fresh canary_runner + gate_g03 reproduced real files write, real git commit/revert with before/after SHAs and receipts, real ephemeral HTTP lifecycle on a test port, idempotent replays with matching receipt hashes and no duplicate journal entries"
+    },
+    "R9-C05": {
+      "status": "PASS",
+      "evidence": "Fresh gate_g04 + R9_FAIL_CLOSED.json reproduced REFUSED for missing/expired/revoked/unknown_target, DEFERRED for quota/rate, NOT_ACCEPTED for malformed_receipt, DENIED for financial; no capability/event join and no partial effects; fresh FinancialPolicy.assert_denied('transfer'/'payment') denied"
+    },
+    "R9-C06": {
+      "status": "PASS",
+      "evidence": "quota/rate DEFERRED with retry_after_seconds and no effects; files/git/services STOP refused/rolled back with no partial effect; services stop released the test port; fault cycles leave before-state identical"
+    },
+    "R9-C07": {
+      "status": "PASS",
+      "evidence": "focused pytest tests/remaster/r9 = 55 passed; full split Part1 (foundry+r6+r7+r8) = 1383 passed, Part2 r9 = 55 passed, mandatory combined = 1438 passed, all exit 0, no collection/ImportError/errors; ruff check 0, ruff format --check 0, mypy strict 0, bandit 0; repo evidence 519230 bytes < 8388608; protected main unchanged; live guard protected_state_unchanged=True and r9_attributable_mutation=False"
+    },
+    "R9-C08": {
+      "status": "PASS",
+      "evidence": "Fresh independent verifier reproduced lifecycle, real canary effects, fail-closed paths, focused tests, credential safety, privacy, full suites, and static truth; no new S1/S2 and no unresolved S3 contradicting the mandatory contract"
+    }
+  },
+  "deliverables": {
+    "R9-D01": {
+      "status": "PASS",
+      "evidence": "src/jarvis_foundry/capabilities_live/** registry, states, ledger events, projections; R9_LIFECYCLE.json capability/credential/adapter states; durable ledger with 51 events and valid chain in fresh run"
+    },
+    "R9-D02": {
+      "status": "PASS",
+      "evidence": "src/jarvis_foundry/capabilities_live/broker.py with SQLite store, fingerprint-only evidence, expiry/revocation/scoping; R9_CREDENTIALS.json and R9_G02_CREDENTIALS.json; exact-value scan found no secret in evidence"
+    },
+    "R9-D03": {
+      "status": "PASS",
+      "evidence": "Fresh canary_runner and gate_g03 reproduced all three real adapters ACTIVE with before/after, receipts, reconciliation, idempotent replay, stop, and fault evidence (R9_CANARY_FILES/GIT/SERVICES.json)"
+    },
+    "R9-D04": {
+      "status": "PASS",
+      "evidence": "FailClosedFakeAdapter and R9_FAIL_CLOSED.json/G04 cover all required fail-closed modes; financial denial has no capability/event kind and no partial effect"
+    },
+    "R9-D05": {
+      "status": "PASS",
+      "evidence": "R9_LIFECYCLE.json, R9_UNAVAILABLE.json, R9_G01_LIFECYCLE.json prove discovered->probing->ready->active with proof hashes and honest BLOCKED/NOT_TESTED states; fresh g01 also proved illegal/no-proof transitions are refused and unrecorded"
+    },
+    "R9-D06": {
+      "status": "PASS",
+      "evidence": "Evidence includes command outputs, hashes, receipts, statuses, retry_after_seconds, unavailable reasons, and next action = fresh verifier adjudication; R9_BUILDER_REPORT.json resources_and_boundaries.evidence_bytes=496680 reproduced exactly"
+    }
+  },
+  "gates": {
+    "R9-G01": {
+      "status": "PASS",
+      "evidence": "Fresh gate_g01 passed=True; active_checks all true; ACTIVE proof-gated; unavailable states honest; illegal and no-proof activation refused and left no event"
+    },
+    "R9-G02": {
+      "status": "PASS",
+      "evidence": "Fresh gate_g02 passed=True; no leaks; fingerprints-only; expiry/revocation/scoping/unknown-account all enforced; exact-value scan over evidence found 0 leaks"
+    },
+    "R9-G03": {
+      "status": "PASS",
+      "evidence": "Fresh canary_runner + gate_g03 passed=True; real files write, real git commit/revert, real ephemeral HTTP lifecycle; replays idempotent and journal-unique"
+    },
+    "R9-G04": {
+      "status": "PASS",
+      "evidence": "Fresh gate_g04 passed=True; all 8 fail-closed modes reproduced with no partial effects; fresh financial denial reproduced"
+    },
+    "R9-G05": {
+      "status": "PASS",
+      "evidence": "Fresh verifier subprocess passed=True (r9-fresh-verifier-subprocess; no builder self-certification); mirror reproduced lifecycle/canary/fail-closed/focused tests; artifacts under budget"
+    },
+    "R9-G06": {
+      "status": "PASS",
+      "evidence": "Focused + full suites green; static checks clean on repo paths; evidence under 8 MiB; live guard protected_state_unchanged=True and no attributable mutation; no protected mutation and no commits/pushes"
+    }
+  },
+  "findings": [
+    {
+      "id": "R9VER-001",
+      "severity": "S4",
+      "title": "Artifact manifest self-referential builder-report size is stale/incorrect",
+      "invariant": "Artifact manifest and frozen builder report describe the same file; manifest self-entry size should match actual builder report size",
+      "reproduction": "Manifest R9_BUILDER_REPORT.json entry says size=8076; actual frozen file is 8195 bytes. The manifest audit contract requires 77 real entries and excludes the self-referential entry, and committing that 8076 value at freeze time does not alter the 77-entry checks.",
+      "probe_ids": [
+        "PB-FROZEN-HASH",
+        "PB-MANIFEST-REAL77"
+      ]
+    },
+    {
+      "id": "R9VER-002",
+      "severity": "S4",
+      "title": "Mirror-run static gate is not clean when copied outside the repo root",
+      "invariant": "A copied R9 gate tree fired at its own REPO_ROOT should pass the mandatory ruff subgates",
+      "reproduction": "After copying scripts/remaster/r9, tests/remaster/r9, src/jarvis_foundry/capabilities_live, evidence, and the work package to an isolated mirror temp and patching only common.py (EVIDENCE_DIR + JARVIS_R9_TEMP + REPO_ROOT), ruff check/format and mypy failed because ruff treated frozen files as unformatted/un-sorted imports. The exact same files pass from the real worktree, so this is a mirror-harness artifact and not a source regression.",
+      "probe_ids": [
+        "PB-STATIC-REPO",
+        "PB-STATIC-MIRROR"
+      ]
+    },
+    {
+      "id": "R9VER-003",
+      "severity": "S4",
+      "title": "Synthetic seed credential literals are embedded in R9 script source",
+      "invariant": "No secret VALUE should appear in R9-owned source under a broad exact-value interpretation",
+      "reproduction": "canary_runner.py intentionally contains synthetic local canary/token seed values, including the three builder manifest secrets. The builder's own secret-scan only learns the 3 manifest values yet still reports a clean scan; the artifact exact-value scan found 0 leaks in evidence. These are synthetic local test seeds, not real secrets, and no occurrence exists in evidence/downloadable artifacts.",
+      "probe_ids": [
+        "PB-SECRET-EVIDENCE",
+        "PB-SECRET-STORE"
+      ]
+    },
+    {
+      "id": "R9VER-004",
+      "severity": "S4",
+      "title": "Live guard comparison relies on a narrow mirror window for process equality",
+      "invariant": "Protected state/process equality should hold in the recorded window without masking attributable mutation",
+      "reproduction": "The mirror window ran live guard before/after around canary/verification/focused gates and reported protected_state_unchanged=True, r9_attributable_mutation=False. The prior builder finding R9-V-003 already documented live daemon worker churn between wide windows; this fresh window used the narrow gate window and remained clean.",
+      "probe_ids": [
+        "PB-LIVE-GUARD"
+      ]
+    },
+    {
+      "id": "R9VER-005",
+      "severity": "S4",
+      "title": "Canary service health proves capability on localhost only",
+      "invariant": "Provider receipt should remain truthful about the tested provider boundary",
+      "reproduction": "The services adapter's /health response is produced by the local ephemeral service and serves as the system receipt; network access remains disabled and external providers remain BLOCKED/NOT_TESTED. This is a real local canary effect, not an external provider claim.",
+      "probe_ids": [
+        "PB-CANARY-SERVICES"
+      ]
+    }
+  ],
+  "status_summary": {
+    "reproduced_outputs": [
+      "frozen hashes byte-for-byte: work_package F6582580BDD5ED27689957A4DF832A81D902CE82AD6AB8FE9364960D8AEFFC5C/10479; builder report DAC672EA974DA7CFF112EFDED162463BFBCD4001A13255E4F2C75FBF078CA583/8195; artifact manifest CDD5398D12454F28A7A641272C136808D249508B983D2425D4D4F004BF3696E5/14355",
+      "manifest audit: 78 entries, 77 real entries, 0 mismatches; repo evidence dir total 519230 bytes < 8388608; R9_BUILDER_REPORT.resources_and_boundaries.evidence_bytes=496680 equals payload total excluding builder report and artifact manifest",
+      "focused suite: tests/remaster/r9, 55 passed exit 0 (verified by JUnit: 55 testcase, 0 failures, 0 errors)",
+      "full split: Part1 (foundry+r6+r7+r8) 1383 passed exit 0; Part2 r9 55 passed exit 0; mandatory combined 1438 passed exit 0; no collection/ImportError/conftest errors",
+      "static from real repo: ruff check exit 0, ruff format --check exit 0, mypy strict exit 0, bandit exit 0",
+      "mirror gates: canary_runner, g01, g02, g03, g04, g05, focused_tests, secret_scan, privacy_gate all exit 0; fresh verifier passed=True; mirror evidence_bytes=177593; live guard protected_state_unchanged=True, r9_attributable_mutation=False",
+      "secret/path scan: 0 exact leaks in evidence; records redacted; fingerprints 64-hex; no committed credential store",
+      "repo evidence re-audit after mirror: 0 manifest mismatches",
+      "boundary: porcelain remains expected untracked trees only; protected main HEAD e715b812dc49a04e1a0294b8dbd18c48abacb9f8 unchanged; no commits/pushes by verifier"
+    ],
+    "repo_boundary": {
+      "worktree": "remaster/post-v7-purpose at 445cd92161f6e9cebaefdfdc30ab49cc5a8964aa",
+      "porcelain_unchanged": true,
+      "only_verifier_repo_write": "docs/remaster/evidence/r9/R9_VERIFIER_ROUND1_VERDICT_DSV4.json",
+      "protected_main_unchanged": true,
+      "live_state_unchanged_in_narrow_mirror_window": true,
+      "commits_or_pushes_by_verifier": false
+    }
+  },
+  "evidence_paths_and_hashes": {
+    "frozen": {
+      "docs/remaster/work_packages/R9_WORK_PACKAGE.json": "F6582580BDD5ED27689957A4DF832A81D902CE82AD6AB8FE9364960D8AEFFC5C",
+      "docs/remaster/evidence/r9/R9_BUILDER_REPORT.json": "DAC672EA974DA7CFF112EFDED162463BFBCD4001A13255E4F2C75FBF078CA583",
+      "docs/remaster/evidence/r9/R9_ARTIFACT_MANIFEST.json": "CDD5398D12454F28A7A641272C136808D249508B983D2425D4D4F004BF3696E5"
+    },
+    "repo_evidence": {
+      "docs/remaster/evidence/r9/R9_LIFECYCLE.json": "c99a681163bd32e1eb78c31fa45f6fbfba27e0fc6416da263b7af0b2c45fc13d",
+      "docs/remaster/evidence/r9/R9_CANARY_FILES.json": "dacfbc71497e8d013544e26ef215244bceb892ff3938640b19fe05944cbfcddb",
+      "docs/remaster/evidence/r9/R9_CANARY_GIT.json": "3040ad63ee45ab0205b68aa48136ad6a803e983e85d56e31b048359f52a8bb26",
+      "docs/remaster/evidence/r9/R9_CANARY_SERVICES.json": "8d02a55d104e028dd92faf2b49aec52aee8335822769e0f053f8c94c77000dcb",
+      "docs/remaster/evidence/r9/R9_CREDENTIALS.json": "c0cbe331a0af9546aab671f3dc9c312d50f45a1d687d44ecb05c606fc97d571f",
+      "docs/remaster/evidence/r9/R9_FAIL_CLOSED.json": "6bf1d31f8e5657917280919610ccc32a4e58cba7bda4924231c39573d732f957",
+      "docs/remaster/evidence/r9/R9_FINANCIAL_DENIAL.json": "bfa96b103508178b7344efb10c1feefa8680ef4a47015b2069a73e568132e3ca",
+      "docs/remaster/evidence/r9/R9_UNAVAILABLE.json": "ebe739562ed9f2bce16876380fb52364de46d20029a97a4f9403a8284815bb11"
+    },
+    "fresh_verifier_mirror": {
+      "R9_VERIFIER_REPRODUCTION.json": "76586537f88682c24753e255e9da4c62cc6ced74a025c8e2ba892acb1a053e80",
+      "R9_G05_VERIFICATION.json": "67f219e837c402fd6518bb649a462624954b16fb7fbf31f11a45aa9913d35eed",
+      "fullsuite": "combined.xml/part1.xml/r9.xml all exit 0; counts 1438/1383/55",
+      "R9_FOCUSED_TESTS.json": "54e026d89afe86257acef53cd50c55046ffafc4f9f93eb8b7ec27cd4f332feee",
+      "R9_LIVE_GUARD_COMPARISON.json": "f3ff22c112e12ed16568fab49b947f2be465b3d9be5c231e43849bf1dd78be0f"
+    }
+  },
+  "verdict": "PASS"
+}

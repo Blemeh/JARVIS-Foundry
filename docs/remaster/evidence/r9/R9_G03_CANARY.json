@@ -1,0 +1,33 @@
+{
+  "active_all": true,
+  "evidence_files": [
+    "R9_LIFECYCLE.json",
+    "R9_CANARY_FILES.json",
+    "R9_CANARY_GIT.json",
+    "R9_CANARY_SERVICES.json",
+    "R9_CREDENTIALS.json",
+    "R9_FAIL_CLOSED.json",
+    "R9_FINANCIAL_DENIAL.json",
+    "R9_UNAVAILABLE.json"
+  ],
+  "exit_code": 0,
+  "files_real": true,
+  "git_real": true,
+  "independent_replay": {
+    "files": {
+      "journal_entry_unique": true,
+      "outcome": "REPLAYED",
+      "receipt_hash_matches": true,
+      "state_unchanged": true
+    },
+    "git": {
+      "journal_entry_unique": true,
+      "outcome": "REPLAYED",
+      "receipt_hash_matches": true
+    }
+  },
+  "passed": true,
+  "schema": "jarvis-r9-g03-canary-v1",
+  "services_real": true,
+  "wall_seconds": 0.49
+}

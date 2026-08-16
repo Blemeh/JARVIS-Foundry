@@ -1,0 +1,26 @@
+{
+  "schema": "jarvis-r9-progress-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R9",
+  "milestone": "canary evidence and gates G01-G05",
+  "generated_utc": "2026-08-16T06:00:00Z",
+  "status": "COMPLETED",
+  "detail": "Real files/git/services canaries ACTIVE with receipts, replay, stop, and fault evidence; fail-closed and financial probes recorded; unavailable connectors honest; gates G01-G05 all passed=True.",
+  "evidence": [
+    "docs/remaster/evidence/r9/R9_LIFECYCLE.json",
+    "docs/remaster/evidence/r9/R9_CANARY_FILES.json",
+    "docs/remaster/evidence/r9/R9_CANARY_GIT.json",
+    "docs/remaster/evidence/r9/R9_CANARY_SERVICES.json",
+    "docs/remaster/evidence/r9/R9_CREDENTIALS.json",
+    "docs/remaster/evidence/r9/R9_FAIL_CLOSED.json",
+    "docs/remaster/evidence/r9/R9_FINANCIAL_DENIAL.json",
+    "docs/remaster/evidence/r9/R9_UNAVAILABLE.json",
+    "docs/remaster/evidence/r9/R9_G01_LIFECYCLE.json",
+    "docs/remaster/evidence/r9/R9_G02_CREDENTIALS.json",
+    "docs/remaster/evidence/r9/R9_G03_CANARY.json",
+    "docs/remaster/evidence/r9/R9_G04_FAIL_CLOSED.json",
+    "docs/remaster/evidence/r9/R9_G05_VERIFICATION.json",
+    "docs/remaster/evidence/r9/R9_VERIFIER_REPRODUCTION.json"
+  ],
+  "next_action": "run static, focused/full suites, live guard, secret/privacy scans, and final closure"
+}

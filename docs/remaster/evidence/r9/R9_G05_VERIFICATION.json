@@ -1,0 +1,55 @@
+{
+  "exit_code": 0,
+  "final_independent_adjudication": "PENDING; a fresh independent verifier must review the frozen package",
+  "no_builder_self_certification": true,
+  "passed": true,
+  "schema": "jarvis-r9-g05-verification-v1",
+  "verdict": {
+    "evidence_bytes": 81987,
+    "evidence_file_count": 13,
+    "evidence_under_budget": true,
+    "expected_work_package_sha256": "f6582580bdd5ed27689957a4df832a81d902ce82ad6ab8fe9364960d8aeffc5c",
+    "focused_tests": {
+      "exit_code": 0,
+      "summary": ""
+    },
+    "generated_utc": "2026-08-15T23:57:04Z",
+    "mirror": {
+      "fail_closed": {
+        "deferred": true,
+        "no_partial_effect": true
+      },
+      "files": {
+        "active": true,
+        "before_after_differ": true,
+        "executed": true,
+        "replayed": true
+      },
+      "financial_policy_denied": true,
+      "git": {
+        "active": true,
+        "committed": true,
+        "revert_restored": true
+      },
+      "ledger_chain_valid": true,
+      "services": {
+        "active": true,
+        "started": true,
+        "stopped": true
+      }
+    },
+    "passed": true,
+    "schema": "jarvis-r9-fresh-verifier-reproduction-v1",
+    "verifier_id": "r9-fresh-verifier-subprocess",
+    "wall_seconds": 15.379,
+    "work_package_sha256": "f6582580bdd5ed27689957a4df832a81d902ce82ad6ab8fe9364960d8aeffc5c"
+  },
+  "verdict_path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r9\\R9_VERIFIER_REPRODUCTION.json",
+  "verdict_sha256": "0afbc8dc88a11a20231829088da745c9d8f94864b8e2ce6e54a3544a81ba9ed7",
+  "verifier_subprocess": {
+    "exit_code": 0,
+    "stderr": "",
+    "stdout": "verifier r9-fresh-verifier-subprocess: passed=True evidence_bytes=81987\n"
+  },
+  "wall_seconds": 15.669
+}

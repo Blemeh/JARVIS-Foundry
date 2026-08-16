@@ -1,0 +1,325 @@
+{
+  "schema": "jarvis-r9-verifier-round2-verdict-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R9",
+  "repair_round": 2,
+  "verifier_model": "deepseek-v4-flash via codex-router",
+  "generated_utc": "2026-08-16T02:35:00Z",
+  "frozen_base": {
+    "branch": "remaster/post-v7-purpose",
+    "head": "445cd92161f6e9cebaefdfdc30ab49cc5a8964aa",
+    "work_package_sha256": "F6582580BDD5ED27689957A4DF832A81D902CE82AD6AB8FE9364960D8AEFFC5C",
+    "builder_report_sha256": "DD9D325E507BF642103D24E9AD8F9ECE19BDE927B0458699FAB90B0ABFF8289C",
+    "manifest_sha256": "326BA5D73889318F358DCEAF8E06EEF95F749FD7B7A574FB899348527A712061"
+  },
+  "criteria": [
+    {
+      "id": "R9-C01",
+      "status": "PASS",
+      "evidence": "All deliverables D01-D06 PASS with evidence; frozen manifest 79 entries (78 real + 1 SELF_REFERENTIAL_REPORT), all 78 real entries sha256+size recomputed with 0 mismatches; builder report and fresh mirror preserve evidence."
+    },
+    {
+      "id": "R9-C02",
+      "status": "PASS",
+      "evidence": "Independent sweep: files/git/services each EXECUTED with before/after+receipt+reconciliation then ACTIVE; unavailable connectors recorded browser=NOT_TESTED, communication=BLOCKED, calendar=BLOCKED without blocking gates."
+    },
+    {
+      "id": "R9-C03",
+      "status": "PASS",
+      "evidence": "R9_SECRET_SCAN passed findings=0 full_body_leaks=0; g02 passed; brokerage stores exist only under R9 temp proving area; evidence contains 64-hex fingerprints and [REDACTED] only."
+    },
+    {
+      "id": "R9-C04",
+      "status": "PASS",
+      "evidence": "Fresh mirror canary and independent sweep reproduced real files write/replay, real git commit/revert, real ephemeral HTTP service lifecycle with receipts, after-state, reconciliation."
+    },
+    {
+      "id": "R9-C05",
+      "status": "PASS",
+      "evidence": "All fail-closed modes reproduced with no_partial_effect=True and unchanged dir hash: missing REFUSED, expired REFUSED, revoked REFUSED, quota DEFERRED, rate DEFERRED, malformed_receipt NOT_ACCEPTED, unknown_target REFUSED, financial DENIED; FinancialPolicy denies every request type."
+    },
+    {
+      "id": "R9-C06",
+      "status": "PASS",
+      "evidence": "quota/rate include retry_after_seconds reconciliation; STOP refusal/rollback reproduced (files/git/services stop leaves no effect; service port released; wrong fingerprint 403)."
+    },
+    {
+      "id": "R9-C07",
+      "status": "PASS",
+      "evidence": "Focused 55 passed exit 0; split and combined full suites green (combined exit 0; one whole-second scheduler flake in tests/foundry passed on retry); ruff/format/mypy/bandit clean; evidence_dir_total 534218 < 8388608; no protected mutation by R9; repo evidence byte-identical after mirror."
+    },
+    {
+      "id": "R9-C08",
+      "status": "PASS",
+      "evidence": "Fresh mirror reran canary_runner, g01-g05, static, focused_tests, full_suite, secret_scan, privacy_gate all passed=True/exit 0; independent sweep reproduced lifecycle/fail-closed/financial; no new S1/S2; residual S3/S4 recorded honestly below."
+    }
+  ],
+  "deliverables": [
+    {
+      "id": "R9-D01",
+      "status": "PASS",
+      "evidence": "src/jarvis_foundry/capabilities_live/registry.py + ledger events; transitions discover/probe/ready/activate/suspend/revoke/block/not_tested durable in ledger; tests/remaster/r9/test_registry_lifecycle.py + test_states.py."
+    },
+    {
+      "id": "R9-D02",
+      "status": "PASS",
+      "evidence": "broker.py with expiry/revocation/scoped capability bindings; R9_CREDENTIALS.json fingerprint-only; secret scan passed."
+    },
+    {
+      "id": "R9-D03",
+      "status": "PASS",
+      "evidence": "FilesAdapter, GitAdapter, ServicesAdapter real effects; independent sweep and fresh canary ACTIVE with idempotent replay, receipts, stop, fault."
+    },
+    {
+      "id": "R9-D04",
+      "status": "PASS",
+      "evidence": "FailClosedFakeAdapter modes and FinancialPolicy; every refusal no-partial-effect proven in tests and independent sweep."
+    },
+    {
+      "id": "R9-D05",
+      "status": "PASS",
+      "evidence": "R9_LIFECYCLE.json, R9_CANARY_FILES/GIT/SERVICES.json, R9_FAIL_CLOSED.json, R9_UNAVAILABLE.json, R9_FINANCIAL_DENIAL.json; gates g01/g03/g04 passed in mirror."
+    },
+    {
+      "id": "R9-D06",
+      "status": "PASS",
+      "evidence": "R9_BUILDER_REPORT.json, R9_FINDINGS.json, R9_G05_VERIFICATION.json, raw/junit evidence and next-action content; evidence_bytes reproducible."
+    }
+  ],
+  "gates": [
+    {
+      "id": "R9-G01",
+      "status": "PASS",
+      "evidence": "mirror gate passed=True; lifecycle states honest with ACTIVE only after proof."
+    },
+    {
+      "id": "R9-G02",
+      "status": "PASS",
+      "evidence": "mirror gate passed=True; no secrets in R9-owned artifacts."
+    },
+    {
+      "id": "R9-G03",
+      "status": "PASS",
+      "evidence": "mirror gate passed=True; real files/git/services canary effects."
+    },
+    {
+      "id": "R9-G04",
+      "status": "PASS",
+      "evidence": "mirror gate passed=True; all fail-closed and financial refusal paths."
+    },
+    {
+      "id": "R9-G05",
+      "status": "PASS",
+      "evidence": "mirror gate passed=True; verifier.py fresh subprocess reproduced with verifier_id r9-fresh-verifier-subprocess and passed=True."
+    },
+    {
+      "id": "R9-G06",
+      "status": "PASS",
+      "evidence": "mirror static passed=True (ruff/ruff_format/mypy/bandit), focused exit 0, full_suite exit 0, secret/privacy passed, live guard r9_attributable_mutation=False; frozen live-guard recorded window protected_state_unchanged=True; fresh mirror external status drift documented as S4 environment note."
+    }
+  ],
+  "findings": [
+    {
+      "id": "R9VER-001",
+      "severity": "S4",
+      "title": "Self-referential manifest entry recorded stale builder-report size",
+      "invariant": "manifest SELF_REFERENTIAL_REPORT.size == on-disk R9_BUILDER_REPORT.json size and all real entries hash/size match",
+      "reproduction": "Independent audit recomputed sha256+size for all 78 real entries: 0 mismatches; self entry size=8195 == on-disk report size=8195; file_count=79.",
+      "disposition": "CLOSED",
+      "probe_ids": [
+        "manifest_audit_round2"
+      ]
+    },
+    {
+      "id": "R9VER-002",
+      "severity": "S4",
+      "title": "Full-suite raw outputs omit pytest summary lines",
+      "invariant": "JUnit counts and exit codes are authoritative",
+      "reproduction": "Raw outputs show progress lines without final counts; R9_FULL_SUITE.json exit_code=0 and JUnit exit 0; focused tests 55 passed.",
+      "disposition": "HONEST_S4_RESIDUAL",
+      "probe_ids": [
+        "full_suite_round2",
+        "focused_round2"
+      ]
+    },
+    {
+      "id": "R9VER-003",
+      "severity": "S4",
+      "title": "Live daemon worker churn between wide-window live guard captures",
+      "invariant": "Persistent protected command set unchanged; r9_attributable_mutation=False",
+      "reproduction": "Frozen live-guard comparison shows protected_state_unchanged=True in recorded window with supervisor-only event deltas; finding notes earlier wide-window churn.",
+      "disposition": "HONEST_S4_RESIDUAL",
+      "probe_ids": [
+        "live_guard_frozen",
+        "live_guard_mirror"
+      ]
+    },
+    {
+      "id": "R9-NEW-001",
+      "severity": "S4",
+      "title": "External protected-main status drift during wide fresh-mirror window",
+      "invariant": "Protected main HEAD unchanged; R9 run not attributable",
+      "reproduction": "Protected main HEAD stayed e715b812dc49a04e1a0294b8dbd18c48abacb9f8 before/after; C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry\\scripts\\v8_rollback_drill.py LastWriteTime 2026-08-16T03:58:52 local during the mirror window (status_sha256 0d0b407bee50cc2369bd139bb9c87b37c933560ea999c80afdbca946e2af21db -> 143218a2feaff8b3dd6861a12623c298465a8760b2aff0f5358c9bd0a0fb6d70); R9 commands wrote only to temp mirror dirs; git status of worktree unchanged and manifest hash byte-identical; r9_attributable_mutation=False.",
+      "disposition": "ENVIRONMENT_NOTE_NO_R9_ATTRIBUTION",
+      "probe_ids": [
+        "live_guard_mirror",
+        "protected_main_status_probe",
+        "repo_evidence_reaudit"
+      ]
+    },
+    {
+      "id": "R9-F-001",
+      "severity": "S3",
+      "title": "Brokerage store holds synthetic local secrets outside evidence",
+      "invariant": "No real/synthetic secret in R9 artifacts; stores only under temp proving area",
+      "reproduction": "Secret scan findings=0, full_body_leaks=0; store paths under jarvis-r9 temp; evidence fingerprints only.",
+      "disposition": "RECORDED_S3",
+      "probe_ids": [
+        "secret_scan_round2"
+      ]
+    },
+    {
+      "id": "R9-F-002",
+      "severity": "S3",
+      "title": "Windows read-only git objects require read-only-safe temp clear",
+      "invariant": "Canary git objects confined to R9 temp and cleaned safely",
+      "reproduction": "common.safe_clear chmods before removal and confines to TEMP_BASE; no protected paths touched.",
+      "disposition": "RECORDED_S3",
+      "probe_ids": [
+        "mirror_canary"
+      ]
+    },
+    {
+      "id": "R9-F-003",
+      "severity": "S3",
+      "title": "Unavailable connectors are honestly NOT_TESTED/BLOCKED",
+      "invariant": "Unavailable connectors do not block files/git/services gates",
+      "reproduction": "R9_UNAVAILABLE.json and independent sweep show browser NOT_TESTED, communication/calendar BLOCKED; gates still pass.",
+      "disposition": "RECORDED_S3",
+      "probe_ids": [
+        "unavailable_sweep"
+      ]
+    },
+    {
+      "id": "R9-NEW-002",
+      "severity": "S4",
+      "title": "External protected-main HEAD advance during verification (V8 promotion)",
+      "invariant": "Verifier made no mutating command on protected main; R9 not attributable",
+      "reproduction": "Protected main HEAD was e715b812dc49a04e1a0294b8dbd18c48abacb9f8 at 2026-08-16T01:55Z and advanced externally to 2f7360e742559e051109e04ef7f3a82cc64cc2d2 (commit subject 'v8(promotion): canonical promotion report -- full gate record, live finding (supervisor takeover fix), final state 4e50f49', committed 2026-08-16 03:59:24 +0200). The commit also explains the earlier v8_rollback_drill.py status drift. I issued only read-only git status/rev-parse/log on the protected repo and no commits or pushes.",
+      "disposition": "ENVIRONMENT_NOTE_NO_R9_ATTRIBUTION",
+      "probe_ids": [
+        "protected_main_head_probe"
+      ]
+    }
+  ],
+  "status_summary": {
+    "verdict": "PASS",
+    "reproduced_outputs": {
+      "frozen_work_package": {
+        "sha256": "F6582580BDD5ED27689957A4DF832A81D902CE82AD6AB8FE9364960D8AEFFC5C",
+        "size": 10479
+      },
+      "frozen_builder_report": {
+        "sha256": "DD9D325E507BF642103D24E9AD8F9ECE19BDE927B0458699FAB90B0ABFF8289C",
+        "size": 8195
+      },
+      "frozen_manifest": {
+        "sha256": "326BA5D73889318F358DCEAF8E06EEF95F749FD7B7A574FB899348527A712061",
+        "size": 14557,
+        "file_count": 79,
+        "real_entries": 78,
+        "mismatches": 0,
+        "self_size_matches_report": true
+      },
+      "evidence_dir_total": 534218,
+      "evidence_budget_bytes": 8388608,
+      "evidence_bytes_excluding_report_and_manifest": 511466,
+      "focused_tests": {
+        "collected": 55,
+        "exit_code": 0,
+        "summary": "55 passed"
+      },
+      "full_suite_mirror": {
+        "exit_code": 0,
+        "parts": {
+          "foundry_r6_r7_r8": 0,
+          "r9": 0,
+          "combined_all": 0
+        }
+      },
+      "full_suite_combined_direct": {
+        "exit_code": 0,
+        "flake_retry": "passed"
+      },
+      "static_mirror": {
+        "ruff": true,
+        "ruff_format": true,
+        "mypy": true,
+        "bandit": true
+      },
+      "secret_scan_mirror": {
+        "passed": true,
+        "findings": 0,
+        "full_body_leaks": 0
+      },
+      "privacy_mirror": {
+        "passed": true
+      },
+      "live_guard_mirror": {
+        "protected_state_unchanged": false,
+        "r9_attributable_mutation": false,
+        "external_status_drift_documented": true
+      },
+      "frozen_live_guard_comparison": {
+        "protected_state_unchanged": true,
+        "r9_attributable_mutation": false
+      },
+      "independent_sweep": {
+        "files": "EXECUTED/REPLAYED/ACTIVE",
+        "git": "EXECUTED/EXECUTED/ACTIVE",
+        "services": "EXECUTED/403_on_wrong_fingerprint/stopped/ACTIVE",
+        "fail_closed_modes": 8,
+        "no_partial_effect": true,
+        "financial_denied": true,
+        "ledger_chain_valid": true
+      }
+    },
+    "repo_boundary": {
+      "worktree_head": "445cd92161f6e9cebaefdfdc30ab49cc5a8964aa",
+      "protected_main_head": "2f7360e742559e051109e04ef7f3a82cc64cc2d2 (advanced externally from e715b812dc49a04e1a0294b8dbd18c48abacb9f8 via V8 promotion commit; verifier read-only)",
+      "worktree_status": "expected untracked R9/R6 trees only; unchanged throughout",
+      "repo_evidence_after_mirror": "byte-identical to frozen hashes",
+      "commits_or_pushes_by_verifier": false,
+      "live_mutation_by_verifier": false,
+      "writes_made": [
+        "docs/remaster/evidence/r9/R9_VERIFIER_ROUND2_VERDICT_DSV4.json"
+      ]
+    }
+  },
+  "evidence_paths_and_hashes": {
+    "frozen": {
+      "R9_WORK_PACKAGE.json": {
+        "sha256": "F6582580BDD5ED27689957A4DF832A81D902CE82AD6AB8FE9364960D8AEFFC5C",
+        "size": 10479
+      },
+      "R9_BUILDER_REPORT.json": {
+        "sha256": "DD9D325E507BF642103D24E9AD8F9ECE19BDE927B0458699FAB90B0ABFF8289C",
+        "size": 8195
+      },
+      "R9_ARTIFACT_MANIFEST.json": {
+        "sha256": "326BA5D73889318F358DCEAF8E06EEF95F749FD7B7A574FB899348527A712061",
+        "size": 14557
+      }
+    },
+    "repo_evidence": {
+      "R9_ARTIFACT_MANIFEST.json": "326BA5D73889318F358DCEAF8E06EEF95F749FD7B7A574FB899348527A712061",
+      "R9_BUILDER_REPORT.json": "DD9D325E507BF642103D24E9AD8F9ECE19BDE927B0458699FAB90B0ABFF8289C",
+      "R9_LIVE_GUARD_COMPARISON.json": "1993EB4044C339B03514149224762E1236F35D9820E7300AE5421A0AD3BA7445"
+    },
+    "fresh_verifier_mirror": {
+      "root": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r9-verifier-round2\\evidence-fresh2",
+      "notes": "Fresh rerun of canary_runner, gate_g01..g05, static, focused_tests, full_suite, secret_scan, privacy_gate, live_guard before/after/compare; repo evidence not written."
+    }
+  },
+  "verdict": "PASS"
+}

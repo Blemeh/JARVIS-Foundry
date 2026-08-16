@@ -1,0 +1,182 @@
+{
+  "capability_id": "capability.git",
+  "commit": {
+    "after_detail": {
+      "head": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+      "porcelain": "",
+      "tree": "04a79dec9e536faad54bbc7d95a7e1fb8d8f2d2c"
+    },
+    "after_state_hash": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+    "before_detail": {
+      "head": "7eb9b3cdf0b201971f7d19e64e977820137c3d78",
+      "porcelain": "",
+      "tree": "d2232885c5e7166bae0c68cdca3ff0bd5c19ab56"
+    },
+    "before_state_hash": "7eb9b3cdf0b201971f7d19e64e977820137c3d78",
+    "no_partial_effect": false,
+    "occurred_at": "2026-08-16T06:00:00Z",
+    "outcome": "EXECUTED",
+    "reason": "real bounded git commit produced",
+    "receipt": {
+      "detail": {
+        "after_head": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+        "after_tree": "04a79dec9e536faad54bbc7d95a7e1fb8d8f2d2c",
+        "before_head": "7eb9b3cdf0b201971f7d19e64e977820137c3d78",
+        "before_tree": "d2232885c5e7166bae0c68cdca3ff0bd5c19ab56",
+        "commit_sha": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+        "content_hash": "dda2ad8c870bbfac5d561e385632f8ccd104d0736abb457a90c6e557befcfb3c",
+        "message": "add r9 canary note [idem:canary-git-commit]",
+        "parent_sha": "7eb9b3cdf0b201971f7d19e64e977820137c3d78",
+        "relative_path": "note.md",
+        "tree_sha": "04a79dec9e536faad54bbc7d95a7e1fb8d8f2d2c"
+      },
+      "effect_hash": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+      "idempotency_key": "canary-git-commit",
+      "operation": "commit",
+      "provider_reference": "git://git-canary"
+    },
+    "receipt_hash": "ddefa0a964221e36e6d47bae72ca6eaa3fcea1d545634c5c83001328c0954368",
+    "reconciliation": {
+      "detail": "commit exists, working tree clean, tree changed",
+      "reconciled": true
+    }
+  },
+  "fault": {
+    "after_detail": {
+      "head": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+      "porcelain": "",
+      "tree": "04a79dec9e536faad54bbc7d95a7e1fb8d8f2d2c"
+    },
+    "after_state_hash": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+    "before_detail": {
+      "head": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+      "porcelain": "",
+      "tree": "04a79dec9e536faad54bbc7d95a7e1fb8d8f2d2c"
+    },
+    "before_state_hash": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+    "no_partial_effect": true,
+    "occurred_at": "2026-08-16T06:00:00Z",
+    "outcome": "FAILED",
+    "reason": "injected provider failure; no commit performed",
+    "receipt": null,
+    "receipt_hash": null,
+    "reconciliation": {
+      "detail": "before and after state identical",
+      "reconciled": true
+    }
+  },
+  "generated_utc": "2026-08-16T06:00:00Z",
+  "proof": {
+    "after_state_hash": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+    "before_state_hash": "7eb9b3cdf0b201971f7d19e64e977820137c3d78",
+    "receipt_hash": "ddefa0a964221e36e6d47bae72ca6eaa3fcea1d545634c5c83001328c0954368",
+    "reconciliation": {
+      "detail": "commit exists, working tree clean, tree changed",
+      "reconciled": true
+    }
+  },
+  "proving_root": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r9-builder\\canary\\git\\proving",
+  "replay": {
+    "after_detail": {
+      "head": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+      "porcelain": "",
+      "tree": "04a79dec9e536faad54bbc7d95a7e1fb8d8f2d2c"
+    },
+    "after_state_hash": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+    "before_detail": {
+      "head": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+      "porcelain": "",
+      "tree": "04a79dec9e536faad54bbc7d95a7e1fb8d8f2d2c"
+    },
+    "before_state_hash": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+    "no_partial_effect": true,
+    "occurred_at": "2026-08-16T06:00:00Z",
+    "outcome": "REPLAYED",
+    "reason": "idempotent replay; commit already present",
+    "receipt": {
+      "detail": {
+        "after_head": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+        "after_tree": "04a79dec9e536faad54bbc7d95a7e1fb8d8f2d2c",
+        "before_head": "7eb9b3cdf0b201971f7d19e64e977820137c3d78",
+        "before_tree": "d2232885c5e7166bae0c68cdca3ff0bd5c19ab56",
+        "commit_sha": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+        "content_hash": "dda2ad8c870bbfac5d561e385632f8ccd104d0736abb457a90c6e557befcfb3c",
+        "message": "add r9 canary note [idem:canary-git-commit]",
+        "parent_sha": "7eb9b3cdf0b201971f7d19e64e977820137c3d78",
+        "relative_path": "note.md",
+        "tree_sha": "04a79dec9e536faad54bbc7d95a7e1fb8d8f2d2c"
+      },
+      "effect_hash": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+      "idempotency_key": "canary-git-commit",
+      "operation": "commit",
+      "provider_reference": "git://git-canary"
+    },
+    "receipt_hash": "ddefa0a964221e36e6d47bae72ca6eaa3fcea1d545634c5c83001328c0954368",
+    "reconciliation": {
+      "detail": "head unchanged by replay",
+      "reconciled": true
+    }
+  },
+  "revert": {
+    "after_detail": {
+      "head": "3506c3d9b75c8ed8b546fafe5845c0dfec171c00",
+      "porcelain": "",
+      "tree": "d2232885c5e7166bae0c68cdca3ff0bd5c19ab56"
+    },
+    "after_state_hash": "3506c3d9b75c8ed8b546fafe5845c0dfec171c00",
+    "before_detail": {
+      "head": "7dc79f14c73e2ee04560a8029e6bec2f9e05bcac",
+      "porcelain": "",
+      "tree": "c8e71f1575b78450bccf72e32fc27c4d6e72129d"
+    },
+    "before_state_hash": "7dc79f14c73e2ee04560a8029e6bec2f9e05bcac",
+    "no_partial_effect": false,
+    "occurred_at": "2026-08-16T06:00:00Z",
+    "outcome": "EXECUTED",
+    "reason": "real bounded git revert produced",
+    "receipt": {
+      "detail": {
+        "after_head": "3506c3d9b75c8ed8b546fafe5845c0dfec171c00",
+        "after_tree": "d2232885c5e7166bae0c68cdca3ff0bd5c19ab56",
+        "before_head": "7dc79f14c73e2ee04560a8029e6bec2f9e05bcac",
+        "before_tree": "c8e71f1575b78450bccf72e32fc27c4d6e72129d",
+        "reverted_commit": "7dc79f14c73e2ee04560a8029e6bec2f9e05bcac"
+      },
+      "effect_hash": "3506c3d9b75c8ed8b546fafe5845c0dfec171c00",
+      "idempotency_key": "canary-git-revert",
+      "operation": "revert",
+      "provider_reference": "git://git-canary"
+    },
+    "receipt_hash": "46dec9b8a096eb290aeab8235e3677d2dd3a1bcb72f13e095b389c3bd2e4c953",
+    "reconciliation": {
+      "detail": "working tree restored to pre-commit tree",
+      "reconciled": true
+    }
+  },
+  "revert_baseline_tree": "d2232885c5e7166bae0c68cdca3ff0bd5c19ab56",
+  "schema": "jarvis-r9-canary-git-v1",
+  "stop": {
+    "after_detail": {
+      "head": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+      "porcelain": "",
+      "tree": "04a79dec9e536faad54bbc7d95a7e1fb8d8f2d2c"
+    },
+    "after_state_hash": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+    "before_detail": {
+      "head": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+      "porcelain": "",
+      "tree": "04a79dec9e536faad54bbc7d95a7e1fb8d8f2d2c"
+    },
+    "before_state_hash": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+    "no_partial_effect": true,
+    "occurred_at": "2026-08-16T06:00:00Z",
+    "outcome": "STOPPED",
+    "reason": "adapter stop requested; new operations refused",
+    "receipt": null,
+    "receipt_hash": null,
+    "reconciliation": {
+      "detail": "no effect produced",
+      "reconciled": true
+    }
+  }
+}

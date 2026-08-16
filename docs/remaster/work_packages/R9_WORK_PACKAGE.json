@@ -1,0 +1,146 @@
+{
+  "schema": "jarvis-remaster-work-package-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R9",
+  "title": "Real digital work adapters and connectors",
+  "status": "FROZEN",
+  "generated_utc": "2026-08-16T03:10:00Z",
+  "frozen_base": {
+    "commit": "445cd92161f6e9cebaefdfdc30ab49cc5a8964aa",
+    "branch": "remaster/post-v7-purpose",
+    "worktree": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster",
+    "protected_main": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry (external V8 promotion commits advanced HEAD to e715b812 during R8; remaster live guards remained protected_state_unchanged within their windows)",
+    "live_v7_deployment_changes_allowed": false,
+    "push_or_publish_allowed": false,
+    "live_daemon_database_tasks_processes_ports": "protected, untouched",
+    "r6_status": "OWNER_REDIRECT_R6_DEFERRED (never reopen; R6 trees remain uncommitted and untouched)"
+  },
+  "objective": "Build and prove real DIGITAL WORK adapters and connectors with an honest capability lifecycle: DISCOVERED -> PROBING -> READY -> ACTIVE (or BLOCKED / NOT_READY / NOT_TESTED / DEGRADED / SUSPENDED / REVOKED). ACTIVE requires canonical system identity, canonical account/target identity, actual usable interface, credential brokerage (no secrets in prompts/logs/evidence), deterministic authorization, scoped capabilities, expiry/revocation, cost/quota/rate control, before-state, idempotent execution, system/provider receipt, after-state inspection, reconciliation, compensation where possible, STOP behavior, fault behavior, and independent verification. Digital work domains: files, applications, browser, Git, repositories, deployment, services, communication, calendar. Use owner-controlled bounded canary targets. Fakes may test contracts but cannot prove real provider readiness. Financial actions remain outside scope and must remain denied. Unavailable connectors must not stop unrelated progress.",
+  "governed_proving_area": {
+    "purpose": "All real effects run in isolated proving areas/clones under C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r9-*; canary targets are owner-controlled bounded local resources (local git repos, local files, local service ports on ephemeral test ports); no live daemon, database, vault, protected main, or owner project in place is touched.",
+    "privacy_boundary": "Evidence records identities, hashes, timestamps, provenance, capability states, and non-sensitive excerpts only; credentials are stored only in the brokerage store outside evidence with redacted fingerprints; never any secret in prompts/logs/evidence.",
+    "canary_domains": [
+      "files (local canary directory tree with before/after hashes)",
+      "git/repositories (isolated canary clones with real commits and receipts)",
+      "services (ephemeral local HTTP service on a test port with health/lifecycle)",
+      "browser (bounded local interface probe only if a driver is available; otherwise NOT_TESTED)",
+      "communication/calendar (BLOCKED/NOT_TESTED unless a real configured provider is available; no mock claims)"
+    ]
+  },
+  "mandatory_deliverables": [
+    {
+      "id": "R9-D01",
+      "item": "Capability registry with honest lifecycle",
+      "detail": "New additive module(s) under src/jarvis_foundry/capabilities_live/** (do not touch existing kernel/capabilities) implementing a capability registry: discover, probe, mark READY, activate, suspend, revoke; every transition durable in the kernel ledger with events; ACTIVE only after real proof; BLOCKED/NOT_READY/NOT_TESTED/DEGRADED/SUSPENDED/REVOKED recorded honestly with reasons."
+    },
+    {
+      "id": "R9-D02",
+      "item": "Credential brokerage with no secret leakage",
+      "detail": "A brokerage that stores credentials with canonical identity, expiry, revocation, scoped capability bindings, and redacted fingerprints only in evidence; retrieval is deterministic and authorized; no secret ever appears in prompts, logs, gate evidence, or manifests (secret scan must pass over all R9-owned artifacts)."
+    },
+    {
+      "id": "R9-D03",
+      "item": "Real digital work adapter(s) proven ACTIVE on a canary target",
+      "detail": "At least one REAL adapter proven ACTIVE against an owner-controlled bounded canary: real interface, real effect with before/after state, idempotent execution, system receipt, after-state inspection, reconciliation, STOP behavior, and fault behavior (e.g., local git adapter performing a real bounded commit/revert with receipts, or a files adapter with hashed before/after, or a services adapter driving an ephemeral local HTTP lifecycle)."
+    },
+    {
+      "id": "R9-D04",
+      "item": "Contract fakes that prove fail-closed contract behavior",
+      "detail": "Fake adapter(s) that fail closed: missing credential -> BLOCKED; expired/revoked -> REFUSED; quota/rate exceeded -> deferred; malformed provider receipt -> not accepted; unknown account/target -> refused; financial action -> always denied (no code path, no capability)."
+    },
+    {
+      "id": "R9-D05",
+      "item": "Capability lifecycle evidence",
+      "detail": "Evidence per capability: discovered -> probed -> ready -> active with before-state, after-state, receipt, reconciliation; and at least one suspend/revoke or refusal path with durable record; unavailable connectors recorded as BLOCKED/NOT_TESTED without blocking other gates."
+    },
+    {
+      "id": "R9-D06",
+      "item": "Owner-useful evidence and explanations",
+      "detail": "Command/output evidence, hashes, capability states, costs/quotas where applicable, and the exact next autonomous action; every claim carries evidence."
+    }
+  ],
+  "mandatory_gates": [
+    {
+      "id": "R9-G01",
+      "gate": "Lifecycle honesty: every capability has a durable state; ACTIVE only with real proof (before/after + receipt + reconciliation); BLOCKED/NOT_TESTED recorded honestly."
+    },
+    {
+      "id": "R9-G02",
+      "gate": "Credential safety: no secret in any prompt/log/evidence/manifest; secret scan over all R9-owned artifacts passes; brokerage enforces expiry/revocation/scoping."
+    },
+    {
+      "id": "R9-G03",
+      "gate": "Real canary effect: at least one adapter produced a real bounded digital effect on an owner-controlled canary with receipt and after-state inspection, idempotently re-executable."
+    },
+    {
+      "id": "R9-G04",
+      "gate": "Fail-closed: malformed/absent credentials, expired/revoked, quota/rate exceeded, unknown target, malformed receipt, and financial actions all refuse with durable records and no partial effects."
+    },
+    {
+      "id": "R9-G05",
+      "gate": "Independent verification: no builder certifies its own work; a fresh verifier reproduces the lifecycle, the real canary effect, and the fail-closed paths."
+    },
+    {
+      "id": "R9-G06",
+      "gate": "No live/protected mutation: canary effects only in proving areas; evidence under 8 MiB; full repo suite green; ruff check + format --check + mypy strict + bandit clean for R9-owned source."
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "R9-C01",
+      "criterion": "R9-D01..D06 each PASS with non-empty evidence (paths, hashes, receipts, command outputs)."
+    },
+    {
+      "id": "R9-C02",
+      "criterion": "Capability lifecycle is durable and honest; ACTIVE only with real proof; unavailable connectors are BLOCKED/NOT_TESTED without blocking progress."
+    },
+    {
+      "id": "R9-C03",
+      "criterion": "Credential brokerage: no secrets in evidence; expiry/revocation/scoping enforced; deterministic authorization."
+    },
+    {
+      "id": "R9-C04",
+      "criterion": "At least one real adapter ACTIVE with idempotent real canary effect, receipt, after-state, reconciliation."
+    },
+    {
+      "id": "R9-C05",
+      "criterion": "Fail-closed contract paths proven (including financial denial); no partial effects on refusal."
+    },
+    {
+      "id": "R9-C06",
+      "criterion": "Cost/quota/rate control enforced where applicable; STOP behavior proven."
+    },
+    {
+      "id": "R9-C07",
+      "criterion": "Full repository suite green; R9-owned files pass ruff check/format/mypy strict/bandit; evidence under budget; no protected mutation."
+    },
+    {
+      "id": "R9-C08",
+      "criterion": "Fresh independent verifier reproduces every criterion and finds no new S1/S2 defect."
+    }
+  ],
+  "ownership": {
+    "builder": "May create src/jarvis_foundry/capabilities_live/**, scripts/remaster/r9/**, tests/remaster/r9/**, docs/remaster/evidence/r9/**, docs/remaster/work_packages/R9_WORK_PACKAGE.json, and R9_FINDINGS.json under evidence/r9. May NOT edit existing kernel modules, tests/foundry, tests/remaster/r6, scripts/remaster/r6, src/jarvis_foundry/kernel/memory, prior evidence (r0-r8), FINDINGS.jsonl (root-owned), PROGRAM_STATE.md, R6 files, protected main, or any owner project in place. R9 source may IMPORT existing kernel modules and the R8 orchestration package read-only.",
+    "root": "Evidence custody, findings registry, commit decision, final truth.",
+    "verifier": "Fresh independent context after builder freeze."
+  },
+  "resources_and_constraints": {
+    "python": "C:\\Python313\\python.exe",
+    "isolated_venv": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r3-venv (reuse)",
+    "proving_area": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r9-*",
+    "network_allowed": "none for provider calls; real canary effects are local only. Browser/communication/calendar connectors that need real providers are honestly NOT_TESTED/BLOCKED without network.",
+    "evidence_budget_bytes": 8388608,
+    "timeout": "bounded; every long gate prints WALL_SECONDS and EXIT_CODE"
+  },
+  "status_contract": "PASS | FAIL | BLOCKED | NOT_TESTED | WAITING only; exit code zero alone is NOT_TESTED; every PASS needs non-empty evidence.",
+  "stop_conditions": [
+    "any mutation of live/protected state, live vault, live database, protected main, or any owner project in place",
+    "any secret value written to evidence, prompts, logs, or manifests",
+    "any financial action capability or code path",
+    "any fake/mock presented as real provider proof",
+    "any ACTIVE claim without before/after state, receipt, and reconciliation",
+    "any commit or push by the builder to protected repos",
+    "any unrecorded gate failure presented as PASS"
+  ],
+  "builder_status": "NOT_TESTED until a fresh independent verifier passes every mandatory criterion"
+}

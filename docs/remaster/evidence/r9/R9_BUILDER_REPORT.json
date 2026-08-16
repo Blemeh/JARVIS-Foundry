@@ -1,0 +1,214 @@
+{
+  "artifact_confinement": {
+    "baseline_entries_missing": [],
+    "confined": true,
+    "confinement_violations": [],
+    "porcelain_line_count": 10,
+    "pre_existing_baseline_entries": [
+      "?? docs/remaster/evidence/r6/",
+      "?? docs/remaster/work_packages/R6_WORK_PACKAGE.json",
+      "?? docs/remaster/work_packages/R9_WORK_PACKAGE.json",
+      "?? scripts/remaster/r6/",
+      "?? src/jarvis_foundry/kernel/memory/",
+      "?? tests/remaster/r6/"
+    ]
+  },
+  "artifact_manifest": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r9\\R9_ARTIFACT_MANIFEST.json",
+  "artifact_manifest_verification": {
+    "checked": 78,
+    "manifest_file_count": 79,
+    "mismatches": []
+  },
+  "builder": "r9_builder_fresh",
+  "builder_status": "NOT_TESTED",
+  "deliverables": {
+    "R9-D01": {
+      "evidence": [
+        "R9_LIFECYCLE.json"
+      ],
+      "evidence_hashes": {
+        "R9_LIFECYCLE.json": "c99a681163bd32e1eb78c31fa45f6fbfba27e0fc6416da263b7af0b2c45fc13d"
+      },
+      "status": "FAIL"
+    },
+    "R9-D02": {
+      "evidence": [
+        "R9_CREDENTIALS.json"
+      ],
+      "evidence_hashes": {
+        "R9_CREDENTIALS.json": "c0cbe331a0af9546aab671f3dc9c312d50f45a1d687d44ecb05c606fc97d571f"
+      },
+      "status": "FAIL"
+    },
+    "R9-D03": {
+      "evidence": [
+        "R9_CANARY_FILES.json"
+      ],
+      "evidence_hashes": {
+        "R9_CANARY_FILES.json": "dacfbc71497e8d013544e26ef215244bceb892ff3938640b19fe05944cbfcddb"
+      },
+      "status": "FAIL"
+    },
+    "R9-D04": {
+      "evidence": [
+        "R9_FAIL_CLOSED.json"
+      ],
+      "evidence_hashes": {
+        "R9_FAIL_CLOSED.json": "6bf1d31f8e5657917280919610ccc32a4e58cba7bda4924231c39573d732f957"
+      },
+      "status": "FAIL"
+    },
+    "R9-D05": {
+      "evidence": [
+        "R9_G01_LIFECYCLE.json"
+      ],
+      "evidence_hashes": {
+        "R9_G01_LIFECYCLE.json": "5ee4adc8022709f253a8e6c34862a43f35ee3590159be64e8c8df1103fec3cd6"
+      },
+      "status": "PASS"
+    },
+    "R9-D06": {
+      "evidence": [
+        "R9_LIFECYCLE.json"
+      ],
+      "evidence_hashes": {
+        "R9_LIFECYCLE.json": "c99a681163bd32e1eb78c31fa45f6fbfba27e0fc6416da263b7af0b2c45fc13d"
+      },
+      "status": "FAIL"
+    }
+  },
+  "findings": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r9\\R9_FINDINGS.json",
+  "focused_tests_status": "PASS",
+  "frozen_base": {
+    "branch": "remaster/post-v7-purpose",
+    "commit": "445cd92161f6e9cebaefdfdc30ab49cc5a8964aa",
+    "live_v7_deployment_changes_allowed": false,
+    "push_or_publish_allowed": false,
+    "work_package": "docs/remaster/work_packages/R9_WORK_PACKAGE.json",
+    "work_package_sha256": "F6582580BDD5ED27689957A4DF832A81D902CE82AD6AB8FE9364960D8AEFFC5C",
+    "work_package_unchanged": true
+  },
+  "full_suite": {
+    "evidence": [
+      "R9_FULL_SUITE.json",
+      "R9_FULL_SUITE_RAW.txt",
+      "R9_FULL_SUITE_PART1_JUNIT.xml",
+      "R9_FULL_SUITE_PART2_JUNIT.xml",
+      "R9_FULL_SUITE_COMBINED_JUNIT.xml"
+    ],
+    "evidence_hashes": {
+      "R9_FULL_SUITE.json": "e2e95c0cb0fb92244334fa2ae8fd1290019f3a0b7531e728fc812bb3fcc618dd",
+      "R9_FULL_SUITE_COMBINED_JUNIT.xml": "dffc1862d3123814f93e119064356124f4b6df560af93fbc4ba07159550a1983",
+      "R9_FULL_SUITE_PART1_JUNIT.xml": "dc8fcdbca86c5676d478b7e935497871579467c0946db2b02a5df2c0651f7cf2",
+      "R9_FULL_SUITE_PART2_JUNIT.xml": "3caf30b26fa3cae66ee0cefaaf284520fe0d1a7ca2c8a587bf12d1445d46d8fc",
+      "R9_FULL_SUITE_RAW.txt": "bcd0f03dfdfbe11d6cba4baa35edb21dce5a66ba60e1119dcab824cdfc6f6e96"
+    },
+    "status": "PASS",
+    "summary_line": "......................................................................   [100%]"
+  },
+  "gates": {
+    "R9-G01": {
+      "evidence": [
+        "R9_G01_LIFECYCLE.json"
+      ],
+      "evidence_hashes": {
+        "R9_G01_LIFECYCLE.json": "5ee4adc8022709f253a8e6c34862a43f35ee3590159be64e8c8df1103fec3cd6"
+      },
+      "status": "PASS"
+    },
+    "R9-G02": {
+      "evidence": [
+        "R9_G02_CREDENTIALS.json"
+      ],
+      "evidence_hashes": {
+        "R9_G02_CREDENTIALS.json": "be76f03fb64d5c6d5d57cec0ed71500d59f49bc73f0dd59c5d3de4fa2fe817fe"
+      },
+      "status": "PASS"
+    },
+    "R9-G03": {
+      "evidence": [
+        "R9_G03_CANARY.json"
+      ],
+      "evidence_hashes": {
+        "R9_G03_CANARY.json": "ea6ee3faedf5dba1920f33eeb35a18a9f9d707f0a3e57fe3d89f26b7e7362604"
+      },
+      "status": "PASS"
+    },
+    "R9-G04": {
+      "evidence": [
+        "R9_G04_FAIL_CLOSED.json"
+      ],
+      "evidence_hashes": {
+        "R9_G04_FAIL_CLOSED.json": "53b762dbd10d2d46cfca380ecba52bb95b6ee57f7bc929adfbe13bb2b95528e9"
+      },
+      "status": "PASS"
+    },
+    "R9-G05": {
+      "evidence": [
+        "R9_G05_VERIFICATION.json"
+      ],
+      "evidence_hashes": {
+        "R9_G05_VERIFICATION.json": "48bf1abb4b8a858199d02afe5ab7514ebb6cef8ed6f0300a3b31b90440c2f4a0"
+      },
+      "status": "PASS"
+    },
+    "R9-G06": {
+      "evidence": [
+        "R9_FULL_SUITE.json",
+        "R9_STATIC.json",
+        "R9_SECRET_SCAN.json",
+        "R9_PRIVACY.json",
+        "R9_LIVE_GUARD_COMPARISON.json"
+      ],
+      "evidence_hashes": {
+        "R9_BANDIT.json": "3b207a7098cafa9193aaed471917ea332c04c064a4eb5e790e7b6970fff370ca",
+        "R9_FULL_SUITE.json": "e2e95c0cb0fb92244334fa2ae8fd1290019f3a0b7531e728fc812bb3fcc618dd",
+        "R9_LIVE_GUARD_AFTER.json": "dd524f70d8048b4d804d04c158cdab47c1176ef21014109212a4234ac5a2db4c",
+        "R9_LIVE_GUARD_BEFORE.json": "6d268e47fe592d80a8950410c41bf7db8e9b824e1dee31fd5be4962a85f54e83",
+        "R9_LIVE_GUARD_COMPARISON.json": "1993eb4044c339b03514149224762e1236f35d9820e7300ae5421a0ad3ba7445",
+        "R9_MYPY.json": "cb00e8590c25b9579c611015358e76694f2b21f498c198d0545af0e3b83f938d",
+        "R9_PRIVACY.json": "9024ee7d80284754ad6a6962e02d95beea12de0bab41692803cca260b2a222bf",
+        "R9_RUFF.json": "13a73f9aa74af4ff7e5c3d3db0fe7824c2b46816df679b61c8d4d50b3f1b0ab0",
+        "R9_SECRET_SCAN.json": "14b6ae0fb224ce92734c402a9e115488059cf69bd3548458da750fa912e67cc4",
+        "R9_STATIC.json": "a032a8081c62a4e3ebc8dbbbfdc6606913e17593507409276dc4ef36cf79f845"
+      },
+      "status": "PASS"
+    }
+  },
+  "generated_utc": "2026-08-16T06:00:00Z",
+  "live_guard": {
+    "after": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r9\\R9_LIVE_GUARD_AFTER.json",
+    "after_sha256": "dd524f70d8048b4d804d04c158cdab47c1176ef21014109212a4234ac5a2db4c",
+    "before": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r9\\R9_LIVE_GUARD_BEFORE.json",
+    "before_sha256": "6d268e47fe592d80a8950410c41bf7db8e9b824e1dee31fd5be4962a85f54e83",
+    "comparison": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r9\\R9_LIVE_GUARD_COMPARISON.json",
+    "comparison_sha256": "1993eb4044c339b03514149224762e1236f35d9820e7300ae5421a0ad3ba7445",
+    "protected_state_unchanged": true
+  },
+  "privacy_passed": true,
+  "program": "POST_V7_JARVIS_REMASTER",
+  "resources_and_boundaries": {
+    "commit_created": false,
+    "evidence_budget_bytes": 8388608,
+    "evidence_bytes": 511466,
+    "evidence_under_budget": true,
+    "live_or_protected_writes": 0,
+    "network_used": "none",
+    "provider_calls": 0,
+    "push_or_publish_performed": false
+  },
+  "schema": "jarvis-r9-builder-report-v1",
+  "secret_scan_passed": true,
+  "stage": "R9",
+  "static_analysis_status": "PASS",
+  "status_reason": "Builder evidence is complete; a fresh independent verifier must reproduce and adjudicate the package before the gate closes.",
+  "tool_versions": {
+    "bandit": "1.9.4",
+    "coverage": "7.15.4",
+    "hypothesis": "6.165.8",
+    "mypy": "2.3.0",
+    "pytest": "9.0.3",
+    "pytest-cov": "7.1.0",
+    "ruff": "0.16.3"
+  }
+}

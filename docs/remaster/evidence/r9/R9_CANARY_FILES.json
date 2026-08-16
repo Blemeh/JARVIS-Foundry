@@ -1,0 +1,123 @@
+{
+  "capability_id": "capability.files",
+  "execute": {
+    "after_detail": {
+      "relative_path": "one.txt",
+      "root": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r9-builder\\canary\\files\\proving\\files-canary"
+    },
+    "after_state_hash": "e9a340e647b9a59885fb0b7f8e02f1d5ba727f7cca039005a3febcc1aecbad4f",
+    "before_detail": {
+      "root": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r9-builder\\canary\\files\\proving\\files-canary"
+    },
+    "before_state_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "no_partial_effect": false,
+    "occurred_at": "2026-08-16T06:00:00Z",
+    "outcome": "EXECUTED",
+    "reason": "real bounded file effect produced",
+    "receipt": {
+      "detail": {
+        "after_dir_hash": "e9a340e647b9a59885fb0b7f8e02f1d5ba727f7cca039005a3febcc1aecbad4f",
+        "after_file_hash": "39e5b602509b3dc2b2189b9c639d634eae02c9fcc35654d6f2b0582bb7588058",
+        "before_dir_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "before_file_hash": null,
+        "relative_path": "one.txt",
+        "size_bytes": 15
+      },
+      "effect_hash": "39e5b602509b3dc2b2189b9c639d634eae02c9fcc35654d6f2b0582bb7588058",
+      "idempotency_key": "canary-files-write",
+      "operation": "write",
+      "provider_reference": "file://one.txt"
+    },
+    "receipt_hash": "adeab2ae6d105c61f53f38bd60a7c77b495ea05ffd09b490cac8719d1fbf7210",
+    "reconciliation": {
+      "detail": "read-back hash matched after state",
+      "reconciled": true
+    }
+  },
+  "fault": {
+    "after_detail": {
+      "root": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r9-builder\\canary\\files\\proving\\files-canary"
+    },
+    "after_state_hash": "e9a340e647b9a59885fb0b7f8e02f1d5ba727f7cca039005a3febcc1aecbad4f",
+    "before_detail": {
+      "root": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r9-builder\\canary\\files\\proving\\files-canary"
+    },
+    "before_state_hash": "e9a340e647b9a59885fb0b7f8e02f1d5ba727f7cca039005a3febcc1aecbad4f",
+    "no_partial_effect": true,
+    "occurred_at": "2026-08-16T06:00:00Z",
+    "outcome": "FAILED",
+    "reason": "injected provider failure; no write performed",
+    "receipt": null,
+    "receipt_hash": null,
+    "reconciliation": {
+      "detail": "before and after state identical",
+      "reconciled": true
+    }
+  },
+  "generated_utc": "2026-08-16T06:00:00Z",
+  "proof": {
+    "after_state_hash": "e9a340e647b9a59885fb0b7f8e02f1d5ba727f7cca039005a3febcc1aecbad4f",
+    "before_state_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "receipt_hash": "adeab2ae6d105c61f53f38bd60a7c77b495ea05ffd09b490cac8719d1fbf7210",
+    "reconciliation": {
+      "detail": "read-back hash matched after state",
+      "reconciled": true
+    }
+  },
+  "proving_root": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r9-builder\\canary\\files\\proving",
+  "replay": {
+    "after_detail": {
+      "relative_path": "one.txt",
+      "root": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r9-builder\\canary\\files\\proving\\files-canary"
+    },
+    "after_state_hash": "e9a340e647b9a59885fb0b7f8e02f1d5ba727f7cca039005a3febcc1aecbad4f",
+    "before_detail": {
+      "root": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r9-builder\\canary\\files\\proving\\files-canary"
+    },
+    "before_state_hash": "e9a340e647b9a59885fb0b7f8e02f1d5ba727f7cca039005a3febcc1aecbad4f",
+    "no_partial_effect": true,
+    "occurred_at": "2026-08-16T06:00:00Z",
+    "outcome": "REPLAYED",
+    "reason": "idempotent replay; state already matches receipt",
+    "receipt": {
+      "detail": {
+        "after_dir_hash": "e9a340e647b9a59885fb0b7f8e02f1d5ba727f7cca039005a3febcc1aecbad4f",
+        "after_file_hash": "39e5b602509b3dc2b2189b9c639d634eae02c9fcc35654d6f2b0582bb7588058",
+        "before_dir_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "before_file_hash": null,
+        "relative_path": "one.txt",
+        "size_bytes": 15
+      },
+      "effect_hash": "39e5b602509b3dc2b2189b9c639d634eae02c9fcc35654d6f2b0582bb7588058",
+      "idempotency_key": "canary-files-write",
+      "operation": "write",
+      "provider_reference": "file://one.txt"
+    },
+    "receipt_hash": "adeab2ae6d105c61f53f38bd60a7c77b495ea05ffd09b490cac8719d1fbf7210",
+    "reconciliation": {
+      "detail": "state unchanged by replay",
+      "reconciled": true
+    }
+  },
+  "schema": "jarvis-r9-canary-files-v1",
+  "stop": {
+    "after_detail": {
+      "root": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r9-builder\\canary\\files\\proving\\files-canary"
+    },
+    "after_state_hash": "e9a340e647b9a59885fb0b7f8e02f1d5ba727f7cca039005a3febcc1aecbad4f",
+    "before_detail": {
+      "root": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r9-builder\\canary\\files\\proving\\files-canary"
+    },
+    "before_state_hash": "e9a340e647b9a59885fb0b7f8e02f1d5ba727f7cca039005a3febcc1aecbad4f",
+    "no_partial_effect": true,
+    "occurred_at": "2026-08-16T06:00:00Z",
+    "outcome": "STOPPED",
+    "reason": "adapter stop requested; new operations refused",
+    "receipt": null,
+    "receipt_hash": null,
+    "reconciliation": {
+      "detail": "no effect produced",
+      "reconciled": true
+    }
+  }
+}

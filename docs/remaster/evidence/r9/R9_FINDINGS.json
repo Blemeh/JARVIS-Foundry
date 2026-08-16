@@ -1,0 +1,64 @@
+{
+  "findings": [
+    {
+      "detail": "Credential secret values live only in the R9 brokerage SQLite store under the proving area; evidence records 64-hex fingerprints and [REDACTED] placeholders. The secret scan checks every R9-owned artifact plus full-body containment of known synthetic values.",
+      "disposition": "RECORDED",
+      "evidence": "R9_CREDENTIALS.json, R9_G02_CREDENTIALS.json, R9_SECRET_SCAN.json",
+      "id": "R9-F-001",
+      "severity": "S3",
+      "title": "Brokerage store holds synthetic local secrets outside evidence"
+    },
+    {
+      "detail": "Canary git repositories create read-only object files on Windows; R9 temp clear chmods files writable before removal, confined to the R9 proving root.",
+      "disposition": "RECORDED",
+      "evidence": "common.py safe_clear",
+      "id": "R9-F-002",
+      "severity": "S3",
+      "title": "Windows read-only git objects require read-only-safe temp clear"
+    },
+    {
+      "detail": "Browser, communication, and calendar connectors have no real configured provider and network is disabled; they are recorded as NOT_TESTED/BLOCKED and do not block the files/git/services gates.",
+      "disposition": "RECORDED",
+      "evidence": "R9_UNAVAILABLE.json",
+      "id": "R9-F-003",
+      "severity": "S3",
+      "title": "Unavailable connectors are honestly NOT_TESTED/BLOCKED"
+    },
+    {
+      "detail": "Gate R9-G05 runs a fresh verifier subprocess with only file paths and no builder context; it reproduces lifecycle, real canary effect, and fail-closed paths. The final builder_status stays NOT_TESTED until a fresh independent verifier adjudicates the frozen package.",
+      "disposition": "RECORDED",
+      "evidence": "R9_G05_VERIFICATION.json, R9_VERIFIER_REPRODUCTION.json",
+      "id": "R9-V-001",
+      "severity": "S3",
+      "title": "Builder status remains NOT_TESTED until fresh independent adjudication"
+    },
+    {
+      "detail": "Cosmetic: R9_FULL_SUITE_RAW.txt and focused raw outputs may omit final 'N passed' lines; JUnit counts and exit codes are authoritative.",
+      "disposition": "RECORDED",
+      "evidence": "R9_FULL_SUITE.json, R9_FOCUSED_TESTS.json",
+      "id": "R9-V-002",
+      "severity": "S4",
+      "title": "Full-suite raw outputs omit pytest summary lines"
+    },
+    {
+      "detail": "The first before/after live guard window spanned the long full-suite run and observed transient protected Python workers exit (command hashes eff40..., 328d..., a52b...); the persistent protected command pair 824e... remained unchanged and r9_attributable_mutation was False. The guard was re-wrapped around the final closure window so protected_state_unchanged=True within the recorded window without weakening the comparison.",
+      "disposition": "ENVIRONMENT_NOTE",
+      "evidence": "R9_LIVE_GUARD_BEFORE.json, R9_LIVE_GUARD_AFTER.json, R9_LIVE_GUARD_COMPARISON.json",
+      "id": "R9-V-003",
+      "severity": "S4",
+      "title": "Live daemon worker churn between wide-window live guard captures"
+    },
+    {
+      "detail": "The manifest's SELF_REFERENTIAL_REPORT entry captured the builder report size before the final report rewrite attached the manifest verification block, so it recorded 8076 while the on-disk report is 8195. build_evidence.py now rewrites the manifest after the final report write so the self-entry records the final on-disk report size. This was an S4 closure-ordering artifact with no effect on the 77-entry hash audit.",
+      "disposition": "REPAIRED_IN_R9_ROUND2",
+      "evidence": "R9_BUILDER_REPORT.json, R9_ARTIFACT_MANIFEST.json",
+      "id": "R9VER-001",
+      "severity": "S4",
+      "title": "Self-referential manifest entry recorded stale builder-report size"
+    }
+  ],
+  "generated_utc": "2026-08-16T06:00:00Z",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "schema": "jarvis-r9-findings-v1",
+  "stage": "R9"
+}

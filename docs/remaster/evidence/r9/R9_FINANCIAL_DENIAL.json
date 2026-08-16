@@ -1,0 +1,15 @@
+{
+  "capability_exists": false,
+  "capability_ids": [],
+  "financial_event_kinds": [],
+  "generated_utc": "2026-08-16T06:00:00Z",
+  "no_financial_capability_in_registry": true,
+  "policy_reason": "financial action always denied; no capability or code path exists: payment",
+  "policy_refused": true,
+  "probe_notes": [
+    "financial.request_denied event kind is registered only to record denials",
+    "no financial=True event kind exists in the R9 registry",
+    "no capability or code path can perform a financial action"
+  ],
+  "schema": "jarvis-r9-financial-denial-v1"
+}

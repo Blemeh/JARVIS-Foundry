@@ -1,0 +1,401 @@
+{
+  "file_count": 79,
+  "files": [
+    {
+      "path": "docs/remaster/evidence/r9/R9_BANDIT.json",
+      "sha256": "3b207a7098cafa9193aaed471917ea332c04c064a4eb5e790e7b6970fff370ca",
+      "size": 235
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_BANDIT_RAW.txt",
+      "sha256": "99fdb7a4db6779a2bd5f195a7f0396addb7d708ec5f5c4f89af9541866bd28c5",
+      "size": 6701
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_CANARY_FILES.json",
+      "sha256": "dacfbc71497e8d013544e26ef215244bceb892ff3938640b19fe05944cbfcddb",
+      "size": 5333
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_CANARY_GIT.json",
+      "sha256": "3040ad63ee45ab0205b68aa48136ad6a803e983e85d56e31b048359f52a8bb26",
+      "size": 7333
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_CANARY_SERVICES.json",
+      "sha256": "8d02a55d104e028dd92faf2b49aec52aee8335822769e0f053f8c94c77000dcb",
+      "size": 4178
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_CREDENTIALS.json",
+      "sha256": "c0cbe331a0af9546aab671f3dc9c312d50f45a1d687d44ecb05c606fc97d571f",
+      "size": 8406
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_FAIL_CLOSED.json",
+      "sha256": "6bf1d31f8e5657917280919610ccc32a4e58cba7bda4924231c39573d732f957",
+      "size": 3290
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_FINANCIAL_DENIAL.json",
+      "sha256": "bfa96b103508178b7344efb10c1feefa8680ef4a47015b2069a73e568132e3ca",
+      "size": 591
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_FOCUSED_TESTS.json",
+      "sha256": "3127459b5baa814c36b8c71c54e0cbcdebd71e7f4b5d3b87351f15cf7a199083",
+      "size": 468
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_FOCUSED_TESTS_JUNIT.xml",
+      "sha256": "4561ee730a531bed846a38643aea298830cdae6affb8d6776665c5456d8be7d6",
+      "size": 7242
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_FOCUSED_TESTS_RAW.txt",
+      "sha256": "cb18da0b6f22f66dcc3b91519f2731f34b02c843e4e4517d002e65d87a1ecdaf",
+      "size": 81
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_FULL_SUITE.json",
+      "sha256": "e2e95c0cb0fb92244334fa2ae8fd1290019f3a0b7531e728fc812bb3fcc618dd",
+      "size": 1041
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_FULL_SUITE_COMBINED_JUNIT.xml",
+      "sha256": "dffc1862d3123814f93e119064356124f4b6df560af93fbc4ba07159550a1983",
+      "size": 189364
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_FULL_SUITE_PART1_JUNIT.xml",
+      "sha256": "dc8fcdbca86c5676d478b7e935497871579467c0946db2b02a5df2c0651f7cf2",
+      "size": 182370
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_FULL_SUITE_PART2_JUNIT.xml",
+      "sha256": "3caf30b26fa3cae66ee0cefaaf284520fe0d1a7ca2c8a587bf12d1445d46d8fc",
+      "size": 7242
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_FULL_SUITE_RAW.txt",
+      "sha256": "bcd0f03dfdfbe11d6cba4baa35edb21dce5a66ba60e1119dcab824cdfc6f6e96",
+      "size": 3412
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_G01_LIFECYCLE.json",
+      "sha256": "5ee4adc8022709f253a8e6c34862a43f35ee3590159be64e8c8df1103fec3cd6",
+      "size": 648
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_G02_CREDENTIALS.json",
+      "sha256": "be76f03fb64d5c6d5d57cec0ed71500d59f49bc73f0dd59c5d3de4fa2fe817fe",
+      "size": 8168
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_G03_CANARY.json",
+      "sha256": "ea6ee3faedf5dba1920f33eeb35a18a9f9d707f0a3e57fe3d89f26b7e7362604",
+      "size": 776
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_G04_FAIL_CLOSED.json",
+      "sha256": "53b762dbd10d2d46cfca380ecba52bb95b6ee57f7bc929adfbe13bb2b95528e9",
+      "size": 922
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_G05_VERIFICATION.json",
+      "sha256": "48bf1abb4b8a858199d02afe5ab7514ebb6cef8ed6f0300a3b31b90440c2f4a0",
+      "size": 1856
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_LIFECYCLE.json",
+      "sha256": "c99a681163bd32e1eb78c31fa45f6fbfba27e0fc6416da263b7af0b2c45fc13d",
+      "size": 38732
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_LIVE_GUARD_AFTER.json",
+      "sha256": "dd524f70d8048b4d804d04c158cdab47c1176ef21014109212a4234ac5a2db4c",
+      "size": 2107
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_LIVE_GUARD_BEFORE.json",
+      "sha256": "6d268e47fe592d80a8950410c41bf7db8e9b824e1dee31fd5be4962a85f54e83",
+      "size": 2107
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_LIVE_GUARD_COMPARISON.json",
+      "sha256": "1993eb4044c339b03514149224762e1236f35d9820e7300ae5421a0ad3ba7445",
+      "size": 1407
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_MYPY.json",
+      "sha256": "cb00e8590c25b9579c611015358e76694f2b21f498c198d0545af0e3b83f938d",
+      "size": 231
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_MYPY_RAW.txt",
+      "sha256": "e903677c248a6ca6ac9094eed21b5350be088d014c43570c553f047d8f487a0a",
+      "size": 45
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_PRIVACY.json",
+      "sha256": "9024ee7d80284754ad6a6962e02d95beea12de0bab41692803cca260b2a222bf",
+      "size": 373
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_PROGRESS_01.json",
+      "sha256": "05f12de4356dcf5e8a763a7736022b6c98351542762c25769d3508ad6aeeb4e7",
+      "size": 477
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_PROGRESS_02.json",
+      "sha256": "37c4ac3f057107aaacd4dbc861e4cde10eb9c6abc760f40802936b297bba5774",
+      "size": 1324
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_RUFF.json",
+      "sha256": "13a73f9aa74af4ff7e5c3d3db0fe7824c2b46816df679b61c8d4d50b3f1b0ab0",
+      "size": 231
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_RUFF_FORMAT.json",
+      "sha256": "6b4ec4c63d67a9b22ce7486c375d0b1b691272eee79fb0898167c383559839b7",
+      "size": 244
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_RUFF_FORMAT_RAW.txt",
+      "sha256": "577256fabd692c8ad6243464be36aee0efb40ef52093c3aa0b763d2880961278",
+      "size": 28
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_RUFF_RAW.txt",
+      "sha256": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0",
+      "size": 20
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_SECRET_SCAN.json",
+      "sha256": "14b6ae0fb224ce92734c402a9e115488059cf69bd3548458da750fa912e67cc4",
+      "size": 300
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_SECRET_SCAN_RAW.json",
+      "sha256": "62732d9a465c67f3284e2f43c66d0b5e216810b6be62133d39d7409864c056af",
+      "size": 560
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_STATIC.json",
+      "sha256": "a032a8081c62a4e3ebc8dbbbfdc6606913e17593507409276dc4ef36cf79f845",
+      "size": 1416
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_UNAVAILABLE.json",
+      "sha256": "ebe739562ed9f2bce16876380fb52364de46d20029a97a4f9403a8284815bb11",
+      "size": 3133
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_VERIFIER_REPRODUCTION.json",
+      "sha256": "0afbc8dc88a11a20231829088da745c9d8f94864b8e2ce6e54a3544a81ba9ed7",
+      "size": 1069
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_VERIFIER_ROUND1_VERDICT_DSV4.json",
+      "sha256": "be67ca99174a2d85b95231a52c90a3ca58b8e74117ebea62dc823b6cd885d87c",
+      "size": 14076
+    },
+    {
+      "path": "scripts/remaster/r9/build_evidence.py",
+      "sha256": "88c926b972a51fb8b01077d96225744dab8eb5dd50d3ec8bbf074f2fea025c61",
+      "size": 19298
+    },
+    {
+      "path": "scripts/remaster/r9/canary_runner.py",
+      "sha256": "bc302bbd384de6e0f4ef7b25410e9ea88546b93185f4b22e4af4de131acd4d88",
+      "size": 31661
+    },
+    {
+      "path": "scripts/remaster/r9/common.py",
+      "sha256": "ddfed2b44e408b3c14ea433124d4009c2cfa7111a692e281a67f75be95ec9e5b",
+      "size": 5644
+    },
+    {
+      "path": "scripts/remaster/r9/focused_tests.py",
+      "sha256": "8e27db68a834cfce62c5dd0c10a01aeeedf43b6533d4e28d38298204eaea3d87",
+      "size": 1549
+    },
+    {
+      "path": "scripts/remaster/r9/full_suite.py",
+      "sha256": "917da0aa5b9f1494422e1afed1e2e32e796d2c26e90f2845ca52a508ca784fc1",
+      "size": 3550
+    },
+    {
+      "path": "scripts/remaster/r9/gate_g01_lifecycle.py",
+      "sha256": "b3fecb807214a6e9d91a1b88b43b8d0ef3507eb5321ef2ed9582b1fa64c8a828",
+      "size": 4686
+    },
+    {
+      "path": "scripts/remaster/r9/gate_g02_credentials.py",
+      "sha256": "d84560ba3d6b1a176cf9d5cc3158908647beca05218a65f436e2a89df411ec97",
+      "size": 5874
+    },
+    {
+      "path": "scripts/remaster/r9/gate_g03_canary.py",
+      "sha256": "f62c0daab4ca139b51069ca59616d923fc3941457828c3f6b9048ef48fd13c04",
+      "size": 6594
+    },
+    {
+      "path": "scripts/remaster/r9/gate_g04_fail_closed.py",
+      "sha256": "9856b7905c4b64d3751377afb4d87a1d028670f6c80e20a863305ff8e0c6f8cc",
+      "size": 4313
+    },
+    {
+      "path": "scripts/remaster/r9/gate_g05_verification.py",
+      "sha256": "63823fc422369633b8c0a61e8b6f43df8734a402dfbda40ab77887ea84fb8d43",
+      "size": 2777
+    },
+    {
+      "path": "scripts/remaster/r9/live_guard.py",
+      "sha256": "f67ac45b941282145d59f2065135716d92e1d15012194b455227be4407d7e33b",
+      "size": 10599
+    },
+    {
+      "path": "scripts/remaster/r9/privacy_gate.py",
+      "sha256": "20644e5b034e2976fcbec7345ce5a16198ba356fffca1680987c3a3314b86b77",
+      "size": 2224
+    },
+    {
+      "path": "scripts/remaster/r9/secret_scan.py",
+      "sha256": "0d64620b5f52e9f1891e68099bb5c1b575c454796795f5d7c8f3c4037e422478",
+      "size": 3932
+    },
+    {
+      "path": "scripts/remaster/r9/static.py",
+      "sha256": "03936b416ab0eed7bc396f0fa3ae9b540268da45bdea04a53256bd47bf77f6e2",
+      "size": 2900
+    },
+    {
+      "path": "scripts/remaster/r9/verifier.py",
+      "sha256": "7c7e97fd04c7a699ee3d2f4a17005f4cdf0b456a092de651019c9b1d8717e303",
+      "size": 10721
+    },
+    {
+      "path": "src/jarvis_foundry/capabilities_live/__init__.py",
+      "sha256": "0cab98c99e3067ab5405e5931a991325e8291ac443ab497776cb566c1da42634",
+      "size": 965
+    },
+    {
+      "path": "src/jarvis_foundry/capabilities_live/adapters/__init__.py",
+      "sha256": "d06b31b1088f392d562a8054d468199dfc7e8167dce891efb4c1a3846ff174d7",
+      "size": 962
+    },
+    {
+      "path": "src/jarvis_foundry/capabilities_live/adapters/base.py",
+      "sha256": "28dae876c96d02f8fcec88f92228b7d1fca6403394c14d6eb1ab80111f63760c",
+      "size": 6104
+    },
+    {
+      "path": "src/jarvis_foundry/capabilities_live/adapters/fakes.py",
+      "sha256": "605488dc5a6a48bf605825d4ea9e1a302ed5d0e74a28b029df9ed98fb6665a43",
+      "size": 3824
+    },
+    {
+      "path": "src/jarvis_foundry/capabilities_live/adapters/files.py",
+      "sha256": "e2325b77c2ab73942f602b9133da4cb46b425c18c2f1a5ff4a62e3e529497ff3",
+      "size": 9448
+    },
+    {
+      "path": "src/jarvis_foundry/capabilities_live/adapters/git.py",
+      "sha256": "ecadb3c162852cb6a9ea6b79a2003383bdc6928fa26abcb807db21afa4c0b463",
+      "size": 12509
+    },
+    {
+      "path": "src/jarvis_foundry/capabilities_live/adapters/services.py",
+      "sha256": "4d0f423e8e204bf9d6ea9f6c0bc8623192074b89ec0dea92816b5db471c25d14",
+      "size": 11545
+    },
+    {
+      "path": "src/jarvis_foundry/capabilities_live/adapters/unavailable.py",
+      "sha256": "469ae4c6839d19a88f394d95a7c2491ea7f7c7afd51db6a2f2b8325e03f17004",
+      "size": 1070
+    },
+    {
+      "path": "src/jarvis_foundry/capabilities_live/broker.py",
+      "sha256": "bf0ad5e62edd75bb4b8a1c9dd157d206aaffcfa8003d5be78c7c0da66930d9b3",
+      "size": 14655
+    },
+    {
+      "path": "src/jarvis_foundry/capabilities_live/ledger_events.py",
+      "sha256": "26e2874b0c01305989cf0cad86646984abfe1edc3e333ba278b9642bd0247ee2",
+      "size": 4365
+    },
+    {
+      "path": "src/jarvis_foundry/capabilities_live/policy.py",
+      "sha256": "c1732b26a590d1fb001bcabcf2bf8fdd5d46d11902c2ac5edcbb16ada39c7bfa",
+      "size": 879
+    },
+    {
+      "path": "src/jarvis_foundry/capabilities_live/projections.py",
+      "sha256": "e109c74590469e5b0070ec41c0080b926dd82693c51f11069b563e21cf007b32",
+      "size": 3728
+    },
+    {
+      "path": "src/jarvis_foundry/capabilities_live/registry.py",
+      "sha256": "ce9e6c878cb04545e6bd434256137ffa9d51758487c9878068853dafb0a2e152",
+      "size": 7563
+    },
+    {
+      "path": "src/jarvis_foundry/capabilities_live/states.py",
+      "sha256": "55bdc87071a51dfe186da80331b6cc0cd48d0abaff17d70a552f3aeba63f1725",
+      "size": 3417
+    },
+    {
+      "path": "tests/remaster/r9/r9_helpers.py",
+      "sha256": "01c25f6224c48c59703e1773db30d8c30f57a773292098e4d62d0656cff0181f",
+      "size": 2106
+    },
+    {
+      "path": "tests/remaster/r9/test_adapters_real.py",
+      "sha256": "bafe13937430e9ee53831102c1681d6fb860a7feed9274c05c7c39ad5f2b3db6",
+      "size": 8525
+    },
+    {
+      "path": "tests/remaster/r9/test_broker.py",
+      "sha256": "22c974c4322e0d4a2d2e55cd3486e68e444bf7f1afe7d5aa527c962cba7167e7",
+      "size": 4766
+    },
+    {
+      "path": "tests/remaster/r9/test_fail_closed.py",
+      "sha256": "0bd24192adf67373559d359b0b6a55be086dd561d135009a9c4df71ae86e48f8",
+      "size": 3391
+    },
+    {
+      "path": "tests/remaster/r9/test_financial_denial.py",
+      "sha256": "4bbce54253f133dbc0c271d3991f17d1437d500784ddabbb7901ec14ca34a391",
+      "size": 866
+    },
+    {
+      "path": "tests/remaster/r9/test_registry_lifecycle.py",
+      "sha256": "7b7534e7d224e4ce3aefeb69849c1e39b563e9e6feae0fb8b91be924f872d827",
+      "size": 6053
+    },
+    {
+      "path": "tests/remaster/r9/test_states.py",
+      "sha256": "140809665a7b3a00549bcf104d70434b13e89d56be68eff989fcf3d16fd3e9a9",
+      "size": 1908
+    },
+    {
+      "path": "tests/remaster/r9/test_unavailable.py",
+      "sha256": "3458a166da80c2d86ff0a6281671ffa764e095e55846ad457ed2f2184831ad7f",
+      "size": 1318
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_BUILDER_REPORT.json",
+      "sha256": "SELF_REFERENTIAL_REPORT",
+      "size": 8195
+    },
+    {
+      "path": "docs/remaster/evidence/r9/R9_FINDINGS.json",
+      "sha256": "67a7a409a83cb4594f0b0438bc792f90537c5e43eb93cd2987592022403a5b5b",
+      "size": 3929
+    }
+  ],
+  "schema": "jarvis-r9-artifact-manifest-v1"
+}

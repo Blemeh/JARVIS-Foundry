@@ -1,0 +1,55 @@
+[manager]	WARNING	Test in comment: argv is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: only is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: git is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: subprocess is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: never is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: shell is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: True is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: fixed is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: argv is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: list is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: no is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: shell is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: bounded is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: canary is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: repo is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: localhost is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: only is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: URL is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: from is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: an is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: int is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: port is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: public is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: redaction is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: placeholder is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: never is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: a is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: credential is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: value is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: public is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: redaction is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: placeholder is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: never is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: a is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: credential is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: value is not a test name or id, ignoring
+[tester]	WARNING	nosec encountered (B105), but no failed test on file C:\Users\b\Documents\ChatGPT\Autonomous AI powered by Hoowen\JARVIS-Foundry-Remaster\src\jarvis_foundry\capabilities_live\broker.py:55
+[tester]	WARNING	nosec encountered (B105), but no failed test on file C:\Users\b\Documents\ChatGPT\Autonomous AI powered by Hoowen\JARVIS-Foundry-Remaster\src\jarvis_foundry\capabilities_live\broker.py:56
+[tester]	WARNING	nosec encountered (B105), but no failed test on file C:\Users\b\Documents\ChatGPT\Autonomous AI powered by Hoowen\JARVIS-Foundry-Remaster\src\jarvis_foundry\capabilities_live\broker.py:57
+[tester]	WARNING	nosec encountered (B105), but no failed test on file C:\Users\b\Documents\ChatGPT\Autonomous AI powered by Hoowen\JARVIS-Foundry-Remaster\src\jarvis_foundry\capabilities_live\broker.py:58
+[tester]	WARNING	nosec encountered (B105), but no failed test on file C:\Users\b\Documents\ChatGPT\Autonomous AI powered by Hoowen\JARVIS-Foundry-Remaster\src\jarvis_foundry\capabilities_live\broker.py:59
+[tester]	WARNING	nosec encountered (B105), but no failed test on file C:\Users\b\Documents\ChatGPT\Autonomous AI powered by Hoowen\JARVIS-Foundry-Remaster\src\jarvis_foundry\capabilities_live\broker.py:60
+[tester]	WARNING	nosec encountered (B105), but no failed test on file C:\Users\b\Documents\ChatGPT\Autonomous AI powered by Hoowen\JARVIS-Foundry-Remaster\src\jarvis_foundry\capabilities_live\broker.py:61
+[tester]	WARNING	nosec encountered (B105), but no failed test on file C:\Users\b\Documents\ChatGPT\Autonomous AI powered by Hoowen\JARVIS-Foundry-Remaster\src\jarvis_foundry\capabilities_live\broker.py:62
+[tester]	WARNING	nosec encountered (B105), but no failed test on file C:\Users\b\Documents\ChatGPT\Autonomous AI powered by Hoowen\JARVIS-Foundry-Remaster\src\jarvis_foundry\capabilities_live\broker.py:63
+[tester]	WARNING	nosec encountered (B105), but no failed test on file C:\Users\b\Documents\ChatGPT\Autonomous AI powered by Hoowen\JARVIS-Foundry-Remaster\src\jarvis_foundry\capabilities_live\broker.py:64
+[tester]	WARNING	nosec encountered (B105), but no failed test on file C:\Users\b\Documents\ChatGPT\Autonomous AI powered by Hoowen\JARVIS-Foundry-Remaster\src\jarvis_foundry\capabilities_live\broker.py:82
+[tester]	WARNING	nosec encountered (B105), but no failed test on file C:\Users\b\Documents\ChatGPT\Autonomous AI powered by Hoowen\JARVIS-Foundry-Remaster\src\jarvis_foundry\capabilities_live\broker.py:83
+[tester]	WARNING	nosec encountered (B105), but no failed test on file C:\Users\b\Documents\ChatGPT\Autonomous AI powered by Hoowen\JARVIS-Foundry-Remaster\src\jarvis_foundry\capabilities_live\broker.py:84
+[tester]	WARNING	nosec encountered (B105), but no failed test on file C:\Users\b\Documents\ChatGPT\Autonomous AI powered by Hoowen\JARVIS-Foundry-Remaster\src\jarvis_foundry\capabilities_live\broker.py:85
+[tester]	WARNING	nosec encountered (B105), but no failed test on file C:\Users\b\Documents\ChatGPT\Autonomous AI powered by Hoowen\JARVIS-Foundry-Remaster\src\jarvis_foundry\capabilities_live\broker.py:86
+[tester]	WARNING	nosec encountered (B105), but no failed test on file C:\Users\b\Documents\ChatGPT\Autonomous AI powered by Hoowen\JARVIS-Foundry-Remaster\src\jarvis_foundry\capabilities_live\broker.py:87
+[tester]	WARNING	nosec encountered (B105), but no failed test on file C:\Users\b\Documents\ChatGPT\Autonomous AI powered by Hoowen\JARVIS-Foundry-Remaster\src\jarvis_foundry\capabilities_live\broker.py:88
+[tester]	WARNING	nosec encountered (B105), but no failed test on file C:\Users\b\Documents\ChatGPT\Autonomous AI powered by Hoowen\JARVIS-Foundry-Remaster\src\jarvis_foundry\capabilities_live\broker.py:89
+[tester]	WARNING	nosec encountered (B105), but no failed test on file C:\Users\b\Documents\ChatGPT\Autonomous AI powered by Hoowen\JARVIS-Foundry-Remaster\src\jarvis_foundry\capabilities_live\broker.py:90

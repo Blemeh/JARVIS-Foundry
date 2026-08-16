@@ -1,0 +1,39 @@
+{
+  "all_modes_ok": true,
+  "broker_refusals_ok": true,
+  "exit_code": 0,
+  "financial_policy": true,
+  "fresh_reproduction": {
+    "financial_policy_denied": true,
+    "modes": {
+      "financial": {
+        "expected": "DENIED",
+        "no_partial_effect": true,
+        "outcome": "DENIED"
+      },
+      "malformed_receipt": {
+        "expected": "NOT_ACCEPTED",
+        "no_partial_effect": true,
+        "outcome": "NOT_ACCEPTED"
+      },
+      "quota": {
+        "expected": "DEFERRED",
+        "no_partial_effect": true,
+        "outcome": "DEFERRED"
+      }
+    }
+  },
+  "mode_checks": {
+    "expired": true,
+    "financial": true,
+    "malformed_receipt": true,
+    "missing_credential": true,
+    "quota": true,
+    "rate": true,
+    "revoked": true,
+    "unknown_target": true
+  },
+  "passed": true,
+  "schema": "jarvis-r9-g04-fail-closed-v1",
+  "wall_seconds": 0.047
+}

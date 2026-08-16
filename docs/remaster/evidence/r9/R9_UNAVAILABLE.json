@@ -1,0 +1,95 @@
+{
+  "connectors": [
+    {
+      "capability_id": "capability.browser",
+      "domain": "browser",
+      "name": "Browser automation",
+      "reason": "no configured browser driver and network is disabled",
+      "status": "NOT_TESTED"
+    },
+    {
+      "capability_id": "capability.communication",
+      "domain": "communication",
+      "name": "Communication delivery",
+      "reason": "no real configured provider and network is disabled",
+      "status": "BLOCKED"
+    },
+    {
+      "capability_id": "capability.calendar",
+      "domain": "calendar",
+      "name": "Calendar write",
+      "reason": "no real configured provider and network is disabled",
+      "status": "BLOCKED"
+    }
+  ],
+  "generated_utc": "2026-08-16T06:00:00Z",
+  "schema": "jarvis-r9-unavailable-v1",
+  "states": {
+    "capability.browser": {
+      "capability_id": "capability.browser",
+      "domain": "browser",
+      "name": "Browser automation",
+      "reason": "no configured browser driver and network is disabled",
+      "status": "NOT_TESTED",
+      "system_id": "none",
+      "timeline": [
+        {
+          "event_id": "r9:capability.discovered:capability.browser:discover",
+          "event_type": "capability.discovered",
+          "recorded_at": "2026-08-16T06:00:00Z",
+          "sequence": 41
+        },
+        {
+          "event_id": "r9:capability.not_tested:capability.browser:not_tested",
+          "event_type": "capability.not_tested",
+          "recorded_at": "2026-08-16T06:00:00Z",
+          "sequence": 42
+        }
+      ]
+    },
+    "capability.calendar": {
+      "capability_id": "capability.calendar",
+      "domain": "calendar",
+      "name": "Calendar write",
+      "reason": "no real configured provider and network is disabled",
+      "status": "BLOCKED",
+      "system_id": "none",
+      "timeline": [
+        {
+          "event_id": "r9:capability.discovered:capability.calendar:discover",
+          "event_type": "capability.discovered",
+          "recorded_at": "2026-08-16T06:00:00Z",
+          "sequence": 45
+        },
+        {
+          "event_id": "r9:capability.blocked:capability.calendar:block",
+          "event_type": "capability.blocked",
+          "recorded_at": "2026-08-16T06:00:00Z",
+          "sequence": 46
+        }
+      ]
+    },
+    "capability.communication": {
+      "capability_id": "capability.communication",
+      "domain": "communication",
+      "name": "Communication delivery",
+      "reason": "no real configured provider and network is disabled",
+      "status": "BLOCKED",
+      "system_id": "none",
+      "timeline": [
+        {
+          "event_id": "r9:capability.discovered:capability.communication:discover",
+          "event_type": "capability.discovered",
+          "recorded_at": "2026-08-16T06:00:00Z",
+          "sequence": 43
+        },
+        {
+          "event_id": "r9:capability.blocked:capability.communication:block",
+          "event_type": "capability.blocked",
+          "recorded_at": "2026-08-16T06:00:00Z",
+          "sequence": 44
+        }
+      ]
+    }
+  }
+}

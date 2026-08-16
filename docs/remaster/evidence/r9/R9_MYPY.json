@@ -1,0 +1,8 @@
+{
+  "exit_code": 0,
+  "passed": true,
+  "raw_output": "R9_MYPY_RAW.txt",
+  "raw_output_sha256": "e903677c248a6ca6ac9094eed21b5350be088d014c43570c553f047d8f487a0a",
+  "schema": "jarvis-r9-mypy-v1",
+  "wall_seconds": 0.414
+}

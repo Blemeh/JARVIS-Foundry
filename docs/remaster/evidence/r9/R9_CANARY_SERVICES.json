@@ -1,0 +1,133 @@
+{
+  "capability_id": "capability.services",
+  "fault": {
+    "after_detail": {
+      "server_running": false
+    },
+    "after_state_hash": "stopped",
+    "before_detail": {
+      "server_running": false
+    },
+    "before_state_hash": "stopped",
+    "no_partial_effect": true,
+    "occurred_at": "2026-08-16T06:00:00Z",
+    "outcome": "FAILED",
+    "reason": "injected provider failure; no service started",
+    "receipt": null,
+    "receipt_hash": null,
+    "reconciliation": {
+      "detail": "before and after state identical",
+      "reconciled": true
+    }
+  },
+  "generated_utc": "2026-08-16T06:00:00Z",
+  "lifecycle": {
+    "after_detail": {
+      "health_body_hash": "4007d4651a99da76de6380705254a9f03fb3cdddc1c8d01ca4c77247adefab14",
+      "pid": 23404,
+      "port": 65408
+    },
+    "after_state_hash": "running",
+    "before_detail": {
+      "server_running": false
+    },
+    "before_state_hash": "stopped",
+    "no_partial_effect": false,
+    "occurred_at": "2026-08-16T06:00:00Z",
+    "outcome": "EXECUTED",
+    "reason": "real ephemeral HTTP service lifecycle produced",
+    "receipt": {
+      "detail": {
+        "fingerprint_prefix": "40e165b6f457",
+        "health_body_hash": "4007d4651a99da76de6380705254a9f03fb3cdddc1c8d01ca4c77247adefab14",
+        "pid": 23404,
+        "port": 65408,
+        "status": 200
+      },
+      "effect_hash": "4007d4651a99da76de6380705254a9f03fb3cdddc1c8d01ca4c77247adefab14",
+      "idempotency_key": "canary-service-live",
+      "operation": "lifecycle",
+      "provider_reference": "http://127.0.0.1:65408/health"
+    },
+    "receipt_hash": "ba8ed4dbc9eeaad88db78d2a37e772948ee21f03441e5984ac010755a7854886",
+    "reconciliation": {
+      "detail": "second health probe matched first",
+      "reconciled": true
+    }
+  },
+  "proof": {
+    "after_state_hash": "running",
+    "before_state_hash": "stopped",
+    "receipt_hash": "ba8ed4dbc9eeaad88db78d2a37e772948ee21f03441e5984ac010755a7854886",
+    "reconciliation": {
+      "detail": "second health probe matched first",
+      "reconciled": true
+    }
+  },
+  "proving_root": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r9-builder\\canary\\services\\proving",
+  "replay": {
+    "after_detail": {
+      "port": 65408
+    },
+    "after_state_hash": "running",
+    "before_detail": {
+      "server_running": true
+    },
+    "before_state_hash": "running",
+    "no_partial_effect": true,
+    "occurred_at": "2026-08-16T06:00:00Z",
+    "outcome": "REPLAYED",
+    "reason": "idempotent replay; service already healthy",
+    "receipt": {
+      "detail": {
+        "fingerprint_prefix": "40e165b6f457",
+        "health_body_hash": "4007d4651a99da76de6380705254a9f03fb3cdddc1c8d01ca4c77247adefab14",
+        "pid": 23404,
+        "port": 65408,
+        "status": 200
+      },
+      "effect_hash": "4007d4651a99da76de6380705254a9f03fb3cdddc1c8d01ca4c77247adefab14",
+      "idempotency_key": "canary-service-live",
+      "operation": "lifecycle",
+      "provider_reference": "http://127.0.0.1:65408/health"
+    },
+    "receipt_hash": "ba8ed4dbc9eeaad88db78d2a37e772948ee21f03441e5984ac010755a7854886",
+    "reconciliation": {
+      "detail": "health probe matched",
+      "reconciled": true
+    }
+  },
+  "schema": "jarvis-r9-canary-services-v1",
+  "stop": {
+    "capability_id": "capability.services",
+    "detail": "server shutdown and port released",
+    "port": 65408,
+    "port_released": true,
+    "stopped": true
+  },
+  "stop_refusal": {
+    "after_detail": {
+      "server_running": false
+    },
+    "after_state_hash": "stopped",
+    "before_detail": {
+      "server_running": false
+    },
+    "before_state_hash": "stopped",
+    "no_partial_effect": true,
+    "occurred_at": "2026-08-16T06:00:00Z",
+    "outcome": "STOPPED",
+    "reason": "adapter stop requested; lifecycle refused",
+    "receipt": null,
+    "receipt_hash": null,
+    "reconciliation": {
+      "detail": "no effect produced",
+      "reconciled": true
+    }
+  },
+  "wrong_credential_probe": {
+    "reason": "fingerprint mismatch",
+    "refused": true,
+    "status": 403
+  }
+}

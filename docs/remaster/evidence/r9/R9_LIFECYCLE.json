@@ -1,0 +1,996 @@
+{
+  "adapter_states": {
+    "capability.files:write:canary-files-fault": {
+      "capability_id": "capability.files",
+      "idempotency_key": "canary-files-fault",
+      "no_partial_effect": true,
+      "operation": "write",
+      "reason": "injected provider failure; no write performed"
+    },
+    "capability.files:write:canary-files-stop": {
+      "capability_id": "capability.files",
+      "idempotency_key": "canary-files-stop",
+      "no_partial_effect": true,
+      "operation": "write",
+      "reason": "adapter stop requested; new operations refused",
+      "refusal": "STOPPED"
+    },
+    "capability.files:write:canary-files-write": {
+      "after_state_hash": "e9a340e647b9a59885fb0b7f8e02f1d5ba727f7cca039005a3febcc1aecbad4f",
+      "before_state_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "capability_id": "capability.files",
+      "idempotency_key": "canary-files-write",
+      "operation": "write",
+      "outcome": "EXECUTED",
+      "receipt_hash": "adeab2ae6d105c61f53f38bd60a7c77b495ea05ffd09b490cac8719d1fbf7210",
+      "reconciled": true
+    },
+    "capability.git:commit:canary-git-commit": {
+      "after_state_hash": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+      "before_state_hash": "7eb9b3cdf0b201971f7d19e64e977820137c3d78",
+      "capability_id": "capability.git",
+      "idempotency_key": "canary-git-commit",
+      "operation": "commit",
+      "outcome": "EXECUTED",
+      "receipt_hash": "ddefa0a964221e36e6d47bae72ca6eaa3fcea1d545634c5c83001328c0954368",
+      "reconciled": true
+    },
+    "capability.git:commit:canary-git-fault": {
+      "capability_id": "capability.git",
+      "idempotency_key": "canary-git-fault",
+      "no_partial_effect": true,
+      "operation": "commit",
+      "reason": "injected provider failure; no commit performed"
+    },
+    "capability.git:commit:canary-git-stop": {
+      "capability_id": "capability.git",
+      "idempotency_key": "canary-git-stop",
+      "no_partial_effect": true,
+      "operation": "commit",
+      "reason": "adapter stop requested; new operations refused",
+      "refusal": "STOPPED"
+    },
+    "capability.git:revert:canary-git-revert": {
+      "after_state_hash": "3506c3d9b75c8ed8b546fafe5845c0dfec171c00",
+      "before_state_hash": "7dc79f14c73e2ee04560a8029e6bec2f9e05bcac",
+      "capability_id": "capability.git",
+      "idempotency_key": "canary-git-revert",
+      "operation": "revert",
+      "outcome": "EXECUTED",
+      "receipt_hash": "46dec9b8a096eb290aeab8235e3677d2dd3a1bcb72f13e095b389c3bd2e4c953",
+      "reconciled": true
+    },
+    "capability.services:lifecycle:canary-service-fault": {
+      "capability_id": "capability.services",
+      "idempotency_key": "canary-service-fault",
+      "no_partial_effect": true,
+      "operation": "lifecycle",
+      "reason": "injected provider failure; no service started"
+    },
+    "capability.services:lifecycle:canary-service-live": {
+      "after_state_hash": "running",
+      "before_state_hash": "stopped",
+      "capability_id": "capability.services",
+      "idempotency_key": "canary-service-live",
+      "operation": "lifecycle",
+      "outcome": "EXECUTED",
+      "receipt_hash": "ba8ed4dbc9eeaad88db78d2a37e772948ee21f03441e5984ac010755a7854886",
+      "reconciled": true
+    },
+    "capability.services:lifecycle:canary-service-stop": {
+      "capability_id": "capability.services",
+      "idempotency_key": "canary-service-stop",
+      "no_partial_effect": true,
+      "operation": "lifecycle",
+      "reason": "adapter stop requested; lifecycle refused",
+      "refusal": "STOPPED"
+    },
+    "fake.expired:act:fake-expired": {
+      "capability_id": "fake.expired",
+      "idempotency_key": "fake-expired",
+      "no_partial_effect": true,
+      "operation": "act",
+      "reason": "credential unavailable; expired refused",
+      "refusal": "REFUSED"
+    },
+    "fake.financial:act:fake-financial": {
+      "capability_id": "fake.financial",
+      "idempotency_key": "fake-financial",
+      "no_partial_effect": true,
+      "operation": "act",
+      "reason": "financial action always denied; no capability or code path exists: payment",
+      "refusal": "DENIED"
+    },
+    "fake.malformed_receipt:act:fake-malformed_receipt": {
+      "capability_id": "fake.malformed_receipt",
+      "idempotency_key": "fake-malformed_receipt",
+      "no_partial_effect": true,
+      "operation": "act",
+      "reason": "provider receipt missing required fields; not accepted"
+    },
+    "fake.missing_credential:act:fake-missing_credential": {
+      "capability_id": "fake.missing_credential",
+      "idempotency_key": "fake-missing_credential",
+      "no_partial_effect": true,
+      "operation": "act",
+      "reason": "missing credential refused",
+      "refusal": "REFUSED"
+    },
+    "fake.quota:act:fake-quota": {
+      "capability_id": "fake.quota",
+      "idempotency_key": "fake-quota",
+      "no_partial_effect": true,
+      "operation": "act",
+      "reason": "quota exceeded; deferred",
+      "refusal": "DEFERRED"
+    },
+    "fake.rate:act:fake-rate": {
+      "capability_id": "fake.rate",
+      "idempotency_key": "fake-rate",
+      "no_partial_effect": true,
+      "operation": "act",
+      "reason": "rate exceeded; deferred",
+      "refusal": "DEFERRED"
+    },
+    "fake.revoked:act:fake-revoked": {
+      "capability_id": "fake.revoked",
+      "idempotency_key": "fake-revoked",
+      "no_partial_effect": true,
+      "operation": "act",
+      "reason": "credential unavailable; revoked refused",
+      "refusal": "REFUSED"
+    },
+    "fake.unknown_target:act:fake-unknown_target": {
+      "capability_id": "fake.unknown_target",
+      "idempotency_key": "fake-unknown_target",
+      "no_partial_effect": true,
+      "operation": "act",
+      "reason": "unknown account or target refused",
+      "refusal": "REFUSED"
+    }
+  },
+  "capability_states": {
+    "capability.browser": {
+      "capability_id": "capability.browser",
+      "domain": "browser",
+      "name": "Browser automation",
+      "reason": "no configured browser driver and network is disabled",
+      "status": "NOT_TESTED",
+      "system_id": "none",
+      "timeline": [
+        {
+          "event_id": "r9:capability.discovered:capability.browser:discover",
+          "event_type": "capability.discovered",
+          "recorded_at": "2026-08-16T06:00:00Z",
+          "sequence": 41
+        },
+        {
+          "event_id": "r9:capability.not_tested:capability.browser:not_tested",
+          "event_type": "capability.not_tested",
+          "recorded_at": "2026-08-16T06:00:00Z",
+          "sequence": 42
+        }
+      ]
+    },
+    "capability.calendar": {
+      "capability_id": "capability.calendar",
+      "domain": "calendar",
+      "name": "Calendar write",
+      "reason": "no real configured provider and network is disabled",
+      "status": "BLOCKED",
+      "system_id": "none",
+      "timeline": [
+        {
+          "event_id": "r9:capability.discovered:capability.calendar:discover",
+          "event_type": "capability.discovered",
+          "recorded_at": "2026-08-16T06:00:00Z",
+          "sequence": 45
+        },
+        {
+          "event_id": "r9:capability.blocked:capability.calendar:block",
+          "event_type": "capability.blocked",
+          "recorded_at": "2026-08-16T06:00:00Z",
+          "sequence": 46
+        }
+      ]
+    },
+    "capability.communication": {
+      "capability_id": "capability.communication",
+      "domain": "communication",
+      "name": "Communication delivery",
+      "reason": "no real configured provider and network is disabled",
+      "status": "BLOCKED",
+      "system_id": "none",
+      "timeline": [
+        {
+          "event_id": "r9:capability.discovered:capability.communication:discover",
+          "event_type": "capability.discovered",
+          "recorded_at": "2026-08-16T06:00:00Z",
+          "sequence": 43
+        },
+        {
+          "event_id": "r9:capability.blocked:capability.communication:block",
+          "event_type": "capability.blocked",
+          "recorded_at": "2026-08-16T06:00:00Z",
+          "sequence": 44
+        }
+      ]
+    },
+    "capability.files": {
+      "after_state_hash": "e9a340e647b9a59885fb0b7f8e02f1d5ba727f7cca039005a3febcc1aecbad4f",
+      "before_state_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "capability_id": "capability.files",
+      "domain": "files",
+      "name": "capability.files",
+      "probe_note": "probe requested",
+      "proof_hash": "afc752b09001191545a40160b8bdc8f50e2453be1fd8bc863e0189e39680c97e",
+      "reason": "probe succeeded",
+      "receipt_hash": "adeab2ae6d105c61f53f38bd60a7c77b495ea05ffd09b490cac8719d1fbf7210",
+      "reconciliation_hash": "9d6958f56da50a098d7b0fb60ebe3357b45cb70cc76c4b81fd0b809ff7e27286",
+      "status": "ACTIVE",
+      "system_id": "r9-canary",
+      "timeline": [
+        {
+          "event_id": "r9:capability.discovered:capability.files:discover",
+          "event_type": "capability.discovered",
+          "recorded_at": "2026-08-16T06:00:00Z",
+          "sequence": 4
+        },
+        {
+          "event_id": "r9:capability.probing:capability.files:probe",
+          "event_type": "capability.probing",
+          "recorded_at": "2026-08-16T06:00:00Z",
+          "sequence": 5
+        },
+        {
+          "event_id": "r9:capability.ready:capability.files:ready",
+          "event_type": "capability.ready",
+          "recorded_at": "2026-08-16T06:00:00Z",
+          "sequence": 6
+        },
+        {
+          "event_id": "r9:capability.active:capability.files:activate",
+          "event_type": "capability.active",
+          "recorded_at": "2026-08-16T06:00:00Z",
+          "sequence": 14
+        }
+      ]
+    },
+    "capability.git": {
+      "after_state_hash": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+      "before_state_hash": "7eb9b3cdf0b201971f7d19e64e977820137c3d78",
+      "capability_id": "capability.git",
+      "domain": "git",
+      "name": "capability.git",
+      "probe_note": "probe requested",
+      "proof_hash": "81e100423f2c7552aad81b1c49bbfdd4de919f4540b740a7d60846ef4e5f12f8",
+      "reason": "probe succeeded",
+      "receipt_hash": "ddefa0a964221e36e6d47bae72ca6eaa3fcea1d545634c5c83001328c0954368",
+      "reconciliation_hash": "ed4ddd38355144f67ea29adc123227f0031af3e5edc3ab9f8c4a8401ba6781fb",
+      "status": "ACTIVE",
+      "system_id": "r9-canary",
+      "timeline": [
+        {
+          "event_id": "r9:capability.discovered:capability.git:discover",
+          "event_type": "capability.discovered",
+          "recorded_at": "2026-08-16T06:00:00Z",
+          "sequence": 7
+        },
+        {
+          "event_id": "r9:capability.probing:capability.git:probe",
+          "event_type": "capability.probing",
+          "recorded_at": "2026-08-16T06:00:00Z",
+          "sequence": 8
+        },
+        {
+          "event_id": "r9:capability.ready:capability.git:ready",
+          "event_type": "capability.ready",
+          "recorded_at": "2026-08-16T06:00:00Z",
+          "sequence": 9
+        },
+        {
+          "event_id": "r9:capability.active:capability.git:activate",
+          "event_type": "capability.active",
+          "recorded_at": "2026-08-16T06:00:00Z",
+          "sequence": 18
+        }
+      ]
+    },
+    "capability.services": {
+      "after_state_hash": "running",
+      "before_state_hash": "stopped",
+      "capability_id": "capability.services",
+      "domain": "services",
+      "name": "capability.services",
+      "probe_note": "probe requested",
+      "proof_hash": "28a248e468ee7db46dec549b9ca28115342466a532dce7242e12caa50561ff31",
+      "reason": "probe succeeded",
+      "receipt_hash": "ba8ed4dbc9eeaad88db78d2a37e772948ee21f03441e5984ac010755a7854886",
+      "reconciliation_hash": "c5ba0e33478542be5a2689a0969a47a53d7be46804fd87cc2295eac9a3fcb3c9",
+      "status": "ACTIVE",
+      "system_id": "r9-canary",
+      "timeline": [
+        {
+          "event_id": "r9:capability.discovered:capability.services:discover",
+          "event_type": "capability.discovered",
+          "recorded_at": "2026-08-16T06:00:00Z",
+          "sequence": 10
+        },
+        {
+          "event_id": "r9:capability.probing:capability.services:probe",
+          "event_type": "capability.probing",
+          "recorded_at": "2026-08-16T06:00:00Z",
+          "sequence": 11
+        },
+        {
+          "event_id": "r9:capability.ready:capability.services:ready",
+          "event_type": "capability.ready",
+          "recorded_at": "2026-08-16T06:00:00Z",
+          "sequence": 12
+        },
+        {
+          "event_id": "r9:capability.active:capability.services:activate",
+          "event_type": "capability.active",
+          "recorded_at": "2026-08-16T06:00:00Z",
+          "sequence": 23
+        }
+      ]
+    }
+  },
+  "credential_states": {
+    "authorization.denied:r9:authorization.denied:unknown-owner:capability.files": {
+      "capability": "capability.files",
+      "credential_id": "",
+      "reason": "no authorized credential",
+      "requested_target": "canary/probe/x.txt"
+    },
+    "cred-expired": {
+      "capabilities": [
+        "capability.files"
+      ],
+      "credential_id": "cred-expired",
+      "expires_at": "2026-08-16T05:00:00Z",
+      "fingerprint": "5bdcce4db35cf332848c6153e3c92fbf60550c18642882e5f2338b3b153f62ef",
+      "identity_canonical": "probe-owner",
+      "provider": "local-probe",
+      "scope_hash": "b55afde29559e569854c55eb9456d04e2ca09a94e303fd507584d73e0462c65e",
+      "status": "ACTIVE"
+    },
+    "cred-fake-expired": {
+      "capabilities": [
+        "fake.expired"
+      ],
+      "credential_id": "cred-fake-expired",
+      "expires_at": "2026-08-16T05:00:00Z",
+      "fingerprint": "f82a16409bf28d35f12d8b97e599077c7f246f08463c481b378c152b47614a71",
+      "identity_canonical": "fake-owner",
+      "provider": "local-fake-canary",
+      "scope_hash": "8758cd4bea054509d31746bb45bda7fa580d8f6a9ae918bfe1fe8c3bcdc3536c",
+      "status": "ACTIVE"
+    },
+    "cred-fake-financial": {
+      "capabilities": [
+        "fake.financial"
+      ],
+      "credential_id": "cred-fake-financial",
+      "expires_at": "2026-08-17T06:00:00Z",
+      "fingerprint": "08825100ae4158efda3555bd3a685b6f8d7c2ed32dc13012c9556466a621fc8a",
+      "identity_canonical": "fake-owner",
+      "provider": "local-fake-canary",
+      "scope_hash": "8758cd4bea054509d31746bb45bda7fa580d8f6a9ae918bfe1fe8c3bcdc3536c",
+      "status": "ACTIVE"
+    },
+    "cred-fake-malformed_receipt": {
+      "capabilities": [
+        "fake.malformed_receipt"
+      ],
+      "credential_id": "cred-fake-malformed_receipt",
+      "expires_at": "2026-08-17T06:00:00Z",
+      "fingerprint": "0ae5dd57d5dd76ee498abdd62b80cfa96c167e73d477a97b6935e80412dcd8cd",
+      "identity_canonical": "fake-owner",
+      "provider": "local-fake-canary",
+      "scope_hash": "8758cd4bea054509d31746bb45bda7fa580d8f6a9ae918bfe1fe8c3bcdc3536c",
+      "status": "ACTIVE"
+    },
+    "cred-fake-quota": {
+      "capabilities": [
+        "fake.quota"
+      ],
+      "credential_id": "cred-fake-quota",
+      "expires_at": "2026-08-17T06:00:00Z",
+      "fingerprint": "7e1c87b6ed30fa91a7485b353410ffa7c9a1187d9c67f99e595bb3506221ee76",
+      "identity_canonical": "fake-owner",
+      "provider": "local-fake-canary",
+      "scope_hash": "8758cd4bea054509d31746bb45bda7fa580d8f6a9ae918bfe1fe8c3bcdc3536c",
+      "status": "ACTIVE"
+    },
+    "cred-fake-rate": {
+      "capabilities": [
+        "fake.rate"
+      ],
+      "credential_id": "cred-fake-rate",
+      "expires_at": "2026-08-17T06:00:00Z",
+      "fingerprint": "87892b373c30df0763db5c3cbf5730a6ac3ede602b92f3d6aef2b6225d9fe853",
+      "identity_canonical": "fake-owner",
+      "provider": "local-fake-canary",
+      "scope_hash": "8758cd4bea054509d31746bb45bda7fa580d8f6a9ae918bfe1fe8c3bcdc3536c",
+      "status": "ACTIVE"
+    },
+    "cred-fake-revoked": {
+      "capabilities": [
+        "fake.revoked"
+      ],
+      "credential_id": "cred-fake-revoked",
+      "expires_at": "2026-08-16T05:00:00Z",
+      "fingerprint": "8ee41b1bca11d9ee15c51fc4f9f51010fa62e0e51f5016ce8794b980eaf3c2b7",
+      "identity_canonical": "fake-owner",
+      "provider": "local-fake-canary",
+      "scope_hash": "8758cd4bea054509d31746bb45bda7fa580d8f6a9ae918bfe1fe8c3bcdc3536c",
+      "status": "ACTIVE"
+    },
+    "cred-fake-unknown_target": {
+      "capabilities": [
+        "fake.unknown_target"
+      ],
+      "credential_id": "cred-fake-unknown_target",
+      "expires_at": "2026-08-17T06:00:00Z",
+      "fingerprint": "29e2b5e6f85c395ba9863974501b8752ce70d7963dc892e840bd95d246d2f106",
+      "identity_canonical": "fake-owner",
+      "provider": "local-fake-canary",
+      "scope_hash": "8758cd4bea054509d31746bb45bda7fa580d8f6a9ae918bfe1fe8c3bcdc3536c",
+      "status": "ACTIVE"
+    },
+    "cred-files": {
+      "capabilities": [
+        "capability.files"
+      ],
+      "credential_id": "cred-files",
+      "expires_at": "2026-08-17T06:00:00Z",
+      "fingerprint": "a2155b40b7ad8d483e701b147df93e887759b0772efde6dc7e05e2787a0e0f93",
+      "identity_canonical": "canary-owner",
+      "provider": "local-files-canary",
+      "scope_hash": "b07de595d4cccb0dac7e9d4c4d4c65f296572887cab7eb56ae2676c4789ddfed",
+      "status": "ACTIVE"
+    },
+    "cred-git": {
+      "capabilities": [
+        "capability.git"
+      ],
+      "credential_id": "cred-git",
+      "expires_at": "2026-08-17T06:00:00Z",
+      "fingerprint": "b529f3758c0f8718447113c0a05945a46c251792a6da455c01a0e98884aeddcc",
+      "identity_canonical": "canary-owner",
+      "provider": "local-git-canary",
+      "scope_hash": "cb2fe23e073e27a6390737fdb7df703a90108ab5e2d483ea6dfd635fbd859fd6",
+      "status": "ACTIVE"
+    },
+    "cred-revoked": {
+      "capabilities": [
+        "capability.files"
+      ],
+      "credential_id": "cred-revoked",
+      "expires_at": "2026-08-17T06:00:00Z",
+      "fingerprint": "31ebea8270470f65f3b871368e7895acbf7465e0e603f72588101bcbdcbe4d7a",
+      "identity_canonical": "probe-owner",
+      "provider": "local-probe",
+      "revoke_reason": "owner probe revocation",
+      "scope_hash": "b55afde29559e569854c55eb9456d04e2ca09a94e303fd507584d73e0462c65e",
+      "status": "REVOKED"
+    },
+    "cred-scoped": {
+      "capabilities": [
+        "capability.files"
+      ],
+      "credential_id": "cred-scoped",
+      "expires_at": "2026-08-17T06:00:00Z",
+      "fingerprint": "fe2d05f96edfc2dcba6e7558e09871f4d660df1813c30a250c8cb5ad0940dd07",
+      "identity_canonical": "probe-owner",
+      "provider": "local-probe",
+      "scope_hash": "1295012afa9f252e21b0ca6606ae0b388172781779b865d1ed72bd4138431ac7",
+      "status": "ACTIVE"
+    },
+    "cred-services": {
+      "capabilities": [
+        "capability.services"
+      ],
+      "credential_id": "cred-services",
+      "expires_at": "2026-08-17T06:00:00Z",
+      "fingerprint": "40e165b6f457ab3dea6a633c0ca7d1c498500b01615551c3a097d677b3b24149",
+      "identity_canonical": "canary-owner",
+      "provider": "local-services-canary",
+      "scope_hash": "0a4e16ffb471c55e948945457b267b9e2dd29777f2f5a0089b6121b28298fe6e",
+      "status": "ACTIVE"
+    }
+  },
+  "files": {
+    "execute": {
+      "after_detail": {
+        "relative_path": "one.txt",
+        "root": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r9-builder\\canary\\files\\proving\\files-canary"
+      },
+      "after_state_hash": "e9a340e647b9a59885fb0b7f8e02f1d5ba727f7cca039005a3febcc1aecbad4f",
+      "before_detail": {
+        "root": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r9-builder\\canary\\files\\proving\\files-canary"
+      },
+      "before_state_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "no_partial_effect": false,
+      "occurred_at": "2026-08-16T06:00:00Z",
+      "outcome": "EXECUTED",
+      "reason": "real bounded file effect produced",
+      "receipt": {
+        "detail": {
+          "after_dir_hash": "e9a340e647b9a59885fb0b7f8e02f1d5ba727f7cca039005a3febcc1aecbad4f",
+          "after_file_hash": "39e5b602509b3dc2b2189b9c639d634eae02c9fcc35654d6f2b0582bb7588058",
+          "before_dir_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "before_file_hash": null,
+          "relative_path": "one.txt",
+          "size_bytes": 15
+        },
+        "effect_hash": "39e5b602509b3dc2b2189b9c639d634eae02c9fcc35654d6f2b0582bb7588058",
+        "idempotency_key": "canary-files-write",
+        "operation": "write",
+        "provider_reference": "file://one.txt"
+      },
+      "receipt_hash": "adeab2ae6d105c61f53f38bd60a7c77b495ea05ffd09b490cac8719d1fbf7210",
+      "reconciliation": {
+        "detail": "read-back hash matched after state",
+        "reconciled": true
+      }
+    },
+    "fault": {
+      "after_detail": {
+        "root": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r9-builder\\canary\\files\\proving\\files-canary"
+      },
+      "after_state_hash": "e9a340e647b9a59885fb0b7f8e02f1d5ba727f7cca039005a3febcc1aecbad4f",
+      "before_detail": {
+        "root": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r9-builder\\canary\\files\\proving\\files-canary"
+      },
+      "before_state_hash": "e9a340e647b9a59885fb0b7f8e02f1d5ba727f7cca039005a3febcc1aecbad4f",
+      "no_partial_effect": true,
+      "occurred_at": "2026-08-16T06:00:00Z",
+      "outcome": "FAILED",
+      "reason": "injected provider failure; no write performed",
+      "receipt": null,
+      "receipt_hash": null,
+      "reconciliation": {
+        "detail": "before and after state identical",
+        "reconciled": true
+      }
+    },
+    "ledger_head": "12aabb086713c7704d5889273bc43f69e6f959ddb562698086be4493b4127aaa",
+    "proof": {
+      "after_state_hash": "e9a340e647b9a59885fb0b7f8e02f1d5ba727f7cca039005a3febcc1aecbad4f",
+      "before_state_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "receipt_hash": "adeab2ae6d105c61f53f38bd60a7c77b495ea05ffd09b490cac8719d1fbf7210",
+      "reconciliation": {
+        "detail": "read-back hash matched after state",
+        "reconciled": true
+      }
+    },
+    "replay": {
+      "after_detail": {
+        "relative_path": "one.txt",
+        "root": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r9-builder\\canary\\files\\proving\\files-canary"
+      },
+      "after_state_hash": "e9a340e647b9a59885fb0b7f8e02f1d5ba727f7cca039005a3febcc1aecbad4f",
+      "before_detail": {
+        "root": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r9-builder\\canary\\files\\proving\\files-canary"
+      },
+      "before_state_hash": "e9a340e647b9a59885fb0b7f8e02f1d5ba727f7cca039005a3febcc1aecbad4f",
+      "no_partial_effect": true,
+      "occurred_at": "2026-08-16T06:00:00Z",
+      "outcome": "REPLAYED",
+      "reason": "idempotent replay; state already matches receipt",
+      "receipt": {
+        "detail": {
+          "after_dir_hash": "e9a340e647b9a59885fb0b7f8e02f1d5ba727f7cca039005a3febcc1aecbad4f",
+          "after_file_hash": "39e5b602509b3dc2b2189b9c639d634eae02c9fcc35654d6f2b0582bb7588058",
+          "before_dir_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "before_file_hash": null,
+          "relative_path": "one.txt",
+          "size_bytes": 15
+        },
+        "effect_hash": "39e5b602509b3dc2b2189b9c639d634eae02c9fcc35654d6f2b0582bb7588058",
+        "idempotency_key": "canary-files-write",
+        "operation": "write",
+        "provider_reference": "file://one.txt"
+      },
+      "receipt_hash": "adeab2ae6d105c61f53f38bd60a7c77b495ea05ffd09b490cac8719d1fbf7210",
+      "reconciliation": {
+        "detail": "state unchanged by replay",
+        "reconciled": true
+      }
+    },
+    "status": "ACTIVE",
+    "stop": {
+      "after_detail": {
+        "root": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r9-builder\\canary\\files\\proving\\files-canary"
+      },
+      "after_state_hash": "e9a340e647b9a59885fb0b7f8e02f1d5ba727f7cca039005a3febcc1aecbad4f",
+      "before_detail": {
+        "root": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r9-builder\\canary\\files\\proving\\files-canary"
+      },
+      "before_state_hash": "e9a340e647b9a59885fb0b7f8e02f1d5ba727f7cca039005a3febcc1aecbad4f",
+      "no_partial_effect": true,
+      "occurred_at": "2026-08-16T06:00:00Z",
+      "outcome": "STOPPED",
+      "reason": "adapter stop requested; new operations refused",
+      "receipt": null,
+      "receipt_hash": null,
+      "reconciliation": {
+        "detail": "no effect produced",
+        "reconciled": true
+      }
+    }
+  },
+  "generated_utc": "2026-08-16T06:00:00Z",
+  "git": {
+    "baseline_head": "7eb9b3cdf0b201971f7d19e64e977820137c3d78",
+    "baseline_tree": "d2232885c5e7166bae0c68cdca3ff0bd5c19ab56",
+    "commit": {
+      "after_detail": {
+        "head": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+        "porcelain": "",
+        "tree": "04a79dec9e536faad54bbc7d95a7e1fb8d8f2d2c"
+      },
+      "after_state_hash": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+      "before_detail": {
+        "head": "7eb9b3cdf0b201971f7d19e64e977820137c3d78",
+        "porcelain": "",
+        "tree": "d2232885c5e7166bae0c68cdca3ff0bd5c19ab56"
+      },
+      "before_state_hash": "7eb9b3cdf0b201971f7d19e64e977820137c3d78",
+      "no_partial_effect": false,
+      "occurred_at": "2026-08-16T06:00:00Z",
+      "outcome": "EXECUTED",
+      "reason": "real bounded git commit produced",
+      "receipt": {
+        "detail": {
+          "after_head": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+          "after_tree": "04a79dec9e536faad54bbc7d95a7e1fb8d8f2d2c",
+          "before_head": "7eb9b3cdf0b201971f7d19e64e977820137c3d78",
+          "before_tree": "d2232885c5e7166bae0c68cdca3ff0bd5c19ab56",
+          "commit_sha": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+          "content_hash": "dda2ad8c870bbfac5d561e385632f8ccd104d0736abb457a90c6e557befcfb3c",
+          "message": "add r9 canary note [idem:canary-git-commit]",
+          "parent_sha": "7eb9b3cdf0b201971f7d19e64e977820137c3d78",
+          "relative_path": "note.md",
+          "tree_sha": "04a79dec9e536faad54bbc7d95a7e1fb8d8f2d2c"
+        },
+        "effect_hash": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+        "idempotency_key": "canary-git-commit",
+        "operation": "commit",
+        "provider_reference": "git://git-canary"
+      },
+      "receipt_hash": "ddefa0a964221e36e6d47bae72ca6eaa3fcea1d545634c5c83001328c0954368",
+      "reconciliation": {
+        "detail": "commit exists, working tree clean, tree changed",
+        "reconciled": true
+      }
+    },
+    "fault": {
+      "after_detail": {
+        "head": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+        "porcelain": "",
+        "tree": "04a79dec9e536faad54bbc7d95a7e1fb8d8f2d2c"
+      },
+      "after_state_hash": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+      "before_detail": {
+        "head": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+        "porcelain": "",
+        "tree": "04a79dec9e536faad54bbc7d95a7e1fb8d8f2d2c"
+      },
+      "before_state_hash": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+      "no_partial_effect": true,
+      "occurred_at": "2026-08-16T06:00:00Z",
+      "outcome": "FAILED",
+      "reason": "injected provider failure; no commit performed",
+      "receipt": null,
+      "receipt_hash": null,
+      "reconciliation": {
+        "detail": "before and after state identical",
+        "reconciled": true
+      }
+    },
+    "proof": {
+      "after_state_hash": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+      "before_state_hash": "7eb9b3cdf0b201971f7d19e64e977820137c3d78",
+      "receipt_hash": "ddefa0a964221e36e6d47bae72ca6eaa3fcea1d545634c5c83001328c0954368",
+      "reconciliation": {
+        "detail": "commit exists, working tree clean, tree changed",
+        "reconciled": true
+      }
+    },
+    "replay": {
+      "after_detail": {
+        "head": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+        "porcelain": "",
+        "tree": "04a79dec9e536faad54bbc7d95a7e1fb8d8f2d2c"
+      },
+      "after_state_hash": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+      "before_detail": {
+        "head": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+        "porcelain": "",
+        "tree": "04a79dec9e536faad54bbc7d95a7e1fb8d8f2d2c"
+      },
+      "before_state_hash": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+      "no_partial_effect": true,
+      "occurred_at": "2026-08-16T06:00:00Z",
+      "outcome": "REPLAYED",
+      "reason": "idempotent replay; commit already present",
+      "receipt": {
+        "detail": {
+          "after_head": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+          "after_tree": "04a79dec9e536faad54bbc7d95a7e1fb8d8f2d2c",
+          "before_head": "7eb9b3cdf0b201971f7d19e64e977820137c3d78",
+          "before_tree": "d2232885c5e7166bae0c68cdca3ff0bd5c19ab56",
+          "commit_sha": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+          "content_hash": "dda2ad8c870bbfac5d561e385632f8ccd104d0736abb457a90c6e557befcfb3c",
+          "message": "add r9 canary note [idem:canary-git-commit]",
+          "parent_sha": "7eb9b3cdf0b201971f7d19e64e977820137c3d78",
+          "relative_path": "note.md",
+          "tree_sha": "04a79dec9e536faad54bbc7d95a7e1fb8d8f2d2c"
+        },
+        "effect_hash": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+        "idempotency_key": "canary-git-commit",
+        "operation": "commit",
+        "provider_reference": "git://git-canary"
+      },
+      "receipt_hash": "ddefa0a964221e36e6d47bae72ca6eaa3fcea1d545634c5c83001328c0954368",
+      "reconciliation": {
+        "detail": "head unchanged by replay",
+        "reconciled": true
+      }
+    },
+    "revert": {
+      "after_detail": {
+        "head": "3506c3d9b75c8ed8b546fafe5845c0dfec171c00",
+        "porcelain": "",
+        "tree": "d2232885c5e7166bae0c68cdca3ff0bd5c19ab56"
+      },
+      "after_state_hash": "3506c3d9b75c8ed8b546fafe5845c0dfec171c00",
+      "before_detail": {
+        "head": "7dc79f14c73e2ee04560a8029e6bec2f9e05bcac",
+        "porcelain": "",
+        "tree": "c8e71f1575b78450bccf72e32fc27c4d6e72129d"
+      },
+      "before_state_hash": "7dc79f14c73e2ee04560a8029e6bec2f9e05bcac",
+      "no_partial_effect": false,
+      "occurred_at": "2026-08-16T06:00:00Z",
+      "outcome": "EXECUTED",
+      "reason": "real bounded git revert produced",
+      "receipt": {
+        "detail": {
+          "after_head": "3506c3d9b75c8ed8b546fafe5845c0dfec171c00",
+          "after_tree": "d2232885c5e7166bae0c68cdca3ff0bd5c19ab56",
+          "before_head": "7dc79f14c73e2ee04560a8029e6bec2f9e05bcac",
+          "before_tree": "c8e71f1575b78450bccf72e32fc27c4d6e72129d",
+          "reverted_commit": "7dc79f14c73e2ee04560a8029e6bec2f9e05bcac"
+        },
+        "effect_hash": "3506c3d9b75c8ed8b546fafe5845c0dfec171c00",
+        "idempotency_key": "canary-git-revert",
+        "operation": "revert",
+        "provider_reference": "git://git-canary"
+      },
+      "receipt_hash": "46dec9b8a096eb290aeab8235e3677d2dd3a1bcb72f13e095b389c3bd2e4c953",
+      "reconciliation": {
+        "detail": "working tree restored to pre-commit tree",
+        "reconciled": true
+      }
+    },
+    "revert_baseline_tree": "d2232885c5e7166bae0c68cdca3ff0bd5c19ab56",
+    "stop": {
+      "after_detail": {
+        "head": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+        "porcelain": "",
+        "tree": "04a79dec9e536faad54bbc7d95a7e1fb8d8f2d2c"
+      },
+      "after_state_hash": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+      "before_detail": {
+        "head": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+        "porcelain": "",
+        "tree": "04a79dec9e536faad54bbc7d95a7e1fb8d8f2d2c"
+      },
+      "before_state_hash": "afbdaa462518e095c1064181f90dfccd4a9f34d1",
+      "no_partial_effect": true,
+      "occurred_at": "2026-08-16T06:00:00Z",
+      "outcome": "STOPPED",
+      "reason": "adapter stop requested; new operations refused",
+      "receipt": null,
+      "receipt_hash": null,
+      "reconciliation": {
+        "detail": "no effect produced",
+        "reconciled": true
+      }
+    }
+  },
+  "ledger": {
+    "chain_valid": true,
+    "event_count": 51,
+    "event_types": [
+      "credential.registered",
+      "credential.registered",
+      "credential.registered",
+      "capability.discovered",
+      "capability.probing",
+      "capability.ready",
+      "capability.discovered",
+      "capability.probing",
+      "capability.ready",
+      "capability.discovered",
+      "capability.probing",
+      "capability.ready",
+      "adapter.executed",
+      "capability.active",
+      "adapter.refused",
+      "adapter.failed",
+      "adapter.executed",
+      "capability.active",
+      "adapter.executed",
+      "adapter.refused",
+      "adapter.failed",
+      "adapter.executed",
+      "capability.active",
+      "adapter.refused",
+      "adapter.failed",
+      "adapter.refused",
+      "credential.registered",
+      "adapter.refused",
+      "credential.registered",
+      "adapter.refused",
+      "credential.registered",
+      "adapter.refused",
+      "credential.registered",
+      "adapter.refused",
+      "credential.registered",
+      "adapter.receipt_rejected",
+      "credential.registered",
+      "adapter.refused",
+      "credential.registered",
+      "adapter.refused",
+      "capability.discovered",
+      "capability.not_tested",
+      "capability.discovered",
+      "capability.blocked",
+      "capability.discovered",
+      "capability.blocked",
+      "credential.registered",
+      "credential.registered",
+      "credential.revoked",
+      "authorization.denied",
+      "credential.registered"
+    ],
+    "head_hash": "ce643478f7e12acb6a338b6256987c8aac8e53660dcef1f74d428d540fd01a32",
+    "path": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r9-builder\\stores\\r9-ledger.db"
+  },
+  "schema": "jarvis-r9-lifecycle-v1",
+  "services": {
+    "fault": {
+      "after_detail": {
+        "server_running": false
+      },
+      "after_state_hash": "stopped",
+      "before_detail": {
+        "server_running": false
+      },
+      "before_state_hash": "stopped",
+      "no_partial_effect": true,
+      "occurred_at": "2026-08-16T06:00:00Z",
+      "outcome": "FAILED",
+      "reason": "injected provider failure; no service started",
+      "receipt": null,
+      "receipt_hash": null,
+      "reconciliation": {
+        "detail": "before and after state identical",
+        "reconciled": true
+      }
+    },
+    "lifecycle": {
+      "after_detail": {
+        "health_body_hash": "4007d4651a99da76de6380705254a9f03fb3cdddc1c8d01ca4c77247adefab14",
+        "pid": 23404,
+        "port": 65408
+      },
+      "after_state_hash": "running",
+      "before_detail": {
+        "server_running": false
+      },
+      "before_state_hash": "stopped",
+      "no_partial_effect": false,
+      "occurred_at": "2026-08-16T06:00:00Z",
+      "outcome": "EXECUTED",
+      "reason": "real ephemeral HTTP service lifecycle produced",
+      "receipt": {
+        "detail": {
+          "fingerprint_prefix": "40e165b6f457",
+          "health_body_hash": "4007d4651a99da76de6380705254a9f03fb3cdddc1c8d01ca4c77247adefab14",
+          "pid": 23404,
+          "port": 65408,
+          "status": 200
+        },
+        "effect_hash": "4007d4651a99da76de6380705254a9f03fb3cdddc1c8d01ca4c77247adefab14",
+        "idempotency_key": "canary-service-live",
+        "operation": "lifecycle",
+        "provider_reference": "http://127.0.0.1:65408/health"
+      },
+      "receipt_hash": "ba8ed4dbc9eeaad88db78d2a37e772948ee21f03441e5984ac010755a7854886",
+      "reconciliation": {
+        "detail": "second health probe matched first",
+        "reconciled": true
+      }
+    },
+    "proof": {
+      "after_state_hash": "running",
+      "before_state_hash": "stopped",
+      "receipt_hash": "ba8ed4dbc9eeaad88db78d2a37e772948ee21f03441e5984ac010755a7854886",
+      "reconciliation": {
+        "detail": "second health probe matched first",
+        "reconciled": true
+      }
+    },
+    "replay": {
+      "after_detail": {
+        "port": 65408
+      },
+      "after_state_hash": "running",
+      "before_detail": {
+        "server_running": true
+      },
+      "before_state_hash": "running",
+      "no_partial_effect": true,
+      "occurred_at": "2026-08-16T06:00:00Z",
+      "outcome": "REPLAYED",
+      "reason": "idempotent replay; service already healthy",
+      "receipt": {
+        "detail": {
+          "fingerprint_prefix": "40e165b6f457",
+          "health_body_hash": "4007d4651a99da76de6380705254a9f03fb3cdddc1c8d01ca4c77247adefab14",
+          "pid": 23404,
+          "port": 65408,
+          "status": 200
+        },
+        "effect_hash": "4007d4651a99da76de6380705254a9f03fb3cdddc1c8d01ca4c77247adefab14",
+        "idempotency_key": "canary-service-live",
+        "operation": "lifecycle",
+        "provider_reference": "http://127.0.0.1:65408/health"
+      },
+      "receipt_hash": "ba8ed4dbc9eeaad88db78d2a37e772948ee21f03441e5984ac010755a7854886",
+      "reconciliation": {
+        "detail": "health probe matched",
+        "reconciled": true
+      }
+    },
+    "stop": {
+      "capability_id": "capability.services",
+      "detail": "server shutdown and port released",
+      "port": 65408,
+      "port_released": true,
+      "stopped": true
+    },
+    "stop_refusal": {
+      "after_detail": {
+        "server_running": false
+      },
+      "after_state_hash": "stopped",
+      "before_detail": {
+        "server_running": false
+      },
+      "before_state_hash": "stopped",
+      "no_partial_effect": true,
+      "occurred_at": "2026-08-16T06:00:00Z",
+      "outcome": "STOPPED",
+      "reason": "adapter stop requested; lifecycle refused",
+      "receipt": null,
+      "receipt_hash": null,
+      "reconciliation": {
+        "detail": "no effect produced",
+        "reconciled": true
+      }
+    },
+    "wrong_credential_probe": {
+      "reason": "fingerprint mismatch",
+      "refused": true,
+      "status": 403
+    }
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "exit_code": 0,
+  "passed": true,
+  "schema": "jarvis-r9-static-v1",
+  "subgates": {
+    "bandit": {
+      "exit_code": 0,
+      "passed": true,
+      "raw_output": "R9_BANDIT_RAW.txt",
+      "raw_output_sha256": "99fdb7a4db6779a2bd5f195a7f0396addb7d708ec5f5c4f89af9541866bd28c5",
+      "schema": "jarvis-r9-bandit-v1",
+      "wall_seconds": 0.541
+    },
+    "bandit_scripts_advisory": {
+      "exit_code": 1,
+      "note": "advisory only; mandatory bandit gate covers capabilities_live source",
+      "passed": false
+    },
+    "mypy": {
+      "exit_code": 0,
+      "passed": true,
+      "raw_output": "R9_MYPY_RAW.txt",
+      "raw_output_sha256": "e903677c248a6ca6ac9094eed21b5350be088d014c43570c553f047d8f487a0a",
+      "schema": "jarvis-r9-mypy-v1",
+      "wall_seconds": 0.414
+    },
+    "ruff": {
+      "exit_code": 0,
+      "passed": true,
+      "raw_output": "R9_RUFF_RAW.txt",
+      "raw_output_sha256": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0",
+      "schema": "jarvis-r9-ruff-v1",
+      "wall_seconds": 0.279
+    },
+    "ruff_format": {
+      "exit_code": 0,
+      "passed": true,
+      "raw_output": "R9_RUFF_FORMAT_RAW.txt",
+      "raw_output_sha256": "577256fabd692c8ad6243464be36aee0efb40ef52093c3aa0b763d2880961278",
+      "schema": "jarvis-r9-ruff_format-v1",
+      "wall_seconds": 0.25
+    }
+  },
+  "wall_seconds": 2.074
+}

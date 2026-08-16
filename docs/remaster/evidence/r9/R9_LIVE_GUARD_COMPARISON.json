@@ -1,0 +1,38 @@
+{
+  "after": "2026-08-16T00:15:27.7496368Z",
+  "before": "2026-08-16T00:15:16.8664633Z",
+  "file_unchanged": {
+    "foundry-profile.yaml": true,
+    "foundry.db": true
+  },
+  "live_db_provenance": {
+    "after_event_count": 67097,
+    "before_event_count": 67094,
+    "event_delta": 3,
+    "extra_event_types": [
+      "supervisor.heartbeat"
+    ],
+    "extra_rows_supervisor_only": true,
+    "historical_rows_preserved_unchanged": true,
+    "r9_attributable_mutation": false,
+    "testable": true
+  },
+  "live_wal_activity_expected": {
+    "foundry.db-shm": {
+      "after_sha256": "6a1c4694b6a4e817549303b3773245390025849e6292e17b3d864b7942a6c574",
+      "before_sha256": "17354738eddd2c33f038657aea3f479fee3a2ce97c9e5f337f11de9d2010c1e8"
+    },
+    "foundry.db-wal": {
+      "after_sha256": "f303087d27256ce960dcfd8b2eacdaf58fd8d97f9e92804b0a70846b2a4841c4",
+      "before_sha256": "95fedb2003d37bd8118aeb6f2f4ccc7e7da24e43c738c7d889d2903701e69502"
+    }
+  },
+  "process_command_multiset_unchanged": true,
+  "process_restart_observation": "same command hashes observed; a live supervisor may recycle PIDs while the protected command set remains unchanged",
+  "processes_unchanged": true,
+  "protected_main_unchanged": true,
+  "protected_state_unchanged": true,
+  "schema": "jarvis-r9-live-guard-comparison-v1",
+  "tasks_unchanged": true,
+  "vault_unchanged": true
+}

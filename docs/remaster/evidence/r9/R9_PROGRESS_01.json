@@ -1,0 +1,14 @@
+{
+  "schema": "jarvis-r9-progress-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R9",
+  "milestone": "source package and regression suite",
+  "generated_utc": "2026-08-16T06:00:00Z",
+  "status": "COMPLETED",
+  "detail": "capabilities_live package written; ruff check/format and mypy strict clean; focused R9 tests 55 passed.",
+  "evidence": [
+    "tests/remaster/r9/",
+    "src/jarvis_foundry/capabilities_live/"
+  ],
+  "next_action": "run canary runner and gates"
+}

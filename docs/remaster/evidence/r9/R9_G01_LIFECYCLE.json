@@ -1,0 +1,25 @@
+{
+  "active_checks": {
+    "capability.files": true,
+    "capability.git": true,
+    "capability.services": true
+  },
+  "exit_code": 0,
+  "fresh_activation_without_proof_probe": {
+    "refused": true,
+    "status_remained_ready": true
+  },
+  "fresh_illegal_transition_probe": {
+    "no_event_recorded": true,
+    "refused": true
+  },
+  "ledger": {
+    "chain_valid": true,
+    "event_count": 51,
+    "head_hash": "ce643478f7e12acb6a338b6256987c8aac8e53660dcef1f74d428d540fd01a32"
+  },
+  "passed": true,
+  "schema": "jarvis-r9-g01-lifecycle-v1",
+  "unavailable_connectors_recorded_honestly": true,
+  "wall_seconds": 0.181
+}
