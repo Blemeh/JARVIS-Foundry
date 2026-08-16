@@ -89,8 +89,8 @@ def test_5_result_envelope_identity_accuracy():
     envelope = ResultEnvelope.from_contract(
         bounded_contract(Path(".")), framework="openhands",
         provider_actual="opencode_go", model_actual="deepseek-v4-flash")
-    assert envelope.provider_requested != envelope.provider_actual or True
-    assert envelope.model_actual == "deepseek-v4-flash"
+    assert envelope.provider_actual == envelope.provider_requested == "opencode_go"
+    assert envelope.model_actual == envelope.model_requested == "deepseek-v4-flash"
 
 
 def test_6_unsupported_telemetry_prevention():

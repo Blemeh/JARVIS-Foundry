@@ -37,7 +37,8 @@ INTEGRATION WORKTREE: C:\temp\JARVIS-Canonical-HybridWorkers
 - `supervisor/service.py` — STOP freeze keyed per (stop_id, instance_id)
   (live crash-loop fix).
 - `pyproject.toml` — pyyaml runtime dependency.
-- `.gitignore` — restored to the canonical 55-rule set.
+- `.gitignore` — restored to the canonical rule set (44 rules / 55 lines,
+  byte-identical to pre-merge main).
 - v8 evidence/scripts/tests.
 
 ## Candidate delta 93a3ddc -> 491910c (26 new files, all additions)
