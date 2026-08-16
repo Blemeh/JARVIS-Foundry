@@ -127,6 +127,11 @@ class RoleDispatcher:
         budget_usd: float,
         provider: str,
         config,
+        *,
+        expected_artifacts: tuple[str, ...] = (),
+        verification_criteria: tuple[str, ...] = (),
+        forbidden_paths: tuple[str, ...] = (),
+        attempt: int = 1,
     ) -> ContextManifest:
         return ContextManifest(
             run_id=run_id, role=role, mission_id=mission_id,
@@ -136,6 +141,10 @@ class RoleDispatcher:
             tool_policy=config.required_capabilities,
             budget_usd=budget_usd, duration_seconds=duration_seconds,
             instructions=instructions,
+            expected_artifacts=expected_artifacts,
+            verification_criteria=verification_criteria,
+            forbidden_paths=forbidden_paths,
+            attempt=attempt,
         )
 
     def _replay_completed(self, run_id: str, prospective: ContextManifest) -> RoleResult | None:
@@ -165,6 +174,10 @@ class RoleDispatcher:
         duration_seconds: int = 300,
         budget_usd: float = 0.0,
         provider_override: str | None = None,
+        expected_artifacts: tuple[str, ...] = (),
+        verification_criteria: tuple[str, ...] = (),
+        forbidden_paths: tuple[str, ...] = (),
+        attempt: int = 1,
     ) -> RoleResult:
         import uuid
         run_id = run_id or f"run-{uuid.uuid4()}"
@@ -190,6 +203,10 @@ class RoleDispatcher:
         prospective = self._manifest(
             run_id, role, mission_id, step_id, resource_id, capability,
             instructions, duration_seconds, budget_usd, chain[0], config,
+            expected_artifacts=expected_artifacts,
+            verification_criteria=verification_criteria,
+            forbidden_paths=forbidden_paths,
+            attempt=attempt,
         )
         replayed = self._replay_completed(run_id, prospective)
         if replayed is not None:
@@ -216,6 +233,10 @@ class RoleDispatcher:
                 manifest = self._manifest(
                     run_id, role, mission_id, step_id, resource_id, capability,
                     instructions, duration_seconds, budget_usd, provider, config,
+                    expected_artifacts=expected_artifacts,
+                    verification_criteria=verification_criteria,
+                    forbidden_paths=forbidden_paths,
+                    attempt=attempt,
                 )
                 self._start_run(manifest, provider, model)
                 tried.append(provider)

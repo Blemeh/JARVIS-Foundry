@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 from pathlib import Path
 from typing import Any, Callable
@@ -50,12 +51,19 @@ from ..isolation import (
     diff_openhands_containment,
     snapshot_openhands_tree,
 )
-from .base import AdapterConfigurationError, ProviderUnavailable
+from .base import (
+    AdapterConfigurationError,
+    ProviderUnavailable,
+    run_subprocess_with_heartbeat,
+)
 
 
 class OpenHandsWorkerAdapter:
     #: Owner pre-existing OpenHands state; never a valid disposable data dir.
     LIVE_OPENHANDS = Path.home() / ".openhands"
+
+    _VERDICT_SEARCH = re.compile(
+        r"VERDICT\s*:\s*(PASS|FAIL|BLOCKED|NOT_TESTED)\b", re.IGNORECASE)
 
     def __init__(
         self,
@@ -145,15 +153,14 @@ class OpenHandsWorkerAdapter:
         # run so any probe-owned write after is detectable as a violation.
         before_owner = snapshot_openhands_tree(self._owner_openhands)
         try:
-            process = subprocess.run(
+            process = run_subprocess_with_heartbeat(
                 command,
                 cwd=str(contract.working_root),
                 env=env,
-                capture_output=True,
-                text=True,
+                timeout_seconds=self.timeout_seconds,
+                heartbeat=heartbeat,
                 encoding="utf-8",
                 errors="replace",
-                timeout=self.timeout_seconds,
             )
         except subprocess.TimeoutExpired:
             heartbeat()
@@ -191,6 +198,7 @@ class OpenHandsWorkerAdapter:
             if model:
                 model_actual = str(model).removeprefix("openai/")
                 break
+        verdict = self._structured_verdict(process.stdout or "")
         after_owner = snapshot_openhands_tree(self._owner_openhands)
         containment_violations = diff_openhands_containment(
             before_owner, after_owner, home_root=self._owner_openhands)
@@ -225,7 +233,7 @@ class OpenHandsWorkerAdapter:
         summary_tail = (process.stdout or "").strip()[-2000:]
         return ResultEnvelope.from_contract(
             contract, framework=self.framework,
-            worker_status=COMPLETED, verdict=VERDICT_NOT_TESTED,
+            worker_status=COMPLETED, verdict=verdict,
             claimed_outcome="OpenHands session completed",
             summary=summary_tail,
             model_actual=model_actual,
@@ -247,6 +255,21 @@ class OpenHandsWorkerAdapter:
             except json.JSONDecodeError:
                 continue
         return rows
+
+    @classmethod
+    def _structured_verdict(cls, stdout: str) -> str:
+        """Parse an explicit structured verdict from the session output.
+
+        The verifier instructions require a final ``VERDICT: PASS | FAIL |
+        BLOCKED | NOT_TESTED`` line; the adapter scans the session output
+        (JSONL event payloads included). Missing output is NOT_TESTED —
+        never PASS.
+        """
+        for line in (stdout or "").splitlines()[:200]:
+            match = cls._VERDICT_SEARCH.search(line)
+            if match:
+                return match.group(1).upper()
+        return VERDICT_NOT_TESTED
 
 
 def make_openhands_worker_adapter(

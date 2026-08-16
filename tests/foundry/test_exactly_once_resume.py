@@ -44,6 +44,8 @@ def builder_manifest() -> ContextManifest:
         model="deepseek-v4-flash", isolation_group="builder",
         tool_policy=("code", "tools"), budget_usd=0.0,
         duration_seconds=300, instructions="do the work",
+        verification_criteria=(
+            "deliverable exists", "deliverable is correct"),
     )
 
 
@@ -56,6 +58,8 @@ def verifier_manifest() -> ContextManifest:
         tool_policy=("artifact_inspection", "adversarial_verification"),
         budget_usd=0.0, duration_seconds=300,
         instructions=VERIFIER_INSTRUCTIONS,
+        verification_criteria=(
+            "deliverable exists", "deliverable is correct"),
     )
 
 

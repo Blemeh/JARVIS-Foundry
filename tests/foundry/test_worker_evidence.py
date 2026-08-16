@@ -169,3 +169,39 @@ def test_failed_test_forbids_pass(tmp_path):
         test_commands=("python -m pytest test_feature.py -q",))
     assert report.agree is False
     assert any("test command failed" in m for m in report.mismatches)
+
+
+def test_machine_cache_artifacts_do_not_condemn_work(tmp_path):
+    """pytest __pycache__ noise is not an unrecorded mutation."""
+    repository = make_repo(tmp_path)
+    reconciler = EvidenceReconciler()
+    step = contract(repository)
+    before = reconciler.capture_before(step)
+    (repository / "feature.py").write_text("x = 1\n", encoding="utf-8")
+    (repository / "__pycache__").mkdir()
+    (repository / "__pycache__" / "feature.cpython-313.pyc").write_text(
+        "cached", encoding="utf-8")
+    (repository / ".pytest_cache").mkdir()
+    envelope = success_envelope(repository, files_changed=("feature.py",))
+    report = reconciler.reconcile(step, envelope, before=before)
+    assert report.agree is True
+    assert report.unrecorded_mutations == ()
+    assert "feature.py" in report.observed_changed_files
+
+
+def test_verifier_delta_mode_ignores_preexisting_builder_work(tmp_path):
+    """A verifier is only accountable for its own delta, not the builder's
+    uncommitted changes already present at baseline."""
+    repository = make_repo(tmp_path)
+    reconciler = EvidenceReconciler()
+    step = contract(repository)
+    (repository / "feature.py").write_text("builder work\n", encoding="utf-8")
+    before = reconciler.capture_before(step)
+    # The verifier adds only a cache dir; the builder's feature.py was
+    # already in the baseline diff.
+    (repository / "__pycache__").mkdir()
+    envelope = success_envelope(repository)
+    report = reconciler.reconcile(
+        step, envelope, before=before,
+        delta_baseline=before.changed_files)
+    assert report.agree is True

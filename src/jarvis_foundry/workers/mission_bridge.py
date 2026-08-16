@@ -87,21 +87,31 @@ class HybridWorkerRoleAdapter:
                 error_detail=str(error),
                 started_at=started, finished_at=isoformat(utc_now()),
             )
+        instructions = manifest.instructions
+        if manifest.role == "verifier" and manifest.verification_criteria:
+            # The fresh verifier receives the durable acceptance criteria so
+            # it can inspect real artifacts against them (Phase G).
+            instructions = (
+                f"{instructions}\n\nAcceptance criteria to verify:\n"
+                + "\n".join(f"- {c}" for c in manifest.verification_criteria))
         contract = WorkerStepContract(
             run_id=manifest.run_id,
             mission_id=manifest.mission_id,
             step_id=manifest.step_id or "step",
-            attempt=1,
+            attempt=manifest.attempt,
             role=manifest.role,
             objective=manifest.instructions or manifest.capability,
-            instructions=manifest.instructions,
+            instructions=instructions,
             working_root=root,
             allowed_paths=(root,),
+            forbidden_paths=tuple(Path(p) for p in manifest.forbidden_paths),
             provider=manifest.provider,
             model=manifest.model,
             duration_seconds=manifest.duration_seconds,
             budget_usd=manifest.budget_usd,
             task_signals=self._signals_for(manifest),
+            expected_artifacts=tuple(manifest.expected_artifacts),
+            verification_criteria=tuple(manifest.verification_criteria),
         )
         decision = self.router.route(contract)
         if not decision.selected_worker:
@@ -135,7 +145,13 @@ class HybridWorkerRoleAdapter:
                 error_detail=f"{type(error).__name__}: {str(error)[-400:]}",
                 started_at=started, finished_at=isoformat(utc_now()),
             )
-        report = self.reconciler.reconcile(contract, envelope, before=before)
+        report = self.reconciler.reconcile(
+            contract, envelope, before=before,
+            # The verifier is only accountable for its OWN delta: the
+            # builder's uncommitted work in the same worktree is not a
+            # verifier claim mismatch.
+            delta_baseline=(
+                before.changed_files if manifest.role == "verifier" else None))
         agree = report.agree and envelope.worker_status == COMPLETED
         return RoleResult(
             run_id=manifest.run_id, role=manifest.role,

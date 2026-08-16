@@ -34,9 +34,18 @@ class ContextManifest:
     budget_usd: float = 0.0
     duration_seconds: int = 300
     instructions: str = ""
+    # Hybrid worker contract enrichment: durable mission truth carried into
+    # the worker contract (acceptance criteria, expected artifacts, scope,
+    # attempt). Optional fields are omitted from the payload when empty so
+    # existing recorded manifest hashes stay byte-identical (replay
+    # semantics unchanged for historical rows).
+    expected_artifacts: tuple[str, ...] = field(default_factory=tuple)
+    verification_criteria: tuple[str, ...] = field(default_factory=tuple)
+    forbidden_paths: tuple[str, ...] = field(default_factory=tuple)
+    attempt: int = 1
 
     def to_payload(self) -> dict[str, Any]:
-        return {
+        payload = {
             "run_id": self.run_id,
             "role": self.role,
             "mission_id": self.mission_id,
@@ -51,6 +60,15 @@ class ContextManifest:
             "duration_seconds": self.duration_seconds,
             "instructions": self.instructions,
         }
+        if self.expected_artifacts:
+            payload["expected_artifacts"] = list(self.expected_artifacts)
+        if self.verification_criteria:
+            payload["verification_criteria"] = list(self.verification_criteria)
+        if self.forbidden_paths:
+            payload["forbidden_paths"] = list(self.forbidden_paths)
+        if self.attempt != 1:
+            payload["attempt"] = self.attempt
+        return payload
 
     def content_hash(self) -> str:
         """Deterministic sha256 over the canonical manifest payload."""
@@ -74,6 +92,10 @@ class ContextManifest:
             budget_usd=float(payload.get("budget_usd", 0.0)),
             duration_seconds=int(payload.get("duration_seconds", 300)),
             instructions=payload.get("instructions", ""),
+            expected_artifacts=tuple(payload.get("expected_artifacts", [])),
+            verification_criteria=tuple(payload.get("verification_criteria", [])),
+            forbidden_paths=tuple(payload.get("forbidden_paths", [])),
+            attempt=int(payload.get("attempt", 1)),
         )
 
 

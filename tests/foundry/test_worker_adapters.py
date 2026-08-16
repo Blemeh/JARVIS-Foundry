@@ -114,3 +114,16 @@ def test_openhands_adapter_fails_closed_on_containment_violation(tmp_path):
     assert envelope.verdict == "NOT_TESTED"
     assert any("new:conversations/probe/state.json" in b
                for b in envelope.blockers)
+
+
+def test_openhands_structured_verdict_parsing():
+    from jarvis_foundry.workers.envelope import VERDICT_NOT_TESTED
+
+    assert OpenHandsWorkerAdapter._structured_verdict(
+        "inspect the artifact\nVERDICT: PASS\nGoodbye") == "PASS"
+    assert OpenHandsWorkerAdapter._structured_verdict(
+        '{"payload": "VERDICT: FAIL"}') == "FAIL"
+    assert OpenHandsWorkerAdapter._structured_verdict(
+        "no structured verdict here") == VERDICT_NOT_TESTED
+    assert OpenHandsWorkerAdapter._structured_verdict(
+        "VERDICT: PASSED") == VERDICT_NOT_TESTED  # word boundary

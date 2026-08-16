@@ -38,7 +38,11 @@ from ..envelope import (
     VERDICT_NOT_TESTED,
     ResultEnvelope,
 )
-from .base import AdapterConfigurationError, ProviderUnavailable
+from .base import (
+    AdapterConfigurationError,
+    ProviderUnavailable,
+    run_subprocess_with_heartbeat,
+)
 
 
 class HermesWorkerAdapter:
@@ -120,6 +124,13 @@ class HermesWorkerAdapter:
         env = {
             **os.environ,
             "HERMES_HOME": str(self.hermes_home),
+            # The session must operate INSIDE the contract working root so
+            # every write lands in the worker's allowed scope. The checkout
+            # code is resolved via PYTHONPATH (prepended before site-packages),
+            # never by the process cwd (live finding 2026-08-16: cwd=.h let a
+            # probe session write hello.txt into the checkout).
+            "PYTHONPATH": str(self.hermes_root) + os.pathsep
+                         + os.environ.get("PYTHONPATH", ""),
         }
         command = [
             self.python_exe, "-m", "hermes_cli.main", "-z",
@@ -132,13 +143,12 @@ class HermesWorkerAdapter:
         if usage_path is not None:
             command += ["--usage-file", str(usage_path)]
         try:
-            process = subprocess.run(
+            process = run_subprocess_with_heartbeat(
                 command,
-                cwd=str(self.hermes_root),
+                cwd=str(contract.working_root),
                 env=env,
-                capture_output=True,
-                text=True,
-                timeout=self.timeout_seconds,
+                timeout_seconds=self.timeout_seconds,
+                heartbeat=heartbeat,
             )
         except subprocess.TimeoutExpired:
             heartbeat()

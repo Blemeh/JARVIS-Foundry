@@ -35,14 +35,24 @@ def test_canonical_mission_loop_dispatches_through_hybrid_workers(tmp_path):
     (Hermes primary path) and returns to next-action selection."""
     database, repository = mission_database(tmp_path)
     router = WorkerRouter()
+    router.mark_ready(WORKER_OPENHANDS, state=READY,
+                      note="containment proven in test",
+                      evidence=("test-proof",))
     hermes = MutatingScriptedAdapter(
         WORKER_HERMES, write_files=("feature.py",),
         outcome=ScriptedOutcome(files_changed=("feature.py",)))
-    registry = WorkerRegistry({WORKER_HERMES: hermes})
+    verifier = ScriptedWorkerAdapter(
+        WORKER_OPENHANDS, outcome=ScriptedOutcome(verdict="PASS"))
+    registry = WorkerRegistry(
+        {WORKER_HERMES: hermes, WORKER_OPENHANDS: verifier})
     adapter = HybridWorkerRoleAdapter(
         database=database, router=router, registry=registry,
         role_signals={"builder": {"ambiguous": True,
-                                  "root_cause_required": True}},
+                                  "root_cause_required": True},
+                       "verifier": {"bounded": True,
+                                    "explicit_acceptance": True,
+                                    "tests_available": True,
+                                    "narrow_scope": True}},
     )
     loop = MissionLoop(database, router=RoleRouter(), adapter=adapter)
 
