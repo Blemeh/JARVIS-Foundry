@@ -1,0 +1,199 @@
+{
+  "domain_count": 5,
+  "domains": [
+    {
+      "divergences": [
+        {
+          "area": "capability lifecycle",
+          "meaning": "V7 records capabilities and brokers needs; the remastered stack cannot reach ACTIVE without a real before/after effect proof and reconciliation.",
+          "remastered": "discover/probe/ready/active state machine with proof-gated activation",
+          "v7": "registration + brokerage with static reconciliation matrix"
+        }
+      ],
+      "domain": "capability_lifecycle",
+      "input": "equivalent deterministic proving input",
+      "remastered": {
+        "capability_status": "ACTIVE",
+        "event_count": 4
+      },
+      "v7": {
+        "capabilities": [
+          {
+            "capability_id": "capability.files",
+            "controller": "supervisor",
+            "effect_class": "file-write",
+            "family": "files",
+            "name": "File capability",
+            "risk": "R1",
+            "surfaces": [
+              "fixtures/target"
+            ],
+            "verification_hint": "artifact hash + read-back"
+          }
+        ],
+        "matched_capability_ids": [
+          "capability.files"
+        ]
+      }
+    },
+    {
+      "divergences": [
+        {
+          "area": "briefing languages",
+          "meaning": "Both render EN and SQ. The remastered briefing is drillable per category and explicitly reports provider/voice receipts as missing instead of silently omitting them.",
+          "remastered": "structured EN/SQ briefing with categories, evidence refs, and honest missing-evidence",
+          "v7": "ledger-derived briefing with EN and SQ rendering"
+        }
+      ],
+      "domain": "command_center_briefing",
+      "input": "equivalent deterministic proving input",
+      "remastered": {
+        "en_present": true,
+        "en_sample": [
+          "Supervisor briefing - JARVIS Foundry",
+          "- Fact: 0 accepted missions, 1 active capabilities, 0 portfolio decisions.",
+          "- Uncertainty: Measured USD total is UNKNOWN; voice classification is NOT_TESTED."
+        ],
+        "sq_present": true,
+        "sq_sample": [
+          "P\u00ebrmbledhja e Supervizorit - JARVIS Foundry",
+          "- Fakt: 0 misione t\u00eb pranuara, 1 aft\u00ebsi aktive, 0 vendime portfolio.",
+          "- Pasiguri: Totali i matur n\u00eb USD \u00ebsht\u00eb UNKNOWN; klasifikimi i z\u00ebrit \u00ebsht\u00eb NOT_TESTED."
+        ]
+      },
+      "v7": {
+        "en_present": true,
+        "en_sample": [
+          "Supervisor briefing \u2014 JARVIS Foundry",
+          "Improvements: 0 \u00b7 Promotions: 0 \u00b7 Rejections: 0",
+          "Unknowns: 0 \u00b7 Waiting: 0"
+        ],
+        "sq_present": true,
+        "sq_sample": [
+          "P\u00ebrmbledhja e Supervizorit \u2014 JARVIS Foundry",
+          "P\u00ebrmir\u00ebsimet: 0 \u00b7 Promovimet: 0 \u00b7 Refuzimet: 0",
+          "T\u00eb panjohurat: 0 \u00b7 N\u00eb pritje: 0"
+        ]
+      }
+    },
+    {
+      "divergences": [
+        {
+          "area": "evolution cycle",
+          "meaning": "The V7 harness auto-rejected a broken candidate at the build gate; the remastered stack refuses invalid candidates/promotions at earlier frozen boundaries with durable refusal records and supervisor-only control.",
+          "remastered": "frozen lifecycle state machine with independent verification and promotion guards",
+          "v7": "ladder runs build/evaluation/verification/canary/promote and auto-rejects broken candidates"
+        }
+      ],
+      "domain": "evolution_cycle",
+      "input": "equivalent deterministic proving input",
+      "remastered": {
+        "last_event": "evolution_live.promoted",
+        "outcome": "promoted"
+      },
+      "v7": {
+        "improvement_id": "improvement-4fed234545c0",
+        "outcome": "rejected",
+        "reason": "build failed: exit code 1 \u2014 the candidate never reaches evaluation (auto-rejected)"
+      }
+    },
+    {
+      "divergences": [
+        {
+          "area": "selection semantics",
+          "meaning": "V7 records portfolio.decision events for ranked projects; the remastered stack scores candidate actions, records full tradeoff alternatives, and refuses action when nothing is evidence-backed.",
+          "remastered": "candidate-level scoring with evidence-backed value and honest WAITING",
+          "v7": "project-level ranking with fixed score weights"
+        }
+      ],
+      "domain": "goals_portfolio",
+      "input": "equivalent deterministic proving input",
+      "remastered": {
+        "alternative_count": 2,
+        "decision_status": "SELECTED",
+        "reason": "selected c-alpha-1 at score 0.5350 from 2 scored alternatives; target bound to fixtures/alpha",
+        "selected_project_ids": [
+          "p-alpha"
+        ]
+      },
+      "v7": {
+        "scored": [
+          {
+            "ev": 0.9,
+            "project_id": "p-alpha",
+            "score": 2.8,
+            "status": "PLANNED",
+            "urgency": 0.8
+          },
+          {
+            "ev": 0.4,
+            "project_id": "p-beta",
+            "score": 1.4,
+            "status": "PLANNED",
+            "urgency": 0.3
+          }
+        ],
+        "selected_project_ids": [
+          "p-alpha"
+        ]
+      }
+    },
+    {
+      "divergences": [
+        {
+          "area": "orchestration boundary",
+          "meaning": "Both preserve restart-safe lease ownership. The remastered stack links every mission to a portfolio decision/candidate and keeps malformed or late worker results out of the ledger.",
+          "remastered": "supervisor leases plus durable orchestration ledger and portfolio-linked missions",
+          "v7": "scheduler + leases; missions dispatched by MissionLoop"
+        }
+      ],
+      "domain": "mission_orchestration",
+      "input": "equivalent deterministic proving input",
+      "remastered": {
+        "lease_acquired_and_released": true,
+        "running_count": 0,
+        "supervisor_started": true
+      },
+      "v7": {
+        "lease_acquired_and_released": true,
+        "scheduler": {
+          "enabled": true,
+          "items": [
+            {
+              "budget_usd": 0.0,
+              "cooldown_seconds": 60.0,
+              "deadline": null,
+              "item_id": "mission-alpha",
+              "last_fired_at": null,
+              "priority": 1
+            }
+          ],
+          "suspended_reason": null
+        }
+      }
+    }
+  ],
+  "fixed_utc": "2026-08-16T20:00:00Z",
+  "generated_utc": "2026-08-16T07:56:30Z",
+  "passed": true,
+  "protected_main_mutated": false,
+  "remastered_harness": {
+    "exit_code": 0,
+    "output_file": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r12-builder\\R12_REMASTERED_OUTPUT.json",
+    "wall_seconds": 1.022
+  },
+  "schema": "jarvis-r12-comparison-matrix-v1",
+  "v7_harness": {
+    "exit_code": 0,
+    "output_file": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r12-builder\\R12_V7_OUTPUT.json",
+    "wall_seconds": 0.691
+  },
+  "v7_snapshot": {
+    "file_count": 397,
+    "schema": "jarvis-r12-v7-snapshot-v1",
+    "source": "protected main (read-only git archive)",
+    "tag": "v8-pre-promotion-93a3ddc",
+    "tree_hash": "43f4048c7894532304b37695ddb75ba66e67230779addb413c8dce03f335a74c"
+  },
+  "wall_seconds": 4.098
+}

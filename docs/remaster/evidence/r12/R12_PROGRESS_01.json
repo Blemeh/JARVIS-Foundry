@@ -1,0 +1,16 @@
+{
+  "checkpoint": "comparison",
+  "generated_utc": "2026-08-16T07:56:30Z",
+  "index": 1,
+  "payload": {
+    "domains": [
+      "capability_lifecycle",
+      "command_center_briefing",
+      "evolution_cycle",
+      "goals_portfolio",
+      "mission_orchestration"
+    ],
+    "status": "PASS"
+  },
+  "schema": "jarvis-r12-progress-v1"
+}

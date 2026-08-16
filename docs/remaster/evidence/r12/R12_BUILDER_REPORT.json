@@ -1,0 +1,221 @@
+{
+  "artifact_confinement": {
+    "baseline_entries_missing": [],
+    "confined": true,
+    "confinement_violations": [],
+    "porcelain_line_count": 10,
+    "pre_existing_baseline_entries": [
+      "?? docs/remaster/evidence/r6/",
+      "?? docs/remaster/work_packages/R12_WORK_PACKAGE.json",
+      "?? docs/remaster/work_packages/R6_WORK_PACKAGE.json",
+      "?? scripts/remaster/r6/",
+      "?? src/jarvis_foundry/kernel/memory/",
+      "?? tests/remaster/r6/"
+    ]
+  },
+  "artifact_manifest": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r12\\R12_ARTIFACT_MANIFEST.json",
+  "artifact_manifest_verification": {
+    "checked": 75,
+    "manifest_file_count": 76,
+    "mismatches": []
+  },
+  "builder": "r12_builder_fresh",
+  "builder_status": "NOT_TESTED",
+  "deliverables": {
+    "R12-D01": {
+      "evidence": [
+        "R12_COMPARISON_MATRIX.json"
+      ],
+      "evidence_hashes": {
+        "R12_COMPARISON_MATRIX.json": "3c2871475bdc38b20bb08d028f0bd703b49543f28352ed75d1c07f43d46286f8"
+      },
+      "status": "PASS"
+    },
+    "R12-D02": {
+      "evidence": [
+        "R12_ADOPTION_LADDER.json"
+      ],
+      "evidence_hashes": {
+        "R12_ADOPTION_LADDER.json": "e91549e2483e822283d1548c24c4945c285fca6c879ff0c455004f42c096ee91"
+      },
+      "status": "PASS"
+    },
+    "R12-D03": {
+      "evidence": [
+        "R12_RELEASE_FREEZE.json"
+      ],
+      "evidence_hashes": {
+        "R12_RELEASE_FREEZE.json": "32a10be43c32adab47292f93eadb30d840a80cfcaca020d5ec6e30bd8a264fea"
+      },
+      "status": "PASS"
+    },
+    "R12-D04": {
+      "evidence": [
+        "R12_FAULT_MATRIX.json"
+      ],
+      "evidence_hashes": {
+        "R12_FAULT_MATRIX.json": "49484d67a30f0acb5db3f5eacbc3bbd53c11182bf5860e9fba754d94022e13c6"
+      },
+      "status": "PASS"
+    },
+    "R12-D05": {
+      "evidence": [
+        "R12_PROVING_READINESS.json"
+      ],
+      "evidence_hashes": {
+        "R12_PROVING_READINESS.json": "0803c9558f6aed548ce146f30133f0fcf4abb855c315683f5e533d71aa145817"
+      },
+      "status": "PASS"
+    },
+    "R12-D06": {
+      "evidence": [
+        "R12_FINAL_AUDIT_PACKAGE.json"
+      ],
+      "evidence_hashes": {
+        "R12_FINAL_AUDIT_PACKAGE.json": "a41949c248ef125089d1542a4e9664f43b1407420d6de4b7089d6651b997ebc6"
+      },
+      "status": "PASS"
+    }
+  },
+  "final_verdict": "NOT_TESTED",
+  "findings": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r12\\R12_FINDINGS.json",
+  "focused_tests_status": "PASS",
+  "frozen_base": {
+    "branch": "remaster/post-v7-purpose",
+    "commit": "c76d92df55b6ec552b68379479ccd80f972c303c",
+    "live_v7_deployment_changes_allowed": false,
+    "protected_main": "2f7360e (V8-promoted recoverable release; read-only)",
+    "push_or_publish_allowed": false,
+    "work_package": "docs/remaster/work_packages/R12_WORK_PACKAGE.json",
+    "work_package_sha256": "88B0102BAE811508CFEACE7ED5EFA477C76C02147B1FCC4397BCDB956D8D1809",
+    "work_package_size": 10998,
+    "work_package_unchanged": true
+  },
+  "full_suite": {
+    "evidence": [
+      "R12_FULL_SUITE.json",
+      "R12_FULL_SUITE_RAW.txt",
+      "R12_FULL_SUITE_PART1_JUNIT.xml",
+      "R12_FULL_SUITE_PART2_JUNIT.xml",
+      "R12_FULL_SUITE_COMBINED_JUNIT.xml"
+    ],
+    "evidence_hashes": {
+      "R12_FULL_SUITE.json": "1592ec986328d1f7caad1c1464e429252bbb1496c7d7146ddeb82280d538b59d",
+      "R12_FULL_SUITE_COMBINED_JUNIT.xml": "9218ef2413b77c418e8967dbbeccc540493571b93494f526663d5b45edac587d",
+      "R12_FULL_SUITE_PART1_JUNIT.xml": "8758156f7c09e3f55fc9ea8f1c645fd180f5bb3194a4add826c62ec91199ede5",
+      "R12_FULL_SUITE_PART2_JUNIT.xml": "cdf8ddc09c26298a883ceafd0612c5be9611ad109da5d93c2260ff05f3e9bab8",
+      "R12_FULL_SUITE_RAW.txt": "bd45f0c4963c5d2b3e47a7a1a94222f4805ce5dd60bf9961218a965ac37bac3f"
+    },
+    "status": "PASS",
+    "summary_line": ".................................................                        [100%]"
+  },
+  "gates": {
+    "R12-G01": {
+      "evidence": [
+        "R12_G01_COMPARISON.json"
+      ],
+      "evidence_hashes": {
+        "R12_G01_COMPARISON.json": "1769fd9dbcbee9a0eee43356a5908914c49c4c6b74d6cb65c1cb8481630abe72"
+      },
+      "status": "PASS"
+    },
+    "R12-G02": {
+      "evidence": [
+        "R12_G02_ADOPTION.json"
+      ],
+      "evidence_hashes": {
+        "R12_G02_ADOPTION.json": "f3a515a089dc615cf0d043beaa1ca2441feceefea313b92312aee7d9fe2c8bd1"
+      },
+      "status": "PASS"
+    },
+    "R12-G03": {
+      "evidence": [
+        "R12_G03_FREEZE_RESTORE.json"
+      ],
+      "evidence_hashes": {
+        "R12_G03_FREEZE_RESTORE.json": "c95931f009453aab2d0e1cf3ee115011452cd3f04ee7743dd953acb65e18a5f1"
+      },
+      "status": "PASS"
+    },
+    "R12-G04": {
+      "evidence": [
+        "R12_G04_FAULTS.json"
+      ],
+      "evidence_hashes": {
+        "R12_G04_FAULTS.json": "ce508798832597ff0b0d7f9ba5302bec6452f9bb42df6ced1757c41f41fe8a1c"
+      },
+      "status": "PASS"
+    },
+    "R12-G05": {
+      "evidence": [
+        "R12_G05_PROVING.json"
+      ],
+      "evidence_hashes": {
+        "R12_G05_PROVING.json": "6db7a094f6d34aa99bc60755f47d1a933c4f3f2d80060f730c6ce79d45124bdf"
+      },
+      "status": "PASS"
+    },
+    "R12-G06": {
+      "evidence": [
+        "R12_FINAL_AUDIT_PACKAGE.json",
+        "R12_G06_AUDIT.json",
+        "R12_FULL_SUITE.json",
+        "R12_STATIC.json",
+        "R12_SECRET_SCAN.json",
+        "R12_PRIVACY.json",
+        "R12_LIVE_GUARD_COMPARISON.json"
+      ],
+      "evidence_hashes": {
+        "R12_BANDIT.json": "b6b7838e6b8a339158f09dd68a001513c8a9482cab20ae44a8fb49c94185909e",
+        "R12_FINAL_AUDIT_PACKAGE.json": "a41949c248ef125089d1542a4e9664f43b1407420d6de4b7089d6651b997ebc6",
+        "R12_FULL_SUITE.json": "1592ec986328d1f7caad1c1464e429252bbb1496c7d7146ddeb82280d538b59d",
+        "R12_G06_AUDIT.json": "5bb628ae34158c7083d146ef44f8d8fba1f857f112e425aec41cdfe54876e248",
+        "R12_LIVE_GUARD_COMPARISON.json": "20c1e199d222e7fbbde78a6aef12e88e0a6a4be43c77f7427ca60d01cbe2fb7b",
+        "R12_MYPY.json": "e8ee6c3f6c020d42d1a8c5970aac6d8f7cb59a303a4629128ca8982fa16e3b66",
+        "R12_PRIVACY.json": "2bc101c74f7ef0c1906b844828533cd087d3dd4c9b8a73b9b58f05f4b9dfcb98",
+        "R12_RUFF.json": "a294eaff9932825a3ce6b8a7a435d7e017991908253e411ecb3967a8f0410408",
+        "R12_SECRET_SCAN.json": "af40aef1da6e51f6d779b540a2888f72ca254cea22517786729f8af2cae811d5",
+        "R12_STATIC.json": "184cd61d1c333f3c7b731210e7baad624a610e2e08bd49773ec97b71ee665108"
+      },
+      "reason": "Builder evidence closed; a fresh independent final audit must return exactly one of the three allowed verdicts before G06 closes.",
+      "status": "WAITING",
+      "verdict_status": "WAITING"
+    }
+  },
+  "generated_utc": "2026-08-16T20:00:00Z",
+  "live_guard": {
+    "after": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r12\\R12_LIVE_GUARD_AFTER.json",
+    "after_sha256": "a8301879d9f9099c90dfa41e30652a2168875111914da907f7f4c8e55284a4e9",
+    "before": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r12\\R12_LIVE_GUARD_BEFORE.json",
+    "before_sha256": "72fc2d6abfb09fbe6f35c99ecdcd7037e5d48035f4b2dd902b9edf7104bf8c71",
+    "comparison": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster\\docs\\remaster\\evidence\\r12\\R12_LIVE_GUARD_COMPARISON.json",
+    "comparison_sha256": "20c1e199d222e7fbbde78a6aef12e88e0a6a4be43c77f7427ca60d01cbe2fb7b",
+    "protected_state_unchanged": true
+  },
+  "privacy_passed": true,
+  "program": "POST_V7_JARVIS_REMASTER",
+  "resources_and_boundaries": {
+    "commit_created": false,
+    "evidence_budget_bytes": 8388608,
+    "evidence_bytes": 586259,
+    "evidence_under_budget": true,
+    "live_or_protected_writes": 0,
+    "network_used": "none",
+    "provider_calls": 0,
+    "push_or_publish_performed": false
+  },
+  "schema": "jarvis-r12-builder-report-v1",
+  "secret_scan_passed": true,
+  "stage": "R12",
+  "static_analysis_status": "PASS",
+  "status_reason": "Builder evidence is complete; a fresh independent final audit must reproduce and adjudicate the exact deployed release before the gate closes.",
+  "tool_versions": {
+    "bandit": "1.9.4",
+    "coverage": "7.15.4",
+    "hypothesis": "6.165.8",
+    "mypy": "2.3.0",
+    "pytest": "9.0.3",
+    "pytest-cov": "7.1.0",
+    "ruff": "0.16.3"
+  }
+}

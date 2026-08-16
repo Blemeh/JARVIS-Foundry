@@ -1,0 +1,72 @@
+{
+  "captured_utc": "2026-08-16T07:59:05.8021278Z",
+  "files": {
+    "foundry-profile.yaml": {
+      "sha256": "732d3040c8b8aef81ee5026ba5e44a46ac73c8f6ca7fd81eb2561a061ac65f0a",
+      "size": 293
+    },
+    "foundry.db": {
+      "sha256": "93907dca5e4dd0d74e88b454fe70044283c8f97e53d783657ef3392581749aa2",
+      "size": 50270208
+    },
+    "foundry.db-shm": {
+      "sha256": "fc56852ad5c730bb5e35b256bf5c26ef7340cbc24a8557cf6669ce430054dd9e",
+      "size": 32768
+    },
+    "foundry.db-wal": {
+      "sha256": "7775168986d8cc2943e90780a0b2de0a8ef66c69be1cd831cbed019fe2f586a9",
+      "size": 469712
+    }
+  },
+  "protected_main": {
+    "head": "2f7360e742559e051109e04ef7f3a82cc64cc2d2",
+    "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry",
+    "status_sha256": "a5dbb95de1154038d12901d9f6e7c1d1a6d143fad51ff234f7b4fe30b4368611"
+  },
+  "protected_supervisor_processes": [
+    {
+      "command_sha256": "824e09a3ea8d12f38d8fe7fa93cf602e0229c190dea3692e023837963cb9a8e9",
+      "creation_date": "08/16/2026 01:43:05",
+      "executable": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry\\.venv\\Scripts\\python.exe",
+      "pid": 15068
+    },
+    {
+      "command_sha256": "824e09a3ea8d12f38d8fe7fa93cf602e0229c190dea3692e023837963cb9a8e9",
+      "creation_date": "08/16/2026 01:43:05",
+      "executable": "C:\\Python313\\python.exe",
+      "pid": 5252
+    },
+    {
+      "command_sha256": "2e83840fce939acf6ee59095c3f79efb107f58a5ef709c72c4eacbb829078eed",
+      "creation_date": "08/16/2026 09:59:05",
+      "executable": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r3-venv\\Scripts\\python.exe",
+      "pid": 14188
+    },
+    {
+      "command_sha256": "2e83840fce939acf6ee59095c3f79efb107f58a5ef709c72c4eacbb829078eed",
+      "creation_date": "08/16/2026 09:59:05",
+      "executable": "C:\\Python313\\python.exe",
+      "pid": 6756
+    }
+  ],
+  "protected_tasks": [
+    {
+      "exists": true,
+      "status": "Running",
+      "task_name": "JARVIS-Foundry-Supervisor",
+      "xml_sha256": "7c5ea4fbf5158610cb8016a8b91d10303e5b6f15a615085f52e12a9e1ab9a880"
+    },
+    {
+      "exists": true,
+      "status": "Ready",
+      "task_name": "Hermes_Gateway",
+      "xml_sha256": "5d2a3789b1a8f5ab91bc6d319af46515615892266a6186f0c01a0e89263cca44"
+    }
+  ],
+  "vault": {
+    "file_count": 95,
+    "manifest_sha256": "7f453620792a1d9b63b45af9ce83e0b00fe7a3c59ac5f5013434bf879eab6aa8",
+    "path": "C:\\Users\\b\\Blendi",
+    "total_bytes": 150856
+  }
+}

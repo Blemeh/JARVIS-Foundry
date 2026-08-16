@@ -1,0 +1,235 @@
+{
+  "schema": "jarvis-r12-final-audit-verdict-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R12",
+  "repair_round": 4,
+  "verifier_model": "deepseek-v4-flash via codex-router",
+  "generated_utc": "2026-08-16T11:36:00Z",
+  "frozen_base": {
+    "branch": "remaster/post-v7-purpose",
+    "commit": "c76d92df55b6ec552b68379479ccd80f972c303c",
+    "worktree": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster",
+    "r6_status": "OWNER_REDIRECT_R6_DEFERRED (never reopened)",
+    "protected_main": "read-only probes only; external HEAD ddc5129a2d30e0435fd4a828cf3a0af23cec7c9d at audit close; V7 tag v8-pre-promotion-93a3ddc read-only"
+  },
+  "criteria": [
+    {
+      "id": "R12-C01",
+      "status": "PASS",
+      "evidence": "R12-D01..D06 each PASS in R12_BUILDER_REPORT.json with non-empty evidence; D06 closes with this fresh independent verdict; R6 owner redirect preserved."
+    },
+    {
+      "id": "R12-C02",
+      "status": "PASS",
+      "evidence": "R12_COMPARISON_MATRIX.json + R12_G01_COMPARISON.json passed=true exit 0: 5 domains, each with explained divergences; V7 snapshot 397 files tree 43f4048c7894532304b37695ddb75ba66e67230779addb413c8dce03f335a74c reproduced independently from protected tag v8-pre-promotion-93a3ddc; protected_main_mutated=false; recoverable release untouched."
+    },
+    {
+      "id": "R12-C03",
+      "status": "PASS",
+      "evidence": "R12_ADOPTION_LADDER.json + R12_G02_ADOPTION.json passed=true exit 0: 6/6 rungs PASS (READ_ONLY, SHADOW, ISOLATED_EFFECTS, LIMITED_CANARY, BOUNDED_LIVE, FULL_DIGITAL_WORK_OPERATION), all transition_ok=true; final rungs honestly staged simulations over isolated copies (R12-F-002)."
+    },
+    {
+      "id": "R12-C04",
+      "status": "PASS",
+      "evidence": "R12_RELEASE_FREEZE.json complete (all 15 required freeze dimensions); source tree ef426a85d0f201905e0138cbcdd41918f08eaf3cac917765edd659a962a17e09 (222 files) independently recomputed; rollback zip on disk matches recorded sha256 8fd2a0b5ab031b58f79e4634aad2b625d142b70704fddff562ee0e97dbb286a3 (1,417,531 bytes, 397 entries, 0 harness/pyc paths); independent zip from pristine V7 tag reproduced the identical hash; fresh mirror release_freeze restore_passed=true with the same rollback hash; R12_RESTORE_PROOF.json restored_exactly=true."
+    },
+    {
+      "id": "R12-C05",
+      "status": "PASS",
+      "evidence": "R12_FAULT_MATRIX.json 44/44: passed=44, failed=0, incomplete_records=0, campaign_passed=true, all outcomes include every required field (truthful_state, blast_radius, incident_record, reconciliation, suspension, unrelated_work_continuation, compensation, recovery, truthful_briefing), protected_touched=false everywhere; fresh mirror fault_campaign.py reproduced 44/0 exit 0."
+    },
+    {
+      "id": "R12-C06",
+      "status": "PASS",
+      "evidence": "R12_C06_CONTROL.json + R12_G04_FAULTS.json passed=true: stop_never_bypassed=true, veto_never_bypassed=true, forged_directive_isolated=true, prompt_injection_isolated=true, malicious_content_never_authority=true."
+    },
+    {
+      "id": "R12-C07",
+      "status": "PASS",
+      "evidence": "R12_PROVING_READINESS.json + R12_CHECKPOINT_PERSISTENCE.json + R12_WAITING.json passed=true: deployed_release_frozen=true; 4/4 simulated restarts passed; READY not started; WAITING honest; release_fingerprint 35627d0782880f85effbabfd2a4afc0d361da843c2bec6502a555883deaeffbc independently recomputed from the freeze source tree hash; fresh mirror proving_window.py passed=True restarts=4 exit 0."
+    },
+    {
+      "id": "R12-C08",
+      "status": "PASS",
+      "evidence": "This fresh independent audit returns exactly one allowed verdict (SERVES_ORIGINAL_PURPOSE); R6 remains owner redirect and was never reopened; R7-R11 findings reconciled; R7-R11 verdict records and evidence manifests present; round-3 S2 findings R3-001/R3-002/R3-003 all closed; no unresolved mandatory S3."
+    }
+  ],
+  "deliverables": [
+    {
+      "id": "R12-D01",
+      "status": "PASS",
+      "evidence": "R12_COMPARISON_MATRIX.json 5 domains with explained divergences; V7 snapshot tree 43f4048c... (397 files) reproduced; protected main recoverable release not overwritten; mirror comparison.py + gate_g01 passed=true exit 0."
+    },
+    {
+      "id": "R12-D02",
+      "status": "PASS",
+      "evidence": "R12_ADOPTION_LADDER.json 6/6 rungs PASS; final rungs staged honestly; mirror adoption_ladder.py passed=True rungs=6 exit 0."
+    },
+    {
+      "id": "R12-D03",
+      "status": "PASS",
+      "evidence": "R12_RELEASE_FREEZE.json binds source ef426a85... (222 files) at head c76d92d, generated 2026-08-16T11:06:00Z after every R12-owned source mtime; rollback sha256 8fd2a0b5... reproduced on disk and independently from pristine V7 zip; 397 entries, 0 harness/pyc; restore_proof restored_exactly=true; fresh mirror rollback hash identical."
+    },
+    {
+      "id": "R12-D04",
+      "status": "PASS",
+      "evidence": "R12_FAULT_MATRIX.json 44/44 with all required outcome fields; R12_FAULT_INCIDENTS.json records; fresh mirror reproduced 44/0 exit 0."
+    },
+    {
+      "id": "R12-D05",
+      "status": "PASS",
+      "evidence": "R12_PROVING_READINESS.json + R12_CHECKPOINT_PERSISTENCE.json + R12_WAITING.json: deployed_release_frozen=true; 4/4 simulated restarts; READY not started; honest WAITING; fingerprint verified; mirror passed=True restarts=4 exit 0."
+    },
+    {
+      "id": "R12-D06",
+      "status": "PASS",
+      "evidence": "R12_FINAL_AUDIT_PACKAGE.json prerequisites_ready=true; R12_G06_AUDIT.json passed=true with verdict_status WAITING; this round-4 fresh independent verdict supplies the missing adjudication exactly one of the three allowed outcomes."
+    }
+  ],
+  "gates": [
+    {
+      "id": "R12-G01",
+      "status": "PASS",
+      "evidence": "R12_G01_COMPARISON.json passed=true exit 0; 5 domains with divergences; protected_main_mutated=false; mirror gate passed=true exit 0."
+    },
+    {
+      "id": "R12-G02",
+      "status": "PASS",
+      "evidence": "R12_G02_ADOPTION.json passed=true exit 0; 6/6 rung statuses PASS; full operation staged honestly; mirror gate passed."
+    },
+    {
+      "id": "R12-G03",
+      "status": "PASS",
+      "evidence": "R12_G03_FREEZE_RESTORE.json passed=true exit 0; freeze fields complete; restore_proof passed=true restored_exactly=true; rollback deterministic 8fd2a0b5...; fresh mirror release_freeze + gate passed."
+    },
+    {
+      "id": "R12-G04",
+      "status": "PASS",
+      "evidence": "R12_G04_FAULTS.json passed=true exit 0; fault_count 44, failed 0, all_records_complete, control_guards_ok; mirror gate passed."
+    },
+    {
+      "id": "R12-G05",
+      "status": "PASS",
+      "evidence": "R12_G05_PROVING.json passed=true exit 0; deployed_release_frozen, restart_resilience_passed, waiting_records_honest; mirror gate passed."
+    },
+    {
+      "id": "R12-G06",
+      "status": "PASS",
+      "evidence": "Fresh independent final audit returned exactly one allowed verdict (SERVES_ORIGINAL_PURPOSE) after reproducing all G01-G05 evidence; R6 owner redirect never reopened; all R7-R12 findings reconciled."
+    }
+  ],
+  "findings": [
+    {
+      "id": "R12-AUD-R3-001",
+      "severity": "CLOSED_REPAIRED_R4",
+      "title": "Release freeze ordering after final R12-owned source write",
+      "invariant": "R12_RELEASE_FREEZE.json generated_utc must be after every R12-owned source mtime and the frozen source tree must equal final disk.",
+      "reproduction": "Freeze generated_utc=2026-08-16T11:06:00Z; latest source mtimes: src/jarvis_foundry/fault_campaign=2026-08-16T07:59:16Z, tests/remaster/r12=2026-08-16T07:53:56Z, scripts/remaster/r12=2026-08-16T11:05:20Z; freeze postdates all; independent src tree recomputes to ef426a85d0f201905e0138cbcdd41918f08eaf3cac917765edd659a962a17e09 (222 files, no bytecode) at head c76d92d; no later source edits observed.",
+      "probe_ids": [
+        "freeze_mtime_invariant",
+        "r12_owned_source_mtime_scan",
+        "src_tree_recompute"
+      ]
+    },
+    {
+      "id": "R12-AUD-R3-002",
+      "severity": "CLOSED_REPAIRED_R4",
+      "title": "Rollback package deterministic and clean V7 representation",
+      "invariant": "Rollback zip bytecode-free, byte-identical to recorded hash, reproducible from pristine V7 tag, 397 entries, 0 r12-v7-proving entries.",
+      "reproduction": "On-disk zip: sha256 8fd2a0b5ab031b58f79e4634aad2b625d142b70704fddff562ee0e97dbb286a3, size 1,417,531, 397 entries, no r12-v7-proving/pyc/__pycache__; independent archive from pristine V7 tag v8-pre-promotion-93a3ddc produced identical zip sha256 and entry count with fixed 1980 zip timestamps; fresh mirror release_freeze.py again produced the same hash while restore passed.",
+      "probe_ids": [
+        "rollback_hash_reproduction",
+        "zip_entry_scan",
+        "pristine_v7_archive_sha"
+      ]
+    },
+    {
+      "id": "R12-AUD-R3-003",
+      "severity": "CLOSED_REPAIRED_R4",
+      "title": "FROZEN V7 comparison snapshot remains pristine V7",
+      "invariant": "Recorded snapshot hash must correspond to pristine tag tree and rollback must contain that tree only.",
+      "reproduction": "Pristine tag archive from protected main is 397 files, tree 43f4048c7894532304b37695ddb75ba66e67230779addb413c8dce03f335a74c, matching R12_COMPARISON_MATRIX.json; release_freeze.py now excludes r12-v7-proving and bytecode from the rollback and source manifests.",
+      "probe_ids": [
+        "pristine_v7_tree_hash",
+        "rollback_harness_artifact_scan"
+      ]
+    },
+    {
+      "id": "R12-AUD-R4-001",
+      "severity": "S4",
+      "title": "External live daemon/window activity not attributable to verifier",
+      "invariant": "Protected main/vault/tasks/files unchanged by verifier; live DB growth must not be R12-attributable.",
+      "reproduction": "Mirror 20-minute full-suite window ended with protected_state_unchanged=false only because the live daemon wrote 327 rows (missions/agent runs/verifications/heartbeats) and the protected process command set changed 6->2/4; protected main/vault/tasks remained unchanged and no verifier write touched live DB (verifier commands are read/probe/temp-mirror only, none use live foundry.db); a quick 16-second window also observed 5 live heartbeat rows while processes/main/vault/tasks stayed unchanged. Repo R12_LIVE_GUARD_FULLWINDOW_COMPARISON.json records the same external phenomenon with r12_attributable_mutation=false during its long window, and repo R12_LIVE_GUARD_COMPARISON.json records protected_state_unchanged=true in its quiet window.",
+      "probe_ids": [
+        "live_guard_long_window",
+        "live_guard_quiet_window",
+        "process_command_history_scan"
+      ]
+    }
+  ],
+  "status_summary": {
+    "reproduced_outputs": [
+      "FROZEN HASHES PASS byte-for-byte: R12_WORK_PACKAGE.json 88B0102BAE811508CFEACE7ED5EFA477C76C02147B1FCC4397BCDB956D8D1809/10998; R12_BUILDER_REPORT.json 06769737DA6328FC956A8548E23B8F1AC3264D5C8C5E034B2EE89C5505FCAFA3/8739; R12_ARTIFACT_MANIFEST.json 3F9CABD63650518349C33627909498F75D0514F30653D6271F077B1B6FF6CB13/14097; R12_FINAL_AUDIT_PACKAGE.json A41949C248EF125089D1542A4E9664F43B1407420D6DE4B7089D6651B997EBC6/604.",
+      "MANIFEST AUDIT PASS: 76 entries = 75 real + 1 SELF_REFERENTIAL_REPORT; 0 mismatches on sha256+size; self size equals report size; 0 R12_PROGRESS_* entries bound; evidence dir total 613,580 bytes < 8,388,608; report evidence_bytes 586,259 independently reproduced excluding report+manifest+PROGRESS; post-audit manifest recheck still 0 mismatches.",
+      "SOURCE/FREEZE PASS: current src/jarvis_foundry recomputes ef426a85d0f201905e0138cbcdd41918f08eaf3cac917765edd659a962a17e09 with 222 files (no bytecode); head c76d92d; freeze generated_utc 2026-08-16T11:06:00Z is after all R12-owned source mtimes (latest 11:05:20Z); proving fingerprint 35627d0782880f85effbabfd2a4afc0d361da843c2bec6502a555883deaeffbc independently recomputed.",
+      "ROLLBACK PASS: on-disk zip sha256 8fd2a0b5ab031b58f79e4634aad2b625d142b70704fddff562ee0e97dbb286a3 (1,417,531 bytes, 397 entries, 0 r12-v7-proving/pyc/__pycache__); independent clean archive from pristine V7 tag has identical sha256/size/entries; fresh mirror release_freeze again produced the same rollback hash; restore exactly true.",
+      "FOCUSED SUITE PASS: repo python -m pytest tests/remaster/r12 -q exit 0, 6 passed/0 failed/0 errors; mirror focused_tests.py exit 0.",
+      "FULL SUITES PASS: repo split part1 (foundry+r6..r11)=1483, part2 (r12)=6, mandatory combined=1489, all exit 0 with 0 failures/0 errors; mirror full_suite.py exit 0; no collection/conftest/ImportError errors observed.",
+      "STATIC PASS: ruff check exit 0; ruff format --check exit 0 (29 files); mypy --strict exit 0 (6 source files); bandit -r src/jarvis_foundry/fault_campaign exit 0; R12_STATIC.json includes ruff_format subgate; mirror static passed=True exit 0.",
+      "COMPARISON PASS: 5 domains with explained divergences; V7 pristine snapshot 397 files tree 43f4048c...; mirror comparison passed=True exit 0.",
+      "ADOPTION PASS: 6/6 rungs PASS in repo evidence and fresh mirror; final rungs honestly staged simulations over isolated copies.",
+      "FREEZE/RESTORE PASS: mirror release_freeze.py restore_passed=True with source ef426a85... and deterministic rollback 8fd2a0b5...; mirror gate_g03 passed.",
+      "FAULT CAMPAIGN PASS: 44/44 outcomes, passed=44, failed=0, incomplete_records=0, campaign_passed=true; all required fields present; protected_touched=false everywhere; fresh mirror fault_campaign.py reproduced 44/0 exit 0.",
+      "PROVING READINESS PASS: 4/4 simulated restarts, deployed_release_frozen=true, READY not started, WAITING honest; fingerprint verified; mirror proving_window.py passed=True restarts=4 exit 0.",
+      "SECRET/PRIVACY PASS: secret_scan findings=0 full_body_leaks=0; privacy path_leaks=0 private_category_mentions=0 (mirror and repo evidence).",
+      "LIVE GUARD HONESTY: verifier never wrote live/protected state; protected main/vault/tasks unchanged; live DB growth is external supervisor/agent activity and documented as S4; repo quiet guard protected_state_unchanged=true; no KeyError in guard runs."
+    ],
+    "repo_boundary": "Porcelain expected untracked trees only (r12 evidence/work package/scripts/tests, fault_campaign, kernel/memory, plus preserved R6 baseline). No commits/pushes by verifier. No protected-main, live daemon/db, vault, tests/foundry, or protected remaster source writes. The only repository write is this verdict file, intentionally overwriting the prior round-4 placeholder."
+  },
+  "reconciled_state": {
+    "artifacts": "R12 manifest 76 entries (75 real + 1 self) all sha256+size PASS; evidence total 613,580 < 8,388,608; evidence_bytes 586,259 reproduced; no R12_PROGRESS_* entries bound; focused 6, part1 1483, part2 6, combined 1489 (0 failures/0 errors); static/secret/privacy PASS.",
+    "r7": "R7 artifact manifest present (72 entries); R7 verifier findings recorded in FINDINGS.jsonl; no R7 reopen.",
+    "r8": "R8 artifact manifest present (107 entries) with verifier verdicts; reconciled through clean combined suite.",
+    "r9": "R9 artifact manifest present (79 entries) with verifier verdicts; secret/privacy honesty carried into R12.",
+    "r10": "R10 artifact manifest present (82 entries) and R10_VERIFIER_ROUND2_VERDICT_DSV4.json; EN/SQ briefing and honest missing-evidence reproduced in R12 comparison.",
+    "r11": "R11 artifact manifest present (90 entries) and R11_VERIFIER_ROUND1_VERDICT_DSV4.json PASS; commit c76d92d is the R12 frozen base.",
+    "r12": "R12 builder findings R12-F-001..003/R12-V-001..004 recorded; R12-AUD-001/002 repaired in round 2; round-3 S2/S3 findings closed in round 4; this verdict supplies G06 adjudication.",
+    "r6": "OWNER_REDIRECT_R6_DEFERRED recorded in docs/remaster/PROGRAM_STATE.md and R6_WORK_PACKAGE.json; R6 trees untracked and untouched; never reopened.",
+    "live_and_boundary": "protected main ddc5129a2d30e0435fd4a828cf3a0af23cec7c9d (external advance, read-only probes only); V7 tag read-only; live daemon/db/vault untouched by verifier; long live-window activity attributed externally and documented as S4; no commits/pushes."
+  },
+  "evidence_paths_and_hashes": {
+    "frozen": {
+      "docs/remaster/work_packages/R12_WORK_PACKAGE.json": "88B0102BAE811508CFEACE7ED5EFA477C76C02147B1FCC4397BCDB956D8D1809/10998",
+      "docs/remaster/evidence/r12/R12_BUILDER_REPORT.json": "06769737DA6328FC956A8548E23B8F1AC3264D5C8C5E034B2EE89C5505FCAFA3/8739",
+      "docs/remaster/evidence/r12/R12_ARTIFACT_MANIFEST.json": "3F9CABD63650518349C33627909498F75D0514F30653D6271F077B1B6FF6CB13/14097",
+      "docs/remaster/evidence/r12/R12_FINAL_AUDIT_PACKAGE.json": "A41949C248EF125089D1542A4E9664F43B1407420D6DE4B7089D6651B997EBC6/604"
+    },
+    "repo_evidence": {
+      "R12_RELEASE_FREEZE.json": "32a10be43c32adab47292f93eadb30d840a80cfcaca020d5ec6e30bd8a264fea/10952",
+      "R12_ROLLBACK_PACKAGE.json": "db8e883a9e039722eacf830fbbfb80a5c34ac09006db65c6649d11de76265a20/330",
+      "R12_RESTORE_PROOF.json": "b2da7c1ce08b05865b93f2351294e39b3d5073bffc974e72cfe254c6beeb5ea1/465",
+      "R12_PROVING_READINESS.json": "0803c9558f6aed548ce146f30133f0fcf4abb855c315683f5e533d71aa145817/1873",
+      "R12_CHECKPOINT_PERSISTENCE.json": "0803c9558f6aed548ce146f30133f0fcf4abb855c315683f5e533d71aa145817/1873",
+      "R12_WAITING.json": "5bba951c674367ecabf67fdce57d3813d878d304ee8d76618b4fca5dd6e3ba97/644",
+      "R12_FAULT_MATRIX.json": "49484d67a30f0acb5db3f5eacbc3bbd53c11182bf5860e9fba754d94022e13c6/72544",
+      "R12_C06_CONTROL.json": "1b1ae37d13f18d6d5155f7f660b726066750050b6dad910be1bbfaa34cbfe181/233",
+      "R12_COMPARISON_MATRIX.json": "3c2871475bdc38b20bb08d028f0bd703b49543f28352ed75d1c07f43d46286f8/7449",
+      "R12_ADOPTION_LADDER.json": "e91549e2483e822283d1548c24c4945c285fca6c879ff0c455004f42c096ee91/5162",
+      "R12_FINAL_AUDIT_PACKAGE.json": "a41949c248ef125089d1542a4e9664f43b1407420d6de4b7089d6651b997ebc6/604",
+      "R12_G06_AUDIT.json": "5bb628ae34158c7083d146ef44f8d8fba1f857f112e425aec41cdfe54876e248/380",
+      "R12_STATIC.json": "184cd61d1c333f3c7b731210e7baad624a610e2e08bd49773ec97b71ee665108/1252",
+      "R12_SECRET_SCAN.json": "af40aef1da6e51f6d779b540a2888f72ca254cea22517786729f8af2cae811d5/302",
+      "R12_PRIVACY.json": "2bc101c74f7ef0c1906b844828533cd087d3dd4c9b8a73b9b58f05f4b9dfcb98/376"
+    },
+    "fresh_verifier_mirror": {
+      "mirror_root": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r12-verifier4-r4",
+      "R12_RELEASE_FREEZE.json_rollback_hash": "8fd2a0b5ab031b58f79e4634aad2b625d142b70704fddff562ee0e97dbb286a3",
+      "R12_FULL_SUITE.json_exit_code": "0",
+      "R12_FAULT_MATRIX.json_passed_failed": "44/0",
+      "R12_ADOPTION_LADDER.json_rungs": "6/6",
+      "R12_PROVING_READINESS.json_restarts": "4/4",
+      "junit_counts_from_repo_evidence": "focused 6/0/0; part1 1483/0/0; part2 6/0/0; combined 1489/0/0"
+    }
+  },
+  "final_verdict": "SERVES_ORIGINAL_PURPOSE"
+}

@@ -1,0 +1,12 @@
+{
+  "mutated_tree_hash": "328b21bc13a4b6ae891dca0142764f6e875910d8aca08b5b7a2c2a5b77d671f6",
+  "original_tree_hash": "43f4048c7894532304b37695ddb75ba66e67230779addb413c8dce03f335a74c",
+  "passed": true,
+  "restore_smoke": {
+    "exit_code": 0,
+    "output": "Event"
+  },
+  "restored_exactly": true,
+  "restored_tree_hash": "43f4048c7894532304b37695ddb75ba66e67230779addb413c8dce03f335a74c",
+  "scope": "isolated copies only; protected main untouched"
+}

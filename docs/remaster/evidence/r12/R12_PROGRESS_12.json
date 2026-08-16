@@ -1,0 +1,10 @@
+{
+  "checkpoint": "release_freeze",
+  "generated_utc": "2026-08-16T10:12:47Z",
+  "index": 12,
+  "payload": {
+    "restored_exactly": true,
+    "status": "PASS"
+  },
+  "schema": "jarvis-r12-progress-v1"
+}

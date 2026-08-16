@@ -1,0 +1,30 @@
+{
+  "exit_code": 0,
+  "junit_sha256": {
+    "combined": "9218ef2413b77c418e8967dbbeccc540493571b93494f526663d5b45edac587d",
+    "part1": "8758156f7c09e3f55fc9ea8f1c645fd180f5bb3194a4add826c62ec91199ede5",
+    "part2": "cdf8ddc09c26298a883ceafd0612c5be9611ad109da5d93c2260ff05f3e9bab8"
+  },
+  "parts": {
+    "combined_all": {
+      "exit_code": 0,
+      "junit_output": "R12_FULL_SUITE_COMBINED_JUNIT.xml",
+      "wall_seconds": 511.614
+    },
+    "foundry_r6_r7_r8_r9_r10_r11": {
+      "exit_code": 0,
+      "junit_output": "R12_FULL_SUITE_PART1_JUNIT.xml",
+      "wall_seconds": 481.06
+    },
+    "r12": {
+      "exit_code": 0,
+      "junit_output": "R12_FULL_SUITE_PART2_JUNIT.xml",
+      "wall_seconds": 30.57
+    }
+  },
+  "raw_output": "R12_FULL_SUITE_RAW.txt",
+  "raw_output_sha256": "bd45f0c4963c5d2b3e47a7a1a94222f4805ce5dd60bf9961218a965ac37bac3f",
+  "schema": "jarvis-r12-full-suite-v1",
+  "summary_line": ".................................................                        [100%]",
+  "wall_seconds": 1023.244
+}

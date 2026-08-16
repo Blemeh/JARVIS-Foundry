@@ -1,0 +1,142 @@
+{
+  "schema": "jarvis-remaster-work-package-v1",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "stage": "R12",
+  "title": "Final integration, live adoption, fault campaign, and final audit",
+  "status": "FROZEN",
+  "generated_utc": "2026-08-16T10:30:00Z",
+  "frozen_base": {
+    "commit": "c76d92df55b6ec552b68379479ccd80f972c303c",
+    "branch": "remaster/post-v7-purpose",
+    "worktree": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry-Remaster",
+    "protected_main": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry at 2f7360e (V8-promoted recoverable release; read-only)",
+    "live_v7_deployment_changes_allowed": false,
+    "push_or_publish_allowed": false,
+    "live_daemon_database_tasks_processes_ports": "protected, untouched (read-only probes only)",
+    "r6_status": "OWNER_REDIRECT_R6_DEFERRED (never reopen; R6 trees remain uncommitted and untouched)"
+  },
+  "objective": "Perform the full integrated comparison FROZEN V7 vs REMASTERED JARVIS using equivalent relevant inputs, explain meaningful divergences, and progress the remastered stack through READ_ONLY -> SHADOW -> ISOLATED_EFFECTS -> LIMITED_CANARY -> BOUNDED_LIVE -> FULL_DIGITAL_WORK_OPERATION without overwriting the previous recoverable release. Before cutover, freeze and record executable, source hash, dependencies, configuration, DB/WAL, scheduled tasks, ports, capabilities, credential metadata, queues, leases, health, evidence, release pointer, and rollback package; independently prove restore. Then run the full integrated fault campaign required by the original remaster (Hermes crash/hang, Supervisor crash/duplicate/restart, host reboot, worker crash/hang/malformed/refusing termination, network/provider outage, timeout, rate limit, partial/late response, UI/browser/voice failure, credential expiry/revocation, duplicate/lost/late/out-of-order/corrupt event, stale before-state, conflicting external mutation, DB lock, interrupted migration, projection drift, WAL/recovery, cost spike, quota exhaustion, disk pressure, evidence/log growth, malicious retrieved content, prompt injection, forged owner directive, STOP during queued/in-flight work, veto during work, bad candidate, bad promotion, freeze, rollback, restore). Every failure proves truthful state, bounded blast radius, incident record, reconciliation, suspension when required, unrelated work continuation where safe, compensation where appropriate, recovery/restoration, and a truthful briefing. Then freeze the exact deployed release and start the real proving window required by the original remaster. Final verdict must be exactly one of SERVES_ORIGINAL_PURPOSE / SERVES_PURPOSE_WITH_EXTERNAL_BLOCKERS / DOES_NOT_YET_SERVE_PURPOSE.",
+  "governed_proving_area": {
+    "purpose": "Fault-campaign effects run in isolated proving stores/clones under C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r12-*; the V7 FROZEN comparison uses the protected main's committed V7 release tree read-only (or a cloned snapshot); BOUNDED_LIVE and FULL_DIGITAL_WORK_OPERATION are staged simulations over isolated copies, never the live daemon/db/vault/protected main.",
+    "privacy_boundary": "Evidence records identities, hashes, timestamps, provenance, and non-sensitive excerpts only; no credentials/secrets in evidence.",
+    "frozen_v7": "Protected main JARVIS-Foundry at 2f7360e (V8-promoted) with the pre-V8 V7 release recoverable; the comparison uses committed release trees read-only, never mutating the live deployment.",
+    "remastered_stack": "The remastered worktree at c76d92d (R7-R11 machinery: portfolio/selection, orchestration, capabilities_live, command_center, evolution_live) with additive R12 fault-harness modules."
+  },
+  "mandatory_deliverables": [
+    {
+      "id": "R12-D01",
+      "item": "Integrated comparison V7 vs remastered",
+      "detail": "Equivalent relevant inputs exercised through FROZEN V7 and REMASTERED JARVIS (read-only on V7; isolated on remastered): goals/portfolio decisions, mission orchestration, capability lifecycle, Command Center briefing, evolution cycle; meaningful divergences explained; no overwrite of the previous recoverable release."
+    },
+    {
+      "id": "R12-D02",
+      "item": "Adoption ladder",
+      "detail": "Progress READ_ONLY -> SHADOW -> ISOLATED_EFFECTS -> LIMITED_CANARY -> BOUNDED_LIVE -> FULL_DIGITAL_WORK_OPERATION with evidence at each rung; each transition requires the previous rung's PASS."
+    },
+    {
+      "id": "R12-D03",
+      "item": "Release freeze + restore proof",
+      "detail": "Before cutover freeze and record: executable, source hash, dependencies, configuration, DB/WAL, scheduled tasks, ports, capabilities, credential metadata, queues, leases, health, evidence, release pointer, rollback package. Independently prove restore of the previous recoverable release."
+    },
+    {
+      "id": "R12-D04",
+      "item": "Full integrated fault campaign",
+      "detail": "Run the full fault list (above) against the remastered stack in isolated proving; for every failure prove truthful state, bounded blast radius, incident record, reconciliation, suspension when required, unrelated work continuation where safe, compensation where appropriate, recovery/restoration, and truthful briefing."
+    },
+    {
+      "id": "R12-D05",
+      "item": "Proving-window readiness + checkpoint persistence",
+      "detail": "When all engineering/canary prerequisites are genuinely ready, freeze the exact deployed release and start the real proving window; persist checkpoints so execution survives compaction, agent death, terminal closure, Hermes restart, Supervisor restart, and Windows restart; honest WAITING/monitoring during elapsed-time periods while continuing other safe dependency-ready work."
+    },
+    {
+      "id": "R12-D06",
+      "item": "Final audit package",
+      "detail": "Reconcile all R7-R12 mandatory criteria, findings, exact deployed source, executable, configuration, migration state, ledger, projections, effects, connector state, Command Center state, evolution state, incidents, rollback, and live proving evidence; commission a fresh independent final audit of the exact deployed release; final verdict exactly one of the three allowed outcomes."
+    }
+  ],
+  "mandatory_gates": [
+    {
+      "id": "R12-G01",
+      "gate": "Integrated comparison V7 vs remastered with equivalent inputs and explained divergences; no overwrite of the recoverable release."
+    },
+    {
+      "id": "R12-G02",
+      "gate": "Adoption ladder reached FULL_DIGITAL_WORK_OPERATION (staged simulation) with each rung's evidence."
+    },
+    {
+      "id": "R12-G03",
+      "gate": "Release freeze recorded and restore independently proven."
+    },
+    {
+      "id": "R12-G04",
+      "gate": "Full fault campaign executed; every failure has truthful state, bounded blast radius, incident record, reconciliation, recovery/restoration, truthful briefing."
+    },
+    {
+      "id": "R12-G05",
+      "gate": "Proving-window readiness: exact deployed release frozen; checkpoints persisted; honest WAITING/monitoring during elapsed-time periods."
+    },
+    {
+      "id": "R12-G06",
+      "gate": "Fresh independent final audit of the exact deployed release returns exactly one of the three allowed verdicts; R6 remains recorded as the owner redirect and is never reopened."
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "R12-C01",
+      "criterion": "R12-D01..D06 each PASS with non-empty evidence (comparison matrix, adoption rungs, freeze manifest + restore proof, fault campaign matrix, checkpoint records, final audit verdict)."
+    },
+    {
+      "id": "R12-C02",
+      "criterion": "Integrated comparison explains meaningful divergences between FROZEN V7 and remastered JARVIS on equivalent inputs."
+    },
+    {
+      "id": "R12-C03",
+      "criterion": "Adoption ladder reaches FULL_DIGITAL_WORK_OPERATION with evidence at every rung."
+    },
+    {
+      "id": "R12-C04",
+      "criterion": "Release freeze manifest complete and restore independently proven."
+    },
+    {
+      "id": "R12-C05",
+      "criterion": "Full fault campaign covers every required failure; each has truthful state, bounded blast radius, incident record, reconciliation, recovery/restoration, truthful briefing."
+    },
+    {
+      "id": "R12-C06",
+      "criterion": "STOP during queued/in-flight work and veto during work proven; forged owner directive and prompt injection isolated; malicious retrieved content never becomes authority."
+    },
+    {
+      "id": "R12-C07",
+      "criterion": "Proving-window readiness: deployed release frozen; checkpoints persist across simulated restarts; honest WAITING/monitoring."
+    },
+    {
+      "id": "R12-C08",
+      "criterion": "Fresh independent final audit returns exactly one of SERVES_ORIGINAL_PURPOSE / SERVES_PURPOSE_WITH_EXTERNAL_BLOCKERS / DOES_NOT_YET_SERVE_PURPOSE; R6 never reopened; all R7-R12 findings reconciled."
+    }
+  ],
+  "ownership": {
+    "builder": "May create src/jarvis_foundry/fault_campaign/**, scripts/remaster/r12/**, tests/remaster/r12/**, docs/remaster/evidence/r12/**, docs/remaster/work_packages/R12_WORK_PACKAGE.json, and R12_FINDINGS.json under evidence/r12. May NOT edit existing kernel modules, tests/foundry, tests/remaster/r6-r11, scripts/remaster/r6-r11, src/jarvis_foundry/kernel/memory, src/jarvis_foundry/evolution/**, supervisor/evolution_control.py, prior evidence (r0-r11), FINDINGS.jsonl (root-owned), PROGRAM_STATE.md, R6 files, protected main, or any owner project in place. R12 source may IMPORT existing modules read-only.",
+    "root": "Evidence custody, findings registry, commit decision, final truth.",
+    "verifier": "Fresh independent context after builder freeze."
+  },
+  "resources_and_constraints": {
+    "python": "C:\\Python313\\python.exe",
+    "isolated_venv": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r3-venv (reuse)",
+    "proving_area": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r12-*",
+    "network_allowed": "none (fault campaign is local/staged; external provider outages are simulated)",
+    "evidence_budget_bytes": 8388608,
+    "timeout": "bounded; every long gate prints WALL_SECONDS and EXIT_CODE"
+  },
+  "status_contract": "PASS | FAIL | BLOCKED | NOT_TESTED | WAITING only; exit code zero alone is NOT_TESTED; every PASS needs non-empty evidence.",
+  "stop_conditions": [
+    "any mutation of live/protected state, live vault, live database, protected main, or any owner project in place",
+    "any overwrite of the previous recoverable release",
+    "any forged-owner-directive or malicious-retrieved-content effect on real authority",
+    "any STOP/veto bypass during queued/in-flight work",
+    "any secret value written to evidence",
+    "any commit or push by the builder to protected repos",
+    "any unrecorded gate failure presented as PASS",
+    "any reopening of R6"
+  ],
+  "builder_status": "NOT_TESTED until a fresh independent verifier passes every mandatory criterion"
+}

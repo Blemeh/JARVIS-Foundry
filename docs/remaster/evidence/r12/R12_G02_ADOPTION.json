@@ -1,0 +1,17 @@
+{
+  "exit_code": 0,
+  "passed": true,
+  "reached_full_operation": true,
+  "rung_count": 6,
+  "rung_statuses": [
+    "PASS",
+    "PASS",
+    "PASS",
+    "PASS",
+    "PASS",
+    "PASS"
+  ],
+  "schema": "jarvis-r12-g02-adoption-v1",
+  "transitions_ok": true,
+  "wall_seconds": 0.0
+}

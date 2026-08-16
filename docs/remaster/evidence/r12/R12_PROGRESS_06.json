@@ -1,0 +1,15 @@
+{
+  "checkpoint": "proving_window",
+  "generated_utc": "2026-08-16T07:58:44Z",
+  "index": 6,
+  "payload": {
+    "restarts": [
+      "compaction_agent_death_terminal_close",
+      "hermes_restart",
+      "supervisor_restart",
+      "windows_restart"
+    ],
+    "status": "PASS"
+  },
+  "schema": "jarvis-r12-progress-v1"
+}

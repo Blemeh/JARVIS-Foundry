@@ -1,0 +1,12 @@
+{
+  "checkpoint": "fault_campaign",
+  "generated_utc": "2026-08-16T07:57:59Z",
+  "index": 5,
+  "payload": {
+    "failed": 0,
+    "fault_count": 44,
+    "passed": 44,
+    "status": "PASS"
+  },
+  "schema": "jarvis-r12-progress-v1"
+}

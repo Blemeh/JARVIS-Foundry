@@ -1,0 +1,1185 @@
+{
+  "generated_utc": "2026-08-16T07:57:59Z",
+  "incidents": [
+    {
+      "fault_id": "f01",
+      "incident_record": {
+        "detail": "hermes worker crashed; heartbeats stopped",
+        "detected": true,
+        "incident_id": "inc-f01",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "detail": "ledger and projection agree",
+        "heartbeats_before_crash": 2,
+        "reconciled": true
+      },
+      "recovery": {
+        "detail": "crash detected; process exit recorded",
+        "restored": true
+      },
+      "suspension": {
+        "applied": false,
+        "detail": "not required",
+        "required": false
+      },
+      "truthful_briefing": "Hermes crash detected via missing heartbeat; crash record kept, unrelated work continued.",
+      "truthful_state": "worker w1 wrote 2 heartbeats then exited with code 99; unrelated worker w2 completed=True"
+    },
+    {
+      "fault_id": "f02",
+      "incident_record": {
+        "detail": "worker hang exceeded bounded grace period",
+        "detected": true,
+        "incident_id": "inc-f02",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "detail": "ledger and projection agree",
+        "heartbeats": 3,
+        "reconciled": true
+      },
+      "recovery": {
+        "detail": "hang bounded and process terminated",
+        "restored": true
+      },
+      "suspension": {
+        "applied": false,
+        "detail": "not required",
+        "required": false
+      },
+      "truthful_briefing": "Hang bounded by termination after grace; incident recorded.",
+      "truthful_state": "hung worker produced 3 heartbeats and was forcibly stopped"
+    },
+    {
+      "fault_id": "f03",
+      "incident_record": {
+        "detail": "supervisor process crashed; durable state survived",
+        "detected": true,
+        "incident_id": "inc-f03",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "detail": "ledger and projection agree",
+        "heartbeat_preserved": "2026-08-16T20:00:00Z",
+        "reconciled": true
+      },
+      "recovery": {
+        "detail": "supervisor restarted from durable store",
+        "restored": true
+      },
+      "suspension": {
+        "applied": false,
+        "detail": "not required",
+        "required": false
+      },
+      "truthful_briefing": "Supervisor crash recovered from durable state; no protected state touched.",
+      "truthful_state": "durable state before=RUNNING after reopen=RUNNING restart=RUNNING"
+    },
+    {
+      "fault_id": "f04",
+      "incident_record": {
+        "detail": "duplicate supervisor instance/event attempted",
+        "detected": true,
+        "incident_id": "inc-f04",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "detail": "ledger and projection agree",
+        "duplicate_event_created": false,
+        "reconciled": true
+      },
+      "recovery": {
+        "detail": "duplicate start/event refused or deduped",
+        "restored": true
+      },
+      "suspension": {
+        "applied": false,
+        "detail": "not required",
+        "required": false
+      },
+      "truthful_briefing": "Duplicate supervisor start and duplicate event are refused/deduped.",
+      "truthful_state": "duplicate start idempotent=True; duplicate event created=False"
+    },
+    {
+      "fault_id": "f05",
+      "incident_record": {
+        "detail": "scheduled supervisor restart completed",
+        "detected": true,
+        "incident_id": "inc-f05",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "detail": "ledger and projection agree",
+        "heartbeat_preserved": true,
+        "reconciled": true
+      },
+      "recovery": {
+        "detail": "restart preserved last heartbeat",
+        "restored": true
+      },
+      "suspension": {
+        "applied": false,
+        "detail": "not required",
+        "required": false
+      },
+      "truthful_briefing": "Supervisor restart preserved durable state and resumed RUNNING.",
+      "truthful_state": "state preserved across restart: RUNNING -> RUNNING"
+    },
+    {
+      "fault_id": "f06",
+      "incident_record": {
+        "detail": "host reboot simulated; state reopened from disk",
+        "detected": true,
+        "incident_id": "inc-f06",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "detail": "ledger and projection agree",
+        "event_count_stable": true,
+        "reconciled": true
+      },
+      "recovery": {
+        "detail": "all durable stores reopened after simulated reboot",
+        "restored": true
+      },
+      "suspension": {
+        "applied": false,
+        "detail": "not required",
+        "required": false
+      },
+      "truthful_briefing": "Simulated host reboot preserved durable state and checkpoints.",
+      "truthful_state": "events before=4 after reopen=4 checkpoint_preserved=True"
+    },
+    {
+      "fault_id": "f07",
+      "incident_record": {
+        "detail": "worker crash before effect completion; compensation applied",
+        "detected": true,
+        "incident_id": "inc-f07",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "detail": "ledger and projection agree",
+        "effect_compensated": "COMPENSATED",
+        "reconciled": true
+      },
+      "recovery": {
+        "detail": "effect journal consistent after crash",
+        "restored": true
+      },
+      "suspension": {
+        "applied": false,
+        "detail": "not required",
+        "required": false
+      },
+      "truthful_briefing": "Worker crash compensated the partial effect; ledger stayed consistent.",
+      "truthful_state": "effect compensated=COMPENSATED; recovery=()"
+    },
+    {
+      "fault_id": "f08",
+      "incident_record": {
+        "detail": "hung worker lease expired; supervisor reclaimed it",
+        "detected": true,
+        "incident_id": "inc-f08",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "detail": "ledger and projection agree",
+        "reclaimed": [
+          "hang"
+        ],
+        "reconciled": true
+      },
+      "recovery": {
+        "detail": "expired lease reclaimed; worker suspended",
+        "restored": true
+      },
+      "suspension": {
+        "applied": true,
+        "reason": "hung worker suspended",
+        "required": true,
+        "scope": "worker hang"
+      },
+      "truthful_briefing": "Hung worker suspended and lease reclaimed; no unrelated work blocked.",
+      "truthful_state": "hang stopped=False; reclaimed leases=('hang',)"
+    },
+    {
+      "fault_id": "f09",
+      "incident_record": {
+        "detail": "malformed worker result refused at ingestion boundary",
+        "detected": true,
+        "incident_id": "inc-f09",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "detail": "ledger and projection agree",
+        "malformed_rejected_event": true,
+        "reconciled": true
+      },
+      "recovery": {
+        "detail": "malformed result isolated; no effect applied",
+        "restored": true
+      },
+      "suspension": {
+        "applied": false,
+        "detail": "not required",
+        "required": false
+      },
+      "truthful_briefing": "Malformed worker output refused; no partial effect applied.",
+      "truthful_state": "malformed worker result rejected as invalid JSON; incident recorded"
+    },
+    {
+      "fault_id": "f10",
+      "incident_record": {
+        "detail": "worker ignored graceful termination; escalated to force kill",
+        "detected": true,
+        "incident_id": "inc-f10",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "detail": "ledger and projection agree",
+        "reconciled": true,
+        "termination_escalated": false
+      },
+      "recovery": {
+        "detail": "process terminated after bounded grace",
+        "restored": true
+      },
+      "suspension": {
+        "applied": true,
+        "reason": "refusing worker force-terminated",
+        "required": true,
+        "scope": "worker"
+      },
+      "truthful_briefing": "Worker refusing termination was force-killed after bounded grace.",
+      "truthful_state": "worker refused termination and was force-killed=False"
+    },
+    {
+      "fault_id": "f11",
+      "incident_record": {
+        "detail": "provider outage degraded capability; no partial effect",
+        "detected": true,
+        "incident_id": "inc-f11",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "capability_status": "DEGRADED",
+        "detail": "ledger and projection agree",
+        "reconciled": true
+      },
+      "recovery": {
+        "detail": "outage recorded; state remains honest",
+        "restored": true
+      },
+      "suspension": {
+        "applied": true,
+        "reason": "degraded capability suspended from dispatch",
+        "required": true,
+        "scope": "capability.files"
+      },
+      "truthful_briefing": "Provider outage recorded; capability degraded with no partial effect.",
+      "truthful_state": "capability status=DEGRADED; snapshot rebuilt with honest state voice=None"
+    },
+    {
+      "fault_id": "f12",
+      "incident_record": {
+        "detail": "worker exceeded timeout; late result treated as missing",
+        "detected": true,
+        "incident_id": "inc-f12",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "detail": "ledger and projection agree",
+        "reconciled": true,
+        "timeout_reclaimed": [
+          "late"
+        ]
+      },
+      "recovery": {
+        "detail": "timeout reclaimed lease; no partial ingestion",
+        "restored": true
+      },
+      "suspension": {
+        "applied": true,
+        "reason": "timed-out worker suspended",
+        "required": true,
+        "scope": "worker"
+      },
+      "truthful_briefing": "Timeout handled; no late result was treated as authoritative.",
+      "truthful_state": "worker timed out; no result arrived; lease reclaimed"
+    },
+    {
+      "fault_id": "f13",
+      "incident_record": {
+        "detail": "rate limit held worker in queue; no silent drop",
+        "detected": true,
+        "incident_id": "inc-f13",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "detail": "ledger and projection agree",
+        "promoted": [
+          "w-b"
+        ],
+        "reconciled": true,
+        "waiting": "WAITING"
+      },
+      "recovery": {
+        "detail": "queued worker promoted after capacity freed",
+        "restored": true
+      },
+      "suspension": {
+        "applied": true,
+        "reason": "rate-limited worker queued",
+        "required": true,
+        "scope": "worker"
+      },
+      "truthful_briefing": "Rate limit queued work without loss; queued work resumed after capacity freed.",
+      "truthful_state": "second worker queued=WAITING; promoted after release=('w-b',)"
+    },
+    {
+      "fault_id": "f14",
+      "incident_record": {
+        "detail": "partial provider/worker response refused",
+        "detected": true,
+        "incident_id": "inc-f14",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "detail": "ledger and projection agree",
+        "partial_rejected": true,
+        "reconciled": true
+      },
+      "recovery": {
+        "detail": "partial response never ingested",
+        "restored": true
+      },
+      "suspension": {
+        "applied": false,
+        "detail": "not required",
+        "required": false
+      },
+      "truthful_briefing": "Partial response rejected; no partial truth entered the ledger.",
+      "truthful_state": "partial result missing required fields; rejected as malformed"
+    },
+    {
+      "fault_id": "f15",
+      "incident_record": {
+        "detail": "late response ingested with honest ordering",
+        "detected": true,
+        "incident_id": "inc-f15",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "detail": "ledger and projection agree",
+        "reconciled": true,
+        "sequence_append_order": true
+      },
+      "recovery": {
+        "detail": "late event recorded in append order",
+        "restored": true
+      },
+      "suspension": {
+        "applied": false,
+        "detail": "not required",
+        "required": false
+      },
+      "truthful_briefing": "Late response recorded honestly; sequence order never rewrites history.",
+      "truthful_state": "late event appended after newer event; sequence order preserved=True"
+    },
+    {
+      "fault_id": "f16",
+      "incident_record": {
+        "detail": "UI/browser failure does not affect durable state",
+        "detected": true,
+        "incident_id": "inc-f16",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "detail": "ledger and projection agree",
+        "reconciled": true,
+        "snapshot_rebuilt": true
+      },
+      "recovery": {
+        "detail": "snapshot derived from stores, not UI",
+        "restored": true
+      },
+      "suspension": {
+        "applied": false,
+        "detail": "not required",
+        "required": false
+      },
+      "truthful_briefing": "UI/browser failure isolated; durable state and briefing rebuilt from stores.",
+      "truthful_state": "UI artifacts broken but Command Center snapshot rebuilt from durable stores"
+    },
+    {
+      "fault_id": "f17",
+      "incident_record": {
+        "detail": "voice provider unavailable; no fabricated classification",
+        "detected": true,
+        "incident_id": "inc-f17",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "detail": "ledger and projection agree",
+        "reconciled": true,
+        "voice_classification": null
+      },
+      "recovery": {
+        "detail": "briefing marks missing evidence honestly",
+        "restored": true
+      },
+      "suspension": {
+        "applied": false,
+        "detail": "not required",
+        "required": false
+      },
+      "truthful_briefing": "Voice failure reported as missing evidence; no fabricated STT/TTS result.",
+      "truthful_state": "voice classification=None; briefing reports missing evidence"
+    },
+    {
+      "fault_id": "f18",
+      "incident_record": {
+        "detail": "expired credential revoked capability",
+        "detected": true,
+        "incident_id": "inc-f18",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "capability_status": "REVOKED",
+        "detail": "ledger and projection agree",
+        "reconciled": true
+      },
+      "recovery": {
+        "detail": "capability revoked; no secret value stored",
+        "restored": true
+      },
+      "suspension": {
+        "applied": true,
+        "reason": "expired credential suspended capability",
+        "required": true,
+        "scope": "capability"
+      },
+      "truthful_briefing": "Credential expiry recorded; capability revoked with metadata only.",
+      "truthful_state": "secret metadata registered without value; capability=REVOKED on expiry"
+    },
+    {
+      "fault_id": "f19",
+      "incident_record": {
+        "detail": "credential revocation propagated to capability",
+        "detected": true,
+        "incident_id": "inc-f19",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "capability_status": "REVOKED",
+        "detail": "ledger and projection agree",
+        "reconciled": true
+      },
+      "recovery": {
+        "detail": "revocation durable in ledger",
+        "restored": true
+      },
+      "suspension": {
+        "applied": true,
+        "reason": "revoked credential suspended capability",
+        "required": true,
+        "scope": "capability"
+      },
+      "truthful_briefing": "Credential revocation suspended the capability; no secret value stored.",
+      "truthful_state": "credential revoked; capability=REVOKED"
+    },
+    {
+      "fault_id": "f20",
+      "incident_record": {
+        "detail": "duplicate delivery deduped by idempotency key",
+        "detected": true,
+        "incident_id": "inc-f20",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "detail": "ledger and projection agree",
+        "duplicate_created": false,
+        "event_count": 1,
+        "reconciled": true
+      },
+      "recovery": {
+        "detail": "dedupe kept ledger append-only",
+        "restored": true
+      },
+      "suspension": {
+        "applied": false,
+        "detail": "not required",
+        "required": false
+      },
+      "truthful_briefing": "Duplicate event deduped; ledger count unchanged.",
+      "truthful_state": "duplicate append created=False; event_count=1"
+    },
+    {
+      "fault_id": "f21",
+      "incident_record": {
+        "detail": "lost event detected by backup comparison; recovered by replay",
+        "detected": true,
+        "incident_id": "inc-f21",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "detail": "ledger and projection agree",
+        "reconciled": true,
+        "recovered_events": 1
+      },
+      "recovery": {
+        "detail": "event re-applied from authoritative live ledger",
+        "restored": true
+      },
+      "suspension": {
+        "applied": false,
+        "detail": "not required",
+        "required": false
+      },
+      "truthful_briefing": "Lost event detected and recovered; no silent data loss.",
+      "truthful_state": "live=2 restored_backup=1 after_recovery=2"
+    },
+    {
+      "fault_id": "f22",
+      "incident_record": {
+        "detail": "out-of-order arrival recorded by sequence, not wall clock",
+        "detected": true,
+        "incident_id": "inc-f22",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "detail": "ledger and projection agree",
+        "reconciled": true,
+        "sequence_order": [
+          "r12-order-later",
+          "r12-order-earlier"
+        ]
+      },
+      "recovery": {
+        "detail": "append order is the durable truth",
+        "restored": true
+      },
+      "suspension": {
+        "applied": false,
+        "detail": "not required",
+        "required": false
+      },
+      "truthful_briefing": "Out-of-order events recorded by append sequence; projections stay deterministic.",
+      "truthful_state": "append order preserved despite wall-clock order: ['r12-order-later', 'r12-order-earlier']"
+    },
+    {
+      "fault_id": "f23",
+      "incident_record": {
+        "detail": "corrupt ledger payload detected by hash chain",
+        "detected": true,
+        "incident_id": "inc-f23",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "chain_valid": false,
+        "detail": "ledger and projection agree",
+        "problem_count": 1,
+        "reconciled": true
+      },
+      "recovery": {
+        "detail": "corruption detected; fail-closed",
+        "restored": true
+      },
+      "suspension": {
+        "applied": false,
+        "detail": "not required",
+        "required": false
+      },
+      "truthful_briefing": "Corrupt event detected by hash chain; state fails closed.",
+      "truthful_state": "chain valid=False; problems=['payload hash mismatch']"
+    },
+    {
+      "fault_id": "f24",
+      "incident_record": {
+        "detail": "stale before-state never dispatched",
+        "detected": true,
+        "incident_id": "inc-f24",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "detail": "ledger and projection agree",
+        "reconciled": true,
+        "target_mismatch_refused": true
+      },
+      "recovery": {
+        "detail": "dispatch refused against current target",
+        "restored": true
+      },
+      "suspension": {
+        "applied": false,
+        "detail": "not required",
+        "required": false
+      },
+      "truthful_briefing": "Stale before-state refused at dispatch; current target is authoritative.",
+      "truthful_state": "decision target=fixtures/alpha; dispatch to stale target refused=True"
+    },
+    {
+      "fault_id": "f25",
+      "incident_record": {
+        "detail": "external mutation conflicted on idempotency key",
+        "detected": true,
+        "incident_id": "inc-f25",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "conflict_refused": true,
+        "detail": "ledger and projection agree",
+        "event_count": 1,
+        "reconciled": true
+      },
+      "recovery": {
+        "detail": "conflicting append atomic-refused",
+        "restored": true
+      },
+      "suspension": {
+        "applied": false,
+        "detail": "not required",
+        "required": false
+      },
+      "truthful_briefing": "Conflicting external mutation refused; ledger remained append-only.",
+      "truthful_state": "conflicting mutation refused=True; event_count=1"
+    },
+    {
+      "fault_id": "f26",
+      "incident_record": {
+        "detail": "database lock held writes within bounded timeout",
+        "detected": true,
+        "incident_id": "inc-f26",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "detail": "ledger and projection agree",
+        "reconciled": true,
+        "rows_after_release": 0
+      },
+      "recovery": {
+        "detail": "lock released; store consistent",
+        "restored": true
+      },
+      "suspension": {
+        "applied": false,
+        "detail": "not required",
+        "required": false
+      },
+      "truthful_briefing": "DB lock bounded; no write happened and the store reopened cleanly.",
+      "truthful_state": "exclusive lock blocked writer=True; rows_after_release=0"
+    },
+    {
+      "fault_id": "f27",
+      "incident_record": {
+        "detail": "interrupted migration detected; backup restore",
+        "detected": true,
+        "incident_id": "inc-f27",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "detail": "ledger and projection agree",
+        "reconciled": true,
+        "restored_event_count": 4
+      },
+      "recovery": {
+        "detail": "backup restored after interrupted write",
+        "restored": true
+      },
+      "suspension": {
+        "applied": true,
+        "reason": "store suspended during migration repair",
+        "required": true,
+        "scope": "store"
+      },
+      "truthful_briefing": "Interrupted migration refused corrupt state; backup restored exactly.",
+      "truthful_state": "interrupted store refused=True; restored_count=4"
+    },
+    {
+      "fault_id": "f28",
+      "incident_record": {
+        "detail": "projection drift detected and corrected from ledger",
+        "detected": true,
+        "incident_id": "inc-f28",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "corrected": "ACTIVE",
+        "detail": "ledger and projection agree",
+        "drift_detected": true,
+        "reconciled": true
+      },
+      "recovery": {
+        "detail": "projection rebuilt from authoritative ledger",
+        "restored": true
+      },
+      "suspension": {
+        "applied": false,
+        "detail": "not required",
+        "required": false
+      },
+      "truthful_briefing": "Projection drift detected; authoritative ledger projection restored.",
+      "truthful_state": "ledger truth=ACTIVE; drifted projection status=DRIFTED; corrected status=ACTIVE"
+    },
+    {
+      "fault_id": "f29",
+      "incident_record": {
+        "detail": "WAL recovery preserved committed events",
+        "detected": true,
+        "incident_id": "inc-f29",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "chain_valid": true,
+        "detail": "ledger and projection agree",
+        "reconciled": true
+      },
+      "recovery": {
+        "detail": "WAL frames recovered on reopen",
+        "restored": true
+      },
+      "suspension": {
+        "applied": false,
+        "detail": "not required",
+        "required": false
+      },
+      "truthful_briefing": "WAL/recovery preserved committed events and hash chain.",
+      "truthful_state": "wal_file=True; chain_valid=True; events_recovered=1"
+    },
+    {
+      "fault_id": "f30",
+      "incident_record": {
+        "detail": "cost spike exhausted budget; selection waited",
+        "detected": true,
+        "incident_id": "inc-f30",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "decision_status": "WAITING",
+        "detail": "ledger and projection agree",
+        "reconciled": true
+      },
+      "recovery": {
+        "detail": "budget state recorded; WAITING honest",
+        "restored": true
+      },
+      "suspension": {
+        "applied": true,
+        "reason": "budget exhausted; selection suspended",
+        "required": true,
+        "scope": "selection"
+      },
+      "truthful_briefing": "Cost spike recorded; selection WAITING; unrelated capability continued.",
+      "truthful_state": "decision=WAITING; capability=ACTIVE"
+    },
+    {
+      "fault_id": "f31",
+      "incident_record": {
+        "detail": "quota exhausted; no work invented",
+        "detected": true,
+        "incident_id": "inc-f31",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "decision_status": "WAITING",
+        "detail": "ledger and projection agree",
+        "reconciled": true
+      },
+      "recovery": {
+        "detail": "honest WAITING until quota resets",
+        "restored": true
+      },
+      "suspension": {
+        "applied": true,
+        "reason": "quota exhausted; work suspended",
+        "required": true,
+        "scope": "selection"
+      },
+      "truthful_briefing": "Quota exhaustion produced honest WAITING; no fabricated action.",
+      "truthful_state": "quota exhausted; decision=WAITING; reason=budget exhausted; no action can be safely selected"
+    },
+    {
+      "fault_id": "f32",
+      "incident_record": {
+        "detail": "disk pressure refused unbounded log growth",
+        "detected": true,
+        "incident_id": "inc-f32",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "accepted_lines": 9,
+        "detail": "ledger and projection agree",
+        "final_size": 477,
+        "reconciled": true
+      },
+      "recovery": {
+        "detail": "log growth bounded at quota",
+        "restored": true
+      },
+      "suspension": {
+        "applied": false,
+        "detail": "not required",
+        "required": false
+      },
+      "truthful_briefing": "Disk pressure bounded log growth; no protected disk touched.",
+      "truthful_state": "quota=512; accepted=9; final_size=477; refused=True"
+    },
+    {
+      "fault_id": "f33",
+      "incident_record": {
+        "detail": "evidence/log growth compacted with provenance",
+        "detected": true,
+        "incident_id": "inc-f33",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "compacted_bytes": 83,
+        "detail": "ledger and projection agree",
+        "reconciled": true
+      },
+      "recovery": {
+        "detail": "head and tail preserved in compaction",
+        "restored": true
+      },
+      "suspension": {
+        "applied": false,
+        "detail": "not required",
+        "required": false
+      },
+      "truthful_briefing": "Evidence/log growth bounded by compaction preserving head and tail.",
+      "truthful_state": "rows=300; compacted_bytes=83"
+    },
+    {
+      "fault_id": "f34",
+      "incident_record": {
+        "detail": "malicious retrieved content isolated as data",
+        "detected": true,
+        "incident_id": "inc-f34",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "authority_unchanged": true,
+        "detail": "ledger and projection agree",
+        "reconciled": true
+      },
+      "recovery": {
+        "detail": "no authority mutation occurred",
+        "restored": true
+      },
+      "suspension": {
+        "applied": false,
+        "detail": "not required",
+        "required": false
+      },
+      "truthful_briefing": "Malicious retrieved content never became authority; stored as evidence only.",
+      "truthful_state": "malicious retrieved text stored as evidence only; stop gate inactive; no authority effect"
+    },
+    {
+      "fault_id": "f35",
+      "incident_record": {
+        "detail": "prompt-injected command refused at authority boundary",
+        "detected": true,
+        "incident_id": "inc-f35",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "authority_unchanged": true,
+        "detail": "ledger and projection agree",
+        "reconciled": true
+      },
+      "recovery": {
+        "detail": "no directive recorded",
+        "restored": true
+      },
+      "suspension": {
+        "applied": false,
+        "detail": "not required",
+        "required": false
+      },
+      "truthful_briefing": "Prompt injection refused; real owner authority unchanged.",
+      "truthful_state": "injected command refused=True; stop_gate_active=False"
+    },
+    {
+      "fault_id": "f36",
+      "incident_record": {
+        "detail": "forged owner directive refused by signature check",
+        "detected": true,
+        "incident_id": "inc-f36",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "detail": "ledger and projection agree",
+        "directive_events": 0,
+        "reconciled": true
+      },
+      "recovery": {
+        "detail": "no forged directive recorded",
+        "restored": true
+      },
+      "suspension": {
+        "applied": false,
+        "detail": "not required",
+        "required": false
+      },
+      "truthful_briefing": "Forged owner directive refused; no directive event recorded.",
+      "truthful_state": "forged veto refused=True; directive_events=0"
+    },
+    {
+      "fault_id": "f37",
+      "incident_record": {
+        "detail": "STOP blocked new work; in-flight completed",
+        "detected": true,
+        "incident_id": "inc-f37",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "detail": "ledger and projection agree",
+        "reconciled": true,
+        "selection_blocked": true
+      },
+      "recovery": {
+        "detail": "STOP gate durable; RESUME required",
+        "restored": true
+      },
+      "suspension": {
+        "applied": true,
+        "reason": "STOP active; new work suspended",
+        "required": true,
+        "scope": "selection"
+      },
+      "truthful_briefing": "STOP blocked new selection; in-flight work completed without bypass.",
+      "truthful_state": "stop_active=True; inflight_completed=True; selection=WAITING"
+    },
+    {
+      "fault_id": "f38",
+      "incident_record": {
+        "detail": "vetoed candidate excluded from selection and dispatch",
+        "detected": true,
+        "incident_id": "inc-f38",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "detail": "ledger and projection agree",
+        "reconciled": true,
+        "vetoed_excluded": true
+      },
+      "recovery": {
+        "detail": "veto durable in control state",
+        "restored": true
+      },
+      "suspension": {
+        "applied": true,
+        "reason": "vetoed candidate suspended",
+        "required": true,
+        "scope": "candidate"
+      },
+      "truthful_briefing": "Veto during work excluded the candidate; dispatch refused.",
+      "truthful_state": "veto applied; selected=None; vetoed_excluded=True; dispatch_refused=False"
+    },
+    {
+      "fault_id": "f39",
+      "incident_record": {
+        "detail": "bad candidate refused at hypothesis boundary",
+        "detected": true,
+        "incident_id": "inc-f39",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "detail": "ledger and projection agree",
+        "ledger_events": 1,
+        "reconciled": true
+      },
+      "recovery": {
+        "detail": "no bad-candidate event recorded",
+        "restored": true
+      },
+      "suspension": {
+        "applied": true,
+        "reason": "bad candidate suspended",
+        "required": true,
+        "scope": "candidate"
+      },
+      "truthful_briefing": "Bad candidate refused; no lifecycle event recorded.",
+      "truthful_state": "bad candidate refused=True; ledger_events=1"
+    },
+    {
+      "fault_id": "f40",
+      "incident_record": {
+        "detail": "promotion attempted before required milestones",
+        "detected": true,
+        "incident_id": "inc-f40",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "detail": "ledger and projection agree",
+        "promotion_refused": true,
+        "reconciled": true
+      },
+      "recovery": {
+        "detail": "cycle remains at observed milestone",
+        "restored": true
+      },
+      "suspension": {
+        "applied": true,
+        "reason": "premature promotion suspended",
+        "required": true,
+        "scope": "cycle"
+      },
+      "truthful_briefing": "Bad promotion refused by the frozen lifecycle state machine.",
+      "truthful_state": "premature promotion refused=True"
+    },
+    {
+      "fault_id": "f41",
+      "incident_record": {
+        "detail": "release freeze recorded; promotion refused",
+        "detected": true,
+        "incident_id": "inc-f41",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "detail": "ledger and projection agree",
+        "frozen_stage": "FROZEN",
+        "reconciled": true
+      },
+      "recovery": {
+        "detail": "freeze durable in release store",
+        "restored": true
+      },
+      "suspension": {
+        "applied": true,
+        "reason": "frozen release suspended from promotion",
+        "required": true,
+        "scope": "release"
+      },
+      "truthful_briefing": "Release freeze recorded; promotion after freeze refused.",
+      "truthful_state": "release stage=FROZEN; promotion_after_freeze_refused=True"
+    },
+    {
+      "fault_id": "f42",
+      "incident_record": {
+        "detail": "release rolled back to prior release",
+        "detected": true,
+        "incident_id": "inc-f42",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "detail": "ledger and projection agree",
+        "last_event": "evolution_live.rolled_back",
+        "reconciled": true
+      },
+      "recovery": {
+        "detail": "rollback recorded; prior release pointer",
+        "restored": true
+      },
+      "suspension": {
+        "applied": true,
+        "reason": "rolled-back release suspended",
+        "required": true,
+        "scope": "release"
+      },
+      "truthful_briefing": "Rollback recorded; prior release pointer restored.",
+      "truthful_state": "cycle last_event=evolution_live.rolled_back"
+    },
+    {
+      "fault_id": "f43",
+      "incident_record": {
+        "detail": "release restored after rollback",
+        "detected": true,
+        "incident_id": "inc-f43",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "detail": "ledger and projection agree",
+        "last_event": "evolution_live.restored",
+        "reconciled": true
+      },
+      "recovery": {
+        "detail": "restore recorded; release pointer active",
+        "restored": true
+      },
+      "suspension": {
+        "applied": false,
+        "detail": "not required",
+        "required": false
+      },
+      "truthful_briefing": "Restore recorded after rollback; release pointer restored.",
+      "truthful_state": "cycle last_event=evolution_live.restored"
+    },
+    {
+      "fault_id": "f44",
+      "incident_record": {
+        "detail": "freeze/rollback/restore chain executed on isolated release",
+        "detected": true,
+        "incident_id": "inc-f44",
+        "kind": "fault_campaign",
+        "severity": "bounded"
+      },
+      "reconciliation": {
+        "detail": "ledger and projection agree",
+        "reconciled": true,
+        "stages": [
+          "PROMOTED",
+          "ROLLED_BACK",
+          "RESTORED"
+        ]
+      },
+      "recovery": {
+        "detail": "release restored after rollback",
+        "restored": true
+      },
+      "suspension": {
+        "applied": false,
+        "detail": "not required",
+        "required": false
+      },
+      "truthful_briefing": "Freeze, rollback, and restore proven on the kernel release controller.",
+      "truthful_state": "promoted=PROMOTED; rolled=ROLLED_BACK; restored=RESTORED"
+    }
+  ],
+  "schema": "jarvis-r12-fault-incidents-v1"
+}

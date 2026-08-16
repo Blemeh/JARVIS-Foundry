@@ -1,0 +1,40 @@
+{
+  "exit_code": 0,
+  "passed": true,
+  "schema": "jarvis-r12-static-v1",
+  "subgates": {
+    "bandit": {
+      "exit_code": 0,
+      "passed": true,
+      "raw_output": "R12_BANDIT_RAW.txt",
+      "raw_output_sha256": "39d7471a04a923f41473cf85bf262871ec80da9d2a28f8bcec85c81b4bd757c8",
+      "schema": "jarvis-r12-bandit-v1",
+      "wall_seconds": 0.549
+    },
+    "mypy": {
+      "exit_code": 0,
+      "passed": true,
+      "raw_output": "R12_MYPY_RAW.txt",
+      "raw_output_sha256": "90377c8fd97127580c93ac5740d596c9ebc9db94dafa6560ee11fe16b4460c62",
+      "schema": "jarvis-r12-mypy-v1",
+      "wall_seconds": 0.28
+    },
+    "ruff": {
+      "exit_code": 0,
+      "passed": true,
+      "raw_output": "R12_RUFF_RAW.txt",
+      "raw_output_sha256": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0",
+      "schema": "jarvis-r12-ruff-v1",
+      "wall_seconds": 10.161
+    },
+    "ruff_format": {
+      "exit_code": 0,
+      "passed": true,
+      "raw_output": "R12_RUFF_FORMAT_RAW.txt",
+      "raw_output_sha256": "edf21cd8e8c25193cfa247b2e526ee9ac52bb7214ee60ee9c5a4861ced328197",
+      "schema": "jarvis-r12-ruff_format-v1",
+      "wall_seconds": 0.236
+    }
+  },
+  "wall_seconds": 11.245
+}

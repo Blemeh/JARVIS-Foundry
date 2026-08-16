@@ -1,0 +1,68 @@
+{
+  "all_restart_resilience_passed": true,
+  "checkpoint": {
+    "decision_id": "decision-78fec4529dc1c8fc",
+    "events": 5,
+    "frozen_utc": "2026-08-16T20:00:00Z",
+    "index": 1,
+    "release_fingerprint": "35627d0782880f85effbabfd2a4afc0d361da843c2bec6502a555883deaeffbc",
+    "schema": "jarvis-r12-proving-checkpoint-v1"
+  },
+  "checkpoint_sha256": "4661fd0df2c1c305f2e0910c87e1c715a8e6bd4381f87d99cb327a02591522b9",
+  "deployed_release_frozen": true,
+  "fixed_utc": "2026-08-16T20:00:00Z",
+  "generated_utc": "2026-08-16T11:06:26Z",
+  "proving_window": {
+    "start_recommendation": "start after fresh independent final audit of the exact deployed release",
+    "status": "READY"
+  },
+  "release_fingerprint": "35627d0782880f85effbabfd2a4afc0d361da843c2bec6502a555883deaeffbc",
+  "schema": "jarvis-r12-proving-readiness-v1",
+  "simulated_restarts": [
+    {
+      "exit_code": 0,
+      "kind": "compaction_agent_death_terminal_close",
+      "passed": true,
+      "resume": {
+        "checkpoint_events": 5,
+        "consistent": true,
+        "events": 5,
+        "resume_index": 2
+      }
+    },
+    {
+      "exit_code": 0,
+      "kind": "hermes_restart",
+      "passed": true,
+      "resume": {
+        "checkpoint_events": 5,
+        "consistent": true,
+        "events": 5,
+        "resume_index": 2
+      }
+    },
+    {
+      "exit_code": 0,
+      "kind": "supervisor_restart",
+      "passed": true,
+      "resume": {
+        "checkpoint_events": 5,
+        "consistent": true,
+        "events": 5,
+        "resume_index": 2
+      }
+    },
+    {
+      "exit_code": 0,
+      "kind": "windows_restart",
+      "passed": true,
+      "resume": {
+        "checkpoint_events": 5,
+        "consistent": true,
+        "events": 5,
+        "resume_index": 2
+      }
+    }
+  ],
+  "wall_seconds": 1.053
+}

@@ -1,0 +1,194 @@
+{
+  "capabilities": {
+    "capability.files": {
+      "after_state_hash": "after000000000000000000000000000000000000000000000000000000000",
+      "before_state_hash": "before0000000000000000000000000000000000000000000000000000000000",
+      "capability_id": "capability.files",
+      "domain": "files",
+      "name": "Isolated file capability",
+      "probe_note": "r12 probe",
+      "proof_hash": "e18d6cbbc8691539716eb3609bfd260d8bba0daca8ba0d0a983c1f6387ebc434",
+      "reason": "probe succeeded",
+      "receipt_hash": "receipt0000000000000000000000000000000000000000000000000000000",
+      "reconciliation_hash": "c41262d1bd3f4a3d8fd230d322f5f04225392184a5d118bfc7f933101f8c5d18",
+      "status": "ACTIVE",
+      "system_id": "r12-proving",
+      "timeline": [
+        {
+          "event_id": "r9:capability.discovered:capability.files:discover",
+          "event_type": "capability.discovered",
+          "recorded_at": "2026-08-16T20:00:00Z",
+          "sequence": 1
+        },
+        {
+          "event_id": "r9:capability.probing:capability.files:probe",
+          "event_type": "capability.probing",
+          "recorded_at": "2026-08-16T20:00:00Z",
+          "sequence": 2
+        },
+        {
+          "event_id": "r9:capability.ready:capability.files:ready",
+          "event_type": "capability.ready",
+          "recorded_at": "2026-08-16T20:00:00Z",
+          "sequence": 3
+        },
+        {
+          "event_id": "r9:capability.active:capability.files:activate",
+          "event_type": "capability.active",
+          "recorded_at": "2026-08-16T20:00:00Z",
+          "sequence": 4
+        }
+      ]
+    }
+  },
+  "configuration": {
+    "env_vars": [
+      "JARVIS_R12_TEMP",
+      "R12_RECORD_EVIDENCE"
+    ],
+    "network_allowed": false,
+    "proving_layout": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r12-builder\\release-freeze"
+  },
+  "credential_metadata": {
+    "note": "no secret values stored; metadata-only broker",
+    "secret_count": 0
+  },
+  "db_wal": {},
+  "dependencies": {
+    "pip_list_json_exit_code": 0,
+    "pyproject": "src-independent package with dev extras; versions captured from venv"
+  },
+  "evidence": {
+    "files": {
+      "R12_ADOPTION_LADDER.json": "e91549e2483e822283d1548c24c4945c285fca6c879ff0c455004f42c096ee91",
+      "R12_ARTIFACT_MANIFEST.json": "9e5f2be39a898fbac8dac3d72d59ea1d02f5810f7a86bfe1e562f80f6d6b42b1",
+      "R12_BANDIT.json": "b6b7838e6b8a339158f09dd68a001513c8a9482cab20ae44a8fb49c94185909e",
+      "R12_BANDIT_RAW.txt": "39d7471a04a923f41473cf85bf262871ec80da9d2a28f8bcec85c81b4bd757c8",
+      "R12_BUILDER_REPORT.json": "f91ba23d3a9ddbce90f4cac14ce543cc9d3bf1746b56f019b2b4c89af8a4eeae",
+      "R12_C06_CONTROL.json": "1b1ae37d13f18d6d5155f7f660b726066750050b6dad910be1bbfaa34cbfe181",
+      "R12_CHECKPOINT_PERSISTENCE.json": "485601210f8234a7029403ca48e9e1231e33ae0da71a24d39ea1c159b9ac9038",
+      "R12_COMPARISON_MATRIX.json": "3c2871475bdc38b20bb08d028f0bd703b49543f28352ed75d1c07f43d46286f8",
+      "R12_FAULT_INCIDENTS.json": "f21cc0a4156fa7696f528855a856298b145b61c5b4d79331d106dde0880ee482",
+      "R12_FAULT_MATRIX.json": "49484d67a30f0acb5db3f5eacbc3bbd53c11182bf5860e9fba754d94022e13c6",
+      "R12_FINAL_AUDIT_PACKAGE.json": "a41949c248ef125089d1542a4e9664f43b1407420d6de4b7089d6651b997ebc6",
+      "R12_FINAL_AUDIT_VERDICT_DSV4.json": "ddafc28a42f2876688ac2b7d243a6011ec79031d6b426957b4f9798a7ebe3058",
+      "R12_FINDINGS.json": "49b57d415fb365be893850cd718bb7fe235facefd27bd3bb6da3b28efa9f49ef",
+      "R12_FOCUSED_TESTS.json": "f85e6801fa0e1ca43de48dd70d217e1740128e366ef8913b47803808a9defbe5",
+      "R12_FOCUSED_TESTS_JUNIT.xml": "b3bae905ce2dca3a215b6f05e530dec5060eb3f83bc4e2f2ad2adefef36a9737",
+      "R12_FOCUSED_TESTS_RAW.txt": "45bfa02eb2bcc205181c91eac5bc5d585a911d72bcfda4459f29db25af6b48c9",
+      "R12_FULL_SUITE.json": "1592ec986328d1f7caad1c1464e429252bbb1496c7d7146ddeb82280d538b59d",
+      "R12_FULL_SUITE_COMBINED_JUNIT.xml": "9218ef2413b77c418e8967dbbeccc540493571b93494f526663d5b45edac587d",
+      "R12_FULL_SUITE_PART1_JUNIT.xml": "8758156f7c09e3f55fc9ea8f1c645fd180f5bb3194a4add826c62ec91199ede5",
+      "R12_FULL_SUITE_PART2_JUNIT.xml": "cdf8ddc09c26298a883ceafd0612c5be9611ad109da5d93c2260ff05f3e9bab8",
+      "R12_FULL_SUITE_RAW.txt": "bd45f0c4963c5d2b3e47a7a1a94222f4805ce5dd60bf9961218a965ac37bac3f",
+      "R12_G01_COMPARISON.json": "1769fd9dbcbee9a0eee43356a5908914c49c4c6b74d6cb65c1cb8481630abe72",
+      "R12_G02_ADOPTION.json": "f3a515a089dc615cf0d043beaa1ca2441feceefea313b92312aee7d9fe2c8bd1",
+      "R12_G03_FREEZE_RESTORE.json": "9861d9c8c74f1495f87bdef9e8b3ee2341d2e987db8dc98dea4d9e4367607f63",
+      "R12_G04_FAULTS.json": "ce508798832597ff0b0d7f9ba5302bec6452f9bb42df6ced1757c41f41fe8a1c",
+      "R12_G05_PROVING.json": "11e670e06ac2b019c2918a65096ac5fc7a5bd9759ead41da9fed34cc3f9db6d6",
+      "R12_G06_AUDIT.json": "5bb628ae34158c7083d146ef44f8d8fba1f857f112e425aec41cdfe54876e248",
+      "R12_LIVE_GUARD_AFTER.json": "a8301879d9f9099c90dfa41e30652a2168875111914da907f7f4c8e55284a4e9",
+      "R12_LIVE_GUARD_BEFORE.json": "72fc2d6abfb09fbe6f35c99ecdcd7037e5d48035f4b2dd902b9edf7104bf8c71",
+      "R12_LIVE_GUARD_COMPARISON.json": "20c1e199d222e7fbbde78a6aef12e88e0a6a4be43c77f7427ca60d01cbe2fb7b",
+      "R12_LIVE_GUARD_FULLWINDOW_AFTER.json": "124293df2e21270c3649dd579625993527de5096ea5a685e646ba40e1a7c8a1c",
+      "R12_LIVE_GUARD_FULLWINDOW_BEFORE.json": "d5055cdcfa804ec7d2db67e91c460d6730bb52ed65c2a0b0b3d30283913834ad",
+      "R12_LIVE_GUARD_FULLWINDOW_COMPARISON.json": "488016d27b8b96de8cdd1f0e4979c300f3ca48d7b9ba0ed86668c69553ade455",
+      "R12_MYPY.json": "e8ee6c3f6c020d42d1a8c5970aac6d8f7cb59a303a4629128ca8982fa16e3b66",
+      "R12_MYPY_RAW.txt": "90377c8fd97127580c93ac5740d596c9ebc9db94dafa6560ee11fe16b4460c62",
+      "R12_PRIVACY.json": "2bc101c74f7ef0c1906b844828533cd087d3dd4c9b8a73b9b58f05f4b9dfcb98",
+      "R12_PROGRESS_01.json": "7ed887e0685260c0752904896786ca20b37142c40cc5d034dec100e608dc5973",
+      "R12_PROGRESS_02.json": "d68031182c66857529f2ed6932a87f597f346cc90f365838271b888cfb5f1722",
+      "R12_PROGRESS_03.json": "19e2b2fe81bb17aee8d2943cd0251aa9fd637ad8ce1234188db096c573ba206c",
+      "R12_PROGRESS_04.json": "26c9d84c045b3999c595922b6c4d5b0eacde34db91c77c70547a968466ad3682",
+      "R12_PROGRESS_05.json": "08647532e8863205dff87962ddb8b2517ec9d691bce7facbd8d30cbfe722b393",
+      "R12_PROGRESS_06.json": "e2029309fab14684b55c8b42c1c37e82eaade330baa70ad8c787ec75fc994bbc",
+      "R12_PROGRESS_07.json": "1913313535e69b550b695204f2b0cf95d8d121ee296cb0339e487875fe4d4120",
+      "R12_PROGRESS_08.json": "d0cf6065f28675824f9833b60a6451c2c967ef938c62331ce2ca19c559e5f660",
+      "R12_PROGRESS_09.json": "5c2ace570df0a1f3f0f88e3ed61ea0827de3984d67dab1cab83d232426ab4892",
+      "R12_PROGRESS_10.json": "075974304b5de60ceebcaf267664c5be83858529cd8f6ea597b519ad5d7feb79",
+      "R12_PROGRESS_11.json": "d82e87a22734e05cb1290e5e05693030f866994d076429bdc244ddbf0a14e49e",
+      "R12_PROGRESS_12.json": "fb2ea79296a0bdc80fca515b3ecf891c94d6e55bd1eb06b4384ebde44483a790",
+      "R12_PROGRESS_13.json": "3f8310aa619ca2051b33d225b933ba91319138b4c7c9fec95cfa2c568a48219b",
+      "R12_PROGRESS_14.json": "8afcd6431dd64be706b73b0de9e44982ba9ad091eb66909f641d17aecdc0db57",
+      "R12_PROVING_READINESS.json": "485601210f8234a7029403ca48e9e1231e33ae0da71a24d39ea1c159b9ac9038",
+      "R12_RELEASE_FREEZE.json": "a18a1f0d888dd55e5abea5c29316c53a2439f31a792f75105b75a8174916e73c",
+      "R12_RESTORE_PROOF.json": "b2da7c1ce08b05865b93f2351294e39b3d5073bffc974e72cfe254c6beeb5ea1",
+      "R12_ROLLBACK_PACKAGE.json": "db8e883a9e039722eacf830fbbfb80a5c34ac09006db65c6649d11de76265a20",
+      "R12_RUFF.json": "a294eaff9932825a3ce6b8a7a435d7e017991908253e411ecb3967a8f0410408",
+      "R12_RUFF_FORMAT.json": "7367f5557edff8003160f5cb486cc70e1e8ebd8848f412c163d968086e83f559",
+      "R12_RUFF_FORMAT_RAW.txt": "edf21cd8e8c25193cfa247b2e526ee9ac52bb7214ee60ee9c5a4861ced328197",
+      "R12_RUFF_RAW.txt": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0",
+      "R12_SECRET_SCAN.json": "af40aef1da6e51f6d779b540a2888f72ca254cea22517786729f8af2cae811d5",
+      "R12_SECRET_SCAN_RAW.json": "78426d2ff66533e28915f728254986d1a4134f9d131a9635347fcc36917f1847",
+      "R12_STATIC.json": "184cd61d1c333f3c7b731210e7baad624a610e2e08bd49773ec97b71ee665108",
+      "R12_WAITING.json": "3a1ee351c81d244cd95373c58cfbf2795e473dc6b3d7e1adf5f42fcbabb5b629"
+    },
+    "tree_hash": "673235671239aebf533714ca4a0ad79711511734c610047b5a7d69e0775491b0"
+  },
+  "executable": {
+    "executable": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r3-venv\\Scripts\\python.exe",
+    "executable_sha256": "935016795f3e6908e75acbc2040a01e2e4cdb494a57c42f63a0d6eedb2372256",
+    "version": "Python 3.13.5"
+  },
+  "fixed_utc": "2026-08-16T20:00:00Z",
+  "generated_utc": "2026-08-16T11:06:00Z",
+  "health": {
+    "ledger_chain_valid": true,
+    "portfolio_events": 4
+  },
+  "leases": {
+    "lease_count": 0,
+    "note": "freeze snapshot has no active leases"
+  },
+  "ports": {
+    "note": "staged simulation uses no ports",
+    "used_by_r12": []
+  },
+  "queues": {
+    "note": "isolated worker queues under proving root",
+    "queue_files": []
+  },
+  "release_pointer": {
+    "previous_recoverable_release": "v8-pre-promotion-93a3ddc",
+    "protected_main_head": "2f7360e",
+    "remastered_frozen_base": "c76d92df55b6ec552b68379479ccd80f972c303c"
+  },
+  "restore_proof": {
+    "mutated_tree_hash": "328b21bc13a4b6ae891dca0142764f6e875910d8aca08b5b7a2c2a5b77d671f6",
+    "original_tree_hash": "43f4048c7894532304b37695ddb75ba66e67230779addb413c8dce03f335a74c",
+    "passed": true,
+    "restore_smoke": {
+      "exit_code": 0,
+      "output": "Event"
+    },
+    "restored_exactly": true,
+    "restored_tree_hash": "43f4048c7894532304b37695ddb75ba66e67230779addb413c8dce03f335a74c",
+    "scope": "isolated copies only; protected main untouched"
+  },
+  "rollback_package": {
+    "previous_recoverable_release": "v8-pre-promotion-93a3ddc",
+    "rollback_package": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-r12-builder\\rollback-package\\v7-recoverable-release.zip",
+    "rollback_package_sha256": "8fd2a0b5ab031b58f79e4634aad2b625d142b70704fddff562ee0e97dbb286a3",
+    "rollback_package_size": 1417531
+  },
+  "scheduled_tasks": [
+    {
+      "exists": true,
+      "status": "Running",
+      "task_name": "JARVIS-Foundry-Supervisor"
+    },
+    {
+      "exists": true,
+      "status": "Ready",
+      "task_name": "Hermes_Gateway"
+    }
+  ],
+  "schema": "jarvis-r12-release-freeze-v1",
+  "source": {
+    "file_count": 222,
+    "path": "src/jarvis_foundry",
+    "repo_head": "c76d92df55b6ec552b68379479ccd80f972c303c",
+    "tree_hash": "ef426a85d0f201905e0138cbcdd41918f08eaf3cac917765edd659a962a17e09"
+  },
+  "wall_seconds": 3.126
+}

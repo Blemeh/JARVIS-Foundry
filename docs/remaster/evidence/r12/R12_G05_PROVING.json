@@ -1,0 +1,15 @@
+{
+  "exit_code": 0,
+  "passed": true,
+  "release_frozen": true,
+  "restart_resilience_passed": true,
+  "schema": "jarvis-r12-g05-proving-v1",
+  "simulated_restart_kinds": [
+    "compaction_agent_death_terminal_close",
+    "hermes_restart",
+    "supervisor_restart",
+    "windows_restart"
+  ],
+  "waiting_records_honest": true,
+  "wall_seconds": 0.018
+}

@@ -1,0 +1,60 @@
+{
+  "captured_utc": "2026-08-16T08:17:44.2172737Z",
+  "files": {
+    "foundry-profile.yaml": {
+      "sha256": "732d3040c8b8aef81ee5026ba5e44a46ac73c8f6ca7fd81eb2561a061ac65f0a",
+      "size": 293
+    },
+    "foundry.db": {
+      "sha256": "4a1fe7e7932e4c86104e0d118504f9c71d6d99904568747a19b0b8a3314d18f8",
+      "size": 50401280
+    },
+    "foundry.db-shm": {
+      "sha256": "f17e10e41564613d015613c0d3bee67dae3f7c813640f390ce8a1555e2ae1739",
+      "size": 32768
+    },
+    "foundry.db-wal": {
+      "sha256": "3e3276ef0baecc7fb5ec91ad42a342a0f564221e7e0351f5e8f66eae853b65f0",
+      "size": 786952
+    }
+  },
+  "protected_main": {
+    "head": "2f7360e742559e051109e04ef7f3a82cc64cc2d2",
+    "path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry",
+    "status_sha256": "a5dbb95de1154038d12901d9f6e7c1d1a6d143fad51ff234f7b4fe30b4368611"
+  },
+  "protected_supervisor_processes": [
+    {
+      "command_sha256": "824e09a3ea8d12f38d8fe7fa93cf602e0229c190dea3692e023837963cb9a8e9",
+      "creation_date": "08/16/2026 01:43:05",
+      "executable": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry\\.venv\\Scripts\\python.exe",
+      "pid": 15068
+    },
+    {
+      "command_sha256": "824e09a3ea8d12f38d8fe7fa93cf602e0229c190dea3692e023837963cb9a8e9",
+      "creation_date": "08/16/2026 01:43:05",
+      "executable": "C:\\Python313\\python.exe",
+      "pid": 5252
+    }
+  ],
+  "protected_tasks": [
+    {
+      "exists": true,
+      "status": "Running",
+      "task_name": "JARVIS-Foundry-Supervisor",
+      "xml_sha256": "7c5ea4fbf5158610cb8016a8b91d10303e5b6f15a615085f52e12a9e1ab9a880"
+    },
+    {
+      "exists": true,
+      "status": "Ready",
+      "task_name": "Hermes_Gateway",
+      "xml_sha256": "5d2a3789b1a8f5ab91bc6d319af46515615892266a6186f0c01a0e89263cca44"
+    }
+  ],
+  "vault": {
+    "file_count": 95,
+    "manifest_sha256": "7f453620792a1d9b63b45af9ce83e0b00fe7a3c59ac5f5013434bf879eab6aa8",
+    "path": "C:\\Users\\b\\Blendi",
+    "total_bytes": 150856
+  }
+}

@@ -1,0 +1,386 @@
+{
+  "file_count": 76,
+  "files": [
+    {
+      "path": "docs/remaster/evidence/r12/R12_ADOPTION_LADDER.json",
+      "sha256": "e91549e2483e822283d1548c24c4945c285fca6c879ff0c455004f42c096ee91",
+      "size": 5162
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_BANDIT.json",
+      "sha256": "b6b7838e6b8a339158f09dd68a001513c8a9482cab20ae44a8fb49c94185909e",
+      "size": 237
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_BANDIT_RAW.txt",
+      "sha256": "39d7471a04a923f41473cf85bf262871ec80da9d2a28f8bcec85c81b4bd757c8",
+      "size": 774
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_C06_CONTROL.json",
+      "sha256": "1b1ae37d13f18d6d5155f7f660b726066750050b6dad910be1bbfaa34cbfe181",
+      "size": 233
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_CHECKPOINT_PERSISTENCE.json",
+      "sha256": "0803c9558f6aed548ce146f30133f0fcf4abb855c315683f5e533d71aa145817",
+      "size": 1873
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_COMPARISON_MATRIX.json",
+      "sha256": "3c2871475bdc38b20bb08d028f0bd703b49543f28352ed75d1c07f43d46286f8",
+      "size": 7449
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_FAULT_INCIDENTS.json",
+      "sha256": "f21cc0a4156fa7696f528855a856298b145b61c5b4d79331d106dde0880ee482",
+      "size": 38627
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_FAULT_MATRIX.json",
+      "sha256": "49484d67a30f0acb5db3f5eacbc3bbd53c11182bf5860e9fba754d94022e13c6",
+      "size": 72544
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_FINAL_AUDIT_PACKAGE.json",
+      "sha256": "a41949c248ef125089d1542a4e9664f43b1407420d6de4b7089d6651b997ebc6",
+      "size": 604
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_FINAL_AUDIT_VERDICT_DSV4.json",
+      "sha256": "ddafc28a42f2876688ac2b7d243a6011ec79031d6b426957b4f9798a7ebe3058",
+      "size": 24219
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_FOCUSED_TESTS.json",
+      "sha256": "f85e6801fa0e1ca43de48dd70d217e1740128e366ef8913b47803808a9defbe5",
+      "size": 472
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_FOCUSED_TESTS_JUNIT.xml",
+      "sha256": "b3bae905ce2dca3a215b6f05e530dec5060eb3f83bc4e2f2ad2adefef36a9737",
+      "size": 997
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_FOCUSED_TESTS_RAW.txt",
+      "sha256": "45bfa02eb2bcc205181c91eac5bc5d585a911d72bcfda4459f29db25af6b48c9",
+      "size": 81
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_FULL_SUITE.json",
+      "sha256": "1592ec986328d1f7caad1c1464e429252bbb1496c7d7146ddeb82280d538b59d",
+      "size": 1057
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_FULL_SUITE_COMBINED_JUNIT.xml",
+      "sha256": "9218ef2413b77c418e8967dbbeccc540493571b93494f526663d5b45edac587d",
+      "size": 195637
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_FULL_SUITE_PART1_JUNIT.xml",
+      "sha256": "8758156f7c09e3f55fc9ea8f1c645fd180f5bb3194a4add826c62ec91199ede5",
+      "size": 194899
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_FULL_SUITE_PART2_JUNIT.xml",
+      "sha256": "cdf8ddc09c26298a883ceafd0612c5be9611ad109da5d93c2260ff05f3e9bab8",
+      "size": 997
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_FULL_SUITE_RAW.txt",
+      "sha256": "bd45f0c4963c5d2b3e47a7a1a94222f4805ce5dd60bf9961218a965ac37bac3f",
+      "size": 3582
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_G01_COMPARISON.json",
+      "sha256": "1769fd9dbcbee9a0eee43356a5908914c49c4c6b74d6cb65c1cb8481630abe72",
+      "size": 498
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_G02_ADOPTION.json",
+      "sha256": "f3a515a089dc615cf0d043beaa1ca2441feceefea313b92312aee7d9fe2c8bd1",
+      "size": 297
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_G03_FREEZE_RESTORE.json",
+      "sha256": "c95931f009453aab2d0e1cf3ee115011452cd3f04ee7743dd953acb65e18a5f1",
+      "size": 331
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_G04_FAULTS.json",
+      "sha256": "ce508798832597ff0b0d7f9ba5302bec6452f9bb42df6ced1757c41f41fe8a1c",
+      "size": 499
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_G05_PROVING.json",
+      "sha256": "6db7a094f6d34aa99bc60755f47d1a933c4f3f2d80060f730c6ce79d45124bdf",
+      "size": 368
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_G06_AUDIT.json",
+      "sha256": "5bb628ae34158c7083d146ef44f8d8fba1f857f112e425aec41cdfe54876e248",
+      "size": 380
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_LIVE_GUARD_AFTER.json",
+      "sha256": "a8301879d9f9099c90dfa41e30652a2168875111914da907f7f4c8e55284a4e9",
+      "size": 2106
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_LIVE_GUARD_BEFORE.json",
+      "sha256": "72fc2d6abfb09fbe6f35c99ecdcd7037e5d48035f4b2dd902b9edf7104bf8c71",
+      "size": 2106
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_LIVE_GUARD_COMPARISON.json",
+      "sha256": "20c1e199d222e7fbbde78a6aef12e88e0a6a4be43c77f7427ca60d01cbe2fb7b",
+      "size": 1409
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_LIVE_GUARD_FULLWINDOW_AFTER.json",
+      "sha256": "124293df2e21270c3649dd579625993527de5096ea5a685e646ba40e1a7c8a1c",
+      "size": 2106
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_LIVE_GUARD_FULLWINDOW_BEFORE.json",
+      "sha256": "d5055cdcfa804ec7d2db67e91c460d6730bb52ed65c2a0b0b3d30283913834ad",
+      "size": 2601
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_LIVE_GUARD_FULLWINDOW_COMPARISON.json",
+      "sha256": "488016d27b8b96de8cdd1f0e4979c300f3ca48d7b9ba0ed86668c69553ade455",
+      "size": 1330
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_MYPY.json",
+      "sha256": "e8ee6c3f6c020d42d1a8c5970aac6d8f7cb59a303a4629128ca8982fa16e3b66",
+      "size": 232
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_MYPY_RAW.txt",
+      "sha256": "90377c8fd97127580c93ac5740d596c9ebc9db94dafa6560ee11fe16b4460c62",
+      "size": 44
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_PRIVACY.json",
+      "sha256": "2bc101c74f7ef0c1906b844828533cd087d3dd4c9b8a73b9b58f05f4b9dfcb98",
+      "size": 376
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_PROVING_READINESS.json",
+      "sha256": "0803c9558f6aed548ce146f30133f0fcf4abb855c315683f5e533d71aa145817",
+      "size": 1873
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_RELEASE_FREEZE.json",
+      "sha256": "32a10be43c32adab47292f93eadb30d840a80cfcaca020d5ec6e30bd8a264fea",
+      "size": 10952
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_RESTORE_PROOF.json",
+      "sha256": "b2da7c1ce08b05865b93f2351294e39b3d5073bffc974e72cfe254c6beeb5ea1",
+      "size": 465
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_ROLLBACK_PACKAGE.json",
+      "sha256": "db8e883a9e039722eacf830fbbfb80a5c34ac09006db65c6649d11de76265a20",
+      "size": 330
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_RUFF.json",
+      "sha256": "a294eaff9932825a3ce6b8a7a435d7e017991908253e411ecb3967a8f0410408",
+      "size": 234
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_RUFF_FORMAT.json",
+      "sha256": "7367f5557edff8003160f5cb486cc70e1e8ebd8848f412c163d968086e83f559",
+      "size": 247
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_RUFF_FORMAT_RAW.txt",
+      "sha256": "edf21cd8e8c25193cfa247b2e526ee9ac52bb7214ee60ee9c5a4861ced328197",
+      "size": 28
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_RUFF_RAW.txt",
+      "sha256": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0",
+      "size": 20
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_SECRET_SCAN.json",
+      "sha256": "af40aef1da6e51f6d779b540a2888f72ca254cea22517786729f8af2cae811d5",
+      "size": 302
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_SECRET_SCAN_RAW.json",
+      "sha256": "78426d2ff66533e28915f728254986d1a4134f9d131a9635347fcc36917f1847",
+      "size": 565
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_STATIC.json",
+      "sha256": "184cd61d1c333f3c7b731210e7baad624a610e2e08bd49773ec97b71ee665108",
+      "size": 1252
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_WAITING.json",
+      "sha256": "5bba951c674367ecabf67fdce57d3813d878d304ee8d76618b4fca5dd6e3ba97",
+      "size": 644
+    },
+    {
+      "path": "scripts/remaster/r12/adoption_ladder.py",
+      "sha256": "af2e08f377138d06eb9c6a90536014aa3665040c31b08fde4aff3af40a27af6b",
+      "size": 11387
+    },
+    {
+      "path": "scripts/remaster/r12/build_evidence.py",
+      "sha256": "62fe69a7994b9d3b722ea808055e1b4689b26c9d1f81d626d9675a78cd7c7a8a",
+      "size": 22379
+    },
+    {
+      "path": "scripts/remaster/r12/checkpoint.py",
+      "sha256": "dda37a5e1cc4a082380d7592b2b8cc6a1127c5b96be37a23ca4c9f95d396e22d",
+      "size": 616
+    },
+    {
+      "path": "scripts/remaster/r12/common.py",
+      "sha256": "bca33c30c1bf62fc6896df641ab7f02c8302c82e5510bea560353a32b6e4933a",
+      "size": 6053
+    },
+    {
+      "path": "scripts/remaster/r12/comparison.py",
+      "sha256": "57438402c89906fc45514d1c69d01bb2762494fdcf0766986cac009e07092d06",
+      "size": 7925
+    },
+    {
+      "path": "scripts/remaster/r12/fault_campaign.py",
+      "sha256": "44ae5ca6754f78846a5527ba8b0288cb2634a07c55954e485dca94a418720562",
+      "size": 3003
+    },
+    {
+      "path": "scripts/remaster/r12/focused_tests.py",
+      "sha256": "ebe7984d4a6ad3e9053e1ccb496b12969b29ad0f2dc080906aac5130bc1157b6",
+      "size": 1554
+    },
+    {
+      "path": "scripts/remaster/r12/full_suite.py",
+      "sha256": "8cdeb7472797e409759d9fdcf545991f415aa06ca5eb41bc4181b1861f59f51a",
+      "size": 3564
+    },
+    {
+      "path": "scripts/remaster/r12/gate_g01_comparison.py",
+      "sha256": "28213a8d3c7adbad98054256b98a0b0c65e1eb2408b53a532d2f83dfd97a8bb3",
+      "size": 1502
+    },
+    {
+      "path": "scripts/remaster/r12/gate_g02_adoption.py",
+      "sha256": "c42d131d481a46b99accebdc6f9d38f54e6943c91971aba7c187f9dc1895f343",
+      "size": 1230
+    },
+    {
+      "path": "scripts/remaster/r12/gate_g03_freeze_restore.py",
+      "sha256": "69b71eaef87455c1c21a30a50413ba1733cf3895bff5e894da89ddc27d107804",
+      "size": 1661
+    },
+    {
+      "path": "scripts/remaster/r12/gate_g04_faults.py",
+      "sha256": "776c9013c74b5cbea70b4b0fc291fe7019f5c24287593c93719158a1c6239522",
+      "size": 1701
+    },
+    {
+      "path": "scripts/remaster/r12/gate_g05_proving.py",
+      "sha256": "ba8d741fbf542d31659840cdab1d82637ea80fe5884b3696f481276fca107242",
+      "size": 1365
+    },
+    {
+      "path": "scripts/remaster/r12/gate_g06_audit.py",
+      "sha256": "a0d8afdf1cc3b27c602d84a93224922a0318e02e2194e6bdffcfa54fa020db03",
+      "size": 2245
+    },
+    {
+      "path": "scripts/remaster/r12/live_guard.py",
+      "sha256": "9dc547891ada51661bc6087ec5a2ad11f8bdfeb27f9bd0c1d443076426aacbb7",
+      "size": 10578
+    },
+    {
+      "path": "scripts/remaster/r12/privacy_gate.py",
+      "sha256": "08eec816ef49282e740fcc6746a48319035954595f360e793cd7b4b09eaf628a",
+      "size": 2355
+    },
+    {
+      "path": "scripts/remaster/r12/proving_window.py",
+      "sha256": "fb10262142fc31f28b403f06067efd060c85ef1b009cf06204e896101edce855",
+      "size": 5292
+    },
+    {
+      "path": "scripts/remaster/r12/release_freeze.py",
+      "sha256": "b3ac88e0bd98c0d841c20bd67044320bf24ee69c17ae77bbb015327f83c34e5d",
+      "size": 9693
+    },
+    {
+      "path": "scripts/remaster/r12/remastered_harness.py",
+      "sha256": "aa23f61758bd468996b31f5bbecdfbf80e2c3c6d57f40143753c02ba9b6604a9",
+      "size": 6646
+    },
+    {
+      "path": "scripts/remaster/r12/secret_scan.py",
+      "sha256": "36e99d2f6f173c00d5ead525c231b1e3f1f33025f1bd41aeb0e418e28ba924e6",
+      "size": 3946
+    },
+    {
+      "path": "scripts/remaster/r12/static.py",
+      "sha256": "246989de31f5c98b9d7e5933144e235340d48eb129e30f0e2efe64bc7783e949",
+      "size": 2550
+    },
+    {
+      "path": "scripts/remaster/r12/v7_harness.py",
+      "sha256": "edf6a45e9d018d8d61a1c2554d012e5a9d50db1394460e8e4ab2099d12c8cdcd",
+      "size": 7892
+    },
+    {
+      "path": "src/jarvis_foundry/fault_campaign/__init__.py",
+      "sha256": "5c477fc3bc02de75e2af2583fca38db0fba46d419c9f186972023896b35fd3ba",
+      "size": 533
+    },
+    {
+      "path": "src/jarvis_foundry/fault_campaign/harness.py",
+      "sha256": "e89070d2670a153287b9d5e2999aae089512677a8d5bfd403a1ef28c4dcf3f19",
+      "size": 3260
+    },
+    {
+      "path": "src/jarvis_foundry/fault_campaign/isolation.py",
+      "sha256": "13425b5becb7ede3236cc7adfb3c4a645d98e4424f311e4ced602ee071489e95",
+      "size": 11932
+    },
+    {
+      "path": "src/jarvis_foundry/fault_campaign/records.py",
+      "sha256": "373cdad9cf1a40cbabf1887631e82b37a3cfbe800527e43fbc161bb47f5fd14e",
+      "size": 2005
+    },
+    {
+      "path": "src/jarvis_foundry/fault_campaign/scenarios.py",
+      "sha256": "671e7866baf50c0ddb96ab63feb16bcc0a333260a1fe2af48870af860d097100",
+      "size": 94525
+    },
+    {
+      "path": "src/jarvis_foundry/fault_campaign/worker_sim.py",
+      "sha256": "c5fac90a58e9fcd91f421862f986180d68eb09c397ed9c7d670073d0c07b37ea",
+      "size": 4003
+    },
+    {
+      "path": "tests/remaster/r12/test_fault_campaign.py",
+      "sha256": "1bb7c7d45da38de1b8ae175710785b2da14f2953a37058612eea9c0296fb1df0",
+      "size": 3438
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_BUILDER_REPORT.json",
+      "sha256": "SELF_REFERENTIAL_REPORT",
+      "size": 8739
+    },
+    {
+      "path": "docs/remaster/evidence/r12/R12_FINDINGS.json",
+      "sha256": "49b57d415fb365be893850cd718bb7fe235facefd27bd3bb6da3b28efa9f49ef",
+      "size": 5220
+    }
+  ],
+  "schema": "jarvis-r12-artifact-manifest-v1"
+}

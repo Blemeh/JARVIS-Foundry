@@ -1,0 +1,11 @@
+{
+  "exit_code": 0,
+  "freeze_complete": true,
+  "missing_fields": [],
+  "passed": true,
+  "restore_proof_passed": true,
+  "restored_exactly": true,
+  "rollback_package_sha256": "8fd2a0b5ab031b58f79e4634aad2b625d142b70704fddff562ee0e97dbb286a3",
+  "schema": "jarvis-r12-g03-freeze-restore-v1",
+  "wall_seconds": 0.001
+}

@@ -1,0 +1,19 @@
+{
+  "all_records_complete": true,
+  "c06": {
+    "forged_directive_isolated": true,
+    "malicious_content_never_authority": true,
+    "prompt_injection_isolated": true,
+    "schema": "jarvis-r12-c06-control-v1",
+    "stop_never_bypassed": true,
+    "veto_never_bypassed": true
+  },
+  "control_guards_ok": true,
+  "exit_code": 0,
+  "failed_faults": 0,
+  "fault_count": 44,
+  "passed": true,
+  "passed_faults": 44,
+  "schema": "jarvis-r12-g04-faults-v1",
+  "wall_seconds": 0.016
+}

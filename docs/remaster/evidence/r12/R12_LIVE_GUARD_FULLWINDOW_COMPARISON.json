@@ -1,0 +1,38 @@
+{
+  "after": "2026-08-16T08:17:12.7687739Z",
+  "before": "2026-08-16T07:59:05.8021278Z",
+  "file_unchanged": {
+    "foundry-profile.yaml": true,
+    "foundry.db": false
+  },
+  "live_db_provenance": {
+    "after_event_count": 72830,
+    "before_event_count": 72614,
+    "event_delta": 216,
+    "extra_event_types": [
+      "supervisor.heartbeat"
+    ],
+    "extra_rows_supervisor_only": true,
+    "historical_rows_preserved_unchanged": true,
+    "r12_attributable_mutation": false,
+    "testable": true
+  },
+  "live_wal_activity_expected": {
+    "foundry.db-shm": {
+      "after_sha256": "399e4c6fb635a63a41e36fe5669d843db5a01f0f95cb31921d8990e28c3ec51b",
+      "before_sha256": "fc56852ad5c730bb5e35b256bf5c26ef7340cbc24a8557cf6669ce430054dd9e"
+    },
+    "foundry.db-wal": {
+      "after_sha256": "5d81ef34cdea916a3ea4d3db6a07004f92d2fcec1969a76e9aa1c691b58a5600",
+      "before_sha256": "7775168986d8cc2943e90780a0b2de0a8ef66c69be1cd831cbed019fe2f586a9"
+    }
+  },
+  "process_command_multiset_unchanged": false,
+  "process_restart_observation": "protected command set changed",
+  "processes_unchanged": false,
+  "protected_main_unchanged": true,
+  "protected_state_unchanged": false,
+  "schema": "jarvis-r12-live-guard-comparison-v1",
+  "tasks_unchanged": true,
+  "vault_unchanged": true
+}

@@ -1,0 +1,175 @@
+{
+  "fixed_utc": "2026-08-16T20:00:00Z",
+  "generated_utc": "2026-08-16T07:57:30Z",
+  "passed": true,
+  "rung_count": 6,
+  "rungs": [
+    {
+      "checks": [
+        {
+          "name": "protected_main_head_stable",
+          "observed": "2f7360e742559e051109e04ef7f3a82cc64cc2d2",
+          "passed": true
+        },
+        {
+          "name": "protected_main_status_readonly",
+          "observed": 6,
+          "passed": true
+        },
+        {
+          "name": "isolated_workspace_unchanged",
+          "observed": "efd3ebf4c958562117b596b247a5e33739b8a54e57c3df5137cd890ab0aae3ad",
+          "passed": true
+        }
+      ],
+      "evidence": {
+        "evidence_utc": "2026-08-16T20:00:00Z",
+        "workspace_tree_hash": "efd3ebf4c958562117b596b247a5e33739b8a54e57c3df5137cd890ab0aae3ad"
+      },
+      "position": 1,
+      "previous_rung_passed": true,
+      "rung": "READ_ONLY",
+      "status": "PASS",
+      "transition_ok": true,
+      "transition_requires_previous_pass": true
+    },
+    {
+      "checks": [
+        {
+          "name": "shadow_decision_recorded",
+          "observed": "SELECTED",
+          "passed": true
+        },
+        {
+          "name": "source_unchanged_by_shadow",
+          "observed": "e4b56b30733ac6621146eb67fc39fecc9ad8da43e73dd07938dc6aba16fdc599",
+          "passed": true
+        }
+      ],
+      "evidence": {
+        "evidence_utc": "2026-08-16T20:00:00Z",
+        "workspace_tree_hash": "3f23cbe5652833bfb7bada5eac0a964639af46ae06f231b7e2ad566d5d5f18d0"
+      },
+      "position": 2,
+      "previous_rung_passed": true,
+      "rung": "SHADOW",
+      "status": "PASS",
+      "transition_ok": true,
+      "transition_requires_previous_pass": true
+    },
+    {
+      "checks": [
+        {
+          "name": "capability_activated_with_proof",
+          "observed": "ACTIVE",
+          "passed": true
+        },
+        {
+          "name": "effect_recorded_in_isolated_ledger",
+          "observed": 4,
+          "passed": true
+        }
+      ],
+      "evidence": {
+        "evidence_utc": "2026-08-16T20:00:00Z",
+        "workspace_tree_hash": "3f23cbe5652833bfb7bada5eac0a964639af46ae06f231b7e2ad566d5d5f18d0"
+      },
+      "position": 3,
+      "previous_rung_passed": true,
+      "rung": "ISOLATED_EFFECTS",
+      "status": "PASS",
+      "transition_ok": true,
+      "transition_requires_previous_pass": true
+    },
+    {
+      "checks": [
+        {
+          "name": "canary_gate_ready",
+          "observed": "evolution_live.canary_ready",
+          "passed": true
+        },
+        {
+          "name": "canary_scope_isolated",
+          "observed": "isolated proving clone only",
+          "passed": true
+        }
+      ],
+      "evidence": {
+        "evidence_utc": "2026-08-16T20:00:00Z",
+        "workspace_tree_hash": "3f23cbe5652833bfb7bada5eac0a964639af46ae06f231b7e2ad566d5d5f18d0"
+      },
+      "position": 4,
+      "previous_rung_passed": true,
+      "rung": "LIMITED_CANARY",
+      "status": "PASS",
+      "transition_ok": true,
+      "transition_requires_previous_pass": true
+    },
+    {
+      "checks": [
+        {
+          "name": "supervisor_live_like_heartbeat",
+          "observed": "RUNNING",
+          "passed": true
+        },
+        {
+          "name": "portfolio_decision_live_like",
+          "observed": "SELECTED",
+          "passed": true
+        },
+        {
+          "name": "capability_active_live_like",
+          "observed": "ACTIVE",
+          "passed": true
+        }
+      ],
+      "evidence": {
+        "evidence_utc": "2026-08-16T20:00:00Z",
+        "workspace_tree_hash": "3f23cbe5652833bfb7bada5eac0a964639af46ae06f231b7e2ad566d5d5f18d0"
+      },
+      "position": 5,
+      "previous_rung_passed": true,
+      "rung": "BOUNDED_LIVE",
+      "status": "PASS",
+      "transition_ok": true,
+      "transition_requires_previous_pass": true
+    },
+    {
+      "checks": [
+        {
+          "name": "full_operation_decision",
+          "observed": "SELECTED",
+          "passed": true
+        },
+        {
+          "name": "full_operation_supervisor",
+          "observed": 1,
+          "passed": true
+        },
+        {
+          "name": "full_operation_briefing",
+          "observed": "8aa99f1d23fa12dac1cfe9399580e90cbe2ac6e8219bdc9dbfc4cfc11d28d37c",
+          "passed": true
+        },
+        {
+          "name": "full_operation_honest_waiting_recorded",
+          "observed": "NOT_TESTED",
+          "passed": true
+        }
+      ],
+      "evidence": {
+        "evidence_utc": "2026-08-16T20:00:00Z",
+        "workspace_tree_hash": "3f23cbe5652833bfb7bada5eac0a964639af46ae06f231b7e2ad566d5d5f18d0"
+      },
+      "position": 6,
+      "previous_rung_passed": true,
+      "rung": "FULL_DIGITAL_WORK_OPERATION",
+      "status": "PASS",
+      "transition_ok": true,
+      "transition_requires_previous_pass": true
+    }
+  ],
+  "schema": "jarvis-r12-adoption-ladder-v1",
+  "target": "FULL_DIGITAL_WORK_OPERATION (staged simulation over isolated copies)",
+  "wall_seconds": 1.44
+}

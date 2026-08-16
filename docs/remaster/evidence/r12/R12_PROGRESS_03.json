@@ -1,0 +1,17 @@
+{
+  "checkpoint": "adoption_ladder",
+  "generated_utc": "2026-08-16T07:57:30Z",
+  "index": 3,
+  "payload": {
+    "rungs": [
+      "READ_ONLY",
+      "SHADOW",
+      "ISOLATED_EFFECTS",
+      "LIMITED_CANARY",
+      "BOUNDED_LIVE",
+      "FULL_DIGITAL_WORK_OPERATION"
+    ],
+    "status": "PASS"
+  },
+  "schema": "jarvis-r12-progress-v1"
+}

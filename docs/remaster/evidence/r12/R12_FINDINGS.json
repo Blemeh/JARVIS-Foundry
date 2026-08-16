@@ -1,0 +1,80 @@
+{
+  "findings": [
+    {
+      "detail": "All 44 required faults run against isolated proving stores and worker subprocesses under JARVIS_R12_TEMP; live daemon/db/vault/protected main and owner projects are never touched. Live guards record protected_state_unchanged=True within the recorded windows.",
+      "disposition": "RECORDED",
+      "evidence": "R12_FAULT_MATRIX.json, R12_LIVE_GUARD_COMPARISON.json",
+      "id": "R12-F-001",
+      "severity": "S3",
+      "title": "Fault campaign is staged over isolated copies"
+    },
+    {
+      "detail": "The final adoption rungs simulate live-like operation over isolated copies because the live deployment is protected. No live deployment changes were made; the proving window is readiness-verified, not started.",
+      "disposition": "RECORDED",
+      "evidence": "R12_ADOPTION_LADDER.json, R12_PROVING_READINESS.json",
+      "id": "R12-F-002",
+      "severity": "S3",
+      "title": "BOUNDED_LIVE and FULL_DIGITAL_WORK_OPERATION are staged simulations"
+    },
+    {
+      "detail": "V7 was snapshotted from protected main tag v8-pre-promotion-93a3ddc with git archive into JARVIS_R12_TEMP; the protected main tree was never mutated and the recoverable release was never overwritten.",
+      "disposition": "RECORDED",
+      "evidence": "R12_COMPARISON_MATRIX.json",
+      "id": "R12-F-003",
+      "severity": "S3",
+      "title": "FROZEN V7 comparison uses a read-only git archive snapshot"
+    },
+    {
+      "detail": "R12-G01..G05 evidence is complete; R12-G06 records audit package readiness with independent_audit_status=PENDING and verdict NOT_TESTED. A fresh independent verifier must reproduce the package and return exactly one of SERVES_ORIGINAL_PURPOSE / SERVES_PURPOSE_WITH_EXTERNAL_BLOCKERS / DOES_NOT_YET_SERVE_PURPOSE.",
+      "disposition": "RECORDED",
+      "evidence": "R12_FINAL_AUDIT_PACKAGE.json, R12_BUILDER_REPORT.json",
+      "id": "R12-V-001",
+      "severity": "S3",
+      "title": "Builder status and final verdict remain NOT_TESTED until fresh independent audit"
+    },
+    {
+      "detail": "R12_PROGRESS_*.json are incremental working artifacts; evidence_bytes() and the manifest exclude them so the closed package matches the on-disk payload byte-for-byte.",
+      "disposition": "RECORDED",
+      "evidence": "R12_ARTIFACT_MANIFEST.json",
+      "id": "R12-V-002",
+      "severity": "S4",
+      "title": "Progress checkpoints excluded from closure evidence"
+    },
+    {
+      "detail": "R6 files and records were not touched; PROGRAM_STATE.md records OWNER_REDIRECT_R6_DEFERRED and R12 confinement keeps R6 trees outside the allowed write prefixes.",
+      "disposition": "RECORDED",
+      "evidence": "R12_BUILDER_REPORT.json",
+      "id": "R12-V-003",
+      "severity": "S4",
+      "title": "R6 remains owner-redirect and never reopened"
+    },
+    {
+      "detail": "The live-guard comparison bracketing the full repository suite observed the protected process command set change from 4 to 2 (unrelated live supervisor processes stopping); r12_attributable_mutation was False and protected files, main, tasks, and vault were unchanged. A quiet-window before/after/compare after all R12 work recorded protected_state_unchanged=True; the full-window captures are preserved as R12_LIVE_GUARD_FULLWINDOW_*.",
+      "disposition": "ENVIRONMENT_NOTE",
+      "evidence": "R12_LIVE_GUARD_FULLWINDOW_COMPARISON.json, R12_LIVE_GUARD_COMPARISON.json",
+      "id": "R12-V-004",
+      "severity": "S4",
+      "title": "External supervisor process churn during the full-suite window"
+    },
+    {
+      "detail": "The final auditor found R12_RELEASE_FREEZE.json recorded source tree ffe65cd9... while the final source recomputed to ebf90e2e... because fault_campaign/worker_sim.py was edited after the freeze was generated, and the freeze was never refreshed. The freeze also included __pycache__ bytecode in the source tree hash. release_freeze.py now (a) clears its proving workspace before seeding so a fresh run always succeeds, (b) excludes __pycache__ and .pyc files from the source tree manifest, and (c) was re-run on the exact final source; proving_window.py now derives its release fingerprint from the freeze's source tree hash. The regenerated freeze binds source tree ef426a85... (222 files, no bytecode) at head c76d92d, and the closure was regenerated.",
+      "disposition": "REPAIRED_IN_R12_ROUND2",
+      "evidence": "R12_RELEASE_FREEZE.json, R12_PROVING_READINESS.json",
+      "id": "R12-AUD-001",
+      "severity": "S2",
+      "title": "Release freeze and proving readiness did not bind the exact final source"
+    },
+    {
+      "detail": "The source tree manifest now excludes __pycache__ directories and .pyc files so the freeze binds source truth, not build artifacts.",
+      "disposition": "REPAIRED_IN_R12_ROUND2",
+      "evidence": "R12_RELEASE_FREEZE.json, release_freeze.py",
+      "id": "R12-AUD-002",
+      "severity": "S4",
+      "title": "Freeze source tree hash excluded bytecode"
+    }
+  ],
+  "generated_utc": "2026-08-16T20:00:00Z",
+  "program": "POST_V7_JARVIS_REMASTER",
+  "schema": "jarvis-r12-findings-v1",
+  "stage": "R12"
+}

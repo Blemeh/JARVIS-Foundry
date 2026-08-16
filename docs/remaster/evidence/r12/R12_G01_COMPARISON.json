@@ -1,0 +1,18 @@
+{
+  "all_domains_have_divergences": true,
+  "domain_count_ok": true,
+  "domains": [
+    "capability_lifecycle",
+    "command_center_briefing",
+    "evolution_cycle",
+    "goals_portfolio",
+    "mission_orchestration"
+  ],
+  "exit_code": 0,
+  "passed": true,
+  "protected_main_mutated": false,
+  "schema": "jarvis-r12-g01-comparison-v1",
+  "v7_snapshot_file_count": 397,
+  "v7_tree_hash": "43f4048c7894532304b37695ddb75ba66e67230779addb413c8dce03f335a74c",
+  "wall_seconds": 0.0
+}
