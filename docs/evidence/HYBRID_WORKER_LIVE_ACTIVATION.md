@@ -44,10 +44,16 @@ MissionStep READY
   working root and the checkout resolved via `PYTHONPATH` (live finding: the
   CLI previously wrote into `.h` instead of the worktree).
 - `workers/adapters/openhands.py` — structured `VERDICT:` line parsing
-  (fresh verifier verdicts), heartbeats during long sessions.
+  (fresh verifier verdicts), heartbeats during long sessions, secret
+  redaction at intake.
 - `workers/adapters/base.py` — `run_subprocess_with_heartbeat`: real worker
   sessions renew the role lease periodically so the supervisor reaper never
-  reclaims a live session mid-flight (live finding 2026-08-16).
+  reclaims a live session mid-flight (live finding 2026-08-16);
+  `redact_secrets` / `configured_api_key` — every captured worker output is
+  scrubbed of secret-shaped tokens before it enters durable envelopes, and
+  disposable OpenHands run-state files are scrubbed after every run (live
+  finding 2026-08-16: a worker dumped the credential env into a session
+  event file; the artifact was deleted and the mechanism hardened).
 - `config/worker_routing.yaml` (new) — explicit activation configuration,
   INACTIVE until review.
 - `scripts/hybrid_live_probe.py` (new) — reproducible live probe.
@@ -85,7 +91,8 @@ mandate; no substitutions, no fallbacks).
 - The `.h` checkout stayed clean; probe artifact outside the worktree was
   removed and a regression test prevents recurrence.
 - No credential value appears in probe reports, the live database, or any
-  committed file (`sk-cXX` and `sk-[A-Za-z0-9]{16,}` scans clean).
+  committed file (`sk-[A-Za-z0-9]{16,}` scans clean across the repo and the
+  retained probe evidence).
 
 ## Tests
 

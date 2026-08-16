@@ -54,6 +54,8 @@ from ..isolation import (
 from .base import (
     AdapterConfigurationError,
     ProviderUnavailable,
+    configured_api_key,
+    redact_secrets,
     run_subprocess_with_heartbeat,
 )
 
@@ -164,6 +166,7 @@ class OpenHandsWorkerAdapter:
             )
         except subprocess.TimeoutExpired:
             heartbeat()
+            self._scrub_disposable_state()
             after_owner = snapshot_openhands_tree(self._owner_openhands)
             violations = diff_openhands_containment(
                 before_owner, after_owner, home_root=self._owner_openhands)
@@ -191,18 +194,21 @@ class OpenHandsWorkerAdapter:
         # Phase 3 containment diff: the pre-run snapshot above is the
         # baseline; any new/removed/modified entry in the owner state after
         # the run forces a fail-closed BLOCKED result.
-        events = self._parse_jsonl(process.stdout or "")
+        stdout = redact_secrets(
+            process.stdout or "", configured_key=configured_api_key())
+        events = self._parse_jsonl(stdout)
         model_actual = contract.model
         for event in events:
             model = event.get("model") or (event.get("payload") or {}).get("model")
             if model:
                 model_actual = str(model).removeprefix("openai/")
                 break
-        verdict = self._structured_verdict(process.stdout or "")
+        verdict = self._structured_verdict(stdout)
         after_owner = snapshot_openhands_tree(self._owner_openhands)
         containment_violations = diff_openhands_containment(
             before_owner, after_owner, home_root=self._owner_openhands)
         if containment_violations:
+            self._scrub_disposable_state()
             return ResultEnvelope.from_contract(
                 contract, framework=self.framework,
                 worker_status=BLOCKED, verdict=VERDICT_NOT_TESTED,
@@ -220,7 +226,9 @@ class OpenHandsWorkerAdapter:
                 worker_status=FAILED,
                 verdict=VERDICT_FAIL if contract.role == "verifier" else VERDICT_NOT_TESTED,
                 claimed_outcome="OpenHands CLI exited non-zero",
-                summary=(process.stderr or process.stdout or "")[-800:],
+                summary=redact_secrets(
+                    process.stderr or stdout,
+                    configured_key=configured_api_key())[-800:],
                 started_at=started,
                 model_actual=model_actual,
                 exit_state=f"EXIT_{process.returncode}",
@@ -230,7 +238,8 @@ class OpenHandsWorkerAdapter:
         warning = ""
         if statuses & {"error", "agent_state_changed"}:
             warning = "openhands reported error/state events; evidence must be reconciled"
-        summary_tail = (process.stdout or "").strip()[-2000:]
+        summary_tail = stdout.strip()[-2000:]
+        self._scrub_disposable_state()
         return ResultEnvelope.from_contract(
             contract, framework=self.framework,
             worker_status=COMPLETED, verdict=verdict,
@@ -255,6 +264,37 @@ class OpenHandsWorkerAdapter:
             except json.JSONDecodeError:
                 continue
         return rows
+
+    def _scrub_disposable_state(self, limit: int = 5000) -> None:
+        """Redact credential-shaped tokens from disposable run-state files
+        (contained-home conversation events, editor history, etc.) so no
+        retained artifact ever holds the secret value."""
+        key = configured_api_key()
+        if not self.data_dir.exists():
+            return
+        scanned = 0
+        for path in self.data_dir.rglob("*"):
+            if not path.is_file():
+                continue
+            scanned += 1
+            if scanned > limit:
+                break
+            try:
+                data = path.read_bytes()
+            except OSError:
+                continue
+            if b"sk-" not in data:
+                continue
+            try:
+                text = data.decode("utf-8")
+            except UnicodeDecodeError:
+                continue
+            redacted = redact_secrets(text, configured_key=key)
+            if redacted != text:
+                try:
+                    path.write_bytes(redacted.encode("utf-8"))
+                except OSError:
+                    pass
 
     @classmethod
     def _structured_verdict(cls, stdout: str) -> str:

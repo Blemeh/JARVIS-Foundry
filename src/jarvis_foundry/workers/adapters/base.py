@@ -1,6 +1,7 @@
 """Worker adapter protocol (framework-neutral boundary)."""
 from __future__ import annotations
 
+import re
 import subprocess
 from typing import Callable, Protocol
 
@@ -14,6 +15,32 @@ class ProviderUnavailable(RuntimeError):
 
 class AdapterConfigurationError(RuntimeError):
     """The adapter was configured in a way that violates a safety invariant."""
+
+
+#: Owner API credential shape (never the value). Worker sessions can dump
+#: their process env into captured logs; every adapter output that becomes
+#: durable evidence must be scrubbed of secret-shaped tokens at intake.
+_SECRET_TOKEN = re.compile(r"sk-[A-Za-z0-9]{16,}")
+
+
+def redact_secrets(text: str, *, configured_key: str | None = None) -> str:
+    """Remove secret-shaped tokens (and the configured key when known) from
+    worker-captured output before it enters envelopes or retained evidence."""
+    if not text:
+        return text
+    out = _SECRET_TOKEN.sub("<REDACTED>", text)
+    if configured_key:
+        out = out.replace(configured_key, "<REDACTED>")
+    return out
+
+
+def configured_api_key() -> str | None:
+    """The OpenCode Go credential the worker needs (never printed)."""
+    import os
+
+    return (os.environ.get("JARVIS_OPENCODE_API_KEY")
+            or os.environ.get("OPENCODE_GO_API_KEY")
+            or os.environ.get("OPENCODE_API_KEY") or None)
 
 
 class WorkerAdapter(Protocol):
