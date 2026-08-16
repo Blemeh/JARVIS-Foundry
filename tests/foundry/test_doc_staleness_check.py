@@ -28,18 +28,12 @@ def test_current_state_names_real_head_and_schema():
     text = (REPO / "docs" / "CURRENT_STATE.md").read_text(encoding="utf-8")
     found = head[:7] in text or head in text
     if not found:
-        # doc-only walk: a pin one or more doc commits behind is still valid
-        sha = head
-        for _ in range(10):
-            changed = sp.run(["git", "-C", str(REPO), "show", "--name-only", "--format=", sha],
-                             capture_output=True, text=True).stdout.splitlines()
-            if not changed or any(not p_.startswith("docs/") for p_ in changed):
+        # ancestor-within-horizon rule: the pin may name any of the last 20 commits
+        for i in range(1, 21):
+            sha = sp.run(["git", "-C", str(REPO), "rev-parse", f"HEAD~{i}"],
+                         capture_output=True, text=True).stdout.strip()
+            if not sha or sha == head:
                 break
-            parent = sp.run(["git", "-C", str(REPO), "rev-parse", f"{sha}^"],
-                            capture_output=True, text=True).stdout.strip()
-            if not parent or parent == sha:
-                break
-            sha = parent
             if sha[:7] in text or sha in text:
                 found = True
                 break

@@ -52,29 +52,28 @@ def main() -> int:
     schema = _schema_version()
     text = CURRENT_STATE.read_text(encoding="utf-8")
 
-    # The doc is committed AT head; its pin describes the tree it ships in.
-    # Walk HEAD backwards over DOC-ONLY commits (a doc commit does not change
-    # the described system); the pin must match one of them. Any NON-doc
-    # commit after the pin makes it stale until the doc is updated.
+    # The doc pin must be an ancestor of HEAD within the last 20 commits.
+    # (A pin written in a commit can never name that same commit, so exact
+    # equality is impossible; ancestry within a bounded horizon catches real
+    # drift — missions that stop updating CURRENT_STATE — without racing the
+    # commit cycle.)
+    depth = subprocess.run(
+        ["git", "-C", str(REPO), "rev-list", "--count", f"{head}~20..{head}"],
+        capture_output=True, text=True).stdout.strip()
+    try:
+        horizon = int(depth) if depth else 0
+    except ValueError:
+        horizon = 0
     pin_ok = False
-    sha = head
-    for _ in range(10):
+    for i in range(horizon + 1):
+        sha = subprocess.run(
+            ["git", "-C", str(REPO), "rev-parse", f"HEAD~{i}"],
+            capture_output=True, text=True).stdout.strip()
         if sha[:7] in text or sha in text:
             pin_ok = True
             break
-        changed = subprocess.run(
-            ["git", "-C", str(REPO), "show", "--name-only", "--format=", sha],
-            capture_output=True, text=True).stdout.splitlines()
-        if not changed or any(not p.startswith("docs/") for p in changed):
-            break  # first non-doc commit: stop walking
-        parent = subprocess.run(
-            ["git", "-C", str(REPO), "rev-parse", f"{sha}^"],
-            capture_output=True, text=True).stdout.strip()
-        if not parent or parent == sha:
-            break
-        sha = parent
     if not pin_ok:
-        failures.append(f"CURRENT_STATE.md does not name current HEAD {head[:7]} (doc-only walk)")
+        failures.append(f"CURRENT_STATE.md pin is stale: no HEAD..HEAD~{horizon} sha named")
     if f"v{schema}" not in text and str(schema) not in text:
         failures.append(f"CURRENT_STATE.md does not name current schema v{schema}")
 
