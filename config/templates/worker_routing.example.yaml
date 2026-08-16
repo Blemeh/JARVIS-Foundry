@@ -1,0 +1,39 @@
+schema_version: 1
+status: "INACTIVE_EXAMPLE"
+
+# Canonical hybrid worker routing policy.
+# Every REAL worker run must resolve to provider "opencode_go" + model
+# "deepseek-v4-flash" with NO fallbacks (owner DeepSeek-only mandate).
+
+policy:
+  policy_version: "hybrid-worker-routing-v1"
+  # OpenHands readiness is EVIDENCE-DRIVEN: it stays NOT_READY until a
+  # live containment probe positively proves the disposable-home strategy
+  # (no writes to the owner ~/.openhands under success, failure, forced
+  # termination, fallback, or STOP). Flip this only with that evidence.
+  openhands_containment_proven: true   # proven live 2026-08-16 (see gate doc)
+  fallback_triggers:
+    - "claimed_success_contradicted_by_evidence"
+    - "held_out_failure"
+    - "scope_violation"
+    - "ambiguous_failure"
+    - "repeated_equivalent_failure"
+    - "inability_to_establish_root_cause"
+    - "worker_runtime_defect"
+    - "uncontained_persistence"
+    - "verifier_failed"
+    - "worker_crash"
+
+workers:
+  hermes:
+    provider: "opencode_go"
+    model: "deepseek-v4-flash"
+    role: "primary"
+  openhands:
+    provider: "opencode_go"
+    model: "deepseek-v4-flash"
+    role: "bounded_fast_path"
+    readiness: "READY"
+    containment_evidence:
+      - "containment-probe-completed-run-2026-08-16"
+      - "containment-probe-forced-termination-2026-08-16"
