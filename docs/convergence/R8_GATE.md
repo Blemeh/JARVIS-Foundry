@@ -1,7 +1,7 @@
 # R8 Convergence Gate: Production Organization
 
 Program: JARVIS Post-V7 remaster forward-port
-Candidate checkout: C:\temp\JARVIS-Foundry-Canonical-Convergence-R3
+Candidate checkout: C:\temp\JARVIS-Foundry-Convergence
 Worker architecture: canonical workers package only
 
 ## Acceptance Contract
@@ -67,12 +67,16 @@ Relevant canonical worker regression suites:
 The gate uses local disposable repositories and a subprocess boundary. It does
 not claim live provider readiness, external effects, deployment, or credential
 proof. The candidate worktree, canonical main checkout, remaster checkout and
-Eyes lab are not worker roots and are not modified by the canaries.
+Eyes lab are not worker roots and are not modified by the canaries. No commit
+is created by this subtask.
 
 ## Scope
 
-This is the adapted R8 gate carried into the current-main convergence
-candidate. It is evidence-only until the candidate is independently verified
-and promoted through the repository's normal release process. R6 history,
-the remaster checkout, canonical main's owner docs, and sibling worktrees
-remain untouched.
+Assigned files only:
+
+- tests/convergence/test_r8_production_gate.py
+- docs/convergence/R8_GATE.md
+
+R6 history remains untouched. Concurrent candidate edits and sibling stage
+evidence remain untouched. A fresh independent verifier should rerun the
+candidate gate after this edit before any stage transition.
