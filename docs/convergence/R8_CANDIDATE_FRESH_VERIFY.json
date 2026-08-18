@@ -1,0 +1,21 @@
+{
+  "schema": "jarvis-r8-candidate-fresh-verification-v1",
+  "stage": "R8",
+  "candidate_repository": "C:/temp/JARVIS-Foundry-Convergence",
+  "candidate_branch": "candidate/remaster-forward-port",
+  "provider": "executive-read-only",
+  "model": "root",
+  "verdict": "PASS_READ_ONLY",
+  "commands": [
+    "C:/temp/jarvis-convergence-venv/Scripts/python.exe -m pytest tests/convergence/test_r8_production_gate.py -q -ra -p no:cacheprovider",
+    "C:/temp/jarvis-convergence-venv/Scripts/python.exe -m pytest tests/foundry/test_worker_orchestrator.py tests/foundry/test_worker_evidence.py tests/foundry/test_worker_contracts.py -q -ra -p no:cacheprovider"
+  ],
+  "results": {
+    "r8_production_gate": {"tests": 7, "failures": 0, "errors": 0, "skipped": 0},
+    "worker_regression": {"tests": 27, "failures": 0, "errors": 0, "skipped": 0}
+  },
+  "cache_writes": false,
+  "candidate_dirty_work_preserved": true,
+  "source_changed": false,
+  "scope": "subprocess-backed canonical HybridStepController asset and maintenance repair gate"
+}

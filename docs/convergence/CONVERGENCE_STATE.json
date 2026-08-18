@@ -8,7 +8,7 @@
   "canonical": {
     "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
     "branch": "main",
-    "head": "e781f2c44211a33bc2d297d38a7a202bf636337f",
+    "head": "47adab97b64ab992280d3a329fd0ca3d03c2d45f",
     "origin_main": "1abc388c6471a310f361612ebd81ed6a2cf6c646",
     "dirty_owner_docs_preserved": true,
     "current_full_suite": {
@@ -35,8 +35,8 @@
       "skipped": 0
     },
     "canonical_regression_junit": {
-      "path": "docs/convergence/R3_CANONICAL_FULL_SUITE_JUNIT.xml",
-      "sha256": "8D349FCF2B91071D24B915293748983026B34A966A207A50E37623D3D225E028",
+      "path": "docs/convergence/PROMOTION_CANONICAL_FULL_SUITE_POST_MONITOR.xml",
+      "sha256": "8423685788CF2215E40F2B7EA813C3B3112F2F414B669603F23306E00FFAA763",
       "tests": 1222,
       "failures": 0,
       "errors": 0,
@@ -202,7 +202,8 @@
       "agent": "/root/external_capability_auditor",
       "provider": "commandcode",
       "model": "deepseek-v4-flash",
-      "status": "RUNNING",
+      "status": "COMPLETED_EXTERNAL_BLOCKERS",
+      "report": "docs/convergence/EXTERNAL_CAPABILITY_AUDITOR.json",
       "scope": "read-only R7-R12 external capability, voice, UI, and provider-boundary audit"
     },
     {
@@ -219,7 +220,8 @@
       "agent": "/root/proving_window_gate_builder",
       "provider": "commandcode",
       "model": "deepseek-v4-flash",
-      "status": "RUNNING",
+      "status": "COMPLETED_BUILT_PENDING_VERIFICATION",
+      "commit": "7e27122dbe5623a2ac55f0f7f079c2b62ec83527",
       "scope": "isolated append-only proving gate, tests, and durable contract docs",
       "worktree": "C:/temp/JARVIS-Foundry-Proving-Gate",
       "owned_files": [
@@ -227,17 +229,50 @@
         "tests/convergence/test_proving_window_gate.py",
         "docs/convergence/PROVING_WINDOW_GATE.md"
       ]
+    },
+    {
+      "role": "proving-window gate independent verifier",
+      "agent": "/root/proving_window_gate_verifier",
+      "provider": "commandcode",
+      "model": "deepseek-v4-flash",
+      "status": "COMPLETED_PASS_WITH_FINDINGS_REPAIRED",
+      "report": "docs/convergence/PROVING_WINDOW_GATE_VERIFIER.json",
+      "scope": "read-only gate source, lineage, replay, and focused regression verification",
+      "worktree": "C:/temp/JARVIS-Foundry-Proving-Gate",
+      "candidate_commit": "7e27122dbe5623a2ac55f0f7f079c2b62ec83527"
+    },
+    {
+      "role": "proving-window lineage repair worker",
+      "agent": "/root/proving_window_gate_repair",
+      "provider": "commandcode",
+      "model": "deepseek-v4-flash",
+      "status": "COMPLETED_PASS",
+      "report": "docs/convergence/PROVING_WINDOW_GATE_VERIFIER.json",
+      "commit": "676d2d785e2117b32d27c934db8498ab81f88796",
+      "worktree": "C:/temp/JARVIS-Foundry-Proving-Gate-Repair",
+      "scope": "repair historical mission lineage, authenticated scoped directives, and gate documentation"
+    },
+    {
+      "role": "proving-window monitor repair worker",
+      "agent": "/root/proving_window_monitor_repair",
+      "provider": "commandcode",
+      "model": "deepseek-v4-flash",
+      "status": "COMPLETED_PASS",
+      "report": "docs/convergence/PROVING_WINDOW_MONITOR_REPAIR.json",
+      "commit": "6f349adcf1ff3e6ee33fe2e4748c4d7860513677",
+      "worktree": "C:/temp/JARVIS-Foundry-Proving-Monitor-Repair",
+      "scope": "repair operational monitor STOP/VETO directive filter and regressions"
     }
   ],
   "promotion": {
     "status": "PROMOTED_AND_RECONCILED",
     "promotion_worktree": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R3",
-    "promotion_commit": "e781f2c44211a33bc2d297d38a7a202bf636337f",
+    "promotion_commit": "47adab97b64ab992280d3a329fd0ca3d03c2d45f",
     "pre_release_tag": "convergence-pre-r3",
     "post_promotion_runtime_probe": "docs/convergence/LIVE_RUNTIME_PROBE_POST_PROMOTION.json",
     "rollback_bundle": "C:/temp/jarvis-convergence-pre-r3.bundle"
   },
-  "verifier_state": "PROVING_MONITOR_VERIFIED_BUILDER_GATE_PENDING",
+  "verifier_state": "PROVING_GATE_REPAIRED_PENDING_COMBINED_INTEGRATION",
   "blockers": [
     "R7 real monitored provider research NOT_TESTED/WAITING",
     "R9 real external connector/provider effects NOT_TESTED/WAITING",
@@ -245,5 +280,5 @@
     "R11 elapsed promotion cycles and proving window NOT_TESTED/WAITING",
     "R12 physical host and unavailable-provider fault rows NOT_TESTED/BLOCKED"
   ],
-  "exact_next_action": "inspect /root/proving_window_gate_builder and /root/post_promotion_final_auditor; independently verify any gate result"
+  "exact_next_action": "cherry-pick proving commits 676d2d7 and 6f349ad into the isolated promotion worktree, run the combined focused/convergence/full suites, and commission a fresh verifier"
 }

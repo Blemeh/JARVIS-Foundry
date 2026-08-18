@@ -1,0 +1,35 @@
+{
+  "schema": "jarvis-proving-window-gate-verifier-v2",
+  "stage": "POST_PROMOTION_PROVING",
+  "agent": "/root/proving_window_gate_verifier",
+  "provider": "commandcode",
+  "model": "deepseek-v4-flash",
+  "candidate_commit": "7e27122dbe5623a2ac55f0f7f079c2b62ec83527",
+  "verdict": "PASS_WITH_CONFIRMED_FINDINGS_REPAIRED",
+  "initial_findings": [
+    {"id": "F1", "status": "REPAIRED", "detail": "pre-window missions were globally counted"},
+    {"id": "F2", "status": "REPAIRED", "detail": "authenticated VETO_ACTION and STOP_MISSION did not exclude affected days"},
+    {"id": "F3", "status": "REPAIRED", "detail": "gate documentation test count drift"}
+  ],
+  "verification": {
+    "source_read": "PASS",
+    "scratch_reproduction": "PASS",
+    "focused_before_repair": {"tests": 9, "failures": 0},
+    "repair_commit": "676d2d785e2117b32d27c934db8498ab81f88796",
+    "focused_after_repair": {"tests": 12, "failures": 0, "errors": 0, "skipped": 0},
+    "worker_regression_after_repair": {"tests": 27, "failures": 0, "errors": 0, "skipped": 0},
+    "convergence_after_repair": {"tests": 80, "failures": 0, "errors": 0, "skipped": 0},
+    "py_compile": "PASS"
+  },
+  "boundaries": [
+    "real elapsed proving window NOT_TESTED/WAITING",
+    "live provider, connector, voice, UI and physical fault effects NOT_TESTED/WAITING"
+  ],
+  "files_changed_by_repair": [
+    "src/jarvis_foundry/proving.py",
+    "tests/convergence/test_proving_window_gate.py",
+    "docs/convergence/PROVING_WINDOW_GATE.md"
+  ],
+  "live_db_touched": false,
+  "recommended_next_action": "integrate repair and monitor commits in the isolated promotion worktree, then fresh-verify the combined candidate"
+}

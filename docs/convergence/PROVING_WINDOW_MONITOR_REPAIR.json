@@ -1,0 +1,20 @@
+{
+  "schema": "jarvis-proving-window-monitor-repair-v1",
+  "stage": "POST_PROMOTION_PROVING",
+  "agent": "/root/proving_window_monitor_repair",
+  "provider": "commandcode",
+  "model": "deepseek-v4-flash",
+  "commit": "6f349adcf1ff3e6ee33fe2e4748c4d7860513677",
+  "verdict": "PASS",
+  "claim": "active VETO_ACTION and STOP_MISSION directives now surface as WAITING_OWNER_STOP; revoked directives do not block",
+  "focused_tests": {"tests": 8, "failures": 0, "errors": 0, "skipped": 0},
+  "architecture_regression": {"tests": 11, "failures": 0, "errors": 0, "skipped": 0},
+  "py_compile": "PASS",
+  "live_db_touched": false,
+  "files_changed": [
+    "scripts/convergence/monitor_proving_window.py",
+    "tests/convergence/test_proving_window_monitor.py",
+    "docs/convergence/PROVING_WINDOW.md"
+  ],
+  "recommended_next_action": "fresh independent verification after combined integration"
+}
