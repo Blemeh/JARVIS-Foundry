@@ -8,6 +8,22 @@ owner: Blendi Mehmeti
 state_version: 22
 updated_at: 2026-08-13
 
+phase2_eyes: JARVIS EYES PHASE 2 PROMOTED 2026-08-18 (candidate
+  candidate/jarvis-eyes-phase2 -> canonical main; local commit only, no
+  push per no-push rule). Screenpipe 0.4.40 external sidecar registered as
+  governed read-only connector screenpipe-local (perception). Perception
+  core READY/PROVEN: privacy firewall, deterministic normalize/dedup/
+  aggregate/significance, durable cursor, existing STOP/control/ledger
+  reuse, no schema change, no claim/candidate/mission/control path, raw
+  frames PROBING, audio DISABLED, continuous perception NOT activated
+  (Phase 6). Full suite 1166 EXIT=0; fault matrix 20/20; secret scan PASS;
+  doc staleness PASS; independent verifier 25/25 (provider independence
+  LIMITED); bounded live probe PASS. Evidence:
+  docs/evidence/PHASE2_JARVIS_EYES/. License posture: Screenpipe
+  Commercial License; personal/non-commercial/research use OK;
+  production/commercial use requires owner license decision before
+  activation.
+
 phase: V4_CONTINUOUS_AUTONOMY ACTIVE — first gate evidence ACCUMULATING
 phase_status: V4 ACTIVATED per DIR-2026-08-12 completion condition item 11.
   DIR-2026-08-12 12-hour autonomous duty window in progress (started

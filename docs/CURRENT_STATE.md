@@ -6,15 +6,16 @@ every promotion/remaster mission (see `docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.
 If this document and another current-status document disagree, THIS document wins
 for "what exists now" claims; the architecture contract wins for binding invariants.
 
-Last reconciled: 2026-08-16 (documentation truth remaster)
+Last reconciled: 2026-08-18 (JARVIS Eyes Phase 2 candidate)
 
 ```text
-CURRENT CANONICAL HEAD:      4552dc7 (main; docs-truth remaster commit)
+CURRENT CANONICAL HEAD:      765a725 (main; README reconcile merge)
 LETTA PROMOTION ANCESTOR:    2f7360e742559e051109e04ef7f3a82cc64cc2d2 (still an ancestor of HEAD)
 PRE-V8 HISTORICAL BASELINE:  93a3ddc0965dfaf3e4cb9dc0952467bd5250520a (historical only — do not reset to it)
 CURRENT SCHEMA:              v33 (six additive tier_c_* tables; event-derived)
-FULL SUITE:                  1124 tests collected; latest full-suite gate records 1124 EXIT=0
-                             (985 pre-V8 + 41 hybrid-memory + 97 worker + 1 supervisor-takeover regression)
+FULL SUITE:                  1143 collected on canonical main; 1166 on the
+                             Phase-2 candidate (1143 + 23 perception) EXIT=0
+                             (see docs/evidence/PHASE2_JARVIS_EYES/FULL_TEST_REPORT.md)
 SUPERVISOR STATE:            RUNNING (single lease owner, heartbeat advancing)
 STOP STATE:                  OFF (no sentinel, no active STOP/PAUSE directives)
 ACTIVE DIRECTIVES:           redirect, waive, extend_duty_window, align
@@ -23,6 +24,8 @@ MISSION STATE:               3 COMPLETE, 1 PLANNED (live DB)
 TIER C STATE:                6 tables; 2 memories (live canary records), 1 block, 0 procedures
 WORKER IMPLEMENTATIONS:      Hermes adapter + OpenHands adapter — CANONICAL (merged)
 OWNER FILES:                 6 untracked docs under docs/handoffs/, docs/planning/ (hash-protected)
+PERCEPTION INPUT (Phase 2):  SCREENPIPE-LOCAL registered read-only; perception core READY/PROVEN;
+                             raw-frame PROBING; audio DISABLED; no claim/candidate/mission/control path
 ```
 
 ## What exists now
