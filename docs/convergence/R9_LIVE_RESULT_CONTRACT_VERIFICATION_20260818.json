@@ -1,0 +1,56 @@
+{
+  "schema": "jarvis-r9-live-result-contract-verification-v1",
+  "stage": "R9",
+  "recorded_at": "2026-08-18T19:18:00Z",
+  "verdict": "FAIL_REPAIR_REQUIRED",
+  "candidate": {
+    "worktree": "C:/temp/JARVIS-Foundry-R9-LiveCanary-Repair",
+    "branch": "repair/r9-live-canary-result-contract",
+    "head": "d933798",
+    "scope": "machine-ingestable .jarvis-result.json provider contract"
+  },
+  "dispatch": {
+    "agent": "/root/r10_command_center_boundary_reviewer",
+    "provider_route": "router_commandcode_deepseek_v4_flash",
+    "provider": "commandcode",
+    "model": "deepseek-v4-flash",
+    "mode": "fresh_read_only_independent_verification",
+    "live_database_touched": false,
+    "credentials_used": false
+  },
+  "fresh_tests": {
+    "venv": "C:/temp/jarvis-r9live-venv",
+    "selected_suites": {
+      "tests/foundry/test_worker_adapters.py": 18,
+      "tests/foundry/test_worker_orchestrator.py": 11,
+      "tests/foundry/test_worker_contracts.py": 7,
+      "tests/foundry/test_worker_evidence.py": 10
+    },
+    "total": 46,
+    "result": "46 passed",
+    "py_compile": "PASS",
+    "diff_check": "PASS",
+    "builder_claimed_suite": "69 passed (not independently relied on; fresh selection is canonical)"
+  },
+  "confirmed_findings": [
+    {
+      "id": "R9-RESULT-FILE-SELF-DIFF",
+      "severity": "S2",
+      "status": "REPAIR_REQUIRED",
+      "description": "The worker-owned .jarvis-result.json file is included by git_changed_files, so a claim listing only business files disagrees with the observed diff and records an unrecorded mutation; verifier delta mode is also polluted by the control file.",
+      "reproduction": "Claim ['feature.py'] with a worktree containing .jarvis-result.json and feature.py -> agree=False; observed includes .jarvis-result.json; unrecorded_mutations includes .jarvis-result.json."
+    },
+    {
+      "id": "R9-LIVE-BRIDGE-INSTRUCTION-GAP",
+      "severity": "S2",
+      "status": "REPAIR_REQUIRED",
+      "description": "HybridStepController appends the result-file requirement, but the live MissionLoop -> RoleDispatcher -> HybridWorkerRoleAdapter path builds the contract directly and never receives it; real live providers therefore still omit the contract and remain NOT_TESTED.",
+      "reproduction": "Inspected scripts/hybrid_live_probe.py and src/jarvis_foundry/workers/mission_bridge.py; no call to HybridStepController.run_step or shared instruction helper."
+    }
+  ],
+  "acceptance": {
+    "worker_claims_remain_distinct_from_observed_truth": true,
+    "d933798_promotable": false,
+    "next_action": "fresh isolated repair covering live bridge enrichment, control-file reconciliation, and commit/evidence handling, then independent re-verification"
+  }
+}

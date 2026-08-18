@@ -2,7 +2,7 @@
   "schema": "jarvis-post-v7-canonical-convergence-state-v2",
   "program": "JARVIS Post-V7 Remaster",
   "current_stage": "POST_PROMOTION_PROVING",
-  "current_slice": "R8 production organization verified; R9/R10 bounded gates reviewed; R10 directive repair independently verified; R11 bounded evolution gate reviewed; R12 fault gate freshly rechecked; proving lineage/monitor repairs reconciled on current main; live mission canary independently verified with 2 of 10 required missions; restart canary in progress; real elapsed proving window in progress",
+  "current_slice": "R8 production organization verified; R9/R10 bounded gates reviewed; R10 directive repair independently verified; R11 bounded evolution gate reviewed; R12 fault gate freshly rechecked; proving lineage/monitor repairs reconciled on current main; R9 live result-contract repair independently failed and is repairing; live mission canary independently verified with 2 of 10 required missions; restart canary in progress; real elapsed proving window in progress",
   "r6_state": "OWNER_REDIRECT_R6_DEFERRED",
   "eyes_state": "OUT_OF_SCOPE_READ_ONLY",
   "canonical": {
@@ -133,6 +133,17 @@
       "focused_replay": "20 passed",
       "historical_lineage_repair": "676d2d7",
       "historical_monitor_repair": "6f349ad"
+    },
+    "r9_result_contract_verification": {
+      "status": "FAIL_REPAIR_REQUIRED",
+      "report": "docs/convergence/R9_LIVE_RESULT_CONTRACT_VERIFICATION_20260818.json",
+      "report_sha256": "7B685F6C54A821148F41E51FDF44A6D82AA210272FBFC866DFF7AA75FC900F76",
+      "candidate_head": "d933798",
+      "fresh_tests": "46 passed",
+      "findings": [
+        "R9-RESULT-FILE-SELF-DIFF",
+        "R9-LIVE-BRIDGE-INSTRUCTION-GAP"
+      ]
     }
   },
   "remaster_evidence": {
@@ -196,6 +207,22 @@
       "evidence": "docs/convergence/PROVING_WINDOW_REPAIR_RECONCILIATION_20260818.json",
       "finding": "The operational monitor conservatively treats any active VETO_ACTION/STOP_MISSION as WAITING_OWNER_STOP, while the replay gate excludes healthy days only for authenticated directives targeting the proving window or its mission.",
       "resolution": "Preserve the conservative monitor behavior and adjudicate the scope distinction before final proving closure; it cannot create a false PASS."
+    },
+    {
+      "id": "R9-RESULT-FILE-SELF-DIFF",
+      "severity": "S2",
+      "status": "REPAIRING",
+      "evidence": "docs/convergence/R9_LIVE_RESULT_CONTRACT_VERIFICATION_20260818.json",
+      "finding": "The worker-owned .jarvis-result.json control file pollutes observed-diff comparison and verifier delta mode.",
+      "resolution": "Fresh repair must classify the control file explicitly without copying observed diffs into worker claims."
+    },
+    {
+      "id": "R9-LIVE-BRIDGE-INSTRUCTION-GAP",
+      "severity": "S2",
+      "status": "REPAIRING",
+      "evidence": "docs/convergence/R9_LIVE_RESULT_CONTRACT_VERIFICATION_20260818.json",
+      "finding": "The live MissionLoop bridge does not receive the machine-result contract instruction added only to HybridStepController.",
+      "resolution": "Fresh repair must cover HybridWorkerRoleAdapter and runtime worker-loop paths with a shared contract helper."
     }
   ],
   "dispatches": [
@@ -415,6 +442,17 @@
       "status": "COMPLETED_PASS_CURRENT_MAIN_RECONCILED",
       "report": "docs/convergence/PROVING_WINDOW_REPAIR_RECONCILIATION_20260818.json",
       "scope": "read-only comparison of historical repair commits with current main; current proving and monitor tests"
+    },
+    {
+      "role": "R9 live result-contract repair fresh verifier",
+      "agent": "/root/r10_command_center_boundary_reviewer",
+      "provider_route": "router_commandcode_deepseek_v4_flash",
+      "provider": "commandcode",
+      "model": "deepseek-v4-flash",
+      "status": "COMPLETED_FAIL_REPAIR_REQUIRED",
+      "report": "docs/convergence/R9_LIVE_RESULT_CONTRACT_VERIFICATION_20260818.json",
+      "candidate_head": "d933798",
+      "scope": "read-only adapter, evidence, and live MissionLoop bridge inspection with fresh worker regression suites"
     }
   ],
   "promotion": {
@@ -424,6 +462,7 @@
     "latest_evidence_commit": "7f7db2dc04bb2f82fb740b8b3230e878d17cb2c1",
     "latest_live_canary": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_CANARY_20260818.json",
     "latest_repair_reconciliation": "docs/convergence/PROVING_WINDOW_REPAIR_RECONCILIATION_20260818.json",
+    "latest_r9_result_contract_verification": "docs/convergence/R9_LIVE_RESULT_CONTRACT_VERIFICATION_20260818.json",
     "pre_release_tag": "convergence-pre-r3",
     "post_promotion_runtime_probe": "docs/convergence/LIVE_RUNTIME_PROBE_POST_PROMOTION.json",
     "rollback_bundle": "C:/temp/jarvis-convergence-pre-r3.bundle"
@@ -437,5 +476,5 @@
     "R11 real elapsed proving window and live promotion cycles NOT_TESTED/WAITING",
     "R12 physical host and unavailable-provider fault rows NOT_TESTED/BLOCKED"
   ],
-  "exact_next_action": "finish and independently reconcile the running restart canary; preserve the 2-of-10 live canary count and evidence-mismatch finding; assess the structured worker result producer before accepting builder claims; keep the proving monitor scope distinction, R9/R10/R11/R12 external boundaries, and elapsed window honest; do not close or promote final acceptance until real proving criteria are met"
+  "exact_next_action": "finish and independently reconcile the running restart canary; preserve the 2-of-10 live canary count and evidence-mismatch finding; complete the fresh R9 result-contract repair for the live bridge and control-file reconciliation, then independently verify it before promotion; keep the proving monitor scope distinction, R9/R10/R11/R12 external boundaries, and elapsed window honest; do not close or promote final acceptance until real proving criteria are met"
 }
