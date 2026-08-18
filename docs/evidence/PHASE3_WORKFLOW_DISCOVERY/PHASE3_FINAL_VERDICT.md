@@ -2,8 +2,8 @@
 
 **Decision:** `JARVIS WORKFLOW DISCOVERY: READY AND PROVEN`
 
-**Date:** 2026-08-18  
-**Phase:** 3 — deterministic workflow discovery from governed Phase-2 semantic observations  
+**Date:** 2026-08-18
+**Phase:** 3 — deterministic workflow discovery from governed Phase-2 semantic observations
 **Promotion status:** promoted to canonical `main`; Phase 4 is not activated
 
 ## Canonical Reconciliation
