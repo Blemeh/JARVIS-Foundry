@@ -61,6 +61,6 @@
   },
   "canonical_main_mutated": true,
   "release_freeze": "docs/convergence/PROMOTION_FREEZE_R4.json (deployed and audited)",
-  "release_pointer": "main -> 51d1d4e; previous release remains recoverable",
+  "release_pointer": "main -> 1fa0370; source tree verified at 51d1d4e; previous release remains recoverable",
   "exact_next_action": "independently verify R8, then keep the scheduled read-only monitor running until real elapsed criteria are met"
 }
