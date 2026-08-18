@@ -8,17 +8,17 @@
   "canonical": {
     "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
     "branch": "main",
-    "head": "98f64d1627bcc1ad67edd47bc748ef32be034e1c",
+    "head": "adc0278cc0b74258825a33daaf993206747e02bf",
     "origin_main": "1abc388c6471a310f361612ebd81ed6a2cf6c646",
     "dirty_owner_docs_preserved": true,
     "current_full_suite": {
-      "path": "docs/convergence/R3_CANONICAL_FULL_SUITE_JUNIT.xml",
-      "sha256": "8D349FCF2B91071D24B915293748983026B34A966A207A50E37623D3D225E028",
-      "tests": 1222,
+      "path": "docs/convergence/PROMOTION_CANONICAL_FULL_SUITE_R4.xml",
+      "sha256": "4FB8E6D4202C29DF6D9F1A5EF8F84861C1ED99FD32666B00D91EDD3452009153",
+      "tests": 1225,
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "pythonpath": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R3/src"
+      "pythonpath": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R4/src"
     }
   },
   "candidate": {
@@ -35,17 +35,17 @@
       "skipped": 0
     },
     "canonical_regression_junit": {
-      "path": "docs/convergence/PROMOTION_CANONICAL_FULL_SUITE_POST_REPAIRS.xml",
-      "sha256": "04B264DF991F6DD45C8CA4DB19D16D6D13528D4332C57F4703C9F3AB0A178A64",
-      "tests": 1222,
+      "path": "docs/convergence/PROMOTION_CANONICAL_FULL_SUITE_R4.xml",
+      "sha256": "4FB8E6D4202C29DF6D9F1A5EF8F84861C1ED99FD32666B00D91EDD3452009153",
+      "tests": 1225,
       "failures": 0,
       "errors": 0,
       "skipped": 0
     },
     "post_promotion_regression_junit": {
-      "path": "docs/convergence/PROMOTION_CONVERGENCE_JUNIT_POST_PROMOTION.xml",
-      "sha256": "9CAAB8245B4117A030F077572CE109F7AE5D5B608C791C352DF84A5A02D82EB1",
-      "tests": 81,
+      "path": "docs/convergence/PROMOTION_CONVERGENCE_JUNIT_R4.xml",
+      "sha256": "1CB64295EFB24AA39B3E90819B6170AC0C255224BE2DE8768E0842EF6B446655",
+      "tests": 96,
       "failures": 0,
       "errors": 0,
       "skipped": 0,
@@ -272,17 +272,27 @@
       "report": "docs/convergence/INDEPENDENT_FINAL_VERIFIER_POST_REPAIRS.json",
       "candidate_commit": "98f64d1627bcc1ad67edd47bc748ef32be034e1c",
       "scope": "fresh read-only integrated source, tests, evidence, and lineage verification"
+    },
+    {
+      "role": "R4 newest canonical forward-port final verifier",
+      "agent": "/root/r4_forward_port_final_verifier",
+      "provider": "commandcode",
+      "model": "deepseek-v4-flash",
+      "status": "RUNNING",
+      "candidate_commit": "adc0278cc0b74258825a33daaf993206747e02bf",
+      "worktree": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R4",
+      "scope": "fresh read-only exact newest-main forward-port, package, evidence, and release-pointer verification"
     }
   ],
   "promotion": {
     "status": "PROMOTED_AND_RECONCILED",
-    "promotion_worktree": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R3",
-    "promotion_commit": "98f64d1627bcc1ad67edd47bc748ef32be034e1c",
+    "promotion_worktree": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R4",
+    "promotion_commit": "adc0278cc0b74258825a33daaf993206747e02bf",
     "pre_release_tag": "convergence-pre-r3",
     "post_promotion_runtime_probe": "docs/convergence/LIVE_RUNTIME_PROBE_POST_PROMOTION.json",
     "rollback_bundle": "C:/temp/jarvis-convergence-pre-r3.bundle"
   },
-  "verifier_state": "COMBINED_PROVING_GATE_VERIFIED_PENDING_FF_PROMOTION",
+  "verifier_state": "R4_NEWEST_CANONICAL_BASELINE_VERIFIED_PENDING_FF_PROMOTION",
   "blockers": [
     "R7 real monitored provider research NOT_TESTED/WAITING",
     "R9 real external connector/provider effects NOT_TESTED/WAITING",
@@ -290,5 +300,5 @@
     "R11 elapsed promotion cycles and proving window NOT_TESTED/WAITING",
     "R12 physical host and unavailable-provider fault rows NOT_TESTED/BLOCKED"
   ],
-  "exact_next_action": "ff-only promote 98f64d1 to canonical main, commit the exact deployed release freeze, commission a fresh final audit, and register the real proving window"
+  "exact_next_action": "await R4 newest canonical forward-port final verifier, then ff-only promote and freeze the deployed release"
 }

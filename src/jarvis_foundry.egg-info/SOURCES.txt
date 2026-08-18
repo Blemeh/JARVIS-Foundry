@@ -25,6 +25,7 @@ src/jarvis_foundry/migrations.py
 src/jarvis_foundry/owner_controls.py
 src/jarvis_foundry/paths.py
 src/jarvis_foundry/projections.py
+src/jarvis_foundry/proving.py
 src/jarvis_foundry/reconcile.py
 src/jarvis_foundry/research_queue.py
 src/jarvis_foundry/systems.py

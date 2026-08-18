@@ -1,7 +1,7 @@
 {
   "schema": "jarvis-proving-window-manifest-v1",
   "window_id": "post-promotion-r7-r12-window",
-  "release_source_commit": "e781f2c44211a33bc2d297d38a7a202bf636337f",
+  "release_source_commit": "adc0278cc0b74258825a33daaf993206747e02bf",
   "release_pointer": "main",
   "started_at": "REPLACE_WITH_REAL_AUDIT_CLOSURE_UTC",
   "required_duration_seconds": 604800,

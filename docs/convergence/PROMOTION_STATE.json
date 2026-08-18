@@ -1,15 +1,15 @@
 {
   "schema": "jarvis-canonical-promotion-state-v1",
-  "status": "PROMOTED_AND_RECONCILED",
+  "status": "R4_VERIFIED_PENDING_FF_PROMOTION",
   "canonical_repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
-  "promotion_worktree": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R3",
-  "promotion_branch": "promote/canonical-convergence-r3",
-  "source_main_head": "2b3573606570f910e5569cf3306223354f93e4ac",
-  "candidate_commit": "7a1dee8f73ffeb61294c006f28682aa61f11c259",
-  "promotion_commit": "e781f2c",
+  "promotion_worktree": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R4",
+  "promotion_branch": "promote/canonical-convergence-r4",
+  "source_main_head": "073886a517dabd57b85094e34c6ab251357e3023",
+  "candidate_commit": "174d0c6e193023bdbff1087ab6be73296a093a2c",
+  "promotion_commit": "adc0278cc0b74258825a33daaf993206747e02bf",
   "previous_release_remains_recoverable": true,
   "verification": {
-    "pythonpath": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R3/src",
+    "pythonpath": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R4/src",
     "convergence_junit": {
       "path": "docs/convergence/PROMOTION_CONVERGENCE_JUNIT.xml",
       "sha256": "0F4F9E124B814AA958485DB20425533D36DC61D96B9D51ADCE7A8B9B4E6AADD0",
@@ -19,18 +19,18 @@
       "skipped": 0
     },
     "post_promotion_convergence_junit": {
-      "path": "docs/convergence/PROMOTION_CONVERGENCE_JUNIT_POST_PROMOTION.xml",
-      "sha256": "9CAAB8245B4117A030F077572CE109F7AE5D5B608C791C352DF84A5A02D82EB1",
-      "tests": 81,
+      "path": "docs/convergence/PROMOTION_CONVERGENCE_JUNIT_R4.xml",
+      "sha256": "1CB64295EFB24AA39B3E90819B6170AC0C255224BE2DE8768E0842EF6B446655",
+      "tests": 96,
       "failures": 0,
       "errors": 0,
       "skipped": 0,
       "scope": "proving-window monitor regression and adapted R7-R12 gates"
     },
     "canonical_full_suite_junit": {
-      "path": "docs/convergence/PROMOTION_CANONICAL_FULL_SUITE_JUNIT.xml",
-      "sha256": "EC303FFBB5F96635482D831DA257BB479A6904F84D815FA8315B68BA44A7C74A",
-      "tests": 1222,
+      "path": "docs/convergence/PROMOTION_CANONICAL_FULL_SUITE_R4.xml",
+      "sha256": "4FB8E6D4202C29DF6D9F1A5EF8F84861C1ED99FD32666B00D91EDD3452009153",
+      "tests": 1225,
       "failures": 0,
       "errors": 0,
       "skipped": 0
@@ -49,7 +49,7 @@
     "stop_directives": []
   },
   "canonical_main_mutated": true,
-  "release_freeze": "docs/convergence/PROMOTION_FREEZE.json",
-  "release_pointer": "main -> e781f2c (ff-only from isolated promotion branch)",
-  "exact_next_action": "commission the final integrated audit of the promoted release and begin the honest proving-window/remaining R7-R12 external-effect gates"
+  "release_freeze": "docs/convergence/PROMOTION_FREEZE_R4.json (pending ff-only promotion)",
+  "release_pointer": "promote/canonical-convergence-r4 -> adc0278; main remains at 073886a until final verifier PASS",
+  "exact_next_action": "fresh independent verifier of exact R4 HEAD, then ff-only promotion and release freeze"
 }

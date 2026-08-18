@@ -1,7 +1,8 @@
 # Post-Promotion Proving Window
 
-The exact promoted executable is frozen at source commit `e781f2c` and remains
-recoverable through `convergence-pre-r3`.  The proving window is intentionally
+The R4 candidate executable is verified at source commit `adc0278` and remains
+rollback-compatible with the previous recoverable release `convergence-pre-r3`.
+The proving window is intentionally
 separate from the engineering gates: a green test suite or a heartbeat does
 not compress seven days into a test.
 
