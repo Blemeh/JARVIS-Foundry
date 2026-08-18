@@ -6,7 +6,7 @@ Commands and results:
 
 ```text
 pytest tests/foundry/test_procedural_learning.py -q
-18 passed
+20 passed
 
 pytest tests/foundry/test_perception.py -q
 23 passed
@@ -33,4 +33,3 @@ DOCUMENTATION STALENESS CHECK: PASS
 The full suite uses the canonical repository virtual environment with the
 isolated candidate `src` directory first on `PYTHONPATH`. No canonical live DB,
 Supervisor task, STOP sentinel, or unrelated process was changed.
-

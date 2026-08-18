@@ -24,6 +24,7 @@ from .contracts import (
     ProcedureBundle,
     ReplayOutcome,
     SUPPORTED_OPENADAPT_FLOW_VERSION,
+    validate_parameters,
 )
 from .process import OwnedProcessHandle, launch_owned
 
@@ -156,6 +157,7 @@ class OpenAdaptAdapter:
         """
         verify_bundle(bundle)
         check_openadapt(self.config)
+        normalized_params = validate_parameters(bundle.input_schema, params)
         run_path = Path(run_dir).expanduser().resolve()
         run_path.mkdir(parents=True, exist_ok=True)
         run_id = f"replay-{uuid.uuid4().hex[:12]}"
@@ -168,7 +170,7 @@ class OpenAdaptAdapter:
             command.extend(["--config", str(self.config.deployment_config.resolve())])
         if self.config.browser_url:
             command.extend(["--url", self.config.browser_url])
-        params_path = _params_file(run_path, params)
+        params_path = _params_file(run_path, normalized_params)
         command.extend(["--params-file", str(params_path), "--backend", "web"])
         if self.config.allow_model_grounding:
             raise OpenAdaptUnavailable("model grounding is forbidden for Phase-4 healthy replay")
@@ -220,4 +222,3 @@ class OpenAdaptAdapter:
             str(report_path) if report_path else None,
             reason=redact_text(output_text[-2000:]),
         )
-

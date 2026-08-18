@@ -1,6 +1,6 @@
 # Phase 4 Adversarial Fault Matrix
 
-The focused suite is `tests/foundry/test_procedural_learning.py` (18 tests).
+The focused suite is `tests/foundry/test_procedural_learning.py` (20 tests).
 The local bounded probe used the harmless synthetic app and an independent
 `GET /state` system-of-record oracle. `PASS` means the required refusal or
 effect truth was observed; `NOT_TESTED` would be used for a missing gate.
@@ -19,7 +19,7 @@ effect truth was observed; `NOT_TESTED` would be used for a missing gate.
 | F10 irreversible geometry-only | refuse | irreversible step without selector/identity anchor rejected | PASS |
 | F11 crash before effect | safe recovery/no duplicate | Phase-1 hard-kill before Submit recorded 0 backend writes; existing effect journal reap freezes | PASS |
 | F12 crash after real effect | reconcile, no replay | existing effect recovery/effects tests plus terminal idempotency path | PASS |
-| F13 partial effect | FROZEN/repair | existing `system.action_started` crash window reaps to FROZEN; provider mismatch freezes | PASS |
+| F13 partial effect | FROZEN/repair | focused mutable-oracle test classified a changed provider after adapter STOP as `PARTIAL` and froze the journal | PASS |
 | F14 parent kill | owned tree clean | focused Windows process-tree test kills a spawned child tree and verifies no owned descendants | PASS |
 | F15 STOP before replay | no execution | bounded STOP probe returned `NOT_READY`; no ActionEnvelope/effect was launched | PASS |
 | F16 STOP during replay | terminate/freeze/reconcile | focused adapter STOP result reconciled to `FROZEN`; resume did not launch again | PASS |
@@ -34,4 +34,3 @@ effect truth was observed; `NOT_TESTED` would be used for a missing gate.
 
 Known limitation: Phase-1's native Windows replay still requires a WAA agent;
 Phase 4 deliberately does not promote it.
-

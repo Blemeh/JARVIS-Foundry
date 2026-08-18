@@ -29,6 +29,7 @@ from jarvis_foundry.procedural_learning import (
     governed_replay,
     register_openadapt_capabilities,
     register_tier_c_reference,
+    validate_parameters,
     verify_bundle,
     verify_tier_c_reference,
 )
@@ -155,6 +156,20 @@ def test_secret_and_prompt_injection_are_not_bundled(tmp_path: Path):
     assert "UNTRUSTED_PAGE_TEXT" in (safe.artifact_dir / "workflow.json").read_text(encoding="utf-8")
 
 
+def test_parameter_schema_is_bounded_and_secret_safe():
+    schema = {"task": {"type": "string", "required": True},
+              "option": {"type": "string", "required": True,
+                          "maxLength": 12}}
+    assert validate_parameters(schema, {"task": "A", "option": "B"}) == {
+        "task": "A", "option": "B"}
+    with pytest.raises(ValueError):
+        validate_parameters(schema, {"task": "A", "option": "B", "extra": "C"})
+    with pytest.raises(ValueError):
+        validate_parameters(schema, {"task": "A", "option": "token=FAKE"})
+    with pytest.raises(ValueError):
+        validate_parameters(schema, {"task": "A"})
+
+
 @pytest.mark.parametrize("step", [
     {"action": "click", "irreversible": True, "x": 10, "y": 10},
     {"action": "click", "ambiguous": True, "selector": ".save"},
@@ -227,6 +242,29 @@ def test_governed_replay_requires_existing_tier_c_and_authorizes(db, bundle, mon
         run_dir=tmp_path / "run", oracle=lambda: expected,
     )
     assert result.status == "FROZEN"  # custom oracle intentionally mismatches claim hash
+    assert result.effect_state["status"] == "FROZEN"
+
+
+def test_partial_effect_is_frozen_and_classified(db, bundle, monkeypatch, tmp_path):
+    tier_id = _tier_c(db, bundle)
+    adapter = _fake_adapter(monkeypatch, status="FROZEN")
+
+    class ChangingOracle:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def __call__(self) -> dict[str, object]:
+            self.calls += 1
+            return {"exists": self.calls > 1,
+                    "content_hash": "after" if self.calls > 1 else "before"}
+
+    result = governed_replay(
+        db, tier_c_procedure_id=tier_id, mission_id="m", run_id="r",
+        request_id="partial", params={"task": "A", "option": "B"},
+        adapter=adapter, run_dir=tmp_path / "run", oracle=ChangingOracle(),
+    )
+    assert result.status == "FROZEN"
+    assert result.recovery_classification == "PARTIAL"
     assert result.effect_state["status"] == "FROZEN"
 
 

@@ -82,6 +82,7 @@ def main() -> int:
         "model_calls": outcome.model_calls,
         "report_path": outcome.report_path,
         "effect_state": outcome.effect_state,
+        "recovery_classification": outcome.recovery_classification,
         "tier_c_procedure_id": tier_c_id,
         "phase5_started": False,
         "continuous_learning": False,
@@ -92,4 +93,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

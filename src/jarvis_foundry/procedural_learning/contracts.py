@@ -139,6 +139,41 @@ def safe_structural_steps(steps: list[dict[str, Any]]) -> tuple[dict[str, Any], 
     return tuple(normalized)
 
 
+def validate_parameters(
+    input_schema: dict[str, Any],
+    params: dict[str, Any],
+) -> dict[str, str]:
+    """Validate the bounded parameter surface before an external launch."""
+    if not isinstance(input_schema, dict) or not isinstance(params, dict):
+        raise ProcedureError("procedure parameters must be object mappings")
+    if contains_secret_like(canonical_json(params)):
+        raise ProcedureError("secret-like procedure parameter refused")
+    schema_keys = {str(key) for key in input_schema}
+    param_keys = {str(key) for key in params}
+    unknown = sorted(param_keys - schema_keys)
+    if unknown:
+        raise ProcedureError(f"unknown procedure parameters: {unknown}")
+    normalized: dict[str, str] = {}
+    for key in sorted(schema_keys):
+        spec = input_schema.get(key)
+        if not isinstance(spec, dict):
+            raise ProcedureError(f"parameter schema for {key!r} is invalid")
+        if bool(spec.get("required", False)) and key not in params:
+            raise ProcedureError(f"required procedure parameter missing: {key}")
+        if key not in params:
+            continue
+        value = params[key]
+        if not isinstance(value, str):
+            raise ProcedureError(f"procedure parameter {key!r} must be a string")
+        if spec.get("type", "string") not in ("string", None):
+            raise ProcedureError(f"procedure parameter {key!r} has unsupported type")
+        max_length = spec.get("maxLength")
+        if max_length is not None and len(value) > int(max_length):
+            raise ProcedureError(f"procedure parameter {key!r} exceeds maxLength")
+        normalized[key] = value
+    return normalized
+
+
 @dataclass(frozen=True, slots=True)
 class ProcedureBundle:
     """A frozen OpenAdapt bundle plus its JARVIS governance identity."""

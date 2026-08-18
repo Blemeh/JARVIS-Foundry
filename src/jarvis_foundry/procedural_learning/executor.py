@@ -24,6 +24,7 @@ from .contracts import (
     ReplayOutcome,
     canonical_json,
     payload_hash,
+    validate_parameters,
 )
 from .registry import OPENADAPT_BROWSER_CONNECTOR, OPENADAPT_BROWSER_SYSTEM
 from .tier_c import verify_tier_c_reference
@@ -171,6 +172,9 @@ def governed_replay(
     if surface != "browser":
         return ReplayOutcome("NOT_READY", f"surface-{request_id}", None, "",
                              None, None, reason="OpenAdapt desktop remains PROBING")
+    if stop_path is not None and Path(stop_path).exists():
+        return ReplayOutcome("NOT_READY", f"stop-{request_id}", None, "",
+                             None, None, reason="STOP active before replay")
     bundle = verify_tier_c_reference(database, tier_c_procedure_id)
     try:
         check_openadapt(adapter.config)
@@ -178,6 +182,7 @@ def governed_replay(
         return ReplayOutcome("NOT_READY", f"replay-{request_id}", None,
                              bundle.bundle_hash, None, None,
                              reason=f"OpenAdapt unavailable: {type(exc).__name__}")
+    params = validate_parameters(bundle.input_schema, params)
     connector = select_connector(
         database, "openadapt.replay",
         capabilities_required=("openadapt.browser",),
@@ -214,7 +219,8 @@ def governed_replay(
         result = adapter.replay(bundle, params=params, run_dir=run_dir,
                                 stop_path=stop_path)
         claim.update({"run_id": result.run_id, "model_calls": result.model_calls,
-                      "report_path": result.report_path, "status": result.status})
+                      "report_path": result.report_path, "status": result.status,
+                      "reason": result.reason})
         database.append(Event.create(
             "procedure.execution.claimed",
             {"request_id": request_id, "action_id": envelope.action_id,
@@ -244,9 +250,40 @@ def governed_replay(
     )
     key = str(executed["action_key"])
     provider = oracle.provider_state() if isinstance(oracle, LocalStateOracle) else oracle()
-    reconciliation = reconcile_effect(database, key, provider_state=provider)
+    adapter_status = claim.get("status")
+    if adapter_status and adapter_status != "COMPLETED_UNVERIFIED":
+        # An adapter refusal, STOP, timeout, or process fault is ambiguous
+        # even when the provider happens to report a row. Preserve the
+        # provider observation and freeze the terminal journal so a later
+        # request cannot blindly replay it.
+        database.append(Event.create(
+            "effect.reconcile_mismatch",
+            {"action_key": key, "local_claim": {
+                "adapter_status": adapter_status,
+                "reason": claim.get("reason", "adapter did not complete")},
+             "provider_claim": provider},
+            source_type="verifier", source_id="phase4-independent-oracle",
+            idempotency_key=(f"procedure.effect.mismatch:{key}:"
+                             f"{payload_hash(provider)}:{adapter_status}"),
+        ))
+        reconciliation = {"reconciled": False, "action_key": key}
+    else:
+        reconciliation = reconcile_effect(database, key, provider_state=provider)
     state = effect_state(database, key)
     status = str(state.get("status", executed.get("outcome", "FAILED")))
+    before_hash = str(before_capture.get("hash", ""))
+    provider_hash = str(provider.get("content_hash", ""))
+    if provider.get("oracle_error") or not provider_hash:
+        recovery_classification = "AMBIGUOUS"
+    elif status == "COMPLETED":
+        recovery_classification = (
+            "COMPLETED_VERIFIED" if reconciliation.get("reconciled")
+            else "COMPLETED_UNVERIFIED"
+        )
+    elif before_hash and provider_hash != before_hash:
+        recovery_classification = "PARTIAL"
+    else:
+        recovery_classification = "NO_EFFECT"
     verification_payload = {
         "request_id": request_id, "action_key": key, "status": status,
         "provider": provider, "reconciled": reconciliation.get("reconciled"),
@@ -266,4 +303,5 @@ def governed_replay(
         status, f"replay-{request_id}", envelope.action_id, bundle.bundle_hash,
         claim.get("model_calls"), claim.get("report_path"), effect_state=state,
         reason="independent effect oracle matched" if status == "COMPLETED" else "effect frozen or failed",
+        recovery_classification=recovery_classification,
     )
