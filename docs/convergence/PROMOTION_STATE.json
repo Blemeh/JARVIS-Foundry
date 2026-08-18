@@ -59,8 +59,22 @@
     "status": "WAITING_ELAPSED",
     "claims_external_effects": false
   },
+  "current_forward_port": {
+    "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
+    "branch": "main",
+    "latest_verified_evidence_head": "25115ad09bb66271c34bfb3577f951fa94985414",
+    "promotion_worktree": "C:/temp/JARVIS-Foundry-R8-PROMOTE",
+    "promotion_branch": "promote/r8-production-forward-port",
+    "boundary_reviews": [
+      "docs/convergence/R9_CONNECTOR_BOUNDARY_REVIEW.json",
+      "docs/convergence/R10_COMMAND_CENTER_BOUNDARY_REVIEW.json",
+      "docs/convergence/R11_EVOLUTION_CYCLE_BOUNDARY_REVIEW.json",
+      "docs/convergence/R12_FAULT_CAMPAIGN_FRESH_RECHECK.json"
+    ],
+    "status": "BOUNDED_GATES_VERIFIED_REAL_PROVING_WAITING"
+  },
   "canonical_main_mutated": true,
   "release_freeze": "docs/convergence/PROMOTION_FREEZE_R4.json (deployed and audited)",
   "release_pointer": "main -> 1fa0370; source tree verified at 51d1d4e; previous release remains recoverable",
-  "exact_next_action": "keep the scheduled read-only monitor running; continue dependency-ready R9/R10/R11/R12 work without claiming external proof"
+  "exact_next_action": "keep the scheduled read-only monitor running; continue real proving and external-boundary closure without claiming provider or physical-host proof"
 }

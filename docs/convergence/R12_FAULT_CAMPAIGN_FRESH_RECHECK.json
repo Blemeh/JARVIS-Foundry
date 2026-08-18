@@ -1,0 +1,49 @@
+{
+  "schema": "jarvis-r12-fault-campaign-recheck-v1",
+  "stage": "R12",
+  "role": "executive fresh gate recheck",
+  "recorded_at": "2026-08-18T18:20:20Z",
+  "executor": "root executive",
+  "dispatch": "No subagent dispatch; this is a bounded read-only test recheck",
+  "canonical_head": "25115ad09bb66271c34bfb3577f951fa94985414",
+  "mode": "ISOLATED_TEST_DATABASE_ONLY",
+  "verdict": "PASS_WITH_EXTERNAL_BOUNDARIES",
+  "tests": {
+    "command": "\\.venv\\Scripts\\python.exe -m pytest tests/convergence/test_r12_fault_restore_gate.py -q -ra --junitxml=C:\\temp\\r12-fresh-boundary-junit.xml",
+    "count": 5,
+    "failures": 0,
+    "errors": 0,
+    "junit": "C:/temp/r12-fresh-boundary-junit.xml",
+    "junit_sha256": "2661ECE8BFF01143C03069F8D482A39964AD1BD9A5E41BD0D470447D77901D96"
+  },
+  "campaign_artifact": {
+    "path": "docs/convergence/R12_FAULT_CAMPAIGN.json",
+    "sha256": "94ECD789E8EC32F06897B2FFFA5F05C26D4289DB3D31F7B2BDF264633328166E",
+    "fault_count": 47,
+    "direct_faults": 37,
+    "boundary_faults": 10,
+    "isolated_database": true,
+    "claims_external_effects": false
+  },
+  "verified": [
+    "restore freeze rehearse restart and reconcile",
+    "candidate tamper and STOP refusal",
+    "complete current-main fault coverage",
+    "durable incident and unrelated-work continuation records",
+    "repeatable isolated campaign without live mutation"
+  ],
+  "boundaries": [
+    "Hermes hang",
+    "host reboot",
+    "worker hang",
+    "provider outage",
+    "UI failure",
+    "browser failure",
+    "voice failure",
+    "DB lock",
+    "disk pressure",
+    "evidence/log growth"
+  ],
+  "boundary_status": "NOT_TESTED_OR_BLOCKED",
+  "recommended_next_action": "Retain R12 physical/provider rows as NOT_TESTED/BLOCKED. Do not claim full live fault-campaign proof until safe bounded canaries can induce and independently verify those real conditions."
+}
