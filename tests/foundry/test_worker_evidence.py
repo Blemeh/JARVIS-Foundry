@@ -222,3 +222,30 @@ def test_result_control_file_does_not_condemn_claim(tmp_path):
     report = reconciler.reconcile(step, envelope, before=before)
     assert report.agree is True
     assert ".jarvis-result.json" not in report.observed_changed_files
+
+
+def test_verifier_delta_ignores_builder_result_control_file(tmp_path):
+    """Verifier delta mode must not let the builder's .jarvis-result.json
+    poison the delta: the control file is filtered from the before capture
+    and from the delta baseline so a verifier claiming its own business
+    files can PASS without control-file pollution."""
+    repository = make_repo(tmp_path)
+    # Builder finished: business file + control file present at baseline.
+    (repository / "feature.py").write_text("x = 1\n", encoding="utf-8")
+    (repository / ".jarvis-result.json").write_text(
+        '{"files_changed": ["feature.py"]}', encoding="utf-8")
+    reconciler = EvidenceReconciler()
+    step = contract(repository)
+    before = reconciler.capture_before(step)
+    assert ".jarvis-result.json" not in before.changed_files
+    assert "feature.py" in before.changed_files
+    # Fresh verifier adds only its own business file.
+    (repository / "verifier_note.md").write_text("ok\n", encoding="utf-8")
+    envelope = success_envelope(
+        repository, files_changed=("verifier_note.md",))
+    report = reconciler.reconcile(
+        step, envelope, before=before,
+        delta_baseline=before.changed_files)
+    assert report.agree is True
+    assert report.unrecorded_mutations == ()
+    assert ".jarvis-result.json" not in report.observed_changed_files

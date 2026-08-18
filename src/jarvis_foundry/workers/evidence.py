@@ -137,10 +137,12 @@ class EvidenceReconciler:
 
     def capture_before(self, contract: WorkerStepContract) -> BeforeState:
         root = contract.working_root.resolve()
+        changed = git_changed_files(root)
         return BeforeState(
             head=git_head(root),
             diff_hash=git_diff_hash(root),
-            changed_files=git_changed_files(root),
+            changed_files=tuple(
+                rel for rel in changed if not _is_control_file(rel)),
         )
 
     def reconcile(
@@ -172,6 +174,9 @@ class EvidenceReconciler:
             if not _is_machine_cache(rel) and not _is_control_file(rel))
         observed_changed = tuple(
             rel for rel in observed_changed if not _is_control_file(rel))
+        if delta_baseline is not None:
+            delta_baseline = tuple(
+                rel for rel in delta_baseline if not _is_control_file(rel))
 
         if envelope.worker_status != "COMPLETED":
             mismatches.append(
