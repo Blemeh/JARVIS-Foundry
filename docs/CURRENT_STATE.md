@@ -9,7 +9,7 @@ for "what exists now" claims; the architecture contract wins for binding invaria
 Last reconciled: 2026-08-18 (Post-V7 convergence proving window + Phase 4 canonical procedural-learning closure)
 
 ```text
-CURRENT CANONICAL HEAD:      6c5eb05 (main; Phase 4 remediation promoted on
+CURRENT CANONICAL HEAD:      c356798 (main; Phase 4 remediation promoted on
                              top of the Post-V7 convergence proving-window
                              baseline; this docs closure is a descendant)
 LETTA PROMOTION ANCESTOR:    2f7360e742559e051109e04ef7f3a82cc64cc2d2 (still an ancestor of HEAD)
