@@ -8,7 +8,7 @@
   "canonical": {
     "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
     "branch": "main",
-    "head": "d242af7ffeaac2a3e93eedaa51626e395c71e586",
+    "head": "8e7d4f28fb3e41097128d8201f074e71ae463a3c",
     "source_tree_verified_head": "51d1d4e96b9731eb2c4d13ff0e4db8975e0076ab",
     "origin_main": "1abc388c6471a310f361612ebd81ed6a2cf6c646",
     "dirty_owner_docs_preserved": true,
@@ -600,8 +600,8 @@
   "promotion": {
     "status": "R8_R9_R10_R11_R12_BOUNDED_VERIFIED_R9_CANONICAL_SOURCE_PASS_REPAIRED_LIVE_CANARY_BLOCKED_PROVING_WAITING",
     "promotion_worktree": "C:/temp/JARVIS-Foundry-R8-PROMOTE",
-    "promotion_commit": "d242af7ffeaac2a3e93eedaa51626e395c71e586",
-    "latest_evidence_commit": "d242af7ffeaac2a3e93eedaa51626e395c71e586",
+    "promotion_commit": "8e7d4f28fb3e41097128d8201f074e71ae463a3c",
+    "latest_evidence_commit": "8e7d4f28fb3e41097128d8201f074e71ae463a3c",
     "latest_live_canary": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_CANARY_20260818.json",
     "latest_repair_reconciliation": "docs/convergence/PROVING_WINDOW_REPAIR_RECONCILIATION_20260818.json",
     "latest_r9_result_contract_verification": "docs/convergence/R9_LIVE_RESULT_CONTRACT_VERIFICATION_20260818.json",

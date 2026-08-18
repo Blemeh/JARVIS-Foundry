@@ -4,9 +4,9 @@
   "canonical_repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
   "promotion_worktree": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R4",
   "promotion_branch": "promote/canonical-convergence-r4",
-  "source_main_head": "7353004182ad07ff925f0c3af62f4dca9f2e8372",
-  "candidate_commit": "7353004182ad07ff925f0c3af62f4dca9f2e8372",
-  "promotion_commit": "7353004182ad07ff925f0c3af62f4dca9f2e8372",
+  "source_main_head": "8e7d4f28fb3e41097128d8201f074e71ae463a3c",
+  "candidate_commit": "8e7d4f28fb3e41097128d8201f074e71ae463a3c",
+  "promotion_commit": "8e7d4f28fb3e41097128d8201f074e71ae463a3c",
   "source_tree_verified_head": "51d1d4e96b9731eb2c4d13ff0e4db8975e0076ab",
   "previous_release_remains_recoverable": true,
   "verification": {
@@ -62,7 +62,7 @@
   "current_forward_port": {
     "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
     "branch": "main",
-    "latest_verified_evidence_head": "7353004182ad07ff925f0c3af62f4dca9f2e8372",
+    "latest_verified_evidence_head": "8e7d4f28fb3e41097128d8201f074e71ae463a3c",
     "promotion_worktree": "C:/temp/JARVIS-Foundry-R8-PROMOTE",
     "promotion_branch": "promote/r8-production-forward-port",
     "boundary_reviews": [
@@ -78,7 +78,7 @@
     "repaired_live_canary": {
       "status": "INDEPENDENTLY_RECONCILED_BLOCKED",
       "launch_canonical_head": "f109e5405cca3d7ddf237561385db48ea97116ef",
-      "canonical_head": "7353004182ad07ff925f0c3af62f4dca9f2e8372",
+      "canonical_head": "8e7d4f28fb3e41097128d8201f074e71ae463a3c",
       "section": "mission",
       "started_at": "2026-08-18T20:05:27Z",
       "completed_at": "2026-08-18T20:44:59.352584Z",
