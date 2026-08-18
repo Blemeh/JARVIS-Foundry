@@ -2,7 +2,7 @@
   "schema": "jarvis-post-v7-canonical-convergence-state-v2",
   "program": "JARVIS Post-V7 Remaster",
   "current_stage": "POST_PROMOTION_PROVING",
-  "current_slice": "R4 deployed exact-head audited; R8 production gate verification and real elapsed proving window in progress",
+  "current_slice": "R8 production organization verified; R9/R10 bounded gates independently reviewed; R11 review pending; real elapsed proving window in progress",
   "r6_state": "OWNER_REDIRECT_R6_DEFERRED",
   "eyes_state": "OUT_OF_SCOPE_READ_ONLY",
   "canonical": {
@@ -328,17 +328,21 @@
     {
       "role": "R9 connector boundary reviewer",
       "agent": "/root/r9_connector_boundary_reviewer",
+      "provider_route": "router_commandcode_deepseek_v4_flash",
       "provider": "commandcode",
       "model": "deepseek-v4-flash",
-      "status": "RUNNING",
+      "status": "COMPLETED_PASS_WITH_EXTERNAL_BOUNDARIES",
+      "report": "docs/convergence/R9_CONNECTOR_BOUNDARY_REVIEW.json",
       "scope": "read-only capability registry, connector contracts, STOP ordering, and external readiness"
     },
     {
       "role": "R10 command center boundary reviewer",
       "agent": "/root/r10_command_center_boundary_reviewer",
+      "provider_route": "router_commandcode_deepseek_v4_flash",
       "provider": "commandcode",
       "model": "deepseek-v4-flash",
-      "status": "RUNNING",
+      "status": "COMPLETED_PASS_WITH_EXTERNAL_BOUNDARIES",
+      "report": "docs/convergence/R10_COMMAND_CENTER_BOUNDARY_REVIEW.json",
       "scope": "read-only command center, briefings, language, voice, UI authority, and degraded states"
     },
     {
@@ -363,8 +367,9 @@
     "R7 real monitored provider research NOT_TESTED/WAITING",
     "R9 real external connector/provider effects NOT_TESTED/WAITING",
     "R10 live voice provider and visual/a11y inspection NOT_TESTED/WAITING",
+    "R10 REPRIORITIZE/REDIRECT directive surface boundary unresolved",
     "R11 elapsed promotion cycles and proving window NOT_TESTED/WAITING",
     "R12 physical host and unavailable-provider fault rows NOT_TESTED/BLOCKED"
   ],
-  "exact_next_action": "continue scheduled WAITING monitor checkpoints; next dependency-ready work is R9/R10/R11/R12 boundary closure without fabricating external effects"
+  "exact_next_action": "continue scheduled WAITING monitor checkpoints; record R11 review when complete; then close dependency-ready R9/R10/R11/R12 boundaries without fabricating external effects"
 }
