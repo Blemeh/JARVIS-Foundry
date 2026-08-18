@@ -1,13 +1,13 @@
 {
   "schema": "jarvis-canonical-promotion-state-v1",
-  "status": "R9_CANONICAL_SOURCE_PASS_REPAIRED_LIVE_CANARY_BLOCKED_PROVING_WAITING",
+  "status": "R9_CANONICAL_FOCUSED_SOURCE_REPAIR_PASS_REPAIRED_LIVE_CANARY_BLOCKED_PROVING_WAITING",
   "canonical_repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
-  "promotion_worktree": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R4",
-  "promotion_branch": "promote/canonical-convergence-r4",
-  "source_main_head": "7c35f5c7ba5d4fd0fefcfcb7a785c42cb5a74d24",
-  "candidate_commit": "7c35f5c7ba5d4fd0fefcfcb7a785c42cb5a74d24",
-  "promotion_commit": "7c35f5c7ba5d4fd0fefcfcb7a785c42cb5a74d24",
-  "source_tree_verified_head": "51d1d4e96b9731eb2c4d13ff0e4db8975e0076ab",
+  "promotion_worktree": "C:/temp/JARVIS-Foundry-R8-PROMOTE",
+  "promotion_branch": "promote/r8-production-forward-port",
+  "source_main_head": "faa4a98301fa77b68745e5b5e8b11a761cfd71cf",
+  "candidate_commit": "faa4a98301fa77b68745e5b5e8b11a761cfd71cf",
+  "promotion_commit": "faa4a98301fa77b68745e5b5e8b11a761cfd71cf",
+  "source_tree_verified_head": "faa4a98301fa77b68745e5b5e8b11a761cfd71cf",
   "previous_release_remains_recoverable": true,
   "verification": {
     "pythonpath": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R4/src",
@@ -39,7 +39,26 @@
     "source_import": "PASS",
     "py_compile": "PASS",
     "diff_check": "PASS",
-    "doc_staleness": "PASS"
+    "doc_staleness": "PASS",
+    "focused_source_repair": {
+      "path": "docs/convergence/R9_RESULT_CONTRACT_SOURCE_REPAIR_20260818.json",
+      "sha256": "75277EA70E0FEA1F0CBAEA5CD54BD3AB712E41E9E75A9A5ACDBF911552CC1A1B",
+      "head": "faa4a98301fa77b68745e5b5e8b11a761cfd71cf",
+      "tests": 67,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "status": "PASS_SOURCE_FOCUSED_EXTERNAL_BOUNDARY",
+      "independent_verifier": {
+        "agent": "/root/r9_result_contract_luna_short_verifier",
+        "provider_transport": "codex-router",
+        "provider": "commandcode",
+        "model": "gpt-5.6-luna",
+        "route": "router_commandcode_gpt_5_6_luna",
+        "status": "PASS"
+      },
+      "live_provider_boundary": "NOT_TESTED"
+    }
   },
   "post_promotion_runtime_probe": {
     "path": "docs/convergence/LIVE_RUNTIME_PROBE_POST_PROMOTION.json",
@@ -62,7 +81,7 @@
   "current_forward_port": {
     "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
     "branch": "main",
-    "latest_verified_evidence_head": "7c35f5c7ba5d4fd0fefcfcb7a785c42cb5a74d24",
+    "latest_verified_evidence_head": "faa4a98301fa77b68745e5b5e8b11a761cfd71cf",
     "promotion_worktree": "C:/temp/JARVIS-Foundry-R8-PROMOTE",
     "promotion_branch": "promote/r8-production-forward-port",
     "boundary_reviews": [
@@ -73,8 +92,9 @@
       ,"docs/convergence/PROVING_WINDOW_LIVE_MISSION_CANARY_20260818.json"
       ,"docs/convergence/R9_LIVE_RESULT_CONTRACT_VERIFICATION_20260818.json"
       ,"docs/convergence/R9_LIVE_RESULT_CONTRACT_CANONICAL_POST_PROMOTION_VERIFICATION_20260818.json"
+      ,"docs/convergence/R9_RESULT_CONTRACT_SOURCE_REPAIR_20260818.json"
     ],
-    "status": "BOUNDED_GATES_VERIFIED_R9_CANONICAL_SOURCE_PASS_REPAIRED_LIVE_CANARY_BLOCKED_RESTART_CANARY_BLOCKED_REAL_PROVING_WAITING",
+    "status": "BOUNDED_GATES_VERIFIED_R9_FOCUSED_SOURCE_REPAIR_PASS_REPAIRED_LIVE_CANARY_BLOCKED_RESTART_CANARY_BLOCKED_REAL_PROVING_WAITING",
     "repaired_live_canary": {
       "status": "INDEPENDENTLY_RECONCILED_BLOCKED",
       "launch_canonical_head": "f109e5405cca3d7ddf237561385db48ea97116ef",
@@ -108,6 +128,14 @@
       "status": "PASS_CANONICAL_SOURCE_VERIFIED_PENDING_LIVE_CANARY",
       "promotion_allowed": true
     },
+    "latest_source_repair": {
+      "path": "docs/convergence/R9_RESULT_CONTRACT_SOURCE_REPAIR_20260818.json",
+      "sha256": "75277EA70E0FEA1F0CBAEA5CD54BD3AB712E41E9E75A9A5ACDBF911552CC1A1B",
+      "head": "faa4a98301fa77b68745e5b5e8b11a761cfd71cf",
+      "status": "PASS_SOURCE_FOCUSED_EXTERNAL_BOUNDARY",
+      "focused_tests": 67,
+      "live_provider_boundary": "NOT_TESTED"
+    },
     "repair3_pending_verification": {
       "worktree": "C:/temp/JARVIS-Foundry-R9-LiveCanary-Repair-3",
       "branch": "repair/r9-live-canary-result-contract-3",
@@ -129,7 +157,7 @@
   },
   "canonical_main_mutated": true,
   "release_freeze": "docs/convergence/PROMOTION_FREEZE_R4.json (deployed and audited)",
-  "release_pointer": "main -> 1fa0370; source tree verified at 51d1d4e; previous release remains recoverable",
+  "release_pointer": "main -> faa4a98; source tree verified at faa4a98301fa77b68745e5b5e8b11a761cfd71cf; previous release remains recoverable",
     "latest_repaired_live_canary": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_REPAIRED_CANARY_20260818.json",
     "latest_full_suite": "docs/convergence/CANONICAL_FULL_SUITE_20260818_R2.json",
     "documentation_repair": {
@@ -141,5 +169,5 @@
       "provider": "commandcode",
       "model": "gpt-5.6-luna"
     },
-    "exact_next_action": "preserve 2-of-10 accepted mission count and restart-0 count; keep the repaired live canary BLOCKED; repair the live provider/result-contract path before a fresh bounded disposable canary; continue the real proving monitor and do not close final acceptance until elapsed and external criteria are met"
+    "exact_next_action": "preserve 2-of-10 accepted mission count and restart-0 count; keep the repaired live canary BLOCKED; run one fresh bounded disposable canary against exact faa4a98301fa77b68745e5b5e8b11a761cfd71cf and independently inspect result marker, business diff, durable evidence, provider/model, and external-effect boundary; continue the real proving monitor and do not close final acceptance until elapsed and external criteria are met"
 }

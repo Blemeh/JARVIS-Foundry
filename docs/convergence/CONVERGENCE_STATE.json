@@ -2,15 +2,15 @@
   "schema": "jarvis-post-v7-canonical-convergence-state-v2",
   "program": "JARVIS Post-V7 Remaster",
   "current_stage": "POST_PROMOTION_PROVING",
-  "current_slice": "R8 production organization verified; R9/R10 bounded gates reviewed; R10 directive repair independently verified; R11 bounded evolution gate reviewed; R12 fault gate freshly rechecked; proving lineage/monitor repairs reconciled on current main; R9 result-contract and verifier-delta repairs independently verified and ff-only promoted to canonical main; canonical post-promotion worker and convergence gates pass; live mission canary independently verified with 2 of 10 required missions; restart canary completed fail-closed with 0 accepted missions; repaired live mission canary completed fail-closed with 0 new accepted missions; documentation staleness repair independently verified and current canonical full suite 1234/1234 passes; real elapsed proving window in progress",
+  "current_slice": "R8 production organization verified; R9/R10 bounded gates reviewed; R10 directive repair independently verified; R11 bounded evolution gate reviewed; R12 fault gate freshly rechecked; proving lineage/monitor repairs reconciled on current main; R9 result-contract and verifier-delta repairs independently verified and ff-only promoted to canonical main; canonical post-promotion worker and convergence gates pass; live mission canary independently verified with 2 of 10 required missions; restart canary completed fail-closed with 0 accepted missions; repaired live mission canary completed fail-closed with 0 new accepted missions; documentation staleness repair independently verified and current canonical full suite 1234/1234 passes for its recorded parent; source result-contract and STOP/evidence-mismatch repair at faa4a98 focused and independently hash-verified; real elapsed proving window in progress",
   "r6_state": "OWNER_REDIRECT_R6_DEFERRED",
   "eyes_state": "OUT_OF_SCOPE_READ_ONLY",
   "canonical": {
     "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
     "branch": "main",
-    "head": "7c35f5c7ba5d4fd0fefcfcb7a785c42cb5a74d24",
-    "source_tree_verified_head": "51d1d4e96b9731eb2c4d13ff0e4db8975e0076ab",
-    "origin_main": "1abc388c6471a310f361612ebd81ed6a2cf6c646",
+    "head": "faa4a98301fa77b68745e5b5e8b11a761cfd71cf",
+    "source_tree_verified_head": "faa4a98301fa77b68745e5b5e8b11a761cfd71cf",
+    "origin_main": "faa4a98301fa77b68745e5b5e8b11a761cfd71cf",
     "dirty_owner_docs_preserved": true,
     "current_full_suite": {
       "path": "docs/convergence/CANONICAL_FULL_SUITE_20260818_R2.json",
@@ -22,6 +22,22 @@
       "errors": 0,
       "skipped": 0,
       "pythonpath": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry;C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/src"
+    },
+    "focused_source_repair": {
+      "status": "PASS_SOURCE_FOCUSED_EXTERNAL_BOUNDARY",
+      "report": "docs/convergence/R9_RESULT_CONTRACT_SOURCE_REPAIR_20260818.json",
+      "report_sha256": "75277EA70E0FEA1F0CBAEA5CD54BD3AB712E41E9E75A9A5ACDBF911552CC1A1B",
+      "head": "faa4a98301fa77b68745e5b5e8b11a761cfd71cf",
+      "focused_tests": "67 passed",
+      "live_provider_boundary": "NOT_TESTED",
+      "independent_verifier": {
+        "agent": "/root/r9_result_contract_luna_short_verifier",
+        "provider_transport": "codex-router",
+        "provider": "commandcode",
+        "model": "gpt-5.6-luna",
+        "route": "router_commandcode_gpt_5_6_luna",
+        "status": "PASS"
+      }
     },
     "documentation_repair": {
       "status": "PASS",
@@ -228,6 +244,24 @@
       "convergence_junit_sha256": "0F6A886D969DFAF18DE2867111F2FA3BE42B87050B8693D49351627FE19680BD",
       "live_provider_boundary": "NOT_TESTED"
     },
+    "r9_source_repair_faa": {
+      "status": "PASS_SOURCE_FOCUSED_EXTERNAL_BOUNDARY",
+      "report": "docs/convergence/R9_RESULT_CONTRACT_SOURCE_REPAIR_20260818.json",
+      "report_sha256": "75277EA70E0FEA1F0CBAEA5CD54BD3AB712E41E9E75A9A5ACDBF911552CC1A1B",
+      "canonical_head": "faa4a98301fa77b68745e5b5e8b11a761cfd71cf",
+      "origin_main": "faa4a98301fa77b68745e5b5e8b11a761cfd71cf",
+      "focused_tests": 67,
+      "independent_verifier": {
+        "agent": "/root/r9_result_contract_luna_short_verifier",
+        "provider_transport": "codex-router",
+        "provider": "commandcode",
+        "model": "gpt-5.6-luna",
+        "route": "router_commandcode_gpt_5_6_luna",
+        "status": "PASS"
+      },
+      "live_provider_boundary": "NOT_TESTED",
+      "new_live_canary_required": true
+    },
     "restart_canary": {
       "status": "FAIL_EXTERNAL_BOUNDARY",
       "report": "docs/convergence/PROVING_WINDOW_RESTART_CANARY_20260818.json",
@@ -333,9 +367,12 @@
       "id": "R9-LIVE-PROVIDER-RESULT-CONTRACT-20260818",
       "severity": "S2",
       "status": "OPEN_EXTERNAL_BOUNDARY",
-      "evidence": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_REPAIRED_CANARY_20260818.json",
+      "evidence": [
+        "docs/convergence/PROVING_WINDOW_LIVE_MISSION_REPAIRED_CANARY_20260818.json",
+        "docs/convergence/R9_RESULT_CONTRACT_SOURCE_REPAIR_20260818.json"
+      ],
       "finding": "The repaired live provider path still failed to produce .jarvis-result.json or a durable evidence bundle on both bounded repair sessions, so both missions remained BLOCKED after evidence_mismatch/timeout.",
-      "resolution": "Fail closed, preserve the prior 2 accepted missions, count 0 new missions, and require a fresh bounded canary only after the provider/result producer path is repaired."
+      "resolution": "Source-level result production, fail-closed mismatch handling, and STOP-sentinel resolution are focused and independently hash-verified at faa4a98; keep the external finding open, preserve the prior 2 accepted missions and 0 new missions, and require a fresh bounded canary before claiming live-provider success."
     }
   ],
   "dispatches": [
@@ -636,17 +673,42 @@
       "status": "COMPLETED_PASS",
       "worktree": "C:/temp/JARVIS-Foundry-DocStaleness-Repair",
       "scope": "read-only isolated diff, checker, focused tests, and canonical immutability"
+    },
+    {
+      "role": "R9 result-contract exact verifier (superseded nonresponsive run)",
+      "agent": "/root/r9_result_contract_cursor_luna_verifier",
+      "provider_route": "router_commandcode_gpt_5_6_luna",
+      "provider_transport": "codex-router",
+      "provider": "commandcode",
+      "model": "gpt-5.6-luna",
+      "status": "INTERRUPTED_NONRESPONSIVE",
+      "scope": "read-only exact pushed ebec354 source-contract inspection; no mutation",
+      "reason": "Owner requested bounded progress; verifier did not return after repeated waits and was replaced by a shorter exact detached-worktree check."
+    },
+    {
+      "role": "R9 result-contract exact detached-worktree verifier",
+      "agent": "/root/r9_result_contract_luna_short_verifier",
+      "provider_route": "router_commandcode_gpt_5_6_luna",
+      "provider_transport": "codex-router",
+      "provider": "commandcode",
+      "model": "gpt-5.6-luna",
+      "status": "COMPLETED_PASS",
+      "worktree": "C:/temp/JARVIS-Foundry-faa-verify",
+      "head": "faa4a98301fa77b68745e5b5e8b11a761cfd71cf",
+      "report": "docs/convergence/R9_RESULT_CONTRACT_SOURCE_REPAIR_20260818.json",
+      "scope": "read-only exact hash/status and supplied 67-test focused evidence; no mutation"
     }
   ],
   "promotion": {
-    "status": "R8_R9_R10_R11_R12_BOUNDED_VERIFIED_CURRENT_CANONICAL_FULL_SUITE_PASS_REPAIRED_LIVE_CANARY_BLOCKED_PROVING_WAITING",
+    "status": "R8_R9_R10_R11_R12_BOUNDED_VERIFIED_CURRENT_CANONICAL_FOCUSED_SOURCE_REPAIR_PASS_REPAIRED_LIVE_CANARY_BLOCKED_PROVING_WAITING",
     "promotion_worktree": "C:/temp/JARVIS-Foundry-R8-PROMOTE",
-    "promotion_commit": "7c35f5c7ba5d4fd0fefcfcb7a785c42cb5a74d24",
-    "latest_evidence_commit": "7c35f5c7ba5d4fd0fefcfcb7a785c42cb5a74d24",
+    "promotion_commit": "faa4a98301fa77b68745e5b5e8b11a761cfd71cf",
+    "latest_evidence_commit": "faa4a98301fa77b68745e5b5e8b11a761cfd71cf",
     "latest_live_canary": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_CANARY_20260818.json",
     "latest_repair_reconciliation": "docs/convergence/PROVING_WINDOW_REPAIR_RECONCILIATION_20260818.json",
     "latest_r9_result_contract_verification": "docs/convergence/R9_LIVE_RESULT_CONTRACT_VERIFICATION_20260818.json",
     "latest_r9_result_contract_repair_verification": "docs/convergence/R9_LIVE_RESULT_CONTRACT_CANONICAL_POST_PROMOTION_VERIFICATION_20260818.json",
+    "latest_r9_source_repair": "docs/convergence/R9_RESULT_CONTRACT_SOURCE_REPAIR_20260818.json",
     "latest_restart_canary": "docs/convergence/PROVING_WINDOW_RESTART_CANARY_20260818.json",
     "latest_repaired_live_canary": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_REPAIRED_CANARY_20260818.json",
     "latest_full_suite": "docs/convergence/CANONICAL_FULL_SUITE_20260818_R2.json",
@@ -654,7 +716,7 @@
     "post_promotion_runtime_probe": "docs/convergence/LIVE_RUNTIME_PROBE_POST_PROMOTION.json",
     "rollback_bundle": "C:/temp/jarvis-convergence-pre-r3.bundle"
   },
-  "verifier_state": "R8_R9_R10_R11_R12_BOUNDED_GATES_VERIFIED_CURRENT_CANONICAL_FULL_SUITE_PASS_REPAIRED_LIVE_CANARY_BLOCKED_REAL_PROVING_WINDOW_WAITING_ELAPSED",
+  "verifier_state": "R8_R9_R10_R11_R12_BOUNDED_GATES_VERIFIED_CURRENT_CANONICAL_FOCUSED_SOURCE_REPAIR_PASS_REPAIRED_LIVE_CANARY_BLOCKED_REAL_PROVING_WINDOW_WAITING_ELAPSED",
   "blockers": [
     "R7 real monitored provider research NOT_TESTED/WAITING",
     "R9 real external connector/provider effects NOT_TESTED/WAITING",
