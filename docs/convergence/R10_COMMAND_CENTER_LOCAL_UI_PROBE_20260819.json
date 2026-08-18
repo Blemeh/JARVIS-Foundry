@@ -1,0 +1,87 @@
+{
+  "schema": "jarvis-r10-command-center-local-ui-probe-v1",
+  "stage": "R10",
+  "status": "PASS_LOCAL_RENDER_WITH_RUNTIME_BOUNDARIES",
+  "mode": "READ_ONLY",
+  "recorded_at": "2026-08-19T01:31:49+02:00",
+  "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
+  "source_head_under_test": "4a410dad9daabb1dca759e8a8890a8514b176eeb",
+  "worktree_clean_before_probe": true,
+  "probe": {
+    "server": "src/jarvis_foundry/command_center.py",
+    "database": "disposable temporary SQLite database",
+    "database_persisted": false,
+    "live_runtime_touched": false,
+    "owner_secret_used": false,
+    "http": {
+      "endpoint": "http://127.0.0.1:8765/api/command-center",
+      "status_code": 200
+    },
+    "playwright": {
+      "desktop": {
+        "viewport": "1440x1000",
+        "title": "JARVIS Command Center",
+        "heading": "Command Center",
+        "html_lang": "en",
+        "main_visible": true,
+        "stop_text": "SUPERVISOR STOPPED"
+      },
+      "mobile": {
+        "viewport": "390x844",
+        "heading": "Command Center",
+        "main_visible": true,
+        "horizontal_overflow": false
+      }
+    },
+    "screenshots": [
+      {
+        "path": "C:/temp/jarvis-r10-command-center-desktop.png",
+        "sha256": "F4B4B9D8FD6C7684F31AD63328E8E461D8A8EB629CC61399B359D19158CDBEA8"
+      },
+      {
+        "path": "C:/temp/jarvis-r10-command-center-mobile.png",
+        "sha256": "DA8C2F9F5B04C51C591529746642BFF568457785E1A31EC7796E1DD0816B6DE8"
+      }
+    ]
+  },
+  "commands": [
+    "C:/temp/jarvis_r10_ui_probe.ps1",
+    "C:/temp/jarvis_r10_browser_probe.cjs",
+    "Get-FileHash C:/temp/jarvis-r10-command-center-desktop.png -Algorithm SHA256",
+    "Get-FileHash C:/temp/jarvis-r10-command-center-mobile.png -Algorithm SHA256"
+  ],
+  "verified": [
+    "local Command Center projection server started and answered HTTP 200",
+    "desktop and mobile Command Center rendered with visible main content",
+    "mobile viewport had no horizontal overflow",
+    "empty disposable ledger truthfully displayed SUPERVISOR STOPPED"
+  ],
+  "boundaries": [
+    {
+      "area": "live Supervisor control through the owner directive ledger",
+      "status": "NOT_TESTED",
+      "reason": "probe used an empty disposable database and no owner secret"
+    },
+    {
+      "area": "configured voice provider and real STT/TTS",
+      "status": "NOT_TESTED"
+    },
+    {
+      "area": "production browser deployment, restart reconciliation, and live runtime UI",
+      "status": "NOT_TESTED"
+    },
+    {
+      "area": "full accessibility audit",
+      "status": "NOT_TESTED",
+      "reason": "this probe covered visibility, language, and overflow only"
+    }
+  ],
+  "independent_visual_inspection": {
+    "status": "PASS_LOCAL_SCREENSHOT_INSPECTION",
+    "inspector": "/root",
+    "method": "Codex local image inspection",
+    "notes": "Desktop and mobile screenshots were visually inspected; no incoherent overlap was observed."
+  },
+  "verdict_scope": "This proves local projection rendering only. It does not prove live owner controls, provider voice, production deployment, or final R10 acceptance.",
+  "recommended_next_action": "Keep real proving and external R10 boundaries honest; do not promote the simulated React candidate as live UI proof."
+}
