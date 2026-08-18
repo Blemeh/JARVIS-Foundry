@@ -1,0 +1,84 @@
+{
+  "schema": "jarvis-canonical-proving-window-runtime-start-v3",
+  "stage": "POST_PROMOTION_PROVING",
+  "status": "STARTED_WAITING_ELAPSED_EXACT_CANONICAL_RELEASE_R2",
+  "recorded_at": "2026-08-18T23:54:07.723317+00:00",
+  "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
+  "branch": "main",
+  "release": {
+    "release_pointer": "main",
+    "deployed_metadata_commit": "ee697375c53bedeb3e4616c4b343074bf86af99f",
+    "deployed_metadata_tree": "07cd4d6a5cdc2070cd93a30583a926790cfdb758",
+    "executable_source_commit": "f37f852b3b328aa39476f86fb4f7b7e9d57836a9",
+    "executable_source_tree": "6f6b90249c82a340627b3a9c645f62e41d5d796c",
+    "runtime_source_loaded": "f37f852b3b328aa39476f86fb4f7b7e9d57836a9",
+    "previous_release_remains_recoverable": true
+  },
+  "controlled_restart": {
+    "pre_restart_process_started_at": "2026-08-18T17:47:05+00:00",
+    "pre_restart_window": "post-canonical-ee69737-real-20260819",
+    "pre_restart_window_status": "SUSPENDED",
+    "pre_restart_window_close_event_sequence": 103994,
+    "pre_restart_window_close_reason": "Supervisor process predates executable source f37f852; suspend this registration before controlled restart and re-register after exact source load",
+    "fresh_process_started_at": "2026-08-18T23:52:05Z",
+    "fresh_supervisor_instance": "supervisor-dbfc3d8b-936d-4b61-9895-2b8ae917ce04",
+    "fresh_process_long_lived": true,
+    "fresh_process_source_path": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/.venv/Scripts/python.exe"
+  },
+  "window": {
+    "window_id": "post-canonical-ee69737-real-20260819-r2",
+    "registration_event_sequence": 104009,
+    "started_at": "2026-08-18T23:53:26.180035Z",
+    "required_days": 7,
+    "required_duration_seconds": 604800,
+    "required_missions": 10,
+    "previous_window_id": "post-canonical-ee69737-real-20260819",
+    "manifest": {
+      "path": "C:/Users/b/AppData/Local/hermes/foundry/evidence/proving-window/manifest-canonical-ee69737-real-20260819-r2.json",
+      "sha256": "C883023E9EB16544447A5E3EE309A1DE415D90E25D6157552CB2CE696C3706B5"
+    },
+    "checkpoint": {
+      "path": "C:/Users/b/AppData/Local/hermes/foundry/evidence/proving-window/checkpoint-canonical-ee69737-real-20260819-r2.json",
+      "sha256": "ABB37106958E3367637903570AD8603FCECCFF6561A88BC9BA8285C723DB9744",
+      "status": "WAITING_ELAPSED",
+      "manifest_hash": "a8f0ac0ffda1d90f0e52792d888191cc0d93925429e52afbb36c6fe9b168f3c9",
+      "elapsed_seconds": 41.543,
+      "remaining_seconds": 604758.457,
+      "event_head": 104017,
+      "sqlite_quick_check": "ok",
+      "schema_version": 33,
+      "active_stop_directives": 0,
+      "supervisor_status": "RUNNING",
+      "supervisor_singleton": 1,
+      "heartbeat_count": 8,
+      "max_heartbeat_gap_seconds": 5.054116,
+      "heartbeat_source_id": "supervisor-dbfc3d8b-936d-4b61-9895-2b8ae917ce04"
+    }
+  },
+  "scheduled_monitor": {
+    "task_name": "JARVIS-Foundry-Proving-Window-Monitor-Canonical-R2",
+    "wrapper": "C:/Users/b/AppData/Local/hermes/foundry/evidence/proving-window/run-monitor-canonical-ee69737-r2.cmd",
+    "wrapper_sha256": "3A1A651DB6F6325577362131EF211A32D879CC1766B4533A70D744F1C04A9ED1",
+    "last_run_time": "2026-08-19T01:54:07+02:00",
+    "last_task_result": 0,
+    "next_run_time": "2026-08-19T01:55:07+02:00",
+    "repetition": "PT5M",
+    "multiple_instances": "IgnoreNew",
+    "read_only_monitor": true
+  },
+  "registration": {
+    "method": "canonical jarvis_foundry.proving.register_window API",
+    "controller": "supervisor",
+    "database_mutation": "one proving.window_registered event for R2",
+    "provider_invoked": false,
+    "credential_values_recorded": false
+  },
+  "honest_boundaries": {
+    "external_provider_effects": "NOT_TESTED",
+    "voice_provider": "NOT_TESTED",
+    "physical_host_faults": "NOT_TESTED",
+    "verified_missions_after_window_start": 0,
+    "required_verified_missions": 10
+  },
+  "recommended_next_action": "Let the R2 exact-release monitor persist WAITING through restart; do not close until seven real healthy days and ten independently verified post-start missions are present, and do not retry the blocked provider canary without authorized quota/configuration change."
+}
