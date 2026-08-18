@@ -62,7 +62,7 @@
   "current_forward_port": {
     "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
     "branch": "main",
-    "latest_verified_evidence_head": "949b4effdf28a2d938a628811fb9c751f5cb222c",
+    "latest_verified_evidence_head": "fcf3b84bb5051aef8d5baaa894847aecb4bd35d2",
     "promotion_worktree": "C:/temp/JARVIS-Foundry-R8-PROMOTE",
     "promotion_branch": "promote/r8-production-forward-port",
     "boundary_reviews": [
@@ -70,11 +70,12 @@
       "docs/convergence/R10_COMMAND_CENTER_BOUNDARY_REVIEW.json",
       "docs/convergence/R11_EVOLUTION_CYCLE_BOUNDARY_REVIEW.json",
       "docs/convergence/R12_FAULT_CAMPAIGN_FRESH_RECHECK.json"
+      ,"docs/convergence/PROVING_WINDOW_LIVE_MISSION_CANARY_20260818.json"
     ],
-    "status": "BOUNDED_GATES_VERIFIED_REAL_PROVING_WAITING"
+    "status": "BOUNDED_GATES_VERIFIED_LIVE_CANARY_RECONCILED_REAL_PROVING_WAITING"
   },
   "canonical_main_mutated": true,
   "release_freeze": "docs/convergence/PROMOTION_FREEZE_R4.json (deployed and audited)",
   "release_pointer": "main -> 1fa0370; source tree verified at 51d1d4e; previous release remains recoverable",
-  "exact_next_action": "keep the scheduled read-only monitor running; continue real proving and external-boundary closure without claiming provider or physical-host proof"
+  "exact_next_action": "keep the scheduled read-only monitor running; preserve the independently verified 2-of-10 live canary and its builder evidence-mismatch finding; continue real proving and external-boundary closure without claiming provider or physical-host proof"
 }

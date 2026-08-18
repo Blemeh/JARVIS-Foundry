@@ -2,13 +2,13 @@
   "schema": "jarvis-post-v7-canonical-convergence-state-v2",
   "program": "JARVIS Post-V7 Remaster",
   "current_stage": "POST_PROMOTION_PROVING",
-  "current_slice": "R8 production organization verified; R9/R10 bounded gates reviewed; R10 directive repair independently verified; R11 bounded evolution gate reviewed; R12 fault gate freshly rechecked; real elapsed proving window in progress",
+  "current_slice": "R8 production organization verified; R9/R10 bounded gates reviewed; R10 directive repair independently verified; R11 bounded evolution gate reviewed; R12 fault gate freshly rechecked; live mission canary independently verified with 2 of 10 required missions; real elapsed proving window in progress",
   "r6_state": "OWNER_REDIRECT_R6_DEFERRED",
   "eyes_state": "OUT_OF_SCOPE_READ_ONLY",
   "canonical": {
     "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
     "branch": "main",
-    "head": "949b4effdf28a2d938a628811fb9c751f5cb222c",
+    "head": "fcf3b84bb5051aef8d5baaa894847aecb4bd35d2",
     "source_tree_verified_head": "51d1d4e96b9731eb2c4d13ff0e4db8975e0076ab",
     "origin_main": "1abc388c6471a310f361612ebd81ed6a2cf6c646",
     "dirty_owner_docs_preserved": true,
@@ -109,7 +109,23 @@
     "scheduled_monitor_task": "JARVIS-Foundry-Proving-Window-Monitor",
     "registered_event_sequence": 99426,
     "started_at": "2026-08-18T17:57:26.791325Z",
-    "claims_external_effects": false
+    "claims_external_effects": false,
+    "last_checkpoint_event_head": 100154,
+    "canary": {
+      "status": "INDEPENDENTLY_VERIFIED_WAITING",
+      "report": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_CANARY_20260818.json",
+      "report_sha256": "FB5EB6261267BFA9B16729D3C63B6EA76791DCFCD8CEBF0F820F0277AA401829",
+      "provider": "opencode_go",
+      "model": "deepseek-v4-flash",
+      "verified_missions": 2,
+      "required_missions": 10,
+      "mission_ids": [
+        "mission-hybrid-probe-a-33284704",
+        "mission-hybrid-probe-b-d30b7975"
+      ],
+      "builder_evidence_mismatch_count": 2,
+      "builder_mismatch_resolution": "fresh verifiers inspected the frozen artifact and returned PASS; builder claims remain NOT_TESTED"
+    }
   },
   "remaster_evidence": {
     "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry-Remaster",
@@ -156,6 +172,14 @@
       "severity": "S2",
       "status": "RECHECKED_IN_R3",
       "evidence": "docs/convergence/R12_FAULT_CAMPAIGN.json"
+    },
+    {
+      "id": "R8-LIVE-CANARY-EVIDENCE-MISMATCH-20260818",
+      "severity": "S2",
+      "status": "OBSERVED_RECONCILED_MONITORING",
+      "evidence": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_CANARY_20260818.json",
+      "finding": "Both live canary builders claimed files_changed=[] although the frozen disposable worktree contained source/test diffs; EvidenceReconciler surfaced evidence_mismatch and fresh verifiers independently inspected the artifact.",
+      "resolution": "No builder claim was accepted as truth. The two missions remain verifier PASS with builder NOT_TESTED; investigate the structured worker result producer before relying on builder-level completion."
     }
   ],
   "dispatches": [
@@ -371,6 +395,8 @@
     "status": "R8_R9_R10_R11_R12_BOUNDED_VERIFIED_PROVING_WAITING",
     "promotion_worktree": "C:/temp/JARVIS-Foundry-R8-PROMOTE",
     "promotion_commit": "949b4effdf28a2d938a628811fb9c751f5cb222c",
+    "latest_evidence_commit": "fcf3b84bb5051aef8d5baaa894847aecb4bd35d2",
+    "latest_live_canary": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_CANARY_20260818.json",
     "pre_release_tag": "convergence-pre-r3",
     "post_promotion_runtime_probe": "docs/convergence/LIVE_RUNTIME_PROBE_POST_PROMOTION.json",
     "rollback_bundle": "C:/temp/jarvis-convergence-pre-r3.bundle"
@@ -384,5 +410,5 @@
     "R11 real elapsed proving window and live promotion cycles NOT_TESTED/WAITING",
     "R12 physical host and unavailable-provider fault rows NOT_TESTED/BLOCKED"
   ],
-  "exact_next_action": "continue scheduled WAITING monitor checkpoints; keep R9/R10/R11/R12 external and elapsed boundaries honest; do not close or promote final acceptance until real proving criteria are met"
+  "exact_next_action": "continue scheduled WAITING monitor checkpoints; preserve the 2-of-10 live canary count and evidence-mismatch finding; assess the structured worker result producer before another canary; keep R9/R10/R11/R12 external and elapsed boundaries honest; do not close or promote final acceptance until real proving criteria are met"
 }

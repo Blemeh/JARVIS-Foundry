@@ -1,0 +1,119 @@
+{
+  "schema": "jarvis-proving-window-live-mission-canary-v1",
+  "stage": "POST_PROMOTION_PROVING",
+  "recorded_at": "2026-08-18T18:55:00Z",
+  "verdict": "WAITING_REAL_PROVING",
+  "window": {
+    "window_id": "post-r4-real-20260818",
+    "started_at": "2026-08-18T17:57:26.791325Z",
+    "required_duration_seconds": 604800,
+    "required_verified_missions": 10,
+    "verified_missions_after_canary": 2,
+    "checkpoint": "C:/Users/b/AppData/Local/hermes/foundry/evidence/proving-window/checkpoint-r4-real.json",
+    "monitor_status": "WAITING_ELAPSED",
+    "monitor_event_head_after_canary": 100154
+  },
+  "dispatch": {
+    "route": "opencode_go",
+    "provider": "opencode_go",
+    "model": "deepseek-v4-flash",
+    "credential_values_recorded": false,
+    "external_effects_claimed": false,
+    "command": "canonical .venv python scripts/hybrid_live_probe.py --section mission --home C:/Users/b/AppData/Local/hermes/foundry --out C:/temp/jarvis-live-mission-20260818-2045",
+    "report": "C:/temp/jarvis-live-mission-20260818-2045/report-mission.json",
+    "report_sha256": "EAAFEA60A08E4354B59CEC6C0DD6E30FB1A53AAE909D794F303E65D2B1D76A69"
+  },
+  "containment": {
+    "resource_id": "resource-hybrid-probe-536cda24",
+    "worktree": "C:/temp/jarvis-live-mission-20260818-2045/mission-worktree",
+    "held_out_tests": "C:/temp/jarvis-live-mission-20260818-2045/held-out-tests",
+    "baseline_head": "3128bc4",
+    "observed_worktree_status": [
+      "M rows.py",
+      "?? tests/public/test_no_header.py",
+      "?? __pycache__/",
+      "?? tests/public/__pycache__/"
+    ],
+    "outside_target_mutation_observed": false,
+    "worktree_cleaned": false
+  },
+  "missions": [
+    {
+      "mission_id": "mission-hybrid-probe-a-33284704",
+      "objective": "repair rows.load_rows so header rows are skipped only when a header is present",
+      "step_id": "fix-rows",
+      "run_id": "run-64aef596d5c6",
+      "verifier_run_id": "run-64aef596d5c6-verify",
+      "verdict_id": "verdict-2a2c2155079b",
+      "builder_status": "COMPLETED",
+      "builder_verdict": "NOT_TESTED",
+      "verifier_status": "COMPLETED",
+      "verifier_verdict": "PASS",
+      "provider": "opencode_go",
+      "model": "deepseek-v4-flash"
+    },
+    {
+      "mission_id": "mission-hybrid-probe-b-d30b7975",
+      "objective": "add a regression test proving no-header input keeps the first data row and keep all public tests green",
+      "step_id": "add-regression-test",
+      "run_id": "run-b084c5957996",
+      "verifier_run_id": "run-b084c5957996-verify",
+      "verdict_id": "verdict-81b379de026d",
+      "builder_status": "COMPLETED",
+      "builder_verdict": "NOT_TESTED",
+      "verifier_status": "COMPLETED",
+      "verifier_verdict": "PASS",
+      "provider": "opencode_go",
+      "model": "deepseek-v4-flash"
+    }
+  ],
+  "artifact": {
+    "rows_py_sha256": "5D24BB3FB5C0D1DFF8381FDAFCCF40F7B9CC680D2DB31D64709B1CA6E71B470E",
+    "regression_test_sha256": "C48928F219FCB2D8F9EF8A3B5554B661D6BEAED71CCA688D5DEB3F58EDA9E3EF",
+    "observed_source_diff": ["rows.py"],
+    "observed_regression_diff": ["tests/public/test_no_header.py"],
+    "public_tests": {
+      "command": "canonical .venv python -m pytest tests/public -q -ra",
+      "result": "2 passed",
+      "exit_code": 0
+    },
+    "held_out_tests": {
+      "command": "canonical .venv python -m pytest C:/temp/jarvis-live-mission-20260818-2045/held-out-tests/test_no_header.py -q -ra",
+      "result": "1 passed",
+      "exit_code": 0
+    },
+    "behavior_verified": "load_rows preserves the first row for no-header numeric and named data while skipping a detected header"
+  },
+  "evidence_reconciliation": [
+    {
+      "mission_id": "mission-hybrid-probe-a-33284704",
+      "builder_claim": "files_changed=[]",
+      "observed_diff": ["rows.py"],
+      "error_class": "evidence_mismatch",
+      "resolution": "builder remains NOT_TESTED; fresh verifier inspected the frozen artifact and returned PASS"
+    },
+    {
+      "mission_id": "mission-hybrid-probe-b-d30b7975",
+      "builder_claim": "files_changed=[]",
+      "observed_diff": ["rows.py", "tests/public/test_no_header.py", "__pycache__/", "tests/public/__pycache__/"],
+      "error_class": "evidence_mismatch",
+      "resolution": "builder remains NOT_TESTED; fresh verifier inspected the frozen artifact and returned PASS"
+    }
+  ],
+  "initial_configuration_attempt": {
+    "mission_id": "mission-hybrid-probe-a-a980c600",
+    "resource_id": "resource-hybrid-probe-2a06743a",
+    "out": "C:/Users/b/AppData/Local/hermes/foundry/evidence/proving-window/live-mission-20260818-2040",
+    "status": "NOT_DISPATCHED_CONFIGURATION_REFUSAL",
+    "durable_state": "ACTION_SELECTION",
+    "agent_runs_created": false,
+    "reason": "adapter refused a runtime state root under the live Hermes profile before provider dispatch"
+  },
+  "acceptance": {
+    "real_provider_worker_observed": true,
+    "real_external_effects": "NOT_TESTED",
+    "physical_host_faults": "NOT_TESTED",
+    "elapsed_window": "WAITING",
+    "next_action": "continue scheduled proving monitor and bounded disposable missions; do not claim final proving or live external effects"
+  }
+}
