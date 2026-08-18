@@ -4,9 +4,9 @@
   "canonical_repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
   "promotion_worktree": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R4",
   "promotion_branch": "promote/canonical-convergence-r4",
-  "source_main_head": "8e7d4f28fb3e41097128d8201f074e71ae463a3c",
-  "candidate_commit": "8e7d4f28fb3e41097128d8201f074e71ae463a3c",
-  "promotion_commit": "8e7d4f28fb3e41097128d8201f074e71ae463a3c",
+  "source_main_head": "7c35f5c7ba5d4fd0fefcfcb7a785c42cb5a74d24",
+  "candidate_commit": "7c35f5c7ba5d4fd0fefcfcb7a785c42cb5a74d24",
+  "promotion_commit": "7c35f5c7ba5d4fd0fefcfcb7a785c42cb5a74d24",
   "source_tree_verified_head": "51d1d4e96b9731eb2c4d13ff0e4db8975e0076ab",
   "previous_release_remains_recoverable": true,
   "verification": {
@@ -62,7 +62,7 @@
   "current_forward_port": {
     "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
     "branch": "main",
-    "latest_verified_evidence_head": "8e7d4f28fb3e41097128d8201f074e71ae463a3c",
+    "latest_verified_evidence_head": "7c35f5c7ba5d4fd0fefcfcb7a785c42cb5a74d24",
     "promotion_worktree": "C:/temp/JARVIS-Foundry-R8-PROMOTE",
     "promotion_branch": "promote/r8-production-forward-port",
     "boundary_reviews": [
@@ -78,7 +78,7 @@
     "repaired_live_canary": {
       "status": "INDEPENDENTLY_RECONCILED_BLOCKED",
       "launch_canonical_head": "f109e5405cca3d7ddf237561385db48ea97116ef",
-      "canonical_head": "8e7d4f28fb3e41097128d8201f074e71ae463a3c",
+      "canonical_head": "7c35f5c7ba5d4fd0fefcfcb7a785c42cb5a74d24",
       "section": "mission",
       "started_at": "2026-08-18T20:05:27Z",
       "completed_at": "2026-08-18T20:44:59.352584Z",
@@ -131,5 +131,15 @@
   "release_freeze": "docs/convergence/PROMOTION_FREEZE_R4.json (deployed and audited)",
   "release_pointer": "main -> 1fa0370; source tree verified at 51d1d4e; previous release remains recoverable",
     "latest_repaired_live_canary": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_REPAIRED_CANARY_20260818.json",
+    "latest_full_suite": "docs/convergence/CANONICAL_FULL_SUITE_20260818_R2.json",
+    "documentation_repair": {
+      "status": "PASS",
+      "commit": "7c35f5c7ba5d4fd0fefcfcb7a785c42cb5a74d24",
+      "files_changed": ["docs/CURRENT_STATE.md"],
+      "focused_tests": "3 passed",
+      "independent_verifier": "/root/doc_staleness_verifier_luna",
+      "provider": "commandcode",
+      "model": "gpt-5.6-luna"
+    },
     "exact_next_action": "preserve 2-of-10 accepted mission count and restart-0 count; keep the repaired live canary BLOCKED; repair the live provider/result-contract path before a fresh bounded disposable canary; continue the real proving monitor and do not close final acceptance until elapsed and external criteria are met"
 }

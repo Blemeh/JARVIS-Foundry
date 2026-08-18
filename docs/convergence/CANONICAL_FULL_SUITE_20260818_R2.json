@@ -1,0 +1,47 @@
+{
+  "schema": "jarvis-canonical-full-suite-v2",
+  "status": "PASS",
+  "recorded_at": "2026-08-18T23:21:15Z",
+  "canonical_head_tested": "7c35f5c7ba5d4fd0fefcfcb7a785c42cb5a74d24",
+  "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
+  "command": "PYTHONPATH=C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry;C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/src .venv/Scripts/python.exe -B -m pytest -q -ra -p no:cacheprovider --junitxml=C:/temp/jarvis-canonical-final-20260818-r2.xml",
+  "tests": 1234,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "junit": {
+    "path": "C:/temp/jarvis-canonical-final-20260818-r2.xml",
+    "sha256": "E59AE1CBE9593C53B951758A80F6BB0A9EB371637B19944D10BA1C0770B2CACE"
+  },
+  "prior_failure": {
+    "junit_path": "C:/temp/jarvis-canonical-final-20260818.xml",
+    "junit_sha256": "719A247C9532F69848D8B282645E80A66855621BB9EDD159C74BEFF6D11FB7AA",
+    "tests": 1234,
+    "failures": 2,
+    "root_cause": "docs/CURRENT_STATE.md did not name a commit within the doc staleness horizon"
+  },
+  "repair": {
+    "worktree": "C:/temp/JARVIS-Foundry-DocStaleness-Repair",
+    "branch": "repair/doc-staleness-current-head",
+    "commit": "7c35f5c7ba5d4fd0fefcfcb7a785c42cb5a74d24",
+    "files_changed": ["docs/CURRENT_STATE.md"],
+    "diff": "one truthful pin update: 6c5eb05 -> c356798",
+    "builder": {
+      "agent": "/root/doc_staleness_repair_luna",
+      "provider": "commandcode",
+      "model": "gpt-5.6-luna",
+      "status": "PASS"
+    },
+    "independent_verifier": {
+      "agent": "/root/doc_staleness_verifier_luna",
+      "provider": "commandcode",
+      "model": "gpt-5.6-luna",
+      "status": "PASS"
+    },
+    "focused_tests": "3 passed",
+    "checker": "PASS",
+    "diff_check": "PASS"
+  },
+  "canonical_status": "clean",
+  "next_action": "retain full-suite PASS evidence and continue the real proving-window/external-boundary campaign"
+}
