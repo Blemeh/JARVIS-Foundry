@@ -6,17 +6,17 @@ every promotion/remaster mission (see `docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.
 If this document and another current-status document disagree, THIS document wins
 for "what exists now" claims; the architecture contract wins for binding invariants.
 
-Last reconciled: 2026-08-18 (Post-V7 convergence proving window + Phase 4 procedural-learning remediation)
+Last reconciled: 2026-08-18 (Post-V7 convergence proving window + Phase 4 canonical procedural-learning closure)
 
 ```text
-CURRENT CANONICAL HEAD:      47adab9 (main; Post-V7 convergence R3 proving-
-                             window baseline; Phase 4 remediation integration
-                             and final probe documentation are descendants)
+CURRENT CANONICAL HEAD:      6c5eb05 (main; Phase 4 remediation promoted on
+                             top of the Post-V7 convergence proving-window
+                             baseline; this docs closure is a descendant)
 LETTA PROMOTION ANCESTOR:    2f7360e742559e051109e04ef7f3a82cc64cc2d2 (still an ancestor of HEAD)
 PRE-V8 HISTORICAL BASELINE:  93a3ddc0965dfaf3e4cb9dc0952467bd5250520a (historical only — do not reset to it)
 CURRENT SCHEMA:              v33 (six additive tier_c_* tables; event-derived)
-FULL SUITE:                  1225 collected on the Phase-4 remediation
-                             integration path; EXIT=0 (see
+FULL SUITE:                  1225 collected on the promoted canonical path;
+                             EXIT=0 (see
                              docs/evidence/PHASE4_PROCEDURAL_LEARNING/TEST_REPORT.md)
 SUPERVISOR STATE:            RUNNING (single lease owner, heartbeat advancing)
 STOP STATE:                  OFF (no sentinel, no active STOP/PAUSE directives)

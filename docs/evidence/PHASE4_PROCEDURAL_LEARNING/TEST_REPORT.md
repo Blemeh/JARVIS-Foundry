@@ -3,6 +3,7 @@
 Candidate branch: `candidate/procedural-learning-phase4-remediation`
 Candidate HEAD: `992317e8c1bac8ef556f05ac82a884bff3a91c36`
 Integration base: `47adab97b64ab992280d3a329fd0ca3d03c2d45f`
+Canonical promotion: `6c5eb05cb64db54f9240f38bc904410c8f272eb1`
 
 Commands and results:
 
@@ -52,3 +53,9 @@ OpenAdapt `1.12.1` / Flow `1.31.0`: fresh replay and resume were
 `COMPLETED_VERIFIED` with `model_calls=0`; duplicate replay had
 `report_path=null` and no second provider row; external STOP returned
 `NOT_READY` with exit `2`; the runner was stopped and port `8787` was free.
+
+Post-promotion canonical full suite on `main` also completed with `EXIT 0`.
+The canonical probe used the same repaired bundle hash and reached
+the same fresh, duplicate, STOP, resume, and cleanup results on canonical
+`main`; its exact request IDs and report paths are recorded in
+`CANONICAL_PROBE.md`.

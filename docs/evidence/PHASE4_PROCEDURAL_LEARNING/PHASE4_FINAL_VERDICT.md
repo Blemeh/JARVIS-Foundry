@@ -5,9 +5,9 @@
 ## Canonical Reconciliation
 
 - **CANONICAL START:** `c3665b75ca5542e6bc73917c5eb710eadfef6d1b`
-- **CANONICAL BASELINE:** `47adab9` on `main` (Post-V7 convergence R3
-  proving-window monitor);
-  Phase 4 remediation integration and final canonical probe are descendants
+- **CANONICAL FINAL:** `6c5eb05` on `main` (Phase 4 remediation promoted on
+  top of the Post-V7 convergence R3 proving-window monitor); this docs closure
+  is a descendant
 - **LOCAL MAIN / origin/main before remediation promotion:** `47adab9 / 1abc388`
 - **PUSH PERFORMED:** NO
 - **SCHEMA:** v33, unchanged
@@ -76,8 +76,7 @@
 - **PHASE-2 REGRESSION:** 23/23 PASS
 - **PHASE-3 REGRESSION:** 36/36 PASS
 - **AFFECTED CONTROL/EFFECT/CONNECTOR/TIER-C/SHADOW SLICES:** PASS
-- **FULL SUITE:** 1,225 collected, EXIT 0 on the repaired candidate and
-  convergence-based integration path
+- **FULL SUITE:** 1,225 collected, EXIT 0 on the promoted canonical path
 - **COMPILEALL:** PASS
 - **DOC STALENESS CHECK:** PASS
 - **FAULT MATRIX:** F1–F24 PASS; 0 FAIL, 0 BLOCKED, 0 NOT_TESTED for the
@@ -90,15 +89,14 @@
 
 ## Promotion and Boundary
 
-- **INTEGRATION:** Phase 4 remediation commits are applied onto convergence
-  head `657519c`; final `main` promotion is pending the canonical ff-only
-  merge and fresh canonical probe
+- **PROMOTED:** YES; Phase 4 remediation was fast-forward promoted from the
+  convergence head through the R4 integration worktree with no push
 - **ROLLBACK:** PASS; detached baseline regression 59/59
-- **INTEGRATION CANDIDATE PROBE:** PASS; fresh remediation replay reached
-  `COMPLETED_VERIFIED` with `model_calls=0`, duplicate replay produced no
-  second provider row, external STOP returned `NOT_READY` before dispatch,
-  and clean resume reached `COMPLETED_VERIFIED` (count 2). Exact evidence is
-  in `CANONICAL_PROBE.md`.
+- **POST-PROMOTION PROBE:** PASS; canonical `main` replay
+  `canonical-remediation-final-1` reached `COMPLETED_VERIFIED` with
+  `model_calls=0`, duplicate replay produced no second provider row, external
+  STOP returned `NOT_READY` before dispatch, and clean resume reached
+  `COMPLETED_VERIFIED` (count 2). Exact evidence is in `CANONICAL_PROBE.md`.
 - **PHASE 4 FINAL VERDICT:** PASS
 - **PROCEDURAL LEARNING:** READY AND PROVEN
 - **OPENADAPT BROWSER:** READY AND GOVERNED
