@@ -6,18 +6,17 @@ every promotion/remaster mission (see `docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.
 If this document and another current-status document disagree, THIS document wins
 for "what exists now" claims; the architecture contract wins for binding invariants.
 
-Last reconciled: 2026-08-18 (JARVIS Workflow Discovery Phase 3 promotion)
+Last reconciled: 2026-08-18 (JARVIS Procedural Learning + OpenAdapt Phase 4 promotion)
 
 ```text
-CURRENT CANONICAL HEAD:      a62ed77 (main; Phase 3 Workflow Discovery
+CURRENT CANONICAL HEAD:      735c199 (main; Phase 4 Procedural Learning
                              promoted; documentation closure is a descendant)
 LETTA PROMOTION ANCESTOR:    2f7360e742559e051109e04ef7f3a82cc64cc2d2 (still an ancestor of HEAD)
 PRE-V8 HISTORICAL BASELINE:  93a3ddc0965dfaf3e4cb9dc0952467bd5250520a (historical only — do not reset to it)
 CURRENT SCHEMA:              v33 (six additive tier_c_* tables; event-derived)
-FULL SUITE:                  1202 collected on the Phase-3 candidate and
-                             canonical promotion path; EXIT=0 with the exact
-                             candidate runtime (see
-                             docs/evidence/PHASE3_WORKFLOW_DISCOVERY/FULL_TEST_REPORT.md)
+FULL SUITE:                  1222 collected on the Phase-4 candidate and
+                             repaired promotion path; EXIT=0 (see
+                             docs/evidence/PHASE4_PROCEDURAL_LEARNING/TEST_REPORT.md)
 SUPERVISOR STATE:            RUNNING (single lease owner, heartbeat advancing)
 STOP STATE:                  OFF (no sentinel, no active STOP/PAUSE directives)
 ACTIVE DIRECTIVES:           redirect, waive, extend_duty_window, align
@@ -25,12 +24,15 @@ TRUST STATE:                 LAB
 MISSION STATE:               3 COMPLETE, 1 PLANNED (live DB)
 TIER C STATE:                6 tables; 2 memories (live canary records), 1 block, 0 procedures
 WORKER IMPLEMENTATIONS:      Hermes adapter + OpenHands adapter — CANONICAL (merged)
-OWNER FILES:                 6 untracked docs under docs/handoffs/, docs/planning/ (hash-protected)
+OWNER FILES:                 6 tracked docs under docs/handoffs/, docs/planning/ (preserved from 1abc388)
 PERCEPTION INPUT (Phase 2):  SCREENPIPE-LOCAL registered read-only; perception core READY/PROVEN;
                              raw-frame PROBING; audio DISABLED; no claim/candidate/mission/control path
 WORKFLOW DISCOVERY (Phase 3): deterministic sessionization/tokenization/mining and
                              evidence-to-existing-candidate bridge READY/PROVEN;
                              disabled by default; no continuous mining or execution
+PROCEDURAL LEARNING (Phase 4): governed deterministic OpenAdapt browser substrate
+                             READY/PROVEN; disabled by default; desktop PROBING;
+                             no continuous learning, broad promotion, or Phase 5 loop
 ```
 
 ## What exists now
@@ -71,6 +73,12 @@ WORKFLOW DISCOVERY (Phase 3): deterministic sessionization/tokenization/mining a
   1,202-test full suite, controlled 10k-observation probe, and independent
   read-only review. Disabled by default; no computer control, audio, continuous
   loop, candidate approval, or mission creation.
+- **Procedural Learning (Phase 4)** — versioned/hash-bound OpenAdapt browser
+  bundle, reference-only Tier-C procedure, existing ActionEnvelope/capability/
+  connector/effect path, independent local effect oracle, scoped process cleanup,
+  STOP/recovery/idempotency, and zero-model synthetic replay. Proven by the
+  Phase-4 evidence package and 1,222-test candidate suite; disabled by default;
+  native desktop remains PROBING.
 
 ## What is running
 
@@ -79,6 +87,10 @@ schema v33, ledger live (event count growing), Tier C live.
 
 Workflow Discovery is not wired into the live supervisor or perception loop;
 only an explicitly enabled bounded cycle can be called by code/tests.
+
+Procedural Learning is not wired into a continuous learner or autonomous
+promotion loop. Only the explicit bounded local probe can call the governed
+browser substrate, and it cannot activate native desktop execution.
 
 ## What has been proven
 
@@ -89,9 +101,10 @@ only an explicitly enabled bounded cycle can be called by code/tests.
 | V8 hybrid-memory certification | PASS — 9/9 criteria (candidate) |
 | V8 canonical promotion | PASS — 1027/0/0 post-merge; live canary PASS; rollback drill PASS; post-promotion remediation certification PASS |
 | Worker canonical gate | PASS — 18/18 + independent adversarial review |
-| Full suite (current) | 1,202 collected, 0 failures (Phase 3 promotion gate) |
+| Full suite (current) | 1,222 collected, 0 failures (Phase 4 promotion gate) |
 | JARVIS Eyes Phase 2 | PASS — 20/20 faults, rollback/live probe, read-only boundary |
 | Workflow Discovery Phase 3 | PASS — 36/36 focused, F1–F25, bounded probe, independent review |
+| Procedural Learning Phase 4 | PASS — 20/20 focused, F1–F24, local browser probe, rollback, independent source review |
 
 ## What is experimental / not canonical
 
@@ -106,7 +119,8 @@ only an explicitly enabled bounded cycle can be called by code/tests.
 - Semantic (embedding-based) recall/dedup/contradiction detection — lexical/negation only; hook reserved.
 - Voice/dashboard surfaces beyond the command-center control layer — limited.
 - Provider diversity for verification — currently single-family (recorded per round as INDEPENDENCE: REDUCED where applicable).
-- Continuous workflow mining, computer execution, and audio-driven workflow discovery — explicitly not active in Phase 3.
+- Continuous workflow mining, learned computer execution, native desktop replay,
+  and audio-driven workflow discovery — explicitly not active; Phase 5/6 remain locked.
 - Scanner patterns are configuration (defense-in-depth, not proof).
 - Rollback strategy is RESTORE-FROM-BACKUP for schema v33 (no reverse migration; by design).
 
@@ -119,10 +133,8 @@ only an explicitly enabled bounded cycle can be called by code/tests.
 
 ## Next real architectural dependency
 
-Per the owner's own planning record (`docs/planning/POST_V7_CODEX_SOL_REMASTER_GOAL.md`),
-the declared next program is the **Post-V7 Remaster** executed by an external
-authority (Codex Sol, max reasoning) from the now-promoted V7+V8+worker baseline
-into full real-operation purpose fulfillment. Nothing in this repository queues
-a V9 capability stage; the roadmap's automatic progression operates on the
-existing stage sequence, all of whose stages are now IMPLEMENTED_AND_PROVEN or
-PARTIAL (see `docs/CAPABILITY_MATRIX.md`).
+The next architectural dependency is the owner-authorized Phase 5 learned-
+procedure gate. It requires a fresh canonical reconciliation, preserved
+ActionEnvelope/effect/STOP authority, and an independent end-to-end verifier.
+Phase 5 is not started by this promotion; native desktop and autonomous
+continuous learning remain outside the current boundary.
