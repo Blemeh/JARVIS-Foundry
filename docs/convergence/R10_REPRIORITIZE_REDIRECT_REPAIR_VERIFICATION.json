@@ -33,6 +33,16 @@
     "junit_sha256": "7DB5594BB422FB5FA2EC8F052FCBD326F07BD2AAA8B56A347389A7DC311523D2",
     "py_compile": "PASS"
   },
+  "post_promotion_recheck": {
+    "canonical_head": "59112989570f034cd2468288c3566650675f9379",
+    "source_commit_under_test": "949b4effdf28a2d938a628811fb9c751f5cb222c",
+    "source_import": "PASS",
+    "tests": 25,
+    "failures": 0,
+    "errors": 0,
+    "junit": "C:/temp/r10-post-promote-junit.xml",
+    "junit_sha256": "390C7DA151AE366BE28604820F7B3D96A94C1A947369E089827F003FECCB5338"
+  },
   "findings": [],
   "boundaries": [
     {
