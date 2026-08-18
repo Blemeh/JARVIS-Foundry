@@ -169,6 +169,14 @@
       "model": "deepseek-v4-flash",
       "status": "RUNNING",
       "scope": "promoted release R7-R12 acceptance and external-boundary audit; no mutation"
+    },
+    {
+      "role": "post-promotion final auditor retry",
+      "agent": "/root/post_promotion_audit_retry",
+      "provider": "commandcode",
+      "model": "deepseek-v4-flash",
+      "status": "RUNNING",
+      "scope": "concise promoted-release acceptance and external-boundary audit; no mutation"
     }
   ],
   "promotion": {
