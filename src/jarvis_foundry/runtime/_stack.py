@@ -52,7 +52,6 @@ def build_worker_stack(
     Disabled adapters are not registered, so the router can never select an
     unavailable worker (honest NOT_READY / no eligible worker).
     """
-    del paths  # the adapters own their containment; state root comes from config
     run_root = _resolve_root(config.runtime_state_root, run_id, kind="run")
     router = WorkerRouter()
     registry = WorkerRegistry()
@@ -131,6 +130,7 @@ def build_worker_stack(
         router=router,
         registry=registry,
         role_signals=dict(config.role_signals),
+        stop_path=config.resolve_stop_path(paths.home),
     )
     return WorkerStack(
         bridge=bridge, router=router, registry=registry,

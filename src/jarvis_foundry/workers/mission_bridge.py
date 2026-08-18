@@ -23,6 +23,7 @@ from typing import Any, Callable
 
 from ..clock import isoformat, utc_now
 from ..database import FoundryDatabase
+from ..supervisor.estop import EmergencyStop
 from ..roles.adapter import RoleAdapter
 from ..roles.manifest import ContextManifest
 from ..roles.results import (
@@ -52,6 +53,7 @@ class HybridWorkerRoleAdapter:
         reconciler: EvidenceReconciler | None = None,
         task_signals: dict[str, Any] | None = None,
         role_signals: dict[str, dict[str, Any]] | None = None,
+        stop_path: str | Path | None = None,
     ) -> None:
         self.database = database
         self.router = router
@@ -62,6 +64,7 @@ class HybridWorkerRoleAdapter:
         self.task_signals = task_signals or {}
         self.role_signals = dict(role_signals or {})
         self.framework = "hybrid"
+        self.stop_path = Path(stop_path).resolve() if stop_path else None
 
     def _signals_for(self, manifest: ContextManifest) -> dict[str, Any]:
         signals = dict(self.role_signals.get(manifest.role, self.task_signals))
@@ -77,6 +80,15 @@ class HybridWorkerRoleAdapter:
 
     def dispatch(self, manifest: ContextManifest, *, heartbeat) -> RoleResult:
         started = isoformat(utc_now())
+        if self.stop_path is not None and EmergencyStop(self.stop_path).active():
+            return RoleResult(
+                run_id=manifest.run_id, role=manifest.role,
+                status=BLOCKED, provider=manifest.provider,
+                model=manifest.model, verdict=VERDICT_NOT_TESTED,
+                error_class="emergency_stop",
+                error_detail=f"STOP sentinel active: {self.stop_path}",
+                started_at=started, finished_at=isoformat(utc_now()),
+            )
         try:
             root = self._working_root(manifest)
         except ValueError as error:
@@ -155,15 +167,30 @@ class HybridWorkerRoleAdapter:
             delta_baseline=(
                 before.changed_files if manifest.role == "verifier" else None))
         agree = report.agree and envelope.worker_status == COMPLETED
+        # MissionLoop treats COMPLETED as "send to verifier". A mismatched
+        # or incomplete claim must not stay COMPLETED or a later verifier
+        # PASS would accept unproven work.
+        if agree:
+            status = envelope.worker_status
+            error_class = None
+            error_detail = None
+        else:
+            status = (
+                envelope.worker_status
+                if envelope.worker_status != COMPLETED
+                else FAILED)
+            error_class = (
+                "evidence_mismatch" if not report.agree else None)
+            error_detail = (
+                "; ".join(report.mismatches) if not report.agree else None)
         return RoleResult(
             run_id=manifest.run_id, role=manifest.role,
-            status=envelope.worker_status,
+            status=status,
             provider=envelope.provider_actual,
             model=envelope.model_actual,
             verdict=envelope.verdict if agree else VERDICT_NOT_TESTED,
             evidence=(envelope.summary,) + tuple(report.mismatches),
-            error_class="evidence_mismatch" if not report.agree else None,
-            error_detail=("; ".join(report.mismatches) if not report.agree
-                          else None),
+            error_class=error_class,
+            error_detail=error_detail,
             started_at=started, finished_at=isoformat(utc_now()),
         )

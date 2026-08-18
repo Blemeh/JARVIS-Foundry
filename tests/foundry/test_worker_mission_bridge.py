@@ -111,6 +111,79 @@ def test_canonical_mission_loop_rejects_false_success_from_bridge(tmp_path):
     assert outcome.outcome in ("FAILED", "BLOCKED")
 
 
+def test_evidence_mismatch_is_not_accepted_even_if_verifier_would_pass(tmp_path):
+    """Builder mutates the tree but claims files_changed=[] while an eligible
+    verifier is scripted to PASS. The loop must BLOCK before verification;
+    a PASS wash-out is the live accept hole."""
+    database, repository = mission_database(tmp_path)
+    router = WorkerRouter()
+    router.mark_ready(WORKER_OPENHANDS, state=READY,
+                      note="containment proven in test",
+                      evidence=("test-proof",))
+    router.mark_ready(WORKER_HERMES, state=READY,
+                      note="containment proven in test",
+                      evidence=("test-proof",))
+    builder = MutatingScriptedAdapter(
+        WORKER_OPENHANDS, write_files=("feature.py",),
+        outcome=ScriptedOutcome(files_changed=()))
+    verifier = ScriptedWorkerAdapter(
+        WORKER_HERMES, outcome=ScriptedOutcome(verdict="PASS"))
+    registry = WorkerRegistry(
+        {WORKER_OPENHANDS: builder, WORKER_HERMES: verifier})
+    adapter = HybridWorkerRoleAdapter(
+        database=database, router=router, registry=registry,
+        role_signals={
+            "builder": {"bounded": True, "explicit_acceptance": True,
+                        "tests_available": True, "narrow_scope": True,
+                        "reversible": True},
+            "verifier": {"bounded": True, "explicit_acceptance": True,
+                         "tests_available": True, "narrow_scope": True},
+        },
+    )
+    loop = MissionLoop(database, router=RoleRouter(), adapter=adapter)
+    outcome = loop.run_step(
+        mission_id="mission-1", step_id="step-1",
+        capability="git_local_commit", target=repository,
+        instructions="implement feature.py",
+        expected_effects=("feature.py created",),
+        rollback={"kind": "git_reset_soft"},
+    )
+    assert outcome.outcome != PASSED
+    assert outcome.outcome == "BLOCKED"
+    assert verifier.received == []
+
+
+def test_bridge_refuses_dispatch_when_stop_sentinel_is_active(tmp_path):
+    database, repository = mission_database(tmp_path)
+    stop = tmp_path / "EMERGENCY_STOP"
+    stop.write_text("{}", encoding="utf-8")
+    router = WorkerRouter()
+    router.mark_ready(WORKER_HERMES, state=READY, note="x", evidence=("e",))
+    builder = ScriptedWorkerAdapter(WORKER_HERMES)
+    registry = WorkerRegistry({WORKER_HERMES: builder})
+    adapter = HybridWorkerRoleAdapter(
+        database=database, router=router, registry=registry,
+        stop_path=stop,
+        role_signals={"builder": {"ambiguous": True,
+                                  "root_cause_required": True}},
+    )
+    from jarvis_foundry.roles.results import BLOCKED
+
+    manifest = ContextManifest(
+        run_id="run-stop", role="builder", mission_id="mission-1",
+        step_id="step-1", resource_id="resource-1",
+        capability="write_registered_worktree_files",
+        provider="opencode_go", model="deepseek-v4-flash",
+        isolation_group="g", tool_policy=("bounded",),
+        budget_usd=0.0, duration_seconds=30,
+        instructions="do not run",
+    )
+    result = adapter.dispatch(manifest, heartbeat=lambda: None)
+    assert result.status == BLOCKED
+    assert result.error_class == "emergency_stop"
+    assert builder.received == []
+
+
 def test_mission_bridge_enriches_instructions_with_result_contract(tmp_path):
     """The live MissionLoop -> RoleDispatcher -> HybridWorkerRoleAdapter
     path must append the machine-ingestable result requirement so real

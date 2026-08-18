@@ -49,12 +49,7 @@ DEFAULT_RESOURCE_ID = "resource-wfm-optimizer"
 
 
 def _default_stop_path(paths: FoundryPaths, config: WorkerRuntimeConfig) -> Path:
-    if config.stop_sentinel_path:
-        configured = Path(config.stop_sentinel_path)
-        if configured.is_absolute():
-            return configured
-        return paths.home / configured
-    return paths.emergency_stop
+    return config.resolve_stop_path(paths.home)
 
 
 def run_cycle(

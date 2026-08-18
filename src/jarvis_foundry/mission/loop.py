@@ -304,7 +304,7 @@ class MissionLoop:
             forbidden_paths=forbidden_paths,
             attempt=attempt,
         )
-        if result.status != COMPLETED:
+        if result.status != COMPLETED or result.error_class == "evidence_mismatch":
             self._advance(mission_id, "BLOCKED", run_id=run_id)
             return StepOutcome(
                 outcome=BLOCKED_OUTCOME, step_id=step_id, run_id=run_id,
