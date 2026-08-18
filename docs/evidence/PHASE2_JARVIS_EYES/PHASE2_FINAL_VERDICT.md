@@ -19,7 +19,7 @@ AUDIO:                                     DISABLED
 SCHEMA CHANGE:                             NO
 PROMOTION STATE:                           PROMOTED 2026-08-18 (candidate -> canonical main,
                                            local commit only; no push per no-push rule)
-FINAL CANONICAL HEAD:                      bfeb4cd (merge of candidate/jarvis-eyes-phase2)
+FINAL CANONICAL HEAD:                      474156a (main; promotion merge bfeb4cd + evidence freeze)
 POST-PROMOTION LIVE PROBE:                 PASS (19 observations from 293 real Screenpipe
                                            frames; STOP blocked; resume from cursor clean)
 ROLLBACK / RESTORE:                        PASS (revert-to-first-parent of bfeb4cd produced a
