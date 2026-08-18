@@ -4,10 +4,11 @@
   "canonical_repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
   "promotion_worktree": "C:/temp/JARVIS-Foundry-R8-PROMOTE",
   "promotion_branch": "promote/r8-production-forward-port",
-  "source_main_head": "2af8191d2f400531cec76155e934caf4aa32a895",
-  "candidate_commit": "2af8191d2f400531cec76155e934caf4aa32a895",
-  "promotion_commit": "2af8191d2f400531cec76155e934caf4aa32a895",
-  "source_tree_verified_head": "2af8191d2f400531cec76155e934caf4aa32a895",
+  "source_main_head": "d1c48130397497dccf1f922233e1dc26b54a99dd",
+  "source_tested_head": "2af8191d2f400531cec76155e934caf4aa32a895",
+  "candidate_commit": "d1c48130397497dccf1f922233e1dc26b54a99dd",
+  "promotion_commit": "d1c48130397497dccf1f922233e1dc26b54a99dd",
+  "source_tree_verified_head": "d1c48130397497dccf1f922233e1dc26b54a99dd",
   "previous_release_remains_recoverable": true,
   "verification": {
     "pythonpath": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R4/src",
@@ -81,7 +82,8 @@
   "current_forward_port": {
     "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
     "branch": "main",
-     "latest_verified_evidence_head": "2af8191d2f400531cec76155e934caf4aa32a895",
+    "latest_verified_evidence_head": "d1c48130397497dccf1f922233e1dc26b54a99dd",
+    "source_tested_head": "2af8191d2f400531cec76155e934caf4aa32a895",
     "promotion_worktree": "C:/temp/JARVIS-Foundry-R8-PROMOTE",
     "promotion_branch": "promote/r8-production-forward-port",
     "boundary_reviews": [
@@ -171,10 +173,14 @@
   },
   "canonical_main_mutated": true,
   "release_freeze": "docs/convergence/PROMOTION_FREEZE_R4.json (deployed and audited)",
-  "release_pointer": "main -> 2af8191; source tree verified at 2af8191d2f400531cec76155e934caf4aa32a895; previous release remains recoverable",
+  "release_pointer": "main -> d1c4813; docs-only descendant of tested source 2af8191d2f400531cec76155e934caf4aa32a895; previous release remains recoverable",
     "latest_repaired_live_canary": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_REPAIRED_CANARY_20260818.json",
     "latest_full_suite": "docs/convergence/CANONICAL_FULL_SUITE_20260819_EXACT_HEAD.json",
     "exact_head_audit": "docs/convergence/INDEPENDENT_SEMANTIC_CONVERGENCE_AUDIT_20260819.json",
+    "final_audit": {
+      "status": "PASS_WITH_BLOCKERS",
+      "path": "docs/convergence/FINAL_CONVERGENCE_AUDIT_20260819.json"
+    },
     "documentation_repair": {
       "status": "PASS",
       "commit": "7c35f5c7ba5d4fd0fefcfcb7a785c42cb5a74d24",

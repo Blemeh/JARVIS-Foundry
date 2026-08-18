@@ -9,9 +9,10 @@ for "what exists now" claims; the architecture contract wins for binding invaria
 Last reconciled: 2026-08-19 (exact-head convergence evidence reconciliation; legacy evidence preserved)
 
 ```text
-CURRENT CANONICAL HEAD:      2af8191 (main; exact tested head for the current
-                             convergence reconciliation; this docs closure is
-                             a descendant)
+CURRENT CANONICAL HEAD:      d1c4813 (main; current promoted docs-only
+                             descendant; local==origin)
+TESTED SOURCE HEAD:          2af8191 (exact source head for the 1243-test full
+                             suite; docs-only audit commits follow)
 LETTA PROMOTION ANCESTOR:    2f7360e742559e051109e04ef7f3a82cc64cc2d2 (still an ancestor of HEAD)
 PRE-V8 HISTORICAL BASELINE:  93a3ddc0965dfaf3e4cb9dc0952467bd5250520a (historical only — do not reset to it)
 CURRENT SCHEMA:              v33 (six additive tier_c_* tables; event-derived)
