@@ -71,6 +71,23 @@ def test_run_cycle_frozen_when_stop_sentinel(tmp_path):
                for event in database.events())
 
 
+def test_production_yaml_stop_path_matches_cli_sentinel(tmp_path):
+    """P0: jarvis stop writes FoundryPaths.emergency_stop. worker_loop and
+    the adapter heartbeat runner must watch that same file. Production yaml
+    historically nested foundry/EMERGENCY_STOP under a home already named
+    foundry; tests that inject an absolute sentinel hide the split."""
+    from jarvis_foundry.runtime.worker_loop import _default_stop_path
+
+    repo = Path(__file__).resolve().parents[2]
+    cfg = WorkerRuntimeConfig.from_yaml(repo / "config" / "worker_routing.yaml")
+    paths = FoundryPaths(tmp_path / "foundry")
+    watched = _default_stop_path(paths, cfg).resolve()
+    assert watched == paths.emergency_stop.resolve(), (
+        f"worker_loop watches {watched} but jarvis stop writes "
+        f"{paths.emergency_stop.resolve()}"
+    )
+
+
 def test_stack_never_selects_disabled_framework(tmp_path):
     database = FoundryDatabase(tmp_path / "db.sqlite")
     database.initialize()
