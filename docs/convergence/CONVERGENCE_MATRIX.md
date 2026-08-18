@@ -66,9 +66,11 @@ The R8 and R9 gates use canonical main's newer worker and capability
 architectures; no remaster `orchestration`, `capabilities_live`, or duplicate
 runtime was introduced. R12 external/physical failures are explicitly
 boundary-only where a safe candidate cannot induce the real provider or host
-condition. The candidate-bound canonical suite completes with 1222/1222
-tests passing, and the adapted convergence suite completes with 76/76
-passing. Independent R3 verifier and isolated promotion closure are PASS in
-the durable state record. Live provider research, voice/interface inspection, external
-connector effects, and the required elapsed proving window remain honest
-NOT_TESTED/WAITING boundaries.
+ condition. The candidate-bound canonical suite completes with 1222/1222
+ tests passing, and the adapted convergence suite completed with 76/76 before
+ the post-promotion proving monitor. The post-promotion regression suite adds
+ the read-only proving-window monitor and completes with 81/81 passing.
+ Independent R3 verifier and isolated promotion closure are PASS in the
+ durable state record. Live provider research, voice/interface inspection,
+ external connector effects, and the required elapsed proving window remain
+ honest NOT_TESTED/WAITING boundaries.

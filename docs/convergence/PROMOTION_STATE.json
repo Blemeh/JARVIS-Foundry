@@ -18,6 +18,15 @@
       "errors": 0,
       "skipped": 0
     },
+    "post_promotion_convergence_junit": {
+      "path": "docs/convergence/PROMOTION_CONVERGENCE_JUNIT_POST_PROMOTION.xml",
+      "sha256": "9CAAB8245B4117A030F077572CE109F7AE5D5B608C791C352DF84A5A02D82EB1",
+      "tests": 81,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "scope": "proving-window monitor regression and adapted R7-R12 gates"
+    },
     "canonical_full_suite_junit": {
       "path": "docs/convergence/PROMOTION_CANONICAL_FULL_SUITE_JUNIT.xml",
       "sha256": "EC303FFBB5F96635482D831DA257BB479A6904F84D815FA8315B68BA44A7C74A",

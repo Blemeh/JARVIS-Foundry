@@ -1,0 +1,49 @@
+{
+  "schema": "jarvis-proving-window-investigator-v1",
+  "verdict": "PASS_READ_ONLY",
+  "provider": "commandcode",
+  "model": "deepseek-v4-flash",
+  "agent": "/root/proving_window_investigator",
+  "canonical_head": "657519c8ff3427491c95b359ece1cc3d78756d0a",
+  "live_runtime": {
+    "supervisor_status": "RUNNING",
+    "schema_version": 33,
+    "sqlite_quick_check": "ok",
+    "heartbeat_count": 92924,
+    "monitor_count": 4,
+    "monitor_poll_count": 52,
+    "last_monitor_poll": "2026-08-13T10:06:04Z",
+    "worker_loop_cycle_count": 0,
+    "briefing_outbox_count": 0,
+    "completed_mission_count": 6,
+    "verification_passed_count": 51,
+    "evidence_bundle_count": 56,
+    "agent_run_completed_count": 44,
+    "proving_event_types": []
+  },
+  "findings": [
+    {
+      "id": "PROVING-CONTRACT-MISSING",
+      "severity": "S2",
+      "status": "OPEN",
+      "detail": "No durable proving.window_* event contract or restart-safe gate exists."
+    },
+    {
+      "id": "WORKER-CADENCE-PAUSED",
+      "severity": "S2",
+      "status": "OPEN",
+      "detail": "Worker runtime config is enabled but no live worker-loop cycles are recorded."
+    },
+    {
+      "id": "MISSION-COUNT-BELOW-GATE",
+      "severity": "S2",
+      "status": "OPEN",
+      "detail": "Six completed missions are below the required ten independently verified useful cycles."
+    }
+  ],
+  "historical_boundaries": [
+    "The owner-waived V1 seven-day window is not reused as proof.",
+    "Live provider, voice, UI, external connector, and physical host effects remain NOT_TESTED/WAITING."
+  ],
+  "recommended_next_action": "build and independently verify the durable proving-window gate before starting a new real elapsed window"
+}

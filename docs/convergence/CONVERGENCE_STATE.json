@@ -42,6 +42,15 @@
       "errors": 0,
       "skipped": 0
     },
+    "post_promotion_regression_junit": {
+      "path": "docs/convergence/PROMOTION_CONVERGENCE_JUNIT_POST_PROMOTION.xml",
+      "sha256": "9CAAB8245B4117A030F077572CE109F7AE5D5B608C791C352DF84A5A02D82EB1",
+      "tests": 81,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "scope": "post-promotion proving-window monitor and adapted R7-R12 gates"
+    },
     "fault_campaign": {
       "path": "docs/convergence/R12_FAULT_CAMPAIGN.json",
       "sha256": "8D5985021BF2E457A6DC18F16DDB4559672D9040A6C79D25579A796968CC6D7C",
@@ -184,7 +193,8 @@
       "agent": "/root/proving_window_investigator",
       "provider": "commandcode",
       "model": "deepseek-v4-flash",
-      "status": "RUNNING",
+      "status": "COMPLETED_PASS_READ_ONLY",
+      "report": "docs/convergence/PROVING_WINDOW_INVESTIGATOR.json",
       "scope": "read-only durable proving-window and WAITING continuation audit"
     },
     {
@@ -194,6 +204,29 @@
       "model": "deepseek-v4-flash",
       "status": "RUNNING",
       "scope": "read-only R7-R12 external capability, voice, UI, and provider-boundary audit"
+    },
+    {
+      "role": "proving-window independent verifier",
+      "agent": "/root/proving_window_verifier",
+      "provider": "commandcode",
+      "model": "deepseek-v4-flash",
+      "status": "COMPLETED_PASS",
+      "report": "docs/convergence/PROVING_WINDOW_VERIFIER.json",
+      "scope": "read-only monitor source, evidence, and disposable regression verification"
+    },
+    {
+      "role": "proving-window gate builder",
+      "agent": "/root/proving_window_gate_builder",
+      "provider": "commandcode",
+      "model": "deepseek-v4-flash",
+      "status": "RUNNING",
+      "scope": "isolated append-only proving gate, tests, and durable contract docs",
+      "worktree": "C:/temp/JARVIS-Foundry-Proving-Gate",
+      "owned_files": [
+        "src/jarvis_foundry/proving.py",
+        "tests/convergence/test_proving_window_gate.py",
+        "docs/convergence/PROVING_WINDOW_GATE.md"
+      ]
     }
   ],
   "promotion": {
@@ -204,7 +237,7 @@
     "post_promotion_runtime_probe": "docs/convergence/LIVE_RUNTIME_PROBE_POST_PROMOTION.json",
     "rollback_bundle": "C:/temp/jarvis-convergence-pre-r3.bundle"
   },
-  "verifier_state": "FINAL_AUDIT_RETRY_COMPLETED_EXTERNAL_BLOCKERS_PRIMARY_AUDIT_PENDING",
+  "verifier_state": "PROVING_MONITOR_VERIFIED_BUILDER_GATE_PENDING",
   "blockers": [
     "R7 real monitored provider research NOT_TESTED/WAITING",
     "R9 real external connector/provider effects NOT_TESTED/WAITING",
@@ -212,5 +245,5 @@
     "R11 elapsed promotion cycles and proving window NOT_TESTED/WAITING",
     "R12 physical host and unavailable-provider fault rows NOT_TESTED/BLOCKED"
   ],
-  "exact_next_action": "inspect /root/post_promotion_final_auditor; then run durable WAITING/monitoring and dependency-ready local proving gates"
+  "exact_next_action": "inspect /root/proving_window_gate_builder and /root/post_promotion_final_auditor; independently verify any gate result"
 }
