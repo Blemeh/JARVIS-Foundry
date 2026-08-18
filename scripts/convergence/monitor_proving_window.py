@@ -186,7 +186,8 @@ def read_checkpoint(
         stop_rows = connection.execute(
             "SELECT directive_id, command_type, target, active, updated_at "
             "FROM directives WHERE active=1 AND command_type IN "
-            "('STOP_EVERYTHING','PAUSE','VETO') ORDER BY updated_at DESC"
+            "('STOP_EVERYTHING','PAUSE','VETO_ACTION','STOP_MISSION') "
+            "ORDER BY updated_at DESC"
         ).fetchall() if "directives" in tables else []
         lease_row = connection.execute(
             "SELECT * FROM leases WHERE lease_key='supervisor:singleton'"

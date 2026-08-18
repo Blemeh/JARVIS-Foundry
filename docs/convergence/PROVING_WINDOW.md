@@ -18,7 +18,9 @@ Checkpoint statuses are deliberately honest:
   elapsed;
 - `WAITING_HEARTBEAT` — continuity evidence is insufficient or a gap exceeds
   the manifest tolerance;
-- `WAITING_OWNER_STOP` — an active STOP, PAUSE, or VETO is visible;
+- `WAITING_OWNER_STOP` — an active `STOP_EVERYTHING`, `PAUSE`,
+  `VETO_ACTION`, or `STOP_MISSION` directive is visible; revoked directives
+  never block;
 - `WAITING_SUPERVISOR` — the singleton Supervisor is not RUNNING;
 - `BLOCKED_INTEGRITY` — required tables or SQLite integrity are not healthy;
 - `READY_TO_CLOSE` — duration and local continuity criteria are satisfied,

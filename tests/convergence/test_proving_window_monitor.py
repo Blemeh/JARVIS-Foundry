@@ -15,7 +15,8 @@ from scripts.convergence.monitor_proving_window import (
 
 
 def _store(path: Path, *, heartbeats: list[str], status: str = "RUNNING",
-           stop: bool = False) -> None:
+           stop: bool = False, directives: list[tuple[str, str, str, int, str]]
+           | None = None) -> None:
     connection = sqlite3.connect(path)
     connection.executescript(
         """
@@ -47,10 +48,13 @@ def _store(path: Path, *, heartbeats: list[str], status: str = "RUNNING",
     connection.execute(
         "INSERT INTO supervisor_state VALUES (1, 'supervisor-1', ?, 'LAB', ?, NULL)",
         (status, heartbeats[-1] if heartbeats else None))
-    if stop:
+    if directives is None and stop:
+        directives = [
+            ("stop-1", "PAUSE", "*", 1,
+             heartbeats[-1] if heartbeats else "2026-08-18T00:00:00+00:00")]
+    for directive in directives or []:
         connection.execute(
-            "INSERT INTO directives VALUES ('stop-1', 'PAUSE', '*', 1, ?)",
-            (heartbeats[-1] if heartbeats else "2026-08-18T00:00:00+00:00",))
+            "INSERT INTO directives VALUES (?, ?, ?, ?, ?)", directive)
     connection.commit()
     connection.close()
 
@@ -113,6 +117,46 @@ def test_monitor_preserves_owner_stop_as_waiting(tmp_path: Path) -> None:
         database, manifest, now=datetime(2026, 8, 18, 0, 1, tzinfo=timezone.utc))
     assert checkpoint["status"] == "WAITING_OWNER_STOP"
     assert checkpoint["runtime"]["active_stop_directives"]
+
+
+def test_monitor_surfaces_veto_action_as_owner_stop(tmp_path: Path) -> None:
+    database = tmp_path / "foundry.db"
+    _store(database, heartbeats=["2026-08-18T00:00:05Z"], directives=[
+        ("veto-1", "VETO_ACTION", "mission-9", 1, "2026-08-18T00:00:05Z")])
+    manifest = _manifest(tmp_path / "manifest.json", duration=1)
+    checkpoint = read_checkpoint(
+        database, manifest, now=datetime(2026, 8, 18, 0, 1, tzinfo=timezone.utc))
+    assert checkpoint["status"] == "WAITING_OWNER_STOP"
+    assert [d["command_type"] for d in checkpoint["runtime"]["active_stop_directives"]] \
+        == ["VETO_ACTION"]
+    assert checkpoint["evidence_limits"]["claims_external_effects"] is False
+
+
+def test_monitor_surfaces_stop_mission_as_owner_stop(tmp_path: Path) -> None:
+    database = tmp_path / "foundry.db"
+    _store(database, heartbeats=["2026-08-18T00:00:05Z"], directives=[
+        ("stop-mission-1", "STOP_MISSION", "mission-4", 1,
+         "2026-08-18T00:00:05Z")])
+    manifest = _manifest(tmp_path / "manifest.json", duration=1)
+    checkpoint = read_checkpoint(
+        database, manifest, now=datetime(2026, 8, 18, 0, 1, tzinfo=timezone.utc))
+    assert checkpoint["status"] == "WAITING_OWNER_STOP"
+    assert [d["command_type"] for d in checkpoint["runtime"]["active_stop_directives"]] \
+        == ["STOP_MISSION"]
+    assert checkpoint["evidence_limits"]["claims_external_effects"] is False
+
+
+def test_monitor_ignores_revoked_stop_directive(tmp_path: Path) -> None:
+    database = tmp_path / "foundry.db"
+    _store(database, heartbeats=[
+        "2026-08-18T00:00:05Z", "2026-08-18T00:00:10Z"], directives=[
+            ("stop-old", "STOP_EVERYTHING", "GLOBAL", 0,
+             "2026-08-18T00:00:05Z")])
+    manifest = _manifest(tmp_path / "manifest.json", duration=10)
+    checkpoint = read_checkpoint(
+        database, manifest, now=datetime(2026, 8, 18, 0, 0, 9, tzinfo=timezone.utc))
+    assert checkpoint["status"] == "WAITING_ELAPSED"
+    assert checkpoint["runtime"]["active_stop_directives"] == []
 
 
 def test_checkpoint_write_is_atomic_and_reloadable(tmp_path: Path) -> None:
