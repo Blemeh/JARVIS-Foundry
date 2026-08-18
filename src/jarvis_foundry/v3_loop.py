@@ -342,6 +342,7 @@ def run_one_loop(db: FoundryDatabase, *, loop_id: str, adapter: Any,
         expected_effects=("writes within the loop target directory",),
         rollback={"revert": "delete files created under the loop target"},
         risk_class="C1",
+        expected_artifacts=("report.md",),
         verification_criteria=[
             "the deliverable exists in the target directory",
             "the deliverable satisfies the mission objective",

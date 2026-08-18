@@ -67,6 +67,7 @@ def test_loop_repeat_runs_never_create_duplicate_missions(db, tmp_path):
     from jarvis_foundry.v3_loop import run_one_loop
     from jarvis_foundry.roles.adapter import FakeHermesAdapter
     from jarvis_foundry.roles.router import RoleRouter
+    from test_v3_loop import WritingFakeHermes
 
     db.append(Event.create(
         "project.registered",
@@ -92,7 +93,7 @@ def test_loop_repeat_runs_never_create_duplicate_missions(db, tmp_path):
         idempotency_key="knowledge.claim_recorded:claim-stale1"))
     for run in ("a", "b"):
         report = run_one_loop(
-            db, loop_id=f"run-{run}", adapter=FakeHermesAdapter(),
+            db, loop_id=f"run-{run}", adapter=WritingFakeHermes(),
             router=RoleRouter(), mission_id="mission-1",
             resource_id="resource-test", target_root=tmp_path / "target",
             max_items=10, max_bytes=20_000)
@@ -129,6 +130,7 @@ def test_rejected_low_value_items_never_resurrect(db, tmp_path):
     from jarvis_foundry.v3_loop import run_one_loop
     from jarvis_foundry.roles.adapter import FakeHermesAdapter
     from jarvis_foundry.roles.router import RoleRouter
+    from test_v3_loop import WritingFakeHermes
 
     db.append(Event.create(
         "project.registered",
@@ -151,7 +153,7 @@ def test_rejected_low_value_items_never_resurrect(db, tmp_path):
         source_type="test", source_id="test-suite",
         idempotency_key="knowledge.claim_recorded:claim-trivia"))
     report = run_one_loop(
-        db, loop_id="run-trivia", adapter=FakeHermesAdapter(),
+        db, loop_id="run-trivia", adapter=WritingFakeHermes(),
         router=RoleRouter(), mission_id="mission-1",
         resource_id="resource-test", target_root=tmp_path / "target",
         max_items=10, max_bytes=20_000)

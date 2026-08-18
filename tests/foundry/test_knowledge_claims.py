@@ -95,8 +95,8 @@ def test_do_support_family_no_false_negatives(tmp_path):
         ("The agent runs", "The agent doesn't run"),
         ("She has a car", "She doesn't have a car"),
     ]
-    for positive, variant in pairs:
-        db = FoundryDatabase(tmp_path / f"foundry-{abs(hash(variant)) % 100000}.db")
+    for i, (positive, variant) in enumerate(pairs):
+        db = FoundryDatabase(tmp_path / f"foundry-pos-{i}.db")
         db.initialize()
         db.append(claim_event(claim_id="p", statement=positive))
         db.append(negation_event(claim_id="n", statement=variant))
@@ -106,9 +106,9 @@ def test_do_support_family_no_false_negatives(tmp_path):
             "CONTRADICTED"
 
     # near-siblings with a DIFFERENT verb must stay clean
-    for sibling in ("The system starts", "The system works hard",
-                    "The system worked"):
-        db = FoundryDatabase(tmp_path / f"foundry-{abs(hash(sibling)) % 100000}.db")
+    for i, sibling in enumerate(("The system starts", "The system works hard",
+                    "The system worked")):
+        db = FoundryDatabase(tmp_path / f"foundry-sib-{i}.db")
         db.initialize()
         db.append(claim_event(claim_id="p", statement="The system works"))
         db.append(negation_event(claim_id="n", statement=sibling))

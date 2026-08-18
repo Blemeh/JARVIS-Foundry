@@ -559,3 +559,28 @@ def test_f3_builder_killed_after_mutation_step_reclaimed_without_duplicates(tmp_
                             and e.payload.get("state") == "ACTION_SELECTION"]
     assert len(session_loss_resumes) == 1
     assert database.quick_check() == "ok"
+
+
+def test_run_step_blocks_when_file_stop_is_active(tmp_path):
+    database, repository, policy, router = mission_fixture(tmp_path)
+    (tmp_path / "STOP").write_text("{}", encoding="utf-8")
+    loop = MissionLoop(database, router, FakeHermesAdapter(), policy=policy)
+    outcome = loop.run_step(**step_kwargs())
+    assert outcome.outcome == BLOCKED_OUTCOME
+    assert "emergency stop" in (outcome.reason or "").lower()
+    assert database.row("missions", "mission_id", "mission-1")["state"] == "ACTION_SELECTION"
+
+
+def test_run_step_blocks_on_pause_directive(tmp_path):
+    database, repository, policy, router = mission_fixture(tmp_path)
+    database.append(Event.create(
+        "owner_directive.recorded",
+        {"directive_id": "pause-1", "command_type": "PAUSE",
+         "target": "GLOBAL", "exact_text": "pause", "active": True},
+        source_type="owner", source_id="local-owner",
+        idempotency_key="owner_directive.recorded:pause-1",
+    ))
+    loop = MissionLoop(database, router, FakeHermesAdapter(), policy=policy)
+    outcome = loop.run_step(**step_kwargs())
+    assert outcome.outcome == BLOCKED_OUTCOME
+    assert "PAUSE" in (outcome.reason or "")

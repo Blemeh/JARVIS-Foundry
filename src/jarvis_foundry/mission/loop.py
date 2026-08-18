@@ -20,11 +20,13 @@ and re-runnable (idempotent events, ledger replay in the dispatcher).
 from __future__ import annotations
 
 import json
+import os
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from ..control.broker import emergency_stop_reason
 from ..control.policy import ActionPolicy
 from ..database import FoundryDatabase
 from ..domain import ActionEnvelope
@@ -95,6 +97,7 @@ class MissionLoop:
         max_repairs: int = 2,
         source_id: str = "mission-loop",
         heartbeat_interval_seconds: int = 60,
+        stop_path: Path | str | None = None,
     ) -> None:
         self.database = database
         self.router = router
@@ -105,6 +108,43 @@ class MissionLoop:
         )
         self.policy = policy
         self.max_repairs = max_repairs
+        self.stop_path = Path(stop_path) if stop_path is not None else (
+            policy.stop_path if policy is not None else None)
+        if self.stop_path is None:
+            env_stop = os.environ.get("JARVIS_STOP_PATH")
+            if env_stop:
+                self.stop_path = Path(env_stop)
+
+    def _stop_reason(self) -> str | None:
+        return emergency_stop_reason(self.database, self.stop_path)
+
+    @staticmethod
+    def _pass_requires_jarvis_predicate(
+        *,
+        target: Path,
+        expected_artifacts: tuple[str, ...],
+    ) -> str | None:
+        """Model PASS is insufficient: JARVIS must see an artifact predicate.
+
+        Returns a BLOCKED reason, or None when a JARVIS-owned predicate holds.
+        """
+        if expected_artifacts:
+            missing = []
+            root = target if target.is_dir() else target.parent
+            for rel in expected_artifacts:
+                candidate = Path(rel)
+                path = candidate if candidate.is_absolute() else root / rel
+                if not path.exists() and not (target.exists() and target.name == Path(rel).name):
+                    missing.append(rel)
+            if missing:
+                return "expected artifacts missing: " + ", ".join(missing)
+            return None
+        if target.is_file():
+            return None
+        hashes = _hash_target(target)
+        if hashes:
+            return None
+        return "model PASS is not backed by a JARVIS-owned artifact predicate"
 
     # -- durable helpers ----------------------------------------------------
 
@@ -256,6 +296,9 @@ class MissionLoop:
         repair budget remains — the caller continues with
         ``run_step(..., run_id=<repair>)`` or calls ``run_until_settled``.
         """
+        stop_reason = self._stop_reason()
+        if stop_reason:
+            return StepOutcome(outcome=BLOCKED_OUTCOME, reason=stop_reason)
         proposal = propose_next_action(self.database, mission_id)
         if isinstance(proposal, Waiting):
             return StepOutcome(outcome=WAITING_OUTCOME, reason=proposal.reason)
@@ -400,6 +443,21 @@ class MissionLoop:
             )
 
         if verifier.verdict == "PASS":
+            blocked = self._pass_requires_jarvis_predicate(
+                target=target, expected_artifacts=expected_artifacts,
+            )
+            if blocked:
+                record_verification_outcome(
+                    self.database, verdict_id=verdict_id, outcome="BLOCKED",
+                    findings=[blocked],
+                    evidence={"verifier_run_id": verifier_run_id},
+                    reason=blocked,
+                )
+                self._advance(mission_id, "BLOCKED", run_id=run_id)
+                return StepOutcome(
+                    outcome=BLOCKED_OUTCOME, step_id=step_id, run_id=run_id,
+                    verdict_id=verdict_id, reason=blocked,
+                )
             record_verification_outcome(
                 self.database, verdict_id=verdict_id, outcome="PASS",
                 findings=[], evidence={"verifier_run_id": verifier_run_id},
@@ -447,6 +505,21 @@ class MissionLoop:
                 commit_head=(commit_state or {}).get("commit_head"),
             )
 
+        if verifier.verdict in {"NOT_TESTED", "BLOCKED"}:
+            record_verification_outcome(
+                self.database, verdict_id=verdict_id, outcome="BLOCKED",
+                findings=list(verifier.evidence),
+                evidence={"verifier_run_id": verifier_run_id},
+                reason=f"verifier verdict {verifier.verdict} is not a FAIL and must not consume repair budget",
+                blocking_dependency=verifier.verdict,
+            )
+            self._advance(mission_id, "BLOCKED", run_id=run_id)
+            return StepOutcome(
+                outcome=BLOCKED_OUTCOME, step_id=step_id, run_id=run_id,
+                verdict_id=verdict_id,
+                reason=f"verifier {verifier.verdict}",
+            )
+
         # FAIL -> bounded repair or precise BLOCKED
         findings = list(verifier.evidence)
         record_verification_outcome(
@@ -488,6 +561,9 @@ class MissionLoop:
     ) -> StepOutcome:
         """Run the step through FAIL -> repair cycles until PASSED, BLOCKED,
         or WAITING — never looping beyond the durable repair budget."""
+        stop_reason = self._stop_reason()
+        if stop_reason:
+            return StepOutcome(outcome=BLOCKED_OUTCOME, reason=stop_reason)
         for attempt in range(self.max_repairs + 2):
             outcome = self.run_step(
                 mission_id=mission_id, step_id=step_id, capability=capability,

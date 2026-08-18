@@ -40,8 +40,8 @@ def run_step(loop: MissionLoop, *, target: Path, instructions: str = "do the wor
 
 
 def test_not_test_verdict_never_advances(tmp_path):
-    """A verifier that completes WITHOUT an explicit PASS verdict must
-    fail the step — the mission goes REPAIRING, never ACCEPTING."""
+    """A verifier that completes with NOT_TESTED must BLOCK the step
+    without recording FAIL or consuming repair budget — never ACCEPTING."""
     database, repository, policy, router = mission_fixture(tmp_path)
     target = repository / "step-out"
     target.mkdir()
@@ -49,7 +49,7 @@ def test_not_test_verdict_never_advances(tmp_path):
     adapter = FakeHermesAdapter(outcome="COMPLETED", verdict="NOT_TESTED")
     loop = MissionLoop(database, router, adapter, policy=policy)
     outcome = run_step(loop, target=target)
-    assert outcome.outcome == FAILED
+    assert outcome.outcome == BLOCKED_OUTCOME
     with database.connect() as connection:
         state = connection.execute(
             "SELECT state FROM missions WHERE mission_id = 'mission-1'"
@@ -61,10 +61,14 @@ def test_not_test_verdict_never_advances(tmp_path):
             "SELECT COUNT(*) FROM evidence_bundles").fetchone()[0]
         verdict_rows = connection.execute(
             "SELECT status FROM verification_verdicts").fetchall()
-    assert state == "REPAIRING"
+        fails = connection.execute(
+            "SELECT COUNT(*) FROM verification_verdicts WHERE status = 'FAIL'"
+        ).fetchone()[0]
+    assert state == "BLOCKED"
     assert completed == 0
     assert bundles == 0
-    assert {r[0] for r in verdict_rows} == {"FAIL"}
+    assert {r[0] for r in verdict_rows} == {"BLOCKED"}
+    assert fails == 0
 
 
 def test_fail_verdict_never_advances(tmp_path):
@@ -90,6 +94,7 @@ def test_verifier_instructions_demand_structured_verdict(tmp_path):
     database, repository, policy, router = mission_fixture(tmp_path)
     target = repository / "step-out"
     target.mkdir()
+    (target / "out.md").write_text("deliverable\n", encoding="utf-8")
     adapter = FakeHermesAdapter(outcome="COMPLETED", verdict="PASS")
     loop = MissionLoop(database, router, adapter, policy=policy)
     outcome = run_step(loop, target=target)
@@ -123,16 +128,23 @@ def test_pass_path_binds_artifact_hashes(tmp_path):
     }
 
 
-def test_pass_path_no_artifact_no_hashes(tmp_path):
+def test_pass_path_no_artifact_blocks_model_only_pass(tmp_path):
+    """P1-D: an empty target plus a scripted model PASS must not ACCEPT."""
     database, repository, policy, router = mission_fixture(tmp_path)
     target = repository / "step-out"
-    target.mkdir()  # empty target: nothing to hash, bundle still records {}
+    target.mkdir()  # empty: no JARVIS-owned artifact predicate
     adapter = FakeHermesAdapter(outcome="COMPLETED", verdict="PASS")
     loop = MissionLoop(database, router, adapter, policy=policy)
     outcome = run_step(loop, target=target)
-    assert outcome.outcome == "PASSED"
+    assert outcome.outcome == BLOCKED_OUTCOME
     with database.connect() as connection:
-        row = connection.execute(
-            "SELECT artifact_hashes_json FROM evidence_bundles "
-            "ORDER BY rowid DESC LIMIT 1").fetchone()
-    assert __import__("json").loads(row[0]) == {}
+        state = connection.execute(
+            "SELECT state FROM missions WHERE mission_id = 'mission-1'"
+        ).fetchone()[0]
+        bundles = connection.execute(
+            "SELECT COUNT(*) FROM evidence_bundles").fetchone()[0]
+        statuses = [r[0] for r in connection.execute(
+            "SELECT status FROM verification_verdicts").fetchall()]
+    assert state == "BLOCKED"
+    assert bundles == 0
+    assert "PASS" not in statuses

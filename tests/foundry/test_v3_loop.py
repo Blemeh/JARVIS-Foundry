@@ -23,6 +23,25 @@ FRONTMATTER = ("---\norigin: jarvis\ncurrent_steward: jarvis\n"
                "system: jarvis-foundry\nversion: v1\n---\n\n")
 
 
+class WritingFakeHermes(FakeHermesAdapter):
+    """P1-D: model PASS is not enough; PASSED tests must create report.md."""
+
+    def dispatch(self, manifest, *, heartbeat):
+        if manifest.role in ("builder", "repair"):
+            marker = " named report.md"
+            text = manifest.instructions or ""
+            key = "target directory "
+            dest = None
+            if key in text and marker in text:
+                raw = text.split(key, 1)[1].split(marker, 1)[0].strip()
+                dest = Path(raw)
+            if dest is not None:
+                dest.mkdir(parents=True, exist_ok=True)
+                (dest / "report.md").write_text(
+                    "objective\nVERIFIED_BY test\n", encoding="utf-8")
+        return super().dispatch(manifest, heartbeat=heartbeat)
+
+
 def _write(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8", newline="")
@@ -79,7 +98,7 @@ def test_loop_runs_end_to_end(db: FoundryDatabase, vault: Path,
                               resource_root: Path, tmp_path: Path):
     from jarvis_foundry.v3_loop import run_one_loop
     _seed_stale_claim(db, vault)
-    adapter = FakeHermesAdapter()  # COMPLETED / PASS
+    adapter = WritingFakeHermes()
     report = run_one_loop(
         db, loop_id="t1", adapter=adapter, router=RoleRouter(),
         resource_id="resource-test",
@@ -99,11 +118,11 @@ def test_loop_runs_end_to_end(db: FoundryDatabase, vault: Path,
     row = db.row("candidates", "candidate_id", report["selected_candidate"])
     assert row["status"] == "EXECUTED"
     assert "outcome" in str(row["evidence_json"])
-    # the loop created the target workspace (the FakeHermesAdapter is
-    # deterministic and writes nothing — file production belongs to the
-    # real adapter; the deliverable assertion is covered by live loops)
+    # the loop target exists and the test adapter wrote the JARVIS-owned
+    # deliverable (model PASS is no longer sufficient on its own)
     target = resource_root / "v3-loops" / "loop-t1"
     assert target.exists()
+    assert (target / "report.md").is_file()
     # agent_run ledger records exist for the real dispatcher path
     with db.connect() as connection:
         runs = connection.execute(
@@ -116,7 +135,7 @@ def test_loop_honest_waiting_when_nothing_clears_bar(
         db: FoundryDatabase, vault: Path, resource_root: Path):
     from jarvis_foundry.v3_loop import run_one_loop
     _seed_stale_claim(db, vault)
-    adapter = FakeHermesAdapter()
+    adapter = WritingFakeHermes()
     report = run_one_loop(
         db, loop_id="t2", adapter=adapter, router=RoleRouter(),
         resource_id="resource-test",
@@ -136,7 +155,7 @@ def test_loop_idempotent_rerun_no_duplicate_missions(
         db: FoundryDatabase, vault: Path, resource_root: Path):
     from jarvis_foundry.v3_loop import run_one_loop
     _seed_stale_claim(db, vault)
-    adapter = FakeHermesAdapter()
+    adapter = WritingFakeHermes()
     first = run_one_loop(
         db, loop_id="t3", adapter=adapter, router=RoleRouter(),
         resource_id="resource-test",
@@ -210,7 +229,7 @@ def test_loop_selects_maintenance_candidate_when_signals_present(
             source_type="test", source_id="test-suite",
             idempotency_key=f"knowledge.claim_recorded:claim-unsup{i}"))
     report = run_one_loop(
-        db, loop_id="t7", adapter=FakeHermesAdapter(), router=RoleRouter(),
+        db, loop_id="t7", adapter=WritingFakeHermes(), router=RoleRouter(),
         resource_id="resource-test", vault_root=vault,
         target_root=resource_root, max_items=10, max_bytes=20_000)
     assert report["maintenance_candidate_created"] is True
@@ -225,7 +244,7 @@ def test_loop_records_outcome_and_reconciles(
     from jarvis_foundry.v3_loop import run_one_loop
     _seed_stale_claim(db, vault)
     report = run_one_loop(
-        db, loop_id="t5", adapter=FakeHermesAdapter(), router=RoleRouter(),
+        db, loop_id="t5", adapter=WritingFakeHermes(), router=RoleRouter(),
         resource_id="resource-test",
         vault_root=vault, target_root=resource_root, max_items=10,
         max_bytes=20_000)
