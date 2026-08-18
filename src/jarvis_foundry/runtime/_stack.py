@@ -52,8 +52,9 @@ def build_worker_stack(
     Disabled adapters are not registered, so the router can never select an
     unavailable worker (honest NOT_READY / no eligible worker).
     """
-    del paths  # the adapters own their containment; state root comes from config
     run_root = _resolve_root(config.runtime_state_root, run_id, kind="run")
+    stop_path = config.resolve_stop_path(paths.home)
+    pid_table = paths.home / "adapter_worker_pids.json"
     router = WorkerRouter()
     registry = WorkerRegistry()
     enabled: list[str] = []
@@ -75,6 +76,8 @@ def build_worker_stack(
                 python_exe=str(hermes.get(
                     "python_exe",
                     r"C:\Users\b\AppData\Local\hermes\hermes-agent\venv\Scripts\python.exe")),
+                stop_path=stop_path,
+                pid_table=pid_table,
             ),
         )
         enabled.append("hermes")
@@ -93,6 +96,8 @@ def build_worker_stack(
                 data_dir=data_dir,
                 enabled=True,
                 timeout_seconds=int(openhands.get("timeout_seconds", 900)),
+                stop_path=stop_path,
+                pid_table=pid_table,
             ),
         )
         enabled.append("openhands")

@@ -83,6 +83,8 @@ class HermesWorkerAdapter:
         enabled: bool = False,
         timeout_seconds: int = 900,
         python_exe: str = "python",
+        stop_path: Path | str | None = None,
+        pid_table: Path | str | None = None,
     ) -> None:
         self.hermes_root = hermes_root.resolve()
         self.hermes_home = hermes_home.resolve()
@@ -90,6 +92,8 @@ class HermesWorkerAdapter:
         self.timeout_seconds = timeout_seconds
         self.python_exe = python_exe
         self.framework = "hermes"
+        self.stop_path = Path(stop_path) if stop_path is not None else None
+        self.pid_table = Path(pid_table) if pid_table is not None else None
         self._validate()
 
     def _validate(self) -> None:
@@ -154,6 +158,8 @@ class HermesWorkerAdapter:
                 timeout_seconds=self.timeout_seconds,
                 heartbeat=heartbeat,
                 run_id=contract.run_id,
+                stop_path=self.stop_path,
+                pid_table=self.pid_table,
             )
         except subprocess.TimeoutExpired:
             heartbeat()
