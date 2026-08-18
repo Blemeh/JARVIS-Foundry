@@ -64,6 +64,7 @@ database/control plane, no schema migration.
 | Fresh independent verifier PASS | independent_verifier.json 25/25 |
 | Canonical integration reconciled | candidate base == origin/main (fetched 2026-08-18) |
 | Post-promotion bounded live probe | PASS (real Screenpipe history, read-only, STOP/resume) |
+| Promotion executed | YES — merge candidate/jarvis-eyes-phase2 -> main (--no-ff, commit bfeb4cd); post-merge full suite EXIT 0 (1166); live probe PASS; rollback-to-765a725 proven |
 | Zero unresolved CRITICAL/HIGH | none found |
 
 ## Phase boundaries

@@ -42,6 +42,17 @@ Final raw hashes (2026-08-18 10:40 UTC):
 | independent_verifier.json | `59882bbe5dd40586f4880caf123ed0b0b0616e3043a78e40632dc90c4badd930` |
 | full-suite-run.txt | `28bd10e3879e5b28794cbae626812956784215c6236551622258a397971a7391` |
 
+## Post-promotion evidence (canonical main `bfeb4cd`, 2026-08-18)
+
+| Artifact | SHA-256 |
+|---|---|
+| `var/phase2-eyes/promotion-full-suite.txt` (1166 collected, EXIT 0) | `28bd10e3879e5b28794cbae626812956784215c6236551622258a397971a7391` |
+| `var/phase2-eyes/promotion-live-probe.json` | `ea1c3f2ab6ff5ff63eb2a11029532e2b1a72680ccbab877f012006221b03a28b` |
+
+Rollback path proven: `git revert -m 1 bfeb4cd` restores a tree
+byte-identical to pre-promotion `765a725` (verified on a scratch branch).
+Promotion was a LOCAL merge; no push (no-push rule).
+
 ## Source artifacts
 
 - `src/jarvis_foundry/perception/` (implementation)

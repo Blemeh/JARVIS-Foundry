@@ -17,8 +17,14 @@ INDEPENDENT REVIEWER:                      PASS (25/25)
 RAW FRAME:                                 PROBING
 AUDIO:                                     DISABLED
 SCHEMA CHANGE:                             NO
-PROMOTION STATE:                           CANDIDATE READY (promotion executed only per
-                                           repository release machinery + owner policy)
+PROMOTION STATE:                           PROMOTED 2026-08-18 (candidate -> canonical main,
+                                           local commit only; no push per no-push rule)
+FINAL CANONICAL HEAD:                      bfeb4cd (merge of candidate/jarvis-eyes-phase2)
+POST-PROMOTION LIVE PROBE:                 PASS (19 observations from 293 real Screenpipe
+                                           frames; STOP blocked; resume from cursor clean)
+ROLLBACK / RESTORE:                        PASS (revert-to-first-parent of bfeb4cd produced a
+                                           tree byte-identical to pre-promotion 765a725;
+                                           proven on a scratch branch, main restored)
 ```
 
 Implementation surface (candidate branch `candidate/jarvis-eyes-phase2`,
