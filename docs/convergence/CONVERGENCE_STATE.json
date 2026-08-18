@@ -324,6 +324,30 @@
       "report": "docs/convergence/R8_PRODUCTION_GATE_FRESH_VERIFIER.json",
       "candidate_head": "578ada1b35ed5fa8e3440001438902bcf47bb54f",
       "scope": "read-only bounded retry after first verifier nonresponse"
+    },
+    {
+      "role": "R9 connector boundary reviewer",
+      "agent": "/root/r9_connector_boundary_reviewer",
+      "provider": "commandcode",
+      "model": "deepseek-v4-flash",
+      "status": "RUNNING",
+      "scope": "read-only capability registry, connector contracts, STOP ordering, and external readiness"
+    },
+    {
+      "role": "R10 command center boundary reviewer",
+      "agent": "/root/r10_command_center_boundary_reviewer",
+      "provider": "commandcode",
+      "model": "deepseek-v4-flash",
+      "status": "RUNNING",
+      "scope": "read-only command center, briefings, language, voice, UI authority, and degraded states"
+    },
+    {
+      "role": "R11 evolution cycle reviewer",
+      "agent": "/root/r11_evolution_cycle_reviewer",
+      "provider": "commandcode",
+      "model": "deepseek-v4-flash",
+      "status": "RUNNING",
+      "scope": "read-only controlled self-evolution cycles, promotion ownership, and rollback evidence"
     }
   ],
   "promotion": {
