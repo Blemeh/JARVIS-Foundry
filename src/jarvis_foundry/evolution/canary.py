@@ -23,6 +23,7 @@ from typing import Any
 from ..clock import isoformat
 from ..database import FoundryDatabase
 from ..events import Event
+from ._authority import SUPERVISOR_CONTROLLER
 
 STATUSES = ("RUNNING", "COMPLETED", "TERMINATED")
 
@@ -37,10 +38,10 @@ def _require(condition: bool, message: str) -> None:
 
 
 def _controller_ok(controller: str) -> bool:
-    """Canary control is Supervisor-owned: candidate identities can
-    never start, tick, extend or terminate their own canary."""
-    return (isinstance(controller, str) and controller.strip()
-            and "candidate" not in controller.lower())
+    """Canary control is Supervisor-owned: only the exact Supervisor
+    identity may start, tick, extend or terminate a canary."""
+    return isinstance(controller, str) and \
+        controller == SUPERVISOR_CONTROLLER
 
 
 def _stop_active(database: FoundryDatabase) -> bool:

@@ -82,7 +82,7 @@ def _request(db: FoundryDatabase, improvement_id: str,
         "criteria": ["criterion-1: suite green", "criterion-2: latency"],
         "artifacts": {"suite.txt": "a" * 64},
         "builder_identity": DIRECTIVE_IDENTITY,
-        "controller": "v6-s5-test",
+        "controller": "supervisor",
     }
     params.update(overrides)
     return record_verification_request(

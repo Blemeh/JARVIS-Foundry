@@ -31,6 +31,7 @@ from ..clock import isoformat
 from ..control.redaction import contains_secret_like
 from ..database import FoundryDatabase
 from ..events import Event, canonical_json, payload_hash
+from ..supervisor.authority import SUPERVISOR_CONTROLLER
 from .records import RISK_ORDER  # noqa: F401 — risk vocabulary shared
 
 MARKER_NAME = ".candidate-build.json"
@@ -52,6 +53,14 @@ def _require(condition: bool, message: str) -> None:
         raise BuilderError(message)
 
 
+def _require_supervisor(controller: str) -> None:
+    _require(
+        isinstance(controller, str) and controller == SUPERVISOR_CONTROLLER,
+        "only the exact Supervisor controller identity 'supervisor' is "
+        "accepted - refused",
+    )
+
+
 def _runtime_home(database: FoundryDatabase) -> Path:
     return Path(database.path).resolve().parent
 
@@ -64,6 +73,7 @@ def register_candidate_root(
     """Register a canonical candidate root. Idempotent per resolved
     path. Roots inside the runtime home (the live-like surface) are
     refused."""
+    _require_supervisor(controller)
     _require(isinstance(controller, str) and controller.strip(),
              "controller identity must be a non-empty string")
     resolved = Path(root).expanduser().resolve()
@@ -164,6 +174,7 @@ def build_candidate(
     running on the same root (live marker). A stale marker (dead pid)
     is reaped first and recorded as candidate.build_reaped.
     """
+    _require_supervisor(controller)
     _require(database.row("improvement_records", "improvement_id",
                           improvement_id) is not None,
              f"improvement {improvement_id} does not exist — refused")

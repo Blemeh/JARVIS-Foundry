@@ -20,6 +20,7 @@ from typing import Any
 from ..control.redaction import contains_secret_like
 from ..database import FoundryDatabase
 from ..events import Event, canonical_json, payload_hash
+from ..supervisor.authority import SUPERVISOR_CONTROLLER
 
 VERDICTS = ("PASS", "FAIL", "BLOCKED", "NOT_TESTED")
 DIRECTIVE_PROVIDER = "opencode_go"
@@ -69,8 +70,11 @@ def record_verification_request(
         _require(isinstance(digest, str) and _HEX64.match(digest),
                  f"artifact hash for {name!r} must be a 64-char "
                  "lowercase hex sha256 — refused")
-    _require(isinstance(controller, str) and controller.strip(),
-             "controller identity must be a non-empty string")
+    _require(
+        isinstance(controller, str) and controller == SUPERVISOR_CONTROLLER,
+        "only the exact Supervisor controller identity 'supervisor' may "
+        "create verification requests - refused",
+    )
     _require(_identity_ok(builder_identity),
              "builder identity must resolve to the directive "
              f"{DIRECTIVE_PROVIDER}/{DIRECTIVE_MODEL} — refused")

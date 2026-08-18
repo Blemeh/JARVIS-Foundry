@@ -9,8 +9,8 @@ for "what exists now" claims; the architecture contract wins for binding invaria
 Last reconciled: 2026-08-18 (JARVIS Procedural Learning + OpenAdapt Phase 4 promotion)
 
 ```text
-CURRENT CANONICAL HEAD:      11161a2 (main; Phase 4 Procedural Learning
-                             promoted; final probe documentation is a descendant)
+CURRENT CANONICAL HEAD:      2b3573606570f910e5569cf3306223354f93e4ac (main;
+                             Phase 4 Procedural Learning final probe recorded)
 LETTA PROMOTION ANCESTOR:    2f7360e742559e051109e04ef7f3a82cc64cc2d2 (still an ancestor of HEAD)
 PRE-V8 HISTORICAL BASELINE:  93a3ddc0965dfaf3e4cb9dc0952467bd5250520a (historical only — do not reset to it)
 CURRENT SCHEMA:              v33 (six additive tier_c_* tables; event-derived)
@@ -105,6 +105,7 @@ browser substrate, and it cannot activate native desktop execution.
 | JARVIS Eyes Phase 2 | PASS — 20/20 faults, rollback/live probe, read-only boundary |
 | Workflow Discovery Phase 3 | PASS — 36/36 focused, F1–F25, bounded probe, independent review |
 | Procedural Learning Phase 4 | PASS — 20/20 focused, F1–F24, local browser probe, rollback, independent source review |
+| Post-V7 canonical convergence (R7–R12 semantic closure) | Candidate gates reproduced — exact Supervisor authority across low-level evolution/control surfaces; 75 convergence tests + 1,222 canonical tests; independent promotion verification pending |
 
 ## What is experimental / not canonical
 

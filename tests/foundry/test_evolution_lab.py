@@ -101,11 +101,11 @@ def test_workload_registration_deterministic_and_idempotent(
     directory = _workload_dir(tmp_path)
     workload_id = register_workload(
         db, name="w1", input_dir=directory,
-        config={"mode": "echo"}, seeds=[1, 2, 3], controller="v6-s4")
+        config={"mode": "echo"}, seeds=[1, 2, 3], controller="supervisor")
     assert workload_id.startswith("workload-")
     again = register_workload(db, name="w1", input_dir=directory,
                               config={"mode": "echo"}, seeds=[1, 2, 3],
-                              controller="v6-s4")
+                              controller="supervisor")
     assert again == workload_id
     events = [e for e in db.events()
               if e.event_type == "evaluation.workload_registered"]
@@ -122,7 +122,7 @@ def test_workload_registration_secret_config_refused(
     with pytest.raises(LabError):
         register_workload(db, name="w1", input_dir=directory,
                           config={"token": "sk-live-1234"},
-                          seeds=[], controller="v6-s4")
+                          seeds=[], controller="supervisor")
     assert len(db.events()) == 0
 
 
@@ -130,7 +130,7 @@ def test_unknown_workload_refused(db: FoundryDatabase) -> None:
     with pytest.raises(LabError):
         run_evaluation(db, workload_id="workload-nope",
                        subject_kind="baseline", subject_identity="base-v1",
-                       command=_echo_command(), controller="v6-s4")
+                       command=_echo_command(), controller="supervisor")
 
 
 # ---------------------------------------------------------------------------
@@ -140,11 +140,11 @@ def test_unknown_workload_refused(db: FoundryDatabase) -> None:
 def test_baseline_run_all_cases(db: FoundryDatabase, tmp_path: Path) -> None:
     directory = _workload_dir(tmp_path, count=5)
     workload_id = register_workload(db, name="w1", input_dir=directory,
-                                    config={}, seeds=[], controller="v6-s4")
+                                    config={}, seeds=[], controller="supervisor")
     run_id = run_evaluation(db, workload_id=workload_id,
                             subject_kind="baseline",
                             subject_identity="base-v1",
-                            command=_echo_command(), controller="v6-s4")
+                            command=_echo_command(), controller="supervisor")
     row = db.row("evaluation_runs", "run_id", run_id)
     assert row is not None
     assert row["subject_kind"] == "baseline"
@@ -162,15 +162,15 @@ def test_candidate_run_same_input_hash(db: FoundryDatabase,
                                        tmp_path: Path) -> None:
     directory = _workload_dir(tmp_path)
     workload_id = register_workload(db, name="w1", input_dir=directory,
-                                    config={}, seeds=[], controller="v6-s4")
+                                    config={}, seeds=[], controller="supervisor")
     run_evaluation(db, workload_id=workload_id, subject_kind="baseline",
                    subject_identity="base-v1", command=_echo_command(),
-                   controller="v6-s4")
+                   controller="supervisor")
     candidate_id = run_evaluation(db, workload_id=workload_id,
                                   subject_kind="candidate",
                                   subject_identity="cand-v1",
                                   command=_fast_command(),
-                                  controller="v6-s4")
+                                  controller="supervisor")
     row = db.row("evaluation_runs", "run_id", candidate_id)
     baseline = db.all("evaluation_runs",
                       subject_kind="baseline")[0]
@@ -181,7 +181,7 @@ def test_failing_case_records_error_rate(db: FoundryDatabase,
                                          tmp_path: Path) -> None:
     directory = _workload_dir(tmp_path, count=4)
     workload_id = register_workload(db, name="w1", input_dir=directory,
-                                    config={}, seeds=[], controller="v6-s4")
+                                    config={}, seeds=[], controller="supervisor")
     broken = [PY, "-c",
               "import pathlib,sys\n"
               "case = pathlib.Path(sys.argv[1])\n"
@@ -189,7 +189,7 @@ def test_failing_case_records_error_rate(db: FoundryDatabase,
     run_id = run_evaluation(db, workload_id=workload_id,
                             subject_kind="candidate",
                             subject_identity="broken-v1",
-                            command=broken, controller="v6-s4")
+                            command=broken, controller="supervisor")
     row = db.row("evaluation_runs", "run_id", run_id)
     assert row is not None
     assert row["exit_code"] == 1  # overall failure
@@ -200,15 +200,15 @@ def test_seeded_determinism(db: FoundryDatabase, tmp_path: Path) -> None:
     directory = _workload_dir(tmp_path)
     workload_id = register_workload(db, name="w1", input_dir=directory,
                                     config={}, seeds=[42],
-                                    controller="v6-s4")
+                                    controller="supervisor")
     first = run_evaluation(db, workload_id=workload_id,
                            subject_kind="baseline",
                            subject_identity="base-v1",
-                           command=_echo_command(), controller="v6-s4")
+                           command=_echo_command(), controller="supervisor")
     second = run_evaluation(db, workload_id=workload_id,
                             subject_kind="baseline",
                             subject_identity="base-v1",
-                            command=_echo_command(), controller="v6-s4")
+                            command=_echo_command(), controller="supervisor")
     row_a = db.row("evaluation_runs", "run_id", first)
     row_b = db.row("evaluation_runs", "run_id", second)
     assert row_a["output_hashes_json"] == row_b["output_hashes_json"]
@@ -221,11 +221,11 @@ def test_nondeterminism_handling_recorded(db: FoundryDatabase,
         db, name="w1", input_dir=directory,
         config={"nondeterministic": True,
                 "treatment": "explicit variance recording"},
-        seeds=[], controller="v6-s4")
+        seeds=[], controller="supervisor")
     run_id = run_evaluation(db, workload_id=workload_id,
                             subject_kind="candidate",
                             subject_identity="cand-v1",
-                            command=_echo_command(), controller="v6-s4")
+                            command=_echo_command(), controller="supervisor")
     row = db.row("evaluation_runs", "run_id", run_id)
     assert row is not None
     assert "explicit variance recording" in (
@@ -267,7 +267,7 @@ def _improvement_mmi(db: FoundryDatabase, minimum_delta: float,
 def test_compare_improvement_met(db: FoundryDatabase, tmp_path: Path) -> None:
     directory = _workload_dir(tmp_path)
     workload_id = register_workload(db, name="w1", input_dir=directory,
-                                    config={}, seeds=[], controller="v6-s4")
+                                    config={}, seeds=[], controller="supervisor")
     slow = [PY, "-c",
             "import pathlib,sys,time\n"
             "pathlib.Path(sys.argv[1]).read_text()\n"
@@ -280,11 +280,11 @@ def test_compare_improvement_met(db: FoundryDatabase, tmp_path: Path) -> None:
     baseline_id = run_evaluation(db, workload_id=workload_id,
                                  subject_kind="baseline",
                                  subject_identity="base-v1",
-                                 command=slow, controller="v6-s4")
+                                 command=slow, controller="supervisor")
     candidate_id = run_evaluation(db, workload_id=workload_id,
                                   subject_kind="candidate",
                                   subject_identity="cand-v1",
-                                  command=fast, controller="v6-s4")
+                                  command=fast, controller="supervisor")
     result = compare_evaluations(db, baseline_run_id=baseline_id,
                                  candidate_run_id=candidate_id,
                                  improvement_id=improvement_id)
@@ -299,17 +299,17 @@ def test_compare_improvement_not_met(db: FoundryDatabase,
                                      tmp_path: Path) -> None:
     directory = _workload_dir(tmp_path)
     workload_id = register_workload(db, name="w1", input_dir=directory,
-                                    config={}, seeds=[], controller="v6-s4")
+                                    config={}, seeds=[], controller="supervisor")
     same = _echo_command()
     improvement_id = _improvement(db)
     baseline_id = run_evaluation(db, workload_id=workload_id,
                                  subject_kind="baseline",
                                  subject_identity="base-v1",
-                                 command=same, controller="v6-s4")
+                                 command=same, controller="supervisor")
     candidate_id = run_evaluation(db, workload_id=workload_id,
                                   subject_kind="candidate",
                                   subject_identity="cand-v1",
-                                  command=same, controller="v6-s4")
+                                  command=same, controller="supervisor")
     result = compare_evaluations(db, baseline_run_id=baseline_id,
                                  candidate_run_id=candidate_id,
                                  improvement_id=improvement_id)
@@ -320,7 +320,7 @@ def test_compare_guardrail_violation(db: FoundryDatabase,
                                      tmp_path: Path) -> None:
     directory = _workload_dir(tmp_path)
     workload_id = register_workload(db, name="w1", input_dir=directory,
-                                    config={}, seeds=[], controller="v6-s4")
+                                    config={}, seeds=[], controller="supervisor")
     broken = [PY, "-c",
               "import pathlib,sys\n"
               "pathlib.Path(sys.argv[1]).read_text()\n"
@@ -330,11 +330,11 @@ def test_compare_guardrail_violation(db: FoundryDatabase,
                                  subject_kind="baseline",
                                  subject_identity="base-v1",
                                  command=_echo_command(),
-                                 controller="v6-s4")
+                                 controller="supervisor")
     candidate_id = run_evaluation(db, workload_id=workload_id,
                                   subject_kind="candidate",
                                   subject_identity="broken-v1",
-                                  command=broken, controller="v6-s4")
+                                  command=broken, controller="supervisor")
     result = compare_evaluations(db, baseline_run_id=baseline_id,
                                  candidate_run_id=candidate_id,
                                  improvement_id=improvement_id)
@@ -344,28 +344,28 @@ def test_compare_guardrail_violation(db: FoundryDatabase,
 def test_compare_refusals(db: FoundryDatabase, tmp_path: Path) -> None:
     directory = _workload_dir(tmp_path)
     workload_id = register_workload(db, name="w1", input_dir=directory,
-                                    config={}, seeds=[], controller="v6-s4")
+                                    config={}, seeds=[], controller="supervisor")
     other_dir = tmp_path / "other-workload"
     other_dir.mkdir()
     (other_dir / "x.txt").write_text("x")
     other_workload = register_workload(db, name="w2", input_dir=other_dir,
                                        config={}, seeds=[],
-                                       controller="v6-s4")
+                                       controller="supervisor")
     improvement_id = _improvement(db)
     baseline_id = run_evaluation(db, workload_id=workload_id,
                                  subject_kind="baseline",
                                  subject_identity="base-v1",
                                  command=_echo_command(),
-                                 controller="v6-s4")
+                                 controller="supervisor")
     other_run = run_evaluation(db, workload_id=other_workload,
                                subject_kind="candidate",
                                subject_identity="cand-other",
-                               command=_echo_command(), controller="v6-s4")
+                               command=_echo_command(), controller="supervisor")
     candidate_id = run_evaluation(db, workload_id=workload_id,
                                   subject_kind="candidate",
                                   subject_identity="cand-v1",
                                   command=_echo_command(),
-                                  controller="v6-s4")
+                                  controller="supervisor")
     with pytest.raises(LabError):
         compare_evaluations(db, baseline_run_id="run-nope",
                             candidate_run_id=candidate_id,
@@ -392,15 +392,15 @@ def test_bad_subject_kind_and_command_refused(db: FoundryDatabase,
                                               tmp_path: Path) -> None:
     directory = _workload_dir(tmp_path)
     workload_id = register_workload(db, name="w1", input_dir=directory,
-                                    config={}, seeds=[], controller="v6-s4")
+                                    config={}, seeds=[], controller="supervisor")
     with pytest.raises(LabError):
         run_evaluation(db, workload_id=workload_id,
                        subject_kind="alien", subject_identity="x",
-                       command=_echo_command(), controller="v6-s4")
+                       command=_echo_command(), controller="supervisor")
     with pytest.raises(LabError):
         run_evaluation(db, workload_id=workload_id,
                        subject_kind="baseline", subject_identity="x",
-                       command=[], controller="v6-s4")
+                       command=[], controller="supervisor")
 
 
 # ---------------------------------------------------------------------------
@@ -410,10 +410,10 @@ def test_bad_subject_kind_and_command_refused(db: FoundryDatabase,
 def test_projection_and_schema(db: FoundryDatabase, tmp_path: Path) -> None:
     directory = _workload_dir(tmp_path)
     workload_id = register_workload(db, name="w1", input_dir=directory,
-                                    config={}, seeds=[], controller="v6-s4")
+                                    config={}, seeds=[], controller="supervisor")
     run_evaluation(db, workload_id=workload_id, subject_kind="baseline",
                    subject_identity="base-v1", command=_echo_command(),
-                   controller="v6-s4")
+                   controller="supervisor")
     report = reconcile(db)
     assert report.consistent is True
     before = db.count("evaluation_runs")

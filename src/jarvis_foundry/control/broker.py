@@ -54,6 +54,31 @@ _ENV_VAR = re.compile(
 _WILDCARD = re.compile(r"[*?\[\]]")
 _SEPARATOR = re.compile(r"[/:]+")
 _WS = re.compile(r"\s+")
+_FINANCIAL_CLASSES = frozenset(
+    {"transfer", "pay_invoice", "create_budget", "modify_budget"})
+_FINANCIAL_NAMESPACES = frozenset(
+    {"finance", "financial", "bank", "banking", "payment", "payments"})
+
+
+def _financial_class(kind: str) -> str | None:
+    """Return the denied financial class for a canonical action kind.
+
+    Namespace descendants are denied as a family, while unrelated digital
+    actions such as ``file.transfer`` remain available.
+    """
+    parts = tuple(part for part in kind.split(".") if part)
+    if not parts:
+        return None
+    if len(parts) == 1 and parts[0] in _FINANCIAL_CLASSES:
+        return parts[0]
+    for part in parts:
+        if part in _FINANCIAL_NAMESPACES:
+            return next(
+                (candidate for candidate in parts
+                 if candidate in _FINANCIAL_CLASSES),
+                part,
+            )
+    return None
 
 
 def normalize_action_kind(kind: str) -> str:
@@ -220,6 +245,17 @@ class PolicyBroker:
         if stop:
             return BrokerResult(BrokerDecision.EMERGENCY_STOPPED, stop,
                                 canonical_kind)
+
+        # Financial effects remain outside this remaster's DIGITAL WORK
+        # scope. Deny after global STOP but before any target or capability
+        # lookup so a forged READY finance capability cannot become ALLOW.
+        financial_class = _financial_class(canonical_kind)
+        if financial_class:
+            return BrokerResult(
+                BrokerDecision.NOT_READY,
+                f"financial action class {financial_class!r} is denied",
+                canonical_kind,
+            )
 
         # 2 — target resolution and normalization
         try:

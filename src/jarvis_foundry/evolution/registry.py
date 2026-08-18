@@ -34,6 +34,7 @@ from typing import Any
 from ..database import FoundryDatabase
 from ..domain import ARTIFACT_NAME_PATTERN
 from ..events import Event, canonical_json, payload_hash
+from ..supervisor.authority import SUPERVISOR_CONTROLLER
 from .records import RISK_ORDER, improvement_eligibility
 
 SLOTS = ("live", "candidate", "previous", "quarantine")
@@ -54,6 +55,14 @@ class ReleaseError(ValueError):
 def _require(condition: bool, message: str) -> None:
     if not condition:
         raise ReleaseError(message)
+
+
+def _require_supervisor(controller: str, action: str) -> None:
+    _require(
+        isinstance(controller, str) and controller == SUPERVISOR_CONTROLLER,
+        f"only the exact Supervisor controller identity 'supervisor' may "
+        f"{action} - refused",
+    )
 
 
 def _slot_key(slot: str, release_id: str | None,
@@ -80,6 +89,7 @@ def register_release(
 ) -> str:
     """Register an immutable release manifest. Returns the content-
     derived release id; identical re-registration dedupes."""
+    _require_supervisor(controller, "register a release")
     _require(_HEX40.match(source_commit),
              "source_commit must be a 40-char sha1 hex string")
     _require(isinstance(artifact_hashes, dict) and artifact_hashes,
@@ -188,8 +198,7 @@ def set_slot(
     _require(slot in SLOTS, f"unknown slot {slot!r} — refused")
     _require(isinstance(reason, str) and reason.strip(),
              "reason must be a non-empty string")
-    _require(isinstance(controller, str) and controller.strip(),
-             "controller identity must be a non-empty string")
+    _require_supervisor(controller, "change release slots")
     if release_id is not None:
         _require(database.row("release_manifests", "release_id",
                               release_id) is not None,
@@ -219,6 +228,7 @@ def promote_candidate(
     """Promote the candidate to live (atomic batch). The old live
     becomes previous; the candidate slot is cleared. Requires PASS
     verdicts, no FAIL verdicts, and an eligible improvement."""
+    _require_supervisor(controller, "promote a release")
     _require(database.row("release_manifests", "release_id",
                           candidate_release_id) is not None,
              f"candidate release {candidate_release_id} does not exist — "
@@ -284,6 +294,7 @@ def rollback_live(
     """Roll the live release back to the exact previous release. The
     failed live release moves to quarantine; previous is consumed.
     History is never rewritten (all transitions are new events)."""
+    _require_supervisor(controller, "roll back a release")
     pointers = slot_pointers(database)
     old_live = pointers["live"]
     previous = pointers["previous"]
@@ -327,6 +338,7 @@ def quarantine_release(
 ) -> dict[str, str | None]:
     """Move a release into quarantine (candidate slot cleared if it
     pointed there). History preserved."""
+    _require_supervisor(controller, "quarantine a release")
     _require(database.row("release_manifests", "release_id",
                           release_id) is not None,
              f"release {release_id} does not exist — refused")

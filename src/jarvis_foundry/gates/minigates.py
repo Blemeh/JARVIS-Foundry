@@ -13,8 +13,9 @@ from typing import Any
 
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.events import Event
+from jarvis_foundry.supervisor.authority import SUPERVISOR_CONTROLLER
 from jarvis_foundry.supervisor.evolution_control import (
-    SUPERVISOR_CONTROLLER, EvolutionControlError,
+    EvolutionControlError,
 )
 from jarvis_foundry.supervisor.estop import EmergencyStop
 

@@ -29,6 +29,7 @@ from ..database import FoundryDatabase
 from ..events import Event, canonical_json
 from ..migrations import SCHEMA_VERSION
 from ..reconcile import reconcile
+from ._authority import SUPERVISOR_CONTROLLER
 
 RESTORE_STATUSES = ("CREATED", "VERIFIED", "EXECUTED")
 
@@ -43,8 +44,8 @@ def _require(condition: bool, message: str) -> None:
 
 
 def _controller_ok(controller: str) -> bool:
-    return (isinstance(controller, str) and controller.strip()
-            and "candidate" not in controller.lower())
+    return isinstance(controller, str) and \
+        controller == SUPERVISOR_CONTROLLER
 
 
 def _stop_active(database: FoundryDatabase) -> bool:

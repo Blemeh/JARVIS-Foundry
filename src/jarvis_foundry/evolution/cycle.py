@@ -28,6 +28,7 @@ from .lab import register_workload, run_evaluation
 from .promote import promote_release
 from .records import classify_risk
 from .registry import register_release, set_slot
+from ._authority import SUPERVISOR_CONTROLLER
 from .verify import (
     DIRECTIVE_PROVIDER,
     DIRECTIVE_MODEL,
@@ -50,8 +51,8 @@ def _require(condition: bool, message: str) -> None:
 
 
 def _controller_ok(controller: str) -> bool:
-    return (isinstance(controller, str) and controller.strip()
-            and "candidate" not in controller.lower())
+    return isinstance(controller, str) and \
+        controller == SUPERVISOR_CONTROLLER
 
 
 def _stop_active(database: FoundryDatabase) -> bool:

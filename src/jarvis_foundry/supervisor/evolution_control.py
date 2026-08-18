@@ -31,8 +31,8 @@ from ..evolution import promote as promote_mod
 from ..evolution import records as records_mod
 from ..evolution import registry as registry_mod
 from ..evolution import restore as restore_mod
+from .authority import SUPERVISOR_CONTROLLER
 
-SUPERVISOR_CONTROLLER = "supervisor"
 _MODES = ("observe", "active")
 
 

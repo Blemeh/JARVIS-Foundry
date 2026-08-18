@@ -1,0 +1,35 @@
+{
+  "schema": "jarvis-canonical-runtime-probe-v1",
+  "recorded_at": "2026-08-18T14:53:39.295383+00:00",
+  "database": "C:\\Users\\b\\AppData\\Local\\hermes\\foundry\\foundry.db",
+  "database_exists": true,
+  "sqlite_quick_check": "ok",
+  "schema_version": 33,
+  "event_head": 97247,
+  "latest_event": {
+    "event_type": "supervisor.heartbeat",
+    "occurred_at": "2026-08-18T14:53:35.320008Z",
+    "source_id": "supervisor-6b2b8a86-e880-4cd8-9c7b-bcdcc9785caf"
+  },
+  "latest_heartbeat": {
+    "occurred_at": "2026-08-18T14:53:35.320008Z",
+    "source_id": "supervisor-6b2b8a86-e880-4cd8-9c7b-bcdcc9785caf",
+    "payload_json": "{\"instance_id\":\"supervisor-6b2b8a86-e880-4cd8-9c7b-bcdcc9785caf\",\"trust_state\":\"LAB\"}"
+  },
+  "supervisor_state": {
+    "singleton": 1,
+    "instance_id": "supervisor-6b2b8a86-e880-4cd8-9c7b-bcdcc9785caf",
+    "status": "RUNNING",
+    "trust_state": "LAB",
+    "last_heartbeat_at": "2026-08-18T14:53:35.320015Z",
+    "last_event_id": "85ff5720-a881-46e7-92e1-f7987ded0048"
+  },
+  "supervisor_lease": {
+    "lease_key": "supervisor:singleton",
+    "owner_id": "supervisor-6b2b8a86-e880-4cd8-9c7b-bcdcc9785caf",
+    "expires_at": "2026-08-18T14:55:05.295796Z",
+    "heartbeat_at": "2026-08-18T14:53:35.295796Z"
+  },
+  "stop_directives": [],
+  "required_tables_present": true
+}

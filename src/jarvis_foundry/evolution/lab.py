@@ -27,6 +27,7 @@ from ..clock import isoformat
 from ..control.redaction import contains_secret_like
 from ..database import FoundryDatabase
 from ..events import Event, canonical_json, payload_hash
+from ..supervisor.authority import SUPERVISOR_CONTROLLER
 from .builder import _is_reparse_point
 from .records import improvement_eligibility
 
@@ -40,6 +41,14 @@ class LabError(ValueError):
 def _require(condition: bool, message: str) -> None:
     if not condition:
         raise LabError(message)
+
+
+def _require_supervisor(controller: str) -> None:
+    _require(
+        isinstance(controller, str) and controller == SUPERVISOR_CONTROLLER,
+        "only the exact Supervisor controller identity 'supervisor' is "
+        "accepted - refused",
+    )
 
 
 def _hash_inputs(directory: Path) -> dict[str, str]:
@@ -75,6 +84,7 @@ def register_workload(
     """Register a frozen representative workload. Input content hashes,
     config and seeds are bound to the workload id; identical content
     dedupes."""
+    _require_supervisor(controller)
     _require(isinstance(name, str) and name.strip(),
              "name must be a non-empty string")
     directory = Path(input_dir).expanduser().resolve()
@@ -125,6 +135,7 @@ def run_evaluation(
 ) -> str:
     """Run one subject against a hash-verified copy of the workload
     inputs. One invocation per input file; every case is recorded."""
+    _require_supervisor(controller)
     workload = workload_by_id(database, workload_id)
     _require(workload is not None,
              f"workload {workload_id} does not exist — refused")

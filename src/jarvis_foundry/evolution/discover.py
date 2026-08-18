@@ -21,6 +21,7 @@ from ..database import FoundryDatabase
 from ..events import Event, canonical_json
 from ..migrations import SCHEMA_VERSION
 from .records import classify_risk, record_improvement
+from ._authority import SUPERVISOR_CONTROLLER
 
 OBSERVATION_TYPES = ("metric_exceedances", "guardrail_breaches",
                      "verifier_findings", "task_failures")
@@ -36,8 +37,8 @@ def _require(condition: bool, message: str) -> None:
 
 
 def _controller_ok(controller: str) -> bool:
-    return (isinstance(controller, str) and controller.strip()
-            and "candidate" not in controller.lower())
+    return isinstance(controller, str) and \
+        controller == SUPERVISOR_CONTROLLER
 
 
 def _sources_hash(sources: dict[str, Any]) -> str:

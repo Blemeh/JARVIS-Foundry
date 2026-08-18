@@ -35,7 +35,7 @@ from jarvis_foundry.evolution.registry import (
 from jarvis_foundry.migrations import SCHEMA_VERSION
 from jarvis_foundry.reconcile import reconcile
 
-CONTROLLER = "v6-controller-test"
+CONTROLLER = "supervisor"
 
 
 @pytest.fixture()

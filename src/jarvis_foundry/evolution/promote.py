@@ -25,6 +25,7 @@ from ..reconcile import reconcile
 from .canary import canary_completed_successfully
 from .lab import compare_evaluations
 from .registry import SLOTS, slot_pointers
+from ._authority import SUPERVISOR_CONTROLLER
 from .verify import is_trusted_verdict
 
 TRIGGERS = ("stop", "veto", "lost_heartbeat", "health_failure",
@@ -45,8 +46,8 @@ def _require(condition: bool, message: str) -> None:
 
 
 def _controller_ok(controller: str) -> bool:
-    return (isinstance(controller, str) and controller.strip()
-            and "candidate" not in controller.lower())
+    return isinstance(controller, str) and \
+        controller == SUPERVISOR_CONTROLLER
 
 
 def _stop_active(database: FoundryDatabase) -> bool:

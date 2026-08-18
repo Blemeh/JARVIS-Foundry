@@ -94,9 +94,9 @@ _OK_SCRIPT = (
 def test_register_root_canonical_and_idempotent(db: FoundryDatabase,
                                                 tmp_path: Path) -> None:
     root = tmp_path / "candidate-a"
-    register_candidate_root(db, root, controller="v6-s3-test")
+    register_candidate_root(db, root, controller="supervisor")
     assert root.resolve() in registered_roots(db)
-    register_candidate_root(db, root, controller="v6-s3-test")
+    register_candidate_root(db, root, controller="supervisor")
     roots = registered_roots(db)
     assert len(roots) == 1
     events = [e for e in db.events()
@@ -110,10 +110,10 @@ def test_register_root_inside_runtime_home_refused(
     # surface: registering it or anything inside it is refused
     with pytest.raises(BuilderError):
         register_candidate_root(db, tmp_path / "runtime",
-                                controller="v6-s3-test")
+                                controller="supervisor")
     with pytest.raises(BuilderError):
         register_candidate_root(db, tmp_path / "runtime" / "nested",
-                                controller="v6-s3-test")
+                                controller="supervisor")
 
 
 def test_build_requires_registered_root(db: FoundryDatabase,
@@ -123,28 +123,28 @@ def test_build_requires_registered_root(db: FoundryDatabase,
     with pytest.raises(BuilderError):
         build_candidate(db, improvement_id=_improvement(db),
                         build_command=[PY, "-c", "pass"],
-                        candidate_root=root, controller="v6-s3-test")
+                        candidate_root=root, controller="supervisor")
 
 
 def test_build_requires_known_improvement(db: FoundryDatabase,
                                           tmp_path: Path) -> None:
     root = tmp_path / "candidate-a"
-    register_candidate_root(db, root, controller="v6-s3-test")
+    register_candidate_root(db, root, controller="supervisor")
     with pytest.raises(BuilderError):
         build_candidate(db, improvement_id="improvement-nope",
                         build_command=[PY, "-c", "pass"],
-                        candidate_root=root, controller="v6-s3-test")
+                        candidate_root=root, controller="supervisor")
 
 
 def test_secret_bearing_command_refused(db: FoundryDatabase,
                                         tmp_path: Path) -> None:
     root = tmp_path / "candidate-a"
-    register_candidate_root(db, root, controller="v6-s3-test")
+    register_candidate_root(db, root, controller="supervisor")
     with pytest.raises(BuilderError):
         build_candidate(db, improvement_id=_improvement(db),
                         build_command=[PY, "-c",
                                        "print('api_key=sk-live-9999')"],
-                        candidate_root=root, controller="v6-s3-test")
+                        candidate_root=root, controller="supervisor")
     # root registration + improvement record only — zero build events
     assert len(db.events()) == 2
     assert not any(e.event_type.startswith("candidate.build")
@@ -158,13 +158,13 @@ def test_secret_bearing_command_refused(db: FoundryDatabase,
 def test_successful_build_records_artifacts(db: FoundryDatabase,
                                             tmp_path: Path) -> None:
     root = tmp_path / "candidate-a"
-    register_candidate_root(db, root, controller="v6-s3-test")
+    register_candidate_root(db, root, controller="supervisor")
     script = _write_script(root, "build.py", _OK_SCRIPT)
     improvement_id = _improvement(db)
     build_id = build_candidate(db, improvement_id=improvement_id,
                                build_command=[PY, str(script)],
                                candidate_root=root,
-                               controller="v6-s3-test")
+                               controller="supervisor")
     row = db.row("candidate_builds", "build_id", build_id)
     assert row is not None
     assert row["status"] == "COMPLETED"
@@ -181,13 +181,13 @@ def test_successful_build_records_artifacts(db: FoundryDatabase,
 def test_failed_build_records_exit_code(db: FoundryDatabase,
                                         tmp_path: Path) -> None:
     root = tmp_path / "candidate-a"
-    register_candidate_root(db, root, controller="v6-s3-test")
+    register_candidate_root(db, root, controller="supervisor")
     script = _write_script(root, "bad.py",
                            "import sys\nsys.exit(2)\n")
     build_id = build_candidate(db, improvement_id=_improvement(db),
                                build_command=[PY, str(script)],
                                candidate_root=root,
-                               controller="v6-s3-test")
+                               controller="supervisor")
     row = db.row("candidate_builds", "build_id", build_id)
     assert row is not None
     assert row["status"] == "FAILED"
@@ -198,13 +198,13 @@ def test_failed_build_records_exit_code(db: FoundryDatabase,
 
 def test_timeout_fails_build(db: FoundryDatabase, tmp_path: Path) -> None:
     root = tmp_path / "candidate-a"
-    register_candidate_root(db, root, controller="v6-s3-test")
+    register_candidate_root(db, root, controller="supervisor")
     script = _write_script(root, "slow.py",
                            "import time\ntime.sleep(30)\n")
     build_id = build_candidate(db, improvement_id=_improvement(db),
                                build_command=[PY, str(script)],
                                candidate_root=root, timeout_s=1,
-                               controller="v6-s3-test")
+                               controller="supervisor")
     row = db.row("candidate_builds", "build_id", build_id)
     assert row is not None
     assert row["status"] == "FAILED"
@@ -218,7 +218,7 @@ def test_timeout_fails_build(db: FoundryDatabase, tmp_path: Path) -> None:
 def test_build_environment_sanitized(db: FoundryDatabase,
                                      tmp_path: Path) -> None:
     root = tmp_path / "candidate-a"
-    register_candidate_root(db, root, controller="v6-s3-test")
+    register_candidate_root(db, root, controller="supervisor")
     os.environ["HERMES_HOME"] = "C:/should/not/leak"
     os.environ["JARVIS_HOME"] = "C:/should/not/leak"
     os.environ["TEST_API_KEY"] = "sk-live-should-not-leak"
@@ -228,7 +228,7 @@ def test_build_environment_sanitized(db: FoundryDatabase,
         "json.dump(dict(os.environ), open('env.json','w'))\n")
     build_candidate(db, improvement_id=_improvement(db),
                     build_command=[PY, str(script)],
-                    candidate_root=root, controller="v6-s3-test")
+                    candidate_root=root, controller="supervisor")
     env = json.loads((root / "env.json").read_text(encoding="utf-8"))
     assert "HERMES_HOME" not in env
     assert "TEST_API_KEY" not in env
@@ -240,7 +240,7 @@ def test_build_environment_sanitized(db: FoundryDatabase,
 def test_outside_write_detected_and_fails_build(db: FoundryDatabase,
                                                 tmp_path: Path) -> None:
     root = tmp_path / "candidate-a"
-    register_candidate_root(db, root, controller="v6-s3-test")
+    register_candidate_root(db, root, controller="supervisor")
     script = _write_script(
         root, "escape.py",
         "import pathlib\n"
@@ -248,7 +248,7 @@ def test_outside_write_detected_and_fails_build(db: FoundryDatabase,
     build_id = build_candidate(db, improvement_id=_improvement(db),
                                build_command=[PY, str(script)],
                                candidate_root=root,
-                               controller="v6-s3-test")
+                               controller="supervisor")
     row = db.row("candidate_builds", "build_id", build_id)
     assert row is not None
     assert row["status"] == "FAILED"
@@ -261,14 +261,14 @@ def test_release_pointers_unreachable_from_candidate(
     release-slot surface: its whole runtime home lives inside the root
     and the environment is stripped of foundry paths."""
     root = tmp_path / "candidate-a"
-    register_candidate_root(db, root, controller="v6-s3-test")
+    register_candidate_root(db, root, controller="supervisor")
     script = _write_script(
         root, "probe.py",
         "import json, os\n"
         "json.dump({'cwd': os.getcwd(), 'home': os.environ.get('JARVIS_HOME', '')}, open('probe.json','w'))\n")
     build_candidate(db, improvement_id=_improvement(db),
                     build_command=[PY, str(script)],
-                    candidate_root=root, controller="v6-s3-test")
+                    candidate_root=root, controller="supervisor")
     probe = json.loads((root / "probe.json").read_text(encoding="utf-8"))
     assert str(root.resolve()) in probe["cwd"]
     assert str(root.resolve()) in probe["home"]
@@ -278,7 +278,7 @@ def test_release_pointers_unreachable_from_candidate(
 def test_stale_marker_reaped_then_build_proceeds(
         db: FoundryDatabase, tmp_path: Path) -> None:
     root = tmp_path / "candidate-a"
-    register_candidate_root(db, root, controller="v6-s3-test")
+    register_candidate_root(db, root, controller="supervisor")
     # plant a stale marker (dead pid) simulating a crashed builder
     marker = root / ".candidate-build.json"
     marker.write_text(json.dumps(
@@ -288,7 +288,7 @@ def test_stale_marker_reaped_then_build_proceeds(
     build_id = build_candidate(db, improvement_id=_improvement(db),
                                build_command=[PY, str(script)],
                                candidate_root=root,
-                               controller="v6-s3-test")
+                               controller="supervisor")
     assert build_id != "build-crashed-0001"
     reap = [e for e in db.events()
             if e.event_type == "candidate.build_reaped"]
@@ -303,7 +303,7 @@ def test_stale_marker_reaped_then_build_proceeds(
 def test_live_marker_refuses_concurrent_build(
         db: FoundryDatabase, tmp_path: Path) -> None:
     root = tmp_path / "candidate-a"
-    register_candidate_root(db, root, controller="v6-s3-test")
+    register_candidate_root(db, root, controller="supervisor")
     marker = root / ".candidate-build.json"
     marker.write_text(json.dumps(
         {"build_id": "build-running-0001", "pid": os.getpid()}),
@@ -311,7 +311,7 @@ def test_live_marker_refuses_concurrent_build(
     with pytest.raises(BuilderError):
         build_candidate(db, improvement_id=_improvement(db),
                         build_command=[PY, "-c", "pass"],
-                        candidate_root=root, controller="v6-s3-test")
+                        candidate_root=root, controller="supervisor")
 
 
 def test_parallel_builds_on_distinct_roots_isolated(
@@ -320,7 +320,7 @@ def test_parallel_builds_on_distinct_roots_isolated(
     roots = []
     for index in range(2):
         root = tmp_path / f"candidate-{index}"
-        register_candidate_root(db, root, controller="v6-s3-test")
+        register_candidate_root(db, root, controller="supervisor")
         _write_script(root, "build.py",
                       f"import pathlib\n"
                       f"pathlib.Path('tag.txt').write_text('tag-{index}')\n")
@@ -333,7 +333,7 @@ def test_parallel_builds_on_distinct_roots_isolated(
         build_id = build_candidate(
             db, improvement_id=improvement_id,
             build_command=[PY, str(root / "build.py")],
-            candidate_root=root, controller="v6-s3-test")
+            candidate_root=root, controller="supervisor")
         with lock:
             results.append(f"{index}:{build_id}")
 
@@ -358,11 +358,11 @@ def test_parallel_builds_on_distinct_roots_isolated(
 
 def test_projection_and_schema(db: FoundryDatabase, tmp_path: Path) -> None:
     root = tmp_path / "candidate-a"
-    register_candidate_root(db, root, controller="v6-s3-test")
+    register_candidate_root(db, root, controller="supervisor")
     script = _write_script(root, "build.py", _OK_SCRIPT)
     build_candidate(db, improvement_id=_improvement(db),
                     build_command=[PY, str(script)],
-                    candidate_root=root, controller="v6-s3-test")
+                    candidate_root=root, controller="supervisor")
     report = reconcile(db)
     assert report.consistent is True
     before = db.count("candidate_builds")
@@ -384,7 +384,7 @@ def test_register_ancestor_of_runtime_home_refused(
     """S3 r2: a root that CONTAINS the runtime home is refused (its
     subtree would include the DB — builds could write beside it)."""
     with pytest.raises(BuilderError):
-        register_candidate_root(db, tmp_path, controller="v6-s3-test")
+        register_candidate_root(db, tmp_path, controller="supervisor")
 
 
 def test_decoy_db_file_in_parent_detected(
@@ -393,10 +393,10 @@ def test_decoy_db_file_in_parent_detected(
     family — a decoy foundry.db or foundry.db.backup written by the
     candidate is a new parent entry and fails the build."""
     root = tmp_path / "candidate-a"
-    register_candidate_root(db, root, controller="v6-s3-test")
+    register_candidate_root(db, root, controller="supervisor")
     for decoy in ("foundry.db", "foundry.db.backup"):
         clean = tmp_path / f"candidate-{len(decoy)}"
-        register_candidate_root(db, clean, controller="v6-s3-test")
+        register_candidate_root(db, clean, controller="supervisor")
         script = _write_script(
             clean, "decoy.py",
             "import pathlib\n"
@@ -404,7 +404,7 @@ def test_decoy_db_file_in_parent_detected(
         build_id = build_candidate(
             db, improvement_id=_improvement(db),
             build_command=[PY, str(script)],
-            candidate_root=clean, controller="v6-s3-test")
+            candidate_root=clean, controller="supervisor")
         row = db.row("candidate_builds", "build_id", build_id)
         assert row is not None and row["status"] == "FAILED"
         assert "outside write" in (row["reason"] or "")
@@ -415,7 +415,7 @@ def test_symlink_content_not_hashed_as_artifact(
     """S3 r2: symlinks/junctions inside the root are never hashed as
     artifacts (their content lives outside the root)."""
     root = tmp_path / "candidate-a"
-    register_candidate_root(db, root, controller="v6-s3-test")
+    register_candidate_root(db, root, controller="supervisor")
     outside_dir = tmp_path / "outside-content"
     outside_dir.mkdir()
     (outside_dir / "evil.txt").write_text("secret outside bytes")
@@ -430,7 +430,7 @@ def test_symlink_content_not_hashed_as_artifact(
     build_id = build_candidate(db, improvement_id=_improvement(db),
                                build_command=[PY, str(script)],
                                candidate_root=root,
-                               controller="v6-s3-test")
+                               controller="supervisor")
     row = db.row("candidate_builds", "build_id", build_id)
     assert row is not None and row["status"] == "COMPLETED"
     artifacts = json.loads(row["artifact_hashes_json"])

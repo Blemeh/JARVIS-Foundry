@@ -80,7 +80,7 @@ def _release(db: FoundryDatabase, improvement_id: str) -> str:
         dependencies=[], runtime_identity={"python": "3.13.5"},
         parent_release_id=None, improvement_id=improvement_id,
         risk_class="R2", migrations=[1, 2, 3], verdicts=[],
-        controller="v6-s7-test")
+        controller="supervisor")
 
 
 def _start(db: FoundryDatabase, improvement_id: str, release_id: str,

@@ -74,7 +74,7 @@ def _release(db: FoundryDatabase, improvement_id: str) -> str:
         dependencies=[], runtime_identity={"python": "3.13.5"},
         parent_release_id=None, improvement_id=improvement_id,
         risk_class="R2", migrations=[1, 2, 3], verdicts=[],
-        controller="v6-s6-test")
+        controller="supervisor")
 
 
 def _inputs(tmp_path: Path, count: int = 3) -> Path:
@@ -123,7 +123,7 @@ def test_propose_only_shadow_completes_with_zero_effects(
         db, improvement_id=improvement_id,
         candidate_release_id=release_id,
         decision_fn=_propose_only_decision,
-        inputs_dir=_inputs(tmp_path), controller="v6-s6-test",
+        inputs_dir=_inputs(tmp_path), controller="supervisor",
         live_marker=live_marker)
     row = db.row("shadow_runs", "run_id", run_id)
     assert row is not None
@@ -149,7 +149,7 @@ def test_live_capability_attempt_fails_run(
             db, improvement_id=improvement_id,
             candidate_release_id=release_id,
             decision_fn=_live_attempt_decision,
-            inputs_dir=_inputs(tmp_path), controller="v6-s6-test")
+            inputs_dir=_inputs(tmp_path), controller="supervisor")
     runs = db.all("shadow_runs")
     assert runs and runs[0]["status"] == "FAILED"
     assert "live effect" in (runs[0]["reason"] or "")
@@ -167,7 +167,7 @@ def test_blocked_connector_attempt_fails_run(
             db, improvement_id=improvement_id,
             candidate_release_id=release_id,
             decision_fn=_blocked_connector_decision,
-            inputs_dir=_inputs(tmp_path), controller="v6-s6-test")
+            inputs_dir=_inputs(tmp_path), controller="supervisor")
     runs = db.all("shadow_runs")
     assert runs and runs[0]["status"] == "FAILED"
     assert "blocked connector" in (runs[0]["reason"] or "")
@@ -189,7 +189,7 @@ def test_stop_freezes_shadow_run(db: FoundryDatabase, tmp_path: Path) -> None:
                 db, improvement_id=improvement_id,
                 candidate_release_id=release_id,
                 decision_fn=_propose_only_decision,
-                inputs_dir=_inputs(tmp_path), controller="v6-s6-test")
+                inputs_dir=_inputs(tmp_path), controller="supervisor")
         runs = db.all("shadow_runs")
         assert runs and runs[0]["status"] == "FAILED"
         assert "stop" in (runs[0]["reason"] or "").lower()
@@ -202,7 +202,7 @@ def test_stop_freezes_shadow_run(db: FoundryDatabase, tmp_path: Path) -> None:
         db, improvement_id=improvement_id,
         candidate_release_id=release_id,
         decision_fn=_propose_only_decision,
-        inputs_dir=_inputs(tmp_path), controller="v6-s6-test")
+        inputs_dir=_inputs(tmp_path), controller="supervisor")
     assert db.row("shadow_runs", "run_id", run_id)["status"] \
         == "COMPLETED"
 
@@ -228,7 +228,7 @@ def test_divergence_recorded(db: FoundryDatabase, tmp_path: Path) -> None:
         db, improvement_id=improvement_id,
         candidate_release_id=release_id,
         decision_fn=diverging, inputs_dir=_inputs(tmp_path),
-        baseline_decisions=baseline, controller="v6-s6-test")
+        baseline_decisions=baseline, controller="supervisor")
     row = db.row("shadow_runs", "run_id", run_id)
     assert row is not None and row["status"] == "COMPLETED"
     divergences = __import__("json").loads(row["divergences_json"])
@@ -248,7 +248,7 @@ def test_no_divergence(db: FoundryDatabase, tmp_path: Path) -> None:
         candidate_release_id=release_id,
         decision_fn=_propose_only_decision,
         inputs_dir=_inputs(tmp_path),
-        baseline_decisions=baseline, controller="v6-s6-test")
+        baseline_decisions=baseline, controller="supervisor")
     row = db.row("shadow_runs", "run_id", run_id)
     assert row is not None
     assert __import__("json").loads(row["divergences_json"]) == []
@@ -266,12 +266,12 @@ def test_unknown_improvement_and_release_refused(
         shadow_run(db, improvement_id="improvement-nope",
                    candidate_release_id=release_id,
                    decision_fn=_propose_only_decision,
-                   inputs_dir=_inputs(tmp_path), controller="v6-s6-test")
+                   inputs_dir=_inputs(tmp_path), controller="supervisor")
     with pytest.raises(ShadowError):
         shadow_run(db, improvement_id=improvement_id,
                    candidate_release_id="release-nope",
                    decision_fn=_propose_only_decision,
-                   inputs_dir=_inputs(tmp_path), controller="v6-s6-test")
+                   inputs_dir=_inputs(tmp_path), controller="supervisor")
 
 
 def test_tampered_inputs_refused(db: FoundryDatabase, tmp_path: Path) -> None:
@@ -286,7 +286,7 @@ def test_tampered_inputs_refused(db: FoundryDatabase, tmp_path: Path) -> None:
         db, improvement_id=improvement_id,
         candidate_release_id=release_id,
         decision_fn=_propose_only_decision,
-        inputs_dir=inputs, controller="v6-s6-test")
+        inputs_dir=inputs, controller="supervisor")
     row = db.row("shadow_runs", "run_id", run_id)
     assert row is not None and row["status"] == "COMPLETED"
     assert row["input_hash"]  # bound to the actual bytes used
@@ -306,7 +306,7 @@ def test_secret_proposal_refused(db: FoundryDatabase, tmp_path: Path) -> None:
             db, improvement_id=improvement_id,
             candidate_release_id=release_id,
             decision_fn=leaky, inputs_dir=_inputs(tmp_path),
-            controller="v6-s6-test")
+            controller="supervisor")
     assert not any(e.event_type == "shadow.decision_proposed"
                    for e in db.events())
 
@@ -321,7 +321,7 @@ def test_projection_and_schema(db: FoundryDatabase, tmp_path: Path) -> None:
     shadow_run(db, improvement_id=improvement_id,
                candidate_release_id=release_id,
                decision_fn=_propose_only_decision,
-               inputs_dir=_inputs(tmp_path), controller="v6-s6-test")
+               inputs_dir=_inputs(tmp_path), controller="supervisor")
     report = reconcile(db)
     assert report.consistent is True
     before = db.count("shadow_runs")
@@ -359,7 +359,7 @@ def test_pre_attempt_proposals_preserved(db: FoundryDatabase,
         shadow_run(db, improvement_id=improvement_id,
                    candidate_release_id=release_id,
                    decision_fn=propose_then_attempt,
-                   inputs_dir=_inputs(tmp_path), controller="v6-s6-test")
+                   inputs_dir=_inputs(tmp_path), controller="supervisor")
     runs = db.all("shadow_runs")
     assert runs and runs[0]["status"] == "FAILED"
     assert runs[0]["decisions_count"] == 2  # both proposals preserved
@@ -382,7 +382,7 @@ def test_empty_inputs_no_orphan_row(db: FoundryDatabase,
         shadow_run(db, improvement_id=improvement_id,
                    candidate_release_id=release_id,
                    decision_fn=_propose_only_decision,
-                   inputs_dir=empty, controller="v6-s6-test")
+                   inputs_dir=empty, controller="supervisor")
     assert db.count("shadow_runs") == 0
     assert not any(e.event_type == "shadow.run_started"
                    for e in db.events())
@@ -402,7 +402,7 @@ def test_missing_baseline_uncomparable(db: FoundryDatabase,
         candidate_release_id=release_id,
         decision_fn=_propose_only_decision,
         inputs_dir=_inputs(tmp_path, count=3),
-        baseline_decisions=baseline, controller="v6-s6-test")
+        baseline_decisions=baseline, controller="supervisor")
     row = db.row("shadow_runs", "run_id", run_id)
     divergences = __import__("json").loads(row["divergences_json"])
     assert len(divergences) == 1
@@ -423,7 +423,7 @@ def test_nested_inputs_are_cases(db: FoundryDatabase,
         db, improvement_id=improvement_id,
         candidate_release_id=release_id,
         decision_fn=_propose_only_decision,
-        inputs_dir=inputs, controller="v6-s6-test")
+        inputs_dir=inputs, controller="supervisor")
     row = db.row("shadow_runs", "run_id", run_id)
     assert row is not None and row["status"] == "COMPLETED"
     assert row["decisions_count"] == 3  # 2 top-level + 1 nested

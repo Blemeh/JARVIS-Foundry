@@ -22,6 +22,7 @@ from ..clock import isoformat
 from ..control.redaction import contains_secret_like
 from ..database import FoundryDatabase
 from ..events import Event, canonical_json, payload_hash
+from ..supervisor.authority import SUPERVISOR_CONTROLLER
 
 BLOCKED_CONNECTOR_PREFIXES = ("browser.", "email.", "sms.", "voice.",
                               "search.", "calendar.")
@@ -109,8 +110,11 @@ def shadow_run(
              f"release {candidate_release_id} has no manifest — refused")
     _require(callable(decision_fn),
              "decision_fn must be a callable(case_path, sink)")
-    _require(isinstance(controller, str) and controller.strip(),
-             "controller identity must be a non-empty string")
+    _require(
+        isinstance(controller, str) and controller == SUPERVISOR_CONTROLLER,
+        "only the exact Supervisor controller identity 'supervisor' may "
+        "run shadow evaluations - refused",
+    )
     inputs = Path(inputs_dir).expanduser().resolve()
     _require(inputs.is_dir(), f"inputs dir {inputs} is not a directory")
 

@@ -1,0 +1,15 @@
+{
+  "schema": "jarvis-canonical-package-build-evidence-v1",
+  "candidate": "C:/temp/JARVIS-Foundry-Canonical-Convergence-R3",
+  "base_head": "2b3573606570f910e5569cf3306223354f93e4ac",
+  "builder": "setuptools.build_meta",
+  "wheel": "C:/temp/r3-wheel-0818/jarvis_foundry-0.1.0-py3-none-any.whl",
+  "wheel_sha256": "abc737f35c793ef3ea3100237f39b9ffe41d3f8237bb3d99f8172d6915fda8c7",
+  "inspection": {
+    "authority_leaf_present": true,
+    "procedural_learning_present": true,
+    "secrets_in_manifest": false
+  },
+  "status": "PASS",
+  "note": "The shared convergence venv lacked setuptools initially; the declared build dependency setuptools>=75 was installed before this isolated wheel build."
+}

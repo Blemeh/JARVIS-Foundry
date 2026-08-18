@@ -28,6 +28,7 @@ from typing import Any
 from ..database import FoundryDatabase
 from ..events import Event
 from ..migrations import SCHEMA_VERSION
+from ._authority import SUPERVISOR_CONTROLLER
 
 MIN_CYCLES = 3
 MIN_PROMOTIONS = 2
@@ -42,8 +43,8 @@ class AcceptanceError(ValueError):
 
 
 def _controller_ok_local(controller: str) -> bool:
-    return (isinstance(controller, str) and controller.strip()
-            and "candidate" not in controller.lower())
+    return isinstance(controller, str) and \
+        controller == SUPERVISOR_CONTROLLER
 
 
 def engineering_acceptance(database: FoundryDatabase
