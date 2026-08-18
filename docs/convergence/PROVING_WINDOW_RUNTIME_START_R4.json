@@ -2,6 +2,7 @@
   "schema": "jarvis-r4-proving-window-runtime-start-v1",
   "stage": "POST_PROMOTION_PROVING",
   "release_source_commit": "51d1d4e96b9731eb2c4d13ff0e4db8975e0076ab",
+  "deployed_metadata_head_at_record": "05ee912587f728de9627cab4092d3c696af806e0",
   "release_pointer": "main",
   "window_id": "post-r4-real-20260818",
   "mission_id": "r4-real-proving-window",

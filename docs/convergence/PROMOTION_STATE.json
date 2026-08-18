@@ -5,8 +5,9 @@
   "promotion_worktree": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R4",
   "promotion_branch": "promote/canonical-convergence-r4",
   "source_main_head": "073886a517dabd57b85094e34c6ab251357e3023",
-  "candidate_commit": "51d1d4e96b9731eb2c4d13ff0e4db8975e0076ab",
-  "promotion_commit": "51d1d4e96b9731eb2c4d13ff0e4db8975e0076ab",
+  "candidate_commit": "05ee912587f728de9627cab4092d3c696af806e0",
+  "promotion_commit": "05ee912587f728de9627cab4092d3c696af806e0",
+  "source_tree_verified_head": "51d1d4e96b9731eb2c4d13ff0e4db8975e0076ab",
   "previous_release_remains_recoverable": true,
   "verification": {
     "pythonpath": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R4/src",
