@@ -2,13 +2,13 @@
   "schema": "jarvis-post-v7-canonical-convergence-state-v2",
   "program": "JARVIS Post-V7 Remaster",
   "current_stage": "POST_PROMOTION_PROVING",
-  "current_slice": "R8 production organization verified; R9/R10 bounded gates reviewed; R10 directive repair independently verified; R11 bounded evolution gate reviewed; R12 fault gate freshly rechecked; proving lineage/monitor repairs reconciled on current main; R9 result-contract and verifier-delta repairs independently verified and ff-only promoted to canonical main; canonical post-promotion worker and convergence gates pass; live mission canary independently verified with 2 of 10 required missions; restart canary completed fail-closed with 0 accepted missions; fresh repaired live mission canary running against exact canonical HEAD; real elapsed proving window in progress",
+  "current_slice": "R8 production organization verified; R9/R10 bounded gates reviewed; R10 directive repair independently verified; R11 bounded evolution gate reviewed; R12 fault gate freshly rechecked; proving lineage/monitor repairs reconciled on current main; R9 result-contract and verifier-delta repairs independently verified and ff-only promoted to canonical main; canonical post-promotion worker and convergence gates pass; live mission canary independently verified with 2 of 10 required missions; restart canary completed fail-closed with 0 accepted missions; repaired live mission canary completed fail-closed with 0 new accepted missions; real elapsed proving window in progress",
   "r6_state": "OWNER_REDIRECT_R6_DEFERRED",
   "eyes_state": "OUT_OF_SCOPE_READ_ONLY",
   "canonical": {
     "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
     "branch": "main",
-    "head": "f109e5405cca3d7ddf237561385db48ea97116ef",
+    "head": "d242af7ffeaac2a3e93eedaa51626e395c71e586",
     "source_tree_verified_head": "51d1d4e96b9731eb2c4d13ff0e4db8975e0076ab",
     "origin_main": "1abc388c6471a310f361612ebd81ed6a2cf6c646",
     "dirty_owner_docs_preserved": true,
@@ -128,18 +128,34 @@
       "builder_mismatch_resolution": "fresh verifiers inspected the frozen artifact and returned PASS; builder claims remain NOT_TESTED"
     },
     "r9_repaired_live_canary": {
-      "status": "RUNNING",
+      "status": "INDEPENDENTLY_RECONCILED_BLOCKED",
       "section": "mission",
       "started_at": "2026-08-18T20:05:27Z",
-      "canonical_head": "f109e5405cca3d7ddf237561385db48ea97116ef",
+      "completed_at": "2026-08-18T20:44:59.352584Z",
+      "launch_canonical_head": "f109e5405cca3d7ddf237561385db48ea97116ef",
+      "canonical_head_at_reconciliation": "d242af7ffeaac2a3e93eedaa51626e395c71e586",
       "command": "canonical .venv python scripts/hybrid_live_probe.py --section mission --home C:/Users/b/AppData/Local/hermes/foundry --out C:/temp/jarvis-live-mission-r9-repaired-20260818-2205",
       "output": "C:/temp/jarvis-live-mission-r9-repaired-20260818-2205",
+      "report": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_REPAIRED_CANARY_20260818.json",
+      "report_sha256": "DC537F2509B6795D9732E48C1AB2283DDA7560163735D085E3C1B3971BB2A1CD",
       "provider": "opencode_go",
       "model": "deepseek-v4-flash",
-      "verified_missions": null,
+      "verified_missions": 0,
+      "new_accepted_missions": 0,
+      "prior_verified_missions_preserved": 2,
+      "total_verified_missions": 2,
       "required_missions": 10,
       "external_effects": "NOT_TESTED",
-      "next_action": "wait for completion, inspect report, disposable worktree, result files, observed diffs, verifier delta, and durable ledger"
+      "result_marker": "ABSENT",
+      "failure_class": "evidence_mismatch",
+      "independent_verification": {
+        "agent": "/root/r9_repaired_live_canary_luna_verifier",
+        "provider_transport": "codex-router",
+        "provider": "commandcode",
+        "model": "gpt-5.6-luna",
+        "status": "PASS_WITH_BOUNDARY"
+      },
+      "next_action": "preserve 2-of-10 count and restart-0 count; keep this canary blocked; repair the live result-contract/provider path before another bounded disposable canary"
     },
     "proving_repair_reconciliation": {
       "status": "PASS_CURRENT_MAIN_RECONCILED",
@@ -294,6 +310,14 @@
       "evidence": "docs/convergence/R9_LIVE_RESULT_CONTRACT_POST_PROMOTION_CANDIDATE_VERIFICATION_20260818.json",
       "finding": "Fresh verification reproduced that MissionLoop verifier delta mode can retain .jarvis-result.json in the builder baseline, producing claimed business files versus an empty observed delta and preventing an otherwise valid live verifier PASS.",
       "resolution": "Repair-3 filters RESULT_FILENAME from capture_before and delta_baseline and adds a canonical verifier-delta regression; independently verified and green in the isolated promotion candidate."
+    },
+    {
+      "id": "R9-LIVE-PROVIDER-RESULT-CONTRACT-20260818",
+      "severity": "S2",
+      "status": "OPEN_EXTERNAL_BOUNDARY",
+      "evidence": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_REPAIRED_CANARY_20260818.json",
+      "finding": "The repaired live provider path still failed to produce .jarvis-result.json or a durable evidence bundle on both bounded repair sessions, so both missions remained BLOCKED after evidence_mismatch/timeout.",
+      "resolution": "Fail closed, preserve the prior 2 accepted missions, count 0 new missions, and require a fresh bounded canary only after the provider/result producer path is repaired."
     }
   ],
   "dispatches": [
@@ -560,30 +584,43 @@
       "scope": "read-only fresh exact source, delta probe, regression suite, compile and diff verification",
       "report": "docs/convergence/R9_LIVE_RESULT_CONTRACT_REPAIR_VERIFICATION_20260818.json",
       "tests": "52 worker + 23 loop + 55 closure passed"
+    },
+    {
+      "role": "R9 repaired live mission canary independent verifier",
+      "agent": "/root/r9_repaired_live_canary_luna_verifier",
+      "provider_route": "router_commandcode_gpt_5_6_luna",
+      "provider_transport": "codex-router",
+      "provider": "commandcode",
+      "model": "gpt-5.6-luna",
+      "status": "COMPLETED_PASS_WITH_BOUNDARY",
+      "report": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_REPAIRED_CANARY_20260818.json",
+      "scope": "read-only report, worktree, result-marker, durable ledger, provider metadata, and canonical immutability audit"
     }
   ],
   "promotion": {
-    "status": "R8_R9_R10_R11_R12_BOUNDED_VERIFIED_R9_CANONICAL_SOURCE_PASS_LIVE_CANARY_RUNNING_PROVING_WAITING",
+    "status": "R8_R9_R10_R11_R12_BOUNDED_VERIFIED_R9_CANONICAL_SOURCE_PASS_REPAIRED_LIVE_CANARY_BLOCKED_PROVING_WAITING",
     "promotion_worktree": "C:/temp/JARVIS-Foundry-R8-PROMOTE",
-    "promotion_commit": "f109e5405cca3d7ddf237561385db48ea97116ef",
-    "latest_evidence_commit": "f109e5405cca3d7ddf237561385db48ea97116ef",
+    "promotion_commit": "d242af7ffeaac2a3e93eedaa51626e395c71e586",
+    "latest_evidence_commit": "d242af7ffeaac2a3e93eedaa51626e395c71e586",
     "latest_live_canary": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_CANARY_20260818.json",
     "latest_repair_reconciliation": "docs/convergence/PROVING_WINDOW_REPAIR_RECONCILIATION_20260818.json",
     "latest_r9_result_contract_verification": "docs/convergence/R9_LIVE_RESULT_CONTRACT_VERIFICATION_20260818.json",
     "latest_r9_result_contract_repair_verification": "docs/convergence/R9_LIVE_RESULT_CONTRACT_CANONICAL_POST_PROMOTION_VERIFICATION_20260818.json",
     "latest_restart_canary": "docs/convergence/PROVING_WINDOW_RESTART_CANARY_20260818.json",
+    "latest_repaired_live_canary": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_REPAIRED_CANARY_20260818.json",
     "pre_release_tag": "convergence-pre-r3",
     "post_promotion_runtime_probe": "docs/convergence/LIVE_RUNTIME_PROBE_POST_PROMOTION.json",
     "rollback_bundle": "C:/temp/jarvis-convergence-pre-r3.bundle"
   },
-  "verifier_state": "R8_R9_R10_R11_R12_BOUNDED_GATES_VERIFIED_R9_CANONICAL_SOURCE_PASS_LIVE_CANARY_RUNNING_REAL_PROVING_WINDOW_WAITING_ELAPSED",
+  "verifier_state": "R8_R9_R10_R11_R12_BOUNDED_GATES_VERIFIED_R9_CANONICAL_SOURCE_PASS_REPAIRED_LIVE_CANARY_BLOCKED_REAL_PROVING_WINDOW_WAITING_ELAPSED",
   "blockers": [
     "R7 real monitored provider research NOT_TESTED/WAITING",
     "R9 real external connector/provider effects NOT_TESTED/WAITING",
     "R10 live voice provider and visual/a11y inspection NOT_TESTED/WAITING",
     "R10 REPRIORITIZE/REDIRECT live Supervisor/mission-loop consumer NOT_TESTED",
+    "R9 repaired live provider result contract NOT_TESTED/BLOCKED after two bounded evidence_mismatch timeouts",
     "R11 real elapsed proving window and live promotion cycles NOT_TESTED/WAITING",
     "R12 physical host and unavailable-provider fault rows NOT_TESTED/BLOCKED"
   ],
-  "exact_next_action": "wait for and independently reconcile the running repaired live mission canary against canonical f109e54; inspect machine result files, observed business diffs, verifier delta, durable ledger, and actual provider/model; preserve 2-of-10 count, blocked restart canary, and elapsed proving/external boundaries; do not close or promote final acceptance until real proving criteria are met"
+  "exact_next_action": "preserve 2-of-10 accepted mission count and restart-0 count; keep the repaired live canary BLOCKED; repair the live provider/result-contract path before a fresh bounded disposable canary; continue the real proving monitor and do not close final acceptance until elapsed and external criteria are met"
 }
