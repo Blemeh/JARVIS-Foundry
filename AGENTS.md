@@ -5,9 +5,12 @@ working in this repository.
 
 ## 1. Current State And Launch Rule
 
-At repository creation, the runtime does not exist and implementation has not
-started. Documentation work is current; executable work begins when the owner
-issues one `START BUILD` instruction.
+`START BUILD` was received on 2026-08-11. The runtime exists. For what exists
+*now*, prefer `docs/CURRENT_STATE.md` over `PROJECT_STATE.md` and `README.md`
+(those two still describe a mid-V4 snapshot). This section keeps the launch
+rule because it is still the authority switch:
+
+Executable work began when the owner issued one `START BUILD` instruction.
 
 After that instruction:
 

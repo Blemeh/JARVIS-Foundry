@@ -80,13 +80,24 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "doctor":
         print(json.dumps(Supervisor(database, paths.emergency_stop).doctor(), indent=2))
     elif args.command == "events":
+        if not paths.database.is_file():
+            print(json.dumps([], indent=2))
+            return 0
         items = database.events()[-args.limit:]
         print(json.dumps([asdict(event) for event in items], indent=2))
     elif args.command == "status":
-        database.initialize()
+        if not paths.database.is_file():
+            print(json.dumps({
+                "home": str(paths.home), "stop": estop.active(),
+                "error": "database_not_initialized",
+                "hint": "run jarvis init (or leave the live Supervisor home alone)",
+            }, indent=2))
+            return 1
         installer = _installer(args, paths)
-        with database.connect() as connection:
-            supervisor = dict(connection.execute("SELECT * FROM supervisor_state WHERE singleton = 1").fetchone())
+        with database.connect(readonly=True) as connection:
+            row = connection.execute(
+                "SELECT * FROM supervisor_state WHERE singleton = 1").fetchone()
+            supervisor = dict(row) if row is not None else {}
             counts = {
                 table: connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
                 for table in (

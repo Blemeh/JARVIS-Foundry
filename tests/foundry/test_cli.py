@@ -59,3 +59,33 @@ def test_events_and_status_report_counts(tmp_path, capsys):
     assert status["counts"]["events"] == 0
     assert "agent_runs" in status["counts"]
     assert _run(capsys, "--home", str(tmp_path), "events", "--limit", "10") == []
+
+
+def test_status_and_doctor_do_not_migrate(tmp_path, capsys, monkeypatch):
+    """Live `jarvis status` / `doctor` must not call initialize() — that
+    migrates and write-locks the Supervisor database."""
+    from jarvis_foundry.database import FoundryDatabase
+    from jarvis_foundry.cli.main import main
+
+    _run(capsys, "--home", str(tmp_path), "init")
+    calls: list[str] = []
+    original = FoundryDatabase.initialize
+
+    def spy(self, target=None):
+        calls.append("initialize")
+        return original(self, target=target)
+
+    monkeypatch.setattr(FoundryDatabase, "initialize", spy)
+    assert main(["status", "--home", str(tmp_path)]) == 0
+    assert main(["doctor", "--home", str(tmp_path)]) == 0
+    assert calls == []
+
+
+def test_status_without_database_does_not_create_one(tmp_path, capsys):
+    from jarvis_foundry.cli.main import main
+
+    code = main(["status", "--home", str(tmp_path)])
+    payload = json.loads(capsys.readouterr().out)
+    assert code == 1
+    assert payload["error"] == "database_not_initialized"
+    assert not (tmp_path / "foundry.db").exists()

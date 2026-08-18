@@ -17,13 +17,26 @@ class FoundryDatabase:
         self.path = Path(path).expanduser().resolve()
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
-    def connect(self) -> sqlite3.Connection:
-        connection = sqlite3.connect(self.path, timeout=10, isolation_level=None)
+    def connect(self, *, readonly: bool = False) -> sqlite3.Connection:
+        """Open the ledger. ``readonly=True`` uses SQLite ``mode=ro`` and
+        never creates or migrates the file (status/doctor/events must use
+        this against a live Supervisor home).
+        """
+        if readonly:
+            if not self.path.is_file():
+                raise FileNotFoundError(self.path)
+            uri = f"file:{self.path.resolve().as_posix()}?mode=ro"
+            connection = sqlite3.connect(
+                uri, uri=True, timeout=10, isolation_level=None)
+        else:
+            connection = sqlite3.connect(
+                self.path, timeout=10, isolation_level=None)
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA foreign_keys = ON")
         connection.execute("PRAGMA busy_timeout = 10000")
-        connection.execute("PRAGMA synchronous = FULL")
-        connection.execute("PRAGMA journal_mode = WAL")
+        if not readonly:
+            connection.execute("PRAGMA synchronous = FULL")
+            connection.execute("PRAGMA journal_mode = WAL")
         return connection
 
     def initialize(self, target: int | None = None) -> int:

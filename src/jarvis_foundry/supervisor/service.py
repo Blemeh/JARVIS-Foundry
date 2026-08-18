@@ -136,7 +136,20 @@ class Supervisor:
                 pass
 
     def doctor(self) -> dict[str, object]:
-        self.database.initialize()
+        """Inspect without migrating. Live homes are already at schema;
+        ``initialize()`` here would take a write lock and could mutate
+        the Supervisor's database.
+        """
+        if not Path(self.database.path).is_file():
+            return {
+                "database": str(self.database.path),
+                "database_quick_check": "missing",
+                "emergency_stop": self.estop.active(),
+                "event_count": 0,
+                "hermes_required_for_supervisor": False,
+                "reconciliation": {"consistent": False, "reason": "database missing"},
+                "active_workers": [],
+            }
         return {
             "database": str(self.database.path),
             "database_quick_check": self.database.quick_check(),

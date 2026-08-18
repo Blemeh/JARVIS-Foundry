@@ -10,16 +10,18 @@ Part of the Hoowen platform family.
 
 ## Status
 
+**Do not treat this README block as live truth.** Canonical current state is
+[`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md) (V1–V8 machinery in-tree,
+schema v33, live trust **LAB**, proving window in progress). `PROJECT_STATE.md`
+is a mid-V4 historical snapshot.
+
 ```text
-PHASE:        V4 CONTINUOUS AUTONOMY — ACTIVE
-V5:           MULTI-SYSTEM INTELLIGENCE — ACCEPTED (final gate PASS)
-V6:           CONTINUOUS SELF-EVOLUTION — ACTIVATED, in isolated construction
-TRUST STATE:  TRUSTED_AUTONOMOUS (project-local staging runtime only)
 PERMISSION:   STANDING AUTONOMY — owner manages by exception (veto + STOP)
-SUITE:        710 tests passing (EXIT=0) at the V5 acceptance close
+TRUST STATE:  LAB (live Supervisor heartbeat; not TRUSTED_AUTONOMOUS)
+NEXT GATE:    Post-V7 proving window (7 elapsed days + 10 verified missions)
 ```
 
-This is an early-stage, research-grade system. The runtime operates in **project-local staging only** — nothing is installed system-wide and no external service is connected. The owner started the build on 2026-08-11 with a single `START BUILD` instruction; since then the program has advanced through work packages and version gates, with every phase independently verified. Current project truth always lives in [`PROJECT_STATE.md`](PROJECT_STATE.md).
+The owner started the build on 2026-08-11 with a single `START BUILD` instruction. A Supervisor scheduled task is installed on this host. Status, STOP, and capability claims belong in [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md).
 
 ## How it works
 
