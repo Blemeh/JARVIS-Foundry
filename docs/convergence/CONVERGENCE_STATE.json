@@ -8,7 +8,7 @@
   "canonical": {
     "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
     "branch": "main",
-    "head": "2b3573606570f910e5569cf3306223354f93e4ac",
+    "head": "8f35a9053a28cfd9e2a0e8b10233a3e4793aa1ad",
     "origin_main": "1abc388c6471a310f361612ebd81ed6a2cf6c646",
     "dirty_owner_docs_preserved": true,
     "current_full_suite": {
@@ -18,7 +18,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "pythonpath": "C:/temp/JARVIS-Foundry-Canonical-Convergence-R3/src"
+      "pythonpath": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R3/src"
     }
   },
   "candidate": {
@@ -81,11 +81,11 @@
     }
   },
   "runtime_probe": {
-    "path": "docs/convergence/LIVE_RUNTIME_PROBE_R3.json",
+    "path": "docs/convergence/LIVE_RUNTIME_PROBE_POST_PROMOTION.json",
     "status": "PASS_READ_ONLY",
     "schema_version": 33,
     "sqlite_quick_check": "ok",
-    "event_head": 97849,
+    "event_head": 98164,
     "supervisor_status": "RUNNING",
     "stop_directives": [],
     "credential_values_recorded": false
@@ -163,7 +163,15 @@
       "scope": "exact candidate source/evidence inspection; no mutation"
     }
   ],
-  "verifier_state": "INDEPENDENT_VERIFICATION_PASS_R3",
+  "promotion": {
+    "status": "PROMOTED_AND_RECONCILED",
+    "promotion_worktree": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R3",
+    "promotion_commit": "8f35a9053a28cfd9e2a0e8b10233a3e4793aa1ad",
+    "pre_release_tag": "convergence-pre-r3",
+    "post_promotion_runtime_probe": "docs/convergence/LIVE_RUNTIME_PROBE_POST_PROMOTION.json",
+    "rollback_bundle": "C:/temp/jarvis-convergence-pre-r3.bundle"
+  },
+  "verifier_state": "INDEPENDENT_VERIFICATION_PASS_R3_PROMOTED",
   "blockers": [],
-  "exact_next_action": "freeze final evidence, run final scoped gates, commit the verified R3 candidate, then create an isolated promotion worktree from current main"
+  "exact_next_action": "commission the final integrated audit of the promoted release and continue the remaining R7-R12 external-effect/proving-window gates honestly"
 }

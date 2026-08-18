@@ -1,7 +1,7 @@
 # JARVIS Remaster -> Canonical Convergence Matrix
 
 Program: JARVIS FINAL REMASTER FORWARD-PORT & CANONICAL CONVERGENCE
-Canonical base: `2b3573606570f910e5569cf3306223354f93e4ac` (main), Remaster certified tip: `6be9185`, Merge-base: `93a3ddc`.
+Canonical promoted tip: `8f35a90` (main); forward-port baseline: `2b3573606570f910e5569cf3306223354f93e4ac`; Remaster certified tip: `6be9185`; Merge-base: `93a3ddc`.
 Method: SEMANTIC FORWARD-PORT. No wholesale merge, no blind cherry-pick. Newest canonical architecture is authoritative.
 
 ## Structural delta
@@ -68,7 +68,7 @@ runtime was introduced. R12 external/physical failures are explicitly
 boundary-only where a safe candidate cannot induce the real provider or host
 condition. The candidate-bound canonical suite completes with 1222/1222
 tests passing, and the adapted convergence suite completes with 76/76
-passing. Independent R3 verifier closure is still pending in the durable state
-record. Live provider research, voice/interface inspection, external
+passing. Independent R3 verifier and isolated promotion closure are PASS in
+the durable state record. Live provider research, voice/interface inspection, external
 connector effects, and the required elapsed proving window remain honest
 NOT_TESTED/WAITING boundaries.

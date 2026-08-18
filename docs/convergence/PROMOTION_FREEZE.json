@@ -1,15 +1,16 @@
 {
   "schema": "jarvis-canonical-release-freeze-v1",
-  "status": "FROZEN_BEFORE_CANONICAL_POINTER_ADVANCE",
+  "status": "PROMOTED_RELEASE_FREEZE_RECONCILED",
   "recorded_at": "2026-08-18T16:09:02.591524+00:00",
   "release": {
     "pre_release_head": "2b3573606570f910e5569cf3306223354f93e4ac",
     "pre_release_tag": "convergence-pre-r3",
-    "promotion_commit": "3fae743b0be75be49f075d9270b5c88c95f13968",
+    "promotion_verification_commit": "3fae743b0be75be49f075d9270b5c88c95f13968",
     "source_commit": "ffa9ce4",
+    "final_release_commit": "8f35a90",
     "branch": "promote/canonical-convergence-r3",
     "release_pointer_before": "main -> 2b3573606570f910e5569cf3306223354f93e4ac",
-    "release_pointer_after": "PENDING"
+    "release_pointer_after": "main -> 8f35a90 (ff-only)"
   },
   "executable": {
     "package": "jarvis-foundry==0.1.0",
@@ -78,6 +79,6 @@
   "owner_state": {
     "r6": "OWNER_REDIRECT_R6_DEFERRED",
     "eyes": "OUT_OF_SCOPE_READ_ONLY",
-    "canonical_main_mutation": "PENDING_FF_ONLY"
+    "canonical_main_mutation": "INTENTIONAL_FF_ONLY_COMPLETE"
   }
 }

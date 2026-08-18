@@ -1,12 +1,12 @@
 {
   "schema": "jarvis-canonical-promotion-state-v1",
-  "status": "VERIFIED_ISOLATED_PROMOTION_FROZEN",
+  "status": "PROMOTED_AND_RECONCILED",
   "canonical_repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
   "promotion_worktree": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R3",
   "promotion_branch": "promote/canonical-convergence-r3",
   "source_main_head": "2b3573606570f910e5569cf3306223354f93e4ac",
   "candidate_commit": "7a1dee8f73ffeb61294c006f28682aa61f11c259",
-  "promotion_commit": "ffa9ce4",
+  "promotion_commit": "8f35a90",
   "previous_release_remains_recoverable": true,
   "verification": {
     "pythonpath": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R3/src",
@@ -31,8 +31,16 @@
     "diff_check": "PASS",
     "doc_staleness": "PASS"
   },
-  "canonical_main_mutated": false,
+  "post_promotion_runtime_probe": {
+    "path": "docs/convergence/LIVE_RUNTIME_PROBE_POST_PROMOTION.json",
+    "sha256": "4531FF609FAB69026CB3C907D9BD9E091985C757E93D6F70312CC83C9243E5DE",
+    "event_head": 98164,
+    "supervisor_status": "RUNNING",
+    "sqlite_quick_check": "ok",
+    "stop_directives": []
+  },
+  "canonical_main_mutated": true,
   "release_freeze": "docs/convergence/PROMOTION_FREEZE.json",
-  "release_pointer": "PENDING_CANONICAL_POINTER_ADVANCE",
-  "exact_next_action": "advance the canonical release pointer through the isolated promotion commit, then re-run the live read-only probe and reconcile release truth"
+  "release_pointer": "main -> 8f35a90 (ff-only from isolated promotion branch)",
+  "exact_next_action": "commission the final integrated audit of the promoted release and begin the honest proving-window/remaining R7-R12 external-effect gates"
 }
