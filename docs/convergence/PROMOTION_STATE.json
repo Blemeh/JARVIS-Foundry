@@ -1,12 +1,12 @@
 {
   "schema": "jarvis-canonical-promotion-state-v1",
-  "status": "R9_CANONICAL_SOURCE_PASS_LIVE_CANARY_PENDING_RESTART_BLOCKED_PROVING_WAITING",
+  "status": "R9_CANONICAL_SOURCE_PASS_REPAIRED_LIVE_CANARY_BLOCKED_PROVING_WAITING",
   "canonical_repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
   "promotion_worktree": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R4",
   "promotion_branch": "promote/canonical-convergence-r4",
-  "source_main_head": "073886a517dabd57b85094e34c6ab251357e3023",
-  "candidate_commit": "05ee912587f728de9627cab4092d3c696af806e0",
-  "promotion_commit": "05ee912587f728de9627cab4092d3c696af806e0",
+  "source_main_head": "7353004182ad07ff925f0c3af62f4dca9f2e8372",
+  "candidate_commit": "7353004182ad07ff925f0c3af62f4dca9f2e8372",
+  "promotion_commit": "7353004182ad07ff925f0c3af62f4dca9f2e8372",
   "source_tree_verified_head": "51d1d4e96b9731eb2c4d13ff0e4db8975e0076ab",
   "previous_release_remains_recoverable": true,
   "verification": {
@@ -62,7 +62,7 @@
   "current_forward_port": {
     "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
     "branch": "main",
-    "latest_verified_evidence_head": "1f490aeed5088cb4a34db32a4758dd1a230ea037",
+    "latest_verified_evidence_head": "7353004182ad07ff925f0c3af62f4dca9f2e8372",
     "promotion_worktree": "C:/temp/JARVIS-Foundry-R8-PROMOTE",
     "promotion_branch": "promote/r8-production-forward-port",
     "boundary_reviews": [
@@ -74,15 +74,32 @@
       ,"docs/convergence/R9_LIVE_RESULT_CONTRACT_VERIFICATION_20260818.json"
       ,"docs/convergence/R9_LIVE_RESULT_CONTRACT_CANONICAL_POST_PROMOTION_VERIFICATION_20260818.json"
     ],
-    "status": "BOUNDED_GATES_VERIFIED_R9_CANONICAL_SOURCE_PASS_REPAIRED_LIVE_CANARY_RUNNING_RESTART_CANARY_BLOCKED_LIVE_CANARY_RECONCILED_REAL_PROVING_WAITING",
+    "status": "BOUNDED_GATES_VERIFIED_R9_CANONICAL_SOURCE_PASS_REPAIRED_LIVE_CANARY_BLOCKED_RESTART_CANARY_BLOCKED_REAL_PROVING_WAITING",
     "repaired_live_canary": {
-      "status": "RUNNING",
-      "canonical_head": "f109e5405cca3d7ddf237561385db48ea97116ef",
+      "status": "INDEPENDENTLY_RECONCILED_BLOCKED",
+      "launch_canonical_head": "f109e5405cca3d7ddf237561385db48ea97116ef",
+      "canonical_head": "7353004182ad07ff925f0c3af62f4dca9f2e8372",
       "section": "mission",
       "started_at": "2026-08-18T20:05:27Z",
+      "completed_at": "2026-08-18T20:44:59.352584Z",
       "output": "C:/temp/jarvis-live-mission-r9-repaired-20260818-2205",
       "provider": "opencode_go",
-      "model": "deepseek-v4-flash"
+      "model": "deepseek-v4-flash",
+      "report": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_REPAIRED_CANARY_20260818.json",
+      "report_sha256": "DC537F2509B6795D9732E48C1AB2283DDA7560163735D085E3C1B3971BB2A1CD",
+      "verified_missions": 0,
+      "new_accepted_missions": 0,
+      "prior_verified_missions_preserved": 2,
+      "required_missions": 10,
+      "result_marker": "ABSENT",
+      "external_effects": "NOT_TESTED",
+      "independent_verifier": {
+        "agent": "/root/r9_repaired_live_canary_luna_verifier",
+        "provider_transport": "codex-router",
+        "provider": "commandcode",
+        "model": "gpt-5.6-luna",
+        "status": "PASS_WITH_BOUNDARY"
+      }
     },
     "latest_r9_repair_verification": {
       "path": "docs/convergence/R9_LIVE_RESULT_CONTRACT_CANONICAL_POST_PROMOTION_VERIFICATION_20260818.json",
@@ -113,5 +130,6 @@
   "canonical_main_mutated": true,
   "release_freeze": "docs/convergence/PROMOTION_FREEZE_R4.json (deployed and audited)",
   "release_pointer": "main -> 1fa0370; source tree verified at 51d1d4e; previous release remains recoverable",
-  "exact_next_action": "wait for and independently reconcile repaired live mission canary against canonical f109e54; inspect machine result files, observed business diffs, verifier delta, durable ledger, and actual provider/model; preserve 2-of-10 count, blocked restart canary, and elapsed proving/external boundaries"
+    "latest_repaired_live_canary": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_REPAIRED_CANARY_20260818.json",
+    "exact_next_action": "preserve 2-of-10 accepted mission count and restart-0 count; keep the repaired live canary BLOCKED; repair the live provider/result-contract path before a fresh bounded disposable canary; continue the real proving monitor and do not close final acceptance until elapsed and external criteria are met"
 }
