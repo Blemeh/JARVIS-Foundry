@@ -95,5 +95,8 @@ def verify_tier_c_reference(database: Any, procedure_id: str) -> ProcedureBundle
         raise ActionAuthorityError("Tier-C bundle version mismatch")
     if bundle.content_hash != reference.get("content_hash"):
         raise ActionAuthorityError("Tier-C content hash mismatch")
+    if reference.get("artifact_file_hashes") != bundle.artifact_manifest.get(
+            "jarvis_file_hashes"):
+        raise ActionAuthorityError("Tier-C artifact file hashes mismatch")
     return bundle
 

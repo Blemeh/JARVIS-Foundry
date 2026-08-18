@@ -10,13 +10,17 @@ Required frozen identity:
   `1.0.0`;
 - OpenAdapt manifest schema `2`, content digest, manifest hash, and every
   listed file hash;
+- JARVIS artifact hash set covering every file in the bundle except the
+  external `manifest.json` (whose canonical bytes are bound by `manifest_hash`);
 - input/parameter schema, preconditions, expected effects, verification plan,
   required capability, risk class, creation time, and lineage;
 - executor reference `openadapt-flow` with authority `jarvis.action_envelope`.
 
-`verify_bundle()` rejects missing files, path traversal, hash changes, unknown
-manifest schema, unknown JARVIS bundle version, and unsupported OpenAdapt
-versions before an ActionEnvelope is constructed.
+`verify_bundle()` rejects missing files, path traversal, native or JARVIS hash
+changes (including generated `workflow.py` files that OpenAdapt's native asset
+list does not enumerate), unknown manifest schema, unknown JARVIS bundle
+version, and unsupported OpenAdapt versions before an ActionEnvelope is
+constructed.
 
 `register_tier_c_reference()` uses the existing
 `jarvis_foundry.hybrid_memory.procedures.ProcedureRegistry`. Its body contains

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -17,6 +18,8 @@ from jarvis_foundry.domain import ActionEnvelope
 from jarvis_foundry.effects import effect_identity, effect_state
 from jarvis_foundry.events import Event
 from jarvis_foundry.execution.pipeline import execute as execute_pipeline
+from jarvis_foundry.evolution.records import record_improvement
+from jarvis_foundry.evolution.registry import register_release
 from jarvis_foundry.procedural_learning import (
     ActionAuthorityError,
     BundleIntegrityError,
@@ -32,6 +35,7 @@ from jarvis_foundry.procedural_learning import (
     validate_parameters,
     verify_bundle,
     verify_tier_c_reference,
+    shadow_procedure,
 )
 from jarvis_foundry.procedural_learning.registry import (
     OPENADAPT_BROWSER_SYSTEM,
@@ -133,6 +137,26 @@ def test_bundle_tamper_rejected(bundle):
         verify_bundle(bundle)
 
 
+@pytest.mark.skipif(
+    not (Path(r"C:\Users\b\Documents\JARVIS-Eyes-Qualification-Lab\openadapt\bundle-synthetic18") / "workflow.py").is_file(),
+    reason="Phase-1 compiled bundle is not installed",
+)
+def test_unlisted_openadapt_artifact_tamper_rejected(tmp_path: Path):
+    source = Path(
+        r"C:\Users\b\Documents\JARVIS-Eyes-Qualification-Lab\openadapt\bundle-synthetic18"
+    )
+    copied = tmp_path / "bundle"
+    shutil.copytree(source, copied)
+    from jarvis_foundry.procedural_learning import adopt_openadapt_bundle
+    bundle = adopt_openadapt_bundle(
+        copied, procedure_id="unlisted-tamper", source_workflow_evidence=["phase1"]
+    )
+    workflow_py = copied / "workflow.py"
+    workflow_py.write_bytes(workflow_py.read_bytes() + b"\n# tampered\n")
+    with pytest.raises(BundleIntegrityError):
+        verify_bundle(bundle)
+
+
 def test_unknown_bundle_version_fails_closed(bundle):
     unknown = replace(
         bundle,
@@ -212,6 +236,95 @@ def test_tier_c_tamper_fails_closed(db, bundle):
         source_type="test", source_id="phase4", idempotency_key="tamper-tier-c"))
     with pytest.raises(ActionAuthorityError):
         verify_tier_c_reference(db, procedure_id)
+
+
+def test_invalid_tier_c_reference_returns_not_ready_before_execution(
+        db, bundle, monkeypatch, tmp_path: Path):
+    procedure_id = _tier_c(db, bundle)
+    with db.connect() as connection:
+        record = connection.execute(
+            "SELECT * FROM tier_c_procedures WHERE procedure_id = ?",
+            (procedure_id,),
+        ).fetchone()
+    body = json.loads(record["body"])
+    body["bundle_version"] = "9.9.9"
+    db.append(Event.create(
+        "procedure.created",
+        {"procedure_id": procedure_id, "name": record["name"],
+         "description": record["description"], "body": json.dumps(body),
+         "trigger_terms": ["synthetic"], "scope": "global", "state": "ACTIVE",
+         "confidence": 0.5, "source_ids": [], "evidence_ids": [],
+         "mission_id": "", "created_by": "test"},
+        source_type="test", source_id="phase4", idempotency_key="tier-c-version"))
+    adapter = _fake_adapter(monkeypatch)
+    result = governed_replay(
+        db, tier_c_procedure_id=procedure_id, mission_id="m", run_id="r",
+        request_id="invalid-tier-c", params={"task": "A", "option": "B"},
+        adapter=adapter, run_dir=tmp_path / "run",
+        oracle=lambda: {"exists": False},
+    )
+    assert result.status == "NOT_READY"
+    assert "Tier-C" in result.reason
+    assert not any(event.event_type == "procedure.execution.requested"
+                   for event in db.events())
+
+
+def _shadow_improvement(db: FoundryDatabase) -> str:
+    return record_improvement(
+        db,
+        problem="bounded procedural shadow proof",
+        evidence_refs=["phase4-shadow-test"],
+        provenance={"source": "phase4 focused suite"},
+        hypothesis="shadow proposals remain zero effect",
+        expected_mechanism="ShadowSink records proposals and refuses capability use",
+        baseline_metric={"name": "shadow_effects", "value": 0,
+                         "unit": "count", "source": "phase4-shadow-test"},
+        mmi={"minimum_delta": 0, "direction": "decrease", "unit": "count"},
+        guardrails={"correctness": "shadow completes", "safety": "zero live effects",
+                    "cost": "no paid calls", "latency": "bounded"},
+        workload={"ref": "phase4-shadow-test", "hash": "a" * 64},
+        observation={"requirement": "one shadow case", "cycles": 1},
+        declared_risk="R2", surfaces=["tests/foundry"],
+        budget={"max_cost_usd": 0.0, "capability_scope": []},
+        reversibility={"plan": "delete temp shadow data",
+                        "rollback_threshold": "any live effect"},
+        source_type="test", source_id="phase4-shadow",
+    )
+
+
+def _shadow_release(db: FoundryDatabase, improvement_id: str) -> str:
+    return register_release(
+        db, source_commit="a" * 40, artifact_hashes={"bundle.txt": "b" * 64},
+        dependencies=[], runtime_identity={"python": "test"},
+        parent_release_id=None, improvement_id=improvement_id, risk_class="R2",
+        migrations=[], verdicts=[], controller="supervisor",
+        source_type="test", source_id="phase4-shadow",
+    )
+
+
+def test_shadow_procedure_stays_zero_effect_before_local_replay(
+        db, bundle, tmp_path: Path):
+    improvement_id = _shadow_improvement(db)
+    release_id = _shadow_release(db, improvement_id)
+    inputs = tmp_path / "shadow-inputs"
+    inputs.mkdir()
+    (inputs / "case.txt").write_text("synthetic", encoding="utf-8")
+    marker = tmp_path / "live-marker"
+    marker.write_text("unchanged", encoding="utf-8")
+    before = marker.read_bytes()
+    run_id = shadow_procedure(
+        db, bundle=bundle, improvement_id=improvement_id,
+        candidate_release_id=release_id, inputs_dir=inputs,
+        controller="supervisor", live_marker=marker,
+    )
+    row = db.row("shadow_runs", "run_id", run_id)
+    assert row is not None
+    assert row["status"] == "COMPLETED"
+    assert row["zero_live_effects"] == 1
+    assert row["live_attempts"] == 0
+    assert marker.read_bytes() == before
+    assert not any(event.event_type == "system.action_started"
+                   for event in db.events())
 
 
 def test_action_envelope_bypass_is_refused(db, bundle):

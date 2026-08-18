@@ -5,9 +5,9 @@
 ## Canonical Reconciliation
 
 - **CANONICAL START:** `c3665b75ca5542e6bc73917c5eb710eadfef6d1b`
-- **CANONICAL FINAL:** `11161a2` on `main`; this final probe documentation is
-  a descendant and the exact close-out HEAD is reported separately
-- **LOCAL MAIN / origin/main before promotion:** `1abc388`
+- **CANONICAL BASELINE:** `657519c` on `main` (Post-V7 convergence R3);
+  Phase 4 remediation integration and final canonical probe are descendants
+- **LOCAL MAIN / origin/main before remediation promotion:** `657519c / 1abc388`
 - **PUSH PERFORMED:** NO
 - **SCHEMA:** v33, unchanged
 - **RISK:** R2
@@ -24,18 +24,20 @@
 - **OPENADAPT-FLOW VERSION:** 1.31.0
 - **OPENADAPT BROWSER:** READY AND GOVERNED
 - **OPENADAPT WINDOWS:** PROBING / NOT READY
-- **CANDIDATE BRANCH:** `candidate/procedural-learning-phase4`
-- **CANDIDATE WORKTREE:** `C:\temp\JARVIS-Procedural-Learning-Phase4`
-- **CANDIDATE BASE:** `c3665b75`
+- **CANDIDATE BRANCH:** `candidate/procedural-learning-phase4-remediation`
+- **CANDIDATE WORKTREE:** `C:\temp\JARVIS-Phase4-Remediation-0818`
+- **CANDIDATE HEAD:** `992317e`
+- **CANDIDATE BASE:** `2b35736`; applied onto convergence head `657519c`
 - **BUNDLE CONTRACT:** PASS; JARVIS contract 1.0.0, manifest schema 2,
   deterministic wrapper with source/lineage/parameter/effect metadata
 - **BUNDLE INTEGRITY:** PASS; Phase-1 bundle and compiled bundle verified by
-  per-file SHA-256, manifest hash, content digest, and version guards
+  native per-file SHA-256, a JARVIS SHA-256 for every non-manifest artifact,
+  manifest hash, content digest, and version guards
 - **CONTROLLED BUNDLE HASH:**
-  `6e84ebc3d938cbff463e1e0da5e2b9094b8b9256880c23772eedf927f06c2377`
-- **PARAMETER REPLAY:** PASS; `PH4-SCRIPT/A`, `PH4-RESUME/R`, and fresh
-  `PH4-HARDENED3/H3` values produced distinct local records
-- **ZERO-MODEL HEALTHY REPLAY:** PASS; fresh `hardened-3` report recorded
+  `0d9a3e227315314fed4980739cf9d95cb803f636b3da1af62980c113180686e0`
+- **PARAMETER REPLAY:** PASS; fresh `PH4-REMEDIATION/R1` and resume values
+  produced distinct local records
+- **ZERO-MODEL HEALTHY REPLAY:** PASS; fresh remediation report recorded
   `model_calls: 0`
 - **TIER-C INTEGRATION:** PASS; existing `ProcedureRegistry`, reference-only
   metadata, no executable duplication
@@ -67,31 +69,34 @@
 - **PHASE-1 MANIFEST:** 51/51 entries present; all OpenAdapt entries matched
   their recorded SHA-256. One unrelated historical Phase-2 contract drift is
   preserved and not repaired here.
-- **FOCUSED PHASE-4:** 20/20 PASS
+- **FOCUSED PHASE-4:** 23/23 PASS (including shadow zero-effect, invalid
+  Tier-C `NOT_READY`, and unlisted-artifact tamper gates)
 - **PHASE-2 REGRESSION:** 23/23 PASS
 - **PHASE-3 REGRESSION:** 36/36 PASS
 - **AFFECTED CONTROL/EFFECT/CONNECTOR/TIER-C/SHADOW SLICES:** PASS
-- **FULL SUITE:** 1,222 collected, EXIT 0 on the repaired candidate
+- **FULL SUITE:** 1,225 collected, EXIT 0 on the repaired candidate and
+  convergence-based integration path
 - **COMPILEALL:** PASS
 - **DOC STALENESS CHECK:** PASS
 - **FAULT MATRIX:** F1–F24 PASS; 0 FAIL, 0 BLOCKED, 0 NOT_TESTED for the
   applicable browser gates
-- **INDEPENDENT REVIEW:** PASS, source-level attack review at candidate HEAD
+- **INDEPENDENT REVIEW:** PASS, fresh DeepSeek max-effort review at candidate
+  HEAD; 0 Critical / 0 High
 - **VERIFIER INDEPENDENCE:** LIMITED (same host/provider family; live gates
   were not re-executed by the verifier)
 - **UNRESOLVED CRITICAL / HIGH:** 0 / 0
 
 ## Promotion and Boundary
 
-- **PROMOTED:** YES, through a non-fast-forward integration merge that
-  preserved newer canonical owner docs
+- **INTEGRATION:** Phase 4 remediation commits are applied onto convergence
+  head `657519c`; final `main` promotion is pending the canonical ff-only
+  merge and fresh canonical probe
 - **ROLLBACK:** PASS; detached baseline regression 59/59
-- **POST-PROMOTION PROBE:** PASS; canonical `main` replay
-  `canonical-final-1` reached `COMPLETED_VERIFIED` with `model_calls=0` and
-  no owned descendants; the same request reused the terminal effect without a
-  second record, STOP returned `NOT_READY` before dispatch, and a fresh resume
-  reached `COMPLETED_VERIFIED` (count 2). Exact run evidence is in
-  `CANONICAL_PROBE.md`.
+- **INTEGRATION CANDIDATE PROBE:** PASS; fresh remediation replay reached
+  `COMPLETED_VERIFIED` with `model_calls=0`, duplicate replay produced no
+  second provider row, external STOP returned `NOT_READY` before dispatch,
+  and clean resume reached `COMPLETED_VERIFIED` (count 2). Exact evidence is
+  in `CANONICAL_PROBE.md`.
 - **PHASE 4 FINAL VERDICT:** PASS
 - **PROCEDURAL LEARNING:** READY AND PROVEN
 - **OPENADAPT BROWSER:** READY AND GOVERNED
