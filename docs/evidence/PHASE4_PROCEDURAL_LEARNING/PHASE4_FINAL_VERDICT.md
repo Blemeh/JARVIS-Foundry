@@ -67,11 +67,12 @@
 - **PHASE-1 MANIFEST:** 51/51 entries present; all OpenAdapt entries matched
   their recorded SHA-256. One unrelated historical Phase-2 contract drift is
   preserved and not repaired here.
-- **FOCUSED PHASE-4:** 20/20 PASS
+- **FOCUSED PHASE-4:** 22/22 PASS (including shadow zero-effect and invalid
+  Tier-C `NOT_READY` readiness gates)
 - **PHASE-2 REGRESSION:** 23/23 PASS
 - **PHASE-3 REGRESSION:** 36/36 PASS
 - **AFFECTED CONTROL/EFFECT/CONNECTOR/TIER-C/SHADOW SLICES:** PASS
-- **FULL SUITE:** 1,222 collected, EXIT 0 on the repaired candidate
+- **FULL SUITE:** 1,224 collected, EXIT 0 on the repaired candidate
 - **COMPILEALL:** PASS
 - **DOC STALENESS CHECK:** PASS
 - **FAULT MATRIX:** F1–F24 PASS; 0 FAIL, 0 BLOCKED, 0 NOT_TESTED for the
