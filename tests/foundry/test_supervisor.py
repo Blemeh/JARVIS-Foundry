@@ -121,3 +121,58 @@ def test_incomplete_sentinel_still_stops_with_defaults(tmp_path):
     assert state["status"] == "FROZEN"
     supervisor.stop()
 
+
+def test_spawn_worker_loop_defaults_off(tmp_path):
+    database = FoundryDatabase(tmp_path / "foundry.db")
+    supervisor = Supervisor(database, tmp_path / "STOP", instance_id="no-spawn")
+    assert supervisor.spawn_worker_loop is False
+    assert supervisor.start() == "RUNNING"
+    assert supervisor.heartbeat() == "RUNNING"
+    assert supervisor.workers.active_runs() == []
+    supervisor.stop()
+
+
+def test_spawn_worker_loop_noops_when_yaml_disabled(tmp_path):
+    config = tmp_path / "workers.yaml"
+    config.write_text("enabled: false\nprovider: opencode_go\nmodel: deepseek-v4-flash\n", encoding="utf-8")
+    database = FoundryDatabase(tmp_path / "foundry.db")
+    supervisor = Supervisor(
+        database, tmp_path / "STOP", instance_id="disabled-loop",
+        spawn_worker_loop=True, worker_loop_config=config,
+    )
+    assert supervisor.start() == "RUNNING"
+    assert supervisor.heartbeat() == "RUNNING"
+    assert supervisor.workers.active_runs() == []
+    supervisor.stop()
+
+
+def test_spawn_worker_loop_registers_child_when_enabled(tmp_path, monkeypatch):
+    config = tmp_path / "workers.yaml"
+    config.write_text(
+        "enabled: true\nstatus: ACTIVE\nprovider: opencode_go\n"
+        "model: deepseek-v4-flash\n",
+        encoding="utf-8")
+    database = FoundryDatabase(tmp_path / "foundry.db")
+    supervisor = Supervisor(
+        database, tmp_path / "STOP", instance_id="spawn-loop",
+        spawn_worker_loop=True, worker_loop_config=config,
+    )
+    spawned: list[list[str]] = []
+
+    def fake_spawn(run_id, command, *, cwd=None):
+        spawned.append(command)
+        from jarvis_foundry.supervisor.worker import WorkerStatus
+        return WorkerStatus(
+            run_id=run_id, lease_key=f"worker:{run_id}",
+            owner_id=f"worker:{run_id}", expires_at=None,
+            alive=True, lease_expired=False, process=None,
+        )
+
+    monkeypatch.setattr(supervisor.workers, "spawn", fake_spawn)
+    assert supervisor.start() == "RUNNING"
+    assert supervisor.heartbeat() == "RUNNING"
+    assert spawned
+    assert spawned[0][:3] == [__import__("sys").executable, "-m", "jarvis_foundry.runtime.worker_loop"]
+    assert "--once" in spawned[0]
+    supervisor.stop()
+

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 import uuid
 from pathlib import Path
 
@@ -7,7 +8,7 @@ from ..database import FoundryDatabase
 from ..events import Event
 from ..reconcile import reconcile
 from .estop import EmergencyStop
-from .leases import LeaseManager
+from .leases import LeaseManager, LeaseUnavailable
 from .worker import WorkerController
 
 
@@ -22,6 +23,8 @@ class Supervisor:
         instance_id: str | None = None,
         lease_seconds: int = 90,
         workers: WorkerController | None = None,
+        spawn_worker_loop: bool = False,
+        worker_loop_config: str | Path | None = None,
     ) -> None:
         self.database = database
         self.estop = EmergencyStop(stop_path)
@@ -30,6 +33,9 @@ class Supervisor:
         self.leases = LeaseManager(database)
         self.workers = workers or WorkerController(database)
         self.started = False
+        self.spawn_worker_loop = spawn_worker_loop
+        self.worker_loop_config = (
+            Path(worker_loop_config) if worker_loop_config is not None else None)
 
     def start(self) -> str:
         self.database.initialize()
@@ -79,6 +85,7 @@ class Supervisor:
                 idempotency_key=f"emergency_stop.frozen:{stop['stop_id']}:{self.instance_id}",
             ))
             return "FROZEN"
+        self._maybe_spawn_worker_loop()
         self._reap_and_recover()
         payload = {"instance_id": self.instance_id, "trust_state": "LAB"}
         if reaped:
@@ -135,6 +142,35 @@ class Supervisor:
             except Exception:  # noqa: BLE001 — never let the record itself raise
                 pass
 
+    def _maybe_spawn_worker_loop(self) -> None:
+        """Optional fail-closed companion: spawn ``worker_loop --once``.
+
+        Default OFF so the live watchdog-only Supervisor does not start
+        dispatching missions. No-ops when worker YAML ``enabled`` is false.
+        The child is registered with WorkerController so STOP/terminate_all
+        applies. Loop logic stays in ``v3_loop``.
+        """
+        if not self.spawn_worker_loop:
+            return
+        from ..runtime.config import WorkerRuntimeConfig
+
+        config = WorkerRuntimeConfig.from_yaml(self.worker_loop_config)
+        if not config.enabled:
+            return
+        if any(self.workers.status(run_id).alive for run_id in self.workers.active_runs()):
+            return
+        home = Path(self.database.path).resolve().parent
+        command = [
+            sys.executable, "-m", "jarvis_foundry.runtime.worker_loop",
+            "--once", "--home", str(home),
+        ]
+        if self.worker_loop_config is not None:
+            command.extend(["--config", str(self.worker_loop_config)])
+        try:
+            self.workers.spawn("worker-loop", command, cwd=home)
+        except (LeaseUnavailable, OSError):
+            return
+
     def doctor(self) -> dict[str, object]:
         """Inspect without migrating. Live homes are already at schema;
         ``initialize()`` here would take a write lock and could mutate
@@ -152,10 +188,10 @@ class Supervisor:
             }
         return {
             "database": str(self.database.path),
-            "database_quick_check": self.database.quick_check(),
+            "database_quick_check": self.database.quick_check(readonly=True),
             "emergency_stop": self.estop.active(),
-            "event_count": len(self.database.events()),
+            "event_count": len(self.database.events(readonly=True)),
             "hermes_required_for_supervisor": False,
-            "reconciliation": reconcile(self.database).to_json(),
-            "active_workers": self.workers.active_runs(),
+            "reconciliation": reconcile(self.database, readonly=True).to_json(),
+            "active_workers": self.workers.active_runs(readonly=True),
         }
