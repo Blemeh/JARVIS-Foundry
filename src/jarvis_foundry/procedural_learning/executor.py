@@ -175,7 +175,15 @@ def governed_replay(
     if stop_path is not None and Path(stop_path).exists():
         return ReplayOutcome("NOT_READY", f"stop-{request_id}", None, "",
                              None, None, reason="STOP active before replay")
-    bundle = verify_tier_c_reference(database, tier_c_procedure_id)
+    try:
+        bundle = verify_tier_c_reference(database, tier_c_procedure_id)
+    except ActionAuthorityError as exc:
+        # A stale, tampered, or incompatible Tier-C reference is a readiness
+        # failure, never an uncaught executor error and never a launch.
+        return ReplayOutcome(
+            "NOT_READY", f"replay-{request_id}", None, "", None, None,
+            reason=f"Tier-C procedure unavailable: {type(exc).__name__}",
+        )
     try:
         check_openadapt(adapter.config)
     except Exception as exc:
