@@ -1,0 +1,37 @@
+{
+  "schema": "jarvis-canonical-promotion-state-v1",
+  "status": "VERIFIED_ISOLATED_PROMOTION",
+  "canonical_repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
+  "promotion_worktree": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R3",
+  "promotion_branch": "promote/canonical-convergence-r3",
+  "source_main_head": "2b3573606570f910e5569cf3306223354f93e4ac",
+  "candidate_commit": "7a1dee8f73ffeb61294c006f28682aa61f11c259",
+  "promotion_commit": "ffa9ce4",
+  "previous_release_remains_recoverable": true,
+  "verification": {
+    "pythonpath": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R3/src",
+    "convergence_junit": {
+      "path": "docs/convergence/PROMOTION_CONVERGENCE_JUNIT.xml",
+      "sha256": "0F4F9E124B814AA958485DB20425533D36DC61D96B9D51ADCE7A8B9B4E6AADD0",
+      "tests": 76,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "canonical_full_suite_junit": {
+      "path": "docs/convergence/PROMOTION_CANONICAL_FULL_SUITE_JUNIT.xml",
+      "sha256": "EC303FFBB5F96635482D831DA257BB479A6904F84D815FA8315B68BA44A7C74A",
+      "tests": 1222,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "source_import": "PASS",
+    "py_compile": "PASS",
+    "diff_check": "PASS",
+    "doc_staleness": "PASS"
+  },
+  "canonical_main_mutated": false,
+  "release_pointer": "PENDING_CANONICAL_POINTER_ADVANCE",
+  "exact_next_action": "advance the canonical release pointer through the isolated promotion commit, then re-run the live read-only probe and reconcile release truth"
+}
