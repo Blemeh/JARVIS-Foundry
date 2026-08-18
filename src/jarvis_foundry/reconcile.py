@@ -49,8 +49,8 @@ class ReconciliationReport:
         }
 
 
-def _live_schema_version(database: FoundryDatabase) -> int:
-    with database.connect() as connection:
+def _live_schema_version(database: FoundryDatabase, *, readonly: bool = False) -> int:
+    with database.connect(readonly=readonly) as connection:
         row = connection.execute(
             "SELECT COALESCE(MAX(version), 0) FROM schema_migrations"
         ).fetchone()
@@ -125,8 +125,8 @@ def _rows_by_key(connection: sqlite3.Connection, table: str) -> dict[str, dict[s
     return {str(row[key_column]): dict(row) for row in rows}
 
 
-def reconcile(database: FoundryDatabase) -> ReconciliationReport:
-    live_version = _live_schema_version(database)
+def reconcile(database: FoundryDatabase, *, readonly: bool = False) -> ReconciliationReport:
+    live_version = _live_schema_version(database, readonly=readonly)
     if live_version != SCHEMA_VERSION:
         return ReconciliationReport(
             consistent=False,
@@ -146,7 +146,7 @@ def reconcile(database: FoundryDatabase) -> ReconciliationReport:
     # separate per-table connections and fabricate mismatches
     # (V2-operational gate 2026-08-12: supervisor_state raced 5/5 runs
     # while the daemon heartbeated every 5s)
-    with database.connect() as snapshot:
+    with database.connect(readonly=readonly) as snapshot:
         snapshot.execute("BEGIN")  # deferred: stable WAL snapshot, no write lock
         rows = snapshot.execute(
             "SELECT * FROM events ORDER BY sequence").fetchall()

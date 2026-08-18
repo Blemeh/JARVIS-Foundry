@@ -83,7 +83,7 @@ def main(argv: list[str] | None = None) -> int:
         if not paths.database.is_file():
             print(json.dumps([], indent=2))
             return 0
-        items = database.events()[-args.limit:]
+        items = database.events(readonly=True)[-args.limit:]
         print(json.dumps([asdict(event) for event in items], indent=2))
     elif args.command == "status":
         if not paths.database.is_file():

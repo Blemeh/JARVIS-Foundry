@@ -89,3 +89,36 @@ def test_status_without_database_does_not_create_one(tmp_path, capsys):
     assert code == 1
     assert payload["error"] == "database_not_initialized"
     assert not (tmp_path / "foundry.db").exists()
+
+
+def test_database_constructor_does_not_mkdir(tmp_path):
+    from jarvis_foundry.database import FoundryDatabase
+
+    nested = tmp_path / "absent-home" / "foundry.db"
+    FoundryDatabase(nested)
+    assert not nested.parent.exists()
+
+
+def test_doctor_and_events_open_sqlite_readonly(tmp_path, capsys, monkeypatch):
+    """P1-A: doctor/events must open the ledger with SQLite mode=ro.
+    Spying initialize() is not sufficient — those paths used writable
+    connect() and set WAL."""
+    from jarvis_foundry.database import FoundryDatabase
+    from jarvis_foundry.cli.main import main
+
+    _run(capsys, "--home", str(tmp_path), "init")
+    capsys.readouterr()
+    seen: list[bool] = []
+    original = FoundryDatabase.connect
+
+    def spy(self, *, readonly: bool = False):
+        seen.append(readonly)
+        return original(self, readonly=readonly)
+
+    monkeypatch.setattr(FoundryDatabase, "connect", spy)
+    assert main(["doctor", "--home", str(tmp_path)]) == 0
+    assert seen, "doctor never opened the ledger"
+    assert all(seen), f"doctor opened writable connections: {seen}"
+    seen.clear()
+    assert main(["events", "--home", str(tmp_path)]) == 0
+    assert seen and all(seen), f"events opened writable connections: {seen}"
