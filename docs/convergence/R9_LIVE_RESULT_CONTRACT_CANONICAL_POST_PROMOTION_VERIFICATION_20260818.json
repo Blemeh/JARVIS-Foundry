@@ -1,0 +1,63 @@
+{
+  "schema": "jarvis-r9-live-result-contract-canonical-post-promotion-v1",
+  "stage": "R9",
+  "status": "PASS_CANONICAL_SOURCE_PENDING_LIVE_CANARY",
+  "canonical": {
+    "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
+    "branch": "main",
+    "head": "1f490aeed5088cb4a34db32a4758dd1a230ea037",
+    "working_tree": "CLEAN",
+    "promotion_worktree": "C:/temp/JARVIS-Foundry-R8-PROMOTE",
+    "source_commits": ["f762892", "5ccceb6"],
+    "independent_source_candidate": "cce4f5e0780957900b042ef616b12a7420a4ec94"
+  },
+  "post_promotion_tests": {
+    "pythonpath": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry;C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/src",
+    "worker_mission_verification": {
+      "tests": 107,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit": "C:/temp/r9-canonical-post-promote-worker-junit.xml",
+      "sha256": "9935691B2DD4045A5F6B5E098AF850DCCAA8E57534BB4283BDADF30DADC1EC6D"
+    },
+    "convergence": {
+      "tests": 96,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit": "C:/temp/r9-canonical-post-promote-convergence-junit.xml",
+      "sha256": "0F6A886D969DFAF18DE2867111F2FA3BE42B87050B8693D49351627FE19680BD"
+    },
+    "compileall": "PASS",
+    "diff_check": "PASS",
+    "source_import": "PASS"
+  },
+  "independent_verification": {
+    "report": "docs/convergence/R9_LIVE_RESULT_CONTRACT_REPAIR_VERIFICATION_20260818.json",
+    "report_sha256": "80739D642FB1A80AC43C0AB16D7A2D458445BC3E917523DD37746B91A78C287E",
+    "provider_route": "router_commandcode_deepseek_v4_flash",
+    "provider": "commandcode",
+    "model": "deepseek-v4-flash",
+    "status": "PASS",
+    "delta_baseline_probe": "PASS",
+    "live_provider_call": false
+  },
+  "r9_findings": {
+    "R9-RESULT-FILE-SELF-DIFF": "CLOSED_IN_REPAIR3",
+    "R9-LIVE-BRIDGE-INSTRUCTION-GAP": "CLOSED_IN_REPAIR3",
+    "R9-VERIFIER-DELTA-CONTROL-BASELINE-20260818": "CLOSED_IN_REPAIR3"
+  },
+  "acceptance": {
+    "canonical_source_gate": "PASS",
+    "live_provider_result_contract": "NOT_TESTED",
+    "external_effects": "NOT_TESTED",
+    "next_action": "run a fresh bounded disposable live mission canary against this exact canonical HEAD and inspect machine result files, observed diffs, verifier delta, durable ledger, and provider/model identity"
+  },
+  "integrity": {
+    "owner_worktree_preserved": true,
+    "historical_failure_evidence_preserved": true,
+    "r6_redirect_preserved": true,
+    "secrets_recorded": false
+  }
+}

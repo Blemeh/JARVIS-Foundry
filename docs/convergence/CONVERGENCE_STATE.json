@@ -2,13 +2,13 @@
   "schema": "jarvis-post-v7-canonical-convergence-state-v2",
   "program": "JARVIS Post-V7 Remaster",
   "current_stage": "POST_PROMOTION_PROVING",
-  "current_slice": "R8 production organization verified; R9/R10 bounded gates reviewed; R10 directive repair independently verified; R11 bounded evolution gate reviewed; R12 fault gate freshly rechecked; proving lineage/monitor repairs reconciled on current main; R9 live result-contract repair primary scope independently verified but verifier-delta baseline finding repaired in isolated cce4f5e and awaits fresh closure verification; live mission canary independently verified with 2 of 10 required missions; restart canary completed fail-closed with 0 accepted missions; real elapsed proving window in progress",
+  "current_slice": "R8 production organization verified; R9/R10 bounded gates reviewed; R10 directive repair independently verified; R11 bounded evolution gate reviewed; R12 fault gate freshly rechecked; proving lineage/monitor repairs reconciled on current main; R9 result-contract and verifier-delta repairs independently verified and ff-only promoted to canonical main; canonical post-promotion worker and convergence gates pass; live mission canary independently verified with 2 of 10 required missions; restart canary completed fail-closed with 0 accepted missions; fresh repaired live canary pending; real elapsed proving window in progress",
   "r6_state": "OWNER_REDIRECT_R6_DEFERRED",
   "eyes_state": "OUT_OF_SCOPE_READ_ONLY",
   "canonical": {
     "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
     "branch": "main",
-    "head": "56bded15d24050ab2b27a7a01daabb0c7b94b9a1",
+    "head": "1f490aeed5088cb4a34db32a4758dd1a230ea037",
     "source_tree_verified_head": "51d1d4e96b9731eb2c4d13ff0e4db8975e0076ab",
     "origin_main": "1abc388c6471a310f361612ebd81ed6a2cf6c646",
     "dirty_owner_docs_preserved": true,
@@ -147,10 +147,10 @@
       ]
     },
     "r9_result_contract_repair_verification": {
-      "status": "PASS_SOURCE_VERIFIED",
-      "report": "docs/convergence/R9_LIVE_RESULT_CONTRACT_POST_PROMOTION_CANDIDATE_VERIFICATION_20260818.json",
-      "report_sha256": "58141161C1CAE434C46C6F83BE6685852387437AA98FD25B2D426F7BC69034D2",
-      "candidate_head": "5ccceb6",
+      "status": "PASS_CANONICAL_SOURCE_VERIFIED",
+      "report": "docs/convergence/R9_LIVE_RESULT_CONTRACT_CANONICAL_POST_PROMOTION_VERIFICATION_20260818.json",
+      "report_sha256": "EEB2245A1DA17C2C966E7DCBDAFE4B6A2DDB49EE41EE43C2EAE5ED9B4312A3E7",
+      "candidate_head": "1f490aeed5088cb4a34db32a4758dd1a230ea037",
       "independent_source_head": "cce4f5e0780957900b042ef616b12a7420a4ec94",
       "fresh_tests": "74 passed independent; 107 worker/mission post-promotion-candidate; 96 convergence post-promotion-candidate",
       "remaining_finding": null,
@@ -158,15 +158,27 @@
       "live_provider_boundary": "NOT_TESTED"
     },
     "r9_post_promotion_candidate": {
-      "status": "PASS_PENDING_FF_PROMOTION",
+      "status": "PASS_CANONICAL_RECONCILED",
       "report": "docs/convergence/R9_LIVE_RESULT_CONTRACT_POST_PROMOTION_CANDIDATE_VERIFICATION_20260818.json",
       "candidate_head": "5ccceb6",
+      "canonical_head": "1f490aeed5088cb4a34db32a4758dd1a230ea037",
       "source_commits": ["f762892", "5ccceb6"],
       "worker_junit": "C:/temp/r9-post-promote-worker-junit.xml",
       "worker_junit_sha256": "1FEAC888D0E5FFF45CAB029553E8702C234AD1CC877192B69CF1EEF29F24AAE9",
       "convergence_junit": "C:/temp/r9-post-promote-convergence-junit.xml",
       "convergence_junit_sha256": "BC41C8C96AE5FF1CF68E914427F9D6CB73BC188C75D39175A4EC1F27D9386EA2",
       "promotion_allowed": true
+    },
+    "r9_canonical_post_promotion": {
+      "status": "PASS_PENDING_LIVE_CANARY",
+      "report": "docs/convergence/R9_LIVE_RESULT_CONTRACT_CANONICAL_POST_PROMOTION_VERIFICATION_20260818.json",
+      "report_sha256": "EEB2245A1DA17C2C966E7DCBDAFE4B6A2DDB49EE41EE43C2EAE5ED9B4312A3E7",
+      "canonical_head": "1f490aeed5088cb4a34db32a4758dd1a230ea037",
+      "worker_tests": 107,
+      "worker_junit_sha256": "9935691B2DD4045A5F6B5E098AF850DCCAA8E57534BB4283BDADF30DADC1EC6D",
+      "convergence_tests": 96,
+      "convergence_junit_sha256": "0F6A886D969DFAF18DE2867111F2FA3BE42B87050B8693D49351627FE19680BD",
+      "live_provider_boundary": "NOT_TESTED"
     },
     "restart_canary": {
       "status": "FAIL_EXTERNAL_BOUNDARY",
@@ -537,20 +549,20 @@
     }
   ],
   "promotion": {
-    "status": "R8_R9_R10_R11_R12_BOUNDED_VERIFIED_R9_REPAIR_SOURCE_PASS_PENDING_FF_PROMOTION_PROVING_WAITING",
+    "status": "R8_R9_R10_R11_R12_BOUNDED_VERIFIED_R9_CANONICAL_SOURCE_PASS_LIVE_CANARY_PENDING_PROVING_WAITING",
     "promotion_worktree": "C:/temp/JARVIS-Foundry-R8-PROMOTE",
-    "promotion_commit": "949b4effdf28a2d938a628811fb9c751f5cb222c",
-    "latest_evidence_commit": "56bded15d24050ab2b27a7a01daabb0c7b94b9a1",
+    "promotion_commit": "1f490aeed5088cb4a34db32a4758dd1a230ea037",
+    "latest_evidence_commit": "1f490aeed5088cb4a34db32a4758dd1a230ea037",
     "latest_live_canary": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_CANARY_20260818.json",
     "latest_repair_reconciliation": "docs/convergence/PROVING_WINDOW_REPAIR_RECONCILIATION_20260818.json",
     "latest_r9_result_contract_verification": "docs/convergence/R9_LIVE_RESULT_CONTRACT_VERIFICATION_20260818.json",
-    "latest_r9_result_contract_repair_verification": "docs/convergence/R9_LIVE_RESULT_CONTRACT_REPAIR_VERIFICATION_20260818.json",
+    "latest_r9_result_contract_repair_verification": "docs/convergence/R9_LIVE_RESULT_CONTRACT_CANONICAL_POST_PROMOTION_VERIFICATION_20260818.json",
     "latest_restart_canary": "docs/convergence/PROVING_WINDOW_RESTART_CANARY_20260818.json",
     "pre_release_tag": "convergence-pre-r3",
     "post_promotion_runtime_probe": "docs/convergence/LIVE_RUNTIME_PROBE_POST_PROMOTION.json",
     "rollback_bundle": "C:/temp/jarvis-convergence-pre-r3.bundle"
   },
-  "verifier_state": "R8_R9_R10_R11_R12_BOUNDED_GATES_VERIFIED_R9_REPAIR_SOURCE_PASS_REAL_PROVING_WINDOW_WAITING_ELAPSED",
+  "verifier_state": "R8_R9_R10_R11_R12_BOUNDED_GATES_VERIFIED_R9_CANONICAL_SOURCE_PASS_LIVE_CANARY_PENDING_REAL_PROVING_WINDOW_WAITING_ELAPSED",
   "blockers": [
     "R7 real monitored provider research NOT_TESTED/WAITING",
     "R9 real external connector/provider effects NOT_TESTED/WAITING",
@@ -559,5 +571,5 @@
     "R11 real elapsed proving window and live promotion cycles NOT_TESTED/WAITING",
     "R12 physical host and unavailable-provider fault rows NOT_TESTED/BLOCKED"
   ],
-  "exact_next_action": "commit independently verified R9 repair candidate evidence, ff-only promote source commits to canonical main, run canonical post-promotion regression, then rerun a bounded disposable live mission canary with repaired result contract; preserve 2-of-10 count, blocked restart canary, and elapsed proving/external boundaries; do not close or promote final acceptance until real proving criteria are met"
+  "exact_next_action": "run a fresh bounded disposable live mission canary against canonical 1f490ae; inspect machine result files, observed business diffs, verifier delta, durable ledger, and actual provider/model; preserve 2-of-10 count, blocked restart canary, and elapsed proving/external boundaries; do not close or promote final acceptance until real proving criteria are met"
 }
