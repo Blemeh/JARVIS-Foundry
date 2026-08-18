@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>JARVIS Phase 4 Synthetic Workflow</title>
+<style>body{font-family:Segoe UI,sans-serif;background:#f4f6fa;margin:0}main{max-width:640px;margin:48px auto;background:#fff;border:1px solid #d7dbe3;border-radius:8px;padding:32px}label{display:block;margin-top:16px;font-weight:600}input,button{font-size:15px;padding:10px;width:100%;box-sizing:border-box;margin-top:6px}button{background:#1f5eff;color:#fff;border:0;cursor:pointer}.status{margin-top:20px;padding:14px;border:1px solid #d4e0ff}</style>
+</head>
+<body><main><h1>Synthetic Workflow</h1>
+<form id="wf"><label>Task identifier<input id="task" name="task" autocomplete="off"></label>
+<label>Option<input id="option" name="option" autocomplete="off"></label>
+<div class="status" id="oracle2">SYNTHETICWORKFLOWAPP</div>
+<button id="submit" type="submit">Submit</button></form>
+<div class="status" id="status">Ready</div><div class="status" id="oracle">Oracle: pending</div></main>
+<script>
+const api='http://127.0.0.1:8797';
+async function refresh(){const r=await fetch(api+'/state');const j=await r.json();document.getElementById('oracle').textContent='Oracle: '+j.count+' record(s)';}
+document.getElementById('wf').addEventListener('submit',async(e)=>{e.preventDefault();const b={task:document.getElementById('task').value,option:document.getElementById('option').value};await fetch(api+'/tasks',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});document.getElementById('status').textContent='UI success: record submitted.';refresh();});
+refresh();
+</script></body></html>
