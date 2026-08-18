@@ -9,7 +9,7 @@ for "what exists now" claims; the architecture contract wins for binding invaria
 Last reconciled: 2026-08-18 (JARVIS Eyes Phase 2 candidate)
 
 ```text
-CURRENT CANONICAL HEAD:      474156a (main; JARVIS Eyes Phase 2 promoted +
+CURRENT CANONICAL HEAD:      7901eba (main; JARVIS Eyes Phase 2 promoted +
                              evidence freeze; feature merge bfeb4cd)
 LETTA PROMOTION ANCESTOR:    2f7360e742559e051109e04ef7f3a82cc64cc2d2 (still an ancestor of HEAD)
 PRE-V8 HISTORICAL BASELINE:  93a3ddc0965dfaf3e4cb9dc0952467bd5250520a (historical only — do not reset to it)
