@@ -74,6 +74,21 @@ class WorkerRuntimeConfig:
                 f"{self.model!r}")
 
     def resolve_stop_path(self, home: Path) -> Path:
-        if self.stop_sentinel_path:
-            return Path(self.stop_sentinel_path).expanduser()
-        return Path(home) / "EMERGENCY_STOP"
+        """Sentinel the worker loop and adapters must watch.
+
+        Historical yaml used ``foundry/EMERGENCY_STOP`` while Foundry home
+        is already ``.../foundry``, which nested a second foundry directory
+        the CLI never writes. A leading segment equal to the home name is
+        stripped so STOP and ``jarvis stop`` share one file.
+        """
+        home = Path(home)
+        canonical = (home / "EMERGENCY_STOP").resolve()
+        if not self.stop_sentinel_path:
+            return canonical
+        configured = Path(self.stop_sentinel_path)
+        if configured.is_absolute():
+            return configured.resolve()
+        parts = configured.parts
+        if len(parts) >= 2 and parts[0] == home.name:
+            configured = Path(*parts[1:]) if len(parts) > 1 else Path("EMERGENCY_STOP")
+        return (home / configured).resolve()

@@ -88,6 +88,22 @@ def test_production_yaml_stop_path_matches_cli_sentinel(tmp_path):
     )
 
 
+def test_legacy_nested_foundry_stop_path_matches_cli_sentinel(tmp_path):
+    """yaml used to say foundry/EMERGENCY_STOP while home is already foundry."""
+    home = tmp_path / "foundry"
+    home.mkdir()
+    cfg = WorkerRuntimeConfig(
+        enabled=True, stop_sentinel_path="foundry/EMERGENCY_STOP")
+    assert cfg.resolve_stop_path(home) == (home / "EMERGENCY_STOP").resolve()
+    database = FoundryDatabase(home / "db.sqlite")
+    database.initialize()
+    (home / "EMERGENCY_STOP").write_text("{}", encoding="utf-8")
+    report = run_cycle(
+        database, FoundryPaths(home), cfg,
+        loop_id="l1", instance_id="i1")
+    assert report["outcome"] == "FROZEN"
+
+
 def test_stack_never_selects_disabled_framework(tmp_path):
     database = FoundryDatabase(tmp_path / "db.sqlite")
     database.initialize()
@@ -110,6 +126,7 @@ def test_mission_contract_carries_durable_truth(tmp_path):
     worker_router.mark_ready(WORKER_OPENHANDS, state=READY,
                              note="proven in test",
                              evidence=("test-proof",))
+
     builder = MutatingScriptedAdapter(
         WORKER_OPENHANDS, write_files=("feature.py",),
         outcome=ScriptedOutcome(files_changed=("feature.py",)))
