@@ -2,13 +2,13 @@
   "schema": "jarvis-post-v7-canonical-convergence-state-v2",
   "program": "JARVIS Post-V7 Remaster",
   "current_stage": "POST_PROMOTION_PROVING",
-  "current_slice": "R8 production organization verified; R9/R10 bounded gates reviewed; R10 directive repair independently verified; R11 bounded evolution gate reviewed; R12 fault gate freshly rechecked; live mission canary independently verified with 2 of 10 required missions; real elapsed proving window in progress",
+  "current_slice": "R8 production organization verified; R9/R10 bounded gates reviewed; R10 directive repair independently verified; R11 bounded evolution gate reviewed; R12 fault gate freshly rechecked; proving lineage/monitor repairs reconciled on current main; live mission canary independently verified with 2 of 10 required missions; restart canary in progress; real elapsed proving window in progress",
   "r6_state": "OWNER_REDIRECT_R6_DEFERRED",
   "eyes_state": "OUT_OF_SCOPE_READ_ONLY",
   "canonical": {
     "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
     "branch": "main",
-    "head": "fcf3b84bb5051aef8d5baaa894847aecb4bd35d2",
+    "head": "7f7db2dc04bb2f82fb740b8b3230e878d17cb2c1",
     "source_tree_verified_head": "51d1d4e96b9731eb2c4d13ff0e4db8975e0076ab",
     "origin_main": "1abc388c6471a310f361612ebd81ed6a2cf6c646",
     "dirty_owner_docs_preserved": true,
@@ -125,6 +125,14 @@
       ],
       "builder_evidence_mismatch_count": 2,
       "builder_mismatch_resolution": "fresh verifiers inspected the frozen artifact and returned PASS; builder claims remain NOT_TESTED"
+    },
+    "proving_repair_reconciliation": {
+      "status": "PASS_CURRENT_MAIN_RECONCILED",
+      "report": "docs/convergence/PROVING_WINDOW_REPAIR_RECONCILIATION_20260818.json",
+      "report_sha256": "381FFFBD46ECDF999D3F8E830EDDBC91F8A3DB3E283B0089EBE7B1D69F560DA2",
+      "focused_replay": "20 passed",
+      "historical_lineage_repair": "676d2d7",
+      "historical_monitor_repair": "6f349ad"
     }
   },
   "remaster_evidence": {
@@ -180,6 +188,14 @@
       "evidence": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_CANARY_20260818.json",
       "finding": "Both live canary builders claimed files_changed=[] although the frozen disposable worktree contained source/test diffs; EvidenceReconciler surfaced evidence_mismatch and fresh verifiers independently inspected the artifact.",
       "resolution": "No builder claim was accepted as truth. The two missions remain verifier PASS with builder NOT_TESTED; investigate the structured worker result producer before relying on builder-level completion."
+    },
+    {
+      "id": "R4-PROVING-MONITOR-SCOPE-DIVERGENCE-20260818",
+      "severity": "S3",
+      "status": "OPEN_MONITORING",
+      "evidence": "docs/convergence/PROVING_WINDOW_REPAIR_RECONCILIATION_20260818.json",
+      "finding": "The operational monitor conservatively treats any active VETO_ACTION/STOP_MISSION as WAITING_OWNER_STOP, while the replay gate excludes healthy days only for authenticated directives targeting the proving window or its mission.",
+      "resolution": "Preserve the conservative monitor behavior and adjudicate the scope distinction before final proving closure; it cannot create a false PASS."
     }
   ],
   "dispatches": [
@@ -389,14 +405,25 @@
       "status": "COMPLETED_PASS_WITH_LIVE_CONSUMER_BOUNDARY",
       "report": "docs/convergence/R10_REPRIORITIZE_REDIRECT_REPAIR_VERIFICATION.json",
       "scope": "read-only exact isolated repair diff, fresh venv gate, projection, and command-center regressions"
+    },
+    {
+      "role": "proving window lineage and monitor repair adjudicator",
+      "agent": "/root/proving_window_gate_verifier",
+      "provider_route": "router_commandcode_deepseek_v4_flash",
+      "provider": "commandcode",
+      "model": "deepseek-v4-flash",
+      "status": "COMPLETED_PASS_CURRENT_MAIN_RECONCILED",
+      "report": "docs/convergence/PROVING_WINDOW_REPAIR_RECONCILIATION_20260818.json",
+      "scope": "read-only comparison of historical repair commits with current main; current proving and monitor tests"
     }
   ],
   "promotion": {
     "status": "R8_R9_R10_R11_R12_BOUNDED_VERIFIED_PROVING_WAITING",
     "promotion_worktree": "C:/temp/JARVIS-Foundry-R8-PROMOTE",
     "promotion_commit": "949b4effdf28a2d938a628811fb9c751f5cb222c",
-    "latest_evidence_commit": "fcf3b84bb5051aef8d5baaa894847aecb4bd35d2",
+    "latest_evidence_commit": "7f7db2dc04bb2f82fb740b8b3230e878d17cb2c1",
     "latest_live_canary": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_CANARY_20260818.json",
+    "latest_repair_reconciliation": "docs/convergence/PROVING_WINDOW_REPAIR_RECONCILIATION_20260818.json",
     "pre_release_tag": "convergence-pre-r3",
     "post_promotion_runtime_probe": "docs/convergence/LIVE_RUNTIME_PROBE_POST_PROMOTION.json",
     "rollback_bundle": "C:/temp/jarvis-convergence-pre-r3.bundle"
@@ -410,5 +437,5 @@
     "R11 real elapsed proving window and live promotion cycles NOT_TESTED/WAITING",
     "R12 physical host and unavailable-provider fault rows NOT_TESTED/BLOCKED"
   ],
-  "exact_next_action": "continue scheduled WAITING monitor checkpoints; preserve the 2-of-10 live canary count and evidence-mismatch finding; assess the structured worker result producer before another canary; keep R9/R10/R11/R12 external and elapsed boundaries honest; do not close or promote final acceptance until real proving criteria are met"
+  "exact_next_action": "finish and independently reconcile the running restart canary; preserve the 2-of-10 live canary count and evidence-mismatch finding; assess the structured worker result producer before accepting builder claims; keep the proving monitor scope distinction, R9/R10/R11/R12 external boundaries, and elapsed window honest; do not close or promote final acceptance until real proving criteria are met"
 }
