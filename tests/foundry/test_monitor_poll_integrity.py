@@ -235,3 +235,44 @@ def test_poll_retry_dedupes_on_stable_key(db):
             "'discovery.monitor_polled' ORDER BY sequence").fetchall()
     assert len(events) == 2
     assert events[0][0] != events[1][0]
+
+
+def test_poll_retry_returns_original_result_after_candidate_creation(db):
+    monitor_id = register_monitor(db, "mission-1", "vault", "root")
+    item = {"mission_id": "mission-1", "source": "monitor:vault",
+            "objective": "Create a durable retry receipt"}
+    first = poll_monitor(db, monitor_id, [item], poll_key="same-key")
+    retry = poll_monitor(db, monitor_id, [item], poll_key="same-key")
+
+    assert first == {"monitor_id": monitor_id, "items_seen": 1,
+                     "candidates_found": 1}
+    assert retry == first
+    assert db.count("candidates") == 1
+    assert len([event for event in db.events()
+                if event.event_type == "discovery.monitor_polled"]) == 1
+
+
+def test_poll_retry_same_key_returns_identical_result(db):
+    monitor_id = register_monitor(db, "mission-1", "vault", "root")
+    first = poll_monitor(db, monitor_id, [
+        {"objective": "Record the first durable receipt"},
+        {"objective": "Record the second durable receipt"},
+    ], poll_key="same-key")
+
+    assert poll_monitor(db, monitor_id, [], poll_key="same-key") == first
+
+
+def test_distinct_poll_key_still_polls_after_stable_retry(db):
+    monitor_id = register_monitor(db, "mission-1", "vault", "root")
+    item = {"mission_id": "mission-1", "source": "monitor:vault",
+            "objective": "Create a durable retry receipt"}
+    first = poll_monitor(db, monitor_id, [item], poll_key="cycle-1")
+    retry = poll_monitor(db, monitor_id, [], poll_key="cycle-1")
+    distinct = poll_monitor(db, monitor_id, [], poll_key="cycle-2")
+
+    assert first["candidates_found"] == 1
+    assert retry == first
+    assert distinct == {"monitor_id": monitor_id, "items_seen": 0,
+                        "candidates_found": 0}
+    assert len([event for event in db.events()
+                if event.event_type == "discovery.monitor_polled"]) == 2

@@ -13,11 +13,12 @@ Bounded, deterministic:
   implemented in the mission.completed projection handler."""
 from __future__ import annotations
 
+import json
 import uuid
 from typing import Any
 
 from .database import FoundryDatabase
-from .events import Event
+from .events import Event, EventConflict
 from .discovery_candidates import generate_candidate
 
 
@@ -55,6 +56,28 @@ def poll_monitor(db: FoundryDatabase, monitor_id: str,
         raise ValueError(
             f"poll_monitor requires an ENABLED monitor ({monitor_id}) — "
             f"rolled back")
+    poll_event_key = (f"discovery.monitor_polled:{monitor_id}:"
+                      f"{poll_key or uuid.uuid4().hex[:8]}")
+    if poll_key:
+        with db.connect() as connection:
+            existing = connection.execute(
+                "SELECT event_type, payload_json FROM events "
+                "WHERE idempotency_key = ?",
+                (poll_event_key,),
+            ).fetchone()
+        if existing:
+            if existing[0] != "discovery.monitor_polled":
+                raise EventConflict(
+                    f"idempotency conflict for {poll_event_key}")
+            payload = json.loads(existing[1])
+            if payload.get("monitor_id") != monitor_id:
+                raise EventConflict(
+                    f"idempotency conflict for {poll_event_key}")
+            return {
+                "monitor_id": monitor_id,
+                "items_seen": payload["items_seen"],
+                "candidates_found": payload["candidates_found"],
+            }
     found = 0
     for item in items:
         objective = item.get("objective")
@@ -74,8 +97,7 @@ def poll_monitor(db: FoundryDatabase, monitor_id: str,
         {"monitor_id": monitor_id, "items_seen": len(items),
          "candidates_found": found},
         source_type="supervisor", source_id="wp10-discovery",
-        idempotency_key=f"discovery.monitor_polled:{monitor_id}:"
-                        f"{poll_key or uuid.uuid4().hex[:8]}"))
+        idempotency_key=poll_event_key))
     return {"monitor_id": monitor_id, "items_seen": len(items),
             "candidates_found": found}
 
