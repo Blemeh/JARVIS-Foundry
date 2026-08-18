@@ -72,3 +72,8 @@ class WorkerRuntimeConfig:
                 f"worker runtime must route to {DIRECTIVE_PROVIDER!r} + "
                 f"{DIRECTIVE_MODEL!r} only, got {self.provider!r} + "
                 f"{self.model!r}")
+
+    def resolve_stop_path(self, home: Path) -> Path:
+        if self.stop_sentinel_path:
+            return Path(self.stop_sentinel_path).expanduser()
+        return Path(home) / "EMERGENCY_STOP"

@@ -153,6 +153,7 @@ class HermesWorkerAdapter:
                 env=env,
                 timeout_seconds=self.timeout_seconds,
                 heartbeat=heartbeat,
+                run_id=contract.run_id,
             )
         except subprocess.TimeoutExpired:
             heartbeat()

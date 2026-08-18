@@ -1,12 +1,17 @@
 """Worker adapter protocol (framework-neutral boundary)."""
 from __future__ import annotations
 
+import os
 import re
 import subprocess
-from typing import Callable, Protocol
+from pathlib import Path
+from typing import TYPE_CHECKING, Callable, Protocol
 
 from ..contracts import WorkerStepContract
 from ..envelope import ResultEnvelope
+
+if TYPE_CHECKING:
+    from ...supervisor.worker import WorkerController
 
 
 class ProviderUnavailable(RuntimeError):
@@ -68,38 +73,103 @@ def run_subprocess_with_heartbeat(
     interval_seconds: int = 30,
     encoding: str | None = None,
     errors: str | None = None,
+    run_id: str | None = None,
+    workers: "WorkerController | None" = None,
+    stop_path: str | Path | None = None,
+    pid_table: str | Path | None = None,
 ) -> subprocess.CompletedProcess[str]:
     """Run a worker subprocess while heartbeating periodically.
 
     Real worker sessions (Hermes / OpenHands) can far exceed the role lease
     bound; without periodic heartbeats the supervisor's reaper reclaims the
     lease mid-flight and the durable run fails with heartbeat_timeout (live
-    finding 2026-08-16). The subprocess runs in a daemon thread; the main
-    thread heartbeats every ``interval_seconds`` until it finishes. The
-    adapter's own timeout still bounds the session; a heartbeat that can no
-    longer renew (the lease was reaped) propagates honestly.
+    finding 2026-08-16). The subprocess is started with ``Popen`` so its PID
+    can be registered with ``WorkerController`` / the durable PID table
+    before the wait loop; the main thread heartbeats every
+    ``interval_seconds``, polls STOP, and can kill the tree. The adapter's
+    own timeout still bounds the session; a heartbeat that can no longer
+    renew (the lease was reaped) propagates honestly.
+
+    When no ``workers`` / PID table / JARVIS_HOME is available, behavior
+    stays watchdog-only (no live-home registration).
     """
     import threading
+    import time
+
+    from ...supervisor.worker import (
+        default_adapter_pid_table,
+        kill_pid,
+        register_adapter_pid,
+        terminate_popen,
+        unregister_adapter_pid,
+    )
+
+    popen_kwargs: dict[str, object] = {
+        "cwd": cwd,
+        "env": env,
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.PIPE,
+        "text": True,
+    }
+    if encoding is not None:
+        popen_kwargs["encoding"] = encoding
+    if errors is not None:
+        popen_kwargs["errors"] = errors
+
+    process = subprocess.Popen(command, **popen_kwargs)  # type: ignore[arg-type]
+    key = run_id or f"adapter-{process.pid}"
+    table_path = Path(pid_table) if pid_table is not None else default_adapter_pid_table()
+    if workers is not None:
+        workers.attach(key, process, acquire_lease=False)
+    elif table_path is not None:
+        register_adapter_pid(table_path, key, process.pid)
+
+    resolved_stop = stop_path if stop_path is not None else os.environ.get("JARVIS_STOP_PATH")
+    stop = Path(resolved_stop) if resolved_stop else None
 
     holder: dict[str, object] = {}
+    stopped = threading.Event()
 
     def _run_blocking() -> None:
         try:
-            holder["result"] = subprocess.run(
-                command, cwd=cwd, env=env, capture_output=True, text=True,
-                timeout=timeout_seconds,
-                encoding=encoding, errors=errors,
+            stdout, stderr = process.communicate()
+            holder["result"] = subprocess.CompletedProcess(
+                command, process.returncode if process.returncode is not None else -1,
+                stdout, stderr,
             )
         except BaseException as error:  # noqa: BLE001 - surfaced by caller
             holder["error"] = error
 
     thread = threading.Thread(target=_run_blocking, daemon=True)
     thread.start()
-    while thread.is_alive():
-        thread.join(timeout=interval_seconds)
-        heartbeat()
-    thread.join(timeout=1)
-    if "error" in holder:
-        error = holder["error"]
-        raise error  # type: ignore[misc]
-    return holder["result"]  # type: ignore[return-value]
+    deadline = time.monotonic() + timeout_seconds if timeout_seconds > 0 else None
+    try:
+        while thread.is_alive():
+            if stop is not None and stop.exists():
+                stopped.set()
+                terminate_popen(process, timeout=5)
+                kill_pid(process.pid)
+            if deadline is not None and time.monotonic() >= deadline:
+                terminate_popen(process, timeout=5)
+                kill_pid(process.pid)
+                thread.join(timeout=5)
+                raise subprocess.TimeoutExpired(command, timeout_seconds)
+            thread.join(timeout=interval_seconds)
+            heartbeat()
+        thread.join(timeout=1)
+        if "error" in holder:
+            error = holder["error"]
+            raise error  # type: ignore[misc]
+        result = holder["result"]  # type: ignore[assignment]
+        if stopped.is_set() and isinstance(result, subprocess.CompletedProcess):
+            if result.returncode == 0:
+                result = subprocess.CompletedProcess(
+                    command, -15, result.stdout,
+                    (result.stderr or "") + "\nSTOP: adapter child terminated\n",
+                )
+        return result  # type: ignore[return-value]
+    finally:
+        if workers is not None:
+            workers.detach(key)
+        elif table_path is not None:
+            unregister_adapter_pid(table_path, key)

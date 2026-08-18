@@ -108,8 +108,9 @@ def test_openhands_adapter_fails_closed_on_containment_violation(tmp_path):
     before = {"profiles/owner.json": "a" * 64}
     after = {"profiles/owner.json": "a" * 64,
              "conversations/probe/state.json": "b" * 64}
-    with mock.patch.object(oh_module.subprocess, "run",
-                           return_value=fake_result), \
+    with mock.patch.object(
+            oh_module, "run_subprocess_with_heartbeat",
+            return_value=fake_result), \
          mock.patch.object(oh_module, "snapshot_openhands_tree",
                            side_effect=[before, after]):
         envelope = adapter.dispatch(contract(tmp_path), heartbeat=lambda: None)
@@ -328,8 +329,9 @@ def test_openhands_adapter_consumes_machine_result_file(tmp_path):
         timeout_seconds=30)
     adapter._owner_openhands = tmp_path / "owner-openhands"
     adapter._owner_openhands.mkdir()
-    with mock.patch.object(oh_module.subprocess, "run",
-                           return_value=fake_result), \
+    with mock.patch.object(
+            oh_module, "run_subprocess_with_heartbeat",
+            return_value=fake_result), \
          mock.patch.object(oh_module, "snapshot_openhands_tree",
                            side_effect=[before, before]):
         envelope = adapter.dispatch(contract(tmp_path), heartbeat=lambda: None)
@@ -356,8 +358,9 @@ def test_openhands_adapter_missing_result_file_is_not_testable(tmp_path):
         timeout_seconds=30)
     adapter._owner_openhands = tmp_path / "owner-openhands"
     adapter._owner_openhands.mkdir()
-    with mock.patch.object(oh_module.subprocess, "run",
-                           return_value=fake_result), \
+    with mock.patch.object(
+            oh_module, "run_subprocess_with_heartbeat",
+            return_value=fake_result), \
          mock.patch.object(oh_module, "snapshot_openhands_tree",
                            side_effect=[before, before]):
         envelope = adapter.dispatch(contract(tmp_path), heartbeat=lambda: None)

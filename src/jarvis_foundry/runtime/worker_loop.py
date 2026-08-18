@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import time
 import uuid
 from pathlib import Path
@@ -84,6 +85,50 @@ def run_cycle(
     if not config.enabled:
         return {"loop_id": loop_id, "outcome": "DISABLED",
                 "reason": "worker runtime subsystem is not enabled"}
+    previous_env = {
+        "JARVIS_ADAPTER_PID_TABLE": os.environ.get("JARVIS_ADAPTER_PID_TABLE"),
+        "JARVIS_STOP_PATH": os.environ.get("JARVIS_STOP_PATH"),
+    }
+    os.environ["JARVIS_ADAPTER_PID_TABLE"] = str(
+        paths.home / "adapter_worker_pids.json")
+    os.environ["JARVIS_STOP_PATH"] = str(_default_stop_path(paths, config))
+    try:
+        return _run_cycle_body(
+            database, paths, config,
+            loop_id=loop_id, instance_id=instance_id,
+            vault_root=vault_root, handoff_dir=handoff_dir,
+            research_dirs=research_dirs, repo_paths=repo_paths,
+            target_root=target_root, min_score=min_score,
+            score_budget=score_budget, max_items=max_items,
+            max_bytes=max_bytes,
+            instructions_builder=instructions_builder,
+        )
+    finally:
+        for key, value in previous_env.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+
+
+def _run_cycle_body(
+    database: FoundryDatabase,
+    paths: FoundryPaths,
+    config: WorkerRuntimeConfig,
+    *,
+    loop_id: str,
+    instance_id: str,
+    vault_root: str | Path | None,
+    handoff_dir: str | Path | None,
+    research_dirs: Iterable[str | Path],
+    repo_paths: Iterable[str | Path] | None,
+    target_root: str | Path | None,
+    min_score: float,
+    score_budget: int,
+    max_items: int,
+    max_bytes: int,
+    instructions_builder: Callable[[str, Path], str] | None,
+) -> dict[str, Any]:
     estop = EmergencyStop(_default_stop_path(paths, config))
     if estop.active():
         stop = estop.read()

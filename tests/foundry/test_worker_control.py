@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import os
 import sys
+import threading
 import time
 
 import pytest
 
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.supervisor.worker import WorkerController
+from jarvis_foundry.workers.adapters.base import run_subprocess_with_heartbeat
 
 
 def sleep_command(seconds: int = 120) -> list[str]:
@@ -142,3 +145,94 @@ def test_failed_spawn_releases_lease(tmp_path):
 
     assert database.row("leases", "lease_key", "worker:run-bogus") is None
     assert controller.active_runs() == []
+
+
+def test_adapter_heartbeat_child_is_killed_by_terminate_all(tmp_path):
+    """P0-A: adapter children started via run_subprocess_with_heartbeat
+    must be registered with WorkerController so STOP/terminate_all kills
+    them. In-flight Hermes must not outlive jarvis stop."""
+    database = FoundryDatabase(tmp_path / "foundry.db")
+    database.initialize()
+    controller = WorkerController(database, lease_seconds=900)
+    errors: list[BaseException] = []
+
+    def _run() -> None:
+        try:
+            run_subprocess_with_heartbeat(
+                sleep_command(60),
+                cwd=str(tmp_path),
+                env=os.environ.copy(),
+                timeout_seconds=120,
+                heartbeat=lambda: None,
+                interval_seconds=0.1,
+                run_id="adapter-run",
+                workers=controller,
+                stop_path=tmp_path / "NO_STOP",
+            )
+        except BaseException as error:  # noqa: BLE001 - test harness
+            errors.append(error)
+
+    thread = threading.Thread(target=_run, daemon=True)
+    thread.start()
+    deadline = time.monotonic() + 8
+    while time.monotonic() < deadline and not controller.status("adapter-run").alive:
+        time.sleep(0.05)
+    status = controller.status("adapter-run")
+    assert status.alive is True, "adapter child was never registered with WorkerController"
+    process = status.process
+    assert process is not None and process.poll() is None
+
+    killed = controller.terminate_all()
+    assert "adapter-run" in killed
+    deadline = time.monotonic() + 8
+    while time.monotonic() < deadline and process.poll() is None:
+        time.sleep(0.05)
+    assert process.poll() is not None, "STOP/terminate_all left the adapter child alive"
+    thread.join(timeout=5)
+
+
+def test_terminate_all_kills_pid_persisted_by_another_controller(tmp_path):
+    """P0-A: Supervisor terminate_all must kill adapter PIDs recorded next
+    to the ledger even when this process did not spawn them."""
+    database = FoundryDatabase(tmp_path / "foundry.db")
+    database.initialize()
+    registrar = WorkerController(database, lease_seconds=900)
+    child = __import__("subprocess").Popen(sleep_command(60), cwd=str(tmp_path))
+    try:
+        registrar.attach("cross-proc", child, acquire_lease=False)
+        assert child.poll() is None
+        killer = WorkerController(database, lease_seconds=900)
+        killer.terminate_all()
+        deadline = time.monotonic() + 8
+        while time.monotonic() < deadline and child.poll() is None:
+            time.sleep(0.05)
+        assert child.poll() is not None
+    finally:
+        if child.poll() is None:
+            child.kill()
+            child.wait(timeout=5)
+
+
+def test_heartbeat_runner_kills_child_when_stop_file_appears(tmp_path):
+    """P0-A: run_subprocess_with_heartbeat must poll the STOP sentinel and
+    kill the in-flight child instead of waiting out the adapter timeout."""
+    stop = tmp_path / "EMERGENCY_STOP"
+    started = time.monotonic()
+
+    def heartbeat() -> None:
+        if not stop.exists():
+            stop.write_text('{"reason": "test stop"}', encoding="utf-8")
+
+    result = run_subprocess_with_heartbeat(
+        sleep_command(60),
+        cwd=str(tmp_path),
+        env=os.environ.copy(),
+        timeout_seconds=30,
+        heartbeat=heartbeat,
+        interval_seconds=0.1,
+        run_id="stop-run",
+        stop_path=stop,
+    )
+    elapsed = time.monotonic() - started
+    assert elapsed < 8, f"STOP did not interrupt adapter child ({elapsed:.1f}s)"
+    assert result.returncode != 0

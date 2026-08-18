@@ -169,6 +169,7 @@ class OpenHandsWorkerAdapter:
                 heartbeat=heartbeat,
                 encoding="utf-8",
                 errors="replace",
+                run_id=contract.run_id,
             )
         except subprocess.TimeoutExpired:
             heartbeat()
