@@ -1,0 +1,83 @@
+{
+  "schema": "jarvis-canonical-release-freeze-v1",
+  "status": "FROZEN_BEFORE_CANONICAL_POINTER_ADVANCE",
+  "recorded_at": "2026-08-18T16:09:02.591524+00:00",
+  "release": {
+    "pre_release_head": "2b3573606570f910e5569cf3306223354f93e4ac",
+    "pre_release_tag": "convergence-pre-r3",
+    "promotion_commit": "3fae743b0be75be49f075d9270b5c88c95f13968",
+    "source_commit": "ffa9ce4",
+    "branch": "promote/canonical-convergence-r3",
+    "release_pointer_before": "main -> 2b3573606570f910e5569cf3306223354f93e4ac",
+    "release_pointer_after": "PENDING"
+  },
+  "executable": {
+    "package": "jarvis-foundry==0.1.0",
+    "wheel": "C:/temp/r3-wheel-0818/jarvis_foundry-0.1.0-py3-none-any.whl",
+    "wheel_sha256": "abc737f35c793ef3ea3100237f39b9ffe41d3f8237bb3d99f8172d6915fda8c7",
+    "authority_leaf_in_wheel": true,
+    "phase4_in_wheel": true
+  },
+  "source_and_dependencies": {
+    "pyproject_sha256": "E3FBA5A37F3EA2EE0FF11EC00AA15F9CE0E72BC61E60A92FC0091F66C62C1B91",
+    "procedural_learning_config_sha256": "4865AC0371C99CF518006036E41D74CC234DB8B616508549B7767EA9FB943E2D",
+    "runtime_dependency": "PyYAML 6.0.3",
+    "build_dependency": "setuptools 84.0.0"
+  },
+  "database_and_wal": {
+    "database": "C:/Users/b/AppData/Local/hermes/foundry/foundry.db",
+    "schema_version": 33,
+    "sqlite_quick_check": "ok",
+    "event_head": 98145,
+    "wal_state": "read-only probe healthy; no migration or WAL mutation in this promotion",
+    "probe": "docs/convergence/LIVE_RUNTIME_PROBE_PROMOTION.json"
+  },
+  "scheduled_task": {
+    "status": "NOT_CAPTURED — no scheduler/config mutation in this code promotion"
+  },
+  "ports": {
+    "status": "NOT_CAPTURED — no service/port mutation in this code promotion"
+  },
+  "capabilities": {
+    "status": "UNCHANGED_CODE_REGISTRY; live external capability activation not claimed"
+  },
+  "credential_metadata": {
+    "status": "NO_SECRET_VALUES_CAPTURED; live credential provider effects not claimed"
+  },
+  "queues_leases_health": {
+    "supervisor": "RUNNING",
+    "lease": "supervisor:singleton present and advancing",
+    "stop_directives": [],
+    "queues": "not separately enumerated by this read-only probe",
+    "health_probe": "docs/convergence/LIVE_RUNTIME_PROBE_PROMOTION.json"
+  },
+  "evidence": {
+    "canonical_suite": {
+      "path": "docs/convergence/PROMOTION_CANONICAL_FULL_SUITE_JUNIT.xml",
+      "sha256": "EC303FFBB5F96635482D831DA257BB479A6904F84D815FA8315B68BA44A7C74A",
+      "tests": 1222,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "convergence_suite": {
+      "path": "docs/convergence/PROMOTION_CONVERGENCE_JUNIT.xml",
+      "sha256": "0F4F9E124B814AA958485DB20425533D36DC61D96B9D51ADCE7A8B9B4E6AADD0",
+      "tests": 76,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "rollback": {
+    "bundle": "C:/temp/jarvis-convergence-pre-r3.bundle",
+    "bundle_sha256": "B1ECC3A7F03CD2C551D1B74176427F8668402CDBFB4F0E4DC5D5FEBF7423DE67",
+    "recoverable_ref": "convergence-pre-r3 -> 2b3573606570f910e5569cf3306223354f93e4ac",
+    "restore_procedure": "git fetch C:/temp/jarvis-convergence-pre-r3.bundle refs/heads/main:refs/heads/main; git worktree add <rollback-worktree> convergence-pre-r3"
+  },
+  "owner_state": {
+    "r6": "OWNER_REDIRECT_R6_DEFERRED",
+    "eyes": "OUT_OF_SCOPE_READ_ONLY",
+    "canonical_main_mutation": "PENDING_FF_ONLY"
+  }
+}

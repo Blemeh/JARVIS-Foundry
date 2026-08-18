@@ -1,6 +1,6 @@
 {
   "schema": "jarvis-canonical-promotion-state-v1",
-  "status": "VERIFIED_ISOLATED_PROMOTION",
+  "status": "VERIFIED_ISOLATED_PROMOTION_FROZEN",
   "canonical_repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
   "promotion_worktree": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R3",
   "promotion_branch": "promote/canonical-convergence-r3",
@@ -32,6 +32,7 @@
     "doc_staleness": "PASS"
   },
   "canonical_main_mutated": false,
+  "release_freeze": "docs/convergence/PROMOTION_FREEZE.json",
   "release_pointer": "PENDING_CANONICAL_POINTER_ADVANCE",
   "exact_next_action": "advance the canonical release pointer through the isolated promotion commit, then re-run the live read-only probe and reconcile release truth"
 }
