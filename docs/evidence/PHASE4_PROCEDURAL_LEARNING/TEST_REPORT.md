@@ -18,7 +18,7 @@ pytest Tier-C, control/effects/connectors, shadow/evolution slices
 all passed
 
 pytest --collect-only
-1218 tests collected
+1222 tests collected
 
 pytest -q
 EXIT 0
