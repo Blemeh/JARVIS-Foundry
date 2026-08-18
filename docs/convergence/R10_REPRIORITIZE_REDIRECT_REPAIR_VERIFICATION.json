@@ -8,6 +8,7 @@
   "model": "deepseek-v4-flash",
   "verifier_agent": "/root/r10_command_center_boundary_reviewer",
   "verified_base_head": "40ab7b06f5372dbd743e13c883cc5d02d01e2e25",
+  "promoted_commit": "949b4effdf28a2d938a628811fb9c751f5cb222c",
   "mode": "READ_ONLY",
   "verdict": "PASS_WITH_LIVE_CONSUMER_BOUNDARY",
   "files_changed_by_builder": [
@@ -45,5 +46,5 @@
       "reason": "unchanged R10 external boundary"
     }
   ],
-  "recommended_next_action": "Commit this four-file repair from the isolated promotion worktree, then preserve the live-consumer boundary as NOT_TESTED until a bounded Supervisor canary proves downstream interpretation."
+  "recommended_next_action": "Repair is committed and fast-forwarded to main. Preserve the live-consumer boundary as NOT_TESTED until a bounded Supervisor canary proves downstream interpretation."
 }

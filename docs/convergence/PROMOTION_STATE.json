@@ -62,7 +62,7 @@
   "current_forward_port": {
     "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
     "branch": "main",
-    "latest_verified_evidence_head": "25115ad09bb66271c34bfb3577f951fa94985414",
+    "latest_verified_evidence_head": "949b4effdf28a2d938a628811fb9c751f5cb222c",
     "promotion_worktree": "C:/temp/JARVIS-Foundry-R8-PROMOTE",
     "promotion_branch": "promote/r8-production-forward-port",
     "boundary_reviews": [
