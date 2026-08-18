@@ -2,15 +2,15 @@
   "schema": "jarvis-post-v7-canonical-convergence-state-v2",
   "program": "JARVIS Post-V7 Remaster",
   "current_stage": "POST_PROMOTION_PROVING",
-  "current_slice": "Final independent audit recorded for canonical d1c4813 docs-only descendant of tested source 2af8191; full Foundry JUnit 1243/1243 passes; 46/46 convergence JSON parses and doc staleness pass; R7/R9/R10/R11/R12 external boundaries remain honest WAITING/NOT_TESTED/BLOCKED; historical R12 artifact-manifest mismatch preserved",
+  "current_slice": "Canonical 088a7ac includes the bounded R7 monitor-poll idempotency repair and local filesystem research canary; external provider research/effects remain honest WAITING/NOT_TESTED; prior full-suite evidence remains anchored to tested source 2af8191 and is not silently extended to this source repair",
   "r6_state": "OWNER_REDIRECT_R6_DEFERRED",
   "eyes_state": "OUT_OF_SCOPE_READ_ONLY",
   "canonical": {
     "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
     "branch": "main",
-    "head": "d1c48130397497dccf1f922233e1dc26b54a99dd",
-    "source_tree_verified_head": "d1c48130397497dccf1f922233e1dc26b54a99dd",
-    "origin_main": "d1c48130397497dccf1f922233e1dc26b54a99dd",
+    "head": "088a7acc8b2bddbc1b437e74805f2b9f635bc4c7",
+    "source_tree_verified_head": "088a7acc8b2bddbc1b437e74805f2b9f635bc4c7",
+    "origin_main": "088a7acc8b2bddbc1b437e74805f2b9f635bc4c7",
     "dirty_owner_docs_preserved": true,
     "current_full_suite": {
       "path": "docs/convergence/CANONICAL_FULL_SUITE_20260819_EXACT_HEAD.json",
@@ -734,6 +734,8 @@
     "latest_restart_canary": "docs/convergence/PROVING_WINDOW_RESTART_CANARY_20260818.json",
     "latest_repaired_live_canary": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_REPAIRED_CANARY_20260818.json",
     "latest_full_suite": "docs/convergence/CANONICAL_FULL_SUITE_20260819_EXACT_HEAD.json",
+    "latest_r7_local_canary": "docs/convergence/R7_LOCAL_RESEARCH_CANARY_20260819.json",
+    "latest_r7_poll_repair": "docs/convergence/R7_POLL_IDEMPOTENCY_REPAIR_20260819.json",
     "exact_head_audit": "docs/convergence/INDEPENDENT_SEMANTIC_CONVERGENCE_AUDIT_20260819.json",
     "final_audit": {
       "status": "PASS_WITH_BLOCKERS",
