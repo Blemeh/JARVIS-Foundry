@@ -45,7 +45,7 @@ from .base import (
     redact_secrets,
     run_subprocess_with_heartbeat,
 )
-from ..result_contract import read_result_file
+from ..result_contract import MISSING_RESULT_NOTE, ingest_result_claim, result_env
 
 
 class HermesWorkerAdapter:
@@ -127,6 +127,7 @@ class HermesWorkerAdapter:
         env = {
             **os.environ,
             "HERMES_HOME": str(self.hermes_home),
+            **result_env(contract.working_root),
             # The session must operate INSIDE the contract working root so
             # every write lands in the worker's allowed scope. The checkout
             # code is resolved via PYTHONPATH (prepended before site-packages),
@@ -156,11 +157,16 @@ class HermesWorkerAdapter:
         except subprocess.TimeoutExpired:
             heartbeat()
             self._scrub_disposable_home()
+            files, valid = ingest_result_claim(contract.working_root)
+            summary = f"session exceeded {self.timeout_seconds}s bound"
+            if not valid:
+                summary = f"{summary}\n{MISSING_RESULT_NOTE}"
             return ResultEnvelope.from_contract(
                 contract, framework=self.framework,
                 worker_status=FAILED, verdict=VERDICT_NOT_TESTED,
                 claimed_outcome="session timed out",
-                summary=f"session exceeded {self.timeout_seconds}s bound",
+                summary=summary,
+                files_changed=files,
                 started_at=started,
                 exit_state="TIMEOUT",
                 blockers=(f"timeout after {self.timeout_seconds}s",),
@@ -204,12 +210,11 @@ class HermesWorkerAdapter:
         evidence = stdout.strip()[-2000:]
         if note:
             evidence = f"{evidence}\n{note}" if evidence else note
-        result = read_result_file(contract.working_root)
-        if result is None:
-            note = ("[adapter] worker did not write .jarvis-result.json — "
-                    "recorded NOT_TESTED, never PASS")
-            if note not in (evidence or ""):
-                evidence = f"{evidence}\n{note}" if evidence else note
+        result_files, valid_claim = ingest_result_claim(contract.working_root)
+        if not valid_claim:
+            if MISSING_RESULT_NOTE not in (evidence or ""):
+                evidence = (f"{evidence}\n{MISSING_RESULT_NOTE}"
+                            if evidence else MISSING_RESULT_NOTE)
             verdict = VERDICT_NOT_TESTED
         return ResultEnvelope.from_contract(
             contract, framework=self.framework,
@@ -217,8 +222,7 @@ class HermesWorkerAdapter:
             claimed_outcome="Hermes session completed",
             summary=evidence,
             worker_results=(evidence,),
-            files_changed=tuple(result["files_changed"])
-            if result is not None else (),
+            files_changed=result_files,
             started_at=started,
             usage_cost=cost if usage_availability == "available" else NOT_AVAILABLE,
             usage_availability=usage_availability,

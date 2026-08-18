@@ -21,6 +21,7 @@ from typing import Any
 from ..clock import isoformat
 from .contracts import WorkerStepContract
 from .envelope import ResultEnvelope
+from .result_contract import RESULT_FILENAME
 
 
 class EvidenceError(RuntimeError):
@@ -53,13 +54,26 @@ def git_changed_files(root: Path) -> tuple[str, ...]:
     result = _run(["git", "status", "--porcelain"], cwd=root)
     changed: list[str] = []
     for line in result.stdout.splitlines():
-        if len(line) > 3:
-            changed.append(line[3:].strip().replace("\\", "/"))
+        rel = _porcelain_path(line)
+        if rel:
+            changed.append(rel)
     return tuple(sorted(set(changed)))
 
 
+def _porcelain_path(line: str) -> str | None:
+    """Parse a ``git status --porcelain`` path, including quoted names."""
+    if len(line) < 4:
+        return None
+    raw = line[3:].strip().replace("\\", "/")
+    if " -> " in raw:
+        raw = raw.split(" -> ", 1)[1]
+    if len(raw) >= 2 and raw[0] == '"' and raw[-1] == '"':
+        raw = raw[1:-1]
+    return raw or None
+
+
 _CACHE_SEGMENTS = ("__pycache__", ".pytest_cache", ".mypy_cache")
-_CONTROL_FILES = (".jarvis-result.json",)
+_CONTROL_FILES = (RESULT_FILENAME,)
 
 
 def _is_machine_cache(rel: str) -> bool:

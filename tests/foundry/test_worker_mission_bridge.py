@@ -140,4 +140,8 @@ def test_mission_bridge_enriches_instructions_with_result_contract(tmp_path):
     outcome = bridge.dispatch(manifest, heartbeat=lambda: None)
     assert outcome is not None
     assert builder.received, "bridge did not dispatch the builder"
-    assert RESULT_FILENAME in builder.received[0].instructions
+    prompt = builder.received[0].instructions
+    assert RESULT_FILENAME in prompt
+    marker = str((repository / RESULT_FILENAME).resolve())
+    assert marker in prompt
+    assert prompt.index("JARVIS RESULT CONTRACT") < prompt.index("implement feature.py")

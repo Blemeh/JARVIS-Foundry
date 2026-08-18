@@ -89,7 +89,7 @@ class HybridWorkerRoleAdapter:
                 started_at=started, finished_at=isoformat(utc_now()),
             )
         instructions = manifest.instructions
-        instructions = result_instruction(instructions)
+        instructions = result_instruction(instructions, working_root=root)
         if manifest.role == "verifier" and manifest.verification_criteria:
             # The fresh verifier receives the durable acceptance criteria so
             # it can inspect real artifacts against them (Phase G).
