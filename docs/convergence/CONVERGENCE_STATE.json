@@ -262,6 +262,21 @@
       "live_provider_boundary": "NOT_TESTED",
       "new_live_canary_required": true
     },
+    "r9_sourcefix_live_canary_20260819": {
+      "status": "BLOCKED_EXTERNAL_PROVIDER_RATE_LIMIT",
+      "report": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_SOURCEFIX_CANARY_20260819.json",
+      "report_sha256": "6263D07B24BCEFAF876AA94F2FF9F235A8F4FE572417B558E73436A48DF6EC0B",
+      "launch_canonical_head": "a43c181b8fc09bc0a30c798e6f6623608dd2cd58",
+      "provider": "opencode_go",
+      "model": "deepseek-v4-flash",
+      "accepted_missions": 0,
+      "prior_verified_missions_preserved": 2,
+      "required_missions": 10,
+      "result_marker": "ABSENT",
+      "external_effects": "NOT_TESTED",
+      "blocker": "LLMRateLimitError monthly usage limit reached",
+      "next_action": "preserve counts and wait for authorized provider quota restoration or provider configuration change; do not retry blindly"
+    },
     "restart_canary": {
       "status": "FAIL_EXTERNAL_BOUNDARY",
       "report": "docs/convergence/PROVING_WINDOW_RESTART_CANARY_20260818.json",
@@ -709,6 +724,7 @@
     "latest_r9_result_contract_verification": "docs/convergence/R9_LIVE_RESULT_CONTRACT_VERIFICATION_20260818.json",
     "latest_r9_result_contract_repair_verification": "docs/convergence/R9_LIVE_RESULT_CONTRACT_CANONICAL_POST_PROMOTION_VERIFICATION_20260818.json",
     "latest_r9_source_repair": "docs/convergence/R9_RESULT_CONTRACT_SOURCE_REPAIR_20260818.json",
+    "latest_r9_sourcefix_canary": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_SOURCEFIX_CANARY_20260819.json",
     "latest_restart_canary": "docs/convergence/PROVING_WINDOW_RESTART_CANARY_20260818.json",
     "latest_repaired_live_canary": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_REPAIRED_CANARY_20260818.json",
     "latest_full_suite": "docs/convergence/CANONICAL_FULL_SUITE_20260818_R2.json",
@@ -722,9 +738,9 @@
     "R9 real external connector/provider effects NOT_TESTED/WAITING",
     "R10 live voice provider and visual/a11y inspection NOT_TESTED/WAITING",
     "R10 REPRIORITIZE/REDIRECT live Supervisor/mission-loop consumer NOT_TESTED",
-    "R9 repaired live provider result contract NOT_TESTED/BLOCKED after two bounded evidence_mismatch timeouts",
+    "R9 repaired live provider result contract remains OPEN_EXTERNAL_BOUNDARY: source repair focused-pass verified, fresh canary blocked by provider monthly rate limit",
     "R11 real elapsed proving window and live promotion cycles NOT_TESTED/WAITING",
     "R12 physical host and unavailable-provider fault rows NOT_TESTED/BLOCKED"
   ],
-  "exact_next_action": "preserve 2-of-10 accepted mission count and restart-0 count; keep the repaired live canary BLOCKED; repair the live provider/result-contract path before a fresh bounded disposable canary; continue the real proving monitor and do not close final acceptance until elapsed and external criteria are met"
+  "exact_next_action": "preserve 2-of-10 accepted mission count and restart-0 count; keep the sourcefix canary BLOCKED on provider monthly rate limit; do not retry blindly; continue the real proving monitor and resume a fresh bounded canary only after an authorized real provider quota/configuration change; do not close final acceptance until elapsed and external criteria are met"
 }

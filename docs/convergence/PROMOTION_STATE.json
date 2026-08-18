@@ -93,6 +93,7 @@
       ,"docs/convergence/R9_LIVE_RESULT_CONTRACT_VERIFICATION_20260818.json"
       ,"docs/convergence/R9_LIVE_RESULT_CONTRACT_CANONICAL_POST_PROMOTION_VERIFICATION_20260818.json"
       ,"docs/convergence/R9_RESULT_CONTRACT_SOURCE_REPAIR_20260818.json"
+      ,"docs/convergence/PROVING_WINDOW_LIVE_MISSION_SOURCEFIX_CANARY_20260819.json"
     ],
     "status": "BOUNDED_GATES_VERIFIED_R9_FOCUSED_SOURCE_REPAIR_PASS_REPAIRED_LIVE_CANARY_BLOCKED_RESTART_CANARY_BLOCKED_REAL_PROVING_WAITING",
     "repaired_live_canary": {
@@ -136,6 +137,19 @@
       "focused_tests": 67,
       "live_provider_boundary": "NOT_TESTED"
     },
+    "latest_sourcefix_canary": {
+      "path": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_SOURCEFIX_CANARY_20260819.json",
+      "sha256": "6263D07B24BCEFAF876AA94F2FF9F235A8F4FE572417B558E73436A48DF6EC0B",
+      "launch_canonical_head": "a43c181b8fc09bc0a30c798e6f6623608dd2cd58",
+      "status": "BLOCKED_EXTERNAL_PROVIDER_RATE_LIMIT",
+      "provider": "opencode_go",
+      "model": "deepseek-v4-flash",
+      "accepted_missions": 0,
+      "prior_verified_missions": 2,
+      "required_missions": 10,
+      "result_marker": "ABSENT",
+      "external_effects": "NOT_TESTED"
+    },
     "repair3_pending_verification": {
       "worktree": "C:/temp/JARVIS-Foundry-R9-LiveCanary-Repair-3",
       "branch": "repair/r9-live-canary-result-contract-3",
@@ -169,5 +183,5 @@
       "provider": "commandcode",
       "model": "gpt-5.6-luna"
     },
-    "exact_next_action": "preserve 2-of-10 accepted mission count and restart-0 count; keep the repaired live canary BLOCKED; run one fresh bounded disposable canary against exact faa4a98301fa77b68745e5b5e8b11a761cfd71cf and independently inspect result marker, business diff, durable evidence, provider/model, and external-effect boundary; continue the real proving monitor and do not close final acceptance until elapsed and external criteria are met"
+    "exact_next_action": "preserve 2-of-10 accepted mission count and restart-0 count; keep the sourcefix canary BLOCKED on provider monthly rate limit; do not retry blindly; continue the real proving monitor and resume a fresh bounded canary only after an authorized real provider quota/configuration change; do not close final acceptance until elapsed and external criteria are met"
 }

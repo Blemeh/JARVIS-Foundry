@@ -1,0 +1,44 @@
+{
+  "schema": "jarvis-proving-window-live-mission-canary-v1",
+  "status": "BLOCKED_EXTERNAL_PROVIDER_RATE_LIMIT",
+  "section": "mission",
+  "launch_canonical_head": "a43c181b8fc09bc0a30c798e6f6623608dd2cd58",
+  "launch_source_head": "faa4a98301fa77b68745e5b5e8b11a761cfd71cf",
+  "canonical_origin_match": true,
+  "started_at": "2026-08-18T23:59:48+02:00",
+  "stopped_at": "2026-08-19T00:13:41+02:00",
+  "command": "canonical .venv python scripts/hybrid_live_probe.py --section mission --home C:/Users/b/AppData/Local/hermes/foundry --out C:/temp/jarvis-live-mission-r9-sourcefix-20260818-235940",
+  "output": "C:/temp/jarvis-live-mission-r9-sourcefix-20260818-235940",
+  "provider": "opencode_go",
+  "model": "deepseek-v4-flash",
+  "missions_started": [
+    "mission-hybrid-probe-a-3a8370ee"
+  ],
+  "provider_errors": [
+    {
+      "code": "LLMRateLimitError",
+      "conversation_id": "654f9163-cc97-4d69-a9f1-464fa4e9ed66",
+      "timestamp": "2026-08-19T00:02:07.675573",
+      "detail": "Monthly usage limit reached; provider reported reset in 19 days."
+    },
+    {
+      "code": "LLMRateLimitError",
+      "conversation_id": "9e245cf4-60b7-4cb6-95aa-887750cb09de",
+      "timestamp": "2026-08-19T00:04:26.318750",
+      "detail": "Monthly usage limit reached; provider reported reset in 19 days."
+    }
+  ],
+  "result_marker": "ABSENT",
+  "report_mission": "ABSENT",
+  "accepted_missions": 0,
+  "prior_verified_missions_preserved": 2,
+  "required_missions": 10,
+  "external_effects": "NOT_TESTED",
+  "canonical_mutation": "NONE",
+  "worker_processes": "STOPPED_AFTER_PROVIDER_BLOCK",
+  "blockers": [
+    "The configured opencode_go/deepseek-v4-flash provider rejected both observed conversations with LLMRateLimitError.",
+    "No result marker, durable evidence bundle, mission report, or external effect was produced."
+  ],
+  "recommended_next_action": "Preserve the 2-of-10 accepted count and restart-0 count. Keep this canary BLOCKED. Do not retry until the owner-controlled provider quota is restored or a different authorized real provider is configured; unrelated proving monitoring may continue."
+}
