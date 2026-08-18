@@ -6,7 +6,7 @@
   "promotion_branch": "promote/canonical-convergence-r3",
   "source_main_head": "2b3573606570f910e5569cf3306223354f93e4ac",
   "candidate_commit": "7a1dee8f73ffeb61294c006f28682aa61f11c259",
-  "promotion_commit": "8f35a90",
+  "promotion_commit": "e781f2c",
   "previous_release_remains_recoverable": true,
   "verification": {
     "pythonpath": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R3/src",
@@ -41,6 +41,6 @@
   },
   "canonical_main_mutated": true,
   "release_freeze": "docs/convergence/PROMOTION_FREEZE.json",
-  "release_pointer": "main -> 8f35a90 (ff-only from isolated promotion branch)",
+  "release_pointer": "main -> e781f2c (ff-only from isolated promotion branch)",
   "exact_next_action": "commission the final integrated audit of the promoted release and begin the honest proving-window/remaining R7-R12 external-effect gates"
 }

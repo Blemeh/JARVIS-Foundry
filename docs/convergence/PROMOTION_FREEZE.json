@@ -7,10 +7,10 @@
     "pre_release_tag": "convergence-pre-r3",
     "promotion_verification_commit": "3fae743b0be75be49f075d9270b5c88c95f13968",
     "source_commit": "ffa9ce4",
-    "final_release_commit": "8f35a90",
+    "final_release_commit": "e781f2c44211a33bc2d297d38a7a202bf636337f",
     "branch": "promote/canonical-convergence-r3",
     "release_pointer_before": "main -> 2b3573606570f910e5569cf3306223354f93e4ac",
-    "release_pointer_after": "main -> 8f35a90 (ff-only)"
+    "release_pointer_after": "main -> e781f2c (ff-only)"
   },
   "executable": {
     "package": "jarvis-foundry==0.1.0",

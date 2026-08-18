@@ -9,7 +9,7 @@ for "what exists now" claims; the architecture contract wins for binding invaria
 Last reconciled: 2026-08-18 (Post-V7 canonical convergence promotion)
 
 ```text
-CURRENT CANONICAL HEAD:      8f35a90 (main; Post-V7 convergence R3 promoted
+CURRENT CANONICAL HEAD:      e781f2c (main; Post-V7 convergence R3 promoted
                              through isolated worktree; full hash in evidence)
 LETTA PROMOTION ANCESTOR:    2f7360e742559e051109e04ef7f3a82cc64cc2d2 (still an ancestor of HEAD)
 PRE-V8 HISTORICAL BASELINE:  93a3ddc0965dfaf3e4cb9dc0952467bd5250520a (historical only — do not reset to it)
