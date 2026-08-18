@@ -1,6 +1,6 @@
 {
   "schema": "jarvis-canonical-promotion-state-v1",
-  "status": "R4_DEPLOYED_AUDITED_R8_PENDING",
+  "status": "R4_DEPLOYED_AUDITED_R8_VERIFIED_PROVING_WAITING",
   "canonical_repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
   "promotion_worktree": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R4",
   "promotion_branch": "promote/canonical-convergence-r4",
@@ -62,5 +62,5 @@
   "canonical_main_mutated": true,
   "release_freeze": "docs/convergence/PROMOTION_FREEZE_R4.json (deployed and audited)",
   "release_pointer": "main -> 1fa0370; source tree verified at 51d1d4e; previous release remains recoverable",
-  "exact_next_action": "independently verify R8, then keep the scheduled read-only monitor running until real elapsed criteria are met"
+  "exact_next_action": "keep the scheduled read-only monitor running; continue dependency-ready R9/R10/R11/R12 work without claiming external proof"
 }

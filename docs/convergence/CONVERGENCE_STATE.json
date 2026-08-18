@@ -320,7 +320,8 @@
       "agent": "/root/r8_production_gate_fresh_verifier_retry",
       "provider": "commandcode",
       "model": "deepseek-v4-flash",
-      "status": "RUNNING",
+      "status": "COMPLETED_PASS",
+      "report": "docs/convergence/R8_PRODUCTION_GATE_FRESH_VERIFIER.json",
       "candidate_head": "578ada1b35ed5fa8e3440001438902bcf47bb54f",
       "scope": "read-only bounded retry after first verifier nonresponse"
     }
@@ -333,7 +334,7 @@
     "post_promotion_runtime_probe": "docs/convergence/LIVE_RUNTIME_PROBE_POST_PROMOTION.json",
     "rollback_bundle": "C:/temp/jarvis-convergence-pre-r3.bundle"
   },
-  "verifier_state": "R4_DEPLOYED_AUDITED_R8_VERIFICATION_PENDING_PROVING_WINDOW_WAITING_ELAPSED",
+  "verifier_state": "R8_PRODUCTION_GATE_VERIFIED_REAL_PROVING_WINDOW_WAITING_ELAPSED",
   "blockers": [
     "R7 real monitored provider research NOT_TESTED/WAITING",
     "R9 real external connector/provider effects NOT_TESTED/WAITING",
@@ -341,5 +342,5 @@
     "R11 elapsed promotion cycles and proving window NOT_TESTED/WAITING",
     "R12 physical host and unavailable-provider fault rows NOT_TESTED/BLOCKED"
   ],
-  "exact_next_action": "accept only a fresh independent R8 PASS, then continue scheduled WAITING monitor checkpoints through the real seven-day window"
+  "exact_next_action": "continue scheduled WAITING monitor checkpoints; next dependency-ready work is R9/R10/R11/R12 boundary closure without fabricating external effects"
 }
