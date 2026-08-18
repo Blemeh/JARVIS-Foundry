@@ -63,12 +63,15 @@ def _heartbeat(db: FoundryDatabase, at: datetime, *, instance: str = "sup-1",
 
 def _verified_mission(db: FoundryDatabase, mission_id: str, *,
                       builder: str = "builder-run-1",
-                      verifier: str = "verifier-run-1") -> None:
+                      verifier: str = "verifier-run-1",
+                      occurred_at: datetime | None = None) -> None:
+    occurred = occurred_at or _now()
     db.append(Event.create(
         "mission.created",
         {"mission_id": mission_id, "objective": f"objective {mission_id}",
          "acceptance_criteria": ["durable pass"]},
         source_type="test", source_id="test-suite",
+        occurred_at=isoformat(occurred),
         idempotency_key=f"mission.created:{mission_id}",
     ))
     db.append(Event.create(
@@ -76,7 +79,15 @@ def _verified_mission(db: FoundryDatabase, mission_id: str, *,
         {"bundle_id": f"bundle-{mission_id}", "mission_id": mission_id,
          "objective": f"objective {mission_id}", "criteria": ["durable pass"]},
         source_type="test", source_id="test-suite",
+        occurred_at=isoformat(occurred),
         idempotency_key=f"evidence.created:{mission_id}",
+    ))
+    db.append(Event.create(
+        "mission.completed",
+        {"mission_id": mission_id, "objective": f"objective {mission_id}"},
+        source_type="test", source_id="test-suite",
+        occurred_at=isoformat(occurred),
+        idempotency_key=f"mission.completed:{mission_id}",
     ))
     start_verification(
         db,
@@ -89,6 +100,11 @@ def _verified_mission(db: FoundryDatabase, mission_id: str, *,
                       "fresh": True},
         criteria=["durable pass"],
     )
+    for event in db.events():
+        if event.event_type == "verification.started" and \
+                event.payload["verdict_id"] == f"verdict-{mission_id}":
+            occurred_at = event.occurred_at
+            break
     record_verification_outcome(
         db,
         verdict_id=f"verdict-{mission_id}",
@@ -197,6 +213,80 @@ def test_verified_mission_count_requires_independent_pass(
     _verified_mission(db, "mission-b", builder="same-run",
                       verifier="same-run")
     assert verified_mission_count(db) == 1
+
+
+def test_verified_mission_count_excludes_pre_window_work(
+        db: FoundryDatabase) -> None:
+    started = _now() - timedelta(days=4)
+    _register(db, started=started, days=2, missions=2)
+    _verified_mission(db, "mission-old",
+                      occurred_at=started - timedelta(days=2))
+    _verified_mission(db, "mission-new",
+                      occurred_at=started + timedelta(days=1))
+    status = window_status(db, "proving-1", observed_at=started + timedelta(days=5))
+    assert status["verified_mission_count"] == 1
+    assert status["met"] is False
+    assert verified_mission_count(
+        db, started_at=isoformat(started)) == 1
+    assert verified_mission_count(db) == 2
+
+
+def test_authenticated_veto_and_stop_mission_exclude_days(
+        db: FoundryDatabase) -> None:
+    started = _now() - timedelta(days=4)
+    _register(db, started=started, days=2, missions=1)
+    for day in range(4):
+        _heartbeat(db, started + timedelta(days=day), index=day)
+    _append(db, "owner_directive.recorded",
+            {"directive_id": "dir-veto", "command_type": "VETO_ACTION",
+             "target": "mission-window", "exact_text": "veto proving window",
+             "authenticated": True},
+            occurred_at=started + timedelta(days=1),
+            key="veto:dir-veto")
+    _append(db, "owner_directive.recorded",
+            {"directive_id": "dir-stop-mission",
+             "command_type": "STOP_MISSION", "target": "GLOBAL",
+             "exact_text": "stop the window mission",
+             "authenticated": True},
+            occurred_at=started + timedelta(days=2),
+            key="stop-mission:dir-stop-mission")
+    observed = started + timedelta(days=3)
+    days = healthy_days(db, "proving-1", observed_at=observed)
+    assert days["count"] == 1
+    reasons = {entry["reason"] for entry in days["excluded"]}
+    assert reasons == {"veto/stop-mission directive"}
+
+
+def test_revoked_veto_and_stop_mission_do_not_exclude_days(
+        db: FoundryDatabase) -> None:
+    started = _now() - timedelta(days=4)
+    _register(db, started=started, days=2, missions=1)
+    for day in range(4):
+        _heartbeat(db, started + timedelta(days=day), index=day)
+    _append(db, "owner_directive.recorded",
+            {"directive_id": "dir-veto", "command_type": "VETO_ACTION",
+             "target": "mission-window", "exact_text": "veto proving window",
+             "authenticated": True},
+            occurred_at=started + timedelta(days=1),
+            key="veto:dir-veto")
+    _append(db, "owner_directive.recorded",
+            {"directive_id": "dir-stop-mission",
+             "command_type": "STOP_MISSION", "target": "GLOBAL",
+             "exact_text": "stop the window mission",
+             "authenticated": True},
+            occurred_at=started + timedelta(days=2),
+            key="stop-mission:dir-stop-mission")
+    _append(db, "owner_directive.revoked",
+            {"directive_id": "dir-veto", "authenticated": True},
+            occurred_at=started + timedelta(days=2),
+            key="veto:revoke")
+    _append(db, "owner_directive.revoked",
+            {"directive_id": "dir-stop-mission", "authenticated": True},
+            occurred_at=started + timedelta(days=2),
+            key="stop-mission:revoke")
+    observed = started + timedelta(days=1)
+    days = healthy_days(db, "proving-1", observed_at=observed)
+    assert days["count"] == 1
 
 
 def test_window_stays_waiting_until_real_criteria_met(

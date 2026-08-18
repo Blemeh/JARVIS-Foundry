@@ -22,6 +22,7 @@ SUPERVISOR = "supervisor"
 DEFAULT_REQUIRED_DAYS = 7
 DEFAULT_REQUIRED_MISSIONS = 10
 _STOP_TYPES = frozenset({"STOP_EVERYTHING", "PAUSE"})
+_SCOPED_STOP_TYPES = frozenset({"VETO_ACTION", "STOP_MISSION"})
 
 
 class ProvingError(ValueError):
@@ -65,31 +66,60 @@ def _closed(events: list[Event]) -> Event | None:
     return matches[-1] if matches else None
 
 
-def _active_stop_dates(events: list[Event],
-                       horizon: datetime.date) -> set[datetime.date]:
-    """Dates covered by a still-active STOP_EVERYTHING/PAUSE directive.
+def _active_stop_dates(
+    events: list[Event],
+    horizon: datetime.date,
+    *,
+    window_id: str | None = None,
+    window_mission_id: str | None = None,
+) -> dict[datetime.date, str]:
+    """Dates covered by a still-active owner stop/veto directive.
 
-    A directive covers a date when it was recorded on or before that date and
-    was not revoked before the end of that date (conservative: any overlap
-    fails the day closed).
+    ``STOP_EVERYTHING`` / ``PAUSE`` are global. ``VETO_ACTION`` /
+    ``STOP_MISSION`` must be authenticated and target the window's global /
+    mission / window identity; unknown target forms are not treated as
+    matching (fail closed by refusing to count the window day as healthy
+    only when the target is ambiguous is not possible, so ambiguous targets
+    are deliberately ignored and the gate stays conservative: scoped
+    directives must name the window to exclude it). A directive covers a
+    date when it was recorded on or before that date and was not revoked
+    before the end of that date (any overlap fails the day closed).
     """
-    recorded: dict[str, Event] = {}
+    recorded: dict[str, tuple[Event, str]] = {}
     revoked_at: dict[str, datetime] = {}
     for event in events:
         payload = event.payload
-        if event.event_type == "owner_directive.recorded" and payload.get(
-                "command_type") in _STOP_TYPES:
-            recorded[payload["directive_id"]] = event
+        if event.event_type == "owner_directive.recorded":
+            command_type = str(payload.get("command_type") or "")
+            if command_type in _STOP_TYPES or command_type in _SCOPED_STOP_TYPES:
+                recorded[payload["directive_id"]] = (event, command_type)
         elif event.event_type == "owner_directive.revoked":
             revoked_at[payload["directive_id"]] = parse(event.occurred_at)
-    covered: set[datetime.date] = set()
-    for directive_id, event in recorded.items():
+    identities = {"GLOBAL", "proving", "proving-window", "proving_window"}
+    if window_id:
+        identities.update({
+            window_id, f"window:{window_id}", f"proving:{window_id}"})
+    if window_mission_id:
+        identities.update({
+            window_mission_id, f"mission:{window_mission_id}"})
+    covered: dict[datetime.date, str] = {}
+    for directive_id, (event, command_type) in recorded.items():
+        payload = event.payload
+        if command_type in _SCOPED_STOP_TYPES:
+            if not payload.get("authenticated"):
+                continue
+            target = str(payload.get("target") or "").strip() or "GLOBAL"
+            if target not in identities:
+                continue
+            reason = "veto/stop-mission directive"
+        else:
+            reason = "stop/pause directive"
         recorded_day = parse(event.occurred_at).date()
         revoked = revoked_at.get(directive_id)
-        end_day = revoked.date() if revoked is not None else None
+        end_day = (revoked - timedelta(seconds=1)).date() if revoked is not None else None
         day = recorded_day
         while day <= (end_day or horizon):
-            covered.add(day)
+            covered[day] = reason
             day += timedelta(days=1)
     return covered
 
@@ -97,7 +127,7 @@ def _active_stop_dates(events: list[Event],
 def _day_health(
     events: list[Event],
     day: datetime.date,
-    stop_dates: set[datetime.date],
+    stop_dates: dict[datetime.date, str],
 ) -> tuple[bool, str]:
     day_events = [
         event for event in events
@@ -112,7 +142,7 @@ def _day_health(
     if any(event.event_type == "supervisor.stopped" for event in day_events):
         return False, "supervisor stopped"
     if day in stop_dates:
-        return False, "stop/pause directive"
+        return False, stop_dates[day]
     return True, "healthy"
 
 
@@ -126,7 +156,8 @@ def healthy_days(
 
     A day counts only when the calendar day has actually completed
     (``day < observed day``), at least one real ``supervisor.heartbeat``
-    exists on it, and no degraded / STOP / PAUSE evidence overlaps it.
+    exists on it, and no degraded / STOP / PAUSE / authenticated VETO_ACTION
+    or STOP_MISSION (targeting the window) evidence overlaps it.
     """
     all_events = database.events()
     window_events = [
@@ -137,7 +168,11 @@ def healthy_days(
     observed = _as_datetime(observed_at)
     start = parse(registered.payload["started_at"]).date()
     end = observed.date()
-    stop_dates = _active_stop_dates(all_events, end)
+    stop_dates = _active_stop_dates(
+        all_events, end,
+        window_id=window_id,
+        window_mission_id=registered.payload.get("mission_id"),
+    )
     dates: list[str] = []
     excluded: list[dict[str, str]] = []
     day = start
@@ -155,25 +190,93 @@ def healthy_days(
     }
 
 
-def verified_mission_count(database: FoundryDatabase) -> int:
-    """Missions with durable evidence and a genuinely independent PASS verdict.
+def verified_mission_count(
+    database: FoundryDatabase,
+    *,
+    started_at: datetime | str | None = None,
+) -> int:
+    """Missions with durable completion, evidence, and an independent PASS.
 
-    A mission counts only when it exists in the ledger, has at least one
-    evidence bundle, and has at least one PASS verdict whose verifier run is
-    distinct from the builder run (a worker never verifies itself).
+    A mission counts only when it exists in the ledger, has a durable
+    completion event (``mission.completed`` or ``mission.state_changed`` to
+    COMPLETE), has at least one evidence bundle, and has at least one PASS
+    verdict whose verifier run is distinct from the builder run (a worker
+    never verifies itself). When ``started_at`` is provided, the mission's
+    creation, completion, evidence, and PASS verdict must all be recorded on
+    or after that timestamp, so a proving window never reuses work that
+    predates it.
     """
+    started = _as_datetime(started_at) if started_at is not None else None
+    created_at: dict[str, datetime] = {}
+    completed_at: dict[str, datetime] = {}
+    evidence_at: dict[str, datetime] = {}
+    verdict_at: dict[str, datetime] = {}
+    verdict_builder: dict[str, str | None] = {}
+    verdict_verifier: dict[str, str | None] = {}
+    verdict_status: dict[str, str] = {}
+    for event in database.events():
+        payload = event.payload
+        occurred = parse(event.occurred_at)
+        if event.event_type == "mission.created":
+            mission_id = str(payload["mission_id"])
+            created_at[mission_id] = occurred
+        elif event.event_type == "mission.completed":
+            mission_id = str(payload["mission_id"])
+            completed_at[mission_id] = occurred
+        elif (event.event_type == "mission.state_changed"
+              and payload.get("state") == "COMPLETE"):
+            mission_id = str(payload["mission_id"])
+            completed_at[mission_id] = occurred
+        elif event.event_type == "evidence.created":
+            mission_id = str(payload["mission_id"])
+            evidence_at[mission_id] = occurred
+        elif event.event_type == "verification.started":
+            verdict_id = str(payload["verdict_id"])
+            verdict_builder[verdict_id] = payload.get("builder_run_id")
+            verdict_verifier[verdict_id] = payload.get("verifier_run_id")
+            verdict_status[verdict_id] = "STARTED"
+            verdict_at[verdict_id] = occurred
+        elif event.event_type == "verification.passed":
+            verdict_id = str(payload["verdict_id"])
+            verdict_status[verdict_id] = "PASS"
+            verdict_at[verdict_id] = occurred
     with database.connect() as connection:
-        row = connection.execute(
-            """SELECT COUNT(DISTINCT v.mission_id) AS count
-               FROM verification_verdicts v
+        rows = connection.execute(
+            """SELECT v.verdict_id, v.mission_id FROM verification_verdicts v
                JOIN evidence_bundles e ON e.mission_id = v.mission_id
-               JOIN missions m ON m.mission_id = v.mission_id
-               WHERE v.status = 'PASS' AND v.verdict = 'PASS'
-                 AND v.verifier_run_id IS NOT NULL
-                 AND (v.builder_run_id IS NULL
-                      OR v.builder_run_id != v.verifier_run_id)"""
-        ).fetchone()
-    return int(row["count"])
+               WHERE v.status = 'PASS' AND v.verdict = 'PASS'"""
+        ).fetchall()
+    counted: set[str] = set()
+    count = 0
+    for row in rows:
+        verdict_id = str(row["verdict_id"])
+        mission_id = str(row["mission_id"])
+        if verdict_id not in verdict_status or verdict_status[verdict_id] != "PASS":
+            continue
+        if not verdict_verifier.get(verdict_id):
+            continue
+        builder = verdict_builder.get(verdict_id)
+        if builder and builder == verdict_verifier[verdict_id]:
+            continue
+        if mission_id in counted:
+            continue
+        if mission_id not in completed_at:
+            continue
+        if started is not None:
+            created = created_at.get(mission_id)
+            if created is None or created < started:
+                continue
+            if completed_at[mission_id] < started:
+                continue
+            evidence = evidence_at.get(mission_id)
+            if evidence is None or evidence < started:
+                continue
+            verdict = verdict_at.get(verdict_id)
+            if verdict is None or verdict < started:
+                continue
+        counted.add(mission_id)
+        count += 1
+    return count
 
 
 def window_status(
@@ -190,7 +293,8 @@ def window_status(
     required_missions = int(payload["required_missions"])
     observed = _as_datetime(observed_at)
     days = healthy_days(database, window_id, observed_at=observed)
-    missions = verified_mission_count(database)
+    missions = verified_mission_count(
+        database, started_at=payload["started_at"])
     met = days["count"] >= required_days and missions >= required_missions
     close = _closed(events)
     state = close.payload["outcome"] if close else "OPEN"
