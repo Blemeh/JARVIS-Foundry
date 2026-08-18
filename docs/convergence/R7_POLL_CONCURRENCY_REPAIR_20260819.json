@@ -1,0 +1,51 @@
+{
+  "schema": "jarvis-r7-poll-concurrency-repair-v1",
+  "stage": "R7",
+  "status": "PASS_BOUNDED_REPAIR",
+  "parent_head": "742f7a1ab657e47f8f6575bb7be94cee7c9b50f0",
+  "canonical_source_head": "f37f852b3b328aa39476f86fb4f7b7e9d57836a9",
+  "commit": "f37f852 fix: serialize concurrent monitor poll retries",
+  "files_changed": [
+    "src/jarvis_foundry/database.py",
+    "src/jarvis_foundry/discovery_candidates.py",
+    "src/jarvis_foundry/discovery_monitors.py",
+    "tests/foundry/test_monitor_poll_integrity.py"
+  ],
+  "finding_closed": {
+    "before": "Separate duplicate lookup and poll append transactions allowed concurrent same-key callers to race.",
+    "after": "Monitor validation, stable-key replay, candidate generation, and poll-event append share one BEGIN IMMEDIATE transaction.",
+    "history_preserved": true,
+    "unrelated_event_collision": "EventConflict",
+    "disabled_unknown_monitor": "ValueError"
+  },
+  "verification": {
+    "focused_tests": {
+      "tests/foundry/test_monitor_poll_integrity.py": 11,
+      "tests/foundry/test_discovery_monitors.py": 10,
+      "tests/convergence/test_r7_research_lineage_gate.py": 11,
+      "total": 32,
+      "passed": 32,
+      "failed": 0
+    },
+    "py_compile": "PASS",
+    "diff_check": "PASS",
+    "concurrent_same_key": {
+      "callers": 2,
+      "identical_results": true,
+      "selectable_candidates": 1,
+      "poll_events": 1
+    },
+    "broad_suite": "NOT_RUN; prior full-suite evidence remains anchored to 2af8191"
+  },
+  "independent_verifier": {
+    "agent": "/root/r7_poll_concurrency_short_verifier_luna",
+    "execution_label": "Luna Max",
+    "provider": "commandcode",
+    "model": "gpt-5.6-luna",
+    "route": "router_commandcode_gpt_5_6_luna",
+    "transport": "codex-router",
+    "provider_telemetry": "NOT_EXPOSED_BY_VERIFIER_SHELL",
+    "status": "PASS"
+  },
+  "boundary": "This closes local durable same-key concurrency semantics only. External provider research/effects, voice, physical-host faults, and elapsed proving remain NOT_TESTED/WAITING/BLOCKED."
+}
