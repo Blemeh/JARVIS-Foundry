@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import math
+import sqlite3
 import uuid
 from typing import Any
 
@@ -79,41 +80,53 @@ def score_objective(objective: str, *, age_hours: float = 0.0,
     return score, weights
 
 
-def covered_objective(db: FoundryDatabase, objective: str) -> str | None:
+def covered_objective(
+    db: FoundryDatabase, objective: str,
+    *, connection: sqlite3.Connection | None = None,
+) -> str | None:
     """Whether the canonicalized objective is already covered by an
     existing candidate or mission (V4-S5 round 2: the poll feed uses
     this so repeated polls can never increase candidates). Returns the
     covering candidate/mission id, or None."""
-    return _find_duplicate(db, canonicalize_statement(objective))
+    return _find_duplicate(db, canonicalize_statement(objective), connection=connection)
 
 
-def _find_duplicate(db: FoundryDatabase, canonical: str) -> str | None:
-    with db.connect() as connection:
-        row = connection.execute(
+def _find_duplicate(
+    db: FoundryDatabase, canonical: str,
+    *, connection: sqlite3.Connection | None = None,
+) -> str | None:
+    def find(current: sqlite3.Connection) -> str | None:
+        row = current.execute(
             "SELECT candidate_id FROM candidates "
             "WHERE objective_canonical = ? ORDER BY rowid LIMIT 1",
             (canonical,)).fetchone()
         if row:
             return row[0]
         # missions store RAW objectives — compare canonicalized in Python
-        for mission in connection.execute(
+        for mission in current.execute(
                 "SELECT mission_id, objective FROM missions "
                 "ORDER BY rowid").fetchall():
             if canonicalize_statement(mission[1]) == canonical:
                 return mission[0]
         return None
 
+    if connection is not None:
+        return find(connection)
+    with db.connect() as current:
+        return find(current)
+
 
 def generate_candidate(db: FoundryDatabase, mission_id: str, source: str,
                        objective: str, evidence: list[dict[str, Any]] | None = None,
+                       *, connection: sqlite3.Connection | None = None,
                        ) -> dict[str, Any]:
     """Record a candidate; duplicate detection via the canonicalized
     objective (vs candidates AND missions). Returns
     {candidate_id, created, duplicate_of}."""
     canonical = canonicalize_statement(objective)
-    duplicate = _find_duplicate(db, canonical)
+    duplicate = _find_duplicate(db, canonical, connection=connection)
     candidate_id = f"cand-{uuid.uuid4().hex[:12]}"
-    db.append(Event.create(
+    event = Event.create(
         "discovery.candidate_generated",
         {"candidate_id": candidate_id, "mission_id": mission_id,
          "source": source, "objective": objective,
@@ -121,7 +134,11 @@ def generate_candidate(db: FoundryDatabase, mission_id: str, source: str,
          "evidence": evidence or [],
          "duplicate_of": duplicate},
         source_type="supervisor", source_id="wp10-discovery",
-        idempotency_key=f"discovery.candidate_generated:{candidate_id}"))
+        idempotency_key=f"discovery.candidate_generated:{candidate_id}")
+    if connection is None:
+        db.append(event)
+    else:
+        db.append_events_on_connection(connection, [event])
     return {"candidate_id": candidate_id, "created": duplicate is None,
             "duplicate_of": duplicate}
 

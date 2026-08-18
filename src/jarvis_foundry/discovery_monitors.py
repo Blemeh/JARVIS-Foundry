@@ -48,58 +48,57 @@ def poll_monitor(db: FoundryDatabase, monitor_id: str,
     makes a crash-retried poll of the same cycle idempotent (the loop
     passes its loop_id — distinct cycles poll distinctly).
     """
-    with db.connect() as connection:
+    poll_event_key = (f"discovery.monitor_polled:{monitor_id}:"
+                      f"{poll_key or uuid.uuid4().hex[:8]}")
+    with db.transaction() as connection:
         row = connection.execute(
             "SELECT enabled FROM monitors WHERE monitor_id = ?",
             (monitor_id,)).fetchone()
-    if row is None or row[0] != 1:
-        raise ValueError(
-            f"poll_monitor requires an ENABLED monitor ({monitor_id}) — "
-            f"rolled back")
-    poll_event_key = (f"discovery.monitor_polled:{monitor_id}:"
-                      f"{poll_key or uuid.uuid4().hex[:8]}")
-    if poll_key:
-        with db.connect() as connection:
+        if row is None or row[0] != 1:
+            raise ValueError(
+                f"poll_monitor requires an ENABLED monitor ({monitor_id}) — "
+                f"rolled back")
+        if poll_key:
             existing = connection.execute(
                 "SELECT event_type, payload_json FROM events "
                 "WHERE idempotency_key = ?",
                 (poll_event_key,),
             ).fetchone()
-        if existing:
-            if existing[0] != "discovery.monitor_polled":
-                raise EventConflict(
-                    f"idempotency conflict for {poll_event_key}")
-            payload = json.loads(existing[1])
-            if payload.get("monitor_id") != monitor_id:
-                raise EventConflict(
-                    f"idempotency conflict for {poll_event_key}")
-            return {
-                "monitor_id": monitor_id,
-                "items_seen": payload["items_seen"],
-                "candidates_found": payload["candidates_found"],
-            }
-    found = 0
-    for item in items:
-        objective = item.get("objective")
-        if not objective or not str(objective).strip():
-            continue  # empty objectives never fabricate candidates
-        from .discovery_candidates import covered_objective
-        if covered_objective(db, str(objective)) is not None:
-            continue  # already covered — polls never duplicate work
-        result = generate_candidate(
-            db, item.get("mission_id", "mission-1"),
-            item.get("source", "monitor-feed"),
-            objective, item.get("evidence"))
-        if result["created"]:
-            found += 1
-    db.append(Event.create(
-        "discovery.monitor_polled",
-        {"monitor_id": monitor_id, "items_seen": len(items),
-         "candidates_found": found},
-        source_type="supervisor", source_id="wp10-discovery",
-        idempotency_key=poll_event_key))
-    return {"monitor_id": monitor_id, "items_seen": len(items),
-            "candidates_found": found}
+            if existing:
+                if existing[0] != "discovery.monitor_polled":
+                    raise EventConflict(
+                        f"idempotency conflict for {poll_event_key}")
+                payload = json.loads(existing[1])
+                if payload.get("monitor_id") != monitor_id:
+                    raise EventConflict(
+                        f"idempotency conflict for {poll_event_key}")
+                return {
+                    "monitor_id": monitor_id,
+                    "items_seen": payload["items_seen"],
+                    "candidates_found": payload["candidates_found"],
+                }
+        found = 0
+        for item in items:
+            objective = item.get("objective")
+            if not objective or not str(objective).strip():
+                continue  # empty objectives never fabricate candidates
+            from .discovery_candidates import covered_objective
+            if covered_objective(db, str(objective), connection=connection) is not None:
+                continue  # already covered — polls never duplicate work
+            result = generate_candidate(
+                db, item.get("mission_id", "mission-1"),
+                item.get("source", "monitor-feed"),
+                objective, item.get("evidence"), connection=connection)
+            if result["created"]:
+                found += 1
+        db.append_events_on_connection(connection, [Event.create(
+            "discovery.monitor_polled",
+            {"monitor_id": monitor_id, "items_seen": len(items),
+             "candidates_found": found},
+            source_type="supervisor", source_id="wp10-discovery",
+            idempotency_key=poll_event_key)])
+        return {"monitor_id": monitor_id, "items_seen": len(items),
+                "candidates_found": found}
 
 
 def disable_monitor(db: FoundryDatabase, monitor_id: str, reason: str) -> None:

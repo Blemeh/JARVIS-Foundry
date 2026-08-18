@@ -14,6 +14,8 @@ deleg_71efdc9e FAIL findings, repaired:
 from __future__ import annotations
 
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
 
 import pytest
 
@@ -276,3 +278,36 @@ def test_distinct_poll_key_still_polls_after_stable_retry(db):
                         "candidates_found": 0}
     assert len([event for event in db.events()
                 if event.event_type == "discovery.monitor_polled"]) == 2
+
+
+def test_concurrent_same_key_poll_is_serialized_and_replayed(db):
+    """Concurrent callers must share one durable poll result.
+
+    The monitor transaction takes the SQLite write lock before checking the
+    stable key, so the losing caller observes the committed poll event rather
+    than creating another selectable candidate or raising EventConflict.
+    """
+    monitor_id = register_monitor(db, "mission-1", "vault", "root")
+    item = {"mission_id": "mission-1", "source": "monitor:vault",
+            "objective": "Investigate the concurrent retry regression"}
+    barrier = Barrier(2)
+
+    def invoke():
+        barrier.wait(timeout=5)
+        return poll_monitor(db, monitor_id, [item], poll_key="concurrent-key")
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(lambda _: invoke(), range(2)))
+
+    expected = {"monitor_id": monitor_id, "items_seen": 1,
+                "candidates_found": 1}
+    assert results == [expected, expected]
+    with db.connect() as connection:
+        candidate_count = connection.execute(
+            "SELECT COUNT(*) FROM candidates WHERE status IN ('NEW', 'SCORED', 'APPROVED')"
+        ).fetchone()[0]
+        poll_count = connection.execute(
+            "SELECT COUNT(*) FROM events WHERE event_type = 'discovery.monitor_polled'"
+        ).fetchone()[0]
+    assert candidate_count == 1
+    assert poll_count == 1

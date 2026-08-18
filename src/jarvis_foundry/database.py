@@ -78,35 +78,53 @@ class FoundryDatabase:
         """
         results: list[tuple[int, bool]] = []
         with self.transaction() as connection:
-            for event in events:
-                event.validate()
-                existing = connection.execute(
-                    "SELECT sequence, event_id, event_type, payload_hash FROM events WHERE idempotency_key = ?",
-                    (event.idempotency_key,),
-                ).fetchone()
-                if existing:
-                    identical = (
-                        existing["event_type"] == event.event_type
-                        and existing["payload_hash"] == event.payload_hash
-                    )
-                    if not identical:
-                        raise EventConflict(f"idempotency conflict for {event.idempotency_key}")
-                    results.append((int(existing["sequence"]), False))
-                    continue
-                cursor = connection.execute(
-                    """INSERT INTO events(
-                        event_id, event_type, occurred_at, recorded_at, source_type, source_id,
-                        correlation_id, causation_id, idempotency_key, schema_version,
-                        payload_json, payload_hash
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                    (
-                        event.event_id, event.event_type, event.occurred_at, event.recorded_at,
-                        event.source_type, event.source_id, event.correlation_id, event.causation_id,
-                        event.idempotency_key, event.schema_version, canonical_json(event.payload), event.payload_hash,
-                    ),
+            results.extend(self._append_events_on_connection(connection, events))
+        return results
+
+    def append_events_on_connection(
+        self, connection: sqlite3.Connection, events: list[Event]
+    ) -> list[tuple[int, bool]]:
+        """Append events while an existing caller-owned transaction is open.
+
+        This is intentionally a narrow escape hatch for state transitions that
+        must combine their projection reads and event writes atomically.
+        """
+        return self._append_events_on_connection(connection, events)
+
+    @staticmethod
+    def _append_events_on_connection(
+        connection: sqlite3.Connection, events: list[Event]
+    ) -> list[tuple[int, bool]]:
+        results: list[tuple[int, bool]] = []
+        for event in events:
+            event.validate()
+            existing = connection.execute(
+                "SELECT sequence, event_id, event_type, payload_hash FROM events WHERE idempotency_key = ?",
+                (event.idempotency_key,),
+            ).fetchone()
+            if existing:
+                identical = (
+                    existing["event_type"] == event.event_type
+                    and existing["payload_hash"] == event.payload_hash
                 )
-                apply_event(connection, event)
-                results.append((int(cursor.lastrowid), True))
+                if not identical:
+                    raise EventConflict(f"idempotency conflict for {event.idempotency_key}")
+                results.append((int(existing["sequence"]), False))
+                continue
+            cursor = connection.execute(
+                """INSERT INTO events(
+                    event_id, event_type, occurred_at, recorded_at, source_type, source_id,
+                    correlation_id, causation_id, idempotency_key, schema_version,
+                    payload_json, payload_hash
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    event.event_id, event.event_type, event.occurred_at, event.recorded_at,
+                    event.source_type, event.source_id, event.correlation_id, event.causation_id,
+                    event.idempotency_key, event.schema_version, canonical_json(event.payload), event.payload_hash,
+                ),
+            )
+            apply_event(connection, event)
+            results.append((int(cursor.lastrowid), True))
         return results
 
     def events(self) -> list[Event]:
