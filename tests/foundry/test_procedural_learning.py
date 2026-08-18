@@ -6,6 +6,7 @@ import os
 import subprocess
 import sys
 import time
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -19,6 +20,7 @@ from jarvis_foundry.execution.pipeline import execute as execute_pipeline
 from jarvis_foundry.procedural_learning import (
     ActionAuthorityError,
     BundleIntegrityError,
+    BundleVersionError,
     LocalStateOracle,
     OpenAdaptAdapter,
     OpenAdaptConfig,
@@ -128,6 +130,15 @@ def test_bundle_tamper_rejected(bundle):
     workflow.write_text(workflow.read_text(encoding="utf-8") + "tampered", encoding="utf-8")
     with pytest.raises(BundleIntegrityError):
         verify_bundle(bundle)
+
+
+def test_unknown_bundle_version_fails_closed(bundle):
+    unknown = replace(
+        bundle,
+        artifact_manifest={**bundle.artifact_manifest, "jarvis_bundle_version": "9.9.9"},
+    )
+    with pytest.raises(BundleVersionError):
+        verify_bundle(unknown)
 
 
 def test_secret_and_prompt_injection_are_not_bundled(tmp_path: Path):
@@ -262,6 +273,31 @@ def test_false_visual_success_freezes_against_real_oracle(db, bundle, monkeypatc
     )
     assert result.status == "FROZEN"
     assert result.effect_state["status"] == "FROZEN"
+
+
+def test_stop_during_replay_freezes_and_does_not_retry(db, bundle, monkeypatch, tmp_path):
+    tier_id = _tier_c(db, bundle)
+    adapter = _fake_adapter(monkeypatch, status="FROZEN")
+    calls: list[str] = []
+    original = adapter.replay
+    def counted(*args, **kwargs):
+        calls.append("run")
+        return original(*args, **kwargs)
+    monkeypatch.setattr(adapter, "replay", counted)
+    result = governed_replay(
+        db, tier_c_procedure_id=tier_id, mission_id="m", run_id="r",
+        request_id="stop-during", params={"task": "A", "option": "B"}, adapter=adapter,
+        run_dir=tmp_path / "run", oracle=lambda: {"exists": False, "content_hash": "wrong"},
+    )
+    assert result.status == "FROZEN"
+    assert calls == ["run"]
+    resumed = governed_replay(
+        db, tier_c_procedure_id=tier_id, mission_id="m", run_id="r2",
+        request_id="stop-during", params={"task": "A", "option": "B"}, adapter=adapter,
+        run_dir=tmp_path / "run2", oracle=lambda: {"exists": False, "content_hash": "wrong"},
+    )
+    assert resumed.status == "FROZEN"
+    assert calls == ["run"]
 
 
 def test_stop_before_replay_never_launches(db, bundle, monkeypatch, tmp_path):
