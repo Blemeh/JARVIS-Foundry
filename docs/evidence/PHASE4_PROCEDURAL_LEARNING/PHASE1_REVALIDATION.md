@@ -19,6 +19,11 @@ The frozen contract and evidence files are:
 - `evidence\openadapt_windows_probe.txt`
 - `openadapt\bundle-synthetic18\manifest.json`
 
+The Phase-1 `final\evidence_manifest.json` was rehashed: 51/51 entries were
+present; every OpenAdapt artifact listed above matched its recorded SHA-256.
+The lab's separately recorded historical Phase-2 entry-contract drift remains
+unchanged and was not repaired as part of this Phase-4 mission.
+
 Revalidated Phase-1 posture:
 
 | Surface | Result | Phase-4 treatment |
@@ -39,4 +44,3 @@ The two unresolved Phase-1 findings were treated as hard Phase-4 requirements:
    effect state was not sufficient to assume safety. Phase 4 routes every
    replay through JARVIS's existing effect journal and reconciliation path;
    ambiguous outcomes freeze and never blindly retry.
-
