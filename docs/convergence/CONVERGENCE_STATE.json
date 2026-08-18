@@ -99,6 +99,16 @@
     "stop_directives": [],
     "credential_values_recorded": false
   },
+  "live_state": {
+    "status": "REAL_PROVING_WINDOW_STARTED_WAITING_ELAPSED",
+    "manifest": "C:/Users/b/AppData/Local/hermes/foundry/evidence/proving-window/manifest-r4-real.json",
+    "checkpoint": "C:/Users/b/AppData/Local/hermes/foundry/evidence/proving-window/checkpoint-r4-real.json",
+    "runtime_start_evidence": "docs/convergence/PROVING_WINDOW_RUNTIME_START_R4.json",
+    "scheduled_monitor_task": "JARVIS-Foundry-Proving-Window-Monitor",
+    "registered_event_sequence": 99426,
+    "started_at": "2026-08-18T17:57:26.791325Z",
+    "claims_external_effects": false
+  },
   "remaster_evidence": {
     "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry-Remaster",
     "branch": "remaster/post-v7-purpose",
@@ -294,7 +304,7 @@
     "post_promotion_runtime_probe": "docs/convergence/LIVE_RUNTIME_PROBE_POST_PROMOTION.json",
     "rollback_bundle": "C:/temp/jarvis-convergence-pre-r3.bundle"
   },
-  "verifier_state": "R4_DEPLOYED_AUDITED_R8_VERIFICATION_AND_PROVING_WINDOW_PENDING",
+  "verifier_state": "R4_DEPLOYED_AUDITED_R8_VERIFICATION_PENDING_PROVING_WINDOW_WAITING_ELAPSED",
   "blockers": [
     "R7 real monitored provider research NOT_TESTED/WAITING",
     "R9 real external connector/provider effects NOT_TESTED/WAITING",
@@ -302,5 +312,5 @@
     "R11 elapsed promotion cycles and proving window NOT_TESTED/WAITING",
     "R12 physical host and unavailable-provider fault rows NOT_TESTED/BLOCKED"
   ],
-  "exact_next_action": "independently verify the R8 production gate, then register the real Supervisor-owned proving window and start the read-only monitor"
+  "exact_next_action": "accept only a fresh independent R8 PASS, then continue scheduled WAITING monitor checkpoints through the real seven-day window"
 }

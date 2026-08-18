@@ -48,8 +48,18 @@
     "sqlite_quick_check": "ok",
     "stop_directives": []
   },
+  "real_proving_window": {
+    "window_id": "post-r4-real-20260818",
+    "started_at": "2026-08-18T17:57:26.791325Z",
+    "manifest": "C:/Users/b/AppData/Local/hermes/foundry/evidence/proving-window/manifest-r4-real.json",
+    "checkpoint": "C:/Users/b/AppData/Local/hermes/foundry/evidence/proving-window/checkpoint-r4-real.json",
+    "runtime_evidence": "docs/convergence/PROVING_WINDOW_RUNTIME_START_R4.json",
+    "monitor_task": "JARVIS-Foundry-Proving-Window-Monitor",
+    "status": "WAITING_ELAPSED",
+    "claims_external_effects": false
+  },
   "canonical_main_mutated": true,
   "release_freeze": "docs/convergence/PROMOTION_FREEZE_R4.json (deployed and audited)",
   "release_pointer": "main -> 51d1d4e; previous release remains recoverable",
-  "exact_next_action": "independently verify R8, then register the real proving window and schedule its read-only monitor"
+  "exact_next_action": "independently verify R8, then keep the scheduled read-only monitor running until real elapsed criteria are met"
 }

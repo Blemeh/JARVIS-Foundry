@@ -1,0 +1,58 @@
+{
+  "schema": "jarvis-r4-proving-window-runtime-start-v1",
+  "stage": "POST_PROMOTION_PROVING",
+  "release_source_commit": "51d1d4e96b9731eb2c4d13ff0e4db8975e0076ab",
+  "release_pointer": "main",
+  "window_id": "post-r4-real-20260818",
+  "mission_id": "r4-real-proving-window",
+  "controller": "supervisor",
+  "registration": {
+    "event_sequence": 99426,
+    "started_at": "2026-08-18T17:57:26.791325Z",
+    "required_days": 7,
+    "required_missions": 10,
+    "proving_events_at_record": 1
+  },
+  "manifest": {
+    "path": "C:/Users/b/AppData/Local/hermes/foundry/evidence/proving-window/manifest-r4-real.json",
+    "sha256": "08F384B12B433910364CC514765C9F56E68A0D3E746E90635C8CB2D6D0C5F326",
+    "schema": "jarvis-proving-window-manifest-v1",
+    "credential_values_recorded": false,
+    "external_effects": "NOT_TESTED"
+  },
+  "checkpoint": {
+    "path": "C:/Users/b/AppData/Local/hermes/foundry/evidence/proving-window/checkpoint-r4-real.json",
+    "sha256": "02FC4E014F926625856B26874B6BDF745C2B1D089C238772229F5D519A6EDB22",
+    "status": "WAITING_ELAPSED",
+    "manifest_hash": "1ab02da9f85ac74f8363f4bdf979434f216d8d123f474b030891c45c7e29f3ef",
+    "event_head": 99436,
+    "claims_external_effects": false,
+    "sqlite_quick_check": "ok",
+    "schema_version": 33,
+    "active_stop_directives": 0,
+    "heartbeat_source_ids": ["supervisor-afd62533-962e-46af-9b53-633d3cc9bed9"]
+  },
+  "scheduled_monitor": {
+    "task_name": "JARVIS-Foundry-Proving-Window-Monitor",
+    "state": "Ready/Enabled",
+    "interval": "PT5M",
+    "multiple_instances_policy": "IgnoreNew",
+    "command_wrapper": "C:/Users/b/AppData/Local/hermes/foundry/evidence/proving-window/run-monitor-r4.cmd",
+    "wrapper_sha256": "14215312EAF7C794E3B27E55E4879566258FC21039CA909525735BC7C0D14723"
+  },
+  "live_reconciliation": {
+    "event_head_at_record": 99445,
+    "supervisor_status": "RUNNING",
+    "singleton_lease_owner": "supervisor-afd62533-962e-46af-9b53-633d3cc9bed9",
+    "active_stop_directives": 0,
+    "old_rehearsal_artifacts_not_used": true
+  },
+  "honest_boundaries": {
+    "provider": "NOT_TESTED/WAITING",
+    "connector": "NOT_TESTED/WAITING",
+    "voice": "NOT_TESTED/WAITING",
+    "ui": "NOT_TESTED/WAITING",
+    "physical_host_faults": "NOT_TESTED/BLOCKED"
+  },
+  "exact_next_action": "let the scheduled read-only monitor checkpoint durable WAITING state; do not close until seven real elapsed days and ten post-start independently verified missions"
+}

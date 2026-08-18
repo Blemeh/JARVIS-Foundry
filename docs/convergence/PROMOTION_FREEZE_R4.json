@@ -42,7 +42,10 @@
   "scheduled_task": {
     "supervisor_task": "JARVIS-Foundry-Supervisor",
     "supervisor_status": "RUNNING/Enabled",
-    "proving_monitor_task": "NOT_CREATED_UNTIL_REAL_MANIFEST_REGISTRATION"
+    "proving_monitor_task": "JARVIS-Foundry-Proving-Window-Monitor (PT5M, IgnoreNew)",
+    "proving_manifest": "C:/Users/b/AppData/Local/hermes/foundry/evidence/proving-window/manifest-r4-real.json",
+    "proving_checkpoint": "C:/Users/b/AppData/Local/hermes/foundry/evidence/proving-window/checkpoint-r4-real.json",
+    "proving_runtime_evidence": "docs/convergence/PROVING_WINDOW_RUNTIME_START_R4.json"
   },
   "ports": {
     "codex_router": "127.0.0.1:4100 LISTENING",
