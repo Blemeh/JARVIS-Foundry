@@ -34,7 +34,7 @@ class OwnerCommandError(ValueError):
 
 _COMMANDS = frozenset({
     "GOAL", "CONSTRAINT", "ADD_CONSTRAINT", "VETO_ACTION", "STOP_MISSION", "STOP_EVERYTHING",
-    "PAUSE", "RESUME", "RESTART_RECOVERY",
+    "PAUSE", "RESUME", "REPRIORITIZE", "REDIRECT", "RESTART_RECOVERY",
 })
 
 
@@ -131,6 +131,24 @@ class OwnerControlService:
 
     def stop_now(self, *, reason: str, nonce: str, signature: str) -> OwnerCommandResult:
         return self.apply("STOP_EVERYTHING", target="GLOBAL", exact_text=reason, nonce=nonce, signature=signature)
+
+    def reprioritize(self, *, target: str, exact_text: str, nonce: str,
+                     signature: str,
+                     directive_id: str | None = None) -> OwnerCommandResult:
+        """Record an authenticated priority change on the canonical ledger."""
+        return self.apply(
+            "REPRIORITIZE", target=target, exact_text=exact_text,
+            nonce=nonce, signature=signature, directive_id=directive_id,
+        )
+
+    def redirect(self, *, target: str, exact_text: str, nonce: str,
+                 signature: str,
+                 directive_id: str | None = None) -> OwnerCommandResult:
+        """Record an authenticated mission/project redirect on the ledger."""
+        return self.apply(
+            "REDIRECT", target=target, exact_text=exact_text,
+            nonce=nonce, signature=signature, directive_id=directive_id,
+        )
 
     def resume(self, *, nonce: str, signature: str, exact_text: str = "resume jarvis") -> list[str]:
         self._verify("RESUME", "GLOBAL", exact_text, nonce, signature)

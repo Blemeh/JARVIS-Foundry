@@ -158,6 +158,8 @@ def build_snapshot(
     active_vetoes = [d for d in directives if d.get("command_type") in {"VETO_ACTION", "STOP_MISSION", "STOP_EVERYTHING"}]
     goals = [d for d in directives if d.get("command_type") == "GOAL"]
     constraints = [d for d in directives if d.get("command_type") in {"CONSTRAINT", "ADD_CONSTRAINT"}]
+    reprioritizations = [d for d in directives if d.get("command_type") == "REPRIORITIZE"]
+    redirects = [d for d in directives if d.get("command_type") == "REDIRECT"]
     paused = any(d.get("command_type") == "PAUSE" for d in directives)
     stale_leases = [l for l in leases if l.get("expires_at") and str(l["expires_at"]) < generated_at]
     blocked = [m for m in missions if m.get("state") == "BLOCKED"]
@@ -191,6 +193,8 @@ def build_snapshot(
             "goals": [with_ref(d, "directive", "directive_id") for d in goals],
             "constraints": [with_ref(d, "directive", "directive_id") for d in constraints],
             "vetoes": [with_ref(d, "directive", "directive_id") for d in active_vetoes],
+            "reprioritizations": [with_ref(d, "directive", "directive_id") for d in reprioritizations],
+            "redirects": [with_ref(d, "directive", "directive_id") for d in redirects],
             "paused": paused,
             "resume_available": bool(paused or stop),
             "stop_effective_without_hermes_ui_models_network": True,

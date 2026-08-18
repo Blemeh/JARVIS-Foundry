@@ -2,7 +2,7 @@
   "schema": "jarvis-post-v7-canonical-convergence-state-v2",
   "program": "JARVIS Post-V7 Remaster",
   "current_stage": "POST_PROMOTION_PROVING",
-  "current_slice": "R8 production organization verified; R9/R10 bounded gates reviewed; R11 bounded evolution gate reviewed; R12 fault gate freshly rechecked; real elapsed proving window in progress",
+  "current_slice": "R8 production organization verified; R9/R10 bounded gates reviewed; R10 directive repair independently verified; R11 bounded evolution gate reviewed; R12 fault gate freshly rechecked; real elapsed proving window in progress",
   "r6_state": "OWNER_REDIRECT_R6_DEFERRED",
   "eyes_state": "OUT_OF_SCOPE_READ_ONLY",
   "canonical": {
@@ -355,6 +355,16 @@
       "status": "COMPLETED_PASS_WITH_ELAPSED_BOUNDARY",
       "report": "docs/convergence/R11_EVOLUTION_CYCLE_BOUNDARY_REVIEW.json",
       "scope": "read-only controlled self-evolution cycles, promotion ownership, and rollback evidence"
+    },
+    {
+      "role": "R10 REPRIORITIZE/REDIRECT repair fresh verifier",
+      "agent": "/root/r10_command_center_boundary_reviewer",
+      "provider_route": "router_commandcode_deepseek_v4_flash",
+      "provider": "commandcode",
+      "model": "deepseek-v4-flash",
+      "status": "COMPLETED_PASS_WITH_LIVE_CONSUMER_BOUNDARY",
+      "report": "docs/convergence/R10_REPRIORITIZE_REDIRECT_REPAIR_VERIFICATION.json",
+      "scope": "read-only exact isolated repair diff, fresh venv gate, projection, and command-center regressions"
     }
   ],
   "promotion": {
@@ -370,7 +380,7 @@
     "R7 real monitored provider research NOT_TESTED/WAITING",
     "R9 real external connector/provider effects NOT_TESTED/WAITING",
     "R10 live voice provider and visual/a11y inspection NOT_TESTED/WAITING",
-    "R10 REPRIORITIZE/REDIRECT directive surface boundary unresolved",
+    "R10 REPRIORITIZE/REDIRECT live Supervisor/mission-loop consumer NOT_TESTED",
     "R11 real elapsed proving window and live promotion cycles NOT_TESTED/WAITING",
     "R12 physical host and unavailable-provider fault rows NOT_TESTED/BLOCKED"
   ],

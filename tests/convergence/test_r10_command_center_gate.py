@@ -207,6 +207,32 @@ def test_authenticated_directives_use_durable_ledger_and_block_execution(
     assert veto.command_type == "VETO_ACTION"
     snapshot = build_snapshot(db, stop_path=stop)
     assert any(v["directive_id"] == veto.directive_id for v in snapshot["controls"]["vetoes"])
+    # Reprioritize and redirect are authenticated owner directives too; the
+    # Supervisor/mission loop may interpret them later, but the UI never
+    # bypasses this durable authority path.
+    reprioritize_sig = sign_command(
+        secret, "REPRIORITIZE", "project-1", "raise project priority",
+        "r10-reprioritize",
+    )
+    reprioritized = service.reprioritize(
+        target="project-1", exact_text="raise project priority",
+        nonce="r10-reprioritize", signature=reprioritize_sig,
+    )
+    assert reprioritized.command_type == "REPRIORITIZE"
+    assert db.row("directives", "directive_id", reprioritized.directive_id)["active"] == 1
+    redirect_sig = sign_command(
+        secret, "REDIRECT", "mission-1", "use the evidence-first path",
+        "r10-redirect",
+    )
+    redirected = service.redirect(
+        target="mission-1", exact_text="use the evidence-first path",
+        nonce="r10-redirect", signature=redirect_sig,
+    )
+    assert redirected.command_type == "REDIRECT"
+    assert db.row("directives", "directive_id", redirected.directive_id)["active"] == 1
+    snapshot = build_snapshot(db, stop_path=stop)
+    assert [d["directive_id"] for d in snapshot["controls"]["reprioritizations"]] == [reprioritized.directive_id]
+    assert [d["directive_id"] for d in snapshot["controls"]["redirects"]] == [redirected.directive_id]
     # bad signature is refused before any ledger mutation
     with pytest.raises(OwnerAuthenticationError):
         service.apply("PAUSE", target="GLOBAL", exact_text="pause", nonce="r10-pause-bad", signature="bad")

@@ -21,7 +21,7 @@ The focused gate proves, against a fresh canonical ledger:
   via ledger events, recovery/blocked/waiting material, costs with honest
   `UNKNOWN` totals, briefings, voice, and the decision/effect timeline with
   per-record evidence refs and drill-down routes.
-- authenticated owner controls STOP/PAUSE/RESUME/VETO are recorded through
+- authenticated owner controls STOP/PAUSE/RESUME/VETO/REPRIORITIZE/REDIRECT are recorded through
   the SAME durable `owner_directive.*` ledger path used by the Supervisor;
   the UI/voice surface cannot bypass authentication, nonce replay guards, or
   the deterministic policy broker. UI POST controls hit `/api/controls` and
@@ -45,6 +45,7 @@ The focused gate proves, against a fresh canonical ledger:
 | Remaster surface | Canonical main evidence |
 |---|---|
 | goals | `directives` with `command_type=GOAL` -> `controls.goals` |
+| reprioritize / redirect | authenticated `directives` with `command_type=REPRIORITIZE` or `REDIRECT` -> `controls.reprioritizations` / `controls.redirects` |
 | projects | `evolution/portfolio.py` project registry (not a snapshot key) |
 | missions | `missions` projection, `mission.created/state_changed` |
 | candidate decisions / rejected alternatives | `candidates` projection and timeline `candidate*` events |
