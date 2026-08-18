@@ -155,15 +155,30 @@ class HybridWorkerRoleAdapter:
             delta_baseline=(
                 before.changed_files if manifest.role == "verifier" else None))
         agree = report.agree and envelope.worker_status == COMPLETED
+        # MissionLoop treats COMPLETED as "send to verifier". A mismatched
+        # or incomplete claim must not stay COMPLETED or a later verifier
+        # PASS would accept unproven work.
+        if agree:
+            status = envelope.worker_status
+            error_class = None
+            error_detail = None
+        else:
+            status = (
+                envelope.worker_status
+                if envelope.worker_status != COMPLETED
+                else FAILED)
+            error_class = (
+                "evidence_mismatch" if not report.agree else None)
+            error_detail = (
+                "; ".join(report.mismatches) if not report.agree else None)
         return RoleResult(
             run_id=manifest.run_id, role=manifest.role,
-            status=envelope.worker_status,
+            status=status,
             provider=envelope.provider_actual,
             model=envelope.model_actual,
             verdict=envelope.verdict if agree else VERDICT_NOT_TESTED,
             evidence=(envelope.summary,) + tuple(report.mismatches),
-            error_class="evidence_mismatch" if not report.agree else None,
-            error_detail=("; ".join(report.mismatches) if not report.agree
-                          else None),
+            error_class=error_class,
+            error_detail=error_detail,
             started_at=started, finished_at=isoformat(utc_now()),
         )

@@ -71,6 +71,27 @@ def test_not_test_verdict_never_advances(tmp_path):
     assert fails == 0
 
 
+def test_empty_verifier_verdict_does_not_consume_repair_budget(tmp_path):
+    """Unknown/empty verifier verdicts must BLOCK like NOT_TESTED, not FAIL."""
+    database, repository, policy, router = mission_fixture(tmp_path)
+    target = repository / "step-out"
+    target.mkdir()
+    (target / "out.md").write_text("builder output\n", encoding="utf-8")
+    adapter = FakeHermesAdapter(outcome="COMPLETED", verdict=None)
+    loop = MissionLoop(database, router, adapter, policy=policy)
+    outcome = run_step(loop, target=target)
+    assert outcome.outcome == BLOCKED_OUTCOME
+    with database.connect() as connection:
+        fails = connection.execute(
+            "SELECT COUNT(*) FROM verification_verdicts WHERE status = 'FAIL'"
+        ).fetchone()[0]
+        blocked = connection.execute(
+            "SELECT COUNT(*) FROM verification_verdicts WHERE status = 'BLOCKED'"
+        ).fetchone()[0]
+    assert fails == 0
+    assert blocked >= 1
+
+
 def test_fail_verdict_never_advances(tmp_path):
     database, repository, policy, router = mission_fixture(tmp_path)
     target = repository / "step-out"

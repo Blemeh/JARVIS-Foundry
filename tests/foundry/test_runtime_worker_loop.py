@@ -127,9 +127,14 @@ def test_mission_contract_carries_durable_truth(tmp_path):
                              note="proven in test",
                              evidence=("test-proof",))
 
-    builder = MutatingScriptedAdapter(
-        WORKER_OPENHANDS, write_files=("feature.py",),
-        outcome=ScriptedOutcome(files_changed=("feature.py",)))
+    class _DeltaWriter(MutatingScriptedAdapter):
+        def dispatch(self, contract, *, heartbeat):
+            path = contract.working_root / "feature.py"
+            path.write_text(f"attempt {contract.attempt}\n", encoding="utf-8")
+            self.outcome = ScriptedOutcome(files_changed=("feature.py",))
+            return ScriptedWorkerAdapter.dispatch(self, contract, heartbeat=heartbeat)
+
+    builder = _DeltaWriter(WORKER_OPENHANDS)
     verifier = ScriptedWorkerAdapter(
         WORKER_HERMES, outcome=ScriptedOutcome(verdict="FAIL"))
     registry = WorkerRegistry(
@@ -141,7 +146,9 @@ def test_mission_contract_carries_durable_truth(tmp_path):
                         "tests_available": True, "narrow_scope": True,
                         "reversible": True},
             "verifier": {"ambiguous": True, "root_cause_required": True},
-            "repair": {"ambiguous": True, "root_cause_required": True},
+            "repair": {"bounded": True, "explicit_acceptance": True,
+                       "tests_available": True, "narrow_scope": True,
+                       "reversible": True},
         },
     )
     loop = MissionLoop(database, router=RoleRouter(), adapter=bridge,
@@ -169,13 +176,17 @@ def test_mission_contract_carries_durable_truth(tmp_path):
 
     second = loop.run_step(**kwargs)  # state REPAIRING -> role repair
     assert second.outcome == FAILED
-    repairs = [c for c in verifier.received if c.role == "repair"]
+    # Repair is a bounded rewrite, so it is dispatched to OpenHands (the
+    # same writer as the builder). Looking at verifier.received would miss
+    # the repair contract and would only pass if repair were mis-routed to
+    # the Hermes FAIL adapter (empty files_changed over a dirty tree).
+    repairs = [c for c in builder.received if c.role == "repair"]
     assert len(repairs) == 1
     assert repairs[0].attempt == 2
 
     third = loop.run_step(**kwargs)  # repair budget exhausted -> BLOCKED
     assert third.outcome == "BLOCKED"
-    repairs = [c for c in verifier.received if c.role == "repair"]
+    repairs = [c for c in builder.received if c.role == "repair"]
     assert len(repairs) == 2
     assert repairs[-1].attempt == 3
 

@@ -505,19 +505,20 @@ class MissionLoop:
                 commit_head=(commit_state or {}).get("commit_head"),
             )
 
-        if verifier.verdict in {"NOT_TESTED", "BLOCKED"}:
+        if verifier.verdict != "FAIL":
+            recorded = verifier.verdict or "empty"
             record_verification_outcome(
                 self.database, verdict_id=verdict_id, outcome="BLOCKED",
                 findings=list(verifier.evidence),
                 evidence={"verifier_run_id": verifier_run_id},
-                reason=f"verifier verdict {verifier.verdict} is not a FAIL and must not consume repair budget",
-                blocking_dependency=verifier.verdict,
+                reason=f"verifier verdict {recorded} is not a FAIL and must not consume repair budget",
+                blocking_dependency=recorded,
             )
             self._advance(mission_id, "BLOCKED", run_id=run_id)
             return StepOutcome(
                 outcome=BLOCKED_OUTCOME, step_id=step_id, run_id=run_id,
                 verdict_id=verdict_id,
-                reason=f"verifier {verifier.verdict}",
+                reason=f"verifier {recorded}",
             )
 
         # FAIL -> bounded repair or precise BLOCKED
