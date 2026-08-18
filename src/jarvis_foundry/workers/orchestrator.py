@@ -337,7 +337,8 @@ class HybridStepController:
         expected_artifact_hashes: dict[str, str] | None = None,
         persistence_scan_roots: tuple[Path, ...] = (),
     ) -> HybridStepOutcome:
-        enriched = result_instruction(contract.instructions)
+        enriched = result_instruction(
+            contract.instructions, working_root=contract.working_root)
         if enriched != contract.instructions:
             contract = WorkerStepContract(
                 run_id=contract.run_id, mission_id=contract.mission_id,

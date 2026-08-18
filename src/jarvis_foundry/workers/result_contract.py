@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 RESULT_FILENAME = ".jarvis-result.json"
+RESULT_PATH_ENV = "JARVIS_RESULT_PATH"
 
 _RESULT_INSTRUCTION = (
     "\n\nWhen you finish, write a machine-readable result file "
@@ -29,12 +30,65 @@ _RESULT_INSTRUCTION = (
     "fabricate a claim. Never list the result file itself."
 )
 
+MISSING_RESULT_NOTE = (
+    "[adapter] worker did not write .jarvis-result.json — "
+    "recorded NOT_TESTED, never PASS"
+)
 
-def result_instruction(instructions: str) -> str:
-    """Append the machine-result contract when it is not already present."""
+
+def result_path(working_root: Path) -> Path:
+    """Absolute control-file path EvidenceReconciler / adapters inspect."""
+    return working_root.resolve() / RESULT_FILENAME
+
+
+def result_env(working_root: Path) -> dict[str, str]:
+    """Env the live worker process can use to locate the control file."""
+    return {RESULT_PATH_ENV: str(result_path(working_root))}
+
+
+def result_instruction(
+    instructions: str,
+    working_root: Path | None = None,
+) -> str:
+    """Prepend the machine-result contract when it is not already present.
+
+    The live provider path appends this too late and names only the
+    relative filename, so sessions time out before writing and the
+    marker is ABSENT from the worktree JARVIS inspects. The contract
+    is prepended (survives Windows argv truncation) and, when a
+    working root is known, names the exact absolute path.
+    """
     if RESULT_FILENAME in instructions:
         return instructions
-    return f"{instructions}{_RESULT_INSTRUCTION}"
+    if working_root is None:
+        return f"{_RESULT_INSTRUCTION.lstrip()}\n\n{instructions}" if instructions else _RESULT_INSTRUCTION.strip()
+    path = result_path(working_root)
+    block = (
+        "JARVIS RESULT CONTRACT (required): write UTF-8 JSON to the exact "
+        f"file {path} with "
+        '{"files_changed": ["relative/path", ...]} listing exactly the files '
+        "you changed. Write this file immediately after your first real "
+        "change and update it before you exit — do not wait until the "
+        "session times out. If you cannot determine the files, write an "
+        "empty list; JARVIS will record NOT_TESTED rather than fabricate "
+        f"a claim. Never list {RESULT_FILENAME} itself and never git-add it."
+    )
+    if instructions:
+        return f"{block}\n\n{instructions}"
+    return block
+
+
+def ingest_result_claim(working_root: Path) -> tuple[tuple[str, ...], bool]:
+    """Read the worker claim without inventing files from the git diff.
+
+    Returns ``(files_changed, valid)``. Missing/malformed → empty claim
+    and ``valid=False`` (NOT_TESTED). Timeout paths must still call this
+    so a marker written before the bound expires is not ignored.
+    """
+    result = read_result_file(working_root)
+    if result is None:
+        return (), False
+    return tuple(result["files_changed"]), True
 
 
 def read_result_file(working_root: Path) -> dict[str, Any] | None:
@@ -43,7 +97,7 @@ def read_result_file(working_root: Path) -> dict[str, Any] | None:
     Returns None (NOT_TESTED) when missing or malformed. The claim only
     accepts a list of strings for ``files_changed``.
     """
-    path = working_root / RESULT_FILENAME
+    path = result_path(working_root)
     if not path.is_file():
         return None
     try:

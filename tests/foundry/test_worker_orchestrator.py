@@ -101,7 +101,9 @@ def test_runner_contract_requires_machine_result_file(tmp_path):
     step = bounded_contract(repository)
     outcome = controller.run_step(step)
     assert outcome.outcome == "PASSED"
-    assert RESULT_FILENAME in openhands.received[0].instructions
+    prompt = openhands.received[0].instructions
+    assert RESULT_FILENAME in prompt
+    assert str((repository / RESULT_FILENAME).resolve()) in prompt
 
 
 def test_openhands_bounded_fast_path_success_returns_to_next_action(tmp_path):

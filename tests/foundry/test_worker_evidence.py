@@ -249,3 +249,22 @@ def test_verifier_delta_ignores_builder_result_control_file(tmp_path):
     assert report.agree is True
     assert report.unrecorded_mutations == ()
     assert ".jarvis-result.json" not in report.observed_changed_files
+
+
+def test_quoted_porcelain_control_file_is_still_excluded(tmp_path):
+    """Windows git may quote .jarvis-result.json in porcelain output."""
+    from jarvis_foundry.workers.evidence import _is_control_file, _porcelain_path
+
+    assert _porcelain_path('?? ".jarvis-result.json"') == ".jarvis-result.json"
+    assert _is_control_file(".jarvis-result.json")
+    repository = make_repo(tmp_path)
+    (repository / "feature.py").write_text("x = 1\n", encoding="utf-8")
+    (repository / ".jarvis-result.json").write_text(
+        '{"files_changed": ["feature.py"]}', encoding="utf-8")
+    reconciler = EvidenceReconciler()
+    step = contract(repository)
+    before = reconciler.capture_before(step)
+    envelope = success_envelope(repository, files_changed=("feature.py",))
+    report = reconciler.reconcile(step, envelope, before=before)
+    assert report.agree is True
+    assert ".jarvis-result.json" not in report.observed_changed_files

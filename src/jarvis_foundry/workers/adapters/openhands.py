@@ -58,7 +58,11 @@ from .base import (
     redact_secrets,
     run_subprocess_with_heartbeat,
 )
-from ..result_contract import read_result_file
+from ..result_contract import (
+    MISSING_RESULT_NOTE,
+    ingest_result_claim,
+    result_env,
+)
 
 
 class OpenHandsWorkerAdapter:
@@ -110,6 +114,7 @@ class OpenHandsWorkerAdapter:
                 "with a disposable OPENHANDS_DATA_DIR")
         started = isoformat(utc_now())
         env = dict(os.environ)
+        env.update(result_env(contract.working_root))
         env["LLM_BASE_URL"] = os.environ.get(
             "JARVIS_OPENCODE_BASE_URL", "https://opencode.ai/zen/go/v1")
         env["LLM_API_KEY"] = os.environ.get("JARVIS_OPENCODE_API_KEY", "")
@@ -175,12 +180,17 @@ class OpenHandsWorkerAdapter:
             if violations:
                 blockers = blockers + tuple(
                     f"containment_violation:{v}" for v in violations)
+            files, valid = ingest_result_claim(contract.working_root)
+            summary = f"session exceeded {self.timeout_seconds}s bound"
+            if not valid:
+                summary = f"{summary}\n{MISSING_RESULT_NOTE}"
             return ResultEnvelope.from_contract(
                 contract, framework=self.framework,
                 worker_status=BLOCKED if violations else FAILED,
                 verdict=VERDICT_NOT_TESTED,
                 claimed_outcome="OpenHands session timed out",
-                summary=f"session exceeded {self.timeout_seconds}s bound",
+                summary=summary,
+                files_changed=files,
                 started_at=started,
                 exit_state="TIMEOUT",
                 blockers=blockers,
@@ -242,11 +252,10 @@ class OpenHandsWorkerAdapter:
             warning = "openhands reported error/state events; evidence must be reconciled"
         summary_tail = stdout.strip()[-2000:]
         self._scrub_disposable_state()
-        result = read_result_file(contract.working_root)
-        if result is None:
-            note = ("[adapter] worker did not write .jarvis-result.json — "
-                    "recorded NOT_TESTED, never PASS")
-            summary_tail = f"{summary_tail}\n{note}" if summary_tail else note
+        result_files, valid_claim = ingest_result_claim(contract.working_root)
+        if not valid_claim:
+            summary_tail = (f"{summary_tail}\n{MISSING_RESULT_NOTE}"
+                            if summary_tail else MISSING_RESULT_NOTE)
             verdict = VERDICT_NOT_TESTED
         return ResultEnvelope.from_contract(
             contract, framework=self.framework,
@@ -255,8 +264,7 @@ class OpenHandsWorkerAdapter:
             summary=summary_tail,
             model_actual=model_actual,
             worker_results=(summary_tail,),
-            files_changed=tuple(result["files_changed"])
-            if result is not None else (),
+            files_changed=result_files,
             started_at=started,
             warnings=(warning,) if warning else (),
             usage_availability=NOT_AVAILABLE,

@@ -388,3 +388,70 @@ def test_malformed_result_file_stays_not_testable(tmp_path):
         envelope = adapter.dispatch(contract(tmp_path), heartbeat=lambda: None)
     assert envelope.verdict == "NOT_TESTED"
     assert envelope.files_changed == ()
+
+
+def test_hermes_passes_result_path_env(tmp_path):
+    """Live Hermes must tell the session the exact control-file path."""
+    from jarvis_foundry.workers.adapters import hermes as hermes_module
+    from jarvis_foundry.workers.result_contract import RESULT_PATH_ENV, result_path
+
+    captured = {}
+    fake = subprocess.CompletedProcess(
+        ["python", "-m", "hermes_cli.main"], 0, "VERDICT: NOT_TESTED\n", "")
+    (tmp_path / "home").mkdir()
+
+    def fake_run(command, **kwargs):
+        captured["env"] = kwargs.get("env") or {}
+        return fake
+
+    adapter = HermesWorkerAdapter(
+        hermes_root=tmp_path, hermes_home=tmp_path / "home",
+        enabled=True, timeout_seconds=0, python_exe="python")
+    with mock.patch.object(
+            hermes_module, "run_subprocess_with_heartbeat",
+            side_effect=fake_run), \
+         mock.patch.object(
+            hermes_module, "configured_api_key", return_value=None):
+        adapter.dispatch(contract(tmp_path), heartbeat=lambda: None)
+    assert captured["env"][RESULT_PATH_ENV] == str(result_path(tmp_path))
+
+
+def test_hermes_timeout_ingests_result_file_but_never_passes(tmp_path):
+    """A timed-out session that already wrote the marker must not ignore it,
+    and must stay FAILED / NOT_TESTED (never PASS)."""
+    from jarvis_foundry.workers.adapters import hermes as hermes_module
+
+    _hermes_result_file(tmp_path)
+    (tmp_path / "home").mkdir()
+    adapter = HermesWorkerAdapter(
+        hermes_root=tmp_path, hermes_home=tmp_path / "home",
+        enabled=True, timeout_seconds=5, python_exe="python")
+    with mock.patch.object(
+            hermes_module, "run_subprocess_with_heartbeat",
+            side_effect=subprocess.TimeoutExpired("hermes", 5)), \
+         mock.patch.object(
+            hermes_module, "configured_api_key", return_value=None):
+        envelope = adapter.dispatch(contract(tmp_path), heartbeat=lambda: None)
+    assert envelope.worker_status == "FAILED"
+    assert envelope.exit_state == "TIMEOUT"
+    assert envelope.verdict == "NOT_TESTED"
+    assert envelope.files_changed == ("feature.py",)
+
+
+def test_hermes_timeout_without_result_file_stays_not_tested(tmp_path):
+    from jarvis_foundry.workers.adapters import hermes as hermes_module
+
+    (tmp_path / "home").mkdir()
+    adapter = HermesWorkerAdapter(
+        hermes_root=tmp_path, hermes_home=tmp_path / "home",
+        enabled=True, timeout_seconds=5, python_exe="python")
+    with mock.patch.object(
+            hermes_module, "run_subprocess_with_heartbeat",
+            side_effect=subprocess.TimeoutExpired("hermes", 5)), \
+         mock.patch.object(
+            hermes_module, "configured_api_key", return_value=None):
+        envelope = adapter.dispatch(contract(tmp_path), heartbeat=lambda: None)
+    assert envelope.worker_status == "FAILED"
+    assert envelope.verdict == "NOT_TESTED"
+    assert envelope.files_changed == ()
+    assert ".jarvis-result.json" in envelope.summary
