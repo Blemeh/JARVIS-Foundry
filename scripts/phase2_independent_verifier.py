@@ -166,9 +166,9 @@ def checks() -> list[dict]:
         "untracked owner docs still present in canonical"))
     out.append(probe(
         "23. current canonical baseline correctly reconstructed",
-        lambda: "PASS" if git("rev-parse", "HEAD") ==
+        lambda: "PASS" if git("rev-parse", "HEAD^") ==
         "765a725c941efc9762317741cdbcf1703e44e7be" else "FAIL", "PASS",
-        "candidate base == canonical main"))
+        "candidate parent == canonical baseline 765a725"))
     out.append(probe(
         "24. tests actually passed",
         lambda: "PASS" if (EVIDENCE / "full-suite-run.txt").exists() and
