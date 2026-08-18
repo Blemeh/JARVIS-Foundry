@@ -6,7 +6,7 @@ Commands and results:
 
 ```text
 pytest tests/foundry/test_procedural_learning.py -q
-22 passed
+23 passed
 
 pytest tests/foundry/test_perception.py -q
 23 passed
@@ -18,7 +18,7 @@ pytest Tier-C, control/effects/connectors, shadow/evolution slices
 all passed
 
 pytest --collect-only
-1224 tests collected
+1225 tests collected
 
 pytest -q
 EXIT 0
