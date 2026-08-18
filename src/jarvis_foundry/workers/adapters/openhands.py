@@ -58,6 +58,7 @@ from .base import (
     redact_secrets,
     run_subprocess_with_heartbeat,
 )
+from ..result_contract import read_result_file
 
 
 class OpenHandsWorkerAdapter:
@@ -241,6 +242,12 @@ class OpenHandsWorkerAdapter:
             warning = "openhands reported error/state events; evidence must be reconciled"
         summary_tail = stdout.strip()[-2000:]
         self._scrub_disposable_state()
+        result = read_result_file(contract.working_root)
+        if result is None:
+            note = ("[adapter] worker did not write .jarvis-result.json — "
+                    "recorded NOT_TESTED, never PASS")
+            summary_tail = f"{summary_tail}\n{note}" if summary_tail else note
+            verdict = VERDICT_NOT_TESTED
         return ResultEnvelope.from_contract(
             contract, framework=self.framework,
             worker_status=COMPLETED, verdict=verdict,
@@ -248,6 +255,8 @@ class OpenHandsWorkerAdapter:
             summary=summary_tail,
             model_actual=model_actual,
             worker_results=(summary_tail,),
+            files_changed=tuple(result["files_changed"])
+            if result is not None else (),
             started_at=started,
             warnings=(warning,) if warning else (),
             usage_availability=NOT_AVAILABLE,

@@ -156,6 +156,7 @@ def test_hermes_adapter_redacts_captured_secrets(tmp_path, monkeypatch):
     fake = subprocess.CompletedProcess(
         ["python", "-m", "hermes_cli.main"], 0, captured, "")
     (tmp_path / "home").mkdir()
+    _hermes_result_file(tmp_path)
     adapter = HermesWorkerAdapter(
         hermes_root=tmp_path, hermes_home=tmp_path / "home",
         enabled=True, timeout_seconds=0, python_exe="python")
@@ -245,3 +246,145 @@ def test_hermes_scrubs_disposable_home(tmp_path):
     content = session.read_text(encoding="utf-8")
     assert token not in content
     assert "<REDACTED>" in content
+
+
+def _hermes_result_file(working_root: Path) -> None:
+    (working_root / ".jarvis-result.json").write_text(
+        '{"files_changed": ["feature.py"]}', encoding="utf-8")
+
+
+def _openhands_result_file(working_root: Path) -> None:
+    (working_root / ".jarvis-result.json").write_text(
+        '{"files_changed": ["rows.py", "tests/public/test_no_header.py"]}',
+        encoding="utf-8")
+
+
+def test_hermes_adapter_consumes_machine_result_file(tmp_path, monkeypatch):
+    """Hermes must translate the worker's machine-ingestable claim file
+    into files_changed instead of always reporting an empty claim."""
+    from unittest import mock
+    from jarvis_foundry.workers.adapters import hermes as hermes_module
+
+    fake = subprocess.CompletedProcess(
+        ["python", "-m", "hermes_cli.main"], 0, "VERDICT: PASS\nok\n", "")
+    (tmp_path / "home").mkdir()
+    _hermes_result_file(tmp_path)
+    adapter = HermesWorkerAdapter(
+        hermes_root=tmp_path, hermes_home=tmp_path / "home",
+        enabled=True, timeout_seconds=0, python_exe="python")
+    with mock.patch.object(
+            hermes_module, "run_subprocess_with_heartbeat",
+            return_value=fake), \
+         mock.patch.object(
+            hermes_module, "configured_api_key", return_value=None):
+        envelope = adapter.dispatch(contract(tmp_path), heartbeat=lambda: None)
+    assert envelope.worker_status == "COMPLETED"
+    assert envelope.verdict == "PASS"
+    assert envelope.files_changed == ("feature.py",)
+
+
+def test_hermes_adapter_missing_result_file_is_not_testable(
+        tmp_path, monkeypatch):
+    """A provider session that omits the result contract must never PASS:
+    the adapter downgrades the verdict to NOT_TESTED and keeps the claim
+    empty (no JARVIS-observed diff is copied into the claim)."""
+    from unittest import mock
+    from jarvis_foundry.workers.adapters import hermes as hermes_module
+
+    fake = subprocess.CompletedProcess(
+        ["python", "-m", "hermes_cli.main"], 0, "VERDICT: PASS\n", "")
+    (tmp_path / "home").mkdir()
+    adapter = HermesWorkerAdapter(
+        hermes_root=tmp_path, hermes_home=tmp_path / "home",
+        enabled=True, timeout_seconds=0, python_exe="python")
+    with mock.patch.object(
+            hermes_module, "run_subprocess_with_heartbeat",
+            return_value=fake), \
+         mock.patch.object(
+            hermes_module, "configured_api_key", return_value=None):
+        envelope = adapter.dispatch(contract(tmp_path), heartbeat=lambda: None)
+    assert envelope.worker_status == "COMPLETED"
+    assert envelope.verdict == "NOT_TESTED"
+    assert envelope.files_changed == ()
+    assert ".jarvis-result.json" in envelope.summary
+
+
+def test_openhands_adapter_consumes_machine_result_file(tmp_path):
+    """OpenHands must consume the machine-ingestable claim file written by
+    the provider session and carry it into the normalized envelope."""
+    from unittest import mock
+    from jarvis_foundry.workers.adapters import openhands as oh_module
+
+    exe = tmp_path / "openhands.exe"
+    exe.write_text("", encoding="utf-8")
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    _openhands_result_file(tmp_path)
+    fake_result = subprocess.CompletedProcess(
+        ["openhands"], 0, '{"event":"agent_state_changed"}\nVERDICT: PASS\n', "")
+    before = {"profiles/owner.json": "a" * 64}
+    adapter = oh_module.OpenHandsWorkerAdapter(
+        openhands_exe=exe, data_dir=data_dir, enabled=True,
+        timeout_seconds=30)
+    adapter._owner_openhands = tmp_path / "owner-openhands"
+    adapter._owner_openhands.mkdir()
+    with mock.patch.object(oh_module.subprocess, "run",
+                           return_value=fake_result), \
+         mock.patch.object(oh_module, "snapshot_openhands_tree",
+                           side_effect=[before, before]):
+        envelope = adapter.dispatch(contract(tmp_path), heartbeat=lambda: None)
+    assert envelope.worker_status == "COMPLETED"
+    assert envelope.verdict == "PASS"
+    assert envelope.files_changed == (
+        "rows.py", "tests/public/test_no_header.py")
+
+
+def test_openhands_adapter_missing_result_file_is_not_testable(tmp_path):
+    """OpenHands without the result contract is NOT_TESTED, never PASS."""
+    from unittest import mock
+    from jarvis_foundry.workers.adapters import openhands as oh_module
+
+    exe = tmp_path / "openhands.exe"
+    exe.write_text("", encoding="utf-8")
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    fake_result = subprocess.CompletedProcess(
+        ["openhands"], 0, '{"event":"agent_state_changed"}\nVERDICT: PASS\n', "")
+    before = {"profiles/owner.json": "a" * 64}
+    adapter = oh_module.OpenHandsWorkerAdapter(
+        openhands_exe=exe, data_dir=data_dir, enabled=True,
+        timeout_seconds=30)
+    adapter._owner_openhands = tmp_path / "owner-openhands"
+    adapter._owner_openhands.mkdir()
+    with mock.patch.object(oh_module.subprocess, "run",
+                           return_value=fake_result), \
+         mock.patch.object(oh_module, "snapshot_openhands_tree",
+                           side_effect=[before, before]):
+        envelope = adapter.dispatch(contract(tmp_path), heartbeat=lambda: None)
+    assert envelope.worker_status == "COMPLETED"
+    assert envelope.verdict == "NOT_TESTED"
+    assert envelope.files_changed == ()
+
+
+def test_malformed_result_file_stays_not_testable(tmp_path):
+    """A malformed result file (non-list files_changed) is treated exactly
+    like a missing one: NOT_TESTED, never a fabricated PASS."""
+    from unittest import mock
+    from jarvis_foundry.workers.adapters import hermes as hermes_module
+
+    (tmp_path / ".jarvis-result.json").write_text(
+        '{"files_changed": "feature.py"}', encoding="utf-8")
+    fake = subprocess.CompletedProcess(
+        ["python", "-m", "hermes_cli.main"], 0, "VERDICT: PASS\n", "")
+    (tmp_path / "home").mkdir()
+    adapter = HermesWorkerAdapter(
+        hermes_root=tmp_path, hermes_home=tmp_path / "home",
+        enabled=True, timeout_seconds=0, python_exe="python")
+    with mock.patch.object(
+            hermes_module, "run_subprocess_with_heartbeat",
+            return_value=fake), \
+         mock.patch.object(
+            hermes_module, "configured_api_key", return_value=None):
+        envelope = adapter.dispatch(contract(tmp_path), heartbeat=lambda: None)
+    assert envelope.verdict == "NOT_TESTED"
+    assert envelope.files_changed == ()

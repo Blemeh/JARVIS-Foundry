@@ -45,6 +45,7 @@ from .base import (
     redact_secrets,
     run_subprocess_with_heartbeat,
 )
+from ..result_contract import read_result_file
 
 
 class HermesWorkerAdapter:
@@ -203,12 +204,21 @@ class HermesWorkerAdapter:
         evidence = stdout.strip()[-2000:]
         if note:
             evidence = f"{evidence}\n{note}" if evidence else note
+        result = read_result_file(contract.working_root)
+        if result is None:
+            note = ("[adapter] worker did not write .jarvis-result.json — "
+                    "recorded NOT_TESTED, never PASS")
+            if note not in (evidence or ""):
+                evidence = f"{evidence}\n{note}" if evidence else note
+            verdict = VERDICT_NOT_TESTED
         return ResultEnvelope.from_contract(
             contract, framework=self.framework,
             worker_status=COMPLETED, verdict=verdict,
             claimed_outcome="Hermes session completed",
             summary=evidence,
             worker_results=(evidence,),
+            files_changed=tuple(result["files_changed"])
+            if result is not None else (),
             started_at=started,
             usage_cost=cost if usage_availability == "available" else NOT_AVAILABLE,
             usage_availability=usage_availability,

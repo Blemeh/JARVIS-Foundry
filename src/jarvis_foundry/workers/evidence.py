@@ -59,6 +59,7 @@ def git_changed_files(root: Path) -> tuple[str, ...]:
 
 
 _CACHE_SEGMENTS = ("__pycache__", ".pytest_cache", ".mypy_cache")
+_CONTROL_FILES = (".jarvis-result.json",)
 
 
 def _is_machine_cache(rel: str) -> bool:
@@ -66,6 +67,12 @@ def _is_machine_cache(rel: str) -> bool:
     parts = Path(rel).parts
     return (any(part in _CACHE_SEGMENTS for part in parts)
             or rel.endswith(".pyc"))
+
+
+def _is_control_file(rel: str) -> bool:
+    """JARVIS control/claim files are excluded from the deliverable diff
+    comparison. They carry worker claims, never deliverables."""
+    return rel in _CONTROL_FILES
 
 
 def file_hashes(paths: tuple[Path, ...], *, limit: int = 200) -> dict[str, str]:
@@ -162,7 +169,9 @@ class EvidenceReconciler:
         observed_changed = git_changed_files(root)
         meaningful_changed = tuple(
             rel for rel in observed_changed
-            if not _is_machine_cache(rel))
+            if not _is_machine_cache(rel) and not _is_control_file(rel))
+        observed_changed = tuple(
+            rel for rel in observed_changed if not _is_control_file(rel))
 
         if envelope.worker_status != "COMPLETED":
             mismatches.append(

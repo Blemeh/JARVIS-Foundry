@@ -36,6 +36,7 @@ from .adapters.base import ProviderUnavailable
 from .adapters.registry import WorkerRegistry
 from .contracts import WorkerStepContract
 from .evidence import BeforeState, EvidenceReconciler
+from .result_contract import result_instruction
 from .router import WorkerRouter
 
 
@@ -88,6 +89,7 @@ class HybridWorkerRoleAdapter:
                 started_at=started, finished_at=isoformat(utc_now()),
             )
         instructions = manifest.instructions
+        instructions = result_instruction(instructions)
         if manifest.role == "verifier" and manifest.verification_criteria:
             # The fresh verifier receives the durable acceptance criteria so
             # it can inspect real artifacts against them (Phase G).

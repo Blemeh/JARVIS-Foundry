@@ -8,6 +8,7 @@ from jarvis_foundry.workers.adapters.fakes import ScriptedOutcome, ScriptedWorke
 from jarvis_foundry.workers.adapters.registry import WorkerRegistry
 from jarvis_foundry.workers.contracts import WORKER_HERMES, WORKER_OPENHANDS, WorkerStepContract
 from jarvis_foundry.workers.envelope import COMPLETED, VERDICT_FAIL, ResultEnvelope
+from jarvis_foundry.workers.result_contract import RESULT_FILENAME
 from jarvis_foundry.workers.router import READY, WorkerRouter
 
 from worker_test_helpers import make_controller, mission_database
@@ -81,6 +82,26 @@ def openhands_ready_router() -> WorkerRouter:
                       note="containment proven in test",
                       evidence=("test-containment-proof",))
     return router
+
+
+def test_runner_contract_requires_machine_result_file(tmp_path):
+    """The controller must append the machine-ingestable result-file
+    requirement to provider instructions; a provider that omits it stays
+    NOT_TESTED instead of inheriting JARVIS-observed diffs into its
+    claim."""
+    controller, database, repository = make_controller(
+        tmp_path, router=openhands_ready_router(), verifier_factory=fake_verifier)
+    openhands = MutatingScriptedAdapter(
+        WORKER_OPENHANDS, write_files=("feature.py",),
+        outcome=ScriptedOutcome(files_changed=("feature.py",)))
+    controller.registry = WorkerRegistry({WORKER_OPENHANDS: openhands})
+    controller.router.mark_ready(WORKER_OPENHANDS, state=READY,
+                                 note="containment proven",
+                                 evidence=("test-proof",))
+    step = bounded_contract(repository)
+    outcome = controller.run_step(step)
+    assert outcome.outcome == "PASSED"
+    assert RESULT_FILENAME in openhands.received[0].instructions
 
 
 def test_openhands_bounded_fast_path_success_returns_to_next_action(tmp_path):

@@ -205,3 +205,20 @@ def test_verifier_delta_mode_ignores_preexisting_builder_work(tmp_path):
         step, envelope, before=before,
         delta_baseline=before.changed_files)
     assert report.agree is True
+
+
+def test_result_control_file_does_not_condemn_claim(tmp_path):
+    """The .jarvis-result.json control file must not force a worker claim
+    mismatch: the worker lists only its business files and the control file
+    itself is excluded from the deliverable diff comparison."""
+    repository = make_repo(tmp_path)
+    (repository / "feature.py").write_text("x = 1\n", encoding="utf-8")
+    (repository / ".jarvis-result.json").write_text(
+        '{"files_changed": ["feature.py"]}', encoding="utf-8")
+    reconciler = EvidenceReconciler()
+    step = contract(repository)
+    before = reconciler.capture_before(step)
+    envelope = success_envelope(repository, files_changed=("feature.py",))
+    report = reconciler.reconcile(step, envelope, before=before)
+    assert report.agree is True
+    assert ".jarvis-result.json" not in report.observed_changed_files

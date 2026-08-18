@@ -17,6 +17,7 @@ from ..control.action_envelope import evaluate_and_record
 from ..control.policy import ActionPolicy
 from ..database import FoundryDatabase
 from ..domain import ActionDecision, ActionEnvelope
+from ..workers.result_contract import RESULT_FILENAME
 from .verification import latest_verdict_for_step
 
 
@@ -69,7 +70,9 @@ def commit_after_pass(
     worktree = worktree.resolve()
     before = _git(worktree, "rev-parse", "HEAD")
     message = f"jarvis: {mission_id} {step_id} verified PASS (run {run_id})"
+    _git(worktree, "reset", "-q", "--", RESULT_FILENAME)
     _git(worktree, "add", "-A")
+    _git(worktree, "reset", "-q", "--", RESULT_FILENAME)
     _git(worktree, "commit", "-m", message)
     after = _git(worktree, "rev-parse", "HEAD")
     return {

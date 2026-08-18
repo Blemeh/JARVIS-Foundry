@@ -4,11 +4,13 @@ from __future__ import annotations
 from pathlib import Path
 
 from jarvis_foundry.mission.loop import PASSED, MissionLoop
+from jarvis_foundry.roles.manifest import ContextManifest
 from jarvis_foundry.roles.router import RoleRouter
 from jarvis_foundry.workers.adapters.fakes import ScriptedOutcome, ScriptedWorkerAdapter
 from jarvis_foundry.workers.adapters.registry import WorkerRegistry
 from jarvis_foundry.workers.contracts import WORKER_HERMES, WORKER_OPENHANDS
 from jarvis_foundry.workers.mission_bridge import HybridWorkerRoleAdapter
+from jarvis_foundry.workers.result_contract import RESULT_FILENAME
 from jarvis_foundry.workers.router import READY, WorkerRouter
 
 from worker_test_helpers import make_controller, mission_database
@@ -107,3 +109,35 @@ def test_canonical_mission_loop_rejects_false_success_from_bridge(tmp_path):
     # The loop must NOT accept: either FAIL (repair) or BLOCKED, never PASS.
     assert outcome.outcome != PASSED
     assert outcome.outcome in ("FAILED", "BLOCKED")
+
+
+def test_mission_bridge_enriches_instructions_with_result_contract(tmp_path):
+    """The live MissionLoop -> RoleDispatcher -> HybridWorkerRoleAdapter
+    path must append the machine-ingestable result requirement so real
+    provider builders can return a durable files_changed claim."""
+    database, repository = mission_database(tmp_path)
+    router = WorkerRouter()
+    router.mark_ready(WORKER_OPENHANDS, state=READY,
+                      note="containment proven in test",
+                      evidence=("test-proof",))
+    builder = ScriptedWorkerAdapter(WORKER_OPENHANDS)
+    registry = WorkerRegistry({WORKER_OPENHANDS: builder})
+    bridge = HybridWorkerRoleAdapter(
+        database=database, router=router, registry=registry,
+        role_signals={"builder": {"bounded": True,
+                                  "explicit_acceptance": True,
+                                  "tests_available": True,
+                                  "narrow_scope": True,
+                                  "reversible": True}},
+    )
+    manifest = ContextManifest(
+        run_id="run-bridge-result", role="builder",
+        mission_id="mission-1", step_id="step-1",
+        resource_id="resource-1", capability="git_local_commit",
+        provider="opencode_go", model="deepseek-v4-flash",
+        isolation_group="ind", instructions="implement feature.py",
+    )
+    outcome = bridge.dispatch(manifest, heartbeat=lambda: None)
+    assert outcome is not None
+    assert builder.received, "bridge did not dispatch the builder"
+    assert RESULT_FILENAME in builder.received[0].instructions

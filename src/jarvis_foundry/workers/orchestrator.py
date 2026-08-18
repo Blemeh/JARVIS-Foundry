@@ -46,6 +46,7 @@ from .envelope import (
     ResultEnvelope,
 )
 from .evidence import BeforeState, EvidenceReport, EvidenceReconciler
+from .result_contract import result_instruction
 from .router import RouteDecision, WorkerRouter
 
 PASSED = "PASSED"
@@ -336,6 +337,26 @@ class HybridStepController:
         expected_artifact_hashes: dict[str, str] | None = None,
         persistence_scan_roots: tuple[Path, ...] = (),
     ) -> HybridStepOutcome:
+        enriched = result_instruction(contract.instructions)
+        if enriched != contract.instructions:
+            contract = WorkerStepContract(
+                run_id=contract.run_id, mission_id=contract.mission_id,
+                step_id=contract.step_id, attempt=contract.attempt,
+                role=contract.role, objective=contract.objective,
+                instructions=enriched,
+                working_root=contract.working_root,
+                allowed_paths=contract.allowed_paths,
+                forbidden_paths=contract.forbidden_paths,
+                context_manifest_id=contract.context_manifest_id,
+                context_manifest_hash=contract.context_manifest_hash,
+                action_envelope=contract.action_envelope,
+                provider=contract.provider, model=contract.model,
+                duration_seconds=contract.duration_seconds,
+                budget_usd=contract.budget_usd,
+                task_signals=contract.task_signals,
+                expected_artifacts=contract.expected_artifacts,
+                verification_criteria=contract.verification_criteria,
+            )
         stop_reason = self._stop_verdict()
         if stop_reason:
             self._record_stop_blocked(contract, stop_reason)
