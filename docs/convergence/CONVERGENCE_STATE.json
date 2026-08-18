@@ -8,7 +8,7 @@
   "canonical": {
     "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
     "branch": "main",
-    "head": "ff4c95b5fac86cb733d437addb819708dbdb04e7",
+    "head": "56bded15d24050ab2b27a7a01daabb0c7b94b9a1",
     "source_tree_verified_head": "51d1d4e96b9731eb2c4d13ff0e4db8975e0076ab",
     "origin_main": "1abc388c6471a310f361612ebd81ed6a2cf6c646",
     "dirty_owner_docs_preserved": true,
@@ -525,7 +525,7 @@
     "status": "R8_R9_R10_R11_R12_BOUNDED_VERIFIED_R9_DELTA_REPAIRING_PROVING_WAITING",
     "promotion_worktree": "C:/temp/JARVIS-Foundry-R8-PROMOTE",
     "promotion_commit": "949b4effdf28a2d938a628811fb9c751f5cb222c",
-    "latest_evidence_commit": "ff4c95b5fac86cb733d437addb819708dbdb04e7",
+    "latest_evidence_commit": "56bded15d24050ab2b27a7a01daabb0c7b94b9a1",
     "latest_live_canary": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_CANARY_20260818.json",
     "latest_repair_reconciliation": "docs/convergence/PROVING_WINDOW_REPAIR_RECONCILIATION_20260818.json",
     "latest_r9_result_contract_verification": "docs/convergence/R9_LIVE_RESULT_CONTRACT_VERIFICATION_20260818.json",
