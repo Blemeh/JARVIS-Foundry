@@ -2,7 +2,7 @@
   "schema": "jarvis-post-v7-canonical-convergence-state-v2",
   "program": "JARVIS Post-V7 Remaster",
   "current_stage": "POST_PROMOTION_PROVING",
-  "current_slice": "Canonical f37f852 includes the bounded R7 monitor-poll idempotency and concurrent same-key transaction repair plus local filesystem research canary; the local R10 Command Center UI probe passes for disposable projection rendering only; external provider research/effects, live UI controls, voice, and deployment remain honest WAITING/NOT_TESTED; prior full-suite evidence remains anchored to tested source 2af8191 and is not silently extended to this source repair",
+  "current_slice": "Canonical f37f852 includes the bounded R7 monitor-poll idempotency and concurrent same-key transaction repair plus local filesystem research canary; the local R10 Command Center UI probe passes for disposable projection rendering only; an exact-release proving window is now registered for executable source f37f852 with metadata descendant ee69737; external provider research/effects, live UI controls, voice, and deployment remain honest WAITING/NOT_TESTED; prior full-suite evidence remains anchored to tested source 2af8191 and is not silently extended to this source repair",
   "r6_state": "OWNER_REDIRECT_R6_DEFERRED",
   "eyes_state": "OUT_OF_SCOPE_READ_ONLY",
   "canonical": {
@@ -150,6 +150,21 @@
     "registered_event_sequence": 99426,
     "started_at": "2026-08-18T17:57:26.791325Z",
     "claims_external_effects": false,
+    "exact_canonical_window": {
+      "status": "STARTED_WAITING_ELAPSED",
+      "window_id": "post-canonical-ee69737-real-20260819",
+      "registration_event_sequence": 103909,
+      "started_at": "2026-08-18T23:43:31.490389Z",
+      "manifest": "C:/Users/b/AppData/Local/hermes/foundry/evidence/proving-window/manifest-canonical-ee69737-real-20260819.json",
+      "checkpoint": "C:/Users/b/AppData/Local/hermes/foundry/evidence/proving-window/checkpoint-canonical-ee69737-real-20260819.json",
+      "runtime_start_evidence": "docs/convergence/PROVING_WINDOW_RUNTIME_START_CANONICAL_20260819.json",
+      "executable_source_commit": "f37f852b3b328aa39476f86fb4f7b7e9d57836a9",
+      "deployed_metadata_commit": "ee697375c53bedeb3e4616c4b343074bf86af99f",
+      "required_days": 7,
+      "required_missions": 10,
+      "verified_missions_after_start": 0,
+      "scheduled_monitor_task": "JARVIS-Foundry-Proving-Window-Monitor-Canonical"
+    },
     "last_checkpoint_event_head": 100154,
     "last_live_observed_event_head": 100875,
     "canary": {
@@ -732,6 +747,7 @@
     "latest_r9_source_repair": "docs/convergence/R9_RESULT_CONTRACT_SOURCE_REPAIR_20260818.json",
     "latest_r9_sourcefix_canary": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_SOURCEFIX_CANARY_20260819.json",
     "latest_r10_local_ui_probe": "docs/convergence/R10_COMMAND_CENTER_LOCAL_UI_PROBE_20260819.json",
+    "latest_exact_release_proving_window": "docs/convergence/PROVING_WINDOW_RUNTIME_START_CANONICAL_20260819.json",
     "latest_restart_canary": "docs/convergence/PROVING_WINDOW_RESTART_CANARY_20260818.json",
     "latest_repaired_live_canary": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_REPAIRED_CANARY_20260818.json",
     "latest_full_suite": "docs/convergence/CANONICAL_FULL_SUITE_20260819_EXACT_HEAD.json",
@@ -754,8 +770,8 @@
     "R10 live voice provider and visual/a11y inspection NOT_TESTED/WAITING",
     "R10 REPRIORITIZE/REDIRECT live Supervisor/mission-loop consumer NOT_TESTED",
     "R9 repaired live provider result contract remains OPEN_EXTERNAL_BOUNDARY: source repair focused-pass verified, fresh canary blocked by provider monthly rate limit",
-    "R11 real elapsed proving window and live promotion cycles NOT_TESTED/WAITING",
+    "R11 real elapsed proving window on exact canonical release and live promotion cycles NOT_TESTED/WAITING",
     "R12 physical host and unavailable-provider fault rows NOT_TESTED/BLOCKED"
   ],
-  "exact_next_action": "preserve 2-of-10 accepted mission count and restart-0 count; keep the sourcefix canary BLOCKED on provider monthly rate limit; do not retry blindly; continue the real proving monitor and resume a fresh bounded canary only after an authorized real provider quota/configuration change; do not close final acceptance until elapsed and external criteria are met"
+  "exact_next_action": "let the exact canonical release proving monitor persist WAITING through restart; preserve the historical 2-of-10 and restart-0 counts; keep the provider canary BLOCKED on the monthly rate limit; do not retry blindly; resume a fresh bounded canary only after an authorized quota/configuration change; do not close final acceptance until seven real healthy days, ten post-start independently verified missions, and all required external criteria are met"
 }

@@ -1,0 +1,72 @@
+{
+  "schema": "jarvis-canonical-proving-window-runtime-start-v2",
+  "stage": "POST_PROMOTION_PROVING",
+  "status": "STARTED_WAITING_ELAPSED_EXACT_CANONICAL_RELEASE",
+  "recorded_at": "2026-08-18T23:44:48.504890+00:00",
+  "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
+  "branch": "main",
+  "release": {
+    "release_pointer": "main",
+    "deployed_metadata_commit": "ee697375c53bedeb3e4616c4b343074bf86af99f",
+    "deployed_metadata_tree": "07cd4d6a5cdc2070cd93a30583a926790cfdb758",
+    "executable_source_commit": "f37f852b3b328aa39476f86fb4f7b7e9d57836a9",
+    "executable_source_tree": "6f6b90249c82a340627b3a9c645f62e41d5d796c",
+    "runtime_source_loaded": "f37f852b3b328aa39476f86fb4f7b7e9d57836a9",
+    "previous_release_remains_recoverable": true
+  },
+  "window": {
+    "window_id": "post-canonical-ee69737-real-20260819",
+    "registration_event_sequence": 103909,
+    "started_at": "2026-08-18T23:43:31.490389Z",
+    "required_days": 7,
+    "required_duration_seconds": 604800,
+    "required_missions": 10,
+    "previous_window_id": "post-r4-real-20260818",
+    "manifest": {
+      "path": "C:/Users/b/AppData/Local/hermes/foundry/evidence/proving-window/manifest-canonical-ee69737-real-20260819.json",
+      "sha256": "6EC7CADB56CFD7F116963E847E9535E60BFCBA5254D24B12D6BF0DCFC676449E"
+    },
+    "checkpoint": {
+      "path": "C:/Users/b/AppData/Local/hermes/foundry/evidence/proving-window/checkpoint-canonical-ee69737-real-20260819.json",
+      "sha256": "AB8159868094CF0EED958E269968372485D3CB268CE8F83EAD51E3FD9D6ECA6D",
+      "status": "WAITING_ELAPSED",
+      "manifest_hash": "a0550c5e683fb602e8650a3ff660b1a06710bbb428c3061dfcade0f6cd353609",
+      "elapsed_seconds": 77.015,
+      "remaining_seconds": 604722.985,
+      "event_head": 103924,
+      "sqlite_quick_check": "ok",
+      "schema_version": 33,
+      "active_stop_directives": 0,
+      "supervisor_status": "RUNNING",
+      "supervisor_singleton": 1,
+      "heartbeat_count": 15,
+      "max_heartbeat_gap_seconds": 5.08462
+    }
+  },
+  "scheduled_monitor": {
+    "task_name": "JARVIS-Foundry-Proving-Window-Monitor-Canonical",
+    "wrapper": "C:/Users/b/AppData/Local/hermes/foundry/evidence/proving-window/run-monitor-canonical-ee69737.cmd",
+    "wrapper_sha256": "5EC800489A2EB88AD46C9FAC2F114F5DCF037E6946A862268F639F28FE314A29",
+    "last_run_time": "2026-08-19T01:44:48+02:00",
+    "last_task_result": 0,
+    "next_run_time": "2026-08-19T01:45:47+02:00",
+    "repetition": "PT5M",
+    "multiple_instances": "IgnoreNew",
+    "read_only_monitor": true
+  },
+  "registration": {
+    "method": "canonical jarvis_foundry.proving.register_window API",
+    "controller": "supervisor",
+    "database_mutation": "one proving.window_registered event only",
+    "provider_invoked": false,
+    "credential_values_recorded": false
+  },
+  "honest_boundaries": {
+    "external_provider_effects": "NOT_TESTED",
+    "voice_provider": "NOT_TESTED",
+    "physical_host_faults": "NOT_TESTED",
+    "verified_missions_after_window_start": 0,
+    "required_verified_missions": 10
+  },
+  "recommended_next_action": "Let the exact-release monitor persist WAITING state through restart; do not close until seven real healthy days and ten independently verified post-start missions are present, and do not retry the blocked provider canary without authorized quota/configuration change."
+}
