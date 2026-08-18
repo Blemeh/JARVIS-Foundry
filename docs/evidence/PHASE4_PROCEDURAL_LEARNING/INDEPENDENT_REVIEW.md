@@ -3,7 +3,7 @@
 **Verifier:** fresh `commandcode/deepseek-v4-flash`, max effort
 **Candidate reviewed:** `candidate/procedural-learning-phase4-remediation` at
 `992317e8c1bac8ef556f05ac82a884bff3a91c36`
-**Baseline:** canonical convergence head `47adab97b64ab992280d3a329fd0ca3d03c2d45f`
+**Baseline:** Phase 4 remediation base `2b3573606570f910e5569cf3306223354f93e4ac`
 **Mode:** read-only; no source, Git, live DB, scheduled task, or process mutation
 
 ## Verdict
@@ -38,6 +38,6 @@ The review confirmed:
 The verifier ran in the same host/provider family. It independently ran source
 and focused/slice tests, but did not re-execute the real OpenAdapt browser
 probe, live DB, STOP sentinel, canonical Supervisor process, or full suite.
-Those gates are backed separately by the candidate, integration, and
-post-promotion evidence. Provider diversity is therefore `LIMITED`, not
+Those gates are backed separately by the candidate, convergence integration,
+and post-promotion evidence. Provider diversity is therefore `LIMITED`, not
 `FULL`. Native Windows desktop replay remains deliberately `PROBING`.
