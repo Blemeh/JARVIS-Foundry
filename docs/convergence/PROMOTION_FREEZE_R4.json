@@ -1,6 +1,6 @@
 {
   "schema": "jarvis-canonical-release-freeze-v2",
-  "status": "R4_VERIFIED_PENDING_FF_PROMOTION",
+  "status": "R4_DEPLOYED_AUDITED",
   "recorded_at": "2026-08-18T17:34:22.0653346Z",
   "release": {
     "baseline_main_head": "073886a517dabd57b85094e34c6ab251357e3023",
@@ -9,8 +9,9 @@
     "source_tree_sha256": "8a855847d58c01d72df10a63abf7008d3288f86b",
     "branch": "promote/canonical-convergence-r4",
     "release_pointer_before": "main -> 073886a",
-    "release_metadata_commit": "f122eb18d17b4cd0e31c058c8f1a000b373b5509",
-    "release_pointer_after": "main -> f122eb1 (pending ff-only promotion)"
+    "release_metadata_commit": "51d1d4e96b9731eb2c4d13ff0e4db8975e0076ab",
+    "release_pointer_after": "main -> 51d1d4e",
+    "post_promotion_audit": "docs/convergence/R4_POST_PROMOTION_EXACT_AUDIT.json"
   },
   "executable": {
     "package": "jarvis-foundry==0.1.0",
@@ -32,7 +33,7 @@
     "database": "C:/Users/b/AppData/Local/hermes/foundry/foundry.db",
     "schema_version": 33,
     "sqlite_quick_check": "ok",
-    "event_head_at_freeze": 98920,
+    "event_head_at_freeze": 99376,
     "wal_observation": "read-only runtime probe healthy; no migration or WAL mutation in freeze",
     "rollback_bundle": "C:/temp/jarvis-convergence-pre-r3.bundle",
     "rollback_bundle_sha256": "B1ECC3A7F03CD2C551D1B74176427F8668402CDBFB4F0E4DC5D5FEBF7423DE67",
@@ -41,7 +42,7 @@
   "scheduled_task": {
     "supervisor_task": "JARVIS-Foundry-Supervisor",
     "supervisor_status": "RUNNING/Enabled",
-    "proving_monitor_task": "NOT_CREATED_UNTIL_FINAL_AUDIT_AND_FF_PROMOTION"
+    "proving_monitor_task": "NOT_CREATED_UNTIL_REAL_MANIFEST_REGISTRATION"
   },
   "ports": {
     "codex_router": "127.0.0.1:4100 LISTENING",

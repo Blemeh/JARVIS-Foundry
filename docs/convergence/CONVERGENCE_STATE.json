@@ -2,13 +2,13 @@
   "schema": "jarvis-post-v7-canonical-convergence-state-v2",
   "program": "JARVIS Post-V7 Remaster",
   "current_stage": "POST_PROMOTION_PROVING",
-  "current_slice": "honest elapsed proving window and dependency-ready R7-R12 external-effect gates",
+  "current_slice": "R4 deployed exact-head audited; R8 production gate verification and real elapsed proving window in progress",
   "r6_state": "OWNER_REDIRECT_R6_DEFERRED",
   "eyes_state": "OUT_OF_SCOPE_READ_ONLY",
   "canonical": {
     "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
     "branch": "main",
-    "head": "f122eb18d17b4cd0e31c058c8f1a000b373b5509",
+    "head": "51d1d4e96b9731eb2c4d13ff0e4db8975e0076ab",
     "origin_main": "1abc388c6471a310f361612ebd81ed6a2cf6c646",
     "dirty_owner_docs_preserved": true,
     "current_full_suite": {
@@ -53,7 +53,7 @@
     },
     "fault_campaign": {
       "path": "docs/convergence/R12_FAULT_CAMPAIGN.json",
-      "sha256": "8D5985021BF2E457A6DC18F16DDB4559672D9040A6C79D25579A796968CC6D7C",
+      "sha256": "94ECD789E8EC32F06897B2FFFA5F05C26D4289DB3D31F7B2BDF264633328166E",
       "faults": 47,
       "direct_faults": 37,
       "boundary_faults": 10
@@ -94,7 +94,7 @@
     "status": "PASS_READ_ONLY",
     "schema_version": 33,
     "sqlite_quick_check": "ok",
-    "event_head": 98164,
+    "event_head": 99376,
     "supervisor_status": "RUNNING",
     "stop_directives": [],
     "credential_values_recorded": false
@@ -176,8 +176,9 @@
       "agent": "/root/post_promotion_final_auditor",
       "provider": "commandcode",
       "model": "deepseek-v4-flash",
-      "status": "RUNNING",
-      "scope": "promoted release R7-R12 acceptance and external-boundary audit; no mutation"
+      "status": "COMPLETED_PASS_WITH_FINDINGS",
+      "report": "docs/convergence/R4_POST_PROMOTION_EXACT_AUDIT.json",
+      "scope": "exact deployed HEAD read-only release, runtime, and external-boundary audit; no mutation"
     },
     {
       "role": "post-promotion final auditor retry",
@@ -288,12 +289,12 @@
   "promotion": {
     "status": "PROMOTED_AND_RECONCILED",
     "promotion_worktree": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R4",
-    "promotion_commit": "f122eb18d17b4cd0e31c058c8f1a000b373b5509",
+    "promotion_commit": "51d1d4e96b9731eb2c4d13ff0e4db8975e0076ab",
     "pre_release_tag": "convergence-pre-r3",
     "post_promotion_runtime_probe": "docs/convergence/LIVE_RUNTIME_PROBE_POST_PROMOTION.json",
     "rollback_bundle": "C:/temp/jarvis-convergence-pre-r3.bundle"
   },
-  "verifier_state": "R4_FORWARD_PORT_VERIFIED_PENDING_FF_PROMOTION",
+  "verifier_state": "R4_DEPLOYED_AUDITED_R8_VERIFICATION_AND_PROVING_WINDOW_PENDING",
   "blockers": [
     "R7 real monitored provider research NOT_TESTED/WAITING",
     "R9 real external connector/provider effects NOT_TESTED/WAITING",
@@ -301,5 +302,5 @@
     "R11 elapsed promotion cycles and proving window NOT_TESTED/WAITING",
     "R12 physical host and unavailable-provider fault rows NOT_TESTED/BLOCKED"
   ],
-  "exact_next_action": "ff-only promote the exact verified R4 candidate to canonical main, then run a fresh post-promotion runtime audit"
+  "exact_next_action": "independently verify the R8 production gate, then register the real Supervisor-owned proving window and start the read-only monitor"
 }
