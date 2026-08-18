@@ -1,0 +1,80 @@
+{
+  "schema": "jarvis-r9-live-result-contract-post-promotion-candidate-v1",
+  "stage": "R9",
+  "status": "PASS_SOURCE_VERIFIED_PENDING_LIVE_CANARY",
+  "candidate": {
+    "promotion_worktree": "C:/temp/JARVIS-Foundry-R8-PROMOTE",
+    "branch": "promote/r8-production-forward-port",
+    "base_head": "1a5b60ce59f00c3017f2079f73163215794e44cd",
+    "candidate_head": "5ccceb6",
+    "source_commits": [
+      {
+        "commit": "f762892",
+        "source_commit": "810e9bb4d6cb156e5acb770b6ba80e0737d901f5",
+        "purpose": "shared result contract through live bridge, adapter parsing, control-file exclusion and commit unstage"
+      },
+      {
+        "commit": "5ccceb6",
+        "source_commit": "cce4f5e0780957900b042ef616b12a7420a4ec94",
+        "purpose": "filter result control file from capture_before and verifier delta baseline"
+      }
+    ]
+  },
+  "independent_verifier": {
+    "agent": "/root/r10_command_center_boundary_reviewer",
+    "provider_route": "router_commandcode_deepseek_v4_flash",
+    "provider": "commandcode",
+    "model": "deepseek-v4-flash",
+    "source_candidate": "cce4f5e0780957900b042ef616b12a7420a4ec94",
+    "status": "PASS",
+    "report": "docs/convergence/R9_LIVE_RESULT_CONTRACT_REPAIR_VERIFICATION_20260818.json",
+    "report_sha256": "80739D642FB1A80AC43C0AB16D7A2D458445BC3E917523DD37746B91A78C287E",
+    "fresh_worker_tests": 52,
+    "fresh_loop_tests": 23,
+    "fresh_closure_tests": 55,
+    "boundary": "real live provider re-dispatch remains NOT_TESTED"
+  },
+  "post_promotion_candidate_gates": {
+    "pythonpath": "C:/temp/JARVIS-Foundry-R8-PROMOTE;C:/temp/JARVIS-Foundry-R8-PROMOTE/src",
+    "worker_mission_verification": {
+      "tests": 107,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit": "C:/temp/r9-post-promote-worker-junit.xml",
+      "sha256": "1FEAC888D0E5FFF45CAB029553E8702C234AD1CC877192B69CF1EEF29F24AAE9"
+    },
+    "convergence": {
+      "tests": 96,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit": "C:/temp/r9-post-promote-convergence-junit.xml",
+      "sha256": "BC41C8C96AE5FF1CF68E914427F9D6CB73BC188C75D39175A4EC1F27D9386EA2"
+    },
+    "compileall": "PASS",
+    "diff_check": "PASS",
+    "initial_import_trap": {
+      "status": "REPRODUCED_AND_CORRECTED",
+      "cause": "scripts.* convergence test import requires promotion worktree root on PYTHONPATH",
+      "corrected_command": "PYTHONPATH=C:/temp/JARVIS-Foundry-R8-PROMOTE;C:/temp/JARVIS-Foundry-R8-PROMOTE/src"
+    }
+  },
+  "findings": {
+    "R9-RESULT-FILE-SELF-DIFF": "CLOSED_IN_REPAIR3",
+    "R9-LIVE-BRIDGE-INSTRUCTION-GAP": "CLOSED_IN_REPAIR3",
+    "R9-VERIFIER-DELTA-CONTROL-BASELINE-20260818": "CLOSED_IN_REPAIR3"
+  },
+  "acceptance": {
+    "source_gate": "PASS",
+    "promotion_allowed": true,
+    "live_provider_effects": "NOT_TESTED",
+    "next_action": "commit this candidate evidence, ff-only promote to canonical main, run canonical post-promotion regression, then rerun a bounded disposable live mission canary and inspect its result contract and durable evidence"
+  },
+  "integrity": {
+    "canonical_main_untouched_during_candidate_tests": true,
+    "egg_info_noise_excluded": true,
+    "secrets_recorded": false,
+    "historical_failure_reports_preserved": true
+  }
+}

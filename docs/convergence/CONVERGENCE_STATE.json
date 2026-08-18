@@ -147,13 +147,26 @@
       ]
     },
     "r9_result_contract_repair_verification": {
-      "status": "PASS_WITH_DELTA_BASELINE_FINDING",
-      "report": "docs/convergence/R9_LIVE_RESULT_CONTRACT_REPAIR_VERIFICATION_20260818.json",
-      "report_sha256": "80739D642FB1A80AC43C0AB16D7A2D458445BC3E917523DD37746B91A78C287E",
-      "candidate_head": "810e9bb4d6cb156e5acb770b6ba80e0737d901f5",
-      "fresh_tests": "74 passed",
-      "remaining_finding": "R9-VERIFIER-DELTA-CONTROL-BASELINE-20260818",
-      "promotion_allowed": false
+      "status": "PASS_SOURCE_VERIFIED",
+      "report": "docs/convergence/R9_LIVE_RESULT_CONTRACT_POST_PROMOTION_CANDIDATE_VERIFICATION_20260818.json",
+      "report_sha256": "58141161C1CAE434C46C6F83BE6685852387437AA98FD25B2D426F7BC69034D2",
+      "candidate_head": "5ccceb6",
+      "independent_source_head": "cce4f5e0780957900b042ef616b12a7420a4ec94",
+      "fresh_tests": "74 passed independent; 107 worker/mission post-promotion-candidate; 96 convergence post-promotion-candidate",
+      "remaining_finding": null,
+      "promotion_allowed": true,
+      "live_provider_boundary": "NOT_TESTED"
+    },
+    "r9_post_promotion_candidate": {
+      "status": "PASS_PENDING_FF_PROMOTION",
+      "report": "docs/convergence/R9_LIVE_RESULT_CONTRACT_POST_PROMOTION_CANDIDATE_VERIFICATION_20260818.json",
+      "candidate_head": "5ccceb6",
+      "source_commits": ["f762892", "5ccceb6"],
+      "worker_junit": "C:/temp/r9-post-promote-worker-junit.xml",
+      "worker_junit_sha256": "1FEAC888D0E5FFF45CAB029553E8702C234AD1CC877192B69CF1EEF29F24AAE9",
+      "convergence_junit": "C:/temp/r9-post-promote-convergence-junit.xml",
+      "convergence_junit_sha256": "BC41C8C96AE5FF1CF68E914427F9D6CB73BC188C75D39175A4EC1F27D9386EA2",
+      "promotion_allowed": true
     },
     "restart_canary": {
       "status": "FAIL_EXTERNAL_BOUNDARY",
@@ -235,26 +248,26 @@
     {
       "id": "R9-RESULT-FILE-SELF-DIFF",
       "severity": "S2",
-      "status": "REPAIRING",
-      "evidence": "docs/convergence/R9_LIVE_RESULT_CONTRACT_VERIFICATION_20260818.json",
+      "status": "CLOSED_IN_REPAIR3",
+      "evidence": "docs/convergence/R9_LIVE_RESULT_CONTRACT_POST_PROMOTION_CANDIDATE_VERIFICATION_20260818.json",
       "finding": "The worker-owned .jarvis-result.json control file pollutes observed-diff comparison and verifier delta mode.",
-      "resolution": "Fresh repair must classify the control file explicitly without copying observed diffs into worker claims."
+      "resolution": "Repair-3 filters the control file from observed and delta comparisons, preserving business-file truth and worker-claim distinction; independently verified."
     },
     {
       "id": "R9-LIVE-BRIDGE-INSTRUCTION-GAP",
       "severity": "S2",
-      "status": "REPAIRING",
-      "evidence": "docs/convergence/R9_LIVE_RESULT_CONTRACT_VERIFICATION_20260818.json",
+      "status": "CLOSED_IN_REPAIR3",
+      "evidence": "docs/convergence/R9_LIVE_RESULT_CONTRACT_POST_PROMOTION_CANDIDATE_VERIFICATION_20260818.json",
       "finding": "The live MissionLoop bridge does not receive the machine-result contract instruction added only to HybridStepController.",
-      "resolution": "Fresh repair must cover HybridWorkerRoleAdapter and runtime worker-loop paths with a shared contract helper."
+      "resolution": "Repair-2 shared result_instruction reaches HybridWorkerRoleAdapter and MissionLoop; independently verified."
     },
     {
       "id": "R9-VERIFIER-DELTA-CONTROL-BASELINE-20260818",
       "severity": "S2",
-      "status": "REPAIRING",
-      "evidence": "docs/convergence/R9_LIVE_RESULT_CONTRACT_VERIFICATION_20260818.json",
+      "status": "CLOSED_IN_REPAIR3",
+      "evidence": "docs/convergence/R9_LIVE_RESULT_CONTRACT_POST_PROMOTION_CANDIDATE_VERIFICATION_20260818.json",
       "finding": "Fresh verification reproduced that MissionLoop verifier delta mode can retain .jarvis-result.json in the builder baseline, producing claimed business files versus an empty observed delta and preventing an otherwise valid live verifier PASS.",
-      "resolution": "A fresh isolated repair must filter the control file from delta baselines while preserving observed business-file truth, add a canonical live-path regression, and pass independent verification."
+      "resolution": "Repair-3 filters RESULT_FILENAME from capture_before and delta_baseline and adds a canonical verifier-delta regression; independently verified and green in the isolated promotion candidate."
     }
   ],
   "dispatches": [
@@ -515,14 +528,16 @@
       "provider_route": "router_commandcode_deepseek_v4_flash",
       "provider": "commandcode",
       "model": "deepseek-v4-flash",
-      "status": "DISPATCHED_VERIFYING",
+      "status": "COMPLETED_PASS",
       "candidate_head": "cce4f5e0780957900b042ef616b12a7420a4ec94",
       "worktree": "C:/temp/JARVIS-Foundry-R9-LiveCanary-Repair-3",
-      "scope": "read-only fresh exact source, delta probe, regression suite, compile and diff verification"
+      "scope": "read-only fresh exact source, delta probe, regression suite, compile and diff verification",
+      "report": "docs/convergence/R9_LIVE_RESULT_CONTRACT_REPAIR_VERIFICATION_20260818.json",
+      "tests": "52 worker + 23 loop + 55 closure passed"
     }
   ],
   "promotion": {
-    "status": "R8_R9_R10_R11_R12_BOUNDED_VERIFIED_R9_DELTA_REPAIRING_PROVING_WAITING",
+    "status": "R8_R9_R10_R11_R12_BOUNDED_VERIFIED_R9_REPAIR_SOURCE_PASS_PENDING_FF_PROMOTION_PROVING_WAITING",
     "promotion_worktree": "C:/temp/JARVIS-Foundry-R8-PROMOTE",
     "promotion_commit": "949b4effdf28a2d938a628811fb9c751f5cb222c",
     "latest_evidence_commit": "56bded15d24050ab2b27a7a01daabb0c7b94b9a1",
@@ -535,7 +550,7 @@
     "post_promotion_runtime_probe": "docs/convergence/LIVE_RUNTIME_PROBE_POST_PROMOTION.json",
     "rollback_bundle": "C:/temp/jarvis-convergence-pre-r3.bundle"
   },
-  "verifier_state": "R8_R9_R10_R11_R12_BOUNDED_GATES_VERIFIED_R9_DELTA_BASELINE_REPAIRING_REAL_PROVING_WINDOW_WAITING_ELAPSED",
+  "verifier_state": "R8_R9_R10_R11_R12_BOUNDED_GATES_VERIFIED_R9_REPAIR_SOURCE_PASS_REAL_PROVING_WINDOW_WAITING_ELAPSED",
   "blockers": [
     "R7 real monitored provider research NOT_TESTED/WAITING",
     "R9 real external connector/provider effects NOT_TESTED/WAITING",
@@ -544,5 +559,5 @@
     "R11 real elapsed proving window and live promotion cycles NOT_TESTED/WAITING",
     "R12 physical host and unavailable-provider fault rows NOT_TESTED/BLOCKED"
   ],
-  "exact_next_action": "fresh-verify cce4f5e independently; if PASS, record its exact evidence, promote through isolated ff-only integration, run canonical post-promotion regression, then rerun a bounded disposable live mission canary with the repaired result contract; preserve the 2-of-10 count, the blocked restart canary, R4 monitor scope distinction, R9/R10/R11/R12 external boundaries, and real elapsed proving window honestly; do not close or promote final acceptance until real proving criteria are met"
+  "exact_next_action": "commit independently verified R9 repair candidate evidence, ff-only promote source commits to canonical main, run canonical post-promotion regression, then rerun a bounded disposable live mission canary with repaired result contract; preserve 2-of-10 count, blocked restart canary, and elapsed proving/external boundaries; do not close or promote final acceptance until real proving criteria are met"
 }

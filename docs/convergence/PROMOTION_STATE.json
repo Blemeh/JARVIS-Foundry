@@ -73,13 +73,13 @@
       ,"docs/convergence/PROVING_WINDOW_LIVE_MISSION_CANARY_20260818.json"
       ,"docs/convergence/R9_LIVE_RESULT_CONTRACT_VERIFICATION_20260818.json"
     ],
-    "status": "BOUNDED_GATES_VERIFIED_R9_DELTA_REPAIRING_RESTART_CANARY_BLOCKED_LIVE_CANARY_RECONCILED_REAL_PROVING_WAITING",
+    "status": "BOUNDED_GATES_VERIFIED_R9_REPAIR_SOURCE_PASS_PENDING_FF_PROMOTION_RESTART_CANARY_BLOCKED_LIVE_CANARY_RECONCILED_REAL_PROVING_WAITING",
     "latest_r9_repair_verification": {
       "path": "docs/convergence/R9_LIVE_RESULT_CONTRACT_REPAIR_VERIFICATION_20260818.json",
-      "sha256": "80739D642FB1A80AC43C0AB16D7A2D458445BC3E917523DD37746B91A78C287E",
+      "sha256": "58141161C1CAE434C46C6F83BE6685852387437AA98FD25B2D426F7BC69034D2",
       "candidate_head": "810e9bb4d6cb156e5acb770b6ba80e0737d901f5",
-      "status": "PASS_WITH_DELTA_BASELINE_FINDING",
-      "promotion_allowed": false
+      "status": "PASS_SOURCE_VERIFIED_PENDING_LIVE_CANARY",
+      "promotion_allowed": true
     },
     "repair3_pending_verification": {
       "worktree": "C:/temp/JARVIS-Foundry-R9-LiveCanary-Repair-3",
@@ -89,7 +89,7 @@
       "provider_route": "router_commandcode_deepseek_v4_flash",
       "provider": "commandcode",
       "model": "deepseek-v4-flash",
-      "status": "DISPATCHED_VERIFYING"
+      "status": "COMPLETED_PASS"
     },
     "restart_canary": {
       "path": "docs/convergence/PROVING_WINDOW_RESTART_CANARY_20260818.json",
@@ -103,5 +103,5 @@
   "canonical_main_mutated": true,
   "release_freeze": "docs/convergence/PROMOTION_FREEZE_R4.json (deployed and audited)",
   "release_pointer": "main -> 1fa0370; source tree verified at 51d1d4e; previous release remains recoverable",
-  "exact_next_action": "fresh-verify repair3 cce4f5e; if PASS, promote through isolated ff-only integration, run canonical regression, then rerun a bounded disposable live mission canary with repaired result contract; preserve 2-of-10 count, blocked restart canary, and elapsed proving/external boundaries"
+  "exact_next_action": "commit independently verified R9 repair candidate evidence, ff-only promote source commits to canonical main, run canonical regression, then rerun bounded disposable live mission canary with repaired result contract; preserve 2-of-10 count, blocked restart canary, and elapsed proving/external boundaries"
 }
