@@ -297,7 +297,7 @@ def _shadow_release(db: FoundryDatabase, improvement_id: str) -> str:
         db, source_commit="a" * 40, artifact_hashes={"bundle.txt": "b" * 64},
         dependencies=[], runtime_identity={"python": "test"},
         parent_release_id=None, improvement_id=improvement_id, risk_class="R2",
-        migrations=[], verdicts=[], controller="phase4-shadow-test",
+        migrations=[], verdicts=[], controller="supervisor",
         source_type="test", source_id="phase4-shadow",
     )
 
@@ -315,7 +315,7 @@ def test_shadow_procedure_stays_zero_effect_before_local_replay(
     run_id = shadow_procedure(
         db, bundle=bundle, improvement_id=improvement_id,
         candidate_release_id=release_id, inputs_dir=inputs,
-        controller="phase4-shadow-test", live_marker=marker,
+        controller="supervisor", live_marker=marker,
     )
     row = db.row("shadow_runs", "run_id", run_id)
     assert row is not None

@@ -6,16 +6,17 @@ every promotion/remaster mission (see `docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.
 If this document and another current-status document disagree, THIS document wins
 for "what exists now" claims; the architecture contract wins for binding invariants.
 
-Last reconciled: 2026-08-18 (Post-V7 canonical convergence promotion)
+Last reconciled: 2026-08-18 (Post-V7 convergence + Phase 4 procedural-learning remediation)
 
 ```text
-CURRENT CANONICAL HEAD:      e781f2c (main; Post-V7 convergence R3 promoted
-                             through isolated worktree; full hash in evidence)
+CURRENT CANONICAL HEAD:      657519c (main; Post-V7 convergence R3 baseline;
+                             Phase 4 remediation integration and final probe
+                             documentation are descendants)
 LETTA PROMOTION ANCESTOR:    2f7360e742559e051109e04ef7f3a82cc64cc2d2 (still an ancestor of HEAD)
 PRE-V8 HISTORICAL BASELINE:  93a3ddc0965dfaf3e4cb9dc0952467bd5250520a (historical only — do not reset to it)
 CURRENT SCHEMA:              v33 (six additive tier_c_* tables; event-derived)
-FULL SUITE:                  1222 collected on the Phase-4 candidate and
-                             repaired promotion path; EXIT=0 (see
+FULL SUITE:                  1225 collected on the Phase-4 remediation
+                             integration path; EXIT=0 (see
                              docs/evidence/PHASE4_PROCEDURAL_LEARNING/TEST_REPORT.md)
 SUPERVISOR STATE:            RUNNING (single lease owner, heartbeat advancing)
 STOP STATE:                  OFF (no sentinel, no active STOP/PAUSE directives)
@@ -31,8 +32,10 @@ WORKFLOW DISCOVERY (Phase 3): deterministic sessionization/tokenization/mining a
                              evidence-to-existing-candidate bridge READY/PROVEN;
                              disabled by default; no continuous mining or execution
 PROCEDURAL LEARNING (Phase 4): governed deterministic OpenAdapt browser substrate
-                             READY/PROVEN; disabled by default; desktop PROBING;
-                             no continuous learning, broad promotion, or Phase 5 loop
+                             READY/PROVEN with complete artifact-byte binding and
+                             zero-effect shadow proof; disabled by default;
+                             desktop PROBING; no continuous learning, broad
+                             promotion, or Phase 5 loop
 ```
 
 ## What exists now
@@ -74,11 +77,12 @@ PROCEDURAL LEARNING (Phase 4): governed deterministic OpenAdapt browser substrat
   read-only review. Disabled by default; no computer control, audio, continuous
   loop, candidate approval, or mission creation.
 - **Procedural Learning (Phase 4)** — versioned/hash-bound OpenAdapt browser
-  bundle, reference-only Tier-C procedure, existing ActionEnvelope/capability/
-  connector/effect path, independent local effect oracle, scoped process cleanup,
-  STOP/recovery/idempotency, and zero-model synthetic replay. Proven by the
-  Phase-4 evidence package and 1,222-test candidate suite; disabled by default;
-  native desktop remains PROBING.
+  bundle with a JARVIS hash for every artifact byte, reference-only Tier-C
+  procedure, existing ActionEnvelope/capability/connector/effect reconciliation,
+  independent local effect oracle, scoped process cleanup, STOP/recovery/
+  idempotency, existing V6 zero-effect shadow bridge, and zero-model synthetic
+  replay. Proven by the Phase-4 remediation evidence package and 1,225-test
+  integration suite; disabled by default; native desktop remains PROBING.
 
 ## What is running
 
@@ -101,11 +105,11 @@ browser substrate, and it cannot activate native desktop execution.
 | V8 hybrid-memory certification | PASS — 9/9 criteria (candidate) |
 | V8 canonical promotion | PASS — 1027/0/0 post-merge; live canary PASS; rollback drill PASS; post-promotion remediation certification PASS |
 | Worker canonical gate | PASS — 18/18 + independent adversarial review |
-| Full suite (current) | 1,222 collected, 0 failures (Phase 4 promotion gate) |
+| Full suite (current) | 1,225 collected, 0 failures (Phase 4 remediation gate) |
 | JARVIS Eyes Phase 2 | PASS — 20/20 faults, rollback/live probe, read-only boundary |
 | Workflow Discovery Phase 3 | PASS — 36/36 focused, F1–F25, bounded probe, independent review |
-| Procedural Learning Phase 4 | PASS — 20/20 focused, F1–F24, local browser probe, rollback, independent source review |
-| Post-V7 canonical convergence (R7–R12 semantic closure) | PASS — exact Supervisor authority across low-level evolution/control surfaces; 76 convergence tests + 1,222 canonical tests; isolated promotion and post-promotion runtime probe PASS |
+| Procedural Learning Phase 4 | PASS — 23/23 focused, F1–F24, artifact-byte tamper, zero-effect shadow, local browser probe, rollback, fresh independent review |
+| Post-V7 canonical convergence (R7–R12 semantic closure) | PASS — exact Supervisor authority across low-level evolution/control surfaces; 76 convergence tests + 1,225 canonical tests; isolated promotion and post-promotion runtime probe PASS |
 
 ## What is experimental / not canonical
 
