@@ -5,8 +5,8 @@
 ## Canonical Reconciliation
 
 - **CANONICAL START:** `c3665b75ca5542e6bc73917c5eb710eadfef6d1b`
-- **CANONICAL FINAL:** Phase-4 merge `735c199` with this documentation
-  closure as a descendant; exact final Git HEAD is reported in the close-out
+- **CANONICAL FINAL:** `11161a2` on `main`; this final probe documentation is
+  a descendant and the exact close-out HEAD is reported separately
 - **LOCAL MAIN / origin/main before promotion:** `1abc388`
 - **PUSH PERFORMED:** NO
 - **SCHEMA:** v33, unchanged
@@ -86,9 +86,12 @@
 - **PROMOTED:** YES, through a non-fast-forward integration merge that
   preserved newer canonical owner docs
 - **ROLLBACK:** PASS; detached baseline regression 59/59
-- **POST-PROMOTION PROBE:** PASS; bounded local replay `hardened-3` reached
-  `COMPLETED_VERIFIED`, report path, `model_calls=0`, no owned descendants;
-  repeat/STOP/resume evidence is recorded in the fault matrix and probe logs
+- **POST-PROMOTION PROBE:** PASS; canonical `main` replay
+  `canonical-final-1` reached `COMPLETED_VERIFIED` with `model_calls=0` and
+  no owned descendants; the same request reused the terminal effect without a
+  second record, STOP returned `NOT_READY` before dispatch, and a fresh resume
+  reached `COMPLETED_VERIFIED` (count 2). Exact run evidence is in
+  `CANONICAL_PROBE.md`.
 - **PHASE 4 FINAL VERDICT:** PASS
 - **PROCEDURAL LEARNING:** READY AND PROVEN
 - **OPENADAPT BROWSER:** READY AND GOVERNED

@@ -4,7 +4,7 @@ Single authoritative capability status. Classifications:
 `IMPLEMENTED_AND_PROVEN` · `IMPLEMENTED_UNPROVEN` · `PARTIAL` · `MISSING` · `SUPERSEDED`.
 
 Evidence roots: `docs/evidence/`, `evidence/`, git history, live runtime state.
-Current HEAD reference: `735c199` (see `docs/CURRENT_STATE.md`; documentation
+Current HEAD reference: `11161a2` (see `docs/CURRENT_STATE.md`; documentation
 closure is a descendant).
 
 | Capability | Original target | Current implementation | Evidence | State | Remaining gap |

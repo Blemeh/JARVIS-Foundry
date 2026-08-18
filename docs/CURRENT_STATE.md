@@ -9,8 +9,8 @@ for "what exists now" claims; the architecture contract wins for binding invaria
 Last reconciled: 2026-08-18 (JARVIS Procedural Learning + OpenAdapt Phase 4 promotion)
 
 ```text
-CURRENT CANONICAL HEAD:      735c199 (main; Phase 4 Procedural Learning
-                             promoted; documentation closure is a descendant)
+CURRENT CANONICAL HEAD:      11161a2 (main; Phase 4 Procedural Learning
+                             promoted; final probe documentation is a descendant)
 LETTA PROMOTION ANCESTOR:    2f7360e742559e051109e04ef7f3a82cc64cc2d2 (still an ancestor of HEAD)
 PRE-V8 HISTORICAL BASELINE:  93a3ddc0965dfaf3e4cb9dc0952467bd5250520a (historical only — do not reset to it)
 CURRENT SCHEMA:              v33 (six additive tier_c_* tables; event-derived)
