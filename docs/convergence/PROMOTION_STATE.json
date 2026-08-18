@@ -1,6 +1,6 @@
 {
   "schema": "jarvis-canonical-promotion-state-v1",
-  "status": "R4_VERIFIED_PENDING_FF_PROMOTION",
+  "status": "R4_FORWARD_PORT_VERIFIED_PENDING_FF_PROMOTION",
   "canonical_repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
   "promotion_worktree": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R4",
   "promotion_branch": "promote/canonical-convergence-r4",
@@ -50,6 +50,6 @@
   },
   "canonical_main_mutated": true,
   "release_freeze": "docs/convergence/PROMOTION_FREEZE_R4.json (pending ff-only promotion)",
-  "release_pointer": "promote/canonical-convergence-r4 -> adc0278; main remains at 073886a until final verifier PASS",
-  "exact_next_action": "fresh independent verifier of exact R4 HEAD, then ff-only promotion and release freeze"
+  "release_pointer": "promote/canonical-convergence-r4 -> 6b2411c; main remains at 073886a until ff-only promotion",
+  "exact_next_action": "ff-only promote 6b2411c to canonical main and run a fresh post-promotion runtime audit"
 }

@@ -278,7 +278,8 @@
       "agent": "/root/r4_forward_port_final_verifier",
       "provider": "commandcode",
       "model": "deepseek-v4-flash",
-      "status": "RUNNING",
+      "status": "COMPLETED_PASS",
+      "report": "docs/convergence/R4_FORWARD_PORT_FINAL_VERIFIER.json",
       "candidate_commit": "adc0278cc0b74258825a33daaf993206747e02bf",
       "worktree": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R4",
       "scope": "fresh read-only exact newest-main forward-port, package, evidence, and release-pointer verification"
@@ -292,7 +293,7 @@
     "post_promotion_runtime_probe": "docs/convergence/LIVE_RUNTIME_PROBE_POST_PROMOTION.json",
     "rollback_bundle": "C:/temp/jarvis-convergence-pre-r3.bundle"
   },
-  "verifier_state": "R4_NEWEST_CANONICAL_BASELINE_VERIFIED_PENDING_FF_PROMOTION",
+  "verifier_state": "R4_FORWARD_PORT_VERIFIED_PENDING_FF_PROMOTION",
   "blockers": [
     "R7 real monitored provider research NOT_TESTED/WAITING",
     "R9 real external connector/provider effects NOT_TESTED/WAITING",
@@ -300,5 +301,5 @@
     "R11 elapsed promotion cycles and proving window NOT_TESTED/WAITING",
     "R12 physical host and unavailable-provider fault rows NOT_TESTED/BLOCKED"
   ],
-  "exact_next_action": "await R4 newest canonical forward-port final verifier, then ff-only promote and freeze the deployed release"
+  "exact_next_action": "ff-only promote the exact verified R4 candidate to canonical main, then run a fresh post-promotion runtime audit"
 }

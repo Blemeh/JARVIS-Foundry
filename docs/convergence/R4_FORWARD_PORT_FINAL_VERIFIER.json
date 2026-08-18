@@ -1,0 +1,43 @@
+{
+  "schema": "jarvis-r4-forward-port-final-verifier-v1",
+  "stage": "POST_PROMOTION_PROVING",
+  "agent": "/root/r4_forward_port_final_verifier",
+  "provider": "commandcode",
+  "model": "deepseek-v4-flash",
+  "worktree": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R4",
+  "head_verified": "6b2411c634d2230dfdaf77390e2debc7db972547",
+  "verdict": "PASS",
+  "lineage": {
+    "newest_main_baseline": "073886a517dabd57b85094e34c6ab251357e3023",
+    "source_bearing_commit": "adc0278cc0b74258825a33daaf993206747e02bf",
+    "main_baseline_preserved": true,
+    "unrelated_scope_added": false
+  },
+  "tests": {
+    "focused_gate_monitor_authority": {"tests": 25, "failures": 0, "errors": 0, "skipped": 0},
+    "worker_regression": {"tests": 27, "failures": 0, "errors": 0, "skipped": 0},
+    "convergence": {"tests": 96, "failures": 0, "errors": 0, "skipped": 0, "junit": "docs/convergence/PROMOTION_CONVERGENCE_JUNIT_R4.xml", "sha256": "1CB64295EFB24AA39B3E90819B6170AC0C255224BE2DE8768E0842EF6B446655"},
+    "canonical_foundry": {"tests": 1225, "failures": 0, "errors": 0, "skipped": 0, "junit": "docs/convergence/PROMOTION_CANONICAL_FULL_SUITE_R4.xml", "sha256": "4FB8E6D4202C29DF6D9F1A5EF8F84861C1ED99FD32666B00D91EDD3452009153"},
+    "py_compile": "PASS",
+    "import_proving": "PASS"
+  },
+  "package": {
+    "sources_includes_proving": true,
+    "wheel": "C:/temp/r4-wheel-0818-new/jarvis_foundry-0.1.0-py3-none-any.whl",
+    "wheel_sha256": "44e72a2e6a3fbf283892a09aa008a56dd2fd651729c4d7b3f7f11196a2f25012",
+    "wheel_size_bytes": 400234
+  },
+  "semantic_checks": {
+    "monitor_read_only": true,
+    "owner_stop_filter_complete": true,
+    "pre_window_lineage_excluded": true,
+    "revocation_releases_day": true,
+    "external_effect_claims": false,
+    "live_db_touched": false
+  },
+  "boundaries": [
+    "real seven-day elapsed proving window NOT_TESTED/WAITING",
+    "live provider/connector/voice/UI and physical fault effects NOT_TESTED/WAITING"
+  ],
+  "recommended_next_action": "ff-only promote the exact verified candidate to main, then perform a fresh post-promotion runtime audit and start the real proving window"
+}
