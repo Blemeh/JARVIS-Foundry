@@ -148,11 +148,20 @@ class OwnedProcessHandle:
         return tuple(pid for pid in sorted(owned) if pid_alive(pid))
 
     def assert_clean(self) -> None:
-        self.refresh()
-        alive = tuple(pid for pid in sorted(self.descendants_seen) if pid_alive(pid))
-        if alive:
-            raise RuntimeError(
-                f"owned OpenAdapt descendants remain after {self.run_id}: {alive}")
+        # A browser child can be in the short Windows termination window
+        # after taskkill returns. Poll the already-owned set before declaring
+        # a cleanup failure; never broaden the set to unrelated browsers.
+        deadline = time.monotonic() + 5
+        while True:
+            self.refresh()
+            alive = tuple(pid for pid in sorted(self.descendants_seen)
+                          if pid_alive(pid))
+            if not alive:
+                return
+            if time.monotonic() >= deadline:
+                raise RuntimeError(
+                    f"owned OpenAdapt descendants remain after {self.run_id}: {alive}")
+            time.sleep(0.1)
 
 
 def launch_owned(
@@ -176,4 +185,3 @@ def launch_owned(
         kwargs["start_new_session"] = True
     process = subprocess.Popen(command, **kwargs)
     return OwnedProcessHandle(process, run_id, tuple(command))
-

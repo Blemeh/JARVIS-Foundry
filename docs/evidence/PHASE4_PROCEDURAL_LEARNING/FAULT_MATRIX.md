@@ -20,7 +20,7 @@ effect truth was observed; `NOT_TESTED` would be used for a missing gate.
 | F11 crash before effect | safe recovery/no duplicate | Phase-1 hard-kill before Submit recorded 0 backend writes; existing effect journal reap freezes | PASS |
 | F12 crash after real effect | reconcile, no replay | existing effect recovery/effects tests plus terminal idempotency path | PASS |
 | F13 partial effect | FROZEN/repair | focused mutable-oracle test classified a changed provider after adapter STOP as `PARTIAL` and froze the journal | PASS |
-| F14 parent kill | owned tree clean | focused Windows process-tree test kills a spawned child tree and verifies no owned descendants | PASS |
+| F14 parent kill | owned tree clean | focused Windows process-tree test passed; first real replay failed closed on a transient descendant, then the bounded polling repair produced a fresh clean replay with no owned descendants | PASS |
 | F15 STOP before replay | no execution | bounded STOP probe returned `NOT_READY`; no ActionEnvelope/effect was launched | PASS |
 | F16 STOP during replay | terminate/freeze/reconcile | focused adapter STOP result reconciled to `FROZEN`; resume did not launch again | PASS |
 | F17 restart after interruption | durable reconciliation | existing pipeline/effect resume regressions plus frozen request replay path | PASS |

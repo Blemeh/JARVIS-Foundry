@@ -202,11 +202,21 @@ class OpenAdaptAdapter:
         handle.refresh()
         if handle.descendants_seen:
             leftovers = handle.terminate_tree(reason="normal completion cleanup")
-        handle.assert_clean()
         try:
             params_path.unlink(missing_ok=True)
         except OSError:
             pass
+        try:
+            handle.assert_clean()
+        except RuntimeError as exc:
+            report_path, model_calls = _read_report(run_path)
+            return ReplayOutcome(
+                "FROZEN", run_id, None, bundle.bundle_hash, model_calls,
+                str(report_path) if report_path else None,
+                reason=redact_text(str(exc)),
+                recovery_classification="AMBIGUOUS",
+            )
+        leftovers = ()
         report_path, model_calls = _read_report(run_path)
         if leftovers:
             return ReplayOutcome("FROZEN", run_id, None, bundle.bundle_hash,
