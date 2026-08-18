@@ -295,12 +295,40 @@
       "candidate_commit": "adc0278cc0b74258825a33daaf993206747e02bf",
       "worktree": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R4",
       "scope": "fresh read-only exact newest-main forward-port, package, evidence, and release-pointer verification"
+    },
+    {
+      "role": "R4 post-promotion exact audit",
+      "agent": "/root/r4_post_promotion_exact_audit",
+      "provider": "commandcode",
+      "model": "deepseek-v4-flash",
+      "status": "COMPLETED_PASS_WITH_FINDINGS",
+      "report": "docs/convergence/R4_POST_PROMOTION_EXACT_AUDIT.json",
+      "head_verified": "51d1d4e96b9731eb2c4d13ff0e4db8975e0076ab",
+      "scope": "fresh exact deployed HEAD read-only audit; no mutation"
+    },
+    {
+      "role": "fresh R8 production gate verifier",
+      "agent": "/root/r8_production_gate_fresh_verifier",
+      "provider": "commandcode",
+      "model": "deepseek-v4-flash",
+      "status": "RUNNING",
+      "candidate_head": "578ada1b35ed5fa8e3440001438902bcf47bb54f",
+      "scope": "read-only exact R8 files, subprocess asset, maintenance repair, worker regression"
+    },
+    {
+      "role": "fresh R8 production gate verifier retry",
+      "agent": "/root/r8_production_gate_fresh_verifier_retry",
+      "provider": "commandcode",
+      "model": "deepseek-v4-flash",
+      "status": "RUNNING",
+      "candidate_head": "578ada1b35ed5fa8e3440001438902bcf47bb54f",
+      "scope": "read-only bounded retry after first verifier nonresponse"
     }
   ],
   "promotion": {
     "status": "PROMOTED_AND_RECONCILED",
     "promotion_worktree": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R4",
-    "promotion_commit": "05ee912587f728de9627cab4092d3c696af806e0",
+    "promotion_commit": "c84f7cabed013761ac7b01e4ddd65f2f9819142e",
     "pre_release_tag": "convergence-pre-r3",
     "post_promotion_runtime_probe": "docs/convergence/LIVE_RUNTIME_PROBE_POST_PROMOTION.json",
     "rollback_bundle": "C:/temp/jarvis-convergence-pre-r3.bundle"
