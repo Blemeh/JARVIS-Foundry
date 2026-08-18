@@ -1,0 +1,75 @@
+{
+  "schema": "jarvis-independent-semantic-convergence-audit-v1",
+  "recorded_at": "2026-08-19",
+  "status": "PASS_WITH_EXTERNAL_BOUNDARIES_AND_HISTORICAL_BLOCKER",
+  "dispatch": {
+    "provider": "commandcode",
+    "model": "gpt-5.6-luna",
+    "route": "router_commandcode_gpt_5_6_luna",
+    "transport": "codex-router",
+    "execution_label": "Luna Max"
+  },
+  "exact_heads": {
+    "canonical": {
+      "repository": "JARVIS Foundry canonical main",
+      "head": "2af8191d2f400531cec76155e934caf4aa32a895",
+      "head_short": "2af8191",
+      "status": "CLEAN_AT_EXACT_HEAD"
+    },
+    "remaster": {
+      "repository": "JARVIS Foundry Remaster",
+      "certified_head": "6be9185ea34a64a84737dbd9ec323e25776c4558",
+      "certified_head_short": "6be9185",
+      "status": "DIRTY",
+      "dirty_file_count": 87,
+      "inventory": "docs/convergence/REMASTER_CURRENT_DIRTY_INVENTORY_R3_FINAL.json",
+      "inventory_reconciliation": {
+        "entries": 87,
+        "classified_entries": 87,
+        "unclassified_entries": 0,
+        "historical_r6_deferred": 74,
+        "convergence_evidence": 4,
+        "post_certification_semantic_deltas": 9
+      }
+    }
+  },
+  "semantic_reconciliation": {
+    "method": "Read-only exact-head comparison and supplied inventory/audit reconciliation; no wholesale merge, cherry-pick, remaster repair, or runtime action.",
+    "stages": {
+      "R6": {"classification": "OWNER_DEFERRED_PRESERVED", "finding": "R6 trees and evidence remain historical and are not reopened or ported."},
+      "Eyes": {"classification": "OUT_OF_SCOPE_READ_ONLY", "finding": "Eyes material is preserved as an out-of-scope boundary and is not used as convergence proof."},
+      "R7": {"classification": "BOUNDED_SEMANTICS_EXTERNAL_BOUNDARY", "finding": "Bounded semantics are retained; real monitored provider research remains NOT_TESTED/WAITING."},
+      "R8": {"classification": "BOUNDED_CANONICAL_WORKER_SEMANTICS", "finding": "Canonical worker/production semantics are reconciled at the exact head; live external readiness is not implied."},
+      "R9": {"classification": "BOUNDED_SEMANTICS_EXTERNAL_BOUNDARY", "finding": "Capability and brokerage semantics are retained; real external connector/provider effects remain NOT_TESTED/WAITING."},
+      "R10": {"classification": "BOUNDED_SEMANTICS_EXTERNAL_BOUNDARY", "finding": "Command-center semantics are retained; live voice provider and visual/accessibility inspection remain NOT_TESTED/WAITING."},
+      "R11": {"classification": "BOUNDED_SEMANTICS_ELAPSED_BOUNDARY", "finding": "Evolution authority and rollback semantics are retained; real elapsed promotion cycles remain NOT_TESTED/WAITING."},
+      "R12": {"classification": "BOUNDED_CAMPAIGN_HISTORICAL_BLOCKER", "finding": "Bounded fault/recovery semantics are retained, while physical-host and unavailable-provider rows remain NOT_TESTED/BLOCKED."}
+    },
+    "r12_certified_artifact_manifest_mismatch": {
+      "status": "HISTORICAL_BLOCKER",
+      "finding": "The certified remaster R12 artifact-manifest binding mismatch remains a historical blocker in the semantic record.",
+      "action": "RECORDED_ONLY",
+      "remaster_repaired": false,
+      "canonical_source_repaired": false
+    }
+  },
+  "stale_pointer_findings": [
+    {"path": "docs/convergence/CONVERGENCE_MATRIX.md", "previous": "older promoted/main and forward-port pointers", "reconciled_to": "canonical exact head 2af8191 and remaster certified head 6be9185"},
+    {"path": "docs/convergence/CONVERGENCE_STATE.json", "previous": "canonical head faa4a983 and recorded full suite 1234", "reconciled_to": "canonical exact head 2af8191 and current full suite 1243"},
+    {"path": "docs/convergence/PROMOTION_STATE.json", "previous": "source/promotion pointers at faa4a983", "reconciled_to": "exact source/promotion/release pointers at 2af8191"},
+    {"path": "docs/CURRENT_STATE.md", "previous": "current head c356798 and full suite 1225", "reconciled_to": "current exact-head pin 2af8191 and full suite 1243"}
+  ],
+  "external_blockers": [
+    "R7 real monitored provider research is NOT_TESTED/WAITING.",
+    "R9 real external connector/provider effects are NOT_TESTED/WAITING.",
+    "R10 live voice provider and visual/accessibility inspection are NOT_TESTED/WAITING.",
+    "R11 real elapsed proving and promotion cycles are NOT_TESTED/WAITING.",
+    "R12 physical-host and unavailable-provider fault rows are NOT_TESTED/BLOCKED."
+  ],
+  "preservation": {"legacy_evidence_preserved": true, "old_reports_relabelled": false, "r6_preserved": true, "eyes_preserved_as_out_of_scope": true},
+  "external_effects": {
+    "claimed": false,
+    "statement": "This audit changed documentation only in the isolated worktree. No canonical checkout, remaster checkout, R6 tree, Eyes tree, database, service, provider, external connector, deployment, or running process was touched."
+  },
+  "recommended_next_action": "Keep WAITING/BLOCKED external boundaries and the historical R12 manifest mismatch explicit; use the exact-head suite and audit records as the current documentation pointers, and do not repair remaster evidence in this reconciliation."
+}

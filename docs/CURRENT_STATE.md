@@ -6,18 +6,18 @@ every promotion/remaster mission (see `docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.
 If this document and another current-status document disagree, THIS document wins
 for "what exists now" claims; the architecture contract wins for binding invariants.
 
-Last reconciled: 2026-08-18 (Post-V7 convergence proving window + Phase 4 canonical procedural-learning closure)
+Last reconciled: 2026-08-19 (exact-head convergence evidence reconciliation; legacy evidence preserved)
 
 ```text
-CURRENT CANONICAL HEAD:      c356798 (main; Phase 4 remediation promoted on
-                             top of the Post-V7 convergence proving-window
-                             baseline; this docs closure is a descendant)
+CURRENT CANONICAL HEAD:      2af8191 (main; exact tested head for the current
+                             convergence reconciliation; this docs closure is
+                             a descendant)
 LETTA PROMOTION ANCESTOR:    2f7360e742559e051109e04ef7f3a82cc64cc2d2 (still an ancestor of HEAD)
 PRE-V8 HISTORICAL BASELINE:  93a3ddc0965dfaf3e4cb9dc0952467bd5250520a (historical only — do not reset to it)
 CURRENT SCHEMA:              v33 (six additive tier_c_* tables; event-derived)
-FULL SUITE:                  1225 collected on the promoted canonical path;
-                             EXIT=0 (see
-                             docs/evidence/PHASE4_PROCEDURAL_LEARNING/TEST_REPORT.md)
+FULL SUITE:                  1243 collected on the exact tested canonical path;
+                             failures=0, errors=0, skipped=0 (see
+                             docs/convergence/CANONICAL_FULL_SUITE_20260819_EXACT_HEAD.json)
 SUPERVISOR STATE:            RUNNING (single lease owner, heartbeat advancing)
 STOP STATE:                  OFF (no sentinel, no active STOP/PAUSE directives)
 ACTIVE DIRECTIVES:           redirect, waive, extend_duty_window, align

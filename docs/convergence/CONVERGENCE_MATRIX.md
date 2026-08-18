@@ -1,7 +1,8 @@
 # JARVIS Remaster -> Canonical Convergence Matrix
 
 Program: JARVIS FINAL REMASTER FORWARD-PORT & CANONICAL CONVERGENCE
-Canonical promoted tip: `8f35a90` (main); forward-port baseline: `2b3573606570f910e5569cf3306223354f93e4ac`; Remaster certified tip: `6be9185`; Merge-base: `93a3ddc`.
+Exact-head reconciliation (2026-08-19): canonical tested head `2af8191` (full suite `1243/0/0/0`); remaster certified head `6be9185` with dirty inventory `87/87` classified. Legacy evidence below is preserved and not relabelled.
+Canonical promoted tip: `2af8191` (main); forward-port baseline: `2b3573606570f910e5569cf3306223354f93e4ac`; Remaster certified tip: `6be9185`; Merge-base: `93a3ddc`.
 Method: SEMANTIC FORWARD-PORT. No wholesale merge, no blind cherry-pick. Newest canonical architecture is authoritative.
 
 ## Structural delta

@@ -4,10 +4,10 @@
   "canonical_repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
   "promotion_worktree": "C:/temp/JARVIS-Foundry-R8-PROMOTE",
   "promotion_branch": "promote/r8-production-forward-port",
-  "source_main_head": "faa4a98301fa77b68745e5b5e8b11a761cfd71cf",
-  "candidate_commit": "faa4a98301fa77b68745e5b5e8b11a761cfd71cf",
-  "promotion_commit": "faa4a98301fa77b68745e5b5e8b11a761cfd71cf",
-  "source_tree_verified_head": "faa4a98301fa77b68745e5b5e8b11a761cfd71cf",
+  "source_main_head": "2af8191d2f400531cec76155e934caf4aa32a895",
+  "candidate_commit": "2af8191d2f400531cec76155e934caf4aa32a895",
+  "promotion_commit": "2af8191d2f400531cec76155e934caf4aa32a895",
+  "source_tree_verified_head": "2af8191d2f400531cec76155e934caf4aa32a895",
   "previous_release_remains_recoverable": true,
   "verification": {
     "pythonpath": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R4/src",
@@ -81,7 +81,7 @@
   "current_forward_port": {
     "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
     "branch": "main",
-    "latest_verified_evidence_head": "faa4a98301fa77b68745e5b5e8b11a761cfd71cf",
+     "latest_verified_evidence_head": "2af8191d2f400531cec76155e934caf4aa32a895",
     "promotion_worktree": "C:/temp/JARVIS-Foundry-R8-PROMOTE",
     "promotion_branch": "promote/r8-production-forward-port",
     "boundary_reviews": [
@@ -171,9 +171,10 @@
   },
   "canonical_main_mutated": true,
   "release_freeze": "docs/convergence/PROMOTION_FREEZE_R4.json (deployed and audited)",
-  "release_pointer": "main -> faa4a98; source tree verified at faa4a98301fa77b68745e5b5e8b11a761cfd71cf; previous release remains recoverable",
+  "release_pointer": "main -> 2af8191; source tree verified at 2af8191d2f400531cec76155e934caf4aa32a895; previous release remains recoverable",
     "latest_repaired_live_canary": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_REPAIRED_CANARY_20260818.json",
-    "latest_full_suite": "docs/convergence/CANONICAL_FULL_SUITE_20260818_R2.json",
+    "latest_full_suite": "docs/convergence/CANONICAL_FULL_SUITE_20260819_EXACT_HEAD.json",
+    "exact_head_audit": "docs/convergence/INDEPENDENT_SEMANTIC_CONVERGENCE_AUDIT_20260819.json",
     "documentation_repair": {
       "status": "PASS",
       "commit": "7c35f5c7ba5d4fd0fefcfcb7a785c42cb5a74d24",

@@ -1,0 +1,34 @@
+{
+  "schema": "jarvis-canonical-full-suite-evidence-v1",
+  "recorded_at": "2026-08-19",
+  "status": "PASS",
+  "tested_head": "2af8191d2f400531cec76155e934caf4aa32a895",
+  "tested_head_short": "2af8191",
+  "tested_source": {
+    "repository": "JARVIS Foundry canonical main",
+    "branch": "main",
+    "exact_head": "2af8191d2f400531cec76155e934caf4aa32a895"
+  },
+  "junit": {
+    "path": "C:/temp/jarvis-current-2af-foundry.xml",
+    "sha256": "2F25E745D58E50866B4E666D6708E712476BCEEA1633ECCD74610AE382664302",
+    "tests": 1243,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "command_scope": {
+    "kind": "FULL_FOUNDRY_JUNIT",
+    "description": "Already-completed full Foundry test execution represented by the supplied JUnit artifact.",
+    "artifact_reconciled_without_rerun": true,
+    "broad_suite_rerun_in_this_docs_task": false
+  },
+  "external_effects": {
+    "claimed": false,
+    "statement": "This evidence records repository test results only. It does not claim provider, browser, voice, connector, network, database, service, deployment, or live-runtime effects."
+  },
+  "legacy_evidence": {
+    "preserved": true,
+    "older_reports_relabelled": false
+  }
+}
