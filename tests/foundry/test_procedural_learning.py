@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -132,6 +133,26 @@ def test_bundle_contract_is_deterministic(bundle):
 def test_bundle_tamper_rejected(bundle):
     workflow = bundle.artifact_dir / "workflow.json"
     workflow.write_text(workflow.read_text(encoding="utf-8") + "tampered", encoding="utf-8")
+    with pytest.raises(BundleIntegrityError):
+        verify_bundle(bundle)
+
+
+@pytest.mark.skipif(
+    not (Path(r"C:\Users\b\Documents\JARVIS-Eyes-Qualification-Lab\openadapt\bundle-synthetic18") / "workflow.py").is_file(),
+    reason="Phase-1 compiled bundle is not installed",
+)
+def test_unlisted_openadapt_artifact_tamper_rejected(tmp_path: Path):
+    source = Path(
+        r"C:\Users\b\Documents\JARVIS-Eyes-Qualification-Lab\openadapt\bundle-synthetic18"
+    )
+    copied = tmp_path / "bundle"
+    shutil.copytree(source, copied)
+    from jarvis_foundry.procedural_learning import adopt_openadapt_bundle
+    bundle = adopt_openadapt_bundle(
+        copied, procedure_id="unlisted-tamper", source_workflow_evidence=["phase1"]
+    )
+    workflow_py = copied / "workflow.py"
+    workflow_py.write_bytes(workflow_py.read_bytes() + b"\n# tampered\n")
     with pytest.raises(BundleIntegrityError):
         verify_bundle(bundle)
 

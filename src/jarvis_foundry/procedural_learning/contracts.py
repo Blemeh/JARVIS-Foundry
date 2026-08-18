@@ -220,6 +220,8 @@ class ProcedureBundle:
             "bundle_hash": self.bundle_hash,
             "content_hash": self.content_hash,
             "manifest_hash": str(self.artifact_manifest.get("manifest_hash", "")),
+            "artifact_file_hashes": dict(
+                self.artifact_manifest.get("jarvis_file_hashes", {})),
             "bundle_version": self.bundle_version,
             "openadapt_version": self.openadapt_version,
             "openadapt_flow_version": self.openadapt_flow_version,

@@ -46,7 +46,33 @@ def _manifest_hash(manifest: dict[str, Any]) -> str:
     return payload_hash({k: v for k, v in manifest.items() if k != "manifest_hash"})
 
 
-def _verify_artifact_files(artifact_dir: Path, manifest: dict[str, Any]) -> None:
+def _jarvis_file_hashes(artifact_dir: Path) -> dict[str, str]:
+    """Hash every artifact byte JARVIS may hand to the executor.
+
+    OpenAdapt's native manifest intentionally lists template assets only;
+    JARVIS also binds generated workflow/code and any other bundle files so a
+    file outside that native asset list cannot change execution unnoticed.
+    The external manifest is excluded because its canonical hash is bound
+    separately as ``manifest_hash``.
+    """
+    hashes: dict[str, str] = {}
+    for path in sorted(artifact_dir.rglob("*")):
+        if not path.is_file():
+            continue
+        relative = path.relative_to(artifact_dir).as_posix()
+        if relative == "manifest.json":
+            continue
+        hashes[relative] = file_hash(path)
+    if not hashes:
+        raise BundleIntegrityError("bundle has no JARVIS-hashable artifact files")
+    return hashes
+
+
+def _verify_artifact_files(
+    artifact_dir: Path,
+    manifest: dict[str, Any],
+    jarvis_file_hashes: dict[str, str] | None = None,
+) -> None:
     schema = manifest.get("schema_version")
     if schema not in SUPPORTED_OPENADAPT_MANIFEST_SCHEMAS:
         raise BundleVersionError(f"unsupported OpenAdapt manifest schema {schema!r}")
@@ -67,6 +93,20 @@ def _verify_artifact_files(artifact_dir: Path, manifest: dict[str, Any]) -> None
     workflow = artifact_dir / "workflow.json"
     if not workflow.is_file():
         raise BundleIntegrityError("OpenAdapt bundle has no workflow.json")
+    if not isinstance(jarvis_file_hashes, dict) or not jarvis_file_hashes:
+        raise BundleIntegrityError("bundle has no JARVIS artifact hash set")
+    actual_jarvis_hashes = _jarvis_file_hashes(artifact_dir)
+    if set(actual_jarvis_hashes) != {str(key) for key in jarvis_file_hashes}:
+        raise BundleIntegrityError("JARVIS artifact file set changed")
+    for relative, expected in sorted(jarvis_file_hashes.items()):
+        rel = Path(str(relative))
+        if rel.is_absolute() or ".." in rel.parts or str(relative) == "manifest.json":
+            raise BundleIntegrityError(f"unsafe JARVIS artifact file path {relative!r}")
+        actual = actual_jarvis_hashes.get(str(relative))
+        if actual != str(expected):
+            raise BundleIntegrityError(
+                f"JARVIS artifact hash mismatch for {relative}: "
+                f"expected {expected}, got {actual}")
 
 
 def verify_bundle(bundle: ProcedureBundle) -> ProcedureBundle:
@@ -78,7 +118,8 @@ def verify_bundle(bundle: ProcedureBundle) -> ProcedureBundle:
         raise BundleIntegrityError("bundle artifact path is not canonical")
     manifest_path = artifact_dir / "manifest.json"
     manifest = _load_json(manifest_path)
-    _verify_artifact_files(artifact_dir, manifest)
+    jarvis_file_hashes = bundle.artifact_manifest.get("jarvis_file_hashes")
+    _verify_artifact_files(artifact_dir, manifest, jarvis_file_hashes)
     actual_manifest_hash = _manifest_hash(manifest)
     recorded_manifest_hash = str(manifest.get("manifest_hash", ""))
     # OpenAdapt's own manifests do not carry this field; Phase 4's wrapper
@@ -105,6 +146,7 @@ def verify_bundle(bundle: ProcedureBundle) -> ProcedureBundle:
         "risk_class": bundle.risk_class,
         "supersedes": bundle.supersedes,
         "lineage": list(bundle.lineage),
+        "jarvis_file_hashes": jarvis_file_hashes,
     })
     if expected != bundle.bundle_hash:
         raise BundleIntegrityError("governed bundle hash mismatch")
@@ -135,7 +177,8 @@ def adopt_openadapt_bundle(
     if not procedure_id.strip():
         raise ValueError("procedure_id is required")
     manifest = _load_json(directory / "manifest.json")
-    _verify_artifact_files(directory, manifest)
+    jarvis_file_hashes = _jarvis_file_hashes(directory)
+    _verify_artifact_files(directory, manifest, jarvis_file_hashes)
     openadapt_version = str(manifest.get("openadapt_version", SUPPORTED_OPENADAPT_VERSION))
     flow_version = str(manifest.get("openadapt_flow_version", manifest.get("provenance", {}).get("compiler_version", "")))
     if openadapt_version != SUPPORTED_OPENADAPT_VERSION:
@@ -152,6 +195,7 @@ def adopt_openadapt_bundle(
     # the hash of those exact original bytes; it never rewrites the artifact.
     original_manifest_hash = _manifest_hash(manifest)
     wrapped["manifest_hash"] = original_manifest_hash
+    wrapped["jarvis_file_hashes"] = jarvis_file_hashes
     bundle_identity = {
         "procedure_id": procedure_id,
         "manifest_hash": original_manifest_hash,
@@ -167,6 +211,7 @@ def adopt_openadapt_bundle(
         "risk_class": risk_class,
         "supersedes": supersedes,
         "lineage": list(lineage),
+        "jarvis_file_hashes": jarvis_file_hashes,
     }
     bundle = ProcedureBundle(
         procedure_id=procedure_id,
