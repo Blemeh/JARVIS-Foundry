@@ -2,13 +2,13 @@
   "schema": "jarvis-post-v7-canonical-convergence-state-v2",
   "program": "JARVIS Post-V7 Remaster",
   "current_stage": "POST_PROMOTION_PROVING",
-  "current_slice": "R8 production organization verified; R9/R10 bounded gates reviewed; R10 directive repair independently verified; R11 bounded evolution gate reviewed; R12 fault gate freshly rechecked; proving lineage/monitor repairs reconciled on current main; R9 live result-contract repair independently failed and is repairing; live mission canary independently verified with 2 of 10 required missions; restart canary in progress; real elapsed proving window in progress",
+  "current_slice": "R8 production organization verified; R9/R10 bounded gates reviewed; R10 directive repair independently verified; R11 bounded evolution gate reviewed; R12 fault gate freshly rechecked; proving lineage/monitor repairs reconciled on current main; R9 live result-contract repair primary scope independently verified but verifier-delta baseline finding repaired in isolated cce4f5e and awaits fresh closure verification; live mission canary independently verified with 2 of 10 required missions; restart canary completed fail-closed with 0 accepted missions; real elapsed proving window in progress",
   "r6_state": "OWNER_REDIRECT_R6_DEFERRED",
   "eyes_state": "OUT_OF_SCOPE_READ_ONLY",
   "canonical": {
     "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
     "branch": "main",
-    "head": "7f7db2dc04bb2f82fb740b8b3230e878d17cb2c1",
+    "head": "ff4c95b5fac86cb733d437addb819708dbdb04e7",
     "source_tree_verified_head": "51d1d4e96b9731eb2c4d13ff0e4db8975e0076ab",
     "origin_main": "1abc388c6471a310f361612ebd81ed6a2cf6c646",
     "dirty_owner_docs_preserved": true,
@@ -111,6 +111,7 @@
     "started_at": "2026-08-18T17:57:26.791325Z",
     "claims_external_effects": false,
     "last_checkpoint_event_head": 100154,
+    "last_live_observed_event_head": 100875,
     "canary": {
       "status": "INDEPENDENTLY_VERIFIED_WAITING",
       "report": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_CANARY_20260818.json",
@@ -144,6 +145,29 @@
         "R9-RESULT-FILE-SELF-DIFF",
         "R9-LIVE-BRIDGE-INSTRUCTION-GAP"
       ]
+    },
+    "r9_result_contract_repair_verification": {
+      "status": "PASS_WITH_DELTA_BASELINE_FINDING",
+      "report": "docs/convergence/R9_LIVE_RESULT_CONTRACT_REPAIR_VERIFICATION_20260818.json",
+      "report_sha256": "80739D642FB1A80AC43C0AB16D7A2D458445BC3E917523DD37746B91A78C287E",
+      "candidate_head": "810e9bb4d6cb156e5acb770b6ba80e0737d901f5",
+      "fresh_tests": "74 passed",
+      "remaining_finding": "R9-VERIFIER-DELTA-CONTROL-BASELINE-20260818",
+      "promotion_allowed": false
+    },
+    "restart_canary": {
+      "status": "FAIL_EXTERNAL_BOUNDARY",
+      "report": "docs/convergence/PROVING_WINDOW_RESTART_CANARY_20260818.json",
+      "report_sha256": "0CE2E74716C5B612F5AE9FD9D89C983BE1BD05C227B794CCE827DBF5E7FFF775",
+      "verified_missions": 0,
+      "required_missions": 10,
+      "prior_verified_missions_preserved": 2,
+      "accepted_missions": 0,
+      "mission_states": ["BLOCKED", "BLOCKED"],
+      "provider": "opencode_go",
+      "model": "deepseek-v4-flash",
+      "restart_gate": "NOT_PASS",
+      "reason": "Both disposable provider missions failed closed on evidence_mismatch; no artifact or duplicate accepted action was recorded."
     }
   },
   "remaster_evidence": {
@@ -223,6 +247,14 @@
       "evidence": "docs/convergence/R9_LIVE_RESULT_CONTRACT_VERIFICATION_20260818.json",
       "finding": "The live MissionLoop bridge does not receive the machine-result contract instruction added only to HybridStepController.",
       "resolution": "Fresh repair must cover HybridWorkerRoleAdapter and runtime worker-loop paths with a shared contract helper."
+    },
+    {
+      "id": "R9-VERIFIER-DELTA-CONTROL-BASELINE-20260818",
+      "severity": "S2",
+      "status": "REPAIRING",
+      "evidence": "docs/convergence/R9_LIVE_RESULT_CONTRACT_VERIFICATION_20260818.json",
+      "finding": "Fresh verification reproduced that MissionLoop verifier delta mode can retain .jarvis-result.json in the builder baseline, producing claimed business files versus an empty observed delta and preventing an otherwise valid live verifier PASS.",
+      "resolution": "A fresh isolated repair must filter the control file from delta baselines while preserving observed business-file truth, add a canonical live-path regression, and pass independent verification."
     }
   ],
   "dispatches": [
@@ -449,25 +481,61 @@
       "provider_route": "router_commandcode_deepseek_v4_flash",
       "provider": "commandcode",
       "model": "deepseek-v4-flash",
-      "status": "COMPLETED_FAIL_REPAIR_REQUIRED",
+      "status": "COMPLETED_PASS_WITH_DELTA_BASELINE_FINDING",
       "report": "docs/convergence/R9_LIVE_RESULT_CONTRACT_VERIFICATION_20260818.json",
-      "candidate_head": "d933798",
-      "scope": "read-only adapter, evidence, and live MissionLoop bridge inspection with fresh worker regression suites"
+      "candidate_head": "810e9bb4d6cb156e5acb770b6ba80e0737d901f5",
+      "scope": "read-only exact repair inspection, self-diff/bridge/commit probes, and fresh worker plus mission/verifier closure suites",
+      "boundary_finding": "verifier delta baseline still includes the control file when the builder leaves it in the worktree; repair required before promotion"
+    },
+    {
+      "role": "R9 verifier-delta control-file repair worker",
+      "agent": "/root/r9_connector_boundary_reviewer",
+      "provider_route": "router_commandcode_deepseek_v4_flash",
+      "provider": "commandcode",
+      "model": "deepseek-v4-flash",
+      "status": "DISPATCHED_REPAIRING",
+      "base_commit": "810e9bb4d6cb156e5acb770b6ba80e0737d901f5",
+      "scope": "isolated root-cause repair of verifier delta baseline filtering and canonical live-path regression; no canonical mutation"
+    },
+    {
+      "role": "R9 verifier-delta control-file repair worker",
+      "agent": "/root/r9_connector_boundary_reviewer",
+      "provider_route": "router_commandcode_deepseek_v4_flash",
+      "provider": "commandcode",
+      "model": "deepseek-v4-flash",
+      "status": "COMPLETED_REPAIR_READY",
+      "worktree": "C:/temp/JARVIS-Foundry-R9-LiveCanary-Repair-3",
+      "branch": "repair/r9-live-canary-result-contract-3",
+      "candidate_head": "cce4f5e0780957900b042ef616b12a7420a4ec94",
+      "scope": "capture_before and verifier delta baseline filtering with canonical live-path regression; 97/97 claimed worker and mission closure"
+    },
+    {
+      "role": "R9 verifier-delta repair fresh verifier",
+      "agent": "/root/r10_command_center_boundary_reviewer",
+      "provider_route": "router_commandcode_deepseek_v4_flash",
+      "provider": "commandcode",
+      "model": "deepseek-v4-flash",
+      "status": "DISPATCHED_VERIFYING",
+      "candidate_head": "cce4f5e0780957900b042ef616b12a7420a4ec94",
+      "worktree": "C:/temp/JARVIS-Foundry-R9-LiveCanary-Repair-3",
+      "scope": "read-only fresh exact source, delta probe, regression suite, compile and diff verification"
     }
   ],
   "promotion": {
-    "status": "R8_R9_R10_R11_R12_BOUNDED_VERIFIED_PROVING_WAITING",
+    "status": "R8_R9_R10_R11_R12_BOUNDED_VERIFIED_R9_DELTA_REPAIRING_PROVING_WAITING",
     "promotion_worktree": "C:/temp/JARVIS-Foundry-R8-PROMOTE",
     "promotion_commit": "949b4effdf28a2d938a628811fb9c751f5cb222c",
-    "latest_evidence_commit": "7f7db2dc04bb2f82fb740b8b3230e878d17cb2c1",
+    "latest_evidence_commit": "ff4c95b5fac86cb733d437addb819708dbdb04e7",
     "latest_live_canary": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_CANARY_20260818.json",
     "latest_repair_reconciliation": "docs/convergence/PROVING_WINDOW_REPAIR_RECONCILIATION_20260818.json",
     "latest_r9_result_contract_verification": "docs/convergence/R9_LIVE_RESULT_CONTRACT_VERIFICATION_20260818.json",
+    "latest_r9_result_contract_repair_verification": "docs/convergence/R9_LIVE_RESULT_CONTRACT_REPAIR_VERIFICATION_20260818.json",
+    "latest_restart_canary": "docs/convergence/PROVING_WINDOW_RESTART_CANARY_20260818.json",
     "pre_release_tag": "convergence-pre-r3",
     "post_promotion_runtime_probe": "docs/convergence/LIVE_RUNTIME_PROBE_POST_PROMOTION.json",
     "rollback_bundle": "C:/temp/jarvis-convergence-pre-r3.bundle"
   },
-  "verifier_state": "R8_R9_R10_R11_R12_BOUNDED_GATES_VERIFIED_REAL_PROVING_WINDOW_WAITING_ELAPSED",
+  "verifier_state": "R8_R9_R10_R11_R12_BOUNDED_GATES_VERIFIED_R9_DELTA_BASELINE_REPAIRING_REAL_PROVING_WINDOW_WAITING_ELAPSED",
   "blockers": [
     "R7 real monitored provider research NOT_TESTED/WAITING",
     "R9 real external connector/provider effects NOT_TESTED/WAITING",
@@ -476,5 +544,5 @@
     "R11 real elapsed proving window and live promotion cycles NOT_TESTED/WAITING",
     "R12 physical host and unavailable-provider fault rows NOT_TESTED/BLOCKED"
   ],
-  "exact_next_action": "finish and independently reconcile the running restart canary; preserve the 2-of-10 live canary count and evidence-mismatch finding; complete the fresh R9 result-contract repair for the live bridge and control-file reconciliation, then independently verify it before promotion; keep the proving monitor scope distinction, R9/R10/R11/R12 external boundaries, and elapsed window honest; do not close or promote final acceptance until real proving criteria are met"
+  "exact_next_action": "fresh-verify cce4f5e independently; if PASS, record its exact evidence, promote through isolated ff-only integration, run canonical post-promotion regression, then rerun a bounded disposable live mission canary with the repaired result contract; preserve the 2-of-10 count, the blocked restart canary, R4 monitor scope distinction, R9/R10/R11/R12 external boundaries, and real elapsed proving window honestly; do not close or promote final acceptance until real proving criteria are met"
 }

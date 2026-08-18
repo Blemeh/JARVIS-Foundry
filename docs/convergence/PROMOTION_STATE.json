@@ -62,7 +62,7 @@
   "current_forward_port": {
     "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
     "branch": "main",
-    "latest_verified_evidence_head": "7f7db2dc04bb2f82fb740b8b3230e878d17cb2c1",
+    "latest_verified_evidence_head": "ff4c95b5fac86cb733d437addb819708dbdb04e7",
     "promotion_worktree": "C:/temp/JARVIS-Foundry-R8-PROMOTE",
     "promotion_branch": "promote/r8-production-forward-port",
     "boundary_reviews": [
@@ -73,10 +73,35 @@
       ,"docs/convergence/PROVING_WINDOW_LIVE_MISSION_CANARY_20260818.json"
       ,"docs/convergence/R9_LIVE_RESULT_CONTRACT_VERIFICATION_20260818.json"
     ],
-    "status": "BOUNDED_GATES_VERIFIED_R9_RESULT_CONTRACT_REPAIRING_LIVE_CANARY_RECONCILED_REAL_PROVING_WAITING"
+    "status": "BOUNDED_GATES_VERIFIED_R9_DELTA_REPAIRING_RESTART_CANARY_BLOCKED_LIVE_CANARY_RECONCILED_REAL_PROVING_WAITING",
+    "latest_r9_repair_verification": {
+      "path": "docs/convergence/R9_LIVE_RESULT_CONTRACT_REPAIR_VERIFICATION_20260818.json",
+      "sha256": "80739D642FB1A80AC43C0AB16D7A2D458445BC3E917523DD37746B91A78C287E",
+      "candidate_head": "810e9bb4d6cb156e5acb770b6ba80e0737d901f5",
+      "status": "PASS_WITH_DELTA_BASELINE_FINDING",
+      "promotion_allowed": false
+    },
+    "repair3_pending_verification": {
+      "worktree": "C:/temp/JARVIS-Foundry-R9-LiveCanary-Repair-3",
+      "branch": "repair/r9-live-canary-result-contract-3",
+      "candidate_head": "cce4f5e0780957900b042ef616b12a7420a4ec94",
+      "verifier_agent": "/root/r10_command_center_boundary_reviewer",
+      "provider_route": "router_commandcode_deepseek_v4_flash",
+      "provider": "commandcode",
+      "model": "deepseek-v4-flash",
+      "status": "DISPATCHED_VERIFYING"
+    },
+    "restart_canary": {
+      "path": "docs/convergence/PROVING_WINDOW_RESTART_CANARY_20260818.json",
+      "sha256": "0CE2E74716C5B612F5AE9FD9D89C983BE1BD05C227B794CCE827DBF5E7FFF775",
+      "status": "FAIL_EXTERNAL_BOUNDARY",
+      "accepted_missions": 0,
+      "prior_verified_missions": 2,
+      "required_missions": 10
+    }
   },
   "canonical_main_mutated": true,
   "release_freeze": "docs/convergence/PROMOTION_FREEZE_R4.json (deployed and audited)",
   "release_pointer": "main -> 1fa0370; source tree verified at 51d1d4e; previous release remains recoverable",
-  "exact_next_action": "keep the scheduled read-only monitor running; preserve the independently verified 2-of-10 live canary and its builder evidence-mismatch finding; complete and fresh-verify the R9 result-contract repair before another provider canary; continue real proving and external-boundary closure without claiming provider or physical-host proof"
+  "exact_next_action": "fresh-verify repair3 cce4f5e; if PASS, promote through isolated ff-only integration, run canonical regression, then rerun a bounded disposable live mission canary with repaired result contract; preserve 2-of-10 count, blocked restart canary, and elapsed proving/external boundaries"
 }
