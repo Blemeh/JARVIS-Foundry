@@ -1,8 +1,8 @@
 {
   "schema": "jarvis-post-v7-canonical-convergence-state-v2",
   "program": "JARVIS Post-V7 Remaster",
-  "current_stage": "CANONICAL_CONVERGENCE",
-  "current_slice": "R3 exact semantic forward-port onto newest canonical main",
+  "current_stage": "POST_PROMOTION_PROVING",
+  "current_slice": "honest elapsed proving window and dependency-ready R7-R12 external-effect gates",
   "r6_state": "OWNER_REDIRECT_R6_DEFERRED",
   "eyes_state": "OUT_OF_SCOPE_READ_ONLY",
   "canonical": {
@@ -175,8 +175,25 @@
       "agent": "/root/post_promotion_audit_retry",
       "provider": "commandcode",
       "model": "deepseek-v4-flash",
-      "status": "RUNNING",
+      "status": "COMPLETED_EXTERNAL_BLOCKERS",
+      "report": "docs/convergence/INDEPENDENT_FINAL_AUDIT_RETRY.json",
       "scope": "concise promoted-release acceptance and external-boundary audit; no mutation"
+    },
+    {
+      "role": "proving-window investigator",
+      "agent": "/root/proving_window_investigator",
+      "provider": "commandcode",
+      "model": "deepseek-v4-flash",
+      "status": "RUNNING",
+      "scope": "read-only durable proving-window and WAITING continuation audit"
+    },
+    {
+      "role": "external capability auditor",
+      "agent": "/root/external_capability_auditor",
+      "provider": "commandcode",
+      "model": "deepseek-v4-flash",
+      "status": "RUNNING",
+      "scope": "read-only R7-R12 external capability, voice, UI, and provider-boundary audit"
     }
   ],
   "promotion": {
@@ -187,7 +204,13 @@
     "post_promotion_runtime_probe": "docs/convergence/LIVE_RUNTIME_PROBE_POST_PROMOTION.json",
     "rollback_bundle": "C:/temp/jarvis-convergence-pre-r3.bundle"
   },
-  "verifier_state": "FINAL_AUDIT_RUNNING_POST_PROMOTION",
-  "blockers": [],
-  "exact_next_action": "inspect /root/post_promotion_final_auditor; repair any actionable finding and continue dependency-ready proving work"
+  "verifier_state": "FINAL_AUDIT_RETRY_COMPLETED_EXTERNAL_BLOCKERS_PRIMARY_AUDIT_PENDING",
+  "blockers": [
+    "R7 real monitored provider research NOT_TESTED/WAITING",
+    "R9 real external connector/provider effects NOT_TESTED/WAITING",
+    "R10 live voice provider and visual/a11y inspection NOT_TESTED/WAITING",
+    "R11 elapsed promotion cycles and proving window NOT_TESTED/WAITING",
+    "R12 physical host and unavailable-provider fault rows NOT_TESTED/BLOCKED"
+  ],
+  "exact_next_action": "inspect /root/post_promotion_final_auditor; then run durable WAITING/monitoring and dependency-ready local proving gates"
 }
