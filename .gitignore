@@ -53,3 +53,4 @@ artifacts/
 reports/generated/
 snapshots/
 backups/
+full-suite-run.log

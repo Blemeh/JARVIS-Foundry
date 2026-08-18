@@ -202,7 +202,12 @@ def test_backpressure_anomaly_suspension(db: FoundryDatabase) -> None:
 def test_tick_is_idempotent_no_duplicate_fires(db: FoundryDatabase) -> None:
     enable_scheduler(db, controller=SUPERVISOR_CONTROLLER,
                      source_type="supervisor", source_id="v7")
-    _register(db, "item-a", cooldown_seconds=1.0)
+    # Large cooldown keeps the idempotency probe deterministic under load:
+    # the cooldown compares wall-clock epochs (whole-second granularity),
+    # so a 1s cooldown could elapse between immediate ticks on a slow host
+    # and spuriously fire twice. The invariant under test is "no duplicate
+    # fire while the cooldown holds", not the exact 1s window.
+    _register(db, "item-a", cooldown_seconds=3600.0)
     tick_scheduler(db, controller=SUPERVISOR_CONTROLLER,
                    source_type="supervisor", source_id="v7")
     tick_scheduler(db, controller=SUPERVISOR_CONTROLLER,
