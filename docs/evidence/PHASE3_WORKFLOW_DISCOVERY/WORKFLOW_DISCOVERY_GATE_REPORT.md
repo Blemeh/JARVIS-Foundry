@@ -42,3 +42,8 @@ Full candidate suite: PASS, 1,202 collected, EXIT 0 when run with an absolute
 candidate `PYTHONPATH` so child-process regressions import the candidate code.
 The final run is recorded in `var/phase3/full-suite-run-final.txt` (generated,
 not committed).
+
+Post-promotion canonical `main` rerun: PASS, 1,202 collected, EXIT 0 in a
+clean scheduler window. A prior attempt was stopped/classified after an
+unrelated `C:\temp\jarvis-convergence-venv` pytest created a competing
+`JF-WP7Gate-*` task; no such task remained for the accepted rerun.

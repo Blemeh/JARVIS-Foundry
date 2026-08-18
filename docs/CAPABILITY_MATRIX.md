@@ -4,7 +4,8 @@ Single authoritative capability status. Classifications:
 `IMPLEMENTED_AND_PROVEN` · `IMPLEMENTED_UNPROVEN` · `PARTIAL` · `MISSING` · `SUPERSEDED`.
 
 Evidence roots: `docs/evidence/`, `evidence/`, git history, live runtime state.
-Current HEAD reference: `474156a` (see `docs/CURRENT_STATE.md`).
+Current HEAD reference: `a62ed77` (see `docs/CURRENT_STATE.md`; documentation
+closure is a descendant).
 
 | Capability | Original target | Current implementation | Evidence | State | Remaining gap |
 |---|---|---|---|---|---|
@@ -33,3 +34,4 @@ Current HEAD reference: `474156a` (see `docs/CURRENT_STATE.md`).
 | Distributed/multi-machine operation | North star | not present | — | MISSING | genuine next-stage candidate |
 | Letta runtime integration | rejected (NATIVE_JARVIS) | not present; concepts embodied natively | V8 final verdict | SUPERSEDED (decision: native) | none |
 | Governed perception input (JARVIS Eyes) | Phase 2 | Screenpipe external sidecar -> privacy firewall -> normalize -> dedup -> aggregate -> significance -> `perception.observed` (read-only connector `screenpipe-local`) | PHASE2_JARVIS_EYES gate docs + fault matrix 20/20 + full suite EXIT=0 | IMPLEMENTED_AND_PROVEN | raw frame PROBING; audio disabled; continuous perception not yet activated (Phase 6) |
+| Deterministic Workflow Discovery | Phase 3 | Frozen Phase-2 `PerceptionObservation` -> deterministic sessions -> safe structural tokens -> versioned fingerprint/similarity -> repeated evidence -> existing candidate generator/scorer bridge | `docs/evidence/PHASE3_WORKFLOW_DISCOVERY/` (36/36 focused; 1,202 full suite; F1-F25; independent review; bounded 10k probe) | IMPLEMENTED_AND_PROVEN | disabled by default; no continuous mining, computer control, audio, candidate approval, or mission creation |

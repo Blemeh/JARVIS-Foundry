@@ -6,17 +6,18 @@ every promotion/remaster mission (see `docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.
 If this document and another current-status document disagree, THIS document wins
 for "what exists now" claims; the architecture contract wins for binding invariants.
 
-Last reconciled: 2026-08-18 (JARVIS Eyes Phase 2 candidate)
+Last reconciled: 2026-08-18 (JARVIS Workflow Discovery Phase 3 promotion)
 
 ```text
-CURRENT CANONICAL HEAD:      7901eba (main; JARVIS Eyes Phase 2 promoted +
-                             evidence freeze; feature merge bfeb4cd)
+CURRENT CANONICAL HEAD:      a62ed77 (main; Phase 3 Workflow Discovery
+                             promoted; documentation closure is a descendant)
 LETTA PROMOTION ANCESTOR:    2f7360e742559e051109e04ef7f3a82cc64cc2d2 (still an ancestor of HEAD)
 PRE-V8 HISTORICAL BASELINE:  93a3ddc0965dfaf3e4cb9dc0952467bd5250520a (historical only — do not reset to it)
 CURRENT SCHEMA:              v33 (six additive tier_c_* tables; event-derived)
-FULL SUITE:                  1143 collected on canonical main; 1166 on the
-                             Phase-2 candidate (1143 + 23 perception) EXIT=0
-                             (see docs/evidence/PHASE2_JARVIS_EYES/FULL_TEST_REPORT.md)
+FULL SUITE:                  1202 collected on the Phase-3 candidate and
+                             canonical promotion path; EXIT=0 with the exact
+                             candidate runtime (see
+                             docs/evidence/PHASE3_WORKFLOW_DISCOVERY/FULL_TEST_REPORT.md)
 SUPERVISOR STATE:            RUNNING (single lease owner, heartbeat advancing)
 STOP STATE:                  OFF (no sentinel, no active STOP/PAUSE directives)
 ACTIVE DIRECTIVES:           redirect, waive, extend_duty_window, align
@@ -27,6 +28,9 @@ WORKER IMPLEMENTATIONS:      Hermes adapter + OpenHands adapter — CANONICAL (m
 OWNER FILES:                 6 untracked docs under docs/handoffs/, docs/planning/ (hash-protected)
 PERCEPTION INPUT (Phase 2):  SCREENPIPE-LOCAL registered read-only; perception core READY/PROVEN;
                              raw-frame PROBING; audio DISABLED; no claim/candidate/mission/control path
+WORKFLOW DISCOVERY (Phase 3): deterministic sessionization/tokenization/mining and
+                             evidence-to-existing-candidate bridge READY/PROVEN;
+                             disabled by default; no continuous mining or execution
 ```
 
 ## What exists now
@@ -60,11 +64,21 @@ PERCEPTION INPUT (Phase 2):  SCREENPIPE-LOCAL registered read-only; perception c
   isolation, bounded working directories, verifier independence, evidence
   reconciliation, mission-loop bridge, worker-crash recovery. 18-item canonical
   gate PASS at 01e9cc9; merged dea4042; suite 1124 EXIT=0.
+- **Workflow Discovery (Phase 3)** — deterministic sessionization of the frozen
+  Phase-2 `PerceptionObservation` contract, safe structural tokens, versioned
+  fingerprints, bounded similarity, repeated evidence, and a governed bridge
+  to the existing candidate generator/scorer. Proven with 36 adversarial tests,
+  1,202-test full suite, controlled 10k-observation probe, and independent
+  read-only review. Disabled by default; no computer control, audio, continuous
+  loop, candidate approval, or mission creation.
 
 ## What is running
 
 Live daemon (single supervisor pair) with home `C:\Users\b\AppData\Local\hermes\foundry`,
 schema v33, ledger live (event count growing), Tier C live.
+
+Workflow Discovery is not wired into the live supervisor or perception loop;
+only an explicitly enabled bounded cycle can be called by code/tests.
 
 ## What has been proven
 
@@ -75,7 +89,9 @@ schema v33, ledger live (event count growing), Tier C live.
 | V8 hybrid-memory certification | PASS — 9/9 criteria (candidate) |
 | V8 canonical promotion | PASS — 1027/0/0 post-merge; live canary PASS; rollback drill PASS; post-promotion remediation certification PASS |
 | Worker canonical gate | PASS — 18/18 + independent adversarial review |
-| Full suite (current) | 1124 collected, 0 failures (latest gate) |
+| Full suite (current) | 1,202 collected, 0 failures (Phase 3 promotion gate) |
+| JARVIS Eyes Phase 2 | PASS — 20/20 faults, rollback/live probe, read-only boundary |
+| Workflow Discovery Phase 3 | PASS — 36/36 focused, F1–F25, bounded probe, independent review |
 
 ## What is experimental / not canonical
 
@@ -90,6 +106,7 @@ schema v33, ledger live (event count growing), Tier C live.
 - Semantic (embedding-based) recall/dedup/contradiction detection — lexical/negation only; hook reserved.
 - Voice/dashboard surfaces beyond the command-center control layer — limited.
 - Provider diversity for verification — currently single-family (recorded per round as INDEPENDENCE: REDUCED where applicable).
+- Continuous workflow mining, computer execution, and audio-driven workflow discovery — explicitly not active in Phase 3.
 - Scanner patterns are configuration (defense-in-depth, not proof).
 - Rollback strategy is RESTORE-FROM-BACKUP for schema v33 (no reverse migration; by design).
 
