@@ -5,9 +5,10 @@
 ## Canonical Reconciliation
 
 - **CANONICAL START:** `c3665b75ca5542e6bc73917c5eb710eadfef6d1b`
-- **CANONICAL BASELINE:** `657519c` on `main` (Post-V7 convergence R3);
+- **CANONICAL BASELINE:** `47adab9` on `main` (Post-V7 convergence R3
+  proving-window monitor);
   Phase 4 remediation integration and final canonical probe are descendants
-- **LOCAL MAIN / origin/main before remediation promotion:** `657519c / 1abc388`
+- **LOCAL MAIN / origin/main before remediation promotion:** `47adab9 / 1abc388`
 - **PUSH PERFORMED:** NO
 - **SCHEMA:** v33, unchanged
 - **RISK:** R2
@@ -27,7 +28,8 @@
 - **CANDIDATE BRANCH:** `candidate/procedural-learning-phase4-remediation`
 - **CANDIDATE WORKTREE:** `C:\temp\JARVIS-Phase4-Remediation-0818`
 - **CANDIDATE HEAD:** `992317e`
-- **CANDIDATE BASE:** `2b35736`; applied onto convergence head `657519c`
+- **CANDIDATE BASE:** `2b35736`; applied onto convergence heads `657519c` and
+  `47adab9`
 - **BUNDLE CONTRACT:** PASS; JARVIS contract 1.0.0, manifest schema 2,
   deterministic wrapper with source/lineage/parameter/effect metadata
 - **BUNDLE INTEGRITY:** PASS; Phase-1 bundle and compiled bundle verified by

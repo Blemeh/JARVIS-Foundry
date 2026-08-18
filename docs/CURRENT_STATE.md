@@ -6,12 +6,12 @@ every promotion/remaster mission (see `docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.
 If this document and another current-status document disagree, THIS document wins
 for "what exists now" claims; the architecture contract wins for binding invariants.
 
-Last reconciled: 2026-08-18 (Post-V7 convergence + Phase 4 procedural-learning remediation)
+Last reconciled: 2026-08-18 (Post-V7 convergence proving window + Phase 4 procedural-learning remediation)
 
 ```text
-CURRENT CANONICAL HEAD:      657519c (main; Post-V7 convergence R3 baseline;
-                             Phase 4 remediation integration and final probe
-                             documentation are descendants)
+CURRENT CANONICAL HEAD:      47adab9 (main; Post-V7 convergence R3 proving-
+                             window baseline; Phase 4 remediation integration
+                             and final probe documentation are descendants)
 LETTA PROMOTION ANCESTOR:    2f7360e742559e051109e04ef7f3a82cc64cc2d2 (still an ancestor of HEAD)
 PRE-V8 HISTORICAL BASELINE:  93a3ddc0965dfaf3e4cb9dc0952467bd5250520a (historical only — do not reset to it)
 CURRENT SCHEMA:              v33 (six additive tier_c_* tables; event-derived)

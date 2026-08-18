@@ -2,7 +2,7 @@
 
 **Checkout:** `candidate/procedural-learning-phase4-remediation` at
 `992317e8c1bac8ef556f05ac82a884bff3a91c36`, applied to convergence base
-`657519c` (2026-08-18)
+`47adab9` (2026-08-18)
 
 The probe used the harmless local synthetic application on `127.0.0.1:8787`,
 the qualified compiled bundle with JARVIS artifact-byte binding,

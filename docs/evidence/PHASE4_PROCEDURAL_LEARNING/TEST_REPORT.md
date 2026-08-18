@@ -2,7 +2,7 @@
 
 Candidate branch: `candidate/procedural-learning-phase4-remediation`
 Candidate HEAD: `992317e8c1bac8ef556f05ac82a884bff3a91c36`
-Integration base: `657519c8ff3427491c95b359ece1cc3d78756d0a`
+Integration base: `47adab97b64ab992280d3a329fd0ca3d03c2d45f`
 
 Commands and results:
 

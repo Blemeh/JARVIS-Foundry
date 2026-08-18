@@ -3,7 +3,7 @@
 **Verifier:** fresh `commandcode/deepseek-v4-flash`, max effort
 **Candidate reviewed:** `candidate/procedural-learning-phase4-remediation` at
 `992317e8c1bac8ef556f05ac82a884bff3a91c36`
-**Baseline:** canonical convergence head `657519c8ff3427491c95b359ece1cc3d78756d0a`
+**Baseline:** canonical convergence head `47adab97b64ab992280d3a329fd0ca3d03c2d45f`
 **Mode:** read-only; no source, Git, live DB, scheduled task, or process mutation
 
 ## Verdict
