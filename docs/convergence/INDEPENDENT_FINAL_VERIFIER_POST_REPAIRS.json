@@ -1,0 +1,36 @@
+{
+  "schema": "jarvis-independent-final-verifier-post-repairs-v1",
+  "stage": "POST_PROMOTION_PROVING",
+  "agent": "/root/combined_proving_gate_final_verifier",
+  "provider": "commandcode",
+  "model": "deepseek-v4-flash",
+  "worktree": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R3",
+  "head": "98f64d1627bcc1ad67edd47bc748ef32be034e1c",
+  "verdict": "PASS",
+  "scope": "fresh read-only verification of integrated proving gate, monitor, evidence, and release lineage",
+  "tests": {
+    "focused_gate_monitor": {"tests": 20, "failures": 0, "errors": 0, "skipped": 0, "junit": "docs/convergence/FRESH_FINAL_VERIFIER_FOCUSED.xml", "sha256": "342CFA5D11F3A312A3E0844B7007DEA4211DE2167042A1E6FD8EFE38DC2BAFFC"},
+    "worker_regression": {"tests": 27, "failures": 0, "errors": 0, "skipped": 0},
+    "convergence": {"tests": 96, "failures": 0, "errors": 0, "skipped": 0, "junit": "docs/convergence/PROMOTION_CONVERGENCE_JUNIT_POST_REPAIRS.xml", "sha256": "93B982BC87A0A8E518A60D34F607105D1A9881FF3A37261F2CB37435C133E409"},
+    "canonical_foundry": {"tests": 1222, "failures": 0, "errors": 0, "skipped": 0, "junit": "docs/convergence/PROMOTION_CANONICAL_FULL_SUITE_POST_REPAIRS.xml", "sha256": "04B264DF991F6DD45C8CA4DB19D16D6D13528D4332C57F4703C9F3AB0A178A64"}
+  },
+  "semantic_checks": {
+    "pre_window_missions_excluded": true,
+    "post_start_completed_evidence_independent_pass_counted": true,
+    "authenticated_scoped_veto_stop_excluded": true,
+    "revoked_directives_released": true,
+    "monitor_read_only_query_only": true,
+    "atomic_checkpoint": true,
+    "external_effect_claims": false,
+    "live_db_touched": false
+  },
+  "non_blocking_coverage_notes": [
+    "No dedicated unauthenticated scoped-directive regression test; code path inspected and requires authenticated=true.",
+    "No dedicated pre-observed-day revocation timing test; code path inspected and released-day behavior verified."
+  ],
+  "boundaries": [
+    "real elapsed seven-day proving window NOT_TESTED/WAITING",
+    "live provider, connector, voice, UI and physical fault effects NOT_TESTED/WAITING"
+  ],
+  "recommended_next_action": "ff-only promote this exact verified commit, then commission a fresh audit of the exact deployed HEAD and register a real proving window"
+}
