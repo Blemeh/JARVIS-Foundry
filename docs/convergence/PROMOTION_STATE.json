@@ -5,8 +5,8 @@
   "promotion_worktree": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R4",
   "promotion_branch": "promote/canonical-convergence-r4",
   "source_main_head": "073886a517dabd57b85094e34c6ab251357e3023",
-  "candidate_commit": "ca1f348f143e1e83f70dd2ac0e2951ff552db463",
-  "promotion_commit": "ca1f348f143e1e83f70dd2ac0e2951ff552db463",
+  "candidate_commit": "f122eb18d17b4cd0e31c058c8f1a000b373b5509",
+  "promotion_commit": "f122eb18d17b4cd0e31c058c8f1a000b373b5509",
   "previous_release_remains_recoverable": true,
   "verification": {
     "pythonpath": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R4/src",
@@ -50,6 +50,6 @@
   },
   "canonical_main_mutated": true,
   "release_freeze": "docs/convergence/PROMOTION_FREEZE_R4.json (pending ff-only promotion)",
-  "release_pointer": "promote/canonical-convergence-r4 -> ca1f348; main remains at 073886a until ff-only promotion",
-  "exact_next_action": "ff-only promote ca1f348 to canonical main and run a fresh post-promotion runtime audit"
+  "release_pointer": "promote/canonical-convergence-r4 -> f122eb1; main remains at 073886a until ff-only promotion",
+  "exact_next_action": "ff-only promote f122eb1 to canonical main and run a fresh post-promotion runtime audit"
 }

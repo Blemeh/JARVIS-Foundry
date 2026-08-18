@@ -8,7 +8,7 @@
   "canonical": {
     "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
     "branch": "main",
-    "head": "ca1f348f143e1e83f70dd2ac0e2951ff552db463",
+    "head": "f122eb18d17b4cd0e31c058c8f1a000b373b5509",
     "origin_main": "1abc388c6471a310f361612ebd81ed6a2cf6c646",
     "dirty_owner_docs_preserved": true,
     "current_full_suite": {
@@ -288,7 +288,7 @@
   "promotion": {
     "status": "PROMOTED_AND_RECONCILED",
     "promotion_worktree": "C:/temp/JARVIS-Foundry-Canonical-Convergence-PROMOTE-R4",
-    "promotion_commit": "ca1f348f143e1e83f70dd2ac0e2951ff552db463",
+    "promotion_commit": "f122eb18d17b4cd0e31c058c8f1a000b373b5509",
     "pre_release_tag": "convergence-pre-r3",
     "post_promotion_runtime_probe": "docs/convergence/LIVE_RUNTIME_PROBE_POST_PROMOTION.json",
     "rollback_bundle": "C:/temp/jarvis-convergence-pre-r3.bundle"
