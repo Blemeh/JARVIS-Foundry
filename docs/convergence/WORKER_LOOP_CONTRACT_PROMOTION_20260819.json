@@ -1,0 +1,51 @@
+{
+  "schema": "jarvis-worker-loop-contract-promotion-v1",
+  "recorded_at": "2026-08-19T08:20:00+02:00",
+  "promotion_worktree": "C:\\temp\\JARVIS-WorkerLoop-Contract-Promote-20260819",
+  "source_parent_head": "1ae8378427675cef07f0a3f3f1f8e93e7df28716",
+  "canonical_base": "ec5cce0dbe6084a205892ee91a5a08ddba9b901d",
+  "remote_main_before_push": "ec5cce0dbe6084a205892ee91a5a08ddba9b901d",
+  "candidate_remote": "e01fe4fbc78300499d21fe7f3b14b5d7bb3ea495",
+  "source_commits": [
+    "86abbd3 runtime: add durable existing-mission step contracts",
+    "3576172 fix: fail closed on ambiguous mission step contracts"
+  ],
+  "evidence_commits": [
+    "b1741d9 docs(convergence): classify remaster dirty state",
+    "66aa0be docs: record worker-loop contract verification",
+    "1ae8378 docs: pin candidate source schema boundary"
+  ],
+  "verification": {
+    "provider_transport": "codex-router",
+    "provider": "commandcode",
+    "model": "gpt-5.6-luna",
+    "route": "router_commandcode_gpt_5_6_luna",
+    "independent_verifier": "/root/r7_local_evidence_verifier_luna",
+    "independent_status": "PASS_WITH_BOUNDARY",
+    "focused_contract_runtime": {
+      "command": "PYTHONPATH=src C:\\Python313\\python.exe -m pytest tests/foundry/test_mission_contract.py tests/foundry/test_runtime_worker_loop.py -q -ra",
+      "result": "18 passed",
+      "exit": 0
+    },
+    "dependency_regressions": {
+      "command": "PYTHONPATH=src C:\\Python313\\python.exe -m pytest tests/foundry/test_migrations.py tests/foundry/test_reconcile.py tests/foundry/test_event_store.py tests/foundry/test_projection_monotonic.py tests/foundry/test_mission_loop.py tests/foundry/test_worker_mission_bridge.py tests/foundry/test_worker_contracts.py -q -ra",
+      "result": "completed without failures",
+      "exit": 0
+    },
+    "py_compile": "PASS",
+    "doc_staleness": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "runtime_boundary": {
+    "live_database_touched": false,
+    "live_supervisor_restarted": false,
+    "worker_loop_task_enabled": false,
+    "provider_dispatch": "NOT_TESTED",
+    "live_migration": "NOT_PERFORMED",
+    "remaster_touched": false,
+    "r6_state": "OWNER_REDIRECT_R6_DEFERRED",
+    "eyes_touched": false,
+    "rollback_branch": "promote/worker-loop-contract-20260819"
+  },
+  "next_action": "Publish this promotion branch as a rollback point, then fast-forward origin/main only if it still equals the recorded canonical base; keep the worker task disabled and reconcile runtime source without restart."
+}
