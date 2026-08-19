@@ -1,8 +1,8 @@
 # JARVIS Remaster -> Canonical Convergence Matrix
 
 Program: JARVIS FINAL REMASTER FORWARD-PORT & CANONICAL CONVERGENCE
-Final convergence audit (2026-08-19): canonical record tip `53701f6` (main, local==origin) with semantic source `93d23f5`; current-source full suite `1248/0/0/0` is recorded at `CURRENT_SOURCE_FULL_SUITE_20260819.json`; remaster certified head `6be9185` with dirty inventory `87/87` classified. Legacy evidence below is preserved and not relabelled.
-Canonical record tip: `53701f6` (main); semantic source: `93d23f5`; source suite tested at `93d23f5`; forward-port baseline: `2b3573606570f910e5569cf3306223354f93e4ac`; Remaster certified tip: `6be9185`; Merge-base: `93a3ddc`.
+Final convergence audit (2026-08-19): canonical runtime/source record `c60db92` (main, local==origin before docs-only descendants) with semantic source `93d23f5`; current-source full suite `1248/0/0/0` is recorded at `CURRENT_SOURCE_FULL_SUITE_20260819.json`; exact current-release R3 proving is `WAITING_ELAPSED`; remaster certified head `6be9185` with dirty inventory `87/87` classified. Legacy evidence below is preserved and not relabelled.
+Canonical runtime/source record: `c60db92` (main); semantic source: `93d23f5`; source suite tested at `93d23f5`; forward-port baseline: `2b3573606570f910e5569cf3306223354f93e4ac`; Remaster certified tip: `6be9185`; Merge-base: `93a3ddc`.
 Method: SEMANTIC FORWARD-PORT. No wholesale merge, no blind cherry-pick. Newest canonical architecture is authoritative.
 
 ## Structural delta

@@ -6,13 +6,13 @@ every promotion/remaster mission (see `docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.
 If this document and another current-status document disagree, THIS document wins
 for "what exists now" claims; the architecture contract wins for binding invariants.
 
-Last reconciled: 2026-08-19 (R10 replay-manifest repair, current-source full-suite certification, and exact-head evidence reconciliation; legacy evidence preserved)
+Last reconciled: 2026-08-19 (exact c60db92 runtime freeze/restart, R3 proving-window registration, and current-source convergence reconciliation; legacy evidence preserved)
 
 ```text
-CURRENT CANONICAL HEAD:      93d23f5 (main; R10 replay-manifest repair on top
-                             of the authenticated directive consumer; local==origin)
-CURRENT STATE RECORD:        98d143b (docs-only checkpoint record on top of the
-                             semantic source; local==origin)
+CURRENT CANONICAL HEAD:      93d23f5 (semantic source; R10 replay-manifest repair
+                             on top of the authenticated directive consumer)
+CURRENT STATE RECORD:        c60db92 (exact promoted runtime/source record;
+                             local==origin before docs-only descendants)
 TESTED SOURCE HEAD:          93d23f5 (exact source head for the deterministic
                              1248-test full suite; docs-only audit commits follow)
 LATEST R10 FOCUSED SOURCE:   93d23f5 (authenticated nonce-bound
@@ -95,6 +95,11 @@ PROCEDURAL LEARNING (Phase 4): governed deterministic OpenAdapt browser substrat
 Live daemon (single supervisor pair) with home `C:\Users\b\AppData\Local\hermes\foundry`,
 schema v33, ledger live (event count growing), Tier C live.
 
+The exact current runtime/source record is `c60db92`; its R3 proving window is
+`WAITING_ELAPSED` under the read-only task
+`JARVIS-Foundry-Proving-Window-Monitor-Canonical-R3`. The previous f37f852 R2
+window is preserved as `SUSPENDED` history.
+
 Workflow Discovery is not wired into the live supervisor or perception loop;
 only an explicitly enabled bounded cycle can be called by code/tests.
 
@@ -136,7 +141,7 @@ browser substrate, and it cannot activate native desktop execution.
   and audio-driven workflow discovery — explicitly not active; Phase 5/6 remain locked.
 - Scanner patterns are configuration (defense-in-depth, not proof).
 - Rollback strategy is RESTORE-FROM-BACKUP for schema v33 (no reverse migration; by design).
-- The exact canonical R2 proving window remains active and WAITING_ELAPSED; its runtime release source is f37f852, while the newer R10 consumer is promoted in source but not yet loaded into that runtime.
+- The prior canonical R2 proving window on f37f852 is durably SUSPENDED. The exact current-release R3 proving window is active and WAITING_ELAPSED against source c60db92, with a fresh Supervisor restart, read-only monitor, 0/10 verified post-start missions, and all external/provider/voice/physical boundaries explicitly NOT_TESTED or BLOCKED.
 
 ## Documentation rules (anti-staleness)
 

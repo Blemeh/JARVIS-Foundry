@@ -1,7 +1,10 @@
 # Post-Promotion Proving Window
 
-The R4 candidate executable is verified at source commit `adc0278` and remains
-rollback-compatible with the previous recoverable release `convergence-pre-r3`.
+The exact current canonical executable/source record is `c60db92` (semantic
+source `93d23f5`) and remains rollback-compatible with the previous runtime
+source `f37f852` via `convergence-pre-runtime-c60-20260819`. The active R3
+window is `post-canonical-c60db92-real-20260819-r3`; the earlier f37f852 R2
+window is preserved as `SUSPENDED` history.
 The proving window is intentionally
 separate from the engineering gates: a green test suite or a heartbeat does
 not compress seven days into a test.
@@ -27,8 +30,8 @@ Checkpoint statuses are deliberately honest:
 - `READY_TO_CLOSE` — duration and local continuity criteria are satisfied,
   pending independent adjudication.
 
-The example manifest is a template only.  A real manifest must be created
-after the fresh final audit closes and the release pointer is still the frozen
-release.  The monitor's output belongs under the runtime evidence directory
+The example manifest is a template only.  The current real manifest is
+release-bound to c60db92 and lives under the runtime evidence directory. The
+monitor's output belongs under the runtime evidence directory
 (for example `%LOCALAPPDATA%\\hermes\\foundry\\evidence\\proving-window`) so
 scheduled checkpoints do not dirty the source checkout.

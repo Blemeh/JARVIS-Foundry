@@ -1,0 +1,65 @@
+{
+  "schema": "jarvis-runtime-freeze-audit-v1",
+  "status": "PASS_WITH_BOUNDARY",
+  "recorded_at": "2026-08-19T02:49:50.6218192Z",
+  "scope": "Fresh independent read-only verification of the exact c60 runtime freeze and R3 proving registration",
+  "provider": "commandcode",
+  "model": "gpt-5.6-luna",
+  "route": "router_commandcode_gpt_5_6_luna",
+  "transport": "codex-router",
+  "agent": "/root/r3_runtime_freeze_verifier_luna",
+  "candidate": {
+    "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
+    "branch": "main",
+    "source_record": "c60db92986a958dd20ff618e2ca6a6b586a91ff8",
+    "semantic_source": "93d23f50ea5858355c202cae7d4a5809ed7e245c",
+    "worktree": "CLEAN",
+    "origin_matches": true
+  },
+  "freeze": {
+    "wheel_sha256": "CF2E0B85EF77F934E66967E46E251A20DA506CF828D9B36521A6F2AD47DCA695",
+    "schema_version": 33,
+    "sqlite_quick_check": "ok",
+    "rollback_tag": "convergence-pre-runtime-c60-20260819",
+    "rollback_target": "f37f852b3b328aa39476f86fb4f7b7e9d57836a9"
+  },
+  "runtime": {
+    "event_head": 106063,
+    "supervisor": "RUNNING",
+    "singleton_lease": "PRESENT_AND_ADVANCING",
+    "active_stop_directives": [],
+    "old_r2_event": {
+      "event_sequence": 105948,
+      "outcome": "SUSPENDED",
+      "source": "f37f852"
+    },
+    "r3_event": {
+      "event_sequence": 105959,
+      "window_id": "post-canonical-c60db92-real-20260819-r3",
+      "status": "WAITING_ELAPSED",
+      "runtime_source": "c60db92986a958dd20ff618e2ca6a6b586a91ff8",
+      "semantic_source": "93d23f50ea5858355c202cae7d4a5809ed7e245c",
+      "verified_missions": "0/10",
+      "heartbeat_count": 61,
+      "max_heartbeat_gap_seconds": 5.204727
+    },
+    "supervisor_task": "JARVIS-Foundry-Supervisor",
+    "monitor_task": "JARVIS-Foundry-Proving-Window-Monitor-Canonical-R3",
+    "monitor_last_result": 0,
+    "superseded_monitor_tasks_disabled": true
+  },
+  "preservation": {
+    "r6": "OWNER_REDIRECT_R6_DEFERRED",
+    "remaster_preserved": true,
+    "eyes": "OUT_OF_SCOPE_READ_ONLY",
+    "eyes_touched": false
+  },
+  "boundaries": {
+    "live_provider_effects": "NOT_TESTED",
+    "voice_ui": "NOT_TESTED",
+    "elapsed_seven_day_window": "WAITING",
+    "physical_host_faults": "NOT_TESTED",
+    "post_start_verified_missions": "0/10"
+  },
+  "mutations": "NONE"
+}

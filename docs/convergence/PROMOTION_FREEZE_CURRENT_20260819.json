@@ -1,0 +1,82 @@
+{
+  "schema": "jarvis-canonical-release-freeze-v3",
+  "status": "CURRENT_RELEASE_DEPLOYED_AUDITED_WAITING_PROVING",
+  "recorded_at": "2026-08-19T02:41:18.7306952Z",
+  "release": {
+    "record_head": "c60db92986a958dd20ff618e2ca6a6b586a91ff8",
+    "record_tree": "0f9353cb5675a5b5e2c2b25d2e268a4e825b2c88",
+    "semantic_source_commit": "93d23f50ea5858355c202cae7d4a5809ed7e245c",
+    "semantic_source_tree": "259f669c34cdc604b968b975544c65f1cd8006d7",
+    "branch": "main",
+    "release_pointer": "main",
+    "previous_runtime_source_commit": "f37f852b3b328aa39476f86fb4f7b7e9d57836a9",
+    "previous_release_remains_recoverable": true,
+    "rollback_tag": "convergence-pre-runtime-c60-20260819",
+    "rollback_tag_target": "f37f852b3b328aa39476f86fb4f7b7e9d57836a9"
+  },
+  "executable": {
+    "package": "jarvis-foundry==0.1.0",
+    "wheel": "C:/temp/jarvis-current-release-freeze-20260819/jarvis_foundry-0.1.0-py3-none-any.whl",
+    "wheel_sha256": "CF2E0B85EF77F934E66967E46E251A20DA506CF828D9B36521A6F2AD47DCA695",
+    "wheel_size_bytes": 408585,
+    "pyproject_sha256": "E3FBA5A37F3EA2EE0FF11EC00AA15F9CE0E72BC61E60A92FC0091F66C62C1B91",
+    "build_command": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/.venv/Scripts/python.exe -m pip wheel . --no-deps --wheel-dir C:/temp/jarvis-current-release-freeze-20260819",
+    "source_import": "PASS",
+    "py_compile": "PASS"
+  },
+  "database_and_wal": {
+    "database": "C:/Users/b/AppData/Local/hermes/foundry/foundry.db",
+    "schema_version": 33,
+    "sqlite_quick_check": "ok",
+    "event_head_at_freeze": 105987,
+    "wal_observation": "read-only size observation; no migration or WAL mutation performed by freeze capture",
+    "database_size_bytes": 72548352,
+    "wal_size_bytes": 1483232
+  },
+  "scheduled_tasks": {
+    "supervisor_task": "JARVIS-Foundry-Supervisor (RUNNING/Enabled)",
+    "active_proving_monitor_task": "JARVIS-Foundry-Proving-Window-Monitor-Canonical-R3 (Enabled, PT5M, IgnoreNew)",
+    "superseded_monitor_tasks_disabled": [
+      "JARVIS-Foundry-Proving-Window-Monitor",
+      "JARVIS-Foundry-Proving-Window-Monitor-Canonical",
+      "JARVIS-Foundry-Proving-Window-Monitor-Canonical-R2"
+    ],
+    "wrapper": "C:/Users/b/AppData/Local/hermes/foundry/evidence/proving-window/run-monitor-canonical-c60db92-r3.cmd",
+    "wrapper_sha256": "82A6AA055C517C233D7158075B43B0C6AF4F1DB16B3455A59A350AC0F352C3BC",
+    "manifest": "C:/Users/b/AppData/Local/hermes/foundry/evidence/proving-window/manifest-canonical-c60db92-real-20260819-r3.json",
+    "manifest_file_sha256": "D1DC563287D0A4908CEB88A178E4FD8A5247EBE016D24CC3D68A46FF0C191BA9",
+    "checkpoint": "C:/Users/b/AppData/Local/hermes/foundry/evidence/proving-window/checkpoint-canonical-c60db92-real-20260819-r3.json",
+    "checkpoint_file_sha256": "CF654CC4C67EA766236D58C2FD315C407A3E05E16E2D38CE908B30F855B5101A"
+  },
+  "ports": {
+    "codex_router": "127.0.0.1:4100 LISTENING",
+    "service_port_mutation": false
+  },
+  "capabilities": {
+    "registry": "unchanged canonical registry",
+    "external_effects": "NOT_TESTED/WAITING",
+    "financial_actions": "DENIED_BY_POLICY"
+  },
+  "credential_metadata": {
+    "secret_values_recorded": false,
+    "live_provider_effects": "NOT_TESTED/WAITING"
+  },
+  "queues_leases_health": {
+    "supervisor_process_ids": [25528, 26852],
+    "supervisor": "RUNNING",
+    "lease": "supervisor:singleton present and advancing",
+    "stop_directives": [],
+    "runtime_quick_check": "ok",
+    "mission_state_counts": {
+      "ACTION_SELECTION": 7,
+      "BLOCKED": 8,
+      "COMPLETE": 8,
+      "PLANNED": 1
+    }
+  },
+  "owner_state": {
+    "r6": "OWNER_REDIRECT_R6_DEFERRED",
+    "eyes": "OUT_OF_SCOPE_READ_ONLY",
+    "remaster_dirty_worktree_preserved": true
+  }
+}
