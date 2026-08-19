@@ -1,0 +1,63 @@
+{
+  "schema": "jarvis-proving-window-checkpoint-reconciliation-v1",
+  "recorded_at": "2026-08-19T02:45:08.713939+02:00",
+  "status": "PASS_WAITING_ELAPSED_RECONCILED",
+  "scope": "read-only checkpoint capture; no runtime mutation",
+  "canonical": {
+    "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
+    "branch": "main",
+    "head": "c0b8fb7e535e73af501b695013e5c6151f99a964",
+    "tree": "be6c2f8dfbbff911de81f0f3e876c485adad4a81",
+    "origin_main": "c0b8fb7e535e73af501b695013e5c6151f99a964",
+    "working_tree": "CLEAN"
+  },
+  "window": {
+    "window_id": "post-canonical-ee69737-real-20260819-r2",
+    "checkpoint": "C:/Users/b/AppData/Local/hermes/foundry/evidence/proving-window/checkpoint-canonical-ee69737-real-20260819-r2.json",
+    "manifest": "C:/Users/b/AppData/Local/hermes/foundry/evidence/proving-window/manifest-canonical-ee69737-real-20260819-r2.json",
+    "status": "WAITING_ELAPSED",
+    "started_at": "2026-08-18T23:53:26.180035+00:00",
+    "elapsed_seconds": 3102.534,
+    "remaining_seconds": 601697.466,
+    "required_duration_seconds": 604800.0,
+    "required_missions": 10,
+    "checkpoint_recorded_at": "2026-08-19T02:45:08.713939+02:00",
+    "event_head": 104624
+  },
+  "runtime": {
+    "supervisor_status": "RUNNING",
+    "supervisor_singleton": 1,
+    "supervisor_instance": "supervisor-dbfc3d8b-936d-4b61-9895-2b8ae917ce04",
+    "heartbeat_count": 615,
+    "last_heartbeat_at": "2026-08-19T02:45:08.381598+02:00",
+    "max_heartbeat_gap_seconds": 5.291522,
+    "sqlite_quick_check": "ok",
+    "active_stop_directives": 0,
+    "required_tables_present": true,
+    "schema_version": 33,
+    "release_source_commit": "f37f852b3b328aa39476f86fb4f7b7e9d57836a9",
+    "release_source_tree": "6f6b90249c82a340627b3a9c645f62e41d5d796c"
+  },
+  "boundaries": {
+    "external_provider_effects": "NOT_TESTED",
+    "physical_host_faults": "NOT_TESTED",
+    "voice_provider": "NOT_TESTED",
+    "verified_missions_after_start_in_checkpoint": "NOT_REPORTED",
+    "historical_verified_missions_after_start": 0
+  },
+  "preservation": {
+    "r6_state": "OWNER_REDIRECT_R6_DEFERRED",
+    "remaster_touched": false,
+    "eyes_touched": false,
+    "live_runtime_mutated": false,
+    "credentials_recorded": false
+  },
+  "commands": [
+    "Get-Content checkpoint-canonical-ee69737-real-20260819-r2.json | ConvertFrom-Json",
+    "git status --short --branch",
+    "git rev-parse HEAD",
+    "git rev-parse HEAD^{tree}",
+    "git ls-remote origin refs/heads/main"
+  ],
+  "recommended_next_action": "Keep the canonical R2 monitor running without provider retries or runtime restarts; refresh this checkpoint only on the scheduled monitor cadence and do not close the proving window until the real duration and independently verified mission requirements are met."
+}
