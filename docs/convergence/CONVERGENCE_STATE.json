@@ -47,8 +47,8 @@
     },
     "latest_runtime_probe": {
       "path": "docs/convergence/LIVE_RUNTIME_PROBE_CURRENT_20260819.json",
-      "sha256": "1576F17F07DBDD64880FA5182C2A828580A8ACF4794F4C60F6B30C0FF3A27D7D",
-      "event_head": 107601,
+      "sha256": "8D19FDC71F31AB25AE85FC157A1A5A330DE9FC86730FBF64ECCBE1F8308B7CBE",
+      "event_head": 108034,
       "schema_version": 33,
       "status": "PASS_READ_ONLY"
     },
@@ -251,7 +251,7 @@
       "supervisor_instance": "supervisor-dbfc3d8b-936d-4b61-9895-2b8ae917ce04"
     },
     "last_checkpoint_event_head": 105969,
-    "last_live_observed_event_head": 107622,
+    "last_live_observed_event_head": 108034,
     "latest_checkpoint_reconciliation": "docs/convergence/PROVING_WINDOW_CHECKPOINT_RECONCILIATION_R3_20260819.json",
     "latest_runtime_reconciliation": "docs/convergence/LIVE_RUNTIME_PROBE_CURRENT_20260819.json",
     "worker_loop_registration": {
