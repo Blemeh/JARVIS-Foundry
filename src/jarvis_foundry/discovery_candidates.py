@@ -274,8 +274,15 @@ def _token_overlap(first: str, second: str) -> float:
 
 
 def approve_candidate(db: FoundryDatabase, candidate_id: str,
-                      role: str = "builder") -> str:
-    """Validate (exists + scored) then approve AND create the mission."""
+                      role: str = "builder",
+                      *,
+                      resource_id: str | None = None,
+                      next_action: str | None = None) -> str:
+    """Validate (exists + scored) then approve AND create the mission.
+
+    Optional ``resource_id`` / ``next_action`` bind the existing Operating
+    Kernel resource without a second mission creator.
+    """
     with db.connect() as connection:
         row = connection.execute(
             "SELECT objective, status FROM candidates WHERE candidate_id = ?",
@@ -290,12 +297,18 @@ def approve_candidate(db: FoundryDatabase, candidate_id: str,
         {"candidate_id": candidate_id, "mission_id": mission_id},
         source_type="supervisor", source_id="wp10-discovery",
         idempotency_key=f"discovery.candidate_approved:{candidate_id}"))
+    created: dict[str, Any] = {
+        "mission_id": mission_id, "step_id": "v3-candidate",
+        "objective": row[0], "role": role,
+        "acceptance_criteria": [f"Complete: {row[0]}"],
+        "created_from": f"candidate:{candidate_id}",
+    }
+    if resource_id:
+        created["resource_id"] = resource_id
+    if next_action:
+        created["next_action"] = next_action
     db.append(Event.create(
-        "mission.created",
-        {"mission_id": mission_id, "step_id": "v3-candidate",
-         "objective": row[0], "role": role,
-         "acceptance_criteria": [f"Complete: {row[0]}"],
-         "created_from": f"candidate:{candidate_id}"},
+        "mission.created", created,
         source_type="supervisor", source_id="wp10-discovery",
         idempotency_key=f"mission.created:{mission_id}"))
     return mission_id

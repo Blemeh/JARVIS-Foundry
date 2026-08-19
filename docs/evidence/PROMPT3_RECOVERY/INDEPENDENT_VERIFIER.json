@@ -1,0 +1,83 @@
+{
+  "role": "independent-verifier",
+  "inspected": {
+    "head": "b59836772d948bd7b2507949c42f3c7dfa75afaf",
+    "main": "b59836772d948bd7b2507949c42f3c7dfa75afaf",
+    "origin_main": "b59836772d948bd7b2507949c42f3c7dfa75afaf",
+    "current_release": "b59836772d948bd7b2507949c42f3c7dfa75afaf",
+    "previous_release": "adada7f31ac515cfac9782ace95f744b631f76f5",
+    "schema": 34,
+    "supervisor": {
+      "singleton": 1,
+      "instance_id": "supervisor-b2886418-1b32-427a-b30d-3a04e8f33f01",
+      "status": "RUNNING",
+      "trust_state": "LAB",
+      "last_heartbeat_at": "2026-08-19T19:35:01.829506Z",
+      "last_event_id": "8fe7e5f7-d5d7-4352-beed-8eb99e072d04"
+    },
+    "stop_active": false,
+    "prompt3_missions": [
+      {
+        "mission_id": "mission-687bda2610c3",
+        "state": "COMPLETE"
+      },
+      {
+        "mission_id": "mission-05a4ac1a3db4",
+        "state": "COMPLETE"
+      },
+      {
+        "mission_id": "mission-prompt3-m6a-T193251Z",
+        "state": "COMPLETE"
+      },
+      {
+        "mission_id": "mission-prompt3-m6a-T193243Z",
+        "state": "BLOCKED"
+      },
+      {
+        "mission_id": "mission-prompt3-m6a-T193143Z",
+        "state": "COMPLETE"
+      },
+      {
+        "mission_id": "mission-d56efb1b5cb6",
+        "state": "COMPLETE"
+      },
+      {
+        "mission_id": "mission-prompt3-m6a-T192853Z",
+        "state": "COMPLETE"
+      },
+      {
+        "mission_id": "mission-bae244bab6ce",
+        "state": "COMPLETE"
+      },
+      {
+        "mission_id": "mission-cab6dcff925c",
+        "state": "COMPLETE"
+      },
+      {
+        "mission_id": "mission-85e7dfd10446",
+        "state": "COMPLETE"
+      }
+    ],
+    "complete_count": 9,
+    "perception_observed": 1,
+    "workflow_pattern_evidence": 1,
+    "procedure_effect_verified": 2,
+    "live_gates": "docs\\evidence\\PROMPT3_RECOVERY\\LIVE_GATES.json"
+  },
+  "gate_verdicts": {
+    "M6A": "PASS",
+    "M6B": "PASS",
+    "M7A": "PASS",
+    "M7B": "PASS",
+    "M7C": "PASS",
+    "M7D": "PASS",
+    "M7_E2E": "PASS",
+    "M8": "PASS"
+  },
+  "findings": [],
+  "unresolved_critical": [],
+  "unresolved_high": [],
+  "verdict": "PASS",
+  "prompt4_ready": "YES",
+  "l6_unattended": "NOT YET GATED"
+}

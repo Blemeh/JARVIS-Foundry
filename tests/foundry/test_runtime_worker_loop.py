@@ -14,7 +14,11 @@ from jarvis_foundry.runtime.config import WorkerRuntimeConfig
 from jarvis_foundry.runtime.worker_loop import run_cycle
 from jarvis_foundry.workers.adapters.fakes import ScriptedOutcome, ScriptedWorkerAdapter
 from jarvis_foundry.workers.adapters.registry import WorkerRegistry
-from jarvis_foundry.workers.contracts import WORKER_HERMES, WORKER_OPENHANDS
+from jarvis_foundry.workers.contracts import (
+    WORKER_HERMES,
+    WORKER_OPENHANDS,
+    WorkerStepContract,
+)
 from jarvis_foundry.workers.mission_bridge import HybridWorkerRoleAdapter
 from jarvis_foundry.workers.router import NOT_READY, READY, WorkerRouter
 
@@ -189,6 +193,60 @@ def test_mission_contract_carries_durable_truth(tmp_path):
     repairs = [c for c in verifier.received if c.role == "repair"]
     assert len(repairs) == 2
     assert repairs[-1].attempt == 3
+
+
+def test_lab_scripted_stack_keeps_openhands_not_ready(tmp_path):
+    from jarvis_foundry.runtime.worker_loop import _pin_routing_to_hermes
+
+    database = FoundryDatabase(tmp_path / "db.sqlite")
+    database.initialize()
+    cfg = WorkerRuntimeConfig(
+        enabled=True,
+        lab_scripted_hermes=True,
+        openhands={"enabled": True},
+        readiness={"openhands": {"state": READY, "evidence": ["claimed"]}},
+        runtime_state_root=str(tmp_path / "state"),
+    )
+    stack = build_worker_stack(
+        database, FoundryPaths(tmp_path), cfg, run_id="pin-lab")
+    _pin_routing_to_hermes(stack, cfg)
+    assert stack.router.is_eligible(WORKER_HERMES) is True
+    assert stack.router.is_eligible(WORKER_OPENHANDS) is False
+
+
+def test_openhands_stays_eligible_when_evidence_ready(tmp_path):
+    from jarvis_foundry.runtime.worker_loop import _pin_routing_to_hermes
+
+    exe = tmp_path / "openhands.exe"
+    exe.write_bytes(b"")
+    database = FoundryDatabase(tmp_path / "db.sqlite")
+    database.initialize()
+    cfg = WorkerRuntimeConfig(
+        enabled=True,
+        hermes={"enabled": False},
+        openhands={"enabled": True, "exe": str(exe), "timeout_seconds": 30},
+        readiness={"openhands": {
+            "state": READY,
+            "note": "containment proven in test",
+            "evidence": ["containment-test"],
+        }},
+        runtime_state_root=str(tmp_path / "state"),
+    )
+    stack = build_worker_stack(
+        database, FoundryPaths(tmp_path), cfg, run_id="pin-oh")
+    _pin_routing_to_hermes(stack, cfg)
+    assert WORKER_OPENHANDS in stack.enabled_frameworks
+    assert stack.router.is_eligible(WORKER_OPENHANDS) is True
+    step = WorkerStepContract(
+        run_id="r", mission_id="m", step_id="s", attempt=1, role="builder",
+        objective="o", instructions="i", working_root=tmp_path,
+        task_signals={"bounded": True, "explicit_acceptance": True,
+                      "tests_available": True, "narrow_scope": True,
+                      "reversible": True},
+    )
+    decision = stack.router.route(step)
+    assert decision.selected_worker == WORKER_OPENHANDS
+    assert decision.fallback == (WORKER_HERMES,)
 
 
 def test_manifest_hash_stable_without_criteria(tmp_path):

@@ -153,8 +153,33 @@ def build_snapshot(
         briefings = _safe_table(connection, "briefing_outbox", "SELECT * FROM briefing_outbox ORDER BY updated_at DESC LIMIT 100")
         voices = _safe_table(connection, "voice_interactions", "SELECT * FROM voice_interactions ORDER BY updated_at DESC LIMIT 100")
         candidates = _safe_table(connection, "candidates", "SELECT * FROM candidates ORDER BY updated_at DESC LIMIT 200")
+        memories = _safe_table(
+            connection, "tier_c_memories",
+            "SELECT memory_id, state, mem_type, scope, mission_id, updated_at, last_event_id "
+            "FROM tier_c_memories ORDER BY updated_at DESC LIMIT 100")
+        procedures = _safe_table(
+            connection, "tier_c_procedures",
+            "SELECT procedure_id, state, scope, updated_at, last_event_id "
+            "FROM tier_c_procedures ORDER BY updated_at DESC LIMIT 100")
+        steps = _safe_table(
+            connection, "mission_step_contracts",
+            "SELECT contract_id, mission_id, step_id, version, capability, "
+            "last_event_id, updated_at FROM mission_step_contracts "
+            "ORDER BY updated_at DESC LIMIT 100")
 
     stop = EmergencyStop(stop_path).read() if stop_path is not None else None
+    try:
+        from .deployment.release import read_current, read_previous
+        release_identity = {
+            "current": read_current(),
+            "previous": read_previous(),
+            "source": "immutable_release_pointers",
+        }
+    except Exception as error:  # noqa: BLE001 - CC read model must not fail closed on layout
+        release_identity = {
+            "current": None, "previous": None,
+            "status": "NOT_AVAILABLE", "reason": type(error).__name__,
+        }
     active_vetoes = [d for d in directives if d.get("command_type") in {"VETO_ACTION", "STOP_MISSION", "STOP_EVERYTHING"}]
     goals = [d for d in directives if d.get("command_type") == "GOAL"]
     constraints = [d for d in directives if d.get("command_type") in {"CONSTRAINT", "ADD_CONSTRAINT"}]
@@ -215,6 +240,10 @@ def build_snapshot(
         "resources": [with_ref(r, "resource", "resource_id") for r in resources],
         "systems": [with_ref(s, "system", "system_id") for s in systems],
         "candidates": [with_ref(c, "candidate", "candidate_id") for c in candidates],
+        "mission_steps": [with_ref(s, "mission_step", "contract_id") for s in steps],
+        "memory": [with_ref(m, "memory", "memory_id") for m in memories],
+        "procedures": [with_ref(p, "procedure", "procedure_id") for p in procedures],
+        "release_identity": release_identity,
         "releases_canaries_rollbacks": release_events or {"status": "NOT_AVAILABLE", "evidence_refs": []},
         "recovery": {
             "blocked_missions": [with_ref(m, "mission", "mission_id") for m in blocked],

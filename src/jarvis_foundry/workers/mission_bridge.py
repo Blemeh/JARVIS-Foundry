@@ -54,6 +54,7 @@ class HybridWorkerRoleAdapter:
         task_signals: dict[str, Any] | None = None,
         role_signals: dict[str, dict[str, Any]] | None = None,
         stop_path: str | Path | None = None,
+        vault_root: str | Path | None = None,
     ) -> None:
         self.database = database
         self.router = router
@@ -65,10 +66,43 @@ class HybridWorkerRoleAdapter:
         self.role_signals = dict(role_signals or {})
         self.framework = "hybrid"
         self.stop_path = Path(stop_path).resolve() if stop_path else None
+        self.vault_root = Path(vault_root).resolve() if vault_root else None
 
     def _signals_for(self, manifest: ContextManifest) -> dict[str, Any]:
         signals = dict(self.role_signals.get(manifest.role, self.task_signals))
         return signals
+
+    def _advisory_context(self, manifest: ContextManifest, instructions: str) -> str:
+        """Attach hybrid memory as labeled advisory context, never as truth.
+
+        Memory failure degrades context only. STOP, evidence, and verifier
+        authority stay in the control plane.
+        """
+        if self.vault_root is None or not self.vault_root.is_dir():
+            return instructions
+        try:
+            from ..worker_context import deliver_hybrid_worker_context
+            record = deliver_hybrid_worker_context(
+                self.database, self.vault_root,
+                run_id=manifest.run_id, worker=str(manifest.role),
+                mission_id=manifest.mission_id,
+                objective=manifest.instructions or manifest.capability,
+                role=str(manifest.role),
+                stop_path=self.stop_path,
+            )
+            return (
+                instructions
+                + "\n\n--- ADVISORY CONTEXT (not mission truth; cannot override "
+                "STOP, actual evidence, or verifier) ---\n"
+                f"hybrid_memory_manifest={record.get('manifest_id')} "
+                f"tier_c_hash={record.get('tier_c_hash')}\n"
+            )
+        except Exception as error:  # noqa: BLE001 - memory must not halt the kernel
+            return (
+                instructions
+                + "\n\n--- ADVISORY CONTEXT UNAVAILABLE "
+                f"({type(error).__name__}); runtime truth unchanged ---\n"
+            )
 
     def _working_root(self, manifest: ContextManifest) -> Path:
         resource = self.database.row("resources", "resource_id", manifest.resource_id)
@@ -102,6 +136,7 @@ class HybridWorkerRoleAdapter:
             )
         instructions = manifest.instructions
         instructions = result_instruction(instructions, working_root=root)
+        instructions = self._advisory_context(manifest, instructions)
         if manifest.role == "verifier" and manifest.verification_criteria:
             # The fresh verifier receives the durable acceptance criteria so
             # it can inspect real artifacts against them (Phase G).

@@ -50,7 +50,7 @@ from ..mission.loop import MissionLoop, ProposalError
 from ..control.policy import ActionPolicy
 from ..domain import ActionEnvelope
 from ..workers.contracts import WORKER_OPENHANDS
-from ..workers.router import NOT_READY
+from ..workers.router import NOT_READY, READY
 from ._stack import build_worker_stack
 from .config import WorkerRuntimeConfig
 
@@ -102,20 +102,62 @@ def _select_contract(database: FoundryDatabase) -> str | None:
     return select_dispatchable_mission(database, mission_ids)
 
 
-def _pin_routing_to_hermes(stack: Any) -> None:
-    """Keep Hybrid Worker routing, but pin production dispatch to Hermes.
+def _pin_routing_to_hermes(stack: Any, config: WorkerRuntimeConfig | None = None) -> None:
+    """Keep Hermes as the fail-closed production worker.
 
-    OpenHands stays registered and is not deleted; it is not eligible for
-    Prompt-1 kernel dispatch. Stacks without a router (test fakes) no-op.
+    OpenHands stays registered when enabled and is eligible only when the
+    runtime config carries positive READY evidence. Missing evidence or a
+    lab-scripted Hermes stack leaves OpenHands honestly NOT_READY.
+    Stacks without a router (test fakes) no-op.
     """
     router = getattr(stack, "router", None)
     if router is None or not hasattr(router, "mark_ready"):
         return
+    enabled = tuple(getattr(stack, "enabled_frameworks", ()) or ())
+    spec = dict((config.readiness if config is not None else {}).get(WORKER_OPENHANDS) or {})
+    openhands_enabled = bool((config.openhands if config is not None else {}).get("enabled"))
+    lab = bool(getattr(config, "lab_scripted_hermes", False)) if config is not None else False
+    evidence = tuple(spec.get("evidence") or ())
+    claimed_ready = str(spec.get("state") or "") == READY
+    genuinely_ready = (
+        openhands_enabled
+        and not lab
+        and WORKER_OPENHANDS in enabled
+        and claimed_ready
+        and bool(evidence)
+    )
+    if genuinely_ready:
+        return
     router.mark_ready(
         WORKER_OPENHANDS, state=NOT_READY,
-        note="production dispatch pinned to Hermes; OpenHands frozen not deleted",
-        evidence=("prompt1-m2-hermes-pin",),
+        note="OpenHands not evidence-READY for this run; Hermes remains production dispatch",
+        evidence=("hybrid-worker-openhands-not-ready",),
     )
+
+
+def _advisory_accepted_outcome_writeback(
+    database: FoundryDatabase, *, mission_id: str, outcome: Any,
+) -> None:
+    """Governed observation writeback after a verified PASS.
+
+    Memory remains advisory. Failure here never changes mission state.
+    """
+    try:
+        from ..hybrid_memory.lifecycle import TierCMemoryStore
+        run_id = getattr(outcome, "run_id", None) or "unknown"
+        step_id = getattr(outcome, "step_id", None) or "unknown"
+        store = TierCMemoryStore(database)
+        store.record_observation(
+            f"accepted verified outcome mission={mission_id} step={step_id}",
+            mission_id=mission_id,
+            created_by="worker-loop",
+            source_ids=[f"mission:{mission_id}", f"run:{run_id}"],
+            evidence_ids=[str(getattr(outcome, "verdict_id", "") or "")],
+            confidence=0.8,
+            idempotency_key=f"memory.observed:accepted:{mission_id}:{run_id}",
+        )
+    except Exception:
+        return
 
 
 def _commit_envelope(
@@ -226,7 +268,7 @@ def run_cycle(
         role_router.enforce_directive_routing()
         stack = build_worker_stack(
             database, paths, config, run_id=f"loop-{loop_id}")
-        _pin_routing_to_hermes(stack)
+        _pin_routing_to_hermes(stack, config)
         stop_path = _default_stop_path(paths, config)
         loop = MissionLoop(
             database, router=role_router, adapter=stack.bridge,
@@ -245,6 +287,9 @@ def run_cycle(
                 database, loop_id=loop_id, instance_id=instance_id,
                 mission_id=mission_id, reason=f"mission contract dispatch blocked: {error}",
             )
+        if getattr(outcome, "outcome", None) == "PASSED":
+            _advisory_accepted_outcome_writeback(
+                database, mission_id=mission_id, outcome=outcome)
         return {
             "loop_id": loop_id,
             "outcome": outcome.outcome,

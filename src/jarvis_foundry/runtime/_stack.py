@@ -157,12 +157,14 @@ def build_worker_stack(
                 evidence=(),
             )
 
+    vault = paths.home / "connector-root"
     bridge = HybridWorkerRoleAdapter(
         database=database,
         router=router,
         registry=registry,
         role_signals=dict(config.role_signals),
         stop_path=config.resolve_stop_path(paths.home),
+        vault_root=vault if vault.is_dir() else None,
     )
     return WorkerStack(
         bridge=bridge, router=router, registry=registry,
