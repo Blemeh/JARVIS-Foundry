@@ -2,23 +2,23 @@
   "schema": "jarvis-post-v7-canonical-convergence-state-v2",
   "program": "JARVIS Post-V7 Remaster",
   "current_stage": "POST_PROMOTION_PROVING",
-  "current_slice": "Canonical source main now includes the independently checked durable mission-step contract package at promotion record 6b776bd; the running Supervisor still has the previously loaded c60db92 executable and deployed schema v33 because no restart or migration was performed. The semantic source remains 93d23f5 with the bounded nonce-bound R10 consumer and exactly-once replay repair. The previous f37f852 R2 proving window remains durably SUSPENDED, and the exact current-release R3 window remains WAITING_ELAPSED with a read-only monitor, healthy singleton, and zero post-start verified missions. The R11 proof records three subprocess-backed cycles, two promotions (R1 and R2 canary), one frozen non-promotion, one separately verified broken-candidate rejection, and rollback/acceptance evidence. External providers/effects, live evolution consumption, voice, and physical-host fault evidence remain honest WAITING/NOT_TESTED. The fresh 1248-test current-source suite remains PASS at 93d23f5; the worker-loop contract has only focused source proof and is not live-activated.",
+  "current_slice": "Canonical source main now includes the independently checked durable mission-step contract package at promotion record 6b776bd; the running Supervisor still has the previously loaded c60db92 executable and deployed schema v33 because no restart or migration was performed. The semantic source remains 93d23f5 with the bounded nonce-bound R10 consumer and exactly-once replay repair. The previous f37f852 R2 proving window remains durably SUSPENDED, and the exact current-release R3 window remains WAITING_ELAPSED with a read-only monitor, healthy singleton, and zero post-start verified missions. The R11 proof records three subprocess-backed cycles, two promotions (R1 and R2 canary), one frozen non-promotion, one separately verified broken-candidate rejection, and rollback/acceptance evidence. External providers/effects, live evolution consumption, voice, and physical-host fault evidence remain honest WAITING/NOT_TESTED. The historical 1248-test suite remains PASS at 93d23f5; the current-source 1260-test attempt stopped after 557 passes on one stale v33 assertion, the bounded repair and 25-test regression pass are recorded, and a fresh full recheck remains required. The worker-loop contract has only focused source proof and is not live-activated.",
   "r6_state": "OWNER_REDIRECT_R6_DEFERRED",
   "eyes_state": "OUT_OF_SCOPE_READ_ONLY",
   "canonical": {
     "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
     "branch": "main",
-    "head": "75db26355630601dc21484e325279aac7ac83fd7",
+    "head": "951b6348c62e1baf7819feff5a2ece1753a10cbf",
     "source_tree_verified_head": "6b776bd0f93005d020b5de2c183f900b82fbe57c",
-    "origin_main": "75db26355630601dc21484e325279aac7ac83fd7",
+    "origin_main": "951b6348c62e1baf7819feff5a2ece1753a10cbf",
     "deployed_tree": "0f9353cb5675a5b5e2c2b25d2e268a4e825b2c88",
-    "repository_head": "75db26355630601dc21484e325279aac7ac83fd7",
-    "repository_tree": "4e60343fa17bf45f002795774d5eeb06612c8b41",
-    "current_repository_head": "75db26355630601dc21484e325279aac7ac83fd7",
-    "current_repository_tree": "4e60343fa17bf45f002795774d5eeb06612c8b41",
-    "current_origin_main": "75db26355630601dc21484e325279aac7ac83fd7",
-    "record_commit": "75db26355630601dc21484e325279aac7ac83fd7",
-    "record_origin_main": "75db26355630601dc21484e325279aac7ac83fd7",
+    "repository_head": "951b6348c62e1baf7819feff5a2ece1753a10cbf",
+    "repository_tree": "293c4eb63c87e6a06e31286e104333d39df88c09",
+    "current_repository_head": "951b6348c62e1baf7819feff5a2ece1753a10cbf",
+    "current_repository_tree": "293c4eb63c87e6a06e31286e104333d39df88c09",
+    "current_origin_main": "951b6348c62e1baf7819feff5a2ece1753a10cbf",
+    "record_commit": "951b6348c62e1baf7819feff5a2ece1753a10cbf",
+    "record_origin_main": "951b6348c62e1baf7819feff5a2ece1753a10cbf",
     "semantic_source_commit": "93d23f50ea5858355c202cae7d4a5809ed7e245c",
     "dirty_owner_docs_preserved": true,
     "current_full_suite": {
@@ -33,6 +33,20 @@
       "pythonpath": "C:/temp/JARVIS-R10-ReplayRepair-20260819/src",
       "pythonhashseed": "0",
       "tested_head": "93d23f50ea5858355c202cae7d4a5809ed7e245c"
+    },
+    "latest_full_suite_attempt": {
+      "path": "docs/convergence/CURRENT_SOURCE_MIGRATION_TEST_REPAIR_20260819.json",
+      "sha256": "D9C1E577271F0F466A1CD1D40154D47A4BB19F8EBA02112216F9110A1FD2C9A5",
+      "tested_head": "f62998904d6ff059fae009e1fa5008e6de2f8c3c",
+      "status": "PASS_FOCUSED_REPAIR_WITH_FULL_SUITE_RECHECK_REQUIRED",
+      "focused_regression": "25 passed"
+    },
+    "latest_runtime_probe": {
+      "path": "docs/convergence/LIVE_RUNTIME_PROBE_CURRENT_20260819.json",
+      "sha256": "1576F17F07DBDD64880FA5182C2A828580A8ACF4794F4C60F6B30C0FF3A27D7D",
+      "event_head": 107601,
+      "schema_version": 33,
+      "status": "PASS_READ_ONLY"
     },
     "focused_worker_loop_contract": {
       "status": "PASS_WITH_BOUNDARY",
@@ -233,9 +247,9 @@
       "supervisor_instance": "supervisor-dbfc3d8b-936d-4b61-9895-2b8ae917ce04"
     },
     "last_checkpoint_event_head": 105969,
-    "last_live_observed_event_head": 107217,
+    "last_live_observed_event_head": 107622,
     "latest_checkpoint_reconciliation": "docs/convergence/PROVING_WINDOW_CHECKPOINT_RECONCILIATION_R3_20260819.json",
-    "latest_runtime_reconciliation": "docs/convergence/WORKER_LOOP_RUNTIME_RECONCILIATION_20260819.json",
+    "latest_runtime_reconciliation": "docs/convergence/LIVE_RUNTIME_PROBE_CURRENT_20260819.json",
     "worker_loop_registration": {
       "status": "REGISTERED_DISABLED",
       "evidence": "docs/convergence/WORKER_LOOP_DISABLED_REGISTRATION_20260819.json",
