@@ -181,6 +181,7 @@ def run_cycle(
             database, router=role_router, adapter=stack.bridge,
             leases=leases, max_repairs=config.max_repairs,
             source_id=f"worker-loop:{instance_id}",
+            stop_path=_default_stop_path(paths, config),
         )
         try:
             outcome = loop.run_until_settled(**runtime_kwargs)

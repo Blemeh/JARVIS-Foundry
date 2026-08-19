@@ -79,6 +79,9 @@ class OpenHandsWorkerAdapter:
         data_dir: Path,
         enabled: bool = False,
         timeout_seconds: int = 900,
+        stop_path: Path | str | None = None,
+        pid_table: Path | str | None = None,
+        workers: Any = None,
     ) -> None:
         self.openhands_exe = openhands_exe.resolve()
         self.data_dir = data_dir.resolve()
@@ -86,6 +89,9 @@ class OpenHandsWorkerAdapter:
         self.timeout_seconds = timeout_seconds
         self.framework = "openhands"
         self._owner_openhands = self.LIVE_OPENHANDS
+        self.stop_path = Path(stop_path).resolve() if stop_path is not None else None
+        self.pid_table = Path(pid_table).resolve() if pid_table is not None else None
+        self.workers = workers
         self._validate()
 
     def _validate(self) -> None:
@@ -169,6 +175,13 @@ class OpenHandsWorkerAdapter:
                 heartbeat=heartbeat,
                 encoding="utf-8",
                 errors="replace",
+                run_id=contract.run_id,
+                workers=self.workers,
+                stop_path=self.stop_path,
+                pid_table=self.pid_table,
+                mission_id=contract.mission_id,
+                step_id=contract.step_id,
+                worker_type=self.framework,
             )
         except subprocess.TimeoutExpired:
             heartbeat()

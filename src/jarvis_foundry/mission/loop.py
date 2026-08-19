@@ -25,6 +25,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from ..control.broker import emergency_stop_reason
 from ..control.policy import ActionPolicy
 from ..database import FoundryDatabase
 from ..domain import ActionEnvelope
@@ -95,6 +96,7 @@ class MissionLoop:
         max_repairs: int = 2,
         source_id: str = "mission-loop",
         heartbeat_interval_seconds: int = 60,
+        stop_path: Path | str | None = None,
     ) -> None:
         self.database = database
         self.router = router
@@ -105,6 +107,16 @@ class MissionLoop:
         )
         self.policy = policy
         self.max_repairs = max_repairs
+        if stop_path is not None:
+            self.stop_path = Path(stop_path)
+        elif policy is not None:
+            self.stop_path = Path(policy.stop_path)
+        else:
+            # Same identity as jarvis stop / Supervisor: {foundry_home}/EMERGENCY_STOP
+            self.stop_path = Path(database.path).resolve().parent / "EMERGENCY_STOP"
+
+    def _stop_reason(self) -> str | None:
+        return emergency_stop_reason(self.database, self.stop_path)
 
     # -- durable helpers ----------------------------------------------------
 
@@ -256,6 +268,9 @@ class MissionLoop:
         repair budget remains — the caller continues with
         ``run_step(..., run_id=<repair>)`` or calls ``run_until_settled``.
         """
+        stop_reason = self._stop_reason()
+        if stop_reason:
+            return StepOutcome(outcome=BLOCKED_OUTCOME, reason=stop_reason)
         proposal = propose_next_action(self.database, mission_id)
         if isinstance(proposal, Waiting):
             return StepOutcome(outcome=WAITING_OUTCOME, reason=proposal.reason)
@@ -497,6 +512,9 @@ class MissionLoop:
     ) -> StepOutcome:
         """Run the step through FAIL -> repair cycles until PASSED, BLOCKED,
         or WAITING — never looping beyond the durable repair budget."""
+        stop_reason = self._stop_reason()
+        if stop_reason:
+            return StepOutcome(outcome=BLOCKED_OUTCOME, reason=stop_reason)
         for attempt in range(self.max_repairs + 2):
             outcome = self.run_step(
                 mission_id=mission_id, step_id=step_id, capability=capability,

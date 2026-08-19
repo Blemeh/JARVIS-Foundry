@@ -3,10 +3,18 @@ from __future__ import annotations
 
 import re
 import subprocess
-from typing import Callable, Protocol
+from pathlib import Path
+from typing import TYPE_CHECKING, Callable, Protocol
 
 from ..contracts import WorkerStepContract
 from ..envelope import ResultEnvelope
+
+if TYPE_CHECKING:
+    from ...supervisor.worker import WorkerController
+
+#: STOP is polled independently of lease heartbeat. A 30s heartbeat
+#: interval must not become a 30s STOP detection delay.
+STOP_POLL_SECONDS = 1.0
 
 
 class ProviderUnavailable(RuntimeError):
@@ -68,38 +76,111 @@ def run_subprocess_with_heartbeat(
     interval_seconds: int = 30,
     encoding: str | None = None,
     errors: str | None = None,
+    run_id: str | None = None,
+    workers: "WorkerController | None" = None,
+    stop_path: str | Path | None = None,
+    pid_table: str | Path | None = None,
+    mission_id: str | None = None,
+    step_id: str | None = None,
+    worker_type: str | None = None,
+    stop_poll_seconds: float = STOP_POLL_SECONDS,
 ) -> subprocess.CompletedProcess[str]:
-    """Run a worker subprocess while heartbeating periodically.
+    """Run a worker subprocess while heartbeating and watching STOP.
 
-    Real worker sessions (Hermes / OpenHands) can far exceed the role lease
-    bound; without periodic heartbeats the supervisor's reaper reclaims the
-    lease mid-flight and the durable run fails with heartbeat_timeout (live
-    finding 2026-08-16). The subprocess runs in a daemon thread; the main
-    thread heartbeats every ``interval_seconds`` until it finishes. The
-    adapter's own timeout still bounds the session; a heartbeat that can no
-    longer renew (the lease was reaped) propagates honestly.
+    The child is started with ``Popen`` so its exact PID can be registered
+    with ``WorkerController`` / the durable PID table BEFORE the wait loop.
+    Lease heartbeats may remain coarse; STOP is polled at
+    ``stop_poll_seconds`` so local detection stays within the 10s contract.
     """
+    import os
     import threading
+    import time
+
+    from ...supervisor.worker import (
+        default_adapter_pid_table,
+        register_adapter_pid,
+        terminate_popen,
+        unregister_adapter_pid,
+    )
+
+    popen_kwargs: dict[str, object] = {
+        "cwd": cwd,
+        "env": env,
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.PIPE,
+        "text": True,
+    }
+    if encoding is not None:
+        popen_kwargs["encoding"] = encoding
+    if errors is not None:
+        popen_kwargs["errors"] = errors
+
+    process = subprocess.Popen(command, **popen_kwargs)  # type: ignore[arg-type]
+    key = run_id or f"adapter-{process.pid}"
+    table_path = Path(pid_table) if pid_table is not None else default_adapter_pid_table()
+    if workers is not None:
+        workers.attach(
+            key, process, acquire_lease=False,
+            mission_id=mission_id, step_id=step_id, worker_type=worker_type,
+            working_directory=cwd, stop_path=stop_path,
+        )
+    elif table_path is not None:
+        register_adapter_pid(
+            table_path, key, process.pid,
+            mission_id=mission_id, step_id=step_id, worker_type=worker_type,
+            working_directory=cwd, stop_path=stop_path,
+        )
+
+    resolved_stop = stop_path if stop_path is not None else os.environ.get("JARVIS_STOP_PATH")
+    stop = Path(resolved_stop) if resolved_stop else None
 
     holder: dict[str, object] = {}
+    stopped = threading.Event()
 
     def _run_blocking() -> None:
         try:
-            holder["result"] = subprocess.run(
-                command, cwd=cwd, env=env, capture_output=True, text=True,
-                timeout=timeout_seconds,
-                encoding=encoding, errors=errors,
+            stdout, stderr = process.communicate()
+            holder["result"] = subprocess.CompletedProcess(
+                command, process.returncode if process.returncode is not None else -1,
+                stdout, stderr,
             )
         except BaseException as error:  # noqa: BLE001 - surfaced by caller
             holder["error"] = error
 
     thread = threading.Thread(target=_run_blocking, daemon=True)
     thread.start()
-    while thread.is_alive():
-        thread.join(timeout=interval_seconds)
-        heartbeat()
-    thread.join(timeout=1)
-    if "error" in holder:
-        error = holder["error"]
-        raise error  # type: ignore[misc]
-    return holder["result"]  # type: ignore[return-value]
+    deadline = time.monotonic() + timeout_seconds if timeout_seconds > 0 else None
+    last_beat = time.monotonic()
+    poll = max(0.05, float(stop_poll_seconds))
+    try:
+        while thread.is_alive():
+            if stop is not None and stop.exists():
+                stopped.set()
+                terminate_popen(process, timeout=5)
+            if deadline is not None and time.monotonic() >= deadline:
+                terminate_popen(process, timeout=5)
+                thread.join(timeout=5)
+                raise subprocess.TimeoutExpired(command, timeout_seconds)
+            thread.join(timeout=poll)
+            if time.monotonic() - last_beat >= interval_seconds:
+                heartbeat()
+                last_beat = time.monotonic()
+        thread.join(timeout=1)
+        if "error" in holder:
+            error = holder["error"]
+            raise error  # type: ignore[misc]
+        result = holder.get("result")
+        if result is None:
+            result = subprocess.CompletedProcess(command, -1, "", "adapter child ended without a result")
+        if stopped.is_set() and isinstance(result, subprocess.CompletedProcess):
+            if result.returncode == 0:
+                result = subprocess.CompletedProcess(
+                    command, -15, result.stdout,
+                    (result.stderr or "") + "\nSTOP: adapter child terminated\n",
+                )
+        return result  # type: ignore[return-value]
+    finally:
+        if workers is not None:
+            workers.detach(key)
+        elif table_path is not None:
+            unregister_adapter_pid(table_path, key)

@@ -1,0 +1,80 @@
+{
+  "home": "C:\\temp\\JARVIS-Goal1-STOP-Probe-20260819T104706",
+  "cli_stop": "C:\\temp\\JARVIS-Goal1-STOP-Probe-20260819T104706\\EMERGENCY_STOP",
+  "live_stop_before": false,
+  "live_home_untouched_rule": "C:\\Users\\b\\AppData\\Local\\hermes\\foundry",
+  "decoy_pid": 28164,
+  "ownership_registered": {
+    "run_id": "probe-tree",
+    "root_pid": 12816,
+    "child_pid": 9192,
+    "table": {
+      "creation_identity": {
+        "create_time": 134316028263629906,
+        "exe": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry\\.venv\\Scripts\\python.exe",
+        "pid": 12816
+      },
+      "mission_id": "probe-m",
+      "owned_descendants": [
+        12816,
+        10844
+      ],
+      "pid": 12816,
+      "recorded_at": "2026-08-19T08:47:06.392023Z",
+      "root_pid": 12816,
+      "run_id": "probe-tree",
+      "step_id": "probe-s",
+      "stop_path": "C:\\temp\\JARVIS-Goal1-STOP-Probe-20260819T104706\\EMERGENCY_STOP",
+      "termination_state": "running",
+      "worker_type": "probe",
+      "working_directory": "C:\\temp\\JARVIS-Goal1-STOP-Probe-20260819T104706"
+    }
+  },
+  "heartbeat_child_registered": true,
+  "stop": {
+    "written_s": 0.00559449999127537,
+    "observed": true,
+    "path": "C:\\temp\\JARVIS-Goal1-STOP-Probe-20260819T104706\\EMERGENCY_STOP",
+    "kill_elapsed_s": 4.104046099993866,
+    "owned_root_alive": false,
+    "owned_child_alive": false,
+    "hb_alive": false,
+    "hb_returncode": 1,
+    "hb_errors": [],
+    "pid_table_after": {}
+  },
+  "new_dispatch": {
+    "loop_id": "probe-1",
+    "outcome": "FROZEN",
+    "reason": "emergency stop is active"
+  },
+  "decoy_survived": true,
+  "hermes": {
+    "elapsed_s": 4.633039699998335,
+    "worker_status": "FAILED",
+    "exit_state": "EXIT_1",
+    "summary": ""
+  },
+  "openhands": {
+    "elapsed_s": 2.9757433000049787,
+    "worker_status": "FAILED",
+    "exit_state": "EXIT_1",
+    "summary": "",
+    "blockers": []
+  },
+  "latency": {
+    "min": 3.8944943000096828,
+    "median": 4.043567900007474,
+    "max": 4.073521300000721,
+    "n": 5,
+    "samples": [
+      3.8944943000096828,
+      3.9276451999903657,
+      4.043567900007474,
+      4.0616120000049705,
+      4.073521300000721
+    ]
+  },
+  "live_stop_after": false,
+  "pass": true
+}

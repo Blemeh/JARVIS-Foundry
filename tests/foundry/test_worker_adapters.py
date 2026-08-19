@@ -108,7 +108,7 @@ def test_openhands_adapter_fails_closed_on_containment_violation(tmp_path):
     before = {"profiles/owner.json": "a" * 64}
     after = {"profiles/owner.json": "a" * 64,
              "conversations/probe/state.json": "b" * 64}
-    with mock.patch.object(oh_module.subprocess, "run",
+    with mock.patch.object(oh_module, "run_subprocess_with_heartbeat",
                            return_value=fake_result), \
          mock.patch.object(oh_module, "snapshot_openhands_tree",
                            side_effect=[before, after]):
@@ -328,7 +328,7 @@ def test_openhands_adapter_consumes_machine_result_file(tmp_path):
         timeout_seconds=30)
     adapter._owner_openhands = tmp_path / "owner-openhands"
     adapter._owner_openhands.mkdir()
-    with mock.patch.object(oh_module.subprocess, "run",
+    with mock.patch.object(oh_module, "run_subprocess_with_heartbeat",
                            return_value=fake_result), \
          mock.patch.object(oh_module, "snapshot_openhands_tree",
                            side_effect=[before, before]):
@@ -356,7 +356,7 @@ def test_openhands_adapter_missing_result_file_is_not_testable(tmp_path):
         timeout_seconds=30)
     adapter._owner_openhands = tmp_path / "owner-openhands"
     adapter._owner_openhands.mkdir()
-    with mock.patch.object(oh_module.subprocess, "run",
+    with mock.patch.object(oh_module, "run_subprocess_with_heartbeat",
                            return_value=fake_result), \
          mock.patch.object(oh_module, "snapshot_openhands_tree",
                            side_effect=[before, before]):
@@ -455,3 +455,127 @@ def test_hermes_timeout_without_result_file_stays_not_tested(tmp_path):
     assert envelope.verdict == "NOT_TESTED"
     assert envelope.files_changed == ()
     assert ".jarvis-result.json" in envelope.summary
+
+
+def test_hermes_dispatch_passes_stop_path_and_pid_table(tmp_path):
+    """P0: production dispatch() must pass stop_path and pid_table, not
+    only rely on tests injecting workers= into the heartbeat runner."""
+    from jarvis_foundry.workers.adapters import hermes as hermes_module
+
+    fake = subprocess.CompletedProcess(
+        ["python", "-m", "hermes_cli.main"], 0, "VERDICT: PASS\nok\n", "")
+    (tmp_path / "home").mkdir()
+    _hermes_result_file(tmp_path)
+    stop = tmp_path / "EMERGENCY_STOP"
+    table = tmp_path / "adapter_worker_pids.json"
+    adapter = HermesWorkerAdapter(
+        hermes_root=tmp_path, hermes_home=tmp_path / "home",
+        enabled=True, timeout_seconds=0, python_exe="python",
+        stop_path=stop, pid_table=table)
+    captured: dict = {}
+
+    def spy(*args, **kwargs):
+        captured.update(kwargs)
+        return fake
+
+    with mock.patch.object(
+            hermes_module, "run_subprocess_with_heartbeat", side_effect=spy), \
+         mock.patch.object(
+            hermes_module, "configured_api_key", return_value=None):
+        adapter.dispatch(contract(tmp_path), heartbeat=lambda: None)
+    assert captured.get("run_id") == "run-1"
+    assert Path(captured["stop_path"]) == stop.resolve()
+    assert Path(captured["pid_table"]) == table.resolve()
+    assert captured.get("worker_type") == "hermes"
+    assert captured.get("mission_id") == "m"
+    assert captured.get("step_id") == "s"
+
+
+def test_openhands_dispatch_passes_stop_path_and_pid_table(tmp_path):
+    """P0: OpenHands dispatch() kwargs must match Hermes control parity."""
+    from jarvis_foundry.workers.adapters import openhands as oh_module
+
+    exe = tmp_path / "openhands.exe"
+    exe.write_text("", encoding="utf-8")
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    stop = tmp_path / "EMERGENCY_STOP"
+    table = tmp_path / "adapter_worker_pids.json"
+    fake = subprocess.CompletedProcess(
+        ["openhands"], 0, "VERDICT: NOT_TESTED\n", "")
+    before = {"profiles/owner.json": "a" * 64}
+    adapter = oh_module.OpenHandsWorkerAdapter(
+        openhands_exe=exe, data_dir=data_dir, enabled=True,
+        timeout_seconds=30, stop_path=stop, pid_table=table)
+    adapter._owner_openhands = tmp_path / "owner-openhands"
+    adapter._owner_openhands.mkdir()
+    captured: dict = {}
+
+    def spy(*args, **kwargs):
+        captured.update(kwargs)
+        return fake
+
+    with mock.patch.object(oh_module, "run_subprocess_with_heartbeat",
+                           side_effect=spy), \
+         mock.patch.object(oh_module, "snapshot_openhands_tree",
+                           side_effect=[before, before]):
+        adapter.dispatch(contract(tmp_path), heartbeat=lambda: None)
+    assert captured.get("run_id") == "run-1"
+    assert Path(captured["stop_path"]) == stop.resolve()
+    assert Path(captured["pid_table"]) == table.resolve()
+    assert captured.get("worker_type") == "openhands"
+    assert captured.get("mission_id") == "m"
+    assert captured.get("step_id") == "s"
+
+
+def test_stack_wires_cli_stop_and_pid_table_onto_hermes_adapter(tmp_path):
+    """build_worker_stack is the production constructor path: adapters
+    must receive the CLI sentinel even when yaml still says foundry/."""
+    from jarvis_foundry.database import FoundryDatabase
+    from jarvis_foundry.paths import FoundryPaths
+    from jarvis_foundry.runtime._stack import build_worker_stack
+    from jarvis_foundry.runtime.config import WorkerRuntimeConfig
+
+    home = tmp_path / "foundry"
+    database = FoundryDatabase(home / "foundry.db")
+    database.initialize()
+    cfg = WorkerRuntimeConfig(
+        hermes={"enabled": True, "root": str(tmp_path),
+                "timeout_seconds": 0, "python_exe": "python"},
+        stop_sentinel_path="foundry/EMERGENCY_STOP",
+        runtime_state_root=str(tmp_path / "state"),
+    )
+    stack = build_worker_stack(
+        database, FoundryPaths(home), cfg, run_id="r-stop")
+    adapter = stack.registry.get("hermes")
+    assert adapter.stop_path == (home / "EMERGENCY_STOP").resolve()
+    assert adapter.pid_table == (home / "adapter_worker_pids.json").resolve()
+    assert adapter.workers is stack.workers
+    assert stack.bridge.stop_path == (home / "EMERGENCY_STOP").resolve()
+
+
+def test_stack_wires_cli_stop_and_pid_table_onto_openhands_adapter(tmp_path):
+    """Production stack must wire OpenHands the same STOP/PID controls."""
+    from jarvis_foundry.database import FoundryDatabase
+    from jarvis_foundry.paths import FoundryPaths
+    from jarvis_foundry.runtime._stack import build_worker_stack
+    from jarvis_foundry.runtime.config import WorkerRuntimeConfig
+
+    home = tmp_path / "foundry"
+    database = FoundryDatabase(home / "foundry.db")
+    database.initialize()
+    exe = tmp_path / "openhands.exe"
+    exe.write_text("", encoding="utf-8")
+    cfg = WorkerRuntimeConfig(
+        openhands={"enabled": True, "exe": str(exe), "timeout_seconds": 0},
+        stop_sentinel_path="foundry/EMERGENCY_STOP",
+        runtime_state_root=str(tmp_path / "state"),
+    )
+    stack = build_worker_stack(
+        database, FoundryPaths(home), cfg, run_id="r-oh")
+    adapter = stack.registry.get("openhands")
+    assert adapter.stop_path == (home / "EMERGENCY_STOP").resolve()
+    assert adapter.pid_table == (home / "adapter_worker_pids.json").resolve()
+    assert adapter.workers is stack.workers
+    assert stack.bridge.stop_path == (home / "EMERGENCY_STOP").resolve()
+

@@ -14,6 +14,7 @@ from typing import Any
 
 from ..database import FoundryDatabase
 from ..paths import FoundryPaths
+from ..supervisor.worker import WorkerController
 from ..workers.adapters.hermes import HermesWorkerAdapter
 from ..workers.adapters.openhands import OpenHandsWorkerAdapter
 from ..workers.adapters.registry import WorkerRegistry
@@ -29,6 +30,9 @@ class WorkerStack:
     registry: WorkerRegistry
     disposable_root: Path
     enabled_frameworks: tuple[str, ...] = ()
+    stop_path: Path | None = None
+    pid_table: Path | None = None
+    workers: WorkerController | None = None
 
 
 def _resolve_root(raw: str | None, run_id: str, *, kind: str) -> Path:
@@ -53,6 +57,9 @@ def build_worker_stack(
     unavailable worker (honest NOT_READY / no eligible worker).
     """
     run_root = _resolve_root(config.runtime_state_root, run_id, kind="run")
+    stop_path = config.resolve_stop_path(paths.home)
+    pid_table = paths.home / "adapter_worker_pids.json"
+    workers = WorkerController(database)
     router = WorkerRouter()
     registry = WorkerRegistry()
     enabled: list[str] = []
@@ -74,6 +81,9 @@ def build_worker_stack(
                 python_exe=str(hermes.get(
                     "python_exe",
                     r"C:\Users\b\AppData\Local\hermes\hermes-agent\venv\Scripts\python.exe")),
+                stop_path=stop_path,
+                pid_table=pid_table,
+                workers=workers,
             ),
         )
         enabled.append("hermes")
@@ -92,6 +102,9 @@ def build_worker_stack(
                 data_dir=data_dir,
                 enabled=True,
                 timeout_seconds=int(openhands.get("timeout_seconds", 900)),
+                stop_path=stop_path,
+                pid_table=pid_table,
+                workers=workers,
             ),
         )
         enabled.append("openhands")
@@ -135,4 +148,5 @@ def build_worker_stack(
     return WorkerStack(
         bridge=bridge, router=router, registry=registry,
         disposable_root=run_root, enabled_frameworks=tuple(enabled),
+        stop_path=stop_path, pid_table=pid_table, workers=workers,
     )

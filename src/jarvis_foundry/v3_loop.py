@@ -185,6 +185,7 @@ def run_one_loop(db: FoundryDatabase, *, loop_id: str, adapter: Any,
                  repo_paths: Iterable[str | Path] | None = None,
                  target_root: str | Path | None = None,
                  instructions_builder: Callable[[str, Path], str] | None = None,
+                 stop_path: str | Path | None = None,
                  ) -> dict[str, Any]:
     """Run one complete real loop. Returns the loop report dict."""
     report: dict[str, Any] = {"loop_id": loop_id}
@@ -335,7 +336,10 @@ def run_one_loop(db: FoundryDatabase, *, loop_id: str, adapter: Any,
     instructions = (instructions_builder(objective, target)
                     if instructions_builder is not None
                     else _default_instructions(objective, target))
-    loop = MissionLoop(db, router, adapter)
+    loop = MissionLoop(
+        db, router, adapter,
+        stop_path=stop_path or (Path(db.path).resolve().parent / "EMERGENCY_STOP"),
+    )
     outcome = loop.run_until_settled(
         mission_id=new_mission, step_id="v3-loop", capability=capability,
         target=target, instructions=instructions,
