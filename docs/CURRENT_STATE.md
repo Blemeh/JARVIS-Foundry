@@ -6,13 +6,16 @@ every promotion/remaster mission (see `docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.
 If this document and another current-status document disagree, THIS document wins
 for "what exists now" claims; the architecture contract wins for binding invariants.
 
-Last reconciled: 2026-08-19 (exact-head convergence evidence reconciliation; legacy evidence preserved)
+Last reconciled: 2026-08-19 (R10 directive-consumer forward-port and exact-head evidence reconciliation; legacy evidence preserved)
 
 ```text
-CURRENT CANONICAL HEAD:      65bc25e (main; current promoted docs-only
-                             descendant; local==origin)
+CURRENT CANONICAL HEAD:      1846998 (main; R10 directive-consumer
+                             forward-port; local==origin)
 TESTED SOURCE HEAD:          2af8191 (exact source head for the 1243-test full
                              suite; docs-only audit commits follow)
+LATEST R10 FOCUSED SOURCE:   aa753c0 (authenticated nonce-bound
+                             REPRIORITIZE/REDIRECT consumer; 26 focused tests;
+                             live provider dispatch remains NOT_TESTED)
 LETTA PROMOTION ANCESTOR:    2f7360e742559e051109e04ef7f3a82cc64cc2d2 (still an ancestor of HEAD)
 PRE-V8 HISTORICAL BASELINE:  93a3ddc0965dfaf3e4cb9dc0952467bd5250520a (historical only — do not reset to it)
 CURRENT SCHEMA:              v33 (six additive tier_c_* tables; event-derived)
@@ -111,6 +114,7 @@ browser substrate, and it cannot activate native desktop execution.
 | Workflow Discovery Phase 3 | PASS — 36/36 focused, F1–F25, bounded probe, independent review |
 | Procedural Learning Phase 4 | PASS — 23/23 focused, F1–F24, artifact-byte tamper, zero-effect shadow, local browser probe, rollback, fresh independent review |
 | Post-V7 canonical convergence (R7–R12 semantic closure) | PASS — exact Supervisor authority across low-level evolution/control surfaces; 76 convergence tests + 1,225 canonical tests; isolated promotion and post-promotion runtime probe PASS |
+| R10 authenticated mission-directive consumer | PASS_WITH_BOUNDARY — nonce-bound REPRIORITIZE/REDIRECT reaches the existing MissionLoop path; 26 focused tests and fresh verifier PASS; live Supervisor/Hermes/provider dispatch remains NOT_TESTED |
 
 ## What is experimental / not canonical
 
@@ -129,6 +133,7 @@ browser substrate, and it cannot activate native desktop execution.
   and audio-driven workflow discovery — explicitly not active; Phase 5/6 remain locked.
 - Scanner patterns are configuration (defense-in-depth, not proof).
 - Rollback strategy is RESTORE-FROM-BACKUP for schema v33 (no reverse migration; by design).
+- The exact canonical R2 proving window remains active and WAITING_ELAPSED; its runtime release source is f37f852, while the newer R10 consumer is promoted in source but not yet loaded into that runtime.
 
 ## Documentation rules (anti-staleness)
 
