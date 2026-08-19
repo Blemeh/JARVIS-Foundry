@@ -17,6 +17,9 @@
     "current_repository_head": "93d23f50ea5858355c202cae7d4a5809ed7e245c",
     "current_repository_tree": "259f669c34cdc604b968b975544c65f1cd8006d7",
     "current_origin_main": "93d23f50ea5858355c202cae7d4a5809ed7e245c",
+    "record_commit": "98d143bc69bea37bf87c17ba860868a0d3249188",
+    "record_origin_main": "98d143bc69bea37bf87c17ba860868a0d3249188",
+    "semantic_source_commit": "93d23f50ea5858355c202cae7d4a5809ed7e245c",
     "dirty_owner_docs_preserved": true,
     "current_full_suite": {
       "path": "docs/convergence/CURRENT_SOURCE_FULL_SUITE_20260819.json",
@@ -885,6 +888,7 @@
     "promotion_worktree": "C:/temp/JARVIS-Foundry-R8-PROMOTE",
     "promotion_commit": "93d23f50ea5858355c202cae7d4a5809ed7e245c",
     "latest_evidence_commit": "93d23f50ea5858355c202cae7d4a5809ed7e245c",
+    "evidence_record_commit": "98d143bc69bea37bf87c17ba860868a0d3249188",
     "promoted_head": "93d23f50ea5858355c202cae7d4a5809ed7e245c",
     "state_reconciliation_head": "4e2d0d2748650f24ab2deeaf932765e7a4e3ff81",
     "latest_live_canary": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_CANARY_20260818.json",

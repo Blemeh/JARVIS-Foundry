@@ -11,6 +11,8 @@ Last reconciled: 2026-08-19 (R10 replay-manifest repair, current-source full-sui
 ```text
 CURRENT CANONICAL HEAD:      93d23f5 (main; R10 replay-manifest repair on top
                              of the authenticated directive consumer; local==origin)
+CURRENT STATE RECORD:        98d143b (docs-only checkpoint record on top of the
+                             semantic source; local==origin)
 TESTED SOURCE HEAD:          93d23f5 (exact source head for the deterministic
                              1248-test full suite; docs-only audit commits follow)
 LATEST R10 FOCUSED SOURCE:   93d23f5 (authenticated nonce-bound
