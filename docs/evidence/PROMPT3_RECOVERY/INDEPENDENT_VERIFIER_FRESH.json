@@ -1,0 +1,150 @@
+{
+  "role": "independent-verifier",
+  "ran_at": "2026-08-19T20:28:54Z",
+  "supersedes": [
+    "2026-08-19T21:35:40",
+    "2026-08-19T21:52:46"
+  ],
+  "full_suite": {
+    "command": ".venv python -m pytest tests/foundry tests/convergence -q --tb=line",
+    "pythonpath": "src",
+    "exit_code": 0,
+    "finished_local": "2026-08-19T22:27:21"
+  },
+  "inspected": {
+    "head": "52ee917208e5964992125f478508460cd9893514",
+    "main": "52ee917208e5964992125f478508460cd9893514",
+    "origin_main": "52ee917208e5964992125f478508460cd9893514",
+    "current_release_pointer": "52ee917208e5964992125f478508460cd9893514",
+    "previous_release_pointer": "c4a0fd1b706f8c0ecac89143bc01b7c37d34191a",
+    "schema": 34,
+    "supervisor": {
+      "singleton": 1,
+      "instance_id": "supervisor-b2886418-1b32-427a-b30d-3a04e8f33f01",
+      "status": "RUNNING",
+      "trust_state": "LAB",
+      "last_heartbeat_at": "2026-08-19T20:28:02.642263Z",
+      "last_event_id": "8bc3a546-ea04-45d5-b928-b31cb60596de"
+    },
+    "stop_active": false,
+    "t193243": {
+      "mission_id": "mission-prompt3-m6a-T193243Z",
+      "state": "BLOCKED"
+    },
+    "t193251": {
+      "mission_id": "mission-prompt3-m6a-T193251Z",
+      "state": "COMPLETE"
+    },
+    "prompt3_missions": [
+      {
+        "mission_id": "mission-687bda2610c3",
+        "state": "COMPLETE"
+      },
+      {
+        "mission_id": "mission-05a4ac1a3db4",
+        "state": "COMPLETE"
+      },
+      {
+        "mission_id": "mission-prompt3-m6a-T193251Z",
+        "state": "COMPLETE"
+      },
+      {
+        "mission_id": "mission-prompt3-m6a-T193243Z",
+        "state": "BLOCKED"
+      },
+      {
+        "mission_id": "mission-prompt3-m6a-T193143Z",
+        "state": "COMPLETE"
+      },
+      {
+        "mission_id": "mission-d56efb1b5cb6",
+        "state": "COMPLETE"
+      },
+      {
+        "mission_id": "mission-prompt3-m6a-T192853Z",
+        "state": "COMPLETE"
+      },
+      {
+        "mission_id": "mission-bae244bab6ce",
+        "state": "COMPLETE"
+      },
+      {
+        "mission_id": "mission-cab6dcff925c",
+        "state": "COMPLETE"
+      },
+      {
+        "mission_id": "mission-85e7dfd10446",
+        "state": "COMPLETE"
+      }
+    ],
+    "complete_count": 9,
+    "mission_states": [
+      [
+        "ACTION_SELECTION",
+        7
+      ],
+      [
+        "BLOCKED",
+        9
+      ],
+      [
+        "COMPLETE",
+        16
+      ],
+      [
+        "PLANNED",
+        1
+      ]
+    ],
+    "agent_runs": 123,
+    "verifications": 0,
+    "verification_verdicts": 72,
+    "directives": 8,
+    "candidates": 944,
+    "perception_observed": 1,
+    "workflow_pattern_evidence": 1,
+    "procedure_effect_verified": 2,
+    "procedure_execution_requested": 2,
+    "verification_passed": 73,
+    "verification_failed": 36,
+    "worker_manifests": 56,
+    "tier_c_memories": 26,
+    "tier_c_procedures": 3,
+    "live_launchers": [
+      {
+        "pid": "29416",
+        "ppid": "15752",
+        "cmd": "\"C:\\Users\\b\\AppData\\Local\\JARVIS\\releases\\b59836772d948bd7b2507949c42f3c7dfa75afaf\\.venv\\Scripts\\python.exe\"  -m jarvis_foundry.deployment.launcher --home \"C:\\Users\\b\\AppData\\Local\\hermes\\foundry\" --spawn-worker-loop --worker-loop-config \"C"
+      },
+      {
+        "pid": "29580",
+        "ppid": "29416",
+        "cmd": "\"C:\\Users\\b\\AppData\\Local\\JARVIS\\releases\\b59836772d948bd7b2507949c42f3c7dfa75afaf\\.venv\\Scripts\\python.exe\"  -m jarvis_foundry.deployment.launcher --home \"C:\\Users\\b\\AppData\\Local\\hermes\\foundry\" --spawn-worker-loop --worker-loop-config \"C"
+      }
+    ],
+    "live_release_trees": [
+      "b59836772d948bd7b2507949c42f3c7dfa75afaf"
+    ],
+    "live_gates": "docs\\evidence\\PROMPT3_RECOVERY\\LIVE_GATES.json"
+  },
+  "gate_verdicts": {
+    "M6A": "PASS",
+    "M6B": "PASS",
+    "M7A": "PASS",
+    "M7B": "PASS",
+    "M7C": "PASS",
+    "M7D": "PASS",
+    "M7_E2E": "PASS",
+    "M8": "PASS"
+  },
+  "findings": [],
+  "unresolved_critical": [],
+  "unresolved_high": [
+    "CURRENT pointer 52ee917208e5964992125f478508460cd9893514 is not the live launcher tree ['b59836772d948bd7b2507949c42f3c7dfa75afaf'] (pointer advanced by overlapping session; live process not killed)"
+  ],
+  "verdict": "PASS",
+  "prompt4_ready": "NO",
+  "l6_unattended": "NOT YET GATED",
+  "openhands_live_coding": "NOT_READY",
+  "openadapt_desktop": "PROBING"
+}
