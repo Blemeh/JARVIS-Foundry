@@ -1,0 +1,47 @@
+{
+  "schema": "jarvis-remaster-dirty-inventory-verifier-v1",
+  "status": "PASS_WITH_BOUNDARY",
+  "verified_at": "2026-08-19T02:34:00Z",
+  "candidate": {
+    "worktree": "C:/temp/JARVIS-Foundry-Remaster-Inventory-20260819",
+    "head": "954a00512559c50d0fb5ae2053092e62b12c1efc",
+    "tree": "da0e89c1d60fb4c7b212f671fa527c2350bc550a",
+    "parent": "284c0914489d6e41caf3b583fb227d88625dc83e",
+    "worktree_clean": true,
+    "diff_check": "PASS",
+    "delta_scope": "one convergence JSON documentation file"
+  },
+  "checks": {
+    "inventory_json_valid": true,
+    "actual_status_entries": 87,
+    "inventory_entries": 87,
+    "missing_paths": 0,
+    "extra_paths": 0,
+    "status_mismatches": 0,
+    "category_mismatches": 0,
+    "per_file_hash_mismatches": 0,
+    "inventory_sha256": "DF230B8E393F63C23222927FE07CAA054E6AA985BE62C41769F9722D03296FE2",
+    "actual_porcelain_status_sha256": "9CC1B5F0D3AE5FC6C257BFBDCFD49BA4446A0CB3D0088D4FB0C549FE5F9D68BF",
+    "category_counts": {
+      "CONVERGENCE_EVIDENCE": 4,
+      "HISTORICAL_R6_DEFERRED": 74,
+      "POST_CERTIFICATION_SEMANTIC_DELTA": 9
+    },
+    "remaster_head": "6be9185ea34a64a84737dbd9ec323e25776c4558",
+    "merge_base": "93a3ddc0965dfaf3e4cb9dc0952467bd5250520a"
+  },
+  "preservation": {
+    "r6_state": "OWNER_REDIRECT_R6_DEFERRED",
+    "r6_files_mutated": false,
+    "remaster_files_mutated": false,
+    "eyes_touched": false,
+    "blind_reset_stash_discard": false,
+    "wholesale_merge": false,
+    "blind_cherry_pick": false
+  },
+  "boundary": "This is a read-only inventory reconciliation; it does not certify the dirty remaster as canonical implementation or prove live effects.",
+  "provider": "commandcode",
+  "model": "gpt-5.6-luna",
+  "route": "router_commandcode_gpt_5_6_luna",
+  "transport": "codex-router"
+}
