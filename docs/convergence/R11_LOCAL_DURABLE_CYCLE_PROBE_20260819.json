@@ -59,7 +59,8 @@
     "evaluation_and_independent_verification_records": true,
     "r1_promotion": true,
     "r2_canary_promotion": true,
-    "broken_candidate_rejected": true,
+    "non_promoting_rejection": true,
+    "broken_candidate_rejected": "covered by the supplemental focused probe; this operational-minimums ledger itself rejects while the release is frozen",
     "rollback_recorded": true,
     "acceptance_archived": true,
     "candidate_self_certification_or_self_promotion": "not exercised by this probe; covered by the canonical R11 gate",
@@ -74,5 +75,6 @@
     "production_or_customer_scope": false,
     "financial_actions": "DENIED_OUT_OF_SCOPE"
   },
-  "next_action": "fresh independent Luna verification of this exact evidence and source commit; retain live R2 proving window as WAITING_ELAPSED"
+  "supplemental_evidence": "docs/convergence/R11_BROKEN_CANDIDATE_REJECTION_PROBE_20260819.json",
+  "next_action": "fresh independent Luna verification of this evidence plus the supplemental broken-candidate probe; retain live R2 proving window as WAITING_ELAPSED"
 }
