@@ -6,7 +6,12 @@ from dataclasses import asdict
 from pathlib import Path
 
 from ..database import FoundryDatabase
-from ..installer import V1_TASK_NAME, Installer
+from ..installer import (
+    V1_TASK_NAME,
+    WORKER_LOOP_TASK_NAME,
+    Installer,
+    WorkerLoopInstaller,
+)
 from ..paths import FoundryPaths
 from ..supervisor.estop import EmergencyStop
 from ..supervisor.service import Supervisor
@@ -24,6 +29,7 @@ def _parser() -> argparse.ArgumentParser:
     status = sub.add_parser("status", parents=[home_option])
     status.add_argument("--task", default=None)
     status.add_argument("--v1", action="store_true")
+    status.add_argument("--worker-loop", action="store_true")
     sub.add_parser("doctor", parents=[home_option])
     stop = sub.add_parser("stop", parents=[home_option])
     stop.add_argument("--reason", default="owner requested STOP")
@@ -35,20 +41,40 @@ def _parser() -> argparse.ArgumentParser:
                          help="task name (default: staging-safe name; --v1 uses the real V1 task)")
     install.add_argument("--v1", action="store_true",
                          help="install the real V1 Supervisor task (requires the WP7 gate PASS verdict)")
+    install.add_argument("--worker-loop", action="store_true",
+                         help="install the separate worker-loop task disabled")
+    install.add_argument("--config", type=Path,
+                         help="absolute worker-loop YAML config path")
     install.add_argument("--force", action="store_true", help="replace an existing task")
     uninstall = sub.add_parser("uninstall", parents=[home_option])
     uninstall.add_argument("--task", default=None)
     uninstall.add_argument("--v1", action="store_true")
+    uninstall.add_argument("--worker-loop", action="store_true")
+    uninstall.add_argument("--config", type=Path)
     activate = sub.add_parser("activate", parents=[home_option])
     activate.add_argument("--task", default=None)
     activate.add_argument("--v1", action="store_true")
+    activate.add_argument("--worker-loop", action="store_true")
+    activate.add_argument("--config", type=Path)
     deactivate = sub.add_parser("deactivate", parents=[home_option])
     deactivate.add_argument("--task", default=None)
     deactivate.add_argument("--v1", action="store_true")
+    deactivate.add_argument("--worker-loop", action="store_true")
+    deactivate.add_argument("--config", type=Path)
     return parser
 
 
 def _installer(args, paths: FoundryPaths) -> Installer:
+    if args.v1 and args.worker_loop:
+        raise ValueError("--v1 and --worker-loop are mutually exclusive")
+    if args.worker_loop:
+        return WorkerLoopInstaller(
+            FoundryDatabase(paths.database),
+            task_name=args.task or WORKER_LOOP_TASK_NAME,
+            foundry_home=paths.home,
+            hermes_home=FoundryPaths.hermes_home(),
+            worker_config_path=getattr(args, "config", None),
+        )
     task_name = args.task
     if args.v1:
         task_name = V1_TASK_NAME

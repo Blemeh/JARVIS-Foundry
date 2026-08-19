@@ -23,9 +23,13 @@ from xml.sax.saxutils import escape as xml_escape
 
 from .database import FoundryDatabase
 from .events import Event
+from .runtime.config import WorkerRuntimeConfig
 
 V1_TASK_NAME = "JARVIS-Foundry-Supervisor"
+WORKER_LOOP_TASK_NAME = "JARVIS-Foundry-Worker-Loop"
 PROFILE_FILE = "foundry-profile.yaml"
+WORKER_PROFILE_FILE = "worker-loop-profile.yaml"
+WORKER_CONFIG_FILE = "worker-routing.yaml"
 GATE_VERDICT_RELATIVE = Path("var/evidence/wp7-gate/GATE_VERDICT.json")
 
 TASK_XML_TEMPLATE = """<?xml version="1.0" encoding="UTF-16"?>
@@ -72,6 +76,55 @@ TASK_XML_TEMPLATE = """<?xml version="1.0" encoding="UTF-16"?>
     <Exec>
       <Command>{python_exe}</Command>
       <Arguments>-m jarvis_foundry.supervisor.run --home "{foundry_home}"</Arguments>
+    </Exec>
+  </Actions>
+</Task>
+"""
+
+WORKER_LOOP_TASK_XML_TEMPLATE = """<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo>
+    <Description>JARVIS Foundry canonical worker loop (separate from Supervisor)</Description>
+  </RegistrationInfo>
+  <Triggers>
+    <LogonTrigger>
+      <UserId>{user_id}</UserId>
+      <Enabled>false</Enabled>
+    </LogonTrigger>
+    <TimeTrigger>
+      <StartBoundary>{start_boundary}</StartBoundary>
+      <Enabled>false</Enabled>
+      <Repetition>
+        <Interval>PT5M</Interval>
+        <Duration>P30D</Duration>
+        <StopAtDurationEnd>false</StopAtDurationEnd>
+      </Repetition>
+    </TimeTrigger>
+  </Triggers>
+  <Principals>
+    <Principal id="Author">
+      <LogonType>InteractiveToken</LogonType>
+      <RunLevel>LeastPrivilege</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <AllowHardTerminate>true</AllowHardTerminate>
+    <StartWhenAvailable>true</StartWhenAvailable>
+    <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
+    <Hidden>true</Hidden>
+    <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
+    <RestartOnFailure>
+      <Interval>PT1M</Interval>
+      <Count>3</Count>
+    </RestartOnFailure>
+  </Settings>
+  <Actions Context="Author">
+    <Exec>
+      <Command>{python_exe}</Command>
+      <Arguments>-m jarvis_foundry.runtime.worker_loop --home "{foundry_home}" --config "{worker_config}"</Arguments>
     </Exec>
   </Actions>
 </Task>
@@ -303,3 +356,98 @@ class Installer:
             if parts:
                 names.append(parts[0].strip('"').lstrip("\\"))
         return sorted(names)
+
+
+class WorkerLoopInstaller(Installer):
+    """Install the canonical worker-loop task as a separate, disabled task.
+
+    This deliberately reuses the existing installer lifecycle and event
+    recording while changing only the task XML/profile surface. The worker
+    loop remains its own process and durable ``worker-loop:singleton`` lease;
+    the Supervisor task is never replaced or managed by this class.
+    """
+
+    def __init__(
+        self,
+        database: FoundryDatabase,
+        *,
+        task_name: str = WORKER_LOOP_TASK_NAME,
+        foundry_home: str | Path,
+        hermes_home: str | Path,
+        python_exe: str | Path | None = None,
+        worker_config_path: str | Path | None = None,
+        config_path: str | Path | None = None,
+        profile: dict[str, Any] | None = None,
+    ) -> None:
+        if task_name == V1_TASK_NAME:
+            raise InstallerError(
+                "worker-loop installer cannot manage the Supervisor task")
+        if worker_config_path is not None and config_path is not None:
+            raise InstallerError(
+                "provide only one of worker_config_path or config_path")
+        super().__init__(
+            database,
+            task_name=task_name,
+            foundry_home=foundry_home,
+            hermes_home=hermes_home,
+            python_exe=python_exe,
+            profile=profile,
+        )
+        self.worker_config_path = Path(
+            config_path or worker_config_path or
+            (self.foundry_home / WORKER_CONFIG_FILE)
+        ).resolve()
+        self.profile_path = self.foundry_home / WORKER_PROFILE_FILE
+
+    def _task_xml(self) -> str:
+        now = datetime.now()
+        start_boundary = (now - timedelta(minutes=1)).strftime(
+            "%Y-%m-%dT%H:%M:%S")
+        return WORKER_LOOP_TASK_XML_TEMPLATE.format(
+            python_exe=xml_escape(str(self.python_exe)),
+            foundry_home=xml_escape(str(self.foundry_home)),
+            worker_config=xml_escape(str(self.worker_config_path)),
+            user_id=xml_escape(_current_user_id()),
+            start_boundary=start_boundary,
+        )
+
+    def _write_profile(self) -> None:
+        lines = [
+            "# JARVIS Foundry worker-loop profile (JARVIS-owned; removed by uninstall)",
+            f"task_name: {self.task_name}",
+            f"foundry_home: {self.foundry_home}",
+            f"worker_config_path: {self.worker_config_path}",
+        ]
+        for key, value in self.profile.items():
+            lines.append(f"{key}: {value}")
+        self.profile_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    def install(self, *, force: bool = False) -> dict[str, Any]:
+        # The worker triggers are disabled in the XML before registration;
+        # /change then makes the task's registered state unambiguously Disabled.
+        super().install(force=force)
+        try:
+            return self.set_enabled(False)
+        except Exception:
+            # Do not leave an unexpectedly enabled worker task behind after a
+            # partial activation failure.
+            try:
+                super().uninstall()
+            except Exception:
+                pass
+            raise
+
+    def set_enabled(self, enabled: bool) -> dict[str, Any]:
+        if enabled:
+            if not self.worker_config_path.is_file():
+                raise InstallerError(
+                    f"worker config does not exist: {self.worker_config_path}")
+            try:
+                config = WorkerRuntimeConfig.from_yaml(self.worker_config_path)
+            except Exception as error:  # noqa: BLE001 - fail closed at boundary
+                raise InstallerError(
+                    f"worker config is invalid: {self.worker_config_path}") from error
+            if not config.enabled:
+                raise InstallerError(
+                    "worker config is disabled; set enabled: true before activation")
+        return super().set_enabled(enabled)

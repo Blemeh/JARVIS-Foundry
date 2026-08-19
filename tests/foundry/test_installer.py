@@ -16,7 +16,15 @@ from pathlib import Path
 import pytest
 
 from jarvis_foundry.database import FoundryDatabase
-from jarvis_foundry.installer import PROFILE_FILE, V1_TASK_NAME, Installer, InstallerError
+from jarvis_foundry.installer import (
+    PROFILE_FILE,
+    V1_TASK_NAME,
+    WORKER_LOOP_TASK_NAME,
+    WORKER_PROFILE_FILE,
+    Installer,
+    InstallerError,
+    WorkerLoopInstaller,
+)
 
 
 def installer_fixture(tmp_path, *, task_name=None):
@@ -301,6 +309,124 @@ def test_task_xml_has_repeating_time_trigger_for_bounded_restart(tmp_path):
         assert status["installed"] is True
     finally:
         teardown(installer)
+
+
+def test_worker_loop_task_xml_is_separate_disabled_and_configured(tmp_path):
+    home = tmp_path / "foundry-home"
+    database = FoundryDatabase(tmp_path / "foundry.db")
+    database.initialize()
+    config = tmp_path / "worker config.yaml"
+    installer = WorkerLoopInstaller(
+        database,
+        foundry_home=home,
+        hermes_home=tmp_path / "hermes-home",
+        python_exe=sys.executable,
+        worker_config_path=config,
+    )
+    xml = installer._task_xml()
+    assert installer.task_name == WORKER_LOOP_TASK_NAME
+    assert installer.task_name != V1_TASK_NAME
+    assert str(Path(sys.executable).resolve()) in xml
+    assert str(home.resolve()) in xml
+    assert str(config.resolve()).replace("&", "&amp;") in xml
+    assert "-m jarvis_foundry.runtime.worker_loop" in xml
+    assert f'--home "{home.resolve()}"' in xml
+    assert f'--config "{config.resolve()}"' in xml
+    assert xml.count("<Enabled>false</Enabled>") == 2
+    assert "JARVIS_OPENCODE_API_KEY" not in xml
+    assert "JARVIS_OPENCODE_BASE_URL" not in xml
+
+
+def test_worker_loop_installer_uses_scoped_profile_and_rejects_supervisor(tmp_path):
+    database = FoundryDatabase(tmp_path / "foundry.db")
+    database.initialize()
+    worker = WorkerLoopInstaller(
+        database,
+        foundry_home=tmp_path / "foundry-home",
+        hermes_home=tmp_path / "hermes-home",
+        python_exe=sys.executable,
+    )
+    assert worker.profile_path.name == WORKER_PROFILE_FILE
+    with pytest.raises(InstallerError, match="cannot manage the Supervisor"):
+        WorkerLoopInstaller(
+            database,
+            task_name=V1_TASK_NAME,
+            foundry_home=tmp_path / "other-home",
+            hermes_home=tmp_path / "other-hermes",
+        )
+
+
+def test_worker_loop_install_uninstall_scope_is_separate_and_disabled(
+    tmp_path, monkeypatch
+):
+    """Exercise lifecycle plumbing without creating a host scheduled task."""
+    import jarvis_foundry.installer as installer_module
+
+    database = FoundryDatabase(tmp_path / "foundry.db")
+    database.initialize()
+    config = tmp_path / "worker.yaml"
+    config.write_text("enabled: false\n", encoding="utf-8")
+    worker = WorkerLoopInstaller(
+        database,
+        foundry_home=tmp_path / "foundry-home",
+        hermes_home=tmp_path / "hermes-home",
+        python_exe=sys.executable,
+        worker_config_path=config,
+    )
+    state = {"installed": False, "status": "Unknown"}
+    calls = []
+
+    def fake_schtasks(*args):
+        calls.append(args)
+        command = args[0]
+        if command == "/query":
+            if not state["installed"]:
+                return type("Result", (), {
+                    "returncode": 1, "stdout": "", "stderr": "missing",
+                })()
+            if "/v" in args:
+                return type("Result", (), {
+                    "returncode": 0,
+                    "stdout": f"TaskName: \\{worker.task_name}\nStatus: {state['status']}\n",
+                    "stderr": "",
+                })()
+            return type("Result", (), {
+                "returncode": 0, "stdout": "", "stderr": "",
+            })()
+        if command == "/create":
+            state.update(installed=True, status="Disabled")
+            assert worker.task_name in args
+            return type("Result", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+        if command == "/change":
+            state["status"] = "Ready" if "/ENABLE" in args else "Disabled"
+            return type("Result", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+        if command == "/delete":
+            state.update(installed=False, status="Unknown")
+            return type("Result", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+        return type("Result", (), {"returncode": 1, "stdout": "", "stderr": ""})()
+
+    monkeypatch.setattr(installer_module, "_run_schtasks", fake_schtasks)
+    installed = worker.install()
+    assert installed["installed"] is True
+    assert installed["task_name"] == WORKER_LOOP_TASK_NAME
+    assert installed["task_state"] == "Disabled"
+    assert (worker.foundry_home / WORKER_PROFILE_FILE).exists()
+    assert all(V1_TASK_NAME not in call for call in calls)
+
+    with pytest.raises(InstallerError, match="config is disabled"):
+        worker.set_enabled(True)
+    config.write_text(
+        "enabled: true\nprovider: opencode_go\nmodel: deepseek-v4-flash\n",
+        encoding="utf-8",
+    )
+    enabled = worker.set_enabled(True)
+    assert enabled["task_state"] == "Ready"
+
+    gone = worker.uninstall()
+    assert gone["installed"] is False
+    assert gone["profile_present"] is False
+    assert not (worker.foundry_home / WORKER_PROFILE_FILE).exists()
+    assert all(V1_TASK_NAME not in call for call in calls)
 
 
 def test_task_restarts_after_hard_kill_via_repeating_trigger(tmp_path):
