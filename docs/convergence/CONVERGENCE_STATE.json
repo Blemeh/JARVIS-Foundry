@@ -2,7 +2,7 @@
   "schema": "jarvis-post-v7-canonical-convergence-state-v2",
   "program": "JARVIS Post-V7 Remaster",
   "current_stage": "POST_PROMOTION_PROVING",
-  "current_slice": "Canonical executable source f37f852 remains loaded in the fresh Supervisor; canonical main is now 6a5d397 with local R10 controls evidence and a disposable R11 evolution-cycle proof. The R11 proof records three subprocess-backed cycles, two promotions (R1 and R2 canary), one frozen non-promotion, one separately verified broken-candidate rejection, and rollback/acceptance evidence. The exact R2 release proving window remains WAITING_ELAPSED at the latest recorded event head 104386; external providers/effects, live evolution consumption, voice, deployment, and elapsed proving remain honest WAITING/NOT_TESTED; prior full-suite evidence remains anchored to tested source 2af8191 and is not silently extended.",
+  "current_slice": "Canonical executable source f37f852 remains loaded in the fresh Supervisor; deployed R10/R11 evidence is anchored at 6a5d397, while the current canonical repository head 4e2d0d2 contains only the state/verifier reconciliation docs. The R11 proof records three subprocess-backed cycles, two promotions (R1 and R2 canary), one frozen non-promotion, one separately verified broken-candidate rejection, and rollback/acceptance evidence. The exact R2 release proving window remains WAITING_ELAPSED at the latest recorded event head 104445; external providers/effects, live evolution consumption, voice, deployment, and elapsed proving remain honest WAITING/NOT_TESTED; prior full-suite evidence remains anchored to tested source 2af8191 and is not silently extended.",
   "r6_state": "OWNER_REDIRECT_R6_DEFERRED",
   "eyes_state": "OUT_OF_SCOPE_READ_ONLY",
   "canonical": {
@@ -12,6 +12,8 @@
     "source_tree_verified_head": "6a5d397a0491c59084c787547f6d799f7c5d7bb3",
     "origin_main": "6a5d397a0491c59084c787547f6d799f7c5d7bb3",
     "deployed_tree": "dfb8489406b161113f1062600607eaeb0ab8aa6a",
+    "repository_head": "4e2d0d2748650f24ab2deeaf932765e7a4e3ff81",
+    "repository_tree": "fc6efdc26bf3397ba3b9f9744fa29d445c8dcb3c",
     "dirty_owner_docs_preserved": true,
     "current_full_suite": {
       "path": "docs/convergence/CANONICAL_FULL_SUITE_20260819_EXACT_HEAD.json",
@@ -784,6 +786,7 @@
     "promotion_commit": "d1c48130397497dccf1f922233e1dc26b54a99dd",
     "latest_evidence_commit": "cca299ac21d8ef1e177cf28ed00cfef76134d6cc",
     "promoted_head": "6a5d397a0491c59084c787547f6d799f7c5d7bb3",
+    "state_reconciliation_head": "4e2d0d2748650f24ab2deeaf932765e7a4e3ff81",
     "latest_live_canary": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_CANARY_20260818.json",
     "latest_repair_reconciliation": "docs/convergence/PROVING_WINDOW_REPAIR_RECONCILIATION_20260818.json",
     "latest_r9_result_contract_verification": "docs/convergence/R9_LIVE_RESULT_CONTRACT_VERIFICATION_20260818.json",
@@ -822,5 +825,5 @@
     "R11 live Supervisor evolution consumption and real elapsed proving window NOT_TESTED/WAITING; disposable local cycle proof PASS_WITH_BOUNDARY",
     "R12 physical host and unavailable-provider fault rows NOT_TESTED/BLOCKED"
   ],
-  "exact_next_action": "promote the independently verified R11 local evidence/state docs without source mutation; let the R2 exact canonical release proving monitor persist WAITING through restart; preserve the suspended pre-restart registration and historical 2-of-10 and restart-0 counts; keep the provider canary BLOCKED on the monthly rate limit; do not retry blindly; do not close final acceptance until seven real healthy days, ten post-start independently verified missions, and all required external criteria are met"
+  "exact_next_action": "let the R2 exact canonical release proving monitor persist WAITING through restart; preserve the suspended pre-restart registration and historical 2-of-10 and restart-0 counts; keep the provider canary BLOCKED on the monthly rate limit; do not retry blindly; continue only safe dependency-ready local evidence work; do not close final acceptance until seven real healthy days, ten post-start independently verified missions, and all required external criteria are met"
 }
