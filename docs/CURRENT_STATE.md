@@ -6,17 +6,17 @@ every promotion/remaster mission (see `docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.
 If this document and another current-status document disagree, THIS document wins
 for "what exists now" claims; the architecture contract wins for binding invariants.
 
-Last reconciled: 2026-08-19 (docs-only convergence evidence at e992695; source gates verified at 84a22b4; c60db92 runtime freeze/restart, R3 proving-window registration, disabled worker-loop registration, schema34 deployment/restore rehearsal, and legacy evidence preserved)
+Last reconciled: 2026-08-19 (docs-only convergence evidence at e9da9ba; source gates verified at 84a22b4; c60db92 runtime freeze/restart, R3 proving-window registration, disabled worker-loop registration, schema34 deployment/restore rehearsal, and legacy evidence preserved)
 
 ```text
-CURRENT CANONICAL HEAD:      e992695 (latest canonical repository/evidence head;
+CURRENT CANONICAL HEAD:      e9da9ba (latest canonical repository/evidence head;
                              source gates were verified at 84a22b4, semantic
                              runtime source remains 93d23f5, and the running
                              deployed release remains c60db92)
-CURRENT REPOSITORY HEAD:     e992695 (docs-only descendant of the tested
+CURRENT REPOSITORY HEAD:     e9da9ba (docs-only descendant of the tested
                              source base; the exact c60db92 runtime is not
                              silently replaced)
-CURRENT STATE RECORD:        e992695 (current-head convergence evidence is
+CURRENT STATE RECORD:        e9da9ba (current-head convergence evidence is
                              recorded under docs/convergence/)
 TESTED SOURCE HEAD:          84a22b4 (fresh 1260-test full suite and 100-test
                              R7-R12 convergence suite; docs-only candidate
