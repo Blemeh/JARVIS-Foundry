@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from jarvis_foundry.command_center import build_snapshot
+from jarvis_foundry.command_center import _CommandCenterHandler, build_snapshot
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.discovery_candidates import (
     approve_candidate,
@@ -265,3 +265,14 @@ def test_m8_command_center_snapshot_is_real_read_model(tmp_path):
     assert snapshot["controls"]["stop_effective_without_hermes_ui_models_network"] is True
     rebuilt = build_snapshot(database, stop_path=tmp_path / "EMERGENCY_STOP")
     assert rebuilt["missions"] == snapshot["missions"]
+
+
+def test_m10_command_center_html_shows_live_foundry_not_local_candidate(tmp_path):
+    database, _repository = mission_database(tmp_path)
+    snapshot = build_snapshot(database, stop_path=tmp_path / "EMERGENCY_STOP")
+    html = _CommandCenterHandler._html(snapshot)
+    assert "LOCAL CANDIDATE" not in html
+    assert "No live connectors" not in html
+    assert "LIVE FOUNDRY" in html
+    assert "CURRENT" in html
+    assert "PREVIOUS" in html

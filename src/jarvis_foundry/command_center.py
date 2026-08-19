@@ -415,6 +415,11 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
         stop_label = "ACTIVE" if stop else "CLEAR"
         degraded_label = "DEGRADED" if health.get("degraded") else "NOMINAL"
         generated = safe(snapshot["generated_at"])
+        identity = snapshot.get("release_identity") or {}
+        current_sha = identity.get("current")
+        previous_sha = identity.get("previous")
+        current_disp = safe(current_sha[:12] if isinstance(current_sha, str) and current_sha else None)
+        previous_disp = safe(previous_sha[:12] if isinstance(previous_sha, str) and previous_sha else None)
 
         return f"""<!doctype html>
 <html lang='en'>
@@ -501,7 +506,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
       <a href='#timeline'><span>Timeline</span></a>
       <a href='/api/command-center'><span>Evidence API</span></a>
     </nav>
-    <div class='rail-foot'><b>LOCAL CANDIDATE</b><span>Durable projection only<br>No live connectors</span></div>
+    <div class='rail-foot'><b>LIVE FOUNDRY</b><span>CURRENT {current_disp}<br>PREVIOUS {previous_disp}</span></div>
   </aside>
   <main class='main'>
     <header class='topbar'>
