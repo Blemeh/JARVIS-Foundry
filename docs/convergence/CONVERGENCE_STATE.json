@@ -78,6 +78,12 @@
       "path": "docs/convergence/FINAL_CONVERGENCE_AUDIT_CURRENT_20260819.json",
       "sha256": "86659E9F7B5A2B67A8B3CAB4E0ACDB16DE28EDBFAFFBEA27B587013264EE779E"
     },
+    "latest_current_release_audit": {
+      "status": "PASS_WITH_BOUNDARY",
+      "verdict": "SERVES_PURPOSE_WITH_EXTERNAL_BLOCKERS",
+      "path": "docs/convergence/FINAL_CURRENT_RELEASE_AUDIT_POST_SUITE_20260819.json",
+      "sha256": "69479B3736E48D71C30CEE09E9A9344425867575A9643A465CDE307A1F20D58C"
+    },
     "focused_source_repair": {
       "status": "PASS_SOURCE_FOCUSED_EXTERNAL_BOUNDARY",
       "report": "docs/convergence/R9_RESULT_CONTRACT_SOURCE_REPAIR_20260818.json",
