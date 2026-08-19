@@ -1,0 +1,65 @@
+{
+  "schema": "jarvis-canonical-convergence-truth-freeze-v1",
+  "recorded_at": "2026-08-19T08:40:00+02:00",
+  "canonical": {
+    "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
+    "branch": "main",
+    "head": "84a22b4186aa0c4ba98bfaeed177993cfcc85576",
+    "origin_main": "84a22b4186aa0c4ba98bfaeed177993cfcc85576",
+    "status": "CLEAN",
+    "base_tree": "25313d88c6738fd3df7a69836e8176dbea740892",
+    "candidate_worktree": "C:/temp/JARVIS-Canonical-Convergence-20260819",
+    "candidate_branch": "candidate/remaster-forward-port-20260819",
+    "competing_main_writer": false,
+    "schema": 33,
+    "live_supervisor": "RUNNING",
+    "live_worker_task": "DISABLED",
+    "proving_monitor": "READY",
+    "stop_state": "NO_ACTIVE_STOP_DIRECTIVE",
+    "active_release": "c60db92 semantic runtime; current source main is 84a22b4",
+    "hybrid_worker_state": "CANONICAL_SOURCE_PRESENT; LIVE_WORKER_DISABLED",
+    "hybrid_worker_live_runtime": "NOT_ACTIVATED_FOR_PROMOTED_CONTRACT",
+    "current_test_baseline": {
+      "path": "docs/convergence/CURRENT_SOURCE_FULL_SUITE_VENV_20260819.json",
+      "status": "PASS_HISTORICAL_BASELINE",
+      "tests": 1260,
+      "tested_head": "87c908254e6daf1f2a677c35caf576c6e50a01e9",
+      "must_rerun_on_candidate": true
+    }
+  },
+  "remaster": {
+    "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry-Remaster",
+    "branch": "remaster/post-v7-purpose",
+    "certified_head": "6be9185ea34a64a84737dbd9ec323e25776c4558",
+    "merge_base": "93a3ddc0965dfaf3e4cb9dc0952467bd5250520a",
+    "dirty_file_count": 87,
+    "inventory_path": "C:/temp/JARVIS-Foundry-Canonical-Convergence/docs/convergence/REMASTER_CURRENT_DIRTY_INVENTORY.json",
+    "inventory_sha256": "9FC8D3DDF8C74807AC66FDA536F93D80441415A67262611DC69C6AAA8685C53B",
+    "inventory_hash_reconciliation": "PASS_87_OF_87",
+    "categories": {
+      "HISTORICAL_R6_DEFERRED": 74,
+      "POST_CERTIFICATION_SEMANTIC_DELTA": 9,
+      "CONVERGENCE_EVIDENCE": 4
+    },
+    "r6_state": "OWNER_REDIRECT_R6_DEFERRED",
+    "dirty_worktree_mutated": false
+  },
+  "eyes": {
+    "repository": "C:/temp/JARVIS-Eyes-Phase2",
+    "branch": "candidate/jarvis-eyes-phase2",
+    "head": "4728ccc7052297347cc98c8d240592f843f36ca3",
+    "state": "OUT_OF_SCOPE_READ_ONLY",
+    "mutated": false
+  },
+  "runtime": {
+    "database": "C:/Users/b/AppData/Local/hermes/foundry/foundry.db",
+    "schema": 33,
+    "quick_check": "ok",
+    "latest_evidence": "docs/convergence/LIVE_RUNTIME_PROBE_CURRENT_20260819_R2.json",
+    "event_head_at_last_probe": 108471,
+    "provider_dispatch": "NOT_TESTED_RATE_LIMIT_BOUNDARY",
+    "live_database_write": false
+  },
+  "method": "SEMANTIC_FORWARD_PORT; newest main remains authoritative; no wholesale merge or blind cherry-pick",
+  "exact_next_action": "build the current-head semantic delta map, then port only missing R7-R12 proof/contracts onto the single canonical architecture"
+}

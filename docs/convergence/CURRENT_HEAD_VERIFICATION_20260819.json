@@ -1,0 +1,46 @@
+{
+  "schema": "jarvis-canonical-convergence-verification-v1",
+  "recorded_at": "2026-08-19T08:56:00+02:00",
+  "canonical_head": "84a22b4186aa0c4ba98bfaeed177993cfcc85576",
+  "base_tree": "25313d88c6738fd3df7a69836e8176dbea740892",
+  "candidate": "C:/temp/JARVIS-Canonical-Convergence-20260819",
+  "verification": {
+    "convergence_gates": {
+      "path": "docs/convergence/CONVERGENCE_CURRENT_HEAD_JUNIT.xml",
+      "sha256": "CDDF61E7795D5A37D1FF55569E28FB45ACB7BB7A0660455D6EC12593913747C9",
+      "tests": 100,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "status": "PASS"
+    },
+    "full_suite": {
+      "path": "docs/convergence/CURRENT_CANONICAL_FULL_SUITE_20260819_JUNIT.xml",
+      "sha256": "97F9A04DB3E5B7CEDCEF1598F113041B160405946203BDB4B8F330406D097473",
+      "tests": 1260,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "status": "PASS"
+    },
+    "compileall": "PASS",
+    "secret_scan": "docs/convergence/SECRET_SCAN_CURRENT_20260819.json",
+    "runtime_probe": {
+      "path": "docs/convergence/LIVE_RUNTIME_PROBE_CANONICAL_CURRENT_20260819.json",
+      "sha256": "949698EE74EB75F429825356809C685577F467A518A5823BFDD6692619FFB515",
+      "status": "PASS_READ_ONLY",
+      "schema": 33,
+      "event_head": 108821,
+      "supervisor": "RUNNING",
+      "worker_task": "DISABLED",
+      "stop_directives": []
+    },
+    "dirty_remaster": {
+      "path": "docs/convergence/REMASTER_DIRTY_CLASSIFICATION_CURRENT_20260819.json",
+      "hash_reconciliation": "PASS_87_OF_87",
+      "r6": "OWNER_REDIRECT_R6_DEFERRED"
+    }
+  },
+  "source_mutations": "NONE_REQUIRED; current main already contains newer canonical implementations",
+  "boundary": "This verifies current source and bounded local semantics; it does not claim live migration, external provider effects, voice, or elapsed proving completion."
+}
