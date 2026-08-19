@@ -1,7 +1,8 @@
 # Current Canonical Semantic Convergence Matrix
 
 Program: JARVIS FINAL REMASTER FORWARD-PORT & CANONICAL CONVERGENCE.
-Current canonical base: `84a22b4186aa0c4ba98bfaeed177993cfcc85576`.
+Current canonical repository head: `33efa57cedfb0a61436eff65a6a23d25881acc23` (docs-only promoted descendant).
+Tested source base: `84a22b4186aa0c4ba98bfaeed177993cfcc85576`.
 Certified remaster tip: `6be9185ea34a64a84737dbd9ec323e25776c4558`.
 Merge-base: `93a3ddc0965dfaf3e4cb9dc0952467bd5250520a`.
 
