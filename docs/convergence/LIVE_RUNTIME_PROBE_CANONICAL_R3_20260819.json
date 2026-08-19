@@ -1,18 +1,18 @@
 {
   "schema": "jarvis-canonical-runtime-probe-v1",
-  "recorded_at": "2026-08-19T08:04:30.914993+00:00",
+  "recorded_at": "2026-08-19T08:09:51.739814+00:00",
   "database": "C:\\Users\\b\\AppData\\Local\\hermes\\foundry\\foundry.db",
   "database_exists": true,
   "sqlite_quick_check": "ok",
   "schema_version": 33,
-  "event_head": 109825,
+  "event_head": 109889,
   "latest_event": {
     "event_type": "supervisor.heartbeat",
-    "occurred_at": "2026-08-19T08:04:28.338469Z",
+    "occurred_at": "2026-08-19T08:09:51.332158Z",
     "source_id": "supervisor-401cd2da-ae13-44f6-bd6d-abc7186ff981"
   },
   "latest_heartbeat": {
-    "occurred_at": "2026-08-19T08:04:28.338469Z",
+    "occurred_at": "2026-08-19T08:09:51.332158Z",
     "source_id": "supervisor-401cd2da-ae13-44f6-bd6d-abc7186ff981",
     "payload_json": "{\"instance_id\":\"supervisor-401cd2da-ae13-44f6-bd6d-abc7186ff981\",\"trust_state\":\"LAB\"}"
   },
@@ -21,14 +21,14 @@
     "instance_id": "supervisor-401cd2da-ae13-44f6-bd6d-abc7186ff981",
     "status": "RUNNING",
     "trust_state": "LAB",
-    "last_heartbeat_at": "2026-08-19T08:04:28.338481Z",
-    "last_event_id": "3e68f6ff-9cee-4bb7-b99c-775c9781db1b"
+    "last_heartbeat_at": "2026-08-19T08:09:51.332170Z",
+    "last_event_id": "096a2715-cf59-4e1a-a280-db40191957b1"
   },
   "supervisor_lease": {
     "lease_key": "supervisor:singleton",
     "owner_id": "supervisor-401cd2da-ae13-44f6-bd6d-abc7186ff981",
-    "expires_at": "2026-08-19T08:05:58.289291Z",
-    "heartbeat_at": "2026-08-19T08:04:28.289291Z"
+    "expires_at": "2026-08-19T08:11:21.298800Z",
+    "heartbeat_at": "2026-08-19T08:09:51.298800Z"
   },
   "stop_directives": [],
   "required_tables_present": true
