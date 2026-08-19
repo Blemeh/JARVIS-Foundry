@@ -1,8 +1,8 @@
 # JARVIS Remaster -> Canonical Convergence Matrix
 
 Program: JARVIS FINAL REMASTER FORWARD-PORT & CANONICAL CONVERGENCE
-Final convergence audit (2026-08-19): canonical promoted tip `d1c4813` (main, local==origin); full suite tested at source head `2af8191` (`1243/0/0/0`) with docs-only commits afterward; remaster certified head `6be9185` with dirty inventory `87/87` classified. Legacy evidence below is preserved and not relabelled.
-Canonical promoted tip: `d1c4813` (main); source suite tested at `2af8191`; forward-port baseline: `2b3573606570f910e5569cf3306223354f93e4ac`; Remaster certified tip: `6be9185`; Merge-base: `93a3ddc`.
+Final convergence audit (2026-08-19): canonical record tip `53701f6` (main, local==origin) with semantic source `93d23f5`; current-source full suite `1248/0/0/0` is recorded at `CURRENT_SOURCE_FULL_SUITE_20260819.json`; remaster certified head `6be9185` with dirty inventory `87/87` classified. Legacy evidence below is preserved and not relabelled.
+Canonical record tip: `53701f6` (main); semantic source: `93d23f5`; source suite tested at `93d23f5`; forward-port baseline: `2b3573606570f910e5569cf3306223354f93e4ac`; Remaster certified tip: `6be9185`; Merge-base: `93a3ddc`.
 Method: SEMANTIC FORWARD-PORT. No wholesale merge, no blind cherry-pick. Newest canonical architecture is authoritative.
 
 ## Structural delta
@@ -28,7 +28,7 @@ Remaster-only additive packages absent from main: `kernel/**`, `kernel/portfolio
 | mission candidate lineage | R7 | Candidate->decision->mission lineage | mission/loop.py, discovery_monitors, worker_context | PRESENT | ALREADY_PRESENT | Keep main. Adapted lineage tests. |
 | orchestration/** | R8 | Autonomous production organization | workers/** + runtime/** + mission/loop.py | PRESENT (newer Hybrid Worker) | SUPERSEDED_BY_NEWER_MAIN | Do NOT port remaster worker pipeline. Prove R8 semantics against main worker/mission path. |
 | capabilities_live/** | R9 | Capability lifecycle + brokerage | capabilities/registry.py, connectors, capability_broker | PRESENT | ALREADY_PRESENT | Keep main. Adapted gates. |
-| command_center/** (package) | R10 | Command Center + EN/SQ briefings | command_center.py + briefings.py | PRESENT but NO Albanian/language/category support | FORWARD_PORT_ADAPTED | Port EN/SQ briefing semantics + category distinctions onto main command_center/briefings. |
+| command_center/** (package) | R10 | Command Center + EN/SQ briefings | command_center.py + briefings.py + durable directive consumer | PRESENT with adapted EN/SQ categories and nonce-bound controls | FORWARD_PORT_ADAPTED | Keep canonical command-center path; verify local controls and preserve live voice/provider boundaries as NOT_TESTED. |
 | evolution_live/** | R11 | Controlled self-evolution + self-cert refusals | evolution/** + supervisor/evolution_control.py | PRESENT | SUPERSEDED_BY_NEWER_MAIN | Adapted gates (self-cert/promotion refusals, cycles, rollback/restore). |
 | fault_campaign/** | R12 | Full fault campaign + freeze/restore | test_crash_recovery, integrated_rollback.py, V8 drill | PRESENT | FORWARD_PORT_ADAPTED | Port R12 fault matrix gate + freeze/restore proof adapted to main. |
 | tests/remaster/r7..r12 + scripts | R7-R12 | Certified acceptance contracts/evidence | (main equivalents above) | - | KEEP_TEST_OR_GATE_ONLY / KEEP_EVIDENCE_ONLY | Port adapted gates into tests/convergence/ + scripts/convergence/. |
@@ -36,12 +36,12 @@ Remaster-only additive packages absent from main: `kernel/**`, `kernel/portfolio
 
 ## Port slices (ordered)
 
-1. Slice A - R10 EN/SQ briefings + language toggle + briefing semantic categories onto main command_center/briefings (only genuine functional gap).
-2. Slice B - R7-R12 acceptance gates adapted to main APIs (fill gaps found by failing gates minimally).
-3. Slice C - R12 fault matrix + freeze/restore proof adapted to main (integrated_rollback).
-4. Slice D - Docs reconciliation + remaster branch marked CERTIFIED HISTORICAL CANDIDATE / FORWARD-PORTED.
-5. Verification: full suite + hybrid regressions + adapted gates + secret scan + independent convergence verifier.
-6. Promotion via repository's proven process (no force push, no history rewrite).
+1. Slice A - R10 EN/SQ briefings, language toggle, semantic categories, and nonce-bound durable controls: PASS_WITH_BOUNDARY.
+2. Slice B - R7-R12 acceptance gates adapted to canonical main APIs: focused gates PASS; external/provider/elapsed boundaries remain explicit.
+3. Slice C - R12 fault matrix plus freeze/restore proof adapted to main: bounded campaign PASS; physical/provider rows remain NOT_TESTED/BLOCKED.
+4. Slice D - Documentation, dirty-remaster inventory, current-source replay repair, and historical-branch reconciliation: PASS.
+5. Verification - current-source full suite 1248/0/0/0, focused R10 replay repair 36 passed, JSON and documentation checks PASS, fresh Luna audit PASS_WITH_BOUNDARY.
+6. Promotion - non-force fast-forward main and rollback tag pushed; runtime proving release remains frozen separately.
 
 ## Current convergence evidence
 
@@ -67,11 +67,11 @@ The R8 and R9 gates use canonical main's newer worker and capability
 architectures; no remaster `orchestration`, `capabilities_live`, or duplicate
 runtime was introduced. R12 external/physical failures are explicitly
 boundary-only where a safe candidate cannot induce the real provider or host
- condition. The candidate-bound canonical suite completes with 1222/1222
- tests passing, and the adapted convergence suite completed with 76/76 before
- the post-promotion proving monitor. The post-promotion regression suite adds
- the read-only proving-window monitor and completes with 81/81 passing.
- Independent R3 verifier and isolated promotion closure are PASS in the
- durable state record. Live provider research, voice/interface inspection,
- external connector effects, and the required elapsed proving window remain
- honest NOT_TESTED/WAITING boundaries.
+ condition. Historical candidate-bound suites remain preserved in their
+ original evidence. The current semantic source `93d23f5` has a fresh
+ deterministic `1248/0/0/0` full-suite artifact, and the current R10 replay
+ repair has an independent 36-test PASS_WITH_BOUNDARY verifier. Live provider
+ research, voice/interface inspection, external connector effects, and the
+ required elapsed proving window remain honest NOT_TESTED/WAITING boundaries.
+ The runtime proving release is still `f37f852`, so repository promotion has
+ not been silently represented as a runtime deployment.

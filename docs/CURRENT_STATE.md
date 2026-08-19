@@ -111,7 +111,7 @@ browser substrate, and it cannot activate native desktop execution.
 | V8 hybrid-memory certification | PASS — 9/9 criteria (candidate) |
 | V8 canonical promotion | PASS — 1027/0/0 post-merge; live canary PASS; rollback drill PASS; post-promotion remediation certification PASS |
 | Worker canonical gate | PASS — 18/18 + independent adversarial review |
-| Full suite (current) | 1,225 collected, 0 failures (Phase 4 remediation gate) |
+| Full suite (current semantic source) | 1,248 collected at `93d23f5` with `PYTHONHASHSEED=0`, 0 failures; the 1,225-test Phase 4 remediation gate remains historical evidence |
 | JARVIS Eyes Phase 2 | PASS — 20/20 faults, rollback/live probe, read-only boundary |
 | Workflow Discovery Phase 3 | PASS — 36/36 focused, F1–F25, bounded probe, independent review |
 | Procedural Learning Phase 4 | PASS — 23/23 focused, F1–F24, artifact-byte tamper, zero-effect shadow, local browser probe, rollback, fresh independent review |
