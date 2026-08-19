@@ -29,7 +29,7 @@ def _fresh_db(tmp_path: Path) -> tuple[Path, int]:
     home.mkdir()
     db_path = home / "foundry.db"
     db = FoundryDatabase(db_path)
-    db.initialize()
+    db.initialize(target=33)
     # Python's `with sqlite3.Connection` commits but does NOT close — the
     # leaked WAL connection holds the -wal lock on Windows. Checkpoint +
     # explicit close + gc so the sidecar is removable later.
