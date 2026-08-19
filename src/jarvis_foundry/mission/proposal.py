@@ -42,6 +42,18 @@ def propose_next_action(database: FoundryDatabase, mission_id: str) -> Proposal 
     state = str(row["state"])
     if state not in DISPATCHABLE_STATES:
         raise ProposalError(f"mission {mission_id} is not dispatchable in state {state}")
+    # Consume owner directives at the canonical proposal boundary so a fresh
+    # MissionLoop instance observes the same durable interpretation after a
+    # restart.
+    from .directives import consume_directives
+    consume_directives(database, mission_id)
+    # Redirect projection may have changed the durable next action; reload
+    # the row so this proposal and the worker context use the same truth.
+    row = database.row("missions", "mission_id", mission_id)
+    assert row is not None  # the existence check above remains authoritative
+    state = str(row["state"])
+    if state not in DISPATCHABLE_STATES:
+        raise ProposalError(f"mission {mission_id} is not dispatchable in state {state}")
     requirement = str(row["next_action"] or "").strip()
     if state == "ACTION_SELECTION" and not requirement:
         return Waiting("no next action scheduled; the mission's action list is exhausted")

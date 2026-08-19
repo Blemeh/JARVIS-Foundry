@@ -3,6 +3,7 @@ repair, commit-after-PASS, and honest waiting."""
 from __future__ import annotations
 
 from .commit import CommitError, commit_after_pass
+from .directives import DirectiveEffect, consume_directives, matching_effects, select_dispatchable_mission
 from .loop import MissionLoop, StepOutcome
 from .proposal import Proposal, ProposalError, Waiting, propose_next_action
 from .verification import (
@@ -18,6 +19,10 @@ __all__ = [
     "StepOutcome",
     "Waiting",
     "commit_after_pass",
+    "DirectiveEffect",
+    "consume_directives",
+    "matching_effects",
+    "select_dispatchable_mission",
     "propose_next_action",
     "record_verification_outcome",
     "start_verification",

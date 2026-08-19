@@ -28,6 +28,7 @@ from jarvis_foundry.mission.loop import (
     WAITING_OUTCOME,
 )
 from jarvis_foundry.mission.proposal import ProposalError, propose_next_action
+from jarvis_foundry.owner_controls import OwnerControlService, sign_command
 from jarvis_foundry.roles.adapter import FakeHermesAdapter
 from jarvis_foundry.roles.results import COMPLETED, RoleResult
 from jarvis_foundry.roles.router import RoleRouter
@@ -191,6 +192,37 @@ def test_unknown_capability_rejected_before_dispatch(tmp_path):
         loop.run_step(**step_kwargs(capability="teleport_into_canonical_db"))
 
     assert len(adapter.received) == 0  # nothing was dispatched
+
+
+def test_authenticated_redirect_reaches_mission_loop_dispatch(tmp_path):
+    """R10: a durable owner redirect changes the existing loop context."""
+    database, repository, policy, router = mission_fixture(tmp_path)
+    secret = b"r10-mission-loop-secret"
+    service = OwnerControlService(database, secret=secret, stop_path=tmp_path / "STOP")
+    signature = sign_command(
+        secret, "REDIRECT", "mission-1", "use the evidence-first path",
+        "r10-loop-redirect",
+    )
+    directive = service.redirect(
+        target="mission-1", exact_text="use the evidence-first path",
+        nonce="r10-loop-redirect", signature=signature,
+        directive_id="directive-r10-loop-redirect",
+    )
+
+    adapter = FakeHermesAdapter()
+    outcome = MissionLoop(database, router, adapter, policy=policy).run_step(
+        **step_kwargs())
+
+    assert outcome.outcome == PASSED
+    builder = next(manifest for manifest in adapter.received if manifest.role == "builder")
+    assert "Canonical mission next action: redirect: use the evidence-first path" in builder.instructions
+    interpreted = [
+        event for event in database.events()
+        if event.event_type == "mission.directive_interpreted"
+    ]
+    assert len(interpreted) == 1
+    assert interpreted[0].payload["directive_id"] == directive.directive_id
+    assert database.quick_check() == "ok"
 
 
 def test_empty_rollback_rejected_before_dispatch(tmp_path):

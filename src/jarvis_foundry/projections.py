@@ -198,6 +198,17 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             "UPDATE directives SET active = 0, last_event_id = ?, updated_at = ? WHERE directive_id = ?",
             (event.event_id, event.recorded_at, payload["directive_id"]),
         )
+    elif event.event_type == "mission.directive_interpreted":
+        # R10 live consumer: interpretation is an event-derived projection,
+        # never a second mission state store.  Reprioritization intentionally
+        # leaves next_action unchanged; its durable priority is in the event.
+        if payload.get("command_type") == "REDIRECT":
+            connection.execute(
+                "UPDATE missions SET next_action = ?, last_event_id = ?, "
+                "updated_at = ? WHERE mission_id = ?",
+                (payload.get("next_action"), event.event_id,
+                 event.recorded_at, payload["mission_id"]),
+            )
     elif event.event_type in {"action.allowed", "action.vetoed", "action.not_ready", "action.stopped", "action.invalid_target"}:
         connection.execute(
             """INSERT INTO action_decisions(

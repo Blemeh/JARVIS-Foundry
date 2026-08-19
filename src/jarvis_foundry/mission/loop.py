@@ -286,6 +286,15 @@ class MissionLoop:
         self._advance(mission_id, "READY", run_id=run_id)
         self._advance(mission_id, "EXECUTING", run_id=run_id)
 
+        # ``proposal.action_requirement`` is projected from the canonical
+        # mission state, including an authenticated REDIRECT.  Carry it into
+        # the provider-facing instruction so the downstream worker executes
+        # the interpreted next action rather than merely seeing a control row.
+        dispatch_instructions = instructions
+        if proposal.action_requirement.strip() != instructions.strip():
+            dispatch_instructions = (
+                f"Canonical mission next action: {proposal.action_requirement}\n\n"
+                f"{instructions}")
         result = self.dispatcher.dispatch(
             role=role,
             mission_id=mission_id,
@@ -293,7 +302,7 @@ class MissionLoop:
             capability=capability,
             step_id=step_id,
             run_id=run_id,
-            instructions=instructions,
+            instructions=dispatch_instructions,
             expected_artifacts=expected_artifacts,
             # Only carry criteria in the manifest when the caller explicitly
             # provided them: default steps keep byte-identical manifest
