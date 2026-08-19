@@ -40,5 +40,14 @@
     "provider_dispatch": "NOT_TESTED",
     "mission_invented": false
   },
+  "supervisor_startup_smoke": {
+    "home": "C:\\temp\\JARVIS-WorkerLoop-Schema34-Supervisor-Rehearsal-20260819",
+    "command": "PYTHONPATH=src C:\\Python313\\python.exe -m jarvis_foundry.supervisor.run --home C:\\temp\\JARVIS-WorkerLoop-Schema34-Supervisor-Rehearsal-20260819 --once",
+    "start_state": "RUNNING",
+    "heartbeat_state": "RUNNING",
+    "exit": 0,
+    "clean_stop": true,
+    "live_systems_touched": false
+  },
   "boundary": "This is a disposable migration/reconciliation rehearsal only. It does not migrate the live schema v33, restart the Supervisor, enable the scheduled worker task, or prove provider effects."
 }
