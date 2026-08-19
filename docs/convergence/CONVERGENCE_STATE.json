@@ -141,6 +141,8 @@
     "latest_r10_accessibility_audit": {
       "path": "docs/convergence/R10_COMMAND_CENTER_ACCESSIBILITY_AUDIT_20260819.json",
       "sha256": "5B47C944AD324CAA936A835152BC150FF092C40351CA81D47EDEBFB42ACE93CA",
+      "canonical_windows_worktree_sha256": "345E951835E2C7640B3C33289671BAF9CC393F23E6A531CC1F67640B4F37250A",
+      "hash_note": "repository payload is LF-normalized; the canonical Windows checkout is CRLF-normalized",
       "status": "PASS_LOCAL_ACCESSIBILITY_WITH_RUNTIME_BOUNDARIES",
       "source_head": "17d9f511deb877301759942eb1ce8b267c88f8fb",
       "live_runtime_touched": false,
