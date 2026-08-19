@@ -152,6 +152,8 @@
     "latest_r3_ledger_reconciliation": {
       "path": "docs/convergence/PROVING_WINDOW_LEDGER_RECONCILIATION_R3_20260819.json",
       "sha256": "4B60A41702A9E8B8145F702CE563BAD32A43E1B871977D10EBEFB1F5564C241F",
+      "canonical_windows_worktree_sha256": "299F6F92D315D17CB118F1153EAA0EE474B740EA3EF6CDF2131C582E56D70F02",
+      "hash_note": "repository payload is LF-normalized; the canonical Windows checkout is CRLF-normalized",
       "status": "PASS_WAITING_ELAPSED_NO_POST_START_MISSIONS",
       "source_head": "ccdffc5b83b56f0163436a45b1e0c5f7a4394543",
       "missions_after_start": 0,
