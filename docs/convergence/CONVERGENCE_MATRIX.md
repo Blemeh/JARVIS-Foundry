@@ -1,8 +1,8 @@
 # JARVIS Remaster -> Canonical Convergence Matrix
 
 Program: JARVIS FINAL REMASTER FORWARD-PORT & CANONICAL CONVERGENCE
-Final convergence audit (2026-08-19): canonical runtime/source record `c60db92` (main, local==origin before docs-only descendants) with semantic source `93d23f5`; current-source full suite `1248/0/0/0` is recorded at `CURRENT_SOURCE_FULL_SUITE_20260819.json`; exact current-release R3 proving is `WAITING_ELAPSED`; remaster certified head `6be9185` with dirty inventory `87/87` classified. Legacy evidence below is preserved and not relabelled.
-Canonical runtime/source record: `c60db92` (main); semantic source: `93d23f5`; source suite tested at `93d23f5`; forward-port baseline: `2b3573606570f910e5569cf3306223354f93e4ac`; Remaster certified tip: `6be9185`; Merge-base: `93a3ddc`.
+Final convergence audit (2026-08-19): canonical runtime/source record `c60db92` with semantic source `93d23f5`; current published repository head `9c45694` contains documentation/evidence descendants only; current-source full suite `1260/0/0/0` is recorded at `CURRENT_SOURCE_FULL_SUITE_VENV_20260819.json`; exact current-release R3 proving is `WAITING_ELAPSED`; remaster certified head `6be9185` with dirty inventory `87/87` classified. Legacy evidence below is preserved and not relabelled.
+Canonical runtime/source record: `c60db92` (main); current published repository head: `9c45694`; semantic source: `93d23f5`; reproducible suite snapshot: `f172147`; forward-port baseline: `2b3573606570f910e5569cf3306223354f93e4ac`; Remaster certified tip: `6be9185`; Merge-base: `93a3ddc`.
 Method: SEMANTIC FORWARD-PORT. No wholesale merge, no blind cherry-pick. Newest canonical architecture is authoritative.
 
 ## Structural delta
@@ -40,7 +40,7 @@ Remaster-only additive packages absent from main: `kernel/**`, `kernel/portfolio
 2. Slice B - R7-R12 acceptance gates adapted to canonical main APIs: focused gates PASS; external/provider/elapsed boundaries remain explicit.
 3. Slice C - R12 fault matrix plus freeze/restore proof adapted to main: bounded campaign PASS; physical/provider rows remain NOT_TESTED/BLOCKED.
 4. Slice D - Documentation, dirty-remaster inventory, current-source replay repair, and historical-branch reconciliation: PASS.
-5. Verification - current-source full suite 1248/0/0/0, focused R10 replay repair 36 passed, JSON and documentation checks PASS, fresh Luna audit PASS_WITH_BOUNDARY.
+5. Verification - current-source full suite 1260/0/0/0 at reproducible snapshot f172147, focused R10 replay repair 36 passed, JSON and documentation checks PASS, fresh Luna audit PASS_WITH_BOUNDARY.
 6. Promotion - non-force fast-forward main and rollback tag pushed; runtime proving release remains frozen separately.
 
 ## Current convergence evidence
@@ -68,10 +68,12 @@ architectures; no remaster `orchestration`, `capabilities_live`, or duplicate
 runtime was introduced. R12 external/physical failures are explicitly
 boundary-only where a safe candidate cannot induce the real provider or host
  condition. Historical candidate-bound suites remain preserved in their
- original evidence. The current semantic source `93d23f5` has a fresh
- deterministic `1248/0/0/0` full-suite artifact, and the current R10 replay
+ original evidence. The reproducible current-source snapshot `f172147` has a
+ fresh deterministic `1260/0/0/0` full-suite artifact (the earlier 1248-test
+ semantic-source artifact remains historical), and the current R10 replay
  repair has an independent 36-test PASS_WITH_BOUNDARY verifier. Live provider
  research, voice/interface inspection, external connector effects, and the
  required elapsed proving window remain honest NOT_TESTED/WAITING boundaries.
- The runtime proving release is still `f37f852`, so repository promotion has
- not been silently represented as a runtime deployment.
+ The runtime proving release is still `c60db92`; the previous `f37f852` window
+ remains suspended history, so repository promotion has not been silently
+ represented as a runtime deployment.

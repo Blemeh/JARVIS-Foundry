@@ -6,19 +6,20 @@ every promotion/remaster mission (see `docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.
 If this document and another current-status document disagree, THIS document wins
 for "what exists now" claims; the architecture contract wins for binding invariants.
 
-Last reconciled: 2026-08-19 (c60db92 runtime freeze/restart, R3 proving-window registration, disabled worker-loop registration, 75db263 worker-loop schema34 rehearsal and source/state reconciliation, and repository-head reconciliation; legacy evidence preserved)
+Last reconciled: 2026-08-19 (c60db92 runtime freeze/restart, R3 proving-window registration, disabled worker-loop registration, 9c45694 evidence-only descendants, schema34 deployment/restore rehearsal, and current-state reconciliation; legacy evidence preserved)
 
 ```text
 CURRENT CANONICAL HEAD:      93d23f5 (semantic source; R10 replay-manifest repair
                              on top of the authenticated directive consumer)
-CURRENT REPOSITORY HEAD:     75db263 (source/evidence descendants after the
-                             worker-loop contract promotion; not yet loaded by
-                             the running c60db92 proving release)
-CURRENT STATE RECORD:        75db263 (current source/evidence reconciliation;
+CURRENT REPOSITORY HEAD:     9c45694 (documentation/evidence descendants after
+                             the worker-loop contract promotion; not yet loaded
+                             by the running c60db92 proving release)
+CURRENT STATE RECORD:        9c45694 (current source/evidence reconciliation;
                              exact promoted runtime/source record remains
                              c60db92 and is still the running proving release)
-TESTED SOURCE HEAD:          93d23f5 (exact source head for the deterministic
-                             1248-test full suite; docs-only audit commits follow)
+TESTED SOURCE HEAD:          f172147 (reproducible committed snapshot for the
+                             deterministic 1260-test full suite; docs-only audit
+                             commits follow; semantic source lineage remains 93d23f5)
 LATEST R10 FOCUSED SOURCE:   93d23f5 (authenticated nonce-bound
                              REPRIORITIZE/REDIRECT consumer plus exactly-once
                              replay repair; live provider dispatch remains NOT_TESTED)
@@ -27,9 +28,10 @@ PRE-V8 HISTORICAL BASELINE:  93a3ddc0965dfaf3e4cb9dc0952467bd5250520a (historica
 CURRENT SCHEMA:              v34 (adds event-derived mission_step_contracts;
                              the live deployed database remains v33 until a
                              controlled migration)
-FULL SUITE:                  1248 collected on exact source 93d23f5 with
-                             PYTHONHASHSEED=0; failures=0, errors=0, skipped=0
-                             (see docs/convergence/CURRENT_SOURCE_FULL_SUITE_20260819.json)
+FULL SUITE:                  1260 collected on reproducible source snapshot
+                             f172147 with PYTHONHASHSEED=0; failures=0, errors=0,
+                             skipped=0 (see
+                             docs/convergence/CURRENT_SOURCE_FULL_SUITE_VENV_20260819.json)
 SUPERVISOR STATE:            RUNNING (single lease owner, heartbeat advancing)
 STOP STATE:                  OFF (no sentinel, no active STOP/PAUSE directives)
 ACTIVE DIRECTIVES:           redirect, waive, extend_duty_window, align
@@ -132,13 +134,13 @@ browser substrate, and it cannot activate native desktop execution.
 | V8 hybrid-memory certification | PASS — 9/9 criteria (candidate) |
 | V8 canonical promotion | PASS — 1027/0/0 post-merge; live canary PASS; rollback drill PASS; post-promotion remediation certification PASS |
 | Worker canonical gate | PASS — 18/18 + independent adversarial review |
-| Full suite (current semantic source) | 1,248 collected at `93d23f5` with `PYTHONHASHSEED=0`, 0 failures; the 1,225-test Phase 4 remediation gate remains historical evidence |
+| Full suite (current source snapshot) | 1,260 collected at reproducible snapshot `f172147` with `PYTHONHASHSEED=0`, 0 failures; the earlier 1,248-test semantic-source record and 1,225-test Phase 4 remediation gate remain historical evidence |
 | JARVIS Eyes Phase 2 | PASS — 20/20 faults, rollback/live probe, read-only boundary |
 | Workflow Discovery Phase 3 | PASS — 36/36 focused, F1–F25, bounded probe, independent review |
 | Procedural Learning Phase 4 | PASS — 23/23 focused, F1–F24, artifact-byte tamper, zero-effect shadow, local browser probe, rollback, fresh independent review |
-| Post-V7 canonical convergence (R7–R12 semantic closure) | PASS — exact Supervisor authority across low-level evolution/control surfaces; 76 convergence tests + 1,225 canonical tests; isolated promotion and post-promotion runtime probe PASS |
+| Post-V7 canonical convergence (R7–R12 semantic closure) | PASS_WITH_BOUNDARY — exact Supervisor authority across low-level evolution/control surfaces; focused gates and the 1,260-test current-source suite pass; isolated promotion and post-promotion runtime probe PASS; live/provider/elapsed boundaries remain explicit |
 | R10 authenticated mission-directive consumer | PASS_WITH_BOUNDARY — nonce-bound REPRIORITIZE/REDIRECT reaches the existing MissionLoop path; 26 focused tests and fresh verifier PASS; live Supervisor/Hermes/provider dispatch remains NOT_TESTED |
-| R10 exactly-once replay repair | PASS — ordinary mission instructions preserve the caller manifest hash; authenticated REDIRECT remains canonical; 36 focused tests and 1248-test current-source suite PASS |
+| R10 exactly-once replay repair | PASS — ordinary mission instructions preserve the caller manifest hash; authenticated REDIRECT remains canonical; 36 focused tests and the 1,260-test current-source suite PASS |
 
 ## What is experimental / not canonical
 
