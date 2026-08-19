@@ -138,6 +138,15 @@
       "source_delta": "NONE_REQUIRED; newer canonical implementations already present",
       "promotion": "PASS_NON_FORCE_FAST_FORWARD"
     },
+    "latest_r10_accessibility_audit": {
+      "path": "docs/convergence/R10_COMMAND_CENTER_ACCESSIBILITY_AUDIT_20260819.json",
+      "sha256": "5B47C944AD324CAA936A835152BC150FF092C40351CA81D47EDEBFB42ACE93CA",
+      "status": "PASS_LOCAL_ACCESSIBILITY_WITH_RUNTIME_BOUNDARIES",
+      "source_head": "17d9f511deb877301759942eb1ce8b267c88f8fb",
+      "live_runtime_touched": false,
+      "live_ui": "NOT_TESTED",
+      "voice": "NOT_TESTED"
+    },
     "latest_documentation_reconciliation": {
       "status": "PASS_STALE_PIN_REPAIRED",
       "record_parent": "9c456947d2f6ef514345e37b9f57765896dec2e0",
@@ -1088,7 +1097,7 @@
   "blockers": [
     "R7 real monitored provider research NOT_TESTED/WAITING",
     "R9 real external connector/provider effects NOT_TESTED/WAITING",
-    "R10 live voice provider and visual/a11y inspection NOT_TESTED/WAITING",
+    "R10 local accessibility audit PASS; live voice provider and production UI deployment NOT_TESTED/WAITING",
     "R10 local REPRIORITIZE/REDIRECT consumer PASS_WITH_BOUNDARY; live Supervisor/Hermes provider dispatch NOT_TESTED",
     "R9 repaired live provider result contract remains OPEN_EXTERNAL_BOUNDARY: source repair focused-pass verified, fresh canary blocked by provider monthly rate limit",
     "R11 live Supervisor evolution consumption and real elapsed proving window NOT_TESTED/WAITING; disposable local cycle proof PASS_WITH_BOUNDARY",
