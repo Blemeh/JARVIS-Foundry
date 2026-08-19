@@ -76,4 +76,7 @@ boundary-only where a safe candidate cannot induce the real provider or host
  required elapsed proving window remain honest NOT_TESTED/WAITING boundaries.
  The runtime proving release is still `c60db92`; the previous `f37f852` window
  remains suspended history, so repository promotion has not been silently
- represented as a runtime deployment.
+ represented as a runtime deployment. The disposable worker-loop deployment
+ and restore rehearsal is recorded at
+ `WORKER_LOOP_DEPLOYMENT_CANARY_REHEARSAL_20260819.json`; it does not upgrade
+ the live schema, worker task, provider, or proving-window claims.

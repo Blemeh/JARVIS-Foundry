@@ -118,6 +118,13 @@ and no worker-loop process or provider effect has been observed. Activation is
 deferred until an authoritative executable mission contract and provider
 readiness are independently reconciled.
 
+A disposable deployment rehearsal is recorded at
+`docs/convergence/WORKER_LOOP_DEPLOYMENT_CANARY_REHEARSAL_20260819.json`:
+a read-only live backup migrated from schema v33 to v34, reconciled with zero
+mismatches, passed a Supervisor `--once` smoke, and restored source bytes
+unchanged. It is rehearsal evidence only; live migration, restart, activation,
+and provider dispatch remain unperformed.
+
 Workflow Discovery is not wired into the live supervisor or perception loop;
 only an explicitly enabled bounded cycle can be called by code/tests.
 
@@ -134,6 +141,7 @@ browser substrate, and it cannot activate native desktop execution.
 | V8 hybrid-memory certification | PASS — 9/9 criteria (candidate) |
 | V8 canonical promotion | PASS — 1027/0/0 post-merge; live canary PASS; rollback drill PASS; post-promotion remediation certification PASS |
 | Worker canonical gate | PASS — 18/18 + independent adversarial review |
+| Worker-loop deployment rehearsal | PASS_WITH_BOUNDARY — disposable schema34 migration/reconciliation, Supervisor startup, and source-unchanged restore proof; live activation remains deferred |
 | Full suite (current source snapshot) | 1,260 collected at reproducible snapshot `f172147` with `PYTHONHASHSEED=0`, 0 failures; the earlier 1,248-test semantic-source record and 1,225-test Phase 4 remediation gate remain historical evidence |
 | JARVIS Eyes Phase 2 | PASS — 20/20 faults, rollback/live probe, read-only boundary |
 | Workflow Discovery Phase 3 | PASS — 36/36 focused, F1–F25, bounded probe, independent review |

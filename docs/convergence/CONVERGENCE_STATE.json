@@ -103,9 +103,9 @@
       "status": "PASS_STALE_PIN_REPAIRED",
       "record_parent": "9c456947d2f6ef514345e37b9f57765896dec2e0",
       "current_state": "docs/CURRENT_STATE.md",
-      "current_state_sha256": "6A65379BB3C9163F6A746116DEA5761591704FF024C4B56DC32C663C14371F4B",
+      "current_state_sha256": "12ACC78156663EF9ED95F24E047CB0C462C7C84EA047D8421E834AE695A6C714",
       "convergence_matrix": "docs/convergence/CONVERGENCE_MATRIX.md",
-      "convergence_matrix_sha256": "37246D2467B280B029442F23D4335EA1DA47C0F215F30B809C134B185C94CA94",
+      "convergence_matrix_sha256": "56DC65AA1E4BCEE452072F13FD5DDD94EB4B078BF408200DA0608B5523B0A9CE",
       "claims_reconciled": [
         "1260-test current-source suite",
         "reproducible source snapshot f172147",
