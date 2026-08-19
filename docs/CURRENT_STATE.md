@@ -6,17 +6,17 @@ every promotion/remaster mission (see `docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.
 If this document and another current-status document disagree, THIS document wins
 for "what exists now" claims; the architecture contract wins for binding invariants.
 
-Last reconciled: 2026-08-19 (c60db92 runtime freeze/restart, R3 proving-window registration, disabled worker-loop registration, and repository-head reconciliation; legacy evidence preserved)
+Last reconciled: 2026-08-19 (c60db92 runtime freeze/restart, R3 proving-window registration, disabled worker-loop registration, 92926fe worker-loop source/state reconciliation, and repository-head reconciliation; legacy evidence preserved)
 
 ```text
 CURRENT CANONICAL HEAD:      93d23f5 (semantic source; R10 replay-manifest repair
                              on top of the authenticated directive consumer)
-CURRENT REPOSITORY HEAD:     75ec402 (docs/evidence descendants after the
-                             worker-loop installer push; not yet loaded by the
-                             running c60db92 proving release)
-CURRENT STATE RECORD:        c60db92 (exact promoted runtime/source record;
-                             running Supervisor/proving release; repository
-                             now has later source/evidence descendants)
+CURRENT REPOSITORY HEAD:     92926fe (source/evidence descendants after the
+                             worker-loop contract promotion; not yet loaded by
+                             the running c60db92 proving release)
+CURRENT STATE RECORD:        92926fe (current source/evidence reconciliation;
+                             exact promoted runtime/source record remains
+                             c60db92 and is still the running proving release)
 TESTED SOURCE HEAD:          93d23f5 (exact source head for the deterministic
                              1248-test full suite; docs-only audit commits follow)
 LATEST R10 FOCUSED SOURCE:   93d23f5 (authenticated nonce-bound
