@@ -2,7 +2,7 @@
   "schema": "jarvis-post-v7-canonical-convergence-state-v2",
   "program": "JARVIS Post-V7 Remaster",
   "current_stage": "POST_PROMOTION_PROVING",
-  "current_slice": "Canonical f37f852 includes the bounded R7 monitor-poll idempotency and concurrent same-key transaction repair plus local filesystem research canary; the local R10 Command Center UI probe passes for disposable projection rendering only; the first exact-release proving registration was suspended because its Supervisor process predated f37f852, then a fresh Supervisor loaded f37f852 and registered R2 at sequence 104009; external provider research/effects, live UI controls, voice, and deployment remain honest WAITING/NOT_TESTED; prior full-suite evidence remains anchored to tested source 2af8191 and is not silently extended to this source repair",
+  "current_slice": "Canonical f37f852 includes the bounded R7 monitor-poll idempotency and concurrent same-key transaction repair plus local filesystem research canary; the local R10 Command Center UI projection and authenticated durable control path both pass in disposable probes; the first exact-release proving registration was suspended because its Supervisor process predated f37f852, then a fresh Supervisor loaded f37f852 and registered R2 at sequence 104009; external provider research/effects, live Supervisor/mission-loop consumers, voice, and deployment remain honest WAITING/NOT_TESTED; prior full-suite evidence remains anchored to tested source 2af8191 and is not silently extended to this source repair",
   "r6_state": "OWNER_REDIRECT_R6_DEFERRED",
   "eyes_state": "OUT_OF_SCOPE_READ_ONLY",
   "canonical": {
@@ -766,6 +766,7 @@
     "latest_r9_source_repair": "docs/convergence/R9_RESULT_CONTRACT_SOURCE_REPAIR_20260818.json",
     "latest_r9_sourcefix_canary": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_SOURCEFIX_CANARY_20260819.json",
     "latest_r10_local_ui_probe": "docs/convergence/R10_COMMAND_CENTER_LOCAL_UI_PROBE_20260819.json",
+    "latest_r10_local_controls_probe": "docs/convergence/R10_COMMAND_CENTER_LOCAL_CONTROLS_PROBE_20260819.json",
     "latest_exact_release_proving_window": "docs/convergence/PROVING_WINDOW_RUNTIME_START_CANONICAL_R2_20260819.json",
     "latest_suspended_exact_release_window": "docs/convergence/PROVING_WINDOW_RUNTIME_START_CANONICAL_20260819.json",
     "latest_restart_canary": "docs/convergence/PROVING_WINDOW_RESTART_CANARY_20260818.json",
