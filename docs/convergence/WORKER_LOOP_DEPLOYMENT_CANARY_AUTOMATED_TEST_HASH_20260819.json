@@ -1,0 +1,112 @@
+{
+  "backup": {
+    "event_count": 0,
+    "quick_check": "ok",
+    "schema": 33,
+    "sha256": "CAD92F62BF457BADD207B24CFAA0D55E0BCA78723E0D8CAF246FF7ABB0356856"
+  },
+  "boundary": "Disposable rehearsal only; live migration, scheduler activation, provider dispatch, and external effects are not performed.",
+  "checks": {
+    "backup_quick_check": true,
+    "final_reconciled": true,
+    "migration_reconciled": true,
+    "restore_reconciled": true,
+    "restore_source_unchanged": true,
+    "schema34": true,
+    "supervisor_clean_stop": true,
+    "supervisor_heartbeat": true,
+    "supervisor_lease_sanitized": true,
+    "supervisor_started": true,
+    "worker_reconciled": true,
+    "worker_waiting": true
+  },
+  "lease_sanitization": {
+    "lease_key": "supervisor:singleton",
+    "present": false,
+    "removed": false
+  },
+  "method": {
+    "canary_home": "C:\\temp\\JARVIS-WorkerLoop-Automated-TestCanary-hash-20260819",
+    "live_database": "C:\\temp\\JARVIS-WorkerLoop-Automated-TestSource-53760c861a\\foundry.db",
+    "live_database_open": "SQLite mode=ro",
+    "live_database_touched": false,
+    "live_supervisor_restarted": false,
+    "provider_dispatch": "NOT_TESTED",
+    "restore_home": "C:\\temp\\JARVIS-WorkerLoop-Automated-TestRestore-hash-20260819",
+    "target_lock": {
+      "acquired": true,
+      "path": "C:\\temp\\.JARVIS-WorkerLoop-Automated-TestCanary-hash-20260819.lock"
+    },
+    "worker_task_enabled": false
+  },
+  "migration": {
+    "event_count_final": 5,
+    "migrated_version": 34,
+    "mission_step_contracts_present": true,
+    "quick_check": "ok",
+    "reconciliation": {
+      "consistent": true,
+      "event_count": 5,
+      "integrity_failures": [],
+      "mismatches": [],
+      "missing_rows": [],
+      "unexpected_rows": [],
+      "version_mismatch": null
+    }
+  },
+  "recorded_at": "2026-08-19T06:28:03.187993+00:00",
+  "restore": {
+    "database": "C:\\temp\\JARVIS-WorkerLoop-Automated-TestRestore-hash-20260819\\foundry.db",
+    "event_count": 5,
+    "quick_check": "ok",
+    "reconciliation": {
+      "consistent": true,
+      "event_count": 5,
+      "integrity_failures": [],
+      "mismatches": [],
+      "missing_rows": [],
+      "unexpected_rows": [],
+      "version_mismatch": null
+    },
+    "schema": 34,
+    "source_file_sha256_after": "CAD92F62BF457BADD207B24CFAA0D55E0BCA78723E0D8CAF246FF7ABB0356856",
+    "source_file_sha256_before": "CAD92F62BF457BADD207B24CFAA0D55E0BCA78723E0D8CAF246FF7ABB0356856",
+    "source_sha256_after": "4712C8869183EF57B912E748F79BACD82A5F9B12295731E1511FEC09EA456CCD",
+    "source_sha256_before": "4712C8869183EF57B912E748F79BACD82A5F9B12295731E1511FEC09EA456CCD",
+    "source_unchanged": true
+  },
+  "schema": "jarvis-worker-loop-deployment-canary-v1",
+  "source": {
+    "head": "687f4e8d56dbf55ff3ea83b8fef8b69ca745d847",
+    "python": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry\\.venv\\Scripts\\python.exe",
+    "pythonpath": "C:\\temp\\JARVIS-WorkerLoop-Contract-Promote-20260819\\src",
+    "repository": "C:\\temp\\JARVIS-WorkerLoop-Contract-Promote-20260819"
+  },
+  "status": "PASS_DISPOSABLE",
+  "supervisor": {
+    "clean_stop": true,
+    "command": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry\\.venv\\Scripts\\python.exe -m jarvis_foundry.supervisor.run --home C:\\temp\\JARVIS-WorkerLoop-Automated-TestCanary-hash-20260819 --once",
+    "exit": 0,
+    "heartbeat_state": "RUNNING",
+    "start_state": "RUNNING",
+    "stderr_tail": "",
+    "stdout_tail": "{\"supervisor\": \"RUNNING\", \"home\": \"C:\\\\temp\\\\JARVIS-WorkerLoop-Automated-TestCanary-hash-20260819\"}\n{\"heartbeat\": \"RUNNING\"}"
+  },
+  "worker_loop": {
+    "mission_invented": false,
+    "reconciliation": {
+      "consistent": true,
+      "event_count": 2,
+      "integrity_failures": [],
+      "mismatches": [],
+      "missing_rows": [],
+      "unexpected_rows": [],
+      "version_mismatch": null
+    },
+    "report": {
+      "loop_id": "deployment-canary-wait-1",
+      "outcome": "WAITING",
+      "reason": "no dispatchable mission has an authoritative executable contract"
+    }
+  }
+}

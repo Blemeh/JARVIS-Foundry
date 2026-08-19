@@ -100,6 +100,20 @@
       "live_worker_task": "DISABLED",
       "published_head_after_restore_proof": "b66aaf7788f81c8c717579a09f6a4c965fac685c"
     },
+    "latest_automated_deployment_canary": {
+      "status": "PASS_DISPOSABLE_AUTOMATED",
+      "finding": "docs/convergence/WORKER_LOOP_DEPLOYMENT_CANARY_FINDING_20260819.json",
+      "script": "scripts/convergence/worker_loop_deployment_canary.py",
+      "script_sha256": "1E8412A168D6FE865DEADC815D1190352D55549CC54DED9678567C4677FF87AF",
+      "focused_test": "docs/convergence/WORKER_LOOP_DEPLOYMENT_CANARY_AUTOMATED_TEST_HASH_20260819.json",
+      "live_probe": "docs/convergence/WORKER_LOOP_DEPLOYMENT_CANARY_AUTOMATED_LIVE_PASS_20260819.json",
+      "lease_sanitization": "PASS_CANARY_ONLY",
+      "target_lock": "PASS_ATOMIC_FAIL_CLOSED",
+      "restore": "PASS_LOGICAL_WAL_SAFE_RECONCILED",
+      "live_migration": "NOT_PERFORMED",
+      "live_worker_task": "DISABLED",
+      "provider_dispatch": "NOT_TESTED"
+    },
     "latest_documentation_reconciliation": {
       "status": "PASS_STALE_PIN_REPAIRED",
       "record_parent": "9c456947d2f6ef514345e37b9f57765896dec2e0",
@@ -1056,5 +1070,5 @@
     "R11 live Supervisor evolution consumption and real elapsed proving window NOT_TESTED/WAITING; disposable local cycle proof PASS_WITH_BOUNDARY",
     "R12 physical host and unavailable-provider fault rows NOT_TESTED/BLOCKED"
   ],
-  "exact_next_action": "let the R3 exact current-release proving monitor persist WAITING through restart; preserve the suspended f37f852 R2 registration and historical 2-of-10/restart-0 counts; keep the provider canary BLOCKED on the monthly rate limit; keep JARVIS-Foundry-Worker-Loop registered Disabled because its promoted source contract has not undergone live migration or provider readiness proof; preserve the fresh PASS disposable deployment rehearsal at docs/convergence/WORKER_LOOP_DEPLOYMENT_CANARY_REHEARSAL_20260819.json; continue only safe dependency-ready rehearsal/evidence work; do not retry blindly, enable the worker task, migrate the live database, or restart R3; do not close final acceptance until seven real healthy days, ten post-start independently verified missions, and all required external criteria are met"
+  "exact_next_action": "let the R3 exact current-release proving monitor persist WAITING through restart; preserve the suspended f37f852 R2 registration and historical 2-of-10/restart-0 counts; keep the provider canary BLOCKED on the monthly rate limit; keep JARVIS-Foundry-Worker-Loop registered Disabled because its promoted source contract has not undergone live migration or provider readiness proof; preserve the automated PASS disposable deployment canary and its closed finding at docs/convergence/WORKER_LOOP_DEPLOYMENT_CANARY_FINDING_20260819.json; continue only safe dependency-ready rehearsal/evidence work; do not retry blindly, enable the worker task, migrate the live database, or restart R3; do not close final acceptance until seven real healthy days, ten post-start independently verified missions, and all required external criteria are met"
 }

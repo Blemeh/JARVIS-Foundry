@@ -1,0 +1,100 @@
+{
+  "backup": {
+    "event_count": 108561,
+    "quick_check": "ok",
+    "schema": 33,
+    "sha256": "0823909FE293BAC5513D403626585CC8585B564DFDE3898BB8D88B7575DDED61"
+  },
+  "boundary": "Disposable rehearsal only; live migration, scheduler activation, provider dispatch, and external effects are not performed.",
+  "checks": {
+    "backup_quick_check": true,
+    "final_reconciled": true,
+    "migration_reconciled": true,
+    "restore_reconciled": true,
+    "restore_source_unchanged": false,
+    "schema34": true,
+    "supervisor_clean_stop": false,
+    "supervisor_heartbeat": false,
+    "supervisor_started": false,
+    "worker_reconciled": true,
+    "worker_waiting": true
+  },
+  "method": {
+    "canary_home": "C:\\temp\\JARVIS-WorkerLoop-Automated-LiveCanary-20260819-7aaf1105d0",
+    "live_database": "C:\\Users\\b\\AppData\\Local\\hermes\\foundry\\foundry.db",
+    "live_database_open": "SQLite mode=ro",
+    "live_database_touched": false,
+    "live_supervisor_restarted": false,
+    "provider_dispatch": "NOT_TESTED",
+    "restore_home": "C:\\temp\\JARVIS-WorkerLoop-Automated-LiveRestore-20260819-7aaf1105d0",
+    "worker_task_enabled": false
+  },
+  "migration": {
+    "event_count_final": 108563,
+    "migrated_version": 34,
+    "mission_step_contracts_present": true,
+    "quick_check": "ok",
+    "reconciliation": {
+      "consistent": true,
+      "event_count": 108563,
+      "integrity_failures": [],
+      "mismatches": [],
+      "missing_rows": [],
+      "unexpected_rows": [],
+      "version_mismatch": null
+    }
+  },
+  "recorded_at": "2026-08-19T06:19:50.427532+00:00",
+  "restore": {
+    "database": "C:\\temp\\JARVIS-WorkerLoop-Automated-LiveRestore-20260819-7aaf1105d0\\foundry.db",
+    "event_count": 108563,
+    "quick_check": "ok",
+    "reconciliation": {
+      "consistent": true,
+      "event_count": 108563,
+      "integrity_failures": [],
+      "mismatches": [],
+      "missing_rows": [],
+      "unexpected_rows": [],
+      "version_mismatch": null
+    },
+    "schema": 34,
+    "source_sha256_after": "E68016F58C4A986A6C78449272DE4F8F3AF6E2B98ACE20A4ACCB5B845C65D8A2",
+    "source_sha256_before": "0823909FE293BAC5513D403626585CC8585B564DFDE3898BB8D88B7575DDED61",
+    "source_unchanged": false
+  },
+  "schema": "jarvis-worker-loop-deployment-canary-v1",
+  "source": {
+    "head": "687f4e8d56dbf55ff3ea83b8fef8b69ca745d847",
+    "python": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry\\.venv\\Scripts\\python.exe",
+    "pythonpath": "C:\\temp\\JARVIS-WorkerLoop-Contract-Promote-20260819\\src",
+    "repository": "C:\\temp\\JARVIS-WorkerLoop-Contract-Promote-20260819"
+  },
+  "status": "FAIL_DISPOSABLE",
+  "supervisor": {
+    "clean_stop": false,
+    "command": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry\\.venv\\Scripts\\python.exe -m jarvis_foundry.supervisor.run --home C:\\temp\\JARVIS-WorkerLoop-Automated-LiveCanary-20260819-7aaf1105d0 --once",
+    "exit": 1,
+    "heartbeat_state": "UNKNOWN",
+    "start_state": "UNKNOWN",
+    "stderr_tail": "runpy>\", line 198, in _run_module_as_main\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"C:\\temp\\JARVIS-WorkerLoop-Contract-Promote-20260819\\src\\jarvis_foundry\\supervisor\\run.py\", line 244, in <module>\n    raise SystemExit(main())\n                     ~~~~^^\n  File \"C:\\temp\\JARVIS-WorkerLoop-Contract-Promote-20260819\\src\\jarvis_foundry\\supervisor\\run.py\", line 220, in main\n    state = supervisor.start()\n  File \"C:\\temp\\JARVIS-WorkerLoop-Contract-Promote-20260819\\src\\jarvis_foundry\\supervisor\\service.py\", line 52, in start\n    self.leases.acquire(self.LEASE_KEY, self.instance_id, self.lease_seconds)\n    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\temp\\JARVIS-WorkerLoop-Contract-Promote-20260819\\src\\jarvis_foundry\\supervisor\\leases.py\", line 25, in acquire\n    raise LeaseUnavailable(f\"lease {lease_key} is held by another live owner\")\njarvis_foundry.supervisor.leases.LeaseUnavailable: lease supervisor:singleton is held by another live owner",
+    "stdout_tail": ""
+  },
+  "worker_loop": {
+    "mission_invented": false,
+    "reconciliation": {
+      "consistent": true,
+      "event_count": 108563,
+      "integrity_failures": [],
+      "mismatches": [],
+      "missing_rows": [],
+      "unexpected_rows": [],
+      "version_mismatch": null
+    },
+    "report": {
+      "loop_id": "deployment-canary-wait-1",
+      "outcome": "WAITING",
+      "reason": "no dispatchable mission has an authoritative executable contract"
+    }
+  }
+}
