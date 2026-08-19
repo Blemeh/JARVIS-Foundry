@@ -95,7 +95,18 @@ def test_invalid_or_blocked_directives_never_reach_downstream_interpretation(
 ):
     database = _database(tmp_path)
     # A forged event can exist in the ledger only in this test fixture; the
-    # consumer must still require owner source + authenticated payload.
+    # consumer must still require owner source + authenticated payload and the
+    # durable nonce-use path created by OwnerControlService.
+    database.append(Event.create(
+        "owner_directive.recorded",
+        {"directive_id": "missing-nonce", "command_type": "REDIRECT",
+         "target": "mission-a", "exact_text": "skip nonce path",
+         "authenticated": True},
+        source_type="owner", source_id="forged-owner",
+        idempotency_key="forged-owner-missing-nonce",
+    ))
+    assert consume_directives(database, "mission-a") == []
+    assert database.row("missions", "mission_id", "mission-a")["next_action"] == "inspect A"
     database.append(Event.create(
         "owner_directive.recorded",
         {"directive_id": "forged", "command_type": "REDIRECT",

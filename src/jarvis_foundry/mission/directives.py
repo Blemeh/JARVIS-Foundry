@@ -9,6 +9,7 @@ dispatch-ranking metadata.
 """
 from __future__ import annotations
 
+import hashlib
 import re
 from dataclasses import dataclass
 from typing import Any, Iterable
@@ -16,6 +17,7 @@ from typing import Any, Iterable
 from ..control.broker import emergency_stop_reason, matching_veto_reason
 from ..database import FoundryDatabase
 from ..events import Event
+from ..owner_controls import canonical_command
 
 _DIRECTIVE_TYPES = frozenset({"REPRIORITIZE", "REDIRECT"})
 _NUMBER = re.compile(
@@ -43,8 +45,16 @@ def _owner_directives(database: FoundryDatabase) -> list[dict[str, Any]]:
     consumer.  Revocation is applied in ledger order, so replay is stable.
     """
     records: dict[str, dict[str, Any]] = {}
+    nonce_uses: dict[str, Event] = {}
     for event in database.events():
-        if event.event_type == "owner_directive.recorded":
+        if event.event_type == "owner_control.nonce_used":
+            payload = event.payload
+            nonce = payload.get("nonce")
+            command_hash = payload.get("command_hash")
+            if (event.source_type == "owner" and isinstance(nonce, str)
+                    and nonce and isinstance(command_hash, str) and command_hash):
+                nonce_uses[nonce] = event
+        elif event.event_type == "owner_directive.recorded":
             payload = event.payload
             if (event.source_type != "owner" or
                     payload.get("authenticated") is not True or
@@ -53,13 +63,34 @@ def _owner_directives(database: FoundryDatabase) -> list[dict[str, Any]]:
             directive_id = str(payload.get("directive_id") or "")
             target = payload.get("target")
             exact_text = payload.get("exact_text")
-            if not directive_id or not isinstance(exact_text, str) or not exact_text.strip():
+            nonce = payload.get("nonce")
+            command_hash = payload.get("command_hash")
+            nonce_event = nonce_uses.get(nonce) if isinstance(nonce, str) else None
+            if (not directive_id or not isinstance(exact_text, str)
+                    or not exact_text.strip() or nonce_event is None
+                    or not isinstance(command_hash, str) or not command_hash):
+                continue
+            try:
+                expected_hash = hashlib.sha256(canonical_command(
+                    str(payload["command_type"]),
+                    str(target) if target is not None else None,
+                    exact_text,
+                    nonce,
+                )).hexdigest()
+            except (TypeError, ValueError):
+                continue
+            if (command_hash != expected_hash
+                    or nonce_event.payload.get("command_hash") != expected_hash
+                    or event.causation_id != nonce_event.event_id
+                    or event.correlation_id != nonce_event.correlation_id):
                 continue
             records[directive_id] = {
                 "directive_id": directive_id,
                 "command_type": str(payload["command_type"]),
                 "target": str(target) if target is not None else None,
                 "exact_text": exact_text,
+                "nonce": nonce,
+                "command_hash": command_hash,
                 "event_id": event.event_id,
                 "sequence": len(records),
                 "active": True,
