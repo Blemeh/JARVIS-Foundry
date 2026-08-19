@@ -149,6 +149,15 @@
       "live_ui": "NOT_TESTED",
       "voice": "NOT_TESTED"
     },
+    "latest_r3_ledger_reconciliation": {
+      "path": "docs/convergence/PROVING_WINDOW_LEDGER_RECONCILIATION_R3_20260819.json",
+      "sha256": "4B60A41702A9E8B8145F702CE563BAD32A43E1B871977D10EBEFB1F5564C241F",
+      "status": "PASS_WAITING_ELAPSED_NO_POST_START_MISSIONS",
+      "source_head": "ccdffc5b83b56f0163436a45b1e0c5f7a4394543",
+      "missions_after_start": 0,
+      "verification_events_after_start": 0,
+      "database_written_by_capture": false
+    },
     "latest_documentation_reconciliation": {
       "status": "PASS_STALE_PIN_REPAIRED",
       "record_parent": "9c456947d2f6ef514345e37b9f57765896dec2e0",
