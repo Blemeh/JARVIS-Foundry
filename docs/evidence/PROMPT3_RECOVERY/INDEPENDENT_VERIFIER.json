@@ -1,9 +1,9 @@
 {
   "role": "independent-verifier",
   "inspected": {
-    "head": "b59836772d948bd7b2507949c42f3c7dfa75afaf",
-    "main": "b59836772d948bd7b2507949c42f3c7dfa75afaf",
-    "origin_main": "b59836772d948bd7b2507949c42f3c7dfa75afaf",
+    "head": "281b66ed64b67be847a1cd9a4b93c9fdd27f2327",
+    "main": "281b66ed64b67be847a1cd9a4b93c9fdd27f2327",
+    "origin_main": "281b66ed64b67be847a1cd9a4b93c9fdd27f2327",
     "current_release": "b59836772d948bd7b2507949c42f3c7dfa75afaf",
     "previous_release": "adada7f31ac515cfac9782ace95f744b631f76f5",
     "schema": 34,
@@ -12,8 +12,8 @@
       "instance_id": "supervisor-b2886418-1b32-427a-b30d-3a04e8f33f01",
       "status": "RUNNING",
       "trust_state": "LAB",
-      "last_heartbeat_at": "2026-08-19T19:35:01.829506Z",
-      "last_event_id": "8fe7e5f7-d5d7-4352-beed-8eb99e072d04"
+      "last_heartbeat_at": "2026-08-19T19:52:02.966505Z",
+      "last_event_id": "4000ca7a-48c0-4e8c-b98a-616c7c71fdaf"
     },
     "stop_active": false,
     "prompt3_missions": [
