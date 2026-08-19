@@ -46,11 +46,12 @@
       "junit_sha256": "82826F446F430D0E18CACCC1AF196747E28379B33A5102AC7CCAB69BDA816C1E"
     },
     "latest_runtime_probe": {
-      "path": "docs/convergence/LIVE_RUNTIME_PROBE_CURRENT_20260819.json",
-      "sha256": "8D19FDC71F31AB25AE85FC157A1A5A330DE9FC86730FBF64ECCBE1F8308B7CBE",
-      "event_head": 108034,
+      "path": "docs/convergence/LIVE_RUNTIME_PROBE_CURRENT_20260819_R2.json",
+      "sha256": "D1B690428C8FA2220ADF3C09C7EBCA7C0B1A168151884E85C3CED1DD5B8F6739",
+      "event_head": 108471,
       "schema_version": 33,
-      "status": "PASS_READ_ONLY"
+      "status": "PASS_READ_ONLY",
+      "recorded_at": "2026-08-19T06:10:27.014135+00:00"
     },
     "focused_worker_loop_contract": {
       "status": "PASS_WITH_BOUNDARY",
@@ -287,9 +288,9 @@
       "supervisor_instance": "supervisor-dbfc3d8b-936d-4b61-9895-2b8ae917ce04"
     },
     "last_checkpoint_event_head": 105969,
-    "last_live_observed_event_head": 108034,
+    "last_live_observed_event_head": 108471,
     "latest_checkpoint_reconciliation": "docs/convergence/PROVING_WINDOW_CHECKPOINT_RECONCILIATION_R3_20260819.json",
-    "latest_runtime_reconciliation": "docs/convergence/LIVE_RUNTIME_PROBE_CURRENT_20260819.json",
+    "latest_runtime_reconciliation": "docs/convergence/LIVE_RUNTIME_PROBE_CURRENT_20260819_R2.json",
     "worker_loop_registration": {
       "status": "REGISTERED_DISABLED",
       "evidence": "docs/convergence/WORKER_LOOP_DISABLED_REGISTRATION_20260819.json",
