@@ -437,6 +437,17 @@
       ],
       "finding": "The repaired live provider path still failed to produce .jarvis-result.json or a durable evidence bundle on both bounded repair sessions, so both missions remained BLOCKED after evidence_mismatch/timeout.",
       "resolution": "Source-level result production, fail-closed mismatch handling, and STOP-sentinel resolution are focused and independently hash-verified at faa4a98; keep the external finding open, preserve the prior 2 accepted missions and 0 new missions, and require a fresh bounded canary before claiming live-provider success."
+    },
+    {
+      "id": "R10-LIVE-DIRECTIVE-NONCE-20260819",
+      "severity": "S2",
+      "status": "CLOSED_IN_REPAIR",
+      "evidence": [
+        "docs/convergence/R10_LIVE_DIRECTIVE_CONSUMER_20260819.json",
+        "docs/convergence/R10_LIVE_DIRECTIVE_CONSUMER_VERIFIER_20260819.json"
+      ],
+      "finding": "The first bounded live directive consumer accepted an owner-looking authenticated directive without proving the durable nonce-use path.",
+      "resolution": "The consumer now requires the owner nonce-use event, canonical command hash, causation, and correlation linkage; a fresh verifier reproduced zero effects and zero interpreted events for the forged path."
     }
   ],
   "dispatches": [
@@ -808,6 +819,18 @@
       "candidate_head": "8f5d7b0e2a0b72d8cecd6f321b6b4f0db61e3fb6",
       "report": "docs/convergence/PROVING_WINDOW_CHECKPOINT_VERIFIER_20260819.json",
       "scope": "read-only exact checkpoint/hash/runtime predicate verification; no mutation"
+    },
+    {
+      "role": "R10 live directive consumer repair verifier",
+      "agent": "/root/r10_live_consumer_verifier_luna",
+      "provider_route": "router_commandcode_deepseek_v4_flash",
+      "provider_transport": "local candidate filesystem",
+      "provider": "commandcode",
+      "model": "deepseek-v4-flash",
+      "status": "COMPLETED_PASS_WITH_BOUNDARY",
+      "candidate_head": "aa753c0ad1f2d86abeaf5929d51e8992fa290990",
+      "report": "docs/convergence/R10_LIVE_DIRECTIVE_CONSUMER_VERIFIER_20260819.json",
+      "scope": "read-only focused consumer, MissionLoop, Command Center, compile, diff, and forged nonce-path probe"
     }
   ],
   "promotion": {
@@ -837,6 +860,9 @@
     "latest_r11_broken_candidate_probe": "docs/convergence/R11_BROKEN_CANDIDATE_REJECTION_PROBE_20260819.json",
     "latest_r11_local_cycle_verifier": "docs/convergence/R11_LOCAL_CYCLE_VERIFIER_20260819.json",
     "latest_proving_checkpoint_reconciliation": "docs/convergence/PROVING_WINDOW_CHECKPOINT_RECONCILIATION_20260819.json",
+    "latest_r10_live_directive_consumer": "docs/convergence/R10_LIVE_DIRECTIVE_CONSUMER_20260819.json",
+    "latest_r10_live_directive_consumer_verifier": "docs/convergence/R10_LIVE_DIRECTIVE_CONSUMER_VERIFIER_20260819.json",
+    "latest_r10_live_directive_consumer_commit": "aa753c0ad1f2d86abeaf5929d51e8992fa290990",
     "exact_head_audit": "docs/convergence/INDEPENDENT_SEMANTIC_CONVERGENCE_AUDIT_20260819.json",
     "final_audit": {
       "status": "PASS_WITH_BLOCKERS",
@@ -846,12 +872,12 @@
     "post_promotion_runtime_probe": "docs/convergence/LIVE_RUNTIME_PROBE_POST_PROMOTION.json",
     "rollback_bundle": "C:/temp/jarvis-convergence-pre-r3.bundle"
   },
-  "verifier_state": "R8_R9_R10_R11_R12_BOUNDED_GATES_VERIFIED_CURRENT_CANONICAL_FOCUSED_SOURCE_REPAIR_PASS_REPAIRED_R11_LOCAL_CYCLE_PASS_WITH_BOUNDARY_LIVE_CANARY_BLOCKED_EXACT_SOURCE_PROVING_R2_WAITING_ELAPSED_CHECKPOINT_RECONCILIATION_PASS_WITH_BOUNDARY",
+  "verifier_state": "R8_R9_R10_R11_R12_BOUNDED_GATES_VERIFIED_CURRENT_CANONICAL_FOCUSED_SOURCE_REPAIR_PASS_REPAIRED_R10_LOCAL_DIRECTIVE_CONSUMER_PASS_WITH_BOUNDARY_R11_LOCAL_CYCLE_PASS_WITH_BOUNDARY_LIVE_CANARY_BLOCKED_EXACT_SOURCE_PROVING_R2_WAITING_ELAPSED_CHECKPOINT_RECONCILIATION_PASS_WITH_BOUNDARY",
   "blockers": [
     "R7 real monitored provider research NOT_TESTED/WAITING",
     "R9 real external connector/provider effects NOT_TESTED/WAITING",
     "R10 live voice provider and visual/a11y inspection NOT_TESTED/WAITING",
-    "R10 REPRIORITIZE/REDIRECT live Supervisor/mission-loop consumer NOT_TESTED",
+    "R10 local REPRIORITIZE/REDIRECT consumer PASS_WITH_BOUNDARY; live Supervisor/Hermes provider dispatch NOT_TESTED",
     "R9 repaired live provider result contract remains OPEN_EXTERNAL_BOUNDARY: source repair focused-pass verified, fresh canary blocked by provider monthly rate limit",
     "R11 live Supervisor evolution consumption and real elapsed proving window NOT_TESTED/WAITING; disposable local cycle proof PASS_WITH_BOUNDARY",
     "R12 physical host and unavailable-provider fault rows NOT_TESTED/BLOCKED"

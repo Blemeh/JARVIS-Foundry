@@ -1,0 +1,41 @@
+{
+  "schema": "jarvis-r10-live-directive-consumer-v1",
+  "stage": "R10",
+  "status": "PASS_WITH_BOUNDARY",
+  "recorded_at": "2026-08-19",
+  "candidate": {
+    "repository": "C:/temp/JARVIS-Foundry-R10-LiveConsumer-20260819",
+    "branch": "convergence/r10-live-directive-consumer-20260819",
+    "base_head": "d657b048011c37605a18d64c6adb65c5bbfc97d6",
+    "commit": "aa753c0ad1f2d86abeaf5929d51e8992fa290990"
+  },
+  "implemented": [
+    "REPRIORITIZE and REDIRECT are consumed by the existing mission path",
+    "REDIRECT updates the existing mission next_action and reaches MissionLoop provider-facing instructions",
+    "REPRIORITIZE changes selection among existing dispatchable missions without creating work",
+    "interpretation is append-only, idempotent, restart-safe, and projection-rebuild consistent",
+    "owner source, authenticated payload, durable nonce-use event, canonical command hash, causation, and correlation linkage are required",
+    "STOP and VETO prevent downstream interpretation"
+  ],
+  "tests": {
+    "command": "python -m pytest tests/convergence/test_r10_live_directive_consumer.py tests/foundry/test_mission_loop.py tests/convergence/test_r10_command_center_gate.py -q -ra",
+    "count": 26,
+    "failures": 0,
+    "errors": 0,
+    "py_compile": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "boundaries": [
+    {
+      "area": "live Supervisor/Hermes provider dispatch",
+      "status": "NOT_TESTED",
+      "reason": "bounded local consumer and MissionLoop tests use disposable adapters"
+    },
+    {
+      "area": "external provider effects, voice, and rendered UI/a11y",
+      "status": "NOT_TESTED/WAITING",
+      "reason": "unchanged external R10 boundary"
+    }
+  ],
+  "next_action": "Preserve this local semantic proof while the exact canonical R2 proving monitor remains WAITING_ELAPSED; do not claim live provider effects."
+}
