@@ -1,0 +1,52 @@
+{
+  "schema": "jarvis-proving-window-current-checkpoint-snapshot-v1",
+  "status": "PASS_WAITING_ELAPSED",
+  "recorded_at": "2026-08-19T07:14:02.253621Z",
+  "window_id": "post-canonical-c60db92-real-20260819-r3",
+  "checkpoint": {
+    "path": "C:/Users/b/AppData/Local/hermes/foundry/evidence/proving-window/checkpoint-canonical-c60db92-real-20260819-r3.json",
+    "sha256": "47206CD0519EE38097FC918B3C9CFE4F382EF1C86804175967775FF07CA4AE4D",
+    "manifest_path": "C:/Users/b/AppData/Local/hermes/foundry/evidence/proving-window/manifest-canonical-c60db92-real-20260819-r3.json",
+    "manifest_sha256": "D1DC563287D0A4908CEB88A178E4FD8A5247EBE016D24CC3D68A46FF0C191BA9"
+  },
+  "release": {
+    "canonical_repository_head": "8762b6b83e6fca5e0a42abac3638f3d0f69e66a7",
+    "runtime_source_commit": "c60db92986a958dd20ff618e2ca6a6b586a91ff8",
+    "semantic_source_commit": "93d23f50ea5858355c202cae7d4a5809ed7e245c",
+    "release_pointer": "main",
+    "runtime_schema": 33
+  },
+  "window": {
+    "started_at": "2026-08-19T02:38:50.150338Z",
+    "elapsed_seconds": 16512.103,
+    "remaining_seconds": 588287.897,
+    "required_duration_seconds": 604800.0,
+    "verified_missions_after_start": 0,
+    "required_missions": 10
+  },
+  "runtime": {
+    "event_head_at_checkpoint": 109226,
+    "event_head_read_only_probe": 109227,
+    "heartbeat_count": 3265,
+    "max_heartbeat_gap_seconds": 14.092591,
+    "sqlite_quick_check": "ok",
+    "supervisor": "RUNNING_SINGLETON",
+    "active_stop_directives": 0,
+    "database_written_by_capture": false
+  },
+  "monitor": {
+    "task_name": "JARVIS-Foundry-Proving-Window-Monitor-Canonical-R3",
+    "last_run_at": "2026-08-19T07:14:01Z",
+    "last_task_result": 0,
+    "next_run_at": "2026-08-19T07:19:00Z",
+    "missed_runs": 0,
+    "read_only": true
+  },
+  "boundaries": {
+    "external_provider_effects": "NOT_TESTED",
+    "voice_provider": "NOT_TESTED",
+    "physical_host_faults": "NOT_TESTED",
+    "provider_rate_limit": "PRESERVED_NO_RETRY"
+  },
+  "next_action": "continue scheduled durable WAITING monitoring; do not close before seven real healthy days and ten independently verified post-start missions"
+}

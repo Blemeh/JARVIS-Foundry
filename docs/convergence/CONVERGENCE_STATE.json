@@ -53,6 +53,16 @@
       "status": "PASS_READ_ONLY",
       "recorded_at": "2026-08-19T06:39:53.541413+00:00"
     },
+    "latest_current_release_checkpoint_snapshot": {
+      "path": "docs/convergence/PROVING_WINDOW_CHECKPOINT_CURRENT_R3_20260819.json",
+      "sha256": "084E598B57EC859DE19002C386EBE5B9050000C58A91B03F9DB2339979FBD6FD",
+      "checkpoint_sha256": "47206CD0519EE38097FC918B3C9CFE4F382EF1C86804175967775FF07CA4AE4D",
+      "status": "PASS_WAITING_ELAPSED",
+      "event_head": 109226,
+      "elapsed_seconds": 16512.103,
+      "remaining_seconds": 588287.897,
+      "monitor_last_result": 0
+    },
     "focused_worker_loop_contract": {
       "status": "PASS_WITH_BOUNDARY",
       "source_head": "6b776bd0f93005d020b5de2c183f900b82fbe57c",
@@ -313,9 +323,9 @@
       "scheduled_monitor_task": "JARVIS-Foundry-Proving-Window-Monitor-Canonical-R3",
       "supervisor_instance": "supervisor-dbfc3d8b-936d-4b61-9895-2b8ae917ce04"
     },
-    "last_checkpoint_event_head": 105969,
-    "last_live_observed_event_head": 108471,
-    "latest_checkpoint_reconciliation": "docs/convergence/PROVING_WINDOW_CHECKPOINT_RECONCILIATION_R3_20260819.json",
+    "last_checkpoint_event_head": 109226,
+    "last_live_observed_event_head": 109227,
+    "latest_checkpoint_reconciliation": "docs/convergence/PROVING_WINDOW_CHECKPOINT_CURRENT_R3_20260819.json",
     "latest_runtime_reconciliation": "docs/convergence/LIVE_RUNTIME_PROBE_CURRENT_20260819_R2.json",
     "worker_loop_registration": {
       "status": "REGISTERED_DISABLED",
