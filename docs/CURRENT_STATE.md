@@ -6,20 +6,19 @@ every promotion/remaster mission (see `docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.
 If this document and another current-status document disagree, THIS document wins
 for "what exists now" claims; the architecture contract wins for binding invariants.
 
-Last reconciled: 2026-08-19 (c60db92 runtime freeze/restart, R3 proving-window registration, disabled worker-loop registration, 9c45694 evidence-only descendants, schema34 deployment/restore rehearsal, and current-state reconciliation; legacy evidence preserved)
+Last reconciled: 2026-08-19 (current-head semantic convergence verification at 84a22b4; c60db92 runtime freeze/restart, R3 proving-window registration, disabled worker-loop registration, schema34 deployment/restore rehearsal, and legacy evidence preserved)
 
 ```text
-CURRENT CANONICAL HEAD:      93d23f5 (semantic source; R10 replay-manifest repair
-                             on top of the authenticated directive consumer)
-CURRENT REPOSITORY HEAD:     9c45694 (documentation/evidence descendants after
-                             the worker-loop contract promotion; not yet loaded
-                             by the running c60db92 proving release)
-CURRENT STATE RECORD:        9c45694 (current source/evidence reconciliation;
-                             exact promoted runtime/source record remains
-                             c60db92 and is still the running proving release)
-TESTED SOURCE HEAD:          f172147 (reproducible committed snapshot for the
-                             deterministic 1260-test full suite; docs-only audit
-                             commits follow; semantic source lineage remains 93d23f5)
+CURRENT CANONICAL HEAD:      84a22b4 (latest canonical source/evidence head;
+                             semantic runtime source remains 93d23f5 and the
+                             running deployed release remains c60db92)
+CURRENT REPOSITORY HEAD:     84a22b4 (current canonical source/evidence base;
+                             the exact c60db92 runtime is not silently replaced)
+CURRENT STATE RECORD:        84a22b4 (current-head convergence evidence is
+                             recorded under docs/convergence/)
+TESTED SOURCE HEAD:          84a22b4 (fresh 1260-test full suite and 100-test
+                             R7-R12 convergence suite; docs-only candidate
+                             evidence commits follow)
 LATEST R10 FOCUSED SOURCE:   93d23f5 (authenticated nonce-bound
                              REPRIORITIZE/REDIRECT consumer plus exactly-once
                              replay repair; live provider dispatch remains NOT_TESTED)
@@ -28,10 +27,9 @@ PRE-V8 HISTORICAL BASELINE:  93a3ddc0965dfaf3e4cb9dc0952467bd5250520a (historica
 CURRENT SCHEMA:              v34 (adds event-derived mission_step_contracts;
                              the live deployed database remains v33 until a
                              controlled migration)
-FULL SUITE:                  1260 collected on reproducible source snapshot
-                             f172147 with PYTHONHASHSEED=0; failures=0, errors=0,
-                             skipped=0 (see
-                             docs/convergence/CURRENT_SOURCE_FULL_SUITE_VENV_20260819.json)
+FULL SUITE:                  1260 collected at current source base 84a22b4;
+                             failures=0, errors=0, skipped=0 (see
+                             docs/convergence/CURRENT_CANONICAL_FULL_SUITE_20260819_JUNIT.xml)
 SUPERVISOR STATE:            RUNNING (single lease owner, heartbeat advancing)
 STOP STATE:                  OFF (no sentinel, no active STOP/PAUSE directives)
 ACTIVE DIRECTIVES:           redirect, waive, extend_duty_window, align
@@ -40,6 +38,9 @@ MISSION STATE:               7 ACTION_SELECTION, 8 BLOCKED, 8 COMPLETE,
                              1 PLANNED (read-only reconciliation 2026-08-19)
 TIER C STATE:                6 tables; 2 memories (live canary records), 1 block, 0 procedures
 WORKER IMPLEMENTATIONS:      Hermes adapter + OpenHands adapter — CANONICAL (merged)
+R7-R12 CONVERGENCE:          current-head gates 100/100 PASS; independent
+                             verifier PASS_WITH_EXTERNAL_BOUNDARIES; see
+                             docs/convergence/INDEPENDENT_CONVERGENCE_VERIFIER_CURRENT_20260819.json
 OWNER FILES:                 6 tracked docs under docs/handoffs/, docs/planning/ (preserved from 1abc388)
 PERCEPTION INPUT (Phase 2):  SCREENPIPE-LOCAL registered read-only; perception core READY/PROVEN;
                              raw-frame PROBING; audio DISABLED; no claim/candidate/mission/control path
