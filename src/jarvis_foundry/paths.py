@@ -44,3 +44,19 @@ class FoundryPaths:
         local = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
         return local / "hermes"
 
+    @classmethod
+    def live_hermes_checkout(cls) -> Path:
+        """Profile-relative live Hermes checkout (never a valid worker root)."""
+        return cls.hermes_home() / "hermes-agent"
+
+
+class LiveHermesPath:
+    """Class attribute that tracks the current profile's live Hermes paths."""
+
+    def __init__(self, checkout: bool = False) -> None:
+        self.checkout = checkout
+
+    def __get__(self, obj, owner=None) -> Path:
+        home = FoundryPaths.hermes_home().resolve()
+        return (home / "hermes-agent") if self.checkout else home
+

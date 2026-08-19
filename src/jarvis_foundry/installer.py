@@ -76,6 +76,7 @@ TASK_XML_TEMPLATE = """<?xml version="1.0" encoding="UTF-16"?>
     <Exec>
       <Command>{python_exe}</Command>
       <Arguments>-m jarvis_foundry.supervisor.run --home "{foundry_home}"</Arguments>
+      <WorkingDirectory>{working_directory}</WorkingDirectory>
     </Exec>
   </Actions>
 </Task>
@@ -125,6 +126,7 @@ WORKER_LOOP_TASK_XML_TEMPLATE = """<?xml version="1.0" encoding="UTF-16"?>
     <Exec>
       <Command>{python_exe}</Command>
       <Arguments>-m jarvis_foundry.runtime.worker_loop --home "{foundry_home}" --config "{worker_config}"</Arguments>
+      <WorkingDirectory>{working_directory}</WorkingDirectory>
     </Exec>
   </Actions>
 </Task>
@@ -241,13 +243,21 @@ class Installer:
         """
         now = datetime.now()
         start_boundary = (now - timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%S")
+        identity = self.source_identity()
         return TASK_XML_TEMPLATE.format(
             hermes_home=xml_escape(str(self.hermes_home)),
             python_exe=xml_escape(str(self.python_exe)),
             foundry_home=xml_escape(str(self.foundry_home)),
+            working_directory=xml_escape(str(identity["working_directory"])),
             user_id=xml_escape(_current_user_id()),
             start_boundary=start_boundary,
         )
+
+    def source_identity(self) -> dict[str, Any]:
+        from .runtime.authority import runtime_source_identity
+        identity = dict(runtime_source_identity(self.python_exe))
+        identity["working_directory"] = str(self.foundry_home)
+        return identity
 
     def install(self, *, force: bool = False) -> dict[str, Any]:
         if self.task_name == V1_TASK_NAME and not self.v1_allowed():
@@ -282,11 +292,19 @@ class Installer:
         return self.status()
 
     def _write_profile(self) -> None:
+        self.foundry_home.mkdir(parents=True, exist_ok=True)
+        identity = self.source_identity()
         lines = [
             "# JARVIS Foundry V1 profile (JARVIS-owned; removed by uninstall)",
             f"task_name: {self.task_name}",
             f"foundry_home: {self.foundry_home}",
             f"hermes_home: {self.hermes_home}",
+            f"python_exe: {self.python_exe}",
+            f"working_directory: {identity['working_directory']}",
+            f"code_origin: {identity['code_origin']}",
+            f"source_sha: {identity['source_sha'] or 'unknown'}",
+            f"source_kind: {identity['source_kind']}",
+            f"package_version: {identity['package_version']}",
         ]
         for key, value in self.profile.items():
             lines.append(f"{key}: {value}")
@@ -403,10 +421,12 @@ class WorkerLoopInstaller(Installer):
         now = datetime.now()
         start_boundary = (now - timedelta(minutes=1)).strftime(
             "%Y-%m-%dT%H:%M:%S")
+        identity = self.source_identity()
         return WORKER_LOOP_TASK_XML_TEMPLATE.format(
             python_exe=xml_escape(str(self.python_exe)),
             foundry_home=xml_escape(str(self.foundry_home)),
             worker_config=xml_escape(str(self.worker_config_path)),
+            working_directory=xml_escape(str(identity["working_directory"])),
             user_id=xml_escape(_current_user_id()),
             start_boundary=start_boundary,
         )
@@ -438,6 +458,12 @@ class WorkerLoopInstaller(Installer):
             raise
 
     def set_enabled(self, enabled: bool) -> dict[str, Any]:
+        if enabled and self.task_name == WORKER_LOOP_TASK_NAME:
+            raise InstallerError(
+                "JARVIS-Foundry-Worker-Loop has no production authority; "
+                "Supervisor owns runtime lifecycle and spawn_worker_loop "
+                "defaults OFF"
+            )
         if enabled:
             if not self.worker_config_path.is_file():
                 raise InstallerError(

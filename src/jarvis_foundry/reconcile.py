@@ -134,9 +134,13 @@ def inspect(database: FoundryDatabase) -> ReconciliationReport:
 def reconcile(database: FoundryDatabase, *, readonly: bool = False) -> ReconciliationReport:
     live_version = _live_schema_version(database, readonly=readonly)
     if live_version != SCHEMA_VERSION:
+        try:
+            count = database.event_count(readonly=readonly)
+        except Exception:  # noqa: BLE001 — unmigrated files may lack events
+            count = 0
         return ReconciliationReport(
             consistent=False,
-            event_count=0,
+            event_count=count,
             version_mismatch={
                 "live_schema_version": live_version,
                 "expected_schema_version": SCHEMA_VERSION,

@@ -378,7 +378,7 @@ class MissionLoop:
                 outcome=BLOCKED_OUTCOME, step_id=step_id, run_id=run_id,
                 reason=f"{role} session blocked: {result.error_class or result.status}",
             )
-        if result.status != COMPLETED and result.error_class != "evidence_mismatch":
+        if result.status != COMPLETED:
             verdict_id = f"verdict-{uuid.uuid4().hex[:12]}"
             start_verification(
                 self.database,

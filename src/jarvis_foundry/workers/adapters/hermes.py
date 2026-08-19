@@ -29,6 +29,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from ...clock import isoformat, utc_now
+from ...paths import LiveHermesPath
 from ..contracts import WorkerStepContract
 from ..envelope import (
     COMPLETED,
@@ -49,8 +50,8 @@ from ..result_contract import MISSING_RESULT_NOTE, ingest_result_claim, result_e
 
 
 class HermesWorkerAdapter:
-    LIVE_HERMES = Path(r"C:\Users\b\AppData\Local\hermes\hermes-agent")
-    LIVE_HERMES_HOME = Path(r"C:\Users\b\AppData\Local\hermes")
+    LIVE_HERMES = LiveHermesPath(checkout=True)
+    LIVE_HERMES_HOME = LiveHermesPath(checkout=False)
 
     #: Router provider names -> Hermes CLI canonical provider ids (verified
     #: against the .h checkout: "opencode_go" is not a CLI alias).

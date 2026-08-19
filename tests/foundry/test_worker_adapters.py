@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -33,14 +34,14 @@ def test_hermes_adapter_disabled_by_default(tmp_path):
 
 
 def test_hermes_adapter_refuses_live_installation(tmp_path):
-    live = Path(r"C:\Users\b\AppData\Local\hermes\hermes-agent")
+    live = HermesWorkerAdapter.LIVE_HERMES
     with pytest.raises(Exception):
         HermesWorkerAdapter(
             hermes_root=live, hermes_home=tmp_path / "home", enabled=True)
 
 
 def test_hermes_adapter_refuses_live_home(tmp_path):
-    live_home = Path(r"C:\Users\b\AppData\Local\hermes")
+    live_home = HermesWorkerAdapter.LIVE_HERMES_HOME
     with pytest.raises(Exception):
         HermesWorkerAdapter(
             hermes_root=tmp_path, hermes_home=live_home / "sub-probe",
@@ -541,7 +542,7 @@ def test_stack_wires_cli_stop_and_pid_table_onto_hermes_adapter(tmp_path):
     database.initialize()
     cfg = WorkerRuntimeConfig(
         hermes={"enabled": True, "root": str(tmp_path),
-                "timeout_seconds": 0, "python_exe": "python"},
+                "timeout_seconds": 0, "python_exe": sys.executable},
         stop_sentinel_path="foundry/EMERGENCY_STOP",
         runtime_state_root=str(tmp_path / "state"),
     )

@@ -1,3 +1,13 @@
+# TEMPLATE / HISTORICAL — NOT LOADED BY PRODUCTION.
+#
+# Role: EXPLICIT TEMPLATE
+# Authority: jarvis_foundry.runtime.authority (FOUNDRY_YAML_ROLE = TEMPLATE)
+# Production never consults this file. Values below are historical examples
+# from the original V1 checkout and MUST NOT be treated as live defaults.
+#
+# Live precedence: CLI > environment > installed foundry-profile.yaml >
+# worker runtime YAML > deterministic defaults.
+#
 foundry:
   enabled: false
   version: v1
@@ -17,8 +27,8 @@ foundry:
     independent_from_hermes: true
     startup_install_ready: false
   hermes:
-    home: C:\Users\b\AppData\Local\hermes
-    live_checkout: C:\Users\b\AppData\Local\hermes\hermes-agent
+    home: TEMPLATE_NOT_LIVE
+    live_checkout: TEMPLATE_NOT_LIVE
     development_checkout: .h
     development_checkout_purpose: isolated_hermes_source_and_adapter_work
     v1_proving_resource: false
@@ -28,7 +38,7 @@ foundry:
     proving_mission: not_selected
     selection_contract: docs/architecture/04_V1_ACCEPTANCE_GATE.md
   obsidian:
-    vault_path: C:\Users\b\Blendi
+    vault_path: TEMPLATE_NOT_LIVE
     v1_write_root: JARVIS\V1
     write_ready: false
   external_actions: not_ready_until_capability_tested

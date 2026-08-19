@@ -19,6 +19,13 @@ jarvis = "jarvis_foundry.cli.main:main"
 where = ["src"]
 
 [tool.pytest.ini_options]
+# FAST = default development suite. FULL is never this default.
+# FAST: pytest tests/foundry
+# FULL: pytest tests/foundry tests/convergence
 testpaths = ["tests/foundry"]
 addopts = "-q"
+
+[tool.jarvis.tests]
+fast = ["tests/foundry"]
+full = ["tests/foundry", "tests/convergence"]
 

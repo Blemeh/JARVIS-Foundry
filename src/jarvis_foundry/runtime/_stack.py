@@ -21,6 +21,7 @@ from ..workers.adapters.registry import WorkerRegistry
 from ..workers.mission_bridge import HybridWorkerRoleAdapter
 from ..workers.router import READY, NOT_READY, WorkerRouter
 from .config import WorkerRuntimeConfig
+from .authority import require_existing_executable
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,6 +72,8 @@ def build_worker_stack(
         root = Path(str(hermes.get("root", ".h"))).expanduser()
         if not root.is_absolute():
             root = Path.cwd() / root
+        python_exe = require_existing_executable(
+            hermes.get("python_exe"), kind="hermes python")
         registry.register(
             "hermes",
             HermesWorkerAdapter(
@@ -78,9 +81,7 @@ def build_worker_stack(
                 hermes_home=home,
                 enabled=True,
                 timeout_seconds=int(hermes.get("timeout_seconds", 900)),
-                python_exe=str(hermes.get(
-                    "python_exe",
-                    r"C:\Users\b\AppData\Local\hermes\hermes-agent\venv\Scripts\python.exe")),
+                python_exe=str(python_exe),
                 stop_path=stop_path,
                 pid_table=pid_table,
                 workers=workers,
@@ -92,9 +93,7 @@ def build_worker_stack(
     if openhands.get("enabled", False):
         data_dir = run_root / "openhands-data"
         data_dir.mkdir(parents=True, exist_ok=True)
-        exe = Path(str(openhands.get("exe", ""))).expanduser()
-        if not exe.is_absolute():
-            exe = Path.cwd() / exe
+        exe = require_existing_executable(openhands.get("exe"), kind="openhands")
         registry.register(
             "openhands",
             OpenHandsWorkerAdapter(

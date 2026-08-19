@@ -133,6 +133,18 @@ class FoundryDatabase:
             rows = connection.execute("SELECT * FROM events ORDER BY sequence").fetchall()
         return [self._row_to_event(row) for row in rows]
 
+    def event_count(self, *, readonly: bool = False, event_type: str | None = None) -> int:
+        """Row count without materializing the ledger."""
+        with self.connect(readonly=readonly) as connection:
+            if event_type is None:
+                row = connection.execute("SELECT COUNT(*) FROM events").fetchone()
+            else:
+                row = connection.execute(
+                    "SELECT COUNT(*) FROM events WHERE event_type = ?",
+                    (event_type,),
+                ).fetchone()
+        return int(row[0])
+
     def rebuild_projections(self) -> int:
         with self.transaction() as connection:
             rows = connection.execute("SELECT * FROM events ORDER BY sequence").fetchall()

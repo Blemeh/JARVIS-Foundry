@@ -88,7 +88,7 @@ def create_restore_point(
     target = points_dir / f"{point_id}.db"
     database.backup_to(target)
     digest = _file_sha256(target)
-    event_count = len(database.events())
+    event_count = database.event_count()
     database.append(Event.create(
         "restore.point_created",
         {"point_id": point_id, "label": label, "path": str(target),
@@ -137,7 +137,7 @@ def data_loss_analysis(database: FoundryDatabase, point_id: str
     """Report (never execute) what restoring the point would discard:
     event-count delta + per-table row deltas."""
     row = _point_meta(database, point_id)
-    current = len(database.events())
+    current = database.event_count()
     point_events = int(row["event_count"])
     connection = sqlite3.connect(
         f"file:{Path(str(row['path'])).as_posix()}?mode=ro", uri=True)
@@ -227,7 +227,7 @@ def restore_from_point(
              "missing, or schema-incompatible) — restore refused")
     row = _point_meta(database, point_id)
     analysis = data_loss_analysis(database, point_id)
-    before = len(database.events())
+    before = database.event_count()
     try:
         restored = database.restore_from(Path(str(row["path"])))
     except (sqlite3.DatabaseError, OSError) as exc:

@@ -29,6 +29,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from ..clock import isoformat, utc_now
+from ..paths import LiveHermesPath
 from .manifest import ContextManifest
 from .results import (
     BLOCKED,
@@ -160,9 +161,9 @@ class HermesOneshotAdapter:
     """
 
     #: live Hermes installation root (never a valid hermes_root)
-    LIVE_HERMES = Path(r"C:\Users\b\AppData\Local\hermes\hermes-agent")
+    LIVE_HERMES = LiveHermesPath(checkout=True)
     #: live Hermes profile/home (never a valid hermes_home for a role session)
-    LIVE_HERMES_HOME = Path(r"C:\Users\b\AppData\Local\hermes")
+    LIVE_HERMES_HOME = LiveHermesPath(checkout=False)
 
     #: Router provider names -> Hermes CLI canonical provider ids. Verified
     #: 2026-08-12 against the .h checkout's hermes_cli/models.py

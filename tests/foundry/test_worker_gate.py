@@ -257,7 +257,7 @@ def test_h16_no_canonical_scope_escape(tmp_path):
 
 
 def test_h17_no_live_hermes_mutation():
-    live_home = Path(r"C:\Users\b\AppData\Local\hermes")
+    live_home = HermesWorkerAdapter.LIVE_HERMES_HOME
     try:
         HermesWorkerAdapter(
             hermes_root=Path("."), hermes_home=live_home / "probe",

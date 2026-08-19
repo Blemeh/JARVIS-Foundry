@@ -4,10 +4,12 @@ import sys
 import uuid
 from pathlib import Path
 
+from ..clock import utc_now
 from ..database import FoundryDatabase
 from ..events import Event
 from ..reconcile import inspect as inspect_ledger
 from ..reconcile import reconcile
+from ..runtime.authority import ALLOWED_TRUST_STATES
 from .estop import EmergencyStop
 from .leases import LeaseManager, LeaseUnavailable
 from .worker import WorkerController
@@ -28,6 +30,7 @@ class Supervisor:
         workers: WorkerController | None = None,
         spawn_worker_loop: bool = False,
         worker_loop_config: str | Path | None = None,
+        ledger_heartbeat_seconds: int = 60,
     ) -> None:
         self.database = database
         self.estop = EmergencyStop(stop_path)
@@ -39,6 +42,7 @@ class Supervisor:
         self.spawn_worker_loop = spawn_worker_loop
         self.worker_loop_config = (
             Path(worker_loop_config) if worker_loop_config is not None else None)
+        self.ledger_heartbeat_seconds = ledger_heartbeat_seconds
 
     def start(self) -> str:
         self.database.initialize()
@@ -90,20 +94,48 @@ class Supervisor:
             return "FROZEN"
         self._maybe_spawn_worker_loop()
         self._reap_and_recover()
-        payload = {"instance_id": self.instance_id, "trust_state": "LAB"}
+        payload = {
+            "instance_id": self.instance_id,
+            "trust_state": self._preserved_trust(),
+        }
         if reaped:
             payload["reaped_workers"] = reaped
+        key = self._heartbeat_idempotency_key(reaped)
         self.database.append(Event.create(
             "supervisor.heartbeat", payload,
             source_type="supervisor", source_id=self.instance_id,
+            idempotency_key=key,
         ))
         return "RUNNING"
+
+    def _preserved_trust(self) -> str:
+        """Heartbeats are not a trust gate. Never promote to TRUSTED_AUTONOMOUS."""
+        trust = "LAB"
+        try:
+            with self.database.connect() as connection:
+                row = connection.execute(
+                    "SELECT trust_state FROM supervisor_state WHERE singleton = 1"
+                ).fetchone()
+            if row is not None and row["trust_state"] in ALLOWED_TRUST_STATES:
+                trust = str(row["trust_state"])
+        except Exception:  # noqa: BLE001 — fail closed to LAB
+            trust = "LAB"
+        return trust
+
+    def _heartbeat_idempotency_key(self, reaped: list | tuple | None) -> str:
+        """Coalesce non-material heartbeats; keep reap events distinct."""
+        if self.ledger_heartbeat_seconds <= 0:
+            return str(uuid.uuid4())
+        bucket = int(utc_now().timestamp() // self.ledger_heartbeat_seconds)
+        reap_token = ",".join(str(item) for item in (reaped or ()))
+        return f"supervisor.heartbeat:{self.instance_id}:{bucket}:{reap_token or 'ok'}"
 
     def stop(self) -> None:
         if self.started:
             self.workers.terminate_all()
             self.database.append(Event.create(
-                "supervisor.stopped", {"instance_id": self.instance_id, "trust_state": "LAB"},
+                "supervisor.stopped",
+                {"instance_id": self.instance_id, "trust_state": self._preserved_trust()},
                 source_type="supervisor", source_id=self.instance_id,
             ))
             self.leases.release(self.LEASE_KEY, self.instance_id)
@@ -202,7 +234,9 @@ class Supervisor:
             "database": str(self.database.path),
             "database_quick_check": self.database.quick_check(readonly=True),
             "emergency_stop": self.estop.active(),
-            "event_count": len(self.database.events(readonly=True)),
+            "event_count": self.database.event_count(readonly=True),
+            "heartbeat_count": self.database.event_count(
+                readonly=True, event_type="supervisor.heartbeat"),
             "hermes_required_for_supervisor": False,
             "reconciliation": inspect_ledger(self.database).to_json(),
             "active_workers": self.workers.active_runs(readonly=True),

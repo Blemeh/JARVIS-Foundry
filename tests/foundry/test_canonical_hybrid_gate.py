@@ -61,7 +61,7 @@ def test_2_canonical_mission_state_ownership():
 
 def test_3_hermes_isolation():
     from jarvis_foundry.workers.adapters.hermes import HermesWorkerAdapter
-    live = Path(r"C:\Users\b\AppData\Local\hermes\hermes-agent")
+    live = HermesWorkerAdapter.LIVE_HERMES
     try:
         HermesWorkerAdapter(hermes_root=live, hermes_home=Path("."),
                             enabled=True)
@@ -232,7 +232,7 @@ def test_15_preservation_of_unrelated_owner_state():
 
 def test_16_no_live_hermes_mutation():
     from jarvis_foundry.workers.adapters.hermes import HermesWorkerAdapter
-    live_home = Path(r"C:\Users\b\AppData\Local\hermes")
+    live_home = HermesWorkerAdapter.LIVE_HERMES_HOME
     try:
         HermesWorkerAdapter(hermes_root=Path("."), hermes_home=live_home,
                             enabled=True)

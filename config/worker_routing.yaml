@@ -19,7 +19,9 @@ capability: "write_registered_worktree_files"
 provider: "opencode_go"
 model: "deepseek-v4-flash"
 
-runtime_state_root: "var/worker-runtime"
+# Machine-local executable coordinates (not code defaults). Missing files
+# fail closed in build_worker_stack; they are never guessed from a developer
+# checkout. Live spawn_worker_loop remains default OFF.
 
 hermes:
   enabled: true              # proven live: isolated .h + disposable home

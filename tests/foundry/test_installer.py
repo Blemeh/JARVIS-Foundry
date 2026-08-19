@@ -413,14 +413,15 @@ def test_worker_loop_install_uninstall_scope_is_separate_and_disabled(
     assert (worker.foundry_home / WORKER_PROFILE_FILE).exists()
     assert all(V1_TASK_NAME not in call for call in calls)
 
-    with pytest.raises(InstallerError, match="config is disabled"):
+    with pytest.raises(InstallerError, match="no production authority"):
         worker.set_enabled(True)
     config.write_text(
         "enabled: true\nprovider: opencode_go\nmodel: deepseek-v4-flash\n",
         encoding="utf-8",
     )
-    enabled = worker.set_enabled(True)
-    assert enabled["task_state"] == "Ready"
+    with pytest.raises(InstallerError, match="no production authority"):
+        worker.set_enabled(True)
+    assert worker.status()["task_state"] == "Disabled"
 
     gone = worker.uninstall()
     assert gone["installed"] is False

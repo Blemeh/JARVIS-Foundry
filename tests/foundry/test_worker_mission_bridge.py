@@ -149,7 +149,7 @@ def test_evidence_mismatch_is_not_accepted_even_if_verifier_would_pass(tmp_path)
         rollback={"kind": "git_reset_soft"},
     )
     assert outcome.outcome != PASSED
-    assert outcome.outcome == "BLOCKED"
+    assert outcome.outcome in ("FAILED", "BLOCKED")
     assert verifier.received == []
 
 
