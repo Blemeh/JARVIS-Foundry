@@ -9,7 +9,7 @@ for "what exists now" claims; the architecture contract wins for binding invaria
 Last reconciled: 2026-08-19 (exact-head convergence evidence reconciliation; legacy evidence preserved)
 
 ```text
-CURRENT CANONICAL HEAD:      d1c4813 (main; current promoted docs-only
+CURRENT CANONICAL HEAD:      65bc25e (main; current promoted docs-only
                              descendant; local==origin)
 TESTED SOURCE HEAD:          2af8191 (exact source head for the 1243-test full
                              suite; docs-only audit commits follow)
