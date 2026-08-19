@@ -4,7 +4,7 @@ Single authoritative capability status. Classifications:
 `IMPLEMENTED_AND_PROVEN` · `IMPLEMENTED_UNPROVEN` · `PARTIAL` · `MISSING` · `SUPERSEDED`.
 
 Evidence roots: `docs/evidence/`, `evidence/`, git history, live runtime state.
-Current HEAD reference: `1a58b8b` (docs-only promoted descendant of tested
+Current HEAD reference: `5d16fe6` (docs-only promoted descendant of tested
 source head `84a22b4`; fresh current-head convergence evidence is in
 `docs/convergence/`; the deployed runtime remains the separately frozen `c60db92`).
 
@@ -15,7 +15,7 @@ source head `84a22b4`; fresh current-head convergence evidence is in
 | R7 goals, portfolio, research, provenance, lineage, honest waiting | mission/evolution/discovery/knowledge surfaces | `CONVERGENCE_CURRENT_HEAD_JUNIT.xml` (R7 gates) | `IMPLEMENTED_AND_PROVEN` | live provider research and elapsed proving remain `WAITING` |
 | R8 inspect, dispatch, evidence, verify, repair, reconcile, continue | Hybrid Workers + mission loop + runtime worker loop | R8 convergence gate and disposable deployment/restore canary | `IMPLEMENTED_AND_PROVEN` | live worker-loop activation remains `DISABLED` |
 | R9 capability lifecycle, scope, credential/financial denial, effects | capabilities, connectors, capability broker | R9 gate plus focused redaction tests | `IMPLEMENTED_AND_PROVEN` | real external effects remain `NOT_TESTED` |
-| R10 command center, durable controls, EN/SQ briefing semantics | command center, broker, briefings, `convergence/briefings_l10n.py` | R10 gates and local controls evidence | `IMPLEMENTED_AND_PROVEN` | live voice/provider and visual inspection remain `NOT_TESTED` |
+| R10 command center, durable controls, EN/SQ briefing semantics | command center, broker, briefings, `convergence/briefings_l10n.py` | R10 gates, local controls, and disposable accessibility audit | `IMPLEMENTED_AND_PROVEN` | live voice/provider and production UI inspection remain `NOT_TESTED` |
 | R11 governed evolution and Supervisor authority | canonical `evolution/**` and `supervisor/authority.py` | R11 authority/evolution gates | `IMPLEMENTED_AND_PROVEN` | live elapsed promotions remain `WAITING` |
 | R12 fault, freeze, rollback, restore | integrated rollback and adapted fault campaign | R12 gate, restore canary, independent verifier | `IMPLEMENTED_AND_PROVEN` | physical/unavailable-provider rows remain `NOT_TESTED/BLOCKED` |
 

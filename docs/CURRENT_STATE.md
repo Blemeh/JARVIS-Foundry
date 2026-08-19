@@ -149,7 +149,7 @@ browser substrate, and it cannot activate native desktop execution.
 | JARVIS Eyes Phase 2 | PASS — 20/20 faults, rollback/live probe, read-only boundary |
 | Workflow Discovery Phase 3 | PASS — 36/36 focused, F1–F25, bounded probe, independent review |
 | Procedural Learning Phase 4 | PASS — 23/23 focused, F1–F24, artifact-byte tamper, zero-effect shadow, local browser probe, rollback, fresh independent review |
-| Post-V7 canonical convergence (R7–R12 semantic closure) | PASS_WITH_BOUNDARY — exact Supervisor authority across low-level evolution/control surfaces; focused gates and the 1,260-test current-source suite pass; isolated promotion and post-promotion runtime probe PASS; live/provider/elapsed boundaries remain explicit |
+| Post-V7 canonical convergence (R7–R12 semantic closure) | PASS_WITH_BOUNDARY — exact Supervisor authority across low-level evolution/control surfaces; focused gates and the 1,260-test current-source suite pass; isolated promotion, post-promotion runtime probe, and disposable local accessibility audit PASS; live/provider/elapsed boundaries remain explicit |
 | R10 authenticated mission-directive consumer | PASS_WITH_BOUNDARY — nonce-bound REPRIORITIZE/REDIRECT reaches the existing MissionLoop path; 26 focused tests and fresh verifier PASS; live Supervisor/Hermes/provider dispatch remains NOT_TESTED |
 | R10 exactly-once replay repair | PASS — ordinary mission instructions preserve the caller manifest hash; authenticated REDIRECT remains canonical; 36 focused tests and the 1,260-test current-source suite PASS |
 
@@ -164,13 +164,13 @@ browser substrate, and it cannot activate native desktop execution.
 
 - Distributed/multi-machine operation — NOT implemented (single host).
 - Semantic (embedding-based) recall/dedup/contradiction detection — lexical/negation only; hook reserved.
-- Voice/dashboard surfaces beyond the command-center control layer — limited.
+- Voice/dashboard surfaces beyond the command-center control layer — limited; disposable local Command Center accessibility audit PASS, live voice and production UI remain unproven.
 - Provider diversity for verification — currently single-family (recorded per round as INDEPENDENCE: REDUCED where applicable).
 - Continuous workflow mining, learned computer execution, native desktop replay,
   and audio-driven workflow discovery — explicitly not active; Phase 5/6 remain locked.
 - Scanner patterns are configuration (defense-in-depth, not proof).
 - Rollback strategy is RESTORE-FROM-BACKUP for schema v33 (no reverse migration; by design).
-- The prior canonical R2 proving window on f37f852 is durably SUSPENDED. The exact current-release R3 proving window is active and WAITING_ELAPSED against source c60db92, with a fresh Supervisor restart, read-only monitor, 0/10 verified post-start missions, and all external/provider/voice/physical boundaries explicitly NOT_TESTED or BLOCKED.
+- The prior canonical R2 proving window on f37f852 is durably SUSPENDED. The exact current-release R3 proving window is active and WAITING_ELAPSED against source c60db92, with a fresh Supervisor restart, read-only monitor, 0/10 verified post-start missions, local accessibility PASS, and all external/provider/voice/physical boundaries explicitly NOT_TESTED or BLOCKED.
 - The worker-loop activation package is source-verified and pushed, but its live task remains disabled; this does not restart or promote the c60db92 proving release.
 
 ## Documentation rules (anti-staleness)

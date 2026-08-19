@@ -54,6 +54,6 @@ untouched, and `OWNER_REDIRECT_R6_DEFERRED` unchanged.
 
 The current source can prove bounded local semantics and disposable recovery.
 Live schema migration, worker-loop activation, external provider/connectors,
-live voice/interface inspection, and real elapsed proving remain honest
+live voice/provider and production-interface inspection, and real elapsed proving remain honest
 `NOT_TESTED`, `WAITING`, or `BLOCKED` boundaries until independently reproduced
 against the exact promoted release.
