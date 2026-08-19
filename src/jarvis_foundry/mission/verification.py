@@ -60,10 +60,13 @@ def record_verification_outcome(
     reason: str | None = None,
     blocking_dependency: str | None = None,
 ) -> None:
-    """Record the terminal outcome (PASS / FAIL / BLOCKED) for a verdict."""
-    if outcome not in ("PASS", "FAIL", "BLOCKED"):
+    """Record the terminal outcome (PASS / FAIL / BLOCKED / NOT_TESTED)."""
+    if outcome not in ("PASS", "FAIL", "BLOCKED", "NOT_TESTED"):
         raise ValueError(f"invalid verification outcome: {outcome!r}")
-    event_suffix = {"PASS": "passed", "FAIL": "failed", "BLOCKED": "blocked"}[outcome]
+    event_suffix = {
+        "PASS": "passed", "FAIL": "failed", "BLOCKED": "blocked",
+        "NOT_TESTED": "not_tested",
+    }[outcome]
     event_type = f"verification.{event_suffix}"
     payload: dict[str, Any] = {
         "verdict_id": verdict_id,

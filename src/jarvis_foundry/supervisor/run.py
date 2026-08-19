@@ -204,6 +204,12 @@ def build_parser() -> argparse.ArgumentParser:
                              "review deleg_acbc8ce5)")
     parser.add_argument("--once", action="store_true",
                         help="run a single start+heartbeat cycle and exit")
+    parser.add_argument(
+        "--spawn-worker-loop", action="store_true", default=False,
+        help="Supervisor-owned worker_loop --once (default OFF)")
+    parser.add_argument(
+        "--worker-loop-config", type=Path, default=None,
+        help="worker runtime YAML used only when --spawn-worker-loop is set")
     return parser
 
 
@@ -213,7 +219,11 @@ def main(argv: list[str] | None = None) -> int:
 
     paths = FoundryPaths.discover(getattr(args, "home", None))
     database = FoundryDatabase(paths.database)
-    supervisor = Supervisor(database, paths.emergency_stop)
+    supervisor = Supervisor(
+        database, paths.emergency_stop,
+        spawn_worker_loop=bool(getattr(args, "spawn_worker_loop", False)),
+        worker_loop_config=getattr(args, "worker_loop_config", None),
+    )
     console_handler = make_console_handler(supervisor)
     console_handler.install()
 

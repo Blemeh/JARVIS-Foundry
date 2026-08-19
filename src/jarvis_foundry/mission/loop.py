@@ -32,7 +32,7 @@ from ..domain import ActionEnvelope
 from ..events import Event
 from ..roles.adapter import RoleAdapter
 from ..roles.dispatcher import RoleDispatcher
-from ..roles.results import COMPLETED
+from ..roles.results import BLOCKED, COMPLETED, FAILED
 from ..roles.router import RoleRouter
 from ..supervisor.leases import LeaseManager
 from .commit import CommitError, commit_after_pass
@@ -117,6 +117,50 @@ class MissionLoop:
 
     def _stop_reason(self) -> str | None:
         return emergency_stop_reason(self.database, self.stop_path)
+
+    @staticmethod
+    def _pass_requires_jarvis_predicate(
+        *,
+        target: Path,
+        expected_artifacts: tuple[str, ...],
+    ) -> str | None:
+        """Model PASS is insufficient: JARVIS must see an artifact predicate."""
+        if expected_artifacts:
+            missing = []
+            root = target if target.is_dir() else target.parent
+            for rel in expected_artifacts:
+                candidate = Path(rel)
+                path = candidate if candidate.is_absolute() else root / rel
+                if not path.exists():
+                    missing.append(rel)
+            if missing:
+                return "expected artifacts missing: " + ", ".join(missing)
+            return None
+        if target.is_file():
+            return None
+        hashes = _hash_target(target)
+        if hashes:
+            return None
+        return "model PASS is not backed by a JARVIS-owned artifact predicate"
+
+    def _repair_or_block(
+        self, *, mission_id: str, step_id: str, run_id: str, verdict_id: str,
+        findings: list[str], reason: str,
+    ) -> StepOutcome:
+        repair_budget = self.max_repairs
+        fails = failed_verdict_count(self.database, mission_id, step_id)
+        if fails <= repair_budget:
+            self._advance(mission_id, "REPAIRING", run_id=run_id)
+            return StepOutcome(
+                outcome=FAILED, step_id=step_id, run_id=run_id,
+                verdict_id=verdict_id, reason=reason,
+            )
+        self._advance(mission_id, "BLOCKED", run_id=run_id)
+        return StepOutcome(
+            outcome=BLOCKED_OUTCOME, step_id=step_id, run_id=run_id,
+            verdict_id=verdict_id,
+            reason=f"repair budget exhausted ({fails} failed verdicts > {repair_budget})",
+        )
 
     # -- durable helpers ----------------------------------------------------
 
@@ -328,10 +372,40 @@ class MissionLoop:
             forbidden_paths=forbidden_paths,
             attempt=attempt,
         )
-        if result.status != COMPLETED or result.error_class == "evidence_mismatch":
+        if result.status == BLOCKED:
             self._advance(mission_id, "BLOCKED", run_id=run_id)
             return StepOutcome(
                 outcome=BLOCKED_OUTCOME, step_id=step_id, run_id=run_id,
+                reason=f"{role} session blocked: {result.error_class or result.status}",
+            )
+        if result.status != COMPLETED and result.error_class != "evidence_mismatch":
+            verdict_id = f"verdict-{uuid.uuid4().hex[:12]}"
+            start_verification(
+                self.database,
+                verdict_id=verdict_id,
+                mission_id=mission_id,
+                step_id=step_id,
+                builder_run_id=run_id,
+                verifier_run_id=f"{run_id}-crash",
+                independence={
+                    "builder_provider": result.provider,
+                    "verifier_provider": "jarvis",
+                    "provider_diverse": True,
+                    "same_provider_limitation": "",
+                },
+                criteria=criteria,
+            )
+            record_verification_outcome(
+                self.database, verdict_id=verdict_id, outcome="FAIL",
+                findings=list(result.evidence) or [result.error_detail or result.status],
+                evidence={"builder_run_id": run_id, "error_class": result.error_class},
+                repair_requirements=["recover partial worker mutation and re-verify"],
+                reason=f"{role} crashed or failed: {result.error_class or result.status}",
+            )
+            return self._repair_or_block(
+                mission_id=mission_id, step_id=step_id, run_id=run_id,
+                verdict_id=verdict_id,
+                findings=list(result.evidence),
                 reason=f"{role} session did not complete: {result.error_class or result.status}",
             )
 
@@ -411,6 +485,22 @@ class MissionLoop:
             attempt=attempt,
         )
         if verifier.status != COMPLETED:
+            if (verifier.error_class == "evidence_mismatch"
+                    or verifier.verdict == "FAIL"):
+                findings = list(verifier.evidence) or [
+                    verifier.error_detail or verifier.status]
+                record_verification_outcome(
+                    self.database, verdict_id=verdict_id, outcome="FAIL",
+                    findings=findings,
+                    evidence={"verifier_run_id": verifier_run_id},
+                    repair_requirements=["rebuild the step artifact and re-verify"],
+                    reason=verifier.error_detail or "verifier evidence mismatch",
+                )
+                return self._repair_or_block(
+                    mission_id=mission_id, step_id=step_id, run_id=run_id,
+                    verdict_id=verdict_id, findings=findings,
+                    reason=verifier.error_detail or "verifier evidence mismatch",
+                )
             record_verification_outcome(
                 self.database, verdict_id=verdict_id, outcome="BLOCKED",
                 findings=[], evidence={},
@@ -424,6 +514,22 @@ class MissionLoop:
             )
 
         if verifier.verdict == "PASS":
+            refused = self._pass_requires_jarvis_predicate(
+                target=target, expected_artifacts=expected_artifacts,
+            )
+            if refused or result.error_class == "evidence_mismatch":
+                reason = refused or (result.error_detail or "evidence reconciliation disagreed")
+                record_verification_outcome(
+                    self.database, verdict_id=verdict_id, outcome="FAIL",
+                    findings=[reason],
+                    evidence={"verifier_run_id": verifier_run_id, "reconciler": "disagree"},
+                    repair_requirements=["create the claimed artifact and re-verify"],
+                    reason=reason,
+                )
+                return self._repair_or_block(
+                    mission_id=mission_id, step_id=step_id, run_id=run_id,
+                    verdict_id=verdict_id, findings=[reason], reason=reason,
+                )
             record_verification_outcome(
                 self.database, verdict_id=verdict_id, outcome="PASS",
                 findings=[], evidence={"verifier_run_id": verifier_run_id},
@@ -471,6 +577,27 @@ class MissionLoop:
                 commit_head=(commit_state or {}).get("commit_head"),
             )
 
+        if verifier.verdict != "FAIL":
+            recorded = verifier.verdict or "empty"
+            outcome = "NOT_TESTED" if recorded == "NOT_TESTED" else "BLOCKED"
+            if recorded not in ("NOT_TESTED", "BLOCKED"):
+                outcome = "BLOCKED"
+            record_verification_outcome(
+                self.database, verdict_id=verdict_id, outcome=outcome,
+                findings=list(verifier.evidence),
+                evidence={"verifier_run_id": verifier_run_id},
+                reason=(
+                    f"verifier verdict {recorded} is not a FAIL and must not "
+                    "consume repair budget"),
+                blocking_dependency=recorded,
+            )
+            self._advance(mission_id, "BLOCKED", run_id=run_id)
+            return StepOutcome(
+                outcome=BLOCKED_OUTCOME, step_id=step_id, run_id=run_id,
+                verdict_id=verdict_id,
+                reason=f"verifier {recorded}",
+            )
+
         # FAIL -> bounded repair or precise BLOCKED
         findings = list(verifier.evidence)
         record_verification_outcome(
@@ -479,19 +606,11 @@ class MissionLoop:
             evidence={"verifier_run_id": verifier_run_id},
             repair_requirements=["rebuild the step artifact and re-verify"],
         )
-        repair_budget = self.max_repairs
-        fails = failed_verdict_count(self.database, mission_id, step_id)
-        if fails <= repair_budget:
-            self._advance(mission_id, "REPAIRING", run_id=run_id)
-            return StepOutcome(
-                outcome=FAILED, step_id=step_id, run_id=run_id,
-                verdict_id=verdict_id, reason="; ".join(findings) or "verification failed",
-            )
-        self._advance(mission_id, "BLOCKED", run_id=run_id)
-        return StepOutcome(
-            outcome=BLOCKED_OUTCOME, step_id=step_id, run_id=run_id,
+        return self._repair_or_block(
+            mission_id=mission_id, step_id=step_id, run_id=run_id,
             verdict_id=verdict_id,
-            reason=f"repair budget exhausted ({fails} failed verdicts > {repair_budget})",
+            findings=findings,
+            reason="; ".join(findings) or "verification failed",
         )
 
     def run_until_settled(

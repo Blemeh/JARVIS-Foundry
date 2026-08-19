@@ -209,7 +209,7 @@ def test_authenticated_redirect_reaches_mission_loop_dispatch(tmp_path):
         directive_id="directive-r10-loop-redirect",
     )
 
-    adapter = FakeHermesAdapter()
+    adapter = FakeHermesAdapter(working_root=repository)
     outcome = MissionLoop(database, router, adapter, policy=policy).run_step(
         **step_kwargs())
 
@@ -414,7 +414,7 @@ def test_builder_session_failure_blocks_mission(tmp_path):
     outcome = loop.run_until_settled(**step_kwargs())
 
     assert outcome.outcome == BLOCKED_OUTCOME
-    assert "did not complete" in outcome.reason
+    assert "provider_unavailable" in (outcome.reason or "")
     mission = database.row("missions", "mission_id", "mission-1")
     assert mission["state"] == "BLOCKED"
 

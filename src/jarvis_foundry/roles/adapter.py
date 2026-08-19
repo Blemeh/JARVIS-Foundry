@@ -72,13 +72,34 @@ class FakeHermesAdapter:
         verdict: str = VERDICT_PASS,
         evidence: tuple[str, ...] = ("fake adapter ran the session",),
         error_class: str | None = None,
+        working_root: Path | None = None,
     ) -> None:
         self.fail_provider = fail_provider
         self.outcome = outcome
         self.verdict = verdict
         self.evidence = evidence
         self.error_class = error_class
+        self.working_root = Path(working_root) if working_root is not None else None
         self.received: list[ContextManifest] = []
+
+    def _write_owned_artifact(self, manifest: ContextManifest) -> None:
+        if self.outcome != COMPLETED or manifest.role == "verifier":
+            return
+        dests: list[Path] = []
+        if self.working_root is not None:
+            names = list(manifest.expected_artifacts) or ["result.txt"]
+            dests.extend(self.working_root / name for name in names)
+        text = manifest.instructions or ""
+        marker = " named report.md"
+        if marker in text:
+            token = text.split(marker, 1)[0].split()[-1]
+            dests.append(Path(token) / "report.md")
+        for path in dests:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            if not path.exists() or manifest.role == "repair":
+                path.write_text(
+                    "jarvis-owned-evidence\nVERIFIED_BY fake-adapter\n",
+                    encoding="utf-8")
 
     def dispatch(self, manifest: ContextManifest, *, heartbeat) -> RoleResult:
         self.received.append(manifest)
@@ -86,6 +107,7 @@ class FakeHermesAdapter:
             raise ProviderUnavailable(f"provider {self.fail_provider} unavailable (scripted)")
         heartbeat()
         if self.outcome == COMPLETED:
+            self._write_owned_artifact(manifest)
             return RoleResult(
                 run_id=manifest.run_id,
                 role=manifest.role,

@@ -541,8 +541,8 @@ class WorkerController:
                     pass
         return terminated
 
-    def active_runs(self) -> list[str]:
-        with self.database.connect() as connection:
+    def active_runs(self, *, readonly: bool = False) -> list[str]:
+        with self.database.connect(readonly=readonly) as connection:
             rows = connection.execute(
                 "SELECT lease_key FROM leases WHERE lease_key LIKE 'worker:%'"
             ).fetchall()

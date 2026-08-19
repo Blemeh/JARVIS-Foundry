@@ -423,6 +423,17 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
                 event.recorded_at, event.event_id, event.recorded_at, payload["verdict_id"],
             ),
         )
+    elif event.event_type == "verification.not_tested":
+        connection.execute(
+            """UPDATE verification_verdicts SET status = 'NOT_TESTED', verdict = 'NOT_TESTED',
+               blocking_dependency = ?, reason = ?, findings_json = ?,
+               issued_at = ?, last_event_id = ?, updated_at = ? WHERE verdict_id = ?""",
+            (
+                payload.get("blocking_dependency"), payload.get("reason"),
+                canonical_json(payload.get("findings", [])),
+                event.recorded_at, event.event_id, event.recorded_at, payload["verdict_id"],
+            ),
+        )
     elif event.event_type == "budget.allocation_recorded":
         connection.execute(
             """INSERT INTO budgets(

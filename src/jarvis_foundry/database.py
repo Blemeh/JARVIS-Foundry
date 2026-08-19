@@ -15,7 +15,6 @@ from .projections import apply_event, reset
 class FoundryDatabase:
     def __init__(self, path: str | Path) -> None:
         self.path = Path(path).expanduser().resolve()
-        self.path.parent.mkdir(parents=True, exist_ok=True)
 
     def connect(self, *, readonly: bool = False) -> sqlite3.Connection:
         """Open the ledger. ``readonly=True`` uses SQLite ``mode=ro`` and
@@ -29,6 +28,7 @@ class FoundryDatabase:
             connection = sqlite3.connect(
                 uri, uri=True, timeout=10, isolation_level=None)
         else:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
             connection = sqlite3.connect(
                 self.path, timeout=10, isolation_level=None)
         connection.row_factory = sqlite3.Row
@@ -40,6 +40,7 @@ class FoundryDatabase:
         return connection
 
     def initialize(self, target: int | None = None) -> int:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
             try:
@@ -127,8 +128,8 @@ class FoundryDatabase:
             results.append((int(cursor.lastrowid), True))
         return results
 
-    def events(self) -> list[Event]:
-        with self.connect() as connection:
+    def events(self, *, readonly: bool = False) -> list[Event]:
+        with self.connect(readonly=readonly) as connection:
             rows = connection.execute("SELECT * FROM events ORDER BY sequence").fetchall()
         return [self._row_to_event(row) for row in rows]
 
@@ -142,8 +143,8 @@ class FoundryDatabase:
                 apply_event(connection, event)
             return len(rows)
 
-    def quick_check(self) -> str:
-        with self.connect() as connection:
+    def quick_check(self, *, readonly: bool = False) -> str:
+        with self.connect(readonly=readonly) as connection:
             return str(connection.execute("PRAGMA quick_check").fetchone()[0])
 
     def verify_event_integrity(self) -> int:
