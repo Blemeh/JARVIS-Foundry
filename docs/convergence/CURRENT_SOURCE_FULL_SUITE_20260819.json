@@ -1,0 +1,55 @@
+{
+  "schema": "jarvis-current-source-full-suite-v1",
+  "status": "PASS",
+  "recorded_at": "2026-08-19T04:18:25+02:00",
+  "source": {
+    "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
+    "candidate_worktree": "C:/temp/JARVIS-R10-ReplayRepair-20260819",
+    "candidate_branch": "repair/r10-replay-manifest-20260819",
+    "tested_head": "93d23f50ea5858355c202cae7d4a5809ed7e245c",
+    "parent_head": "0812d8fa808a246caf6b08aaa3723b0d859506e2",
+    "changed_files": [
+      "src/jarvis_foundry/mission/loop.py",
+      "src/jarvis_foundry/mission/proposal.py"
+    ]
+  },
+  "execution": {
+    "command": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/.venv/Scripts/python.exe -m pytest -q -ra --junitxml=C:/temp/jarvis-current-r10-replay-repair-full-seed0.xml",
+    "working_directory": "C:/temp/JARVIS-R10-ReplayRepair-20260819",
+    "pythonpath": "C:/temp/JARVIS-R10-ReplayRepair-20260819/src",
+    "pythonhashseed": "0",
+    "junit_path": "C:/temp/jarvis-current-r10-replay-repair-full-seed0.xml",
+    "junit_sha256": "10B1EF6AA247D57240DFCBCC1AF39CC26620B7F219F0ACBDF14BD7829D44859E",
+    "duration_seconds": 582.867
+  },
+  "counts": {
+    "tests": 1248,
+    "passed": 1248,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "exit_code": 0
+  },
+  "repair_scope": {
+    "finding": "R10-REPLAY-MANIFEST-CONFLICT-20260819",
+    "root_cause": "MissionLoop rewrote ordinary caller instructions with durable next_action text, changing the provider manifest hash and causing exactly-once replay conflicts.",
+    "fix": "Proposal records a successfully authenticated unblocked REDIRECT; MissionLoop prefixes provider instructions only for that redirect and preserves ordinary caller instructions.",
+    "focused_verifier": {
+      "agent": "/root/r10_replay_repair_verifier_luna",
+      "status": "PASS_WITH_BOUNDARY",
+      "provider": "commandcode",
+      "model": "deepseek-v4-flash",
+      "route": "router_commandcode_deepseek_v4_flash",
+      "transport": "local candidate filesystem",
+      "tests": 36,
+      "live_provider": "NOT_TESTED"
+    }
+  },
+  "reproducibility_note": "An earlier unrestricted-hash run produced one unrelated test failure from a modulo-100000 temporary SQLite filename collision in test_knowledge_claims.py. The failed test passed in isolation; this certification uses PYTHONHASHSEED=0 and the complete suite passed.",
+  "boundaries": [
+    "No live provider request was made.",
+    "Supervisor and proving-window runtime were not restarted or modified.",
+    "R6 remains OWNER_REDIRECT_R6_DEFERRED.",
+    "Remaster and Eyes worktrees remain preserved and untouched."
+  ]
+}

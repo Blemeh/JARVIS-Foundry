@@ -2,34 +2,36 @@
   "schema": "jarvis-post-v7-canonical-convergence-state-v2",
   "program": "JARVIS Post-V7 Remaster",
   "current_stage": "POST_PROMOTION_PROVING",
-  "current_slice": "Canonical executable source f37f852 remains loaded in the fresh Supervisor; deployed R10/R11 evidence remains anchored at 6a5d397, while current canonical main 1846998 includes the bounded nonce-bound R10 REPRIORITIZE/REDIRECT consumer and reconciled convergence evidence. The R11 proof records three subprocess-backed cycles, two promotions (R1 and R2 canary), one frozen non-promotion, one separately verified broken-candidate rejection, and rollback/acceptance evidence. The exact R2 release proving window remains WAITING_ELAPSED at the latest reconciled checkpoint; external providers/effects, live evolution consumption, voice, deployment, and elapsed proving remain honest WAITING/NOT_TESTED; prior full-suite evidence remains anchored to tested source 2af8191 and is not silently extended.",
+  "current_slice": "Canonical executable source f37f852 remains loaded in the fresh Supervisor; current canonical main now includes the bounded nonce-bound R10 consumer plus the exactly-once replay repair at 93d23f5. The R11 proof records three subprocess-backed cycles, two promotions (R1 and R2 canary), one frozen non-promotion, one separately verified broken-candidate rejection, and rollback/acceptance evidence. The exact R2 release proving window remains WAITING_ELAPSED at the latest reconciled checkpoint; external providers/effects, live evolution consumption, voice, deployment, and elapsed proving remain honest WAITING/NOT_TESTED. A fresh 1248-test current-source suite is PASS at 93d23f5; earlier 1243-test evidence remains historical and is not silently extended.",
   "r6_state": "OWNER_REDIRECT_R6_DEFERRED",
   "eyes_state": "OUT_OF_SCOPE_READ_ONLY",
   "canonical": {
     "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
     "branch": "main",
-    "head": "6a5d397a0491c59084c787547f6d799f7c5d7bb3",
-    "source_tree_verified_head": "6a5d397a0491c59084c787547f6d799f7c5d7bb3",
-    "origin_main": "6a5d397a0491c59084c787547f6d799f7c5d7bb3",
+    "head": "93d23f50ea5858355c202cae7d4a5809ed7e245c",
+    "source_tree_verified_head": "93d23f50ea5858355c202cae7d4a5809ed7e245c",
+    "origin_main": "93d23f50ea5858355c202cae7d4a5809ed7e245c",
     "deployed_tree": "dfb8489406b161113f1062600607eaeb0ab8aa6a",
     "repository_head": "4e2d0d2748650f24ab2deeaf932765e7a4e3ff81",
     "repository_tree": "fc6efdc26bf3397ba3b9f9744fa29d445c8dcb3c",
-    "current_repository_head": "1846998f8d838da475c6e8dbd71034bea6565a0d",
-    "current_repository_tree": "5ae83b84cf9ea6a1718287e0f176db858b440eca",
-    "current_origin_main": "1846998f8d838da475c6e8dbd71034bea6565a0d",
+    "current_repository_head": "93d23f50ea5858355c202cae7d4a5809ed7e245c",
+    "current_repository_tree": "259f669c34cdc604b968b975544c65f1cd8006d7",
+    "current_origin_main": "93d23f50ea5858355c202cae7d4a5809ed7e245c",
     "dirty_owner_docs_preserved": true,
     "current_full_suite": {
-      "path": "docs/convergence/CANONICAL_FULL_SUITE_20260819_EXACT_HEAD.json",
-      "sha256": "67F83923AE887C8D894CDB5086B4E1EFFFEC626C214ABC9761D770D8CA43724B",
-      "junit_path": "C:/temp/jarvis-current-2af-foundry.xml",
-      "junit_sha256": "2F25E745D58E50866B4E666D6708E712476BCEEA1633ECCD74610AE382664302",
-      "tests": 1243,
+      "path": "docs/convergence/CURRENT_SOURCE_FULL_SUITE_20260819.json",
+      "sha256": "BD296FF5F0CA753ECA621B0131E36FD9D59A4A54527A724C209572F1E54B13A8",
+      "junit_path": "C:/temp/jarvis-current-r10-replay-repair-full-seed0.xml",
+      "junit_sha256": "10B1EF6AA247D57240DFCBCC1AF39CC26620B7F219F0ACBDF14BD7829D44859E",
+      "tests": 1248,
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "pythonpath": "not_recorded_in_supplied_junit_evidence"
+      "pythonpath": "C:/temp/JARVIS-R10-ReplayRepair-20260819/src",
+      "pythonhashseed": "0",
+      "tested_head": "93d23f50ea5858355c202cae7d4a5809ed7e245c"
     },
-    "tested_head": "2af8191d2f400531cec76155e934caf4aa32a895",
+    "tested_head": "93d23f50ea5858355c202cae7d4a5809ed7e245c",
     "exact_head_audit": "docs/convergence/INDEPENDENT_SEMANTIC_CONVERGENCE_AUDIT_20260819.json",
     "final_audit": {
       "status": "PASS_WITH_BLOCKERS",
@@ -448,6 +450,14 @@
       ],
       "finding": "The first bounded live directive consumer accepted an owner-looking authenticated directive without proving the durable nonce-use path.",
       "resolution": "The consumer now requires the owner nonce-use event, canonical command hash, causation, and correlation linkage; a fresh verifier reproduced zero effects and zero interpreted events for the forged path."
+    },
+    {
+      "id": "R10-REPLAY-MANIFEST-CONFLICT-20260819",
+      "severity": "S1",
+      "status": "CLOSED_IN_REPAIR",
+      "evidence": "docs/convergence/CURRENT_SOURCE_FULL_SUITE_20260819.json",
+      "finding": "MissionLoop rewrote ordinary caller instructions with durable next_action text, changing the worker manifest hash and causing exactly-once replay conflicts during resume.",
+      "resolution": "Proposal now marks only a successfully authenticated, unblocked REDIRECT as redirected; ordinary actions preserve caller instructions, while redirected actions retain the canonical prefix. Fresh focused verification passed 36 tests and the current-source full suite passed 1248 tests."
     }
   ],
   "dispatches": [
@@ -843,14 +853,26 @@
       "candidate_head": "47233143a3cbc29f8148dec245e58f1975d24a28",
       "report": "docs/convergence/CURRENT_STATE_RECONCILIATION_VERIFIER_20260819.json",
       "scope": "read-only current-state docs, convergence state, R6/Eyes/Remaster preservation, and proving boundary"
+    },
+    {
+      "role": "R10 replay manifest repair fresh verifier",
+      "agent": "/root/r10_replay_repair_verifier_luna",
+      "provider_route": "router_commandcode_deepseek_v4_flash",
+      "provider_transport": "local candidate filesystem",
+      "provider": "commandcode",
+      "model": "deepseek-v4-flash",
+      "status": "COMPLETED_PASS_WITH_BOUNDARY",
+      "candidate_head": "93d23f50ea5858355c202cae7d4a5809ed7e245c",
+      "report": "docs/convergence/CURRENT_SOURCE_FULL_SUITE_20260819.json",
+      "scope": "read-only focused replay, mission-loop, R8/R10 regressions, compile, diff, and path-uniqueness inspection; no live provider or runtime mutation"
     }
   ],
   "promotion": {
-    "status": "R8_R9_R10_R11_R12_BOUNDED_VERIFIED_CURRENT_CANONICAL_FOCUSED_SOURCE_REPAIR_PASS_REPAIRED_R10_LOCAL_DIRECTIVE_CONSUMER_PASS_WITH_BOUNDARY_LIVE_CANARY_BLOCKED_PROVING_WAITING",
+    "status": "R8_R9_R10_R11_R12_BOUNDED_VERIFIED_CURRENT_CANONICAL_R10_REPLAY_REPAIR_PASS_CURRENT_SOURCE_FULL_SUITE_PASS_REPAIRED_R10_LOCAL_DIRECTIVE_CONSUMER_PASS_WITH_BOUNDARY_LIVE_CANARY_BLOCKED_PROVING_WAITING",
     "promotion_worktree": "C:/temp/JARVIS-Foundry-R8-PROMOTE",
-    "promotion_commit": "d1c48130397497dccf1f922233e1dc26b54a99dd",
-    "latest_evidence_commit": "1846998f8d838da475c6e8dbd71034bea6565a0d",
-    "promoted_head": "6a5d397a0491c59084c787547f6d799f7c5d7bb3",
+    "promotion_commit": "93d23f50ea5858355c202cae7d4a5809ed7e245c",
+    "latest_evidence_commit": "93d23f50ea5858355c202cae7d4a5809ed7e245c",
+    "promoted_head": "93d23f50ea5858355c202cae7d4a5809ed7e245c",
     "state_reconciliation_head": "4e2d0d2748650f24ab2deeaf932765e7a4e3ff81",
     "latest_live_canary": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_CANARY_20260818.json",
     "latest_repair_reconciliation": "docs/convergence/PROVING_WINDOW_REPAIR_RECONCILIATION_20260818.json",
@@ -864,7 +886,7 @@
     "latest_suspended_exact_release_window": "docs/convergence/PROVING_WINDOW_RUNTIME_START_CANONICAL_20260819.json",
     "latest_restart_canary": "docs/convergence/PROVING_WINDOW_RESTART_CANARY_20260818.json",
     "latest_repaired_live_canary": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_REPAIRED_CANARY_20260818.json",
-    "latest_full_suite": "docs/convergence/CANONICAL_FULL_SUITE_20260819_EXACT_HEAD.json",
+    "latest_full_suite": "docs/convergence/CURRENT_SOURCE_FULL_SUITE_20260819.json",
     "latest_r7_local_canary": "docs/convergence/R7_LOCAL_RESEARCH_CANARY_20260819.json",
     "latest_r7_poll_repair": "docs/convergence/R7_POLL_IDEMPOTENCY_REPAIR_20260819.json",
     "latest_r7_poll_concurrency_repair": "docs/convergence/R7_POLL_CONCURRENCY_REPAIR_20260819.json",
@@ -877,6 +899,7 @@
     "latest_r10_live_directive_consumer_commit": "aa753c0ad1f2d86abeaf5929d51e8992fa290990",
     "latest_state_reconciliation": "docs/convergence/CURRENT_STATE_RECONCILIATION_VERIFIER_20260819.json",
     "latest_state_reconciliation_commit": "47233143a3cbc29f8148dec245e58f1975d24a28",
+    "latest_r10_replay_repair": "docs/convergence/CURRENT_SOURCE_FULL_SUITE_20260819.json",
     "exact_head_audit": "docs/convergence/INDEPENDENT_SEMANTIC_CONVERGENCE_AUDIT_20260819.json",
     "final_audit": {
       "status": "PASS_WITH_BLOCKERS",
@@ -886,7 +909,7 @@
     "post_promotion_runtime_probe": "docs/convergence/LIVE_RUNTIME_PROBE_POST_PROMOTION.json",
     "rollback_bundle": "C:/temp/jarvis-convergence-pre-r3.bundle"
   },
-  "verifier_state": "R8_R9_R10_R11_R12_BOUNDED_GATES_VERIFIED_CURRENT_CANONICAL_FOCUSED_SOURCE_REPAIR_PASS_REPAIRED_R10_LOCAL_DIRECTIVE_CONSUMER_PASS_WITH_BOUNDARY_R11_LOCAL_CYCLE_PASS_WITH_BOUNDARY_LIVE_CANARY_BLOCKED_EXACT_SOURCE_PROVING_R2_WAITING_ELAPSED_CHECKPOINT_RECONCILIATION_PASS_WITH_BOUNDARY",
+  "verifier_state": "R8_R9_R10_R11_R12_BOUNDED_GATES_VERIFIED_CURRENT_CANONICAL_FOCUSED_SOURCE_REPAIR_PASS_REPAIRED_R10_LOCAL_DIRECTIVE_CONSUMER_PASS_WITH_BOUNDARY_R10_REPLAY_REPAIR_PASS_CURRENT_SOURCE_FULL_SUITE_PASS_R11_LOCAL_CYCLE_PASS_WITH_BOUNDARY_LIVE_CANARY_BLOCKED_EXACT_SOURCE_PROVING_R2_WAITING_ELAPSED_CHECKPOINT_RECONCILIATION_PASS_WITH_BOUNDARY",
   "blockers": [
     "R7 real monitored provider research NOT_TESTED/WAITING",
     "R9 real external connector/provider effects NOT_TESTED/WAITING",

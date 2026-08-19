@@ -6,22 +6,22 @@ every promotion/remaster mission (see `docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.
 If this document and another current-status document disagree, THIS document wins
 for "what exists now" claims; the architecture contract wins for binding invariants.
 
-Last reconciled: 2026-08-19 (R10 directive-consumer forward-port and exact-head evidence reconciliation; legacy evidence preserved)
+Last reconciled: 2026-08-19 (R10 replay-manifest repair, current-source full-suite certification, and exact-head evidence reconciliation; legacy evidence preserved)
 
 ```text
-CURRENT CANONICAL HEAD:      1846998 (main; R10 directive-consumer
-                             forward-port; local==origin)
-TESTED SOURCE HEAD:          2af8191 (exact source head for the 1243-test full
-                             suite; docs-only audit commits follow)
-LATEST R10 FOCUSED SOURCE:   aa753c0 (authenticated nonce-bound
-                             REPRIORITIZE/REDIRECT consumer; 26 focused tests;
-                             live provider dispatch remains NOT_TESTED)
+CURRENT CANONICAL HEAD:      93d23f5 (main; R10 replay-manifest repair on top
+                             of the authenticated directive consumer; local==origin)
+TESTED SOURCE HEAD:          93d23f5 (exact source head for the deterministic
+                             1248-test full suite; docs-only audit commits follow)
+LATEST R10 FOCUSED SOURCE:   93d23f5 (authenticated nonce-bound
+                             REPRIORITIZE/REDIRECT consumer plus exactly-once
+                             replay repair; live provider dispatch remains NOT_TESTED)
 LETTA PROMOTION ANCESTOR:    2f7360e742559e051109e04ef7f3a82cc64cc2d2 (still an ancestor of HEAD)
 PRE-V8 HISTORICAL BASELINE:  93a3ddc0965dfaf3e4cb9dc0952467bd5250520a (historical only — do not reset to it)
 CURRENT SCHEMA:              v33 (six additive tier_c_* tables; event-derived)
-FULL SUITE:                  1243 collected on the exact tested canonical path;
-                             failures=0, errors=0, skipped=0 (see
-                             docs/convergence/CANONICAL_FULL_SUITE_20260819_EXACT_HEAD.json)
+FULL SUITE:                  1248 collected on exact source 93d23f5 with
+                             PYTHONHASHSEED=0; failures=0, errors=0, skipped=0
+                             (see docs/convergence/CURRENT_SOURCE_FULL_SUITE_20260819.json)
 SUPERVISOR STATE:            RUNNING (single lease owner, heartbeat advancing)
 STOP STATE:                  OFF (no sentinel, no active STOP/PAUSE directives)
 ACTIVE DIRECTIVES:           redirect, waive, extend_duty_window, align
@@ -115,6 +115,7 @@ browser substrate, and it cannot activate native desktop execution.
 | Procedural Learning Phase 4 | PASS — 23/23 focused, F1–F24, artifact-byte tamper, zero-effect shadow, local browser probe, rollback, fresh independent review |
 | Post-V7 canonical convergence (R7–R12 semantic closure) | PASS — exact Supervisor authority across low-level evolution/control surfaces; 76 convergence tests + 1,225 canonical tests; isolated promotion and post-promotion runtime probe PASS |
 | R10 authenticated mission-directive consumer | PASS_WITH_BOUNDARY — nonce-bound REPRIORITIZE/REDIRECT reaches the existing MissionLoop path; 26 focused tests and fresh verifier PASS; live Supervisor/Hermes/provider dispatch remains NOT_TESTED |
+| R10 exactly-once replay repair | PASS — ordinary mission instructions preserve the caller manifest hash; authenticated REDIRECT remains canonical; 36 focused tests and 1248-test current-source suite PASS |
 
 ## What is experimental / not canonical
 
