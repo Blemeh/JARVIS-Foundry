@@ -1,0 +1,37 @@
+{
+  "schema": "jarvis-proving-window-checkpoint-reconciliation-v1",
+  "status": "WAITING_ELAPSED",
+  "recorded_at": "2026-08-19T04:25:08.808249+02:00",
+  "checkpoint": "C:/Users/b/AppData/Local/hermes/foundry/evidence/proving-window/checkpoint-canonical-ee69737-real-20260819-r2.json",
+  "window_id": "post-canonical-ee69737-real-20260819-r2",
+  "runtime": {
+    "event_head": 105812,
+    "elapsed_seconds": 9102.628,
+    "remaining_seconds": 595697.372,
+    "required_duration_seconds": 604800.0,
+    "required_missions": 10,
+    "verified_missions_after_start": 0,
+    "supervisor_status": "RUNNING",
+    "supervisor_instance": "supervisor-dbfc3d8b-936d-4b61-9895-2b8ae917ce04",
+    "singleton": 1,
+    "heartbeat_count": 1803,
+    "max_heartbeat_gap_seconds": 5.291522,
+    "sqlite_quick_check": "ok",
+    "active_stop_directives": []
+  },
+  "manifest": {
+    "release_source_commit": "f37f852b3b328aa39476f86fb4f7b7e9d57836a9",
+    "deployed_metadata_commit": "ee697375c53bedeb3e4616c4b343074bf86af99f",
+    "scheduled_monitor_task": "JARVIS-Foundry-Proving-Window-Monitor-Canonical-R2",
+    "credential_values_recorded": false,
+    "external_provider_effects": "NOT_TESTED",
+    "voice_provider": "NOT_TESTED",
+    "physical_host_faults": "NOT_TESTED"
+  },
+  "reconciliation": {
+    "source": "read-only checkpoint JSON and process/database observation",
+    "runtime_restarted": false,
+    "scheduled_task_modified": false,
+    "next_action": "continue durable WAITING monitoring until seven real healthy days and ten independently verified post-start missions; preserve provider rate-limit blocker and do not retry blindly"
+  }
+}

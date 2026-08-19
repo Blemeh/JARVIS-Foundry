@@ -193,9 +193,9 @@
         "supervisor_instance": "supervisor-dbfc3d8b-936d-4b61-9895-2b8ae917ce04"
       }
     },
-    "last_checkpoint_event_head": 104624,
-    "last_live_observed_event_head": 104624,
-    "latest_checkpoint_reconciliation": "docs/convergence/PROVING_WINDOW_CHECKPOINT_RECONCILIATION_20260819.json",
+    "last_checkpoint_event_head": 105812,
+    "last_live_observed_event_head": 105812,
+    "latest_checkpoint_reconciliation": "docs/convergence/PROVING_WINDOW_CHECKPOINT_RECONCILIATION_CURRENT_20260819.json",
     "canary": {
       "status": "INDEPENDENTLY_VERIFIED_WAITING",
       "report": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_CANARY_20260818.json",
@@ -906,7 +906,7 @@
     "latest_r11_local_cycle_probe": "docs/convergence/R11_LOCAL_DURABLE_CYCLE_PROBE_20260819.json",
     "latest_r11_broken_candidate_probe": "docs/convergence/R11_BROKEN_CANDIDATE_REJECTION_PROBE_20260819.json",
     "latest_r11_local_cycle_verifier": "docs/convergence/R11_LOCAL_CYCLE_VERIFIER_20260819.json",
-    "latest_proving_checkpoint_reconciliation": "docs/convergence/PROVING_WINDOW_CHECKPOINT_RECONCILIATION_20260819.json",
+    "latest_proving_checkpoint_reconciliation": "docs/convergence/PROVING_WINDOW_CHECKPOINT_RECONCILIATION_CURRENT_20260819.json",
     "latest_r10_live_directive_consumer": "docs/convergence/R10_LIVE_DIRECTIVE_CONSUMER_20260819.json",
     "latest_r10_live_directive_consumer_verifier": "docs/convergence/R10_LIVE_DIRECTIVE_CONSUMER_VERIFIER_20260819.json",
     "latest_r10_live_directive_consumer_commit": "aa753c0ad1f2d86abeaf5929d51e8992fa290990",
