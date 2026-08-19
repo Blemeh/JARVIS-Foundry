@@ -765,6 +765,17 @@
       "candidate_head": "cca299ac21d8ef1e177cf28ed00cfef76134d6cc",
       "report": "docs/convergence/R11_LOCAL_CYCLE_VERIFIER_20260819.json",
       "scope": "read-only exact R11 JSON evidence, stable disposable ledgers, hashes, and boundaries; no mutation"
+    },
+    {
+      "role": "R11 deployed-state pin verifier",
+      "agent": "/root/r11_local_cycle_verifier_luna_retry",
+      "provider_route": "router_commandcode_gpt_5_6_luna",
+      "provider_transport": "codex-router",
+      "provider": "commandcode",
+      "model": "gpt-5.6-luna",
+      "status": "COMPLETED_PASS_WITH_BOUNDARY",
+      "candidate_head": "5efcbe99e830ce3e8d4f0b2f959fe2f7fadc5e5c",
+      "scope": "read-only exact canonical state pin, R6/Eyes preservation, and documentation staleness check"
     }
   ],
   "promotion": {
