@@ -116,7 +116,7 @@
     },
     "latest_current_head_convergence": {
       "status": "PASS_WITH_EXTERNAL_BOUNDARIES",
-      "candidate_head": "b6e4af34d42060ce5d3e1429092e36ab1632d7ed",
+      "candidate_head": "483c81b80d81eeaf7cc5bb5c595a5108f1581ace",
       "matrix": "docs/convergence/CONVERGENCE_MATRIX_CURRENT_20260819.md",
       "dirty_classification": "docs/convergence/REMASTER_DIRTY_CLASSIFICATION_CURRENT_20260819.json",
       "verification": "docs/convergence/CURRENT_HEAD_VERIFICATION_20260819.json",
@@ -1082,5 +1082,5 @@
     "R11 live Supervisor evolution consumption and real elapsed proving window NOT_TESTED/WAITING; disposable local cycle proof PASS_WITH_BOUNDARY",
     "R12 physical host and unavailable-provider fault rows NOT_TESTED/BLOCKED"
   ],
-  "exact_next_action": "promote candidate b6e4af34d42060ce5d3e1429092e36ab1632d7ed to main by non-force fast-forward after final documentation/hash reconciliation; then keep the R3 exact current-release proving monitor WAITING, preserve the suspended f37f852 history, keep the worker task Disabled, and do not migrate/restart live state or claim final purpose acceptance until external and elapsed obligations are met"
+  "exact_next_action": "promote candidate 483c81b80d81eeaf7cc5bb5c595a5108f1581ace to main by non-force fast-forward after final verifier PASS; then keep the R3 exact current-release proving monitor WAITING, preserve the suspended f37f852 history, keep the worker task Disabled, and do not migrate/restart live state or claim final purpose acceptance until external and elapsed obligations are met"
 }
