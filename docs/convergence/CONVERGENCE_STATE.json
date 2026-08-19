@@ -46,23 +46,23 @@
       "junit_sha256": "97F9A04DB3E5B7CEDCEF1598F113041B160405946203BDB4B8F330406D097473"
     },
     "latest_runtime_probe": {
-      "path": "docs/convergence/LIVE_RUNTIME_PROBE_CANONICAL_CURRENT_20260819.json",
-      "sha256": "949698EE74EB75F429825356809C685577F467A518A5823BFDD6692619FFB515",
-      "event_head": 108821,
+      "path": "docs/convergence/LIVE_RUNTIME_PROBE_CANONICAL_R3_20260819.json",
+      "sha256": "3E62A355FEF20CB0F72888E20CB22610417B9E33B8DD8081F37D3F48A5538010",
+      "event_head": 109726,
       "schema_version": 33,
       "status": "PASS_READ_ONLY",
-      "recorded_at": "2026-08-19T06:39:53.541413+00:00"
+      "recorded_at": "2026-08-19T07:56:10.108707+00:00"
     },
     "latest_current_release_checkpoint_snapshot": {
       "path": "docs/convergence/PROVING_WINDOW_CHECKPOINT_CURRENT_R3_20260819.json",
-      "sha256": "ACFC57FBCD4BF355F2C8BFCB62B01F562BC080CC5548673F9C205C9FC5C8E920",
-      "canonical_windows_worktree_sha256": "3D422C39A46741AD1E1392BB4C8759DCC75EE05D91E905F36B7AB16769B1E165",
+      "sha256": "092E5E6C9333B69444967BBA3577B1BAA95DCBA1B4733E908DF23A0EB699FA13",
+      "canonical_windows_worktree_sha256": "691B67F113EC7D09B9C12C272106D6DA705DCC190211D6EAE7D57541338DAAAE",
       "hash_note": "repository payload is LF-normalized; the canonical Windows checkout is CRLF-normalized",
-      "checkpoint_sha256": "F0FE5AC248EC8118C59D01C14CB7B0623459C8D892736E91420334416833D62F",
+      "checkpoint_sha256": "7397A5ABE118C6BC60DD69C7DCAC0CE2CCA20099C9282BA8AD4861B68E50BDCA",
       "status": "PASS_WAITING_ELAPSED",
-      "event_head": 109641,
-      "elapsed_seconds": 18612.285,
-      "remaining_seconds": 586187.715,
+      "event_head": 109701,
+      "elapsed_seconds": 18912.198,
+      "remaining_seconds": 585887.802,
       "monitor_last_result": 0
     },
     "focused_worker_loop_contract": {
