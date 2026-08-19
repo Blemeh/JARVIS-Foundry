@@ -88,10 +88,11 @@
     "latest_deployment_canary_rehearsal": {
       "status": "PASS_DISPOSABLE_DEPLOYMENT_REHEARSAL",
       "path": "docs/convergence/WORKER_LOOP_DEPLOYMENT_CANARY_REHEARSAL_20260819.json",
-      "sha256": "C8A722062799DDAD6250D1F84A707EE98455249B584B6DF57B833F1E03C6F863",
+      "sha256": "5C2BE842254CFB450A0A3A6BC683B566DA9E54A9DF7A93CCFF4C253BBF74FCDF",
       "schema_before": 33,
       "schema_after": 34,
       "reconciliation": "PASS",
+      "restore": "PASS_SOURCE_UNCHANGED_SCHEMA34_RECONCILED",
       "worker_loop": "WAITING_NO_AUTHORITATIVE_CONTRACT",
       "supervisor_startup": "PASS_EXIT_0",
       "live_migration": "NOT_PERFORMED",
