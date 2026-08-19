@@ -233,8 +233,9 @@
       "supervisor_instance": "supervisor-dbfc3d8b-936d-4b61-9895-2b8ae917ce04"
     },
     "last_checkpoint_event_head": 105969,
-    "last_live_observed_event_head": 106492,
+    "last_live_observed_event_head": 107217,
     "latest_checkpoint_reconciliation": "docs/convergence/PROVING_WINDOW_CHECKPOINT_RECONCILIATION_R3_20260819.json",
+    "latest_runtime_reconciliation": "docs/convergence/WORKER_LOOP_RUNTIME_RECONCILIATION_20260819.json",
     "worker_loop_registration": {
       "status": "REGISTERED_DISABLED",
       "evidence": "docs/convergence/WORKER_LOOP_DISABLED_REGISTRATION_20260819.json",
@@ -971,6 +972,7 @@
     "latest_runtime_freeze_audit": "docs/convergence/FINAL_RUNTIME_FREEZE_AUDIT_CURRENT_20260819.json",
     "latest_worker_loop_contract_verification": "docs/convergence/WORKER_LOOP_CONTRACT_VERIFICATION_20260819.json",
     "latest_worker_loop_contract_promotion": "docs/convergence/WORKER_LOOP_CONTRACT_PROMOTION_20260819.json",
+    "latest_worker_loop_runtime_reconciliation": "docs/convergence/WORKER_LOOP_RUNTIME_RECONCILIATION_20260819.json",
     "latest_r10_live_directive_consumer": "docs/convergence/R10_LIVE_DIRECTIVE_CONSUMER_20260819.json",
     "latest_r10_live_directive_consumer_verifier": "docs/convergence/R10_LIVE_DIRECTIVE_CONSUMER_VERIFIER_20260819.json",
     "latest_r10_live_directive_consumer_commit": "aa753c0ad1f2d86abeaf5929d51e8992fa290990",
