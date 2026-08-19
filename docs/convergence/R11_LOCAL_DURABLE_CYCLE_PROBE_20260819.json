@@ -19,7 +19,7 @@
     "transport": "local"
   },
   "durable_artifact": {
-    "database": "C:/temp/jarvis-r11-cycle-proof-20260819-b/test_operational_acceptance_mi0/runtime/foundry.db",
+    "database": "C:/temp/jarvis-r11-evidence-artifacts-20260819/r11-operational-acceptance-foundry.db",
     "database_sha256": "0BADB523CF972A57FF5CB40FB1A5A09B90E204EC047FE26D8B822EC916064A0D",
     "schema_version": 33,
     "sqlite_quick_check": "ok",
@@ -75,6 +75,7 @@
     "production_or_customer_scope": false,
     "financial_actions": "DENIED_OUT_OF_SCOPE"
   },
+  "artifact_persistence": "stable disposable SQLite copies are retained at C:/temp/jarvis-r11-evidence-artifacts-20260819",
   "supplemental_evidence": "docs/convergence/R11_BROKEN_CANDIDATE_REJECTION_PROBE_20260819.json",
   "next_action": "fresh independent Luna verification of this evidence plus the supplemental broken-candidate probe; retain live R2 proving window as WAITING_ELAPSED"
 }

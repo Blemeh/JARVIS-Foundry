@@ -19,7 +19,7 @@
     "transport": "local"
   },
   "durable_artifact": {
-    "database": "C:/temp/jarvis-r11-broken-candidate-20260819/test_broken_candidate_auto_rej0/runtime/foundry.db",
+    "database": "C:/temp/jarvis-r11-evidence-artifacts-20260819/r11-broken-candidate-foundry.db",
     "database_sha256": "9B399A770D74C11502BFA0083B5E11F2072849D3A132869B2BACD66BFD519D9A",
     "schema_version": 33,
     "sqlite_quick_check": "ok",
