@@ -79,6 +79,16 @@ def test_contract_versions_are_explicitly_superseded(tmp_path: Path) -> None:
         record_step_contract(database, replace(first, instructions="conflict"))
 
 
+def test_multiple_active_step_ids_fail_closed(tmp_path: Path) -> None:
+    database, _ = mission_database(tmp_path)
+    first = _contract()
+    second = replace(first, step_id="step-second")
+    record_step_contract(database, first)
+    record_step_contract(database, second)
+    with pytest.raises(MissionStepContractError, match="multiple active step contracts"):
+        latest_contract(database, first.mission_id)
+
+
 def test_contract_rejects_forged_controller_provider_and_escape() -> None:
     with pytest.raises(MissionStepContractError, match="relative"):
         _contract(target_relative_path="../outside.txt")
