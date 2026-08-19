@@ -218,11 +218,25 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     paths = FoundryPaths.discover(getattr(args, "home", None))
+    from ..deployment.guard import refuse_developer_checkout_on_live_home
+    from ..deployment.release import ReleaseError
+    try:
+        refuse_developer_checkout_on_live_home(paths.home)
+    except ReleaseError as error:
+        print(json.dumps({"supervisor": "FAIL_CLOSED", "error": str(error)}), flush=True)
+        return 2
+    from ..runtime.authority import resolve_runtime_authority
+    authority = resolve_runtime_authority(
+        home=paths.home,
+        heartbeat_seconds=args.interval,
+        spawn_worker_loop=True if args.spawn_worker_loop else None,
+        worker_loop_config=getattr(args, "worker_loop_config", None),
+    )
     database = FoundryDatabase(paths.database)
     supervisor = Supervisor(
         database, paths.emergency_stop,
-        spawn_worker_loop=bool(getattr(args, "spawn_worker_loop", False)),
-        worker_loop_config=getattr(args, "worker_loop_config", None),
+        spawn_worker_loop=bool(args.spawn_worker_loop or authority.spawn_worker_loop),
+        worker_loop_config=getattr(args, "worker_loop_config", None) or authority.worker_yaml,
     )
     console_handler = make_console_handler(supervisor)
     console_handler.install()

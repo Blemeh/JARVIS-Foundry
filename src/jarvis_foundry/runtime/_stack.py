@@ -7,7 +7,6 @@ the config carries positive containment evidence — never by default.
 """
 from __future__ import annotations
 
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -36,10 +35,10 @@ class WorkerStack:
     workers: WorkerController | None = None
 
 
-def _resolve_root(raw: str | None, run_id: str, *, kind: str) -> Path:
-    base = Path(raw).expanduser() if raw else Path(tempfile.gettempdir())
+def _resolve_root(raw: str | None, run_id: str, *, kind: str, home: Path) -> Path:
+    base = Path(raw).expanduser() if raw else (home / "var" / "worker-runtime")
     if not base.is_absolute():
-        base = Path.cwd() / base
+        base = home / base
     root = base / f"{kind}-{run_id}"
     root.mkdir(parents=True, exist_ok=True)
     return root.resolve()
@@ -57,7 +56,7 @@ def build_worker_stack(
     Disabled adapters are not registered, so the router can never select an
     unavailable worker (honest NOT_READY / no eligible worker).
     """
-    run_root = _resolve_root(config.runtime_state_root, run_id, kind="run")
+    run_root = _resolve_root(config.runtime_state_root, run_id, kind="run", home=paths.home)
     stop_path = config.resolve_stop_path(paths.home)
     pid_table = paths.home / "adapter_worker_pids.json"
     workers = WorkerController(database)
@@ -65,13 +64,25 @@ def build_worker_stack(
     registry = WorkerRegistry()
     enabled: list[str] = []
 
+    if config.lab_scripted_hermes:
+        from ..deployment.lab_hermes import LabHermesAdapter
+        from ..workers.contracts import WORKER_HERMES
+        registry.register(WORKER_HERMES, LabHermesAdapter())
+        enabled.append(WORKER_HERMES)
+        router.mark_ready(
+            WORKER_HERMES, state=READY,
+            note="LAB scripted Hermes adapter (no live provider)",
+            evidence=("prompt2-lab-scripted-hermes",),
+        )
+
     hermes = config.hermes
-    if hermes.get("enabled", False):
+    if hermes.get("enabled", False) and not config.lab_scripted_hermes:
         home = run_root / "hermes-home"
         home.mkdir(parents=True, exist_ok=True)
-        root = Path(str(hermes.get("root", ".h"))).expanduser()
+        root = Path(str(hermes.get("root", ""))).expanduser()
         if not root.is_absolute():
-            root = Path.cwd() / root
+            from ..workers.adapters.base import AdapterConfigurationError
+            raise AdapterConfigurationError("hermes root must be an absolute path")
         python_exe = require_existing_executable(
             hermes.get("python_exe"), kind="hermes python")
         registry.register(
@@ -90,7 +101,7 @@ def build_worker_stack(
         enabled.append("hermes")
 
     openhands = config.openhands
-    if openhands.get("enabled", False):
+    if openhands.get("enabled", False) and not config.lab_scripted_hermes:
         data_dir = run_root / "openhands-data"
         data_dir.mkdir(parents=True, exist_ok=True)
         exe = require_existing_executable(openhands.get("exe"), kind="openhands")
@@ -111,6 +122,8 @@ def build_worker_stack(
     # Readiness is evidence-driven: only frameworks with positive recorded
     # containment evidence become READY; everything else stays NOT_READY.
     for framework in enabled:
+        if config.lab_scripted_hermes and framework == "hermes":
+            continue
         spec = dict(config.readiness.get(framework) or {})
         state = str(spec.get("state") or NOT_READY)
         if state != READY or not spec.get("evidence"):

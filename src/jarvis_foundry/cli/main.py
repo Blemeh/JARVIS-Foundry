@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from dataclasses import asdict
 from pathlib import Path
 
@@ -61,6 +62,27 @@ def _parser() -> argparse.ArgumentParser:
     deactivate.add_argument("--v1", action="store_true")
     deactivate.add_argument("--worker-loop", action="store_true")
     deactivate.add_argument("--config", type=Path)
+    status_prod = sub.add_parser("production-status", parents=[home_option])
+    status_prod.add_argument("--source-repo", type=Path, default=None)
+    release = sub.add_parser("release", parents=[home_option])
+    release_sub = release.add_subparsers(dest="release_command", required=True)
+    build = release_sub.add_parser("build")
+    build.add_argument("--source-repo", type=Path, required=True)
+    build.add_argument("--sha", required=True)
+    build.add_argument("--install-root", type=Path, default=None)
+    rel_activate = release_sub.add_parser("activate")
+    rel_activate.add_argument("--sha", required=True)
+    rel_activate.add_argument("--install-root", type=Path, default=None)
+    rel_activate.add_argument("--worker-config", type=Path, default=None)
+    rel_activate.add_argument("--spawn-worker-loop", action="store_true")
+    rollback = release_sub.add_parser("rollback")
+    rollback.add_argument("--install-root", type=Path, default=None)
+    backup = release_sub.add_parser("backup-db")
+    backup.add_argument("--destination", type=Path, required=True)
+    migrate = release_sub.add_parser("migrate-clone")
+    migrate.add_argument("--destination", type=Path, required=True)
+    restore = release_sub.add_parser("restore-db")
+    restore.add_argument("--source", type=Path, required=True)
     return parser
 
 
@@ -146,7 +168,80 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(_installer(args, paths).set_enabled(True), indent=2))
     elif args.command == "deactivate":
         print(json.dumps(_installer(args, paths).set_enabled(False), indent=2))
+    elif args.command == "production-status":
+        from ..deployment.status import production_status
+        print(json.dumps(production_status(
+            home=paths.home,
+            source_repo=getattr(args, "source_repo", None),
+        ), indent=2, default=str))
+    elif args.command == "release":
+        return _release_command(args, paths)
     return 0
+
+
+def _release_command(args, paths: FoundryPaths) -> int:
+    from ..deployment.layout import install_root as resolve_install_root
+    from ..deployment.release import (
+        backup_database,
+        build_release,
+        migrate_clone,
+        restore_database,
+        rollback_current,
+        set_current,
+    )
+    from ..installer import V1_TASK_NAME, Installer
+    from ..paths import FoundryPaths as Paths
+
+    root = getattr(args, "install_root", None)
+    if args.release_command == "build":
+        print(json.dumps(build_release(
+            source_repo=args.source_repo, source_sha=args.sha, root=root,
+        ), indent=2, default=str))
+        return 0
+    if args.release_command == "activate":
+        os.environ.setdefault("JARVIS_INSTALL_ROOT", str(resolve_install_root(root)))
+        pointers = set_current(args.sha, root=root)
+        from ..deployment.layout import launcher_cmd
+        from ..deployment.release import validate_release
+        identity = validate_release(args.sha, root=root, require_schema_match=False)
+        launcher = launcher_cmd(root)
+        spawn = bool(getattr(args, "spawn_worker_loop", False))
+        worker_config = getattr(args, "worker_config", None)
+        extra = ""
+        if spawn:
+            extra += " --spawn-worker-loop"
+        if worker_config:
+            extra += f' --worker-loop-config "{Path(worker_config).resolve()}"'
+        installer = Installer(
+            FoundryDatabase(paths.database),
+            task_name=V1_TASK_NAME,
+            foundry_home=paths.home,
+            hermes_home=Paths.hermes_home(),
+            python_exe=identity["python_exe"],
+            exec_command=launcher,
+            exec_arguments=f'--home "{paths.home}"{extra}',
+            profile={
+                "start_record": str(paths.database),
+                "spawn_worker_loop": "true" if spawn else "false",
+                "worker_config_path": str(Path(worker_config).resolve()) if worker_config else "",
+                "release_sha": args.sha,
+            },
+        )
+        print(json.dumps({"pointers": pointers, "task": installer.retarget_existing()}, indent=2))
+        return 0
+    if args.release_command == "rollback":
+        print(json.dumps(rollback_current(root=root), indent=2))
+        return 0
+    if args.release_command == "backup-db":
+        print(json.dumps({"backup": str(backup_database(paths.database, args.destination))}, indent=2))
+        return 0
+    if args.release_command == "migrate-clone":
+        print(json.dumps(migrate_clone(paths.database, args.destination), indent=2))
+        return 0
+    if args.release_command == "restore-db":
+        print(json.dumps({"events": restore_database(paths.database, args.source)}, indent=2))
+        return 0
+    return 1
 
 
 if __name__ == "__main__":

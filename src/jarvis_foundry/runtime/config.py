@@ -29,6 +29,7 @@ class WorkerRuntimeConfig:
     max_repairs: int = 2
     stop_sentinel_path: str | None = None
     pause_directives: bool = True
+    lab_scripted_hermes: bool = False
 
     @classmethod
     def from_yaml(cls, path: str | Path | None) -> "WorkerRuntimeConfig":
@@ -59,6 +60,7 @@ class WorkerRuntimeConfig:
                 "stop_integration", {}).get("sentinel_path"),
             pause_directives=bool(
                 raw.get("stop_integration", {}).get("pause_directives", True)),
+            lab_scripted_hermes=bool(raw.get("lab_scripted_hermes", False)),
         )
         cfg.validate()
         return cfg

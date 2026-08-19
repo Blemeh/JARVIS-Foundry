@@ -72,10 +72,10 @@ TASK_XML_TEMPLATE = """<?xml version="1.0" encoding="UTF-16"?>
       <Count>3</Count>
     </RestartOnFailure>
   </Settings>
-  <Actions Context="Author">
+    <Actions Context="Author">
     <Exec>
-      <Command>{python_exe}</Command>
-      <Arguments>-m jarvis_foundry.supervisor.run --home "{foundry_home}"</Arguments>
+      <Command>{command}</Command>
+      <Arguments>{arguments}</Arguments>
       <WorkingDirectory>{working_directory}</WorkingDirectory>
     </Exec>
   </Actions>
@@ -171,6 +171,8 @@ class Installer:
         python_exe: str | Path | None = None,
         profile: dict[str, Any] | None = None,
         gate_verdict_path: str | Path | None = None,
+        exec_command: str | Path | None = None,
+        exec_arguments: str | None = None,
     ) -> None:
         self.database = database
         self.task_name = task_name
@@ -180,6 +182,8 @@ class Installer:
         self.profile = profile or {}
         self.gate_verdict_path = Path(gate_verdict_path) if gate_verdict_path else None
         self.profile_path = self.foundry_home / PROFILE_FILE
+        self.exec_command = Path(exec_command).resolve() if exec_command else None
+        self.exec_arguments = exec_arguments
 
     # -- helpers ------------------------------------------------------------
 
@@ -244,11 +248,16 @@ class Installer:
         now = datetime.now()
         start_boundary = (now - timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%S")
         identity = self.source_identity()
+        command = self.exec_command or self.python_exe
+        arguments = self.exec_arguments or (
+            f'-m jarvis_foundry.supervisor.run --home "{self.foundry_home}"'
+        )
         return TASK_XML_TEMPLATE.format(
             hermes_home=xml_escape(str(self.hermes_home)),
-            python_exe=xml_escape(str(self.python_exe)),
+            command=xml_escape(str(command)),
+            arguments=xml_escape(arguments),
             foundry_home=xml_escape(str(self.foundry_home)),
-            working_directory=xml_escape(str(identity["working_directory"])),
+            working_directory=xml_escape(str(self.foundry_home)),
             user_id=xml_escape(_current_user_id()),
             start_boundary=start_boundary,
         )
@@ -288,6 +297,35 @@ class Installer:
             {"task_name": self.task_name, "foundry_home": str(self.foundry_home),
              "python_exe": str(self.python_exe)},
             key=f"installation.installed:{self.task_name}",
+        )
+        return self.status()
+
+    def retarget_existing(self) -> dict[str, Any]:
+        """Rewrite an already-installed task's action without WP7 first-install.
+
+        Used to point production at the stable launcher. Refuses to create a
+        missing V1 task (that still requires the gate).
+        """
+        if not self.task_exists():
+            raise InstallerError(
+                f"task {self.task_name} is not installed; cannot retarget")
+        xml = self._task_xml()
+        xml_path = self.foundry_home / f".task-{uuid.uuid4().hex[:8]}.xml"
+        xml_path.parent.mkdir(parents=True, exist_ok=True)
+        xml_path.write_text(xml, encoding="utf-16")
+        try:
+            result = _run_schtasks(
+                "/create", "/tn", self.task_name, "/xml", str(xml_path), "/f")
+            if result.returncode != 0:
+                raise InstallerError(
+                    f"schtasks retarget failed: {result.stderr.strip() or result.stdout.strip()}")
+        finally:
+            xml_path.unlink(missing_ok=True)
+        self._write_profile()
+        self._append(
+            "installation.retargeted",
+            {"task_name": self.task_name, "command": str(self.exec_command or self.python_exe)},
+            key=f"installation.retargeted:{self.task_name}",
         )
         return self.status()
 

@@ -109,7 +109,12 @@ def resolve_runtime_authority(
     spawn = spawn_worker_loop
     if spawn is None:
         env_spawn = os.environ.get("JARVIS_SPAWN_WORKER_LOOP")
-        spawn = env_spawn.lower() in {"1", "true", "yes"} if env_spawn else False
+        if env_spawn is not None:
+            spawn = env_spawn.lower() in {"1", "true", "yes"}
+        elif str(profile.get("spawn_worker_loop", "")).lower() in {"1", "true", "yes"}:
+            spawn = True
+        else:
+            spawn = False
 
     worker_yaml = worker_loop_config
     if worker_yaml is None and os.environ.get("JARVIS_WORKER_LOOP_CONFIG"):
