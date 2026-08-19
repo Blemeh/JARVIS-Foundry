@@ -1,0 +1,51 @@
+{
+  "program": "JARVIS Foundry",
+  "current_stage": "R10-R12 continuation",
+  "current_slice": "worker_loop_activation_registration",
+  "status": "REGISTERED_DISABLED",
+  "recorded_at": "2026-08-19T03:24:52.9657533Z",
+  "canonical_head": "282ad4000a4484bc8a5cbf5bf59334b4bbbe02fd",
+  "source_file_hashes": {
+    "src/jarvis_foundry/installer.py": "6666883494E24ED98DC1397D30484E94C1DC0984F169D5FB9F1C3D1B55F5F2DF",
+    "config/worker_routing.yaml": "A36A7B6A1748562F9672F49CF00257AC92517AC1D40C1383DE453BA05C148CC0"
+  },
+  "task": {
+    "name": "JARVIS-Foundry-Worker-Loop",
+    "state": "Disabled",
+    "command_module": "jarvis_foundry.runtime.worker_loop",
+    "foundry_home": "C:\\Users\\b\\AppData\\Local\\hermes\\foundry",
+    "config_path": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry\\config\\worker_routing.yaml",
+    "triggers_enabled": [false, false],
+    "separate_from_supervisor": true,
+    "profile": "C:\\Users\\b\\AppData\\Local\\hermes\\foundry\\worker-loop-profile.yaml"
+  },
+  "supervisor": {
+    "task_name": "JARVIS-Foundry-Supervisor",
+    "state": "Running",
+    "unchanged": true,
+    "worker_process_present": false
+  },
+  "provider": {
+    "configured_provider": "opencode_go",
+    "configured_model": "deepseek-v4-flash",
+    "dispatch_status": "NOT_TESTED",
+    "existing_rate_limit_boundary": "BLOCKED"
+  },
+  "verification": {
+    "focused_installer_and_cli_tests": "PASS",
+    "py_compile": "PASS",
+    "git_diff_check": "PASS",
+    "independent_verdict": "PASS_WITH_BOUNDARY",
+    "verifier_provider": "commandcode",
+    "verifier_model": "gpt-5.6-luna",
+    "verifier_route": "router_commandcode_gpt_5_6_luna",
+    "verifier_transport": "codex-router"
+  },
+  "boundaries": [
+    "Registration changed only the named worker task, its JARVIS-owned profile, and the durable installation ledger.",
+    "No worker-loop process was started and no provider effect was attempted.",
+    "R3 proving remains on the frozen c60 runtime; this disabled registration does not promote or restart that release.",
+    "Activation remains gated on an enabled validated configuration and a later bounded canary with an authoritative executable mission contract."
+  ],
+  "exact_next_action": "Keep JARVIS-Foundry-Worker-Loop disabled; independently reconcile the executable mission contract and provider readiness before any activation or proving-window restart."
+}
