@@ -1,0 +1,69 @@
+{
+  "schema": "jarvis-proving-window-checkpoint-verifier-v1",
+  "recorded_at": "2026-08-19T02:49:36Z",
+  "status": "PASS_WITH_BOUNDARY",
+  "dispatch": {
+    "role": "fresh independent proving checkpoint verifier",
+    "agent": "/root/proving_checkpoint_verifier_luna",
+    "provider": "commandcode",
+    "model": "gpt-5.6-luna",
+    "route": "router_commandcode_gpt_5_6_luna",
+    "transport": "codex-router",
+    "execution_label": "Luna Max"
+  },
+  "candidate": {
+    "worktree": "C:/temp/JARVIS-Foundry-Proving-Checkpoint-20260819",
+    "branch": "convergence/proving-checkpoint-20260819",
+    "commit": "8f5d7b0e2a0b72d8cecd6f321b6b4f0db61e3fb6",
+    "tree": "7a6d81c15a63439c2fa5d08c6161d38014895df9",
+    "clean": true,
+    "diff_check": "PASS"
+  },
+  "evidence": {
+    "path": "docs/convergence/PROVING_WINDOW_CHECKPOINT_RECONCILIATION_20260819.json",
+    "json_parse": "PASS",
+    "recorded_status": "PASS_WAITING_ELAPSED_RECONCILED",
+    "checkpoint_status": "WAITING_ELAPSED",
+    "manifest_hash_recomputed": "a8f0ac0ffda1d90f0e52792d888191cc0d93925429e52afbb36c6fe9b168f3c9",
+    "checkpoint_sha256_at_verification": "7ddc4589c41b523f89ac080faf4318aa78cf8d3f7b30f4af0d7f4e52a9bfbcc2",
+    "manifest_sha256_at_verification": "c883023e9eb16544447a5e3ee309a1de415d90e25d6157552cb2ce696c3706b5",
+    "elapsed_seconds": 3102.534,
+    "remaining_seconds": 601697.466,
+    "event_head_at_capture": 104624,
+    "event_head_at_verification": 104677,
+    "heartbeat_count_at_capture": 615,
+    "max_heartbeat_gap_seconds": 5.291522,
+    "sqlite_quick_check": "ok",
+    "schema_version": 33,
+    "supervisor_status": "RUNNING",
+    "supervisor_singleton": 1,
+    "active_stop_directives": 0,
+    "required_tables_present": true,
+    "scheduled_monitor_last_result": 0
+  },
+  "boundaries": {
+    "proving_duration_complete": false,
+    "required_missions_complete": false,
+    "verified_missions_after_start_in_checkpoint": "NOT_REPORTED",
+    "historical_verified_missions_after_start": 0,
+    "external_provider_effects": "NOT_TESTED",
+    "voice_provider": "NOT_TESTED",
+    "physical_host_faults": "NOT_TESTED",
+    "external_connector_effects": "NOT_TESTED"
+  },
+  "preservation": {
+    "canonical_main_mutated": false,
+    "remaster_mutated": false,
+    "r6_reopened": false,
+    "eyes_mutated": false,
+    "runtime_db_mutated": false,
+    "scheduled_tasks_mutated": false,
+    "credentials_recorded": false
+  },
+  "uncertainty": [
+    "The checkpoint is a point-in-time artifact; live event and heartbeat values can advance after capture.",
+    "The checkpoint does not report a verified-missions-after-start field; the historical zero remains explicit.",
+    "Physical-host faults and external effects were not induced or claimed."
+  ],
+  "recommended_next_action": "Keep the exact R2 monitor running and refresh on schedule. Do not close or promote the proving window until seven real healthy days and ten independently verified post-start missions are durably evidenced."
+}
