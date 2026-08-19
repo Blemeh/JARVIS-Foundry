@@ -8,17 +8,17 @@
   "canonical": {
     "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
     "branch": "main",
-    "head": "f1721474c37cca7677f493431e87f2670114aa70",
+    "head": "561d445e51e84b77b47fecac1633e504ec81edb3",
     "source_tree_verified_head": "6b776bd0f93005d020b5de2c183f900b82fbe57c",
-    "origin_main": "f1721474c37cca7677f493431e87f2670114aa70",
+    "origin_main": "561d445e51e84b77b47fecac1633e504ec81edb3",
     "deployed_tree": "0f9353cb5675a5b5e2c2b25d2e268a4e825b2c88",
-    "repository_head": "f1721474c37cca7677f493431e87f2670114aa70",
-    "repository_tree": "edcfe04c373fa1d8796720730db11ea8be3e9ca0",
-    "current_repository_head": "f1721474c37cca7677f493431e87f2670114aa70",
-    "current_repository_tree": "edcfe04c373fa1d8796720730db11ea8be3e9ca0",
-    "current_origin_main": "f1721474c37cca7677f493431e87f2670114aa70",
-    "record_commit": "f1721474c37cca7677f493431e87f2670114aa70",
-    "record_origin_main": "f1721474c37cca7677f493431e87f2670114aa70",
+    "repository_head": "561d445e51e84b77b47fecac1633e504ec81edb3",
+    "repository_tree": "f7858dcc8996f609534001d1e98151921bfc97ec",
+    "current_repository_head": "561d445e51e84b77b47fecac1633e504ec81edb3",
+    "current_repository_tree": "f7858dcc8996f609534001d1e98151921bfc97ec",
+    "current_origin_main": "561d445e51e84b77b47fecac1633e504ec81edb3",
+    "record_commit": "561d445e51e84b77b47fecac1633e504ec81edb3",
+    "record_origin_main": "561d445e51e84b77b47fecac1633e504ec81edb3",
     "semantic_source_commit": "93d23f50ea5858355c202cae7d4a5809ed7e245c",
     "dirty_owner_docs_preserved": true,
     "current_full_suite": {
@@ -82,7 +82,20 @@
       "status": "PASS_WITH_BOUNDARY",
       "verdict": "SERVES_PURPOSE_WITH_EXTERNAL_BLOCKERS",
       "path": "docs/convergence/FINAL_CURRENT_RELEASE_AUDIT_POST_SUITE_20260819.json",
-      "sha256": "69479B3736E48D71C30CEE09E9A9344425867575A9643A465CDE307A1F20D58C"
+      "sha256": "69479B3736E48D71C30CEE09E9A9344425867575A9643A465CDE307A1F20D58C",
+      "published_head_after_audit": "561d445e51e84b77b47fecac1633e504ec81edb3"
+    },
+    "latest_deployment_canary_rehearsal": {
+      "status": "PASS_DISPOSABLE_DEPLOYMENT_REHEARSAL",
+      "path": "docs/convergence/WORKER_LOOP_DEPLOYMENT_CANARY_REHEARSAL_20260819.json",
+      "sha256": "C8A722062799DDAD6250D1F84A707EE98455249B584B6DF57B833F1E03C6F863",
+      "schema_before": 33,
+      "schema_after": 34,
+      "reconciliation": "PASS",
+      "worker_loop": "WAITING_NO_AUTHORITATIVE_CONTRACT",
+      "supervisor_startup": "PASS_EXIT_0",
+      "live_migration": "NOT_PERFORMED",
+      "live_worker_task": "DISABLED"
     },
     "focused_source_repair": {
       "status": "PASS_SOURCE_FOCUSED_EXTERNAL_BOUNDARY",
@@ -1025,5 +1038,5 @@
     "R11 live Supervisor evolution consumption and real elapsed proving window NOT_TESTED/WAITING; disposable local cycle proof PASS_WITH_BOUNDARY",
     "R12 physical host and unavailable-provider fault rows NOT_TESTED/BLOCKED"
   ],
-  "exact_next_action": "let the R3 exact current-release proving monitor persist WAITING through restart; preserve the suspended f37f852 R2 registration and historical 2-of-10/restart-0 counts; keep the provider canary BLOCKED on the monthly rate limit; keep JARVIS-Foundry-Worker-Loop registered Disabled because its promoted source contract has not undergone live migration or provider readiness proof; preserve the PASS disposable schema34 migration/reconciliation rehearsal; continue only safe dependency-ready rehearsal/evidence work; do not retry blindly, enable the worker task, migrate the live database, or restart R3; do not close final acceptance until seven real healthy days, ten post-start independently verified missions, and all required external criteria are met"
+  "exact_next_action": "let the R3 exact current-release proving monitor persist WAITING through restart; preserve the suspended f37f852 R2 registration and historical 2-of-10/restart-0 counts; keep the provider canary BLOCKED on the monthly rate limit; keep JARVIS-Foundry-Worker-Loop registered Disabled because its promoted source contract has not undergone live migration or provider readiness proof; preserve the fresh PASS disposable deployment rehearsal at docs/convergence/WORKER_LOOP_DEPLOYMENT_CANARY_REHEARSAL_20260819.json; continue only safe dependency-ready rehearsal/evidence work; do not retry blindly, enable the worker task, migrate the live database, or restart R3; do not close final acceptance until seven real healthy days, ten post-start independently verified missions, and all required external criteria are met"
 }
