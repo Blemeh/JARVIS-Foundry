@@ -6,6 +6,7 @@
     "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
     "branch": "main",
     "tested_source_commit": "87c908254e6daf1f2a677c35caf576c6e50a01e9",
+    "reproducible_committed_snapshot": "f1721474c37cca7677f493431e87f2670114aa70",
     "promotion_worktree": "C:/temp/JARVIS-WorkerLoop-Contract-Promote-20260819",
     "production_source_changed_during_run": false,
     "test_patch_present_during_run": "tests/foundry/test_v7_restore_sidecar_regression.py (historical v33 fixture pinned to initialize(target=33))"
