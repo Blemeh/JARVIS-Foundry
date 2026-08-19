@@ -2,7 +2,7 @@
   "schema": "jarvis-post-v7-canonical-convergence-state-v2",
   "program": "JARVIS Post-V7 Remaster",
   "current_stage": "POST_PROMOTION_PROVING",
-  "current_slice": "Canonical executable source f37f852 remains loaded in the fresh Supervisor; deployed R10/R11 evidence remains anchored at 6a5d397, while the current canonical repository head c0b8fb7 contains only reconciled convergence evidence/docs. The R11 proof records three subprocess-backed cycles, two promotions (R1 and R2 canary), one frozen non-promotion, one separately verified broken-candidate rejection, and rollback/acceptance evidence. The exact R2 release proving window remains WAITING_ELAPSED at the latest reconciled event head 104624; external providers/effects, live evolution consumption, voice, deployment, and elapsed proving remain honest WAITING/NOT_TESTED; prior full-suite evidence remains anchored to tested source 2af8191 and is not silently extended.",
+  "current_slice": "Canonical executable source f37f852 remains loaded in the fresh Supervisor; deployed R10/R11 evidence remains anchored at 6a5d397, while the current canonical repository head 65bc25e contains only reconciled convergence evidence/docs. The R11 proof records three subprocess-backed cycles, two promotions (R1 and R2 canary), one frozen non-promotion, one separately verified broken-candidate rejection, and rollback/acceptance evidence. The exact R2 release proving window remains WAITING_ELAPSED at the latest reconciled event head 104624; external providers/effects, live evolution consumption, voice, deployment, and elapsed proving remain honest WAITING/NOT_TESTED; prior full-suite evidence remains anchored to tested source 2af8191 and is not silently extended.",
   "r6_state": "OWNER_REDIRECT_R6_DEFERRED",
   "eyes_state": "OUT_OF_SCOPE_READ_ONLY",
   "canonical": {
@@ -14,9 +14,9 @@
     "deployed_tree": "dfb8489406b161113f1062600607eaeb0ab8aa6a",
     "repository_head": "4e2d0d2748650f24ab2deeaf932765e7a4e3ff81",
     "repository_tree": "fc6efdc26bf3397ba3b9f9744fa29d445c8dcb3c",
-    "current_repository_head": "c0b8fb7e535e73af501b695013e5c6151f99a964",
-    "current_repository_tree": "be6c2f8dfbbff911de81f0f3e876c485adad4a81",
-    "current_origin_main": "c0b8fb7e535e73af501b695013e5c6151f99a964",
+    "current_repository_head": "65bc25eeef0d0602ddfc3315f87f7c9cce9d18aa",
+    "current_repository_tree": "ad19ca95c91389995976fb4207957f4ea6525db1",
+    "current_origin_main": "65bc25eeef0d0602ddfc3315f87f7c9cce9d18aa",
     "dirty_owner_docs_preserved": true,
     "current_full_suite": {
       "path": "docs/convergence/CANONICAL_FULL_SUITE_20260819_EXACT_HEAD.json",
