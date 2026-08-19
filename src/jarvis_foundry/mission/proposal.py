@@ -22,6 +22,7 @@ class ProposalError(RuntimeError):
 class Proposal:
     """A validated, dispatchable next action."""
     action_requirement: str
+    redirected: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,7 +47,7 @@ def propose_next_action(database: FoundryDatabase, mission_id: str) -> Proposal 
     # MissionLoop instance observes the same durable interpretation after a
     # restart.
     from .directives import consume_directives
-    consume_directives(database, mission_id)
+    effects = consume_directives(database, mission_id)
     # Redirect projection may have changed the durable next action; reload
     # the row so this proposal and the worker context use the same truth.
     row = database.row("missions", "mission_id", mission_id)
@@ -59,4 +60,10 @@ def propose_next_action(database: FoundryDatabase, mission_id: str) -> Proposal 
         return Waiting("no next action scheduled; the mission's action list is exhausted")
     if not requirement:
         requirement = "continue the current step"
-    return Proposal(requirement)
+    return Proposal(
+        requirement,
+        redirected=any(
+            effect.command_type == "REDIRECT" and not effect.blocked_reason
+            for effect in effects
+        ),
+    )

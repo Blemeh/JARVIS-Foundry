@@ -291,7 +291,7 @@ class MissionLoop:
         # the provider-facing instruction so the downstream worker executes
         # the interpreted next action rather than merely seeing a control row.
         dispatch_instructions = instructions
-        if proposal.action_requirement.strip() != instructions.strip():
+        if proposal.redirected:
             dispatch_instructions = (
                 f"Canonical mission next action: {proposal.action_requirement}\n\n"
                 f"{instructions}")
