@@ -36,7 +36,7 @@
     },
     "latest_full_suite_attempt": {
       "path": "docs/convergence/CURRENT_SOURCE_FULL_SUITE_VENV_20260819.json",
-      "sha256": "94EA602ACFB9B492BE90856C8D92C593075A79CF8E6B12961AF32DDE6785C713",
+      "sha256": "C830C52837C1FE485DECF1D88BEEFDC659C4EB90D2DA5F3F77783DD99DD39C8B",
       "tested_head": "f1721474c37cca7677f493431e87f2670114aa70",
       "status": "PASS",
       "tests": 1260,
