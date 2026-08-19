@@ -5,7 +5,7 @@ import sqlite3
 from .v4_schema import ensure_v4_tables
 
 
-SCHEMA_VERSION = 33
+SCHEMA_VERSION = 34
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -925,6 +925,37 @@ MIGRATIONS: dict[int, str] = {
     );
     CREATE INDEX IF NOT EXISTS tier_c_procedures_state ON tier_c_procedures(state);
     CREATE INDEX IF NOT EXISTS tier_c_procedures_scope ON tier_c_procedures(scope);
+    """,
+    34: """
+    -- Durable executable authority for an existing mission step.  Contract
+    -- rows are immutable. Corrections use a higher version and explicit
+    -- supersession.  The event ledger remains the source of truth.
+    CREATE TABLE IF NOT EXISTS mission_step_contracts (
+        contract_id TEXT PRIMARY KEY,
+        mission_id TEXT NOT NULL,
+        step_id TEXT NOT NULL,
+        version INTEGER NOT NULL CHECK(version > 0),
+        resource_id TEXT NOT NULL,
+        capability TEXT NOT NULL,
+        target_relative_path TEXT NOT NULL,
+        instructions TEXT NOT NULL,
+        expected_effects_json TEXT NOT NULL,
+        rollback_json TEXT NOT NULL,
+        risk_class TEXT NOT NULL CHECK(risk_class IN ('C0', 'C1', 'C2', 'C3')),
+        verification_criteria_json TEXT NOT NULL,
+        expected_artifacts_json TEXT NOT NULL,
+        forbidden_paths_json TEXT NOT NULL,
+        contract_hash TEXT NOT NULL CHECK(length(contract_hash) = 64),
+        recorded_by TEXT NOT NULL,
+        source TEXT NOT NULL,
+        provenance_json TEXT NOT NULL DEFAULT '{}',
+        supersedes_hash TEXT,
+        last_event_id TEXT NOT NULL UNIQUE,
+        updated_at TEXT NOT NULL,
+        UNIQUE(mission_id, step_id, version)
+    );
+    CREATE INDEX IF NOT EXISTS mission_step_contracts_mission
+        ON mission_step_contracts(mission_id, step_id, version);
     """,
 }
 

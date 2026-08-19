@@ -8,6 +8,7 @@ from .events import Event, canonical_json
 
 PROJECTION_TABLES = (
     "missions",
+    "mission_step_contracts",
     "resources",
     "directives",
     "action_decisions",
@@ -148,6 +149,71 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             """UPDATE missions SET state = ?, next_action = ?, last_event_id = ?, updated_at = ?
                WHERE mission_id = ?""",
             (payload["state"], payload.get("next_action"), event.event_id, event.recorded_at, payload["mission_id"]),
+        )
+    elif event.event_type == "mission.step_contract_recorded":
+        # Executable mission authority is immutable and event-derived.  The
+        # payload is validated before any row is written; duplicate semantic
+        # delivery is idempotent, while a conflicting hash is rejected.
+        from .mission.contracts import MissionStepContract, MissionStepContractError
+
+        if event.source_type != "supervisor" or event.source_id != "supervisor":
+            raise ValueError("mission step contracts are Supervisor-owned")
+        try:
+            contract = MissionStepContract.from_payload(payload)
+        except (MissionStepContractError, TypeError, ValueError) as error:
+            raise ValueError(f"invalid mission step contract: {error}") from error
+        mission = connection.execute(
+            "SELECT resource_id FROM missions WHERE mission_id = ?",
+            (contract.mission_id,),
+        ).fetchone()
+        if mission is None:
+            raise ValueError(f"unknown mission: {contract.mission_id}")
+        if str(mission[0] or "") != contract.resource_id:
+            raise ValueError("mission step contract resource mismatch")
+        resource = connection.execute(
+            "SELECT resource_id FROM resources WHERE resource_id = ?",
+            (contract.resource_id,),
+        ).fetchone()
+        if resource is None:
+            raise ValueError(f"unknown resource: {contract.resource_id}")
+        existing = connection.execute(
+            "SELECT contract_hash FROM mission_step_contracts "
+            "WHERE contract_id = ? OR (mission_id = ? AND step_id = ? AND version = ?)",
+            (contract.contract_id, contract.mission_id, contract.step_id, contract.version),
+        ).fetchone()
+        if existing is not None:
+            if str(existing[0]) == contract.content_hash():
+                return
+            raise ValueError("conflicting mission step contract for immutable version")
+        if contract.version > 1:
+            previous = connection.execute(
+                "SELECT contract_hash FROM mission_step_contracts "
+                "WHERE mission_id = ? AND step_id = ? ORDER BY version DESC LIMIT 1",
+                (contract.mission_id, contract.step_id),
+            ).fetchone()
+            if previous is None or contract.supersedes_hash != str(previous[0]):
+                raise ValueError("contract version must explicitly supersede the latest hash")
+        connection.execute(
+            """INSERT INTO mission_step_contracts(
+                contract_id, mission_id, step_id, version, resource_id, capability,
+                target_relative_path, instructions, expected_effects_json,
+                rollback_json, risk_class, verification_criteria_json,
+                expected_artifacts_json, forbidden_paths_json, contract_hash,
+                recorded_by, source, provenance_json, supersedes_hash,
+                last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                contract.contract_id, contract.mission_id, contract.step_id,
+                contract.version, contract.resource_id, contract.capability,
+                contract.target_relative_path, contract.instructions,
+                canonical_json(contract.expected_effects),
+                canonical_json(contract.rollback), contract.risk_class,
+                canonical_json(contract.verification_criteria),
+                canonical_json(contract.expected_artifacts),
+                canonical_json(contract.forbidden_paths), contract.content_hash(),
+                contract.recorded_by, contract.source, canonical_json(contract.provenance),
+                contract.supersedes_hash, event.event_id, event.recorded_at,
+            ),
         )
     elif event.event_type == "project.registered":
         connection.execute(

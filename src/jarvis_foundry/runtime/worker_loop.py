@@ -4,7 +4,7 @@ One production path for worker-driven mission steps:
 
     Supervisor/STOP sentinel
       -> driver cycle (bounded, durable singleton lease)
-      -> v3 loop (``run_one_loop``)
+      -> existing durable mission selector + executable step contract
       -> MissionLoop (canonical mission state machine)
       -> RoleDispatcher (durable leases, replay, exactly-once)
       -> HybridWorkerRoleAdapter (the single worker bridge)
@@ -39,7 +39,13 @@ from ..paths import FoundryPaths
 from ..roles.router import RoleRouter
 from ..supervisor.estop import EmergencyStop
 from ..supervisor.leases import LeaseManager
-from ..v3_loop import DEFAULT_CAPABILITY, run_one_loop
+from ..mission.contracts import (
+    MissionStepContractError,
+    dispatchable_contract_missions,
+    latest_contract,
+)
+from ..mission.directives import select_dispatchable_mission
+from ..mission.loop import MissionLoop, ProposalError
 from ._stack import build_worker_stack
 from .config import WorkerRuntimeConfig
 
@@ -50,6 +56,45 @@ DEFAULT_RESOURCE_ID = "resource-wfm-optimizer"
 
 def _default_stop_path(paths: FoundryPaths, config: WorkerRuntimeConfig) -> Path:
     return config.resolve_stop_path(paths.home)
+
+
+def _waiting_report(database: FoundryDatabase, *, loop_id: str,
+                    instance_id: str, reason: str) -> dict[str, Any]:
+    database.append(Event.create(
+        "worker_loop.waiting",
+        {"loop_id": loop_id, "instance_id": instance_id, "reason": reason},
+        source_type="supervisor", source_id=instance_id,
+        idempotency_key=f"worker_loop.waiting:{loop_id}",
+    ))
+    return {"loop_id": loop_id, "outcome": "WAITING", "reason": reason}
+
+
+def _blocked_contract_report(database: FoundryDatabase, *, loop_id: str,
+                             instance_id: str, mission_id: str | None,
+                             reason: str) -> dict[str, Any]:
+    database.append(Event.create(
+        "worker_loop.contract_blocked",
+        {"loop_id": loop_id, "instance_id": instance_id,
+         "mission_id": mission_id, "reason": reason},
+        source_type="supervisor", source_id=instance_id,
+        idempotency_key=f"worker_loop.contract_blocked:{loop_id}",
+    ))
+    return {"loop_id": loop_id, "outcome": "BLOCKED",
+            "mission_id": mission_id, "reason": reason}
+
+
+def _select_contract(database: FoundryDatabase) -> str | None:
+    """Select an existing mission that has a durable contract.
+
+    Missions without executable authority are excluded from selection rather
+    than converted into invented work.  A selected but malformed contract is
+    returned for the caller to report as BLOCKED, preserving the distinction
+    between honest WAITING and a corrupted authoritative record.
+    """
+    mission_ids = dispatchable_contract_missions(database)
+    if not mission_ids:
+        return None
+    return select_dispatchable_mission(database, mission_ids)
 
 
 def run_cycle(
@@ -108,30 +153,51 @@ def run_cycle(
             source_type="supervisor", source_id=instance_id,
             idempotency_key=f"worker_loop.cycle_started:{loop_id}",
         ))
+        mission_id = _select_contract(database)
+        if mission_id is None:
+            return _waiting_report(
+                database, loop_id=loop_id, instance_id=instance_id,
+                reason="no dispatchable mission has an authoritative executable contract",
+            )
+        try:
+            contract = latest_contract(database, mission_id)
+            if contract is None:
+                return _waiting_report(
+                    database, loop_id=loop_id, instance_id=instance_id,
+                    reason=f"mission {mission_id} has no executable contract",
+                )
+            runtime_kwargs = contract.runtime_kwargs(database)
+        except (MissionStepContractError, KeyError, TypeError, ValueError) as error:
+            return _blocked_contract_report(
+                database, loop_id=loop_id, instance_id=instance_id,
+                mission_id=mission_id, reason=f"invalid executable contract: {error}",
+            )
+
         role_router = RoleRouter()
         role_router.enforce_directive_routing()
-        bridge = build_worker_stack(
+        stack = build_worker_stack(
             database, paths, config, run_id=f"loop-{loop_id}")
-        report = run_one_loop(
-            database,
-            loop_id=loop_id,
-            adapter=bridge,
-            router=role_router,
-            mission_id=config.mission_id,
-            resource_id=config.resource_id,
-            capability=config.capability,
-            min_score=min_score,
-            score_budget=score_budget,
-            max_items=max_items,
-            max_bytes=max_bytes,
-            vault_root=vault_root,
-            handoff_dir=handoff_dir,
-            research_dirs=research_dirs,
-            repo_paths=repo_paths,
-            target_root=target_root,
-            instructions_builder=instructions_builder,
+        loop = MissionLoop(
+            database, router=role_router, adapter=stack.bridge,
+            leases=leases, max_repairs=config.max_repairs,
+            source_id=f"worker-loop:{instance_id}",
         )
-        return report
+        try:
+            outcome = loop.run_until_settled(**runtime_kwargs)
+        except (MissionStepContractError, ProposalError, KeyError, TypeError, ValueError) as error:
+            return _blocked_contract_report(
+                database, loop_id=loop_id, instance_id=instance_id,
+                mission_id=mission_id, reason=f"mission contract dispatch blocked: {error}",
+            )
+        return {
+            "loop_id": loop_id,
+            "outcome": outcome.outcome,
+            "mission_id": mission_id,
+            "step_id": outcome.step_id,
+            "run_id": outcome.run_id,
+            "verdict_id": outcome.verdict_id,
+            "reason": outcome.reason,
+        }
     finally:
         leases.release(LOOP_LEASE_KEY, instance_id)
 

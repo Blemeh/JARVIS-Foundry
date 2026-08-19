@@ -183,6 +183,7 @@ class FoundryDatabase:
     def row(self, table: str, key_column: str, key: str) -> dict[str, object] | None:
         allowed = {
             "missions": "mission_id",
+            "mission_step_contracts": "contract_id",
             "resources": "resource_id",
             "directives": "directive_id",
             "action_decisions": "action_id",
@@ -238,7 +239,7 @@ class FoundryDatabase:
                    "knowledge_ingestions", "knowledge_snapshots", "candidates",
                    "candidate_scores", "monitors", "vault_files",
                    "vault_sync_state", "ingestion_cursors", "research_queue",
-                   "worker_manifests", "consolidation_ops"}
+                   "worker_manifests", "consolidation_ops", "mission_step_contracts"}
         allowed.update({"cost_measurements", "briefing_outbox", "voice_interactions", "control_nonces", "improvement_records", "release_manifests", "release_slots", "candidate_builds", "evaluation_runs", "verifications", "shadow_runs", "canaries", "promotions", "release_control", "restore_points", "discovery_runs", "cycles", "acceptance_runs"})
         if table not in allowed:
             raise ValueError("unsupported projection listing")
@@ -257,7 +258,7 @@ class FoundryDatabase:
                    "knowledge_ingestions", "knowledge_snapshots", "candidates",
                    "candidate_scores", "monitors", "vault_files",
                    "vault_sync_state", "ingestion_cursors", "research_queue",
-                   "worker_manifests", "consolidation_ops"}
+                   "worker_manifests", "consolidation_ops", "mission_step_contracts"}
         allowed.update({"cost_measurements", "briefing_outbox", "voice_interactions", "control_nonces", "improvement_records", "release_manifests", "release_slots", "candidate_builds", "evaluation_runs", "verifications", "shadow_runs", "canaries", "promotions", "release_control", "restore_points", "discovery_runs", "cycles", "acceptance_runs"})
         if table not in allowed:
             raise ValueError("unsupported projection count")
