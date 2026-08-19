@@ -831,6 +831,18 @@
       "candidate_head": "aa753c0ad1f2d86abeaf5929d51e8992fa290990",
       "report": "docs/convergence/R10_LIVE_DIRECTIVE_CONSUMER_VERIFIER_20260819.json",
       "scope": "read-only focused consumer, MissionLoop, Command Center, compile, diff, and forged nonce-path probe"
+    },
+    {
+      "role": "current-state reconciliation verifier",
+      "agent": "/root/r10_state_docs_verifier_luna",
+      "provider_route": "router_commandcode_gpt_5_6_luna",
+      "provider_transport": "codex-router",
+      "provider": "commandcode",
+      "model": "gpt-5.6-luna",
+      "status": "COMPLETED_PASS_WITH_BOUNDARY",
+      "candidate_head": "47233143a3cbc29f8148dec245e58f1975d24a28",
+      "report": "docs/convergence/CURRENT_STATE_RECONCILIATION_VERIFIER_20260819.json",
+      "scope": "read-only current-state docs, convergence state, R6/Eyes/Remaster preservation, and proving boundary"
     }
   ],
   "promotion": {
@@ -863,6 +875,8 @@
     "latest_r10_live_directive_consumer": "docs/convergence/R10_LIVE_DIRECTIVE_CONSUMER_20260819.json",
     "latest_r10_live_directive_consumer_verifier": "docs/convergence/R10_LIVE_DIRECTIVE_CONSUMER_VERIFIER_20260819.json",
     "latest_r10_live_directive_consumer_commit": "aa753c0ad1f2d86abeaf5929d51e8992fa290990",
+    "latest_state_reconciliation": "docs/convergence/CURRENT_STATE_RECONCILIATION_VERIFIER_20260819.json",
+    "latest_state_reconciliation_commit": "47233143a3cbc29f8148dec245e58f1975d24a28",
     "exact_head_audit": "docs/convergence/INDEPENDENT_SEMANTIC_CONVERGENCE_AUDIT_20260819.json",
     "final_audit": {
       "status": "PASS_WITH_BLOCKERS",

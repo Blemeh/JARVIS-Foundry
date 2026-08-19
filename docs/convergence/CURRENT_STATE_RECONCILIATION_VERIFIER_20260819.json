@@ -1,0 +1,40 @@
+{
+  "schema": "jarvis-current-state-reconciliation-verifier-v1",
+  "stage": "POST_PROMOTION_PROVING",
+  "role": "fresh independent docs/state verifier",
+  "recorded_at": "2026-08-19",
+  "verdict": "PASS_WITH_BOUNDARY",
+  "candidate": {
+    "head": "47233143a3cbc29f8148dec245e58f1975d24a28",
+    "parent": "1846998f8d838da475c6e8dbd71034bea6565a0d",
+    "documented_source_tree": "5ae83b84cf9ea6a1718287e0f176db858b440eca",
+    "canonical_branch": "main"
+  },
+  "checks": {
+    "json_parse": "PASS",
+    "doc_staleness_check": "PASS",
+    "git_diff_check": "PASS",
+    "r6_state": "OWNER_REDIRECT_R6_DEFERRED",
+    "eyes_state": "OUT_OF_SCOPE_READ_ONLY",
+    "remaster_certified_head": "6be9185ea34a64a84737dbd9ec323e25776c4558",
+    "remaster_dirty_inventory": "87 paths; 74 historical R6-deferred",
+    "r10_evidence_commit": "aa753c0ad1f2d86abeaf5929d51e8992fa290990",
+    "proving_window": "STARTED_WAITING_ELAPSED; 0/10 missions; seven-day and ten-mission boundary preserved"
+  },
+  "verifier_agent": "/root/r10_state_docs_verifier_luna",
+  "provider_transport": "codex-router",
+  "provider": "commandcode",
+  "model": "gpt-5.6-luna",
+  "route": "router_commandcode_gpt_5_6_luna",
+  "boundaries": [
+    "live Supervisor/Hermes/provider dispatch remains NOT_TESTED",
+    "external effects, voice, and rendered UI/a11y remain NOT_TESTED/WAITING",
+    "runtime proving source remains f37f852 and was not restarted"
+  ],
+  "mutations": {
+    "canonical_main_during_verification": false,
+    "runtime_db_processes_scheduled_task": false,
+    "remaster": false,
+    "eyes": false
+  }
+}
