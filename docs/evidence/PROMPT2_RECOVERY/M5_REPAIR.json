@@ -1,0 +1,30 @@
+{
+  "observed_at": "2026-08-19T18:43:00Z",
+  "canonical_source_sha": "b59836772d948bd7b2507949c42f3c7dfa75afaf",
+  "topology": {
+    "CURRENT": "b59836772d948bd7b2507949c42f3c7dfa75afaf",
+    "PREVIOUS": "adada7f31ac515cfac9782ace95f744b631f76f5",
+    "note": "PREVIOUS is the exact prior immutable v34 release already installed at M3; not a developer checkout and not a v33 executable."
+  },
+  "F4_worker_killed_after_partial_mutation": {
+    "EXPECTED": "Worker mutates a real file, owned PID is killed before result submission, runtime classifies partial work, repair continues, fresh verifier PASS, no duplicate material effect",
+    "ACTUAL": "Installed release python wrote PARTIAL to step_a.md, owned pid 5328 was SIGTERM'd, verification.failed with recover-partial repair_requirements, repair wrote STEP-A, mission COMPLETE, one verification.passed",
+    "EVIDENCE": "C:\\temp\\jarvis-prompt2-m5-crash\\mission-repo\\step_a.md; tests/foundry/test_prompt2_m5_recovery.py; import path under releases\\b598367...\\site-packages",
+    "RECOVERY": "MissionLoop FAILED path -> REPAIRING -> repair worker overwrite of preserved partial file",
+    "VERDICT": "PASS"
+  },
+  "F11_release_rollback": {
+    "EXPECTED": "Normal rollback switches CURRENT to PREVIOUS immutable release that can open the same v34 live DB; return path restores CURRENT",
+    "ACTUAL": "jarvis release rollback: CURRENT adada7f, launcher started adada7f python, schema stayed 34, mission-prompt2-live COMPLETE with exactly 1 mission.completed. Second rollback restored CURRENT b598367.",
+    "EVIDENCE": "pointers CURRENT/PREVIOUS; process ExecutablePath under each releases\\<sha>\\.venv; backup C:\\Users\\b\\AppData\\Local\\JARVIS\\backups\\pre-m5-rollback-20260819T204134\\foundry.db",
+    "RECOVERY": "pointer swap + Supervisor process restart via stable launcher; live DB not restored/downgraded",
+    "VERDICT": "PASS"
+  },
+  "F10_windows_restart": {
+    "EXPECTED": "Host reboot only when safe",
+    "ACTUAL": "Owner interactive Cursor session is active; a full Windows reboot would disrupt that session. F2 already proved Task Scheduler relaunch of the stable launcher.",
+    "EVIDENCE": "not rebooted",
+    "RECOVERY": "N/A",
+    "VERDICT": "BLOCKED_OWNER_ENVIRONMENT"
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "install_root": "C:\\Users\\b\\AppData\\Local\\JARVIS",
+  "before": {
+    "current": "b59836772d948bd7b2507949c42f3c7dfa75afaf",
+    "previous": "adada7f31ac515cfac9782ace95f744b631f76f5"
+  },
+  "after": {
+    "current": "c4a0fd1b706f8c0ecac89143bc01b7c37d34191a",
+    "previous": "b59836772d948bd7b2507949c42f3c7dfa75afaf"
+  },
+  "residual": {
+    "ok": true,
+    "state": "BLOCKED",
+    "next_action": "create step_c.md containing STEP-C",
+    "updated_at": "2026-08-19T19:33:08.715500Z"
+  },
+  "built": {
+    "release_id": "rel-c4a0fd1b706f-ea8e0c7d",
+    "source_sha": "c4a0fd1b706f8c0ecac89143bc01b7c37d34191a",
+    "python_version": "3.13.5",
+    "package_version": "0.1.0",
+    "schema_compatibility": {
+      "package_schema": 34,
+      "opens_min": 34,
+      "opens_max": 34
+    },
+    "created_at": "2026-08-19T20:08:23.969841Z"
+  },
+  "promoted": {
+    "current": "c4a0fd1b706f8c0ecac89143bc01b7c37d34191a",
+    "previous": "b59836772d948bd7b2507949c42f3c7dfa75afaf"
+  },
+  "generation": {
+    "source_sha": "c4a0fd1b706f8c0ecac89143bc01b7c37d34191a",
+    "schema": 34,
+    "backup": null,
+    "recorded_at": "2026-08-19T20:08:23.996458Z"
+  },
+  "production_runtime_in_prompt3": true,
+  "reason": "git diff b598367..c4a0fd1 includes worker_loop, _stack, mission_bridge, discovery_candidates, command_center"
+}

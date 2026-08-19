@@ -1,0 +1,7 @@
+FULL canonical suite (disposable worktree, PYTHONPATH=C:\temp\jarvis-prompt1-m2\src)
+
+command: pytest tests/foundry tests/convergence
+collected: 1404
+exit_code: 0
+elapsed_ms: 701891
+focused kernel recheck: tests/foundry/test_prompt1_m2_kernel.py 4 passed

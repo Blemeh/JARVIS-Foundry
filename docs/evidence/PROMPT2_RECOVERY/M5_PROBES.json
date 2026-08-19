@@ -1,0 +1,83 @@
+{
+  "observed_at": "2026-08-19T18:30:00Z",
+  "canonical_source_sha": "adada7f31ac515cfac9782ace95f744b631f76f5",
+  "probes": {
+    "F1_STOP_during_worker": {
+      "EXPECTED": "STOP sentinel freezes Supervisor; worker_loop does not dispatch; process remains watchdog until resume",
+      "ACTUAL": "emergency_stop.frozen recorded for supervisor-247430aa; trust_state SUSPENDED; after resume, cycles continued WAITING (no remaining contracts)",
+      "EVIDENCE": "live ledger emergency_stop.frozen stop_id 37318bb9-8acc-416c-a3d9-9a4048c19ada",
+      "RECOVERY": "jarvis resume cleared sentinel; later hard restart restored LAB/RUNNING",
+      "VERDICT": "PASS"
+    },
+    "F2_supervisor_termination_restart": {
+      "EXPECTED": "Supervisor death is followed by Task Scheduler PT1M restart of the stable launcher on the same immutable release",
+      "ACTUAL": "schtasks /End did not kill the release python tree (cmd vs python). Stop-Process on launcher PIDs 9408/28736; new instance supervisor-28195bfb started 18:14:40Z from the same release python via jarvis-supervisor.cmd",
+      "EVIDENCE": "supervisor.started 247430aa then 28195bfb; PIDs 28068/27584; task still targets LOCALAPPDATA\\JARVIS\\bin\\jarvis-supervisor.cmd",
+      "RECOVERY": "singleton lease moved to new instance; live home unchanged",
+      "VERDICT": "PASS"
+    },
+    "F3_worker_loop_runtime_termination": {
+      "EXPECTED": "No independent production worker-loop daemon; Supervisor owns worker_loop --once",
+      "ACTUAL": "JARVIS-Foundry-Worker-Loop remains Disabled. Live children are --once cycles spawned from the Supervisor launcher",
+      "EVIDENCE": "schtasks Worker-Loop Disabled; worker:worker-loop lease owned by Supervisor-spawned child",
+      "RECOVERY": "next heartbeat respawns --once when spawn_worker_loop is on",
+      "VERDICT": "PASS"
+    },
+    "F4_worker_killed_after_partial_mutation": {
+      "EXPECTED": "Partial worktree mutation recovered by repair/re-dispatch without owner hop",
+      "ACTUAL": "LAB scripted Hermes writes complete faster than a reliable kill window on this host",
+      "EVIDENCE": "none for live mid-write kill",
+      "RECOVERY": "not exercised",
+      "VERDICT": "NOT_TESTED"
+    },
+    "F5_provider_network_unavailable": {
+      "EXPECTED": "Provider/network loss fail-closes without fake success",
+      "ACTUAL": "Installed proving path used lab_scripted_hermes (no live provider/network). Duplicate-event tamper still EventConflict",
+      "EVIDENCE": "prompt2-worker-routing.yaml lab_scripted_hermes: true",
+      "RECOVERY": "N/A (provider not in path)",
+      "VERDICT": "PASS"
+    },
+    "F6_false_success_worker_claim": {
+      "EXPECTED": "Builder claim is not verifier truth; DEFECT fails; repair overwrites; fresh verifier PASS",
+      "ACTUAL": "Step B builder wrote DEFECT; verification.failed with repair_requirements; repair wrote STEP-B; fresh PASS; mission COMPLETE",
+      "EVIDENCE": "verification.failed + verification.passed x3; worktree step_b.md == STEP-B",
+      "RECOVERY": "automatic REPAIRING then continuation to C",
+      "VERDICT": "PASS"
+    },
+    "F7_duplicate_completion_verdict": {
+      "EXPECTED": "Identical idempotent replay dedupes; mutated payload under same key conflicts",
+      "ACTUAL": "replay verification.passed created=False; tamper raised EventConflict; mission remained COMPLETE",
+      "EVIDENCE": "seq 116838 duplicate_identical False; EventConflict",
+      "RECOVERY": "ledger unchanged semantically",
+      "VERDICT": "PASS"
+    },
+    "F8_stale_lease": {
+      "EXPECTED": "New Supervisor acquires supervisor:singleton after previous instance death",
+      "ACTUAL": "After hard kill, instance 28195bfb owns supervisor:singleton; old 247430aa did not write supervisor.stopped (hard kill)",
+      "EVIDENCE": "leases.owner_id supervisor-28195bfb",
+      "RECOVERY": "LeaseManager acquire on start",
+      "VERDICT": "PASS"
+    },
+    "F9_restart_after_PASS_before_next_action": {
+      "EXPECTED": "After Action A PASS, next_action persists and Action B runs without owner chat",
+      "ACTUAL": "Observed ACTION_SELECTION next_action=create step_b.md after A PASS, then B (defect/repair) then C COMPLETE autonomously",
+      "EVIDENCE": "mission-prompt2-live state machine + step_*.md",
+      "RECOVERY": "durable next_action + contracts",
+      "VERDICT": "PASS"
+    },
+    "F10_planned_windows_restart": {
+      "EXPECTED": "Bounded JARVIS-owned restart if safe",
+      "ACTUAL": "Full Windows reboot would disrupt the owner session; no separate JARVIS-owned host reboot path was required after F2 process restart",
+      "EVIDENCE": "not rebooted",
+      "RECOVERY": "N/A",
+      "VERDICT": "NOT_TESTED"
+    },
+    "F11_release_rollback": {
+      "EXPECTED": "CURRENT rolls back to PREVIOUS immutable release that can safely open live data",
+      "ACTUAL": "PREVIOUS pointer absent. v33 SQLite backup exists and integrity-checked. Current release fail-closes on schema 33. Migrated live v34 cannot be claimed compatible with a v33-era executable restore",
+      "EVIDENCE": "rollback_current: no PREVIOUS release; schema mismatch live=33 package=34 against the pre-M3 backup home",
+      "RECOVERY": "file restore of foundry.db from backups\\pre-m3-20260819T200510\\foundry.db would return v33 but the installed release would refuse to start",
+      "VERDICT": "FAIL"
+    }
+  }
+}

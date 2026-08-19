@@ -1,0 +1,49 @@
+{
+  "role": "independent_verifier",
+  "prompt": "2 OF 4 — LIVE RUNTIME",
+  "observed_at": "2026-08-19T18:30:00Z",
+  "git": {
+    "canonical_start": "0b45d9ee799d1c5de38f8c307fc0455783aca80d",
+    "canonical_final": "adada7f31ac515cfac9782ace95f744b631f76f5",
+    "origin_main": "adada7f31ac515cfac9782ace95f744b631f76f5",
+    "local_equals_origin": true,
+    "m2_commit": "857640913bda04f51d97bf6d79be2e83b73d9c38",
+    "m2_payload_class": "VERIFIED_EXACT"
+  },
+  "release": {
+    "install_root": "C:\\Users\\b\\AppData\\Local\\JARVIS",
+    "current": "adada7f31ac515cfac9782ace95f744b631f76f5",
+    "previous": null,
+    "python": "C:\\Users\\b\\AppData\\Local\\JARVIS\\releases\\adada7f31ac515cfac9782ace95f744b631f76f5\\.venv\\Scripts\\python.exe",
+    "import_origin": "C:\\Users\\b\\AppData\\Local\\JARVIS\\releases\\adada7f31ac515cfac9782ace95f744b631f76f5\\.venv\\Lib\\site-packages\\jarvis_foundry\\__init__.py",
+    "task_target": "C:\\Users\\b\\AppData\\Local\\JARVIS\\bin\\jarvis-supervisor.cmd"
+  },
+  "live": {
+    "home": "C:\\Users\\b\\AppData\\Local\\hermes\\foundry",
+    "db": "C:\\Users\\b\\AppData\\Local\\hermes\\foundry\\foundry.db",
+    "schema": 34,
+    "stop": false,
+    "supervisor_instance": "supervisor-28195bfb-7ac4-4b17-adfa-9d347d0aa2e0",
+    "supervisor_pids": [28068, 27584],
+    "developer_checkout_import": false
+  },
+  "mission": {
+    "id": "mission-prompt2-live",
+    "worktree": "C:\\temp\\jarvis-prompt2-live-mission",
+    "state": "COMPLETE",
+    "artifacts": ["step_a.md", "step_b.md", "step_c.md"],
+    "verification_passed": 3,
+    "verification_failed": 1,
+    "repair_cycles": 1,
+    "agent_runs": 8
+  },
+  "suite": {
+    "full": "tests/foundry tests/convergence",
+    "collected": 1411,
+    "exit": 0
+  },
+  "verdict": "PASS",
+  "unresolved_high": [
+    "No PREVIOUS immutable release; executable rollback of migrated v34 live data is not proven safe"
+  ]
+}

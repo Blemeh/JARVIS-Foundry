@@ -1,0 +1,40 @@
+{
+  "verifier": "prompt1-m2-independent",
+  "inspected_at": "2026-08-19T15:50:00Z",
+  "verdict": "PASS",
+  "scope": "CASE A kernel in disposable worktree C:\\temp\\jarvis-prompt1-m2",
+  "findings": [],
+  "checks": {
+    "canonical_start_sha": "0b45d9ee799d1c5de38f8c307fc0455783aca80d",
+    "worktree_head": "0b45d9ee799d1c5de38f8c307fc0455783aca80d",
+    "live_checkout_src_mutated": false,
+    "live_task_scheduler_mutated": false,
+    "live_db_schema": 33,
+    "live_stop_active": false,
+    "live_supervisor_still_running": true,
+    "goal4_worktree_left_in_place": true,
+    "full_suite": {
+      "command": "pytest tests/foundry tests/convergence",
+      "collected": 1404,
+      "exit_code": 0,
+      "pythonpath": "C:\\temp\\jarvis-prompt1-m2\\src"
+    },
+    "focused_kernel_tests": "tests/foundry/test_prompt1_m2_kernel.py 4 passed",
+    "git_diff_files": [
+      "src/jarvis_foundry/mission/contracts.py",
+      "src/jarvis_foundry/mission/loop.py",
+      "src/jarvis_foundry/runtime/worker_loop.py",
+      "src/jarvis_foundry/workers/evidence.py",
+      "src/jarvis_foundry/workers/mission_bridge.py",
+      "tests/foundry/test_prompt1_m2_kernel.py"
+    ],
+    "next_action_persistence": "PASS after step-a schedules step-b instructions; no owner SQL",
+    "evidence_isolation": "builder/repair delta uses content hashes; Action B not poisoned by Action A; repair overwrite counts",
+    "repair_lineage": "verification.failed with repair_requirements then automatic repair then verification.passed",
+    "completion": "mission.completed from durable contracts when none remain",
+    "fresh_process_reconstruction": "subprocess reopened FoundryDatabase and read COMPLETE + mission.completed",
+    "hermes_pin": "worker_loop marks OpenHands NOT_READY; adapter not deleted",
+    "supervisor_heartbeat": "unchanged; no reasoning added",
+    "scope_containment": "no live home, no scheduler, no Goal 4, no M3"
+  }
+}
