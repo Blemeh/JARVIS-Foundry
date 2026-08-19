@@ -56,6 +56,8 @@
     "latest_current_release_checkpoint_snapshot": {
       "path": "docs/convergence/PROVING_WINDOW_CHECKPOINT_CURRENT_R3_20260819.json",
       "sha256": "084E598B57EC859DE19002C386EBE5B9050000C58A91B03F9DB2339979FBD6FD",
+      "canonical_windows_worktree_sha256": "5C7374BEC8154DB3FDF27D1E04D736630D0C78EB81E739154B6183B694423F53",
+      "hash_note": "repository payload is LF-normalized; the canonical Windows checkout is CRLF-normalized",
       "checkpoint_sha256": "47206CD0519EE38097FC918B3C9CFE4F382EF1C86804175967775FF07CA4AE4D",
       "status": "PASS_WAITING_ELAPSED",
       "event_head": 109226,
