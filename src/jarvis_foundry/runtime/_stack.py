@@ -67,7 +67,14 @@ def build_worker_stack(
     if config.lab_scripted_hermes:
         from ..deployment.lab_hermes import LabHermesAdapter
         from ..workers.contracts import WORKER_HERMES
-        registry.register(WORKER_HERMES, LabHermesAdapter())
+        registry.register(
+            WORKER_HERMES,
+            LabHermesAdapter(
+                crash_after_write=config.lab_crash_after_write,
+                crash_step_id=config.lab_crash_step_id,
+                workers=workers,
+            ),
+        )
         enabled.append(WORKER_HERMES)
         router.mark_ready(
             WORKER_HERMES, state=READY,

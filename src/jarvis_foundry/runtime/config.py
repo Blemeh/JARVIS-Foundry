@@ -30,6 +30,8 @@ class WorkerRuntimeConfig:
     stop_sentinel_path: str | None = None
     pause_directives: bool = True
     lab_scripted_hermes: bool = False
+    lab_crash_after_write: bool = False
+    lab_crash_step_id: str = "step-a"
 
     @classmethod
     def from_yaml(cls, path: str | Path | None) -> "WorkerRuntimeConfig":
@@ -61,6 +63,8 @@ class WorkerRuntimeConfig:
             pause_directives=bool(
                 raw.get("stop_integration", {}).get("pause_directives", True)),
             lab_scripted_hermes=bool(raw.get("lab_scripted_hermes", False)),
+            lab_crash_after_write=bool(raw.get("lab_crash_after_write", False)),
+            lab_crash_step_id=str(raw.get("lab_crash_step_id", "step-a")),
         )
         cfg.validate()
         return cfg

@@ -12,6 +12,7 @@ from jarvis_foundry.deployment.layout import current_pointer, launcher_cmd, rele
 from jarvis_foundry.deployment.release import (
     ReleaseError,
     migrate_clone,
+    rollback_current,
     set_current,
     validate_release,
     write_pointer,
@@ -127,3 +128,35 @@ def test_stable_launcher_cmd_clears_pythonpath(tmp_path):
     assert "PYTHONPATH=" in text
     assert "jarvis_foundry.deployment.launcher" in text
     assert launcher_cmd(tmp_path / "JARVIS") == path
+
+
+def test_rollback_swaps_current_and_previous(tmp_path):
+    first, second = "1" * 40, "2" * 40
+    _fake_release(tmp_path, first)
+    _fake_release(tmp_path, second)
+    root = tmp_path / "JARVIS"
+    set_current(first, root=root)
+    set_current(second, root=root)
+    home = tmp_path / "foundry"
+    FoundryDatabase(home / "foundry.db").initialize()
+    result = rollback_current(root=root, foundry_home=home)
+    assert result["current"] == first
+    assert result["previous"] == second
+    assert current_pointer(root).read_text(encoding="utf-8").strip() == first
+    restored = rollback_current(root=root, foundry_home=home)
+    assert restored["current"] == second
+    assert restored["previous"] == first
+
+
+def test_rollback_refuses_schema_mismatch(tmp_path):
+    first, second = "3" * 40, "4" * 40
+    _fake_release(tmp_path, first)
+    _fake_release(tmp_path, second)
+    root = tmp_path / "JARVIS"
+    set_current(first, root=root)
+    set_current(second, root=root)
+    home = tmp_path / "foundry"
+    FoundryDatabase(home / "foundry.db").initialize(target=33)
+    with pytest.raises(ReleaseError, match="schema mismatch"):
+        rollback_current(root=root, foundry_home=home)
+    assert current_pointer(root).read_text(encoding="utf-8").strip() == second

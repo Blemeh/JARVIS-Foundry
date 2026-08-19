@@ -230,7 +230,7 @@ def _release_command(args, paths: FoundryPaths) -> int:
         print(json.dumps({"pointers": pointers, "task": installer.retarget_existing()}, indent=2))
         return 0
     if args.release_command == "rollback":
-        print(json.dumps(rollback_current(root=root), indent=2))
+        print(json.dumps(rollback_current(root=root, foundry_home=paths.home), indent=2))
         return 0
     if args.release_command == "backup-db":
         print(json.dumps({"backup": str(backup_database(paths.database, args.destination))}, indent=2))

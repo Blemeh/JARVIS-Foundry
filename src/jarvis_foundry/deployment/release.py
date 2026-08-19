@@ -18,6 +18,7 @@ from ..database import FoundryDatabase
 from ..migrations import SCHEMA_VERSION
 from .layout import (
     current_pointer,
+    install_root,
     launcher_cmd,
     previous_pointer,
     release_dir,
@@ -233,16 +234,61 @@ def set_current(source_sha: str, *, root: Path | None = None) -> dict[str, str |
     return {"current": source_sha, "previous": read_previous(root)}
 
 
-def rollback_current(*, root: Path | None = None) -> dict[str, str | None]:
+def record_generation(
+    *,
+    root: Path | None = None,
+    foundry_home: Path | None = None,
+    backup: Path | None = None,
+) -> dict[str, Any]:
+    """Record which immutable release currently owns which DB generation."""
+    sha = read_current(root)
+    if not sha:
+        raise ReleaseError("CURRENT pointer missing")
+    schema = 0
+    if foundry_home is not None:
+        schema = schema_version(Path(foundry_home) / "foundry.db")
+    record = {
+        "source_sha": sha,
+        "schema": schema,
+        "backup": str(backup) if backup else None,
+        "recorded_at": isoformat(),
+    }
+    directory = install_root(root) / "generations"
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / f"{sha[:12]}-{uuid.uuid4().hex[:8]}.json"
+    path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    (install_root(root) / "GENERATION.json").write_text(
+        json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return record
+
+
+def rollback_current(
+    *,
+    root: Path | None = None,
+    foundry_home: Path | None = None,
+) -> dict[str, Any]:
     previous = read_previous(root)
     if not previous:
         raise ReleaseError("no PREVIOUS release to roll back to")
-    validate_release(previous, root=root, require_schema_match=False)
     current = read_current(root)
+    validate_release(
+        previous, root=root, foundry_home=foundry_home,
+        require_schema_match=foundry_home is not None,
+    )
+    if current:
+        validate_release(current, root=root, require_schema_match=False)
     write_pointer(current_pointer(root), previous)
     if current:
         write_pointer(previous_pointer(root), current)
-    return {"current": previous, "previous": current}
+    generation = None
+    if foundry_home is not None:
+        generation = record_generation(root=root, foundry_home=foundry_home)
+    return {
+        "current": previous,
+        "previous": current,
+        "generation": generation,
+        "switched": True,
+    }
 
 
 def backup_database(source: Path, destination: Path) -> Path:
