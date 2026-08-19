@@ -1,0 +1,38 @@
+{
+  "schema": "jarvis-current-source-migration-test-repair-v1",
+  "recorded_at": "2026-08-19T04:52:45.6795317Z",
+  "status": "PASS_FOCUSED_REPAIR_WITH_FULL_SUITE_RECHECK_REQUIRED",
+  "source": {
+    "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
+    "branch": "main",
+    "tested_head": "f62998904d6ff059fae009e1fa5008e6de2f8c3c",
+    "semantic_source": "6b776bd0f93005d020b5de2c183f900b82fbe57c"
+  },
+  "initial_full_suite_attempt": {
+    "command": "PYTHONPATH=src PYTHONHASHSEED=0 C:/Python313/python.exe -m pytest -vv --maxfail=1 -o faulthandler_timeout=20",
+    "collected": 1260,
+    "passed_before_stop": 557,
+    "failed": 1,
+    "errors": 0,
+    "stopped_at": "tests/foundry/test_hybrid_memory_migration.py::test_forward_migration_reaches_v33",
+    "failure": "historical v33-focused test called initialize() and expected 33; current intentional schema is v34",
+    "live_systems_touched": false
+  },
+  "repair": {
+    "files_changed": [
+      "tests/foundry/test_hybrid_memory_migration.py"
+    ],
+    "change": "pin v33 historical migration assertions to initialize(target=33); production migration code unchanged",
+    "scope": "test_only"
+  },
+  "focused_regression": {
+    "command": "PYTHONPATH=src PYTHONHASHSEED=0 C:/Python313/python.exe -m pytest -q tests/foundry/test_hybrid_memory_migration.py tests/foundry/test_mission_contract.py tests/foundry/test_runtime_worker_loop.py -ra",
+    "passed": 25,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "status": "PASS",
+    "live_systems_touched": false
+  },
+  "boundary": "The focused repair is verified. A fresh full 1260-test run remains required before claiming full-suite PASS; no live migration, restart, scheduler enablement, provider dispatch, or external effect was performed."
+}

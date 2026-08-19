@@ -27,7 +27,7 @@ def _fresh() -> FoundryDatabase:
 
 def test_forward_migration_reaches_v33():
     db = _fresh()
-    assert db.initialize() == 33
+    assert db.initialize(target=33) == 33
     with db.connect() as conn:
         tables = {r["name"] for r in conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table'")}
@@ -42,9 +42,9 @@ def test_forward_migration_reaches_v33():
 
 def test_migration_idempotent_forward_twice():
     db = _fresh()
-    db.initialize()
+    db.initialize(target=33)
     # second initialization must be a no-op
-    assert db.initialize() == 33
+    assert db.initialize(target=33) == 33
     with db.connect() as conn:
         count = conn.execute(
             "SELECT COUNT(*) AS n FROM schema_migrations WHERE version=33").fetchone()["n"]
@@ -69,13 +69,13 @@ def test_migration_partially_applied_then_retried():
                     "last_verified TEXT, expires_at TEXT, supersedes TEXT, contradicts TEXT, "
                     "importance REAL NOT NULL DEFAULT 0.5, context_cost_chars INTEGER NOT NULL DEFAULT 0, "
                     "promotion_reason TEXT, last_event_id TEXT NOT NULL UNIQUE, updated_at TEXT NOT NULL DEFAULT '')")
-    assert db.initialize() == 33  # must complete despite the pre-existing table
-    assert db.initialize() == 33  # and stay idempotent
+    assert db.initialize(target=33) == 33  # must complete despite the pre-existing table
+    assert db.initialize(target=33) == 33  # and stay idempotent
 
 
 def test_rollback_to_v32_restores_previous_schema():
     db = _fresh()
-    db.initialize()
+    db.initialize(target=33)
     # simulate a rollback decision: drop the v33 row and tables
     with db.connect() as conn:
         conn.execute("BEGIN IMMEDIATE")
@@ -84,7 +84,7 @@ def test_rollback_to_v32_restores_previous_schema():
         conn.execute("DELETE FROM schema_migrations WHERE version=33")
         conn.commit()
     # the previous executable still works at v32
-    assert db.initialize() == 33  # re-migrate forward works
+    assert db.initialize(target=33) == 33  # re-migrate forward works
     with db.connect() as conn:
         version = conn.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0]
         assert version == 33
@@ -97,7 +97,7 @@ def test_v32_schema_unchanged_by_migration_delta():
     with db.connect() as conn:
         v32_tables = {r["name"] for r in conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table'")}
-    db.initialize()
+    db.initialize(target=33)
     with db.connect() as conn:
         v33_tables = {r["name"] for r in conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table'")}
@@ -120,13 +120,13 @@ def test_interrupted_migration_rolls_back_atomically():
         except sqlite3.OperationalError:
             conn.rollback()
     # still at 32, and a clean forward migration works
-    assert db.initialize() == 33
+    assert db.initialize(target=33) == 33
 
 
 def test_locked_db_fails_loudly_and_recovers():
     root = pathlib.Path(tempfile.mkdtemp(prefix="v8-mig-"))
     db = FoundryDatabase(root / "db.sqlite")
-    db.initialize()
+    db.initialize(target=33)
     blocker = sqlite3.connect(root / "db.sqlite")
     blocker.execute("BEGIN IMMEDIATE")
     try:
@@ -135,4 +135,4 @@ def test_locked_db_fails_loudly_and_recovers():
     finally:
         blocker.rollback()
         blocker.close()
-    assert db.initialize() == 33  # recovers after the lock clears
+    assert db.initialize(target=33) == 33  # recovers after the lock clears
