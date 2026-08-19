@@ -55,14 +55,14 @@
     },
     "latest_current_release_checkpoint_snapshot": {
       "path": "docs/convergence/PROVING_WINDOW_CHECKPOINT_CURRENT_R3_20260819.json",
-      "sha256": "084E598B57EC859DE19002C386EBE5B9050000C58A91B03F9DB2339979FBD6FD",
-      "canonical_windows_worktree_sha256": "5C7374BEC8154DB3FDF27D1E04D736630D0C78EB81E739154B6183B694423F53",
+      "sha256": "609DF130CD95597A3A6C01E7CEBA41AAC9619B5D43F9C87FF7400D1F1C47EC28",
+      "canonical_windows_worktree_sha256": "3F938F809AFE19FCF2B0DC4DF416E3C98482F96A65DD93B91A7F432DDB05195E",
       "hash_note": "repository payload is LF-normalized; the canonical Windows checkout is CRLF-normalized",
-      "checkpoint_sha256": "47206CD0519EE38097FC918B3C9CFE4F382EF1C86804175967775FF07CA4AE4D",
+      "checkpoint_sha256": "E8EA623DC6769613BCD3F0F5A588050DDCAC279D14F456B5E7E3D656FBFC5D17",
       "status": "PASS_WAITING_ELAPSED",
-      "event_head": 109226,
-      "elapsed_seconds": 16512.103,
-      "remaining_seconds": 588287.897,
+      "event_head": 109285,
+      "elapsed_seconds": 16812.128,
+      "remaining_seconds": 587987.872,
       "monitor_last_result": 0
     },
     "focused_worker_loop_contract": {
