@@ -34,8 +34,9 @@
     "tested_head": "93d23f50ea5858355c202cae7d4a5809ed7e245c",
     "exact_head_audit": "docs/convergence/INDEPENDENT_SEMANTIC_CONVERGENCE_AUDIT_20260819.json",
     "final_audit": {
-      "status": "PASS_WITH_BLOCKERS",
-      "path": "docs/convergence/FINAL_CONVERGENCE_AUDIT_20260819.json"
+      "status": "PASS_WITH_BOUNDARY",
+      "path": "docs/convergence/FINAL_CONVERGENCE_AUDIT_CURRENT_20260819.json",
+      "sha256": "86659E9F7B5A2B67A8B3CAB4E0ACDB16DE28EDBFAFFBEA27B587013264EE779E"
     },
     "focused_source_repair": {
       "status": "PASS_SOURCE_FOCUSED_EXTERNAL_BOUNDARY",
@@ -865,6 +866,18 @@
       "candidate_head": "93d23f50ea5858355c202cae7d4a5809ed7e245c",
       "report": "docs/convergence/CURRENT_SOURCE_FULL_SUITE_20260819.json",
       "scope": "read-only focused replay, mission-loop, R8/R10 regressions, compile, diff, and path-uniqueness inspection; no live provider or runtime mutation"
+    },
+    {
+      "role": "fresh final convergence auditor",
+      "agent": "/root/final_convergence_auditor_luna",
+      "provider_route": "router_commandcode_gpt_5_6_luna",
+      "provider_transport": "codex-router",
+      "provider": "commandcode",
+      "model": "gpt-5.6-luna",
+      "status": "COMPLETED_PASS_WITH_BOUNDARY",
+      "candidate_head": "ea65c91b35af51f428cb0a6d1925efa5df596dbc",
+      "report": "docs/convergence/FINAL_CONVERGENCE_AUDIT_CURRENT_20260819.json",
+      "scope": "read-only bounded candidate, current-source evidence, R6/Remaster/Eyes preservation, JSON/doc checks, and external-boundary reconciliation"
     }
   ],
   "promotion": {
@@ -902,8 +915,9 @@
     "latest_r10_replay_repair": "docs/convergence/CURRENT_SOURCE_FULL_SUITE_20260819.json",
     "exact_head_audit": "docs/convergence/INDEPENDENT_SEMANTIC_CONVERGENCE_AUDIT_20260819.json",
     "final_audit": {
-      "status": "PASS_WITH_BLOCKERS",
-      "path": "docs/convergence/FINAL_CONVERGENCE_AUDIT_20260819.json"
+      "status": "PASS_WITH_BOUNDARY",
+      "path": "docs/convergence/FINAL_CONVERGENCE_AUDIT_CURRENT_20260819.json",
+      "sha256": "86659E9F7B5A2B67A8B3CAB4E0ACDB16DE28EDBFAFFBEA27B587013264EE779E"
     },
     "pre_release_tag": "convergence-pre-r3",
     "post_promotion_runtime_probe": "docs/convergence/LIVE_RUNTIME_PROBE_POST_PROMOTION.json",

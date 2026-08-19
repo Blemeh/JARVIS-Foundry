@@ -1,0 +1,64 @@
+{
+  "schema": "jarvis-final-convergence-audit-v2",
+  "status": "PASS_WITH_BOUNDARY",
+  "recorded_at": "2026-08-19T04:24:13+02:00",
+  "provider": "commandcode",
+  "model": "gpt-5.6-luna",
+  "route": "router_commandcode_gpt_5_6_luna",
+  "transport": "codex-router",
+  "scope": "Read-only bounded audit; no mutations, runtime actions, or broad tests run.",
+  "candidate": {
+    "path": "C:/temp/JARVIS-R10-ReplayRepair-20260819",
+    "branch": "repair/r10-replay-manifest-20260819",
+    "observed_head": "ea65c91b35af51f428cb0a6d1925efa5df596dbc",
+    "code_head": "93d23f50ea5858355c202cae7d4a5809ed7e245c",
+    "code_parent": "0812d8fa808a246caf6b08aaa3723b0d859506e2",
+    "worktree": "CLEAN",
+    "diff_check": "PASS"
+  },
+  "canonical_before_promotion": {
+    "path": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
+    "head": "0812d8fa808a246caf6b08aaa3723b0d859506e2",
+    "origin_main": "0812d8fa808a246caf6b08aaa3723b0d859506e2",
+    "branch": "main",
+    "worktree": "CLEAN"
+  },
+  "current_source_suite": {
+    "record": "docs/convergence/CURRENT_SOURCE_FULL_SUITE_20260819.json",
+    "tested_head": "93d23f50ea5858355c202cae7d4a5809ed7e245c",
+    "junit": "C:/temp/jarvis-current-r10-replay-repair-full-seed0.xml",
+    "junit_sha256": "10B1EF6AA247D57240DFCBCC1AF39CC26620B7F219F0ACBDF14BD7829D44859E",
+    "pythonhashseed": "0",
+    "counts": "1248 tests, 0 failures, 0 errors, 0 skipped",
+    "status": "PASS"
+  },
+  "r10_replay_repair": {
+    "finding": "R10-REPLAY-MANIFEST-CONFLICT-20260819",
+    "status": "CLOSED_IN_REPAIR",
+    "focused_verifier": {
+      "status": "PASS_WITH_BOUNDARY",
+      "tests": 36,
+      "provider": "commandcode",
+      "model": "deepseek-v4-flash",
+      "route": "router_commandcode_deepseek_v4_flash",
+      "transport": "local candidate filesystem",
+      "live_provider": "NOT_TESTED"
+    }
+  },
+  "preservation": {
+    "r6": "OWNER_REDIRECT_R6_DEFERRED",
+    "remaster_certified_head": "6be9185ea34a64a84737dbd9ec323e25776c4558",
+    "remaster_inventory": "87 classified entries: 74 historical R6, 4 convergence evidence, 9 post-certification semantic deltas",
+    "remaster_repaired": false,
+    "eyes": "OUT_OF_SCOPE_READ_ONLY; untouched",
+    "runtime_mutation": "none recorded; Supervisor/proving runtime was not restarted or modified"
+  },
+  "open_boundaries": [
+    "Live provider execution, Supervisor/Hermes dispatch, and external connector effects remain NOT_TESTED/WAITING.",
+    "R10 live voice/provider and visual/accessibility inspection remain NOT_TESTED/WAITING.",
+    "R11 live evolution consumption and seven-day elapsed proving remain WAITING/NOT_TESTED.",
+    "R12 physical-host and unavailable-provider fault rows remain BLOCKED/NOT_TESTED.",
+    "Historical R12 artifact-manifest mismatch remains recorded only and unrepaired."
+  ],
+  "recommendation": "Candidate is suitable for bounded non-force promotion as ea65c91. Do not declare unrestricted final convergence until the open external and elapsed-time boundaries are independently proven."
+}
