@@ -237,7 +237,8 @@ def record_step_contract(
     if contract.recorded_by != SUPERVISOR_CONTROLLER:
         raise MissionStepContractError("recorded_by must be the exact Supervisor identity")
     _validate_database_binding(database, contract)
-    latest = latest_contract(database, contract.mission_id, allow_invalid=False)
+    latest = latest_contract(
+        database, contract.mission_id, step_id=contract.step_id, allow_invalid=False)
     if latest is not None:
         if contract.version <= latest.version:
             if contract.version == latest.version and contract.content_hash() == latest.content_hash():
@@ -286,6 +287,19 @@ def latest_contract(
     rows = contract_rows(database, mission_id)
     if step_id is not None:
         rows = [row for row in rows if row["step_id"] == step_id]
+    else:
+        # A mission may carry historical versions, but the runtime must never
+        # guess which of multiple active step IDs is executable.
+        latest_by_step: dict[str, dict[str, Any]] = {}
+        for candidate in rows:
+            key = str(candidate["step_id"])
+            current = latest_by_step.get(key)
+            if current is None or int(candidate["version"]) > int(current["version"]):
+                latest_by_step[key] = candidate
+        if len(latest_by_step) > 1:
+            raise MissionStepContractError(
+                "multiple active step contracts for mission; step binding is required")
+        rows = list(latest_by_step.values())
     if not rows:
         return None
     row = max(rows, key=lambda item: (int(item["version"]), str(item["step_id"])))
