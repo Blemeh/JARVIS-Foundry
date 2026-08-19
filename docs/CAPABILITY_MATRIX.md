@@ -4,7 +4,7 @@ Single authoritative capability status. Classifications:
 `IMPLEMENTED_AND_PROVEN` · `IMPLEMENTED_UNPROVEN` · `PARTIAL` · `MISSING` · `SUPERSEDED`.
 
 Evidence roots: `docs/evidence/`, `evidence/`, git history, live runtime state.
-Current HEAD reference: `33efa57` (docs-only promoted descendant of tested
+Current HEAD reference: `1a58b8b` (docs-only promoted descendant of tested
 source head `84a22b4`; fresh current-head convergence evidence is in
 `docs/convergence/`; the deployed runtime remains the separately frozen `c60db92`).
 
