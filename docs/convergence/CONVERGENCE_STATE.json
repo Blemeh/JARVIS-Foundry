@@ -974,6 +974,7 @@
     "latest_worker_loop_contract_promotion": "docs/convergence/WORKER_LOOP_CONTRACT_PROMOTION_20260819.json",
     "latest_worker_loop_runtime_reconciliation": "docs/convergence/WORKER_LOOP_RUNTIME_RECONCILIATION_20260819.json",
     "latest_final_current_release_audit": "docs/convergence/FINAL_CURRENT_RELEASE_AUDIT_20260819.json",
+    "latest_worker_loop_schema34_rehearsal": "docs/convergence/WORKER_LOOP_SCHEMA34_REHEARSAL_20260819.json",
     "latest_r10_live_directive_consumer": "docs/convergence/R10_LIVE_DIRECTIVE_CONSUMER_20260819.json",
     "latest_r10_live_directive_consumer_verifier": "docs/convergence/R10_LIVE_DIRECTIVE_CONSUMER_VERIFIER_20260819.json",
     "latest_r10_live_directive_consumer_commit": "aa753c0ad1f2d86abeaf5929d51e8992fa290990",
@@ -1000,5 +1001,5 @@
     "R11 live Supervisor evolution consumption and real elapsed proving window NOT_TESTED/WAITING; disposable local cycle proof PASS_WITH_BOUNDARY",
     "R12 physical host and unavailable-provider fault rows NOT_TESTED/BLOCKED"
   ],
-  "exact_next_action": "let the R3 exact current-release proving monitor persist WAITING through restart; preserve the suspended f37f852 R2 registration and historical 2-of-10/restart-0 counts; keep the provider canary BLOCKED on the monthly rate limit; keep JARVIS-Foundry-Worker-Loop registered Disabled because its promoted source contract has not undergone live migration or provider readiness proof; continue only safe dependency-ready rehearsal/evidence work; do not retry blindly, enable the worker task, migrate the live database, or restart R3; do not close final acceptance until seven real healthy days, ten post-start independently verified missions, and all required external criteria are met"
+  "exact_next_action": "let the R3 exact current-release proving monitor persist WAITING through restart; preserve the suspended f37f852 R2 registration and historical 2-of-10/restart-0 counts; keep the provider canary BLOCKED on the monthly rate limit; keep JARVIS-Foundry-Worker-Loop registered Disabled because its promoted source contract has not undergone live migration or provider readiness proof; preserve the PASS disposable schema34 migration/reconciliation rehearsal; continue only safe dependency-ready rehearsal/evidence work; do not retry blindly, enable the worker task, migrate the live database, or restart R3; do not close final acceptance until seven real healthy days, ten post-start independently verified missions, and all required external criteria are met"
 }
