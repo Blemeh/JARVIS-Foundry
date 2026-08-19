@@ -1,11 +1,11 @@
 {
   "schema": "jarvis-proving-window-current-checkpoint-snapshot-v1",
   "status": "PASS_WAITING_ELAPSED",
-  "recorded_at": "2026-08-19T07:19:02.278371+00:00",
+  "recorded_at": "2026-08-19T07:44:02.297752+00:00",
   "window_id": "post-canonical-c60db92-real-20260819-r3",
   "checkpoint": {
     "path": "C:/Users/b/AppData/Local/hermes/foundry/evidence/proving-window/checkpoint-canonical-c60db92-real-20260819-r3.json",
-    "sha256": "E8EA623DC6769613BCD3F0F5A588050DDCAC279D14F456B5E7E3D656FBFC5D17",
+    "sha256": "0181332420E41FAD96035F73BBBEFCC3DACC9ECB1D4B042BDDACB43E8C829FD7",
     "manifest_path": "C:/Users/b/AppData/Local/hermes/foundry/evidence/proving-window/manifest-canonical-c60db92-real-20260819-r3.json",
     "manifest_sha256": "D1DC563287D0A4908CEB88A178E4FD8A5247EBE016D24CC3D68A46FF0C191BA9"
   },
@@ -18,16 +18,16 @@
   },
   "window": {
     "started_at": "2026-08-19T02:38:50.150338Z",
-    "elapsed_seconds": 16812.128,
-    "remaining_seconds": 587987.872,
+    "elapsed_seconds": 18312.147,
+    "remaining_seconds": 586487.853,
     "required_duration_seconds": 604800.0,
     "verified_missions_after_start": 0,
     "required_missions": 10
   },
   "runtime": {
-    "event_head_at_checkpoint": 109285,
-    "event_head_read_only_probe": 109295,
-    "heartbeat_count": 3324,
+    "event_head_at_checkpoint": 109582,
+    "event_head_read_only_probe": 109589,
+    "heartbeat_count": 3621,
     "max_heartbeat_gap_seconds": 14.092591,
     "sqlite_quick_check": "ok",
     "supervisor": "RUNNING_SINGLETON",
@@ -36,9 +36,9 @@
   },
   "monitor": {
     "task_name": "JARVIS-Foundry-Proving-Window-Monitor-Canonical-R3",
-    "last_run_at": "2026-08-19T07:19:01Z",
+    "last_run_at": "2026-08-19T07:44:01Z",
     "last_task_result": 0,
-    "next_run_at": "2026-08-19T07:24:00Z",
+    "next_run_at": "2026-08-19T07:49:00Z",
     "missed_runs": 0,
     "read_only": true
   },
