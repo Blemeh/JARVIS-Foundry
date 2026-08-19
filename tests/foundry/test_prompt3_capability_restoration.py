@@ -276,3 +276,13 @@ def test_m10_command_center_html_shows_live_foundry_not_local_candidate(tmp_path
     assert "LIVE FOUNDRY" in html
     assert "CURRENT" in html
     assert "PREVIOUS" in html
+
+
+def test_prompt3_independent_verifier_cannot_hardcode_full_suite_pass():
+    source = (Path(__file__).resolve().parents[2]
+              / "scripts" / "prompt3_independent_verifier.py").read_text(encoding="utf-8")
+    assert "2026-08-19T22:27:21" not in source
+    assert "parse_junit" in source
+    assert "full_suite omitted" in source
+    assert '"exit_code": 0,' not in source
+    assert '"finished_local": "2026-08-19T22:27:21"' not in source

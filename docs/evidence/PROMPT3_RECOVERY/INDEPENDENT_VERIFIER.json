@@ -1,30 +1,57 @@
 {
   "role": "independent-verifier",
-  "ran_at": "2026-08-19T20:28:54Z",
+  "ran_at": "2026-08-19T20:52:27Z",
   "supersedes": [
     "2026-08-19T21:35:40",
-    "2026-08-19T21:52:46"
+    "2026-08-19T21:52:46",
+    "2026-08-19T20:28:54Z"
   ],
   "full_suite": {
-    "command": ".venv python -m pytest tests/foundry tests/convergence -q --tb=line",
+    "command": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry\\.venv\\Scripts\\python.exe -m pytest tests/foundry tests/convergence -q --tb=line",
     "pythonpath": "src",
-    "exit_code": 0,
-    "finished_local": "2026-08-19T22:27:21"
+    "junit": "docs\\evidence\\PROMPT3_RECOVERY\\FULL_SUITE.junit.xml",
+    "log": "docs\\evidence\\PROMPT3_RECOVERY\\FULL_SUITE.stdout.log",
+    "source": "junit",
+    "path": "docs\\evidence\\PROMPT3_RECOVERY\\FULL_SUITE.junit.xml",
+    "mtime_local": "2026-08-19T22:50:58",
+    "tests": 1429,
+    "failures": 1,
+    "errors": 0,
+    "skipped": 0,
+    "failed_cases": [
+      "tests.foundry.test_prompt3_capability_restoration::test_prompt3_independent_verifier_cannot_hardcode_full_suite_pass"
+    ],
+    "ok": false,
+    "exit_code": 1,
+    "log_mtime_local": "2026-08-19T22:50:58",
+    "log_bytes": 5000
+  },
+  "identity": {
+    "git_head": "8880a0e9c212c19ae85208d123c43fd71187b047",
+    "git_main": "8880a0e9c212c19ae85208d123c43fd71187b047",
+    "origin_main": "8880a0e9c212c19ae85208d123c43fd71187b047",
+    "current_release_pointer": "52ee917208e5964992125f478508460cd9893514",
+    "previous_release_pointer": "c4a0fd1b706f8c0ecac89143bc01b7c37d34191a",
+    "live_release_trees": [
+      "52ee917208e5964992125f478508460cd9893514"
+    ],
+    "live_matches_current": true,
+    "note": "CURRENT/live are the installed capability identity. git HEAD may be docs-ahead of CURRENT; do not relabel live as HEAD or as an older release tree."
   },
   "inspected": {
-    "head": "52ee917208e5964992125f478508460cd9893514",
-    "main": "52ee917208e5964992125f478508460cd9893514",
-    "origin_main": "52ee917208e5964992125f478508460cd9893514",
+    "head": "8880a0e9c212c19ae85208d123c43fd71187b047",
+    "main": "8880a0e9c212c19ae85208d123c43fd71187b047",
+    "origin_main": "8880a0e9c212c19ae85208d123c43fd71187b047",
     "current_release_pointer": "52ee917208e5964992125f478508460cd9893514",
     "previous_release_pointer": "c4a0fd1b706f8c0ecac89143bc01b7c37d34191a",
     "schema": 34,
     "supervisor": {
       "singleton": 1,
-      "instance_id": "supervisor-b2886418-1b32-427a-b30d-3a04e8f33f01",
+      "instance_id": "supervisor-2cd24ecb-55e5-4eb2-931a-c9cd3c7a8000",
       "status": "RUNNING",
       "trust_state": "LAB",
-      "last_heartbeat_at": "2026-08-19T20:28:02.642263Z",
-      "last_event_id": "8bc3a546-ea04-45d5-b928-b31cb60596de"
+      "last_heartbeat_at": "2026-08-19T20:52:01.225667Z",
+      "last_event_id": "ff67fc57-7a24-4b38-a4fa-2c25d38fcd86"
     },
     "stop_active": false,
     "t193243": {
@@ -112,20 +139,20 @@
     "tier_c_procedures": 3,
     "live_launchers": [
       {
-        "pid": "29416",
-        "ppid": "15752",
-        "cmd": "\"C:\\Users\\b\\AppData\\Local\\JARVIS\\releases\\b59836772d948bd7b2507949c42f3c7dfa75afaf\\.venv\\Scripts\\python.exe\"  -m jarvis_foundry.deployment.launcher --home \"C:\\Users\\b\\AppData\\Local\\hermes\\foundry\" --spawn-worker-loop --worker-loop-config \"C"
+        "pid": "30600",
+        "ppid": "6236",
+        "cmd": "\"C:\\Users\\b\\AppData\\Local\\JARVIS\\releases\\52ee917208e5964992125f478508460cd9893514\\.venv\\Scripts\\python.exe\"  -m jarvis_foundry.deployment.launcher --home \"C:\\Users\\b\\AppData\\Local\\hermes\\foundry\" --spawn-worker-loop --worker-loop-config \"C"
       },
       {
-        "pid": "29580",
-        "ppid": "29416",
-        "cmd": "\"C:\\Users\\b\\AppData\\Local\\JARVIS\\releases\\b59836772d948bd7b2507949c42f3c7dfa75afaf\\.venv\\Scripts\\python.exe\"  -m jarvis_foundry.deployment.launcher --home \"C:\\Users\\b\\AppData\\Local\\hermes\\foundry\" --spawn-worker-loop --worker-loop-config \"C"
+        "pid": "24292",
+        "ppid": "30600",
+        "cmd": "\"C:\\Users\\b\\AppData\\Local\\JARVIS\\releases\\52ee917208e5964992125f478508460cd9893514\\.venv\\Scripts\\python.exe\"  -m jarvis_foundry.deployment.launcher --home \"C:\\Users\\b\\AppData\\Local\\hermes\\foundry\" --spawn-worker-loop --worker-loop-config \"C"
       }
     ],
     "live_release_trees": [
-      "b59836772d948bd7b2507949c42f3c7dfa75afaf"
+      "52ee917208e5964992125f478508460cd9893514"
     ],
-    "live_gates": "docs\\evidence\\PROMPT3_RECOVERY\\LIVE_GATES.json"
+    "live_gates": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry\\docs\\evidence\\PROMPT3_RECOVERY\\LIVE_GATES.json"
   },
   "gate_verdicts": {
     "M6A": "PASS",
@@ -137,12 +164,15 @@
     "M7_E2E": "PASS",
     "M8": "PASS"
   },
-  "findings": [],
+  "findings": [
+    "full_suite not green: exit_code=1 tests=1429 failures=1 errors=0 reason=None"
+  ],
   "unresolved_critical": [],
   "unresolved_high": [
-    "CURRENT pointer 52ee917208e5964992125f478508460cd9893514 is not the live launcher tree ['b59836772d948bd7b2507949c42f3c7dfa75afaf'] (pointer advanced by overlapping session; live process not killed)"
+    "full pytest suite not proven green from artifacts"
   ],
-  "verdict": "PASS",
+  "capability_is_current": false,
+  "verdict": "FAIL",
   "prompt4_ready": "NO",
   "l6_unattended": "NOT YET GATED",
   "openhands_live_coding": "NOT_READY",
