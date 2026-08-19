@@ -63,6 +63,150 @@ def _default_stop_path(paths: FoundryPaths, config: WorkerRuntimeConfig) -> Path
     return config.resolve_stop_path(paths.home)
 
 
+def _executive_waiting_report(
+    database: FoundryDatabase, *, loop_id: str, instance_id: str,
+    decision: Any, reason: str,
+) -> dict[str, Any]:
+    database.append(Event.create(
+        "worker_loop.executive_waiting",
+        {
+            "loop_id": loop_id, "instance_id": instance_id,
+            "decision_id": decision.decision_id,
+            "reason": reason,
+            "wait": {
+                "reconsider_condition": (
+                    decision.wait.reconsider_condition if decision.wait else ""),
+                "best_candidate_id": (
+                    decision.wait.best_candidate_id if decision.wait else None),
+                "best_score": (
+                    decision.wait.best_score if decision.wait else None),
+            },
+        },
+        source_type="supervisor", source_id=instance_id,
+        idempotency_key=f"worker_loop.executive_waiting:{loop_id}",
+    ))
+    return {
+        "loop_id": loop_id,
+        "outcome": "WAITING",
+        "reason": reason,
+        "executive_decision": decision.kind,
+        "decision_id": decision.decision_id,
+    }
+
+
+def _maybe_executive_select(
+    database: FoundryDatabase,
+    config: WorkerRuntimeConfig,
+    *,
+    loop_id: str,
+    instance_id: str,
+) -> str | None:
+    """Run bounded executive evaluation when enabled; return new mission_id or None."""
+    if not config.executive_selection_enabled:
+        return None
+    from ..executive.decisions import ExecutiveDecisionService
+    from ..executive.missions import materialize_selection
+
+    executive = ExecutiveDecisionService(
+        database,
+        activation_epoch=config.executive_activation_epoch,
+        min_action_score=config.executive_min_action_score,
+        wait_margin=config.executive_wait_margin,
+        source_id=f"worker-loop:{instance_id}",
+    )
+    epoch = executive.ensure_activation(
+        config.executive_activation_epoch or None)
+    decision = executive.evaluate(
+        resource_id=config.resource_id,
+        capability=config.capability,
+        loop_id=loop_id,
+        candidate_limit=config.executive_candidate_limit,
+    )
+    if decision.kind == "WAIT":
+        _executive_waiting_report(
+            database, loop_id=loop_id, instance_id=instance_id,
+            decision=decision, reason=decision.reason,
+        )
+        return None
+    if decision.kind != "SELECT" or decision.candidate_id is None:
+        return None
+    materialized = materialize_selection(
+        database,
+        candidate_id=decision.candidate_id,
+        objective=decision.score.objective if decision.score else "",
+        resource_id=config.resource_id,
+        capability=config.capability,
+        decision_id=decision.decision_id,
+        activation_epoch=epoch,
+        source_id=f"worker-loop:{instance_id}",
+    )
+    decision_id = decision.decision_id
+    database.append(Event.create(
+        "executive.decision_recorded",
+        {
+            "decision_id": decision_id,
+            "decision": "SELECT",
+            "reason": decision.reason,
+            "mission_id": materialized["mission_id"],
+            "candidate_id": decision.candidate_id,
+            "materialized": True,
+        },
+        source_type="supervisor",
+        source_id=f"worker-loop:{instance_id}",
+        idempotency_key=f"executive.decision_materialized:{decision_id}",
+    ))
+    return str(materialized["mission_id"])
+
+
+def _record_executive_outcome(
+    database: FoundryDatabase,
+    *,
+    mission_id: str,
+    outcome: Any,
+    instance_id: str,
+) -> None:
+    """Capture actuals and calibration after a verified mission step."""
+    from ..executive.calibration import outcome_from_mission, record_calibration
+
+    mission = database.row("missions", "mission_id", mission_id)
+    if mission is None:
+        return
+    created_from = str(mission.get("created_from") or "")
+    if not created_from.startswith("candidate:"):
+        return
+    candidate_id = created_from.split(":", 1)[1]
+    actual = outcome_from_mission(database, mission_id)
+    with database.connect() as connection:
+        row = connection.execute(
+            "SELECT source, objective FROM candidates WHERE candidate_id = ?",
+            (candidate_id,),
+        ).fetchone()
+    source = str(row[0]) if row else ""
+    objective = str(row[1]) if row else str(mission.get("objective") or "")
+    decision_events = [
+        e for e in database.events()
+        if e.event_type == "executive.decision_recorded"
+        and e.payload.get("candidate_id") == candidate_id
+        and e.payload.get("mission_id") in (mission_id, None)
+    ]
+    decision_id = (
+        str(decision_events[-1].payload.get("decision_id"))
+        if decision_events else f"post-{mission_id}"
+    )
+    record_calibration(
+        database,
+        decision_id=decision_id,
+        candidate_id=candidate_id,
+        mission_id=mission_id,
+        source=source,
+        objective=objective,
+        outcome=str(getattr(outcome, "outcome", actual.get("outcome", "UNKNOWN"))),
+        repair_count=int(actual.get("repair_count") or 0),
+        actual=actual,
+        source_id=f"worker-loop:{instance_id}",
+    )
+
+
 def _waiting_report(database: FoundryDatabase, *, loop_id: str,
                     instance_id: str, reason: str) -> dict[str, Any]:
     database.append(Event.create(
@@ -245,6 +389,9 @@ def run_cycle(
             idempotency_key=f"worker_loop.cycle_started:{loop_id}",
         ))
         mission_id = _select_contract(database)
+        if mission_id is None and config.executive_selection_enabled:
+            mission_id = _maybe_executive_select(
+                database, config, loop_id=loop_id, instance_id=instance_id)
         if mission_id is None:
             return _waiting_report(
                 database, loop_id=loop_id, instance_id=instance_id,
@@ -290,6 +437,9 @@ def run_cycle(
         if getattr(outcome, "outcome", None) == "PASSED":
             _advisory_accepted_outcome_writeback(
                 database, mission_id=mission_id, outcome=outcome)
+            _record_executive_outcome(
+                database, mission_id=mission_id, outcome=outcome,
+                instance_id=instance_id)
         return {
             "loop_id": loop_id,
             "outcome": outcome.outcome,
