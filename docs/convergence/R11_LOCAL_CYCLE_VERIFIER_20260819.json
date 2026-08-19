@@ -1,0 +1,64 @@
+{
+  "schema": "jarvis-r11-local-cycle-verifier-v1",
+  "status": "PASS_WITH_BOUNDARY",
+  "verified_at": "2026-08-19T02:20:00Z",
+  "candidate": {
+    "worktree": "C:/temp/JARVIS-Foundry-R11-Cycle-20260819",
+    "head": "cca299ac21d8ef1e177cf28ed00cfef76134d6cc",
+    "tree": "2e7309b210e97170c922fa05c12462fac3ffb051",
+    "parent": "305c77a773d7cb0402d50329bf97ee4ebda53fa6",
+    "worktree_clean": true,
+    "diff_check": "PASS",
+    "delta_scope": "two convergence JSON documentation files only"
+  },
+  "checks": {
+    "json_valid": true,
+    "primary_database_sha256": "0BADB523CF972A57FF5CB40FB1A5A09B90E204EC047FE26D8B822EC916064A0D",
+    "primary_sqlite_quick_check": "ok",
+    "primary_schema_version": 33,
+    "primary_event_count": 70,
+    "primary_cycles": 3,
+    "primary_promotions": 2,
+    "primary_rejections": 1,
+    "primary_completed_canaries": 1,
+    "primary_acceptance_archives": 1,
+    "supplemental_database_sha256": "9B399A770D74C11502BFA0083B5E11F2072849D3A132869B2BACD66BFD519D9A",
+    "supplemental_sqlite_quick_check": "ok",
+    "supplemental_schema_version": 33,
+    "supplemental_event_count": 18,
+    "supplemental_rejected_cycles": 1,
+    "supplemental_promotions": 0,
+    "supplemental_baseline_exit_code": 0,
+    "supplemental_candidate_exit_code": 1,
+    "supplemental_candidate_error_rate": 1.0
+  },
+  "commands_run": [
+    "read-only JSON parse and hash checks",
+    "git rev-parse/status/diff-check",
+    "read-only SQLite quick_check/schema/event/table queries"
+  ],
+  "tests": {
+    "rerun": false,
+    "recorded_focus_tests": [
+      "test_operational_acceptance_minimums_pass_and_archive: 1 passed",
+      "test_broken_candidate_auto_rejected: 1 passed"
+    ],
+    "broad_suite": "NOT_RUN"
+  },
+  "boundaries": {
+    "live_runtime_touched": false,
+    "live_supervisor_db_touched": false,
+    "provider_effects": "NOT_TESTED",
+    "voice": "NOT_TESTED",
+    "real_elapsed_proving_window": "NOT_TESTED",
+    "production_customer_scope": false
+  },
+  "uncertainty": [
+    "The local disposable cycle evidence does not establish live Supervisor evolution consumption or external effects."
+  ],
+  "recommended_next_action": "promote this docs/evidence commit only after state reconciliation; keep exact R2 proving monitor WAITING_ELAPSED",
+  "provider": "commandcode",
+  "model": "gpt-5.6-luna",
+  "route": "router_commandcode_gpt_5_6_luna",
+  "transport": "codex-router"
+}
