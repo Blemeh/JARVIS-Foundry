@@ -161,11 +161,10 @@ class HybridWorkerRoleAdapter:
             )
         report = self.reconciler.reconcile(
             contract, envelope, before=before,
-            # The verifier is only accountable for its OWN delta: the
-            # builder's uncommitted work in the same worktree is not a
-            # verifier claim mismatch.
-            delta_baseline=(
-                before.changed_files if manifest.role == "verifier" else None))
+            # Every role is accountable only for the delta it introduced
+            # since capture. Accepted prior-step files (committed or not)
+            # must not poison the next step's evidence.
+            delta_baseline=before.changed_files)
         agree = report.agree and envelope.worker_status == COMPLETED
         # MissionLoop treats COMPLETED as "send to verifier". A mismatched
         # or incomplete claim must not stay COMPLETED or a later verifier

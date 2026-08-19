@@ -40,12 +40,17 @@ from ..roles.router import RoleRouter
 from ..supervisor.estop import EmergencyStop
 from ..supervisor.leases import LeaseManager
 from ..mission.contracts import (
+    MissionStepContract,
     MissionStepContractError,
     dispatchable_contract_missions,
-    latest_contract,
+    next_executable_contract,
 )
 from ..mission.directives import select_dispatchable_mission
 from ..mission.loop import MissionLoop, ProposalError
+from ..control.policy import ActionPolicy
+from ..domain import ActionEnvelope
+from ..workers.contracts import WORKER_OPENHANDS
+from ..workers.router import NOT_READY
 from ._stack import build_worker_stack
 from .config import WorkerRuntimeConfig
 
@@ -95,6 +100,50 @@ def _select_contract(database: FoundryDatabase) -> str | None:
     if not mission_ids:
         return None
     return select_dispatchable_mission(database, mission_ids)
+
+
+def _pin_routing_to_hermes(stack: Any) -> None:
+    """Keep Hybrid Worker routing, but pin production dispatch to Hermes.
+
+    OpenHands stays registered and is not deleted; it is not eligible for
+    Prompt-1 kernel dispatch. Stacks without a router (test fakes) no-op.
+    """
+    router = getattr(stack, "router", None)
+    if router is None or not hasattr(router, "mark_ready"):
+        return
+    router.mark_ready(
+        WORKER_OPENHANDS, state=NOT_READY,
+        note="production dispatch pinned to Hermes; OpenHands frozen not deleted",
+        evidence=("prompt1-m2-hermes-pin",),
+    )
+
+
+def _commit_envelope(
+    database: FoundryDatabase, contract: MissionStepContract,
+) -> ActionEnvelope | None:
+    """Local commit of an accepted step when git_local_commit is READY.
+
+    Isolation still works without a commit (builder delta vs before-state).
+    A missing commit capability must not block the kernel.
+    """
+    resource = database.row("resources", "resource_id", contract.resource_id)
+    if resource is None:
+        return None
+    capabilities = json.loads(str(resource["capabilities_json"]))
+    if capabilities.get("git_local_commit") not in ("READY", "ACTIVE"):
+        return None
+    root = Path(str(resource["resolved_root"])).expanduser().resolve()
+    return ActionEnvelope(
+        action_id=f"commit:{contract.mission_id}:{contract.step_id}:v{contract.version}",
+        mission_id=contract.mission_id,
+        resource_id=contract.resource_id,
+        action_kind="git_commit",
+        target=root,
+        capability="git_local_commit",
+        expected_effects=("create local commit of accepted step",),
+        rollback={"kind": "git_reset_soft", "reversible": True},
+        step_id=contract.step_id,
+    )
 
 
 def run_cycle(
@@ -160,11 +209,11 @@ def run_cycle(
                 reason="no dispatchable mission has an authoritative executable contract",
             )
         try:
-            contract = latest_contract(database, mission_id)
+            contract = next_executable_contract(database, mission_id)
             if contract is None:
                 return _waiting_report(
                     database, loop_id=loop_id, instance_id=instance_id,
-                    reason=f"mission {mission_id} has no executable contract",
+                    reason=f"mission {mission_id} has no remaining executable contract",
                 )
             runtime_kwargs = contract.runtime_kwargs(database)
         except (MissionStepContractError, KeyError, TypeError, ValueError) as error:
@@ -177,14 +226,20 @@ def run_cycle(
         role_router.enforce_directive_routing()
         stack = build_worker_stack(
             database, paths, config, run_id=f"loop-{loop_id}")
+        _pin_routing_to_hermes(stack)
+        stop_path = _default_stop_path(paths, config)
         loop = MissionLoop(
             database, router=role_router, adapter=stack.bridge,
             leases=leases, max_repairs=config.max_repairs,
             source_id=f"worker-loop:{instance_id}",
-            stop_path=_default_stop_path(paths, config),
+            stop_path=stop_path,
+            policy=ActionPolicy(database, stop_path),
         )
         try:
-            outcome = loop.run_until_settled(**runtime_kwargs)
+            outcome = loop.run_until_settled(
+                **runtime_kwargs,
+                commit_envelope=_commit_envelope(database, contract),
+            )
         except (MissionStepContractError, ProposalError, KeyError, TypeError, ValueError) as error:
             return _blocked_contract_report(
                 database, loop_id=loop_id, instance_id=instance_id,

@@ -334,6 +334,48 @@ def latest_contract(
         raise
 
 
+def latest_contracts_by_step(
+    database: FoundryDatabase, mission_id: str,
+) -> dict[str, MissionStepContract]:
+    """Return the highest-version contract for each step_id on a mission."""
+    rows = contract_rows(database, mission_id)
+    latest_ids: dict[str, dict[str, Any]] = {}
+    for candidate in rows:
+        key = str(candidate["step_id"])
+        current = latest_ids.get(key)
+        if current is None or int(candidate["version"]) > int(current["version"]):
+            latest_ids[key] = candidate
+    result: dict[str, MissionStepContract] = {}
+    for step_id, row in latest_ids.items():
+        contract = latest_contract(
+            database, mission_id, step_id=step_id, allow_invalid=False)
+        if contract is not None:
+            result[step_id] = contract
+    return result
+
+
+def next_executable_contract(
+    database: FoundryDatabase, mission_id: str,
+) -> MissionStepContract | None:
+    """Select the next un-passed step contract for a mission.
+
+    Multiple active step_ids are the durable action plan, not an error.
+    ``latest_contract(mission_id)`` still fail-closes when a caller asks for
+    a single unbound contract; this selector is the production owner for
+    sequential dispatch.
+    """
+    from .verification import latest_verdict_for_step
+
+    remaining: list[MissionStepContract] = []
+    for step_id, contract in latest_contracts_by_step(database, mission_id).items():
+        verdict = latest_verdict_for_step(database, mission_id, step_id)
+        if verdict is not None and str(verdict.get("status") or "") == "PASS":
+            continue
+        remaining.append(contract)
+    remaining.sort(key=lambda item: (item.step_id, item.version))
+    return remaining[0] if remaining else None
+
+
 def dispatchable_contract_missions(database: FoundryDatabase) -> tuple[str, ...]:
     """Return existing dispatchable missions with an authoritative contract."""
     with database.connect() as connection:

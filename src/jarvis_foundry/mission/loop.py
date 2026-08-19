@@ -162,6 +162,36 @@ class MissionLoop:
             reason=f"repair budget exhausted ({fails} failed verdicts > {repair_budget})",
         )
 
+    def _continue_after_pass(self, mission_id: str, *, run_id: str | None) -> None:
+        """Durable next-action owner after a verified PASS.
+
+        Contract-driven missions keep an ordered remaining-step plan:
+        the next un-passed contract becomes ``next_action``. When none
+        remain, the mission COMPLETEs from durable truth. Missions with
+        no contracts keep the legacy WAITING behaviour (cleared
+        ``next_action`` at ACTION_SELECTION) so existing executive
+        schedulers still work.
+        """
+        from .contracts import contract_rows, next_executable_contract
+
+        remaining = next_executable_contract(self.database, mission_id)
+        if remaining is not None:
+            self._advance(
+                mission_id, "ACTION_SELECTION",
+                next_action=remaining.instructions, run_id=run_id)
+            return
+        if contract_rows(self.database, mission_id):
+            self._advance(mission_id, "COMPLETE", next_action=None, run_id=run_id)
+            self.database.append(Event.create(
+                "mission.completed",
+                {"mission_id": mission_id, "outcome": "PASSED", "run_id": run_id},
+                source_type="supervisor",
+                source_id="mission-loop",
+                idempotency_key=f"mission.completed:{mission_id}",
+            ))
+            return
+        self._advance(mission_id, "ACTION_SELECTION", next_action=None, run_id=run_id)
+
     # -- durable helpers ----------------------------------------------------
 
     def _mission(self, mission_id: str) -> dict[str, Any]:
@@ -570,7 +600,7 @@ class MissionLoop:
                 role=role,
                 artifact_hashes=_hash_target(target),
             )
-            self._advance(mission_id, "ACTION_SELECTION", next_action=None, run_id=run_id)
+            self._continue_after_pass(mission_id, run_id=run_id)
             return StepOutcome(
                 outcome=PASSED, step_id=step_id, run_id=run_id,
                 verdict_id=verdict_id,

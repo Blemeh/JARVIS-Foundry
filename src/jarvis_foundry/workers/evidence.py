@@ -108,6 +108,7 @@ class BeforeState:
     head: str
     diff_hash: str
     changed_files: tuple[str, ...]
+    file_hashes: dict[str, str] = field(default_factory=dict)
     captured_at: str = field(default_factory=isoformat)
 
 
@@ -152,11 +153,21 @@ class EvidenceReconciler:
     def capture_before(self, contract: WorkerStepContract) -> BeforeState:
         root = contract.working_root.resolve()
         changed = git_changed_files(root)
+        meaningful = tuple(
+            rel for rel in changed if not _is_control_file(rel))
+        hashes: dict[str, str] = {}
+        for rel in meaningful:
+            path = root / rel
+            if path.is_file():
+                try:
+                    hashes[rel] = hashlib.sha256(path.read_bytes()).hexdigest()
+                except OSError:
+                    continue
         return BeforeState(
             head=git_head(root),
             diff_hash=git_diff_hash(root),
-            changed_files=tuple(
-                rel for rel in changed if not _is_control_file(rel)),
+            changed_files=meaningful,
+            file_hashes=hashes,
         )
 
     def reconcile(
@@ -216,10 +227,23 @@ class EvidenceReconciler:
         claimed = set(envelope.files_changed)
         observed_set = set(meaningful_changed)
         if delta_baseline is not None:
-            # Delta mode (verifier role): the worker is only accountable for
-            # changes IT introduced since the captured baseline; the
-            # builder's uncommitted work is not the verifier's claim.
-            own_changes = observed_set - set(delta_baseline)
+            # Delta mode: the worker is accountable for files it added or
+            # whose contents changed since capture. Overwriting an already
+            # dirty path (repair of a failed step) is still this run's work.
+            # Previously accepted sibling files that did not change are not.
+            current_hashes: dict[str, str] = {}
+            for rel in observed_set:
+                path = root / rel
+                if path.is_file():
+                    try:
+                        current_hashes[rel] = hashlib.sha256(
+                            path.read_bytes()).hexdigest()
+                    except OSError:
+                        continue
+            own_changes = {
+                rel for rel, digest in current_hashes.items()
+                if before.file_hashes.get(rel) != digest
+            }
             unrecorded = sorted(own_changes - claimed)
             if claimed != own_changes:
                 mismatches.append(
