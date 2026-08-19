@@ -2,23 +2,23 @@
   "schema": "jarvis-post-v7-canonical-convergence-state-v2",
   "program": "JARVIS Post-V7 Remaster",
   "current_stage": "POST_PROMOTION_PROVING",
-  "current_slice": "Canonical record c60db92 is now loaded by the restarted Supervisor from the promoted source checkout; the semantic source remains 93d23f5 with the bounded nonce-bound R10 consumer and exactly-once replay repair. The previous f37f852 R2 proving window was durably SUSPENDED before restart, and the exact current-release R3 window is WAITING_ELAPSED with a read-only monitor, healthy singleton, and zero post-start verified missions. The R11 proof records three subprocess-backed cycles, two promotions (R1 and R2 canary), one frozen non-promotion, one separately verified broken-candidate rejection, and rollback/acceptance evidence. External providers/effects, live evolution consumption, voice, and physical-host fault evidence remain honest WAITING/NOT_TESTED. The fresh 1248-test current-source suite remains PASS at 93d23f5.",
+  "current_slice": "Canonical source main now includes the independently checked durable mission-step contract package at promotion record 6b776bd; the running Supervisor still has the previously loaded c60db92 executable and deployed schema v33 because no restart or migration was performed. The semantic source remains 93d23f5 with the bounded nonce-bound R10 consumer and exactly-once replay repair. The previous f37f852 R2 proving window remains durably SUSPENDED, and the exact current-release R3 window remains WAITING_ELAPSED with a read-only monitor, healthy singleton, and zero post-start verified missions. The R11 proof records three subprocess-backed cycles, two promotions (R1 and R2 canary), one frozen non-promotion, one separately verified broken-candidate rejection, and rollback/acceptance evidence. External providers/effects, live evolution consumption, voice, and physical-host fault evidence remain honest WAITING/NOT_TESTED. The fresh 1248-test current-source suite remains PASS at 93d23f5; the worker-loop contract has only focused source proof and is not live-activated.",
   "r6_state": "OWNER_REDIRECT_R6_DEFERRED",
   "eyes_state": "OUT_OF_SCOPE_READ_ONLY",
   "canonical": {
     "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
     "branch": "main",
-    "head": "c60db92986a958dd20ff618e2ca6a6b586a91ff8",
-    "source_tree_verified_head": "c60db92986a958dd20ff618e2ca6a6b586a91ff8",
-    "origin_main": "75ec4029a9c431653d624adc51db2a3b58d01dfe",
+    "head": "6b776bd0f93005d020b5de2c183f900b82fbe57c",
+    "source_tree_verified_head": "6b776bd0f93005d020b5de2c183f900b82fbe57c",
+    "origin_main": "6b776bd0f93005d020b5de2c183f900b82fbe57c",
     "deployed_tree": "0f9353cb5675a5b5e2c2b25d2e268a4e825b2c88",
-    "repository_head": "75ec4029a9c431653d624adc51db2a3b58d01dfe",
-    "repository_tree": "fc6efdc26bf3397ba3b9f9744fa29d445c8dcb3c",
-    "current_repository_head": "75ec4029a9c431653d624adc51db2a3b58d01dfe",
-    "current_repository_tree": "0f9353cb5675a5b5e2c2b25d2e268a4e825b2c88",
-    "current_origin_main": "75ec4029a9c431653d624adc51db2a3b58d01dfe",
-    "record_commit": "c60db92986a958dd20ff618e2ca6a6b586a91ff8",
-    "record_origin_main": "c60db92986a958dd20ff618e2ca6a6b586a91ff8",
+    "repository_head": "6b776bd0f93005d020b5de2c183f900b82fbe57c",
+    "repository_tree": "95e41286239e8ca66ee4f65283692c489de3f5e3",
+    "current_repository_head": "6b776bd0f93005d020b5de2c183f900b82fbe57c",
+    "current_repository_tree": "95e41286239e8ca66ee4f65283692c489de3f5e3",
+    "current_origin_main": "6b776bd0f93005d020b5de2c183f900b82fbe57c",
+    "record_commit": "6b776bd0f93005d020b5de2c183f900b82fbe57c",
+    "record_origin_main": "6b776bd0f93005d020b5de2c183f900b82fbe57c",
     "semantic_source_commit": "93d23f50ea5858355c202cae7d4a5809ed7e245c",
     "dirty_owner_docs_preserved": true,
     "current_full_suite": {
@@ -33,6 +33,25 @@
       "pythonpath": "C:/temp/JARVIS-R10-ReplayRepair-20260819/src",
       "pythonhashseed": "0",
       "tested_head": "93d23f50ea5858355c202cae7d4a5809ed7e245c"
+    },
+    "focused_worker_loop_contract": {
+      "status": "PASS_WITH_BOUNDARY",
+      "source_head": "6b776bd0f93005d020b5de2c183f900b82fbe57c",
+      "candidate_source_head": "40ccef9eef20d91fcaa2e31715e4df9caa6f58e8",
+      "verification": "docs/convergence/WORKER_LOOP_CONTRACT_VERIFICATION_20260819.json",
+      "promotion": "docs/convergence/WORKER_LOOP_CONTRACT_PROMOTION_20260819.json",
+      "focused_tests": "18 passed",
+      "dependency_gates": "completed without failures",
+      "independent_verifier": {
+        "agent": "/root/r7_local_evidence_verifier_luna",
+        "provider_transport": "codex-router",
+        "provider": "commandcode",
+        "model": "gpt-5.6-luna",
+        "route": "router_commandcode_gpt_5_6_luna",
+        "status": "PASS_WITH_BOUNDARY"
+      },
+      "live_activation": "NOT_PERFORMED",
+      "live_schema_migration": "NOT_PERFORMED"
     },
     "tested_head": "93d23f50ea5858355c202cae7d4a5809ed7e245c",
     "exact_head_audit": "docs/convergence/INDEPENDENT_SEMANTIC_CONVERGENCE_AUDIT_20260819.json",
@@ -921,12 +940,12 @@
     }
   ],
   "promotion": {
-    "status": "R8_R9_R10_R11_R12_BOUNDED_VERIFIED_CURRENT_RELEASE_C60_DEPLOYED_R10_REPLAY_REPAIR_PASS_CURRENT_SOURCE_FULL_SUITE_PASS_LIVE_CANARY_BLOCKED_PROVING_R3_WAITING",
-    "promotion_worktree": "C:/temp/JARVIS-Foundry-R8-PROMOTE",
-    "promotion_commit": "c60db92986a958dd20ff618e2ca6a6b586a91ff8",
-    "latest_evidence_commit": "c60db92986a958dd20ff618e2ca6a6b586a91ff8",
-    "evidence_record_commit": "c60db92986a958dd20ff618e2ca6a6b586a91ff8",
-    "promoted_head": "c60db92986a958dd20ff618e2ca6a6b586a91ff8",
+    "status": "R8_R9_R10_R11_R12_BOUNDED_VERIFIED_CURRENT_RELEASE_C60_DEPLOYED_R10_REPLAY_REPAIR_PASS_CURRENT_SOURCE_FULL_SUITE_PASS_WORKER_LOOP_CONTRACT_SOURCE_PROMOTED_DISABLED_LIVE_CANARY_BLOCKED_PROVING_R3_WAITING",
+    "promotion_worktree": "C:/temp/JARVIS-WorkerLoop-Contract-Promote-20260819",
+    "promotion_commit": "6b776bd0f93005d020b5de2c183f900b82fbe57c",
+    "latest_evidence_commit": "6b776bd0f93005d020b5de2c183f900b82fbe57c",
+    "evidence_record_commit": "6b776bd0f93005d020b5de2c183f900b82fbe57c",
+    "promoted_head": "6b776bd0f93005d020b5de2c183f900b82fbe57c",
     "state_reconciliation_head": "4e2d0d2748650f24ab2deeaf932765e7a4e3ff81",
     "latest_live_canary": "docs/convergence/PROVING_WINDOW_LIVE_MISSION_CANARY_20260818.json",
     "latest_repair_reconciliation": "docs/convergence/PROVING_WINDOW_REPAIR_RECONCILIATION_20260818.json",
@@ -950,6 +969,8 @@
     "latest_proving_checkpoint_reconciliation": "docs/convergence/PROVING_WINDOW_CHECKPOINT_RECONCILIATION_R3_20260819.json",
     "latest_release_freeze": "docs/convergence/PROMOTION_FREEZE_CURRENT_20260819.json",
     "latest_runtime_freeze_audit": "docs/convergence/FINAL_RUNTIME_FREEZE_AUDIT_CURRENT_20260819.json",
+    "latest_worker_loop_contract_verification": "docs/convergence/WORKER_LOOP_CONTRACT_VERIFICATION_20260819.json",
+    "latest_worker_loop_contract_promotion": "docs/convergence/WORKER_LOOP_CONTRACT_PROMOTION_20260819.json",
     "latest_r10_live_directive_consumer": "docs/convergence/R10_LIVE_DIRECTIVE_CONSUMER_20260819.json",
     "latest_r10_live_directive_consumer_verifier": "docs/convergence/R10_LIVE_DIRECTIVE_CONSUMER_VERIFIER_20260819.json",
     "latest_r10_live_directive_consumer_commit": "aa753c0ad1f2d86abeaf5929d51e8992fa290990",
@@ -966,7 +987,7 @@
     "post_promotion_runtime_probe": "docs/convergence/LIVE_RUNTIME_PROBE_POST_PROMOTION.json",
     "rollback_bundle": "C:/temp/jarvis-convergence-pre-r3.bundle"
   },
-  "verifier_state": "R8_R9_R10_R11_R12_BOUNDED_GATES_VERIFIED_CURRENT_RELEASE_C60_DEPLOYED_FOCUSED_SOURCE_REPAIR_PASS_R10_REPLAY_REPAIR_PASS_CURRENT_SOURCE_FULL_SUITE_PASS_R11_LOCAL_CYCLE_PASS_WITH_BOUNDARY_LIVE_CANARY_BLOCKED_EXACT_SOURCE_PROVING_R3_WAITING_ELAPSED_CHECKPOINT_RECONCILIATION_PASS_WITH_BOUNDARY",
+  "verifier_state": "R8_R9_R10_R11_R12_BOUNDED_GATES_VERIFIED_CURRENT_RELEASE_C60_DEPLOYED_FOCUSED_SOURCE_REPAIR_PASS_R10_REPLAY_REPAIR_PASS_CURRENT_SOURCE_FULL_SUITE_PASS_WORKER_LOOP_CONTRACT_SOURCE_PASS_WITH_BOUNDARY_LIVE_CANARY_BLOCKED_EXACT_SOURCE_PROVING_R3_WAITING_ELAPSED_CHECKPOINT_RECONCILIATION_PASS_WITH_BOUNDARY",
   "blockers": [
     "R7 real monitored provider research NOT_TESTED/WAITING",
     "R9 real external connector/provider effects NOT_TESTED/WAITING",
@@ -976,5 +997,5 @@
     "R11 live Supervisor evolution consumption and real elapsed proving window NOT_TESTED/WAITING; disposable local cycle proof PASS_WITH_BOUNDARY",
     "R12 physical host and unavailable-provider fault rows NOT_TESTED/BLOCKED"
   ],
-  "exact_next_action": "let the R3 exact current-release proving monitor persist WAITING through restart; preserve the suspended f37f852 R2 registration and historical 2-of-10/restart-0 counts; keep the provider canary BLOCKED on the monthly rate limit; keep JARVIS-Foundry-Worker-Loop registered Disabled; continue only safe dependency-ready local evidence work, with the mission_step_contract package remaining NOT_READY after the bounded builder attempt; do not retry blindly, enable the worker task, or restart R3; do not close final acceptance until seven real healthy days, ten post-start independently verified missions, and all required external criteria are met"
+  "exact_next_action": "let the R3 exact current-release proving monitor persist WAITING through restart; preserve the suspended f37f852 R2 registration and historical 2-of-10/restart-0 counts; keep the provider canary BLOCKED on the monthly rate limit; keep JARVIS-Foundry-Worker-Loop registered Disabled because its promoted source contract has not undergone live migration or provider readiness proof; continue only safe dependency-ready local evidence work; do not retry blindly, enable the worker task, migrate the live database, or restart R3; do not close final acceptance until seven real healthy days, ten post-start independently verified missions, and all required external criteria are met"
 }
