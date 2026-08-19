@@ -60,6 +60,7 @@ def _live_schema_version(database: FoundryDatabase) -> int:
 def _table_key_column(table: str) -> str:
     key_columns = {
         "missions": "mission_id",
+        "mission_step_contracts": "contract_id",
         "resources": "resource_id",
         "directives": "directive_id",
         "action_decisions": "action_id",
