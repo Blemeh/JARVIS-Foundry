@@ -96,7 +96,8 @@
       "worker_loop": "WAITING_NO_AUTHORITATIVE_CONTRACT",
       "supervisor_startup": "PASS_EXIT_0",
       "live_migration": "NOT_PERFORMED",
-      "live_worker_task": "DISABLED"
+      "live_worker_task": "DISABLED",
+      "published_head_after_restore_proof": "b66aaf7788f81c8c717579a09f6a4c965fac685c"
     },
     "focused_source_repair": {
       "status": "PASS_SOURCE_FOCUSED_EXTERNAL_BOUNDARY",
