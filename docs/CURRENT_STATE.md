@@ -24,7 +24,9 @@ LATEST R10 FOCUSED SOURCE:   93d23f5 (authenticated nonce-bound
                              replay repair; live provider dispatch remains NOT_TESTED)
 LETTA PROMOTION ANCESTOR:    2f7360e742559e051109e04ef7f3a82cc64cc2d2 (still an ancestor of HEAD)
 PRE-V8 HISTORICAL BASELINE:  93a3ddc0965dfaf3e4cb9dc0952467bd5250520a (historical only — do not reset to it)
-CURRENT SCHEMA:              v33 (six additive tier_c_* tables; event-derived)
+CURRENT SCHEMA:              v34 (adds event-derived mission_step_contracts;
+                             the live deployed database remains v33 until a
+                             controlled migration)
 FULL SUITE:                  1248 collected on exact source 93d23f5 with
                              PYTHONHASHSEED=0; failures=0, errors=0, skipped=0
                              (see docs/convergence/CURRENT_SOURCE_FULL_SUITE_20260819.json)
@@ -98,7 +100,9 @@ PROCEDURAL LEARNING (Phase 4): governed deterministic OpenAdapt browser substrat
 ## What is running
 
 Live daemon (single supervisor pair) with home `C:\Users\b\AppData\Local\hermes\foundry`,
-schema v33, ledger live (event count growing), Tier C live.
+deployed schema v33, ledger live (event count growing), Tier C live. The
+candidate source schema is v34, but no live migration or worker-loop activation
+has been performed.
 
 The exact current runtime/source record is `c60db92`; its R3 proving window is
 `WAITING_ELAPSED` under the read-only task
