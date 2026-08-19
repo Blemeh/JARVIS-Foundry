@@ -6,13 +6,17 @@ every promotion/remaster mission (see `docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.
 If this document and another current-status document disagree, THIS document wins
 for "what exists now" claims; the architecture contract wins for binding invariants.
 
-Last reconciled: 2026-08-19 (exact c60db92 runtime freeze/restart, R3 proving-window registration, and current-source convergence reconciliation; legacy evidence preserved)
+Last reconciled: 2026-08-19 (c60db92 runtime freeze/restart, R3 proving-window registration, disabled worker-loop registration, and repository-head reconciliation; legacy evidence preserved)
 
 ```text
 CURRENT CANONICAL HEAD:      93d23f5 (semantic source; R10 replay-manifest repair
                              on top of the authenticated directive consumer)
+CURRENT REPOSITORY HEAD:     75ec402 (docs/evidence descendants after the
+                             worker-loop installer push; not yet loaded by the
+                             running c60db92 proving release)
 CURRENT STATE RECORD:        c60db92 (exact promoted runtime/source record;
-                             local==origin before docs-only descendants)
+                             running Supervisor/proving release; repository
+                             now has later source/evidence descendants)
 TESTED SOURCE HEAD:          93d23f5 (exact source head for the deterministic
                              1248-test full suite; docs-only audit commits follow)
 LATEST R10 FOCUSED SOURCE:   93d23f5 (authenticated nonce-bound
@@ -28,7 +32,8 @@ SUPERVISOR STATE:            RUNNING (single lease owner, heartbeat advancing)
 STOP STATE:                  OFF (no sentinel, no active STOP/PAUSE directives)
 ACTIVE DIRECTIVES:           redirect, waive, extend_duty_window, align
 TRUST STATE:                 LAB
-MISSION STATE:               3 COMPLETE, 1 PLANNED (live DB)
+MISSION STATE:               7 ACTION_SELECTION, 8 BLOCKED, 8 COMPLETE,
+                             1 PLANNED (read-only reconciliation 2026-08-19)
 TIER C STATE:                6 tables; 2 memories (live canary records), 1 block, 0 procedures
 WORKER IMPLEMENTATIONS:      Hermes adapter + OpenHands adapter — CANONICAL (merged)
 OWNER FILES:                 6 tracked docs under docs/handoffs/, docs/planning/ (preserved from 1abc388)
@@ -100,6 +105,13 @@ The exact current runtime/source record is `c60db92`; its R3 proving window is
 `JARVIS-Foundry-Proving-Window-Monitor-Canonical-R3`. The previous f37f852 R2
 window is preserved as `SUSPENDED` history.
 
+The separate `JARVIS-Foundry-Worker-Loop` task is registered but `Disabled`.
+Its triggers are disabled before registration, it points to the canonical
+`jarvis_foundry.runtime.worker_loop` command and worker-routing configuration,
+and no worker-loop process or provider effect has been observed. Activation is
+deferred until an authoritative executable mission contract and provider
+readiness are independently reconciled.
+
 Workflow Discovery is not wired into the live supervisor or perception loop;
 only an explicitly enabled bounded cycle can be called by code/tests.
 
@@ -142,6 +154,7 @@ browser substrate, and it cannot activate native desktop execution.
 - Scanner patterns are configuration (defense-in-depth, not proof).
 - Rollback strategy is RESTORE-FROM-BACKUP for schema v33 (no reverse migration; by design).
 - The prior canonical R2 proving window on f37f852 is durably SUSPENDED. The exact current-release R3 proving window is active and WAITING_ELAPSED against source c60db92, with a fresh Supervisor restart, read-only monitor, 0/10 verified post-start missions, and all external/provider/voice/physical boundaries explicitly NOT_TESTED or BLOCKED.
+- The worker-loop activation package is source-verified and pushed, but its live task remains disabled; this does not restart or promote the c60db92 proving release.
 
 ## Documentation rules (anti-staleness)
 
