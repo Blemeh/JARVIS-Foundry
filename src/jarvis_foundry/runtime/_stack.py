@@ -103,6 +103,7 @@ def build_worker_stack(
                 stop_path=stop_path,
                 pid_table=pid_table,
                 workers=workers,
+                provider_settings=config.provider_settings,
             ),
         )
         enabled.append("hermes")
@@ -122,6 +123,7 @@ def build_worker_stack(
                 stop_path=stop_path,
                 pid_table=pid_table,
                 workers=workers,
+                provider_settings=config.provider_settings,
             ),
         )
         enabled.append("openhands")

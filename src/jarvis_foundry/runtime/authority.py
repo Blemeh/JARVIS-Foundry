@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from ..paths import FoundryPaths
+from .provider_config import ProviderSettings, load_provider_settings
 
 FOUNDRY_YAML_ROLE = "TEMPLATE"
 FOUNDRY_YAML_RELATIVE = Path("config") / "foundry.yaml"
@@ -69,6 +70,7 @@ class RuntimeAuthority:
     spawn_worker_loop: bool
     python_executable: Path
     hermes_home: Path
+    provider_settings: ProviderSettings
     foundry_yaml_role: str = FOUNDRY_YAML_ROLE
     precedence: tuple[str, ...] = CONFIG_PRECEDENCE
 
@@ -99,6 +101,7 @@ def resolve_runtime_authority(
     from .config import WorkerRuntimeConfig
 
     paths = FoundryPaths.discover(home)
+    provider_settings = load_provider_settings()
     profile = _read_profile(paths.home / "foundry-profile.yaml")
 
     interval = heartbeat_seconds
@@ -122,7 +125,8 @@ def resolve_runtime_authority(
     if worker_yaml is None and profile.get("worker_config_path"):
         worker_yaml = profile["worker_config_path"]
     worker_path = Path(worker_yaml).expanduser().resolve() if worker_yaml else None
-    worker_cfg = WorkerRuntimeConfig.from_yaml(worker_path)
+    worker_cfg = WorkerRuntimeConfig.from_yaml(
+        worker_path, provider_settings=provider_settings)
     python = python_executable or os.environ.get("JARVIS_PYTHON_EXE") or sys.executable
     return RuntimeAuthority(
         home=paths.home,
@@ -133,6 +137,7 @@ def resolve_runtime_authority(
         spawn_worker_loop=bool(spawn),
         python_executable=Path(python).expanduser().resolve(),
         hermes_home=FoundryPaths.hermes_home(),
+        provider_settings=provider_settings,
     )
 
 

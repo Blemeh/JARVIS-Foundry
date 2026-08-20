@@ -22,9 +22,9 @@ WORKER_OPENHANDS = "openhands"
 VALID_WORKERS = frozenset({WORKER_HERMES, WORKER_OPENHANDS})
 
 #: DIR-2026-08-12 / External Fusion model mandate: every real worker run
-#: resolves to the owner's direct OpenCode Go access with deepseek-v4-flash.
+#: resolves to the machine-local provider configuration (default muse-spark).
 DIRECTIVE_PROVIDER = "opencode_go"
-DIRECTIVE_MODEL = "deepseek-v4-flash"
+DIRECTIVE_MODEL = "muse-spark-1.2-contributor"
 
 
 @dataclass(frozen=True, slots=True)

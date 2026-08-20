@@ -49,13 +49,16 @@ from jarvis_foundry.evolution.verify import (
 from jarvis_foundry.migrations import SCHEMA_VERSION
 from jarvis_foundry.reconcile import reconcile
 
+from jarvis_foundry.runtime.provider_config import DEFAULT_MODEL, default_provider_settings
+
 CONTROLLER = "supervisor"
 CANDIDATE_CONTROLLER = "candidate-builder-1"
+TEST_PROVIDER = default_provider_settings()
 DIRECTIVE_IDENTITY = {"provider": "opencode_go",
-                      "model": "deepseek-v4-flash",
+                      "model": DEFAULT_MODEL,
                       "session_id": "session-builder-s8"}
 OTHER_IDENTITY = {"provider": "opencode_go",
-                  "model": "deepseek-v4-flash",
+                  "model": DEFAULT_MODEL,
                   "session_id": "session-verifier-s8"}
 THRESHOLDS = {"error_rate_max": 0.05, "latency_max_s": 2.0}
 
@@ -115,7 +118,8 @@ def _verification(db: FoundryDatabase, improvement_id: str) -> str:
         subject_ref="release-candidate-0001",
         criteria=["criterion-1: suite green", "criterion-2: latency"],
         artifacts={"suite.txt": "b" * 64},
-        builder_identity=DIRECTIVE_IDENTITY, controller=CONTROLLER)
+        builder_identity=DIRECTIVE_IDENTITY, controller=CONTROLLER,
+        provider_settings=TEST_PROVIDER)
     record_verification_verdict(
         db, verification_id=verification_id, verdict="PASS",
         criteria_results=[
@@ -125,7 +129,8 @@ def _verification(db: FoundryDatabase, improvement_id: str) -> str:
              "evidence_hash": "d" * 64},
         ],
         findings=[], verifier_identity=OTHER_IDENTITY,
-        evidence_refs=["var/evidence/v6-s8/probe.txt"])
+        evidence_refs=["var/evidence/v6-s8/probe.txt"],
+        provider_settings=TEST_PROVIDER)
     return verification_id
 
 
@@ -243,7 +248,8 @@ def test_promotion_requires_trusted_verdict(db: FoundryDatabase,
         subject_ref="release-candidate-0001",
         criteria=["criterion-1: suite green"],
         artifacts={"suite.txt": "b" * 64},
-        builder_identity=DIRECTIVE_IDENTITY, controller=CONTROLLER)
+        builder_identity=DIRECTIVE_IDENTITY, controller=CONTROLLER,
+        provider_settings=TEST_PROVIDER)
     record_verification_verdict(
         db, verification_id=fail_verification, verdict="FAIL",
         criteria_results=[
@@ -251,7 +257,8 @@ def test_promotion_requires_trusted_verdict(db: FoundryDatabase,
              "evidence_hash": "e" * 64}],
         findings=[{"severity": "HIGH", "finding": "suite red"}],
         verifier_identity=OTHER_IDENTITY,
-        evidence_refs=["var/evidence/v6-s8/fail.txt"])
+        evidence_refs=["var/evidence/v6-s8/fail.txt"],
+        provider_settings=TEST_PROVIDER)
     with pytest.raises(PromoteError):
         promote_release(
             db, candidate_release_id=setup["candidate"],

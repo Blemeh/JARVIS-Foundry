@@ -51,6 +51,11 @@ from ..isolation import (
     diff_openhands_containment,
     snapshot_openhands_tree,
 )
+from ...runtime.provider_config import (
+    ProviderCredentialError,
+    ProviderSettings,
+    openhands_provider_env,
+)
 from .base import (
     AdapterConfigurationError,
     ProviderUnavailable,
@@ -82,12 +87,16 @@ class OpenHandsWorkerAdapter:
         stop_path: Path | str | None = None,
         pid_table: Path | str | None = None,
         workers: Any = None,
+        provider_settings: ProviderSettings | None = None,
     ) -> None:
+        from ...runtime.provider_config import default_provider_settings
+
         self.openhands_exe = openhands_exe.resolve()
         self.data_dir = data_dir.resolve()
         self.enabled = enabled
         self.timeout_seconds = timeout_seconds
         self.framework = "openhands"
+        self.provider_settings = provider_settings or default_provider_settings()
         self._owner_openhands = self.LIVE_OPENHANDS
         self.stop_path = Path(stop_path).resolve() if stop_path is not None else None
         self.pid_table = Path(pid_table).resolve() if pid_table is not None else None
@@ -118,12 +127,14 @@ class OpenHandsWorkerAdapter:
             raise ProviderUnavailable(
                 "real OpenHands dispatch is disabled; enable explicitly "
                 "with a disposable OPENHANDS_DATA_DIR")
+        try:
+            provider_env = openhands_provider_env(self.provider_settings)
+        except ProviderCredentialError as error:
+            raise ProviderUnavailable(str(error)) from error
         started = isoformat(utc_now())
         env = dict(os.environ)
         env.update(result_env(contract.working_root))
-        env["LLM_BASE_URL"] = os.environ.get(
-            "JARVIS_OPENCODE_BASE_URL", "https://opencode.ai/zen/go/v1")
-        env["LLM_API_KEY"] = os.environ.get("JARVIS_OPENCODE_API_KEY", "")
+        env.update(provider_env)
         env["LLM_MODEL"] = f"openai/{contract.model}"
         env["OPENHANDS_DATA_DIR"] = str(self.data_dir)
         # Phase 3 containment: redirect the entire OpenHands persistence
@@ -219,7 +230,7 @@ class OpenHandsWorkerAdapter:
         # baseline; any new/removed/modified entry in the owner state after
         # the run forces a fail-closed BLOCKED result.
         stdout = redact_secrets(
-            process.stdout or "", configured_key=configured_api_key())
+            process.stdout or "", configured_key=configured_api_key(self.provider_settings))
         events = self._parse_jsonl(stdout)
         model_actual = contract.model
         for event in events:
@@ -253,7 +264,7 @@ class OpenHandsWorkerAdapter:
                 claimed_outcome="OpenHands CLI exited non-zero",
                 summary=redact_secrets(
                     process.stderr or stdout,
-                    configured_key=configured_api_key())[-800:],
+                    configured_key=configured_api_key(self.provider_settings))[-800:],
                 started_at=started,
                 model_actual=model_actual,
                 exit_state=f"EXIT_{process.returncode}",
@@ -300,7 +311,7 @@ class OpenHandsWorkerAdapter:
         """Redact credential-shaped tokens from disposable run-state files
         (contained-home conversation events, editor history, etc.) so no
         retained artifact ever holds the secret value."""
-        key = configured_api_key()
+        key = configured_api_key(self.provider_settings)
         if not self.data_dir.exists():
             return
         scanned = 0

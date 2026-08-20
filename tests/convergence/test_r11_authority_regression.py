@@ -87,15 +87,17 @@ from jarvis_foundry.evolution.verify import (
     record_verification_request,
     record_verification_verdict,
 )
+from jarvis_foundry.runtime.provider_config import DEFAULT_MODEL, default_provider_settings
 from jarvis_foundry.supervisor.authority import SUPERVISOR_CONTROLLER
 
 CONTROLLER = "supervisor"
 CANDIDATE = "candidate-builder-1"
+TEST_PROVIDER = default_provider_settings()
 DIRECTIVE_IDENTITY = {"provider": "opencode_go",
-                      "model": "deepseek-v4-flash",
+                      "model": DEFAULT_MODEL,
                       "session_id": "session-builder-authority"}
 OTHER_IDENTITY = {"provider": "opencode_go",
-                  "model": "deepseek-v4-flash",
+                  "model": DEFAULT_MODEL,
                   "session_id": "session-verifier-authority"}
 
 
@@ -255,14 +257,16 @@ def test_verification_request_supervisor_only(db: FoundryDatabase) -> None:
             subject_ref="release-candidate-x",
             criteria=["criterion: welcome"],
             artifacts={"suite.txt": "b" * 64},
-            builder_identity=DIRECTIVE_IDENTITY, controller=CANDIDATE)
+            builder_identity=DIRECTIVE_IDENTITY, controller=CANDIDATE,
+            provider_settings=TEST_PROVIDER)
     # the genuine Supervisor-created request still exists...
     verification_id = record_verification_request(
         db, improvement_id=improvement_id,
         subject_ref="release-candidate-x",
         criteria=["criterion: welcome"],
         artifacts={"suite.txt": "b" * 64},
-        builder_identity=DIRECTIVE_IDENTITY, controller=CONTROLLER)
+        builder_identity=DIRECTIVE_IDENTITY, controller=CONTROLLER,
+        provider_settings=TEST_PROVIDER)
     # ...but a same-session verdict is refused: no self-certification
     with pytest.raises(VerificationError):
         record_verification_verdict(
@@ -271,7 +275,8 @@ def test_verification_request_supervisor_only(db: FoundryDatabase) -> None:
                 {"criterion": "criterion: welcome", "status": "PASS",
                  "evidence_hash": "c" * 64}],
             findings=[], verifier_identity=DIRECTIVE_IDENTITY,
-            evidence_refs=["var/evidence/r11-authority/self.txt"])
+            evidence_refs=["var/evidence/r11-authority/self.txt"],
+            provider_settings=TEST_PROVIDER)
     assert is_trusted_verdict(db, verification_id,
                               DIRECTIVE_IDENTITY) is False
     # independent completion is still valid
@@ -281,7 +286,8 @@ def test_verification_request_supervisor_only(db: FoundryDatabase) -> None:
             {"criterion": "criterion: welcome", "status": "PASS",
              "evidence_hash": "c" * 64}],
         findings=[], verifier_identity=OTHER_IDENTITY,
-        evidence_refs=["var/evidence/r11-authority/independent.txt"])
+        evidence_refs=["var/evidence/r11-authority/independent.txt"],
+        provider_settings=TEST_PROVIDER)
     assert is_trusted_verdict(db, verification_id,
                               DIRECTIVE_IDENTITY) is True
     assert SUPERVISOR_CONTROLLER == CONTROLLER == "supervisor"

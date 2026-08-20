@@ -6,7 +6,7 @@ BLOCKED/NOT_TESTED) is bound to exact hashes; exit code zero alone is
 NOT_TESTED (D-032). A verdict without a recorded request is refused
 (forgery guard). One verdict per verification. Verifier identity is
 recorded (provider/model/session); the D-031 worker constraint is
-enforced (opencode_go + deepseek-v4-flash, no silent substitution),
+enforced (opencode_go + configured model, no silent substitution),
 same-provider limitations are flagged honestly, and a candidate can
 never invoke a trusted promotion verdict for itself.
 """
@@ -28,11 +28,14 @@ from jarvis_foundry.evolution.verify import (
 from jarvis_foundry.migrations import SCHEMA_VERSION
 from jarvis_foundry.reconcile import reconcile
 
+from jarvis_foundry.runtime.provider_config import DEFAULT_MODEL, default_provider_settings
+
+TEST_PROVIDER = default_provider_settings()
 DIRECTIVE_IDENTITY = {"provider": "opencode_go",
-                      "model": "deepseek-v4-flash",
+                      "model": DEFAULT_MODEL,
                       "session_id": "session-builder-1"}
 OTHER_IDENTITY = {"provider": "opencode_go",
-                  "model": "deepseek-v4-flash",
+                  "model": DEFAULT_MODEL,
                   "session_id": "session-verifier-1"}
 FOREIGN_IDENTITY = {"provider": "vertex_ai",
                     "model": "gemini-pro",
@@ -83,6 +86,7 @@ def _request(db: FoundryDatabase, improvement_id: str,
         "artifacts": {"suite.txt": "a" * 64},
         "builder_identity": DIRECTIVE_IDENTITY,
         "controller": "supervisor",
+        "provider_settings": TEST_PROVIDER,
     }
     params.update(overrides)
     return record_verification_request(
@@ -102,6 +106,7 @@ def _verdict(verification_id: str, **overrides: object) -> dict[str, object]:
         "findings": [],
         "verifier_identity": OTHER_IDENTITY,
         "evidence_refs": ["var/evidence/v6-s5/probe-1.txt"],
+        "provider_settings": TEST_PROVIDER,
     }
     verdict.update(overrides)
     return verdict
@@ -247,9 +252,8 @@ def test_self_certification_refused(db: FoundryDatabase) -> None:
 
 
 def test_directive_identity_enforced(db: FoundryDatabase) -> None:
-    """D-031: JARVIS internal workers must resolve to
-    opencode_go/deepseek-v4-flash — a foreign identity is refused
-    (no silent substitution)."""
+    """D-031: JARVIS internal workers must resolve to the configured
+    provider/model — a foreign identity is refused (no silent substitution)."""
     improvement_id = _improvement(db)
     verification_id = _request(db, improvement_id)
     with pytest.raises(VerificationError):

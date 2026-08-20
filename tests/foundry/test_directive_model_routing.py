@@ -142,15 +142,15 @@ def test_yaml_compliant_passes_enforcement(tmp_path):
 roles:
   executive:
     preferred_provider: "opencode_go"
-    preferred_model: "deepseek-v4-flash"
+    preferred_model: "muse-spark-1.2-contributor"
     fallbacks: []
   builder:
     preferred_provider: "opencode_go"
-    preferred_model: "deepseek-v4-flash"
+    preferred_model: "muse-spark-1.2-contributor"
     fallbacks: []
   verifier:
     preferred_provider: "opencode_go"
-    preferred_model: "deepseek-v4-flash"
+    preferred_model: "muse-spark-1.2-contributor"
     fallbacks: []
 """, encoding="utf-8")
     router = RoleRouter.from_yaml(config)
@@ -167,7 +167,7 @@ roles:
     fallbacks: ["vertex_ai"]
   verifier:
     preferred_provider: "opencode_go"
-    preferred_model: "deepseek-v4-flash"
+    preferred_model: "muse-spark-1.2-contributor"
     fallbacks: []
 """, encoding="utf-8")
     router = RoleRouter.from_yaml(config)

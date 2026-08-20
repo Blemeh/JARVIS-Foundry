@@ -93,13 +93,16 @@ from jarvis_foundry.supervisor.evolution_control import (
     EvolutionControlError,
 )
 
+from jarvis_foundry.runtime.provider_config import DEFAULT_MODEL, default_provider_settings
+
 CONTROLLER = "supervisor"
 CANDIDATE = "candidate-builder-1"
+TEST_PROVIDER = default_provider_settings()
 DIRECTIVE_IDENTITY = {"provider": "opencode_go",
-                      "model": "deepseek-v4-flash",
+                      "model": DEFAULT_MODEL,
                       "session_id": "session-builder-r11"}
 OTHER_IDENTITY = {"provider": "opencode_go",
-                  "model": "deepseek-v4-flash",
+                  "model": DEFAULT_MODEL,
                   "session_id": "session-verifier-r11"}
 THRESHOLDS = {"error_rate_max": 0.05, "latency_max_s": 2.0}
 
@@ -199,7 +202,8 @@ def _verification(db: FoundryDatabase, improvement_id: str,
         subject_ref="release-candidate-r11",
         criteria=["criterion-1: suite green", "criterion-2: latency"],
         artifacts={"suite.txt": "b" * 64},
-        builder_identity=DIRECTIVE_IDENTITY, controller=CONTROLLER)
+        builder_identity=DIRECTIVE_IDENTITY, controller=CONTROLLER,
+        provider_settings=TEST_PROVIDER)
     record_verification_verdict(
         db, verification_id=verification_id, verdict="PASS",
         criteria_results=[
@@ -210,7 +214,8 @@ def _verification(db: FoundryDatabase, improvement_id: str,
         ],
         findings=[],
         verifier_identity=verifier_identity or OTHER_IDENTITY,
-        evidence_refs=["var/evidence/r11/verdict.txt"])
+        evidence_refs=["var/evidence/r11/verdict.txt"],
+        provider_settings=TEST_PROVIDER)
     return verification_id
 
 
@@ -270,7 +275,8 @@ def test_candidate_cannot_self_certify(db: FoundryDatabase) -> None:
         subject_ref="release-candidate-r11",
         criteria=["criterion-1: suite green"],
         artifacts={"suite.txt": "b" * 64},
-        builder_identity=DIRECTIVE_IDENTITY, controller=CONTROLLER)
+        builder_identity=DIRECTIVE_IDENTITY, controller=CONTROLLER,
+        provider_settings=TEST_PROVIDER)
     # verifier session == builder session: self-certification refused
     with pytest.raises(VerificationError, match="self|same"):
         record_verification_verdict(
@@ -279,7 +285,8 @@ def test_candidate_cannot_self_certify(db: FoundryDatabase) -> None:
                 {"criterion": "criterion-1: suite green",
                  "status": "PASS", "evidence_hash": "c" * 64}],
             findings=[], verifier_identity=DIRECTIVE_IDENTITY,
-            evidence_refs=["var/evidence/r11/self.txt"])
+            evidence_refs=["var/evidence/r11/self.txt"],
+            provider_settings=TEST_PROVIDER)
     # a FAIL or not-yet-verdict is never a trusted promotion verdict
     assert is_trusted_verdict(db, verification_id, DIRECTIVE_IDENTITY) \
         is False
@@ -290,7 +297,8 @@ def test_candidate_cannot_self_certify(db: FoundryDatabase) -> None:
             {"criterion": "criterion-1: suite green", "status": "PASS",
              "evidence_hash": "c" * 64}],
         findings=[], verifier_identity=OTHER_IDENTITY,
-        evidence_refs=["var/evidence/r11/independent.txt"])
+        evidence_refs=["var/evidence/r11/independent.txt"],
+        provider_settings=TEST_PROVIDER)
     assert is_trusted_verdict(db, verification_id, DIRECTIVE_IDENTITY) \
         is True
     # queried with the verifier's own session as builder: not trusted
@@ -308,13 +316,15 @@ def test_verdict_forgery_and_artifact_binding_refused(
                 {"criterion": "c", "status": "PASS",
                  "evidence_hash": "c" * 64}],
             findings=[], verifier_identity=OTHER_IDENTITY,
-            evidence_refs=["var/evidence/r11/fake.txt"])
+            evidence_refs=["var/evidence/r11/fake.txt"],
+            provider_settings=TEST_PROVIDER)
     verification_id = record_verification_request(
         db, improvement_id=improvement_id,
         subject_ref="release-candidate-r11",
         criteria=["criterion-1: suite green"],
         artifacts={"suite.txt": "b" * 64},
-        builder_identity=DIRECTIVE_IDENTITY, controller=CONTROLLER)
+        builder_identity=DIRECTIVE_IDENTITY, controller=CONTROLLER,
+        provider_settings=TEST_PROVIDER)
     # verdict bound to different artifacts than the frozen request
     with pytest.raises(VerificationError, match="differ"):
         record_verification_verdict(
@@ -324,7 +334,8 @@ def test_verdict_forgery_and_artifact_binding_refused(
                  "status": "PASS", "evidence_hash": "c" * 64}],
             findings=[], verifier_identity=OTHER_IDENTITY,
             evidence_refs=["var/evidence/r11/alt.txt"],
-            artifacts={"suite.txt": "e" * 64})
+            artifacts={"suite.txt": "e" * 64},
+            provider_settings=TEST_PROVIDER)
 
 
 # ---------------------------------------------------------------------------
