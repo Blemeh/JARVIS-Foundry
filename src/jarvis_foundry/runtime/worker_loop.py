@@ -107,6 +107,7 @@ def _maybe_executive_select(
     if not config.executive_selection_enabled:
         return None
     from ..executive.decisions import ExecutiveDecisionService
+    from ..executive.eligibility import enable_admission_authority
     from ..executive.missions import materialize_selection
 
     executive = ExecutiveDecisionService(
@@ -118,6 +119,9 @@ def _maybe_executive_select(
     )
     epoch = executive.ensure_activation(
         config.executive_activation_epoch or None)
+    enable_admission_authority(
+        database, epoch, source_id=f"worker-loop:{instance_id}",
+    )
     decision = executive.evaluate(
         resource_id=config.resource_id,
         capability=config.capability,
@@ -142,6 +146,20 @@ def _maybe_executive_select(
         activation_epoch=epoch,
         source_id=f"worker-loop:{instance_id}",
     )
+    if not materialized.get("materialized"):
+        database.append(Event.create(
+            "worker_loop.executive_materialization_blocked",
+            {
+                "loop_id": loop_id,
+                "decision_id": decision.decision_id,
+                "candidate_id": decision.candidate_id,
+                "reason": materialized.get("blocked_reason"),
+            },
+            source_type="supervisor",
+            source_id=f"worker-loop:{instance_id}",
+            idempotency_key=f"worker_loop.executive_materialization_blocked:{loop_id}",
+        ))
+        return None
     decision_id = decision.decision_id
     database.append(Event.create(
         "executive.decision_materialized",

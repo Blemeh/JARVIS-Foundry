@@ -71,8 +71,27 @@ def score_candidate_for_executive(
         except (TypeError, ValueError):
             weights = {}
 
+    def _weight(name: str, default: float | None = None) -> tuple[float | None, str]:
+        raw = weights.get(name)
+        if raw is None:
+            ctx = weights.get("context") or {}
+            if isinstance(ctx, dict):
+                raw = ctx.get(name)
+        if raw is None:
+            return default, "UNKNOWN" if default is None else "KNOWN"
+        try:
+            return float(raw), "KNOWN"
+        except (TypeError, ValueError):
+            return None, "UNKNOWN"
+
+    value_term, value_kind = _weight("value", None)
+    urgency_term, urgency_kind = _weight("urgency", None)
+    info_gain, info_kind = _weight("information_gain", None)
+    source_trust, trust_kind = _weight("source_trust", None)
+    effort_raw, effort_kind = _weight("effort_penalty", None)
+    cost_raw, cost_kind = _weight("cost_penalty", None)
+    freshness_raw, freshness_kind = _weight("freshness", None)
     goal_fit = 0.0
-    compared: list[str] = []
     owner_priority = 0.0
     if goals:
         fits = [goal_alignment_score(g, objective) for g in goals]
@@ -85,11 +104,11 @@ def score_candidate_for_executive(
 
     cal_adj = calibration.adjustment_for(source=source, objective=objective)
 
-    # Keyword-bait penalty: high urgency/value terms but zero goal fit.
-    value_term = float(weights.get("value", weights.get("context", {}).get("value", 0.0)))
-    urgency_term = float(weights.get("urgency", 0.0))
     bait_penalty = 0.0
-    if goal_fit < 0.1 and (value_term > 0.5 or urgency_term > 0.5):
+    if goal_fit < 0.1 and (
+        (value_term is not None and value_term > 0.5)
+        or (urgency_term is not None and urgency_term > 0.5)
+    ):
         bait_penalty = 0.15
 
     # Reversibility / risk from evidence and objective terms.
@@ -100,16 +119,31 @@ def score_candidate_for_executive(
 
     factors = (
         _factor("goal_fit", goal_fit, 0.30),
-        _factor("expected_value", value_term, 0.20, kind="ESTIMATED"),
-        _factor("information_gain", float(weights.get("information_gain", 0.0)), 0.10),
-        _factor("urgency", urgency_term, 0.10),
-        _factor("confidence", float(weights.get("source_trust", 0.85)), 0.05),
-        _factor("effort", 1.0 - float(weights.get("effort_penalty", 0.0)), 0.05, kind="ESTIMATED"),
-        _factor("cost", 1.0 - float(weights.get("cost_penalty", 0.0)), 0.05, kind="ESTIMATED"),
+        _factor("expected_value", value_term, 0.20, kind=value_kind),
+        _factor("information_gain", info_gain, 0.10, kind=info_kind),
+        _factor("urgency", urgency_term, 0.10, kind=urgency_kind),
+        _factor("confidence", source_trust, 0.05, kind=trust_kind),
+        _factor(
+            "effort",
+            None if effort_raw is None else 1.0 - effort_raw,
+            0.05,
+            kind=effort_kind,
+        ),
+        _factor(
+            "cost",
+            None if cost_raw is None else 1.0 - cost_raw,
+            0.05,
+            kind=cost_kind,
+        ),
         _factor("reversibility", reversibility, 0.05),
         _factor("resource_contention", 1.0 - resource_contention, 0.05),
         _factor("owner_priority", owner_priority, 0.10),
-        _factor("freshness", float(weights.get("freshness", 0.0)) + base * 0.1, 0.05),
+        _factor(
+            "freshness",
+            None if freshness_raw is None else freshness_raw + base * 0.1,
+            0.05,
+            kind=freshness_kind,
+        ),
     )
 
     composite = sum(f.contribution for f in factors)

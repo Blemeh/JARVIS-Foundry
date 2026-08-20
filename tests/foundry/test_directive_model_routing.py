@@ -225,7 +225,8 @@ def test_run_one_loop_accepts_directive_router(tmp_path):
         adapter=FakeHermesAdapter(), router=RoleRouter(),
         mission_id="mission-test", resource_id="resource-test",
         target_root=tmp_path / "target", vault_root=tmp_path / "vault",
-        handoff_dir=tmp_path / "handoffs")
+        handoff_dir=tmp_path / "handoffs",
+        test_legacy_selection=True)
     # enforcement passed; the loop ran — with an empty candidate table the
     # loop must report honest WAITING, never crash (regression: the WAITING
     # reason read top[0] on an empty list -> IndexError)

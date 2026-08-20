@@ -18,6 +18,7 @@ from jarvis_foundry.executive.eligibility import (
     WAIT_COMPARATIVE,
     WAIT_NO_ELIGIBLE,
     assess_eligibility,
+    enable_admission_authority,
 )
 from jarvis_foundry.executive.scoring import rank_candidates
 from jarvis_foundry.owner_controls import OwnerControlService, sign_command
@@ -49,6 +50,7 @@ def _activate(db: FoundryDatabase) -> None:
         source_type="supervisor", source_id="m1-proof",
         idempotency_key=f"executive.activation_recorded:{EPOCH}",
     ))
+    enable_admission_authority(db, EPOCH, source_id="m1-proof")
 
 
 def _organic(db: FoundryDatabase, objective: str, source: str, **extra) -> str:

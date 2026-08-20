@@ -102,10 +102,14 @@ def record_calibration(
     repair_count: int = 0,
     actual: dict[str, Any] | None = None,
     source_id: str = "executive",
+    terminal_event_id: str | None = None,
 ) -> str:
     from ..events import Event
 
     normalized = _normalize_outcome(outcome)
+    terminal_key = terminal_event_id or _authoritative_terminal_key(
+        database, mission_id, normalized,
+    )
     payload = {
         "decision_id": decision_id,
         "candidate_id": candidate_id,
@@ -116,15 +120,38 @@ def record_calibration(
         "repair_count": repair_count,
         "actual": actual or {},
         "calibration_version": CALIBRATION_VERSION,
+        "terminal_event_id": terminal_key,
     }
     event = Event.create(
         "executive.calibration_recorded",
         payload,
         source_type="supervisor",
         source_id=source_id,
-        idempotency_key=f"executive.calibration_recorded:{mission_id}:{normalized}",
+        idempotency_key=f"executive.calibration_recorded:{terminal_key}",
     )
     return str(database.append(event)[0])
+
+
+def _authoritative_terminal_key(
+    database: FoundryDatabase,
+    mission_id: str,
+    outcome: str,
+) -> str:
+    """Derive idempotency key from the authoritative terminal mission application."""
+    for event in reversed(list(database.events())):
+        event_type = event.event_type
+        if event_type in (
+            "verification.passed", "verification.failed", "verification.blocked",
+            "mission.completed",
+        ):
+            payload = event.payload
+            if str(payload.get("mission_id") or "") == mission_id:
+                return f"{event_type}:{event.event_id}"
+            if event_type.startswith("verification."):
+                mission = database.row("missions", "mission_id", mission_id)
+                if mission is not None:
+                    return f"{event_type}:{event.event_id}"
+    return f"mission.terminal:{mission_id}:{outcome}"
 
 
 def outcome_from_mission(database: FoundryDatabase, mission_id: str) -> dict[str, Any]:

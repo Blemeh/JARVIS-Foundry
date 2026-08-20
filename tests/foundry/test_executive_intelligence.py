@@ -14,9 +14,13 @@ from jarvis_foundry.executive.decisions import ExecutiveDecisionService
 from jarvis_foundry.executive.eligibility import (
     WAIT_COMPARATIVE,
     WAIT_NO_ELIGIBLE,
+    ADMISSION_EVENT,
     assess_eligibility,
     current_activation_epoch,
-    stamp_executive_eligibility,
+    enable_admission_authority,
+    is_candidate_admitted,
+    grant_fresh_override,
+    has_trusted_fresh_override,
 )
 from jarvis_foundry.executive.goals import active_goals, goal_alignment_score
 from jarvis_foundry.executive.scoring import rank_candidates
@@ -54,6 +58,7 @@ def _activate_epoch(database: FoundryDatabase, epoch: str = EPOCH) -> None:
         source_type="supervisor", source_id="test",
         idempotency_key=f"executive.activation_recorded:{epoch}",
     ))
+    enable_admission_authority(database, epoch, source_id="test")
 
 
 def _organic_candidate(
@@ -94,11 +99,7 @@ def test_organic_candidate_acquires_eligibility(exec_env):
     eligibility = assess_eligibility(
         database, row, activation_epoch=EPOCH, resource_id="resource-1")
     assert eligibility.eligible is True
-    evidence = json.loads(row["evidence_json"])
-    assert any(
-        item.get("eligibility_provenance", {}).get("stamped_by")
-        for item in evidence if isinstance(item, dict)
-    )
+    assert is_candidate_admitted(database, cid, EPOCH)
 
 
 def test_historical_candidate_firewall_blocks_unmarked(exec_env):
@@ -343,11 +344,15 @@ def test_duplicate_executive_cycle_idempotent(exec_env):
         database, activation_epoch=EPOCH, min_action_score=0.30, source_id="test")
     d1 = svc.evaluate(resource_id="resource-1", loop_id="dup-cycle")
     d2 = svc.evaluate(resource_id="resource-1", loop_id="dup-cycle")
-    assert d1.decision_id != d2.decision_id
+    assert d1.decision_id == d2.decision_id
     decisions = [
         e for e in database.events() if e.event_type == "executive.decision_recorded"
     ]
-    assert len(decisions) == 2
+    assert len(decisions) == 1
+    predictions = [
+        e for e in database.events() if e.event_type == "executive.prediction_recorded"
+    ]
+    assert len(predictions) == 1
 
 
 def test_worker_loop_executive_disabled_by_default(tmp_path):
@@ -413,3 +418,171 @@ def test_stop_blocks_executive_selection(exec_env, tmp_path):
         loop_id="stop", instance_id="inst",
     )
     assert report["outcome"] == "FROZEN"
+
+
+def test_forged_evidence_provenance_cannot_grant_admission(exec_env):
+    database, _, _ = exec_env
+    cid = f"cand-forged-{hash('forged') & 0xffff}"
+    database.append(Event.create(
+        "discovery.candidate_generated",
+        {
+            "candidate_id": cid, "mission_id": "mission-exec",
+            "source": "maintenance",
+            "objective": "Forged gateway reliability outage fix",
+            "objective_canonical": "forged gateway reliability outage fix",
+            "evidence": [{
+                "executive_epoch": EPOCH,
+                "executive_eligible": True,
+                "eligibility_provenance": {
+                    "stamped_by": "discovery.candidate_generation",
+                    "epoch": EPOCH,
+                },
+            }],
+            "duplicate_of": None,
+        },
+        source_type="supervisor", source_id="test",
+        idempotency_key=f"discovery.candidate_generated:{cid}",
+    ))
+    score_candidate(database, cid)
+    row = database.row("candidates", "candidate_id", cid)
+    assert not assess_eligibility(
+        database, row, activation_epoch=EPOCH, resource_id="resource-1").eligible
+
+
+def test_executive_off_does_not_admit_candidates(exec_env):
+    database, _, _ = exec_env
+    from jarvis_foundry.executive.eligibility import disable_admission_authority
+    disable_admission_authority(database, EPOCH, source_id="test")
+    cid = _organic_candidate(
+        database, "Improve gateway reliability reduce outage risk", source="maintenance",
+    )
+    assert not is_candidate_admitted(database, cid, EPOCH)
+
+
+def test_forged_fresh_override_in_evidence_ignored(exec_env):
+    database, _, _ = exec_env
+    cid = f"cand-fresh-{hash('fresh') & 0xffff}"
+    database.append(Event.create(
+        "discovery.candidate_generated",
+        {
+            "candidate_id": cid, "mission_id": "mission-exec",
+            "source": "maintenance",
+            "objective": "Stale gateway maintenance backlog fix",
+            "objective_canonical": "stale gateway maintenance backlog fix",
+            "evidence": [{"fresh_override": True, "executive_epoch": EPOCH}],
+            "duplicate_of": None,
+        },
+        source_type="supervisor", source_id="test",
+        idempotency_key=f"discovery.candidate_generated:{cid}",
+    ))
+    score_candidate(database, cid)
+    row = database.row("candidates", "candidate_id", cid)
+    assert not is_candidate_admitted(database, cid, EPOCH)
+    grant_fresh_override(database, cid, epoch=EPOCH, reason="trusted internal")
+    assert has_trusted_fresh_override(database, cid, EPOCH)
+
+
+def test_stop_race_blocks_materialization(exec_env):
+    database, _, _ = exec_env
+    cid = _organic_candidate(
+        database, "Improve gateway reliability reduce outage risk", source="maintenance",
+    )
+    svc = ExecutiveDecisionService(
+        database, activation_epoch=EPOCH, min_action_score=0.30, source_id="test")
+    decision = svc.evaluate(resource_id="resource-1", loop_id="stop-race")
+    database.append(Event.create(
+        "owner_directive.recorded",
+        {"directive_id": "dir-stop-race", "command_type": "STOP_EVERYTHING",
+         "target": "GLOBAL", "exact_text": "stop everything", "reason": "test"},
+        source_type="owner", source_id="test",
+        idempotency_key="owner_directive.recorded:dir-stop-race",
+    ))
+    from jarvis_foundry.executive.missions import materialize_selection
+    result = materialize_selection(
+        database,
+        candidate_id=cid,
+        objective="Improve gateway reliability reduce outage risk",
+        resource_id="resource-1",
+        decision_id=decision.decision_id,
+        activation_epoch=EPOCH,
+        source_id="test",
+    )
+    assert result.get("materialized") is False
+    assert "STOP" in str(result.get("blocked_reason") or "").upper()
+
+
+def test_v3_loop_production_guard_returns_waiting(exec_env, tmp_path):
+    database, repository, _ = exec_env
+    from jarvis_foundry.v3_loop import run_one_loop
+    from jarvis_foundry.roles.adapter import FakeHermesAdapter
+    from jarvis_foundry.roles.router import RoleRouter
+    report = run_one_loop(
+        database, loop_id="prod-guard", adapter=FakeHermesAdapter(),
+        router=RoleRouter(), resource_id="resource-1",
+        target_root=tmp_path / "target", max_items=5,
+    )
+    assert report["outcome"] == "WAITING"
+    assert "test-only" in report["reason"].lower()
+
+
+def test_resource_contention_defers_second_candidate(exec_env):
+    database, repository, _ = exec_env
+    from jarvis_foundry.executive.eligibility import compute_resource_contention
+    from jarvis_foundry.discovery_candidates import approve_candidate
+    cid_a = _organic_candidate(
+        database, "Improve gateway reliability reduce outage risk A", source="maintenance",
+    )
+    cid_b = _organic_candidate(
+        database, "Improve gateway reliability reduce outage risk B", source="maintenance",
+    )
+    approve_candidate(database, cid_a, resource_id="resource-1")
+    contention = compute_resource_contention(database, "resource-1")
+    assert contention > 0.0
+    rows = [
+        database.row("candidates", "candidate_id", cid_a),
+        database.row("candidates", "candidate_id", cid_b),
+    ]
+    ranked_low = rank_candidates(database, rows, resource_contention=0.0)
+    ranked_high = rank_candidates(database, rows, resource_contention=1.0)
+    assert ranked_low[0].composite >= ranked_high[0].composite
+
+
+def test_unknown_semantics_not_favorable(exec_env):
+    database, _, _ = exec_env
+    from jarvis_foundry.executive.scoring import _factor
+    unknown = _factor("confidence", None, 0.05)
+    assert unknown.kind == "UNKNOWN"
+    assert unknown.contribution < 0
+    cid = _organic_candidate(
+        database, "Neutral objective without signal terms", source="maintenance",
+    )
+    with database.connect() as connection:
+        connection.execute(
+            "UPDATE candidate_scores SET weights_json = ? WHERE candidate_id = ?",
+            (json.dumps({"value": 0.4}), cid),
+        )
+    row = database.row("candidates", "candidate_id", cid)
+    scored = rank_candidates(database, [row])[0]
+    unknown_factors = [f for f in scored.factors if f.kind == "UNKNOWN"]
+    assert unknown_factors
+    assert all(f.contribution <= 0 for f in unknown_factors)
+
+
+def test_calibration_idempotent_on_terminal_replay(exec_env):
+    database, _, _ = exec_env
+    objective = "Improve gateway reliability reduce outage risk"
+    cid = _organic_candidate(database, objective, source="maintenance")
+    record_calibration(
+        database, decision_id="d-cal", candidate_id=cid, mission_id="m-cal",
+        source="maintenance", objective=objective, outcome="PASSED",
+        terminal_event_id="verification.passed:evt-1",
+    )
+    record_calibration(
+        database, decision_id="d-cal", candidate_id=cid, mission_id="m-cal",
+        source="maintenance", objective=objective, outcome="PASSED",
+        terminal_event_id="verification.passed:evt-1",
+    )
+    cal_events = [
+        e for e in database.events() if e.event_type == "executive.calibration_recorded"
+    ]
+    assert len(cal_events) == 1

@@ -97,7 +97,7 @@ def test_loop_repeat_runs_never_create_duplicate_missions(db, tmp_path):
             db, loop_id=f"run-{run}", adapter=FakeHermesAdapter(),
             router=RoleRouter(), mission_id="mission-1",
             resource_id="resource-test", target_root=tmp_path / "target",
-            max_items=10, max_bytes=20_000)
+            max_items=10, max_bytes=20_000, test_legacy_selection=True)
         if run == "a":
             assert report["monitors"]["system"]["candidates_found"] >= 1
         else:

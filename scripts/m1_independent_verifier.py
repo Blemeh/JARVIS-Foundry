@@ -28,12 +28,18 @@ def main() -> int:
     check("stamp_executive_eligibility" in discovery,
           "generate_candidate must stamp organic executive eligibility")
 
-    # 3. Governed provenance firewall
+    # 3. Governed provenance firewall — trusted admission events, not evidence claims
     elig = (REPO / "src/jarvis_foundry/executive/eligibility.py").read_text()
-    check("eligibility_provenance" in elig and "_has_governed_epoch_marker" in elig,
-          "governed eligibility provenance required")
-    check("maintenance" not in elig or '_LAB_SOURCE_PREFIXES' in elig,
-          "maintenance must not be blanket-blocked by prefix")
+    check("ADMISSION_EVENT" in elig and "is_candidate_admitted" in elig,
+          "trusted admission events required")
+    check("executive.candidate_admitted" in elig,
+          "governed eligibility admission event required")
+    check("materialization_blocked" in (REPO / "src/jarvis_foundry/executive/missions.py").read_text(),
+          "fail-closed materialization boundary required")
+    check("test_legacy_selection" in (REPO / "src/jarvis_foundry/v3_loop.py").read_text(),
+          "v3_loop production selection guard required")
+    check("admission_authority" in elig,
+          "executive OFF admission authority gate required")
 
     # 4. Distinct wait kinds
     check("WAIT_NO_ELIGIBLE" in elig and "WAIT_COMPARATIVE" in elig,

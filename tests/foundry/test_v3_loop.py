@@ -82,6 +82,7 @@ def test_loop_runs_end_to_end(db: FoundryDatabase, vault: Path,
     adapter = FakeHermesAdapter()  # COMPLETED / PASS
     report = run_one_loop(
         db, loop_id="t1", adapter=adapter, router=RoleRouter(),
+        test_legacy_selection=True,
         resource_id="resource-test",
         vault_root=vault, target_root=resource_root, max_items=10,
         max_bytes=20_000)
@@ -119,6 +120,7 @@ def test_loop_honest_waiting_when_nothing_clears_bar(
     adapter = FakeHermesAdapter()
     report = run_one_loop(
         db, loop_id="t2", adapter=adapter, router=RoleRouter(),
+        test_legacy_selection=True,
         resource_id="resource-test",
         vault_root=vault, target_root=resource_root, max_items=10,
         max_bytes=20_000, min_score=0.99)  # nothing can clear this bar
@@ -139,6 +141,7 @@ def test_loop_idempotent_rerun_no_duplicate_missions(
     adapter = FakeHermesAdapter()
     first = run_one_loop(
         db, loop_id="t3", adapter=adapter, router=RoleRouter(),
+        test_legacy_selection=True,
         resource_id="resource-test",
         vault_root=vault, target_root=resource_root, max_items=10,
         max_bytes=20_000)
@@ -150,6 +153,7 @@ def test_loop_idempotent_rerun_no_duplicate_missions(
     # re-approved)
     second = run_one_loop(
         db, loop_id="t4", adapter=adapter, router=RoleRouter(),
+        test_legacy_selection=True,
         resource_id="resource-test",
         vault_root=vault, target_root=resource_root, max_items=10,
         max_bytes=20_000)
@@ -174,6 +178,7 @@ def test_loop_blocked_does_not_complete_mission(
     adapter = FakeHermesAdapter(fail_provider="opencode_go")
     report = run_one_loop(
         db, loop_id="t6", adapter=adapter, router=RoleRouter(),
+        test_legacy_selection=True,
         resource_id="resource-test", vault_root=vault,
         target_root=resource_root, max_items=10, max_bytes=20_000)
     assert report["outcome"] == "BLOCKED"
@@ -211,6 +216,7 @@ def test_loop_selects_maintenance_candidate_when_signals_present(
             idempotency_key=f"knowledge.claim_recorded:claim-unsup{i}"))
     report = run_one_loop(
         db, loop_id="t7", adapter=FakeHermesAdapter(), router=RoleRouter(),
+        test_legacy_selection=True,
         resource_id="resource-test", vault_root=vault,
         target_root=resource_root, max_items=10, max_bytes=20_000)
     assert report["maintenance_candidate_created"] is True
@@ -226,6 +232,7 @@ def test_loop_records_outcome_and_reconciles(
     _seed_stale_claim(db, vault)
     report = run_one_loop(
         db, loop_id="t5", adapter=FakeHermesAdapter(), router=RoleRouter(),
+        test_legacy_selection=True,
         resource_id="resource-test",
         vault_root=vault, target_root=resource_root, max_items=10,
         max_bytes=20_000)

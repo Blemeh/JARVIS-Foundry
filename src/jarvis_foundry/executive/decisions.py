@@ -13,6 +13,7 @@ from .eligibility import (
     WAIT_COMPARATIVE,
     WAIT_NO_ELIGIBLE,
     assess_eligibility,
+    compute_resource_contention,
     current_activation_epoch,
     eligible_candidates,
 )
@@ -92,6 +93,45 @@ class ExecutiveDecisionService:
             return f"veto active: {veto}"
         return None
 
+    def _decision_id_for_loop(self, loop_id: str) -> str:
+        return f"exec-{loop_id}"
+
+    def _existing_decision(self, decision_id: str) -> ExecutiveDecision | None:
+        for event in reversed(list(self.database.events())):
+            if event.event_type != "executive.decision_recorded":
+                continue
+            if str(event.payload.get("decision_id") or "") != decision_id:
+                continue
+            return self._decision_from_event(event)
+        return None
+
+    def _decision_from_event(self, event: Any) -> ExecutiveDecision:
+        payload = event.payload
+        kind = str(payload.get("decision") or "WAIT")
+        wait_payload = payload.get("wait") or {}
+        wait = ExecutiveWait(
+            reason=str(wait_payload.get("reason") or payload.get("reason") or ""),
+            reconsider_condition=str(wait_payload.get("reconsider_condition") or ""),
+            wait_kind=str(wait_payload.get("wait_kind") or WAIT_NO_ELIGIBLE),
+            best_candidate_id=wait_payload.get("best_candidate_id"),
+            best_score=wait_payload.get("best_score"),
+            comparative_rationale=str(wait_payload.get("comparative_rationale") or ""),
+        ) if kind == "WAIT" else None
+        return ExecutiveDecision(
+            kind=kind,  # type: ignore[arg-type]
+            decision_id=str(payload.get("decision_id") or ""),
+            reason=str(payload.get("reason") or ""),
+            candidate_id=payload.get("candidate_id"),
+            mission_id=payload.get("mission_id"),
+            wait=wait,
+            active_goals=tuple(payload.get("active_goals") or ()),
+            eligibility=dict(payload.get("eligibility") or {}),
+            calibration_version=str(payload.get("calibration_version") or ""),
+            rejected=tuple(payload.get("rejected") or ()),
+            deferred=tuple(payload.get("deferred") or ()),
+            factor_breakdown=dict(payload.get("factor_breakdown") or {}),
+        )
+
     def evaluate(
         self,
         *,
@@ -99,10 +139,16 @@ class ExecutiveDecisionService:
         capability: str = "write_registered_worktree_files",
         loop_id: str,
         candidate_limit: int = 20,
-        resource_contention: float = 0.0,
+        resource_contention: float | None = None,
     ) -> ExecutiveDecision:
         """Evaluate eligible candidates and return exactly one decision."""
-        decision_id = f"exec-{loop_id}-{uuid.uuid4().hex[:8]}"
+        decision_id = self._decision_id_for_loop(loop_id)
+        existing = self._existing_decision(decision_id)
+        if existing is not None:
+            return existing
+
+        if resource_contention is None:
+            resource_contention = compute_resource_contention(self.database, resource_id)
         blocked = self._safety_block()
         if blocked:
             return self._wait_decision(
@@ -223,13 +269,14 @@ class ExecutiveDecisionService:
                 best = better
 
         prediction = build_prediction(best)
-        record_prediction(
-            self.database,
-            decision_id=decision_id,
-            candidate_id=best.candidate_id,
-            prediction=prediction,
-            source_id=self.source_id,
-        )
+        if not self._prediction_exists(decision_id):
+            record_prediction(
+                self.database,
+                decision_id=decision_id,
+                candidate_id=best.candidate_id,
+                prediction=prediction,
+                source_id=self.source_id,
+            )
 
         decision = ExecutiveDecision(
             kind="SELECT",
@@ -248,6 +295,13 @@ class ExecutiveDecisionService:
             calibration_version=calibration.version,
         )
         return self._record_and_return(decision)
+
+    def _prediction_exists(self, decision_id: str) -> bool:
+        for event in self.database.events():
+            if event.event_type == "executive.prediction_recorded":
+                if str(event.payload.get("decision_id") or "") == decision_id:
+                    return True
+        return False
 
     def _wait_decision(
         self,
