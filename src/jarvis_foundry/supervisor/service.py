@@ -43,6 +43,9 @@ class Supervisor:
         self.worker_loop_config = (
             Path(worker_loop_config) if worker_loop_config is not None else None)
         self.ledger_heartbeat_seconds = ledger_heartbeat_seconds
+        # GOAL directives recorded before this Supervisor instance became
+        # authoritative are historical intent, not new admission requests.
+        self._owner_goal_after_sequence = 0
 
     def start(self) -> str:
         self.database.initialize()
@@ -70,10 +73,11 @@ class Supervisor:
             "trust_state": "SUSPENDED" if stop else "LAB",
             "stop_id": stop.get("stop_id") if stop else None,
         }
-        self.database.append(Event.create(
+        started_sequence, _ = self.database.append(Event.create(
             event_type, payload, source_type="supervisor", source_id=self.instance_id,
             idempotency_key=f"{event_type}:{self.instance_id}:{payload.get('stop_id') or 'start'}",
         ))
+        self._owner_goal_after_sequence = started_sequence
         self.started = True
         return "FROZEN" if stop else "RUNNING"
 
@@ -92,6 +96,7 @@ class Supervisor:
                 idempotency_key=f"emergency_stop.frozen:{stop['stop_id']}:{self.instance_id}",
             ))
             return "FROZEN"
+        self._admit_owner_goals()
         self._maybe_spawn_worker_loop()
         self._reap_and_recover()
         payload = {
@@ -107,6 +112,30 @@ class Supervisor:
             idempotency_key=key,
         ))
         return "RUNNING"
+
+    def _admit_owner_goals(self) -> None:
+        """Materialize new authenticated GOALs before the worker loop wakes.
+
+        Admission is Supervisor-owned and fail-closed.  The worker loop stays
+        the only executor, and an unavailable/invalid existing worker config
+        produces no mission rather than an invented target or fallback.
+        """
+        if self.worker_loop_config is None:
+            return
+        from ..runtime.config import WorkerRuntimeConfig
+        from .owner_goals import admit_owner_goals
+
+        try:
+            config = WorkerRuntimeConfig.from_yaml(self.worker_loop_config)
+            admit_owner_goals(
+                self.database, config,
+                after_sequence=self._owner_goal_after_sequence,
+                source_id=self.instance_id,
+            )
+        except (OSError, ValueError, TypeError):
+            # Existing Supervisor behavior is fail-closed when optional
+            # worker configuration cannot be loaded; no mission is invented.
+            return
 
     def _preserved_trust(self) -> str:
         """Heartbeats are not a trust gate. Never promote to TRUSTED_AUTONOMOUS."""
