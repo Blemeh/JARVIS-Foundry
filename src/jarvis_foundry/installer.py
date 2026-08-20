@@ -329,6 +329,32 @@ class Installer:
         )
         return self.status()
 
+    def end_running(self) -> dict[str, Any]:
+        """Request the exact task instance to stop, without deleting it.
+
+        Task Scheduler may only end the wrapper for a detached Python child;
+        release handoff therefore follows this request with exact Supervisor
+        PID/tree reconciliation.  Keeping the request here preserves the
+        canonical task-control path and avoids any executable-name kill.
+        """
+        if not self.task_exists():
+            raise InstallerError(f"task {self.task_name} is not installed")
+        result = _run_schtasks("/end", "/tn", self.task_name)
+        if result.returncode != 0:
+            raise InstallerError(
+                f"schtasks end failed: {result.stderr.strip() or result.stdout.strip()}")
+        return self.status()
+
+    def run_existing(self) -> dict[str, Any]:
+        """Start the installed task through Task Scheduler's canonical path."""
+        if not self.task_exists():
+            raise InstallerError(f"task {self.task_name} is not installed")
+        result = _run_schtasks("/run", "/tn", self.task_name)
+        if result.returncode != 0:
+            raise InstallerError(
+                f"schtasks run failed: {result.stderr.strip() or result.stdout.strip()}")
+        return self.status()
+
     def _write_profile(self) -> None:
         self.foundry_home.mkdir(parents=True, exist_ok=True)
         identity = self.source_identity()
