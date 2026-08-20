@@ -7,24 +7,16 @@ second operational truth and it never starts a worker, sender, or connector.
 from __future__ import annotations
 
 import json
-import secrets
 import threading
-from contextlib import contextmanager
 from datetime import datetime, timezone
 from html import escape
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from ipaddress import ip_address
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote, unquote
 
 from .database import FoundryDatabase
-from .owner_controls import (
-    OwnerAuthenticationError,
-    OwnerControlService,
-    OwnerReplayError,
-    sign_command,
-)
+from .owner_controls import OwnerAuthenticationError, OwnerControlService, OwnerReplayError
 from .supervisor.estop import EmergencyStop
 
 
@@ -43,18 +35,6 @@ def _json_value(value: Any) -> Any:
 
 def _rows(connection, query: str, args: tuple[Any, ...] = ()) -> list[dict[str, Any]]:
     return [dict(row) for row in connection.execute(query, args).fetchall()]
-
-
-@contextmanager
-def command_center_readonly_connection(database: FoundryDatabase):
-    """Yield a mechanically read-only SQLite handle for Command Center reads.
-
-    ``mode=ro`` is enforced by :meth:`FoundryDatabase.connect`; this helper
-    keeps every read-model query on that path and fails with ``FileNotFoundError``
-    when a configured live database is absent instead of creating a replacement.
-    """
-    with database.connect(readonly=True) as connection:
-        yield connection
 
 
 def _record_ref(kind: str, identifier: Any, event_id: Any = None) -> dict[str, Any]:
@@ -152,7 +132,7 @@ def _current_failed_workers(
 def decision_timeline(database: FoundryDatabase, *, limit: int = 200) -> list[dict[str, Any]]:
     """Return a compact trace of material ledger decisions and outcomes."""
     limit = max(1, min(int(limit), 2000))
-    events = database.events(readonly=True)
+    events = database.events()
     material = []
     for sequence, event in enumerate(events, start=1):
         payload = dict(event.payload)
@@ -191,7 +171,7 @@ def build_snapshot(
 ) -> dict[str, Any]:
     """Build the complete JSON-safe Command Center projection."""
     generated_at = now or _now_iso()
-    with command_center_readonly_connection(database) as connection:
+    with database.connect() as connection:
         head = connection.execute("SELECT COALESCE(MAX(sequence), 0) FROM events").fetchone()[0]
         event_count = int(head or 0)
         supervisor_row = connection.execute(
@@ -372,26 +352,12 @@ def build_snapshot(
     }
 
 
-def _is_loopback(host: str | None) -> bool:
-    if not host:
-        return False
-    try:
-        return ip_address(host).is_loopback
-    except ValueError:
-        return host in {"localhost", "::1"}
-
-
 class _CommandCenterHandler(BaseHTTPRequestHandler):
     database: FoundryDatabase
     stop_path: Path | None
     owner_secret: bytes | None
     owner_id: str = "local-owner"
     timeline_limit: int = 200
-
-    def do_OPTIONS(self) -> None:  # noqa: N802
-        self.send_response(204)
-        self._cors_headers()
-        self.end_headers()
 
     def do_GET(self) -> None:  # noqa: N802
         route = self.path.split("?", 1)[0]
@@ -420,17 +386,6 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
                 return
             self._json_response({"status": "FOUND", "kind": record_kind, "record": record}, status=200)
             return
-        if route == "/api/health":
-            snapshot = build_snapshot(self.database, stop_path=self.stop_path, timeline_limit=self.timeline_limit)
-            self._json_response({
-                "status": "OK",
-                "generated_at": snapshot["generated_at"],
-                "stop_active": bool(snapshot["stop"]["active"]),
-                "supervisor_status": snapshot["health"].get("supervisor_status", "UNKNOWN"),
-                "degraded": bool(snapshot["health"].get("degraded")),
-                "controls_configured": bool(self.owner_secret),
-            }, status=200)
-            return
         if route not in {"/", "/api/command-center", "/api/timeline"}:
             self.send_error(404)
             return
@@ -448,8 +403,7 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_POST(self) -> None:  # noqa: N802
-        route = self.path.split("?", 1)[0]
-        if route not in {"/api/controls", "/api/owner-command"}:
+        if self.path.split("?", 1)[0] != "/api/controls":
             self.send_error(404)
             return
         if not self.owner_secret:
@@ -462,18 +416,12 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length).decode("utf-8"))
             if not isinstance(payload, dict):
                 raise ValueError("JSON object required")
-            if route == "/api/owner-command" and not _is_loopback(self.client_address[0]):
-                raise OwnerAuthenticationError("owner-command is localhost-only")
             service = OwnerControlService(self.database, secret=self.owner_secret, stop_path=self.stop_path, owner_id=self.owner_id)
             command_type = str(payload.get("command_type", ""))
             target = payload.get("target")
             exact_text = str(payload.get("exact_text", ""))
-            if route == "/api/owner-command":
-                nonce = secrets.token_hex(16)
-                signature = sign_command(self.owner_secret, command_type, target, exact_text, nonce)
-            else:
-                nonce = str(payload.get("nonce", ""))
-                signature = str(payload.get("signature", ""))
+            nonce = str(payload.get("nonce", ""))
+            signature = str(payload.get("signature", ""))
             if command_type == "RESUME":
                 event_ids = service.resume(nonce=nonce, signature=signature, exact_text=exact_text or "resume jarvis")
                 result: dict[str, Any] = {"status": "APPLIED", "command_type": command_type, "event_ids": event_ids}
@@ -488,19 +436,10 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
         except (ValueError, TypeError, json.JSONDecodeError) as error:
             self._json_response({"status": "MALFORMED", "reason": str(error)}, status=400)
 
-    def _cors_headers(self) -> None:
-        origin = self.headers.get("Origin", "")
-        if origin.startswith("http://127.0.0.1:") or origin.startswith("http://localhost:"):
-            self.send_header("Access-Control-Allow-Origin", origin)
-            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-            self.send_header("Access-Control-Allow-Headers", "Content-Type")
-            self.send_header("Vary", "Origin")
-
     def _json_response(self, value: dict[str, Any], *, status: int) -> None:
         body = json.dumps(value, ensure_ascii=True).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
-        self._cors_headers()
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)

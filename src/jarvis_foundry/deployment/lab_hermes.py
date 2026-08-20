@@ -48,11 +48,6 @@ class LabHermesAdapter(ScriptedWorkerAdapter):
 
     def dispatch(self, contract, *, heartbeat):
         artifact, expected = self.expected[contract.step_id]
-        # The Supervisor contract is authoritative for the artifact location.
-        # Keep the historical step defaults only for older contracts that do
-        # not carry an explicit expected artifact.
-        if contract.expected_artifacts:
-            artifact = str(contract.expected_artifacts[0])
         path = Path(contract.working_root) / artifact
         crash = (
             self.crash_after_write
@@ -96,8 +91,10 @@ class LabHermesAdapter(ScriptedWorkerAdapter):
         """
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(PARTIAL_BYTES, encoding="utf-8")
+        from ..platform.windows_subprocess import headless_popen_kwargs
         holder = subprocess.Popen(
             [sys.executable, "-c", "import time; time.sleep(600)"],
+            **headless_popen_kwargs(),
         )
         self.last_owned_pid = holder.pid
         pid_path = Path(contract.working_root) / OWNED_PID_NAME

@@ -106,13 +106,14 @@ def run_subprocess_with_heartbeat(
         unregister_adapter_pid,
     )
 
-    popen_kwargs: dict[str, object] = {
-        "cwd": cwd,
-        "env": env,
-        "stdout": subprocess.PIPE,
-        "stderr": subprocess.PIPE,
-        "text": True,
-    }
+    from ...platform.windows_subprocess import headless_popen_kwargs
+    popen_kwargs: dict[str, object] = headless_popen_kwargs(
+        cwd=cwd,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
     if encoding is not None:
         popen_kwargs["encoding"] = encoding
     if errors is not None:

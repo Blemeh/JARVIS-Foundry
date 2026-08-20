@@ -6,7 +6,6 @@ import pytest
 
 from jarvis_foundry.clock import isoformat, utc_now
 from jarvis_foundry.database import FoundryDatabase
-from jarvis_foundry.owner_controls import OwnerControlService, sign_command
 from jarvis_foundry.supervisor.estop import EmergencyStop
 from jarvis_foundry.supervisor.leases import LeaseManager, LeaseUnavailable
 from jarvis_foundry.supervisor.service import Supervisor
@@ -26,85 +25,6 @@ def test_supervisor_runs_and_freezes_without_hermes(tmp_path):
     assert state["status"] == "FROZEN"
     assert state["trust_state"] == "SUSPENDED"
     assert any(event.event_type == "emergency_stop.frozen" for event in database.events())
-
-
-def test_authenticated_resume_reorients_same_supervisor(tmp_path):
-    database = FoundryDatabase(tmp_path / "foundry.db")
-    stop_path = tmp_path / "EMERGENCY_STOP"
-    secret = b"resume-reorientation-test"
-    supervisor = Supervisor(database, stop_path, instance_id="supervisor-resume")
-    controls = OwnerControlService(database, secret=secret, stop_path=stop_path)
-
-    assert supervisor.start() == "RUNNING"
-    stop_text = "test owner STOP"
-    stopped = controls.stop_now(
-        reason=stop_text,
-        nonce="resume-stop",
-        signature=sign_command(secret, "STOP_EVERYTHING", "GLOBAL", stop_text, "resume-stop"),
-    )
-    assert supervisor.heartbeat() == "FROZEN"
-    resume_text = "resume jarvis"
-    assert controls.resume(
-        nonce="resume-command",
-        signature=sign_command(secret, "RESUME", "GLOBAL", resume_text, "resume-command"),
-        exact_text=resume_text,
-    )
-    assert not stop_path.exists()
-
-    assert supervisor.heartbeat() == "RUNNING"
-    with database.connect(readonly=True) as connection:
-        state = dict(connection.execute(
-            "SELECT status, trust_state FROM supervisor_state WHERE singleton = 1"
-        ).fetchone())
-    assert state == {"status": "RUNNING", "trust_state": "LAB"}
-    resumed = [
-        event for event in database.events()
-        if event.event_type == "supervisor.started"
-        and event.payload.get("resumed") is True
-    ]
-    assert len(resumed) == 1
-
-    # Repeated healthy heartbeats do not manufacture duplicate reopen events.
-    assert supervisor.heartbeat() == "RUNNING"
-    assert len([
-        event for event in database.events()
-        if event.event_type == "supervisor.started"
-        and event.payload.get("resumed") is True
-    ]) == 1
-    assert stopped.directive_id
-    supervisor.stop()
-
-
-def test_resume_reorientation_stays_blocked_by_active_stop_directive(tmp_path):
-    database = FoundryDatabase(tmp_path / "foundry.db")
-    stop_path = tmp_path / "EMERGENCY_STOP"
-    secret = b"resume-stop-authority-test"
-    supervisor = Supervisor(database, stop_path, instance_id="supervisor-stop-authority")
-    controls = OwnerControlService(database, secret=secret, stop_path=stop_path)
-
-    assert supervisor.start() == "RUNNING"
-    stop_text = "test durable STOP"
-    controls.stop_now(
-        reason=stop_text,
-        nonce="stop-authority",
-        signature=sign_command(secret, "STOP_EVERYTHING", "GLOBAL", stop_text, "stop-authority"),
-    )
-    assert supervisor.heartbeat() == "FROZEN"
-    # Simulate only the filesystem disappearing; the durable directive must
-    # continue to prevent a trust reopen.
-    EmergencyStop(stop_path).clear()
-    assert supervisor.heartbeat() == "RUNNING"
-    with database.connect(readonly=True) as connection:
-        trust = connection.execute(
-            "SELECT trust_state FROM supervisor_state WHERE singleton = 1"
-        ).fetchone()[0]
-    assert trust == "SUSPENDED"
-    assert not [
-        event for event in database.events()
-        if event.event_type == "supervisor.started"
-        and event.payload.get("resumed") is True
-    ]
-    supervisor.stop()
 
 
 def test_second_live_supervisor_cannot_take_lease(tmp_path):

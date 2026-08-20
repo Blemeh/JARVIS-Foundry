@@ -61,6 +61,14 @@ src/jarvis_foundry/convergence/briefings_l10n.py
 src/jarvis_foundry/correlation/__init__.py
 src/jarvis_foundry/correlation/entities.py
 src/jarvis_foundry/correlation/events.py
+src/jarvis_foundry/deployment/__init__.py
+src/jarvis_foundry/deployment/guard.py
+src/jarvis_foundry/deployment/headless_launcher.py
+src/jarvis_foundry/deployment/lab_hermes.py
+src/jarvis_foundry/deployment/launcher.py
+src/jarvis_foundry/deployment/layout.py
+src/jarvis_foundry/deployment/release.py
+src/jarvis_foundry/deployment/status.py
 src/jarvis_foundry/evolution/__init__.py
 src/jarvis_foundry/evolution/_authority.py
 src/jarvis_foundry/evolution/acceptance.py
@@ -92,6 +100,9 @@ src/jarvis_foundry/hybrid_memory/recall.py
 src/jarvis_foundry/hybrid_memory/versioning.py
 src/jarvis_foundry/mission/__init__.py
 src/jarvis_foundry/mission/commit.py
+src/jarvis_foundry/mission/contracts.py
+src/jarvis_foundry/mission/directives.py
+src/jarvis_foundry/mission/lineage.py
 src/jarvis_foundry/mission/loop.py
 src/jarvis_foundry/mission/proposal.py
 src/jarvis_foundry/mission/verification.py
@@ -109,6 +120,8 @@ src/jarvis_foundry/perception/privacy.py
 src/jarvis_foundry/perception/run.py
 src/jarvis_foundry/perception/screenpipe.py
 src/jarvis_foundry/perception/significance.py
+src/jarvis_foundry/platform/__init__.py
+src/jarvis_foundry/platform/windows_subprocess.py
 src/jarvis_foundry/procedural_learning/__init__.py
 src/jarvis_foundry/procedural_learning/adapter.py
 src/jarvis_foundry/procedural_learning/bundle.py
@@ -129,7 +142,9 @@ src/jarvis_foundry/roles/results.py
 src/jarvis_foundry/roles/router.py
 src/jarvis_foundry/runtime/__init__.py
 src/jarvis_foundry/runtime/_stack.py
+src/jarvis_foundry/runtime/authority.py
 src/jarvis_foundry/runtime/config.py
+src/jarvis_foundry/runtime/provider_config.py
 src/jarvis_foundry/runtime/worker_loop.py
 src/jarvis_foundry/supervisor/__init__.py
 src/jarvis_foundry/supervisor/authority.py
@@ -149,6 +164,7 @@ src/jarvis_foundry/workers/isolation.py
 src/jarvis_foundry/workers/lab.py
 src/jarvis_foundry/workers/mission_bridge.py
 src/jarvis_foundry/workers/orchestrator.py
+src/jarvis_foundry/workers/result_contract.py
 src/jarvis_foundry/workers/router.py
 src/jarvis_foundry/workers/adapters/__init__.py
 src/jarvis_foundry/workers/adapters/base.py

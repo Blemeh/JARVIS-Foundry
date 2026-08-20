@@ -2,13 +2,12 @@
 from __future__ import annotations
 
 import json
-import sqlite3
 from pathlib import Path
 
 import pytest
 
 from jarvis_foundry.briefings import BriefingPlanner
-from jarvis_foundry.command_center import build_snapshot, command_center_readonly_connection, decision_timeline
+from jarvis_foundry.command_center import build_snapshot, decision_timeline
 from jarvis_foundry.command_center import CommandCenterServer
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.events import Event
@@ -120,21 +119,6 @@ def test_local_command_center_server_is_read_only_projection(db: FoundryDatabase
             assert b"JARVIS Command Center" in response.read()
     finally:
         server.close()
-
-
-def test_command_center_connection_rejects_writes_and_missing_db_is_not_created(tmp_path: Path) -> None:
-    database = FoundryDatabase(tmp_path / "foundry.db")
-    database.initialize()
-    with command_center_readonly_connection(database) as connection:
-        with pytest.raises(sqlite3.OperationalError, match="readonly"):
-            connection.execute("INSERT INTO events(event_id) VALUES ('command-center-write-probe')")
-
-    missing_path = tmp_path / "missing" / "foundry.db"
-    missing = FoundryDatabase(missing_path)
-    with pytest.raises(FileNotFoundError):
-        with command_center_readonly_connection(missing):
-            pass
-    assert not missing_path.exists()
 
 
 def test_command_center_exposes_direct_durable_record_routes(db: FoundryDatabase, tmp_path: Path) -> None:

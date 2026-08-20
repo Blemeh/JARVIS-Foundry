@@ -15,6 +15,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from ..platform.windows_subprocess import headless_popen_kwargs, headless_run_kwargs
+
 
 def _windows_process_rows() -> list[tuple[int, int]]:
     if os.name != "nt":
@@ -27,6 +29,7 @@ def _windows_process_rows() -> list[tuple[int, int]]:
         result = subprocess.run(
             ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
             capture_output=True, text=True, timeout=5, check=False,
+            **headless_run_kwargs(),
         )
     except (OSError, subprocess.TimeoutExpired):
         return []
@@ -70,6 +73,7 @@ def pid_alive(pid: int) -> bool:
                  f"$p=Get-Process -Id {int(pid)} -ErrorAction SilentlyContinue; "
                  "if($p){'1'}else{'0'}"],
                 capture_output=True, text=True, timeout=5, check=False,
+                **headless_run_kwargs(),
             )
             return result.stdout.strip() == "1"
         except (OSError, subprocess.TimeoutExpired):
@@ -118,12 +122,14 @@ class OwnedProcessHandle:
                 subprocess.run(
                     ["taskkill", "/PID", str(self.pid), "/T", "/F"],
                     capture_output=True, text=True, timeout=10, check=False,
+                    **headless_run_kwargs(),
                 )
             for pid in sorted(owned - {self.pid}, reverse=True):
                 if pid_alive(pid):
                     subprocess.run(
                         ["taskkill", "/PID", str(pid), "/F"],
                         capture_output=True, text=True, timeout=10, check=False,
+                        **headless_run_kwargs(),
                     )
         else:
             try:
@@ -171,17 +177,18 @@ def launch_owned(
     cwd: Path | None = None,
     env: dict[str, str] | None = None,
 ) -> OwnedProcessHandle:
-    kwargs: dict[str, Any] = {
-        "cwd": str(cwd) if cwd else None,
-        "env": env,
-        "stdout": subprocess.PIPE,
-        "stderr": subprocess.STDOUT,
-        "text": True,
-        "bufsize": 1,
-    }
-    if os.name == "nt":
-        kwargs["creationflags"] = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
-    else:
+    kwargs: dict[str, Any] = headless_popen_kwargs(
+        cwd=str(cwd) if cwd else None,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+    )
+    if os.name != "nt":
         kwargs["start_new_session"] = True
+    elif "creationflags" in kwargs:
+        kwargs["creationflags"] = int(kwargs["creationflags"]) | getattr(
+            subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
     process = subprocess.Popen(command, **kwargs)
     return OwnedProcessHandle(process, run_id, tuple(command))

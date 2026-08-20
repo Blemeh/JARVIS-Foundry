@@ -8,7 +8,6 @@ import pytest
 
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.deployment.lab_hermes import LabHermesAdapter
-from jarvis_foundry.deployment.launcher import _interpreter_matches_release
 from jarvis_foundry.deployment.layout import current_pointer, launcher_cmd, release_dir
 from jarvis_foundry.deployment.release import (
     ReleaseError,
@@ -123,20 +122,16 @@ def test_lab_scripted_hermes_does_not_use_cwd(tmp_path, monkeypatch):
 
 
 def test_stable_launcher_cmd_clears_pythonpath(tmp_path):
+    from jarvis_foundry.deployment.layout import headless_launcher_cmd
     from jarvis_foundry.deployment.release import _install_stable_launcher
     path = _install_stable_launcher(tmp_path / "JARVIS")
     text = path.read_text(encoding="utf-8")
     assert "PYTHONPATH=" in text
     assert "jarvis_foundry.deployment.launcher" in text
     assert launcher_cmd(tmp_path / "JARVIS") == path
-
-
-def test_headless_interpreter_matches_same_release_python() -> None:
-    expected = Path(r"C:\JARVIS\releases\abc\.venv\Scripts\python.exe")
-    assert _interpreter_matches_release(expected.with_name("pythonw.exe"), expected)
-    assert _interpreter_matches_release(expected, expected)
-    assert not _interpreter_matches_release(
-        Path(r"C:\Other\pythonw.exe"), expected)
+    headless = headless_launcher_cmd(tmp_path / "JARVIS")
+    assert headless.is_file()
+    assert "pythonw.exe" in headless.read_text(encoding="utf-8")
 
 
 def test_rollback_swaps_current_and_previous(tmp_path):

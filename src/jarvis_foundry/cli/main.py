@@ -102,12 +102,20 @@ def _installer(args, paths: FoundryPaths) -> Installer:
         task_name = V1_TASK_NAME
     elif task_name is None:
         task_name = f"{V1_TASK_NAME}-staging"
+    exec_command = None
+    exec_arguments = None
+    if task_name == V1_TASK_NAME:
+        from ..deployment.layout import headless_task_command
+        exec_command, prefix = headless_task_command()
+        exec_arguments = f'{prefix} --home "{paths.home}"'
     return Installer(
         FoundryDatabase(paths.database),
         task_name=task_name,
         foundry_home=paths.home,
         hermes_home=FoundryPaths.hermes_home(),
         profile={"start_record": str(paths.database), "model_roles": "default"},
+        exec_command=exec_command,
+        exec_arguments=exec_arguments,
     )
 
 
@@ -185,16 +193,9 @@ def _release_command(args, paths: FoundryPaths) -> int:
         backup_database,
         build_release,
         migrate_clone,
-        read_current,
         restore_database,
         rollback_current,
         set_current,
-        validate_release,
-    )
-    from ..deployment.handoff import (
-        handoff_running_supervisor,
-        resolve_handoff_release_python,
-        wait_for_single_supervisor,
     )
     from ..installer import V1_TASK_NAME, Installer
     from ..paths import FoundryPaths as Paths
@@ -207,87 +208,35 @@ def _release_command(args, paths: FoundryPaths) -> int:
         return 0
     if args.release_command == "activate":
         os.environ.setdefault("JARVIS_INSTALL_ROOT", str(resolve_install_root(root)))
-        from ..deployment.layout import launcher_cmd
-        target_sha = args.sha.strip()
-        # Validate the target before stopping the currently live process.  A
-        # malformed immutable release must never take down a valid one.
-        identity = validate_release(target_sha, root=root, require_schema_match=False)
-        previous_sha = read_current(root)
-        handoff = None
-        stopper = None
-        task_suspended = False
-        try:
-            if previous_sha and previous_sha != target_sha:
-                previous_identity = validate_release(
-                    previous_sha, root=root, require_schema_match=False)
-                stopper = Installer(
-                    FoundryDatabase(paths.database),
-                    task_name=V1_TASK_NAME,
-                    foundry_home=paths.home,
-                    hermes_home=Paths.hermes_home(),
-                )
-                task_suspended = stopper.status().get("task_state") != "Disabled"
-                if task_suspended:
-                    stopper.set_enabled(False)
-                handoff_release_python = resolve_handoff_release_python(
-                    paths.home, previous_identity["python_exe"])
-                handoff = handoff_running_supervisor(
-                    home=paths.home,
-                    release_python=handoff_release_python,
-                    request_shutdown=stopper.end_running,
-                )
-            pointers = set_current(target_sha, root=root)
-            launcher = launcher_cmd(root)
-            spawn = bool(getattr(args, "spawn_worker_loop", False))
-            worker_config = getattr(args, "worker_config", None)
-            extra = ""
-            if spawn:
-                extra += " --spawn-worker-loop"
-            if worker_config:
-                extra += f' --worker-loop-config "{Path(worker_config).resolve()}"'
-            installer = Installer(
-                FoundryDatabase(paths.database),
-                task_name=V1_TASK_NAME,
-                foundry_home=paths.home,
-                hermes_home=Paths.hermes_home(),
-                python_exe=identity["python_exe"],
-                exec_command=launcher,
-                exec_arguments=f'--home "{paths.home}"{extra}',
-                profile={
-                    "start_record": str(paths.database),
-                    "spawn_worker_loop": "true" if spawn else "false",
-                    "worker_config_path": str(Path(worker_config).resolve()) if worker_config else "",
-                    "release_sha": target_sha,
-                },
-            )
-            task = installer.retarget_existing()
-            resumed = installer.set_enabled(True) if task_suspended else None
-            started = installer.run_existing()
-            supervisor = wait_for_single_supervisor(
-                home=paths.home,
-                release_python=identity["python_exe"],
-            )
-            print(json.dumps({
-                "pointers": pointers,
-                "handoff": handoff,
-                "task": task,
-                "resumed": resumed,
-                "started": started,
-                "supervisor": {
-                    "pid": supervisor.pid,
-                    "executable": supervisor.executable,
-                    "command_line": supervisor.command_line,
-                },
-            }, indent=2))
-            return 0
-        except Exception:
-            if task_suspended and stopper is not None:
-                try:
-                    if stopper.status().get("task_state") == "Disabled":
-                        stopper.set_enabled(True)
-                except Exception:
-                    pass
-            raise
+        pointers = set_current(args.sha, root=root)
+        from ..deployment.layout import headless_task_command
+        from ..deployment.release import validate_release
+        identity = validate_release(args.sha, root=root, require_schema_match=False)
+        task_command, task_prefix = headless_task_command(root)
+        spawn = bool(getattr(args, "spawn_worker_loop", False))
+        worker_config = getattr(args, "worker_config", None)
+        extra = ""
+        if spawn:
+            extra += " --spawn-worker-loop"
+        if worker_config:
+            extra += f' --worker-loop-config "{Path(worker_config).resolve()}"'
+        installer = Installer(
+            FoundryDatabase(paths.database),
+            task_name=V1_TASK_NAME,
+            foundry_home=paths.home,
+            hermes_home=Paths.hermes_home(),
+            python_exe=identity["python_exe"],
+            exec_command=task_command,
+            exec_arguments=f'{task_prefix} --home "{paths.home}"{extra}',
+            profile={
+                "start_record": str(paths.database),
+                "spawn_worker_loop": "true" if spawn else "false",
+                "worker_config_path": str(Path(worker_config).resolve()) if worker_config else "",
+                "release_sha": args.sha,
+            },
+        )
+        print(json.dumps({"pointers": pointers, "task": installer.retarget_existing()}, indent=2))
+        return 0
     if args.release_command == "rollback":
         print(json.dumps(rollback_current(root=root, foundry_home=paths.home), indent=2))
         return 0

@@ -18,6 +18,7 @@ from ..database import FoundryDatabase
 from ..migrations import SCHEMA_VERSION
 from .layout import (
     current_pointer,
+    headless_launcher_cmd,
     install_root,
     launcher_cmd,
     previous_pointer,
@@ -45,6 +46,14 @@ if not exist "%PY%" (
 "%PY%" -m jarvis_foundry.deployment.launcher %*
 exit /b %ERRORLEVEL%
 """
+
+
+def _packaging_template(name: str) -> Path:
+    repo = Path(__file__).resolve().parents[3]
+    path = repo / "packaging" / name
+    if not path.is_file():
+        raise ReleaseError(f"missing packaging template: {path}")
+    return path
 
 
 class ReleaseError(RuntimeError):
@@ -219,9 +228,14 @@ def build_release(
 
 
 def _install_stable_launcher(root: Path | None = None) -> Path:
+    bin_dir = install_root(root) / "bin"
+    bin_dir.mkdir(parents=True, exist_ok=True)
     destination = launcher_cmd(root)
-    destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(LAUNCHER_CMD_TEXT, encoding="utf-8")
+    headless_launcher_cmd(root).write_text(
+        _packaging_template("jarvis-supervisor-headless.vbs").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
     return destination
 
 

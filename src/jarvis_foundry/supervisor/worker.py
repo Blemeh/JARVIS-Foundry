@@ -28,6 +28,7 @@ from typing import Any
 
 from ..clock import isoformat, parse, utc_now
 from ..database import FoundryDatabase
+from ..platform.windows_subprocess import headless_popen_kwargs, headless_run_kwargs
 from .leases import LeaseManager, LeaseUnavailable
 
 ADAPTER_PID_TABLE_NAME = "adapter_worker_pids.json"
@@ -222,6 +223,7 @@ def pid_alive(pid: int) -> bool:
         result = subprocess.run(
             ["tasklist", "/FI", f"PID eq {pid}", "/NH"],
             capture_output=True, text=True, timeout=10, check=False,
+            **headless_run_kwargs(),
         )
         return str(pid) in (result.stdout or "")
     try:
@@ -235,7 +237,10 @@ def _taskkill(pid: int, *, force: bool) -> None:
     command = ["taskkill", "/PID", str(pid), "/T"]
     if force:
         command.append("/F")
-    subprocess.run(command, capture_output=True, text=True, timeout=15, check=False)
+    subprocess.run(
+        command, capture_output=True, text=True, timeout=15, check=False,
+        **headless_run_kwargs(),
+    )
 
 
 def terminate_owned_tree(
@@ -404,7 +409,10 @@ class WorkerController:
             raise LeaseUnavailable(f"worker {run_id} already has a live lease")
         self.leases.acquire(key, key, self.lease_seconds)
         try:
-            process = subprocess.Popen(command, cwd=str(cwd) if cwd is not None else None)
+            popen_kwargs = headless_popen_kwargs(
+                cwd=str(cwd) if cwd is not None else None,
+            )
+            process = subprocess.Popen(command, **popen_kwargs)  # type: ignore[arg-type]
         except BaseException:
             self.leases.release(key, key)
             raise
