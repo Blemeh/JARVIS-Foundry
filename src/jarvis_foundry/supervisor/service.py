@@ -96,6 +96,7 @@ class Supervisor:
                 idempotency_key=f"emergency_stop.frozen:{stop['stop_id']}:{self.instance_id}",
             ))
             return "FROZEN"
+        self._reorient_after_resume()
         self._admit_owner_goals()
         self._maybe_spawn_worker_loop()
         self._reap_and_recover()
@@ -112,6 +113,43 @@ class Supervisor:
             idempotency_key=key,
         ))
         return "RUNNING"
+
+    def _reorient_after_resume(self) -> None:
+        """Reopen a running Supervisor after an authenticated Resume.
+
+        STOP deliberately leaves the durable trust projection SUSPENDED even
+        after its sentinel is cleared.  A fresh ``supervisor.started`` event
+        is the canonical gate-reopening transition; emit it from the still
+        authoritative Supervisor on its first healthy post-Resume heartbeat.
+        An active STOP/PAUSE directive still wins, so a missing sentinel can
+        never silently reopen authority.
+        """
+        if self.estop.active():
+            return
+        with self.database.connect(readonly=True) as connection:
+            state = connection.execute(
+                "SELECT trust_state, last_event_id FROM supervisor_state "
+                "WHERE singleton = 1"
+            ).fetchone()
+            blocked = connection.execute(
+                "SELECT 1 FROM directives WHERE active = 1 "
+                "AND command_type IN ('STOP_EVERYTHING', 'PAUSE') LIMIT 1"
+            ).fetchone()
+        if state is None or state["trust_state"] != "SUSPENDED" or blocked:
+            return
+        self.database.append(Event.create(
+            "supervisor.started",
+            {
+                "instance_id": self.instance_id,
+                "trust_state": "LAB",
+                "resumed": True,
+                "previous_event_id": state["last_event_id"],
+            },
+            source_type="supervisor", source_id=self.instance_id,
+            idempotency_key=(
+                f"supervisor.reoriented:{self.instance_id}:"
+                f"{state['last_event_id']}"),
+        ))
 
     def _admit_owner_goals(self) -> None:
         """Materialize new authenticated GOALs before the worker loop wakes.
