@@ -14,6 +14,7 @@ import os
 import subprocess
 import time
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable
 
@@ -123,6 +124,54 @@ def supervisor_roots(processes: list[SupervisorProcess]) -> list[SupervisorProce
     return [item for item in processes if item.parent_pid not in pids]
 
 
+def _filetime_datetime(value: Any) -> datetime | None:
+    """Convert a Windows FILETIME identity to UTC for ledger correlation."""
+    try:
+        ticks = int(value)
+    except (TypeError, ValueError):
+        return None
+    if ticks <= 0:
+        return None
+    return datetime(1601, 1, 1, tzinfo=UTC) + timedelta(microseconds=ticks / 10)
+
+
+def select_authoritative_root(
+    roots: list[SupervisorProcess],
+    *,
+    started_at: datetime | None,
+    authority_window_seconds: float = 300.0,
+) -> SupervisorProcess:
+    """Select the root that created the durable singleton instance.
+
+    A repeating Task Scheduler trigger may leave a short-lived second launch
+    attempt while the old process still owns the singleton.  Only the root
+    whose process-creation identity precedes the durable ``supervisor.started``
+    event for the current lease owner is authoritative.  Ambiguity fails
+    closed rather than guessing a PID.
+    """
+    if not roots:
+        raise SupervisorHandoffError("no Supervisor root matches the current release")
+    if len(roots) == 1:
+        return roots[0]
+    if started_at is None:
+        raise SupervisorHandoffError(
+            f"multiple Supervisor roots and no durable started identity: {[item.pid for item in roots]}")
+    candidates: list[SupervisorProcess] = []
+    for process in roots:
+        created_at = _filetime_datetime(process.creation_identity.get("create_time"))
+        if created_at is None:
+            continue
+        age = (started_at - created_at).total_seconds()
+        if 0 <= age <= authority_window_seconds:
+            candidates.append(process)
+    if len(candidates) != 1:
+        raise SupervisorHandoffError(
+            "durable Supervisor identity did not select exactly one root: "
+            f"roots={[item.pid for item in roots]}, candidates={[item.pid for item in candidates]}, "
+            f"started_at={started_at.isoformat()}")
+    return candidates[0]
+
+
 def _same_process(process: SupervisorProcess) -> bool:
     """Confirm that the captured PID still denotes the captured process."""
     if not pid_alive(process.pid):
@@ -175,6 +224,43 @@ def _singleton_lease(home: Path) -> dict[str, Any] | None:
     return dict(row) if row is not None else None
 
 
+def _authoritative_started_at(home: Path) -> tuple[str | None, datetime | None]:
+    """Read the current singleton owner and its first durable start event."""
+    lease = _singleton_lease(home)
+    if lease is None or not lease.get("owner_id"):
+        return None, None
+    database = FoundryDatabase(Path(home).resolve() / "foundry.db")
+    with database.connect(readonly=True) as connection:
+        row = connection.execute(
+            "SELECT occurred_at FROM events "
+            "WHERE event_type = 'supervisor.started' AND source_id = ? "
+            "ORDER BY sequence LIMIT 1",
+            (str(lease["owner_id"]),),
+        ).fetchone()
+    if row is None:
+        return str(lease["owner_id"]), None
+    try:
+        return str(lease["owner_id"]), parse(str(row["occurred_at"]))
+    except (KeyError, TypeError, ValueError):
+        raise SupervisorHandoffError("authoritative Supervisor start event is malformed")
+
+
+def _wait_for_no_supervisor_roots(
+    home: Path,
+    release_python: str | Path,
+    deadline: float,
+    poll: float,
+) -> bool:
+    while time.monotonic() < deadline:
+        roots = supervisor_roots(discover_supervisor_processes(
+            home, release_python=release_python))
+        if not roots:
+            return True
+        time.sleep(poll)
+    return not supervisor_roots(discover_supervisor_processes(
+        home, release_python=release_python))
+
+
 def _wait_for_lease_reconciliation(home: Path, deadline: float, poll: float) -> str:
     while time.monotonic() < deadline:
         row = _singleton_lease(home)
@@ -215,10 +301,8 @@ def handoff_running_supervisor(
     """
     all_matching = discover_supervisor_processes(home, release_python=release_python)
     roots = supervisor_roots(all_matching)
-    if len(roots) > 1:
-        raise SupervisorHandoffError(
-            f"multiple Supervisor roots match home/release: {[item.pid for item in roots]}")
-    process = roots[0] if roots else None
+    authority_owner, authority_started_at = _authoritative_started_at(home) if len(roots) > 1 else (None, None)
+    process = select_authoritative_root(roots, started_at=authority_started_at) if roots else None
     old_pid = process.pid if process is not None else None
     had_process = process is not None
     owned_identities = (
@@ -265,12 +349,22 @@ def handoff_running_supervisor(
         else:
             process = None
 
+    if not _wait_for_no_supervisor_roots(
+            home, release_python,
+            time.monotonic() + max(0.1, wait_seconds), poll_seconds):
+        remaining = supervisor_roots(discover_supervisor_processes(
+            home, release_python=release_python))
+        raise SupervisorHandoffError(
+            f"old release Supervisor roots remain after handoff: {[item.pid for item in remaining]}")
+
     lease_state = _wait_for_lease_reconciliation(
         home, time.monotonic() + max(0.1, lease_wait_seconds), poll_seconds)
     return {
         "running": had_process,
         "old_pid": old_pid,
         "old_release_python": str(Path(release_python).resolve()),
+        "authority_owner_id": authority_owner,
+        "authority_started_at": authority_started_at.isoformat() if authority_started_at else None,
         "request_result": request_result,
         "request_error": request_error,
         "forced_exact_tree": forced,

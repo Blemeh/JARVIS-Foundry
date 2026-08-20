@@ -10,6 +10,7 @@ from jarvis_foundry.deployment.handoff import (
     SupervisorHandoffError,
     SupervisorProcess,
     handoff_running_supervisor,
+    select_authoritative_root,
     supervisor_roots,
 )
 from jarvis_foundry.installer import Installer
@@ -32,6 +33,27 @@ def test_supervisor_roots_excludes_same_tree_children() -> None:
     assert [item.pid for item in supervisor_roots([root, child, unrelated])] == [101, 202]
 
 
+def test_authoritative_root_matches_durable_start_identity() -> None:
+    from datetime import UTC, datetime, timedelta
+
+    started_at = datetime(2026, 8, 20, 10, 32, 41, tzinfo=UTC)
+    old = _process(101, 7)
+    transient = _process(202, 8)
+    old = SupervisorProcess(
+        pid=old.pid, parent_pid=old.parent_pid, executable=old.executable,
+        command_line=old.command_line,
+        creation_identity={"pid": old.pid, "create_time": int(
+            ((started_at - timedelta(seconds=18)) - datetime(1601, 1, 1, tzinfo=UTC)).total_seconds() * 10_000_000), "exe": old.executable},
+    )
+    transient = SupervisorProcess(
+        pid=transient.pid, parent_pid=transient.parent_pid, executable=transient.executable,
+        command_line=transient.command_line,
+        creation_identity={"pid": transient.pid, "create_time": int(
+            ((started_at + timedelta(seconds=2)) - datetime(1601, 1, 1, tzinfo=UTC)).total_seconds() * 10_000_000), "exe": transient.executable},
+    )
+    assert select_authoritative_root([old, transient], started_at=started_at).pid == 101
+
+
 def test_handoff_terminates_only_exact_orphan_tree(monkeypatch, tmp_path: Path) -> None:
     database = FoundryDatabase(tmp_path / "foundry.db")
     database.initialize()
@@ -43,10 +65,12 @@ def test_handoff_terminates_only_exact_orphan_tree(monkeypatch, tmp_path: Path) 
 
     monkeypatch.setattr(
         handoff, "discover_supervisor_processes",
-        lambda home, release_python=None: [
-            item for item in [old, child, unrelated]
-            if release_python is None or item.executable == release_python
-        ],
+        lambda home, release_python=None: (
+            [item for item in [old, child, unrelated]
+             if release_python is None or item.executable == release_python]
+            if any(alive.get(item.pid, False) for item in [old, child, unrelated])
+            else []
+        ),
     )
     monkeypatch.setattr(handoff, "_wait_for_process_exit", lambda *args: False)
     monkeypatch.setattr(handoff, "pid_alive", lambda pid: alive.get(pid, False))
@@ -108,7 +132,9 @@ def test_handoff_terminates_child_when_task_wrapper_root_exits(monkeypatch, tmp_
     terminated: list[int] = []
     monkeypatch.setattr(
         handoff, "discover_supervisor_processes",
-        lambda home, release_python=None: [old, child],
+        lambda home, release_python=None: [old, child] if any(
+            alive.get(item.pid, False) for item in [old, child]
+        ) else [],
     )
     # The task wrapper/root has exited, but its Python child remains alive.
     monkeypatch.setattr(handoff, "_wait_for_process_exit", lambda *args: True)
