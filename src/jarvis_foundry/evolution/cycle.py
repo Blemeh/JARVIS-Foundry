@@ -101,15 +101,13 @@ def run_cycle(
     workload_dir = Path(workload_dir)
     _require(workload_dir.is_dir(),
              f"workload_dir {workload_dir} does not exist")
+    provider_settings = load_provider_settings()
     if verifier_identity is None:
-        provider = load_provider_settings()
         verifier_identity = {
-            "provider": provider.provider,
-            "model": provider.model,
+            "provider": provider_settings.provider,
+            "model": provider_settings.model,
             "session_id": "supervisor-verifier",
         }
-    else:
-        provider = load_provider_settings()
 
     cycle_id = "cycle-" + uuid.uuid4().hex[:12]
     database.append(Event.create(
@@ -200,10 +198,11 @@ def run_cycle(
             subject_ref=candidate,
             criteria=_verification_criteria(improvement),
             artifacts=dict(build["artifact_hashes"]),
-            builder_identity={"provider": provider.provider,
-                              "model": provider.model,
+            builder_identity={"provider": provider_settings.provider,
+                              "model": provider_settings.model,
                               "session_id": "cycle-builder"},
-            controller=controller)
+            controller=controller,
+            provider_settings=provider_settings)
         record_verification_verdict(
             database, verification_id=verification_id, verdict="PASS",
             criteria_results=[
@@ -211,7 +210,8 @@ def run_cycle(
                  "evidence_hash": "c" * 64}
                 for criterion in _verification_criteria(improvement)],
             findings=[], verifier_identity=verifier_identity,
-            evidence_refs=["var/evidence/v6-s11/cycle-verdict.txt"])
+            evidence_refs=["var/evidence/v6-s11/cycle-verdict.txt"],
+            provider_settings=provider_settings)
 
         # 6. canary for R2/R3
         canary_id = None

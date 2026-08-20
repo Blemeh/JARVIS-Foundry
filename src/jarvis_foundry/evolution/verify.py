@@ -6,10 +6,12 @@ artifacts, metrics and manifests. A structured verdict
 zero alone is NOT_TESTED (D-032). A verdict without a recorded
 verification request is refused (forgery guard). One verdict per
 verification. Verifier identity (provider/model/session) is recorded;
-the D-031 worker constraint is enforced (opencode_go +
-deepseek-v4-flash, no silent substitution); same-provider limitations
+the D-031 worker constraint is enforced against the resolved current
+provider policy (no silent substitution); same-provider limitations
 are flagged honestly; and a candidate can never invoke a trusted
 promotion verdict for itself (builder-session verdicts are refused).
+Persisted historical identities are accepted only when durable state
+proves the exact provider/model pair belongs to the run being replayed.
 """
 from __future__ import annotations
 
@@ -22,7 +24,10 @@ from ..database import FoundryDatabase
 from ..events import Event, canonical_json, payload_hash
 from ..supervisor.authority import SUPERVISOR_CONTROLLER
 
-from ..runtime.provider_config import ProviderSettings, load_provider_settings
+from ..runtime.provider_config import (
+    ProviderSettings,
+    matches_persisted_identity,
+)
 
 VERDICTS = ("PASS", "FAIL", "BLOCKED", "NOT_TESTED")
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
@@ -38,19 +43,25 @@ def _require(condition: bool, message: str) -> None:
 
 
 def _identity_ok(
+    settings: ProviderSettings,
     identity: dict[str, Any],
     *,
-    authority: ProviderSettings | None = None,
+    persisted_identity: dict[str, Any] | None = None,
 ) -> bool:
-    """D-031: trusted worker identity from configured or persisted models."""
-    settings = authority or load_provider_settings()
-    return settings.is_trusted_identity(identity)
+    """Current policy or durable persisted execution identity only."""
+    if settings.is_currently_authorized_identity(identity):
+        return True
+    if persisted_identity is not None:
+        return matches_persisted_identity(persisted_identity, identity)
+    return False
 
 
 def record_verification_request(
     database: FoundryDatabase, *, improvement_id: str, subject_ref: str,
     criteria: list[str], artifacts: dict[str, str],
     builder_identity: dict[str, Any], controller: str,
+    provider_settings: ProviderSettings,
+    persisted_builder_identity: dict[str, Any] | None = None,
     source_type: str = "supervisor", source_id: str = "v6",
 ) -> str:
     """Record a verification REQUEST (created by the controller — the
@@ -74,9 +85,15 @@ def record_verification_request(
         "only the exact Supervisor controller identity 'supervisor' may "
         "create verification requests - refused",
     )
-    _require(_identity_ok(builder_identity),
-             "builder identity must resolve to a trusted configured or "
-             "persisted provider/model pair — refused")
+    _require(
+        _identity_ok(
+            provider_settings,
+            builder_identity,
+            persisted_identity=persisted_builder_identity,
+        ),
+        "builder identity must match current provider policy or the "
+        "persisted execution identity for this run — refused",
+    )
     if contains_secret_like(canonical_json({"criteria": criteria})):
         raise VerificationError(
             "verification criteria contain secret-like content — "
@@ -110,6 +127,8 @@ def record_verification_verdict(
     database: FoundryDatabase, *, verification_id: str, verdict: str,
     criteria_results: list[dict[str, Any]], findings: list[dict[str, Any]],
     verifier_identity: dict[str, Any], evidence_refs: list[str],
+    provider_settings: ProviderSettings,
+    persisted_verifier_identity: dict[str, Any] | None = None,
     artifacts: dict[str, str] | None = None,
     source_type: str = "supervisor", source_id: str = "v6",
 ) -> None:
@@ -148,9 +167,16 @@ def record_verification_verdict(
                  "verification request's frozen criteria — refused "
                  "(frozen-criteria contract)")
     _require(isinstance(findings, list), "findings must be a list")
-    _require(_identity_ok(verifier_identity),
-             "verifier identity must resolve to a trusted configured or "
-             "persisted provider/model pair — refused (no silent substitution)")
+    _require(
+        _identity_ok(
+            provider_settings,
+            verifier_identity,
+            persisted_identity=persisted_verifier_identity,
+        ),
+        "verifier identity must match current provider policy or the "
+        "persisted execution identity for this run — refused "
+        "(no silent substitution)",
+    )
     _require(isinstance(evidence_refs, list), "evidence_refs must be "
              "a list")
     if artifacts is not None:

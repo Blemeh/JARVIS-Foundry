@@ -32,13 +32,15 @@ from jarvis_foundry.evolution.registry import set_slot
 from jarvis_foundry.migrations import SCHEMA_VERSION
 from jarvis_foundry.reconcile import reconcile
 
+from jarvis_foundry.runtime.provider_config import DEFAULT_MODEL
+
 CONTROLLER = "supervisor"
 CANDIDATE_CONTROLLER = "candidate-builder-1"
 DIRECTIVE_IDENTITY = {"provider": "opencode_go",
-                      "model": "deepseek-v4-flash",
+                      "model": DEFAULT_MODEL,
                       "session_id": "session-builder-s11"}
 OTHER_IDENTITY = {"provider": "opencode_go",
-                  "model": "deepseek-v4-flash",
+                  "model": DEFAULT_MODEL,
                   "session_id": "session-verifier-s11"}
 
 SLOW = [sys.executable, "-c",

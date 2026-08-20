@@ -24,6 +24,7 @@ from ..database import FoundryDatabase
 from ..events import Event, EventConflict
 from ..paths import FoundryPaths
 from .console import ConsoleControlHandler
+from .estop import EmergencyStop
 from .service import Supervisor
 
 #: Bounded retry: after this many consecutive heartbeat failures the daemon
@@ -213,6 +214,34 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _run_frozen_supervisor(
+    paths: FoundryPaths,
+    *,
+    spawn_worker_loop: bool,
+    worker_loop_config: Path | None,
+    once: bool,
+) -> int:
+    """STOP-active entry: freeze without resolving provider configuration."""
+    database = FoundryDatabase(paths.database)
+    supervisor = Supervisor(
+        database,
+        paths.emergency_stop,
+        spawn_worker_loop=spawn_worker_loop,
+        worker_loop_config=worker_loop_config,
+    )
+    console_handler = make_console_handler(supervisor)
+    console_handler.install()
+    try:
+        state = supervisor.start()
+        print(json.dumps({"supervisor": state, "home": str(paths.home)}), flush=True)
+        if once:
+            print(json.dumps({"heartbeat": supervisor.heartbeat()}), flush=True)
+        return 0
+    finally:
+        supervisor.stop()
+        console_handler.uninstall()
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -225,6 +254,13 @@ def main(argv: list[str] | None = None) -> int:
     except ReleaseError as error:
         print(json.dumps({"supervisor": "FAIL_CLOSED", "error": str(error)}), flush=True)
         return 2
+    if EmergencyStop(paths.emergency_stop).active():
+        return _run_frozen_supervisor(
+            paths,
+            spawn_worker_loop=bool(args.spawn_worker_loop),
+            worker_loop_config=getattr(args, "worker_loop_config", None),
+            once=bool(args.once),
+        )
     from ..runtime.authority import resolve_runtime_authority
     authority = resolve_runtime_authority(
         home=paths.home,
@@ -237,6 +273,7 @@ def main(argv: list[str] | None = None) -> int:
         database, paths.emergency_stop,
         spawn_worker_loop=bool(args.spawn_worker_loop or authority.spawn_worker_loop),
         worker_loop_config=getattr(args, "worker_loop_config", None) or authority.worker_yaml,
+        provider_settings=authority.provider_settings,
     )
     console_handler = make_console_handler(supervisor)
     console_handler.install()

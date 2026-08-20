@@ -1,12 +1,16 @@
 """Machine-local provider configuration resolution (repair pass)."""
 from __future__ import annotations
 
+import json
+import sys
+import traceback
 from pathlib import Path
 from unittest import mock
 
 import pytest
 
 from jarvis_foundry.database import FoundryDatabase
+from jarvis_foundry.evolution.cycle import run_cycle
 from jarvis_foundry.evolution.records import record_improvement
 from jarvis_foundry.evolution.verify import (
     VerificationError,
@@ -14,6 +18,7 @@ from jarvis_foundry.evolution.verify import (
 )
 from jarvis_foundry.paths import FoundryPaths
 from jarvis_foundry.roles.router import RoleRouter
+from jarvis_foundry.runtime.authority import resolve_runtime_authority
 from jarvis_foundry.runtime.config import WorkerRuntimeConfig
 from jarvis_foundry.runtime.provider_config import (
     DEFAULT_MODEL,
@@ -22,11 +27,13 @@ from jarvis_foundry.runtime.provider_config import (
     ProviderCredentialError,
     ProviderSettings,
     default_provider_config_path,
+    default_provider_settings,
     ensure_provider_template,
     hermes_provider_env,
     load_provider_settings,
     openhands_provider_env,
 )
+from jarvis_foundry.supervisor.service import Supervisor
 from jarvis_foundry.workers.adapters.base import ProviderUnavailable
 from jarvis_foundry.workers.adapters.hermes import HermesWorkerAdapter
 from jarvis_foundry.workers.adapters.openhands import OpenHandsWorkerAdapter
@@ -324,23 +331,97 @@ def _record_improvement(database: FoundryDatabase) -> str:
     )
 
 
-def test_evolution_verifier_accepts_historical_deepseek_identity(config_path):
+def test_evolution_verifier_accepts_persisted_historical_deepseek(config_path):
+    _write_provider(
+        config_path,
+        provider="opencode_go",
+        model="muse-spark-1.2-contributor",
+        base_url="https://opencode.ai/zen/go/v1",
+        api_key="",
+    )
+    settings = load_provider_settings(config_path=config_path)
     database = FoundryDatabase(config_path.parent / "foundry.db")
     database.initialize()
     improvement_id = _record_improvement(database)
+    persisted = {
+        "provider": "opencode_go",
+        "model": "deepseek-v4-flash",
+        "session_id": "historical-builder",
+    }
     record_verification_request(
         database,
         improvement_id=improvement_id,
         subject_ref="candidate",
         criteria=["criterion-1"],
         artifacts={"artifact": "a" * 64},
-        builder_identity={
-            "provider": "opencode_go",
-            "model": "deepseek-v4-flash",
-            "session_id": "historical-builder",
-        },
+        builder_identity=persisted,
         controller="supervisor",
+        provider_settings=settings,
+        persisted_builder_identity=persisted,
     )
+
+
+def test_new_arbitrary_deepseek_identity_rejected(config_path):
+    _write_provider(
+        config_path,
+        provider="opencode_go",
+        model="muse-spark-1.2-contributor",
+        base_url="https://opencode.ai/zen/go/v1",
+        api_key="",
+    )
+    settings = load_provider_settings(config_path=config_path)
+    database = FoundryDatabase(config_path.parent / "foundry4.db")
+    database.initialize()
+    improvement_id = _record_improvement(database)
+    with pytest.raises(VerificationError):
+        record_verification_request(
+            database,
+            improvement_id=improvement_id,
+            subject_ref="candidate",
+            criteria=["criterion-1"],
+            artifacts={"artifact": "a" * 64},
+            builder_identity={
+                "provider": "opencode_go",
+                "model": "deepseek-v4-flash",
+                "session_id": "forged-new",
+            },
+            controller="supervisor",
+            provider_settings=settings,
+        )
+
+
+def test_forged_historical_deepseek_rejected(config_path):
+    _write_provider(
+        config_path,
+        provider="opencode_go",
+        model="muse-spark-1.2-contributor",
+        base_url="https://opencode.ai/zen/go/v1",
+        api_key="",
+    )
+    settings = load_provider_settings(config_path=config_path)
+    database = FoundryDatabase(config_path.parent / "foundry5.db")
+    database.initialize()
+    improvement_id = _record_improvement(database)
+    with pytest.raises(VerificationError):
+        record_verification_request(
+            database,
+            improvement_id=improvement_id,
+            subject_ref="candidate",
+            criteria=["criterion-1"],
+            artifacts={"artifact": "a" * 64},
+            builder_identity={
+                "provider": "opencode_go",
+                "model": "deepseek-v4-flash",
+                "session_id": "forged-historical",
+            },
+            controller="supervisor",
+            provider_settings=settings,
+            persisted_builder_identity={
+                "provider": "opencode_go",
+                "model": "muse-spark-1.2-contributor",
+                "session_id": "other",
+            },
+        )
 
 
 def test_evolution_verifier_accepts_configured_muse_identity(config_path):
@@ -366,6 +447,7 @@ def test_evolution_verifier_accepts_configured_muse_identity(config_path):
             "session_id": "muse-builder",
         },
         controller="supervisor",
+        provider_settings=load_provider_settings(config_path=config_path),
     )
 
 
@@ -386,6 +468,7 @@ def test_evolution_verifier_rejects_foreign_identity(config_path):
                 "session_id": "foreign",
             },
             controller="supervisor",
+            provider_settings=load_provider_settings(config_path=config_path),
         )
 
 
@@ -423,3 +506,157 @@ def test_default_provider_config_path_uses_jarvis_install_root(tmp_path, monkeyp
     root = tmp_path / "JARVIS"
     monkeypatch.setenv("JARVIS_INSTALL_ROOT", str(root))
     assert default_provider_config_path() == root / "config" / "provider.yaml"
+
+
+SECRET_TOKEN = "SECRET_SHOULD_NEVER_APPEAR_9f83abcd"
+
+
+@pytest.fixture()
+def db(tmp_path):
+    database = FoundryDatabase(tmp_path / "foundry.db")
+    database.initialize()
+    return database
+
+
+def test_provider_settings_repr_and_str_secret_safe():
+    settings = _settings(api_key=SECRET_TOKEN)
+    assert SECRET_TOKEN not in repr(settings)
+    assert SECRET_TOKEN not in str(settings)
+
+
+def test_malformed_yaml_exception_chain_secret_safe(config_path):
+    config_path.write_text(
+        f"provider: opencode_go\napi_key: {SECRET_TOKEN}\n: [unterminated\n",
+        encoding="utf-8",
+    )
+    try:
+        load_provider_settings(config_path=config_path)
+    except ProviderConfigError as error:
+        rendered = "".join(traceback.format_exception(error))
+        assert SECRET_TOKEN not in str(error)
+        assert SECRET_TOKEN not in repr(error)
+        assert SECRET_TOKEN not in rendered
+        assert error.__cause__ is None
+    else:
+        pytest.fail("expected ProviderConfigError")
+
+
+def test_supervisor_authority_reads_provider_once(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    monkeypatch.setenv("JARVIS_INSTALL_ROOT", str(tmp_path / "JARVIS"))
+    provider_path = tmp_path / "JARVIS" / "config" / "provider.yaml"
+    provider_path.parent.mkdir(parents=True)
+    provider_path.write_text(
+        "provider: opencode_go\n"
+        "model: muse-spark-1.2-contributor\n"
+        "base_url: https://opencode.ai/zen/go/v1\n"
+        'api_key: ""\n',
+        encoding="utf-8",
+    )
+    with mock.patch(
+        "jarvis_foundry.runtime.authority.load_provider_settings",
+        wraps=load_provider_settings,
+    ) as loader:
+        authority = resolve_runtime_authority(home=home)
+        cfg = WorkerRuntimeConfig.from_yaml(
+            None, provider_settings=authority.provider_settings)
+    assert loader.call_count == 1
+    assert cfg.provider_settings.model == "muse-spark-1.2-contributor"
+
+
+def test_supervisor_spawn_uses_authority_provider_settings(tmp_path):
+    home = tmp_path / "home"
+    home.mkdir()
+    database = FoundryDatabase(home / "foundry.db")
+    database.initialize()
+    settings = _settings(api_key="sk-supervisor-spawn-key-1234567890")
+    supervisor = Supervisor(
+        database,
+        home / "EMERGENCY_STOP",
+        spawn_worker_loop=True,
+        provider_settings=settings,
+    )
+    with mock.patch(
+        "jarvis_foundry.runtime.config.load_provider_settings",
+    ) as loader:
+        supervisor._maybe_spawn_worker_loop()
+        loader.assert_not_called()
+
+
+def test_supervisor_stop_before_provider_config(tmp_path, monkeypatch, capsys):
+    home = tmp_path / "home"
+    home.mkdir()
+    (home / "EMERGENCY_STOP").write_text("{}", encoding="utf-8")
+    provider_path = tmp_path / "JARVIS" / "config" / "provider.yaml"
+    provider_path.parent.mkdir(parents=True)
+    provider_path.write_text(
+        f"provider: opencode_go\napi_key: {SECRET_TOKEN}\n: [bad\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    monkeypatch.setenv("JARVIS_INSTALL_ROOT", str(tmp_path / "JARVIS"))
+    with mock.patch(
+        "jarvis_foundry.runtime.authority.load_provider_settings",
+    ) as loader:
+        from jarvis_foundry.supervisor import run as supervisor_run
+
+        code = supervisor_run.main(["--home", str(home), "--once"])
+    output = capsys.readouterr().out
+    assert code == 0
+    assert json.loads(output.splitlines()[0])["supervisor"] == "FROZEN"
+    assert SECRET_TOKEN not in output
+    loader.assert_not_called()
+
+
+def test_supervisor_normal_startup_resolves_provider(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    home.mkdir()
+    provider_path = tmp_path / "JARVIS" / "config" / "provider.yaml"
+    provider_path.parent.mkdir(parents=True)
+    provider_path.write_text(
+        "provider: opencode_go\n"
+        "model: muse-spark-1.2-contributor\n"
+        "base_url: https://opencode.ai/zen/go/v1\n"
+        'api_key: ""\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    monkeypatch.setenv("JARVIS_INSTALL_ROOT", str(tmp_path / "JARVIS"))
+    from jarvis_foundry.supervisor import run as supervisor_run
+
+    code = supervisor_run.main(["--home", str(home), "--once"])
+    assert code == 0
+
+
+def test_evolution_cycle_reads_provider_once(db, tmp_path, monkeypatch):
+    workload = tmp_path / "workload"
+    workload.mkdir()
+    for index in range(3):
+        (workload / f"case-{index}.txt").write_text(f"input-{index}", encoding="utf-8")
+    improvement_id = _record_improvement(db)
+    build_ok = [
+        sys.executable, "-c",
+        "import pathlib\npathlib.Path('built.txt').write_text('built')\n",
+    ]
+    fast = [sys.executable, "-c", "import pathlib,sys\npathlib.Path(sys.argv[1]).read_text()\n"]
+    slow = [
+        sys.executable, "-c",
+        "import pathlib,sys,time\npathlib.Path(sys.argv[1]).read_text()\ntime.sleep(0.3)\n",
+    ]
+    with mock.patch(
+        "jarvis_foundry.evolution.cycle.load_provider_settings",
+        wraps=load_provider_settings,
+    ) as loader:
+        result = run_cycle(
+            db,
+            improvement_id=improvement_id,
+            source_commit="c" * 40,
+            workload_dir=workload,
+            baseline_command=slow,
+            candidate_command=fast,
+            build_command=build_ok,
+            controller="supervisor",
+        )
+    assert loader.call_count == 1

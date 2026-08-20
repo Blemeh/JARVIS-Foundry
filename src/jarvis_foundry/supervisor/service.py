@@ -10,7 +10,7 @@ from ..events import Event
 from ..reconcile import inspect as inspect_ledger
 from ..reconcile import reconcile
 from ..runtime.authority import ALLOWED_TRUST_STATES
-from ..runtime.provider_config import ProviderConfigError
+from ..runtime.provider_config import ProviderConfigError, ProviderSettings
 from .estop import EmergencyStop
 from .leases import LeaseManager, LeaseUnavailable
 from .worker import WorkerController
@@ -32,6 +32,7 @@ class Supervisor:
         spawn_worker_loop: bool = False,
         worker_loop_config: str | Path | None = None,
         ledger_heartbeat_seconds: int = 60,
+        provider_settings: ProviderSettings | None = None,
     ) -> None:
         self.database = database
         self.estop = EmergencyStop(stop_path)
@@ -44,6 +45,7 @@ class Supervisor:
         self.worker_loop_config = (
             Path(worker_loop_config) if worker_loop_config is not None else None)
         self.ledger_heartbeat_seconds = ledger_heartbeat_seconds
+        self._provider_settings = provider_settings
 
     def start(self) -> str:
         self.database.initialize()
@@ -192,7 +194,10 @@ class Supervisor:
         from ..runtime.config import WorkerRuntimeConfig
 
         try:
-            config = WorkerRuntimeConfig.from_yaml(self.worker_loop_config)
+            config = WorkerRuntimeConfig.from_yaml(
+                self.worker_loop_config,
+                provider_settings=self._provider_settings,
+            )
         except (OSError, ValueError, TypeError, ProviderConfigError):
             return
         if not config.enabled:

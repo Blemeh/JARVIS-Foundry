@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from ..paths import FoundryPaths
+from .provider_config import ProviderSettings, load_provider_settings
 
 FOUNDRY_YAML_ROLE = "TEMPLATE"
 FOUNDRY_YAML_RELATIVE = Path("config") / "foundry.yaml"
@@ -69,6 +70,7 @@ class RuntimeAuthority:
     spawn_worker_loop: bool
     python_executable: Path
     hermes_home: Path
+    provider_settings: ProviderSettings
     foundry_yaml_role: str = FOUNDRY_YAML_ROLE
     precedence: tuple[str, ...] = CONFIG_PRECEDENCE
 
@@ -97,7 +99,6 @@ def resolve_runtime_authority(
     ``config/foundry.yaml`` is a TEMPLATE and is not consulted.
     """
     from .config import WorkerRuntimeConfig
-    from .provider_config import load_provider_settings
 
     paths = FoundryPaths.discover(home)
     provider_settings = load_provider_settings()
@@ -136,6 +137,7 @@ def resolve_runtime_authority(
         spawn_worker_loop=bool(spawn),
         python_executable=Path(python).expanduser().resolve(),
         hermes_home=FoundryPaths.hermes_home(),
+        provider_settings=provider_settings,
     )
 
 

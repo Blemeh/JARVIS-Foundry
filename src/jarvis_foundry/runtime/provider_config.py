@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import os
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -30,9 +30,6 @@ from ..deployment.layout import install_root
 DEFAULT_PROVIDER = "opencode_go"
 DEFAULT_MODEL = "muse-spark-1.2-contributor"
 DEFAULT_BASE_URL = "https://opencode.ai/zen/go/v1"
-
-# Persisted missions recorded under the prior owner mandate remain replayable.
-HISTORICAL_MODELS = frozenset({"deepseek-v4-flash"})
 
 _RUNTIME_CREDENTIAL_ENV = {
     "api_key": "JARVIS_RUNTIME_API_KEY",
@@ -65,8 +62,18 @@ class ProviderSettings:
     provider: str
     model: str
     base_url: str
-    api_key: str | None
-    source: str
+    api_key: str | None = field(repr=False, default=None)
+    source: str = "default"
+
+    def __repr__(self) -> str:
+        key = _REDACTED if self.api_key else ""
+        return (
+            f"ProviderSettings(provider={self.provider!r}, model={self.model!r}, "
+            f"base_url={self.base_url!r}, api_key={key!r}, source={self.source!r})"
+        )
+
+    def __str__(self) -> str:
+        return self.__repr__()
 
     def redacted(self) -> dict[str, str]:
         """Safe representation for logs, errors, and status output."""
@@ -86,20 +93,30 @@ class ProviderSettings:
                 "runtime override")
         return self.api_key
 
-    def trusted_models(self) -> frozenset[str]:
-        """Models accepted for new dispatch and identity verification."""
-        return frozenset({self.model, *HISTORICAL_MODELS})
-
-    def is_trusted_identity(self, identity: dict[str, Any]) -> bool:
+    def is_currently_authorized_identity(self, identity: dict[str, Any]) -> bool:
+        """True when identity matches the resolved current provider policy."""
         if not isinstance(identity, dict):
             return False
         session_id = identity.get("session_id")
         if not isinstance(session_id, str) or not session_id.strip():
             return False
-        if identity.get("provider") != self.provider:
-            return False
-        model = identity.get("model")
-        return isinstance(model, str) and model in self.trusted_models()
+        return (
+            identity.get("provider") == self.provider
+            and identity.get("model") == self.model
+        )
+
+
+def matches_persisted_identity(
+    persisted: dict[str, Any],
+    identity: dict[str, Any],
+) -> bool:
+    """True when claimed identity equals durable persisted execution identity."""
+    if not isinstance(persisted, dict) or not isinstance(identity, dict):
+        return False
+    return (
+        persisted.get("provider") == identity.get("provider")
+        and persisted.get("model") == identity.get("model")
+    )
 
 
 class ProviderCredentialError(RuntimeError):
@@ -174,9 +191,9 @@ def _load_yaml_config(path: Path) -> dict[str, Any]:
     except OSError as error:
         raise ProviderConfigError(
             f"could not read provider config at {path}") from error
-    except Exception as error:
+    except Exception:
         raise ProviderConfigError(
-            "provider config is malformed; check syntax and field types") from error
+            "provider config is malformed; check syntax and field types") from None
     if not isinstance(raw, dict):
         raise ProviderConfigError("provider config must be a mapping")
     return raw
