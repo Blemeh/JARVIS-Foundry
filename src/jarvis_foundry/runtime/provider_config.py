@@ -179,32 +179,44 @@ def _legacy_value(field: str) -> str | None:
     return _first_env(names)
 
 
+_YAML_UNREADABLE = object()
+_YAML_MALFORMED = object()
+_YAML_NOT_MAPPING = object()
+
+
+def _read_and_parse_provider_yaml(path: Path) -> Any:
+    """Parse provider.yaml. Returns a mapping or a sentinel. Never raises."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return _YAML_UNREADABLE
+    try:
+        import yaml
+        raw = yaml.safe_load(text) or {}
+    except Exception:
+        return _YAML_MALFORMED
+    if not isinstance(raw, dict):
+        return _YAML_NOT_MAPPING
+    return raw
+
+
 def _load_yaml_config(path: Path) -> dict[str, Any]:
     if not path.is_file():
         return {}
     try:
-        import yaml
+        import yaml  # noqa: F401
     except ImportError as error:  # pragma: no cover
         raise ProviderConfigError("pyyaml is required to load provider config") from error
-    try:
-        text = path.read_text(encoding="utf-8")
-    except OSError as error:
+    parsed = _read_and_parse_provider_yaml(path)
+    if parsed is _YAML_UNREADABLE:
         raise ProviderConfigError(
-            f"could not read provider config at {path}") from error
-    malformed = False
-    raw: Any = {}
-    try:
-        raw = yaml.safe_load(text) or {}
-    except yaml.YAMLError:
-        malformed = True
-    except Exception:
-        malformed = True
-    if malformed:
+            f"could not read provider config at {path}")
+    if parsed is _YAML_MALFORMED:
         raise ProviderConfigError(
             "provider config is malformed; check syntax and field types")
-    if not isinstance(raw, dict):
+    if parsed is _YAML_NOT_MAPPING:
         raise ProviderConfigError("provider config must be a mapping")
-    return raw
+    return parsed
 
 
 def _pick_trusted(

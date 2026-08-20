@@ -42,15 +42,39 @@ def _require(condition: bool, message: str) -> None:
         raise VerificationError(message)
 
 
-def _durable_run_identity(
-    database: FoundryDatabase, run_id: str,
+def _normalize_step_id(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    stripped = value.strip()
+    return stripped or None
+
+
+def _durable_subject_run_identity(
+    database: FoundryDatabase,
+    *,
+    run_id: str,
+    mission_id: str,
+    step_id: str | None,
+    role: str,
 ) -> dict[str, Any] | None:
-    """Provider/model from the canonical agent_runs projection only."""
-    row = database.row("agent_runs", "run_id", run_id)
+    """Provider/model from the agent_runs row that matches this execution subject."""
+    if not isinstance(run_id, str) or not run_id.strip():
+        return None
+    if not isinstance(mission_id, str) or not mission_id.strip():
+        return None
+    if not isinstance(role, str) or not role.strip():
+        return None
+    row = database.row("agent_runs", "run_id", run_id.strip())
     if row is None:
         return None
-    provider = row.get("provider")
-    model = row.get("model")
+    if str(row["mission_id"]) != mission_id.strip():
+        return None
+    if _normalize_step_id(row["step_id"]) != _normalize_step_id(step_id):
+        return None
+    if str(row["role"]) != role.strip():
+        return None
+    provider = row["provider"]
+    model = row["model"]
     if not isinstance(provider, str) or not provider.strip():
         return None
     if not isinstance(model, str) or not model.strip():
@@ -64,15 +88,30 @@ def _identity_ok(
     *,
     database: FoundryDatabase | None = None,
     run_id: str | None = None,
+    mission_id: str | None = None,
+    step_id: str | None = None,
+    role: str | None = None,
 ) -> bool:
-    """Current policy or durable agent_runs identity for the cited run only."""
+    """Current policy, or durable agent_runs identity for this exact subject."""
     if settings.is_currently_authorized_identity(identity):
         return True
-    if database is not None and run_id is not None:
-        persisted = _durable_run_identity(database, run_id)
-        if persisted is not None:
-            return matches_persisted_identity(persisted, identity)
-    return False
+    if (
+        database is None
+        or run_id is None
+        or mission_id is None
+        or role is None
+    ):
+        return False
+    persisted = _durable_subject_run_identity(
+        database,
+        run_id=run_id,
+        mission_id=mission_id,
+        step_id=step_id,
+        role=role,
+    )
+    if persisted is None:
+        return False
+    return matches_persisted_identity(persisted, identity)
 
 
 def record_verification_request(
@@ -81,6 +120,8 @@ def record_verification_request(
     builder_identity: dict[str, Any], controller: str,
     provider_settings: ProviderSettings,
     builder_run_id: str | None = None,
+    builder_mission_id: str | None = None,
+    builder_step_id: str | None = None,
     source_type: str = "supervisor", source_id: str = "v6",
 ) -> str:
     """Record a verification REQUEST (created by the controller — the
@@ -110,6 +151,9 @@ def record_verification_request(
             builder_identity,
             database=database,
             run_id=builder_run_id,
+            mission_id=builder_mission_id,
+            step_id=builder_step_id,
+            role="builder",
         ),
         "builder identity must match current provider policy or the "
         "persisted execution identity for this run — refused",
@@ -149,6 +193,8 @@ def record_verification_verdict(
     verifier_identity: dict[str, Any], evidence_refs: list[str],
     provider_settings: ProviderSettings,
     verifier_run_id: str | None = None,
+    verifier_mission_id: str | None = None,
+    verifier_step_id: str | None = None,
     artifacts: dict[str, str] | None = None,
     source_type: str = "supervisor", source_id: str = "v6",
 ) -> None:
@@ -193,6 +239,9 @@ def record_verification_verdict(
             verifier_identity,
             database=database,
             run_id=verifier_run_id,
+            mission_id=verifier_mission_id,
+            step_id=verifier_step_id,
+            role="verifier",
         ),
         "verifier identity must match current provider policy or the "
         "persisted execution identity for this run — refused "

@@ -338,14 +338,17 @@ def _seed_agent_run(
     *,
     provider: str,
     model: str,
+    mission_id: str = "mission-1",
+    step_id: str = "step-1",
+    role: str = "builder",
 ) -> None:
     database.append(Event.create(
         "agent_run.started",
         {
             "run_id": run_id,
-            "mission_id": "mission-1",
-            "step_id": "step-1",
-            "role": "builder",
+            "mission_id": mission_id,
+            "step_id": step_id,
+            "role": role,
             "provider": provider,
             "model": model,
             "context_manifest_hash": "hash",
@@ -391,6 +394,8 @@ def test_evolution_verifier_accepts_persisted_historical_deepseek(config_path):
         controller="supervisor",
         provider_settings=settings,
         builder_run_id=run_id,
+        builder_mission_id="mission-1",
+        builder_step_id="step-1",
     )
 
 
@@ -481,6 +486,8 @@ def test_forged_matching_persisted_identity_without_run_rejected(config_path):
             controller="supervisor",
             provider_settings=settings,
             builder_run_id="run-does-not-exist",
+            builder_mission_id="mission-1",
+            builder_step_id="step-1",
         )
 
 
@@ -518,6 +525,8 @@ def test_historical_identity_mismatch_rejected(config_path):
             controller="supervisor",
             provider_settings=settings,
             builder_run_id=run_id,
+            builder_mission_id="mission-1",
+            builder_step_id="step-1",
         )
 
 
@@ -554,6 +563,207 @@ def test_wrong_run_historical_identity_rejected(config_path):
             controller="supervisor",
             provider_settings=settings,
             builder_run_id="wrong-run-id",
+            builder_mission_id="mission-1",
+            builder_step_id="step-1",
+        )
+
+
+def test_unrelated_real_historical_deepseek_run_rejected(config_path):
+    _write_provider(
+        config_path,
+        provider="opencode_go",
+        model="muse-spark-1.2-contributor",
+        base_url="https://opencode.ai/zen/go/v1",
+        api_key="",
+    )
+    settings = load_provider_settings(config_path=config_path)
+    database = FoundryDatabase(config_path.parent / "foundry-unrelated.db")
+    database.initialize()
+    improvement_id = _record_improvement(database)
+    _seed_agent_run(
+        database,
+        "subject-muse-run",
+        provider="opencode_go",
+        model="muse-spark-1.2-contributor",
+        mission_id="mission-subject",
+        step_id="step-1",
+    )
+    _seed_agent_run(
+        database,
+        "unrelated-deepseek-run",
+        provider="opencode_go",
+        model="deepseek-v4-flash",
+        mission_id="mission-other",
+        step_id="step-9",
+    )
+    with pytest.raises(VerificationError):
+        record_verification_request(
+            database,
+            improvement_id=improvement_id,
+            subject_ref="candidate",
+            criteria=["criterion-1"],
+            artifacts={"artifact": "a" * 64},
+            builder_identity={
+                "provider": "opencode_go",
+                "model": "deepseek-v4-flash",
+                "session_id": "stolen-run",
+            },
+            controller="supervisor",
+            provider_settings=settings,
+            builder_run_id="unrelated-deepseek-run",
+            builder_mission_id="mission-subject",
+            builder_step_id="step-1",
+        )
+
+
+def test_wrong_mission_historical_run_rejected(config_path):
+    _write_provider(
+        config_path,
+        provider="opencode_go",
+        model="muse-spark-1.2-contributor",
+        base_url="https://opencode.ai/zen/go/v1",
+        api_key="",
+    )
+    settings = load_provider_settings(config_path=config_path)
+    database = FoundryDatabase(config_path.parent / "foundry-wrong-mission.db")
+    database.initialize()
+    improvement_id = _record_improvement(database)
+    _seed_agent_run(
+        database,
+        "deepseek-other-mission",
+        provider="opencode_go",
+        model="deepseek-v4-flash",
+        mission_id="mission-other",
+        step_id="step-1",
+    )
+    with pytest.raises(VerificationError):
+        record_verification_request(
+            database,
+            improvement_id=improvement_id,
+            subject_ref="candidate",
+            criteria=["criterion-1"],
+            artifacts={"artifact": "a" * 64},
+            builder_identity={
+                "provider": "opencode_go",
+                "model": "deepseek-v4-flash",
+                "session_id": "wrong-mission",
+            },
+            controller="supervisor",
+            provider_settings=settings,
+            builder_run_id="deepseek-other-mission",
+            builder_mission_id="mission-subject",
+            builder_step_id="step-1",
+        )
+
+
+def test_wrong_step_historical_run_rejected(config_path):
+    _write_provider(
+        config_path,
+        provider="opencode_go",
+        model="muse-spark-1.2-contributor",
+        base_url="https://opencode.ai/zen/go/v1",
+        api_key="",
+    )
+    settings = load_provider_settings(config_path=config_path)
+    database = FoundryDatabase(config_path.parent / "foundry-wrong-step.db")
+    database.initialize()
+    improvement_id = _record_improvement(database)
+    _seed_agent_run(
+        database,
+        "deepseek-step-a",
+        provider="opencode_go",
+        model="deepseek-v4-flash",
+        mission_id="mission-1",
+        step_id="step-a",
+    )
+    with pytest.raises(VerificationError):
+        record_verification_request(
+            database,
+            improvement_id=improvement_id,
+            subject_ref="candidate",
+            criteria=["criterion-1"],
+            artifacts={"artifact": "a" * 64},
+            builder_identity={
+                "provider": "opencode_go",
+                "model": "deepseek-v4-flash",
+                "session_id": "wrong-step",
+            },
+            controller="supervisor",
+            provider_settings=settings,
+            builder_run_id="deepseek-step-a",
+            builder_mission_id="mission-1",
+            builder_step_id="step-b",
+        )
+
+
+def test_wrong_role_historical_run_rejected(config_path):
+    _write_provider(
+        config_path,
+        provider="opencode_go",
+        model="muse-spark-1.2-contributor",
+        base_url="https://opencode.ai/zen/go/v1",
+        api_key="",
+    )
+    settings = load_provider_settings(config_path=config_path)
+    database = FoundryDatabase(config_path.parent / "foundry-wrong-role.db")
+    database.initialize()
+    improvement_id = _record_improvement(database)
+    _seed_agent_run(
+        database,
+        "deepseek-verifier-run",
+        provider="opencode_go",
+        model="deepseek-v4-flash",
+        mission_id="mission-1",
+        step_id="step-1",
+        role="verifier",
+    )
+    with pytest.raises(VerificationError):
+        record_verification_request(
+            database,
+            improvement_id=improvement_id,
+            subject_ref="candidate",
+            criteria=["criterion-1"],
+            artifacts={"artifact": "a" * 64},
+            builder_identity={
+                "provider": "opencode_go",
+                "model": "deepseek-v4-flash",
+                "session_id": "wrong-role",
+            },
+            controller="supervisor",
+            provider_settings=settings,
+            builder_run_id="deepseek-verifier-run",
+            builder_mission_id="mission-1",
+            builder_step_id="step-1",
+        )
+
+
+def test_caller_supplied_identity_dict_has_zero_authority(config_path):
+    _write_provider(
+        config_path,
+        provider="opencode_go",
+        model="muse-spark-1.2-contributor",
+        base_url="https://opencode.ai/zen/go/v1",
+        api_key="",
+    )
+    settings = load_provider_settings(config_path=config_path)
+    database = FoundryDatabase(config_path.parent / "foundry-dict-authority.db")
+    database.initialize()
+    improvement_id = _record_improvement(database)
+    claimed = {
+        "provider": "opencode_go",
+        "model": "deepseek-v4-flash",
+        "session_id": "dict-only",
+    }
+    with pytest.raises(VerificationError):
+        record_verification_request(
+            database,
+            improvement_id=improvement_id,
+            subject_ref="candidate",
+            criteria=["criterion-1"],
+            artifacts={"artifact": "a" * 64},
+            builder_identity=claimed,
+            controller="supervisor",
+            provider_settings=settings,
         )
 
 
@@ -641,13 +851,37 @@ def test_default_provider_config_path_uses_jarvis_install_root(tmp_path, monkeyp
     assert default_provider_config_path() == root / "config" / "provider.yaml"
 
 
-SECRET_TOKEN = "SECRET_SHOULD_NEVER_APPEAR_FINAL_847291"
+SECRET_TOKEN = "SECRET_SHOULD_NEVER_APPEAR_GROK_FINAL_913527"
+
+
+def _value_contains_secret(value: object, secret: str) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, (str, bytes)):
+        text = value.decode("utf-8", "replace") if isinstance(value, bytes) else value
+        return secret in text
+    try:
+        rendered = repr(value)
+    except Exception:
+        rendered = type(value).__name__
+    return secret in rendered
 
 
 def _exception_graph_contains_secret(error: BaseException, secret: str) -> list[str]:
     """Return paths in the exception graph where secret appears."""
     paths: list[str] = []
     seen: set[int] = set()
+
+    def walk_tb(tb, prefix: str) -> None:
+        depth = 0
+        while tb is not None:
+            frame = tb.tb_frame
+            locals_map = getattr(frame, "f_locals", {}) or {}
+            for name, value in locals_map.items():
+                if secret in str(name) or _value_contains_secret(value, secret):
+                    paths.append(f"{prefix}.tb[{depth}].f_locals.{name}")
+            tb = tb.tb_next
+            depth += 1
 
     def walk(exc: BaseException | None, prefix: str) -> None:
         if exc is None or id(exc) in seen:
@@ -657,12 +891,21 @@ def _exception_graph_contains_secret(error: BaseException, secret: str) -> list[
             paths.append(f"{prefix}:str")
         if secret in repr(exc):
             paths.append(f"{prefix}:repr")
+        if _value_contains_secret(getattr(exc, "args", ()), secret):
+            paths.append(f"{prefix}.args")
+        for key, value in getattr(exc, "__dict__", {}).items():
+            if secret in str(key) or _value_contains_secret(value, secret):
+                paths.append(f"{prefix}.{key}")
         for attr in ("problem_mark", "context_mark", "problem", "context"):
             mark = getattr(exc, attr, None)
-            if mark is not None:
-                buffer = getattr(mark, "buffer", None)
-                if buffer is not None and secret in buffer:
-                    paths.append(f"{prefix}.{attr}.buffer")
+            if mark is None:
+                continue
+            if _value_contains_secret(mark, secret):
+                paths.append(f"{prefix}.{attr}")
+            buffer = getattr(mark, "buffer", None)
+            if buffer is not None and _value_contains_secret(buffer, secret):
+                paths.append(f"{prefix}.{attr}.buffer")
+        walk_tb(exc.__traceback__, f"{prefix}.__traceback__")
         walk(exc.__cause__, f"{prefix}.__cause__")
         walk(exc.__context__, f"{prefix}.__context__")
 
@@ -683,7 +926,7 @@ def test_provider_settings_repr_and_str_secret_safe():
     assert SECRET_TOKEN not in str(settings)
 
 
-def test_malformed_yaml_exception_chain_secret_safe(config_path):
+def test_malformed_yaml_exception_chain_secret_safe(config_path, caplog):
     config_path.write_text(
         f"provider: opencode_go\napi_key: {SECRET_TOKEN}\n: [unterminated\n",
         encoding="utf-8",
@@ -696,6 +939,7 @@ def test_malformed_yaml_exception_chain_secret_safe(config_path):
         assert SECRET_TOKEN not in str(error)
         assert SECRET_TOKEN not in repr(error)
         assert SECRET_TOKEN not in rendered
+        assert SECRET_TOKEN not in caplog.text
         assert error.__cause__ is None
         assert error.__context__ is None
         assert leaks == []
