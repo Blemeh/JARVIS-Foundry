@@ -9,13 +9,13 @@ semantics: preferred -> fallbacks -> BLOCKED.
 DIR-2026-08-12 MANDATORY INTERNAL MODEL ROUTING: every REAL JARVIS internal
 dispatch (builder, verifier, researcher, repairer, reviewer, planner,
 replacement worker, mission specialist, retry/recovery worker, live canary)
-must resolve to provider ``opencode_go`` + model ``deepseek-v4-flash`` with
-NO fallbacks. The owner's DeepSeek-only constraint overrides the provider
-diversity preference during this build window; a non-compliant role must be
-recorded BLOCKED, never substituted with another model. ``BUILTIN_ROLES``
-implements exactly this policy, and ``RoleRouter.enforce_directive_routing``
-rejects any configuration that deviates (used by the production wiring —
-``v3_loop.run_one_loop`` and the live loop drivers — before any mutation).
+must resolve to the machine-local provider configuration (default
+``opencode_go`` + ``muse-spark-1.2-contributor``) with NO fallbacks. A
+non-compliant role must be recorded BLOCKED, never substituted with another
+model. ``builtin_roles()`` implements exactly this policy, and
+``RoleRouter.enforce_directive_routing`` rejects any configuration that
+deviates (used by the production wiring — ``v3_loop.run_one_loop`` and the
+live loop drivers — before any mutation).
 
 The router is pure configuration logic; it never launches anything.
 """
@@ -31,62 +31,75 @@ try:
 except ImportError:  # pragma: no cover - venv provides pyyaml
     yaml = None  # type: ignore[assignment]
 
-#: DIR-2026-08-12 mandatory internal model routing: the ONLY provider/model
-#: pair every real JARVIS role may resolve to, with no fallbacks.
-DIRECTIVE_PROVIDER = "opencode_go"
-DIRECTIVE_MODEL = "deepseek-v4-flash"
+from ..runtime.provider_config import ProviderSettings, default_provider_settings
 
-BUILTIN_ROLES: dict[str, dict[str, Any]] = {
-    "executive": {
-        "preferred_provider": DIRECTIVE_PROVIDER,
-        "preferred_model": DIRECTIVE_MODEL,
-        "fallbacks": [],
-        "independence_group": "executive",
-        "required_capabilities": ["structured_reasoning"],
-    },
-    "builder": {
-        "preferred_provider": DIRECTIVE_PROVIDER,
-        "preferred_model": DIRECTIVE_MODEL,
-        "fallbacks": [],
-        "independence_group": "builder",
-        "required_capabilities": ["code", "tools"],
-    },
-    "verifier": {
-        "preferred_provider": DIRECTIVE_PROVIDER,
-        "preferred_model": DIRECTIVE_MODEL,
-        "fallbacks": [],
-        "independence_group": "verifier",
-        "required_capabilities": ["artifact_inspection", "adversarial_verification"],
-    },
-    "critic": {
-        "preferred_provider": DIRECTIVE_PROVIDER,
-        "preferred_model": DIRECTIVE_MODEL,
-        "fallbacks": [],
-        "independence_group": "critic",
-        "required_capabilities": ["adversarial_review", "artifact_inspection"],
-    },
-    "repair": {
-        "preferred_provider": DIRECTIVE_PROVIDER,
-        "preferred_model": DIRECTIVE_MODEL,
-        "fallbacks": [],
-        "independence_group": "repair",
-        "required_capabilities": ["code", "tools", "tests"],
-    },
-    "researcher": {
-        "preferred_provider": DIRECTIVE_PROVIDER,
-        "preferred_model": DIRECTIVE_MODEL,
-        "fallbacks": [],
-        "independence_group": "research",
-        "required_capabilities": ["research"],
-    },
-    "premium_reviewer": {
-        "preferred_provider": DIRECTIVE_PROVIDER,
-        "preferred_model": DIRECTIVE_MODEL,
-        "fallbacks": [],
-        "independence_group": "premium",
-        "required_capabilities": ["multimodal"],
-    },
-}
+#: Template defaults mirrored in provider.yaml.example.
+DIRECTIVE_PROVIDER = "opencode_go"
+DIRECTIVE_MODEL = "muse-spark-1.2-contributor"
+
+
+def builtin_roles(
+    settings: ProviderSettings | None = None,
+) -> dict[str, dict[str, Any]]:
+    """Built-in role routing from trusted provider settings (no disk read)."""
+    authority = settings or default_provider_settings()
+    provider = authority.provider
+    model = authority.model
+    return {
+        "executive": {
+            "preferred_provider": provider,
+            "preferred_model": model,
+            "fallbacks": [],
+            "independence_group": "executive",
+            "required_capabilities": ["structured_reasoning"],
+        },
+        "builder": {
+            "preferred_provider": provider,
+            "preferred_model": model,
+            "fallbacks": [],
+            "independence_group": "builder",
+            "required_capabilities": ["code", "tools"],
+        },
+        "verifier": {
+            "preferred_provider": provider,
+            "preferred_model": model,
+            "fallbacks": [],
+            "independence_group": "verifier",
+            "required_capabilities": ["artifact_inspection", "adversarial_verification"],
+        },
+        "critic": {
+            "preferred_provider": provider,
+            "preferred_model": model,
+            "fallbacks": [],
+            "independence_group": "critic",
+            "required_capabilities": ["adversarial_review", "artifact_inspection"],
+        },
+        "repair": {
+            "preferred_provider": provider,
+            "preferred_model": model,
+            "fallbacks": [],
+            "independence_group": "repair",
+            "required_capabilities": ["code", "tools", "tests"],
+        },
+        "researcher": {
+            "preferred_provider": provider,
+            "preferred_model": model,
+            "fallbacks": [],
+            "independence_group": "research",
+            "required_capabilities": ["research"],
+        },
+        "premium_reviewer": {
+            "preferred_provider": provider,
+            "preferred_model": model,
+            "fallbacks": [],
+            "independence_group": "premium",
+            "required_capabilities": ["multimodal"],
+        },
+    }
+
+
+# Backward-compatible alias (deterministic defaults, no disk read).
+BUILTIN_ROLES: dict[str, dict[str, Any]] = builtin_roles()
 
 DIVERSITY_EXEMPT_ROLES = {"executive", "researcher", "premium_reviewer"}
 
@@ -114,13 +127,24 @@ class RoleConfigurationError(RuntimeError):
 
 
 class RoleRouter:
-    def __init__(self, roles: dict[str, RoleConfig] | None = None) -> None:
+    def __init__(
+        self,
+        roles: dict[str, RoleConfig] | None = None,
+        *,
+        provider_settings: ProviderSettings | None = None,
+    ) -> None:
+        self._provider_settings = provider_settings or default_provider_settings()
         self._roles = dict(roles or {})
-        for role, defaults in BUILTIN_ROLES.items():
+        for role, defaults in builtin_roles(self._provider_settings).items():
             self._roles.setdefault(role, RoleConfig(role=role, **defaults))
 
     @classmethod
-    def from_yaml(cls, path: str | Path) -> "RoleRouter":
+    def from_yaml(
+        cls,
+        path: str | Path,
+        *,
+        provider_settings: ProviderSettings | None = None,
+    ) -> "RoleRouter":
         """Load a role configuration from a model_roles YAML file.
 
         Unknown/missing files fall back to the built-in configuration so the
@@ -159,7 +183,7 @@ class RoleRouter:
                 required_capabilities=tuple(
                     str(item) for item in spec.get("required_capabilities", [])),
             )
-        return cls(roles)
+        return cls(roles, provider_settings=provider_settings)
 
     def known_roles(self) -> tuple[str, ...]:
         return tuple(sorted(self._roles))
@@ -182,17 +206,18 @@ class RoleRouter:
         Called by the production wiring (``v3_loop.run_one_loop`` and the
         live loop drivers) BEFORE any mutation or dispatch.
         """
+        authority = self._provider_settings
         offenders = sorted(
             role for role, cfg in self._roles.items()
-            if cfg.preferred_provider != DIRECTIVE_PROVIDER
-            or cfg.preferred_model != DIRECTIVE_MODEL
+            if cfg.preferred_provider != authority.provider
+            or cfg.preferred_model != authority.model
             or bool(cfg.fallbacks)
         )
         if offenders:
             raise RoleConfigurationError(
                 "DIR-2026-08-12 mandatory model routing violated for roles "
                 f"{offenders}: every real JARVIS role must resolve to "
-                f"provider={DIRECTIVE_PROVIDER!r} model={DIRECTIVE_MODEL!r} "
+                f"provider={authority.provider!r} model={authority.model!r} "
                 "with no fallbacks; a non-compliant role must be recorded "
                 "BLOCKED, never substituted with another model")
 
@@ -250,4 +275,4 @@ class RoleRouter:
                 independence_group=str(patch.get("independence_group", current.independence_group)),
                 required_capabilities=tuple(patch.get("required_capabilities", current.required_capabilities)),
             )
-        return RoleRouter(roles)
+        return RoleRouter(roles, provider_settings=self._provider_settings)

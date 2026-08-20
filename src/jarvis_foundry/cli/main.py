@@ -102,12 +102,20 @@ def _installer(args, paths: FoundryPaths) -> Installer:
         task_name = V1_TASK_NAME
     elif task_name is None:
         task_name = f"{V1_TASK_NAME}-staging"
+    exec_command = None
+    exec_arguments = None
+    if task_name == V1_TASK_NAME:
+        from ..deployment.layout import headless_task_command
+        exec_command, prefix = headless_task_command()
+        exec_arguments = f'{prefix} --home "{paths.home}"'
     return Installer(
         FoundryDatabase(paths.database),
         task_name=task_name,
         foundry_home=paths.home,
         hermes_home=FoundryPaths.hermes_home(),
         profile={"start_record": str(paths.database), "model_roles": "default"},
+        exec_command=exec_command,
+        exec_arguments=exec_arguments,
     )
 
 
@@ -201,10 +209,10 @@ def _release_command(args, paths: FoundryPaths) -> int:
     if args.release_command == "activate":
         os.environ.setdefault("JARVIS_INSTALL_ROOT", str(resolve_install_root(root)))
         pointers = set_current(args.sha, root=root)
-        from ..deployment.layout import launcher_cmd
+        from ..deployment.layout import headless_task_command
         from ..deployment.release import validate_release
         identity = validate_release(args.sha, root=root, require_schema_match=False)
-        launcher = launcher_cmd(root)
+        task_command, task_prefix = headless_task_command(root)
         spawn = bool(getattr(args, "spawn_worker_loop", False))
         worker_config = getattr(args, "worker_config", None)
         extra = ""
@@ -218,8 +226,8 @@ def _release_command(args, paths: FoundryPaths) -> int:
             foundry_home=paths.home,
             hermes_home=Paths.hermes_home(),
             python_exe=identity["python_exe"],
-            exec_command=launcher,
-            exec_arguments=f'--home "{paths.home}"{extra}',
+            exec_command=task_command,
+            exec_arguments=f'{task_prefix} --home "{paths.home}"{extra}',
             profile={
                 "start_record": str(paths.database),
                 "spawn_worker_loop": "true" if spawn else "false",

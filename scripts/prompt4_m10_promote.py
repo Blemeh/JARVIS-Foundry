@@ -11,7 +11,11 @@ sys.path.insert(0, str(REPO / "src"))
 
 from jarvis_foundry.command_center import _CommandCenterHandler, build_snapshot
 from jarvis_foundry.database import FoundryDatabase
-from jarvis_foundry.deployment.layout import default_live_foundry_home
+from jarvis_foundry.deployment.layout import (
+    current_pointer,
+    default_live_foundry_home,
+    release_dir,
+)
 from jarvis_foundry.deployment.release import (
     build_release,
     read_current,
@@ -21,19 +25,32 @@ from jarvis_foundry.deployment.release import (
     set_current,
 )
 from jarvis_foundry.paths import FoundryPaths
+from jarvis_foundry.platform.windows_subprocess import headless_run_kwargs
 
 SHA = "52ee917208e5964992125f478508460cd9893514"
-CMD = Path(r"C:\Users\b\AppData\Local\JARVIS\bin\jarvis-supervisor.cmd")
 HOME = default_live_foundry_home()
 EVIDENCE = REPO / "docs" / "evidence" / "PROMPT4_RECOVERY"
 
 
+def _current_release_pythonw() -> Path:
+    sha = current_pointer().read_text(encoding="utf-8").strip().splitlines()[0].strip()
+    pythonw = release_dir(sha) / ".venv" / "Scripts" / "pythonw.exe"
+    if not pythonw.is_file():
+        raise FileNotFoundError(f"release pythonw missing for CURRENT {sha}: {pythonw}")
+    return pythonw
+
+
 def validate() -> dict:
     result = subprocess.run(
-        [str(CMD), "--home", str(HOME), "--validate-only"],
+        [
+            str(_current_release_pythonw()),
+            "-m", "jarvis_foundry.deployment.headless_launcher",
+            "--home", str(HOME), "--validate-only",
+        ],
         capture_output=True, text=True, timeout=60,
         env={k: v for k, v in __import__("os").environ.items()
              if k not in {"PYTHONPATH", "PYTHONHOME"}},
+        **headless_run_kwargs(),
     )
     body = (result.stdout or "") + (result.stderr or "")
     try:

@@ -122,12 +122,16 @@ def test_lab_scripted_hermes_does_not_use_cwd(tmp_path, monkeypatch):
 
 
 def test_stable_launcher_cmd_clears_pythonpath(tmp_path):
+    from jarvis_foundry.deployment.layout import headless_launcher_cmd
     from jarvis_foundry.deployment.release import _install_stable_launcher
     path = _install_stable_launcher(tmp_path / "JARVIS")
     text = path.read_text(encoding="utf-8")
     assert "PYTHONPATH=" in text
     assert "jarvis_foundry.deployment.launcher" in text
     assert launcher_cmd(tmp_path / "JARVIS") == path
+    headless = headless_launcher_cmd(tmp_path / "JARVIS")
+    assert headless.is_file()
+    assert "pythonw.exe" in headless.read_text(encoding="utf-8")
 
 
 def test_rollback_swaps_current_and_previous(tmp_path):

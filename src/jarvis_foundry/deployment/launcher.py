@@ -25,6 +25,12 @@ def _release_root_from_prefix() -> Path:
     return prefix
 
 
+def _release_python_executables(python_exe: Path) -> set[Path]:
+    """Console and GUI-subsystem interpreters for the same release venv."""
+    resolved = python_exe.resolve()
+    return {resolved, resolved.with_name("pythonw.exe").resolve()}
+
+
 def validate_running_identity(home: Path) -> dict[str, object]:
     root = install_root()
     current = current_pointer().read_text(encoding="utf-8").strip().splitlines()[0].strip()
@@ -35,7 +41,8 @@ def validate_running_identity(home: Path) -> dict[str, object]:
             f"sys.prefix release {observed_dir} != CURRENT {expected_dir}")
     identity = validate_release(current, foundry_home=home, require_schema_match=True)
     python_exe = Path(identity["python_exe"]).resolve()
-    if Path(sys.executable).resolve() != python_exe:
+    running = Path(sys.executable).resolve()
+    if running not in _release_python_executables(python_exe):
         raise ReleaseError(
             f"sys.executable {sys.executable} != release python {python_exe}")
     origin = Path(__import__("jarvis_foundry").__file__).resolve()

@@ -5,12 +5,10 @@ status: "INACTIVE_EXAMPLE"
 # internal dispatch (executive, builder, verifier, critic, repair,
 # researcher, premium_reviewer, replacement workers, recovery workers,
 # live canaries) must resolve to provider "opencode_go" + model
-# "deepseek-v4-flash" with NO fallbacks. The owner's DeepSeek-only
-# constraint overrides provider-diversity preferences during this build
-# window; verifier independence is delivered through separate verifier
-# sessions, read-only verification of frozen artifacts and deterministic
-# adversarial probes. If deepseek-v4-flash is unavailable, the dispatch
-# is recorded BLOCKED — never substituted with another model.
+# "muse-spark-1.2-contributor" with NO fallbacks. Provider/model/base_url/
+# api_key are owned by %LOCALAPPDATA%\JARVIS\config\provider.yaml. If the
+# configured model is unavailable, the dispatch is recorded BLOCKED — never
+# substituted with another model.
 # RoleRouter.enforce_directive_routing() rejects any deviation; the
 # production wiring (v3_loop.run_one_loop, live loop drivers) calls it
 # before any mutation.
@@ -24,7 +22,7 @@ policy:
 roles:
   executive:
     preferred_provider: "opencode_go"
-    preferred_model: "deepseek-v4-flash"
+    preferred_model: "muse-spark-1.2-contributor"
     fallbacks: []
     required_capabilities:
       - "structured_reasoning"
@@ -34,7 +32,7 @@ roles:
 
   builder:
     preferred_provider: "opencode_go"
-    preferred_model: "deepseek-v4-flash"
+    preferred_model: "muse-spark-1.2-contributor"
     fallbacks: []
     required_capabilities:
       - "code"
@@ -45,7 +43,7 @@ roles:
 
   verifier:
     preferred_provider: "opencode_go"
-    preferred_model: "deepseek-v4-flash"
+    preferred_model: "muse-spark-1.2-contributor"
     fallbacks: []
     required_capabilities:
       - "artifact_inspection"
@@ -56,7 +54,7 @@ roles:
 
   critic:
     preferred_provider: "opencode_go"
-    preferred_model: "deepseek-v4-flash"
+    preferred_model: "muse-spark-1.2-contributor"
     fallbacks: []
     required_capabilities:
       - "adversarial_review"
@@ -67,7 +65,7 @@ roles:
 
   repair:
     preferred_provider: "opencode_go"
-    preferred_model: "deepseek-v4-flash"
+    preferred_model: "muse-spark-1.2-contributor"
     fallbacks: []
     required_capabilities:
       - "code"
@@ -79,7 +77,7 @@ roles:
 
   researcher:
     preferred_provider: "opencode_go"
-    preferred_model: "deepseek-v4-flash"
+    preferred_model: "muse-spark-1.2-contributor"
     fallbacks: []
     required_capabilities:
       - "research"
@@ -89,7 +87,7 @@ roles:
 
   premium_reviewer:
     preferred_provider: "opencode_go"
-    preferred_model: "deepseek-v4-flash"
+    preferred_model: "muse-spark-1.2-contributor"
     fallbacks: []
     required_capabilities:
       - "multimodal"

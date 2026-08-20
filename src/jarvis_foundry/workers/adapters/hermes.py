@@ -39,6 +39,11 @@ from ..envelope import (
     VERDICT_NOT_TESTED,
     ResultEnvelope,
 )
+from ...runtime.provider_config import (
+    ProviderCredentialError,
+    ProviderSettings,
+    hermes_provider_env,
+)
 from .base import (
     AdapterConfigurationError,
     ProviderUnavailable,
@@ -87,13 +92,17 @@ class HermesWorkerAdapter:
         stop_path: Path | str | None = None,
         pid_table: Path | str | None = None,
         workers: Any = None,
+        provider_settings: ProviderSettings | None = None,
     ) -> None:
+        from ...runtime.provider_config import default_provider_settings
+
         self.hermes_root = hermes_root.resolve()
         self.hermes_home = hermes_home.resolve()
         self.enabled = enabled
         self.timeout_seconds = timeout_seconds
         self.python_exe = python_exe
         self.framework = "hermes"
+        self.provider_settings = provider_settings or default_provider_settings()
         self.stop_path = Path(stop_path).resolve() if stop_path is not None else None
         self.pid_table = Path(pid_table).resolve() if pid_table is not None else None
         self.workers = workers
@@ -127,6 +136,10 @@ class HermesWorkerAdapter:
             raise ProviderUnavailable(
                 "real Hermes dispatch is disabled; enable explicitly with "
                 "an isolated HERMES_HOME")
+        try:
+            provider_env = hermes_provider_env(self.provider_settings)
+        except ProviderCredentialError as error:
+            raise ProviderUnavailable(str(error)) from error
         started = isoformat(utc_now())
         usage_path: Path | None = None
         if self.timeout_seconds > 0:
@@ -135,6 +148,7 @@ class HermesWorkerAdapter:
             **os.environ,
             "HERMES_HOME": str(self.hermes_home),
             **result_env(contract.working_root),
+            **provider_env,
             # The session must operate INSIDE the contract working root so
             # every write lands in the worker's allowed scope. The checkout
             # code is resolved via PYTHONPATH (prepended before site-packages),
@@ -194,9 +208,9 @@ class HermesWorkerAdapter:
         cost = self._read_usage_cost(usage_path)
         usage_availability = "available" if cost not in (0.0, None) else NOT_AVAILABLE
         stdout = redact_secrets(
-            process.stdout or "", configured_key=configured_api_key())
+            process.stdout or "", configured_key=configured_api_key(self.provider_settings))
         stderr = redact_secrets(
-            process.stderr or "", configured_key=configured_api_key())
+            process.stderr or "", configured_key=configured_api_key(self.provider_settings))
         self._scrub_disposable_home()
         if process.returncode != 0:
             return ResultEnvelope.from_contract(
@@ -277,7 +291,7 @@ class HermesWorkerAdapter:
         """Redact credential-shaped tokens from the disposable HERMES_HOME
         (state.db, auth.json, sessions) so no retained run-state file ever
         holds the secret value."""
-        key = configured_api_key()
+        key = configured_api_key(self.provider_settings)
         if not self.hermes_home.exists():
             return
         scanned = 0

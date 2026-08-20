@@ -23,8 +23,8 @@ reaper handles worker leases, WP2).
 """
 from __future__ import annotations
 
+from dataclasses import replace
 import json
-from pathlib import Path
 from typing import Callable
 
 from ..clock import isoformat, utc_now
@@ -154,6 +154,14 @@ class RoleDispatcher:
         row = self.database.row("agent_runs", "run_id", run_id)
         if row is None or row["status"] != "COMPLETED":
             return None
+        # Recompute the manifest hash using the persisted execution identity
+        # so machine-local default model changes do not break replay.
+        if row.get("provider") and row.get("model"):
+            prospective = replace(
+                prospective,
+                provider=str(row["provider"]),
+                model=str(row["model"]),
+            )
         if row["context_manifest_hash"] != prospective.content_hash():
             return None  # changed context under the same run_id: not a replay
         try:

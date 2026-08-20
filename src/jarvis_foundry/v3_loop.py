@@ -191,10 +191,10 @@ def run_one_loop(db: FoundryDatabase, *, loop_id: str, adapter: Any,
     report: dict[str, Any] = {"loop_id": loop_id}
 
     # 0. MANDATORY MODEL ROUTING (DIR-2026-08-12): every real role must
-    # resolve to opencode_go + deepseek-v4-flash with no fallbacks. A
-    # non-compliant router refuses the loop BEFORE any observation,
-    # mutation or dispatch (dispatch would have to be BLOCKED, never
-    # substituted with another model).
+    # resolve to the configured provider policy (provider.yaml) with no
+    # fallbacks. A non-compliant router refuses the loop BEFORE any
+    # observation, mutation or dispatch (dispatch would have to be BLOCKED,
+    # never substituted with another model).
     router.enforce_directive_routing()
 
     # 1+2. OBSERVE + RECORD EVIDENCE (live ingestion, bounded)

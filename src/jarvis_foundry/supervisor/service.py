@@ -10,6 +10,7 @@ from ..events import Event
 from ..reconcile import inspect as inspect_ledger
 from ..reconcile import reconcile
 from ..runtime.authority import ALLOWED_TRUST_STATES
+from ..runtime.provider_config import ProviderConfigError, ProviderSettings
 from .estop import EmergencyStop
 from .leases import LeaseManager, LeaseUnavailable
 from .worker import WorkerController
@@ -31,6 +32,7 @@ class Supervisor:
         spawn_worker_loop: bool = False,
         worker_loop_config: str | Path | None = None,
         ledger_heartbeat_seconds: int = 60,
+        provider_settings: ProviderSettings | None = None,
     ) -> None:
         self.database = database
         self.estop = EmergencyStop(stop_path)
@@ -43,6 +45,7 @@ class Supervisor:
         self.worker_loop_config = (
             Path(worker_loop_config) if worker_loop_config is not None else None)
         self.ledger_heartbeat_seconds = ledger_heartbeat_seconds
+        self._provider_settings = provider_settings
 
     def start(self) -> str:
         self.database.initialize()
@@ -191,8 +194,11 @@ class Supervisor:
         from ..runtime.config import WorkerRuntimeConfig
 
         try:
-            config = WorkerRuntimeConfig.from_yaml(self.worker_loop_config)
-        except (OSError, ValueError, TypeError):
+            config = WorkerRuntimeConfig.from_yaml(
+                self.worker_loop_config,
+                provider_settings=self._provider_settings,
+            )
+        except (OSError, ValueError, TypeError, ProviderConfigError):
             return
         if not config.enabled:
             return
@@ -200,8 +206,9 @@ class Supervisor:
         if status.alive:
             return
         home = Path(self.database.path).resolve().parent
+        from ..platform.windows_subprocess import background_python_executable
         command = [
-            sys.executable, "-m", "jarvis_foundry.runtime.worker_loop",
+            background_python_executable(), "-m", "jarvis_foundry.runtime.worker_loop",
             "--once", "--home", str(home),
         ]
         if self.worker_loop_config is not None:

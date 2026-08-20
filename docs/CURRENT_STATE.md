@@ -6,32 +6,33 @@ every promotion/remaster mission (see `docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.
 If this document and another current-status document disagree, THIS document wins
 for "what exists now" claims; the architecture contract wins for binding invariants.
 
-Last reconciled: 2026-08-19 (docs-only convergence evidence at e9da9ba; source gates verified at 84a22b4; c60db92 runtime freeze/restart, R3 proving-window registration, disabled worker-loop registration, schema34 deployment/restore rehearsal, and legacy evidence preserved)
+Last reconciled: 2026-08-20 (provider-config promoted to main at cc5cde2;
+immutable release deployed; machine-local provider.yaml active; Muse live probe PASS)
 
 ```text
-CURRENT CANONICAL HEAD:      e9da9ba (latest canonical repository/evidence head;
-                             source gates were verified at 84a22b4, semantic
-                             runtime source remains 93d23f5, and the running
-                             deployed release remains c60db92)
-CURRENT REPOSITORY HEAD:     e9da9ba (docs-only descendant of the tested
-                             source base; the exact c60db92 runtime is not
-                             silently replaced)
-CURRENT STATE RECORD:        e9da9ba (current-head convergence evidence is
-                             recorded under docs/convergence/)
-TESTED SOURCE HEAD:          84a22b4 (fresh 1260-test full suite and 100-test
-                             R7-R12 convergence suite; docs-only candidate
-                             evidence commits follow)
+CURRENT CANONICAL HEAD:      cc5cde2 (main: provider-config security closure merged;
+                             machine-local provider.yaml authority, subject-bound
+                             historical identity, YAML parse secret isolation)
+CURRENT REPOSITORY HEAD:     cc5cde2 (origin/main aligned)
+CURRENT STATE RECORD:        cc5cde2 (provider-config promoted and deployed)
+TESTED SOURCE HEAD:          cc5cde2 (1465-test full suite + 194 focused security
+                             verification; independent verifier PASS)
+DEPLOYED RELEASE:            cc5cde269e69a71e592bb6849cf7f12973a86ade (CURRENT)
+PREVIOUS RELEASE:            2940418273bfd013f33938f8d337772d44e8f1f8 (PREVIOUS)
+PROVIDER CONFIG:             %LOCALAPPDATA%\\JARVIS\\config\\provider.yaml
+                             (opencode_go / muse-spark-1.2-contributor / OpenCode Go URL)
 LATEST R10 FOCUSED SOURCE:   93d23f5 (authenticated nonce-bound
                              REPRIORITIZE/REDIRECT consumer plus exactly-once
-                             replay repair; live provider dispatch remains NOT_TESTED)
+                             replay repair)
 LETTA PROMOTION ANCESTOR:    2f7360e742559e051109e04ef7f3a82cc64cc2d2 (still an ancestor of HEAD)
 PRE-V8 HISTORICAL BASELINE:  93a3ddc0965dfaf3e4cb9dc0952467bd5250520a (historical only — do not reset to it)
-CURRENT SCHEMA:              v34 (adds event-derived mission_step_contracts;
-                             the live deployed database remains v33 until a
-                             controlled migration)
-FULL SUITE:                  1260 collected at tested source base 84a22b4;
-                             failures=0, errors=0, skipped=0 (see
-                             docs/convergence/CURRENT_CANONICAL_FULL_SUITE_20260819_JUNIT.xml)
+CURRENT SCHEMA:              v34 (live deployed database at schema v34)
+FULL SUITE:                  1465 collected at cc5cde2;
+                             failures=0, errors=0, skipped=0
+MUSE LIVE VALIDATED:         YES (bounded Hermes oneshot via JARVIS provider.yaml wiring;
+                             response MUSE_PROBE_OK; no DeepSeek fallback observed)
+API KEY STATUS:              CONFIGURED (migrated from existing local Hermes credential;
+                             not stored in Git or immutable release directories)
 SUPERVISOR STATE:            RUNNING (single lease owner, heartbeat advancing)
 STOP STATE:                  OFF (no sentinel, no active STOP/PAUSE directives)
 ACTIVE DIRECTIVES:           redirect, waive, extend_duty_window, align
@@ -149,6 +150,7 @@ browser substrate, and it cannot activate native desktop execution.
 | JARVIS Eyes Phase 2 | PASS — 20/20 faults, rollback/live probe, read-only boundary |
 | Workflow Discovery Phase 3 | PASS — 36/36 focused, F1–F25, bounded probe, independent review |
 | Procedural Learning Phase 4 | PASS — 23/23 focused, F1–F24, artifact-byte tamper, zero-effect shadow, local browser probe, rollback, fresh independent review |
+| Provider-config security closure | PASS — subject-bound historical identity, YAML secret isolation, 1465/1465 suite, promoted to main cc5cde2, immutable release deployed, Muse live probe PASS |
 | Post-V7 canonical convergence (R7–R12 semantic closure) | PASS_WITH_BOUNDARY — exact Supervisor authority across low-level evolution/control surfaces; focused gates and the 1,260-test current-source suite pass; isolated promotion, post-promotion runtime probe, and disposable local accessibility audit PASS; live/provider/elapsed boundaries remain explicit |
 | R10 authenticated mission-directive consumer | PASS_WITH_BOUNDARY — nonce-bound REPRIORITIZE/REDIRECT reaches the existing MissionLoop path; 26 focused tests and fresh verifier PASS; live Supervisor/Hermes/provider dispatch remains NOT_TESTED |
 | R10 exactly-once replay repair | PASS — ordinary mission instructions preserve the caller manifest hash; authenticated REDIRECT remains canonical; 36 focused tests and the 1,260-test current-source suite PASS |

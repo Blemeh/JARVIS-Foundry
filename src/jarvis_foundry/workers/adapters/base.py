@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING, Callable, Protocol
 from ..contracts import WorkerStepContract
 from ..envelope import ResultEnvelope
 
+from ...runtime.provider_config import ProviderSettings
+
 if TYPE_CHECKING:
     from ...supervisor.worker import WorkerController
 
@@ -42,13 +44,14 @@ def redact_secrets(text: str, *, configured_key: str | None = None) -> str:
     return out
 
 
-def configured_api_key() -> str | None:
-    """The OpenCode Go credential the worker needs (never printed)."""
-    import os
+def configured_api_key(settings: ProviderSettings) -> str | None:
+    """Return the resolved credential without re-reading configuration."""
+    return settings.api_key
 
-    return (os.environ.get("JARVIS_OPENCODE_API_KEY")
-            or os.environ.get("OPENCODE_GO_API_KEY")
-            or os.environ.get("OPENCODE_API_KEY") or None)
+
+def configured_base_url(settings: ProviderSettings) -> str:
+    """Return the resolved base URL without re-reading configuration."""
+    return settings.base_url
 
 
 class WorkerAdapter(Protocol):
@@ -103,13 +106,14 @@ def run_subprocess_with_heartbeat(
         unregister_adapter_pid,
     )
 
-    popen_kwargs: dict[str, object] = {
-        "cwd": cwd,
-        "env": env,
-        "stdout": subprocess.PIPE,
-        "stderr": subprocess.PIPE,
-        "text": True,
-    }
+    from ...platform.windows_subprocess import headless_popen_kwargs
+    popen_kwargs: dict[str, object] = headless_popen_kwargs(
+        cwd=cwd,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
     if encoding is not None:
         popen_kwargs["encoding"] = encoding
     if errors is not None:

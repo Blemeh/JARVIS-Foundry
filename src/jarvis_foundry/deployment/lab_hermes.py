@@ -91,8 +91,10 @@ class LabHermesAdapter(ScriptedWorkerAdapter):
         """
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(PARTIAL_BYTES, encoding="utf-8")
+        from ..platform.windows_subprocess import headless_popen_kwargs
         holder = subprocess.Popen(
             [sys.executable, "-c", "import time; time.sleep(600)"],
+            **headless_popen_kwargs(),
         )
         self.last_owned_pid = holder.pid
         pid_path = Path(contract.working_root) / OWNED_PID_NAME

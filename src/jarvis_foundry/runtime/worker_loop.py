@@ -20,9 +20,9 @@ refuses to start cycles while STOP is active or while the subsystem is
 configured disabled, holds its own durable singleton lease, and relies on
 the canonical replay/dedup semantics for exactly-once recovery.
 
-No credential is ever read or stored here: adapters consume
-``JARVIS_OPENCODE_API_KEY`` / ``JARVIS_OPENCODE_BASE_URL`` from the process
-environment (approved runtime configuration, never committed).
+No credential is ever read or stored here: adapters consume the resolved
+machine-local provider configuration (``%LOCALAPPDATA%/JARVIS/config/provider.yaml``
+with legacy env compatibility) at process start.
 """
 from __future__ import annotations
 
@@ -53,6 +53,7 @@ from ..workers.contracts import WORKER_OPENHANDS
 from ..workers.router import NOT_READY, READY
 from ._stack import build_worker_stack
 from .config import WorkerRuntimeConfig
+from .provider_config import ProviderConfigError
 
 LOOP_LEASE_KEY = "worker-loop:singleton"
 DEFAULT_MISSION_ID = "mission-wfm-optimizer"
@@ -264,7 +265,7 @@ def run_cycle(
                 mission_id=mission_id, reason=f"invalid executable contract: {error}",
             )
 
-        role_router = RoleRouter()
+        role_router = RoleRouter(provider_settings=config.provider_settings)
         role_router.enforce_directive_routing()
         stack = build_worker_stack(
             database, paths, config, run_id=f"loop-{loop_id}")
@@ -320,7 +321,20 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     paths = FoundryPaths.discover(getattr(args, "home", None))
-    config = WorkerRuntimeConfig.from_yaml(args.config)
+    if EmergencyStop(paths.emergency_stop).active():
+        print(json.dumps({
+            "worker_loop": "FROZEN",
+            "reason": "emergency stop is active",
+        }, indent=2))
+        return 0
+    try:
+        config = WorkerRuntimeConfig.from_yaml(args.config)
+    except (ValueError, ProviderConfigError) as error:
+        print(json.dumps({
+            "worker_loop": "BLOCKED",
+            "reason": str(error),
+        }, indent=2))
+        return 1
     if not config.enabled:
         print(json.dumps({
             "worker_loop": "DISABLED",

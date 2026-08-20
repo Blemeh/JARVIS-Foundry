@@ -6,10 +6,12 @@ artifacts, metrics and manifests. A structured verdict
 zero alone is NOT_TESTED (D-032). A verdict without a recorded
 verification request is refused (forgery guard). One verdict per
 verification. Verifier identity (provider/model/session) is recorded;
-the D-031 worker constraint is enforced (opencode_go +
-deepseek-v4-flash, no silent substitution); same-provider limitations
+the D-031 worker constraint is enforced against the resolved current
+provider policy (no silent substitution); same-provider limitations
 are flagged honestly; and a candidate can never invoke a trusted
 promotion verdict for itself (builder-session verdicts are refused).
+Persisted historical identities are accepted only when durable state
+proves the exact provider/model pair belongs to the run being replayed.
 """
 from __future__ import annotations
 
@@ -22,9 +24,12 @@ from ..database import FoundryDatabase
 from ..events import Event, canonical_json, payload_hash
 from ..supervisor.authority import SUPERVISOR_CONTROLLER
 
+from ..runtime.provider_config import (
+    ProviderSettings,
+    matches_persisted_identity,
+)
+
 VERDICTS = ("PASS", "FAIL", "BLOCKED", "NOT_TESTED")
-DIRECTIVE_PROVIDER = "opencode_go"
-DIRECTIVE_MODEL = "deepseek-v4-flash"
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
 
 
@@ -37,21 +42,86 @@ def _require(condition: bool, message: str) -> None:
         raise VerificationError(message)
 
 
-def _identity_ok(identity: dict[str, Any]) -> bool:
-    """D-031: JARVIS internal workers resolve to the directive
-    provider/model pair. Anything else is refused — unavailability is
-    BLOCKED, never silently substituted."""
-    return (isinstance(identity, dict)
-            and identity.get("provider") == DIRECTIVE_PROVIDER
-            and identity.get("model") == DIRECTIVE_MODEL
-            and isinstance(identity.get("session_id"), str)
-            and identity["session_id"].strip())
+def _normalize_step_id(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    stripped = value.strip()
+    return stripped or None
+
+
+def _durable_subject_run_identity(
+    database: FoundryDatabase,
+    *,
+    run_id: str,
+    mission_id: str,
+    step_id: str | None,
+    role: str,
+) -> dict[str, Any] | None:
+    """Provider/model from the agent_runs row that matches this execution subject."""
+    if not isinstance(run_id, str) or not run_id.strip():
+        return None
+    if not isinstance(mission_id, str) or not mission_id.strip():
+        return None
+    if not isinstance(role, str) or not role.strip():
+        return None
+    row = database.row("agent_runs", "run_id", run_id.strip())
+    if row is None:
+        return None
+    if str(row["mission_id"]) != mission_id.strip():
+        return None
+    if _normalize_step_id(row["step_id"]) != _normalize_step_id(step_id):
+        return None
+    if str(row["role"]) != role.strip():
+        return None
+    provider = row["provider"]
+    model = row["model"]
+    if not isinstance(provider, str) or not provider.strip():
+        return None
+    if not isinstance(model, str) or not model.strip():
+        return None
+    return {"provider": provider.strip(), "model": model.strip()}
+
+
+def _identity_ok(
+    settings: ProviderSettings,
+    identity: dict[str, Any],
+    *,
+    database: FoundryDatabase | None = None,
+    run_id: str | None = None,
+    mission_id: str | None = None,
+    step_id: str | None = None,
+    role: str | None = None,
+) -> bool:
+    """Current policy, or durable agent_runs identity for this exact subject."""
+    if settings.is_currently_authorized_identity(identity):
+        return True
+    if (
+        database is None
+        or run_id is None
+        or mission_id is None
+        or role is None
+    ):
+        return False
+    persisted = _durable_subject_run_identity(
+        database,
+        run_id=run_id,
+        mission_id=mission_id,
+        step_id=step_id,
+        role=role,
+    )
+    if persisted is None:
+        return False
+    return matches_persisted_identity(persisted, identity)
 
 
 def record_verification_request(
     database: FoundryDatabase, *, improvement_id: str, subject_ref: str,
     criteria: list[str], artifacts: dict[str, str],
     builder_identity: dict[str, Any], controller: str,
+    provider_settings: ProviderSettings,
+    builder_run_id: str | None = None,
+    builder_mission_id: str | None = None,
+    builder_step_id: str | None = None,
     source_type: str = "supervisor", source_id: str = "v6",
 ) -> str:
     """Record a verification REQUEST (created by the controller — the
@@ -75,9 +145,19 @@ def record_verification_request(
         "only the exact Supervisor controller identity 'supervisor' may "
         "create verification requests - refused",
     )
-    _require(_identity_ok(builder_identity),
-             "builder identity must resolve to the directive "
-             f"{DIRECTIVE_PROVIDER}/{DIRECTIVE_MODEL} — refused")
+    _require(
+        _identity_ok(
+            provider_settings,
+            builder_identity,
+            database=database,
+            run_id=builder_run_id,
+            mission_id=builder_mission_id,
+            step_id=builder_step_id,
+            role="builder",
+        ),
+        "builder identity must match current provider policy or the "
+        "persisted execution identity for this run — refused",
+    )
     if contains_secret_like(canonical_json({"criteria": criteria})):
         raise VerificationError(
             "verification criteria contain secret-like content — "
@@ -111,6 +191,10 @@ def record_verification_verdict(
     database: FoundryDatabase, *, verification_id: str, verdict: str,
     criteria_results: list[dict[str, Any]], findings: list[dict[str, Any]],
     verifier_identity: dict[str, Any], evidence_refs: list[str],
+    provider_settings: ProviderSettings,
+    verifier_run_id: str | None = None,
+    verifier_mission_id: str | None = None,
+    verifier_step_id: str | None = None,
     artifacts: dict[str, str] | None = None,
     source_type: str = "supervisor", source_id: str = "v6",
 ) -> None:
@@ -149,10 +233,20 @@ def record_verification_verdict(
                  "verification request's frozen criteria — refused "
                  "(frozen-criteria contract)")
     _require(isinstance(findings, list), "findings must be a list")
-    _require(_identity_ok(verifier_identity),
-             "verifier identity must resolve to the directive "
-             f"{DIRECTIVE_PROVIDER}/{DIRECTIVE_MODEL} — refused (no "
-             "silent substitution)")
+    _require(
+        _identity_ok(
+            provider_settings,
+            verifier_identity,
+            database=database,
+            run_id=verifier_run_id,
+            mission_id=verifier_mission_id,
+            step_id=verifier_step_id,
+            role="verifier",
+        ),
+        "verifier identity must match current provider policy or the "
+        "persisted execution identity for this run — refused "
+        "(no silent substitution)",
+    )
     _require(isinstance(evidence_refs, list), "evidence_refs must be "
              "a list")
     if artifacts is not None:

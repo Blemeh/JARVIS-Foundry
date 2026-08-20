@@ -1,9 +1,15 @@
 """Explicit auditable configuration for the live worker loop."""
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
+
+from .provider_config import (
+    ProviderSettings,
+    default_provider_settings,
+    load_provider_settings,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -11,7 +17,7 @@ class WorkerRuntimeConfig:
     """Explicit, auditable activation configuration for the worker loop.
 
     Defaults fail closed: the driver refuses to run cycles unless
-    ``enabled`` is true. Provider/model are fixed by the owner mandate.
+    ``enabled`` is true. Provider/model are owned by ``provider_settings``.
     """
 
     enabled: bool = False
@@ -20,7 +26,7 @@ class WorkerRuntimeConfig:
     resource_id: str = "resource-wfm-optimizer"
     capability: str = "write_registered_worktree_files"
     provider: str = "opencode_go"
-    model: str = "deepseek-v4-flash"
+    model: str = "muse-spark-1.2-contributor"
     runtime_state_root: str = "var/worker-runtime"
     hermes: dict[str, Any] = field(default_factory=dict)
     openhands: dict[str, Any] = field(default_factory=dict)
@@ -32,11 +38,23 @@ class WorkerRuntimeConfig:
     lab_scripted_hermes: bool = False
     lab_crash_after_write: bool = False
     lab_crash_step_id: str = "step-a"
+    provider_settings: ProviderSettings = field(default_factory=default_provider_settings)
 
     @classmethod
-    def from_yaml(cls, path: str | Path | None) -> "WorkerRuntimeConfig":
+    def from_yaml(
+        cls,
+        path: str | Path | None,
+        *,
+        provider_settings: ProviderSettings | None = None,
+    ) -> "WorkerRuntimeConfig":
+        settings = provider_settings or load_provider_settings()
         if path is None:
-            return cls()  # fail closed: disabled
+            return replace(
+                cls(),
+                provider=settings.provider,
+                model=settings.model,
+                provider_settings=settings,
+            )
         import yaml
 
         raw = yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
@@ -49,8 +67,8 @@ class WorkerRuntimeConfig:
             resource_id=str(raw.get("resource_id", "resource-wfm-optimizer")),
             capability=str(
                 raw.get("capability", "write_registered_worktree_files")),
-            provider=str(raw.get("provider", "opencode_go")),
-            model=str(raw.get("model", "deepseek-v4-flash")),
+            provider=settings.provider,
+            model=settings.model,
             runtime_state_root=str(
                 raw.get("runtime_state_root", "var/worker-runtime")),
             hermes=dict(raw.get("hermes") or {}),
@@ -65,18 +83,13 @@ class WorkerRuntimeConfig:
             lab_scripted_hermes=bool(raw.get("lab_scripted_hermes", False)),
             lab_crash_after_write=bool(raw.get("lab_crash_after_write", False)),
             lab_crash_step_id=str(raw.get("lab_crash_step_id", "step-a")),
+            provider_settings=settings,
         )
         cfg.validate()
         return cfg
 
     def resolve_stop_path(self, home: Path) -> Path:
-        """Sentinel the worker loop and bridge must watch.
-
-        Historical yaml used ``foundry/EMERGENCY_STOP`` while Foundry home
-        is already ``.../foundry``, which nested a second foundry directory
-        the CLI never writes. A leading segment equal to the home name is
-        stripped so STOP and ``jarvis stop`` share one file.
-        """
+        """Sentinel the worker loop and bridge must watch."""
         canonical = (home / "EMERGENCY_STOP").resolve()
         if not self.stop_sentinel_path:
             return canonical
@@ -89,11 +102,11 @@ class WorkerRuntimeConfig:
         return (home / configured).resolve()
 
     def validate(self) -> None:
-        """Fail closed on any deviation from the owner model mandate."""
-        from ..roles.router import DIRECTIVE_MODEL, DIRECTIVE_PROVIDER
-
-        if self.provider != DIRECTIVE_PROVIDER or self.model != DIRECTIVE_MODEL:
+        """Fail closed on any deviation from the resolved provider mandate."""
+        if (self.provider != self.provider_settings.provider
+                or self.model != self.provider_settings.model):
             raise ValueError(
-                f"worker runtime must route to {DIRECTIVE_PROVIDER!r} + "
-                f"{DIRECTIVE_MODEL!r} only, got {self.provider!r} + "
-                f"{self.model!r}")
+                f"worker runtime must route to "
+                f"{self.provider_settings.provider!r} + "
+                f"{self.provider_settings.model!r} only, got "
+                f"{self.provider!r} + {self.model!r}")

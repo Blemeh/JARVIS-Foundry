@@ -4,10 +4,9 @@
 # Consumed by `jarvis -m jarvis_foundry.runtime.worker_loop --config
 # config/worker_routing.yaml`. Explicit and auditable by design: the driver
 # refuses to run cycles while `enabled` is false, and the owner model
-# mandate (opencode_go + deepseek-v4-flash, no fallbacks) is enforced at
-# load time. The API credential is NEVER stored here; adapters consume
-# JARVIS_OPENCODE_API_KEY / JARVIS_OPENCODE_BASE_URL from the process
-# environment.
+# mandate (opencode_go + muse-spark-1.2-contributor, no fallbacks) is enforced at
+# load time. Provider/model/api_key/base_url are owned by the machine-local
+# file ``%LOCALAPPDATA%/JARVIS/config/provider.yaml`` (never committed).
 schema_version: 1
 status: "ACTIVE"            # proven live 2026-08-16; see docs/evidence/HYBRID_WORKER_LIVE_ACTIVATION.md
 enabled: true               # driver only runs cycles when explicitly launched
@@ -17,7 +16,7 @@ resource_id: "resource-wfm-optimizer"
 capability: "write_registered_worktree_files"
 
 provider: "opencode_go"
-model: "deepseek-v4-flash"
+model: "muse-spark-1.2-contributor"
 
 # Machine-local executable coordinates (not code defaults). Missing files
 # fail closed in build_worker_stack; they are never guessed from a developer
