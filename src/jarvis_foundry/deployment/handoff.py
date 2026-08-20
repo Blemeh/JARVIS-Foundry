@@ -124,6 +124,33 @@ def supervisor_roots(processes: list[SupervisorProcess]) -> list[SupervisorProce
     return [item for item in processes if item.parent_pid not in pids]
 
 
+def resolve_handoff_release_python(
+    home: Path,
+    configured_release_python: str | Path,
+) -> str:
+    """Bind handoff to the one exact Supervisor root currently owning home.
+
+    The release pointer can be stale after an interrupted activation. A
+    running process inventory is authoritative for termination, but only when
+    it resolves to exactly one Supervisor root. Ambiguity fails closed so a
+    release handoff can never broaden into an executable-name kill.
+    """
+    roots = supervisor_roots(discover_supervisor_processes(home))
+    if len(roots) > 1:
+        raise SupervisorHandoffError(
+            "cannot resolve handoff release with multiple Supervisor roots: "
+            f"{[item.pid for item in roots]}"
+        )
+    if not roots:
+        return str(Path(configured_release_python).resolve())
+    executable = roots[0].executable
+    if not executable:
+        raise SupervisorHandoffError(
+            f"running Supervisor root {roots[0].pid} has no executable identity"
+        )
+    return str(Path(executable).resolve())
+
+
 def _filetime_datetime(value: Any) -> datetime | None:
     """Convert a Windows FILETIME identity to UTC for ledger correlation."""
     try:

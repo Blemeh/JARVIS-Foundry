@@ -193,6 +193,7 @@ def _release_command(args, paths: FoundryPaths) -> int:
     )
     from ..deployment.handoff import (
         handoff_running_supervisor,
+        resolve_handoff_release_python,
         wait_for_single_supervisor,
     )
     from ..installer import V1_TASK_NAME, Installer
@@ -228,9 +229,11 @@ def _release_command(args, paths: FoundryPaths) -> int:
                 task_suspended = stopper.status().get("task_state") != "Disabled"
                 if task_suspended:
                     stopper.set_enabled(False)
+                handoff_release_python = resolve_handoff_release_python(
+                    paths.home, previous_identity["python_exe"])
                 handoff = handoff_running_supervisor(
                     home=paths.home,
-                    release_python=previous_identity["python_exe"],
+                    release_python=handoff_release_python,
                     request_shutdown=stopper.end_running,
                 )
             pointers = set_current(target_sha, root=root)

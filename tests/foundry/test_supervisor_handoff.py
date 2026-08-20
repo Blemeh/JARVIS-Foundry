@@ -10,6 +10,7 @@ from jarvis_foundry.deployment.handoff import (
     SupervisorHandoffError,
     SupervisorProcess,
     handoff_running_supervisor,
+    resolve_handoff_release_python,
     select_authoritative_root,
     supervisor_roots,
 )
@@ -52,6 +53,31 @@ def test_authoritative_root_matches_durable_start_identity() -> None:
             ((started_at + timedelta(seconds=2)) - datetime(1601, 1, 1, tzinfo=UTC)).total_seconds() * 10_000_000), "exe": transient.executable},
     )
     assert select_authoritative_root([old, transient], started_at=started_at).pid == 101
+
+
+def test_handoff_release_follows_exact_running_root_when_pointer_is_stale(
+    monkeypatch, tmp_path: Path,
+) -> None:
+    running = _process(101, 7, exe="C:/JARVIS/releases/old/.venv/Scripts/python.exe")
+    monkeypatch.setattr(
+        handoff, "discover_supervisor_processes", lambda home, release_python=None: [running]
+    )
+    resolved = resolve_handoff_release_python(
+        tmp_path, "C:/JARVIS/releases/stale/.venv/Scripts/python.exe")
+    assert resolved.casefold().endswith("old\\.venv\\scripts\\python.exe")
+
+
+def test_handoff_release_refuses_ambiguous_running_roots(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(
+        handoff, "discover_supervisor_processes",
+        lambda home, release_python=None: [_process(101, 7), _process(202, 8)],
+    )
+    try:
+        resolve_handoff_release_python(tmp_path, "stale-python.exe")
+    except SupervisorHandoffError:
+        pass
+    else:
+        raise AssertionError("ambiguous Supervisor roots must fail closed")
 
 
 def test_handoff_terminates_only_exact_orphan_tree(monkeypatch, tmp_path: Path) -> None:
