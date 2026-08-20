@@ -23,8 +23,20 @@ from ..runtime.config import WorkerRuntimeConfig
 OWNER_GOAL_ADMITTED = "supervisor.owner_goal_admitted"
 OWNER_GOAL_BLOCKED = "supervisor.owner_goal_admission_blocked"
 OWNER_GOAL_STEP = "step-a"
-OWNER_GOAL_ARTIFACT = "step_a.md"
 OWNER_GOAL_EXPECTED = "STEP-A\n"
+
+
+def _goal_artifact(directive_id: str) -> str:
+    """Return a stable, isolated artifact path for one owner directive.
+
+    Registered worktrees can contain artifacts from earlier missions or
+    unrelated work.  A per-directive filename keeps the bounded owner goal
+    from mistaking pre-existing content for its own evidence while remaining
+    deterministic, git-observable, and safely rooted under the configured
+    resource.
+    """
+    digest = hashlib.sha256(directive_id.encode("utf-8")).hexdigest()[:16]
+    return f"owner-goal-{digest}-step_a.md"
 
 
 @dataclass(frozen=True, slots=True)
@@ -208,8 +220,9 @@ def _materialize(
 
     mission_id = _existing_mission(database, directive_id) or _mission_id(directive_id)
     created_from = f"owner-directive:{directive_id}"
+    artifact = _goal_artifact(directive_id)
     if _existing_mission(database, directive_id) is None:
-        next_action = f"create {OWNER_GOAL_ARTIFACT} containing STEP-A"
+        next_action = f"create {artifact} containing STEP-A"
         database.append_events([
             Event.create(
                 "mission.created",
@@ -219,7 +232,7 @@ def _materialize(
                     "resource_id": resource_id,
                     "state": "PLANNED",
                     "acceptance_criteria": [
-                        f"{OWNER_GOAL_ARTIFACT} contains {OWNER_GOAL_EXPECTED.strip()}"
+                        f"{artifact} contains {OWNER_GOAL_EXPECTED.strip()}"
                     ],
                     "next_action": next_action,
                     "created_from": created_from,
@@ -248,16 +261,16 @@ def _materialize(
         version=1,
         resource_id=resource_id,
         capability=capability,
-        target_relative_path=OWNER_GOAL_ARTIFACT,
+        target_relative_path=artifact,
         instructions=(
             f"Bounded owner goal: {objective}\n"
-            f"Create {OWNER_GOAL_ARTIFACT} containing {OWNER_GOAL_EXPECTED.strip()}."
+            f"Create {artifact} containing {OWNER_GOAL_EXPECTED.strip()}."
         ),
-        expected_effects=(f"{OWNER_GOAL_ARTIFACT} exists",),
+        expected_effects=(f"{artifact} exists",),
         rollback={"method": "git_reset_soft", "reversible": True},
         risk_class="C1",
-        verification_criteria=(f"{OWNER_GOAL_ARTIFACT} contains {OWNER_GOAL_EXPECTED.strip()}",),
-        expected_artifacts=(OWNER_GOAL_ARTIFACT,),
+        verification_criteria=(f"{artifact} contains {OWNER_GOAL_EXPECTED.strip()}",),
+        expected_artifacts=(artifact,),
         forbidden_paths=("owner-private",),
         recorded_by="supervisor",
         source="supervisor-owner-goal",

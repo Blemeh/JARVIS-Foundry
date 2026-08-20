@@ -59,6 +59,21 @@ describe("RealJarvisRuntimeAdapter", () => {
     expect(client.connection.source).toBe("DISCONNECTED");
   });
 
+  it("deduplicates concurrent live snapshot reads", async () => {
+    let calls = 0;
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo) => {
+      calls += 1;
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      expect(String(input)).toBe("/api/command-center");
+      return new Response(JSON.stringify(snapshot), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+    const client = new RealJarvisRuntimeAdapter({ apiBase: "/api", pollMs: 60000 });
+    await Promise.all([client.listMissions(), client.listWorkers(), client.listNotifications()]);
+    expect(calls).toBe(1);
+    expect(client.connection.source).toBe("LIVE");
+    expect(client.connection.connected).toBe(true);
+  });
+
   it("submits owner goal through owner-command endpoint", async () => {
     const client = new RealJarvisRuntimeAdapter({ apiBase: "/api", pollMs: 60000 });
     const result = await client.submitOwnerGoal("integration probe objective");

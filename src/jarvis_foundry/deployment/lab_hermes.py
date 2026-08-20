@@ -48,6 +48,11 @@ class LabHermesAdapter(ScriptedWorkerAdapter):
 
     def dispatch(self, contract, *, heartbeat):
         artifact, expected = self.expected[contract.step_id]
+        # The Supervisor contract is authoritative for the artifact location.
+        # Keep the historical step defaults only for older contracts that do
+        # not carry an explicit expected artifact.
+        if contract.expected_artifacts:
+            artifact = str(contract.expected_artifacts[0])
         path = Path(contract.working_root) / artifact
         crash = (
             self.crash_after_write

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import subprocess
 from pathlib import Path
 
@@ -137,6 +138,46 @@ def test_admitted_owner_goal_uses_existing_worker_loop(tmp_path: Path) -> None:
         and event.payload.get("mission_id") == mission_id
         for event in database.events()
     )
+    with database.connect() as connection:
+        verdict = connection.execute(
+            "SELECT status FROM verification_verdicts WHERE mission_id = ? "
+            "ORDER BY rowid DESC LIMIT 1", (mission_id,)
+        ).fetchone()
+    assert verdict is not None and verdict["status"] == "PASS"
+
+
+def test_owner_goal_uses_isolated_artifact_when_default_already_exists(
+    tmp_path: Path,
+) -> None:
+    database, stop, config_path, secret = _fixture(tmp_path)
+    resource = Path(str(database.row("resources", "resource_id", "resource-owner-goal")["resolved_root"]))
+    (resource / "step_a.md").write_text("STEP-A\n", encoding="utf-8")
+    supervisor = Supervisor(
+        database, stop, instance_id="supervisor-test",
+        spawn_worker_loop=False, worker_loop_config=config_path,
+    )
+    assert supervisor.start() == "RUNNING"
+    _owner_goal(database, secret, "Avoid a pre-existing artifact collision")
+    supervisor.heartbeat()
+
+    mission_event = next(
+        event for event in database.events()
+        if event.event_type == "mission.created"
+        and str(event.payload.get("created_from", "")).startswith("owner-directive:")
+    )
+    mission_id = str(mission_event.payload["mission_id"])
+    contract = database.all("mission_step_contracts", mission_id=mission_id)[0]
+    artifact = str(contract["target_relative_path"])
+    assert artifact.startswith("owner-goal-")
+    assert artifact != "step_a.md"
+    assert json.loads(str(contract["expected_artifacts_json"])) == [artifact]
+
+    report = run_cycle(
+        database, FoundryPaths(tmp_path), WorkerRuntimeConfig.from_yaml(config_path),
+        loop_id="owner-goal-isolated-cycle", instance_id="worker-loop-test",
+    )
+    assert report["outcome"] == "PASSED"
+    assert database.row("missions", "mission_id", mission_id)["state"] == "COMPLETE"
     with database.connect() as connection:
         verdict = connection.execute(
             "SELECT status FROM verification_verdicts WHERE mission_id = ? "

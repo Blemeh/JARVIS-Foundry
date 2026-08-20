@@ -51,6 +51,7 @@ function unavailable<T>(feature: string): Promise<T> {
 export class RealJarvisRuntimeAdapter implements JarvisClient {
   private _source: DataSource = "LIVE";
   private snapshot: FoundrySnapshot | null = null;
+  private snapshotRequest: Promise<FoundrySnapshot> | null = null;
   private lastError: string | null = null;
   private lastFetchedAt: string | null = null;
   private readonly stream: PollingEventStream;
@@ -87,20 +88,27 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
   }
 
   private async refreshSnapshot(): Promise<FoundrySnapshot> {
-    try {
-      const response = await fetch(`${this.apiBase}/command-center`, { headers: { Accept: "application/json" } });
-      if (!response.ok) throw new Error(`snapshot HTTP ${response.status}`);
-      const payload = (await response.json()) as FoundrySnapshot;
-      this.snapshot = payload;
-      this.lastFetchedAt = new Date().toISOString();
-      this.lastError = null;
-      this._source = payload.health.degraded ? "DEGRADED" : "LIVE";
-      return payload;
-    } catch (error) {
-      this.lastError = error instanceof Error ? error.message : String(error);
-      this._source = "DISCONNECTED";
-      throw error;
-    }
+    if (this.snapshotRequest) return this.snapshotRequest;
+    const request = (async () => {
+      try {
+        const response = await fetch(`${this.apiBase}/command-center`, { headers: { Accept: "application/json" } });
+        if (!response.ok) throw new Error(`snapshot HTTP ${response.status}`);
+        const payload = (await response.json()) as FoundrySnapshot;
+        this.snapshot = payload;
+        this.lastFetchedAt = new Date().toISOString();
+        this.lastError = null;
+        this._source = payload.health.degraded ? "DEGRADED" : "LIVE";
+        return payload;
+      } catch (error) {
+        this.lastError = error instanceof Error ? error.message : String(error);
+        this._source = "DISCONNECTED";
+        throw error;
+      } finally {
+        if (this.snapshotRequest === request) this.snapshotRequest = null;
+      }
+    })();
+    this.snapshotRequest = request;
+    return request;
   }
 
   private async snapshotOrFetch(): Promise<FoundrySnapshot> {
