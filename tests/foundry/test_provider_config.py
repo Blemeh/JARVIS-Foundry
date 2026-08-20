@@ -16,6 +16,7 @@ from jarvis_foundry.evolution.verify import (
     VerificationError,
     record_verification_request,
 )
+from jarvis_foundry.events import Event
 from jarvis_foundry.paths import FoundryPaths
 from jarvis_foundry.roles.router import RoleRouter
 from jarvis_foundry.runtime.authority import resolve_runtime_authority
@@ -331,6 +332,31 @@ def _record_improvement(database: FoundryDatabase) -> str:
     )
 
 
+def _seed_agent_run(
+    database: FoundryDatabase,
+    run_id: str,
+    *,
+    provider: str,
+    model: str,
+) -> None:
+    database.append(Event.create(
+        "agent_run.started",
+        {
+            "run_id": run_id,
+            "mission_id": "mission-1",
+            "step_id": "step-1",
+            "role": "builder",
+            "provider": provider,
+            "model": model,
+            "context_manifest_hash": "hash",
+            "tool_policy": [],
+        },
+        source_type="test",
+        source_id="test",
+        idempotency_key=f"agent_run.started:{run_id}:{provider}",
+    ))
+
+
 def test_evolution_verifier_accepts_persisted_historical_deepseek(config_path):
     _write_provider(
         config_path,
@@ -343,6 +369,13 @@ def test_evolution_verifier_accepts_persisted_historical_deepseek(config_path):
     database = FoundryDatabase(config_path.parent / "foundry.db")
     database.initialize()
     improvement_id = _record_improvement(database)
+    run_id = "historical-deepseek-run"
+    _seed_agent_run(
+        database,
+        run_id,
+        provider="opencode_go",
+        model="deepseek-v4-flash",
+    )
     persisted = {
         "provider": "opencode_go",
         "model": "deepseek-v4-flash",
@@ -357,7 +390,7 @@ def test_evolution_verifier_accepts_persisted_historical_deepseek(config_path):
         builder_identity=persisted,
         controller="supervisor",
         provider_settings=settings,
-        persisted_builder_identity=persisted,
+        builder_run_id=run_id,
     )
 
 
@@ -416,11 +449,111 @@ def test_forged_historical_deepseek_rejected(config_path):
             },
             controller="supervisor",
             provider_settings=settings,
-            persisted_builder_identity={
+        )
+
+
+def test_forged_matching_persisted_identity_without_run_rejected(config_path):
+    """Caller-supplied identity dict is not authority without durable proof."""
+    _write_provider(
+        config_path,
+        provider="opencode_go",
+        model="muse-spark-1.2-contributor",
+        base_url="https://opencode.ai/zen/go/v1",
+        api_key="",
+    )
+    settings = load_provider_settings(config_path=config_path)
+    database = FoundryDatabase(config_path.parent / "foundry-forged.db")
+    database.initialize()
+    improvement_id = _record_improvement(database)
+    forged = {
+        "provider": "opencode_go",
+        "model": "deepseek-v4-flash",
+        "session_id": "forged-no-db",
+    }
+    with pytest.raises(VerificationError):
+        record_verification_request(
+            database,
+            improvement_id=improvement_id,
+            subject_ref="candidate",
+            criteria=["criterion-1"],
+            artifacts={"artifact": "a" * 64},
+            builder_identity=forged,
+            controller="supervisor",
+            provider_settings=settings,
+            builder_run_id="run-does-not-exist",
+        )
+
+
+def test_historical_identity_mismatch_rejected(config_path):
+    _write_provider(
+        config_path,
+        provider="opencode_go",
+        model="muse-spark-1.2-contributor",
+        base_url="https://opencode.ai/zen/go/v1",
+        api_key="",
+    )
+    settings = load_provider_settings(config_path=config_path)
+    database = FoundryDatabase(config_path.parent / "foundry-mismatch.db")
+    database.initialize()
+    improvement_id = _record_improvement(database)
+    run_id = "historical-muse-run"
+    _seed_agent_run(
+        database,
+        run_id,
+        provider="opencode_go",
+        model="muse-spark-1.2-contributor",
+    )
+    with pytest.raises(VerificationError):
+        record_verification_request(
+            database,
+            improvement_id=improvement_id,
+            subject_ref="candidate",
+            criteria=["criterion-1"],
+            artifacts={"artifact": "a" * 64},
+            builder_identity={
                 "provider": "opencode_go",
-                "model": "muse-spark-1.2-contributor",
-                "session_id": "other",
+                "model": "deepseek-v4-flash",
+                "session_id": "mismatch",
             },
+            controller="supervisor",
+            provider_settings=settings,
+            builder_run_id=run_id,
+        )
+
+
+def test_wrong_run_historical_identity_rejected(config_path):
+    _write_provider(
+        config_path,
+        provider="opencode_go",
+        model="muse-spark-1.2-contributor",
+        base_url="https://opencode.ai/zen/go/v1",
+        api_key="",
+    )
+    settings = load_provider_settings(config_path=config_path)
+    database = FoundryDatabase(config_path.parent / "foundry-wrong-run.db")
+    database.initialize()
+    improvement_id = _record_improvement(database)
+    _seed_agent_run(
+        database,
+        "other-deepseek-run",
+        provider="opencode_go",
+        model="deepseek-v4-flash",
+    )
+    with pytest.raises(VerificationError):
+        record_verification_request(
+            database,
+            improvement_id=improvement_id,
+            subject_ref="candidate",
+            criteria=["criterion-1"],
+            artifacts={"artifact": "a" * 64},
+            builder_identity={
+                "provider": "opencode_go",
+                "model": "deepseek-v4-flash",
+                "session_id": "wrong-run",
+            },
+            controller="supervisor",
+            provider_settings=settings,
+            builder_run_id="wrong-run-id",
         )
 
 
@@ -508,7 +641,33 @@ def test_default_provider_config_path_uses_jarvis_install_root(tmp_path, monkeyp
     assert default_provider_config_path() == root / "config" / "provider.yaml"
 
 
-SECRET_TOKEN = "SECRET_SHOULD_NEVER_APPEAR_9f83abcd"
+SECRET_TOKEN = "SECRET_SHOULD_NEVER_APPEAR_FINAL_847291"
+
+
+def _exception_graph_contains_secret(error: BaseException, secret: str) -> list[str]:
+    """Return paths in the exception graph where secret appears."""
+    paths: list[str] = []
+    seen: set[int] = set()
+
+    def walk(exc: BaseException | None, prefix: str) -> None:
+        if exc is None or id(exc) in seen:
+            return
+        seen.add(id(exc))
+        if secret in str(exc):
+            paths.append(f"{prefix}:str")
+        if secret in repr(exc):
+            paths.append(f"{prefix}:repr")
+        for attr in ("problem_mark", "context_mark", "problem", "context"):
+            mark = getattr(exc, attr, None)
+            if mark is not None:
+                buffer = getattr(mark, "buffer", None)
+                if buffer is not None and secret in buffer:
+                    paths.append(f"{prefix}.{attr}.buffer")
+        walk(exc.__cause__, f"{prefix}.__cause__")
+        walk(exc.__context__, f"{prefix}.__context__")
+
+    walk(error, "error")
+    return paths
 
 
 @pytest.fixture()
@@ -533,10 +692,13 @@ def test_malformed_yaml_exception_chain_secret_safe(config_path):
         load_provider_settings(config_path=config_path)
     except ProviderConfigError as error:
         rendered = "".join(traceback.format_exception(error))
+        leaks = _exception_graph_contains_secret(error, SECRET_TOKEN)
         assert SECRET_TOKEN not in str(error)
         assert SECRET_TOKEN not in repr(error)
         assert SECRET_TOKEN not in rendered
         assert error.__cause__ is None
+        assert error.__context__ is None
+        assert leaks == []
     else:
         pytest.fail("expected ProviderConfigError")
 

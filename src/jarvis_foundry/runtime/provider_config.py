@@ -187,13 +187,21 @@ def _load_yaml_config(path: Path) -> dict[str, Any]:
     except ImportError as error:  # pragma: no cover
         raise ProviderConfigError("pyyaml is required to load provider config") from error
     try:
-        raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        text = path.read_text(encoding="utf-8")
     except OSError as error:
         raise ProviderConfigError(
             f"could not read provider config at {path}") from error
+    malformed = False
+    raw: Any = {}
+    try:
+        raw = yaml.safe_load(text) or {}
+    except yaml.YAMLError:
+        malformed = True
     except Exception:
+        malformed = True
+    if malformed:
         raise ProviderConfigError(
-            "provider config is malformed; check syntax and field types") from None
+            "provider config is malformed; check syntax and field types")
     if not isinstance(raw, dict):
         raise ProviderConfigError("provider config must be a mapping")
     return raw

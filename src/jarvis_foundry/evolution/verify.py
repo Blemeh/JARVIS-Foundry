@@ -42,17 +42,36 @@ def _require(condition: bool, message: str) -> None:
         raise VerificationError(message)
 
 
+def _durable_run_identity(
+    database: FoundryDatabase, run_id: str,
+) -> dict[str, Any] | None:
+    """Provider/model from the canonical agent_runs projection only."""
+    row = database.row("agent_runs", "run_id", run_id)
+    if row is None:
+        return None
+    provider = row.get("provider")
+    model = row.get("model")
+    if not isinstance(provider, str) or not provider.strip():
+        return None
+    if not isinstance(model, str) or not model.strip():
+        return None
+    return {"provider": provider.strip(), "model": model.strip()}
+
+
 def _identity_ok(
     settings: ProviderSettings,
     identity: dict[str, Any],
     *,
-    persisted_identity: dict[str, Any] | None = None,
+    database: FoundryDatabase | None = None,
+    run_id: str | None = None,
 ) -> bool:
-    """Current policy or durable persisted execution identity only."""
+    """Current policy or durable agent_runs identity for the cited run only."""
     if settings.is_currently_authorized_identity(identity):
         return True
-    if persisted_identity is not None:
-        return matches_persisted_identity(persisted_identity, identity)
+    if database is not None and run_id is not None:
+        persisted = _durable_run_identity(database, run_id)
+        if persisted is not None:
+            return matches_persisted_identity(persisted, identity)
     return False
 
 
@@ -61,7 +80,7 @@ def record_verification_request(
     criteria: list[str], artifacts: dict[str, str],
     builder_identity: dict[str, Any], controller: str,
     provider_settings: ProviderSettings,
-    persisted_builder_identity: dict[str, Any] | None = None,
+    builder_run_id: str | None = None,
     source_type: str = "supervisor", source_id: str = "v6",
 ) -> str:
     """Record a verification REQUEST (created by the controller — the
@@ -89,7 +108,8 @@ def record_verification_request(
         _identity_ok(
             provider_settings,
             builder_identity,
-            persisted_identity=persisted_builder_identity,
+            database=database,
+            run_id=builder_run_id,
         ),
         "builder identity must match current provider policy or the "
         "persisted execution identity for this run — refused",
@@ -128,7 +148,7 @@ def record_verification_verdict(
     criteria_results: list[dict[str, Any]], findings: list[dict[str, Any]],
     verifier_identity: dict[str, Any], evidence_refs: list[str],
     provider_settings: ProviderSettings,
-    persisted_verifier_identity: dict[str, Any] | None = None,
+    verifier_run_id: str | None = None,
     artifacts: dict[str, str] | None = None,
     source_type: str = "supervisor", source_id: str = "v6",
 ) -> None:
@@ -171,7 +191,8 @@ def record_verification_verdict(
         _identity_ok(
             provider_settings,
             verifier_identity,
-            persisted_identity=persisted_verifier_identity,
+            database=database,
+            run_id=verifier_run_id,
         ),
         "verifier identity must match current provider policy or the "
         "persisted execution identity for this run — refused "
