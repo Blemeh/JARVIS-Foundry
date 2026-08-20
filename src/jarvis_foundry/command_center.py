@@ -64,6 +64,71 @@ def _event_refs(payload: dict[str, Any], event_id: str) -> list[dict[str, Any]]:
     return refs
 
 
+def _worker_lease_matches(lease: dict[str, Any], worker: dict[str, Any]) -> bool:
+    """Return whether a lease belongs to this durable worker run.
+
+    Role dispatch leases are owned by the run id, while the lower-level
+    worker lease is owned by its ``worker:<run_id>`` key.  Matching both the
+    key and owner prevents an unrelated retry for the same mission/step from
+    making a terminal historical run look current.
+    """
+    run_id = str(worker.get("run_id") or "")
+    if not run_id:
+        return False
+    lease_key = str(lease.get("lease_key") or "")
+    owner_id = str(lease.get("owner_id") or "")
+    role_key = (
+        f"role:{worker.get('role')}:{worker.get('mission_id')}"
+        f":{worker.get('step_id') or 'start'}"
+    )
+    worker_key = f"worker:{run_id}"
+    return (lease_key == role_key and owner_id == run_id) or (
+        lease_key == worker_key and owner_id == worker_key
+    )
+
+
+def _current_failed_workers(
+    workers: list[dict[str, Any]],
+    leases: list[dict[str, Any]],
+    stale_leases: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Select worker failures that still describe the current runtime.
+
+    ``FAILED`` is a terminal ledger outcome, not a current health signal by
+    itself.  A failed run remains a current crash only while its own lease is
+    still present (including an expired lease, which is separately surfaced
+    as stale).  Conversely, a ``RUNNING`` projection with no live own lease
+    is an unresolved crash.  Historical terminal failures remain visible in
+    ``workers`` and are never deleted or rewritten.
+    """
+    stale_ids = {
+        (str(lease.get("lease_key") or ""), str(lease.get("owner_id") or ""))
+        for lease in stale_leases
+    }
+
+    def has_lease(worker: dict[str, Any], *, live_only: bool) -> bool:
+        return any(
+            _worker_lease_matches(lease, worker)
+            and (
+                not live_only
+                or (str(lease.get("lease_key") or ""), str(lease.get("owner_id") or ""))
+                not in stale_ids
+            )
+            for lease in leases
+        )
+
+    return [
+        worker for worker in workers
+        if (
+            worker.get("status") == "FAILED"
+            and has_lease(worker, live_only=False)
+        ) or (
+            worker.get("status") == "RUNNING"
+            and not has_lease(worker, live_only=True)
+        )
+    ]
+
+
 def decision_timeline(database: FoundryDatabase, *, limit: int = 200) -> list[dict[str, Any]]:
     """Return a compact trace of material ledger decisions and outcomes."""
     limit = max(1, min(int(limit), 2000))
@@ -119,6 +184,27 @@ def build_snapshot(
         system_state = dict(system_state_row) if system_state_row else {"start_active": None}
         missions = _rows(connection, "SELECT * FROM missions ORDER BY updated_at DESC LIMIT 100")
         workers = _rows(connection, "SELECT * FROM agent_runs ORDER BY updated_at DESC LIMIT 100")
+        # The UI worker list is intentionally bounded, but health must not
+        # lose an active run merely because older terminal history fills that
+        # window.  Select all RUNNING rows plus FAILED rows that still have a
+        # durable role/worker lease; historical failures stay in ``workers``
+        # without becoming health inputs.
+        runtime_workers = _rows(
+            connection,
+            """
+            SELECT ar.* FROM agent_runs ar
+            WHERE ar.status = 'RUNNING'
+               OR EXISTS (
+                   SELECT 1 FROM leases l
+                   WHERE l.lease_key = 'role:' || ar.role || ':' || ar.mission_id || ':' || COALESCE(ar.step_id, 'start')
+               )
+               OR EXISTS (
+                   SELECT 1 FROM leases l
+                   WHERE l.lease_key = 'worker:' || ar.run_id
+               )
+            ORDER BY ar.updated_at DESC
+            """,
+        )
         evidence = _rows(connection, "SELECT * FROM evidence_bundles ORDER BY updated_at DESC LIMIT 100")
         verdicts = _rows(connection, "SELECT * FROM verification_verdicts ORDER BY updated_at DESC LIMIT 100")
         resources = _rows(connection, "SELECT * FROM resources ORDER BY updated_at DESC LIMIT 100")
@@ -188,7 +274,7 @@ def build_snapshot(
     paused = any(d.get("command_type") == "PAUSE" for d in directives)
     stale_leases = [l for l in leases if l.get("expires_at") and str(l["expires_at"]) < generated_at]
     blocked = [m for m in missions if m.get("state") == "BLOCKED"]
-    crashed_workers = [w for w in workers if w.get("status") == "FAILED"]
+    crashed_workers = _current_failed_workers(runtime_workers, leases, stale_leases)
     recovery_events = [e for e in decision_timeline(database, limit=timeline_limit)
                        if any(token in e["event_type"] for token in ("recover", "reap", "rollback", "degraded", "blocked"))]
     release_events = [e for e in decision_timeline(database, limit=timeline_limit)
