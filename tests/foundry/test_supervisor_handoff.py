@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import subprocess
+import json
 from pathlib import Path
 
 from jarvis_foundry.database import FoundryDatabase
@@ -65,6 +66,33 @@ def test_handoff_release_follows_exact_running_root_when_pointer_is_stale(
     resolved = resolve_handoff_release_python(
         tmp_path, "C:/JARVIS/releases/stale/.venv/Scripts/python.exe")
     assert resolved.casefold().endswith("old\\.venv\\scripts\\python.exe")
+
+
+def test_process_inventory_includes_headless_release_launcher(monkeypatch) -> None:
+    payload = [{
+        "ProcessId": 101,
+        "ParentProcessId": 7,
+        "ExecutablePath": "C:/JARVIS/releases/live/.venv/Scripts/pythonw.exe",
+        "CommandLine": (
+            "pythonw.exe -m jarvis_foundry.deployment.headless_launcher "
+            "--home C:/foundry"
+        ),
+    }]
+
+    def fake_run(command, **_kwargs):
+        assert "deployment\\.(launcher|headless_launcher)" in command[-1]
+        return subprocess.CompletedProcess(command, 0, json.dumps(payload), "")
+
+    monkeypatch.setattr(handoff.subprocess, "run", fake_run)
+    monkeypatch.setattr(
+        handoff, "process_creation_identity",
+        lambda pid: {"pid": pid, "create_time": pid, "exe": payload[0]["ExecutablePath"]},
+    )
+    observed = handoff.discover_supervisor_processes(
+        Path("C:/foundry"),
+        release_python=payload[0]["ExecutablePath"],
+    )
+    assert [item.pid for item in observed] == [101]
 
 
 def test_handoff_release_refuses_ambiguous_running_roots(monkeypatch, tmp_path: Path) -> None:

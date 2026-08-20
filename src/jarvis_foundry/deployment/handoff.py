@@ -53,7 +53,7 @@ def _process_inventory() -> list[dict[str, Any]]:
         return []
     script = r"""
 $items = @(Get-CimInstance Win32_Process |
-  Where-Object { $_.CommandLine -and $_.CommandLine -match 'jarvis_foundry\.(supervisor\.run|deployment\.launcher)' } |
+  Where-Object { $_.CommandLine -and $_.CommandLine -match 'jarvis_foundry\.(supervisor\.run|deployment\.(launcher|headless_launcher))' } |
   Select-Object ProcessId, ParentProcessId, ExecutablePath, CommandLine)
 if ($items.Count -eq 0) { '[]' } else { $items | ConvertTo-Json -Compress }
 """
