@@ -4,9 +4,10 @@ import { Dialog } from "./Dialog";
 import type { TrustSummary } from "../lib/contracts";
 import { StatusBadge } from "./StatusBadge";
 import { useCommandCenter } from "../context/CommandCenterContext";
+import { sourceCopy, sourceModeLabel } from "../lib/sourceMode";
 
 export function TrustDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { client, version } = useCommandCenter();
+  const { client, version, sourceMode } = useCommandCenter();
   const [trust, setTrust] = useState<TrustSummary | null>(null);
 
   useEffect(() => {
@@ -28,7 +29,11 @@ export function TrustDialog({ open, onClose }: { open: boolean; onClose: () => v
       labelledBy="trust-dialog-title"
       footer={
         <span className="t-mono text-muted trust-sim-note">
-          SIMULATED FIXTURE - not canonical JARVIS truth. The runtime adapter will supply measured values.
+          {sourceCopy(sourceMode, {
+            live: "LIVE SOURCE - canonical Foundry/Supervisor projection.",
+            simulated: "SIMULATED FIXTURE - not canonical JARVIS truth. The runtime adapter supplies measured values in live mode.",
+            unavailable: `SOURCE ${sourceModeLabel(sourceMode)} - canonical trust state is unavailable; no fixture fallback is shown.`,
+          })}
         </span>
       }
     >
@@ -81,8 +86,11 @@ export function TrustDialog({ open, onClose }: { open: boolean; onClose: () => v
             ))}
           </ul>
           <p className="t-mono text-muted trust-explain-note">
-            <Info size={13} aria-hidden="true" /> A numeric score is withheld in simulation because it would imply
-            canonical measurement. Every factor above can be traced to a fixture record.
+            <Info size={13} aria-hidden="true" /> {sourceCopy(sourceMode, {
+              live: "This trust projection is derived from canonical runtime records; unavailable factors remain explicit.",
+              simulated: "A numeric score is withheld in simulation because it would imply canonical measurement. Every factor above can be traced to a fixture record.",
+              unavailable: `Trust explanation is ${sourceMode.toLowerCase()}; no canonical measurement or fixture fallback is asserted.`,
+            })}
           </p>
         </div>
       ) : (

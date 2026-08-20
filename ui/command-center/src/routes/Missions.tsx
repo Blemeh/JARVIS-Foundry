@@ -10,6 +10,7 @@ import { Dialog } from "../components/Dialog";
 import { EmptyState, LoadingState } from "../components/states";
 import { Tooltip } from "../components/Tooltip";
 import { ContextChip } from "../components/EntityRefLink";
+import { sourceCopy, sourceModeLabel } from "../lib/sourceMode";
 
 type Filter = "ALL" | "ACTIVE" | "STANDBY" | "BLOCKED" | "ARCHIVED";
 type View = "grid" | "list";
@@ -23,7 +24,7 @@ const statusParam: Record<string, Filter> = {
 };
 
 export function Missions() {
-  const { client, version, mode, mutationsEnabled } = useCommandCenter();
+  const { client, version, mode, mutationsEnabled, sourceMode } = useCommandCenter();
   const [searchParams, setSearchParams] = useSearchParams();
   const [missions, setMissions] = useState<Mission[] | null>(null);
   const [filter, setFilter] = useState<Filter>(statusParam[searchParams.get("status") ?? ""] ?? "ALL");
@@ -101,9 +102,11 @@ export function Missions() {
         kicker="Missions"
         title="Mission Control"
         description={
-          live
-            ? "Live missions from the canonical append-only ledger projection. New missions enter as authenticated owner GOAL directives."
-            : "Simulated JARVIS missions across verification cycles, hybrid workers, memory reconciliation, recovery drills, and evidence gates."
+          sourceCopy(sourceMode, {
+            live: "Live missions from the canonical append-only ledger projection. New missions enter as authenticated owner GOAL directives.",
+            simulated: "Simulated JARVIS missions for tests and demos across verification cycles, hybrid workers, memory reconciliation, recovery drills, and evidence gates.",
+            unavailable: `Mission source ${sourceModeLabel(sourceMode)}: canonical mission state is unavailable and no fixture fallback is shown.`,
+          })
         }
         actions={
           <>
@@ -175,7 +178,7 @@ export function Missions() {
 
       {rows.length === 0 ? (
         <div className="panel panel-corner">
-          <EmptyState label="No missions" detail="No simulated missions match this view. Reset the filter to return to the full universe." />
+          <EmptyState label="No missions" detail={sourceMode === "SIMULATED" ? "No simulated missions match this view. Reset the filter to return to the full universe." : sourceMode === "LIVE" ? "No canonical missions match this view. Reset the filter to return to the full ledger projection." : `Mission data is unavailable: runtime source is ${sourceMode}.`} />
         </div>
       ) : (
         <div className={view === "grid" ? "mission-grid" : "mission-list"}>
@@ -243,7 +246,7 @@ export function Missions() {
 
       <Dialog
         open={dialog === "new"}
-        title={live ? "New Mission - Owner Goal" : "New Mission - Simulated"}
+        title={live ? sourceMode === "LIVE" ? "New Mission - Owner Goal" : `New Mission - ${sourceModeLabel(sourceMode)}` : "New Mission - Simulated"}
         onClose={() => {
           setDialog(null);
           setSubmitted(false);
@@ -289,7 +292,7 @@ export function Missions() {
             ) : null}
             {submitError ? <p className="prose sim-note" role="alert">{submitError}</p> : null}
             <p className="prose sim-note">
-              {live ? "Submits GOAL through /api/owner-command on localhost." : "Simulated form. No mission is created in any runtime store."}
+              {live ? sourceMode === "LIVE" ? "Submits GOAL through /api/owner-command on localhost." : `Owner goal submission unavailable while source is ${sourceModeLabel(sourceMode)}.` : "Simulated form. No mission is created in any runtime store."}
             </p>
           </form>
         )}

@@ -9,9 +9,10 @@ import { MetricCard } from "../components/MetricCard";
 import { Dialog } from "../components/Dialog";
 import { EmptyState, LoadingState } from "../components/states";
 import { ContextChip } from "../components/EntityRefLink";
+import { sourceCopy, sourceModeLabel } from "../lib/sourceMode";
 
 export function Agents() {
-  const { client, version, stopActive } = useCommandCenter();
+  const { client, version, stopActive, sourceMode } = useCommandCenter();
   const [searchParams, setSearchParams] = useSearchParams();
   const [workers, setWorkers] = useState<Worker[] | null>(null);
   const [query, setQuery] = useState("");
@@ -64,10 +65,14 @@ export function Agents() {
       <SectionHeader
         kicker="Agents"
         title="Worker Fleet"
-        description="Simulated JARVIS workers: orchestrators, build executors, verifiers, memory reconcilers, routing, and the deterministic STOP gatekeeper."
+        description={sourceCopy(sourceMode, {
+          live: "Canonical JARVIS workers: orchestrators, build executors, verifiers, memory reconcilers, routing, and the deterministic STOP gatekeeper.",
+          simulated: "Simulated JARVIS workers for tests and demos: orchestrators, build executors, verifiers, memory reconcilers, routing, and the deterministic STOP gatekeeper.",
+          unavailable: `Worker fleet unavailable: runtime source is ${sourceModeLabel(sourceMode)}; no fixture fallback is shown.`,
+        })}
         actions={
           <>
-            <button type="button" className="btn" onClick={() => setDeployOpen(true)} disabled={stopActive} title={stopActive ? "Frozen during simulated STOP" : undefined}>
+            <button type="button" className="btn" onClick={() => setDeployOpen(true)} disabled={stopActive || sourceMode !== "SIMULATED"} title={stopActive ? `Frozen during ${sourceModeLabel(sourceMode)} STOP` : sourceMode !== "SIMULATED" ? `Worker deployment unavailable in ${sourceModeLabel(sourceMode)} source mode` : undefined}>
               <Plus size={14} />
               Deploy Agent
             </button>
@@ -117,7 +122,7 @@ export function Agents() {
 
       {filtered.length === 0 ? (
         <div className="panel panel-corner">
-          <EmptyState label="No workers match" detail="Adjust the search or context filter to see workers in this simulated universe." />
+          <EmptyState label="No workers match" detail={sourceMode === "SIMULATED" ? "Adjust the search or context filter to see workers in this simulated universe." : sourceMode === "LIVE" ? "No canonical workers match the current filters." : `Worker data is unavailable: runtime source is ${sourceMode}.`} />
         </div>
       ) : (
         <div className="agent-grid">
@@ -165,7 +170,7 @@ export function Agents() {
 
       <Dialog
         open={deployOpen}
-        title="Deploy Agent - Simulated"
+        title={sourceMode === "SIMULATED" ? "Deploy Agent - Simulated" : `Deploy Agent - ${sourceModeLabel(sourceMode)}`}
         onClose={() => {
           setDeployOpen(false);
           setDeployed(false);
@@ -207,7 +212,7 @@ export function Agents() {
                 <option>internal deterministic loop</option>
               </select>
             </label>
-            <p className="prose sim-note">Simulated form. No worker is dispatched to any runtime.</p>
+            <p className="prose sim-note">{sourceMode === "SIMULATED" ? "Simulated form. No worker is dispatched to any runtime." : `Worker deployment is unavailable in ${sourceModeLabel(sourceMode)} source mode.`}</p>
           </form>
         )}
       </Dialog>

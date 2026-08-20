@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import secrets
 import threading
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from html import escape
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -44,6 +45,18 @@ def _rows(connection, query: str, args: tuple[Any, ...] = ()) -> list[dict[str, 
     return [dict(row) for row in connection.execute(query, args).fetchall()]
 
 
+@contextmanager
+def command_center_readonly_connection(database: FoundryDatabase):
+    """Yield a mechanically read-only SQLite handle for Command Center reads.
+
+    ``mode=ro`` is enforced by :meth:`FoundryDatabase.connect`; this helper
+    keeps every read-model query on that path and fails with ``FileNotFoundError``
+    when a configured live database is absent instead of creating a replacement.
+    """
+    with database.connect(readonly=True) as connection:
+        yield connection
+
+
 def _record_ref(kind: str, identifier: Any, event_id: Any = None) -> dict[str, Any]:
     ref: dict[str, Any] = {"kind": kind, "id": identifier}
     if event_id:
@@ -74,7 +87,7 @@ def _event_refs(payload: dict[str, Any], event_id: str) -> list[dict[str, Any]]:
 def decision_timeline(database: FoundryDatabase, *, limit: int = 200) -> list[dict[str, Any]]:
     """Return a compact trace of material ledger decisions and outcomes."""
     limit = max(1, min(int(limit), 2000))
-    events = database.events()
+    events = database.events(readonly=True)
     material = []
     for sequence, event in enumerate(events, start=1):
         payload = dict(event.payload)
@@ -113,7 +126,7 @@ def build_snapshot(
 ) -> dict[str, Any]:
     """Build the complete JSON-safe Command Center projection."""
     generated_at = now or _now_iso()
-    with database.connect() as connection:
+    with command_center_readonly_connection(database) as connection:
         head = connection.execute("SELECT COALESCE(MAX(sequence), 0) FROM events").fetchone()[0]
         event_count = int(head or 0)
         supervisor_row = connection.execute(

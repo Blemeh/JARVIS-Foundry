@@ -10,6 +10,7 @@ import {
 import type { ConnectionState, JarvisClient, MockEventType, Notification, Scenario } from "../lib/contracts";
 import { createJarvisClient, resolveClientMode } from "../lib/clientFactory";
 import { MockJarvisClient } from "../lib/mockClient";
+import { resolveSourceMode, type ResolvedSourceMode } from "../lib/sourceMode";
 
 const DEMO_SEQUENCE: MockEventType[] = [
   "verification.failed",
@@ -21,6 +22,7 @@ const DEMO_SEQUENCE: MockEventType[] = [
 interface CommandCenterState {
   client: JarvisClient;
   mode: "simulated" | "live";
+  sourceMode: ResolvedSourceMode;
   connection: ConnectionState;
   /** Bumped after every event/scenario mutation so mounted surfaces re-read state. */
   version: number;
@@ -190,13 +192,18 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
     void refreshNotifications();
   }, [client, notifications, refreshNotifications]);
 
+  const sourceMode = resolveSourceMode(mode, connection);
   const unreadCount = useMemo(() => notifications.filter((n) => n.state === "UNREAD").length, [notifications]);
-  const mutationsEnabled = connection.connected && connection.source !== "DISCONNECTED" && !stopActive;
+  // A live control is available only after a canonical snapshot is connected.
+  // Degraded/unknown/disconnected sources fail closed rather than attempting a
+  // mutation against an untrusted or stale runtime.
+  const mutationsEnabled = !stopActive && (sourceMode === "SIMULATED" || sourceMode === "LIVE");
 
   const value = useMemo<CommandCenterState>(
     () => ({
       client,
       mode,
+      sourceMode,
       connection,
       version,
       scenario,
@@ -228,6 +235,7 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
     [
       client,
       mode,
+      sourceMode,
       connection,
       version,
       scenario,

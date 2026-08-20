@@ -18,9 +18,10 @@ import { Panel } from "../components/Panel";
 import { StatusBadge } from "../components/StatusBadge";
 import { SectionHeader } from "../components/SectionHeader";
 import { LoadingState } from "../components/states";
+import { sourceCopy } from "../lib/sourceMode";
 
 export function Overview() {
-  const { client, version, openTrustDialog, notifications, unreadCount } = useCommandCenter();
+  const { client, version, openTrustDialog, notifications, unreadCount, sourceMode } = useCommandCenter();
   const [missions, setMissions] = useState<Mission[] | null>(null);
   const [overview, setOverview] = useState<SystemOverview | null>(null);
   const [trust, setTrust] = useState<TrustSummary | null>(null);
@@ -69,19 +70,22 @@ export function Overview() {
   const atRiskWorkers = workers.filter((w) => w.status === "FAILED" || w.status === "RECOVERING" || w.status === "RATE_LIMITED");
   const memoryConflict = notifications.find((n) => n.category === "MEMORY_CONFLICT" && n.state !== "RESOLVED");
 
-  const resourceBars = [
-    { label: "Supervisor core", value: overview.resourceUsage[0].value, tone: "accent" as const },
-    { label: "Hybrid memory", value: overview.resourceUsage[1].value, tone: "teal" as const },
-    { label: "Provider routing", value: overview.resourceUsage[3].value, tone: "amber" as const },
-    { label: "Worker pool", value: 58, tone: "accent" as const },
-  ];
+  const resourceBars = overview.resourceUsage.map((resource, index) => ({
+    label: resource.label,
+    value: resource.value,
+    tone: (index % 3 === 1 ? "teal" : index % 3 === 2 ? "amber" : "accent") as "accent" | "teal" | "amber",
+  }));
 
   return (
     <div className="shell-content">
       <SectionHeader
         kicker="Foundry"
         title="Command Center"
-        description="Operational projection of the JARVIS autonomy runtime. Every displayed value is simulated fixture data; the runtime adapter will replace it with ledger-backed measurements."
+        description={sourceCopy(sourceMode, {
+          live: "Operational projection of the JARVIS autonomy runtime from the canonical Foundry ledger and Supervisor.",
+          simulated: "Operational projection of the JARVIS autonomy runtime using local fixture data for tests and demos.",
+          unavailable: `Operational projection unavailable: the Foundry data source is ${sourceMode.toLowerCase()}; no fixture fallback is shown.`,
+        })}
         actions={
           <>
             <Link to="/missions" className="btn btn-ghost">

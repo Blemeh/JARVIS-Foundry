@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.9.0",
   "type": "module",
-  "description": "JARVIS Foundry Command Center - isolated UI candidate (simulated data only)",
+  "description": "JARVIS Foundry Command Center - source-labelled live and simulated observability candidate",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
