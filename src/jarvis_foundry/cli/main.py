@@ -185,9 +185,15 @@ def _release_command(args, paths: FoundryPaths) -> int:
         backup_database,
         build_release,
         migrate_clone,
+        read_current,
         restore_database,
         rollback_current,
         set_current,
+        validate_release,
+    )
+    from ..deployment.handoff import (
+        handoff_running_supervisor,
+        wait_for_single_supervisor,
     )
     from ..installer import V1_TASK_NAME, Installer
     from ..paths import FoundryPaths as Paths
@@ -200,10 +206,28 @@ def _release_command(args, paths: FoundryPaths) -> int:
         return 0
     if args.release_command == "activate":
         os.environ.setdefault("JARVIS_INSTALL_ROOT", str(resolve_install_root(root)))
-        pointers = set_current(args.sha, root=root)
         from ..deployment.layout import launcher_cmd
-        from ..deployment.release import validate_release
-        identity = validate_release(args.sha, root=root, require_schema_match=False)
+        target_sha = args.sha.strip()
+        # Validate the target before stopping the currently live process.  A
+        # malformed immutable release must never take down a valid one.
+        identity = validate_release(target_sha, root=root, require_schema_match=False)
+        previous_sha = read_current(root)
+        handoff = None
+        if previous_sha and previous_sha != target_sha:
+            previous_identity = validate_release(
+                previous_sha, root=root, require_schema_match=False)
+            stopper = Installer(
+                FoundryDatabase(paths.database),
+                task_name=V1_TASK_NAME,
+                foundry_home=paths.home,
+                hermes_home=Paths.hermes_home(),
+            )
+            handoff = handoff_running_supervisor(
+                home=paths.home,
+                release_python=previous_identity["python_exe"],
+                request_shutdown=stopper.end_running,
+            )
+        pointers = set_current(target_sha, root=root)
         launcher = launcher_cmd(root)
         spawn = bool(getattr(args, "spawn_worker_loop", False))
         worker_config = getattr(args, "worker_config", None)
@@ -224,10 +248,26 @@ def _release_command(args, paths: FoundryPaths) -> int:
                 "start_record": str(paths.database),
                 "spawn_worker_loop": "true" if spawn else "false",
                 "worker_config_path": str(Path(worker_config).resolve()) if worker_config else "",
-                "release_sha": args.sha,
+                "release_sha": target_sha,
             },
         )
-        print(json.dumps({"pointers": pointers, "task": installer.retarget_existing()}, indent=2))
+        task = installer.retarget_existing()
+        started = installer.run_existing()
+        supervisor = wait_for_single_supervisor(
+            home=paths.home,
+            release_python=identity["python_exe"],
+        )
+        print(json.dumps({
+            "pointers": pointers,
+            "handoff": handoff,
+            "task": task,
+            "started": started,
+            "supervisor": {
+                "pid": supervisor.pid,
+                "executable": supervisor.executable,
+                "command_line": supervisor.command_line,
+            },
+        }, indent=2))
         return 0
     if args.release_command == "rollback":
         print(json.dumps(rollback_current(root=root, foundry_home=paths.home), indent=2))
