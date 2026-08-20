@@ -16,6 +16,7 @@ export function Notifications() {
     simulateNextEvent,
     demoIndex,
     stopActive,
+    sourceMode,
   } = useCommandCenter();
 
   const critical = notifications.filter((n) => n.severity === "CRITICAL").length;
@@ -28,16 +29,18 @@ export function Notifications() {
         description="Only meaningful JARVIS events appear here: verification failures, blocked missions, worker crashes and recoveries, provider degradation, memory conflicts, STOP, and promotion or rollback state. Every item links to the object that caused it."
         actions={
           <>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => void simulateNextEvent()}
-              disabled={stopActive}
-              title="Simulate the next demo event locally (verification.failed → repair → recovery → pass)"
-            >
-              <Zap size={14} aria-hidden="true" />
-              Simulate next event ({demoIndex % 4 === 0 ? "failed" : demoIndex % 4 === 1 ? "repair" : demoIndex % 4 === 2 ? "recovery" : "pass"})
-            </button>
+            {sourceMode === "SIMULATED" ? (
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => void simulateNextEvent()}
+                disabled={stopActive}
+                title="Simulate the next demo event locally (verification.failed → repair → recovery → pass)"
+              >
+                <Zap size={14} aria-hidden="true" />
+                Simulate next event ({demoIndex % 4 === 0 ? "failed" : demoIndex % 4 === 1 ? "repair" : demoIndex % 4 === 2 ? "recovery" : "pass"})
+              </button>
+            ) : null}
             <Link to="/" className="btn btn-ghost">
               Overview
               <ArrowUpRight size={14} aria-hidden="true" />
@@ -55,7 +58,10 @@ export function Notifications() {
 
       <div className="panel panel-corner notify-page">
         {notifications.length === 0 ? (
-          <EmptyState label="No alerts" detail="Nothing is demanding owner attention in this simulated universe." />
+          <EmptyState
+            label="No alerts"
+            detail={sourceMode === "SIMULATED" ? "Nothing is demanding owner attention in this simulated universe." : sourceMode === "LIVE" ? "No canonical runtime event currently demands owner attention." : `No alerts available: runtime source is ${sourceMode}.`}
+          />
         ) : (
           <NotificationCenter
             notifications={notifications}

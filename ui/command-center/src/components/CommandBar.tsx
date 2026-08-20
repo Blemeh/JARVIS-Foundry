@@ -4,6 +4,7 @@ import { ArrowRight, Check, History, Keyboard, Search, Terminal } from "lucide-r
 import { useCommandCenter } from "../context/CommandCenterContext";
 import type { SearchResultItem, SearchResults } from "../lib/contracts";
 import { agentRunToWorker } from "../lib/cohesion";
+import { sourceModeLabel } from "../lib/sourceMode";
 
 const groupOrder: { key: keyof SearchResults; label: string }[] = [
   { key: "missions", label: "Missions" },
@@ -89,7 +90,7 @@ function parseIntent(raw: string): Intent | null {
 }
 
 export function CommandBar() {
-  const { client, stopActive } = useCommandCenter();
+  const { client, stopActive, sourceMode } = useCommandCenter();
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState("");
@@ -217,7 +218,7 @@ export function CommandBar() {
     <footer className="commandbar" role="contentinfo" aria-label="Command surface">
       <div className="commandbar-inner">
         <Terminal size={18} className="commandbar-icon" aria-hidden="true" />
-        <form className="commandbar-form" onSubmit={submit} aria-label="Simulated command and search">
+        <form className="commandbar-form" onSubmit={submit} aria-label={`${sourceModeLabel(sourceMode)} command and search`}>
           <Search size={14} className="commandbar-search-icon" aria-hidden="true" />
           <input
             ref={inputRef}
@@ -234,10 +235,10 @@ export function CommandBar() {
             onKeyDown={onKeyDown}
             placeholder={
               stopActive
-                ? "Search frozen during simulated STOP..."
+                ? `Search frozen during ${sourceModeLabel(sourceMode)} STOP...`
                 : "Search missions, agents, evidence, systems... or press /"
             }
-            aria-label="Command and search input (simulated, local only)"
+            aria-label={`Command and search input (${sourceModeLabel(sourceMode)})`}
             aria-expanded={flat.length > 0 || intent !== null}
             role="combobox"
             aria-controls="command-results"
@@ -247,7 +248,7 @@ export function CommandBar() {
             type="submit"
             className="btn btn-ghost commandbar-execute"
             disabled={stopActive}
-            title={stopActive ? "Mutation-like commands are frozen during simulated STOP" : "Execute (local only)"}
+            title={stopActive ? `Mutation-like commands are frozen during ${sourceModeLabel(sourceMode)} STOP` : "Execute (local navigation only)"}
           >
             Execute
           </button>
@@ -328,7 +329,7 @@ export function CommandBar() {
           })}
           {flat.length === 0 && !intent ? (
             <div className="command-empty">
-              <span className="t-mono text-dim">No fixture objects match "{value}".</span>
+              <span className="t-mono text-dim">No {sourceModeLabel(sourceMode).toLowerCase()} objects match "{value}".</span>
             </div>
           ) : null}
         </div>

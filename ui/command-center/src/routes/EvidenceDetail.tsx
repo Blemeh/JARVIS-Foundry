@@ -8,10 +8,11 @@ import { LoadingState, ErrorState } from "../components/states";
 import { EntityRefLink } from "../components/EntityRefLink";
 import { Lineage } from "../components/Lineage";
 import { formatHash } from "../lib/format";
+import { sourceModeLabel } from "../lib/sourceMode";
 
 export function EvidenceDetail() {
   const { evidenceId } = useParams();
-  const { client, version } = useCommandCenter();
+  const { client, version, sourceMode } = useCommandCenter();
   const [item, setItem] = useState<EvidenceArtifact | null>(null);
   const [lineage, setLineage] = useState<LineageNode[]>([]);
   const [relatedEvents, setRelatedEvents] = useState<TimelineEvent[]>([]);
@@ -41,7 +42,7 @@ export function EvidenceDetail() {
   if (notFound) {
     return (
       <div className="shell-content">
-        <ErrorState label="Evidence not found" detail="No simulated artifact exists at this identifier." />
+        <ErrorState label="Evidence not found" detail={sourceMode === "SIMULATED" ? "No simulated artifact exists at this identifier." : sourceMode === "LIVE" ? "No canonical artifact exists at this identifier." : `Evidence lookup unavailable: runtime source is ${sourceModeLabel(sourceMode)}.`} />
       </div>
     );
   }
@@ -195,7 +196,7 @@ export function EvidenceDetail() {
         </div>
       </section>
 
-      <p className="t-mono text-muted">SIMULATED RECORD - the runtime adapter will replace this with canonical ledger evidence.</p>
+      <p className="t-mono text-muted">{sourceMode === "SIMULATED" ? "SIMULATED RECORD - the runtime adapter will replace this with canonical ledger evidence." : sourceMode === "LIVE" ? "LIVE RECORD - canonical ledger evidence." : `RECORD SOURCE ${sourceModeLabel(sourceMode)} - canonical ledger evidence is unavailable.`}</p>
     </div>
   );
 }

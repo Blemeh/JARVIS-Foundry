@@ -9,9 +9,10 @@ import { MetricCard } from "../components/MetricCard";
 import { Drawer } from "../components/Drawer";
 import { EmptyState, LoadingState } from "../components/states";
 import { ContextChip } from "../components/EntityRefLink";
+import { sourceCopy, sourceModeLabel } from "../lib/sourceMode";
 
 export function Systems() {
-  const { client, version, stopActive } = useCommandCenter();
+  const { client, version, stopActive, sourceMode } = useCommandCenter();
   const [searchParams, setSearchParams] = useSearchParams();
   const [components, setComponents] = useState<SystemComponent[] | null>(null);
   const [overview, setOverview] = useState<SystemOverview | null>(null);
@@ -62,7 +63,11 @@ export function Systems() {
       <SectionHeader
         kicker="Systems"
         title="Runtime Systems"
-        description="Simulated projection of JARVIS components: supervisor, gateway, durable state, hybrid memory, workers, routing, STOP, ledger, verification, and resource health."
+        description={sourceCopy(sourceMode, {
+          live: "Canonical projection of JARVIS components: supervisor, gateway, durable state, hybrid memory, workers, routing, STOP, ledger, verification, and resource health.",
+          simulated: "Simulated projection of JARVIS components for tests and demos: supervisor, gateway, durable state, hybrid memory, workers, routing, STOP, ledger, verification, and resource health.",
+          unavailable: `System projection unavailable: runtime source is ${sourceModeLabel(sourceMode)}; no fixture fallback is shown.`,
+        })}
         actions={
           <span className="badge badge-amber">
             <ShieldAlert size={11} aria-hidden="true" />
@@ -129,7 +134,7 @@ export function Systems() {
       <div className="systems-table panel panel-corner">
         <div className="evidence-toolbar">
           <span className="t-mono text-muted">COMPONENTS - CLICK A ROW TO INSPECT</span>
-          <span className="t-mono text-muted">HEARTBEATS ARE FIXTURE VALUES</span>
+          <span className="t-mono text-muted">{sourceMode === "SIMULATED" ? "HEARTBEATS ARE FIXTURE VALUES" : sourceMode === "LIVE" ? "HEARTBEATS ARE CANONICAL VALUES" : `HEARTBEATS ${sourceModeLabel(sourceMode)}`}</span>
         </div>
         {grouped.length === 0 ? (
           <EmptyState label="No systems match" detail="Clear the context filter to see the full component set." />
@@ -225,7 +230,7 @@ export function Systems() {
                 Open system detail
                 <ArrowUpRight size={13} aria-hidden="true" />
               </Link>
-              <span className="t-mono text-muted">SIMULATED COMPONENT STATE{stopActive && selected.id === "SYS-STOP" ? " · STOP ACTIVE (UI)" : ""}</span>
+              <span className="t-mono text-muted">{sourceModeLabel(sourceMode)} COMPONENT STATE{stopActive && selected.id === "SYS-STOP" ? ` · STOP ACTIVE (${sourceModeLabel(sourceMode)})` : ""}</span>
             </div>
           </div>
         ) : null}

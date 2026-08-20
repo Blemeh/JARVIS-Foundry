@@ -7,10 +7,11 @@ import { StatusBadge } from "../components/StatusBadge";
 import { LoadingState, ErrorState } from "../components/states";
 import { EntityRefLink, RefChipRow } from "../components/EntityRefLink";
 import { relativeTime } from "../lib/format";
+import { sourceModeLabel } from "../lib/sourceMode";
 
 export function SystemDetail() {
   const { systemId } = useParams();
-  const { client, version, stopActive } = useCommandCenter();
+  const { client, version, stopActive, sourceMode } = useCommandCenter();
   const [system, setSystem] = useState<SystemComponent | null>(null);
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [notFound, setNotFound] = useState(false);
@@ -35,7 +36,7 @@ export function SystemDetail() {
   if (notFound) {
     return (
       <div className="shell-content">
-        <ErrorState label="System not found" detail="No simulated component exists at this identifier." />
+        <ErrorState label="System not found" detail={sourceMode === "SIMULATED" ? "No simulated component exists at this identifier." : sourceMode === "LIVE" ? "No canonical component exists at this identifier." : `System lookup unavailable: runtime source is ${sourceModeLabel(sourceMode)}.`} />
       </div>
     );
   }
@@ -121,7 +122,7 @@ export function SystemDetail() {
             <div>
               <dt className="t-label text-muted">STOP status</dt>
               <dd className="t-mono">
-                {system.id === "SYS-STOP" && stopActive ? "ACTIVE (SIMULATED - UI CANDIDATE)" : system.id === "SYS-STOP" ? "ARMED" : "Not applicable"}
+                {system.id === "SYS-STOP" && stopActive ? sourceMode === "SIMULATED" ? "ACTIVE (SIMULATED - UI CANDIDATE)" : sourceMode === "LIVE" ? "ACTIVE (LIVE CANONICAL DIRECTIVE)" : `ACTIVE (${sourceModeLabel(sourceMode)} SOURCE)` : system.id === "SYS-STOP" ? "ARMED" : "Not applicable"}
               </dd>
             </div>
           </dl>
@@ -173,7 +174,7 @@ export function SystemDetail() {
         </ul>
       </section>
 
-      <p className="t-mono text-muted">SIMULATED COMPONENT STATE - no live component is being read or written.</p>
+      <p className="t-mono text-muted">{sourceMode === "SIMULATED" ? "SIMULATED COMPONENT STATE - no live component is being read or written." : sourceMode === "LIVE" ? "LIVE COMPONENT STATE - read from the canonical runtime projection; no component is written." : `COMPONENT STATE ${sourceModeLabel(sourceMode)} - canonical runtime state is unavailable.`}</p>
     </div>
   );
 }

@@ -7,10 +7,11 @@ import { StatusBadge } from "../components/StatusBadge";
 import { LoadingState, ErrorState } from "../components/states";
 import { EntityRefLink, RefChipRow } from "../components/EntityRefLink";
 import { relativeTime } from "../lib/format";
+import { sourceModeLabel } from "../lib/sourceMode";
 
 export function AgentDetail() {
   const { agentId } = useParams();
-  const { client, version, stopActive } = useCommandCenter();
+  const { client, version, stopActive, sourceMode } = useCommandCenter();
   const [agent, setAgent] = useState<Worker | null>(null);
   const [runs, setRuns] = useState<AgentRun[] | null>(null);
   const [system, setSystem] = useState<SystemComponent | null>(null);
@@ -45,7 +46,7 @@ export function AgentDetail() {
   if (notFound) {
     return (
       <div className="shell-content">
-        <ErrorState label="Agent not found" detail="No simulated worker exists at this identifier." />
+        <ErrorState label="Agent not found" detail={sourceMode === "SIMULATED" ? "No simulated worker exists at this identifier." : sourceMode === "LIVE" ? "No canonical worker exists at this identifier." : `Worker lookup unavailable: runtime source is ${sourceModeLabel(sourceMode)}.`} />
       </div>
     );
   }
@@ -75,10 +76,10 @@ export function AgentDetail() {
         <div className="md-head-main">
           <div className="md-head-badges">
             <StatusBadge status={agent.status} pulse={agent.status === "ACTIVE"} />
-            <span className="t-mono text-muted">Provider fixture: {agent.provider}</span>
+            <span className="t-mono text-muted">Provider {sourceMode === "SIMULATED" ? "fixture" : sourceMode === "LIVE" ? "runtime" : sourceModeLabel(sourceMode)}: {agent.provider}</span>
           </div>
           <h1 className="t-display md-title">{agent.name}</h1>
-          <p className="prose md-desc">{agent.role}. Simulated worker state - never a live dispatch claim.</p>
+          <p className="prose md-desc">{agent.role}. {sourceMode === "SIMULATED" ? "Simulated worker state - never a live dispatch claim." : sourceMode === "LIVE" ? "Canonical worker state read from the runtime projection." : `Worker state source is ${sourceModeLabel(sourceMode)}; canonical dispatch status is unavailable.`}</p>
         </div>
         <div className="md-actions">
           <span className="badge badge-muted">
@@ -146,7 +147,7 @@ export function AgentDetail() {
           <span className="t-mono text-muted">{evidenceRefs.length} attached</span>
         </div>
         <div className="panel-body">
-          <RefChipRow refs={evidenceRefs} emptyLabel="No evidence attached in this fixture." />
+          <RefChipRow refs={evidenceRefs} emptyLabel={sourceMode === "SIMULATED" ? "No evidence attached in this fixture." : sourceMode === "LIVE" ? "No evidence attached to this worker." : `Evidence unavailable: runtime source is ${sourceModeLabel(sourceMode)}.`} />
         </div>
       </section>
 
@@ -193,7 +194,7 @@ export function AgentDetail() {
         </div>
         <div className="panel-body">
           {events.length === 0 ? (
-            <span className="t-mono text-dim">No failure or recovery events in this fixture.</span>
+            <span className="t-mono text-dim">{sourceMode === "SIMULATED" ? "No failure or recovery events in this fixture." : sourceMode === "LIVE" ? "No failure or recovery events recorded for this worker." : `Worker events unavailable: runtime source is ${sourceModeLabel(sourceMode)}.`}</span>
           ) : (
             <ul className="detail-event-list">
               {events.map((e) => (
@@ -210,7 +211,7 @@ export function AgentDetail() {
       </section>
 
       {stopActive ? (
-        <p className="t-mono text-muted">SIMULATED STOP ACTIVE - this worker's dispatch is frozen in the UI candidate.</p>
+        <p className="t-mono text-muted">{sourceMode === "SIMULATED" ? "SIMULATED STOP ACTIVE - this worker's dispatch is frozen in the UI candidate." : sourceMode === "LIVE" ? "LIVE STOP ACTIVE - this worker's dispatch is frozen by the canonical directive." : `STOP ACTIVE, but runtime source is ${sourceModeLabel(sourceMode)}.`}</p>
       ) : null}
     </div>
   );

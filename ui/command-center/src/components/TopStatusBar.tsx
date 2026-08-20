@@ -4,24 +4,17 @@ import { useCommandCenter } from "../context/CommandCenterContext";
 import { StopControl } from "./EmergencyStop";
 import { TrustDialog } from "./TrustDialog";
 import { NotificationBell } from "./NotificationBell";
-
-function sourceLabel(source: string, stale: boolean) {
-  if (source === "DISCONNECTED") return "Disconnected";
-  if (stale) return "Stale";
-  if (source === "DEGRADED") return "Degraded";
-  if (source === "LIVE") return "Live";
-  return "Simulated";
-}
+import { sourceModeLabel } from "../lib/sourceMode";
 
 export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
   const clock = useClock();
-  const { stopActive, trustDialogOpen, openTrustDialog, closeTrustDialog, connection, mode } = useCommandCenter();
+  const { stopActive, trustDialogOpen, openTrustDialog, closeTrustDialog, connection, sourceMode } = useCommandCenter();
   const pillClass =
-    connection.source === "DISCONNECTED"
+    sourceMode === "DISCONNECTED"
       ? "data-source-pill data-source-disconnected"
-      : connection.source === "DEGRADED" || connection.stale
+      : sourceMode === "DEGRADED" || sourceMode === "UNKNOWN"
         ? "data-source-pill data-source-degraded"
-        : connection.source === "LIVE"
+        : sourceMode === "LIVE"
           ? "data-source-pill data-source-live"
           : "data-source-pill";
 
@@ -33,14 +26,14 @@ export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
             <Menu size={18} />
           </button>
           <span className={pillClass} title={connection.error ?? `Data source: ${connection.source}`}>
-            {connection.source === "DISCONNECTED" ? <WifiOff size={11} aria-hidden="true" /> : <Database size={11} aria-hidden="true" />}
-            <span className="t-label">Data Source: {sourceLabel(connection.source, connection.stale)}</span>
+            {sourceMode === "DISCONNECTED" ? <WifiOff size={11} aria-hidden="true" /> : <Database size={11} aria-hidden="true" />}
+            <span className="t-label">Data Source: {sourceModeLabel(sourceMode)}</span>
           </span>
         </div>
         <div className="topbar-right">
           <NotificationBell />
           {stopActive ? (
-            <span className="topbar-stop-chip" title={mode === "live" ? "STOP active in canonical runtime" : "SIMULATED STOP - UI CANDIDATE"}>
+            <span className="topbar-stop-chip" title={sourceMode === "LIVE" ? "STOP active in canonical runtime" : sourceMode === "SIMULATED" ? "SIMULATED STOP - UI CANDIDATE" : `STOP state ${sourceModeLabel(sourceMode)}; runtime state unavailable`}>
               <OctagonX size={11} aria-hidden="true" />
               <span className="t-label">Suspended</span>
             </span>
@@ -49,8 +42,8 @@ export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
             <ShieldQuestion size={13} aria-hidden="true" />
             <span className="t-label">
               Trust:{" "}
-              <span className={stopActive ? "trust-state-error" : mode === "live" ? "trust-state-live" : "trust-state-sim"}>
-                {mode === "live" ? (connection.source === "DISCONNECTED" ? "UNKNOWN" : "LIVE") : "SIMULATED"}
+              <span className={stopActive ? "trust-state-error" : sourceMode === "LIVE" ? "trust-state-live" : sourceMode === "SIMULATED" ? "trust-state-sim" : "trust-state-error"}>
+                {sourceModeLabel(sourceMode)}
               </span>
             </span>
           </button>

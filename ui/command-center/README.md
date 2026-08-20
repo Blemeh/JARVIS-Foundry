@@ -64,8 +64,9 @@ production:
 RealJarvisRuntimeAdapter  (src/lib/realClient.ts - maps canonical snapshot)
 ```
 
-The UI imports no JARVIS database internals. A future runtime adapter maps the
-Foundry ledger and Supervisor APIs onto the same contracts.
+The UI imports no JARVIS database internals. `RealJarvisRuntimeAdapter` maps the
+Foundry ledger and Supervisor APIs onto the same contracts; the mock adapter is
+kept isolated to explicit simulated mode.
 
 ## Routes
 
@@ -87,12 +88,12 @@ Foundry ledger and Supervisor APIs onto the same contracts.
 
 ## Cohesion layer
 
-The candidate is one coherent simulated JARVIS universe behind `JarvisClient`
+The simulated path remains one coherent JARVIS universe behind `JarvisClient`
 (`src/lib/contracts.ts`). `MockJarvisClient` (`src/lib/mockClient.ts`) owns a
-single mutable universe (`src/lib/cohesion.ts`): missions, steps, agent runs,
-workers, evidence, timeline, systems, memory, trust, and notifications all
-reference stable IDs and stay synchronized when an event or scenario mutates
-state.
+single mutable universe (`src/lib/cohesion.ts`) for tests and demos; the live
+path reads the canonical runtime projection through `RealJarvisRuntimeAdapter`.
+Every surface uses the explicit source contract, so live, simulated, and
+unavailable states cannot be silently conflated.
 
 - **Cross-linking:** missions, workers, evidence, systems, memory nodes,
   verdicts, and timeline events link to their related objects everywhere they
@@ -119,11 +120,11 @@ state.
   `PROVIDER_DEGRADED`, `MISSION_BLOCKED`, `MEMORY_CONFLICT`, `STOP_ACTIVE`,
   `RECOVERY`, `ROLLBACK`, `MISSION_COMPLETE`, plus `EMPTY_STATE` and
   `STREAM_DISCONNECTED`.
-- **STOP:** simulated only. Activating STOP freezes the UI candidate globally
-  (top bar SUSPENDED banner, frozen controls, STOP subsystem ACTIVE, timeline
-  `emergency_stop.*` events, critical notification) and resume writes
-  `resume.reorientation` / `resume.reconciliation` events. No production side
-  effect; labeled `SIMULATED STOP - UI CANDIDATE`.
+- **STOP:** simulated mode freezes the UI candidate globally (top bar SUSPENDED
+  banner, frozen controls, STOP subsystem ACTIVE, timeline `emergency_stop.*`
+  events, critical notification) and resume writes local
+  `resume.reorientation` / `resume.reconciliation` events. Live mode labels the
+  canonical owner-control path separately; owner mutations remain a later gate.
 - **Integrity:** `validateUniverseIntegrity` (`src/lib/integrity.ts`) checks
   every entity cross-reference and runs in the unit suite; the mock universe
   stays defect-free after scenarios and events.

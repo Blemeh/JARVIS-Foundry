@@ -8,9 +8,10 @@ import { StatusBadge } from "../components/StatusBadge";
 import { Dialog } from "../components/Dialog";
 import { ErrorState, LoadingState } from "../components/states";
 import { ContextChip, EntityRefLink } from "../components/EntityRefLink";
+import { sourceModeLabel } from "../lib/sourceMode";
 
 export function Memory() {
-  const { client, version } = useCommandCenter();
+  const { client, version, sourceMode } = useCommandCenter();
   const { memoryId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -121,7 +122,7 @@ export function Memory() {
       <aside className="memory-inspector panel panel-corner" aria-label="Node inspector">
         <div className="panel-header">
           <h2 className="t-label panel-title text-muted">Node Inspector</h2>
-          <span className="t-mono text-muted">SIMULATED</span>
+          <span className="t-mono text-muted">{sourceModeLabel(sourceMode)}</span>
         </div>
         <div className="inspector-body">
           {missionNoNode && !selected ? (
@@ -129,7 +130,7 @@ export function Memory() {
               <span className="t-mono inspector-active-label">No memory node</span>
               <h3 className="inspector-title">No node for {missionParam}</h3>
               <p className="prose inspector-summary">
-                This simulated mission has no memory node in the knowledge graph. Select a node to inspect it.
+                {sourceMode === "SIMULATED" ? "This simulated mission has no memory node in the knowledge graph. Select a node to inspect it." : sourceMode === "LIVE" ? "This canonical mission has no memory node in the knowledge graph. Select a node to inspect it." : `Memory relationship unavailable: runtime source is ${sourceModeLabel(sourceMode)}.`}
               </p>
             </div>
           ) : null}
@@ -192,7 +193,7 @@ export function Memory() {
               </div>
 
               <div className="inspector-actions">
-                <button type="button" className="btn btn-primary inspector-action" onClick={() => setDialogOpen(true)} disabled={requested}>
+                <button type="button" className="btn btn-primary inspector-action" onClick={() => setDialogOpen(true)} disabled={requested || sourceMode !== "SIMULATED"} title={sourceMode === "SIMULATED" ? undefined : `Memory re-evaluation is unavailable in ${sourceModeLabel(sourceMode)} source mode`}>
                   <RefreshCcw size={14} />
                   {requested ? "Re-evaluation requested" : "Request Re-evaluation"}
                 </button>
@@ -208,7 +209,7 @@ export function Memory() {
 
       <Dialog
         open={dialogOpen && selected !== null}
-        title="Re-evaluation Request - Simulated"
+        title={sourceMode === "SIMULATED" ? "Re-evaluation Request - Simulated" : `Re-evaluation Request - ${sourceModeLabel(sourceMode)}`}
         onClose={() => {
           setDialogOpen(false);
           if (requested) setRequested(false);
@@ -237,10 +238,9 @@ export function Memory() {
       >
         <div className="state-block">
           <RefreshCcw size={22} aria-hidden="true" />
-          <span className="t-label">Simulated re-evaluation request</span>
+          <span className="t-label">{sourceMode === "SIMULATED" ? "Simulated re-evaluation request" : `Re-evaluation request (${sourceModeLabel(sourceMode)})`}</span>
           <p className="prose">
-            The inspector requests a fresh evaluation of {selected?.label}. This candidate records the request
-            locally; a future runtime adapter will submit it to the Hybrid Memory service.
+            {sourceMode === "SIMULATED" ? `The inspector requests a fresh evaluation of ${selected?.label}. This candidate records the request locally; a future runtime adapter will submit it to the Hybrid Memory service.` : `A fresh evaluation of ${selected?.label} is not available from the ${sourceModeLabel(sourceMode)} source.`}
           </p>
         </div>
       </Dialog>

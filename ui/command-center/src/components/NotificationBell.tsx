@@ -18,6 +18,7 @@ export function NotificationBell() {
     acknowledgeNotification,
     resolveNotification,
     stopActive,
+    sourceMode,
   } = useCommandCenter();
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -70,16 +71,18 @@ export function NotificationBell() {
             compact
           />
           <div className="notify-popover-foot">
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => void simulateNextEvent()}
-              disabled={stopActive}
-              title={`Simulates the next demo event: ${nextEvent} (local only)`}
-            >
-              <Zap size={12} aria-hidden="true" />
-              Simulate {nextEvent}
-            </button>
+            {sourceMode === "SIMULATED" ? (
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => void simulateNextEvent()}
+                disabled={stopActive}
+                title={`Simulates the next demo event: ${nextEvent} (local only)`}
+              >
+                <Zap size={12} aria-hidden="true" />
+                Simulate {nextEvent}
+              </button>
+            ) : null}
             <Link to="/notifications" className="text-link" onClick={closeNotify}>
               View all
             </Link>

@@ -25,6 +25,7 @@ import { Dialog } from "../components/Dialog";
 import { LoadingState, ErrorState } from "../components/states";
 import { EntityRefLink, RefChipRow } from "../components/EntityRefLink";
 import { Lineage } from "../components/Lineage";
+import { sourceModeLabel } from "../lib/sourceMode";
 
 const stageIcons: Record<string, typeof Check> = {
   observe: SearchCheck,
@@ -37,7 +38,7 @@ const stageIcons: Record<string, typeof Check> = {
 
 export function MissionDetail() {
   const { missionId } = useParams();
-  const { client, version, notifications, stopActive, openTrustDialog } = useCommandCenter();
+  const { client, version, notifications, stopActive, openTrustDialog, sourceMode } = useCommandCenter();
   const [mission, setMission] = useState<Mission | null>(null);
   const [run, setRun] = useState<MissionRun | null>(null);
   const [workers, setWorkers] = useState<Worker[]>([]);
@@ -79,7 +80,7 @@ export function MissionDetail() {
   if (notFound) {
     return (
       <div className="shell-content">
-        <ErrorState label="Mission not found" detail="No simulated mission exists at this identifier." />
+        <ErrorState label="Mission not found" detail={sourceMode === "SIMULATED" ? "No simulated mission exists at this identifier." : sourceMode === "LIVE" ? "No canonical mission exists at this identifier." : `Mission lookup unavailable: runtime source is ${sourceModeLabel(sourceMode)}.`} />
       </div>
     );
   }
@@ -124,8 +125,8 @@ export function MissionDetail() {
       {stopActive ? (
         <div className="md-blocked-banner md-blocked-banner-stop" role="alert">
           <AlertTriangle size={15} aria-hidden="true" />
-          <span className="t-label">SIMULATED FROZEN</span>
-          <span className="t-mono md-blocked-detail">STOP active in the UI candidate. Execution pipeline is frozen; no advancement events fire.</span>
+          <span className="t-label">{sourceMode === "SIMULATED" ? "SIMULATED FROZEN" : sourceMode === "LIVE" ? "LIVE FROZEN" : `${sourceModeLabel(sourceMode)} FROZEN`}</span>
+          <span className="t-mono md-blocked-detail">{sourceMode === "SIMULATED" ? "STOP active in the UI candidate. Execution pipeline is frozen; no advancement events fire." : sourceMode === "LIVE" ? "Canonical STOP is active. Execution pipeline is frozen; no advancement events fire." : `STOP is active but runtime source is ${sourceModeLabel(sourceMode)}.`}</span>
         </div>
       ) : null}
 
@@ -143,8 +144,8 @@ export function MissionDetail() {
             type="button"
             className="btn"
             onClick={() => setDialog("halt")}
-            disabled={halted || stopActive}
-            aria-label="Request halt of this mission execution (simulated)"
+            disabled={halted || stopActive || sourceMode !== "SIMULATED"}
+            aria-label={sourceMode === "SIMULATED" ? "Request halt of this mission execution (simulated)" : `Mission halt unavailable in ${sourceModeLabel(sourceMode)} source mode`}
           >
             {halted ? "Halt requested" : "Halt Execution"}
           </button>
@@ -152,8 +153,8 @@ export function MissionDetail() {
             type="button"
             className="btn btn-primary"
             onClick={() => setDialog("gate")}
-            disabled={gateRequested || stopActive}
-            aria-label="Request fresh verifier evaluation of the current gate (simulated)"
+            disabled={gateRequested || stopActive || sourceMode !== "SIMULATED"}
+            aria-label={sourceMode === "SIMULATED" ? "Request fresh verifier evaluation of the current gate (simulated)" : `Gate re-evaluation unavailable in ${sourceModeLabel(sourceMode)} source mode`}
           >
             {gateRequested ? "Re-evaluation requested" : "Re-evaluate Gate"}
           </button>
@@ -300,7 +301,7 @@ export function MissionDetail() {
             <div className="md-trust-row">
               <ShieldQuestion size={14} className="text-muted" aria-hidden="true" />
               <span className="t-label text-muted">Trust state</span>
-              <span className="t-mono md-trust-value">SIMULATED</span>
+              <span className="t-mono md-trust-value">{sourceModeLabel(sourceMode)}</span>
               <button type="button" className="text-link" onClick={openTrustDialog}>
                 Explain
               </button>
@@ -324,7 +325,7 @@ export function MissionDetail() {
           </div>
           <div className="md-hub-body">
             {workers.length === 0 ? (
-              <span className="t-mono text-dim">No workers assigned in this fixture.</span>
+              <span className="t-mono text-dim">{sourceMode === "SIMULATED" ? "No workers assigned in this fixture." : sourceMode === "LIVE" ? "No canonical workers assigned." : `Worker assignment unavailable: runtime source is ${sourceModeLabel(sourceMode)}.`}</span>
             ) : (
               <RefChipRow refs={workers.map((w) => ({ kind: "agent" as const, id: w.id, label: w.name }))} />
             )}
@@ -341,7 +342,7 @@ export function MissionDetail() {
           </div>
           <div className="md-hub-body">
             {evidence.length === 0 ? (
-              <span className="t-mono text-dim">No evidence attached in this fixture.</span>
+              <span className="t-mono text-dim">{sourceMode === "SIMULATED" ? "No evidence attached in this fixture." : sourceMode === "LIVE" ? "No canonical evidence attached." : `Evidence unavailable: runtime source is ${sourceModeLabel(sourceMode)}.`}</span>
             ) : (
               <RefChipRow refs={evidence.map((e) => ({ kind: "evidence" as const, id: e.id, label: `${e.id} · ${e.verdict}` }))} />
             )}
@@ -364,14 +365,14 @@ export function MissionDetail() {
 
       <Dialog
         open={dialog === "halt"}
-        title="Halt Execution - Simulated"
+        title={sourceMode === "SIMULATED" ? "Halt Execution - Simulated" : `Halt Execution - ${sourceModeLabel(sourceMode)}`}
         onClose={() => setDialog(null)}
         labelledBy="halt-dialog-title"
         footer={
           halted ? (
             <>
               <span className="t-mono text-muted" style={{ marginRight: "auto" }}>
-                HALT REQUEST SIMULATED - NO RUNTIME EFFECT
+                {sourceMode === "SIMULATED" ? "HALT REQUEST SIMULATED - NO RUNTIME EFFECT" : `HALT REQUEST ${sourceModeLabel(sourceMode)} - NOT AVAILABLE`}
               </span>
               <button type="button" className="btn" onClick={() => setDialog(null)}>
                 Close
@@ -392,17 +393,16 @@ export function MissionDetail() {
       >
         <div className="state-block">
           <AlertTriangle size={22} aria-hidden="true" />
-          <span className="t-label">Simulated halt request</span>
+          <span className="t-label">{sourceMode === "SIMULATED" ? "Simulated halt request" : `Halt request (${sourceModeLabel(sourceMode)})`}</span>
           <p className="prose">
-            This candidate records the halt request locally. A future runtime adapter will submit it as an
-            authenticated owner directive to the Supervisor.
+            {sourceMode === "SIMULATED" ? "This candidate records the halt request locally. A future runtime adapter will submit it as an authenticated owner directive to the Supervisor." : `Mission halt is not invoked in this read-only proof. The ${sourceModeLabel(sourceMode)} source does not expose a confirmed halt path.`}
           </p>
         </div>
       </Dialog>
 
       <Dialog
         open={dialog === "gate"}
-        title="Re-evaluate Gate - Simulated"
+        title={sourceMode === "SIMULATED" ? "Re-evaluate Gate - Simulated" : `Re-evaluate Gate - ${sourceModeLabel(sourceMode)}`}
         onClose={() => setDialog(null)}
         labelledBy="gate-dialog-title"
         footer={

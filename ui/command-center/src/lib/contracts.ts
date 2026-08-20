@@ -6,7 +6,7 @@
  * current mission ships MockJarvisClient behind the same interface.
  */
 
-export type DataSource = "SIMULATED" | "LIVE" | "DEGRADED" | "DISCONNECTED";
+export type DataSource = "SIMULATED" | "LIVE" | "DEGRADED" | "DISCONNECTED" | "UNKNOWN";
 
 export interface ConnectionState {
   connected: boolean;

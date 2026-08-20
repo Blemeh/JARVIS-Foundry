@@ -10,13 +10,14 @@ import { Pagination } from "../components/Pagination";
 import { EmptyState, LoadingState } from "../components/states";
 import { ContextChip } from "../components/EntityRefLink";
 import { formatHash } from "../lib/format";
+import { sourceCopy, sourceModeLabel } from "../lib/sourceMode";
 
 const PAGE_SIZE = 6;
 const sources = ["ALL", "VERIFIER", "WORKER", "LEDGER", "MEMORY"] as const;
 type SourceFilter = (typeof sources)[number];
 
 export function Evidence() {
-  const { client, version } = useCommandCenter();
+  const { client, version, sourceMode } = useCommandCenter();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [items, setItems] = useState<EvidenceArtifact[] | null>(null);
@@ -72,14 +73,18 @@ export function Evidence() {
       <SectionHeader
         kicker="Evidence"
         title="Evidence Ledger"
-        description="Simulated artifacts collected by JARVIS workers and verifiers. Every row is fixture data with a plausible hash; no canonical ledger is touched."
+        description={sourceCopy(sourceMode, {
+          live: "Canonical evidence artifacts collected by JARVIS workers and verifiers, read from the Foundry ledger.",
+          simulated: "Simulated artifacts collected by JARVIS workers and verifiers for tests and demos. Every row is fixture data with a plausible hash; no canonical ledger is touched.",
+          unavailable: `Evidence source ${sourceModeLabel(sourceMode)}: canonical artifacts are unavailable and no fixture fallback is shown.`,
+        })}
         actions={
           <>
             <span className="badge badge-teal">
               <ShieldCheck size={11} aria-hidden="true" />
               Integrity node online
             </span>
-            <button type="button" className="btn" aria-label="Export ledger (simulated)">
+            <button type="button" className="btn" aria-label={`Export ledger (${sourceModeLabel(sourceMode).toLowerCase()})`} disabled={sourceMode !== "SIMULATED"}>
               <Download size={14} />
               Export Ledger
             </button>
@@ -163,7 +168,7 @@ export function Evidence() {
         </div>
 
         {rows.length === 0 ? (
-          <EmptyState label="No evidence matches" detail="Adjust filters or clear context to inspect more artifacts in this simulated universe." />
+          <EmptyState label="No evidence matches" detail={sourceMode === "SIMULATED" ? "Adjust filters or clear context to inspect more artifacts in this simulated universe." : sourceMode === "LIVE" ? "Adjust filters or clear context to inspect canonical artifacts." : `Evidence data is unavailable: runtime source is ${sourceMode}.`} />
         ) : (
           <div className="evidence-table" role="table" aria-label="Evidence artifacts">
             <div className="evidence-row evidence-row-head" role="row">

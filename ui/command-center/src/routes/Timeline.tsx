@@ -6,6 +6,7 @@ import type { EntityRef, TimelineCategory, TimelineEvent, TimelineSeverity } fro
 import { Drawer } from "../components/Drawer";
 import { EmptyState, LoadingState } from "../components/states";
 import { ContextChip, RefChipRow } from "../components/EntityRefLink";
+import { sourceModeLabel } from "../lib/sourceMode";
 
 const filters: { key: "ALL" | TimelineCategory; label: string }[] = [
   { key: "ALL", label: "All Events" },
@@ -43,7 +44,7 @@ function eventRefs(e: TimelineEvent): EntityRef[] {
 }
 
 export function Timeline() {
-  const { client, version } = useCommandCenter();
+  const { client, version, sourceMode } = useCommandCenter();
   const [searchParams, setSearchParams] = useSearchParams();
   const [events, setEvents] = useState<TimelineEvent[] | null>(null);
   const [query, setQuery] = useState("");
@@ -118,11 +119,10 @@ export function Timeline() {
           <p className="t-label text-muted page-kicker">Event Ledger</p>
           <h1 className="t-display">Timeline</h1>
           <p className="prose page-desc">
-            Simulated ledger sequence for missions, handoffs, verifier gates, recovery, and STOP drills. Detail views
-            are local only and every reference is navigable.
+            {sourceMode === "SIMULATED" ? "Simulated ledger sequence for missions, handoffs, verifier gates, recovery, and STOP drills. Detail views are local only and every reference is navigable." : sourceMode === "LIVE" ? "Canonical ledger sequence for missions, handoffs, verifier gates, recovery, and STOP directives. Every reference is navigable." : `Timeline source ${sourceModeLabel(sourceMode)}: canonical events are unavailable and no fixture fallback is shown.`}
           </p>
         </div>
-        <span className="t-mono text-muted timeline-head-hash">SYSTEM AUDIT HASH: 8F9A.22C (FIXTURE)</span>
+        <span className="t-mono text-muted timeline-head-hash">SYSTEM AUDIT HASH: {sourceMode === "SIMULATED" ? "8F9A.22C (FIXTURE)" : sourceMode === "LIVE" ? "CANONICAL" : sourceModeLabel(sourceMode)}</span>
       </div>
 
       {missionFilter || agentFilter || systemFilter || severityFilter || categoryFilter ? (
@@ -183,7 +183,7 @@ export function Timeline() {
 
       {groups.length === 0 ? (
         <div className="panel panel-corner">
-          <EmptyState label="Empty timeline" detail="No events match the current filters in this simulated ledger." />
+          <EmptyState label="Empty timeline" detail={sourceMode === "SIMULATED" ? "No events match the current filters in this simulated ledger." : sourceMode === "LIVE" ? "No canonical events match the current filters." : `Timeline data is unavailable: runtime source is ${sourceMode}.`} />
         </div>
       ) : (
         <div className="timeline">
@@ -239,7 +239,7 @@ export function Timeline() {
             </div>
           ))}
           <div className="timeline-end">
-            <span className="t-mono text-dim">--- END OF SIMULATED LEDGER ---</span>
+            <span className="t-mono text-dim">--- END OF {sourceModeLabel(sourceMode)} LEDGER ---</span>
           </div>
         </div>
       )}
@@ -275,7 +275,7 @@ export function Timeline() {
               <RefChipRow refs={eventRefs(selected)} />
             </div>
             <div className="record-foot">
-              <span className="t-mono text-muted">SIMULATED EVENT</span>
+              <span className="t-mono text-muted">{sourceModeLabel(sourceMode)} EVENT</span>
             </div>
           </div>
         ) : null}
