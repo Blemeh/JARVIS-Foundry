@@ -6,21 +6,20 @@ every promotion/remaster mission (see `docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.
 If this document and another current-status document disagree, THIS document wins
 for "what exists now" claims; the architecture contract wins for binding invariants.
 
-Last reconciled: 2026-08-19 (docs-only convergence evidence at e9da9ba; source gates verified at 84a22b4; c60db92 runtime freeze/restart, R3 proving-window registration, disabled worker-loop registration, schema34 deployment/restore rehearsal, and legacy evidence preserved)
+Last reconciled: 2026-08-20 (provider-config security closure at 8cf045e on
+candidate/provider-config; full suite 1465/1465 PASS; live Muse validation and
+owner API key remain external boundaries)
 
 ```text
-CURRENT CANONICAL HEAD:      e9da9ba (latest canonical repository/evidence head;
-                             source gates were verified at 84a22b4, semantic
-                             runtime source remains 93d23f5, and the running
-                             deployed release remains c60db92)
-CURRENT REPOSITORY HEAD:     e9da9ba (docs-only descendant of the tested
-                             source base; the exact c60db92 runtime is not
-                             silently replaced)
-CURRENT STATE RECORD:        e9da9ba (current-head convergence evidence is
-                             recorded under docs/convergence/)
-TESTED SOURCE HEAD:          84a22b4 (fresh 1260-test full suite and 100-test
-                             R7-R12 convergence suite; docs-only candidate
-                             evidence commits follow)
+CURRENT CANONICAL HEAD:      8cf045e (candidate/provider-config security closure;
+                             machine-local provider.yaml authority, subject-bound
+                             historical identity, and YAML parse secret isolation)
+CURRENT REPOSITORY HEAD:     8cf045e (candidate branch; not yet merged to main)
+CURRENT STATE RECORD:        8cf045e (provider-config candidate closure)
+TESTED SOURCE HEAD:          8cf045e (1465-test full suite + 194 focused security
+                             verification; independent Luna verifier PASS)
+PROVIDER CONFIG CANDIDATE:   candidate/provider-config @ 8cf045e (base 458fe4b;
+                             security closure proven; promotion pending)
 LATEST R10 FOCUSED SOURCE:   93d23f5 (authenticated nonce-bound
                              REPRIORITIZE/REDIRECT consumer plus exactly-once
                              replay repair; live provider dispatch remains NOT_TESTED)
@@ -29,9 +28,12 @@ PRE-V8 HISTORICAL BASELINE:  93a3ddc0965dfaf3e4cb9dc0952467bd5250520a (historica
 CURRENT SCHEMA:              v34 (adds event-derived mission_step_contracts;
                              the live deployed database remains v33 until a
                              controlled migration)
-FULL SUITE:                  1260 collected at tested source base 84a22b4;
-                             failures=0, errors=0, skipped=0 (see
-                             docs/convergence/CURRENT_CANONICAL_FULL_SUITE_20260819_JUNIT.xml)
+FULL SUITE:                  1465 collected at candidate head 8cf045e;
+                             failures=0, errors=0, skipped=0
+MUSE LIVE VALIDATED:         NO (machine-local provider.yaml not yet deployed;
+                             owner API key required for live probe)
+API KEY STATUS:              OWNER INPUT REQUIRED (unless an existing local
+                             OpenCode credential is securely migrated later)
 SUPERVISOR STATE:            RUNNING (single lease owner, heartbeat advancing)
 STOP STATE:                  OFF (no sentinel, no active STOP/PAUSE directives)
 ACTIVE DIRECTIVES:           redirect, waive, extend_duty_window, align
@@ -149,6 +151,7 @@ browser substrate, and it cannot activate native desktop execution.
 | JARVIS Eyes Phase 2 | PASS — 20/20 faults, rollback/live probe, read-only boundary |
 | Workflow Discovery Phase 3 | PASS — 36/36 focused, F1–F25, bounded probe, independent review |
 | Procedural Learning Phase 4 | PASS — 23/23 focused, F1–F24, artifact-byte tamper, zero-effect shadow, local browser probe, rollback, fresh independent review |
+| Provider-config security closure (candidate) | PASS — subject-bound historical identity, YAML secret isolation, 1465/1465 suite, 194/194 focused security verification, independent Luna verifier PASS; live Muse validation deferred (owner API key) |
 | Post-V7 canonical convergence (R7–R12 semantic closure) | PASS_WITH_BOUNDARY — exact Supervisor authority across low-level evolution/control surfaces; focused gates and the 1,260-test current-source suite pass; isolated promotion, post-promotion runtime probe, and disposable local accessibility audit PASS; live/provider/elapsed boundaries remain explicit |
 | R10 authenticated mission-directive consumer | PASS_WITH_BOUNDARY — nonce-bound REPRIORITIZE/REDIRECT reaches the existing MissionLoop path; 26 focused tests and fresh verifier PASS; live Supervisor/Hermes/provider dispatch remains NOT_TESTED |
 | R10 exactly-once replay repair | PASS — ordinary mission instructions preserve the caller manifest hash; authenticated REDIRECT remains canonical; 36 focused tests and the 1,260-test current-source suite PASS |
