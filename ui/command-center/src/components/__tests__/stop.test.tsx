@@ -2,7 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { CommandCenterProvider } from "../../context/CommandCenterContext";
-import { StopControl, EmergencyStopDialog } from "../EmergencyStop";
+import { canResume, StopControl, EmergencyStopDialog } from "../EmergencyStop";
 
 function renderStop() {
   return render(
@@ -14,6 +14,12 @@ function renderStop() {
 }
 
 describe("Emergency STOP", () => {
+  it("keeps live Resume available while canonical STOP is active", () => {
+    expect(canResume(true, "LIVE")).toBe(true);
+    expect(canResume(true, "DISCONNECTED")).toBe(false);
+    expect(canResume(false, "SIMULATED")).toBe(true);
+  });
+
   it("is prominent, opens a dialog, and only simulates in simulated mode", async () => {
     const fetchSpy = vi.spyOn(window, "fetch");
     const user = userEvent.setup();

@@ -1,7 +1,11 @@
 import { AlertOctagon, OctagonX, RotateCcw, ShieldCheck } from "lucide-react";
 import { Dialog } from "./Dialog";
 import { useCommandCenter } from "../context/CommandCenterContext";
-import { sourceModeLabel } from "../lib/sourceMode";
+import { sourceModeLabel, type ResolvedSourceMode } from "../lib/sourceMode";
+
+export function canResume(live: boolean, sourceMode: ResolvedSourceMode): boolean {
+  return !live || sourceMode === "LIVE";
+}
 
 export function EmergencyStopDialog() {
   const { stopDialogOpen, closeStopDialog, stopActive, stopActivatedAt, activateStop, resetStop, mode, sourceMode, mutationsEnabled } =
@@ -21,7 +25,7 @@ export function EmergencyStopDialog() {
             <span className="t-mono text-muted" style={{ marginRight: "auto" }}>
               {sourceMode === "LIVE" ? "STOP active" : sourceMode === "SIMULATED" ? "Simulated" : `STOP ${sourceModeLabel(sourceMode)}`} at {stopActivatedAt ? new Date(stopActivatedAt).toLocaleTimeString() : ""}
             </span>
-            <button type="button" className="btn" onClick={resetStop} disabled={!mutationsEnabled && live}>
+            <button type="button" className="btn" onClick={resetStop} disabled={!canResume(live, sourceMode)}>
               <RotateCcw size={14} />
               Resume
             </button>
