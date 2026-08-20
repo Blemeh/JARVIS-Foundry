@@ -16,6 +16,50 @@ from jarvis_foundry.workers.adapters.fakes import ScriptedWorkerAdapter
 from jarvis_foundry.workers.adapters.hermes import HermesWorkerAdapter
 from jarvis_foundry.workers.adapters.openhands import OpenHandsWorkerAdapter
 from jarvis_foundry.workers.contracts import WorkerStepContract
+from jarvis_foundry.runtime.provider_config import ProviderSettings
+
+
+TEST_PROVIDER_SETTINGS = ProviderSettings(
+    provider="opencode_go",
+    model="muse-spark-1.2-contributor",
+    base_url="https://opencode.ai/zen/go/v1",
+    api_key="sk-test-adapter-key-1234567890",
+    source="test",
+)
+
+
+@pytest.fixture(autouse=True)
+def _adapter_provider_settings(monkeypatch):
+    """Dispatching adapters need a resolved credential without disk reads."""
+    monkeypatch.setattr(
+        "jarvis_foundry.runtime.provider_config.default_provider_settings",
+        lambda: TEST_PROVIDER_SETTINGS,
+    )
+    return TEST_PROVIDER_SETTINGS
+
+
+def _hermes_kwargs(tmp_path: Path, **kwargs: object) -> dict[str, object]:
+    home = kwargs.pop("hermes_home", tmp_path / "home")
+    Path(home).mkdir(parents=True, exist_ok=True)
+    return {
+        "hermes_root": tmp_path,
+        "hermes_home": home,
+        "provider_settings": TEST_PROVIDER_SETTINGS,
+        **kwargs,
+    }
+
+
+def _openhands_kwargs(tmp_path: Path, **kwargs: object) -> dict[str, object]:
+    data_dir = kwargs.pop("data_dir", tmp_path / "data")
+    Path(data_dir).mkdir(parents=True, exist_ok=True)
+    exe = kwargs.pop("openhands_exe", tmp_path / "openhands.exe")
+    Path(exe).write_text("", encoding="utf-8")
+    return {
+        "openhands_exe": exe,
+        "data_dir": data_dir,
+        "provider_settings": TEST_PROVIDER_SETTINGS,
+        **kwargs,
+    }
 
 
 def contract(tmp_path: Path) -> WorkerStepContract:

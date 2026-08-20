@@ -22,9 +22,9 @@ from ..database import FoundryDatabase
 from ..events import Event, canonical_json, payload_hash
 from ..supervisor.authority import SUPERVISOR_CONTROLLER
 
+from ..runtime.provider_config import ProviderSettings, load_provider_settings
+
 VERDICTS = ("PASS", "FAIL", "BLOCKED", "NOT_TESTED")
-DIRECTIVE_PROVIDER = "opencode_go"
-DIRECTIVE_MODEL = "deepseek-v4-flash"
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
 
 
@@ -37,15 +37,14 @@ def _require(condition: bool, message: str) -> None:
         raise VerificationError(message)
 
 
-def _identity_ok(identity: dict[str, Any]) -> bool:
-    """D-031: JARVIS internal workers resolve to the directive
-    provider/model pair. Anything else is refused — unavailability is
-    BLOCKED, never silently substituted."""
-    return (isinstance(identity, dict)
-            and identity.get("provider") == DIRECTIVE_PROVIDER
-            and identity.get("model") == DIRECTIVE_MODEL
-            and isinstance(identity.get("session_id"), str)
-            and identity["session_id"].strip())
+def _identity_ok(
+    identity: dict[str, Any],
+    *,
+    authority: ProviderSettings | None = None,
+) -> bool:
+    """D-031: trusted worker identity from configured or persisted models."""
+    settings = authority or load_provider_settings()
+    return settings.is_trusted_identity(identity)
 
 
 def record_verification_request(
@@ -76,8 +75,8 @@ def record_verification_request(
         "create verification requests - refused",
     )
     _require(_identity_ok(builder_identity),
-             "builder identity must resolve to the directive "
-             f"{DIRECTIVE_PROVIDER}/{DIRECTIVE_MODEL} — refused")
+             "builder identity must resolve to a trusted configured or "
+             "persisted provider/model pair — refused")
     if contains_secret_like(canonical_json({"criteria": criteria})):
         raise VerificationError(
             "verification criteria contain secret-like content — "
@@ -150,9 +149,8 @@ def record_verification_verdict(
                  "(frozen-criteria contract)")
     _require(isinstance(findings, list), "findings must be a list")
     _require(_identity_ok(verifier_identity),
-             "verifier identity must resolve to the directive "
-             f"{DIRECTIVE_PROVIDER}/{DIRECTIVE_MODEL} — refused (no "
-             "silent substitution)")
+             "verifier identity must resolve to a trusted configured or "
+             "persisted provider/model pair — refused (no silent substitution)")
     _require(isinstance(evidence_refs, list), "evidence_refs must be "
              "a list")
     if artifacts is not None:

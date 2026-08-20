@@ -97,8 +97,10 @@ def resolve_runtime_authority(
     ``config/foundry.yaml`` is a TEMPLATE and is not consulted.
     """
     from .config import WorkerRuntimeConfig
+    from .provider_config import load_provider_settings
 
     paths = FoundryPaths.discover(home)
+    provider_settings = load_provider_settings()
     profile = _read_profile(paths.home / "foundry-profile.yaml")
 
     interval = heartbeat_seconds
@@ -122,7 +124,8 @@ def resolve_runtime_authority(
     if worker_yaml is None and profile.get("worker_config_path"):
         worker_yaml = profile["worker_config_path"]
     worker_path = Path(worker_yaml).expanduser().resolve() if worker_yaml else None
-    worker_cfg = WorkerRuntimeConfig.from_yaml(worker_path)
+    worker_cfg = WorkerRuntimeConfig.from_yaml(
+        worker_path, provider_settings=provider_settings)
     python = python_executable or os.environ.get("JARVIS_PYTHON_EXE") or sys.executable
     return RuntimeAuthority(
         home=paths.home,

@@ -29,9 +29,8 @@ from .promote import promote_release
 from .records import classify_risk
 from .registry import register_release, set_slot
 from ._authority import SUPERVISOR_CONTROLLER
+from ..runtime.provider_config import load_provider_settings
 from .verify import (
-    DIRECTIVE_PROVIDER,
-    DIRECTIVE_MODEL,
     record_verification_request,
     record_verification_verdict,
 )
@@ -103,9 +102,14 @@ def run_cycle(
     _require(workload_dir.is_dir(),
              f"workload_dir {workload_dir} does not exist")
     if verifier_identity is None:
-        verifier_identity = {"provider": DIRECTIVE_PROVIDER,
-                             "model": DIRECTIVE_MODEL,
-                             "session_id": "supervisor-verifier"}
+        provider = load_provider_settings()
+        verifier_identity = {
+            "provider": provider.provider,
+            "model": provider.model,
+            "session_id": "supervisor-verifier",
+        }
+    else:
+        provider = load_provider_settings()
 
     cycle_id = "cycle-" + uuid.uuid4().hex[:12]
     database.append(Event.create(
@@ -196,8 +200,8 @@ def run_cycle(
             subject_ref=candidate,
             criteria=_verification_criteria(improvement),
             artifacts=dict(build["artifact_hashes"]),
-            builder_identity={"provider": DIRECTIVE_PROVIDER,
-                              "model": DIRECTIVE_MODEL,
+            builder_identity={"provider": provider.provider,
+                              "model": provider.model,
                               "session_id": "cycle-builder"},
             controller=controller)
         record_verification_verdict(

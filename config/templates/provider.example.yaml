@@ -1,0 +1,8 @@
+# Machine-local provider configuration template.
+# Copy to: %LOCALAPPDATA%\JARVIS\config\provider.yaml
+# Never commit the live file or store api_key in Git-tracked YAML.
+
+provider: opencode_go
+model: muse-spark-1.2-contributor
+base_url: https://opencode.ai/zen/go/v1
+api_key: ""

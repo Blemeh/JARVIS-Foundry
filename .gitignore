@@ -46,7 +46,9 @@ coverage/
 Thumbs.db
 Desktop.ini
 
-# Worktrees and generated evidence
+# Machine-local provider credentials (never commit live copies)
+**/provider.yaml
+
 .worktrees/
 .h/
 artifacts/

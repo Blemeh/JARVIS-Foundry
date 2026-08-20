@@ -10,6 +10,7 @@ from ..events import Event
 from ..reconcile import inspect as inspect_ledger
 from ..reconcile import reconcile
 from ..runtime.authority import ALLOWED_TRUST_STATES
+from ..runtime.provider_config import ProviderConfigError
 from .estop import EmergencyStop
 from .leases import LeaseManager, LeaseUnavailable
 from .worker import WorkerController
@@ -192,7 +193,7 @@ class Supervisor:
 
         try:
             config = WorkerRuntimeConfig.from_yaml(self.worker_loop_config)
-        except (OSError, ValueError, TypeError):
+        except (OSError, ValueError, TypeError, ProviderConfigError):
             return
         if not config.enabled:
             return
