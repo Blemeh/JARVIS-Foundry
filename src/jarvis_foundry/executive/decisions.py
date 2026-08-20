@@ -10,6 +10,8 @@ from ..database import FoundryDatabase
 from ..events import Event
 from .calibration import CalibrationState, rebuild_calibration
 from .eligibility import (
+    WAIT_COMPARATIVE,
+    WAIT_NO_ELIGIBLE,
     assess_eligibility,
     current_activation_epoch,
     eligible_candidates,
@@ -25,6 +27,7 @@ DecisionKind = Literal["SELECT", "REJECT", "DEFER", "WAIT"]
 class ExecutiveWait:
     reason: str
     reconsider_condition: str
+    wait_kind: str = WAIT_NO_ELIGIBLE
     best_candidate_id: str | None = None
     best_score: float | None = None
     comparative_rationale: str = ""
@@ -130,11 +133,12 @@ class ExecutiveDecisionService:
         if not rows:
             return self._record_and_return(self._wait_decision(
                 decision_id,
-                reason="no eligible candidates after historical firewall",
-                reconsider_condition="fresh evidence-backed candidates with executive_epoch marker",
+                reason=WAIT_NO_ELIGIBLE,
+                reconsider_condition="fresh evidence-backed candidates with governed executive_epoch marker",
                 goals=goal_ids,
                 eligibility=eligibility_audit,
                 calibration_version=calibration.version,
+                wait_kind=WAIT_NO_ELIGIBLE,
             ))
 
         ranked = rank_candidates(
@@ -192,6 +196,7 @@ class ExecutiveDecisionService:
                 calibration_version=calibration.version,
                 rejected=tuple(rejected),
                 deferred=tuple(deferred),
+                wait_kind=WAIT_COMPARATIVE,
             ))
 
         if best.composite < wait_threshold and best.goal_fit < 0.15:
@@ -203,6 +208,7 @@ class ExecutiveDecisionService:
                 best=best,
                 eligibility=eligibility_audit,
                 calibration_version=calibration.version,
+                wait_kind=WAIT_COMPARATIVE,
             ))
 
         # Keyword bait rejection: superficially attractive but no goal fit.
@@ -255,13 +261,20 @@ class ExecutiveDecisionService:
         calibration_version: str = "",
         rejected: tuple[dict[str, Any], ...] = (),
         deferred: tuple[dict[str, Any], ...] = (),
+        wait_kind: str = WAIT_NO_ELIGIBLE,
     ) -> ExecutiveDecision:
+        comparative = (
+            wait_kind == WAIT_COMPARATIVE
+            and best is not None
+            and reason != WAIT_NO_ELIGIBLE
+        )
         wait = ExecutiveWait(
             reason=reason,
             reconsider_condition=reconsider_condition,
+            wait_kind=wait_kind,
             best_candidate_id=best.candidate_id if best else None,
             best_score=best.composite if best else None,
-            comparative_rationale=reason,
+            comparative_rationale=reason if comparative else "",
         )
         return ExecutiveDecision(
             kind="WAIT",
@@ -302,8 +315,10 @@ class ExecutiveDecisionService:
             payload["wait"] = {
                 "reason": decision.wait.reason,
                 "reconsider_condition": decision.wait.reconsider_condition,
+                "wait_kind": decision.wait.wait_kind,
                 "best_candidate_id": decision.wait.best_candidate_id,
                 "best_score": decision.wait.best_score,
+                "comparative_rationale": decision.wait.comparative_rationale,
             }
         self.database.append(Event.create(
             "executive.decision_recorded",

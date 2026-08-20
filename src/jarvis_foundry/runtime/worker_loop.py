@@ -80,6 +80,8 @@ def _executive_waiting_report(
                     decision.wait.best_candidate_id if decision.wait else None),
                 "best_score": (
                     decision.wait.best_score if decision.wait else None),
+                "wait_kind": (
+                    decision.wait.wait_kind if decision.wait else None),
             },
         },
         source_type="supervisor", source_id=instance_id,
@@ -142,7 +144,7 @@ def _maybe_executive_select(
     )
     decision_id = decision.decision_id
     database.append(Event.create(
-        "executive.decision_recorded",
+        "executive.decision_materialized",
         {
             "decision_id": decision_id,
             "decision": "SELECT",
@@ -185,9 +187,12 @@ def _record_executive_outcome(
     objective = str(row[1]) if row else str(mission.get("objective") or "")
     decision_events = [
         e for e in database.events()
-        if e.event_type == "executive.decision_recorded"
+        if e.event_type in ("executive.decision_recorded", "executive.decision_materialized")
         and e.payload.get("candidate_id") == candidate_id
-        and e.payload.get("mission_id") in (mission_id, None)
+        and (
+            e.payload.get("mission_id") in (mission_id, None)
+            or e.event_type == "executive.decision_recorded"
+        )
     ]
     decision_id = (
         str(decision_events[-1].payload.get("decision_id"))
@@ -200,7 +205,7 @@ def _record_executive_outcome(
         mission_id=mission_id,
         source=source,
         objective=objective,
-        outcome=str(getattr(outcome, "outcome", actual.get("outcome", "UNKNOWN"))),
+        outcome=str(actual.get("outcome") or getattr(outcome, "outcome", "UNKNOWN")),
         repair_count=int(actual.get("repair_count") or 0),
         actual=actual,
         source_id=f"worker-loop:{instance_id}",
@@ -434,9 +439,11 @@ def run_cycle(
                 database, loop_id=loop_id, instance_id=instance_id,
                 mission_id=mission_id, reason=f"mission contract dispatch blocked: {error}",
             )
-        if getattr(outcome, "outcome", None) == "PASSED":
+        terminal = getattr(outcome, "outcome", None)
+        if terminal == "PASSED":
             _advisory_accepted_outcome_writeback(
                 database, mission_id=mission_id, outcome=outcome)
+        if terminal in ("PASSED", "FAILED", "BLOCKED"):
             _record_executive_outcome(
                 database, mission_id=mission_id, outcome=outcome,
                 instance_id=instance_id)

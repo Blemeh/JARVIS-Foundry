@@ -10,16 +10,18 @@ from ..database import FoundryDatabase
 from ..discovery_candidates import covered_objective
 from ..knowledge import canonicalize_statement
 
-# Sources that must never auto-activate without explicit executive epoch marker.
-_BLOCKED_SOURCE_PREFIXES = (
-    "test", "prompt", "hybrid-probe", "maintenance", "monitor:",
-    "research_queue", "proving", "lab", "shadow", "v7-", "wp10",
+# Lab/test proving sources — never receive organic executive eligibility.
+_LAB_SOURCE_PREFIXES = (
+    "test", "prompt", "hybrid-probe", "proving", "lab", "shadow", "v7-", "wp10",
 )
-_BLOCKED_SOURCE_EXACT = frozenset({
-    "review-of-F8", "system", "vault",
+_LAB_SOURCE_EXACT = frozenset({
+    "review-of-F8",
 })
 
 ELIGIBLE_STATUSES = frozenset({"NEW", "SCORED"})
+
+WAIT_NO_ELIGIBLE = "NO_ELIGIBLE_CANDIDATES"
+WAIT_COMPARATIVE = "COMPARATIVE_WAIT"
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,22 +49,59 @@ def _evidence_dict(evidence_json: str) -> list[dict[str, Any]]:
         return []
 
 
-def _has_epoch_marker(evidence: list[dict[str, Any]], epoch: str) -> bool:
+def _source_is_lab_provenance(source: str) -> bool:
+    """True when source provenance marks lab/test/historical proving work."""
+    lower = source.lower()
+    if source in _LAB_SOURCE_EXACT:
+        return True
+    return any(lower.startswith(prefix) for prefix in _LAB_SOURCE_PREFIXES)
+
+
+def _has_governed_epoch_marker(evidence: list[dict[str, Any]], epoch: str) -> bool:
+    """True only when evidence carries governed eligibility for the active epoch."""
     for item in evidence:
         if not isinstance(item, dict):
             continue
-        if str(item.get("executive_epoch") or "") == epoch:
-            return True
-        if item.get("executive_eligible") is True:
+        if str(item.get("executive_epoch") or "") != epoch:
+            continue
+        prov = item.get("eligibility_provenance")
+        if not isinstance(prov, dict):
+            continue
+        if str(prov.get("epoch") or "") != epoch:
+            continue
+        if prov.get("stamped_by"):
             return True
     return False
 
 
-def _source_blocked(source: str) -> bool:
-    lower = source.lower()
-    if source in _BLOCKED_SOURCE_EXACT:
-        return True
-    return any(lower.startswith(prefix) for prefix in _BLOCKED_SOURCE_PREFIXES)
+def stamp_executive_eligibility(
+    database: FoundryDatabase,
+    evidence: list[dict[str, Any]] | None,
+    *,
+    source: str,
+    stamped_by: str = "discovery.candidate_generation",
+) -> list[dict[str, Any]]:
+    """Attach governed executive eligibility when activation epoch is active."""
+    epoch = current_activation_epoch(database)
+    if not epoch:
+        return list(evidence or [])
+    if _source_is_lab_provenance(source):
+        return list(evidence or [])
+    items = list(evidence or [])
+    if _has_governed_epoch_marker(items, epoch):
+        return items
+    items.append({
+        "executive_epoch": epoch,
+        "executive_eligible": True,
+        "eligibility_provenance": {
+            "stamped_by": stamped_by,
+            "reason": "organic_candidate_generation",
+            "epoch": epoch,
+            "source": source,
+            "environment": "production",
+        },
+    })
+    return items
 
 
 def assess_eligibility(
@@ -84,25 +123,23 @@ def assess_eligibility(
     if status not in ELIGIBLE_STATUSES:
         return EligibilityResult(candidate_id, False, f"status_{status.lower()}", {"status": status})
 
-    if _source_blocked(source) and not _has_epoch_marker(evidence, activation_epoch):
+    if _source_is_lab_provenance(source) and not _has_governed_epoch_marker(evidence, activation_epoch):
         return EligibilityResult(
             candidate_id, False, "blocked_source",
             {"source": source, "epoch": activation_epoch},
         )
 
-    if activation_epoch and not _has_epoch_marker(evidence, activation_epoch):
+    if activation_epoch and not _has_governed_epoch_marker(evidence, activation_epoch):
         return EligibilityResult(
             candidate_id, False, "stale_historical",
-            {"epoch": activation_epoch, "requires": "executive_epoch marker"},
+            {"epoch": activation_epoch, "requires": "governed executive_epoch marker"},
         )
 
-    if not activation_epoch and not _has_epoch_marker(evidence, ""):
-        # No activation yet and no explicit eligibility — historical firewall.
-        if not any(item.get("executive_eligible") for item in evidence if isinstance(item, dict)):
-            return EligibilityResult(
-                candidate_id, False, "stale_historical",
-                {"reason": "missing executive activation epoch"},
-            )
+    if not activation_epoch:
+        return EligibilityResult(
+            candidate_id, False, "stale_historical",
+            {"reason": "missing executive activation epoch"},
+        )
 
     covered = covered_objective(database, objective)
     if covered is not None and covered != candidate_id:
