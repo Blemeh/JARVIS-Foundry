@@ -25,6 +25,19 @@ def _release_root_from_prefix() -> Path:
     return prefix
 
 
+def _interpreter_matches_release(observed: Path, expected: Path) -> bool:
+    """Accept console and headless interpreters from the same release venv."""
+    observed = observed.resolve()
+    expected = expected.resolve()
+    if observed == expected:
+        return True
+    return (
+        observed.name.casefold() == "pythonw.exe"
+        and expected.name.casefold() == "python.exe"
+        and observed.with_name("python.exe") == expected
+    )
+
+
 def validate_running_identity(home: Path) -> dict[str, object]:
     root = install_root()
     current = current_pointer().read_text(encoding="utf-8").strip().splitlines()[0].strip()
@@ -35,7 +48,7 @@ def validate_running_identity(home: Path) -> dict[str, object]:
             f"sys.prefix release {observed_dir} != CURRENT {expected_dir}")
     identity = validate_release(current, foundry_home=home, require_schema_match=True)
     python_exe = Path(identity["python_exe"]).resolve()
-    if Path(sys.executable).resolve() != python_exe:
+    if not _interpreter_matches_release(Path(sys.executable), python_exe):
         raise ReleaseError(
             f"sys.executable {sys.executable} != release python {python_exe}")
     origin = Path(__import__("jarvis_foundry").__file__).resolve()
