@@ -77,6 +77,9 @@ def _parser() -> argparse.ArgumentParser:
     rel_activate.add_argument("--spawn-worker-loop", action="store_true")
     rollback = release_sub.add_parser("rollback")
     rollback.add_argument("--install-root", type=Path, default=None)
+    setup = sub.add_parser("setup", help="configure machine-local LLM provider")
+    setup.add_argument("--show", action="store_true", help="show current provider config")
+    setup.add_argument("--test", action="store_true", help="test current provider config")
     backup = release_sub.add_parser("backup-db")
     backup.add_argument("--destination", type=Path, required=True)
     migrate = release_sub.add_parser("migrate-clone")
@@ -182,6 +185,14 @@ def main(argv: list[str] | None = None) -> int:
             home=paths.home,
             source_repo=getattr(args, "source_repo", None),
         ), indent=2, default=str))
+    elif args.command == "setup":
+        from .setup import run_interactive_setup, run_show, run_test
+
+        if args.show:
+            return run_show()
+        if args.test:
+            return run_test()
+        return run_interactive_setup()
     elif args.command == "release":
         return _release_command(args, paths)
     return 0

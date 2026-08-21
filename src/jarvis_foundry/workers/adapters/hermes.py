@@ -42,7 +42,7 @@ from ..envelope import (
 from ...runtime.provider_config import (
     ProviderCredentialError,
     ProviderSettings,
-    hermes_provider_env,
+    apply_hermes_provider_env,
 )
 from .base import (
     AdapterConfigurationError,
@@ -62,6 +62,7 @@ class HermesWorkerAdapter:
     #: against the .h checkout: "opencode_go" is not a CLI alias).
     CLI_PROVIDER_IDS = {
         "opencode_go": "opencode-go",
+        "opencode_zen": "opencode-zen",
         "vertex_ai": "vertex",
     }
 
@@ -137,7 +138,8 @@ class HermesWorkerAdapter:
                 "real Hermes dispatch is disabled; enable explicitly with "
                 "an isolated HERMES_HOME")
         try:
-            provider_env = hermes_provider_env(self.provider_settings)
+            provider_env = apply_hermes_provider_env(
+                self.provider_settings, os.environ)
         except ProviderCredentialError as error:
             raise ProviderUnavailable(str(error)) from error
         started = isoformat(utc_now())
@@ -145,10 +147,9 @@ class HermesWorkerAdapter:
         if self.timeout_seconds > 0:
             usage_path = Path(tempfile.gettempdir()) / f"jf-hermes-usage-{uuid.uuid4().hex}.json"
         env = {
-            **os.environ,
+            **provider_env,
             "HERMES_HOME": str(self.hermes_home),
             **result_env(contract.working_root),
-            **provider_env,
             # The session must operate INSIDE the contract working root so
             # every write lands in the worker's allowed scope. The checkout
             # code is resolved via PYTHONPATH (prepended before site-packages),

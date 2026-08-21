@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Any
 
 from ..deployment.layout import install_root
+from .provider_registry import UnsupportedProviderError, opencode_hermes_env_names, require_service
 
 DEFAULT_PROVIDER = "opencode_go"
 DEFAULT_MODEL = "muse-spark-1.2-contributor"
@@ -44,12 +45,14 @@ _LEGACY_ENV = {
     "api_key": (
         "JARVIS_OPENCODE_API_KEY",
         "OPENCODE_GO_API_KEY",
+        "OPENCODE_ZEN_API_KEY",
         "OPENCODE_API_KEY",
     ),
     "base_url": (
         "JARVIS_OPENCODE_BASE_URL",
         "OPENCODE_BASE_URL",
         "OPENCODE_GO_BASE_URL",
+        "OPENCODE_ZEN_BASE_URL",
     ),
 }
 
@@ -304,10 +307,26 @@ def load_provider_settings(
 
 def hermes_provider_env(settings: ProviderSettings) -> dict[str, str]:
     """Hermes subprocess env fragment (authoritative over inherited env)."""
+    try:
+        service = require_service(settings.provider)
+    except UnsupportedProviderError as error:
+        raise ProviderConfigError(str(error)) from error
     return {
-        "OPENCODE_GO_API_KEY": settings.require_api_key(),
-        "OPENCODE_GO_BASE_URL": settings.base_url,
+        service.hermes_api_key_env: settings.require_api_key(),
+        service.hermes_base_url_env: settings.base_url,
     }
+
+
+def apply_hermes_provider_env(
+    settings: ProviderSettings,
+    env: dict[str, str],
+) -> dict[str, str]:
+    """Merge provider mapping into *env*, clearing stale OpenCode family vars."""
+    updated = dict(env)
+    for name in opencode_hermes_env_names():
+        updated.pop(name, None)
+    updated.update(hermes_provider_env(settings))
+    return updated
 
 
 def openhands_provider_env(settings: ProviderSettings) -> dict[str, str]:

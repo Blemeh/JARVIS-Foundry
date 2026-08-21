@@ -175,6 +175,7 @@ class HermesOneshotAdapter:
     #: at the ONLY boundary that talks to the real CLI.
     CLI_PROVIDER_IDS = {
         "opencode_go": "opencode-go",
+        "opencode_zen": "opencode-zen",
         "vertex_ai": "vertex",
     }
 

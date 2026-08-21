@@ -155,6 +155,21 @@ def test_hermes_env_uses_opencode_go_names():
     }
 
 
+def test_hermes_env_uses_opencode_zen_names():
+    settings = _settings(
+        provider="opencode_zen",
+        model="x-preview-f-free",
+        api_key="sk-hermes-zen-key-1234567890",
+        base_url="https://opencode.ai/zen/v1",
+    )
+    env = hermes_provider_env(settings)
+    assert env == {
+        "OPENCODE_ZEN_API_KEY": "sk-hermes-zen-key-1234567890",
+        "OPENCODE_ZEN_BASE_URL": "https://opencode.ai/zen/v1",
+    }
+    assert "OPENCODE_GO_API_KEY" not in env
+
+
 def test_yaml_key_and_base_url_win_over_stale_legacy_env(config_path, monkeypatch):
     _write_provider(
         config_path,
