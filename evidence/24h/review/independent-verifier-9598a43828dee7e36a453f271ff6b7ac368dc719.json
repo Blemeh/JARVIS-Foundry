@@ -1,0 +1,240 @@
+{
+ "record_type": "independent_review",
+ "reviewer": {
+  "identity": "ox-alpha (x-preview-f-free via opencode-zen), Hermes Agent desktop session",
+  "model_lock": "session model x-preview-f-free; zero subagents dispatched; every verification command executed inline by the reviewer",
+  "skill": "acceptance-gate-review v2.0.0",
+  "independence_note": "same provider family as builder is an owner-mandated model lock; independence delivered via fresh reviewer session, reviewer-authored probes, structured evidence recomputation"
+ },
+ "lane": "candidate/24h-independent-verifier",
+ "builder_goal": "MASTER GOAL 2 - Independent Verifier Hardening",
+ "reviewed_sha": "9598a43828dee7e36a453f271ff6b7ac368dc719",
+ "implementation_commit": "5aaff020859fb7cb867066d51f3f7d7b1c19540b",
+ "base_commit": "7ac0b2373c8d4c74924fcea15c028c4f6e9cdc3c",
+ "artifact_integrity": {
+  "impl_to_tip_contains_only_FINAL_json": true,
+  "branch_pushed": false,
+  "main_touched": false,
+  "post_verdict_mutation_check_at_review_time": {
+   "checked_utc": "2026-08-21T21:12:10.087731Z",
+   "local_sha": "9598a43828dee7e36a453f271ff6b7ac368dc719",
+   "remote_sha": null,
+   "unchanged": true
+  }
+ },
+ "commands_executed_independently": [
+  {
+   "command": "git rev-parse / diff --stat / name-status base..lane",
+   "result": "5 files: verifier_binding.py NEW(586L), loop.py M(+94/-26), orchestrator.py M(+73), test_verifier_binding_hardening.py NEW(829L, exactly 24 test functions counted by reviewer), FINAL.json A"
+  },
+  {
+   "command": "worktree add -b review-lane1-readonly C:/c/temp/JARVIS-review-lane1 9598a43",
+   "result": "isolated checkout; own venv (python 3.13, pytest 9.1.1); jarvis_foundry imports strictly from the lane worktree"
+  },
+  {
+   "command": "pytest tests/foundry/test_verifier_binding_hardening.py --junitxml (reviewer run)",
+   "result": "tests=24 failures=0 errors=0 skipped=0 EXIT=0 - matches claimed 24 passed"
+  },
+  {
+   "command": "collection arithmetic",
+   "result": "BASE foundry=1459 + convergence=100 = 1559; LANE foundry=1483 (+24); FULL projection 1583 == builder claim"
+  },
+  {
+   "command": "pytest tests/foundry --junitxml at BASE 7ac0b23 (review control)",
+   "result": "tests=1459 failures=0 errors=0 skipped=0 EXIT=0 in 641s"
+  },
+  {
+   "command": "uvx ruff check new files (reviewer run)",
+   "result": "All checks passed! (both new files clean)"
+  },
+  {
+   "command": "uvx ruff check modified files lane vs BASE (A/B)",
+   "result": "BASE 9 findings -> LANE 8; loop.py improved (removed unused Proposal import); orchestrator 7 findings all pre-existing byte-identical classes; F811 FAILED shadowing pre-existing by design"
+  },
+  {
+   "command": "diff secret scan (sk-/ghp_/github_pat_/AKIA/private-key/xox patterns)",
+   "result": "clean; single grep hit is FINAL.json describing its own scan"
+  },
+  {
+   "command": "hidden-dependency scan of src/tests diff (AppData|LOCALAPPDATA|hermes foundry|provider names|URLs)",
+   "result": "only hit is removed text 'owner DeepSeek-only mandate' inside orchestrator docstring update - no live paths, no endpoints, no model-lock violations"
+  },
+  {
+   "command": "scripts/doc_staleness_check.py (reviewer run)",
+   "result": "PASS exit 0"
+  },
+  {
+   "command": "reviewer-authored attack battery lane1_attack_battery.py (12 attacks, disposable tmp DBs)",
+   "result": "12/12 behaved as security-required - see attacks array"
+  }
+ ],
+ "attacks": [
+  {
+   "id": "A1",
+   "attack": "legitimate happy path",
+   "expect": "ACCEPT",
+   "observed": "ACCEPT all acceptance invariants hold",
+   "verdict": "PASS"
+  },
+  {
+   "id": "A2",
+   "attack": "self-certification (verifier identity forged == builder)",
+   "expect": "REFUSE",
+   "observed": "REFUSE builder certified its own work (shared identity)",
+   "verdict": "PASS"
+  },
+  {
+   "id": "A3",
+   "attack": "wrong step evaluated",
+   "expect": "REFUSE",
+   "observed": "REFUSE no verification verdict exists",
+   "verdict": "PASS"
+  },
+  {
+   "id": "A4",
+   "attack": "stale builder-run binding",
+   "expect": "REFUSE",
+   "observed": "REFUSE stale/replayed verdict naming both runs",
+   "verdict": "PASS"
+  },
+  {
+   "id": "A5",
+   "attack": "tampered STARTED binding (forged digest + replayed hashes)",
+   "expect": "REFUSE",
+   "observed": "REFUSE binding hash mismatch (tampered or malformed binding)",
+   "verdict": "PASS"
+  },
+  {
+   "id": "A6",
+   "attack": "artifact planted after verdict",
+   "expect": "REFUSE",
+   "observed": "REFUSE frozen artifacts mutated after the verdict",
+   "verdict": "PASS"
+  },
+  {
+   "id": "A7",
+   "attack": "duplicate identical terminal PASS",
+   "expect": "no crash; safe state",
+   "observed": "ledger idempotency key no-op; gate decision stable",
+   "verdict": "PASS"
+  },
+  {
+   "id": "A8",
+   "attack": "EMERGENCY_STOP overrides otherwise-valid PASS",
+   "expect": "REFUSE first",
+   "observed": "REFUSE STOP active at acceptance (checked before all else)",
+   "verdict": "PASS"
+  },
+  {
+   "id": "A9",
+   "attack": "broken/corrupt ledger connection",
+   "expect": "fail CLOSED",
+   "observed": "REFUSE acceptance gate failed closed: RuntimeError",
+   "verdict": "PASS"
+  },
+  {
+   "id": "A10",
+   "attack": "terminal evidence missing required keys",
+   "expect": "REFUSE",
+   "observed": "REFUSE missing keys [artifact_hashes, builder_run_id, diff_hash, target]",
+   "verdict": "PASS"
+  },
+  {
+   "id": "A11",
+   "attack": "fabrication-review marker stripped",
+   "expect": "REFUSE",
+   "observed": "REFUSE lacks the fabrication review marker",
+   "verdict": "PASS"
+  },
+  {
+   "id": "A12",
+   "attack": "compromised projector flips FAIL->PASS directly in verification_verdicts table",
+   "expect": "REFUSE",
+   "observed": "REFUSE verdict lacks its STARTED or terminal ledger event (row/ledger cross-check)",
+   "verdict": "PASS"
+  }
+ ],
+ "source_inspection": [
+  "AcceptanceGate.evaluate wraps _evaluate in fail-closed exception handler (any exception -> REFUSE)",
+  "STOP/veto checked FIRST (deterministic precedence) via emergency_stop_reason/matching_veto_reason",
+  "binding digest recomputed from STARTED payload independently; stored hash compared",
+  "replay ordering enforced (terminal sequence must exceed started sequence)",
+  "identity triple-checked (mission/step, builder_run_id across binding+row, verifier!=builder under three spellings)",
+  "evidence completeness + fabrication marker + artifact/diff agreement vs frozen binding",
+  "post-verdict mutation: target tree re-hashed AND working-tree diff re-hashed at acceptance time",
+  "loop.py: binding frozen BEFORE verifier dispatch; deterministic {run}-verify[-rN] ids preserve DIR-2026-08-12 item 3 exactly-once resume; gate evaluated AFTER durable PASS but BEFORE commit/ACCEPTING/ACTION_SELECTION; refusal records superseding FAIL + repair-or-block (append-only ledger makes later events downgrade-only)",
+  "orchestrator.py: same capture->dispatch->terminal-evidence->gate flow; verifier crash mid-review -> honest BLOCKED (no PASS/FAIL)"
+ ],
+ "test_counts": {
+  "focused_new_suite": {
+   "claimed": "24 passed",
+   "reviewer_reproduced": "24 passed, 0 failed, 0 errored (JUnit)"
+  },
+  "full_suite": {
+   "claimed": "1583 collected, exit 0",
+   "reviewer_reproduced": "1583 passed, 0 failures, 0 errors, 0 skipped, exit 0 in 756s (JUnit XML, reviewer's isolated worktree+venv)",
+   "base_control": "1459 passed @base tests/foundry; collection 1559 base FULL-scope"
+  },
+  "lint": {
+   "claimed": "new files 0 findings; net -1 on modified files",
+   "reviewer_reproduced": true
+  }
+ },
+ "defects": [],
+ "observations_minor": [
+  {
+   "severity": "observation",
+   "finding": "_hash_target_tree binds only first 200 files (declared limitation); trees beyond 200 entries have unsealed tail",
+   "assessment": "documented by builder; bounded consistent with prior practice; acceptable for candidate stage, should be revisited before any V1 gate reliance"
+  },
+  {
+   "severity": "observation",
+   "finding": "fabrication_review='performed' is a declarative marker assembled by build_terminal_evidence, not an externally verified act",
+   "assessment": "gate treats absence as refusing; presence is engine-asserted; defense rests on the remaining hash-bound invariants which held under A5/A6/A12 attacks"
+  },
+  {
+   "severity": "observation",
+   "finding": "callers constructing verdict rows outside MissionLoop/HybridStepController bypass the gate by construction (declared; none exist today)",
+   "assessment": "acceptable now; integration safety note for future engines"
+  }
+ ],
+ "uncertainty": [],
+ "required_repair": [],
+ "rollback_assessment": {
+  "method_claimed": "single-commit revert of implementation commit on isolated branch; harder rollback removes worktree+branch",
+  "reviewer_assessment": "credible: branch-local, unpushed, main untouched; previous-executable compatibility independently verified at baseline (probe D: PREVIOUS release runs clean cycle against v34 schema copy); blast radius confined to candidate branch"
+ },
+ "integration_safety": {
+  "scope_audit": "all 4 code/test changes within declared Master Goal 2 surface; no migrations; no config; no packaging; no unrelated edits detected in full-diff read",
+  "schema_effects": "none (no migration files touched)",
+  "live_dependencies": "none found (hidden-dep scan)",
+  "stop_precedence": "verified at gate level (A8), supervisor level (baseline probe C), worker level (baseline probe E)"
+ },
+ "builder_evidence_integrity": {
+  "raw_logs_cited_exist": [
+   "C:/temp/jv_full2.log (tail FULL_EXIT=0)",
+   "C:/temp/jv_full.log (preserved round-1 failure, FAILED exactly_once_resume lines + FULL_EXIT=1)",
+   "C:/temp/jv_collect.log",
+   "C:/temp/jv_baseline.log"
+  ],
+  "repair_lineage_corroborated": "round-1 finding (random verifier ids broke exactly-once resume) visible in preserved failing log; deployed design now deterministic ids (code-read confirms)",
+  "honest_wording": "builder reported FULL result as exit-code observation noting missing summary line (same -qq cosmetic trap the reviewer hit); not overstated"
+ },
+ "criteria_results": {
+  "builder_cannot_self_certify": "PASS (A2 + code)",
+  "fresh_isolated_verifier_identity": "PASS (code + deterministic-resume repair verified)",
+  "hash_bound_tuple": "PASS (code + A5)",
+  "missing_stale_replayed_mismatched_fabricated_post_verdict_mutated_fail_closed": "PASS (A4/A5/A6/A10/A11/A12)",
+  "false_success_cannot_commit_advance_complete": "PASS (wiring order verified in both engines)",
+  "repair_invalidates_old_verdict": "PASS (superseding semantics + fresh binding per attempt)",
+  "exact_verdict_vocabulary": "PASS (record_verification_outcome raises on invalid; gate re-checks)",
+  "same_provider_limitation_recorded": "PASS (explicit metadata, honestly disclosed as reduced independence)",
+  "stop_veto_precedence": "PASS (A8 + baseline probes C/E)",
+  "crash_restart_duplicate_idempotent": "PASS (A7 + crash-BLOCKED wiring + exactly-once resume suite)",
+  "full_suite_green": "PASS",
+  "no_unauthorized_scope_or_live_touch": "PASS"
+ },
+ "overall_verdict": "PASS",
+ "note": "Record finalized only after: (1) reviewer FULL rerun completes green/red, (2) post-verdict mutation guard rescan confirms lane SHA still 9598a43828dee7e36a453f271ff6b7ac368dc719.",
+ "justification": "Every material claim was independently reproduced on an isolated checkout and venv: focused suite 24/24, FULL suite 1583 passed / 0 failed (base control 1459 passed at the pinned base commit), lint delta verified by A/B against base, all four cited raw-evidence logs exist and corroborate the repair lineage. Reviewer-authored attack battery (12 attacks including tampered binding digests, forged self-certification, planted post-verdict files, STOP override, corrupt-ledger fail-closed, missing/forged evidence markers, and direct projection-table FAIL->PASS tampering) produced zero false acceptances; legitimate path still accepts. Scope audit found no unauthorized changes, migrations, hidden live dependencies, or model-lock violations; branch unpushed; main untouched. Residual risks are declared limitations recorded as observations (200-file seal bound, declarative fabrication marker, engine-call-site-only enforcement), none gate-flipping at candidate stage."
+}

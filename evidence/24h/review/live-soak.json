@@ -54,7 +54,12 @@
   "adapter_worker_pids.json recorded root_pid 21304 at 2026-08-21T19:48:27Z but no PID 21304 existed at 20:33Z observation; current launcher PIDs 7676/16864 created 16:13Z(local) - worker identity bookkeeping churn under investigation",
   "supervisor-20260821.log has no entries after 18:13 local despite live heartbeats (possibly normal: steady-state logs go to ledger only)"
  ],
- "observations": [],
+ "observations": [
+  {
+   "at_utc": "2026-08-21T21:09:33.573941+00:00",
+   "note": "17 samples; ledger seq 178925 advancing; heartbeat age 30.3s; quick_check ok throughout; no pointer movement; no STOP appearance; single supervisor pair throughout"
+  }
+ ],
  "defects": [],
  "uncertainty": [
   "pre-existing read-only watcher bash loop (PID 10992) polling 7ac0b23->origin/main containment observed at baseline; author unknown (likely prior interrupted review run); benign, fetch-only"
