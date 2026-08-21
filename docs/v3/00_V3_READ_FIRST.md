@@ -161,6 +161,7 @@ If canonical V2 integration lands at a different `N`, V3 uses `N + 1`. Never har
 | `05_V3_ACCEPTANCE_GATE.md` | Reproducible verification gate |
 | `06_V3_THREAT_MODEL.md` | Assets, threats, mitigations, test traceability |
 | `07_V3_IMPLEMENTATION_HANDOFF.md` | Blocked first-build prompt |
+| `08_V3_GOD_MODE_EXECUTION_PLAN.md` | Autonomous WP0–WP8 execution plan with phase diagram |
 | `evidence/v3/design/V3_CAPABILITY_GAP.json` | Machine-readable gap inventory |
 | `evidence/v3/design/V3_DESIGN_VALIDATION.json` | Validation record |
 
