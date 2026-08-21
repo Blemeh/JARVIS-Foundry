@@ -1,0 +1,107 @@
+{
+  "schema": "jarvis.evidence/24h.independent-verifier/1.0",
+  "generated_utc": "2026-08-21T23:30:00Z",
+  "goal": "MASTER GOAL 2 - INDEPENDENT VERIFIER HARDENING",
+  "verdict": "PASS",
+  "isolation": {
+    "repository": "C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry",
+    "worktree": "C:/temp/JARVIS-24H-Independent-Verifier",
+    "branch": "candidate/24h-independent-verifier",
+    "base_commit": "7ac0b2373c8d4c74924fcea15c028c4f6e9cdc3c",
+    "base_commit_resolution": "git rev-parse '7ac0b23^{commit}' resolved exactly; origin/main containment waited for and confirmed before worktree creation (origin/main advanced to a743fdeb535f78c5ad455e8b09944f721f2515a7 containing the base)",
+    "head_commit": "PENDING_FINAL_JSON_COMMIT (parent 5aaff020859fb7cb867066d51f3f7d7b1c19540b)",
+    "implementation_commit": "5aaff020859fb7cb867066d51f3f7d7b1c19540b",
+    "pushed": false,
+    "main_touched": false,
+    "live_runtime_touched": false,
+    "destructive_git_operations": "none (no reset --hard, no clean, no force)"
+  },
+  "changed_files": [
+    {
+      "path": "src/jarvis_foundry/mission/verifier_binding.py",
+      "change": "NEW - VerifierBinding capture (hash-bound verdict tuple), AcceptanceGate (fail-closed), fresh_verifier_identity, build_terminal_evidence"
+    },
+    {
+      "path": "src/jarvis_foundry/mission/loop.py",
+      "change": "MODIFIED - MissionLoop.run_step freezes binding before verifier dispatch, records full terminal evidence on every outcome, evaluates AcceptanceGate before commit/ACCEPTING/ACTION_SELECTION/mission.completed"
+    },
+    {
+      "path": "src/jarvis_foundry/workers/orchestrator.py",
+      "change": "MODIFIED - HybridStepController._verify uses binding + gate; verifier crashes record honest verifier_crashed BLOCKED; same-provider limitation recorded explicitly"
+    },
+    {
+      "path": "tests/foundry/test_verifier_binding_hardening.py",
+      "change": "NEW - 24 adversarial tests covering every REQUIRED PROOF row"
+    }
+  ],
+  "required_proof_coverage": [
+    {"proof": "builder cannot certify its own consequential work", "mechanism": "AcceptanceGate refuses when builder_run_id equals verifier identity (binding or verdict row); commit_after_pass additionally refuses without a durable PASS bound to the exact builder run", "tests": ["test_builder_cannot_certify_own_work", "test_hybrid_controller_never_reuses_builder_run_for_verifier"]},
+    {"proof": "every verifier is a fresh isolated run with distinct identity", "mechanism": "fresh_verifier_identity mints per-attempt {run}-verify[-rN] ids distinct from builder identity; session_isolation=fresh-session recorded in independence metadata", "tests": ["test_capture_binding_freezes_full_tuple", "test_same_provider_limitation_recorded_with_fresh_session"]},
+    {"proof": "mission/step/target/builder/verifier/manifest/artifact/diff/tests hash-bound to one verdict", "mechanism": "capture_binding freezes the full tuple into one sha256 binding_hash at verification.started; terminal outcomes carry build_terminal_evidence derived from the frozen capture", "tests": ["test_capture_binding_freezes_full_tuple"]},
+    {"proof": "missing/stale/replayed/mismatched/fabricated/post-verdict-mutated evidence fails closed", "mechanism": "gate recomputes the binding digest, re-reads ledger ordering, compares terminal evidence to binding, re-hashes artifacts and working tree at acceptance time", "tests": ["test_missing_evidence_keys_fail_closed", "test_wrong_builder_run_stale_verdict_refused", "test_replayed_terminal_before_start_refused", "test_tampered_started_event_breaks_binding_integrity", "test_post_verdict_mutation_refused", "test_added_file_after_verdict_refused"]},
+    {"proof": "false success cannot commit/advance/promote/complete", "mechanism": "gate evaluated in both engines BEFORE any advance; refusal records FAIL + repair requirements; mission-loop false-success test proves zero commits and zero mission.completed events", "tests": ["test_false_success_claim_cannot_advance", "test_mission_loop_false_success_commit_blocked", "test_non_pass_verdicts_never_authorize"]},
+    {"proof": "repair invalidates old verdict and requires affected gates + fresh verifier", "mechanism": "each pass captures a NEW binding with fresh identities; old bindings cannot authorize mutated trees; latest-verdict-only authorization", "tests": ["test_repair_invalidates_old_verdict_requires_fresh_verify"]},
+    {"proof": "verdicts are exactly PASS/FAIL/BLOCKED/NOT_TESTED", "mechanism": "record_verification_outcome vocabulary check plus gate VERDICTS constant; non-passing verdicts never authorize", "tests": ["test_verdict_vocabulary_is_exact", "test_non_pass_verdicts_never_authorize"]},
+    {"proof": "same-provider verification records reduced independence while enforcing fresh-session isolation", "mechanism": "independence.same_provider_limitation recorded verbatim; session_isolation=fresh-session asserted", "tests": ["test_same_provider_limitation_recorded_with_fresh_session"]},
+    {"proof": "STOP and authenticated vetoes deterministically block dispatch and acceptance", "mechanism": "gate checks emergency_stop_reason and matching_veto_reason FIRST; existing dispatch-side STOP gates unchanged and still effective", "tests": ["test_stop_blocks_acceptance_even_with_valid_pass", "test_veto_precedence_over_pass", "test_stop_sentinel_matches_shared_emergency_stop_read"]},
+    {"proof": "crash/restart/duplicate/expired lease/interrupted verification are idempotent and resumable", "mechanism": "stable idempotency keys absorb redelivery; dangling STARTED verdicts corrected additively; deterministic verifier ids preserve exactly-once resume; expired leases grant no authority", "tests": ["test_duplicate_completion_is_idempotent", "test_verifier_crash_blocks_then_resumes_with_fresh_binding", "test_expired_lease_leaves_no_authority_and_resumes", "test_exactly_once_resume.py (existing, still green)"]}
+  ],
+  "commands_and_results": [
+    {"command": ".venv/Scripts/python.exe -m pytest tests/foundry/test_verifier_binding_hardening.py", "result": "24 passed"},
+    {"command": ".venv/Scripts/python.exe -m pytest <9 focused affected suites: verifier_binding_hardening, mission_loop, verifier_truth, exactly_once_resume, worker_orchestrator, worker_gate, worker_evidence, verification_loop, executive_intelligence>", "result": "133 passed in 140.73s"},
+    {"command": ".venv/Scripts/python.exe -m pytest tests/foundry tests/convergence -q (FULL)", "result": "FULL_EXIT=0, 1583 collected, 0 failures, 0 errors (log tail shows [100%] with no failure summary)"},
+    {"command": "uvx ruff check src/jarvis_foundry/mission/verifier_binding.py src/jarvis_foundry/mission/loop.py src/jarvis_foundry/workers/orchestrator.py tests/foundry/test_verifier_binding_hardening.py", "result": "new module and new test file: 0 findings; loop.py improved from 2 pre-existing findings to 1 (remaining F811 FAILED shadowing is pre-existing by design); orchestrator.py identical 7 pre-existing findings (verified against stashed baseline)"},
+    {"command": ".venv/Scripts/python.exe scripts/doc_staleness_check.py", "result": "PASS"},
+    {"command": "credential-pattern grep (sk-/ghp_/github_pat_/AKIA/private-key/xox) over all 4 changed files", "result": "clean (no matches)"}
+  ],
+  "repair_lineage": [
+    {
+      "round": 1,
+      "finding": "FULL suite run 1 (C:/temp/jv_full.log): 3 failures in tests/foundry/test_exactly_once_resume.py - interrupted-verifier resume expected deterministic fresh id run-x1-verify-r1 but implementation minted random uuid verifier ids",
+      "root_cause": "random verifier run ids broke the DIR-2026-08-12 item 3 exactly-once resume contract, which requires the crashed caller to resume into the SAME deterministic identity so the dispatcher replays instead of orphaning sessions",
+      "repair": "fresh_verifier_identity redesigned: DETERMINISTIC per-attempt ids ({run}-verify[-rN]) distinct from builder identity - freshness means not-shared-with-builder and unique-per-attempt, never random-per-call",
+      "reverify": "exactly_once_resume 3/3 green inside 133-test focused run; FULL suite rerun EXIT=0"
+    },
+    {
+      "round": 2,
+      "finding": "adversarial self-certification test initially tripped an over-strict structural '-verify' substring check in the gate",
+      "root_cause": "structural substring check conflated naming convention with isolation property",
+      "repair": "gate now enforces the actual invariant (verifier identity must differ from builder identity under every recorded spelling)",
+      "reverify": "self-certification attacks refuse; legitimate distinct-id passes accept"
+    }
+  ],
+  "raw_evidence_paths": [
+    "C:/temp/jv_full2.log (FINAL full suite: EXIT=0, 1583 collected)",
+    "C:/temp/jv_full.log (FAIL round 1: 3 exactly-once resume failures - preserved per evidence discipline)",
+    "C:/temp/jv_collect.log (collection manifest: 1583 tests across tests/foundry + tests/convergence)",
+    "C:/temp/jv_baseline.log (mid-build full suite EXIT=0 after engine wiring)",
+    "worktree git history: candidate/24h-independent-verifier 5aaff02 (parent 7ac0b23)",
+    "this file's parent directory evidence/24h/independent-verifier/"
+  ],
+  "model_lock_compliance": {
+    "mandated_model": "OpenCode x-preview / 0x-alpha (x-preview-f-free)",
+    "subagents_used": 0,
+    "note": "all implementation, testing, review and repair performed directly in this session; no delegation occurred, so no fallback or non-compliant provider was ever exercised; session model id x-preview-f-free"
+  },
+  "remaining_limitations": [
+    "same-provider verification: owner model lock permits only x-preview / 0x-alpha, so provider diversity remains REDUCED; independence is delivered through deterministic fresh-session isolation, distinct run identities, JARVIS-owned reconciliation, and the fail-closed gate rather than provider separation",
+    "binding artifact seal covers up to 200 files under the step target (bounded, consistent with existing _hash_target practice); larger trees bind only their first 200 entries deterministically",
+    "verifier_session_id falls back to the verifier run id where an adapter does not expose a separate OS/session identity",
+    "the acceptance gate is enforced at both engine call sites; callers constructing verdicts outside MissionLoop/HybridStepController bypass it by construction (no such caller exists today)"
+  ],
+  "rollback": {
+    "method": "single-commit revert on the isolated branch",
+    "command": "cd C:/temp/JARVIS-24H-Independent-Verifier && git revert 5aaff020859fb7cb867066d51f3f7d7b1c19540b",
+    "harder_rollback": "git worktree remove C:/temp/JARVIS-24H-Independent-Verifier && git branch -D candidate/24h-independent-verifier",
+    "blast_radius": "none beyond this candidate branch; main and live runtime untouched"
+  },
+  "reviewer_instructions": [
+    "1. cd C:/temp/JARVIS-24H-Independent-Verifier && git rev-parse HEAD  (expect FINAL.json commit whose parent is 5aaff020859fb7cb867066d51f3f7d7b1c19540b on candidate/24h-independent-verifier)",
+    "2. Confirm origin/main contains base 7ac0b2373c8d4c74924fcea15c028c4f6e9cdc3c and that this branch has NOT been pushed",
+    "3. Read src/jarvis_foundry/mission/verifier_binding.py end-to-end; attack AcceptanceGate._evaluate clause order and fail-closed exception path",
+    "4. Re-run: .venv/Scripts/python.exe -m pytest tests/foundry/test_verifier_binding_hardening.py  (expect 24 passed)",
+    "5. Re-run FULL: .venv/Scripts/python.exe -m pytest tests/foundry tests/convergence -q  (expect exit 0)",
+    "6. Attempt to construct a false-success acceptance: craft any ledger/tree state you believe should ACCEPT wrongly and evaluate AcceptanceGate.evaluate directly; every deviation from the frozen binding must REFUSE",
+    "7. Verify the builder report was never used as proof: grep the gate for any use of envelope claims or model output (there are none; only ledger events and filesystem hashing)"
+  ]
+}

@@ -23,7 +23,6 @@ dispatch, cancels queued fallback, and records the refusal.
 """
 from __future__ import annotations
 
-import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
@@ -35,7 +34,12 @@ from ..domain import require_transition
 from ..events import Event
 from ..mission.verification import (
     record_verification_outcome,
-    start_verification,
+)
+from ..mission.verifier_binding import (
+    AcceptanceGate,
+    build_terminal_evidence,
+    capture_binding,
+    fresh_verifier_identity,
 )
 from .adapters.base import ProviderUnavailable, WorkerAdapter
 from .adapters.registry import WorkerRegistry
@@ -232,33 +236,43 @@ class HybridStepController:
         envelope: ResultEnvelope,
         report: EvidenceReport,
     ) -> tuple[str, str | None]:
-        """Independent verification; returns (verdict, verdict_id)."""
+        """Independent verification; returns (verdict, verdict_id).
+
+        Master Goal 2: the verifier is a fresh isolated run with a distinct
+        run identity; the verdict binding (mission, step, target, builder
+        run, verifier run, context manifest, artifact hashes, diff hash) is
+        frozen before the verifier session starts and every terminal
+        outcome carries the hash-bound evidence set.
+        """
         stop_reason = self._stop_verdict()
         if stop_reason:
             self._record_stop_blocked(contract, stop_reason)
             return "STOPPED", None
-        verdict_id = f"verdict-{uuid.uuid4().hex[:12]}"
-        verifier_run_id = f"{envelope.run_id}-verify"
+        verdict_id, verifier_run_id = fresh_verifier_identity(contract.run_id)
         independence = {
             "builder_worker": envelope.framework,
             "builder_provider": envelope.provider_actual,
             "verifier_provider": envelope.provider_actual,
             "provider_diverse": False,
             "same_provider_limitation": (
-                "verifier ran under the same provider/model family as the "
-                "builder (owner DeepSeek-only mandate); independence is "
-                "delivered through fresh sessions + adversarial probes"),
+                "same-provider verification: reduced provider independence "
+                "(owner model-lock mandate); isolation enforced through a "
+                "fresh verifier session with distinct run identity"),
+            "session_isolation": "fresh-session",
         }
         criteria = list(contract.verification_criteria) or [
             "worker outcome agrees with observed evidence",
         ]
-        start_verification(
+        capture = capture_binding(
             self.database,
             verdict_id=verdict_id,
             mission_id=contract.mission_id,
             step_id=contract.step_id,
+            target=contract.working_root,
             builder_run_id=envelope.run_id,
             verifier_run_id=verifier_run_id,
+            context_manifest_id=contract.context_manifest_id,
+            context_manifest_hash=contract.context_manifest_hash,
             independence=independence,
             criteria=criteria,
         )
@@ -310,21 +324,56 @@ class HybridStepController:
                 reason=f"verifier unavailable: {error}",
                 blocking_dependency="provider_unavailable")
             return "BLOCKED", verdict_id
+        except Exception as error:  # noqa: BLE001 - verifier crash (Master Goal 2)
+            # A verifier that dies mid-review records NO PASS and NO FAIL:
+            # an interrupted verification is an honest BLOCKED against the
+            # frozen binding, resumable by a later fresh pass.
+            record_verification_outcome(
+                self.database, verdict_id=verdict_id, outcome="BLOCKED",
+                findings=[], evidence={},
+                reason=(f"verifier crashed mid-review: "
+                        f"{type(error).__name__}: {str(error)[-300:]}"),
+                blocking_dependency="verifier_crashed")
+            return "BLOCKED", verdict_id
+        terminal_evidence = build_terminal_evidence(
+            capture=capture,
+            verifier_session_id=getattr(result, "session_id", "") or verifier_run_id,
+        )
         self._record_envelope(verifier_contract, result)
         if result.worker_status != COMPLETED or result.verdict != VERDICT_PASS:
             outcome = "FAIL" if result.worker_status == COMPLETED else "BLOCKED"
             record_verification_outcome(
                 self.database, verdict_id=verdict_id, outcome=outcome,
                 findings=list(result.blockers) or list(result.warnings) or [],
-                evidence={"verifier_run_id": verifier_run_id,
-                          "verdict": result.verdict},
+                evidence=terminal_evidence,
                 repair_requirements=["rebuild the step artifact and re-verify"],
             )
             return result.verdict or ("BLOCKED" if outcome == "BLOCKED" else "FAIL"), verdict_id
         record_verification_outcome(
             self.database, verdict_id=verdict_id, outcome="PASS",
-            findings=[], evidence={"verifier_run_id": verifier_run_id},
+            findings=[], evidence=terminal_evidence,
         )
+        # Master Goal 2: fail-closed acceptance gate before any advance.
+        gate = AcceptanceGate(self.database, stop_path=self.stop_path)
+        decision = gate.evaluate(
+            mission_id=contract.mission_id, step_id=contract.step_id,
+            target=contract.working_root, builder_run_id=envelope.run_id,
+        )
+        if not decision.accepted:
+            record_verification_outcome(
+                self.database, verdict_id=verdict_id, outcome="FAIL",
+                findings=[decision.reason],
+                evidence=build_terminal_evidence(
+                    capture=capture,
+                    verifier_session_id=getattr(result, "session_id", "") or verifier_run_id,
+                    extra={"acceptance_gate": decision.checks},
+                ),
+                repair_requirements=[
+                    "repair the acceptance-gate refusal and re-verify with a fresh verifier",
+                ],
+                reason=f"acceptance gate refused: {decision.reason}",
+            )
+            return "FAIL", verdict_id
         return "PASS", verdict_id
 
     # -- main flow ----------------------------------------------------------
