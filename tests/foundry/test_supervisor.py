@@ -149,7 +149,6 @@ def test_spawn_worker_loop_noops_when_yaml_disabled(tmp_path):
 
 
 def test_spawn_worker_loop_registers_child_when_enabled(tmp_path, monkeypatch):
-    import sys
 
     config = tmp_path / "workers.yaml"
     config.write_text(
@@ -176,7 +175,14 @@ def test_spawn_worker_loop_registers_child_when_enabled(tmp_path, monkeypatch):
     assert supervisor.start() == "RUNNING"
     assert supervisor.heartbeat() == "RUNNING"
     assert spawned
-    assert spawned[0][:3] == [sys.executable, "-m", "jarvis_foundry.runtime.worker_loop"]
+    # Production spawns the worker loop through the platform's background
+    # (windowless) interpreter, NOT sys.executable — visible console windows
+    # from scheduled/background workers are an owner-rejected behavior
+    # (cron pause 2026-08-12). The assertion must pin production intent.
+    from jarvis_foundry.platform.windows_subprocess import background_python_executable
+    expected_python = background_python_executable()
+    assert spawned[0][0] == expected_python, spawned[0]
+    assert spawned[0][1:3] == ["-m", "jarvis_foundry.runtime.worker_loop"]
     assert "--once" in spawned[0]
     supervisor.stop()
 
