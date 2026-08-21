@@ -25,6 +25,8 @@ class ProviderService:
     hermes_api_key_env: str
     hermes_base_url_env: str
     default_model: str
+    free_test_model: str | None = None
+    live_test_allowed_for_free_model: bool = False
 
 
 _PROVIDER_FAMILIES: dict[str, ProviderFamily] = {
@@ -52,6 +54,8 @@ _PROVIDER_SERVICES: dict[str, ProviderService] = {
         hermes_api_key_env="OPENCODE_ZEN_API_KEY",
         hermes_base_url_env="OPENCODE_ZEN_BASE_URL",
         default_model="x-preview-f-free",
+        free_test_model="x-preview-f-free",
+        live_test_allowed_for_free_model=True,
     ),
 }
 
@@ -113,3 +117,13 @@ def opencode_hermes_env_names() -> tuple[str, ...]:
     ):
         names.append(legacy)
     return tuple(dict.fromkeys(names))
+
+
+def live_test_allowed(provider_id: str, model: str) -> bool:
+    """True only for explicitly approved free-model live Hermes probes."""
+    service = get_service(provider_id)
+    if service is None or not service.live_test_allowed_for_free_model:
+        return False
+    if service.free_test_model is None:
+        return False
+    return model.strip() == service.free_test_model

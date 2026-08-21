@@ -1,7 +1,6 @@
 """Interactive ``jarvis setup`` for machine-local provider configuration."""
 from __future__ import annotations
 
-import getpass
 import json
 import os
 import re
@@ -24,15 +23,24 @@ from ..runtime.provider_config import (
 from ..runtime.provider_registry import (
     OPENCODE_FAMILY_ID,
     ProviderService,
+    UnsupportedProviderError,
     get_service,
     list_families,
     list_services,
+    live_test_allowed,
     require_service,
 )
+from .hermes_probe import (
+    HermesProbeRuntime,
+    resolve_hermes_probe_runtime,
+    run_hermes_live_probe,
+)
+from .masked_input import read_masked_api_key
 
 _SECRET_TOKEN = re.compile(r"sk-[A-Za-z0-9]{16,}")
 _REDACTED = "<REDACTED>"
 _PENDING_APPLY_FILENAME = "provider.apply_pending"
+_SKIP_REASON_BILLING = "BILLING PROTECTION"
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,23 +54,29 @@ class SetupView:
 
 
 @dataclass(frozen=True, slots=True)
-class TestReport:
-    authentication: str
-    endpoint: str
-    model: str
-    test_response: str
+class ValidationReport:
+    configuration: str
+    live_free_test: str
+    live_inference: str
+    skip_reason: str | None = None
+    detail: str | None = None
 
     @property
-    def passed(self) -> bool:
-        return all(
-            value == "PASS"
-            for value in (
-                self.authentication,
-                self.endpoint,
-                self.model,
-                self.test_response,
-            )
-        )
+    def can_save(self) -> bool:
+        if self.configuration != "PASS":
+            return False
+        if self.live_free_test == "FAIL":
+            return False
+        if self.live_inference == "FAIL":
+            return False
+        return True
+
+    @property
+    def exit_code(self) -> int:
+        return 0 if self.can_save or (
+            self.configuration == "PASS"
+            and self.live_inference == "SKIPPED"
+        ) else 1
 
 
 def _sanitize_error_text(text: str) -> str:
@@ -131,10 +145,6 @@ def _models_url(base_url: str) -> str:
     return f"{base_url.rstrip('/')}/models"
 
 
-def _chat_url(base_url: str) -> str:
-    return f"{base_url.rstrip('/')}/chat/completions"
-
-
 def _authorized_request(
     url: str,
     *,
@@ -167,7 +177,7 @@ def discover_models(
     api_key: str,
     fetch: Callable[..., tuple[int, str]] | None = None,
 ) -> list[str]:
-    """Fetch model ids from the provider's OpenAI-compatible ``/models`` endpoint."""
+    """Optional convenience: fetch model ids from ``/models`` when available."""
     fetcher = fetch or _authorized_request
     status, body = fetcher(_models_url(base_url), api_key=api_key)
     if status < 200 or status >= 300:
@@ -192,64 +202,127 @@ def discover_models(
     return models
 
 
+def try_discover_models(
+    *,
+    base_url: str,
+    api_key: str,
+    fetch: Callable[..., tuple[int, str]] | None = None,
+) -> list[str] | None:
+    try:
+        return discover_models(base_url=base_url, api_key=api_key, fetch=fetch)
+    except ProviderConfigError:
+        return None
+
+
+def validate_configuration_structure(settings: ProviderSettings) -> tuple[bool, str]:
+    try:
+        require_service(settings.provider)
+    except UnsupportedProviderError as error:
+        return False, str(error)
+    if not settings.api_key:
+        return False, "API key is not configured"
+    if not settings.model.strip():
+        return False, "model is required"
+    if not settings.base_url.strip().startswith("https://"):
+        return False, "base URL must be an https URL"
+    try:
+        hermes_provider_env(settings)
+    except (ProviderConfigError, ProviderCredentialError) as error:
+        return False, str(error)
+    return True, ""
+
+
 def evaluate_provider_configuration(
     settings: ProviderSettings,
     *,
     fetch: Callable[..., tuple[int, str]] | None = None,
-) -> TestReport:
-    fetcher = fetch or _authorized_request
-    auth = "FAIL"
-    endpoint = "FAIL"
-    model = "FAIL"
-    test_response = "FAIL"
-
-    try:
-        require_service(settings.provider)
-    except Exception:
-        return TestReport(auth, endpoint, model, test_response)
-
-    if not settings.api_key:
-        return TestReport(auth, endpoint, model, test_response)
-    auth = "PASS"
-
-    try:
-        models = discover_models(
-            base_url=settings.base_url,
-            api_key=settings.api_key,
-            fetch=fetcher,
+    probe_runtime: HermesProbeRuntime | None = None,
+    run_probe: Callable[..., Any] | None = None,
+) -> ValidationReport:
+    ok, reason = validate_configuration_structure(settings)
+    if not ok:
+        return ValidationReport(
+            configuration="FAIL",
+            live_free_test="SKIPPED",
+            live_inference="SKIPPED",
+            detail=_sanitize_error_text(reason),
         )
-        endpoint = "PASS"
-    except ProviderConfigError:
-        return TestReport(auth, endpoint, model, test_response)
 
-    if settings.model in models:
-        model = "PASS"
-    else:
-        return TestReport(auth, endpoint, model, test_response)
+    if not live_test_allowed(settings.provider, settings.model):
+        return ValidationReport(
+            configuration="PASS",
+            live_free_test="SKIPPED",
+            live_inference="SKIPPED",
+            skip_reason=_SKIP_REASON_BILLING,
+        )
 
-    payload = {
-        "model": settings.model,
-        "messages": [{"role": "user", "content": "ping"}],
-        "max_tokens": 1,
-    }
-    status, _body = fetcher(
-        _chat_url(settings.base_url),
-        api_key=settings.api_key,
-        method="POST",
-        payload=payload,
+    runtime = probe_runtime or resolve_hermes_probe_runtime()
+    if runtime is None:
+        return ValidationReport(
+            configuration="PASS",
+            live_free_test="FAIL",
+            live_inference="FAIL",
+            detail="Hermes probe runtime is not configured",
+        )
+
+    probe = run_probe or run_hermes_live_probe
+    result = probe(settings, runtime)
+    if result.success:
+        return ValidationReport(
+            configuration="PASS",
+            live_free_test="PASS",
+            live_inference="PASS",
+        )
+    return ValidationReport(
+        configuration="PASS",
+        live_free_test="FAIL",
+        live_inference="FAIL",
+        detail=_sanitize_error_text(result.error or "Hermes probe failed"),
     )
-    if 200 <= status < 300:
-        test_response = "PASS"
-    return TestReport(auth, endpoint, model, test_response)
 
 
-def format_test_report(report: TestReport) -> str:
-    return "\n".join([
-        f"Authentication: {report.authentication}",
-        f"Endpoint: {report.endpoint}",
-        f"Model: {report.model}",
-        f"Test response: {report.test_response}",
-    ])
+def format_validation_report(
+    report: ValidationReport,
+    *,
+    provider_id: str,
+    model: str,
+) -> str:
+    lines = [
+        f"Provider: {provider_id}",
+        f"Model: {model}",
+        f"Configuration validation: {report.configuration}",
+    ]
+    if report.live_free_test == "PASS":
+        lines.append("Live free test: PASS")
+    elif report.live_inference == "SKIPPED" and report.skip_reason:
+        lines.append("Live inference: SKIPPED")
+        lines.append(f"Reason: {report.skip_reason}")
+    else:
+        lines.append(f"Live free test: {report.live_free_test}")
+        if report.detail:
+            lines.append(f"Detail: {report.detail}")
+    return "\n".join(lines)
+
+
+def format_test_report(report: ValidationReport) -> str:
+    """Backward-compatible alias for ``jarvis setup --test`` output."""
+    if report.skip_reason:
+        return "\n".join([
+            f"Configuration validation: {report.configuration}",
+            "Selected-model live test: SKIPPED",
+            f"Reason: {report.skip_reason}",
+        ])
+    if report.live_free_test == "PASS":
+        return "\n".join([
+            f"Configuration validation: {report.configuration}",
+            "Selected-model live test: PASS",
+        ])
+    lines = [f"Configuration validation: {report.configuration}"]
+    if report.live_free_test != "SKIPPED":
+        lines.append(f"Selected-model live test: {report.live_free_test}")
+    if report.detail:
+        lines.append(f"Detail: {report.detail}")
+    return "\n".join(lines)
 
 
 def _serialize_provider_yaml(fields: dict[str, str]) -> str:
@@ -339,9 +412,11 @@ def _prompt_choice(
         print("Enter a number from the list.")
 
 
-def _prompt_api_key(getpass_func: Callable[[str], str] = getpass.getpass) -> str:
+def _prompt_api_key(
+    read_secret: Callable[[str], str] = read_masked_api_key,
+) -> str:
     while True:
-        value = getpass_func("API key: ").strip()
+        value = read_secret("API key: ").strip()
         if value:
             return value
         print("API key is required.")
@@ -366,19 +441,17 @@ def _select_service(*, input_func: Callable[[str], str] = input) -> ProviderServ
 
 def _select_model(
     *,
-    service: ProviderService,
     base_url: str,
     api_key: str,
     fetch: Callable[..., tuple[int, str]] | None = None,
     input_func: Callable[[str], str] = input,
 ) -> str:
-    try:
-        models = discover_models(base_url=base_url, api_key=api_key, fetch=fetch)
-    except ProviderConfigError as error:
-        print(f"Model discovery failed: {_sanitize_error_text(str(error))}")
+    models = try_discover_models(base_url=base_url, api_key=api_key, fetch=fetch)
+    if models is None:
+        print("Model discovery unavailable.")
         manual = input_func("Enter model id manually: ").strip()
         if not manual:
-            raise ProviderConfigError("model selection is required") from error
+            raise ProviderConfigError("model selection is required")
         return manual
     print("Available models:")
     for index, model_id in enumerate(models, start=1):
@@ -391,6 +464,9 @@ def _select_model(
                 return models[choice - 1]
         elif raw in models:
             return raw
+        manual = raw
+        if manual:
+            return manual
         print("Enter a listed number or exact model id.")
 
 
@@ -398,8 +474,10 @@ def run_interactive_setup(
     *,
     config_path: Path | None = None,
     input_func: Callable[[str], str] = input,
-    getpass_func: Callable[[str], str] = getpass.getpass,
+    read_secret: Callable[[str], str] = read_masked_api_key,
     fetch: Callable[..., tuple[int, str]] | None = None,
+    probe_runtime: HermesProbeRuntime | None = None,
+    run_probe: Callable[..., Any] | None = None,
 ) -> int:
     path = config_path or default_provider_config_path()
     current = load_provider_settings(config_path=path)
@@ -413,12 +491,11 @@ def run_interactive_setup(
     if existing_key and service.family_id == OPENCODE_FAMILY_ID:
         print("Existing OpenCode credential found.")
         if not _prompt_yes_no("Reuse it?", default_yes=True, input_func=input_func):
-            api_key = _prompt_api_key(getpass_func)
+            api_key = _prompt_api_key(read_secret)
     else:
-        api_key = _prompt_api_key(getpass_func)
+        api_key = _prompt_api_key(read_secret)
 
     model = _select_model(
-        service=service,
         base_url=base_url,
         api_key=api_key,
         fetch=fetch,
@@ -432,10 +509,19 @@ def run_interactive_setup(
         source="setup",
     )
     print()
-    report = evaluate_provider_configuration(candidate, fetch=fetch)
-    print(format_test_report(report))
-    if not report.passed:
-        print("Configuration not saved because the connectivity test failed.")
+    report = evaluate_provider_configuration(
+        candidate,
+        fetch=fetch,
+        probe_runtime=probe_runtime,
+        run_probe=run_probe,
+    )
+    print(format_validation_report(
+        report,
+        provider_id=service.provider_id,
+        model=model,
+    ))
+    if not report.can_save:
+        print("Configuration not saved because required validation failed.")
         return 1
 
     save_provider_config_atomic(
@@ -456,8 +542,17 @@ def run_show(*, config_path: Path | None = None) -> int:
     return 0
 
 
-def run_test(*, config_path: Path | None = None) -> int:
+def run_test(
+    *,
+    config_path: Path | None = None,
+    probe_runtime: HermesProbeRuntime | None = None,
+    run_probe: Callable[..., Any] | None = None,
+) -> int:
     settings = load_provider_settings(config_path=config_path)
-    report = evaluate_provider_configuration(settings)
+    report = evaluate_provider_configuration(
+        settings,
+        probe_runtime=probe_runtime,
+        run_probe=run_probe,
+    )
     print(format_test_report(report))
-    return 0 if report.passed else 1
+    return report.exit_code
