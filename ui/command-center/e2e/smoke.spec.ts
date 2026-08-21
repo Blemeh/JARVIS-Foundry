@@ -1,19 +1,19 @@
 import { expect, test, type Page } from "@playwright/test";
 
 const sections = [
-  { path: "/", name: "Overview", heading: "Command Center" },
-  { path: "/missions", name: "Missions", heading: "Mission Control" },
+  { path: "/", name: "Overview", heading: "What should JARVIS move next?" },
+  { path: "/missions", name: "Missions", heading: "Mission Vectors" },
   { path: "/missions/M-HYB-014", name: "Mission Detail", heading: "Hybrid Worker Activation" },
-  { path: "/agents", name: "Agents", heading: "Worker Fleet" },
-  { path: "/memory", name: "Memory", heading: "Global Knowledge Graph" },
+  { path: "/agents", name: "Agents", heading: "Specialist Fleet" },
+  { path: "/memory", name: "Memory", heading: "Knowledge Graph" },
   { path: "/evidence", name: "Evidence", heading: "Evidence Ledger" },
-  { path: "/timeline", name: "Timeline", heading: "Timeline" },
-  { path: "/systems", name: "Systems", heading: "Runtime Systems" },
+  { path: "/timeline", name: "Timeline", heading: "Evidence Spine" },
+  { path: "/systems", name: "Systems", heading: "Telemetry" },
   { path: "/notifications", name: "Notifications", heading: "Notification / Exception Center" },
   { path: "/agents/WRK-HERMES", name: "Agent Detail", heading: "Hermes Orchestrator" },
   { path: "/evidence/EV-1131-007", name: "Evidence Detail", heading: "Ledger entry" },
   { path: "/systems/SYS-STOP", name: "System Detail", heading: "STOP subsystem" },
-  { path: "/memory/n-verdict", name: "Memory Detail", heading: "Global Knowledge Graph" },
+  { path: "/memory/n-verdict", name: "Memory Detail", heading: "Knowledge Graph" },
 ] as const;
 
 async function collectErrors(page: Page) {
@@ -84,7 +84,7 @@ test("Emergency STOP simulates without touching the network or real runtime", as
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByText("SIMULATED STOP - UI CANDIDATE")).toBeVisible();
   await expect(dialog.getByText("NO PRODUCTION SIDE EFFECT")).toBeVisible();
-  await expect(page.getByRole("button", { name: /STOP simulation active/i }).first()).toBeVisible();
+  await expect(page.getByText(/STOP simulation active/i).first()).toBeVisible();
   expect(requests).toEqual([]);
   expect(errors).toEqual([]);
 });
@@ -111,7 +111,7 @@ test("memory graph has a legend with semantic categories", async ({ page }) => {
 
 test("systems screen is complete and inspectable", async ({ page }) => {
   await page.goto("/systems");
-  await expect(page.getByText("Runtime Systems")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Telemetry" })).toBeVisible();
   await expect(page.getByText("STOP subsystem")).toBeVisible();
   await expect(page.getByText("Hermes Gateway")).toBeVisible();
   await page.getByRole("row", { name: "Inspect JARVIS Supervisor" }).click();

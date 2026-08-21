@@ -61,8 +61,8 @@ export function Systems() {
   return (
     <div className="shell-content">
       <SectionHeader
-        kicker="Systems"
-        title="Runtime Systems"
+        kicker="Telemetry"
+        title="Telemetry"
         description={sourceCopy(sourceMode, {
           live: "Canonical projection of JARVIS components: supervisor, gateway, durable state, hybrid memory, workers, routing, STOP, ledger, verification, and resource health.",
           simulated: "Simulated projection of JARVIS components for tests and demos: supervisor, gateway, durable state, hybrid memory, workers, routing, STOP, ledger, verification, and resource health.",

@@ -1,65 +1,80 @@
 :root {
   color-scheme: dark;
 
-  /* Core surfaces - near-black graphite scale */
-  --bg-void: #0a0a0b;
-  --surface-lowest: #0e0e0f;
-  --surface-1: #121214;
-  --surface-2: #1a1a1c;
-  --surface-3: #1c1b1c;
-  --surface-4: #201f20;
-  --surface-5: #2a2a2b;
-  --surface-6: #353436;
+  /* V4 2100 Living Command Core - canonical palette */
+  --void-black: #02040a;
+  --downlink-blue: #07101c;
+  --raised-blue: #0b1928;
+  --structural-line: #1a3751;
+  --active-line: #2a6382;
+  --telemetry-white: #effcff;
+  --telemetry-muted: #9fc5d7;
+  --telemetry-dim: #7093a7;
+  --electric-signal: #8affef;
+  --evidence-cyan: #66d9ff;
+  --orbit-violet: #9b8cff;
+  --caution-amber: #ffd071;
+  --stop-pink: #ff7189;
 
-  /* Lines */
-  --line: #262626;
-  --line-strong: #3c494c;
-  --line-faint: rgba(255, 255, 255, 0.05);
-
-  /* Text */
-  --text-primary: #e5e2e3;
-  --text-secondary: #bbc9cd;
-  --text-muted: #859397;
-  --text-dim: rgba(187, 201, 205, 0.55);
-
-  /* Semantic */
-  --accent: #22d3ee;
-  --accent-soft: #8aebff;
-  --accent-on: #00363e;
-  --accent-glow: rgba(34, 211, 238, 0.2);
-  --teal: #0d9488;
-  --teal-soft: #6bd8cb;
-  --teal-on: #00302b;
-  --amber: #d97706;
-  --amber-soft: #fbbf24;
-  --error: #ffb4ab;
-  --error-deep: #93000a;
-  --error-on: #690005;
-  --blue: #60a5fa;
-  --violet-soft: #a78bfa;
-  --rose-soft: #f472b6;
-
-  /* Glass */
-  --glass-fill: rgba(26, 26, 28, 0.8);
-  --glass-border: rgba(255, 255, 255, 0.1);
+  /* Legacy aliases for untouched components - map to V4 */
+  --bg-void: var(--void-black);
+  --surface-lowest: #030710;
+  --surface-1: var(--downlink-blue);
+  --surface-2: #061323;
+  --surface-3: var(--raised-blue);
+  --surface-4: var(--downlink-blue);
+  --surface-5: #0e2135;
+  --surface-6: #132841;
+  --line: var(--structural-line);
+  --line-strong: var(--structural-line);
+  --line-faint: rgba(26, 55, 81, 0.55);
+  --text-primary: var(--telemetry-white);
+  --text-secondary: var(--telemetry-muted);
+  --text-muted: var(--telemetry-dim);
+  --text-dim: var(--telemetry-dim);
+  --accent: var(--electric-signal);
+  --accent-soft: var(--evidence-cyan);
+  --accent-on: var(--void-black);
+  --accent-glow: rgba(138, 255, 239, 0.22);
+  --teal: var(--evidence-cyan);
+  --teal-soft: var(--evidence-cyan);
+  --teal-on: var(--void-black);
+  --amber: var(--caution-amber);
+  --amber-soft: var(--caution-amber);
+  --error: var(--stop-pink);
+  --error-deep: #4a1020;
+  --error-on: var(--telemetry-white);
+  --blue: var(--evidence-cyan);
+  --violet-soft: var(--orbit-violet);
+  --rose-soft: var(--stop-pink);
+  --warning: var(--caution-amber);
+  --danger: var(--stop-pink);
+  --glass-fill: rgba(7, 16, 28, 0.86);
+  --glass-border: rgba(26, 55, 81, 0.9);
 
   /* Typography */
-  --font-display: "Geist Variable", "Inter Variable", system-ui, sans-serif;
-  --font-body: "Inter Variable", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono Variable", ui-monospace, "Cascadia Mono", monospace;
+  --font-display: "Tektur", "Segoe UI", sans-serif;
+  --font-body: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", monospace;
 
   /* Geometry */
-  --radius-sm: 2px;
-  --radius-md: 4px;
-  --radius-lg: 6px;
-  --radius-xl: 8px;
+  --radius-sm: 4px;
+  --radius-md: 7px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --radius-frame: 18px;
+  --radius-frame-mobile: 12px;
 
-  /* Shell dimensions */
-  --sidebar-width: 280px;
-  --topbar-height: 64px;
+  /* Shell dimensions - DESIGN.md spec */
+  --sidebar-width: 232px;
+  --sidebar-compact: 78px;
+  --topbar-height: 72px;
   --bottombar-height: 80px;
-  --gutter: 24px;
-  --page-margin: 32px;
+  --gutter: 30px;
+  --page-margin: 30px;
+  --content-max: 1680px;
+  --panel-pad: 20px;
+  --section-gap: 28px;
 
   /* Motion */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
@@ -67,20 +82,19 @@
   --dur-med: 220ms;
   --dur-slow: 420ms;
 
-  --focus-ring: 0 0 0 3px rgba(34, 211, 238, 0.35);
-  --scroll-thumb: #3c494c;
+  --focus-ring: 0 0 0 3px rgba(102, 217, 255, 0.34);
+  --scroll-thumb: #1a3751;
+  --shadow-apparatus: 0 28px 80px rgba(0, 0, 0, 0.46), 0 0 90px rgba(66, 145, 255, 0.08);
+  --shadow-nominal: 0 0 9px rgba(138, 255, 239, 0.6);
+  --orbit-ambient: 0 0 42px rgba(102, 217, 255, 0.11);
 }
 
-@media (max-width: 1023px) {
-  :root {
-    --page-margin: 20px;
-    --gutter: 16px;
-  }
-}
-
-@media (max-width: 639px) {
-  :root {
-    --page-margin: 14px;
-    --gutter: 12px;
-  }
+/* Legacy spacing aliases */
+:root {
+  --space-micro: 4px;
+  --space-tight: 8px;
+  --space-control: 12px;
+  --space-panel: 20px;
+  --space-section: 28px;
+  --space-shell: 30px;
 }

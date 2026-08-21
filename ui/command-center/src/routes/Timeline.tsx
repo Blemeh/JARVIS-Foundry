@@ -116,8 +116,8 @@ export function Timeline() {
     <div className="shell-content">
       <div className="timeline-head">
         <div>
-          <p className="t-label text-muted page-kicker">Event Ledger</p>
-          <h1 className="t-display">Timeline</h1>
+          <p className="t-label text-muted page-kicker">Evidence Spine</p>
+          <h1 className="t-display">Evidence Spine</h1>
           <p className="prose page-desc">
             {sourceMode === "SIMULATED" ? "Simulated ledger sequence for missions, handoffs, verifier gates, recovery, and STOP drills. Detail views are local only and every reference is navigable." : sourceMode === "LIVE" ? "Canonical ledger sequence for missions, handoffs, verifier gates, recovery, and STOP directives. Every reference is navigable." : `Timeline source ${sourceModeLabel(sourceMode)}: canonical events are unavailable and no fixture fallback is shown.`}
           </p>

@@ -87,8 +87,8 @@ export function Memory() {
       <div className="memory-main">
         <div className="memory-head">
           <div>
-            <p className="t-label text-muted page-kicker">Hybrid Memory</p>
-            <h1 className="t-display">Global Knowledge Graph</h1>
+            <p className="t-label text-muted page-kicker">Knowledge Graph</p>
+            <h1 className="t-display">Knowledge Graph</h1>
             <p className="prose page-desc">
               Epistemic state, not a flat store: observations, evidence, claims, beliefs, decisions, procedures,
               missions, and resources are distinct categories with distinct provenance.

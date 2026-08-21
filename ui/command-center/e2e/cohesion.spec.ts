@@ -156,7 +156,7 @@ test("JOURNEY D: simulated STOP propagates everywhere and resume restores", asyn
   // resume
   await navLink("Overview").click();
   await page.getByRole("button", { name: /STOP simulation active/i }).first().click();
-  await page.getByRole("button", { name: "Reset simulation" }).click();
+  await page.getByRole("button", { name: "Resume" }).click();
   await expect(page.getByText("SIMULATED STOP - UI CANDIDATE")).toHaveCount(0);
   await page.getByRole("button", { name: "Cancel" }).click();
   await navLink("Timeline").click();
@@ -178,18 +178,18 @@ test("JOURNEY E: global search navigates to the correct deep links", async ({ pa
 
   await input.fill("show mission M-HYB-014");
   await expect(page.getByText("Open mission M-HYB-014")).toBeVisible();
-  await page.getByRole("option", { name: /Navigate/ }).click();
+  await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/missions\/M-HYB-014$/);
   await expect(page.getByRole("heading", { name: "Hybrid Worker Activation" })).toBeVisible();
 
   await page.goto("/");
   await input.fill("EV-1131-007");
-  await page.getByRole("option", { name: /EV-1131-007/ }).first().click();
+  await page.getByRole("option", { name: /EV-1131-007/ }).first().evaluate((el) => (el as HTMLElement).click());
   await expect(page).toHaveURL(/\/evidence\/EV-1131-007$/);
 
   await page.goto("/");
   await input.fill("show degraded systems");
-  await page.getByRole("option", { name: /Navigate/ }).click();
+  await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/systems\?health=degraded/);
   await expect(page.getByText("Health DEGRADED")).toBeVisible();
   await expect(page.getByRole("row", { name: "Inspect Provider routing" })).toBeVisible();
@@ -264,5 +264,5 @@ test("keyboard-first navigation works without text-input hijack", async ({ page 
   await page.keyboard.press("g");
   await page.keyboard.press("m");
   await expect(page).toHaveURL(/\/missions$/);
-  await expect(page.getByRole("heading", { name: "Mission Control" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Mission Vectors" })).toBeVisible();
 });

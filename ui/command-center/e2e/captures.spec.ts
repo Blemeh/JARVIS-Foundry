@@ -79,7 +79,7 @@ test("capture cohesion surfaces", async ({ page }) => {
   await page.screenshot({ path: path.join(evidenceDir, "overview-stop-1600x1280.png"), fullPage: false });
 
   await page.getByRole("button", { name: /STOP simulation active/i }).first().click();
-  await page.getByRole("button", { name: "Reset simulation" }).click();
+  await page.getByRole("button", { name: "Resume" }).click();
   await page.getByRole("button", { name: "Cancel" }).click();
   await page.getByRole("button", { name: /Notifications, \d+ unread/ }).first().click();
   await page.waitForTimeout(350);

@@ -63,8 +63,8 @@ export function Agents() {
   return (
     <div className="shell-content">
       <SectionHeader
-        kicker="Agents"
-        title="Worker Fleet"
+        kicker="Specialist Fleet"
+        title="Specialist Fleet"
         description={sourceCopy(sourceMode, {
           live: "Canonical JARVIS workers: orchestrators, build executors, verifiers, memory reconcilers, routing, and the deterministic STOP gatekeeper.",
           simulated: "Simulated JARVIS workers for tests and demos: orchestrators, build executors, verifiers, memory reconcilers, routing, and the deterministic STOP gatekeeper.",

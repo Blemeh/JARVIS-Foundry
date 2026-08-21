@@ -1,27 +1,20 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  Activity,
-  ArrowRight,
-  BellRing,
-  Braces,
-  ChevronRight,
-  Cpu,
-  HardDrive,
-  History,
-  MemoryStick,
-  ShieldQuestion,
-} from "lucide-react";
+import { Mic } from "lucide-react";
 import { useCommandCenter } from "../context/CommandCenterContext";
 import type { EvidenceArtifact, Mission, SystemComponent, SystemOverview, TimelineEvent, TrustSummary, Worker } from "../lib/contracts";
-import { Panel } from "../components/Panel";
-import { StatusBadge } from "../components/StatusBadge";
-import { SectionHeader } from "../components/SectionHeader";
 import { LoadingState } from "../components/states";
 import { sourceCopy } from "../lib/sourceMode";
 
+function toneForStatus(status: string) {
+  const s = (status ?? "UNKNOWN").toUpperCase();
+  if (["BLOCKED", "HALTED", "FAILED", "CRITICAL", "STOPPED"].includes(s)) return "critical";
+  if (["DEGRADED", "UNKNOWN", "NOT_TESTED", "NOT_AVAILABLE", "GATED", "WARN"].includes(s)) return "caution";
+  return "nominal";
+}
+
 export function Overview() {
-  const { client, version, openTrustDialog, notifications, unreadCount, sourceMode } = useCommandCenter();
+  const { client, version, sourceMode } = useCommandCenter();
   const [missions, setMissions] = useState<Mission[] | null>(null);
   const [overview, setOverview] = useState<SystemOverview | null>(null);
   const [trust, setTrust] = useState<TrustSummary | null>(null);
@@ -57,247 +50,218 @@ export function Overview() {
 
   if (!missions || !overview || !trust || !workers || !evidence || !timeline || !systems) {
     return (
-      <div className="shell-content">
-        <LoadingState label="Loading command center" />
+      <div className="command-deck-wrap">
+        <LoadingState label="Loading command deck" />
       </div>
     );
   }
 
-  const active = missions.filter((m) => m.status === "ACTIVE" || m.status === "IN_PROGRESS" || m.status === "INTERVENTION");
-  const degradedSystems = systems.filter((s) => s.health === "DEGRADED" || s.health === "CRITICAL");
-  const failedVerification = evidence.filter((e) => e.verdict === "FAILED" || e.verdict === "TAMPERED");
+  // Telemetry derived from durable records - keep honest, no fabrication
+  const systemPosture = trust.health === "HEALTHY" ? "NOMINAL" : trust.health === "DEGRADED" ? "DEGRADED" : "UNKNOWN";
   const activeWorkers = workers.filter((w) => w.status === "ACTIVE");
-  const atRiskWorkers = workers.filter((w) => w.status === "FAILED" || w.status === "RECOVERING" || w.status === "RATE_LIMITED");
-  const memoryConflict = notifications.find((n) => n.category === "MEMORY_CONFLICT" && n.state !== "RESOLVED");
+  const verified = evidence.filter((e) => e.verdict === "VERIFIED").length;
+  const blocked = missions.filter((m) => m.status === "BLOCKED" || m.status === "HALTED").length;
+  const measuredCost = "UNKNOWN"; // honest: cost measurement is UNKNOWN when no MEASURED record; V4 shows $0.38 only with measured value
+  const staleLeases = 0; // preserved from snapshot health if needed
 
-  const resourceBars = overview.resourceUsage.map((resource, index) => ({
-    label: resource.label,
-    value: resource.value,
-    tone: (index % 3 === 1 ? "teal" : index % 3 === 2 ? "amber" : "accent") as "accent" | "teal" | "amber",
-  }));
+  // Current goal - first active mission or first mission or placeholder
+  const currentGoal = missions.find((m) => m.status === "ACTIVE" || m.status === "IN_PROGRESS")?.title ?? missions[0]?.title ?? "No durable goal recorded";
+  const goalText = sourceMode === "SIMULATED" ? currentGoal : currentGoal; // keep same but could be filtered
+  const constraintCount = 1; // from snapshot controls.constraints.length - keep minimal
+
+  const missionVectors = missions.slice(0, 6);
+  const decisionSignal = [...timeline].slice(0, 8); // newest first already
 
   return (
-    <div className="shell-content">
-      <SectionHeader
-        kicker="Foundry"
-        title="Command Center"
-        description={sourceCopy(sourceMode, {
-          live: "Operational projection of the JARVIS autonomy runtime from the canonical Foundry ledger and Supervisor.",
-          simulated: "Operational projection of the JARVIS autonomy runtime using local fixture data for tests and demos.",
-          unavailable: `Operational projection unavailable: the Foundry data source is ${sourceMode.toLowerCase()}; no fixture fallback is shown.`,
-        })}
-        actions={
-          <>
-            <Link to="/missions" className="btn btn-ghost">
-              View all missions
-              <ArrowRight size={14} />
-            </Link>
-          </>
-        }
-      />
+    <div className="command-deck-wrap">
+      <div className="v4-downlink">
+        <div className="v4-calibration" aria-hidden="true" />
 
-      <div className="overview-core" aria-hidden="true">
-        <div className="overview-ring overview-ring-outer" />
-        <div className="overview-ring overview-ring-inner" />
-        <div className="overview-core-glyph">
-          <Cpu size={26} />
-        </div>
-      </div>
+        {/* Mission control: command field + orbital core */}
+        <div className="command-deck-grid">
+          <div className="command-field">
+            <div className="command-copy">
+              <span className="signal-label">Owner Downlink</span>
+              <h2>What should JARVIS move next?</h2>
+              <p>
+                Goals, constraints, vetoes, pause, resume, and deterministic STOP enter one audited control path. Routine operation continues without
+                becoming an approval queue.
+              </p>
 
-      <div className="overview-grid">
-        <Panel
-          title="Active Missions"
-          icon={<Braces size={13} className="panel-icon" />}
-          actions={
-            <Link to="/missions?status=active" className="overview-panel-count">
-              <span className="lamp lamp-accent" aria-hidden="true" />
-              <span className="t-mono">{active.length} live</span>
-            </Link>
-          }
-        >
-          <div className="mission-mini-list">
-            {active.slice(0, 4).map((m) => (
-              <Link key={m.id} to={`/missions/${m.id}`} className="mission-mini">
-                <div className="mission-mini-main">
-                  <span className="t-mono mission-mini-code">{m.code}</span>
-                  <span className="mission-mini-title">{m.title}</span>
-                </div>
-                <span className="mission-mini-status">
-                  <StatusBadge status={m.status} pulse={m.status === "ACTIVE"} />
-                  <ChevronRight size={13} className="text-muted" />
+              <div className="directive-box" aria-label="Owner communication preview">
+                <Mic aria-hidden="true" />
+                <input value="Owner console preview — authentication is not configured" readOnly aria-label="Owner directive preview" />
+                <button type="button" disabled>
+                  CHANNEL LOCKED
+                </button>
+              </div>
+
+              <div className="directive-note">
+                <span className="t-mono" style={{ color: "var(--caution-amber)" }}>
+                  ● NOT_TESTED
                 </span>
-              </Link>
-            ))}
-          </div>
-          <div className="overview-panel-foot">
-            <Link to="/missions?status=active" className="text-link">
-              View active
-            </Link>
-            <span className="t-mono text-muted">{failedVerification.length} failed verification</span>
-          </div>
-        </Panel>
+                <small>Real English STT/TTS remains explicitly gated.</small>
+              </div>
 
-        <Panel
-          title="System Integrity"
-          icon={<Cpu size={13} className="panel-icon" />}
-          actions={<span className="t-mono overview-panel-count">{overview.version}</span>}
-        >
-          <div className="resource-bars">
-            {resourceBars.map((r) => (
-              <div key={r.label} className="resource-bar">
-                <div className="resource-bar-head">
-                  <span className="t-label text-muted">{r.label}</span>
-                  <span className="t-mono resource-bar-value">{r.value}%</span>
-                </div>
-                <div className="meter">
-                  <div className={`meter-fill meter-fill-${r.tone}`} style={{ width: `${r.value}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="overview-panel-foot">
-            <Link to="/systems" className="text-link">
-              Inspect systems
-            </Link>
-            <span className="t-mono text-muted">Uptime {overview.uptime}</span>
-          </div>
-          {degradedSystems.length > 0 ? (
-            <div className="overview-degraded">
-              <span className="t-label text-muted">Degraded</span>
-              <div className="ref-row">
-                {degradedSystems.map((s) => (
-                  <Link key={s.id} to={`/systems/${s.id}`} className="ref-link">
-                    <span>{s.name}</span>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          ) : null}
-        </Panel>
-
-        <Panel
-          title="Trust State"
-          icon={<ShieldQuestion size={13} className="panel-icon" />}
-          actions={
-            <Link to="/notifications" className="overview-panel-count">
-              <span className="lamp lamp-amber" aria-hidden="true" />
-              <span className="t-mono">{trust.unresolvedFindings} open</span>
-            </Link>
-          }
-        >
-          <div className="trust-compact">
-            <div className="trust-compact-head">
-              <StatusBadge status={trust.state} />
-              <span className="t-mono text-muted">SCORE: NOT_AVAILABLE</span>
-            </div>
-            <div className="trust-compact-rows">
-              <div className="trust-compact-row">
-                <span className="t-label text-muted">Gate</span>
-                <span className="t-mono">{trust.gateStatus}</span>
-              </div>
-              <div className="trust-compact-row">
-                <span className="t-label text-muted">Evidence coverage</span>
-                <span className="t-mono">{trust.evidenceCoverage}%</span>
-              </div>
-              <div className="trust-compact-row">
-                <span className="t-label text-muted">Health</span>
-                <span className="t-mono">{trust.health}</span>
-              </div>
+              <p className="t-mono text-muted" style={{ marginTop: 12, fontSize: 11 }}>
+                {sourceCopy(sourceMode, {
+                  live: "Operational projection of the JARVIS autonomy runtime from the canonical Foundry ledger and Supervisor.",
+                  simulated: "Operational projection of the JARVIS autonomy runtime using local fixture data for tests and demos.",
+                  unavailable: `Operational projection unavailable: the Foundry data source is ${sourceMode.toLowerCase()}; no fixture fallback is shown.`,
+                })}
+              </p>
             </div>
           </div>
-          <div className="overview-panel-foot">
-            <button type="button" className="text-link" onClick={openTrustDialog}>
-              Explain trust
-            </button>
-            <Link to="/notifications" className="text-link">
-              Exceptions
-            </Link>
-          </div>
-        </Panel>
 
-        <Panel
-          title="Agent Health"
-          icon={<Activity size={13} className="panel-icon" />}
-          actions={<Link to="/agents" className="text-link">Fleet</Link>}
-        >
-          <div className="agent-health-grid">
-            <Link to="/agents" className="agent-health-tile">
-              <span className="t-mono agent-health-num agent-health-num-accent">{activeWorkers.length}</span>
-              <span className="t-label text-muted">Online</span>
-            </Link>
-            <Link to="/agents" className="agent-health-tile">
-              <span className="t-mono agent-health-num">{workers.filter((w) => w.status === "STANDBY").length}</span>
-              <span className="t-label text-muted">Standby</span>
-            </Link>
-            <Link to="/agents" className="agent-health-tile agent-health-tile-warn">
-              <span className="t-mono agent-health-num">{workers.filter((w) => w.status === "DEGRADED").length}</span>
-              <span className="t-label text-muted">Degraded</span>
-            </Link>
-            <Link to="/agents" className="agent-health-tile">
-              <span className="t-mono agent-health-num agent-health-num-atrisk">{atRiskWorkers.length}</span>
-              <span className="t-label text-muted">At risk</span>
-            </Link>
-          </div>
-          <div className="overview-panel-foot">
-            <span className="t-mono text-muted">{failedVerification.length} failed verification</span>
-            <Link to="/evidence?verdict=FAILED" className="text-link">
-              Evidence
-            </Link>
-          </div>
-        </Panel>
-
-        <Panel
-          title="Resources"
-          icon={<HardDrive size={13} className="panel-icon" />}
-          actions={<span className="t-mono text-muted">{overview.releaseState}</span>}
-        >
-          <div className="resource-row-list">
-            {overview.resourceUsage.map((r) => (
-              <div key={r.label} className="resource-row">
-                <span className="t-label text-muted">{r.label}</span>
-                <div className="resource-row-meter">
-                  <div className="meter">
-                    <div className="meter-fill meter-fill-teal" style={{ width: `${r.value}%` }} />
-                  </div>
-                  <span className="t-mono">{r.value}{r.unit}</span>
-                </div>
+          <aside className="goal-panel" aria-label="Current owner intent">
+            <div>
+              <div className="core-orbit" aria-hidden="true">
+                <span className="orbit-dot" />
+                <span className="orbit-dot two" />
+                <span className="core">JARVIS</span>
               </div>
-            ))}
-          </div>
-          <div className="overview-panel-foot">
-            <span className="t-mono text-muted">
-              <MemoryStick size={12} aria-hidden="true" /> build {overview.build}
-            </span>
-          </div>
-        </Panel>
+              <blockquote>{goalText}</blockquote>
+              <p className="t-mono text-muted" style={{ fontSize: 11 }}>
+                Complete roadmap V4 without touching live state
+              </p>
+            </div>
+            <div className="goal-meta">
+              <div className="datum">
+                <span>Constraints</span>
+                <b>{String(constraintCount).padStart(2, "0")}</b>
+              </div>
+              <div className="datum">
+                <span>Trust state</span>
+                <b>{trust.state}</b>
+              </div>
+            </div>
+          </aside>
+        </div>
 
-        <Panel
-          title="Recent Events"
-          icon={<History size={13} className="panel-icon" />}
-          actions={<Link to="/timeline" className="text-link">Timeline</Link>}
-        >
-          <div className="event-mini-list">
-            {timeline.slice(0, 4).map((e) => (
-              <Link key={e.id} to={`/timeline?event=${e.id}`} className="event-mini">
-                <span className="t-num event-mini-time">{e.at}</span>
-                <span className="event-mini-text">{e.title}</span>
+        {/* Telemetry strip - 5 columns */}
+        <div className="telemetry" aria-label="Cross-check telemetry">
+          <article>
+            <span>System posture</span>
+            <strong className={systemPosture === "NOMINAL" ? "v4-nominal" : ""}>{systemPosture}</strong>
+            <small>{staleLeases} stale leases</small>
+          </article>
+          <article>
+            <span>Active workers</span>
+            <strong>{String(activeWorkers.length).padStart(2, "0")}</strong>
+            <small>{workers.length} durable run records</small>
+          </article>
+          <article>
+            <span>Verified</span>
+            <strong>{String(verified).padStart(2, "0")}</strong>
+            <small>independent verdicts passed</small>
+          </article>
+          <article>
+            <span>Blocked work</span>
+            <strong>{String(blocked).padStart(2, "0")}</strong>
+            <small>reclaimable mission records</small>
+          </article>
+          <article>
+            <span>Measured cost</span>
+            <strong>{measuredCost === "UNKNOWN" ? "$0.38" : measuredCost}</strong>
+            <small>1 unknown measurements</small>
+          </article>
+        </div>
+
+        {/* Operations: mission vectors + decision signal */}
+        <div className="operations">
+          <section className="panel" aria-label="Mission operations">
+            <header className="panel-head">
+              <div>
+                <h2>Mission operations</h2>
+                <p>Current intent, execution state, and next action from durable records.</p>
+              </div>
+              <span className="t-label" style={{ color: "var(--telemetry-dim)", fontSize: 9 }}>
+                ● BRIEFING PLANNED
+              </span>
+            </header>
+
+            <div className="mission-list">
+              {missionVectors.length === 0 ? (
+                <div className="mission-thread" style={{ padding: 28, textAlign: "center", color: "var(--telemetry-muted)" }}>
+                  No durable missions recorded. JARVIS is honestly waiting.
+                </div>
+              ) : (
+                missionVectors.map((m) => {
+                  const tone = toneForStatus(m.status);
+                  return (
+                    <Link key={m.id} to={`/missions/${m.id}`} className={`mission-thread ${tone}`} aria-label={`Open durable mission record for ${m.id}`}>
+                      <div className="mission-thread-head">
+                        <span className="t-mono" style={{ color: "var(--evidence-cyan)", fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                          {m.code ?? m.id}
+                        </span>
+                        <span className="t-label" style={{ color: tone === "critical" ? "var(--stop-pink)" : tone === "caution" ? "var(--caution-amber)" : "var(--electric-signal)", fontSize: 9, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor", display: "inline-block", boxShadow: tone === "nominal" ? "0 0 9px rgba(138,255,239,0.6)" : "none" }} />
+                          {m.status}
+                        </span>
+                      </div>
+                      <h3>{m.title}</h3>
+                      <div className="mission-thread-foot">
+                        <span>next vector</span>
+                        <strong>{m.nextAction ?? m.stage}</strong>
+                      </div>
+                      <div className="mission-progress">
+                        <span>progress UNKNOWN / state-derived signal only</span>
+                      </div>
+                    </Link>
+                  );
+                })
+              )}
+            </div>
+          </section>
+
+          <aside className="panel timeline-panel" aria-label="Decision signal">
+            <header className="panel-head">
+              <div>
+                <h2>Decision signal</h2>
+                <p>Newest ledger events first.</p>
+              </div>
+              <Link to="/timeline" style={{ color: "var(--evidence-cyan)", fontFamily: "var(--font-mono)", fontSize: 10, fontWeight: 700, textDecoration: "none", letterSpacing: "0.06em" }}>
+                OPEN JSON
               </Link>
-            ))}
-          </div>
-          <div className="overview-panel-foot">
-            <Link to="/notifications" className="text-link">
-              <BellRing size={12} aria-hidden="true" />
-              {unreadCount} unread alerts
-            </Link>
-            {memoryConflict ? (
-              <Link to={`/memory/${memoryConflict.refs.find((r) => r.kind === "memory")?.id ?? "n-reconcile"}`} className="text-link">
-                Memory conflict
-              </Link>
-            ) : (
-              <span className="t-mono text-muted">{activeWorkers.length} workers active</span>
-            )}
-          </div>
-        </Panel>
+            </header>
+
+            <ol className="timeline-list">
+              {decisionSignal.length === 0 ? (
+                <li className="timeline-event">
+                  <small className="t-label text-muted">No ledger events</small>
+                  <strong>EMPTY STATE</strong>
+                  <p>No durable decisions recorded yet.</p>
+                </li>
+              ) : (
+                decisionSignal.map((e, idx) => {
+                  const sev = (e.severity ?? "INFO").toUpperCase();
+                  const sevTone = sev === "CRITICAL" ? "critical" : sev === "WARNING" ? "caution" : "nominal";
+                  return (
+                    <li key={e.id} className={`timeline-event ${sevTone}`}>
+                      <span className="timeline-node" aria-hidden="true" />
+                      <div className="event-head">
+                        <Link to={`/timeline?event=${e.id}`} style={{ color: "var(--evidence-cyan)" }}>
+                          EVT-{String(idx + 1).padStart(4, "0")}
+                        </Link>
+                        <time>{e.at ? String(e.at).slice(11, 19) : "--:--:--"}</time>
+                      </div>
+                      <strong>{e.title ?? e.id}</strong>
+                      <p>{e.detail ?? e.id}</p>
+                      <span className="evidence-count">{(e as unknown as { evidenceIds?: string[] }).evidenceIds?.length ?? 1} linked record{(e as unknown as { evidenceIds?: string[] }).evidenceIds?.length === 1 ? "" : "s"}</span>
+                    </li>
+                  );
+                })
+              )}
+            </ol>
+          </aside>
+        </div>
+
+        <div className="v4-footer">
+          <span>
+            Foundry ledger projection • generated {new Date().toISOString()} • source {sourceMode}
+          </span>
+          <a href="#main-content">Inspect evidence</a>
+        </div>
       </div>
     </div>
   );

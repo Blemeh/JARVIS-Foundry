@@ -1,7 +1,12 @@
 import { AlertOctagon, OctagonX, RotateCcw, ShieldCheck } from "lucide-react";
 import { Dialog } from "./Dialog";
 import { useCommandCenter } from "../context/CommandCenterContext";
-import { sourceModeLabel } from "../lib/sourceMode";
+import { sourceModeLabel, type ResolvedSourceMode } from "../lib/sourceMode";
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function canResume(live: boolean, sourceMode: ResolvedSourceMode): boolean {
+  return !live || sourceMode === "LIVE";
+}
 
 export function EmergencyStopDialog() {
   const { stopDialogOpen, closeStopDialog, stopActive, stopActivatedAt, activateStop, resetStop, mode, sourceMode, mutationsEnabled } =
@@ -21,7 +26,7 @@ export function EmergencyStopDialog() {
             <span className="t-mono text-muted" style={{ marginRight: "auto" }}>
               {sourceMode === "LIVE" ? "STOP active" : sourceMode === "SIMULATED" ? "Simulated" : `STOP ${sourceModeLabel(sourceMode)}`} at {stopActivatedAt ? new Date(stopActivatedAt).toLocaleTimeString() : ""}
             </span>
-            <button type="button" className="btn" onClick={resetStop} disabled={!mutationsEnabled && live}>
+            <button type="button" className="btn" onClick={resetStop} disabled={!canResume(live, sourceMode)}>
               <RotateCcw size={14} />
               Resume
             </button>
@@ -87,16 +92,16 @@ export function EmergencyStopDialog() {
 }
 
 export function StopControl({ compact = false, label = "Emergency STOP" }: { compact?: boolean; label?: string }) {
-  const { openStopDialog, stopActive } = useCommandCenter();
+  const { openStopDialog, stopActive, sourceMode } = useCommandCenter();
   return (
     <button
       type="button"
       className={`stop-control ${compact ? "stop-control-compact" : ""} ${stopActive ? "stop-control-armed" : ""}`}
       onClick={openStopDialog}
-      aria-label={stopActive ? "STOP active. Open Emergency STOP control." : label}
+      aria-label={stopActive ? (sourceMode === "SIMULATED" ? "STOP simulation active. Open Emergency STOP control." : "STOP active. Open Emergency STOP control.") : label}
     >
       <AlertOctagon size={compact ? 15 : 16} aria-hidden="true" />
-      <span>{stopActive ? "STOP ACTIVE" : label}</span>
+      <span>{stopActive ? (sourceMode === "SIMULATED" ? "STOP simulation active" : "STOP ACTIVE") : label}</span>
     </button>
   );
 }

@@ -2,7 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { CommandCenterProvider } from "../../context/CommandCenterContext";
-import { StopControl, EmergencyStopDialog } from "../EmergencyStop";
+import { canResume, StopControl, EmergencyStopDialog } from "../EmergencyStop";
 
 function renderStop() {
   return render(
@@ -14,6 +14,12 @@ function renderStop() {
 }
 
 describe("Emergency STOP", () => {
+  it("keeps live Resume available while canonical STOP is active", () => {
+    expect(canResume(true, "LIVE")).toBe(true);
+    expect(canResume(true, "DISCONNECTED")).toBe(false);
+    expect(canResume(false, "SIMULATED")).toBe(true);
+  });
+
   it("is prominent, opens a dialog, and only simulates in simulated mode", async () => {
     const fetchSpy = vi.spyOn(window, "fetch");
     const user = userEvent.setup();
@@ -30,7 +36,7 @@ describe("Emergency STOP", () => {
 
     await waitFor(() => expect(screen.getByText(/SIMULATED STOP - UI CANDIDATE/i)).toBeInTheDocument());
     expect(screen.getByText(/NO PRODUCTION SIDE EFFECT/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /STOP active/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /STOP simulation active/i })).toBeInTheDocument();
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
   });
@@ -40,7 +46,7 @@ describe("Emergency STOP", () => {
     renderStop();
     await user.click(screen.getByRole("button", { name: /Emergency STOP/i }));
     await user.click(screen.getByText("Simulate STOP"));
-    const armed = await screen.findByRole("button", { name: /STOP active/i });
+    const armed = await screen.findByRole("button", { name: /STOP simulation active/i });
     await user.click(armed);
     await waitFor(() => expect(screen.getByRole("button", { name: /Resume/i })).toBeInTheDocument());
     await user.click(screen.getByText("Resume"));

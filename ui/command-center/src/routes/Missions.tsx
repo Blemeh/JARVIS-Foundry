@@ -99,8 +99,8 @@ export function Missions() {
   return (
     <div className="shell-content">
       <SectionHeader
-        kicker="Missions"
-        title="Mission Control"
+        kicker="Mission Vectors"
+        title="Mission Vectors"
         description={
           sourceCopy(sourceMode, {
             live: "Live missions from the canonical append-only ledger projection. New missions enter as authenticated owner GOAL directives.",
