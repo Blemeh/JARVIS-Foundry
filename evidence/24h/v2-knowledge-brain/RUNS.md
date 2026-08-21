@@ -29,7 +29,7 @@ a743fde ancestry via merge-base --is-ancestor after fetch)
 | R8 | convergence suite at frozen commit | see CONVERGENCE line below |
 
 ## FROZEN COMMIT (filled at freeze, before verifier dispatch)
-FROZEN_COMMIT: PENDING
+FROZEN_COMMIT: e79a8a5961e90f67cda499db12b056d2cf759d31
 
 ## Baseline (acceptance criterion A)
 BASELINE: EXIT=1 at PURE BASE 7ac0b23 (detached checkout
