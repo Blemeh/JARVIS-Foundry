@@ -662,6 +662,33 @@ def test_command_center_projects_executive_decisions(exec_env):
     assert decision.decision_id in ids
 
 
+def test_command_center_latest_decision_is_newest(exec_env):
+    """Discriminating regression (verifier finding): with multiple decisions
+    in the ledger, latest_decision must be the NEWEST, and recent_decisions
+    must be ordered newest-first. The original projection returned the oldest."""
+    from jarvis_foundry.command_center import build_snapshot
+
+    database, _, _ = exec_env
+    first_obj = "Improve gateway reliability reduce outage risk alpha"
+    second_obj = "Improve gateway reliability reduce outage risk beta"
+    _organic_candidate(database, first_obj, source="maintenance")
+    _organic_candidate(database, second_obj, source="maintenance")
+    service = ExecutiveDecisionService(database, source_id="cc-order-test")
+    first = service.evaluate(resource_id="resource-1", loop_id="loop-first")
+    second = service.evaluate(resource_id="resource-1", loop_id="loop-second")
+    assert first.kind == "SELECT" and second.kind == "SELECT"
+    assert first.decision_id != second.decision_id
+
+    snapshot = build_snapshot(database)
+    section = snapshot["executive"]
+    latest = section["latest_decision"]
+    assert latest is not None
+    assert latest["decision_id"] == second.decision_id
+    ids = [d["decision_id"] for d in section["recent_decisions"]]
+    assert ids[0] == second.decision_id
+    assert ids.index(second.decision_id) < ids.index(first.decision_id)
+
+
 def test_command_center_executive_empty_state_is_honest(exec_env):
     """No executive events -> explicit empty projection, not fabricated state."""
     from jarvis_foundry.command_center import build_snapshot

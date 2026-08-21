@@ -245,13 +245,16 @@ def _executive_projection(database: FoundryDatabase, *, limit: int = 25) -> dict
         key = str(record.get("decision_id") or "")
         if key and key not in by_decision:
             by_decision[key] = record
-    ordered = list(by_decision.values())[-limit:]
+    # ``decisions`` is oldest->newest; ``by_decision`` was built newest-first
+    # (first occurrence of each id wins), so the NEWEST decision is at the
+    # front. Bound from the front and expose newest-first ordering.
+    ordered = list(by_decision.values())[:limit]
     calibration_by_decision: dict[str, dict[str, Any]] = {}
     for cal in calibrations:
         key = str(cal.get("decision_id") or "")
         if key:
             calibration_by_decision[key] = cal
-    latest = ordered[-1] if ordered else None
+    latest = ordered[0] if ordered else None
     if latest is not None:
         key = str(latest.get("decision_id") or "")
         latest["prediction"] = predictions.get(key)
@@ -260,7 +263,7 @@ def _executive_projection(database: FoundryDatabase, *, limit: int = 25) -> dict
         "activation_epoch": activation_epoch,
         "admission_authority": admission_authority,
         "latest_decision": latest,
-        "recent_decisions": list(reversed(ordered)),
+        "recent_decisions": ordered,
         "calibrations": calibrations[-limit:],
     }
 
