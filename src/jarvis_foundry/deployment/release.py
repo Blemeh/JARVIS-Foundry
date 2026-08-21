@@ -17,6 +17,7 @@ from ..clock import isoformat
 from ..database import FoundryDatabase
 from ..migrations import SCHEMA_VERSION
 from .layout import (
+    cli_cmd,
     current_pointer,
     headless_launcher_cmd,
     install_root,
@@ -45,6 +46,37 @@ if not exist "%PY%" (
 )
 "%PY%" -m jarvis_foundry.deployment.launcher %*
 exit /b %ERRORLEVEL%
+"""
+
+JARVIS_CLI_CMD_TEXT = """@echo off
+setlocal EnableExtensions
+set "PYTHONPATH="
+set "PYTHONHOME="
+if exist "C:\\Python313\\python.exe" (
+  "C:\\Python313\\python.exe" -m jarvis_foundry.cli.main %*
+  exit /b %ERRORLEVEL%
+)
+if exist "%APPDATA%\\Python\\Python313\\Scripts\\jarvis.exe" (
+  "%APPDATA%\\Python\\Python313\\Scripts\\jarvis.exe" %*
+  exit /b %ERRORLEVEL%
+)
+where py >nul 2>nul && (
+  py -3.13 -m jarvis_foundry.cli.main %*
+  exit /b %ERRORLEVEL%
+)
+if not defined JARVIS_INSTALL_ROOT set "JARVIS_INSTALL_ROOT=%LOCALAPPDATA%\\JARVIS"
+set "CURRENT_FILE=%JARVIS_INSTALL_ROOT%\\CURRENT"
+if exist "%CURRENT_FILE%" (
+  set /p SHA=<"%CURRENT_FILE%"
+  for /f "tokens=* delims= " %%A in ("%SHA%") do set "SHA=%%A"
+  set "PY=%JARVIS_INSTALL_ROOT%\\releases\\%SHA%\\.venv\\Scripts\\python.exe"
+  if exist "%PY%" (
+    "%PY%" -m jarvis_foundry.cli.main %*
+    exit /b %ERRORLEVEL%
+  )
+)
+echo FAIL_CLOSED: jarvis CLI not installed. Run: pip install -e . from JARVIS-Foundry>&2
+exit /b 2
 """
 
 
@@ -227,6 +259,12 @@ def build_release(
     return {"release_dir": str(directory), "manifest": manifest, "python_exe": str(release_python)}
 
 
+def install_cli_launcher(root: Path | None = None) -> Path:
+    from .path_setup import install_cli_launchers
+
+    return install_cli_launchers(root)
+
+
 def _install_stable_launcher(root: Path | None = None) -> Path:
     bin_dir = install_root(root) / "bin"
     bin_dir.mkdir(parents=True, exist_ok=True)
@@ -236,6 +274,7 @@ def _install_stable_launcher(root: Path | None = None) -> Path:
         _packaging_template("jarvis-supervisor-headless.vbs").read_text(encoding="utf-8"),
         encoding="utf-8",
     )
+    install_cli_launcher(root)
     return destination
 
 

@@ -30,6 +30,7 @@ from ..runtime.provider_registry import (
     live_test_allowed,
     require_service,
 )
+from .hermes_env_sync import sync_provider_to_hermes_env_safe
 from .hermes_probe import (
     HermesProbeRuntime,
     resolve_hermes_probe_runtime,
@@ -102,6 +103,24 @@ def is_pending_apply(config_path: Path | None = None) -> bool:
         config_path or default_provider_config_path()).is_file()
 
 
+def clear_pending_apply(config_path: Path | None = None) -> None:
+    _pending_apply_path(
+        config_path or default_provider_config_path()).unlink(missing_ok=True)
+
+
+def apply_provider_configuration(
+    settings: ProviderSettings,
+    *,
+    config_path: Path | None = None,
+) -> bool:
+    """Sync provider credentials into Hermes home and clear pending apply."""
+    result = sync_provider_to_hermes_env_safe(settings)
+    if result is None:
+        return False
+    clear_pending_apply(config_path)
+    return True
+
+
 def build_setup_view(settings: ProviderSettings) -> SetupView:
     service = get_service(settings.provider)
     if service is None:
@@ -145,6 +164,9 @@ def _models_url(base_url: str) -> str:
     return f"{base_url.rstrip('/')}/models"
 
 
+_DISCOVERY_USER_AGENT = "JARVIS-Setup/1.0"
+
+
 def _authorized_request(
     url: str,
     *,
@@ -157,6 +179,7 @@ def _authorized_request(
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Accept": "application/json",
+        "User-Agent": _DISCOVERY_USER_AGENT,
     }
     if payload is not None:
         data = json.dumps(payload).encode("utf-8")
@@ -531,8 +554,11 @@ def run_interactive_setup(
         base_url=base_url,
         api_key=api_key,
     )
-    mark_pending_apply(path)
-    print("Configuration saved. Live apply is pending a safe restart.")
+    if apply_provider_configuration(candidate, config_path=path):
+        print("Configuration saved and applied to Hermes home (shared OpenCode key).")
+    else:
+        mark_pending_apply(path)
+        print("Configuration saved. Live apply is pending a safe restart.")
     return 0
 
 
@@ -556,3 +582,13 @@ def run_test(
     )
     print(format_test_report(report))
     return report.exit_code
+
+
+def run_apply(*, config_path: Path | None = None) -> int:
+    path = config_path or default_provider_config_path()
+    settings = load_provider_settings(config_path=path)
+    if not apply_provider_configuration(settings, config_path=path):
+        print("Apply failed: provider API key is not configured.")
+        return 1
+    print("Applied provider configuration to Hermes home (shared OpenCode key).")
+    return 0

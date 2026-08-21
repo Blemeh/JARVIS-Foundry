@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 from dataclasses import asdict
 from pathlib import Path
 
@@ -80,6 +81,11 @@ def _parser() -> argparse.ArgumentParser:
     setup = sub.add_parser("setup", help="configure machine-local LLM provider")
     setup.add_argument("--show", action="store_true", help="show current provider config")
     setup.add_argument("--test", action="store_true", help="test current provider config")
+    setup.add_argument(
+        "--apply",
+        action="store_true",
+        help="sync provider credentials into Hermes home .env",
+    )
     backup = release_sub.add_parser("backup-db")
     backup.add_argument("--destination", type=Path, required=True)
     migrate = release_sub.add_parser("migrate-clone")
@@ -123,6 +129,12 @@ def _installer(args, paths: FoundryPaths) -> Installer:
 
 
 def main(argv: list[str] | None = None) -> int:
+    if argv is None:
+        argv = sys.argv[1:]
+    if argv and argv[0] == "setup":
+        from ..deployment.path_setup import bootstrap_global_cli
+
+        bootstrap_global_cli()
     args = _parser().parse_args(argv)
     # --home uses SUPPRESS as its default, so it may be absent entirely —
     # a bare `jarvis <cmd>` must resolve the default home, not crash.
@@ -186,12 +198,14 @@ def main(argv: list[str] | None = None) -> int:
             source_repo=getattr(args, "source_repo", None),
         ), indent=2, default=str))
     elif args.command == "setup":
-        from .setup import run_interactive_setup, run_show, run_test
+        from .setup import run_apply, run_interactive_setup, run_show, run_test
 
         if args.show:
             return run_show()
         if args.test:
             return run_test()
+        if args.apply:
+            return run_apply()
         return run_interactive_setup()
     elif args.command == "release":
         return _release_command(args, paths)

@@ -44,7 +44,10 @@ src/jarvis_foundry.egg-info/top_level.txt
 src/jarvis_foundry/capabilities/__init__.py
 src/jarvis_foundry/capabilities/registry.py
 src/jarvis_foundry/cli/__init__.py
+src/jarvis_foundry/cli/hermes_probe.py
 src/jarvis_foundry/cli/main.py
+src/jarvis_foundry/cli/masked_input.py
+src/jarvis_foundry/cli/setup.py
 src/jarvis_foundry/connectors/activation.py
 src/jarvis_foundry/connectors/contract.py
 src/jarvis_foundry/connectors/fakes.py
@@ -67,6 +70,7 @@ src/jarvis_foundry/deployment/headless_launcher.py
 src/jarvis_foundry/deployment/lab_hermes.py
 src/jarvis_foundry/deployment/launcher.py
 src/jarvis_foundry/deployment/layout.py
+src/jarvis_foundry/deployment/path_setup.py
 src/jarvis_foundry/deployment/release.py
 src/jarvis_foundry/deployment/status.py
 src/jarvis_foundry/evolution/__init__.py
@@ -145,6 +149,7 @@ src/jarvis_foundry/runtime/_stack.py
 src/jarvis_foundry/runtime/authority.py
 src/jarvis_foundry/runtime/config.py
 src/jarvis_foundry/runtime/provider_config.py
+src/jarvis_foundry/runtime/provider_registry.py
 src/jarvis_foundry/runtime/worker_loop.py
 src/jarvis_foundry/supervisor/__init__.py
 src/jarvis_foundry/supervisor/authority.py

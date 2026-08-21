@@ -546,6 +546,33 @@ def test_model_discovery_parsing():
     assert "x-preview-f-free" in models
 
 
+def test_model_discovery_sends_non_python_user_agent(monkeypatch):
+    captured: dict[str, str] = {}
+
+    class FakeResponse:
+        status = 200
+
+        def read(self):
+            return MODELS_BODY.encode("utf-8")
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    def fake_urlopen(request, timeout=30.0):
+        for key, value in request.header_items():
+            captured[key] = value
+        return FakeResponse()
+
+    monkeypatch.setattr("jarvis_foundry.cli.setup.urllib.request.urlopen", fake_urlopen)
+    from jarvis_foundry.cli.setup import _DISCOVERY_USER_AGENT, _authorized_request
+
+    _authorized_request("https://opencode.ai/zen/v1/models", api_key=SECRET)
+    assert captured.get("User-agent") == _DISCOVERY_USER_AGENT
+
+
 def test_unsupported_provider_fails_closed():
     with pytest.raises(ProviderConfigError):
         hermes_provider_env(_settings(provider="vertex_ai", api_key=SECRET))

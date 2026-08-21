@@ -26,6 +26,10 @@ def launcher_cmd(root: Path | None = None) -> Path:
     return install_root(root) / "bin" / "jarvis-supervisor.cmd"
 
 
+def cli_cmd(root: Path | None = None) -> Path:
+    return install_root(root) / "bin" / "jarvis.cmd"
+
+
 def headless_launcher_cmd(root: Path | None = None) -> Path:
     return install_root(root) / "bin" / "jarvis-supervisor-headless.vbs"
 
