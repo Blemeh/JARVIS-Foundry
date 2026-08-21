@@ -5,7 +5,7 @@ import sqlite3
 from .v4_schema import ensure_v4_tables
 
 
-SCHEMA_VERSION = 34
+SCHEMA_VERSION = 35
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -956,6 +956,95 @@ MIGRATIONS: dict[int, str] = {
     );
     CREATE INDEX IF NOT EXISTS mission_step_contracts_mission
         ON mission_step_contracts(mission_id, step_id, version);
+    """,
+    35: """
+    -- WP-24H-V2KB (V2 Knowledge Brain typed records): additive only.
+    -- knowledge_claims gains typed-record + evidence-status columns via a
+    -- rebuild (SQLite cannot ALTER ADD COLUMN with non-constant DEFAULT).
+    -- History is preserved row-for-row and legacy rows receive deterministic
+    -- defaults (record_kind='CLAIM', evidence_status='UNSUPPORTED').
+    CREATE TABLE IF NOT EXISTS knowledge_claims_v35 (
+        claim_id TEXT PRIMARY KEY,
+        mission_id TEXT NOT NULL,
+        statement TEXT NOT NULL,
+        claim_type TEXT NOT NULL,
+        record_kind TEXT NOT NULL DEFAULT 'CLAIM'
+            CHECK(record_kind IN ('OBSERVATION', 'EVIDENCE', 'CLAIM',
+                                  'BELIEF', 'DECISION', 'UNKNOWN')),
+        confidence REAL NOT NULL CHECK(confidence >= 0.0 AND confidence <= 1.0),
+        fresh_until TEXT,
+        source_run_id TEXT,
+        source_event_id TEXT,
+        status TEXT NOT NULL DEFAULT 'ACCEPTED'
+            CHECK(status IN ('ACCEPTED', 'CONTRADICTED', 'SUPERSEDED',
+                             'ROLLED_BACK')),
+        superseded_by TEXT,
+        rolled_back_by TEXT,
+        evidence_status TEXT NOT NULL DEFAULT 'UNSUPPORTED'
+            CHECK(evidence_status IN ('SUPPORTED', 'UNSUPPORTED')),
+        unsupported_reason TEXT,
+        content_sha256 TEXT,
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    INSERT INTO knowledge_claims_v35(
+        claim_id, mission_id, statement, claim_type, record_kind,
+        confidence, fresh_until, source_run_id, source_event_id, status,
+        superseded_by, rolled_back_by, evidence_status, unsupported_reason,
+        content_sha256, last_event_id, updated_at
+    )
+    SELECT claim_id, mission_id, statement, claim_type, 'CLAIM',
+        confidence, fresh_until, source_run_id, source_event_id, status,
+        superseded_by, rolled_back_by, 'UNSUPPORTED', NULL,
+        NULL, last_event_id, updated_at
+    FROM knowledge_claims;
+    DROP TABLE knowledge_claims;
+    ALTER TABLE knowledge_claims_v35 RENAME TO knowledge_claims;
+    CREATE INDEX IF NOT EXISTS knowledge_claims_mission
+        ON knowledge_claims(mission_id, claim_type);
+    CREATE INDEX IF NOT EXISTS knowledge_claims_status
+        ON knowledge_claims(status);
+    CREATE INDEX IF NOT EXISTS knowledge_claims_kind
+        ON knowledge_claims(mission_id, record_kind);
+
+    -- Typed entities (goals/projects/people/organizations/systems).
+    CREATE TABLE IF NOT EXISTS knowledge_entities_v35 (
+        entity_id TEXT PRIMARY KEY,
+        mission_id TEXT NOT NULL,
+        canonical_name TEXT NOT NULL,
+        aliases_json TEXT NOT NULL DEFAULT '[]',
+        entity_type TEXT NOT NULL DEFAULT 'system'
+            CHECK(entity_type IN ('goal', 'project', 'person',
+                                  'organization', 'system')),
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    INSERT INTO knowledge_entities_v35(
+        entity_id, mission_id, canonical_name, aliases_json, entity_type,
+        last_event_id, updated_at
+    )
+    SELECT entity_id, mission_id, canonical_name, aliases_json, 'system',
+        last_event_id, updated_at
+    FROM knowledge_entities;
+    DROP TABLE knowledge_entities;
+    ALTER TABLE knowledge_entities_v35 RENAME TO knowledge_entities;
+    CREATE INDEX IF NOT EXISTS knowledge_entities_mission
+        ON knowledge_entities(mission_id);
+    CREATE INDEX IF NOT EXISTS knowledge_entities_type
+        ON knowledge_entities(mission_id, entity_type);
+
+    -- Immutable claim<->evidence links (append-only with NO delete event).
+    CREATE TABLE IF NOT EXISTS knowledge_claim_evidence (
+        claim_id TEXT NOT NULL,
+        evidence_id TEXT NOT NULL,
+        payload_hash TEXT,
+        linked_at TEXT NOT NULL,
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (claim_id, evidence_id)
+    );
+    CREATE INDEX IF NOT EXISTS knowledge_claim_evidence_evidence
+        ON knowledge_claim_evidence(evidence_id);
     """,
 }
 

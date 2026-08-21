@@ -56,5 +56,19 @@ def entities_for_claim(connection: sqlite3.Connection,
                        claim_id: str) -> list[str]:
     rows = connection.execute(
         "SELECT entity_id FROM knowledge_claim_entities "
-        "WHERE claim_id = ? ORDER BY entity_id", (claim_id,)).fetchall()
+        "WHERE claim_id = ? ORDER BY entity_id",
+        (claim_id,)).fetchall()
+    return [r[0] for r in rows]
+
+
+def entities_of_type(connection: sqlite3.Connection,
+                     entity_type: str) -> list[str]:
+    """Deterministic typed lookup: entity ids of one entity_type
+    (goal/project/person/organization/system), id-ordered."""
+    from .knowledge_records import validate_entity_type
+
+    validate_entity_type(entity_type)
+    rows = connection.execute(
+        "SELECT entity_id FROM knowledge_entities WHERE entity_type = ? "
+        "ORDER BY entity_id", (entity_type,)).fetchall()
     return [r[0] for r in rows]

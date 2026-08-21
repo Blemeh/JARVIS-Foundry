@@ -249,6 +249,7 @@ class FoundryDatabase:
         """Bounded read helper for the projection tables (exact-match filters)."""
         allowed = {"knowledge_claims", "knowledge_contradictions", "obsidian_writes",
                    "knowledge_manifests", "knowledge_entities", "knowledge_claim_entities",
+                   "knowledge_claim_evidence",
                    "knowledge_ingestions", "knowledge_snapshots", "candidates",
                    "candidate_scores", "monitors", "vault_files",
                    "vault_sync_state", "ingestion_cursors", "research_queue",
@@ -268,6 +269,7 @@ class FoundryDatabase:
     def count(self, table: str) -> int:
         allowed = {"knowledge_claims", "knowledge_contradictions", "obsidian_writes",
                    "knowledge_manifests", "knowledge_entities", "knowledge_claim_entities",
+                   "knowledge_claim_evidence",
                    "knowledge_ingestions", "knowledge_snapshots", "candidates",
                    "candidate_scores", "monitors", "vault_files",
                    "vault_sync_state", "ingestion_cursors", "research_queue",
