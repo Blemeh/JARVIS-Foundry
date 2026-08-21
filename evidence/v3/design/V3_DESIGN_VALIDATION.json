@@ -1,0 +1,118 @@
+{
+  "schema_version": "1.0",
+  "verdict": "PASS",
+  "base_sha": "a743fdeb535f78c5ad455e8b09944f721f2515a7",
+  "final_sha": null,
+  "branch": "candidate/v3-discovery-design",
+  "worktree": "C:\\temp\\JARVIS-V3-Discovery-Design",
+  "generated_at": "2026-08-21T23:59:30+02:00",
+  "changed_files": [
+    "docs/v3/00_V3_READ_FIRST.md",
+    "docs/v3/01_V3_DISCOVERY_BUILDING_SPEC.md",
+    "docs/v3/02_V3_EVENTS_AND_STATE_MACHINES.md",
+    "docs/v3/03_V3_SCORING_AND_PORTFOLIO.md",
+    "docs/v3/04_V3_WORK_PACKAGES.md",
+    "docs/v3/05_V3_ACCEPTANCE_GATE.md",
+    "docs/v3/06_V3_THREAT_MODEL.md",
+    "docs/v3/07_V3_IMPLEMENTATION_HANDOFF.md",
+    "evidence/v3/design/V3_CAPABILITY_GAP.json",
+    "evidence/v3/design/V3_DESIGN_VALIDATION.json"
+  ],
+  "document_hashes": {
+    "docs/v3/00_V3_READ_FIRST.md": "b616fc366b77047ed04917e107be79b9f21f3cc1a5c8957fedeeca3cfb510057",
+    "docs/v3/01_V3_DISCOVERY_BUILDING_SPEC.md": "16d6d13b6cb844dfdea7ff5176fa441caa7d8a2a08db09bbe69631e5be2086a1",
+    "docs/v3/02_V3_EVENTS_AND_STATE_MACHINES.md": "426dec4b17a6cf074d749ddae85dd0d20fcd5eea466f24163b7cf360ac85b8fd",
+    "docs/v3/03_V3_SCORING_AND_PORTFOLIO.md": "065106937c7c8807765a2c8d745848b260688367f8b9cd0c0bf46521b4b8681a",
+    "docs/v3/04_V3_WORK_PACKAGES.md": "3d6edd303ca00f06ee6fe327be5eb74352bbd8f6e512ece1b35f8a2d6c1c9dc4",
+    "docs/v3/05_V3_ACCEPTANCE_GATE.md": "7c9d055f51e52741ec0ebfb731299bdf0226494d2e0ea63e670af37a0d709696",
+    "docs/v3/06_V3_THREAT_MODEL.md": "4f9f03cc5f6054bef2d38725657caaf7bfbf992358833aae2a10bd7f3ab53fed",
+    "docs/v3/07_V3_IMPLEMENTATION_HANDOFF.md": "40799381a3d6dc948dcee7b82bafbfb81abb3aa7c9d3f1885a4e3b3f1d445e85",
+    "evidence/v3/design/V3_CAPABILITY_GAP.json": "43681929b716e1c805cddb40307279242fc0a91b1bb9c33b43ff0f1d887f385"
+  },
+  "validation_commands": [
+    {
+      "command": "python -c \"import json; json.load(open('evidence/v3/design/V3_CAPABILITY_GAP.json'))\"",
+      "result": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "python -c \"import json; json.load(open('evidence/v3/design/V3_DESIGN_VALIDATION.json'))\"",
+      "result": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "git status --porcelain (worktree)",
+      "result": "PASS — only docs/v3/ and evidence/v3/ untracked",
+      "exit_code": 0
+    },
+    {
+      "command": "grep secret-like material in docs/v3/",
+      "result": "PASS — only architectural credential references",
+      "exit_code": 0
+    },
+    {
+      "command": "scope proof: git diff --stat against base",
+      "result": "PASS — 10 new files only, no src/tests/scripts changes",
+      "exit_code": 0
+    }
+  ],
+  "requirement_traceability": [
+    {"requirement": "DISCOVERY INPUTS §1", "section": "01_V3_DISCOVERY_BUILDING_SPEC.md §3.2", "work_package": "WP0-WP1", "acceptance": "AC-01"},
+    {"requirement": "CANDIDATE MODEL §2", "section": "01_V3_DISCOVERY_BUILDING_SPEC.md §3.3", "work_package": "WP1", "acceptance": "AC-03"},
+    {"requirement": "SCORING §3", "section": "03_V3_SCORING_AND_PORTFOLIO.md", "work_package": "WP2", "acceptance": "AC-02,AC-04,AC-05"},
+    {"requirement": "PORTFOLIO §4", "section": "02_V3_EVENTS_AND_STATE_MACHINES.md §4", "work_package": "WP2", "acceptance": "AC-02,AC-15"},
+    {"requirement": "MISSION CREATION §5", "section": "01_V3_DISCOVERY_BUILDING_SPEC.md §3.6", "work_package": "WP3", "acceptance": "AC-01"},
+    {"requirement": "TEAMS §6", "section": "01_V3_DISCOVERY_BUILDING_SPEC.md §3.7", "work_package": "WP4", "acceptance": "AC-06,AC-09"},
+    {"requirement": "RESEARCH-TO-BUILD §7", "section": "02_V3_EVENTS_AND_STATE_MACHINES.md §5", "work_package": "WP3", "acceptance": "AC-01,AC-20"},
+    {"requirement": "GIT/RELEASE §8", "section": "01_V3_DISCOVERY_BUILDING_SPEC.md §3.9", "work_package": "WP5", "acceptance": "AC-10,AC-11"},
+    {"requirement": "OUTCOMES §9", "section": "01_V3_DISCOVERY_BUILDING_SPEC.md §3.10", "work_package": "WP6", "acceptance": "AC-12,AC-13"},
+    {"requirement": "MAINTENANCE §10", "section": "01_V3_DISCOVERY_BUILDING_SPEC.md §3.11", "work_package": "WP6", "acceptance": "AC-14,AC-15"},
+    {"requirement": "SECURITY §11", "section": "06_V3_THREAT_MODEL.md", "work_package": "WP7", "acceptance": "AC-06,AC-07,AC-16,AC-17"},
+    {"requirement": "COMMAND CENTER §12", "section": "01_V3_DISCOVERY_BUILDING_SPEC.md §3.13", "work_package": "WP3", "acceptance": "AC-20"},
+    {"requirement": "ROADMAP EXIT §6", "section": "05_V3_ACCEPTANCE_GATE.md AC-01..AC-20", "work_package": "WP8", "acceptance": "gate PASS"},
+    {"requirement": "V2 PREREQUISITE", "section": "00_V3_READ_FIRST.md §3", "work_package": "BLOCKED", "acceptance": "entry gate"}
+  ],
+  "contradictions_found": [
+    "V3_SLICE1_DESIGN candidate.* events vs production discovery.*",
+    "WP12 full loop vs v3_loop WAIT default",
+    "Score threshold 0.35 vs 0.40",
+    "test_candidate_pipeline.py vs test_discovery_candidates.py"
+  ],
+  "contradictions_resolved": [
+    "Use discovery.* event namespace; candidate.* historical only",
+    "V3DiscoveryCycle unifies observation and ExecutiveDecisionService selection",
+    "Single scoring_policy_registry threshold 0.40",
+    "test_discovery_candidates.py is canonical test path"
+  ],
+  "remaining_uncertainty": [
+    "V2 Session-04 independent PASS not yet recorded on canonical main",
+    "Live production schema may lag v34 candidate",
+    "Same-provider verifier independence remains MEDIUM residual risk",
+    "UD-01 through UD-04 unresolved decisions default per handoff"
+  ],
+  "scope_proof": {
+    "only_allowed_files": true,
+    "src_modified": false,
+    "tests_modified": false,
+    "scripts_modified": false,
+    "existing_canonical_docs_modified": false
+  },
+  "invariant_checks": {
+    "stop_veto_hard_filters": "PASS — 03 §2, 06 T-20/T-21, AC-07",
+    "verifier_independence": "PASS — 01 §3.7, 06 T-06, AC-06",
+    "append_only_history": "PASS — 02 §2, 00 §5",
+    "capability_readiness": "PASS — HARD_CAPABILITY filter",
+    "standing_autonomy": "PASS — no approval gates in design",
+    "stage_sequencing_v2_block": "PASS — 00 §3, 07 §1"
+  },
+  "capability_map_counts": {
+    "EXISTING": 28,
+    "PARTIAL": 22,
+    "MISSING": 14,
+    "CONTRADICTED": 4
+  },
+  "v3_entry_condition_satisfied": false,
+  "implementation_authorized": false,
+  "pushed": false,
+  "rollback": "Delete branch candidate/v3-discovery-design and worktree C:\\temp\\JARVIS-V3-Discovery-Design"
+}

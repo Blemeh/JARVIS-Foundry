@@ -1,0 +1,499 @@
+{
+  "schema_version": "1.0",
+  "base_sha": "a743fdeb535f78c5ad455e8b09944f721f2515a7",
+  "branch": "candidate/v3-discovery-design",
+  "generated_at": "2026-08-21T23:59:00+02:00",
+  "summary": {
+    "EXISTING": 28,
+    "PARTIAL": 22,
+    "MISSING": 14,
+    "CONTRADICTED": 4
+  },
+  "capabilities": [
+    {
+      "id": "V3-LEDGER-01",
+      "name": "Append-only event ledger with idempotency",
+      "status": "EXISTING",
+      "evidence": ["src/jarvis_foundry/events.py:Event", "src/jarvis_foundry/database.py:_append_events_on_connection", "tests/foundry/test_event_store.py"],
+      "reuse": "REUSE",
+      "missing_behavior": null,
+      "risk": "LOW",
+      "work_package": "WP0"
+    },
+    {
+      "id": "V3-PROJ-01",
+      "name": "Rebuildable projections from ledger",
+      "status": "EXISTING",
+      "evidence": ["src/jarvis_foundry/projections.py:apply_event", "src/jarvis_foundry/reconcile.py:reconcile", "tests/foundry/test_reconcile.py"],
+      "reuse": "EXTEND",
+      "missing_behavior": "candidate_outcomes, discovery_portfolio, scoring_policy_registry tables",
+      "risk": "MEDIUM",
+      "work_package": "WP1"
+    },
+    {
+      "id": "V3-MON-01",
+      "name": "Discovery monitor registry and poll",
+      "status": "EXISTING",
+      "evidence": ["src/jarvis_foundry/discovery_monitors.py", "tests/foundry/test_discovery_monitors.py", "event:discovery.monitor_registered"],
+      "reuse": "REUSE",
+      "missing_behavior": "CI/runtime_health/cost monitors when capability not READY",
+      "risk": "LOW",
+      "work_package": "WP0"
+    },
+    {
+      "id": "V3-MON-02",
+      "name": "Live ingestion (vault/handoffs/repo/system)",
+      "status": "EXISTING",
+      "evidence": ["src/jarvis_foundry/live_ingestion.py:run_ingestion_cycle", "tests/foundry/test_live_ingestion.py"],
+      "reuse": "REUSE",
+      "missing_behavior": null,
+      "risk": "LOW",
+      "work_package": "WP0"
+    },
+    {
+      "id": "V3-CAND-01",
+      "name": "Candidate generation with duplicate detection",
+      "status": "EXISTING",
+      "evidence": ["src/jarvis_foundry/discovery_candidates.py:generate_candidate", "src/jarvis_foundry/discovery_candidates.py:covered_objective", "tests/foundry/test_discovery_candidates.py"],
+      "reuse": "EXTEND",
+      "missing_behavior": "fingerprint, candidate_type, expected_outcome, provenance_hash columns",
+      "risk": "MEDIUM",
+      "work_package": "WP1"
+    },
+    {
+      "id": "V3-CAND-02",
+      "name": "Typed candidate record (full V3 spec)",
+      "status": "PARTIAL",
+      "evidence": ["src/jarvis_foundry/discovery_candidates.py", "table:candidates"],
+      "reuse": "EXTEND",
+      "missing_behavior": "blast_radius, maintenance_expectation, expires_at, depends_on, capability_readiness map",
+      "risk": "MEDIUM",
+      "work_package": "WP1"
+    },
+    {
+      "id": "V3-CAND-03",
+      "name": "Semantic/causal/supersession duplicate rules",
+      "status": "PARTIAL",
+      "evidence": ["src/jarvis_foundry/discovery_candidates.py:_find_duplicate", "event:discovery.candidate_superseded", "tests/foundry/test_candidate_supersession.py"],
+      "reuse": "EXTEND",
+      "missing_behavior": "causal duplicate by incident_id, split detection anti-gaming",
+      "risk": "MEDIUM",
+      "work_package": "WP2"
+    },
+    {
+      "id": "V3-SCORE-01",
+      "name": "Deterministic candidate scoring",
+      "status": "PARTIAL",
+      "evidence": ["src/jarvis_foundry/discovery_candidates.py:score_objective", "src/jarvis_foundry/executive/scoring.py:score_candidate_for_executive"],
+      "reuse": "REPLACE_POLICY",
+      "missing_behavior": "versioned scoring_policy_registry, 10-dimension registry, auditable trace in all paths",
+      "risk": "HIGH",
+      "work_package": "WP2"
+    },
+    {
+      "id": "V3-SCORE-02",
+      "name": "Hard eligibility filters (not weights)",
+      "status": "PARTIAL",
+      "evidence": ["src/jarvis_foundry/executive/eligibility.py:assess_eligibility", "src/jarvis_foundry/executive/decisions.py:_safety_block"],
+      "reuse": "EXTEND",
+      "missing_behavior": "HARD_CIRCULAR, HARD_UNMEASURABLE, HARD_BLAST, severity-one defect registry",
+      "risk": "MEDIUM",
+      "work_package": "WP2"
+    },
+    {
+      "id": "V3-SCORE-03",
+      "name": "Unified score threshold",
+      "status": "CONTRADICTED",
+      "evidence": ["src/jarvis_foundry/v3_loop.py:DEFAULT_MIN_SCORE=0.35", "src/jarvis_foundry/executive/decisions.py:min_action_score=0.40"],
+      "reuse": "UNIFY",
+      "missing_behavior": "single policy_version threshold 0.40",
+      "risk": "MEDIUM",
+      "work_package": "WP2"
+    },
+    {
+      "id": "V3-PORT-01",
+      "name": "Portfolio state machine",
+      "status": "PARTIAL",
+      "evidence": ["table:candidates status enum", "src/jarvis_foundry/evolution/portfolio.py (V7 projects, not V3)"],
+      "reuse": "NEW",
+      "missing_behavior": "ELIGIBLE, DEFERRED, MEASURING, CLOSED states; portfolio.evaluated events",
+      "risk": "MEDIUM",
+      "work_package": "WP2"
+    },
+    {
+      "id": "V3-PORT-02",
+      "name": "Capacity limits and starvation guard",
+      "status": "PARTIAL",
+      "evidence": ["src/jarvis_foundry/executive/eligibility.py:compute_resource_contention"],
+      "reuse": "EXTEND",
+      "missing_behavior": "priority aging, starvation_guard_cycles, defer cooldown",
+      "risk": "LOW",
+      "work_package": "WP2"
+    },
+    {
+      "id": "V3-EXEC-01",
+      "name": "Executive selection with rejected alternatives",
+      "status": "EXISTING",
+      "evidence": ["src/jarvis_foundry/executive/decisions.py:ExecutiveDecisionService", "tests/foundry/test_executive_intelligence.py", "event:executive.decision_recorded"],
+      "reuse": "EXTEND",
+      "missing_behavior": "read ELIGIBLE portfolio; policy_version in payload",
+      "risk": "LOW",
+      "work_package": "WP2"
+    },
+    {
+      "id": "V3-EXEC-02",
+      "name": "Research vs build comparative override",
+      "status": "PARTIAL",
+      "evidence": ["src/jarvis_foundry/executive/decisions.py:wait_margin", "WAIT_COMPARATIVE kind"],
+      "reuse": "EXTEND",
+      "missing_behavior": "explicit information_gain override rule per policy",
+      "risk": "LOW",
+      "work_package": "WP2"
+    },
+    {
+      "id": "V3-EXEC-03",
+      "name": "Honest idle (no busywork)",
+      "status": "EXISTING",
+      "evidence": ["src/jarvis_foundry/executive/eligibility.py:WAIT_NO_ELIGIBLE", "event:worker_loop.executive_waiting"],
+      "reuse": "REUSE",
+      "missing_behavior": null,
+      "risk": "LOW",
+      "work_package": "WP3"
+    },
+    {
+      "id": "V3-CYCLE-01",
+      "name": "Unified V3DiscoveryCycle orchestrator",
+      "status": "MISSING",
+      "evidence": ["src/jarvis_foundry/v3_loop.py (observation only, WAIT default)", "src/jarvis_foundry/runtime/worker_loop.py (selection only)"],
+      "reuse": "NEW",
+      "missing_behavior": "single cycle observe→select→compile; discovery.cycle_* events",
+      "risk": "HIGH",
+      "work_package": "WP3"
+    },
+    {
+      "id": "V3-CYCLE-02",
+      "name": "Production loop without test_legacy_selection",
+      "status": "CONTRADICTED",
+      "evidence": ["src/jarvis_foundry/v3_loop.py:277-284 test_legacy_selection gate", "docs/evidence/WP12_V3_OPERATIONAL_GATE.md claims full loop"],
+      "reuse": "FIX",
+      "missing_behavior": "WP12-described E2E in production path",
+      "risk": "HIGH",
+      "work_package": "WP3"
+    },
+    {
+      "id": "V3-MISS-01",
+      "name": "Mission compiler fail-closed",
+      "status": "PARTIAL",
+      "evidence": ["src/jarvis_foundry/executive/missions.py", "event:executive.materialization_blocked"],
+      "reuse": "EXTEND",
+      "missing_behavior": "stale candidate, dirty worktree, missing rollback checks",
+      "risk": "MEDIUM",
+      "work_package": "WP3"
+    },
+    {
+      "id": "V3-MISS-02",
+      "name": "Mission loop execute verify repair",
+      "status": "EXISTING",
+      "evidence": ["src/jarvis_foundry/mission/loop.py:MissionLoop", "tests/foundry/test_mission_loop.py", "tests/foundry/test_verification_loop.py"],
+      "reuse": "REUSE",
+      "missing_behavior": null,
+      "risk": "LOW",
+      "work_package": "WP4"
+    },
+    {
+      "id": "V3-TEAM-01",
+      "name": "Role dispatcher with leases",
+      "status": "EXISTING",
+      "evidence": ["src/jarvis_foundry/roles/dispatcher.py:RoleDispatcher", "tests/foundry/test_role_dispatch.py"],
+      "reuse": "EXTEND",
+      "missing_behavior": "delegation depth limit, team size cap, role manifest schema",
+      "risk": "MEDIUM",
+      "work_package": "WP4"
+    },
+    {
+      "id": "V3-VER-01",
+      "name": "Independent verifier binding",
+      "status": "EXISTING",
+      "evidence": ["src/jarvis_foundry/mission/verification.py", "tests/foundry/test_verifier_truth.py", "tests/foundry/test_worker_gate.py:test_h21_verifier_is_not_the_builder"],
+      "reuse": "EXTEND",
+      "missing_behavior": "mandatory fresh_session flag; REDUCED independence recording",
+      "risk": "MEDIUM",
+      "work_package": "WP4"
+    },
+    {
+      "id": "V3-GIT-01",
+      "name": "Local git observation",
+      "status": "EXISTING",
+      "evidence": ["src/jarvis_foundry/live_ingestion.py:_repo_source", "src/jarvis_foundry/mission/commit.py"],
+      "reuse": "REUSE",
+      "missing_behavior": null,
+      "risk": "LOW",
+      "work_package": "WP5"
+    },
+    {
+      "id": "V3-GIT-02",
+      "name": "Remote git reconcile adapter",
+      "status": "MISSING",
+      "evidence": ["docs/evidence/WP12_V3_OPERATIONAL_GATE.md req 6 local-only", "no GitEffectAdapter module"],
+      "reuse": "NEW",
+      "missing_behavior": "ls-remote reconcile, effect.reconcile_pending, disposable bare remote",
+      "risk": "HIGH",
+      "work_package": "WP5"
+    },
+    {
+      "id": "V3-EFF-01",
+      "name": "External effect journal",
+      "status": "PARTIAL",
+      "evidence": ["src/jarvis_foundry/effects.py", "event:effect.reconcile_mismatch", "tests/foundry/test_effects.py"],
+      "reuse": "EXTEND",
+      "missing_behavior": "git-specific reconcile; ambiguous timeout handling",
+      "risk": "MEDIUM",
+      "work_package": "WP5"
+    },
+    {
+      "id": "V3-OUT-01",
+      "name": "Outcome recording on PASSED mission",
+      "status": "EXISTING",
+      "evidence": ["src/jarvis_foundry/discovery_candidates.py:record_outcome", "event:discovery.candidate_outcome_recorded", "tests/foundry/test_v3_loop.py"],
+      "reuse": "EXTEND",
+      "missing_behavior": null,
+      "risk": "LOW",
+      "work_package": "WP6"
+    },
+    {
+      "id": "V3-OUT-02",
+      "name": "candidate_outcomes projection table",
+      "status": "MISSING",
+      "evidence": ["docs/planning/V3_SLICE1_DESIGN.md specifies table", "no candidate_outcomes in migrations.py"],
+      "reuse": "NEW",
+      "missing_behavior": "predicted_total, actual_value, calibration_error columns",
+      "risk": "MEDIUM",
+      "work_package": "WP1"
+    },
+    {
+      "id": "V3-OUT-03",
+      "name": "Delayed outcome windows and UNKNOWN",
+      "status": "PARTIAL",
+      "evidence": ["src/jarvis_foundry/executive/calibration.py", "event:executive.calibration_recorded"],
+      "reuse": "EXTEND",
+      "missing_behavior": "7d/30d windows; explicit UNKNOWN status",
+      "risk": "LOW",
+      "work_package": "WP6"
+    },
+    {
+      "id": "V3-MAINT-01",
+      "name": "Maintenance candidate generation",
+      "status": "EXISTING",
+      "evidence": ["src/jarvis_foundry/v3_loop.py:_maintenance_candidates", "WP12 live maintenance loops"],
+      "reuse": "REUSE",
+      "missing_behavior": null,
+      "risk": "LOW",
+      "work_package": "WP6"
+    },
+    {
+      "id": "V3-STOP-01",
+      "name": "STOP veto before dispatch",
+      "status": "EXISTING",
+      "evidence": ["src/jarvis_foundry/supervisor/estop.py", "src/jarvis_foundry/executive/decisions.py:_safety_block", "tests/foundry/test_stop_controls.py"],
+      "reuse": "REUSE",
+      "missing_behavior": null,
+      "risk": "LOW",
+      "work_package": "WP7"
+    },
+    {
+      "id": "V3-CC-01",
+      "name": "Command Center executive projection",
+      "status": "EXISTING",
+      "evidence": ["src/jarvis_foundry/command_center.py:_executive_projection", "tests/foundry/test_v4_command_center.py"],
+      "reuse": "EXTEND",
+      "missing_behavior": "snapshot.discovery section (candidates, portfolio, idle)",
+      "risk": "LOW",
+      "work_package": "WP3"
+    },
+    {
+      "id": "V3-KB-01",
+      "name": "V2 knowledge brain claims retrieval",
+      "status": "PARTIAL",
+      "evidence": ["src/jarvis_foundry/knowledge.py", "src/jarvis_foundry/knowledge_retrieval.py", "candidate/24h-v2-knowledge-brain f1660f6"],
+      "reuse": "DEPEND_V2",
+      "missing_behavior": "canonical main merge pending; Session-04 independent PASS",
+      "risk": "HIGH",
+      "work_package": "BLOCKED"
+    },
+    {
+      "id": "V3-REL-01",
+      "name": "Release pointer control",
+      "status": "EXISTING",
+      "evidence": ["src/jarvis_foundry/deployment/release.py", "src/jarvis_foundry/evolution/promote.py"],
+      "reuse": "REUSE",
+      "missing_behavior": "V3 gate promotion packet",
+      "risk": "LOW",
+      "work_package": "WP8"
+    },
+    {
+      "id": "V3-GATE-01",
+      "name": "V3 acceptance gate script",
+      "status": "MISSING",
+      "evidence": ["docs/v3/05_V3_ACCEPTANCE_GATE.md design only"],
+      "reuse": "NEW",
+      "missing_behavior": "scripts/v3_acceptance_gate.py, AC-01..AC-20 tests",
+      "risk": "HIGH",
+      "work_package": "WP8"
+    },
+    {
+      "id": "V3-EVT-01",
+      "name": "Historical candidate.* events",
+      "status": "CONTRADICTED",
+      "evidence": ["docs/planning/V3_SLICE1_DESIGN.md", "production uses discovery.candidate_*"],
+      "reuse": "IGNORE_DESIGN",
+      "missing_behavior": "n/a — use discovery namespace",
+      "risk": "LOW",
+      "work_package": "WP0"
+    },
+    {
+      "id": "V3-PER-01",
+      "name": "Perception/workflow discovery feed",
+      "status": "PARTIAL",
+      "evidence": ["src/jarvis_foundry/perception/", "src/jarvis_foundry/workflow_discovery/", "disabled by default"],
+      "reuse": "OPTIONAL",
+      "missing_behavior": "bridge to V3 candidate pipeline when enabled",
+      "risk": "LOW",
+      "work_package": "WP6"
+    },
+    {
+      "id": "V3-LIM-01",
+      "name": "Runaway control limits",
+      "status": "PARTIAL",
+      "evidence": ["src/jarvis_foundry/v3_loop.py:max_items,max_bytes,score_budget"],
+      "reuse": "EXTEND",
+      "missing_behavior": "cycle throttle, model call cap, repair budget enforcement",
+      "risk": "MEDIUM",
+      "work_package": "WP7"
+    },
+    {
+      "id": "V3-MIG-01",
+      "name": "Schema v35 additive migration",
+      "status": "MISSING",
+      "evidence": ["src/jarvis_foundry/migrations.py SCHEMA_VERSION=34"],
+      "reuse": "NEW",
+      "missing_behavior": "v35 tables and columns per WP1",
+      "risk": "MEDIUM",
+      "work_package": "WP1"
+    },
+    {
+      "id": "V3-FIX-01",
+      "name": "Disposable bare remote fixture",
+      "status": "MISSING",
+      "evidence": ["tests/fixtures/v3/ not present"],
+      "reuse": "NEW",
+      "missing_behavior": "AC-11 rehearsal infrastructure",
+      "risk": "MEDIUM",
+      "work_package": "WP0"
+    },
+    {
+      "id": "V3-RES-01",
+      "name": "Research queue to candidates",
+      "status": "EXISTING",
+      "evidence": ["src/jarvis_foundry/research_queue.py", "tests/foundry/test_research_queue.py"],
+      "reuse": "REUSE",
+      "missing_behavior": null,
+      "risk": "LOW",
+      "work_package": "WP0"
+    },
+    {
+      "id": "V3-CRASH-01",
+      "name": "Crash recovery exactly-once",
+      "status": "EXISTING",
+      "evidence": ["tests/foundry/test_crash_recovery.py", "tests/foundry/test_exactly_once_resume.py", "src/jarvis_foundry/supervisor/leases.py"],
+      "reuse": "EXTEND",
+      "missing_behavior": "V3 cycle injection matrix",
+      "risk": "MEDIUM",
+      "work_package": "WP7"
+    },
+    {
+      "id": "V3-CAL-01",
+      "name": "Prediction before select",
+      "status": "EXISTING",
+      "evidence": ["src/jarvis_foundry/executive/predictions.py:record_prediction", "event:executive.prediction_recorded"],
+      "reuse": "REUSE",
+      "missing_behavior": null,
+      "risk": "LOW",
+      "work_package": "WP6"
+    },
+    {
+      "id": "V3-ADM-01",
+      "name": "Organic candidate admission firewall",
+      "status": "EXISTING",
+      "evidence": ["src/jarvis_foundry/executive/eligibility.py", "event:executive.candidate_admitted"],
+      "reuse": "REUSE",
+      "missing_behavior": null,
+      "risk": "LOW",
+      "work_package": "WP2"
+    },
+    {
+      "id": "V3-SUP-01",
+      "name": "Multi-source support semantics",
+      "status": "PARTIAL",
+      "evidence": ["src/jarvis_foundry/vault_retrieval.py:batch_support repo_paths param", "WP12 finding 894 unsupported"],
+      "reuse": "EXTEND",
+      "missing_behavior": "consistent support for handoff/repo/system claims",
+      "risk": "MEDIUM",
+      "work_package": "WP2"
+    },
+    {
+      "id": "V3-ROUTE-01",
+      "name": "Mandatory model routing enforcement",
+      "status": "EXISTING",
+      "evidence": ["src/jarvis_foundry/v3_loop.py:router.enforce_directive_routing"],
+      "reuse": "REUSE",
+      "missing_behavior": null,
+      "risk": "LOW",
+      "work_package": "WP3"
+    },
+    {
+      "id": "V3-TEST-01",
+      "name": "test_candidate_pipeline.py per slice-1 design",
+      "status": "CONTRADICTED",
+      "evidence": ["docs/planning/V3_SLICE1_DESIGN.md", "replaced by test_discovery_candidates.py"],
+      "reuse": "IGNORE",
+      "missing_behavior": "n/a",
+      "risk": "LOW",
+      "work_package": "WP0"
+    },
+    {
+      "id": "V3-LOOP-TEST",
+      "name": "V3 loop integration tests",
+      "status": "EXISTING",
+      "evidence": ["tests/foundry/test_v3_loop.py", "6 tests", "test_legacy_selection=True"],
+      "reuse": "EXTEND",
+      "missing_behavior": "tests without legacy flag for production path",
+      "risk": "MEDIUM",
+      "work_package": "WP3"
+    },
+    {
+      "id": "V3-WP12",
+      "name": "WP12 operational gate historical PASS",
+      "status": "EXISTING",
+      "evidence": ["docs/evidence/WP12_V3_OPERATIONAL_GATE.md", "verification.passed:verdict-v3-operational:round1", "HEAD b433ae6 historical"],
+      "reuse": "SUPERSEDE",
+      "missing_behavior": "re-prove on unified cycle at new gate",
+      "risk": "MEDIUM",
+      "work_package": "WP8"
+    },
+    {
+      "id": "V3-LINEAGE-01",
+      "name": "Full goal-to-next-action lineage",
+      "status": "PARTIAL",
+      "evidence": ["scripts/m2_live_product_proof.py 12/12 PASS", "executive chain events"],
+      "reuse": "EXTEND",
+      "missing_behavior": "discovery cycle events in chain; AC-20 gate test",
+      "risk": "MEDIUM",
+      "work_package": "WP8"
+    }
+  ],
+  "v2_entry_dependency": {
+    "required": true,
+    "satisfied": false,
+    "evidence": "candidate/24h-v2-knowledge-brain at f1660f6; Session-04 independent review pending; not merged to main at base SHA a743fde"
+  }
+}
