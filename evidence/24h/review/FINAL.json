@@ -1,0 +1,25 @@
+{
+ "record_type": "review_final",
+ "reviewer": {
+  "identity": "ox-alpha (x-preview-f-free via opencode-zen), Hermes Agent session",
+  "model_lock": "OpenCode x-preview / x-preview-f-free only; no subagents dispatched; all verification inline",
+  "skill": "acceptance-gate-review v2.0.0"
+ },
+ "mandate": "MASTER GOAL 4 - independent red-team review and 24h soak of two candidate lanes",
+ "lanes_terminal": null,
+ "lane_verdicts": {
+  "candidate/24h-independent-verifier": null,
+  "candidate/24h-v2-knowledge-brain": null
+ },
+ "soak_summary": "see live-soak.json",
+ "base_containment_precondition_met": false,
+ "deadline_utc": null,
+ "defects": [],
+ "uncertainty": [],
+ "verdict": "IN_PROGRESS",
+ "note": "Skeleton written early per acceptance-gate-review section 23. This file is superseded when lanes reach terminal state.",
+ "deviations": [
+  "Review worktree materialized at C:\\c\\temp\\JARVIS-24H-Independent-Review instead of contract path C:\\temp\\JARVIS-24H-Independent-Review due to MSYS->native path conversion being disabled in this environment; relocation requires owner-approved destructive cleanup and was deferred. Git identity of the branch is unaffected.",
+  "Reviewer probe stdout/stderr redirected by headless_launcher design into shared live supervisor log (disclosed in live-soak.json); no live state writes."
+ ]
+}

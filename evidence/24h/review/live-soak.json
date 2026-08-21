@@ -1,0 +1,130 @@
+{
+ "record_type": "live_soak",
+ "reviewer": {
+  "identity": "ox-alpha (x-preview-f-free via opencode-zen), Hermes Agent session",
+  "method": "read-only sampler (sqlite mode=ro, WMI process list, file stat) every 300s; never wrote live state",
+  "script": "C:/temp/JARVIS-24H-scratch/soak_monitor.py",
+  "raw_output": "C:/temp/JARVIS-24H-scratch/soak.jsonl"
+ },
+ "scope_note": "This is a 24-hour soak observation, NOT the seven-day V1 proving gate.",
+ "soak_start_utc": null,
+ "soak_end_utc": null,
+ "samples_collected": null,
+ "baseline_at_start": {
+  "utc": "2026-08-21T20:40Z(approx)",
+  "local_main": "a743fde0330f4c5d1b6ee7e2b8f4f5f0f5c0f001(placeholder-corrected-below)",
+  "note_local_main": "a743fde (docs(evidence): archive complete M2 Executive Intelligence evidence bundle); full SHA to be substituted from rev-parse",
+  "origin_main": "c9b9014d10ed365b0b83204d57c384774fb9b43e",
+  "release_current": "769715a7f8aee22bf4ab2db8870c37e6e9c9ef1b",
+  "release_previous": "9a10910f78a4a618fba4c916b418056e4ada1991",
+  "generation": {
+   "recorded_at": "2026-08-21T16:06:19Z",
+   "schema": 34,
+   "source_sha": "769715a7f8aee22bf4ab2db8870c37e6e9c9ef1b"
+  },
+  "live_home": "C:/Users/b/AppData/Local/hermes/foundry",
+  "db": {
+   "events": 175186,
+   "quick_check": "ok",
+   "schema_migrations": 34,
+   "missions": 38,
+   "directives": 17,
+   "verification_verdicts": 79,
+   "agent_runs": 134
+  },
+  "supervisor": {
+   "launcher_pid": 7676,
+   "worker_loop_child_pid": 16864,
+   "lease_owner": "supervisor-35ee798d-7c72-44f2-b907-44b32a87730b",
+   "heartbeat": "advancing ~60s",
+   "trust_state": "LAB"
+  },
+  "stop_state": {
+   "emergency_stop_sentinel": false,
+   "active_stop_directives": 0
+  },
+  "deployed_code_provenance": {
+   "method": "git blob-hash comparison of release/source tree vs pinned commit 769715a (CRLF-normalized discrimination)",
+   "result": "all sampled files match pinned commit exactly; service.py/release.py differ only from DIRTY canonical worktree (other lane's uncommitted WIP), release itself clean"
+  }
+ },
+ "anomalies_open_at_baseline": [
+  "PREVIOUS pointer targets 9a10910f which is not a reachable commit in the canonical clone (release directory exists; provenance unverified at baseline)",
+  "foundry-profile.yaml still pins source_sha/release_sha/python_exe of 2851d13 while CURRENT=769715a (stale install-time metadata or drift - impact under assessment)",
+  "adapter_worker_pids.json recorded root_pid 21304 at 2026-08-21T19:48:27Z but no PID 21304 existed at 20:33Z observation; current launcher PIDs 7676/16864 created 16:13Z(local) - worker identity bookkeeping churn under investigation",
+  "supervisor-20260821.log has no entries after 18:13 local despite live heartbeats (possibly normal: steady-state logs go to ledger only)"
+ ],
+ "observations": [],
+ "defects": [],
+ "uncertainty": [
+  "pre-existing read-only watcher bash loop (PID 10992) polling 7ac0b23->origin/main containment observed at baseline; author unknown (likely prior interrupted review run); benign, fetch-only"
+ ],
+ "verdict": "IN_PROGRESS",
+ "anomalies_resolved": [
+  {
+   "anomaly": "PREVIOUS pointer 9a10910f unreachable in git",
+   "resolution": "VERIFIED EQUIVALENT: previous release/source (372 files) matches branch commit e427292 (candidate/audit-truth-remediation tip) byte-for-byte except build metadata SOURCES.txt; orphan SHA cosmetic; rollback content real"
+  },
+  {
+   "anomaly": "foundry-profile.yaml pins 2851d13 while CURRENT=769715a",
+   "resolution": "INSTALL-TIME METADATA: profile written at install generation, not updated by later promotions; launcher uses CURRENT pointer + RELEASE.json identity (verified in log), so stale profile fields are inert bookkeeping; observation-grade"
+  },
+  {
+   "anomaly": "adapter_worker_pids.json root_pid 21304 missing",
+   "resolution": "BY DESIGN: supervisor spawns short-lived worker_loop --once companions each cycle (deployed service.py:183-219, --interval 5.0); pids file books latest ephemeral child; ledger shows fresh instance_id per companion process (uuid minted once per process, worker_loop.py:522 deployed source)"
+  },
+  {
+   "anomaly": "supervisor log quiet after 18:13",
+   "resolution": "BY DESIGN: steady-state heartbeats/cycles are ledger events, not file logs; file log receives launcher lifecycle + tracebacks only"
+  },
+  {
+   "anomaly": "two identical launcher PIDs 7676/16864",
+   "resolution": "PARENT-CHILD: 16864 child of 7676 (worker-loop companion controller chain); exactly ONE supervisor:singleton lease owner; duplicate launch attempts refused"
+  }
+ ],
+ "attack_probes_disposable_copies": {
+  "method": "sqlite backup-API snapshot of live foundry.db into scratch copy homes; deployed release python; probes never touched live state",
+  "A_duplicate_supervisor_refusal": {
+   "result": "REFUSED",
+   "evidence": "LeaseUnavailable 'held by another live owner' traceback, nonzero exit (shared log, probeA run 2026-08-21T20:06Z window)",
+   "note": "second attempt ~4min later succeeded via natural lease expiry - consistent with 120s lease design"
+  },
+  "B_expired_lease_takeover": {
+   "result": "TAKEOVER_EXACTLY_ONCE",
+   "rc": 0,
+   "duration_s": 17.4,
+   "events_in_copy_only": "+3 (started/heartbeat/stopped); live DB max_seq unaffected by probe",
+   "clean_stop_released_lease": true
+  },
+  "C_emergency_stop_sentinel": {
+   "result": "FROZEN",
+   "trust_transition": "LAB -> SUSPENDED",
+   "events": [
+    "emergency_stop.frozen x2",
+    "supervisor.stopped"
+   ],
+   "normal_supervision_blocked": true
+  },
+  "finding_frozen_path_lease_crash": {
+   "severity": "minor",
+   "product_area": "deployment/frozen supervisor path",
+   "observed": "_run_frozen_supervisor (run.py:258) acquires singleton lease before freezing; if another live owner holds the lease it exits via unhandled LeaseUnavailable traceback (rc=1, no structured FROZEN signal)",
+   "safety_impact": "none - fail-closed preserved (never supervises)",
+   "remediation_suggestion": "catch LeaseUnavailable in frozen path and emit structured {'supervisor': 'FROZEN_REFUSED'} + nonzero rc"
+  }
+ },
+ "reviewer_side_effects_disclosure": [
+  "headless_launcher redirects probe stdout/stderr to the SHARED live log supervisor-20260821.log; six probe blocks appended there (log pollution only)",
+  "scratch homes under C:/temp/JARVIS-24H-scratch (disposable); no writes to live home, DB, pointers, releases, scheduled tasks"
+ ],
+ "moving_target_log": [
+  {
+   "at_utc": "2026-08-21T19:53Z",
+   "event": "origin/main advanced c9b9014 -> a743fde (M2 bundle push landed mid-review); base 7ac0b23 containment precondition became TRUE"
+  },
+  {
+   "at_utc": "2026-08-21T21:51 local",
+   "event": "foreign 'pytest tests/foundry -q' process observed (not reviewer-owned) - builder lanes active; consistent with lane preparation"
+  }
+ ]
+}
