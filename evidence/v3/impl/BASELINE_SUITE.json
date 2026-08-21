@@ -1,0 +1,15 @@
+{
+  "record": "BASELINE_SUITE",
+  "command": "pytest tests/foundry/ -q --junitxml=var/evidence/baseline.junit.xml",
+  "head_at_baseline": "12faf65",
+  "branch": "candidate/v3-implementation",
+  "counts": {
+    "total": 1459,
+    "passed": 1459,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "failing_node_ids": [],
+  "exit_code": 0
+}

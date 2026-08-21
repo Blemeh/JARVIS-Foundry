@@ -119,22 +119,36 @@ def _find_duplicate(
 def generate_candidate(db: FoundryDatabase, mission_id: str, source: str,
                        objective: str, evidence: list[dict[str, Any]] | None = None,
                        *, connection: sqlite3.Connection | None = None,
+                       typed: dict[str, Any] | None = None,
                        ) -> dict[str, Any]:
     """Record a candidate; duplicate detection via the canonicalized
     objective (vs candidates AND missions). Returns
-    {candidate_id, created, duplicate_of}."""
+    {candidate_id, created, duplicate_of}.
+
+    V3 WP1: ``typed`` optionally carries fingerprint / candidate_type /
+    expected_outcome / provenance_hash / expires_at so the projection
+    stores the full typed record. Absent fields stay NULL (v34
+    behavior unchanged).
+    """
     from .executive.eligibility import stamp_executive_eligibility
 
     canonical = canonicalize_statement(objective)
     duplicate = _find_duplicate(db, canonical, connection=connection)
     candidate_id = f"cand-{uuid.uuid4().hex[:12]}"
+    payload: dict[str, Any] = {
+        "candidate_id": candidate_id, "mission_id": mission_id,
+        "source": source, "objective": objective,
+        "objective_canonical": canonical,
+        "evidence": list(evidence or []),
+        "duplicate_of": duplicate}
+    for field in ("fingerprint", "candidate_type", "expected_outcome",
+                  "provenance_hash", "expires_at"):
+        value = (typed or {}).get(field)
+        if value is not None:
+            payload[field] = value
     event = Event.create(
         "discovery.candidate_generated",
-        {"candidate_id": candidate_id, "mission_id": mission_id,
-         "source": source, "objective": objective,
-         "objective_canonical": canonical,
-         "evidence": list(evidence or []),
-         "duplicate_of": duplicate},
+        payload,
         source_type="supervisor", source_id="wp10-discovery",
         idempotency_key=f"discovery.candidate_generated:{candidate_id}")
     if connection is None:

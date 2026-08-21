@@ -1,0 +1,22 @@
+{
+  "record": "WP1_WP2_SUITE_DELTA",
+  "phase": "PHASE_1 (WP0+WP1+WP2)",
+  "command": "pytest tests/foundry/ -q --junitxml=var/evidence/phase1.junit.xml",
+  "counts": {
+    "total": 1486,
+    "passed": 1486,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "baseline_counts": {
+    "total": 1459,
+    "passed": 1459,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "new_failures_vs_baseline": [],
+  "resolved_baseline_failures": [],
+  "gate": "PASS (zero new failures; all test_v3_* pass)"
+}

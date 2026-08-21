@@ -5,7 +5,7 @@ import sqlite3
 from .v4_schema import ensure_v4_tables
 
 
-SCHEMA_VERSION = 34
+SCHEMA_VERSION = 35
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -956,6 +956,91 @@ MIGRATIONS: dict[int, str] = {
     );
     CREATE INDEX IF NOT EXISTS mission_step_contracts_mission
         ON mission_step_contracts(mission_id, step_id, version);
+    """,
+    35: """
+    -- V3 Discovery and Building (WP1): additive discovery state.
+    -- candidates gains typed-V3 columns and the ELIGIBLE/DEFERRED
+    -- lifecycle states (SQLite cannot ALTER a CHECK constraint —
+    -- v9/v17 table-rebuild idiom). candidate_outcomes,
+    -- scoring_policy_registry and discovery_portfolio are new
+    -- event-derived projections.
+    CREATE TABLE IF NOT EXISTS candidates_v35 (
+        candidate_id TEXT PRIMARY KEY,
+        mission_id TEXT NOT NULL,
+        source TEXT NOT NULL,
+        objective TEXT NOT NULL,
+        objective_canonical TEXT NOT NULL,
+        evidence_json TEXT NOT NULL DEFAULT '[]',
+        status TEXT NOT NULL DEFAULT 'NEW'
+            CHECK(status IN ('NEW', 'SCORED', 'ELIGIBLE', 'APPROVED',
+                             'REJECTED', 'EXECUTED', 'SUPERSEDED',
+                             'DEFERRED')),
+        duplicate_of TEXT,
+        created_from TEXT,
+        superseded_by TEXT,
+        fingerprint TEXT,
+        candidate_type TEXT,
+        expected_outcome TEXT,
+        provenance_hash TEXT,
+        expires_at TEXT,
+        scoring_policy_version TEXT,
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    INSERT INTO candidates_v35(
+        candidate_id, mission_id, source, objective, objective_canonical,
+        evidence_json, status, duplicate_of, created_from, superseded_by,
+        last_event_id, updated_at)
+    SELECT candidate_id, mission_id, source, objective, objective_canonical,
+        evidence_json, status, duplicate_of, created_from, superseded_by,
+        last_event_id, updated_at
+    FROM candidates;
+    DROP TABLE candidates;
+    ALTER TABLE candidates_v35 RENAME TO candidates;
+    CREATE INDEX IF NOT EXISTS candidates_canonical
+        ON candidates(objective_canonical);
+    CREATE INDEX IF NOT EXISTS candidates_mission
+        ON candidates(mission_id);
+    CREATE INDEX IF NOT EXISTS candidates_fingerprint
+        ON candidates(fingerprint);
+
+    CREATE TABLE IF NOT EXISTS candidate_outcomes (
+        outcome_id TEXT PRIMARY KEY,
+        candidate_id TEXT NOT NULL,
+        mission_id TEXT NOT NULL,
+        window_kind TEXT NOT NULL DEFAULT 'immediate'
+            CHECK(window_kind IN ('immediate', '7d', '30d')),
+        predicted_value_json TEXT NOT NULL DEFAULT '{}',
+        actual_value_json TEXT NOT NULL DEFAULT '{}',
+        status TEXT NOT NULL DEFAULT 'UNKNOWN'
+            CHECK(status IN ('RECORDED', 'UNKNOWN')),
+        confidence REAL NOT NULL DEFAULT 0.0 CHECK(confidence >= 0.0 AND confidence <= 1.0),
+        last_event_id TEXT NOT NULL UNIQUE,
+        updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS candidate_outcomes_candidate
+        ON candidate_outcomes(candidate_id);
+
+    CREATE TABLE IF NOT EXISTS scoring_policy_registry (
+        policy_version TEXT PRIMARY KEY,
+        active INTEGER NOT NULL DEFAULT 0 CHECK(active IN (0, 1)),
+        weights_json TEXT NOT NULL DEFAULT '{}',
+        thresholds_json TEXT NOT NULL DEFAULT '{}',
+        hard_filters_json TEXT NOT NULL DEFAULT '{}',
+        last_event_id TEXT NOT NULL UNIQUE,
+        updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS discovery_portfolio (
+        loop_id TEXT PRIMARY KEY,
+        policy_version TEXT,
+        eligible_count INTEGER NOT NULL DEFAULT 0,
+        deferred_count INTEGER NOT NULL DEFAULT 0,
+        rejected_count INTEGER NOT NULL DEFAULT 0,
+        capacity_snapshot_json TEXT NOT NULL DEFAULT '{}',
+        last_event_id TEXT NOT NULL UNIQUE,
+        updated_at TEXT NOT NULL
+    );
     """,
 }
 

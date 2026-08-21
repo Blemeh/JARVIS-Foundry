@@ -1,0 +1,38 @@
+{
+  "record": "V3_ENTRY_BASELINE",
+  "created_at": "2026-08-22T00:00:00+02:00",
+  "goal": "V3 Discovery and Building fast autonomous MVP (God Mode execution plan v2.0)",
+  "entry_gate_resolution": {
+    "design_requirement": "V2 independent PASS merged into canonical main before implementation",
+    "owner_directive_2026_08_22": "you can continue dont wait for v2",
+    "resolution": "Owner directive overrides design prerequisite per truth hierarchy (latest authenticated owner directive > design docs). Implementation proceeds on canonical main without V2 merge.",
+    "residual_risk": "If V2 (f1660f6, SCHEMA_VERSION=35) later merges into main, V2 migration will collide with V3's allocation of schema version 35. Renumber/rebase of the V3 migration will be required at that point. Recorded, accepted by owner waiver."
+  },
+  "canonical_base": {
+    "branch": "candidate/v3-implementation",
+    "worktree": "C:/temp/JARVIS-V3-Implementation",
+    "base_sha": "12faf65",
+    "base_composition": "main@a743fdeb535f78c5ad455e8b09944f721f2515a7 + design package commits c723107, 5cd0b88, 12faf65",
+    "canonical_main_sha": "a743fdeb535f78c5ad455e8b09944f721f2515a7",
+    "design_sha": "12faf65"
+  },
+  "schema": {
+    "CANONICAL_V2_SCHEMA_VERSION_source": "git show main:src/jarvis_foundry/migrations.py -> SCHEMA_VERSION = 34 (line 8)",
+    "CANONICAL_V2_SCHEMA_VERSION": 34,
+    "V3_SCHEMA_VERSION": 35,
+    "rule": "V3_SCHEMA_VERSION = actual canonical main SCHEMA_VERSION + 1 = 34 + 1",
+    "contradiction_recorded": "Design prose expected canonical V2 at v35 (from unmerged f1660f6) making V3 v36. Actual canonical main is v34; per goal 'actual canonical source wins', V3_SCHEMA_VERSION = 35.",
+    "v35_note": "v35 is NOT occupied on canonical main; V2 candidate f1660f6 remains unmerged."
+  },
+  "baseline_command": "pytest tests/foundry/ -q --junitxml=var/evidence/baseline.junit.xml",
+  "baseline_artifact": "evidence/v3/impl/BASELINE_SUITE.json",
+  "environment": {
+    "python": "3.14.5 (.venv via uv sync --extra dev)",
+    "host": "Windows 11, git-bash"
+  },
+  "feature_flag_contract": {
+    "discovery.cycle_enabled_default": false,
+    "phase1_wiring": false,
+    "v3_loop_WAIT_preserved": true
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "active_phase": "PHASE_1_WP0_WP1_WP2",
+  "updated_at": "2026-08-22T02:30:00+02:00",
+  "branch": "candidate/v3-implementation",
+  "worktree": "C:/temp/JARVIS-V3-Implementation",
+  "head": "12faf65 (pre-phase; phase commit pending)",
+  "completed": [
+    "Phase 0: design package committed (12faf65 on candidate/v3-discovery-design, merged into implementation branch base)",
+    "Phase 0: entry baseline recorded (evidence/v3/impl/V3_ENTRY_BASELINE.json) — owner waived V2 wait; V3_SCHEMA_VERSION=35 from canonical main v34+1",
+    "Phase 0: baseline suite frozen — 1459 passed / 0 failed / 0 skipped at 12faf65 (var/evidence/baseline.junit.xml -> evidence/v3/impl/BASELINE_SUITE.json)",
+    "WP0: policy fixture + baseline DB generator + bare remote helper (tests/foundry/v3_fixtures.py, tests/fixtures/v3/policy_v3-policy-2026-08-21.json)",
+    "WP1: migration v35 (candidates rebuild with typed columns + ELIGIBLE/DEFERRED states; candidate_outcomes; scoring_policy_registry; discovery_portfolio)",
+    "WP1: projection handlers incl. any-version replay guards (projections.py), five touch points registered (database.py row/all/count, reconcile.py)",
+    "WP2: ScoringService + register_policy + hard filters + ELIGIBLE portfolio + evaluate_portfolio (src/jarvis_foundry/v3_scoring.py)",
+    "Flag: discovery.cycle_enabled added to WorkerRuntimeConfig default false (runtime/config.py); NOT wired anywhere"
+  ],
+  "verification_so_far": {
+    "focused_v3_tests": "27 passed (test_v3_fixtures 5, test_v3_projections 8, test_v3_scoring 14)",
+    "full_suite": "RUNNING proc_9d70a5e6e689 (phase1.junit.xml)"
+  },
+  "next_exact_action": "When full suite exits: compare against BASELINE_SUITE.json (must be zero new failures), write evidence/v3/impl/WP1_WP2_SUITE_DELTA.json, commit [V3-PHASE1-WP0-WP2-DONE], then reread files 07/08 and start PHASE 2 (WP3 flagged orchestrator).",
+  "blockers": []
+}
