@@ -246,13 +246,19 @@ def run_proof(home: Path) -> dict:
     details["outcomes"] = mine[-3:]
 
     # ---- Command Center projection carries the full spine ----
+    # After two cycles the newest decision is exec-m2-loop-2; latest_decision
+    # must be that one (newest-first), and both decisions must appear.
     snapshot = build_snapshot(database)
     section = snapshot["executive"]
     latest = section["latest_decision"] or {}
+    recent_ids = [d.get("decision_id") for d in section["recent_decisions"]]
     proofs["cc_projection"] = "PASS" if (
-        latest.get("decision_id") == decision.decision_id
+        latest.get("decision_id") == "exec-m2-loop-2"
+        and latest.get("candidate_id")
         and latest.get("prediction")
         and section["activation_epoch"] == EPOCH
+        and decision.decision_id in recent_ids
+        and recent_ids[0] == "exec-m2-loop-2"
     ) else "FAIL"
 
     # ---- Restart continuity: a fresh service instance sees the same truth ----
