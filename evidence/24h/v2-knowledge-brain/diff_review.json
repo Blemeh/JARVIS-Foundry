@@ -1,0 +1,84 @@
+{
+  "base_commit": "7ac0b2373c8d4c74924fcea15c028c4f6e9cdc3c",
+  "changed_files": [
+    "docs/CURRENT_STATE.md",
+    "src/jarvis_foundry/database.py",
+    "src/jarvis_foundry/knowledge_entities.py",
+    "src/jarvis_foundry/knowledge_retrieval.py",
+    "src/jarvis_foundry/migrations.py",
+    "src/jarvis_foundry/projections.py",
+    "src/jarvis_foundry/reconcile.py",
+    "tests/foundry/crash_fixture.py"
+  ],
+  "untracked_lane_files": [
+    "evidence/24h/",
+    "scripts/v2kb_final_gate.py",
+    "src/jarvis_foundry/knowledge_records.py",
+    "tests/foundry/test_knowledge_records.py",
+    "tests/foundry/test_knowledge_v35_durability.py"
+  ],
+  "scan": [
+    {
+      "file": "docs/CURRENT_STATE.md",
+      "bytes": 15840,
+      "secret_like": false
+    },
+    {
+      "file": "src/jarvis_foundry/database.py",
+      "bytes": 13789,
+      "secret_like": false
+    },
+    {
+      "file": "src/jarvis_foundry/knowledge_entities.py",
+      "bytes": 2744,
+      "secret_like": false
+    },
+    {
+      "file": "src/jarvis_foundry/knowledge_retrieval.py",
+      "bytes": 8050,
+      "secret_like": false
+    },
+    {
+      "file": "src/jarvis_foundry/migrations.py",
+      "bytes": 42817,
+      "secret_like": false
+    },
+    {
+      "file": "src/jarvis_foundry/projections.py",
+      "bytes": 104282,
+      "secret_like": false
+    },
+    {
+      "file": "src/jarvis_foundry/reconcile.py",
+      "bytes": 10302,
+      "secret_like": false
+    },
+    {
+      "file": "tests/foundry/crash_fixture.py",
+      "bytes": 5166,
+      "secret_like": false
+    },
+    {
+      "file": "scripts/v2kb_final_gate.py",
+      "untracked": true,
+      "secret_like": false
+    },
+    {
+      "file": "src/jarvis_foundry/knowledge_records.py",
+      "untracked": true,
+      "secret_like": false
+    },
+    {
+      "file": "tests/foundry/test_knowledge_records.py",
+      "untracked": true,
+      "secret_like": false
+    },
+    {
+      "file": "tests/foundry/test_knowledge_v35_durability.py",
+      "untracked": true,
+      "secret_like": false
+    }
+  ],
+  "verdict": "PASS",
+  "failures": []
+}

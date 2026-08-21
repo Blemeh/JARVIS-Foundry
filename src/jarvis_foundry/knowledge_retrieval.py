@@ -17,7 +17,8 @@ from typing import Any
 CLAIM_TYPE_HINTS = ("causal-analysis", "fact", "constraint", "preference",
                     "decision")
 
-_CLAIM_COLUMNS = ("claim_id, mission_id, statement, claim_type, confidence, "
+_CLAIM_COLUMNS = ("claim_id, mission_id, statement, claim_type, "
+                  "record_kind, confidence, "
                   "fresh_until, source_run_id, status")
 
 
@@ -28,16 +29,50 @@ def _now() -> str:
 def retrieve(connection: sqlite3.Connection, mission_id: str,
              claim_type: str | None = None, status: str = "ACCEPTED",
              fresh_only: bool = True, limit: int = 50,
-             now: str | None = None) -> list[dict[str, Any]]:
+             now: str | None = None,
+             record_kind: str | None = None,
+             min_confidence: float | None = None,
+             max_confidence: float | None = None,
+             recorded_from: str | None = None,
+             recorded_to: str | None = None,
+             source_run: str | None = None,
+             entity_id: str | None = None) -> list[dict[str, Any]]:
     """Bounded, deterministic retrieval over knowledge_claims.
 
     Ordering: confidence DESC, then recency (rowid DESC). Capped at
     ``limit``. Fresh-only excludes expired claims (fresh_until < now).
+    Optional dimensions (WP-24H-V2KB): record_kind, confidence band
+    (min/max), recorded-time window (from/to on updated_at), source_run
+    and entity linkage. Every dimension is exact-match; the result is a
+    deterministic, provenance-carrying subset — never the whole vault.
     """
     clauses, args = ["mission_id = ?", "status = ?"], [mission_id, status]
     if claim_type:
         clauses.append("claim_type = ?")
         args.append(claim_type)
+    if record_kind:
+        clauses.append("record_kind = ?")
+        args.append(record_kind)
+    if min_confidence is not None:
+        clauses.append("confidence >= ?")
+        args.append(float(min_confidence))
+    if max_confidence is not None:
+        clauses.append("confidence <= ?")
+        args.append(float(max_confidence))
+    if recorded_from:
+        clauses.append("updated_at >= ?")
+        args.append(recorded_from)
+    if recorded_to:
+        clauses.append("updated_at <= ?")
+        args.append(recorded_to)
+    if source_run:
+        clauses.append("source_run_id = ?")
+        args.append(source_run)
+    if entity_id:
+        clauses.append(
+            "claim_id IN (SELECT claim_id FROM knowledge_claim_entities "
+            "WHERE entity_id = ?)")
+        args.append(entity_id)
     if fresh_only:
         clauses.append("(fresh_until IS NULL OR fresh_until > ?)")
         args.append(now or _now())

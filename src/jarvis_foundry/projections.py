@@ -19,6 +19,7 @@ PROJECTION_TABLES = (
     "obsidian_writes",
     "knowledge_claims",
     "knowledge_contradictions",
+    "knowledge_claim_evidence",
     "knowledge_manifests",
     "knowledge_entities",
     "knowledge_claim_entities",
@@ -497,6 +498,10 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
         )
     elif event.event_type == "knowledge.claim_recorded":
         from .knowledge import contradicts, normalize_source_run_id
+        from .knowledge_records import (
+            RECORD_KIND_DEFAULT,
+            content_hash as record_content_hash,
+        )
 
         claim_id = payload["claim_id"]
         run_id = payload.get("source", {}).get("run_id")
@@ -506,18 +511,27 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             # boundary — derived state is clean, history untouched,
             # rebuilds reproduce the same rows.
             run_id = normalize_source_run_id(run_id)
+        record_kind = payload.get("record_kind", RECORD_KIND_DEFAULT)
+        content_sha = record_content_hash(
+            statement=payload["statement"],
+            claim_type=payload["claim_type"],
+            mission_id=payload["mission_id"], claim_id=claim_id)
         connection.execute(
             """INSERT INTO knowledge_claims(
-                claim_id, mission_id, statement, claim_type, confidence,
-                fresh_until, source_run_id, source_event_id, status,
-                superseded_by, last_event_id, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ACCEPTED', NULL, ?, ?)""",
+                claim_id, mission_id, statement, claim_type, record_kind,
+                confidence, fresh_until, source_run_id, source_event_id,
+                status, superseded_by, evidence_status, unsupported_reason,
+                content_sha256, last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACCEPTED', NULL,
+                      'UNSUPPORTED', NULL, ?, ?, ?)""",
             (
                 claim_id, payload["mission_id"], payload["statement"],
-                payload["claim_type"], payload.get("confidence", 0.5),
+                payload["claim_type"], record_kind,
+                payload.get("confidence", 0.5),
                 payload.get("fresh_until"),
                 run_id,
                 payload.get("source", {}).get("event_id"),
+                content_sha,
                 event.event_id, event.recorded_at,
             ),
         )
@@ -588,14 +602,24 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
         )
 
     elif event.event_type == "knowledge.entity_registered":
+        from .knowledge_records import (
+            ENTITY_TYPE_DEFAULT,
+            validate_entity_type,
+        )
+
+        # clean validation error BEFORE database contact (fail closed,
+        # deterministic refusal — never a deep IntegrityError)
+        validate_entity_type(
+            payload.get("entity_type", ENTITY_TYPE_DEFAULT))
         connection.execute(
             """INSERT INTO knowledge_entities(
                 entity_id, mission_id, canonical_name, aliases_json,
-                last_event_id, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?)""",
+                entity_type, last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (payload["entity_id"], payload["mission_id"],
              payload["canonical_name"],
              canonical_json(payload.get("aliases", [])),
+             payload.get("entity_type", ENTITY_TYPE_DEFAULT),
              event.event_id, event.recorded_at),
         )
     elif event.event_type == "knowledge.entity_alias_added":
@@ -634,6 +658,36 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             ) VALUES (?, ?, ?, ?, ?)""",
             (payload["claim_id"], payload["entity_id"],
              payload.get("role"), event.event_id, event.recorded_at),
+        )
+
+    elif event.event_type == "knowledge.evidence_linked":
+        # WP-24H-V2KB: immutable append-only provenance link. Requires the
+        # claim to exist; duplicate identical delivery dedupes via the
+        # idempotency key BEFORE reaching this branch. There is
+        # deliberately NO unlink/rewrite event type.
+        claim = connection.execute(
+            "SELECT claim_id FROM knowledge_claims WHERE claim_id = ?",
+            (payload["claim_id"],)).fetchone()
+        if claim is None:
+            raise ValueError(
+                "knowledge.evidence_linked requires an existing claim "
+                f"({payload.get('claim_id')}) — rolled back")
+        connection.execute(
+            """INSERT INTO knowledge_claim_evidence(
+                claim_id, evidence_id, payload_hash, linked_at,
+                last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(claim_id, evidence_id) DO NOTHING""",
+            (payload["claim_id"], payload["evidence_id"],
+             payload.get("payload_hash"), event.recorded_at,
+             event.event_id, event.recorded_at),
+        )
+        connection.execute(
+            """UPDATE knowledge_claims
+               SET evidence_status = 'SUPPORTED', unsupported_reason = NULL,
+                   last_event_id = ?, updated_at = ?
+               WHERE claim_id = ?""",
+            (event.event_id, event.recorded_at, payload["claim_id"]),
         )
 
     elif event.event_type == "knowledge.ingestion_queued":

@@ -96,12 +96,28 @@ def _crash_migration_mid_script(database_path: str, marker: str) -> None:
     connection.commit()  # unreachable: process is killed first
 
 
+def _crash_migration_v35_first_statement(database_path: str,
+                                         marker: str) -> None:
+    """WP-24H-V2KB: crash between the FIRST DDL statement of the newest
+    knowledge migration and the rest of it (mirrors migrate()'s
+    per-statement execution inside BEGIN IMMEDIATE)."""
+    latest = max(MIGRATIONS)
+    first_statement = split_sql_statements(MIGRATIONS[latest])[0]
+    connection = _connect(database_path)
+    connection.execute("BEGIN IMMEDIATE")
+    connection.execute(first_statement)  # partial v35 — never committed
+    _hold(marker)
+    connection.commit()  # unreachable: process is killed first
+
+
 def main() -> None:
     database_path, mode, marker = sys.argv[1], sys.argv[2], sys.argv[3]
     if mode == "event-between-statements":
         _crash_event_between_statements(database_path, marker)
     elif mode == "migration-mid-script":
         _crash_migration_mid_script(database_path, marker)
+    elif mode == "migration-v35-first-statement":
+        _crash_migration_v35_first_statement(database_path, marker)
     else:
         raise SystemExit(f"unknown crash mode: {mode}")
 

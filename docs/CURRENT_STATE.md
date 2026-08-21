@@ -27,6 +27,11 @@ PROVIDER CONFIG:             %LOCALAPPDATA%\JARVIS\config\provider.yaml
                              (opencode_go / muse-spark-1.2-contributor / OpenCode Go URL)
 CURRENT SCHEMA:              v34 (live deployed database at schema v34; no
                              migration required by M2 — additive event types only)
+                             CANDIDATE NOTE: candidate/24h-v2-knowledge-brain
+                             advances SCHEMA_VERSION to v35 (additive typed
+                             knowledge records, WP-24H-V2KB); the live
+                             database remains v34 until an owner-approved
+                             migration window.
 FULL SUITE:                  1559 collected at b8bc3543570f3b19ba4700433820b7665d5e07c5;
                              failures=0, errors=0, skipped=0
 FOCUSED EXECUTIVE SUITE:     32 passed (tests/foundry/test_executive_intelligence.py)

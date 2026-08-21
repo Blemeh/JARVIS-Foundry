@@ -74,6 +74,7 @@ def _table_key_column(table: str) -> str:
         "knowledge_manifests": "manifest_id",
         "knowledge_entities": "entity_id",
         "knowledge_claim_entities": "claim_id",
+        "knowledge_claim_evidence": "claim_id",
         "knowledge_ingestions": "ingestion_id",
         "knowledge_snapshots": "snapshot_id",
         "candidates": "candidate_id",
