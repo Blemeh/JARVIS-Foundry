@@ -32,11 +32,15 @@ from ..domain import ActionEnvelope
 from ..events import Event
 from ..roles.adapter import RoleAdapter
 from ..roles.dispatcher import RoleDispatcher
-from ..roles.results import BLOCKED, COMPLETED, FAILED
+from ..roles.results import (
+    BLOCKED,
+    COMPLETED,
+    FAILED,
+)
 from ..roles.router import RoleRouter
 from ..supervisor.leases import LeaseManager
 from .commit import CommitError, commit_after_pass
-from .proposal import Proposal, ProposalError, Waiting, propose_next_action
+from .proposal import ProposalError, Waiting, propose_next_action
 from .verification import (
     dangling_verdict_for_run,
     failed_verdict_count,
@@ -44,9 +48,15 @@ from .verification import (
     record_verification_outcome,
     start_verification,
 )
+from .verifier_binding import (
+    AcceptanceGate,
+    build_terminal_evidence,
+    capture_binding,
+    fresh_verifier_identity,
+)
 
 PASSED = "PASSED"
-FAILED = "FAILED"
+FAILED = "FAILED"  # outcome constant; distinct from roles.results.FAILED status
 BLOCKED_OUTCOME = "BLOCKED"
 WAITING_OUTCOME = "WAITING"
 
@@ -441,7 +451,8 @@ class MissionLoop:
 
         self._advance(mission_id, "VERIFYING", run_id=run_id)
         verifier_provider = self.router.diversity_resolution(result.provider)
-        verifier_run_id = f"{run_id}-verify"
+        base_verifier_run_id = f"{run_id}-verify"
+        verify_attempt: int | None = None
 
         # DIR-2026-08-12 item 3 (exactly-once recovery): when this pass
         # resumes a run whose builder COMPLETED earlier, verification may
@@ -460,36 +471,47 @@ class MissionLoop:
         # (c) a COMPLETED verifier row replays through the dispatcher (no
         #     new session) — the builder is NEVER re-executed (its run
         #     replays from the ledger: exactly-once mutation).
-        dangling = dangling_verdict_for_run(self.database, verifier_run_id)
+        dangling = dangling_verdict_for_run(self.database, f"{run_id}-verify")
         if dangling is not None:
             record_verification_outcome(
                 self.database, verdict_id=dangling["verdict_id"],
                 outcome="BLOCKED", findings=[], evidence={},
                 reason="verification pass interrupted before its outcome "
                        "was recorded; superseded by the resumed pass")
-        verifier_row = self.database.row("agent_runs", "run_id", verifier_run_id)
+        verifier_row = self.database.row("agent_runs", "run_id", base_verifier_run_id)
         if verifier_row is not None and verifier_row["status"] != "COMPLETED":
             with self.database.connect() as connection:
                 attempt = connection.execute(
                     "SELECT COUNT(*) FROM agent_runs WHERE run_id LIKE ?",
-                    (f"{run_id}-verify%",)).fetchone()[0]
-            verifier_run_id = f"{run_id}-verify-r{attempt}"
+                    (f"{base_verifier_run_id}%",)).fetchone()[0]
+            verify_attempt: int | None = attempt
 
-        start_verification(
+        # Master Goal 2: the verifier is a fresh isolated run with its own
+        # identity (distinct from the builder's, unique per verification
+        # attempt), and the verdict binding is frozen BEFORE any verifier
+        # session starts (artifact hashes, diff hash, HEAD, manifest).
+        verdict_id, verifier_run_id = fresh_verifier_identity(
+            run_id, attempt=verify_attempt)
+        capture = capture_binding(
             self.database,
             verdict_id=verdict_id,
             mission_id=mission_id,
             step_id=step_id,
+            target=target,
             builder_run_id=run_id,
             verifier_run_id=verifier_run_id,
+            context_manifest_hash=str(mission.get("context_manifest_hash") or ""),
             independence={
                 "builder_provider": result.provider,
                 "verifier_provider": verifier_provider,
                 "provider_diverse": result.provider != verifier_provider,
                 "same_provider_limitation": (
-                    "verifier ran under the same provider as the builder"
+                    "same-provider verification: reduced provider "
+                    "independence; isolation enforced through a fresh "
+                    "verifier session with distinct run identity"
                     if result.provider == verifier_provider else ""
                 ),
+                "session_isolation": "fresh-session",
             },
             criteria=criteria,
         )
@@ -522,7 +544,11 @@ class MissionLoop:
                 record_verification_outcome(
                     self.database, verdict_id=verdict_id, outcome="FAIL",
                     findings=findings,
-                    evidence={"verifier_run_id": verifier_run_id},
+                    evidence=build_terminal_evidence(
+                        capture=capture,
+                        verifier_session_id=verifier_run_id,
+                        extra={"verifier_completed": False},
+                    ),
                     repair_requirements=["rebuild the step artifact and re-verify"],
                     reason=verifier.error_detail or "verifier evidence mismatch",
                 )
@@ -531,6 +557,9 @@ class MissionLoop:
                     verdict_id=verdict_id, findings=findings,
                     reason=verifier.error_detail or "verifier evidence mismatch",
                 )
+            # Verifier crash / interruption: honest BLOCKED with the frozen
+            # binding preserved; a resumed pass supersedes this verdict with
+            # a fresh binding and a fresh verifier identity.
             record_verification_outcome(
                 self.database, verdict_id=verdict_id, outcome="BLOCKED",
                 findings=[], evidence={},
@@ -552,7 +581,11 @@ class MissionLoop:
                 record_verification_outcome(
                     self.database, verdict_id=verdict_id, outcome="FAIL",
                     findings=[reason],
-                    evidence={"verifier_run_id": verifier_run_id, "reconciler": "disagree"},
+                    evidence=build_terminal_evidence(
+                        capture=capture,
+                        verifier_session_id=verifier_run_id,
+                        extra={"reconciler": "disagree"},
+                    ),
                     repair_requirements=["create the claimed artifact and re-verify"],
                     reason=reason,
                 )
@@ -562,8 +595,41 @@ class MissionLoop:
                 )
             record_verification_outcome(
                 self.database, verdict_id=verdict_id, outcome="PASS",
-                findings=[], evidence={"verifier_run_id": verifier_run_id},
+                findings=[],
+                evidence=build_terminal_evidence(
+                    capture=capture,
+                    verifier_session_id=getattr(verifier, "session_id", "") or verifier_run_id,
+                ),
             )
+            # Master Goal 2: the fail-closed acceptance gate re-evaluates the
+            # whole invariant set against the durable ledger AND the live
+            # tree before anything may advance. A false-success claim that
+            # somehow reached this point is refused here — no commit, no
+            # ACCEPTING, no ACTION_SELECTION, no mission.completed.
+            gate = AcceptanceGate(self.database, stop_path=self.stop_path)
+            decision = gate.evaluate(
+                mission_id=mission_id, step_id=step_id, target=target,
+                builder_run_id=run_id,
+            )
+            if not decision.accepted:
+                record_verification_outcome(
+                    self.database, verdict_id=verdict_id, outcome="FAIL",
+                    findings=[decision.reason],
+                    evidence=build_terminal_evidence(
+                        capture=capture,
+                        verifier_session_id=getattr(verifier, "session_id", "") or verifier_run_id,
+                        extra={"acceptance_gate": decision.checks},
+                    ),
+                    repair_requirements=[
+                        "repair the acceptance-gate refusal and re-verify with a fresh verifier",
+                    ],
+                    reason=f"acceptance gate refused: {decision.reason}",
+                )
+                return self._repair_or_block(
+                    mission_id=mission_id, step_id=step_id, run_id=run_id,
+                    verdict_id=verdict_id, findings=[decision.reason],
+                    reason=f"acceptance gate refused: {decision.reason}",
+                )
             # The commit happens while still VERIFYING (only after the PASS
             # verdict is durable); a failed commit blocks from VERIFYING,
             # which the state machine allows. ACCEPTING is entered only when
