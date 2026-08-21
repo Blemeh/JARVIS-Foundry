@@ -5,6 +5,7 @@
  * maps canonical Foundry ledger / Supervisor APIs onto the same shapes. The
  * current mission ships MockJarvisClient behind the same interface.
  */
+import type { FoundryExecutive } from "./snapshotTypes";
 
 export type DataSource = "SIMULATED" | "LIVE" | "DEGRADED" | "DISCONNECTED" | "UNKNOWN";
 
@@ -429,6 +430,7 @@ export interface JarvisClient {
   getTimelineEvent(id: string): Promise<TimelineEvent | null>;
   getMemoryGraph(): Promise<MemoryGraph>;
   getMemoryNode(id: string): Promise<MemoryNode | null>;
+  getExecutive(): Promise<FoundryExecutive>;
   listSystemComponents(): Promise<SystemComponent[]>;
   getSystem(id: string): Promise<SystemComponent | null>;
   getSystemOverview(): Promise<SystemOverview>;

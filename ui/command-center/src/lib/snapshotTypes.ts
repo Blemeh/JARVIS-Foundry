@@ -34,6 +34,56 @@ export interface FoundrySnapshot {
   timeline: FoundryTimelineEvent[];
   release_identity: Record<string, unknown>;
   costs: Record<string, unknown>;
+  executive: FoundryExecutive;
+}
+
+export interface FoundryExecutiveDecision {
+  decision_id: string;
+  decision?: string;
+  reason?: string;
+  decision_version?: string;
+  candidate_id?: string | null;
+  mission_id?: string | null;
+  active_goals?: string[];
+  factor_breakdown?: Record<string, { value?: unknown; kind?: string; contribution?: number }>;
+  eligibility?: Record<string, unknown>;
+  rejected?: { candidate_id: string; composite?: number; reason?: string }[];
+  deferred?: { candidate_id: string; reason?: string }[];
+  selected_score?: { candidate_id?: string; composite?: number; goal_fit?: number; calibration_adjustment?: number };
+  wait?: {
+    reason?: string;
+    reconsider_condition?: string;
+    wait_kind?: string;
+    best_candidate_id?: string | null;
+    best_score?: number | null;
+    comparative_rationale?: string;
+  } | null;
+  prediction?: { candidate_id?: string; prediction?: Record<string, unknown> } | null;
+  calibration?: {
+    outcome?: string;
+    repair_count?: number;
+    actual?: Record<string, unknown>;
+    calibration_version?: string;
+  } | null;
+  event_id?: string;
+  occurred_at?: string;
+}
+
+export interface FoundryExecutive {
+  activation_epoch: string | null;
+  admission_authority: string;
+  latest_decision: FoundryExecutiveDecision | null;
+  recent_decisions: FoundryExecutiveDecision[];
+  calibrations: {
+    decision_id?: string;
+    candidate_id?: string;
+    mission_id?: string;
+    outcome?: string;
+    repair_count?: number;
+    actual?: Record<string, unknown>;
+    calibration_version?: string;
+    event_id?: string;
+  }[];
 }
 
 export interface FoundryMission {

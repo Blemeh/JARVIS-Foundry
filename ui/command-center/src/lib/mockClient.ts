@@ -25,6 +25,7 @@ import type {
   TrustSummary,
   Worker,
 } from "./contracts";
+import type { FoundryExecutive } from "./snapshotTypes";
 import {
   applyEventToUniverse,
   applyResumeToUniverse,
@@ -131,6 +132,18 @@ export class MockJarvisClient implements JarvisClient {
   async getMemoryGraph(): Promise<MemoryGraph> {
     await delay();
     return this.universe.memoryGraph;
+  }
+
+  async getExecutive(): Promise<FoundryExecutive> {
+    await delay();
+    // Simulated mode has no executive ledger; honest empty state.
+    return {
+      activation_epoch: null,
+      admission_authority: "UNKNOWN",
+      latest_decision: null,
+      recent_decisions: [],
+      calibrations: [],
+    };
   }
 
   async getMemoryNode(id: string): Promise<MemoryNode | null> {

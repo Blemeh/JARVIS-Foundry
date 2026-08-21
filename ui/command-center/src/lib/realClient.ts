@@ -40,7 +40,7 @@ import {
   mapTrustSummary,
   mapWorkers,
 } from "./snapshotMapper";
-import type { FoundrySnapshot, OwnerCommandResponse } from "./snapshotTypes";
+import type { FoundrySnapshot, FoundryExecutive, OwnerCommandResponse } from "./snapshotTypes";
 
 const DEFAULT_API = "/api";
 
@@ -189,6 +189,21 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
 
   async getMemoryGraph(): Promise<MemoryGraph> {
     return mapMemoryGraph(await this.snapshotOrFetch());
+  }
+
+  async getExecutive(): Promise<FoundryExecutive> {
+    const snapshot = await this.snapshotOrFetch();
+    if (!snapshot.executive) {
+      // Older backend without executive projection: honest empty state.
+      return {
+        activation_epoch: null,
+        admission_authority: "UNKNOWN",
+        latest_decision: null,
+        recent_decisions: [],
+        calibrations: [],
+      };
+    }
+    return snapshot.executive;
   }
 
   async getMemoryNode(id: string): Promise<MemoryNode | null> {

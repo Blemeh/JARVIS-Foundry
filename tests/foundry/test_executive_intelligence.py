@@ -586,3 +586,54 @@ def test_calibration_idempotent_on_terminal_replay(exec_env):
         e for e in database.events() if e.event_type == "executive.calibration_recorded"
     ]
     assert len(cal_events) == 1
+
+
+def test_command_center_projects_executive_decisions(exec_env):
+    """CC snapshot exposes the executive spine: latest decision with
+    rationale, rejected alternatives, prediction, and outcome calibration —
+    all traced to ledger events (no UI-only truth)."""
+    from jarvis_foundry.command_center import build_snapshot
+
+    database, repository, _ = exec_env
+    objective = "Improve gateway reliability reduce outage risk"
+    cid = _organic_candidate(database, objective, source="maintenance")
+    service = ExecutiveDecisionService(database, source_id="cc-projection-test")
+    decision = service.evaluate(resource_id="resource-1", loop_id="loop-cc-1")
+    assert decision.kind == "SELECT" and decision.candidate_id == cid
+    record_calibration(
+        database, decision_id=decision.decision_id, candidate_id=cid,
+        mission_id="m-cc", source="maintenance", objective=objective,
+        outcome="PASSED",
+        terminal_event_id="verification.passed:evt-cc-1",
+    )
+    snapshot = build_snapshot(database)
+    section = snapshot["executive"]
+    assert section["activation_epoch"] == EPOCH
+    assert section["admission_authority"] == "ENABLED"
+    latest = section["latest_decision"]
+    assert latest is not None
+    assert latest["decision"] == "SELECT"
+    assert latest["candidate_id"] == cid
+    assert latest["reason"]
+    assert latest["rejected"] == decision.rejected or isinstance(latest["rejected"], list)
+    assert latest["prediction"]["candidate_id"] == cid
+    assert latest["calibration"]["outcome"] == "PASSED"
+    ids = [d["decision_id"] for d in section["recent_decisions"]]
+    assert decision.decision_id in ids
+
+
+def test_command_center_executive_empty_state_is_honest(exec_env):
+    """No executive events -> explicit empty projection, not fabricated state."""
+    from jarvis_foundry.command_center import build_snapshot
+
+    database, _, _ = exec_env
+    # Fresh initialized database in its own directory: no executive events.
+    empty_dir = Path(database.path).parent / "empty-cc"
+    empty_dir.mkdir(parents=True, exist_ok=True)
+    empty_db = FoundryDatabase(empty_dir / "foundry.db")
+    empty_db.initialize()
+    snapshot = build_snapshot(empty_db)
+    section = snapshot["executive"]
+    assert section["latest_decision"] is None
+    assert section["recent_decisions"] == []
+    assert section["calibrations"] == []

@@ -182,6 +182,89 @@ def _safe_table(connection, table: str, query: str, args: tuple[Any, ...] = ()) 
         return []
 
 
+def _executive_projection(database: FoundryDatabase, *, limit: int = 25) -> dict[str, Any]:
+    """Project Executive Intelligence decisions from the durable ledger.
+
+    Read-only view over executive.* events: latest decision (with rationale,
+    rejected/deferred alternatives, factor breakdown), its prediction, the
+    outcome calibration that followed, and bounded recent history. No UI-only
+    truth: every field traces to a ledger event.
+    """
+    decisions: list[dict[str, Any]] = []
+    predictions: dict[str, dict[str, Any]] = {}
+    calibrations: list[dict[str, Any]] = []
+    activation_epoch: str | None = None
+    admission_authority: str = "UNKNOWN"
+    for event in database.events():
+        etype = event.event_type
+        payload = event.payload
+        if etype == "executive.activation_recorded":
+            epoch = payload.get("epoch")
+            if isinstance(epoch, str) and epoch:
+                activation_epoch = epoch
+        elif etype in ("executive.admission_authority_enabled",
+                       "executive.admission_authority_disabled"):
+            admission_authority = "ENABLED" if etype.endswith("enabled") else "DISABLED"
+        elif etype == "executive.prediction_recorded":
+            predictions[str(payload.get("decision_id") or "")] = {
+                "candidate_id": payload.get("candidate_id"),
+                "prediction": _json_value(payload.get("prediction")),
+            }
+        elif etype == "executive.calibration_recorded":
+            calibrations.append({
+                "decision_id": payload.get("decision_id"),
+                "candidate_id": payload.get("candidate_id"),
+                "mission_id": payload.get("mission_id"),
+                "outcome": payload.get("outcome"),
+                "repair_count": payload.get("repair_count"),
+                "actual": _json_value(payload.get("actual")),
+                "calibration_version": payload.get("calibration_version"),
+                "event_id": event.event_id,
+            })
+        elif etype == "executive.decision_recorded":
+            decisions.append({
+                "decision_id": payload.get("decision_id"),
+                "decision": payload.get("decision"),
+                "reason": payload.get("reason"),
+                "decision_version": payload.get("decision_version"),
+                "candidate_id": payload.get("candidate_id"),
+                "mission_id": payload.get("mission_id"),
+                "active_goals": payload.get("active_goals") or [],
+                "factor_breakdown": _json_value(payload.get("factor_breakdown")),
+                "eligibility": _json_value(payload.get("eligibility")),
+                "rejected": payload.get("rejected") or [],
+                "deferred": payload.get("deferred") or [],
+                "selected_score": _json_value(payload.get("selected_score")),
+                "wait": _json_value(payload.get("wait")),
+                "calibration_version": payload.get("calibration_version"),
+                "event_id": event.event_id,
+                "occurred_at": event.occurred_at,
+            })
+    by_decision: dict[str, dict[str, Any]] = {}
+    for record in reversed(decisions):
+        key = str(record.get("decision_id") or "")
+        if key and key not in by_decision:
+            by_decision[key] = record
+    ordered = list(by_decision.values())[-limit:]
+    calibration_by_decision: dict[str, dict[str, Any]] = {}
+    for cal in calibrations:
+        key = str(cal.get("decision_id") or "")
+        if key:
+            calibration_by_decision[key] = cal
+    latest = ordered[-1] if ordered else None
+    if latest is not None:
+        key = str(latest.get("decision_id") or "")
+        latest["prediction"] = predictions.get(key)
+        latest["calibration"] = calibration_by_decision.get(key)
+    return {
+        "activation_epoch": activation_epoch,
+        "admission_authority": admission_authority,
+        "latest_decision": latest,
+        "recent_decisions": list(reversed(ordered)),
+        "calibrations": calibrations[-limit:],
+    }
+
+
 def build_snapshot(
     database: FoundryDatabase,
     *,
@@ -369,6 +452,7 @@ def build_snapshot(
         "briefings": [with_ref(b, "briefing", "briefing_id") for b in briefings],
         "voice": [with_ref(v, "voice_interaction", "interaction_id") for v in voices],
         "timeline": decision_timeline(database, limit=timeline_limit),
+        "executive": _executive_projection(database, limit=25),
     }
 
 

@@ -8,6 +8,7 @@ import { MissionDetail } from "./routes/MissionDetail";
 import { Agents } from "./routes/Agents";
 import { AgentDetail } from "./routes/AgentDetail";
 import { Memory } from "./routes/Memory";
+import { Executive } from "./routes/Executive";
 import { Evidence } from "./routes/Evidence";
 import { EvidenceDetail } from "./routes/EvidenceDetail";
 import { Timeline } from "./routes/Timeline";
@@ -57,6 +58,7 @@ export function App() {
           <Route path="/agents/:agentId" element={<AgentDetail />} />
           <Route path="/memory" element={<Memory />} />
           <Route path="/memory/:memoryId" element={<Memory />} />
+          <Route path="/executive" element={<Executive />} />
           <Route path="/evidence" element={<Evidence />} />
           <Route path="/evidence/:evidenceId" element={<EvidenceDetail />} />
           <Route path="/timeline" element={<Timeline />} />

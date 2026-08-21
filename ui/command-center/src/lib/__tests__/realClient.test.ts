@@ -21,6 +21,13 @@ const snapshot: FoundrySnapshot = {
   timeline: [],
   release_identity: {},
   costs: {},
+  executive: {
+    activation_epoch: null,
+    admission_authority: "UNKNOWN",
+    latest_decision: null,
+    recent_decisions: [],
+    calibrations: [],
+  },
 };
 
 describe("RealJarvisRuntimeAdapter", () => {

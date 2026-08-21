@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom";
 import {
   Activity,
+  BrainCircuit,
   Braces,
   Database,
   FileCheck2,
@@ -17,6 +18,7 @@ import { useCommandCenter } from "../context/CommandCenterContext";
 
 const nav = [
   { to: "/", label: "Overview", icon: LayoutDashboard, end: true },
+  { to: "/executive", label: "Executive", icon: BrainCircuit },
   { to: "/missions", label: "Missions", icon: Braces },
   { to: "/agents", label: "Agents", icon: Activity },
   { to: "/evidence", label: "Evidence", icon: FileCheck2 },
