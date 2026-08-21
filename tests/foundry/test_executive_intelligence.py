@@ -196,6 +196,46 @@ def test_goal_alignment_changes_ranking(exec_env):
     assert ranked[0].goal_fit > ranked[1].goal_fit
 
 
+def test_keyword_bait_cannot_outrank_aligned_maintenance(exec_env):
+    """Discriminating regression for the bait-damping repair: a hype-heavy
+    candidate with near-zero goal fit must not outrank moderate-fit aligned
+    work even when the provider scores its value/urgency highly. The old
+    scoring let the bait win (composite 0.584 vs 0.493 in the M2 proof)."""
+    database, _, _ = exec_env
+    bait = _organic_candidate(
+        database,
+        "URGENT crash outage revenue fix tonight blocked deadline now",
+        source="workflow_opportunity",
+    )
+    aligned = _organic_candidate(
+        database,
+        "Improve gateway reliability documentation for on-call rotation",
+        source="maintenance",
+    )
+    # Provider attributes high value/urgency to the hype candidate.
+    with database.connect() as connection:
+        connection.execute(
+            "UPDATE candidate_scores SET weights_json = ? WHERE candidate_id = ?",
+            (json.dumps({"value": 0.9, "urgency": 0.8}), bait),
+        )
+        connection.execute(
+            "UPDATE candidate_scores SET weights_json = ? WHERE candidate_id = ?",
+            (json.dumps({"value": 0.4}), aligned),
+        )
+    rows = [
+        database.row("candidates", "candidate_id", bait),
+        database.row("candidates", "candidate_id", aligned),
+    ]
+    ranked = rank_candidates(database, rows, goals=active_goals(database))
+    assert ranked[0].candidate_id == aligned
+    bait_factors = {f.name: f for f in ranked[1].factors}
+    # The bait factor is a recorded penalty (positive value, subtracted in
+    # the composite); its presence plus the halved value/urgency terms are
+    # what flipped the ranking.
+    assert bait_factors["keyword_bait"].value == 1.0
+    assert bait_factors["expected_value"].contribution <= 0.09
+
+
 def test_goal_priority_changes_ranking(exec_env):
     database, _, secret = exec_env
     objective_a = "Improve gateway reliability reduce customer outage risk"

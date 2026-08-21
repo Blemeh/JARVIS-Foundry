@@ -113,7 +113,7 @@ def score_candidate_for_executive(
                   "tonight", "critical!!")
     has_hype = any(t in objective.lower() for t in hype_terms)
     bait_penalty = 0.0
-    if goal_fit < 0.1 and (
+    if goal_fit < 0.15 and (
         (value_term is not None and value_term > 0.5)
         or (urgency_term is not None and urgency_term > 0.5)
         or has_hype
@@ -155,6 +155,7 @@ def score_candidate_for_executive(
             0.05,
             kind=freshness_kind,
         ),
+        _factor("keyword_bait", 1.0 if bait_penalty else 0.0, 0.15),
     )
 
     composite = sum(f.contribution for f in factors)
