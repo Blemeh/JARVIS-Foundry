@@ -1,0 +1,146 @@
+{
+ "record_type": "independent_review",
+ "reviewer": {
+  "identity": "ox-alpha (x-preview-f-free via opencode-zen), Hermes Agent desktop session",
+  "model_lock": "session model x-preview-f-free; zero subagents dispatched; all verification inline",
+  "skill": "acceptance-gate-review v2.0.0"
+ },
+ "lane": "candidate/24h-v2-knowledge-brain",
+ "builder_goal": "MASTER GOAL 3 - V2 Knowledge Brain / WP-24H-V2KB typed-records vertical slice",
+ "reviewed_sha": "f1660f6d7e33f2130dae748d29c553e39d3c66df",
+ "frozen_implementation_commit": "e79a8a5961e90f67cda499db12b056d2cf759d31",
+ "base_commit": "7ac0b2373c8d4c74924fcea15c028c4f6e9cdc3c",
+ "artifact_integrity": {
+  "freeze_topology_verified": true,
+  "freeze_parent_is_base": true,
+  "post_freeze_changes_limited_to_evidence_files": [
+   "FINAL.json",
+   "RUNS.md",
+   "VERIFIER.json",
+   "VERIFIER_BRIEF.md"
+  ],
+  "branch_pushed": false,
+  "main_touched": false,
+  "mutation_guard_utc": "2026-08-21T21:33:12.756733+00:00",
+  "mutation_guard_ok": true
+ },
+ "builder_verifier_status": "VERIFIER.json was produced by the builder session itself; treated as CLAIMS ONLY - every probe independently re-executed by this reviewer",
+ "commands_executed_independently": [
+  {
+   "command": "worktree add review-lane2-readonly @tip; own python 3.13 venv; import isolation verified",
+   "result": "jarvis_foundry imports strictly from lane worktree"
+  },
+  {
+   "command": "pytest test_knowledge_records.py test_knowledge_v35_durability.py --junitxml",
+   "result": "33 passed, 0 failed, 0 errors, exit 0 (claim: 33 passed - REPRODUCED)"
+  },
+  {
+   "command": "migration/crash/hybrid-memory/doc-staleness gates + convergence --junitxml",
+   "result": "120 passed, 0 failed, exit 0 (claims: miggate EXIT=0 + convergence 100 pass - REPRODUCED)"
+  },
+  {
+   "command": "FULL tests/foundry --junitxml at tip under conditions identical to reviewer baseline",
+   "result": "1492 passed, 0 failed, 0 errors, exit 0 in 659s. Reviewer environment reproduces ZERO failures (stronger than builder env which had 2 pre-existing installer failures); failure-delta vs base = empty set in BOTH environments"
+  },
+  {
+   "command": "collection arithmetic",
+   "result": "1459 base foundry + 33 new = 1492 exactly"
+  },
+  {
+   "command": "scripts/v2kb_final_gate.py (reviewer run)",
+   "result": "{\"files_scanned\": 19, \"verdict\": \"PASS\"}, GATE_EXIT=0"
+  },
+  {
+   "command": "hidden-dependency scan of src/tests/scripts diff",
+   "result": "CLEAN - no AppData/live-home paths, no endpoints, no provider/model-lock references"
+  },
+  {
+   "command": "event-vocabulary audit of diff",
+   "result": "only knowledge.* event types added; zero control-plane vocabulary (directives/STOP/supervisor) touched"
+  },
+  {
+   "command": "lint A/B (ruff)",
+   "result": "new source knowledge_records.py CLEAN; migrations.py I001 pre-existing at base; 4 cosmetic findings in new TEST files (F401 x2, F841, I001); builder made no contrary lint claim"
+  }
+ ],
+ "migration_attack_battery": {
+  "script": "C:/temp/JARVIS-24H-scratch/lane2_migration_battery.py",
+  "method": "disposable DBs built by BASE-code child processes into realistic populated v34 state; cross-executed between reviewer BASE venv and LANE venv",
+  "M1_populated_v34_no_data_loss": "PASS - 3 claims+2 entities preserved verbatim incl rolled_back_by; deterministic defaults record_kind=CLAIM evidence_status=UNSUPPORTED entity_type=system; quick_check ok; links table empty",
+  "M2_fresh_init_at_35": "PASS - fresh DB initializes directly at 35 with all three tables",
+  "M3_reopen_idempotent": "PASS - repeated initialize(): version stable, no row duplication, no duplicate schema_migrations entries",
+  "M4_mid_migration_crash_recovery": "PASS - killed mid-migration after statement 7/15: version stayed 34, ZERO shadow tables leaked (transaction rollback), unmodified retry migrated cleanly to 35 with all rows",
+  "M5_base_code_opens_v35_db": "PASS - previous-generation (v34/base) code opens migrated DB safely (initialize no-op at 34 semantics, quick_check ok, data intact)",
+  "M6_restore_from_backup_semantics": "PASS - byte-restored v34 backup migrates cleanly and reproduces original statements"
+ },
+ "scope_audit": {
+  "changed_files": 18,
+  "adjudicated_paths_reviewed": {
+   "docs/CURRENT_STATE.md": "+5 truthful CANDIDATE NOTE lines stating live stays v34 until owner-approved window - accurate, no drift introduced",
+   "src/jarvis_foundry/database.py": "+2 allowlist entries for the new knowledge_claim_evidence table - required for the feature, control-neutral",
+   "scripts/v2kb_final_gate.py": "verification-protocol artifact; inspected: scans changed+untracked files for secret-like patterns, writes only its own evidence JSON"
+  },
+  "forbidden_paths_touched": [],
+  "schema_effect": "code SCHEMA_VERSION 34->35; LIVE database untouched (verified by soak monitor: schema_migrations count stayed 34 throughout; CURRENT/PREVIOUS pointers unmoved)"
+ },
+ "test_counts": {
+  "focused": {
+   "claimed": "33 passed",
+   "reviewer_reproduced": "33 passed (JUnit)"
+  },
+  "gates_convergence": {
+   "claimed": "EXIT=0 + convergence 100",
+   "reviewer_reproduced": "120 passed combined (JUnit)"
+  },
+  "full_foundry": {
+   "claimed": "1490 passed / 2 pre-existing failures",
+   "reviewer_reproduced": "1492 passed / 0 failures (reviewer env has no installer-daemon limitation); both environments show empty candidate-vs-base failure delta"
+  },
+  "red_rederivation": {
+   "claimed_by_builder_verifier": "23 feature-absence failures at base",
+   "reviewer_assessment": "plausible and consistent with KeyError surfaces observed in code-read; not re-executed (lowest-value reproduction; GREEN-side fully reproduced)"
+  }
+ },
+ "defects": [],
+ "observations_minor": [
+  {
+   "severity": "minor",
+   "finding": "4 cosmetic lint findings in new test files (unused imports/variable, import ordering)",
+   "remediation": "one-pass ruff cleanup before any integration",
+   "gate_flipping": false
+  },
+  {
+   "severity": "observation",
+   "finding": "RED derivation not independently re-executed by this reviewer (GREEN side fully reproduced; risk accepted as low)",
+   "gate_flipping": false
+  }
+ ],
+ "uncertainty": [
+  "builder-environment-specific installer failures (schtasks daemon imports) could not be reproduced in reviewer env; classified pre-existing via builder's fresh-base rerun claim + reviewer's own zero-failure base control"
+ ],
+ "required_repair": [],
+ "rollback_assessment": {
+  "method": "single-commit revert of e79a8a5 on isolated branch (evidence commits contain no source)",
+  "reviewer_verification": "migration battery proves forward path safe AND crash-safe; reverse compatibility proven (base code opens v35 DB); branch-local, unpushed, live runtime untouched; blast radius confined to candidate branch"
+ },
+ "integration_safety": {
+  "live_database_protection": "verified - soak monitor confirms live schema_migrations=34 and unchanged pointers throughout the review window",
+  "five_touchpoint_wiring": "migrations/projections/reconcile/database allowlist/knowledge modules all present in diff; reconcile.py +1 line reviewed as projection registration",
+  "event_vocabulary": "knowledge.* only; no control-plane types",
+  "stop_veto_interplay": "no changes to STOP/veto paths; malicious directive-shaped content test claimed by builder corroborated by static vocabulary audit (no directives emitted by knowledge ingestion)"
+ },
+ "criteria_results": {
+  "conflicting_claims_remain_visible": "PASS (focused suite reproduced; contradiction machinery untouched by migration per M1)",
+  "every_claim_evidence_or_unsupported": "PASS (NOT NULL DEFAULT UNSUPPORTED column verified in migration DDL; invariant tests green)",
+  "concurrent_owner_jarvis_edits_preserve_both": "PASS (WAL concurrency test green in focused suite)",
+  "duplicate_ingestion_idempotent": "PASS (focused suite + M-series idempotency)",
+  "interrupted_writes_and_migration_recovery": "PASS (test_crash_recovery gate 120-suite green + reviewer subprocess-kill battery M4)",
+  "restore_reproduces_bytes_and_semantics": "PASS (M6)",
+  "malicious_content_yields_only_knowledge_events": "PASS (vocabulary audit + focused suite)",
+  "previous_executable_compatibility": "PASS (M5 + baseline probe D)",
+  "full_suite_failure_delta_empty": "PASS (both environments)",
+  "no_unauthorized_scope_or_live_touch": "PASS (scope audit + soak monitor)"
+ },
+ "justification": "All material claims independently reproduced on isolated checkout and venvs: focused 33/33, gates+convergence 120/120, FULL foundry 1492/1492 (empty failure delta vs the reviewer's own 1459-test base control), gate script PASS, hidden-dependency scan clean, freeze topology and post-freeze evidence-only discipline verified, mutation guard clean at verdict time. The highest-risk surface - additive rebuild migration 34->35 - survived a six-attack battery including real subprocess-kill mid-migration (zero partial state, clean retry) and cross-generation open-compatibility. Live database remained v34 and untouched throughout (soak-monitored). Residual items are cosmetic lint debt in test files and one unreproduced-but-corroborated RED derivation; neither flips the gate.",
+ "overall_verdict": "PASS"
+}

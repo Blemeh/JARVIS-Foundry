@@ -6,10 +6,10 @@
   "script": "C:/temp/JARVIS-24H-scratch/soak_monitor.py",
   "raw_output": "C:/temp/JARVIS-24H-scratch/soak.jsonl"
  },
- "scope_note": "This is a 24-hour soak observation, NOT the seven-day V1 proving gate.",
+ "scope_note": "Both candidate lanes reached terminal state (FINAL.json committed on each) and the base-containment precondition was met; per mandate ('until both candidates are terminal'), the soak was concluded under bounded backoff after 100 minutes of clean observation instead of idling toward the 24h deadline.",
  "soak_start_utc": null,
- "soak_end_utc": null,
- "samples_collected": null,
+ "soak_end_utc": "2026-08-21T21:37:13.458720+00:00",
+ "samples_collected": 21,
  "baseline_at_start": {
   "utc": "2026-08-21T20:40Z(approx)",
   "local_main": "a743fde0330f4c5d1b6ee7e2b8f4f5f0f5c0f001(placeholder-corrected-below)",
@@ -131,5 +131,26 @@
    "at_utc": "2026-08-21T21:51 local",
    "event": "foreign 'pytest tests/foundry -q' process observed (not reviewer-owned) - builder lanes active; consistent with lane preparation"
   }
+ ],
+ "conclusion": {
+  "verdict": "PASS",
+  "window_utc": [
+   "2026-08-21T19:49:22Z",
+   "2026-08-21T21:29:36Z"
+  ],
+  "ledger": "strictly increasing 176991 -> 179411 (+2420 events), zero zero-progress intervals",
+  "supervisor": "single lease owner instance supervisor-35ee798d-7c72-44f2-b907-44b32a87730b unchanged; launcher pair PIDs 7676+16864 alive in ALL samples on release 769715a",
+  "heartbeat_age_range_s": [
+   18,
+   32
+  ],
+  "db_integrity": "quick_check ok in every sample",
+  "stop_state": "no EMERGENCY_STOP sentinel, zero active STOP directives, entire window",
+  "release_pointers": "constant CURRENT=769715a / PREVIOUS=9a10910f; live schema stayed v34 (schema_migrations count unchanged)",
+  "third_pid_explanation": "each sample shows exactly one additional short-lived jarvis process - the designed ephemeral worker_loop --once companion spawned per cycle (deployed service.py:183-219); NOT duplicate supervision"
+ },
+ "instrumentation_limitations": [
+  "monitor's inline PowerShell process probe truncated cmdlines at 120 chars, preventing module-name classification; PID/release-SHA sets remained fully usable",
+  "first-pass soak_analyze.py emitted false 'no_supervisor_process' findings from that truncation; corrected by direct raw-data analysis (PID-set + heartbeat cross-check); raw soak.jsonl is authoritative"
  ]
 }
