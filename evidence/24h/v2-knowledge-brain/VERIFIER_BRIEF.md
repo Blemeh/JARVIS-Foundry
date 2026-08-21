@@ -15,9 +15,15 @@ that model identity, STOP and return verdict NOT_TESTED with reason
 ## Frozen review target
 Repo/worktree: C:\temp\JARVIS-24H-V2-Knowledge-Brain
 Branch: candidate/24h-v2-knowledge-brain
-Pinned commit: recorded in evidence/24h/v2-knowledge-brain/RUNS.md
-("FROZEN COMMIT" line). Verify `git rev-parse HEAD` matches it exactly.
-If HEAD differs, the certification is void: return FAIL with the actual SHA.
+Pinned SLICE commit: e79a8a5961e90f67cda499db12b056d2cf759d31
+(also recorded in evidence/24h/v2-knowledge-brain/RUNS.md
+"FROZEN COMMIT"). Verify:
+1. `git rev-parse e79a8a5...` resolves and `git merge-base --is-ancestor
+   e79a8a5961e90f67cda499db12b056d2cf759d31 HEAD` succeeds;
+2. `git diff --name-only e79a8a5961e90f67cda499db12b056d2cf759d31 HEAD`
+   contains ONLY paths under evidence/24h/ (docs/evidence bookkeeping
+   commits after the freeze are permitted; any source/test change after
+   the freeze voids certification => FAIL with the actual SHAs).
 Base for diffs: 7ac0b2373c8d4c74924fcea15c028c4f6e9cdc3c.
 
 ## Governing authority (read first)
