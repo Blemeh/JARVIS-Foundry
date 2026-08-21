@@ -104,12 +104,23 @@ def score_candidate_for_executive(
 
     cal_adj = calibration.adjustment_for(source=source, objective=objective)
 
+    # Keyword-bait damping: hype terms (URGENT/crash/now/...) inflate the
+    # provider's value/urgency estimates independently of whether the work
+    # advances an active owner goal. When goal fit is weak, scale those
+    # terms by strategic fit so "interesting" cannot outrank "aligned".
+    # The penalty is recorded as its own factor for explainability.
+    hype_terms = ("urgent", "crash", "asap", "immediately", "deadline",
+                  "tonight", "critical!!")
+    has_hype = any(t in objective.lower() for t in hype_terms)
     bait_penalty = 0.0
     if goal_fit < 0.1 and (
         (value_term is not None and value_term > 0.5)
         or (urgency_term is not None and urgency_term > 0.5)
+        or has_hype
     ):
         bait_penalty = 0.15
+        value_term = None if value_term is None else round(value_term * 0.5, 4)
+        urgency_term = None if urgency_term is None else round(urgency_term * 0.5, 4)
 
     # Reversibility / risk from evidence and objective terms.
     reversibility = 0.7

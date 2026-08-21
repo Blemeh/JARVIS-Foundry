@@ -193,6 +193,8 @@ class ExecutiveDecisionService:
         )
 
         best = ranked[0]
+        # Every runner-up gets an explicit, recorded disposition so the
+        # decision is auditable: why each alternative lost.
         for score in ranked[1:]:
             if score.composite < self.min_action_score:
                 rejected.append({
@@ -205,6 +207,15 @@ class ExecutiveDecisionService:
                     "candidate_id": score.candidate_id,
                     "composite": score.composite,
                     "reason": "low goal alignment vs selected candidate",
+                })
+            else:
+                rejected.append({
+                    "candidate_id": score.candidate_id,
+                    "composite": score.composite,
+                    "reason": (
+                        f"ranked below selected candidate "
+                        f"({score.composite:.3f} < {best.composite:.3f})"
+                    ),
                 })
 
         # Comparative WAIT: candidates exist but acting is worse than waiting.
