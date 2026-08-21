@@ -1,0 +1,62 @@
+{
+  "candidate": "Executive Intelligence M2 (goals/decisions/eligibility/calibration/CC projection/live proof)",
+  "builder_commit": "769715a7f8aee22bf4ab2db8870c37e6e9c9ef1b",
+  "before": {
+    "current": "9a10910f78a4a618fba4c916b418056e4ada1991",
+    "previous": "24d38121a7c46c71d2447ef9eaf78b8c38bf5024"
+  },
+  "built": {
+    "release_id": "rel-769715a7f8ae-060c9abc",
+    "source_sha": "769715a7f8aee22bf4ab2db8870c37e6e9c9ef1b",
+    "python_version": "3.13.5",
+    "package_version": "0.1.0",
+    "schema_compatibility": {
+      "package_schema": 34,
+      "opens_min": 34,
+      "opens_max": 34
+    },
+    "created_at": "2026-08-21T16:06:18.732045Z"
+  },
+  "promoted": {
+    "current": "769715a7f8aee22bf4ab2db8870c37e6e9c9ef1b",
+    "previous": "9a10910f78a4a618fba4c916b418056e4ada1991"
+  },
+  "validate_promoted": {
+    "returncode": 0,
+    "parsed": {
+      "raw": ""
+    }
+  },
+  "rollback": {
+    "current": "9a10910f78a4a618fba4c916b418056e4ada1991",
+    "previous": "769715a7f8aee22bf4ab2db8870c37e6e9c9ef1b",
+    "generation": {
+      "source_sha": "9a10910f78a4a618fba4c916b418056e4ada1991",
+      "schema": 34,
+      "backup": null,
+      "recorded_at": "2026-08-21T16:06:19.053994Z"
+    },
+    "switched": true
+  },
+  "validate_rollback": {
+    "returncode": 0,
+    "parsed": {
+      "raw": ""
+    }
+  },
+  "returned": {
+    "current": "769715a7f8aee22bf4ab2db8870c37e6e9c9ef1b",
+    "previous": "9a10910f78a4a618fba4c916b418056e4ada1991"
+  },
+  "validate_return": {
+    "returncode": 0,
+    "parsed": {
+      "raw": ""
+    }
+  },
+  "verdict": "PASS",
+  "after": {
+    "current": "769715a7f8aee22bf4ab2db8870c37e6e9c9ef1b",
+    "previous": "9a10910f78a4a618fba4c916b418056e4ada1991"
+  }
+}
