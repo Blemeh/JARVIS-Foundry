@@ -13,6 +13,7 @@ secrets.*
 var/
 state/
 logs/
+scripts/.cc_live_e2e/
 *.db
 *.db-shm
 *.db-wal
@@ -22,6 +23,7 @@ EMERGENCY_STOP
 
 # Python
 __pycache__/
+*.egg-info/
 *.py[cod]
 .pytest_cache/
 .mypy_cache/

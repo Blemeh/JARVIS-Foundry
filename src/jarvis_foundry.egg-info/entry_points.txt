@@ -1,2 +1,0 @@
-[console_scripts]
-jarvis = jarvis_foundry.cli.main:main
