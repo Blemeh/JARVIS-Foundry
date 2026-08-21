@@ -78,10 +78,14 @@ class _SupportCache:
         if repo in self._repo_commits:
             return self._repo_commits[repo]
         try:
+            from .platform.windows_subprocess import headless_run_kwargs
+
             output = subprocess.run(
                 ["git", "-C", str(repo), "log", "--format=%H",
                  f"-n{_REPO_LOG_DEPTH}"],
-                capture_output=True, text=True, timeout=30, check=False)
+                capture_output=True, text=True, timeout=30, check=False,
+                **headless_run_kwargs(),
+            )
             commits = frozenset(output.stdout.splitlines())
         except (OSError, subprocess.SubprocessError):
             commits = frozenset()

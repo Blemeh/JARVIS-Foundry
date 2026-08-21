@@ -28,7 +28,11 @@ from typing import Any
 
 from ..clock import isoformat, parse, utc_now
 from ..database import FoundryDatabase
-from ..platform.windows_subprocess import headless_popen_kwargs, headless_run_kwargs
+from ..platform.windows_subprocess import (
+    headless_popen_kwargs,
+    headless_run_kwargs,
+    pid_alive as _pid_alive,
+)
 from .leases import LeaseManager, LeaseUnavailable
 
 ADAPTER_PID_TABLE_NAME = "adapter_worker_pids.json"
@@ -217,20 +221,7 @@ def list_process_tree(root_pid: int) -> list[int]:
 
 
 def pid_alive(pid: int) -> bool:
-    if pid <= 0:
-        return False
-    if os.name == "nt":
-        result = subprocess.run(
-            ["tasklist", "/FI", f"PID eq {pid}", "/NH"],
-            capture_output=True, text=True, timeout=10, check=False,
-            **headless_run_kwargs(),
-        )
-        return str(pid) in (result.stdout or "")
-    try:
-        os.kill(pid, 0)
-    except OSError:
-        return False
-    return True
+    return _pid_alive(pid)
 
 
 def _taskkill(pid: int, *, force: bool) -> None:

@@ -70,3 +70,4 @@ stop_integration:
   # Do not prefix with "foundry/" — home is already the foundry directory.
   sentinel_path: "EMERGENCY_STOP"
   pause_directives: true
+

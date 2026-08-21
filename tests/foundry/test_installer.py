@@ -16,6 +16,10 @@ from pathlib import Path
 import pytest
 
 from jarvis_foundry.database import FoundryDatabase
+from jarvis_foundry.platform.windows_subprocess import (
+    background_python_executable,
+    headless_run_kwargs,
+)
 from jarvis_foundry.installer import (
     PROFILE_FILE,
     V1_TASK_NAME,
@@ -38,7 +42,7 @@ def installer_fixture(tmp_path, *, task_name=None):
         task_name=name,
         foundry_home=home,
         hermes_home=tmp_path / "hermes-home",
-        python_exe=sys.executable,
+        python_exe=background_python_executable(sys.executable),
         profile={"mission_roles": "default"},
         gate_verdict_path=gate_verdict,
     )
@@ -448,7 +452,9 @@ def test_task_restarts_after_hard_kill_via_repeating_trigger(tmp_path):
         # the scheduler so IgnoreNew semantics apply.
         result = subprocess.run(
             ["schtasks", "/run", "/tn", installer.task_name],
-            capture_output=True, text=True, timeout=60)
+            capture_output=True, text=True, timeout=60,
+            **headless_run_kwargs(),
+        )
         assert result.returncode == 0, result.stderr
 
         def daemon_lease_owner() -> str | None:
@@ -470,16 +476,19 @@ def test_task_restarts_after_hard_kill_via_repeating_trigger(tmp_path):
         # Hard-kill the daemon process (TerminateProcess semantics).
         ps = subprocess.run(
             ["powershell", "-NoProfile", "-Command",
-             f"Get-CimInstance Win32_Process -Filter \"name='python.exe'\" | "
+             f"Get-CimInstance Win32_Process -Filter \"name='python.exe' or name='pythonw.exe'\" | "
              f"Where-Object {{ $_.CommandLine -like '*{installer.task_name}*' -or "
              f"($_.CommandLine -like '*jarvis_foundry.supervisor.run*' -and "
              f"$_.CommandLine -like '*{installer.foundry_home}*') }} | "
              f"Select-Object -ExpandProperty ProcessId | Select-Object -First 1"],
-            capture_output=True, text=True, errors="replace", timeout=60)
+            capture_output=True, text=True, errors="replace", timeout=60,
+            **headless_run_kwargs(),
+        )
         pid = ps.stdout.strip()
         assert pid, "daemon process not found"
         kill = subprocess.run(["taskkill", "/f", "/pid", pid],
-                              capture_output=True, text=True, errors="replace", timeout=60)
+                              capture_output=True, text=True, errors="replace", timeout=60,
+                              **headless_run_kwargs())
         assert kill.returncode == 0, kill.stderr
 
         # The next repeating tick (<= 1 minute) must start a NEW instance

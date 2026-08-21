@@ -61,8 +61,13 @@ class TierCGitVersioning:
 
     # ---- git helpers -----------------------------------------------------
     def _git(self, *args: str, check: bool = True) -> subprocess.CompletedProcess:
-        result = subprocess.run(["git", *args], cwd=str(self.git_dir),
-                                capture_output=True, text=True, check=False)
+        from ..platform.windows_subprocess import headless_run_kwargs
+
+        result = subprocess.run(
+            ["git", *args], cwd=str(self.git_dir),
+            capture_output=True, text=True, check=False,
+            **headless_run_kwargs(),
+        )
         if check and result.returncode != 0:
             raise RuntimeError(f"git {' '.join(args)} failed: {result.stderr.strip()}")
         return result

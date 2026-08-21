@@ -29,9 +29,12 @@ class EvidenceError(RuntimeError):
 
 
 def _run(cmd: list[str], *, cwd: Path, timeout: int = 30) -> subprocess.CompletedProcess:
+    from ..platform.windows_subprocess import headless_run_kwargs
+
     return subprocess.run(
         cmd, cwd=str(cwd), capture_output=True, text=True,
         timeout=timeout, check=False,
+        **headless_run_kwargs(),
     )
 
 

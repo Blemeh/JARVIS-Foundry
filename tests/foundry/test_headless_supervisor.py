@@ -1,6 +1,7 @@
 """Tests for Windows headless subprocess helpers and production launchers."""
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -13,8 +14,11 @@ from jarvis_foundry.platform.windows_subprocess import (
     CREATE_NO_WINDOW,
     background_python_executable,
     creationflags_no_window,
+    headless_popen,
     headless_popen_kwargs,
+    headless_run,
     headless_run_kwargs,
+    pid_alive,
 )
 
 
@@ -81,6 +85,85 @@ def test_create_no_window_suppresses_console_for_cmd():
     )
     assert result.returncode == 0
     assert "jarvis-headless-probe" in result.stdout
+
+
+def test_headless_kwargs_preserve_existing_creationflags(monkeypatch):
+    monkeypatch.setattr("jarvis_foundry.platform.windows_subprocess.is_windows", lambda: True)
+    extra = 0x00000008  # DETACHED_PROCESS
+    kwargs = headless_run_kwargs(creationflags=extra)
+    assert kwargs["creationflags"] & CREATE_NO_WINDOW
+    assert kwargs["creationflags"] & extra
+
+
+def test_headless_run_wrapper_uses_no_window(monkeypatch):
+    monkeypatch.setattr("jarvis_foundry.platform.windows_subprocess.is_windows", lambda: True)
+    calls: list[dict] = []
+
+    def fake_run(args, **kwargs):
+        calls.append(kwargs)
+        return subprocess.CompletedProcess(args, 0, "ok", "")
+
+    monkeypatch.setattr("jarvis_foundry.platform.windows_subprocess.subprocess.run", fake_run)
+    result = headless_run(["cmd", "/c", "echo test"], capture_output=True, text=True)
+    assert result.stdout == "ok"
+    assert calls[0]["creationflags"] & CREATE_NO_WINDOW
+
+
+def test_headless_popen_wrapper_uses_no_window(monkeypatch):
+    monkeypatch.setattr("jarvis_foundry.platform.windows_subprocess.is_windows", lambda: True)
+    calls: list[dict] = []
+
+    class FakePopen:
+        def __init__(self, args, **kwargs):
+            calls.append(kwargs)
+            self.args = args
+            self.pid = 4242
+
+        def poll(self):
+            return 0
+
+    monkeypatch.setattr("jarvis_foundry.platform.windows_subprocess.subprocess.Popen", FakePopen)
+    process = headless_popen(["cmd", "/c", "echo test"])
+    assert process.pid == 4242
+    assert calls[0]["creationflags"] & CREATE_NO_WINDOW
+
+
+def test_pid_alive_current_process():
+    assert pid_alive(os.getpid()) is True
+
+
+def test_pid_alive_invalid_pid():
+    assert pid_alive(-1) is False
+    assert pid_alive(0) is False
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows-only pid probe")
+def test_pid_alive_does_not_spawn_tasklist():
+    assert pid_alive(os.getpid()) is True
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows-only subprocess flag probe")
+def test_headless_run_capture_and_returncode():
+    result = headless_run(
+        ["cmd", "/c", "exit", "7"],
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert result.returncode == 7
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows-only subprocess flag probe")
+def test_headless_popen_capture_and_terminate():
+    process = headless_popen(
+        ["cmd", "/c", "echo jarvis-popen-probe"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    stdout, _stderr = process.communicate(timeout=10)
+    assert process.returncode == 0
+    assert "jarvis-popen-probe" in stdout
 
 
 def test_release_python_executables_accepts_pythonw_pair(tmp_path):

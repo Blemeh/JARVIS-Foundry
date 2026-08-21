@@ -72,15 +72,15 @@ def main() -> int:
     monitor_src = REPO / "scripts" / "convergence" / "monitor_proving_window.py"
     monitor_dst = EVIDENCE_LIVE / "monitor_proving_window.py"
     shutil.copy2(monitor_src, monitor_dst)
-    release_py = (
+    release_pyw = (
         Path(r"C:\Users\b\AppData\Local\JARVIS") / "releases" / current
-        / ".venv" / "Scripts" / "python.exe"
+        / ".venv" / "Scripts" / "pythonw.exe"
     )
     checkpoint_path = EVIDENCE_LIVE / "CHECKPOINT.json"
     env = {k: v for k, v in __import__("os").environ.items()
            if k not in {"PYTHONPATH", "PYTHONHOME"}}
     first = subprocess.run(
-        [str(release_py), str(monitor_dst),
+        [str(release_pyw), str(monitor_dst),
          "--database", str(FoundryPaths(home).database),
          "--manifest", str(manifest_path),
          "--output", str(checkpoint_path)],
@@ -88,7 +88,7 @@ def main() -> int:
     )
     task_name = r"\JARVIS-Prompt4-M11-Trust-Monitor"
     tr = (
-        f"\"{release_py}\" \"{monitor_dst}\" "
+        f"\"{release_pyw}\" \"{monitor_dst}\" "
         f"--database \"{FoundryPaths(home).database}\" "
         f"--manifest \"{manifest_path}\" "
         f"--output \"{checkpoint_path}\""

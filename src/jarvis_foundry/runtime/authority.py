@@ -195,10 +195,13 @@ def _git_toplevel(start: Path) -> Path | None:
 
 
 def _git_head(repo: Path) -> str | None:
+    from ..platform.windows_subprocess import headless_run_kwargs
+
     try:
         result = subprocess.run(
             ["git", "-C", str(repo), "rev-parse", "HEAD"],
             capture_output=True, text=True, timeout=10, check=False,
+            **headless_run_kwargs(),
         )
     except OSError:
         return None

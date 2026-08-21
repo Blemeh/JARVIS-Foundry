@@ -42,15 +42,6 @@ TASK_XML_TEMPLATE = """<?xml version="1.0" encoding="UTF-16"?>
       <UserId>{user_id}</UserId>
       <Enabled>true</Enabled>
     </LogonTrigger>
-    <TimeTrigger>
-      <StartBoundary>{start_boundary}</StartBoundary>
-      <Enabled>true</Enabled>
-      <Repetition>
-        <Interval>PT1M</Interval>
-        <Duration>P30D</Duration>
-        <StopAtDurationEnd>false</StopAtDurationEnd>
-      </Repetition>
-    </TimeTrigger>
   </Triggers>
   <Principals>
     <Principal id="Author">
@@ -153,10 +144,13 @@ class InstallerError(RuntimeError):
 
 
 def _run_schtasks(*args: str) -> subprocess.CompletedProcess[str]:
+    from .platform.windows_subprocess import headless_run_kwargs
+
     return subprocess.run(
         ["schtasks"] + list(args),
         capture_output=True, text=True, encoding="utf-8", errors="replace",
         timeout=60,
+        **headless_run_kwargs(),
     )
 
 

@@ -264,6 +264,8 @@ class HermesOneshotAdapter:
         if usage_path is not None:
             command += ["--usage-file", str(usage_path)]
         try:
+            from ..platform.windows_subprocess import headless_run_kwargs
+
             process = subprocess.run(
                 command,
                 cwd=str(self.hermes_root),
@@ -271,6 +273,7 @@ class HermesOneshotAdapter:
                 capture_output=True,
                 text=True,
                 timeout=self.timeout_seconds,
+                **headless_run_kwargs(),
             )
         except subprocess.TimeoutExpired:
             return RoleResult(
