@@ -123,6 +123,8 @@ def generate_candidate(db: FoundryDatabase, mission_id: str, source: str,
     """Record a candidate; duplicate detection via the canonicalized
     objective (vs candidates AND missions). Returns
     {candidate_id, created, duplicate_of}."""
+    from .executive.eligibility import stamp_executive_eligibility
+
     canonical = canonicalize_statement(objective)
     duplicate = _find_duplicate(db, canonical, connection=connection)
     candidate_id = f"cand-{uuid.uuid4().hex[:12]}"
@@ -131,14 +133,20 @@ def generate_candidate(db: FoundryDatabase, mission_id: str, source: str,
         {"candidate_id": candidate_id, "mission_id": mission_id,
          "source": source, "objective": objective,
          "objective_canonical": canonical,
-         "evidence": evidence or [],
+         "evidence": list(evidence or []),
          "duplicate_of": duplicate},
         source_type="supervisor", source_id="wp10-discovery",
         idempotency_key=f"discovery.candidate_generated:{candidate_id}")
     if connection is None:
         db.append(event)
+        stamp_executive_eligibility(
+            db, evidence, source=source, candidate_id=candidate_id,
+        )
     else:
         db.append_events_on_connection(connection, [event])
+        stamp_executive_eligibility(
+            db, evidence, source=source, candidate_id=candidate_id,
+        )
     return {"candidate_id": candidate_id, "created": duplicate is None,
             "duplicate_of": duplicate}
 

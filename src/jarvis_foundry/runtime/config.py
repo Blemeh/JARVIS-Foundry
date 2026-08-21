@@ -39,6 +39,11 @@ class WorkerRuntimeConfig:
     lab_crash_after_write: bool = False
     lab_crash_step_id: str = "step-a"
     provider_settings: ProviderSettings = field(default_factory=default_provider_settings)
+    executive_selection_enabled: bool = False
+    executive_min_action_score: float = 0.40
+    executive_wait_margin: float = 0.05
+    executive_activation_epoch: str | None = None
+    executive_candidate_limit: int = 20
 
     @classmethod
     def from_yaml(
@@ -84,6 +89,15 @@ class WorkerRuntimeConfig:
             lab_crash_after_write=bool(raw.get("lab_crash_after_write", False)),
             lab_crash_step_id=str(raw.get("lab_crash_step_id", "step-a")),
             provider_settings=settings,
+            executive_selection_enabled=bool(
+                raw.get("executive", {}).get("selection_enabled", False)),
+            executive_min_action_score=float(
+                raw.get("executive", {}).get("min_action_score", 0.40)),
+            executive_wait_margin=float(
+                raw.get("executive", {}).get("wait_margin", 0.05)),
+            executive_activation_epoch=raw.get("executive", {}).get("activation_epoch"),
+            executive_candidate_limit=int(
+                raw.get("executive", {}).get("candidate_limit", 20)),
         )
         cfg.validate()
         return cfg

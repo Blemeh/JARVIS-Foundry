@@ -186,8 +186,13 @@ def run_one_loop(db: FoundryDatabase, *, loop_id: str, adapter: Any,
                  target_root: str | Path | None = None,
                  instructions_builder: Callable[[str, Path], str] | None = None,
                  stop_path: str | Path | None = None,
+                 test_legacy_selection: bool = False,
                  ) -> dict[str, Any]:
-    """Run one complete real loop. Returns the loop report dict."""
+    """Run one complete real loop. Returns the loop report dict.
+
+    Independent candidate selection is TEST-ONLY. Production authority is
+    ExecutiveDecisionService via ``runtime.worker_loop``.
+    """
     report: dict[str, Any] = {"loop_id": loop_id}
 
     # 0. MANDATORY MODEL ROUTING (DIR-2026-08-12): every real role must
@@ -269,7 +274,15 @@ def run_one_loop(db: FoundryDatabase, *, loop_id: str, adapter: Any,
     report["maintenance"] = maintenance["counts"]
     report["maintenance_candidate_created"] = maintenance["created"]
 
-    # 4. SCORE + SELECT/REJECT
+    # 4. SCORE + SELECT/REJECT — production authority is ExecutiveDecisionService.
+    if not test_legacy_selection:
+        report["outcome"] = "WAITING"
+        report["reason"] = (
+            "v3_loop independent selection is test-only; use "
+            "ExecutiveDecisionService via runtime.worker_loop for production"
+        )
+        return report
+
     top = _top_scorable(db, budget=score_budget)
     report["scored"] = len(top)
     selected = next((c for c in top if c["score"] >= min_score), None)

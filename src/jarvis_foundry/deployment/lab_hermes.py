@@ -47,6 +47,8 @@ class LabHermesAdapter(ScriptedWorkerAdapter):
         self.last_owned_pid: int | None = None
 
     def dispatch(self, contract, *, heartbeat):
+        if contract.step_id not in self.expected:
+            return self._dispatch_dynamic(contract, heartbeat=heartbeat)
         artifact, expected = self.expected[contract.step_id]
         path = Path(contract.working_root) / artifact
         crash = (
@@ -79,6 +81,45 @@ class LabHermesAdapter(ScriptedWorkerAdapter):
                 observed_touched_paths=(),
                 verdict="PASS" if passed else "FAIL",
                 summary="artifact matches" if passed else "artifact mismatch",
+            )
+        return super().dispatch(contract, heartbeat=heartbeat)
+
+    def _dispatch_dynamic(self, contract, *, heartbeat):
+        """Handle executive and other dynamic contract steps."""
+        artifacts = tuple(contract.expected_artifacts or ())
+        if contract.role in ("builder", "repair"):
+            defect = (
+                self.crash_after_write
+                and contract.step_id == self.crash_step_id
+                and int(contract.attempt) == 1
+            )
+            for rel in artifacts:
+                path = Path(contract.working_root) / rel
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(
+                    "DEFECT\n" if defect else
+                    "Objective report\nVERIFIED_BY executive-worker\n",
+                    encoding="utf-8",
+                )
+            self.outcome = ScriptedOutcome(
+                files_changed=artifacts,
+                observed_touched_paths=artifacts,
+                summary=f"{contract.role} wrote executive artifacts",
+            )
+        else:
+            missing = []
+            for rel in artifacts:
+                path = Path(contract.working_root) / rel
+                if not path.is_file():
+                    missing.append(rel)
+                elif "VERIFIED_BY executive-worker" not in path.read_text(encoding="utf-8"):
+                    missing.append(rel)
+            passed = not missing
+            self.outcome = ScriptedOutcome(
+                files_changed=(),
+                observed_touched_paths=(),
+                verdict="PASS" if passed else "FAIL",
+                summary="verified" if passed else f"missing {missing}",
             )
         return super().dispatch(contract, heartbeat=heartbeat)
 
