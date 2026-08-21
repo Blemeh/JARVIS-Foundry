@@ -7,27 +7,27 @@ If this document and another current-status document disagree, THIS document win
 for "what exists now" claims; the architecture contract wins for binding invariants.
 
 Last reconciled: 2026-08-21 (Executive Intelligence M2 promoted to main at
-PROMOTION_MERGE_SHA; immutable release deployed; live proof 12/12 PASS)
+b8bc3543570f3b19ba4700433820b7665d5e07c5; immutable release deployed; live proof 12/12 PASS)
 
 ```text
-CURRENT CANONICAL HEAD:      PROMOTION_MERGE_SHA (main: Executive Intelligence M2
+CURRENT CANONICAL HEAD:      b8bc3543570f3b19ba4700433820b7665d5e07c5 (main: Executive Intelligence M2
                              integrated — durable goals, governed admission,
                              comparative decision model with bait damping,
                              outcome calibration, CC executive projection)
-CURRENT REPOSITORY HEAD:     PROMOTION_MERGE_SHA (origin/main aligned)
-CURRENT STATE RECORD:        PROMOTION_MERGE_SHA (Executive Intelligence promoted)
-TESTED SOURCE HEAD:          PROMOTION_MERGE_SHA (1559-test full suite R3:
+CURRENT REPOSITORY HEAD:     b8bc3543570f3b19ba4700433820b7665d5e07c5 (origin/main aligned)
+CURRENT STATE RECORD:        b8bc3543570f3b19ba4700433820b7665d5e07c5 (Executive Intelligence promoted)
+TESTED SOURCE HEAD:          b8bc3543570f3b19ba4700433820b7665d5e07c5 (1559-test full suite R3:
                              failures=0 errors=0 skipped=0; independent
                              adversarial verifier round-3 report in
                              var/evidence/m2/M2_INDEPENDENT_VERIFIER.json —
                              rounds 1-2 died on provider errors mid-review)
-DEPLOYED RELEASE:            PROMOTION_MERGE_SHA (CURRENT)
+DEPLOYED RELEASE:            b8bc3543570f3b19ba4700433820b7665d5e07c5 (CURRENT)
 PREVIOUS RELEASE:            2851d13bbaf89bb807e473029aa6e4147b807fc2 (PREVIOUS)
 PROVIDER CONFIG:             %LOCALAPPDATA%\JARVIS\config\provider.yaml
                              (opencode_go / muse-spark-1.2-contributor / OpenCode Go URL)
 CURRENT SCHEMA:              v34 (live deployed database at schema v34; no
                              migration required by M2 — additive event types only)
-FULL SUITE:                  1559 collected at PROMOTION_MERGE_SHA;
+FULL SUITE:                  1559 collected at b8bc3543570f3b19ba4700433820b7665d5e07c5;
                              failures=0, errors=0, skipped=0
 FOCUSED EXECUTIVE SUITE:     32 passed (tests/foundry/test_executive_intelligence.py)
 FRONTEND:                    typecheck clean; vitest 40/40; production build OK;
