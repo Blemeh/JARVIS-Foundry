@@ -1,0 +1,30 @@
+{
+  "verdict": "PASS",
+  "reviewer": {
+    "model": "x-preview",
+    "session": "isolated-verifier-r4-execution"
+  },
+  "snapshot": {
+    "head": "4faf3c8b4c6b46be0cf0e455481827a579e3268a"
+  },
+  "claims": [
+    {
+      "id": "focused_suite",
+      "result": "PASS 32/32 passed (pytest -q output: 32 dots, '[100%]', exit_code=0, no F/E/s marks)"
+    },
+    {
+      "id": "live_proof",
+      "result": "PASS verdict=PASS, all 12 proofs PASS (M2_LIVE_PROOF.json at C:/temp/r4_live_proof_r4/evidence/M2_LIVE_PROOF.json)"
+    },
+    {
+      "id": "adversarial_probes_r4",
+      "result": "PASS verdict=PASS, 6/6 probes PASS: P1_forge_inert PASS pre=False/stale_historical post=False/stale_historical (forge inert); P2_replay_idempotent PASS events=1 identical=True; P3_stop_blocks PASS kind=WAIT; P4_latest_newest PASS; P5_bait_damped PASS top=cand-56a5e51aec35; P6_calibration PASS events=2 failed_adj=-0.150 blocked_adj=0.000"
+    },
+    {
+      "id": "full_suite_junit_r3",
+      "result": "PASS tests=1559 failures=0 errors=0 skipped=0 (FULL_SUITE_R3.junit.xml)"
+    }
+  ],
+  "provenance_note": "Probe suite authored by builder (r4_probe_suite.py) but executed independently in this session; probe design independence derives from completed round-1 review which found and fixed a real defect (CC ordering). Rounds 1-3 died on provider HTTP errors mid-review.",
+  "findings": []
+}
