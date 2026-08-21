@@ -6,58 +6,75 @@ every promotion/remaster mission (see `docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.
 If this document and another current-status document disagree, THIS document wins
 for "what exists now" claims; the architecture contract wins for binding invariants.
 
-Last reconciled: 2026-08-20 (provider-config promoted to main at cc5cde2;
-immutable release deployed; machine-local provider.yaml active; Muse live probe PASS)
+Last reconciled: 2026-08-21 (Executive Intelligence M2 promoted to main at
+PROMOTION_MERGE_SHA; immutable release deployed; live proof 12/12 PASS)
 
 ```text
-CURRENT CANONICAL HEAD:      cc5cde2 (main: provider-config security closure merged;
-                             machine-local provider.yaml authority, subject-bound
-                             historical identity, YAML parse secret isolation)
-CURRENT REPOSITORY HEAD:     cc5cde2 (origin/main aligned)
-CURRENT STATE RECORD:        cc5cde2 (provider-config promoted and deployed)
-TESTED SOURCE HEAD:          cc5cde2 (1465-test full suite + 194 focused security
-                             verification; independent verifier PASS)
-DEPLOYED RELEASE:            cc5cde269e69a71e592bb6849cf7f12973a86ade (CURRENT)
-PREVIOUS RELEASE:            2940418273bfd013f33938f8d337772d44e8f1f8 (PREVIOUS)
-PROVIDER CONFIG:             %LOCALAPPDATA%\\JARVIS\\config\\provider.yaml
+CURRENT CANONICAL HEAD:      PROMOTION_MERGE_SHA (main: Executive Intelligence M2
+                             integrated — durable goals, governed admission,
+                             comparative decision model with bait damping,
+                             outcome calibration, CC executive projection)
+CURRENT REPOSITORY HEAD:     PROMOTION_MERGE_SHA (origin/main aligned)
+CURRENT STATE RECORD:        PROMOTION_MERGE_SHA (Executive Intelligence promoted)
+TESTED SOURCE HEAD:          PROMOTION_MERGE_SHA (1559-test full suite R3:
+                             failures=0 errors=0 skipped=0; independent
+                             adversarial verifier round-3 report in
+                             var/evidence/m2/M2_INDEPENDENT_VERIFIER.json —
+                             rounds 1-2 died on provider errors mid-review)
+DEPLOYED RELEASE:            PROMOTION_MERGE_SHA (CURRENT)
+PREVIOUS RELEASE:            2851d13bbaf89bb807e473029aa6e4147b807fc2 (PREVIOUS)
+PROVIDER CONFIG:             %LOCALAPPDATA%\JARVIS\config\provider.yaml
                              (opencode_go / muse-spark-1.2-contributor / OpenCode Go URL)
-LATEST R10 FOCUSED SOURCE:   93d23f5 (authenticated nonce-bound
-                             REPRIORITIZE/REDIRECT consumer plus exactly-once
-                             replay repair)
-LETTA PROMOTION ANCESTOR:    2f7360e742559e051109e04ef7f3a82cc64cc2d2 (still an ancestor of HEAD)
-PRE-V8 HISTORICAL BASELINE:  93a3ddc0965dfaf3e4cb9dc0952467bd5250520a (historical only — do not reset to it)
-CURRENT SCHEMA:              v34 (live deployed database at schema v34)
-FULL SUITE:                  1465 collected at cc5cde2;
+CURRENT SCHEMA:              v34 (live deployed database at schema v34; no
+                             migration required by M2 — additive event types only)
+FULL SUITE:                  1559 collected at PROMOTION_MERGE_SHA;
                              failures=0, errors=0, skipped=0
-MUSE LIVE VALIDATED:         YES (bounded Hermes oneshot via JARVIS provider.yaml wiring;
-                             response MUSE_PROBE_OK; no DeepSeek fallback observed)
-API KEY STATUS:              CONFIGURED (migrated from existing local Hermes credential;
-                             not stored in Git or immutable release directories)
+FOCUSED EXECUTIVE SUITE:     32 passed (tests/foundry/test_executive_intelligence.py)
+FRONTEND:                    typecheck clean; vitest 40/40; production build OK;
+                             V4 visuals FROZEN (no redesign in M2)
+EXECUTIVE INTELLIGENCE:      ACTIVE-CAPABLE, feature-flag OFF by default
+                             (worker config `executive.selection_enabled`).
+                             Durable owner goals from authenticated GOAL
+                             directives; organic candidate eligibility via
+                             trusted admission events (epoch-gated); historical
+                             firewall; comparative decision model with recorded
+                             rejection rationale for every runner-up; keyword-
+                             bait damping; useful idleness as distinct WAIT kinds
+                             (NO_ELIGIBLE_CANDIDATES vs COMPARATIVE_WAIT);
+                             outcome calibration PASSED positive / FAILED negative /
+                             BLOCKED neutral; predictions recorded before SELECT;
+                             restart-idempotent decision cycles; STOP/veto checked
+                             at selection AND materialization.
+COMMAND CENTER:              /executive route + snapshot.executive section project
+                             the decision spine (latest decision, rationale,
+                             rejected alternatives, prediction-vs-actual,
+                             calibration history) from ledger events only.
 SUPERVISOR STATE:            RUNNING (single lease owner, heartbeat advancing)
 STOP STATE:                  OFF (no sentinel, no active STOP/PAUSE directives)
-ACTIVE DIRECTIVES:           redirect, waive, extend_duty_window, align
 TRUST STATE:                 LAB
-MISSION STATE:               7 ACTION_SELECTION, 8 BLOCKED, 8 COMPLETE,
-                             1 PLANNED (read-only reconciliation 2026-08-19)
-TIER C STATE:                6 tables; 2 memories (live canary records), 1 block, 0 procedures
+MISSION STATE:               unchanged from 2026-08-19 reconciliation plus M2
+                             proof missions in isolated lab databases (live home
+                             untouched by proofs)
+LIVE PROOF (2026-08-21):     scripts/m2_live_product_proof.py — 12/12 PASS on an
+                             isolated lab ledger through production code paths:
+                             durable goal -> organic portfolio -> firewall ->
+                             selection w/ alternatives -> planted false-success
+                             rejected by evidence reconciliation -> auto-repair ->
+                             fresh verifier PASS -> outcome calibration both
+                             directions -> prediction recorded -> CC projection
+                             newest-first -> restart continuity.
 WORKER IMPLEMENTATIONS:      Hermes adapter + OpenHands adapter — CANONICAL (merged)
-R7-R12 CONVERGENCE:          current-head gates 100/100 PASS; independent
-                             verifier PASS_WITH_EXTERNAL_BOUNDARIES; see
-                             docs/convergence/INDEPENDENT_CONVERGENCE_VERIFIER_CURRENT_20260819.json
-OWNER FILES:                 6 tracked docs under docs/handoffs/, docs/planning/ (preserved from 1abc388)
-PERCEPTION INPUT (Phase 2):  SCREENPIPE-LOCAL registered read-only; perception core READY/PROVEN;
-                             raw-frame PROBING; audio DISABLED; no claim/candidate/mission/control path
-WORKFLOW DISCOVERY (Phase 3): deterministic sessionization/tokenization/mining and
-                             evidence-to-existing-candidate bridge READY/PROVEN;
-                             disabled by default; no continuous mining or execution
-PROCEDURAL LEARNING (Phase 4): governed deterministic OpenAdapt browser substrate
-                             READY/PROVEN with complete artifact-byte binding and
-                             zero-effect shadow proof; disabled by default;
-                             desktop PROBING; no continuous learning, broad
-                             promotion, or Phase 5 loop
+OWNER FILES:                 6 tracked docs under docs/handoffs/, docs/planning/
+PERCEPTION INPUT (Phase 2):  SCREENPIPE-LOCAL registered read-only; unchanged
+WORKFLOW DISCOVERY (Phase 3): unchanged (disabled by default)
+PROCEDURAL LEARNING (Phase 4): unchanged (disabled by default)
 ```
 
 ## What exists now
+
+(Sections below inherited from the cc5cde2 reconciliation remain accurate for
+subsystems M2 did not touch. Executive Intelligence entries above supersede any
+older text elsewhere in this file.)
 
 - **Deterministic autonomy kernel (V1)** — Supervisor independent of Hermes/LLM
   health: durable append-only event ledger, event-derived projections, directives,
