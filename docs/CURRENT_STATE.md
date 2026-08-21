@@ -6,32 +6,34 @@ every promotion/remaster mission (see `docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.
 If this document and another current-status document disagree, THIS document wins
 for "what exists now" claims; the architecture contract wins for binding invariants.
 
-Last reconciled: 2026-08-21 (Executive Intelligence M2 promoted to main at
-b8bc3543570f3b19ba4700433820b7665d5e07c5; immutable release deployed; live proof 12/12 PASS)
+Last reconciled: 2026-08-22 (24h release-captain program: verifier hardening
+9598a43 + V2 knowledge brain f1660f6 integrated onto main content via
+candidate/24h-integration @ 8f92b9f and pushed as a branch; INTEGRATION PASS,
+LIVE_PROMOTION_DEFERRED — deployed release unchanged at 769715a, live database
+remains schema v34)
 
 ```text
-CURRENT CANONICAL HEAD:      b8bc3543570f3b19ba4700433820b7665d5e07c5 (main: Executive Intelligence M2
-                             integrated — durable goals, governed admission,
-                             comparative decision model with bait damping,
-                             outcome calibration, CC executive projection)
-CURRENT REPOSITORY HEAD:     b8bc3543570f3b19ba4700433820b7665d5e07c5 (origin/main aligned)
-CURRENT STATE RECORD:        b8bc3543570f3b19ba4700433820b7665d5e07c5 (Executive Intelligence promoted)
-TESTED SOURCE HEAD:          b8bc3543570f3b19ba4700433820b7665d5e07c5 (1559-test full suite R3:
-                             failures=0 errors=0 skipped=0; independent
-                             adversarial verifier round-3 report in
-                             var/evidence/m2/M2_INDEPENDENT_VERIFIER.json —
-                             rounds 1-2 died on provider errors mid-review)
-DEPLOYED RELEASE:            b8bc3543570f3b19ba4700433820b7665d5e07c5 (CURRENT)
-PREVIOUS RELEASE:            2851d13bbaf89bb807e473029aa6e4147b807fc2 (PREVIOUS)
+CURRENT CANONICAL HEAD:      8f92b9f6c2c74ab60e7003385740918c1b01e588 (main:
+                             M2 Executive Intelligence plus integrated 24h
+                             lanes via merge chain 433e5f1 -> 262f156 -> 8f92b9f)
+CURRENT REPOSITORY HEAD:     8f92b9f6c2c74ab60e7003385740918c1b01e588 (origin/main aligned)
+CURRENT STATE RECORD:        8f92b9f6c2c74ab60e7003385740918c1b01e588
+TESTED SOURCE HEAD:          262f156c302e1efa22ed2a0c1c69fb0d04c0d145 (integration code head:
+                             gate battery v3 + clean sequential reruns — focused
+                             foundry 1516 collected, full foundry+convergence
+                             1616 collected, reruns failures=0 errors=0;
+                             independent exact-SHA adversarial reviews PASS for
+                             both lanes under evidence/24h/review/)
+DEPLOYED RELEASE:            769715a7f8aee22bf4ab2db8870c37e6e9c9ef1b (CURRENT)
+PREVIOUS RELEASE:            9a10910f78a4a618fba4c916b418056e4ada1991 (PREVIOUS)
 PROVIDER CONFIG:             %LOCALAPPDATA%\JARVIS\config\provider.yaml
                              (opencode_go / muse-spark-1.2-contributor / OpenCode Go URL)
-CURRENT SCHEMA:              v34 (live deployed database at schema v34; no
-                             migration required by M2 — additive event types only)
-                             CANDIDATE NOTE: candidate/24h-v2-knowledge-brain
-                             advances SCHEMA_VERSION to v35 (additive typed
-                             knowledge records, WP-24H-V2KB); the live
-                             database remains v34 until an owner-approved
-                             migration window.
+CURRENT SCHEMA:              v34 (live deployed database at schema v34)
+                             CANDIDATE NOTE: integrated candidate/24h-integration
+                             (@262f156) advances SCHEMA_VERSION to v35 (additive
+                             typed knowledge records + verifier binding, no live
+                             migration); the live database remains v34 until an
+                             owner-approved migration window; LIVE_PROMOTION_DEFERRED.
 FULL SUITE:                  1559 collected at b8bc3543570f3b19ba4700433820b7665d5e07c5;
                              failures=0, errors=0, skipped=0
 FOCUSED EXECUTIVE SUITE:     32 passed (tests/foundry/test_executive_intelligence.py)
