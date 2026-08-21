@@ -316,5 +316,7 @@ See `06_V3_THREAT_MODEL.md`. Limits table:
 ## 7. Rollback
 
 - Policy version rollback: emit `scoring.policy_superseded`; old version remains in registry.
-- Schema: additive migrations only; forward-compatible projections.
+- Schema: additive migrations only at `V3_SCHEMA_VERSION` (= `CANONICAL_V2_SCHEMA_VERSION + 1`; expected **v36** after V2 `f1660f6` lands v35). Forward-compatible projections. V3 MUST NOT register migration v35 (occupied by V2).
+- Interrupted migration: `migrate()` is idempotent per version; crash mid-DDL resumes from `schema_migrations` ledger; reconcile before retry.
+- Restore: lab/production rollback uses existing `evolution/restore.py` pattern; V3 gate AC-19 proves backup→migrate→restore at `V3_SCHEMA_VERSION`.
 - Feature flag: `discovery.cycle_enabled` (default false until gate PASS).

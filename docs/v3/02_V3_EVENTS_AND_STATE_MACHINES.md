@@ -220,3 +220,23 @@ OBSERVE ──► CANDIDATE_GENERATED ──► SCORED ──► PORTFOLIO_EVAL
 | Mid-mission | MissionLoop resume; lease reclaim |
 | Mid-verification | BLOCKED → fresh verifier session |
 | Mid-external-effect | reconcile_pending → provider query |
+
+## 8. Schema migration ordering
+
+V3 schema changes are a single additive migration at `V3_SCHEMA_VERSION`:
+
+```text
+V3_SCHEMA_VERSION = CANONICAL_V2_SCHEMA_VERSION + 1
+```
+
+| Stage | Version | Owner | Evidence |
+|-------|---------|-------|----------|
+| Pre-V2 merge (`a743fde`) | 34 | `main` | `migrations.py SCHEMA_VERSION=34` |
+| V2 Knowledge Brain (`f1660f6`) | **35** | V2 candidate | `SCHEMA_VERSION=35` — **occupied; V3 must not use** |
+| V3 Discovery WP1 (expected) | **36** | V3 implementation | `CANONICAL_V2_SCHEMA_VERSION + 1` after V2 on `main` |
+
+**Compatibility:** Projections added at v36 MUST rebuild from ledger on databases at v35 (forward migration). Downgrade is not supported; rollback is restore-from-backup, not schema reverse.
+
+**Interrupted migration:** If process dies during v36 DDL, `initialize()` / `migrate()` resumes from last committed version in `schema_migrations`; partial DDL within a version is transactional per `migrations.py` statement batching.
+
+**Projection replay:** After v36 migration, `rebuild_projections()` must converge with zero drift before V3 cycle enable.

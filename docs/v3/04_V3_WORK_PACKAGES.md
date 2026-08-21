@@ -4,6 +4,8 @@ Version: 1.0 (design)
 Base SHA: `a743fdeb535f78c5ad455e8b09944f721f2515a7`
 Prerequisite: Canonical V2 acceptance on `main`
 
+**Schema rule:** V3 WP1 migration at `V3_SCHEMA_VERSION = CANONICAL_V2_SCHEMA_VERSION + 1`. V2 candidate `f1660f6` occupies v35; expected V3 version is **v36**. See `00_V3_READ_FIRST.md` §7a.
+
 ## Dependency graph
 
 ```text
@@ -36,9 +38,9 @@ WP0 ──► WP1 ──► WP2 ──► WP3 ──► WP4
 | Scope | Extend `candidates` columns (`fingerprint`, `candidate_type`, `expected_outcome`, `provenance_hash`, `expires_at`); `candidate_outcomes` table; `discovery_portfolio` projection; projection handlers in `projections.py` |
 | Integration points | `src/jarvis_foundry/discovery_candidates.py`, `projections.py`, `migrations.py` |
 | Risk | MEDIUM (schema additive) |
-| Migration | v35 additive |
-| Acceptance | `pytest tests/foundry/test_discovery_candidates.py tests/foundry/test_v3_projections.py -q`; rebuild projections match live |
-| Rollback | Migration down script; feature flag off |
+| Migration | v36 additive (expected; `CANONICAL_V2_SCHEMA_VERSION + 1` — v35 occupied by V2 `f1660f6`) |
+| Acceptance | `pytest tests/foundry/test_discovery_candidates.py tests/foundry/test_v3_projections.py -q`; rebuild projections match live; verify `schema_migrations` ends at `V3_SCHEMA_VERSION` |
+| Rollback | Restore from pre-WP1 backup; feature flag off; no v36 down-migration |
 | Independent review | Schema + projection replay |
 | Stop condition | Reconcile drift > 0 |
 
@@ -114,9 +116,9 @@ WP0 ──► WP1 ──► WP2 ──► WP3 ──► WP4
 | Scope | Fault injection suite per threat model, migration rehearsal, projection tamper detection |
 | Integration points | `tests/foundry/test_v3_fault_*.py`, `reconcile.py`, `migrations.py` |
 | Risk | MEDIUM |
-| Migration | v35 rehearsal |
-| Acceptance | Full fault matrix PASS; `pytest tests/foundry/ -k v3 -q` |
-| Rollback | Restore from backup proven |
+| Migration | v36 forward + interrupted-migration + restore rehearsal (from v35 baseline) |
+| Acceptance | Full fault matrix PASS; `pytest tests/foundry/ -k v3 -q`; AC-19 migration subtests |
+| Rollback | Restore from backup proven; post-restore `SCHEMA_VERSION` = pre-V3 baseline |
 | Independent review | Mandatory adversarial verifier |
 | Stop condition | Any AC-07..AC-17 failure |
 

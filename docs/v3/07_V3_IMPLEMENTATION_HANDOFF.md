@@ -11,7 +11,7 @@ Base SHA: `a743fdeb535f78c5ad455e8b09944f721f2515a7`
 | 1 | V2 independent PASS (Session-04 or successor) | PENDING — candidate `f1660f6` |
 | 2 | V2 merged to canonical `main` | PENDING |
 | 3 | Integration gates PASS post-merge | PENDING |
-| 4 | Live schema matches accepted V2 migration | v34 candidate; live may lag |
+| 4 | Live schema matches accepted V2 migration | V2 candidate `f1660f6` defines v35; `main` at design base is v34 until V2 merges |
 | 5 | This design package committed on `candidate/v3-discovery-design` | THIS SESSION |
 | 6 | No severity-one defect in discovery/knowledge/mission paths | Verify at implementation start |
 
@@ -28,7 +28,7 @@ Base SHA: `a743fdeb535f78c5ad455e8b09944f721f2515a7`
 7. Mission compilation fail-closed on missing provenance/verifier/rollback.
 8. Outcome only on `mission.completed` + PASSED.
 9. Disposable bare-remote required for gate; no production mutation in acceptance.
-10. Additive schema migration v35 only for V3 tables/columns.
+10. Additive schema migration at `V3_SCHEMA_VERSION` only (= `CANONICAL_V2_SCHEMA_VERSION + 1`; expected **v36**; v35 occupied by V2).
 
 ## 3. Unresolved decisions (implementation must record choice)
 
@@ -43,8 +43,8 @@ Base SHA: `a743fdeb535f78c5ad455e8b09944f721f2515a7`
 
 Implement in one PR after V2 PASS:
 
-1. **WP0 fixtures:** `tests/fixtures/v3/policy_v3-policy-2026-08-21.json`, disposable bare remote helper.
-2. **WP1 migration v35:** Add columns to `candidates`; create `candidate_outcomes`, `scoring_policy_registry`; projection handlers.
+1. **WP0 fixtures:** `tests/fixtures/v3/policy_v3-policy-2026-08-21.json`, disposable bare remote helper, v35 baseline DB fixture.
+2. **WP1 migration at `V3_SCHEMA_VERSION` (expected v36):** Read `CANONICAL_V2_SCHEMA_VERSION` from merged `main`; add migration `CANONICAL_V2_SCHEMA_VERSION + 1` only. Extend `candidates` columns; create `candidate_outcomes`, `scoring_policy_registry`; projection handlers. **Do not allocate v35.**
 3. **WP2 `ScoringService`:** Register default policy event; hard filters; deterministic trace; extend `discovery.candidate_scored` payload.
 4. **Tests:** `test_v3_scoring.py` with AC-02 replay fixture; extend `test_discovery_candidates.py`.
 
@@ -93,8 +93,10 @@ Read in order:
 4. evidence/v3/design/V3_CAPABILITY_GAP.json
 
 Execute WP0+WP1+WP2 first vertical slice only. Preserve all invariants in
-02_ARCHITECTURE_CONTRACT.md. Use additive migration v35. Do not enable
-discovery.cycle_enabled in production. Run test_v3_scoring.py and full suite.
+02_ARCHITECTURE_CONTRACT.md. At WP1 start read CANONICAL_V2_SCHEMA_VERSION from
+merged main migrations.SCHEMA_VERSION; add V3 migration at that value + 1 only
+(expected v36 after V2 f1660f6 lands v35). Do not enable discovery.cycle_enabled
+in production. Run test_v3_scoring.py and full suite.
 
 Report STATUS per AGENTS.md reporting contract.
 ```

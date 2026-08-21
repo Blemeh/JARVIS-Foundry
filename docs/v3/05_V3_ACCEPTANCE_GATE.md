@@ -11,6 +11,8 @@ Reproducibly prove V3 Discovery and Building meets roadmap exit criteria without
 ## 2. Prerequisites
 
 - V2 canonical acceptance on `main` (hard gate).
+- Canonical V2 schema applied on `main` (`SCHEMA_VERSION`; expected **v35** from `f1660f6`).
+- V3 WP1 migration at `V3_SCHEMA_VERSION = CANONICAL_V2_SCHEMA_VERSION + 1` (expected **v36**; v35 occupied by V2).
 - WP0–WP8 implementation complete.
 - `discovery.cycle_enabled=true` in lab config only.
 - Full suite baseline recorded at gate HEAD.
@@ -37,7 +39,7 @@ Reproducibly prove V3 Discovery and Building meets roadmap exit criteria without
 | AC-16 | Context manifests bounded, reproducible, provenance-aware, injection-resistant | `test_v3_gate_context_manifest` | Size limits; malicious content stripped |
 | AC-17 | Resource use within bounds | `test_v3_gate_limits` | Counters ≤ configured max |
 | AC-18 | Projections rebuild exactly; tampering detected | `test_v3_gate_projection_integrity` | reconcile consistent |
-| AC-19 | Compatibility, forward migration, interrupted migration, restore, semantic rollback | `test_v3_gate_migration` | If schema changed |
+| AC-19 | Compatibility, forward migration v35→v36, interrupted migration, restore, semantic rollback | `test_v3_gate_migration` | Forward migrate v35 baseline to `V3_SCHEMA_VERSION`; interrupt/resume; restore pre-V3 backup |
 | AC-20 | Full lineage trace goal→observation→candidate→score→decision→mission→verify→reconcile→outcome→next | `test_v3_gate_lineage` | Single audit chain per loop |
 
 ## 4. Fixtures
@@ -93,7 +95,20 @@ var/evidence/v3-gate/
 | Phase | Duration | Environment | Pass |
 |-------|----------|-------------|------|
 | Lab soak | 4 hours unattended | isolated DB | ≥8 cycles, 0 severity-one |
-| Canary | 24 hours | lab clone of prod schema | cycles complete, prod untouched |
+| Canary | 24 hours | lab clone at V2 schema (v35), then migrate to v36 | cycles complete, prod untouched |
+
+## 8a. Migration acceptance (AC-19 detail)
+
+| Step | Action | Pass criterion |
+|------|--------|----------------|
+| 1 | Start from v35 lab DB (V2 schema fixture) | `SCHEMA_VERSION == CANONICAL_V2_SCHEMA_VERSION` |
+| 2 | Apply V3 migration at `V3_SCHEMA_VERSION` (= v36 expected) | `initialize()` reaches `V3_SCHEMA_VERSION` |
+| 3 | Interrupt mid-v36 DDL, restart | Resumes once; no duplicate DDL; version = `V3_SCHEMA_VERSION` |
+| 4 | `rebuild_projections()` | reconcile consistent, drift = 0 |
+| 5 | Restore pre-V3 backup | bytes identical; `SCHEMA_VERSION` back to v35 |
+| 6 | Full suite on v36 lab DB | EXIT=0 |
+
+**Rule:** Tests resolve `V3_SCHEMA_VERSION` from `migrations.SCHEMA_VERSION` at gate HEAD minus 0 (code constant), not a hardcoded literal, if V2 lands at `N ≠ 35`.
 
 ## 9. Verdict rules
 
@@ -113,7 +128,7 @@ var/evidence/v3-gate/
 ## 11. Rollback conditions
 
 - Any AC FAIL after promote → `release.rolled_back` to PREVIOUS.
-- Schema migration failure → restore from backup (proven in AC-19).
+- Schema migration failure at `V3_SCHEMA_VERSION` → restore from backup (proven in AC-19); no reverse migration of v36.
 
 ## 12. Acceptance commands (future implementation)
 
@@ -127,6 +142,9 @@ pytest tests/foundry/ -q
 
 # Projection integrity
 python -m jarvis_foundry reconcile --inspect
+
+# Migration rehearsal (AC-19): v35 baseline → V3_SCHEMA_VERSION (expected v36)
+pytest tests/foundry/test_v3_gate_migration.py -v
 
 # Independent verifier (external session)
 # Per Hermes Session authority — not run in design session

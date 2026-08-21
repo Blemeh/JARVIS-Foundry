@@ -42,7 +42,7 @@ All must be true before any V3 implementation work begins:
 
 1. V2 Knowledge Brain receives independent PASS on canonical `main` (Hermes Session-04 or successor authority).
 2. V2 integration merge to canonical `main` is complete with passing integration gates.
-3. Merged schema and runtime evidence show live production at accepted V2 schema (currently v34 candidate; live may lag).
+3. Merged schema and runtime evidence show live production at accepted V2 schema (`SCHEMA_VERSION` on merged `main`; V2 candidate `f1660f6` defines **v35**).
 4. No unresolved severity-one defect in discovery, knowledge, mission, or verifier paths.
 
 Current evidence (2026-08-21): V2 candidate frozen at `e79a8a5` / evidence `f1660f6` on `candidate/24h-v2-knowledge-brain`; independent Session-04 review and Release Captain integration **pending**. **Entry condition NOT satisfied.**
@@ -113,7 +113,32 @@ When instructions conflict:
 | Discovery monitors | EXISTING | `discovery_monitors.py`; `test_discovery_monitors.py` |
 | Command Center | EXISTING | `command_center.py`; `_executive_projection` |
 | Git helpers | PARTIAL | `live_ingestion._repo_source`, `mission/commit.py`; no remote reconcile adapter |
-| Schema | v34 at base SHA | `migrations.py` `SCHEMA_VERSION` |
+| Schema (design base SHA) | v34 on `main` at `a743fde` | `migrations.py` `SCHEMA_VERSION=34` |
+| Schema (V2 candidate) | **v35 occupied** | `f1660f6:src/jarvis_foundry/migrations.py` `SCHEMA_VERSION=35` |
+| Schema (V3 WP1 target) | **v36 expected** | next version after canonical V2 baseline (see §7a) |
+
+## 7a. Schema version rule (binding)
+
+V3 additive migrations MUST NOT reuse a version already occupied by canonical V2.
+
+**Mechanical rule at WP1 start:**
+
+```text
+CANONICAL_V2_SCHEMA_VERSION = migrations.SCHEMA_VERSION on merged main
+V3_SCHEMA_VERSION           = CANONICAL_V2_SCHEMA_VERSION + 1
+```
+
+**At design time (2026-08-21):**
+
+| Snapshot | SHA / branch | `SCHEMA_VERSION` |
+|----------|--------------|------------------|
+| V3 design base | `a743fde` (`origin/main`) | 34 |
+| V2 candidate (evidence) | `f1660f6` (`candidate/24h-v2-knowledge-brain`) | **35** |
+| V3 WP1 expected | after V2 merge | **36** (= 35 + 1) |
+
+If canonical V2 integration lands at a different `N`, V3 uses `N + 1`. Never hardcode `v36` without verifying `SCHEMA_VERSION` on merged `main`. Never allocate **v35** for V3 (occupied by V2).
+
+**Ordering:** V2 migration must be applied and proven on `main` before V3 migration is registered. V3 migration is a single additive step at `V3_SCHEMA_VERSION` only.
 
 ## 8. Anti-drift rules
 
@@ -143,7 +168,8 @@ When instructions conflict:
 
 | Contradiction | Resolution |
 |---------------|------------|
-| `V3_SLICE1_DESIGN.md` schema v6 / `candidate.*` events | Historical; implement against `discovery.*` and schema v34+ additive migrations |
+| `V3_SLICE1_DESIGN.md` schema v6 / `candidate.*` events | Historical; implement against `discovery.*` and additive migration at `V3_SCHEMA_VERSION` (expected v36) |
+| V3 design v35 vs V2 candidate v35 collision | V2 occupies v35 (`f1660f6`); V3 uses `CANONICAL_V2_SCHEMA_VERSION + 1` (expected v36) per §7a |
 | WP12 describes `v3_loop` selecting; code WAITs by default | V3 unifies: observation in cycle, selection via Executive path, single orchestrator |
 | Two score thresholds (0.35 loop vs 0.40 executive) | Single `scoring_policy_version` registry; executive reads policy version |
 | No `candidate_outcomes` table | Add projection in WP2; events `discovery.candidate_outcome_recorded` already exist |

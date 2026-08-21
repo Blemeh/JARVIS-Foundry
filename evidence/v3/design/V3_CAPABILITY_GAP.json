@@ -372,11 +372,14 @@
     },
     {
       "id": "V3-MIG-01",
-      "name": "Schema v35 additive migration",
+      "name": "Schema v36 additive migration (V3_SCHEMA_VERSION)",
       "status": "MISSING",
-      "evidence": ["src/jarvis_foundry/migrations.py SCHEMA_VERSION=34"],
+      "evidence": [
+        "src/jarvis_foundry/migrations.py SCHEMA_VERSION=34 at design base a743fde",
+        "f1660f6:src/jarvis_foundry/migrations.py SCHEMA_VERSION=35 (V2 occupies v35)"
+      ],
       "reuse": "NEW",
-      "missing_behavior": "v35 tables and columns per WP1",
+      "missing_behavior": "V3 migration at CANONICAL_V2_SCHEMA_VERSION + 1 (expected v36); candidate_outcomes, scoring_policy_registry, extended candidates columns per WP1",
       "risk": "MEDIUM",
       "work_package": "WP1"
     },
@@ -494,6 +497,9 @@
   "v2_entry_dependency": {
     "required": true,
     "satisfied": false,
-    "evidence": "candidate/24h-v2-knowledge-brain at f1660f6; Session-04 independent review pending; not merged to main at base SHA a743fde"
+    "evidence": "candidate/24h-v2-knowledge-brain at f1660f6 defines SCHEMA_VERSION=35; Session-04 independent review pending; not merged to main at base SHA a743fde (SCHEMA_VERSION=34)",
+    "v2_schema_version": 35,
+    "v3_expected_schema_version": 36,
+    "schema_rule": "V3_SCHEMA_VERSION = CANONICAL_V2_SCHEMA_VERSION + 1"
   }
 }
