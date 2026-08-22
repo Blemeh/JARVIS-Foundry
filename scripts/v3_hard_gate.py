@@ -108,6 +108,19 @@ def _run_pytest(name: str, tests: list[str], evidence_dir: Path) -> dict[str, An
     return payload
 
 
+def _reuse_junit(name: str, junit: Path) -> dict[str, Any]:
+    counts = _junit_counts(junit)
+    payload = {
+        "name": name,
+        "command": "reused existing JUnit result",
+        "exit_code": 0 if counts["failed"] == 0 and counts["errors"] == 0 else 1,
+        "duration_seconds": None,
+        "junit": str(junit),
+        **counts,
+    }
+    return payload
+
+
 def _default_off_probe() -> dict[str, Any]:
     sys.path.insert(0, str(ROOT / "src"))
     sys.path.insert(0, str(ROOT / "tests" / "foundry"))
@@ -304,6 +317,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--evidence-dir", default="evidence/v3/hard")
     parser.add_argument("--full-suite", action="store_true")
+    parser.add_argument("--full-suite-junit", type=Path)
     args = parser.parse_args()
     evidence_dir = (ROOT / args.evidence_dir).resolve()
     evidence_dir.mkdir(parents=True, exist_ok=True)
@@ -344,7 +358,10 @@ def main() -> int:
     })
 
     full_suite: dict[str, Any] = {"status": "NOT_TESTED"}
-    if args.full_suite:
+    if args.full_suite_junit:
+        full_suite = _reuse_junit("full-suite", args.full_suite_junit.resolve())
+        full_suite["status"] = "PASS" if full_suite["exit_code"] == 0 else "FAIL"
+    elif args.full_suite:
         full_suite = _run_pytest("full-suite", ["tests/foundry"], evidence_dir)
         full_suite["status"] = "PASS" if full_suite["exit_code"] == 0 else "FAIL"
 
