@@ -14,11 +14,9 @@ Last reconciled: 2026-08-22 (audit-truth remediation branch
 CURRENT WORK BRANCH:         candidate/audit-truth-remediation-r2
 PRESERVED IMPLEMENTATION BASE: b5fc4f992e3b2b2016d8d777dabe7c824026a312
 ORIGIN MAIN:                 a743fde (Executive Intelligence M2 evidence descendant)
-CURRENT STATE RECORD:        this Phase L reconciliation; the remediation commit
-                             and final accepted HEAD are recorded after gates
-TESTED SOURCE HEAD:          pending for remediation commit; focused remediation
-                             suite 75/75 PASS (2026-08-22); full foundry suite
-                             1482 collected, 0 failures after headless-mock fix
+CURRENT STATE RECORD:        e11c826 (audit-truth remediation R2; Phase L reconciliation)
+TESTED SOURCE HEAD:          e11c826 (2026-08-22); focused remediation suite 75/75
+                             PASS; full foundry suite 1482 collected, 0 failures
 DEPLOYED RELEASE:            769715a7f8aee22bf4ab2db8870c37e6e9c9ef1b (CURRENT)
 PREVIOUS RELEASE:            9a10910f78a4a618fba4c916b418056e4ada1991 (PREVIOUS)
 DEPLOYED MANIFEST:           rel-769715a7f8ae-060c9abc; legacy pre-remediation
