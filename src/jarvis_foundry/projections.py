@@ -6,6 +6,25 @@ import sqlite3
 from .domain import ARTIFACT_NAME_PATTERN, require_transition
 from .events import Event, canonical_json
 
+
+_V3_COLUMN_PROBE_TABLES = frozenset({
+    "candidates", "candidate_outcomes", "scoring_policy_registry",
+    "discovery_portfolio",
+})
+
+
+def _table_columns(connection: sqlite3.Connection, table: str) -> set[str]:
+    # Allowlist before interpolation (same discipline as database.row()).
+    if table not in _V3_COLUMN_PROBE_TABLES:
+        raise ValueError(f"unsupported projection column probe: {table}")
+    return {row[1] for row in connection.execute(f"PRAGMA table_info({table})")}
+
+
+def _has_table(connection: sqlite3.Connection, table: str) -> bool:
+    return bool(connection.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+        (table,)).fetchone())
+
 PROJECTION_TABLES = (
     "missions",
     "mission_step_contracts",
@@ -27,6 +46,9 @@ PROJECTION_TABLES = (
     "knowledge_snapshots",
     "candidates",
     "candidate_scores",
+    "candidate_outcomes",
+    "scoring_policy_registry",
+    "discovery_portfolio",
     "monitors",
     "systems",
     "system_actions",
@@ -753,20 +775,44 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
         evidence = payload.get("evidence", [])
         if duplicate_of:
             evidence = [*evidence, {"duplicate_of": duplicate_of}]
-        connection.execute(
-            """INSERT INTO candidates(
-                candidate_id, mission_id, source, objective,
-                objective_canonical, evidence_json, status, duplicate_of,
-                created_from, last_event_id, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (payload["candidate_id"], payload["mission_id"],
-             payload["source"], payload["objective"],
-             payload.get("objective_canonical", canonical_json(payload["objective"])),
-             canonical_json(evidence),
-             status,
-             duplicate_of, payload.get("created_from"),
-             event.event_id, event.recorded_at),
-        )
+        # V3 columns exist only from schema v35; the handler adapts so
+        # ledger replays against ANY schema version work (mid-migration
+        # appends included) — same contract as mission.created.
+        v3_columns = _table_columns(connection, "candidates")
+        if "fingerprint" in v3_columns:
+            connection.execute(
+                """INSERT INTO candidates(
+                    candidate_id, mission_id, source, objective,
+                    objective_canonical, evidence_json, status, duplicate_of,
+                    created_from, fingerprint, candidate_type, expected_outcome,
+                    provenance_hash, expires_at, last_event_id, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (payload["candidate_id"], payload["mission_id"],
+                 payload["source"], payload["objective"],
+                 payload.get("objective_canonical", canonical_json(payload["objective"])),
+                 canonical_json(evidence),
+                 status,
+                 duplicate_of, payload.get("created_from"),
+                 payload.get("fingerprint"), payload.get("candidate_type"),
+                 payload.get("expected_outcome"), payload.get("provenance_hash"),
+                 payload.get("expires_at"),
+                 event.event_id, event.recorded_at),
+            )
+        else:
+            connection.execute(
+                """INSERT INTO candidates(
+                    candidate_id, mission_id, source, objective,
+                    objective_canonical, evidence_json, status, duplicate_of,
+                    created_from, last_event_id, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (payload["candidate_id"], payload["mission_id"],
+                 payload["source"], payload["objective"],
+                 payload.get("objective_canonical", canonical_json(payload["objective"])),
+                 canonical_json(evidence),
+                 status,
+                 duplicate_of, payload.get("created_from"),
+                 event.event_id, event.recorded_at),
+            )
     elif event.event_type == "discovery.candidate_scored":
         connection.execute(
             "UPDATE candidates SET status = 'SCORED', last_event_id = ?, "
@@ -778,8 +824,82 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             ) VALUES (?, ?, ?, ?, ?)""",
             (payload["candidate_id"], payload["score"],
              canonical_json(payload.get("weights", {})),
-             event.event_id, event.recorded_at),
-        )
+             event.event_id, event.recorded_at))
+        policy_version = payload.get("policy_version")
+        if policy_version and "fingerprint" in _table_columns(
+                connection, "candidates"):
+            # V3 WP2: a registry-scored candidate carries the trace and
+            # becomes ELIGIBLE (portfolio state machine: SCORED pass
+            # filters -> ELIGIBLE). The legacy loop path (no
+            # policy_version) keeps the historical SCORED semantics.
+            connection.execute(
+                "UPDATE candidates SET status = 'ELIGIBLE', "
+                "scoring_policy_version = ?, fingerprint = COALESCE(fingerprint, ?), "
+                "candidate_type = COALESCE(candidate_type, ?), "
+                "expected_outcome = COALESCE(expected_outcome, ?), "
+                "provenance_hash = COALESCE(provenance_hash, ?), "
+                "expires_at = COALESCE(expires_at, ?), "
+                "last_event_id = ?, updated_at = ? WHERE candidate_id = ?",
+                (policy_version,
+                 payload.get("fingerprint"),
+                 payload.get("candidate_type"),
+                 payload.get("expected_outcome"),
+                 payload.get("provenance_hash"),
+                 payload.get("expires_at"),
+                 event.event_id, event.recorded_at,
+                 payload["candidate_id"]))
+    elif event.event_type == "scoring.policy_registered":
+        if not _has_table(connection, "scoring_policy_registry"):
+            return
+        connection.execute("UPDATE scoring_policy_registry SET active = 0")
+        connection.execute(
+            """INSERT OR REPLACE INTO scoring_policy_registry(
+                policy_version, active, weights_json, thresholds_json,
+                hard_filters_json, last_event_id, updated_at
+            ) VALUES (?, 1, ?, ?, ?, ?, ?)""",
+            (payload["policy_version"],
+             canonical_json(payload.get("weights", {})),
+             canonical_json(payload.get("thresholds", {})),
+             canonical_json(payload.get("hard_filters", {})),
+             event.event_id, event.recorded_at))
+    elif event.event_type == "scoring.policy_superseded":
+        if not _has_table(connection, "scoring_policy_registry"):
+            return
+        connection.execute(
+            "UPDATE scoring_policy_registry SET active = 0 "
+            "WHERE policy_version IN (?, ?)",
+            (payload["old_version"], payload["new_version"]))
+        connection.execute(
+            "UPDATE scoring_policy_registry SET active = 1, last_event_id = ?, "
+            "updated_at = ? WHERE policy_version = ? AND EXISTS("
+            "SELECT 1 FROM scoring_policy_registry)",
+            (event.event_id, event.recorded_at, payload["new_version"]))
+    elif event.event_type == "portfolio.evaluated":
+        if not _has_table(connection, "discovery_portfolio"):
+            return
+        connection.execute(
+            """INSERT OR REPLACE INTO discovery_portfolio(
+                loop_id, policy_version, eligible_count, deferred_count,
+                rejected_count, capacity_snapshot_json, last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (payload["loop_id"], payload.get("policy_version"),
+             int(payload.get("eligible_count", 0)),
+             int(payload.get("deferred_count", 0)),
+             int(payload.get("rejected_count", 0)),
+             canonical_json(payload.get("capacity_snapshot", {})),
+             event.event_id, event.recorded_at))
+    elif event.event_type == "portfolio.candidate_deferred":
+        connection.execute(
+            "UPDATE candidates SET status = 'DEFERRED', evidence_json = ?, "
+            "last_event_id = ?, updated_at = ? WHERE candidate_id = ?",
+            (canonical_json([{"defer_reason": payload.get("reason", ""),
+                              "cooldown_until": payload.get("cooldown_until")}]),
+             event.event_id, event.recorded_at, payload["candidate_id"]))
+    elif event.event_type == "portfolio.candidate_requeued":
+        connection.execute(
+            "UPDATE candidates SET status = 'SCORED', last_event_id = ?, "
+            "updated_at = ? WHERE candidate_id = ? AND status = 'DEFERRED'",
+            (event.event_id, event.recorded_at, payload["candidate_id"]))
     elif event.event_type == "discovery.candidate_approved":
         connection.execute(
             "UPDATE candidates SET status = 'APPROVED', last_event_id = ?, "
@@ -808,6 +928,32 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             "last_event_id = ?, updated_at = ? WHERE candidate_id = ?",
             (canonical_json([{"outcome": payload.get("outcome", {})}]),
              event.event_id, event.recorded_at, payload["candidate_id"]))
+        # V3 WP1/WP6: outcomes land in their own projection. Predicted
+        # and actual stay DISTINCT; a payload without either value is
+        # honest UNKNOWN, never manufactured PASS.
+        if _has_table(connection, "candidate_outcomes"):
+            window = str(payload.get("window") or "immediate")
+            predicted = payload.get("predicted_value")
+            actual = payload.get("actual_value",
+                                 payload.get("outcome"))
+            has_measurement = bool(predicted) or bool(actual)
+            outcome_status = str(payload.get("status")
+                                 or ("RECORDED" if has_measurement else "UNKNOWN"))
+            connection.execute(
+                """INSERT OR REPLACE INTO candidate_outcomes(
+                    outcome_id, candidate_id, mission_id, window_kind,
+                    predicted_value_json, actual_value_json, status,
+                    confidence, last_event_id, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (payload.get("outcome_id")
+                 or f"{payload['candidate_id']}:{window}",
+                 payload["candidate_id"], payload.get("mission_id", ""),
+                 window,
+                 canonical_json(predicted or {}),
+                 canonical_json(actual or {}),
+                 outcome_status,
+                 float(payload.get("confidence", 0.0)),
+                 event.event_id, event.recorded_at))
 
     elif event.event_type == "discovery.monitor_registered":
         connection.execute(
@@ -886,13 +1032,17 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
         # V5 exit evidence 2: the journal row is UNIQUE on
         # (system_id, target_ref, payload_hash) — a retried delivery of
         # the same effect dedupes at the projection level too.
+        # V3 WP5 git effects journal under a synthetic system id (the
+        # adapter carries its own identity payload for provenance).
         connection.execute(
             """INSERT OR IGNORE INTO system_actions(
                 action_key, system_id, target_ref, payload_hash, kind,
                 status, last_event_id, updated_at
             ) VALUES (?, ?, ?, ?, ?, 'STARTED', ?, ?)""",
-            (payload["action_key"], payload["system_id"],
-             payload["target_ref"], payload["payload_hash"],
+            (payload["action_key"], payload.get("system_id", "git"),
+             payload["target_ref"],
+             payload.get("payload_hash")
+             or payload.get("action_key", ""),
              payload.get("kind", ""), event.event_id, event.recorded_at),
         )
     elif event.event_type == "system.action_completed":

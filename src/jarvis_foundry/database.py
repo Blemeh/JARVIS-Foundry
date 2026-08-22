@@ -213,6 +213,9 @@ class FoundryDatabase:
             "knowledge_snapshots": "snapshot_id",
             "candidates": "candidate_id",
             "candidate_scores": "candidate_id",
+            "candidate_outcomes": "outcome_id",
+            "scoring_policy_registry": "policy_version",
+            "discovery_portfolio": "loop_id",
             "monitors": "monitor_id",
             "vault_files": "rel_path",
             "vault_sync_state": "sync_id",
@@ -251,7 +254,9 @@ class FoundryDatabase:
                    "knowledge_manifests", "knowledge_entities", "knowledge_claim_entities",
                    "knowledge_claim_evidence",
                    "knowledge_ingestions", "knowledge_snapshots", "candidates",
-                   "candidate_scores", "monitors", "vault_files",
+                   "candidate_scores", "candidate_outcomes",
+                   "scoring_policy_registry", "discovery_portfolio",
+                   "monitors", "vault_files",
                    "vault_sync_state", "ingestion_cursors", "research_queue",
                    "worker_manifests", "consolidation_ops", "mission_step_contracts"}
         allowed.update({"cost_measurements", "briefing_outbox", "voice_interactions", "control_nonces", "improvement_records", "release_manifests", "release_slots", "candidate_builds", "evaluation_runs", "verifications", "shadow_runs", "canaries", "promotions", "release_control", "restore_points", "discovery_runs", "cycles", "acceptance_runs"})
@@ -271,7 +276,9 @@ class FoundryDatabase:
                    "knowledge_manifests", "knowledge_entities", "knowledge_claim_entities",
                    "knowledge_claim_evidence",
                    "knowledge_ingestions", "knowledge_snapshots", "candidates",
-                   "candidate_scores", "monitors", "vault_files",
+                   "candidate_scores", "candidate_outcomes",
+                   "scoring_policy_registry", "discovery_portfolio",
+                   "monitors", "vault_files",
                    "vault_sync_state", "ingestion_cursors", "research_queue",
                    "worker_manifests", "consolidation_ops", "mission_step_contracts"}
         allowed.update({"cost_measurements", "briefing_outbox", "voice_interactions", "control_nonces", "improvement_records", "release_manifests", "release_slots", "candidate_builds", "evaluation_runs", "verifications", "shadow_runs", "canaries", "promotions", "release_control", "restore_points", "discovery_runs", "cycles", "acceptance_runs"})

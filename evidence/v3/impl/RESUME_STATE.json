@@ -1,0 +1,37 @@
+{
+  "active_phase": "PHASE_5_WP8_MVP_REVIEW_ROUND_2",
+  "updated_at": "2026-08-22T07:00:00+02:00",
+  "branch": "candidate/v3-implementation",
+  "worktree": "C:/temp/JARVIS-V3-Implementation",
+  "head": "b165857 (repair 9b10ce2 + gate report rev2)",
+  "review_history": [
+    {
+      "round": 1,
+      "head": "b913c75",
+      "verdict": "FAIL",
+      "m_fail": [
+        "M3"
+      ],
+      "artifact": "evidence/v3/impl/MVP_REVIEW.json"
+    },
+    {
+      "round": 2,
+      "head": "b165857",
+      "status": "IN FLIGHT deleg_171a3746"
+    }
+  ],
+  "repairs_in_9b10ce2": [
+    "ELIGIBLE visibility via _SELECTABLE_STATUS_SQL single source (eligibility.py)",
+    "approve_candidate uses ELIGIBLE_STATUSES (discovery_candidates.py)",
+    "portfolio-total composite base for policy-scored candidates + goal/owner/contention adders (executive/scoring.py)",
+    "policy comparative_wait_margin honored by cycle (v3_cycle.py)",
+    "score-time governed admission stamp, idempotent, authority-gated (v3_scoring.py)",
+    "unconditional COMPILED assertions in discovery-cycle tests; tightened restart-once smoke test"
+  ],
+  "verification": {
+    "full_suite_repair_r1": "1522 passed / 0 failures / zero new vs baseline (var/evidence/repair1.junit.xml, REPAIR1_SUITE_DELTA.json)",
+    "focused_v3_at_9b10ce2": "69/69 PASS (mvp-v3-focused-r1.junit.xml sha256 044b2207...)"
+  },
+  "next_exact_action": "On round-2 PASS verdict: finalize MVP_REVIEW.json is already the artifact the reviewer writes; commit any updated review artifact, update RESUME_STATE, produce final report with verdict MVP_PASS. On FAIL: repair per findings, rerun affected tests + gate, dispatch round 3.",
+  "blockers": []
+}

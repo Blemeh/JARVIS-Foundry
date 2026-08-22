@@ -1,0 +1,152 @@
+{
+  "schema_version": "1.0",
+  "verdict": "PASS",
+  "base_sha": "a743fdeb535f78c5ad455e8b09944f721f2515a7",
+  "repair_of_sha": "c72310741e660c870b5281492b49a0e3720307f0",
+  "final_sha": null,
+  "branch": "candidate/v3-discovery-design",
+  "worktree": "C:\\temp\\JARVIS-V3-Discovery-Design",
+  "generated_at": "2026-08-22T00:10:00+02:00",
+  "changed_files": [
+    "docs/v3/00_V3_READ_FIRST.md",
+    "docs/v3/01_V3_DISCOVERY_BUILDING_SPEC.md",
+    "docs/v3/02_V3_EVENTS_AND_STATE_MACHINES.md",
+    "docs/v3/03_V3_SCORING_AND_PORTFOLIO.md",
+    "docs/v3/04_V3_WORK_PACKAGES.md",
+    "docs/v3/05_V3_ACCEPTANCE_GATE.md",
+    "docs/v3/06_V3_THREAT_MODEL.md",
+    "docs/v3/07_V3_IMPLEMENTATION_HANDOFF.md",
+    "evidence/v3/design/V3_CAPABILITY_GAP.json",
+    "evidence/v3/design/V3_DESIGN_VALIDATION.json"
+  ],
+  "document_hashes": {
+    "docs/v3/00_V3_READ_FIRST.md": "5a6252d8b45b8dabc51d038904999d090e892c1f824f33510bf05eaf6012d8b8",
+    "docs/v3/01_V3_DISCOVERY_BUILDING_SPEC.md": "3500d25d37ff81a6508641753d36c2656a5167154e4e9dd4643e1ebe4be5c40f",
+    "docs/v3/02_V3_EVENTS_AND_STATE_MACHINES.md": "17eacdfae9da2d577628acc48625edb99bce87aceda6943edea87fa09566be78",
+    "docs/v3/03_V3_SCORING_AND_PORTFOLIO.md": "065106937c7c8807765a2c8d745848b260688367f8b9cd0c0bf46521b4b8681a",
+    "docs/v3/04_V3_WORK_PACKAGES.md": "2bc542733bf6660f4b15207972ae2dec18e74e1a9441f93ff6b5ba21f06927c3",
+    "docs/v3/05_V3_ACCEPTANCE_GATE.md": "c0b2cffcddd8abc26c2043ac1fa1ddba8d9629ad5037fa73d38785b6186824e6",
+    "docs/v3/06_V3_THREAT_MODEL.md": "4f9f03cc5f6054bef2d38725657caaf7bfbf992358833aae2a10bd7f3ab53fed",
+    "docs/v3/07_V3_IMPLEMENTATION_HANDOFF.md": "f2c30f0e46fe77a0cd91a0a8f8561c9d5e8b622e653b9321b791f9f804b8ddc5",
+    "evidence/v3/design/V3_CAPABILITY_GAP.json": "c0792e24cea25233676a160ed88b6087a5d3a938f1f9fc7c533be7ccbee79f10"
+  },
+  "schema_version_rule": {
+    "canonical_v2_schema_version_source": "migrations.SCHEMA_VERSION on merged main at WP1 start",
+    "v3_schema_version_formula": "CANONICAL_V2_SCHEMA_VERSION + 1",
+    "design_base_main_sha": "a743fde",
+    "design_base_schema_version": 34,
+    "v2_candidate_sha": "f1660f6",
+    "v2_candidate_schema_version": 35,
+    "v3_expected_schema_version": 36,
+    "v35_occupied_by": "V2 Knowledge Brain (f1660f6)"
+  },
+  "validation_commands": [
+    {
+      "command": "python -c \"import json; json.load(open('evidence/v3/design/V3_CAPABILITY_GAP.json'))\"",
+      "result": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "python -c \"import json; json.load(open('evidence/v3/design/V3_DESIGN_VALIDATION.json'))\"",
+      "result": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "git show f1660f6:src/jarvis_foundry/migrations.py | findstr SCHEMA_VERSION",
+      "result": "PASS — SCHEMA_VERSION = 35",
+      "exit_code": 0
+    },
+    {
+      "command": "grep v35 in docs/v3 and evidence/v3/design — all references are V2-occupied or v35→v36 migration baseline",
+      "result": "PASS — no V3 allocation of v35",
+      "exit_code": 0
+    },
+    {
+      "command": "git diff --name-only HEAD~1 (repair commit)",
+      "result": "PASS — only 8 of 10 files changed in repair (03 and 06 unchanged)",
+      "exit_code": 0
+    },
+    {
+      "command": "scope proof: no src/tests/scripts changes",
+      "result": "PASS",
+      "exit_code": 0
+    }
+  ],
+  "requirement_traceability": [
+    {"requirement": "SCHEMA VERSIONING", "section": "00_V3_READ_FIRST.md §7a", "work_package": "WP1", "acceptance": "AC-19"},
+    {"requirement": "DISCOVERY INPUTS §1", "section": "01_V3_DISCOVERY_BUILDING_SPEC.md §3.2", "work_package": "WP0-WP1", "acceptance": "AC-01"},
+    {"requirement": "CANDIDATE MODEL §2", "section": "01_V3_DISCOVERY_BUILDING_SPEC.md §3.3", "work_package": "WP1", "acceptance": "AC-03"},
+    {"requirement": "SCORING §3", "section": "03_V3_SCORING_AND_PORTFOLIO.md", "work_package": "WP2", "acceptance": "AC-02,AC-04,AC-05"},
+    {"requirement": "PORTFOLIO §4", "section": "02_V3_EVENTS_AND_STATE_MACHINES.md §4", "work_package": "WP2", "acceptance": "AC-02,AC-15"},
+    {"requirement": "MISSION CREATION §5", "section": "01_V3_DISCOVERY_BUILDING_SPEC.md §3.6", "work_package": "WP3", "acceptance": "AC-01"},
+    {"requirement": "TEAMS §6", "section": "01_V3_DISCOVERY_BUILDING_SPEC.md §3.7", "work_package": "WP4", "acceptance": "AC-06,AC-09"},
+    {"requirement": "RESEARCH-TO-BUILD §7", "section": "02_V3_EVENTS_AND_STATE_MACHINES.md §5", "work_package": "WP3", "acceptance": "AC-01,AC-20"},
+    {"requirement": "GIT/RELEASE §8", "section": "01_V3_DISCOVERY_BUILDING_SPEC.md §3.9", "work_package": "WP5", "acceptance": "AC-10,AC-11"},
+    {"requirement": "OUTCOMES §9", "section": "01_V3_DISCOVERY_BUILDING_SPEC.md §3.10", "work_package": "WP6", "acceptance": "AC-12,AC-13"},
+    {"requirement": "MAINTENANCE §10", "section": "01_V3_DISCOVERY_BUILDING_SPEC.md §3.11", "work_package": "WP6", "acceptance": "AC-14,AC-15"},
+    {"requirement": "SECURITY §11", "section": "06_V3_THREAT_MODEL.md", "work_package": "WP7", "acceptance": "AC-06,AC-07,AC-16,AC-17"},
+    {"requirement": "COMMAND CENTER §12", "section": "01_V3_DISCOVERY_BUILDING_SPEC.md §3.13", "work_package": "WP3", "acceptance": "AC-20"},
+    {"requirement": "ROADMAP EXIT §6", "section": "05_V3_ACCEPTANCE_GATE.md AC-01..AC-20", "work_package": "WP8", "acceptance": "gate PASS"},
+    {"requirement": "V2 PREREQUISITE", "section": "00_V3_READ_FIRST.md §3", "work_package": "BLOCKED", "acceptance": "entry gate"}
+  ],
+  "contradictions_found": [
+    "V3_SLICE1_DESIGN candidate.* events vs production discovery.*",
+    "WP12 full loop vs v3_loop WAIT default",
+    "Score threshold 0.35 vs 0.40",
+    "test_candidate_pipeline.py vs test_discovery_candidates.py",
+    "V3 design proposed migration v35 while V2 candidate f1660f6 already defines SCHEMA_VERSION=35"
+  ],
+  "contradictions_resolved": [
+    "Use discovery.* event namespace; candidate.* historical only",
+    "V3DiscoveryCycle unifies observation and ExecutiveDecisionService selection",
+    "Single scoring_policy_registry threshold 0.40",
+    "test_discovery_candidates.py is canonical test path",
+    "V3_SCHEMA_VERSION = CANONICAL_V2_SCHEMA_VERSION + 1 (expected v36); v35 reserved for V2"
+  ],
+  "remaining_uncertainty": [
+    "V2 Session-04 independent PASS not yet recorded on canonical main",
+    "If V2 merges at schema N != 35, V3 uses N+1 per mechanical rule",
+    "Same-provider verifier independence remains MEDIUM residual risk",
+    "UD-01 through UD-04 unresolved decisions default per handoff"
+  ],
+  "scope_proof": {
+    "only_allowed_files": true,
+    "src_modified": false,
+    "tests_modified": false,
+    "scripts_modified": false,
+    "existing_canonical_docs_modified": false,
+    "repair_files_touched": [
+      "docs/v3/00_V3_READ_FIRST.md",
+      "docs/v3/01_V3_DISCOVERY_BUILDING_SPEC.md",
+      "docs/v3/02_V3_EVENTS_AND_STATE_MACHINES.md",
+      "docs/v3/04_V3_WORK_PACKAGES.md",
+      "docs/v3/05_V3_ACCEPTANCE_GATE.md",
+      "docs/v3/07_V3_IMPLEMENTATION_HANDOFF.md",
+      "evidence/v3/design/V3_CAPABILITY_GAP.json",
+      "evidence/v3/design/V3_DESIGN_VALIDATION.json"
+    ],
+    "repair_files_unchanged": [
+      "docs/v3/03_V3_SCORING_AND_PORTFOLIO.md",
+      "docs/v3/06_V3_THREAT_MODEL.md"
+    ]
+  },
+  "invariant_checks": {
+    "schema_version_no_collision": "PASS — v35 V2-only; V3 at V3_SCHEMA_VERSION (expected v36)",
+    "stop_veto_hard_filters": "PASS — 03 §2, 06 T-20/T-21, AC-07",
+    "verifier_independence": "PASS — 01 §3.7, 06 T-06, AC-06",
+    "append_only_history": "PASS — 02 §2, 00 §5",
+    "capability_readiness": "PASS — HARD_CAPABILITY filter",
+    "standing_autonomy": "PASS — no approval gates in design",
+    "stage_sequencing_v2_block": "PASS — 00 §3, 07 §1"
+  },
+  "capability_map_counts": {
+    "EXISTING": 28,
+    "PARTIAL": 22,
+    "MISSING": 14,
+    "CONTRADICTED": 4
+  },
+  "v3_entry_condition_satisfied": false,
+  "implementation_authorized": false,
+  "pushed": false,
+  "rollback": "git revert repair commit on candidate/v3-discovery-design"
+}

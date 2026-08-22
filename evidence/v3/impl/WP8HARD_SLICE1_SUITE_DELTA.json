@@ -1,0 +1,21 @@
+{
+  "record": "WP8HARD_SLICE1_SUITE_DELTA",
+  "phase": "WP8-HARD slice 1 (schema collision repair: V2 v35 adopted verbatim, V3 renumbered to v36)",
+  "command": "pytest tests/foundry/ -q --junitxml=var/evidence/hard1.junit.xml",
+  "counts": {
+    "total": 1522,
+    "passed": 1522,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "baseline_counts": {
+    "total": 1459,
+    "passed": 1459,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "new_failures_vs_baseline": [],
+  "gate": "PASS"
+}

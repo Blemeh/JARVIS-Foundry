@@ -1,0 +1,32 @@
+{
+  "policy_version": "v3-policy-2026-08-21",
+  "weights": {
+    "strategic_fit": 0.18,
+    "expected_value": 0.18,
+    "information_gain": 0.12,
+    "urgency": 0.1,
+    "confidence": 0.1,
+    "effort": 0.08,
+    "cost": 0.06,
+    "risk": 0.06,
+    "reversibility": 0.06,
+    "opportunity_cost": 0.06
+  },
+  "thresholds": {
+    "min_total_score": 0.4,
+    "min_strategic_fit": 0.2,
+    "min_confidence": 0.25,
+    "min_information_gain_for_research_override": 0.55,
+    "comparative_wait_margin": 0.0
+  },
+  "hard_filters": {
+    "max_blast_radius": 0.85,
+    "min_evidence_refs": 1
+  },
+  "tie_breaking": [
+    "higher_total_score",
+    "higher_strategic_fit",
+    "higher_information_gain",
+    "lower_candidate_id"
+  ]
+}

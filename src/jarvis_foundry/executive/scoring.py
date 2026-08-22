@@ -1,6 +1,7 @@
 """Unified portfolio comparison for executive candidate ranking."""
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -40,6 +41,23 @@ def _factor(name: str, value: float | None, weight: float, *, kind: str | None =
     if value is None:
         return FactorValue(name, None, kind or "UNKNOWN", weight, -UNKNOWN_PENALTY * weight)
     return FactorValue(name, value, kind or "KNOWN", weight, round(value * weight, 4))
+
+
+
+
+def _policy_weights(database: FoundryDatabase, policy_version: str) -> dict[str, Any]:
+    """Weights for a registered policy version; empty dict if unknown."""
+    with database.connect() as connection:
+        row = connection.execute(
+            "SELECT weights_json FROM scoring_policy_registry "
+            "WHERE policy_version = ?", (policy_version,)).fetchone()
+    if row is None:
+        return {}
+    try:
+        return json.loads(row[0] or "{}")
+    except (TypeError, ValueError):
+        return {}
+
 
 
 def score_candidate_for_executive(
@@ -158,7 +176,37 @@ def score_candidate_for_executive(
         _factor("keyword_bait", 1.0 if bait_penalty else 0.0, 0.15),
     )
 
-    composite = sum(f.contribution for f in factors)
+    composite = round(sum(f.contribution for f in factors), 4)
+    # V3 WP2 integration (MVP review repair): when the candidate was
+    # scored under a registry policy, its PORTFOLIO TOTAL is the
+    # composite base — the policy already weighs value/urgency/
+    # confidence/effort/cost/risk deterministically and auditable. The
+    # executive adds only what the policy does not model: active-goal
+    # alignment, owner priority, resource contention headroom. Safety
+    # adjustments below still apply. Candidates WITHOUT a policy trace
+    # keep the legacy factor sum unchanged.
+    with database.connect() as _connection:
+        _policy_row = _connection.execute(
+            "SELECT scoring_policy_version FROM candidates "
+            "WHERE candidate_id = ?", (candidate_id,)).fetchone()
+    if _policy_row is not None and _policy_row[0]:
+        from ..v3_scoring import compute_total, derive_dimensions
+        with database.connect() as _c2:
+            evidence_row = _c2.execute(
+                "SELECT evidence_json FROM candidates WHERE candidate_id = ?",
+                (candidate_id,)).fetchone()
+        try:
+            evidence_count = len(json.loads((evidence_row[0] if evidence_row else None) or "[]"))
+        except (TypeError, ValueError):
+            evidence_count = 0
+        dims = derive_dimensions(
+            objective, evidence_count=evidence_count)
+        policy_weights = _policy_weights(database, _policy_row[0])
+        portfolio_total = compute_total(dims, policy_weights)
+        goal_bonus = round(goal_fit * 0.15 + owner_priority * 0.05, 4)
+        contention_headroom = round(0.05 * (1.0 - resource_contention), 4)
+        composite = round(max(0.0, min(1.0,
+            portfolio_total + goal_bonus + contention_headroom)), 4)
     composite += cal_adj
     composite -= bait_penalty
     composite -= risk_penalty
