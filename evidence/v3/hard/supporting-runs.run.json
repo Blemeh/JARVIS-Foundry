@@ -1,0 +1,25 @@
+{
+  "collected": 63,
+  "command": [
+    "C:\\Python313\\python.exe",
+    "-m",
+    "pytest",
+    "tests/foundry/test_verifier_binding_hardening.py",
+    "tests/foundry/test_role_gateway_kill.py",
+    "tests/foundry/test_role_reaper.py",
+    "tests/foundry/test_worker_gate.py",
+    "-q",
+    "--junitxml=C:\\temp\\JARVIS-Overnight-V3-Hard-Gate\\evidence\\v3\\hard\\supporting-runs.junit.xml"
+  ],
+  "duration_seconds": 61.099,
+  "errors": 0,
+  "exit_code": 0,
+  "failed": 0,
+  "failures": [],
+  "junit": "C:\\temp\\JARVIS-Overnight-V3-Hard-Gate\\evidence\\v3\\hard\\supporting-runs.junit.xml",
+  "name": "supporting-runs",
+  "passed": 63,
+  "skipped": 0,
+  "stderr_tail": "",
+  "stdout_tail": "...............................................................          [100%]\n"
+}

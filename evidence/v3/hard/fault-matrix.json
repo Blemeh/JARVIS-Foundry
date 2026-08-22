@@ -1,0 +1,65 @@
+{
+  "points": [
+    {
+      "point": "post cycle_started",
+      "reason": "Hermes-owned worker loop has no lane-local fault hook",
+      "status": "NOT_TESTED"
+    },
+    {
+      "evidence": "test_v3_hard_core.py::test_candidate_approval_crash_window_recovers_one_mission",
+      "point": "post candidate_generated",
+      "status": "PASS"
+    },
+    {
+      "evidence": "test_v3_scoring.py::test_scoring_is_deterministic_byte_identical_traces",
+      "point": "post candidate_scored",
+      "status": "PASS"
+    },
+    {
+      "evidence": "test_v3_smoke.py::test_restart_after_select_before_materialization_resumes_once",
+      "point": "post decision_recorded SELECT",
+      "status": "PASS"
+    },
+    {
+      "evidence": "test_v3_hard_core.py::test_candidate_approval_crash_window_recovers_one_mission",
+      "point": "post mission.created",
+      "status": "PASS"
+    },
+    {
+      "point": "post agent_run.started",
+      "reason": "no dedicated V3 process-kill hook in this lane",
+      "status": "NOT_TESTED"
+    },
+    {
+      "point": "post verification.started",
+      "reason": "Hermes verifier crash transition is outside owned source",
+      "status": "NOT_TESTED"
+    },
+    {
+      "evidence": "test_v3_git_reconcile.py::test_subprocess_timeout_expired_is_ambiguous_not_failed",
+      "point": "mid git push",
+      "status": "PASS"
+    },
+    {
+      "evidence": "test_v3_git_reconcile.py::test_landed_reconciliation_is_terminal_and_does_not_repush",
+      "point": "post effect.reconcile_pending",
+      "status": "PASS"
+    },
+    {
+      "point": "post mission.completed",
+      "reason": "outcome trigger belongs to Hermes-owned v3_outcomes path",
+      "status": "NOT_TESTED"
+    },
+    {
+      "point": "post outcome_recorded",
+      "reason": "calibration/continuation recovery is Hermes-owned",
+      "status": "NOT_TESTED"
+    },
+    {
+      "evidence": "test_v3_smoke.py::test_replay_same_loop_id_is_idempotent",
+      "point": "post cycle_completed",
+      "status": "PASS"
+    }
+  ],
+  "status": "FAIL"
+}

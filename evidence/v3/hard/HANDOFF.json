@@ -1,0 +1,346 @@
+{
+  "ac_summary": {
+    "AC-01": "FAIL",
+    "AC-02": "PASS",
+    "AC-03": "PASS",
+    "AC-04": "PASS",
+    "AC-05": "PASS",
+    "AC-06": "PASS",
+    "AC-07": "FAIL",
+    "AC-08": "FAIL",
+    "AC-09": "FAIL",
+    "AC-10": "PASS",
+    "AC-11": "PASS",
+    "AC-12": "PASS",
+    "AC-13": "PASS",
+    "AC-14": "FAIL",
+    "AC-15": "PASS",
+    "AC-16": "PASS",
+    "AC-17": "FAIL",
+    "AC-18": "PASS",
+    "AC-19": "PASS",
+    "AC-20": "FAIL"
+  },
+  "branch": "candidate/overnight-v3-hard-gate",
+  "defects": [
+    {
+      "id": "V3-HARD-STOP-001",
+      "owner": "Hermes",
+      "source": "src/jarvis_foundry/v3_loop.py:295-308",
+      "status": "OPEN",
+      "summary": "legacy loop observes before a fresh STOP gate; race can write observation events after STOP"
+    },
+    {
+      "id": "V3-HARD-FAULT-001",
+      "owner": "Hermes",
+      "source": "src/jarvis_foundry/v3_cycle.py:56-192",
+      "status": "OPEN",
+      "summary": "cycle_started and lane-local transition fault hooks are absent, so the full 12-point crash matrix cannot run"
+    },
+    {
+      "id": "V3-HARD-OUTCOME-001",
+      "owner": "Hermes",
+      "source": "src/jarvis_foundry/v3_outcomes.py:35-56",
+      "status": "OPEN",
+      "summary": "outcome recording accepts caller-supplied mission/candidate identity without proving mission.completed linkage"
+    },
+    {
+      "id": "V3-HARD-CONT-001",
+      "owner": "Hermes",
+      "source": "src/jarvis_foundry/v3_outcomes.py:112-125",
+      "status": "OPEN",
+      "summary": "maintenance continuation reports wake_scheduled=False and does not create a next selection"
+    },
+    {
+      "id": "V3-HARD-RESOURCE-001",
+      "owner": "Hermes",
+      "source": "docs/v3/05_V3_ACCEPTANCE_GATE.md:17-21",
+      "status": "OPEN",
+      "summary": "no fresh V3 resource/counter envelope evidence exists beyond context bounds"
+    },
+    {
+      "id": "V3-HARD-LINEAGE-001",
+      "owner": "Hermes",
+      "source": "src/jarvis_foundry/v3_cycle.py:164-192",
+      "status": "OPEN",
+      "summary": "cycle path ends at COMPILED and does not produce a fresh outcome-to-next-selection lineage"
+    },
+    {
+      "evidence": [],
+      "id": "AC-01",
+      "reason": "No fresh three-loop discovery-to-mission-to-outcome proof; outcome path is not wired in this lane.",
+      "status": "FAIL"
+    },
+    {
+      "evidence": [],
+      "id": "AC-07",
+      "reason": "Fresh audit found the legacy v3_loop observes before STOP re-check and the unified path has a race window.",
+      "status": "FAIL"
+    },
+    {
+      "evidence": [
+        "fault-matrix.json"
+      ],
+      "id": "AC-08",
+      "reason": "Six named crash points remain NOT_TESTED without lane-local process fault hooks.",
+      "status": "FAIL"
+    },
+    {
+      "evidence": [
+        "supporting-runs"
+      ],
+      "id": "AC-09",
+      "reason": "Worker/verifier crash coverage is fresh, but no bounded repair-to-fresh-verification sequence closes the V3 criterion.",
+      "status": "FAIL"
+    },
+    {
+      "evidence": [],
+      "id": "AC-14",
+      "reason": "maintenance_scan_hook reports wake_scheduled=False and no fresh next-selection outcome chain exists.",
+      "status": "FAIL"
+    },
+    {
+      "evidence": [],
+      "id": "AC-17",
+      "reason": "Context bounds are proven, but a full V3 resource/counter envelope is not implemented or measured.",
+      "status": "FAIL"
+    },
+    {
+      "evidence": [],
+      "id": "AC-20",
+      "reason": "No single fresh lineage artifact spans goal, observation, mission verification, reconcile, outcome, and next selection.",
+      "status": "FAIL"
+    }
+  ],
+  "expected_base": "ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2",
+  "fault_matrix": "C:\\temp\\JARVIS-Overnight-V3-Hard-Gate\\evidence\\v3\\hard\\fault-matrix.json",
+  "feature_flag_off": true,
+  "focused_suite": {
+    "collected": 132,
+    "command": [
+      "C:\\Python313\\python.exe",
+      "-m",
+      "pytest",
+      "tests/foundry/test_v3_fixtures.py",
+      "tests/foundry/test_v3_projections.py",
+      "tests/foundry/test_v3_scoring.py",
+      "tests/foundry/test_v3_discovery_cycle.py",
+      "tests/foundry/test_v3_loop.py",
+      "tests/foundry/test_v3_teams.py",
+      "tests/foundry/test_v3_git_reconcile.py",
+      "tests/foundry/test_v3_outcomes.py",
+      "tests/foundry/test_v3_smoke.py",
+      "tests/foundry/test_v3_hard_core.py",
+      "tests/foundry/test_knowledge_retrieval.py",
+      "tests/foundry/test_role_manifest.py",
+      "tests/foundry/test_executive_intelligence.py",
+      "-q",
+      "--junitxml=C:\\temp\\JARVIS-Overnight-V3-Hard-Gate\\evidence\\v3\\hard\\focused-runs.junit.xml"
+    ],
+    "duration_seconds": 118.62,
+    "errors": 0,
+    "exit_code": 0,
+    "failed": 0,
+    "failures": [],
+    "junit": "C:\\temp\\JARVIS-Overnight-V3-Hard-Gate\\evidence\\v3\\hard\\focused-runs.junit.xml",
+    "name": "focused-runs",
+    "passed": 132,
+    "skipped": 0,
+    "stderr_tail": "",
+    "stdout_tail": "........................................................................ [ 54%]\n............................................................             [100%]\n"
+  },
+  "full_suite": {
+    "collected": 1591,
+    "command": "reused existing JUnit result",
+    "duration_seconds": null,
+    "errors": 0,
+    "exit_code": 0,
+    "failed": 0,
+    "failures": [],
+    "junit": "C:\\temp\\JARVIS-Overnight-V3-Hard-Gate\\evidence\\v3\\hard\\full-suite-final.junit.xml",
+    "name": "full-suite",
+    "passed": 1591,
+    "skipped": 0,
+    "status": "PASS"
+  },
+  "independent_verifier": {
+    "reason": "A separate verifier session was not available in this lane.",
+    "status": "NOT_TESTED"
+  },
+  "migration_suite": {
+    "collected": 9,
+    "command": [
+      "C:\\Python313\\python.exe",
+      "-m",
+      "pytest",
+      "tests/foundry/test_knowledge_v35_durability.py",
+      "-q",
+      "--junitxml=C:\\temp\\JARVIS-Overnight-V3-Hard-Gate\\evidence\\v3\\hard\\migration-runs.junit.xml"
+    ],
+    "duration_seconds": 3.559,
+    "errors": 0,
+    "exit_code": 0,
+    "failed": 0,
+    "failures": [],
+    "junit": "C:\\temp\\JARVIS-Overnight-V3-Hard-Gate\\evidence\\v3\\hard\\migration-runs.junit.xml",
+    "name": "migration-runs",
+    "passed": 9,
+    "skipped": 0,
+    "stderr_tail": "",
+    "stdout_tail": ".........                                                                [100%]\n"
+  },
+  "next_integration_action": "Do not promote. Hermes lane must close AC-01, AC-07, AC-08, AC-09, AC-14, AC-17, and AC-20, then rerun this gate with a separate verifier and full-suite exit 0.",
+  "production_live_db_pushed": false,
+  "soak": {
+    "cycles": 8,
+    "database": "C:\\temp\\JARVIS-Overnight-V3-Hard-Gate\\evidence\\v3\\hard\\soak-lab\\soak.db",
+    "duration_seconds": 0.587,
+    "long_soak_status": "NOT_TESTED",
+    "long_soak_target_seconds": 14400,
+    "provider_calls": 0,
+    "reports": [
+      {
+        "candidate_id": null,
+        "candidates_created": 0,
+        "decision_id": "exec-hard-soak-0",
+        "degraded_sources": [],
+        "eligible": 0,
+        "loop_id": "hard-soak-0",
+        "mission_id": null,
+        "observed": 0,
+        "outcome": "WAITING",
+        "reason": "NO_ELIGIBLE_CANDIDATES",
+        "rejected": 0,
+        "scored": 0
+      },
+      {
+        "candidate_id": null,
+        "candidates_created": 0,
+        "decision_id": "exec-hard-soak-1",
+        "degraded_sources": [],
+        "eligible": 0,
+        "loop_id": "hard-soak-1",
+        "mission_id": null,
+        "observed": 0,
+        "outcome": "WAITING",
+        "reason": "NO_ELIGIBLE_CANDIDATES",
+        "rejected": 0,
+        "scored": 0
+      },
+      {
+        "candidate_id": null,
+        "candidates_created": 0,
+        "decision_id": "exec-hard-soak-2",
+        "degraded_sources": [],
+        "eligible": 0,
+        "loop_id": "hard-soak-2",
+        "mission_id": null,
+        "observed": 0,
+        "outcome": "WAITING",
+        "reason": "NO_ELIGIBLE_CANDIDATES",
+        "rejected": 0,
+        "scored": 0
+      },
+      {
+        "candidate_id": null,
+        "candidates_created": 0,
+        "decision_id": "exec-hard-soak-3",
+        "degraded_sources": [],
+        "eligible": 0,
+        "loop_id": "hard-soak-3",
+        "mission_id": null,
+        "observed": 0,
+        "outcome": "WAITING",
+        "reason": "NO_ELIGIBLE_CANDIDATES",
+        "rejected": 0,
+        "scored": 0
+      },
+      {
+        "candidate_id": null,
+        "candidates_created": 0,
+        "decision_id": "exec-hard-soak-4",
+        "degraded_sources": [],
+        "eligible": 0,
+        "loop_id": "hard-soak-4",
+        "mission_id": null,
+        "observed": 0,
+        "outcome": "WAITING",
+        "reason": "NO_ELIGIBLE_CANDIDATES",
+        "rejected": 0,
+        "scored": 0
+      },
+      {
+        "candidate_id": null,
+        "candidates_created": 0,
+        "decision_id": "exec-hard-soak-5",
+        "degraded_sources": [],
+        "eligible": 0,
+        "loop_id": "hard-soak-5",
+        "mission_id": null,
+        "observed": 0,
+        "outcome": "WAITING",
+        "reason": "NO_ELIGIBLE_CANDIDATES",
+        "rejected": 0,
+        "scored": 0
+      },
+      {
+        "candidate_id": null,
+        "candidates_created": 0,
+        "decision_id": "exec-hard-soak-6",
+        "degraded_sources": [],
+        "eligible": 0,
+        "loop_id": "hard-soak-6",
+        "mission_id": null,
+        "observed": 0,
+        "outcome": "WAITING",
+        "reason": "NO_ELIGIBLE_CANDIDATES",
+        "rejected": 0,
+        "scored": 0
+      },
+      {
+        "candidate_id": null,
+        "candidates_created": 0,
+        "decision_id": "exec-hard-soak-7",
+        "degraded_sources": [],
+        "eligible": 0,
+        "loop_id": "hard-soak-7",
+        "mission_id": null,
+        "observed": 0,
+        "outcome": "WAITING",
+        "reason": "NO_ELIGIBLE_CANDIDATES",
+        "rejected": 0,
+        "scored": 0
+      }
+    ],
+    "status": "PASS",
+    "target_cycles": 8
+  },
+  "supporting_suite": {
+    "collected": 63,
+    "command": [
+      "C:\\Python313\\python.exe",
+      "-m",
+      "pytest",
+      "tests/foundry/test_verifier_binding_hardening.py",
+      "tests/foundry/test_role_gateway_kill.py",
+      "tests/foundry/test_role_reaper.py",
+      "tests/foundry/test_worker_gate.py",
+      "-q",
+      "--junitxml=C:\\temp\\JARVIS-Overnight-V3-Hard-Gate\\evidence\\v3\\hard\\supporting-runs.junit.xml"
+    ],
+    "duration_seconds": 61.099,
+    "errors": 0,
+    "exit_code": 0,
+    "failed": 0,
+    "failures": [],
+    "junit": "C:\\temp\\JARVIS-Overnight-V3-Hard-Gate\\evidence\\v3\\hard\\supporting-runs.junit.xml",
+    "name": "supporting-runs",
+    "passed": 63,
+    "skipped": 0,
+    "stderr_tail": "",
+    "stdout_tail": "...............................................................          [100%]\n"
+  },
+  "verdict": "FAIL",
+  "verified_source_sha": "7849fc3a9998a16da45c922e4ccc506c0c5eab04",
+  "worktree": "C:\\temp\\JARVIS-Overnight-V3-Hard-Gate"
+}

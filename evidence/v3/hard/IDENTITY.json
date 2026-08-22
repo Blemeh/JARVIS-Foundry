@@ -1,0 +1,14 @@
+{
+  "base_ancestry": "ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2",
+  "base_matches": true,
+  "branch": "candidate/overnight-v3-hard-gate",
+  "expected_base": "ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2",
+  "head_at_gate_start": "7849fc3a9998a16da45c922e4ccc506c0c5eab04",
+  "live_database_mutation": false,
+  "production_mutation": false,
+  "push_attempted": false,
+  "status_before_gate": [
+    "?? evidence/v3/hard/"
+  ],
+  "worktree": "C:\\temp\\JARVIS-Overnight-V3-Hard-Gate"
+}

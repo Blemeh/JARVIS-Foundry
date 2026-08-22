@@ -1,0 +1,48 @@
+{
+  "collected": 1591,
+  "command": [
+    "C:\\Python313\\python.exe",
+    "-m",
+    "pytest",
+    "tests/foundry",
+    "-q",
+    "--junitxml=C:\\temp\\JARVIS-Overnight-V3-Hard-Gate\\evidence\\v3\\hard\\full-suite.junit.xml"
+  ],
+  "duration_seconds": 1558.967,
+  "errors": 0,
+  "exit_code": 1,
+  "failed": 5,
+  "failures": [
+    {
+      "classname": "tests.foundry.test_event_store",
+      "message": "PermissionError: [WinError 5] Access is denied: 'C:\\\\Users\\\\b\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-b\\\\pytest-4243\\\\test_verified_backup_restores_0\\\\.foundry.db.restore-4unth946.tmp' -> 'C:\\\\Users\\\\b\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-b\\\\pytest-4243\\\\test_verified_backup_restores_0\\\\foundry.db'",
+      "name": "test_verified_backup_restores_ledger_and_projection"
+    },
+    {
+      "classname": "tests.foundry.test_evolution_restore",
+      "message": "jarvis_foundry.evolution.restore.RestoreError: restore source C:\\Users\\b\\AppData\\Local\\Temp\\pytest-of-b\\pytest-4243\\test_restore_point_restores_st0\\runtime\\restore-points\\point-5c64e531d691.db unreadable during restore ([WinError 5] Access is denied: 'C:\\\\Users\\\\b\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-b\\\\pytest-4243\\\\test_restore_point_restores_st0\\\\runtime\\\\.foundry.db.restore-qoly6ztf.tmp' -> 'C:\\\\Users\\\\b\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-b\\\\pytest-4243\\\\test_restore_point_restores_st0\\\\runtime\\\\foundry.db') \u2014 refused, DB untouched",
+      "name": "test_restore_point_restores_state"
+    },
+    {
+      "classname": "tests.foundry.test_evolution_restore",
+      "message": "PermissionError: [WinError 5] Access is denied: 'C:\\\\Users\\\\b\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-b\\\\pytest-4243\\\\test_rehearse_restore_touches_0\\\\runtime\\\\restore-rehearsal\\\\.rehearsal-75c80942.db.restore-w9nlbbxt.tmp' -> 'C:\\\\Users\\\\b\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-b\\\\pytest-4243\\\\test_rehearse_restore_touches_0\\\\runtime\\\\restore-rehearsal\\\\rehearsal-75c80942.db'",
+      "name": "test_rehearse_restore_touches_nothing"
+    },
+    {
+      "classname": "tests.foundry.test_evolution_restore",
+      "message": "jarvis_foundry.evolution.restore.RestoreError: restore source C:\\Users\\b\\AppData\\Local\\Temp\\pytest-of-b\\pytest-4243\\test_interrupted_restore_recov0\\runtime\\restore-points\\point-a18068dcca5b.db unreadable during restore ([WinError 5] Access is denied: 'C:\\\\Users\\\\b\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-b\\\\pytest-4243\\\\test_interrupted_restore_recov0\\\\runtime\\\\.foundry.db.restore-u8m2hc3e.tmp' -> 'C:\\\\Users\\\\b\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-b\\\\pytest-4243\\\\test_interrupted_restore_recov0\\\\runtime\\\\foundry.db') \u2014 refused, DB untouched",
+      "name": "test_interrupted_restore_recovery"
+    },
+    {
+      "classname": "tests.foundry.test_evolution_restore",
+      "message": "jarvis_foundry.evolution.restore.RestoreError: restore source C:\\Users\\b\\AppData\\Local\\Temp\\pytest-of-b\\pytest-4243\\test_orphaned_points_listed_an0\\runtime\\restore-points\\point-d8c64ed439fc.db unreadable during restore ([WinError 5] Access is denied: 'C:\\\\Users\\\\b\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-b\\\\pytest-4243\\\\test_orphaned_points_listed_an0\\\\runtime\\\\.foundry.db.restore-y8x8x8_1.tmp' -> 'C:\\\\Users\\\\b\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-b\\\\pytest-4243\\\\test_orphaned_points_listed_an0\\\\runtime\\\\foundry.db') \u2014 refused, DB untouched",
+      "name": "test_orphaned_points_listed_and_reaped"
+    }
+  ],
+  "junit": "C:\\temp\\JARVIS-Overnight-V3-Hard-Gate\\evidence\\v3\\hard\\full-suite.junit.xml",
+  "name": "full-suite",
+  "passed": 1586,
+  "skipped": 0,
+  "stderr_tail": "",
+  "stdout_tail": "\\pytest-of-b\\\\pytest-4243\\\\test_orphaned_points_listed_an0\\\\runtime\\\\.foundry.db.restore-y8x8x8_1.tmp' -> 'C:\\\\Users\\\\b\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-b\\\\pytest-4243\\\\test_orphaned_points_listed_an0\\\\runtime\\\\foundry.db'\n\nsrc\\jarvis_foundry\\database.py:214: PermissionError\n\nThe above exception was the direct cause of the following exception:\n\ndb = <jarvis_foundry.database.FoundryDatabase object at 0x000002A4D6368DC0>\n\n    def test_orphaned_points_listed_and_reaped(db: FoundryDatabase) -> None:\n        \"\"\"S9 r1 (LOW): a point created AFTER a snapshot loses its ROW on\n        restore-to-older but its FILE survives \u2014 orphan listing + reaping\n        keeps the restore-points dir clean.\"\"\"\n        _fill(db, 2)\n        early = create_restore_point(db, label=\"early\",\n                                     controller=CONTROLLER)\n        _fill(db, 2)\n        late = create_restore_point(db, label=\"late\",\n                                    controller=CONTROLLER)\n        # restore to the EARLY point: the late point's row rolls back\n>       restore_from_point(db, point_id=early, controller=CONTROLLER)\n\ntests\\foundry\\test_evolution_restore.py:254: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n\ndatabase = <jarvis_foundry.database.FoundryDatabase object at 0x000002A4D6368DC0>\n\n    def restore_from_point(\n        database: FoundryDatabase, *, point_id: str, controller: str,\n        source_type: str = \"supervisor\", source_id: str = \"v6\",\n    ) -> int:\n        \"\"\"Restore the runtime DB to the point's exact state. The point is\n        verified FIRST (tampered/unknown/newer-schema points refuse), the\n        data-loss analysis is recorded, then the restore executes through\n        the sqlite backup API and the result is verified.\"\"\"\n        _require(_controller_ok(controller),\n                 \"only the Supervisor (controller) can restore \u2014 candidate \"\n                 \"identities are refused\")\n        _require(not _stop_active(database),\n                 \"stop active \u2014 restore refused (no state changes under \"\n                 \"STOP)\")\n        _require(verify_restore_point(database, point_id),\n                 f\"restore point {point_id} failed verification (tampered, \"\n                 \"missing, or schema-incompatible) \u2014 restore refused\")\n        row = _point_meta(database, point_id)\n        analysis = data_loss_analysis(database, point_id)\n        before = database.event_count()\n        try:\n            restored = database.restore_from(Path(str(row[\"path\"])))\n        except (sqlite3.DatabaseError, OSError) as exc:\n            # the point file can vanish between verify and restore (race);\n            # fail closed with the documented exception family\n>           raise RestoreError(\n                f\"restore source {row['path']} unreadable during restore \"\n                f\"({exc}) \u2014 refused, DB untouched\") from exc\nE           jarvis_foundry.evolution.restore.RestoreError: restore source C:\\Users\\b\\AppData\\Local\\Temp\\pytest-of-b\\pytest-4243\\test_orphaned_points_listed_an0\\runtime\\restore-points\\point-d8c64ed439fc.db unreadable during restore ([WinError 5] Access is denied: 'C:\\\\Users\\\\b\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-b\\\\pytest-4243\\\\test_orphaned_points_listed_an0\\\\runtime\\\\.foundry.db.restore-y8x8x8_1.tmp' -> 'C:\\\\Users\\\\b\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-b\\\\pytest-4243\\\\test_orphaned_points_listed_an0\\\\runtime\\\\foundry.db') \u2014 refused, DB untouched\n\nsrc\\jarvis_foundry\\evolution\\restore.py:236: RestoreError\n=========================== short test summary info ===========================\nFAILED tests/foundry/test_event_store.py::test_verified_backup_restores_ledger_and_projection\nFAILED tests/foundry/test_evolution_restore.py::test_restore_point_restores_state\nFAILED tests/foundry/test_evolution_restore.py::test_rehearse_restore_touches_nothing\nFAILED tests/foundry/test_evolution_restore.py::test_interrupted_restore_recovery\nFAILED tests/foundry/test_evolution_restore.py::test_orphaned_points_listed_and_reaped\n"
+}
