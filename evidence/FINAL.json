@@ -1,0 +1,47 @@
+{
+  "task": "V3 Command Center visibility — UI-only candidate",
+  "branch": "candidate/v3-command-center",
+  "base_sha": "8d0d7892a66301f6237490d894c11549409a91b9",
+  "final_sha": "06787d054040944ed61184781748fb3baddd598c",
+  "worktree": "C:/temp/JARVIS-V3-Command-Center",
+  "backend_contract_reference_readonly": {
+    "sha": "701aa748a2db412e3b6e83ab91f7982408ea6573",
+    "note": "candidate/v3-integration frozen by owner mid-run; UI models mirror its modules (v3_cycle, v3_scoring, v3_outcomes, v3_teams, executive/eligibility). No backend files touched."
+  },
+  "verification_history": [
+    {
+      "reviewer": "adversarial reviewer #1 (unbounded)",
+      "outcome": "STOPPED BY OWNER after ~30min loop on pre-existing baseline CSS classes (.panel-corner/.badge undefined on origin/main too). Partial findings preserved: scope clean, adapters honest, models tight; flagged fixture arithmetic thread.",
+      "disposition": "Thread verified by builder: real defect. Fixed in 1b473e1."
+    },
+    {
+      "reviewer": "bounded verifier #2 (20-call cap)",
+      "verdict_json": {
+        "verdict": "FAIL",
+        "checks": {
+          "models_match_contract": true,
+          "fixtures_reconcile": false,
+          "adapter_honesty": true,
+          "all_14_items": true,
+          "scope_clean": true,
+          "gates_green": true
+        },
+        "finding": "WAITING cycle loop-20260821T1110 counts inconsistent with backend semantics: eligible must be the pass count (0 when reason says all below threshold), scored=len(decisions), rejected=REJECTED count."
+      },
+      "disposition": "Verified against v3_cycle.py @701aa74 (eligible=[status==ELIGIBLE], scored=len(decisions), rejected=portfolio.rejected_count). Fixed in 406eb2d: scored=3, eligible=0, rejected=3."
+    }
+  ],
+  "gates_at_head": {
+    "lint": "PASS (--max-warnings 0)",
+    "typecheck": "PASS (tsc -b --noEmit)",
+    "unit_tests": "PASS (49/49 across 11 files; 9 new discovery tests)",
+    "production_build": "PASS (vite build)",
+    "visual": "Playwright captures at 1600x1000 / 834x1112 / 390x844 + candidate-grid closeup reviewed by vision passes"
+  },
+  "scope": "ui/command-center/** plus evidence/DECISION_TRAIL.md only. No push.",
+  "integration_requirements": [
+    "Backend: add the §3.13 discovery projection to command_center.build_snapshot at a future commit of candidate/v3-integration.",
+    "UI: implement RealJarvisRuntimeAdapter.getDiscovery mapping (single method, currently returns available:false) to the new snapshot section; V3DiscoveryView in v3Models.ts is the target shape.",
+    "No migration, schema, flag, or runtime change required for this UI candidate; simulated mode is self-contained."
+  ]
+}
