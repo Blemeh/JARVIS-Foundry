@@ -169,6 +169,66 @@ def test_reconcile_confirms_landed_push_after_ambiguity(tmp_path):
     assert resolution["remote_head"] == local_head
 
 
+def test_subprocess_timeout_expired_is_ambiguous_not_failed(tmp_path):
+    bare = make_bare_remote(tmp_path / "remote-timeout-expired")
+    database = FoundryDatabase(tmp_path / "db-timeout-expired.sqlite")
+    database.initialize()
+    adapter = GitEffectAdapter(database)
+    work = _clone_with_commit(bare, tmp_path, "timeout-expired")
+
+    def _expired(worktree, remote, branch):
+        raise subprocess.TimeoutExpired(["git", "push"], timeout=1)
+
+    with pytest.raises(GitReconcilePending):
+        adapter.push(action_id="act-timeout-expired", worktree=work,
+                     remote=bare, branch="main", execute=_expired)
+    assert database.event_count(event_type="effect.reconcile_pending") == 1
+    assert database.event_count(event_type="system.action_failed") == 0
+
+
+def test_landed_reconciliation_is_terminal_and_does_not_repush(tmp_path):
+    bare = make_bare_remote(tmp_path / "remote-reconciled-terminal")
+    database = FoundryDatabase(tmp_path / "db-reconciled-terminal.sqlite")
+    database.initialize()
+    adapter = GitEffectAdapter(database)
+    work = _clone_with_commit(bare, tmp_path, "reconciled-terminal")
+    local_head = subprocess.run(
+        ["git", "-C", str(work), "rev-parse", "HEAD"],
+        capture_output=True, text=True, check=True).stdout.strip()
+
+    def _land_then_timeout(worktree, remote, branch):
+        subprocess.run(["git", "-C", str(worktree), "push", str(remote), branch],
+                       capture_output=True, text=True, check=True)
+        raise subprocess.TimeoutExpired(["git", "push"], timeout=1)
+
+    with pytest.raises(GitReconcilePending):
+        adapter.push(action_id="act-reconciled-terminal", worktree=work,
+                     remote=bare, branch="main", execute=_land_then_timeout)
+    resolution = adapter.reconcile_pending(
+        action_id="act-reconciled-terminal", remote=bare, branch="main",
+        expected_head=local_head)
+    assert resolution["reconciled"] is True
+    replay = adapter.push(
+        action_id="act-reconciled-terminal", worktree=work, remote=bare,
+        branch="main", execute=lambda *_: (_ for _ in ()).throw(
+            AssertionError("reconciled push must not execute again")))
+    assert replay["outcome"] == "COMPLETED"
+    assert replay["performed"] is False
+
+
+def test_dirty_worktree_is_rejected_before_effect_start(tmp_path):
+    bare = make_bare_remote(tmp_path / "remote-dirty")
+    database = FoundryDatabase(tmp_path / "db-dirty.sqlite")
+    database.initialize()
+    adapter = GitEffectAdapter(database)
+    work = _clone_with_commit(bare, tmp_path, "dirty-worktree")
+    (work / "untracked.txt").write_text("not part of the effect", encoding="utf-8")
+    with pytest.raises(ValueError, match="dirty worktree"):
+        adapter.push(action_id="act-dirty", worktree=work, remote=bare,
+                     branch="main")
+    assert database.event_count(event_type="system.action_started") == 0
+
+
 def test_stop_blocks_git_push(tmp_path):
     from jarvis_foundry.owner_controls import OwnerControlService, sign_command
 

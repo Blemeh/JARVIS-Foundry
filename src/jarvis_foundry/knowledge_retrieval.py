@@ -16,6 +16,9 @@ from typing import Any
 # claim_type registry used for objective hints (deterministic matching)
 CLAIM_TYPE_HINTS = ("causal-analysis", "fact", "constraint", "preference",
                     "decision")
+MAX_MANIFEST_CHARS = 16_000
+MAX_OBJECTIVE_CHARS = 2_000
+MAX_CLAIM_TEXT_CHARS = 4_000
 
 _CLAIM_COLUMNS = ("claim_id, mission_id, statement, claim_type, "
                   "record_kind, confidence, "
@@ -174,30 +177,64 @@ def build_context_manifest(connection: sqlite3.Connection, mission_id: str,
         "ORDER BY rowid", (mission_id, mission_id)).fetchall()
     conflicts = [dict(row) for row in conflicts_raw]
 
+    # ``max_chars`` is caller-controlled, so retain a hard upper bound. The
+    # objective and every retrieved section are untrusted content and must
+    # not be able to bypass the context envelope by requesting a huge budget.
+    budget = max(256, min(int(max_chars), MAX_MANIFEST_CHARS))
+    bounded_objective = str(objective)
+    objective_limit = min(MAX_OBJECTIVE_CHARS, max(32, budget // 4))
+    if len(bounded_objective) > objective_limit:
+        bounded_objective = bounded_objective[:objective_limit]
     manifest = Manifest(
-        objective=objective,
+        objective=bounded_objective,
         objective_hash=hashlib.sha256(objective.encode("utf-8")).hexdigest()[:16],
         generated_at=now,
     )
-    budget = max_chars
     serialized: list[dict[str, Any]] = []
+    stale_serialized: list[dict[str, Any]] = []
+    conflict_serialized: list[dict[str, Any]] = []
+    used = len(json.dumps({
+        "objective": manifest.objective,
+        "objective_hash": manifest.objective_hash,
+        "generated_at": manifest.generated_at,
+    }, ensure_ascii=False))
+
+    def add_bounded(target: list[dict[str, Any]], item: dict[str, Any]) -> bool:
+        nonlocal used
+        encoded = json.dumps(item, ensure_ascii=False)
+        if used + len(encoded) > budget:
+            manifest.truncated = True
+            return False
+        target.append(item)
+        used += len(encoded)
+        return True
+
     for claim in active:
-        item = {"claim_id": claim["claim_id"], "statement": claim["statement"],
+        item = {"claim_id": claim["claim_id"],
+                "statement": str(claim["statement"] or "")[:MAX_CLAIM_TEXT_CHARS],
                 "claim_type": claim["claim_type"],
                 "confidence": claim["confidence"],
                 "fresh_until": claim["fresh_until"],
                 "source_run_id": claim["source_run_id"],
                 "status": claim["status"]}
-        cost = len(json.dumps(item))
-        if sum(len(json.dumps(i)) for i in serialized) + cost > budget:
-            manifest.truncated = True
+        if not add_bounded(serialized, item):
             break
-        serialized.append(item)
+    if not manifest.truncated:
+        for claim in stale:
+            item = {"claim_id": claim["claim_id"],
+                    "statement": str(claim["statement"] or "")[:MAX_CLAIM_TEXT_CHARS],
+                    "claim_type": claim["claim_type"],
+                    "confidence": claim["confidence"],
+                    "fresh_until": claim["fresh_until"], "status": "STALE"}
+            if not add_bounded(stale_serialized, item):
+                break
+    if not manifest.truncated:
+        for conflict in conflicts:
+            item = {key: str(conflict.get(key) or "")[:MAX_CLAIM_TEXT_CHARS]
+                    for key in ("claim_a_id", "claim_b_id", "claim_type", "reason")}
+            if not add_bounded(conflict_serialized, item):
+                break
     manifest.active_claims = serialized
-    manifest.conflicts = conflicts
-    manifest.stale_claims = [
-        {"claim_id": c["claim_id"], "statement": c["statement"],
-         "claim_type": c["claim_type"], "confidence": c["confidence"],
-         "fresh_until": c["fresh_until"], "status": "STALE"}
-        for c in stale]
+    manifest.stale_claims = stale_serialized
+    manifest.conflicts = conflict_serialized
     return manifest._finalize()

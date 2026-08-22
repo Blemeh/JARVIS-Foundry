@@ -309,17 +309,36 @@ def approve_candidate(db: FoundryDatabase, candidate_id: str,
         row = connection.execute(
             "SELECT objective, status FROM candidates WHERE candidate_id = ?",
             (candidate_id,)).fetchone()
+        approval = connection.execute(
+            "SELECT payload_json FROM events WHERE event_type = "
+            "'discovery.candidate_approved' AND json_extract(payload_json, "
+            "'$.candidate_id') = ? ORDER BY sequence LIMIT 1",
+            (candidate_id,)).fetchone()
+        mission_event = None
+        if approval:
+            import json
+            approved_payload = json.loads(approval[0])
+            approved_mission_id = str(approved_payload.get("mission_id") or "")
+            if approved_mission_id:
+                mission_event = connection.execute(
+                    "SELECT 1 FROM events WHERE event_type = 'mission.created' "
+                    "AND json_extract(payload_json, '$.mission_id') = ? LIMIT 1",
+                    (approved_mission_id,),
+                ).fetchone()
     from .executive.eligibility import ELIGIBLE_STATUSES
-    if row is None or row[1] not in ELIGIBLE_STATUSES:
+    approved_mission_id = ""
+    if approval:
+        import json
+        approved_mission_id = str(json.loads(approval[0]).get("mission_id") or "")
+    if row is None or (row[1] not in ELIGIBLE_STATUSES
+                       and not (row[1] == "APPROVED" and approved_mission_id)):
         raise ValueError(
             f"approve_candidate requires an existing, scorable candidate "
             f"({candidate_id}, status={row[1] if row else 'MISSING'})")
-    mission_id = f"mission-{uuid.uuid4().hex[:12]}"
-    db.append(Event.create(
-        "discovery.candidate_approved",
-        {"candidate_id": candidate_id, "mission_id": mission_id},
-        source_type="supervisor", source_id="wp10-discovery",
-        idempotency_key=f"discovery.candidate_approved:{candidate_id}"))
+    # Bind the mission identity to the candidate. This makes a retry after a
+    # crash between approval and mission creation converge on one mission,
+    # including concurrent materializers racing on the same decision.
+    mission_id = approved_mission_id or f"mission-{candidate_id}"
     created: dict[str, Any] = {
         "mission_id": mission_id, "step_id": "v3-candidate",
         "objective": row[0], "role": role,
@@ -330,10 +349,20 @@ def approve_candidate(db: FoundryDatabase, candidate_id: str,
         created["resource_id"] = resource_id
     if next_action:
         created["next_action"] = next_action
-    db.append(Event.create(
-        "mission.created", created,
-        source_type="supervisor", source_id="wp10-discovery",
-        idempotency_key=f"mission.created:{mission_id}"))
+    events: list[Event] = []
+    if not approval:
+        events.append(Event.create(
+            "discovery.candidate_approved",
+            {"candidate_id": candidate_id, "mission_id": mission_id},
+            source_type="supervisor", source_id="wp10-discovery",
+            idempotency_key=f"discovery.candidate_approved:{candidate_id}"))
+    if not mission_event:
+        events.append(Event.create(
+            "mission.created", created,
+            source_type="supervisor", source_id="wp10-discovery",
+            idempotency_key=f"mission.created:{mission_id}"))
+    if events:
+        db.append_events(events)
     return mission_id
 
 

@@ -9,7 +9,9 @@ same policy version -> identical trace bytes.
 from __future__ import annotations
 
 import hashlib
+import math
 import sqlite3
+from datetime import datetime, timezone
 from typing import Any
 
 from .database import FoundryDatabase
@@ -37,6 +39,75 @@ COST_TERMS = ("migrate", "refactor", "rewrite", "replatform")
 CIRCULAR_PATTERNS = ("improve the improvement process",
                      "optimize this scoring policy",
                      "select this candidate repeatedly")
+
+
+def _validate_policy(policy: dict[str, Any]) -> dict[str, Any]:
+    """Validate a registered policy before it can influence selection."""
+    if not isinstance(policy, dict):
+        raise ValueError("policy must be an object")
+    version = policy.get("policy_version")
+    if not isinstance(version, str) or not version.strip():
+        raise ValueError("policy_version is required")
+    weights = policy.get("weights")
+    if not isinstance(weights, dict):
+        raise ValueError("policy weights must be an object")
+    missing = sorted(set(DIMENSIONS) - set(weights))
+    unknown = sorted(set(weights) - set(DIMENSIONS))
+    if missing or unknown:
+        raise ValueError(
+            f"policy weights must contain exactly the scoring dimensions; "
+            f"missing={missing}, unknown={unknown}")
+    numeric_weights: dict[str, float] = {}
+    for name in DIMENSIONS:
+        try:
+            value = float(weights[name])
+        except (TypeError, ValueError, OverflowError) as error:
+            raise ValueError(f"policy weight {name!r} is not numeric") from error
+        if not math.isfinite(value) or value < 0.0:
+            raise ValueError(f"policy weight {name!r} is invalid")
+        numeric_weights[name] = value
+    if abs(sum(numeric_weights.values()) - 1.0) > 1e-6:
+        raise ValueError("policy weights must sum to 1.0")
+
+    thresholds = policy.get("thresholds")
+    if not isinstance(thresholds, dict):
+        raise ValueError("policy thresholds must be an object")
+    required_thresholds = (
+        "min_total_score", "min_strategic_fit", "min_confidence",
+        "min_information_gain_for_research_override",
+        "comparative_wait_margin",
+    )
+    normalized_thresholds: dict[str, float] = {}
+    for name in required_thresholds:
+        try:
+            value = float(thresholds[name])
+        except (KeyError, TypeError, ValueError, OverflowError) as error:
+            raise ValueError(f"policy threshold {name!r} is invalid") from error
+        if not math.isfinite(value) or not 0.0 <= value <= 1.0:
+            raise ValueError(f"policy threshold {name!r} is outside [0, 1]")
+        normalized_thresholds[name] = value
+
+    hard_filters = policy.get("hard_filters")
+    if not isinstance(hard_filters, dict):
+        raise ValueError("policy hard_filters must be an object")
+    try:
+        max_blast = float(hard_filters["max_blast_radius"])
+        min_evidence = int(hard_filters["min_evidence_refs"])
+    except (KeyError, TypeError, ValueError, OverflowError) as error:
+        raise ValueError("policy hard_filters are invalid") from error
+    if not math.isfinite(max_blast) or not 0.0 <= max_blast <= 1.0:
+        raise ValueError("policy max_blast_radius is outside [0, 1]")
+    if min_evidence < 0:
+        raise ValueError("policy min_evidence_refs must be non-negative")
+    return {
+        "policy_version": version,
+        "weights": numeric_weights,
+        "thresholds": normalized_thresholds,
+        "hard_filters": {
+            "max_blast_radius": max_blast,
+            "min_evidence_refs": min_evidence,
+        },
+    }
 
 
 def _clamp01(value: float) -> float:
@@ -95,7 +166,8 @@ class HardFilterError(ValueError):
 
 def check_hard_filters(candidate: dict[str, Any], policy: dict[str, Any],
                        *, stop_reason: str | None = None,
-                       veto_reason: str | None = None) -> list[str]:
+                       veto_reason: str | None = None,
+                       now: str | None = None) -> list[str]:
     """Evaluate hard filters in fixed order; return reason codes.
 
     Raises nothing: callers decide rejection vs exception. An empty
@@ -106,20 +178,54 @@ def check_hard_filters(candidate: dict[str, Any], policy: dict[str, Any],
         reasons.append("HARD_STOP")
     if veto_reason:
         reasons.append("HARD_VETO")
+    if candidate.get("action_allowed") is False or candidate.get("illegal_action"):
+        reasons.append("HARD_ILLEGAL")
+    required = candidate.get("required_capabilities") or []
+    readiness = candidate.get("capability_readiness") or {}
+    if any(readiness.get(capability) not in ("READY", "ACTIVE")
+           for capability in required):
+        reasons.append("HARD_CAPABILITY")
+    if candidate.get("severity_one_open"):
+        reasons.append("HARD_DEFECT")
+    try:
+        blast_radius = float(candidate.get("blast_radius") or 0.0)
+    except (TypeError, ValueError, OverflowError):
+        blast_radius = 1.0
+    if not math.isfinite(blast_radius):
+        blast_radius = 1.0
+    hard_filters = policy.get("hard_filters", {})
+    try:
+        max_blast = float(hard_filters.get("max_blast_radius", 0.85))
+        min_evidence = int(hard_filters.get("min_evidence_refs", 1))
+        if not math.isfinite(max_blast) or not 0.0 <= max_blast <= 1.0 or min_evidence < 0:
+            raise ValueError
+    except (AttributeError, TypeError, ValueError, OverflowError):
+        reasons.append("HARD_POLICY")
+        max_blast = 0.0
+        min_evidence = 1
+    if _clamp01(blast_radius) > max_blast:
+        reasons.append("HARD_BLAST")
+    expires_at = candidate.get("expires_at")
+    if expires_at:
+        try:
+            expires = datetime.fromisoformat(str(expires_at).replace("Z", "+00:00"))
+            current = datetime.fromisoformat(
+                str(now or datetime.now(timezone.utc).isoformat()).replace("Z", "+00:00"))
+            if expires <= current:
+                reasons.append("HARD_EXPIRED")
+        except (TypeError, ValueError, OverflowError):
+            reasons.append("HARD_EXPIRED")
+    if candidate.get("duplicate_unresolved") or candidate.get("unresolved_duplicate"):
+        reasons.append("HARD_DUPLICATE")
     if not str(candidate.get("objective") or "").strip():
         reasons.append("HARD_UNMEASURABLE")
-    if not candidate.get("expected_outcome"):
+    if not str(candidate.get("expected_outcome") or "").strip():
         reasons.append("HARD_UNMEASURABLE")
-    if len(candidate.get("evidence_refs") or []) < int(
-            policy.get("hard_filters", {}).get("min_evidence_refs", 1)):
+    if len(candidate.get("evidence_refs") or []) < min_evidence:
         reasons.append("HARD_NO_EVIDENCE")
     lowered = str(candidate.get("objective") or "").lower()
     if any(pattern in lowered for pattern in CIRCULAR_PATTERNS):
         reasons.append("HARD_CIRCULAR")
-    blast_radius = float(policy.get("hard_filters", {}).get(
-        "max_blast_radius", 0.85))
-    if _clamp01(float(candidate.get("blast_radius") or 0.0)) > blast_radius:
-        reasons.append("HARD_BLAST")
     return reasons
 
 
@@ -134,31 +240,39 @@ def load_active_policy(db: FoundryDatabase) -> dict[str, Any]:
         raise ValueError(
             "no active scoring policy registered — register a policy via "
             "register_policy() before scoring (fail-closed)")
-    return {
+    policy = {
         "policy_version": row[0],
         "weights": _load_json(row[1]),
         "thresholds": _load_json(row[2]),
         "hard_filters": _load_json(row[3]),
     }
+    return _validate_policy(policy)
 
 
 def _load_json(raw: str | None) -> dict[str, Any]:
     import json
     try:
-        return json.loads(raw or "{}")
-    except ValueError:
-        return {}
+        value = json.loads(raw or "")
+    except (TypeError, ValueError) as error:
+        raise ValueError("policy JSON is malformed") from error
+    if not isinstance(value, dict):
+        raise ValueError("policy JSON must contain an object")
+    return value
 
 
 def register_policy(db: FoundryDatabase, policy: dict[str, Any]) -> None:
     """Append ``scoring.policy_registered`` for the given policy payload."""
-    version = policy.get("policy_version") or POLICY_VERSION
+    normalized = _validate_policy({
+        **policy,
+        "policy_version": policy.get("policy_version") or POLICY_VERSION,
+    })
+    version = normalized["policy_version"]
     db.append(Event.create(
         "scoring.policy_registered",
         {"policy_version": version,
-         "weights": policy.get("weights", {}),
-         "thresholds": policy.get("thresholds", {}),
-         "hard_filters": policy.get("hard_filters", {})},
+         "weights": normalized["weights"],
+         "thresholds": normalized["thresholds"],
+         "hard_filters": normalized["hard_filters"]},
         source_type="supervisor", source_id="v3-scoring",
         idempotency_key=f"scoring.policy:{version}"))
 
@@ -210,28 +324,14 @@ class ScoringService:
                 return {"candidate_id": candidate_id, "status": status,
                         "total": None, "trace": {}, "appended": False}
             candidate = self._candidate_state(connection, candidate_id)
-        # V3 MVP review repair: a candidate that passes policy scoring
-        # inside a governed cycle is admitted to the CURRENT epoch (the
-        # generation-time stamp can predate activation). Same trusted
-        # issuer rules as generate-time stamping; no-op when authority
-        # is inactive.
-        from .executive.eligibility import (
-            current_activation_epoch, is_candidate_admitted,
-            admit_candidate)
-        epoch = current_activation_epoch(self._db)
-        if epoch and not is_candidate_admitted(self._db, candidate_id, epoch):
-            # Idempotent per candidate+epoch; silently skips when the
-            # admission authority is inactive (fail-closed governance).
-            admit_candidate(
-                self._db, candidate_id, epoch=epoch,
-                source="v3-scoring")
         dims = dimensions or derive_dimensions(
             candidate["objective"],
             evidence_count=len(candidate["evidence_refs"]),
             source_trust=1.0)
 
         reject_reasons = check_hard_filters(
-            candidate, policy, stop_reason=stop_reason, veto_reason=veto_reason)
+            candidate, policy, stop_reason=stop_reason, veto_reason=veto_reason,
+            now=_current_utc())
         if reject_reasons:
             reason_code = reject_reasons[0]
             self._db.append(Event.create(
@@ -248,7 +348,16 @@ class ScoringService:
         total = compute_total(dims, policy["weights"])
         threshold = float(policy.get("thresholds", {}).get(
             "min_total_score", 0.40))
-        below = total < threshold
+        threshold_failures: list[str] = []
+        if total < threshold:
+            threshold_failures.append("BELOW_THRESHOLD")
+        if dims["strategic_fit"] < float(policy["thresholds"].get(
+                "min_strategic_fit", 0.0)):
+            threshold_failures.append("BELOW_STRATEGIC_FIT")
+        if dims["confidence"] < float(policy["thresholds"].get(
+                "min_confidence", 0.0)):
+            threshold_failures.append("BELOW_CONFIDENCE")
+        below = bool(threshold_failures)
         trace = {
             "policy_version": policy["policy_version"],
             "dimensions": dims,
@@ -257,8 +366,9 @@ class ScoringService:
             "hard_filters": [],
             "thresholds": policy.get("thresholds", {}),
             "below_threshold": below,
+            "threshold_failures": threshold_failures,
         }
-        self._db.append(Event.create(
+        scored_event = Event.create(
             "discovery.candidate_scored",
             {"candidate_id": candidate_id,
              "score": total,
@@ -274,21 +384,40 @@ class ScoringService:
              "provenance_hash": candidate.get("provenance_hash"),
              "expires_at": candidate.get("expires_at")},
             source_type="supervisor", source_id="v3-scoring",
-            idempotency_key=f"discovery.candidate_scored:{candidate_id}:{policy['policy_version']}"))
+            idempotency_key=f"discovery.candidate_scored:{candidate_id}:{policy['policy_version']}")
         final_status = "ELIGIBLE"
+        events = [scored_event]
         if below:
             # Score recorded, portfolio bar not met: stays visible but
             # BELOW_THRESHOLD-rejected for selection purposes.
-            self._db.append(Event.create(
+            events.append(Event.create(
                 "discovery.candidate_rejected",
                 {"candidate_id": candidate_id,
-                 "reason": f"BELOW_THRESHOLD score={total}",
+                 "reason": "; ".join(threshold_failures),
                  "filter_or_score": "score",
-                 "reason_code": "BELOW_THRESHOLD"},
+                 "reason_code": threshold_failures[0]},
                 source_type="supervisor", source_id="v3-scoring",
                 idempotency_key=f"discovery.candidate_rejected:{candidate_id}:BELOW_THRESHOLD"))
             final_status = "REJECTED"
+        self._db.append_events(events)
+        if final_status == "ELIGIBLE":
+            # Admission is a post-filter, post-threshold operation. A stop
+            # or veto that arrives while scoring is in flight must not grant
+            # executive authority to a candidate that was not safe to admit.
+            from .control.broker import emergency_stop_reason, matching_veto_reason
+            from .executive.eligibility import (
+                current_activation_epoch, is_candidate_admitted,
+                admit_candidate)
+            live_stop = emergency_stop_reason(self._db, None)
+            live_veto = matching_veto_reason(self._db, {"GLOBAL", candidate_id})
+            epoch = current_activation_epoch(self._db)
+            if not live_stop and not live_veto and epoch and not is_candidate_admitted(
+                    self._db, candidate_id, epoch):
+                admit_candidate(
+                    self._db, candidate_id, epoch=epoch,
+                    source="v3-scoring")
         return {"candidate_id": candidate_id, "status": final_status,
+                "reason_codes": threshold_failures,
                 "total": total, "trace": trace, "appended": True}
 
     def score_all_eligible(self, *, limit: int = 50,
@@ -317,6 +446,27 @@ class ScoringService:
         except ValueError:
             evidence = []
         refs = [item for item in evidence if isinstance(item, dict)]
+        extras: dict[str, Any] = {}
+        event_row = connection.execute(
+            "SELECT payload_json FROM events WHERE event_type = "
+            "'discovery.candidate_generated' AND json_extract(payload_json, "
+            "'$.candidate_id') = ? ORDER BY sequence LIMIT 1",
+            (candidate_id,),
+        ).fetchone()
+        if event_row:
+            try:
+                payload = json.loads(event_row[0])
+                extras = {
+                    key: payload.get(key)
+                    for key in (
+                        "required_capabilities", "capability_readiness",
+                        "action_allowed", "illegal_action",
+                        "severity_one_open", "duplicate_unresolved",
+                    )
+                    if key in payload
+                }
+            except (TypeError, ValueError):
+                extras = {"malformed_payload": True}
         return {
             "objective": row[0],
             "evidence_refs": refs,
@@ -325,7 +475,12 @@ class ScoringService:
             "expected_outcome": row[4],
             "provenance_hash": row[5],
             "expires_at": row[6],
+            **extras,
         }
+
+
+def _current_utc() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
 def compute_total(dimensions: dict[str, float],

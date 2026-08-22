@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import uuid
+import json
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
@@ -193,6 +194,46 @@ class ExecutiveDecisionService:
         )
 
         best = ranked[0]
+        comparative_rationale = ""
+        if len(ranked) >= 2:
+            first, second = ranked[0], ranked[1]
+            first_row = next(r for r in rows if r["candidate_id"] == first.candidate_id)
+            second_row = next(r for r in rows if r["candidate_id"] == second.candidate_id)
+            pair = {str(first_row.get("candidate_type") or ""),
+                    str(second_row.get("candidate_type") or "")}
+            if pair == {"research", "build"}:
+                research = first if first_row.get("candidate_type") == "research" else second
+                build = first if first_row.get("candidate_type") == "build" else second
+                research_row = first_row if first_row.get("candidate_type") == "research" else second_row
+                build_row = first_row if first_row.get("candidate_type") == "build" else second_row
+                from ..v3_scoring import derive_dimensions, load_active_policy
+                def _evidence_count(row: dict[str, Any]) -> int:
+                    try:
+                        value = json.loads(str(row.get("evidence_json") or "[]"))
+                    except (TypeError, ValueError):
+                        value = []
+                    return len(value) if isinstance(value, list) else 0
+                research_dims = derive_dimensions(
+                    str(research_row.get("objective") or ""),
+                    evidence_count=_evidence_count(research_row))
+                build_dims = derive_dimensions(
+                    str(build_row.get("objective") or ""),
+                    evidence_count=_evidence_count(build_row))
+                try:
+                    policy = load_active_policy(self.database)
+                    info_threshold = float(policy["thresholds"][
+                        "min_information_gain_for_research_override"])
+                except (KeyError, TypeError, ValueError):
+                    info_threshold = 0.55
+                if (build_dims["confidence"] < 0.40
+                        and research_dims["information_gain"] >= info_threshold
+                        and abs(research.composite - build.composite) <= 0.08):
+                    best = research
+                    comparative_rationale = (
+                        "research override: build confidence "
+                        f"{build_dims['confidence']:.3f} < 0.40 and research "
+                        f"information gain {research_dims['information_gain']:.3f} "
+                        f">= {info_threshold:.3f}; within 0.08 of build")
         # Every runner-up gets an explicit, recorded disposition so the
         # decision is auditable: why each alternative lost.
         for score in ranked[1:]:
@@ -289,6 +330,9 @@ class ExecutiveDecisionService:
                 source_id=self.source_id,
             )
 
+        factor_breakdown = _factor_dict(best)
+        if comparative_rationale:
+            factor_breakdown["comparative_rationale"] = comparative_rationale
         decision = ExecutiveDecision(
             kind="SELECT",
             decision_id=decision_id,
@@ -300,7 +344,7 @@ class ExecutiveDecisionService:
             score=best,
             rejected=tuple(rejected),
             deferred=tuple(deferred),
-            factor_breakdown=_factor_dict(best),
+            factor_breakdown=factor_breakdown,
             active_goals=goal_ids,
             eligibility=eligibility_audit,
             calibration_version=calibration.version,
