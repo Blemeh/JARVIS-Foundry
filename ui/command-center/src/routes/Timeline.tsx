@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AlertTriangle, ArrowLeftRight, Flag, Search, Terminal } from "lucide-react";
 import { useCommandCenter } from "../context/CommandCenterContext";
 import type { EntityRef, TimelineCategory, TimelineEvent, TimelineSeverity } from "../lib/contracts";
 import { Drawer } from "../components/Drawer";
-import { EmptyState, LoadingState } from "../components/states";
+import { EmptyState } from "../components/states";
+import { RouteQueryGate } from "../components/RouteQueryGate";
 import { ContextChip, RefChipRow } from "../components/EntityRefLink";
+import { useRouteQuery } from "../hooks/useRouteQuery";
 import { sourceModeLabel } from "../lib/sourceMode";
 
 const filters: { key: "ALL" | TimelineCategory; label: string }[] = [
@@ -43,12 +45,11 @@ function eventRefs(e: TimelineEvent): EntityRef[] {
   return refs;
 }
 
-export function Timeline() {
-  const { client, version, sourceMode } = useCommandCenter();
+function TimelineContent({ events }: { events: TimelineEvent[] }) {
+  const { sourceMode } = useCommandCenter();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [events, setEvents] = useState<TimelineEvent[] | null>(null);
   const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<TimelineEvent | null>(null);
+  const [manualSelected, setManualSelected] = useState<TimelineEvent | null>(null);
 
   const missionFilter = searchParams.get("mission");
   const agentFilter = searchParams.get("agent");
@@ -57,24 +58,13 @@ export function Timeline() {
   const categoryFilter = searchParams.get("category");
   const eventParam = searchParams.get("event");
 
-  useEffect(() => {
-    let cancelled = false;
-    client.listTimeline().then((e) => {
-      if (!cancelled) {
-        setEvents(e);
-        if (eventParam) {
-          const found = e.find((x) => x.id === eventParam);
-          setSelected(found ?? null);
-        }
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [client, version, eventParam]);
+  const selected = useMemo(() => {
+    if (manualSelected) return manualSelected;
+    if (!eventParam) return null;
+    return events.find((x) => x.id === eventParam) ?? null;
+  }, [manualSelected, eventParam, events]);
 
   const filtered = useMemo(() => {
-    if (!events) return [];
     const q = query.trim().toLowerCase();
     return events.filter((e) => {
       const catOk = !categoryFilter || e.category === categoryFilter;
@@ -103,14 +93,6 @@ export function Timeline() {
     next.delete(key);
     setSearchParams(next, { replace: true });
   };
-
-  if (!events) {
-    return (
-      <div className="shell-content">
-        <LoadingState label="Loading timeline" />
-      </div>
-    );
-  }
 
   return (
     <div className="shell-content">
@@ -202,7 +184,7 @@ export function Timeline() {
                       type="button"
                       className="tl-card panel panel-corner"
                       onClick={() => {
-                        setSelected(e);
+                        setManualSelected(e);
                         const next = new URLSearchParams(searchParams);
                         next.set("event", e.id);
                         setSearchParams(next, { replace: true });
@@ -248,7 +230,7 @@ export function Timeline() {
         open={selected !== null}
         title="Timeline Event"
         onClose={() => {
-          setSelected(null);
+          setManualSelected(null);
           const next = new URLSearchParams(searchParams);
           next.delete("event");
           setSearchParams(next, { replace: true });
@@ -281,5 +263,24 @@ export function Timeline() {
         ) : null}
       </Drawer>
     </div>
+  );
+}
+
+export function Timeline() {
+  const { client, version } = useCommandCenter();
+  const eventsQuery = useRouteQuery(
+    () => client.listTimeline(),
+    [client, version],
+  );
+
+  return (
+    <RouteQueryGate
+      query={eventsQuery}
+      loadingLabel="Loading timeline"
+      errorLabel="Timeline unavailable"
+      surface="Evidence spine"
+    >
+      {(events) => <TimelineContent events={events} />}
+    </RouteQueryGate>
   );
 }

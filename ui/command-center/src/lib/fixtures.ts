@@ -1096,5 +1096,17 @@ export const trustSummary: TrustSummary = {
       state: "PENDING",
       detail: "This candidate renders simulated fixtures. A numeric trust score is withheld until a runtime adapter supplies canonical measurements.",
     },
+    {
+      id: "constraints",
+      label: "Owner constraints",
+      state: "WARN",
+      detail: "2 active constraints in durable controls.",
+    },
+    {
+      id: "stale-leases",
+      label: "Stale leases",
+      state: "PASS",
+      detail: "0 stale leases reported by supervisor health.",
+    },
   ],
 };

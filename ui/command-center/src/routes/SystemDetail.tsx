@@ -1,54 +1,48 @@
-import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Cpu, HeartPulse, History, ShieldAlert } from "lucide-react";
 import { useCommandCenter } from "../context/CommandCenterContext";
 import type { SystemComponent, TimelineEvent } from "../lib/contracts";
 import { StatusBadge } from "../components/StatusBadge";
-import { LoadingState, ErrorState } from "../components/states";
+import { DetailRouteQueryGate } from "../components/DetailRouteQueryGate";
 import { EntityRefLink, RefChipRow } from "../components/EntityRefLink";
+import { useRouteQuery } from "../hooks/useRouteQuery";
 import { relativeTime } from "../lib/format";
 import { sourceModeLabel } from "../lib/sourceMode";
+
+type SystemDetailData = {
+  system: SystemComponent;
+  events: TimelineEvent[];
+};
 
 export function SystemDetail() {
   const { systemId } = useParams();
   const { client, version, stopActive, sourceMode } = useCommandCenter();
-  const [system, setSystem] = useState<SystemComponent | null>(null);
-  const [events, setEvents] = useState<TimelineEvent[]>([]);
-  const [notFound, setNotFound] = useState(false);
+  const detailQuery = useRouteQuery(
+    async () => {
+      if (!systemId) return null;
+      const [system, timeline] = await Promise.all([
+        client.getSystem(systemId),
+        client.listTimeline(),
+      ]);
+      if (!system) return null;
+      return {
+        system,
+        events: timeline.filter((e) => e.systemId === systemId),
+      } satisfies SystemDetailData;
+    },
+    [client, version, systemId],
+  );
 
-  useEffect(() => {
-    if (!systemId) return;
-    let cancelled = false;
-    Promise.all([client.getSystem(systemId), client.listTimeline()]).then(([s, tl]) => {
-      if (cancelled) return;
-      if (!s) {
-        setNotFound(true);
-        return;
-      }
-      setSystem(s);
-      setEvents(tl.filter((e) => e.systemId === systemId));
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [systemId, client, version]);
-
-  if (notFound) {
-    return (
-      <div className="shell-content">
-        <ErrorState label="System not found" detail={sourceMode === "SIMULATED" ? "No simulated component exists at this identifier." : sourceMode === "LIVE" ? "No canonical component exists at this identifier." : `System lookup unavailable: runtime source is ${sourceModeLabel(sourceMode)}.`} />
-      </div>
-    );
-  }
-
-  if (!system) {
-    return (
-      <div className="shell-content">
-        <LoadingState label="Loading system detail" />
-      </div>
-    );
-  }
-
+  return (
+    <DetailRouteQueryGate
+      query={detailQuery}
+      loadingLabel="Loading system detail"
+      notFoundLabel="System not found"
+      notFoundDetail={sourceMode === "SIMULATED" ? "No simulated component exists at this identifier." : sourceMode === "LIVE" ? "No canonical component exists at this identifier." : `System lookup unavailable: runtime source is ${sourceModeLabel(sourceMode)}.`}
+      errorLabel="System detail unavailable"
+      surface="System detail"
+    >
+      {({ system, events }) => {
   const depRefs = system.dependencies.map((id) => ({ kind: "system" as const, id, label: id }));
   const missionRefs = (system.missionIds ?? []).map((id) => ({ kind: "mission" as const, id, label: id }));
 
@@ -176,5 +170,8 @@ export function SystemDetail() {
 
       <p className="t-mono text-muted">{sourceMode === "SIMULATED" ? "SIMULATED COMPONENT STATE - no live component is being read or written." : sourceMode === "LIVE" ? "LIVE COMPONENT STATE - read from the canonical runtime projection; no component is written." : `COMPONENT STATE ${sourceModeLabel(sourceMode)} - canonical runtime state is unavailable.`}</p>
     </div>
+  );
+      }}
+    </DetailRouteQueryGate>
   );
 }

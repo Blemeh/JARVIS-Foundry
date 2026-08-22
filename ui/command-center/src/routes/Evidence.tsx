@@ -1,14 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Download, FileCode2, Fingerprint, Lock, Search, ShieldCheck } from "lucide-react";
 import { useCommandCenter } from "../context/CommandCenterContext";
-import type { EvidenceArtifact } from "../lib/contracts";
 import { SectionHeader } from "../components/SectionHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { MetricCard } from "../components/MetricCard";
 import { Pagination } from "../components/Pagination";
-import { EmptyState, LoadingState } from "../components/states";
+import { EmptyState } from "../components/states";
+import { RouteQueryGate } from "../components/RouteQueryGate";
 import { ContextChip } from "../components/EntityRefLink";
+import { useRouteQuery } from "../hooks/useRouteQuery";
 import { formatHash } from "../lib/format";
 import { sourceCopy, sourceModeLabel } from "../lib/sourceMode";
 
@@ -20,7 +21,11 @@ export function Evidence() {
   const { client, version, sourceMode } = useCommandCenter();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [items, setItems] = useState<EvidenceArtifact[] | null>(null);
+  const itemsQuery = useRouteQuery(
+    () => client.listEvidence(),
+    [client, version],
+  );
+
   const [query, setQuery] = useState("");
   const [source, setSource] = useState<SourceFilter>("ALL");
   const [page, setPage] = useState(1);
@@ -28,17 +33,8 @@ export function Evidence() {
   const missionFilter = searchParams.get("mission");
   const verdictFilter = searchParams.get("verdict");
 
-  useEffect(() => {
-    let cancelled = false;
-    client.listEvidence().then((e) => {
-      if (!cancelled) setItems(e);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [client, version]);
-
   const filtered = useMemo(() => {
+    const items = itemsQuery.data;
     if (!items) return [];
     const q = query.trim().toLowerCase();
     return items.filter((it) => {
@@ -50,25 +46,25 @@ export function Evidence() {
         (verdictFilter === "FAILED" ? it.verdict === "FAILED" || it.verdict === "TAMPERED" : it.verdict === verdictFilter);
       return sourceOk && qOk && missionOk && verdictOk;
     });
-  }, [items, query, source, missionFilter, verdictFilter]);
+  }, [itemsQuery.data, query, source, missionFilter, verdictFilter]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
   const rows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
-  if (!items) {
-    return (
-      <div className="shell-content">
-        <LoadingState label="Loading evidence ledger" />
-      </div>
-    );
-  }
-
-  const verified = items.filter((i) => i.verdict === "VERIFIED").length;
-  const flagged = items.filter((i) => i.verdict === "TAMPERED" || i.verdict === "FAILED" || i.verdict === "WARN").length;
-  const verificationRate = items.length === 0 ? 0 : Math.round((verified / items.length) * 1000) / 10;
-
   return (
+    <RouteQueryGate
+      query={itemsQuery}
+      loadingLabel="Loading evidence ledger"
+      errorLabel="Evidence ledger unavailable"
+      surface="Evidence ledger"
+    >
+      {(items) => {
+        const verified = items.filter((i) => i.verdict === "VERIFIED").length;
+        const flagged = items.filter((i) => i.verdict === "TAMPERED" || i.verdict === "FAILED" || i.verdict === "WARN").length;
+        const verificationRate = items.length === 0 ? 0 : Math.round((verified / items.length) * 1000) / 10;
+
+        return (
     <div className="shell-content">
       <SectionHeader
         kicker="Evidence"
@@ -217,5 +213,8 @@ export function Evidence() {
         />
       </div>
     </div>
+        );
+      }}
+    </RouteQueryGate>
   );
 }

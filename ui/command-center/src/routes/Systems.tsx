@@ -1,41 +1,34 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArrowUpRight, Cpu, HeartPulse, Server, ShieldAlert } from "lucide-react";
 import { useCommandCenter } from "../context/CommandCenterContext";
-import type { SystemComponent, SystemOverview } from "../lib/contracts";
+import type { SystemComponent } from "../lib/contracts";
 import { SectionHeader } from "../components/SectionHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { MetricCard } from "../components/MetricCard";
 import { Drawer } from "../components/Drawer";
-import { EmptyState, LoadingState } from "../components/states";
+import { EmptyState } from "../components/states";
+import { RouteQueryGate } from "../components/RouteQueryGate";
 import { ContextChip } from "../components/EntityRefLink";
+import { useRouteQuery } from "../hooks/useRouteQuery";
 import { sourceCopy, sourceModeLabel } from "../lib/sourceMode";
 import { formatResourceMetric } from "../lib/truthFormat";
 
 export function Systems() {
   const { client, version, stopActive, sourceMode } = useCommandCenter();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [components, setComponents] = useState<SystemComponent[] | null>(null);
-  const [overview, setOverview] = useState<SystemOverview | null>(null);
   const [selected, setSelected] = useState<SystemComponent | null>(null);
+
+  const systemsQuery = useRouteQuery(
+    () => Promise.all([client.listSystemComponents(), client.getSystemOverview()]).then(([components, overview]) => ({ components, overview })),
+    [client, version],
+  );
 
   const healthFilter = searchParams.get("health");
   const missionFilter = searchParams.get("mission");
 
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([client.listSystemComponents(), client.getSystemOverview()]).then(([c, o]) => {
-      if (!cancelled) {
-        setComponents(c);
-        setOverview(o);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [client, version]);
-
   const grouped = useMemo(() => {
+    const components = systemsQuery.data?.components;
     if (!components) return [];
     const order: SystemComponent["health"][] = ["HEALTHY", "DEGRADED", "CRITICAL", "UNKNOWN"];
     return [...components]
@@ -45,16 +38,16 @@ export function Systems() {
         return healthOk && missionOk;
       })
       .sort((a, b) => order.indexOf(a.health) - order.indexOf(b.health) || a.name.localeCompare(b.name));
-  }, [components, healthFilter, missionFilter]);
+  }, [systemsQuery.data, healthFilter, missionFilter]);
 
-  if (!components || !overview) {
-    return (
-      <div className="shell-content">
-        <LoadingState label="Loading systems" />
-      </div>
-    );
-  }
-
+  return (
+    <RouteQueryGate
+      query={systemsQuery}
+      loadingLabel="Loading systems"
+      errorLabel="Systems unavailable"
+      surface="Telemetry projection"
+    >
+      {({ components, overview }) => {
   const healthy = components.filter((c) => c.health === "HEALTHY").length;
   const degraded = components.filter((c) => c.health === "DEGRADED").length;
   const stopped = components.filter((c) => c.state === "STOPPED").length;
@@ -242,5 +235,8 @@ export function Systems() {
         ) : null}
       </Drawer>
     </div>
+      );
+      }}
+    </RouteQueryGate>
   );
 }

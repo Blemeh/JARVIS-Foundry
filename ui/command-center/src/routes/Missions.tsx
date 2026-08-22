@@ -1,15 +1,17 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArrowRight, Grid3X3, List, Plus, Upload } from "lucide-react";
 import { useCommandCenter } from "../context/CommandCenterContext";
-import type { Mission } from "../lib/contracts";
 import { SectionHeader } from "../components/SectionHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { Pagination } from "../components/Pagination";
 import { Dialog } from "../components/Dialog";
-import { EmptyState, LoadingState } from "../components/states";
+import { EmptyState } from "../components/states";
+import { RouteQueryGate } from "../components/RouteQueryGate";
 import { Tooltip } from "../components/Tooltip";
 import { ContextChip } from "../components/EntityRefLink";
+import { useRouteQuery } from "../hooks/useRouteQuery";
+import { formatArchivedMissionLabel } from "../lib/routeResilience";
 import { sourceCopy, sourceModeLabel } from "../lib/sourceMode";
 
 type Filter = "ALL" | "ACTIVE" | "STANDBY" | "BLOCKED" | "ARCHIVED";
@@ -26,7 +28,6 @@ const statusParam: Record<string, Filter> = {
 export function Missions() {
   const { client, version, mode, mutationsEnabled, sourceMode } = useCommandCenter();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [missions, setMissions] = useState<Mission[] | null>(null);
   const [filter, setFilter] = useState<Filter>(statusParam[searchParams.get("status") ?? ""] ?? "ALL");
   const [view, setView] = useState<View>("grid");
   const [page, setPage] = useState(1);
@@ -35,24 +36,20 @@ export function Missions() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const live = mode === "live";
 
-  useEffect(() => {
-    let cancelled = false;
-    client.listMissions().then((m) => {
-      if (!cancelled) setMissions(m);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [client, version]);
+  const missionsQuery = useRouteQuery(
+    () => client.listMissions(),
+    [client, version],
+  );
 
   const filtered = useMemo(() => {
-    if (!missions) return [];
+    const missions = missionsQuery.data ?? [];
     if (filter === "ALL") return missions;
     if (filter === "ACTIVE") return missions.filter((m) => m.status === "ACTIVE" || m.status === "IN_PROGRESS" || m.status === "INTERVENTION");
     if (filter === "STANDBY") return missions.filter((m) => m.status === "STANDBY");
     if (filter === "BLOCKED") return missions.filter((m) => m.status === "BLOCKED" || m.status === "HALTED");
+    if (filter === "ARCHIVED") return missions.filter((m) => m.status === "COMPLETE");
     return [];
-  }, [missions, filter]);
+  }, [missionsQuery.data, filter]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
@@ -68,8 +65,7 @@ export function Missions() {
       if (result.accepted) {
         setSubmitted(true);
         setSubmitError(null);
-        const refreshed = await client.listMissions();
-        setMissions(refreshed);
+        missionsQuery.reload();
       } else {
         setSubmitError(result.error ?? "owner goal rejected");
       }
@@ -78,25 +74,25 @@ export function Missions() {
     setSubmitted(true);
   };
 
-  if (!missions) {
-    return (
-      <div className="shell-content">
-        <LoadingState label="Loading missions" />
-      </div>
-    );
-  }
-
-  const filters: { key: Filter; label: string }[] = [
-    { key: "ALL", label: "All" },
-    { key: "ACTIVE", label: `Active (${missions.filter((m) => ["ACTIVE", "IN_PROGRESS", "INTERVENTION"].includes(m.status)).length})` },
-    { key: "STANDBY", label: `Standby (${missions.filter((m) => m.status === "STANDBY").length})` },
-    { key: "BLOCKED", label: `Blocked (${missions.filter((m) => m.status === "BLOCKED" || m.status === "HALTED").length})` },
-    { key: "ARCHIVED", label: "Archived (48)" },
-  ];
-
-  const statusValue = searchParams.get("status");
-
   return (
+    <RouteQueryGate
+      query={missionsQuery}
+      loadingLabel="Loading missions"
+      errorLabel="Missions unavailable"
+      surface="Mission vectors"
+    >
+      {(missions) => {
+        const archivedCount = missions.filter((m) => m.status === "COMPLETE").length;
+        const filters: { key: Filter; label: string }[] = [
+          { key: "ALL", label: "All" },
+          { key: "ACTIVE", label: `Active (${missions.filter((m) => ["ACTIVE", "IN_PROGRESS", "INTERVENTION"].includes(m.status)).length})` },
+          { key: "STANDBY", label: `Standby (${missions.filter((m) => m.status === "STANDBY").length})` },
+          { key: "BLOCKED", label: `Blocked (${missions.filter((m) => m.status === "BLOCKED" || m.status === "HALTED").length})` },
+          { key: "ARCHIVED", label: formatArchivedMissionLabel(archivedCount) },
+        ];
+        const statusValue = searchParams.get("status");
+
+        return (
     <div className="shell-content">
       <SectionHeader
         kicker="Mission Vectors"
@@ -328,5 +324,8 @@ export function Missions() {
         )}
       </Dialog>
     </div>
+        );
+      }}
+    </RouteQueryGate>
   );
 }

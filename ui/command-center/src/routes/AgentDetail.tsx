@@ -1,64 +1,54 @@
-import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Activity, ArrowLeft, FileCheck2, HeartPulse, History, Layers, Server } from "lucide-react";
 import { useCommandCenter } from "../context/CommandCenterContext";
 import type { AgentRun, SystemComponent, TimelineEvent, Worker } from "../lib/contracts";
 import { StatusBadge } from "../components/StatusBadge";
-import { LoadingState, ErrorState } from "../components/states";
+import { DetailRouteQueryGate } from "../components/DetailRouteQueryGate";
 import { EntityRefLink, RefChipRow } from "../components/EntityRefLink";
+import { useRouteQuery } from "../hooks/useRouteQuery";
 import { relativeTime } from "../lib/format";
 import { sourceModeLabel } from "../lib/sourceMode";
+
+type AgentDetailData = {
+  agent: Worker;
+  runs: AgentRun[];
+  events: TimelineEvent[];
+  system: SystemComponent | null;
+};
 
 export function AgentDetail() {
   const { agentId } = useParams();
   const { client, version, stopActive, sourceMode } = useCommandCenter();
-  const [agent, setAgent] = useState<Worker | null>(null);
-  const [runs, setRuns] = useState<AgentRun[] | null>(null);
-  const [system, setSystem] = useState<SystemComponent | null>(null);
-  const [events, setEvents] = useState<TimelineEvent[]>([]);
-  const [notFound, setNotFound] = useState(false);
+  const detailQuery = useRouteQuery(
+    async () => {
+      if (!agentId) return null;
+      const [agent, runs, timeline] = await Promise.all([
+        client.getAgent(agentId),
+        client.getAgentRuns(agentId),
+        client.listTimeline(),
+      ]);
+      if (!agent) return null;
+      const system = agent.systemId ? await client.getSystem(agent.systemId) : null;
+      return {
+        agent,
+        runs,
+        events: timeline.filter((e) => e.agentId === agentId),
+        system,
+      } satisfies AgentDetailData;
+    },
+    [client, version, agentId],
+  );
 
-  useEffect(() => {
-    if (!agentId) return;
-    let cancelled = false;
-    Promise.all([client.getAgent(agentId), client.getAgentRuns(agentId), client.listTimeline()]).then(
-      ([a, r, tl]) => {
-        if (cancelled) return;
-        if (!a) {
-          setNotFound(true);
-          return;
-        }
-        setAgent(a);
-        setRuns(r);
-        setEvents(tl.filter((e) => e.agentId === agentId));
-        if (a.systemId) {
-          void client.getSystem(a.systemId).then((s) => {
-            if (!cancelled) setSystem(s);
-          });
-        }
-      },
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [agentId, client, version]);
-
-  if (notFound) {
-    return (
-      <div className="shell-content">
-        <ErrorState label="Agent not found" detail={sourceMode === "SIMULATED" ? "No simulated worker exists at this identifier." : sourceMode === "LIVE" ? "No canonical worker exists at this identifier." : `Worker lookup unavailable: runtime source is ${sourceModeLabel(sourceMode)}.`} />
-      </div>
-    );
-  }
-
-  if (!agent || !runs) {
-    return (
-      <div className="shell-content">
-        <LoadingState label="Loading agent detail" />
-      </div>
-    );
-  }
-
+  return (
+    <DetailRouteQueryGate
+      query={detailQuery}
+      loadingLabel="Loading agent detail"
+      notFoundLabel="Agent not found"
+      notFoundDetail={sourceMode === "SIMULATED" ? "No simulated worker exists at this identifier." : sourceMode === "LIVE" ? "No canonical worker exists at this identifier." : `Worker lookup unavailable: runtime source is ${sourceModeLabel(sourceMode)}.`}
+      errorLabel="Agent detail unavailable"
+      surface="Agent detail"
+    >
+      {({ agent, runs, events, system }) => {
   const missionRefs = (agent.missionIds ?? []).map((id) => ({ kind: "mission" as const, id, label: id }));
   const evidenceRefs = (agent.evidenceIds ?? []).map((id) => ({ kind: "evidence" as const, id, label: id }));
 
@@ -214,5 +204,8 @@ export function AgentDetail() {
         <p className="t-mono text-muted">{sourceMode === "SIMULATED" ? "SIMULATED STOP ACTIVE - this worker's dispatch is frozen in the UI candidate." : sourceMode === "LIVE" ? "LIVE STOP ACTIVE - this worker's dispatch is frozen by the canonical directive." : `STOP ACTIVE, but runtime source is ${sourceModeLabel(sourceMode)}.`}</p>
       ) : null}
     </div>
+  );
+      }}
+    </DetailRouteQueryGate>
   );
 }

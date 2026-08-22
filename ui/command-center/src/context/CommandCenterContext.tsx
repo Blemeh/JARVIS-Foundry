@@ -39,6 +39,8 @@ interface CommandCenterState {
   openTrustDialog: () => void;
   closeTrustDialog: () => void;
   notifications: Notification[];
+  notificationsStatus: "loading" | "ready" | "error";
+  notificationsError: string | null;
   unreadCount: number;
   notifyOpen: boolean;
   openNotify: () => void;
@@ -65,6 +67,8 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
   const [scenario, setScenario] = useState<Scenario | null>(null);
   const [streamConnected, setStreamConnected] = useState(true);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notificationsStatus, setNotificationsStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [notificationsError, setNotificationsError] = useState<string | null>(null);
   const [demoIndex, setDemoIndex] = useState(0);
   const [stopActive, setStopActive] = useState(false);
   const [stopActivatedAt, setStopActivatedAt] = useState<string | null>(null);
@@ -79,13 +83,18 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
     try {
       const list = await client.listNotifications();
       setNotifications(list);
+      setNotificationsStatus("ready");
+      setNotificationsError(null);
       setConnection(client.connection);
       if (mode === "live") {
         const trust = await client.getTrustSummary();
         const active = trust.gateStatus === "GATED" || trust.state === "SUSPENDED";
         setStopActive(active);
       }
-    } catch {
+    } catch (err: unknown) {
+      setNotifications([]);
+      setNotificationsStatus("error");
+      setNotificationsError(err instanceof Error ? err.message : String(err));
       setConnection(client.connection);
     }
   }, [client, mode]);
@@ -219,6 +228,8 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
       openTrustDialog,
       closeTrustDialog,
       notifications,
+      notificationsStatus,
+      notificationsError,
       unreadCount,
       notifyOpen,
       openNotify,
@@ -251,6 +262,8 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
       openTrustDialog,
       closeTrustDialog,
       notifications,
+      notificationsStatus,
+      notificationsError,
       unreadCount,
       notifyOpen,
       openNotify,

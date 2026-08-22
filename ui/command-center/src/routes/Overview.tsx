@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { Mic } from "lucide-react"
 import { useCommandCenter } from "../context/CommandCenterContext"
 import type { EvidenceArtifact, Mission, SystemComponent, SystemOverview, TimelineEvent, TrustSummary, Worker } from "../lib/contracts"
-import { ErrorState, LoadingState } from "../components/states"
-import { sourceCopy, sourceModeLabel } from "../lib/sourceMode"
+import { RouteQueryGate } from "../components/RouteQueryGate"
+import { useRouteQuery } from "../hooks/useRouteQuery"
+import { sourceCopy } from "../lib/sourceMode"
 import {
   findMeasuredCostResource,
   formatMeasuredCostDisplay,
@@ -19,86 +19,38 @@ function toneForStatus(status: string) {
   return "nominal"
 }
 
-export function Overview() {
-  const { client, version, sourceMode, connection } = useCommandCenter()
-  const [missions, setMissions] = useState<Mission[] | null>(null)
-  const [overview, setOverview] = useState<SystemOverview | null>(null)
-  const [trust, setTrust] = useState<TrustSummary | null>(null)
-  const [workers, setWorkers] = useState<Worker[] | null>(null)
-  const [evidence, setEvidence] = useState<EvidenceArtifact[] | null>(null)
-  const [timeline, setTimeline] = useState<TimelineEvent[] | null>(null)
-  const [systems, setSystems] = useState<SystemComponent[] | null>(null)
-  const [loadError, setLoadError] = useState<string | null>(null)
+type OverviewData = {
+  missions: Mission[]
+  overview: SystemOverview
+  trust: TrustSummary
+  workers: Worker[]
+  evidence: EvidenceArtifact[]
+  timeline: TimelineEvent[]
+  systems: SystemComponent[]
+}
 
-  useEffect(() => {
-    let cancelled = false
-    Promise.all([
-      client.listMissions(),
-      client.getSystemOverview(),
-      client.getTrustSummary(),
-      client.listWorkers(),
-      client.listEvidence(),
-      client.listTimeline(),
-      client.listSystemComponents(),
-    ])
-      .then(([m, o, t, w, e, tl, s]) => {
-        if (cancelled) return
-        setLoadError(null)
-        setMissions(m)
-        setOverview(o)
-        setTrust(t)
-        setWorkers(w)
-        setEvidence(e)
-        setTimeline(tl)
-        setSystems(s)
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return
-        setLoadError(err instanceof Error ? err.message : String(err))
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [client, version])
+function OverviewContent({
+  missions,
+  overview,
+  trust,
+  workers,
+  evidence,
+  timeline,
+}: OverviewData) {
+  const { sourceMode } = useCommandCenter()
 
-  const loading = !missions && !overview && !trust && !workers && !evidence && !timeline && !systems && !loadError
-  if (loading) {
-    return (
-      <div className="command-deck-wrap">
-        <LoadingState label="Loading command deck" />
-      </div>
-    )
+  const safeMissions = missions
+  const safeWorkers = workers
+  const safeEvidence = evidence
+  const safeTimeline = timeline
+  const safeTrust = trust
+  const measuredCostBase = findMeasuredCostResource(overview.resourceUsage) ?? {
+    display: "UNKNOWN",
+    source: "NOT_REPORTED" as const,
+    unknownMeasurements: null,
   }
-
-  if (loadError || (sourceMode === "DISCONNECTED" && !missions && !overview)) {
-    return (
-      <div className="command-deck-wrap">
-        <ErrorState
-          label="Command deck unavailable"
-          detail={connection.error ?? loadError ?? `Runtime source is ${sourceModeLabel(sourceMode)}; no fixture fallback is shown.`}
-        />
-      </div>
-    )
-  }
-
-  const safeMissions = missions ?? []
-  const safeWorkers = workers ?? []
-  const safeEvidence = evidence ?? []
-  const safeTimeline = timeline ?? []
-  const safeTrust = trust ?? { state: "DEGRADED" as const, health: "UNKNOWN" as const, factors: [] }
-  const measuredCostBase = overview
-    ? findMeasuredCostResource(overview.resourceUsage) ?? {
-        display: "UNKNOWN",
-        source: "NOT_REPORTED" as const,
-        unknownMeasurements: null,
-      }
-    : {
-        display: "UNKNOWN",
-        source: "NOT_REPORTED" as const,
-        unknownMeasurements: null,
-      }
   const measuredCostDisplay = formatMeasuredCostDisplay(measuredCostBase, sourceMode)
-  const freshness = overview ? formatFreshnessLabel(overview.uptime, new Date().toISOString()) : "UNKNOWN"
+  const freshness = formatFreshnessLabel(overview.uptime, new Date().toISOString())
   const constraintsFactor = safeTrust.factors?.find((f) => f.id === "constraints")
   const staleLeasesFactor = safeTrust.factors?.find((f) => f.id === "stale-leases")
   const constraintCount = constraintsFactor ? trustFactorNumericDetail(constraintsFactor.detail) ?? 0 : 0
@@ -311,5 +263,42 @@ export function Overview() {
         </div>
       </div>
     </div>
+  )
+}
+
+export function Overview() {
+  const { client, version } = useCommandCenter()
+  const overviewQuery = useRouteQuery(
+    () =>
+      Promise.all([
+        client.listMissions(),
+        client.getSystemOverview(),
+        client.getTrustSummary(),
+        client.listWorkers(),
+        client.listEvidence(),
+        client.listTimeline(),
+        client.listSystemComponents(),
+      ]).then(([missions, overview, trust, workers, evidence, timeline, systems]) => ({
+        missions,
+        overview,
+        trust,
+        workers,
+        evidence,
+        timeline,
+        systems,
+      } satisfies OverviewData)),
+    [client, version],
+  )
+
+  return (
+    <RouteQueryGate
+      query={overviewQuery}
+      loadingLabel="Loading command deck"
+      errorLabel="Command deck unavailable"
+      surface="Command deck"
+      shellClass="command-deck-wrap"
+    >
+      {(data) => <OverviewContent {...data} />}
+    </RouteQueryGate>
   )
 }

@@ -4,11 +4,15 @@ import { useCommandCenter } from "../context/CommandCenterContext";
 import { NotificationCenter } from "../components/NotificationCenter";
 import { MetricCard } from "../components/MetricCard";
 import { SectionHeader } from "../components/SectionHeader";
-import { EmptyState } from "../components/states";
+import { EmptyState, ErrorState, LoadingState } from "../components/states";
+import { routeFetchErrorDetail, shouldShowRouteFetchError } from "../lib/routeResilience";
+import { sourceModeLabel } from "../lib/sourceMode";
 
 export function Notifications() {
   const {
     notifications,
+    notificationsStatus,
+    notificationsError,
     unreadCount,
     acknowledgeNotification,
     resolveNotification,
@@ -17,7 +21,30 @@ export function Notifications() {
     demoIndex,
     stopActive,
     sourceMode,
+    connection,
   } = useCommandCenter();
+
+  if (notificationsStatus === "loading") {
+    return (
+      <div className="shell-content">
+        <LoadingState label="Loading notifications" />
+      </div>
+    );
+  }
+
+  if (
+    notificationsStatus === "error" ||
+    shouldShowRouteFetchError(sourceMode, notificationsError, notifications.length > 0)
+  ) {
+    return (
+      <div className="shell-content">
+        <ErrorState
+          label="Notifications unavailable"
+          detail={routeFetchErrorDetail(sourceMode, connection, notificationsError, "Notification center")}
+        />
+      </div>
+    );
+  }
 
   const critical = notifications.filter((n) => n.severity === "CRITICAL").length;
   const resolved = notifications.filter((n) => n.state === "RESOLVED").length;
@@ -60,7 +87,7 @@ export function Notifications() {
         {notifications.length === 0 ? (
           <EmptyState
             label="No alerts"
-            detail={sourceMode === "SIMULATED" ? "Nothing is demanding owner attention in this simulated universe." : sourceMode === "LIVE" ? "No canonical runtime event currently demands owner attention." : `No alerts available: runtime source is ${sourceMode}.`}
+            detail={sourceMode === "SIMULATED" ? "Nothing is demanding owner attention in this simulated universe." : sourceMode === "LIVE" ? "No canonical runtime event currently demands owner attention." : `No alerts available: runtime source is ${sourceModeLabel(sourceMode)}.`}
           />
         ) : (
           <NotificationCenter

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   AlertTriangle,
@@ -22,9 +22,10 @@ import { useCommandCenter } from "../context/CommandCenterContext";
 import type { EvidenceArtifact, LineageNode, Mission, MissionRun, Worker } from "../lib/contracts";
 import { StatusBadge } from "../components/StatusBadge";
 import { Dialog } from "../components/Dialog";
-import { LoadingState, ErrorState } from "../components/states";
+import { DetailRouteQueryGate } from "../components/DetailRouteQueryGate";
 import { EntityRefLink, RefChipRow } from "../components/EntityRefLink";
 import { Lineage } from "../components/Lineage";
+import { useRouteQuery } from "../hooks/useRouteQuery";
 import { sourceModeLabel } from "../lib/sourceMode";
 
 const stageIcons: Record<string, typeof Check> = {
@@ -36,63 +37,52 @@ const stageIcons: Record<string, typeof Check> = {
   next: Route,
 };
 
+type MissionDetailData = {
+  mission: Mission;
+  run: MissionRun;
+  workers: Worker[];
+  evidence: EvidenceArtifact[];
+  lineage: LineageNode[];
+};
+
 export function MissionDetail() {
   const { missionId } = useParams();
   const { client, version, notifications, stopActive, openTrustDialog, sourceMode } = useCommandCenter();
-  const [mission, setMission] = useState<Mission | null>(null);
-  const [run, setRun] = useState<MissionRun | null>(null);
-  const [workers, setWorkers] = useState<Worker[]>([]);
-  const [evidence, setEvidence] = useState<EvidenceArtifact[]>([]);
-  const [lineage, setLineage] = useState<LineageNode[]>([]);
-  const [notFound, setNotFound] = useState(false);
+  const missionIdResolved = missionId ?? "M-HYB-014";
+  const detailQuery = useRouteQuery(
+    async () => {
+      const mission = await client.getMission(missionIdResolved);
+      if (!mission) return null;
+      const [run, workers, evidence, lineage] = await Promise.all([
+        client.getMissionRun(mission.id),
+        client.listWorkers(),
+        client.listEvidence(),
+        client.getLineage(mission.id),
+      ]);
+      return {
+        mission,
+        run,
+        workers: workers.filter((x) => (x.missionIds ?? []).includes(mission.id)),
+        evidence: evidence.filter((x) => x.missionRef === mission.id),
+        lineage,
+      } satisfies MissionDetailData;
+    },
+    [client, version, missionIdResolved],
+  );
   const [dialog, setDialog] = useState<"halt" | "gate" | null>(null);
   const [halted, setHalted] = useState(false);
   const [gateRequested, setGateRequested] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    const id = missionId ?? "M-HYB-014";
-    client.getMission(id).then((m) => {
-      if (cancelled) return;
-      if (!m) {
-        setNotFound(true);
-        return;
-      }
-      setMission(m);
-      void Promise.all([
-        client.getMissionRun(m.id),
-        client.listWorkers(),
-        client.listEvidence(),
-        client.getLineage(m.id),
-      ]).then(([r, w, e, lin]) => {
-        if (cancelled) return;
-        setRun(r);
-        setWorkers(w.filter((x) => (x.missionIds ?? []).includes(m.id)));
-        setEvidence(e.filter((x) => x.missionRef === m.id));
-        setLineage(lin);
-      });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [missionId, client, version]);
-
-  if (notFound) {
-    return (
-      <div className="shell-content">
-        <ErrorState label="Mission not found" detail={sourceMode === "SIMULATED" ? "No simulated mission exists at this identifier." : sourceMode === "LIVE" ? "No canonical mission exists at this identifier." : `Mission lookup unavailable: runtime source is ${sourceModeLabel(sourceMode)}.`} />
-      </div>
-    );
-  }
-
-  if (!mission || !run) {
-    return (
-      <div className="shell-content">
-        <LoadingState label="Loading mission detail" />
-      </div>
-    );
-  }
-
+  return (
+    <DetailRouteQueryGate
+      query={detailQuery}
+      loadingLabel="Loading mission detail"
+      notFoundLabel="Mission not found"
+      notFoundDetail={sourceMode === "SIMULATED" ? "No simulated mission exists at this identifier." : sourceMode === "LIVE" ? "No canonical mission exists at this identifier." : `Mission lookup unavailable: runtime source is ${sourceModeLabel(sourceMode)}.`}
+      errorLabel="Mission detail unavailable"
+      surface="Mission detail"
+    >
+      {({ mission, run, workers, evidence, lineage }) => {
   const blocking = notifications.find((n) => n.refs.some((r) => r.kind === "mission" && r.id === mission.id) && n.state !== "RESOLVED");
   const blockingEventRef = blocking?.refs.find((r) => r.kind === "timeline");
   const contextLinks = [
@@ -442,5 +432,8 @@ export function MissionDetail() {
         </div>
       </Dialog>
     </div>
+  );
+      }}
+    </DetailRouteQueryGate>
   );
 }

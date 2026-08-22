@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { BrainCircuit, CircleSlash, Clock, MinusCircle } from "lucide-react";
 import { useCommandCenter } from "../context/CommandCenterContext";
 import type { FoundryExecutiveDecision } from "../lib/snapshotTypes";
 import { SectionHeader } from "../components/SectionHeader";
 import { StatusBadge } from "../components/StatusBadge";
-import { EmptyState, LoadingState } from "../components/states";
+import { EmptyState } from "../components/states";
+import { RouteQueryGate } from "../components/RouteQueryGate";
+import { useRouteQuery } from "../hooks/useRouteQuery";
 
 function num(value: unknown): string {
   return typeof value === "number" ? value.toFixed(3) : "—";
@@ -102,28 +103,33 @@ function DecisionCard({ d }: { d: FoundryExecutiveDecision }) {
   );
 }
 
+type ExecutiveData = {
+  decisions: FoundryExecutiveDecision[];
+  epoch: string | null;
+  authority: string;
+};
+
 export function Executive() {
   const { client, version } = useCommandCenter();
-  const [decisions, setDecisions] = useState<FoundryExecutiveDecision[] | null>(null);
-  const [epoch, setEpoch] = useState<string | null>(null);
-  const [authority, setAuthority] = useState("UNKNOWN");
-
-  useEffect(() => {
-    let cancelled = false;
-    client.getExecutive().then((e) => {
-      if (cancelled) return;
-      setDecisions(e.latest_decision ? e.recent_decisions : []);
-      setEpoch(e.activation_epoch);
-      setAuthority(e.admission_authority);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [client, version]);
-
-  if (decisions === null) return <LoadingState label="Loading executive decisions" />;
+  const executiveQuery = useRouteQuery(
+    () =>
+      client.getExecutive().then((e) => ({
+        decisions: e.latest_decision ? e.recent_decisions : [],
+        epoch: e.activation_epoch,
+        authority: e.admission_authority,
+      } satisfies ExecutiveData)),
+    [client, version],
+  );
 
   return (
+    <RouteQueryGate
+      query={executiveQuery}
+      loadingLabel="Loading executive decisions"
+      errorLabel="Executive decisions unavailable"
+      surface="Executive decision spine"
+      shellClass="space-y-4"
+    >
+      {({ decisions, epoch, authority }) => (
     <div className="space-y-4">
       <SectionHeader
         title="Executive"
@@ -146,5 +152,7 @@ export function Executive() {
         <Clock size={12} aria-hidden /> Bounded projection of executive.* ledger events — the UI is not a second authority.
       </p>
     </div>
+      )}
+    </RouteQueryGate>
   );
 }

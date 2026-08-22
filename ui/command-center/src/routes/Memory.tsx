@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { HelpCircle, RefreshCcw, ShieldQuestion } from "lucide-react";
 import { useCommandCenter } from "../context/CommandCenterContext";
@@ -6,59 +6,46 @@ import type { MemoryGraph, MemoryNode } from "../lib/contracts";
 import { KnowledgeGraph } from "../components/KnowledgeGraph";
 import { StatusBadge } from "../components/StatusBadge";
 import { Dialog } from "../components/Dialog";
-import { ErrorState, LoadingState } from "../components/states";
+import { ErrorState } from "../components/states";
+import { RouteQueryGate } from "../components/RouteQueryGate";
 import { ContextChip, EntityRefLink } from "../components/EntityRefLink";
+import { useRouteQuery } from "../hooks/useRouteQuery";
 import { sourceModeLabel } from "../lib/sourceMode";
 
-export function Memory() {
-  const { client, version, sourceMode } = useCommandCenter();
+function MemoryContent({ graph }: { graph: MemoryGraph }) {
+  const { sourceMode } = useCommandCenter();
   const { memoryId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const missionParam = searchParams.get("mission");
-  const [graph, setGraph] = useState<MemoryGraph | null>(null);
-  const [selected, setSelected] = useState<MemoryNode | null>(null);
-  const [notFound, setNotFound] = useState(false);
-  const [missionNoNode, setMissionNoNode] = useState(false);
+  const [manualSelected, setManualSelected] = useState<MemoryNode | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [requested, setRequested] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    client.getMemoryGraph().then((g) => {
-      if (cancelled) return;
-      setGraph(g);
-      let node: MemoryNode | undefined;
-      if (memoryId) {
-        node = g.nodes.find((n) => n.id === memoryId);
-        if (!node) {
-          setNotFound(true);
-          return;
-        }
-      } else if (missionParam) {
-        const matched = g.nodes.find((n) => n.ref?.kind === "mission" && n.ref.id === missionParam);
-        if (!matched) {
-          setMissionNoNode(true);
-          setSelected(null);
-          return;
-        }
-        node = matched;
-      }
-      setMissionNoNode(false);
-      setSelected(node ?? g.nodes.find((n) => n.id === "n-mission") ?? g.nodes[0]);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [client, version, memoryId, missionParam]);
+  const missionNoNode = Boolean(
+    missionParam &&
+      !memoryId &&
+      !graph.nodes.some((n) => n.ref?.kind === "mission" && n.ref.id === missionParam),
+  );
+
+  const derivedSelected = useMemo(() => {
+    if (memoryId) {
+      return graph.nodes.find((n) => n.id === memoryId) ?? null;
+    }
+    if (missionParam) {
+      return graph.nodes.find((n) => n.ref?.kind === "mission" && n.ref.id === missionParam) ?? null;
+    }
+    return graph.nodes.find((n) => n.id === "n-mission") ?? graph.nodes[0] ?? null;
+  }, [graph, memoryId, missionParam]);
+
+  const selected = manualSelected ?? derivedSelected;
 
   const connectedCount = useMemo(() => {
-    if (!graph) return 0;
     const ids = new Set(graph.edges.flatMap((e) => [e.from, e.to]));
     return ids.size;
   }, [graph]);
 
-  if (notFound) {
+  if (memoryId && !graph.nodes.some((n) => n.id === memoryId)) {
     return (
       <div className="shell-content">
         <ErrorState
@@ -74,12 +61,8 @@ export function Memory() {
     );
   }
 
-  if (!graph || (!selected && !missionNoNode)) {
-    return (
-      <div className="shell-content">
-        <LoadingState label="Loading knowledge graph" />
-      </div>
-    );
+  if (!selected && !missionNoNode) {
+    return null;
   }
 
   return (
@@ -112,8 +95,7 @@ export function Memory() {
           graph={graph}
           selectedId={selected?.id ?? null}
           onSelect={(node) => {
-            setMissionNoNode(false);
-            setSelected(node);
+            setManualSelected(node);
             navigate(`/memory/${node.id}`, { replace: memoryId === node.id });
           }}
         />
@@ -245,5 +227,25 @@ export function Memory() {
         </div>
       </Dialog>
     </div>
+  );
+}
+
+export function Memory() {
+  const { client, version } = useCommandCenter();
+  const graphQuery = useRouteQuery(
+    () => client.getMemoryGraph(),
+    [client, version],
+  );
+
+  return (
+    <RouteQueryGate
+      query={graphQuery}
+      loadingLabel="Loading knowledge graph"
+      errorLabel="Knowledge graph unavailable"
+      surface="Knowledge graph"
+      shellClass="shell-content"
+    >
+      {(graph) => <MemoryContent graph={graph} />}
+    </RouteQueryGate>
   );
 }
