@@ -16,11 +16,12 @@ CURRENT CANONICAL HEAD:      ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2 (origin/ma
 INTEGRATION BASE:            ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2
 AUDIT SOURCE:                53c9e524ffa368e36f706560c3f3815fd0dd26bc
 CURRENT WORK BRANCH:         candidate/audit-r2-integration
-CURRENT STATE RECORD:        pending merge commit (integration validation PASS)
-TESTED SOURCE HEAD:          pending merge commit (2026-08-22); focused remediation
-                             suite 75/75 PASS; full foundry suite collected and
-                             run with 0 failures at integration validation
-FULL SUITE:                  integration validation 2026-08-22 — failures=0, errors=0
+CURRENT STATE RECORD:        21631bec69feb064e54c33310e6a555ecf4d353f
+TESTED SOURCE HEAD:          21631bec69feb064e54c33310e6a555ecf4d353f (2026-08-22);
+                             focused remediation 75/75 PASS; full foundry 1594
+                             collected, 0 failures
+FULL SUITE:                  1594 collected at integration validation (2026-08-22);
+                             failures=0, errors=0
 FOCUSED REMEDIATION TESTS:   75/75 PASS — installer/scheduler, supervisor
                              lifecycle/lease, PID reconciliation, release
                              identity/authority, headless cleanup
