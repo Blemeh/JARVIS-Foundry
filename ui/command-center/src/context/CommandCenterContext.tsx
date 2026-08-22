@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { ConnectionState, JarvisClient, MockEventType, Notification, Scenario } from "../lib/contracts";
+import type { ConnectionState, JarvisClient, MockEventType, Notification, Scenario, TrustSummary } from "../lib/contracts";
 import { createJarvisClient, resolveClientMode } from "../lib/clientFactory";
 import { MockJarvisClient } from "../lib/mockClient";
 import { resolveSourceMode, type ResolvedSourceMode } from "../lib/sourceMode";
@@ -38,6 +38,8 @@ interface CommandCenterState {
   trustDialogOpen: boolean;
   openTrustDialog: () => void;
   closeTrustDialog: () => void;
+  trustSummary: TrustSummary | null;
+  trustSummaryStatus: "loading" | "ready" | "error";
   notifications: Notification[];
   notificationsStatus: "loading" | "ready" | "error";
   notificationsError: string | null;
@@ -74,6 +76,8 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
   const [stopActivatedAt, setStopActivatedAt] = useState<string | null>(null);
   const [stopDialogOpen, setStopDialogOpen] = useState(false);
   const [trustDialogOpen, setTrustDialogOpen] = useState(false);
+  const [trustSummary, setTrustSummary] = useState<TrustSummary | null>(null);
+  const [trustSummaryStatus, setTrustSummaryStatus] = useState<"loading" | "ready" | "error">("loading");
   const [notifyOpen, setNotifyOpen] = useState(false);
   const appliedScenario = useState<Scenario | null>(null);
   const appliedScenarioRef = appliedScenario[0];
@@ -81,13 +85,17 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
 
   const refreshNotifications = useCallback(async () => {
     try {
-      const list = await client.listNotifications();
+      const [list, trust] = await Promise.all([
+        client.listNotifications(),
+        client.getTrustSummary(),
+      ]);
       setNotifications(list);
       setNotificationsStatus("ready");
       setNotificationsError(null);
+      setTrustSummary(trust);
+      setTrustSummaryStatus("ready");
       setConnection(client.connection);
       if (mode === "live") {
-        const trust = await client.getTrustSummary();
         const active = trust.gateStatus === "GATED" || trust.state === "SUSPENDED";
         setStopActive(active);
       }
@@ -95,6 +103,8 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
       setNotifications([]);
       setNotificationsStatus("error");
       setNotificationsError(err instanceof Error ? err.message : String(err));
+      setTrustSummary(null);
+      setTrustSummaryStatus("error");
       setConnection(client.connection);
     }
   }, [client, mode]);
@@ -227,6 +237,8 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
       trustDialogOpen,
       openTrustDialog,
       closeTrustDialog,
+      trustSummary,
+      trustSummaryStatus,
       notifications,
       notificationsStatus,
       notificationsError,
@@ -261,6 +273,8 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
       trustDialogOpen,
       openTrustDialog,
       closeTrustDialog,
+      trustSummary,
+      trustSummaryStatus,
       notifications,
       notificationsStatus,
       notificationsError,

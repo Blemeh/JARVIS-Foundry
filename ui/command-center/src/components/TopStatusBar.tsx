@@ -8,7 +8,12 @@ import { sourceModeLabel } from "../lib/sourceMode";
 
 export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
   const clock = useClock();
-  const { stopActive, trustDialogOpen, openTrustDialog, closeTrustDialog, connection, sourceMode } = useCommandCenter();
+  const { stopActive, trustDialogOpen, openTrustDialog, closeTrustDialog, connection, sourceMode, trustSummary, trustSummaryStatus } = useCommandCenter();
+  const trustStateLabel = trustSummaryStatus === "ready" && trustSummary
+    ? trustSummary.state
+    : trustSummaryStatus === "error"
+      ? "UNAVAILABLE"
+      : "LOADING";
   const pillClass =
     sourceMode === "DISCONNECTED"
       ? "data-source-pill data-source-disconnected"
@@ -38,12 +43,12 @@ export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
               <span className="t-label">Suspended</span>
             </span>
           ) : null}
-          <button type="button" className="trust-pill" onClick={openTrustDialog} aria-label="Explain trust state">
+          <button type="button" className="trust-pill" onClick={openTrustDialog} aria-label={`Trust state ${trustStateLabel}. Open trust explanation.`}>
             <ShieldQuestion size={13} aria-hidden="true" />
             <span className="t-label">
               Trust:{" "}
-              <span className={stopActive ? "trust-state-error" : sourceMode === "LIVE" ? "trust-state-live" : sourceMode === "SIMULATED" ? "trust-state-sim" : "trust-state-error"}>
-                {sourceModeLabel(sourceMode)}
+              <span className={stopActive || trustStateLabel === "SUSPENDED" || trustStateLabel === "UNAVAILABLE" ? "trust-state-error" : trustStateLabel === "SIMULATED" ? "trust-state-sim" : trustStateLabel === "PROVEN" ? "trust-state-live" : "trust-state-error"}>
+                {trustStateLabel}
               </span>
             </span>
           </button>

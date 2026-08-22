@@ -109,7 +109,7 @@ export function Systems() {
             <Server size={13} className="panel-icon" />
             Foundry Resource Profile
           </h2>
-          <span className="t-mono text-muted">v{overview.version} / {overview.build}</span>
+          <span className="t-mono text-muted" title="Release identity from canonical projection, not deployed production SHA">projection v{overview.version} / seq {overview.build}</span>
         </div>
         <div className="systems-resources">
           {percentResources.length === 0 ? (

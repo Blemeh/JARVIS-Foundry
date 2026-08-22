@@ -76,11 +76,11 @@ export function Evidence() {
         })}
         actions={
           <>
-            <span className="badge badge-teal">
+            <span className={`badge ${sourceMode === "SIMULATED" ? "badge-amber" : sourceMode === "LIVE" ? "badge-teal" : "badge-muted"}`} title={sourceMode === "SIMULATED" ? "Simulated integrity checks only; not a live verifier node." : sourceMode === "LIVE" ? "Verifier health follows canonical projection factors." : "Integrity status unavailable while disconnected."}>
               <ShieldCheck size={11} aria-hidden="true" />
-              Integrity node online
+              {sourceMode === "SIMULATED" ? "Integrity SIMULATED" : sourceMode === "LIVE" ? "Integrity from projection" : "Integrity UNAVAILABLE"}
             </span>
-            <button type="button" className="btn" aria-label={`Export ledger (${sourceModeLabel(sourceMode).toLowerCase()})`} disabled={sourceMode !== "SIMULATED"}>
+            <button type="button" className="btn" aria-label={`Export ledger (${sourceModeLabel(sourceMode).toLowerCase()})`} disabled={sourceMode !== "SIMULATED"} title={sourceMode !== "SIMULATED" ? `Export unavailable in ${sourceModeLabel(sourceMode)} source mode` : "Export simulated ledger fixture locally"}>
               <Download size={14} />
               Export Ledger
             </button>
