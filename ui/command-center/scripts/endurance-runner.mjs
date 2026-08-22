@@ -6,7 +6,7 @@ const baseUrl = process.env.ENDURANCE_BASE ?? "http://localhost:4523"
 const durationMs = Number(process.env.ENDURANCE_DURATION_MS ?? 6 * 60 * 60 * 1000)
 const checkpointMs = Number(process.env.ENDURANCE_CHECKPOINT_MS ?? 15 * 60 * 1000)
 const recycleEvery = Number(process.env.ENDURANCE_RECYCLE_EVERY ?? 40)
-const requestDelayMs = Number(process.env.ENDURANCE_REQUEST_DELAY_MS ?? 250)
+const requestDelayMs = Number(process.env.ENDURANCE_REQUEST_DELAY_MS ?? 500)
 const maxErrors = Number(process.env.ENDURANCE_MAX_ERRORS ?? 200)
 const outPath = join(process.cwd(), "..", "..", "evidence", "overnight", "command-center-truth", "ENDURANCE_RESULT.json")
 

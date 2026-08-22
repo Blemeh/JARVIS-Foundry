@@ -12,7 +12,7 @@
     "F_accessibility": "PASS",
     "G_responsive_visual": "PASS",
     "H_performance_console_security": "PASS",
-    "I_endurance_six_hour": "FAIL",
+    "I_endurance_six_hour": "IN_PROGRESS",
     "J_adversarial_review": "PASS"
   },
   "commits": [
@@ -33,6 +33,12 @@
     "security_scan": "PASS",
     "endurance_6h": "FAIL (15m confirmation only; preview 500s under load)"
   },
-  "shift_verdict": "INCOMPLETE",
-  "blocking_reason": "WP-I six-hour endurance gate not satisfied"
+  "shift_verdict": "IN_PROGRESS",
+  "blocking_reason": "WP-I six-hour endurance rerun in flight (500ms throttle, dedicated preview on 4523)",
+  "endurance_rerun": {
+    "prior_failure": "15m confirmation with preview HTTP 500 storm (ce5856d)",
+    "started_at_utc": "2026-08-22T23:26:00Z",
+    "request_delay_ms": 500,
+    "duration_hours": 6
+  }
 }
