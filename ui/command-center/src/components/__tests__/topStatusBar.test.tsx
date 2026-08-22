@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 import { MemoryRouter } from "react-router-dom"
 import { CommandCenterProvider } from "../../context/CommandCenterContext"
+import { ScenarioBootstrap } from "../../App"
 import { TopStatusBar } from "../TopStatusBar"
 
 describe("TopStatusBar owner workflow", () => {
@@ -19,5 +20,18 @@ describe("TopStatusBar owner workflow", () => {
       expect(trustButton.textContent).toMatch(/SIMULATED|DEGRADED|PROVEN|SUSPENDED/)
     })
     expect(screen.getByText(/Data Source: SIMULATED/i)).toBeInTheDocument()
+  })
+
+  it("shows stream disconnected status when event stream is down", async () => {
+    render(
+      <MemoryRouter initialEntries={["/?scenario=STREAM_DISCONNECTED"]}>
+        <CommandCenterProvider>
+          <ScenarioBootstrap />
+          <TopStatusBar onOpenMobileNav={() => undefined} />
+        </CommandCenterProvider>
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByRole("status", { name: /Stream disconnected/i })).toBeInTheDocument()
   })
 })

@@ -35,7 +35,7 @@ const SCENARIOS = new Set<Scenario>([
 ]);
 
 /** Development-only fixture bootstrap: ?scenario=WORKER_CRASH etc. */
-function ScenarioBootstrap() {
+export function ScenarioBootstrap() {
   const [params] = useSearchParams();
   const { runScenario } = useCommandCenter();
   useEffect(() => {

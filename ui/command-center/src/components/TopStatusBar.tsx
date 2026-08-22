@@ -8,7 +8,17 @@ import { sourceModeLabel } from "../lib/sourceMode";
 
 export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
   const clock = useClock();
-  const { stopActive, trustDialogOpen, openTrustDialog, closeTrustDialog, connection, sourceMode, trustSummary, trustSummaryStatus } = useCommandCenter();
+  const {
+    stopActive,
+    trustDialogOpen,
+    openTrustDialog,
+    closeTrustDialog,
+    connection,
+    sourceMode,
+    streamConnected,
+    trustSummary,
+    trustSummaryStatus,
+  } = useCommandCenter();
   const trustStateLabel = trustSummaryStatus === "ready" && trustSummary
     ? trustSummary.state
     : trustSummaryStatus === "error"
@@ -37,6 +47,20 @@ export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
         </div>
         <div className="topbar-right">
           <NotificationBell />
+          {!streamConnected ? (
+            <span
+              className="topbar-stream-chip"
+              role="status"
+              title={
+                sourceMode === "SIMULATED"
+                  ? "Simulated event stream disconnected; refresh or run NORMAL_OPERATION to reconnect."
+                  : "Canonical event stream disconnected; live updates paused until reconnect."
+              }
+            >
+              <WifiOff size={11} aria-hidden="true" />
+              <span className="t-label">Stream disconnected</span>
+            </span>
+          ) : null}
           {stopActive ? (
             <span className="topbar-stop-chip" title={sourceMode === "LIVE" ? "STOP active in canonical runtime" : sourceMode === "SIMULATED" ? "SIMULATED STOP - UI CANDIDATE" : `STOP state ${sourceModeLabel(sourceMode)}; runtime state unavailable`}>
               <OctagonX size={11} aria-hidden="true" />

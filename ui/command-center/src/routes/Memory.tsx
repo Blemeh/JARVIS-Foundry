@@ -6,7 +6,7 @@ import type { MemoryGraph, MemoryNode } from "../lib/contracts";
 import { KnowledgeGraph } from "../components/KnowledgeGraph";
 import { StatusBadge } from "../components/StatusBadge";
 import { Dialog } from "../components/Dialog";
-import { ErrorState } from "../components/states";
+import { EmptyState, ErrorState } from "../components/states";
 import { RouteQueryGate } from "../components/RouteQueryGate";
 import { ContextChip, EntityRefLink } from "../components/EntityRefLink";
 import { useRouteQuery } from "../hooks/useRouteQuery";
@@ -67,8 +67,32 @@ function MemoryContent({ graph }: { graph: MemoryGraph }) {
     );
   }
 
+  if (graph.nodes.length === 0) {
+    return (
+      <div className="shell-content">
+        <EmptyState
+          label="Knowledge graph empty"
+          detail={
+            sourceMode === "SIMULATED"
+              ? "No memory nodes are present in this simulated projection."
+              : sourceMode === "LIVE"
+                ? "No canonical memory nodes are currently projected."
+                : `Knowledge graph unavailable: runtime source is ${sourceModeLabel(sourceMode)}.`
+          }
+        />
+      </div>
+    );
+  }
+
   if (!selected && !missionNoNode) {
-    return null;
+    return (
+      <div className="shell-content">
+        <EmptyState
+          label="No node selected"
+          detail="Select a node in the knowledge graph to inspect it."
+        />
+      </div>
+    );
   }
 
   return (

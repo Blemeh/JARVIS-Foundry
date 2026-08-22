@@ -852,3 +852,21 @@
   font-size: 9px;
   color: var(--error);
 }
+
+.topbar-stream-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 9px;
+  border: 1px solid var(--caution-amber);
+  border-radius: var(--radius-md);
+  background: rgba(255, 208, 113, 0.12);
+  color: var(--caution-amber);
+  flex: none;
+}
+
+.topbar-stream-chip .t-label {
+  font-size: 9px;
+  color: var(--caution-amber);
+}

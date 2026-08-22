@@ -33,6 +33,8 @@ Recorded: 2026-08-23T00:08:05+02:00 (local) after `npm run lint && npm run typec
 | `/notifications` | context `notificationsStatus` | Loading notifications | Notifications unavailable (disconnected / fetch error) |
 | `/*` | shell not-found | — | unchanged |
 
+**Stream disconnect (simulated):** `TopStatusBar` shows `role="status"` **Stream disconnected** when `streamConnected === false` (`?scenario=STREAM_DISCONNECTED`). Data surfaces remain on SIMULATED snapshot; live stream updates pause explicitly.
+
 **Excluded (boundary):** `Discovery.tsx`, `realClient.ts`, `contracts.ts`, `v3Models.ts`, `v3Fixtures.ts`, backend.
 
 ## Fixture trust factors (Overview constraints / stale leases)

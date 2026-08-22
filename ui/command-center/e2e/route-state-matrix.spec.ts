@@ -204,3 +204,22 @@ test("matrix refresh on systems keeps projection label", async ({ page }) => {
   await expect(page.getByText(/projection v/i)).toBeVisible()
   expect(errors).toEqual([])
 })
+
+const extendedScenarios = ["STREAM_DISCONNECTED", "PROVIDER_DEGRADED"] as const
+
+for (const scenario of extendedScenarios) {
+  test(`matrix extended scenario ${scenario} surfaces honest state`, async ({ page }) => {
+    const errors = await attachConsoleGuard(page, scenario)
+    await page.goto(`/?scenario=${scenario}`)
+    await expect(page.getByRole("heading", { name: "What should JARVIS move next?" })).toBeVisible()
+    await expect(page.locator(".data-source-pill")).toContainText("SIMULATED")
+    if (scenario === "STREAM_DISCONNECTED") {
+      await expect(page.getByRole("status", { name: /Stream disconnected/i })).toBeVisible()
+    }
+    if (scenario === "PROVIDER_DEGRADED") {
+      await page.goto(`/systems?scenario=${scenario}`)
+      await expect(page.getByText("DEGRADED", { exact: true }).first()).toBeVisible()
+    }
+    expect(errors).toEqual([])
+  })
+}
