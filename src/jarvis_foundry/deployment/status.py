@@ -16,6 +16,9 @@ from .release import read_current, read_previous, read_release_json, release_dir
 def _supervisor_processes() -> list[dict[str, Any]]:
     import json
     import subprocess
+
+    from ..platform.windows_subprocess import headless_run_kwargs
+
     script = (
         "Get-CimInstance Win32_Process | "
         "Where-Object { $_.CommandLine -match 'jarvis_foundry.(supervisor.run|deployment.launcher)' } | "
@@ -24,6 +27,7 @@ def _supervisor_processes() -> list[dict[str, Any]]:
     result = subprocess.run(
         ["powershell", "-NoProfile", "-Command", script],
         capture_output=True, text=True, timeout=30, check=False,
+        **headless_run_kwargs(),
     )
     raw = (result.stdout or "").strip()
     if not raw:
@@ -55,9 +59,13 @@ def production_status(*, home: Path | None = None, source_repo: Path | None = No
     source_sha = None
     if source_repo and (Path(source_repo) / ".git").exists():
         import subprocess
+
+        from ..platform.windows_subprocess import headless_run_kwargs
+
         result = subprocess.run(
             ["git", "-C", str(source_repo), "rev-parse", "HEAD"],
             capture_output=True, text=True, timeout=15, check=False,
+            **headless_run_kwargs(),
         )
         source_sha = result.stdout.strip() or None
     supervisor = {}

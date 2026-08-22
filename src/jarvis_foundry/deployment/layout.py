@@ -34,6 +34,15 @@ def headless_launcher_cmd(root: Path | None = None) -> Path:
     return install_root(root) / "bin" / "jarvis-supervisor-headless.vbs"
 
 
+def current_release_pythonw(root: Path | None = None) -> Path:
+    """Resolve ``pythonw.exe`` for the immutable CURRENT release."""
+    sha = current_pointer(root).read_text(encoding="utf-8").strip().splitlines()[0].strip()
+    pythonw = release_dir(sha, root) / ".venv" / "Scripts" / "pythonw.exe"
+    if not pythonw.is_file():
+        raise FileNotFoundError(f"release pythonw missing for CURRENT {sha}: {pythonw}")
+    return pythonw
+
+
 def headless_task_command(root: Path | None = None) -> tuple[str, str]:
     """Return Task Scheduler ``(command, argument_prefix)`` for production."""
     vbs = headless_launcher_cmd(root)

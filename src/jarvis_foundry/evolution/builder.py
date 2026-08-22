@@ -234,9 +234,13 @@ def build_candidate(
     started = isoformat()
     t0 = time.monotonic()
     try:
+        from ..platform.windows_subprocess import headless_run_kwargs
+
         completed = subprocess.run(
             build_command, cwd=str(root), env=env,
-            capture_output=True, timeout=timeout_s, shell=False)
+            capture_output=True, timeout=timeout_s, shell=False,
+            **headless_run_kwargs(),
+        )
         exit_code = completed.returncode
         reason = None if exit_code == 0 else f"exit code {exit_code}"
     except subprocess.TimeoutExpired:

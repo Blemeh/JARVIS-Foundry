@@ -26,9 +26,12 @@ class CommitError(RuntimeError):
 
 
 def _git(root: Path, *args: str) -> str:
+    from ..platform.windows_subprocess import headless_run_kwargs
+
     result = subprocess.run(
         ["git", "-C", str(root), *args], capture_output=True, text=True,
         encoding="utf-8", errors="replace", timeout=30, check=False,
+        **headless_run_kwargs(),
     )
     if result.returncode != 0:
         raise CommitError(result.stderr.strip() or f"git {' '.join(args)} failed")

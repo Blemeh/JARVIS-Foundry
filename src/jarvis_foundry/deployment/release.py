@@ -8,6 +8,7 @@ import sqlite3
 import subprocess
 import sys
 import uuid
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -134,6 +135,9 @@ def read_release_json(path: Path) -> dict[str, Any]:
     return data
 
 
+_GIT_OBJECT_RE = re.compile(r"^[0-9a-f]{40,64}$")
+
+
 def validate_release(
     source_sha: str,
     *,
@@ -154,6 +158,18 @@ def validate_release(
         raise ReleaseError("RELEASE.json source_sha does not match directory")
     if manifest.get("release_id") in (None, ""):
         raise ReleaseError("RELEASE.json missing release_id")
+    git_commit = manifest.get("git_commit")
+    git_tree = manifest.get("git_tree")
+    if not git_commit:
+        raise ReleaseError("RELEASE.json missing git_commit")
+    if not isinstance(git_commit, str) or not _GIT_OBJECT_RE.fullmatch(git_commit):
+        raise ReleaseError("RELEASE.json has invalid git_commit")
+    if git_commit != sha:
+        raise ReleaseError("RELEASE.json git_commit does not match source_sha")
+    if not git_tree:
+        raise ReleaseError("RELEASE.json missing git_tree")
+    if not isinstance(git_tree, str) or not _GIT_OBJECT_RE.fullmatch(git_tree):
+        raise ReleaseError("RELEASE.json has invalid git_tree")
     package_schema = int(manifest.get("schema_compatibility", {}).get("package_schema", 0))
     if package_schema != SCHEMA_VERSION:
         raise ReleaseError(
@@ -216,6 +232,14 @@ def build_release(
     ]
     if tracked_dirty:
         raise ReleaseError("refusing to build from a dirty tracked worktree")
+    tree_observed = subprocess.run(
+        ["git", "-C", str(repo), "rev-parse", f"{sha}^{{tree}}"],
+        capture_output=True, text=True, timeout=30, check=False,
+    )
+    tree = tree_observed.stdout.strip()
+    if tree_observed.returncode != 0 or not _GIT_OBJECT_RE.fullmatch(tree):
+        raise ReleaseError(
+            f"could not resolve Git tree for {sha}: {tree_observed.stderr.strip()}")
     directory = release_dir(sha, root)
     if directory.exists():
         raise ReleaseError(f"release already exists: {directory}")
@@ -244,6 +268,8 @@ def build_release(
     manifest = {
         "release_id": f"rel-{sha[:12]}-{uuid.uuid4().hex[:8]}",
         "source_sha": sha,
+        "git_commit": sha,
+        "git_tree": tree,
         "python_version": py_ver.stdout.strip(),
         "package_version": PACKAGE_VERSION,
         "schema_compatibility": {
@@ -313,6 +339,70 @@ def record_generation(
     (install_root(root) / "GENERATION.json").write_text(
         json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return record
+
+
+def release_authority_report(
+    *,
+    root: Path | None = None,
+    foundry_home: Path | None = None,
+) -> dict[str, Any]:
+    """Report whether durable DB authority agrees with filesystem pointers."""
+    current = read_current(root)
+    previous = read_previous(root)
+    if foundry_home is None:
+        return {
+            "current": current,
+            "previous": previous,
+            "database_release_records": 0,
+            "database_current_recorded": False,
+            "consistent": False,
+            "status": "FOUNDRY_HOME_MISSING",
+        }
+
+    database_path = Path(foundry_home) / "foundry.db"
+    if not database_path.is_file():
+        return {
+            "current": current,
+            "previous": previous,
+            "database_release_records": 0,
+            "database_current_recorded": False,
+            "consistent": False,
+            "status": "DATABASE_MISSING",
+        }
+
+    database = FoundryDatabase(database_path)
+    try:
+        with database.connect(readonly=True) as connection:
+            total = int(connection.execute("SELECT COUNT(*) FROM release_manifests").fetchone()[0])
+            recorded = int(connection.execute(
+                "SELECT COUNT(*) FROM release_manifests WHERE source_commit = ?",
+                (current,),
+            ).fetchone()[0]) if current else 0
+    except sqlite3.OperationalError as error:
+        return {
+            "current": current,
+            "previous": previous,
+            "database_release_records": 0,
+            "database_current_recorded": False,
+            "consistent": False,
+            "status": "RELEASE_SCHEMA_UNAVAILABLE",
+            "error": str(error),
+        }
+
+    if not current:
+        status = "NO_FILESYSTEM_AUTHORITY"
+    elif not recorded:
+        status = "FILESYSTEM_ONLY_AUTHORITY"
+    else:
+        status = "CONSISTENT"
+    return {
+        "current": current,
+        "previous": previous,
+        "database_release_records": total,
+        "database_current_recorded": bool(recorded),
+        "consistent": status == "CONSISTENT",
+        "status": status,
+    }
 
 
 def rollback_current(

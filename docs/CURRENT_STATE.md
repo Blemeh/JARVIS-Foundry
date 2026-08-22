@@ -6,26 +6,29 @@ every promotion/remaster mission (see `docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.
 If this document and another current-status document disagree, THIS document wins
 for "what exists now" claims; the architecture contract wins for binding invariants.
 
-Last reconciled: 2026-08-22 (24h release-captain program: verifier hardening
-9598a43 + V2 knowledge brain f1660f6 integrated onto main content via
-candidate/24h-integration @ 8f92b9f and pushed as a branch; INTEGRATION PASS,
-LIVE_PROMOTION_DEFERRED — deployed release unchanged at 769715a, live database
-remains schema v34)
+Last reconciled: 2026-08-22 (audit-truth remediation R2 integrated onto canonical
+main `ceb90d7` via `candidate/audit-r2-integration`; V3 Command Center UI and
+schema v35 candidate preserved; LIVE_PROMOTION_DEFERRED)
 
 ```text
-CURRENT CANONICAL HEAD:      8f92b9f6c2c74ab60e7003385740918c1b01e588 (main:
-                             M2 Executive Intelligence plus integrated 24h
-                             lanes via merge chain 433e5f1 -> 262f156 -> 8f92b9f)
-CURRENT REPOSITORY HEAD:     8f92b9f6c2c74ab60e7003385740918c1b01e588 (origin/main aligned)
-CURRENT STATE RECORD:        8f92b9f6c2c74ab60e7003385740918c1b01e588
-TESTED SOURCE HEAD:          262f156c302e1efa22ed2a0c1c69fb0d04c0d145 (integration code head:
-                             gate battery v3 + clean sequential reruns — focused
-                             foundry 1516 collected, full foundry+convergence
-                             1616 collected, reruns failures=0 errors=0;
-                             independent exact-SHA adversarial reviews PASS for
-                             both lanes under evidence/24h/review/)
+CURRENT CANONICAL HEAD:      ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2 (origin/main:
+                             V3 Command Center UI integrated atop 24h-integration)
+INTEGRATION BASE:            ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2
+AUDIT SOURCE:                53c9e524ffa368e36f706560c3f3815fd0dd26bc
+CURRENT WORK BRANCH:         candidate/audit-r2-integration
+CURRENT STATE RECORD:        pending merge commit (integration validation PASS)
+TESTED SOURCE HEAD:          pending merge commit (2026-08-22); focused remediation
+                             suite 75/75 PASS; full foundry suite collected and
+                             run with 0 failures at integration validation
+FULL SUITE:                  integration validation 2026-08-22 — failures=0, errors=0
+FOCUSED REMEDIATION TESTS:   75/75 PASS — installer/scheduler, supervisor
+                             lifecycle/lease, PID reconciliation, release
+                             identity/authority, headless cleanup
 DEPLOYED RELEASE:            769715a7f8aee22bf4ab2db8870c37e6e9c9ef1b (CURRENT)
 PREVIOUS RELEASE:            9a10910f78a4a618fba4c916b418056e4ada1991 (PREVIOUS)
+DEPLOYED MANIFEST:           rel-769715a7f8ae-060c9abc; legacy pre-remediation
+                             manifest has source_sha but lacks git_commit and
+                             git_tree; replacement after verifier PASS is required
 PROVIDER CONFIG:             %LOCALAPPDATA%\JARVIS\config\provider.yaml
                              (opencode_go / muse-spark-1.2-contributor / OpenCode Go URL)
 CURRENT SCHEMA:              v34 (live deployed database at schema v34)
@@ -34,8 +37,6 @@ CURRENT SCHEMA:              v34 (live deployed database at schema v34)
                              typed knowledge records + verifier binding, no live
                              migration); the live database remains v34 until an
                              owner-approved migration window; LIVE_PROMOTION_DEFERRED.
-FULL SUITE:                  1559 collected at b8bc3543570f3b19ba4700433820b7665d5e07c5;
-                             failures=0, errors=0, skipped=0
 FOCUSED EXECUTIVE SUITE:     32 passed (tests/foundry/test_executive_intelligence.py)
 FRONTEND:                    typecheck clean; vitest 40/40; production build OK;
                              V4 visuals FROZEN (no redesign in M2)
@@ -56,9 +57,29 @@ COMMAND CENTER:              /executive route + snapshot.executive section proje
                              the decision spine (latest decision, rationale,
                              rejected alternatives, prediction-vs-actual,
                              calibration history) from ledger events only.
-SUPERVISOR STATE:            RUNNING (single lease owner, heartbeat advancing)
-STOP STATE:                  OFF (no sentinel, no active STOP/PAUSE directives)
+SUPERVISOR STATE:            RUNNING (single lease owner; doctor reports
+                             active worker-loop; PID 11672 at reconciliation)
+STOP STATE:                  OFF (doctor reports false)
 TRUST STATE:                 LAB
+RELEASE AUTHORITY:           FILESYSTEM_ONLY_AUTHORITY is explicit and detected
+                             by doctor: CURRENT/PREVIOUS are canonical, DB
+                             release records are a projection/audit cache and
+                             currently contain 0 rows; no manual DB fabrication
+PID LEDGER:                  startup/heartbeat reconciliation requires live PID,
+                             matching creation identity, and JARVIS ownership;
+                             dead PID 15452 classification and reuse rejection
+                             are covered by focused regressions
+OWNER-GOAL:                  SUPERSEDED_BY_NEWER_IMPLEMENTATION — authenticated
+                             GOAL directives in executive/goals.py are current
+RELEASE-HANDOFF:            SUPERSEDED — immutable CURRENT/PREVIOUS release
+                             authority replaces the deleted handoff mechanism
+SCHEDULER AUTHORITY:         JARVIS-Foundry-Supervisor Ready is the production
+                             lifecycle authority; JARVIS-Foundry-Worker-Loop is
+                             LEGACY_DISABLED and fail-closed against enabling;
+                             R3 proving monitor remains a separate read-only task
+HEADLESS FIX:                preserved and integrated; live promotion proof pending
+AUDIT LIVE STATUS:           IMPLEMENTED_UNPROVEN_AT_LIVE_HEAD — remediation code
+                             integrated offline; restart/promotion proof pending
 MISSION STATE:               unchanged from 2026-08-19 reconciliation plus M2
                              proof missions in isolated lab databases (live home
                              untouched by proofs)
@@ -129,22 +150,22 @@ older text elsewhere in this file.)
 
 ## What is running
 
-Live daemon (single supervisor pair) with home `C:\Users\b\AppData\Local\hermes\foundry`,
-deployed schema v33, ledger live (event count growing), Tier C live. The
-candidate source schema is v34, but no live migration or worker-loop activation
-has been performed.
+Live Supervisor uses home `C:\Users\b\AppData\Local\hermes\foundry`, schema v34,
+with a healthy reconciled ledger. At the 2026-08-22 reconciliation doctor
+reported 180,915 events, quick check ok, reconciliation consistent, STOP false,
+and one active `worker-loop` identity. Supervisor PID 11672 held the singleton
+lease. This is the pre-remediation deployed release `769715a7...`; its manifest
+predates the new Git provenance fields.
 
-The exact current runtime/source record is `c60db92`; its R3 proving window is
-`WAITING_ELAPSED` under the read-only task
-`JARVIS-Foundry-Proving-Window-Monitor-Canonical-R3`. The previous f37f852 R2
-window is preserved as `SUSPENDED` history.
+`JARVIS-Foundry-Supervisor` is the single production lifecycle authority.
+`JARVIS-Foundry-Worker-Loop` is `LEGACY_DISABLED`; its fail-closed classification
+prevents accidental re-enable. The R3 proving-window monitor remains a separate
+read-only task and is not a worker launch authority.
 
-The separate `JARVIS-Foundry-Worker-Loop` task is registered but `Disabled`.
-Its triggers are disabled before registration, it points to the canonical
-`jarvis_foundry.runtime.worker_loop` command and worker-routing configuration,
-and no worker-loop process or provider effect has been observed. Activation is
-deferred until an authoritative executable mission contract and provider
-readiness are independently reconciled.
+The integration merge adds deterministic PID reconciliation, duplicate-launch
+fail-closed behavior, explicit release-authority detection, Git commit/tree
+release manifests, and scheduler-safe test boundaries. These changes are not
+live until independently verified, released, promoted, and restarted.
 
 A disposable deployment rehearsal is recorded at
 `docs/convergence/WORKER_LOOP_DEPLOYMENT_CANARY_REHEARSAL_20260819.json`:
@@ -195,9 +216,8 @@ browser substrate, and it cannot activate native desktop execution.
 - Continuous workflow mining, learned computer execution, native desktop replay,
   and audio-driven workflow discovery — explicitly not active; Phase 5/6 remain locked.
 - Scanner patterns are configuration (defense-in-depth, not proof).
-- Rollback strategy is RESTORE-FROM-BACKUP for schema v33 (no reverse migration; by design).
-- The prior canonical R2 proving window on f37f852 is durably SUSPENDED. The exact current-release R3 proving window is active and WAITING_ELAPSED against source c60db92, with a fresh Supervisor restart, read-only monitor, 0/10 verified post-start missions, local accessibility PASS, and all external/provider/voice/physical boundaries explicitly NOT_TESTED or BLOCKED.
-- The worker-loop activation package is source-verified and pushed, but its live task remains disabled; this does not restart or promote the c60db92 proving release.
+- Rollback strategy remains restore-oriented; schema v34 is live and no reverse migration is provided.
+- The deployed legacy manifest does not yet carry the new git_commit/git_tree fields. Until post-verification promotion completes, live release provenance is source_sha-only and must not be described as fully compliant with the new contract.
 
 ## Documentation rules (anti-staleness)
 

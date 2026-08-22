@@ -60,9 +60,12 @@ def check_openadapt(config: OpenAdaptConfig) -> dict[str, Any]:
     if not executable.is_file():
         raise OpenAdaptUnavailable(f"OpenAdapt-Flow executable is missing: {executable}")
     try:
+        from ..platform.windows_subprocess import headless_run_kwargs
+
         result = subprocess.run(
             [str(executable), "--version"], capture_output=True, text=True,
             timeout=15, check=False, env=_clean_env(),
+            **headless_run_kwargs(),
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise OpenAdaptUnavailable(f"cannot invoke OpenAdapt-Flow: {exc}") from exc

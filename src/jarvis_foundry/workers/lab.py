@@ -154,11 +154,15 @@ class DiagnosisLab:
         """Run the controller-private held-out test against the worktree."""
         target = worktree or self.boundary.worktree
         import sys
+
+        from ..platform.windows_subprocess import headless_run_kwargs
+
         result = subprocess.run(
             [sys.executable, "-m", "pytest", str(self.boundary.held_out_tests),
              "-q", "--rootdir", str(target)],
             cwd=str(target),
             capture_output=True, text=True, timeout=120, check=False,
+            **headless_run_kwargs(),
         )
         return {
             "exit": result.returncode,
@@ -171,11 +175,15 @@ class DiagnosisLab:
         """Run the worker-visible public tests against the worktree."""
         target = worktree or self.boundary.worktree
         import sys
+
+        from ..platform.windows_subprocess import headless_run_kwargs
+
         result = subprocess.run(
             [sys.executable, "-m", "pytest", str(self.boundary.public_tests),
              "-q", "--rootdir", str(target)],
             cwd=str(target),
             capture_output=True, text=True, timeout=120, check=False,
+            **headless_run_kwargs(),
         )
         return {
             "exit": result.returncode,

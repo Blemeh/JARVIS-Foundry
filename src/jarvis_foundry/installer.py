@@ -153,10 +153,13 @@ class InstallerError(RuntimeError):
 
 
 def _run_schtasks(*args: str) -> subprocess.CompletedProcess[str]:
+    from .platform.windows_subprocess import headless_run_kwargs
+
     return subprocess.run(
         ["schtasks"] + list(args),
         capture_output=True, text=True, encoding="utf-8", errors="replace",
         timeout=60,
+        **headless_run_kwargs(),
     )
 
 

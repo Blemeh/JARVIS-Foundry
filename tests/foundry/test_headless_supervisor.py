@@ -1,6 +1,7 @@
 """Tests for Windows headless subprocess helpers and production launchers."""
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -15,6 +16,7 @@ from jarvis_foundry.platform.windows_subprocess import (
     creationflags_no_window,
     headless_popen_kwargs,
     headless_run_kwargs,
+    pid_alive,
 )
 
 
@@ -81,6 +83,28 @@ def test_create_no_window_suppresses_console_for_cmd():
     )
     assert result.returncode == 0
     assert "jarvis-headless-probe" in result.stdout
+
+
+def test_headless_kwargs_preserve_existing_creationflags(monkeypatch):
+    monkeypatch.setattr("jarvis_foundry.platform.windows_subprocess.is_windows", lambda: True)
+    extra = 0x00000008  # DETACHED_PROCESS
+    kwargs = headless_run_kwargs(creationflags=extra)
+    assert kwargs["creationflags"] & CREATE_NO_WINDOW
+    assert kwargs["creationflags"] & extra
+
+
+def test_pid_alive_current_process():
+    assert pid_alive(os.getpid()) is True
+
+
+def test_pid_alive_invalid_pid():
+    assert pid_alive(-1) is False
+    assert pid_alive(0) is False
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows-only pid probe")
+def test_pid_alive_does_not_spawn_tasklist():
+    assert pid_alive(os.getpid()) is True
 
 
 def test_release_python_executables_accepts_pythonw_pair(tmp_path):

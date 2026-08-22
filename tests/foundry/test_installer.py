@@ -16,6 +16,10 @@ from pathlib import Path
 import pytest
 
 from jarvis_foundry.database import FoundryDatabase
+from jarvis_foundry.platform.windows_subprocess import (
+    background_python_executable,
+    headless_run_kwargs,
+)
 from jarvis_foundry.installer import (
     PROFILE_FILE,
     V1_TASK_NAME,
@@ -24,6 +28,10 @@ from jarvis_foundry.installer import (
     Installer,
     InstallerError,
     WorkerLoopInstaller,
+)
+from tests.foundry.scheduler_guard import (
+    delete_scheduled_tasks,
+    select_created_staging_tasks,
 )
 
 
@@ -38,7 +46,7 @@ def installer_fixture(tmp_path, *, task_name=None):
         task_name=name,
         foundry_home=home,
         hermes_home=tmp_path / "hermes-home",
-        python_exe=sys.executable,
+        python_exe=background_python_executable(sys.executable),
         profile={"mission_roles": "default"},
         gate_verdict_path=gate_verdict,
     )
@@ -228,6 +236,46 @@ def test_install_scope_proof_host_inventory(tmp_path):
         teardown(installer)
 
 
+def test_scheduler_guard_never_selects_preexisting_staging_name():
+    before = {"\\JF-WP7Gate-preexisting", "\\Other-Task"}
+    after = {
+        *before,
+        "\\JF-WP7Gate-session-created",
+        "\\JF-WP7Gate-session-created-lower",
+        "\\New-Non-Staging",
+    }
+
+    assert select_created_staging_tasks(before, after) == [
+        "\\JF-WP7Gate-session-created",
+        "\\JF-WP7Gate-session-created-lower",
+    ]
+    assert select_created_staging_tasks(None, after) == []
+    assert select_created_staging_tasks(before, None) == []
+
+
+def test_scheduler_guard_deletes_only_selected_tasks(monkeypatch):
+    import tests.foundry.scheduler_guard as scheduler_guard
+
+    calls: list[list[str]] = []
+
+    def fake_run(args, **kwargs):
+        calls.append(args)
+        return type("Result", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+
+    monkeypatch.setattr(scheduler_guard.subprocess, "run", fake_run)
+
+    removed = delete_scheduled_tasks([
+        "\\JF-WP7Gate-created",
+        "\\Unrelated-Created",
+    ])
+
+    assert removed == ["\\JF-WP7Gate-created", "\\Unrelated-Created"]
+    assert calls == [
+        ["schtasks", "/Delete", "/TN", "\\JF-WP7Gate-created", "/F"],
+        ["schtasks", "/Delete", "/TN", "\\Unrelated-Created", "/F"],
+    ]
+
+
 def test_profile_written_and_removed_with_install(tmp_path):
     home, database, gate_verdict, installer = installer_fixture(tmp_path)
     try:
@@ -251,7 +299,8 @@ def test_task_xml_contains_absolute_paths_and_home_argument(tmp_path):
     try:
         installer.install()
         xml = installer._task_xml()
-        assert str(Path(sys.executable).resolve()) in xml
+        expected_python = background_python_executable(sys.executable)
+        assert Path(expected_python).resolve().as_posix() in Path(xml).as_posix()
         assert str(home) in xml
         assert '--home "' in xml
         assert "<Hidden>true</Hidden>" in xml
@@ -448,7 +497,9 @@ def test_task_restarts_after_hard_kill_via_repeating_trigger(tmp_path):
         # the scheduler so IgnoreNew semantics apply.
         result = subprocess.run(
             ["schtasks", "/run", "/tn", installer.task_name],
-            capture_output=True, text=True, timeout=60)
+            capture_output=True, text=True, timeout=60,
+            **headless_run_kwargs(),
+        )
         assert result.returncode == 0, result.stderr
 
         def daemon_lease_owner() -> str | None:
@@ -470,16 +521,19 @@ def test_task_restarts_after_hard_kill_via_repeating_trigger(tmp_path):
         # Hard-kill the daemon process (TerminateProcess semantics).
         ps = subprocess.run(
             ["powershell", "-NoProfile", "-Command",
-             f"Get-CimInstance Win32_Process -Filter \"name='python.exe'\" | "
+             f"Get-CimInstance Win32_Process -Filter \"name='python.exe' or name='pythonw.exe'\" | "
              f"Where-Object {{ $_.CommandLine -like '*{installer.task_name}*' -or "
              f"($_.CommandLine -like '*jarvis_foundry.supervisor.run*' -and "
              f"$_.CommandLine -like '*{installer.foundry_home}*') }} | "
              f"Select-Object -ExpandProperty ProcessId | Select-Object -First 1"],
-            capture_output=True, text=True, errors="replace", timeout=60)
+            capture_output=True, text=True, errors="replace", timeout=60,
+            **headless_run_kwargs(),
+        )
         pid = ps.stdout.strip()
         assert pid, "daemon process not found"
         kill = subprocess.run(["taskkill", "/f", "/pid", pid],
-                              capture_output=True, text=True, errors="replace", timeout=60)
+                              capture_output=True, text=True, errors="replace", timeout=60,
+                              **headless_run_kwargs())
         assert kill.returncode == 0, kill.stderr
 
         # The next repeating tick (<= 1 minute) must start a NEW instance
