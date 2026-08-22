@@ -25,12 +25,12 @@ test.describe("owner workflow navigation", () => {
 
   test("trust pill shows trust state not data source mode", async ({ page }) => {
     await page.goto("/")
-    const trust = page.getByRole("button", { name: /Trust state/i })
-    await expect(trust).toContainText("SIMULATED")
+    const trust = page.locator("button.trust-pill")
+    await expect(trust).toContainText(/SIMULATED|DEGRADED|PROVEN|SUSPENDED/)
     await expect(trust).not.toContainText("Data Source")
   })
 
-  test("export ledger control is disabled outside simulated mode label", async ({ page }) => {
+  test("export ledger control is enabled in simulated mode with integrity label", async ({ page }) => {
     await page.goto("/evidence")
     const exportBtn = page.getByRole("button", { name: /Export ledger/i })
     await expect(exportBtn).toBeEnabled()

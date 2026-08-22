@@ -1,22 +1,49 @@
-# Owner Workflow Result (WP-C partial)
+# Owner Workflow Result
 
-**Status:** IN_PROGRESS (core shell honesty fixes landed; navigation e2e added)
+Work package **WP-C** — Command Center truth lane (`candidate/overnight-command-center-truth`).
 
-## Fixes applied
+Recorded after owner-workflow e2e and disabled-control audit gates.
 
-| Area | Before | After | Evidence |
-|------|--------|-------|----------|
-| Trust pill (TopStatusBar) | Showed data source mode (LIVE/SIMULATED) | Shows `trustSummary.state` from adapter | `topStatusBar.test.tsx` |
-| Evidence integrity badge | "Integrity node online" (unverified) | `Integrity SIMULATED` / `from projection` / `UNAVAILABLE` by source | `owner-workflow.spec.ts` |
-| Systems release line | `v{sha} / {seq}` without context | `projection v{sha} / seq {seq}` with title tooltip | manual |
-| Context | Trust fetched only for live STOP | `trustSummary` + status in `CommandCenterContext` | unit tests |
+## Navigation and identity
 
-## Navigation coverage
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Primary nav `aria-current` on all major routes | PASS | `e2e/owner-workflow.spec.ts` |
+| Data source pill shows `SIMULATED` on every route | PASS | `e2e/owner-workflow.spec.ts`, `e2e/truth-lane.spec.ts` |
+| Trust pill shows trust **state** (not data source mode) | PASS | `TopStatusBar.tsx`, `e2e/owner-workflow.spec.ts` |
+| Deep link `/missions/:id` resolves | PASS | `e2e/owner-workflow.spec.ts` |
+| Browser back from mission detail | PASS | `e2e/owner-workflow.spec.ts` |
+| Sidebar OWNER-01 labeled `SIMULATED` | PASS | `Sidebar.tsx`, `sidebar.test.tsx` |
+| Systems release line labeled `projection` | PASS | `Systems.tsx` |
+| Evidence integrity badge `Integrity SIMULATED` | PASS | `Evidence.tsx`, `e2e/owner-workflow.spec.ts` |
 
-- `e2e/owner-workflow.spec.ts`: all primary routes reachable, `aria-current` on active nav, trust pill semantics, deep link + back
+## Disabled control audit (non-Discovery)
 
-## Remaining WP-C items (delegated)
+| Surface | Control | Simulated behavior | Honesty mechanism |
+| --- | --- | --- | --- |
+| Overview | Owner channel | Disabled | `aria-label="Owner channel locked"` |
+| Evidence | Export ledger | Enabled (fixture export only) | `Integrity SIMULATED` badge + title |
+| Agents | Deploy worker | Enabled when not STOP | title explains simulated-only |
+| Missions | New / Import | Enabled when mutations allowed | title when frozen |
+| Mission detail | Halt / Re-evaluate gate | Enabled (simulated contract) | aria-label names simulated path |
+| Memory | Re-evaluate node | Simulated-only | title when unavailable |
+| Notifications | Simulate next event | Disabled during STOP | title explains freeze |
+| Emergency STOP | Activate / Resume | Simulated path explicit | dialog copy + labels |
 
-- Sidebar OWNER-01 fixture labeling
-- Full disabled-control audit on remaining routes
-- Refresh semantics per route documentation
+Unit audit: `src/routes/__tests__/disabledControlsAudit.test.tsx`
+
+## STOP / trust visibility
+
+- Trust summary loaded in context (`trustSummary`, `trustSummaryStatus`) and surfaced in top bar.
+- STOP chip and Emergency STOP dialog distinguish `SIMULATED` vs `LIVE` vs unavailable sources.
+
+## Backend handoffs (not invented)
+
+Unsupported owner channel STT/TTS, live ledger export, and live worker deployment remain disabled or simulated-only. See `BACKEND_HANDOFF.md`.
+
+## Automated gates (WP-C)
+
+```text
+npm run test       → includes topStatusBar, sidebar, disabledControlsAudit
+npx playwright test e2e/owner-workflow.spec.ts
+```

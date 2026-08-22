@@ -62,7 +62,7 @@ export function Notifications() {
                 className="btn btn-ghost"
                 onClick={() => void simulateNextEvent()}
                 disabled={stopActive}
-                title="Simulate the next demo event locally (verification.failed → repair → recovery → pass)"
+                title={stopActive ? "Frozen during STOP simulation" : "Simulate the next demo event locally (verification.failed → repair → recovery → pass)"}
               >
                 <Zap size={14} aria-hidden="true" />
                 Simulate next event ({demoIndex % 4 === 0 ? "failed" : demoIndex % 4 === 1 ? "repair" : demoIndex % 4 === 2 ? "recovery" : "pass"})
