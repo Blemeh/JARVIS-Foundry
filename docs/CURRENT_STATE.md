@@ -8,7 +8,7 @@ for "what exists now" claims; the architecture contract wins for binding invaria
 
 Last reconciled: 2026-08-22 (audit-truth remediation R2 integrated onto canonical
 main `ceb90d7` via `candidate/audit-r2-integration`; V3 Command Center UI and
-schema v35 candidate preserved; LIVE_PROMOTION_DEFERRED)
+schema v36 V3 discovery/building preserved; LIVE_PROMOTION_DEFERRED)
 
 ```text
 CURRENT CANONICAL HEAD:      ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2 (origin/main:
@@ -16,10 +16,13 @@ CURRENT CANONICAL HEAD:      ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2 (origin/ma
 INTEGRATION BASE:            ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2
 AUDIT SOURCE:                53c9e524ffa368e36f706560c3f3815fd0dd26bc
 CURRENT WORK BRANCH:         candidate/audit-r2-integration
-CURRENT STATE RECORD:        21631bec69feb064e54c33310e6a555ecf4d353f
-TESTED SOURCE HEAD:          21631bec69feb064e54c33310e6a555ecf4d353f (2026-08-22);
+CURRENT STATE RECORD:        a7bc63a0107302e656346d0df2f0de5900cff3d0 (docs-only
+                             reconciliation snapshot; not a tested-code claim)
+TESTED CODE HEAD:            21631bec69feb064e54c33310e6a555ecf4d353f (2026-08-22);
                              focused remediation 75/75 PASS; full foundry 1594
-                             collected, 0 failures
+                             collected, 0 failures; source code unchanged afterward
+FINAL EVIDENCE HEAD:         not yet recorded; rerun the gates at the final
+                             overnight candidate HEAD before any release claim
 FULL SUITE:                  1594 collected at integration validation (2026-08-22);
                              failures=0, errors=0
 FOCUSED REMEDIATION TESTS:   75/75 PASS — installer/scheduler, supervisor
@@ -32,12 +35,12 @@ DEPLOYED MANIFEST:           rel-769715a7f8ae-060c9abc; legacy pre-remediation
                              git_tree; replacement after verifier PASS is required
 PROVIDER CONFIG:             %LOCALAPPDATA%\JARVIS\config\provider.yaml
                              (opencode_go / muse-spark-1.2-contributor / OpenCode Go URL)
-CURRENT SCHEMA:              v34 (live deployed database at schema v34)
-                             CANDIDATE NOTE: integrated candidate/24h-integration
-                             (@262f156) advances SCHEMA_VERSION to v35 (additive
-                             typed knowledge records + verifier binding, no live
-                             migration); the live database remains v34 until an
-                             owner-approved migration window; LIVE_PROMOTION_DEFERRED.
+CURRENT SCHEMA:              v34 live deployed database baseline (production unchanged)
+                             V2 KNOWLEDGE SCHEMA: v35 (24h-integration knowledge brain)
+                             V3 DISCOVERY/BUILDING SCHEMA: v36 (integrated on main)
+                             CURRENT/CANDIDATE SCHEMA: v36 (migrations.SCHEMA_VERSION);
+                             live database remains v34 until owner-approved migration;
+                             LIVE_PROMOTION_DEFERRED
 FOCUSED EXECUTIVE SUITE:     32 passed (tests/foundry/test_executive_intelligence.py)
 FRONTEND:                    typecheck clean; vitest 40/40; production build OK;
                              V4 visuals FROZEN (no redesign in M2)
