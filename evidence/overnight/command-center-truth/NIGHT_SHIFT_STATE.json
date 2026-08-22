@@ -1,12 +1,8 @@
 {
   "lane": "overnight-command-center-truth-continuation",
-  "partial_checkpoint_sha": "3e57d2429eaf7ae0e000277463363bf5106e5a5b",
-  "base_sha": "ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2",
+  "head_sha": "83b1e9a",
   "branch": "candidate/overnight-command-center-truth",
   "worktree": "C:\\temp\\JARVIS-Overnight-Command-Center-Truth",
-  "shift_start_utc": "2026-08-22T21:56:00Z",
-  "shift_deadline_utc": "2026-08-23T09:56:00Z",
-  "actual_time_utc": "2026-08-22T22:48:00Z",
   "work_packages": {
     "A_entry_gate_truth": "PASS",
     "B_route_resilience": "PASS",
@@ -16,39 +12,27 @@
     "F_accessibility": "PASS",
     "G_responsive_visual": "PASS",
     "H_performance_console_security": "PASS",
-    "I_endurance_six_hour": "IN_PROGRESS",
-    "J_adversarial_review": "IN_PROGRESS"
+    "I_endurance_six_hour": "FAIL",
+    "J_adversarial_review": "PASS"
   },
-  "commits": {
-    "wp_f": "8fd0d27",
-    "wp_g": "0a9c046",
-    "wp_h": "159a31e",
-    "wp_endurance_runner": "83b1e9a",
-    "head_before_endurance": "83b1e9a875548f31729ba820cdf5ce9491192a8f"
-  },
+  "commits": [
+    { "sha": "8fd0d27", "work_package": "F_accessibility" },
+    { "sha": "0a9c046", "work_package": "G_responsive_visual" },
+    { "sha": "159a31e", "work_package": "H_performance_console_security" },
+    { "sha": "83b1e9a", "work_package": "I_endurance_six_hour" }
+  ],
   "gates": {
     "lint": "PASS",
     "typecheck": "PASS",
-    "unit_tests": "93/93",
+    "unit_test": "PASS (91/91)",
     "build": "PASS",
-    "e2e_accessibility": "11/11",
-    "e2e_owner_workflow": "13/13",
-    "e2e_route_matrix": "77/77",
-    "visual_manifest_cells": "225/225 PASS"
+    "e2e": "PASS (161/161)",
+    "accessibility": "PASS (11/11)",
+    "visual_manifest": "PASS (225/225)",
+    "console_check": "PASS",
+    "security_scan": "PASS",
+    "endurance_6h": "FAIL (15m confirmation only; preview 500s under load)"
   },
-  "endurance": {
-    "status": "starting",
-    "requested_duration_hours": 6,
-    "confirmation_duration_minutes": 90,
-    "port": 4523,
-    "prior_attempt_note": "Aborted at 667ms; restarting full 6h run"
-  },
-  "checkpoints": [
-    {
-      "at_utc": "2026-08-22T22:48:00Z",
-      "head_sha": "83b1e9a875548f31729ba820cdf5ce9491192a8f",
-      "note": "WP-F/G/H verified at HEAD; restarting 6h endurance on port 4523"
-    }
-  ],
-  "verdict": "IN_PROGRESS"
+  "shift_verdict": "INCOMPLETE",
+  "blocking_reason": "WP-I six-hour endurance gate not satisfied"
 }
