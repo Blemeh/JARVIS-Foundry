@@ -226,15 +226,26 @@ def pid_alive(pid: int) -> bool:
 
 
 def _record_is_live(record: Mapping[str, Any]) -> bool:
-    """Confirm liveness using stored creation time to reject PID reuse."""
+    """Confirm liveness using a complete creation identity.
+
+    A PID without a creation timestamp is ambiguous after a restart. It can
+    be reported for diagnostics, but it is never sufficient evidence for a
+    kill or an adoption decision.
+    """
     pid = int(record["pid"])
     if not pid_alive(pid):
         return False
     expected = record.get("creation_identity")
     if not isinstance(expected, Mapping) or expected.get("create_time") is None:
-        return True
+        return False
     observed = process_creation_identity(pid)
-    return observed.get("create_time") == expected.get("create_time")
+    if observed.get("create_time") != expected.get("create_time"):
+        return False
+    expected_exe = expected.get("exe")
+    observed_exe = observed.get("exe")
+    if expected_exe and observed_exe:
+        return str(expected_exe).casefold() == str(observed_exe).casefold()
+    return True
 
 
 def _taskkill(pid: int, *, force: bool) -> None:
@@ -422,11 +433,23 @@ class WorkerController:
             raise
         self._processes[run_id] = process
         self._leased.add(run_id)
-        register_adapter_pid(
-            self.pid_table_path(), run_id, process.pid,
-            mission_id=mission_id, step_id=step_id, worker_type=worker_type,
-            working_directory=cwd, stop_path=stop_path,
-        )
+        try:
+            register_adapter_pid(
+                self.pid_table_path(), run_id, process.pid,
+                mission_id=mission_id, step_id=step_id, worker_type=worker_type,
+                working_directory=cwd, stop_path=stop_path,
+            )
+        except BaseException:
+            # The process has started, but durable PID registration failed.
+            # Do not leak a worker that a restarted controller cannot safely
+            # identify. The exact process object is still available here.
+            self._processes.pop(run_id, None)
+            self._leased.discard(run_id)
+            try:
+                terminate_owned_tree(process.pid, process=process)
+            finally:
+                self.leases.release(key, key)
+            raise
         return self.status(run_id)
 
     def attach(
@@ -547,7 +570,16 @@ class WorkerController:
         terminated = [run_id for run_id in known if self.terminate(run_id)]
         leftover = load_adapter_pids(self.pid_table_path())
         for run_id, record in leftover.items():
-            kill_pid(int(record["pid"]))
+            if _record_is_live(record):
+                terminate_owned_tree(int(record["pid"]))
+            else:
+                # A stale or incomplete identity is not a kill authority.
+                # Remove only the ledger row and release its matching lease.
+                unregister_adapter_pid(self.pid_table_path(), run_id)
+                owner = worker_lease_key(run_id)
+                row = self.database.row("leases", "lease_key", owner)
+                if row is not None:
+                    self.leases.release(owner, str(row["owner_id"]))
             terminated.append(run_id)
         table = self.pid_table_path()
         if table.is_file():

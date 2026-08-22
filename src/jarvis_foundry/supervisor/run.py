@@ -187,6 +187,8 @@ def _heartbeat_loop(supervisor: Supervisor, interval: float, *,
                     }), flush=True)
                 return 1
             continue
+        if state == "STOPPED":
+            return 0
         if state == "FROZEN":
             # The STOP sentinel exists: stay alive as the watchdog, keep
             # the frozen record fresh, and wait for resume/owner.
@@ -235,9 +237,11 @@ def _run_frozen_supervisor(
     try:
         state = supervisor.start()
         print(json.dumps({"supervisor": state, "home": str(paths.home)}), flush=True)
+        if state in {"STOPPED", "BLOCKED", "UNKNOWN"}:
+            return 0 if state == "STOPPED" else 1
         if once:
             print(json.dumps({"heartbeat": supervisor.heartbeat()}), flush=True)
-        return 0
+            return 0
     finally:
         supervisor.stop()
         console_handler.uninstall()
@@ -287,6 +291,8 @@ def main(argv: list[str] | None = None) -> int:
             # Fail loud: a supervisor that cannot reconcile must not hold the
             # lease or heartbeat (finding: DEGRADED was silently ignored).
             return 1
+        if state in {"STOPPED", "BLOCKED", "UNKNOWN"}:
+            return 0 if state == "STOPPED" else 1
         if args.once:
             print(json.dumps({"heartbeat": supervisor.heartbeat()}), flush=True)
             return 0

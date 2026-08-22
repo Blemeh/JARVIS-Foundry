@@ -36,6 +36,16 @@ def _parser() -> argparse.ArgumentParser:
     stop = sub.add_parser("stop", parents=[home_option])
     stop.add_argument("--reason", default="owner requested STOP")
     sub.add_parser("resume", parents=[home_option])
+    control = sub.add_parser(
+        "control", parents=[home_option],
+        help="persist an idempotent runtime owner request or inspect its state",
+    )
+    control.add_argument(
+        "action", choices=("start", "stop", "restart", "status", "reconcile"),
+    )
+    control.add_argument("--request-id", default=None)
+    control.add_argument("--requested-by", default="owner")
+    control.add_argument("--expected-release", default=None)
     events = sub.add_parser("events", parents=[home_option])
     events.add_argument("--limit", type=int, default=50)
     install = sub.add_parser("install", parents=[home_option])
@@ -148,6 +158,47 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(estop.activate(args.reason), indent=2))
     elif args.command == "resume":
         print(json.dumps({"sentinel_cleared": estop.clear(), "reorientation_required": True}, indent=2))
+    elif args.command == "control":
+        from ..supervisor.control import inspect_control, reconcile_control, submit_request
+
+        if args.action == "status":
+            if not paths.database.is_file():
+                print(json.dumps({
+                    "state": {
+                        "status": "UNKNOWN",
+                        "reason": "database_not_initialized",
+                    },
+                }, indent=2))
+                return 1
+            state = inspect_control(database, stop_path=str(paths.emergency_stop))
+            print(json.dumps({"state": state.to_json()}, indent=2))
+            return 0
+        if args.action == "reconcile":
+            if not paths.database.is_file():
+                print(json.dumps({
+                    "state": {
+                        "status": "UNKNOWN",
+                        "reason": "database_not_initialized",
+                    },
+                }, indent=2))
+                return 1
+            state = reconcile_control(database, stop_path=str(paths.emergency_stop))
+            print(json.dumps({"state": state.to_json()}, indent=2))
+            return 0
+        database.initialize()
+        request = submit_request(
+            database,
+            args.action,
+            request_id=args.request_id,
+            requested_by=args.requested_by,
+            expected_release=args.expected_release,
+        )
+        state = reconcile_control(database, stop_path=str(paths.emergency_stop))
+        print(json.dumps({
+            "request": request.to_json(),
+            "state": state.to_json(),
+        }, indent=2))
+        return 0
     elif args.command == "doctor":
         print(json.dumps(Supervisor(database, paths.emergency_stop).doctor(), indent=2))
     elif args.command == "events":
