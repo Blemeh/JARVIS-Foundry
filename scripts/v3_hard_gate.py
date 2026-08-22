@@ -311,10 +311,12 @@ def main() -> int:
     base = _git("rev-parse", "HEAD")
     branch = _git("branch", "--show-current")
     status = _git("status", "--short")
+    base_ancestry = _git("merge-base", "HEAD", EXPECTED_BASE)
     identity = {
         "expected_base": EXPECTED_BASE,
         "head_at_gate_start": base,
-        "base_matches": base == EXPECTED_BASE,
+        "base_matches": base_ancestry == EXPECTED_BASE,
+        "base_ancestry": base_ancestry,
         "branch": branch,
         "worktree": str(ROOT),
         "status_before_gate": status.splitlines(),
