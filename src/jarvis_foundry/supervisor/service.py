@@ -19,6 +19,7 @@ from .control import (
     inspect_control,
     latest_request,
     latest_process_identity,
+    latest_generation,
     record_claim,
     record_lease_reclaimed,
     record_resolution,
@@ -189,7 +190,10 @@ class Supervisor:
             return "DEGRADED"
         self._reap_and_recover()
         reaped_workers = self.workers.reap()
-        self._start_generation += 1
+        self._start_generation = max(
+            self._start_generation + 1,
+            latest_generation(self.database, self.instance_id) + 1,
+        )
         pid, identity = current_process_identity()
         record_claim(
             self.database,
@@ -216,7 +220,9 @@ class Supervisor:
         }
         self.database.append(Event.create(
             event_type, payload, source_type="supervisor", source_id=self.instance_id,
-            idempotency_key=f"{event_type}:{self.instance_id}:{payload.get('stop_id') or 'start'}",
+            idempotency_key=(
+                f"{event_type}:{self.instance_id}:"
+                f"{payload.get('stop_id') or 'start'}:{self._start_generation}"),
         ))
         self.started = True
         if request is not None and request.action in {"START", "RESTART"}:
@@ -230,7 +236,25 @@ class Supervisor:
     def heartbeat(self) -> str:
         if not self.started:
             raise RuntimeError("supervisor has not started")
-        self.leases.acquire(self.LEASE_KEY, self.instance_id, self.lease_seconds)
+        try:
+            self.leases.renew(self.LEASE_KEY, self.instance_id, self.lease_seconds)
+        except LeaseUnavailable:
+            # A heartbeat may never reacquire a lease that another owner has
+            # taken. Preserve an explicit degraded record and let the bounded
+            # headless retry path decide when to stop this process.
+            self.database.append(Event.create(
+                "supervisor.degraded",
+                {
+                    "instance_id": self.instance_id,
+                    "trust_state": "LAB",
+                    "reason": "supervisor lease lost during heartbeat",
+                    "generation": self._start_generation,
+                },
+                source_type="supervisor", source_id=self.instance_id,
+                idempotency_key=(
+                    f"supervisor.degraded:{self.instance_id}:lease_lost:{self._start_generation}"),
+            ))
+            raise
         reaped = self.workers.reap()
         request = latest_request(self.database)
         if request is not None and request.action in {"STOP", "RESTART"}:
@@ -291,7 +315,9 @@ class Supervisor:
             return str(uuid.uuid4())
         bucket = int(utc_now().timestamp() // self.ledger_heartbeat_seconds)
         reap_token = ",".join(str(item) for item in (reaped or ()))
-        return f"supervisor.heartbeat:{self.instance_id}:{bucket}:{reap_token or 'ok'}"
+        return (
+            f"supervisor.heartbeat:{self.instance_id}:{self._start_generation}:"
+            f"{bucket}:{reap_token or 'ok'}")
 
     def stop(self, *, control_request: RuntimeControlRequest | None = None) -> None:
         if not self.started:

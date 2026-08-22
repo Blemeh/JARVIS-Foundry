@@ -353,6 +353,36 @@ def latest_process_identity(
     return payload or None
 
 
+def latest_generation(database: FoundryDatabase, instance_id: str) -> int:
+    """Return the highest durable Supervisor generation for an instance.
+
+    ``Supervisor`` objects are normally short-lived process instances, but a
+    caller may intentionally reuse an instance ID during a controlled
+    restart. Generation allocation must therefore survive object loss so an
+    old idempotency key cannot collide with the new lifecycle.
+    """
+
+    event_types = (
+        "supervisor.started", "supervisor.heartbeat", "supervisor.stopped",
+        CONTROL_CLAIMING,
+    )
+    placeholders = ",".join("?" for _ in event_types)
+    pattern = f'%%"instance_id":"{instance_id}"%%'
+    highest = 0
+    for event in _query_events(
+        database,
+        f"event_type IN ({placeholders}) AND payload_json LIKE ?",
+        (*event_types, pattern),
+    ):
+        if event.payload.get("instance_id") != instance_id:
+            continue
+        try:
+            highest = max(highest, int(event.payload.get("generation") or 0))
+        except (TypeError, ValueError):
+            continue
+    return highest
+
+
 def _pid_matches(pid: int | None, creation_identity: dict[str, Any] | None) -> bool | None:
     if pid is None or pid <= 0:
         return None

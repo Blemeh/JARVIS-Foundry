@@ -65,6 +65,43 @@ def test_duplicate_start_on_same_instance_is_idempotent(tmp_path):
     assert database.event_count(event_type="supervisor.stopped") == 1
 
 
+def test_reused_instance_id_allocates_a_new_durable_generation(tmp_path):
+    database = _database(tmp_path)
+    stop_path = tmp_path / "EMERGENCY_STOP"
+    first = Supervisor(database, stop_path, instance_id="reused-instance")
+    assert first.start() == "RUNNING"
+    first.stop()
+
+    second = Supervisor(database, stop_path, instance_id="reused-instance")
+    assert second.start() == "RUNNING"
+    generations = [
+        int(event.payload["generation"])
+        for event in database.events()
+        if event.event_type == "supervisor.started"
+    ]
+    assert generations == [1, 2]
+    second.stop()
+
+
+def test_heartbeat_does_not_reacquire_a_stolen_supervisor_lease(tmp_path):
+    database = _database(tmp_path)
+    stop_path = tmp_path / "EMERGENCY_STOP"
+    supervisor = Supervisor(database, stop_path, instance_id="heartbeat-owner")
+    assert supervisor.start() == "RUNNING"
+    with database.transaction() as connection:
+        connection.execute(
+            "UPDATE leases SET owner_id = ? WHERE lease_key = ?",
+            ("intruder", "supervisor:singleton"),
+        )
+
+    with pytest.raises(LeaseUnavailable):
+        supervisor.heartbeat()
+    degraded = inspect_control(database, stop_path=str(stop_path))
+    assert degraded.status == "DEGRADED"
+    assert "lease" in (degraded.reason or "").lower()
+    supervisor.started = False
+
+
 def test_stop_request_is_applied_by_next_heartbeat(tmp_path):
     database = _database(tmp_path)
     stop_path = tmp_path / "EMERGENCY_STOP"
