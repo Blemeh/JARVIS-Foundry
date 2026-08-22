@@ -208,18 +208,26 @@ class FoundryDatabase:
             raise
         finally:
             source.close()
-        # Replace only after a complete, independently checked backup exists.
-        # A killed restore therefore leaves the previous database untouched.
+        # The target may be open elsewhere on Windows, so replacing its file
+        # path is not portable. SQLite's backup API performs the final copy
+        # through the destination journal, retaining the old file on a killed
+        # or failed restore while still avoiding an unvalidated source.
         try:
-            os.replace(temporary_path, self.path)
-        except BaseException:
+            validated_source = sqlite3.connect(
+                f"file:{temporary_path.as_posix()}?mode=ro", uri=True,
+                timeout=10)
+            destination = self.connect()
+            try:
+                validated_source.backup(destination)
+                if destination.execute("PRAGMA quick_check").fetchone()[0] != "ok":
+                    raise sqlite3.DatabaseError(
+                        "restore target failed integrity check")
+            finally:
+                destination.close()
+                validated_source.close()
+        finally:
             if temporary_path.exists():
                 temporary_path.unlink()
-            raise
-        for suffix in ("-wal", "-shm"):
-            sidecar = Path(f"{self.path}{suffix}")
-            if sidecar.exists():
-                sidecar.unlink()
         return self.verify_event_integrity()
 
     def row(self, table: str, key_column: str, key: str) -> dict[str, object] | None:
