@@ -429,7 +429,8 @@ class FactoryRunner:
         payload = json.loads(identity["stdout"].strip().splitlines()[-1])
         package_path = _resolve(payload["package"])
         candidate_dir = _resolve(self.roots.install_root / "releases" / self.source_sha)
-        if not _is_within(package_path, candidate_dir) or _is_within(package_path, self.source_repo):
+        source_package = self.source_repo / "src"
+        if not _is_within(package_path, candidate_dir) or _is_within(package_path, source_package):
             raise FactoryGuardError(f"candidate imported from unexpected path: {package_path}")
         self.record.artifacts["identity"] = {
             "candidate": candidate_manifest,
@@ -965,7 +966,9 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(result, indent=2, sort_keys=True))
             return 0
         lane = guard_lane_root(args.root, source_repo=source_repo)
-        sha = args.sha or _git(source_repo, "rev-parse", "HEAD")
+        # Normalize an abbreviated user argument before immutable build and
+        # manifest checks.  The recorded identity is always the full object.
+        sha = _git(source_repo, "rev-parse", args.sha or "HEAD")
         roots = _prepare_roots(lane, run_id, source_repo)
         record = FactoryRunner(roots, source_repo, sha).run()
         print(json.dumps(asdict(record), indent=2, sort_keys=True))
