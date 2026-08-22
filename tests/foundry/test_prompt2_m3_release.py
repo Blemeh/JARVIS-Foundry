@@ -25,7 +25,9 @@ from jarvis_foundry.workers.contracts import WORKER_HERMES
 from jarvis_foundry.workers.router import READY
 
 
-def _fake_release(tmp_path: Path, sha: str, *, schema: int = SCHEMA_VERSION) -> Path:
+def _fake_release(
+        tmp_path: Path, sha: str, *, schema: int = SCHEMA_VERSION,
+        previous: str | None = None) -> Path:
     directory = tmp_path / "JARVIS" / "releases" / sha
     python_dir = directory / ".venv" / "Scripts"
     python_dir.mkdir(parents=True)
@@ -38,8 +40,26 @@ def _fake_release(tmp_path: Path, sha: str, *, schema: int = SCHEMA_VERSION) -> 
         "python_version": "3.13.0",
         "package_version": "0.1.0",
         "schema_compatibility": {"package_schema": schema, "opens_min": schema, "opens_max": schema},
+        "provenance": {
+            "builder": "tests",
+            "source_repo": str(tmp_path / "source"),
+            "git_commit": sha,
+            "git_tree": "1" * 40,
+        },
+        "previous_runtime": None,
         "created_at": "2026-08-19T00:00:00Z",
     }
+    if previous:
+        previous_manifest = json.loads(
+            (tmp_path / "JARVIS" / "releases" / previous / "RELEASE.json").read_text(
+                encoding="utf-8"))
+        manifest["previous_runtime"] = {
+            "source_sha": previous,
+            "release_id": previous_manifest["release_id"],
+            "git_commit": previous_manifest["git_commit"],
+            "git_tree": previous_manifest["git_tree"],
+            "schema": previous_manifest["schema_compatibility"]["package_schema"],
+        }
     (directory / "RELEASE.json").write_text(json.dumps(manifest), encoding="utf-8")
     return directory
 
@@ -73,6 +93,17 @@ def test_validate_release_requires_git_identity(tmp_path, field):
         validate_release(sha, root=tmp_path / "JARVIS", require_schema_match=False)
 
 
+@pytest.mark.parametrize("field", ["provenance", "previous_runtime"])
+def test_validate_release_requires_provenance_and_previous_identity(tmp_path, field):
+    sha = "6" * 40
+    directory = _fake_release(tmp_path, sha)
+    manifest = json.loads((directory / "RELEASE.json").read_text(encoding="utf-8"))
+    del manifest[field]
+    (directory / "RELEASE.json").write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(ReleaseError, match=field):
+        validate_release(sha, root=tmp_path / "JARVIS", require_schema_match=False)
+
+
 def test_validate_release_rejects_commit_source_mismatch(tmp_path):
     sha = "8" * 40
     directory = _fake_release(tmp_path, sha)
@@ -96,13 +127,24 @@ def test_schema_mismatch_fails_closed(tmp_path):
 def test_current_previous_pointers(tmp_path):
     first, second = "e" * 40, "f" * 40
     _fake_release(tmp_path, first)
-    _fake_release(tmp_path, second)
+    _fake_release(tmp_path, second, previous=first)
     root = tmp_path / "JARVIS"
     set_current(first, root=root)
     assert current_pointer(root).read_text(encoding="utf-8").strip() == first
     set_current(second, root=root)
     assert current_pointer(root).read_text(encoding="utf-8").strip() == second
     assert (root / "PREVIOUS").read_text(encoding="utf-8").strip() == first
+
+
+def test_set_current_rejects_candidate_built_from_the_wrong_previous_runtime(tmp_path):
+    first, second = "7" * 40, "8" * 40
+    _fake_release(tmp_path, first)
+    _fake_release(tmp_path, second)
+    root = tmp_path / "JARVIS"
+    set_current(first, root=root)
+    with pytest.raises(ReleaseError, match="previous_runtime"):
+        set_current(second, root=root)
+    assert current_pointer(root).read_text(encoding="utf-8").strip() == first
 
 
 def test_migrate_clone_v33_to_package_schema(tmp_path):
@@ -160,7 +202,7 @@ def test_stable_launcher_cmd_clears_pythonpath(tmp_path):
 def test_rollback_swaps_current_and_previous(tmp_path):
     first, second = "1" * 40, "2" * 40
     _fake_release(tmp_path, first)
-    _fake_release(tmp_path, second)
+    _fake_release(tmp_path, second, previous=first)
     root = tmp_path / "JARVIS"
     set_current(first, root=root)
     set_current(second, root=root)
@@ -170,6 +212,7 @@ def test_rollback_swaps_current_and_previous(tmp_path):
     assert result["current"] == first
     assert result["previous"] == second
     assert current_pointer(root).read_text(encoding="utf-8").strip() == first
+    assert result["generation"]["git_commit"] == first
     restored = rollback_current(root=root, foundry_home=home)
     assert restored["current"] == second
     assert restored["previous"] == first
@@ -178,7 +221,7 @@ def test_rollback_swaps_current_and_previous(tmp_path):
 def test_rollback_refuses_schema_mismatch(tmp_path):
     first, second = "3" * 40, "4" * 40
     _fake_release(tmp_path, first)
-    _fake_release(tmp_path, second)
+    _fake_release(tmp_path, second, previous=first)
     root = tmp_path / "JARVIS"
     set_current(first, root=root)
     set_current(second, root=root)
