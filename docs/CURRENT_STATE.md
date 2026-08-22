@@ -6,16 +6,16 @@ every promotion/remaster mission (see `docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.
 If this document and another current-status document disagree, THIS document wins
 for "what exists now" claims; the architecture contract wins for binding invariants.
 
-Last reconciled: 2026-08-22 (audit-truth remediation R2 integrated onto canonical
-main `ceb90d7` via `candidate/audit-r2-integration`; V3 Command Center UI and
-schema v36 V3 discovery/building preserved; LIVE_PROMOTION_DEFERRED)
+Last reconciled: 2026-08-23 (Audit R2 entry gate repaired in the isolated
+overnight release-candidate lane; V3 Command Center UI and schema v36
+discovery/building preserved; LIVE_PROMOTION_DEFERRED)
 
 ```text
 CURRENT CANONICAL HEAD:      ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2 (origin/main:
                              V3 Command Center UI integrated atop 24h-integration)
 INTEGRATION BASE:            ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2
 AUDIT SOURCE:                53c9e524ffa368e36f706560c3f3815fd0dd26bc
-CURRENT WORK BRANCH:         candidate/audit-r2-integration
+CURRENT WORK BRANCH:         candidate/overnight-release-candidate
 CURRENT STATE RECORD:        a7bc63a0107302e656346d0df2f0de5900cff3d0 (docs-only
                              reconciliation snapshot; not a tested-code claim)
 TESTED CODE HEAD:            final overnight candidate SHA is recorded in
@@ -24,11 +24,15 @@ TESTED CODE HEAD:            final overnight candidate SHA is recorded in
                              at that exact clean HEAD before any release claim
 FINAL EVIDENCE HEAD:         evidence/release/overnight/run-final-20260823-01/RUN.json
                              is the final source-vs-runtime evidence record
-FULL SUITE:                  1594 collected at integration validation (2026-08-22);
-                             failures=0, errors=0
-FOCUSED REMEDIATION TESTS:   75/75 PASS — installer/scheduler, supervisor
-                             lifecycle/lease, PID reconciliation, release
-                             identity/authority, headless cleanup
+FULL SUITE:                  1601 collected at final candidate validation
+                             (2026-08-23); failures=0, errors=0
+FOCUSED REMEDIATION TESTS:   113 PASS, 1 SKIPPED — installer/scheduler,
+                             supervisor lifecycle/lease, PID reconciliation,
+                             release identity/authority, headless cleanup;
+                             the live staging restart probe is bounded and
+                             skipped when Task Scheduler does not start it
+FULL SUITE FINAL GATE:       1601 collected, 0 failures; the same bounded
+                             staging restart probe is SKIPPED when unavailable
 DEPLOYED RELEASE:            769715a7f8aee22bf4ab2db8870c37e6e9c9ef1b (CURRENT)
 PREVIOUS RELEASE:            9a10910f78a4a618fba4c916b418056e4ada1991 (PREVIOUS)
 DEPLOYED MANIFEST:           rel-769715a7f8ae-060c9abc; legacy pre-remediation
