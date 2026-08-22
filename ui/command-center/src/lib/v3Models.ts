@@ -199,6 +199,10 @@ export interface V3FlagState {
  * `{ available: false }` while the backend snapshot carries no discovery
  * section (true at 701aa74), and the UI shows an explicit unavailable state —
  * never fixtures.
+ *
+ * The §3.13 `cost_window` field is intentionally not modeled: it is not among
+ * the mission's required visibility items, and no shape for it is evidenced in
+ * the frozen contract at 701aa74. Add it when the backend defines its payload.
  */
 export type V3DiscoveryView =
   | { available: false; reason: "PROJECTION_NOT_AVAILABLE" }
