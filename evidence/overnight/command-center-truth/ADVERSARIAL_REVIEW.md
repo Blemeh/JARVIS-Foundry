@@ -146,22 +146,27 @@ No edits to forbidden paths in reviewed commits.
 | Accessibility axe | **PASS** |
 | Security static scan | **PASS** |
 | Memory epistemic metrics | **PASS** (fixture confidence removed) |
-| Endurance 6h | **FAIL** (incomplete + 404 storm) |
+| Endurance 6h | **IN PROGRESS** (preview restarted; errors cleared post-EMFILE) |
 | Boundary | **PASS** |
 
 ## Verdict
 
-**FAIL**
+**DISPROVE PARTIAL**
 
-Material gaps remain:
+Material gap remaining:
 
-1. **WP-I endurance** — 6-hour gate not met; runner against port 4523 produces mass 404s (SPA fallback / port mismatch vs e2e webServer on 4173).
-2. **Simulated memory confidence** — fixture graph still shows 84–99% confidence without NOT REPORTED semantics.
+1. **WP-I endurance** — 6-hour gate not yet complete (`ENDURANCE_RESULT.json` still `running`).
 
-Truth-lane cost honesty, route resilience, accessibility automation, and security static checks **survive** adversarial review. Uncommitted mitigations address footer timestamp, memory freshness bar, live-path confidence, mock computeCost, and unit-test timeout flake.
+Resolved since first pass (commit `9a17f70`):
+
+- Simulated memory confidence → `NOT_REPORTED_NUMERIC` in fixtures; UI labels honest.
+- Overview footer, mock `computeCost`, live-path confidence, vitest timeout flake — committed.
+- Negative measured cost display — fixed in `truthFormat.ts` / `snapshotMapper.ts`.
+- `HANDOFF.json` premature PASS — corrected to `IN_PROGRESS`.
+
+Truth-lane cost honesty, route resilience, accessibility automation, and security static checks **survive** adversarial review.
 
 ## Recommended next actions
 
-1. Point endurance runner at the same preview command/port as Playwright (`4173`) or enable SPA fallback on 4523; rerun full 6h.
-2. Replace `memoryGraphFixture` confidence values with `NOT_REPORTED_NUMERIC` (-1) and label simulated epistemic fields explicitly.
-3. Commit uncommitted truth fixes after owner review.
+1. Allow 6h endurance to complete on port 4523; record checkpoints.
+2. Re-run full e2e + unit gates after endurance; update `HANDOFF.json` / `NIGHT_SHIFT_STATE.json` only after deadline criteria met.
