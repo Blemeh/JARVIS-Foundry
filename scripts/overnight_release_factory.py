@@ -440,6 +440,16 @@ class FactoryRunner:
         }
         self._write_record()
 
+    def _validate_candidate_manifest_against_git(self) -> None:
+        """Validate the manifest field that ``validate_release`` cannot
+        resolve without a source repository: the exact Git tree object."""
+        manifest = validate_release(
+            self.source_sha, root=self.roots.install_root, require_schema_match=False,
+        )["manifest"]
+        expected_tree = _git(self.source_repo, "rev-parse", f"{self.source_sha}^{{tree}}")
+        if manifest.get("git_tree") != expected_tree:
+            raise ReleaseError("RELEASE.json git_tree does not match source Git tree")
+
     def set_authority(self) -> None:
         if not self.previous_sha:
             raise FactoryGuardError("previous release is missing")
@@ -755,7 +765,7 @@ class FactoryRunner:
             manifest_path.write_text(json.dumps(data), encoding="utf-8")
             try:
                 try:
-                    validate_release(self.source_sha, root=self.roots.install_root, require_schema_match=False)
+                    self._validate_candidate_manifest_against_git()
                 except ReleaseError:
                     return True, "tampered git_tree refused", {}
                 return False, "tampered git_tree was accepted", {}
@@ -775,9 +785,54 @@ class FactoryRunner:
             finally:
                 manifest_path.write_text(original_manifest, encoding="utf-8")
 
+        def build_sha_mismatch() -> tuple[bool, str, dict[str, Any]]:
+            try:
+                build_release(
+                    source_repo=self.source_repo, source_sha="0" * 40,
+                    python_exe=sys.executable,
+                    root=self.roots.run_root / "build-fault",
+                )
+            except ReleaseError:
+                return True, "wrong requested commit refused before packaging", {}
+            return False, "wrong requested commit was accepted", {}
+
+        def migration_target_refusal() -> tuple[bool, str, dict[str, Any]]:
+            fault_path = self.roots.db_root / "invalid-target.db"
+            try:
+                FoundryDatabase(fault_path).initialize(target=SCHEMA_VERSION + 1)
+            except (KeyError, ValueError):
+                return True, "undefined migration target refused", {}
+            return False, "undefined migration target was accepted", {}
+
+        def startup_duplicate() -> tuple[bool, str, dict[str, Any]]:
+            evidence = self.record.artifacts.get("supervisor", {})
+            if evidence.get("duplicate_returncode") == 2:
+                return True, "duplicate Supervisor launch exited 2", evidence
+            return False, "duplicate Supervisor launch evidence missing", evidence
+
+        def shutdown_orphan() -> tuple[bool, str, dict[str, Any]]:
+            evidence = self.record.artifacts.get("worker", {})
+            if evidence.get("reused_pid_identity_reaped"):
+                return True, "stale/reused worker PID was reaped without broad kill", evidence
+            return False, "worker shutdown evidence missing", evidence
+
+        def rollback_without_previous() -> tuple[bool, str, dict[str, Any]]:
+            empty_root = self.roots.run_root / "rollback-fault"
+            empty_root.mkdir(parents=True, exist_ok=True)
+            try:
+                rollback_current(root=empty_root)
+            except ReleaseError:
+                return True, "rollback without PREVIOUS refused", {}
+            return False, "rollback without PREVIOUS was accepted", {}
+
+        self.fault("build_sha_mismatch", build_sha_mismatch)
         self.fault("manifest_malformed", malformed)
         self.fault("manifest_tree_tamper", tampered_tree)
         self.fault("manifest_legacy_identity", missing_commit)
+        self.fault("migration_target_refusal", migration_target_refusal)
+        self.fault("startup_duplicate", startup_duplicate)
+        self.fault("shutdown_orphan", shutdown_orphan)
+        self.fault("rollback_without_previous", rollback_without_previous)
 
         def current_tamper() -> tuple[bool, str, dict[str, Any]]:
             current_path = self.roots.install_root / "CURRENT"
