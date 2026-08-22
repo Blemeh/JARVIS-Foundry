@@ -51,30 +51,6 @@ def headless_run_kwargs(**extra: object) -> dict[str, object]:
     return kwargs
 
 
-def headless_run(
-    args: Any,
-    *,
-    background: bool = True,
-    **kwargs: Any,
-) -> subprocess.CompletedProcess[Any]:
-    """Run a subprocess; suppress console allocation on Windows when ``background``."""
-    if background:
-        kwargs = {**headless_run_kwargs(), **kwargs}
-    return subprocess.run(args, **kwargs)
-
-
-def headless_popen(
-    args: Any,
-    *,
-    background: bool = True,
-    **kwargs: Any,
-) -> subprocess.Popen[Any]:
-    """Start a subprocess; suppress console allocation on Windows when ``background``."""
-    if background:
-        kwargs = {**headless_popen_kwargs(), **kwargs}
-    return subprocess.Popen(args, **kwargs)
-
-
 def pid_alive(pid: int) -> bool:
     """Return whether ``pid`` refers to a live process without spawning a console."""
     if pid <= 0:

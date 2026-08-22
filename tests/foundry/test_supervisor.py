@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
+import json
 
 import pytest
 
@@ -27,6 +28,20 @@ def test_supervisor_runs_and_freezes_without_hermes(tmp_path):
     assert any(event.event_type == "emergency_stop.frozen" for event in database.events())
 
 
+def test_supervisor_start_reconciles_stale_pid_ledger(tmp_path):
+    database = FoundryDatabase(tmp_path / "foundry.db")
+    supervisor = Supervisor(database, tmp_path / "STOP", instance_id="startup-reaper")
+    ledger = supervisor.workers.pid_table_path()
+    ledger.write_text(
+        '{"stale-run": {"pid": -1, "run_id": "stale-run"}}', encoding="utf-8")
+
+    assert supervisor.start() == "RUNNING"
+
+    assert not ledger.exists()
+    started = [event for event in database.events() if event.event_type == "supervisor.started"]
+    assert started[-1].payload["reaped_workers"] == []
+
+
 def test_second_live_supervisor_cannot_take_lease(tmp_path):
     database = FoundryDatabase(tmp_path / "foundry.db")
     database.initialize()
@@ -36,6 +51,34 @@ def test_second_live_supervisor_cannot_take_lease(tmp_path):
 
     with pytest.raises(LeaseUnavailable):
         second.acquire("supervisor:singleton", "two", 90)
+
+
+def test_duplicate_supervisor_launcher_exits_without_heartbeat_loop(
+        tmp_path, monkeypatch, capsys):
+    from types import SimpleNamespace
+
+    from jarvis_foundry.supervisor import run as supervisor_run
+
+    def unavailable(self):
+        raise LeaseUnavailable("supervisor singleton already held")
+
+    monkeypatch.setattr(supervisor_run.Supervisor, "start", unavailable)
+    monkeypatch.setattr(
+        "jarvis_foundry.runtime.authority.resolve_runtime_authority",
+        lambda **kwargs: SimpleNamespace(
+            spawn_worker_loop=False,
+            worker_yaml=None,
+            provider_settings=None,
+        ),
+    )
+    code = supervisor_run.main(["--home", str(tmp_path), "--once"])
+    payload = json.loads(capsys.readouterr().out)
+
+    assert code == 2
+    assert payload == {
+        "supervisor": "LEASE_UNAVAILABLE",
+        "error": "supervisor singleton already held",
+    }
 
 
 def test_supervisor_takeover_during_active_stop_does_not_collide(tmp_path):

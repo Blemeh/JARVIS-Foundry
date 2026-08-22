@@ -29,6 +29,10 @@ from jarvis_foundry.installer import (
     InstallerError,
     WorkerLoopInstaller,
 )
+from tests.foundry.scheduler_guard import (
+    delete_scheduled_tasks,
+    select_created_staging_tasks,
+)
 
 
 def installer_fixture(tmp_path, *, task_name=None):
@@ -232,6 +236,46 @@ def test_install_scope_proof_host_inventory(tmp_path):
         teardown(installer)
 
 
+def test_scheduler_guard_never_selects_preexisting_staging_name():
+    before = {"\\JF-WP7Gate-preexisting", "\\Other-Task"}
+    after = {
+        *before,
+        "\\JF-WP7Gate-session-created",
+        "\\JF-WP7Gate-session-created-lower",
+        "\\New-Non-Staging",
+    }
+
+    assert select_created_staging_tasks(before, after) == [
+        "\\JF-WP7Gate-session-created",
+        "\\JF-WP7Gate-session-created-lower",
+    ]
+    assert select_created_staging_tasks(None, after) == []
+    assert select_created_staging_tasks(before, None) == []
+
+
+def test_scheduler_guard_deletes_only_selected_tasks(monkeypatch):
+    import tests.foundry.scheduler_guard as scheduler_guard
+
+    calls: list[list[str]] = []
+
+    def fake_run(args, **kwargs):
+        calls.append(args)
+        return type("Result", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+
+    monkeypatch.setattr(scheduler_guard.subprocess, "run", fake_run)
+
+    removed = delete_scheduled_tasks([
+        "\\JF-WP7Gate-created",
+        "\\Unrelated-Created",
+    ])
+
+    assert removed == ["\\JF-WP7Gate-created", "\\Unrelated-Created"]
+    assert calls == [
+        ["schtasks", "/Delete", "/TN", "\\JF-WP7Gate-created", "/F"],
+        ["schtasks", "/Delete", "/TN", "\\Unrelated-Created", "/F"],
+    ]
+
+
 def test_profile_written_and_removed_with_install(tmp_path):
     home, database, gate_verdict, installer = installer_fixture(tmp_path)
     try:
@@ -255,7 +299,8 @@ def test_task_xml_contains_absolute_paths_and_home_argument(tmp_path):
     try:
         installer.install()
         xml = installer._task_xml()
-        assert str(Path(sys.executable).resolve()) in xml
+        expected_python = background_python_executable(sys.executable)
+        assert Path(expected_python).resolve().as_posix() in Path(xml).as_posix()
         assert str(home) in xml
         assert '--home "' in xml
         assert "<Hidden>true</Hidden>" in xml

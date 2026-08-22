@@ -7,6 +7,7 @@ from pathlib import Path
 from ..clock import utc_now
 from ..database import FoundryDatabase
 from ..events import Event
+from ..deployment.release import release_authority_report
 from ..reconcile import inspect as inspect_ledger
 from ..reconcile import reconcile
 from ..runtime.authority import ALLOWED_TRUST_STATES
@@ -65,6 +66,7 @@ class Supervisor:
             ))
             return "DEGRADED"
         self._reap_and_recover()
+        reaped_workers = self.workers.reap()
         self.leases.acquire(self.LEASE_KEY, self.instance_id, self.lease_seconds)
         stop = self.estop.read()
         event_type = "emergency_stop.frozen" if stop else "supervisor.started"
@@ -72,6 +74,7 @@ class Supervisor:
             "instance_id": self.instance_id,
             "trust_state": "SUSPENDED" if stop else "LAB",
             "stop_id": stop.get("stop_id") if stop else None,
+            "reaped_workers": reaped_workers,
         }
         self.database.append(Event.create(
             event_type, payload, source_type="supervisor", source_id=self.instance_id,
@@ -236,6 +239,8 @@ class Supervisor:
                 "hermes_required_for_supervisor": False,
                 "reconciliation": {"consistent": False, "reason": "database missing"},
                 "active_workers": [],
+                "release_authority": release_authority_report(
+                    foundry_home=Path(self.database.path).parent),
             }
         return {
             "database": str(self.database.path),
@@ -247,4 +252,6 @@ class Supervisor:
             "hermes_required_for_supervisor": False,
             "reconciliation": inspect_ledger(self.database).to_json(),
             "active_workers": self.workers.active_runs(readonly=True),
+            "release_authority": release_authority_report(
+                foundry_home=Path(self.database.path).parent),
         }

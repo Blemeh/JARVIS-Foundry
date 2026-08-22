@@ -42,6 +42,15 @@ TASK_XML_TEMPLATE = """<?xml version="1.0" encoding="UTF-16"?>
       <UserId>{user_id}</UserId>
       <Enabled>true</Enabled>
     </LogonTrigger>
+    <TimeTrigger>
+      <StartBoundary>{start_boundary}</StartBoundary>
+      <Enabled>true</Enabled>
+      <Repetition>
+        <Interval>PT1M</Interval>
+        <Duration>P30D</Duration>
+        <StopAtDurationEnd>false</StopAtDurationEnd>
+      </Repetition>
+    </TimeTrigger>
   </Triggers>
   <Principals>
     <Principal id="Author">

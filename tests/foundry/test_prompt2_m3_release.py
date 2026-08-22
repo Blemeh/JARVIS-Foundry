@@ -33,6 +33,8 @@ def _fake_release(tmp_path: Path, sha: str, *, schema: int = SCHEMA_VERSION) -> 
     manifest = {
         "release_id": f"rel-{sha[:8]}",
         "source_sha": sha,
+        "git_commit": sha,
+        "git_tree": "1" * 40,
         "python_version": "3.13.0",
         "package_version": "0.1.0",
         "schema_compatibility": {"package_schema": schema, "opens_min": schema, "opens_max": schema},
@@ -57,6 +59,27 @@ def test_validate_release_rejects_sha_mismatch(tmp_path):
     manifest["source_sha"] = "c" * 40
     (directory / "RELEASE.json").write_text(json.dumps(manifest), encoding="utf-8")
     with pytest.raises(ReleaseError, match="source_sha"):
+        validate_release(sha, root=tmp_path / "JARVIS", require_schema_match=False)
+
+
+@pytest.mark.parametrize("field", ["git_commit", "git_tree"])
+def test_validate_release_requires_git_identity(tmp_path, field):
+    sha = "9" * 40
+    directory = _fake_release(tmp_path, sha)
+    manifest = json.loads((directory / "RELEASE.json").read_text(encoding="utf-8"))
+    del manifest[field]
+    (directory / "RELEASE.json").write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(ReleaseError, match=field):
+        validate_release(sha, root=tmp_path / "JARVIS", require_schema_match=False)
+
+
+def test_validate_release_rejects_commit_source_mismatch(tmp_path):
+    sha = "8" * 40
+    directory = _fake_release(tmp_path, sha)
+    manifest = json.loads((directory / "RELEASE.json").read_text(encoding="utf-8"))
+    manifest["git_commit"] = "7" * 40
+    (directory / "RELEASE.json").write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(ReleaseError, match="git_commit does not match source_sha"):
         validate_release(sha, root=tmp_path / "JARVIS", require_schema_match=False)
 
 

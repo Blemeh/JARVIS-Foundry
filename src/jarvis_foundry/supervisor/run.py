@@ -25,6 +25,7 @@ from ..events import Event, EventConflict
 from ..paths import FoundryPaths
 from .console import ConsoleControlHandler
 from .estop import EmergencyStop
+from .leases import LeaseUnavailable
 from .service import Supervisor
 
 #: Bounded retry: after this many consecutive heartbeat failures the daemon
@@ -278,21 +279,24 @@ def main(argv: list[str] | None = None) -> int:
     console_handler = make_console_handler(supervisor)
     console_handler.install()
 
-    state = supervisor.start()
-    print(json.dumps({"supervisor": state, "home": str(paths.home)}), flush=True)
-    if state == "DEGRADED":
-        # Fail loud: a supervisor that cannot reconcile must not hold the
-        # lease or heartbeat (finding: DEGRADED was silently ignored).
-        supervisor.stop()
-        return 1
-    if args.once:
-        print(json.dumps({"heartbeat": supervisor.heartbeat()}), flush=True)
-        supervisor.stop()
-        return 0
-
     exit_code = 0
     try:
+        state = supervisor.start()
+        print(json.dumps({"supervisor": state, "home": str(paths.home)}), flush=True)
+        if state == "DEGRADED":
+            # Fail loud: a supervisor that cannot reconcile must not hold the
+            # lease or heartbeat (finding: DEGRADED was silently ignored).
+            return 1
+        if args.once:
+            print(json.dumps({"heartbeat": supervisor.heartbeat()}), flush=True)
+            return 0
         exit_code = _heartbeat_loop(supervisor, args.interval)
+    except LeaseUnavailable as error:
+        print(json.dumps({
+            "supervisor": "LEASE_UNAVAILABLE",
+            "error": str(error),
+        }), flush=True)
+        return 2
     except KeyboardInterrupt:
         pass
     finally:

@@ -25,6 +25,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from collections.abc import Mapping
 
 from ..clock import isoformat, parse, utc_now
 from ..database import FoundryDatabase
@@ -222,6 +223,18 @@ def list_process_tree(root_pid: int) -> list[int]:
 
 def pid_alive(pid: int) -> bool:
     return _pid_alive(pid)
+
+
+def _record_is_live(record: Mapping[str, Any]) -> bool:
+    """Confirm liveness using stored creation time to reject PID reuse."""
+    pid = int(record["pid"])
+    if not pid_alive(pid):
+        return False
+    expected = record.get("creation_identity")
+    if not isinstance(expected, Mapping) or expected.get("create_time") is None:
+        return True
+    observed = process_creation_identity(pid)
+    return observed.get("create_time") == expected.get("create_time")
 
 
 def _taskkill(pid: int, *, force: bool) -> None:
@@ -453,8 +466,10 @@ class WorkerController:
         row = self.database.row("leases", "lease_key", worker_lease_key(run_id))
         process = self._processes.get(run_id)
         alive = process is not None and process.poll() is None
+        record = load_adapter_pids(self.pid_table_path()).get(run_id)
         if not alive:
-            record = load_adapter_pids(self.pid_table_path()).get(run_id)
+            if record is not None and not _record_is_live(record):
+                record = None
             if record is not None:
                 alive = pid_alive(int(record["pid"]))
         expired = row is not None and parse(row["expires_at"]) <= utc_now()
@@ -484,6 +499,11 @@ class WorkerController:
             pid = process.pid
         elif record is not None:
             pid = int(record["pid"])
+        if process is None and record is not None and not _record_is_live(record):
+            unregister_adapter_pid(self.pid_table_path(), run_id)
+            self.leases.release(worker_lease_key(run_id), worker_lease_key(run_id))
+            self._leased.discard(run_id)
+            return True
         if pid is not None:
             update_adapter_pid(self.pid_table_path(), run_id, termination_state="graceful")
             owned = terminate_owned_tree(pid, process=process)

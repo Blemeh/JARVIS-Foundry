@@ -6,30 +6,33 @@ every promotion/remaster mission (see `docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.
 If this document and another current-status document disagree, THIS document wins
 for "what exists now" claims; the architecture contract wins for binding invariants.
 
-Last reconciled: 2026-08-21 (Executive Intelligence M2 promoted to main at
-b8bc3543570f3b19ba4700433820b7665d5e07c5; immutable release deployed; live proof 12/12 PASS)
+Last reconciled: 2026-08-22 (audit-truth remediation branch
+`candidate/audit-truth-remediation-r2`; preserved implementation baseline
+`b5fc4f992e3b2b2016d8d777dabe7c824026a312`; Phase L truth update)
 
 ```text
-CURRENT CANONICAL HEAD:      b8bc3543570f3b19ba4700433820b7665d5e07c5 (main: Executive Intelligence M2
-                             integrated — durable goals, governed admission,
-                             comparative decision model with bait damping,
-                             outcome calibration, CC executive projection)
-CURRENT REPOSITORY HEAD:     b8bc3543570f3b19ba4700433820b7665d5e07c5 (origin/main aligned)
-CURRENT STATE RECORD:        b8bc3543570f3b19ba4700433820b7665d5e07c5 (Executive Intelligence promoted)
-TESTED SOURCE HEAD:          b8bc3543570f3b19ba4700433820b7665d5e07c5 (1559-test full suite R3:
-                             failures=0 errors=0 skipped=0; independent
-                             adversarial verifier round-3 report in
-                             var/evidence/m2/M2_INDEPENDENT_VERIFIER.json —
-                             rounds 1-2 died on provider errors mid-review)
-DEPLOYED RELEASE:            b8bc3543570f3b19ba4700433820b7665d5e07c5 (CURRENT)
-PREVIOUS RELEASE:            2851d13bbaf89bb807e473029aa6e4147b807fc2 (PREVIOUS)
+CURRENT WORK BRANCH:         candidate/audit-truth-remediation-r2
+PRESERVED IMPLEMENTATION BASE: b5fc4f992e3b2b2016d8d777dabe7c824026a312
+ORIGIN MAIN:                 a743fde (Executive Intelligence M2 evidence descendant)
+CURRENT STATE RECORD:        this Phase L reconciliation; the remediation commit
+                             and final accepted HEAD are recorded after gates
+TESTED SOURCE HEAD:          pending for remediation commit; focused remediation
+                             suite 75/75 PASS (2026-08-22); full foundry suite
+                             1482 collected, 0 failures after headless-mock fix
+DEPLOYED RELEASE:            769715a7f8aee22bf4ab2db8870c37e6e9c9ef1b (CURRENT)
+PREVIOUS RELEASE:            9a10910f78a4a618fba4c916b418056e4ada1991 (PREVIOUS)
+DEPLOYED MANIFEST:           rel-769715a7f8ae-060c9abc; legacy pre-remediation
+                             manifest has source_sha but lacks git_commit and
+                             git_tree; replacement after verifier PASS is required
 PROVIDER CONFIG:             %LOCALAPPDATA%\JARVIS\config\provider.yaml
                              (opencode_go / muse-spark-1.2-contributor / OpenCode Go URL)
 CURRENT SCHEMA:              v34 (live deployed database at schema v34; no
                              migration required by M2 — additive event types only)
-FULL SUITE:                  1559 collected at b8bc3543570f3b19ba4700433820b7665d5e07c5;
-                             failures=0, errors=0, skipped=0
-FOCUSED EXECUTIVE SUITE:     32 passed (tests/foundry/test_executive_intelligence.py)
+FULL SUITE:                  1482 collected at remediation validation (2026-08-22);
+                             failures=0, errors=0
+FOCUSED REMEDIATION TESTS:   75/75 PASS — installer/scheduler, supervisor
+                             lifecycle/lease, PID reconciliation, release
+                             identity/authority, headless cleanup
 FRONTEND:                    typecheck clean; vitest 40/40; production build OK;
                              V4 visuals FROZEN (no redesign in M2)
 EXECUTIVE INTELLIGENCE:      ACTIVE-CAPABLE, feature-flag OFF by default
@@ -49,20 +52,28 @@ COMMAND CENTER:              /executive route + snapshot.executive section proje
                              the decision spine (latest decision, rationale,
                              rejected alternatives, prediction-vs-actual,
                              calibration history) from ledger events only.
-SUPERVISOR STATE:            RUNNING (single lease owner, heartbeat advancing)
-STOP STATE:                  OFF (no sentinel, no active STOP/PAUSE directives)
+SUPERVISOR STATE:            RUNNING (single lease owner; doctor reports
+                             active worker-loop; PID 11672 at reconciliation)
+STOP STATE:                  OFF (doctor reports false)
 TRUST STATE:                 LAB
-MISSION STATE:               unchanged from 2026-08-19 reconciliation plus M2
-                             proof missions in isolated lab databases (live home
-                             untouched by proofs)
-LIVE PROOF (2026-08-21):     scripts/m2_live_product_proof.py — 12/12 PASS on an
-                             isolated lab ledger through production code paths:
-                             durable goal -> organic portfolio -> firewall ->
-                             selection w/ alternatives -> planted false-success
-                             rejected by evidence reconciliation -> auto-repair ->
-                             fresh verifier PASS -> outcome calibration both
-                             directions -> prediction recorded -> CC projection
-                             newest-first -> restart continuity.
+RELEASE AUTHORITY:           FILESYSTEM_ONLY_AUTHORITY is explicit and detected
+                             by doctor: CURRENT/PREVIOUS are canonical, DB
+                             release records are a projection/audit cache and
+                             currently contain 0 rows; no manual DB fabrication
+PID LEDGER:                  startup/heartbeat reconciliation requires live PID,
+                             matching creation identity, and JARVIS ownership;
+                             dead PID 15452 classification and reuse rejection
+                             are covered by focused regressions
+OWNER-GOAL:                  SUPERSEDED_BY_NEWER_IMPLEMENTATION — authenticated
+                             GOAL directives in executive/goals.py are current
+RELEASE-HANDOFF:            SUPERSEDED — immutable CURRENT/PREVIOUS release
+                             authority replaces the deleted handoff mechanism
+SCHEDULER AUTHORITY:         JARVIS-Foundry-Supervisor Ready is the production
+                             lifecycle authority; JARVIS-Foundry-Worker-Loop is
+                             LEGACY_DISABLED and fail-closed against enabling;
+                             R3 proving monitor remains a separate read-only task
+HEADLESS FIX:                preserved and reviewed in this remediation branch;
+                             live promotion proof pending
 WORKER IMPLEMENTATIONS:      Hermes adapter + OpenHands adapter — CANONICAL (merged)
 OWNER FILES:                 6 tracked docs under docs/handoffs/, docs/planning/
 PERCEPTION INPUT (Phase 2):  SCREENPIPE-LOCAL registered read-only; unchanged
@@ -122,22 +133,23 @@ older text elsewhere in this file.)
 
 ## What is running
 
-Live daemon (single supervisor pair) with home `C:\Users\b\AppData\Local\hermes\foundry`,
-deployed schema v33, ledger live (event count growing), Tier C live. The
-candidate source schema is v34, but no live migration or worker-loop activation
-has been performed.
+Live Supervisor uses home `C:\Users\b\AppData\Local\hermes\foundry`, schema v34,
+with a healthy reconciled ledger. At the 2026-08-22 reconciliation doctor
+reported 180,915 events, quick check ok, reconciliation consistent, STOP false,
+and one active `worker-loop` identity. Supervisor PID 11672 held the singleton
+lease. This is the pre-remediation deployed release `769715a7...`; its manifest
+predates the new Git provenance fields.
 
-The exact current runtime/source record is `c60db92`; its R3 proving window is
-`WAITING_ELAPSED` under the read-only task
-`JARVIS-Foundry-Proving-Window-Monitor-Canonical-R3`. The previous f37f852 R2
-window is preserved as `SUSPENDED` history.
+`JARVIS-Foundry-Supervisor` is the single production lifecycle authority.
+`JARVIS-Foundry-Worker-Loop` is `LEGACY_DISABLED`; its fail-closed classification
+prevents accidental re-enable. The R3 proving-window monitor remains a separate
+read-only task and is not a worker launch authority.
 
-The separate `JARVIS-Foundry-Worker-Loop` task is registered but `Disabled`.
-Its triggers are disabled before registration, it points to the canonical
-`jarvis_foundry.runtime.worker_loop` command and worker-routing configuration,
-and no worker-loop process or provider effect has been observed. Activation is
-deferred until an authoritative executable mission contract and provider
-readiness are independently reconciled.
+The remediation branch adds deterministic PID reconciliation, duplicate-launch
+fail-closed behavior, explicit release-authority detection, Git commit/tree
+release manifests, and scheduler-safe test boundaries. These changes are not
+live until the accepted commit is independently verified, released, promoted,
+and restarted.
 
 A disposable deployment rehearsal is recorded at
 `docs/convergence/WORKER_LOOP_DEPLOYMENT_CANARY_REHEARSAL_20260819.json`:
@@ -188,9 +200,8 @@ browser substrate, and it cannot activate native desktop execution.
 - Continuous workflow mining, learned computer execution, native desktop replay,
   and audio-driven workflow discovery — explicitly not active; Phase 5/6 remain locked.
 - Scanner patterns are configuration (defense-in-depth, not proof).
-- Rollback strategy is RESTORE-FROM-BACKUP for schema v33 (no reverse migration; by design).
-- The prior canonical R2 proving window on f37f852 is durably SUSPENDED. The exact current-release R3 proving window is active and WAITING_ELAPSED against source c60db92, with a fresh Supervisor restart, read-only monitor, 0/10 verified post-start missions, local accessibility PASS, and all external/provider/voice/physical boundaries explicitly NOT_TESTED or BLOCKED.
-- The worker-loop activation package is source-verified and pushed, but its live task remains disabled; this does not restart or promote the c60db92 proving release.
+- Rollback strategy remains restore-oriented; schema v34 is live and no reverse migration is provided.
+- The deployed legacy manifest does not yet carry the new git_commit/git_tree fields. Until post-verification promotion completes, live release provenance is source_sha-only and must not be described as fully compliant with the new contract.
 
 ## Documentation rules (anti-staleness)
 
