@@ -515,13 +515,12 @@ def rollback_current(
     if not previous:
         raise ReleaseError("no PREVIOUS release to roll back to")
     current = read_current(root)
-    previous_identity = validate_release(
+    validate_release(
         previous, root=root, foundry_home=foundry_home,
         require_schema_match=foundry_home is not None,
     )
-    current_identity = None
     if current:
-        current_identity = validate_release(current, root=root, require_schema_match=False)
+        validate_release(current, root=root, require_schema_match=False)
     if current == previous:
         return {
             "current": current,
