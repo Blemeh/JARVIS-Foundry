@@ -36,7 +36,11 @@ describe("Discovery", () => {
 
   it("shows total score and dimension breakdown for scored candidates", async () => {
     renderDiscovery();
-    await waitFor(() => expect(screen.getByText(/total 0.58 · pass ≥ 40%/)).toBeInTheDocument());
+    await waitFor(() => {
+      const scoreHead = screen.getAllByText("Score")[0]!.closest("div");
+      expect(scoreHead!.textContent).toContain("total 0.58");
+      expect(scoreHead!.textContent).toContain("pass ≥ 40%");
+    });
     expect(screen.getAllByText("Strategic fit").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Opportunity cost").length).toBeGreaterThan(0);
   });

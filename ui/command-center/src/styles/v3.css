@@ -1,5 +1,117 @@
 /* ------- V3 discovery (additive; v3- prefix, reuses token palette) ------- */
 
+/* Layout primitives scoped to the V3 discovery surface. */
+.v3-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.v3-row-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.v3-row-wrap {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.v3-icon-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.v3-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.v3-note {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.v3-strong {
+  color: var(--text-primary);
+}
+
+.v3-divider-top {
+  border-top: 1px solid var(--line-faint);
+  padding-top: 10px;
+}
+
+.v3-mt-1 {
+  margin-top: 6px;
+}
+
+.v3-mt-2 {
+  margin-top: 12px;
+}
+
+.v3-grow {
+  min-width: 0;
+  flex: 1;
+}
+
+.v3-sub {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.v3-faint {
+  color: var(--telemetry-dim);
+}
+
+.v3-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.v3-row-top {
+  align-items: flex-start;
+}
+
+/* The EXPERIMENTAL chip rides the shared StatusBadge markup; scope its look here. */
+.v3-flag-banner .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 9px;
+  border: 1px solid rgba(255, 208, 113, 0.55);
+  border-radius: 999px;
+  background: rgba(255, 208, 113, 0.09);
+  color: var(--caution-amber);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+}
+
+.v3-flag-banner .lamp {
+  display: none;
+}
+
+
 .v3-flag-banner {
   display: flex;
   align-items: center;
@@ -99,7 +211,7 @@
 
 .v3-dim-row {
   display: grid;
-  grid-template-columns: 108px 1fr 32px;
+  grid-template-columns: 126px 1fr 32px;
   align-items: center;
   gap: 8px;
 }
