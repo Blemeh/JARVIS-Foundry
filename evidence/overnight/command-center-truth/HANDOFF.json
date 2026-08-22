@@ -1,0 +1,62 @@
+{
+  "lane": "overnight-command-center-truth",
+  "verdict": "PASS",
+  "base_sha": "ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2",
+  "final_sha": "PENDING_COMMIT",
+  "branch": "candidate/overnight-command-center-truth",
+  "worktree": "C:\\temp\\JARVIS-Overnight-Command-Center-Truth",
+  "work_packages": {
+    "A_entry_gate": "PASS",
+    "B_route_truth": "PASS",
+    "C_resilience": "PARTIAL",
+    "D_accessibility": "PASS",
+    "E_fixtures_smoke": "PASS"
+  },
+  "defects_fixed": [
+    "Overview UNKNOWN cost no longer renders $0.38",
+    "snapshotMapper removed fabricated trust score, coverage, and resource percentages",
+    "mapMeasuredCostResource handles measured_actual_total_usd string UNKNOWN token",
+    "LAB trust state maps to DEGRADED not PROVEN",
+    "Trust factors include constraints and stale-leases",
+    "Systems resource meters filter unit=% only",
+    "Overview wires constraints/stale from trust factors",
+    "Simulated measured cost labeled UNKNOWN · SIMULATED",
+    "Timeline linked records no longer default to 1",
+    "Mission completion withheld for in-progress live states"
+  ],
+  "files_changed": [
+    "ui/command-center/src/lib/truthFormat.ts",
+    "ui/command-center/src/lib/snapshotMapper.ts",
+    "ui/command-center/src/routes/Overview.tsx",
+    "ui/command-center/src/routes/Systems.tsx",
+    "ui/command-center/src/components/TrustDialog.tsx",
+    "ui/command-center/src/lib/__tests__/truthFormat.test.ts",
+    "ui/command-center/src/lib/__tests__/snapshotMapper.test.ts",
+    "ui/command-center/src/routes/__tests__/overview.test.tsx",
+    "ui/command-center/src/components/__tests__/trust.test.tsx",
+    "ui/command-center/e2e/truth-lane.spec.ts",
+    "ui/command-center/e2e/smoke.spec.ts",
+    "ui/command-center/scripts/capture-truth-visuals.mjs",
+    "evidence/overnight/command-center-truth/"
+  ],
+  "gates": {
+    "lint": "PASS",
+    "typecheck": "PASS",
+    "unit_tests": "PASS (61/61)",
+    "production_build": "PASS",
+    "visual_port_4523": "PASS (24 screenshots)"
+  },
+  "visual_evidence": {
+    "port": 4523,
+    "viewports": ["1600x1000", "834x1112", "390x844"],
+    "routes": ["overview", "systems", "missions", "timeline", "evidence", "agents", "notifications", "executive"],
+    "directory": "evidence/overnight/command-center-truth/screenshots/"
+  },
+  "backend_handoffs": "evidence/overnight/command-center-truth/BACKEND_HANDOFF.md",
+  "matrices": "evidence/overnight/command-center-truth/SOURCE_TO_DISPLAY_MATRIX.md",
+  "unresolved_risks": [
+    "Work package C partial: non-Overview routes retain existing fetch error handling; Overview now has ErrorState",
+    "Simulated fixture trust lacks constraints/stale-leases factors; Overview shows 0 until fixtures extended"
+  ],
+  "next_autonomous_action": "Extend mock trust fixtures with constraint/stale factors; add .catch ErrorState to remaining non-Discovery routes"
+}

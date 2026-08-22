@@ -10,6 +10,7 @@ import { Drawer } from "../components/Drawer";
 import { EmptyState, LoadingState } from "../components/states";
 import { ContextChip } from "../components/EntityRefLink";
 import { sourceCopy, sourceModeLabel } from "../lib/sourceMode";
+import { formatResourceMetric } from "../lib/truthFormat";
 
 export function Systems() {
   const { client, version, stopActive, sourceMode } = useCommandCenter();
@@ -57,6 +58,7 @@ export function Systems() {
   const healthy = components.filter((c) => c.health === "HEALTHY").length;
   const degraded = components.filter((c) => c.health === "DEGRADED").length;
   const stopped = components.filter((c) => c.state === "STOPPED").length;
+  const percentResources = overview.resourceUsage.filter((r) => r.unit === "%");
 
   return (
     <div className="shell-content">
@@ -117,17 +119,21 @@ export function Systems() {
           <span className="t-mono text-muted">v{overview.version} / {overview.build}</span>
         </div>
         <div className="systems-resources">
-          {overview.resourceUsage.map((r) => (
+          {percentResources.length === 0 ? (
+            <p className="t-mono text-muted" role="status">Resource utilization NOT REPORTED in canonical projection.</p>
+          ) : (
+            percentResources.map((r) => (
             <div key={r.label} className="resource-bar">
               <div className="resource-bar-head">
                 <span className="t-label text-muted">{r.label}</span>
-                <span className="t-mono resource-bar-value">{r.value}{r.unit}</span>
+                <span className="t-mono resource-bar-value">{formatResourceMetric(r.value, r.unit)}</span>
               </div>
-              <div className="meter">
-                <div className={`meter-fill ${r.value > 70 ? "meter-fill-amber" : "meter-fill-teal"}`} style={{ width: `${r.value}%` }} />
+              <div className="meter" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={r.value >= 0 ? r.value : undefined} aria-label={`${r.label} utilization ${formatResourceMetric(r.value, r.unit)}`}>
+                <div className={`meter-fill ${r.value > 70 ? "meter-fill-amber" : "meter-fill-teal"}`} style={{ width: r.value >= 0 ? `${Math.min(r.value, 100)}%` : "0%" }} />
               </div>
             </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 

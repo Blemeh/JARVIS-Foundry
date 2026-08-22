@@ -58,7 +58,7 @@ test("trust is explainable and the hard-coded 99.8% is gone", async ({ page }) =
   expect(bodyText).toContain("DATA SOURCE: SIMULATED");
   await page.getByRole("button", { name: "Explain trust state" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
-  await expect(page.getByRole("dialog").getByText("SCORE: NOT_AVAILABLE")).toBeVisible();
+  await expect(page.getByRole("dialog").getByLabelText(/Trust score not available/i)).toBeVisible();
   await expect(page.getByRole("dialog").getByText("Evidence coverage").first()).toBeVisible();
   expect(errors).toEqual([]);
 });
