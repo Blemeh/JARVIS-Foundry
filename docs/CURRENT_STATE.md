@@ -19,10 +19,10 @@ CURRENT WORK BRANCH:         candidate/overnight-release-candidate
 CURRENT STATE RECORD:        a7bc63a0107302e656346d0df2f0de5900cff3d0 (docs-only
                              reconciliation snapshot; not a tested-code claim)
 TESTED CODE HEAD:            final overnight candidate SHA is recorded in
-                             evidence/release/overnight/run-final-20260823-01/RUN.json;
+                             evidence/release/overnight/run-final-20260823-02/RUN.json;
                              focused/full gates and the disposable factory are rerun
                              at that exact clean HEAD before any release claim
-FINAL EVIDENCE HEAD:         evidence/release/overnight/run-final-20260823-01/RUN.json
+FINAL EVIDENCE HEAD:         evidence/release/overnight/run-final-20260823-02/RUN.json
                              is the final source-vs-runtime evidence record
 FULL SUITE:                  1601 collected at final candidate validation
                              (2026-08-23); failures=0, errors=0

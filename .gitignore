@@ -58,3 +58,7 @@ reports/generated/
 snapshots/
 backups/
 full-suite-run.log
+
+# Disposable overnight release-factory marker and evidence stay local.
+OVERNIGHT_FACTORY_ROOT.json
+evidence/release/overnight/
