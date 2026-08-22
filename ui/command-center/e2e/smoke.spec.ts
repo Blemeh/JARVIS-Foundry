@@ -56,9 +56,9 @@ test("trust is explainable and the hard-coded 99.8% is gone", async ({ page }) =
   const bodyText = await page.evaluate(() => document.body.innerText);
   expect(bodyText).not.toContain("99.8");
   expect(bodyText).toContain("DATA SOURCE: SIMULATED");
-  await page.getByRole("button", { name: /Trust state/i }).click();
+  await page.getByRole("button", { name: "Trust state SIMULATED. Open trust explanation." }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
-  await expect(page.getByRole("dialog").getByLabelText(/Trust score not available/i)).toBeVisible();
+  await expect(page.getByRole("dialog").getByLabel(/Trust score not available/i)).toBeVisible();
   await expect(page.getByRole("dialog").getByText("Evidence coverage").first()).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -114,7 +114,7 @@ test("systems screen is complete and inspectable", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Telemetry" })).toBeVisible();
   await expect(page.getByText("STOP subsystem")).toBeVisible();
   await expect(page.getByText("Hermes Gateway")).toBeVisible();
-  await page.getByRole("row", { name: "Inspect JARVIS Supervisor" }).click();
+  await page.getByRole("button", { name: "Inspect JARVIS Supervisor" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await expect(page.getByText("Deterministic control core")).toBeVisible();
 });

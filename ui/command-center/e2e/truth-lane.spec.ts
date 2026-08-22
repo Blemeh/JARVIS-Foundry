@@ -17,7 +17,7 @@ for (const route of routes) {
     await page.goto("/")
     await expect(page.getByRole("heading", { name: route.heading })).toBeVisible()
     await expect(page.locator("body")).not.toContainText("$0.38")
-    await expect(page.getByLabelText(/Measured cost UNKNOWN · SIMULATED/i)).toBeVisible()
+    await expect(page.getByLabel(/Measured cost UNKNOWN · SIMULATED/i)).toBeVisible()
   })
 
   test(`truth lane smoke ${route.slug}`, async ({ page }) => {

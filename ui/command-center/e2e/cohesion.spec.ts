@@ -76,7 +76,7 @@ test("JOURNEY B: worker crash propagates and recovery reconciles", async ({ page
   await expect(page.getByText("INTERRUPTED - crash")).toBeVisible();
 
   await page.locator(".md-hub-link").filter({ hasText: "Systems" }).click();
-  await page.getByRole("row", { name: "Inspect OpenHands worker" }).click();
+  await page.getByRole("button", { name: "Inspect OpenHands worker" }).click();
   await page.getByRole("link", { name: "Open system detail" }).click();
   await expect(page).toHaveURL(/\/systems\/SYS-OPENHANDS-WORKER$/);
   await expect(page.getByText("DEGRADED", { exact: true }).first()).toBeVisible();
@@ -95,7 +95,7 @@ test("JOURNEY B: worker crash propagates and recovery reconciles", async ({ page
   await page.getByRole("button", { name: "Next page" }).click();
   await page.locator(".mission-card").filter({ hasText: "Worker Crash Recovery" }).click();
   await page.locator(".md-hub-link").filter({ hasText: "Systems" }).click();
-  await page.getByRole("row", { name: "Inspect OpenHands worker" }).click();
+  await page.getByRole("button", { name: "Inspect OpenHands worker" }).click();
   await page.getByRole("link", { name: "Open system detail" }).click();
   await expect(page.getByText("HEALTHY", { exact: true })).toBeVisible();
   await navLink("Timeline").click();
@@ -140,7 +140,7 @@ test("JOURNEY D: simulated STOP propagates everywhere and resume restores", asyn
   await page.keyboard.press("Escape");
 
   await navLink("Systems").click();
-  await page.getByRole("row", { name: "Inspect STOP subsystem" }).click();
+  await page.getByRole("button", { name: "Inspect STOP subsystem" }).click();
   await page.getByRole("link", { name: "Open system detail" }).click();
   await expect(page).toHaveURL(/\/systems\/SYS-STOP$/);
   await expect(page.getByText("ACTIVE", { exact: true }).first()).toBeVisible();
@@ -163,7 +163,7 @@ test("JOURNEY D: simulated STOP propagates everywhere and resume restores", asyn
   await expect(page.getByText("resume.reorientation", { exact: true })).toBeVisible();
   await expect(page.getByText("resume.reconciliation", { exact: true })).toBeVisible();
   await navLink("Systems").click();
-  await page.getByRole("row", { name: "Inspect STOP subsystem" }).click();
+  await page.getByRole("button", { name: "Inspect STOP subsystem" }).click();
   await page.getByRole("link", { name: "Open system detail" }).click();
   await expect(page.getByText("ARMED", { exact: true }).first()).toBeVisible();
   expect(errors).toEqual([]);
@@ -192,7 +192,7 @@ test("JOURNEY E: global search navigates to the correct deep links", async ({ pa
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/systems\?health=degraded/);
   await expect(page.getByText("Health DEGRADED")).toBeVisible();
-  await expect(page.getByRole("row", { name: "Inspect Provider routing" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Inspect Provider routing" })).toBeVisible();
   expect(errors).toEqual([]);
 });
 
