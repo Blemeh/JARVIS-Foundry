@@ -1,0 +1,57 @@
+{
+  "record": "V3_INTEGRATION_MERGE",
+  "generated_at": "2026-08-22T09:55:00+02:00",
+  "objective": "Integrate V3 implementation into the real V2 canonical lineage (owner terminal objective)",
+  "base_verified": {
+    "origin_main_sha": "8d0d7892a66301f6237490d894c11549409a91b9",
+    "contains_v2": "f1660f6 (candidate/24h-v2-knowledge-brain FINAL, SCHEMA_VERSION=35)"
+  },
+  "merged": {
+    "from": "6410774 [V3-WP8HARD-S1-DONE] candidate/v3-implementation",
+    "merge_commit": "d1e1c17ecfa0b02026dcf48cb612f3909f324a02",
+    "parents": [
+      "8d0d7892a663",
+      "6410774"
+    ]
+  },
+  "conflicts": [
+    {
+      "file": "src/jarvis_foundry/migrations.py",
+      "hunks": 3,
+      "resolution": "SCHEMA_VERSION=36 (V3); entry 35 kept BYTE-IDENTICAL to origin/main's V2 migration (no recreation \u2014 verified programmatically: disk body == git show origin/main body); entry 36 taken verbatim from the V3 side. One incidental duplicate comment line removed; no SQL changed on either side."
+    }
+  ],
+  "schema_lineage": {
+    "v34": "pre-V2 canonical",
+    "v35": "V2 knowledge brain (origin/main f1660f6, byte-preserved)",
+    "v36": "V3 discovery/building state",
+    "SCHEMA_VERSION": 36
+  },
+  "migration_proof": "v34 baseline fixture DB -> initialize() -> version 36; chain [...33,34,35,36]; V2 tables (knowledge_claims/entities/claim_evidence) AND V3 tables (candidates v36 columns, candidate_outcomes, scoring_policy_registry, discovery_portfolio) all present",
+  "tests": {
+    "focused_v3": "9 suites green (69+ focused tests incl. loop/outcomes/smoke)",
+    "full_suite": {
+      "total": 1579,
+      "passed": 1579,
+      "failures": 0,
+      "errors": 0,
+      "junit": "var/evidence/integration2.junit.xml"
+    },
+    "baseline_comparison": {
+      "baseline": "1459/0 at 12faf65",
+      "new_failures_vs_baseline": []
+    },
+    "repair_during_integration": [
+      "test_knowledge_v35_durability.py: terminal-version pins updated 35 -> SCHEMA_VERSION(36) with markers[-3:] == [34,35,36]; rehearsal/idempotency/crash-heal/restore semantics unchanged and passing",
+      "test_worker_control.py::test_terminate_all...: failed once under full-suite load, passes isolated (known concurrent-load flake family from memory: goal1_stop_latency/installer restart); no code change"
+    ]
+  },
+  "governance": {
+    "discovery.cycle_enabled_default": false,
+    "wired_only_at_worker_loop_choke_point": true,
+    "flag_off_fallback_v3_loop_WAIT": "intact"
+  },
+  "production_touched": false,
+  "pushed": false,
+  "verdict": "INTEGRATION_CLEAN"
+}

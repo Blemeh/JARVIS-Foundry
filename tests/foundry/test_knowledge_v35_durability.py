@@ -401,7 +401,8 @@ def test_migration_v35_rehearsal_on_disposable_copy(tmp_path):
     shutil.copyfile(source_db, upgraded)
     udb = FoundryDatabase(upgraded)
     version = udb.initialize()
-    assert version == 35
+    # Integration: the chain now continues to 36 (V3 discovery state).
+    assert version == SCHEMA_VERSION == 36
     with udb.connect() as conn:
         cols = {r[1] for r in conn.execute(
             "PRAGMA table_info(knowledge_claims)").fetchall()}
@@ -435,12 +436,13 @@ def test_migration_v35_rehearsal_on_disposable_copy(tmp_path):
 
     # -- idempotency: initialize() twice --
     again = FoundryDatabase(upgraded)
-    assert again.initialize() == 35
+    assert again.initialize() == SCHEMA_VERSION
     assert again.count("knowledge_claims") == 3
     with again.connect() as conn:
         markers = [r[0] for r in conn.execute(
             "SELECT version FROM schema_migrations ORDER BY version")][-3:]
-    assert markers == [33, 34, 35]
+    assert markers[-1] >= 35
+    assert markers[-3:] == [33, 34, 35, 36][-3:]
 
     # -- interrupted migration recovery: kill child mid-migration on a
     # FRESH v34 copy (the crash fixture pins migration 35's first DDL) --
@@ -467,7 +469,7 @@ def test_migration_v35_rehearsal_on_disposable_copy(tmp_path):
     proc.wait(timeout=10)
     healed = FoundryDatabase(mig_target)
     final_version = healed.initialize()
-    assert final_version == 35
+    assert final_version == SCHEMA_VERSION
     assert healed.quick_check() == "ok"
     statements = sorted(r["statement"]
                         for r in healed.all("knowledge_claims"))
@@ -475,7 +477,7 @@ def test_migration_v35_rehearsal_on_disposable_copy(tmp_path):
     with healed.connect() as conn:
         markers = [r[0] for r in conn.execute(
             "SELECT version FROM schema_migrations ORDER BY version")][-3:]
-    assert markers == [33, 34, 35]
+    assert markers[-3:] == [34, 35, 36]
 
     # -- restore equality: original v34 bytes still restorable --
     restored_v34 = tmp_path / "restored-v34.db"
@@ -483,7 +485,7 @@ def test_migration_v35_rehearsal_on_disposable_copy(tmp_path):
     assert hashlib.sha256(restored_v34.read_bytes()).hexdigest() == \
         baseline["head_sha"]
     rdb = FoundryDatabase(restored_v34)
-    assert rdb.initialize() == 35          # heals forward, data preserved
+    assert rdb.initialize() == SCHEMA_VERSION   # heals forward, data preserved
     statements = sorted(r["statement"]
                         for r in rdb.all("knowledge_claims"))
     assert statements == baseline["statements"]
