@@ -309,7 +309,8 @@ def approve_candidate(db: FoundryDatabase, candidate_id: str,
         row = connection.execute(
             "SELECT objective, status FROM candidates WHERE candidate_id = ?",
             (candidate_id,)).fetchone()
-    if row is None or row[1] not in ("NEW", "SCORED"):
+    from .executive.eligibility import ELIGIBLE_STATUSES
+    if row is None or row[1] not in ELIGIBLE_STATUSES:
         raise ValueError(
             f"approve_candidate requires an existing, scorable candidate "
             f"({candidate_id}, status={row[1] if row else 'MISSING'})")

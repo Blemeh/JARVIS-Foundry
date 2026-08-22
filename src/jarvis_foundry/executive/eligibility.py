@@ -25,6 +25,12 @@ _LAB_SOURCE_EXACT = frozenset({
 
 ELIGIBLE_STATUSES = frozenset({"NEW", "SCORED", "ELIGIBLE"})
 
+# SQL fragment for selection queries: the single source of truth for
+# which candidate statuses are selectable. V3 WP2 added ELIGIBLE (the
+# portfolio state after policy scoring); the executive must see it.
+_SELECTABLE_STATUS_SQL = "(" + ", ".join(
+    f"'{status}'" for status in sorted(ELIGIBLE_STATUSES)) + ")"
+
 WAIT_NO_ELIGIBLE = "NO_ELIGIBLE_CANDIDATES"
 WAIT_COMPARATIVE = "COMPARATIVE_WAIT"
 
@@ -364,7 +370,8 @@ def eligible_candidates(
     """Return eligible candidate rows for executive comparison."""
     with database.connect() as connection:
         rows = connection.execute(
-            "SELECT * FROM candidates WHERE status IN ('NEW', 'SCORED') "
+            f"SELECT * FROM candidates WHERE status IN "
+            f"{_SELECTABLE_STATUS_SQL} "
             "ORDER BY rowid DESC LIMIT ?",
             (max(1, int(limit) * 4),),
         ).fetchall()

@@ -1,21 +1,38 @@
 {
-  "active_phase": "PHASE_3_WP4_WP5",
-  "updated_at": "2026-08-22T04:10:00+02:00",
+  "active_phase": "PHASE_5_WP8_MVP_REPAIR_ROUND_1",
+  "updated_at": "2026-08-22T06:10:00+02:00",
   "branch": "candidate/v3-implementation",
   "worktree": "C:/temp/JARVIS-V3-Implementation",
-  "head": "2c81b1f [V3-PHASE2-WP3-DONE]",
-  "completed": [
-    "Phase 0-2 committed: 12faf65 base, aeb79d5 phase1, 2c81b1f phase2",
-    "WP4: v3_teams.py (ROLE_MANIFEST bounded table, validate_team cap 6 + single verifier, fresh_verifier_identity fail-closed with REDUCED independence, repair_budget_exhausted durable from FAIL verdicts, budget=3)",
-    "WP4 tests: test_v3_teams.py 9/9 (incl. self-certification rejection, per-step budget)",
-    "WP5: v3_git.py (GitEffectAdapter: preflight_identity fail-closed, push exactly-once via effects journal, ls-remote provider proof, reconcile_pending resolution, GitReconcilePending blocks blind retry)",
-    "WP5 tests: test_v3_git_reconcile.py 7/7 (disposable bare remote push/pull proof, rejection terminality, ambiguity freeze + reconcile both directions, STOP gate)",
-    "projection fix: system.action_started handler tolerates git-effect payloads (system_id/payload_hash defaults) \u2014 existing effects suite still green (51 passed)"
+  "head": "b913c75 + uncommitted repair (new snapshot to be committed after verification)",
+  "reviewer_verdict": {
+    "verdict": "FAIL",
+    "artifact": "evidence/v3/impl/MVP_REVIEW.json",
+    "m_fail": [
+      "M3"
+    ],
+    "high_findings": [
+      "ELIGIBLE candidates invisible to eligible_candidates() SQL (NEW/SCORED literal)",
+      "flag-on tests asserted mission.created only conditionally (vacuous pass)"
+    ],
+    "medium_findings": [
+      "legacy ranker starves policy-scored lab candidates (0.070 < 0.40)",
+      "gate report counts did not match junit artifacts"
+    ]
+  },
+  "repairs_applied": [
+    "executive/eligibility.py: _SELECTABLE_STATUS_SQL derived from ELIGIBLE_STATUSES single source; eligible_candidates() now sees ELIGIBLE",
+    "discovery_candidates.py approve_candidate: status check uses ELIGIBLE_STATUSES (third scattered-literal site closed)",
+    "executive/scoring.py: policy-scored candidates use portfolio_total as composite base + goal_bonus + contention_headroom (legacy sum unchanged without trace)",
+    "v3_cycle.py: wait_margin read from registered policy (comparative_wait_margin)",
+    "tests/fixtures/v3 policy: comparative_wait_margin=0.0 per spec formula semantics for MVP lab loop",
+    "v3_scoring.py ScoringService.score_candidate: governed score-time admission stamp (idempotent, authority-gated) so post-activation scoring admits the candidate epoch",
+    "test_v3_discovery_cycle: COMPILED assertions unconditional; dual-path asserts PASSED + COMPILED event",
+    "test_v3_smoke restart test: tightened to exactly-once mission creation across attempts"
   ],
   "verification_so_far": {
-    "focused": "test_v3_teams 9 + test_v3_git_reconcile 7 + test_effects/test_role_dispatch/test_verifier_truth 51 all green"
+    "focused_after_repair": "test_v3_discovery_cycle 8 + test_v3_smoke 5 + test_v3_scoring 14 + test_executive_intelligence 32 + test_discovery_candidates + test_v3_loop all green"
   },
-  "running": "proc_8ff3742b7ecf phase-boundary full suite -> var/evidence/phase3.junit.xml",
-  "next_exact_action": "On suite exit: build WP4_WP5_SUITE_DELTA.json vs baseline (zero new failures), commit [V3-PHASE3-WP4-WP5-DONE], reread files 07/08, start Phase 4 (WP6+WP7).",
+  "running": "proc_1e24aa2007d7 full suite -> var/evidence/repair1.junit.xml",
+  "next_exact_action": "On green full suite with zero new failures: commit repair as new frozen snapshot, re-dispatch FRESH reviewer round 2 on the new SHA, then finalize MVP_REVIEW/MVP_GATE_REPORT and [V3-MVP-CANDIDATE].",
   "blockers": []
 }

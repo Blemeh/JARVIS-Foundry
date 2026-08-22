@@ -134,6 +134,7 @@ def run_discovery_cycle(
     executive = ExecutiveDecisionService(
         database, min_action_score=float(
             _threshold(database, policy_version)),
+        wait_margin=float(_wait_margin(database, policy_version)),
         source_id=source_id,
     )
     epoch = executive.ensure_activation()
@@ -203,6 +204,20 @@ def _threshold(database: FoundryDatabase, policy_version: str) -> float:
     except ValueError:
         return 0.40
     return float(thresholds.get("min_total_score", 0.40))
+
+
+def _wait_margin(database: FoundryDatabase, policy_version: str) -> float:
+    """comparative_wait_margin from the registered policy; 0.05 fallback."""
+    row = database.row("scoring_policy_registry", "policy_version",
+                       policy_version)
+    if not row:
+        return 0.05
+    import json
+    try:
+        thresholds = json.loads(row["thresholds_json"] or "{}")
+    except ValueError:
+        return 0.05
+    return float(thresholds.get("comparative_wait_margin", 0.05))
 
 
 def compile_mission(

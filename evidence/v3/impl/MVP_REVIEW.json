@@ -1,0 +1,70 @@
+{
+  "verdict": "FAIL",
+  "reviewer": "ox-alpha — independent adversarial MVP reviewer (fresh isolated session, disprove mandate)",
+  "frozen_head": "b913c7591e3db7a1e1eb8f1d6a2b11c7f720cc2c",
+  "m1_m8": {
+    "M1": "PASS",
+    "M2": "PASS",
+    "M3": "FAIL",
+    "M4": "PASS",
+    "M5": "PASS",
+    "M6": "PASS",
+    "M7": "PASS",
+    "M8": "PASS"
+  },
+  "checks_run": [
+    "git rev-parse HEAD == b913c75…2c2 on candidate/v3-implementation",
+    "pytest tests/foundry/test_v3_projections.py -q → 9/9 (incl. test_full_cycle_events_reconcile_zero_drift, test_v34_database_upgrades_in_place_to_v35)",
+    "pytest tests/foundry/test_v3_scoring.py -q → 13/13 (incl. byte-identical trace replay, fingerprint stability, duplicate-objective rejection)",
+    "pytest tests/foundry/test_v3_discovery_cycle.py -q → 8/8 (passes, but see M3 finding: COMPILED branch never exercised)",
+    "pytest tests/foundry/test_v3_smoke.py -q → 4/4",
+    "pytest tests/foundry/test_v3_git_reconcile.py -q → 7/7 (disposable bare remote push/pull proof, ls-remote truth, ambiguity freeze raises on blind retry, STOP blocks push)",
+    "pytest tests/foundry/test_v3_outcomes.py -q → 8/8 (PASSED-only raises on FAILED/BLOCKED, predicted≠actual JSON columns, honest UNKNOWN, idempotent replay)",
+    "pytest tests/foundry/test_v3_loop.py -q → 6/6 (flag-off fallback regression suite green after observe_for_cycle extraction)",
+    "Independent determinism probe: same inputs into two fresh DBs via exact test fixtures → decision traces + portfolio payloads identical except per-DB random candidate_id and intentionally distinct loop_id",
+    "Direct probe: assess_eligibility(candidate)=eligible=True while eligible_candidates()=0 → SQL filter status IN ('NEW','SCORED') excludes post-scoring status 'ELIGIBLE'",
+    "pytest instrumentation plugin (-p spy_plugin, loaded from outside repo): recorded EVERY run_discovery_cycle outcome during test_v3_discovery_cycle and test_v3_smoke → all cycles WAITING/NO_ELIGIBLE_CANDIDATES (or STOPPED); zero COMPILED outcomes anywhere in the suite",
+    "Scratch-DB counterfactual: demoting candidate ELIGIBLE→SCORED restores executive visibility but legacy ranker scores fixture candidate 0.070 < min_action_score 0.40 → still WAITING (second independent blocker)",
+    "Boundary probes: load_active_policy without registered policy raises ValueError fail-closed and cycle returns BLOCKED before any candidate.* / portfolio.evaluated event; signed STOP_EVERYTHING → cycle STOPPED with observer spy never invoked (observation blocked pre-observe); duplicate fingerprint generate_candidate → created=false, duplicate_of set across 3 consecutive cycles with single objective universe",
+    "grep cycle_enabled across src/: only runtime/config.py default False (+yaml parse default False), worker_loop.py choke point, v3_cycle.py docstring; no yaml/toml/json config in repo enables it; no production wiring forces true",
+    "(b) production checkout JARVIS-Foundry @ b5fc4f9 does NOT contain b913c75 (git merge-base --is-ancestor: not ancestor); its dirty files (installer/supervisor/release/conftest etc.) predate this worktree's existence (mtimes ≤ 2026-08-22T00:14 < worktree creation ~00:30Z) and none touch discovery/scoring/v3 code paths",
+    "(c) git status worktree: only evidence/v3/impl/RESUME_STATE.json modified (reviewer-dispatch bookkeeping); HEAD exactly b913c75; source/ and tests/ untouched by review",
+    "(d) diff 12faf65..HEAD on v3_loop.py = pure extraction of steps 1–3b into observe_for_cycle; run_one_loop still enforces directive routing BEFORE observation and consumes shared extraction; worker_loop else-branch keeps _select_contract + _maybe_executive_select unchanged; test_v3_loop 6/6 green",
+    "M8 reconciliation script over var/evidence/*.junit.xml: baseline 1459/0 → phase1 1486/0 → phase2 1494/0 → phase3 1510/0 → phase4 1522/0 (monotonic, zero failures/errors/skips); WP6_WP7_SUITE_DELTA matches phase4 XML exactly; BASELINE_SUITE matches baseline XML; focused mvp-v3-focused.junit.xml = 69/0 matching gate report"
+  ],
+  "findings": [
+    {
+      "severity": "HIGH",
+      "detail": "M3 core defect (root cause): v3_cycle.run_discovery_cycle scores candidates via ScoringService, which promotes candidates.status to 'ELIGIBLE'; the subsequent ExecutiveDecisionService.evaluate() query eligible_candidates() (executive/eligibility.py line ~367) only considers status IN ('NEW','SCORED'), so every freshly-scored V3 candidate is invisible to selection. Every flag-ON cycle therefore terminates WAITING/'NO_ELIGIBLE_CANDIDATES'. Proven two ways: (1) pytest instrumentation captured all 6 in-suite cycles as WAITING including 'v3-lab-1' and dual-path 'dual-on'; (2) standalone drive shows assess_eligibility()=eligible while eligible_candidates()=0. The select→compile_mission→mission.created path is unreachable code as shipped."
+    },
+    {
+      "severity": "HIGH",
+      "detail": "M3's PASS rests on a vacuous assertion: test_flag_on_lab_loop_observe_to_mission guards ALL mission.created checks behind 'if report.outcome == \"COMPILED\":' and accepts WAITING; test_worker_loop_dual_path_flag_on_compiles likewise only asserts a cycle_completed event exists. Since COMPILED never occurs (finding 1), these tests pass while asserting nothing about discovery-to-mission. The handoff §9 criterion 'One discovery-to-mission loop (flag ON, lab)' is NOT met; the gate report's M3 PASS is unsupported by its cited evidence."
+    },
+    {
+      "severity": "MEDIUM",
+      "detail": "Second independent blocker: even when candidate visibility is repaired (reviewer scratch experiment demoting ELIGIBLE→SCORED so eligible_candidates() sees it), the legacy executive ranker scores the standard lab fixture candidate 0.070 against min_action_score 0.40 ('waiting beats acting'). Fixing only the SQL filter would still yield zero compiled missions; the threshold/ranking interplay between the new policy-based portfolio and the legacy action scorer was never integrated or tested end-to-end."
+    },
+    {
+      "severity": "MEDIUM",
+      "detail": "Gate report evidence lines misstate test counts: M1 claims 8/8 (junit: 9 tests), M2 claims 14/14 (junit: 13), M5 claims 5/5 (junit: 4). The underlying suites do pass, but the gate report's numbers do not match the very artifacts it cites, indicating it was not generated from them."
+    },
+    {
+      "severity": "MEDIUM",
+      "detail": "test_v3_smoke restart-window assertion 'assert len(second_missions) <= max(1, count_after_first)' permits mission-count growth and, given the compile defect, never observes a mission at all — the crash-window resume-once property is unproven at mission level. STOP-before-work, exactly-once cycle records per loop_id, EventConflict-on-rewrite, and rebuild-zero-drift ARE substantively tested and pass."
+    },
+    {
+      "severity": "LOW",
+      "detail": "Doc/code drift: handoff §9 names test_v3_dedup.py for M4 (no such file; dedup coverage lives in test_v3_scoring.py + test_v3_discovery_cycle.py) and §8 sketches src/jarvis_foundry/v3/cycle.py (implementation is src/jarvis_foundry/v3_cycle.py). Cosmetic; brief's interpretation adopted."
+    },
+    {
+      "severity": "LOW",
+      "detail": "Worktree not byte-clean: evidence/v3/impl/RESUME_STATE.json modified (uncommitted reviewer-dispatch status update). No source or test file differs from b913c75; HEAD matches frozen SHA."
+    },
+    {
+      "severity": "LOW",
+      "detail": "Dead code in test_v3_scoring.py (lines 158-159, 186-187: walrus/if False constructs) — cosmetic noise suggesting rushed authoring; does not affect verdicts."
+    }
+  ],
+  "notes": "Independent re-execution confirms M1 (9/9 incl. rebuild zero-drift and v34→v35 in-place migration), M2 (13/13 plus my own two-DB determinism probe: traces identical modulo random ids), M6 (7/7 disposable remote, ls-remote truth, no blind retry), M7 (8/8 PASSED-only/distinct/honest-UNKNOWN), and M8 (baseline 1459→phase4 1522, monotonic, zero failures across all six junit XMLs; delta JSONs match the XMLs). Flag governance is sound: discovery.cycle_enabled defaults false everywhere, wired only at the worker_loop choke point, nothing forces it true, the v3_loop WAIT+ExecutiveDecisionService fallback survives the observe_for_cycle extraction intact (diff reviewed, test_v3_loop green), no production wiring was touched (production checkout lacks b913c75 entirely), and boundary probes confirm fail-closed BLOCKED without a registered policy and STOP blocking before observation with the observer provably never invoked. However, M3 FAILS at substance: instrumenting pytest proves the unified cycle NEVER compiles a mission in any test — ScoringService's ELIGIBLE status makes candidates invisible to the executive's NEW/SCORED query, and even with visibility forced, the legacy ranker scores the fixture candidate below threshold — so 'one discovery-to-mission loop (flag ON, lab)' does not exist, hidden behind conditional assertions that pass vacuously. Per verdict rules this is an overall FAIL; repair must make the flagged path actually reach mission.created with an unconditional assertion, then re-run M3/M5 and regenerate the gate report with corrected counts."
+}

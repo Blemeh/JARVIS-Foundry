@@ -134,23 +134,25 @@ def test_flag_on_lab_loop_observe_to_mission(tmp_path):
         database, loop_id="v3-lab-1", resource_id="resource-1",
         observe=_observe_stub())
 
-    assert report.outcome in ("COMPILED", "WAITING"), report.to_payload()
+    # UNCONDITIONAL: the flagged lab loop must reach mission creation.
+    # (MVP review FAIL round 1: this used to accept WAITING vacuously.)
+    assert report.outcome == "COMPILED", report.to_payload()
     completed = [e for e in database.events()
                  if e.event_type == "discovery.cycle_completed"]
     assert len(completed) == 1
     payload = completed[0].payload
     assert payload["loop_id"] == "v3-lab-1"
     assert payload["observed"] == 4
+    assert payload["outcome"] == "COMPILED"
     portfolio_row = database.row("discovery_portfolio", "loop_id", "v3-lab-1")
     assert portfolio_row is not None
     assert portfolio_row["policy_version"] == "v3-policy-2026-08-21"
-    if report.outcome == "COMPILED":
-        missions = [e for e in database.events()
-                    if e.event_type == "mission.created"
-                    and str(e.payload.get("created_from") or "")
-                    .startswith("candidate:")]
-        assert len(missions) == 1
-        assert report.mission_id == missions[0].payload["mission_id"]
+    missions = [e for e in database.events()
+                if e.event_type == "mission.created"
+                and str(e.payload.get("created_from") or "")
+                .startswith("candidate:")]
+    assert len(missions) == 1
+    assert report.mission_id == missions[0].payload["mission_id"]
 
 
 def test_duplicate_fingerprint_cannot_create_second_mission(tmp_path):
@@ -218,10 +220,11 @@ def test_worker_loop_dual_path_flag_on_compiles(tmp_path):
         database, FoundryPaths(tmp_path), cfg,
         loop_id="dual-on", instance_id="inst-on",
         vault_root=tmp_path / "vault", handoff_dir=tmp_path / "handoffs")
-    assert report["outcome"] in ("PASSED", "WAITING"), report
-    completed = [e for e in database.events()
-                 if e.event_type == "discovery.cycle_completed"]
-    assert len(completed) == 1 and completed[0].payload["loop_id"] == "dual-on"
+    assert report["outcome"] == "PASSED", report
+    compiled = [e for e in database.events()
+                if e.event_type == "discovery.cycle_completed"
+                and e.payload.get("outcome") == "COMPILED"]
+    assert len(compiled) == 1 and compiled[0].payload["loop_id"] == "dual-on"
 
 
 def test_worker_loop_flag_off_unchanged_no_cycle_event(tmp_path):

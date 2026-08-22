@@ -134,41 +134,56 @@ def test_restart_after_select_before_materialization_resumes_once(
 
     database = _env(tmp_path)
     from jarvis_foundry.discovery_candidates import generate_candidate
+    from jarvis_foundry.v3_scoring import ScoringService
     generated = generate_candidate(
         database, "mission-seed", "repo",
         "Fix the failing nightly integration",
         [{"kind": "ci", "ref": "nightly"},
          {"kind": "log", "ref": "run"}, {"kind": "issue", "ref": "i"}],
         typed={"expected_outcome": "nightly green"})
+    # Activation + admission authority BEFORE scoring so the cycle's
+    # score-time governed admission stamps this candidate's epoch.
     epoch = ExecutiveDecisionService(database).ensure_activation()
     enable_admission_authority(database, epoch, source_id="smoke")
+    ScoringService(database).score_candidate(generated["candidate_id"])
 
-    executive = ExecutiveDecisionService(database)
+    executive = ExecutiveDecisionService(database, wait_margin=0.0)
     decision = executive.evaluate(resource_id="resource-1",
                                   loop_id="crash-window")
+    assert decision.kind == "SELECT"
 
+    # Simulated crash AFTER select, BEFORE materialization: the seed
+    # mission from the fixture exists, but NO mission linked to this
+    # candidate yet.
     missions_before = [e for e in database.events()
-                       if e.event_type == "decision_probe"]  # none yet
-    del missions_before
+                       if e.event_type == "mission.created"
+                       and str(e.payload.get("created_from") or "")
+                       == f"candidate:{decision.candidate_id}"]
+    assert not missions_before
 
-    # 'Restart': the full cycle runs under the SAME loop id after the
-    # simulated crash. The recorded decision replays instead of
-    # re-selecting, and compile happens at most once.
+    # 'Restart': the unified cycle runs under a fresh loop id (a new
+    # attempt). It must reach COMPILED exactly once — one candidate,
+    # one mission, and the duplicate guard holds across attempts.
     report = run_discovery_cycle(
-        database, loop_id=decision.decision_id.replace("exec-", "")
-        if decision.decision_id.startswith("exec-") else "crash-window",
-        resource_id="resource-1", observe=_observe())
-    first_missions = [e for e in database.events()
-                      if e.event_type == "mission.created"]
-    count_after_first = len(first_missions)
-
-    report_again = run_discovery_cycle(
-        database, loop_id="restart-same", resource_id="resource-1",
+        database, loop_id="restart-once", resource_id="resource-1",
         observe=_observe())
-    second_missions = [e for e in database.events()
-                       if e.event_type == "mission.created"]
-    # No duplicate mission creation across the restart boundary.
-    assert len(second_missions) <= max(1, count_after_first)
+    assert report.outcome == "COMPILED", report.to_payload()
+    missions_after_first = [e for e in database.events()
+                            if e.event_type == "mission.created"
+                            and str(e.payload.get("created_from") or "")
+                            == f"candidate:{decision.candidate_id}"]
+    assert len(missions_after_first) == 1
+
+    # A further attempt on the same universe creates NO second mission:
+    # the objective is covered by mission now.
+    run_discovery_cycle(
+        database, loop_id="restart-again", resource_id="resource-1",
+        observe=_observe())
+    linked = [e for e in database.events()
+              if e.event_type == "mission.created"
+              and str(e.payload.get("created_from") or "")
+              == f"candidate:{decision.candidate_id}"]
+    assert len(linked) == 1
 
 
 def test_projection_rebuild_zero_drift_after_v3_events(tmp_path):

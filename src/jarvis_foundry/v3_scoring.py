@@ -210,6 +210,21 @@ class ScoringService:
                 return {"candidate_id": candidate_id, "status": status,
                         "total": None, "trace": {}, "appended": False}
             candidate = self._candidate_state(connection, candidate_id)
+        # V3 MVP review repair: a candidate that passes policy scoring
+        # inside a governed cycle is admitted to the CURRENT epoch (the
+        # generation-time stamp can predate activation). Same trusted
+        # issuer rules as generate-time stamping; no-op when authority
+        # is inactive.
+        from .executive.eligibility import (
+            current_activation_epoch, is_candidate_admitted,
+            admit_candidate)
+        epoch = current_activation_epoch(self._db)
+        if epoch and not is_candidate_admitted(self._db, candidate_id, epoch):
+            # Idempotent per candidate+epoch; silently skips when the
+            # admission authority is inactive (fail-closed governance).
+            admit_candidate(
+                self._db, candidate_id, epoch=epoch,
+                source="v3-scoring")
         dims = dimensions or derive_dimensions(
             candidate["objective"],
             evidence_count=len(candidate["evidence_refs"]),
