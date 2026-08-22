@@ -12,7 +12,7 @@
     "A_entry_gate_truth": "PASS",
     "B_route_resilience": "PASS",
     "C_owner_workflow": "PASS",
-    "D_fixture_mapper_hardening": "PENDING",
+    "D_fixture_mapper_hardening": "PASS",
     "E_all_route_automation": "PENDING",
     "F_accessibility": "PENDING",
     "G_responsive_visual": "PENDING",
@@ -25,6 +25,11 @@
       "sha": "1c792bb8a83861f9a649f9e5b8a6090b0bfd7fe2",
       "message": "[verified] add route resilience gate across Command Center routes",
       "work_package": "B_route_resilience"
+    },
+    {
+      "sha": "b858931875548f31729ba820cdf5ce9491192a8f",
+      "message": "[verified] finish owner workflow honesty and control audit (WP-C)",
+      "work_package": "C_owner_workflow"
     }
   ],
   "gates": {
@@ -38,7 +43,12 @@
     "wp_c_test_count": "88/88",
     "wp_c_build": "PASS",
     "wp_c_e2e_owner_workflow": "PASS",
-    "wp_c_e2e_owner_workflow_count": "13/13"
+    "wp_c_e2e_owner_workflow_count": "13/13",
+    "wp_d_lint": "PASS",
+    "wp_d_typecheck": "PASS",
+    "wp_d_test": "PASS",
+    "wp_d_test_count": "91/91",
+    "wp_d_build": "PASS"
   },
   "checkpoints": [
     {
@@ -70,4 +80,3 @@
     "/*"
   ]
 }
-
