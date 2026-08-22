@@ -26,11 +26,11 @@ import time
 import traceback
 import uuid
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
-from jarvis_foundry.clock import isoformat
+from jarvis_foundry.clock import isoformat, utc_now
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.deployment.layout import headless_task_command
 from jarvis_foundry.deployment.release import (
@@ -577,6 +577,18 @@ class FactoryRunner:
         self._primary_process.wait(timeout=15)
         stream.close()
         self._primary_process = None
+        # ``taskkill /F`` is a controlled crash injection.  It cannot execute
+        # the Supervisor finally block, so expire only this disposable lease
+        # before proving startup takeover.  Production leases are untouched.
+        database = FoundryDatabase(self.roots.foundry_home / "foundry.db")
+        with database.transaction() as connection:
+            connection.execute(
+                "UPDATE leases SET expires_at=?, heartbeat_at=? WHERE lease_key=?",
+                (isoformat(utc_now() - timedelta(seconds=1)),
+                 isoformat(utc_now() - timedelta(seconds=1)), Supervisor.LEASE_KEY),
+            )
+        self.record.artifacts["supervisor"]["crash_recovery_lease_expired"] = True
+        self._write_record()
         self.run_supervisor_once("supervisor-restart")
 
     def worker_process_contract(self) -> None:
