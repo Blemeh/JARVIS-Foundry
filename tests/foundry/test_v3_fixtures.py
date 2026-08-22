@@ -26,14 +26,13 @@ def test_policy_fixture_matches_frozen_decisions():
 
 
 def test_schema_constants_derive_from_canonical_source():
-    # Canonical main at the implementation base carries SCHEMA_VERSION=34;
-    # V2 never merged (owner waived the wait), so V3 owns 35.
-    assert CANONICAL_V2_SCHEMA_VERSION == 34
+    # Canonical origin/main merged V2 (f1660f6) at v35; V3 owns 36.
+    assert CANONICAL_V2_SCHEMA_VERSION == 35
     assert V3_SCHEMA_VERSION == CANONICAL_V2_SCHEMA_VERSION + 1
     assert SCHEMA_VERSION == V3_SCHEMA_VERSION
 
 
-def test_baseline_db_generator_produces_pre_v3_database(tmp_path):
+def test_baseline_db_generator_produces_pre_v2_merge_database(tmp_path):
     db_path = make_baseline_db(tmp_path / "base.db")
     connection = sqlite3.connect(db_path)
     try:

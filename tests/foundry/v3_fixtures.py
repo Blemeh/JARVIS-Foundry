@@ -11,10 +11,10 @@ FIXTURES = Path(__file__).resolve().parent.parent / "fixtures" / "v3"
 POLICY_PATH = FIXTURES / "policy_v3-policy-2026-08-21.json"
 POLICY_VERSION = "v3-policy-2026-08-21"
 
-# Canonical main at a743fde carries SCHEMA_VERSION = 34; the V2 candidate
-# that would have claimed v35 never merged (owner waived the wait), so the
-# V3 additive migration lands at 35. One constant, read by tests and code.
-CANONICAL_V2_SCHEMA_VERSION = 34
+# Canonical origin/main (8d0d789) merged V2 (f1660f6) which occupies v35;
+# the V3 additive migration therefore lands at 36. One constant, read by
+# tests and code (WP8-HARD slice 1: collision repair).
+CANONICAL_V2_SCHEMA_VERSION = 35
 V3_SCHEMA_VERSION = CANONICAL_V2_SCHEMA_VERSION + 1
 
 

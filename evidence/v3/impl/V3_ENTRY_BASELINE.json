@@ -18,11 +18,12 @@
   },
   "schema": {
     "CANONICAL_V2_SCHEMA_VERSION_source": "git show main:src/jarvis_foundry/migrations.py -> SCHEMA_VERSION = 34 (line 8)",
-    "CANONICAL_V2_SCHEMA_VERSION": 34,
-    "V3_SCHEMA_VERSION": 35,
-    "rule": "V3_SCHEMA_VERSION = actual canonical main SCHEMA_VERSION + 1 = 34 + 1",
+    "CANONICAL_V2_SCHEMA_VERSION": 35,
+    "V3_SCHEMA_VERSION": 36,
+    "rule": "V3_SCHEMA_VERSION = actual canonical SCHEMA_VERSION + 1 = 35 + 1",
     "contradiction_recorded": "Design prose expected canonical V2 at v35 (from unmerged f1660f6) making V3 v36. Actual canonical main is v34; per goal 'actual canonical source wins', V3_SCHEMA_VERSION = 35.",
-    "v35_note": "v35 is NOT occupied on canonical main; V2 candidate f1660f6 remains unmerged."
+    "v35_note": "v35 is NOT occupied on canonical main; V2 candidate f1660f6 remains unmerged.",
+    "superseded_by": "WP8-HARD slice 1: origin/main 8d0d789 merged V2 (f1660f6, SCHEMA_VERSION=35); V3 renumbered to v36."
   },
   "baseline_command": "pytest tests/foundry/ -q --junitxml=var/evidence/baseline.junit.xml",
   "baseline_artifact": "evidence/v3/impl/BASELINE_SUITE.json",
