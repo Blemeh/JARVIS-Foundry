@@ -166,8 +166,8 @@ export function Evidence() {
         {rows.length === 0 ? (
           <EmptyState label="No evidence matches" detail={sourceMode === "SIMULATED" ? "Adjust filters or clear context to inspect more artifacts in this simulated universe." : sourceMode === "LIVE" ? "Adjust filters or clear context to inspect canonical artifacts." : `Evidence data is unavailable: runtime source is ${sourceMode}.`} />
         ) : (
-          <div className="evidence-table" role="table" aria-label="Evidence artifacts">
-            <div className="evidence-row evidence-row-head" role="row">
+          <div className="evidence-table" aria-label="Evidence artifacts">
+            <div className="evidence-row evidence-row-head">
               <span className="t-label text-muted">Artifact ID / Type</span>
               <span className="t-label text-muted">Provenance (source)</span>
               <span className="t-label text-muted">Integrity hash (SHA-256)</span>
@@ -178,7 +178,6 @@ export function Evidence() {
                 key={it.id}
                 type="button"
                 className={`evidence-row evidence-row-data ${it.verdict === "TAMPERED" ? "evidence-row-tampered" : ""}`}
-                role="row"
                 onClick={() => navigate(`/evidence/${it.id}`)}
                 aria-label={`Open evidence ${it.id}`}
               >

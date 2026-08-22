@@ -139,7 +139,7 @@ export function Systems() {
           <EmptyState label="No systems match" detail="Clear the context filter to see the full component set." />
         ) : (
           <>
-            <div className="systems-grid systems-grid-head" role="row">
+            <div className="systems-grid systems-grid-head">
               <span className="t-label text-muted">Component</span>
               <span className="t-label text-muted">State</span>
               <span className="t-label text-muted">Health</span>
@@ -154,7 +154,6 @@ export function Systems() {
                 key={c.id}
                 type="button"
                 className={`systems-grid systems-grid-row ${c.health === "DEGRADED" ? "systems-row-warn" : ""}`}
-                role="row"
                 onClick={() => setSelected(c)}
                 aria-label={`Inspect ${c.name}`}
               >

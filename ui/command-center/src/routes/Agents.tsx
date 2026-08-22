@@ -129,7 +129,7 @@ export function Agents() {
                   </span>
                   <div>
                     <Link to={`/agents/${w.id}`} className="agent-card-name-link">
-                      <h3 className="agent-card-name">{w.name}</h3>
+                      <h2 className="agent-card-name">{w.name}</h2>
                     </Link>
                     <p className="t-mono agent-card-id">
                       <Link to={`/agents/${w.id}`}>{w.id}</Link> | {w.provider}

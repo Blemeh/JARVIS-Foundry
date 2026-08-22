@@ -188,7 +188,7 @@ export function Missions() {
               <div className="mission-card-head">
                 <div>
                   <span className="t-mono mission-card-code">{m.code}</span>
-                  <h3 className="mission-card-title">{m.title}</h3>
+                  <h2 className="mission-card-title">{m.title}</h2>
                 </div>
                 <StatusBadge status={m.status} pulse={m.status === "ACTIVE"} />
               </div>

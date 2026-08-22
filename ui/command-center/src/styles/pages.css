@@ -1171,6 +1171,13 @@
 }
 
 .agent-log-line-pulse {
+  color: var(--accent);
+}
+
+.agent-log-line-pulse::after {
+  content: "";
+  display: inline-block;
+  width: 0.45em;
   animation: caret-blink 1.4s steps(2) infinite;
 }
 

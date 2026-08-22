@@ -75,7 +75,7 @@ function OverviewContent({
           <div className="command-field">
             <div className="command-copy">
               <span className="signal-label">Owner Downlink</span>
-              <h2>What should JARVIS move next?</h2>
+              <h1>What should JARVIS move next?</h1>
               <p>
                 Goals, constraints, vetoes, pause, resume, and deterministic STOP enter one audited control path. Routine operation continues without
                 becoming an approval queue.

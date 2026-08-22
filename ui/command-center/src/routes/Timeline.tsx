@@ -171,9 +171,9 @@ function TimelineContent({ events }: { events: TimelineEvent[] }) {
         <div className="timeline">
           {groups.map((g) => (
             <div key={g.group} className="timeline-group">
-              <div className="timeline-group-marker">
+              <h2 className="timeline-group-marker">
                 <span className="t-mono">{g.group}</span>
-              </div>
+              </h2>
               {g.events.map((e) => {
                 const Icon = categoryIcon[e.category];
                 const refs = eventRefs(e);

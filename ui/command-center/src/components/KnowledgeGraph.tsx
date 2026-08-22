@@ -47,9 +47,9 @@ export function KnowledgeGraph({ graph, selectedId, onSelect }: KnowledgeGraphPr
   }, [edges, nodes]);
 
   return (
-    <div className="graph-wrap">
+    <div className="graph-wrap" aria-label="Knowledge graph visualization">
       <div className="graph-canvas" style={{ transform: `scale(${zoom})` }}>
-        <svg viewBox="0 0 100 100" className="graph-svg" role="img" aria-label="Knowledge graph visualization">
+        <svg viewBox="0 0 100 100" className="graph-svg">
           <defs>
             <pattern id="graph-grid" width="6.25" height="6.25" patternUnits="userSpaceOnUse">
               <path d="M 6.25 0 L 0 0 0 6.25" fill="none" stroke="rgba(255,255,255,0.045)" strokeWidth="0.08" />
