@@ -18,11 +18,12 @@ AUDIT SOURCE:                53c9e524ffa368e36f706560c3f3815fd0dd26bc
 CURRENT WORK BRANCH:         candidate/audit-r2-integration
 CURRENT STATE RECORD:        a7bc63a0107302e656346d0df2f0de5900cff3d0 (docs-only
                              reconciliation snapshot; not a tested-code claim)
-TESTED CODE HEAD:            21631bec69feb064e54c33310e6a555ecf4d353f (2026-08-22);
-                             focused remediation 75/75 PASS; full foundry 1594
-                             collected, 0 failures; source code unchanged afterward
-FINAL EVIDENCE HEAD:         not yet recorded; rerun the gates at the final
-                             overnight candidate HEAD before any release claim
+TESTED CODE HEAD:            final overnight candidate SHA is recorded in
+                             evidence/release/overnight/run-final-20260823-01/RUN.json;
+                             focused/full gates and the disposable factory are rerun
+                             at that exact clean HEAD before any release claim
+FINAL EVIDENCE HEAD:         evidence/release/overnight/run-final-20260823-01/RUN.json
+                             is the final source-vs-runtime evidence record
 FULL SUITE:                  1594 collected at integration validation (2026-08-22);
                              failures=0, errors=0
 FOCUSED REMEDIATION TESTS:   75/75 PASS — installer/scheduler, supervisor
