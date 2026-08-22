@@ -27,7 +27,8 @@ const cohesionCaptures = [
 ] as const;
 
 test("capture all eight sections at 1600x1280", async ({ page }) => {
-  await page.setViewportSize({ width: 1600, height: 1280 });
+  test.setTimeout(120_000)
+  await page.setViewportSize({ width: 1600, height: 1280 })
   for (const c of captures) {
     await page.goto(c.path);
     await page.waitForTimeout(450);

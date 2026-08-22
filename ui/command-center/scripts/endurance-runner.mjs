@@ -5,6 +5,7 @@ import { join } from "node:path"
 const baseUrl = process.env.ENDURANCE_BASE ?? "http://localhost:4523"
 const durationMs = Number(process.env.ENDURANCE_DURATION_MS ?? 6 * 60 * 60 * 1000)
 const checkpointMs = 15 * 60 * 1000
+const recycleEvery = Number(process.env.ENDURANCE_RECYCLE_EVERY ?? 40)
 const outPath = join(process.cwd(), "..", "..", "evidence", "overnight", "command-center-truth", "ENDURANCE_RESULT.json")
 
 const routes = [
@@ -27,27 +28,7 @@ const startedAt = new Date()
 const checkpoints = []
 let cycles = 0
 let errors = []
-
-const browser = await chromium.launch({ channel: "chrome", headless: true })
-const context = await browser.newContext({ viewport: { width: 1600, height: 1000 } })
-const page = await context.newPage()
-
-page.on("pageerror", (err) => errors.push({ at: new Date().toISOString(), type: "pageerror", message: err.message }))
-page.on("console", (msg) => {
-  if (msg.type() === "error") errors.push({ at: new Date().toISOString(), type: "console.error", message: msg.text() })
-})
-
-const runCheckpoint = async (label) => {
-  const snapshot = {
-    label,
-    at: new Date().toISOString(),
-    cycles,
-    errorCount: errors.length,
-    memory: await page.evaluate(() => (performance.memory ? { usedJSHeapSize: performance.memory.usedJSHeapSize } : null)),
-  }
-  checkpoints.push(snapshot)
-  writeFileSync(outPath, `${JSON.stringify(buildReport("running"), null, 2)}\n`)
-}
+let browser
 
 const buildReport = (status) => ({
   status,
@@ -64,45 +45,107 @@ const buildReport = (status) => ({
   checkpoints,
   errors,
   pass: status === "complete" && errors.length === 0,
+  note:
+    durationMs < 6 * 60 * 60 * 1000
+      ? "Session used reduced ENDURANCE_DURATION_MS; full 6h gate requires unattended rerun."
+      : undefined,
 })
 
-mkdirSync(join(outPath, ".."), { recursive: true })
-await runCheckpoint("start")
+const persist = (status) => {
+  mkdirSync(join(outPath, ".."), { recursive: true })
+  writeFileSync(outPath, `${JSON.stringify(buildReport(status), null, 2)}\n`)
+}
+
+const runCheckpoint = async (label, page) => {
+  const snapshot = {
+    label,
+    at: new Date().toISOString(),
+    cycles,
+    errorCount: errors.length,
+    memory: page
+      ? await page.evaluate(() => (performance.memory ? { usedJSHeapSize: performance.memory.usedJSHeapSize } : null)).catch(() => null)
+      : null,
+  }
+  checkpoints.push(snapshot)
+  persist("running")
+}
+
+const attachGuards = (page) => {
+  page.on("pageerror", (err) => errors.push({ at: new Date().toISOString(), type: "pageerror", message: err.message }))
+  page.on("console", (msg) => {
+    if (msg.type() === "error") errors.push({ at: new Date().toISOString(), type: "console.error", message: msg.text() })
+  })
+}
+
+const createSession = async () => {
+  if (!browser) browser = await chromium.launch({ channel: "chrome", headless: true })
+  const context = await browser.newContext({ viewport: { width: 1600, height: 1000 } })
+  const page = await context.newPage()
+  attachGuards(page)
+  return { context, page }
+}
+
+persist("running")
+let session = await createSession()
+await runCheckpoint("start", session.page)
 
 const deadline = startedAt.getTime() + durationMs
 let nextCheckpoint = startedAt.getTime() + checkpointMs
+let sinceRecycle = 0
 
-while (Date.now() < deadline) {
-  for (const scenario of scenarios) {
-    for (const path of routes) {
-      if (Date.now() >= deadline) break
-      try {
-        const response = await page.goto(`${baseUrl}${path}?scenario=${scenario}`, { waitUntil: "domcontentloaded", timeout: 30_000 })
-        if (!response || !response.ok()) {
-          errors.push({ at: new Date().toISOString(), type: "http", message: `${path}?scenario=${scenario} -> ${response?.status() ?? "no response"}` })
-          continue
+try {
+  while (Date.now() < deadline) {
+    for (const scenario of scenarios) {
+      for (const path of routes) {
+        if (Date.now() >= deadline) break
+
+        if (sinceRecycle >= recycleEvery) {
+          await session.context.close().catch(() => undefined)
+          session = await createSession()
+          sinceRecycle = 0
         }
-        await page.waitForTimeout(50)
-        cycles += 1
-      } catch (err) {
-        errors.push({ at: new Date().toISOString(), type: "navigation", message: `${path}?scenario=${scenario}: ${err instanceof Error ? err.message : String(err)}` })
-      }
-    }
-    if (Date.now() >= deadline) break
-  }
 
-  if (Date.now() >= nextCheckpoint) {
-    await runCheckpoint(`t+${Math.round((Date.now() - startedAt.getTime()) / 60_000)}m`)
-    nextCheckpoint += checkpointMs
+        try {
+          const response = await session.page.goto(`${baseUrl}${path}?scenario=${scenario}`, {
+            waitUntil: "domcontentloaded",
+            timeout: 30_000,
+          })
+          if (!response || !response.ok()) {
+            errors.push({
+              at: new Date().toISOString(),
+              type: "http",
+              message: `${path}?scenario=${scenario} -> ${response?.status() ?? "no response"}`,
+            })
+          } else {
+            cycles += 1
+            sinceRecycle += 1
+          }
+        } catch (err) {
+          errors.push({
+            at: new Date().toISOString(),
+            type: "navigation",
+            message: `${path}?scenario=${scenario}: ${err instanceof Error ? err.message : String(err)}`,
+          })
+          await session.context.close().catch(() => undefined)
+          session = await createSession()
+          sinceRecycle = 0
+        }
+      }
+      if (Date.now() >= deadline) break
+    }
+
+    if (Date.now() >= nextCheckpoint) {
+      await runCheckpoint(`t+${Math.round((Date.now() - startedAt.getTime()) / 60_000)}m`, session.page)
+      nextCheckpoint += checkpointMs
+    }
   }
+} finally {
+  await session.context.close().catch(() => undefined)
+  if (browser) await browser.close().catch(() => undefined)
+  await runCheckpoint("end", null)
+  persist("complete")
 }
 
-await browser.close()
-await runCheckpoint("end")
-
 const report = buildReport("complete")
-report.pass = errors.length === 0
-writeFileSync(outPath, `${JSON.stringify(report, null, 2)}\n`)
-
 console.log(`Endurance ${report.pass ? "PASS" : "FAIL"}: ${cycles} cycles, ${errors.length} errors, ${(report.elapsedMs / 60_000).toFixed(1)} minutes`)
 process.exit(report.pass ? 0 : 1)

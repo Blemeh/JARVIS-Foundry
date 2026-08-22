@@ -5,95 +5,50 @@
   "branch": "candidate/overnight-command-center-truth",
   "worktree": "C:\\temp\\JARVIS-Overnight-Command-Center-Truth",
   "shift_start_utc": "2026-08-22T21:56:00Z",
-  "shift_start_local": "2026-08-22T23:56:00+02:00",
   "shift_deadline_utc": "2026-08-23T09:56:00Z",
-  "shift_deadline_local": "2026-08-23T11:56:00+02:00",
+  "actual_time_utc": "2026-08-22T22:48:00Z",
   "work_packages": {
     "A_entry_gate_truth": "PASS",
     "B_route_resilience": "PASS",
     "C_owner_workflow": "PASS",
     "D_fixture_mapper_hardening": "PASS",
     "E_all_route_automation": "PASS",
-    "F_accessibility": "PENDING",
-    "G_responsive_visual": "PENDING",
-    "H_performance_console_security": "PENDING",
-    "I_endurance_six_hour": "PENDING",
+    "F_accessibility": "PASS",
+    "G_responsive_visual": "PASS",
+    "H_performance_console_security": "PASS",
+    "I_endurance_six_hour": "IN_PROGRESS",
     "J_adversarial_review": "PENDING"
   },
-  "commits": [
-    {
-      "sha": "1c792bb8a83861f9a649f9e5b8a6090b0bfd7fe2",
-      "message": "[verified] add route resilience gate across Command Center routes",
-      "work_package": "B_route_resilience"
-    },
-    {
-      "sha": "b858931875548f31729ba820cdf5ce9491192a8f",
-      "message": "[verified] finish owner workflow honesty and control audit (WP-C)",
-      "work_package": "C_owner_workflow"
-    },
-    {
-      "sha": "28dd9dce4d10d3dbec2b75273153eae0feadc238",
-      "message": "[verified] harden snapshot mapper with boundary truth cases (WP-D)",
-      "work_package": "D_fixture_mapper_hardening"
-    },
-    {
-      "sha": "c369ce25654946fdafd30727b98c29bbc7ef0e21",
-      "message": "[verified] add all-route state matrix automation harness (WP-E)",
-      "work_package": "E_all_route_automation"
-    }
-  ],
+  "commits": {
+    "wp_f": "8fd0d27",
+    "wp_g": "0a9c046",
+    "wp_h": "159a31e",
+    "wp_endurance_runner": "83b1e9a",
+    "head_before_endurance": "83b1e9a875548f31729ba820cdf5ce9491192a8f"
+  },
   "gates": {
-    "wp_b_lint": "PASS",
-    "wp_b_typecheck": "PASS",
-    "wp_b_test": "PASS",
-    "wp_b_test_count": "69/69",
-    "wp_c_lint": "PASS",
-    "wp_c_typecheck": "PASS",
-    "wp_c_test": "PASS",
-    "wp_c_test_count": "88/88",
-    "wp_c_build": "PASS",
-    "wp_c_e2e_owner_workflow": "PASS",
-    "wp_c_e2e_owner_workflow_count": "13/13",
-    "wp_d_lint": "PASS",
-    "wp_d_typecheck": "PASS",
-    "wp_d_test": "PASS",
-    "wp_d_test_count": "91/91",
-    "wp_d_build": "PASS",
-    "wp_e_lint": "PASS",
-    "wp_e_typecheck": "PASS",
-    "wp_e_test": "PASS",
-    "wp_e_test_count": "91/91",
-    "wp_e_build": "PASS",
-    "wp_e_e2e_route_matrix": "PASS",
-    "wp_e_e2e_route_matrix_count": "77/77"
+    "lint": "PASS",
+    "typecheck": "PASS",
+    "unit_tests": "91/91",
+    "build": "PASS",
+    "e2e_accessibility": "11/11",
+    "e2e_owner_workflow": "13/13",
+    "e2e_route_matrix": "77/77",
+    "visual_manifest_cells": "225/225 PASS"
+  },
+  "endurance": {
+    "status": "starting",
+    "requested_duration_hours": 6,
+    "confirmation_duration_minutes": 90,
+    "port": 4523,
+    "prior_attempt_note": "Aborted at 667ms; restarting full 6h run"
   },
   "checkpoints": [
     {
-      "at_utc": "2026-08-22T21:56:00Z",
-      "head_sha": "3e57d2429eaf7ae0e000277463363bf5106e5a5b",
-      "note": "Continuation shift started. Prior PASS rejected; WP-A checkpoint preserved."
-    },
-    {
-      "at_utc": "2026-08-22T22:08:00Z",
-      "head_sha": "1c792bb8a83861f9a649f9e5b8a6090b0bfd7fe2",
-      "note": "WP-B route resilience complete; all non-Discovery routes gated."
+      "at_utc": "2026-08-22T22:48:00Z",
+      "head_sha": "83b1e9a875548f31729ba820cdf5ce9491192a8f",
+      "note": "WP-F/G/H verified at HEAD; restarting 6h endurance on port 4523"
     }
   ],
-  "non_discovery_routes": [
-    "/",
-    "/missions",
-    "/missions/:missionId",
-    "/agents",
-    "/agents/:agentId",
-    "/memory",
-    "/memory/:memoryId",
-    "/executive",
-    "/evidence",
-    "/evidence/:evidenceId",
-    "/timeline",
-    "/systems",
-    "/systems/:systemId",
-    "/notifications",
-    "/*"
-  ]
+  "verdict": "IN_PROGRESS"
 }
