@@ -13,7 +13,7 @@
     "B_route_resilience": "PASS",
     "C_owner_workflow": "PASS",
     "D_fixture_mapper_hardening": "PASS",
-    "E_all_route_automation": "PENDING",
+    "E_all_route_automation": "PASS",
     "F_accessibility": "PENDING",
     "G_responsive_visual": "PENDING",
     "H_performance_console_security": "PENDING",
@@ -30,6 +30,11 @@
       "sha": "b858931875548f31729ba820cdf5ce9491192a8f",
       "message": "[verified] finish owner workflow honesty and control audit (WP-C)",
       "work_package": "C_owner_workflow"
+    },
+    {
+      "sha": "28dd9dce4d10d3dbec2b75273153eae0feadc238",
+      "message": "[verified] harden snapshot mapper with boundary truth cases (WP-D)",
+      "work_package": "D_fixture_mapper_hardening"
     }
   ],
   "gates": {
@@ -48,7 +53,14 @@
     "wp_d_typecheck": "PASS",
     "wp_d_test": "PASS",
     "wp_d_test_count": "91/91",
-    "wp_d_build": "PASS"
+    "wp_d_build": "PASS",
+    "wp_e_lint": "PASS",
+    "wp_e_typecheck": "PASS",
+    "wp_e_test": "PASS",
+    "wp_e_test_count": "91/91",
+    "wp_e_build": "PASS",
+    "wp_e_e2e_route_matrix": "PASS",
+    "wp_e_e2e_route_matrix_count": "77/77"
   },
   "checkpoints": [
     {
