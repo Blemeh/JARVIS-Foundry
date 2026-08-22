@@ -1,20 +1,21 @@
 {
-  "active_phase": "PHASE_2_WP3",
-  "updated_at": "2026-08-22T03:20:00+02:00",
+  "active_phase": "PHASE_3_WP4_WP5",
+  "updated_at": "2026-08-22T04:10:00+02:00",
   "branch": "candidate/v3-implementation",
   "worktree": "C:/temp/JARVIS-V3-Implementation",
-  "head": "aeb79d5 [V3-PHASE1-WP0-WP2-DONE]",
+  "head": "2c81b1f [V3-PHASE2-WP3-DONE]",
   "completed": [
-    "Phase 0 + Phase 1 committed (see RESUME history in git)",
-    "WP3: v3_cycle.py (run_discovery_cycle, compile_mission, CycleReport)",
-    "WP3: shared observe_for_cycle extracted from v3_loop.run_one_loop (handoff \u00a78 sanctioned); WAIT path delegates to it; test_v3_loop 6/6 green",
-    "WP3: worker_loop.run_cycle dual-path at single choke point (discovery_cycle_enabled)",
-    "WP3 tests: test_v3_discovery_cycle.py 8/8 (flag off regression, flag on lab loop, dedup fingerprint, STOP gate, dual path both ways, no-revert rollback)"
+    "Phase 0-2 committed: 12faf65 base, aeb79d5 phase1, 2c81b1f phase2",
+    "WP4: v3_teams.py (ROLE_MANIFEST bounded table, validate_team cap 6 + single verifier, fresh_verifier_identity fail-closed with REDUCED independence, repair_budget_exhausted durable from FAIL verdicts, budget=3)",
+    "WP4 tests: test_v3_teams.py 9/9 (incl. self-certification rejection, per-step budget)",
+    "WP5: v3_git.py (GitEffectAdapter: preflight_identity fail-closed, push exactly-once via effects journal, ls-remote provider proof, reconcile_pending resolution, GitReconcilePending blocks blind retry)",
+    "WP5 tests: test_v3_git_reconcile.py 7/7 (disposable bare remote push/pull proof, rejection terminality, ambiguity freeze + reconcile both directions, STOP gate)",
+    "projection fix: system.action_started handler tolerates git-effect payloads (system_id/payload_hash defaults) \u2014 existing effects suite still green (51 passed)"
   ],
   "verification_so_far": {
-    "focused": "test_v3_loop + test_executive_intelligence + test_v3_scoring + test_v3_projections: 60 passed; test_v3_discovery_cycle: 8 passed"
+    "focused": "test_v3_teams 9 + test_v3_git_reconcile 7 + test_effects/test_role_dispatch/test_verifier_truth 51 all green"
   },
-  "running": "proc_da7df7b172a8 phase-boundary full suite -> var/evidence/phase2.junit.xml",
-  "next_exact_action": "On suite exit: build WP3_SUITE_DELTA.json vs BASELINE_SUITE.json (zero new failures), commit [V3-PHASE2-WP3-DONE], reread files 07/08, start Phase 3 (WP4+WP5).",
+  "running": "proc_8ff3742b7ecf phase-boundary full suite -> var/evidence/phase3.junit.xml",
+  "next_exact_action": "On suite exit: build WP4_WP5_SUITE_DELTA.json vs baseline (zero new failures), commit [V3-PHASE3-WP4-WP5-DONE], reread files 07/08, start Phase 4 (WP6+WP7).",
   "blockers": []
 }

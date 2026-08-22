@@ -978,13 +978,17 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
         # V5 exit evidence 2: the journal row is UNIQUE on
         # (system_id, target_ref, payload_hash) — a retried delivery of
         # the same effect dedupes at the projection level too.
+        # V3 WP5 git effects journal under a synthetic system id (the
+        # adapter carries its own identity payload for provenance).
         connection.execute(
             """INSERT OR IGNORE INTO system_actions(
                 action_key, system_id, target_ref, payload_hash, kind,
                 status, last_event_id, updated_at
             ) VALUES (?, ?, ?, ?, ?, 'STARTED', ?, ?)""",
-            (payload["action_key"], payload["system_id"],
-             payload["target_ref"], payload["payload_hash"],
+            (payload["action_key"], payload.get("system_id", "git"),
+             payload["target_ref"],
+             payload.get("payload_hash")
+             or payload.get("action_key", ""),
              payload.get("kind", ""), event.event_id, event.recorded_at),
         )
     elif event.event_type == "system.action_completed":
