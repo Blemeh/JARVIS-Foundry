@@ -35,6 +35,11 @@
       "sha": "28dd9dce4d10d3dbec2b75273153eae0feadc238",
       "message": "[verified] harden snapshot mapper with boundary truth cases (WP-D)",
       "work_package": "D_fixture_mapper_hardening"
+    },
+    {
+      "sha": "c369ce25654946fdafd30727b98c29bbc7ef0e21",
+      "message": "[verified] add all-route state matrix automation harness (WP-E)",
+      "work_package": "E_all_route_automation"
     }
   ],
   "gates": {
