@@ -412,10 +412,40 @@ def run_cycle(
             source_type="supervisor", source_id=instance_id,
             idempotency_key=f"worker_loop.cycle_started:{loop_id}",
         ))
-        mission_id = _select_contract(database)
-        if mission_id is None and config.executive_selection_enabled:
-            mission_id = _maybe_executive_select(
-                database, config, loop_id=loop_id, instance_id=instance_id)
+        # V3 WP3 single choke point: when discovery.cycle_enabled the
+        # unified experimental cycle replaces the split selection path.
+        # Flag OFF (default) keeps v3_loop WAIT + executive selection
+        # exactly as before — no other code changes.
+        if config.discovery_cycle_enabled:
+            from functools import partial
+            from ..v3_cycle import run_discovery_cycle
+            from ..v3_loop import observe_for_cycle
+
+            report = run_discovery_cycle(
+                database, loop_id=loop_id,
+                resource_id=config.resource_id,
+                capability=config.capability,
+                source_id=f"worker-loop:{instance_id}",
+                observe=partial(
+                    observe_for_cycle, loop_id=loop_id,
+                    mission_id=config.mission_id,
+                    resource_id=config.resource_id,
+                    vault_root=vault_root, handoff_dir=handoff_dir,
+                    research_dirs=research_dirs, repo_paths=repo_paths),
+            )
+            if report.outcome == "COMPILED" and report.mission_id:
+                mission_id: str | None = report.mission_id
+            else:
+                return _waiting_report(
+                    database, loop_id=loop_id, instance_id=instance_id,
+                    reason=f"v3 cycle {report.outcome}: "
+                           f"{report.reason or 'no mission compiled'}",
+                )
+        else:
+            mission_id = _select_contract(database)
+            if mission_id is None and config.executive_selection_enabled:
+                mission_id = _maybe_executive_select(
+                    database, config, loop_id=loop_id, instance_id=instance_id)
         if mission_id is None:
             return _waiting_report(
                 database, loop_id=loop_id, instance_id=instance_id,

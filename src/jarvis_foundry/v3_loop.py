@@ -172,50 +172,35 @@ def _default_instructions(objective: str, target: Path) -> str:
         "End the file with a line: VERIFIED_BY <your identity>.")
 
 
-def run_one_loop(db: FoundryDatabase, *, loop_id: str, adapter: Any,
-                 router: Any, mission_id: str = "mission-wfm-optimizer",
-                 resource_id: str = "resource-wfm-optimizer",
-                 capability: str = DEFAULT_CAPABILITY,
-                 min_score: float = DEFAULT_MIN_SCORE,
-                 score_budget: int = 8,
-                 max_items: int = 40, max_bytes: int = 80_000,
-                 vault_root: str | Path | None = None,
-                 handoff_dir: str | Path | None = None,
-                 research_dirs: Iterable[str | Path] = (),
-                 repo_paths: Iterable[str | Path] | None = None,
-                 target_root: str | Path | None = None,
-                 instructions_builder: Callable[[str, Path], str] | None = None,
-                 stop_path: str | Path | None = None,
-                 test_legacy_selection: bool = False,
-                 ) -> dict[str, Any]:
-    """Run one complete real loop. Returns the loop report dict.
+def observe_for_cycle(
+    db: FoundryDatabase, *, loop_id: str, mission_id: str = "mission-wfm-optimizer",
+    resource_id: str = "resource-wfm-optimizer",
+    vault_root: str | Path | None = None,
+    handoff_dir: str | Path | None = None,
+    research_dirs: Iterable[str | Path] = (),
+    repo_paths: Iterable[str | Path] | None = None,
+    max_items: int = 40, max_bytes: int = 80_000,
+) -> dict[str, Any]:
+    """Shared observation steps (1-3b) extracted from run_one_loop.
 
-    Independent candidate selection is TEST-ONLY. Production authority is
-    ExecutiveDecisionService via ``runtime.worker_loop``.
+    V3 WP3: both the legacy WAIT path and the unified cycle call THIS
+    function, so observation is never duplicated. Returns observed
+    counts and candidates_created; performs no selection.
     """
-    report: dict[str, Any] = {"loop_id": loop_id}
-
-    # 0. MANDATORY MODEL ROUTING (DIR-2026-08-12): every real role must
-    # resolve to the configured provider policy (provider.yaml) with no
-    # fallbacks. A non-compliant router refuses the loop BEFORE any
-    # observation, mutation or dispatch (dispatch would have to be BLOCKED,
-    # never substituted with another model).
-    router.enforce_directive_routing()
-
     # 1+2. OBSERVE + RECORD EVIDENCE (live ingestion, bounded)
     cycle = run_ingestion_cycle(
         db, sources=["vault", "handoffs", "repo", "system"],
         vault_root=vault_root, handoff_dir=handoff_dir,
         repo_paths=list(repo_paths or []), mission_id=mission_id,
         max_items=max_items, max_bytes=max_bytes)
-    report["observed"] = {k: v["claims_created"] for k, v in cycle.items()}
+    observed_map = {k: v["claims_created"] for k, v in cycle.items()}
 
     # 3. GENERATE CANDIDATE (research queue → discovery pipeline)
     items = detect_research_items(db, vault_root=vault_root,
                                   handoff_dir=handoff_dir,
                                   research_dirs=research_dirs,
                                   repo_paths=tuple(repo_paths or ()))
-    report["research_items"] = len(items)
+    research_items_count = len(items)
 
     # 3c. POLL THE DURABLE MONITOR REGISTRY (DIR-2026-08-12 item 6) —
     # BEFORE the queue conversion, so genuinely new observations are
@@ -251,10 +236,10 @@ def run_one_loop(db: FoundryDatabase, *, loop_id: str, adapter: Any,
             "objective": objective,
             "evidence": [{"item_id": item.get("item_id"),
                           "reason": item.get("reason")}]})
-    report["monitors"] = {}
+    monitors_report = {}
     for kind, monitor_id in monitor_ids.items():
         result = poll_monitor(db, monitor_id, poll_items, poll_key=loop_id)
-        report["monitors"][kind] = {
+        monitors_report[kind] = {
             "monitor_id": monitor_id,
             "polled": True,
             "items_seen": result["items_seen"],
@@ -263,7 +248,7 @@ def run_one_loop(db: FoundryDatabase, *, loop_id: str, adapter: Any,
     # the queue then resolves every remaining OPEN item (the
     # poll-generated objectives resolve as already covered)
     candidates = generate_research_candidates(db)
-    report["candidates_created"] = candidates["candidates_created"]
+    candidates_created = candidates["candidates_created"]
 
     # 3b. MAINTENANCE WORK when needed (measured signals; deduped through
     # the same candidate pipeline)
@@ -271,8 +256,57 @@ def run_one_loop(db: FoundryDatabase, *, loop_id: str, adapter: Any,
         db, mission_id=mission_id, vault_root=vault_root,
         handoff_dir=handoff_dir, research_dirs=research_dirs,
         repo_paths=tuple(repo_paths or ()))
-    report["maintenance"] = maintenance["counts"]
-    report["maintenance_candidate_created"] = maintenance["created"]
+    maintenance_counts = maintenance["counts"]
+    maintenance_created = maintenance["created"]
+
+    return {
+        "observed": observed_map,
+        "research_items": research_items_count,
+        "monitors": monitors_report,
+        "candidates_created": candidates_created,
+        "maintenance": maintenance_counts,
+        "maintenance_candidate_created": maintenance_created,
+    }
+
+
+def run_one_loop(db: FoundryDatabase, *, loop_id: str, adapter: Any,
+                 router: Any, mission_id: str = "mission-wfm-optimizer",
+                 resource_id: str = "resource-wfm-optimizer",
+                 capability: str = DEFAULT_CAPABILITY,
+                 min_score: float = DEFAULT_MIN_SCORE,
+                 score_budget: int = 8,
+                 max_items: int = 40, max_bytes: int = 80_000,
+                 vault_root: str | Path | None = None,
+                 handoff_dir: str | Path | None = None,
+                 research_dirs: Iterable[str | Path] = (),
+                 repo_paths: Iterable[str | Path] | None = None,
+                 target_root: str | Path | None = None,
+                 instructions_builder: Callable[[str, Path], str] | None = None,
+                 stop_path: str | Path | None = None,
+                 test_legacy_selection: bool = False,
+                 ) -> dict[str, Any]:
+    """Run one complete real loop. Returns the loop report dict.
+
+    Independent candidate selection is TEST-ONLY. Production authority is
+    ExecutiveDecisionService via ``runtime.worker_loop``.
+    """
+    report: dict[str, Any] = {"loop_id": loop_id}
+
+    # 0. MANDATORY MODEL ROUTING (DIR-2026-08-12): every real role must
+    # resolve to the configured provider policy (provider.yaml) with no
+    # fallbacks. A non-compliant router refuses the loop BEFORE any
+    # observation, mutation or dispatch (dispatch would have to be BLOCKED,
+    # never substituted with another model).
+    router.enforce_directive_routing()
+
+    # 1+2+3(+3b). OBSERVE via the SHARED extraction (V3 WP3): identical
+    # steps for the legacy WAIT path and the unified cycle — no duplication.
+    observation = observe_for_cycle(
+        db, loop_id=loop_id, mission_id=mission_id,
+        resource_id=resource_id, vault_root=vault_root,
+        handoff_dir=handoff_dir, research_dirs=research_dirs,
+        repo_paths=repo_paths, max_items=max_items, max_bytes=max_bytes)
+    report.update(observation)
 
     # 4. SCORE + SELECT/REJECT — production authority is ExecutiveDecisionService.
     if not test_legacy_selection:
