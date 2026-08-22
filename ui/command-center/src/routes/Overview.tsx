@@ -257,7 +257,7 @@ function OverviewContent({
 
         <div className="v4-footer">
           <span>
-            Foundry ledger projection • generated {new Date().toISOString()} • source {sourceMode === "SIMULATED" ? "SIMULATED" : sourceMode}
+            Foundry ledger projection • observed {overview.uptime} • source {sourceMode === "SIMULATED" ? "SIMULATED" : sourceMode}
           </span>
           <a href="#main-content">Inspect evidence</a>
         </div>

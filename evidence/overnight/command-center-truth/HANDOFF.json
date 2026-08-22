@@ -1,62 +1,33 @@
 {
   "lane": "overnight-command-center-truth",
-  "verdict": "PASS",
+  "verdict": "IN_PROGRESS",
   "base_sha": "ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2",
-  "final_sha": "c33cf99e26a9aa5f149feafbd651805c73ab2a75",
+  "partial_checkpoint_sha": "3e57d2429eaf7ae0e000277463363bf5106e5a5b",
+  "final_sha": null,
   "branch": "candidate/overnight-command-center-truth",
   "worktree": "C:\\temp\\JARVIS-Overnight-Command-Center-Truth",
   "work_packages": {
-    "A_entry_gate": "PASS",
-    "B_route_truth": "PASS",
-    "C_resilience": "PARTIAL",
-    "D_accessibility": "PASS",
-    "E_fixtures_smoke": "PASS"
+    "A_entry_gate_truth": "PASS",
+    "B_route_resilience": "PASS",
+    "C_owner_workflow": "PASS",
+    "D_fixture_mapper_hardening": "PASS",
+    "E_all_route_automation": "PASS",
+    "F_accessibility": "PASS",
+    "G_responsive_visual": "PASS",
+    "H_performance_console_security": "PASS",
+    "I_endurance_six_hour": "IN_PROGRESS",
+    "J_adversarial_review": "IN_PROGRESS"
   },
-  "defects_fixed": [
-    "Overview UNKNOWN cost no longer renders $0.38",
-    "snapshotMapper removed fabricated trust score, coverage, and resource percentages",
-    "mapMeasuredCostResource handles measured_actual_total_usd string UNKNOWN token",
-    "LAB trust state maps to DEGRADED not PROVEN",
-    "Trust factors include constraints and stale-leases",
-    "Systems resource meters filter unit=% only",
-    "Overview wires constraints/stale from trust factors",
-    "Simulated measured cost labeled UNKNOWN · SIMULATED",
-    "Timeline linked records no longer default to 1",
-    "Mission completion withheld for in-progress live states"
-  ],
-  "files_changed": [
-    "ui/command-center/src/lib/truthFormat.ts",
-    "ui/command-center/src/lib/snapshotMapper.ts",
-    "ui/command-center/src/routes/Overview.tsx",
-    "ui/command-center/src/routes/Systems.tsx",
-    "ui/command-center/src/components/TrustDialog.tsx",
-    "ui/command-center/src/lib/__tests__/truthFormat.test.ts",
-    "ui/command-center/src/lib/__tests__/snapshotMapper.test.ts",
-    "ui/command-center/src/routes/__tests__/overview.test.tsx",
-    "ui/command-center/src/components/__tests__/trust.test.tsx",
-    "ui/command-center/e2e/truth-lane.spec.ts",
-    "ui/command-center/e2e/smoke.spec.ts",
-    "ui/command-center/scripts/capture-truth-visuals.mjs",
-    "evidence/overnight/command-center-truth/"
-  ],
   "gates": {
     "lint": "PASS",
     "typecheck": "PASS",
-    "unit_tests": "PASS (61/61)",
+    "unit_tests": "91/91",
     "production_build": "PASS",
-    "visual_port_4523": "PASS (24 screenshots)"
+    "e2e_full": "161/161"
   },
-  "visual_evidence": {
-    "port": 4523,
-    "viewports": ["1600x1000", "834x1112", "390x844"],
-    "routes": ["overview", "systems", "missions", "timeline", "evidence", "agents", "notifications", "executive"],
-    "directory": "evidence/overnight/command-center-truth/screenshots/"
-  },
-  "backend_handoffs": "evidence/overnight/command-center-truth/BACKEND_HANDOFF.md",
-  "matrices": "evidence/overnight/command-center-truth/SOURCE_TO_DISPLAY_MATRIX.md",
-  "unresolved_risks": [
-    "Work package C partial: non-Overview routes retain existing fetch error handling; Overview now has ErrorState",
-    "Simulated fixture trust lacks constraints/stale-leases factors; Overview shows 0 until fixtures extended"
+  "blocking_items": [
+    "WP-I: 6-hour endurance run must complete with checkpoints",
+    "WP-J: adversarial DISPROVE PARTIAL until endurance complete; bugbot F6/F7 fixes pending re-review"
   ],
-  "next_autonomous_action": "Extend mock trust fixtures with constraint/stale factors; add .catch ErrorState to remaining non-Discovery routes"
+  "note": "Prior PASS verdict was premature and corrected per WP-J bugbot finding F7."
 }

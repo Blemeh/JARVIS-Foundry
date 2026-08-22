@@ -1,13 +1,13 @@
 {
-  "status": "complete",
+  "status": "running",
   "baseUrl": "http://localhost:4523",
-  "requestedDurationMs": 90000,
-  "requestedDurationHours": 0.025,
+  "requestedDurationMs": 900000,
+  "requestedDurationHours": 0.25,
   "checkpointIntervalMs": 900000,
-  "startedAt": "2026-08-22T22:56:44.986Z",
-  "endedAt": "2026-08-22T22:58:15.089Z",
-  "elapsedMs": 90103,
-  "cycles": 3206,
+  "startedAt": "2026-08-22T23:07:19.344Z",
+  "endedAt": null,
+  "elapsedMs": 4604,
+  "cycles": 0,
   "routes": [
     "/",
     "/executive",
@@ -31,23 +31,147 @@
   "checkpoints": [
     {
       "label": "start",
-      "at": "2026-08-22T22:56:51.071Z",
+      "at": "2026-08-22T23:07:19.638Z",
       "cycles": 0,
       "errorCount": 0,
       "memory": {
         "usedJSHeapSize": 10000000
       }
-    },
-    {
-      "label": "end",
-      "at": "2026-08-22T22:58:15.082Z",
-      "cycles": 3206,
-      "errorCount": 0,
-      "memory": null
     }
   ],
-  "errors": [],
-  "lastHeartbeatAt": "2026-08-22T22:58:14.994Z",
-  "pass": true,
+  "errors": [
+    {
+      "at": "2026-08-22T23:07:19.681Z",
+      "type": "http",
+      "message": "http://localhost:4523/?scenario=NORMAL_OPERATION -> 500"
+    },
+    {
+      "at": "2026-08-22T23:07:19.682Z",
+      "type": "console.error",
+      "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    },
+    {
+      "at": "2026-08-22T23:07:20.011Z",
+      "type": "http",
+      "message": "http://localhost:4523/executive?scenario=NORMAL_OPERATION -> 500"
+    },
+    {
+      "at": "2026-08-22T23:07:20.011Z",
+      "type": "console.error",
+      "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    },
+    {
+      "at": "2026-08-22T23:07:20.341Z",
+      "type": "http",
+      "message": "http://localhost:4523/missions?scenario=NORMAL_OPERATION -> 500"
+    },
+    {
+      "at": "2026-08-22T23:07:20.341Z",
+      "type": "console.error",
+      "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    },
+    {
+      "at": "2026-08-22T23:07:20.677Z",
+      "type": "http",
+      "message": "http://localhost:4523/missions/M-HYB-014?scenario=NORMAL_OPERATION -> 500"
+    },
+    {
+      "at": "2026-08-22T23:07:20.678Z",
+      "type": "console.error",
+      "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    },
+    {
+      "at": "2026-08-22T23:07:21.004Z",
+      "type": "http",
+      "message": "http://localhost:4523/agents?scenario=NORMAL_OPERATION -> 500"
+    },
+    {
+      "at": "2026-08-22T23:07:21.004Z",
+      "type": "console.error",
+      "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    },
+    {
+      "at": "2026-08-22T23:07:21.324Z",
+      "type": "http",
+      "message": "http://localhost:4523/agents/WRK-HERMES?scenario=NORMAL_OPERATION -> 500"
+    },
+    {
+      "at": "2026-08-22T23:07:21.324Z",
+      "type": "console.error",
+      "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    },
+    {
+      "at": "2026-08-22T23:07:21.703Z",
+      "type": "http",
+      "message": "http://localhost:4523/memory?scenario=NORMAL_OPERATION -> 500"
+    },
+    {
+      "at": "2026-08-22T23:07:21.703Z",
+      "type": "console.error",
+      "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    },
+    {
+      "at": "2026-08-22T23:07:22.026Z",
+      "type": "http",
+      "message": "http://localhost:4523/evidence?scenario=NORMAL_OPERATION -> 500"
+    },
+    {
+      "at": "2026-08-22T23:07:22.027Z",
+      "type": "console.error",
+      "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    },
+    {
+      "at": "2026-08-22T23:07:22.355Z",
+      "type": "http",
+      "message": "http://localhost:4523/timeline?scenario=NORMAL_OPERATION -> 500"
+    },
+    {
+      "at": "2026-08-22T23:07:22.356Z",
+      "type": "console.error",
+      "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    },
+    {
+      "at": "2026-08-22T23:07:22.680Z",
+      "type": "http",
+      "message": "http://localhost:4523/systems?scenario=NORMAL_OPERATION -> 500"
+    },
+    {
+      "at": "2026-08-22T23:07:22.682Z",
+      "type": "console.error",
+      "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    },
+    {
+      "at": "2026-08-22T23:07:22.995Z",
+      "type": "http",
+      "message": "http://localhost:4523/notifications?scenario=NORMAL_OPERATION -> 500"
+    },
+    {
+      "at": "2026-08-22T23:07:22.997Z",
+      "type": "console.error",
+      "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    },
+    {
+      "at": "2026-08-22T23:07:23.325Z",
+      "type": "http",
+      "message": "http://localhost:4523/?scenario=STOP_ACTIVE -> 500"
+    },
+    {
+      "at": "2026-08-22T23:07:23.325Z",
+      "type": "console.error",
+      "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    },
+    {
+      "at": "2026-08-22T23:07:23.639Z",
+      "type": "http",
+      "message": "http://localhost:4523/executive?scenario=STOP_ACTIVE -> 500"
+    },
+    {
+      "at": "2026-08-22T23:07:23.640Z",
+      "type": "console.error",
+      "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    }
+  ],
+  "lastHeartbeatAt": "2026-08-22T23:07:19.344Z",
+  "pass": false,
   "note": "Session used reduced ENDURANCE_DURATION_MS; full 6h gate requires unattended rerun."
 }

@@ -65,13 +65,11 @@ export const findMeasuredCostResource = (
 ): MeasuredCostView | null => {
   const row = resourceUsage.find((entry) => entry.label === MEASURED_COST_LABEL)
   if (!row) return null
-  if (row.value === NOT_REPORTED_NUMERIC) {
+  const unit = row.unit.trim()
+  if (unit === "NOT_REPORTED" || (row.value === NOT_REPORTED_NUMERIC && unit !== "USD")) {
     return { display: "UNKNOWN", source: "UNKNOWN", unknownMeasurements: null }
   }
-  if (row.value === 0 && row.unit.trim() === "USD") {
-    return { display: formatUsd(0), source: "MEASURED", unknownMeasurements: null }
-  }
-  if (row.value > 0 && row.unit.trim() === "USD") {
+  if (unit === "USD" && Number.isFinite(row.value)) {
     return { display: formatUsd(row.value), source: "MEASURED", unknownMeasurements: null }
   }
   return { display: "UNKNOWN", source: "NOT_REPORTED", unknownMeasurements: null }

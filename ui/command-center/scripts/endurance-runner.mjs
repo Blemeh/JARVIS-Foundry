@@ -6,6 +6,8 @@ const baseUrl = process.env.ENDURANCE_BASE ?? "http://localhost:4523"
 const durationMs = Number(process.env.ENDURANCE_DURATION_MS ?? 6 * 60 * 60 * 1000)
 const checkpointMs = Number(process.env.ENDURANCE_CHECKPOINT_MS ?? 15 * 60 * 1000)
 const recycleEvery = Number(process.env.ENDURANCE_RECYCLE_EVERY ?? 40)
+const requestDelayMs = Number(process.env.ENDURANCE_REQUEST_DELAY_MS ?? 250)
+const maxErrors = Number(process.env.ENDURANCE_MAX_ERRORS ?? 200)
 const outPath = join(process.cwd(), "..", "..", "evidence", "overnight", "command-center-truth", "ENDURANCE_RESULT.json")
 
 const routes = [
@@ -27,7 +29,10 @@ const scenarios = ["NORMAL_OPERATION", "STOP_ACTIVE", "MISSION_BLOCKED", "WORKER
 const startedAt = new Date()
 const checkpoints = []
 let cycles = 0
-let errors = []
+const errors = []
+const pushError = (entry) => {
+  if (errors.length < maxErrors) errors.push(entry)
+}
 let browser
 let lastHeartbeatAt = startedAt.toISOString()
 
@@ -80,9 +85,9 @@ const runCheckpoint = async (label, page) => {
 }
 
 const attachGuards = (page) => {
-  page.on("pageerror", (err) => errors.push({ at: new Date().toISOString(), type: "pageerror", message: err.message }))
+  page.on("pageerror", (err) => pushError({ at: new Date().toISOString(), type: "pageerror", message: err.message }))
   page.on("console", (msg) => {
-    if (msg.type() === "error") errors.push({ at: new Date().toISOString(), type: "console.error", message: msg.text() })
+    if (msg.type() === "error") pushError({ at: new Date().toISOString(), type: "console.error", message: msg.text() })
   })
 }
 
@@ -121,17 +126,19 @@ try {
             timeout: 20_000,
           })
           if (!response || !response.ok()) {
-            errors.push({
+            pushError({
               at: new Date().toISOString(),
               type: "http",
               message: `${url} -> ${response?.status() ?? "no response"}`,
             })
+          } else {
+            cycles += 1
+            sinceRecycle += 1
           }
-          cycles += 1
-          sinceRecycle += 1
+          await session.page.waitForTimeout(requestDelayMs)
           if (cycles % 25 === 0) persist("running")
         } catch (err) {
-          errors.push({
+          pushError({
             at: new Date().toISOString(),
             type: "navigation",
             message: `${url}: ${err instanceof Error ? err.message : String(err)}`,

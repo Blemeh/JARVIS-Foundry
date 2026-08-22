@@ -177,7 +177,7 @@ export function mapMemoryGraph(snapshot: FoundrySnapshot): MemoryGraph {
     y: 100 + Math.floor(index / 5) * 80,
     r: 18,
     summary: `${m.mem_type ?? "memory"} · ${m.state ?? "UNKNOWN"}`,
-    confidence: 0.7,
+    confidence: NOT_REPORTED_NUMERIC,
     freshness: m.updated_at ?? snapshot.generated_at,
     unknowns: [],
   }));
@@ -215,9 +215,9 @@ const mapMeasuredCostResource = (snapshot: FoundrySnapshot): SystemOverview["res
     return { label: MEASURED_COST_LABEL, value: total, unit: "USD" }
   }
   if (isUnknownToken(total)) {
-    return { label: MEASURED_COST_LABEL, value: NOT_REPORTED_NUMERIC, unit: "USD" }
+    return { label: MEASURED_COST_LABEL, value: NOT_REPORTED_NUMERIC, unit: "NOT_REPORTED" }
   }
-  return { label: MEASURED_COST_LABEL, value: NOT_REPORTED_NUMERIC, unit: "USD" }
+  return { label: MEASURED_COST_LABEL, value: NOT_REPORTED_NUMERIC, unit: "NOT_REPORTED" }
 }
 
 export function mapSystemOverview(snapshot: FoundrySnapshot): SystemOverview {

@@ -168,7 +168,7 @@ export const missionSpecs: Record<string, MissionSpec> = {
       vd("VF-2040", "Plan Feasibility", "WARN_ACCEPT", "Plan requires substantial provider throughput. Accepted, but throttling may occur while provider latency exceeds 1500ms."),
       vd("VF-2041", "Build Structure Scan", "EVALUATING", "Analyzing the handoff payload against activation policy and STOP invariants...", "EV-1142-003", "WRK-VERIFIER"),
     ],
-    stats: { elapsed: "00:04:12", computeCost: "0.42 cr", agentsActive: 4, evidenceArtifacts: 2 },
+    stats: { elapsed: "00:04:12", computeCost: "—", agentsActive: 4, evidenceArtifacts: 2 },
   },
   "M-VER-031": {
     steps: [
@@ -195,7 +195,7 @@ export const missionSpecs: Record<string, MissionSpec> = {
       vd("VF-2037", "Classification Consistency", "PASSED", "No finding promoted to REPAIRED without a fresh independent verification record."),
       vd("VF-2047", "Findings Review", "EVALUATING", "Reviewing open findings against point-in-time audit evidence...", "EV-1142-001", "WRK-VERIFIER"),
     ],
-    stats: { elapsed: "02:41:55", computeCost: "1.18 cr", agentsActive: 2, evidenceArtifacts: 14 },
+    stats: { elapsed: "02:41:55", computeCost: "—", agentsActive: 2, evidenceArtifacts: 14 },
   },
   "M-MEM-007": {
     steps: [
@@ -219,7 +219,7 @@ export const missionSpecs: Record<string, MissionSpec> = {
       vd("VF-2025", "Snapshot Integrity", "PASSED", "Snapshot 004 hashes verified against the ledger before merge.", "EV-1139-004", "WRK-VERIFIER"),
       vd("VF-2026", "Conflict Classification", "EVALUATING", "Classifying worker-scratch claims that overlap durable entries."),
     ],
-    stats: { elapsed: "00:41:20", computeCost: "0.31 cr", agentsActive: 1, evidenceArtifacts: 1 },
+    stats: { elapsed: "00:41:20", computeCost: "—", agentsActive: 1, evidenceArtifacts: 1 },
   },
   "M-SUP-002": {
     steps: [
@@ -243,7 +243,7 @@ export const missionSpecs: Record<string, MissionSpec> = {
       vd("VF-2030", "Drill Procedure Review", "WARN_ACCEPT", "Procedure is deterministic, but the drill window must be owner-confirmed.", "EV-1128-002", "WRK-VERIFIER"),
       vd("VF-2031", "Restart Path Readiness", "EVALUATING", "Verifying restart path against lease invariants."),
     ],
-    stats: { elapsed: "05:12:00", computeCost: "0.08 cr", agentsActive: 0, evidenceArtifacts: 1 },
+    stats: { elapsed: "05:12:00", computeCost: "—", agentsActive: 0, evidenceArtifacts: 1 },
   },
   "M-PRV-011": {
     steps: [
@@ -267,7 +267,7 @@ export const missionSpecs: Record<string, MissionSpec> = {
       vd("VF-2028", "Reroute Policy", "WARN_ACCEPT", "Fallback results match policy; sustained provider latency remains unresolved.", "EV-1138-003", "WRK-VERIFIER"),
       vd("VF-2029", "Fallback Veracity", "EVALUATING", "Verifying a sample of fallback results against primary baselines."),
     ],
-    stats: { elapsed: "09:00:00", computeCost: "0.64 cr", agentsActive: 2, evidenceArtifacts: 1 },
+    stats: { elapsed: "09:00:00", computeCost: "—", agentsActive: 2, evidenceArtifacts: 1 },
   },
   "M-CAN-019": {
     steps: [
@@ -291,7 +291,7 @@ export const missionSpecs: Record<string, MissionSpec> = {
       vd("VF-2044", "Artifact Freeze", "PASSED", "Frozen manifest hashes verified; no drift since seal.", "EV-1140-012", "WRK-VERIFIER"),
       vd("VF-2045", "Promotion Evidence Gate", "EVALUATING", "Waiting for reconciliation mission to confirm main is quiescent."),
     ],
-    stats: { elapsed: "21:40:00", computeCost: "2.05 cr", agentsActive: 3, evidenceArtifacts: 14 },
+    stats: { elapsed: "21:40:00", computeCost: "—", agentsActive: 3, evidenceArtifacts: 14 },
   },
   "M-STP-004": {
     steps: [
@@ -314,7 +314,7 @@ export const missionSpecs: Record<string, MissionSpec> = {
       vd("VF-2032", "STOP Determinism", "PASSED", "STOP path verified offline-safe, independent of Hermes, models, network, and UI health."),
       vd("VF-2033", "Dry Run Integrity", "PASSED", "Dry run completed with zero side effects and full audit record."),
     ],
-    stats: { elapsed: "12:00:00", computeCost: "0.01 cr", agentsActive: 1, evidenceArtifacts: 0 },
+    stats: { elapsed: "12:00:00", computeCost: "—", agentsActive: 1, evidenceArtifacts: 0 },
   },
   "M-CRS-008": {
     steps: [
@@ -339,7 +339,7 @@ export const missionSpecs: Record<string, MissionSpec> = {
       vd("VF-2042", "Crash Restart Integrity", "FAILED", "Initial restart attempt produced a partial lease handoff; corrective run required.", "EV-1142-002", "WRK-VERIFIER"),
       vd("VF-2043", "Post-Recovery Verification", "PASSED", "Repair run A-91 replayed the lease, restarted from checkpoint, and appended corrective entries.", "EV-1142-006", "WRK-VERIFIER"),
     ],
-    stats: { elapsed: "08:18:00", computeCost: "0.52 cr", agentsActive: 2, evidenceArtifacts: 2 },
+    stats: { elapsed: "08:18:00", computeCost: "—", agentsActive: 2, evidenceArtifacts: 2 },
   },
   "M-GAT-022": {
     steps: [
@@ -362,7 +362,7 @@ export const missionSpecs: Record<string, MissionSpec> = {
     verdicts: [
       vd("VF-2038", "Ledger Hash Reconciliation", "FAILED", "Expected hash a7ffc9... does not match stored value. Additive correction queued for owner approval.", "EV-1131-007", "WRK-VERIFIER"),
     ],
-    stats: { elapsed: "11:00:00", computeCost: "0.12 cr", agentsActive: 1, evidenceArtifacts: 1 },
+    stats: { elapsed: "11:00:00", computeCost: "—", agentsActive: 1, evidenceArtifacts: 1 },
   },
   "M-RES-015": {
     steps: [
@@ -384,7 +384,7 @@ export const missionSpecs: Record<string, MissionSpec> = {
     verdicts: [
       vd("VF-2035", "Readiness Measurement", "PASSED", "Measured capacity attached; no pool below the readiness threshold.", "EV-1135-009", "WRK-VERIFIER"),
     ],
-    stats: { elapsed: "15:00:00", computeCost: "0.04 cr", agentsActive: 1, evidenceArtifacts: 1 },
+    stats: { elapsed: "15:00:00", computeCost: "—", agentsActive: 1, evidenceArtifacts: 1 },
   },
   "M-WFL-006": {
     steps: [
@@ -406,7 +406,7 @@ export const missionSpecs: Record<string, MissionSpec> = {
     verdicts: [
       vd("VF-2027", "Projection Consistency", "PASSED", "Mission state, worker leases, and ledger tail project to one consistent snapshot.", "EV-1139-004", "WRK-VERIFIER"),
     ],
-    stats: { elapsed: "24:20:00", computeCost: "0.77 cr", agentsActive: 2, evidenceArtifacts: 1 },
+    stats: { elapsed: "24:20:00", computeCost: "—", agentsActive: 2, evidenceArtifacts: 1 },
   },
   "M-EVI-003": {
     steps: [
@@ -428,7 +428,7 @@ export const missionSpecs: Record<string, MissionSpec> = {
     verdicts: [
       vd("VF-2034", "Provenance Attachment", "PASSED", "Every ingested row carries a source URI and fingerprint before display.", "EV-1142-001", "WRK-VERIFIER"),
     ],
-    stats: { elapsed: "10:00:00", computeCost: "0.09 cr", agentsActive: 2, evidenceArtifacts: 3 },
+    stats: { elapsed: "10:00:00", computeCost: "—", agentsActive: 2, evidenceArtifacts: 3 },
   },
 };
 

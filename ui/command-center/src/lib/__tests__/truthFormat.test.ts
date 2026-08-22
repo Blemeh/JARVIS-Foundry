@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest"
 import {
+  findMeasuredCostResource,
   formatCoveragePercent,
   formatFreshnessLabel,
   formatMeasuredCost,
   formatMeasuredCostDisplay,
   formatResourceMetric,
+  MEASURED_COST_LABEL,
   NOT_REPORTED_NUMERIC,
 } from "../truthFormat"
 
@@ -52,5 +54,20 @@ describe("truthFormat", () => {
   it("labels simulated measured cost explicitly", () => {
     expect(formatMeasuredCostDisplay({ display: "UNKNOWN", source: "UNKNOWN", unknownMeasurements: 1 }, "SIMULATED")).toBe("UNKNOWN · SIMULATED")
     expect(formatMeasuredCostDisplay({ display: "$0.00", source: "MEASURED", unknownMeasurements: 0 }, "SIMULATED")).toBe("$0.00 · SIMULATED")
+  })
+
+  it("renders negative measured cost rows as currency", () => {
+    const view = findMeasuredCostResource([
+      { label: MEASURED_COST_LABEL, value: -0.42, unit: "USD" },
+    ])
+    expect(view).toEqual({ display: "$-0.42", source: "MEASURED", unknownMeasurements: null })
+  })
+
+  it("treats NOT_REPORTED unit as unknown cost", () => {
+    const view = findMeasuredCostResource([
+      { label: MEASURED_COST_LABEL, value: NOT_REPORTED_NUMERIC, unit: "NOT_REPORTED" },
+    ])
+    expect(view?.source).toBe("UNKNOWN")
+    expect(view?.display).toBe("UNKNOWN")
   })
 })

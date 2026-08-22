@@ -17,7 +17,7 @@
     "G_responsive_visual": "PASS",
     "H_performance_console_security": "PASS",
     "I_endurance_six_hour": "IN_PROGRESS",
-    "J_adversarial_review": "PENDING"
+    "J_adversarial_review": "IN_PROGRESS"
   },
   "commits": {
     "wp_f": "8fd0d27",
@@ -29,7 +29,7 @@
   "gates": {
     "lint": "PASS",
     "typecheck": "PASS",
-    "unit_tests": "91/91",
+    "unit_tests": "93/93",
     "build": "PASS",
     "e2e_accessibility": "11/11",
     "e2e_owner_workflow": "13/13",

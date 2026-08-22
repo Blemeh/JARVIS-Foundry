@@ -11,6 +11,12 @@ import { RouteQueryGate } from "../components/RouteQueryGate";
 import { ContextChip, EntityRefLink } from "../components/EntityRefLink";
 import { useRouteQuery } from "../hooks/useRouteQuery";
 import { sourceModeLabel } from "../lib/sourceMode";
+import { NOT_REPORTED_NUMERIC } from "../lib/truthFormat";
+
+const formatConfidenceLabel = (value: number): string => {
+  if (value === NOT_REPORTED_NUMERIC || !Number.isFinite(value) || value < 0) return "NOT REPORTED";
+  return `${value}%`;
+};
 
 function MemoryContent({ graph }: { graph: MemoryGraph }) {
   const { sourceMode } = useCommandCenter();
@@ -140,20 +146,22 @@ function MemoryContent({ graph }: { graph: MemoryGraph }) {
                   <div>
                     <div className="inspector-bar-head">
                       <span className="t-mono">Confidence</span>
-                      <span className="t-mono inspector-bar-value">{selected.confidence}%</span>
+                      <span className="t-mono inspector-bar-value">{formatConfidenceLabel(selected.confidence)}</span>
                     </div>
-                    <div className="meter">
-                      <div className="meter-fill" style={{ width: `${selected.confidence}%` }} />
-                    </div>
+                    {selected.confidence >= 0 && Number.isFinite(selected.confidence) ? (
+                      <div className="meter">
+                        <div className="meter-fill" style={{ width: `${selected.confidence}%` }} />
+                      </div>
+                    ) : (
+                      <p className="t-mono text-muted inspector-unknown-none">Confidence not reported in canonical projection.</p>
+                    )}
                   </div>
                   <div>
                     <div className="inspector-bar-head">
                       <span className="t-mono">Freshness</span>
-                      <span className="t-mono inspector-bar-value">{selected.freshness}</span>
+                      <span className="t-mono inspector-bar-value">{selected.freshness || "NOT REPORTED"}</span>
                     </div>
-                    <div className="meter">
-                      <div className="meter-fill meter-fill-teal" style={{ width: "88%" }} />
-                    </div>
+                    <p className="t-mono text-muted inspector-unknown-none">Freshness is shown as the recorded timestamp, not a fabricated percentage.</p>
                   </div>
                 </div>
               </div>
