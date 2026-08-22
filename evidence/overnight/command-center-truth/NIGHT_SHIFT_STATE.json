@@ -20,7 +20,13 @@
     "I_endurance_six_hour": "PENDING",
     "J_adversarial_review": "PENDING"
   },
-  "commits": [],
+  "commits": [
+    {
+      "sha": "1c792bb8a83861f9a649f9e5b8a6090b0bfd7fe2",
+      "message": "[verified] add route resilience gate across Command Center routes",
+      "work_package": "B_route_resilience"
+    }
+  ],
   "gates": {
     "wp_b_lint": "PASS",
     "wp_b_typecheck": "PASS",
@@ -32,6 +38,11 @@
       "at_utc": "2026-08-22T21:56:00Z",
       "head_sha": "3e57d2429eaf7ae0e000277463363bf5106e5a5b",
       "note": "Continuation shift started. Prior PASS rejected; WP-A checkpoint preserved."
+    },
+    {
+      "at_utc": "2026-08-22T22:08:00Z",
+      "head_sha": "1c792bb8a83861f9a649f9e5b8a6090b0bfd7fe2",
+      "note": "WP-B route resilience complete; all non-Discovery routes gated."
     }
   ],
   "non_discovery_routes": [
@@ -52,4 +63,3 @@
     "/*"
   ]
 }
-
