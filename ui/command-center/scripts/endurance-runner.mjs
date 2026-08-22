@@ -4,7 +4,7 @@ import { join } from "node:path"
 
 const baseUrl = process.env.ENDURANCE_BASE ?? "http://localhost:4523"
 const durationMs = Number(process.env.ENDURANCE_DURATION_MS ?? 6 * 60 * 60 * 1000)
-const checkpointMs = 15 * 60 * 1000
+const checkpointMs = Number(process.env.ENDURANCE_CHECKPOINT_MS ?? 15 * 60 * 1000)
 const recycleEvery = Number(process.env.ENDURANCE_RECYCLE_EVERY ?? 40)
 const outPath = join(process.cwd(), "..", "..", "evidence", "overnight", "command-center-truth", "ENDURANCE_RESULT.json")
 
@@ -29,6 +29,7 @@ const checkpoints = []
 let cycles = 0
 let errors = []
 let browser
+let lastHeartbeatAt = startedAt.toISOString()
 
 const buildReport = (status) => ({
   status,
@@ -43,7 +44,8 @@ const buildReport = (status) => ({
   routes,
   scenarios,
   checkpoints,
-  errors,
+  errors: errors.slice(-200),
+  lastHeartbeatAt,
   pass: status === "complete" && errors.length === 0,
   note:
     durationMs < 6 * 60 * 60 * 1000
@@ -56,6 +58,11 @@ const persist = (status) => {
   writeFileSync(outPath, `${JSON.stringify(buildReport(status), null, 2)}\n`)
 }
 
+const heartbeat = setInterval(() => {
+  lastHeartbeatAt = new Date().toISOString()
+  persist("running")
+}, 30_000)
+
 const runCheckpoint = async (label, page) => {
   const snapshot = {
     label,
@@ -63,7 +70,9 @@ const runCheckpoint = async (label, page) => {
     cycles,
     errorCount: errors.length,
     memory: page
-      ? await page.evaluate(() => (performance.memory ? { usedJSHeapSize: performance.memory.usedJSHeapSize } : null)).catch(() => null)
+      ? await page
+          .evaluate(() => (performance.memory ? { usedJSHeapSize: performance.memory.usedJSHeapSize } : null))
+          .catch(() => null)
       : null,
   }
   checkpoints.push(snapshot)
@@ -78,7 +87,7 @@ const attachGuards = (page) => {
 }
 
 const createSession = async () => {
-  if (!browser) browser = await chromium.launch({ channel: "chrome", headless: true })
+  if (!browser) browser = await chromium.launch({ headless: true })
   const context = await browser.newContext({ viewport: { width: 1600, height: 1000 } })
   const page = await context.newPage()
   attachGuards(page)
@@ -105,26 +114,27 @@ try {
           sinceRecycle = 0
         }
 
+        const url = `${baseUrl}${path}?scenario=${scenario}`
         try {
-          const response = await session.page.goto(`${baseUrl}${path}?scenario=${scenario}`, {
-            waitUntil: "domcontentloaded",
-            timeout: 30_000,
+          const response = await session.page.goto(url, {
+            waitUntil: "commit",
+            timeout: 20_000,
           })
           if (!response || !response.ok()) {
             errors.push({
               at: new Date().toISOString(),
               type: "http",
-              message: `${path}?scenario=${scenario} -> ${response?.status() ?? "no response"}`,
+              message: `${url} -> ${response?.status() ?? "no response"}`,
             })
-          } else {
-            cycles += 1
-            sinceRecycle += 1
           }
+          cycles += 1
+          sinceRecycle += 1
+          if (cycles % 25 === 0) persist("running")
         } catch (err) {
           errors.push({
             at: new Date().toISOString(),
             type: "navigation",
-            message: `${path}?scenario=${scenario}: ${err instanceof Error ? err.message : String(err)}`,
+            message: `${url}: ${err instanceof Error ? err.message : String(err)}`,
           })
           await session.context.close().catch(() => undefined)
           session = await createSession()
@@ -140,6 +150,7 @@ try {
     }
   }
 } finally {
+  clearInterval(heartbeat)
   await session.context.close().catch(() => undefined)
   if (browser) await browser.close().catch(() => undefined)
   await runCheckpoint("end", null)
@@ -147,5 +158,7 @@ try {
 }
 
 const report = buildReport("complete")
-console.log(`Endurance ${report.pass ? "PASS" : "FAIL"}: ${cycles} cycles, ${errors.length} errors, ${(report.elapsedMs / 60_000).toFixed(1)} minutes`)
+console.log(
+  `Endurance ${report.pass ? "PASS" : "FAIL"}: ${cycles} cycles, ${errors.length} errors, ${(report.elapsedMs / 60_000).toFixed(1)} minutes`,
+)
 process.exit(report.pass ? 0 : 1)

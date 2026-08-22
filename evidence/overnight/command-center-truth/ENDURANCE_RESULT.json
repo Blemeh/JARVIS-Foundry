@@ -1,0 +1,53 @@
+{
+  "status": "complete",
+  "baseUrl": "http://localhost:4523",
+  "requestedDurationMs": 90000,
+  "requestedDurationHours": 0.025,
+  "checkpointIntervalMs": 900000,
+  "startedAt": "2026-08-22T22:56:44.986Z",
+  "endedAt": "2026-08-22T22:58:15.089Z",
+  "elapsedMs": 90103,
+  "cycles": 3206,
+  "routes": [
+    "/",
+    "/executive",
+    "/missions",
+    "/missions/M-HYB-014",
+    "/agents",
+    "/agents/WRK-HERMES",
+    "/memory",
+    "/evidence",
+    "/timeline",
+    "/systems",
+    "/notifications"
+  ],
+  "scenarios": [
+    "NORMAL_OPERATION",
+    "STOP_ACTIVE",
+    "MISSION_BLOCKED",
+    "WORKER_CRASH",
+    "EMPTY_STATE"
+  ],
+  "checkpoints": [
+    {
+      "label": "start",
+      "at": "2026-08-22T22:56:51.071Z",
+      "cycles": 0,
+      "errorCount": 0,
+      "memory": {
+        "usedJSHeapSize": 10000000
+      }
+    },
+    {
+      "label": "end",
+      "at": "2026-08-22T22:58:15.082Z",
+      "cycles": 3206,
+      "errorCount": 0,
+      "memory": null
+    }
+  ],
+  "errors": [],
+  "lastHeartbeatAt": "2026-08-22T22:58:14.994Z",
+  "pass": true,
+  "note": "Session used reduced ENDURANCE_DURATION_MS; full 6h gate requires unattended rerun."
+}
