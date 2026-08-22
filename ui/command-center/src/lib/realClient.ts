@@ -27,6 +27,7 @@ import type {
   Worker,
 } from "./contracts";
 import { PollingEventStream } from "./pollingEventStream";
+import type { V3DiscoveryView } from "./v3Models";
 import {
   mapEvidence,
   mapMemoryGraph,
@@ -208,6 +209,13 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
 
   async getMemoryNode(id: string): Promise<MemoryNode | null> {
     return (await this.getMemoryGraph()).nodes.find((n) => n.id === id) ?? null;
+  }
+
+  async getDiscovery(): Promise<V3DiscoveryView> {
+    // Backend contract frozen at candidate/v3-integration @701aa74 ships no
+    // discovery section in the command-center snapshot. Honest unavailable —
+    // never fixtures. When the additive §3.13 projection lands, map it here.
+    return { available: false, reason: "PROJECTION_NOT_AVAILABLE" };
   }
 
   async listSystemComponents(): Promise<SystemComponent[]> {

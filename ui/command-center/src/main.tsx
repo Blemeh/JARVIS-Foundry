@@ -9,6 +9,7 @@ import "./styles/global.css";
 import "./styles/shell.css";
 import "./styles/components.css";
 import "./styles/pages.css";
+import "./styles/v3.css";
 import "./styles/v4.css";
 import { App } from "./App";
 import { CommandCenterProvider } from "./context/CommandCenterContext";

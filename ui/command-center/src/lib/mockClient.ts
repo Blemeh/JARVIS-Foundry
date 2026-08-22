@@ -26,6 +26,8 @@ import type {
   Worker,
 } from "./contracts";
 import type { FoundryExecutive } from "./snapshotTypes";
+import type { V3DiscoveryView } from "./v3Models";
+import { buildV3DiscoveryView } from "./v3Fixtures";
 import {
   applyEventToUniverse,
   applyResumeToUniverse,
@@ -144,6 +146,11 @@ export class MockJarvisClient implements JarvisClient {
       recent_decisions: [],
       calibrations: [],
     };
+  }
+
+  async getDiscovery(): Promise<V3DiscoveryView> {
+    await delay();
+    return buildV3DiscoveryView();
   }
 
   async getMemoryNode(id: string): Promise<MemoryNode | null> {

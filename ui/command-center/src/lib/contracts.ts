@@ -6,6 +6,7 @@
  * current mission ships MockJarvisClient behind the same interface.
  */
 import type { FoundryExecutive } from "./snapshotTypes";
+import type { V3DiscoveryView } from "./v3Models";
 
 export type DataSource = "SIMULATED" | "LIVE" | "DEGRADED" | "DISCONNECTED" | "UNKNOWN";
 
@@ -431,6 +432,11 @@ export interface JarvisClient {
   getMemoryGraph(): Promise<MemoryGraph>;
   getMemoryNode(id: string): Promise<MemoryNode | null>;
   getExecutive(): Promise<FoundryExecutive>;
+  /**
+   * V3 discovery projection (§3.13). Live backends without the additive
+   * snapshot section return { available: false } instead of fixtures.
+   */
+  getDiscovery(): Promise<V3DiscoveryView>;
   listSystemComponents(): Promise<SystemComponent[]>;
   getSystem(id: string): Promise<SystemComponent | null>;
   getSystemOverview(): Promise<SystemOverview>;
