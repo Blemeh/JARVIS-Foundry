@@ -18,6 +18,7 @@ src/jarvis_foundry/knowledge.py
 src/jarvis_foundry/knowledge_entities.py
 src/jarvis_foundry/knowledge_extract.py
 src/jarvis_foundry/knowledge_ingestion.py
+src/jarvis_foundry/knowledge_records.py
 src/jarvis_foundry/knowledge_retrieval.py
 src/jarvis_foundry/knowledge_snapshots.py
 src/jarvis_foundry/live_ingestion.py
@@ -29,7 +30,12 @@ src/jarvis_foundry/proving.py
 src/jarvis_foundry/reconcile.py
 src/jarvis_foundry/research_queue.py
 src/jarvis_foundry/systems.py
+src/jarvis_foundry/v3_cycle.py
+src/jarvis_foundry/v3_git.py
 src/jarvis_foundry/v3_loop.py
+src/jarvis_foundry/v3_outcomes.py
+src/jarvis_foundry/v3_scoring.py
+src/jarvis_foundry/v3_teams.py
 src/jarvis_foundry/v4_schema.py
 src/jarvis_foundry/vault_indexer.py
 src/jarvis_foundry/vault_retrieval.py
@@ -44,6 +50,7 @@ src/jarvis_foundry.egg-info/top_level.txt
 src/jarvis_foundry/capabilities/__init__.py
 src/jarvis_foundry/capabilities/registry.py
 src/jarvis_foundry/cli/__init__.py
+src/jarvis_foundry/cli/hermes_env_sync.py
 src/jarvis_foundry/cli/hermes_probe.py
 src/jarvis_foundry/cli/main.py
 src/jarvis_foundry/cli/masked_input.py
@@ -90,6 +97,14 @@ src/jarvis_foundry/evolution/scheduler.py
 src/jarvis_foundry/evolution/shadow.py
 src/jarvis_foundry/evolution/verify.py
 src/jarvis_foundry/execution/pipeline.py
+src/jarvis_foundry/executive/__init__.py
+src/jarvis_foundry/executive/calibration.py
+src/jarvis_foundry/executive/decisions.py
+src/jarvis_foundry/executive/eligibility.py
+src/jarvis_foundry/executive/goals.py
+src/jarvis_foundry/executive/missions.py
+src/jarvis_foundry/executive/predictions.py
+src/jarvis_foundry/executive/scoring.py
 src/jarvis_foundry/gates/__init__.py
 src/jarvis_foundry/gates/minigates.py
 src/jarvis_foundry/gates/owner_families.py
@@ -110,6 +125,7 @@ src/jarvis_foundry/mission/lineage.py
 src/jarvis_foundry/mission/loop.py
 src/jarvis_foundry/mission/proposal.py
 src/jarvis_foundry/mission/verification.py
+src/jarvis_foundry/mission/verifier_binding.py
 src/jarvis_foundry/obsidian/__init__.py
 src/jarvis_foundry/obsidian/policy.py
 src/jarvis_foundry/obsidian/snapshots.py

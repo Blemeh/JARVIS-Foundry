@@ -959,8 +959,6 @@ MIGRATIONS: dict[int, str] = {
     """,
     35: """
     -- WP-24H-V2KB (V2 Knowledge Brain typed records): additive only.
-    -- Adopted VERBATIM from merged origin/main f1660f6 (entry 35) by
-    -- candidate/v3-integration; see evidence/v3/impl/INTEGRATION_MERGE.json.
     -- knowledge_claims gains typed-record + evidence-status columns via a
     -- rebuild (SQLite cannot ALTER ADD COLUMN with non-constant DEFAULT).
     -- History is preserved row-for-row and legacy rows receive deterministic
