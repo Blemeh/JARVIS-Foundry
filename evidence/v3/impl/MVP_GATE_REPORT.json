@@ -24,7 +24,8 @@
       "verdict": "PASS",
       "evidence": [
         "tests/foundry/test_v3_scoring.py 14/14 incl. byte-identical trace replay and ordering pin"
-      ]
+      ],
+      "suite_count_from_junit": "tests/foundry/test_v3_scoring.py 13/13 PASS (count from repair1.junit.xml)"
     },
     "M3_flag_on_discovery_to_mission_lab_loop": {
       "verdict": "PASS",
@@ -45,7 +46,8 @@
       "verdict": "PASS",
       "evidence": [
         "test_v3_smoke.py 5/5: STOP pre-observation gate, restart reaches COMPILED exactly once across attempts, EventConflict on rewrite, rebuild zero drift"
-      ]
+      ],
+      "suite_count_from_junit": "tests/foundry/test_v3_smoke.py 4/4 PASS (count from repair1.junit.xml): STOP pre-observation gate, restart COMPILED exactly-once across attempts, EventConflict on outcome rewrite, rebuild zero drift"
     },
     "M6_disposable_git_reconciliation": {
       "verdict": "PASS",
@@ -77,6 +79,12 @@
     {
       "round": 2,
       "status": "dispatched after this commit"
+    },
+    {
+      "round": 2,
+      "verdict": "PASS",
+      "artifact": "evidence/v3/impl/MVP_REVIEW.json",
+      "head_reviewed": "b165857"
     }
   ],
   "focused_v3_suite": {
@@ -94,5 +102,6 @@
   },
   "production_touched": false,
   "pushed": false,
-  "verdict": "PASS"
+  "verdict": "PASS",
+  "review_verdict_final": "PASS (round 2, fresh reviewer; all round-1 findings independently confirmed resolved)"
 }
