@@ -29,6 +29,15 @@ This is a pre-existing/shared Windows scheduler integration gate outside the
 V4 ownership boundary, not a V4 test failure. It remains an open external
 blocker rather than a fabricated PASS.
 
+## Parallel-main observation
+
+The initial evidence recorded local `main` and `origin/main` at the frozen
+base and clean. At final read-only audit, `origin/main` resolves to
+`b0aa96d07c65a6850e50873ffa99234bb669590d` and the canonical main worktree
+has unrelated dirty integration-inventory files. This lane did not edit,
+merge, fetch, or push `main`/`origin/main`; the concurrent change is preserved
+and not reconciled here.
+
 ## Passing evidence
 
 - Focused V4/Command Center/convergence Python suite: PASS (exit code 0).
@@ -46,4 +55,3 @@ All green evidence is isolated candidate source and local ledger/fake-clock
 proof. No claim is made about live Supervisor/provider/credential behavior,
 production database state, deployment, or Task Scheduler recovery beyond the
 explicit staging failure above.
-
