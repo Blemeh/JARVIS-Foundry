@@ -112,6 +112,9 @@ function TimelineContent({ events }: { events: TimelineEvent[] }) {
       ) : null}
 
       <div className="timeline-filters">
+        <span className="t-mono text-muted timeline-result-count" aria-live="polite">
+          {filtered.length} of {events.length} events
+        </span>
         {filters.map((f) => (
           <button
             key={f.key}

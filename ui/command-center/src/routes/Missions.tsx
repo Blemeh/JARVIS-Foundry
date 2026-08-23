@@ -1,6 +1,6 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowRight, Grid3X3, List, Plus, Upload } from "lucide-react";
+import { ArrowRight, Grid3X3, List, Plus, Search, Upload } from "lucide-react";
 import { useCommandCenter } from "../context/CommandCenterContext";
 import { SectionHeader } from "../components/SectionHeader";
 import { StatusBadge } from "../components/StatusBadge";
@@ -16,6 +16,7 @@ import { sourceCopy, sourceModeLabel } from "../lib/sourceMode";
 
 type Filter = "ALL" | "ACTIVE" | "STANDBY" | "BLOCKED" | "ARCHIVED";
 type View = "grid" | "list";
+type SortKey = "priority" | "status" | "title";
 
 const PAGE_SIZE = 6;
 
@@ -25,16 +26,31 @@ const statusParam: Record<string, Filter> = {
   blocked: "BLOCKED",
 };
 
+const priorityRank: Record<string, number> = {
+  CRITICAL: 0,
+  HIGH: 1,
+  ELEVATED: 2,
+  NORMAL: 3,
+  LOW: 4,
+};
+
 export function Missions() {
   const { client, version, mode, mutationsEnabled, sourceMode } = useCommandCenter();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [filter, setFilter] = useState<Filter>(statusParam[searchParams.get("status") ?? ""] ?? "ALL");
+  const statusFromUrl = statusParam[searchParams.get("status") ?? ""] ?? "ALL";
+  const [filter, setFilter] = useState<Filter>(statusFromUrl);
   const [view, setView] = useState<View>("grid");
   const [page, setPage] = useState(1);
+  const [query, setQuery] = useState(searchParams.get("q") ?? "");
+  const [sort, setSort] = useState<SortKey>((searchParams.get("sort") as SortKey) || "priority");
   const [dialog, setDialog] = useState<"new" | "import" | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const live = mode === "live";
+
+  useEffect(() => {
+    setFilter(statusFromUrl);
+  }, [statusFromUrl]);
 
   const missionsQuery = useRouteQuery(
     () => client.listMissions(),
@@ -44,6 +60,7 @@ export function Missions() {
   const filtered = useMemo(() => {
     const missions = missionsQuery.data ?? [];
     const candidateFilter = searchParams.get("candidate")?.toLowerCase();
+    const q = query.trim().toLowerCase();
     let rows = missions;
     if (candidateFilter) {
       rows = rows.filter(
@@ -54,13 +71,27 @@ export function Missions() {
           (m.objective ?? "").toLowerCase().includes(candidateFilter),
       );
     }
-    if (filter === "ALL") return rows;
-    if (filter === "ACTIVE") return rows.filter((m) => m.status === "ACTIVE" || m.status === "IN_PROGRESS" || m.status === "INTERVENTION");
-    if (filter === "STANDBY") return rows.filter((m) => m.status === "STANDBY");
-    if (filter === "BLOCKED") return rows.filter((m) => m.status === "BLOCKED" || m.status === "HALTED");
-    if (filter === "ARCHIVED") return rows.filter((m) => m.status === "COMPLETE");
-    return [];
-  }, [missionsQuery.data, filter, searchParams]);
+    if (q) {
+      rows = rows.filter(
+        (m) =>
+          `${m.id} ${m.code} ${m.title} ${m.stage} ${m.status} ${m.nextAction ?? ""} ${m.owner ?? ""}`
+            .toLowerCase()
+            .includes(q),
+      );
+    }
+    if (filter === "ALL") rows = rows;
+    else if (filter === "ACTIVE") rows = rows.filter((m) => m.status === "ACTIVE" || m.status === "IN_PROGRESS" || m.status === "INTERVENTION");
+    else if (filter === "STANDBY") rows = rows.filter((m) => m.status === "STANDBY");
+    else if (filter === "BLOCKED") rows = rows.filter((m) => m.status === "BLOCKED" || m.status === "HALTED");
+    else if (filter === "ARCHIVED") rows = rows.filter((m) => m.status === "COMPLETE");
+    else rows = [];
+
+    return [...rows].sort((a, b) => {
+      if (sort === "title") return a.title.localeCompare(b.title);
+      if (sort === "status") return a.status.localeCompare(b.status);
+      return (priorityRank[a.priority] ?? 9) - (priorityRank[b.priority] ?? 9);
+    });
+  }, [missionsQuery.data, filter, searchParams, query, sort]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
@@ -130,7 +161,7 @@ export function Missions() {
         }
       />
 
-      {statusValue || candidateValue ? (
+      {statusValue || candidateValue || query ? (
         <div className="context-row">
           {statusValue ? (
             <ContextChip
@@ -154,8 +185,63 @@ export function Missions() {
               }}
             />
           ) : null}
+          {query ? (
+            <ContextChip
+              label={`Search "${query}"`}
+              onClear={() => {
+                setQuery("");
+                const next = new URLSearchParams(searchParams);
+                next.delete("q");
+                setSearchParams(next, { replace: true });
+                setPage(1);
+              }}
+            />
+          ) : null}
         </div>
       ) : null}
+
+      <div className="missions-toolbar missions-toolbar-extended">
+        <div className="missions-search">
+          <Search size={14} className="text-muted" aria-hidden="true" />
+          <input
+            className="field missions-search-input"
+            placeholder="Search missions by id, title, stage, owner..."
+            value={query}
+            onChange={(e) => {
+              const value = e.target.value;
+              setQuery(value);
+              setPage(1);
+              const next = new URLSearchParams(searchParams);
+              if (value.trim()) next.set("q", value);
+              else next.delete("q");
+              setSearchParams(next, { replace: true });
+            }}
+            aria-label="Search missions"
+          />
+        </div>
+        <label className="missions-sort">
+          <span className="t-label text-muted">Sort</span>
+          <select
+            className="field"
+            value={sort}
+            onChange={(e) => {
+              const value = e.target.value as SortKey;
+              setSort(value);
+              const next = new URLSearchParams(searchParams);
+              next.set("sort", value);
+              setSearchParams(next, { replace: true });
+            }}
+            aria-label="Sort missions"
+          >
+            <option value="priority">Priority</option>
+            <option value="status">Status</option>
+            <option value="title">Title</option>
+          </select>
+        </label>
+        <span className="t-mono text-muted missions-result-count">
+          {filtered.length} of {missions.length} missions
+        </span>
+      </div>
 
       <div className="missions-toolbar">
         <div className="segmented" role="group" aria-label="Mission filters">

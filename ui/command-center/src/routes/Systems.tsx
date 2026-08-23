@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowUpRight, Cpu, HeartPulse, Server, ShieldAlert } from "lucide-react";
+import { ArrowUpRight, Cpu, HeartPulse, Search, Server, ShieldAlert } from "lucide-react";
 import { useCommandCenter } from "../context/CommandCenterContext";
 import type { SystemComponent } from "../lib/contracts";
 import { SectionHeader } from "../components/SectionHeader";
@@ -18,6 +18,7 @@ export function Systems() {
   const { client, version, stopActive, sourceMode } = useCommandCenter();
   const [searchParams, setSearchParams] = useSearchParams();
   const [selected, setSelected] = useState<SystemComponent | null>(null);
+  const [query, setQuery] = useState(searchParams.get("q") ?? "");
 
   const systemsQuery = useRouteQuery(
     () => Promise.all([client.listSystemComponents(), client.getSystemOverview()]).then(([components, overview]) => ({ components, overview })),
@@ -33,12 +34,14 @@ export function Systems() {
     const order: SystemComponent["health"][] = ["HEALTHY", "DEGRADED", "CRITICAL", "UNKNOWN"];
     return [...components]
       .filter((c) => {
+        const q = query.trim().toLowerCase();
+        const qOk = !q || `${c.id} ${c.name} ${c.description} ${c.health} ${c.readiness} ${c.state}`.toLowerCase().includes(q);
         const healthOk = !healthFilter || c.health.toLowerCase() === healthFilter;
         const missionOk = !missionFilter || (c.missionIds ?? []).includes(missionFilter);
-        return healthOk && missionOk;
+        return qOk && healthOk && missionOk;
       })
       .sort((a, b) => order.indexOf(a.health) - order.indexOf(b.health) || a.name.localeCompare(b.name));
-  }, [systemsQuery.data, healthFilter, missionFilter]);
+  }, [systemsQuery.data, healthFilter, missionFilter, query]);
 
   return (
     <RouteQueryGate
@@ -71,7 +74,7 @@ export function Systems() {
         }
       />
 
-      {healthFilter || missionFilter ? (
+      {healthFilter || missionFilter || query ? (
         <div className="context-row">
           {healthFilter ? (
             <ContextChip
@@ -93,8 +96,40 @@ export function Systems() {
               }}
             />
           ) : null}
+          {query ? (
+            <ContextChip
+              label={`Search "${query}"`}
+              onClear={() => {
+                setQuery("");
+                const next = new URLSearchParams(searchParams);
+                next.delete("q");
+                setSearchParams(next, { replace: true });
+              }}
+            />
+          ) : null}
         </div>
       ) : null}
+
+      <div className="systems-toolbar">
+        <div className="systems-search">
+          <Search size={14} className="text-muted" aria-hidden="true" />
+          <input
+            className="field systems-search-input"
+            placeholder="Search components by name, health, readiness..."
+            value={query}
+            onChange={(e) => {
+              const value = e.target.value;
+              setQuery(value);
+              const next = new URLSearchParams(searchParams);
+              if (value.trim()) next.set("q", value);
+              else next.delete("q");
+              setSearchParams(next, { replace: true });
+            }}
+            aria-label="Search system components"
+          />
+        </div>
+        <span className="t-mono text-muted">{grouped.length} of {components.length} components</span>
+      </div>
 
       <div className="fleet-stats systems-stats">
         <MetricCard label="Components" value={components.length} tone="accent" />

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { HelpCircle, RefreshCcw, ShieldQuestion } from "lucide-react";
+import { HelpCircle, RefreshCcw, Search, ShieldQuestion } from "lucide-react";
 import { useCommandCenter } from "../context/CommandCenterContext";
 import type { MemoryGraph, MemoryNode } from "../lib/contracts";
 import { KnowledgeGraph } from "../components/KnowledgeGraph";
@@ -24,6 +24,7 @@ function MemoryContent({ graph }: { graph: MemoryGraph }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const missionParam = searchParams.get("mission");
+  const [nodeQuery, setNodeQuery] = useState(searchParams.get("q") ?? "");
   const [manualSelected, setManualSelected] = useState<MemoryNode | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [requested, setRequested] = useState(false);
@@ -45,6 +46,17 @@ function MemoryContent({ graph }: { graph: MemoryGraph }) {
   }, [graph, memoryId, missionParam]);
 
   const selected = manualSelected ?? derivedSelected;
+
+  const matchingNodes = useMemo(() => {
+    const q = nodeQuery.trim().toLowerCase();
+    if (!q) return graph.nodes;
+    return graph.nodes.filter(
+      (n) =>
+        `${n.id} ${n.label} ${n.category} ${n.summary} ${n.ref?.id ?? ""}`.toLowerCase().includes(q),
+    );
+  }, [graph.nodes, nodeQuery]);
+
+  const matchingIds = useMemo(() => new Set(matchingNodes.map((n) => n.id)), [matchingNodes]);
 
   const connectedCount = useMemo(() => {
     const ids = new Set(graph.edges.flatMap((e) => [e.from, e.to]));
@@ -113,17 +125,55 @@ function MemoryContent({ graph }: { graph: MemoryGraph }) {
             <span className="t-mono text-muted">{graph.edges.length} edges</span>
           </div>
         </div>
-        {missionParam ? (
+        {missionParam || nodeQuery ? (
           <div className="context-row memory-context-row">
-            <ContextChip
-              label={`Memory related to mission ${missionParam}`}
-              onClear={() => setSearchParams({}, { replace: true })}
-            />
+            {missionParam ? (
+              <ContextChip
+                label={`Memory related to mission ${missionParam}`}
+                onClear={() => {
+                  const next = new URLSearchParams(searchParams);
+                  next.delete("mission");
+                  setSearchParams(next, { replace: true });
+                }}
+              />
+            ) : null}
+            {nodeQuery ? (
+              <ContextChip
+                label={`Search "${nodeQuery}"`}
+                onClear={() => {
+                  setNodeQuery("");
+                  const next = new URLSearchParams(searchParams);
+                  next.delete("q");
+                  setSearchParams(next, { replace: true });
+                }}
+              />
+            ) : null}
           </div>
         ) : null}
+        <div className="memory-toolbar">
+          <div className="memory-search">
+            <Search size={14} className="text-muted" aria-hidden="true" />
+            <input
+              className="field memory-search-input"
+              placeholder="Filter nodes by label, category, id..."
+              value={nodeQuery}
+              onChange={(e) => {
+                const value = e.target.value;
+                setNodeQuery(value);
+                const next = new URLSearchParams(searchParams);
+                if (value.trim()) next.set("q", value);
+                else next.delete("q");
+                setSearchParams(next, { replace: true });
+              }}
+              aria-label="Filter knowledge graph nodes"
+            />
+          </div>
+          <span className="t-mono text-muted">{matchingNodes.length} of {graph.nodes.length} nodes</span>
+        </div>
         <KnowledgeGraph
           graph={graph}
           selectedId={selected?.id ?? null}
+          highlightIds={nodeQuery.trim() ? matchingIds : null}
           onSelect={(node) => {
             setManualSelected(node);
             navigate(`/memory/${node.id}`, { replace: memoryId === node.id });
