@@ -5,7 +5,7 @@ Single authoritative capability status. Classifications:
 
 Evidence roots: `docs/evidence/`, `evidence/`, git history, live runtime state.
 Current work reference, reconciled 2026-08-23:
-`main`/`origin/main` at `3733e73` after Q1-Q5 serial source integration. The
+`main`/`origin/main` at `5f85bae` after Q1-Q5 serial source integration. The
 deployed runtime remains the older
 immutable source `769715a7f8aee22bf4ab2db8870c37e6e9c9ef1b`; this mission did not
 restart, migrate, deploy, or otherwise mutate production. Fresh source evidence

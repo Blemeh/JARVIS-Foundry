@@ -11,14 +11,14 @@ integration, and isolated verification completed through the Command Center
 truth package; canonical push is the remaining owner-authorized step)
 
 ```text
-CURRENT CANONICAL HEAD:      3733e73 (canonical main and origin/main after the normal
+CURRENT CANONICAL HEAD:      5f85bae (canonical main and origin/main after the normal
                              full-reconciliation push; source promotion is complete,
                              live runtime promotion remains owner-authorized)
 INTEGRATION BASE:            ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2
 AUDIT SOURCE:                26e73c7 (residual audit environment scoping, absorbed
                              after Q1-Q3 semantic review)
 CURRENT WORK BRANCH:         integration/full-reconciliation-2026-08-23
-LOCAL RUNTIME LANE CHECKPOINT: 3733e73
+LOCAL RUNTIME LANE CHECKPOINT: 5f85bae
                               (isolated source/test checkpoint; no live runtime,
                               provider, scheduler, or production mutation)
 CURRENT STATE RECORD:        this source checkpoint is not a live promotion claim;

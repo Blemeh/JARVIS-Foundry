@@ -2,6 +2,7 @@
   "mission": "full-candidate-archaeology-recovery-semantic-integration",
   "pass": true,
   "validated_source_head": "2084e5b",
+  "canonical_head_after_normal_push": "5f85bae",
   "integration_branch": "integration/full-reconciliation-2026-08-23",
   "canonical_baseline": {
     "ref": "origin/main",
@@ -130,7 +131,7 @@
     "live_promotion_status": "DEFERRED_OWNER_AUTHORIZATION"
   },
   "remote_backup_refs_verified": true,
-  "canonicalization_status": "ready-for-normal-fast-forward-and-push",
+  "canonicalization_status": "PUSHED_AND_VERIFIED",
   "evidence_files": [
     "evidence/integration/full-reconciliation/CANDIDATE_INVENTORY.json",
     "evidence/integration/full-reconciliation/CANDIDATE_INVENTORY.md",
