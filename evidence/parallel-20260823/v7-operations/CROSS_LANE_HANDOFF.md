@@ -26,6 +26,12 @@ primitives. Later reconciliation must preserve the single canonical policy
 broker, capability broker, effect journal, STOP/veto plane, resource registry,
 mission loop, release authority, and Tier-C reference-only procedure memory.
 
+The candidate's public seams are under `src/jarvis_foundry/operations/`:
+`procedure`, `targets`, `project`, `deployment`, `services`, `planning`,
+`composition`, `reuse`, `adversarial`, and `lab`. The synthetic provider and
+digital-office evidence are fixture-only; live V5 connector/provider readiness
+remains whatever the reconciled canonical head independently proves.
+
 ## Required later reconciliation
 
 1. Re-resolve the final canonical `HEAD` after sibling V4/V5/V6/UI work lands.
@@ -34,3 +40,8 @@ mission loop, release authority, and Tier-C reference-only procedure memory.
    the reconciled head.
 4. Treat this candidate's local/fake proofs as source and disposable evidence,
    never as live/provider deployment proof.
+
+5. Preserve the operation event lineage and exact target/effect-ticket
+   contracts when adapting to the canonical V5 connector adapters; do not copy
+   sibling candidate implementations or create a second mission/portfolio/
+   release authority.
