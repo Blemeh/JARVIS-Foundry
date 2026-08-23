@@ -15,12 +15,35 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from functools import wraps
+import threading
 from typing import Any
 
 from .database import FoundryDatabase
-from .events import Event
+from .events import Event, EventConflict
 from .v3_fault import invoke_fault_hook
 from .v3_scoring import POLICY_VERSION, ScoringService, evaluate_portfolio
+
+
+# A discovery cycle is a transaction-like orchestration over several durable
+# event writes.  Serialize same-database callers in this process so two
+# schedulers cannot both observe "no portfolio yet" and then append different
+# payloads under the same loop idempotency key.  Cross-process callers still
+# get the durable EventConflict protection below.
+_CYCLE_LOCKS: dict[str, threading.Lock] = {}
+_CYCLE_LOCKS_GUARD = threading.Lock()
+
+
+def _with_cycle_lock(function):
+    @wraps(function)
+    def wrapped(database, *args, **kwargs):
+        key = str(database.path)
+        with _CYCLE_LOCKS_GUARD:
+            lock = _CYCLE_LOCKS.setdefault(key, threading.Lock())
+        with lock:
+            return function(database, *args, **kwargs)
+
+    return wrapped
 
 
 @dataclass(frozen=True)
@@ -61,6 +84,7 @@ class CycleReport:
         }
 
 
+@_with_cycle_lock
 def run_discovery_cycle(
     database: FoundryDatabase,
     *,
@@ -225,10 +249,25 @@ def run_discovery_cycle(
     if portfolio_event is not None:
         portfolio = dict(portfolio_event.payload)
     else:
-        portfolio = evaluate_portfolio(
-            database, loop_id,
-            [{**d, "status": d["status"]} for d in decisions],
-            policy_version=policy_version)
+        try:
+            portfolio = evaluate_portfolio(
+                database, loop_id,
+                [{**d, "status": d["status"]} for d in decisions],
+                policy_version=policy_version)
+        except EventConflict:
+            # A different process may have won the same loop between the
+            # read above and the append.  Reuse its canonical projection;
+            # only re-raise if no durable winner exists.
+            portfolio_event = next(
+                (event for event in database.events()
+                 if event.event_type == "portfolio.evaluated"
+                 and event.payload.get("loop_id") == loop_id
+                 and event.payload.get("policy_version") == policy_version),
+                None,
+            )
+            if portfolio_event is None:
+                raise
+            portfolio = dict(portfolio_event.payload)
 
     # Step 6 — selection stays with ExecutiveDecisionService.
     from .executive.decisions import ExecutiveDecisionService

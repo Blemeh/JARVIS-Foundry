@@ -97,24 +97,40 @@ def _junit_counts(path: Path) -> dict[str, Any]:
 
 
 def _run_pytest(name: str, tests: list[str], evidence_dir: Path) -> dict[str, Any]:
-    junit = evidence_dir / f"{name}.junit.xml"
     started = time.time()
-    command = [sys.executable, "-m", "pytest", *tests, "-q",
-               f"--junitxml={junit}"]
     env = os.environ.copy()
     env["PYTHONPATH"] = str(ROOT / "src") + os.pathsep + env.get("PYTHONPATH", "")
-    result = subprocess.run(command, cwd=ROOT, env=env,
-                            capture_output=True, text=True)
-    counts = _junit_counts(junit)
+    commands: list[list[str]] = []
+    junit_paths: list[Path] = []
+    stdout_parts: list[str] = []
+    stderr_parts: list[str] = []
+    aggregate = {"collected": 0, "passed": 0, "failed": 0,
+                 "errors": 0, "skipped": 0, "failures": []}
+    exit_code = 0
+    for index, test in enumerate(tests):
+        junit = evidence_dir / f"{name}-{index:02d}.junit.xml"
+        command = [sys.executable, "-m", "pytest", test, "-q",
+                   f"--junitxml={junit}"]
+        result = subprocess.run(command, cwd=ROOT, env=env,
+                                capture_output=True, text=True)
+        commands.append(command)
+        junit_paths.append(junit)
+        counts = _junit_counts(junit)
+        for key in ("collected", "passed", "failed", "errors", "skipped"):
+            aggregate[key] += counts[key]
+        aggregate["failures"].extend(counts["failures"])
+        stdout_parts.append(result.stdout[-1200:])
+        stderr_parts.append(result.stderr[-1200:])
+        exit_code = max(exit_code, result.returncode)
     payload = {
         "name": name,
-        "command": command,
-        "exit_code": result.returncode,
+        "command": commands,
+        "exit_code": exit_code,
         "duration_seconds": round(time.time() - started, 3),
-        "stdout_tail": result.stdout[-4000:],
-        "stderr_tail": result.stderr[-4000:],
-        "junit": str(junit),
-        **counts,
+        "stdout_tail": "\n".join(stdout_parts)[-4000:],
+        "stderr_tail": "\n".join(stderr_parts)[-4000:],
+        "junit": [str(path) for path in junit_paths],
+        **aggregate,
     }
     _write(evidence_dir / f"{name}.run.json", payload)
     return payload
@@ -318,6 +334,20 @@ def _real_soak(evidence_dir: Path, *, duration_seconds: float = 4 * 60 * 60,
     return payload
 
 
+def _reuse_soak(evidence_dir: Path) -> dict[str, Any]:
+    """Reuse a previously completed measured soak without overwriting it."""
+    path = evidence_dir / "SOAK.json"
+    if not path.is_file():
+        return {
+            "status": "NOT_TESTED",
+            "long_soak_status": "NOT_TESTED",
+            "reason": "--reuse-soak requested but SOAK.json is absent",
+        }
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["reused"] = True
+    return payload
+
+
 def _fault_matrix() -> list[dict[str, Any]]:
     # The matrix is explicit even where the current lane cannot safely inject
     # a process kill. Those points remain NOT_TESTED and therefore keep AC-08
@@ -487,6 +517,8 @@ def main() -> int:
     parser.add_argument("--real-soak-seconds", type=float,
                         default=4 * 60 * 60)
     parser.add_argument("--real-soak-interval", type=float, default=30.0)
+    parser.add_argument("--reuse-soak", action="store_true",
+                        help="reuse an existing completed SOAK.json")
     parser.add_argument("--independent-verifier", action="store_true",
                         help="run a separate fresh local verifier process")
     args = parser.parse_args()
@@ -519,7 +551,7 @@ def main() -> int:
     focused = _run_pytest("focused-runs", FOCUSED_TESTS, evidence_dir)
     supporting = _run_pytest("supporting-runs", SUPPORTING_TESTS, evidence_dir)
     migration = _run_pytest("migration-runs", MIGRATION_TESTS, evidence_dir)
-    soak = (_real_soak(
+    soak = (_reuse_soak(evidence_dir) if args.reuse_soak else _real_soak(
         evidence_dir,
         duration_seconds=args.real_soak_seconds,
         cycle_interval_seconds=args.real_soak_interval,
@@ -614,9 +646,12 @@ def main() -> int:
         "feature_flag_off": default_off["status"] == "PASS",
         "production_live_db_pushed": False,
         "next_integration_action": (
-            "Do not promote. Hermes lane must close AC-01, AC-07, AC-08, "
-            "AC-09, AC-14, AC-17, and AC-20, then rerun this gate with a "
-            "separate verifier and full-suite exit 0."
+            "Candidate is eligible for owner review and semantic promotion "
+            "after reconciling this evidence against the live Git graph."
+            if verdict == "PASS" else
+            "Do not promote. Close the remaining failed acceptance criteria, "
+            "then rerun this gate with a separate verifier and full-suite "
+            "exit 0."
         ),
     })
     print(json.dumps({
