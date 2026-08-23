@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import socket
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -103,6 +104,19 @@ class _Fixture:
         self.server.fixture_state = self.state  # type: ignore[attr-defined]
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
+        # The fixture is used immediately after construction.  On a loaded
+        # Windows host the daemon thread can take a scheduling slice before
+        # ``serve_forever`` binds its accept loop, which would turn a
+        # deterministic injected 429/500 into a transport UNKNOWN.
+        for _ in range(50):
+            try:
+                with socket.create_connection(
+                        ("127.0.0.1", self.server.server_port), timeout=0.1):
+                    break
+            except OSError:
+                time.sleep(0.01)
+        else:
+            raise RuntimeError("HTTP fault-injection fixture did not start")
 
     @property
     def url(self) -> str:
