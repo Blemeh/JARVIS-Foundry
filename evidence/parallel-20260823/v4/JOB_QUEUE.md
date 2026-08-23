@@ -34,7 +34,7 @@ Evidence: `V4-2_OWNER_OPERATING_INPUT.md`
 
 ## V4-3 — Pause / resume product semantics
 
-Status: DONE @ `TBD`
+Status: DONE @ `1954290`
 
 Target behavior: PAUSED, STOPPED, BLOCKED, DEGRADED, WAITING, UNKNOWN, and
 RUNNING are durable and truthful; duplicate/stale/restart requests do not

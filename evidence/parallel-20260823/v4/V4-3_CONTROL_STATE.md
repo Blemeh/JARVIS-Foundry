@@ -2,7 +2,7 @@
 
 Status: PASS (source/lane proof only)
 
-Commit: `TBD`
+Commit: `1954290`
 
 ## Behavior improved
 
@@ -37,4 +37,3 @@ Adversarial cases covered by `test_v4_control_state.py`: missing runtime
 evidence is UNKNOWN, pause survives projection rebuild, resume preserves
 constraints/vetoes, STOP outranks PAUSE, and STOP clears through the durable
 resume path.
-
