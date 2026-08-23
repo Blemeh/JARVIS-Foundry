@@ -4,7 +4,7 @@ import { mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { setTimeout as delay } from "node:timers/promises"
 
-const port = Number(process.env.VERIFY_PORT ?? 4523)
+const port = Number(process.env.VERIFY_PORT ?? 4524)
 const baseUrl = process.env.VERIFY_BASE ?? `http://localhost:${port}`
 const evidenceDir = join(process.cwd(), "..", "..", "evidence", "overnight", "command-center-truth")
 const outPath = join(evidenceDir, "PRODUCT_VERIFY_RESULT.json")

@@ -1,9 +1,9 @@
 {
   "status": "PASS",
-  "baseUrl": "http://localhost:4523",
-  "port": 4523,
-  "startedAt": "2026-08-23T00:00:57.077Z",
-  "endedAt": "2026-08-23T00:01:40.963Z",
+  "baseUrl": "http://localhost:4524",
+  "port": 4524,
+  "startedAt": "2026-08-23T00:04:59.698Z",
+  "endedAt": "2026-08-23T00:05:44.013Z",
   "routeCount": 15,
   "scenarioCount": 7,
   "viewportCount": 2,

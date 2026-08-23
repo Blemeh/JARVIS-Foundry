@@ -3,7 +3,7 @@
 **Branch:** `candidate/overnight-command-center-truth`  
 **Worktree:** `C:\temp\JARVIS-Overnight-Command-Center-Truth`  
 **Canonical base:** `ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2`  
-**Queue verified at:** `d3019a9`
+**Queue verified at:** `4642337`
 
 Evidence is marked **DONE** only after executable verification at the committing HEAD.
 
@@ -105,7 +105,7 @@ npx playwright test e2e/route-state-matrix.spec.ts → PASS
 
 | Requirement | Evidence |
 | --- | --- |
-| Production preview on lane port 4523 | `scripts/product-verify.mjs` (`VERIFY_PORT`) |
+| Production preview on lane port 4524 (4523 reserved for endurance/visuals) | `scripts/product-verify.mjs` (`VERIFY_PORT`) |
 | Routes × scenarios × viewports + nav/refresh | 212 checks |
 | Structured failure capture | `PRODUCT_VERIFY_RESULT.json` |
 | Endurance preview wrapper | `scripts/run-endurance-with-preview.mjs` |
@@ -130,7 +130,7 @@ npx playwright test e2e/route-state-matrix.spec.ts → PASS
 | 6h on port 4523 with preview SPA | `ENDURANCE_RESULT.json` (`running`, 0 errors at t+15m checkpoint) |
 | Wrapper ensures preview lifecycle | `run-endurance-with-preview.mjs` |
 
-**Note:** Prior 404 storm fixed by dedicated preview + 500ms throttle. Full 6h gate not complete in this session.
+**Note:** Prior 404 storm fixed by dedicated preview + 500ms throttle. `product-verify` uses port **4524** so it cannot kill the endurance preview on **4523**. Full 6h gate not complete in this session.
 
 ## Final validation checklist
 
