@@ -152,3 +152,32 @@ def test_runtime_terminal_fault_reconciles_lineage(tmp_path: Path, point: str) -
     assert database.count("candidate_outcomes") == 1
     assert database.event_count(event_type="discovery.cycle_lineage_completed") == 1
     assert injector.triggered == [point]
+
+
+def test_worker_crash_repairs_and_fresh_verifier_passes(tmp_path: Path) -> None:
+    database, repository, policy, router = mission_fixture(tmp_path)
+
+    class CrashThenRepair(FakeHermesAdapter):
+        def __init__(self):
+            super().__init__(working_root=repository)
+            self.builder_crashed = False
+
+        def dispatch(self, manifest, *, heartbeat):
+            if manifest.role == "builder" and not self.builder_crashed:
+                self.builder_crashed = True
+                raise RuntimeError("worker crashed after durable start")
+            return super().dispatch(manifest, heartbeat=heartbeat)
+
+    adapter = CrashThenRepair()
+    loop = MissionLoop(database, router, adapter, policy=policy, max_repairs=1)
+    outcome = loop.run_until_settled(
+        **step_kwargs(expected_artifacts=("result.txt",),
+                      target=Path("result.txt")))
+    assert outcome.outcome == PASSED, outcome
+    assert adapter.builder_crashed is True
+    assert len([m for m in adapter.received if m.role == "repair"]) == 1
+    assert (repository / "result.txt").exists()
+    assert database.event_count(event_type="verification.started") >= 1
+    assert (database.event_count(event_type="verification.failed")
+            + database.event_count(event_type="verification.blocked")) >= 1
+    assert database.event_count(event_type="verification.passed") == 1

@@ -7,13 +7,15 @@ maintenance follow-up.
 """
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from jarvis_foundry.paths import FoundryPaths
 from jarvis_foundry.runtime.config import WorkerRuntimeConfig
 from jarvis_foundry.runtime.worker_loop import run_cycle
 
-from test_v3_discovery_cycle import EPOCH, _cycle_env, _lab_candidate
+from test_v3_discovery_cycle import EPOCH, _cycle_env, _lab_candidate, _observe_stub
+from jarvis_foundry.v3_cycle import run_discovery_cycle
 
 
 def test_three_fresh_discovery_to_outcome_loops_with_continuation(tmp_path: Path) -> None:
@@ -66,3 +68,25 @@ def test_three_fresh_discovery_to_outcome_loops_with_continuation(tmp_path: Path
     assert len(proofs) == 3
     assert len({proof["mission_id"] for proof in proofs}) == 3
     assert len({proof["outcome_id"] for proof in proofs}) == 3
+
+
+def test_concurrent_same_loop_replays_one_canonical_cycle(tmp_path: Path) -> None:
+    lab = tmp_path / "concurrent"
+    lab.mkdir()
+    database, _ = _cycle_env(lab)
+    _lab_candidate(database)
+
+    def invoke():
+        return run_discovery_cycle(
+            database, loop_id="concurrent-loop", resource_id="resource-1",
+            observe=_observe_stub())
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = [future.result() for future in
+                   [pool.submit(invoke), pool.submit(invoke)]]
+    assert all(result.outcome == "COMPILED" for result in results), results
+    assert database.event_count(event_type="discovery.cycle_completed") == 1
+    assert len([event for event in database.events()
+                if event.event_type == "mission.created"
+                and str(event.payload.get("created_from") or "")
+                .startswith("candidate:")]) == 1
