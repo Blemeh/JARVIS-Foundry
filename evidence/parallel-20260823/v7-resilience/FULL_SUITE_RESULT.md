@@ -46,7 +46,7 @@ investigation.
 
 - `python -m py_compile` for the resilience package, Supervisor seam, matrix
   harness, and tests: PASS after the continuation changes.
-- `git diff --check`: rerun at final checkpoint; line-ending warnings are
+- `git diff --check`: PASS at the final checkpoint; line-ending warnings are
   environmental and are not treated as source errors.
 - `ruff`: NOT TESTED because the package is not installed in this lane.
 - Secret-pattern scan over changed source/tests/evidence: no matches.
