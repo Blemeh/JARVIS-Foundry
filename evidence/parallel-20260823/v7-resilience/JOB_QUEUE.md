@@ -6,13 +6,13 @@ and an explicit PASS, FAIL, BLOCKED, or NOT TESTED verdict.
 
 | Job | Scope | Status | Evidence / next action |
 |---|---|---|---|
-| V7C-1 | Failure and health truth map | IN PROGRESS | Reuse existing Supervisor, diagnostics, leases, providers, releases, resources, effects, and scheduler. Add correlation gaps to tests. |
-| V7C-2 | Durable incident record | QUEUED | Event-derived lifecycle with fresh-process reconstruction. |
-| V7C-3 | Deterministic anomaly detector | QUEUED | Rules over durable events and synthetic metrics. |
-| V7C-4 | Capability-level suspension | QUEUED | Scoped state changes with recovery criteria and STOP precedence. |
-| V7C-5 | Blast-radius dependency graph | QUEUED | Small resource -> connector -> capability -> mission graph. |
-| V7C-6 | Diagnostic playbook | QUEUED | Read-only checks before any bounded repair. |
-| V7C-7 | Bounded auto-repair | QUEUED | Owned worker/lease/cache/effect repairs with attempt budgets. |
+| V7C-1 | Failure and health truth map | PASS (source) | `health_truth()` and diagnostics correlate database, ledger, Supervisor identity, capabilities, scheduler, release, logs, and effects. Supervisor heartbeat hook remains a later integration checkpoint. |
+| V7C-2 | Durable incident record | PASS | Event-derived lifecycle with fresh-process reconstruction. |
+| V7C-3 | Deterministic anomaly detector | PASS | Bounded durable-event rules plus typed synthetic metrics. |
+| V7C-4 | Capability-level suspension | PASS | Scoped STOPPED state, prior-state recovery, STOP/veto guard, unrelated capability proof. |
+| V7C-5 | Blast-radius dependency graph | PASS | Resource -> connector -> capability -> mission graph with shared/unrelated proof. |
+| V7C-6 | Diagnostic playbook | PASS | Read-only database, reconciliation, process, scheduler, evidence, release, and effect checks. |
+| V7C-7 | Bounded auto-repair | PASS (source) | Callback repair budget, failure escalation, observed-health requirement, and no-handler BLOCKED path. |
 | V7C-8 | Release degradation and rollback | QUEUED | Disposable freeze, PREVIOUS validation, rollback, health proof. |
 | V7C-9 | Provider/network continuity | QUEUED | Deterministic Supervisor and safe work survive provider failure. |
 | V7C-10 | Database/durable-state faults | QUEUED | Lock, mid-transaction, corrupt copy, migration, WAL, restore fixtures. |
