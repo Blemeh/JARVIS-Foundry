@@ -6,45 +6,38 @@ every promotion/remaster mission (see `docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.
 If this document and another current-status document disagree, THIS document wins
 for "what exists now" claims; the architecture contract wins for binding invariants.
 
-Last reconciled: 2026-08-23 (V6 self-evolution lane: continuous
-self-evolution machinery built and proven on the candidate branch;
-see evidence/parallel-20260823/v6/FINAL_REPORT.md)
+Last reconciled: 2026-08-23 (isolated V4/V5/V6 plus cinematic Command Center
+integration stage; source and live runtime are reported separately below)
 
 ```text
-CURRENT CANONICAL HEAD:      (candidate lane) 05c6cb1+ on
-                             candidate/v6-self-evolution-20260823 —
-                             this worktree's HEAD; canonical main is
-                             owned by the parallel production session
-INTEGRATION BASE:            01db32cbcaa409dfe26386ce66110429c2c0b0e0
-                             (frozen V6 lane base)
-AUDIT SOURCE:                evidence/parallel-20260823/v6/INITIAL_STATE.md
-CURRENT WORK BRANCH:         candidate/v6-self-evolution-20260823
-LOCAL RUNTIME LANE CHECKPOINT: 5f85bae
-                              (isolated source/test checkpoint; no live runtime,
-                              provider, scheduler, or production mutation)
-CURRENT STATE RECORD:        this source checkpoint is not a live promotion claim;
-                             canonicalization and the normal push are pending
-TESTED CODE HEAD:            2084e5b source checkpoint (parent of the evidence-only
-                             canonical pin); release, V3 hard/operational,
-                             worker-control, and Command Center UI gates were run
-                             in the isolated integration worktree
-FINAL EVIDENCE HEAD:         evidence/release/overnight/run-final-20260823-02/RUN.json
-                             is the final source-vs-runtime evidence record
-FULL SUITE:                  FINAL combined source suite is pending on this
-                             checkpoint; historical candidate-suite results remain
-                             provenance only
-FOCUSED REMEDIATION TESTS:   Fresh serial release/V3/worker-control gates PASS;
-                             Command Center UI: lint, typecheck, 108 unit tests,
-                             163 e2e tests, build, product 212/212, and security PASS
-FULL SUITE FINAL GATE:       pending final repository-wide source validation; no
-                             live provider, database, scheduler, or runtime probe
+CURRENT CANONICAL HEAD:      6db467a (canonical main/origin before this stage)
+INTEGRATION BASE:            6db467a2b0e6bdc37adbc4cbfac309418e33afec
+                             (fresh origin/main base)
+AUDIT SOURCE:                evidence/integration/v456-stage/ORIENTATION.md
+CURRENT WORK BRANCH:         integration/v456-cinematic-stage-20260823
+LOCAL RUNTIME LANE CHECKPOINT: 201bbbf (isolated; no live mutation)
+CURRENT STATE RECORD:        this document is reconciled to the isolated
+                             integration stage; canonical promotion remains a
+                             separate, re-verified action
+TESTED CODE HEAD:            201bbbf; V4, V5, V6, cross-lane truth bridges,
+                             and Command Center UI were exercised in this lane
+FINAL EVIDENCE HEAD:         evidence/integration/v456-stage/ (stage records;
+                             final gate record is written after the broad run)
+FULL SUITE:                  one repository-wide run is being classified from
+                             its JUnit evidence; no historical result is reused
+FOCUSED REMEDIATION TESTS:   V4/V5/V6 focused gates and Command Center UI
+                             typecheck, lint, 115 tests, build, product 212/212,
+                             and security scan PASS in this isolated lane
+FULL SUITE FINAL GATE:       not yet closed; no live provider, database,
+                             scheduler, or runtime promotion claim follows from
+                             source tests
 DEPLOYED RELEASE:            769715a7f8aee22bf4ab2db8870c37e6e9c9ef1b (CURRENT)
 PREVIOUS RELEASE:            9a10910f78a4a618fba4c916b418056e4ada1991 (PREVIOUS)
 DEPLOYED MANIFEST:           rel-769715a7f8ae-060c9abc; legacy pre-remediation
                              manifest has source_sha but lacks git_commit and
                              git_tree; replacement after verifier PASS is required
-PROVIDER CONFIG:             %LOCALAPPDATA%\JARVIS\config\provider.yaml
-                             (opencode_go / muse-spark-1.2-contributor / OpenCode Go URL)
+PROVIDER CONFIG:             live provider dispatch was not exercised in this
+                             stage; credentials remain environment-only
 CURRENT SCHEMA:              v34 live deployed database baseline (production unchanged)
                              V2 KNOWLEDGE SCHEMA: v35 (24h-integration knowledge brain)
                              V3 DISCOVERY/BUILDING SCHEMA: v36 (integrated on main)
@@ -52,9 +45,9 @@ CURRENT SCHEMA:              v34 live deployed database baseline (production unc
                              live database remains v34 until owner-approved migration;
                              LIVE_PROMOTION_DEFERRED
 FOCUSED EXECUTIVE SUITE:     32 passed (tests/foundry/test_executive_intelligence.py)
-FRONTEND:                    isolated source checkpoint typecheck clean; vitest
-                             108/108, Playwright 163/163, product 212/212, build,
-                             lint, and security scan PASS; live UI remains unproven
+FRONTEND:                    isolated source stage typecheck/lint clean; Vitest
+                             115/115, product 212/212, build, and security scan
+                             PASS; live UI remains unproven
 EXECUTIVE INTELLIGENCE:      ACTIVE-CAPABLE, feature-flag OFF by default
                              (worker config `executive.selection_enabled`).
                              Durable owner goals from authenticated GOAL
@@ -72,9 +65,9 @@ COMMAND CENTER:              /executive route + snapshot.executive section proje
                              the decision spine (latest decision, rationale,
                              rejected alternatives, prediction-vs-actual,
                              calibration history) from ledger events only.
-SUPERVISOR STATE:            NOT_TESTED_AT_INTEGRATION_HEAD (production was not
-                             restarted or mutated; historical live snapshots are
-                             not promotion proof)
+SUPERVISOR STATE:            read-only live check observed RUNNING supervisor,
+                             active worker-loop, STOP false, and schema v34;
+                             this is not a post-promotion proof
 STOP STATE:                  SOURCE_GATED_ONLY (STOP/PID controls pass isolated
                              tests; production STOP state was not changed)
 TRUST STATE:                 LAB / SOURCE_CHECKPOINT
@@ -95,12 +88,13 @@ SCHEDULER AUTHORITY:         JARVIS-Foundry-Supervisor Ready is the production
                              LEGACY_DISABLED and fail-closed against enabling;
                              R3 proving monitor remains a separate read-only task
 HEADLESS FIX:                preserved and integrated; live promotion proof pending
-AUDIT LIVE STATUS:           IMPLEMENTED_UNPROVEN_AT_LIVE_HEAD — remediation and
-                             Q1-Q5 source semantics integrated offline; restart/
-                             promotion proof remains owner-authorized and pending
-MISSION STATE:               unchanged from 2026-08-19 reconciliation plus M2
-                             proof missions in isolated lab databases (live home
-                             untouched by proofs)
+AUDIT LIVE STATUS:           BLOCKED_AT_LEGACY_RELEASE — live CURRENT is
+                             769715a7..., filesystem-only authority, schema v34;
+                             stage source expects v36 and no post-stage restart,
+                             migration, or provider proof has been performed
+MISSION STATE:               isolated stage and lab databases only; live home,
+                             scheduler tasks, and production processes were left
+                             untouched
 LIVE PROOF (2026-08-21):     scripts/m2_live_product_proof.py — 12/12 PASS on an
                              isolated lab ledger through production code paths:
                              durable goal -> organic portfolio -> firewall ->
@@ -168,12 +162,12 @@ older text elsewhere in this file.)
 
 ## What is running
 
-Live Supervisor uses home `C:\Users\b\AppData\Local\hermes\foundry`, schema v34,
-with a healthy reconciled ledger. At the 2026-08-22 reconciliation doctor
-reported 180,915 events, quick check ok, reconciliation consistent, STOP false,
-and one active `worker-loop` identity. Supervisor PID 11672 held the singleton
-lease. This is the pre-remediation deployed release `769715a7...`; its manifest
-predates the new Git provenance fields.
+Live Supervisor uses home `C:\Users\b\AppData\Local\hermes\foundry`. The fresh
+read-only doctor/status check observed schema v34 versus source v36, STOP false,
+one active `worker-loop`, and CURRENT `769715a7...` under filesystem-only release
+authority. The live manifest has source provenance but no git commit/tree fields.
+No live database, scheduler, provider, process, or release mutation was made by
+this integration stage.
 
 `JARVIS-Foundry-Supervisor` is the single production lifecycle authority.
 `JARVIS-Foundry-Worker-Loop` is `LEGACY_DISABLED`; its fail-closed classification
@@ -210,7 +204,10 @@ browser substrate, and it cannot activate native desktop execution.
 | V8 canonical promotion | PASS — 1027/0/0 post-merge; live canary PASS; rollback drill PASS; post-promotion remediation certification PASS |
 | Worker canonical gate | PASS — 18/18 + independent adversarial review |
 | Worker-loop deployment rehearsal | PASS_WITH_BOUNDARY — disposable schema34 migration/reconciliation, Supervisor startup, and source-unchanged restore proof; live activation remains deferred |
-| Full suite (current source snapshot) | 1,260 collected at reproducible snapshot `f172147` with `PYTHONHASHSEED=0`, 0 failures; the earlier 1,248-test semantic-source record and 1,225-test Phase 4 remediation gate remain historical evidence |
+| Integrated V4/V5/V6 focused source gate | PASS — focused truth/evolution/connector/briefing tests plus independent adversarial checks; details are recorded under `evidence/integration/v456-stage/` |
+| Command Center UI source gate | PASS — typecheck, lint, 115 Vitest tests, build, product 212/212, and security scan |
+| Repository-wide source suite | NOT CLOSED — the first integrated run exposed doc/fixture issues and is being rerun only after those source/test repairs; no PASS is claimed from historical snapshots |
+| Live release/migration/restart/provider proof | BLOCKED — live schema v34 and legacy filesystem-only manifest remain unchanged; no post-promotion proof was authorized |
 | JARVIS Eyes Phase 2 | PASS — 20/20 faults, rollback/live probe, read-only boundary |
 | Workflow Discovery Phase 3 | PASS — 36/36 focused, F1–F25, bounded probe, independent review |
 | Procedural Learning Phase 4 | PASS — 23/23 focused, F1–F24, artifact-byte tamper, zero-effect shadow, local browser probe, rollback, fresh independent review |
