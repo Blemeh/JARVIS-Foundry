@@ -59,7 +59,7 @@ test("mobile 700 downlink has 2-col telemetry and no overflow", async ({ page })
   await page.goto("/");
   await assertNoHorizontalOverflow(page);
   await expect(page.locator(".v4-downlink")).toBeVisible();
-  await expect(page.locator(".core-orbit")).toBeVisible();
+  await expect(page.locator("[data-jarvis-core-state]")).toBeVisible();
 });
 
 test("new detail surfaces have no horizontal overflow on mobile", async ({ page }) => {

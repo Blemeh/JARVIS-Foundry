@@ -132,10 +132,11 @@ export function Missions() {
         const candidateValue = searchParams.get("candidate");
 
         return (
-    <div className="shell-content">
+    <div className="shell-content cinematic-surface">
       <SectionHeader
         kicker="Mission Vectors"
         title="Mission Vectors"
+        activeMissionCount={missions.filter((m) => m.status === "ACTIVE" || m.status === "IN_PROGRESS").length}
         description={
           sourceCopy(sourceMode, {
             live: "Live missions from the canonical append-only ledger projection. New missions enter as authenticated owner GOAL directives.",

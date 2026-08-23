@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom"
 import { Mic } from "lucide-react"
+import { JarvisCoreStage } from "../components/jarvis-core/JarvisCoreStage"
 import { useCommandCenter } from "../context/CommandCenterContext"
 import type { EvidenceArtifact, Mission, SystemComponent, SystemOverview, TimelineEvent, TrustSummary, Worker } from "../lib/contracts"
 import { RouteQueryGate } from "../components/RouteQueryGate"
@@ -60,6 +61,8 @@ function OverviewContent({
   const systemPosture = safeTrust.health === "HEALTHY" ? "NOMINAL" : safeTrust.health === "DEGRADED" ? "DEGRADED" : "UNKNOWN"
   const activeWorkers = safeWorkers.filter((w) => w.status === "ACTIVE")
   const verified = safeEvidence.filter((e) => e.verdict === "VERIFIED").length
+  const verifying = safeEvidence.filter((e) => e.verdict === "EVALUATING").length
+  const activeMissionCount = safeMissions.filter((m) => m.status === "ACTIVE" || m.status === "IN_PROGRESS").length
   const blocked = safeMissions.filter((m) => m.status === "BLOCKED" || m.status === "HALTED").length
 
   const currentGoal = safeMissions.find((m) => m.status === "ACTIVE" || m.status === "IN_PROGRESS")?.title ?? safeMissions[0]?.title ?? "No durable goal recorded"
@@ -136,11 +139,11 @@ function OverviewContent({
 
           <aside className="goal-panel" aria-label="Current owner intent">
             <div>
-              <div className="core-orbit" aria-hidden="true">
-                <span className="orbit-dot" />
-                <span className="orbit-dot two" />
-                <span className="core">JARVIS</span>
-              </div>
+              <JarvisCoreStage
+                activeMissionCount={activeMissionCount}
+                verifyingCount={verifying}
+                trustHealth={safeTrust.health}
+              />
               <blockquote>{goalText}</blockquote>
               <p className="t-mono text-muted" style={{ fontSize: 11 }}>
                 Complete roadmap V4 without touching live state

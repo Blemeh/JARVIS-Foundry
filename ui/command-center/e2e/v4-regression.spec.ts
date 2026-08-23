@@ -55,8 +55,8 @@ test("V4 command deck at 700 shows mobile header, 2-col telemetry, and orbital c
   });
   expect(telemetryCols).toBe(2);
   // Orbital core should be visible
-  await expect(page.locator(".core-orbit")).toBeVisible();
-  await expect(page.locator(".core-orbit .core")).toContainText("JARVIS");
+  await expect(page.locator("[data-jarvis-core-state]")).toBeVisible();
+  await expect(page.locator(".jarvis-core-label").first()).toContainText("JARVIS");
   // Mission vectors should be visible
   await expect(page.locator(".mission-thread").first()).toBeVisible();
   // Evidence spine diamond nodes
@@ -78,8 +78,9 @@ test("V4 visual components are present at desktop 1600", async ({ page }) => {
   // Chamfered downlink
   await expect(page.locator(".v4-downlink")).toBeVisible();
   await expect(page.locator(".v4-calibration")).toBeVisible();
-  // Orbital core with dots
-  await expect(page.locator(".core-orbit .orbit-dot")).toHaveCount(2);
+  // Cinematic JARVIS core with state label
+  await expect(page.locator("[data-jarvis-core-state]")).toBeVisible();
+  await expect(page.locator(".jarvis-core-label").first()).toContainText("JARVIS");
   // Telemetry strip 5 columns at desktop
   const telemetryCols = await page.evaluate(() => {
     const el = document.querySelector(".telemetry") as HTMLElement;

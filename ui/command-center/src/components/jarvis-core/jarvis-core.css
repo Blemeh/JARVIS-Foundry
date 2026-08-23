@@ -1,0 +1,289 @@
+/* Cinematic JARVIS core — WebGL scene + CSS ArcReactor / HolographicCore fallback */
+
+.jarvis-core-fallback,
+.jarvis-core-scene {
+  position: relative;
+  width: 172px;
+  height: 200px;
+  margin: 0 auto;
+  display: grid;
+  place-items: center;
+}
+
+.jarvis-core-fallback--compact,
+.jarvis-core-scene--compact {
+  width: 54px;
+  height: 54px;
+}
+
+.jarvis-core-fallback--compact .jarvis-core-label,
+.jarvis-core-fallback--compact .jarvis-core-state-label,
+.jarvis-core-scene--compact .jarvis-core-overlay {
+  display: none;
+}
+
+.jarvis-arc-reactor {
+  position: relative;
+  width: 148px;
+  height: 148px;
+  display: grid;
+  place-items: center;
+}
+
+.jarvis-core-fallback--compact .jarvis-arc-reactor {
+  width: 48px;
+  height: 48px;
+}
+
+.jarvis-arc-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(102, 217, 255, 0.42);
+  animation: jarvis-orbit 7s linear infinite;
+}
+
+.jarvis-arc-ring--one {
+  inset: 8px;
+}
+
+.jarvis-arc-ring--two {
+  inset: 22px;
+  animation-direction: reverse;
+  animation-duration: 5.5s;
+  border-color: rgba(155, 140, 255, 0.38);
+}
+
+.jarvis-arc-ring--three {
+  inset: 36px;
+  animation-duration: 9s;
+  border-color: rgba(138, 255, 239, 0.28);
+}
+
+.jarvis-holo-core {
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  position: relative;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle, rgba(138, 255, 239, 0.28), rgba(9, 23, 39, 0.9) 68%);
+  box-shadow:
+    0 0 28px rgba(138, 255, 239, 0.28),
+    inset 0 0 18px rgba(138, 255, 239, 0.22);
+  animation: jarvis-core-pulse 4.8s ease-in-out infinite;
+}
+
+.jarvis-core-fallback--compact .jarvis-holo-core {
+  width: 28px;
+  height: 28px;
+}
+
+.jarvis-holo-wire {
+  position: absolute;
+  inset: 6px;
+  border: 1px dashed rgba(102, 217, 255, 0.35);
+  border-radius: 50%;
+  transform: rotate(18deg);
+}
+
+.jarvis-holo-glow {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--electric-signal);
+  box-shadow: 0 0 16px rgba(138, 255, 239, 0.75);
+}
+
+.jarvis-core-label {
+  margin-top: 8px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--electric-signal);
+  text-align: center;
+}
+
+.jarvis-core-state-label {
+  display: block;
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--telemetry-dim);
+  text-align: center;
+}
+
+.jarvis-core-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+}
+
+.jarvis-core-overlay {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.jarvis-core-scene .jarvis-core-label {
+  text-shadow: 0 0 12px rgba(0, 0, 0, 0.8);
+}
+
+/* State palettes */
+.jarvis-core--healthy-idle .jarvis-holo-core {
+  border: 1px solid rgba(138, 255, 239, 0.45);
+}
+
+.jarvis-core--active-mission .jarvis-holo-core {
+  border: 1px solid rgba(138, 255, 239, 0.72);
+  animation-duration: 2.4s;
+}
+
+.jarvis-core--active-mission .jarvis-arc-ring {
+  animation-duration: 3.8s;
+}
+
+.jarvis-core--verifying .jarvis-holo-core {
+  border-color: rgba(255, 184, 77, 0.65);
+  box-shadow: 0 0 24px rgba(255, 184, 77, 0.28);
+}
+
+.jarvis-core--verifying .jarvis-holo-glow {
+  background: var(--caution-amber);
+  box-shadow: 0 0 16px rgba(255, 184, 77, 0.65);
+}
+
+.jarvis-core--degraded .jarvis-holo-core {
+  border-color: rgba(255, 140, 66, 0.55);
+}
+
+.jarvis-core--stopped .jarvis-holo-core {
+  border-color: rgba(255, 92, 138, 0.62);
+  animation-duration: 6.5s;
+}
+
+.jarvis-core--stopped .jarvis-holo-glow {
+  background: var(--stop-pink);
+  box-shadow: 0 0 14px rgba(255, 92, 138, 0.55);
+}
+
+.jarvis-core--disconnected .jarvis-holo-core {
+  border-color: rgba(120, 132, 148, 0.4);
+  animation: none;
+  opacity: 0.72;
+}
+
+.jarvis-core--disconnected .jarvis-arc-ring {
+  animation: none;
+  opacity: 0.45;
+}
+
+@keyframes jarvis-orbit {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes jarvis-core-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.04);
+    filter: brightness(1.12);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jarvis-arc-ring,
+  .jarvis-holo-core {
+    animation: none !important;
+  }
+}
+
+/* Cinematic route surfaces */
+.cinematic-surface,
+.shell-content,
+.command-deck-wrap {
+  position: relative;
+}
+
+.cinematic-surface::before,
+.shell-content::before,
+.command-deck-wrap::before {
+  content: "";
+  position: absolute;
+  inset: 12px 18px auto 18px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(102, 217, 255, 0.35), transparent);
+  pointer-events: none;
+}
+
+.cinematic-page-head {
+  position: relative;
+  padding-bottom: 18px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid rgba(26, 55, 81, 0.75);
+}
+
+.cinematic-page-head::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 120px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--electric-signal), transparent);
+}
+
+.cinematic-page-head .page-kicker {
+  color: var(--electric-signal);
+  letter-spacing: 0.16em;
+}
+
+.cinematic-core-rail {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.cinematic-core-rail__badge {
+  flex: none;
+  margin-top: 4px;
+}
+
+.cinematic-core-rail__copy {
+  min-width: 0;
+  flex: 1;
+}
+
+@media (max-width: 700px) {
+  .cinematic-core-rail {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
