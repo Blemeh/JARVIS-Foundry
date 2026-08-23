@@ -34,11 +34,13 @@ Evidence: `V4-2_OWNER_OPERATING_INPUT.md`
 
 ## V4-3 — Pause / resume product semantics
 
-Status: QUEUED
+Status: DONE @ `TBD`
 
 Target behavior: PAUSED, STOPPED, BLOCKED, DEGRADED, WAITING, UNKNOWN, and
 RUNNING are durable and truthful; duplicate/stale/restart requests do not
 erase unrelated constraints/vetoes or weaken deterministic STOP.
+
+Evidence: `V4-3_CONTROL_STATE.md`
 
 ## V4-4 — Briefing event model
 

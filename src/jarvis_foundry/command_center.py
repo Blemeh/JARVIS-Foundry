@@ -26,7 +26,7 @@ from .owner_controls import (
     OwnerReplayError,
     sign_command,
 )
-from .owner_directives import owner_directive_snapshot
+from .owner_directives import owner_control_state, owner_directive_snapshot
 from .supervisor.estop import EmergencyStop
 from .v3_teams import DEFAULT_REPAIR_BUDGET
 
@@ -878,15 +878,29 @@ def build_snapshot(
             "status": "NOT_AVAILABLE", "reason": type(error).__name__,
         }
     active_vetoes = [d for d in directives if d.get("command_type") in {"VETO_ACTION", "STOP_MISSION", "STOP_EVERYTHING"}]
-    hold_active = bool(active_vetoes) or (stop is not None)
     goals = [d for d in directives if d.get("command_type") == "GOAL"]
     constraints = [d for d in directives if d.get("command_type") in {"CONSTRAINT", "ADD_CONSTRAINT"}]
     reprioritizations = [d for d in directives if d.get("command_type") == "REPRIORITIZE"]
     redirects = [d for d in directives if d.get("command_type") == "REDIRECT"]
-    paused = any(d.get("command_type") == "PAUSE" for d in directives)
     stale_leases = [l for l in leases if l.get("expires_at") and str(l["expires_at"]) < generated_at]
     blocked = [m for m in missions if m.get("state") == "BLOCKED"]
     crashed_workers = _current_failed_workers(runtime_workers, leases, stale_leases)
+    runtime_degraded = supervisor.get("status") == "DEGRADED" or bool(
+        stale_leases or crashed_workers
+    )
+    control_state = owner_control_state(
+        owner_directives,
+        legacy_active=directives,
+        stop_record=stop,
+        supervisor_status=supervisor.get("status"),
+        degraded=runtime_degraded,
+        active_work_count=sum(
+            1 for worker in runtime_workers if worker.get("status") == "RUNNING"
+        ),
+        blocked_work_count=len(blocked),
+    )
+    paused = bool(control_state["paused"])
+    hold_active = bool(active_vetoes) or bool(stop) or paused
     recovery_events = [e for e in decision_timeline(database, limit=timeline_limit)
                        if any(token in e["event_type"] for token in ("recover", "reap", "rollback", "degraded", "blocked"))]
     release_events = [e for e in decision_timeline(database, limit=timeline_limit)
@@ -919,7 +933,11 @@ def build_snapshot(
             "reprioritizations": [with_ref(d, "directive", "directive_id") for d in reprioritizations],
             "redirects": [with_ref(d, "directive", "directive_id") for d in redirects],
             "paused": paused,
-            "resume_available": bool(paused or stop),
+            "resume_available": control_state["resume_available"],
+            "runtime_state": control_state["status"],
+            "state_reason": control_state["reason"],
+            "state_source": control_state["source"],
+            "state_evidence": control_state,
             "stop_effective_without_hermes_ui_models_network": True,
             "history": owner_directives["records"],
             "unknown": owner_directives["unknown"],

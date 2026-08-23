@@ -508,3 +508,129 @@ def owner_directive_snapshot(
         "history_count": len(records),
         "active_count": sum(record.active for record in records),
     }
+
+
+def owner_control_state(
+    snapshot: dict[str, Any],
+    *,
+    legacy_active: list[dict[str, Any]] | tuple[dict[str, Any], ...] = (),
+    stop_record: dict[str, Any] | None = None,
+    supervisor_status: str | None = None,
+    degraded: bool = False,
+    active_work_count: int = 0,
+    blocked_work_count: int = 0,
+) -> dict[str, Any]:
+    """Derive one truthful management state from durable control evidence.
+
+    This is a read model only.  The broker and Supervisor still enforce STOP,
+    PAUSE, and vetoes; this function gives product surfaces one precedence
+    ordered explanation without inventing RUNNING when runtime evidence is
+    absent.
+    """
+    active = [
+        value for value in snapshot.get("active", ())
+        if isinstance(value, dict)
+    ]
+    known_ids = {
+        str(value.get("directive_id"))
+        for value in active
+        if value.get("directive_id")
+    }
+    # Historical projections can predate the authenticated event envelope.
+    # They remain visible to the enforcement/status read model, but are
+    # explicitly marked legacy rather than silently promoted to owner truth.
+    for value in legacy_active:
+        if not isinstance(value, dict):
+            continue
+        directive_id = str(value.get("directive_id") or "")
+        if directive_id and directive_id not in known_ids:
+            legacy_value = dict(value)
+            legacy_value["legacy_projection_only"] = True
+            active.append(legacy_value)
+            known_ids.add(directive_id)
+    stops = [
+        value for value in active
+        if value.get("command_type") == "STOP_EVERYTHING"
+    ]
+    pauses = [
+        value for value in active
+        if value.get("command_type") == "PAUSE"
+    ]
+    vetoes = [
+        value for value in active
+        if value.get("command_type") in {"VETO_ACTION", "STOP_MISSION"}
+    ]
+    supervisor = str(supervisor_status or "UNKNOWN").upper()
+    stop = stop_record is not None or bool(stops)
+    paused = bool(pauses)
+    if stop:
+        status = "STOPPED"
+        reason = (
+            str(stop_record.get("reason") or "emergency stop sentinel is active")
+            if stop_record else
+            f"STOP_EVERYTHING directive {stops[0].get('directive_id')} is active"
+        )
+    elif paused:
+        status = "PAUSED"
+        reason = f"PAUSE directive {pauses[0].get('directive_id')} is active"
+    elif supervisor in {"STOPPED", "FROZEN", "SUSPENDED"}:
+        status = "STOPPED"
+        reason = f"supervisor is {supervisor}"
+    elif vetoes or blocked_work_count > 0:
+        status = "BLOCKED"
+        reason = (
+            f"{len(vetoes)} active owner veto directive(s)"
+            if vetoes else
+            f"{blocked_work_count} blocked mission(s)"
+        )
+    elif degraded or supervisor == "DEGRADED":
+        status = "DEGRADED"
+        reason = "runtime health evidence is degraded"
+    elif supervisor == "RUNNING":
+        status = "RUNNING" if active_work_count > 0 else "WAITING"
+        reason = (
+            f"{active_work_count} active work item(s)"
+            if active_work_count > 0 else "no active work is currently evidenced"
+        )
+    else:
+        status = "UNKNOWN"
+        reason = "no trustworthy runtime status evidence is available"
+    return {
+        "status": status,
+        "reason": reason,
+        "source": "durable_owner_controls_and_runtime_projection",
+        "legacy_projection_only_ids": [
+            str(value.get("directive_id"))
+            for value in active
+            if value.get("legacy_projection_only") and value.get("directive_id")
+        ],
+        "paused": paused,
+        "stopped": stop,
+        "blocked": status == "BLOCKED",
+        "degraded": status == "DEGRADED",
+        "waiting": status == "WAITING",
+        "resume_available": bool(stop or paused),
+        "active_directive_ids": [
+            str(value.get("directive_id"))
+            for value in active
+            if value.get("directive_id")
+        ],
+        "pause_directive_ids": [
+            str(value.get("directive_id"))
+            for value in pauses
+            if value.get("directive_id")
+        ],
+        "stop_directive_ids": [
+            str(value.get("directive_id"))
+            for value in stops
+            if value.get("directive_id")
+        ],
+        "veto_directive_ids": [
+            str(value.get("directive_id"))
+            for value in vetoes
+            if value.get("directive_id")
+        ],
+        "supervisor_status": supervisor,
+        "active_work_count": int(active_work_count),
+        "blocked_work_count": int(blocked_work_count),
+    }
