@@ -33,3 +33,11 @@ The later integrated canonical head may add executive or Command Center fields. 
 - Disposable lab: `scripts/v7_portfolio_lab.py`; three projects, REPAIR/NEW_MISSION/RESEARCH/MAINTENANCE selections, eight outcomes, zero replay claims, and replay consistency true.
 - The adapter reserves active-claim workers, verifiers, provider calls, project/resource shares, cost, and concurrent-mission capacity before mission materialization.
 - Repository-wide `tests/foundry` regression: one unrelated staging Task Scheduler restart test failed; see `VERIFICATION.md`. No V7 portfolio test failed.
+
+## Final handoff state
+
+- Final candidate HEAD: `970e3527dd8fbbbdd7cecc284398b0199137edf0`.
+- Remote candidate: `origin/candidate/v7-executive-portfolio-20260823` at the same SHA.
+- Candidate worktree: clean.
+- Canonical `main` and `origin/main`: still `6db467a2b0e6bdc37adbc4cbfac309418e33afec`, clean and untouched.
+- Production/live Supervisor, Scheduler, databases, credentials, and CURRENT/PREVIOUS state: untouched.

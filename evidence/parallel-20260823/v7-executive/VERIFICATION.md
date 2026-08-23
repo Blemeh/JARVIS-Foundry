@@ -14,7 +14,8 @@ Base: `6db467a2b0e6bdc37adbc4cbfac309418e33afec`
 ## Boundary checks
 
 - Candidate worktree only: PASS.
-- Canonical `main` and `origin/main` untouched: recheck required at final handoff.
+- Canonical `main` and `origin/main` untouched at handoff: `6db467a2b0e6bdc37adbc4cbfac309418e33afec`, clean.
+- Candidate worktree clean and candidate remote matches final HEAD `970e3527dd8fbbbdd7cecc284398b0199137edf0`.
 - Live Supervisor, Scheduler tasks, live database, deployment, production flags, and credentials: NOT TOUCHED.
 - Runtime/V4 consumer integration: NOT TESTED in this frozen-base lane; reconcile against the later integrated canonical head before promotion.
 
