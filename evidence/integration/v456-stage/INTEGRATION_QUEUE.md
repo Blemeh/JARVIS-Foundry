@@ -1,6 +1,6 @@
 # V4/V5/V6 + Cinematic Integration Queue
 
-Status: SOURCE_GATE_PASS_WITH_LIVE_BOUNDARY
+Status: SOURCE_CANONICAL_RELEASE_PASS_WITH_LIVE_BOUNDARY
 Lane: `integration/v456-cinematic-stage-20260823`
 
 | Order | Unit | Status | Exit evidence | Next action |
@@ -12,8 +12,8 @@ Lane: `integration/v456-cinematic-stage-20260823`
 | 4 | V6 continuous self-evolution | PASS | Merge commit `9290b3f`; 254 evolution-focused tests pass including independent-verifier `NOT_TESTED` refusal | Keep the corrected all-criteria-PASS gate under combined review |
 | 5 | Cross-lane semantic adaptation | PASS | `effect_truth`/`evolution_truth` snapshot bridges, V4 briefing item rules, packet fields, Owner Management signal panel; targeted Python and UI checks pass | Run combined source and adversarial gates |
 | 6 | Combined source gate and adversarial review | PASS | `full-suite-20260823-r3.xml`: 1,981 tests, 0 failures, 0 errors, 1 explicit symlink-boundary skip; isolated Scheduler restart probe PASS in 125s; HTTP fault fixture stress 30/30 PASS | Run migration/release gates and re-audit canonical refs |
-| 7 | Canonicalization and push | PENDING | Clean integration head, normal main update, local/origin equality | Update main and push only after source gate PASS |
-| 8 | Immutable release and offline validation | PENDING | Exact Git commit/tree, manifest, schema/provenance, previous identity, disposable proof | Build from final canonical main |
+| 7 | Canonicalization and push | PASS | Fast-forward `main` to `08dad95`; normal push; local/origin equality | Preserve canonical source and recheck live boundary |
+| 8 | Immutable release and offline validation | PASS | `20260824-v456-final/RUN.json`: schema 36, exact commit/tree, migration, lease, fault, and rollback checks PASS; provider DISABLED | Keep release artifact disposable until owner-approved live promotion |
 | 9 | Live ownership, backup, promotion, and runtime proof | PENDING | Ownership arbitration, backup readability, supported promotion path, live proofs | Re-read live state and resolve the irreversible deployment boundary |
 | 10 | Final report | PENDING | `STAGE_GATE.json`, `NO_MISSING_ACCEPTED_WORK.json`, `FINAL_SOURCE_REPORT.md`, live report | Report PASS, FAIL, ROLLED_BACK, or BLOCKED without upgrading missing evidence |
 

@@ -1,6 +1,7 @@
 # Cross-Lane Conflict and Semantic Review Register
 
-Status: OPEN (semantic adaptation complete; broad gate and runtime reconciliation remain)
+Status: SOURCE_CLOSED_LIVE_OPEN (semantic adaptation and canonical source gate
+complete; runtime reconciliation and live promotion remain)
 
 Textual merge-tree checks are clean. Semantic review remains mandatory because
 the candidates were built from the older common base and current main contains
@@ -13,7 +14,7 @@ the accepted cinematic frontend and later runtime/source reconciliations.
 | V5 + V6 | V6 detector and feedback must not treat raw external connector content as authority | V6 is integrated at `9290b3f`; its records require evidence references and independent verdicts, while raw connector payloads remain non-authoritative. `evolution_truth` exposes only governed evidence/gate records and labels UI authority `NONE`. |
 | V4/V5/V6 + STOP | Owner control is shared across directives, connector action envelopes, evolution eligibility, and UI controls | Verify each material path checks the same durable STOP/veto state and that UI never becomes authority. |
 | Release/runtime | Current live release is schema 34 and lacks `git_commit`/`git_tree`; source expects schema 36 and filesystem release authority is explicit | Build from exact final main, rehearse migration on a copy, capture previous identity and backup, and do not call deployment PASS until supported promotion and restart proof exist. |
-| Documentation | `docs/CURRENT_STATE.md` and `docs/CAPABILITY_MATRIX.md` still describe the pre-stage source checkpoint | Reconstruct canonical documentation from final integrated truth. Historical candidate reports remain provenance, not current status. |
+| Documentation | Historical candidate reports retain pre-stage checkpoints | Canonical `CURRENT_STATE.md` and `CAPABILITY_MATRIX.md` now identify pushed `08dad95`; historical candidate reports remain provenance, not current status. |
 
 ## Prohibited resolutions
 

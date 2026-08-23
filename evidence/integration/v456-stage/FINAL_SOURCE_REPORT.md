@@ -2,8 +2,8 @@
 
 Stage: `integration/v456-cinematic-stage-20260823`
 
-Verified source checkpoint: `f8b896b` (the report/evidence commit follows this
-checkpoint; later documentation commits must remain descendants of it).
+Verified source checkpoint: `08dad951ab55b36aaa5521e3da13f72f8982344d`
+(`main` and `origin/main` are equal; the source worktree is clean).
 
 ## Source result
 
@@ -34,6 +34,10 @@ the promotion tests prove evidence rather than relying on absence.
   one documented semantic-info limitation.
 - Disposable release identity build/start/rollback PASS with exact Git commit and
   tree provenance; no production mutation.
+- Provider-disabled release factory run `20260824-v456-final` PASS: previous and
+  candidate schema-36 releases, v34→v35→v36 migration, Supervisor/worker lease
+  contracts, generated scheduler XML without task installation, controlled fault
+  refusals, and rollback/restore all PASS; cleanup reported no errors.
 
 ## Live boundary
 
@@ -43,6 +47,6 @@ STOP false, and an active Supervisor/worker-loop. The integrated source expects
 schema v36. No live database write, migration, scheduler mutation, process kill,
 provider call, release switch, or production UI restart was performed.
 
-Canonical source promotion can be considered only after a fresh main/origin graph
-check. Production mutation requires a separate ownership and authorization
+Canonical source promotion is complete at `08dad95` and pushed to `origin/main`.
+Production mutation still requires a separate ownership and authorization
 checkpoint; absence of that proof is not a PASS.

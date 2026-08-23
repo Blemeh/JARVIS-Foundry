@@ -6,23 +6,23 @@ every promotion/remaster mission (see `docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.
 If this document and another current-status document disagree, THIS document wins
 for "what exists now" claims; the architecture contract wins for binding invariants.
 
-Last reconciled: 2026-08-23 (isolated V4/V5/V6 plus cinematic Command Center
-integration stage; source and live runtime are reported separately below)
+Last reconciled: 2026-08-24 (canonical V4/V5/V6 plus cinematic Command Center
+source promotion; source and live runtime are reported separately below)
 
 ```text
-CURRENT CANONICAL HEAD:      6db467a (canonical main/origin before this stage)
+CURRENT CANONICAL HEAD:      08dad95 (canonical main/origin; pushed)
 INTEGRATION BASE:            6db467a2b0e6bdc37adbc4cbfac309418e33afec
                              (fresh origin/main base)
-AUDIT SOURCE:                evidence/integration/v456-stage/ORIENTATION.md
-CURRENT WORK BRANCH:         integration/v456-cinematic-stage-20260823
-LOCAL RUNTIME LANE CHECKPOINT: 6138a19 (isolated; no live mutation)
-CURRENT STATE RECORD:        this document is reconciled to the isolated
-                             integration stage; canonical promotion remains a
-                             separate, re-verified action
-TESTED CODE HEAD:            6138a19; V4, V5, V6, cross-lane truth bridges,
-                             and Command Center UI were exercised in this lane
+AUDIT SOURCE:                evidence/integration/v456-stage/FINAL_SOURCE_REPORT.md
+CURRENT WORK BRANCH:         main
+LOCAL RUNTIME LANE CHECKPOINT: 08dad95 (source checkpoint; no live mutation)
+CURRENT STATE RECORD:        this document is reconciled to canonical main;
+                             live promotion remains a separate boundary
+TESTED CODE HEAD:            08dad95; V4, V5, V6, cross-lane truth bridges,
+                             and Command Center UI were exercised and promoted
 FINAL EVIDENCE HEAD:         evidence/integration/v456-stage/STAGE_GATE.json;
-                             V3 hard details and JUnit evidence are beside it
+                             release-factory evidence is under
+                             C:/temp/JARVIS-Overnight-Release-Candidate/
 FULL SUITE:                  PASS — 1,981 collected, 1,980 passed, 0 failures,
                              0 errors, 1 explicit filesystem-boundary skip
 FOCUSED REMEDIATION TESTS:   V4/V5/V6 focused gates, V3 independent verifier,
@@ -67,9 +67,10 @@ COMMAND CENTER:              /executive route + snapshot.executive section proje
                              the decision spine (latest decision, rationale,
                              rejected alternatives, prediction-vs-actual,
                              calibration history) from ledger events only.
-SUPERVISOR STATE:            read-only live check observed RUNNING supervisor,
-                             active worker-loop, STOP false, and schema v34;
-                             this is not a post-promotion proof
+SUPERVISOR STATE:            fresh read-only check observed RUNNING supervisor,
+                             active worker-loop, STOP false, schema v34, and
+                             runtime health UNKNOWN because live PID identity
+                             was unavailable; this is not post-promotion proof
 STOP STATE:                  SOURCE_GATED_ONLY (STOP/PID controls pass isolated
                              tests; production STOP state was not changed)
 TRUST STATE:                 LAB / SOURCE_CHECKPOINT
@@ -92,8 +93,9 @@ SCHEDULER AUTHORITY:         JARVIS-Foundry-Supervisor Ready is the production
 HEADLESS FIX:                preserved and integrated; live promotion proof pending
 AUDIT LIVE STATUS:           BLOCKED_AT_LEGACY_RELEASE — live CURRENT is
                              769715a7..., filesystem-only authority, schema v34;
-                             stage source expects v36 and no post-stage restart,
-                             migration, or provider proof has been performed
+                             canonical source is 08dad95 and expects v36; no
+                             post-stage restart, migration, or provider proof
+                             has been performed
 MISSION STATE:               isolated stage and lab databases only; live home,
                              scheduler tasks, and production processes were left
                              untouched
@@ -176,11 +178,14 @@ this integration stage.
 prevents accidental re-enable. The R3 proving-window monitor remains a separate
 read-only task and is not a worker launch authority.
 
-The integration merge adds deterministic PID reconciliation, duplicate-launch
+The canonical merge adds deterministic PID reconciliation, duplicate-launch
 fail-closed behavior, explicit release-authority detection, Git commit/tree
 release manifests, scheduler-safe test boundaries, V3 hard/operational lineage,
-and the Command Center truth/resilience package. These source changes are not
-live until independently verified, released, promoted, and restarted.
+and the Command Center truth/resilience package. A provider-disabled disposable
+release factory run (`20260824-v456-final`) built schema-36 previous/candidate
+releases, exercised migration, Supervisor/worker leases, scheduler XML,
+controlled faults, and rollback with all checks PASS. These source changes are
+not live until independently verified, promoted, and restarted.
 
 A disposable deployment rehearsal is recorded at
 `docs/convergence/WORKER_LOOP_DEPLOYMENT_CANARY_REHEARSAL_20260819.json`:

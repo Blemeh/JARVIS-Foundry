@@ -4,18 +4,19 @@ Single authoritative capability status. Classifications:
 `IMPLEMENTED_AND_PROVEN` · `IMPLEMENTED_UNPROVEN` · `PARTIAL` · `MISSING` · `SUPERSEDED`.
 
 Evidence roots: `docs/evidence/`, `evidence/`, git history, live runtime state.
-Current work reference, reconciled 2026-08-23:
-isolated integration stage `integration/v456-cinematic-stage-20260823` at
-`6138a19` (V4/V5/V6 plus cinematic Command Center, migration-script repair,
-and fresh operational evidence). Canonical `main`/`origin/main` remains
-`6db467a` until promotion. The deployed runtime remains immutable release
+Current work reference, reconciled 2026-08-24:
+canonical `main`/`origin/main` at `08dad95` (V4/V5/V6 plus cinematic Command
+Center, migration-script repair, fresh operational evidence, and source
+promotion). The deployed runtime remains immutable release
 `769715a7f8aee22bf4ab2db8870c37e6e9c9ef1b`, schema v34; this stage did not
 restart, migrate, deploy, or otherwise mutate production. Fresh source evidence:
 repository suite 1,981 tests / 0 failures / 0 errors / 1 explicit skip;
 V3 hard focused/supporting/migration/independent checks PASS; bounded soak PASS
 with the four-hour proving window NOT_TESTED; Command Center 115 tests,
 product 212/212, build, and security PASS. Live promotion remains blocked by
-the legacy runtime boundary.
+the legacy runtime boundary. Disposable release-factory run
+`C:\temp\JARVIS-Overnight-Release-Candidate\evidence\release\overnight\20260824-v456-final\RUN.json`
+is PASS with provider mode DISABLED and no scheduler installation.
 
 ## Audit-Truth Remediation (2026)
 

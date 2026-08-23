@@ -1,6 +1,6 @@
 {
   "stage": "v456-cinematic-integration",
-  "tested_source_sha": "f8b896b",
+  "tested_source_sha": "08dad951ab55b36aaa5521e3da13f72f8982344d",
   "lane": "integration/v456-cinematic-stage-20260823",
   "source_gate": "PASS",
   "checks": {
@@ -32,9 +32,17 @@
     "release_identity_rehearsal": {
       "status": "PASS",
       "schema": 36,
-      "git_commit": "eff8287f0cb36f1c12bac603be3b7d1ebbab1831",
-      "git_tree": "99866e2d54cd78e96dbc4727dff54ec4fff6a453",
+      "git_commit": "08dad951ab55b36aaa5521e3da13f72f8982344d",
+      "git_tree": "843f3c81f0a4d94ec8422af1a5b53f9c14e9ffee",
       "rollback_exact": true,
+      "production_mutation": false
+    },
+    "release_factory": {
+      "status": "PASS",
+      "run": "C:/temp/JARVIS-Overnight-Release-Candidate/evidence/release/overnight/20260824-v456-final/RUN.json",
+      "schema": 36,
+      "provider_mode": "DISABLED",
+      "scheduler_installation": "NOT_RUN",
       "production_mutation": false
     },
     "command_center_ui": {
@@ -54,5 +62,5 @@
     }
   },
   "overall": "SOURCE_PASS_LIVE_BLOCKED",
-  "next_boundary": "canonical source promotion may proceed after graph recheck; production mutation requires a fresh ownership/approval checkpoint"
+  "next_boundary": "canonical source is pushed; production mutation requires a fresh ownership/approval checkpoint"
 }

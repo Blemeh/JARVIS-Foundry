@@ -11,7 +11,8 @@
   ],
   "remaining_boundaries": [
     {"item": "four-hour disposable proving soak", "status": "NOT_TESTED", "reason": "only bounded eight-cycle soak was run"},
-    {"item": "canonical main push", "status": "PENDING", "reason": "graph recheck and promotion step remain"},
+    {"item": "canonical main push", "status": "PASS", "evidence": "main and origin/main equal 08dad951ab55b36aaa5521e3da13f72f8982344d"},
+    {"item": "schema-current provider-disabled release factory", "status": "PASS", "evidence": "20260824-v456-final/RUN.json; all checks and controlled faults PASS"},
     {"item": "live schema migration/restart/provider/UI proof", "status": "BLOCKED", "reason": "live release is schema v34 and production mutation has not been authorized"}
   ],
   "no_fabricated_pass": true,
