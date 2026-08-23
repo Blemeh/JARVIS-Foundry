@@ -36,7 +36,7 @@ Migration/restore v35->v36 remains preserved at 9/9 PASS and will only be rerun 
 - Tests added/updated: strict linkage, lineage, continuation wake, cycle lineage, and runtime candidate outcome assertions in `tests/foundry/test_v3_outcomes.py` and `tests/foundry/test_v3_discovery_cycle.py`.
 - Tests executed: V3 outcomes/discovery/smoke; V3 hard core/scoring/loop; runtime worker loop/mission loop/verification loop — all PASS.
 - Evidence: this queue and fresh local pytest output; full gate evidence has not been regenerated yet.
-- Commit: pending review.
+- Commit: `016546d` (`V3: persist terminal outcome lineage and continuation`).
 - Remaining uncertainty: AC-01 still needs three complete E2E loops; AC-20 needs a fresh full chain including verifier/evidence IDs; full STOP race and fault matrix remain open.
 
 ## Job record template
