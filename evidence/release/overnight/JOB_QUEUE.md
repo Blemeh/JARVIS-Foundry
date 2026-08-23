@@ -38,7 +38,8 @@ Data shapes for the runtime-control work are `RuntimeControlRequest` and the der
 - Full isolated suite: `1,639` collected, `0` failures, `0` errors.
 - Focused lifecycle, release, scheduler, delivery, diagnostics, and worker regressions: PASS.
 - Disposable harnesses: `runtime_control_repro.py`, `release_identity_repro.py`, `delivery_boundary_repro.py`, `runtime_diagnostic_repro.py`, `runtime_fault_repro.py`, and `stale_request_repro.py`: PASS.
-- Disposable overnight factory `final-20260823-runtime`: all 10 checks PASS, all 9 controlled faults PASS, cleanup errors `[]`, Task Scheduler installation `NOT_RUN`, provider mode `DISABLED`. Evidence: `evidence/release/overnight/final-20260823-runtime/RUN.json`.
-- Static and hygiene checks: documentation staleness PASS, compileall PASS, `git diff --check` PASS, credential-signature scan `0` hits across `26` changed files, clean worktree.
+- Disposable overnight factory `final-20260823-runtime-source-bound-v3`: all 10 checks PASS, all 9 controlled faults PASS, cleanup errors `[]`, Task Scheduler installation `NOT_RUN`, provider mode `DISABLED`; candidate-bound imports, provenance, previous-runtime identity, and headless `pythonw` were independently verified. Evidence: `evidence/release/overnight/final-20260823-runtime-source-bound-v3/RUN.json`.
+- Static and hygiene checks: documentation staleness PASS, compileall PASS, `git diff --check` PASS, credential-signature scan `0` hits across `27` changed files, clean worktree.
 - Read-only host inventory observed `\\JF-WP7Gate-test_tas-94653` running from `C:\\temp\\JARVIS-Overnight-V3-Operational-Slice` (another lane); it was not stopped or deleted under the ownership guard.
+- Factory harness source-binding fixes were checkpointed as `4325f35`, `4bd67d2`, and `e24eb7a`; the first two source-bound probes failed closed on real harness defects and were repaired before the v3 PASS.
 - Live promotion, production restart/rollback, live Task Scheduler mutation, provider credentials/calls, live DB migration, and canonical `main`/`origin/main` changes: not taken.
