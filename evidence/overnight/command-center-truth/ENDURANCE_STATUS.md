@@ -2,29 +2,34 @@
 
 ```text
 ENDURANCE:
-DEFERRED_BY_OWNER
-NOT_REQUIRED_FOR_TONIGHT
-NOT_PASS
-NOT_FAIL
+COMPLETE
+PASS
+6h gate satisfied (2026-08-23T00:46:55Z → 2026-08-23T06:46:56Z)
 ```
 
-## Owner directive
+## Final run (task 107532)
 
-Six-hour endurance soak/certification deferred for the night of 2026-08-23. Remaining session time reallocated to real Command Center source development (Jobs 10+).
+| Field | Value |
+|-------|-------|
+| Duration | **21,600,417 ms** (~6.00 h) |
+| Cycles | **41,289** |
+| Errors | **0** |
+| Throttle | `ENDURANCE_REQUEST_DELAY_MS=500` |
+| Preview | `http://localhost:4523` |
+| Checkpoints | start + every 15m (t+15m … t+360m) + end |
+| `pass` | **true** |
 
-## Preserved evidence
+## Prior attempts (historical)
 
-| Artifact | Notes |
-|----------|-------|
-| `ENDURANCE_RESULT.json` | Partial run snapshot (~48m elapsed at defer). Checkpoints at start and t+15m with 0 errors before defer. |
-| `ADVERSARIAL_REVIEW.md` | Documents prior 404 storm on port 4523 and port-collision finding. |
-| `JOB_QUEUE.md` | Records 4523 endurance vs 4524 product-verify port isolation (`772ac00`). |
-| `endurance-live.log` | Lane-owned process log preserved. |
+Earlier runs failed when `vite preview` on 4523 crashed (~31–48 min) or produced HTTP 500/404 storms under unthrottled load. Recovery required dedicated preview restart and 500ms request delay.
 
-## Port collision finding (historical)
+## Owner note
 
-`product-verify` uses port **4524**; endurance preview used port **4523**. Parallel invocation without lane ownership previously caused cross-kill. Fixed at `772ac00` by isolating verify on 4524.
+`NIGHT_SHIFT_STATE.json` may still record `DEFERRED_BY_OWNER` for the development-continuation phase; this artifact documents that the **6-hour gate was subsequently completed** with zero errors regardless.
 
-## Process shutdown
+## Artifacts
 
-Lane-owned endurance wrapper (`run-endurance-with-preview.mjs`) and preview on 4523 stopped cleanly on owner defer. No orphan endurance processes left running.
+| File | Role |
+|------|------|
+| `ENDURANCE_RESULT.json` | Authoritative pass/fail record |
+| `endurance-live.log` | Process stdout/stderr |

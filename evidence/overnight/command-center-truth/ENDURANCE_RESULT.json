@@ -1,13 +1,13 @@
 {
-  "status": "running",
+  "status": "complete",
   "baseUrl": "http://localhost:4523",
   "requestedDurationMs": 21600000,
   "requestedDurationHours": 6,
   "checkpointIntervalMs": 900000,
-  "startedAt": "2026-08-23T00:15:34.448Z",
-  "endedAt": null,
-  "elapsedMs": 1185865,
-  "cycles": 2225,
+  "startedAt": "2026-08-23T00:46:55.976Z",
+  "endedAt": "2026-08-23T06:46:56.393Z",
+  "elapsedMs": 21600417,
+  "cycles": 41289,
   "routes": [
     "/",
     "/executive",
@@ -31,7 +31,7 @@
   "checkpoints": [
     {
       "label": "start",
-      "at": "2026-08-23T00:15:35.563Z",
+      "at": "2026-08-23T00:46:57.267Z",
       "cycles": 0,
       "errorCount": 0,
       "memory": {
@@ -40,56 +40,229 @@
     },
     {
       "label": "t+15m",
-      "at": "2026-08-23T00:30:41.394Z",
-      "cycles": 1701,
-      "errorCount": 8,
+      "at": "2026-08-23T01:02:21.773Z",
+      "cycles": 1760,
+      "errorCount": 0,
       "memory": {
-        "usedJSHeapSize": 31200000
+        "usedJSHeapSize": 56800000
       }
+    },
+    {
+      "label": "t+30m",
+      "at": "2026-08-23T01:17:16.591Z",
+      "cycles": 3465,
+      "errorCount": 0,
+      "memory": {
+        "usedJSHeapSize": 37300000
+      }
+    },
+    {
+      "label": "t+45m",
+      "at": "2026-08-23T01:32:11.440Z",
+      "cycles": 5170,
+      "errorCount": 0,
+      "memory": {
+        "usedJSHeapSize": 14300000
+      }
+    },
+    {
+      "label": "t+60m",
+      "at": "2026-08-23T01:47:04.028Z",
+      "cycles": 6875,
+      "errorCount": 0,
+      "memory": {
+        "usedJSHeapSize": 50400000
+      }
+    },
+    {
+      "label": "t+75m",
+      "at": "2026-08-23T02:02:24.393Z",
+      "cycles": 8635,
+      "errorCount": 0,
+      "memory": {
+        "usedJSHeapSize": 53500000
+      }
+    },
+    {
+      "label": "t+90m",
+      "at": "2026-08-23T02:17:15.960Z",
+      "cycles": 10340,
+      "errorCount": 0,
+      "memory": {
+        "usedJSHeapSize": 33100000
+      }
+    },
+    {
+      "label": "t+105m",
+      "at": "2026-08-23T02:32:07.365Z",
+      "cycles": 12045,
+      "errorCount": 0,
+      "memory": {
+        "usedJSHeapSize": 10000000
+      }
+    },
+    {
+      "label": "t+120m",
+      "at": "2026-08-23T02:46:58.724Z",
+      "cycles": 13750,
+      "errorCount": 0,
+      "memory": {
+        "usedJSHeapSize": 42100000
+      }
+    },
+    {
+      "label": "t+135m",
+      "at": "2026-08-23T03:02:18.636Z",
+      "cycles": 15510,
+      "errorCount": 0,
+      "memory": {
+        "usedJSHeapSize": 44700000
+      }
+    },
+    {
+      "label": "t+150m",
+      "at": "2026-08-23T03:17:09.745Z",
+      "cycles": 17215,
+      "errorCount": 0,
+      "memory": {
+        "usedJSHeapSize": 24500000
+      }
+    },
+    {
+      "label": "t+165m",
+      "at": "2026-08-23T03:32:01.182Z",
+      "cycles": 18920,
+      "errorCount": 0,
+      "memory": {
+        "usedJSHeapSize": 56800000
+      }
+    },
+    {
+      "label": "t+180m",
+      "at": "2026-08-23T03:47:21.329Z",
+      "cycles": 20680,
+      "errorCount": 0,
+      "memory": {
+        "usedJSHeapSize": 56800000
+      }
+    },
+    {
+      "label": "t+195m",
+      "at": "2026-08-23T04:02:12.958Z",
+      "cycles": 22385,
+      "errorCount": 0,
+      "memory": {
+        "usedJSHeapSize": 37300000
+      }
+    },
+    {
+      "label": "t+210m",
+      "at": "2026-08-23T04:17:04.634Z",
+      "cycles": 24090,
+      "errorCount": 0,
+      "memory": {
+        "usedJSHeapSize": 14300000
+      }
+    },
+    {
+      "label": "t+225m",
+      "at": "2026-08-23T04:31:56.079Z",
+      "cycles": 25795,
+      "errorCount": 0,
+      "memory": {
+        "usedJSHeapSize": 53500000
+      }
+    },
+    {
+      "label": "t+240m",
+      "at": "2026-08-23T04:47:16.126Z",
+      "cycles": 27555,
+      "errorCount": 0,
+      "memory": {
+        "usedJSHeapSize": 50400000
+      }
+    },
+    {
+      "label": "t+255m",
+      "at": "2026-08-23T05:02:07.283Z",
+      "cycles": 29260,
+      "errorCount": 0,
+      "memory": {
+        "usedJSHeapSize": 29400000
+      }
+    },
+    {
+      "label": "t+270m",
+      "at": "2026-08-23T05:16:58.974Z",
+      "cycles": 30965,
+      "errorCount": 0,
+      "memory": {
+        "usedJSHeapSize": 10000000
+      }
+    },
+    {
+      "label": "t+285m",
+      "at": "2026-08-23T05:32:19.145Z",
+      "cycles": 32725,
+      "errorCount": 0,
+      "memory": {
+        "usedJSHeapSize": 10000000
+      }
+    },
+    {
+      "label": "t+300m",
+      "at": "2026-08-23T05:47:10.374Z",
+      "cycles": 34430,
+      "errorCount": 0,
+      "memory": {
+        "usedJSHeapSize": 44700000
+      }
+    },
+    {
+      "label": "t+315m",
+      "at": "2026-08-23T06:02:01.858Z",
+      "cycles": 36135,
+      "errorCount": 0,
+      "memory": {
+        "usedJSHeapSize": 23100000
+      }
+    },
+    {
+      "label": "t+330m",
+      "at": "2026-08-23T06:17:21.582Z",
+      "cycles": 37895,
+      "errorCount": 0,
+      "memory": {
+        "usedJSHeapSize": 23100000
+      }
+    },
+    {
+      "label": "t+345m",
+      "at": "2026-08-23T06:32:12.846Z",
+      "cycles": 39600,
+      "errorCount": 0,
+      "memory": {
+        "usedJSHeapSize": 60300000
+      }
+    },
+    {
+      "label": "t+360m",
+      "at": "2026-08-23T06:46:56.345Z",
+      "cycles": 41289,
+      "errorCount": 0,
+      "memory": {
+        "usedJSHeapSize": 17100000
+      }
+    },
+    {
+      "label": "end",
+      "at": "2026-08-23T06:46:56.392Z",
+      "cycles": 41289,
+      "errorCount": 0,
+      "memory": null
     }
   ],
-  "errors": [
-    {
-      "at": "2026-08-23T00:21:12.207Z",
-      "type": "http",
-      "message": "http://localhost:4523/?scenario=WORKER_CRASH -> 404"
-    },
-    {
-      "at": "2026-08-23T00:21:12.208Z",
-      "type": "console.error",
-      "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
-    },
-    {
-      "at": "2026-08-23T00:21:12.724Z",
-      "type": "http",
-      "message": "http://localhost:4523/executive?scenario=WORKER_CRASH -> 404"
-    },
-    {
-      "at": "2026-08-23T00:21:12.724Z",
-      "type": "console.error",
-      "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
-    },
-    {
-      "at": "2026-08-23T00:22:25.644Z",
-      "type": "http",
-      "message": "http://localhost:4523/timeline?scenario=NORMAL_OPERATION -> 404"
-    },
-    {
-      "at": "2026-08-23T00:22:25.644Z",
-      "type": "console.error",
-      "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
-    },
-    {
-      "at": "2026-08-23T00:24:51.887Z",
-      "type": "http",
-      "message": "http://localhost:4523/?scenario=STOP_ACTIVE -> 404"
-    },
-    {
-      "at": "2026-08-23T00:24:51.888Z",
-      "type": "console.error",
-      "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
-    }
-  ],
-  "lastHeartbeatAt": "2026-08-23T00:35:04.785Z",
-  "pass": false
+  "errors": [],
+  "lastHeartbeatAt": "2026-08-23T06:46:31.035Z",
+  "pass": true
 }
