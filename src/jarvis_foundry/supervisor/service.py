@@ -16,7 +16,6 @@ from ..runtime.provider_config import ProviderConfigError, ProviderSettings
 from .control import (
     RuntimeControlRequest,
     current_process_identity,
-    inspect_control,
     latest_request,
     latest_process_identity,
     latest_generation,
@@ -449,9 +448,27 @@ class Supervisor:
                     "status": "UNKNOWN",
                     "reason": "database missing",
                 },
+                "health": {
+                    "status": "UNKNOWN",
+                    "reason": "database missing",
+                },
                 "release_authority": release_authority_report(
                     foundry_home=Path(self.database.path).parent),
             }
+        from ..diagnostics.runtime import diagnostic_snapshot, derive_health
+        release_authority = release_authority_report(
+            foundry_home=Path(self.database.path).parent)
+        reconciliation = inspect_ledger(self.database).to_json()
+        diagnostic = diagnostic_snapshot(
+            self.database, stop_path=str(self.estop.path))
+        runtime_control = diagnostic["runtime_control"]
+        health = derive_health(
+            runtime_status=str(runtime_control.get("status") or "UNKNOWN"),
+            reconciliation_consistent=bool(reconciliation.get("consistent")),
+            release_status=("VALID" if release_authority.get("status") == "CONSISTENT"
+                            else str(release_authority.get("status") or "UNKNOWN")),
+            stop_active=self.estop.active(),
+        )
         return {
             "database": str(self.database.path),
             "database_quick_check": self.database.quick_check(readonly=True),
@@ -460,10 +477,10 @@ class Supervisor:
             "heartbeat_count": self.database.event_count(
                 readonly=True, event_type="supervisor.heartbeat"),
             "hermes_required_for_supervisor": False,
-            "reconciliation": inspect_ledger(self.database).to_json(),
+            "reconciliation": reconciliation,
             "active_workers": self.workers.active_runs(readonly=True),
-            "runtime_control": inspect_control(
-                self.database, stop_path=str(self.estop.path)).to_json(),
-            "release_authority": release_authority_report(
-                foundry_home=Path(self.database.path).parent),
+            "runtime_control": runtime_control,
+            "health": health,
+            "diagnostic": diagnostic,
+            "release_authority": release_authority,
         }
