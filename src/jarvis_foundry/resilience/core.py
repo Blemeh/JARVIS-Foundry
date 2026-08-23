@@ -195,6 +195,7 @@ class IncidentRecord:
     affected_resources: tuple[str, ...] = ()
     affected_capabilities: tuple[str, ...] = ()
     affected_missions: tuple[str, ...] = ()
+    effect_action_key: str | None = None
     evidence: tuple[Mapping[str, Any], ...] = ()
     suspected_causes: tuple[str, ...] = ()
     proven_causes: tuple[str, ...] = ()
@@ -223,6 +224,7 @@ class IncidentRecord:
             "affected_resources": list(self.affected_resources),
             "affected_capabilities": list(self.affected_capabilities),
             "affected_missions": list(self.affected_missions),
+            "effect_action_key": self.effect_action_key,
             "evidence": list(self.evidence),
             "suspected_causes": list(self.suspected_causes),
             "proven_causes": list(self.proven_causes),
@@ -257,6 +259,8 @@ def _incident_from_state(state: Mapping[str, Any]) -> IncidentRecord:
         affected_resources=tuple(state.get("affected_resources") or ()),
         affected_capabilities=tuple(state.get("affected_capabilities") or ()),
         affected_missions=tuple(state.get("affected_missions") or ()),
+        effect_action_key=(str(state["effect_action_key"])
+                           if state.get("effect_action_key") else None),
         evidence=tuple(state.get("evidence") or ()),
         suspected_causes=tuple(state.get("suspected_causes") or ()),
         proven_causes=tuple(state.get("proven_causes") or ()),
@@ -299,6 +303,7 @@ def rebuild_incidents(database: FoundryDatabase) -> tuple[IncidentRecord, ...]:
             "affected_resources": [],
             "affected_capabilities": [],
             "affected_missions": [],
+            "effect_action_key": None,
             "evidence": [],
             "suspected_causes": [],
             "proven_causes": [],
@@ -323,6 +328,8 @@ def rebuild_incidents(database: FoundryDatabase) -> tuple[IncidentRecord, ...]:
             })
         if event.event_type in {"incident.detected", "incident.signal_observed"}:
             state["last_signal_at"] = str(payload.get("observed_at") or event.recorded_at)
+            if payload.get("effect_action_key"):
+                state["effect_action_key"] = str(payload["effect_action_key"])
             kind = payload.get("kind")
             if kind and kind not in state["signal_kinds"]:
                 state["signal_kinds"].append(str(kind))
@@ -726,9 +733,19 @@ class AnomalyDetector:
         if worker_failures is None:
             worker_failures = self._count(
                 recent_events,
-                lambda event: event.event_type == "worker.crashed"
-                or (event.event_type == "agent_run.failed"
-                    and event.payload.get("failure_class") != "provider_unavailable"),
+                lambda event: (
+                    event.event_type == "worker.crashed"
+                    or (event.event_type == "agent_run.failed"
+                        and event.payload.get("failure_class") != "provider_unavailable")
+                    # Independent evidence rejection is a worker fault even
+                    # when the worker claimed COMPLETED; acceptance must never
+                    # advance on that false-success path.
+                    or (event.event_type == "worker.fallback_triggered"
+                        and event.payload.get("trigger") in {
+                            "claimed_success_contradicted_by_evidence", "scope_violation",
+                            "worker_runtime_defect", "verifier_failed",
+                        })
+                ),
             )
         if int(worker_failures or 0) >= self.thresholds.worker_failures:
             run_id = self._metric(metrics, "worker_id", "run_id")
@@ -749,9 +766,14 @@ class AnomalyDetector:
                 lambda event: (
                     ("provider" in event.event_type
                      and any(token in event.event_type for token in
-                             ("failed", "timeout", "unavailable")))
+                              ("failed", "timeout", "unavailable")))
                     or (event.event_type == "agent_run.failed"
                         and event.payload.get("failure_class") == "provider_unavailable")
+                    or (event.event_type == "delivery.outcome"
+                        and str(event.payload.get("status") or "")
+                        in {"FAILED", "TIMED_OUT", "BLOCKED"}
+                        and any(token in str(event.payload.get("error_class") or "")
+                                for token in ("Provider", "Timeout", "Network")))
                 ),
             )
         if int(provider_failures or 0) >= self.thresholds.provider_failures:
@@ -1704,3 +1726,83 @@ class ResilienceCoordinator:
                                            IncidentStatus.UNKNOWN.value})
         return ResilienceRun(observed_at, anomalies, tuple(final), recovered, blocked,
                              tuple(errors))
+
+    def reconcile_incident_effect(
+        self,
+        incident_id: str,
+        *,
+        classification: EffectAmbiguity | str,
+        evidence: Mapping[str, Any],
+        effect_action_key: str,
+        repair: bool = True,
+    ) -> IncidentRecord:
+        """Continue an ambiguous-effect incident only after explicit proof.
+
+        The normal anomaly loop deliberately stops at ``UNKNOWN`` because a
+        frozen effect is not safe to redispatch automatically. This explicit
+        integration seam accepts a provider/system reconciliation record,
+        re-enters diagnosis, and may invoke the bounded handler only for a
+        proven ``RECONCILED`` classification. ``MISMATCH`` remains terminal
+        UNKNOWN and cannot be repaired through this path.
+        """
+        if not effect_action_key:
+            raise IncidentLifecycleError("effect_action_key is required for reconciliation")
+        current = self.store.get(incident_id)
+        if current is None:
+            raise IncidentLifecycleError(f"unknown incident: {incident_id}")
+        if current.effect_action_key != effect_action_key:
+            raise IncidentLifecycleError(
+                "effect reconciliation key does not match the incident's frozen effect"
+            )
+        # A reconciliation callback is an explicit integration seam, not a
+        # second incident state machine.  Do not append new evidence or invoke
+        # a repair handler for an already recovered incident, and never bypass
+        # containment for an incident that is still in an active pre-unknown
+        # state.
+        if current.status == IncidentStatus.RECOVERED.value:
+            return current
+        if current.status not in {
+            IncidentStatus.UNKNOWN.value, IncidentStatus.BLOCKED.value,
+            IncidentStatus.ESCALATED.value, IncidentStatus.DIAGNOSING.value,
+        }:
+            raise IncidentLifecycleError(
+                f"effect reconciliation requires a contained terminal incident, got {current.status}"
+            )
+        reconciled = self.store.reconcile_effect(
+            incident_id, classification=classification, evidence=evidence,
+        )
+        classification_value = str(classification)
+        if classification_value != EffectAmbiguity.RECONCILED.value:
+            if reconciled.status != IncidentStatus.UNKNOWN.value:
+                reconciled = self.store.transition(
+                    incident_id, IncidentStatus.UNKNOWN,
+                    reason="effect reconciliation mismatch remains frozen",
+                    effect_ambiguity=classification_value,
+                )
+            return reconciled
+        if reconciled.status in {
+            IncidentStatus.UNKNOWN.value, IncidentStatus.BLOCKED.value,
+            IncidentStatus.ESCALATED.value,
+        }:
+            reconciled = self.store.transition(
+                incident_id, IncidentStatus.DIAGNOSING,
+                reason="external effect reconciled with evidence",
+                effect_ambiguity=EffectAmbiguity.RECONCILED,
+                evidence=_safe_mapping(evidence),
+            )
+        report = self.playbook.run(
+            self.database, reconciled, stop_path=self.stop_path,
+            effect_action_key=effect_action_key,
+        )
+        if not repair:
+            return reconciled
+        anomaly = self.detector._anomaly(
+            AnomalyKind.EFFECT_UNKNOWN,
+            severity=IncidentSeverity.S2,
+            observed_at=reconciled.last_signal_at or isoformat(),
+            correlation_key=reconciled.correlation_key,
+            evidence=_safe_mapping(evidence),
+            effect_action_key=effect_action_key,
+            effect_ambiguity=EffectAmbiguity.RECONCILED.value,
+        )
+        return self._repair(reconciled, anomaly, report)
