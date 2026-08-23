@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import gc
+import sqlite3
 from pathlib import Path
 import subprocess
 import sys
@@ -22,6 +24,7 @@ from jarvis_foundry.resilience import (
     AnomalyThresholds,
     DependencyGraph,
     DiagnosticReport,
+    DiagnosticPlaybook,
     DiagnosticResult,
     EffectAmbiguity,
     HealthSignal,
@@ -183,6 +186,39 @@ def test_recovered_anomaly_recurrence_creates_new_incident(tmp_path: Path) -> No
     assert second.incidents[0].status == IncidentStatus.RECOVERED.value
     assert db.event_count(event_type="incident.detected") == 2
     assert len(rebuild_incidents(db)) == 2
+
+
+def test_locked_database_diagnostics_fail_closed(tmp_path: Path) -> None:
+    db = database(tmp_path)
+    incident = IncidentStore(db).detect(
+        HealthSignal("database-lock", "database_fault", correlation_key="database")
+    )
+
+    class FastFailDatabase(FoundryDatabase):
+        def connect(self, *, readonly: bool = False):
+            if not readonly:
+                return super().connect(readonly=False)
+            uri = f"file:{self.path.resolve().as_posix()}?mode=ro"
+            connection = sqlite3.connect(uri, uri=True, timeout=0, isolation_level=None)
+            connection.row_factory = sqlite3.Row
+            connection.execute("PRAGMA foreign_keys = ON")
+            connection.execute("PRAGMA busy_timeout = 0")
+            return connection
+
+    probe_db = FastFailDatabase(db.path)
+    gc.collect()
+    lock = sqlite3.connect(db.path, timeout=0, isolation_level=None)
+    lock.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    lock.execute("PRAGMA locking_mode = EXCLUSIVE")
+    lock.execute("BEGIN EXCLUSIVE")
+    try:
+        report = DiagnosticPlaybook().run(probe_db, incident)
+    finally:
+        lock.rollback()
+        lock.close()
+    database_result = next(item for item in report.results if item.name == "database_integrity")
+    assert database_result.status == "FAIL"
+    assert report.all_observed is False
 
 
 def test_invalid_transition_and_unknown_effect_fail_closed(tmp_path: Path) -> None:
@@ -561,7 +597,7 @@ def test_disposable_fault_matrix_emits_all_pass_rows(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
     matrix = json.loads(output.read_text(encoding="utf-8"))
     assert matrix["scope"] == "disposable homes only"
-    assert matrix["summary"] == {"fail": 0, "pass": 20, "total": 20}
+    assert matrix["summary"] == {"fail": 0, "pass": 21, "total": 21}
     assert matrix["verdict"] == "PASS"
     assert all(row["evidence"] for row in matrix["rows"])
 

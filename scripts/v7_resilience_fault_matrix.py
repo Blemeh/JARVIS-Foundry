@@ -41,10 +41,13 @@ from jarvis_foundry.resilience import (
     AnomalyDetector,
     AnomalyThresholds,
     DependencyGraph,
+    DiagnosticPlaybook,
     DiagnosticReport,
     DiagnosticResult,
     EffectAmbiguity,
     IncidentStatus,
+    IncidentStore,
+    HealthSignal,
     RepairResult,
     ResilienceCoordinator,
     rebuild_incidents,
@@ -438,6 +441,48 @@ def _case_database(root: Path) -> dict[str, Any]:
         actual, {"quick_check": database.quick_check(readonly=True), "event_count": database.event_count()},
         "database incident recorded; no write repair handler registered",
         "restore/reconcile remains owner-controlled", "PASS" if passed else "FAIL",
+    )
+
+
+def _case_database_lock(root: Path) -> dict[str, Any]:
+    database = _database(root)
+    incident = IncidentStore(database).detect(
+        HealthSignal("database-lock", "database_fault", correlation_key="database")
+    )
+
+    class FastFailDatabase(FoundryDatabase):
+        def connect(self, *, readonly: bool = False):
+            if not readonly:
+                return super().connect(readonly=False)
+            uri = f"file:{self.path.resolve().as_posix()}?mode=ro"
+            connection = sqlite3.connect(uri, uri=True, timeout=0, isolation_level=None)
+            connection.row_factory = sqlite3.Row
+            connection.execute("PRAGMA foreign_keys = ON")
+            connection.execute("PRAGMA busy_timeout = 0")
+            return connection
+
+    import gc
+    gc.collect()
+    lock = sqlite3.connect(database.path, timeout=0, isolation_level=None)
+    lock.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    lock.execute("PRAGMA locking_mode = EXCLUSIVE")
+    lock.execute("BEGIN EXCLUSIVE")
+    try:
+        report = DiagnosticPlaybook().run(FastFailDatabase(database.path), incident)
+    finally:
+        lock.rollback()
+        lock.close()
+    database_result = next(item for item in report.results if item.name == "database_integrity")
+    passed = database_result.status == "FAIL" and not report.all_observed
+    return _row(
+        "V7C-05-database-lock",
+        "exclusive SQLite lock during read-only diagnostics",
+        "diagnostic FAIL; repair cannot be supported",
+        database_result.status,
+        {"diagnostic_action": database_result.status, "all_observed": report.all_observed},
+        "exclusive lock is disposable and released by the harness",
+        "owner-controlled retry after lock release and fresh diagnostics",
+        "PASS" if passed else "FAIL",
     )
 
 
@@ -1043,6 +1088,7 @@ def run_matrix() -> dict[str, Any]:
         ("provider", _case_provider),
         ("provider_continuity", _case_provider_continuity),
         ("database", _case_database),
+        ("database_lock", _case_database_lock),
         ("database_restore", _case_database_restore),
         ("release_freeze", _case_release),
         ("release_failures", _case_release_failure_modes),

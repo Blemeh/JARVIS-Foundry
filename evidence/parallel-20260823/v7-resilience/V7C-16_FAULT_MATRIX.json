@@ -114,6 +114,19 @@
       "verdict": "PASS"
     },
     {
+      "actual": "FAIL",
+      "case_id": "V7C-05-database-lock",
+      "containment": "exclusive lock is disposable and released by the harness",
+      "evidence": {
+        "all_observed": false,
+        "diagnostic_action": "FAIL"
+      },
+      "expected": "diagnostic FAIL; repair cannot be supported",
+      "fault": "exclusive SQLite lock during read-only diagnostics",
+      "recovery": "owner-controlled retry after lock release and fresh diagnostics",
+      "verdict": "PASS"
+    },
+    {
       "actual": "RESTORED",
       "case_id": "V7C-06-database-restore",
       "containment": "restore uses validated backup; corrupt source cannot replace live copy",
@@ -347,8 +360,8 @@
   "scope": "disposable homes only",
   "summary": {
     "fail": 0,
-    "pass": 20,
-    "total": 20
+    "pass": 21,
+    "total": 21
   },
   "verdict": "PASS"
 }
