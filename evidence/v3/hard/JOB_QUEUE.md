@@ -4,7 +4,7 @@ Orientation recorded 2026-08-23 (Europe/Budapest).
 
 - Worktree: `C:/temp/JARVIS-Overnight-V3-Hard-Gate`
 - Branch: `candidate/overnight-v3-hard-gate`
-- HEAD: `41b9bb856d31b6da18247507f6358317082d6c6b`
+- HEAD: `65443d8` (local hardening checkpoint)
 - Base: `origin/main` / `ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2`
 - Schema: v36
 - Source evidence pin: `7849fc3a9998a16da45c922e4ccc506c0c5eab04`
@@ -38,6 +38,16 @@ Migration/restore v35->v36 remains preserved at 9/9 PASS and will only be rerun 
 - Evidence: this queue and fresh local pytest output; full gate evidence has not been regenerated yet.
 - Commit: `016546d` (`V3: persist terminal outcome lineage and continuation`).
 - Remaining uncertainty: AC-01 still needs three complete E2E loops; AC-20 needs a fresh full chain including verifier/evidence IDs; full STOP race and fault matrix remain open.
+
+## Current checkpoint (65443d8)
+
+- C STOP/race: DONE in source/tests; every consequential legacy/cycle/mission boundary now has a fresh STOP gate, with race tests proving no verifier, portfolio, decision, or candidate mission after a STOP race.
+- D outcome lineage: DONE in source/tests; three disposable end-to-end runtime loops prove candidate, decision, mission, worker, evidence, verifier, outcome, and next-selection IDs.
+- E fault recovery: DONE in source/tests; all 12 named points have one-shot hooks and replay/freeze tests in `test_v3_fault_matrix.py`.
+- F continuation: DONE in source/tests; outcome recording schedules idempotent maintenance and next-selection follow-up, including honest wait state.
+- G resource envelope: IN_PROGRESS; `v3_resources.py` and the real-soak runner measure CPU time, RSS when available, processes, workers, DB/events, retries, queue, and provider counters; 14,400-second evidence is still pending.
+- Commit: `65443d8` (`V3: harden STOP replay faults and resource envelope`).
+- Remaining uncertainty: dynamic hard-gate AC mapping, the genuine wall-clock soak, final full-suite verification, and independent verification remain open; no promotion/push/deploy is authorized.
 
 ## Job record template
 
