@@ -22,4 +22,4 @@ and an explicit PASS, FAIL, BLOCKED, or NOT TESTED verdict.
 | V7C-14 | V4/V6 output contract | PASS (source) | `ResilienceRun.to_payload()` is structured, JSON-safe, and carries incidents/anomalies/recovery/blockers/errors. |
 | V7C-15 | Restart continuity lab | PASS (disposable) | Fresh coordinator replay reconstructs the same incident without a duplicate detection event. |
 | V7C-16 | Bounded fault matrix | PASS (disposable) | `V7C-16_FAULT_MATRIX.json` contains 11/11 PASS rows with expected/actual/evidence/containment/recovery/verdict fields. |
-| V7C-17+ | Next evidenced resilience gap | NOT STARTED | Continue only if the final gate still has an evidenced high-value gap. |
+| V7C-17+ | Next evidenced resilience gap | BLOCKED (external gate) | No additional source gap is authorized while the repository-wide staging Task Scheduler restart test is FAIL; resume after owner-authorized Scheduler evidence. |
