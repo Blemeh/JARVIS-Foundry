@@ -3,9 +3,15 @@ import { spawn } from "node:child_process"
 import { mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { setTimeout as delay } from "node:timers/promises"
+import {
+  assertLanePortFree,
+  clearLaneRecord,
+  registerLaneProcess,
+  shutdownLane,
+} from "./laneProcess.mjs"
 
 const port = Number(process.env.VERIFY_PORT ?? 4524)
-const baseUrl = process.env.VERIFY_BASE ?? `http://localhost:${port}`
+const laneId = `product-verify-${port}`const baseUrl = process.env.VERIFY_BASE ?? `http://localhost:${port}`
 const evidenceDir = join(process.cwd(), "..", "..", "evidence", "overnight", "command-center-truth")
 const outPath = join(evidenceDir, "PRODUCT_VERIFY_RESULT.json")
 const managePreview = process.env.VERIFY_MANAGE_PREVIEW !== "0"
@@ -85,15 +91,35 @@ async function waitForPort(url, timeoutMs = 30_000) {
 }
 
 let previewProcess
+const cleanup = () => {
+  shutdownLane(laneId)
+}
+
+process.on("SIGINT", () => {
+  cleanup()
+  process.exit(130)
+})
+process.on("SIGTERM", () => {
+  cleanup()
+  process.exit(143)
+})
+
 if (managePreview) {
+  if (!assertLanePortFree(laneId, port)) {
+    console.error(
+      `Product verify blocked: port ${port} is held by a foreign process. Set VERIFY_MANAGE_PREVIEW=0 to attach to an existing preview, or free the port.`,
+    )
+    process.exit(2)
+  }
   previewProcess = spawn("npx", ["vite", "preview", "--port", String(port), "--strictPort"], {
     cwd: process.cwd(),
     shell: true,
     stdio: "ignore",
   })
+  if (previewProcess.pid) registerLaneProcess(laneId, port, previewProcess.pid)
+  previewProcess.on("exit", () => clearLaneRecord(laneId))
   await waitForPort(baseUrl)
 }
-
 const browser = await chromium.launch({ channel: "chrome", headless: true })
 
 try {
@@ -181,11 +207,8 @@ try {
   }
 } finally {
   await browser.close()
-  if (previewProcess) {
-    previewProcess.kill()
-  }
+  cleanup()
 }
-
 const result = {
   status: failures.length === 0 ? "PASS" : "FAIL",
   baseUrl,
