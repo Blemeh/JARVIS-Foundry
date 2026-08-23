@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import replace
+import threading
+import time
 from types import SimpleNamespace
 
 import pytest
@@ -113,6 +115,62 @@ def test_request_without_outcome_is_unknown_and_never_blindly_retried(tmp_path):
     assert result["status"] == DeliveryStatus.UNKNOWN.value
     assert "without a durable" in result["reason"]
     assert provider.calls == []
+
+
+def test_claim_without_outcome_is_unknown_after_process_loss(tmp_path):
+    database = _database(tmp_path)
+    provider = FakeDeliveryProvider()
+    boundary = DeliveryBoundary(database, {provider.provider_id: provider})
+    request = _request(key="claimed-crash")
+    database.append(Event.create(
+        "delivery.requested", request.to_payload(),
+        source_type="delivery-boundary", source_id=provider.provider_id,
+        idempotency_key=f"delivery.requested:{request.idempotency_key}"))
+    assert boundary._claim(request, 1) is True
+
+    result = boundary.dispatch(request)
+
+    assert result["status"] == DeliveryStatus.UNKNOWN.value
+    assert result["error_class"] == "DeliveryOutcomeUnknown"
+    assert provider.calls == []
+
+
+def test_concurrent_dispatchers_have_one_provider_claim(tmp_path):
+    database = _database(tmp_path)
+    started = threading.Event()
+    release = threading.Event()
+
+    class SlowProvider(FakeDeliveryProvider):
+        def deliver(self, request):
+            self.calls.append(request)
+            started.set()
+            release.wait(timeout=2)
+            return DeliveryOutcome.delivered(provider_actual=self.provider_id)
+
+    provider = SlowProvider()
+    boundary = DeliveryBoundary(database, {provider.provider_id: provider})
+    request = _request(key="concurrent")
+    results: list[dict[str, object]] = []
+
+    def run():
+        results.append(boundary.dispatch(request))
+
+    first = threading.Thread(target=run)
+    second = threading.Thread(target=run)
+    first.start()
+    assert started.wait(timeout=2)
+    second.start()
+    time.sleep(0.05)
+    release.set()
+    first.join(timeout=3)
+    second.join(timeout=3)
+
+    assert len(results) == 2
+    assert sorted(result["status"] for result in results) == [
+        DeliveryStatus.DELIVERED.value, DeliveryStatus.UNKNOWN.value,
+    ]
+    assert len(provider.calls) == 1
+    assert database.event_count(event_type="delivery.claimed") == 1
 
 
 def test_provider_identity_mismatch_is_unknown_and_cost_stays_unknown(tmp_path):

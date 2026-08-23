@@ -65,6 +65,19 @@ def test_duplicate_start_on_same_instance_is_idempotent(tmp_path):
     assert database.event_count(event_type="supervisor.stopped") == 1
 
 
+def test_second_supervisor_object_cannot_reuse_a_live_instance_id(tmp_path):
+    database = _database(tmp_path)
+    stop_path = tmp_path / "EMERGENCY_STOP"
+    first = Supervisor(database, stop_path, instance_id="same-live-instance")
+    assert first.start() == "RUNNING"
+    second = Supervisor(database, stop_path, instance_id="same-live-instance")
+
+    with pytest.raises(LeaseUnavailable, match="already held"):
+        second.start()
+    assert first.started is True
+    first.stop()
+
+
 def test_reused_instance_id_allocates_a_new_durable_generation(tmp_path):
     database = _database(tmp_path)
     stop_path = tmp_path / "EMERGENCY_STOP"

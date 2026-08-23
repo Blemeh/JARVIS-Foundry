@@ -577,7 +577,14 @@ class WorkerController:
                 # Remove only the ledger row and release its matching lease.
                 unregister_adapter_pid(self.pid_table_path(), run_id)
                 owner = worker_lease_key(run_id)
-                row = self.database.row("leases", "lease_key", owner)
+                connection = self.database.connect(readonly=True)
+                try:
+                    row = connection.execute(
+                        "SELECT owner_id FROM leases WHERE lease_key = ?",
+                        (owner,),
+                    ).fetchone()
+                finally:
+                    connection.close()
                 if row is not None:
                     self.leases.release(owner, str(row["owner_id"]))
             terminated.append(run_id)

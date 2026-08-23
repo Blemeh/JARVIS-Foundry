@@ -5,7 +5,7 @@ import sys
 import uuid
 from pathlib import Path
 
-from ..clock import utc_now
+from ..clock import parse, utc_now
 from ..database import FoundryDatabase
 from ..events import Event
 from ..deployment.release import release_authority_report
@@ -151,7 +151,6 @@ class Supervisor:
             live_lease = False
             if lease is not None:
                 try:
-                    from ..clock import parse
                     live_lease = parse(str(lease["expires_at"])) > utc_now()
                 except (TypeError, ValueError, OverflowError):
                     live_lease = True
@@ -193,6 +192,22 @@ class Supervisor:
             self._start_generation + 1,
             latest_generation(self.database, self.instance_id) + 1,
         )
+        connection = self.database.connect(readonly=True)
+        try:
+            lease = connection.execute(
+                "SELECT owner_id, expires_at FROM leases WHERE lease_key = ?",
+                (self.LEASE_KEY,),
+            ).fetchone()
+        finally:
+            connection.close()
+        if lease is not None and str(lease["owner_id"]) == self.instance_id:
+            try:
+                live = parse(str(lease["expires_at"])) > utc_now()
+            except (TypeError, ValueError, OverflowError):
+                live = True
+            if live:
+                raise LeaseUnavailable(
+                    f"lease {self.LEASE_KEY} is already held by instance {self.instance_id}")
         pid, identity = current_process_identity()
         record_claim(
             self.database,

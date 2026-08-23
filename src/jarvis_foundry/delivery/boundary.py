@@ -11,13 +11,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import uuid
 from dataclasses import dataclass, replace
 from enum import Enum
 from typing import Any, Mapping, Protocol
 
 from ..control.redaction import contains_secret_like, redact_text
 from ..database import FoundryDatabase
-from ..events import Event, canonical_json
+from ..events import Event, EventConflict, canonical_json
 
 
 class DeliveryStatus(str, Enum):
@@ -326,6 +327,29 @@ class DeliveryBoundary:
             raw = replace(raw, reason=redact_text(str(raw.reason)))
         return raw
 
+    def _claim(self, request: DeliveryRequest, attempt: int) -> bool:
+        """Acquire one durable provider-attempt claim.
+
+        Event idempotency gives us a cross-process compare-and-set without a
+        migration. A competing owner sees the conflict and must report
+        UNKNOWN rather than calling the provider a second time.
+        """
+
+        payload = {
+            **request.to_payload(),
+            "attempt": int(attempt),
+            "claim_id": uuid.uuid4().hex,
+        }
+        try:
+            self._append(
+                "delivery.claimed",
+                payload,
+                f"delivery.claimed:{request.idempotency_key}:{attempt}",
+            )
+        except EventConflict:
+            return False
+        return True
+
     def dispatch(self, request: DeliveryRequest) -> dict[str, Any]:
         previous = self._events(request, "delivery.outcome")
         if previous:
@@ -377,6 +401,13 @@ class DeliveryBoundary:
             return receipt
 
         for attempt in range(start_attempt, request.max_attempts + 1):
+            if not self._claim(request, attempt):
+                ambiguous = DeliveryOutcome(
+                    DeliveryStatus.UNKNOWN,
+                    error_class="DeliveryClaimConflict",
+                    reason="another owner is delivering this request",
+                )
+                return self._receipt(request, ambiguous, attempt)
             try:
                 outcome = self._normalize(request, provider.deliver(request))
             except DeliveryCancelled as error:
