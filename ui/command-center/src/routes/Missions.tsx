@@ -39,7 +39,7 @@ export function Missions() {
   const [searchParams, setSearchParams] = useSearchParams();
   const statusFromUrl = statusParam[searchParams.get("status") ?? ""] ?? "ALL";
   const [filter, setFilter] = useState<Filter>(statusFromUrl);
-  const [view, setView] = useState<View>("grid");
+  const [view, setView] = useState<View>((searchParams.get("view") as View) === "list" ? "list" : "grid");
   const [page, setPage] = useState(1);
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
   const [sort, setSort] = useState<SortKey>((searchParams.get("sort") as SortKey) || "priority");
@@ -269,7 +269,12 @@ export function Missions() {
             className={`icon-btn ${view === "grid" ? "view-toggle-active" : ""}`}
             aria-label="Grid view"
             aria-pressed={view === "grid"}
-            onClick={() => setView("grid")}
+            onClick={() => {
+              setView("grid");
+              const next = new URLSearchParams(searchParams);
+              next.delete("view");
+              setSearchParams(next, { replace: true });
+            }}
           >
             <Grid3X3 size={15} />
           </button>
@@ -278,7 +283,12 @@ export function Missions() {
             className={`icon-btn ${view === "list" ? "view-toggle-active" : ""}`}
             aria-label="List view"
             aria-pressed={view === "list"}
-            onClick={() => setView("list")}
+            onClick={() => {
+              setView("list");
+              const next = new URLSearchParams(searchParams);
+              next.set("view", "list");
+              setSearchParams(next, { replace: true });
+            }}
           >
             <List size={15} />
           </button>
