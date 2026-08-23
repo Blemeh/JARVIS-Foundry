@@ -36,8 +36,8 @@ The later integrated canonical head may add executive or Command Center fields. 
 
 ## Final handoff state
 
-- Final candidate HEAD: `970e3527dd8fbbbdd7cecc284398b0199137edf0`.
-- Remote candidate: `origin/candidate/v7-executive-portfolio-20260823` at the same SHA.
+- Final candidate source commit: `970e3527dd8fbbbdd7cecc284398b0199137edf0`.
+- Remote candidate: `origin/candidate/v7-executive-portfolio-20260823` includes the source and handoff commits.
 - Candidate worktree: clean.
 - Canonical `main` and `origin/main`: still `6db467a2b0e6bdc37adbc4cbfac309418e33afec`, clean and untouched.
 - Production/live Supervisor, Scheduler, databases, credentials, and CURRENT/PREVIOUS state: untouched.
