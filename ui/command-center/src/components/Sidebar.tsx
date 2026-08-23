@@ -11,6 +11,7 @@ import {
   Bell,
   Radar,
   Settings,
+  SlidersHorizontal,
   UserRound,
 } from "lucide-react";
 import { ShieldQuestion } from "lucide-react";
@@ -28,6 +29,7 @@ const nav = [
   { to: "/systems", label: "Systems", icon: Settings },
   { to: "/timeline", label: "Timeline", icon: History },
   { to: "/notifications", label: "Notifications", icon: Bell },
+  { to: "/owner", label: "Owner", icon: SlidersHorizontal },
 ];
 
 export function SidebarContent() {

@@ -21,6 +21,7 @@ const routeTitles: Record<string, string> = {
   "/systems": "Systems",
   "/timeline": "Timeline",
   "/notifications": "Notifications",
+  "/owner": "Owner Management",
 };
 
 export function AppShell() {
