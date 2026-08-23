@@ -7,8 +7,8 @@ fresh lane verdict.
 | Job | Scope | State | Next evidence |
 |---|---|---|---|
 | V5-1 | Current V5 asset and gap map | PASS | `INITIAL_STATE.md`, focused baseline exit 0 |
-| V5-2 | Connector contract normalization | IN_PROGRESS | Contract tests, fake connector, fresh verifier |
-| V5-3 | Effect ticket and journal hardening | PENDING | Crash, timeout, race, restart, reconciliation probes |
+| V5-2 | Connector contract normalization | PASS | `V5_2_CONTRACT.md`, commit `ee1e4fd`, fresh 6-test verifier |
+| V5-3 | Effect ticket and journal hardening | IN_PROGRESS | Crash, timeout, race, restart, reconciliation probes |
 | V5-4 | Resource discovery and registration | PENDING | Deterministic disposable resource records |
 | V5-5 | Filesystem/project vertical slice | PENDING | Reversible write, retry, reconcile, rollback proof |
 | V5-6 | Git/repository connector | PENDING | Local remote push and provider-side ref proof |
