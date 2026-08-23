@@ -152,10 +152,14 @@ def test_429_5xx_and_malformed_response_have_bounded_honest_states(fixture: _Fix
     assert malformed.outcome == "UNKNOWN"
     assert malformed.error_code == "malformed_response"
     assert fixture.state.write_count == 0
-    server_connector = HttpServiceConnector(fixture.url, timeout_s=0.2, max_attempts=2)
-    failed = server_connector.write("/write?mode=500", {"value": "bad"}, idempotency_key="server")
-    assert failed.outcome == "UNKNOWN"
-    assert failed.error_code == "server_error"
+    server_fixture = _Fixture()
+    try:
+        server_connector = HttpServiceConnector(server_fixture.url, timeout_s=0.2, max_attempts=2)
+        failed = server_connector.write("/write?mode=500", {"value": "bad"}, idempotency_key="server")
+        assert failed.outcome == "UNKNOWN"
+        assert failed.error_code == "server_error"
+    finally:
+        server_fixture.close()
 
 
 def test_outage_opens_only_this_connector_circuit(fixture: _Fixture) -> None:
