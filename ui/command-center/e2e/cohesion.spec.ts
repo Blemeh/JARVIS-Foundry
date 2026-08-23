@@ -97,7 +97,7 @@ test("JOURNEY B: worker crash propagates and recovery reconciles", async ({ page
   await page.locator(".md-hub-link").filter({ hasText: "Systems" }).click();
   await page.getByRole("button", { name: "Inspect OpenHands worker" }).click();
   await page.getByRole("link", { name: "Open system detail" }).click();
-  await expect(page.getByText("HEALTHY", { exact: true })).toBeVisible();
+  await expect(page.getByText("HEALTHY", { exact: true }).first()).toBeVisible();
   await navLink("Timeline").click();
   await expect(page.getByText("worker.recovered", { exact: true })).toBeVisible();
   expect(errors).toEqual([]);
