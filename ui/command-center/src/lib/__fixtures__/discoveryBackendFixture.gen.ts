@@ -8,7 +8,7 @@ export const backendDiscoveryPayload = {
   "latest_cycle": {
     "loop_id": "e2e-cycle-2",
     "started_at": null,
-    "completed_at": "2026-08-23T00:01:26.418248Z",
+    "completed_at": "2026-08-23T01:23:57.314152Z",
     "outcome": "WAITING",
     "decision_id": "exec-e2e-cycle-2",
     "mission_id": null,
@@ -26,7 +26,7 @@ export const backendDiscoveryPayload = {
     {
       "loop_id": "e2e-cycle-2",
       "started_at": null,
-      "completed_at": "2026-08-23T00:01:26.418248Z",
+      "completed_at": "2026-08-23T01:23:57.314152Z",
       "outcome": "WAITING",
       "decision_id": "exec-e2e-cycle-2",
       "mission_id": null,
@@ -42,11 +42,11 @@ export const backendDiscoveryPayload = {
     },
     {
       "loop_id": "e2e-cycle-1",
-      "started_at": "2026-08-23T00:01:24.402439Z",
-      "completed_at": "2026-08-23T00:01:24.933483Z",
+      "started_at": "2026-08-23T01:23:55.725798Z",
+      "completed_at": "2026-08-23T01:23:56.160576Z",
       "outcome": "COMPILED",
       "decision_id": "exec-e2e-cycle-1",
-      "mission_id": "mission-eaf8eeeeeeb1",
+      "mission_id": "mission-759b9d235085",
       "candidate_id": null,
       "observed": 0,
       "candidates_created": 0,
@@ -60,14 +60,14 @@ export const backendDiscoveryPayload = {
   ],
   "candidates_recent": [
     {
-      "candidate_id": "cand-41eda7eb9557",
+      "candidate_id": "cand-211e06c5426a",
       "fingerprint": "bf096040f632b659b742d57fd32d9caba31aa1af595074f5520a1d001adace87",
       "type": "repair",
       "objective": "Fix the failing nightly integration",
       "expected_outcome": "verified: nightly green",
       "status": "EXECUTED",
       "created_from": null,
-      "updated_at": "2026-08-23T00:01:26.332915Z",
+      "updated_at": "2026-08-23T01:23:57.242074Z",
       "expires_at": null,
       "evidence_ref_count": 1,
       "score": {
@@ -97,19 +97,19 @@ export const backendDiscoveryPayload = {
       "rejection": null,
       "superseded_by": null,
       "deferred_until": null,
-      "mission_id": "mission-eaf8eeeeeeb1",
+      "mission_id": "mission-759b9d235085",
       "partial": false
     }
   ],
   "selected": {
     "decision_id": "exec-e2e-cycle-1",
-    "candidate_id": "cand-41eda7eb9557",
+    "candidate_id": "cand-211e06c5426a",
     "total_score": 0.457,
     "comparative_rationale": null,
-    "reason": "selected cand-41eda7eb9557 (composite=0.457) over 0 alternatives; goals=[]",
+    "reason": "selected cand-211e06c5426a (composite=0.457) over 0 alternatives; goals=[]",
     "rejected_alternatives": [],
     "deferred_alternatives": [],
-    "mission_id": "mission-eaf8eeeeeeb1",
+    "mission_id": "mission-759b9d235085",
     "block_reason": null
   },
   "portfolio_summary": {
@@ -119,37 +119,37 @@ export const backendDiscoveryPayload = {
   },
   "active_team": [
     {
-      "run_id": "run-8b38bc14f6db-verify",
+      "run_id": "run-a789412129df-verify",
       "role": "verifier",
       "provider": "opencode_go",
       "model": "muse-spark-1.2-contributor",
       "status": "COMPLETED",
-      "mission_id": "mission-eaf8eeeeeeb1"
+      "mission_id": "mission-759b9d235085"
     },
     {
-      "run_id": "run-8b38bc14f6db",
+      "run_id": "run-a789412129df",
       "role": "builder",
       "provider": "opencode_go",
       "model": "muse-spark-1.2-contributor",
       "status": "COMPLETED",
-      "mission_id": "mission-eaf8eeeeeeb1"
+      "mission_id": "mission-759b9d235085"
     }
   ],
   "verifier": {
-    "mission_id": "mission-eaf8eeeeeeb1",
+    "mission_id": "mission-759b9d235085",
     "verdict": "PASS",
     "fresh_session": null,
     "independence": null,
     "provider": null,
-    "builder_run_id": "run-8b38bc14f6db",
-    "verifier_run_id": "run-8b38bc14f6db-verify",
+    "builder_run_id": "run-a789412129df",
+    "verifier_run_id": "run-a789412129df-verify",
     "repair_rounds_used": 0,
     "repair_budget": 3
   },
   "outcomes": [
     {
-      "candidate_id": "cand-41eda7eb9557",
-      "mission_id": "mission-eaf8eeeeeeb1",
+      "candidate_id": "cand-211e06c5426a",
+      "mission_id": "mission-759b9d235085",
       "window": "immediate",
       "predicted": {
         "confidence": 0.457,
@@ -166,7 +166,7 @@ export const backendDiscoveryPayload = {
         ]
       },
       "actual": {
-        "duration_seconds": 0.379128,
+        "duration_seconds": 0.292005,
         "outcome": "PASSED",
         "repair_count": 0,
         "verdict": "PASS"

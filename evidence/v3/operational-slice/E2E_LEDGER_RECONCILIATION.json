@@ -22,22 +22,22 @@
       "next_action": null
     },
     "policy_version": "v3-policy-2026-08-21",
-    "candidate_id": "cand-41eda7eb9557",
+    "candidate_id": "cand-211e06c5426a",
     "cycle_1": {
       "candidates_created": 0,
       "decision_id": "exec-e2e-cycle-1",
       "degraded_sources": [],
       "loop_id": "e2e-cycle-1",
-      "mission_id": "mission-eaf8eeeeeeb1",
+      "mission_id": "mission-759b9d235085",
       "observed": 0,
       "outcome": "COMPILED",
       "reason": null
     },
     "dispatch": {
       "outcome": "PASSED",
-      "mission_id": "mission-eaf8eeeeeeb1",
+      "mission_id": "mission-759b9d235085",
       "step_id": "executive-step",
-      "run_id": "run-8b38bc14f6db"
+      "run_id": "run-a789412129df"
     },
     "auto_outcome": {
       "status": "RECORDED",
@@ -57,7 +57,7 @@
         ]
       },
       "actual_value": {
-        "duration_seconds": 0.379128,
+        "duration_seconds": 0.292005,
         "outcome": "PASSED",
         "repair_count": 0,
         "verdict": "PASS"
@@ -95,13 +95,13 @@
       },
       "next_action": "WAIT",
       "verifier": {
-        "mission_id": "mission-eaf8eeeeeeb1",
+        "mission_id": "mission-759b9d235085",
         "verdict": "PASS",
         "fresh_session": null,
         "independence": null,
         "provider": null,
-        "builder_run_id": "run-8b38bc14f6db",
-        "verifier_run_id": "run-8b38bc14f6db-verify",
+        "builder_run_id": "run-a789412129df",
+        "verifier_run_id": "run-a789412129df-verify",
         "repair_rounds_used": 0,
         "repair_budget": 3
       }
@@ -109,5 +109,5 @@
   },
   "fixture_path": "ui\\command-center\\src\\lib\\__fixtures__\\discoveryBackendFixture.gen.ts",
   "snapshot_path": "var\\overnight\\v3-operational-slice\\e2e_snapshot.json",
-  "elapsed_seconds": 2.98
+  "elapsed_seconds": 2.51
 }

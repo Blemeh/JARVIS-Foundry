@@ -181,12 +181,16 @@ def reconcile_mission_outcome(
                 break
         # Bounded re-check via SQL when the Python scan missed it (e.g.
         # very large ledgers): the indexed type scan stays cheap either way.
+        # The predicate requires BOTH the mission id AND outcome=PASSED so a
+        # raw-written non-PASSED completion can never satisfy the gate.
         if not completed_pass:
             with database.connect() as connection:
                 row = connection.execute(
                     "SELECT COUNT(*) FROM events WHERE event_type = "
-                    "'mission.completed' AND payload_json LIKE ?",
-                    (f'%\"mission_id\":\"{mission_id}\"%',),
+                    "'mission.completed' AND payload_json LIKE ? "
+                    "AND payload_json LIKE ?",
+                    (f'%\"mission_id\":\"{mission_id}\"%',
+                     '%\"outcome\":\"PASSED\"%'),
                 ).fetchone()
             completed_pass = bool(row and row[0])
     if not completed_pass:

@@ -258,6 +258,66 @@ def test_failed_or_blocked_terminal_never_records(tmp_path):
     from jarvis_foundry.projections import PROJECTION_TABLES  # noqa: F401
 
 
+def test_forged_non_passed_completion_event_never_records(tmp_path):
+    """F1 regression (adversarial review): a raw-written mission.completed
+    with outcome=FAILED must NOT satisfy the terminal gate via the bounded
+    SQL fallback — the fallback requires BOTH the mission id AND
+    outcome=PASSED in the payload."""
+    from jarvis_foundry.v3_outcomes import (
+        reconcile_mission_outcome,
+        reconcile_pending_outcomes,
+    )
+
+    database, _repository = _env(tmp_path)
+    candidate_id = _lab_candidate(database)
+    # Drive a real PASSED cycle first (control: closure works).
+    report = run_cycle(
+        database, FoundryPaths(tmp_path), _config(True, tmp_path),
+        loop_id="L1", instance_id="i1",
+        vault_root=tmp_path / "vault", handoff_dir=tmp_path / "handoffs")
+    assert report["outcome"] == "PASSED"
+    assert len(_outcomes(database)) == 1
+
+    # Forge a second lineage mission whose completion event says FAILED
+    # (non-canonical writer; canonical paths never emit this).
+    second = generate_candidate(
+        database, "mission-seed", "maintenance",
+        "Investigate unknown root cause of flaky checkout service",
+        [{"kind": "log", "ref": "run-9"}],
+        typed={"expected_outcome": "verified: root cause documented",
+               "candidate_type": "research"})
+    assert second["created"]
+    forged_mission_id = f"mission-forged-{second['candidate_id']}"
+    database.append(Event.create(
+        "mission.created",
+        {"mission_id": forged_mission_id,
+         "objective": "Investigate unknown root cause of flaky checkout service",
+         "resource_id": "resource-1", "state": "PLANNED",
+         "acceptance_criteria": ["root cause documented"],
+         "created_from": f"candidate:{second['candidate_id']}"},
+        source_type="supervisor", source_id="v3-closure-test",
+        idempotency_key=f"mission.created:{forged_mission_id}"))
+    for state in ("ORIENTING", "ACTION_SELECTION", "COMPLETE"):
+        database.append(Event.create(
+            "mission.state_changed",
+            {"mission_id": forged_mission_id, "state": state},
+            source_type="supervisor", source_id="v3-closure-test",
+            idempotency_key=f"mission.state_changed:{forged_mission_id}:{state}"))
+    database.append(Event.create(
+        "mission.completed",
+        {"mission_id": forged_mission_id, "outcome": "FAILED", "run_id": "r"},
+        source_type="supervisor", source_id="mission-loop",
+        idempotency_key=f"mission.completed:{forged_mission_id}"))
+
+    result = reconcile_mission_outcome(database, mission_id=forged_mission_id)
+    assert result["recorded"] is False
+    assert result["idempotent"] is False
+    assert "not terminal PASSED" in (result["skipped_reason"] or "")
+    scan = reconcile_pending_outcomes(database)
+    assert scan["reconciled"] == 0
+    assert len(_outcomes(database)) == 1  # still exactly the control outcome
+
+
 def test_flag_off_records_no_new_outcome_events(tmp_path):
     database, _repository = _env(tmp_path)
     _lab_candidate(database)
