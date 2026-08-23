@@ -3,13 +3,13 @@
 **Branch:** `candidate/overnight-command-center-truth`  
 **Worktree:** `C:\temp\JARVIS-Overnight-Command-Center-Truth`  
 **Canonical base:** `ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2`  
-**Queue verified at:** pending commit (session HEAD was `727343f`)
+**Queue verified at:** `d3019a9`
 
 Evidence is marked **DONE** only after executable verification at the committing HEAD.
 
 ## Job 1 — Route resilience layer
 
-**Status:** IN_PROGRESS → commit pending this session
+**Status:** DONE @ `25d7b47`
 
 | Requirement | Evidence |
 | --- | --- |
@@ -101,7 +101,7 @@ npx playwright test e2e/route-state-matrix.spec.ts → PASS
 
 ## Job 8 — Local product verification harness
 
-**Status:** IN_PROGRESS → commit pending this session
+**Status:** DONE @ `e6ba131`
 
 | Requirement | Evidence |
 | --- | --- |
@@ -115,9 +115,11 @@ npx playwright test e2e/route-state-matrix.spec.ts → PASS
 
 ## Job 9 — Next real UI gap
 
-**Status:** PENDING (after Jobs 1+8 commits and full gate rerun)
+**Status:** DONE @ `d3019a9`
 
-Inspect post-queue source for remaining owned gaps.
+| Gap | Fix |
+| --- | --- |
+| STREAM_DISCONNECTED had no owner recovery control | `reconnectStream` in context + TopStatusBar reconnect button (simulated only) |
 
 ## Job 10 — WP-I six-hour endurance
 
