@@ -294,6 +294,8 @@ export interface OwnerControlSurface {
     count: number;
   };
   briefingPacket: Record<string, unknown> | null;
+  effectTruth?: Record<string, unknown>;
+  evolutionTruth?: Record<string, unknown>;
   decisionQueue: {
     open: OwnerAttentionRecord[];
     history: OwnerAttentionRecord[];

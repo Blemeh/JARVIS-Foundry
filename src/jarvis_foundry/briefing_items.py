@@ -15,7 +15,7 @@ from typing import Any, Iterable
 from .database import FoundryDatabase
 from .events import Event, payload_hash
 
-ITEM_VERSION = "1.0"
+ITEM_VERSION = "1.1"
 DEFAULT_ITEM_LIMIT = 50
 
 _SKIP_EVENT_TYPES = frozenset({
@@ -130,6 +130,10 @@ def _entity(event: Event) -> tuple[str | None, str | None, str | None]:
         ("directive_id", "directive"),
         ("candidate_id", "candidate"),
         ("run_id", "agent_run"),
+        ("effect_ticket_id", "effect"),
+        ("lineage_id", "lineage"),
+        ("action_key", "effect"),
+        ("connector_request_id", "connector_request"),
         ("resource_id", "resource"),
         ("question_id", "question"),
     ):
@@ -161,6 +165,45 @@ def _rule(event: Event) -> tuple[str, int, str]:
         return "KNOWLEDGE", 2, "INFORM"
     if event_type in {"resource.usage_recorded", "provider.usage_recorded"}:
         return "COST", 3, "INFORM"
+    # V5 effect truth is useful to an owner only after it is reduced to the
+    # durable attempt/lineage state.  Raw provider content never changes the
+    # category or authority of an item.
+    if event_type in {
+        "connector.attempt_recorded", "correlation.lineage_recorded",
+        "system.action_started", "system.action_completed",
+        "system.action_failed", "effect.frozen", "effect.reconcile_mismatch",
+    }:
+        outcome = str(payload.get("outcome") or payload.get("status") or "").upper()
+        if event_type in {"system.action_failed", "effect.frozen",
+                          "effect.reconcile_mismatch"} or outcome in {
+            "FAILED", "UNKNOWN", "FROZEN", "BLOCKED",
+        }:
+            return "EFFECT", 5, "DECISION_REQUIRED"
+        if outcome in {"COMPLETED", "COMPENSATED", "CANCELLED"} or \
+                event_type == "system.action_completed":
+            return "EFFECT", 3, "INFORM"
+        return "EFFECT", 3, "UNKNOWN"
+    # V6 records are evidence-backed evolution signals.  They may explain a
+    # candidate or a gate to the owner, but they cannot grant authority merely
+    # by appearing in the briefing stream.
+    if event_type.startswith((
+        "improvement.", "hypothesis.", "measurement.", "experiment.",
+        "candidate.", "shadow.", "benchmark.", "verifier.",
+        "eligibility.", "cycle.", "feedback.", "evolution.",
+    )):
+        decision = str(payload.get("decision") or payload.get("verdict") or
+                       payload.get("outcome") or payload.get("status") or "").upper()
+        if decision in {"FAIL", "FAILED", "REJECTED", "BLOCKED",
+                        "UNKNOWN", "ROLLED_BACK", "NOT_TESTED"} or \
+                payload.get("trusted_independent_pass") is False or \
+                event_type.endswith(("_failed", ".failed", "_rejected",
+                                     ".rejected", ".blocked", ".rolled_back")):
+            return "EVOLUTION", 5, "DECISION_REQUIRED"
+        if decision in {"PASS", "PROMOTED", "COMPLETED", "ELIGIBLE",
+                        "CONFIRMED", "PARTIAL"} or \
+                payload.get("trusted_independent_pass") is True:
+            return "EVOLUTION", 3, "INFORM"
+        return "EVOLUTION", 3, "UNKNOWN"
     if event_type.startswith("mission.") or event_type.startswith("agent_run."):
         return "MISSION", 3, "INFORM"
     if event_type.startswith("release.") or event_type.startswith("rollback."):
@@ -173,7 +216,11 @@ def _rule(event: Event) -> tuple[str, int, str]:
 def _evidence_refs(event: Event) -> tuple[str, ...]:
     payload = event.payload if isinstance(event.payload, dict) else {}
     refs: list[str] = [event.event_id]
-    for key in ("evidence_ref", "evidence_id", "last_event_id", "verdict_id"):
+    for key in (
+        "evidence_ref", "evidence_id", "last_event_id", "verdict_id",
+        "attempt_id", "effect_ticket_id", "lineage_id",
+        "connector_request_id",
+    ):
         value = payload.get(key)
         if isinstance(value, str) and value and value not in refs:
             refs.append(value)

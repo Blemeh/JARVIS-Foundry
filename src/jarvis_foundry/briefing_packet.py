@@ -96,6 +96,11 @@ def build_briefing_packet(
         "packet_id": f"{kind}:{period}",
         "window": {"kind": kind, "period_key": period, "generated_at": snapshot.get("generated_at")},
         "items": items,
+        # These additive signals let the owner see V5 terminal effect state
+        # and V6 gate/evidence state in the same packet as V4 decisions.
+        # They are read-only projections; neither grants authority.
+        "effect_truth": dict(snapshot.get("effect_truth") or {}),
+        "evolution_truth": dict(snapshot.get("evolution_truth") or {}),
         "decision_required": decision_required,
         "source_refs": source_refs,
         "next_action_summary": next_actions,

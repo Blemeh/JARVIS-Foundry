@@ -52,6 +52,56 @@ function projectionBadge(status: string): "COMPLETE" | "PENDING" | "UNKNOWN" {
   return "UNKNOWN";
 }
 
+function truthBadge(status: string): "READY" | "NOT_TESTED" | "DEGRADED" | "FAIL" | "UNKNOWN" {
+  const normalized = status.toUpperCase();
+  if (normalized === "AVAILABLE" || normalized === "PASS" || normalized === "ELIGIBLE") return "READY";
+  if (normalized === "FAIL" || normalized === "FAILED" || normalized === "REJECTED") return "FAIL";
+  if (normalized === "DEGRADED" || normalized === "BLOCKED") return "DEGRADED";
+  if (normalized === "EMPTY" || normalized === "NOT_TESTED") return "NOT_TESTED";
+  return "UNKNOWN";
+}
+
+function TruthSignals({
+  effectTruth,
+  evolutionTruth,
+}: {
+  effectTruth?: Record<string, unknown>;
+  evolutionTruth?: Record<string, unknown>;
+}) {
+  const effectSummary = objectValue(effectTruth ?? {}, "summary");
+  const evolutionSummary = objectValue(evolutionTruth ?? {}, "summary");
+  const evolutionCounts = objectValue(evolutionSummary, "by_status");
+  return (
+    <section className="panel">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="t-label">Cross-system truth</h2>
+          <p className="mt-1 text-xs opacity-60">V5 effects and V6 evolution gates reduced from durable evidence.</p>
+        </div>
+        <span className="t-mono text-muted">READ ONLY</span>
+      </div>
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <article className="rounded border border-white/10 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className="t-label">Effect / reconciliation</span>
+            <StatusBadge status={truthBadge(value(effectTruth ?? {}, "status"))} />
+          </div>
+          <p className="mt-2 text-sm">Attempts {value(effectSummary, "attempts", "lineage")} · unknown {value(effectSummary, "unknown")} · pending {value(effectSummary, "pending")}</p>
+          <p className="mt-1 text-xs opacity-60">External payloads: {value(effectTruth ?? {}, "external_payloads", "source")}</p>
+        </article>
+        <article className="rounded border border-white/10 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className="t-label">Self-evolution gates</span>
+            <StatusBadge status={truthBadge(value(evolutionTruth ?? {}, "status"))} />
+          </div>
+          <p className="mt-2 text-sm">Records {value(evolutionSummary, "records")} · eligible {value(evolutionSummary, "eligible_decisions")} · failed {value(evolutionCounts, "FAIL", "FAILED")}</p>
+          <p className="mt-1 text-xs opacity-60">Authority: {value(evolutionTruth ?? {}, "ui_authority", "source")}</p>
+        </article>
+      </div>
+    </section>
+  );
+}
+
 function DirectiveList({
   title,
   records,
@@ -266,6 +316,10 @@ export function OwnerManagement() {
 
       <div className="mt-4">
         <ResultTraceability results={surface.resultTraceability.results} count={surface.resultTraceability.count} />
+      </div>
+
+      <div className="mt-4">
+        <TruthSignals effectTruth={surface.effectTruth} evolutionTruth={surface.evolutionTruth} />
       </div>
 
       <p className="mt-4 flex items-center gap-1 text-xs opacity-50"><ExternalLink size={12} aria-hidden="true" /> Evidence and event identifiers link this projection back to the local ledger. No UI action here mutates owner authority.</p>

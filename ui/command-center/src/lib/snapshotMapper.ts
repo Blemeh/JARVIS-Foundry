@@ -343,6 +343,8 @@ export function mapOwnerControlSurface(snapshot: FoundrySnapshot): OwnerControlS
     redirects: controls.redirects ?? [],
     directiveHistory: snapshot.owner_directives?.records ?? [],
     briefings: snapshot.briefings ?? [],
+    effectTruth: snapshot.effect_truth ?? undefined,
+    evolutionTruth: snapshot.evolution_truth ?? undefined,
     resultTraceability: {
       status: snapshot.result_traceability?.status ?? "UNKNOWN",
       results: snapshot.result_traceability?.results ?? [],

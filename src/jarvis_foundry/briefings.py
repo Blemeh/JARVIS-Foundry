@@ -54,6 +54,8 @@ class BriefingPlanner:
             "knowledge_changes": [e for e in snapshot["timeline"] if e["event_type"].startswith("knowledge.")][-20:],
             "next_actions": [{"mission_id": m.get("mission_id"), "next_action": m.get("next_action"), "evidence": m.get("record_ref")} for m in snapshot["missions"][:20]],
             "unknowns_and_blockers": snapshot["recovery"]["provider_or_connector_unknowns"] + snapshot["recovery"]["blocked_missions"],
+            "effect_truth": dict(snapshot.get("effect_truth") or {}),
+            "evolution_truth": dict(snapshot.get("evolution_truth") or {}),
             "items": list(selection.get("items") or []),
             "selection": dict(selection),
             "decision_required_items": [

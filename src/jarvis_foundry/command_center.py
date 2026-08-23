@@ -188,6 +188,192 @@ def _safe_table(connection, table: str, query: str, args: tuple[Any, ...] = ()) 
         return []
 
 
+def _bounded_event_rows(
+    connection: sqlite3.Connection,
+    patterns: tuple[str, ...],
+    *,
+    limit: int,
+) -> list[tuple[int, str, str, str, str]]:
+    """Read a bounded newest-first slice without exposing raw payloads."""
+    clauses = " OR ".join("event_type LIKE ?" for _ in patterns)
+    try:
+        return [
+            (int(row[0]), str(row[1]), str(row[2]), str(row[3]), str(row[4]))
+            for row in connection.execute(
+                "SELECT sequence, event_id, event_type, occurred_at, "
+                "payload_json FROM events WHERE " + clauses +
+                " ORDER BY sequence DESC LIMIT ?",
+                (*patterns, int(limit)),
+            ).fetchall()
+        ]
+    except Exception:
+        # A legacy schema or malformed optional projection is an explicit
+        # empty/unknown surface, never a fabricated success state.
+        return []
+
+
+def _effect_truth_projection(
+    connection: sqlite3.Connection, *, limit: int = 100,
+) -> dict[str, Any]:
+    """Project V5 terminal effect truth for owner-facing read models.
+
+    Only the durable attempt, lineage, and system-action state is exposed;
+    provider request bodies and before/after blobs stay outside this surface.
+    External payloads remain untrusted observations, not authority.
+    """
+    rows = _bounded_event_rows(
+        connection,
+        ("connector.attempt_recorded", "correlation.lineage_recorded"),
+        limit=max(1, min(int(limit) * 3, 600)),
+    )
+    attempts: dict[str, dict[str, Any]] = {}
+    lineage: dict[str, dict[str, Any]] = {}
+    for sequence, event_id, event_type, occurred_at, raw in rows:
+        payload, malformed = _load_json_object(raw)
+        if malformed:
+            continue
+        if event_type == "connector.attempt_recorded":
+            key = str(payload.get("attempt_id") or event_id)
+            if key in attempts:
+                continue
+            attempts[key] = {
+                "attempt_id": payload.get("attempt_id"),
+                "mission_id": payload.get("mission_id"),
+                "resource_id": payload.get("resource_id"),
+                "effect_ticket_id": payload.get("effect_ticket_id"),
+                "connector_id": payload.get("connector_id"),
+                "action_kind": payload.get("action_kind"),
+                "outcome": payload.get("outcome", "UNKNOWN"),
+                "error_code": payload.get("error_code"),
+                "provider_ref": payload.get("provider_ref"),
+                "evidence_refs": list(payload.get("evidence_refs") or []),
+                "reconciled": bool(payload.get("reconciled", False)),
+                "source_event_id": event_id,
+                "source_sequence": sequence,
+                "occurred_at": occurred_at,
+            }
+        else:
+            key = str(payload.get("lineage_id") or event_id)
+            if key in lineage:
+                continue
+            lineage[key] = {
+                "lineage_id": payload.get("lineage_id"),
+                "resource_id": payload.get("resource_id"),
+                "mission_id": payload.get("mission_id"),
+                "connector_request_id": payload.get("connector_request_id"),
+                "effect_ticket_id": payload.get("effect_ticket_id"),
+                "external_object_id": payload.get("external_object_id"),
+                "outcome": payload.get("outcome", "UNKNOWN"),
+                "confidence": payload.get("confidence", 0.0),
+                "ambiguity_reason": payload.get("ambiguity_reason"),
+                "evidence_refs": list(payload.get("evidence_refs") or []),
+                "source_refs": list(payload.get("source_refs") or []),
+                "source_event_id": event_id,
+                "source_sequence": sequence,
+                "occurred_at": occurred_at,
+            }
+    actions = _safe_table(
+        connection,
+        "system_actions",
+        "SELECT action_key, system_id, target_ref, kind, status, "
+        "last_event_id, updated_at FROM system_actions "
+        "ORDER BY updated_at DESC LIMIT ?",
+        (max(1, min(int(limit), 200)),),
+    )
+    attempt_rows = list(attempts.values())[: max(1, int(limit))]
+    lineage_rows = list(lineage.values())[: max(1, int(limit))]
+    statuses = [str(row.get("outcome") or "UNKNOWN").upper()
+                for row in attempt_rows + lineage_rows]
+    statuses.extend(str(row.get("status") or "UNKNOWN").upper()
+                    for row in actions)
+    unknown = sum(status in {"UNKNOWN", "NOT_TESTED"} for status in statuses)
+    failures = sum(status in {"FAILED", "FROZEN", "BLOCKED"}
+                   for status in statuses)
+    pending = sum(status in {"STARTED", "PROBING", "PENDING"}
+                  for status in statuses)
+    return {
+        "schema": "v5.effect-truth.v1",
+        "status": "AVAILABLE" if (attempt_rows or lineage_rows or actions)
+        else "EMPTY",
+        "source": "append_only_event_ledger",
+        "external_payloads": "UNTRUSTED",
+        "attempts": attempt_rows,
+        "lineage": lineage_rows,
+        "actions": actions,
+        "summary": {
+            "attempts": len(attempt_rows),
+            "lineage": len(lineage_rows),
+            "actions": len(actions),
+            "unknown": unknown,
+            "failures_or_frozen": failures,
+            "pending": pending,
+        },
+    }
+
+
+def _evolution_truth_projection(
+    connection: sqlite3.Connection, *, limit: int = 100,
+) -> dict[str, Any]:
+    """Project V6 evidence/gate signals without granting UI authority."""
+    rows = _bounded_event_rows(
+        connection,
+        (
+            "improvement.%", "measurement.%", "experiment.%",
+            "shadow.%", "benchmark.%", "verifier.%", "eligibility.%",
+            "cycle.%", "feedback.%", "evolution.%",
+        ),
+        limit=max(1, min(int(limit), 400)),
+    )
+    records: list[dict[str, Any]] = []
+    eligible = 0
+    for sequence, event_id, event_type, occurred_at, raw in rows:
+        payload, malformed = _load_json_object(raw)
+        if malformed:
+            continue
+        if event_type == "verifier.run_recorded":
+            if payload.get("trusted_independent_pass") is True and \
+                    payload.get("all_criteria_pass") is True:
+                status = "PASS"
+            elif payload.get("all_criteria_pass") is False:
+                status = "FAIL"
+            else:
+                status = "NOT_TESTED"
+        elif event_type == "eligibility.evaluated":
+            status = str(payload.get("decision") or "UNKNOWN").upper()
+            eligible += status == "ELIGIBLE"
+        else:
+            status = str(payload.get("verdict") or payload.get("outcome")
+                         or payload.get("status") or payload.get("decision")
+                         or "RECORDED").upper()
+        records.append({
+            "sequence": sequence,
+            "event_id": event_id,
+            "event_type": event_type,
+            "occurred_at": occurred_at,
+            "status": status,
+            "improvement_id": payload.get("improvement_id"),
+            "candidate_release_id": payload.get("candidate_release_id"),
+            "verification_id": payload.get("verification_id"),
+            "evidence_refs": list(payload.get("evidence_refs") or []),
+        })
+    counts: dict[str, int] = {}
+    for record in records:
+        status = str(record["status"])
+        counts[status] = counts.get(status, 0) + 1
+    return {
+        "schema": "v6.evolution-truth.v1",
+        "status": "AVAILABLE" if records else "EMPTY",
+        "source": "governed_evidence_and_independent_verdicts",
+        "ui_authority": "NONE",
+        "records": records[: max(1, int(limit))],
+        "summary": {
+            "records": len(records),
+            "eligible_decisions": eligible,
+            "by_status": counts,
+        },
+    }
+
+
 def _executive_projection(database: FoundryDatabase, *, limit: int = 25) -> dict[str, Any]:
     """Project Executive Intelligence decisions from the durable ledger.
 
@@ -865,6 +1051,8 @@ def build_snapshot(
             "SELECT contract_id, mission_id, step_id, version, capability, "
             "last_event_id, updated_at FROM mission_step_contracts "
             "ORDER BY updated_at DESC LIMIT 100")
+        effect_truth = _effect_truth_projection(connection)
+        evolution_truth = _evolution_truth_projection(connection)
 
     stop = EmergencyStop(stop_path).read() if stop_path is not None else None
     owner_directives = owner_directive_snapshot(database, now=generated_at)
@@ -999,6 +1187,8 @@ def build_snapshot(
         },
         "briefings": [with_ref(b, "briefing", "briefing_id") for b in briefings],
         "voice": [with_ref(v, "voice_interaction", "interaction_id") for v in voices],
+        "effect_truth": effect_truth,
+        "evolution_truth": evolution_truth,
         "timeline": decision_timeline(database, limit=timeline_limit),
         "executive": _executive_projection(database, limit=25),
         "discovery": _discovery_projection(

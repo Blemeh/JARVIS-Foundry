@@ -73,6 +73,47 @@ def test_event_projection_has_traceable_item_contract(tmp_path: Path) -> None:
     assert len(late.summary) <= 320
 
 
+def test_effect_and_evolution_items_keep_unknowns_out_of_pass(tmp_path: Path) -> None:
+    database = _database(tmp_path)
+    _event(
+        database,
+        "connector.attempt_recorded",
+        {
+            "attempt_id": "attempt-1",
+            "mission_id": "mission-effect",
+            "effect_ticket_id": "effect-1",
+            "outcome": "UNKNOWN",
+            "error_code": "provider_timeout",
+        },
+        "connector-attempt-1",
+    )
+    _event(
+        database,
+        "verifier.run_recorded",
+        {
+            "improvement_id": "improvement-1",
+            "trusted_independent_pass": False,
+            "verification_id": "verification-1",
+            "evidence_refs": ["verifier-run-1"],
+        },
+        "verifier-run-1",
+    )
+
+    items = project_briefing_items(
+        database,
+        now="2026-08-23T09:00:00+00:00",
+        limit=20,
+    )
+    effect = next(item for item in items if item.source_event_type == "connector.attempt_recorded")
+    evolution = next(item for item in items if item.source_event_type == "verifier.run_recorded")
+    assert effect.category == "EFFECT"
+    assert effect.owner_action_required == "DECISION_REQUIRED"
+    assert "attempt-1" in effect.evidence_refs
+    assert "effect-1" in effect.evidence_refs
+    assert evolution.category == "EVOLUTION"
+    assert evolution.owner_action_required == "DECISION_REQUIRED"
+
+
 def test_twice_daily_selection_is_restart_safe_and_cross_window_deduped(tmp_path: Path) -> None:
     database = _database(tmp_path)
     _event(

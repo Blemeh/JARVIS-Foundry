@@ -96,6 +96,50 @@ def test_unknown_cost_measurement_is_not_zero(db: FoundryDatabase) -> None:
     assert snapshot["costs"]["unknown_measurements"] == 1
 
 
+def test_snapshot_bridges_v5_effects_and_v6_gates_without_provider_authority(
+        db: FoundryDatabase) -> None:
+    db.append(Event.create(
+        "connector.attempt_recorded",
+        {
+            "attempt_id": "attempt-snapshot-1",
+            "mission_id": "mission-snapshot",
+            "resource_id": "resource-local",
+            "effect_ticket_id": "effect-snapshot-1",
+            "connector_id": "conn-local",
+            "action_kind": "file.write",
+            "outcome": "UNKNOWN",
+            "error_code": "provider_timeout",
+            "before_state": {"secret": "must-not-be-projected"},
+            "evidence_refs": ["evidence-attempt-1"],
+        },
+        source_type="supervisor", source_id="test",
+        idempotency_key="connector.attempt_recorded:snapshot-1",
+    ))
+    db.append(Event.create(
+        "verifier.run_recorded",
+        {
+            "verification_id": "verification-snapshot-1",
+            "improvement_id": "improvement-snapshot-1",
+            "all_criteria_pass": False,
+            "trusted_independent_pass": False,
+            "evidence_refs": ["verifier-evidence-1"],
+        },
+        source_type="supervisor", source_id="test",
+        idempotency_key="verifier.run_recorded:snapshot-1",
+    ))
+    snapshot = build_snapshot(db)
+    effect = snapshot["effect_truth"]
+    evolution = snapshot["evolution_truth"]
+    assert effect["status"] == "AVAILABLE"
+    assert effect["summary"]["unknown"] == 1
+    assert "before_state" not in effect["attempts"][0]
+    assert evolution["records"][0]["status"] == "FAIL"
+    assert evolution["summary"]["eligible_decisions"] == 0
+    packet = snapshot["briefing_packet"]
+    assert packet["effect_truth"]["schema"] == "v5.effect-truth.v1"
+    assert packet["evolution_truth"]["schema"] == "v6.evolution-truth.v1"
+
+
 def test_measured_usage_without_actual_dollars_stays_unknown(db: FoundryDatabase) -> None:
     db.append(Event.create(
         "resource.usage_recorded",

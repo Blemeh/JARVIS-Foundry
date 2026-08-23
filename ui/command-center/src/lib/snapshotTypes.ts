@@ -55,6 +55,8 @@ export interface FoundrySnapshot {
     counts_by_classification?: Record<string, number>;
   };
   briefings?: Record<string, unknown>[];
+  effect_truth?: Record<string, unknown>;
+  evolution_truth?: Record<string, unknown>;
   result_traceability?: {
     schema?: string;
     status?: string;
