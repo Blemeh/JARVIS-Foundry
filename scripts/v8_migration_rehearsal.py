@@ -19,6 +19,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.hybrid_memory import (CoreMemoryRegistry, CurationPipeline,
                                           RecallEngine, TierCMemoryStore)
+from jarvis_foundry.migrations import SCHEMA_VERSION
 
 CANONICAL_VAR = pathlib.Path(
     r"C:/Users/b/Documents/ChatGPT/Autonomous AI powered by Hoowen/JARVIS-Foundry/var")
@@ -265,7 +266,7 @@ def main() -> int:
     failures = []
     for scenario in report["scenarios"]:
         steps = scenario["steps"]
-        if steps.get("forward_migration") != 33:
+        if steps.get("forward_migration") != SCHEMA_VERSION:
             failures.append(f"{scenario['source']}: forward")
         if not steps.get("tier_c_exercise_ok"):
             failures.append(f"{scenario['source']}: exercise")

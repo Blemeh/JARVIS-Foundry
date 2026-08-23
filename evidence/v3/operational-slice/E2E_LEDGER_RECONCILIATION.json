@@ -1,6 +1,6 @@
 {
   "facts": {
-    "db_path": "C:\\temp\\JARVIS-Overnight-V3-Operational-Slice\\var\\overnight\\v3-operational-slice\\e2e.sqlite",
+    "db_path": "C:\\temp\\JARVIS-V456-Cinematic-Integration\\var\\overnight\\v3-operational-slice\\e2e.sqlite",
     "empty_state": {
       "schema": 1,
       "state": "EMPTY_LEDGER",
@@ -22,42 +22,42 @@
       "next_action": null
     },
     "policy_version": "v3-policy-2026-08-21",
-    "candidate_id": "cand-211e06c5426a",
+    "candidate_id": "cand-5df4338c648e",
     "cycle_1": {
       "candidates_created": 0,
       "decision_id": "exec-e2e-cycle-1",
       "degraded_sources": [],
+      "lineage": {
+        "candidate_id": "cand-5df4338c648e",
+        "decision_id": "exec-e2e-cycle-1",
+        "loop_id": "e2e-cycle-1",
+        "mission_id": "mission-cand-5df4338c648e",
+        "next_selection_id": null,
+        "outcome_id": null,
+        "status": "COMPILED"
+      },
       "loop_id": "e2e-cycle-1",
-      "mission_id": "mission-759b9d235085",
+      "mission_id": "mission-cand-5df4338c648e",
       "observed": 0,
       "outcome": "COMPILED",
       "reason": null
     },
     "dispatch": {
       "outcome": "PASSED",
-      "mission_id": "mission-759b9d235085",
+      "mission_id": "mission-cand-5df4338c648e",
       "step_id": "executive-step",
-      "run_id": "run-a789412129df"
+      "run_id": "run-757803e44973"
     },
     "auto_outcome": {
       "status": "RECORDED",
       "window": "immediate",
       "predicted_value": {
-        "confidence": 0.457,
-        "expected_cost": null,
-        "expected_duration_seconds": null,
-        "expected_effort": 1.0,
-        "expected_risk": "MEDIUM",
-        "expected_success": 0.6828,
-        "expected_value": null,
-        "prediction_version": "1.0.0",
-        "unknown_fields": [
-          "expected_duration_seconds",
-          "expected_cost"
-        ]
+        "expected_outcome": "verified: nightly green"
       },
       "actual_value": {
-        "duration_seconds": 0.292005,
+        "duration_seconds": 0.533162,
+        "effort_proxy": 0.0,
+        "mission_state": "COMPLETE",
         "outcome": "PASSED",
         "repair_count": 0,
         "verdict": "PASS"
@@ -95,13 +95,13 @@
       },
       "next_action": "WAIT",
       "verifier": {
-        "mission_id": "mission-759b9d235085",
+        "mission_id": "mission-cand-5df4338c648e",
         "verdict": "PASS",
         "fresh_session": null,
         "independence": null,
         "provider": null,
-        "builder_run_id": "run-a789412129df",
-        "verifier_run_id": "run-a789412129df-verify",
+        "builder_run_id": "run-757803e44973",
+        "verifier_run_id": "run-757803e44973-verify",
         "repair_rounds_used": 0,
         "repair_budget": 3
       }
@@ -109,5 +109,5 @@
   },
   "fixture_path": "ui\\command-center\\src\\lib\\__fixtures__\\discoveryBackendFixture.gen.ts",
   "snapshot_path": "var\\overnight\\v3-operational-slice\\e2e_snapshot.json",
-  "elapsed_seconds": 2.51
+  "elapsed_seconds": 3.44
 }
