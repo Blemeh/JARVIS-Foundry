@@ -35,6 +35,9 @@ class CycleReport:
     rejected: int = 0
     degraded_sources: list[str] = field(default_factory=list)
     reason: str | None = None
+    outcome_id: str | None = None
+    next_selection_id: str | None = None
+    lineage: dict[str, Any] = field(default_factory=dict)
 
     def to_payload(self) -> dict[str, Any]:
         return {
@@ -50,6 +53,9 @@ class CycleReport:
             "rejected": self.rejected,
             "degraded_sources": list(self.degraded_sources),
             "reason": self.reason,
+            "outcome_id": self.outcome_id,
+            "next_selection_id": self.next_selection_id,
+            "lineage": dict(self.lineage),
         }
 
 
@@ -74,15 +80,17 @@ def run_discovery_cycle(
     # Step 1 — safety gate before anything else.
     stop = emergency_stop_reason(database, None)
     if stop:
+        lineage = {"loop_id": loop_id, "status": "STOPPED"}
         database.append(Event.create(
             "discovery.cycle_completed",
             {"loop_id": loop_id, "outcome": "STOPPED", "observed": 0,
              "candidates_created": 0, "decision_id": None,
-             "degraded_sources": [], "reason": f"STOP active: {stop}"},
+             "degraded_sources": [], "reason": f"STOP active: {stop}",
+             "lineage": lineage},
             source_type="supervisor", source_id=source_id,
             idempotency_key=f"discovery.cycle_completed:{loop_id}"))
         return CycleReport(loop_id=loop_id, outcome="STOPPED",
-                           reason=f"STOP active: {stop}")
+                           reason=f"STOP active: {stop}", lineage=lineage)
 
     degraded: list[str] = []
     observed = 0
@@ -100,6 +108,27 @@ def run_discovery_cycle(
         except Exception as error:  # noqa: BLE001 - degrade, don't abort
             degraded.append(f"observe:{type(error).__name__}")
 
+    # Observation is untrusted and may race with an owner STOP.  Do not score,
+    # append portfolio state, select, or materialize after the second gate.
+    stop = emergency_stop_reason(database, None)
+    if stop:
+        lineage = {"loop_id": loop_id, "status": "STOPPED",
+                   "observed": observed, "candidates_created": created}
+        database.append(Event.create(
+            "discovery.cycle_completed",
+            {"loop_id": loop_id, "outcome": "STOPPED", "observed": observed,
+             "candidates_created": created, "decision_id": None,
+             "degraded_sources": degraded,
+             "reason": f"STOP active after observation: {stop}",
+             "lineage": lineage},
+            source_type="supervisor", source_id=source_id,
+            idempotency_key=f"discovery.cycle_completed:{loop_id}"))
+        return CycleReport(loop_id=loop_id, outcome="STOPPED",
+                           observed=observed, candidates_created=created,
+                           degraded_sources=degraded,
+                           reason=f"STOP active after observation: {stop}",
+                           lineage=lineage)
+
     policy_version = POLICY_VERSION
     try:
         from .v3_scoring import load_active_policy
@@ -110,13 +139,33 @@ def run_discovery_cycle(
             {"loop_id": loop_id, "outcome": "BLOCKED", "observed": observed,
              "candidates_created": created, "decision_id": None,
              "degraded_sources": degraded,
-             "reason": str(error)},
+             "reason": str(error),
+             "lineage": {"loop_id": loop_id, "status": "BLOCKED"}},
             source_type="supervisor", source_id=source_id,
             idempotency_key=f"discovery.cycle_completed:{loop_id}"))
         return CycleReport(loop_id=loop_id, outcome="BLOCKED", observed=observed,
-                           candidates_created=created, reason=str(error))
+                           candidates_created=created, reason=str(error),
+                           lineage={"loop_id": loop_id, "status": "BLOCKED"})
 
     # Step 4-5 — score every NEW candidate under the registry policy.
+    stop = emergency_stop_reason(database, None)
+    if stop:
+        lineage = {"loop_id": loop_id, "status": "STOPPED",
+                   "observed": observed, "candidates_created": created}
+        database.append(Event.create(
+            "discovery.cycle_completed",
+            {"loop_id": loop_id, "outcome": "STOPPED", "observed": observed,
+             "candidates_created": created, "decision_id": None,
+             "degraded_sources": degraded,
+             "reason": f"STOP active before scoring: {stop}",
+             "lineage": lineage},
+            source_type="supervisor", source_id=source_id,
+            idempotency_key=f"discovery.cycle_completed:{loop_id}"))
+        return CycleReport(loop_id=loop_id, outcome="STOPPED",
+                           observed=observed, candidates_created=created,
+                           degraded_sources=degraded,
+                           reason=f"STOP active before scoring: {stop}",
+                           lineage=lineage)
     service = ScoringService(database)
     decisions = service.score_all_eligible()
     eligible = [d for d in decisions if d["status"] == "ELIGIBLE"]
@@ -143,13 +192,15 @@ def run_discovery_cycle(
         resource_id=resource_id, capability=capability, loop_id=loop_id)
 
     if decision.kind != "SELECT" or decision.candidate_id is None:
+        lineage = {"loop_id": loop_id, "status": "WAITING",
+                   "decision_id": decision.decision_id}
         database.append(Event.create(
             "discovery.cycle_completed",
             {"loop_id": loop_id, "outcome": "WAITING", "observed": observed,
              "candidates_created": created, "decision_id": decision.decision_id,
              "degraded_sources": degraded,
              "reason": getattr(decision, "reason", None)
-             or decision.kind},
+             or decision.kind, "lineage": lineage},
             source_type="supervisor", source_id=source_id,
             idempotency_key=f"discovery.cycle_completed:{loop_id}"))
         return CycleReport(
@@ -159,9 +210,34 @@ def run_discovery_cycle(
             scored=len(decisions), eligible=len(eligible),
             rejected=int(portfolio["rejected_count"]),
             degraded_sources=degraded,
-            reason=getattr(decision, "reason", None) or decision.kind)
+            reason=getattr(decision, "reason", None) or decision.kind,
+            lineage=lineage)
 
     # Step 7 — compile through the fail-closed canonical materializer.
+    stop = emergency_stop_reason(database, None)
+    if stop:
+        lineage = {"loop_id": loop_id, "status": "STOPPED",
+                   "decision_id": decision.decision_id,
+                   "candidate_id": decision.candidate_id}
+        database.append(Event.create(
+            "discovery.cycle_completed",
+            {"loop_id": loop_id, "outcome": "STOPPED", "observed": observed,
+             "candidates_created": created,
+             "decision_id": decision.decision_id,
+             "degraded_sources": degraded,
+             "reason": f"STOP active before materialization: {stop}",
+             "lineage": lineage},
+            source_type="supervisor", source_id=source_id,
+            idempotency_key=f"discovery.cycle_completed:{loop_id}"))
+        return CycleReport(loop_id=loop_id, outcome="STOPPED",
+                           decision_id=decision.decision_id,
+                           candidate_id=decision.candidate_id,
+                           observed=observed, candidates_created=created,
+                           scored=len(decisions), eligible=len(eligible),
+                           rejected=int(portfolio["rejected_count"]),
+                           degraded_sources=degraded,
+                           reason=f"STOP active before materialization: {stop}",
+                           lineage=lineage)
     compiled = compile_mission(
         database, candidate_id=decision.candidate_id,
         objective=decision.score.objective if decision.score else "",
@@ -170,6 +246,19 @@ def run_discovery_cycle(
         source_id=source_id)
 
     outcome = "COMPILED" if compiled.get("materialized") else "BLOCKED"
+    lineage = {
+        "loop_id": loop_id,
+        "candidate_id": decision.candidate_id,
+        "decision_id": decision.decision_id,
+        "mission_id": compiled.get("mission_id"),
+        "status": outcome,
+        "outcome_id": None,
+        "next_selection_id": None,
+    }
+    database.append(Event.create(
+        "discovery.cycle_lineage_recorded", lineage,
+        source_type="supervisor", source_id=source_id,
+        idempotency_key=f"discovery.cycle_lineage_recorded:{loop_id}"))
     database.append(Event.create(
         "discovery.cycle_completed",
         {"loop_id": loop_id, "outcome": outcome, "observed": observed,
@@ -177,7 +266,8 @@ def run_discovery_cycle(
          "decision_id": decision.decision_id,
          "degraded_sources": degraded,
          "mission_id": compiled.get("mission_id"),
-         "reason": compiled.get("blocked_reason")},
+         "reason": compiled.get("blocked_reason"),
+         "lineage": lineage},
         source_type="supervisor", source_id=source_id,
         idempotency_key=f"discovery.cycle_completed:{loop_id}"))
     return CycleReport(
@@ -189,7 +279,7 @@ def run_discovery_cycle(
         scored=len(decisions), eligible=len(eligible),
         rejected=int(portfolio["rejected_count"]),
         degraded_sources=degraded,
-        reason=compiled.get("blocked_reason"))
+        reason=compiled.get("blocked_reason"), lineage=lineage)
 
 
 def _threshold(database: FoundryDatabase, policy_version: str) -> float:

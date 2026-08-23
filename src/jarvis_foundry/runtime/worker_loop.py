@@ -231,6 +231,59 @@ def _record_executive_outcome(
     )
 
 
+def _record_v3_outcome(
+    database: FoundryDatabase,
+    *,
+    mission_id: str,
+    outcome: Any,
+    loop_id: str,
+) -> dict[str, Any] | None:
+    """Write the V3 candidate outcome and close the cycle lineage.
+
+    The outcome service verifies the durable candidate/mission/completion
+    chain.  A runtime PASS is not returned as complete when that proof is
+    absent or inconsistent.
+    """
+    mission = database.row("missions", "mission_id", mission_id)
+    if mission is None:
+        return None
+    created_from = str(mission.get("created_from") or "")
+    if not created_from.startswith("candidate:"):
+        return None
+    candidate_id = created_from.split(":", 1)[1]
+    candidate = database.row("candidates", "candidate_id", candidate_id) or {}
+    from ..executive.calibration import outcome_from_mission
+    from ..v3_outcomes import record_outcome
+
+    actual = outcome_from_mission(database, mission_id)
+    payload = record_outcome(
+        database,
+        candidate_id=candidate_id,
+        mission_id=mission_id,
+        mission_outcome="PASSED",
+        predicted_value=(
+            {"expected_outcome": candidate["expected_outcome"]}
+            if candidate.get("expected_outcome") else None),
+        actual_value=actual,
+        confidence=0.8,
+        source_id=f"worker-loop:{loop_id}",
+        continuation_loop_id=loop_id,
+    )
+    lineage = dict(payload.get("lineage") or {})
+    lineage.update({
+        "loop_id": loop_id,
+        "outcome_id": payload.get("outcome_id"),
+        "next_selection_id": (payload.get("continuation") or {})
+        .get("next_selection_id"),
+        "terminal_outcome": actual.get("outcome"),
+    })
+    database.append(Event.create(
+        "discovery.cycle_lineage_completed", lineage,
+        source_type="supervisor", source_id=f"worker-loop:{loop_id}",
+        idempotency_key=f"discovery.cycle_lineage_completed:{loop_id}"))
+    return payload
+
+
 def _waiting_report(database: FoundryDatabase, *, loop_id: str,
                     instance_id: str, reason: str) -> dict[str, Any]:
     database.append(Event.create(
@@ -490,6 +543,22 @@ def run_cycle(
             )
         terminal = getattr(outcome, "outcome", None)
         if terminal == "PASSED":
+            try:
+                _record_v3_outcome(
+                    database, mission_id=mission_id, outcome=outcome,
+                    loop_id=loop_id)
+            except (ValueError, TypeError, KeyError) as error:
+                database.append(Event.create(
+                    "worker_loop.outcome_blocked",
+                    {"loop_id": loop_id, "mission_id": mission_id,
+                     "reason": str(error)},
+                    source_type="supervisor", source_id=instance_id,
+                    idempotency_key=f"worker_loop.outcome_blocked:{loop_id}"))
+                return _blocked_contract_report(
+                    database, loop_id=loop_id, instance_id=instance_id,
+                    mission_id=mission_id,
+                    reason=f"V3 outcome proof blocked: {error}",
+                )
             _advisory_accepted_outcome_writeback(
                 database, mission_id=mission_id, outcome=outcome)
         if terminal in ("PASSED", "FAILED", "BLOCKED"):

@@ -153,6 +153,12 @@ def test_flag_on_lab_loop_observe_to_mission(tmp_path):
                 .startswith("candidate:")]
     assert len(missions) == 1
     assert report.mission_id == missions[0].payload["mission_id"]
+    assert report.lineage["candidate_id"] == candidate_id
+    assert report.lineage["decision_id"] == report.decision_id
+    lineage_events = [e for e in database.events()
+                      if e.event_type == "discovery.cycle_lineage_recorded"]
+    assert len(lineage_events) == 1
+    assert lineage_events[0].payload["mission_id"] == report.mission_id
 
 
 def test_duplicate_fingerprint_cannot_create_second_mission(tmp_path):
@@ -225,6 +231,12 @@ def test_worker_loop_dual_path_flag_on_compiles(tmp_path):
                 if e.event_type == "discovery.cycle_completed"
                 and e.payload.get("outcome") == "COMPILED"]
     assert len(compiled) == 1 and compiled[0].payload["loop_id"] == "dual-on"
+    outcome_rows = database.all("candidate_outcomes")
+    assert len(outcome_rows) == 1
+    assert outcome_rows[0]["status"] in ("RECORDED", "UNKNOWN")
+    assert any(e.event_type == "discovery.cycle_lineage_completed"
+               and e.payload["loop_id"] == "dual-on"
+               for e in database.events())
 
 
 def test_worker_loop_flag_off_unchanged_no_cycle_event(tmp_path):
