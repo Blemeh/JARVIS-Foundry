@@ -9,7 +9,7 @@ Verdict: PASS
 The focused V7 and adjacent control/effect suite passed, including continuity,
 WAL-safe restore, Supervisor adoption/recovery/loop resilience, scheduler,
 portfolio, effects, capabilities, diagnostics, delivery boundary, and the new
-19-row resilience matrix.
+20-row resilience matrix.
 
 Command:
 
@@ -17,9 +17,13 @@ Command:
 python -m pytest tests/foundry/test_v7_resilience.py tests/foundry/test_v7_continuity.py tests/foundry/test_v7_restore_sidecar_regression.py tests/foundry/test_v7_supervisor_adoption.py tests/foundry/test_v7_scheduler.py tests/foundry/test_v7_portfolio.py tests/foundry/test_supervisor.py tests/foundry/test_supervisor_recovery.py tests/foundry/test_supervisor_loop_resilience.py tests/foundry/test_effects.py tests/foundry/test_capability_states.py tests/foundry/test_runtime_diagnostics.py tests/foundry/test_delivery_boundary.py -q
 ```
 
-Observed: 138 collected tests passed.
+Observed: 139 collected tests passed.
 
-The disposable fault matrix separately passed 19/19 rows.
+The disposable fault matrix separately passed 20/20 rows.
+
+The bounded database-durability adjunct also passed 54/54 collected tests
+covering migrations, crash recovery, knowledge durability, projection
+monotonicity, runtime control, and worker control.
 
 ## Repository-wide suite
 

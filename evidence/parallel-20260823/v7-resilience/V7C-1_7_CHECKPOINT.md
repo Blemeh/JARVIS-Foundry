@@ -31,12 +31,14 @@ Verdict: PASS for the isolated source slice
 - Incident records now persist the frozen external-effect action key through
   replay. The explicit reconciliation seam rejects a mismatched key and is
   idempotent after recovery.
+- Configured release/foundry paths now flow into read-only diagnostics, which
+  validates CURRENT/PREVIOUS manifests and blocks repair on invalid authority.
 
 ## Focused verification
 
 ```text
 python -m pytest tests/foundry/test_v7_resilience.py -q
-20 passed
+21 passed
 
 python -m pytest tests/foundry/test_v7_resilience.py \
   tests/foundry/test_capability_states.py \
@@ -44,7 +46,7 @@ python -m pytest tests/foundry/test_v7_resilience.py \
   tests/foundry/test_runtime_diagnostics.py \
   tests/foundry/test_v7_scheduler.py \
   tests/foundry/test_supervisor_recovery.py -q
-138 passed
+139 passed
 ```
 
 The tests cover replay, idempotent scans, invalid transitions, STOP

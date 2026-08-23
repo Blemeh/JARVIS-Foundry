@@ -11,7 +11,7 @@ and an explicit PASS, FAIL, BLOCKED, or NOT TESTED verdict.
 | V7C-3 | Deterministic anomaly detector | PASS | Bounded durable-event rules plus typed synthetic metrics. |
 | V7C-4 | Capability-level suspension | PASS | Scoped STOPPED state, prior-state recovery, STOP/veto guard, unrelated capability proof. |
 | V7C-5 | Blast-radius dependency graph | PASS | Resource -> connector -> capability -> mission graph with shared/unrelated proof. |
-| V7C-6 | Diagnostic playbook | PASS | Read-only database, reconciliation, process, scheduler, evidence, release, and effect checks. |
+| V7C-6 | Diagnostic playbook | PASS | Read-only database, reconciliation, process, scheduler, evidence, effect, and configured CURRENT/PREVIOUS release-manifest checks; invalid authority blocks repair. |
 | V7C-7 | Bounded auto-repair | PASS (source) | Callback repair budget, failure escalation, observed-health requirement, and no-handler BLOCKED path. |
 | V7C-8 | Release degradation and rollback | PASS (source/disposable) | Disposable release manifests prove freeze-before-callback plus missing PREVIOUS, schema mismatch, rollback refusal, and health-not-restored escalation; production release roots remain out of scope. |
 | V7C-9 | Provider/network continuity | PASS (source/disposable) | DeliveryBoundary proves unavailable, timeout, partial, and all-unavailable outcomes; safe deterministic delivery continues, provider incidents remain honest BLOCKED, and no live provider proof is claimed. |
@@ -21,5 +21,5 @@ and an explicit PASS, FAIL, BLOCKED, or NOT TESTED verdict.
 | V7C-13 | Resource/cost anomaly | PASS (source/disposable) | Synthetic resource and cost spikes create independently blocked incidents. |
 | V7C-14 | V4/V6 output contract | PASS (source) | `ResilienceRun.to_payload()` is structured, JSON-safe, and carries incidents/anomalies/recovery/blockers/errors. |
 | V7C-15 | Restart continuity lab | PASS (disposable) | Hard-killed Supervisor lease recovery plus fresh coordinator replay reconstruct incidents, capability suspension, and frozen pending effects. |
-| V7C-16 | Bounded fault matrix | PASS (disposable) | `V7C-16_FAULT_MATRIX.json` contains 19/19 PASS rows with expected/actual/evidence/containment/recovery/verdict fields. |
+| V7C-16 | Bounded fault matrix | PASS (disposable) | `V7C-16_FAULT_MATRIX.json` contains 20/20 PASS rows with expected/actual/evidence/containment/recovery/verdict fields. |
 | V7C-17+ | Next evidenced resilience gap | BLOCKED (external gate) | No additional source gap is authorized while the repository-wide staging Task Scheduler restart test is FAIL; resume after owner-authorized Scheduler evidence. |

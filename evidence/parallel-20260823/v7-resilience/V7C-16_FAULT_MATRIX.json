@@ -47,6 +47,20 @@
     },
     {
       "actual": "BLOCKED",
+      "case_id": "V7C-06-release-diagnostic-manifest",
+      "containment": "invalid release evidence blocks repair without pointer mutation",
+      "evidence": {
+        "invalid_release_status": "FAIL",
+        "repair_calls": 0,
+        "valid_release_status": "PASS"
+      },
+      "expected": "read-only diagnostic proves manifest before any repair callback",
+      "fault": "configured release manifest is valid versus missing CURRENT target",
+      "recovery": "owner/integration lane must restore a valid release authority before retry",
+      "verdict": "PASS"
+    },
+    {
+      "actual": "BLOCKED",
       "case_id": "V7C-04-provider-outage",
       "containment": "provider capability incident isolated",
       "evidence": {
@@ -76,7 +90,9 @@
         "provider_anomaly": true,
         "provider_incident_statuses": [
           "BLOCKED"
-        ]
+        ],
+        "supervisor_heartbeat": "RUNNING",
+        "supervisor_status": "RUNNING"
       },
       "expected": "safe delivery continues; unavailable work is honest BLOCKED/TIMED_OUT",
       "fault": "provider unavailable, timeout, partial outage, all unavailable",
@@ -330,8 +346,8 @@
   "scope": "disposable homes only",
   "summary": {
     "fail": 0,
-    "pass": 19,
-    "total": 19
+    "pass": 20,
+    "total": 20
   },
   "verdict": "PASS"
 }
