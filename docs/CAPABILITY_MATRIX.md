@@ -6,7 +6,7 @@ Single authoritative capability status. Classifications:
 Evidence roots: `docs/evidence/`, `evidence/`, git history, live runtime state.
 Current work reference, reconciled 2026-08-23:
 isolated integration stage `integration/v456-cinematic-stage-20260823` at
-`d49bcaf` (V4/V5/V6 plus cinematic Command Center, migration-script repair,
+`6138a19` (V4/V5/V6 plus cinematic Command Center, migration-script repair,
 and fresh operational evidence). Canonical `main`/`origin/main` remains
 `6db467a` until promotion. The deployed runtime remains immutable release
 `769715a7f8aee22bf4ab2db8870c37e6e9c9ef1b`, schema v34; this stage did not

@@ -15,20 +15,22 @@ INTEGRATION BASE:            6db467a2b0e6bdc37adbc4cbfac309418e33afec
                              (fresh origin/main base)
 AUDIT SOURCE:                evidence/integration/v456-stage/ORIENTATION.md
 CURRENT WORK BRANCH:         integration/v456-cinematic-stage-20260823
-LOCAL RUNTIME LANE CHECKPOINT: 201bbbf (isolated; no live mutation)
+LOCAL RUNTIME LANE CHECKPOINT: 6138a19 (isolated; no live mutation)
 CURRENT STATE RECORD:        this document is reconciled to the isolated
                              integration stage; canonical promotion remains a
                              separate, re-verified action
-TESTED CODE HEAD:            201bbbf; V4, V5, V6, cross-lane truth bridges,
+TESTED CODE HEAD:            6138a19; V4, V5, V6, cross-lane truth bridges,
                              and Command Center UI were exercised in this lane
-FINAL EVIDENCE HEAD:         evidence/integration/v456-stage/ (stage records;
-                             final gate record is written after the broad run)
-FULL SUITE:                  one repository-wide run is being classified from
-                             its JUnit evidence; no historical result is reused
-FOCUSED REMEDIATION TESTS:   V4/V5/V6 focused gates and Command Center UI
+FINAL EVIDENCE HEAD:         evidence/integration/v456-stage/STAGE_GATE.json;
+                             V3 hard details and JUnit evidence are beside it
+FULL SUITE:                  PASS — 1,981 collected, 1,980 passed, 0 failures,
+                             0 errors, 1 explicit filesystem-boundary skip
+FOCUSED REMEDIATION TESTS:   V4/V5/V6 focused gates, V3 independent verifier,
+                             and Command Center UI
                              typecheck, lint, 115 tests, build, product 212/212,
                              and security scan PASS in this isolated lane
-FULL SUITE FINAL GATE:       not yet closed; no live provider, database,
+FULL SUITE FINAL GATE:       SOURCE PASS; V3 four-hour proving window is
+                             NOT_TESTED, and no live provider, database,
                              scheduler, or runtime promotion claim follows from
                              source tests
 DEPLOYED RELEASE:            769715a7f8aee22bf4ab2db8870c37e6e9c9ef1b (CURRENT)
@@ -206,7 +208,8 @@ browser substrate, and it cannot activate native desktop execution.
 | Worker-loop deployment rehearsal | PASS_WITH_BOUNDARY — disposable schema34 migration/reconciliation, Supervisor startup, and source-unchanged restore proof; live activation remains deferred |
 | Integrated V4/V5/V6 focused source gate | PASS — focused truth/evolution/connector/briefing tests plus independent adversarial checks; details are recorded under `evidence/integration/v456-stage/` |
 | Command Center UI source gate | PASS — typecheck, lint, 115 Vitest tests, build, product 212/212, and security scan |
-| Repository-wide source suite | NOT CLOSED — the first integrated run exposed doc/fixture issues and is being rerun only after those source/test repairs; no PASS is claimed from historical snapshots |
+| Repository-wide source suite | PASS — 1,981 collected, 1,980 passed, 0 failures, 0 errors, 1 explicit filesystem-boundary skip; fresh JUnit `full-suite-20260823-r3.xml` |
+| V3 hard acceptance | BLOCKED/FAIL-CLOSED — focused/supporting/migration/independent checks PASS and bounded soak PASS; AC-17 four-hour proving window is NOT_TESTED |
 | Live release/migration/restart/provider proof | BLOCKED — live schema v34 and legacy filesystem-only manifest remain unchanged; no post-promotion proof was authorized |
 | JARVIS Eyes Phase 2 | PASS — 20/20 faults, rollback/live probe, read-only boundary |
 | Workflow Discovery Phase 3 | PASS — 36/36 focused, F1–F25, bounded probe, independent review |
