@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event"
 import { describe, expect, it } from "vitest"
 import { MemoryRouter } from "react-router-dom"
 import { CommandCenterProvider } from "../../context/CommandCenterContext"
-import { ScenarioBootstrap } from "../../App"
+import { ScenarioBootstrap } from "../../ScenarioBootstrap"
 import { TopStatusBar } from "../TopStatusBar"
 
 describe("TopStatusBar owner workflow", () => {
