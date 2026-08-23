@@ -6,11 +6,14 @@ from pathlib import Path
 import pytest
 
 from jarvis_foundry.database import FoundryDatabase
+from jarvis_foundry.control.capabilities import set_capability_state
 from jarvis_foundry.effects import effect_state
 from jarvis_foundry.events import Event
 from jarvis_foundry.resilience import (
     AnomalyDetector,
     DependencyGraph,
+    DiagnosticReport,
+    DiagnosticResult,
     EffectAmbiguity,
     HealthSignal,
     IncidentLifecycleError,
@@ -147,13 +150,17 @@ def test_stop_is_stronger_than_recovery(tmp_path: Path) -> None:
     stop_path.write_text("stop", encoding="utf-8")
     graph = DependencyGraph()
     graph.bind("resource-1", "safe-work")
+    repair_calls: list[str] = []
+
+    def repair(incident, report):
+        repair_calls.append(incident.incident_id)
+        return RepairResult(True, "restarted")
+
     coordinator = ResilienceCoordinator(
         db,
         stop_path=stop_path,
         graph=graph,
-        repair_handlers={
-            "worker_crash_loop": lambda incident, report: RepairResult(True, "restarted")
-        },
+        repair_handlers={"worker_crash_loop": repair},
         health_probe=lambda incident, report: True,
     )
     run = coordinator.run_once(metrics={
@@ -161,8 +168,107 @@ def test_stop_is_stronger_than_recovery(tmp_path: Path) -> None:
         "resource_id": "resource-1", "capability": "safe-work",
     })
     assert run.incidents[0].status == IncidentStatus.BLOCKED.value
+    assert repair_calls == []
     capabilities = json.loads(str(db.row("resources", "resource_id", "resource-1")["capabilities_json"]))
     assert capabilities["safe-work"] == "STOPPED"
+
+
+def test_failed_diagnostics_block_repair_callback(tmp_path: Path) -> None:
+    db = database(tmp_path)
+    calls: list[str] = []
+
+    class FailingPlaybook:
+        def run(self, database, incident, **kwargs):
+            from jarvis_foundry.resilience import DiagnosticReport, DiagnosticResult
+            return DiagnosticReport(
+                incident.incident_id,
+                (DiagnosticResult("database", "FAIL", {"reason": "locked"}),),
+                "2026-08-23T10:00:00Z",
+            )
+
+    coordinator = ResilienceCoordinator(
+        db,
+        playbook=FailingPlaybook(),
+        repair_handlers={
+            "database_fault": lambda incident, report: calls.append(incident.incident_id),
+        },
+    )
+    run = coordinator.run_once(
+        now="2026-08-23T10:00:00Z", metrics={"database_errors": 1}
+    )
+    assert calls == []
+    assert run.incidents[0].status == IncidentStatus.BLOCKED.value
+
+
+@pytest.mark.parametrize("protected_state", ["VETOED", "STOPPED"])
+def test_preexisting_protected_capability_is_never_resumed(
+    tmp_path: Path, protected_state: str,
+) -> None:
+    db = database(tmp_path)
+    register_resource(db)
+    set_capability_state(db, "resource-1", "safe-work", protected_state,
+                         source_id="owner", evidence={"owner": True})
+    graph = DependencyGraph()
+    graph.bind("resource-1", "safe-work")
+    coordinator = ResilienceCoordinator(
+        db,
+        graph=graph,
+        repair_handlers={"worker_crash_loop": lambda incident, report: RepairResult(True, "ok")},
+        health_probe=lambda incident, report: True,
+    )
+    run = coordinator.run_once(metrics={
+        "worker_failures": 3, "resource_id": "resource-1", "capability": "safe-work",
+    })
+    assert run.incidents[0].status == IncidentStatus.RECOVERED.value
+    capabilities = json.loads(str(db.row("resources", "resource_id", "resource-1")["capabilities_json"]))
+    assert capabilities["safe-work"] == protected_state
+
+
+def test_effect_reconciliation_requires_proof_and_mismatch_blocks_repair(tmp_path: Path) -> None:
+    db = database(tmp_path)
+    store = IncidentStore(db)
+    incident = store.detect(HealthSignal(
+        "effect-signal", "effect_unknown", correlation_key="effect:e-1",
+        effect_action_key="e-1", effect_ambiguity=EffectAmbiguity.UNKNOWN,
+    ))
+    with pytest.raises(IncidentLifecycleError):
+        store.reconcile_effect(incident.incident_id,
+                               classification=EffectAmbiguity.NONE, evidence={})
+    store.transition(incident.incident_id, IncidentStatus.TRIAGED)
+    store.transition(incident.incident_id, IncidentStatus.CONTAINING)
+    store.transition(incident.incident_id, IncidentStatus.CONTAINED)
+    store.transition(incident.incident_id, IncidentStatus.DIAGNOSING)
+    store.reconcile_effect(incident.incident_id,
+                           classification=EffectAmbiguity.MISMATCH,
+                           evidence={"provider": "oracle", "matched": False})
+    incident = store.get(incident.incident_id)
+    assert incident is not None
+    coordinator = ResilienceCoordinator(
+        db,
+        repair_handlers={"effect_unknown": lambda incident, report: pytest.fail("repair called")},
+    )
+    result = coordinator._repair(
+        incident,
+        AnomalyDetector().detect(db, metrics={"unknown_effects": 1})[0],
+        DiagnosticReport(incident.incident_id, (DiagnosticResult("database", "PASS"),),
+                         "2026-08-23T10:00:00Z"),
+    )
+    assert result.status == IncidentStatus.UNKNOWN.value
+
+
+def test_health_truth_exposes_capability_failure(tmp_path: Path) -> None:
+    from jarvis_foundry.resilience import health_truth
+
+    db = database(tmp_path)
+    register_resource(db)
+    set_capability_state(db, "resource-1", "safe-work", "DEGRADED",
+                         source_id="test", evidence={"reason": "fault"})
+    truth = health_truth(db)
+    capabilities = truth["components"]["capabilities"]
+    assert capabilities["status"] == "DEGRADED"
+    assert capabilities["resources"]["resource-1"]["capabilities"]["safe-work"] == {
+        "state": "DEGRADED", "status": "DEGRADED"
+    }
 
 
 def test_dependency_graph_contains_shared_dependency_only(tmp_path: Path) -> None:
@@ -183,4 +289,3 @@ def test_deterministic_resource_and_cost_rules(tmp_path: Path) -> None:
     )
     assert [item.kind for item in anomalies] == ["cost_anomaly", "resource_anomaly"]
     assert all(item.evidence for item in anomalies)
-

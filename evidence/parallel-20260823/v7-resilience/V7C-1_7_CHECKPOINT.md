@@ -19,12 +19,18 @@ Verdict: PASS for the isolated source slice
   Supervisor, scheduler, release, reconciliation, and effect primitives.
 - Bounded callback repair with explicit escalation and no blind retry of an
   ambiguous effect.
+- Independent review corrections: STOP is checked before every repair callback;
+  failed diagnostics block mutation; capability recovery requires incident
+  ownership and restores the exact prior state; effect mismatch requires
+  evidence and remains non-repairable; capability health exposes per-capability
+  status; and unresolved effects are derived from the complete action-event
+  subset rather than a bounded recent sample.
 
 ## Focused verification
 
 ```text
 python -m pytest tests/foundry/test_v7_resilience.py -q
-7 passed
+12 passed
 
 python -m pytest tests/foundry/test_v7_resilience.py \
   tests/foundry/test_capability_states.py \
@@ -32,11 +38,12 @@ python -m pytest tests/foundry/test_v7_resilience.py \
   tests/foundry/test_runtime_diagnostics.py \
   tests/foundry/test_v7_scheduler.py \
   tests/foundry/test_supervisor_recovery.py -q
-58 passed
+63 passed
 ```
 
 The tests cover replay, idempotent scans, invalid transitions, STOP
-precedence, capability isolation, effect freezing, dependency scope, and
+precedence, capability isolation and ownership, diagnostic gating, effect
+freezing and mismatch proof, dependency scope, capability health truth, and
 synthetic resource/cost anomalies.
 
 ## Boundaries
@@ -45,4 +52,3 @@ synthetic resource/cost anomalies.
 - Real providers, connectors, live release roots, live scheduler tasks, and
   production databases were not touched.
 - `ruff` is NOT TESTED because the package is not installed in this lane.
-

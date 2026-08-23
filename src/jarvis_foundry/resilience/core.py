@@ -353,6 +353,9 @@ def rebuild_incidents(database: FoundryDatabase) -> tuple[IncidentRecord, ...]:
                     state["severity"] = severity
         elif event.event_type == "incident.transitioned":
             state["status"] = str(payload.get("status") or IncidentStatus.UNKNOWN.value)
+            evidence = payload.get("evidence")
+            if evidence and evidence not in state["evidence"]:
+                state["evidence"].append(evidence)
             if payload.get("proven_cause"):
                 cause = str(payload["proven_cause"])
                 if cause not in state["proven_causes"]:
@@ -387,10 +390,16 @@ def rebuild_incidents(database: FoundryDatabase) -> tuple[IncidentRecord, ...]:
             cause = str(payload.get("cause") or "")
             if cause and cause not in state["proven_causes"]:
                 state["proven_causes"].append(cause)
+            evidence = payload.get("evidence")
+            if evidence and evidence not in state["evidence"]:
+                state["evidence"].append(evidence)
         elif event.event_type == "incident.effect_reconciled":
             state["effect_ambiguity"] = str(
                 payload.get("effect_ambiguity") or EffectAmbiguity.RECONCILED.value
             )
+            evidence = payload.get("evidence")
+            if evidence and evidence not in state["evidence"]:
+                state["evidence"].append(evidence)
     return tuple(_incident_from_state(states[key]) for key in sorted(states))
 
 
@@ -541,13 +550,18 @@ class IncidentStore:
         if current is None:
             raise IncidentLifecycleError(f"unknown incident: {incident_id}")
         value = str(classification)
-        if value not in {item.value for item in EffectAmbiguity}:
-            raise IncidentLifecycleError(f"unknown effect classification: {classification}")
+        if value not in {EffectAmbiguity.RECONCILED.value, EffectAmbiguity.MISMATCH.value}:
+            raise IncidentLifecycleError(
+                "effect reconciliation must prove RECONCILED or record MISMATCH"
+            )
+        safe_evidence = _safe_mapping(evidence)
+        if not safe_evidence:
+            raise IncidentLifecycleError("effect reconciliation requires evidence")
         self._append(
             "incident.effect_reconciled",
             {"incident_id": incident_id, "effect_ambiguity": value,
-             "evidence": _safe_mapping(evidence)},
-            f"incident.effect_reconciled:{incident_id}:{hashlib.sha256(canonical_json(evidence).encode()).hexdigest()[:20]}",
+             "evidence": safe_evidence},
+             f"incident.effect_reconciled:{incident_id}:{hashlib.sha256(canonical_json(safe_evidence).encode()).hexdigest()[:20]}",
         )
         return self.get(incident_id) or current
 
@@ -771,7 +785,11 @@ class AnomalyDetector:
                 connector_id=connector,
             ))
 
-        unknown_effect_keys = self._unknown_effect_keys(events)
+        # Effect ambiguity is durable state, not a recent-window metric. Query
+        # the complete action journal event subset so an old STARTED effect
+        # cannot disappear merely because the ledger has grown past the
+        # bounded anomaly-event sample.
+        unknown_effect_keys = self._unknown_effect_keys(self._effect_events(database))
         metric_unknown = self._metric(metrics, "unknown_effects")
         if metric_unknown is not None and int(metric_unknown) > len(unknown_effect_keys):
             unknown_effect_keys.extend([None] * (int(metric_unknown) - len(unknown_effect_keys)))
@@ -902,6 +920,19 @@ class AnomalyDetector:
             elif event.event_type in terminal:
                 started.pop(action_key, None)
         return sorted(started)
+
+    @staticmethod
+    def _effect_events(database: FoundryDatabase) -> list[Event]:
+        connection = database.connect(readonly=True)
+        try:
+            rows = connection.execute(
+                "SELECT * FROM events WHERE event_type IN "
+                "('system.action_started', 'system.action_completed', "
+                "'system.action_failed', 'effect.frozen') ORDER BY sequence"
+            ).fetchall()
+        finally:
+            connection.close()
+        return [database._row_to_event(row) for row in rows]
 
 
 @dataclass(frozen=True, slots=True)
@@ -1140,6 +1171,23 @@ def _current_capability_state(database: FoundryDatabase, resource_id: str,
     return str(value) if value is not None else None
 
 
+def _latest_capability_change(database: FoundryDatabase, resource_id: str,
+                              capability: str) -> Event | None:
+    """Return the durable owner of the latest projected capability state."""
+    connection = database.connect(readonly=True)
+    try:
+        row = connection.execute(
+            "SELECT * FROM events WHERE event_type = 'capability.state_changed' "
+            "AND json_extract(payload_json, '$.resource_id') = ? "
+            "AND json_extract(payload_json, '$.capability') = ? "
+            "ORDER BY sequence DESC LIMIT 1",
+            (resource_id, capability),
+        ).fetchone()
+    finally:
+        connection.close()
+    return None if row is None else database._row_to_event(row)
+
+
 def health_truth(
     database: FoundryDatabase,
     *,
@@ -1174,8 +1222,56 @@ def health_truth(
             rows = connection.execute(
                 "SELECT resource_id, capabilities_json FROM resources ORDER BY resource_id"
             ).fetchall()
+        capability_components: dict[str, Any] = {}
+        healthy_states = {"READY", "ACTIVE"}
+        degraded_states = {"DEGRADED", "STOPPED", "VETOED"}
+        for row in rows:
+            resource_id = str(row[0])
+            states = json.loads(str(row[1]))
+            details: dict[str, Any] = {}
+            statuses: list[str] = []
+            for capability, state in states.items():
+                state_value = str(state)
+                if state_value in healthy_states:
+                    capability_status = "HEALTHY"
+                elif state_value in degraded_states:
+                    capability_status = "DEGRADED"
+                elif state_value in {"DISCOVERED", "PROBING"}:
+                    capability_status = "NOT_READY"
+                else:
+                    capability_status = "UNKNOWN"
+                details[str(capability)] = {
+                    "state": state_value,
+                    "status": capability_status,
+                }
+                statuses.append(capability_status)
+            aggregate = "UNKNOWN"
+            if statuses and all(status == "HEALTHY" for status in statuses):
+                aggregate = "HEALTHY"
+            elif any(status == "DEGRADED" for status in statuses):
+                aggregate = "DEGRADED"
+            elif any(status == "NOT_READY" for status in statuses):
+                aggregate = "NOT_READY"
+            capability_components[resource_id] = {
+                "status": aggregate,
+                "capabilities": details,
+                # Preserve the compact state map for callers that only need
+                # the projected state, while exposing an honest status beside
+                # each capability for health decisions.
+                "states": {str(key): str(value) for key, value in states.items()},
+            }
+        resource_statuses = [str(item.get("status"))
+                             for item in capability_components.values()]
+        capability_status = "UNKNOWN"
+        if resource_statuses and all(status == "HEALTHY" for status in resource_statuses):
+            capability_status = "HEALTHY"
+        elif any(status == "DEGRADED" for status in resource_statuses):
+            capability_status = "DEGRADED"
+        elif any(status == "NOT_READY" for status in resource_statuses):
+            capability_status = "NOT_READY"
         result["components"]["capabilities"] = {
-            str(row[0]): json.loads(str(row[1])) for row in rows
+            "status": capability_status,
+            "resources": capability_components,
         }
     except Exception as error:  # noqa: BLE001
         result["components"]["capabilities"] = {"status": "UNKNOWN", "error_class": type(error).__name__}
@@ -1259,7 +1355,7 @@ class ResilienceCoordinator:
                 self.store.record_action(incident.incident_id, {
                     "kind": "capability_suspended", "status": "PASS",
                     "resource_id": binding.resource_id, "capability": binding.capability,
-                    "previous_state": previous, "state": previous,
+                    "previous_state": previous, "state": previous, "owned": False,
                 })
                 continue
             try:
@@ -1272,7 +1368,7 @@ class ResilienceCoordinator:
                 self.store.record_action(incident.incident_id, {
                     "kind": "capability_suspended", "status": "PASS",
                     "resource_id": binding.resource_id, "capability": binding.capability,
-                    "previous_state": previous, "state": "STOPPED",
+                    "previous_state": previous, "state": "STOPPED", "owned": True,
                 })
             except Exception as error:  # noqa: BLE001
                 self.store.record_action(incident.incident_id, {
@@ -1347,7 +1443,9 @@ class ResilienceCoordinator:
         except ImportError:
             matching_veto_reason = None
         for action in incident.actions:
-            if action.get("kind") != "capability_suspended" or action.get("status") != "PASS":
+            if (action.get("kind") != "capability_suspended"
+                    or action.get("status") != "PASS"
+                    or action.get("owned") is not True):
                 continue
             resource_id = str(action.get("resource_id") or "")
             capability = str(action.get("capability") or "")
@@ -1362,10 +1460,27 @@ class ResilienceCoordinator:
                         "reason": veto,
                     })
                     return False
-            target = str(action.get("previous_state") or "READY")
-            if target not in {"READY", "ACTIVE"}:
-                target = "READY"
+            latest = _latest_capability_change(self.database, resource_id, capability)
+            expected_owner = f"incident:{incident.incident_id}"
+            if (latest is None
+                    or latest.source_id != expected_owner
+                    or str(latest.payload.get("state")) != "STOPPED"):
+                self.store.record_action(incident.incident_id, {
+                    "kind": "capability_resume", "status": "BLOCKED",
+                    "resource_id": resource_id, "capability": capability,
+                    "reason": "containment ownership was lost before recovery",
+                })
+                return False
+            target = str(action.get("previous_state") or "UNKNOWN")
             current = _current_capability_state(self.database, resource_id, capability)
+            if current != "STOPPED":
+                self.store.record_action(incident.incident_id, {
+                    "kind": "capability_resume", "status": "BLOCKED",
+                    "resource_id": resource_id, "capability": capability,
+                    "reason": "capability changed outside this incident during recovery",
+                    "observed_state": current,
+                })
+                return False
             if current != target:
                 try:
                     set_capability_state(
@@ -1389,8 +1504,24 @@ class ResilienceCoordinator:
 
     def _repair(self, incident: IncidentRecord, anomaly: Anomaly,
                 report: DiagnosticReport) -> IncidentRecord:
+        if self._stop_active():
+            return self.store.transition(
+                incident.incident_id, IncidentStatus.BLOCKED,
+                reason="emergency STOP is active; repair is forbidden",
+            )
+        if not report.all_observed:
+            self.store.record_action(incident.incident_id, {
+                "kind": "diagnostic_gate", "status": "BLOCKED",
+                "reason": "repair requires a passing read-only diagnostic report",
+                "report": report.to_payload(),
+            })
+            return self.store.transition(
+                incident.incident_id, IncidentStatus.BLOCKED,
+                reason="diagnostics did not support a bounded repair",
+            )
         if incident.effect_ambiguity in {
             EffectAmbiguity.UNKNOWN.value, EffectAmbiguity.RECONCILE_REQUIRED.value,
+            EffectAmbiguity.MISMATCH.value,
         }:
             return self.store.transition(
                 incident.incident_id, IncidentStatus.UNKNOWN,
@@ -1413,6 +1544,12 @@ class ResilienceCoordinator:
             incident.incident_id, IncidentStatus.REPAIRING,
             reason="bounded repair started", repair_attempt=attempt,
         )
+        if self._stop_active():
+            return self.store.transition(
+                incident.incident_id, IncidentStatus.BLOCKED,
+                reason="emergency STOP became active before repair callback",
+                repair_attempt=attempt,
+            )
         try:
             result = self._repair_result(handler(incident, report))
         except Exception as error:  # noqa: BLE001 - repair failure is incident evidence
