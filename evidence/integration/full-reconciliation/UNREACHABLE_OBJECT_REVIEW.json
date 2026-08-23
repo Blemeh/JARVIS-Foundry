@@ -1,0 +1,655 @@
+{
+  "generated_at_utc": "2026-08-23T17:06:40.668254+00:00",
+  "command": "git fsck --unreachable --no-reflogs --no-progress",
+  "object_counts": {
+    "total": 317,
+    "commits": 61,
+    "trees": 134,
+    "blobs": 122
+  },
+  "commit_classification_counts": {
+    "REFLOG_OR_INDEX_SNAPSHOT": 42,
+    "FULLY_SUPERSEDED": 7,
+    "ALREADY_CANONICAL": 3,
+    "EVIDENCE_ONLY": 7,
+    "ABANDONED_OR_INCOMPLETE": 1,
+    "FAILED_OR_REJECTED": 1
+  },
+  "unknown_commit_classifications": [],
+  "accepted_source_work_stranded": 0,
+  "commits": [
+    {
+      "sha": "5e8351fa686289d6ca6d64cd7806d5d3785a1332",
+      "date": "2026-08-21T15:35:10+02:00",
+      "subject": "WIP on candidate/executive-intelligence-m2: 590c121 feat(executive): damp keyword bait, record every alternative disposition, M2 live proof",
+      "parents": [
+        "590c1213f739cb5d2a95070eee1ad16c7dea2315",
+        "68e76352b0d0fea2710233d315e56eeb8d6ca5b9"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "4c0561c53abcda13217616969e0102826c52890e",
+      "date": "2026-08-21T16:07:11+02:00",
+      "subject": "On main: temp-dirty-scan",
+      "parents": [
+        "c9b9014d10ed365b0b83204d57c384774fb9b43e",
+        "6d5c95a258d38572bde8cd360a676cbcc52581ff"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "e187f87fde440354ae9f99d883e06349771561ab",
+      "date": "2026-08-13T15:20:31+02:00",
+      "subject": "feat(v4): add isolated command center product surface",
+      "parents": [
+        "d07327eab983ae6d86db9e11c60733ab6320e124"
+      ],
+      "classification": "FULLY_SUPERSEDED",
+      "proof": "early V4 command-center source; reimplemented/refined by fc9426a and later 83af79d/6270a21/7dc3688 canonical descendants"
+    },
+    {
+      "sha": "6808f48a1388c9b8d785f3022897a89f7ebcad4f",
+      "date": "2026-08-16T04:23:27+02:00",
+      "subject": "feat(workers): canonical hybrid worker integration — worker abstraction, adapters (Hermes/OpenHands), deterministic routing, evidence reconciliation, mission-loop bridge, worker-crash recovery, OpenHands disposable-home containment (Phase 3 proven), 18-item canonical gate; 97 worker tests, full suite 1124 EXIT=0",
+      "parents": [
+        "e715b812dc49a04e1a0294b8dbd18c48abacb9f8"
+      ],
+      "classification": "ALREADY_CANONICAL",
+      "proof": "stable patch-id matches canonical main commit 01e9cc94ad57d425c051093fc2f7066354d05475; later hybrid-worker merge is also canonical"
+    },
+    {
+      "sha": "9e8978eb11b9f2950a83e41ce21b87d74092cdf2",
+      "date": "2026-08-21T17:25:28+02:00",
+      "subject": "docs(current-state): reconcile for Executive Intelligence M2 promotion",
+      "parents": [
+        "9037a9aebd2d744e3330e42721c6c81d2fedf942"
+      ],
+      "classification": "EVIDENCE_ONLY",
+      "proof": "historical state snapshot; later current-state pins are canonical"
+    },
+    {
+      "sha": "0d901c59857c5395109481ebf3b61d3e9ce8bb28",
+      "date": "2026-08-21T16:42:38+02:00",
+      "subject": "index on candidate/executive-intelligence-m2: af0e60b feat(deployment): M2 promote script following canonical M10 pattern",
+      "parents": [
+        "af0e60bb2746e26ef271c3f8b375e4368c0137b6"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "3391a0431eaa17ad587feda4cc6959142fa9ec3d",
+      "date": "2026-08-12T23:46:13+02:00",
+      "subject": "WIP on main: 2939415 docs(v4): MR-1 model routing CLOSED — verifier PASS (deleg_debc2612, P1-P10, 2 info findings); ledger verification.passed:verdict-v4-mr1-routing:round1 + evidence.created (seq 14050-14051); V4 truth slice design (R1-R8 audit findings); checkpoint 23:38",
+      "parents": [
+        "2939415141c6569327f39fd6dbaf9e72bf49ee24",
+        "d5acab6fb2f9e9bc9dd5d24b85e65491579018cd"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "ca9430cf234d98d6b83be142e10cdce8c7901d12",
+      "date": "2026-08-21T16:11:37+02:00",
+      "subject": "On main: temp3",
+      "parents": [
+        "c9b9014d10ed365b0b83204d57c384774fb9b43e",
+        "779f7963dd01f7bbd0108b99548f0783e11727b0"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "ea9d65958df1b17c85daadf84b37078c31672297",
+      "date": "2026-08-21T16:12:05+02:00",
+      "subject": "index on main: c9b9014 fix(cli): apply setup to Hermes env and install global jarvis command",
+      "parents": [
+        "c9b9014d10ed365b0b83204d57c384774fb9b43e"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "779f7963dd01f7bbd0108b99548f0783e11727b0",
+      "date": "2026-08-21T16:11:37+02:00",
+      "subject": "index on main: c9b9014 fix(cli): apply setup to Hermes env and install global jarvis command",
+      "parents": [
+        "c9b9014d10ed365b0b83204d57c384774fb9b43e"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "91a0baf8126bf1b530ba55b8a3eeac69113115cf",
+      "date": "2026-08-13T15:20:31+02:00",
+      "subject": "feat(v4): add isolated command center product surface",
+      "parents": [
+        "d07327eab983ae6d86db9e11c60733ab6320e124"
+      ],
+      "classification": "FULLY_SUPERSEDED",
+      "proof": "duplicate early V4 command-center source; superseded by fc9426a and later canonical UI lineage"
+    },
+    {
+      "sha": "54a391a8df660e14ac1a97f6f43f4143f12afd6d",
+      "date": "2026-08-13T15:20:31+02:00",
+      "subject": "feat(v4): add isolated command center product surface",
+      "parents": [
+        "d07327eab983ae6d86db9e11c60733ab6320e124"
+      ],
+      "classification": "FULLY_SUPERSEDED",
+      "proof": "duplicate early V4 command-center source; superseded by fc9426a and later canonical UI lineage"
+    },
+    {
+      "sha": "6ea4d6da74371f2c214cd6a1145ced3ab6a2cd37",
+      "date": "2026-08-22T00:01:55+02:00",
+      "subject": "index on candidate/24h-integration: 433e5f1 merge: integrate independent verifier hardening (candidate/24h-independent-verifier @ 9598a43) before V2 knowledge brain",
+      "parents": [
+        "433e5f1c35560c5c5ed6b55674296a408426dab3"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "d924c9792f22645ba66afd68519786cf290a19e9",
+      "date": "2026-08-21T22:23:12+02:00",
+      "subject": "index on candidate/24h-independent-verifier: 7ac0b23 docs(evidence): M2 promotion record (build/promote/rollback/return PASS)",
+      "parents": [
+        "7ac0b2373c8d4c74924fcea15c028c4f6e9cdc3c"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "f324bc4caa816fb94ba90629e2e5fa3b82d47a1b",
+      "date": "2026-08-21T22:21:43+02:00",
+      "subject": "index on candidate/24h-independent-verifier: 7ac0b23 docs(evidence): M2 promotion record (build/promote/rollback/return PASS)",
+      "parents": [
+        "7ac0b2373c8d4c74924fcea15c028c4f6e9cdc3c"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "8f2598bc9c11988668c7926c1799101d4c7d774b",
+      "date": "2026-08-20T19:06:16+02:00",
+      "subject": "index on main: ac31a62 fix-health-terminal-failures",
+      "parents": [
+        "ac31a624e960098ee763e3b884ca8ee7f56757bf"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "dc27e0c2b2b8094f725ed34cd57f2e3da0b50651",
+      "date": "2026-08-22T19:27:24+02:00",
+      "subject": "Merge candidate/v3-command-center UI at 1b4f205 onto canonical V3 main",
+      "parents": [
+        "701aa748a2db412e3b6e83ab91f7982408ea6573",
+        "1b4f2055640b41d90fa2f97f2c063289e9f525d3"
+      ],
+      "classification": "ALREADY_CANONICAL",
+      "proof": "stable patch-id matches canonical UI commit ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2"
+    },
+    {
+      "sha": "e0a711fa487b4d8190d073398cb32f0ed01755de",
+      "date": "2026-08-13T15:20:31+02:00",
+      "subject": "feat(v4): add isolated command center product surface",
+      "parents": [
+        "d07327eab983ae6d86db9e11c60733ab6320e124"
+      ],
+      "classification": "FULLY_SUPERSEDED",
+      "proof": "duplicate early V4 command-center source; superseded by fc9426a and later canonical UI lineage"
+    },
+    {
+      "sha": "a7a89f9a831b7e7d82beea58dc289547edc2e31f",
+      "date": "2026-08-20T16:45:35+02:00",
+      "subject": "On candidate/provider-config: repair-wip",
+      "parents": [
+        "49674d4c9b75b40d593d248c536cf47238a81a27",
+        "9dab99a18c728eb6e2d3fb93081a3f8d880d5687"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "9dab99a18c728eb6e2d3fb93081a3f8d880d5687",
+      "date": "2026-08-20T16:45:35+02:00",
+      "subject": "index on candidate/provider-config: 49674d4 fix(provider-config): single resolution, STOP-first supervisor, identity split",
+      "parents": [
+        "49674d4c9b75b40d593d248c536cf47238a81a27"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "d5acab6fb2f9e9bc9dd5d24b85e65491579018cd",
+      "date": "2026-08-12T23:46:13+02:00",
+      "subject": "index on main: 2939415 docs(v4): MR-1 model routing CLOSED — verifier PASS (deleg_debc2612, P1-P10, 2 info findings); ledger verification.passed:verdict-v4-mr1-routing:round1 + evidence.created (seq 14050-14051); V4 truth slice design (R1-R8 audit findings); checkpoint 23:38",
+      "parents": [
+        "2939415141c6569327f39fd6dbaf9e72bf49ee24"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "e4adb45ab360e43a656b82e0b2e21aebf4a97275",
+      "date": "2026-08-12T23:45:59+02:00",
+      "subject": "WIP on main: 2939415 docs(v4): MR-1 model routing CLOSED — verifier PASS (deleg_debc2612, P1-P10, 2 info findings); ledger verification.passed:verdict-v4-mr1-routing:round1 + evidence.created (seq 14050-14051); V4 truth slice design (R1-R8 audit findings); checkpoint 23:38",
+      "parents": [
+        "2939415141c6569327f39fd6dbaf9e72bf49ee24",
+        "c0f6b18c4e8e6f890e6d3449372875787e88b407"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "4faf3c8b4c6b46be0cf0e455481827a579e3268a",
+      "date": "2026-08-21T17:25:28+02:00",
+      "subject": "docs(current-state): reconcile for Executive Intelligence M2 promotion",
+      "parents": [
+        "9037a9aebd2d744e3330e42721c6c81d2fedf942"
+      ],
+      "classification": "EVIDENCE_ONLY",
+      "proof": "historical state snapshot; later current-state pins are canonical"
+    },
+    {
+      "sha": "e1310734f8c675f704a63ebbf51ea73d67b3bd3f",
+      "date": "2026-08-21T16:42:38+02:00",
+      "subject": "On candidate/executive-intelligence-m2: abcheck",
+      "parents": [
+        "af0e60bb2746e26ef271c3f8b375e4368c0137b6",
+        "0d901c59857c5395109481ebf3b61d3e9ce8bb28"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "d1b307c6f6af5bccd9f3f45e17a4181caa030342",
+      "date": "2026-08-21T16:12:05+02:00",
+      "subject": "On main: temp5",
+      "parents": [
+        "c9b9014d10ed365b0b83204d57c384774fb9b43e",
+        "ea9d65958df1b17c85daadf84b37078c31672297"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "1fb78a6d71baa4d69ec2454ff8aa841715a7ad6e",
+      "date": "2026-08-21T18:05:42+02:00",
+      "subject": "index on main: 769715a docs(current-state): record promotion merge sha in CURRENT_STATE",
+      "parents": [
+        "769715a7f8aee22bf4ab2db8870c37e6e9c9ef1b"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "60b7979be809f2f3f1adf452945b0c7038802833",
+      "date": "2026-08-14T10:15:12+02:00",
+      "subject": "docs(v7-s0): entry audit — authority, protected-state, live-state, V6-closure truth frozen; verifier deleg_6ca5671e PASS; baseline 719 EXIT=0",
+      "parents": [
+        "fa4e65fa07d05f0195872f6e3624dba993ae80e5"
+      ],
+      "classification": "ALREADY_CANONICAL",
+      "proof": "stable patch-id matches canonical documentation evidence commit a1a33e177f76bc3ed4d65b707ab3a1ab3eefbeb26"
+    },
+    {
+      "sha": "e53828f6f41dd462881d21c1bf1ac58418432421",
+      "date": "2026-08-21T21:51:54+02:00",
+      "subject": "WIP on candidate/24h-independent-verifier: 7ac0b23 docs(evidence): M2 promotion record (build/promote/rollback/return PASS)",
+      "parents": [
+        "7ac0b2373c8d4c74924fcea15c028c4f6e9cdc3c",
+        "bb55085a9163279fa8b65c3abba2b165690e73cf"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "10bea608f63eea1b1633e0c6d930a475fd73a6ca",
+      "date": "2026-08-21T16:11:14+02:00",
+      "subject": "index on main: c9b9014 fix(cli): apply setup to Hermes env and install global jarvis command",
+      "parents": [
+        "c9b9014d10ed365b0b83204d57c384774fb9b43e"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "9ac227df77a440cce6df60567cd8910897401692",
+      "date": "2026-08-13T17:19:22+02:00",
+      "subject": "docs(v6): add canonical self-evolution roadmap and Hermes prompt",
+      "parents": [
+        "598024d142803eb8f53d0e3a145419c5e991b282"
+      ],
+      "classification": "ABANDONED_OR_INCOMPLETE",
+      "proof": "V6 roadmap/prompt documentation without a final acceptance checkpoint; later V6 lane remains incomplete"
+    },
+    {
+      "sha": "424303687c6dd6f6348f854a6f16216911ccc2ad",
+      "date": "2026-08-20T22:15:24+02:00",
+      "subject": "g",
+      "parents": [
+        "2851d13bbaf89bb807e473029aa6e4147b807fc2"
+      ],
+      "classification": "FULLY_SUPERSEDED",
+      "proof": "snapshot/reflog artifact; stable patch-id matches provider-config candidate 28c89c14dedef87df98ea82c5a417ef3657e619c"
+    },
+    {
+      "sha": "60c5b606ca5d5e24ec5a225ae6c14858261f7af0",
+      "date": "2026-08-21T16:11:53+02:00",
+      "subject": "On main: temp4",
+      "parents": [
+        "c9b9014d10ed365b0b83204d57c384774fb9b43e",
+        "835648d4c8a49872b30b856881592b5d19dcfbd1"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "d1c58410a90a930574be629a4c1b3ec68b65a03a",
+      "date": "2026-08-20T19:06:16+02:00",
+      "subject": "On main: pre-provider-config-merge",
+      "parents": [
+        "ac31a624e960098ee763e3b884ca8ee7f56757bf",
+        "8f2598bc9c11988668c7926c1799101d4c7d774b"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "364710681b26810193accd948613df156810c0e5",
+      "date": "2026-08-21T17:25:28+02:00",
+      "subject": "docs(current-state): reconcile for Executive Intelligence M2 promotion",
+      "parents": [
+        "9037a9aebd2d744e3330e42721c6c81d2fedf942"
+      ],
+      "classification": "EVIDENCE_ONLY",
+      "proof": "historical state snapshot; later current-state pins are canonical"
+    },
+    {
+      "sha": "0e4af9b208100a97383c4d9daefbf53b4ad0023c",
+      "date": "2026-08-21T18:05:42+02:00",
+      "subject": "On main: concurrent-headless-work",
+      "parents": [
+        "769715a7f8aee22bf4ab2db8870c37e6e9c9ef1b",
+        "1fb78a6d71baa4d69ec2454ff8aa841715a7ad6e"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "3ecc531ff5acf538d7bec71111f3466253ad19ea",
+      "date": "2026-08-21T16:11:14+02:00",
+      "subject": "On main: temp2",
+      "parents": [
+        "c9b9014d10ed365b0b83204d57c384774fb9b43e",
+        "10bea608f63eea1b1633e0c6d930a475fd73a6ca"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "64cdc2b875eb9b457552770faa1abd838a173563",
+      "date": "2026-08-21T21:48:04+02:00",
+      "subject": "index on candidate/24h-independent-verifier: 7ac0b23 docs(evidence): M2 promotion record (build/promote/rollback/return PASS)",
+      "parents": [
+        "7ac0b2373c8d4c74924fcea15c028c4f6e9cdc3c"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "e24e76d2eb2b55f74cb690030dba694d0e8e8796",
+      "date": "2026-08-21T22:23:01+02:00",
+      "subject": "index on candidate/24h-independent-verifier: 7ac0b23 docs(evidence): M2 promotion record (build/promote/rollback/return PASS)",
+      "parents": [
+        "7ac0b2373c8d4c74924fcea15c028c4f6e9cdc3c"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "584fb4c652305d99e5c7a0930c110134d25299bd",
+      "date": "2026-08-21T21:52:06+02:00",
+      "subject": "WIP on candidate/24h-independent-verifier: 7ac0b23 docs(evidence): M2 promotion record (build/promote/rollback/return PASS)",
+      "parents": [
+        "7ac0b2373c8d4c74924fcea15c028c4f6e9cdc3c",
+        "85731e0642b92fd9cda8d140726f895bb6760871"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "20d2d87f0301bb31152750103788ff61f6a6207d",
+      "date": "2026-08-21T21:51:12+02:00",
+      "subject": "WIP on candidate/24h-independent-verifier: 7ac0b23 docs(evidence): M2 promotion record (build/promote/rollback/return PASS)",
+      "parents": [
+        "7ac0b2373c8d4c74924fcea15c028c4f6e9cdc3c",
+        "117d7f0145a28507f79ec010a995336df8e3d122"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "bb55085a9163279fa8b65c3abba2b165690e73cf",
+      "date": "2026-08-21T21:51:54+02:00",
+      "subject": "index on candidate/24h-independent-verifier: 7ac0b23 docs(evidence): M2 promotion record (build/promote/rollback/return PASS)",
+      "parents": [
+        "7ac0b2373c8d4c74924fcea15c028c4f6e9cdc3c"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "835648d4c8a49872b30b856881592b5d19dcfbd1",
+      "date": "2026-08-21T16:11:53+02:00",
+      "subject": "index on main: c9b9014 fix(cli): apply setup to Hermes env and install global jarvis command",
+      "parents": [
+        "c9b9014d10ed365b0b83204d57c384774fb9b43e"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "71577cd350e610133220dea804f3ed32376d1413",
+      "date": "2026-08-21T22:22:54+02:00",
+      "subject": "WIP on candidate/24h-independent-verifier: 7ac0b23 docs(evidence): M2 promotion record (build/promote/rollback/return PASS)",
+      "parents": [
+        "7ac0b2373c8d4c74924fcea15c028c4f6e9cdc3c",
+        "afe82657d7a0b8d101eb196da297e72c4b66c36a"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "05da83e5be80e8c3d35f81f4e547e0e62da24aed",
+      "date": "2026-08-21T21:48:04+02:00",
+      "subject": "WIP on candidate/24h-independent-verifier: 7ac0b23 docs(evidence): M2 promotion record (build/promote/rollback/return PASS)",
+      "parents": [
+        "7ac0b2373c8d4c74924fcea15c028c4f6e9cdc3c",
+        "64cdc2b875eb9b457552770faa1abd838a173563"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "d75a622a35d91b87d2cfdbe927f2dd8d3dedc75c",
+      "date": "2026-08-16T12:23:05+02:00",
+      "subject": "docs(remaster): documentation truth reconciliation — CURRENT_STATE + CAPABILITY_MATRIX (new authoritative surfaces), anti-stale contract + mechanical checker + tests, entry-point/architecture/roadmap/gate/mandate status headers reconciled to reality (V1-V8 + workers PROVEN), Tier C added to architecture contract, worker map marked canonical",
+      "parents": [
+        "ec4ac6b27311d5ca7b60be748fbeca2ace22af47"
+      ],
+      "classification": "FULLY_SUPERSEDED",
+      "proof": "documentation-truth package was later rewritten/pinned by canonical doc-staleness/current-state lineage"
+    },
+    {
+      "sha": "33db8fad9e3b6c24c67a25fe3e4dce4eedb58b86",
+      "date": "2026-08-21T17:25:28+02:00",
+      "subject": "docs(current-state): reconcile for Executive Intelligence M2 promotion",
+      "parents": [
+        "9037a9aebd2d744e3330e42721c6c81d2fedf942"
+      ],
+      "classification": "EVIDENCE_ONLY",
+      "proof": "historical state snapshot; later current-state pins are canonical"
+    },
+    {
+      "sha": "175cf3abe5b8bf375df8b3057ec3bc743ee8aee8",
+      "date": "2026-08-21T22:23:01+02:00",
+      "subject": "WIP on candidate/24h-independent-verifier: 7ac0b23 docs(evidence): M2 promotion record (build/promote/rollback/return PASS)",
+      "parents": [
+        "7ac0b2373c8d4c74924fcea15c028c4f6e9cdc3c",
+        "e24e76d2eb2b55f74cb690030dba694d0e8e8796"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "6d5c95a258d38572bde8cd360a676cbcc52581ff",
+      "date": "2026-08-21T16:07:11+02:00",
+      "subject": "index on main: c9b9014 fix(cli): apply setup to Hermes env and install global jarvis command",
+      "parents": [
+        "c9b9014d10ed365b0b83204d57c384774fb9b43e"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "a35fb87c95f564d20a1fbbea6d0a1d0978a91b23",
+      "date": "2026-08-21T22:23:12+02:00",
+      "subject": "WIP on candidate/24h-independent-verifier: 7ac0b23 docs(evidence): M2 promotion record (build/promote/rollback/return PASS)",
+      "parents": [
+        "7ac0b2373c8d4c74924fcea15c028c4f6e9cdc3c",
+        "d924c9792f22645ba66afd68519786cf290a19e9"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "68e76352b0d0fea2710233d315e56eeb8d6ca5b9",
+      "date": "2026-08-21T15:35:10+02:00",
+      "subject": "index on candidate/executive-intelligence-m2: 590c121 feat(executive): damp keyword bait, record every alternative disposition, M2 live proof",
+      "parents": [
+        "590c1213f739cb5d2a95070eee1ad16c7dea2315"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "afe82657d7a0b8d101eb196da297e72c4b66c36a",
+      "date": "2026-08-21T22:22:54+02:00",
+      "subject": "index on candidate/24h-independent-verifier: 7ac0b23 docs(evidence): M2 promotion record (build/promote/rollback/return PASS)",
+      "parents": [
+        "7ac0b2373c8d4c74924fcea15c028c4f6e9cdc3c"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "ddeca08e2f09e81144b6b3a3cc6788f60d177d9a",
+      "date": "2026-08-21T17:25:28+02:00",
+      "subject": "docs(current-state): reconcile for Executive Intelligence M2 promotion",
+      "parents": [
+        "9037a9aebd2d744e3330e42721c6c81d2fedf942"
+      ],
+      "classification": "EVIDENCE_ONLY",
+      "proof": "historical state snapshot; later current-state pins are canonical"
+    },
+    {
+      "sha": "65ee73d568786a3a30cb2e8d385adfc40ede9c92",
+      "date": "2026-08-22T00:01:55+02:00",
+      "subject": "WIP on candidate/24h-integration: 433e5f1 merge: integrate independent verifier hardening (candidate/24h-independent-verifier @ 9598a43) before V2 knowledge brain",
+      "parents": [
+        "433e5f1c35560c5c5ed6b55674296a408426dab3",
+        "6ea4d6da74371f2c214cd6a1145ced3ab6a2cd37"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "2e72e33ffa682690b9168d86828c8537319ce212",
+      "date": "2026-08-20T14:36:06+02:00",
+      "subject": "fix(provider-config): resolve provider settings once at runtime boundary",
+      "parents": [
+        "458fe4b10468a5499fbb3cebf7a47a401a90e199"
+      ],
+      "classification": "FULLY_SUPERSEDED",
+      "proof": "provider-config draft superseded by 49674d4 and later canonical provider repair"
+    },
+    {
+      "sha": "85731e0642b92fd9cda8d140726f895bb6760871",
+      "date": "2026-08-21T21:52:06+02:00",
+      "subject": "index on candidate/24h-independent-verifier: 7ac0b23 docs(evidence): M2 promotion record (build/promote/rollback/return PASS)",
+      "parents": [
+        "7ac0b2373c8d4c74924fcea15c028c4f6e9cdc3c"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "c07342c0fc1e3001117945a65d0be8e48c44b89e",
+      "date": "2026-08-18T12:46:26+02:00",
+      "subject": "Revert \"merge(perception): promote JARVIS Eyes Phase 2 — governed read-only Screenpipe connector + deterministic perception pipeline (all gates PASS)\"",
+      "parents": [
+        "bfeb4cdcbe9064bcb767c10a354c5a1b11ee0f2e"
+      ],
+      "classification": "FAILED_OR_REJECTED",
+      "proof": "explicit revert of JARVIS Eyes Phase 2 merge"
+    },
+    {
+      "sha": "c0f6b18c4e8e6f890e6d3449372875787e88b407",
+      "date": "2026-08-12T23:45:59+02:00",
+      "subject": "index on main: 2939415 docs(v4): MR-1 model routing CLOSED — verifier PASS (deleg_debc2612, P1-P10, 2 info findings); ledger verification.passed:verdict-v4-mr1-routing:round1 + evidence.created (seq 14050-14051); V4 truth slice design (R1-R8 audit findings); checkpoint 23:38",
+      "parents": [
+        "2939415141c6569327f39fd6dbaf9e72bf49ee24"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "06787d054040944ed61184781748fb3baddd598c",
+      "date": "2026-08-22T19:07:05+02:00",
+      "subject": "docs(evidence): FINAL.json — verification history, gate record, integration requirements",
+      "parents": [
+        "406eb2d12402d8a6abd9fca7f5847308ed2e418f"
+      ],
+      "classification": "EVIDENCE_ONLY",
+      "proof": "V3 Command Center candidate evidence record; branch-local simulated UI, not a backend acceptance package"
+    },
+    {
+      "sha": "95fc8e9fe6f76cf73b18ac4572ae066c98606b68",
+      "date": "2026-08-21T17:25:28+02:00",
+      "subject": "docs(current-state): reconcile for Executive Intelligence M2 promotion",
+      "parents": [
+        "9037a9aebd2d744e3330e42721c6c81d2fedf942"
+      ],
+      "classification": "EVIDENCE_ONLY",
+      "proof": "historical state snapshot; later current-state pins are canonical"
+    },
+    {
+      "sha": "0dfdba81e3f87466589a0461e854c1e8714f070b",
+      "date": "2026-08-21T22:21:43+02:00",
+      "subject": "WIP on candidate/24h-independent-verifier: 7ac0b23 docs(evidence): M2 promotion record (build/promote/rollback/return PASS)",
+      "parents": [
+        "7ac0b2373c8d4c74924fcea15c028c4f6e9cdc3c",
+        "f324bc4caa816fb94ba90629e2e5fa3b82d47a1b"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    },
+    {
+      "sha": "117d7f0145a28507f79ec010a995336df8e3d122",
+      "date": "2026-08-21T21:51:12+02:00",
+      "subject": "index on candidate/24h-independent-verifier: 7ac0b23 docs(evidence): M2 promotion record (build/promote/rollback/return PASS)",
+      "parents": [
+        "7ac0b2373c8d4c74924fcea15c028c4f6e9cdc3c"
+      ],
+      "classification": "REFLOG_OR_INDEX_SNAPSHOT",
+      "proof": "reflog/index/WIP state; not an accepted branch tip and contains no independent canonicalization authority"
+    }
+  ],
+  "conclusion": "No dangling commit is an unexplained accepted source package. Patch-equivalent hybrid-worker, UI, and V7 evidence commits are canonical; V4/provider/docs records are superseded or evidence-only; the explicit Eyes revert and orphan/incomplete checkpoints are not integration candidates."
+}
