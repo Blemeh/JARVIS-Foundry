@@ -1,0 +1,33 @@
+{
+  "record": "V3_HARD_BASELINE_FRESH",
+  "base_sha": "ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2",
+  "branch": "candidate/overnight-v3-hard-gate",
+  "worktree": "C:/temp/JARVIS-Overnight-V3-Hard-Gate",
+  "schema_version": 36,
+  "feature_flag_default": false,
+  "focused": {
+    "command": "python -m pytest tests/foundry/test_v3_fixtures.py tests/foundry/test_v3_projections.py tests/foundry/test_v3_scoring.py tests/foundry/test_v3_discovery_cycle.py tests/foundry/test_v3_loop.py tests/foundry/test_v3_teams.py tests/foundry/test_v3_git_reconcile.py tests/foundry/test_v3_outcomes.py tests/foundry/test_v3_smoke.py -q --junitxml=var/overnight/v3-hard-gate/focused-baseline.junit.xml",
+    "junit": "var/overnight/v3-hard-gate/focused-baseline.junit.xml",
+    "collected": 69,
+    "passed": 69,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "exit_code": 0
+  },
+  "foundry": {
+    "command": "python -m pytest tests/foundry -q --junitxml=var/overnight/v3-hard-gate/foundry-baseline.junit.xml",
+    "junit": "var/overnight/v3-hard-gate/foundry-baseline.junit.xml",
+    "collected": 1579,
+    "passed": 1578,
+    "failures": 1,
+    "errors": 0,
+    "skipped": 0,
+    "exit_code": 1,
+    "failures_by_node": [
+      "tests/foundry/test_installer.py::test_task_restarts_after_hard_kill_via_repeating_trigger"
+    ],
+    "classification": "baseline_platform_failure_outside_v3_core"
+  },
+  "evidence_note": "Counts and failure identity were parsed from the fresh JUnit artifacts in this lane. Historical V3 counts were not reused."
+}

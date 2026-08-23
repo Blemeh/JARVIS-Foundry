@@ -32,6 +32,7 @@ from jarvis_foundry.owner_controls import OwnerControlService, sign_command
 from jarvis_foundry.roles.adapter import FakeHermesAdapter
 from jarvis_foundry.roles.results import COMPLETED, RoleResult
 from jarvis_foundry.roles.router import RoleRouter
+from jarvis_foundry.supervisor.estop import EmergencyStop
 
 
 def git(*args: str, cwd: Path) -> None:
@@ -223,6 +224,30 @@ def test_authenticated_redirect_reaches_mission_loop_dispatch(tmp_path):
     assert len(interpreted) == 1
     assert interpreted[0].payload["directive_id"] == directive.directive_id
     assert database.quick_check() == "ok"
+
+
+def test_stop_arriving_after_builder_blocks_verifier_and_completion(tmp_path):
+    database, repository, policy, router = mission_fixture(tmp_path)
+    stop_path = tmp_path / "STOP"
+
+    class StopAfterBuilder(FakeHermesAdapter):
+        def dispatch(self, manifest, *, heartbeat):
+            result = super().dispatch(manifest, heartbeat=heartbeat)
+            if manifest.role == "builder":
+                EmergencyStop(stop_path).activate("builder boundary race")
+            return result
+
+    adapter = StopAfterBuilder(working_root=repository)
+    outcome = MissionLoop(
+        database, router, adapter, policy=policy, stop_path=stop_path,
+    ).run_step(**step_kwargs())
+
+    assert outcome.outcome == BLOCKED_OUTCOME
+    assert "STOP active" in (outcome.reason or "")
+    assert not [m for m in adapter.received if m.role == "verifier"]
+    assert not [e for e in database.events()
+                if e.event_type == "mission.completed"]
+    assert database.row("missions", "mission_id", "mission-1")["state"] == "BLOCKED"
 
 
 def test_empty_rollback_rejected_before_dispatch(tmp_path):

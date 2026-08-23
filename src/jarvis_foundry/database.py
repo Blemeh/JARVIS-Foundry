@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
+import tempfile
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
@@ -184,13 +186,48 @@ class FoundryDatabase:
     def restore_from(self, source_path: str | Path) -> int:
         source_path = Path(source_path).expanduser().resolve()
         source = sqlite3.connect(f"file:{source_path.as_posix()}?mode=ro", uri=True, timeout=10)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        fd, temporary_name = tempfile.mkstemp(
+            prefix=f".{self.path.name}.restore-", suffix=".tmp",
+            dir=self.path.parent)
+        os.close(fd)
+        temporary_path = Path(temporary_name)
         try:
             if source.execute("PRAGMA quick_check").fetchone()[0] != "ok":
                 raise sqlite3.DatabaseError("restore source failed integrity check")
-            with self.connect() as destination:
+            destination = sqlite3.connect(temporary_path)
+            try:
                 source.backup(destination)
+                if destination.execute("PRAGMA quick_check").fetchone()[0] != "ok":
+                    raise sqlite3.DatabaseError("restore destination failed integrity check")
+            finally:
+                destination.close()
+        except BaseException:
+            if temporary_path.exists():
+                temporary_path.unlink()
+            raise
         finally:
             source.close()
+        # The target may be open elsewhere on Windows, so replacing its file
+        # path is not portable. SQLite's backup API performs the final copy
+        # through the destination journal, retaining the old file on a killed
+        # or failed restore while still avoiding an unvalidated source.
+        try:
+            validated_source = sqlite3.connect(
+                f"file:{temporary_path.as_posix()}?mode=ro", uri=True,
+                timeout=10)
+            destination = self.connect()
+            try:
+                validated_source.backup(destination)
+                if destination.execute("PRAGMA quick_check").fetchone()[0] != "ok":
+                    raise sqlite3.DatabaseError(
+                        "restore target failed integrity check")
+            finally:
+                destination.close()
+                validated_source.close()
+        finally:
+            if temporary_path.exists():
+                temporary_path.unlink()
         return self.verify_event_integrity()
 
     def row(self, table: str, key_column: str, key: str) -> dict[str, object] | None:

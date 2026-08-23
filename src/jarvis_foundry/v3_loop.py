@@ -32,6 +32,7 @@ from typing import Any, Callable, Iterable
 from .database import FoundryDatabase
 from .discovery_candidates import score_candidate
 from .events import Event
+from .control.broker import emergency_stop_reason
 from .live_ingestion import run_ingestion_cycle
 from .mission.loop import MissionLoop
 from .mission.proposal import ProposalError
@@ -292,6 +293,19 @@ def run_one_loop(db: FoundryDatabase, *, loop_id: str, adapter: Any,
     """
     report: dict[str, Any] = {"loop_id": loop_id}
 
+    def stop_reason() -> str | None:
+        return emergency_stop_reason(db, stop_path)
+
+    def stopped(stage: str, reason: str) -> dict[str, Any]:
+        report.update({"outcome": "STOPPED",
+                       "reason": f"STOP active {stage}: {reason}",
+                       "stop_stage": stage})
+        return report
+
+    initial_stop = stop_reason()
+    if initial_stop:
+        return stopped("before routing", initial_stop)
+
     # 0. MANDATORY MODEL ROUTING (DIR-2026-08-12): every real role must
     # resolve to the configured provider policy (provider.yaml) with no
     # fallbacks. A non-compliant router refuses the loop BEFORE any
@@ -308,6 +322,10 @@ def run_one_loop(db: FoundryDatabase, *, loop_id: str, adapter: Any,
         repo_paths=repo_paths, max_items=max_items, max_bytes=max_bytes)
     report.update(observation)
 
+    after_observation_stop = stop_reason()
+    if after_observation_stop:
+        return stopped("after observation", after_observation_stop)
+
     # 4. SCORE + SELECT/REJECT — production authority is ExecutiveDecisionService.
     if not test_legacy_selection:
         report["outcome"] = "WAITING"
@@ -316,6 +334,10 @@ def run_one_loop(db: FoundryDatabase, *, loop_id: str, adapter: Any,
             "ExecutiveDecisionService via runtime.worker_loop for production"
         )
         return report
+
+    before_selection_stop = stop_reason()
+    if before_selection_stop:
+        return stopped("before selection", before_selection_stop)
 
     top = _top_scorable(db, budget=score_budget)
     report["scored"] = len(top)
@@ -336,6 +358,10 @@ def run_one_loop(db: FoundryDatabase, *, loop_id: str, adapter: Any,
     report["selected_candidate"] = candidate_id
     report["candidate_score"] = selected["score"]
 
+    before_approval_stop = stop_reason()
+    if before_approval_stop:
+        return stopped("before candidate approval", before_approval_stop)
+
     # 5. CREATE MISSION (bound to the registered resource)
     new_mission = f"mission-{uuid.uuid4().hex[:12]}"
     db.append(Event.create(
@@ -354,6 +380,10 @@ def run_one_loop(db: FoundryDatabase, *, loop_id: str, adapter: Any,
         idempotency_key=f"mission.created:{new_mission}"))
     report["mission_id"] = new_mission
 
+    before_plan_stop = stop_reason()
+    if before_plan_stop:
+        return stopped("before mission planning", before_plan_stop)
+
     # 6. PLAN (walk the state machine to READY — the domain map:
     # PLANNED → ORIENTING → ACTION_SELECTION → READY)
     for state, next_action in (
@@ -369,6 +399,9 @@ def run_one_loop(db: FoundryDatabase, *, loop_id: str, adapter: Any,
             idempotency_key=f"mission.state_changed:{new_mission}:{state}"))
 
     # 7. DISPATCH + VERIFY + ACCEPT/REPAIR (settled within the budget)
+    before_dispatch_stop = stop_reason()
+    if before_dispatch_stop:
+        return stopped("before dispatch", before_dispatch_stop)
     target_root_p = Path(target_root) if target_root else None
     if target_root_p is None:
         with db.connect() as connection:
@@ -402,6 +435,10 @@ def run_one_loop(db: FoundryDatabase, *, loop_id: str, adapter: Any,
     report["verdict_id"] = outcome.verdict_id
     report["reason"] = outcome.reason
 
+    before_reconcile_stop = stop_reason()
+    if before_reconcile_stop:
+        return stopped("before reconcile", before_reconcile_stop)
+
     # 8. RECONCILE SIDE EFFECTS
     rep = reconcile(db)
     report["reconciled"] = rep.consistent
@@ -412,6 +449,9 @@ def run_one_loop(db: FoundryDatabase, *, loop_id: str, adapter: Any,
     # live-loop finding 2026-08-12: the first live loop recorded
     # mission.completed for a BLOCKED mission — fixed here)
     if outcome.outcome == "PASSED":
+        before_completion_stop = stop_reason()
+        if before_completion_stop:
+            return stopped("before mission completion", before_completion_stop)
         db.append(Event.create(
             "mission.state_changed",
             {"mission_id": new_mission, "state": "COMPLETE",

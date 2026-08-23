@@ -19,6 +19,7 @@ from jarvis_foundry.executive.eligibility import (
     enable_admission_authority,
 )
 from jarvis_foundry.paths import FoundryPaths
+from jarvis_foundry.owner_controls import OwnerControlService, sign_command
 from jarvis_foundry.runtime.config import WorkerRuntimeConfig
 from jarvis_foundry.runtime.worker_loop import run_cycle
 from jarvis_foundry.v3_cycle import run_discovery_cycle
@@ -153,6 +154,12 @@ def test_flag_on_lab_loop_observe_to_mission(tmp_path):
                 .startswith("candidate:")]
     assert len(missions) == 1
     assert report.mission_id == missions[0].payload["mission_id"]
+    assert report.lineage["candidate_id"] == candidate_id
+    assert report.lineage["decision_id"] == report.decision_id
+    lineage_events = [e for e in database.events()
+                      if e.event_type == "discovery.cycle_lineage_recorded"]
+    assert len(lineage_events) == 1
+    assert lineage_events[0].payload["mission_id"] == report.mission_id
 
 
 def test_duplicate_fingerprint_cannot_create_second_mission(tmp_path):
@@ -183,8 +190,6 @@ def test_duplicate_fingerprint_cannot_create_second_mission(tmp_path):
 
 
 def test_stop_blocks_cycle_before_observation(tmp_path):
-    from jarvis_foundry.owner_controls import OwnerControlService, sign_command
-
     database, _ = _cycle_env(tmp_path)
     secret = b"test-secret-32-bytes-minimum!!"
     svc = OwnerControlService(database, secret=secret, owner_id="owner")
@@ -202,6 +207,31 @@ def test_stop_blocks_cycle_before_observation(tmp_path):
     assert report.outcome == "STOPPED"
     events = [e.event_type for e in database.events()]
     assert "portfolio.evaluated" not in events
+
+
+def test_stop_race_after_observation_blocks_scoring_and_materialization(tmp_path):
+    database, _ = _cycle_env(tmp_path)
+    secret = b"test-secret-32-bytes-minimum!!"
+    service = OwnerControlService(database, secret=secret, owner_id="owner")
+
+    def _observe_then_stop(_database):
+        nonce = "stop-after-observe"
+        signature = sign_command(secret, "STOP_EVERYTHING", "GLOBAL",
+                                 "race", nonce)
+        service.apply("STOP_EVERYTHING", target="GLOBAL", exact_text="race",
+                      nonce=nonce, signature=signature)
+        return {"observed": {"vault": 4}, "candidates_created": 1}
+
+    report = run_discovery_cycle(
+        database, loop_id="stop-after-observe", resource_id="resource-1",
+        observe=_observe_then_stop)
+    assert report.outcome == "STOPPED"
+    events = [e.event_type for e in database.events()]
+    assert "portfolio.evaluated" not in events
+    assert "executive.decision_recorded" not in events
+    assert not [e for e in database.events()
+                if e.event_type == "mission.created"
+                and str(e.payload.get("created_from") or "").startswith("candidate:")]
 
 
 def test_worker_loop_dual_path_flag_on_compiles(tmp_path):
@@ -225,6 +255,12 @@ def test_worker_loop_dual_path_flag_on_compiles(tmp_path):
                 if e.event_type == "discovery.cycle_completed"
                 and e.payload.get("outcome") == "COMPILED"]
     assert len(compiled) == 1 and compiled[0].payload["loop_id"] == "dual-on"
+    outcome_rows = database.all("candidate_outcomes")
+    assert len(outcome_rows) == 1
+    assert outcome_rows[0]["status"] in ("RECORDED", "UNKNOWN")
+    assert any(e.event_type == "discovery.cycle_lineage_completed"
+               and e.payload["loop_id"] == "dual-on"
+               for e in database.events())
 
 
 def test_worker_loop_flag_off_unchanged_no_cycle_event(tmp_path):

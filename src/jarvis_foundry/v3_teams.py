@@ -92,6 +92,10 @@ def fresh_verifier_identity(
     """
     if not verifier_session_id or not str(verifier_session_id).strip():
         raise ValueError("verifier requires a fresh session identity")
+    if builder_provider is not None and not builder_run_id:
+        raise ValueError(
+            "verifier binding requires the builder run id when a builder "
+            "context is present")
     if builder_run_id and verifier_session_id == builder_run_id:
         raise ValueError(
             "verifier session must be FRESH — reusing the builder run id "

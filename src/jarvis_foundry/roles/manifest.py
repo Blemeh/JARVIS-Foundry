@@ -13,6 +13,7 @@ Manifests never carry raw credentials (policy: capabilities, not secrets).
 from __future__ import annotations
 
 import hashlib
+import math
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -43,6 +44,46 @@ class ContextManifest:
     verification_criteria: tuple[str, ...] = field(default_factory=tuple)
     forbidden_paths: tuple[str, ...] = field(default_factory=tuple)
     attempt: int = 1
+
+    def __post_init__(self) -> None:
+        """Reject unbounded or malformed worker context at the boundary."""
+        text_fields = {
+            "run_id": (self.run_id, 256),
+            "role": (self.role, 64),
+            "mission_id": (self.mission_id, 256),
+            "resource_id": (self.resource_id, 256),
+            "capability": (self.capability, 128),
+            "provider": (self.provider, 128),
+            "model": (self.model, 256),
+            "isolation_group": (self.isolation_group, 128),
+        }
+        for name, (value, limit) in text_fields.items():
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"manifest {name} is required")
+            if len(value) > limit:
+                raise ValueError(f"manifest {name} exceeds {limit} characters")
+        if self.step_id is not None and len(str(self.step_id)) > 256:
+            raise ValueError("manifest step_id exceeds 256 characters")
+        if not isinstance(self.tool_policy, (tuple, list)) or len(self.tool_policy) > 64:
+            raise ValueError("manifest tool_policy is too large")
+        if any(not isinstance(item, str) or not item.strip() or len(item) > 128
+               for item in self.tool_policy):
+            raise ValueError("manifest tool_policy contains an invalid entry")
+        if not math.isfinite(float(self.budget_usd)) or self.budget_usd < 0:
+            raise ValueError("manifest budget_usd must be finite and non-negative")
+        if not 1 <= int(self.duration_seconds) <= 86_400:
+            raise ValueError("manifest duration_seconds is outside [1, 86400]")
+        if len(self.instructions) > 12_000:
+            raise ValueError("manifest instructions exceed 12000 characters")
+        for name, values in (("expected_artifacts", self.expected_artifacts),
+                             ("verification_criteria", self.verification_criteria),
+                             ("forbidden_paths", self.forbidden_paths)):
+            if not isinstance(values, (tuple, list)) or len(values) > 128:
+                raise ValueError(f"manifest {name} is too large")
+            if any(not isinstance(item, str) or len(item) > 512 for item in values):
+                raise ValueError(f"manifest {name} contains an invalid entry")
+        if int(self.attempt) < 1:
+            raise ValueError("manifest attempt must be positive")
 
     def to_payload(self) -> dict[str, Any]:
         payload = {

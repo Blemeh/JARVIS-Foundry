@@ -74,6 +74,13 @@ def test_missing_session_identity_rejected():
                                 builder_provider=None)
 
 
+def test_verifier_binding_requires_builder_run_identity():
+    with pytest.raises(ValueError, match="builder run id"):
+        fresh_verifier_identity(verifier_provider="p",
+                                verifier_session_id="fresh-session",
+                                builder_provider="p", builder_run_id=None)
+
+
 def _verdict(database: FoundryDatabase, verdict_id: str, mission_id: str,
              step_id: str, outcome: str) -> None:
     start_verification(

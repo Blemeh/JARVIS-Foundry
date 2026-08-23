@@ -21,6 +21,26 @@ class MaterializationBlocked(Exception):
         self.details = details or {}
 
 
+def _approved_mission_id(database: FoundryDatabase,
+                         candidate_id: str) -> str | None:
+    """Return a prior approval's mission identity for crash recovery."""
+    import json
+    with database.connect() as connection:
+        row = connection.execute(
+            "SELECT payload_json FROM events WHERE event_type = "
+            "'discovery.candidate_approved' AND json_extract(payload_json, "
+            "'$.candidate_id') = ? ORDER BY sequence LIMIT 1",
+            (candidate_id,),
+        ).fetchone()
+    if not row:
+        return None
+    try:
+        value = json.loads(row[0]).get("mission_id")
+    except (TypeError, ValueError):
+        return None
+    return str(value) if value else None
+
+
 def existing_materialization(
     database: FoundryDatabase,
     decision_id: str,
@@ -93,7 +113,13 @@ def _materialization_preflight(
         resource_id=resource_id,
         capability=capability,
     )
-    if not eligibility.eligible:
+    # APPROVED with a durable candidate_approved event is the recoverable
+    # half-transition left by a crash before mission.created. It is safe to
+    # resume because the SELECT decision is still required below and
+    # approve_candidate is idempotent on the bound mission identity.
+    if not eligibility.eligible and not (
+            str(row.get("status") or "") == "APPROVED"
+            and _approved_mission_id(database, candidate_id)):
         return f"candidate no longer eligible: {eligibility.reason}"
     decision_found = False
     for event in database.events():

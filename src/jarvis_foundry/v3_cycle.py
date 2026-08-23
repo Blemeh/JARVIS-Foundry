@@ -13,12 +13,37 @@ selection reuses ``ExecutiveDecisionService``, materialization reuses
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
+from functools import wraps
+import threading
 from typing import Any
 
 from .database import FoundryDatabase
-from .events import Event
+from .events import Event, EventConflict
+from .v3_fault import invoke_fault_hook
 from .v3_scoring import POLICY_VERSION, ScoringService, evaluate_portfolio
+
+
+# A discovery cycle is a transaction-like orchestration over several durable
+# event writes.  Serialize same-database callers in this process so two
+# schedulers cannot both observe "no portfolio yet" and then append different
+# payloads under the same loop idempotency key.  Cross-process callers still
+# get the durable EventConflict protection below.
+_CYCLE_LOCKS: dict[str, threading.Lock] = {}
+_CYCLE_LOCKS_GUARD = threading.Lock()
+
+
+def _with_cycle_lock(function):
+    @wraps(function)
+    def wrapped(database, *args, **kwargs):
+        key = str(database.path)
+        with _CYCLE_LOCKS_GUARD:
+            lock = _CYCLE_LOCKS.setdefault(key, threading.Lock())
+        with lock:
+            return function(database, *args, **kwargs)
+
+    return wrapped
 
 
 @dataclass(frozen=True)
@@ -35,6 +60,9 @@ class CycleReport:
     rejected: int = 0
     degraded_sources: list[str] = field(default_factory=list)
     reason: str | None = None
+    outcome_id: str | None = None
+    next_selection_id: str | None = None
+    lineage: dict[str, Any] = field(default_factory=dict)
 
     def to_payload(self) -> dict[str, Any]:
         return {
@@ -50,9 +78,13 @@ class CycleReport:
             "rejected": self.rejected,
             "degraded_sources": list(self.degraded_sources),
             "reason": self.reason,
+            "outcome_id": self.outcome_id,
+            "next_selection_id": self.next_selection_id,
+            "lineage": dict(self.lineage),
         }
 
 
+@_with_cycle_lock
 def run_discovery_cycle(
     database: FoundryDatabase,
     *,
@@ -61,6 +93,7 @@ def run_discovery_cycle(
     capability: str = "write_registered_worktree_files",
     source_id: str = "v3-cycle",
     observe: "Any | None" = None,
+    fault_hook: Callable[[str], None] | None = None,
 ) -> CycleReport:
     """One unified discovery iteration.
 
@@ -74,15 +107,52 @@ def run_discovery_cycle(
     # Step 1 — safety gate before anything else.
     stop = emergency_stop_reason(database, None)
     if stop:
+        lineage = {"loop_id": loop_id, "status": "STOPPED"}
         database.append(Event.create(
             "discovery.cycle_completed",
             {"loop_id": loop_id, "outcome": "STOPPED", "observed": 0,
              "candidates_created": 0, "decision_id": None,
-             "degraded_sources": [], "reason": f"STOP active: {stop}"},
+             "degraded_sources": [], "reason": f"STOP active: {stop}",
+             "lineage": lineage},
             source_type="supervisor", source_id=source_id,
             idempotency_key=f"discovery.cycle_completed:{loop_id}"))
         return CycleReport(loop_id=loop_id, outcome="STOPPED",
-                           reason=f"STOP active: {stop}")
+                           reason=f"STOP active: {stop}", lineage=lineage)
+
+    # A cycle-start marker is durable before any observation work.  The
+    # idempotency key makes a replay after a deliberate crash additive rather
+    # than duplicating the start record.
+    database.append(Event.create(
+        "discovery.cycle_started",
+        {"loop_id": loop_id, "resource_id": resource_id,
+         "capability": capability},
+        source_type="supervisor", source_id=source_id,
+        idempotency_key=f"discovery.cycle_started:{loop_id}"))
+    invoke_fault_hook(fault_hook, "post cycle_started")
+
+    # A caller may have crashed after the terminal cycle event but before it
+    # consumed the returned report.  Return the durable report rather than
+    # rebuilding a different portfolio/lineage payload under the same key.
+    existing_completion = next(
+        (event for event in database.events()
+         if event.event_type == "discovery.cycle_completed"
+         and event.payload.get("loop_id") == loop_id),
+        None,
+    )
+    if existing_completion is not None:
+        payload = existing_completion.payload
+        return CycleReport(
+            loop_id=loop_id,
+            outcome=str(payload.get("outcome") or "BLOCKED"),
+            decision_id=payload.get("decision_id"),
+            mission_id=payload.get("mission_id"),
+            candidate_id=(payload.get("lineage") or {}).get("candidate_id"),
+            observed=int(payload.get("observed") or 0),
+            candidates_created=int(payload.get("candidates_created") or 0),
+            degraded_sources=list(payload.get("degraded_sources") or []),
+            reason=payload.get("reason"),
+            lineage=dict(payload.get("lineage") or {}),
+        )
 
     degraded: list[str] = []
     observed = 0
@@ -99,6 +169,28 @@ def run_discovery_cycle(
                 created = int(observation.get("candidates_created", 0))
         except Exception as error:  # noqa: BLE001 - degrade, don't abort
             degraded.append(f"observe:{type(error).__name__}")
+    invoke_fault_hook(fault_hook, "post candidate_generated")
+
+    # Observation is untrusted and may race with an owner STOP.  Do not score,
+    # append portfolio state, select, or materialize after the second gate.
+    stop = emergency_stop_reason(database, None)
+    if stop:
+        lineage = {"loop_id": loop_id, "status": "STOPPED",
+                   "observed": observed, "candidates_created": created}
+        database.append(Event.create(
+            "discovery.cycle_completed",
+            {"loop_id": loop_id, "outcome": "STOPPED", "observed": observed,
+             "candidates_created": created, "decision_id": None,
+             "degraded_sources": degraded,
+             "reason": f"STOP active after observation: {stop}",
+             "lineage": lineage},
+            source_type="supervisor", source_id=source_id,
+            idempotency_key=f"discovery.cycle_completed:{loop_id}"))
+        return CycleReport(loop_id=loop_id, outcome="STOPPED",
+                           observed=observed, candidates_created=created,
+                           degraded_sources=degraded,
+                           reason=f"STOP active after observation: {stop}",
+                           lineage=lineage)
 
     policy_version = POLICY_VERSION
     try:
@@ -110,22 +202,72 @@ def run_discovery_cycle(
             {"loop_id": loop_id, "outcome": "BLOCKED", "observed": observed,
              "candidates_created": created, "decision_id": None,
              "degraded_sources": degraded,
-             "reason": str(error)},
+             "reason": str(error),
+             "lineage": {"loop_id": loop_id, "status": "BLOCKED"}},
             source_type="supervisor", source_id=source_id,
             idempotency_key=f"discovery.cycle_completed:{loop_id}"))
         return CycleReport(loop_id=loop_id, outcome="BLOCKED", observed=observed,
-                           candidates_created=created, reason=str(error))
+                           candidates_created=created, reason=str(error),
+                           lineage={"loop_id": loop_id, "status": "BLOCKED"})
 
     # Step 4-5 — score every NEW candidate under the registry policy.
+    stop = emergency_stop_reason(database, None)
+    if stop:
+        lineage = {"loop_id": loop_id, "status": "STOPPED",
+                   "observed": observed, "candidates_created": created}
+        database.append(Event.create(
+            "discovery.cycle_completed",
+            {"loop_id": loop_id, "outcome": "STOPPED", "observed": observed,
+             "candidates_created": created, "decision_id": None,
+             "degraded_sources": degraded,
+             "reason": f"STOP active before scoring: {stop}",
+             "lineage": lineage},
+            source_type="supervisor", source_id=source_id,
+            idempotency_key=f"discovery.cycle_completed:{loop_id}"))
+        return CycleReport(loop_id=loop_id, outcome="STOPPED",
+                           observed=observed, candidates_created=created,
+                           degraded_sources=degraded,
+                           reason=f"STOP active before scoring: {stop}",
+                           lineage=lineage)
     service = ScoringService(database)
     decisions = service.score_all_eligible()
     eligible = [d for d in decisions if d["status"] == "ELIGIBLE"]
+    invoke_fault_hook(fault_hook, "post candidate_scored")
 
     # Step 5b — portfolio projection event.
-    portfolio = evaluate_portfolio(
-        database, loop_id,
-        [{**d, "status": d["status"]} for d in decisions],
-        policy_version=policy_version)
+    # A crash after scoring/selection may replay the same loop after the
+    # candidate projection has advanced.  Reuse the durable portfolio payload
+    # for this loop instead of rebuilding a different decision-count payload
+    # under the same idempotency key.
+    portfolio_event = next(
+        (event for event in database.events()
+         if event.event_type == "portfolio.evaluated"
+         and event.payload.get("loop_id") == loop_id
+         and event.payload.get("policy_version") == policy_version),
+        None,
+    )
+    if portfolio_event is not None:
+        portfolio = dict(portfolio_event.payload)
+    else:
+        try:
+            portfolio = evaluate_portfolio(
+                database, loop_id,
+                [{**d, "status": d["status"]} for d in decisions],
+                policy_version=policy_version)
+        except EventConflict:
+            # A different process may have won the same loop between the
+            # read above and the append.  Reuse its canonical projection;
+            # only re-raise if no durable winner exists.
+            portfolio_event = next(
+                (event for event in database.events()
+                 if event.event_type == "portfolio.evaluated"
+                 and event.payload.get("loop_id") == loop_id
+                 and event.payload.get("policy_version") == policy_version),
+                None,
+            )
+            if portfolio_event is None:
+                raise
+            portfolio = dict(portfolio_event.payload)
 
     # Step 6 — selection stays with ExecutiveDecisionService.
     from .executive.decisions import ExecutiveDecisionService
@@ -141,15 +283,19 @@ def run_discovery_cycle(
     enable_admission_authority(database, epoch, source_id=source_id)
     decision = executive.evaluate(
         resource_id=resource_id, capability=capability, loop_id=loop_id)
+    if decision.kind == "SELECT":
+        invoke_fault_hook(fault_hook, "post decision_recorded SELECT")
 
     if decision.kind != "SELECT" or decision.candidate_id is None:
+        lineage = {"loop_id": loop_id, "status": "WAITING",
+                   "decision_id": decision.decision_id}
         database.append(Event.create(
             "discovery.cycle_completed",
             {"loop_id": loop_id, "outcome": "WAITING", "observed": observed,
              "candidates_created": created, "decision_id": decision.decision_id,
              "degraded_sources": degraded,
              "reason": getattr(decision, "reason", None)
-             or decision.kind},
+             or decision.kind, "lineage": lineage},
             source_type="supervisor", source_id=source_id,
             idempotency_key=f"discovery.cycle_completed:{loop_id}"))
         return CycleReport(
@@ -159,17 +305,56 @@ def run_discovery_cycle(
             scored=len(decisions), eligible=len(eligible),
             rejected=int(portfolio["rejected_count"]),
             degraded_sources=degraded,
-            reason=getattr(decision, "reason", None) or decision.kind)
+            reason=getattr(decision, "reason", None) or decision.kind,
+            lineage=lineage)
 
     # Step 7 — compile through the fail-closed canonical materializer.
+    stop = emergency_stop_reason(database, None)
+    if stop:
+        lineage = {"loop_id": loop_id, "status": "STOPPED",
+                   "decision_id": decision.decision_id,
+                   "candidate_id": decision.candidate_id}
+        database.append(Event.create(
+            "discovery.cycle_completed",
+            {"loop_id": loop_id, "outcome": "STOPPED", "observed": observed,
+             "candidates_created": created,
+             "decision_id": decision.decision_id,
+             "degraded_sources": degraded,
+             "reason": f"STOP active before materialization: {stop}",
+             "lineage": lineage},
+            source_type="supervisor", source_id=source_id,
+            idempotency_key=f"discovery.cycle_completed:{loop_id}"))
+        return CycleReport(loop_id=loop_id, outcome="STOPPED",
+                           decision_id=decision.decision_id,
+                           candidate_id=decision.candidate_id,
+                           observed=observed, candidates_created=created,
+                           scored=len(decisions), eligible=len(eligible),
+                           rejected=int(portfolio["rejected_count"]),
+                           degraded_sources=degraded,
+                           reason=f"STOP active before materialization: {stop}",
+                           lineage=lineage)
     compiled = compile_mission(
         database, candidate_id=decision.candidate_id,
         objective=decision.score.objective if decision.score else "",
         resource_id=resource_id, capability=capability,
         decision_id=decision.decision_id, activation_epoch=epoch,
         source_id=source_id)
+    invoke_fault_hook(fault_hook, "post mission.created")
 
     outcome = "COMPILED" if compiled.get("materialized") else "BLOCKED"
+    lineage = {
+        "loop_id": loop_id,
+        "candidate_id": decision.candidate_id,
+        "decision_id": decision.decision_id,
+        "mission_id": compiled.get("mission_id"),
+        "status": outcome,
+        "outcome_id": None,
+        "next_selection_id": None,
+    }
+    database.append(Event.create(
+        "discovery.cycle_lineage_recorded", lineage,
+        source_type="supervisor", source_id=source_id,
+        idempotency_key=f"discovery.cycle_lineage_recorded:{loop_id}"))
     database.append(Event.create(
         "discovery.cycle_completed",
         {"loop_id": loop_id, "outcome": outcome, "observed": observed,
@@ -177,9 +362,11 @@ def run_discovery_cycle(
          "decision_id": decision.decision_id,
          "degraded_sources": degraded,
          "mission_id": compiled.get("mission_id"),
-         "reason": compiled.get("blocked_reason")},
+         "reason": compiled.get("blocked_reason"),
+         "lineage": lineage},
         source_type="supervisor", source_id=source_id,
         idempotency_key=f"discovery.cycle_completed:{loop_id}"))
+    invoke_fault_hook(fault_hook, "post cycle_completed")
     return CycleReport(
         loop_id=loop_id, outcome=outcome,
         decision_id=decision.decision_id,
@@ -189,7 +376,7 @@ def run_discovery_cycle(
         scored=len(decisions), eligible=len(eligible),
         rejected=int(portfolio["rejected_count"]),
         degraded_sources=degraded,
-        reason=compiled.get("blocked_reason"))
+        reason=compiled.get("blocked_reason"), lineage=lineage)
 
 
 def _threshold(database: FoundryDatabase, policy_version: str) -> float:

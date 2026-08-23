@@ -20,6 +20,7 @@ from typing import Any, Callable
 from .database import FoundryDatabase
 from .effects import COMPLETED, FAILED, FROZEN, effect_identity, effect_state
 from .events import Event
+from .v3_fault import V3InjectedFault, invoke_fault_hook
 
 
 class GitReconcilePending(RuntimeError):
@@ -50,7 +51,8 @@ def ls_remote_head(remote: str | Path, ref: str = "main") -> str | None:
 
 def preflight_identity(*, worktree: str | Path, remote: str | Path,
                        branch: str = "main",
-                       expected_head: str | None = None) -> dict[str, Any]:
+                       expected_head: str | None = None,
+                       reject_dirty: bool = False) -> dict[str, Any]:
     """Resolve worktree/branch/remote identity BEFORE any mutation.
 
     T-17 mitigation: wrong-target binding fails closed here. The
@@ -68,6 +70,9 @@ def preflight_identity(*, worktree: str | Path, remote: str | Path,
         ["git", "-C", str(worktree), "status", "--porcelain"],
         capture_output=True, text=True, timeout=30)
     dirty = bool(status.stdout.strip())
+    if reject_dirty and dirty:
+        raise ValueError(
+            f"dirty worktree: refusing git effect for {worktree}")
     remote_head = ls_remote_head(remote, branch)
     identity = {
         "worktree": str(worktree.resolve()),
@@ -91,9 +96,11 @@ def preflight_identity(*, worktree: str | Path, remote: str | Path,
 class GitEffectAdapter:
     """Git push/pull effects with provider-side reconciliation."""
 
-    def __init__(self, database: FoundryDatabase, *, source_id: str = "v3-git") -> None:
+    def __init__(self, database: FoundryDatabase, *, source_id: str = "v3-git",
+                 fault_hook: Callable[[str], None] | None = None) -> None:
         self._database = database
         self._source_id = source_id
+        self._fault_hook = fault_hook
 
     def push(
         self, *,
@@ -121,9 +128,6 @@ class GitEffectAdapter:
         if stop:
             raise PermissionError(f"git push stopped: {stop}")
 
-        identity = preflight_identity(
-            worktree=worktree, remote=remote, branch=branch,
-            expected_head=expected_head)
         key = f"v3-git:{action_id}"
         state = effect_state(self._database, key)
 
@@ -131,6 +135,14 @@ class GitEffectAdapter:
             return {"outcome": "COMPLETED", "action_key": key,
                     "performed": False}
         if state["status"] == FROZEN:
+            with self._database.connect() as connection:
+                reconciled = connection.execute(
+                    "SELECT 1 FROM events WHERE event_type = "
+                    "'effect.reconciled' AND json_extract(payload_json, "
+                    "'$.action_key') = ? LIMIT 1", (key,)).fetchone()
+            if reconciled:
+                return {"outcome": "COMPLETED", "action_key": key,
+                        "performed": False, "reconciled": True}
             raise GitReconcilePending(key)
         if state["status"] == FAILED:
             # Clean rejection is terminal for this identity; a NEW push
@@ -138,6 +150,10 @@ class GitEffectAdapter:
             raise RuntimeError(
                 f"git push {action_id} previously failed — record a new "
                 "action after repairing the cause; no silent re-push")
+
+        identity = preflight_identity(
+            worktree=worktree, remote=remote, branch=branch,
+            expected_head=expected_head, reject_dirty=True)
 
         self._append("system.action_started", {
             "action_key": key, "action_id": action_id,
@@ -150,9 +166,18 @@ class GitEffectAdapter:
             "kind": "git.push", "identity": identity}, "started")
 
         try:
+            invoke_fault_hook(self._fault_hook, "mid git push")
             result = (execute or self._default_execute)(
                 worktree, remote, branch)
-        except TimeoutError:
+        except V3InjectedFault as injected:
+            try:
+                self._mark_ambiguous(
+                    key, action_id,
+                    "fault injected during push; remote state unknown")
+            except V3InjectedFault:
+                pass
+            raise injected
+        except (TimeoutError, subprocess.TimeoutExpired):
             self._append("effect.reconcile_pending", {
                 "action_key": key, "action_id": action_id,
                 "timeout_at": None, "reason": "push timed out; remote "
@@ -161,6 +186,7 @@ class GitEffectAdapter:
                 "action_key": key,
                 "reason": "ambiguous push outcome — frozen pending "
                           "ls-remote reconciliation"}, "frozen.pending")
+            invoke_fault_hook(self._fault_hook, "post effect.reconcile_pending")
             raise GitReconcilePending(key)
         except Exception as exc:  # noqa: BLE001 — recorded, never retried here
             self._append("system.action_failed", {
@@ -229,6 +255,16 @@ class GitEffectAdapter:
             event_type, payload,
             source_type="supervisor", source_id=self._source_id,
             idempotency_key=f"{key}.{suffix}"))
+
+    def _mark_ambiguous(self, key: str, action_id: str, reason: str) -> None:
+        """Persist a pending/frozen prefix before an injected crash escapes."""
+        self._append("effect.reconcile_pending", {
+            "action_key": key, "action_id": action_id,
+            "timeout_at": None, "reason": reason}, "pending")
+        self._append("effect.frozen", {
+            "action_key": key,
+            "reason": "ambiguous push outcome — frozen pending "
+                      "ls-remote reconciliation"}, "frozen.pending")
 
     @staticmethod
     def _default_execute(worktree: str | Path, remote: str | Path,

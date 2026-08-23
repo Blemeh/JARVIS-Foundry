@@ -1,0 +1,53 @@
+{
+  "collected": 63,
+  "command": [
+    [
+      "C:\\Python313\\python.exe",
+      "-m",
+      "pytest",
+      "tests/foundry/test_verifier_binding_hardening.py",
+      "-q",
+      "--junitxml=C:\\temp\\JARVIS-Overnight-V3-Hard-Gate\\evidence\\v3\\hard\\supporting-runs-00.junit.xml"
+    ],
+    [
+      "C:\\Python313\\python.exe",
+      "-m",
+      "pytest",
+      "tests/foundry/test_role_gateway_kill.py",
+      "-q",
+      "--junitxml=C:\\temp\\JARVIS-Overnight-V3-Hard-Gate\\evidence\\v3\\hard\\supporting-runs-01.junit.xml"
+    ],
+    [
+      "C:\\Python313\\python.exe",
+      "-m",
+      "pytest",
+      "tests/foundry/test_role_reaper.py",
+      "-q",
+      "--junitxml=C:\\temp\\JARVIS-Overnight-V3-Hard-Gate\\evidence\\v3\\hard\\supporting-runs-02.junit.xml"
+    ],
+    [
+      "C:\\Python313\\python.exe",
+      "-m",
+      "pytest",
+      "tests/foundry/test_worker_gate.py",
+      "-q",
+      "--junitxml=C:\\temp\\JARVIS-Overnight-V3-Hard-Gate\\evidence\\v3\\hard\\supporting-runs-03.junit.xml"
+    ]
+  ],
+  "duration_seconds": 60.252,
+  "errors": 0,
+  "exit_code": 0,
+  "failed": 0,
+  "failures": [],
+  "junit": [
+    "C:\\temp\\JARVIS-Overnight-V3-Hard-Gate\\evidence\\v3\\hard\\supporting-runs-00.junit.xml",
+    "C:\\temp\\JARVIS-Overnight-V3-Hard-Gate\\evidence\\v3\\hard\\supporting-runs-01.junit.xml",
+    "C:\\temp\\JARVIS-Overnight-V3-Hard-Gate\\evidence\\v3\\hard\\supporting-runs-02.junit.xml",
+    "C:\\temp\\JARVIS-Overnight-V3-Hard-Gate\\evidence\\v3\\hard\\supporting-runs-03.junit.xml"
+  ],
+  "name": "supporting-runs",
+  "passed": 63,
+  "skipped": 0,
+  "stderr_tail": "\n\n\n",
+  "stdout_tail": "........................                                                 [100%]\n\n...                                                                      [100%]\n\n...............                                                          [100%]\n\n.....................                                                    [100%]\n"
+}
