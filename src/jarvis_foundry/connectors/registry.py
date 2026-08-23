@@ -61,7 +61,14 @@ def register_connector(database: FoundryDatabase, spec: ConnectorSpec) -> None:
         "connector_id": spec.connector_id, "kind": spec.kind,
         "version": spec.version, "actions": dict(spec.actions),
         "capabilities": dict(spec.capabilities),
-        "retry_policy": dict(spec.retry_policy)})
+        "retry_policy": dict(spec.retry_policy),
+        "target_kinds": list(spec.target_kinds),
+        "idempotency_strategy": spec.idempotency_strategy,
+        "reconciliation_strategy": spec.reconciliation_strategy,
+        "supports_cancellation": spec.supports_cancellation,
+        "cost_metadata": dict(spec.cost_metadata),
+        "evidence_fields": list(spec.evidence_fields),
+        "stop_policy": spec.stop_policy})
 
 
 def record_health_sample(database: FoundryDatabase, connector_id: str,

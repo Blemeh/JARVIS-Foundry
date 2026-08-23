@@ -1,0 +1,25 @@
+# V5 Multi-System Parallel Lane Job Queue
+
+Queue state is evidence for this isolated lane. `PASS` means the slice has a
+fresh bounded proof in this worktree. Historical V5 records are context, not a
+fresh lane verdict.
+
+| Job | Scope | State | Next evidence |
+|---|---|---|---|
+| V5-1 | Current V5 asset and gap map | PASS | `INITIAL_STATE.md`, focused baseline exit 0 |
+| V5-2 | Connector contract normalization | PASS | `V5_2_CONTRACT.md`, commit `ee1e4fd`, fresh 6-test verifier |
+| V5-3 | Effect ticket and journal hardening | PASS | `V5_3_EFFECTS.md`, commit `aa01401`, fresh 30-test verifier |
+| V5-4 | Resource discovery and registration | PASS | `V5_4_RESOURCES.md`, deterministic disposable resource records |
+| V5-5 | Filesystem/project vertical slice | PASS | `V5_5_FILESYSTEM.md`, reversible write, retry, reconcile, rollback proof |
+| V5-6 | Git/repository connector | PASS | `V5_6_GIT.md`, local remote push and provider-side ref proof |
+| V5-7 | HTTP/service connector | PASS | `V5_7_HTTP.md`, disposable fault-injection service and reconciliation |
+| V5-8 | Browser/procedural boundary | PASS | `V5_8_BROWSER.md`, harmless local web app, drift halt, post-effect oracle |
+| V5-9 | Communication/calendar contracts | PASS | `V5_9_COMMUNICATION.md`, fake provider contract, no real sends or invites |
+| V5-10 | Cross-system entity correlation | PASS | `V5_10_LINEAGE.md`, durable lineage and ambiguity probes |
+| V5-11 | Health/quota/cost/rerouting truth | PASS | `V5_11_OPERATIONS.md`, truthful states and deterministic eligibility |
+| V5-12 | Malicious input and secret resilience | PASS | `V5_12_SAFETY.md`, injection, payload, redirect, and artifact scans |
+| V5-13 | Three-connector composed mission harness | PASS | `V5_13_COMPOSED.md`, disposable end-to-end mission and outage isolation |
+| V5-14+ | Next highest-value V5 gap | PASS | `V5_14_EVIDENCE.md`, durable connector attempt evidence and candidate hygiene |
+
+No job may mutate `main`, `origin/main`, live state, live credentials,
+production accounts, scheduler tasks, or real communications.
