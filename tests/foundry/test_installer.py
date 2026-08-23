@@ -54,6 +54,18 @@ def installer_fixture(tmp_path, *, task_name=None):
     return home, database, gate_verdict, installer
 
 
+def test_installer_rejects_unowned_task_name(tmp_path):
+    database = FoundryDatabase(tmp_path / "foundry.db")
+    database.initialize()
+    with pytest.raises(InstallerError, match="unowned scheduled task"):
+        Installer(
+            database,
+            task_name="Other-Team-Task",
+            foundry_home=tmp_path / "home",
+            hermes_home=tmp_path / "hermes",
+        )
+
+
 def teardown(installer):
     # Best-effort cleanup: never leave a task behind, whatever the test did.
     # NOTE: only call this for tasks the TEST created. A task that already
@@ -133,6 +145,13 @@ def test_install_refuses_existing_task_without_force(tmp_path):
         assert installer.task_exists()
     finally:
         teardown(installer)
+
+
+def test_force_replace_requires_jarvis_ownership_profile(tmp_path):
+    home, database, gate_verdict, installer = installer_fixture(tmp_path)
+    installer.task_exists = lambda: True
+    with pytest.raises(InstallerError, match="ownership profile"):
+        installer.install(force=True)
 
 
 def test_real_v1_task_refused_without_gate_verdict(tmp_path):
@@ -376,7 +395,7 @@ def test_worker_loop_task_xml_is_separate_disabled_and_configured(tmp_path):
     xml = installer._task_xml()
     assert installer.task_name == WORKER_LOOP_TASK_NAME
     assert installer.task_name != V1_TASK_NAME
-    assert str(Path(sys.executable).resolve()) in xml
+    assert background_python_executable(sys.executable) in xml
     assert str(home.resolve()) in xml
     assert str(config.resolve()).replace("&", "&amp;") in xml
     assert "-m jarvis_foundry.runtime.worker_loop" in xml
