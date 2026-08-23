@@ -32,4 +32,4 @@ The later integrated canonical head may add executive or Command Center fields. 
 - Neighboring V7/V3 regression gate: passed (V7 portfolio, continuity, scheduler, minigates, V3 hard core, outcomes, and teams).
 - Disposable lab: `scripts/v7_portfolio_lab.py`; three projects, REPAIR/NEW_MISSION/RESEARCH/MAINTENANCE selections, eight outcomes, zero replay claims, and replay consistency true.
 - The adapter reserves active-claim workers, verifiers, provider calls, project/resource shares, cost, and concurrent-mission capacity before mission materialization.
-- Repository-wide `tests/foundry` regression: PASS with no failures. Full command and boundary status are in `VERIFICATION.md`.
+- Repository-wide `tests/foundry` regression: one unrelated staging Task Scheduler restart test failed; see `VERIFICATION.md`. No V7 portfolio test failed.
