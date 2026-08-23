@@ -870,3 +870,22 @@
   font-size: 9px;
   color: var(--caution-amber);
 }
+
+.topbar-stream-reconnect {
+  margin-left: 4px;
+  padding: 0 6px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.topbar-stream-reconnect:hover {
+  background: rgba(255, 208, 113, 0.18);
+}

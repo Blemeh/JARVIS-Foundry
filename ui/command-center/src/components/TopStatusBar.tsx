@@ -16,6 +16,7 @@ export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
     connection,
     sourceMode,
     streamConnected,
+    reconnectStream,
     trustSummary,
     trustSummaryStatus,
   } = useCommandCenter();
@@ -59,6 +60,16 @@ export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
             >
               <WifiOff size={11} aria-hidden="true" />
               <span className="t-label">Stream disconnected</span>
+              {sourceMode === "SIMULATED" ? (
+                <button
+                  type="button"
+                  className="topbar-stream-reconnect"
+                  onClick={() => void reconnectStream()}
+                  aria-label="Reconnect simulated event stream"
+                >
+                  Reconnect
+                </button>
+              ) : null}
             </span>
           ) : null}
           {stopActive ? (

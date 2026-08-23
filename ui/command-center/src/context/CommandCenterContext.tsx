@@ -48,6 +48,7 @@ interface CommandCenterState {
   openNotify: () => void;
   closeNotify: () => void;
   runScenario: (name: Scenario) => void;
+  reconnectStream: () => Promise<void>;
   simulateEvent: (type: MockEventType) => void;
   simulateNextEvent: () => void;
   demoIndex: number;
@@ -175,6 +176,14 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
     [mockClient, mode, refreshNotifications, appliedScenarioRef, setAppliedScenario],
   );
 
+  const reconnectStream = useCallback(async () => {
+    if (!mockClient) return;
+    await mockClient.reconnectStream();
+    setStreamConnected(mockClient.subscribeEvents().connected);
+    setVersion((v) => v + 1);
+    void refreshNotifications();
+  }, [mockClient, refreshNotifications]);
+
   const simulateEvent = useCallback(
     async (type: MockEventType) => {
       if (!mockClient) return;
@@ -247,6 +256,7 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
       openNotify,
       closeNotify,
       runScenario,
+      reconnectStream,
       simulateEvent,
       simulateNextEvent,
       demoIndex,
@@ -283,6 +293,7 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
       openNotify,
       closeNotify,
       runScenario,
+      reconnectStream,
       simulateEvent,
       simulateNextEvent,
       demoIndex,

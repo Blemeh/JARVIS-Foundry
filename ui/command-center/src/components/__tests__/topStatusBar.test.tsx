@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { describe, expect, it } from "vitest"
 import { MemoryRouter } from "react-router-dom"
 import { CommandCenterProvider } from "../../context/CommandCenterContext"
@@ -33,5 +34,10 @@ describe("TopStatusBar owner workflow", () => {
     )
 
     expect(await screen.findByRole("status", { name: /Stream disconnected/i })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole("button", { name: /Reconnect simulated event stream/i }))
+    await waitFor(() => {
+      expect(screen.queryByRole("status", { name: /Stream disconnected/i })).not.toBeInTheDocument()
+    })
   })
 })
