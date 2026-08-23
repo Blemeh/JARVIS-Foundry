@@ -16,6 +16,9 @@ CURRENT CANONICAL HEAD:      ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2 (origin/ma
 INTEGRATION BASE:            ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2
 AUDIT SOURCE:                53c9e524ffa368e36f706560c3f3815fd0dd26bc
 CURRENT WORK BRANCH:         candidate/overnight-release-candidate
+LOCAL RUNTIME LANE CHECKPOINT: 1be3621621207c61e02dd406e59a14f50af7f182
+                              (isolated source/test checkpoint; not canonical
+                              main, live promotion, or production state)
 CURRENT STATE RECORD:        a7bc63a0107302e656346d0df2f0de5900cff3d0 (docs-only
                              reconciliation snapshot; not a tested-code claim)
 TESTED CODE HEAD:            final overnight candidate SHA is recorded in
