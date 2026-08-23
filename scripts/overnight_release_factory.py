@@ -30,6 +30,13 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
+# The factory is also a directly runnable command. Make its source identity
+# explicit before importing the package so an installed package from another
+# worktree cannot silently perform the disposable build.
+_SOURCE_ROOT = Path(__file__).resolve().parents[1] / "src"
+if str(_SOURCE_ROOT) not in sys.path:
+    sys.path.insert(0, str(_SOURCE_ROOT))
+
 from jarvis_foundry.clock import isoformat, utc_now
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.deployment.layout import headless_task_command
