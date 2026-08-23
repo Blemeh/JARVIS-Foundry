@@ -10,7 +10,7 @@ and leave a verified local commit.
 
 ## V4-1 — Owner directive truth inventory + consolidation
 
-Status: IN PROGRESS
+Status: DONE @ `e3ee481`
 
 Target behavior: owner intent is reconstructible from authenticated ledger
 events with stable identity, provenance, command/scope, lifecycle, and honest
@@ -20,9 +20,11 @@ create a second directive authority.
 Required proof: duplicate admission, replay, supersession, stale/unknown
 target, revocation, restart reconstruction, and malformed optional fields.
 
+Evidence: `V4-1_DIRECTIVE_TRUTH.md`
+
 ## V4-2 — Goals / priorities / constraints / vetoes as operating input
 
-Status: QUEUED
+Status: IN PROGRESS
 
 Target behavior: durable owner inputs are visible to candidate selection and
 owner-facing traceability, with history, versions, active/inactive state,
@@ -102,4 +104,3 @@ Status: QUEUED
 
 Reject decorative churn, generic notification frameworks, duplicate STOP
 engines, V5/V6 internals, voice, localization, and architecture rewrites.
-
