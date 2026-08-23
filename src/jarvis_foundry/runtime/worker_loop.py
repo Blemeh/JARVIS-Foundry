@@ -496,6 +496,16 @@ def run_cycle(
             _record_executive_outcome(
                 database, mission_id=mission_id, outcome=outcome,
                 instance_id=instance_id)
+        # V3 WP-B single authoritative closure seam: when the discovery
+        # cycle is enabled, a terminal harmless result is handed to the
+        # OutcomeService automatically (idempotent; PASSED-only inside).
+        # Flag OFF keeps base behavior byte-for-byte: zero new events.
+        if config.discovery_cycle_enabled and terminal == "PASSED":
+            from ..v3_outcomes import reconcile_mission_outcome
+
+            reconcile_mission_outcome(
+                database, mission_id=mission_id,
+                source_id=f"worker-loop:{instance_id}")
         return {
             "loop_id": loop_id,
             "outcome": outcome.outcome,

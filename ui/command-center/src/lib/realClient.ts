@@ -28,6 +28,7 @@ import type {
 } from "./contracts";
 import { PollingEventStream } from "./pollingEventStream";
 import type { V3DiscoveryView } from "./v3Models";
+import { mapDiscovery } from "./discoveryMapper";
 import {
   mapEvidence,
   mapMemoryGraph,
@@ -212,10 +213,14 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
   }
 
   async getDiscovery(): Promise<V3DiscoveryView> {
-    // Backend contract frozen at candidate/v3-integration @701aa74 ships no
-    // discovery section in the command-center snapshot. Honest unavailable —
-    // never fixtures. When the additive §3.13 projection lands, map it here.
-    return { available: false, reason: "PROJECTION_NOT_AVAILABLE" };
+    // Additive §3.13 projection: map the backend snapshot.discovery section
+    // when present. No fixture fallback — absence stays honest-unavailable.
+    const snapshot = await this.snapshotOrFetch();
+    const discovery = (snapshot as { discovery?: unknown }).discovery;
+    if (discovery === undefined || discovery === null) {
+      return { available: false, reason: "PROJECTION_NOT_AVAILABLE" };
+    }
+    return mapDiscovery(discovery);
   }
 
   async listSystemComponents(): Promise<SystemComponent[]> {

@@ -1,0 +1,113 @@
+{
+  "facts": {
+    "db_path": "C:\\temp\\JARVIS-Overnight-V3-Operational-Slice\\var\\overnight\\v3-operational-slice\\e2e.sqlite",
+    "empty_state": {
+      "schema": 1,
+      "state": "EMPTY_LEDGER",
+      "flag_state": "UNREGISTERED",
+      "policy_version": null,
+      "latest_cycle": null,
+      "cycles": [],
+      "candidates_recent": [],
+      "selected": null,
+      "portfolio_summary": {
+        "eligible": null,
+        "deferred": null,
+        "rejected": null
+      },
+      "active_team": [],
+      "verifier": null,
+      "outcomes": [],
+      "maintenance_due": null,
+      "next_action": null
+    },
+    "policy_version": "v3-policy-2026-08-21",
+    "candidate_id": "cand-41eda7eb9557",
+    "cycle_1": {
+      "candidates_created": 0,
+      "decision_id": "exec-e2e-cycle-1",
+      "degraded_sources": [],
+      "loop_id": "e2e-cycle-1",
+      "mission_id": "mission-eaf8eeeeeeb1",
+      "observed": 0,
+      "outcome": "COMPILED",
+      "reason": null
+    },
+    "dispatch": {
+      "outcome": "PASSED",
+      "mission_id": "mission-eaf8eeeeeeb1",
+      "step_id": "executive-step",
+      "run_id": "run-8b38bc14f6db"
+    },
+    "auto_outcome": {
+      "status": "RECORDED",
+      "window": "immediate",
+      "predicted_value": {
+        "confidence": 0.457,
+        "expected_cost": null,
+        "expected_duration_seconds": null,
+        "expected_effort": 1.0,
+        "expected_risk": "MEDIUM",
+        "expected_success": 0.6828,
+        "expected_value": null,
+        "prediction_version": "1.0.0",
+        "unknown_fields": [
+          "expected_duration_seconds",
+          "expected_cost"
+        ]
+      },
+      "actual_value": {
+        "duration_seconds": 0.379128,
+        "outcome": "PASSED",
+        "repair_count": 0,
+        "verdict": "PASS"
+      },
+      "distinct_fields": true
+    },
+    "cycle_2": {
+      "outcome": "WAITING",
+      "reason": "NO_ELIGIBLE_CANDIDATES",
+      "outcomes_total": 1,
+      "lineage_missions_total": 1
+    }
+  },
+  "reconciliation": {
+    "checks": {
+      "candidate_status_matches_row": true,
+      "candidate_score_matches_table": true,
+      "candidate_policy_matches": true,
+      "selection_mission_lineage": true,
+      "cycle_outcome_verbatim": true,
+      "outcome_window_matches_row": true,
+      "outcome_predicted_actual_distinct": true,
+      "flag_state_registered_on": true,
+      "next_action_present": true,
+      "no_cost_window_fabricated": true
+    },
+    "all_pass": true,
+    "discovery_summary": {
+      "state": "FRESH",
+      "policy_version": "v3-policy-2026-08-21",
+      "portfolio_summary": {
+        "eligible": 0,
+        "deferred": 0,
+        "rejected": 0
+      },
+      "next_action": "WAIT",
+      "verifier": {
+        "mission_id": "mission-eaf8eeeeeeb1",
+        "verdict": "PASS",
+        "fresh_session": null,
+        "independence": null,
+        "provider": null,
+        "builder_run_id": "run-8b38bc14f6db",
+        "verifier_run_id": "run-8b38bc14f6db-verify",
+        "repair_rounds_used": 0,
+        "repair_budget": 3
+      }
+    }
+  },
+  "fixture_path": "ui\\command-center\\src\\lib\\__fixtures__\\discoveryBackendFixture.gen.ts",
+  "snapshot_path": "var\\overnight\\v3-operational-slice\\e2e_snapshot.json",
+  "elapsed_seconds": 2.98
+}
