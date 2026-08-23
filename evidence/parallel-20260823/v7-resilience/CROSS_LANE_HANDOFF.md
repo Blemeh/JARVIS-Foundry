@@ -42,3 +42,14 @@ independent verification, and the final gate verdict.
   repository gate is not PASS.
 - Canonical main remained clean at `6db467a2b0e6bdc37adbc4cbfac309418e33afec`;
   production/live runtime remained untouched.
+
+## External Git drift after the frozen-base audit
+
+The candidate remains anchored to the required frozen base, but the external
+repository advanced after this lane's freeze: current `origin/main` is
+`24268a5b518bc58a3d269dc8fcfd2708137f3127`, with merge-base still exactly
+`6db467a2b0e6bdc37adbc4cbfac309418e33afec`. The candidate is 20 commits ahead
+and 83 commits behind that moving ref. Canonical main currently has unrelated
+dirty documentation/evidence changes. This lane did not rebase, merge, clean,
+or modify those changes; integration must semantically reconcile the V7 slice
+against the newer main before any promotion claim.
