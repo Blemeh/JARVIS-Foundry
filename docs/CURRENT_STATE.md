@@ -6,36 +6,36 @@ every promotion/remaster mission (see `docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.
 If this document and another current-status document disagree, THIS document wins
 for "what exists now" claims; the architecture contract wins for binding invariants.
 
-Last reconciled: 2026-08-23 (Audit R2 entry gate repaired in the isolated
-overnight release-candidate lane; V3 Command Center UI and schema v36
-discovery/building preserved; LIVE_PROMOTION_DEFERRED)
+Last reconciled: 2026-08-23 (full candidate archaeology, serial source
+integration, and isolated verification completed through the Command Center
+truth package; canonical push is the remaining owner-authorized step)
 
 ```text
-CURRENT CANONICAL HEAD:      ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2 (origin/main:
-                             V3 Command Center UI integrated atop 24h-integration)
+CURRENT CANONICAL HEAD:      2084e5b (isolated full-reconciliation source checkpoint;
+                             origin/main remains ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2
+                             until the final normal push)
 INTEGRATION BASE:            ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2
-AUDIT SOURCE:                53c9e524ffa368e36f706560c3f3815fd0dd26bc
-CURRENT WORK BRANCH:         candidate/overnight-release-candidate
-LOCAL RUNTIME LANE CHECKPOINT: e24eb7a8ba88c190842e8f8476abe62530bdb425
-                              (isolated source/test checkpoint; not canonical
-                              main, live promotion, or production state)
-CURRENT STATE RECORD:        a7bc63a0107302e656346d0df2f0de5900cff3d0 (docs-only
-                             reconciliation snapshot; not a tested-code claim)
-TESTED CODE HEAD:            final overnight candidate SHA is recorded in
-                             evidence/release/overnight/run-final-20260823-02/RUN.json;
-                             focused/full gates and the disposable factory are rerun
-                             at that exact clean HEAD before any release claim
+AUDIT SOURCE:                26e73c7 (residual audit environment scoping, absorbed
+                             after Q1-Q3 semantic review)
+CURRENT WORK BRANCH:         integration/full-reconciliation-2026-08-23
+LOCAL RUNTIME LANE CHECKPOINT: 2084e5b
+                              (isolated source/test checkpoint; no live runtime,
+                              provider, scheduler, or production mutation)
+CURRENT STATE RECORD:        this source checkpoint is not a live promotion claim;
+                             canonicalization and the normal push are pending
+TESTED CODE HEAD:            2084e5b source checkpoint; release, V3 hard/operational,
+                             worker-control, and Command Center UI gates were run
+                             in the isolated integration worktree
 FINAL EVIDENCE HEAD:         evidence/release/overnight/run-final-20260823-02/RUN.json
                              is the final source-vs-runtime evidence record
-FULL SUITE:                  1601 collected at final candidate validation
-                             (2026-08-23); failures=0, errors=0
-FOCUSED REMEDIATION TESTS:   113 PASS, 1 SKIPPED — installer/scheduler,
-                             supervisor lifecycle/lease, PID reconciliation,
-                             release identity/authority, headless cleanup;
-                             the live staging restart probe is bounded and
-                             skipped when Task Scheduler does not start it
-FULL SUITE FINAL GATE:       1601 collected, 0 failures; the same bounded
-                             staging restart probe is SKIPPED when unavailable
+FULL SUITE:                  FINAL combined source suite is pending on this
+                             checkpoint; historical candidate-suite results remain
+                             provenance only
+FOCUSED REMEDIATION TESTS:   Fresh serial release/V3/worker-control gates PASS;
+                             Command Center UI: lint, typecheck, 108 unit tests,
+                             163 e2e tests, build, product 212/212, and security PASS
+FULL SUITE FINAL GATE:       pending final repository-wide source validation; no
+                             live provider, database, scheduler, or runtime probe
 DEPLOYED RELEASE:            769715a7f8aee22bf4ab2db8870c37e6e9c9ef1b (CURRENT)
 PREVIOUS RELEASE:            9a10910f78a4a618fba4c916b418056e4ada1991 (PREVIOUS)
 DEPLOYED MANIFEST:           rel-769715a7f8ae-060c9abc; legacy pre-remediation
@@ -50,8 +50,9 @@ CURRENT SCHEMA:              v34 live deployed database baseline (production unc
                              live database remains v34 until owner-approved migration;
                              LIVE_PROMOTION_DEFERRED
 FOCUSED EXECUTIVE SUITE:     32 passed (tests/foundry/test_executive_intelligence.py)
-FRONTEND:                    typecheck clean; vitest 40/40; production build OK;
-                             V4 visuals FROZEN (no redesign in M2)
+FRONTEND:                    isolated source checkpoint typecheck clean; vitest
+                             108/108, Playwright 163/163, product 212/212, build,
+                             lint, and security scan PASS; live UI remains unproven
 EXECUTIVE INTELLIGENCE:      ACTIVE-CAPABLE, feature-flag OFF by default
                              (worker config `executive.selection_enabled`).
                              Durable owner goals from authenticated GOAL
@@ -69,10 +70,12 @@ COMMAND CENTER:              /executive route + snapshot.executive section proje
                              the decision spine (latest decision, rationale,
                              rejected alternatives, prediction-vs-actual,
                              calibration history) from ledger events only.
-SUPERVISOR STATE:            RUNNING (single lease owner; doctor reports
-                             active worker-loop; PID 11672 at reconciliation)
-STOP STATE:                  OFF (doctor reports false)
-TRUST STATE:                 LAB
+SUPERVISOR STATE:            NOT_TESTED_AT_INTEGRATION_HEAD (production was not
+                             restarted or mutated; historical live snapshots are
+                             not promotion proof)
+STOP STATE:                  SOURCE_GATED_ONLY (STOP/PID controls pass isolated
+                             tests; production STOP state was not changed)
+TRUST STATE:                 LAB / SOURCE_CHECKPOINT
 RELEASE AUTHORITY:           FILESYSTEM_ONLY_AUTHORITY is explicit and detected
                              by doctor: CURRENT/PREVIOUS are canonical, DB
                              release records are a projection/audit cache and
@@ -90,8 +93,9 @@ SCHEDULER AUTHORITY:         JARVIS-Foundry-Supervisor Ready is the production
                              LEGACY_DISABLED and fail-closed against enabling;
                              R3 proving monitor remains a separate read-only task
 HEADLESS FIX:                preserved and integrated; live promotion proof pending
-AUDIT LIVE STATUS:           IMPLEMENTED_UNPROVEN_AT_LIVE_HEAD — remediation code
-                             integrated offline; restart/promotion proof pending
+AUDIT LIVE STATUS:           IMPLEMENTED_UNPROVEN_AT_LIVE_HEAD — remediation and
+                             Q1-Q5 source semantics integrated offline; restart/
+                             promotion proof remains owner-authorized and pending
 MISSION STATE:               unchanged from 2026-08-19 reconciliation plus M2
                              proof missions in isolated lab databases (live home
                              untouched by proofs)
@@ -176,7 +180,8 @@ read-only task and is not a worker launch authority.
 
 The integration merge adds deterministic PID reconciliation, duplicate-launch
 fail-closed behavior, explicit release-authority detection, Git commit/tree
-release manifests, and scheduler-safe test boundaries. These changes are not
+release manifests, scheduler-safe test boundaries, V3 hard/operational lineage,
+and the Command Center truth/resilience package. These source changes are not
 live until independently verified, released, promoted, and restarted.
 
 A disposable deployment rehearsal is recorded at

@@ -4,11 +4,14 @@ Single authoritative capability status. Classifications:
 `IMPLEMENTED_AND_PROVEN` · `IMPLEMENTED_UNPROVEN` · `PARTIAL` · `MISSING` · `SUPERSEDED`.
 
 Evidence roots: `docs/evidence/`, `evidence/`, git history, live runtime state.
-Current work reference, reconciled 2026-08-22:
-`candidate/audit-truth-remediation-r2` with preserved implementation baseline
-`b5fc4f992e3b2b2016d8d777dabe7c824026a312`. The deployed runtime remains the
-older immutable source `769715a7f8aee22bf4ab2db8870c37e6e9c9ef1b` until the
-remediation commit passes verification and promotion.
+Current work reference, reconciled 2026-08-23:
+`integration/full-reconciliation-2026-08-23` at isolated source checkpoint
+`2084e5b` (Q1-Q5 serial integration). The deployed runtime remains the older
+immutable source `769715a7f8aee22bf4ab2db8870c37e6e9c9ef1b`; this mission did not
+restart, migrate, deploy, or otherwise mutate production. Fresh source evidence
+includes release/V3/worker-control gates and Command Center lint, typecheck,
+108 unit tests, 163 e2e tests, build, product 212/212, and security PASS. A
+repository-wide combined suite and owner-authorized promotion remain pending.
 
 ## Audit-Truth Remediation (2026)
 

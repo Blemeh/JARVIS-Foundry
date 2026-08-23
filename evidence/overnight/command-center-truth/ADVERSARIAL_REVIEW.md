@@ -2,8 +2,8 @@
 
 Work package **WP-J** — third pass (verification session).
 
-**Base SHA:** `ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2`  
-**Review HEAD:** `9a6136a148be40f09b92ab208aad38ebc563f776` (prior commit) + uncommitted truth fixes in working tree  
+**Base SHA:** `ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2`
+**Review HEAD:** `9a6136a148be40f09b92ab208aad38ebc563f776` (prior commit) + uncommitted truth fixes in working tree
 **Reviewer mandate:** disprove truth/honesty claims; challenge fabricated metrics, route resilience, accessibility, security.
 
 ## Scope challenged

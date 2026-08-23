@@ -1,0 +1,140 @@
+{
+  "mission": "full-candidate-archaeology-recovery-semantic-integration",
+  "pass": true,
+  "validated_source_head": "2084e5b",
+  "integration_branch": "integration/full-reconciliation-2026-08-23",
+  "canonical_baseline": {
+    "ref": "origin/main",
+    "sha": "ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2"
+  },
+  "local_main_at_archaeology_start": "701aa748a2db412e3b6e83ab91f7982408ea6573",
+  "inventory": {
+    "worktrees_registered": 107,
+    "local_branches": 103,
+    "unknown_count": 0,
+    "initial_classification_counts": {
+      "ALREADY_CANONICAL": 86,
+      "FULLY_SUPERSEDED": 5,
+      "EVIDENCE_ONLY": 5,
+      "FAILED_OR_REJECTED": 1,
+      "ABANDONED_OR_INCOMPLETE": 1,
+      "UNIQUE_ACCEPTED_WORK": 5,
+      "PARTIALLY_ABSORBED": 0
+    },
+    "final_classification_counts": {
+      "ALREADY_CANONICAL": 86,
+      "FULLY_SUPERSEDED": 5,
+      "EVIDENCE_ONLY": 5,
+      "FAILED_OR_REJECTED": 1,
+      "ABANDONED_OR_INCOMPLETE": 1,
+      "UNIQUE_ACCEPTED_WORK": 4,
+      "PARTIALLY_ABSORBED": 1
+    },
+    "unknown_classifications": []
+  },
+  "accepted_packages": [
+    {
+      "candidate": "candidate/overnight-release-candidate",
+      "head": "7159ea5e964619d040f9d85c09e83466449d650b",
+      "unique_commits": 38,
+      "remote_backup_verified": true,
+      "integration": "no-ff merge",
+      "merge_commit": "95c0d87",
+      "focused_validation": "release/runtime/factory/supervisor/worker tests PASS"
+    },
+    {
+      "candidate": "candidate/overnight-v3-hard-gate",
+      "head": "e1aa681c1a3d173197b2ab15eb053835c555e479",
+      "unique_commits": 13,
+      "remote_backup_verified": true,
+      "integration": "no-ff merge",
+      "merge_commit": "bfc781f",
+      "focused_validation": "V3 hard/fault/outcome/resource/discovery tests PASS"
+    },
+    {
+      "candidate": "candidate/overnight-v3-operational-slice",
+      "head": "af355dc510ee719b0948a5ad91c7426f080c8c56",
+      "unique_commits": 3,
+      "remote_backup_verified": true,
+      "integration": "no-ff merge with manual v3_outcomes semantic resolution",
+      "merge_commit": "898420a",
+      "focused_validation": "V3 operational/closure/reliability/Discovery tests PASS"
+    },
+    {
+      "candidate": "candidate/audit-remediation-2026-08-18",
+      "head": "8af6838437a5d461b944fc132f34953f12365f1c",
+      "unique_commits": 8,
+      "remote_backup_verified": true,
+      "integration": "PARTIALLY_ABSORBED; duplicate cherry-pick aborted after semantic review",
+      "integration_checkpoint": "26e73c7",
+      "accounting": "Q1-Q3 contain seven behavioral themes; scoped adapter environment restoration covers the residual theme; all eight original commit IDs remain inventoried and backed up",
+      "focused_validation": "worker-control/adapter/mission-bridge/verifier/CLI/supervisor/runtime tests PASS"
+    },
+    {
+      "candidate": "candidate/overnight-command-center-truth",
+      "head": "fb42c6d386c23afc3a74cf548f25e533c64dc264",
+      "unique_commits": 37,
+      "remote_backup_verified": true,
+      "integration": "no-ff merge; worktree-only endurance log excluded",
+      "merge_commit": "2084e5b",
+      "focused_validation": "lint/typecheck/unit 108/e2e 163/build/product 212/security PASS"
+    }
+  ],
+  "accepted_commit_accounting": {
+    "initial_accepted_unique_commits": 99,
+    "directly_merged_or_source_present": 91,
+    "semantically_absorbed_and_accounted": 8,
+    "unexplained_accepted_unique_commits": 0
+  },
+  "conflicts": {
+    "high_conflict_count": 0,
+    "critical_conflict_count": 0,
+    "unresolved_conflicts": [],
+    "semantic_resolutions": [
+      "release STOP sentinel preserved while generated egg-info churn was excluded",
+      "v3_outcomes preserved hard-gate maintenance semantics and operational closure",
+      "audit remediation retained through stronger later implementations plus 26e73c7"
+    ]
+  },
+  "validation": {
+    "full_python_and_convergence": {
+      "command": "python -m pytest -q tests/foundry tests/convergence --junitxml=var/full-reconciliation/FULL_SUITE.junit.xml",
+      "tests": 1804,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "duration_seconds": 1005.331,
+      "junit": "var/full-reconciliation/FULL_SUITE.junit.xml"
+    },
+    "documentation_staleness": "PASS",
+    "ui": {
+      "lint": "PASS",
+      "typecheck": "PASS",
+      "unit": "108/108 PASS",
+      "e2e": "163/163 PASS",
+      "build": "PASS",
+      "security_scan": "PASS",
+      "product_verification": "212/212 PASS"
+    },
+    "historical_evidence_treatment": "candidate branch PASS artifacts were retained as provenance; fresh source checks above are the acceptance evidence"
+  },
+  "production_boundary": {
+    "production_touched": false,
+    "live_database_mutated": false,
+    "provider_called": false,
+    "credentials_used": false,
+    "task_scheduler_changed": false,
+    "runtime_restarted": false,
+    "deployment_performed": false,
+    "migration_performed": false,
+    "live_promotion_status": "DEFERRED_OWNER_AUTHORIZATION"
+  },
+  "remote_backup_refs_verified": true,
+  "canonicalization_status": "ready-for-normal-fast-forward-and-push",
+  "evidence_files": [
+    "evidence/integration/full-reconciliation/CANDIDATE_INVENTORY.json",
+    "evidence/integration/full-reconciliation/CANDIDATE_INVENTORY.md",
+    "evidence/integration/full-reconciliation/INTEGRATION_QUEUE.md",
+    "evidence/integration/full-reconciliation/NO_STRANDED_ACCEPTED_WORK.json"
+  ]
+}
