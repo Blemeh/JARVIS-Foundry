@@ -1,23 +1,23 @@
 {
   "mission": "full-candidate-archaeology-recovery-semantic-integration",
-  "generated_at_utc": "2026-08-23T16:08:41.042204+00:00",
+  "generated_at_utc": "2026-08-23T16:09:48.868539+00:00",
   "pass": true,
   "no_stranded_predicate": "PASS",
   "overall_verification": "PASS",
   "validated_source_head": "55b29466b70ce002d3786dd80fa9ff2601ef7dad",
   "integration_branch": "integration/full-reconciliation-2026-08-23",
-  "canonical_head_after_normal_push": "PENDING_EVIDENCE_COMMIT",
+  "canonical_head_after_normal_push": "d88b6b2335b0b49b5f47bfcd69d35415364c7d1d",
   "canonical_baseline": {
     "ref": "origin/main",
     "sha": "b0aa96d07c65a6850e50873ffa99234bb669590d"
   },
   "local_main": {
     "ref": "main",
-    "sha": "55b29466b70ce002d3786dd80fa9ff2601ef7dad"
+    "sha": "d88b6b2335b0b49b5f47bfcd69d35415364c7d1d"
   },
   "origin_main": {
     "ref": "origin/main",
-    "sha": "b0aa96d07c65a6850e50873ffa99234bb669590d"
+    "sha": "d88b6b2335b0b49b5f47bfcd69d35415364c7d1d"
   },
   "inventory": {
     "branches": 109,
@@ -140,12 +140,21 @@
     "migration_performed": false,
     "read_only_evidence_artifact_written_during_abandoned_wrong_path": true
   },
-  "canonicalization_status": "PENDING_EVIDENCE_COMMIT",
+  "canonicalization_status": "PUSHED_AND_VERIFIED",
   "evidence_files": [
     "evidence/integration/full-reconciliation/CANDIDATE_INVENTORY.json",
     "evidence/integration/full-reconciliation/CANDIDATE_INVENTORY.md",
     "evidence/integration/full-reconciliation/INTEGRATION_QUEUE.md",
     "evidence/integration/full-reconciliation/NO_STRANDED_ACCEPTED_WORK.json",
     "evidence/overnight/command-center-truth/PRODUCT_VERIFY_RESULT.json"
-  ]
+  ],
+  "post_push_main": {
+    "ref": "main",
+    "sha": "d88b6b2335b0b49b5f47bfcd69d35415364c7d1d"
+  },
+  "post_push_origin_main": {
+    "ref": "origin/main",
+    "sha": "d88b6b2335b0b49b5f47bfcd69d35415364c7d1d"
+  },
+  "final_evidence_update": "This artifact is the final evidence update after the first normal main push; the containing second evidence commit is reported by the final git ref verification."
 }
