@@ -41,6 +41,7 @@ export const RouteQueryGate = <T,>({
         <ErrorState
           label={errorLabel}
           detail={routeFetchErrorDetail(sourceMode, connection, query.error, surface)}
+          onRetry={query.reload}
         />
       </div>
     )
@@ -52,6 +53,7 @@ export const RouteQueryGate = <T,>({
         <ErrorState
           label={errorLabel}
           detail={routeFetchErrorDetail(sourceMode, connection, query.error, surface)}
+          onRetry={query.reload}
         />
       </div>
     )

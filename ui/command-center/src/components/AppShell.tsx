@@ -7,6 +7,7 @@ import { CommandBar } from "./CommandBar";
 import { MobileNav } from "./MobileNav";
 import { EmergencyStopDialog } from "./EmergencyStop";
 import { StopBanner } from "./StopBanner";
+import { RoutedOutletBoundary } from "./RouteErrorBoundary";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 
 const routeTitles: Record<string, string> = {
@@ -46,7 +47,9 @@ export function AppShell() {
       <TopStatusBar onOpenMobileNav={() => setMobileOpen(true)} />
       <main className="shell-main" id="main-content" tabIndex={-1}>
         <StopBanner />
-        <Outlet />
+        <RoutedOutletBoundary>
+          <Outlet />
+        </RoutedOutletBoundary>
       </main>
       <CommandBar />
       <MobileNav onOpenDrawer={() => setMobileOpen(true)} />

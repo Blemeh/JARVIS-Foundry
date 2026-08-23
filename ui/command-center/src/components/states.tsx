@@ -19,12 +19,27 @@ export function EmptyState({ label = "Nothing to show", detail }: { label?: stri
   );
 }
 
-export function ErrorState({ label = "Failed to load", detail }: { label?: string; detail?: string }) {
+export function ErrorState({
+  label = "Failed to load",
+  detail,
+  onRetry,
+  retryLabel = "Retry",
+}: {
+  label?: string;
+  detail?: string;
+  onRetry?: () => void;
+  retryLabel?: string;
+}) {
   return (
     <div className="state-block state-error" role="alert">
       <AlertTriangle size={18} aria-hidden="true" />
       <span className="t-label">{label}</span>
       {detail ? <p className="prose">{detail}</p> : null}
+      {onRetry ? (
+        <button type="button" className="btn" onClick={onRetry}>
+          {retryLabel}
+        </button>
+      ) : null}
     </div>
   );
 }
