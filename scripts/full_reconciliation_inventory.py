@@ -30,6 +30,17 @@ def try_git(*args: str, cwd: Path = ROOT) -> str:
     return git(*args, cwd=cwd, check=False)
 
 
+def git_succeeds(*args: str, cwd: Path = ROOT) -> bool:
+    proc = subprocess.run(
+        ["git", *args],
+        cwd=str(cwd),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    return proc.returncode == 0
+
+
 def worktrees() -> list[dict[str, object]]:
     raw = git("worktree", "list", "--porcelain")
     records: list[dict[str, object]] = []
@@ -141,7 +152,14 @@ CLASSIFICATION_NOTES = {
 
 
 def classify(branch: str, *, reachable: bool, plus: int, minus: int, changed: list[str]) -> tuple[str, str]:
+    # The comparison baseline is refreshed on every run. Once an accepted
+    # candidate is reachable from the current canonical main, it is no longer
+    # stranded even if it has a historical special-case note below.
     if branch in CLASSIFICATION_NOTES:
+        if reachable or branch == LOCAL_MAIN:
+            return "ALREADY_CANONICAL", "Branch tip is reachable from current origin/main after the prior reconciliation; no source commit is stranded."
+        if branch == "candidate/audit-remediation-2026-08-18":
+            return "PARTIALLY_ABSORBED", "The eight-commit audit package is outside ancestry, but its accepted behavior is accounted for by the integrated overnight lineage plus scoped environment-hardening checkpoint 26e73c7; no accepted behavior remains unexplained."
         return CLASSIFICATION_NOTES[branch]
     if branch == LOCAL_MAIN or reachable:
         return "ALREADY_CANONICAL", "Branch tip is reachable from origin/main; no source commit is stranded."
@@ -165,8 +183,8 @@ def branch_record(branch: str, wt_map: dict[str, list[dict[str, object]]]) -> di
     minus_commits = [line[2:] for line in cherry_lines if line.startswith("- ")]
     unique_commits = git("rev-list", "--reverse", f"{BASELINE}..{branch}").splitlines()
     changed = git("diff", "--name-only", BASELINE, branch).splitlines()
-    reachable = try_git("merge-base", "--is-ancestor", branch, BASELINE) == ""
-    tree_equal = try_git("diff", "--quiet", BASELINE, branch) == ""
+    reachable = git_succeeds("merge-base", "--is-ancestor", branch, BASELINE)
+    tree_equal = git_succeeds("diff", "--quiet", BASELINE, branch)
     classification, note = classify(branch, reachable=reachable, plus=len(plus_commits), minus=len(minus_commits), changed=changed)
     superseded_by = {
         "candidate/audit-r2-integration": "candidate/overnight-release-candidate",
