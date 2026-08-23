@@ -275,7 +275,8 @@
     "live_runtime_activated": false,
     "registered_worktrees_cleaned_or_deleted": false
   },
-  "canonicalization_status": "SOURCE_ALREADY_CANONICAL; evidence refresh pending normal commit/push",
+  "canonicalization_status": "PUSHED_AND_VERIFIED",
+  "evidence_refresh_commit": "5abdd0f398ff57ebc6bde742407c8f128a6f5f63",
   "evidence_files": [
     "evidence/integration/full-reconciliation/CANDIDATE_INVENTORY.json",
     "evidence/integration/full-reconciliation/CANDIDATE_INVENTORY.md",
