@@ -358,3 +358,47 @@ def test_adapter_identical_state_identical_sources(
     two = discovery_sources(db, **kwargs)
     assert json.dumps(one, sort_keys=True) == json.dumps(two,
                                                          sort_keys=True)
+
+
+# ---------------------------------------------------------------------------
+# JOB V6-3: hypothesis records — lineage + duplicate collapse
+# ---------------------------------------------------------------------------
+
+def test_hypothesis_carries_detector_lineage(db: FoundryDatabase) -> None:
+    for i in range(3):
+        _seed_agent_run(db, "h{i}".format(i=i), "hm-retry", "FAILED",
+                        _in_window(i + 1))
+    sources = discovery_sources(
+        db, window_start=_in_window(0), window_end=_in_window(24))
+    candidates = candidate_improvements(db, sources=sources,
+                                        controller=CONTROLLER)
+    assert candidates
+    candidate = candidates[0]
+    provenance = candidate["provenance"]
+    assert provenance["detector_rule"]
+    assert provenance["dedupe_identity"].startswith("weakness-")
+    # template contract keys are never overwritten by the detector merge
+    assert provenance["source"].startswith("discovery:")
+
+
+def test_duplicate_detection_run_collapses_to_one_record(
+        db: FoundryDatabase) -> None:
+    for i in range(3):
+        _seed_agent_run(db, f"c{i}", "cm-retry", "FAILED", _in_window(i + 1))
+    kwargs = dict(window_start=_in_window(0), window_end=_in_window(24))
+    sources_one = discovery_sources(db, **kwargs)
+    sources_two = discovery_sources(db, **kwargs)
+    candidates_one = candidate_improvements(db, sources=sources_one,
+                                            controller=CONTROLLER)
+    candidates_two = candidate_improvements(db, sources=sources_two,
+                                            controller=CONTROLLER)
+    ids_one = record_discovered_improvements(
+        db, candidates=candidates_one, sources=sources_one,
+        controller=CONTROLLER)
+    ids_two = record_discovered_improvements(
+        db, candidates=candidates_two, sources=sources_two,
+        controller=CONTROLLER)
+    assert ids_one == ids_two, "identical evidence produced new ids"
+    rows = db.all("improvement_records")
+    matched = [r for r in rows if r["improvement_id"] == ids_one[0]]
+    assert len(matched) == 1, "duplicate generation appended a second row"

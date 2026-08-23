@@ -475,7 +475,15 @@ def discovery_sources(database: FoundryDatabase, *,
     for observation in result["observations"]:
         ref = observation["evidence_refs"][0]
         common = {"evidence_ref": ref, "observed_at": window_end,
-                  "surfaces": [observation["affected_component"]]}
+                  "surfaces": [observation["affected_component"]],
+                  # observation lineage travels with the hypothesis
+                  "provenance": {
+                      "detector_rule": observation["rule"],
+                      "dedupe_identity":
+                          observation["dedupe_identity"],
+                      "window_start": observation["window_start"],
+                      "window_end": observation["window_end"],
+                      "confidence": observation["confidence"]}}
         if observation["observation_type"] == "metric_exceedances":
             sources["metric_exceedances"].append({
                 **common,

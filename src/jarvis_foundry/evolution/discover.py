@@ -139,12 +139,22 @@ def _one_candidate(observation_type: str, observation: dict[str, Any]
                              f"{observation_type}")
 
     risk_class = classify_risk(surfaces)
+    # Optional caller-supplied provenance (e.g. the V6 lane detector's
+    # rule/dedupe identity) is MERGED under the template provenance so
+    # hypotheses stay linked to their observation lineage. Caller keys
+    # never overwrite the template source/observed_at contract.
+    provenance: dict[str, Any] = {
+        "source": f"discovery:{observation_type}",
+        "observed_at": observation.get("observed_at", "recorded"),
+    }
+    extra_provenance = observation.get("provenance")
+    if isinstance(extra_provenance, dict):
+        for key, value in extra_provenance.items():
+            provenance.setdefault(key, value)
     return {
         "problem": problem,
         "evidence_refs": [evidence],
-        "provenance": {"source": f"discovery:{observation_type}",
-                       "observed_at": observation.get("observed_at",
-                                                      "recorded")},
+        "provenance": provenance,
         "hypothesis": hypothesis,
         "expected_mechanism": mechanism,
         "baseline_metric": baseline_metric,
