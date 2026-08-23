@@ -27,6 +27,8 @@ Covered rows:
 - resource and cost spikes produce bounded blocked incidents;
 - a fresh coordinator replays the same durable incident, capability suspension,
   and pending-effect freeze;
+- incomplete containment and failed diagnostics remain explicitly BLOCKED/FAIL,
+  while a later post-recovery recurrence gets a new durable incident identity;
 - the structured `ResilienceRun` output contract remains JSON-safe.
 
 ## Verification
@@ -36,10 +38,10 @@ python scripts/v7_resilience_fault_matrix.py
 PASS: 20/20 disposable rows
 
 python -m pytest tests/foundry/test_v7_resilience.py -q
-21 passed
+23 passed
 
 python -m pytest <focused V7 and adjacent control/effect paths> -q
-139 passed
+141 passed
 
 python -m pytest tests/foundry/test_migrations.py \
   tests/foundry/test_crash_recovery.py \

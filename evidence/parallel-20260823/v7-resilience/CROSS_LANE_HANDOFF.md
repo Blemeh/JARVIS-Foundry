@@ -30,9 +30,9 @@ independent verification, and the final gate verdict.
 
 - Candidate branch: `candidate/v7-resilience-continuity-20260823`.
 - Frozen base: `origin/main` at `6db467a2b0e6bdc37adbc4cbfac309418e33afec`.
-- Source checkpoint HEAD before handoff-only documentation: `facafc9bdd329a8ea43cd1ec76c768db1b7e1caa`.
+- Source checkpoint HEAD before handoff-only documentation: `e2c3be5`.
 - Source/disposable V7 matrix: `V7C-16_FAULT_MATRIX.json`, 20/20 PASS.
-- Focused V7/adjacent suite: 139/139 PASS, plus targeted release/provider
+- Focused V7/adjacent suite: 141/141 PASS, plus targeted release/provider
   regression paths PASS.
 - Repository-wide suite: FAIL only at the live-staging Task Scheduler restart
   probe (`test_task_restarts_after_hard_kill_via_repeating_trigger`).

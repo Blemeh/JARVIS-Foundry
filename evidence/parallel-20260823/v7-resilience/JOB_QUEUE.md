@@ -9,10 +9,10 @@ and an explicit PASS, FAIL, BLOCKED, or NOT TESTED verdict.
 | V7C-1 | Failure and health truth map | PASS (source) | `health_truth()` and diagnostics correlate database, ledger, Supervisor identity, capabilities, scheduler, release, logs, and effects. Optional Supervisor heartbeat hook is source-integrated and disposable-tested; live activation remains out of scope. |
 | V7C-2 | Durable incident record | PASS | Event-derived lifecycle with fresh-process reconstruction. |
 | V7C-3 | Deterministic anomaly detector | PASS | Bounded durable-event rules plus typed synthetic metrics. |
-| V7C-4 | Capability-level suspension | PASS | Scoped STOPPED state, prior-state recovery, STOP/veto guard, unrelated capability proof. |
+| V7C-4 | Capability-level suspension | PASS | Scoped STOPPED state, prior-state recovery, STOP/veto guard, unrelated capability proof, and repeat-cycle state receipts bound to incident ownership. |
 | V7C-5 | Blast-radius dependency graph | PASS | Resource -> connector -> capability -> mission graph with shared/unrelated proof. |
 | V7C-6 | Diagnostic playbook | PASS | Read-only database, reconciliation, process, scheduler, evidence, effect, and configured CURRENT/PREVIOUS release-manifest checks; invalid authority blocks repair. |
-| V7C-7 | Bounded auto-repair | PASS (source) | Callback repair budget, failure escalation, observed-health requirement, and no-handler BLOCKED path. |
+| V7C-7 | Bounded auto-repair | PASS (source) | Callback repair budget, failure escalation, observed-health requirement, truthful diagnostic outcome, incomplete-containment BLOCKED path, and no-handler BLOCKED path. |
 | V7C-8 | Release degradation and rollback | PASS (source/disposable) | Disposable release manifests prove freeze-before-callback plus missing PREVIOUS, schema mismatch, rollback refusal, and health-not-restored escalation; production release roots remain out of scope. |
 | V7C-9 | Provider/network continuity | PASS (source/disposable) | DeliveryBoundary proves unavailable, timeout, partial, and all-unavailable outcomes; safe deterministic delivery continues, provider incidents remain honest BLOCKED, and no live provider proof is claimed. |
 | V7C-10 | Database/durable-state faults | PASS (source/disposable) | Database fault signals, read-only diagnostics, validated backup restore, and corrupt-source rejection are covered; physical lock/WAL-sidecar fault remains NOT TESTED here. |
@@ -22,4 +22,4 @@ and an explicit PASS, FAIL, BLOCKED, or NOT TESTED verdict.
 | V7C-14 | V4/V6 output contract | PASS (source) | `ResilienceRun.to_payload()` is structured, JSON-safe, and carries incidents/anomalies/recovery/blockers/errors. |
 | V7C-15 | Restart continuity lab | PASS (disposable) | Hard-killed Supervisor lease recovery plus fresh coordinator replay reconstruct incidents, capability suspension, and frozen pending effects. |
 | V7C-16 | Bounded fault matrix | PASS (disposable) | `V7C-16_FAULT_MATRIX.json` contains 20/20 PASS rows with expected/actual/evidence/containment/recovery/verdict fields. |
-| V7C-17+ | Next evidenced resilience gap | BLOCKED (external gate) | No additional source gap is authorized while the repository-wide staging Task Scheduler restart test is FAIL; resume after owner-authorized Scheduler evidence. |
+| V7C-17+ | Next evidenced resilience gap | PASS (source continuation) | Diagnostic outcome truth, fail-closed containment, and post-recovery recurrence identity were repaired and regression-tested; promotion remains blocked by the external Scheduler gate. |

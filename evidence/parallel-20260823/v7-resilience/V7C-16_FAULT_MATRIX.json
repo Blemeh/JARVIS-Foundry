@@ -36,8 +36,9 @@
     {
       "actual": "BLOCKED",
       "case_id": "V7C-03-diagnostic-gate",
-      "containment": "no repair until read-only diagnostics pass",
+      "containment": "failed diagnostics are recorded as FAIL; no repair",
       "evidence": {
+        "diagnostic_action_status": "FAIL",
         "repair_calls": 0
       },
       "expected": "BLOCKED; no repair mutation",

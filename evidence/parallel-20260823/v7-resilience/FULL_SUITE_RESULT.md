@@ -11,13 +11,16 @@ WAL-safe restore, Supervisor adoption/recovery/loop resilience, scheduler,
 portfolio, effects, capabilities, diagnostics, delivery boundary, and the new
 20-row resilience matrix.
 
+The continuation repair also closes false diagnostic-success evidence, fail-open
+containment before rollback, and post-recovery incident identity collisions.
+
 Command:
 
 ```text
 python -m pytest tests/foundry/test_v7_resilience.py tests/foundry/test_v7_continuity.py tests/foundry/test_v7_restore_sidecar_regression.py tests/foundry/test_v7_supervisor_adoption.py tests/foundry/test_v7_scheduler.py tests/foundry/test_v7_portfolio.py tests/foundry/test_supervisor.py tests/foundry/test_supervisor_recovery.py tests/foundry/test_supervisor_loop_resilience.py tests/foundry/test_effects.py tests/foundry/test_capability_states.py tests/foundry/test_runtime_diagnostics.py tests/foundry/test_delivery_boundary.py -q
 ```
 
-Observed: 139 collected tests passed.
+Observed: 141 collected tests passed.
 
 The disposable fault matrix separately passed 20/20 rows.
 

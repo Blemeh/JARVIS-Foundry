@@ -33,20 +33,19 @@ Verdict: PASS for the isolated source slice
   idempotent after recovery.
 - Configured release/foundry paths now flow into read-only diagnostics, which
   validates CURRENT/PREVIOUS manifests and blocks repair on invalid authority.
+- Failed diagnostics are now recorded as `FAIL` rather than a misleading
+  action-level `PASS`; incomplete containment blocks repair before diagnosis.
+- Recovered incidents use observation-scoped identities, so a later recurrence
+  creates a fresh durable incident while same-observation replay stays idempotent.
 
 ## Focused verification
 
 ```text
 python -m pytest tests/foundry/test_v7_resilience.py -q
-21 passed
+23 passed
 
-python -m pytest tests/foundry/test_v7_resilience.py \
-  tests/foundry/test_capability_states.py \
-  tests/foundry/test_effects.py \
-  tests/foundry/test_runtime_diagnostics.py \
-  tests/foundry/test_v7_scheduler.py \
-  tests/foundry/test_supervisor_recovery.py -q
-139 passed
+python -m pytest <full V7 and adjacent control/effect paths> -q
+141 passed
 ```
 
 The tests cover replay, idempotent scans, invalid transitions, STOP
