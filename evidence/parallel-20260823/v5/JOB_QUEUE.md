@@ -13,8 +13,8 @@ fresh lane verdict.
 | V5-5 | Filesystem/project vertical slice | PASS | `V5_5_FILESYSTEM.md`, reversible write, retry, reconcile, rollback proof |
 | V5-6 | Git/repository connector | PASS | `V5_6_GIT.md`, local remote push and provider-side ref proof |
 | V5-7 | HTTP/service connector | PASS | `V5_7_HTTP.md`, disposable fault-injection service and reconciliation |
-| V5-8 | Browser/procedural boundary | IN_PROGRESS | Harmless local web app, drift halt, post-effect oracle |
-| V5-9 | Communication/calendar contracts | PENDING | Fake provider contract, no real sends or invites |
+| V5-8 | Browser/procedural boundary | PASS | `V5_8_BROWSER.md`, harmless local web app, drift halt, post-effect oracle |
+| V5-9 | Communication/calendar contracts | IN_PROGRESS | Fake provider contract, no real sends or invites |
 | V5-10 | Cross-system entity correlation | PENDING | Durable lineage and ambiguity probes |
 | V5-11 | Health/quota/cost/rerouting truth | PENDING | Truthful states and deterministic eligibility |
 | V5-12 | Malicious input and secret resilience | PENDING | Injection, payload, redirect, and artifact scans |
