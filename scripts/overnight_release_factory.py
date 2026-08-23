@@ -56,6 +56,7 @@ from jarvis_foundry.deployment.release import (
 from jarvis_foundry.events import Event
 from jarvis_foundry.installer import Installer
 from jarvis_foundry.migrations import SCHEMA_VERSION
+from jarvis_foundry.platform.windows_subprocess import background_python_executable
 from jarvis_foundry.supervisor.estop import EmergencyStop
 from jarvis_foundry.supervisor.leases import LeaseUnavailable
 from jarvis_foundry.supervisor.run import _heartbeat_loop
@@ -691,7 +692,8 @@ class FactoryRunner:
         xml_path = self.roots.evidence_root / "disposable-task.xml"
         xml_path.write_text(xml, encoding="utf-8")
         command, prefix = headless_task_command(self.roots.install_root)
-        if str(self.roots.foundry_home) not in xml or str(self._candidate_python()) not in xml:
+        candidate_headless_python = background_python_executable(self._candidate_python())
+        if str(self.roots.foundry_home) not in xml or str(candidate_headless_python) not in xml:
             raise FactoryGuardError("headless XML omitted disposable absolute identity")
         if "MultipleInstancesPolicy" not in xml or "IgnoreNew" not in xml:
             raise FactoryGuardError("headless XML omitted duplicate-instance guard")
