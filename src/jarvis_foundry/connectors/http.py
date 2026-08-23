@@ -217,6 +217,48 @@ class HttpServiceConnector:
             provider_ref=f"http:{self.base_url}{path}", reconciled=True,
         )
 
+    def read_document(self, path: str = "/state") -> tuple[ConnectorAttempt, dict[str, Any] | None]:
+        """Read a JSON document for a higher-level adapter.
+
+        The document is returned in memory for structural validation; the
+        attempt still contains only its hash and provider reference.
+        """
+        request_hash = self._digest({"method": "GET", "path": path})
+        try:
+            status, body = self._request("GET", path)
+        except _TransportUnknown as error:
+            if error.error_code != "circuit_open":
+                self._record_transient_failure(ambiguous=True)
+            return self._attempt(
+                action_kind="http.read", target_ref=path,
+                idempotency_key=f"read:{path}", request_hash=request_hash,
+                outcome="UNKNOWN", error_code=error.error_code,
+            ), None
+        if status != 200:
+            self._record_transient_failure(ambiguous=False)
+            return self._attempt(
+                action_kind="http.read", target_ref=path,
+                idempotency_key=f"read:{path}", request_hash=request_hash,
+                outcome="FAILED", error_code=f"http_{status}",
+            ), None
+        try:
+            payload = self._decode(body)
+        except HttpServiceConnectorError:
+            self._record_transient_failure(ambiguous=True)
+            return self._attempt(
+                action_kind="http.read", target_ref=path,
+                idempotency_key=f"read:{path}", request_hash=request_hash,
+                outcome="UNKNOWN", error_code="malformed_response",
+            ), None
+        self._record_success()
+        attempt = self._attempt(
+            action_kind="http.read", target_ref=path,
+            idempotency_key=f"read:{path}", request_hash=request_hash,
+            outcome="COMPLETED", after_state={"response_hash": self._digest(payload)},
+            provider_ref=f"http:{self.base_url}{path}", reconciled=True,
+        )
+        return attempt, payload
+
     def reconcile(self, idempotency_key: str) -> ConnectorAttempt:
         pending = self._pending.get(idempotency_key)
         if pending is None:
