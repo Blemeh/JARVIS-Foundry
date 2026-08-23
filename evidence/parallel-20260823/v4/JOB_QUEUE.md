@@ -44,7 +44,7 @@ Evidence: `V4-3_CONTROL_STATE.md`
 
 ## V4-4 — Briefing event model
 
-Status: QUEUED
+Status: DONE @ `c8b10ce`
 
 Target behavior: deterministic first-pass briefing items derive from
 authoritative events/evidence, with source refs, importance, freshness,
@@ -52,7 +52,7 @@ dedupe identity, entity/mission links, and owner-action-required classification.
 
 ## V4-5 — Deduplicated twice-daily + exception briefing engine
 
-Status: QUEUED
+Status: DONE @ `c8b10ce`
 
 Target behavior: restart-safe morning/evening windows and exception path use a
 bounded cursor/checkpoint, late-event handling, cross-window dedupe, and zero-
@@ -61,7 +61,7 @@ untouched; use a fake clock/local harness.
 
 ## V4-6 — Owner-decision queue, not approval queue
 
-Status: QUEUED
+Status: DONE @ `c8b10ce`
 
 Target behavior: only genuinely consequential owner attention is classified as
 INFORM, DECISION_REQUIRED, BLOCKED_EXTERNAL_DEPENDENCY, OWNER_VETO_ACTIVE,
@@ -70,7 +70,7 @@ resolved/superseded lifecycle.
 
 ## V4-7 — Command Center management-by-exception surface
 
-Status: QUEUED
+Status: DONE @ `4cd6e20`
 
 Target behavior: owner can inspect goals, constraints/vetoes, pause/STOP truth,
 briefing history, exception and decision queues, and why/what-changed/what-next
@@ -78,7 +78,7 @@ traceability without adding a second authority. Preserve current design system.
 
 ## V4-8 — Result traceability
 
-Status: QUEUED
+Status: DONE @ `6280ae6`
 
 Target behavior: representative outcomes link decision, evidence, candidate,
 mission, worker/verifier, failure/repair, actual outcome, external change, next
@@ -86,7 +86,7 @@ action, and any owner decision without fabrication.
 
 ## V4-9 — Structured briefing packet + export contract
 
-Status: QUEUED
+Status: DONE @ `6280ae6`
 
 Target behavior: stable structured packet for Command Center/future delivery,
 including window, items, decision-required subset, source/evidence refs,
@@ -95,7 +95,7 @@ voice, or localization implementation.
 
 ## V4-10 — Failure / restart / honesty hardening
 
-Status: QUEUED
+Status: DONE @ `6280ae6`
 
 Target behavior: duplicate replay, interrupted checkpoint, malformed/old
 events, missing nested fields, future timestamps, hostile text, partial
