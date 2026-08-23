@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import asdict, dataclass
+from datetime import timedelta
 from typing import Any
 
 from ..clock import isoformat, parse, utc_now
@@ -24,6 +25,8 @@ CONTROL_LEASE_RECLAIMED = "runtime.control.lease_reclaimed"
 
 ACTIONS = frozenset({"START", "STOP", "RESTART"})
 RUNTIME_STATES = frozenset({"STOPPED", "RUNNING", "BLOCKED", "DEGRADED", "UNKNOWN"})
+REQUEST_STATUSES = frozenset({"PENDING", "APPLIED", "BLOCKED", "STALE"})
+REQUEST_STALE_AFTER_SECONDS = 3600
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,6 +36,7 @@ class RuntimeControlRequest:
     requested_by: str
     requested_at: str
     expected_release: str | None = None
+    expires_at: str | None = None
 
     def to_json(self) -> dict[str, Any]:
         return asdict(self)
@@ -67,7 +71,33 @@ def _request_from_payload(payload: dict[str, Any]) -> RuntimeControlRequest:
             str(payload["expected_release"])
             if payload.get("expected_release") not in (None, "") else None
         ),
+        expires_at=(
+            str(payload["expires_at"])
+            if payload.get("expires_at") not in (None, "") else None
+        ),
     )
+
+
+def request_is_stale(
+    request: RuntimeControlRequest,
+    *,
+    now=None,
+) -> bool:
+    """Return whether an owner request has exceeded its bounded lifetime.
+
+    Historical requests may not have an ``expires_at`` field. For those
+    records, use the original request timestamp and the same default TTL. A
+    malformed timestamp is treated as not stale so an unreadable record is
+    surfaced for reconciliation instead of silently discarded.
+    """
+
+    try:
+        expires_at = parse(request.expires_at) if request.expires_at else (
+            parse(request.requested_at) + timedelta(seconds=REQUEST_STALE_AFTER_SECONDS)
+        )
+    except (TypeError, ValueError, OverflowError):
+        return False
+    return expires_at <= (now or utc_now())
 
 
 def _request_events(database: FoundryDatabase) -> list[tuple[RuntimeControlRequest, Event]]:
@@ -164,6 +194,7 @@ def submit_request(
         requested_by=normalized_by,
         requested_at=isoformat(),
         expected_release=(str(expected_release) if expected_release else None),
+        expires_at=isoformat(utc_now() + timedelta(seconds=REQUEST_STALE_AFTER_SECONDS)),
     )
     event = Event.create(
         CONTROL_REQUESTED,
@@ -234,6 +265,7 @@ def record_resolution(
     creation_identity: dict[str, Any] | None = None,
     release_id: str | None = None,
     attempt: int = 0,
+    request_status: str | None = None,
 ) -> None:
     """Record an idempotent request outcome or restart phase."""
 
@@ -242,6 +274,11 @@ def record_resolution(
         raise ValueError(f"unknown runtime state: {status!r}")
     if not phase or any(char in phase for char in "\r\n"):
         raise ValueError("resolution phase must be a non-empty single line")
+    normalized_request_status = (
+        str(request_status).upper() if request_status is not None else None
+    )
+    if normalized_request_status is not None and normalized_request_status not in REQUEST_STATUSES:
+        raise ValueError(f"unknown owner request status: {request_status!r}")
     payload: dict[str, Any] = {
         "request_id": request.request_id,
         "action": request.action,
@@ -253,6 +290,7 @@ def record_resolution(
         "creation_identity": dict(creation_identity) if creation_identity else None,
         "release_id": release_id,
         "attempt": max(0, int(attempt)),
+        "request_status": normalized_request_status,
     }
     key = (
         f"{CONTROL_RESOLVED}:{request.request_id}:{phase}:{normalized_status}:"
@@ -324,6 +362,22 @@ def _latest_runtime_event(database: FoundryDatabase) -> Event | None:
     events = _query_events(
         database, f"event_type IN ({placeholders})", event_types, limit=1)
     return events[0] if events else None
+
+
+def _resolution_is_current(
+    resolution: Event | None,
+    runtime_event: Event | None,
+) -> bool:
+    """Use a resolution for runtime status only until a newer runtime event."""
+
+    if resolution is None or runtime_event is None:
+        return resolution is not None
+    try:
+        return parse(resolution.recorded_at) >= parse(runtime_event.recorded_at)
+    except (TypeError, ValueError, OverflowError):
+        # A malformed ledger timestamp must not erase a valid resolution. The
+        # integrity/reconciliation view will still surface the malformed row.
+        return True
 
 
 def _latest_identity(database: FoundryDatabase, instance_id: str | None) -> dict[str, Any]:
@@ -455,13 +509,19 @@ def inspect_control(
     request_status: str | None = None
     if resolution is not None:
         resolved = resolution.payload
-        status = str(resolved.get("status") or "UNKNOWN").upper()
-        reason = resolved.get("reason") or reason
+        resolution_status = str(resolved.get("status") or "UNKNOWN").upper()
+        if _resolution_is_current(resolution, runtime_event):
+            status = resolution_status
+            reason = resolved.get("reason") or reason
         attempt = int(resolved.get("attempt") or 0)
         phase = str(resolved.get("phase") or "")
-        request_status = "PENDING" if phase == "stopped_for_restart" else (
-            "BLOCKED" if status == "BLOCKED" else "APPLIED"
-        )
+        request_status = str(resolved.get("request_status") or "").upper() or None
+        if request_status is None:
+            request_status = "PENDING" if phase == "stopped_for_restart" else (
+                "BLOCKED" if status == "BLOCKED" else "APPLIED"
+            )
+        if request_status == "STALE":
+            reason = resolved.get("reason") or reason
 
     if status == "RUNNING":
         identity_match = _pid_matches(pid, creation)
@@ -484,18 +544,22 @@ def inspect_control(
                 reason = "supervisor heartbeat is stale"
 
     if request is not None and request_status is None:
-        request_status = "PENDING"
-        if request.action == "STOP" and status == "STOPPED":
-            reason = reason or "stop request is waiting for reconciliation"
-        elif request.action == "STOP" and status == "RUNNING":
-            reason = reason or "stop request is waiting for the owner heartbeat"
-        elif status == "BLOCKED":
-            request_status = "BLOCKED"
-        elif status == "RUNNING" and request.action in {"START", "RESTART"}:
-            request_status = "APPLIED"
+        if request_is_stale(request):
+            request_status = "STALE"
+            reason = reason or "owner request expired before application"
         else:
-            status = "UNKNOWN"
-            reason = reason or "owner request has no durable process outcome"
+            request_status = "PENDING"
+            if request.action == "STOP" and status == "STOPPED":
+                reason = reason or "stop request is waiting for reconciliation"
+            elif request.action == "STOP" and status == "RUNNING":
+                reason = reason or "stop request is waiting for the owner heartbeat"
+            elif status == "BLOCKED":
+                request_status = "BLOCKED"
+            elif status == "RUNNING" and request.action in {"START", "RESTART"}:
+                request_status = "APPLIED"
+            else:
+                status = "UNKNOWN"
+                reason = reason or "owner request has no durable process outcome"
 
     if stop_path and EmergencyStop(stop_path).active() and status == "RUNNING":
         status = "BLOCKED"
@@ -531,7 +595,12 @@ def reconcile_control(
         return inspect_control(database, stop_path=stop_path)
     resolution = _latest_resolution(database, request.request_id)
     state = inspect_control(database, stop_path=stop_path)
-    if resolution is None and state.status == "STOPPED" and request.action == "STOP":
+    if resolution is None and request_is_stale(request):
+        record_resolution(
+            database, request, status=state.status, phase="stale_request",
+            request_status="STALE",
+            reason="owner request expired before application")
+    elif resolution is None and state.status == "STOPPED" and request.action == "STOP":
         record_resolution(
             database, request, status="STOPPED", phase="already_stopped",
             reason="supervisor was already stopped")

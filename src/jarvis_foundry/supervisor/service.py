@@ -22,6 +22,8 @@ from .control import (
     record_claim,
     record_lease_reclaimed,
     record_resolution,
+    inspect_control,
+    request_is_stale,
 )
 from .estop import EmergencyStop
 from .leases import LeaseManager, LeaseUnavailable
@@ -78,6 +80,7 @@ class Supervisor:
         phase: str,
         reason: str | None = None,
         attempt: int = 0,
+        request_status: str | None = None,
     ) -> None:
         if request is None:
             return
@@ -93,6 +96,7 @@ class Supervisor:
             creation_identity=identity,
             release_id=self._release_id(),
             attempt=attempt,
+            request_status=request_status,
         )
 
     def _reclaim_stale_supervisor_lease(self) -> None:
@@ -136,6 +140,21 @@ class Supervisor:
         self.database.initialize()
         self._reclaim_stale_supervisor_lease()
         request = latest_request(self.database)
+        if request is not None and request_is_stale(request):
+            state = inspect_control(self.database, stop_path=str(self.estop.path))
+            stale_status = state.status if state.status in {
+                "STOPPED", "RUNNING", "BLOCKED", "DEGRADED", "UNKNOWN"
+            } else "UNKNOWN"
+            if self.estop.active():
+                stale_status = "BLOCKED"
+            self._record_resolution(
+                request,
+                status=stale_status,
+                phase="stale_request",
+                request_status="STALE",
+                reason="owner request expired before application",
+            )
+            return stale_status
         if request is not None and request.action == "STOP":
             # A duplicate scheduler trigger must not record STOPPED while a
             # different live Supervisor still owns the singleton lease. The
@@ -272,7 +291,15 @@ class Supervisor:
         reaped = self.workers.reap()
         request = latest_request(self.database)
         if request is not None and request.action in {"STOP", "RESTART"}:
-            if self.estop.active():
+            if request_is_stale(request):
+                self._record_resolution(
+                    request,
+                    status="RUNNING",
+                    phase="stale_request",
+                    request_status="STALE",
+                    reason="owner request expired before application",
+                )
+            elif self.estop.active():
                 self._record_resolution(
                     request, status="BLOCKED", phase="blocked_during_stop",
                     reason="emergency STOP sentinel is active")

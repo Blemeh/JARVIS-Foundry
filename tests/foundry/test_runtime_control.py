@@ -9,8 +9,11 @@ import pytest
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.events import Event, EventConflict
 from jarvis_foundry.supervisor.control import (
+    CONTROL_REQUESTED,
     inspect_control,
     record_claim,
+    reconcile_control,
+    request_is_stale,
     submit_request,
 )
 from jarvis_foundry.supervisor.leases import LeaseManager, LeaseUnavailable
@@ -36,6 +39,67 @@ def test_control_request_is_idempotent_and_conflicts_fail_closed(tmp_path):
     assert database.event_count(event_type="runtime.control.requested") == 1
     with pytest.raises(EventConflict):
         submit_request(database, "stop", request_id="request-1")
+    assert first.expires_at is not None
+    assert request_is_stale(first) is False
+
+
+def _append_stale_request(database, *, action: str, request_id: str) -> None:
+    database.append(Event.create(
+        CONTROL_REQUESTED,
+        {
+            "request_id": request_id,
+            "action": action,
+            "requested_by": "old-owner",
+            "requested_at": "2020-01-01T00:00:00Z",
+            "expected_release": None,
+            "expires_at": "2020-01-01T01:00:00Z",
+        },
+        source_type="owner",
+        source_id="old-owner",
+        idempotency_key=f"runtime.control.requested:{request_id}",
+    ))
+
+
+def test_stale_start_request_is_resolved_without_launching(tmp_path):
+    database = _database(tmp_path)
+    _append_stale_request(database, action="START", request_id="stale-start")
+    supervisor = Supervisor(database, tmp_path / "EMERGENCY_STOP", instance_id="stale-start-owner")
+
+    assert supervisor.start() == "STOPPED"
+    assert supervisor.started is False
+    state = inspect_control(database)
+    assert state.status == "STOPPED"
+    assert state.request_status == "STALE"
+    assert state.reason == "owner request expired before application"
+    assert database.event_count(event_type="supervisor.started") == 0
+
+
+def test_reconcile_closes_stale_request_without_inventing_runtime(tmp_path):
+    database = _database(tmp_path)
+    _append_stale_request(database, action="RESTART", request_id="stale-restart")
+
+    state = reconcile_control(database)
+
+    assert state.status == "STOPPED"
+    assert state.request_status == "STALE"
+    assert database.event_count(event_type="supervisor.started") == 0
+    assert database.event_count(event_type="runtime.control.resolved") == 1
+
+
+def test_stale_stop_request_does_not_stop_live_owner(tmp_path):
+    database = _database(tmp_path)
+    supervisor = Supervisor(database, tmp_path / "EMERGENCY_STOP", instance_id="stale-stop-owner")
+    assert supervisor.start() == "RUNNING"
+    _append_stale_request(database, action="STOP", request_id="stale-stop")
+
+    assert supervisor.heartbeat() == "RUNNING"
+    state = inspect_control(database)
+    assert state.status == "RUNNING"
+    assert state.request_status == "STALE"
+    assert supervisor.started is True
+    assert database.event_count(event_type="supervisor.stopped") == 0
+    supervisor.stop()
+    assert inspect_control(database).status == "STOPPED"
 
 
 def test_start_request_is_reconciled_after_supervisor_start(tmp_path):
