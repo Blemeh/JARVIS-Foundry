@@ -6,18 +6,19 @@ every promotion/remaster mission (see `docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.
 If this document and another current-status document disagree, THIS document wins
 for "what exists now" claims; the architecture contract wins for binding invariants.
 
-Last reconciled: 2026-08-23 (full candidate archaeology, serial source
-integration, and isolated verification completed through the Command Center
-truth package; canonical push is the remaining owner-authorized step)
+Last reconciled: 2026-08-23 (V6 self-evolution lane: continuous
+self-evolution machinery built and proven on the candidate branch;
+see evidence/parallel-20260823/v6/FINAL_REPORT.md)
 
 ```text
-CURRENT CANONICAL HEAD:      5f85bae (canonical main and origin/main after the normal
-                             full-reconciliation push; source promotion is complete,
-                             live runtime promotion remains owner-authorized)
-INTEGRATION BASE:            ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2
-AUDIT SOURCE:                26e73c7 (residual audit environment scoping, absorbed
-                             after Q1-Q3 semantic review)
-CURRENT WORK BRANCH:         integration/full-reconciliation-2026-08-23
+CURRENT CANONICAL HEAD:      (candidate lane) 05c6cb1+ on
+                             candidate/v6-self-evolution-20260823 —
+                             this worktree's HEAD; canonical main is
+                             owned by the parallel production session
+INTEGRATION BASE:            01db32cbcaa409dfe26386ce66110429c2c0b0e0
+                             (frozen V6 lane base)
+AUDIT SOURCE:                evidence/parallel-20260823/v6/INITIAL_STATE.md
+CURRENT WORK BRANCH:         candidate/v6-self-evolution-20260823
 LOCAL RUNTIME LANE CHECKPOINT: 5f85bae
                               (isolated source/test checkpoint; no live runtime,
                               provider, scheduler, or production mutation)

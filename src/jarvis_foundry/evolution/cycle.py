@@ -192,26 +192,41 @@ def run_cycle(
             command=candidate_command, controller=controller,
             timeout_s=timeout_s)
 
-        # 5. verification: request + structured verdict
-        verification_id = record_verification_request(
-            database, improvement_id=improvement_id,
-            subject_ref=candidate,
-            criteria=_verification_criteria(improvement),
-            artifacts=dict(build["artifact_hashes"]),
-            builder_identity={"provider": provider_settings.provider,
-                              "model": provider_settings.model,
-                              "session_id": "cycle-builder"},
-            controller=controller,
-            provider_settings=provider_settings)
-        record_verification_verdict(
-            database, verification_id=verification_id, verdict="PASS",
-            criteria_results=[
-                {"criterion": criterion, "status": "PASS",
-                 "evidence_hash": "c" * 64}
-                for criterion in _verification_criteria(improvement)],
-            findings=[], verifier_identity=verifier_identity,
-            evidence_refs=["var/evidence/v6-s11/cycle-verdict.txt"],
-            provider_settings=provider_settings)
+        # 5. INDEPENDENT verification (V6 lane repair of S11's
+        # self-certification gap): the probe suite runs OUT-OF-PROCESS
+        # against the built candidate tree; criteria are FROZEN from
+        # the improvement's guardrails; the verdict is recorded through
+        # the S5 boundary with a dedicated verifier session. The cycle
+        # NEVER fabricates its own PASS.
+        candidate_root = Path(database.path).parent.parent / \
+            "candidate-roots" / cycle_id
+        from .verifier_orchestrator import (
+            VerifierOrchestrationError,
+            default_probe_command,
+            orchestrate_verification,
+        )
+        builder_identity = {
+            "provider": provider_settings.provider,
+            "model": provider_settings.model,
+            "session_id": "cycle-builder",
+        }
+        try:
+            orchestration = orchestrate_verification(
+                database, improvement_id=improvement_id,
+                candidate_release_id=candidate,
+                candidate_tree_root=candidate_root,
+                builder_identity=builder_identity,
+                controller=controller,
+                probe_command=default_probe_command(),
+                probe_timeout_s=timeout_s)
+        except VerifierOrchestrationError as error:
+            raise CycleError(
+                f"independent verification failed: {error} — the "
+                "candidate never reaches promotion")
+        if str(orchestration["trusted_independent_pass"]) != "True":
+            raise CycleError(
+                "independent verifier did not return a trusted PASS — "
+                "the candidate never reaches promotion")
 
         # 6. canary for R2/R3
         canary_id = None
@@ -232,6 +247,7 @@ def run_cycle(
                             controller=controller, **tick)
 
         # 7. atomic promotion (all gates re-checked)
+        verification_id = str(orchestration["verification_id"])
         promotion_id = promote_release(
             database, candidate_release_id=candidate,
             verification_id=verification_id, canary_id=canary_id,

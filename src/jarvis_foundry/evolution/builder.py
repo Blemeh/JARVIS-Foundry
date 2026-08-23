@@ -84,6 +84,15 @@ def register_candidate_root(
             f"candidate root {resolved} overlaps the runtime home "
             f"{runtime_home} (inside, equal, or an ancestor of it) — "
             "refused (live-like surface)")
+    # CLEAN-ROOT PROVENANCE: a registered root must start empty so every
+    # file inside it at build time is attributable to the candidate
+    # (placed after registration). Pre-existing content would silently
+    # enter the release manifest as candidate output.
+    if resolved.exists() and any(resolved.iterdir()):
+        raise BuilderError(
+            f"candidate root {resolved} is not empty — refusing to "
+            "register a polluted root (candidate provenance must start "
+            "clean)")
     resolved.mkdir(parents=True, exist_ok=True)
     event = Event.create(
         "candidate_root.registered",
@@ -195,18 +204,30 @@ def build_candidate(
 
     marker_path = root / MARKER_NAME
     if marker_path.exists():
-        marker = json.loads(marker_path.read_text(encoding="utf-8"))
-        if _process_alive(int(marker.get("pid", -1))):
+        marker: dict[str, Any] | None = None
+        try:
+            marker = json.loads(marker_path.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            marker = None  # crashed executor died mid-write
+        if isinstance(marker, dict) and \
+                _process_alive(int(marker.get("pid", -1))):
             raise BuilderError(
                 f"another build ({marker.get('build_id')}) is running "
                 f"on root {root} — refused (concurrent build)")
-        reap_id = str(marker.get("build_id", "build-unknown"))
+        reap_id = str((marker or {}).get("build_id", "build-unknown"))
         database.append(Event.create(
             "candidate.build_reaped",
-            {"build_id": reap_id, "reason": "stale marker, builder "
-             "process no longer alive"},
+            {"build_id": reap_id,
+             "reason": "stale marker, builder process no longer alive"
+             if marker else "corrupt marker (builder died mid-write)"},
             source_type=source_type, source_id=source_id,
-            idempotency_key=f"candidate.build_reaped:{reap_id}"))
+            idempotency_key=f"candidate.build_reaped:{reap_id}"
+            if marker else f"candidate.build_reaped:{reap_id}:corrupt"))
+
+    # PROVENANCE: registration refuses non-empty roots (above), so
+    # everything inside the root at build time is candidate content —
+    # either staged candidate source or build output. No filtering of
+    # the manifest: the clean-root guard is the provenance boundary.
 
     build_id = "build-" + uuid.uuid4().hex[:12]
     command_hash = payload_hash({"command": list(build_command)})
@@ -227,9 +248,26 @@ def build_candidate(
     runtime_home.mkdir(parents=True, exist_ok=True)
     env["JARVIS_HOME"] = str(runtime_home)
 
-    parent_before = {
-        entry.name for entry in Path(root.parent).iterdir()
-    } if root.parent.is_dir() else set()
+    # sibling baseline taken HERE — after the builder's own marker and
+    # runtime-home writes, immediately before the candidate process
+    # runs, so only CANDIDATE-process churn can ever be flagged.
+    # Directories are tracked by existence only: their mtimes churn
+    # when CONCURRENT builders write inside their own roots (legitimate
+    # parallel isolation), so mtime-based dir tracking would create
+    # false positives across distinct roots sharing one parent.
+    def _parent_snapshot() -> dict[str, tuple[str, str | None]]:
+        snapshot: dict[str, tuple[str, str | None]] = {}
+        if root.parent.is_dir():
+            for entry in root.parent.iterdir():
+                if entry.is_dir():
+                    snapshot[entry.name] = ("dir", None)
+                elif entry.is_file():
+                    snapshot[entry.name] = (
+                        "file", hashlib.sha256(
+                            entry.read_bytes()).hexdigest())
+        return snapshot
+
+    parent_before_entries = _parent_snapshot()
 
     started = isoformat()
     t0 = time.monotonic()
@@ -251,15 +289,24 @@ def build_candidate(
         reason = f"spawn error: {error}"
     duration_s = round(time.monotonic() - t0, 3)
 
-    parent_after = {
-        entry.name for entry in Path(root.parent).iterdir()
-    } if root.parent.is_dir() else set()
-    # any NEW entry in the root's parent is an outside write. The
-    # runtime DB and its WAL/-shm live in the runtime home — a root's
-    # parent can never legitimately contain them (roots overlapping
-    # the runtime home are refused at registration), so no exclusion
-    # is needed and a decoy foundry.db in the parent IS detected.
-    outside = sorted(parent_after - parent_before)
+    parent_after_entries = _parent_snapshot()
+    # any NEW or REMOVED entry in the root's parent is an outside
+    # write; a sibling FILE whose content hash changed is also an
+    # outside write. Directory mtimes are ignored (concurrent builders
+    # legitimately write inside their own roots). The runtime DB and
+    # its WAL/-shm live in the runtime home — a root's parent can never
+    # legitimately contain them (roots overlapping the runtime home are
+    # refused at registration), so a decoy foundry.db in the parent IS
+    # detected.
+    changed_or_new = [
+        name for name, signature in parent_after_entries.items()
+        if name != root.name and
+        parent_before_entries.get(name) != signature]
+    removed = [name for name in parent_before_entries
+               if name not in parent_after_entries]
+    outside = sorted(set(changed_or_new + removed))
+    # exclude this build's own marker churn from outside-write analysis
+    outside = [name for name in outside if name != MARKER_NAME]
     if outside:
         reason = f"outside write detected: {', '.join(outside)}"
         exit_code = exit_code if exit_code is not None else 0

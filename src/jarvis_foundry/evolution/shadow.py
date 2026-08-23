@@ -225,6 +225,27 @@ def shadow_run(
                 f"blocked connector attempt: {attempt.capability} — "
                 "blocked connectors are never usable in shadow mode")
             break
+        except _ShadowLiveEffect:
+            raise  # unreachable — handled above (explicit for readers)
+        except Exception as error:
+            # ARBITRARY CRASH CLEANUP: a candidate that dies mid-run
+            # must never leave an orphaned RUNNING row. The crash is
+            # recorded as evidence (shadow.run_failed) and re-raised so
+            # the caller still sees the failure. ShadowError itself is
+            # not possible from decision_fn (it is the run boundary's
+            # own type, raised only by this module).
+            database.append(Event.create(
+                "shadow.run_failed",
+                {"run_id": run_id,
+                 "reason": f"decision_fn crashed: {error}",
+                 "stop_observed": stopped,
+                 "decisions_count": decisions_count,
+                 "live_attempts": live_attempts,
+                 "blocked_attempts": blocked_attempts,
+                 "controller": controller},
+                source_type=source_type, source_id=source_id,
+                idempotency_key=f"shadow.run_failed:{run_id}"))
+            raise
         flush_error = _flush_proposals(sink, case.name)
         if flush_error:
             failed_reason = flush_error
