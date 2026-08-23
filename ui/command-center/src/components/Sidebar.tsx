@@ -70,7 +70,9 @@ export function SidebarContent() {
         </span>
         <div>
           <p className="t-label">Owner Operator</p>
-          <p className="t-mono sidebar-owner-id">ID: OWNER-01</p>
+          <p className="t-mono sidebar-owner-id" title="Fixture persona for simulated Command Center demos; not an authenticated owner session.">
+            ID: OWNER-01 · SIMULATED
+          </p>
         </div>
       </div>
     </>

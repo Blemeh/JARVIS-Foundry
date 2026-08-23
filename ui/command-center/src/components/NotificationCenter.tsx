@@ -81,7 +81,7 @@ export function NotificationCenter({
                   {n.state}
                 </span>
               </div>
-              <h3 className="notify-item-title-text">{n.title}</h3>
+              <h2 className="notify-item-title-text">{n.title}</h2>
               <p className="prose notify-item-detail">{n.detail}</p>
               <div className="notify-item-meta">
                 <span className="t-mono text-muted notify-item-time">{relativeTime(n.createdAt)}</span>

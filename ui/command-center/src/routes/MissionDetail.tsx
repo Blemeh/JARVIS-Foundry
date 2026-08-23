@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   AlertTriangle,
@@ -19,12 +19,13 @@ import {
   Workflow,
 } from "lucide-react";
 import { useCommandCenter } from "../context/CommandCenterContext";
-import type { EvidenceArtifact, LineageNode, Mission, MissionRun, Worker } from "../lib/contracts";
+import type { EvidenceArtifact, LineageNode, Mission, MissionRun, MissionStep, RelatedEntities, Worker } from "../lib/contracts";
 import { StatusBadge } from "../components/StatusBadge";
 import { Dialog } from "../components/Dialog";
-import { LoadingState, ErrorState } from "../components/states";
+import { DetailRouteQueryGate } from "../components/DetailRouteQueryGate";
 import { EntityRefLink, RefChipRow } from "../components/EntityRefLink";
 import { Lineage } from "../components/Lineage";
+import { useRouteQuery } from "../hooks/useRouteQuery";
 import { sourceModeLabel } from "../lib/sourceMode";
 
 const stageIcons: Record<string, typeof Check> = {
@@ -36,63 +37,59 @@ const stageIcons: Record<string, typeof Check> = {
   next: Route,
 };
 
+type MissionDetailData = {
+  mission: Mission;
+  run: MissionRun;
+  workers: Worker[];
+  evidence: EvidenceArtifact[];
+  lineage: LineageNode[];
+  steps: MissionStep[];
+  related: RelatedEntities;
+};
+
 export function MissionDetail() {
   const { missionId } = useParams();
   const { client, version, notifications, stopActive, openTrustDialog, sourceMode } = useCommandCenter();
-  const [mission, setMission] = useState<Mission | null>(null);
-  const [run, setRun] = useState<MissionRun | null>(null);
-  const [workers, setWorkers] = useState<Worker[]>([]);
-  const [evidence, setEvidence] = useState<EvidenceArtifact[]>([]);
-  const [lineage, setLineage] = useState<LineageNode[]>([]);
-  const [notFound, setNotFound] = useState(false);
+  const missionIdResolved = missionId ?? "M-HYB-014";
+  const detailQuery = useRouteQuery(
+    async () => {
+      const mission = await client.getMission(missionIdResolved);
+      if (!mission) return null;
+      const [run, workers, evidence, lineage, steps, related] = await Promise.all([
+        client.getMissionRun(mission.id),
+        client.listWorkers(),
+        client.listEvidence(),
+        client.getLineage(mission.id),
+        client.getMissionSteps(mission.id),
+        client.getRelatedEntities("mission", mission.id),
+      ]);
+      return {
+        mission,
+        run,
+        workers: workers.filter((x) => (x.missionIds ?? []).includes(mission.id)),
+        evidence: evidence.filter((x) => x.missionRef === mission.id),
+        lineage,
+        steps,
+        related,
+      } satisfies MissionDetailData;
+    },
+    [client, version, missionIdResolved],
+  );
   const [dialog, setDialog] = useState<"halt" | "gate" | null>(null);
   const [halted, setHalted] = useState(false);
   const [gateRequested, setGateRequested] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    const id = missionId ?? "M-HYB-014";
-    client.getMission(id).then((m) => {
-      if (cancelled) return;
-      if (!m) {
-        setNotFound(true);
-        return;
-      }
-      setMission(m);
-      void Promise.all([
-        client.getMissionRun(m.id),
-        client.listWorkers(),
-        client.listEvidence(),
-        client.getLineage(m.id),
-      ]).then(([r, w, e, lin]) => {
-        if (cancelled) return;
-        setRun(r);
-        setWorkers(w.filter((x) => (x.missionIds ?? []).includes(m.id)));
-        setEvidence(e.filter((x) => x.missionRef === m.id));
-        setLineage(lin);
-      });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [missionId, client, version]);
-
-  if (notFound) {
-    return (
-      <div className="shell-content">
-        <ErrorState label="Mission not found" detail={sourceMode === "SIMULATED" ? "No simulated mission exists at this identifier." : sourceMode === "LIVE" ? "No canonical mission exists at this identifier." : `Mission lookup unavailable: runtime source is ${sourceModeLabel(sourceMode)}.`} />
-      </div>
-    );
-  }
-
-  if (!mission || !run) {
-    return (
-      <div className="shell-content">
-        <LoadingState label="Loading mission detail" />
-      </div>
-    );
-  }
-
+  return (
+    <DetailRouteQueryGate
+      query={detailQuery}
+      loadingLabel="Loading mission detail"
+      notFoundLabel="Mission not found"
+      notFoundDetail={sourceMode === "SIMULATED" ? "No simulated mission exists at this identifier." : sourceMode === "LIVE" ? "No canonical mission exists at this identifier." : `Mission lookup unavailable: runtime source is ${sourceModeLabel(sourceMode)}.`}
+      errorLabel="Mission detail unavailable"
+      surface="Mission detail"
+    >
+      {({ mission, run, workers, evidence, lineage, steps, related }) => {
+  const stepByKey = Object.fromEntries(steps.map((s) => [s.key, s]));
   const blocking = notifications.find((n) => n.refs.some((r) => r.kind === "mission" && r.id === mission.id) && n.state !== "RESOLVED");
   const blockingEventRef = blocking?.refs.find((r) => r.kind === "timeline");
   const contextLinks = [
@@ -102,6 +99,15 @@ export function MissionDetail() {
     { label: "Memory", to: `/memory?mission=${mission.id}` },
     { label: "Systems", to: `/systems?mission=${mission.id}` },
   ];
+  const relatedGroups = [
+    { label: "Workers", refs: related.agents },
+    { label: "Evidence", refs: related.evidence },
+    { label: "Systems", refs: related.systems },
+    { label: "Timeline", refs: related.timeline },
+    { label: "Memory", refs: related.memory },
+    { label: "Notifications", refs: related.notifications },
+  ];
+  const hasRelated = relatedGroups.some((group) => group.refs.length > 0);
 
   return (
     <div className="shell-content">
@@ -172,6 +178,7 @@ export function MissionDetail() {
           </div>
           {run.pipeline.map((stage) => {
             const Icon = stageIcons[stage.key] ?? Check;
+            const step = stepByKey[stage.key];
             return (
               <div key={stage.key} className={`md-stage md-stage-${stage.state.toLowerCase()}`}>
                 <div className="md-stage-dot">
@@ -179,6 +186,12 @@ export function MissionDetail() {
                 </div>
                 <span className="t-label md-stage-label">{stage.label}</span>
                 <span className="t-mono md-stage-detail">{stage.detail}</span>
+                {step?.workerId ? (
+                  <EntityRefLink entity={{ kind: "agent", id: step.workerId, label: step.workerId }} />
+                ) : null}
+                {step?.evidenceIds && step.evidenceIds.length > 0 ? (
+                  <RefChipRow refs={step.evidenceIds.map((id) => ({ kind: "evidence" as const, id, label: id }))} />
+                ) : null}
               </div>
             );
           })}
@@ -258,17 +271,20 @@ export function MissionDetail() {
                 <div key={v.id} className={`md-verdict md-verdict-${v.state.toLowerCase()}`}>
                   <div className="md-verdict-head">
                     <span className="t-mono md-verdict-title">
-                      <span className="md-verdict-id">{v.id}</span>
+                      <EntityRefLink entity={{ kind: "verdict", id: v.id, label: v.id }} />
                       <span className="md-verdict-title-text">{v.title}</span>
                     </span>
                     <StatusBadge status={v.state} />
                   </div>
                   <p className="prose md-verdict-detail">{v.detail}</p>
-                  {v.evidenceId ? (
-                    <div className="md-verdict-refs">
+                  <div className="md-verdict-refs">
+                    {v.workerId ? (
+                      <EntityRefLink entity={{ kind: "agent", id: v.workerId, label: v.workerId }} />
+                    ) : null}
+                    {v.evidenceId ? (
                       <EntityRefLink entity={{ kind: "evidence", id: v.evidenceId, label: v.evidenceId }} />
-                    </div>
-                  ) : null}
+                    ) : null}
+                  </div>
                 </div>
               ))}
             </div>
@@ -288,11 +304,15 @@ export function MissionDetail() {
               </div>
               <div className="md-stat">
                 <span className="t-label text-muted">Agents active</span>
-                <span className="t-mono md-stat-value">{run.stats.agentsActive}</span>
+                <Link to={`/agents?mission=${mission.id}`} className="t-mono md-stat-value md-stat-link">
+                  {run.stats.agentsActive}
+                </Link>
               </div>
               <div className="md-stat">
                 <span className="t-label text-muted">Evidence artifacts</span>
-                <span className="t-mono md-stat-value">{run.stats.evidenceArtifacts}</span>
+                <Link to={`/evidence?mission=${mission.id}`} className="t-mono md-stat-value md-stat-link">
+                  {run.stats.evidenceArtifacts}
+                </Link>
               </div>
             </div>
           </section>
@@ -349,6 +369,29 @@ export function MissionDetail() {
           </div>
         </section>
       </div>
+
+      <section className="panel panel-corner detail-panel detail-panel-full md-related" aria-label="Related records">
+        <div className="panel-header">
+          <h2 className="t-label panel-title text-muted">
+            <Link2 size={13} className="panel-icon" />
+            Related Records
+          </h2>
+        </div>
+        <div className="md-related-body">
+          {!hasRelated ? (
+            <span className="t-mono text-dim">No related records indexed for this mission.</span>
+          ) : (
+            relatedGroups
+              .filter((group) => group.refs.length > 0)
+              .map((group) => (
+                <div key={group.label} className="md-related-group">
+                  <span className="t-label text-muted">{group.label}</span>
+                  <RefChipRow refs={group.refs} />
+                </div>
+              ))
+          )}
+        </div>
+      </section>
 
       <section className="panel panel-corner detail-panel detail-panel-full md-lineage">
         <div className="panel-header">
@@ -442,5 +485,8 @@ export function MissionDetail() {
         </div>
       </Dialog>
     </div>
+  );
+      }}
+    </DetailRouteQueryGate>
   );
 }

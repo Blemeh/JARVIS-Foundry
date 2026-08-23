@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AlertTriangle, ArrowLeftRight, Flag, Search, Terminal } from "lucide-react";
 import { useCommandCenter } from "../context/CommandCenterContext";
 import type { EntityRef, TimelineCategory, TimelineEvent, TimelineSeverity } from "../lib/contracts";
 import { Drawer } from "../components/Drawer";
-import { EmptyState, LoadingState } from "../components/states";
+import { EmptyState } from "../components/states";
+import { RouteQueryGate } from "../components/RouteQueryGate";
 import { ContextChip, RefChipRow } from "../components/EntityRefLink";
+import { useRouteQuery } from "../hooks/useRouteQuery";
+import { metaLabelToRef, refsFromTimelineEvent } from "../lib/entityRefs";
 import { sourceModeLabel } from "../lib/sourceMode";
 
 const filters: { key: "ALL" | TimelineCategory; label: string }[] = [
@@ -33,22 +36,14 @@ const categoryIcon: Record<TimelineCategory, typeof Flag> = {
 };
 
 function eventRefs(e: TimelineEvent): EntityRef[] {
-  const refs: EntityRef[] = [];
-  if (e.missionId) refs.push({ kind: "mission", id: e.missionId, label: e.missionId });
-  if (e.agentId) refs.push({ kind: "agent", id: e.agentId, label: e.agentId });
-  if (e.systemId) refs.push({ kind: "system", id: e.systemId, label: e.systemId });
-  if (e.evidenceId) refs.push({ kind: "evidence", id: e.evidenceId, label: e.evidenceId });
-  if (e.verdictId) refs.push({ kind: "verdict", id: e.verdictId, label: e.verdictId });
-  if (e.memoryId) refs.push({ kind: "memory", id: e.memoryId, label: e.memoryId });
-  return refs;
+  return refsFromTimelineEvent(e);
 }
 
-export function Timeline() {
-  const { client, version, sourceMode } = useCommandCenter();
+function TimelineContent({ events }: { events: TimelineEvent[] }) {
+  const { sourceMode } = useCommandCenter();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [events, setEvents] = useState<TimelineEvent[] | null>(null);
   const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<TimelineEvent | null>(null);
+  const [manualSelected, setManualSelected] = useState<TimelineEvent | null>(null);
 
   const missionFilter = searchParams.get("mission");
   const agentFilter = searchParams.get("agent");
@@ -57,24 +52,13 @@ export function Timeline() {
   const categoryFilter = searchParams.get("category");
   const eventParam = searchParams.get("event");
 
-  useEffect(() => {
-    let cancelled = false;
-    client.listTimeline().then((e) => {
-      if (!cancelled) {
-        setEvents(e);
-        if (eventParam) {
-          const found = e.find((x) => x.id === eventParam);
-          setSelected(found ?? null);
-        }
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [client, version, eventParam]);
+  const selected = useMemo(() => {
+    if (manualSelected) return manualSelected;
+    if (!eventParam) return null;
+    return events.find((x) => x.id === eventParam) ?? null;
+  }, [manualSelected, eventParam, events]);
 
   const filtered = useMemo(() => {
-    if (!events) return [];
     const q = query.trim().toLowerCase();
     return events.filter((e) => {
       const catOk = !categoryFilter || e.category === categoryFilter;
@@ -104,14 +88,6 @@ export function Timeline() {
     setSearchParams(next, { replace: true });
   };
 
-  if (!events) {
-    return (
-      <div className="shell-content">
-        <LoadingState label="Loading timeline" />
-      </div>
-    );
-  }
-
   return (
     <div className="shell-content">
       <div className="timeline-head">
@@ -127,15 +103,36 @@ export function Timeline() {
 
       {missionFilter || agentFilter || systemFilter || severityFilter || categoryFilter ? (
         <div className="context-row">
-          {missionFilter ? <ContextChip label={`Mission ${missionFilter}`} onClear={() => clearParam("mission")} /> : null}
-          {agentFilter ? <ContextChip label={`Agent ${agentFilter}`} onClear={() => clearParam("agent")} /> : null}
-          {systemFilter ? <ContextChip label={`System ${systemFilter}`} onClear={() => clearParam("system")} /> : null}
+          {missionFilter ? (
+            <ContextChip
+              label={`Mission ${missionFilter}`}
+              entity={{ kind: "mission", id: missionFilter, label: missionFilter }}
+              onClear={() => clearParam("mission")}
+            />
+          ) : null}
+          {agentFilter ? (
+            <ContextChip
+              label={`Agent ${agentFilter}`}
+              entity={{ kind: "agent", id: agentFilter, label: agentFilter }}
+              onClear={() => clearParam("agent")}
+            />
+          ) : null}
+          {systemFilter ? (
+            <ContextChip
+              label={`System ${systemFilter}`}
+              entity={{ kind: "system", id: systemFilter, label: systemFilter }}
+              onClear={() => clearParam("system")}
+            />
+          ) : null}
           {severityFilter ? <ContextChip label={`Severity ${severityFilter}`} onClear={() => clearParam("severity")} /> : null}
           {categoryFilter ? <ContextChip label={`Category ${categoryFilter}`} onClear={() => clearParam("category")} /> : null}
         </div>
       ) : null}
 
       <div className="timeline-filters">
+        <span className="t-mono text-muted timeline-result-count" aria-live="polite">
+          {filtered.length} of {events.length} events
+        </span>
         {filters.map((f) => (
           <button
             key={f.key}
@@ -189,9 +186,9 @@ export function Timeline() {
         <div className="timeline">
           {groups.map((g) => (
             <div key={g.group} className="timeline-group">
-              <div className="timeline-group-marker">
+              <h2 className="timeline-group-marker">
                 <span className="t-mono">{g.group}</span>
-              </div>
+              </h2>
               {g.events.map((e) => {
                 const Icon = categoryIcon[e.category];
                 const refs = eventRefs(e);
@@ -202,7 +199,7 @@ export function Timeline() {
                       type="button"
                       className="tl-card panel panel-corner"
                       onClick={() => {
-                        setSelected(e);
+                        setManualSelected(e);
                         const next = new URLSearchParams(searchParams);
                         next.set("event", e.id);
                         setSearchParams(next, { replace: true });
@@ -248,7 +245,7 @@ export function Timeline() {
         open={selected !== null}
         title="Timeline Event"
         onClose={() => {
-          setSelected(null);
+          setManualSelected(null);
           const next = new URLSearchParams(searchParams);
           next.delete("event");
           setSearchParams(next, { replace: true });
@@ -263,12 +260,15 @@ export function Timeline() {
             <h3 className="t-title tl-drawer-title">{selected.title}</h3>
             <p className="prose">{selected.detail}</p>
             <dl className="record-fields">
-              {selected.meta.map((m) => (
-                <div key={m.label}>
-                  <dt className="t-label text-muted">{m.label}</dt>
-                  <dd className="t-mono">{m.value}</dd>
-                </div>
-              ))}
+              {selected.meta.map((m) => {
+                const ref = metaLabelToRef(m.label, m.value);
+                return (
+                  <div key={m.label}>
+                    <dt className="t-label text-muted">{m.label}</dt>
+                    <dd className="t-mono">{ref ? <RefChipRow refs={[ref]} /> : m.value}</dd>
+                  </div>
+                );
+              })}
             </dl>
             <div className="detail-section-label">
               <span className="t-label text-muted">Referenced records</span>
@@ -281,5 +281,24 @@ export function Timeline() {
         ) : null}
       </Drawer>
     </div>
+  );
+}
+
+export function Timeline() {
+  const { client, version } = useCommandCenter();
+  const eventsQuery = useRouteQuery(
+    () => client.listTimeline(),
+    [client, version],
+  );
+
+  return (
+    <RouteQueryGate
+      query={eventsQuery}
+      loadingLabel="Loading timeline"
+      errorLabel="Timeline unavailable"
+      surface="Evidence spine"
+    >
+      {(events) => <TimelineContent events={events} />}
+    </RouteQueryGate>
   );
 }

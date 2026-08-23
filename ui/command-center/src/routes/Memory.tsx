@@ -1,64 +1,69 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { HelpCircle, RefreshCcw, ShieldQuestion } from "lucide-react";
+import { HelpCircle, RefreshCcw, Search, ShieldQuestion } from "lucide-react";
 import { useCommandCenter } from "../context/CommandCenterContext";
 import type { MemoryGraph, MemoryNode } from "../lib/contracts";
 import { KnowledgeGraph } from "../components/KnowledgeGraph";
 import { StatusBadge } from "../components/StatusBadge";
 import { Dialog } from "../components/Dialog";
-import { ErrorState, LoadingState } from "../components/states";
+import { EmptyState, ErrorState } from "../components/states";
+import { RouteQueryGate } from "../components/RouteQueryGate";
 import { ContextChip, EntityRefLink } from "../components/EntityRefLink";
+import { useRouteQuery } from "../hooks/useRouteQuery";
 import { sourceModeLabel } from "../lib/sourceMode";
+import { NOT_REPORTED_NUMERIC } from "../lib/truthFormat";
 
-export function Memory() {
-  const { client, version, sourceMode } = useCommandCenter();
+const formatConfidenceLabel = (value: number): string => {
+  if (value === NOT_REPORTED_NUMERIC || !Number.isFinite(value) || value < 0) return "NOT REPORTED";
+  return `${value}%`;
+};
+
+function MemoryContent({ graph }: { graph: MemoryGraph }) {
+  const { sourceMode } = useCommandCenter();
   const { memoryId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const missionParam = searchParams.get("mission");
-  const [graph, setGraph] = useState<MemoryGraph | null>(null);
-  const [selected, setSelected] = useState<MemoryNode | null>(null);
-  const [notFound, setNotFound] = useState(false);
-  const [missionNoNode, setMissionNoNode] = useState(false);
+  const [nodeQuery, setNodeQuery] = useState(searchParams.get("q") ?? "");
+  const [manualSelected, setManualSelected] = useState<MemoryNode | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [requested, setRequested] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    client.getMemoryGraph().then((g) => {
-      if (cancelled) return;
-      setGraph(g);
-      let node: MemoryNode | undefined;
-      if (memoryId) {
-        node = g.nodes.find((n) => n.id === memoryId);
-        if (!node) {
-          setNotFound(true);
-          return;
-        }
-      } else if (missionParam) {
-        const matched = g.nodes.find((n) => n.ref?.kind === "mission" && n.ref.id === missionParam);
-        if (!matched) {
-          setMissionNoNode(true);
-          setSelected(null);
-          return;
-        }
-        node = matched;
-      }
-      setMissionNoNode(false);
-      setSelected(node ?? g.nodes.find((n) => n.id === "n-mission") ?? g.nodes[0]);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [client, version, memoryId, missionParam]);
+  const missionNoNode = Boolean(
+    missionParam &&
+      !memoryId &&
+      !graph.nodes.some((n) => n.ref?.kind === "mission" && n.ref.id === missionParam),
+  );
+
+  const derivedSelected = useMemo(() => {
+    if (memoryId) {
+      return graph.nodes.find((n) => n.id === memoryId) ?? null;
+    }
+    if (missionParam) {
+      return graph.nodes.find((n) => n.ref?.kind === "mission" && n.ref.id === missionParam) ?? null;
+    }
+    return graph.nodes.find((n) => n.id === "n-mission") ?? graph.nodes[0] ?? null;
+  }, [graph, memoryId, missionParam]);
+
+  const selected = manualSelected ?? derivedSelected;
+
+  const matchingNodes = useMemo(() => {
+    const q = nodeQuery.trim().toLowerCase();
+    if (!q) return graph.nodes;
+    return graph.nodes.filter(
+      (n) =>
+        `${n.id} ${n.label} ${n.category} ${n.summary} ${n.ref?.id ?? ""}`.toLowerCase().includes(q),
+    );
+  }, [graph.nodes, nodeQuery]);
+
+  const matchingIds = useMemo(() => new Set(matchingNodes.map((n) => n.id)), [matchingNodes]);
 
   const connectedCount = useMemo(() => {
-    if (!graph) return 0;
     const ids = new Set(graph.edges.flatMap((e) => [e.from, e.to]));
     return ids.size;
   }, [graph]);
 
-  if (notFound) {
+  if (memoryId && !graph.nodes.some((n) => n.id === memoryId)) {
     return (
       <div className="shell-content">
         <ErrorState
@@ -74,10 +79,30 @@ export function Memory() {
     );
   }
 
-  if (!graph || (!selected && !missionNoNode)) {
+  if (graph.nodes.length === 0) {
     return (
       <div className="shell-content">
-        <LoadingState label="Loading knowledge graph" />
+        <EmptyState
+          label="Knowledge graph empty"
+          detail={
+            sourceMode === "SIMULATED"
+              ? "No memory nodes are present in this simulated projection."
+              : sourceMode === "LIVE"
+                ? "No canonical memory nodes are currently projected."
+                : `Knowledge graph unavailable: runtime source is ${sourceModeLabel(sourceMode)}.`
+          }
+        />
+      </div>
+    );
+  }
+
+  if (!selected && !missionNoNode) {
+    return (
+      <div className="shell-content">
+        <EmptyState
+          label="No node selected"
+          detail="Select a node in the knowledge graph to inspect it."
+        />
       </div>
     );
   }
@@ -100,20 +125,58 @@ export function Memory() {
             <span className="t-mono text-muted">{graph.edges.length} edges</span>
           </div>
         </div>
-        {missionParam ? (
+        {missionParam || nodeQuery ? (
           <div className="context-row memory-context-row">
-            <ContextChip
-              label={`Memory related to mission ${missionParam}`}
-              onClear={() => setSearchParams({}, { replace: true })}
-            />
+            {missionParam ? (
+              <ContextChip
+                label={`Memory related to mission ${missionParam}`}
+                entity={{ kind: "mission", id: missionParam, label: missionParam }}
+                onClear={() => {
+                  const next = new URLSearchParams(searchParams);
+                  next.delete("mission");
+                  setSearchParams(next, { replace: true });
+                }}
+              />
+            ) : null}
+            {nodeQuery ? (
+              <ContextChip
+                label={`Search "${nodeQuery}"`}
+                onClear={() => {
+                  setNodeQuery("");
+                  const next = new URLSearchParams(searchParams);
+                  next.delete("q");
+                  setSearchParams(next, { replace: true });
+                }}
+              />
+            ) : null}
           </div>
         ) : null}
+        <div className="memory-toolbar">
+          <div className="memory-search">
+            <Search size={14} className="text-muted" aria-hidden="true" />
+            <input
+              className="field memory-search-input"
+              placeholder="Filter nodes by label, category, id..."
+              value={nodeQuery}
+              onChange={(e) => {
+                const value = e.target.value;
+                setNodeQuery(value);
+                const next = new URLSearchParams(searchParams);
+                if (value.trim()) next.set("q", value);
+                else next.delete("q");
+                setSearchParams(next, { replace: true });
+              }}
+              aria-label="Filter knowledge graph nodes"
+            />
+          </div>
+          <span className="t-mono text-muted">{matchingNodes.length} of {graph.nodes.length} nodes</span>
+        </div>
         <KnowledgeGraph
           graph={graph}
           selectedId={selected?.id ?? null}
+          highlightIds={nodeQuery.trim() ? matchingIds : null}
           onSelect={(node) => {
-            setMissionNoNode(false);
-            setSelected(node);
+            setManualSelected(node);
             navigate(`/memory/${node.id}`, { replace: memoryId === node.id });
           }}
         />
@@ -158,20 +221,22 @@ export function Memory() {
                   <div>
                     <div className="inspector-bar-head">
                       <span className="t-mono">Confidence</span>
-                      <span className="t-mono inspector-bar-value">{selected.confidence}%</span>
+                      <span className="t-mono inspector-bar-value">{formatConfidenceLabel(selected.confidence)}</span>
                     </div>
-                    <div className="meter">
-                      <div className="meter-fill" style={{ width: `${selected.confidence}%` }} />
-                    </div>
+                    {selected.confidence >= 0 && Number.isFinite(selected.confidence) ? (
+                      <div className="meter">
+                        <div className="meter-fill" style={{ width: `${selected.confidence}%` }} />
+                      </div>
+                    ) : (
+                      <p className="t-mono text-muted inspector-unknown-none">Confidence not reported in canonical projection.</p>
+                    )}
                   </div>
                   <div>
                     <div className="inspector-bar-head">
                       <span className="t-mono">Freshness</span>
-                      <span className="t-mono inspector-bar-value">{selected.freshness}</span>
+                      <span className="t-mono inspector-bar-value">{selected.freshness || "NOT REPORTED"}</span>
                     </div>
-                    <div className="meter">
-                      <div className="meter-fill meter-fill-teal" style={{ width: "88%" }} />
-                    </div>
+                    <p className="t-mono text-muted inspector-unknown-none">Freshness is shown as the recorded timestamp, not a fabricated percentage.</p>
                   </div>
                 </div>
               </div>
@@ -245,5 +310,25 @@ export function Memory() {
         </div>
       </Dialog>
     </div>
+  );
+}
+
+export function Memory() {
+  const { client, version } = useCommandCenter();
+  const graphQuery = useRouteQuery(
+    () => client.getMemoryGraph(),
+    [client, version],
+  );
+
+  return (
+    <RouteQueryGate
+      query={graphQuery}
+      loadingLabel="Loading knowledge graph"
+      errorLabel="Knowledge graph unavailable"
+      surface="Knowledge graph"
+      shellClass="shell-content"
+    >
+      {(graph) => <MemoryContent graph={graph} />}
+    </RouteQueryGate>
   );
 }

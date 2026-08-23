@@ -13,7 +13,7 @@ describe("Trust model", () => {
 
     await waitFor(() => expect(screen.getAllByText("Evidence coverage").length).toBeGreaterThan(0));
     expect(container.textContent).not.toContain("99.8");
-    expect(screen.getByText(/SCORE: NOT_AVAILABLE/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Trust score not available/i)).toBeInTheDocument()
     expect(screen.getByText("Gate")).toBeInTheDocument();
     expect(screen.getByText("GATED")).toBeInTheDocument();
     expect(screen.getByText(/SIMULATED FIXTURE - not canonical JARVIS truth/i)).toBeInTheDocument();

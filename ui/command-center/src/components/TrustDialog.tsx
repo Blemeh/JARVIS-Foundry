@@ -5,6 +5,7 @@ import type { TrustSummary } from "../lib/contracts";
 import { StatusBadge } from "./StatusBadge";
 import { useCommandCenter } from "../context/CommandCenterContext";
 import { sourceCopy, sourceModeLabel } from "../lib/sourceMode";
+import { formatCoveragePercent } from "../lib/truthFormat";
 
 export function TrustDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { client, version, sourceMode } = useCommandCenter();
@@ -46,8 +47,8 @@ export function TrustDialog({ open, onClose }: { open: boolean; onClose: () => v
             </div>
             <div className="trust-hero-values">
               <StatusBadge status={trust.state} />
-              <span className="t-mono text-muted">
-                {trust.score === null ? "SCORE: NOT_AVAILABLE" : `SCORE: ${trust.score}%`}
+              <span className="t-mono text-muted" aria-label={trust.score === null ? "Trust score not available" : `Trust score ${trust.score} percent`}>
+                {trust.score === null ? "SCORE: NOT AVAILABLE" : `SCORE: ${trust.score}%`}
               </span>
             </div>
           </div>
@@ -58,7 +59,7 @@ export function TrustDialog({ open, onClose }: { open: boolean; onClose: () => v
             </div>
             <div className="trust-cell">
               <span className="t-label text-muted">Evidence coverage</span>
-              <span className="t-mono">{trust.evidenceCoverage}%</span>
+              <span className="t-mono">{formatCoveragePercent(trust.evidenceCoverage)}</span>
             </div>
             <div className="trust-cell">
               <span className="t-label text-muted">Open findings</span>

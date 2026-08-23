@@ -1,60 +1,52 @@
-import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, FileCode2, Fingerprint, Link2 } from "lucide-react";
 import { useCommandCenter } from "../context/CommandCenterContext";
 import type { EvidenceArtifact, LineageNode, TimelineEvent } from "../lib/contracts";
 import { StatusBadge } from "../components/StatusBadge";
-import { LoadingState, ErrorState } from "../components/states";
+import { DetailRouteQueryGate } from "../components/DetailRouteQueryGate";
 import { EntityRefLink } from "../components/EntityRefLink";
 import { Lineage } from "../components/Lineage";
+import { useRouteQuery } from "../hooks/useRouteQuery";
 import { formatHash } from "../lib/format";
 import { sourceModeLabel } from "../lib/sourceMode";
+
+type EvidenceDetailData = {
+  item: EvidenceArtifact;
+  lineage: LineageNode[];
+  relatedEvents: TimelineEvent[];
+};
 
 export function EvidenceDetail() {
   const { evidenceId } = useParams();
   const { client, version, sourceMode } = useCommandCenter();
-  const [item, setItem] = useState<EvidenceArtifact | null>(null);
-  const [lineage, setLineage] = useState<LineageNode[]>([]);
-  const [relatedEvents, setRelatedEvents] = useState<TimelineEvent[]>([]);
-  const [notFound, setNotFound] = useState(false);
+  const detailQuery = useRouteQuery(
+    async () => {
+      if (!evidenceId) return null;
+      const item = await client.getEvidence(evidenceId);
+      if (!item) return null;
+      const [lineage, timeline] = await Promise.all([
+        client.getLineage(item.missionRef),
+        client.listTimeline(),
+      ]);
+      return {
+        item,
+        lineage,
+        relatedEvents: timeline.filter((x) => x.evidenceId === item.id || (item.relatedEventId && x.id === item.relatedEventId)),
+      } satisfies EvidenceDetailData;
+    },
+    [client, version, evidenceId],
+  );
 
-  useEffect(() => {
-    if (!evidenceId) return;
-    let cancelled = false;
-    client.getEvidence(evidenceId).then((e) => {
-      if (cancelled) return;
-      if (!e) {
-        setNotFound(true);
-        return;
-      }
-      setItem(e);
-      void Promise.all([client.getLineage(e.missionRef), client.listTimeline()]).then(([lin, tl]) => {
-        if (cancelled) return;
-        setLineage(lin);
-        setRelatedEvents(tl.filter((x) => x.evidenceId === e.id || (e.relatedEventId && x.id === e.relatedEventId)));
-      });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [evidenceId, client, version]);
-
-  if (notFound) {
-    return (
-      <div className="shell-content">
-        <ErrorState label="Evidence not found" detail={sourceMode === "SIMULATED" ? "No simulated artifact exists at this identifier." : sourceMode === "LIVE" ? "No canonical artifact exists at this identifier." : `Evidence lookup unavailable: runtime source is ${sourceModeLabel(sourceMode)}.`} />
-      </div>
-    );
-  }
-
-  if (!item) {
-    return (
-      <div className="shell-content">
-        <LoadingState label="Loading evidence record" />
-      </div>
-    );
-  }
-
+  return (
+    <DetailRouteQueryGate
+      query={detailQuery}
+      loadingLabel="Loading evidence record"
+      notFoundLabel="Evidence not found"
+      notFoundDetail={sourceMode === "SIMULATED" ? "No simulated artifact exists at this identifier." : sourceMode === "LIVE" ? "No canonical artifact exists at this identifier." : `Evidence lookup unavailable: runtime source is ${sourceModeLabel(sourceMode)}.`}
+      errorLabel="Evidence detail unavailable"
+      surface="Evidence detail"
+    >
+      {({ item, lineage, relatedEvents }) => {
   const chain = [
     { label: "Observation", value: item.source },
     { label: "Evidence", value: `${item.id} · ${item.typeLabel}` },
@@ -198,5 +190,8 @@ export function EvidenceDetail() {
 
       <p className="t-mono text-muted">{sourceMode === "SIMULATED" ? "SIMULATED RECORD - the runtime adapter will replace this with canonical ledger evidence." : sourceMode === "LIVE" ? "LIVE RECORD - canonical ledger evidence." : `RECORD SOURCE ${sourceModeLabel(sourceMode)} - canonical ledger evidence is unavailable.`}</p>
     </div>
+  );
+      }}
+    </DetailRouteQueryGate>
   );
 }

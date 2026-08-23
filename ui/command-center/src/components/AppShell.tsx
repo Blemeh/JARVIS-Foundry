@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { X } from "lucide-react";
 import { Sidebar, SidebarContent } from "./Sidebar";
 import { TopStatusBar } from "./TopStatusBar";
@@ -7,8 +7,27 @@ import { CommandBar } from "./CommandBar";
 import { MobileNav } from "./MobileNav";
 import { EmergencyStopDialog } from "./EmergencyStop";
 import { StopBanner } from "./StopBanner";
+import { RoutedOutletBoundary } from "./RouteErrorBoundary";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
+
+const routeTitles: Record<string, string> = {
+  "/": "Overview",
+  "/executive": "Executive",
+  "/discovery": "Discovery",
+  "/missions": "Missions",
+  "/agents": "Agents",
+  "/evidence": "Evidence",
+  "/memory": "Memory",
+  "/systems": "Systems",
+  "/timeline": "Timeline",
+  "/notifications": "Notifications",
+};
 
 export function AppShell() {
+  const location = useLocation();
+  const basePath = location.pathname.split("/").slice(0, 2).join("/") || "/";
+  const pageTitle = routeTitles[location.pathname] ?? routeTitles[basePath] ?? "Command Center";
+  useDocumentTitle(pageTitle);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
@@ -26,9 +45,11 @@ export function AppShell() {
       </a>
       <Sidebar />
       <TopStatusBar onOpenMobileNav={() => setMobileOpen(true)} />
-      <main className="shell-main" id="main-content">
+      <main className="shell-main" id="main-content" tabIndex={-1}>
         <StopBanner />
-        <Outlet />
+        <RoutedOutletBoundary>
+          <Outlet />
+        </RoutedOutletBoundary>
       </main>
       <CommandBar />
       <MobileNav onOpenDrawer={() => setMobileOpen(true)} />

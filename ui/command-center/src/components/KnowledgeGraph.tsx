@@ -6,10 +6,11 @@ import { categoryColors, categoryLegend } from "../lib/graphMeta";
 interface KnowledgeGraphProps {
   graph: MemoryGraph;
   selectedId: string | null;
+  highlightIds?: Set<string> | null;
   onSelect: (node: MemoryNode) => void;
 }
 
-export function KnowledgeGraph({ graph, selectedId, onSelect }: KnowledgeGraphProps) {
+export function KnowledgeGraph({ graph, selectedId, highlightIds, onSelect }: KnowledgeGraphProps) {
   const [zoom, setZoom] = useState(1);
   const nodes = graph.nodes;
 
@@ -47,9 +48,9 @@ export function KnowledgeGraph({ graph, selectedId, onSelect }: KnowledgeGraphPr
   }, [edges, nodes]);
 
   return (
-    <div className="graph-wrap">
+    <div className="graph-wrap" aria-label="Knowledge graph visualization">
       <div className="graph-canvas" style={{ transform: `scale(${zoom})` }}>
-        <svg viewBox="0 0 100 100" className="graph-svg" role="img" aria-label="Knowledge graph visualization">
+        <svg viewBox="0 0 100 100" className="graph-svg">
           <defs>
             <pattern id="graph-grid" width="6.25" height="6.25" patternUnits="userSpaceOnUse">
               <path d="M 6.25 0 L 0 0 0 6.25" fill="none" stroke="rgba(255,255,255,0.045)" strokeWidth="0.08" />
@@ -81,9 +82,10 @@ export function KnowledgeGraph({ graph, selectedId, onSelect }: KnowledgeGraphPr
           ))}
           {inView.map((n) => {
             const selected = n.id === selectedId;
+            const dimmed = highlightIds ? !highlightIds.has(n.id) : false;
             const color = categoryColors[n.category];
             return (
-              <g key={n.id} className="graph-node-g">
+              <g key={n.id} className={`graph-node-g${dimmed ? " graph-node-dimmed" : ""}`} opacity={dimmed ? 0.28 : 1}>
                 {selected ? (
                   <circle cx={n.x} cy={n.y} r={n.r + 3.2} fill="none" stroke={color} strokeWidth="0.35" strokeDasharray="1.2 0.8" />
                 ) : null}

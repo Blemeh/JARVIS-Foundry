@@ -1,38 +1,33 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Activity, Bolt, FileSearch, Plus, Search } from "lucide-react";
 import { useCommandCenter } from "../context/CommandCenterContext";
-import type { Worker } from "../lib/contracts";
 import { SectionHeader } from "../components/SectionHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { MetricCard } from "../components/MetricCard";
 import { Dialog } from "../components/Dialog";
-import { EmptyState, LoadingState } from "../components/states";
+import { EmptyState } from "../components/states";
+import { RouteQueryGate } from "../components/RouteQueryGate";
 import { ContextChip } from "../components/EntityRefLink";
+import { useRouteQuery } from "../hooks/useRouteQuery";
 import { sourceCopy, sourceModeLabel } from "../lib/sourceMode";
 
 export function Agents() {
   const { client, version, stopActive, sourceMode } = useCommandCenter();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [workers, setWorkers] = useState<Worker[] | null>(null);
-  const [query, setQuery] = useState("");
-  const [deployOpen, setDeployOpen] = useState(false);
-  const [deployed, setDeployed] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    client.listWorkers().then((w) => {
-      if (!cancelled) setWorkers(w);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [client, version]);
+  const workersQuery = useRouteQuery(
+    () => client.listWorkers(),
+    [client, version],
+  );
 
   const missionFilter = searchParams.get("mission");
   const statusFilter = searchParams.get("status");
 
-  const filtered = (workers ?? []).filter((w) => {
+  const [query, setQuery] = useState("");
+  const [deployOpen, setDeployOpen] = useState(false);
+  const [deployed, setDeployed] = useState(false);
+
+  const filtered = (workersQuery.data ?? []).filter((w) => {
     const q = query.trim().toLowerCase();
     if (q && !`${w.name} ${w.role} ${w.provider} ${w.id}`.toLowerCase().includes(q)) return false;
     if (missionFilter && !(w.missionIds ?? []).includes(missionFilter)) return false;
@@ -45,22 +40,21 @@ export function Agents() {
     setDeployed(true);
   };
 
-  if (!workers) {
-    return (
-      <div className="shell-content">
-        <LoadingState label="Loading agent fleet" />
-      </div>
-    );
-  }
-
-  const counts = {
-    active: workers.filter((w) => w.status === "ACTIVE").length,
-    standby: workers.filter((w) => w.status === "STANDBY").length,
-    degraded: workers.filter((w) => w.status === "DEGRADED" || w.status === "RATE_LIMITED").length,
-    atRisk: workers.filter((w) => w.status === "FAILED" || w.status === "RECOVERING" || w.status === "RATE_LIMITED").length,
-  };
-
   return (
+    <RouteQueryGate
+      query={workersQuery}
+      loadingLabel="Loading agent fleet"
+      errorLabel="Agent fleet unavailable"
+      surface="Specialist fleet"
+    >
+      {(workers) => {
+        const counts = {
+          active: workers.filter((w) => w.status === "ACTIVE").length,
+          standby: workers.filter((w) => w.status === "STANDBY").length,
+          degraded: workers.filter((w) => w.status === "DEGRADED" || w.status === "RATE_LIMITED").length,
+          atRisk: workers.filter((w) => w.status === "FAILED" || w.status === "RECOVERING" || w.status === "RATE_LIMITED").length,
+        }
+        return (
     <div className="shell-content">
       <SectionHeader
         kicker="Specialist Fleet"
@@ -85,7 +79,12 @@ export function Agents() {
           {missionFilter ? (
             <ContextChip
               label={`Workers for mission ${missionFilter}`}
-              onClear={() => setSearchParams({}, { replace: true })}
+              entity={{ kind: "mission", id: missionFilter, label: missionFilter }}
+              onClear={() => {
+                const next = new URLSearchParams(searchParams);
+                next.delete("mission");
+                setSearchParams(next, { replace: true });
+              }}
             />
           ) : null}
           {statusFilter ? (
@@ -135,7 +134,7 @@ export function Agents() {
                   </span>
                   <div>
                     <Link to={`/agents/${w.id}`} className="agent-card-name-link">
-                      <h3 className="agent-card-name">{w.name}</h3>
+                      <h2 className="agent-card-name">{w.name}</h2>
                     </Link>
                     <p className="t-mono agent-card-id">
                       <Link to={`/agents/${w.id}`}>{w.id}</Link> | {w.provider}
@@ -217,5 +216,8 @@ export function Agents() {
         )}
       </Dialog>
     </div>
+        )
+      }}
+    </RouteQueryGate>
   );
 }

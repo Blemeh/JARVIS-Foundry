@@ -323,6 +323,42 @@
   font-size: 10px;
 }
 
+.telemetry-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.telemetry-link:hover,
+.telemetry-link:focus-visible {
+  background: rgba(138, 255, 239, 0.06);
+  outline: none;
+}
+
+.telemetry-link article {
+  height: 100%;
+}
+
+.overview-event-refs {
+  margin-top: 8px;
+}
+
+.v4-footer-link {
+  color: var(--evidence-cyan);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.v4-footer-link:hover,
+.v4-footer-link:focus-visible {
+  text-decoration: underline;
+}
+
 /* Operations - mission vectors + evidence spine */
 .operations {
   display: grid;

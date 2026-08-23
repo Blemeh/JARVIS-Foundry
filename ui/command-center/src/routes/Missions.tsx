@@ -1,19 +1,22 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowRight, Grid3X3, List, Plus, Upload } from "lucide-react";
+import { ArrowRight, Grid3X3, List, Plus, Search, Upload } from "lucide-react";
 import { useCommandCenter } from "../context/CommandCenterContext";
-import type { Mission } from "../lib/contracts";
 import { SectionHeader } from "../components/SectionHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { Pagination } from "../components/Pagination";
 import { Dialog } from "../components/Dialog";
-import { EmptyState, LoadingState } from "../components/states";
+import { EmptyState } from "../components/states";
+import { RouteQueryGate } from "../components/RouteQueryGate";
 import { Tooltip } from "../components/Tooltip";
 import { ContextChip } from "../components/EntityRefLink";
+import { useRouteQuery } from "../hooks/useRouteQuery";
+import { formatArchivedMissionLabel } from "../lib/routeResilience";
 import { sourceCopy, sourceModeLabel } from "../lib/sourceMode";
 
 type Filter = "ALL" | "ACTIVE" | "STANDBY" | "BLOCKED" | "ARCHIVED";
 type View = "grid" | "list";
+type SortKey = "priority" | "status" | "title";
 
 const PAGE_SIZE = 6;
 
@@ -23,36 +26,68 @@ const statusParam: Record<string, Filter> = {
   blocked: "BLOCKED",
 };
 
+const priorityRank: Record<string, number> = {
+  CRITICAL: 0,
+  HIGH: 1,
+  ELEVATED: 2,
+  NORMAL: 3,
+  LOW: 4,
+};
+
 export function Missions() {
   const { client, version, mode, mutationsEnabled, sourceMode } = useCommandCenter();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [missions, setMissions] = useState<Mission[] | null>(null);
-  const [filter, setFilter] = useState<Filter>(statusParam[searchParams.get("status") ?? ""] ?? "ALL");
-  const [view, setView] = useState<View>("grid");
+  const statusFromUrl = statusParam[searchParams.get("status") ?? ""] ?? "ALL";
+  const [filter, setFilter] = useState<Filter>(statusFromUrl);
+  const [view, setView] = useState<View>((searchParams.get("view") as View) === "list" ? "list" : "grid");
   const [page, setPage] = useState(1);
+  const [query, setQuery] = useState(searchParams.get("q") ?? "");
+  const [sort, setSort] = useState<SortKey>((searchParams.get("sort") as SortKey) || "priority");
   const [dialog, setDialog] = useState<"new" | "import" | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const live = mode === "live";
+  const activeFilter = searchParams.get("status") ? statusFromUrl : filter;
 
-  useEffect(() => {
-    let cancelled = false;
-    client.listMissions().then((m) => {
-      if (!cancelled) setMissions(m);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [client, version]);
+  const missionsQuery = useRouteQuery(
+    () => client.listMissions(),
+    [client, version],
+  );
 
   const filtered = useMemo(() => {
-    if (!missions) return [];
-    if (filter === "ALL") return missions;
-    if (filter === "ACTIVE") return missions.filter((m) => m.status === "ACTIVE" || m.status === "IN_PROGRESS" || m.status === "INTERVENTION");
-    if (filter === "STANDBY") return missions.filter((m) => m.status === "STANDBY");
-    if (filter === "BLOCKED") return missions.filter((m) => m.status === "BLOCKED" || m.status === "HALTED");
-    return [];
-  }, [missions, filter]);
+    const missions = missionsQuery.data ?? [];
+    const candidateFilter = searchParams.get("candidate")?.toLowerCase();
+    const q = query.trim().toLowerCase();
+    let rows = missions;
+    if (candidateFilter) {
+      rows = rows.filter(
+        (m) =>
+          m.id.toLowerCase().includes(candidateFilter) ||
+          m.code.toLowerCase().includes(candidateFilter) ||
+          m.title.toLowerCase().includes(candidateFilter) ||
+          (m.objective ?? "").toLowerCase().includes(candidateFilter),
+      );
+    }
+    if (q) {
+      rows = rows.filter(
+        (m) =>
+          `${m.id} ${m.code} ${m.title} ${m.stage} ${m.status} ${m.nextAction ?? ""} ${m.owner ?? ""}`
+            .toLowerCase()
+            .includes(q),
+      );
+    }
+    if (activeFilter === "ACTIVE") rows = rows.filter((m) => m.status === "ACTIVE" || m.status === "IN_PROGRESS" || m.status === "INTERVENTION");
+    else if (activeFilter === "STANDBY") rows = rows.filter((m) => m.status === "STANDBY");
+    else if (activeFilter === "BLOCKED") rows = rows.filter((m) => m.status === "BLOCKED" || m.status === "HALTED");
+    else if (activeFilter === "ARCHIVED") rows = rows.filter((m) => m.status === "COMPLETE");
+    else if (activeFilter !== "ALL") rows = [];
+
+    return [...rows].sort((a, b) => {
+      if (sort === "title") return a.title.localeCompare(b.title);
+      if (sort === "status") return a.status.localeCompare(b.status);
+      return (priorityRank[a.priority] ?? 9) - (priorityRank[b.priority] ?? 9);
+    });
+  }, [missionsQuery.data, activeFilter, searchParams, query, sort]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
@@ -68,8 +103,7 @@ export function Missions() {
       if (result.accepted) {
         setSubmitted(true);
         setSubmitError(null);
-        const refreshed = await client.listMissions();
-        setMissions(refreshed);
+        missionsQuery.reload();
       } else {
         setSubmitError(result.error ?? "owner goal rejected");
       }
@@ -78,25 +112,26 @@ export function Missions() {
     setSubmitted(true);
   };
 
-  if (!missions) {
-    return (
-      <div className="shell-content">
-        <LoadingState label="Loading missions" />
-      </div>
-    );
-  }
-
-  const filters: { key: Filter; label: string }[] = [
-    { key: "ALL", label: "All" },
-    { key: "ACTIVE", label: `Active (${missions.filter((m) => ["ACTIVE", "IN_PROGRESS", "INTERVENTION"].includes(m.status)).length})` },
-    { key: "STANDBY", label: `Standby (${missions.filter((m) => m.status === "STANDBY").length})` },
-    { key: "BLOCKED", label: `Blocked (${missions.filter((m) => m.status === "BLOCKED" || m.status === "HALTED").length})` },
-    { key: "ARCHIVED", label: "Archived (48)" },
-  ];
-
-  const statusValue = searchParams.get("status");
-
   return (
+    <RouteQueryGate
+      query={missionsQuery}
+      loadingLabel="Loading missions"
+      errorLabel="Missions unavailable"
+      surface="Mission vectors"
+    >
+      {(missions) => {
+        const archivedCount = missions.filter((m) => m.status === "COMPLETE").length;
+        const filters: { key: Filter; label: string }[] = [
+          { key: "ALL", label: "All" },
+          { key: "ACTIVE", label: `Active (${missions.filter((m) => ["ACTIVE", "IN_PROGRESS", "INTERVENTION"].includes(m.status)).length})` },
+          { key: "STANDBY", label: `Standby (${missions.filter((m) => m.status === "STANDBY").length})` },
+          { key: "BLOCKED", label: `Blocked (${missions.filter((m) => m.status === "BLOCKED" || m.status === "HALTED").length})` },
+          { key: "ARCHIVED", label: formatArchivedMissionLabel(archivedCount) },
+        ];
+        const statusValue = searchParams.get("status");
+        const candidateValue = searchParams.get("candidate");
+
+        return (
     <div className="shell-content">
       <SectionHeader
         kicker="Mission Vectors"
@@ -122,17 +157,87 @@ export function Missions() {
         }
       />
 
-      {statusValue ? (
+      {statusValue || candidateValue || query ? (
         <div className="context-row">
-          <ContextChip
-            label={`Mission status: ${statusValue.toUpperCase()}`}
-            onClear={() => {
-              setSearchParams({}, { replace: true });
-              setFilter("ALL");
-            }}
-          />
+          {statusValue ? (
+            <ContextChip
+              label={`Mission status: ${statusValue.toUpperCase()}`}
+              onClear={() => {
+                const next = new URLSearchParams(searchParams);
+                next.delete("status");
+                setSearchParams(next, { replace: true });
+                setFilter("ALL");
+              }}
+            />
+          ) : null}
+          {candidateValue ? (
+            <ContextChip
+              label={`Candidate ${candidateValue}`}
+              onClear={() => {
+                const next = new URLSearchParams(searchParams);
+                next.delete("candidate");
+                setSearchParams(next, { replace: true });
+                setPage(1);
+              }}
+            />
+          ) : null}
+          {query ? (
+            <ContextChip
+              label={`Search "${query}"`}
+              onClear={() => {
+                setQuery("");
+                const next = new URLSearchParams(searchParams);
+                next.delete("q");
+                setSearchParams(next, { replace: true });
+                setPage(1);
+              }}
+            />
+          ) : null}
         </div>
       ) : null}
+
+      <div className="missions-toolbar missions-toolbar-extended">
+        <div className="missions-search">
+          <Search size={14} className="text-muted" aria-hidden="true" />
+          <input
+            className="field missions-search-input"
+            placeholder="Search missions by id, title, stage, owner..."
+            value={query}
+            onChange={(e) => {
+              const value = e.target.value;
+              setQuery(value);
+              setPage(1);
+              const next = new URLSearchParams(searchParams);
+              if (value.trim()) next.set("q", value);
+              else next.delete("q");
+              setSearchParams(next, { replace: true });
+            }}
+            aria-label="Search missions"
+          />
+        </div>
+        <label className="missions-sort">
+          <span className="t-label text-muted">Sort</span>
+          <select
+            className="field"
+            value={sort}
+            onChange={(e) => {
+              const value = e.target.value as SortKey;
+              setSort(value);
+              const next = new URLSearchParams(searchParams);
+              next.set("sort", value);
+              setSearchParams(next, { replace: true });
+            }}
+            aria-label="Sort missions"
+          >
+            <option value="priority">Priority</option>
+            <option value="status">Status</option>
+            <option value="title">Title</option>
+          </select>
+        </label>
+        <span className="t-mono text-muted missions-result-count">
+          {filtered.length} of {missions.length} missions
+        </span>
+      </div>
 
       <div className="missions-toolbar">
         <div className="segmented" role="group" aria-label="Mission filters">
@@ -140,8 +245,8 @@ export function Missions() {
             <button
               key={f.key}
               type="button"
-              className={`segmented-item ${filter === f.key ? "segmented-item-active" : ""}`}
-              aria-pressed={filter === f.key}
+              className={`segmented-item ${activeFilter === f.key ? "segmented-item-active" : ""}`}
+              aria-pressed={activeFilter === f.key}
               onClick={() => {
                 setFilter(f.key);
                 setPage(1);
@@ -160,7 +265,12 @@ export function Missions() {
             className={`icon-btn ${view === "grid" ? "view-toggle-active" : ""}`}
             aria-label="Grid view"
             aria-pressed={view === "grid"}
-            onClick={() => setView("grid")}
+            onClick={() => {
+              setView("grid");
+              const next = new URLSearchParams(searchParams);
+              next.delete("view");
+              setSearchParams(next, { replace: true });
+            }}
           >
             <Grid3X3 size={15} />
           </button>
@@ -169,7 +279,12 @@ export function Missions() {
             className={`icon-btn ${view === "list" ? "view-toggle-active" : ""}`}
             aria-label="List view"
             aria-pressed={view === "list"}
-            onClick={() => setView("list")}
+            onClick={() => {
+              setView("list");
+              const next = new URLSearchParams(searchParams);
+              next.set("view", "list");
+              setSearchParams(next, { replace: true });
+            }}
           >
             <List size={15} />
           </button>
@@ -192,7 +307,7 @@ export function Missions() {
               <div className="mission-card-head">
                 <div>
                   <span className="t-mono mission-card-code">{m.code}</span>
-                  <h3 className="mission-card-title">{m.title}</h3>
+                  <h2 className="mission-card-title">{m.title}</h2>
                 </div>
                 <StatusBadge status={m.status} pulse={m.status === "ACTIVE"} />
               </div>
@@ -328,5 +443,8 @@ export function Missions() {
         )}
       </Dialog>
     </div>
+        );
+      }}
+    </RouteQueryGate>
   );
 }

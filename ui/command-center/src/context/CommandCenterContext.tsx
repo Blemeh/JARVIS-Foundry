@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { ConnectionState, JarvisClient, MockEventType, Notification, Scenario } from "../lib/contracts";
+import type { ConnectionState, JarvisClient, MockEventType, Notification, Scenario, TrustSummary } from "../lib/contracts";
 import { createJarvisClient, resolveClientMode } from "../lib/clientFactory";
 import { MockJarvisClient } from "../lib/mockClient";
 import { resolveSourceMode, type ResolvedSourceMode } from "../lib/sourceMode";
@@ -38,12 +38,17 @@ interface CommandCenterState {
   trustDialogOpen: boolean;
   openTrustDialog: () => void;
   closeTrustDialog: () => void;
+  trustSummary: TrustSummary | null;
+  trustSummaryStatus: "loading" | "ready" | "error";
   notifications: Notification[];
+  notificationsStatus: "loading" | "ready" | "error";
+  notificationsError: string | null;
   unreadCount: number;
   notifyOpen: boolean;
   openNotify: () => void;
   closeNotify: () => void;
   runScenario: (name: Scenario) => void;
+  reconnectStream: () => Promise<void>;
   simulateEvent: (type: MockEventType) => void;
   simulateNextEvent: () => void;
   demoIndex: number;
@@ -65,11 +70,15 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
   const [scenario, setScenario] = useState<Scenario | null>(null);
   const [streamConnected, setStreamConnected] = useState(true);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notificationsStatus, setNotificationsStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [notificationsError, setNotificationsError] = useState<string | null>(null);
   const [demoIndex, setDemoIndex] = useState(0);
   const [stopActive, setStopActive] = useState(false);
   const [stopActivatedAt, setStopActivatedAt] = useState<string | null>(null);
   const [stopDialogOpen, setStopDialogOpen] = useState(false);
   const [trustDialogOpen, setTrustDialogOpen] = useState(false);
+  const [trustSummary, setTrustSummary] = useState<TrustSummary | null>(null);
+  const [trustSummaryStatus, setTrustSummaryStatus] = useState<"loading" | "ready" | "error">("loading");
   const [notifyOpen, setNotifyOpen] = useState(false);
   const appliedScenario = useState<Scenario | null>(null);
   const appliedScenarioRef = appliedScenario[0];
@@ -77,15 +86,26 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
 
   const refreshNotifications = useCallback(async () => {
     try {
-      const list = await client.listNotifications();
+      const [list, trust] = await Promise.all([
+        client.listNotifications(),
+        client.getTrustSummary(),
+      ]);
       setNotifications(list);
+      setNotificationsStatus("ready");
+      setNotificationsError(null);
+      setTrustSummary(trust);
+      setTrustSummaryStatus("ready");
       setConnection(client.connection);
       if (mode === "live") {
-        const trust = await client.getTrustSummary();
         const active = trust.gateStatus === "GATED" || trust.state === "SUSPENDED";
         setStopActive(active);
       }
-    } catch {
+    } catch (err: unknown) {
+      setNotifications([]);
+      setNotificationsStatus("error");
+      setNotificationsError(err instanceof Error ? err.message : String(err));
+      setTrustSummary(null);
+      setTrustSummaryStatus("error");
       setConnection(client.connection);
     }
   }, [client, mode]);
@@ -156,6 +176,14 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
     [mockClient, mode, refreshNotifications, appliedScenarioRef, setAppliedScenario],
   );
 
+  const reconnectStream = useCallback(async () => {
+    if (!mockClient) return;
+    await mockClient.reconnectStream();
+    setStreamConnected(mockClient.subscribeEvents().connected);
+    setVersion((v) => v + 1);
+    void refreshNotifications();
+  }, [mockClient, refreshNotifications]);
+
   const simulateEvent = useCallback(
     async (type: MockEventType) => {
       if (!mockClient) return;
@@ -218,12 +246,17 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
       trustDialogOpen,
       openTrustDialog,
       closeTrustDialog,
+      trustSummary,
+      trustSummaryStatus,
       notifications,
+      notificationsStatus,
+      notificationsError,
       unreadCount,
       notifyOpen,
       openNotify,
       closeNotify,
       runScenario,
+      reconnectStream,
       simulateEvent,
       simulateNextEvent,
       demoIndex,
@@ -250,12 +283,17 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
       trustDialogOpen,
       openTrustDialog,
       closeTrustDialog,
+      trustSummary,
+      trustSummaryStatus,
       notifications,
+      notificationsStatus,
+      notificationsError,
       unreadCount,
       notifyOpen,
       openNotify,
       closeNotify,
       runScenario,
+      reconnectStream,
       simulateEvent,
       simulateNextEvent,
       demoIndex,

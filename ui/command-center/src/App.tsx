@@ -1,49 +1,37 @@
-import { useEffect } from "react";
-import { Route, Routes, useSearchParams } from "react-router-dom";
-import type { Scenario } from "./lib/contracts";
+import { lazy, Suspense, type ReactNode } from "react";
+import { Route, Routes } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
-import { Overview } from "./routes/Overview";
-import { Missions } from "./routes/Missions";
-import { MissionDetail } from "./routes/MissionDetail";
-import { Agents } from "./routes/Agents";
-import { AgentDetail } from "./routes/AgentDetail";
-import { Memory } from "./routes/Memory";
-import { Executive } from "./routes/Executive";
-import { Discovery } from "./routes/Discovery";
-import { Evidence } from "./routes/Evidence";
-import { EvidenceDetail } from "./routes/EvidenceDetail";
-import { Timeline } from "./routes/Timeline";
-import { Systems } from "./routes/Systems";
-import { SystemDetail } from "./routes/SystemDetail";
-import { Notifications } from "./routes/Notifications";
+import { LoadingState } from "./components/states";
 import { ErrorState } from "./components/states";
-import { useCommandCenter } from "./context/CommandCenterContext";
+import { ScenarioBootstrap } from "./ScenarioBootstrap";
 
-const SCENARIOS = new Set<Scenario>([
-  "NORMAL_OPERATION",
-  "VERIFICATION_FAILURE",
-  "WORKER_CRASH",
-  "PROVIDER_DEGRADED",
-  "MISSION_BLOCKED",
-  "MEMORY_CONFLICT",
-  "STOP_ACTIVE",
-  "RECOVERY",
-  "ROLLBACK",
-  "MISSION_COMPLETE",
-  "EMPTY_STATE",
-  "STREAM_DISCONNECTED",
-]);
+const Overview = lazy(() => import("./routes/Overview").then((m) => ({ default: m.Overview })));
+const Missions = lazy(() => import("./routes/Missions").then((m) => ({ default: m.Missions })));
+const MissionDetail = lazy(() => import("./routes/MissionDetail").then((m) => ({ default: m.MissionDetail })));
+const Agents = lazy(() => import("./routes/Agents").then((m) => ({ default: m.Agents })));
+const AgentDetail = lazy(() => import("./routes/AgentDetail").then((m) => ({ default: m.AgentDetail })));
+const Memory = lazy(() => import("./routes/Memory").then((m) => ({ default: m.Memory })));
+const Executive = lazy(() => import("./routes/Executive").then((m) => ({ default: m.Executive })));
+const Discovery = lazy(() => import("./routes/Discovery").then((m) => ({ default: m.Discovery })));
+const Evidence = lazy(() => import("./routes/Evidence").then((m) => ({ default: m.Evidence })));
+const EvidenceDetail = lazy(() => import("./routes/EvidenceDetail").then((m) => ({ default: m.EvidenceDetail })));
+const Timeline = lazy(() => import("./routes/Timeline").then((m) => ({ default: m.Timeline })));
+const Systems = lazy(() => import("./routes/Systems").then((m) => ({ default: m.Systems })));
+const SystemDetail = lazy(() => import("./routes/SystemDetail").then((m) => ({ default: m.SystemDetail })));
+const Notifications = lazy(() => import("./routes/Notifications").then((m) => ({ default: m.Notifications })));
 
-/** Development-only fixture bootstrap: ?scenario=WORKER_CRASH etc. */
-function ScenarioBootstrap() {
-  const [params] = useSearchParams();
-  const { runScenario } = useCommandCenter();
-  useEffect(() => {
-    const s = params.get("scenario");
-    if (s && SCENARIOS.has(s as Scenario)) runScenario(s as Scenario);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  return null;
+function RouteSuspense({ children }: { children: ReactNode }) {
+  return (
+    <Suspense
+      fallback={
+        <div className="shell-content">
+          <LoadingState label="Loading section" />
+        </div>
+      }
+    >
+      {children}
+    </Suspense>
+  );
 }
 
 export function App() {
@@ -52,21 +40,21 @@ export function App() {
       <ScenarioBootstrap />
       <Routes>
         <Route element={<AppShell />}>
-          <Route path="/" element={<Overview />} />
-          <Route path="/missions" element={<Missions />} />
-          <Route path="/missions/:missionId" element={<MissionDetail />} />
-          <Route path="/agents" element={<Agents />} />
-          <Route path="/agents/:agentId" element={<AgentDetail />} />
-          <Route path="/memory" element={<Memory />} />
-          <Route path="/memory/:memoryId" element={<Memory />} />
-          <Route path="/executive" element={<Executive />} />
-          <Route path="/discovery" element={<Discovery />} />
-          <Route path="/evidence" element={<Evidence />} />
-          <Route path="/evidence/:evidenceId" element={<EvidenceDetail />} />
-          <Route path="/timeline" element={<Timeline />} />
-          <Route path="/systems" element={<Systems />} />
-          <Route path="/systems/:systemId" element={<SystemDetail />} />
-          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/" element={<RouteSuspense><Overview /></RouteSuspense>} />
+          <Route path="/missions" element={<RouteSuspense><Missions /></RouteSuspense>} />
+          <Route path="/missions/:missionId" element={<RouteSuspense><MissionDetail /></RouteSuspense>} />
+          <Route path="/agents" element={<RouteSuspense><Agents /></RouteSuspense>} />
+          <Route path="/agents/:agentId" element={<RouteSuspense><AgentDetail /></RouteSuspense>} />
+          <Route path="/memory" element={<RouteSuspense><Memory /></RouteSuspense>} />
+          <Route path="/memory/:memoryId" element={<RouteSuspense><Memory /></RouteSuspense>} />
+          <Route path="/executive" element={<RouteSuspense><Executive /></RouteSuspense>} />
+          <Route path="/discovery" element={<RouteSuspense><Discovery /></RouteSuspense>} />
+          <Route path="/evidence" element={<RouteSuspense><Evidence /></RouteSuspense>} />
+          <Route path="/evidence/:evidenceId" element={<RouteSuspense><EvidenceDetail /></RouteSuspense>} />
+          <Route path="/timeline" element={<RouteSuspense><Timeline /></RouteSuspense>} />
+          <Route path="/systems" element={<RouteSuspense><Systems /></RouteSuspense>} />
+          <Route path="/systems/:systemId" element={<RouteSuspense><SystemDetail /></RouteSuspense>} />
+          <Route path="/notifications" element={<RouteSuspense><Notifications /></RouteSuspense>} />
           <Route
             path="*"
             element={

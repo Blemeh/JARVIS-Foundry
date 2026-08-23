@@ -18,6 +18,11 @@ import type {
   WorkerStatus,
 } from "./contracts";
 import type { FoundrySnapshot, FoundryMission, FoundryVerification } from "./snapshotTypes";
+import {
+  isUnknownToken,
+  MEASURED_COST_LABEL,
+  NOT_REPORTED_NUMERIC,
+} from "./truthFormat";
 
 const ACTIVE_MISSION_STATES = new Set(["ACTION_SELECTION", "EXECUTING", "REPAIRING", "READY", "ORIENTING"]);
 const STANDBY_MISSION_STATES = new Set(["PLANNED", "WAITING", "COMPLETE", "COMPLETED"]);
@@ -64,11 +69,8 @@ function missionPriority(_mission: FoundryMission): Priority {
 function missionCompletion(state: string | undefined): number {
   const normalized = (state ?? "").toUpperCase();
   if (normalized === "COMPLETE" || normalized === "COMPLETED") return 100;
-  if (normalized === "BLOCKED" || normalized === "FAILED") return 0;
-  if (normalized === "EXECUTING") return 55;
-  if (normalized === "ACTION_SELECTION") return 35;
-  if (normalized === "ORIENTING") return 15;
-  return 10;
+  if (normalized === "BLOCKED" || normalized === "FAILED" || normalized === "HALTED") return 0;
+  return NOT_REPORTED_NUMERIC;
 }
 
 export function mapMissions(snapshot: FoundrySnapshot): Mission[] {
@@ -175,38 +177,93 @@ export function mapMemoryGraph(snapshot: FoundrySnapshot): MemoryGraph {
     y: 100 + Math.floor(index / 5) * 80,
     r: 18,
     summary: `${m.mem_type ?? "memory"} · ${m.state ?? "UNKNOWN"}`,
-    confidence: 0.7,
+    confidence: NOT_REPORTED_NUMERIC,
     freshness: m.updated_at ?? snapshot.generated_at,
     unknowns: [],
   }));
   return { nodes, edges: [] };
 }
 
+const mapResourceUsage = (snapshot: FoundrySnapshot): SystemOverview["resourceUsage"] => {
+  const resources = (snapshot as FoundrySnapshot & { resources?: Record<string, unknown>[] }).resources ?? []
+  const measured: SystemOverview["resourceUsage"] = []
+
+  for (const resource of resources) {
+    const label = typeof resource.name === "string"
+      ? resource.name
+      : typeof resource.resource_id === "string"
+        ? resource.resource_id
+        : null
+    if (!label) continue
+
+    const usage = resource.utilization_pct ?? resource.usage_pct ?? resource.value
+    if (typeof usage === "number" && Number.isFinite(usage)) {
+      measured.push({ label, value: usage, unit: "%" })
+      continue
+    }
+
+    measured.push({ label, value: NOT_REPORTED_NUMERIC, unit: "%" })
+  }
+
+  return measured
+}
+
+const mapMeasuredCostResource = (snapshot: FoundrySnapshot): SystemOverview["resourceUsage"][number] => {
+  const costs = snapshot.costs
+  const total = costs?.measured_actual_total_usd
+  if (typeof total === "number" && Number.isFinite(total)) {
+    return { label: MEASURED_COST_LABEL, value: total, unit: "USD" }
+  }
+  if (isUnknownToken(total)) {
+    return { label: MEASURED_COST_LABEL, value: NOT_REPORTED_NUMERIC, unit: "NOT_REPORTED" }
+  }
+  return { label: MEASURED_COST_LABEL, value: NOT_REPORTED_NUMERIC, unit: "NOT_REPORTED" }
+}
+
 export function mapSystemOverview(snapshot: FoundrySnapshot): SystemOverview {
   const current = snapshot.release_identity?.current;
   const sha = typeof current === "string" ? current.slice(0, 12) : "unknown";
+  const resourceUsage = [...mapResourceUsage(snapshot), mapMeasuredCostResource(snapshot)];
   return {
     version: sha,
     build: String(snapshot.source_of_truth.ledger_head_sequence),
     releaseState: snapshot.health.supervisor_status ?? "UNKNOWN",
     uptime: snapshot.health.heartbeat_at ?? snapshot.generated_at,
-    resourceUsage: [
-      { label: "Supervisor", value: snapshot.health.degraded ? 72 : 42, unit: "%" },
-      { label: "Memory tier", value: snapshot.memory.length * 8, unit: "%" },
-      { label: "Workers", value: snapshot.workers.filter((w) => w.status === "RUNNING").length * 12, unit: "%" },
-      { label: "Evidence", value: Math.min(snapshot.evidence.length * 5, 95), unit: "%" },
-    ],
+    resourceUsage,
   };
+}
+
+const mapTrustState = (trust: string, stop: boolean): TrustSummary["state"] => {
+  if (stop) return "SUSPENDED"
+  const normalized = trust.toUpperCase()
+  if (normalized === "PROVEN") return "PROVEN"
+  if (normalized === "SIMULATED") return "SIMULATED"
+  if (normalized === "DEGRADED" || normalized === "LAB" || normalized === "UNKNOWN" || normalized === "NOT_AVAILABLE" || normalized === "NOT_REPORTED") {
+    return "DEGRADED"
+  }
+  return "DEGRADED"
+}
+
+const mapEvidenceCoverage = (snapshot: FoundrySnapshot): number => {
+  if (snapshot.verification.length === 0) return NOT_REPORTED_NUMERIC
+  const verified = snapshot.verification.filter((v) => {
+    const status = (v.status ?? "").toUpperCase()
+    return status === "PASS" || status === "VERIFIED"
+  }).length
+  return Math.round((verified / snapshot.verification.length) * 100)
 }
 
 export function mapTrustSummary(snapshot: FoundrySnapshot): TrustSummary {
   const trust = (snapshot.health.trust_state ?? "UNKNOWN").toUpperCase();
   const stop = snapshot.stop.active;
+  const staleLeases = snapshot.health.stale_leases ?? [];
+  const constraints = snapshot.controls.constraints ?? [];
+  const coverage = mapEvidenceCoverage(snapshot);
   return {
-    state: stop ? "SUSPENDED" : trust === "LAB" ? "PROVEN" : trust === "DEGRADED" ? "DEGRADED" : "PROVEN",
-    score: stop ? null : 0.92,
+    state: mapTrustState(trust, stop),
+    score: null,
     gateStatus: stop ? "GATED" : "OPEN",
-    evidenceCoverage: snapshot.evidence.length > 0 ? 0.85 : 0,
+    evidenceCoverage: coverage,
     unresolvedFindings: snapshot.verification.filter((v) => v.status === "FAIL").length,
     health: mapHealth(snapshot.health.supervisor_status),
     lastVerifiedAt: snapshot.generated_at,
@@ -214,6 +271,9 @@ export function mapTrustSummary(snapshot: FoundrySnapshot): TrustSummary {
       { id: "supervisor", label: "Supervisor", state: snapshot.health.supervisor_status === "RUNNING" ? "PASS" : "WARN", detail: snapshot.health.supervisor_status ?? "UNKNOWN" },
       { id: "stop", label: "STOP sentinel", state: stop ? "FAIL" : "PASS", detail: stop ? "ACTIVE" : "CLEAR" },
       { id: "ledger", label: "Ledger head", state: "PASS", detail: String(snapshot.source_of_truth.ledger_head_sequence) },
+      { id: "coverage", label: "Evidence coverage", state: coverage === NOT_REPORTED_NUMERIC ? "PENDING" : "PASS", detail: coverage === NOT_REPORTED_NUMERIC ? "No verification records in canonical projection." : `${coverage}% of verification records passed.` },
+      { id: "constraints", label: "Owner constraints", state: constraints.length > 0 ? "WARN" : "PASS", detail: `${constraints.length} active constraint${constraints.length === 1 ? "" : "s"} in durable controls.` },
+      { id: "stale-leases", label: "Stale leases", state: staleLeases.length > 0 ? "WARN" : "PASS", detail: `${staleLeases.length} stale lease${staleLeases.length === 1 ? "" : "s"} reported by supervisor health.` },
     ],
   };
 }

@@ -1,14 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { Download, FileCode2, Fingerprint, Lock, Search, ShieldCheck } from "lucide-react";
 import { useCommandCenter } from "../context/CommandCenterContext";
-import type { EvidenceArtifact } from "../lib/contracts";
 import { SectionHeader } from "../components/SectionHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { MetricCard } from "../components/MetricCard";
 import { Pagination } from "../components/Pagination";
-import { EmptyState, LoadingState } from "../components/states";
-import { ContextChip } from "../components/EntityRefLink";
+import { EmptyState } from "../components/states";
+import { RouteQueryGate } from "../components/RouteQueryGate";
+import { ContextChip, EntityRefLink } from "../components/EntityRefLink";
+import { useRouteQuery } from "../hooks/useRouteQuery";
 import { formatHash } from "../lib/format";
 import { sourceCopy, sourceModeLabel } from "../lib/sourceMode";
 
@@ -18,9 +19,12 @@ type SourceFilter = (typeof sources)[number];
 
 export function Evidence() {
   const { client, version, sourceMode } = useCommandCenter();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [items, setItems] = useState<EvidenceArtifact[] | null>(null);
+  const itemsQuery = useRouteQuery(
+    () => client.listEvidence(),
+    [client, version],
+  );
+
   const [query, setQuery] = useState("");
   const [source, setSource] = useState<SourceFilter>("ALL");
   const [page, setPage] = useState(1);
@@ -28,17 +32,8 @@ export function Evidence() {
   const missionFilter = searchParams.get("mission");
   const verdictFilter = searchParams.get("verdict");
 
-  useEffect(() => {
-    let cancelled = false;
-    client.listEvidence().then((e) => {
-      if (!cancelled) setItems(e);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [client, version]);
-
   const filtered = useMemo(() => {
+    const items = itemsQuery.data;
     if (!items) return [];
     const q = query.trim().toLowerCase();
     return items.filter((it) => {
@@ -50,25 +45,25 @@ export function Evidence() {
         (verdictFilter === "FAILED" ? it.verdict === "FAILED" || it.verdict === "TAMPERED" : it.verdict === verdictFilter);
       return sourceOk && qOk && missionOk && verdictOk;
     });
-  }, [items, query, source, missionFilter, verdictFilter]);
+  }, [itemsQuery.data, query, source, missionFilter, verdictFilter]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
   const rows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
-  if (!items) {
-    return (
-      <div className="shell-content">
-        <LoadingState label="Loading evidence ledger" />
-      </div>
-    );
-  }
-
-  const verified = items.filter((i) => i.verdict === "VERIFIED").length;
-  const flagged = items.filter((i) => i.verdict === "TAMPERED" || i.verdict === "FAILED" || i.verdict === "WARN").length;
-  const verificationRate = items.length === 0 ? 0 : Math.round((verified / items.length) * 1000) / 10;
-
   return (
+    <RouteQueryGate
+      query={itemsQuery}
+      loadingLabel="Loading evidence ledger"
+      errorLabel="Evidence ledger unavailable"
+      surface="Evidence ledger"
+    >
+      {(items) => {
+        const verified = items.filter((i) => i.verdict === "VERIFIED").length;
+        const flagged = items.filter((i) => i.verdict === "TAMPERED" || i.verdict === "FAILED" || i.verdict === "WARN").length;
+        const verificationRate = items.length === 0 ? 0 : Math.round((verified / items.length) * 1000) / 10;
+
+        return (
     <div className="shell-content">
       <SectionHeader
         kicker="Evidence"
@@ -80,11 +75,11 @@ export function Evidence() {
         })}
         actions={
           <>
-            <span className="badge badge-teal">
+            <span className={`badge ${sourceMode === "SIMULATED" ? "badge-amber" : sourceMode === "LIVE" ? "badge-teal" : "badge-muted"}`} title={sourceMode === "SIMULATED" ? "Simulated integrity checks only; not a live verifier node." : sourceMode === "LIVE" ? "Verifier health follows canonical projection factors." : "Integrity status unavailable while disconnected."}>
               <ShieldCheck size={11} aria-hidden="true" />
-              Integrity node online
+              {sourceMode === "SIMULATED" ? "Integrity SIMULATED" : sourceMode === "LIVE" ? "Integrity from projection" : "Integrity UNAVAILABLE"}
             </span>
-            <button type="button" className="btn" aria-label={`Export ledger (${sourceModeLabel(sourceMode).toLowerCase()})`} disabled={sourceMode !== "SIMULATED"}>
+            <button type="button" className="btn" aria-label={`Export ledger (${sourceModeLabel(sourceMode).toLowerCase()})`} disabled={sourceMode !== "SIMULATED"} title={sourceMode !== "SIMULATED" ? `Export unavailable in ${sourceModeLabel(sourceMode)} source mode` : "Export simulated ledger fixture locally"}>
               <Download size={14} />
               Export Ledger
             </button>
@@ -97,6 +92,7 @@ export function Evidence() {
           {missionFilter ? (
             <ContextChip
               label={`Evidence for mission ${missionFilter}`}
+              entity={{ kind: "mission", id: missionFilter, label: missionFilter }}
               onClear={() => {
                 const next = new URLSearchParams(searchParams);
                 next.delete("mission");
@@ -170,41 +166,43 @@ export function Evidence() {
         {rows.length === 0 ? (
           <EmptyState label="No evidence matches" detail={sourceMode === "SIMULATED" ? "Adjust filters or clear context to inspect more artifacts in this simulated universe." : sourceMode === "LIVE" ? "Adjust filters or clear context to inspect canonical artifacts." : `Evidence data is unavailable: runtime source is ${sourceMode}.`} />
         ) : (
-          <div className="evidence-table" role="table" aria-label="Evidence artifacts">
-            <div className="evidence-row evidence-row-head" role="row">
+          <div className="evidence-table" aria-label="Evidence artifacts">
+            <div className="evidence-row evidence-row-head">
               <span className="t-label text-muted">Artifact ID / Type</span>
+              <span className="t-label text-muted">Mission</span>
               <span className="t-label text-muted">Provenance (source)</span>
               <span className="t-label text-muted">Integrity hash (SHA-256)</span>
               <span className="t-label text-muted evidence-verdict-head">Verdict</span>
             </div>
             {rows.map((it) => (
-              <button
+              <div
                 key={it.id}
-                type="button"
                 className={`evidence-row evidence-row-data ${it.verdict === "TAMPERED" ? "evidence-row-tampered" : ""}`}
-                role="row"
-                onClick={() => navigate(`/evidence/${it.id}`)}
-                aria-label={`Open evidence ${it.id}`}
               >
-                <span className="evidence-cell-id">
+                <div className="evidence-cell-id">
                   <FileCode2 size={15} className={it.verdict === "TAMPERED" ? "text-error" : "text-muted"} aria-hidden="true" />
                   <span>
-                    <span className="t-mono evidence-artifact-id">{it.id}</span>
+                    <Link to={`/evidence/${it.id}`} className="evidence-artifact-link t-mono evidence-artifact-id">
+                      {it.id}
+                    </Link>
                     <span className="t-mono evidence-artifact-kind">{it.typeLabel}</span>
                   </span>
+                </div>
+                <span className="evidence-cell-mission">
+                  <EntityRefLink entity={{ kind: "mission", id: it.missionRef, label: it.missionRef }} />
                 </span>
-                <span className="evidence-cell-source">
+                <Link to={`/evidence/${it.id}`} className="evidence-cell-source evidence-row-link">
                   <span className="evidence-source-name">{it.source}</span>
                   <span className="t-mono evidence-source-uri">{it.sourceUri}</span>
-                </span>
-                <span className="evidence-cell-hash">
+                </Link>
+                <Link to={`/evidence/${it.id}`} className="evidence-cell-hash evidence-row-link">
                   <Lock size={12} className={it.verdict === "TAMPERED" ? "text-error" : "text-muted"} aria-hidden="true" />
                   <span className={`t-mono ${it.verdict === "TAMPERED" ? "text-error" : ""}`}>{formatHash(it.hash)}</span>
-                </span>
-                <span className="evidence-cell-verdict">
+                </Link>
+                <Link to={`/evidence/${it.id}`} className="evidence-cell-verdict evidence-row-link">
                   <StatusBadge status={it.verdict} />
-                </span>
-              </button>
+                </Link>
+              </div>
             ))}
           </div>
         )}
@@ -217,5 +215,8 @@ export function Evidence() {
         />
       </div>
     </div>
+        );
+      }}
+    </RouteQueryGate>
   );
 }

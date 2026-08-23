@@ -8,7 +8,23 @@ import { sourceModeLabel } from "../lib/sourceMode";
 
 export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
   const clock = useClock();
-  const { stopActive, trustDialogOpen, openTrustDialog, closeTrustDialog, connection, sourceMode } = useCommandCenter();
+  const {
+    stopActive,
+    trustDialogOpen,
+    openTrustDialog,
+    closeTrustDialog,
+    connection,
+    sourceMode,
+    streamConnected,
+    reconnectStream,
+    trustSummary,
+    trustSummaryStatus,
+  } = useCommandCenter();
+  const trustStateLabel = trustSummaryStatus === "ready" && trustSummary
+    ? trustSummary.state
+    : trustSummaryStatus === "error"
+      ? "UNAVAILABLE"
+      : "LOADING";
   const pillClass =
     sourceMode === "DISCONNECTED"
       ? "data-source-pill data-source-disconnected"
@@ -32,18 +48,42 @@ export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
         </div>
         <div className="topbar-right">
           <NotificationBell />
+          {!streamConnected ? (
+            <span
+              className="topbar-stream-chip"
+              role="status"
+              title={
+                sourceMode === "SIMULATED"
+                  ? "Simulated event stream disconnected; refresh or run NORMAL_OPERATION to reconnect."
+                  : "Canonical event stream disconnected; live updates paused until reconnect."
+              }
+            >
+              <WifiOff size={11} aria-hidden="true" />
+              <span className="t-label">Stream disconnected</span>
+              {sourceMode === "SIMULATED" ? (
+                <button
+                  type="button"
+                  className="topbar-stream-reconnect"
+                  onClick={() => void reconnectStream()}
+                  aria-label="Reconnect simulated event stream"
+                >
+                  Reconnect
+                </button>
+              ) : null}
+            </span>
+          ) : null}
           {stopActive ? (
             <span className="topbar-stop-chip" title={sourceMode === "LIVE" ? "STOP active in canonical runtime" : sourceMode === "SIMULATED" ? "SIMULATED STOP - UI CANDIDATE" : `STOP state ${sourceModeLabel(sourceMode)}; runtime state unavailable`}>
               <OctagonX size={11} aria-hidden="true" />
               <span className="t-label">Suspended</span>
             </span>
           ) : null}
-          <button type="button" className="trust-pill" onClick={openTrustDialog} aria-label="Explain trust state">
+          <button type="button" className="trust-pill" onClick={openTrustDialog} aria-label={`Trust state ${trustStateLabel}. Open trust explanation.`}>
             <ShieldQuestion size={13} aria-hidden="true" />
             <span className="t-label">
               Trust:{" "}
-              <span className={stopActive ? "trust-state-error" : sourceMode === "LIVE" ? "trust-state-live" : sourceMode === "SIMULATED" ? "trust-state-sim" : "trust-state-error"}>
-                {sourceModeLabel(sourceMode)}
+              <span className={stopActive || trustStateLabel === "SUSPENDED" || trustStateLabel === "UNAVAILABLE" ? "trust-state-error" : trustStateLabel === "SIMULATED" ? "trust-state-sim" : trustStateLabel === "PROVEN" ? "trust-state-live" : "trust-state-error"}>
+                {trustStateLabel}
               </span>
             </span>
           </button>
