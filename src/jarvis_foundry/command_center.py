@@ -387,7 +387,7 @@ def _executive_projection(database: FoundryDatabase, *, limit: int = 25) -> dict
     calibrations: list[dict[str, Any]] = []
     activation_epoch: str | None = None
     admission_authority: str = "UNKNOWN"
-    for event in database.events():
+    for event in database.events(readonly=True):
         etype = str(event.event_type or "")
         payload = event.payload if isinstance(event.payload, dict) else {}
         if etype == "executive.activation_recorded":

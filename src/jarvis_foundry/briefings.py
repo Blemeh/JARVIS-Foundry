@@ -88,7 +88,7 @@ class BriefingPlanner:
     def _prior_selections(self) -> tuple[list[dict[str, Any]], set[str]]:
         rows: list[dict[str, Any]] = []
         keys: set[str] = set()
-        with self.database.connect() as connection:
+        with self.database.connect(readonly=True) as connection:
             stored = connection.execute(
                 "SELECT status, payload_json FROM briefing_outbox ORDER BY rowid"
             ).fetchall()
@@ -159,7 +159,7 @@ class BriefingPlanner:
         }
 
     def _latest_content_digest(self, kind: str) -> str | None:
-        with self.database.connect() as connection:
+        with self.database.connect(readonly=True) as connection:
             row = connection.execute(
                 "SELECT payload_json FROM briefing_outbox WHERE kind = "
                 "? ORDER BY rowid DESC LIMIT 1",
