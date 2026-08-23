@@ -19,6 +19,9 @@ Verdict: PASS for the isolated source slice
   Supervisor, scheduler, release, reconciliation, and effect primitives.
 - Bounded callback repair with explicit escalation and no blind retry of an
   ambiguous effect.
+- Supervisor heartbeat integration is now an optional seam: the heartbeat
+  records first, then invokes the coordinator; STOP returns before the hook;
+  coordinator failures are bounded and recorded without crashing the loop.
 - Independent review corrections: STOP is checked before every repair callback;
   failed diagnostics block mutation; capability recovery requires incident
   ownership and restores the exact prior state; effect mismatch requires
@@ -30,7 +33,7 @@ Verdict: PASS for the isolated source slice
 
 ```text
 python -m pytest tests/foundry/test_v7_resilience.py -q
-12 passed
+14 passed
 
 python -m pytest tests/foundry/test_v7_resilience.py \
   tests/foundry/test_capability_states.py \
@@ -38,7 +41,7 @@ python -m pytest tests/foundry/test_v7_resilience.py \
   tests/foundry/test_runtime_diagnostics.py \
   tests/foundry/test_v7_scheduler.py \
   tests/foundry/test_supervisor_recovery.py -q
-63 passed
+65 passed
 ```
 
 The tests cover replay, idempotent scans, invalid transitions, STOP
@@ -48,7 +51,8 @@ synthetic resource/cost anomalies.
 
 ## Boundaries
 
-- Automatic invocation from the Supervisor heartbeat is not yet integrated.
+- The heartbeat seam is source-integrated and disposable-tested; no live
+  Supervisor was started or changed in this lane.
 - Real providers, connectors, live release roots, live scheduler tasks, and
   production databases were not touched.
 - `ruff` is NOT TESTED because the package is not installed in this lane.

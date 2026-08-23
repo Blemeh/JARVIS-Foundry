@@ -6,7 +6,7 @@ and an explicit PASS, FAIL, BLOCKED, or NOT TESTED verdict.
 
 | Job | Scope | Status | Evidence / next action |
 |---|---|---|---|
-| V7C-1 | Failure and health truth map | PASS (source) | `health_truth()` and diagnostics correlate database, ledger, Supervisor identity, capabilities, scheduler, release, logs, and effects. Supervisor heartbeat hook remains a later integration checkpoint. |
+| V7C-1 | Failure and health truth map | PASS (source) | `health_truth()` and diagnostics correlate database, ledger, Supervisor identity, capabilities, scheduler, release, logs, and effects. Optional Supervisor heartbeat hook is source-integrated and disposable-tested; live activation remains out of scope. |
 | V7C-2 | Durable incident record | PASS | Event-derived lifecycle with fresh-process reconstruction. |
 | V7C-3 | Deterministic anomaly detector | PASS | Bounded durable-event rules plus typed synthetic metrics. |
 | V7C-4 | Capability-level suspension | PASS | Scoped STOPPED state, prior-state recovery, STOP/veto guard, unrelated capability proof. |
@@ -23,4 +23,3 @@ and an explicit PASS, FAIL, BLOCKED, or NOT TESTED verdict.
 | V7C-15 | Restart continuity lab | QUEUED | Two-process/two-phase disposable restart harness. |
 | V7C-16 | Bounded fault matrix | QUEUED | Expected/actual/evidence/containment/recovery/verdict for all rows. |
 | V7C-17+ | Next evidenced resilience gap | NOT STARTED | Continue only if the final gate still has an evidenced high-value gap. |
-

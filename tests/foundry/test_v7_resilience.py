@@ -23,6 +23,7 @@ from jarvis_foundry.resilience import (
     ResilienceCoordinator,
     rebuild_incidents,
 )
+from jarvis_foundry.supervisor.service import Supervisor
 
 
 def database(tmp_path: Path) -> FoundryDatabase:
@@ -269,6 +270,51 @@ def test_health_truth_exposes_capability_failure(tmp_path: Path) -> None:
     assert capabilities["resources"]["resource-1"]["capabilities"]["safe-work"] == {
         "state": "DEGRADED", "status": "DEGRADED"
     }
+
+
+def test_supervisor_heartbeat_invokes_resilience_without_widening_scope(
+    tmp_path: Path,
+) -> None:
+    db = database(tmp_path)
+    stop_path = tmp_path / "EMERGENCY_STOP"
+    calls: list[dict[str, object]] = []
+
+    class FakeCoordinator:
+        def run_once(self, *, metrics=None):
+            calls.append(dict(metrics or {}))
+            return {"status": "ok"}
+
+    supervisor = Supervisor(
+        db, stop_path, instance_id="resilience-hook", resilience=FakeCoordinator()
+    )
+    assert supervisor.start() == "RUNNING"
+    assert supervisor.heartbeat(resilience_metrics={"worker_failures": 0}) == "RUNNING"
+    assert calls == [{"worker_failures": 0}]
+    assert not any(
+        event.event_type == "supervisor.degraded"
+        and event.payload.get("reason") == "resilience_tick_failure"
+        for event in db.events()
+    )
+    supervisor.stop()
+
+
+def test_supervisor_resilience_failure_is_bounded_and_recorded(tmp_path: Path) -> None:
+    db = database(tmp_path)
+    stop_path = tmp_path / "EMERGENCY_STOP"
+
+    class BrokenCoordinator:
+        def run_once(self, *, metrics=None):
+            raise RuntimeError("disposable coordinator failure")
+
+    supervisor = Supervisor(
+        db, stop_path, instance_id="broken-resilience-hook", resilience=BrokenCoordinator()
+    )
+    assert supervisor.start() == "RUNNING"
+    assert supervisor.heartbeat() == "RUNNING"
+    degraded = [event for event in db.events() if event.event_type == "supervisor.degraded"]
+    assert len(degraded) == 1
+    assert degraded[0].payload["reason"] == "resilience_tick_failure"
+    supervisor.stop()
 
 
 def test_dependency_graph_contains_shared_dependency_only(tmp_path: Path) -> None:
