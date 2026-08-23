@@ -1,0 +1,19 @@
+{
+  "status": "BLOCKED",
+  "scope": "V4/V5/V6 cinematic integration and requested release/live proof",
+  "accepted_work": [
+    {"item": "V4 owner controls and briefings", "status": "PASS", "evidence": "6b119c3"},
+    {"item": "V5 multi-system effects and lineage", "status": "PASS", "evidence": "7e38aae"},
+    {"item": "V6 governed self-evolution and independent verifier", "status": "PASS", "evidence": "9290b3f"},
+    {"item": "cinematic Command Center integration", "status": "PASS", "evidence": "1bfeb7e"},
+    {"item": "cross-lane owner/effect/evolution truth bridges", "status": "PASS", "evidence": "384f179"},
+    {"item": "repository-wide source suite", "status": "PASS", "evidence": "full-suite-20260823-r3.xml"}
+  ],
+  "remaining_boundaries": [
+    {"item": "four-hour disposable proving soak", "status": "NOT_TESTED", "reason": "only bounded eight-cycle soak was run"},
+    {"item": "canonical main push", "status": "PENDING", "reason": "graph recheck and promotion step remain"},
+    {"item": "live schema migration/restart/provider/UI proof", "status": "BLOCKED", "reason": "live release is schema v34 and production mutation has not been authorized"}
+  ],
+  "no_fabricated_pass": true,
+  "production_mutation": false
+}

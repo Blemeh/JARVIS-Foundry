@@ -1,0 +1,58 @@
+{
+  "stage": "v456-cinematic-integration",
+  "tested_source_sha": "f8b896b",
+  "lane": "integration/v456-cinematic-stage-20260823",
+  "source_gate": "PASS",
+  "checks": {
+    "v4_v5_v6_semantic_integration": {"status": "PASS", "evidence": ["384f179", "9290b3f"]},
+    "repository_suite": {
+      "status": "PASS",
+      "junit": "var/evidence/v456-stage/full-suite-20260823-r3.xml",
+      "collected": 1981,
+      "passed": 1980,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 1,
+      "skip_boundary": "symlink/reserved-ledger filesystem probe"
+    },
+    "v3_hard_gate": {
+      "status": "BLOCKED",
+      "verdict": "FAIL_CLOSED",
+      "focused_passed": 154,
+      "supporting_passed": 63,
+      "migration_passed": 9,
+      "independent_verifier_passed": 26,
+      "bounded_soak_cycles": 8,
+      "four_hour_soak": "NOT_TESTED",
+      "reason": "AC-17 requires the measured four-hour disposable proving window"
+    },
+    "v3_operational_e2e": {"status": "PASS", "reconciliation": true, "elapsed_seconds": 3.44},
+    "migration_rehearsal": {"status": "PASS", "scenarios": 9, "schema": 36, "live_source_read_only": true},
+    "adversarial": {"status": "PASS", "pass": 13, "fail": 0, "info": 1},
+    "release_identity_rehearsal": {
+      "status": "PASS",
+      "schema": 36,
+      "git_commit": "eff8287f0cb36f1c12bac603be3b7d1ebbab1831",
+      "git_tree": "99866e2d54cd78e96dbc4727dff54ec4fff6a453",
+      "rollback_exact": true,
+      "production_mutation": false
+    },
+    "command_center_ui": {
+      "status": "PASS",
+      "typecheck": true,
+      "lint": true,
+      "vitest_passed": 115,
+      "build": true,
+      "security": true,
+      "product_checks": 212
+    },
+    "scheduler_restart_probe": {"status": "PASS", "duration_seconds": 125, "scope": "disposable staging task"},
+    "live_promotion": {
+      "status": "BLOCKED",
+      "reason": "live schema v34/current release 769715a7... versus source schema v36; no post-stage migration, restart, or provider proof",
+      "production_mutation": false
+    }
+  },
+  "overall": "SOURCE_PASS_LIVE_BLOCKED",
+  "next_boundary": "canonical source promotion may proceed after graph recheck; production mutation requires a fresh ownership/approval checkpoint"
+}

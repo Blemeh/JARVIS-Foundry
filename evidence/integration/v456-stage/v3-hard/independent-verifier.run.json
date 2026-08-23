@@ -1,0 +1,62 @@
+{
+  "collected": 36,
+  "command": [
+    [
+      "C:\\Python313\\python.exe",
+      "-m",
+      "pytest",
+      "tests/foundry/test_v3_hard_e2e.py",
+      "-q",
+      "--junitxml=C:\\temp\\JARVIS-V456-Cinematic-Integration\\evidence\\integration\\v456-stage\\v3-hard\\independent-verifier-00.junit.xml"
+    ],
+    [
+      "C:\\Python313\\python.exe",
+      "-m",
+      "pytest",
+      "tests/foundry/test_v3_fault_matrix.py",
+      "-q",
+      "--junitxml=C:\\temp\\JARVIS-V456-Cinematic-Integration\\evidence\\integration\\v456-stage\\v3-hard\\independent-verifier-01.junit.xml"
+    ],
+    [
+      "C:\\Python313\\python.exe",
+      "-m",
+      "pytest",
+      "tests/foundry/test_v3_resources.py",
+      "-q",
+      "--junitxml=C:\\temp\\JARVIS-V456-Cinematic-Integration\\evidence\\integration\\v456-stage\\v3-hard\\independent-verifier-02.junit.xml"
+    ],
+    [
+      "C:\\Python313\\python.exe",
+      "-m",
+      "pytest",
+      "tests/foundry/test_v3_outcomes.py",
+      "-q",
+      "--junitxml=C:\\temp\\JARVIS-V456-Cinematic-Integration\\evidence\\integration\\v456-stage\\v3-hard\\independent-verifier-03.junit.xml"
+    ],
+    [
+      "C:\\Python313\\python.exe",
+      "-m",
+      "pytest",
+      "tests/foundry/test_v3_git_reconcile.py",
+      "-q",
+      "--junitxml=C:\\temp\\JARVIS-V456-Cinematic-Integration\\evidence\\integration\\v456-stage\\v3-hard\\independent-verifier-04.junit.xml"
+    ]
+  ],
+  "duration_seconds": 84.829,
+  "errors": 0,
+  "exit_code": 0,
+  "failed": 0,
+  "failures": [],
+  "junit": [
+    "C:\\temp\\JARVIS-V456-Cinematic-Integration\\evidence\\integration\\v456-stage\\v3-hard\\independent-verifier-00.junit.xml",
+    "C:\\temp\\JARVIS-V456-Cinematic-Integration\\evidence\\integration\\v456-stage\\v3-hard\\independent-verifier-01.junit.xml",
+    "C:\\temp\\JARVIS-V456-Cinematic-Integration\\evidence\\integration\\v456-stage\\v3-hard\\independent-verifier-02.junit.xml",
+    "C:\\temp\\JARVIS-V456-Cinematic-Integration\\evidence\\integration\\v456-stage\\v3-hard\\independent-verifier-03.junit.xml",
+    "C:\\temp\\JARVIS-V456-Cinematic-Integration\\evidence\\integration\\v456-stage\\v3-hard\\independent-verifier-04.junit.xml"
+  ],
+  "name": "independent-verifier",
+  "passed": 36,
+  "skipped": 0,
+  "stderr_tail": "\n\n\n\n",
+  "stdout_tail": "..                                                                       [100%]\n\n.............                                                            [100%]\n\n.                                                                        [100%]\n\n..........                                                               [100%]\n\n..........                                                               [100%]\n"
+}

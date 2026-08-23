@@ -1,0 +1,12 @@
+{
+  "base_ancestry": "ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2",
+  "base_matches": true,
+  "branch": "integration/v456-cinematic-stage-20260823",
+  "expected_base": "ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2",
+  "head_at_gate_start": "eff8287f0cb36f1c12bac603be3b7d1ebbab1831",
+  "live_database_mutation": false,
+  "production_mutation": false,
+  "push_attempted": false,
+  "status_before_gate": [],
+  "worktree": "C:\\temp\\JARVIS-V456-Cinematic-Integration"
+}
