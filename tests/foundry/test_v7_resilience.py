@@ -352,6 +352,58 @@ def test_failed_diagnostics_block_repair_callback(tmp_path: Path) -> None:
     assert run.incidents[0].status == IncidentStatus.BLOCKED.value
 
 
+def test_configured_release_diagnostics_validate_manifest_before_repair(
+    tmp_path: Path,
+) -> None:
+    current = "c" * 40
+    valid_root = tmp_path / "valid-release"
+    fake_release(valid_root, current)
+    set_current(current, root=valid_root)
+    valid_home = tmp_path / "valid-home"
+    valid_db = FoundryDatabase(valid_home / "foundry.db")
+    valid_db.initialize()
+    valid_run = ResilienceCoordinator(
+        valid_db,
+        release_root=valid_root,
+        foundry_home=valid_home,
+    ).run_once(metrics={"database_errors": 1}, auto_repair=False)
+    valid_report = next(
+        action["report"] for action in valid_run.incidents[0].actions
+        if action.get("kind") == "diagnostics"
+    )
+    valid_release = next(
+        result for result in valid_report["results"] if result["name"] == "release"
+    )
+    assert valid_release["status"] == "PASS"
+    assert valid_release["evidence"]["manifest_checks"][0]["status"] == "PASS"
+
+    invalid_root = tmp_path / "invalid-release"
+    invalid_root.mkdir()
+    current_pointer(invalid_root).write_text("missing", encoding="utf-8")
+    invalid_home = tmp_path / "invalid-home"
+    invalid_db = FoundryDatabase(invalid_home / "foundry.db")
+    invalid_db.initialize()
+    calls: list[str] = []
+    invalid_run = ResilienceCoordinator(
+        invalid_db,
+        release_root=invalid_root,
+        foundry_home=invalid_home,
+        repair_handlers={
+            "database_fault": lambda incident, report: calls.append(incident.incident_id),
+        },
+    ).run_once(metrics={"database_errors": 1})
+    invalid_report = next(
+        action["report"] for action in invalid_run.incidents[0].actions
+        if action.get("kind") == "diagnostics"
+    )
+    invalid_release = next(
+        result for result in invalid_report["results"] if result["name"] == "release"
+    )
+    assert invalid_release["status"] == "FAIL"
+    assert invalid_run.incidents[0].status == IncidentStatus.BLOCKED.value
+    assert calls == []
+
+
 @pytest.mark.parametrize("protected_state", ["VETOED", "STOPPED"])
 def test_preexisting_protected_capability_is_never_resumed(
     tmp_path: Path, protected_state: str,
@@ -478,7 +530,7 @@ def test_disposable_fault_matrix_emits_all_pass_rows(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
     matrix = json.loads(output.read_text(encoding="utf-8"))
     assert matrix["scope"] == "disposable homes only"
-    assert matrix["summary"] == {"fail": 0, "pass": 19, "total": 19}
+    assert matrix["summary"] == {"fail": 0, "pass": 20, "total": 20}
     assert matrix["verdict"] == "PASS"
     assert all(row["evidence"] for row in matrix["rows"])
 

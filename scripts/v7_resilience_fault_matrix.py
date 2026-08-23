@@ -249,6 +249,72 @@ def _case_diagnostic_gate(root: Path) -> dict[str, Any]:
     )
 
 
+def _case_release_diagnostic_manifest(root: Path) -> dict[str, Any]:
+    current = "c" * 40
+    valid_root = root / "valid-release"
+    _fake_release(valid_root, current)
+    set_current(current, root=valid_root)
+    valid_home = root / "valid-home"
+    valid_database = FoundryDatabase(valid_home / "foundry.db")
+    valid_database.initialize()
+    valid_run = ResilienceCoordinator(
+        valid_database,
+        release_root=valid_root,
+        foundry_home=valid_home,
+    ).run_once(metrics={"database_errors": 1}, auto_repair=False)
+    valid_report = next(
+        action["report"] for action in valid_run.incidents[0].actions
+        if action.get("kind") == "diagnostics"
+    )
+    valid_release = next(
+        item for item in valid_report["results"] if item["name"] == "release"
+    )
+
+    invalid_root = root / "invalid-release"
+    invalid_root.mkdir()
+    current_pointer(invalid_root).write_text("missing", encoding="utf-8")
+    invalid_home = root / "invalid-home"
+    invalid_database = FoundryDatabase(invalid_home / "foundry.db")
+    invalid_database.initialize()
+    repair_calls: list[str] = []
+    invalid_run = ResilienceCoordinator(
+        invalid_database,
+        release_root=invalid_root,
+        foundry_home=invalid_home,
+        repair_handlers={
+            "database_fault": lambda incident, report: repair_calls.append(incident.incident_id),
+        },
+    ).run_once(metrics={"database_errors": 1})
+    invalid_report = next(
+        action["report"] for action in invalid_run.incidents[0].actions
+        if action.get("kind") == "diagnostics"
+    )
+    invalid_release = next(
+        item for item in invalid_report["results"] if item["name"] == "release"
+    )
+    passed = (
+        valid_release["status"] == "PASS"
+        and valid_release["evidence"]["manifest_checks"][0]["status"] == "PASS"
+        and invalid_release["status"] == "FAIL"
+        and invalid_run.incidents[0].status == IncidentStatus.BLOCKED.value
+        and not repair_calls
+    )
+    return _row(
+        "V7C-06-release-diagnostic-manifest",
+        "configured release manifest is valid versus missing CURRENT target",
+        "read-only diagnostic proves manifest before any repair callback",
+        invalid_run.incidents[0].status,
+        {
+            "valid_release_status": valid_release["status"],
+            "invalid_release_status": invalid_release["status"],
+            "repair_calls": len(repair_calls),
+        },
+        "invalid release evidence blocks repair without pointer mutation",
+        "owner/integration lane must restore a valid release authority before retry",
+        "PASS" if passed else "FAIL",
+    )
+
+
 def _case_provider(root: Path) -> dict[str, Any]:
     database = _database(root)
     coordinator = ResilienceCoordinator(database)
@@ -294,6 +360,14 @@ def _case_provider_continuity(root: Path) -> dict[str, Any]:
         all_unavailable.dispatch(_delivery_request("offline-a", "all-a")),
         all_unavailable.dispatch(_delivery_request("offline-b", "all-b")),
     ]
+    supervisor = Supervisor(database, root / "SUPERVISOR_STOP", instance_id="provider-lab")
+    supervisor_status = "NOT_STARTED"
+    supervisor_heartbeat = "NOT_HEARTBEAT"
+    try:
+        supervisor_status = supervisor.start()
+        supervisor_heartbeat = supervisor.heartbeat()
+    finally:
+        supervisor.stop()
     coordinator = ResilienceCoordinator(database)
     run = coordinator.run_once(auto_repair=True)
     provider_incidents = [
@@ -313,6 +387,8 @@ def _case_provider_continuity(root: Path) -> dict[str, Any]:
         ]
         and delivered["status"] == DeliveryStatus.DELIVERED.value
         and all(item["status"] == DeliveryStatus.BLOCKED.value for item in all_blocked)
+        and supervisor_status == "RUNNING"
+        and supervisor_heartbeat == "RUNNING"
         and provider_anomaly
         and provider_incidents
         and provider_incidents[0].status == IncidentStatus.BLOCKED.value
@@ -331,6 +407,8 @@ def _case_provider_continuity(root: Path) -> dict[str, Any]:
         {
             "delivery_statuses": statuses,
             "healthy_provider_calls": len(healthy_provider.calls),
+            "supervisor_status": supervisor_status,
+            "supervisor_heartbeat": supervisor_heartbeat,
             "provider_anomaly": provider_anomaly,
             "provider_incident_statuses": [item.status for item in provider_incidents],
         },
@@ -684,7 +762,13 @@ def _case_false_success(root: Path) -> dict[str, Any]:
 def _case_resource_cost(root: Path) -> dict[str, Any]:
     database = _database(root)
     coordinator = ResilienceCoordinator(database)
-    run = coordinator.run_once(metrics={"task_count": 101, "memory_bytes": 2_000_000_001, "cost_usd": 26.0})
+    run = coordinator.run_once(metrics={
+        "task_count": 101,
+        "process_count": 101,
+        "memory_bytes": 2_000_000_001,
+        "cost_usd": 26.0,
+        "retry_cost_usd": 11.0,
+    })
     kinds = sorted(item.kind for item in run.anomalies)
     actual = sorted(item.status for item in run.incidents)
     passed = kinds == ["cost_anomaly", "resource_anomaly"] and all(
@@ -946,6 +1030,7 @@ def run_matrix() -> dict[str, Any]:
         ("worker", _case_worker_crash),
         ("stop", _case_stop),
         ("diagnostic", _case_diagnostic_gate),
+        ("release_diagnostic", _case_release_diagnostic_manifest),
         ("provider", _case_provider),
         ("provider_continuity", _case_provider_continuity),
         ("database", _case_database),

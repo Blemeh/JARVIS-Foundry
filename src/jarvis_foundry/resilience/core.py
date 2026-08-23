@@ -1144,14 +1144,59 @@ class DiagnosticPlaybook:
             results.append(DiagnosticResult("release", "NOT_CONFIGURED"))
         else:
             try:
-                from ..deployment.release import release_authority_report
+                from ..deployment.release import (
+                    read_current, read_previous, release_authority_report,
+                    validate_release,
+                )
+                release_root_path = Path(release_root) if release_root else None
+                foundry_home_path = Path(foundry_home) if foundry_home else None
                 report = release_authority_report(
-                    root=Path(release_root) if release_root else None,
-                    foundry_home=Path(foundry_home) if foundry_home else None,
+                    root=release_root_path,
+                    foundry_home=foundry_home_path,
+                )
+                manifest_checks: list[dict[str, Any]] = []
+                if release_root_path is not None:
+                    for pointer_name, source_sha in (
+                        ("CURRENT", read_current(release_root_path)),
+                        ("PREVIOUS", read_previous(release_root_path)),
+                    ):
+                        if not source_sha:
+                            manifest_checks.append({
+                                "pointer": pointer_name,
+                                "status": "MISSING",
+                            })
+                            continue
+                        try:
+                            validate_release(
+                                source_sha,
+                                root=release_root_path,
+                                foundry_home=foundry_home_path,
+                                require_schema_match=foundry_home_path is not None,
+                            )
+                            manifest_checks.append({
+                                "pointer": pointer_name,
+                                "source_sha": source_sha,
+                                "status": "PASS",
+                            })
+                        except Exception as error:  # noqa: BLE001 — report, do not mutate
+                            manifest_checks.append({
+                                "pointer": pointer_name,
+                                "source_sha": source_sha,
+                                "status": "FAIL",
+                                "error_class": type(error).__name__,
+                                "error": _text(error),
+                            })
+                report = {**report, "manifest_checks": manifest_checks}
+                manifest_failed = any(
+                    item.get("status") == "FAIL" for item in manifest_checks
                 )
                 results.append(DiagnosticResult(
-                    "release", "PASS" if report.get("status") in {"CONSISTENT", "FILESYSTEM_ONLY_AUTHORITY"}
-                    else "FAIL", report,
+                    "release",
+                    "PASS" if (
+                        report.get("status") in {"CONSISTENT", "FILESYSTEM_ONLY_AUTHORITY"}
+                        and not manifest_failed
+                    ) else "FAIL",
+                    report,
                 ))
             except Exception as error:  # noqa: BLE001
                 results.append(DiagnosticResult("release", "FAIL",
@@ -1344,10 +1389,14 @@ class ResilienceCoordinator:
         repair_handlers: Mapping[str, Callable[[IncidentRecord, DiagnosticReport], Any]] | None = None,
         health_probe: Callable[[IncidentRecord, DiagnosticReport], Any] | None = None,
         max_repair_attempts: int = 2,
+        release_root: str | Path | None = None,
+        foundry_home: str | Path | None = None,
         source_id: str = "v7-resilience",
     ) -> None:
         self.database = database
         self.stop_path = Path(stop_path).expanduser().resolve() if stop_path else None
+        self.release_root = Path(release_root).expanduser().resolve() if release_root else None
+        self.foundry_home = Path(foundry_home).expanduser().resolve() if foundry_home else None
         self.graph = graph or DependencyGraph()
         self.detector = detector or AnomalyDetector()
         self.playbook = playbook or DiagnosticPlaybook()
@@ -1478,6 +1527,7 @@ class ResilienceCoordinator:
     def _diagnose(self, incident: IncidentRecord, anomaly: Anomaly) -> DiagnosticReport:
         report = self.playbook.run(
             self.database, incident, stop_path=self.stop_path,
+            release_root=self.release_root, foundry_home=self.foundry_home,
             effect_action_key=anomaly.effect_action_key,
         )
         self.store.transition(incident.incident_id, IncidentStatus.DIAGNOSING,
@@ -1792,6 +1842,7 @@ class ResilienceCoordinator:
             )
         report = self.playbook.run(
             self.database, reconciled, stop_path=self.stop_path,
+            release_root=self.release_root, foundry_home=self.foundry_home,
             effect_action_key=effect_action_key,
         )
         if not repair:
