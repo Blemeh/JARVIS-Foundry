@@ -27,6 +27,7 @@ from .owner_controls import (
     sign_command,
 )
 from .owner_directives import owner_control_state, owner_directive_snapshot
+from .decision_queue import build_owner_attention_queue
 from .supervisor.estop import EmergencyStop
 from .v3_teams import DEFAULT_REPAIR_BUDGET
 
@@ -901,6 +902,11 @@ def build_snapshot(
     )
     paused = bool(control_state["paused"])
     hold_active = bool(active_vetoes) or bool(stop) or paused
+    decision_queue = build_owner_attention_queue(
+        database,
+        now=generated_at,
+        limit=100,
+    )
     recovery_events = [e for e in decision_timeline(database, limit=timeline_limit)
                        if any(token in e["event_type"] for token in ("recover", "reap", "rollback", "degraded", "blocked"))]
     release_events = [e for e in decision_timeline(database, limit=timeline_limit)
@@ -938,6 +944,7 @@ def build_snapshot(
             "state_reason": control_state["reason"],
             "state_source": control_state["source"],
             "state_evidence": control_state,
+            "decision_queue_open_count": decision_queue["open_count"],
             "stop_effective_without_hermes_ui_models_network": True,
             "history": owner_directives["records"],
             "unknown": owner_directives["unknown"],
@@ -945,6 +952,7 @@ def build_snapshot(
             "active_count": owner_directives["active_count"],
         },
         "owner_directives": owner_directives,
+        "decision_queue": decision_queue,
         "missions": [with_ref(m, "mission", "mission_id") for m in missions],
         "workers": [with_ref(w, "agent_run", "run_id") for w in workers],
         "evidence": [with_ref(e, "evidence", "bundle_id") for e in evidence],

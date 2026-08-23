@@ -453,6 +453,7 @@ def test_existing_non_discovery_consumers_unchanged(db):
         "releases_canaries_rollbacks", "recovery", "costs", "briefings",
             "voice", "timeline", "executive",
             "owner_directives",
+            "decision_queue",
         }
     assert set(legacy_keys) == expected
     assert set(pinned["candidates"][0]) >= {"candidate_id"}
