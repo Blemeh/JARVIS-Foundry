@@ -4,7 +4,7 @@ Orientation recorded 2026-08-23 (Europe/Budapest).
 
 - Worktree: `C:/temp/JARVIS-Overnight-V3-Hard-Gate`
 - Branch: `candidate/overnight-v3-hard-gate`
-- HEAD: `58f35b8` (local hardening checkpoint)
+- HEAD: `b736260` (local evidence checkpoint; verified source is `58f35b8`)
 - Base: `origin/main` / `ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2`
 - Schema: v36
 - Source evidence pin: `58f35b873f682a209eee2d12cf549cf315f469d9`
