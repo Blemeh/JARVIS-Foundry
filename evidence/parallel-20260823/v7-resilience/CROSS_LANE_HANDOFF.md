@@ -30,7 +30,7 @@ independent verification, and the final gate verdict.
 
 - Candidate branch: `candidate/v7-resilience-continuity-20260823`.
 - Frozen base: `origin/main` at `6db467a2b0e6bdc37adbc4cbfac309418e33afec`.
-- Final candidate HEAD: `facafc94f7787dcfa05721b26be04c6cec54cb3f`.
+- Source checkpoint HEAD before handoff-only documentation: `facafc9bdd329a8ea43cd1ec76c768db1b7e1caa`.
 - Source/disposable V7 matrix: `V7C-16_FAULT_MATRIX.json`, 19/19 PASS.
 - Focused V7/adjacent suite: 138/138 PASS, plus targeted release/provider
   regression paths PASS.
