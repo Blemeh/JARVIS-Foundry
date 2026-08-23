@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import subprocess
 import uuid
 from pathlib import Path
@@ -50,6 +51,20 @@ from .verify import (
 
 class VerifierOrchestrationError(ValueError):
     """Verifier orchestration refused or failed."""
+
+
+def default_probe_command() -> list[str]:
+    """The SHIPPED probe suite: an out-of-process Python interpreter
+    running the repository's verifier probe module against the
+    candidate tree (passed as the final argv entry by the
+    orchestrator). It executes the candidate's own tests/artifacts and
+    reports per-criterion results in the frozen contract shape. The
+    probe is a REAL subprocess — the cycle process never writes the
+    verdict itself."""
+    import sys
+
+    return [sys.executable, "-m",
+            "jarvis_foundry.evolution.verifier_probe"]
 
 
 def _require(condition: bool, message: str) -> None:
@@ -135,11 +150,16 @@ def orchestrate_verification(
     started = isoformat()
 
     # execute the probe suite OUT-OF-PROCESS (fresh interpreter,
-    # sanitized env — the candidate never records its own verdict)
+    # sanitized env — the candidate never records its own verdict).
+    # The FROZEN criteria travel via JARVIS_VERIFIER_CRITERIA so the
+    # probe reports against exactly the request's criteria.
     env = {key: value for key, value in __import__("os").environ.items()
            if not key.endswith(("_API_KEY", "_TOKEN", "_SECRET",
                                 "_PASSWORD"))
            and key not in ("HERMES_HOME", "JARVIS_HOME")}
+    env["JARVIS_VERIFIER_CRITERIA"] = json.dumps(criteria)
+    env["PYTHONPATH"] = str(Path(__file__).resolve().parent.parent.parent) \
+        + os.pathsep + env.get("PYTHONPATH", "")
     try:
         completed = subprocess.run(
             [*probe_command, str(Path(candidate_tree_root))],
@@ -176,7 +196,12 @@ def orchestrate_verification(
              f"missing={missing} extra={extra}")
     criteria_results: list[dict[str, Any]] = []
     findings = list(report.get("findings") or [])  # type: ignore[union-attr]
-    all_pass = True
+    # Overall-verdict rule aligned with the S5 boundary (D-032):
+    # NOT_TESTED is a legal per-criterion status; overall PASS requires
+    # NO criterion to be FAIL. Every PASS entry must carry a 64-char
+    # evidence hash (unearned PASS refused below).
+    any_fail = False
+    not_tested_count = 0
     for criterion in criteria:
         result = reported[criterion]
         status = result.get("status")
@@ -188,11 +213,14 @@ def orchestrate_verification(
                      and len(evidence_hash) == 64,
                      f"PASS criterion {criterion!r} lacks a 64-char "
                      "evidence hash — unearned PASS refused")
+        elif status == "FAIL":
+            any_fail = True
         else:
-            all_pass = False
+            not_tested_count += 1
         criteria_results.append({"criterion": criterion,
                                  "status": status,
                                  "evidence_hash": evidence_hash})
+    all_pass = not any_fail
 
     verifier_identity = {
         "provider": provider_settings.provider,
@@ -224,6 +252,7 @@ def orchestrate_verification(
         "candidate_tree_sha256": tree_hash,
         "criteria_count": len(criteria),
         "all_criteria_pass": all_pass,
+        "not_tested_count": not_tested_count,
         "trusted_independent_pass": trusted,
         "independence_status": ("INDEPENDENT" if trusted else
                                 "SAME_SESSION_UNTRUSTED"),
