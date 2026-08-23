@@ -10,6 +10,7 @@ from ..control.broker import emergency_stop_reason, matching_veto_reason
 from ..database import FoundryDatabase
 from ..events import Event, payload_hash
 from .browser import BrowserConnector
+from .evidence import record_attempt
 from .git import GitConnector
 from .http import HttpServiceConnector
 from .lineage import record_lineage
@@ -71,6 +72,10 @@ class ComposedMissionHarness:
             return {"mission_id": mission_id, "status": "BLOCKED", "reason": blocked}
 
         http_attempt, document = self.http.read_document("/state")
+        record_attempt(
+            self.database, http_attempt, mission_id=mission_id,
+            resource_id="resource-http", effect_ticket_id=f"effect-http:{mission_id}",
+        )
         if http_attempt.outcome != "COMPLETED" or document is None:
             return {
                 "mission_id": mission_id, "status": "BLOCKED",
@@ -116,6 +121,10 @@ class ComposedMissionHarness:
         )
         if browser_attempt.outcome == "UNKNOWN":
             browser_attempt = self.browser.reconcile(f"compose-browser:{mission_id}")
+        record_attempt(
+            self.database, browser_attempt, mission_id=mission_id,
+            resource_id="resource-browser", effect_ticket_id=f"effect-browser:{mission_id}",
+        )
         if browser_attempt.outcome != "COMPLETED":
             return {"mission_id": mission_id, "status": "BLOCKED", "reason": f"Browser {browser_attempt.outcome}"}
         browser_lineage = record_lineage(

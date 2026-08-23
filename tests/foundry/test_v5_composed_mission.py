@@ -9,6 +9,7 @@ from jarvis_foundry.connectors.browser import BrowserConnector
 from jarvis_foundry.connectors.composed import ComposedMissionHarness
 from jarvis_foundry.connectors.git import GitConnector
 from jarvis_foundry.connectors.http import HttpServiceConnector
+from jarvis_foundry.connectors.evidence import attempts_for_mission
 from jarvis_foundry.connectors.lineage import lineage_for_mission
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.owner_controls import OwnerControlService, sign_command
@@ -59,6 +60,7 @@ def test_composed_mission_runs_three_connectors_and_replays_without_duplicates(t
             ).fetchone()[0]
         assert completed == 1
         assert len(lineage_for_mission(db, "mission-compose")) == 3
+        assert len(attempts_for_mission(db, "mission-compose")) == 2
         assert not subprocess.run(
             ["git", "-C", str(work), "status", "--porcelain"], capture_output=True, text=True, check=True,
         ).stdout.strip()
@@ -103,4 +105,3 @@ def test_http_outage_isolated_from_unrelated_git_work(tmp_path: Path) -> None:
     assert subprocess.run(
         ["git", "ls-remote", str(bare), "main"], capture_output=True, text=True, check=True,
     ).stdout.split()[0] == head
-
