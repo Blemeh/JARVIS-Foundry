@@ -154,6 +154,81 @@
   font-weight: 500;
 }
 
+/* Reference-inspired boot console, backed only by current runtime state. */
+.neural-console {
+  max-width: 760px;
+  margin-top: 18px;
+  padding: 11px 13px 10px;
+  border: 1px solid rgba(102, 217, 255, 0.22);
+  border-radius: 7px;
+  background:
+    linear-gradient(90deg, rgba(102, 217, 255, 0.04), transparent 42%),
+    rgba(2, 4, 10, 0.62);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.neural-console-head,
+.neural-console-line {
+  display: grid;
+  grid-template-columns: minmax(90px, 0.9fr) minmax(0, 2fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.neural-console-head {
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(26, 55, 81, 0.8);
+}
+
+.neural-console-title {
+  color: var(--telemetry-white);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.neural-console-state,
+.neural-console-code {
+  font-weight: 700;
+}
+
+.neural-console-state {
+  justify-self: end;
+}
+
+.neural-console-line {
+  min-height: 25px;
+  color: var(--telemetry-muted);
+}
+
+.neural-console-line + .neural-console-line {
+  border-top: 1px solid rgba(26, 55, 81, 0.45);
+}
+
+.neural-console-code.nominal,
+.neural-console-state.nominal {
+  color: var(--electric-signal);
+}
+
+.neural-console-code.caution,
+.neural-console-state.caution {
+  color: var(--caution-amber);
+}
+
+.neural-console-code.critical,
+.neural-console-state.critical {
+  color: var(--stop-pink);
+}
+
+.neural-console-value {
+  color: var(--telemetry-dim);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-align: right;
+}
+
 /* Goal panel + core orbit */
 .goal-panel {
   padding: 28px 24px;
@@ -761,6 +836,22 @@
 
   .directive-box button {
     display: none;
+  }
+
+  .neural-console {
+    font-size: 9px;
+    letter-spacing: 0.04em;
+  }
+
+  .neural-console-head,
+  .neural-console-line {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .neural-console-value {
+    grid-column: 2;
+    text-align: left;
+    margin-top: -5px;
   }
 
   .telemetry {

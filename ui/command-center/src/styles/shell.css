@@ -60,6 +60,27 @@
   box-shadow: 0 0 18px rgba(138, 255, 239, 0.65);
 }
 
+.sidebar-logo > svg {
+  position: relative;
+  z-index: 2;
+  stroke-width: 1.4;
+}
+
+.sidebar-logo-orbit {
+  position: absolute;
+  inset: 5px -6px;
+  border: 1px solid rgba(102, 217, 255, 0.52);
+  border-radius: 50%;
+  transform: rotate(32deg);
+  pointer-events: none;
+}
+
+.sidebar-logo-orbit-two {
+  inset: -6px 5px;
+  border-color: rgba(155, 140, 255, 0.48);
+  transform: rotate(-32deg);
+}
+
 .sidebar-title {
   margin: 0;
   font-family: var(--font-display);
@@ -295,6 +316,61 @@
 
 .data-source-disconnected {
   border-color: rgba(255, 113, 137, 0.45);
+  color: var(--stop-pink);
+}
+
+.neural-link-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--structural-line);
+  border-radius: 7px;
+  background: rgba(7, 16, 28, 0.78);
+  color: var(--telemetry-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.neural-link-pill svg {
+  color: var(--evidence-cyan);
+}
+
+.neural-link-state {
+  color: var(--telemetry-dim);
+  letter-spacing: 0.08em;
+}
+
+.neural-link-live {
+  border-color: rgba(138, 255, 239, 0.42);
+  color: var(--telemetry-white);
+}
+
+.neural-link-live svg,
+.neural-link-live .neural-link-state {
+  color: var(--electric-signal);
+}
+
+.neural-link-sim {
+  border-color: rgba(255, 208, 113, 0.42);
+}
+
+.neural-link-sim svg,
+.neural-link-sim .neural-link-state {
+  color: var(--caution-amber);
+}
+
+.neural-link-suspended {
+  border-color: rgba(255, 113, 137, 0.5);
+  color: var(--stop-pink);
+}
+
+.neural-link-suspended svg,
+.neural-link-suspended .neural-link-state {
   color: var(--stop-pink);
 }
 
@@ -716,6 +792,10 @@
 
   .topbar-clock,
   .topbar-divider {
+    display: none;
+  }
+
+  .neural-link-pill {
     display: none;
   }
 

@@ -1,4 +1,4 @@
-import { Clock, Database, Menu, OctagonX, ShieldQuestion, WifiOff } from "lucide-react";
+import { Clock, Database, Menu, OctagonX, ShieldQuestion, Wifi, WifiOff } from "lucide-react";
 import { useClock } from "../lib/useClock";
 import { useCommandCenter } from "../context/CommandCenterContext";
 import { StopControl } from "./EmergencyStop";
@@ -32,7 +32,16 @@ export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
         ? "data-source-pill data-source-degraded"
         : sourceMode === "LIVE"
           ? "data-source-pill data-source-live"
-          : "data-source-pill";
+        : "data-source-pill";
+  const neuralState = stopActive
+    ? "SUSPENDED"
+    : !streamConnected
+      ? "WAIT"
+      : sourceMode === "LIVE"
+        ? "LIVE"
+        : sourceMode === "SIMULATED"
+          ? "SIM"
+          : "GATED";
 
   return (
     <>
@@ -44,6 +53,14 @@ export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
           <span className={pillClass} title={connection.error ?? `Data source: ${connection.source}`}>
             {sourceMode === "DISCONNECTED" ? <WifiOff size={11} aria-hidden="true" /> : <Database size={11} aria-hidden="true" />}
             <span className="t-label">Data Source: {sourceModeLabel(sourceMode)}</span>
+          </span>
+          <span
+            className={`neural-link-pill ${stopActive ? "neural-link-suspended" : neuralState === "LIVE" ? "neural-link-live" : neuralState === "SIM" ? "neural-link-sim" : ""}`}
+            title={`Neural Link state: ${neuralState}. This is an interface status, not voice capability.`}
+          >
+            <Wifi size={11} aria-hidden="true" />
+            <span className="t-label">Neural Link</span>
+            <span className="t-label neural-link-state">{neuralState}</span>
           </span>
         </div>
         <div className="topbar-right">

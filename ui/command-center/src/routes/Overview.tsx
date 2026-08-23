@@ -6,7 +6,7 @@ import { RouteQueryGate } from "../components/RouteQueryGate"
 import { RefChipRow } from "../components/EntityRefLink"
 import { useRouteQuery } from "../hooks/useRouteQuery"
 import { refsFromTimelineEvent } from "../lib/entityRefs"
-import { sourceCopy } from "../lib/sourceMode"
+import { sourceCopy, sourceModeLabel } from "../lib/sourceMode"
 import {
   findMeasuredCostResource,
   formatMeasuredCostDisplay,
@@ -39,7 +39,7 @@ function OverviewContent({
   evidence,
   timeline,
 }: OverviewData) {
-  const { sourceMode } = useCommandCenter()
+  const { sourceMode, stopActive, streamConnected } = useCommandCenter()
 
   const safeMissions = missions
   const safeWorkers = workers
@@ -67,6 +67,8 @@ function OverviewContent({
 
   const missionVectors = safeMissions.slice(0, 6)
   const decisionSignal = [...safeTimeline].slice(0, 8)
+  const sourceReady = sourceMode === "LIVE" || sourceMode === "SIMULATED"
+  const linkState = stopActive ? "SUSPENDED" : sourceReady ? sourceModeLabel(sourceMode) : "GATED"
 
   return (
     <div className="command-deck-wrap">
@@ -105,6 +107,30 @@ function OverviewContent({
                   unavailable: `Operational projection unavailable: the Foundry data source is ${sourceMode.toLowerCase()}; no fixture fallback is shown.`,
                 })}
               </p>
+
+              <div className="neural-console" aria-label="JARVIS neural link status">
+                <div className="neural-console-head">
+                  <span className="neural-console-title">Neural Link</span>
+                  <span className={`neural-console-state ${stopActive ? "critical" : sourceReady ? "nominal" : "caution"}`}>
+                    {linkState}
+                  </span>
+                </div>
+                <div className="neural-console-line">
+                  <span className={`neural-console-code ${sourceReady ? "nominal" : "caution"}`}>{sourceReady ? "[OK]" : "[WAIT]"}</span>
+                  <span>FOUNDRY LEDGER PROJECTION</span>
+                  <span className="neural-console-value">{sourceModeLabel(sourceMode)}</span>
+                </div>
+                <div className="neural-console-line">
+                  <span className={`neural-console-code ${streamConnected ? "nominal" : "critical"}`}>{streamConnected ? "[OK]" : "[WAIT]"}</span>
+                  <span>EVENT STREAM</span>
+                  <span className="neural-console-value">{streamConnected ? "CONNECTED" : "DISCONNECTED"}</span>
+                </div>
+                <div className="neural-console-line">
+                  <span className="neural-console-code caution">[GATED]</span>
+                  <span>OWNER VOICE CHANNEL</span>
+                  <span className="neural-console-value">NOT_TESTED</span>
+                </div>
+              </div>
             </div>
           </div>
 

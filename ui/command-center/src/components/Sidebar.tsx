@@ -3,7 +3,7 @@ import {
   Activity,
   BrainCircuit,
   Braces,
-  Database,
+  Cpu,
   FileCheck2,
   History,
   LayoutDashboard,
@@ -37,11 +37,13 @@ export function SidebarContent() {
     <>
       <div className="sidebar-brand">
         <div className="sidebar-logo" aria-hidden="true">
-          <Database size={20} />
+          <span className="sidebar-logo-orbit sidebar-logo-orbit-one" />
+          <span className="sidebar-logo-orbit sidebar-logo-orbit-two" />
+          <Cpu size={19} />
         </div>
         <div>
-          <p className="sidebar-title">JARVIS FOUNDRY</p>
-          <p className="t-label sidebar-version">Command Center Candidate</p>
+          <p className="sidebar-title">J.A.R.V.I.S.</p>
+          <p className="t-label sidebar-version">Foundry Command Core</p>
         </div>
       </div>
       <nav className="sidebar-nav" aria-label="Primary">
