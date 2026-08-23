@@ -11,19 +11,20 @@ integration, and isolated verification completed through the Command Center
 truth package; canonical push is the remaining owner-authorized step)
 
 ```text
-CURRENT CANONICAL HEAD:      2084e5b (isolated full-reconciliation source checkpoint;
-                             origin/main remains ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2
-                             until the final normal push)
+CURRENT CANONICAL HEAD:      5f85bae (canonical main and origin/main after the normal
+                             full-reconciliation push; source promotion is complete,
+                             live runtime promotion remains owner-authorized)
 INTEGRATION BASE:            ceb90d7d201b4775757cae0f7e03ae1e2d6f22e2
 AUDIT SOURCE:                26e73c7 (residual audit environment scoping, absorbed
                              after Q1-Q3 semantic review)
 CURRENT WORK BRANCH:         integration/full-reconciliation-2026-08-23
-LOCAL RUNTIME LANE CHECKPOINT: 2084e5b
+LOCAL RUNTIME LANE CHECKPOINT: 5f85bae
                               (isolated source/test checkpoint; no live runtime,
                               provider, scheduler, or production mutation)
 CURRENT STATE RECORD:        this source checkpoint is not a live promotion claim;
                              canonicalization and the normal push are pending
-TESTED CODE HEAD:            2084e5b source checkpoint; release, V3 hard/operational,
+TESTED CODE HEAD:            2084e5b source checkpoint (parent of the evidence-only
+                             canonical pin); release, V3 hard/operational,
                              worker-control, and Command Center UI gates were run
                              in the isolated integration worktree
 FINAL EVIDENCE HEAD:         evidence/release/overnight/run-final-20260823-02/RUN.json
