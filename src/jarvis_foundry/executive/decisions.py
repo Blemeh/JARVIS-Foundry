@@ -18,6 +18,7 @@ from .eligibility import (
     current_activation_epoch,
     eligible_candidates,
 )
+from ..owner_directives import active_directives_for, constraint_context
 from .goals import StructuredGoal, active_goals
 from .predictions import build_prediction, record_prediction
 from .scoring import DECISION_VERSION, CandidateScore, rank_candidates
@@ -50,6 +51,7 @@ class ExecutiveDecision:
     active_goals: tuple[str, ...] = ()
     eligibility: dict[str, Any] = field(default_factory=dict)
     calibration_version: str = ""
+    owner_controls: dict[str, Any] = field(default_factory=dict)
 
 
 class ExecutiveDecisionService:
@@ -85,14 +87,31 @@ class ExecutiveDecisionService:
         self.activation_epoch = epoch
         return epoch
 
-    def _safety_block(self) -> str | None:
+    def _safety_block(self, resource_id: str | None = None) -> str | None:
         stop = emergency_stop_reason(self.database, None)
         if stop:
             return f"STOP active: {stop}"
-        veto = matching_veto_reason(self.database, {"GLOBAL"})
+        identities = {"GLOBAL"}
+        if resource_id:
+            identities.add(str(resource_id))
+        veto = matching_veto_reason(self.database, identities)
         if veto:
             return f"veto active: {veto}"
         return None
+
+    def _owner_control_context(self, resource_id: str) -> dict[str, Any]:
+        """Return the durable owner controls relevant to this evaluation."""
+        targets = {"GLOBAL", str(resource_id)}
+        vetoes = active_directives_for(
+            self.database,
+            command_types=frozenset({"VETO_ACTION", "STOP_MISSION"}),
+            targets=targets,
+        )
+        return {
+            "constraints": constraint_context(self.database, targets=targets),
+            "vetoes": [record.to_dict() for record in vetoes],
+            "veto_reason": matching_veto_reason(self.database, targets),
+        }
 
     def _decision_id_for_loop(self, loop_id: str) -> str:
         return f"exec-{loop_id}"
@@ -131,6 +150,7 @@ class ExecutiveDecisionService:
             rejected=tuple(payload.get("rejected") or ()),
             deferred=tuple(payload.get("deferred") or ()),
             factor_breakdown=dict(payload.get("factor_breakdown") or {}),
+            owner_controls=dict(payload.get("owner_controls") or {}),
         )
 
     def evaluate(
@@ -150,12 +170,14 @@ class ExecutiveDecisionService:
 
         if resource_contention is None:
             resource_contention = compute_resource_contention(self.database, resource_id)
-        blocked = self._safety_block()
+        owner_controls = self._owner_control_context(resource_id)
+        blocked = self._safety_block(resource_id)
         if blocked:
             return self._wait_decision(
                 decision_id, reason=blocked,
                 reconsider_condition="STOP/veto cleared",
                 goals=(),
+                owner_controls=owner_controls,
             )
 
         goals = active_goals(self.database)
@@ -173,7 +195,10 @@ class ExecutiveDecisionService:
             limit=candidate_limit,
         )
 
-        eligibility_audit: dict[str, Any] = {"eligible_count": len(rows)}
+        eligibility_audit: dict[str, Any] = {
+            "eligible_count": len(rows),
+            "owner_controls": owner_controls,
+        }
         rejected: list[dict[str, Any]] = []
         deferred: list[dict[str, Any]] = []
 
@@ -186,6 +211,7 @@ class ExecutiveDecisionService:
                 eligibility=eligibility_audit,
                 calibration_version=calibration.version,
                 wait_kind=WAIT_NO_ELIGIBLE,
+                owner_controls=owner_controls,
             ))
 
         ranked = rank_candidates(
@@ -295,6 +321,7 @@ class ExecutiveDecisionService:
                 rejected=tuple(rejected),
                 deferred=tuple(deferred),
                 wait_kind=WAIT_COMPARATIVE,
+                owner_controls=owner_controls,
             ))
 
         if best.composite < wait_threshold and best.goal_fit < 0.15:
@@ -307,6 +334,7 @@ class ExecutiveDecisionService:
                 eligibility=eligibility_audit,
                 calibration_version=calibration.version,
                 wait_kind=WAIT_COMPARATIVE,
+                owner_controls=owner_controls,
             ))
 
         # Keyword bait rejection: superficially attractive but no goal fit.
@@ -333,6 +361,7 @@ class ExecutiveDecisionService:
         factor_breakdown = _factor_dict(best)
         if comparative_rationale:
             factor_breakdown["comparative_rationale"] = comparative_rationale
+        factor_breakdown["owner_controls"] = owner_controls
         decision = ExecutiveDecision(
             kind="SELECT",
             decision_id=decision_id,
@@ -348,6 +377,7 @@ class ExecutiveDecisionService:
             active_goals=goal_ids,
             eligibility=eligibility_audit,
             calibration_version=calibration.version,
+            owner_controls=owner_controls,
         )
         return self._record_and_return(decision)
 
@@ -371,6 +401,7 @@ class ExecutiveDecisionService:
         rejected: tuple[dict[str, Any], ...] = (),
         deferred: tuple[dict[str, Any], ...] = (),
         wait_kind: str = WAIT_NO_ELIGIBLE,
+        owner_controls: dict[str, Any] | None = None,
     ) -> ExecutiveDecision:
         comparative = (
             wait_kind == WAIT_COMPARATIVE
@@ -396,6 +427,7 @@ class ExecutiveDecisionService:
             active_goals=goals,
             eligibility=eligibility or {},
             calibration_version=calibration_version,
+            owner_controls=owner_controls or {},
         )
 
     def _record_and_return(self, decision: ExecutiveDecision) -> ExecutiveDecision:
@@ -412,6 +444,7 @@ class ExecutiveDecisionService:
             "rejected": list(decision.rejected),
             "deferred": list(decision.deferred),
             "calibration_version": decision.calibration_version,
+            "owner_controls": decision.owner_controls,
         }
         if decision.score is not None:
             payload["selected_score"] = {

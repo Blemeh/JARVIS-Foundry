@@ -1074,7 +1074,17 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
             exact_text = str(payload.get("exact_text", ""))
             if route == "/api/owner-command":
                 nonce = secrets.token_hex(16)
-                signature = sign_command(self.owner_secret, command_type, target, exact_text, nonce)
+                metadata = payload.get("metadata") if isinstance(payload.get("metadata"), dict) else None
+                signature = sign_command(
+                    self.owner_secret,
+                    command_type,
+                    target,
+                    exact_text,
+                    nonce,
+                    supersedes=payload.get("supersedes_directive_id"),
+                    expires_at=payload.get("expires_at"),
+                    metadata=metadata,
+                )
             else:
                 nonce = str(payload.get("nonce", ""))
                 signature = str(payload.get("signature", ""))
@@ -1091,6 +1101,7 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
                     directive_id=payload.get("directive_id"),
                     supersedes_directive_id=payload.get("supersedes_directive_id"),
                     expires_at=payload.get("expires_at"),
+                    metadata=payload.get("metadata") if isinstance(payload.get("metadata"), dict) else None,
                 )
                 result = {
                     "status": "APPLIED",

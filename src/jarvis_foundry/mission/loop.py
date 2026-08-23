@@ -439,6 +439,8 @@ class MissionLoop:
             proposal = SimpleNamespace(
                 redirected=False,
                 action_requirement=str(mission.get("next_action") or ""),
+                owner_constraints=(),
+                owner_constraint_status="CLEAR",
             )
         else:
             proposal = propose_next_action(self.database, mission_id)
@@ -482,6 +484,21 @@ class MissionLoop:
             dispatch_instructions = (
                 f"Canonical mission next action: {proposal.action_requirement}\n\n"
                 f"{instructions}")
+        if proposal.owner_constraints:
+            constraint_lines = [
+                "Durable owner constraints (verbatim; policy gates remain authoritative):"
+            ]
+            for constraint in proposal.owner_constraints:
+                text = str(constraint.get("exact_text") or "").strip()
+                if text:
+                    constraint_lines.append(
+                        f"- [{constraint.get('state', 'UNKNOWN')}] {text}")
+            if proposal.owner_constraint_status != "CLEAR":
+                constraint_lines.append(
+                    f"Owner-constraint status: {proposal.owner_constraint_status}; "
+                    "do not infer an additional rule from ambiguous text.")
+            dispatch_instructions = (
+                "\n".join(constraint_lines) + "\n\n" + dispatch_instructions)
         if state == "VERIFYING":
             row = self.database.row("agent_runs", "run_id", run_id)
             try:

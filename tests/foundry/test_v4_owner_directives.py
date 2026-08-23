@@ -32,9 +32,19 @@ def _apply(
     directive_id: str | None = None,
     supersedes: str | None = None,
     expires_at: str | None = None,
+    metadata: dict | None = None,
 ):
     secret = b"v4-owner-secret"
-    signature = sign_command(secret, command_type, target, text, nonce)
+    signature = sign_command(
+        secret,
+        command_type,
+        target,
+        text,
+        nonce,
+        supersedes=supersedes,
+        expires_at=expires_at,
+        metadata=metadata,
+    )
     return OwnerControlService(db, secret=secret).apply(
         command_type,
         target=target,
@@ -44,6 +54,7 @@ def _apply(
         directive_id=directive_id,
         supersedes_directive_id=supersedes,
         expires_at=expires_at,
+        metadata=metadata,
     )
 
 
@@ -150,4 +161,3 @@ def test_malformed_optional_admission_is_visible_as_unknown_not_authority(db: Fo
     assert record.state == "UNKNOWN"
     assert record.active is False
     assert {"target", "nonce", "nonce_event", "command_hash"}.issubset(record.unknown_fields)
-

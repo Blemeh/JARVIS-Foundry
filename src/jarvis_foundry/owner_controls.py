@@ -38,7 +38,16 @@ _COMMANDS = frozenset({
 })
 
 
-def canonical_command(command_type: str, target: str | None, exact_text: str, nonce: str) -> bytes:
+def canonical_command(
+    command_type: str,
+    target: str | None,
+    exact_text: str,
+    nonce: str,
+    *,
+    supersedes: str | None = None,
+    expires_at: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> bytes:
     if command_type not in _COMMANDS:
         raise OwnerCommandError(f"unsupported owner command: {command_type}")
     if not nonce or not exact_text.strip():
@@ -48,11 +57,36 @@ def canonical_command(command_type: str, target: str | None, exact_text: str, no
         "target": target,
         "exact_text": exact_text,
         "nonce": nonce,
+        "supersedes": supersedes,
+        "expires_at": expires_at,
+        "metadata": dict(metadata or {}),
     }).encode("utf-8")
 
 
-def sign_command(secret: bytes, command_type: str, target: str | None, exact_text: str, nonce: str) -> str:
-    return hmac.new(secret, canonical_command(command_type, target, exact_text, nonce), hashlib.sha256).hexdigest()
+def sign_command(
+    secret: bytes,
+    command_type: str,
+    target: str | None,
+    exact_text: str,
+    nonce: str,
+    *,
+    supersedes: str | None = None,
+    expires_at: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> str:
+    return hmac.new(
+        secret,
+        canonical_command(
+            command_type,
+            target,
+            exact_text,
+            nonce,
+            supersedes=supersedes,
+            expires_at=expires_at,
+            metadata=metadata,
+        ),
+        hashlib.sha256,
+    ).hexdigest()
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,8 +107,28 @@ class OwnerControlService:
         self.stop = EmergencyStop(stop_path) if stop_path is not None else None
         self.owner_id = owner_id
 
-    def _verify(self, command_type: str, target: str | None, exact_text: str, nonce: str, signature: str) -> None:
-        expected = sign_command(self.secret, command_type, target, exact_text, nonce)
+    def _verify(
+        self,
+        command_type: str,
+        target: str | None,
+        exact_text: str,
+        nonce: str,
+        signature: str,
+        *,
+        supersedes: str | None = None,
+        expires_at: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        expected = sign_command(
+            self.secret,
+            command_type,
+            target,
+            exact_text,
+            nonce,
+            supersedes=supersedes,
+            expires_at=expires_at,
+            metadata=metadata,
+        )
         if not hmac.compare_digest(expected, signature or ""):
             raise OwnerAuthenticationError("owner command authentication failed")
         with self.database.connect() as connection:
@@ -104,8 +158,18 @@ class OwnerControlService:
         directive_id: str | None = None,
         supersedes_directive_id: str | None = None,
         expires_at: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> OwnerCommandResult:
-        self._verify(command_type, target, exact_text, nonce, signature)
+        self._verify(
+            command_type,
+            target,
+            exact_text,
+            nonce,
+            signature,
+            supersedes=supersedes_directive_id,
+            expires_at=expires_at,
+            metadata=metadata,
+        )
         directive_id = directive_id or f"owner-{secrets.token_hex(12)}"
         if self._existing_directive_id(directive_id):
             raise OwnerCommandError(
@@ -119,7 +183,17 @@ class OwnerControlService:
                     f"cannot supersede unknown directive: {supersedes_directive_id}"
                 )
         now = isoformat()
-        command_hash = hashlib.sha256(canonical_command(command_type, target, exact_text, nonce)).hexdigest()
+        command_hash = hashlib.sha256(
+            canonical_command(
+                command_type,
+                target,
+                exact_text,
+                nonce,
+                supersedes=supersedes_directive_id,
+                expires_at=expires_at,
+                metadata=metadata,
+            )
+        ).hexdigest()
         nonce_event = Event.create(
             "owner_control.nonce_used",
             {"nonce": nonce, "command_hash": command_hash, "issued_at": now, "used_at": now},
@@ -133,7 +207,7 @@ class OwnerControlService:
              "command_hash": command_hash, "reason": exact_text,
              "owner_id": self.owner_id, "source_identity": f"owner:{self.owner_id}",
              "admission_version": "v4.1", "supersedes": supersedes_directive_id,
-             "expires_at": expires_at},
+             "expires_at": expires_at, "metadata": dict(metadata or {})},
             source_type="owner", source_id=self.owner_id,
             correlation_id=nonce_event.correlation_id,
             causation_id=nonce_event.event_id,

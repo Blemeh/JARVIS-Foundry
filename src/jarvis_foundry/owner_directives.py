@@ -60,6 +60,7 @@ class OwnerDirectiveRecord:
     revoked_at: str | None
     expires_at: str | None
     target_status: str
+    metadata: dict[str, Any]
     unknown_fields: tuple[str, ...] = ()
 
     @property
@@ -94,6 +95,7 @@ class OwnerDirectiveRecord:
             "revoked_at": self.revoked_at,
             "expires_at": self.expires_at,
             "target_status": self.target_status,
+            "metadata": self.metadata,
             "unknown_fields": list(self.unknown_fields),
         }
 
@@ -128,6 +130,10 @@ def _command_hash(
     target: str | None,
     exact_text: str,
     nonce: str,
+    *,
+    supersedes: str | None = None,
+    expires_at: str | None = None,
+    metadata: dict[str, Any] | None = None,
 ) -> str | None:
     """Calculate the admission hash without importing the owner service at module load."""
     try:
@@ -136,7 +142,15 @@ def _command_hash(
         from .owner_controls import canonical_command
 
         return hashlib.sha256(
-            canonical_command(command_type, target, exact_text, nonce)
+            canonical_command(
+                command_type,
+                target,
+                exact_text,
+                nonce,
+                supersedes=supersedes,
+                expires_at=expires_at,
+                metadata=metadata,
+            )
         ).hexdigest()
     except (TypeError, ValueError):
         return None
@@ -203,7 +217,21 @@ def _unknown_fields(
             and isinstance(exact_text, str) and exact_text.strip() \
             and (target is None or isinstance(target, str)) \
             and isinstance(nonce, str) and nonce.strip():
-        expected = _command_hash(command_type, target, exact_text, nonce)
+        supersedes = payload.get("supersedes")
+        supersedes_value = supersedes if isinstance(supersedes, str) else None
+        expires_at = payload.get("expires_at")
+        expires_value = expires_at if isinstance(expires_at, str) else None
+        metadata = payload.get("metadata")
+        metadata_value = metadata if isinstance(metadata, dict) else None
+        expected = _command_hash(
+            command_type,
+            target,
+            exact_text,
+            nonce,
+            supersedes=supersedes_value,
+            expires_at=expires_value,
+            metadata=metadata_value,
+        )
         if expected is None or supplied_hash != expected:
             unknown.append("command_hash")
         if nonce_event is not None and nonce_event.payload.get("command_hash") != expected:
@@ -225,6 +253,9 @@ def _unknown_fields(
                 parse(expires_at)
             except (TypeError, ValueError, OverflowError):
                 unknown.append("expires_at")
+    metadata = payload.get("metadata")
+    if metadata is not None and not isinstance(metadata, dict):
+        unknown.append("metadata")
     return tuple(dict.fromkeys(unknown))
 
 
@@ -252,6 +283,7 @@ def _event_record(
     else:
         state = "UNKNOWN" if unknown else "ACTIVE"
     expires_at = payload.get("expires_at") if isinstance(payload.get("expires_at"), str) else None
+    metadata = payload.get("metadata") if isinstance(payload.get("metadata"), dict) else {}
     return OwnerDirectiveRecord(
         directive_id=directive_id,
         command_type=command_type,
@@ -276,6 +308,7 @@ def _event_record(
         revoked_at=None,
         expires_at=expires_at,
         target_status=_target_status(database, target),
+        metadata=dict(metadata),
         unknown_fields=tuple(dict.fromkeys(unknown)),
     )
 
@@ -390,6 +423,75 @@ def active_owner_directives(
 ) -> list[OwnerDirectiveRecord]:
     """Return only authenticated, non-expired, non-superseded directives."""
     return [record for record in project_owner_directives(database, now=now) if record.active]
+
+
+def active_directives_for(
+    database: FoundryDatabase,
+    *,
+    command_types: set[str] | frozenset[str] | None = None,
+    targets: set[str] | frozenset[str] | None = None,
+    now: datetime | str | None = None,
+) -> list[OwnerDirectiveRecord]:
+    """Return active directives matching a command family and target scope."""
+    records = active_owner_directives(database, now=now)
+    wanted_commands = set(command_types) if command_types is not None else None
+    wanted_targets = set(targets) if targets is not None else None
+    return [
+        record
+        for record in records
+        if (wanted_commands is None or record.command_type in wanted_commands)
+        and (
+            wanted_targets is None
+            or record.target == "GLOBAL"
+            or record.target in wanted_targets
+        )
+    ]
+
+
+def constraint_context(
+    database: FoundryDatabase,
+    *,
+    targets: set[str] | frozenset[str] | None = None,
+    now: datetime | str | None = None,
+) -> dict[str, Any]:
+    """Project applicable constraints without guessing at vague owner text.
+
+    A constraint becomes machine-classifiable only when its optional metadata
+    supplies both ``constraint_key`` and ``mode`` (``ALLOW`` or ``DENY``).
+    Free-text constraints remain visible in ``unknown`` and are carried to
+    workers verbatim; they never silently become a guessed block or allow.
+    """
+    records = active_directives_for(
+        database,
+        command_types=frozenset({"CONSTRAINT", "ADD_CONSTRAINT"}),
+        targets=targets,
+        now=now,
+    )
+    classified: dict[str, dict[str, OwnerDirectiveRecord]] = {}
+    unknown: list[OwnerDirectiveRecord] = []
+    for record in records:
+        key = record.metadata.get("constraint_key")
+        mode = str(record.metadata.get("mode") or "").upper()
+        if not isinstance(key, str) or not key.strip() or mode not in {"ALLOW", "DENY"}:
+            unknown.append(record)
+            continue
+        classified.setdefault(key.strip(), {})[mode] = record
+
+    conflicts: list[dict[str, Any]] = []
+    for key, modes in classified.items():
+        if "ALLOW" in modes and "DENY" in modes:
+            conflicts.append({
+                "constraint_key": key,
+                "directive_ids": [modes["ALLOW"].directive_id, modes["DENY"].directive_id],
+                "status": "CONFLICTING",
+            })
+
+    return {
+        "records": [record.to_dict() for record in records],
+        "unknown": [record.to_dict() for record in unknown],
+        "conflicts": conflicts,
+        "status": "CONFLICTING" if conflicts else "UNKNOWN" if unknown else "CLEAR",
+    }
 
 
 def owner_directive_snapshot(
