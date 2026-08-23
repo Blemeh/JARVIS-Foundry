@@ -26,6 +26,7 @@ from .owner_controls import (
     OwnerReplayError,
     sign_command,
 )
+from .owner_directives import owner_directive_snapshot
 from .supervisor.estop import EmergencyStop
 from .v3_teams import DEFAULT_REPAIR_BUDGET
 
@@ -863,6 +864,7 @@ def build_snapshot(
             "ORDER BY updated_at DESC LIMIT 100")
 
     stop = EmergencyStop(stop_path).read() if stop_path is not None else None
+    owner_directives = owner_directive_snapshot(database, now=generated_at)
     try:
         from .deployment.release import read_current, read_previous
         release_identity = {
@@ -919,7 +921,12 @@ def build_snapshot(
             "paused": paused,
             "resume_available": bool(paused or stop),
             "stop_effective_without_hermes_ui_models_network": True,
+            "history": owner_directives["records"],
+            "unknown": owner_directives["unknown"],
+            "history_count": owner_directives["history_count"],
+            "active_count": owner_directives["active_count"],
         },
+        "owner_directives": owner_directives,
         "missions": [with_ref(m, "mission", "mission_id") for m in missions],
         "workers": [with_ref(w, "agent_run", "run_id") for w in workers],
         "evidence": [with_ref(e, "evidence", "bundle_id") for e in evidence],
@@ -1075,8 +1082,23 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
                 event_ids = service.resume(nonce=nonce, signature=signature, exact_text=exact_text or "resume jarvis")
                 result: dict[str, Any] = {"status": "APPLIED", "command_type": command_type, "event_ids": event_ids}
             else:
-                applied = service.apply(command_type, target=target, exact_text=exact_text, nonce=nonce, signature=signature, directive_id=payload.get("directive_id"))
-                result = {"status": "APPLIED", "command_type": applied.command_type, "directive_id": applied.directive_id, "event_id": applied.event_id}
+                applied = service.apply(
+                    command_type,
+                    target=target,
+                    exact_text=exact_text,
+                    nonce=nonce,
+                    signature=signature,
+                    directive_id=payload.get("directive_id"),
+                    supersedes_directive_id=payload.get("supersedes_directive_id"),
+                    expires_at=payload.get("expires_at"),
+                )
+                result = {
+                    "status": "APPLIED",
+                    "command_type": applied.command_type,
+                    "directive_id": applied.directive_id,
+                    "event_id": applied.event_id,
+                    "superseded_directive_id": applied.superseded_directive_id,
+                }
             self._json_response(result, status=200)
         except OwnerReplayError as error:
             self._json_response({"status": "REJECTED", "reason": str(error)}, status=409)

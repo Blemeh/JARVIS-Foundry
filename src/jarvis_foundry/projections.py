@@ -273,16 +273,29 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             (canonical_json(capabilities), event.event_id, event.recorded_at, resource_id),
         )
     elif event.event_type == "owner_directive.recorded":
+        # Optional target fields are untrusted owner-channel input.  Preserve
+        # the original event for the event-derived UNKNOWN projection, while
+        # keeping the legacy enforcement row relationally safe.
+        target = payload.get("target") if isinstance(payload.get("target"), str) else None
         connection.execute(
             """INSERT INTO directives(
                 directive_id, command_type, target, exact_text, active, last_event_id, updated_at
             ) VALUES (?, ?, ?, ?, 1, ?, ?)""",
             (
-                payload["directive_id"], payload["command_type"], payload.get("target"),
+                payload["directive_id"], payload["command_type"], target,
                 payload["exact_text"], event.event_id, event.recorded_at,
             ),
         )
     elif event.event_type == "owner_directive.revoked":
+        connection.execute(
+            "UPDATE directives SET active = 0, last_event_id = ?, updated_at = ? WHERE directive_id = ?",
+            (event.event_id, event.recorded_at, payload["directive_id"]),
+        )
+    elif event.event_type == "owner_directive.superseded":
+        # Supersession is an additive lifecycle event.  The richer
+        # owner_directives projection reconstructs provenance/history; this
+        # legacy enforcement table only needs the prior directive disabled so
+        # broker STOP/veto checks cannot keep applying superseded intent.
         connection.execute(
             "UPDATE directives SET active = 0, last_event_id = ?, updated_at = ? WHERE directive_id = ?",
             (event.event_id, event.recorded_at, payload["directive_id"]),
