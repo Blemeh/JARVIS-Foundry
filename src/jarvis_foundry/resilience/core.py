@@ -1425,7 +1425,7 @@ class ResilienceCoordinator:
                 })
         if anomaly.effect_action_key:
             try:
-                from ..effects import EffectStateError, effect_state, freeze_effect
+                from ..effects import effect_state, freeze_effect
                 state = effect_state(self.database, anomaly.effect_action_key)
                 if state.get("status") == "STARTED":
                     freeze_effect(self.database, anomaly.effect_action_key,
