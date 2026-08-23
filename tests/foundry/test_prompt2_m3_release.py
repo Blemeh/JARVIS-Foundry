@@ -56,10 +56,29 @@ def _fake_release(
         manifest["previous_runtime"] = {
             "source_sha": previous,
             "release_id": previous_manifest["release_id"],
-            "git_commit": previous_manifest["git_commit"],
-            "git_tree": previous_manifest["git_tree"],
+            "git_commit": previous_manifest.get("git_commit"),
+            "git_tree": previous_manifest.get("git_tree"),
             "schema": previous_manifest["schema_compatibility"]["package_schema"],
         }
+    (directory / "RELEASE.json").write_text(json.dumps(manifest), encoding="utf-8")
+    return directory
+
+
+def _legacy_release(tmp_path: Path, sha: str, *, schema: int = 34) -> Path:
+    directory = tmp_path / "JARVIS" / "releases" / sha
+    python_dir = directory / ".venv" / "Scripts"
+    python_dir.mkdir(parents=True)
+    (python_dir / "python.exe").write_text("legacy", encoding="utf-8")
+    manifest = {
+        "release_id": f"rel-{sha[:8]}",
+        "source_sha": sha,
+        "python_version": "3.13.0",
+        "package_version": "0.1.0",
+        "schema_compatibility": {
+            "package_schema": schema, "opens_min": schema, "opens_max": schema,
+        },
+        "created_at": "2026-08-19T00:00:00Z",
+    }
     (directory / "RELEASE.json").write_text(json.dumps(manifest), encoding="utf-8")
     return directory
 
@@ -134,6 +153,27 @@ def test_current_previous_pointers(tmp_path):
     set_current(second, root=root)
     assert current_pointer(root).read_text(encoding="utf-8").strip() == second
     assert (root / "PREVIOUS").read_text(encoding="utf-8").strip() == first
+
+
+def test_candidate_accepts_explicit_legacy_previous_and_can_roll_back_pointer(tmp_path):
+    legacy, current = "a" * 40, "b" * 40
+    _legacy_release(tmp_path, legacy)
+    _fake_release(tmp_path, current, previous=legacy)
+    root = tmp_path / "JARVIS"
+    write_pointer(current_pointer(root), legacy)
+
+    with pytest.raises(ReleaseError, match="git_commit"):
+        validate_release(legacy, root=root, require_schema_match=False)
+    accepted = validate_release(
+        legacy, root=root, require_schema_match=False, allow_legacy_identity=True)
+    assert accepted["legacy_identity"] is True
+
+    set_current(current, root=root)
+    result = rollback_current(root=root)
+    assert result["switched"] is True
+    assert result["current"] == legacy
+    assert current_pointer(root).read_text(encoding="utf-8").strip() == legacy
+    assert (root / "PREVIOUS").read_text(encoding="utf-8").strip() == current
 
 
 def test_set_current_rejects_candidate_built_from_the_wrong_previous_runtime(tmp_path):

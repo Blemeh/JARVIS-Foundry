@@ -181,12 +181,56 @@ def _validate_runtime_identity(value: Any, *, field: str) -> dict[str, Any]:
     return value
 
 
+def _validate_legacy_runtime_identity(value: Any, *, field: str) -> dict[str, Any]:
+    """Validate the reduced identity retained for a pre-provenance release.
+
+    A legacy release may be used only as an explicitly identified predecessor
+    or rollback target.  It must still carry a real source object, release id,
+    and schema; Git and provenance fields are absent by definition rather than
+    silently accepted when malformed.
+    """
+
+    if not isinstance(value, dict):
+        raise ReleaseError(f"RELEASE.json {field} must be an object")
+    required = ("source_sha", "release_id", "schema")
+    missing = [name for name in required if value.get(name) in (None, "")]
+    if missing:
+        raise ReleaseError(
+            f"RELEASE.json {field} missing identity: {', '.join(missing)}")
+    if not isinstance(value["source_sha"], str) or not _GIT_OBJECT_RE.fullmatch(value["source_sha"]):
+        raise ReleaseError(f"RELEASE.json {field}.source_sha is invalid")
+    if not isinstance(value["release_id"], str) or not value["release_id"]:
+        raise ReleaseError(f"RELEASE.json {field}.release_id is invalid")
+    for name in ("git_commit", "git_tree"):
+        if value.get(name) not in (None, ""):
+            raise ReleaseError(
+                f"RELEASE.json {field}.{name} is not a legacy identity")
+    try:
+        value["schema"] = int(value["schema"])
+    except (TypeError, ValueError):
+        raise ReleaseError(f"RELEASE.json {field}.schema is invalid") from None
+    if value["schema"] <= 0:
+        raise ReleaseError(f"RELEASE.json {field}.schema is invalid")
+    return value
+
+
+def _is_legacy_manifest(manifest: dict[str, Any]) -> bool:
+    """Return true only for the known pre-Git/provenance manifest shape."""
+
+    return (
+        manifest.get("git_commit") in (None, "")
+        and manifest.get("git_tree") in (None, "")
+        and "provenance" not in manifest
+    )
+
+
 def validate_release(
     source_sha: str,
     *,
     root: Path | None = None,
     foundry_home: Path | None = None,
     require_schema_match: bool = True,
+    allow_legacy_identity: bool = False,
 ) -> dict[str, Any]:
     sha = source_sha.strip()
     directory = release_dir(sha, root)
@@ -201,6 +245,39 @@ def validate_release(
         raise ReleaseError("RELEASE.json source_sha does not match directory")
     if not isinstance(manifest.get("release_id"), str) or not manifest.get("release_id"):
         raise ReleaseError("RELEASE.json missing release_id")
+
+    # The current release must always have complete immutable identity.  The
+    # compatibility branch is callable only by explicit predecessor/rollback
+    # paths and accepts the historical schema/provenance shape without
+    # manufacturing Git values.
+    if allow_legacy_identity and _is_legacy_manifest(manifest):
+        schema_compatibility = manifest.get("schema_compatibility")
+        if not isinstance(schema_compatibility, dict):
+            raise ReleaseError("RELEASE.json missing schema_compatibility")
+        try:
+            package_schema = int(schema_compatibility["package_schema"])
+        except (KeyError, TypeError, ValueError):
+            raise ReleaseError("RELEASE.json missing package_schema") from None
+        if package_schema <= 0:
+            raise ReleaseError("RELEASE.json package_schema is invalid")
+        previous_runtime = manifest.get("previous_runtime", _MISSING)
+        if previous_runtime is not _MISSING and previous_runtime is not None:
+            _validate_legacy_runtime_identity(previous_runtime, field="previous_runtime")
+        if foundry_home is not None and require_schema_match:
+            live_schema = schema_version(Path(foundry_home) / "foundry.db")
+            if live_schema != package_schema:
+                raise ReleaseError(
+                    f"schema mismatch: live={live_schema} package={package_schema}")
+        return {
+            "ok": True,
+            "source_sha": sha,
+            "release_dir": str(directory),
+            "python_exe": str(python_exe.resolve()),
+            "manifest": manifest,
+            "runtime_identity": _runtime_identity(manifest, sha),
+            "legacy_identity": True,
+        }
+
     git_commit = manifest.get("git_commit")
     git_tree = manifest.get("git_tree")
     if not git_commit:
@@ -234,7 +311,14 @@ def validate_release(
     if previous_runtime is _MISSING:
         raise ReleaseError("RELEASE.json missing previous_runtime identity")
     if previous_runtime is not None:
-        _validate_runtime_identity(previous_runtime, field="previous_runtime")
+        if (
+            isinstance(previous_runtime, dict)
+            and previous_runtime.get("git_commit") in (None, "")
+            and previous_runtime.get("git_tree") in (None, "")
+        ):
+            _validate_legacy_runtime_identity(previous_runtime, field="previous_runtime")
+        else:
+            _validate_runtime_identity(previous_runtime, field="previous_runtime")
     if foundry_home is not None and require_schema_match:
         live_schema = schema_version(Path(foundry_home) / "foundry.db")
         if live_schema != package_schema:
@@ -247,6 +331,7 @@ def validate_release(
         "python_exe": str(python_exe.resolve()),
         "manifest": manifest,
         "runtime_identity": _runtime_identity(manifest, sha),
+        "legacy_identity": False,
     }
 
 
@@ -418,18 +503,20 @@ def record_generation(
     sha = read_current(root)
     if not sha:
         raise ReleaseError("CURRENT pointer missing")
-    identity = validate_release(sha, root=root, require_schema_match=False)
+    identity = validate_release(
+        sha, root=root, require_schema_match=False, allow_legacy_identity=True)
     schema = 0
     if foundry_home is not None:
         schema = schema_version(Path(foundry_home) / "foundry.db")
     record = {
         "source_sha": sha,
         "release_id": identity["manifest"]["release_id"],
-        "git_commit": identity["manifest"]["git_commit"],
-        "git_tree": identity["manifest"]["git_tree"],
+        "git_commit": identity["manifest"].get("git_commit"),
+        "git_tree": identity["manifest"].get("git_tree"),
         "schema": schema,
-        "previous_runtime": identity["manifest"]["previous_runtime"],
-        "provenance": identity["manifest"]["provenance"],
+        "previous_runtime": identity["manifest"].get("previous_runtime"),
+        "provenance": identity["manifest"].get("provenance"),
+        "legacy_identity": bool(identity.get("legacy_identity")),
         "backup": str(backup) if backup else None,
         "recorded_at": isoformat(),
     }
@@ -518,6 +605,7 @@ def rollback_current(
     validate_release(
         previous, root=root, foundry_home=foundry_home,
         require_schema_match=foundry_home is not None,
+        allow_legacy_identity=True,
     )
     if current:
         validate_release(current, root=root, require_schema_match=False)
