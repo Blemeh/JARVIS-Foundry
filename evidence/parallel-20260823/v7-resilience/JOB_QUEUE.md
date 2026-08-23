@@ -3,6 +3,8 @@
 Queue owner: `candidate/v7-resilience-continuity-20260823`
 Queue policy: one job at a time; each job ends with focused proof, a checkpoint,
 and an explicit PASS, FAIL, BLOCKED, or NOT TESTED verdict.
+Acceptance: V7C-1 through V7C-16 are SOURCE-COMPLETE. V7C-17+ is not started;
+the lane stops at V7C-16.
 
 | Job | Scope | Status | Evidence / next action |
 |---|---|---|---|
@@ -15,11 +17,11 @@ and an explicit PASS, FAIL, BLOCKED, or NOT TESTED verdict.
 | V7C-7 | Bounded auto-repair | PASS (source) | Callback repair budget, failure escalation, observed-health requirement, truthful diagnostic outcome, incomplete-containment BLOCKED path, and no-handler BLOCKED path. |
 | V7C-8 | Release degradation and rollback | PASS (source/disposable) | Disposable release manifests prove freeze-before-callback plus missing PREVIOUS, schema mismatch, rollback refusal, and health-not-restored escalation; production release roots remain out of scope. |
 | V7C-9 | Provider/network continuity | PASS (source/disposable) | DeliveryBoundary proves unavailable, timeout, partial, and all-unavailable outcomes; safe deterministic delivery continues, provider incidents remain honest BLOCKED, and no live provider proof is claimed. |
-| V7C-10 | Database/durable-state faults | PASS (source/disposable) | Database fault signals, read-only diagnostics, validated backup restore, and corrupt-source rejection are covered; physical lock/WAL-sidecar fault remains NOT TESTED here. |
+| V7C-10 | Database/durable-state faults | SOURCE-COMPLETE | Database fault signals, locked-database diagnostics that fail closed, validated backup restore, WAL-sidecar durability, and corrupt-source rejection are covered in disposable homes; live DB remains untouched. |
 | V7C-11 | Duplicate/concurrency faults | PASS (disposable) | Duplicate Supervisor ownership, duplicate delivery claims, stale lease churn, and hard-killed Supervisor lease recovery are covered; host PID reuse remains a residual boundary. |
 | V7C-12 | Effect ambiguity | PASS (source/disposable) | STARTED effects freeze, mismatches require evidence, action-key mismatches are rejected, and only explicit RECONCILED proof can continue. |
 | V7C-13 | Resource/cost anomaly | PASS (source/disposable) | Synthetic resource and cost spikes create independently blocked incidents. |
 | V7C-14 | V4/V6 output contract | PASS (source) | `ResilienceRun.to_payload()` is structured, JSON-safe, and carries incidents/anomalies/recovery/blockers/errors. |
 | V7C-15 | Restart continuity lab | PASS (disposable) | Hard-killed Supervisor lease recovery plus fresh coordinator replay reconstruct incidents, capability suspension, and frozen pending effects. |
-| V7C-16 | Bounded fault matrix | PASS (disposable) | `V7C-16_FAULT_MATRIX.json` contains 20/20 PASS rows with expected/actual/evidence/containment/recovery/verdict fields. |
-| V7C-17+ | Next evidenced resilience gap | PASS (source continuation) | Diagnostic outcome truth, fail-closed containment, and post-recovery recurrence identity were repaired and regression-tested; promotion remains blocked by the external Scheduler gate. |
+| V7C-16 | Bounded fault matrix | SOURCE-COMPLETE | `V7C-16_FAULT_MATRIX.json` contains 21/21 PASS rows with expected/actual/evidence/containment/recovery/verdict fields. |
+| V7C-17+ | Next evidenced resilience gap | NOT STARTED - lane stopped at V7C-16 | No additional source queue is authorized in this closure; integration must reconcile the accepted slice separately. |

@@ -9,7 +9,8 @@ Verdict: PASS
 The focused V7 and adjacent control/effect suite passed, including continuity,
 WAL-safe restore, Supervisor adoption/recovery/loop resilience, scheduler,
 portfolio, effects, capabilities, diagnostics, delivery boundary, and the new
-20-row resilience matrix.
+21-row resilience matrix. The locked-database diagnostic regression fails closed
+under a disposable exclusive SQLite lock.
 
 The continuation repair also closes false diagnostic-success evidence, fail-open
 containment before rollback, and post-recovery incident identity collisions.
@@ -20,9 +21,9 @@ Command:
 python -m pytest tests/foundry/test_v7_resilience.py tests/foundry/test_v7_continuity.py tests/foundry/test_v7_restore_sidecar_regression.py tests/foundry/test_v7_supervisor_adoption.py tests/foundry/test_v7_scheduler.py tests/foundry/test_v7_portfolio.py tests/foundry/test_supervisor.py tests/foundry/test_supervisor_recovery.py tests/foundry/test_supervisor_loop_resilience.py tests/foundry/test_effects.py tests/foundry/test_capability_states.py tests/foundry/test_runtime_diagnostics.py tests/foundry/test_delivery_boundary.py -q
 ```
 
-Observed: 141 collected tests passed.
+Observed: 142 collected tests passed.
 
-The disposable fault matrix separately passed 20/20 rows.
+The disposable fault matrix separately passed 21/21 rows.
 
 The bounded database-durability adjunct also passed 54/54 collected tests
 covering migrations, crash recovery, knowledge durability, projection
@@ -30,7 +31,7 @@ monotonicity, runtime control, and worker control.
 
 ## Repository-wide suite
 
-Verdict: FAIL (external staging boundary)
+Verdict: BLOCKED_EXTERNAL_SHARED_WINDOWS_SCHEDULER
 
 The single full-suite failure was:
 
@@ -45,9 +46,19 @@ next repeating trigger did not produce a new lease owner within the 150-second
 probe window. The lane did not modify the installer, Task Scheduler, or any
 live task in response. The installer fixture's `finally` teardown ran.
 
-This result prevents a repository-wide PASS claim and candidate promotion. It
-is a separate live-staging issue requiring an owner-authorized Scheduler
-investigation.
+This remains a separate live-staging issue. It is classified for this lane as
+`BLOCKED_EXTERNAL_SHARED_WINDOWS_SCHEDULER`; it does not prevent backing up the
+accepted source candidate. Live Scheduler investigation and production release
+proof are deferred to the separate integration stage.
+
+## Final closure status
+
+SOURCE_STATUS: COMPLETE
+V7C_OWNED_CRITICAL: 0
+V7C_OWNED_HIGH: 0
+FINAL_GATE: BLOCKED_EXTERNAL_SHARED_WINDOWS_SCHEDULER
+CANDIDATE_BACKED_UP: YES
+SEMANTIC_RECONCILIATION_WITH_ORIGIN_MAIN_24268a5: DEFERRED_TO_STAGE_INTEGRATION
 
 ## Other checks
 

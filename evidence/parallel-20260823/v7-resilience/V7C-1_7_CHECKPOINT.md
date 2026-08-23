@@ -2,6 +2,7 @@
 
 Date: 2026-08-24 (continuation update)
 Verdict: PASS for the isolated source slice
+Source status: SOURCE-COMPLETE for V7C-1 through V7C-7
 
 ## Delivered
 
@@ -37,15 +38,17 @@ Verdict: PASS for the isolated source slice
   action-level `PASS`; incomplete containment blocks repair before diagnosis.
 - Recovered incidents use observation-scoped identities, so a later recurrence
   creates a fresh durable incident while same-observation replay stays idempotent.
+- Locked SQLite diagnostics fail closed: the database-integrity result is `FAIL`
+  and no repair is supported while the disposable exclusive lock is held.
 
 ## Focused verification
 
 ```text
 python -m pytest tests/foundry/test_v7_resilience.py -q
-23 passed
+24 passed
 
 python -m pytest <full V7 and adjacent control/effect paths> -q
-141 passed
+142 passed
 ```
 
 The tests cover replay, idempotent scans, invalid transitions, STOP

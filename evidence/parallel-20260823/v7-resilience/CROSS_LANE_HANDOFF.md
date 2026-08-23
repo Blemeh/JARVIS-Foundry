@@ -1,5 +1,14 @@
 # V7 Resilience Continuity Cross-Lane Handoff
 
+## Closure status
+
+SOURCE_STATUS: COMPLETE
+V7C_OWNED_CRITICAL: 0
+V7C_OWNED_HIGH: 0
+FINAL_GATE: BLOCKED_EXTERNAL_SHARED_WINDOWS_SCHEDULER
+CANDIDATE_BACKED_UP: YES
+SEMANTIC_RECONCILIATION_WITH_ORIGIN_MAIN_24268a5: DEFERRED_TO_STAGE_INTEGRATION
+
 ## To the separate integration/live-promotion lane
 
 This lane owns source and disposable fault proof only. It must not promote,
@@ -30,16 +39,16 @@ independent verification, and the final gate verdict.
 
 - Candidate branch: `candidate/v7-resilience-continuity-20260823`.
 - Frozen base: `origin/main` at `6db467a2b0e6bdc37adbc4cbfac309418e33afec`.
-- Source checkpoint HEAD before handoff-only documentation: `e2c3be5`.
-- Source/disposable V7 matrix: `V7C-16_FAULT_MATRIX.json`, 20/20 PASS.
-- Focused V7/adjacent suite: 141/141 PASS, plus targeted release/provider
+- Source checkpoint HEAD after the locked-database proof: `035106d16a2087d1e362099e57fff7a6f15ea9e0`.
+- Source/disposable V7 matrix: `V7C-16_FAULT_MATRIX.json`, 21/21 PASS.
+- Focused V7/adjacent suite: 142/142 PASS, plus targeted release/provider
   regression paths PASS.
-- Repository-wide suite: FAIL only at the live-staging Task Scheduler restart
+- Repository-wide boundary: `BLOCKED_EXTERNAL_SHARED_WINDOWS_SCHEDULER` only at the live-staging Task Scheduler restart
   probe (`test_task_restarts_after_hard_kill_via_repeating_trigger`).
-- Candidate push/promotion: BLOCKED pending owner-authorized Scheduler
-  investigation and a fresh full-suite result.
-- Remote candidate ref: not present; this lane did not push because the final
-  repository gate is not PASS.
+- Candidate backup: YES; production promotion remains a separate integration-stage
+  decision and does not require this lane to chase the shared Scheduler.
+- Remote candidate ref: backed up at the source checkpoint; the final closure
+  commit is reported by the lane owner after evidence documentation is committed.
 - Canonical main was clean at the initial freeze
   (`6db467a2b0e6bdc37adbc4cbfac309418e33afec`); production/live runtime
   remained untouched.
