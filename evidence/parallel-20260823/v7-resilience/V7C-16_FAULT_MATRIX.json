@@ -60,6 +60,30 @@
       "verdict": "PASS"
     },
     {
+      "actual": "PASS",
+      "case_id": "V7C-09-provider-network-continuity",
+      "containment": "provider scope isolated; no false successful offline delivery",
+      "evidence": {
+        "delivery_statuses": [
+          "BLOCKED",
+          "TIMED_OUT",
+          "FAILED",
+          "DELIVERED",
+          "BLOCKED",
+          "BLOCKED"
+        ],
+        "healthy_provider_calls": 1,
+        "provider_anomaly": true,
+        "provider_incident_statuses": [
+          "BLOCKED"
+        ]
+      },
+      "expected": "safe delivery continues; unavailable work is honest BLOCKED/TIMED_OUT",
+      "fault": "provider unavailable, timeout, partial outage, all unavailable",
+      "recovery": "durable requests/outcomes remain replayable; recovery requires fresh provider health",
+      "verdict": "PASS"
+    },
+    {
       "actual": "BLOCKED",
       "case_id": "V7C-05-database-fault",
       "containment": "database incident recorded; no write repair handler registered",
@@ -102,6 +126,29 @@
       "verdict": "PASS"
     },
     {
+      "actual": "PASS",
+      "case_id": "V7C-08-release-rollback-failures",
+      "containment": "release control remains frozen while each failure is bounded",
+      "evidence": {
+        "health_not_restored": {
+          "current": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "status": "ESCALATED"
+        },
+        "missing_previous": {
+          "current": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "status": "ESCALATED"
+        },
+        "schema_mismatch": {
+          "current": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "status": "ESCALATED"
+        }
+      },
+      "expected": "freeze first; rollback refuses or escalates without false recovery",
+      "fault": "PREVIOUS missing, schema incompatible, recovery health not restored",
+      "recovery": "failed rollback escalates; successful pointer switch with failed health remains escalated",
+      "verdict": "PASS"
+    },
+    {
       "actual": "UNKNOWN",
       "case_id": "V7C-08-ambiguous-effect",
       "containment": "effect frozen; retry and undo withheld",
@@ -120,8 +167,69 @@
       "verdict": "PASS"
     },
     {
+      "actual": "UNKNOWN + FROZEN",
+      "case_id": "V7C-12-worker-partial-effect",
+      "containment": "effect journal remains frozen and worker scope is not redispatched",
+      "evidence": {
+        "delivery_status": "TIMED_OUT",
+        "effect_state": {
+          "action_key": "partial-timeout",
+          "before_state": null,
+          "expected_effects": null,
+          "frozen_reason": "incident containment: external effect is ambiguous",
+          "status": "FROZEN"
+        },
+        "incident_statuses": [
+          "UNKNOWN",
+          "BLOCKED"
+        ],
+        "provider_calls": 1
+      },
+      "expected": "freeze effect; no blind retry or compensation",
+      "fault": "worker crash and connector timeout after an external effect may have occurred",
+      "recovery": "explicit external reconciliation required before any continuation",
+      "verdict": "PASS"
+    },
+    {
+      "actual": "RECOVERED",
+      "case_id": "V7C-12-effect-reconciliation",
+      "containment": "UNKNOWN effect stays frozen until an explicit integration call",
+      "evidence": {
+        "effect_state": {
+          "action_key": "reconcile-explicit",
+          "before_state": null,
+          "expected_effects": null,
+          "frozen_reason": "incident containment: external effect is ambiguous",
+          "status": "FROZEN"
+        },
+        "final_status": "RECOVERED",
+        "initial_status": "UNKNOWN",
+        "repair_calls": 1
+      },
+      "expected": "continue only through explicit RECONCILED evidence",
+      "fault": "remote effect confirmed after local result loss",
+      "recovery": "bounded repair runs once after provider/system truth matches",
+      "verdict": "PASS"
+    },
+    {
+      "actual": "BLOCKED",
+      "case_id": "V7C-16-false-success-worker",
+      "containment": "worker capability remains blocked pending bounded recovery",
+      "evidence": {
+        "anomaly_kinds": [
+          "worker_crash_loop"
+        ],
+        "incident_status": "BLOCKED",
+        "trigger": "claimed_success_contradicted_by_evidence"
+      },
+      "expected": "worker anomaly recorded; no false success accepted",
+      "fault": "worker claimed completion but independent evidence contradicted it",
+      "recovery": "verifier evidence, not worker claim, controls continuation",
+      "verdict": "PASS"
+    },
+    {
       "actual": "BLOCKED,BLOCKED",
-      "case_id": "V7C-09-resource-cost",
+      "case_id": "V7C-13-resource-cost",
       "containment": "resource and provider scopes isolated",
       "evidence": {
         "anomaly_kinds": [
@@ -136,7 +244,7 @@
     },
     {
       "actual": "BLOCKED",
-      "case_id": "V7C-10-duplicate-authority",
+      "case_id": "V7C-11-duplicate-authority",
       "containment": "singleton lease retained by first owner",
       "evidence": {
         "duplicate_blocked": true,
@@ -148,24 +256,82 @@
       "verdict": "PASS"
     },
     {
-      "actual": "REPLAY_STABLE",
-      "case_id": "V7C-11-restart-replay",
-      "containment": "durable incident state reconstructed from ledger",
+      "actual": "DELIVERED,UNKNOWN",
+      "case_id": "V7C-11-duplicate-delivery",
+      "containment": "durable claim compare-and-set prevents duplicate external calls",
       "evidence": {
-        "detected_events": 1,
-        "incident_count": 1
+        "delivery_claims": 1,
+        "provider_calls": 1,
+        "statuses": [
+          "DELIVERED",
+          "UNKNOWN"
+        ]
       },
-      "expected": "same incident; no duplicate detection",
-      "fault": "fresh coordinator after interrupted run",
-      "recovery": "resume remains bounded from DIAGNOSING",
+      "expected": "one provider claim; competing owner reports UNKNOWN",
+      "fault": "two dispatchers wake for one idempotent delivery",
+      "recovery": "confirmed result is replayable by idempotency key",
+      "verdict": "PASS"
+    },
+    {
+      "actual": "BLOCKED",
+      "case_id": "V7C-11-stale-lease",
+      "containment": "duplicate-authority capability is blocked pending owner reconciliation",
+      "evidence": {
+        "anomaly_kinds": [
+          "duplicate_authority"
+        ],
+        "lease_reclaimed": 2
+      },
+      "expected": "authority anomaly contained; no unbounded takeover",
+      "fault": "stale lease and PID/creation-identity churn",
+      "recovery": "fresh owner must prove process identity before lease acquisition",
+      "verdict": "PASS"
+    },
+    {
+      "actual": "RUNNING_AFTER_RESTART",
+      "case_id": "V7C-15-supervisor-crash-restart",
+      "containment": "stale lease is reclaimed only after the recorded process is dead",
+      "evidence": {
+        "child_started": true,
+        "heartbeat_status": "RUNNING",
+        "lease_reclaimed": 1,
+        "replacement_status": "RUNNING"
+      },
+      "expected": "fresh Supervisor reclaims stale authority and resumes heartbeat",
+      "fault": "disposable Supervisor process terminated before clean shutdown",
+      "recovery": "new owner emits heartbeat and stops cleanly",
+      "verdict": "PASS"
+    },
+    {
+      "actual": "REPLAY_STABLE",
+      "case_id": "V7C-15-restart-replay",
+      "containment": "durable incident state, capability suspension, and effect freeze reconstructed from ledger",
+      "evidence": {
+        "capability_state": {
+          "safe-work": "STOPPED",
+          "unrelated": "READY"
+        },
+        "detected_events": 2,
+        "effect_state": {
+          "action_key": "restart-pending-effect",
+          "before_state": null,
+          "expected_effects": null,
+          "frozen_reason": "incident containment: external effect is ambiguous",
+          "status": "FROZEN"
+        },
+        "incident_count": 2
+      },
+      "expected": "same incidents, suspension, and frozen effect reconstructed",
+      "fault": "fresh coordinator after process interruption with active incident and pending effect",
+      "recovery": "fresh process can continue only after explicit health/effect reconciliation",
       "verdict": "PASS"
     }
   ],
   "scope": "disposable homes only",
   "summary": {
     "fail": 0,
-    "pass": 11,
-    "total": 11
+    "pass": 19,
+    "total": 19
   },
   "verdict": "PASS"
 }

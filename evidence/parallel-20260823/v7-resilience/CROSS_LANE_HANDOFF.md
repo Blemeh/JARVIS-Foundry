@@ -29,8 +29,9 @@ independent verification, and the final gate verdict.
 ## Current source checkpoint
 
 - Candidate branch: `candidate/v7-resilience-continuity-20260823`.
-- Source/disposable V7 matrix: `V7C-16_FAULT_MATRIX.json`, 11/11 PASS.
-- Focused V7/adjacent suite: PASS.
+- Source/disposable V7 matrix: `V7C-16_FAULT_MATRIX.json`, 19/19 PASS.
+- Focused V7/adjacent suite: 138/138 PASS, plus targeted release/provider
+  regression paths PASS.
 - Repository-wide suite: FAIL only at the live-staging Task Scheduler restart
   probe (`test_task_restarts_after_hard_kill_via_repeating_trigger`).
 - Candidate push/promotion: BLOCKED pending owner-authorized Scheduler

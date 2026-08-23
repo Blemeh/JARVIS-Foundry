@@ -1,6 +1,6 @@
 # Repository Verification Result
 
-Date: 2026-08-23
+Date: 2026-08-24 (continuation update; repository-wide result retained from 2026-08-23)
 
 ## Source/disposable V7 regression set
 
@@ -8,15 +8,18 @@ Verdict: PASS
 
 The focused V7 and adjacent control/effect suite passed, including continuity,
 WAL-safe restore, Supervisor adoption/recovery/loop resilience, scheduler,
-portfolio, effects, capabilities, diagnostics, and the new resilience matrix.
+portfolio, effects, capabilities, diagnostics, delivery boundary, and the new
+19-row resilience matrix.
 
 Command:
 
 ```text
-python -m pytest tests/foundry/test_v7_resilience.py tests/foundry/test_v7_continuity.py tests/foundry/test_v7_restore_sidecar_regression.py tests/foundry/test_v7_supervisor_adoption.py tests/foundry/test_v7_scheduler.py tests/foundry/test_v7_portfolio.py tests/foundry/test_supervisor.py tests/foundry/test_supervisor_recovery.py tests/foundry/test_supervisor_loop_resilience.py tests/foundry/test_effects.py tests/foundry/test_capability_states.py tests/foundry/test_runtime_diagnostics.py -q -rA
+python -m pytest tests/foundry/test_v7_resilience.py tests/foundry/test_v7_continuity.py tests/foundry/test_v7_restore_sidecar_regression.py tests/foundry/test_v7_supervisor_adoption.py tests/foundry/test_v7_scheduler.py tests/foundry/test_v7_portfolio.py tests/foundry/test_supervisor.py tests/foundry/test_supervisor_recovery.py tests/foundry/test_supervisor_loop_resilience.py tests/foundry/test_effects.py tests/foundry/test_capability_states.py tests/foundry/test_runtime_diagnostics.py tests/foundry/test_delivery_boundary.py -q
 ```
 
-Observed: all collected tests passed.
+Observed: 138 collected tests passed.
+
+The disposable fault matrix separately passed 19/19 rows.
 
 ## Repository-wide suite
 
@@ -42,7 +45,8 @@ investigation.
 ## Other checks
 
 - `python -m py_compile` for the resilience package, Supervisor seam, matrix
-  harness, and tests: PASS.
-- `git diff --check`: PASS for the committed source checkpoints.
+  harness, and tests: PASS after the continuation changes.
+- `git diff --check`: rerun at final checkpoint; line-ending warnings are
+  environmental and are not treated as source errors.
 - `ruff`: NOT TESTED because the package is not installed in this lane.
 - Secret-pattern scan over changed source/tests/evidence: no matches.

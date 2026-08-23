@@ -1,6 +1,6 @@
 # V7C-1 through V7C-7 Source Checkpoint
 
-Date: 2026-08-23
+Date: 2026-08-24 (continuation update)
 Verdict: PASS for the isolated source slice
 
 ## Delivered
@@ -28,12 +28,15 @@ Verdict: PASS for the isolated source slice
   evidence and remains non-repairable; capability health exposes per-capability
   status; and unresolved effects are derived from the complete action-event
   subset rather than a bounded recent sample.
+- Incident records now persist the frozen external-effect action key through
+  replay. The explicit reconciliation seam rejects a mismatched key and is
+  idempotent after recovery.
 
 ## Focused verification
 
 ```text
 python -m pytest tests/foundry/test_v7_resilience.py -q
-14 passed
+20 passed
 
 python -m pytest tests/foundry/test_v7_resilience.py \
   tests/foundry/test_capability_states.py \
@@ -41,7 +44,7 @@ python -m pytest tests/foundry/test_v7_resilience.py \
   tests/foundry/test_runtime_diagnostics.py \
   tests/foundry/test_v7_scheduler.py \
   tests/foundry/test_supervisor_recovery.py -q
-65 passed
+138 passed
 ```
 
 The tests cover replay, idempotent scans, invalid transitions, STOP
