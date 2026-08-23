@@ -47,6 +47,7 @@ BROKEN = [sys.executable, "-c",
           "raise SystemExit(1)\n"]
 BUILD_OK = [sys.executable, "-c",
             "import pathlib\n"
+            "pathlib.Path('candidate.py').write_text('value = 1\\n')\n"
             "pathlib.Path('built.txt').write_text('built')\n"]
 
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-import socket
+import http.client
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -104,17 +104,24 @@ class _Fixture:
         self.server.fixture_state = self.state  # type: ignore[attr-defined]
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
-        # The fixture is used immediately after construction.  On a loaded
-        # Windows host the daemon thread can take a scheduling slice before
-        # ``serve_forever`` binds its accept loop, which would turn a
-        # deterministic injected 429/500 into a transport UNKNOWN.
-        for _ in range(50):
+        # The fixture is used immediately after construction.  Binding the
+        # socket is not enough: on a loaded Windows host the daemon thread
+        # can take a scheduling slice before ``serve_forever`` services its
+        # first request.  Complete a real health request so fault responses
+        # are deterministic rather than transport UNKNOWN.
+        for _ in range(100):
+            connection = http.client.HTTPConnection(
+                "127.0.0.1", self.server.server_port, timeout=0.1)
             try:
-                with socket.create_connection(
-                        ("127.0.0.1", self.server.server_port), timeout=0.1):
+                connection.request("GET", "/state")
+                response = connection.getresponse()
+                response.read()
+                if response.status == 200:
                     break
-            except OSError:
+            except (OSError, http.client.HTTPException):
                 time.sleep(0.01)
+            finally:
+                connection.close()
         else:
             raise RuntimeError("HTTP fault-injection fixture did not start")
 
@@ -157,7 +164,10 @@ def test_read_write_timeout_reconcile_and_duplicate_prevention(fixture: _Fixture
 
 
 def test_429_5xx_and_malformed_response_have_bounded_honest_states(fixture: _Fixture) -> None:
-    connector = HttpServiceConnector(fixture.url, timeout_s=0.2, max_attempts=2)
+    # Keep the fault classification bounded while allowing the Windows
+    # thread scheduler enough headroom to deliver the deterministic fixture
+    # response under a loaded repository-wide test run.
+    connector = HttpServiceConnector(fixture.url, timeout_s=5.0, max_attempts=2)
     rate = connector.write("/write?mode=429", {"value": "nope"}, idempotency_key="rate")
     assert rate.outcome == "FAILED"
     assert rate.error_code == "rate_limited"
@@ -168,7 +178,7 @@ def test_429_5xx_and_malformed_response_have_bounded_honest_states(fixture: _Fix
     assert fixture.state.write_count == 0
     server_fixture = _Fixture()
     try:
-        server_connector = HttpServiceConnector(server_fixture.url, timeout_s=0.2, max_attempts=2)
+        server_connector = HttpServiceConnector(server_fixture.url, timeout_s=5.0, max_attempts=2)
         failed = server_connector.write("/write?mode=500", {"value": "bad"}, idempotency_key="server")
         assert failed.outcome == "UNKNOWN"
         assert failed.error_code == "server_error"
