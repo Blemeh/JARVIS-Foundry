@@ -3,6 +3,7 @@
   "pass": true,
   "validated_source_head": "01db32cbcaa409dfe26386ce66110429c2c0b0e0",
   "integration_branch": "integration/full-reconciliation-2026-08-23",
+  "canonical_head_after_normal_push": "a992989843266675ad75da44be59d889fb3feda8",
   "canonical_baseline": {
     "ref": "origin/main",
     "sha": "01db32cbcaa409dfe26386ce66110429c2c0b0e0"
@@ -78,7 +79,7 @@
     "migration_performed": false,
     "read_only_evidence_artifact_written_during_abandoned_promotion_path": true
   },
-  "canonicalization_status": "READY_FOR_NORMAL_PUSH",
+  "canonicalization_status": "PUSHED_AND_VERIFIED",
   "evidence_files": [
     "evidence/integration/full-reconciliation/CANDIDATE_INVENTORY.json",
     "evidence/integration/full-reconciliation/CANDIDATE_INVENTORY.md",
