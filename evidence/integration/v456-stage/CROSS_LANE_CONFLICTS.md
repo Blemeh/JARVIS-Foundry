@@ -1,0 +1,24 @@
+# Cross-Lane Conflict and Semantic Review Register
+
+Status: OPEN
+
+Textual merge-tree checks are clean. Semantic review remains mandatory because
+the candidates were built from the older common base and current main contains
+the accepted cinematic frontend and later runtime/source reconciliations.
+
+| Area | Evidence of risk | Required resolution |
+|---|---|---|
+| Cinematic UI + V4 | V4 changes `command_center.py`, snapshot contracts, frontend mapper/types, and adds `OwnerManagement.tsx`; the current main already owns the newer cinematic AppShell and route architecture | Preserve the cinematic visual system and live/simulated truth. Add owner goals, priorities, constraints, vetoes, pause/STOP, briefings, decisions, traceability, and next action through the current snapshot and route contracts. Do not create a second dashboard. |
+| V4 + V5 | V4 briefing and decision selection must understand connector effects without treating every attempt as notification-worthy | Map terminal effect truth, ambiguity, outage, quota, cost, and owner-decision conditions into deterministic briefing selection and traceability. Keep UNKNOWN distinct from failure and success. |
+| V5 + V6 | V6 detector and feedback must not treat raw external connector content as authority | Feed only durable governed V5 evidence/outcomes into weakness detection. Prove untrusted connector payloads cannot create hypotheses with authority or bypass STOP/veto. |
+| V4/V5/V6 + STOP | Owner control is shared across directives, connector action envelopes, evolution eligibility, and UI controls | Verify each material path checks the same durable STOP/veto state and that UI never becomes authority. |
+| Release/runtime | Current live release is schema 34 and lacks `git_commit`/`git_tree`; source expects schema 36 and filesystem release authority is explicit | Build from exact final main, rehearse migration on a copy, capture previous identity and backup, and do not call deployment PASS until supported promotion and restart proof exist. |
+| Documentation | `docs/CURRENT_STATE.md` and `docs/CAPABILITY_MATRIX.md` still describe the pre-stage source checkpoint | Reconstruct canonical documentation from final integrated truth. Historical candidate reports remain provenance, not current status. |
+
+## Prohibited resolutions
+
+- No global `ours` or `theirs` conflict resolution.
+- No deletion of V4 behavior to silence UI or test conflicts.
+- No reset, rebase, force push, blind squash, or candidate-history rewrite.
+- No fabricated credentials, provider-side reconciliation, live readiness, or
+  simulated data presented as live.
