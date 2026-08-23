@@ -28,11 +28,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import time
 import uuid
+from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Iterator, Iterable
 
 from ..database import FoundryDatabase
 from ..events import Event
@@ -64,6 +66,34 @@ DEFAULT_RESOURCE_ID = "resource-wfm-optimizer"
 
 def _default_stop_path(paths: FoundryPaths, config: WorkerRuntimeConfig) -> Path:
     return config.resolve_stop_path(paths.home)
+
+
+@contextmanager
+def _adapter_runtime_environment(
+    paths: FoundryPaths, config: WorkerRuntimeConfig,
+) -> Iterator[None]:
+    """Expose run-scoped STOP/PID paths to adapters, then scrub the process env.
+
+    The normal stack passes these paths explicitly. The environment fallback
+    is retained for adapter call paths created by older integrations, while
+    restoration on every exit prevents retained state from leaking between
+    cycles or into unrelated processes.
+    """
+    previous = {
+        "JARVIS_ADAPTER_PID_TABLE": os.environ.get("JARVIS_ADAPTER_PID_TABLE"),
+        "JARVIS_STOP_PATH": os.environ.get("JARVIS_STOP_PATH"),
+    }
+    os.environ["JARVIS_ADAPTER_PID_TABLE"] = str(
+        paths.home / "adapter_worker_pids.json")
+    os.environ["JARVIS_STOP_PATH"] = str(_default_stop_path(paths, config))
+    try:
+        yield
+    finally:
+        for key, value in previous.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
 
 
 def _executive_waiting_report(
@@ -590,10 +620,11 @@ def run_cycle(
             fault_hook=fault_hook,
         )
         try:
-            outcome = loop.run_until_settled(
-                **runtime_kwargs,
-                commit_envelope=_commit_envelope(database, contract),
-            )
+            with _adapter_runtime_environment(paths, config):
+                outcome = loop.run_until_settled(
+                    **runtime_kwargs,
+                    commit_envelope=_commit_envelope(database, contract),
+                )
         except (MissionStepContractError, ProposalError, KeyError, TypeError, ValueError) as error:
             return _blocked_contract_report(
                 database, loop_id=loop_id, instance_id=instance_id,

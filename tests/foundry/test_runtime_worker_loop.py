@@ -1,6 +1,7 @@
 """CANONICAL RUNTIME PATH — live worker loop driver tests."""
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -11,7 +12,10 @@ from jarvis_foundry.paths import FoundryPaths
 from jarvis_foundry.roles.router import RoleRouter
 from jarvis_foundry.runtime._stack import build_worker_stack
 from jarvis_foundry.runtime.config import WorkerRuntimeConfig
-from jarvis_foundry.runtime.worker_loop import run_cycle
+from jarvis_foundry.runtime.worker_loop import (
+    _adapter_runtime_environment,
+    run_cycle,
+)
 from jarvis_foundry.workers.adapters.fakes import ScriptedOutcome, ScriptedWorkerAdapter
 from jarvis_foundry.workers.adapters.registry import WorkerRegistry
 from jarvis_foundry.workers.contracts import (
@@ -59,6 +63,31 @@ def test_run_cycle_disabled(tmp_path):
         database, FoundryPaths(tmp_path), WorkerRuntimeConfig(),
         loop_id="l1", instance_id="i1")
     assert report["outcome"] == "DISABLED"
+
+
+def test_adapter_runtime_environment_is_scoped_and_restored(tmp_path):
+    paths = FoundryPaths(tmp_path)
+    cfg = WorkerRuntimeConfig(enabled=True)
+    old_pid_table = os.environ.get("JARVIS_ADAPTER_PID_TABLE")
+    old_stop_path = os.environ.get("JARVIS_STOP_PATH")
+    os.environ["JARVIS_ADAPTER_PID_TABLE"] = "outer-pids.json"
+    os.environ["JARVIS_STOP_PATH"] = "outer-stop"
+    try:
+        with _adapter_runtime_environment(paths, cfg):
+            assert os.environ["JARVIS_ADAPTER_PID_TABLE"] == str(
+                paths.home / "adapter_worker_pids.json")
+            assert os.environ["JARVIS_STOP_PATH"] == str(paths.emergency_stop)
+        assert os.environ["JARVIS_ADAPTER_PID_TABLE"] == "outer-pids.json"
+        assert os.environ["JARVIS_STOP_PATH"] == "outer-stop"
+    finally:
+        if old_pid_table is None:
+            os.environ.pop("JARVIS_ADAPTER_PID_TABLE", None)
+        else:
+            os.environ["JARVIS_ADAPTER_PID_TABLE"] = old_pid_table
+        if old_stop_path is None:
+            os.environ.pop("JARVIS_STOP_PATH", None)
+        else:
+            os.environ["JARVIS_STOP_PATH"] = old_stop_path
 
 
 def test_run_cycle_frozen_when_stop_sentinel(tmp_path):
