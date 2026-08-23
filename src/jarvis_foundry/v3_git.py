@@ -20,6 +20,7 @@ from typing import Any, Callable
 from .database import FoundryDatabase
 from .effects import COMPLETED, FAILED, FROZEN, effect_identity, effect_state
 from .events import Event
+from .v3_fault import V3InjectedFault, invoke_fault_hook
 
 
 class GitReconcilePending(RuntimeError):
@@ -95,9 +96,11 @@ def preflight_identity(*, worktree: str | Path, remote: str | Path,
 class GitEffectAdapter:
     """Git push/pull effects with provider-side reconciliation."""
 
-    def __init__(self, database: FoundryDatabase, *, source_id: str = "v3-git") -> None:
+    def __init__(self, database: FoundryDatabase, *, source_id: str = "v3-git",
+                 fault_hook: Callable[[str], None] | None = None) -> None:
         self._database = database
         self._source_id = source_id
+        self._fault_hook = fault_hook
 
     def push(
         self, *,
@@ -163,8 +166,17 @@ class GitEffectAdapter:
             "kind": "git.push", "identity": identity}, "started")
 
         try:
+            invoke_fault_hook(self._fault_hook, "mid git push")
             result = (execute or self._default_execute)(
                 worktree, remote, branch)
+        except V3InjectedFault as injected:
+            try:
+                self._mark_ambiguous(
+                    key, action_id,
+                    "fault injected during push; remote state unknown")
+            except V3InjectedFault:
+                pass
+            raise injected
         except (TimeoutError, subprocess.TimeoutExpired):
             self._append("effect.reconcile_pending", {
                 "action_key": key, "action_id": action_id,
@@ -174,6 +186,7 @@ class GitEffectAdapter:
                 "action_key": key,
                 "reason": "ambiguous push outcome — frozen pending "
                           "ls-remote reconciliation"}, "frozen.pending")
+            invoke_fault_hook(self._fault_hook, "post effect.reconcile_pending")
             raise GitReconcilePending(key)
         except Exception as exc:  # noqa: BLE001 — recorded, never retried here
             self._append("system.action_failed", {
@@ -242,6 +255,16 @@ class GitEffectAdapter:
             event_type, payload,
             source_type="supervisor", source_id=self._source_id,
             idempotency_key=f"{key}.{suffix}"))
+
+    def _mark_ambiguous(self, key: str, action_id: str, reason: str) -> None:
+        """Persist a pending/frozen prefix before an injected crash escapes."""
+        self._append("effect.reconcile_pending", {
+            "action_key": key, "action_id": action_id,
+            "timeout_at": None, "reason": reason}, "pending")
+        self._append("effect.frozen", {
+            "action_key": key,
+            "reason": "ambiguous push outcome — frozen pending "
+                      "ls-remote reconciliation"}, "frozen.pending")
 
     @staticmethod
     def _default_execute(worktree: str | Path, remote: str | Path,

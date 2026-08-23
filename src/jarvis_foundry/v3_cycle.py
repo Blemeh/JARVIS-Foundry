@@ -13,11 +13,13 @@ selection reuses ``ExecutiveDecisionService``, materialization reuses
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
 from .database import FoundryDatabase
 from .events import Event
+from .v3_fault import invoke_fault_hook
 from .v3_scoring import POLICY_VERSION, ScoringService, evaluate_portfolio
 
 
@@ -67,6 +69,7 @@ def run_discovery_cycle(
     capability: str = "write_registered_worktree_files",
     source_id: str = "v3-cycle",
     observe: "Any | None" = None,
+    fault_hook: Callable[[str], None] | None = None,
 ) -> CycleReport:
     """One unified discovery iteration.
 
@@ -92,6 +95,41 @@ def run_discovery_cycle(
         return CycleReport(loop_id=loop_id, outcome="STOPPED",
                            reason=f"STOP active: {stop}", lineage=lineage)
 
+    # A cycle-start marker is durable before any observation work.  The
+    # idempotency key makes a replay after a deliberate crash additive rather
+    # than duplicating the start record.
+    database.append(Event.create(
+        "discovery.cycle_started",
+        {"loop_id": loop_id, "resource_id": resource_id,
+         "capability": capability},
+        source_type="supervisor", source_id=source_id,
+        idempotency_key=f"discovery.cycle_started:{loop_id}"))
+    invoke_fault_hook(fault_hook, "post cycle_started")
+
+    # A caller may have crashed after the terminal cycle event but before it
+    # consumed the returned report.  Return the durable report rather than
+    # rebuilding a different portfolio/lineage payload under the same key.
+    existing_completion = next(
+        (event for event in database.events()
+         if event.event_type == "discovery.cycle_completed"
+         and event.payload.get("loop_id") == loop_id),
+        None,
+    )
+    if existing_completion is not None:
+        payload = existing_completion.payload
+        return CycleReport(
+            loop_id=loop_id,
+            outcome=str(payload.get("outcome") or "BLOCKED"),
+            decision_id=payload.get("decision_id"),
+            mission_id=payload.get("mission_id"),
+            candidate_id=(payload.get("lineage") or {}).get("candidate_id"),
+            observed=int(payload.get("observed") or 0),
+            candidates_created=int(payload.get("candidates_created") or 0),
+            degraded_sources=list(payload.get("degraded_sources") or []),
+            reason=payload.get("reason"),
+            lineage=dict(payload.get("lineage") or {}),
+        )
+
     degraded: list[str] = []
     observed = 0
     created = 0
@@ -107,6 +145,7 @@ def run_discovery_cycle(
                 created = int(observation.get("candidates_created", 0))
         except Exception as error:  # noqa: BLE001 - degrade, don't abort
             degraded.append(f"observe:{type(error).__name__}")
+    invoke_fault_hook(fault_hook, "post candidate_generated")
 
     # Observation is untrusted and may race with an owner STOP.  Do not score,
     # append portfolio state, select, or materialize after the second gate.
@@ -169,12 +208,27 @@ def run_discovery_cycle(
     service = ScoringService(database)
     decisions = service.score_all_eligible()
     eligible = [d for d in decisions if d["status"] == "ELIGIBLE"]
+    invoke_fault_hook(fault_hook, "post candidate_scored")
 
     # Step 5b — portfolio projection event.
-    portfolio = evaluate_portfolio(
-        database, loop_id,
-        [{**d, "status": d["status"]} for d in decisions],
-        policy_version=policy_version)
+    # A crash after scoring/selection may replay the same loop after the
+    # candidate projection has advanced.  Reuse the durable portfolio payload
+    # for this loop instead of rebuilding a different decision-count payload
+    # under the same idempotency key.
+    portfolio_event = next(
+        (event for event in database.events()
+         if event.event_type == "portfolio.evaluated"
+         and event.payload.get("loop_id") == loop_id
+         and event.payload.get("policy_version") == policy_version),
+        None,
+    )
+    if portfolio_event is not None:
+        portfolio = dict(portfolio_event.payload)
+    else:
+        portfolio = evaluate_portfolio(
+            database, loop_id,
+            [{**d, "status": d["status"]} for d in decisions],
+            policy_version=policy_version)
 
     # Step 6 — selection stays with ExecutiveDecisionService.
     from .executive.decisions import ExecutiveDecisionService
@@ -190,6 +244,8 @@ def run_discovery_cycle(
     enable_admission_authority(database, epoch, source_id=source_id)
     decision = executive.evaluate(
         resource_id=resource_id, capability=capability, loop_id=loop_id)
+    if decision.kind == "SELECT":
+        invoke_fault_hook(fault_hook, "post decision_recorded SELECT")
 
     if decision.kind != "SELECT" or decision.candidate_id is None:
         lineage = {"loop_id": loop_id, "status": "WAITING",
@@ -244,6 +300,7 @@ def run_discovery_cycle(
         resource_id=resource_id, capability=capability,
         decision_id=decision.decision_id, activation_epoch=epoch,
         source_id=source_id)
+    invoke_fault_hook(fault_hook, "post mission.created")
 
     outcome = "COMPILED" if compiled.get("materialized") else "BLOCKED"
     lineage = {
@@ -270,6 +327,7 @@ def run_discovery_cycle(
          "lineage": lineage},
         source_type="supervisor", source_id=source_id,
         idempotency_key=f"discovery.cycle_completed:{loop_id}"))
+    invoke_fault_hook(fault_hook, "post cycle_completed")
     return CycleReport(
         loop_id=loop_id, outcome=outcome,
         decision_id=decision.decision_id,

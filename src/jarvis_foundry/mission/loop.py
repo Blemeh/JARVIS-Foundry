@@ -23,7 +23,8 @@ import json
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from types import SimpleNamespace
+from typing import Any, Callable
 
 from ..control.broker import emergency_stop_reason
 from ..control.policy import ActionPolicy
@@ -36,11 +37,13 @@ from ..roles.results import (
     BLOCKED,
     COMPLETED,
     FAILED,
+    RoleResult,
 )
 from ..roles.router import RoleRouter
 from ..supervisor.leases import LeaseManager
 from .commit import CommitError, commit_after_pass
 from .proposal import ProposalError, Waiting, propose_next_action
+from ..v3_fault import invoke_fault_hook
 from .verification import (
     dangling_verdict_for_run,
     failed_verdict_count,
@@ -107,6 +110,7 @@ class MissionLoop:
         source_id: str = "mission-loop",
         heartbeat_interval_seconds: int = 60,
         stop_path: Path | str | None = None,
+        fault_hook: Callable[[str], None] | None = None,
     ) -> None:
         self.database = database
         self.router = router
@@ -114,9 +118,11 @@ class MissionLoop:
             database, router, adapter,
             leases=leases, source_id=source_id,
             heartbeat_interval_seconds=heartbeat_interval_seconds,
+            fault_hook=fault_hook,
         )
         self.policy = policy
         self.max_repairs = max_repairs
+        self.fault_hook = fault_hook
         if stop_path is not None:
             self.stop_path = Path(stop_path)
         elif policy is not None:
@@ -127,6 +133,60 @@ class MissionLoop:
 
     def _stop_reason(self) -> str | None:
         return emergency_stop_reason(self.database, self.stop_path)
+
+    def _stop_blocked(self, mission_id: str, *, step_id: str,
+                      run_id: str | None = None) -> StepOutcome | None:
+        """Freeze a pass at every external-effect boundary.
+
+        STOP is a safety decision, not a provider result.  A durable state is
+        still written so a fresh loop can re-orient after the owner clears the
+        stop; no builder, verifier, commit, or completion event is emitted
+        after the gate observes STOP.
+        """
+        reason = self._stop_reason()
+        if not reason:
+            return None
+        mission = self._mission(mission_id)
+        state = str(mission["state"])
+        if state in {"READY", "EXECUTING", "VERIFYING", "REPAIRING"}:
+            self._advance(mission_id, "BLOCKED", run_id=run_id)
+            self.database.append(Event.create(
+                "mission.stop_blocked",
+                {"mission_id": mission_id, "step_id": step_id,
+                 "run_id": run_id, "reason": reason},
+                source_type="supervisor", source_id="mission-loop",
+                idempotency_key=f"mission.stop_blocked:{mission_id}:{run_id or 'none'}"))
+        elif state == "ACCEPTING":
+            # ACCEPTING can only return to ACTION_SELECTION or COMPLETE.  A
+            # cleared next-action slot is the durable reorientation point.
+            self._advance(mission_id, "ACTION_SELECTION",
+                          next_action=None, run_id=run_id)
+            self.database.append(Event.create(
+                "mission.stop_blocked",
+                {"mission_id": mission_id, "step_id": step_id,
+                 "run_id": run_id, "reason": reason},
+                source_type="supervisor", source_id="mission-loop",
+                idempotency_key=f"mission.stop_blocked:{mission_id}:{run_id or 'none'}"))
+        return StepOutcome(outcome=BLOCKED_OUTCOME, step_id=step_id,
+                           run_id=run_id,
+                           reason=f"STOP active: {reason}")
+
+    def _reorient_after_stop(self, mission_id: str) -> None:
+        """Move a STOP-blocked mission back to its scheduled action once clear."""
+        if self._stop_reason():
+            return
+        mission = self._mission(mission_id)
+        if str(mission["state"]) != "BLOCKED":
+            return
+        if not any(e.event_type == "mission.stop_blocked"
+                   and e.payload.get("mission_id") == mission_id
+                   for e in self.database.events()):
+            return
+        self._advance(
+            mission_id, "ACTION_SELECTION",
+            next_action=mission.get("next_action"),
+            run_id=f"resume-stop-{mission_id}",
+        )
 
     @staticmethod
     def _pass_requires_jarvis_predicate(
@@ -199,6 +259,7 @@ class MissionLoop:
                 source_id="mission-loop",
                 idempotency_key=f"mission.completed:{mission_id}",
             ))
+            invoke_fault_hook(self.fault_hook, "post mission.completed")
             return
         self._advance(mission_id, "ACTION_SELECTION", next_action=None, run_id=run_id)
 
@@ -355,15 +416,37 @@ class MissionLoop:
         stop_reason = self._stop_reason()
         if stop_reason:
             return StepOutcome(outcome=BLOCKED_OUTCOME, reason=stop_reason)
-        proposal = propose_next_action(self.database, mission_id)
-        if isinstance(proposal, Waiting):
-            return StepOutcome(outcome=WAITING_OUTCOME, reason=proposal.reason)
+        self._reorient_after_stop(mission_id)
+        mission = self._mission(mission_id)
+        state = str(mission["state"])
+        # A deliberate crash can leave the canonical mission in EXECUTING or
+        # VERIFYING.  Resume the durable run instead of asking the proposal
+        # layer (which correctly rejects those in-flight states) to invent a
+        # new action.  When the caller does not carry the run id, recover the
+        # latest builder/repair run from the ledger.
+        if run_id is None and state in {"EXECUTING", "VERIFYING"}:
+            with self.database.connect() as connection:
+                row = connection.execute(
+                    "SELECT run_id FROM agent_runs "
+                    "WHERE mission_id = ? AND step_id = ? "
+                    "AND role IN ('builder', 'repair') "
+                    "ORDER BY rowid DESC LIMIT 1",
+                    (mission_id, step_id),
+                ).fetchone()
+            run_id = str(row[0]) if row else None
         run_id = run_id or f"run-{uuid.uuid4().hex[:12]}"
+        if state in {"EXECUTING", "VERIFYING"}:
+            proposal = SimpleNamespace(
+                redirected=False,
+                action_requirement=str(mission.get("next_action") or ""),
+            )
+        else:
+            proposal = propose_next_action(self.database, mission_id)
+            if isinstance(proposal, Waiting):
+                return StepOutcome(outcome=WAITING_OUTCOME, reason=proposal.reason)
         verdict_id = f"verdict-{uuid.uuid4().hex[:12]}"
         criteria = verification_criteria or ["step result is verified by an independent verifier"]
 
-        mission = self._mission(mission_id)
-        state = str(mission["state"])
         role = "repair" if state == "REPAIRING" else "builder"
         attempt = failed_verdict_count(self.database, mission_id, step_id) + 1
 
@@ -382,8 +465,13 @@ class MissionLoop:
                 raise ProposalError(
                     f"repair requested for {mission_id} step {step_id} but no FAIL verdict exists")
 
-        self._advance(mission_id, "READY", run_id=run_id)
-        self._advance(mission_id, "EXECUTING", run_id=run_id)
+        if state not in {"EXECUTING", "VERIFYING"}:
+            self._advance(mission_id, "READY", run_id=run_id)
+            self._advance(mission_id, "EXECUTING", run_id=run_id)
+        stopped = self._stop_blocked(mission_id, step_id=step_id,
+                                     run_id=run_id)
+        if stopped is not None:
+            return stopped
 
         # ``proposal.action_requirement`` is projected from the canonical
         # mission state, including an authenticated REDIRECT.  Carry it into
@@ -394,24 +482,37 @@ class MissionLoop:
             dispatch_instructions = (
                 f"Canonical mission next action: {proposal.action_requirement}\n\n"
                 f"{instructions}")
-        result = self.dispatcher.dispatch(
-            role=role,
-            mission_id=mission_id,
-            resource_id=str(mission["resource_id"]),
-            capability=capability,
-            step_id=step_id,
-            run_id=run_id,
-            instructions=dispatch_instructions,
-            expected_artifacts=expected_artifacts,
-            # Only carry criteria in the manifest when the caller explicitly
-            # provided them: default steps keep byte-identical manifest
-            # hashes (historical replay semantics unchanged).
-            verification_criteria=(
-                tuple(verification_criteria)
-                if verification_criteria is not None else ()),
-            forbidden_paths=forbidden_paths,
-            attempt=attempt,
-        )
+        if state == "VERIFYING":
+            row = self.database.row("agent_runs", "run_id", run_id)
+            try:
+                if row is None or row.get("status") != "COMPLETED":
+                    raise ValueError("durable builder run is not complete")
+                result = RoleResult.from_payload(json.loads(str(row["result_json"])))
+            except (KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
+                self._advance(mission_id, "BLOCKED", run_id=run_id)
+                return StepOutcome(
+                    outcome=BLOCKED_OUTCOME, step_id=step_id, run_id=run_id,
+                    reason=f"cannot resume VERIFYING run: {error}",
+                )
+        else:
+            result = self.dispatcher.dispatch(
+                role=role,
+                mission_id=mission_id,
+                resource_id=str(mission["resource_id"]),
+                capability=capability,
+                step_id=step_id,
+                run_id=run_id,
+                instructions=dispatch_instructions,
+                expected_artifacts=expected_artifacts,
+                # Only carry criteria in the manifest when the caller explicitly
+                # provided them: default steps keep byte-identical manifest
+                # hashes (historical replay semantics unchanged).
+                verification_criteria=(
+                    tuple(verification_criteria)
+                    if verification_criteria is not None else ()),
+                forbidden_paths=forbidden_paths,
+                attempt=attempt,
+            )
         if result.status == BLOCKED:
             self._advance(mission_id, "BLOCKED", run_id=run_id)
             return StepOutcome(
@@ -449,6 +550,10 @@ class MissionLoop:
                 reason=f"{role} session did not complete: {result.error_class or result.status}",
             )
 
+        stopped = self._stop_blocked(mission_id, step_id=step_id,
+                                     run_id=run_id)
+        if stopped is not None:
+            return stopped
         self._advance(mission_id, "VERIFYING", run_id=run_id)
         verifier_provider = self.router.diversity_resolution(result.provider)
         base_verifier_run_id = f"{run_id}-verify"
@@ -515,6 +620,11 @@ class MissionLoop:
             },
             criteria=criteria,
         )
+        invoke_fault_hook(self.fault_hook, "post verification.started")
+        stopped = self._stop_blocked(mission_id, step_id=step_id,
+                                     run_id=run_id)
+        if stopped is not None:
+            return stopped
         verifier = self.dispatcher.dispatch(
             role="verifier",
             mission_id=mission_id,
@@ -536,6 +646,10 @@ class MissionLoop:
             forbidden_paths=forbidden_paths,
             attempt=attempt,
         )
+        stopped = self._stop_blocked(mission_id, step_id=step_id,
+                                     run_id=run_id)
+        if stopped is not None:
+            return stopped
         if verifier.status != COMPLETED:
             if (verifier.error_class == "evidence_mismatch"
                     or verifier.verdict == "FAIL"):
@@ -573,6 +687,10 @@ class MissionLoop:
             )
 
         if verifier.verdict == "PASS":
+            stopped = self._stop_blocked(mission_id, step_id=step_id,
+                                         run_id=run_id)
+            if stopped is not None:
+                return stopped
             refused = self._pass_requires_jarvis_predicate(
                 target=target, expected_artifacts=expected_artifacts,
             )
@@ -635,6 +753,10 @@ class MissionLoop:
             # which the state machine allows. ACCEPTING is entered only when
             # the verified work is fully accepted.
             commit_state: dict[str, Any] | None = None
+            stopped = self._stop_blocked(mission_id, step_id=step_id,
+                                         run_id=run_id)
+            if stopped is not None:
+                return stopped
             if commit_envelope is not None and self.policy is not None:
                 resource = self.database.row("resources", "resource_id", str(mission["resource_id"]))
                 if resource is None:
@@ -659,13 +781,25 @@ class MissionLoop:
                         outcome=BLOCKED_OUTCOME, step_id=step_id, run_id=run_id,
                         verdict_id=verdict_id, reason=f"commit after PASS failed: {error}",
                     )
+            stopped = self._stop_blocked(mission_id, step_id=step_id,
+                                         run_id=run_id)
+            if stopped is not None:
+                return stopped
             self._advance(mission_id, "ACCEPTING", run_id=run_id)
+            stopped = self._stop_blocked(mission_id, step_id=step_id,
+                                         run_id=run_id)
+            if stopped is not None:
+                return stopped
             self._record_evidence(
                 mission_id=mission_id, step_id=step_id, run_id=run_id,
                 verdict_id=verdict_id, commit_state=commit_state, criteria=criteria,
                 role=role,
                 artifact_hashes=_hash_target(target),
             )
+            stopped = self._stop_blocked(mission_id, step_id=step_id,
+                                         run_id=run_id)
+            if stopped is not None:
+                return stopped
             self._continue_after_pass(mission_id, run_id=run_id)
             return StepOutcome(
                 outcome=PASSED, step_id=step_id, run_id=run_id,
@@ -730,6 +864,38 @@ class MissionLoop:
         stop_reason = self._stop_reason()
         if stop_reason:
             return StepOutcome(outcome=BLOCKED_OUTCOME, reason=stop_reason)
+        self._reorient_after_stop(mission_id)
+        # A STOP can arrive after a PASS was accepted but before the terminal
+        # completion event.  On the next clean pass, close that durable
+        # contract exactly once without redispatching the worker.
+        from .contracts import contract_rows, next_executable_contract
+
+        if self._stop_reason():
+            current = self._mission(mission_id)
+            if str(current["state"]) == "ACCEPTING":
+                self._advance(mission_id, "ACTION_SELECTION",
+                              next_action=None, run_id=run_id)
+            return
+        mission = self._mission(mission_id)
+        if (str(mission["state"]) == "ACTION_SELECTION"
+                and contract_rows(self.database, mission_id)
+                and next_executable_contract(self.database, mission_id) is None):
+            run_id = f"resume-complete-{mission_id}"
+            self._advance(mission_id, "COMPLETE", next_action=None,
+                          run_id=run_id)
+            if not any(
+                    e.event_type == "mission.completed"
+                    and e.payload.get("mission_id") == mission_id
+                    for e in self.database.events()):
+                self.database.append(Event.create(
+                    "mission.completed",
+                    {"mission_id": mission_id, "outcome": "PASSED",
+                     "run_id": run_id},
+                    source_type="supervisor", source_id="mission-loop",
+                    idempotency_key=f"mission.completed:{mission_id}"))
+            invoke_fault_hook(self.fault_hook, "post mission.completed")
+            return StepOutcome(outcome=PASSED, step_id=step_id,
+                               run_id=run_id)
         for attempt in range(self.max_repairs + 2):
             outcome = self.run_step(
                 mission_id=mission_id, step_id=step_id, capability=capability,

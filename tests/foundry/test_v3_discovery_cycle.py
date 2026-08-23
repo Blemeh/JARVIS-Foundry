@@ -19,6 +19,7 @@ from jarvis_foundry.executive.eligibility import (
     enable_admission_authority,
 )
 from jarvis_foundry.paths import FoundryPaths
+from jarvis_foundry.owner_controls import OwnerControlService, sign_command
 from jarvis_foundry.runtime.config import WorkerRuntimeConfig
 from jarvis_foundry.runtime.worker_loop import run_cycle
 from jarvis_foundry.v3_cycle import run_discovery_cycle
@@ -189,8 +190,6 @@ def test_duplicate_fingerprint_cannot_create_second_mission(tmp_path):
 
 
 def test_stop_blocks_cycle_before_observation(tmp_path):
-    from jarvis_foundry.owner_controls import OwnerControlService, sign_command
-
     database, _ = _cycle_env(tmp_path)
     secret = b"test-secret-32-bytes-minimum!!"
     svc = OwnerControlService(database, secret=secret, owner_id="owner")
@@ -208,6 +207,31 @@ def test_stop_blocks_cycle_before_observation(tmp_path):
     assert report.outcome == "STOPPED"
     events = [e.event_type for e in database.events()]
     assert "portfolio.evaluated" not in events
+
+
+def test_stop_race_after_observation_blocks_scoring_and_materialization(tmp_path):
+    database, _ = _cycle_env(tmp_path)
+    secret = b"test-secret-32-bytes-minimum!!"
+    service = OwnerControlService(database, secret=secret, owner_id="owner")
+
+    def _observe_then_stop(_database):
+        nonce = "stop-after-observe"
+        signature = sign_command(secret, "STOP_EVERYTHING", "GLOBAL",
+                                 "race", nonce)
+        service.apply("STOP_EVERYTHING", target="GLOBAL", exact_text="race",
+                      nonce=nonce, signature=signature)
+        return {"observed": {"vault": 4}, "candidates_created": 1}
+
+    report = run_discovery_cycle(
+        database, loop_id="stop-after-observe", resource_id="resource-1",
+        observe=_observe_then_stop)
+    assert report.outcome == "STOPPED"
+    events = [e.event_type for e in database.events()]
+    assert "portfolio.evaluated" not in events
+    assert "executive.decision_recorded" not in events
+    assert not [e for e in database.events()
+                if e.event_type == "mission.created"
+                and str(e.payload.get("created_from") or "").startswith("candidate:")]
 
 
 def test_worker_loop_dual_path_flag_on_compiles(tmp_path):

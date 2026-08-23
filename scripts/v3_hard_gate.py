@@ -15,6 +15,7 @@ import subprocess
 import sys
 import time
 import xml.etree.ElementTree as ET
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -31,6 +32,11 @@ FOCUSED_TESTS = [
     "tests/foundry/test_v3_outcomes.py",
     "tests/foundry/test_v3_smoke.py",
     "tests/foundry/test_v3_hard_core.py",
+    "tests/foundry/test_v3_hard_e2e.py",
+    "tests/foundry/test_v3_fault_matrix.py",
+    "tests/foundry/test_v3_resources.py",
+    "tests/foundry/test_exactly_once_resume.py",
+    "tests/foundry/test_goal2_supervisor_autonomy.py",
     "tests/foundry/test_knowledge_retrieval.py",
     "tests/foundry/test_role_manifest.py",
     "tests/foundry/test_executive_intelligence.py",
@@ -182,6 +188,130 @@ def _bounded_soak(evidence_dir: Path, cycles: int = 8) -> dict[str, Any]:
     return payload
 
 
+def _real_soak(evidence_dir: Path, *, duration_seconds: float = 4 * 60 * 60,
+               cycle_interval_seconds: float = 30.0) -> dict[str, Any]:
+    """Run the actual disposable V3 cycle for a measured wall-clock window."""
+    sys.path.insert(0, str(ROOT / "src"))
+    from jarvis_foundry.database import FoundryDatabase
+    from jarvis_foundry.v3_cycle import run_discovery_cycle
+    from jarvis_foundry.v3_resources import (
+        ResourceLimits,
+        capture_resource_snapshot,
+        envelope_violations,
+        limits_payload,
+    )
+    from v3_fixtures import load_policy
+    from jarvis_foundry.v3_scoring import register_policy
+
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    root = evidence_dir / f"soak-lab-real-{stamp}"
+    root.mkdir(parents=True, exist_ok=True)
+    database = FoundryDatabase(root / "soak.db")
+    database.initialize()
+    register_policy(database, load_policy())
+
+    started_at = datetime.now(timezone.utc)
+    started_mono = time.monotonic()
+    reports: list[dict[str, Any]] = []
+    snapshots: list[dict[str, Any]] = []
+    failures: list[dict[str, Any]] = []
+    interrupted = False
+    cycle_index = 0
+    try:
+        while time.monotonic() - started_mono < duration_seconds:
+            loop_id = f"hard-real-soak-{cycle_index}"
+            cycle_started = time.monotonic()
+            try:
+                report = run_discovery_cycle(
+                    database,
+                    loop_id=loop_id,
+                    observe=lambda _db: {
+                        "observed": {}, "candidates_created": 0,
+                    },
+                )
+                reports.append(report.to_payload())
+            except Exception as error:  # noqa: BLE001 - evidence, then continue
+                failures.append({
+                    "loop_id": loop_id,
+                    "error_class": type(error).__name__,
+                    "reason": str(error),
+                })
+            snapshots.append(capture_resource_snapshot(
+                database,
+                provider_calls=0,
+                worker_count=0,
+                retry_count=len(failures),
+            ))
+            cycle_index += 1
+            remaining = duration_seconds - (time.monotonic() - started_mono)
+            if remaining > 0:
+                time.sleep(min(cycle_interval_seconds,
+                               remaining, max(0.0, cycle_interval_seconds)))
+            # Keep a slow/failed cycle visible without inventing a recovery.
+            if time.monotonic() - cycle_started > max(60.0, cycle_interval_seconds * 4):
+                failures.append({
+                    "loop_id": loop_id,
+                    "error_class": "cycle_latency",
+                    "reason": "cycle exceeded bounded latency envelope",
+                })
+    except KeyboardInterrupt:
+        interrupted = True
+
+    elapsed = time.monotonic() - started_mono
+    ended_at = datetime.now(timezone.utc)
+    limits = ResourceLimits()
+    violations: list[str] = []
+    for snapshot in snapshots:
+        violations.extend(envelope_violations(snapshot, limits))
+    unique_violations = sorted(set(violations))
+    completed_window = elapsed >= duration_seconds and not interrupted
+    stop_events = sum(
+        1 for event in database.events()
+        if event.event_type == "discovery.cycle_completed"
+        and event.payload.get("outcome") == "STOPPED")
+    resource_payload = {
+        "status": "PASS" if not unique_violations else "FAIL",
+        "limits": limits_payload(limits),
+        "samples": len(snapshots),
+        "snapshots": snapshots,
+        "maxima": {
+            key: max((int(item[key]) for item in snapshots
+                      if item.get(key) is not None), default=None)
+            for key in ("event_count", "db_bytes", "candidate_count",
+                        "mission_count", "agent_run_count",
+                        "verification_run_count", "retry_count",
+                        "process_count", "worker_count", "rss_bytes")
+        },
+        "violations": unique_violations,
+        "database": str(database.path),
+    }
+    _write(evidence_dir / "RESOURCE.json", resource_payload)
+    payload = {
+        "status": (
+            "PASS" if completed_window and len(reports) >= 8
+            and not failures and not unique_violations else
+            "FAIL" if failures or unique_violations else "NOT_TESTED"
+        ),
+        "started_at": started_at.isoformat(),
+        "ended_at": ended_at.isoformat(),
+        "elapsed_seconds": round(elapsed, 3),
+        "target_seconds": duration_seconds,
+        "cycles": len(reports),
+        "target_cycles": 8,
+        "long_soak_status": "PASS" if completed_window and len(reports) >= 8 else "NOT_TESTED",
+        "provider_calls": 0,
+        "failures": failures,
+        "recoveries": 0,
+        "stop_events": stop_events,
+        "resource_envelope": resource_payload,
+        "reports": reports,
+        "database": str(database.path),
+        "interrupted": interrupted,
+    }
+    _write(evidence_dir / "SOAK.json", payload)
+    return payload
+
+
 def _fault_matrix() -> list[dict[str, Any]]:
     # The matrix is explicit even where the current lane cannot safely inject
     # a process kill. Those points remain NOT_TESTED and therefore keep AC-08
@@ -318,6 +448,11 @@ def main() -> int:
     parser.add_argument("--evidence-dir", default="evidence/v3/hard")
     parser.add_argument("--full-suite", action="store_true")
     parser.add_argument("--full-suite-junit", type=Path)
+    parser.add_argument("--real-soak", action="store_true",
+                        help="run the measured four-hour disposable soak")
+    parser.add_argument("--real-soak-seconds", type=float,
+                        default=4 * 60 * 60)
+    parser.add_argument("--real-soak-interval", type=float, default=30.0)
     args = parser.parse_args()
     evidence_dir = (ROOT / args.evidence_dir).resolve()
     evidence_dir.mkdir(parents=True, exist_ok=True)
@@ -348,7 +483,11 @@ def main() -> int:
     focused = _run_pytest("focused-runs", FOCUSED_TESTS, evidence_dir)
     supporting = _run_pytest("supporting-runs", SUPPORTING_TESTS, evidence_dir)
     migration = _run_pytest("migration-runs", MIGRATION_TESTS, evidence_dir)
-    soak = _bounded_soak(evidence_dir)
+    soak = (_real_soak(
+        evidence_dir,
+        duration_seconds=args.real_soak_seconds,
+        cycle_interval_seconds=args.real_soak_interval,
+    ) if args.real_soak else _bounded_soak(evidence_dir))
     fault_matrix = _fault_matrix()
     defects = _defect_inventory()
     _write(evidence_dir / "DEFECTS.json", defects)

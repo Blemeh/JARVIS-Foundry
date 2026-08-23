@@ -31,6 +31,7 @@ import json
 import time
 import uuid
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, Callable, Iterable
 
 from ..database import FoundryDatabase
@@ -51,6 +52,7 @@ from ..control.policy import ActionPolicy
 from ..domain import ActionEnvelope
 from ..workers.contracts import WORKER_OPENHANDS
 from ..workers.router import NOT_READY, READY
+from ..v3_fault import invoke_fault_hook
 from ._stack import build_worker_stack
 from .config import WorkerRuntimeConfig
 from .provider_config import ProviderConfigError
@@ -237,6 +239,7 @@ def _record_v3_outcome(
     mission_id: str,
     outcome: Any,
     loop_id: str,
+    fault_hook: Callable[[str], None] | None = None,
 ) -> dict[str, Any] | None:
     """Write the V3 candidate outcome and close the cycle lineage.
 
@@ -269,19 +272,69 @@ def _record_v3_outcome(
         source_id=f"worker-loop:{loop_id}",
         continuation_loop_id=loop_id,
     )
+    invoke_fault_hook(fault_hook, "post outcome_recorded")
+    _record_v3_lineage(database, loop_id=loop_id, payload=payload)
+    return payload
+
+
+def _record_v3_lineage(database: FoundryDatabase, *, loop_id: str,
+                       payload: dict[str, Any]) -> None:
+    """Append the terminal lineage once, including after a caller crash."""
     lineage = dict(payload.get("lineage") or {})
+    actual = dict(payload.get("actual_value") or {})
+    terminal_outcome = actual.get("outcome")
+    if terminal_outcome is None:
+        outcome_payload = payload.get("outcome") or {}
+        if isinstance(outcome_payload, dict):
+            terminal_outcome = outcome_payload.get("actual")
     lineage.update({
         "loop_id": loop_id,
         "outcome_id": payload.get("outcome_id"),
         "next_selection_id": (payload.get("continuation") or {})
         .get("next_selection_id"),
-        "terminal_outcome": actual.get("outcome"),
+        "terminal_outcome": terminal_outcome,
     })
     database.append(Event.create(
         "discovery.cycle_lineage_completed", lineage,
         source_type="supervisor", source_id=f"worker-loop:{loop_id}",
         idempotency_key=f"discovery.cycle_lineage_completed:{loop_id}"))
-    return payload
+
+
+def _recover_v3_terminal(database: FoundryDatabase, *, loop_id: str,
+                         fault_hook: Callable[[str], None] | None = None) -> None:
+    """Finish a durable COMPILED mission after a post-completion crash."""
+    cycle = next((event for event in database.events()
+                  if event.event_type == "discovery.cycle_completed"
+                  and event.payload.get("loop_id") == loop_id
+                  and event.payload.get("mission_id")), None)
+    if cycle is None:
+        return
+    mission_id = str(cycle.payload["mission_id"])
+    mission = database.row("missions", "mission_id", mission_id)
+    if mission is None or str(mission.get("state")) != "COMPLETE":
+        return
+    lineage_event = next((event for event in database.events()
+                          if event.event_type == "discovery.cycle_lineage_completed"
+                          and event.payload.get("loop_id") == loop_id), None)
+    if lineage_event is not None:
+        return
+    outcome_event = next((event for event in database.events()
+                          if event.event_type == "discovery.candidate_outcome_recorded"
+                          and event.source_id == f"worker-loop:{loop_id}"), None)
+    if outcome_event is not None:
+        _record_v3_lineage(
+            database, loop_id=loop_id, payload=dict(outcome_event.payload))
+        return
+    created_from = str(mission.get("created_from") or "")
+    if not created_from.startswith("candidate:"):
+        return
+    _record_v3_outcome(
+        database,
+        mission_id=mission_id,
+        outcome=SimpleNamespace(outcome="PASSED", step_id="recovered"),
+        loop_id=loop_id,
+        fault_hook=fault_hook,
+    )
 
 
 def _waiting_report(database: FoundryDatabase, *, loop_id: str,
@@ -426,6 +479,7 @@ def run_cycle(
     max_items: int = 40,
     max_bytes: int = 80_000,
     instructions_builder: Callable[[str, Path], str] | None = None,
+    fault_hook: Callable[[str], None] | None = None,
 ) -> dict[str, Any]:
     """Run one bounded autonomous loop pass through the canonical path.
 
@@ -465,6 +519,8 @@ def run_cycle(
             source_type="supervisor", source_id=instance_id,
             idempotency_key=f"worker_loop.cycle_started:{loop_id}",
         ))
+        _recover_v3_terminal(database, loop_id=loop_id,
+                             fault_hook=fault_hook)
         # V3 WP3 single choke point: when discovery.cycle_enabled the
         # unified experimental cycle replaces the split selection path.
         # Flag OFF (default) keeps v3_loop WAIT + executive selection
@@ -483,8 +539,9 @@ def run_cycle(
                     observe_for_cycle, loop_id=loop_id,
                     mission_id=config.mission_id,
                     resource_id=config.resource_id,
-                    vault_root=vault_root, handoff_dir=handoff_dir,
-                    research_dirs=research_dirs, repo_paths=repo_paths),
+                     vault_root=vault_root, handoff_dir=handoff_dir,
+                     research_dirs=research_dirs, repo_paths=repo_paths),
+                fault_hook=fault_hook,
             )
             if report.outcome == "COMPILED" and report.mission_id:
                 mission_id: str | None = report.mission_id
@@ -530,6 +587,7 @@ def run_cycle(
             source_id=f"worker-loop:{instance_id}",
             stop_path=stop_path,
             policy=ActionPolicy(database, stop_path),
+            fault_hook=fault_hook,
         )
         try:
             outcome = loop.run_until_settled(
@@ -546,7 +604,7 @@ def run_cycle(
             try:
                 _record_v3_outcome(
                     database, mission_id=mission_id, outcome=outcome,
-                    loop_id=loop_id)
+                    loop_id=loop_id, fault_hook=fault_hook)
             except (ValueError, TypeError, KeyError) as error:
                 database.append(Event.create(
                     "worker_loop.outcome_blocked",

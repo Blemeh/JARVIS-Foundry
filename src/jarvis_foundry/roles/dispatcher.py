@@ -35,6 +35,7 @@ from .adapter import ProviderUnavailable, RoleAdapter
 from .manifest import ContextManifest
 from .results import BLOCKED, COMPLETED, FAILED, RoleResult
 from .router import RoleRouter
+from ..v3_fault import invoke_fault_hook
 
 
 class DispatchError(RuntimeError):
@@ -52,6 +53,7 @@ class RoleDispatcher:
         source_type: str = "supervisor",
         source_id: str = "role-dispatcher",
         heartbeat_interval_seconds: int = 60,
+        fault_hook: Callable[[str], None] | None = None,
     ) -> None:
         self.database = database
         self.router = router
@@ -60,6 +62,7 @@ class RoleDispatcher:
         self.source_type = source_type
         self.source_id = source_id
         self.heartbeat_interval_seconds = heartbeat_interval_seconds
+        self.fault_hook = fault_hook
         self.startup_grace_seconds = 30  # V7-S5 promotion (cycle-r2b):
         # cover adapter boot before the first session heartbeat
         self._heartbeat_count: dict[str, int] = {}
@@ -247,6 +250,11 @@ class RoleDispatcher:
                     attempt=attempt,
                 )
                 self._start_run(manifest, provider, model)
+                # The start event is durable before the provider adapter is
+                # entered.  A disposable injector can interrupt here and a
+                # replay of the same run_id will resume without a second
+                # mutation.
+                invoke_fault_hook(self.fault_hook, "post agent_run.started")
                 tried.append(provider)
 
                 def _beat(rid: str = run_id) -> None:
