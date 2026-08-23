@@ -52,7 +52,9 @@ Focused V7B suites pass (`29 passed`):
 - digital-office end-to-end lab.
 
 The repository `tests/foundry` regression run completed at `100%` with exit
-code 0 after the V7B additions. No duplicate full-suite run was started.
+code 0 after the V7B additions. The complementary `tests/convergence` gate
+also completed at `100%` with exit code 0. No duplicate foundry full-suite run
+was started.
 
 ## Digital-office lab result
 
