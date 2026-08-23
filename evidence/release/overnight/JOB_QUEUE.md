@@ -32,3 +32,12 @@ Data shapes for the runtime-control work are `RuntimeControlRequest` and the der
 | 6 | Added typed health derivation and read-only diagnostics that correlate release, process, lease, request, and mission IDs while whitelisting event fields; doctor and production status now expose source-backed health instead of fabricated defaults. | Runtime observability now distinguishes `UNKNOWN`, `DEGRADED`, `BLOCKED`, `STOPPED`, and proven `RUNNING` in disposable proof. | PASS | `8653f82` |
 | 7 | Added durable per-attempt delivery claims so concurrent owners cannot both call a provider; same-instance Supervisor lease reuse now fails closed; worker stale-identity cleanup closes its read handle. | Reproduced and fixed delivery claim, supervisor ownership, PID-registration, and stale-PID race classes with deterministic tests and disposable concurrent proof. | PASS | `271354a` |
 | 8 | Added one-hour owner-request expiry with explicit `STALE` status, stale request resolution in start/heartbeat/reconcile paths, and runtime-event precedence so later process state cannot be masked by an older resolution. | Owner-control state now closes abandoned START/STOP/RESTART requests without launching or stopping a process; disposable proof covers stale START rejection, stale STOP preservation, and reconciliation. | PASS | `fec874f` |
+
+## Final validation checkpoint
+
+- Full isolated suite: `1,639` collected, `0` failures, `0` errors.
+- Focused lifecycle, release, scheduler, delivery, diagnostics, and worker regressions: PASS.
+- Disposable harnesses: `runtime_control_repro.py`, `release_identity_repro.py`, `delivery_boundary_repro.py`, `runtime_diagnostic_repro.py`, `runtime_fault_repro.py`, and `stale_request_repro.py`: PASS.
+- Disposable overnight factory `final-20260823-runtime`: all 10 checks PASS, all 9 controlled faults PASS, cleanup errors `[]`, Task Scheduler installation `NOT_RUN`, provider mode `DISABLED`. Evidence: `evidence/release/overnight/final-20260823-runtime/RUN.json`.
+- Static and hygiene checks: documentation staleness PASS, compileall PASS, `git diff --check` PASS, credential-signature scan `0` hits across `26` changed files, clean worktree.
+- Live promotion, production restart/rollback, live Task Scheduler mutation, provider credentials/calls, live DB migration, and canonical `main`/`origin/main` changes: not taken.
