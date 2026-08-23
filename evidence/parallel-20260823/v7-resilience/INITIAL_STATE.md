@@ -37,4 +37,3 @@ The first implementation slice will provide an event-derived incident model,
 deterministic anomaly rules, scoped capability suspension, and a bounded
 response coordinator. It will be proven with disposable SQLite fixtures and
 will preserve event replay and STOP precedence.
-

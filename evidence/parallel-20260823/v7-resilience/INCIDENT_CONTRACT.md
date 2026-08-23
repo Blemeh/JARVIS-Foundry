@@ -36,4 +36,3 @@ attempts remain immutable.
 5. Suspension is capability-scoped unless a shared dependency requires more.
 6. Recovery needs observed health, not process-start evidence.
 7. Repair attempts are bounded; repeated failure escalates.
-

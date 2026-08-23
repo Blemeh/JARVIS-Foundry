@@ -24,4 +24,3 @@ No live production path is a test target.
 3. A missing observation is `UNKNOWN`, never inferred success.
 4. Evidence is append-only and redacted before reporting.
 5. A fault test must verify containment and recovery, not only the exception.
-

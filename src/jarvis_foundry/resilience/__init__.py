@@ -47,4 +47,3 @@ __all__ = [
     "health_truth",
     "rebuild_incidents",
 ]
-
