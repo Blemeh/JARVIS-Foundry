@@ -14,6 +14,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
+import time
+import uuid
 from typing import Any, Callable
 
 from .control.broker import (BrokerDecision, PolicyBroker,
@@ -29,6 +32,7 @@ COMPLETED = "COMPLETED"
 FAILED = "FAILED"
 FROZEN = "FROZEN"
 _TERMINAL = {COMPLETED, FAILED, FROZEN}
+_DEFAULT_CLAIM_TTL_S = 300.0
 
 
 class EffectStateError(Exception):
@@ -178,6 +182,69 @@ def _append(database: FoundryDatabase, event_type: str, payload: dict[str, Any],
         idempotency_key=key))
 
 
+def _claim_effect(database: FoundryDatabase, *, action_key: str,
+                  start_payload: dict[str, Any], claim_token: str,
+                  claim_ttl_s: float) -> tuple[str, dict[str, Any]]:
+    """Atomically claim a never-started effect or observe its current claim.
+
+    The transaction closes the read-then-start race between workers. An
+    unexpired claim is returned as UNKNOWN to a competing worker. A claim
+    without an expiry, or with an expired expiry, is stale and may be reaped;
+    it is never executed a second time.
+    """
+    if (not isinstance(claim_ttl_s, (int, float)) or
+            isinstance(claim_ttl_s, bool) or
+            not math.isfinite(float(claim_ttl_s)) or claim_ttl_s <= 0):
+        raise ValueError("claim_ttl_s must be a finite positive number")
+    now = time.time()
+    with database.transaction() as connection:
+        row = connection.execute(
+            "SELECT status FROM system_actions WHERE action_key = ?",
+            (action_key,)).fetchone()
+        terminal_rows = connection.execute(
+            "SELECT event_type FROM events WHERE event_type IN "
+            "('system.action_completed', 'system.action_failed', "
+            "'effect.frozen') AND json_extract(payload_json, "
+            "'$.action_key') = ? ORDER BY sequence",
+            (action_key,)).fetchall()
+        if row is not None and row[0] in _TERMINAL:
+            return "TERMINAL", {"status": row[0]}
+        if terminal_rows:
+            status = {
+                "system.action_completed": COMPLETED,
+                "system.action_failed": FAILED,
+                "effect.frozen": FROZEN,
+            }[terminal_rows[0][0]]
+            return "TERMINAL", {"status": status}
+
+        started = connection.execute(
+            "SELECT payload_json FROM events WHERE event_type = "
+            "'system.action_started' AND json_extract(payload_json, "
+            "'$.action_key') = ? ORDER BY sequence DESC LIMIT 1",
+            (action_key,)).fetchone()
+        if started is not None:
+            observed = dict(json.loads(started[0]))
+            try:
+                active = (observed.get("claim_expires_at") is not None and
+                          float(observed["claim_expires_at"]) > now)
+            except (TypeError, ValueError):
+                active = False
+            return ("ACTIVE" if active else "STALE"), observed
+
+        claimed = dict(start_payload)
+        claimed.update({
+            "claim_token": claim_token,
+            "claimed_at": now,
+            "claim_expires_at": now + float(claim_ttl_s),
+        })
+        event = Event.create(
+            "system.action_started", claimed,
+            source_type="supervisor", source_id="v5-effect-driver",
+            idempotency_key=f"{action_key}.started")
+        database.append_events_on_connection(connection, [event])
+        return "CLAIMED", claimed
+
+
 def execute_effect(
     database: FoundryDatabase,
     *,
@@ -185,6 +252,7 @@ def execute_effect(
     connector_id: str,
     perform: Callable[[str, str], str],
     stop_path: str | None = None,
+    claim_ttl_s: float = _DEFAULT_CLAIM_TTL_S,
 ) -> dict[str, Any]:
     """Execute an ALLOWed envelope through a connector EXACTLY ONCE.
 
@@ -214,14 +282,30 @@ def execute_effect(
         raise PermissionError(f"effect execution vetoed: {veto}")
     key, system_id, target_ref, effect_hash = effect_identity(
         database, envelope)
-    state = effect_state(database, key)
-    if state["status"] in _TERMINAL:
+    claim_mode, observed = _claim_effect(
+        database,
+        action_key=key,
+        start_payload={
+            "action_key": key, "system_id": system_id,
+            "target_ref": target_ref, "payload_hash": effect_hash,
+            "kind": envelope.action_kind, "connector_id": connector_id,
+            "before_state_capture": envelope.before_state_capture,
+            "expected_effects": list(envelope.expected_effects),
+            "action_id": envelope.action_id,
+        },
+        claim_token=uuid.uuid4().hex,
+        claim_ttl_s=claim_ttl_s)
+    if claim_mode == "TERMINAL":
         # Idempotent retry semantics: a retried delivery of a terminal
         # effect returns the RECORDED outcome without re-performing
         # (duplicate-effect prevention — the exit evidence gate).
-        return {"outcome": state["status"], "action_key": key,
+        return {"outcome": observed["status"], "action_key": key,
                 "reaped": False, "performed": False}
-    if state["status"] == STARTED:
+    if claim_mode == "ACTIVE":
+        return {"outcome": "UNKNOWN", "action_key": key,
+                "reaped": False, "performed": False,
+                "claim_expires_at": observed.get("claim_expires_at")}
+    if claim_mode == "STALE":
         # crash between start and completion: the previous attempt never
         # reached a terminal event. Reap deterministically — the effect
         # freezes for review; NO second execution.
@@ -239,25 +323,26 @@ def execute_effect(
         return {"outcome": FROZEN, "action_key": key, "reaped": True,
                 "connector_id": connector_id}
 
-    # first execution: START journal with before-state + effects
-    _append(database, "system.action_started", {
-        "action_key": key, "system_id": system_id, "target_ref": target_ref,
-        "payload_hash": effect_hash, "kind": envelope.action_kind,
-        "connector_id": connector_id,
-        "before_state_capture": envelope.before_state_capture,
-        "expected_effects": list(envelope.expected_effects),
-        "action_id": envelope.action_id}, "started")
+    # The atomic claim above is the only path that reaches the external call.
     after_state: str | None = None
     try:
         after_state = perform(target_ref, envelope.expected_effect or "")
     except TimeoutError as exc:
-        _append(database, "system.action_failed", {
+        reason = f"timeout: {redact_text(str(exc))}"
+        _append(database, "effect.reconcile_pending", {
             "action_key": key, "system_id": system_id,
             "target_ref": target_ref, "payload_hash": effect_hash,
             "kind": envelope.action_kind,
-            "reason": f"timeout: {redact_text(str(exc))}",
-            "after_state": after_state}, "failed.timeout")
-        return {"outcome": FAILED, "action_key": key, "reaped": False}
+            "reason": reason, "provider_state": "UNKNOWN"},
+            "pending.timeout", full_payload_key=True)
+        _append(database, "effect.frozen", {
+            "action_key": key, "reason": (
+                f"{reason}; external state is unknown and requires "
+                "provider or system reconciliation"),
+            "connector_id": connector_id}, "frozen.timeout",
+            full_payload_key=True)
+        return {"outcome": FROZEN, "action_key": key, "reaped": False,
+                "ambiguous": True}
     except BaseException as exc:  # noqa: BLE001 — the driver records ALL failures
         _append(database, "system.action_failed", {
             "action_key": key, "system_id": system_id,

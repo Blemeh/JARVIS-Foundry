@@ -9,6 +9,8 @@ provider); financial consequences are recorded.
 """
 from __future__ import annotations
 
+import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -162,6 +164,74 @@ def test_retry_never_duplicates_effect(db: FoundryDatabase) -> None:
     assert (started, completed) == (1, 1)
 
 
+def test_two_workers_claim_same_effect_at_most_once(
+        db: FoundryDatabase, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Concurrent deliveries must not both cross the external boundary."""
+    _register_system(db)
+    _register_connector(db)
+    envelope = _allow(db)
+    store = _FakeStore()
+    barrier = threading.Barrier(2)
+    original_effect_state = effect_state
+
+    def gated_effect_state(database: FoundryDatabase,
+                           action_key: str) -> dict[str, object]:
+        state = original_effect_state(database, action_key)
+        if state["status"] == "UNKNOWN":
+            barrier.wait(timeout=10)
+        return state
+
+    monkeypatch.setattr("jarvis_foundry.effects.effect_state",
+                        gated_effect_state)
+    results: list[dict[str, object]] = []
+    errors: list[BaseException] = []
+
+    def worker() -> None:
+        try:
+            results.append(_run(db, store, envelope))
+        except BaseException as exc:  # pragma: no cover - assertion below
+            errors.append(exc)
+
+    workers = [threading.Thread(target=worker) for _ in range(2)]
+    for thread in workers:
+        thread.start()
+    for thread in workers:
+        thread.join(timeout=15)
+
+    assert not errors
+    assert len(results) == 2
+    assert store.calls == 1
+    assert {result["outcome"] for result in results} <= {
+        "COMPLETED", "UNKNOWN"}
+
+
+def test_active_claim_is_not_reaped_by_competing_worker(
+        db: FoundryDatabase) -> None:
+    _register_system(db)
+    _register_connector(db)
+    envelope = _allow(db, action_id="act-active-claim")
+    store = _FakeStore()
+    key, system_id, target_ref, payload_hash = effect_identity(db, envelope)
+    now = time.time()
+    db.append(Event.create(
+        "system.action_started",
+        {"action_key": key, "system_id": system_id,
+         "target_ref": target_ref, "payload_hash": payload_hash,
+         "kind": envelope.action_kind, "connector_id": "conn-fs",
+         "before_state_capture": envelope.before_state_capture,
+         "expected_effects": list(envelope.expected_effects),
+         "action_id": envelope.action_id, "claim_token": "worker-a",
+         "claimed_at": now, "claim_expires_at": now + 60},
+        source_type="supervisor", source_id="v5-effect-driver",
+        idempotency_key=f"{key}.started"))
+
+    result = _run(db, store, envelope)
+
+    assert result["outcome"] == "UNKNOWN"
+    assert store.calls == 0
+    assert effect_state(db, key)["status"] == "STARTED"
+
+
 def test_conflicting_payload_is_a_different_effect(db: FoundryDatabase) -> None:
     """Same system+target with a DIFFERENT payload -> different key:
     both effects execute independently."""
@@ -285,7 +355,7 @@ def test_failure_records_reason_and_no_completed(db: FoundryDatabase) -> None:
     assert "connection refused" in state["failure_reason"]
 
 
-def test_timeout_recorded_as_failed(db: FoundryDatabase) -> None:
+def test_timeout_is_ambiguous_until_reconciled(db: FoundryDatabase) -> None:
     _register_system(db)
     _register_connector(db)
     envelope = _allow(db, action_id="act-slow",
@@ -293,9 +363,44 @@ def test_timeout_recorded_as_failed(db: FoundryDatabase) -> None:
     store = _FakeStore()
     store.fail_with = TimeoutError("deadline exceeded")
     result = _run(db, store, envelope)
-    assert result["outcome"] == "FAILED"
-    assert "deadline" in str(effect_state(
-        db, result["action_key"])["failure_reason"])
+    assert result["outcome"] == "FROZEN"
+    state = effect_state(db, result["action_key"])
+    assert state["status"] == "FROZEN"
+    assert "deadline" in str(state["frozen_reason"])
+    assert db.event_count(event_type="effect.reconcile_pending") == 1
+    assert db.event_count(event_type="system.action_failed") == 0
+
+
+def test_crash_after_external_call_freezes_on_expired_claim(
+        db: FoundryDatabase, monkeypatch: pytest.MonkeyPatch) -> None:
+    _register_system(db)
+    _register_connector(db)
+    envelope = _allow(db, action_id="act-crash-after",
+                      expected_effect="create crash-after.txt")
+    store = _FakeStore()
+    original_append = __import__("jarvis_foundry.effects",
+                                 fromlist=["_append"])._append
+
+    def crash_at_completion(database: FoundryDatabase, event_type: str,
+                            payload: dict[str, object], key_suffix: str,
+                            **kwargs: object) -> None:
+        if event_type == "system.action_completed":
+            raise RuntimeError("simulated process crash")
+        original_append(database, event_type, payload, key_suffix, **kwargs)
+
+    monkeypatch.setattr("jarvis_foundry.effects._append", crash_at_completion)
+    with pytest.raises(RuntimeError, match="simulated process crash"):
+        execute_effect(db, envelope=envelope, connector_id="conn-fs",
+                       perform=store.perform, claim_ttl_s=0.01)
+    assert store.calls == 1
+
+    monkeypatch.setattr("jarvis_foundry.effects._append", original_append)
+    time.sleep(0.03)
+    retry = execute_effect(db, envelope=envelope, connector_id="conn-fs",
+                           perform=store.perform, claim_ttl_s=0.01)
+    assert retry["outcome"] == "FROZEN"
+    assert retry["reaped"] is True
+    assert store.calls == 1
 
 
 def test_partial_success_captures_after_state(db: FoundryDatabase) -> None:
