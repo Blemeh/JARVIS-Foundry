@@ -16,8 +16,8 @@ fresh lane verdict.
 | V5-8 | Browser/procedural boundary | PASS | `V5_8_BROWSER.md`, harmless local web app, drift halt, post-effect oracle |
 | V5-9 | Communication/calendar contracts | PASS | `V5_9_COMMUNICATION.md`, fake provider contract, no real sends or invites |
 | V5-10 | Cross-system entity correlation | PASS | `V5_10_LINEAGE.md`, durable lineage and ambiguity probes |
-| V5-11 | Health/quota/cost/rerouting truth | IN_PROGRESS | Truthful states and deterministic eligibility |
-| V5-12 | Malicious input and secret resilience | PENDING | Injection, payload, redirect, and artifact scans |
+| V5-11 | Health/quota/cost/rerouting truth | PASS | `V5_11_OPERATIONS.md`, truthful states and deterministic eligibility |
+| V5-12 | Malicious input and secret resilience | IN_PROGRESS | Injection, payload, redirect, and artifact scans |
 | V5-13 | Three-connector composed mission harness | PENDING | Disposable end-to-end mission and outage isolation |
 | V5-14+ | Next highest-value V5 gap | PENDING | Selected only after fresh V5-13 evidence |
 
