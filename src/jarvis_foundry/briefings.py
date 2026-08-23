@@ -23,6 +23,13 @@ def _period_key(now: datetime) -> str:
     return f"{now.date().isoformat()}:{half}"
 
 
+def _safe_int(value: Any, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError, OverflowError):
+        return default
+
+
 class BriefingPlanner:
     def __init__(self, database: FoundryDatabase, *, stop_path: str | None = None) -> None:
         self.database = database
@@ -108,9 +115,9 @@ class BriefingPlanner:
     ) -> dict[str, Any]:
         prior, prior_keys = self._prior_selections()
         kind_cursors = [
-            int(selection.get("cursor_end") or 0)
+            _safe_int(selection.get("cursor_end"), 0)
             for selection in prior
-            if selection.get("kind") == kind
+            if isinstance(selection, dict) and selection.get("kind") == kind
         ]
         cursor_start = max(kind_cursors, default=0)
         projected = project_briefing_items(
@@ -124,7 +131,7 @@ class BriefingPlanner:
             filtered = [item for item in projected if exception_item(item)]
         deduped_count = sum(1 for item in filtered if item.dedupe_key in prior_keys)
         candidates = [item for item in filtered if item.dedupe_key not in prior_keys]
-        selected = candidates[: max(1, int(limit))]
+        selected = candidates[: max(1, _safe_int(limit, DEFAULT_ITEM_LIMIT))]
         head = len(self.database.events(readonly=True))
         if selected:
             # The lowest selected sequence is the safe checkpoint.  Priority
@@ -180,7 +187,7 @@ class BriefingPlanner:
             return {
                 "briefing_id": existing[0], "briefing_key": key,
                 "sequence": None, "created": False,
-                "status": existing[1], "payload": json.loads(existing[2]),
+                "status": existing[1], "payload": self._safe_existing_payload(existing[2]),
             }
         snapshot = build_snapshot(self.database, stop_path=self.stop_path, now=clock.isoformat())
         selection = self._select_items(kind, period, now=clock)
@@ -223,6 +230,16 @@ class BriefingPlanner:
         )
         sequence, created = self.database.append(event)
         return {"briefing_id": event.payload["briefing_id"], "briefing_key": key, "sequence": sequence, "created": created, "payload": payload}
+
+    @staticmethod
+    def _safe_existing_payload(raw: Any) -> dict[str, Any]:
+        try:
+            parsed = json.loads(raw or "{}")
+        except (TypeError, ValueError):
+            return {"status": "UNKNOWN", "reason": "stored briefing payload is malformed"}
+        return dict(parsed) if isinstance(parsed, dict) else {
+            "status": "UNKNOWN", "reason": "stored briefing payload is not an object"
+        }
 
     def claim(self, briefing_id: str) -> bool:
         event = Event.create("briefing.claimed", {"briefing_id": briefing_id}, source_type="supervisor", source_id="briefing-outbox", idempotency_key=f"briefing.claimed:{briefing_id}")

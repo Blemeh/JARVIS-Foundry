@@ -55,6 +55,13 @@ export interface FoundrySnapshot {
     counts_by_classification?: Record<string, number>;
   };
   briefings?: Record<string, unknown>[];
+  result_traceability?: {
+    schema?: string;
+    status?: string;
+    results?: Record<string, unknown>[];
+    count?: number;
+  };
+  briefing_packet?: Record<string, unknown>;
   /** Additive §3.13 projection; absent on backends older than its landing. */
   discovery?: unknown;
 }

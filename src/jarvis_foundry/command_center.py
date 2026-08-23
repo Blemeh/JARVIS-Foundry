@@ -28,6 +28,7 @@ from .owner_controls import (
 )
 from .owner_directives import owner_control_state, owner_directive_snapshot
 from .decision_queue import build_owner_attention_queue
+from .result_traceability import build_result_traceability
 from .supervisor.estop import EmergencyStop
 from .v3_teams import DEFAULT_REPAIR_BUDGET
 
@@ -159,19 +160,20 @@ def decision_timeline(database: FoundryDatabase, *, limit: int = 200) -> list[di
     events = database.events(readonly=True)
     material = []
     for sequence, event in enumerate(events, start=1):
-        payload = dict(event.payload)
+        payload = dict(event.payload) if isinstance(event.payload, dict) else {}
+        event_type = str(event.event_type or "")
         material.append({
             "sequence": sequence,
             "event_id": event.event_id,
-            "event_type": event.event_type,
+            "event_type": event_type,
             "occurred_at": event.occurred_at,
             "recorded_at": event.recorded_at,
             "source": {"type": event.source_type, "id": event.source_id},
             "correlation_id": event.correlation_id,
             "causation_id": event.causation_id,
-            "summary": payload.get("reason") or payload.get("objective") or payload.get("status") or event.event_type,
+            "summary": payload.get("reason") or payload.get("objective") or payload.get("status") or event_type,
             "decision": payload.get("decision") or payload.get("verdict") or payload.get("outcome"),
-            "rejected_alternative": payload.get("rejection_reason") or payload.get("reason") if "reject" in event.event_type else None,
+            "rejected_alternative": payload.get("rejection_reason") or payload.get("reason") if "reject" in event_type else None,
             "evidence_refs": _event_refs(payload, event.event_id),
         })
     return material[-limit:]
@@ -200,8 +202,8 @@ def _executive_projection(database: FoundryDatabase, *, limit: int = 25) -> dict
     activation_epoch: str | None = None
     admission_authority: str = "UNKNOWN"
     for event in database.events():
-        etype = event.event_type
-        payload = event.payload
+        etype = str(event.event_type or "")
+        payload = event.payload if isinstance(event.payload, dict) else {}
         if etype == "executive.activation_recorded":
             epoch = payload.get("epoch")
             if isinstance(epoch, str) and epoch:
@@ -907,6 +909,11 @@ def build_snapshot(
         now=generated_at,
         limit=100,
     )
+    result_traceability = build_result_traceability(
+        database,
+        now=generated_at,
+        limit=100,
+    )
     recovery_events = [e for e in decision_timeline(database, limit=timeline_limit)
                        if any(token in e["event_type"] for token in ("recover", "reap", "rollback", "degraded", "blocked"))]
     release_events = [e for e in decision_timeline(database, limit=timeline_limit)
@@ -926,7 +933,7 @@ def build_snapshot(
                 value[field[:-5] if field.endswith("_json") else field] = _json_value(value[field])
         return value
 
-    return {
+    snapshot_payload = {
         "generated_at": generated_at,
         "source_of_truth": {"kind": "append_only_event_ledger", "ledger_head_sequence": event_count, "event_count": event_count},
         "supervisor": supervisor,
@@ -953,6 +960,7 @@ def build_snapshot(
         },
         "owner_directives": owner_directives,
         "decision_queue": decision_queue,
+        "result_traceability": result_traceability,
         "missions": [with_ref(m, "mission", "mission_id") for m in missions],
         "workers": [with_ref(w, "agent_run", "run_id") for w in workers],
         "evidence": [with_ref(e, "evidence", "bundle_id") for e in evidence],
@@ -1000,6 +1008,21 @@ def build_snapshot(
             hold_active=hold_active,
         ),
     }
+    # The packet is an additive read-only export contract.  Import lazily to
+    # avoid a module cycle: the packet builder reuses this snapshot function
+    # when called independently.
+    from .briefing_packet import build_briefing_packet
+    try:
+        packet_clock = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
+    except ValueError:
+        packet_clock = None
+    snapshot_payload["briefing_packet"] = build_briefing_packet(
+        database,
+        now=packet_clock,
+        stop_path=str(stop_path) if stop_path is not None else None,
+        snapshot=snapshot_payload,
+    )
+    return snapshot_payload
 
 
 def _is_loopback(host: str | None) -> bool:

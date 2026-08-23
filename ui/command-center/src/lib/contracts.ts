@@ -288,6 +288,12 @@ export interface OwnerControlSurface {
   redirects: Record<string, unknown>[];
   directiveHistory: Record<string, unknown>[];
   briefings: Record<string, unknown>[];
+  resultTraceability: {
+    status: string;
+    results: Record<string, unknown>[];
+    count: number;
+  };
+  briefingPacket: Record<string, unknown> | null;
   decisionQueue: {
     open: OwnerAttentionRecord[];
     history: OwnerAttentionRecord[];

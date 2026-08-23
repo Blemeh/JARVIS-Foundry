@@ -39,6 +39,19 @@ function directiveLabel(record: Record<string, unknown>): string {
   return value(record, "exact_text", "objective", "constraint", "reason", "command_type", "directive_id");
 }
 
+function objectValue(record: Record<string, unknown>, key: string): Record<string, unknown> {
+  const candidate = record[key];
+  return candidate && typeof candidate === "object" && !Array.isArray(candidate)
+    ? candidate as Record<string, unknown>
+    : {};
+}
+
+function projectionBadge(status: string): "COMPLETE" | "PENDING" | "UNKNOWN" {
+  if (status === "EVIDENCED") return "COMPLETE";
+  if (status === "DERIVED") return "PENDING";
+  return "UNKNOWN";
+}
+
 function DirectiveList({
   title,
   records,
@@ -131,6 +144,45 @@ function BriefingHistory({ records }: { records: Record<string, unknown>[] }) {
   );
 }
 
+function ResultTraceability({
+  results,
+  count,
+}: {
+  results: Record<string, unknown>[];
+  count: number;
+}) {
+  return (
+    <section className="panel">
+      <div className="flex items-center justify-between gap-3">
+        <div><h2 className="t-label">Result traceability</h2><p className="mt-1 text-xs opacity-60">Decision → evidence → execution → outcome, with unknowns left visible.</p></div>
+        <span className="t-mono text-muted">{count}</span>
+      </div>
+      {results.length === 0 ? <EmptyState label="No result lineage recorded" detail="A representative result cannot be traced until the ledger records an outcome." /> : (
+        <ul className="mt-4 space-y-4">
+          {results.slice(0, 5).map((result, index) => {
+            const candidate = objectValue(result, "candidate");
+            const mission = objectValue(result, "mission");
+            const outcome = objectValue(result, "actual_outcome");
+            const decision = objectValue(result, "decision");
+            const next = objectValue(result, "next_action");
+            const missionId = value(mission, "mission_id");
+            return (
+              <li key={value(result, "trace_id") !== "—" ? value(result, "trace_id") : `trace-${index}`} className="border-t border-white/10 pt-3 first:border-0 first:pt-0">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm">{value(candidate, "candidate_id")} → {missionId !== "—" ? <Link className="underline" to={`/missions/${encodeURIComponent(missionId)}`}>{missionId}</Link> : "mission unknown"}</p>
+                  <StatusBadge status={projectionBadge(value(outcome, "status").toUpperCase())} />
+                </div>
+                <p className="mt-1 text-xs opacity-70">Decision {value(decision, "decision_id", "decision")} · next {value(next, "value")}</p>
+                <p className="mt-1 text-xs opacity-50">Refs: {Array.isArray(result.evidence_refs) ? result.evidence_refs.join(", ") || "none" : "unknown"}</p>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 export function OwnerManagement() {
   const { client, version, sourceMode, connection } = useCommandCenter();
   const query = useRouteQuery<OwnerControlSurface | null>(
@@ -212,8 +264,11 @@ export function OwnerManagement() {
         </section>
       </div>
 
+      <div className="mt-4">
+        <ResultTraceability results={surface.resultTraceability.results} count={surface.resultTraceability.count} />
+      </div>
+
       <p className="mt-4 flex items-center gap-1 text-xs opacity-50"><ExternalLink size={12} aria-hidden="true" /> Evidence and event identifiers link this projection back to the local ledger. No UI action here mutates owner authority.</p>
     </div>
   );
 }
-

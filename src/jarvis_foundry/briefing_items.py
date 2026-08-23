@@ -75,11 +75,19 @@ def _now(value: datetime | str | None) -> datetime:
         return datetime.now(timezone.utc)
     if isinstance(value, datetime):
         return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
-    parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (TypeError, ValueError, OverflowError):
+        # A malformed fake clock must not crash a restart/replay.  Keep the
+        # resulting freshness explicitly UNKNOWN rather than inventing a
+        # current timestamp.
+        return datetime.min.replace(tzinfo=timezone.utc)
     return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
 
 
 def _freshness(occurred_at: str, now: datetime) -> str:
+    if now.year == datetime.min.year:
+        return "UNKNOWN"
     try:
         occurred = datetime.fromisoformat(str(occurred_at).replace("Z", "+00:00"))
         if occurred.tzinfo is None:
@@ -133,9 +141,10 @@ def _entity(event: Event) -> tuple[str | None, str | None, str | None]:
 
 
 def _rule(event: Event) -> tuple[str, int, str]:
-    event_type = event.event_type
+    event_type = str(event.event_type or "")
+    payload = event.payload if isinstance(event.payload, dict) else {}
     if event_type in {"owner_directive.recorded", "owner_directive.revoked", "owner_directive.superseded"}:
-        command = str(event.payload.get("command_type") or "")
+        command = str(payload.get("command_type") or "")
         if command in {"STOP_EVERYTHING", "PAUSE", "VETO_ACTION", "STOP_MISSION"}:
             return "OWNER_CONTROL", 5, "OWNER_VETO_ACTIVE"
         if event_type != "owner_directive.recorded":
@@ -146,7 +155,7 @@ def _rule(event: Event) -> tuple[str, int, str]:
     if event_type in {"supervisor.degraded", "worker.failed", "agent_run.failed", "mission.failed"}:
         return "EXCEPTION", 5, "DECISION_REQUIRED"
     if event_type == "executive.decision_recorded":
-        decision = str(event.payload.get("decision") or "")
+        decision = str(payload.get("decision") or "")
         return "DECISION", 4 if decision in {"SELECT", "REJECT", "DEFER"} else 3, "INFORM"
     if event_type.startswith("knowledge.") or event_type.startswith("memory."):
         return "KNOWLEDGE", 2, "INFORM"
@@ -178,14 +187,15 @@ def _evidence_refs(event: Event) -> tuple[str, ...]:
 
 def event_to_item(event: Event, sequence: int, *, now: datetime | str | None = None) -> BriefingItem | None:
     """Convert one authoritative event to a bounded item, or skip noise."""
-    if event.event_type in _SKIP_EVENT_TYPES:
+    event_type = str(event.event_type or "")
+    if event_type in _SKIP_EVENT_TYPES:
         return None
     category, importance, action = _rule(event)
     entity_kind, entity_id, mission_id = _entity(event)
     payload = event.payload if isinstance(event.payload, dict) else {}
     target = _text(payload.get("target"))
-    dedupe_key = f"{event.event_type}:{event.event_id}"
-    item_id = f"brief-item-{payload_hash({'event_id': event.event_id, 'event_type': event.event_type})[:24]}"
+    dedupe_key = f"{event_type}:{event.event_id}"
+    item_id = f"brief-item-{payload_hash({'event_id': event.event_id, 'event_type': event_type})[:24]}"
     metadata = {
         "source_type": event.source_type,
         "source_id": event.source_id,
@@ -205,7 +215,7 @@ def event_to_item(event: Event, sequence: int, *, now: datetime | str | None = N
         entity_id=entity_id,
         mission_id=mission_id,
         source_event_id=event.event_id,
-        source_event_type=event.event_type,
+        source_event_type=event_type,
         source_sequence=sequence,
         occurred_at=event.occurred_at,
         summary=_payload_summary(event),

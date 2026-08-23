@@ -93,10 +93,11 @@ def build_owner_attention_queue(
     records: list[dict[str, Any]] = []
     for item in items:
         event = event_by_id.get(item.source_event_id)
+        event_payload = event.payload if event is not None and isinstance(event.payload, dict) else {}
         unknown_directive = bool(
             event is not None
             and event.event_type == "owner_directive.recorded"
-            and str(event.payload.get("directive_id") or "") in unknown_ids
+            and str(event_payload.get("directive_id") or "") in unknown_ids
         )
         classification = _classification(item, unknown_directive=unknown_directive)
         if not classification:
@@ -107,7 +108,7 @@ def build_owner_attention_queue(
             status, resolution_event_id = directive_status[item.entity_id]
         elif item.entity_kind == "decision" and item.entity_id in decision_status:
             status, resolution_event_id = decision_status[item.entity_id]
-        payload = event.payload if event is not None else {}
+        payload = event_payload
         record = {
             "queue_version": QUEUE_VERSION,
             "queue_id": f"attention:{item.dedupe_key}",

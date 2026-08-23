@@ -343,6 +343,12 @@ export function mapOwnerControlSurface(snapshot: FoundrySnapshot): OwnerControlS
     redirects: controls.redirects ?? [],
     directiveHistory: snapshot.owner_directives?.records ?? [],
     briefings: snapshot.briefings ?? [],
+    resultTraceability: {
+      status: snapshot.result_traceability?.status ?? "UNKNOWN",
+      results: snapshot.result_traceability?.results ?? [],
+      count: Number(snapshot.result_traceability?.count ?? 0),
+    },
+    briefingPacket: snapshot.briefing_packet ?? null,
     decisionQueue: {
       open: (queue.open ?? []) as unknown as OwnerControlSurface["decisionQueue"]["open"],
       history: (queue.history ?? []) as unknown as OwnerControlSurface["decisionQueue"]["history"],
