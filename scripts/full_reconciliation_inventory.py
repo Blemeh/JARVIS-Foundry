@@ -120,6 +120,26 @@ CLASSIFICATION_NOTES = {
         "EVIDENCE_ONLY",
         "Only a documentation reconciliation commit remains non-equivalent; procedural-learning source is already represented by canonical closure branches.",
     ),
+    "candidate/v4-owner-briefings-20260823": (
+        "ABANDONED_OR_INCOMPLETE",
+        "The isolated V4 lane explicitly leaves V4-4 through V4-11 queued, even though its worktree is currently clean at a newer documentation checkpoint, and has no canonical acceptance or authorized integration checkpoint. Preserve the lane; do not integrate it as completed work.",
+    ),
+    "candidate/v5-multisystem-20260823": (
+        "ABANDONED_OR_INCOMPLETE",
+        "The isolated V5 lane now records V5-1 through V5-14 as local/fake-provider PASS, but its FINAL_AUDIT still names older head 2d584ef while the branch advanced to a newer 54210d8 checkpoint; live/provider reconciliation remains NOT_TESTED or BLOCKED and no canonical acceptance or promotion authorization exists. Preserve the lane; do not integrate it as completed work.",
+    ),
+    "candidate/v6-self-evolution-20260823": (
+        "ABANDONED_OR_INCOMPLETE",
+        "The isolated V6 lane explicitly leaves V6-2 through V6-17 pending despite committed experiments; the lane is not a completed acceptance package even where its current worktree tip is clean. Preserve it for a future owner-authorized lane; do not integrate now.",
+    ),
+    "candidate/jarvis-frontend-adaptation": (
+        "ABANDONED_OR_INCOMPLETE",
+        "The recent clean UI candidate contains three unique presentation/E2E commits, but no lane acceptance gate or authorized integration queue entry; its visual artifacts and product claims require a separate semantic review. Preserve the local candidate and push a normal remote backup, but do not integrate it as accepted work.",
+    ),
+    "repair/r9-live-canary-result-contract": (
+        "ABANDONED_OR_INCOMPLETE",
+        "The lone result-contract repair has no final acceptance artifact or authorized integration checkpoint and its registered worktree contains only generated editable-install drift; no safe semantic promotion is justified.",
+    ),
     "experiment/graphiti-openhands-a2a": (
         "FAILED_OR_REJECTED",
         "External Graphiti/OpenHands experiment is outside the canonical architecture and has no acceptance authority; do not promote.",
@@ -151,18 +171,26 @@ CLASSIFICATION_NOTES = {
 }
 
 
-def classify(branch: str, *, reachable: bool, plus: int, minus: int, changed: list[str]) -> tuple[str, str]:
+def classify(
+    branch: str,
+    *,
+    reachable: bool,
+    local_reachable: bool,
+    plus: int,
+    minus: int,
+    changed: list[str],
+) -> tuple[str, str]:
     # The comparison baseline is refreshed on every run. Once an accepted
     # candidate is reachable from the current canonical main, it is no longer
     # stranded even if it has a historical special-case note below.
     if branch in CLASSIFICATION_NOTES:
-        if reachable or branch == LOCAL_MAIN:
-            return "ALREADY_CANONICAL", "Branch tip is reachable from current origin/main after the prior reconciliation; no source commit is stranded."
+        if local_reachable or reachable or branch == LOCAL_MAIN:
+            return "ALREADY_CANONICAL", "Branch tip is reachable from the current local canonical main; no source commit is stranded, although this snapshot does not independently establish the branch's acceptance authority."
         if branch == "candidate/audit-remediation-2026-08-18":
             return "PARTIALLY_ABSORBED", "The eight-commit audit package is outside ancestry, but its accepted behavior is accounted for by the integrated overnight lineage plus scoped environment-hardening checkpoint 26e73c7; no accepted behavior remains unexplained."
         return CLASSIFICATION_NOTES[branch]
-    if branch == LOCAL_MAIN or reachable:
-        return "ALREADY_CANONICAL", "Branch tip is reachable from origin/main; no source commit is stranded."
+    if branch == LOCAL_MAIN or local_reachable or reachable:
+        return "ALREADY_CANONICAL", "Branch tip is reachable from the current local canonical main or origin/main; no source commit is stranded."
     if plus == 0 and minus > 0:
         return "FULLY_SUPERSEDED", "All branch patches are equivalent to or contained by origin/main; no unique source remains."
     if plus == 0 and minus == 0:
@@ -184,8 +212,16 @@ def branch_record(branch: str, wt_map: dict[str, list[dict[str, object]]]) -> di
     unique_commits = git("rev-list", "--reverse", f"{BASELINE}..{branch}").splitlines()
     changed = git("diff", "--name-only", BASELINE, branch).splitlines()
     reachable = git_succeeds("merge-base", "--is-ancestor", branch, BASELINE)
+    local_reachable = git_succeeds("merge-base", "--is-ancestor", branch, LOCAL_MAIN)
     tree_equal = git_succeeds("diff", "--quiet", BASELINE, branch)
-    classification, note = classify(branch, reachable=reachable, plus=len(plus_commits), minus=len(minus_commits), changed=changed)
+    classification, note = classify(
+        branch,
+        reachable=reachable,
+        local_reachable=local_reachable,
+        plus=len(plus_commits),
+        minus=len(minus_commits),
+        changed=changed,
+    )
     superseded_by = {
         "candidate/audit-r2-integration": "candidate/overnight-release-candidate",
         "candidate/audit-truth-remediation-r2": "candidate/overnight-release-candidate",
@@ -206,6 +242,7 @@ def branch_record(branch: str, wt_map: dict[str, list[dict[str, object]]]) -> di
         "ahead_of_baseline": ahead,
         "behind_baseline": behind,
         "reachable_from_baseline": reachable,
+        "reachable_from_local_main": local_reachable,
         "tree_equal_to_baseline": tree_equal,
         "cherry_plus_count": len(plus_commits),
         "cherry_minus_count": len(minus_commits),
@@ -253,7 +290,7 @@ def main() -> None:
         "remote_tracking_refs": remote_refs,
         "method": [
             "git fetch --all --prune was completed before this snapshot",
-            "origin/main is the canonical comparison baseline; local main is recorded separately",
+            "origin/main is the canonical comparison baseline; local main is recorded separately and local-main reachability is retained when concurrent canonical advancement is observed",
             "ancestry, tree equality, git cherry patch-equivalence, changed-file lists and worktree status are all retained",
             "classification notes are semantic review decisions; historical evidence is not treated as live proof",
         ],
