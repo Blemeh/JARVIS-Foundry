@@ -5,13 +5,17 @@ Single authoritative capability status. Classifications:
 
 Evidence roots: `docs/evidence/`, `evidence/`, git history, live runtime state.
 Current work reference, reconciled 2026-08-23:
-`main`/`origin/main` at `5f85bae` after Q1-Q5 serial source integration. The
-deployed runtime remains the older
-immutable source `769715a7f8aee22bf4ab2db8870c37e6e9c9ef1b`; this mission did not
-restart, migrate, deploy, or otherwise mutate production. Fresh source evidence
-includes release/V3/worker-control gates and Command Center lint, typecheck,
-108 unit tests, 163 e2e tests, build, product 212/212, and security PASS. A
-repository-wide combined suite and owner-authorized promotion remain pending.
+isolated integration stage `integration/v456-cinematic-stage-20260823` at
+`d49bcaf` (V4/V5/V6 plus cinematic Command Center, migration-script repair,
+and fresh operational evidence). Canonical `main`/`origin/main` remains
+`6db467a` until promotion. The deployed runtime remains immutable release
+`769715a7f8aee22bf4ab2db8870c37e6e9c9ef1b`, schema v34; this stage did not
+restart, migrate, deploy, or otherwise mutate production. Fresh source evidence:
+repository suite 1,981 tests / 0 failures / 0 errors / 1 explicit skip;
+V3 hard focused/supporting/migration/independent checks PASS; bounded soak PASS
+with the four-hour proving window NOT_TESTED; Command Center 115 tests,
+product 212/212, build, and security PASS. Live promotion remains blocked by
+the legacy runtime boundary.
 
 ## Audit-Truth Remediation (2026)
 
@@ -60,7 +64,7 @@ repository-wide combined suite and owner-authorized promotion remain pending.
 | Voice | — | voice_interactions table exists; no full voice pipeline | migrations | PARTIAL | end-to-end voice UX |
 | Multi-system operation | V5 | systems registry + broker | V5 slices | IMPLEMENTED_AND_PROVEN | single host |
 | Self-evolution | V6 | builder/lab/verifier, shadow, canary, promote, restore, discovery, cycles | V6_S0–S13 | IMPLEMENTED_AND_PROVEN | none |
-| Candidate/live promotion | V6 + V8 | release registry, promotion machinery; V8 canonical promotion executed | V6_S8, V8_CANONICAL_PROMOTION_REPORT | IMPLEMENTED_AND_PROVEN | none |
+| Candidate/live promotion | V6 + V8 | release registry, immutable release identity, disposable promotion/rollback harness | V6 focused gate, `scripts/release_identity_repro.py` PASS, source suite | IMPLEMENTED_UNPROVEN | live release is schema v34/source-only manifest; no post-stage migration/restart/provider proof |
 | Rollback / recovery | V6 + V8 | restore points, restore-from-backup, rollback drills | V6_S9, rollback drill (pre+post promotion) | IMPLEMENTED_AND_PROVEN | reverse migration not provided (by design) |
 | Distributed/multi-machine operation | North star | not present | — | MISSING | genuine next-stage candidate |
 | Letta runtime integration | rejected (NATIVE_JARVIS) | not present; concepts embodied natively | V8 final verdict | SUPERSEDED (decision: native) | none |
