@@ -335,10 +335,13 @@ class Installer:
         finally:
             xml_path.unlink(missing_ok=True)
         self._write_profile()
+        release_sha = str(self.profile.get("release_sha") or "").strip() or "unknown"
         self._append(
             "installation.retargeted",
-            {"task_name": self.task_name, "command": str(self.exec_command or self.python_exe)},
-            key=f"installation.retargeted:{self.task_name}",
+            {"task_name": self.task_name,
+             "command": str(self.exec_command or self.python_exe),
+             "release_sha": release_sha},
+            key=f"installation.retargeted:{self.task_name}:{release_sha}",
         )
         return self.status()
 
