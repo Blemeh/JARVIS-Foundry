@@ -24,11 +24,13 @@ Evidence: `V4-1_DIRECTIVE_TRUTH.md`
 
 ## V4-2 — Goals / priorities / constraints / vetoes as operating input
 
-Status: IN PROGRESS
+Status: DONE @ `e57811e`
 
 Target behavior: durable owner inputs are visible to candidate selection and
 owner-facing traceability, with history, versions, active/inactive state,
 provenance, conflicts, and veto precedence.
+
+Evidence: `V4-2_OWNER_OPERATING_INPUT.md`
 
 ## V4-3 — Pause / resume product semantics
 
