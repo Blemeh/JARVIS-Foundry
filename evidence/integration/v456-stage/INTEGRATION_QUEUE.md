@@ -1,6 +1,6 @@
 # V4/V5/V6 + Cinematic Integration Queue
 
-Status: IN_PROGRESS
+Status: SOURCE_GATE_PASS_WITH_LIVE_BOUNDARY
 Lane: `integration/v456-cinematic-stage-20260823`
 
 | Order | Unit | Status | Exit evidence | Next action |
@@ -11,7 +11,7 @@ Lane: `integration/v456-cinematic-stage-20260823`
 | 3 | V5 multi-system intelligence | PASS | Merge commit `7e38aae`; focused connector/effect suite passes, including filesystem, Git, HTTP, browser synthetic, communication contracts, safety, lineage, and composed mission | Keep effect/reconciliation semantics under combined V4/V6 review |
 | 4 | V6 continuous self-evolution | PASS | Merge commit `9290b3f`; 254 evolution-focused tests pass including independent-verifier `NOT_TESTED` refusal | Keep the corrected all-criteria-PASS gate under combined review |
 | 5 | Cross-lane semantic adaptation | PASS | `effect_truth`/`evolution_truth` snapshot bridges, V4 briefing item rules, packet fields, Owner Management signal panel; targeted Python and UI checks pass | Run combined source and adversarial gates |
-| 6 | Combined source gate and adversarial review | IN_PROGRESS | Fresh combined V4/V5/V6 run reached 97%; one HTTP fault test was flaky in the combined run and passed isolated | Re-run independently, then complete repository-wide checks and classify failures honestly |
+| 6 | Combined source gate and adversarial review | PASS | `full-suite-20260823-r3.xml`: 1,981 tests, 0 failures, 0 errors, 1 explicit symlink-boundary skip; isolated Scheduler restart probe PASS in 125s; HTTP fault fixture stress 30/30 PASS | Run migration/release gates and re-audit canonical refs |
 | 7 | Canonicalization and push | PENDING | Clean integration head, normal main update, local/origin equality | Update main and push only after source gate PASS |
 | 8 | Immutable release and offline validation | PENDING | Exact Git commit/tree, manifest, schema/provenance, previous identity, disposable proof | Build from final canonical main |
 | 9 | Live ownership, backup, promotion, and runtime proof | PENDING | Ownership arbitration, backup readability, supported promotion path, live proofs | Re-read live state and resolve the irreversible deployment boundary |
