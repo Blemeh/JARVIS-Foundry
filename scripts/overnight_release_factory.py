@@ -403,6 +403,11 @@ class FactoryRunner:
             )
         finally:
             self._remove_previous_worktree()
+        # Build the candidate against the validated previous release so its
+        # immutable ``previous_runtime`` identity is captured in RELEASE.json.
+        # This pointer is disposable factory authority and is replaced by the
+        # normal CURRENT/PREVIOUS activation check later in the run.
+        set_current(self.previous_sha, root=self.roots.install_root)
         candidate = build_release(
             source_repo=self.source_repo, source_sha=self.source_sha,
             python_exe=sys.executable, root=self.roots.install_root,
