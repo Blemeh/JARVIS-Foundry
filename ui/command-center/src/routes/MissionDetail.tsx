@@ -19,7 +19,7 @@ import {
   Workflow,
 } from "lucide-react";
 import { useCommandCenter } from "../context/CommandCenterContext";
-import type { EvidenceArtifact, LineageNode, Mission, MissionRun, Worker } from "../lib/contracts";
+import type { EvidenceArtifact, LineageNode, Mission, MissionRun, MissionStep, Worker } from "../lib/contracts";
 import { StatusBadge } from "../components/StatusBadge";
 import { Dialog } from "../components/Dialog";
 import { DetailRouteQueryGate } from "../components/DetailRouteQueryGate";
@@ -43,6 +43,7 @@ type MissionDetailData = {
   workers: Worker[];
   evidence: EvidenceArtifact[];
   lineage: LineageNode[];
+  steps: MissionStep[];
 };
 
 export function MissionDetail() {
@@ -53,11 +54,12 @@ export function MissionDetail() {
     async () => {
       const mission = await client.getMission(missionIdResolved);
       if (!mission) return null;
-      const [run, workers, evidence, lineage] = await Promise.all([
+      const [run, workers, evidence, lineage, steps] = await Promise.all([
         client.getMissionRun(mission.id),
         client.listWorkers(),
         client.listEvidence(),
         client.getLineage(mission.id),
+        client.getMissionSteps(mission.id),
       ]);
       return {
         mission,
@@ -65,6 +67,7 @@ export function MissionDetail() {
         workers: workers.filter((x) => (x.missionIds ?? []).includes(mission.id)),
         evidence: evidence.filter((x) => x.missionRef === mission.id),
         lineage,
+        steps,
       } satisfies MissionDetailData;
     },
     [client, version, missionIdResolved],
@@ -82,7 +85,8 @@ export function MissionDetail() {
       errorLabel="Mission detail unavailable"
       surface="Mission detail"
     >
-      {({ mission, run, workers, evidence, lineage }) => {
+      {({ mission, run, workers, evidence, lineage, steps }) => {
+  const stepByKey = Object.fromEntries(steps.map((s) => [s.key, s]));
   const blocking = notifications.find((n) => n.refs.some((r) => r.kind === "mission" && r.id === mission.id) && n.state !== "RESOLVED");
   const blockingEventRef = blocking?.refs.find((r) => r.kind === "timeline");
   const contextLinks = [
@@ -162,6 +166,7 @@ export function MissionDetail() {
           </div>
           {run.pipeline.map((stage) => {
             const Icon = stageIcons[stage.key] ?? Check;
+            const step = stepByKey[stage.key];
             return (
               <div key={stage.key} className={`md-stage md-stage-${stage.state.toLowerCase()}`}>
                 <div className="md-stage-dot">
@@ -169,6 +174,12 @@ export function MissionDetail() {
                 </div>
                 <span className="t-label md-stage-label">{stage.label}</span>
                 <span className="t-mono md-stage-detail">{stage.detail}</span>
+                {step?.workerId ? (
+                  <EntityRefLink entity={{ kind: "agent", id: step.workerId, label: step.workerId }} />
+                ) : null}
+                {step?.evidenceIds && step.evidenceIds.length > 0 ? (
+                  <RefChipRow refs={step.evidenceIds.map((id) => ({ kind: "evidence" as const, id, label: id }))} />
+                ) : null}
               </div>
             );
           })}
@@ -254,11 +265,14 @@ export function MissionDetail() {
                     <StatusBadge status={v.state} />
                   </div>
                   <p className="prose md-verdict-detail">{v.detail}</p>
-                  {v.evidenceId ? (
-                    <div className="md-verdict-refs">
+                  <div className="md-verdict-refs">
+                    {v.workerId ? (
+                      <EntityRefLink entity={{ kind: "agent", id: v.workerId, label: v.workerId }} />
+                    ) : null}
+                    {v.evidenceId ? (
                       <EntityRefLink entity={{ kind: "evidence", id: v.evidenceId, label: v.evidenceId }} />
-                    </div>
-                  ) : null}
+                    ) : null}
+                  </div>
                 </div>
               ))}
             </div>

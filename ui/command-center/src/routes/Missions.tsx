@@ -43,13 +43,24 @@ export function Missions() {
 
   const filtered = useMemo(() => {
     const missions = missionsQuery.data ?? [];
-    if (filter === "ALL") return missions;
-    if (filter === "ACTIVE") return missions.filter((m) => m.status === "ACTIVE" || m.status === "IN_PROGRESS" || m.status === "INTERVENTION");
-    if (filter === "STANDBY") return missions.filter((m) => m.status === "STANDBY");
-    if (filter === "BLOCKED") return missions.filter((m) => m.status === "BLOCKED" || m.status === "HALTED");
-    if (filter === "ARCHIVED") return missions.filter((m) => m.status === "COMPLETE");
+    const candidateFilter = searchParams.get("candidate")?.toLowerCase();
+    let rows = missions;
+    if (candidateFilter) {
+      rows = rows.filter(
+        (m) =>
+          m.id.toLowerCase().includes(candidateFilter) ||
+          m.code.toLowerCase().includes(candidateFilter) ||
+          m.title.toLowerCase().includes(candidateFilter) ||
+          (m.objective ?? "").toLowerCase().includes(candidateFilter),
+      );
+    }
+    if (filter === "ALL") return rows;
+    if (filter === "ACTIVE") return rows.filter((m) => m.status === "ACTIVE" || m.status === "IN_PROGRESS" || m.status === "INTERVENTION");
+    if (filter === "STANDBY") return rows.filter((m) => m.status === "STANDBY");
+    if (filter === "BLOCKED") return rows.filter((m) => m.status === "BLOCKED" || m.status === "HALTED");
+    if (filter === "ARCHIVED") return rows.filter((m) => m.status === "COMPLETE");
     return [];
-  }, [missionsQuery.data, filter]);
+  }, [missionsQuery.data, filter, searchParams]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
@@ -91,6 +102,7 @@ export function Missions() {
           { key: "ARCHIVED", label: formatArchivedMissionLabel(archivedCount) },
         ];
         const statusValue = searchParams.get("status");
+        const candidateValue = searchParams.get("candidate");
 
         return (
     <div className="shell-content">
@@ -118,15 +130,30 @@ export function Missions() {
         }
       />
 
-      {statusValue ? (
+      {statusValue || candidateValue ? (
         <div className="context-row">
-          <ContextChip
-            label={`Mission status: ${statusValue.toUpperCase()}`}
-            onClear={() => {
-              setSearchParams({}, { replace: true });
-              setFilter("ALL");
-            }}
-          />
+          {statusValue ? (
+            <ContextChip
+              label={`Mission status: ${statusValue.toUpperCase()}`}
+              onClear={() => {
+                const next = new URLSearchParams(searchParams);
+                next.delete("status");
+                setSearchParams(next, { replace: true });
+                setFilter("ALL");
+              }}
+            />
+          ) : null}
+          {candidateValue ? (
+            <ContextChip
+              label={`Candidate ${candidateValue}`}
+              onClear={() => {
+                const next = new URLSearchParams(searchParams);
+                next.delete("candidate");
+                setSearchParams(next, { replace: true });
+                setPage(1);
+              }}
+            />
+          ) : null}
         </div>
       ) : null}
 

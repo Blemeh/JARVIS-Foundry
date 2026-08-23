@@ -81,7 +81,11 @@ function DecisionCard({ d }: { d: FoundryExecutiveDecision }) {
           <ul className="mt-1 space-y-1 text-xs">
             {d.rejected!.map((r) => (
               <li key={r.candidate_id}>
-                <span className="opacity-70">{r.candidate_id}</span> — {r.reason}
+                <Link className="underline" to={`/missions?candidate=${encodeURIComponent(r.candidate_id)}`}>
+                  {r.candidate_id}
+                </Link>
+                {" — "}
+                {r.reason}
                 {r.composite !== undefined ? ` (${num(r.composite)})` : ""}
               </li>
             ))}
@@ -94,7 +98,13 @@ function DecisionCard({ d }: { d: FoundryExecutiveDecision }) {
           <h4 className="t-label flex items-center gap-1"><MinusCircle size={12} aria-hidden /> Deferred</h4>
           <ul className="mt-1 space-y-1 text-xs">
             {d.deferred!.map((r) => (
-              <li key={r.candidate_id}>{r.candidate_id} — {r.reason}</li>
+              <li key={r.candidate_id}>
+                <Link className="underline" to={`/missions?candidate=${encodeURIComponent(r.candidate_id)}`}>
+                  {r.candidate_id}
+                </Link>
+                {" — "}
+                {r.reason}
+              </li>
             ))}
           </ul>
         </section>

@@ -6,8 +6,9 @@ import type { EntityRef, TimelineCategory, TimelineEvent, TimelineSeverity } fro
 import { Drawer } from "../components/Drawer";
 import { EmptyState } from "../components/states";
 import { RouteQueryGate } from "../components/RouteQueryGate";
-import { ContextChip, RefChipRow } from "../components/EntityRefLink";
+import { ContextChip, RefChipRow, EntityRefLink } from "../components/EntityRefLink";
 import { useRouteQuery } from "../hooks/useRouteQuery";
+import { metaLabelToRef, refsFromTimelineEvent } from "../lib/entityRefs";
 import { sourceModeLabel } from "../lib/sourceMode";
 
 const filters: { key: "ALL" | TimelineCategory; label: string }[] = [
@@ -35,14 +36,7 @@ const categoryIcon: Record<TimelineCategory, typeof Flag> = {
 };
 
 function eventRefs(e: TimelineEvent): EntityRef[] {
-  const refs: EntityRef[] = [];
-  if (e.missionId) refs.push({ kind: "mission", id: e.missionId, label: e.missionId });
-  if (e.agentId) refs.push({ kind: "agent", id: e.agentId, label: e.agentId });
-  if (e.systemId) refs.push({ kind: "system", id: e.systemId, label: e.systemId });
-  if (e.evidenceId) refs.push({ kind: "evidence", id: e.evidenceId, label: e.evidenceId });
-  if (e.verdictId) refs.push({ kind: "verdict", id: e.verdictId, label: e.verdictId });
-  if (e.memoryId) refs.push({ kind: "memory", id: e.memoryId, label: e.memoryId });
-  return refs;
+  return refsFromTimelineEvent(e);
 }
 
 function TimelineContent({ events }: { events: TimelineEvent[] }) {
@@ -202,12 +196,15 @@ function TimelineContent({ events }: { events: TimelineEvent[] }) {
                       <h3 className="tl-card-title">{e.title}</h3>
                       <p className="prose tl-card-detail">{e.detail}</p>
                       <div className="tl-card-meta">
-                        {e.meta.map((m) => (
-                          <span key={m.label} className="tl-meta">
-                            <span className="t-label text-muted">{m.label}:</span>
-                            <span className="t-mono">{m.value}</span>
-                          </span>
-                        ))}
+                        {e.meta.map((m) => {
+                          const ref = metaLabelToRef(m.label, m.value);
+                          return (
+                            <span key={m.label} className="tl-meta">
+                              <span className="t-label text-muted">{m.label}:</span>
+                              {ref ? <EntityRefLink entity={ref} /> : <span className="t-mono">{m.value}</span>}
+                            </span>
+                          );
+                        })}
                       </div>
                     </button>
                     {refs.length > 0 ? (
@@ -245,12 +242,15 @@ function TimelineContent({ events }: { events: TimelineEvent[] }) {
             <h3 className="t-title tl-drawer-title">{selected.title}</h3>
             <p className="prose">{selected.detail}</p>
             <dl className="record-fields">
-              {selected.meta.map((m) => (
-                <div key={m.label}>
-                  <dt className="t-label text-muted">{m.label}</dt>
-                  <dd className="t-mono">{m.value}</dd>
-                </div>
-              ))}
+              {selected.meta.map((m) => {
+                const ref = metaLabelToRef(m.label, m.value);
+                return (
+                  <div key={m.label}>
+                    <dt className="t-label text-muted">{m.label}</dt>
+                    <dd className="t-mono">{ref ? <EntityRefLink entity={ref} /> : m.value}</dd>
+                  </div>
+                );
+              })}
             </dl>
             <div className="detail-section-label">
               <span className="t-label text-muted">Referenced records</span>

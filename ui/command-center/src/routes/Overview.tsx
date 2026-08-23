@@ -3,7 +3,9 @@ import { Mic } from "lucide-react"
 import { useCommandCenter } from "../context/CommandCenterContext"
 import type { EvidenceArtifact, Mission, SystemComponent, SystemOverview, TimelineEvent, TrustSummary, Worker } from "../lib/contracts"
 import { RouteQueryGate } from "../components/RouteQueryGate"
+import { RefChipRow } from "../components/EntityRefLink"
 import { useRouteQuery } from "../hooks/useRouteQuery"
+import { refsFromTimelineEvent } from "../lib/entityRefs"
 import { sourceCopy } from "../lib/sourceMode"
 import {
   findMeasuredCostResource,
@@ -132,26 +134,34 @@ function OverviewContent({
         </div>
 
         <div className="telemetry" aria-label="Cross-check telemetry">
-          <article>
-            <span>System posture</span>
-            <strong className={systemPosture === "NOMINAL" ? "v4-nominal" : ""} aria-label={`System posture ${systemPosture}`}>{systemPosture}</strong>
-            <small>{staleLeases > 0 ? `${staleLeases} stale lease${staleLeases === 1 ? "" : "s"}` : freshness === "STALE" ? "stale heartbeat" : freshness === "CURRENT" ? "heartbeat current" : "freshness unknown"}</small>
-          </article>
-          <article>
-            <span>Active workers</span>
-            <strong aria-label={`${activeWorkers.length} active workers`}>{String(activeWorkers.length).padStart(2, "0")}</strong>
-            <small>{safeWorkers.length} durable run records</small>
-          </article>
-          <article>
-            <span>Verified</span>
-            <strong aria-label={`${verified} verified records`}>{String(verified).padStart(2, "0")}</strong>
-            <small>independent verdicts passed</small>
-          </article>
-          <article>
-            <span>Blocked work</span>
-            <strong aria-label={`${blocked} blocked missions`}>{String(blocked).padStart(2, "0")}</strong>
-            <small>reclaimable mission records</small>
-          </article>
+          <Link to="/systems" className="telemetry-link" aria-label={`System posture ${systemPosture}. Open systems.`}>
+            <article>
+              <span>System posture</span>
+              <strong className={systemPosture === "NOMINAL" ? "v4-nominal" : ""}>{systemPosture}</strong>
+              <small>{staleLeases > 0 ? `${staleLeases} stale lease${staleLeases === 1 ? "" : "s"}` : freshness === "STALE" ? "stale heartbeat" : freshness === "CURRENT" ? "heartbeat current" : "freshness unknown"}</small>
+            </article>
+          </Link>
+          <Link to="/agents?status=active" className="telemetry-link" aria-label={`${activeWorkers.length} active workers. Open agents.`}>
+            <article>
+              <span>Active workers</span>
+              <strong>{String(activeWorkers.length).padStart(2, "0")}</strong>
+              <small>{safeWorkers.length} durable run records</small>
+            </article>
+          </Link>
+          <Link to="/evidence?verdict=VERIFIED" className="telemetry-link" aria-label={`${verified} verified records. Open evidence.`}>
+            <article>
+              <span>Verified</span>
+              <strong>{String(verified).padStart(2, "0")}</strong>
+              <small>independent verdicts passed</small>
+            </article>
+          </Link>
+          <Link to="/missions?status=blocked" className="telemetry-link" aria-label={`${blocked} blocked missions. Open missions.`}>
+            <article>
+              <span>Blocked work</span>
+              <strong>{String(blocked).padStart(2, "0")}</strong>
+              <small>reclaimable mission records</small>
+            </article>
+          </Link>
           <article>
             <span>Measured cost</span>
             <strong aria-label={`Measured cost ${measuredCostDisplay}`}>{measuredCostDisplay}</strong>
@@ -231,10 +241,7 @@ function OverviewContent({
                 decisionSignal.map((e, idx) => {
                   const sev = (e.severity ?? "INFO").toUpperCase()
                   const sevTone = sev === "CRITICAL" ? "critical" : sev === "WARNING" ? "caution" : "nominal"
-                  const linkedCount = (e as unknown as { evidenceIds?: string[] }).evidenceIds?.length
-                  const linkedLabel = linkedCount === undefined
-                    ? "linked records NOT REPORTED"
-                    : `${linkedCount} linked record${linkedCount === 1 ? "" : "s"}`
+                  const eventRefs = refsFromTimelineEvent(e)
                   return (
                     <li key={e.id} className={`timeline-event ${sevTone}`}>
                       <span className="timeline-node" aria-hidden="true" />
@@ -246,7 +253,11 @@ function OverviewContent({
                       </div>
                       <strong>{e.title ?? e.id}</strong>
                       <p>{e.detail ?? e.id}</p>
-                      <span className="evidence-count">{linkedLabel}</span>
+                      {eventRefs.length > 0 ? (
+                        <div className="overview-event-refs">
+                          <RefChipRow refs={eventRefs} />
+                        </div>
+                      ) : null}
                     </li>
                   )
                 })
@@ -259,7 +270,7 @@ function OverviewContent({
           <span>
             Foundry ledger projection • observed {overview.uptime} • source {sourceMode === "SIMULATED" ? "SIMULATED" : sourceMode}
           </span>
-          <a href="#main-content">Inspect evidence</a>
+          <Link to="/evidence" className="v4-footer-link">Inspect evidence</Link>
         </div>
       </div>
     </div>
