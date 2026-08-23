@@ -18,8 +18,8 @@ fresh lane verdict.
 | V5-10 | Cross-system entity correlation | PASS | `V5_10_LINEAGE.md`, durable lineage and ambiguity probes |
 | V5-11 | Health/quota/cost/rerouting truth | PASS | `V5_11_OPERATIONS.md`, truthful states and deterministic eligibility |
 | V5-12 | Malicious input and secret resilience | PASS | `V5_12_SAFETY.md`, injection, payload, redirect, and artifact scans |
-| V5-13 | Three-connector composed mission harness | IN_PROGRESS | Disposable end-to-end mission and outage isolation |
-| V5-14+ | Next highest-value V5 gap | PENDING | Selected only after fresh V5-13 evidence |
+| V5-13 | Three-connector composed mission harness | PASS | `V5_13_COMPOSED.md`, disposable end-to-end mission and outage isolation |
+| V5-14+ | Next highest-value V5 gap | IN_PROGRESS | Final audit: durable effect evidence and candidate hygiene |
 
 No job may mutate `main`, `origin/main`, live state, live credentials,
 production accounts, scheduler tasks, or real communications.
