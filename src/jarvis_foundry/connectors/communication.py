@@ -23,6 +23,12 @@ def _hash(value: Any) -> str:
     return hashlib.sha256(canonical_json(value).encode("utf-8")).hexdigest()
 
 
+def _validate_provider_id(record: dict[str, Any], *, prefix: str, idempotency_key: str) -> None:
+    expected = f"{prefix}:{_hash(idempotency_key)[:24]}"
+    if record.get("provider_id") != expected:
+        raise CommunicationConnectorError("provider id does not match connector evidence")
+
+
 class FakeMailProvider:
     """In-memory provider; no SMTP, account, or network interface exists."""
 
@@ -224,6 +230,7 @@ class CommunicationConnector(_ContractBase):
         except CommunicationConnectorError:
             self._pending.pop(idempotency_key, None)
             raise
+        _validate_provider_id(record, prefix="message", idempotency_key=idempotency_key)
         self._pending.pop(idempotency_key, None)
         self._completed[idempotency_key] = record
         return self._attempt(prefix="message", connector_id=self.spec.connector_id,
@@ -240,6 +247,7 @@ class CommunicationConnector(_ContractBase):
                                  action_kind="communication.send", target_ref="unknown",
                                  idempotency_key=idempotency_key, request_hash=request_hash,
                                  outcome="UNKNOWN", error_code="not_observed")
+        _validate_provider_id(record, prefix="message", idempotency_key=idempotency_key)
         self._pending.pop(idempotency_key, None)
         self._completed[idempotency_key] = record
         return self._attempt(prefix="message", connector_id=self.spec.connector_id,
@@ -256,6 +264,7 @@ class CommunicationConnector(_ContractBase):
                                  action_kind="communication.withdraw", target_ref="unknown",
                                  idempotency_key=idempotency_key, request_hash=_hash(idempotency_key),
                                  outcome="UNKNOWN", error_code="not_observed")
+        _validate_provider_id(record, prefix="message", idempotency_key=idempotency_key)
         self._completed[idempotency_key] = record
         return self._attempt(prefix="message", connector_id=self.spec.connector_id,
                              action_kind="communication.withdraw", target_ref=record["recipient"],
@@ -321,6 +330,7 @@ class CalendarConnector(_ContractBase):
                                  action_kind="calendar.create", target_ref=calendar_id,
                                  idempotency_key=idempotency_key, request_hash=request_hash,
                                  outcome="FAILED", error_code="idempotency_conflict")
+        _validate_provider_id(record, prefix="event", idempotency_key=idempotency_key)
         self._pending.pop(idempotency_key, None)
         self._completed[idempotency_key] = record
         return self._attempt(prefix="event", connector_id=self.spec.connector_id,
@@ -337,6 +347,7 @@ class CalendarConnector(_ContractBase):
                                  action_kind="calendar.create", target_ref="unknown",
                                  idempotency_key=idempotency_key, request_hash=request_hash,
                                  outcome="UNKNOWN", error_code="not_observed")
+        _validate_provider_id(record, prefix="event", idempotency_key=idempotency_key)
         self._pending.pop(idempotency_key, None)
         self._completed[idempotency_key] = record
         return self._attempt(prefix="event", connector_id=self.spec.connector_id,
@@ -353,6 +364,7 @@ class CalendarConnector(_ContractBase):
                                  action_kind="calendar.cancel", target_ref="unknown",
                                  idempotency_key=idempotency_key, request_hash=_hash(idempotency_key),
                                  outcome="UNKNOWN", error_code="not_observed")
+        _validate_provider_id(record, prefix="event", idempotency_key=idempotency_key)
         self._completed[idempotency_key] = record
         return self._attempt(prefix="event", connector_id=self.spec.connector_id,
                              action_kind="calendar.cancel", target_ref=record["calendar_id"],

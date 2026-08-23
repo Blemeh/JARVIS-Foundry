@@ -13,6 +13,7 @@ from typing import Any
 from urllib.parse import urljoin, urlsplit, urlunsplit
 
 from ..events import canonical_json
+from ..control.redaction import contains_secret_like
 from .contract import ConnectorAttempt, ConnectorSpec
 
 
@@ -24,6 +25,11 @@ class _TransportUnknown(RuntimeError):
     def __init__(self, error_code: str, message: str) -> None:
         super().__init__(message)
         self.error_code = error_code
+
+
+class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *_args, **_kwargs):
+        return None
 
 
 class HttpServiceConnector:
@@ -54,6 +60,8 @@ class HttpServiceConnector:
     ) -> None:
         if not isinstance(base_url, str) or not base_url.strip():
             raise HttpServiceConnectorError("base URL is required")
+        if any(ord(character) < 0x20 for character in base_url):
+            raise HttpServiceConnectorError("base URL contains control characters")
         parsed = urlsplit(base_url.strip())
         if parsed.scheme.lower() not in {"http", "https"} or not parsed.hostname:
             raise HttpServiceConnectorError("base URL must be HTTP(S) with a host")
@@ -75,6 +83,7 @@ class HttpServiceConnector:
         self._health = "UNKNOWN"
         self._pending: dict[str, dict[str, str]] = {}
         self._completed: dict[str, dict[str, str]] = {}
+        self._opener = urllib.request.build_opener(_NoRedirectHandler())
 
     @property
     def health(self) -> str:
@@ -87,6 +96,8 @@ class HttpServiceConnector:
     def _url(self, path: str) -> str:
         if not isinstance(path, str) or not path.startswith("/") or path.startswith("//"):
             raise HttpServiceConnectorError("target path must be absolute and local to the base URL")
+        if any(ord(character) < 0x20 for character in path):
+            raise HttpServiceConnectorError("target path contains control characters")
         return urljoin(self.base_url + "/", path.lstrip("/"))
 
     @staticmethod
@@ -129,9 +140,11 @@ class HttpServiceConnector:
             headers={"Accept": "application/json", **(headers or {})},
         )
         try:
-            with urllib.request.urlopen(request, timeout=self.timeout_s) as response:
+            with self._opener.open(request, timeout=self.timeout_s) as response:
                 return int(response.status), response.read()
         except urllib.error.HTTPError as error:
+            if error.code in {301, 302, 303, 307, 308}:
+                raise _TransportUnknown("redirect_refused", "redirect response is not followed") from error
             try:
                 body = error.read()
             except OSError:
@@ -310,6 +323,11 @@ class HttpServiceConnector:
         if not idempotency_key or not idempotency_key.strip():
             raise HttpServiceConnectorError("idempotency_key is required")
         request_hash = self._digest(payload)
+        encoded = json.dumps(payload, ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        if len(encoded) > 256 * 1024:
+            raise HttpServiceConnectorError("HTTP payload exceeds maximum size")
+        if contains_secret_like(encoded.decode("utf-8")):
+            raise HttpServiceConnectorError("secret-like HTTP payload is refused")
         previous = self._completed.get(idempotency_key)
         if previous is not None:
             if previous["payload_hash"] != request_hash or previous["target_ref"] != path:
@@ -335,7 +353,6 @@ class HttpServiceConnector:
                     replayed=True,
                 )
             return resolved
-        encoded = json.dumps(payload, ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("utf-8")
         self._pending[idempotency_key] = {"target_ref": path, "payload_hash": request_hash}
         last_error = "server_error"
         for attempt_number in range(self.max_attempts):
