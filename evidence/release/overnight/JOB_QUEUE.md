@@ -40,4 +40,5 @@ Data shapes for the runtime-control work are `RuntimeControlRequest` and the der
 - Disposable harnesses: `runtime_control_repro.py`, `release_identity_repro.py`, `delivery_boundary_repro.py`, `runtime_diagnostic_repro.py`, `runtime_fault_repro.py`, and `stale_request_repro.py`: PASS.
 - Disposable overnight factory `final-20260823-runtime`: all 10 checks PASS, all 9 controlled faults PASS, cleanup errors `[]`, Task Scheduler installation `NOT_RUN`, provider mode `DISABLED`. Evidence: `evidence/release/overnight/final-20260823-runtime/RUN.json`.
 - Static and hygiene checks: documentation staleness PASS, compileall PASS, `git diff --check` PASS, credential-signature scan `0` hits across `26` changed files, clean worktree.
+- Read-only host inventory observed `\\JF-WP7Gate-test_tas-94653` running from `C:\\temp\\JARVIS-Overnight-V3-Operational-Slice` (another lane); it was not stopped or deleted under the ownership guard.
 - Live promotion, production restart/rollback, live Task Scheduler mutation, provider credentials/calls, live DB migration, and canonical `main`/`origin/main` changes: not taken.
