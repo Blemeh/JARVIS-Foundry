@@ -64,6 +64,8 @@ class _Handler(BaseHTTPRequestHandler):
             self._json(404, {"error": "missing"})
             return
         mode = parse_qs(parsed.query).get("mode", [self.state.mode])[0]
+        body_length = int(self.headers.get("Content-Length", "0"))
+        body = self.rfile.read(body_length) if body_length else b""
         if mode == "429":
             self._json(429, {"error": "rate limited"})
             return
@@ -71,14 +73,11 @@ class _Handler(BaseHTTPRequestHandler):
             self._json(500, {"error": "fixture failure"})
             return
         if mode == "malformed":
-            body_length = int(self.headers.get("Content-Length", "0"))
-            self.rfile.read(body_length)
             self.send_response(200)
             self.end_headers()
             self.wfile.write(b"not-json")
             return
-        body_length = int(self.headers.get("Content-Length", "0"))
-        body = json.loads(self.rfile.read(body_length) or b"{}")
+        body = json.loads(body or b"{}")
         key = self.headers.get("Idempotency-Key")
         with self.state.lock:
             if key not in self.state.keys:
@@ -164,10 +163,7 @@ def test_read_write_timeout_reconcile_and_duplicate_prevention(fixture: _Fixture
 
 
 def test_429_5xx_and_malformed_response_have_bounded_honest_states(fixture: _Fixture) -> None:
-    # Keep the fault classification bounded while allowing the Windows
-    # thread scheduler enough headroom to deliver the deterministic fixture
-    # response under a loaded repository-wide test run.
-    connector = HttpServiceConnector(fixture.url, timeout_s=5.0, max_attempts=2)
+    connector = HttpServiceConnector(fixture.url, timeout_s=0.2, max_attempts=2)
     rate = connector.write("/write?mode=429", {"value": "nope"}, idempotency_key="rate")
     assert rate.outcome == "FAILED"
     assert rate.error_code == "rate_limited"
@@ -178,7 +174,7 @@ def test_429_5xx_and_malformed_response_have_bounded_honest_states(fixture: _Fix
     assert fixture.state.write_count == 0
     server_fixture = _Fixture()
     try:
-        server_connector = HttpServiceConnector(server_fixture.url, timeout_s=5.0, max_attempts=2)
+        server_connector = HttpServiceConnector(server_fixture.url, timeout_s=0.2, max_attempts=2)
         failed = server_connector.write("/write?mode=500", {"value": "bad"}, idempotency_key="server")
         assert failed.outcome == "UNKNOWN"
         assert failed.error_code == "server_error"
