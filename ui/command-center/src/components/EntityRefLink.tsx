@@ -72,11 +72,19 @@ export function RefChipRow({ refs, emptyLabel = "No related records" }: { refs: 
   );
 }
 
-export function ContextChip({ label, onClear }: { label: string; onClear?: () => void }) {
+export function ContextChip({
+  label,
+  entity,
+  onClear,
+}: {
+  label: string;
+  entity?: EntityRef;
+  onClear?: () => void;
+}) {
   return (
     <span className="context-chip">
       <span className="t-label context-chip-label">Context</span>
-      <span className="context-chip-value">{label}</span>
+      {entity ? <EntityRefLink entity={entity} /> : <span className="context-chip-value">{label}</span>}
       {onClear ? (
         <button type="button" className="context-chip-clear" aria-label={`Clear context ${label}`} onClick={onClear}>
           <X size={11} aria-hidden="true" />

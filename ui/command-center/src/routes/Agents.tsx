@@ -79,7 +79,12 @@ export function Agents() {
           {missionFilter ? (
             <ContextChip
               label={`Workers for mission ${missionFilter}`}
-              onClear={() => setSearchParams({}, { replace: true })}
+              entity={{ kind: "mission", id: missionFilter, label: missionFilter }}
+              onClear={() => {
+                const next = new URLSearchParams(searchParams);
+                next.delete("mission");
+                setSearchParams(next, { replace: true });
+              }}
             />
           ) : null}
           {statusFilter ? (

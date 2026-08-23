@@ -9,7 +9,7 @@ import { MetricCard } from "../components/MetricCard";
 import { Drawer } from "../components/Drawer";
 import { EmptyState } from "../components/states";
 import { RouteQueryGate } from "../components/RouteQueryGate";
-import { ContextChip } from "../components/EntityRefLink";
+import { ContextChip, RefChipRow } from "../components/EntityRefLink";
 import { useRouteQuery } from "../hooks/useRouteQuery";
 import { sourceCopy, sourceModeLabel } from "../lib/sourceMode";
 import { formatResourceMetric } from "../lib/truthFormat";
@@ -89,6 +89,7 @@ export function Systems() {
           {missionFilter ? (
             <ContextChip
               label={`Systems touched by ${missionFilter}`}
+              entity={{ kind: "mission", id: missionFilter, label: missionFilter }}
               onClear={() => {
                 const next = new URLSearchParams(searchParams);
                 next.delete("mission");
@@ -231,7 +232,13 @@ export function Systems() {
               </div>
               <div>
                 <dt className="t-label text-muted">Dependencies</dt>
-                <dd className="t-mono">{selected.dependencies.length === 0 ? "none" : selected.dependencies.join(", ")}</dd>
+                <dd>
+                  {selected.dependencies.length === 0 ? (
+                    <span className="t-mono">none</span>
+                  ) : (
+                    <RefChipRow refs={selected.dependencies.map((id) => ({ kind: "system", id, label: id }))} />
+                  )}
+                </dd>
               </div>
               <div>
                 <dt className="t-label text-muted">Last heartbeat</dt>
@@ -243,7 +250,13 @@ export function Systems() {
               </div>
               <div>
                 <dt className="t-label text-muted">Affected missions</dt>
-                <dd className="t-mono">{(selected.missionIds ?? []).length === 0 ? "none" : (selected.missionIds ?? []).join(", ")}</dd>
+                <dd>
+                  {(selected.missionIds ?? []).length === 0 ? (
+                    <span className="t-mono">none</span>
+                  ) : (
+                    <RefChipRow refs={(selected.missionIds ?? []).map((id) => ({ kind: "mission", id, label: id }))} />
+                  )}
+                </dd>
               </div>
             </dl>
             <h4 className="t-label text-muted record-section-title">Checks</h4>

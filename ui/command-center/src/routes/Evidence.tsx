@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Download, FileCode2, Fingerprint, Lock, Search, ShieldCheck } from "lucide-react";
 import { useCommandCenter } from "../context/CommandCenterContext";
 import { SectionHeader } from "../components/SectionHeader";
@@ -8,7 +8,7 @@ import { MetricCard } from "../components/MetricCard";
 import { Pagination } from "../components/Pagination";
 import { EmptyState } from "../components/states";
 import { RouteQueryGate } from "../components/RouteQueryGate";
-import { ContextChip } from "../components/EntityRefLink";
+import { ContextChip, EntityRefLink } from "../components/EntityRefLink";
 import { useRouteQuery } from "../hooks/useRouteQuery";
 import { formatHash } from "../lib/format";
 import { sourceCopy, sourceModeLabel } from "../lib/sourceMode";
@@ -19,7 +19,6 @@ type SourceFilter = (typeof sources)[number];
 
 export function Evidence() {
   const { client, version, sourceMode } = useCommandCenter();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const itemsQuery = useRouteQuery(
     () => client.listEvidence(),
@@ -93,6 +92,7 @@ export function Evidence() {
           {missionFilter ? (
             <ContextChip
               label={`Evidence for mission ${missionFilter}`}
+              entity={{ kind: "mission", id: missionFilter, label: missionFilter }}
               onClear={() => {
                 const next = new URLSearchParams(searchParams);
                 next.delete("mission");
@@ -169,37 +169,40 @@ export function Evidence() {
           <div className="evidence-table" aria-label="Evidence artifacts">
             <div className="evidence-row evidence-row-head">
               <span className="t-label text-muted">Artifact ID / Type</span>
+              <span className="t-label text-muted">Mission</span>
               <span className="t-label text-muted">Provenance (source)</span>
               <span className="t-label text-muted">Integrity hash (SHA-256)</span>
               <span className="t-label text-muted evidence-verdict-head">Verdict</span>
             </div>
             {rows.map((it) => (
-              <button
+              <div
                 key={it.id}
-                type="button"
                 className={`evidence-row evidence-row-data ${it.verdict === "TAMPERED" ? "evidence-row-tampered" : ""}`}
-                onClick={() => navigate(`/evidence/${it.id}`)}
-                aria-label={`Open evidence ${it.id}`}
               >
-                <span className="evidence-cell-id">
+                <div className="evidence-cell-id">
                   <FileCode2 size={15} className={it.verdict === "TAMPERED" ? "text-error" : "text-muted"} aria-hidden="true" />
                   <span>
-                    <span className="t-mono evidence-artifact-id">{it.id}</span>
+                    <Link to={`/evidence/${it.id}`} className="evidence-artifact-link t-mono evidence-artifact-id">
+                      {it.id}
+                    </Link>
                     <span className="t-mono evidence-artifact-kind">{it.typeLabel}</span>
                   </span>
+                </div>
+                <span className="evidence-cell-mission">
+                  <EntityRefLink entity={{ kind: "mission", id: it.missionRef, label: it.missionRef }} />
                 </span>
-                <span className="evidence-cell-source">
+                <Link to={`/evidence/${it.id}`} className="evidence-cell-source evidence-row-link">
                   <span className="evidence-source-name">{it.source}</span>
                   <span className="t-mono evidence-source-uri">{it.sourceUri}</span>
-                </span>
-                <span className="evidence-cell-hash">
+                </Link>
+                <Link to={`/evidence/${it.id}`} className="evidence-cell-hash evidence-row-link">
                   <Lock size={12} className={it.verdict === "TAMPERED" ? "text-error" : "text-muted"} aria-hidden="true" />
                   <span className={`t-mono ${it.verdict === "TAMPERED" ? "text-error" : ""}`}>{formatHash(it.hash)}</span>
-                </span>
-                <span className="evidence-cell-verdict">
+                </Link>
+                <Link to={`/evidence/${it.id}`} className="evidence-cell-verdict evidence-row-link">
                   <StatusBadge status={it.verdict} />
-                </span>
-              </button>
+                </Link>
+              </div>
             ))}
           </div>
         )}

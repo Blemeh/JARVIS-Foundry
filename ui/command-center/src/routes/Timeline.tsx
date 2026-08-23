@@ -103,9 +103,27 @@ function TimelineContent({ events }: { events: TimelineEvent[] }) {
 
       {missionFilter || agentFilter || systemFilter || severityFilter || categoryFilter ? (
         <div className="context-row">
-          {missionFilter ? <ContextChip label={`Mission ${missionFilter}`} onClear={() => clearParam("mission")} /> : null}
-          {agentFilter ? <ContextChip label={`Agent ${agentFilter}`} onClear={() => clearParam("agent")} /> : null}
-          {systemFilter ? <ContextChip label={`System ${systemFilter}`} onClear={() => clearParam("system")} /> : null}
+          {missionFilter ? (
+            <ContextChip
+              label={`Mission ${missionFilter}`}
+              entity={{ kind: "mission", id: missionFilter, label: missionFilter }}
+              onClear={() => clearParam("mission")}
+            />
+          ) : null}
+          {agentFilter ? (
+            <ContextChip
+              label={`Agent ${agentFilter}`}
+              entity={{ kind: "agent", id: agentFilter, label: agentFilter }}
+              onClear={() => clearParam("agent")}
+            />
+          ) : null}
+          {systemFilter ? (
+            <ContextChip
+              label={`System ${systemFilter}`}
+              entity={{ kind: "system", id: systemFilter, label: systemFilter }}
+              onClear={() => clearParam("system")}
+            />
+          ) : null}
           {severityFilter ? <ContextChip label={`Severity ${severityFilter}`} onClear={() => clearParam("severity")} /> : null}
           {categoryFilter ? <ContextChip label={`Category ${categoryFilter}`} onClear={() => clearParam("category")} /> : null}
         </div>

@@ -976,6 +976,28 @@
   color: var(--text-primary);
 }
 
+.md-stat-link {
+  text-decoration: none;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+.md-stat-link:hover {
+  color: var(--teal-soft);
+}
+
+.md-related-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 18px 18px;
+}
+
+.md-related-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .md-trust {
   padding: 16px 18px;
 }
@@ -1799,7 +1821,7 @@
 
 .evidence-row {
   display: grid;
-  grid-template-columns: 3fr 3fr 4fr 2fr;
+  grid-template-columns: 2.5fr 1.5fr 2.5fr 3fr 1.5fr;
   gap: 12px;
   align-items: center;
   padding: 12px 18px;
@@ -1813,12 +1835,38 @@
 }
 
 .evidence-row-data {
-  cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease-out);
 }
 
 .evidence-row-data:hover {
   background: rgba(255, 255, 255, 0.025);
+}
+
+.evidence-row-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.evidence-row-link:hover .evidence-source-name,
+.evidence-row-link:hover .evidence-artifact-id {
+  color: var(--teal-soft);
+}
+
+.evidence-artifact-link {
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.evidence-artifact-link:hover {
+  color: var(--teal-soft);
+}
+
+.evidence-cell-mission {
+  min-width: 0;
 }
 
 .evidence-row-tampered {
@@ -2452,7 +2500,7 @@
     grid-template-columns: 2fr 2fr 1fr;
   }
 
-  .evidence-row > :nth-child(3) {
+  .evidence-row > :nth-child(4) {
     display: none;
   }
 
@@ -2499,7 +2547,7 @@
     gap: 6px;
   }
 
-  .evidence-row > :nth-child(2) {
+  .evidence-row > :nth-child(3) {
     display: none;
   }
 

@@ -130,6 +130,7 @@ function MemoryContent({ graph }: { graph: MemoryGraph }) {
             {missionParam ? (
               <ContextChip
                 label={`Memory related to mission ${missionParam}`}
+                entity={{ kind: "mission", id: missionParam, label: missionParam }}
                 onClear={() => {
                   const next = new URLSearchParams(searchParams);
                   next.delete("mission");

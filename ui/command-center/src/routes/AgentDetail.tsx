@@ -159,7 +159,9 @@ export function AgentDetail() {
           </div>
           {runs.map((r) => (
             <div key={r.id} className="runs-row" role="row">
-              <span className="t-mono runs-run-id">{r.id}</span>
+              <span className="t-mono runs-run-id">
+                <EntityRefLink entity={{ kind: "agent", id: r.workerId, label: r.id }} />
+              </span>
               <EntityRefLink entity={{ kind: "mission", id: r.missionId, label: r.missionId }} />
               <StatusBadge status={r.state} />
               <span className="prose runs-summary">{r.summary}</span>
