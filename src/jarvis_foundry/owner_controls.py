@@ -38,7 +38,16 @@ _COMMANDS = frozenset({
 })
 
 
-def canonical_command(command_type: str, target: str | None, exact_text: str, nonce: str) -> bytes:
+def canonical_command(
+    command_type: str,
+    target: str | None,
+    exact_text: str,
+    nonce: str,
+    *,
+    supersedes: str | None = None,
+    expires_at: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> bytes:
     if command_type not in _COMMANDS:
         raise OwnerCommandError(f"unsupported owner command: {command_type}")
     if not nonce or not exact_text.strip():
@@ -48,11 +57,36 @@ def canonical_command(command_type: str, target: str | None, exact_text: str, no
         "target": target,
         "exact_text": exact_text,
         "nonce": nonce,
+        "supersedes": supersedes,
+        "expires_at": expires_at,
+        "metadata": dict(metadata or {}),
     }).encode("utf-8")
 
 
-def sign_command(secret: bytes, command_type: str, target: str | None, exact_text: str, nonce: str) -> str:
-    return hmac.new(secret, canonical_command(command_type, target, exact_text, nonce), hashlib.sha256).hexdigest()
+def sign_command(
+    secret: bytes,
+    command_type: str,
+    target: str | None,
+    exact_text: str,
+    nonce: str,
+    *,
+    supersedes: str | None = None,
+    expires_at: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> str:
+    return hmac.new(
+        secret,
+        canonical_command(
+            command_type,
+            target,
+            exact_text,
+            nonce,
+            supersedes=supersedes,
+            expires_at=expires_at,
+            metadata=metadata,
+        ),
+        hashlib.sha256,
+    ).hexdigest()
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,6 +95,7 @@ class OwnerCommandResult:
     event_id: str
     command_type: str
     nonce: str
+    superseded_directive_id: str | None = None
 
 
 class OwnerControlService:
@@ -72,8 +107,28 @@ class OwnerControlService:
         self.stop = EmergencyStop(stop_path) if stop_path is not None else None
         self.owner_id = owner_id
 
-    def _verify(self, command_type: str, target: str | None, exact_text: str, nonce: str, signature: str) -> None:
-        expected = sign_command(self.secret, command_type, target, exact_text, nonce)
+    def _verify(
+        self,
+        command_type: str,
+        target: str | None,
+        exact_text: str,
+        nonce: str,
+        signature: str,
+        *,
+        supersedes: str | None = None,
+        expires_at: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        expected = sign_command(
+            self.secret,
+            command_type,
+            target,
+            exact_text,
+            nonce,
+            supersedes=supersedes,
+            expires_at=expires_at,
+            metadata=metadata,
+        )
         if not hmac.compare_digest(expected, signature or ""):
             raise OwnerAuthenticationError("owner command authentication failed")
         with self.database.connect() as connection:
@@ -81,11 +136,64 @@ class OwnerControlService:
         if used:
             raise OwnerReplayError(f"owner command nonce already used: {nonce}")
 
-    def apply(self, command_type: str, *, target: str | None, exact_text: str, nonce: str, signature: str, directive_id: str | None = None) -> OwnerCommandResult:
-        self._verify(command_type, target, exact_text, nonce, signature)
+    def _existing_directive(self, directive_id: str) -> Event | None:
+        for event in self.database.events(readonly=True):
+            if event.event_type != "owner_directive.recorded":
+                continue
+            if event.payload.get("directive_id") == directive_id:
+                return event
+        return None
+
+    def _existing_directive_id(self, directive_id: str) -> bool:
+        return self._existing_directive(directive_id) is not None
+
+    def apply(
+        self,
+        command_type: str,
+        *,
+        target: str | None,
+        exact_text: str,
+        nonce: str,
+        signature: str,
+        directive_id: str | None = None,
+        supersedes_directive_id: str | None = None,
+        expires_at: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> OwnerCommandResult:
+        self._verify(
+            command_type,
+            target,
+            exact_text,
+            nonce,
+            signature,
+            supersedes=supersedes_directive_id,
+            expires_at=expires_at,
+            metadata=metadata,
+        )
         directive_id = directive_id or f"owner-{secrets.token_hex(12)}"
+        if self._existing_directive_id(directive_id):
+            raise OwnerCommandError(
+                f"directive_id already admitted: {directive_id}; use a new directive_id"
+            )
+        if supersedes_directive_id is not None:
+            if not supersedes_directive_id.strip() or supersedes_directive_id == directive_id:
+                raise OwnerCommandError("supersedes_directive_id must identify another directive")
+            if not self._existing_directive_id(supersedes_directive_id):
+                raise OwnerCommandError(
+                    f"cannot supersede unknown directive: {supersedes_directive_id}"
+                )
         now = isoformat()
-        command_hash = hashlib.sha256(canonical_command(command_type, target, exact_text, nonce)).hexdigest()
+        command_hash = hashlib.sha256(
+            canonical_command(
+                command_type,
+                target,
+                exact_text,
+                nonce,
+                supersedes=supersedes_directive_id,
+                expires_at=expires_at,
+                metadata=metadata,
+            )
+        ).hexdigest()
         nonce_event = Event.create(
             "owner_control.nonce_used",
             {"nonce": nonce, "command_hash": command_hash, "issued_at": now, "used_at": now},
@@ -96,35 +204,67 @@ class OwnerControlService:
             "owner_directive.recorded",
             {"directive_id": directive_id, "command_type": command_type, "target": target,
              "exact_text": exact_text, "authenticated": True, "nonce": nonce,
-             "command_hash": command_hash, "reason": exact_text},
+             "command_hash": command_hash, "reason": exact_text,
+             "owner_id": self.owner_id, "source_identity": f"owner:{self.owner_id}",
+             "admission_version": "v4.1", "supersedes": supersedes_directive_id,
+             "expires_at": expires_at, "metadata": dict(metadata or {})},
             source_type="owner", source_id=self.owner_id,
             correlation_id=nonce_event.correlation_id,
             causation_id=nonce_event.event_id,
             idempotency_key=f"owner_directive.recorded:{directive_id}:{command_hash}",
         )
+        events = [nonce_event, directive_event]
+        if supersedes_directive_id is not None:
+            events.append(Event.create(
+                "owner_directive.superseded",
+                {
+                    "directive_id": supersedes_directive_id,
+                    "superseded_by": directive_id,
+                    "reason": exact_text,
+                    "owner_id": self.owner_id,
+                },
+                source_type="owner", source_id=self.owner_id,
+                correlation_id=nonce_event.correlation_id,
+                causation_id=directive_event.event_id,
+                idempotency_key=(
+                    f"owner_directive.superseded:{supersedes_directive_id}:{directive_id}"
+                ),
+            ))
         # The nonce and directive are one atomic ledger batch.  A retry cannot
         # create a second directive, and a partial authentication cannot leave
         # an owner command without its replay marker.
-        self.database.append_events([nonce_event, directive_event])
+        self.database.append_events(events)
         if command_type == "STOP_EVERYTHING" and self.stop is not None:
             # The filesystem sentinel is intentionally written after the
             # durable directive; if the process dies before this line, the
             # durable STOP still blocks through emergency_stop_reason().
             self.stop.activate(exact_text, source="authenticated-owner")
-        return OwnerCommandResult(directive_id, directive_event.event_id, command_type, nonce)
+        return OwnerCommandResult(
+            directive_id, directive_event.event_id, command_type, nonce,
+            supersedes_directive_id,
+        )
 
     def revoke(self, directive_id: str, *, nonce: str, signature: str, exact_text: str = "revoke owner directive") -> str:
         self._verify("RESUME", directive_id, exact_text, nonce, signature)
-        event = Event.create(
-            "owner_directive.revoked", {"directive_id": directive_id, "nonce": nonce, "authenticated": True},
-            source_type="owner", source_id=self.owner_id,
-            idempotency_key=f"owner_directive.revoked:{directive_id}:{nonce}",
-        )
+        now = isoformat()
+        command_hash = hashlib.sha256(canonical_command("RESUME", directive_id, exact_text, nonce)).hexdigest()
         nonce_event = Event.create(
             "owner_control.nonce_used",
-            {"nonce": nonce, "command_hash": hashlib.sha256(canonical_command("RESUME", directive_id, exact_text, nonce)).hexdigest(), "issued_at": isoformat(), "used_at": isoformat()},
+            {"nonce": nonce, "command_hash": command_hash, "issued_at": now, "used_at": now},
             source_type="owner", source_id=self.owner_id,
             idempotency_key=f"owner_control.nonce_used:{nonce}",
+        )
+        event = Event.create(
+            "owner_directive.revoked",
+            {
+                "directive_id": directive_id, "nonce": nonce,
+                "authenticated": True, "reason": exact_text,
+                "owner_id": self.owner_id,
+            },
+            source_type="owner", source_id=self.owner_id,
+            correlation_id=nonce_event.correlation_id,
+            causation_id=nonce_event.event_id,
+            idempotency_key=f"owner_directive.revoked:{directive_id}:{nonce}",
         )
         self.database.append_events([nonce_event, event])
         return event.event_id
@@ -167,8 +307,14 @@ class OwnerControlService:
         event_ids = []
         for row in rows:
             event = Event.create(
-                "owner_directive.revoked", {"directive_id": str(row[0]), "nonce": nonce, "authenticated": True},
+                "owner_directive.revoked", {
+                    "directive_id": str(row[0]), "nonce": nonce,
+                    "authenticated": True, "reason": exact_text,
+                    "owner_id": self.owner_id,
+                },
                 source_type="owner", source_id=self.owner_id,
+                correlation_id=events[0].correlation_id,
+                causation_id=events[0].event_id,
                 idempotency_key=f"owner_directive.revoked:{row[0]}:{nonce}",
             )
             events.append(event)

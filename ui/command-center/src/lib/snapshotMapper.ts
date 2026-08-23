@@ -16,6 +16,7 @@ import type {
   TrustSummary,
   Worker,
   WorkerStatus,
+  OwnerControlSurface,
 } from "./contracts";
 import type { FoundrySnapshot, FoundryMission, FoundryVerification } from "./snapshotTypes";
 import {
@@ -317,6 +318,45 @@ export function mapNotifications(snapshot: FoundrySnapshot): Notification[] {
     });
   }
   return items;
+}
+
+export function mapOwnerControlSurface(snapshot: FoundrySnapshot): OwnerControlSurface {
+  const controls = snapshot.controls ?? ({} as FoundrySnapshot["controls"]);
+  const queue = snapshot.decision_queue ?? {};
+  const rawState = typeof controls.runtime_state === "string"
+    ? controls.runtime_state
+    : snapshot.stop.active
+      ? "STOPPED"
+      : snapshot.health.supervisor_status ?? "UNKNOWN";
+  return {
+    source: snapshot.owner_directives ? "LIVE" : "UNKNOWN",
+    runtimeState: rawState,
+    stateReason: controls.state_reason ?? "Canonical runtime state reason is unavailable.",
+    stateSource: controls.state_source ?? "canonical-ledger",
+    paused: Boolean(controls.paused),
+    stopped: Boolean(snapshot.stop.active || rawState === "STOPPED"),
+    resumeAvailable: Boolean(controls.resume_available),
+    goals: controls.goals ?? [],
+    constraints: controls.constraints ?? [],
+    vetoes: controls.vetoes ?? [],
+    reprioritizations: controls.reprioritizations ?? [],
+    redirects: controls.redirects ?? [],
+    directiveHistory: snapshot.owner_directives?.records ?? [],
+    briefings: snapshot.briefings ?? [],
+    resultTraceability: {
+      status: snapshot.result_traceability?.status ?? "UNKNOWN",
+      results: snapshot.result_traceability?.results ?? [],
+      count: Number(snapshot.result_traceability?.count ?? 0),
+    },
+    briefingPacket: snapshot.briefing_packet ?? null,
+    decisionQueue: {
+      open: (queue.open ?? []) as unknown as OwnerControlSurface["decisionQueue"]["open"],
+      history: (queue.history ?? []) as unknown as OwnerControlSurface["decisionQueue"]["history"],
+      open_count: Number(queue.open_count ?? 0),
+      history_count: Number(queue.history_count ?? 0),
+      counts_by_classification: queue.counts_by_classification ?? {},
+    },
+  };
 }
 
 export function mapMissionRun(snapshot: FoundrySnapshot, missionId: string): MissionRun {

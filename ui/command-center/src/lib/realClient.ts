@@ -15,6 +15,7 @@ import type {
   MockEventStream,
   MockEventType,
   Notification,
+  OwnerControlSurface,
   OwnerGoalResult,
   RelatedEntities,
   Scenario,
@@ -36,6 +37,7 @@ import {
   mapMissionSteps,
   mapMissions,
   mapNotifications,
+  mapOwnerControlSurface,
   mapSystemOverview,
   mapSystems,
   mapTimeline,
@@ -269,6 +271,10 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
 
   async listNotifications(): Promise<Notification[]> {
     return mapNotifications(await this.snapshotOrFetch());
+  }
+
+  async getOwnerControlSurface(): Promise<OwnerControlSurface> {
+    return mapOwnerControlSurface(await this.snapshotOrFetch());
   }
 
   async acknowledgeNotification(_id: string): Promise<void> {

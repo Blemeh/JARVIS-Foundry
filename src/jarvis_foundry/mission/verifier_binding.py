@@ -359,7 +359,11 @@ class AcceptanceGate:
                 decision="REFUSE", reason=f"STOP active at acceptance: {stop_reason}",
                 checks={_STOP_BLOCKING_DEPENDENCY: stop_reason})
 
-        veto = matching_veto_reason(self.database, {"GLOBAL", mission_id})
+        mission = self.database.row("missions", "mission_id", mission_id)
+        veto_identities = {"GLOBAL", mission_id}
+        if mission is not None and mission.get("resource_id"):
+            veto_identities.add(str(mission["resource_id"]))
+        veto = matching_veto_reason(self.database, veto_identities)
         if veto:
             return GateDecision(
                 decision="REFUSE", reason=f"veto active at acceptance: {veto}",

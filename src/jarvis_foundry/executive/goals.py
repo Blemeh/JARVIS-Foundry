@@ -7,6 +7,7 @@ from typing import Any
 
 from ..database import FoundryDatabase
 from ..knowledge import canonicalize_statement
+from ..owner_directives import OwnerDirectiveRecord, active_directives_for
 
 _PRIORITY_RE = re.compile(
     r"(?:priority|priority[_ -]?level)\s*(?:=|:)?\s*([-+]?\d+(?:\.\d+)?)",
@@ -69,50 +70,17 @@ def _parse_horizon(text: str) -> str | None:
     return match.group(1).strip() if match else None
 
 
-def _owner_goal_directives(database: FoundryDatabase) -> list[dict[str, Any]]:
-    """Rebuild authenticated GOAL directives from ledger events."""
-    records: dict[str, dict[str, Any]] = {}
-    nonce_uses: dict[str, Any] = {}
-    seq = 0
-    for event in database.events():
-        if event.event_type == "owner_control.nonce_used":
-            payload = event.payload
-            nonce = payload.get("nonce")
-            if (event.source_type == "owner" and isinstance(nonce, str) and nonce):
-                nonce_uses[nonce] = event
-        elif event.event_type == "owner_directive.recorded":
-            payload = event.payload
-            if (event.source_type != "owner"
-                    or payload.get("authenticated") is not True
-                    or payload.get("command_type") != "GOAL"):
-                continue
-            directive_id = str(payload.get("directive_id") or "")
-            exact_text = payload.get("exact_text")
-            if not directive_id or not isinstance(exact_text, str) or not exact_text.strip():
-                continue
-            records[directive_id] = {
-                "directive_id": directive_id,
-                "target": payload.get("target"),
-                "exact_text": exact_text.strip(),
-                "event_id": event.event_id,
-                "sequence": seq,
-                "active": True,
-            }
-            seq += 1
-        elif event.event_type == "owner_directive.revoked":
-            directive_id = str(event.payload.get("directive_id") or "")
-            if directive_id in records:
-                records[directive_id]["active"] = False
-    return [r for r in records.values() if r["active"]]
+def _owner_goal_directives(database: FoundryDatabase) -> list[OwnerDirectiveRecord]:
+    """Return authenticated active GOAL directives from the shared projection."""
+    return active_directives_for(database, command_types=frozenset({"GOAL"}))
 
 
 def _active_constraints(database: FoundryDatabase) -> tuple[str, ...]:
-    with database.connect() as connection:
-        rows = connection.execute(
-            "SELECT exact_text FROM directives WHERE active = 1 "
-            "AND command_type IN ('CONSTRAINT', 'ADD_CONSTRAINT')"
-        ).fetchall()
-    return tuple(str(row[0]) for row in rows)
+    records = active_directives_for(
+        database,
+        command_types=frozenset({"CONSTRAINT", "ADD_CONSTRAINT"}),
+    )
+    return tuple(str(record.exact_text or "") for record in records)
 
 
 def active_goals(database: FoundryDatabase) -> list[StructuredGoal]:
@@ -120,11 +88,11 @@ def active_goals(database: FoundryDatabase) -> list[StructuredGoal]:
     constraints = _active_constraints(database)
     goals: list[StructuredGoal] = []
     for record in _owner_goal_directives(database):
-        text = record["exact_text"]
-        target = record.get("target")
+        text = str(record.exact_text or "")
+        target = record.target
         related = (str(target),) if target and target != "GLOBAL" else ()
         goals.append(StructuredGoal(
-            goal_id=record["directive_id"],
+            goal_id=record.directive_id,
             objective=text,
             priority=_parse_priority(text),
             success_criteria=_parse_success_criteria(text),
@@ -133,9 +101,13 @@ def active_goals(database: FoundryDatabase) -> list[StructuredGoal]:
             constraints=constraints,
             related_resources=related,
             provenance={
-                "directive_id": record["directive_id"],
-                "event_id": record["event_id"],
-                "sequence": record["sequence"],
+                "directive_id": record.directive_id,
+                "event_id": record.event_id,
+                "correlation_id": record.correlation_id,
+                "causation_id": record.causation_id,
+                "source": record.source_id,
+                "nonce": record.nonce,
+                "state": record.state,
             },
         ))
     goals.sort(key=lambda g: (-g.priority, g.goal_id))
@@ -150,3 +122,57 @@ def goal_alignment_score(goal: StructuredGoal, objective: str) -> float:
         return 0.0
     overlap = len(goal_tokens & obj_tokens)
     return min(1.0, overlap / max(3.0, len(goal_tokens) * 0.5))
+
+
+def _priority_value(text: str) -> float:
+    match = _PRIORITY_RE.search(text)
+    if match:
+        return float(match.group(1))
+    lowered = text.lower()
+    if any(word in lowered for word in ("raise", "increase", "higher", "up")):
+        return 1.0
+    if any(word in lowered for word in ("lower", "decrease", "down")):
+        return -1.0
+    return 0.0
+
+
+def active_priorities(
+    database: FoundryDatabase,
+    *,
+    targets: set[str] | frozenset[str] | None = None,
+) -> list[dict[str, Any]]:
+    """Return durable owner reprioritizations applicable to target identities."""
+    records = active_directives_for(
+        database,
+        command_types=frozenset({"REPRIORITIZE"}),
+        targets=targets,
+    )
+    return [
+        {
+            "directive_id": record.directive_id,
+            "target": record.target,
+            "exact_text": record.exact_text,
+            "value": _priority_value(str(record.exact_text or "")),
+            "event_id": record.event_id,
+            "nonce": record.nonce,
+            "correlation_id": record.correlation_id,
+        }
+        for record in records
+    ]
+
+
+def owner_priority_for(
+    database: FoundryDatabase,
+    *,
+    targets: set[str] | frozenset[str],
+) -> tuple[float, list[dict[str, Any]]]:
+    """Select the newest applicable owner priority without inventing one."""
+    priorities = active_priorities(database, targets=targets)
+    if not priorities:
+        return 0.0, []
+    specific = [p for p in priorities if p.get("target") in targets]
+    selected = specific[0] if specific else priorities[0]
+    # Normalize the free-form numeric convention to the scoring range while
+    # retaining the raw value in the decision audit.
+    raw = float(selected.get("value") or 0.0)
+    return max(-1.0, min(1.0, raw / 10.0 if abs(raw) > 1.0 else raw)), priorities

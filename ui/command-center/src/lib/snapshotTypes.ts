@@ -14,6 +14,11 @@ export interface FoundrySnapshot {
     redirects: Record<string, unknown>[];
     paused: boolean;
     resume_available: boolean;
+    runtime_state?: string;
+    state_reason?: string;
+    state_source?: string;
+    state_evidence?: Record<string, unknown>;
+    decision_queue_open_count?: number;
   };
   missions: FoundryMission[];
   workers: FoundryWorker[];
@@ -35,6 +40,28 @@ export interface FoundrySnapshot {
   release_identity: Record<string, unknown>;
   costs: Record<string, unknown>;
   executive: FoundryExecutive;
+  owner_directives?: {
+    records?: Record<string, unknown>[];
+    active?: Record<string, unknown>[];
+    unknown?: Record<string, unknown>[];
+    history_count?: number;
+    active_count?: number;
+  };
+  decision_queue?: {
+    open?: Record<string, unknown>[];
+    history?: Record<string, unknown>[];
+    open_count?: number;
+    history_count?: number;
+    counts_by_classification?: Record<string, number>;
+  };
+  briefings?: Record<string, unknown>[];
+  result_traceability?: {
+    schema?: string;
+    status?: string;
+    results?: Record<string, unknown>[];
+    count?: number;
+  };
+  briefing_packet?: Record<string, unknown>;
   /** Additive §3.13 projection; absent on backends older than its landing. */
   discovery?: unknown;
 }

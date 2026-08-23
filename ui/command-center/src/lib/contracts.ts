@@ -248,6 +248,61 @@ export interface OwnerGoalResult {
   error?: string;
 }
 
+export type OwnerAttentionClassification =
+  | "INFORM"
+  | "DECISION_REQUIRED"
+  | "BLOCKED_EXTERNAL_DEPENDENCY"
+  | "OWNER_VETO_ACTIVE"
+  | "UNKNOWN";
+
+export interface OwnerAttentionRecord {
+  queue_id: string;
+  status: "OPEN" | "RESOLVED" | "SUPERSEDED";
+  classification: OwnerAttentionClassification;
+  summary?: string;
+  consequence?: string;
+  options?: unknown[];
+  source_event_id?: string;
+  source_event_type?: string;
+  evidence_refs?: string[];
+  entity_kind?: string | null;
+  entity_id?: string | null;
+  mission_id?: string | null;
+  resolution_event_id?: string | null;
+  opened_at?: string;
+  item?: Record<string, unknown>;
+}
+
+export interface OwnerControlSurface {
+  source: DataSource;
+  runtimeState: string;
+  stateReason: string;
+  stateSource: string;
+  paused: boolean;
+  stopped: boolean;
+  resumeAvailable: boolean;
+  goals: Record<string, unknown>[];
+  constraints: Record<string, unknown>[];
+  vetoes: Record<string, unknown>[];
+  reprioritizations: Record<string, unknown>[];
+  redirects: Record<string, unknown>[];
+  directiveHistory: Record<string, unknown>[];
+  briefings: Record<string, unknown>[];
+  resultTraceability: {
+    status: string;
+    results: Record<string, unknown>[];
+    count: number;
+  };
+  briefingPacket: Record<string, unknown> | null;
+  decisionQueue: {
+    open: OwnerAttentionRecord[];
+    history: OwnerAttentionRecord[];
+    open_count: number;
+    history_count: number;
+    counts_by_classification: Record<string, number>;
+  };
+}
+
 export interface SystemOverview {
   version: string;
   build: string;
@@ -444,6 +499,7 @@ export interface JarvisClient {
   getLineage(missionId: string): Promise<LineageNode[]>;
   search(query: string): Promise<SearchResults>;
   listNotifications(): Promise<Notification[]>;
+  getOwnerControlSurface?(): Promise<OwnerControlSurface>;
   acknowledgeNotification(id: string): Promise<void>;
   resolveNotification(id: string): Promise<void>;
   getRelatedEntities(kind: EntityKind, id: string): Promise<RelatedEntities>;

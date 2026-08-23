@@ -19,6 +19,7 @@ const Timeline = lazy(() => import("./routes/Timeline").then((m) => ({ default: 
 const Systems = lazy(() => import("./routes/Systems").then((m) => ({ default: m.Systems })));
 const SystemDetail = lazy(() => import("./routes/SystemDetail").then((m) => ({ default: m.SystemDetail })));
 const Notifications = lazy(() => import("./routes/Notifications").then((m) => ({ default: m.Notifications })));
+const OwnerManagement = lazy(() => import("./routes/OwnerManagement").then((m) => ({ default: m.OwnerManagement })));
 
 function RouteSuspense({ children }: { children: ReactNode }) {
   return (
@@ -55,6 +56,7 @@ export function App() {
           <Route path="/systems" element={<RouteSuspense><Systems /></RouteSuspense>} />
           <Route path="/systems/:systemId" element={<RouteSuspense><SystemDetail /></RouteSuspense>} />
           <Route path="/notifications" element={<RouteSuspense><Notifications /></RouteSuspense>} />
+          <Route path="/owner" element={<RouteSuspense><OwnerManagement /></RouteSuspense>} />
           <Route
             path="*"
             element={

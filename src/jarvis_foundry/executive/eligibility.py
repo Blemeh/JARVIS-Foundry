@@ -308,7 +308,10 @@ def assess_eligibility(
     if stop:
         return EligibilityResult(candidate_id, False, "stop_active", {"stop": stop})
 
-    veto = matching_veto_reason(database, {"GLOBAL", candidate_id})
+    veto_identities = {"GLOBAL", candidate_id}
+    if resource_id:
+        veto_identities.add(str(resource_id))
+    veto = matching_veto_reason(database, veto_identities)
     if veto:
         return EligibilityResult(candidate_id, False, "veto_active", {"veto": veto})
 

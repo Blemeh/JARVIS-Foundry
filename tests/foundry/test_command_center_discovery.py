@@ -451,8 +451,12 @@ def test_existing_non_discovery_consumers_unchanged(db):
         "verification", "health", "resources", "systems", "candidates",
         "mission_steps", "memory", "procedures", "release_identity",
         "releases_canaries_rollbacks", "recovery", "costs", "briefings",
-        "voice", "timeline", "executive",
-    }
+            "voice", "timeline", "executive",
+            "owner_directives",
+            "decision_queue",
+            "result_traceability",
+            "briefing_packet",
+        }
     assert set(legacy_keys) == expected
     assert set(pinned["candidates"][0]) >= {"candidate_id"}
     assert pinned["generated_at"] == "2026-08-22T12:00:00Z"

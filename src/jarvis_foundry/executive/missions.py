@@ -101,7 +101,8 @@ def _materialization_preflight(
     stop = emergency_stop_reason(database, None)
     if stop:
         return f"STOP active at materialization: {stop}"
-    veto = matching_veto_reason(database, {"GLOBAL", candidate_id})
+    veto = matching_veto_reason(
+        database, {"GLOBAL", candidate_id, str(resource_id)})
     if veto:
         return f"veto active at materialization: {veto}"
     row = database.row("candidates", "candidate_id", candidate_id)

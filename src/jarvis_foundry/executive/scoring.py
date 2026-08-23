@@ -8,7 +8,12 @@ from typing import Any
 from ..database import FoundryDatabase
 from ..discovery_candidates import score_candidate, score_objective
 from .calibration import CalibrationState, rebuild_calibration
-from .goals import StructuredGoal, active_goals, goal_alignment_score
+from .goals import (
+    StructuredGoal,
+    active_goals,
+    goal_alignment_score,
+    owner_priority_for,
+)
 
 DECISION_VERSION = "1.0.0"
 UNKNOWN_PENALTY = 0.03
@@ -35,6 +40,8 @@ class CandidateScore:
     owner_priority: float
     factors: tuple[FactorValue, ...]
     compared_goals: tuple[str, ...]
+    owner_directive_priority: float = 0.0
+    owner_priority_directive_ids: tuple[str, ...] = ()
 
 
 def _factor(name: str, value: float | None, weight: float, *, kind: str | None = None) -> FactorValue:
@@ -120,6 +127,13 @@ def score_candidate_for_executive(
     else:
         compared = []
 
+    target_identities = {"GLOBAL", candidate_id}
+    resource_target = str(row.get("resource_id") or "").strip()
+    if resource_target:
+        target_identities.add(resource_target)
+    directive_priority, priority_directives = owner_priority_for(
+        database, targets=target_identities)
+
     cal_adj = calibration.adjustment_for(source=source, objective=objective)
 
     # Keyword-bait damping: hype terms (URGENT/crash/now/...) inflate the
@@ -146,7 +160,7 @@ def score_candidate_for_executive(
         reversibility = 0.2
     risk_penalty = 0.1 if reversibility < 0.5 else 0.0
 
-    factors = (
+    factor_values = [
         _factor("goal_fit", goal_fit, 0.30),
         _factor("expected_value", value_term, 0.20, kind=value_kind),
         _factor("information_gain", info_gain, 0.10, kind=info_kind),
@@ -174,7 +188,14 @@ def score_candidate_for_executive(
             kind=freshness_kind,
         ),
         _factor("keyword_bait", 1.0 if bait_penalty else 0.0, 0.15),
-    )
+    ]
+    # Reprioritization is a durable owner control, distinct from the lexical
+    # goal-priority factor above.  Keep it out of legacy scores when absent;
+    # when present its signed contribution can raise or lower a target.
+    if priority_directives:
+        factor_values.append(
+            _factor("owner_directive_priority", directive_priority, 0.15))
+    factors = tuple(factor_values)
 
     composite = round(sum(f.contribution for f in factors), 4)
     # V3 WP2 integration (MVP review repair): when the candidate was
@@ -207,6 +228,7 @@ def score_candidate_for_executive(
         contention_headroom = round(0.05 * (1.0 - resource_contention), 4)
         composite = round(max(0.0, min(1.0,
             portfolio_total + goal_bonus + contention_headroom)), 4)
+        composite = round(composite + directive_priority * 0.15, 4)
     composite += cal_adj
     composite -= bait_penalty
     composite -= risk_penalty
@@ -223,6 +245,12 @@ def score_candidate_for_executive(
         owner_priority=owner_priority,
         factors=factors,
         compared_goals=tuple(compared),
+        owner_directive_priority=directive_priority,
+        owner_priority_directive_ids=tuple(
+            str(item["directive_id"])
+            for item in priority_directives
+            if item.get("directive_id")
+        ),
     )
 
 

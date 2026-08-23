@@ -26,6 +26,9 @@ from .owner_controls import (
     OwnerReplayError,
     sign_command,
 )
+from .owner_directives import owner_control_state, owner_directive_snapshot
+from .decision_queue import build_owner_attention_queue
+from .result_traceability import build_result_traceability
 from .supervisor.estop import EmergencyStop
 from .v3_teams import DEFAULT_REPAIR_BUDGET
 
@@ -157,19 +160,20 @@ def decision_timeline(database: FoundryDatabase, *, limit: int = 200) -> list[di
     events = database.events(readonly=True)
     material = []
     for sequence, event in enumerate(events, start=1):
-        payload = dict(event.payload)
+        payload = dict(event.payload) if isinstance(event.payload, dict) else {}
+        event_type = str(event.event_type or "")
         material.append({
             "sequence": sequence,
             "event_id": event.event_id,
-            "event_type": event.event_type,
+            "event_type": event_type,
             "occurred_at": event.occurred_at,
             "recorded_at": event.recorded_at,
             "source": {"type": event.source_type, "id": event.source_id},
             "correlation_id": event.correlation_id,
             "causation_id": event.causation_id,
-            "summary": payload.get("reason") or payload.get("objective") or payload.get("status") or event.event_type,
+            "summary": payload.get("reason") or payload.get("objective") or payload.get("status") or event_type,
             "decision": payload.get("decision") or payload.get("verdict") or payload.get("outcome"),
-            "rejected_alternative": payload.get("rejection_reason") or payload.get("reason") if "reject" in event.event_type else None,
+            "rejected_alternative": payload.get("rejection_reason") or payload.get("reason") if "reject" in event_type else None,
             "evidence_refs": _event_refs(payload, event.event_id),
         })
     return material[-limit:]
@@ -198,8 +202,8 @@ def _executive_projection(database: FoundryDatabase, *, limit: int = 25) -> dict
     activation_epoch: str | None = None
     admission_authority: str = "UNKNOWN"
     for event in database.events():
-        etype = event.event_type
-        payload = event.payload
+        etype = str(event.event_type or "")
+        payload = event.payload if isinstance(event.payload, dict) else {}
         if etype == "executive.activation_recorded":
             epoch = payload.get("epoch")
             if isinstance(epoch, str) and epoch:
@@ -863,6 +867,7 @@ def build_snapshot(
             "ORDER BY updated_at DESC LIMIT 100")
 
     stop = EmergencyStop(stop_path).read() if stop_path is not None else None
+    owner_directives = owner_directive_snapshot(database, now=generated_at)
     try:
         from .deployment.release import read_current, read_previous
         release_identity = {
@@ -876,15 +881,39 @@ def build_snapshot(
             "status": "NOT_AVAILABLE", "reason": type(error).__name__,
         }
     active_vetoes = [d for d in directives if d.get("command_type") in {"VETO_ACTION", "STOP_MISSION", "STOP_EVERYTHING"}]
-    hold_active = bool(active_vetoes) or (stop is not None)
     goals = [d for d in directives if d.get("command_type") == "GOAL"]
     constraints = [d for d in directives if d.get("command_type") in {"CONSTRAINT", "ADD_CONSTRAINT"}]
     reprioritizations = [d for d in directives if d.get("command_type") == "REPRIORITIZE"]
     redirects = [d for d in directives if d.get("command_type") == "REDIRECT"]
-    paused = any(d.get("command_type") == "PAUSE" for d in directives)
     stale_leases = [l for l in leases if l.get("expires_at") and str(l["expires_at"]) < generated_at]
     blocked = [m for m in missions if m.get("state") == "BLOCKED"]
     crashed_workers = _current_failed_workers(runtime_workers, leases, stale_leases)
+    runtime_degraded = supervisor.get("status") == "DEGRADED" or bool(
+        stale_leases or crashed_workers
+    )
+    control_state = owner_control_state(
+        owner_directives,
+        legacy_active=directives,
+        stop_record=stop,
+        supervisor_status=supervisor.get("status"),
+        degraded=runtime_degraded,
+        active_work_count=sum(
+            1 for worker in runtime_workers if worker.get("status") == "RUNNING"
+        ),
+        blocked_work_count=len(blocked),
+    )
+    paused = bool(control_state["paused"])
+    hold_active = bool(active_vetoes) or bool(stop) or paused
+    decision_queue = build_owner_attention_queue(
+        database,
+        now=generated_at,
+        limit=100,
+    )
+    result_traceability = build_result_traceability(
+        database,
+        now=generated_at,
+        limit=100,
+    )
     recovery_events = [e for e in decision_timeline(database, limit=timeline_limit)
                        if any(token in e["event_type"] for token in ("recover", "reap", "rollback", "degraded", "blocked"))]
     release_events = [e for e in decision_timeline(database, limit=timeline_limit)
@@ -904,7 +933,7 @@ def build_snapshot(
                 value[field[:-5] if field.endswith("_json") else field] = _json_value(value[field])
         return value
 
-    return {
+    snapshot_payload = {
         "generated_at": generated_at,
         "source_of_truth": {"kind": "append_only_event_ledger", "ledger_head_sequence": event_count, "event_count": event_count},
         "supervisor": supervisor,
@@ -917,9 +946,21 @@ def build_snapshot(
             "reprioritizations": [with_ref(d, "directive", "directive_id") for d in reprioritizations],
             "redirects": [with_ref(d, "directive", "directive_id") for d in redirects],
             "paused": paused,
-            "resume_available": bool(paused or stop),
+            "resume_available": control_state["resume_available"],
+            "runtime_state": control_state["status"],
+            "state_reason": control_state["reason"],
+            "state_source": control_state["source"],
+            "state_evidence": control_state,
+            "decision_queue_open_count": decision_queue["open_count"],
             "stop_effective_without_hermes_ui_models_network": True,
+            "history": owner_directives["records"],
+            "unknown": owner_directives["unknown"],
+            "history_count": owner_directives["history_count"],
+            "active_count": owner_directives["active_count"],
         },
+        "owner_directives": owner_directives,
+        "decision_queue": decision_queue,
+        "result_traceability": result_traceability,
         "missions": [with_ref(m, "mission", "mission_id") for m in missions],
         "workers": [with_ref(w, "agent_run", "run_id") for w in workers],
         "evidence": [with_ref(e, "evidence", "bundle_id") for e in evidence],
@@ -967,6 +1008,21 @@ def build_snapshot(
             hold_active=hold_active,
         ),
     }
+    # The packet is an additive read-only export contract.  Import lazily to
+    # avoid a module cycle: the packet builder reuses this snapshot function
+    # when called independently.
+    from .briefing_packet import build_briefing_packet
+    try:
+        packet_clock = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
+    except ValueError:
+        packet_clock = None
+    snapshot_payload["briefing_packet"] = build_briefing_packet(
+        database,
+        now=packet_clock,
+        stop_path=str(stop_path) if stop_path is not None else None,
+        snapshot=snapshot_payload,
+    )
+    return snapshot_payload
 
 
 def _is_loopback(host: str | None) -> bool:
@@ -1067,7 +1123,17 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
             exact_text = str(payload.get("exact_text", ""))
             if route == "/api/owner-command":
                 nonce = secrets.token_hex(16)
-                signature = sign_command(self.owner_secret, command_type, target, exact_text, nonce)
+                metadata = payload.get("metadata") if isinstance(payload.get("metadata"), dict) else None
+                signature = sign_command(
+                    self.owner_secret,
+                    command_type,
+                    target,
+                    exact_text,
+                    nonce,
+                    supersedes=payload.get("supersedes_directive_id"),
+                    expires_at=payload.get("expires_at"),
+                    metadata=metadata,
+                )
             else:
                 nonce = str(payload.get("nonce", ""))
                 signature = str(payload.get("signature", ""))
@@ -1075,8 +1141,24 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
                 event_ids = service.resume(nonce=nonce, signature=signature, exact_text=exact_text or "resume jarvis")
                 result: dict[str, Any] = {"status": "APPLIED", "command_type": command_type, "event_ids": event_ids}
             else:
-                applied = service.apply(command_type, target=target, exact_text=exact_text, nonce=nonce, signature=signature, directive_id=payload.get("directive_id"))
-                result = {"status": "APPLIED", "command_type": applied.command_type, "directive_id": applied.directive_id, "event_id": applied.event_id}
+                applied = service.apply(
+                    command_type,
+                    target=target,
+                    exact_text=exact_text,
+                    nonce=nonce,
+                    signature=signature,
+                    directive_id=payload.get("directive_id"),
+                    supersedes_directive_id=payload.get("supersedes_directive_id"),
+                    expires_at=payload.get("expires_at"),
+                    metadata=payload.get("metadata") if isinstance(payload.get("metadata"), dict) else None,
+                )
+                result = {
+                    "status": "APPLIED",
+                    "command_type": applied.command_type,
+                    "directive_id": applied.directive_id,
+                    "event_id": applied.event_id,
+                    "superseded_directive_id": applied.superseded_directive_id,
+                }
             self._json_response(result, status=200)
         except OwnerReplayError as error:
             self._json_response({"status": "REJECTED", "reason": str(error)}, status=409)
