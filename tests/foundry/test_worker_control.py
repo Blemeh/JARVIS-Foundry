@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 import time
 
@@ -94,6 +95,40 @@ def test_reap_releases_lease_of_naturally_exited_worker(tmp_path):
 
     assert controller.reap() == []
     assert controller.active_runs() == []
+
+
+def test_reap_rejects_reused_process_identity(tmp_path, monkeypatch):
+    """A live unrelated process with the recorded PID is not the old worker."""
+    import os
+
+    from jarvis_foundry.supervisor import worker as worker_module
+
+    database = FoundryDatabase(tmp_path / "foundry.db")
+    database.initialize()
+    controller = WorkerController(database, lease_seconds=900)
+    controller.leases.acquire("worker:reused", "worker:reused", 900)
+    ledger = controller.pid_table_path()
+    ledger.write_text(json.dumps({
+        "reused": {
+            "pid": os.getpid(),
+            "run_id": "reused",
+            "creation_identity": {"pid": os.getpid(), "create_time": 100},
+        }
+    }), encoding="utf-8")
+    monkeypatch.setattr(worker_module, "pid_alive", lambda pid: True)
+    monkeypatch.setattr(
+        worker_module,
+        "process_creation_identity",
+        lambda pid: {"pid": pid, "create_time": 200},
+    )
+
+    status = controller.status("reused")
+    reaped = controller.reap()
+
+    assert status.alive is False
+    assert reaped == []
+    assert not ledger.exists()
+    assert database.row("leases", "lease_key", "worker:reused") is None
 
 
 def test_terminate_all_stops_every_worker(tmp_path):

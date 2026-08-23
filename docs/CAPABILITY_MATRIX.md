@@ -4,9 +4,25 @@ Single authoritative capability status. Classifications:
 `IMPLEMENTED_AND_PROVEN` · `IMPLEMENTED_UNPROVEN` · `PARTIAL` · `MISSING` · `SUPERSEDED`.
 
 Evidence roots: `docs/evidence/`, `evidence/`, git history, live runtime state.
-Current HEAD reference: `e9da9ba` (docs-only promoted descendant of tested
-source head `84a22b4`; fresh current-head convergence evidence is in
-`docs/convergence/`; the deployed runtime remains the separately frozen `c60db92`).
+Current work reference, reconciled 2026-08-22:
+`candidate/audit-truth-remediation-r2` with preserved implementation baseline
+`b5fc4f992e3b2b2016d8d777dabe7c824026a312`. The deployed runtime remains the
+older immutable source `769715a7f8aee22bf4ab2db8870c37e6e9c9ef1b` until the
+remediation commit passes verification and promotion.
+
+## Audit-Truth Remediation (2026)
+
+| Capability family | Current implementation | Current proof | State | Boundary |
+|---|---|---|---|---|
+| Duplicate launch authority | Supervisor lease ownership plus `LeaseUnavailable` fail-closed launcher exit | focused duplicate-launch regression; live singleton lease observed | IMPLEMENTED_UNPROVEN_AT_LIVE_HEAD | restart/promotion proof pending |
+| Release identity/provenance | Explicit synthetic release ID plus validated actual Git commit and tree in `RELEASE.json` | focused malformed/missing provenance regressions | IMPLEMENTED_UNPROVEN_AT_LIVE_HEAD | currently deployed legacy manifest lacks new fields |
+| Release authority | Filesystem CURRENT/PREVIOUS canonical; DB is projection/audit cache; doctor reports mismatch status | `FILESYSTEM_ONLY_AUTHORITY` doctor snapshot and focused tests | IMPLEMENTED_AND_PROVEN | no manual DB reconciliation is permitted |
+| PID ledger reconciliation | Startup/heartbeat liveness + process creation identity + JARVIS ownership checks; unknown PIDs are never killed | stale-entry and PID-reuse regressions | IMPLEMENTED_UNPROVEN_AT_LIVE_HEAD | live restart proof pending |
+| Scheduler routing | One production Supervisor task; Worker-Loop classified `LEGACY_DISABLED` and fail-closed against re-enable | task snapshot plus installer/fail-closed regressions | IMPLEMENTED_UNPROVEN_AT_LIVE_HEAD | post-promotion scheduler smoke pending |
+| Headless console behavior | Reviewed preserved Windows subprocess/installer path without dead wrapper API | focused lifecycle/installer regressions | IMPLEMENTED_UNPROVEN_AT_LIVE_HEAD | visible-window/live restart proof pending |
+| Test fixture host safety | Session-diff guard permits cleanup only for JF-WP7Gate tasks created by current test session | scheduler-guard regression suite | IMPLEMENTED_AND_PROVEN | integration staging remains opt-in by design |
+| Owner-goal deletion governance | Authenticated GOAL directives in current executive/goal system supersede deleted admission path | current executive implementation/tests and historical audit classification | SUPERSEDED | do not resurrect old code wholesale |
+| Release-handoff deletion governance | Immutable CURRENT/PREVIOUS release authority supersedes deleted handoff mechanism | current deployment/release tests and live pointers | SUPERSEDED | old capability must not be claimed as active |
 
 ## Post-V7 Remaster Convergence
 

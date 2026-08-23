@@ -211,10 +211,14 @@ def _repo_source(db: FoundryDatabase, *, repo_paths: list[Path],
         repo = Path(repo).resolve()
         name = repo.name
         try:
+            from .platform.windows_subprocess import headless_run_kwargs
+
             output = subprocess.run(
                 ["git", "-C", str(repo), "log", "--format=%H|%s",
                  f"-n{budget['items'] + 1}"],
-                capture_output=True, text=True, timeout=30, check=False)
+                capture_output=True, text=True, timeout=30, check=False,
+                **headless_run_kwargs(),
+            )
         except (OSError, subprocess.SubprocessError) as exc:
             errors += 1
             error_msgs.append(f"{name}: {exc}")

@@ -8,6 +8,7 @@ import sqlite3
 import subprocess
 import sys
 import uuid
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -134,6 +135,52 @@ def read_release_json(path: Path) -> dict[str, Any]:
     return data
 
 
+_GIT_OBJECT_RE = re.compile(r"^[0-9a-f]{40,64}$")
+_MISSING = object()
+
+
+def _runtime_identity(manifest: dict[str, Any], source_sha: str) -> dict[str, Any]:
+    """Extract the immutable identity needed for promotion/rollback proof."""
+
+    schema_compatibility = manifest.get("schema_compatibility")
+    if not isinstance(schema_compatibility, dict):
+        raise ReleaseError("RELEASE.json schema_compatibility is missing")
+    try:
+        schema = int(schema_compatibility["package_schema"])
+    except (KeyError, TypeError, ValueError):
+        raise ReleaseError("RELEASE.json package_schema is missing") from None
+    return {
+        "source_sha": source_sha,
+        "release_id": manifest.get("release_id"),
+        "git_commit": manifest.get("git_commit"),
+        "git_tree": manifest.get("git_tree"),
+        "schema": schema,
+    }
+
+
+def _validate_runtime_identity(value: Any, *, field: str) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise ReleaseError(f"RELEASE.json {field} must be an object")
+    required = ("source_sha", "release_id", "git_commit", "git_tree", "schema")
+    missing = [name for name in required if value.get(name) in (None, "")]
+    if missing:
+        raise ReleaseError(
+            f"RELEASE.json {field} missing identity: {', '.join(missing)}")
+    if not isinstance(value["source_sha"], str) or not _GIT_OBJECT_RE.fullmatch(value["source_sha"]):
+        raise ReleaseError(f"RELEASE.json {field}.source_sha is invalid")
+    if not isinstance(value["release_id"], str):
+        raise ReleaseError(f"RELEASE.json {field}.release_id is invalid")
+    if not isinstance(value["git_commit"], str) or not _GIT_OBJECT_RE.fullmatch(value["git_commit"]):
+        raise ReleaseError(f"RELEASE.json {field}.git_commit is invalid")
+    if not isinstance(value["git_tree"], str) or not _GIT_OBJECT_RE.fullmatch(value["git_tree"]):
+        raise ReleaseError(f"RELEASE.json {field}.git_tree is invalid")
+    try:
+        value["schema"] = int(value["schema"])
+    except (TypeError, ValueError):
+        raise ReleaseError(f"RELEASE.json {field}.schema is invalid") from None
+    return value
+
+
 def validate_release(
     source_sha: str,
     *,
@@ -152,12 +199,42 @@ def validate_release(
     manifest = read_release_json(manifest_path)
     if manifest.get("source_sha") != sha:
         raise ReleaseError("RELEASE.json source_sha does not match directory")
-    if manifest.get("release_id") in (None, ""):
+    if not isinstance(manifest.get("release_id"), str) or not manifest.get("release_id"):
         raise ReleaseError("RELEASE.json missing release_id")
-    package_schema = int(manifest.get("schema_compatibility", {}).get("package_schema", 0))
+    git_commit = manifest.get("git_commit")
+    git_tree = manifest.get("git_tree")
+    if not git_commit:
+        raise ReleaseError("RELEASE.json missing git_commit")
+    if not isinstance(git_commit, str) or not _GIT_OBJECT_RE.fullmatch(git_commit):
+        raise ReleaseError("RELEASE.json has invalid git_commit")
+    if git_commit != sha:
+        raise ReleaseError("RELEASE.json git_commit does not match source_sha")
+    if not git_tree:
+        raise ReleaseError("RELEASE.json missing git_tree")
+    if not isinstance(git_tree, str) or not _GIT_OBJECT_RE.fullmatch(git_tree):
+        raise ReleaseError("RELEASE.json has invalid git_tree")
+    schema_compatibility = manifest.get("schema_compatibility")
+    if not isinstance(schema_compatibility, dict):
+        raise ReleaseError("RELEASE.json missing schema_compatibility")
+    try:
+        package_schema = int(schema_compatibility["package_schema"])
+    except (KeyError, TypeError, ValueError):
+        raise ReleaseError("RELEASE.json missing package_schema") from None
     if package_schema != SCHEMA_VERSION:
         raise ReleaseError(
             f"RELEASE.json schema {package_schema} != package {SCHEMA_VERSION}")
+    provenance = manifest.get("provenance")
+    if not isinstance(provenance, dict):
+        raise ReleaseError("RELEASE.json missing provenance")
+    if not isinstance(provenance.get("source_repo"), str) or not provenance["source_repo"]:
+        raise ReleaseError("RELEASE.json provenance source_repo is missing")
+    if provenance.get("git_commit") != git_commit or provenance.get("git_tree") != git_tree:
+        raise ReleaseError("RELEASE.json provenance does not match git identity")
+    previous_runtime = manifest.get("previous_runtime", _MISSING)
+    if previous_runtime is _MISSING:
+        raise ReleaseError("RELEASE.json missing previous_runtime identity")
+    if previous_runtime is not None:
+        _validate_runtime_identity(previous_runtime, field="previous_runtime")
     if foundry_home is not None and require_schema_match:
         live_schema = schema_version(Path(foundry_home) / "foundry.db")
         if live_schema != package_schema:
@@ -169,6 +246,7 @@ def validate_release(
         "release_dir": str(directory),
         "python_exe": str(python_exe.resolve()),
         "manifest": manifest,
+        "runtime_identity": _runtime_identity(manifest, sha),
     }
 
 
@@ -216,9 +294,26 @@ def build_release(
     ]
     if tracked_dirty:
         raise ReleaseError("refusing to build from a dirty tracked worktree")
+    tree_observed = subprocess.run(
+        ["git", "-C", str(repo), "rev-parse", f"{sha}^{{tree}}"],
+        capture_output=True, text=True, timeout=30, check=False,
+    )
+    tree = tree_observed.stdout.strip()
+    if tree_observed.returncode != 0 or not _GIT_OBJECT_RE.fullmatch(tree):
+        raise ReleaseError(
+            f"could not resolve Git tree for {sha}: {tree_observed.stderr.strip()}")
     directory = release_dir(sha, root)
     if directory.exists():
         raise ReleaseError(f"release already exists: {directory}")
+    previous_runtime = None
+    previous_sha = read_current(root)
+    if previous_sha and previous_sha != sha:
+        previous_manifest_path = release_dir(previous_sha, root) / "RELEASE.json"
+        if not previous_manifest_path.is_file():
+            raise ReleaseError(
+                f"previous CURRENT release manifest missing: {previous_manifest_path}")
+        previous_manifest = read_release_json(previous_manifest_path)
+        previous_runtime = _runtime_identity(previous_manifest, previous_sha)
     directory.mkdir(parents=True)
     staging = directory / "source"
     _copy_source_snapshot(repo, staging)
@@ -244,6 +339,8 @@ def build_release(
     manifest = {
         "release_id": f"rel-{sha[:12]}-{uuid.uuid4().hex[:8]}",
         "source_sha": sha,
+        "git_commit": sha,
+        "git_tree": tree,
         "python_version": py_ver.stdout.strip(),
         "package_version": PACKAGE_VERSION,
         "schema_compatibility": {
@@ -251,6 +348,13 @@ def build_release(
             "opens_min": SCHEMA_VERSION,
             "opens_max": SCHEMA_VERSION,
         },
+        "provenance": {
+            "builder": "jarvis_foundry.deployment.release",
+            "source_repo": str(repo),
+            "git_commit": sha,
+            "git_tree": tree,
+        },
+        "previous_runtime": previous_runtime,
         "created_at": isoformat(),
     }
     (directory / "RELEASE.json").write_text(
@@ -279,8 +383,25 @@ def _install_stable_launcher(root: Path | None = None) -> Path:
 
 
 def set_current(source_sha: str, *, root: Path | None = None) -> dict[str, str | None]:
-    validate_release(source_sha, root=root, require_schema_match=False)
+    candidate = validate_release(source_sha, root=root, require_schema_match=False)
     previous = read_current(root)
+    if previous == source_sha:
+        return {"current": source_sha, "previous": read_previous(root)}
+    candidate_previous = candidate["manifest"].get("previous_runtime")
+    if previous is None:
+        if candidate_previous is not None:
+            raise ReleaseError(
+                "candidate previous_runtime does not match empty CURRENT pointer")
+    else:
+        previous_manifest_path = release_dir(previous, root) / "RELEASE.json"
+        if not previous_manifest_path.is_file():
+            raise ReleaseError(
+                f"CURRENT release manifest missing: {previous_manifest_path}")
+        previous_identity = _runtime_identity(
+            read_release_json(previous_manifest_path), previous)
+        if candidate_previous != previous_identity:
+            raise ReleaseError(
+                "candidate previous_runtime does not match the CURRENT release")
     if previous and previous != source_sha:
         write_pointer(previous_pointer(root), previous)
     write_pointer(current_pointer(root), source_sha)
@@ -297,12 +418,18 @@ def record_generation(
     sha = read_current(root)
     if not sha:
         raise ReleaseError("CURRENT pointer missing")
+    identity = validate_release(sha, root=root, require_schema_match=False)
     schema = 0
     if foundry_home is not None:
         schema = schema_version(Path(foundry_home) / "foundry.db")
     record = {
         "source_sha": sha,
+        "release_id": identity["manifest"]["release_id"],
+        "git_commit": identity["manifest"]["git_commit"],
+        "git_tree": identity["manifest"]["git_tree"],
         "schema": schema,
+        "previous_runtime": identity["manifest"]["previous_runtime"],
+        "provenance": identity["manifest"]["provenance"],
         "backup": str(backup) if backup else None,
         "recorded_at": isoformat(),
     }
@@ -313,6 +440,70 @@ def record_generation(
     (install_root(root) / "GENERATION.json").write_text(
         json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return record
+
+
+def release_authority_report(
+    *,
+    root: Path | None = None,
+    foundry_home: Path | None = None,
+) -> dict[str, Any]:
+    """Report whether durable DB authority agrees with filesystem pointers."""
+    current = read_current(root)
+    previous = read_previous(root)
+    if foundry_home is None:
+        return {
+            "current": current,
+            "previous": previous,
+            "database_release_records": 0,
+            "database_current_recorded": False,
+            "consistent": False,
+            "status": "FOUNDRY_HOME_MISSING",
+        }
+
+    database_path = Path(foundry_home) / "foundry.db"
+    if not database_path.is_file():
+        return {
+            "current": current,
+            "previous": previous,
+            "database_release_records": 0,
+            "database_current_recorded": False,
+            "consistent": False,
+            "status": "DATABASE_MISSING",
+        }
+
+    database = FoundryDatabase(database_path)
+    try:
+        with database.connect(readonly=True) as connection:
+            total = int(connection.execute("SELECT COUNT(*) FROM release_manifests").fetchone()[0])
+            recorded = int(connection.execute(
+                "SELECT COUNT(*) FROM release_manifests WHERE source_commit = ?",
+                (current,),
+            ).fetchone()[0]) if current else 0
+    except sqlite3.OperationalError as error:
+        return {
+            "current": current,
+            "previous": previous,
+            "database_release_records": 0,
+            "database_current_recorded": False,
+            "consistent": False,
+            "status": "RELEASE_SCHEMA_UNAVAILABLE",
+            "error": str(error),
+        }
+
+    if not current:
+        status = "NO_FILESYSTEM_AUTHORITY"
+    elif not recorded:
+        status = "FILESYSTEM_ONLY_AUTHORITY"
+    else:
+        status = "CONSISTENT"
+    return {
+        "current": current,
+        "previous": previous,
+        "database_release_records": total,
+        "database_current_recorded": bool(recorded),
+        "consistent": status == "CONSISTENT",
+        "status": status,
+    }
 
 
 def rollback_current(
@@ -330,6 +521,13 @@ def rollback_current(
     )
     if current:
         validate_release(current, root=root, require_schema_match=False)
+    if current == previous:
+        return {
+            "current": current,
+            "previous": read_previous(root),
+            "generation": None,
+            "switched": False,
+        }
     write_pointer(current_pointer(root), previous)
     if current:
         write_pointer(previous_pointer(root), current)

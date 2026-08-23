@@ -127,6 +127,53 @@ def build_envelope(candidate: ActionCandidate, *, mission_id: str,
     )
 
 
+def deliver_candidate(
+    database: FoundryDatabase,
+    mission_id: str,
+    run_id: str,
+    candidate: ActionCandidate,
+    *,
+    delivery_boundary: Any,
+    channel: str,
+    provider: str,
+    target: str | None = None,
+    payload: str | None = None,
+    timeout_seconds: float = 30.0,
+    max_attempts: int = 1,
+) -> dict[str, Any]:
+    """Turn one selected candidate into a typed provider/voice/UI request.
+
+    Authorization remains the caller's policy decision. This helper owns only
+    the delivery boundary, so a provider timeout, cancellation, unknown cost,
+    or replay is returned as an honest typed receipt and learned durably.
+    """
+
+    try:
+        envelope = build_envelope(candidate, mission_id=mission_id, run_id=run_id)
+        receipt = delivery_boundary.dispatch_envelope(
+            envelope,
+            channel=channel,
+            provider=provider,
+            target=target,
+            payload=payload,
+            timeout_seconds=timeout_seconds,
+            max_attempts=max_attempts,
+        )
+    except ValueError as error:
+        result = {
+            "action_id": candidate.action_id,
+            "outcome": _REFUSED,
+            "reason": redact_text(str(error)),
+        }
+        learn(database, mission_id, candidate.action_id, result)
+        return result
+    result = dict(receipt)
+    result["action_id"] = candidate.action_id
+    result["outcome"] = result.get("status")
+    learn(database, mission_id, candidate.action_id, result)
+    return result
+
+
 # ---------------------------------------------------------------------------
 # observe -> select
 # ---------------------------------------------------------------------------

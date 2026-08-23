@@ -488,7 +488,7 @@ def test_hermes_oneshot_command_surface_matches_real_cli(tmp_path, monkeypatch):
 
     captured = {}
 
-    def fake_run(command, *, cwd, env, capture_output, text, timeout):
+    def fake_run(command, *, cwd, env, capture_output, text, timeout, **_kwargs):
         captured["command"] = command
         captured["cwd"] = cwd
         captured["env_home"] = env.get("HERMES_HOME")
@@ -538,7 +538,7 @@ def test_hermes_oneshot_translates_router_providers_to_cli_ids(tmp_path, monkeyp
 
     captured = []
 
-    def fake_run(command, *, cwd, env, capture_output, text, timeout):
+    def fake_run(command, *, cwd, env, capture_output, text, timeout, **_kwargs):
         captured.append(command)
         return subprocess.CompletedProcess(command, 0, stdout="ok", stderr="")
 
@@ -583,7 +583,7 @@ def test_hermes_oneshot_usage_cost_absent_is_zero(tmp_path, monkeypatch):
         isolation_group="executive",
     )
 
-    def fake_run(command, *, cwd, env, capture_output, text, timeout):
+    def fake_run(command, *, cwd, env, capture_output, text, timeout, **_kwargs):
         return subprocess.CompletedProcess(command, 0, stdout="ok", stderr="")
 
     monkeypatch.setattr("jarvis_foundry.roles.adapter.subprocess.run", fake_run)

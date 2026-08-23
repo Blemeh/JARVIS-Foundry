@@ -5,8 +5,10 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 CREATE_NO_WINDOW = 0x08000000
+_STILL_ACTIVE = 259
 
 
 def is_windows() -> bool:
@@ -25,6 +27,12 @@ def headless_popen_kwargs(**extra: object) -> dict[str, object]:
     if is_windows():
         flags = int(kwargs.pop("creationflags", 0))
         kwargs["creationflags"] = creationflags_no_window(extra=flags)
+        startupinfo = kwargs.get("startupinfo")
+        if startupinfo is None:
+            startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startupinfo.wShowWindow = subprocess.SW_HIDE
+        kwargs["startupinfo"] = startupinfo
     return kwargs
 
 
@@ -34,7 +42,46 @@ def headless_run_kwargs(**extra: object) -> dict[str, object]:
     if is_windows():
         flags = int(kwargs.pop("creationflags", 0))
         kwargs["creationflags"] = creationflags_no_window(extra=flags)
+        startupinfo = kwargs.get("startupinfo")
+        if startupinfo is None:
+            startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startupinfo.wShowWindow = subprocess.SW_HIDE
+        kwargs["startupinfo"] = startupinfo
     return kwargs
+
+
+def pid_alive(pid: int) -> bool:
+    """Return whether ``pid`` refers to a live process without spawning a console."""
+    if pid <= 0:
+        return False
+    if is_windows():
+        return _pid_alive_windows(pid)
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    return True
+
+
+def _pid_alive_windows(pid: int) -> bool:
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        handle = kernel32.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+        if not handle:
+            return False
+        try:
+            exit_code = wintypes.DWORD()
+            if not kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code)):
+                return False
+            return int(exit_code.value) == _STILL_ACTIVE
+        finally:
+            kernel32.CloseHandle(handle)
+    except Exception:  # noqa: BLE001 — advisory liveness probe
+        return False
 
 
 def background_python_executable(preferred: str | Path | None = None) -> str:

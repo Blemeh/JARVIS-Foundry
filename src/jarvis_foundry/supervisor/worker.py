@@ -25,10 +25,15 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from collections.abc import Mapping
 
 from ..clock import isoformat, parse, utc_now
 from ..database import FoundryDatabase
-from ..platform.windows_subprocess import headless_popen_kwargs, headless_run_kwargs
+from ..platform.windows_subprocess import (
+    headless_popen_kwargs,
+    headless_run_kwargs,
+    pid_alive as _pid_alive,
+)
 from .leases import LeaseManager, LeaseUnavailable
 
 ADAPTER_PID_TABLE_NAME = "adapter_worker_pids.json"
@@ -217,19 +222,29 @@ def list_process_tree(root_pid: int) -> list[int]:
 
 
 def pid_alive(pid: int) -> bool:
-    if pid <= 0:
+    return _pid_alive(pid)
+
+
+def _record_is_live(record: Mapping[str, Any]) -> bool:
+    """Confirm liveness using a complete creation identity.
+
+    A PID without a creation timestamp is ambiguous after a restart. It can
+    be reported for diagnostics, but it is never sufficient evidence for a
+    kill or an adoption decision.
+    """
+    pid = int(record["pid"])
+    if not pid_alive(pid):
         return False
-    if os.name == "nt":
-        result = subprocess.run(
-            ["tasklist", "/FI", f"PID eq {pid}", "/NH"],
-            capture_output=True, text=True, timeout=10, check=False,
-            **headless_run_kwargs(),
-        )
-        return str(pid) in (result.stdout or "")
-    try:
-        os.kill(pid, 0)
-    except OSError:
+    expected = record.get("creation_identity")
+    if not isinstance(expected, Mapping) or expected.get("create_time") is None:
         return False
+    observed = process_creation_identity(pid)
+    if observed.get("create_time") != expected.get("create_time"):
+        return False
+    expected_exe = expected.get("exe")
+    observed_exe = observed.get("exe")
+    if expected_exe and observed_exe:
+        return str(expected_exe).casefold() == str(observed_exe).casefold()
     return True
 
 
@@ -418,11 +433,23 @@ class WorkerController:
             raise
         self._processes[run_id] = process
         self._leased.add(run_id)
-        register_adapter_pid(
-            self.pid_table_path(), run_id, process.pid,
-            mission_id=mission_id, step_id=step_id, worker_type=worker_type,
-            working_directory=cwd, stop_path=stop_path,
-        )
+        try:
+            register_adapter_pid(
+                self.pid_table_path(), run_id, process.pid,
+                mission_id=mission_id, step_id=step_id, worker_type=worker_type,
+                working_directory=cwd, stop_path=stop_path,
+            )
+        except BaseException:
+            # The process has started, but durable PID registration failed.
+            # Do not leak a worker that a restarted controller cannot safely
+            # identify. The exact process object is still available here.
+            self._processes.pop(run_id, None)
+            self._leased.discard(run_id)
+            try:
+                terminate_owned_tree(process.pid, process=process)
+            finally:
+                self.leases.release(key, key)
+            raise
         return self.status(run_id)
 
     def attach(
@@ -462,8 +489,10 @@ class WorkerController:
         row = self.database.row("leases", "lease_key", worker_lease_key(run_id))
         process = self._processes.get(run_id)
         alive = process is not None and process.poll() is None
+        record = load_adapter_pids(self.pid_table_path()).get(run_id)
         if not alive:
-            record = load_adapter_pids(self.pid_table_path()).get(run_id)
+            if record is not None and not _record_is_live(record):
+                record = None
             if record is not None:
                 alive = pid_alive(int(record["pid"]))
         expired = row is not None and parse(row["expires_at"]) <= utc_now()
@@ -493,6 +522,11 @@ class WorkerController:
             pid = process.pid
         elif record is not None:
             pid = int(record["pid"])
+        if process is None and record is not None and not _record_is_live(record):
+            unregister_adapter_pid(self.pid_table_path(), run_id)
+            self.leases.release(worker_lease_key(run_id), worker_lease_key(run_id))
+            self._leased.discard(run_id)
+            return True
         if pid is not None:
             update_adapter_pid(self.pid_table_path(), run_id, termination_state="graceful")
             owned = terminate_owned_tree(pid, process=process)
@@ -536,7 +570,23 @@ class WorkerController:
         terminated = [run_id for run_id in known if self.terminate(run_id)]
         leftover = load_adapter_pids(self.pid_table_path())
         for run_id, record in leftover.items():
-            kill_pid(int(record["pid"]))
+            if _record_is_live(record):
+                terminate_owned_tree(int(record["pid"]))
+            else:
+                # A stale or incomplete identity is not a kill authority.
+                # Remove only the ledger row and release its matching lease.
+                unregister_adapter_pid(self.pid_table_path(), run_id)
+                owner = worker_lease_key(run_id)
+                connection = self.database.connect(readonly=True)
+                try:
+                    row = connection.execute(
+                        "SELECT owner_id FROM leases WHERE lease_key = ?",
+                        (owner,),
+                    ).fetchone()
+                finally:
+                    connection.close()
+                if row is not None:
+                    self.leases.release(owner, str(row["owner_id"]))
             terminated.append(run_id)
         table = self.pid_table_path()
         if table.is_file():

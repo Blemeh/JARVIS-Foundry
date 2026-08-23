@@ -23,12 +23,13 @@ def test_doc_staleness_check_passes_on_current_tree():
 
 def test_current_state_names_real_head_and_schema():
     import subprocess as sp
+
+    staleness = _load_staleness_module()
     head = sp.run(["git", "-C", str(REPO), "rev-parse", "HEAD"],
                   capture_output=True, text=True, check=True).stdout.strip()
     text = (REPO / "docs" / "CURRENT_STATE.md").read_text(encoding="utf-8")
     found = head[:7] in text or head in text
     if not found:
-        # ancestor-within-horizon rule: the pin may name any of the last 20 commits
         for i in range(1, 21):
             sha = sp.run(["git", "-C", str(REPO), "rev-parse", f"HEAD~{i}"],
                          capture_output=True, text=True).stdout.strip()
@@ -40,7 +41,54 @@ def test_current_state_names_real_head_and_schema():
     assert found
     sys.path.insert(0, str(REPO / "src"))
     from jarvis_foundry.migrations import SCHEMA_VERSION
-    assert f"v{SCHEMA_VERSION}" in text or str(SCHEMA_VERSION) in text
+    assert staleness.validate_schema_documentation(text, SCHEMA_VERSION) == []
+
+
+def _load_staleness_module():
+    import importlib.util
+
+    path = REPO / "scripts" / "doc_staleness_check.py"
+    spec = importlib.util.spec_from_file_location("doc_staleness_check", path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_schema_check_rejects_incidental_36_without_semantic_marker():
+    staleness = _load_staleness_module()
+    text = """
+    CURRENT SCHEMA: v34 live deployed database baseline (production unchanged)
+    V2 KNOWLEDGE SCHEMA: v35 (24h-integration knowledge brain)
+    V3 DISCOVERY/BUILDING SCHEMA: v36 (integrated on main)
+    | Workflow Discovery Phase 3 | PASS — 36/36 focused |
+    """
+    failures = staleness.validate_schema_documentation(text, 36)
+    assert any("CURRENT/CANDIDATE SCHEMA" in failure for failure in failures)
+
+
+def test_schema_check_accepts_correct_v36_documentation():
+    staleness = _load_staleness_module()
+    text = """
+    CURRENT SCHEMA: v34 live deployed database baseline (production unchanged)
+    V2 KNOWLEDGE SCHEMA: v35 (24h-integration knowledge brain)
+    V3 DISCOVERY/BUILDING SCHEMA: v36 (integrated on main)
+    CURRENT/CANDIDATE SCHEMA: v36 (migrations.SCHEMA_VERSION)
+    | Workflow Discovery Phase 3 | PASS — 36/36 focused |
+    """
+    assert staleness.validate_schema_documentation(text, 36) == []
+
+
+def test_schema_check_rejects_contradictory_current_v35_claim():
+    staleness = _load_staleness_module()
+    text = """
+    CURRENT SCHEMA: v34 live deployed database baseline (production unchanged)
+    V2 KNOWLEDGE SCHEMA: v35 (24h-integration knowledge brain)
+    V3 DISCOVERY/BUILDING SCHEMA: v36 (integrated on main)
+    CURRENT/CANDIDATE SCHEMA: v35 (wrong)
+    """
+    failures = staleness.validate_schema_documentation(text, 36)
+    assert any("CURRENT/CANDIDATE SCHEMA is v35" in failure for failure in failures)
 
 
 def test_forbidden_stale_phrases_absent_from_current_surfaces():

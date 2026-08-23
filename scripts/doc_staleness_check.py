@@ -2,7 +2,7 @@
 
 Verifies the current-truth surfaces against the repository:
 1. docs/CURRENT_STATE.md HEAD claim == `git rev-parse HEAD`
-2. schema claim == jarvis_foundry.migrations.SCHEMA_VERSION
+2. schema claim == jarvis_foundry.migrations.SCHEMA_VERSION (semantic markers)
 3. no forbidden stale phrases in current-status surfaces
 4. referenced evidence paths exist
 
@@ -32,6 +32,54 @@ CURRENT_SURFACES = (
     "docs/architecture/05_POST_V1_ROADMAP.md",
 )
 
+CURRENT_CANDIDATE_SCHEMA_RE = re.compile(
+    r"CURRENT/CANDIDATE SCHEMA:\s*v(\d+)",
+    re.IGNORECASE,
+)
+V34_BASELINE_RE = re.compile(
+    r"v34\b.*\bbaseline\b|\bbaseline\b.*\bv34\b",
+    re.IGNORECASE,
+)
+V2_SCHEMA_RE = re.compile(
+    r"V2 KNOWLEDGE SCHEMA:\s*v35\b",
+    re.IGNORECASE,
+)
+V3_SCHEMA_RE = re.compile(
+    r"V3 DISCOVERY/BUILDING SCHEMA:\s*v36\b",
+    re.IGNORECASE,
+)
+CONTRADICTORY_CURRENT_V35_RE = re.compile(
+    r"(?:current|candidate)\s*/?\s*candidate\s+schema\s*(?:is|=)\s*v35\b|"
+    r"advances\s+SCHEMA_VERSION\s+to\s+v35\b|"
+    r"CURRENT/CANDIDATE SCHEMA:\s*v35\b|"
+    r"current\s+candidate\s+schema\s+is\s+v35\b",
+    re.IGNORECASE,
+)
+
+
+def validate_schema_documentation(text: str, schema_version: int) -> list[str]:
+    """Return schema documentation failures for CURRENT_STATE body text."""
+    failures: list[str] = []
+    match = CURRENT_CANDIDATE_SCHEMA_RE.search(text)
+    if match is None:
+        failures.append(
+            "CURRENT_STATE.md missing explicit CURRENT/CANDIDATE SCHEMA marker")
+    elif int(match.group(1)) != schema_version:
+        failures.append(
+            f"CURRENT_STATE.md CURRENT/CANDIDATE SCHEMA is v{match.group(1)}, "
+            f"expected v{schema_version}")
+    if not V34_BASELINE_RE.search(text):
+        failures.append("CURRENT_STATE.md does not document v34 live baseline")
+    if not V2_SCHEMA_RE.search(text):
+        failures.append("CURRENT_STATE.md does not document V2 knowledge schema v35")
+    if not V3_SCHEMA_RE.search(text):
+        failures.append(
+            "CURRENT_STATE.md does not document V3 discovery/building schema v36")
+    if CONTRADICTORY_CURRENT_V35_RE.search(text):
+        failures.append(
+            "CURRENT_STATE.md contains contradictory current/candidate schema v35 claim")
+    return failures
+
 
 def _git_head() -> str:
     out = subprocess.run(
@@ -52,11 +100,6 @@ def main() -> int:
     schema = _schema_version()
     text = CURRENT_STATE.read_text(encoding="utf-8")
 
-    # The doc pin must be an ancestor of HEAD within the last 20 commits.
-    # (A pin written in a commit can never name that same commit, so exact
-    # equality is impossible; ancestry within a bounded horizon catches real
-    # drift — missions that stop updating CURRENT_STATE — without racing the
-    # commit cycle.)
     depth = subprocess.run(
         ["git", "-C", str(REPO), "rev-list", "--count", f"{head}~20..{head}"],
         capture_output=True, text=True).stdout.strip()
@@ -74,8 +117,7 @@ def main() -> int:
             break
     if not pin_ok:
         failures.append(f"CURRENT_STATE.md pin is stale: no HEAD..HEAD~{horizon} sha named")
-    if f"v{schema}" not in text and str(schema) not in text:
-        failures.append(f"CURRENT_STATE.md does not name current schema v{schema}")
+    failures.extend(validate_schema_documentation(text, schema))
 
     for surface in CURRENT_SURFACES:
         path = REPO / surface

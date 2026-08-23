@@ -190,9 +190,13 @@ def run_evaluation(
     for rel in sorted(workload["input_hashes"]):
         case_path = run_dir / rel
         try:
+            from ..platform.windows_subprocess import headless_run_kwargs
+
             completed = subprocess.run(
                 [*command, str(case_path)], cwd=str(run_dir), env=env,
-                capture_output=True, timeout=timeout_s, shell=False)
+                capture_output=True, timeout=timeout_s, shell=False,
+                **headless_run_kwargs(),
+            )
             exit_code = completed.returncode
             output_hashes[rel] = hashlib.sha256(
                 completed.stdout).hexdigest()

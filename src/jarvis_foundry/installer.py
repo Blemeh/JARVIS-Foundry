@@ -23,6 +23,7 @@ from xml.sax.saxutils import escape as xml_escape
 
 from .database import FoundryDatabase
 from .events import Event
+from .platform.windows_subprocess import background_python_executable
 from .runtime.config import WorkerRuntimeConfig
 
 V1_TASK_NAME = "JARVIS-Foundry-Supervisor"
@@ -31,6 +32,7 @@ PROFILE_FILE = "foundry-profile.yaml"
 WORKER_PROFILE_FILE = "worker-loop-profile.yaml"
 WORKER_CONFIG_FILE = "worker-routing.yaml"
 GATE_VERDICT_RELATIVE = Path("var/evidence/wp7-gate/GATE_VERDICT.json")
+OWNED_TASK_PREFIXES = ("JARVIS-", "JF-")
 
 TASK_XML_TEMPLATE = """<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
@@ -153,10 +155,13 @@ class InstallerError(RuntimeError):
 
 
 def _run_schtasks(*args: str) -> subprocess.CompletedProcess[str]:
+    from .platform.windows_subprocess import headless_run_kwargs
+
     return subprocess.run(
         ["schtasks"] + list(args),
         capture_output=True, text=True, encoding="utf-8", errors="replace",
         timeout=60,
+        **headless_run_kwargs(),
     )
 
 
@@ -176,6 +181,10 @@ class Installer:
     ) -> None:
         self.database = database
         self.task_name = task_name
+        if not isinstance(task_name, str) or not any(
+                task_name.startswith(prefix) for prefix in OWNED_TASK_PREFIXES):
+            raise InstallerError(
+                "refusing an unowned scheduled task name; expected a JARVIS-/JF- prefix")
         self.foundry_home = Path(foundry_home).resolve()
         self.hermes_home = Path(hermes_home).resolve()
         self.python_exe = Path(python_exe or sys.executable).resolve()
@@ -247,8 +256,8 @@ class Installer:
         """
         now = datetime.now()
         start_boundary = (now - timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%S")
-        identity = self.source_identity()
-        command = self.exec_command or self.python_exe
+        command = self.exec_command or Path(
+            background_python_executable(self.python_exe))
         arguments = self.exec_arguments or (
             f'-m jarvis_foundry.supervisor.run --home "{self.foundry_home}"'
         )
@@ -273,9 +282,13 @@ class Installer:
             raise InstallerError(
                 "refusing to install the real V1 task: the WP7 gate verdict "
                 "is not recorded (PASS required)")
-        if self.task_exists() and not force:
+        existing = self.task_exists()
+        if existing and not force:
             raise InstallerError(
                 f"task {self.task_name} already exists (use force=True to replace)")
+        if existing and force and not self.profile_path.is_file():
+            raise InstallerError(
+                "refusing to replace an existing task without the JARVIS ownership profile")
 
         xml = self._task_xml()
         xml_path = self.foundry_home / f".task-{uuid.uuid4().hex[:8]}.xml"
@@ -461,7 +474,7 @@ class WorkerLoopInstaller(Installer):
             "%Y-%m-%dT%H:%M:%S")
         identity = self.source_identity()
         return WORKER_LOOP_TASK_XML_TEMPLATE.format(
-            python_exe=xml_escape(str(self.python_exe)),
+            python_exe=xml_escape(background_python_executable(self.python_exe)),
             foundry_home=xml_escape(str(self.foundry_home)),
             worker_config=xml_escape(str(self.worker_config_path)),
             working_directory=xml_escape(str(identity["working_directory"])),
