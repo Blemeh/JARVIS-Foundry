@@ -5,6 +5,38 @@ import { Discovery } from "../Discovery";
 import { CommandCenterProvider } from "../../context/CommandCenterContext";
 import { MockJarvisClient } from "../../lib/mockClient";
 import { RealJarvisRuntimeAdapter } from "../../lib/realClient";
+import type { FoundrySnapshot } from "../../lib/snapshotTypes";
+
+/** Minimal legacy snapshot with NO discovery section (pre-projection backend). */
+function legacySnapshot(): FoundrySnapshot {
+  return {
+    generated_at: "2026-08-20T12:00:00Z",
+    source_of_truth: { kind: "append_only_event_ledger", ledger_head_sequence: 1, event_count: 1 },
+    supervisor: {},
+    system_state: {},
+    stop: { active: false, record: null, source: "sentinel_or_durable_control" },
+    controls: { goals: [], constraints: [], vetoes: [], reprioritizations: [], redirects: [], paused: false, resume_available: false },
+    missions: [],
+    workers: [],
+    evidence: [],
+    verification: [],
+    health: { supervisor_status: "RUNNING", trust_state: "LAB", degraded: false },
+    systems: [],
+    memory: [],
+    procedures: [],
+    mission_steps: [],
+    timeline: [],
+    release_identity: {},
+    costs: {},
+    executive: {
+      activation_epoch: null,
+      admission_authority: "UNKNOWN",
+      latest_decision: null,
+      recent_decisions: [],
+      calibrations: [],
+    },
+  };
+}
 
 function renderDiscovery() {
   return render(
@@ -89,8 +121,12 @@ describe("V3 discovery adapter boundary", () => {
     }
   });
 
-  it("live adapter reports projection unavailable instead of fixtures", async () => {
-    const client = new RealJarvisRuntimeAdapter({ apiBase: "http://localhost:1" });
+  it("live adapter reports projection unavailable on a legacy snapshot without fixtures", async () => {
+    // Legacy backend: fetch succeeds but ships NO discovery section.
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response(JSON.stringify(legacySnapshot()), { status: 200, headers: { "Content-Type": "application/json" } }),
+    ));
+    const client = new RealJarvisRuntimeAdapter({ apiBase: "/api", pollMs: 60000 });
     const view = await client.getDiscovery();
     expect(view).toEqual({ available: false, reason: "PROJECTION_NOT_AVAILABLE" });
   });

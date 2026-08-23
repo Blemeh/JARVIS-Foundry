@@ -20,6 +20,7 @@ import type {
   V3Candidate,
   V3CandidateStatus,
   V3CycleOutcome,
+  V3CycleOutcomeOrUnknown,
   V3DiscoveryView,
 } from "../lib/v3Models";
 import { V3_DIMENSION_LABELS, V3_NEGATIVE_DIMENSIONS } from "../lib/v3Models";
@@ -49,6 +50,11 @@ const CYCLE_BADGE: Record<V3CycleOutcome, Parameters<typeof StatusBadge>[0]["sta
   STOPPED: "HALTED",
   BLOCKED: "BLOCKED",
 };
+
+function cycleBadge(outcome: V3CycleOutcomeOrUnknown | null): Parameters<typeof StatusBadge>[0]["status"] | null {
+  if (outcome === null) return null;
+  return (CYCLE_BADGE as Record<string, Parameters<typeof StatusBadge>[0]["status"]>)[outcome] ?? "PENDING";
+}
 
 /** Lifecycle order for the inline stage tracker on each candidate card. */
 const LIFECYCLE: V3CandidateStatus[] = [
@@ -213,7 +219,7 @@ function CycleCard({ view }: { view: Extract<V3DiscoveryView, { available: true 
     <article className="panel panel-corner">
       <div className="v3-row-between">
         <h3 className="t-label v3-icon-label"><Radar size={14} aria-hidden /> Current cycle</h3>
-        {current.outcome ? <StatusBadge status={CYCLE_BADGE[current.outcome]} /> : <StatusBadge status="EVALUATING" />}
+        {current.outcome ? <StatusBadge status={cycleBadge(current.outcome) ?? "EVALUATING"} /> : <StatusBadge status="EVALUATING" />}
       </div>
       <p className="t-mono v3-sub v3-faint v3-mt-1">{current.loopId}</p>
       <dl className="detail-stats-grid v3-mt-2">
@@ -240,7 +246,7 @@ function CycleCard({ view }: { view: Extract<V3DiscoveryView, { available: true 
             {view.cycles.slice(1).map((cycle) => (
               <li key={cycle.loopId} className="v3-row">
                 <span className="t-mono v3-faint">{cycle.loopId}</span>
-                <StatusBadge status={cycle.outcome ? CYCLE_BADGE[cycle.outcome] : "PENDING"} />
+                <StatusBadge status={cycleBadge(cycle.outcome) ?? "PENDING"} />
                 {cycle.reason ? <span className="v3-faint v3-ellipsis">{cycle.reason}</span> : null}
               </li>
             ))}

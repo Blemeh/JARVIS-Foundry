@@ -35,6 +35,8 @@ export interface FoundrySnapshot {
   release_identity: Record<string, unknown>;
   costs: Record<string, unknown>;
   executive: FoundryExecutive;
+  /** Additive §3.13 projection; absent on backends older than its landing. */
+  discovery?: unknown;
 }
 
 export interface FoundryExecutiveDecision {

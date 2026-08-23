@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import secrets
+import sqlite3
 import threading
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -26,6 +27,7 @@ from .owner_controls import (
     sign_command,
 )
 from .supervisor.estop import EmergencyStop
+from .v3_teams import DEFAULT_REPAIR_BUDGET
 
 
 def _now_iso() -> str:
@@ -268,14 +270,515 @@ def _executive_projection(database: FoundryDatabase, *, limit: int = 25) -> dict
     }
 
 
+def _load_json_object(raw: Any) -> tuple[dict[str, Any], bool]:
+    """Parse a JSON object column; malformed input degrades honestly."""
+    if raw is None or raw == "":
+        return {}, False
+    try:
+        parsed = json.loads(raw) if isinstance(raw, str) else raw
+    except (TypeError, ValueError):
+        return {}, True
+    if isinstance(parsed, dict):
+        return parsed, False
+    if isinstance(parsed, list):
+        return {"__items__": parsed}, False
+    return {}, True
+
+
+def _load_json_list(raw: Any) -> tuple[list[Any], bool]:
+    """Parse a JSON array column; malformed input degrades honestly."""
+    if raw is None or raw == "":
+        return [], False
+    try:
+        parsed = json.loads(raw) if isinstance(raw, str) else raw
+    except (TypeError, ValueError):
+        return [], True
+    if isinstance(parsed, list):
+        return parsed, False
+    return [], True
+
+
+# Event types the discovery projection reads. Bounded per-type scans use the
+# events_type_sequence index; the full ledger is never iterated.
+_DISCOVERY_EVENT_TYPES = (
+    "worker_loop.cycle_started",
+    "portfolio.evaluated",
+    "executive.decision_recorded",
+    "executive.decision_materialized",
+    "executive.materialization_blocked",
+    "executive.calibration_recorded",
+    "mission.completed",
+    "discovery.cycle_completed",
+    "discovery.candidate_scored",
+    "discovery.candidate_rejected",
+    "discovery.candidate_outcome_recorded",
+)
+_DISCOVERY_SCAN_WINDOW = 400
+DISCOVERY_PROJECTION_SCHEMA = 1
+DISCOVERY_MAX_CYCLES = 10
+DISCOVERY_MAX_CANDIDATES = 25
+DISCOVERY_MAX_OUTCOMES = 50
+
+
+def _recent_events(
+    connection: sqlite3.Connection, event_types: tuple[str, ...],
+    *, limit: int = _DISCOVERY_SCAN_WINDOW,
+) -> list[dict[str, Any]]:
+    """Newest-first bounded read of specific event types (parameterized)."""
+    placeholders = ",".join("?" for _ in event_types)
+    return [
+        {
+            "sequence": row[0], "event_type": row[1],
+            "occurred_at": row[2], "payload": row[3],
+        }
+        for row in connection.execute(
+            "SELECT sequence, event_type, occurred_at, payload_json "
+            f"FROM events WHERE event_type IN ({placeholders}) "
+            "ORDER BY sequence DESC LIMIT ?",
+            (*event_types, int(limit)),
+        ).fetchall()
+    ]
+
+
+def _empty_discovery(state: str, *, cycle_enabled: str = "UNREGISTERED") -> dict[str, Any]:
+    return {
+        "schema": DISCOVERY_PROJECTION_SCHEMA,
+        "state": state,
+        "flag_state": cycle_enabled,
+        "policy_version": None,
+        "latest_cycle": None,
+        "cycles": [],
+        "candidates_recent": [],
+        "selected": None,
+        "portfolio_summary": {"eligible": None, "deferred": None, "rejected": None},
+        "active_team": [],
+        "verifier": None,
+        "outcomes": [],
+        "maintenance_due": None,
+        "next_action": None,
+    }
+
+
+def _discovery_projection(
+    connection: sqlite3.Connection, *,
+    cycle_enabled: bool | None = None,
+    hold_active: bool = False,
+    limit_cycles: int = DISCOVERY_MAX_CYCLES,
+    limit_candidates: int = DISCOVERY_MAX_CANDIDATES,
+    limit_outcomes: int = DISCOVERY_MAX_OUTCOMES,
+) -> dict[str, Any]:
+    """Additive ledger-backed ``snapshot.discovery`` section (spec §3.13).
+
+    Read-only over canonical V3 rows/events; deterministic newest-first
+    ordering; malformed/legacy data degrades to explicit partial/unavailable
+    fields instead of manufacturing success. ``cost_window`` is deliberately
+    absent: no canonical shape for it exists at this schema.
+    """
+    flag_state = "UNREGISTERED" if cycle_enabled is None else ("ON" if cycle_enabled else "OFF")
+    tables = {
+        row[0] for row in connection.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table'")
+    }
+    if not {"candidates", "candidate_outcomes", "scoring_policy_registry"}.issubset(tables):
+        # Legacy schema without the additive V3 projections stays honest.
+        return _empty_discovery("UNSUPPORTED_SCHEMA", cycle_enabled=flag_state)
+
+    candidate_total = int(connection.execute(
+        "SELECT COUNT(*) FROM candidates").fetchone()[0])
+    relevant_events = _recent_events(connection, _DISCOVERY_EVENT_TYPES)
+    if candidate_total == 0 and not relevant_events:
+        return _empty_discovery("EMPTY_LEDGER", cycle_enabled=flag_state)
+
+    partial = False
+    policy_version = None
+    policy_row = connection.execute(
+        "SELECT policy_version FROM scoring_policy_registry "
+        "WHERE active = 1 ORDER BY updated_at DESC LIMIT 1").fetchone()
+    if policy_row is None:
+        policy_row = connection.execute(
+            "SELECT policy_version FROM scoring_policy_registry "
+            "ORDER BY updated_at DESC LIMIT 1").fetchone()
+    if policy_row is not None:
+        policy_version = str(policy_row[0])
+
+    # ---- bounded newest-first event joins ---------------------------------
+    started_by_loop: dict[str, str] = {}
+    portfolio_by_loop: dict[str, dict[str, Any]] = {}
+    decision_by_id: dict[str, dict[str, Any]] = {}
+    materialized_by_decision: dict[str, str] = {}
+    blocked_by_decision: dict[str, str] = {}
+    calibration_by_candidate: dict[tuple[str, str], float] = {}
+    completed_by_mission: dict[str, str] = {}
+    score_event_by_candidate: dict[str, dict[str, Any]] = {}
+    rejection_by_candidate: dict[str, dict[str, str]] = {}
+    for item in relevant_events:
+        payload, bad = _load_json_object(item["payload"])
+        partial = partial or bad
+        etype = item["event_type"]
+        if etype == "worker_loop.cycle_started":
+            loop_id = str(payload.get("loop_id") or "")
+            if loop_id and loop_id not in started_by_loop:
+                started_by_loop[loop_id] = str(item["occurred_at"])
+        elif etype == "portfolio.evaluated":
+            loop_id = str(payload.get("loop_id") or "")
+            portfolio_by_loop.setdefault(loop_id, payload)
+        elif etype == "executive.decision_recorded":
+            decision_id = str(payload.get("decision_id") or "")
+            decision_by_id.setdefault(decision_id, payload)
+        elif etype == "executive.decision_materialized":
+            decision_id = str(payload.get("decision_id") or "")
+            mission_id = payload.get("mission_id")
+            if decision_id and mission_id:
+                materialized_by_decision.setdefault(decision_id, str(mission_id))
+        elif etype == "executive.materialization_blocked":
+            decision_id = str(payload.get("decision_id") or "")
+            if decision_id:
+                blocked_by_decision.setdefault(
+                    decision_id, str(payload.get("block_reason") or ""))
+        elif etype == "executive.calibration_recorded":
+            key = (str(payload.get("candidate_id") or ""),
+                   str(payload.get("mission_id") or ""))
+            delta = payload.get("delta")
+            if all(key) and isinstance(delta, (int, float)):
+                calibration_by_candidate.setdefault(key, float(delta))
+        elif etype == "mission.completed":
+            mission_id = str(payload.get("mission_id") or "")
+            outcome = payload.get("outcome")
+            if mission_id and outcome:
+                completed_by_mission.setdefault(mission_id, str(outcome))
+        elif etype == "discovery.candidate_scored":
+            candidate_id = str(payload.get("candidate_id") or "")
+            if candidate_id:
+                score_event_by_candidate.setdefault(candidate_id, payload)
+        elif etype == "discovery.candidate_rejected":
+            candidate_id = str(payload.get("candidate_id") or "")
+            if candidate_id:
+                rejection_by_candidate.setdefault(candidate_id, {
+                    "code": str(payload.get("reason_code")
+                                or payload.get("filter_or_score") or ""),
+                    "detail": str(payload.get("reason") or ""),
+                })
+
+    # ---- cycles ------------------------------------------------------------
+    cycle_rows = connection.execute(
+        "SELECT payload_json, recorded_at FROM events "
+        "WHERE event_type = 'discovery.cycle_completed' "
+        "ORDER BY sequence DESC LIMIT ?",
+        (int(limit_cycles),),
+    ).fetchall()
+    cycles: list[dict[str, Any]] = []
+    for row in cycle_rows:
+        payload, bad = _load_json_object(row[0])
+        partial = partial or bad
+        loop_id = str(payload.get("loop_id") or "")
+        portfolio = portfolio_by_loop.get(loop_id)
+        decision_payload = decision_by_id.get(str(payload.get("decision_id") or ""))
+        wait_payload, _wait_bad = _load_json_object(
+            (decision_payload or {}).get("wait"))
+        eligible = rejected = scored = deferred_count = None
+        if portfolio is not None:
+            eligible = int(portfolio.get("eligible_count", 0) or 0)
+            rejected = int(portfolio.get("rejected_count", 0) or 0)
+            deferred_count = int(portfolio.get("deferred_count", 0) or 0)
+            scored = eligible + rejected + deferred_count
+        wait_kind = None
+        if decision_payload is not None and decision_payload.get("decision") == "WAIT":
+            wait_kind = wait_payload.get("wait_kind") or None
+        cycles.append({
+            "loop_id": loop_id,
+            "started_at": started_by_loop.get(loop_id),
+            "completed_at": str(row[1]),
+            "outcome": payload.get("outcome"),
+            "decision_id": payload.get("decision_id"),
+            "mission_id": payload.get("mission_id"),
+            "candidate_id": payload.get("candidate_id"),
+            "observed": int(payload.get("observed", 0) or 0),
+            "candidates_created": int(payload.get("candidates_created", 0) or 0),
+            "scored": scored,
+            "eligible": eligible,
+            "rejected": rejected,
+            "degraded_sources": list(payload.get("degraded_sources") or []),
+            "reason": payload.get("reason"),
+            "wait_kind": wait_kind,
+        })
+
+    # ---- candidates --------------------------------------------------------
+    candidate_rows = connection.execute(
+        "SELECT candidate_id, fingerprint, candidate_type, objective,"
+        " expected_outcome, status, created_from, superseded_by, expires_at,"
+        " evidence_json, scoring_policy_version, updated_at"
+        " FROM candidates ORDER BY updated_at DESC, candidate_id DESC LIMIT ?",
+        (int(limit_candidates),),
+    ).fetchall()
+    ids = [str(row[0]) for row in candidate_rows]
+    score_rows: dict[str, tuple[float, str | None]] = {}
+    if ids:
+        placeholders = ",".join("?" for _ in ids)
+        score_rows = {
+            str(r[0]): (float(r[1]), r[2])
+            for r in connection.execute(
+                "SELECT candidate_id, score, scoring_policy_version FROM"
+                " candidate_scores WHERE candidate_id IN"
+                f" ({placeholders})",
+                ids,
+            )
+        } if "scoring_policy_version" in {
+            c[1] for c in connection.execute("PRAGMA table_info(candidate_scores)")
+        } else {
+            str(r[0]): (float(r[1]), None)
+            for r in connection.execute(
+                "SELECT candidate_id, score FROM candidate_scores"
+                f" WHERE candidate_id IN ({placeholders})",
+                ids,
+            )
+        }
+    lineage_by_candidate: dict[str, str] = {}
+    mission_states: dict[str, str] = {}
+    for m_row in connection.execute(
+            "SELECT mission_id, created_from, state FROM missions").fetchall():
+        mission_states[str(m_row[0])] = str(m_row[2])
+        created_from = str(m_row[1] or "")
+        if created_from.startswith("candidate:"):
+            lineage_by_candidate[created_from.split(":", 1)[1]] = str(m_row[0])
+
+    candidates_recent: list[dict[str, Any]] = []
+    for row in candidate_rows:
+        (candidate_id, fingerprint, candidate_type, objective, expected_outcome,
+         status, created_from, superseded_by, expires_at, evidence_raw,
+         row_policy, updated_at) = row
+        evidence_items, bad = _load_json_list(evidence_raw)
+        partial = partial or bad
+        cooldown_until = None
+        for entry in evidence_items:
+            if isinstance(entry, dict) and entry.get("cooldown_until"):
+                cooldown_until = str(entry["cooldown_until"])
+                break
+        score_entry: dict[str, Any] | None = None
+        total = score_rows.get(str(candidate_id))
+        scored_event = score_event_by_candidate.get(str(candidate_id))
+        trace, trace_bad = _load_json_object((scored_event or {}).get("trace"))
+        dimensions = trace.get("dimensions")
+        if dimensions is None and scored_event is not None:
+            dimensions = scored_event.get("dimensions")
+        if total is not None or scored_event is not None:
+            total_value: float | None = None
+            if total is not None:
+                total_value = float(total[0])
+            elif isinstance((scored_event or {}).get("score"), (int, float)):
+                total_value = float(scored_event["score"])  # type: ignore[index]
+            score_entry = {
+                "total": total_value,
+                "policy_version": (total[1] if total else None)
+                or (scored_event or {}).get("policy_version")
+                or row_policy,
+                "dimensions": dimensions,
+                "calibration_adjust": float(trace.get("calibration_adjust", 0.0) or 0.0),
+                "thresholds": trace.get("thresholds"),
+            }
+            partial = partial or trace_bad
+        rejection = rejection_by_candidate.get(str(candidate_id))
+        if rejection is None and status == "REJECTED":
+            for entry in evidence_items:
+                if isinstance(entry, dict) and entry.get("rejection_reason"):
+                    rejection = {"code": "", "detail": str(entry["rejection_reason"])}
+                    break
+        if status == "REJECTED" and rejection is None:
+            rejection = {"code": "", "detail": ""}
+        candidates_recent.append({
+            "candidate_id": str(candidate_id),
+            "fingerprint": fingerprint,
+            "type": candidate_type,
+            "objective": objective,
+            "expected_outcome": expected_outcome,
+            "status": status,
+            "created_from": created_from,
+            "updated_at": str(updated_at),
+            "expires_at": expires_at,
+            "evidence_ref_count": sum(1 for e in evidence_items if isinstance(e, dict)),
+            "score": score_entry,
+            "rejection": rejection,
+            "superseded_by": superseded_by,
+            "deferred_until": cooldown_until,
+            "mission_id": lineage_by_candidate.get(str(candidate_id)),
+            "partial": bad or trace_bad,
+        })
+
+    # ---- selected decision --------------------------------------------------
+    selected: dict[str, Any] | None = None
+    for decision_id, payload in decision_by_id.items():
+        if payload.get("decision") != "SELECT":
+            continue
+        selected_score, ss_bad = _load_json_object(payload.get("selected_score"))
+        rejected_alt = [
+            {
+                "candidate_id": str(item.get("candidate_id") or ""),
+                "total_score": (
+                    float(item["composite"])
+                    if isinstance(item.get("composite"), (int, float)) else None),
+                "reason": str(item.get("reason") or ""),
+            }
+            for item in (payload.get("rejected") or [])
+            if isinstance(item, dict)
+        ]
+        deferred_alt = [
+            {"candidate_id": str(item.get("candidate_id") or ""),
+             "reason": str(item.get("reason") or "")}
+            for item in (payload.get("deferred") or [])
+            if isinstance(item, dict)
+        ]
+        selected = {
+            "decision_id": decision_id,
+            "candidate_id": payload.get("candidate_id"),
+            "total_score": selected_score.get("composite"),
+            "comparative_rationale": None,
+            "reason": str(payload.get("reason") or ""),
+            "rejected_alternatives": rejected_alt,
+            "deferred_alternatives": deferred_alt,
+            "mission_id": materialized_by_decision.get(decision_id),
+            "block_reason": blocked_by_decision.get(decision_id),
+        }
+        partial = partial or ss_bad
+        break
+
+    selected_mission = (selected or {}).get("mission_id")
+
+    # ---- team + verifier for the selected mission ---------------------------
+    active_team: list[dict[str, Any]] = []
+    verifier: dict[str, Any] | None = None
+    if selected_mission:
+        team_rows = connection.execute(
+            "SELECT run_id, role, provider, model, status, mission_id"
+            " FROM agent_runs WHERE mission_id = ?"
+            " ORDER BY started_at DESC LIMIT 20",
+            (selected_mission,),
+        ).fetchall()
+        active_team = [
+            {"run_id": str(r[0]), "role": str(r[1]), "provider": r[2],
+             "model": r[3], "status": str(r[4]), "mission_id": str(r[5])}
+            for r in team_rows
+        ]
+        verdict_rows = connection.execute(
+            "SELECT verdict, status, verifier_run_id, builder_run_id,"
+            " independence_json FROM verification_verdicts"
+            " WHERE mission_id = ? ORDER BY rowid DESC LIMIT 5",
+            (selected_mission,),
+        ).fetchall()
+        repair_rounds = int(connection.execute(
+            "SELECT COUNT(*) FROM verification_verdicts"
+            " WHERE mission_id = ? AND verdict = 'FAIL'",
+            (selected_mission,),
+        ).fetchone()[0])
+        for v_row in verdict_rows:
+            verdict = v_row[0] or (None if v_row[1] == "STARTED" else v_row[1])
+            if verdict is None:
+                continue
+            independence, ind_bad = _load_json_object(v_row[4])
+            partial = partial or ind_bad
+            verifier = {
+                "mission_id": selected_mission,
+                "verdict": str(verdict),
+                "fresh_session": independence.get("fresh_session"),
+                "independence": independence.get("independence"),
+                "provider": independence.get("provider"),
+                "builder_run_id": v_row[3],
+                "verifier_run_id": v_row[2],
+                "repair_rounds_used": repair_rounds,
+                "repair_budget": DEFAULT_REPAIR_BUDGET,
+            }
+            break
+
+    # ---- outcomes ------------------------------------------------------------
+    outcome_rows = connection.execute(
+        "SELECT candidate_id, mission_id, window_kind, predicted_value_json,"
+        " actual_value_json, status, confidence, updated_at"
+        " FROM candidate_outcomes ORDER BY updated_at DESC LIMIT ?",
+        (int(limit_outcomes),),
+    ).fetchall()
+    outcomes: list[dict[str, Any]] = []
+    for row in outcome_rows:
+        predicted, p_bad = _load_json_object(row[3])
+        actual_raw, a_bad = _load_json_object(row[4])
+        partial = partial or p_bad or a_bad
+        status = str(row[5])
+        actual: dict[str, Any] | None
+        if status == "UNKNOWN":
+            actual = None  # honest UNKNOWN, never a manufactured value
+        else:
+            actual = {k: v for k, v in actual_raw.items() if k != "__items__"} \
+                if actual_raw else {}
+        delta = calibration_by_candidate.get((str(row[0]), str(row[1])))
+        outcomes.append({
+            "candidate_id": str(row[0]),
+            "mission_id": str(row[1]),
+            "window": str(row[2]),
+            "predicted": {k: v for k, v in predicted.items() if k != "__items__"},
+            "actual": actual,
+            "status": status,
+            "confidence": float(row[6] or 0.0),
+            "delta": delta,
+        })
+
+    # ---- honest continuation / next action -----------------------------------
+    next_action = None
+    latest_cycle = cycles[0] if cycles else None
+    if hold_active:
+        next_action = "HOLD: owner veto/STOP active"
+    elif latest_cycle is not None:
+        mission_id = latest_cycle.get("mission_id")
+        if latest_cycle.get("outcome") == "COMPILED" and mission_id:
+            state = mission_states.get(str(mission_id))
+            if state in ("COMPLETE", "FAILED", "BLOCKED"):
+                if completed_by_mission.get(str(mission_id)) == "PASSED" and \
+                        any(o["mission_id"] == mission_id for o in outcomes):
+                    next_action = "RUN_NEXT_CYCLE"
+                elif completed_by_mission.get(str(mission_id)) == "PASSED":
+                    next_action = f"RECONCILE_OUTCOME:{mission_id}"
+                else:
+                    next_action = f"WAIT: mission {mission_id} terminal ({state})"
+            else:
+                next_action = f"EXECUTE_MISSION:{mission_id}"
+        else:
+            next_action = "WAIT"
+
+    return {
+        "schema": DISCOVERY_PROJECTION_SCHEMA,
+        "state": "PARTIAL" if partial else "FRESH",
+        "flag_state": flag_state,
+        "policy_version": policy_version,
+        "latest_cycle": latest_cycle,
+        "cycles": cycles,
+        "candidates_recent": candidates_recent,
+        "selected": selected,
+        "portfolio_summary": {
+            "eligible": (cycles[0]["eligible"] if cycles else None),
+            "deferred": (cycles[0]["scored"] - cycles[0]["eligible"]
+                         - cycles[0]["rejected"]
+                         if cycles and cycles[0]["scored"] is not None else None),
+            "rejected": (cycles[0]["rejected"] if cycles else None),
+        },
+        "active_team": active_team,
+        "verifier": verifier,
+        "outcomes": outcomes,
+        "maintenance_due": None,
+        "next_action": next_action,
+    }
+
+
 def build_snapshot(
     database: FoundryDatabase,
     *,
     stop_path: str | Path | None = None,
     now: str | None = None,
     timeline_limit: int = 200,
+    discovery_cycle_enabled: bool | None = None,
 ) -> dict[str, Any]:
-    """Build the complete JSON-safe Command Center projection."""
+    """Build the complete JSON-safe Command Center projection.
+
+    ``discovery_cycle_enabled`` carries the registered runtime flag
+    (``WorkerRuntimeConfig.discovery_cycle_enabled``). ``None`` (the default)
+    means no registered value was available and the projection reports the
+    honest ``UNREGISTERED`` state; callers with a live config pass its value.
+    """
     generated_at = now or _now_iso()
     with command_center_readonly_connection(database) as connection:
         head = connection.execute("SELECT COALESCE(MAX(sequence), 0) FROM events").fetchone()[0]
@@ -373,6 +876,7 @@ def build_snapshot(
             "status": "NOT_AVAILABLE", "reason": type(error).__name__,
         }
     active_vetoes = [d for d in directives if d.get("command_type") in {"VETO_ACTION", "STOP_MISSION", "STOP_EVERYTHING"}]
+    hold_active = bool(active_vetoes) or (stop is not None)
     goals = [d for d in directives if d.get("command_type") == "GOAL"]
     constraints = [d for d in directives if d.get("command_type") in {"CONSTRAINT", "ADD_CONSTRAINT"}]
     reprioritizations = [d for d in directives if d.get("command_type") == "REPRIORITIZE"]
@@ -456,6 +960,12 @@ def build_snapshot(
         "voice": [with_ref(v, "voice_interaction", "interaction_id") for v in voices],
         "timeline": decision_timeline(database, limit=timeline_limit),
         "executive": _executive_projection(database, limit=25),
+        "discovery": _discovery_projection(
+            connection,
+            cycle_enabled=None if discovery_cycle_enabled is None
+            else bool(discovery_cycle_enabled),
+            hold_active=hold_active,
+        ),
     }
 
 

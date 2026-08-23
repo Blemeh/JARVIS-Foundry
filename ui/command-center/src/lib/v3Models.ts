@@ -93,6 +93,13 @@ export interface V3Candidate {
 /** CycleReport.outcome at 701aa74: COMPILED | WAITING | STOPPED | BLOCKED. */
 export type V3CycleOutcome = "COMPILED" | "WAITING" | "STOPPED" | "BLOCKED";
 
+/**
+ * cycles[].outcome admits unknown additive backend strings at runtime so
+ * newer payloads render verbatim instead of being collapsed to null;
+ * known values stay exhaustively typed for badge mapping.
+ */
+export type V3CycleOutcomeOrUnknown = V3CycleOutcome | (string & {});
+
 /** Executive WAIT kinds (executive/eligibility.py at 701aa74). */
 export type V3WaitKind = "NO_ELIGIBLE_CANDIDATES" | "COMPARATIVE_WAIT";
 
@@ -100,15 +107,16 @@ export interface V3DiscoveryCycle {
   loopId: string;
   startedAt: string;
   completedAt: string | null;
-  outcome: V3CycleOutcome | null;
+  outcome: import("./v3Models").V3CycleOutcomeOrUnknown | null;
   decisionId: string | null;
   missionId: string | null;
   candidateId: string | null;
   observed: number;
   candidatesCreated: number;
-  scored: number;
-  eligible: number;
-  rejected: number;
+  /** Null when the cycle never reached scoring (STOPPED/BLOCKED before portfolio). */
+  scored: number | null;
+  eligible: number | null;
+  rejected: number | null;
   degradedSources: string[];
   /** Honest idle/blocked reason carried verbatim from the report. */
   reason: string | null;
