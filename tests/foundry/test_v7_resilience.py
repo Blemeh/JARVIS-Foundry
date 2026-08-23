@@ -159,6 +159,32 @@ def test_repeated_anomaly_scan_is_idempotent(tmp_path: Path) -> None:
     assert len(rebuild_incidents(db)) == 1
 
 
+def test_recovered_anomaly_recurrence_creates_new_incident(tmp_path: Path) -> None:
+    db = database(tmp_path)
+    register_resource(db)
+    coordinator = ResilienceCoordinator(
+        db,
+        repair_handlers={
+            "worker_crash_loop": lambda incident, report: RepairResult(
+                True, "worker reclaimed", {"reclaimed": True}
+            ),
+        },
+        health_probe=lambda incident, report: True,
+    )
+    metrics = {
+        "worker_failures": 3,
+        "worker_id": "worker-1",
+        "resource_id": "resource-1",
+        "capability": "safe-work",
+    }
+    first = coordinator.run_once(now="2026-08-23T10:00:00Z", metrics=metrics)
+    second = coordinator.run_once(now="2026-08-23T10:01:00Z", metrics=metrics)
+    assert first.incidents[0].status == IncidentStatus.RECOVERED.value
+    assert second.incidents[0].status == IncidentStatus.RECOVERED.value
+    assert db.event_count(event_type="incident.detected") == 2
+    assert len(rebuild_incidents(db)) == 2
+
+
 def test_invalid_transition_and_unknown_effect_fail_closed(tmp_path: Path) -> None:
     db = database(tmp_path)
     store = IncidentStore(db)
@@ -350,6 +376,11 @@ def test_failed_diagnostics_block_repair_callback(tmp_path: Path) -> None:
     )
     assert calls == []
     assert run.incidents[0].status == IncidentStatus.BLOCKED.value
+    diagnostics = next(
+        action for action in run.incidents[0].actions
+        if action.get("kind") == "diagnostics"
+    )
+    assert diagnostics["status"] == "FAIL"
 
 
 def test_configured_release_diagnostics_validate_manifest_before_repair(
@@ -583,6 +614,32 @@ def test_release_degradation_freezes_before_rollback_callback(tmp_path: Path) ->
     run = coordinator.run_once(metrics={"release_degraded": True, "release_id": "candidate-1"})
     assert run.incidents[0].status == IncidentStatus.RECOVERED.value
     assert callback_observations == [True]
+
+
+def test_release_freeze_failure_blocks_rollback_callback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    db = database(tmp_path)
+    calls: list[str] = []
+
+    def refuse_freeze(*args, **kwargs):
+        raise RuntimeError("freeze control unavailable")
+
+    monkeypatch.setattr("jarvis_foundry.evolution.promote.freeze_active", refuse_freeze)
+    coordinator = ResilienceCoordinator(
+        db,
+        repair_handlers={
+            "release_degradation": lambda incident, report: calls.append(incident.incident_id),
+        },
+    )
+    run = coordinator.run_once(metrics={"release_degraded": True, "release_id": "candidate-1"})
+    incident = run.incidents[0]
+    assert incident.status == IncidentStatus.BLOCKED.value
+    assert calls == []
+    assert any(
+        action.get("kind") == "release_freeze" and action.get("status") == "BLOCKED"
+        for action in incident.actions
+    )
 
 
 def test_release_rollback_failure_modes_fail_closed(tmp_path: Path) -> None:

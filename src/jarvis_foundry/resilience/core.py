@@ -240,7 +240,10 @@ class IncidentRecord:
 
 
 def _incident_id(signal: HealthSignal) -> str:
-    raw = f"{signal.correlation_key}|{signal.signal_id}"
+    # The observation timestamp is part of the incident identity: the same
+    # observation must replay idempotently, while a later recurrence after a
+    # recovered incident must not collide with its immutable event key.
+    raw = f"{signal.correlation_key}|{signal.signal_id}|{signal.observed_at}"
     return "inc-" + hashlib.sha256(raw.encode("utf-8")).hexdigest()[:24]
 
 
@@ -446,12 +449,20 @@ class IncidentStore:
                 (signal.signal_id,),
             ).fetchone()
             if row is not None:
-                existing_incident = str(json.loads(row[0]).get("incident_id") or "") or None
+                signal_payload = json.loads(row[0])
+                existing_incident = str(signal_payload.get("incident_id") or "") or None
         finally:
             connection.close()
         if existing_incident:
             existing = self.get(existing_incident)
-            if existing is not None:
+            same_observation = (
+                str(signal_payload.get("observed_at") or "") == signal.observed_at
+            )
+            if existing is not None and (
+                not existing.terminal
+                or existing.status != IncidentStatus.RECOVERED.value
+                or same_observation
+            ):
                 return existing
         active = next((item for item in self.list()
                        if item.correlation_key == signal.correlation_key and not item.terminal), None)
@@ -1430,6 +1441,7 @@ class ResilienceCoordinator:
     def _contain(self, incident: IncidentRecord, anomaly: Anomaly) -> IncidentRecord:
         incident = self.store.transition(incident.incident_id, IncidentStatus.CONTAINING,
                                          reason="freeze affected capability before diagnosis")
+        containment_failures: list[str] = []
         if self._stop_active():
             self.store.record_action(incident.incident_id, {
                 "kind": "stop_observed", "status": "PASS",
@@ -1441,6 +1453,7 @@ class ResilienceCoordinator:
                     "kind": "release_freeze", "status": "BLOCKED",
                     "reason": "STOP is active; release control remains owner-frozen",
                 })
+                containment_failures.append("release_freeze")
             else:
                 try:
                     from ..evolution.promote import freeze_active
@@ -1459,6 +1472,7 @@ class ResilienceCoordinator:
                         "kind": "release_freeze", "status": "BLOCKED",
                         "error_class": type(error).__name__, "error": _text(error),
                     })
+                    containment_failures.append("release_freeze")
         for binding in self._scope(anomaly):
             previous = _current_capability_state(
                 self.database, binding.resource_id, binding.capability)
@@ -1468,6 +1482,7 @@ class ResilienceCoordinator:
                     "resource_id": binding.resource_id, "capability": binding.capability,
                     "reason": "resource or capability projection is unavailable",
                 })
+                containment_failures.append(f"capability:{binding.resource_id}:{binding.capability}")
                 continue
             if previous in {"VETOED", "STOPPED"}:
                 self.store.record_action(incident.incident_id, {
@@ -1494,6 +1509,7 @@ class ResilienceCoordinator:
                     "resource_id": binding.resource_id, "capability": binding.capability,
                     "error_class": type(error).__name__, "error": _text(error),
                 })
+                containment_failures.append(f"capability:{binding.resource_id}:{binding.capability}")
         if anomaly.effect_action_key:
             try:
                 from ..effects import effect_state, freeze_effect
@@ -1517,6 +1533,13 @@ class ResilienceCoordinator:
                     "action_key": anomaly.effect_action_key,
                     "error_class": type(error).__name__, "error": _text(error),
                 })
+                containment_failures.append(f"effect:{anomaly.effect_action_key}")
+        if containment_failures:
+            return self.store.transition(
+                incident.incident_id, IncidentStatus.BLOCKED,
+                reason="containment did not complete; repair is forbidden",
+                evidence={"failed_steps": containment_failures},
+            )
         return self.store.transition(
             incident.incident_id, IncidentStatus.CONTAINED,
             reason="affected capability and ambiguous effects are frozen",
@@ -1534,7 +1557,9 @@ class ResilienceCoordinator:
                               reason="read-only diagnostics completed",
                               evidence=report.to_payload())
         self.store.record_action(incident.incident_id, {
-            "kind": "diagnostics", "status": "PASS", "report": report.to_payload(),
+            "kind": "diagnostics",
+            "status": "PASS" if report.all_observed else "FAIL",
+            "report": report.to_payload(),
         })
         return report
 

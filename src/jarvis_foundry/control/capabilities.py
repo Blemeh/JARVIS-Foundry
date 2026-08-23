@@ -49,7 +49,12 @@ def set_capability_state(
         source_type="supervisor",
         source_id=source_id,
         correlation_id=resource_id,
-        idempotency_key=f"capability.state_changed:{resource_id}:{capability}:{state}",
+        # Bind the transition receipt to its owner so a later, independently
+        # contained incident can repeat STOPPED/ACTIVE after the capability
+        # has recovered, while retries from the same owner remain idempotent.
+        idempotency_key=(
+            f"capability.state_changed:{resource_id}:{capability}:{state}:{source_id}"
+        ),
     )
     database.append(event)
     return event

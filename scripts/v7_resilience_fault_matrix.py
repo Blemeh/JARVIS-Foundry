@@ -241,10 +241,19 @@ def _case_diagnostic_gate(root: Path) -> dict[str, Any]:
     )
     run = coordinator.run_once(metrics={"database_errors": 1})
     actual = run.incidents[0].status
-    passed = actual == IncidentStatus.BLOCKED.value and not calls
+    diagnostics = next(
+        action for action in run.incidents[0].actions
+        if action.get("kind") == "diagnostics"
+    )
+    passed = (
+        actual == IncidentStatus.BLOCKED.value
+        and diagnostics.get("status") == "FAIL"
+        and not calls
+    )
     return _row(
         "V7C-03-diagnostic-gate", "diagnostic failure", "BLOCKED; no repair mutation",
-        actual, {"repair_calls": len(calls)}, "no repair until read-only diagnostics pass",
+        actual, {"diagnostic_action_status": diagnostics.get("status"),
+                 "repair_calls": len(calls)}, "failed diagnostics are recorded as FAIL; no repair",
         "owner review required", "PASS" if passed else "FAIL",
     )
 
