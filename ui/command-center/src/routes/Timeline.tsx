@@ -6,7 +6,7 @@ import type { EntityRef, TimelineCategory, TimelineEvent, TimelineSeverity } fro
 import { Drawer } from "../components/Drawer";
 import { EmptyState } from "../components/states";
 import { RouteQueryGate } from "../components/RouteQueryGate";
-import { ContextChip, RefChipRow, EntityRefLink } from "../components/EntityRefLink";
+import { ContextChip, RefChipRow } from "../components/EntityRefLink";
 import { useRouteQuery } from "../hooks/useRouteQuery";
 import { metaLabelToRef, refsFromTimelineEvent } from "../lib/entityRefs";
 import { sourceModeLabel } from "../lib/sourceMode";
@@ -199,15 +199,12 @@ function TimelineContent({ events }: { events: TimelineEvent[] }) {
                       <h3 className="tl-card-title">{e.title}</h3>
                       <p className="prose tl-card-detail">{e.detail}</p>
                       <div className="tl-card-meta">
-                        {e.meta.map((m) => {
-                          const ref = metaLabelToRef(m.label, m.value);
-                          return (
-                            <span key={m.label} className="tl-meta">
-                              <span className="t-label text-muted">{m.label}:</span>
-                              {ref ? <EntityRefLink entity={ref} /> : <span className="t-mono">{m.value}</span>}
-                            </span>
-                          );
-                        })}
+                        {e.meta.map((m) => (
+                          <span key={m.label} className="tl-meta">
+                            <span className="t-label text-muted">{m.label}:</span>
+                            <span className="t-mono">{m.value}</span>
+                          </span>
+                        ))}
                       </div>
                     </button>
                     {refs.length > 0 ? (
@@ -250,7 +247,7 @@ function TimelineContent({ events }: { events: TimelineEvent[] }) {
                 return (
                   <div key={m.label}>
                     <dt className="t-label text-muted">{m.label}</dt>
-                    <dd className="t-mono">{ref ? <EntityRefLink entity={ref} /> : m.value}</dd>
+                    <dd className="t-mono">{ref ? <RefChipRow refs={[ref]} /> : m.value}</dd>
                   </div>
                 );
               })}

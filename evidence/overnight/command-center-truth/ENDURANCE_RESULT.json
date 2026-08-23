@@ -6,8 +6,8 @@
   "checkpointIntervalMs": 900000,
   "startedAt": "2026-08-23T00:15:34.448Z",
   "endedAt": null,
-  "elapsedMs": 150067,
-  "cycles": 282,
+  "elapsedMs": 1185865,
+  "cycles": 2225,
   "routes": [
     "/",
     "/executive",
@@ -37,9 +37,59 @@
       "memory": {
         "usedJSHeapSize": 10000000
       }
+    },
+    {
+      "label": "t+15m",
+      "at": "2026-08-23T00:30:41.394Z",
+      "cycles": 1701,
+      "errorCount": 8,
+      "memory": {
+        "usedJSHeapSize": 31200000
+      }
     }
   ],
-  "errors": [],
-  "lastHeartbeatAt": "2026-08-23T00:18:04.515Z",
+  "errors": [
+    {
+      "at": "2026-08-23T00:21:12.207Z",
+      "type": "http",
+      "message": "http://localhost:4523/?scenario=WORKER_CRASH -> 404"
+    },
+    {
+      "at": "2026-08-23T00:21:12.208Z",
+      "type": "console.error",
+      "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "at": "2026-08-23T00:21:12.724Z",
+      "type": "http",
+      "message": "http://localhost:4523/executive?scenario=WORKER_CRASH -> 404"
+    },
+    {
+      "at": "2026-08-23T00:21:12.724Z",
+      "type": "console.error",
+      "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "at": "2026-08-23T00:22:25.644Z",
+      "type": "http",
+      "message": "http://localhost:4523/timeline?scenario=NORMAL_OPERATION -> 404"
+    },
+    {
+      "at": "2026-08-23T00:22:25.644Z",
+      "type": "console.error",
+      "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "at": "2026-08-23T00:24:51.887Z",
+      "type": "http",
+      "message": "http://localhost:4523/?scenario=STOP_ACTIVE -> 404"
+    },
+    {
+      "at": "2026-08-23T00:24:51.888Z",
+      "type": "console.error",
+      "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    }
+  ],
+  "lastHeartbeatAt": "2026-08-23T00:35:04.785Z",
   "pass": false
 }

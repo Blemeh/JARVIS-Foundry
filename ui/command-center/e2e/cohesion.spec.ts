@@ -70,7 +70,7 @@ test("JOURNEY B: worker crash propagates and recovery reconciles", async ({ page
   await expect(page.getByText(/CRASHED - lease replayed/)).toBeVisible();
 
   await navLink("Missions").click();
-  await page.getByRole("button", { name: "Next page" }).click();
+  await page.getByRole("heading", { name: "Mission Vectors" }).waitFor({ state: "visible" });
   await page.locator(".mission-card").filter({ hasText: "Worker Crash Recovery" }).click();
   await expect(page).toHaveURL(/\/missions\/M-CRS-008$/);
   await expect(page.getByText("INTERRUPTED - crash")).toBeVisible();
@@ -92,7 +92,7 @@ test("JOURNEY B: worker crash propagates and recovery reconciles", async ({ page
   await expect(page).toHaveURL(/\/agents\/WRK-OPENHANDS$/);
   await expect(page.getByText("ACTIVE", { exact: true }).first()).toBeVisible();
   await navLink("Missions").click();
-  await page.getByRole("button", { name: "Next page" }).click();
+  await page.getByRole("heading", { name: "Mission Vectors" }).waitFor({ state: "visible" });
   await page.locator(".mission-card").filter({ hasText: "Worker Crash Recovery" }).click();
   await page.locator(".md-hub-link").filter({ hasText: "Systems" }).click();
   await page.getByRole("button", { name: "Inspect OpenHands worker" }).click();

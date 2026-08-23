@@ -11,7 +11,8 @@ import {
 } from "./laneProcess.mjs"
 
 const port = Number(process.env.VERIFY_PORT ?? 4524)
-const laneId = `product-verify-${port}`const baseUrl = process.env.VERIFY_BASE ?? `http://localhost:${port}`
+const laneId = `product-verify-${port}`
+const baseUrl = process.env.VERIFY_BASE ?? `http://localhost:${port}`
 const evidenceDir = join(process.cwd(), "..", "..", "evidence", "overnight", "command-center-truth")
 const outPath = join(evidenceDir, "PRODUCT_VERIFY_RESULT.json")
 const managePreview = process.env.VERIFY_MANAGE_PREVIEW !== "0"

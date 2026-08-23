@@ -1,6 +1,6 @@
 {
   "lane": "overnight-command-center-truth-continuation",
-  "head_sha": "ce5856d",
+  "head_sha": "ad4bfa7",
   "branch": "candidate/overnight-command-center-truth",
   "worktree": "C:\\temp\\JARVIS-Overnight-Command-Center-Truth",
   "work_packages": {
@@ -12,33 +12,27 @@
     "F_accessibility": "PASS",
     "G_responsive_visual": "PASS",
     "H_performance_console_security": "PASS",
-    "I_endurance_six_hour": "IN_PROGRESS",
-    "J_adversarial_review": "PASS"
+    "I_endurance_six_hour": "DEFERRED_BY_OWNER",
+    "J_adversarial_review": "PASS",
+    "jobs_10_18_development": "PASS"
   },
-  "commits": [
-    { "sha": "8fd0d27", "work_package": "F_accessibility" },
-    { "sha": "0a9c046", "work_package": "G_responsive_visual" },
-    { "sha": "159a31e", "work_package": "H_performance_console_security" },
-    { "sha": "83b1e9a", "work_package": "I_endurance_six_hour" }
-  ],
   "gates": {
-    "lint": "PASS",
-    "typecheck": "PASS",
-    "unit_test": "PASS (91/91)",
-    "build": "PASS",
-    "e2e": "PASS (161/161)",
-    "accessibility": "PASS (11/11)",
-    "visual_manifest": "PASS (225/225)",
-    "console_check": "PASS",
-    "security_scan": "PASS",
-    "endurance_6h": "FAIL (15m confirmation only; preview 500s under load)"
+    "lint": "PENDING_FINAL",
+    "typecheck": "PENDING_FINAL",
+    "unit_test": "PENDING_FINAL",
+    "build": "PENDING_FINAL",
+    "e2e": "PENDING_FINAL",
+    "product_verify": "PENDING_FINAL",
+    "security_scan": "PENDING_FINAL",
+    "endurance_6h": "DEFERRED_BY_OWNER"
   },
-  "shift_verdict": "IN_PROGRESS",
-  "blocking_reason": "WP-I six-hour endurance rerun in flight (500ms throttle, dedicated preview on 4523)",
-  "endurance_rerun": {
-    "prior_failure": "15m confirmation with preview HTTP 500 storm (ce5856d)",
-    "started_at_utc": "2026-08-22T23:26:00Z",
-    "request_delay_ms": 500,
-    "duration_hours": 6
-  }
+  "shift_verdict": "DEVELOPMENT_CONTINUATION",
+  "endurance": {
+    "state": "DEFERRED_BY_OWNER",
+    "not_required_for_tonight": true,
+    "pass": false,
+    "fail": false,
+    "note": "See ENDURANCE_STATUS.md; port 4523/4524 collision evidence preserved"
+  },
+  "blocking_reason": null
 }

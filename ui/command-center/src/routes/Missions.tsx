@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArrowRight, Grid3X3, List, Plus, Search, Upload } from "lucide-react";
 import { useCommandCenter } from "../context/CommandCenterContext";
@@ -47,10 +47,7 @@ export function Missions() {
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const live = mode === "live";
-
-  useEffect(() => {
-    setFilter(statusFromUrl);
-  }, [statusFromUrl]);
+  const activeFilter = searchParams.get("status") ? statusFromUrl : filter;
 
   const missionsQuery = useRouteQuery(
     () => client.listMissions(),
@@ -79,19 +76,18 @@ export function Missions() {
             .includes(q),
       );
     }
-    if (filter === "ALL") rows = rows;
-    else if (filter === "ACTIVE") rows = rows.filter((m) => m.status === "ACTIVE" || m.status === "IN_PROGRESS" || m.status === "INTERVENTION");
-    else if (filter === "STANDBY") rows = rows.filter((m) => m.status === "STANDBY");
-    else if (filter === "BLOCKED") rows = rows.filter((m) => m.status === "BLOCKED" || m.status === "HALTED");
-    else if (filter === "ARCHIVED") rows = rows.filter((m) => m.status === "COMPLETE");
-    else rows = [];
+    if (activeFilter === "ACTIVE") rows = rows.filter((m) => m.status === "ACTIVE" || m.status === "IN_PROGRESS" || m.status === "INTERVENTION");
+    else if (activeFilter === "STANDBY") rows = rows.filter((m) => m.status === "STANDBY");
+    else if (activeFilter === "BLOCKED") rows = rows.filter((m) => m.status === "BLOCKED" || m.status === "HALTED");
+    else if (activeFilter === "ARCHIVED") rows = rows.filter((m) => m.status === "COMPLETE");
+    else if (activeFilter !== "ALL") rows = [];
 
     return [...rows].sort((a, b) => {
       if (sort === "title") return a.title.localeCompare(b.title);
       if (sort === "status") return a.status.localeCompare(b.status);
       return (priorityRank[a.priority] ?? 9) - (priorityRank[b.priority] ?? 9);
     });
-  }, [missionsQuery.data, filter, searchParams, query, sort]);
+  }, [missionsQuery.data, activeFilter, searchParams, query, sort]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
@@ -249,8 +245,8 @@ export function Missions() {
             <button
               key={f.key}
               type="button"
-              className={`segmented-item ${filter === f.key ? "segmented-item-active" : ""}`}
-              aria-pressed={filter === f.key}
+              className={`segmented-item ${activeFilter === f.key ? "segmented-item-active" : ""}`}
+              aria-pressed={activeFilter === f.key}
               onClick={() => {
                 setFilter(f.key);
                 setPage(1);

@@ -16,6 +16,7 @@ const routes = [
 for (const route of routes) {
   test(`accessibility scan ${route.name}`, async ({ page }) => {
     await page.goto(route.path)
+    await page.locator("main#main-content").waitFor({ state: "visible" })
     await page.waitForLoadState("networkidle")
 
     const results = await new AxeBuilder({ page })
