@@ -73,8 +73,23 @@
       "verdict": "PASS"
     },
     {
+      "actual": "RESTORED",
+      "case_id": "V7C-06-database-restore",
+      "containment": "restore uses validated backup; corrupt source cannot replace live copy",
+      "evidence": {
+        "corrupt_rejected": true,
+        "quick_check": "ok",
+        "restored_events": 1,
+        "snapshot_events": 1
+      },
+      "expected": "valid snapshot restored; corrupt source rejected",
+      "fault": "corrupt copy and interrupted durable-state mutation",
+      "recovery": "ledger integrity remains verifiable after restore",
+      "verdict": "PASS"
+    },
+    {
       "actual": "RECOVERED",
-      "case_id": "V7C-06-release-degradation",
+      "case_id": "V7C-07-release-degradation",
       "containment": "release control frozen before repair",
       "evidence": {
         "frozen_before_callback": [
@@ -88,7 +103,7 @@
     },
     {
       "actual": "UNKNOWN",
-      "case_id": "V7C-07-ambiguous-effect",
+      "case_id": "V7C-08-ambiguous-effect",
       "containment": "effect frozen; retry and undo withheld",
       "evidence": {
         "effect_state": {
@@ -106,7 +121,7 @@
     },
     {
       "actual": "BLOCKED,BLOCKED",
-      "case_id": "V7C-08-resource-cost",
+      "case_id": "V7C-09-resource-cost",
       "containment": "resource and provider scopes isolated",
       "evidence": {
         "anomaly_kinds": [
@@ -121,7 +136,7 @@
     },
     {
       "actual": "BLOCKED",
-      "case_id": "V7C-09-duplicate-authority",
+      "case_id": "V7C-10-duplicate-authority",
       "containment": "singleton lease retained by first owner",
       "evidence": {
         "duplicate_blocked": true,
@@ -134,7 +149,7 @@
     },
     {
       "actual": "REPLAY_STABLE",
-      "case_id": "V7C-10-restart-replay",
+      "case_id": "V7C-11-restart-replay",
       "containment": "durable incident state reconstructed from ledger",
       "evidence": {
         "detected_events": 1,
@@ -149,8 +164,8 @@
   "scope": "disposable homes only",
   "summary": {
     "fail": 0,
-    "pass": 10,
-    "total": 10
+    "pass": 11,
+    "total": 11
   },
   "verdict": "PASS"
 }

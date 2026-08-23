@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import gc
 import json
+import sqlite3
 import sys
 import tempfile
 from pathlib import Path
@@ -218,9 +219,46 @@ def _case_release(root: Path) -> dict[str, Any]:
     actual = run.incidents[0].status
     passed = actual == IncidentStatus.RECOVERED.value and callback_observations == [True]
     return _row(
-        "V7C-06-release-degradation", "release health degradation", "freeze precedes rollback callback",
+        "V7C-07-release-degradation", "release health degradation", "freeze precedes rollback callback",
         actual, {"frozen_before_callback": callback_observations},
         "release control frozen before repair", "disposable rollback callback returned success and health passed",
+        "PASS" if passed else "FAIL",
+    )
+
+
+def _case_database_restore(root: Path) -> dict[str, Any]:
+    database = _database(root)
+    database.append(Event.create(
+        "database.marker", {"marker": "snapshot"},
+        source_type="fault-matrix", source_id="v7-matrix",
+        idempotency_key="database.marker:snapshot",
+    ))
+    snapshot = root / "snapshot.db"
+    database.backup_to(snapshot)
+    snapshot_events = database.event_count()
+    database.append(Event.create(
+        "database.marker", {"marker": "mutated"},
+        source_type="fault-matrix", source_id="v7-matrix",
+        idempotency_key="database.marker:mutated",
+    ))
+    database.restore_from(snapshot)
+    restored_events = database.event_count()
+    corrupt = root / "corrupt.db"
+    corrupt.write_bytes(b"not a sqlite database")
+    corrupt_rejected = False
+    try:
+        database.restore_from(corrupt)
+    except (OSError, sqlite3.DatabaseError):
+        corrupt_rejected = True
+    passed = restored_events == snapshot_events and corrupt_rejected and database.quick_check() == "ok"
+    return _row(
+        "V7C-06-database-restore", "corrupt copy and interrupted durable-state mutation",
+        "valid snapshot restored; corrupt source rejected",
+        "RESTORED" if passed else "RESTORE_UNPROVEN",
+        {"snapshot_events": snapshot_events, "restored_events": restored_events,
+         "corrupt_rejected": corrupt_rejected, "quick_check": database.quick_check()},
+        "restore uses validated backup; corrupt source cannot replace live copy",
+        "ledger integrity remains verifiable after restore",
         "PASS" if passed else "FAIL",
     )
 
@@ -241,7 +279,7 @@ def _case_effect(root: Path) -> dict[str, Any]:
     effect = effect_state(database, "ambiguous-1")
     passed = actual == IncidentStatus.UNKNOWN.value and effect.get("status") == "FROZEN"
     return _row(
-        "V7C-07-ambiguous-effect", "STARTED external effect with no terminal evidence", "UNKNOWN + FROZEN",
+        "V7C-08-ambiguous-effect", "STARTED external effect with no terminal evidence", "UNKNOWN + FROZEN",
         actual, {"effect_state": effect}, "effect frozen; retry and undo withheld",
         "provider reconciliation required", "PASS" if passed else "FAIL",
     )
@@ -257,7 +295,7 @@ def _case_resource_cost(root: Path) -> dict[str, Any]:
         status == IncidentStatus.BLOCKED.value for status in actual
     )
     return _row(
-        "V7C-08-resource-cost", "runaway resource and cost metrics", "resource/cost incidents BLOCKED",
+        "V7C-09-resource-cost", "runaway resource and cost metrics", "resource/cost incidents BLOCKED",
         ",".join(actual), {"anomaly_kinds": kinds}, "resource and provider scopes isolated",
         "owner quota/capacity action required", "PASS" if passed else "FAIL",
     )
@@ -276,7 +314,7 @@ def _case_concurrency(root: Path) -> dict[str, Any]:
         duplicate_blocked = True
     first.stop()
     return _row(
-        "V7C-09-duplicate-authority", "duplicate Supervisor wake", "second owner BLOCKED",
+        "V7C-10-duplicate-authority", "duplicate Supervisor wake", "second owner BLOCKED",
         "BLOCKED" if duplicate_blocked else "RUNNING",
         {"duplicate_blocked": duplicate_blocked, "event_count": database.event_count()},
         "singleton lease retained by first owner", "first owner stopped cleanly",
@@ -295,7 +333,7 @@ def _case_restart(root: Path) -> dict[str, Any]:
     detected = database.event_count(event_type="incident.detected")
     passed = before == after and detected == 1
     return _row(
-        "V7C-10-restart-replay", "fresh coordinator after interrupted run", "same incident; no duplicate detection",
+        "V7C-11-restart-replay", "fresh coordinator after interrupted run", "same incident; no duplicate detection",
         "REPLAY_STABLE" if passed else "REPLAY_DRIFT",
         {"incident_count": len(after), "detected_events": detected},
         "durable incident state reconstructed from ledger", "resume remains bounded from DIAGNOSING",
@@ -310,6 +348,7 @@ def run_matrix() -> dict[str, Any]:
         ("diagnostic", _case_diagnostic_gate),
         ("provider", _case_provider),
         ("database", _case_database),
+        ("database_restore", _case_database_restore),
         ("release", _case_release),
         ("effect", _case_effect),
         ("resource_cost", _case_resource_cost),

@@ -329,7 +329,7 @@ def test_disposable_fault_matrix_emits_all_pass_rows(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
     matrix = json.loads(output.read_text(encoding="utf-8"))
     assert matrix["scope"] == "disposable homes only"
-    assert matrix["summary"] == {"fail": 0, "pass": 10, "total": 10}
+    assert matrix["summary"] == {"fail": 0, "pass": 11, "total": 11}
     assert matrix["verdict"] == "PASS"
     assert all(row["evidence"] for row in matrix["rows"])
 
