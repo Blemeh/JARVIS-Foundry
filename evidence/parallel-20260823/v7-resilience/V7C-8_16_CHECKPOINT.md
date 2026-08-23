@@ -42,3 +42,11 @@ python -m pytest tests/foundry/test_v7_resilience.py -q
 - The rollback row verifies freeze-before-callback ordering only. A real
   release rollback still requires the separate integration/live-promotion
   session and independent health evidence.
+
+## Repository gate
+
+The focused V7/adjacent source suite passed. The repository-wide suite is
+`FAIL` on the existing live-staging Task Scheduler restart test
+`test_task_restarts_after_hard_kill_via_repeating_trigger`; see
+`FULL_SUITE_RESULT.md`. This lane does not change or retry live Scheduler
+state, so candidate promotion remains blocked.

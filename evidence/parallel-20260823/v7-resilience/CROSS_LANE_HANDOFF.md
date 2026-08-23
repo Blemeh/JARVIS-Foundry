@@ -26,3 +26,12 @@ independent verification, and the final gate verdict.
 - open critical/high defects and residual host-only rows;
 - explicit `MAIN MODIFIED: NO` and `PRODUCTION MODIFIED: NO` proof.
 
+## Current source checkpoint
+
+- Candidate branch: `candidate/v7-resilience-continuity-20260823`.
+- Source/disposable V7 matrix: `V7C-16_FAULT_MATRIX.json`, 11/11 PASS.
+- Focused V7/adjacent suite: PASS.
+- Repository-wide suite: FAIL only at the live-staging Task Scheduler restart
+  probe (`test_task_restarts_after_hard_kill_via_repeating_trigger`).
+- Candidate push/promotion: BLOCKED pending owner-authorized Scheduler
+  investigation and a fresh full-suite result.
