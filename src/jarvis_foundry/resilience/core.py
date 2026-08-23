@@ -60,6 +60,7 @@ class AnomalyKind(StrEnum):
     CONNECTOR_OUTAGE = "connector_outage"
     EFFECT_UNKNOWN = "effect_unknown"
     DATABASE_FAULT = "database_fault"
+    RELEASE_DEGRADATION = "release_degradation"
     CANARY_DEGRADATION = "canary_degradation"
     COMMAND_CENTER_STALE = "command_center_stale"
     REPAIR_FAILURE_LOOP = "repair_failure_loop"
@@ -608,6 +609,7 @@ class AnomalyThresholds:
     connector_failures: int = 3
     unknown_effects: int = 1
     database_errors: int = 1
+    release_failures: int = 1
     canary_failures: int = 2
     repair_failures: int = 2
     command_center_stale_seconds: float = 300.0
@@ -817,6 +819,27 @@ class AnomalyDetector:
                 AnomalyKind.DATABASE_FAULT, severity=IncidentSeverity.S2,
                 observed_at=observed_at, correlation_key="database",
                 evidence={"error_count": int(db_errors)}, capability="database",
+            ))
+
+        release_failures = self._metric(metrics, "release_failures", "release_degraded")
+        if release_failures is None:
+            release_failures = self._count(
+                recent_events,
+                lambda event: event.event_type in {
+                    "release.degraded", "release.health_failed", "release.rollback_requested",
+                },
+            )
+        if bool(self._metric(metrics, "release_degraded")):
+            release_failures = max(int(release_failures or 0), 1)
+        if int(release_failures or 0) >= self.thresholds.release_failures:
+            release_id = str(self._metric(metrics, "release_id") or "current")
+            anomalies.append(self._anomaly(
+                AnomalyKind.RELEASE_DEGRADATION, severity=IncidentSeverity.S2,
+                observed_at=observed_at, correlation_key=f"release:{release_id}",
+                evidence={"failure_count": int(release_failures),
+                          "threshold": self.thresholds.release_failures,
+                          "release_id": release_id},
+                capability="release",
             ))
 
         canary_failures = self._metric(metrics, "canary_failures")
@@ -1341,6 +1364,30 @@ class ResilienceCoordinator:
                 "kind": "stop_observed", "status": "PASS",
                 "scope": "global", "reason": "STOP remains stronger than automation",
             })
+        if anomaly.kind == AnomalyKind.RELEASE_DEGRADATION.value:
+            if self._stop_active():
+                self.store.record_action(incident.incident_id, {
+                    "kind": "release_freeze", "status": "BLOCKED",
+                    "reason": "STOP is active; release control remains owner-frozen",
+                })
+            else:
+                try:
+                    from ..evolution.promote import freeze_active
+                    from ..supervisor.evolution_control import SUPERVISOR_CONTROLLER
+                    freeze_active(
+                        self.database,
+                        reason="resilience containment before release rollback",
+                        controller=SUPERVISOR_CONTROLLER,
+                    )
+                    self.store.record_action(incident.incident_id, {
+                        "kind": "release_freeze", "status": "PASS",
+                        "reason": "release freeze precedes any rollback callback",
+                    })
+                except Exception as error:  # noqa: BLE001 — diagnosis remains honest
+                    self.store.record_action(incident.incident_id, {
+                        "kind": "release_freeze", "status": "BLOCKED",
+                        "error_class": type(error).__name__, "error": _text(error),
+                    })
         for binding in self._scope(anomaly):
             previous = _current_capability_state(
                 self.database, binding.resource_id, binding.capability)

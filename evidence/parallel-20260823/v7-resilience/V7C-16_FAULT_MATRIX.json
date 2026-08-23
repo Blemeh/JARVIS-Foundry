@@ -1,0 +1,156 @@
+{
+  "harness": "v7-resilience-fault-matrix",
+  "rows": [
+    {
+      "actual": "RECOVERED",
+      "case_id": "V7C-01-worker-crash-loop",
+      "containment": "safe-work STOPPED; unrelated capability retained",
+      "evidence": {
+        "capability_state": {
+          "safe-work": "ACTIVE",
+          "unrelated": "READY"
+        },
+        "event_count": 15
+      },
+      "expected": "RECOVERED + scoped resume",
+      "fault": "worker crash loop",
+      "recovery": "bounded reclaim callback and observed health restored ACTIVE",
+      "verdict": "PASS"
+    },
+    {
+      "actual": "BLOCKED",
+      "case_id": "V7C-02-stop-during-repair",
+      "containment": "capability frozen and STOP retained",
+      "evidence": {
+        "capability_state": {
+          "safe-work": "STOPPED",
+          "unrelated": "READY"
+        },
+        "repair_calls": 0
+      },
+      "expected": "BLOCKED; callback not invoked",
+      "fault": "emergency STOP during repair window",
+      "recovery": "no automatic recovery under STOP",
+      "verdict": "PASS"
+    },
+    {
+      "actual": "BLOCKED",
+      "case_id": "V7C-03-diagnostic-gate",
+      "containment": "no repair until read-only diagnostics pass",
+      "evidence": {
+        "repair_calls": 0
+      },
+      "expected": "BLOCKED; no repair mutation",
+      "fault": "diagnostic failure",
+      "recovery": "owner review required",
+      "verdict": "PASS"
+    },
+    {
+      "actual": "BLOCKED",
+      "case_id": "V7C-04-provider-outage",
+      "containment": "provider capability incident isolated",
+      "evidence": {
+        "anomaly_kinds": [
+          "provider_outage"
+        ]
+      },
+      "expected": "BLOCKED without provider substitution",
+      "fault": "provider unavailable",
+      "recovery": "resume requires fresh provider health",
+      "verdict": "PASS"
+    },
+    {
+      "actual": "BLOCKED",
+      "case_id": "V7C-05-database-fault",
+      "containment": "database incident recorded; no write repair handler registered",
+      "evidence": {
+        "event_count": 7,
+        "quick_check": "ok"
+      },
+      "expected": "BLOCKED; no fabricated recovery",
+      "fault": "durable database fault signal",
+      "recovery": "restore/reconcile remains owner-controlled",
+      "verdict": "PASS"
+    },
+    {
+      "actual": "RECOVERED",
+      "case_id": "V7C-06-release-degradation",
+      "containment": "release control frozen before repair",
+      "evidence": {
+        "frozen_before_callback": [
+          true
+        ]
+      },
+      "expected": "freeze precedes rollback callback",
+      "fault": "release health degradation",
+      "recovery": "disposable rollback callback returned success and health passed",
+      "verdict": "PASS"
+    },
+    {
+      "actual": "UNKNOWN",
+      "case_id": "V7C-07-ambiguous-effect",
+      "containment": "effect frozen; retry and undo withheld",
+      "evidence": {
+        "effect_state": {
+          "action_key": "ambiguous-1",
+          "before_state": null,
+          "expected_effects": null,
+          "frozen_reason": "incident containment: external effect is ambiguous",
+          "status": "FROZEN"
+        }
+      },
+      "expected": "UNKNOWN + FROZEN",
+      "fault": "STARTED external effect with no terminal evidence",
+      "recovery": "provider reconciliation required",
+      "verdict": "PASS"
+    },
+    {
+      "actual": "BLOCKED,BLOCKED",
+      "case_id": "V7C-08-resource-cost",
+      "containment": "resource and provider scopes isolated",
+      "evidence": {
+        "anomaly_kinds": [
+          "cost_anomaly",
+          "resource_anomaly"
+        ]
+      },
+      "expected": "resource/cost incidents BLOCKED",
+      "fault": "runaway resource and cost metrics",
+      "recovery": "owner quota/capacity action required",
+      "verdict": "PASS"
+    },
+    {
+      "actual": "BLOCKED",
+      "case_id": "V7C-09-duplicate-authority",
+      "containment": "singleton lease retained by first owner",
+      "evidence": {
+        "duplicate_blocked": true,
+        "event_count": 4
+      },
+      "expected": "second owner BLOCKED",
+      "fault": "duplicate Supervisor wake",
+      "recovery": "first owner stopped cleanly",
+      "verdict": "PASS"
+    },
+    {
+      "actual": "REPLAY_STABLE",
+      "case_id": "V7C-10-restart-replay",
+      "containment": "durable incident state reconstructed from ledger",
+      "evidence": {
+        "detected_events": 1,
+        "incident_count": 1
+      },
+      "expected": "same incident; no duplicate detection",
+      "fault": "fresh coordinator after interrupted run",
+      "recovery": "resume remains bounded from DIAGNOSING",
+      "verdict": "PASS"
+    }
+  ],
+  "scope": "disposable homes only",
+  "summary": {
+    "fail": 0,
+    "pass": 10,
+    "total": 10
+  },
+  "verdict": "PASS"
+}

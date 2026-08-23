@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import subprocess
+import sys
 
 import pytest
 
@@ -317,6 +319,32 @@ def test_supervisor_resilience_failure_is_bounded_and_recorded(tmp_path: Path) -
     supervisor.stop()
 
 
+def test_disposable_fault_matrix_emits_all_pass_rows(tmp_path: Path) -> None:
+    script = Path(__file__).resolve().parents[2] / "scripts" / "v7_resilience_fault_matrix.py"
+    output = tmp_path / "fault-matrix.json"
+    result = subprocess.run(
+        [sys.executable, str(script), "--output", str(output)],
+        capture_output=True, text=True, timeout=60,
+    )
+    assert result.returncode == 0, result.stderr
+    matrix = json.loads(output.read_text(encoding="utf-8"))
+    assert matrix["scope"] == "disposable homes only"
+    assert matrix["summary"] == {"fail": 0, "pass": 10, "total": 10}
+    assert matrix["verdict"] == "PASS"
+    assert all(row["evidence"] for row in matrix["rows"])
+
+
+def test_resilience_run_output_contract_is_structured(tmp_path: Path) -> None:
+    db = database(tmp_path)
+    run = ResilienceCoordinator(db).run_once(
+        now="2026-08-23T10:00:00Z", metrics={"database_errors": 1}
+    )
+    payload = run.to_payload()
+    assert set(payload) == {"observed_at", "anomalies", "incidents", "recovered_ids", "blocked_ids", "errors"}
+    assert payload["incidents"][0]["status"] == IncidentStatus.BLOCKED.value
+    json.dumps(payload)
+
+
 def test_dependency_graph_contains_shared_dependency_only(tmp_path: Path) -> None:
     graph = DependencyGraph()
     graph.bind("resource-a", "cap-a", connector_id="shared")
@@ -335,3 +363,22 @@ def test_deterministic_resource_and_cost_rules(tmp_path: Path) -> None:
     )
     assert [item.kind for item in anomalies] == ["cost_anomaly", "resource_anomaly"]
     assert all(item.evidence for item in anomalies)
+
+
+def test_release_degradation_freezes_before_rollback_callback(tmp_path: Path) -> None:
+    db = database(tmp_path)
+    callback_observations: list[bool] = []
+
+    def rollback(incident, report):
+        from jarvis_foundry.evolution.promote import is_frozen
+        callback_observations.append(is_frozen(db))
+        return RepairResult(True, "rollback rehearsal complete", {"rolled_back": True})
+
+    coordinator = ResilienceCoordinator(
+        db,
+        repair_handlers={"release_degradation": rollback},
+        health_probe=lambda incident, report: True,
+    )
+    run = coordinator.run_once(metrics={"release_degraded": True, "release_id": "candidate-1"})
+    assert run.incidents[0].status == IncidentStatus.RECOVERED.value
+    assert callback_observations == [True]
