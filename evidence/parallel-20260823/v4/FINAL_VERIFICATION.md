@@ -1,5 +1,12 @@
 # Final lane verification — 2026-08-23
 
+## Accepted lane status
+
+SOURCE_STATUS: COMPLETE
+FINAL_GATE: BLOCKED_EXTERNAL_SHARED_SCHEDULER
+V4_PRODUCT_DEFECTS_BLOCKING: 0
+CANDIDATE_BACKED_UP: YES
+
 ## Verdict
 
 `BLOCKED — external staging Task Scheduler gate; V4 product source is
