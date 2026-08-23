@@ -9,8 +9,8 @@ fresh lane verdict.
 | V5-1 | Current V5 asset and gap map | PASS | `INITIAL_STATE.md`, focused baseline exit 0 |
 | V5-2 | Connector contract normalization | PASS | `V5_2_CONTRACT.md`, commit `ee1e4fd`, fresh 6-test verifier |
 | V5-3 | Effect ticket and journal hardening | PASS | `V5_3_EFFECTS.md`, commit `aa01401`, fresh 30-test verifier |
-| V5-4 | Resource discovery and registration | IN_PROGRESS | Deterministic disposable resource records |
-| V5-5 | Filesystem/project vertical slice | PENDING | Reversible write, retry, reconcile, rollback proof |
+| V5-4 | Resource discovery and registration | PASS | `V5_4_RESOURCES.md`, deterministic disposable resource records |
+| V5-5 | Filesystem/project vertical slice | IN_PROGRESS | Reversible write, retry, reconcile, rollback proof |
 | V5-6 | Git/repository connector | PENDING | Local remote push and provider-side ref proof |
 | V5-7 | HTTP/service connector | PENDING | Disposable fault-injection service and reconciliation |
 | V5-8 | Browser/procedural boundary | PENDING | Harmless local web app, drift halt, post-effect oracle |
