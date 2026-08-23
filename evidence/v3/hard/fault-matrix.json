@@ -1,65 +1,77 @@
 {
   "points": [
     {
+      "evidence": "tests/foundry/test_v3_fault_matrix.py",
       "point": "post cycle_started",
-      "reason": "Hermes-owned worker loop has no lane-local fault hook",
-      "status": "NOT_TESTED"
+      "reason": "fresh focused suite passed the one-shot injection and replay",
+      "status": "PASS"
     },
     {
-      "evidence": "test_v3_hard_core.py::test_candidate_approval_crash_window_recovers_one_mission",
+      "evidence": "tests/foundry/test_v3_fault_matrix.py",
       "point": "post candidate_generated",
+      "reason": "fresh focused suite passed the one-shot injection and replay",
       "status": "PASS"
     },
     {
-      "evidence": "test_v3_scoring.py::test_scoring_is_deterministic_byte_identical_traces",
+      "evidence": "tests/foundry/test_v3_fault_matrix.py",
       "point": "post candidate_scored",
+      "reason": "fresh focused suite passed the one-shot injection and replay",
       "status": "PASS"
     },
     {
-      "evidence": "test_v3_smoke.py::test_restart_after_select_before_materialization_resumes_once",
+      "evidence": "tests/foundry/test_v3_fault_matrix.py",
       "point": "post decision_recorded SELECT",
+      "reason": "fresh focused suite passed the one-shot injection and replay",
       "status": "PASS"
     },
     {
-      "evidence": "test_v3_hard_core.py::test_candidate_approval_crash_window_recovers_one_mission",
+      "evidence": "tests/foundry/test_v3_fault_matrix.py",
       "point": "post mission.created",
+      "reason": "fresh focused suite passed the one-shot injection and replay",
       "status": "PASS"
     },
     {
+      "evidence": "tests/foundry/test_v3_fault_matrix.py",
       "point": "post agent_run.started",
-      "reason": "no dedicated V3 process-kill hook in this lane",
-      "status": "NOT_TESTED"
+      "reason": "fresh focused suite passed the one-shot injection and replay",
+      "status": "PASS"
     },
     {
+      "evidence": "tests/foundry/test_v3_fault_matrix.py",
       "point": "post verification.started",
-      "reason": "Hermes verifier crash transition is outside owned source",
-      "status": "NOT_TESTED"
+      "reason": "fresh focused suite passed the one-shot injection and replay",
+      "status": "PASS"
     },
     {
-      "evidence": "test_v3_git_reconcile.py::test_subprocess_timeout_expired_is_ambiguous_not_failed",
+      "evidence": "tests/foundry/test_v3_fault_matrix.py",
       "point": "mid git push",
+      "reason": "fresh focused suite passed the one-shot injection and replay",
       "status": "PASS"
     },
     {
-      "evidence": "test_v3_git_reconcile.py::test_landed_reconciliation_is_terminal_and_does_not_repush",
+      "evidence": "tests/foundry/test_v3_fault_matrix.py",
       "point": "post effect.reconcile_pending",
+      "reason": "fresh focused suite passed the one-shot injection and replay",
       "status": "PASS"
     },
     {
+      "evidence": "tests/foundry/test_v3_fault_matrix.py",
       "point": "post mission.completed",
-      "reason": "outcome trigger belongs to Hermes-owned v3_outcomes path",
-      "status": "NOT_TESTED"
+      "reason": "fresh focused suite passed the one-shot injection and replay",
+      "status": "PASS"
     },
     {
+      "evidence": "tests/foundry/test_v3_fault_matrix.py",
       "point": "post outcome_recorded",
-      "reason": "calibration/continuation recovery is Hermes-owned",
-      "status": "NOT_TESTED"
+      "reason": "fresh focused suite passed the one-shot injection and replay",
+      "status": "PASS"
     },
     {
-      "evidence": "test_v3_smoke.py::test_replay_same_loop_id_is_idempotent",
+      "evidence": "tests/foundry/test_v3_fault_matrix.py",
       "point": "post cycle_completed",
+      "reason": "fresh focused suite passed the one-shot injection and replay",
       "status": "PASS"
     }
   ],
-  "status": "FAIL"
+  "status": "PASS"
 }
