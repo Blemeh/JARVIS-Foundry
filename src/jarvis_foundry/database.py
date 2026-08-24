@@ -14,6 +14,16 @@ from .migrations import migrate
 from .projections import apply_event, reset
 
 
+class _ClosingConnection(sqlite3.Connection):
+    """Close SQLite handles when their transaction context exits."""
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        try:
+            return super().__exit__(exc_type, exc_value, traceback)
+        finally:
+            self.close()
+
+
 class FoundryDatabase:
     def __init__(self, path: str | Path) -> None:
         self.path = Path(path).expanduser().resolve()
@@ -28,11 +38,13 @@ class FoundryDatabase:
                 raise FileNotFoundError(self.path)
             uri = f"file:{self.path.resolve().as_posix()}?mode=ro"
             connection = sqlite3.connect(
-                uri, uri=True, timeout=10, isolation_level=None)
+                uri, uri=True, timeout=10, isolation_level=None,
+                factory=_ClosingConnection)
         else:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             connection = sqlite3.connect(
-                self.path, timeout=10, isolation_level=None)
+                self.path, timeout=10, isolation_level=None,
+                factory=_ClosingConnection)
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA foreign_keys = ON")
         connection.execute("PRAGMA busy_timeout = 10000")
