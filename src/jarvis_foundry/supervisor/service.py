@@ -4,6 +4,7 @@ import os
 import sys
 import uuid
 from pathlib import Path
+from typing import TYPE_CHECKING, Any, Mapping
 
 from ..clock import parse, utc_now
 from ..database import FoundryDatabase
@@ -29,6 +30,9 @@ from .estop import EmergencyStop
 from .leases import LeaseManager, LeaseUnavailable
 from .worker import WorkerController, pid_alive, process_creation_identity
 
+if TYPE_CHECKING:
+    from ..resilience import ResilienceCoordinator
+
 WORKER_LOOP_RUN_ID = "worker-loop"
 
 
@@ -47,6 +51,7 @@ class Supervisor:
         worker_loop_config: str | Path | None = None,
         ledger_heartbeat_seconds: int = 60,
         provider_settings: ProviderSettings | None = None,
+        resilience: ResilienceCoordinator | None = None,
     ) -> None:
         self.database = database
         self.estop = EmergencyStop(stop_path)
@@ -60,6 +65,7 @@ class Supervisor:
             Path(worker_loop_config) if worker_loop_config is not None else None)
         self.ledger_heartbeat_seconds = ledger_heartbeat_seconds
         self._provider_settings = provider_settings
+        self.resilience = resilience
         self._start_generation = 0
 
     def _release_id(self) -> str | None:
@@ -266,7 +272,7 @@ class Supervisor:
                 reason="owner STOP request arrived during startup")
         return "FROZEN" if stop else "RUNNING"
 
-    def heartbeat(self) -> str:
+    def heartbeat(self, *, resilience_metrics: Mapping[str, Any] | None = None) -> str:
         if not self.started:
             raise RuntimeError("supervisor has not started")
         try:
@@ -334,7 +340,40 @@ class Supervisor:
             source_type="supervisor", source_id=self.instance_id,
             idempotency_key=key,
         ))
+        self.resilience_tick(metrics=resilience_metrics)
         return "RUNNING"
+
+    def resilience_tick(self, *, metrics: Mapping[str, Any] | None = None) -> Any:
+        """Run the bounded resilience coordinator without widening heartbeat failure.
+
+        Scoped anomalies are owned by the coordinator and remain incident
+        events; only a coordinator integration failure is recorded as a
+        Supervisor degradation. The emergency STOP branch returns before this
+        hook is reached, and the coordinator itself rechecks STOP before any
+        repair callback.
+        """
+        if self.resilience is None or self.estop.active():
+            return None
+        try:
+            return self.resilience.run_once(metrics=metrics)
+        except Exception as error:  # noqa: BLE001 — resilience must not kill heartbeat
+            try:
+                self.database.append(Event.create(
+                    "supervisor.degraded",
+                    {
+                        "instance_id": self.instance_id,
+                        "trust_state": "LAB",
+                        "reason": "resilience_tick_failure",
+                        "error_class": type(error).__name__,
+                        "error": str(error)[:300],
+                    },
+                    source_type="supervisor", source_id=self.instance_id,
+                    idempotency_key=(
+                        f"supervisor.degraded:{self.instance_id}:resilience_tick_failure"),
+                ))
+            except Exception:  # noqa: BLE001 — the heartbeat remains bounded
+                pass
+            return None
 
     def _preserved_trust(self) -> str:
         """Heartbeats are not a trust gate. Never promote to TRUSTED_AUTONOMOUS."""

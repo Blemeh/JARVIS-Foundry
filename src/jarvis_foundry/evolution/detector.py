@@ -78,6 +78,12 @@ RULES: dict[str, dict[str, Any]] = {
                       "immediately preceding equal-length window signals "
                       "cost inflation"),
     },
+    "incident_recurrence": {
+        "threshold": 3, "direction": "decrease", "min_sample": 3,
+        "rationale": ("three or more detected incidents sharing one "
+                      "correlation key inside a window is a recurring "
+                      "failure pattern worth governed improvement"),
+    },
 }
 
 _STALE_STATES = ("BLOCKED", "REPAIRING", "REJECTING")
@@ -434,6 +440,61 @@ def detect_weaknesses(database: FoundryDatabase, *,
             observation["dedupe_identity"] = _observation_id({
                 key: value_ for key, value_ in observation.items()
                 if key != "detail"})
+            observation["confidence"] = min(
+                observation["confidence"], 0.6)
+            observations.append(observation)
+
+    # R9 incident recurrence (V7C -> V6 bridge): the same correlation key
+    # detected or re-signaled repeatedly inside one window is a governed
+    # improvement signal. Evidence-only: this rule never mutates runtime
+    # state, and any resulting improvement still passes through the V6
+    # cycle gates with an independent verifier before anything is built.
+    with database.connect() as connection:
+        cursor = connection.execute(
+            "SELECT payload_json, occurred_at FROM events "
+            "WHERE event_type IN ('incident.detected', "
+            "'incident.signal_observed') ORDER BY rowid")
+        names = [description[0] for description in cursor.description]
+        event_rows = [dict(zip(names, raw)) for raw in cursor.fetchall()]
+    by_correlation: dict[str, int] = {}
+    evidence_ids: dict[str, list[str]] = {}
+    for row in event_rows:
+        try:
+            moment = datetime.fromisoformat(
+                str(row["occurred_at"]).replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if not (start <= moment <= end):
+            continue
+        try:
+            payload = json.loads(row["payload_json"])
+        except (TypeError, ValueError):
+            continue
+        key = str(payload.get("correlation_key") or "unknown")
+        by_correlation[key] = by_correlation.get(key, 0) + 1
+        incident_id = str(payload.get("incident_id") or "")
+        bucket = evidence_ids.setdefault(key, [])
+        if incident_id and (f"incidents/{incident_id}" not in bucket):
+            bucket.append(f"incidents/{incident_id}")
+    for correlation_key, count in sorted(by_correlation.items()):
+        if count >= RULES["incident_recurrence"]["threshold"]:
+            observation = _emit(
+                "incident_recurrence", "incident_recurrence_count",
+                float(count), None,
+                RULES["incident_recurrence"]["threshold"],
+                window,
+                evidence_ids.get(correlation_key, [])[:10],
+                "resilience/", count,
+                detail=(f"correlation {correlation_key} produced {count} "
+                        "incident signals in one window"))
+            observation["rule"] = "incident_recurrence"
+            observation["rationale"] = (
+                "repeated incidents with one root pattern indicate a "
+                "structural weakness; the pattern becomes improvement "
+                "evidence under V6 governance")
+            observation["dedupe_identity"] = _observation_id({
+                key_: value_ for key_, value_ in observation.items()
+                if key_ != "detail"})
             observation["confidence"] = min(
                 observation["confidence"], 0.6)
             observations.append(observation)

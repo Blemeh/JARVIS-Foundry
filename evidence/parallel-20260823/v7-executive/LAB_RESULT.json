@@ -1,0 +1,19 @@
+{
+  "run_date": "2026-08-23",
+  "command": "python scripts/v7_portfolio_lab.py",
+  "isolated_temporary_database": true,
+  "project_count": 3,
+  "decision_count": 8,
+  "selected_classes": {
+    "MAINTENANCE": 1,
+    "NEW_MISSION": 3,
+    "REPAIR": 3,
+    "RESEARCH": 1
+  },
+  "outcome_count": 8,
+  "event_count": 49,
+  "restart_claims": 0,
+  "restart_outcomes": 8,
+  "replay_consistent": true,
+  "provider_or_live_db_calls": false
+}
