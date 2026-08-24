@@ -25,7 +25,7 @@ Long profiles are prepared but are not run in this lane.
 | H17 | Machine-readable verdict engine | PASS |
 | H18 | Complete evidence bundle and hashes | PASS |
 | H19 | Accelerated 12-hour-equivalent proof | PASS, accelerated label only |
-| H20 | Short real-time disposable proof | PASS, 900.018 seconds |
+| H20 | Short real-time disposable proof | PASS, 900.187 seconds |
 | H21 | Harness interruption and resume proof | PASS |
 | H22 | False-PASS adversarial factory | PASS, 8/8 attacks rejected |
 | H23 | QUICK_30M through REBOOT_ASSISTED_24H profiles | READY, not run |

@@ -9,7 +9,7 @@ Implementation commit: `e843c04` (pushed and verified on the candidate branch)
 | Run | Clock | Verdict | Evidence |
 | --- | --- | --- | --- |
 | Accelerated 12-hour-equivalent | `ACCELERATED_DISPOSABLE` | PASS | `runs/ACCELERATED_12H_EQUIVALENT/FINAL_VERDICT.json` |
-| Short real-time | 900.018 seconds wall time | PASS | `runs/SHORT_REAL_TIME/FINAL_VERDICT.json` |
+| Short real-time | 900.187 seconds wall time | PASS | `runs/SHORT_REAL_TIME/FINAL_VERDICT.json` |
 
 Both bundles contain the required manifest, scenario, timeline, invariant,
 fault, resource, autonomy, incident, effect, briefing, verdict, and report
