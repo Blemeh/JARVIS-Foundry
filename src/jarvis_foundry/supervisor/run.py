@@ -247,6 +247,31 @@ def _run_frozen_supervisor(
         console_handler.uninstall()
 
 
+def _resilience_coordinator(database, config_path):
+    """Build the bounded V7C coordinator when explicitly enabled in the
+    worker runtime YAML (``resilience.coordinator_enabled: true``).
+
+    Default OFF: the watchdog-only Supervisor must not gain an incident
+    automation surface without an explicit activation record. The
+    coordinator itself re-checks STOP before any repair callback and never
+    widens heartbeat failure (service.resilience_tick).
+    """
+    flag_path = getattr(config_path, "expanduser", lambda: config_path)()
+    try:
+        import yaml
+
+        raw = yaml.safe_load(Path(flag_path).read_text(encoding="utf-8")) or {}
+    except (OSError, ValueError, TypeError):
+        return None
+    if not isinstance(raw, dict):
+        return None
+    if not bool((raw.get("resilience") or {}).get("coordinator_enabled", False)):
+        return None
+    from ..resilience import ResilienceCoordinator
+
+    return ResilienceCoordinator(database)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -279,6 +304,8 @@ def main(argv: list[str] | None = None) -> int:
         spawn_worker_loop=bool(args.spawn_worker_loop or authority.spawn_worker_loop),
         worker_loop_config=getattr(args, "worker_loop_config", None) or authority.worker_yaml,
         provider_settings=authority.provider_settings,
+        resilience=_resilience_coordinator(
+            database, getattr(args, "worker_loop_config", None)),
     )
     console_handler = make_console_handler(supervisor)
     console_handler.install()
