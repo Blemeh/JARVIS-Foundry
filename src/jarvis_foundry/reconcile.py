@@ -118,6 +118,8 @@ def _table_key_column(table: str) -> str:
         "tier_c_blocks": "label",
         "tier_c_block_revisions": "revision_id",
         "tier_c_procedures": "procedure_id",
+        # Software-intelligence (Lane 4): derived alias projection
+        "tier_c_project_aliases": "alias",
     }
     return key_columns[table]
 

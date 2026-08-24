@@ -107,6 +107,7 @@ class ObsidianService:
                 content=data, expected_hash=expected_hash,
                 observed_hash=observed_hash, mission_id=mission_id,
             )
+        path.parent.mkdir(parents=True, exist_ok=True)
         before_bytes = path.read_bytes() if path.exists() else b""
         before_hash = sha256_bytes(before_bytes)
         before_snapshot = self.snapshots.before(note_name, before_bytes)

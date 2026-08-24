@@ -42,7 +42,9 @@ class ObsidianWriter:
     before any file or ledger mutation.
     """
 
-    def __init__(self, vault_root: str | Path, v1_write_root: str = "JARVIS/V1") -> None:
+    def __init__(self, vault_root: str | Path,
+                 v1_write_root: str = "JARVIS/V1", *,
+                 allow_projects: bool = False) -> None:
         self.vault = Path(vault_root).expanduser().resolve()
         # Root-cause fix (review deleg_1e6e9421, R4): historical callers
         # passed the governed dir itself (…/JARVIS/V1) or the JARVIS dir
@@ -63,6 +65,8 @@ class ObsidianWriter:
         else:
             write_root = self.vault / v1_write_root
         self.write_root = write_root.resolve()
+        #: software-intelligence extension: Projects/ subnamespace opt-in
+        self.allow_projects = bool(allow_projects)
         if self.write_root != self.vault and self.vault not in self.write_root.parents:
             raise ObsidianPolicyError(
                 f"v1_write_root must live inside the vault: {self.write_root}")
@@ -86,6 +90,11 @@ class ObsidianWriter:
             return name
         if name.startswith(f"{AUDIT_DIR}/") or name.startswith(f"{AUDIT_DIR}\\") or name == "Audit":
             raise ObsidianPolicyError("audit notes are written by the writer, not callers")
+        # Software-intelligence lane: governed project-intelligence namespace.
+        # Opt-in per writer instance; never enabled for the live V1 writer.
+        if self.allow_projects and (
+                name.startswith("Projects/") or name.startswith("Projects\\")):
+            return name
         raise ObsidianPolicyError(
             f"note {name!r} is not in the governed V1 note set")
 
@@ -96,6 +105,13 @@ class ObsidianWriter:
         if not self._inside(path, self.write_root):
             raise ObsidianPolicyError("note path escapes the V1 write root")
         return path
+
+    @staticmethod
+    def _ensure_parent(path: Path) -> None:
+        """Create the note's parent directory when missing (Projects/x)."""
+        parent = path.parent
+        if not parent.exists():
+            parent.mkdir(parents=True, exist_ok=True)
 
     def audit_path(self, relative: str) -> Path:
         """Resolve a path under the Audit/ area (conflict preserves, trail)."""
