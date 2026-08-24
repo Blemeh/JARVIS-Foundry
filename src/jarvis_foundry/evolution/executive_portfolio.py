@@ -1424,22 +1424,33 @@ def _all_work_items(
     goals: Sequence[StructuredGoal],
     now: datetime,
 ) -> list[WorkItem]:
-    items: dict[str, WorkItem] = {}
+    # Registered items occupy their identities even when closed: a terminal
+    # mirror must shadow any derived duplicate (busywork guard).
+    identities: dict[str, WorkItem] = {}
     for item in state.work_items.values():
-        if item.status not in ("OPEN", "PLANNED", "ELIGIBLE"):
-            continue
-        items[item.item_id] = item
-    for item in _project_items(state) + _mission_items(database):
-        items.setdefault(item.item_id, item)
+        identities.setdefault(item.item_id, item)
+    derived: list[WorkItem] = []
+    for item in (_project_items(state) + _mission_items(database)):
+        if item.item_id not in identities:
+            derived.append(item)
     for item in _candidate_items(
             database, resource_id=resource_id, capability=capability,
             candidate_limit=candidate_limit, goals=goals):
-        items.setdefault(item.item_id, item)
+        if item.item_id not in identities:
+            derived.append(item)
     for item in (_research_queue_items(database)
                  + _improvement_items(database)
                  + _incident_items(database)):
-        items.setdefault(item.item_id, item)
-    return list(items.values())
+        if item.item_id not in identities:
+            derived.append(item)
+    actionable = [
+        item for item in identities.values()
+        if item.status in ("OPEN", "PLANNED", "ELIGIBLE")
+    ]
+    return actionable + [
+        item for item in derived
+        if all(item.item_id != kept.item_id for kept in actionable)
+    ]
 
 
 def _latest_wait(state: PortfolioState) -> dict[str, Any] | None:

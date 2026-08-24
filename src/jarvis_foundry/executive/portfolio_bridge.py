@@ -93,6 +93,49 @@ def capability_readiness(
     return {"ready": True, "state": state, "reason": "", "blocked_by": None}
 
 
+def _retire_unexecutable(
+    database: FoundryDatabase,
+    *,
+    mission_id: str,
+    item_id: str,
+    kind: str,
+    decision_id: str,
+    source_id: str,
+) -> None:
+    database.append(Event.create(
+        "mission.state_changed",
+        {
+            "mission_id": mission_id,
+            "state": "CANCELLED",
+            "next_action": (
+                f"retired by portfolio: no executable step contract "
+                f"remains ({kind} selection)"),
+            "reason": (
+                "bounded portfolio policy: repair without an "
+                "executable contract cannot make progress"),
+        },
+        source_type="supervisor",
+        source_id=source_id,
+        idempotency_key=(
+            f"mission.state_changed:{mission_id}:CANCELLED:"
+            f"portfolio-unexecutable"),
+    ))
+    database.append(Event.create(
+        "portfolio.repair_retired",
+        {
+            "decision_id": decision_id,
+            "item_id": item_id,
+            "kind": kind,
+            "mission_id": mission_id,
+            "reason": "no remaining executable step contract",
+        },
+        source_type="supervisor",
+        source_id=source_id,
+        idempotency_key=(
+            f"portfolio.repair_retired:{decision_id}:{mission_id}"),
+    ))
+
+
 def _stop_or_veto(database: FoundryDatabase) -> str | None:
     stop = emergency_stop_reason(
         database, database.path.parent / "EMERGENCY_STOP")
@@ -179,7 +222,20 @@ def materialize_portfolio_selection(
             # A BLOCKED/terminal mission refuses contracts outright; that is
             # exactly the unrepairable case this branch retires.
             executable = None
-        if executable is None:
+        blocked_state = str(mission["state"] or "") == "BLOCKED"
+        if executable is None or blocked_state:
+            # A BLOCKED mission can never be dispatched again under current
+            # machinery (the loop refuses non-dispatchable states), so a
+            # REPAIR selection would only produce endless blocked cycles
+            # (live incident 2026-08-24). Retire it durably so the selector
+            # stops ranking it; the ledger keeps the full history.
+            _retire_unexecutable(
+                database, mission_id=mission_id, item_id=item_id,
+                kind=kind, decision_id=decision_id, source_id=source_id)
+            return {"materialized": False, "mission_id": None,
+                    "blocked_reason": (
+                        f"{kind} target {mission_id} cannot be dispatched "
+                        f"(state {mission['state'] or 'unknown'}); retired")}
             # A repairable mission without any remaining executable contract
             # can only produce an endless blocked-cycle (live incident
             # 2026-08-24). Retire it durably so the selector stops ranking
@@ -214,7 +270,7 @@ def materialize_portfolio_selection(
                 source_type="supervisor",
                 source_id=source_id,
                 idempotency_key=(
-                    f"portfolio.repair_retired:{decision_id}"),
+                    f"portfolio.repair_retired:{decision_id}:{mission_id}"),
             ))
             return {"materialized": False, "mission_id": None,
                     "blocked_reason": (
