@@ -19,7 +19,9 @@ def _fresh_db(tmp_path, name="db.sqlite"):
 
 
 def test_schema_version_is_v3_and_projection_registry_complete():
-    assert SCHEMA_VERSION == V3_SCHEMA_VERSION
+    # V3 owned v36; later additive migrations (Lane 4 software-intelligence
+    # v37) may raise the current version without changing V3's own tables.
+    assert SCHEMA_VERSION >= V3_SCHEMA_VERSION
     for table in ("candidate_outcomes", "scoring_policy_registry",
                   "discovery_portfolio"):
         assert table in PROJECTION_TABLES
