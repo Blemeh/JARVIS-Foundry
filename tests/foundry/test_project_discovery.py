@@ -168,6 +168,43 @@ def test_feed_portfolio_creates_scored_candidates_and_v7a_items(tmp_path) -> Non
                                 for entry in replay["fed"])
 
 
+def test_selection_bar_is_canonical_not_local(tmp_path, monkeypatch) -> None:
+    """If canonical V7A policy changes, discovery must not retain a
+    stale private threshold."""
+    import jarvis_foundry.v3_loop as v3_loop
+    from jarvis_foundry.project_discovery import (
+        canonical_min_candidate_score,
+    )
+    assert canonical_min_candidate_score() == v3_loop.DEFAULT_MIN_SCORE
+    db = FoundryDatabase(tmp_path / "foundry.db")
+    db.initialize()
+    now = datetime(2026, 8, 24, tzinfo=timezone.utc)
+    failing = _record(ci_runs=(
+        {"name": "CI", "status": "completed", "conclusion": "failure",
+         "created_at": "2026-08-24T18:08:26Z"},
+        {"name": "CI", "status": "completed", "conclusion": "failure",
+         "created_at": "2026-08-05T20:19:53Z"},
+    ))
+    opportunities = detect_opportunities(
+        observe_repository(failing, now=now), failing)
+    baseline = feed_portfolio(db, "mission-policy-a", opportunities)
+    assert baseline["min_score_applied"] == 0.35
+    assert baseline["min_score_source"] == "v3_loop.DEFAULT_MIN_SCORE"
+
+    # canonical policy moves -> discovery decision moves with it
+    monkeypatch.setattr(v3_loop, "DEFAULT_MIN_SCORE", 0.10)
+    moved = feed_portfolio(db, "mission-policy-b", opportunities)
+    assert moved["min_score_applied"] == 0.10
+    assert len(moved["passing_min_score"]) == \
+        len([e for e in moved["fed"] if e.get("score") is not None])
+
+    monkeypatch.setattr(v3_loop, "DEFAULT_MIN_SCORE", 0.60)
+    raised = feed_portfolio(db, "mission-policy-c", opportunities)
+    assert raised["decision"] == "WAIT"
+    assert raised["wait_reason"] == \
+        "no opportunity reached the canonical selection bar"
+
+
 def test_honest_wait_when_nothing_warrants_work(tmp_path) -> None:
     db = FoundryDatabase(tmp_path / "foundry.db")
     db.initialize()

@@ -53,6 +53,41 @@ on branch `candidate/live-github-research-activation-20260824`
   ANY consumer of repo metadata must go through the redaction-normalizing
   connector, not raw payloads.
 
+## REQUIRED at four-lane semantic integration: NEW_PROJECT mapping
+
+Lane 3 has independently added the canonical V7A work class `NEW_PROJECT`.
+This lane was built from the older frozen base and currently maps:
+
+```
+NEW_PROJECT_OPPORTUNITY -> CANDIDATE      (_PORTFOLIO_CLASS, project_discovery.py)
+```
+
+After Lane-1 + Lane-3 semantic integration, the four-lane integration
+session MUST change this single mapping line to the canonical class:
+
+```
+NEW_PROJECT_OPPORTUNITY -> NEW_PROJECT    (canonical V7A work class from Lane 3)
+```
+
+Do NOT recreate or duplicate NEW_PROJECT inside Lane-1 code before that
+session; do not merge/cherry-pick Lane 3 here. The mapping is deliberately
+isolated to one dictionary entry so the integration wiring is a one-line
+change against the combined tree.
+
+## Closure-repair notes (same branch, post-pass batch)
+
+- Research claim identity is now CLOCK-FREE (`claim_identity`):
+  proposition+source identity is stable across retrievals; later reads of
+  an identical claim append `research.revalidation_recorded` events in the
+  same ledger instead of minting duplicates.
+- The selection bar is no longer copied into discovery:
+  `feed_portfolio` reads the authoritative `v3_loop.DEFAULT_MIN_SCORE` at
+  decision time via `canonical_min_candidate_score()`.
+- `read_document` redirect contract implemented as documented: bounded
+  hops, HTTPS-only, host-policy-checked per hop, loop-fail bounded.
+- `read_document` now returns sanitized `DocumentContent` (+ raw_sha256
+  provenance); raw secret material cannot reach returned/durable text.
+
 ## Boundaries respected (verify on integration)
 
 - No main mutation, no production/live-DB/scheduler touch, no merges from

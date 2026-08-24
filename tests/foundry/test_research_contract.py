@@ -7,11 +7,14 @@ import json
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.research_contract import (
     ResearchContractError,
+    claim_identity,
     classify_content,
     link_attempt_evidence,
     record_conflict,
     record_research_item,
+    record_revalidation,
     record_unknown,
+    revalidations_for,
 )
 
 
@@ -33,6 +36,122 @@ def _claim_rows(db, claim_type: str | None = None) -> list[dict]:
                 "FROM knowledge_claims WHERE claim_type = ? ORDER BY rowid",
                 (claim_type,)).fetchall()
     return [dict(row) for row in rows]
+
+
+def test_repeated_retrieval_at_new_time_does_not_duplicate_claims(
+        tmp_path) -> None:
+    """A: same source, same location, same proposition, later clock."""
+    db = _db(tmp_path)
+    kwargs = dict(
+        mission_id="mission-research",
+        claim_kind="observation",
+        statement="Hoowen CI concluded failure on 2026-08-24",
+        source_type="github_api",
+        location="repos/Blemeh/Hoowen/actions/runs")
+    first = record_research_item(db, retrieved_at="2026-08-24T18:30:00Z",
+                                 **kwargs)
+    assert first["created"] is True
+    second = record_research_item(db, retrieved_at="2026-08-25T09:00:00Z",
+                                  **kwargs)
+    assert second["claim_id"] == first["claim_id"]
+    assert second["created"] is False
+    assert second["revalidated"] is True
+    rows = _claim_rows(db, "observation")
+    assert len(rows) == 1, "clock change must not mint a duplicate claim"
+    # retrieval history is NOT erased:
+    stamps = revalidations_for(db, first["claim_id"])
+    assert stamps == ["2026-08-25T09:00:00Z"]
+    with db.connect() as connection:
+        original = connection.execute(
+            "SELECT payload_json FROM events WHERE event_type = "
+            "'knowledge.claim_recorded' AND json_extract(payload_json, "
+            "'$.claim_id') = ?", (first["claim_id"],)).fetchone()
+    import json
+    provenance = json.loads(original[0])["provenance"]
+    assert provenance["retrieved_at"] == "2026-08-24T18:30:00Z", \
+        "first-retrieval provenance preserved"
+
+
+def test_materially_different_proposition_is_distinct_claim(tmp_path) -> None:
+    """B: same source+location, different proposition -> distinct id."""
+    db = _db(tmp_path)
+    base = dict(mission_id="m", claim_kind="observation",
+                source_type="github_api",
+                location="repos/Blemeh/Hoowen/actions/runs")
+    a = record_research_item(
+        db, statement="Hoowen CI concluded failure", retrieved_at=NOWISH,
+        **base)
+    b = record_research_item(
+        db, statement="Hoowen CI concluded success", retrieved_at=NOWISH,
+        **base)
+    assert a["claim_id"] != b["claim_id"]
+    assert len(_claim_rows(db)) == 2
+
+
+NOWISH = "2026-08-24T19:00:00Z"
+
+
+def test_same_proposition_from_independent_source_is_distinct_and_traceable(
+        tmp_path) -> None:
+    """C: same proposition, different canonical location -> distinct
+    claims whose provenance keeps the sources distinguishable (canonical
+    knowledge semantics; contradiction detection may relate them)."""
+    db = _db(tmp_path)
+    proposition = "pytest latest release tag is 9.1.1"
+    registry = record_research_item(
+        db, mission_id="m", claim_kind="evidence", statement=proposition,
+        source_type="github_api",
+        location="/repos/pytest-dev/pytest/releases/latest",
+        retrieved_at=NOWISH)
+    blog = record_research_item(
+        db, mission_id="m", claim_kind="evidence", statement=proposition,
+        source_type="vendor_blog",
+        location="https://blog.example/pytest-9-1-1",
+        retrieved_at=NOWISH)
+    assert registry["claim_id"] != blog["claim_id"]
+    rows = {r["claim_id"]: r for r in _claim_rows(db, "evidence")}
+    assert len(rows) == 2
+    events = db.events(event_type_prefixes=("knowledge.claim_recorded",))
+    locations = set()
+    for event in events:
+        prov = event.payload.get("provenance") or {}
+        if event.payload.get("statement") == proposition:
+            locations.add(prov["canonical_location"])
+    assert locations == {"/repos/pytest-dev/pytest/releases/latest",
+                         "https://blog.example/pytest-9-1-1"}
+
+
+def test_claim_identity_is_clock_free_and_location_sensitive() -> None:
+    assert claim_identity(
+        claim_kind="observation", statement="S", source_type="github_api",
+        location="L") == claim_identity(
+        claim_kind="observation", statement="S", source_type="github_api",
+        location="L")
+    assert claim_identity(
+        claim_kind="observation", statement="S", source_type="github_api",
+        location="L") != claim_identity(
+        claim_kind="observation", statement="S", source_type="github_api",
+        location="L2")
+
+
+def test_explicit_revalidation_appends_distinct_history(tmp_path) -> None:
+    db = _db(tmp_path)
+    item = record_research_item(
+        db, mission_id="m", claim_kind="observation", statement="X is red",
+        source_type="github_api", location="/runs",
+        retrieved_at="2026-08-24T10:00:00Z")
+    record_revalidation(db, claim_id=item["claim_id"],
+                        retrieved_at="2026-08-24T11:00:00Z",
+                        content_sha256_16=item["content_hash"])
+    # identical re-delivery dedupes; new timestamp appends history
+    record_revalidation(db, claim_id=item["claim_id"],
+                        retrieved_at="2026-08-24T11:00:00Z",
+                        content_sha256_16=item["content_hash"])
+    record_revalidation(db, claim_id=item["claim_id"],
+                        retrieved_at="2026-08-24T12:00:00Z",
+                        content_sha256_16=item["content_hash"])
+    stamps = revalidations_for(db, item["claim_id"])
+    assert stamps == ["2026-08-24T11:00:00Z", "2026-08-24T12:00:00Z"]
 
 
 def test_observation_records_with_full_provenance_and_dedupes(tmp_path) -> None:

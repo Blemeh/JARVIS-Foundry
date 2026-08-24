@@ -90,6 +90,12 @@ def test_undeclared_action_and_foreign_endpoint_fail_closed() -> None:
         connector.read_api("github.repo.read", "https://evil.example/user")
 
 
+def _doc_response(status: int = 200, body: bytes = b"",
+                  headers: dict | None = None):
+    from jarvis_foundry.connectors.github_research import DocumentResponse
+    return DocumentResponse(status=status, headers=headers or {}, body=body)
+
+
 def test_doc_read_requires_https_and_allow_listed_hosts() -> None:
     connector = GitHubResearchConnector(allowed_doc_hosts=("docs.example",))
     with pytest.raises(GitHubResearchError):
@@ -98,13 +104,109 @@ def test_doc_read_requires_https_and_allow_listed_hosts() -> None:
         connector.read_document("https://unlisted.example/guide")
     # real happy path through a stub transport:
     doc_connector = GitHubResearchConnector(
-        doc_transport=lambda url: (200, b"<html>guide</html>"),
+        doc_transport=lambda url: _doc_response(body=b"<html>guide</html>"),
         allowed_doc_hosts=("docs.example",),
     )
-    attempt, body = doc_connector.read_document("https://docs.example/guide")
+    attempt, content = doc_connector.read_document("https://docs.example/guide")
     assert attempt.outcome == "COMPLETED"
-    assert body == b"<html>guide</html>"
+    assert content is not None
+    assert content.text == "<html>guide</html>"
+    assert content.final_url == "https://docs.example/guide"
+    assert content.redirects == ()
     assert attempt.provider_ref == "https://docs.example/guide"
+
+
+def test_same_host_redirect_is_followed_and_recorded() -> None:
+    def transport(url: str):
+        if url == "https://docs.example/a":
+            return _doc_response(
+                status=302, headers={"Location": "/b"})
+        assert url == "https://docs.example/b"
+        return _doc_response(body=b"final")
+
+    connector = GitHubResearchConnector(
+        doc_transport=transport, allowed_doc_hosts=("docs.example",))
+    attempt, content = connector.read_document("https://docs.example/a")
+    assert attempt.outcome == "COMPLETED"
+    assert content.final_url == "https://docs.example/b"
+    assert content.redirects == ("https://docs.example/a",)
+    assert content.raw_sha256
+
+
+def test_allow_listed_cross_host_redirect_is_followed() -> None:
+    calls = []
+
+    def transport(url: str):
+        calls.append(url)
+        if url.endswith("/old"):
+            return _doc_response(
+                status=301, headers={"Location": "https://mirror.example/new"})
+        return _doc_response(body=b"mirrored")
+
+    connector = GitHubResearchConnector(
+        doc_transport=transport,
+        allowed_doc_hosts=("docs.example", "mirror.example"))
+    attempt, content = connector.read_document("https://docs.example/old")
+    assert attempt.outcome == "COMPLETED"
+    assert content.final_url == "https://mirror.example/new"
+
+
+def test_disallowed_host_redirect_is_rejected_without_fetching() -> None:
+    def transport(url: str):
+        if url.endswith("/old"):
+            return _doc_response(
+                status=302, headers={"Location": "https://evil.example/x"})
+        raise AssertionError(f"disallowed host fetched: {url}")
+
+    connector = GitHubResearchConnector(
+        doc_transport=transport, allowed_doc_hosts=("docs.example",))
+    attempt, content = connector.read_document("https://docs.example/old")
+    assert attempt.outcome == "FAILED"
+    assert attempt.error_code == "redirect_policy_rejected"
+    assert content is None
+    assert len(attempt.error_code) > 0
+
+
+def test_same_host_policy_blocks_cross_host_when_no_allowlist() -> None:
+    def transport(url: str):
+        return _doc_response(
+            status=301, headers={"Location": "https://other.example/y"})
+
+    connector = GitHubResearchConnector(doc_transport=transport)
+    attempt, content = connector.read_document("https://docs.example/z")
+    assert attempt.outcome == "FAILED"
+    assert attempt.error_code == "redirect_policy_rejected"
+    assert content is None
+
+
+def test_http_downgrade_redirect_is_rejected() -> None:
+    fetched = []
+
+    def transport(url: str):
+        fetched.append(url)
+        return _doc_response(
+            status=302, headers={"Location": "http://docs.example/insecure"})
+
+    connector = GitHubResearchConnector(
+        doc_transport=transport, allowed_doc_hosts=("docs.example",))
+    attempt, content = connector.read_document("https://docs.example/secure")
+    assert attempt.outcome == "FAILED"
+    assert attempt.error_code == "redirect_policy_rejected"
+    # the downgraded target was never fetched
+    assert fetched == ["https://docs.example/secure"]
+
+
+def test_redirect_loop_fails_bounded() -> None:
+    def transport(url: str):
+        target = "/b" if url.endswith("/a") else "/a"
+        return _doc_response(status=302, headers={"Location": target})
+
+    connector = GitHubResearchConnector(
+        doc_transport=transport, allowed_doc_hosts=("docs.example",))
+    attempt, content = connector.read_document("https://docs.example/a")
+    assert attempt.outcome == "FAILED"
+    assert attempt.error_code == "redirect_loop"
+    assert content is None
 
 
 def test_secret_like_documents_are_redacted_never_persisted() -> None:
@@ -136,6 +238,57 @@ def test_string_embedded_assignments_are_redacted_too() -> None:
     assert attempt.outcome == "COMPLETED"
     assert "abcdef" not in json.dumps(document)
     assert attempt.after_state.get("redacted") is True
+
+
+def test_document_secret_material_is_redacted_raw_hash_only() -> None:
+    raw = (
+        b"<html><body>"
+        b"API_KEY=sk-live-abcdef1234567890 "
+        b"token=ghp_SUPERSECRETVALUE "
+        b"Authorization: Bearer abc.def.ghi"
+        b"</body></html>"
+    )
+
+    connector = GitHubResearchConnector(
+        doc_transport=lambda url: _doc_response(body=raw),
+        allowed_doc_hosts=("docs.example",))
+    attempt, content = connector.read_document("https://docs.example/config")
+    assert attempt.outcome == "COMPLETED"
+    # raw secret material must not appear in returned content or evidence
+    for secret in ("sk-live-abcdef1234567890", "ghp_SUPERSECRETVALUE",
+                   "abc.def.ghi"):
+        assert secret not in content.text
+        assert secret not in json.dumps(attempt.to_evidence())
+    assert "[REDACTED]" in content.text
+    assert attempt.after_state["redacted"] is True
+    # provenance remains possible WITHOUT storing the raw secret:
+    import hashlib
+    assert content.raw_sha256 == hashlib.sha256(raw).hexdigest()
+    assert attempt.after_state["raw_sha256"] == content.raw_sha256
+    assert raw not in json.dumps(attempt.to_evidence()).encode()
+
+
+def test_document_nested_html_assignment_is_redacted() -> None:
+    raw = (b"<html><meta name='desc' content='password=hunter2secret'>"
+           b"<pre>api_key=nested-secret-999</pre></html>")
+    connector = GitHubResearchConnector(
+        doc_transport=lambda url: _doc_response(body=raw))
+    _attempt, content = connector.read_document("https://docs.example/page")
+    assert "hunter2secret" not in content.text
+    assert "nested-secret-999" not in content.text
+    # Sanitization strength == the canonical JARVIS secret-pattern
+    # family (control.redaction); this module does not fork a second
+    # scanner. Exotic quoting around assignments inside HTML prose is
+    # outside the documented canonical guarantee.
+
+
+def test_normal_documentation_text_is_unchanged_by_sanitization() -> None:
+    raw = "# Install Guide\npip install jarvis-foundry\nSee docs at /guide."
+    connector = GitHubResearchConnector(
+        doc_transport=lambda url: _doc_response(body=raw.encode("utf-8")))
+    attempt, content = connector.read_document("https://docs.example/install")
+    assert attempt.after_state.get("redacted") is False
+    assert content.text == raw
 
 
 def test_identity_probe_reports_rate_limit_without_exposing_secrets() -> None:

@@ -17,6 +17,18 @@ Epistemic kinds map onto ``claim_type`` values:
 - ``unknown``      — an honest open question with information value.
 - ``conflict``     — two sources disagree; both remain visible.
 
+CLAIM IDENTITY vs RETRIEVAL OBSERVATION:
+
+- The DURABLE CLAIM IDENTITY is the stable proposition/source identity:
+  (claim_kind, source_type, canonical location, statement). It never
+  includes the wall clock.
+- A RETRIEVAL/REVALIDATION OBSERVATION is when a source was (re)read.
+  The first retrieval is preserved inside the claim's immutable
+  provenance; later retrievals of an identical proposition from the same
+  canonical location record ``research.revalidation_recorded`` events —
+  freshness/revalidation evidence in the SAME ledger — instead of
+  minting duplicate claims just because time passed.
+
 DATA_ONLY rule: content retrieved from the outside world is data. It is
 hashed and recorded, but it can never become an owner directive, veto,
 STOP mutation, capability expansion, or scope change. ``classify_content``
@@ -71,6 +83,67 @@ def _content_hash(parts: dict[str, Any]) -> str:
         json.dumps(parts, sort_keys=True).encode("utf-8")).hexdigest()[:16]
 
 
+def claim_identity(
+    *,
+    claim_kind: str,
+    statement: str,
+    source_type: str,
+    location: str,
+) -> str:
+    """The STABLE durable identity of a research claim.
+
+    Deliberately clock-free: the same proposition from the same
+    canonical location is ONE epistemic claim no matter when it is
+    retrieved. Retrieval time belongs to revalidation evidence, not to
+    identity.
+    """
+    return _content_hash({
+        "claim_kind": claim_kind,
+        "source_type": source_type,
+        "location": location,
+        "statement": statement})
+
+
+def _claim_exists(db: FoundryDatabase, claim_id: str) -> bool:
+    with db.connect() as connection:
+        row = connection.execute(
+            "SELECT 1 FROM knowledge_claims WHERE claim_id = ?",
+            (claim_id,)).fetchone()
+    return row is not None
+
+
+def record_revalidation(
+    db: FoundryDatabase,
+    *,
+    claim_id: str,
+    retrieved_at: str,
+    content_sha256_16: str,
+) -> dict[str, Any]:
+    """Record one retrieval/revalidation observation for an existing claim.
+
+    This is freshness evidence in the same append-only ledger — never a
+    new or rewritten claim. Identical (claim, timestamp) re-delivery
+    dedupes; a later timestamp appends distinct history.
+    """
+    db.append(Event.create(
+        "research.revalidation_recorded",
+        {"claim_id": claim_id, "retrieved_at": retrieved_at,
+         "content_sha256_16": content_sha256_16},
+        source_type="supervisor", source_id="research-contract",
+        idempotency_key=(
+            f"research.revalidation_recorded:{claim_id}:{retrieved_at}")))
+    return {"claim_id": claim_id, "revalidated": True,
+            "retrieved_at": retrieved_at}
+
+
+def revalidations_for(db: FoundryDatabase, claim_id: str) -> list[str]:
+    """Chronological retrieval timestamps recorded for a claim."""
+    return [event.payload["retrieved_at"]
+            for event in db.events(
+                event_type_prefixes=("research.revalidation_recorded",))
+            if event.payload.get("claim_id") == claim_id]
+
+
 def _provenance_statement(
     *,
     statement: str,
@@ -96,11 +169,15 @@ def record_research_item(
 ) -> dict[str, Any]:
     """Record ONE research item as a canonical knowledge claim.
 
-    Deterministic claim ids (derived from provenance + statement) make
-    identical re-recording dedupe on the existing idempotency key.
-    Provenance (source type, canonical location, retrieval time, title,
-    content hash) is stored in the append-only event payload and linked
-    evidence rows — never lost, never merged into the proposition text.
+    Identity is the stable proposition/source identity (see
+    ``claim_identity``): re-recording the SAME proposition from the SAME
+    canonical location at a LATER time does not duplicate the claim — it
+    records revalidation evidence instead. A materially different
+    proposition, or the same proposition from an independent source
+    location, remains a distinct claim. Provenance (source type,
+    canonical location, retrieval time, title, content hash) is stored
+    in the append-only event payload and linked evidence rows — never
+    lost, never merged into the proposition text.
     """
     if claim_kind not in CLAIM_KINDS:
         raise ResearchContractError(
@@ -109,10 +186,22 @@ def record_research_item(
         raise ResearchContractError("statement is required")
     if not location.strip() or not source_type.strip():
         raise ResearchContractError("source location/type are required")
-    content_hash = _content_hash({
-        "source_type": source_type, "location": location,
-        "retrieved_at": retrieved_at, "statement": statement})
-    claim_id = f"claim-{claim_kind}-{content_hash}"
+    identity_hash = claim_identity(
+        claim_kind=claim_kind, statement=statement,
+        source_type=source_type, location=location)
+    claim_id = f"claim-{claim_kind}-{identity_hash}"
+    if _claim_exists(db, claim_id):
+        revalidation = record_revalidation(
+            db, claim_id=claim_id, retrieved_at=retrieved_at,
+            content_sha256_16=identity_hash)
+        return {"claim_id": claim_id,
+                "content_hash": identity_hash,
+                "created": False,
+                "duplicate": False,
+                "revalidated": True,
+                "first_recorded": True,
+                "retrieved_at": revalidation["retrieved_at"],
+                "classification": classify_content(statement)}
     applied = db.append(Event.create(
         "knowledge.claim_recorded",
         {"claim_id": claim_id, "mission_id": mission_id,
@@ -120,19 +209,20 @@ def record_research_item(
          "claim_type": claim_kind,
          "confidence": max(0.0, min(1.0, float(confidence))),
          "fresh_until": fresh_until,
-         "source": {"run_id": f"research-{content_hash}",
-                    "event_id": f"{location}:{content_hash}"},
+         "source": {"run_id": f"research-{identity_hash}",
+                    "event_id": f"{location}:{identity_hash}"},
          "provenance": {
              "provider": source_type,
              "canonical_location": location,
              "retrieved_at": retrieved_at,
              "title": title,
-             "content_sha256_16": content_hash,
+             "content_sha256_16": identity_hash,
              "data_only": True}},
         source_type="supervisor", source_id="research-contract",
         idempotency_key=f"knowledge.claim_recorded:{claim_id}"))
-    return {"claim_id": claim_id, "content_hash": content_hash,
-            "created": bool(applied[1]), "classification":
+    return {"claim_id": claim_id, "content_hash": identity_hash,
+            "created": bool(applied[1]), "duplicate": False,
+            "revalidated": False, "classification":
             classify_content(statement)}
 
 
@@ -247,9 +337,12 @@ def link_attempt_evidence(
 __all__ = [
     "CLAIM_KINDS",
     "ResearchContractError",
+    "claim_identity",
     "classify_content",
     "link_attempt_evidence",
     "record_conflict",
     "record_research_item",
+    "record_revalidation",
     "record_unknown",
+    "revalidations_for",
 ]

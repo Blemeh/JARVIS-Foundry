@@ -57,8 +57,10 @@ _PORTFOLIO_CLASS = {
     "UNKNOWN_REQUIRING_RESEARCH": "RESEARCH",
 }
 
-# Selection bar mirrors the live loop's minimum score (never lowered).
-_MIN_CANDIDATE_SCORE = 0.35
+# NOTE: the selection bar is NOT duplicated here. The authoritative
+# minimum candidate score lives in the canonical discovery loop policy
+# (`v3_loop.DEFAULT_MIN_SCORE`) and is consumed at decision time so a
+# canonical policy change flows through automatically.
 
 _STALE_DAYS = 45
 
@@ -407,6 +409,17 @@ def reject_duplicates(
     return accepted, rejections
 
 
+def canonical_min_candidate_score() -> float:
+    """The authoritative selection bar, read from canonical policy.
+
+    Single source of truth: ``v3_loop.DEFAULT_MIN_SCORE``. This module
+    never keeps its own copy, so a canonical policy change applies here
+    without touching discovery code.
+    """
+    from .v3_loop import DEFAULT_MIN_SCORE
+    return float(DEFAULT_MIN_SCORE)
+
+
 def feed_portfolio(
     db: FoundryDatabase,
     mission_id: str,
@@ -416,9 +429,10 @@ def feed_portfolio(
 
     Candidates are generated through ``generate_candidate`` (dedupe),
     scored through ``score_candidate`` (canonical calibrated truth), and
-    registered as V7A work items via ``register_work_item``. This module
-    computes NO second final score: the recorded candidate score and the
-    portfolio's own policy remain authoritative.
+    registered as V7A work items via ``register_work_item``. The
+    SELECT/WAIT decision reads the CANONICAL selection bar at decision
+    time (``canonical_min_candidate_score``); this module computes NO
+    second final score and owns no threshold.
     """
     from .discovery_candidates import (
         generate_candidate,
@@ -427,6 +441,7 @@ def feed_portfolio(
     from .supervisor.authority import SUPERVISOR_CONTROLLER
     from .evolution.executive_portfolio import register_work_item
 
+    min_score = canonical_min_candidate_score()
     fed: list[dict[str, Any]] = []
     for opp in opportunities:
         result = generate_candidate(
@@ -487,11 +502,13 @@ def feed_portfolio(
                     "portfolio_class": _PORTFOLIO_CLASS[opp.kind]})
     passing = [entry for entry in fed
                if entry.get("score") is not None
-               and entry["score"] >= _MIN_CANDIDATE_SCORE]
+               and entry["score"] >= min_score]
     waiting = bool(fed) and not passing
     return {
         "mission_id": mission_id,
         "fed": fed,
+        "min_score_source": "v3_loop.DEFAULT_MIN_SCORE",
+        "min_score_applied": min_score,
         "passing_min_score": passing,
         "decision": "SELECT_CANDIDATES" if passing else "WAIT",
         "wait_reason": (
@@ -507,6 +524,7 @@ __all__ = [
     "Observation",
     "Rejection",
     "RepositoryRecord",
+    "canonical_min_candidate_score",
     "detect_opportunities",
     "feed_portfolio",
     "observe_repository",
