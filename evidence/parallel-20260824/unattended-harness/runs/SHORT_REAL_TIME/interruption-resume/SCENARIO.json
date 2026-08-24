@@ -1,0 +1,51 @@
+{
+  "busywork_threshold": 2,
+  "clock_mode": "ACCELERATED_DISPOSABLE",
+  "duration_seconds": 4.0,
+  "evidence_output": "interruption-resume",
+  "expected_invariants": [
+    "STOP_AVAILABLE",
+    "HEARTBEAT_CONTINUITY",
+    "MISSION_PROGRESS",
+    "EVIDENCE_COMPLETE"
+  ],
+  "initial_state": {
+    "stop_available": true
+  },
+  "owner_spam_threshold": 4,
+  "required_capabilities": [
+    "supervisor"
+  ],
+  "required_end_state": "CONTINUABLE",
+  "resource_envelope": {
+    "max_cpu_seconds": null,
+    "max_db_bytes": 67108864,
+    "max_event_count": 100000,
+    "max_memory_bytes": null,
+    "max_processes": 512,
+    "max_provider_cost": 5.0,
+    "max_retry_count": 10000,
+    "max_task_count": 64,
+    "max_workers": 64
+  },
+  "restart_checkpoints": [
+    "PRE_RESTART",
+    "POST_RESTART"
+  ],
+  "rollback_requirement": "HEALTHY_AFTER_ROLLBACK",
+  "sample_interval_seconds": 1.0,
+  "scenario_id": "INTERRUPTION_PROOF",
+  "scheduled_faults": [
+    {
+      "at_seconds": 1.0,
+      "fault_id": "provider",
+      "kind": "PROVIDER_OUTAGE",
+      "parameters": {
+        "recovery_after_seconds": 1
+      },
+      "target": "fake"
+    }
+  ],
+  "seed": 20260824,
+  "wall_time_invariants": []
+}

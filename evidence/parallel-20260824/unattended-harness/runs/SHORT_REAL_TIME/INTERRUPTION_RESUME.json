@@ -1,0 +1,11 @@
+{
+  "fault_ids": [
+    "provider"
+  ],
+  "fault_rows": 1,
+  "first_status": "INTERRUPTED",
+  "proof_root": "evidence\\parallel-20260824\\unattended-harness\\runs\\SHORT_REAL_TIME\\interruption-resume",
+  "resumed_verdict": "PASS",
+  "same_run_id": true,
+  "status": "PASS"
+}

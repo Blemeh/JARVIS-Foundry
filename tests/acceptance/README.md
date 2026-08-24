@@ -49,5 +49,7 @@ Every test must produce structured evidence containing:
 - PASS, FAIL, BLOCKED, or NOT_TESTED;
 - verifier identity and independence limitation.
 
-This directory currently contains test contracts only. No acceptance test has
-run and no gate has passed.
+The reusable unattended acceptance runner lives in
+`scripts/unattended_acceptance.py`; focused contract and negative-control tests
+are in `test_unattended_harness.py`. Fresh disposable proofs are recorded under
+`evidence/parallel-20260824/unattended-harness/runs/`.

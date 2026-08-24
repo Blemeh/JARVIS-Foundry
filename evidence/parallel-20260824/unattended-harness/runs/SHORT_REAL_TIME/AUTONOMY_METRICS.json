@@ -1,0 +1,20 @@
+{
+  "acceptance_label": "REAL_TIME_DISPOSABLE",
+  "busywork_fingerprint_max": 0,
+  "clock_mode": "REAL_TIME",
+  "continuation_cycles": 25,
+  "cycles": 26,
+  "duplicate_effect_count": 0,
+  "duplicate_mission_count": 0,
+  "logical_duration_seconds": 900.0,
+  "manual_continuation_count": 0,
+  "manual_continuation_required": 0,
+  "outcomes": 26,
+  "owner_action_briefings": 6,
+  "run_id": "short_real_time-c7bbf0aee42d",
+  "scenario_id": "SHORT_REAL_TIME",
+  "time_to_next_selection_seconds": 30.0,
+  "wait_count": 5,
+  "wake_events": 2,
+  "wall_elapsed_seconds": 900.187368999992
+}

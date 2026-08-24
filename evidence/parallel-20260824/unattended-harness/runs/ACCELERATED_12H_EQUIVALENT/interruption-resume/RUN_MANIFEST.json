@@ -1,0 +1,159 @@
+{
+  "artifact_hashes": {
+    "AUTONOMY_METRICS.json": "b6c4356646f38657332f9144604832e03a1d536d2fb1849d4cbc40850493efe1",
+    "BRIEFING_SUMMARY.json": "fcbc6e11a013239a3c92208d550414725c2dc9e6ee8fb7e48c82a601d65f6164",
+    "EFFECT_SUMMARY.json": "f6731f7774587a292fc6b3f323c1ffe0012d582cf46b4115778fcd82a55857a5",
+    "FAULTS.jsonl": "5ed4ecffb1764857aeb6af00f129f3e47b159600ca03e50ca7ff59a5d52adb37",
+    "FINAL_REPORT.md": "8f03999eb47868779c3ff7470c7197714bc6ba21162050171d864974ea6d80a7",
+    "FINAL_VERDICT.json": "236dca452b3dd16c5c795d9e876e356d217ad5067843a20b06f355c43530946c",
+    "INCIDENT_SUMMARY.json": "c8810cf9e98c73bd4d7751b3a6400ae7fd6f5e4c8441a64bce368feefd5549a5",
+    "INVARIANTS.jsonl": "95711d44f8aa38ecffe03edb9be12d440521ce123a243d7edb82e8a0fefd216c",
+    "RESOURCE_SAMPLES.jsonl": "04f4ea1fcdd5d45e67ffa847114d9e170df60376a0ac8e9d8e90c378ba08b2f0",
+    "SCENARIO.json": "7d49841380cb00710a3d6ffa2bf9388af6b1f3974d531df92abe3bedfbc6cd76",
+    "TIMELINE.jsonl": "3b0280fae535ffb6df093b0fbae4f47da64a2af96fcde4ec898128b8aa5b397e"
+  },
+  "extra": {
+    "component_results": {
+      "accelerated_proof": {
+        "evidence": {
+          "duration_seconds": 4.0
+        },
+        "reason": "logical 12-hour-equivalent sequence completed",
+        "status": "PASS"
+      },
+      "busywork": {
+        "evidence": {
+          "maximum_repeat": 0
+        },
+        "reason": "repeated work stayed within threshold",
+        "status": "PASS"
+      },
+      "checkpoint_resume": {
+        "evidence": {
+          "step_count": 4
+        },
+        "reason": "checkpoint persisted at every sampling boundary",
+        "status": "PASS"
+      },
+      "continuation": {
+        "evidence": {
+          "continuation_count": 3,
+          "wait_count": 1
+        },
+        "reason": "terminal outcome led to next selection or honest WAIT",
+        "status": "PASS"
+      },
+      "database_fault": {
+        "evidence": {
+          "mode": "healthy"
+        },
+        "reason": "disposable database returned to healthy state",
+        "status": "PASS"
+      },
+      "effect_ambiguity": {
+        "evidence": {
+          "ambiguities": 0,
+          "reconciled": 0
+        },
+        "reason": "ambiguous effects froze and were explicitly reconciled",
+        "status": "PASS"
+      },
+      "evidence_bundle": {
+        "evidence": {
+          "missing": []
+        },
+        "reason": "supporting evidence artifacts are present",
+        "status": "PASS"
+      },
+      "false_pass_factory": {
+        "evidence": {},
+        "reason": "false-PASS proof is a separate adversarial run",
+        "status": "NOT_TESTED"
+      },
+      "fault_scheduler": {
+        "evidence": {
+          "actual_order": [
+            "provider"
+          ],
+          "expected_order": [
+            "provider"
+          ]
+        },
+        "reason": "faults fired deterministically in schedule order",
+        "status": "PASS"
+      },
+      "interruption_resume": {
+        "evidence": {},
+        "reason": "interruption proof is a separate resumed run",
+        "status": "NOT_TESTED"
+      },
+      "invariant_sampler": {
+        "evidence": {
+          "count": 16
+        },
+        "reason": "invariant records are present",
+        "status": "PASS"
+      },
+      "owner_spam": {
+        "evidence": {
+          "owner_action_count": 1
+        },
+        "reason": "owner-action briefing count stayed within threshold",
+        "status": "PASS"
+      },
+      "process_fault": {
+        "evidence": {},
+        "reason": "no owned process probe was run",
+        "status": "NOT_TESTED"
+      },
+      "provider_fault": {
+        "evidence": {},
+        "reason": "fixture provider schedule exercised",
+        "status": "PASS"
+      },
+      "realtime_proof": {
+        "evidence": {},
+        "reason": "real wall-clock proof is a separate run",
+        "status": "NOT_TESTED"
+      },
+      "release_rollback": {
+        "evidence": {
+          "rollback_attempts": 0,
+          "rollback_succeeded": false
+        },
+        "reason": "no release degradation was required",
+        "status": "PASS"
+      },
+      "resource_envelope": {
+        "evidence": {
+          "violations": []
+        },
+        "reason": "resource samples stayed below scenario ceilings",
+        "status": "PASS"
+      },
+      "restart_contract": {
+        "evidence": {},
+        "reason": "no process restart was required",
+        "status": "PASS"
+      },
+      "scenario_contract": {
+        "evidence": {},
+        "reason": "scenario contract remained immutable",
+        "status": "PASS"
+      },
+      "verdict_engine": {
+        "evidence": {},
+        "reason": "verdict derived from structured evidence",
+        "status": "PASS"
+      }
+    }
+  },
+  "generated_at": "2026-08-24T14:02:40.453397Z",
+  "harness": "jarvis-unattended-acceptance",
+  "missing_artifacts": [],
+  "phase": "FINAL",
+  "run_id": "interrupted-proof",
+  "scenario_id": "INTERRUPTION_PROOF",
+  "scope": "disposable fixtures only",
+  "status": "PASS"
+}

@@ -1,0 +1,22 @@
+scenario_id: STANDARD_6H
+duration_seconds: 21600
+clock_mode: REAL_TIME
+seed: 20260824
+initial_state: {stop_available: true, provider_mode: fake-local}
+required_capabilities: [supervisor, portfolio, effects, database, provider]
+scheduled_faults:
+  - {fault_id: worker-crash, at_seconds: 1800, kind: PROCESS_CRASH, target: owned-worker, parameters: {recovery_after_seconds: 60}}
+  - {fault_id: provider-outage, at_seconds: 7200, kind: PROVIDER_OUTAGE, target: fake-provider, parameters: {recovery_after_seconds: 60}}
+  - {fault_id: ambiguous-effect, at_seconds: 10800, kind: RESPONSE_LOST_AFTER_EFFECT, target: fake-provider, parameters: {recovery_after_seconds: 60}}
+  - {fault_id: database-lock, at_seconds: 14400, kind: DATABASE_LOCK, target: disposable-sqlite, parameters: {recovery_after_seconds: 60}}
+  - {fault_id: release-degradation, at_seconds: 18000, kind: RELEASE_DEGRADATION, target: disposable-release}
+expected_invariants: [STOP_AVAILABLE, SINGLE_SUPERVISOR, HEARTBEAT_CONTINUITY, MISSION_PROGRESS, PORTFOLIO_CONTINUATION, MANUAL_CONTINUATION_REQUIRED, WAIT_IS_HONEST, NO_DUPLICATE_MISSION, NO_DUPLICATE_EFFECT, EFFECT_UNKNOWN_FROZEN, INCIDENT_CONTAINED, DB_DURABLE, RESOURCE_ENVELOPE, OWNER_BRIEFING_BOUND, BUSYWORK_BOUND, RELEASE_ROLLBACK_READY, RESTART_RESUMABLE, EVIDENCE_COMPLETE]
+resource_envelope: {max_event_count: 100000, max_db_bytes: 67108864, max_retry_count: 10000, max_provider_cost: 5.0, max_processes: 512, max_workers: 64, max_task_count: 64, max_memory_bytes: 67108864}
+owner_spam_threshold: 8
+busywork_threshold: 2
+restart_checkpoints: [PRE_RESTART, POST_RESTART]
+required_end_state: CONTINUABLE
+rollback_requirement: HEALTHY_AFTER_ROLLBACK
+evidence_output: evidence/runs/standard-6h
+sample_interval_seconds: 60
+wall_time_invariants: [HEARTBEAT_CONTINUITY, RESTART_RESUMABLE]
