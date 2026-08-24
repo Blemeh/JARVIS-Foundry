@@ -352,6 +352,13 @@ def _latest_resolution(
     return None
 
 
+def latest_resolution(
+    database: FoundryDatabase, request_id: str,
+) -> Event | None:
+    """Public read: the newest durable resolution for one request id."""
+    return _latest_resolution(database, request_id)
+
+
 def _latest_runtime_event(database: FoundryDatabase) -> Event | None:
     event_types = (
         "supervisor.started", "supervisor.heartbeat", "supervisor.degraded",

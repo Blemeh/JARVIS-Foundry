@@ -74,6 +74,43 @@ def test_stale_start_request_is_resolved_without_launching(tmp_path):
     assert database.event_count(event_type="supervisor.started") == 0
 
 
+def test_resolved_stale_request_does_not_wedge_next_startup(tmp_path):
+    """Live incident 2026-08-24 regression: one expired START request must
+    not permanently block supervisor recovery. The first start resolves it;
+    the NEXT instance must reach RUNNING instead of exiting UNKNOWN forever."""
+    database = _database(tmp_path)
+    _append_stale_request(database, action="START", request_id="stale-wedge")
+    first = Supervisor(database, tmp_path / "EMERGENCY_STOP", instance_id="first-attempt")
+    assert first.start() == "STOPPED"
+    assert first.started is False
+
+    second = Supervisor(database, tmp_path / "EMERGENCY_STOP", instance_id="second-attempt")
+    assert second.start() == "RUNNING"
+    assert second.started is True
+    # exactly ONE stale resolution: the consumed request is never re-resolved
+    assert database.event_count(event_type="runtime.control.resolved") == 1
+    assert database.event_count(event_type="supervisor.started") == 1
+    second.stop()
+    assert inspect_control(database).status == "STOPPED"
+
+
+def test_resolved_stale_stop_request_does_not_block_restart(tmp_path):
+    """A stale STOP that was already resolved must not stop a later healthy
+    startup either — the EMERGENCY_STOP sentinel remains the hard authority."""
+    database = _database(tmp_path)
+    _append_stale_request(database, action="STOP", request_id="stale-stop-wedge")
+    first = Supervisor(database, tmp_path / "EMERGENCY_STOP", instance_id="stop-first")
+    assert first.start() == "STOPPED"  # resolves the expired request, launches nothing
+    # Reaching a resolved state for the stale STOP request:
+    from jarvis_foundry.supervisor.control import latest_resolution
+    assert latest_resolution(database, "stale-stop-wedge") is not None
+
+    second = Supervisor(database, tmp_path / "EMERGENCY_STOP", instance_id="stop-second")
+    assert second.start() == "RUNNING"
+    assert second.started is True
+    second.stop()
+
+
 def test_reconcile_closes_stale_request_without_inventing_runtime(tmp_path):
     database = _database(tmp_path)
     _append_stale_request(database, action="RESTART", request_id="stale-restart")
