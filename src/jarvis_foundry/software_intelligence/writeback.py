@@ -203,7 +203,7 @@ def record_research(db: FoundryDatabase, *, mission_id: str,
                           evidence_id=str(ev.get("evidence_id")
                                             or _now_key("ev")),
                           locator=ev.get("locator"),
-                          payload_hash=ev.get("hash"))
+                          payload_hash_text=ev.get("hash"))
     if supersedes_claim_id:
         target = db.row("knowledge_claims", "claim_id", supersedes_claim_id)
         if target is None:

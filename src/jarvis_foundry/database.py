@@ -330,6 +330,8 @@ class FoundryDatabase:
             "discovery_runs": "run_id",
             "cycles": "cycle_id",
             "acceptance_runs": "run_id",
+            # Software-intelligence (Lane 4): derived alias projection
+            "tier_c_project_aliases": "alias",
         }
         if allowed.get(table) != key_column:
             raise ValueError("unsupported projection lookup")
@@ -348,6 +350,7 @@ class FoundryDatabase:
                    "monitors", "vault_files",
                    "vault_sync_state", "ingestion_cursors", "research_queue",
                    "worker_manifests", "consolidation_ops", "mission_step_contracts"}
+        allowed.update({"tier_c_project_aliases"})
         allowed.update({"cost_measurements", "briefing_outbox", "voice_interactions", "control_nonces", "improvement_records", "release_manifests", "release_slots", "candidate_builds", "evaluation_runs", "verifications", "shadow_runs", "canaries", "promotions", "release_control", "restore_points", "discovery_runs", "cycles", "acceptance_runs"})
         if table not in allowed:
             raise ValueError("unsupported projection listing")
@@ -369,7 +372,7 @@ class FoundryDatabase:
                    "scoring_policy_registry", "discovery_portfolio",
                    "monitors", "vault_files",
                    "vault_sync_state", "ingestion_cursors", "research_queue",
-                   "worker_manifests", "consolidation_ops", "mission_step_contracts"}
+                   "worker_manifests", "consolidation_ops", "mission_step_contracts", "tier_c_project_aliases"}
         allowed.update({"cost_measurements", "briefing_outbox", "voice_interactions", "control_nonces", "improvement_records", "release_manifests", "release_slots", "candidate_builds", "evaluation_runs", "verifications", "shadow_runs", "canaries", "promotions", "release_control", "restore_points", "discovery_runs", "cycles", "acceptance_runs"})
         if table not in allowed:
             raise ValueError("unsupported projection count")

@@ -79,6 +79,18 @@ class TestResearchWriteback:
         assert _claim_row(db, result.claim_ids[0])["evidence_status"] == \
             "SUPPORTED"
 
+    def test_inline_evidence_attachment_supported(self, db):
+        """F1 regression: findings with inline evidence lists attach links."""
+        result = record_research(
+            db, mission_id="m-inline", question="q",
+            findings=[{"statement": "claim with evidence",
+                       "evidence": [{"evidence_id": "ev-x1",
+                                     "locator": "https://official.example/x",
+                                     "hash": "abc123"}]}],
+            source_type="docs", source_ref="official")
+        row = _claim_row(db, result.claim_ids[0])
+        assert row["evidence_status"] == "SUPPORTED"
+
     def test_official_source_supersedes_stale_without_deleting_history(self, db):
         stale = record_research(
             db, mission_id="m-2", question="retry api",
