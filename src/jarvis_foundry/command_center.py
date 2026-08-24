@@ -501,13 +501,20 @@ def _postv7_projection(
             status = str(definition.proof_status)
             proof_counts[status] = proof_counts.get(status, 0) + 1
 
-        procedure_events: list[dict[str, Any]] = []
-        for event in database.events(
+        # Prefix predicates on the append-only ledger are not indexed on all
+        # historical installations.  Read a bounded newest window first and
+        # filter in memory so a Command Center refresh cannot rescan the full
+        # ledger as it grows.
+        window_limit = max(400, min(max(1, int(limit)), 1000))
+        ledger_window = database.events(
             readonly=True,
-            event_type_prefixes=("procedure.library.", "operation.procedure."),
-            limit=max(1, min(int(limit), 400)),
+            limit=window_limit,
             newest_first=True,
-        ):
+        )
+        procedure_events: list[dict[str, Any]] = []
+        for event in ledger_window:
+            if not event.event_type.startswith(("procedure.library.", "operation.procedure.")):
+                continue
             payload = event.payload if isinstance(event.payload, dict) else {}
             procedure_events.append({
                 "event_id": event.event_id,
@@ -521,13 +528,10 @@ def _postv7_projection(
                 if isinstance(payload.get("verification"), dict) else None,
             })
 
-        manual_rows = database.events(
+        manual_count = database.event_count(
             readonly=True,
-            event_types=("manual_continuation_required",),
-            limit=1,
-            newest_first=True,
+            event_type="manual_continuation_required",
         )
-        manual_count = len(manual_rows)
         return {
             "account_readiness": {
                 "status": account_status,
