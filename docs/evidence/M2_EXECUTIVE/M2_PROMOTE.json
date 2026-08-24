@@ -1,15 +1,15 @@
 {
   "candidate": "Executive Intelligence M2 (goals/decisions/eligibility/calibration/CC projection/live proof)",
-  "builder_commit": "dddfad8242d778029ca0cff36541bb4268b208bd",
+  "builder_commit": "eacae8a34dae8b20ed6a6f7a4c68e1950641eec2",
   "before": {
-    "current": "21c26456fe151897a490b0c66b4b2b5dd83deb92",
-    "previous": "6644b95ec477367f8b1afd41d453a7a831e565da"
+    "current": "dddfad8242d778029ca0cff36541bb4268b208bd",
+    "previous": "21c26456fe151897a490b0c66b4b2b5dd83deb92"
   },
   "built": {
-    "release_id": "rel-dddfad8242d7-ea079085",
-    "source_sha": "dddfad8242d778029ca0cff36541bb4268b208bd",
-    "git_commit": "dddfad8242d778029ca0cff36541bb4268b208bd",
-    "git_tree": "e07c9e7d29e4a5dfee906b4d2d673c0405918c59",
+    "release_id": "rel-eacae8a34dae-6c6db068",
+    "source_sha": "eacae8a34dae8b20ed6a6f7a4c68e1950641eec2",
+    "git_commit": "eacae8a34dae8b20ed6a6f7a4c68e1950641eec2",
+    "git_tree": "38350906c01e66ec694975ce6d62e2669cf0d6c4",
     "python_version": "3.13.5",
     "package_version": "0.1.0",
     "schema_compatibility": {
@@ -20,21 +20,21 @@
     "provenance": {
       "builder": "jarvis_foundry.deployment.release",
       "source_repo": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry",
-      "git_commit": "dddfad8242d778029ca0cff36541bb4268b208bd",
-      "git_tree": "e07c9e7d29e4a5dfee906b4d2d673c0405918c59"
+      "git_commit": "eacae8a34dae8b20ed6a6f7a4c68e1950641eec2",
+      "git_tree": "38350906c01e66ec694975ce6d62e2669cf0d6c4"
     },
     "previous_runtime": {
-      "source_sha": "21c26456fe151897a490b0c66b4b2b5dd83deb92",
-      "release_id": "rel-21c26456fe15-6d41c768",
-      "git_commit": "21c26456fe151897a490b0c66b4b2b5dd83deb92",
-      "git_tree": "5098a69f3d9521058950e8b2daf43c063be0c74a",
+      "source_sha": "dddfad8242d778029ca0cff36541bb4268b208bd",
+      "release_id": "rel-dddfad8242d7-ea079085",
+      "git_commit": "dddfad8242d778029ca0cff36541bb4268b208bd",
+      "git_tree": "e07c9e7d29e4a5dfee906b4d2d673c0405918c59",
       "schema": 36
     },
-    "created_at": "2026-08-24T11:25:53.793941Z"
+    "created_at": "2026-08-24T11:31:16.095792Z"
   },
   "promoted": {
-    "current": "dddfad8242d778029ca0cff36541bb4268b208bd",
-    "previous": "21c26456fe151897a490b0c66b4b2b5dd83deb92"
+    "current": "eacae8a34dae8b20ed6a6f7a4c68e1950641eec2",
+    "previous": "dddfad8242d778029ca0cff36541bb4268b208bd"
   },
   "validate_promoted": {
     "returncode": 0,
@@ -43,30 +43,30 @@
     }
   },
   "rollback": {
-    "current": "21c26456fe151897a490b0c66b4b2b5dd83deb92",
-    "previous": "dddfad8242d778029ca0cff36541bb4268b208bd",
+    "current": "dddfad8242d778029ca0cff36541bb4268b208bd",
+    "previous": "eacae8a34dae8b20ed6a6f7a4c68e1950641eec2",
     "generation": {
-      "source_sha": "21c26456fe151897a490b0c66b4b2b5dd83deb92",
-      "release_id": "rel-21c26456fe15-6d41c768",
-      "git_commit": "21c26456fe151897a490b0c66b4b2b5dd83deb92",
-      "git_tree": "5098a69f3d9521058950e8b2daf43c063be0c74a",
+      "source_sha": "dddfad8242d778029ca0cff36541bb4268b208bd",
+      "release_id": "rel-dddfad8242d7-ea079085",
+      "git_commit": "dddfad8242d778029ca0cff36541bb4268b208bd",
+      "git_tree": "e07c9e7d29e4a5dfee906b4d2d673c0405918c59",
       "schema": 36,
       "previous_runtime": {
-        "git_commit": "6644b95ec477367f8b1afd41d453a7a831e565da",
-        "git_tree": "461c186c837edd0521a6d7f0aa6bea423a4f8488",
-        "release_id": "rel-6644b95ec477-70838ff7",
+        "git_commit": "21c26456fe151897a490b0c66b4b2b5dd83deb92",
+        "git_tree": "5098a69f3d9521058950e8b2daf43c063be0c74a",
+        "release_id": "rel-21c26456fe15-6d41c768",
         "schema": 36,
-        "source_sha": "6644b95ec477367f8b1afd41d453a7a831e565da"
+        "source_sha": "21c26456fe151897a490b0c66b4b2b5dd83deb92"
       },
       "provenance": {
         "builder": "jarvis_foundry.deployment.release",
-        "git_commit": "21c26456fe151897a490b0c66b4b2b5dd83deb92",
-        "git_tree": "5098a69f3d9521058950e8b2daf43c063be0c74a",
+        "git_commit": "dddfad8242d778029ca0cff36541bb4268b208bd",
+        "git_tree": "e07c9e7d29e4a5dfee906b4d2d673c0405918c59",
         "source_repo": "C:\\Users\\b\\Documents\\ChatGPT\\Autonomous AI powered by Hoowen\\JARVIS-Foundry"
       },
       "legacy_identity": false,
       "backup": null,
-      "recorded_at": "2026-08-24T11:25:54.123252Z"
+      "recorded_at": "2026-08-24T11:31:16.428299Z"
     },
     "switched": true
   },
@@ -77,8 +77,8 @@
     }
   },
   "returned": {
-    "current": "dddfad8242d778029ca0cff36541bb4268b208bd",
-    "previous": "21c26456fe151897a490b0c66b4b2b5dd83deb92"
+    "current": "eacae8a34dae8b20ed6a6f7a4c68e1950641eec2",
+    "previous": "dddfad8242d778029ca0cff36541bb4268b208bd"
   },
   "validate_return": {
     "returncode": 0,
@@ -88,7 +88,7 @@
   },
   "verdict": "PASS",
   "after": {
-    "current": "dddfad8242d778029ca0cff36541bb4268b208bd",
-    "previous": "21c26456fe151897a490b0c66b4b2b5dd83deb92"
+    "current": "eacae8a34dae8b20ed6a6f7a4c68e1950641eec2",
+    "previous": "dddfad8242d778029ca0cff36541bb4268b208bd"
   }
 }
