@@ -1041,6 +1041,21 @@ def _discovery_projection(
     }
 
 
+def _command_center_discovery_projection(
+    database: FoundryDatabase,
+    *,
+    cycle_enabled: bool | None,
+    hold_active: bool,
+) -> dict[str, Any]:
+    """Run the late discovery read on its own explicitly-scoped handle."""
+    with command_center_readonly_connection(database) as connection:
+        return _discovery_projection(
+            connection,
+            cycle_enabled=cycle_enabled,
+            hold_active=hold_active,
+        )
+
+
 def build_snapshot(
     database: FoundryDatabase,
     *,
@@ -1279,8 +1294,12 @@ def build_snapshot(
         "timeline": decision_timeline(database, limit=timeline_limit),
         "executive": _executive_projection(database, limit=25),
         "portfolio": _portfolio_projection(database, limit=10),
-        "discovery": _discovery_projection(
-            connection,
+        # ``connection`` belongs to the bounded read-only block above.  Open
+        # one explicit second read handle for this late additive projection so
+        # connection lifecycle hardening cannot leave the read model using a
+        # closed SQLite handle after the context exits.
+        "discovery": _command_center_discovery_projection(
+            database,
             cycle_enabled=None if discovery_cycle_enabled is None
             else bool(discovery_cycle_enabled),
             hold_active=hold_active,
