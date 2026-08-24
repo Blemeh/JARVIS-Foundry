@@ -1,7 +1,7 @@
 FINAL VERDICT: PASS
 FROZEN BASE: 107827d81eaee514edc66eab98390438b63c1650
-FINAL HEAD: candidate working HEAD
-REMOTE CANDIDATE: not pushed in local run
+FINAL HEAD (implementation): e843c04
+REMOTE CANDIDATE AT IMPLEMENTATION PUSH: origin/candidate/postv7-unattended-harness-20260824 @ e843c04
 
 SCENARIO CONTRACT: PASS
 CLOCK MODES: ACCELERATED_EQUIVALENT_ONLY
@@ -36,16 +36,16 @@ REBOOT_ASSISTED_24H: READY_NOT_RUN
 CROSS-LANE HANDOFFS: documented in CROSS_LANE_HANDOFF.md
 OPEN CRITICAL: 0
 OPEN HIGH: 0
-TESTS: focused harness and source regressions recorded by caller
-HYGIENE: candidate-only; final git check is caller-owned
-SECRET SCAN: redaction and candidate scan required
+TESTS: acceptance + V7/resource/effect/recovery regressions PASS; compileall PASS; all six profile validations PASS
+HYGIENE: candidate-only; git diff --cached --check PASS
+SECRET SCAN: clean
 
 PRODUCTION MODIFIED: NO
 LIVE DB MODIFIED: NO
 LIVE SCHEDULER MODIFIED: NO
 MAIN MODIFIED: NO
-WORKTREE CLEAN: NOT_TESTED
-CANDIDATE PUSHED: NO
+WORKTREE CLEAN: YES after implementation commit
+CANDIDATE PUSHED: YES (implementation SHA verified)
 
 METRICS: {'run_id': 'interrupted-proof', 'scenario_id': 'INTERRUPTION_PROOF', 'clock_mode': 'ACCELERATED_DISPOSABLE', 'acceptance_label': 'ACCELERATED_EQUIVALENT_ONLY', 'logical_duration_seconds': 4.0, 'wall_elapsed_seconds': 0.05929050000850111, 'cycles': 4, 'outcomes': 4, 'continuation_cycles': 3, 'time_to_next_selection_seconds': 1.0, 'manual_continuation_required': 0, 'manual_continuation_count': 0, 'wait_count': 1, 'wake_events': 1, 'duplicate_mission_count': 0, 'duplicate_effect_count': 0, 'owner_action_briefings': 1, 'busywork_fingerprint_max': 0}
 REASONS: none

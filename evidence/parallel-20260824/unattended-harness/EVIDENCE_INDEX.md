@@ -2,6 +2,7 @@
 
 Frozen base: `107827d81eaee514edc66eab98390438b63c1650`
 Candidate branch: `candidate/postv7-unattended-harness-20260824`
+Implementation commit: `e843c04` (pushed and verified on the candidate branch)
 
 ## Fresh disposable proofs
 
