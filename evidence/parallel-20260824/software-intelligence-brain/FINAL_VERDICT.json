@@ -90,7 +90,12 @@
  },
  "tests": {
   "focused_lane_suites": "108 passed / 0 failed",
-  "post_repair_regression_batch": "EXIT=0 (lane suites + v3 schema pins + doc staleness + obsidian + hybrid memory + reconcile)"
+  "post_repair_regression_batch": "EXIT=0 (lane suites + v3 schema pins + doc staleness + obsidian + hybrid memory + reconcile)",
+  "confirming_full_suite": {
+   "head": "b975b02bc55241a56f3ab4cf65a82e2460d0ca95",
+   "result": "FINAL_SUITE_EXIT=0",
+   "note": "first run found 5 schema-pin/staleness assertion failures; repaired 87977ad/dc265fc; confirming rerun fully green"
+  }
  },
  "production": {
   "main_modified": false,
