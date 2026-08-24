@@ -22,6 +22,13 @@ SUSPICIOUS_PATTERNS: tuple[tuple[str, str], ...] = (
     (r"(?i)(automatically|always|should)\s+pass\s+(my|our|this)\s+work", "verdict_imposter"),
     (r"(?i)this\s+memory\s+overrides", "authority_override"),
     (r"(?i)disable\s+(the\s+)?(emergency\s+)?stop", "directive_imposter"),
+    # Software-intelligence lane additions: prose that self-promotes trust,
+    # impersonates verdicts, or smuggles secrets must never reach recall.
+    (r"(?i)trusted\s+memory", "authority_override"),
+    (r"(?i)mark\s+(this|it)\s+(as\s+)?verified", "verdict_imposter"),
+    (r"(?i)verifier\s+already\s+passed", "verdict_imposter"),
+    (r"(?i)elevate\s+.*\s+to\s+(TRUSTED|CORE)\b", "authority_override"),
+    (r"(?i)(use|here\s+is(\s+the)?)\s+secret\b", "secret_like"),
 )
 
 # Fake-secret probe strings used by tests are deliberately simple patterns;
