@@ -201,6 +201,27 @@ def test_maintenance_selection_materializes_dispatchable_mission(
     assert again["mission_id"] == mission_id
 
 
+def test_distinct_decisions_target_distinct_artifacts(tmp_path: Path) -> None:
+    """Live incident 2026-08-24 regression: shared artifact names plus
+    deterministic content collapsed every mission's evidence delta to
+    empty, so every portfolio mission failed its evidence reconciliation."""
+    db = database(tmp_path)
+    register_resource(db)
+    first = materialize_portfolio_selection(
+        db, decision=decision_payload_for("art-1", "MAINTENANCE"),
+        resource_id="resource-1")
+    second = materialize_portfolio_selection(
+        db, decision=decision_payload_for("art-2", "RESEARCH"),
+        resource_id="resource-1")
+    contracts = [e.payload for e in db.events()
+                 if e.event_type == "mission.step_contract_recorded"
+                 and e.payload.get("source") == "portfolio"]
+    targets = {c["target_relative_path"] for c in contracts}
+    assert len(contracts) == 2
+    assert len(targets) == 2, f"artifact collision: {sorted(targets)}"
+    assert first["mission_id"] != second["mission_id"]
+
+
 def test_active_mission_selection_returns_existing_mission(
         tmp_path: Path) -> None:
     db = database(tmp_path)
