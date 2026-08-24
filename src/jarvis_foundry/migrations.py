@@ -5,7 +5,7 @@ import sqlite3
 from .v4_schema import ensure_v4_tables
 
 
-SCHEMA_VERSION = 36
+SCHEMA_VERSION = 37
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -1131,6 +1131,23 @@ MIGRATIONS: dict[int, str] = {
         last_event_id TEXT NOT NULL UNIQUE,
         updated_at TEXT NOT NULL
     );
+    """,
+
+    37: """
+    -- Software-intelligence brain activation (Lane 4) derived alias
+    -- projection for deterministic project identity. Event-sourced from
+    -- memory.alias.bound events. The resources registry remains the
+    -- canonical project identity. Additive only, no authority change.
+    CREATE TABLE IF NOT EXISTS tier_c_project_aliases (
+        alias TEXT PRIMARY KEY,
+        resource_id TEXT NOT NULL,
+        alias_kind TEXT,
+        active INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0, 1)),
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS tier_c_project_aliases_resource
+        ON tier_c_project_aliases(resource_id);
     """,
 }
 

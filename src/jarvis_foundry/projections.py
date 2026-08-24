@@ -85,6 +85,9 @@ PROJECTION_TABLES = (
     "tier_c_block_revisions",
     "tier_c_blocks",
     "tier_c_procedures",
+    # Software-intelligence (Lane 4): derived alias projection. Deleted with
+    # the other Tier-C-derived tables; rebuilt from memory.alias.bound events.
+    "tier_c_project_aliases",
 )
 
 
@@ -2145,6 +2148,18 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
                supersedes=COALESCE(?, supersedes) WHERE procedure_id=?""",
             (payload.get("state", "ACTIVE"), event.recorded_at, event.event_id,
              event.recorded_at, payload.get("supersedes"), payload["procedure_id"]))
+    elif event.event_type == "memory.alias.bound":
+        alias = str(payload["alias"]).strip().lower()
+        connection.execute(
+            """INSERT INTO tier_c_project_aliases(
+                 alias, resource_id, alias_kind, active, last_event_id, updated_at)
+               VALUES (?, ?, ?, 1, ?, ?)
+               ON CONFLICT(alias) DO UPDATE SET
+                 resource_id=excluded.resource_id, alias_kind=excluded.alias_kind,
+                 active=1, last_event_id=excluded.last_event_id,
+                 updated_at=excluded.updated_at""",
+            (alias, payload["resource_id"], payload.get("alias_kind"),
+             event.event_id, event.recorded_at))
 
 
 def reset(connection: sqlite3.Connection) -> None:
