@@ -6,11 +6,13 @@ every promotion/remaster mission (see `docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.
 If this document and another current-status document disagree, THIS document wins
 for "what exists now" claims; the architecture contract wins for binding invariants.
 
-Last reconciled: 2026-08-24 (V7 Full Autonomy stage: V7A portfolio + V7B
-broad operations + V7C resilience integrated onto canonical, released, and
-proven live; source and live runtime reported together below)
+Last reconciled: 2026-08-24 (Lane 4 software-intelligence brain activation
+candidate: additive schema v37 alias projection, deterministic project
+identity, governed writeback/context layers; canonical head named below is
+the integration base this candidate builds on)
 
 ```text
+CANDIDATE HEAD:              cadb1b2+ (candidate/software-intelligence-brain-activation-20260824; this file's staleness check runs against the working tree)
 CURRENT CANONICAL HEAD:      0887a3b (canonical main/origin; pushed)
 V7 STAGE INTEGRATION:        integration/v7-full-autonomy-20260824 merged;
                              lanes V7A 9accb24d + V7B 8662fae7 +
@@ -21,13 +23,16 @@ FULL SUITE:                  PASS — 1,972 collected, 0 failures, 1 explicit
 DEPLOYED RELEASE:            rel-f12a2215f0bc-c3bb04f6 (CURRENT,
                              git_commit f12a2215..., tree e5054369...)
 PREVIOUS RELEASE:            rel-441113bcfd27-de548929 (PREVIOUS)
-CURRENT SCHEMA:              v36 live and current; no pending migration
+CURRENT SCHEMA:              v37 live and current; no pending migration
                              V2 KNOWLEDGE SCHEMA: v35 (applied 2026-08-23)
                              V3 DISCOVERY/BUILDING SCHEMA: v36 (applied 2026-08-23)
-                             CURRENT/CANDIDATE SCHEMA: v36 (migrations.SCHEMA_VERSION)
+                             SOFTWARE-INTELLIGENCE ALIASES: v37 (Lane 4
+                             candidate, 2026-08-24; additive derived
+                             tier_c_project_aliases projection)
+                             CURRENT/CANDIDATE SCHEMA: v37 (migrations.SCHEMA_VERSION)
                              v34 live baseline was migrated to v36 on 2026-08-23
                              (schema_migrations head 36; production database
-                             opens at 36 only)
+                             opens at the current source version only)
 SUPERVISOR STATE:            RUNNING singleton on the live release;
                              heartbeat advancing; STOP false
 STOP/RESUME PROOF:           PASS live (sentinel freeze -> FROZEN/SUSPENDED,

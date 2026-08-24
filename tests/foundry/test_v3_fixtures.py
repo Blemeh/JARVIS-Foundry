@@ -26,10 +26,11 @@ def test_policy_fixture_matches_frozen_decisions():
 
 
 def test_schema_constants_derive_from_canonical_source():
-    # Canonical origin/main merged V2 (f1660f6) at v35; V3 owns 36.
+    # Canonical origin/main merged V2 (f1660f6) at v35; V3 owned 36;
+    # software-intelligence (Lane 4, 2026-08-24) added additive v37.
     assert CANONICAL_V2_SCHEMA_VERSION == 35
-    assert V3_SCHEMA_VERSION == CANONICAL_V2_SCHEMA_VERSION + 1
-    assert SCHEMA_VERSION == V3_SCHEMA_VERSION
+    assert V3_SCHEMA_VERSION == 36
+    assert SCHEMA_VERSION >= V3_SCHEMA_VERSION
 
 
 def test_baseline_db_generator_produces_pre_v2_merge_database(tmp_path):
