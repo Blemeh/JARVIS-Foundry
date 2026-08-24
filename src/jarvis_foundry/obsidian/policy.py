@@ -84,17 +84,24 @@ class ObsidianWriter:
         if not note_name or not str(note_name).strip():
             raise ObsidianPolicyError("note name is required")
         name = str(note_name).strip()
+        # Software-intelligence lane: governed project-intelligence namespace.
+        # Opt-in per writer instance; never enabled for the live V1 writer.
+        # Exactly one safe path segment under Projects/.
+        if self.allow_projects and (
+                name.startswith("Projects/") or name.startswith("Projects\\")):
+            separator = "/" if name.startswith("Projects/") else "\\"
+            tail = name.split(separator, 1)[1]
+            if not tail or tail in {".", ".."} or "/" in tail or "\\" in tail \
+                    or tail.strip() != tail:
+                raise ObsidianPolicyError(
+                    f"unsafe project note name: {name!r}")
+            return name
         if "/" in name or "\\" in name or name in {".", ".."}:
             raise ObsidianPolicyError(f"note name must be a plain file name: {name!r}")
         if name in V1_NOTE_NAMES:
             return name
         if name.startswith(f"{AUDIT_DIR}/") or name.startswith(f"{AUDIT_DIR}\\") or name == "Audit":
             raise ObsidianPolicyError("audit notes are written by the writer, not callers")
-        # Software-intelligence lane: governed project-intelligence namespace.
-        # Opt-in per writer instance; never enabled for the live V1 writer.
-        if self.allow_projects and (
-                name.startswith("Projects/") or name.startswith("Projects\\")):
-            return name
         raise ObsidianPolicyError(
             f"note {name!r} is not in the governed V1 note set")
 

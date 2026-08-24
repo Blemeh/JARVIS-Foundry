@@ -29,7 +29,8 @@ from ..database import FoundryDatabase
 from ..events import Event
 from ..hybrid_memory.defense import DefenseScanner, PoisonedMemoryError
 from ..knowledge_records import RECORD_KINDS
-from ..mission.verification import record_verification_outcome
+from ..mission.verification import (record_verification_outcome,
+                                    start_verification)
 from ..obsidian import ObsidianService
 from ..obsidian.policy import FRONTMATTER as NOTE_FRONTMATTER
 from ..v3_outcomes import record_outcome as record_candidate_outcome
@@ -49,6 +50,26 @@ def _now_key(prefix: str) -> str:
 
 def _sha(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+_TABLE_KEYS = {
+    "tier_c_memories": "memory_id",
+    "tier_c_procedures": "procedure_id",
+}
+
+
+def _read_row(db: FoundryDatabase, table: str, key: str) -> dict[str, Any] | None:
+    """Read one Tier C projection row (allowlisted; canonical helper refuses)."""
+    if table not in _TABLE_KEYS:
+        raise ValueError(f"unsupported software-intelligence read: {table}")
+    column = _TABLE_KEYS[table]
+    connection = db.connect(readonly=True)
+    try:
+        row = connection.execute(
+            f"SELECT * FROM {table} WHERE {column} = ?", (key,)).fetchone()
+        return dict(row) if row else None
+    finally:
+        connection.close()
 
 
 class WritebackRejected(ValueError):
@@ -85,13 +106,23 @@ def _scan(text: str) -> None:
 
 def _tier_c_observe(db: FoundryDatabase, content: str, *,
                     mission_id: str, source_ids: list[str],
-                    evidence_ids: list[str] | None = None) -> str:
-    from ..hybrid_memory import TierCMemoryStore
+                    evidence_ids: list[str] | None = None,
+                    accept: bool = False) -> str:
+    """Record a Tier C observation; optionally promote it through the
+    governed curation path so recall (which serves only accepted experience
+    states) can retrieve it. Promotion still passes every V8 gate."""
+    from ..hybrid_memory import CurationPipeline, TierCMemoryStore
 
     memories = TierCMemoryStore(db)
-    return memories.record_observation(
+    memory_id = memories.record_observation(
         content, mission_id=mission_id, source_ids=source_ids,
         evidence_ids=evidence_ids or [])
+    if accept:
+        curation = CurationPipeline(db)
+        curation.validate_and_accept(memory_id, placement="CORE",
+                                     actor="software-intelligence",
+                                     require_independent=False)
+    return memory_id
 
 
 def record_software_observation(db: FoundryDatabase, *, mission_id: str,
@@ -225,12 +256,20 @@ def record_engineering_outcome(db: FoundryDatabase, *, mission_id: str,
             "accepted-outcome writeback requires verifier PASS; use "
             "record_failed_attempt for FAIL verdicts")
     result = WritebackResult()
+    verdict_id = f"verdict-{step_id}"
+    # canonical lifecycle: STARTED row first, then the terminal outcome
+    # (the projection updates an existing STARTED verdict row)
+    start_verification(
+        db, verdict_id=verdict_id, mission_id=mission_id, step_id=step_id,
+        builder_run_id=builder_run_id, verifier_run_id=verifier_run_id,
+        independence={"fresh": True, "note": "recorded by software-intelligence"},
+        criteria=list(criteria))
     record_verification_outcome(
-        db, verdict_id=f"verdict-{step_id}", outcome="PASS",
+        db, verdict_id=verdict_id, outcome="PASS",
         findings=findings,
         evidence={"bundle": evidence_bundle_id,
                   "commit": commit_sha or "unknown"})
-    result.verdict_id = f"verdict-{step_id}"
+    result.verdict_id = verdict_id
 
     # predicted-vs-actual calibration rides the existing outcome window when
     # both values exist; missing measurements stay honestly UNKNOWN
@@ -284,7 +323,7 @@ def record_engineering_outcome(db: FoundryDatabase, *, mission_id: str,
             notes.append(f"LESSON {text}")
     for note in notes:
         mid = _tier_c_observe(db, note, mission_id=mission_id,
-                              source_ids=[result.verdict_id])
+                              source_ids=[result.verdict_id], accept=True)
         if result.memory_id is None:
             result.memory_id = mid
     return result
@@ -303,6 +342,11 @@ def record_failed_attempt(db: FoundryDatabase, *, mission_id: str,
     """
     _scan(attempt_summary)
     result = WritebackResult()
+    start_verification(
+        db, verdict_id=verdict_id, mission_id=mission_id, step_id=step_id,
+        builder_run_id=builder_run_id, verifier_run_id=verifier_run_id,
+        independence={"fresh": True},
+        criteria=["attempt meets acceptance criteria"])
     record_verification_outcome(
         db, verdict_id=verdict_id, outcome="FAIL",
         findings=list(defects),
@@ -321,7 +365,7 @@ def record_failed_attempt(db: FoundryDatabase, *, mission_id: str,
               f"{defect_lines}")
     result.memory_id = _tier_c_observe(
         db, lesson, mission_id=mission_id,
-        source_ids=[builder_run_id, verifier_run_id])
+        source_ids=[builder_run_id, verifier_run_id], accept=True)
     return result
 
 
@@ -380,7 +424,7 @@ def update_procedure_experience(db: FoundryDatabase, *, name: str,
             name=name, description=description, body=body,
             trigger_terms=list(trigger_terms))
     result.procedure_id = pid
-    row = db.row("tier_c_procedures", "procedure_id", pid)
+    row = _read_row(db, "tier_c_procedures", pid)
     if row is None:
         raise WritebackRejected(f"procedure missing after upsert: {pid}")
     current = float(row.get("confidence") or 0.5)
@@ -428,7 +472,7 @@ def render_project_note(*, project_name: str, resource_id: str,
                         goal: str, current_state: str,
                         decisions: list[str], failures: list[str],
                         lessons: list[str], unknowns: list[str],
-                        evidence_pointers: list[str]) -> str:
+                        evidence_pointers: list[str] | None = None) -> str:
     """Human-readable project brain note following the governed contract."""
     def bullets(items: list[str]) -> str:
         return "\n".join(f"- {i}" for i in items) if items else "- (none recorded)"
