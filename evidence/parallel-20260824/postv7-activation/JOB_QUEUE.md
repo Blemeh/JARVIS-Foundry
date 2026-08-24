@@ -19,16 +19,17 @@
 | A15 | Unified diagnostics | PASS | structured readiness diagnostics and next-action contract |
 | A16 | Malicious provider content | PASS | hash-only untrusted content proof; owner-like directives cannot change readiness authority |
 | A17 | Activation factory | PASS | `scripts/postv7_activation_factory.py`; 17 fake scenarios |
-| A18+ | Remaining gaps and repository gate | IN_PROGRESS | 1,985-test foundry suite exited 0; secret scan, hygiene, independent review, commit, and candidate push remain |
+| A18+ | Remaining gaps and repository gate | PASS | 1,985-test foundry suite exited 0; diff/compile/secret checks passed; candidate commit and normal push verified |
 
 The queue closes only after each applicable final-gate predicate is evidenced.
 
 ## Checkpoint
 
 Implementation checkpoint: the source layer, provider packs, factory, and
-focused regression tests are staged in this isolated worktree. The factory
+focused regression tests are committed in this isolated worktree. The factory
 reports 17 PASS scenarios with no live accounts, real credentials, or real
 effects; the 13 focused activation tests, 19 convergence tests, and 1,985-test
-foundry suite have exited 0. Final closure is intentionally held until the
-secret scan, clean-tree check, normal commit, and candidate push have all been
-recorded.
+foundry suite have exited 0. Final closure is recorded at candidate commit
+`67645f6606faef8487e7358e2fd89d43edb2b606`; local, tracking, and remote
+candidate refs match and the candidate worktree is clean. The source PASS does
+not claim live provider readiness or production activation.

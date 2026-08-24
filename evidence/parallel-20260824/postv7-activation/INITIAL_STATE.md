@@ -1,6 +1,6 @@
 # Post-V7 Account Activation Lane
 
-Status: final-gate validation in progress.
+Status: source candidate complete; live activation intentionally not performed.
 
 Frozen base: `107827d81eaee514edc66eab98390438b63c1650`.
 
@@ -19,6 +19,12 @@ lane to `32309abf1f164fa4673fc83d15b5373c7a9bfb90` and contained an untracked
 `evidence/integration/v7-stage/LIVE_PROOF.json`. The candidate remains on the
 intentionally frozen base above; this lane did not modify, clean, or reconcile
 that external V7 work.
+
+The candidate completed its final gate at commit
+`67645f6606faef8487e7358e2fd89d43edb2b606`, pushed normally to the matching
+remote candidate branch, with a clean candidate worktree. A later boundary
+check observed main at `13b1a5a3239b771a12054b10272f1797ebf12dc4`, matching
+`origin/main`; that movement was also external to this lane.
 
 The repository's current-state document claims an older canonical source head
 (`08dad95`) while the frozen repository head is `107827d`. That documentation
@@ -40,7 +46,6 @@ Existing canonical seams inspected before implementation:
   Architecture Contract.
 
 Baseline focused connector and capability tests passed before this lane's
-changes. The candidate now adds an event-derived account activation model,
+changes. The candidate adds an event-derived account activation model,
 fake-provider factory, and focused regression tests. No production/runtime
-activation has been attempted; the remaining work is repository-level gate
-verification and candidate publication.
+activation has been attempted.
