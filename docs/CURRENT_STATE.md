@@ -21,9 +21,9 @@ FULL SUITE:                  PASS — 1,972 collected, 0 failures, 1 explicit
 DEPLOYED RELEASE:            rel-f12a2215f0bc-c3bb04f6 (CURRENT,
                              git_commit f12a2215..., tree e5054369...)
 PREVIOUS RELEASE:            rel-441113bcfd27-de548929 (PREVIOUS)
-CURRENT SCHEMA:              v36 live and current (V2 knowledge schema v35 and
-                             V3 discovery/building schema v36 are applied);
-                             no pending migration
+CURRENT SCHEMA:              v36 live and current; no pending migration
+                             V2 KNOWLEDGE SCHEMA: v35 (applied 2026-08-23)
+                             V3 DISCOVERY/BUILDING SCHEMA: v36 (applied 2026-08-23)
 SUPERVISOR STATE:            RUNNING singleton on the live release;
                              heartbeat advancing; STOP false
 STOP/RESUME PROOF:           PASS live (sentinel freeze -> FROZEN/SUSPENDED,
