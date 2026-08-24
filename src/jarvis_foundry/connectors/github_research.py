@@ -202,14 +202,16 @@ class GitHubResearchConnector:
             return self._finish(
                 action_kind=action_kind, endpoint=endpoint, body=b"",
                 status=0, error_code="malformed_response"), None
-        if contains_secret_like(json.dumps(document, default=str)[:8192]):
-            return self._finish(
-                action_kind=action_kind, endpoint=endpoint,
-                body=json.dumps({"refused": "secret_like"}).encode("utf-8"),
-                status=0, error_code="secret_like_refused"), None
-        return self._finish(
+        from ..control.redaction import redact_payload
+        redacted = redact_payload(document)
+        attempt = self._finish(
             action_kind=action_kind, endpoint=endpoint, body=body, status=200,
-        ), document
+        )
+        if redacted != document:
+            # Secret-like keys/assignments were normalized to
+            # ``[REDACTED]`` before anything durable or returned.
+            attempt.after_state["redacted"] = True
+        return attempt, redacted
 
     def read_document(self, url: str) -> tuple[ConnectorAttempt, bytes]:
         """Bounded HTTPS document fetch for official docs (DATA only)."""

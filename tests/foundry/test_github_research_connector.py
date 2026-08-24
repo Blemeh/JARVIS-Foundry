@@ -107,6 +107,37 @@ def test_doc_read_requires_https_and_allow_listed_hosts() -> None:
     assert attempt.provider_ref == "https://docs.example/guide"
 
 
+def test_secret_like_documents_are_redacted_never_persisted() -> None:
+    payload = {"full_name": "x/y", "custom_properties": {
+        "token": "SUPERSECRETVALUE123"}}
+    connector = GitHubResearchConnector(
+        api_transport=lambda endpoint: (
+            200, json.dumps(payload).encode("utf-8")))
+    attempt, document = connector.read_api("github.repo.read", "/repos/x/y")
+    assert attempt.outcome == "COMPLETED"
+    assert document["full_name"] == "x/y"
+    redacted_value = document["custom_properties"]["token"]
+    assert redacted_value == "[REDACTED]"
+    assert attempt.after_state.get("redacted") is True
+    # the raw value never appears in the durable-safe evidence; the
+    # canonical scanner flags assignment SHAPES (including redacted
+    # ones), so the value-level check is what matters here:
+    evidence = json.dumps(attempt.to_evidence())
+    assert "SUPERSECRET" not in evidence
+    assert "SUPERSECRET" not in json.dumps(document)
+
+
+def test_string_embedded_assignments_are_redacted_too() -> None:
+    payload = {"note": "authorization: Bearer abcdef123456"}
+    connector = GitHubResearchConnector(
+        api_transport=lambda endpoint: (
+            200, json.dumps(payload).encode("utf-8")))
+    attempt, document = connector.read_api("github.repo.read", "/repos/x/y")
+    assert attempt.outcome == "COMPLETED"
+    assert "abcdef" not in json.dumps(document)
+    assert attempt.after_state.get("redacted") is True
+
+
 def test_identity_probe_reports_rate_limit_without_exposing_secrets() -> None:
     payloads = {
         "/user": {"login": "octocat"},
