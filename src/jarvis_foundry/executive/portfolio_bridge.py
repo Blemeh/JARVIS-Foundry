@@ -219,6 +219,38 @@ def materialize_portfolio_selection(
         return {"materialized": False, "mission_id": None,
                 "blocked_reason": f"unsupported portfolio class {kind!r}"}
 
+    # Derived sources (improvements, research, incidents) rebuild their
+    # work items from foreign tables on every selection. Without a durable
+    # mirror, a terminal outcome cannot retire them and the same item is
+    # re-admitted forever (live busywork incident 2026-08-24).
+    from ..evolution.executive_portfolio import register_work_item
+    try:
+        register_work_item(
+            database,
+            item_id=item_id,
+            kind=kind,
+            project_id=str(item.get("project_id") or "") or None,
+            objective=objective,
+            expected_value=item.get("expected_value"),
+            urgency=item.get("urgency"),
+            confidence=item.get("confidence"),
+            reversibility=item.get("reversibility"),
+            requires_verifier=bool(item.get("requires_verifier", True)),
+            metadata=dict(item.get("metadata") or {}),
+            source_type="supervisor",
+            source_id=source_id,
+        )
+    except EventConflict:
+        pass
+    except Exception as error:  # noqa: BLE001 - mirror failure must not block selection
+        database.append(Event.create(
+            "portfolio.work_item_mirror_blocked",
+            {"item_id": item_id, "reason": str(error)[:200]},
+            source_type="supervisor",
+            source_id=source_id,
+            idempotency_key=f"portfolio.work_item_mirror_blocked:{item_id}:{decision_id}",
+        ))
+
     prior = _materialization_for_decision(database, decision_id)
     if prior is not None:
         return {"materialized": True, "mission_id": prior,

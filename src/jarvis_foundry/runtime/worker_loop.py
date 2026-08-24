@@ -754,6 +754,33 @@ def run_cycle(
         try:
             contract = next_executable_contract(database, mission_id)
             if contract is None:
+                # A dispatchable-state mission without any remaining
+                # executable contract is residue: re-selecting it forever
+                # would starve the portfolio tier (live incident
+                # 2026-08-24). Retire it durably unless work is actively
+                # in flight, then let the cycle continue.
+                mission_row = database.row("missions", "mission_id", mission_id)
+                state = str((mission_row or {}).get("state") or "")
+                if state in {"PLANNED", "ORIENTING", "ACTION_SELECTION",
+                             "READY"}:
+                    database.append(Event.create(
+                        "mission.state_changed",
+                        {
+                            "mission_id": mission_id,
+                            "state": "CANCELLED",
+                            "next_action": (
+                                "retired by worker loop: no executable "
+                                "step contract remains"),
+                            "reason": (
+                                "bounded policy: contractless residue "
+                                "must not idle the loop"),
+                        },
+                        source_type="supervisor",
+                        source_id=f"worker-loop:{instance_id}",
+                        idempotency_key=(
+                            f"mission.state_changed:{mission_id}:"
+                            f"CANCELLED:loop-contractless"),
+                    ))
                 return _waiting_report(
                     database, loop_id=loop_id, instance_id=instance_id,
                     reason=f"mission {mission_id} has no remaining executable contract",
