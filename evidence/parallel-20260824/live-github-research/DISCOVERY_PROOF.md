@@ -10,7 +10,7 @@ DISPOSABLE database. No live runtime/DB touched.
 ```
 real identity probe (Blemeh, rate 4994/5000 after campaign)
 → inventory of 3 accessible repos (exact SHAs recorded)
-→ change observations (4 raw)
+→ change observations (5 raw)
 → typed opportunities (3 accepted)
 → duplicate/quality rejection layers
 → generate_candidate (canonical dedupe) + score_candidate (canonical truth)
@@ -25,17 +25,22 @@ This lane does NOT implement any selected candidate.
 | Type | Repo | Detail |
 |---|---|---|
 | CI_FAILED | JARVIS-Foundry | windows-ci.yml failed 2026-08-19 (ran on side branch `remaster/post-v7-purpose`) |
-| NO_CI_ON_DEFAULT | LeadGen | no Actions runs ever |
+| NO_CI_ON_DEFAULT | LeadGen | no Actions runs on record (total_count=0) |
+| NEW_ISSUE/PR | LeadGen | 1 open PR (#1: "fix: never derive verified gaps from contradictory audit evidence") — appeared BETWEEN campaign runs; live drift detection proof |
 | CI_FAILED | Hoowen | workflow 'CI' failure at 2026-08-24T18:08:26Z |
 | CI_FAILED | Hoowen | 3 recent failing runs — RECURRING pattern |
+
+Monitor note (G5): the campaign ran twice this lane. The second run caught
+LeadGen's newly opened PR that the first run's snapshot did not contain —
+bounded re-observation surfaces estate changes without aggressive polling.
 
 ## Candidates fed to V7A (existing scorer's verdicts)
 
 | Candidate | Repo | Kind→Portfolio class | Canonical score | Verdict |
 |---|---|---|---|---|
-| cand-a72133166254 | Hoowen | CI_FAILURE→REPAIR | **0.487** | PASSES selection bar (≥0.35) → top recommendation for a later build lane |
-| cand-3a88c9b397e5 | JARVIS-Foundry | CI_FAILURE→REPAIR | 0.305 | below bar → honest WAIT (single non-recurring failure on side branch) |
-| cand-ee97071cbc27 | LeadGen | MISSING_TEST→MAINTENANCE | 0.239 | below bar → honest WAIT |
+| cand-7209962efb3c | Hoowen | CI_FAILURE→REPAIR | **0.487** | PASSES selection bar (≥0.35) → top recommendation for a later build lane |
+| cand-8d66f291129a | JARVIS-Foundry | CI_FAILURE→REPAIR | 0.305 | below bar → honest WAIT (single non-recurring failure on side branch) |
+| cand-9b10cb474443 | LeadGen | MISSING_TEST→MAINTENANCE | 0.239 | below bar → honest WAIT |
 
 ## Honest WAIT cases (G10)
 
