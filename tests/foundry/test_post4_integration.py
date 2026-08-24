@@ -443,3 +443,97 @@ def test_new_project_factory_with_planted_failure_then_repair(db, tmp_path):
     manifest = compiler.compile(role="builder", mission_id=mission_id, objective="factory", budget_chars=3000)
     rendered = manifest.render()
     assert "PASS" in rendered or "factory-synth" in rendered.lower()
+
+
+# ------------------------------------------------------------------ WP11 schema / migration / rebuild
+def test_wp11_schema_v37_migration_and_rebuild_preserves_all_domains(tmp_path):
+    """WP11: combined integration from canonical baseline, disposable migration/rebuild."""
+    import shutil
+
+    from jarvis_foundry.database import FoundryDatabase
+    from jarvis_foundry.migrations import SCHEMA_VERSION
+    from jarvis_foundry.projections import reset as reset_projections
+    from jarvis_foundry.reconcile import reconcile as do_reconcile
+
+    assert SCHEMA_VERSION == 37
+    # Create disposable baseline at v36, then migrate to 37
+    base_db_path = tmp_path / "wp11-base.db"
+    db = FoundryDatabase(base_db_path)
+    # initialize to 36 first (disposable)
+    import sqlite3
+
+    # Force init to 36 by migrating with target
+    from jarvis_foundry.migrations import migrate
+    from datetime import datetime, timezone
+
+    conn = sqlite3.connect(str(base_db_path))
+    try:
+        migrate(conn, datetime.now(timezone.utc).isoformat(), target=36)
+        conn.commit()
+    finally:
+        conn.close()
+    # Now open via FoundryDatabase which will migrate to 37
+    db2 = FoundryDatabase(base_db_path)
+    db2.initialize()
+    with db2.connect(readonly=True) as conn:
+        v = conn.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0]
+        assert int(v) == 37
+        # alias table must exist after migration
+        assert conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='tier_c_project_aliases'").fetchone() is not None
+
+    # Seed some durable state at v37
+    from jarvis_foundry.events import Event
+    from jarvis_foundry.software_intelligence.lifecycle_states import record_project_truth
+
+    db2.append(Event.create(
+        "mission.created",
+        {"mission_id": "m-wp11", "objective": "obj", "resource_id": "res-x", "state": "PLANNED", "acceptance_criteria": [], "next_action": ""},
+        source_type="test", source_id="test-wp11", idempotency_key="mission.created:m-wp11",
+    ))
+    record_project_truth(db2, mission_id="m-wp11", key="taskward")
+    # project alias
+    db2.append(Event.create(
+        "memory.alias.bound",
+        {"alias": "slug:wp11-probe", "resource_id": "res-wp11", "alias_kind": "slug"},
+        source_type="test", source_id="test-wp11", idempotency_key="memory.alias.bound:wp11",
+    ))
+    db2.append(Event.create(
+        "project.registered",
+        {"resource_id": "res-wp11", "kind": "git_worktree", "root_path": str(tmp_path / "wp11"), "resolved_root": str(tmp_path / "wp11"),
+         "baseline": {"head": "abc"}, "capabilities": {"write_registered_worktree_files": "READY"}, "readiness_state": "READY"},
+        source_type="test", source_id="test-wp11", idempotency_key="project.registered:res-wp11",
+    ))
+    # portfolio lineage
+    from jarvis_foundry.evolution.executive_portfolio import PortfolioPolicy, configure_portfolio_policy, register_work_item
+
+    configure_portfolio_policy(db2, PortfolioPolicy())
+    register_work_item(db2, item_id="new-project:wp11-lineage", kind="NEW_PROJECT", objective="wp11 lineage", metadata={"project_slug": "wp11-probe"})
+
+    # Projection rebuild (deterministic)
+    rebuilt = db2.rebuild_projections()
+    assert rebuilt > 0
+    with db2.connect(readonly=True) as conn:
+        assert conn.execute("SELECT COUNT(*) FROM tier_c_project_aliases WHERE alias='slug:wp11-probe'").fetchone()[0] == 1
+    # Reopen DB (new instance) and verify all survive
+    db3 = FoundryDatabase(base_db_path)
+    db3.initialize()
+    with db3.connect(readonly=True) as conn:
+        assert conn.execute("SELECT COUNT(*) FROM tier_c_project_aliases WHERE alias='slug:wp11-probe'").fetchone()[0] == 1
+        assert conn.execute("SELECT COUNT(*) FROM knowledge_claims WHERE mission_id='m-wp11'").fetchone()[0] >= 1
+        assert conn.execute("SELECT COUNT(*) FROM resources WHERE resource_id='res-wp11'").fetchone()[0] == 1
+        # portfolio work item survives via rebuild_portfolio_state
+    from jarvis_foundry.evolution.executive_portfolio import rebuild_portfolio_state
+
+    state = rebuild_portfolio_state(db3)
+    assert "new-project:wp11-lineage" in state.work_items
+    # No destructive migration: disposable copy can be opened at same schema and retains projection ability
+    copy_path = tmp_path / "wp11-copy.db"
+    # Ensure checkpoint before copy
+    with db3.connect() as conn:
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    shutil.copy(str(base_db_path), str(copy_path))
+    copy_db = FoundryDatabase(copy_path)
+    copy_db.initialize()
+    with copy_db.connect(readonly=True) as conn:
+        assert conn.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0] == 37
+        assert conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='tier_c_project_aliases'").fetchone() is not None
