@@ -1,0 +1,78 @@
+{
+  "stage": "v7-full-autonomy-20260824",
+  "live_proof_window_utc": "2026-08-24T10:20Z..14:08Z",
+  "live_release": {
+    "CURRENT": "f12a2215f0bc98ca0d44337dcf0dc1ab0096e147",
+    "PREVIOUS": "441113bcfd278505b81cede1f346fac77898c7dc",
+    "promotion_drills": ["457b59e", "6644b95", "21c2645", "dddfad8", "eacae8a", "7e8bfdd", "5f56346", "441113b", "f12a221"],
+    "rollback_drill_each_promotion": true,
+    "factory_run": "C:/temp/JARVIS-Overnight-Release-Candidate/evidence/release/overnight/20260824-v7-full-autonomy (status PASS, 10 checks + 9 faults)"
+  },
+  "phase13_live_v7a": {
+    "candidate_items": [">=3 maintained across the window (maintenance x2, unknown/research, improvements, repairs)"],
+    "selection_explains": "portfolio.selection_recorded carries reason/why_now/capacity/veto_check/score/alternatives",
+    "capacity_budget_reservation": "portfolio.selection_claimed + capacity_lease_acquired observed",
+    "completion_returns_to_selection": "verified across 14 PASSED outcome cycles",
+    "maintenance_competes": "maintenance:v7-backup-verify / v7-doc-pin present in ranked alternatives (not_due)",
+    "unknown_triggers_work": "unknown:provider-quota-headroom selected and PASSED",
+    "honest_wait": "WAIT with rejection_reasons=[not_due] + wake_on + revisit_at recorded",
+    "wake_resumes": "revisit-based wake observed repeatedly",
+    "no_duplicate_admission": "idempotent materialization + durable mirrors; regression tests added"
+  },
+  "phase14_live_v7b": {
+    "procedure": "proc-v7-live-broad-* on mission-v7-phase14-procedure (live ledger)",
+    "capabilities": ["filesystem edit", "tests", "git commit/push to bare remote", "disposable HTTP serve", "readback"],
+    "target_identity": "exact paths/URLs + effect tickets per step",
+    "ambiguity": "timeout-after-mutation -> freeze -> reconcile by readback -> COMPLETED (no retry)",
+    "terminal": "COMPLETED; git head 0febb5dc...; http readback 200 matching head"
+  },
+  "phase15_live_v7c": {
+    "injection": "3 real probes of genuinely closed 127.0.0.1:9 recorded via canonical systems.probe_recorded",
+    "detected": "CONNECTOR_OUTAGE S3 incident inc-9328c96de98b153a08cb9c07 (autonomous)",
+    "also_detected": "DUPLICATE_AUTHORITY S1 from real launcher churn during restarts (autonomous)",
+    "lifecycle": "DETECTED->TRIAGED->CONTAINING->CONTAINED->DIAGNOSING->action->BLOCKED(no bounded repair handler) — honest escalation, no blind repair",
+    "coordinator_armed_via": "worker config resilience.coordinator_enabled=true (fail-closed flag + tests)"
+  },
+  "phase16_full_scenario": {
+    "owner_goal_constraint": "authenticated GOAL owner-b5adf4b9a88841daed9b38f3 + ADD_CONSTRAINT owner-47afee8688a80d939f27d12d via OwnerControlService",
+    "multi_cycle_autonomy": "observe->select->execute->verify->outcome->calibrate->select-next repeated without manual continuation",
+    "controlled_failure_path": "builder false claims rejected by evidence reconciliation; bounded repair; honest BLOCKED outcomes",
+    "v6_signal": "incident_recurrence detector rule evidence-only; V6 improvement records consumed as IMPROVEMENT work then retired after completion",
+    "next_action": "WAIT (no positive-value work; maintenance items not due; wake conditions recorded)"
+  },
+  "phase17_restart_continuity": {
+    "controlled_restarts": 4,
+    "release_identity_unchanged_across_restart": true,
+    "singleton_new_instance_adopted": true,
+    "heartbeat_advanced": true,
+    "portfolio_wait_wake_preserved": true,
+    "procedures_incidents_directives_durable": true,
+    "continuation_resumed_without_session_memory": true
+  },
+  "phase18_ui_truth": {
+    "cinematic_ui_unchanged": true,
+    "source_of_truth": "append_only_event_ledger (head 270k+ events)",
+    "release_identity_source": "immutable_release_pointers == live CURRENT",
+    "additive_v7_sections": ["portfolio.latest_decision (incl WAIT/wake)", "portfolio.outcomes", "portfolio.incidents (+open count)", "existing procedures/executive/effect_truth unchanged"],
+    "fixture_leakage": "none found; all fields ledger-traceable"
+  },
+  "phase19_rollback_ready": {
+    "current_validates": true, "previous_validates": true,
+    "db_backup_hash_matches": true, "db_backup_quick_check": "ok",
+    "restore_command_resolves": true, "schema_compat_known": "36==36"
+  },
+  "defects_found_and_fixed_canonically": [
+    {"id": "W1", "severity": "HIGH", "what": "expired owner control request permanently wedged supervisor startup (UNKNOWN exits, degraded spam)", "fix": "resolved stale requests are consumed; regression tests", "commits": ["212e63a"]},
+    {"id": "W2", "severity": "HIGH", "what": "shared artifact name + deterministic content collapsed evidence deltas for every portfolio mission", "fix": "per-decision unique artifact targets; regression test", "commit_parent": "21c2645"},
+    {"id": "W3", "severity": "MEDIUM", "what": "REPAIR selections of BLOCKED/contractless missions looped forever", "fix": "state-aware retirement (portfolio.repair_retired); worker-loop retires contractless dispatchable residue", "commits": ["dddfad8", "7e8bfdd", "5f56346"]},
+    {"id": "W4", "severity": "MEDIUM", "what": "derived items re-admitted after terminal outcomes (busywork)", "fix": "durable work-item mirrors registered at materialization; closed mirrors shadow derived duplicates", "commits": ["7e8bfdd", "441113b"]}
+  ],
+  "final_sweep": {
+    "supervisor": "RUNNING (fresh heartbeat)",
+    "stop_absent": true,
+    "degraded_last_hour": 0,
+    "outcomes": {"passed": 14, "honest_blocked_failed": 4},
+    "repair_retired": 5,
+    "cc_portfolio_decision": "WAIT"
+  }
+}
