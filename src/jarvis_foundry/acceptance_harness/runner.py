@@ -89,6 +89,9 @@ class AcceptanceRunner:
         run_false_pass_factory: bool = True,
         run_interruption_probe: bool = True,
         interrupt_after_steps: int | None = None,
+        canonical_database: Any | None = None,
+        canonical_stop_path: str | Path | None = None,
+        canonical_release_root: str | Path | None = None,
     ) -> None:
         self.scenario = scenario
         self.output_root = Path(output_root)
@@ -100,6 +103,12 @@ class AcceptanceRunner:
         self.run_false_pass_factory = run_false_pass_factory
         self.run_interruption_probe = run_interruption_probe
         self.interrupt_after_steps = interrupt_after_steps
+        # Optional read-only observer boundary.  The disposable fixture keeps
+        # running exactly as before; when supplied, this is an additional
+        # canonical-ledger observation and never a source-of-truth write.
+        self.canonical_database = canonical_database
+        self.canonical_stop_path = canonical_stop_path
+        self.canonical_release_root = canonical_release_root
         self.state = RuntimeFixtureState.from_scenario(scenario)
         self.clock = HarnessClock(scenario.clock_mode, duration_seconds=scenario.duration_seconds)
         self.next_fault_index = 0
@@ -112,6 +121,31 @@ class AcceptanceRunner:
         self.timeline: list[dict[str, Any]] = []
         self.interrupted = False
         self._load_existing()
+
+    def _observe_canonical(self) -> None:
+        if self.canonical_database is None:
+            return
+        try:
+            from .observer import observe_canonical
+            observation = observe_canonical(
+                self.canonical_database,
+                stop_path=self.canonical_stop_path,
+                release_root=self.canonical_release_root,
+                now=utc_now(),
+            )
+            self.writer.write_json("CANONICAL_OBSERVATION.json", observation)
+            manual = int(observation.get("manual_continuation_required", 0) or 0)
+            self.component_results["canonical_observer"] = _status(
+                "PASS" if manual == 0 else "FAIL",
+                "canonical append-only ledger was observed without fixture leakage",
+                source=observation.get("source"),
+                fixture_leakage=observation.get("fixture_leakage"),
+                manual_continuation_required=manual,
+            )
+        except Exception as error:  # noqa: BLE001 - acceptance must report observer truth
+            self.component_results["canonical_observer"] = _status(
+                "FAIL", "canonical observer failed closed", error_class=type(error).__name__,
+            )
 
     def _load_existing(self) -> None:
         checkpoint = self.writer.read_checkpoint()
@@ -473,6 +507,7 @@ class AcceptanceRunner:
             self.component_results.setdefault("false_pass_factory", _status("NOT_TESTED", "false-PASS proof is a separate adversarial run"))
 
     def _finalize(self, *, run_status: str) -> dict[str, Any]:
+        self._observe_canonical()
         self._component_results()
         metrics = self._write_summaries()
         supporting_missing = [name for name in self.writer.missing_artifacts() if name not in {"RUN_MANIFEST.json", "FINAL_VERDICT.json", "FINAL_REPORT.md"}]
