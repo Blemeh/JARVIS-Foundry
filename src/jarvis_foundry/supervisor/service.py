@@ -20,6 +20,7 @@ from .control import (
     latest_request,
     latest_process_identity,
     latest_generation,
+    latest_resolution,
     record_claim,
     record_lease_reclaimed,
     record_resolution,
@@ -147,20 +148,28 @@ class Supervisor:
         self._reclaim_stale_supervisor_lease()
         request = latest_request(self.database)
         if request is not None and request_is_stale(request):
-            state = inspect_control(self.database, stop_path=str(self.estop.path))
-            stale_status = state.status if state.status in {
-                "STOPPED", "RUNNING", "BLOCKED", "DEGRADED", "UNKNOWN"
-            } else "UNKNOWN"
-            if self.estop.active():
-                stale_status = "BLOCKED"
-            self._record_resolution(
-                request,
-                status=stale_status,
-                phase="stale_request",
-                request_status="STALE",
-                reason="owner request expired before application",
-            )
-            return stale_status
+            if latest_resolution(self.database, request.request_id) is not None:
+                # An earlier attempt already resolved this expired request.
+                # It is consumed: treating it as still-latest would wedge
+                # every future startup outside the lease path (live incident
+                # 2026-08-24: one expired START request permanently blocked
+                # supervisor recovery with UNKNOWN exits).
+                request = None
+            else:
+                state = inspect_control(self.database, stop_path=str(self.estop.path))
+                stale_status = state.status if state.status in {
+                    "STOPPED", "RUNNING", "BLOCKED", "DEGRADED", "UNKNOWN"
+                } else "UNKNOWN"
+                if self.estop.active():
+                    stale_status = "BLOCKED"
+                self._record_resolution(
+                    request,
+                    status=stale_status,
+                    phase="stale_request",
+                    request_status="STALE",
+                    reason="owner request expired before application",
+                )
+                return stale_status
         if request is not None and request.action == "STOP":
             # A duplicate scheduler trigger must not record STOPPED while a
             # different live Supervisor still owns the singleton lease. The
