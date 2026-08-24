@@ -1358,6 +1358,62 @@ def _improvement_items(database: FoundryDatabase) -> list[WorkItem]:
     ]
 
 
+_SEVERITY_URGENCY = {
+    "S1": 0.95,
+    "S2": 0.85,
+    "S3": 0.6,
+    "S4": 0.4,
+}
+
+
+def _incident_items(database: FoundryDatabase) -> list[WorkItem]:
+    """Surface non-terminal resilience incidents as comparable portfolio work.
+
+    Incidents outrank ordinary work through urgency, but STOP still outranks
+    incident automation (checked independently by select_next_work and by the
+    coordinator itself before any repair callback).
+    """
+    try:
+        from ..resilience.core import rebuild_incidents
+        incidents = rebuild_incidents(database)
+    except (ImportError, ValueError, TypeError, KeyError):
+        return []
+    items: list[WorkItem] = []
+    for incident in incidents:
+        status = str(getattr(incident, "status", "") or "")
+        if getattr(incident, "terminal", True):
+            continue
+        severity = str(getattr(incident, "severity", "") or "S3")
+        urgency = _SEVERITY_URGENCY.get(severity, 0.5)
+        incident_id = str(getattr(incident, "incident_id", "") or "")
+        items.append(WorkItem(
+            item_id=f"incident:{incident_id}", kind="INCIDENT",
+            objective=(
+                f"Contain/repair incident {incident_id} "
+                f"[{severity}/{status}] "
+                f"{getattr(incident, 'correlation_key', '')}"),
+            status="OPEN",
+            expected_value=0.9, urgency=urgency, information_gain=0.2,
+            confidence=0.7, effort=0.3, risk=0.4, reversibility=0.5,
+            requires_verifier=True,
+            dependencies=tuple(str(m) for m in (
+                getattr(incident, "affected_missions", ()) or ())),
+            metadata={
+                "incident_id": incident_id,
+                "severity": severity,
+                "incident_status": status,
+                "correlation_key": getattr(
+                    incident, "correlation_key", ""),
+                "affected_capabilities": list(
+                    getattr(incident, "affected_capabilities", ()) or ()),
+                "effect_ambiguity": str(getattr(
+                    incident, "effect_ambiguity", "")),
+            },
+            evidence_refs=(f"incident.detected:{incident_id}",),
+        ))
+    return items
+
+
 def _all_work_items(
     database: FoundryDatabase,
     state: PortfolioState,
@@ -1379,7 +1435,9 @@ def _all_work_items(
             database, resource_id=resource_id, capability=capability,
             candidate_limit=candidate_limit, goals=goals):
         items.setdefault(item.item_id, item)
-    for item in _research_queue_items(database) + _improvement_items(database):
+    for item in (_research_queue_items(database)
+                 + _improvement_items(database)
+                 + _incident_items(database)):
         items.setdefault(item.item_id, item)
     return list(items.values())
 

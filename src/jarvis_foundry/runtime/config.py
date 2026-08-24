@@ -44,6 +44,10 @@ class WorkerRuntimeConfig:
     executive_wait_margin: float = 0.05
     executive_activation_epoch: str | None = None
     executive_candidate_limit: int = 20
+    # V7 full-autonomy: portfolio-level selection above candidate selection.
+    # OFF by default; when ON the loop consults select_next_work after the
+    # candidate path yields nothing, and WAIT/wake semantics govern idling.
+    portfolio_selection_enabled: bool = False
     # V3 Discovery and Building: the unified cycle stays OFF by default;
     # production keeps the v3_loop WAIT + executive selection split.
     discovery_cycle_enabled: bool = False
@@ -101,6 +105,9 @@ class WorkerRuntimeConfig:
             executive_activation_epoch=raw.get("executive", {}).get("activation_epoch"),
             executive_candidate_limit=int(
                 raw.get("executive", {}).get("candidate_limit", 20)),
+            portfolio_selection_enabled=bool(
+                raw.get("executive", {}).get("portfolio_selection_enabled",
+                                             False)),
             discovery_cycle_enabled=bool(
                 raw.get("discovery", {}).get("cycle_enabled", False)),
         )

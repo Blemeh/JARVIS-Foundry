@@ -263,6 +263,163 @@ def _record_executive_outcome(
     )
 
 
+def _maybe_portfolio_select(
+    database: FoundryDatabase,
+    config: WorkerRuntimeConfig,
+    *,
+    loop_id: str,
+    instance_id: str,
+) -> str | None:
+    """V7 portfolio tier: global next-useful-work above candidate selection.
+
+    Consumes the canonical V7A selector; materializes through the bridge so
+    STOP, vetoes, capacity/budget, WAIT/wake, and fairness stay authoritative.
+    """
+    from ..evolution.executive_portfolio import (
+        claim_selection,
+        release_selection_claim,
+        select_next_work,
+    )
+    from ..executive.portfolio_bridge import materialize_portfolio_selection
+
+    decision = select_next_work(
+        database,
+        loop_id=f"portfolio:{loop_id}:{uuid.uuid4().hex[:8]}",
+        resource_id=config.resource_id,
+        capability=config.capability,
+        source_id=f"worker-loop:{instance_id}",
+    )
+    if decision.kind != "SELECT" or decision.entity_id is None:
+        database.append(Event.create(
+            "worker_loop.portfolio_waiting",
+            {
+                "loop_id": loop_id,
+                "instance_id": instance_id,
+                "decision_id": decision.decision_id,
+                "selected_class": decision.selected_class,
+                "reason": decision.reason,
+                "why_now": decision.why_now,
+                "wake_on": list(decision.wake_on),
+                "revisit_at": decision.revisit_at,
+            },
+            source_type="supervisor",
+            source_id=f"worker-loop:{instance_id}",
+            idempotency_key=f"worker_loop.portfolio_waiting:{loop_id}",
+        ))
+        return None
+    payload = decision.to_payload()
+    result = materialize_portfolio_selection(
+        database, decision=payload,
+        resource_id=config.resource_id, capability=config.capability,
+        source_id=f"worker-loop:{instance_id}",
+    )
+    if not result.get("materialized"):
+        database.append(Event.create(
+            "worker_loop.portfolio_materialization_blocked",
+            {
+                "loop_id": loop_id,
+                "decision_id": decision.decision_id,
+                "item_id": decision.entity_id,
+                "reason": result.get("blocked_reason"),
+            },
+            source_type="supervisor",
+            source_id=f"worker-loop:{instance_id}",
+            idempotency_key=(
+                f"worker_loop.portfolio_materialization_blocked:{loop_id}"),
+        ))
+        return None
+    try:
+        claim = claim_selection(
+            database, decision, source_id=f"worker-loop:{instance_id}")
+    except Exception:  # noqa: BLE001 - claim loss must not kill the cycle
+        claim = {}
+    mission_id = str(result.get("mission_id") or "")
+    database.append(Event.create(
+        "worker_loop.portfolio_selected",
+        {
+            "loop_id": loop_id,
+            "instance_id": instance_id,
+            "decision_id": decision.decision_id,
+            "selected_class": decision.selected_class,
+            "item_id": decision.entity_id,
+            "mission_id": mission_id,
+            "claim": dict(claim or {}),
+        },
+        source_type="supervisor",
+        source_id=f"worker-loop:{instance_id}",
+        idempotency_key=f"worker_loop.portfolio_selected:{loop_id}",
+    ))
+    # Release the selection lease immediately: the mission itself is now the
+    # durable unit of work; holding the portfolio lease would only block
+    # unrelated selections after a crash.
+    try:
+        release_selection_claim(
+            database, decision.entity_id,
+            source_id=f"worker-loop:{instance_id}")
+    except Exception:  # noqa: BLE001 - lease TTL bounds any leak
+        pass
+    return mission_id
+
+
+def _record_mission_portfolio_outcome(
+    database: FoundryDatabase,
+    *,
+    mission_id: str,
+    outcome: Any,
+    status: str,
+    instance_id: str,
+    repair_count: int = 0,
+) -> None:
+    """Reconcile a portfolio-materialized mission's terminal truth."""
+    from ..executive.portfolio_bridge import record_mission_portfolio_outcome
+
+    mission = database.row("missions", "mission_id", mission_id)
+    if mission is None:
+        return
+    created_from = str(mission.get("created_from") or "")
+    if not created_from.startswith("portfolio:"):
+        return
+    item_id = created_from.split(":", 1)[1]
+    materialization = None
+    recorded = None
+    for event in reversed(database.events()):
+        if materialization is None and \
+                event.event_type == "portfolio.selection_materialized" \
+                and str(event.payload.get("mission_id") or "") == mission_id:
+            materialization = event.payload
+        if recorded is None and \
+                event.event_type == "portfolio.selection_recorded":
+            payload_item = dict(event.payload.get("selected_item") or {})
+            if str(payload_item.get("item_id") or "") == item_id:
+                recorded = event.payload
+        if materialization is not None and recorded is not None:
+            break
+    if materialization is None or recorded is None:
+        return
+    actual = {
+        "outcome": status,
+        "mission_id": mission_id,
+        "step_id": getattr(outcome, "step_id", None),
+        "verdict_id": getattr(outcome, "verdict_id", None),
+        "reason": getattr(outcome, "reason", ""),
+    }
+    try:
+        record_mission_portfolio_outcome(
+            database, decision=recorded, mission_id=mission_id,
+            status=status, actual=actual, repair_count=repair_count,
+            outcome_id=f"outcome-{mission_id[:20]}",
+            source_id=f"worker-loop:{instance_id}")
+    except (ValueError, KeyError, TypeError) as error:
+        database.append(Event.create(
+            "worker_loop.portfolio_outcome_blocked",
+            {"mission_id": mission_id, "reason": str(error)},
+            source_type="supervisor",
+            source_id=f"worker-loop:{instance_id}",
+            idempotency_key=(
+                f"worker_loop.portfolio_outcome_blocked:{mission_id}"),
+        ))
+
+
 def _record_v3_outcome(
     database: FoundryDatabase,
     *,
@@ -586,6 +743,9 @@ def run_cycle(
             if mission_id is None and config.executive_selection_enabled:
                 mission_id = _maybe_executive_select(
                     database, config, loop_id=loop_id, instance_id=instance_id)
+            if mission_id is None and config.portfolio_selection_enabled:
+                mission_id = _maybe_portfolio_select(
+                    database, config, loop_id=loop_id, instance_id=instance_id)
         if mission_id is None:
             return _waiting_report(
                 database, loop_id=loop_id, instance_id=instance_id,
@@ -654,6 +814,9 @@ def run_cycle(
             _record_executive_outcome(
                 database, mission_id=mission_id, outcome=outcome,
                 instance_id=instance_id)
+            _record_mission_portfolio_outcome(
+                database, mission_id=mission_id, outcome=outcome,
+                status=terminal, instance_id=instance_id)
         # V3 WP-B single authoritative closure seam: when the discovery
         # cycle is enabled, a terminal harmless result is handed to the
         # OutcomeService automatically (idempotent; PASSED-only inside).
