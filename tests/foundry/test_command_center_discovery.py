@@ -458,6 +458,7 @@ def test_existing_non_discovery_consumers_unchanged(db):
                 "briefing_packet",
                 "effect_truth",
                 "evolution_truth",
+                "portfolio",
             }
     assert set(legacy_keys) == expected
     assert set(pinned["candidates"][0]) >= {"candidate_id"}

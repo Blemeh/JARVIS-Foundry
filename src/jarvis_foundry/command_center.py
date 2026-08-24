@@ -388,6 +388,79 @@ def _evolution_truth_projection(
     }
 
 
+def _portfolio_projection(database: FoundryDatabase, *, limit: int = 10) -> dict[str, Any]:
+    """Project V7 portfolio decisions, incidents, and procedure state.
+
+    Additive read-only view over portfolio.*, incident.*, and
+    operation.procedure.* events. Every field traces to the ledger; no
+    simulated values.
+    """
+    latest: dict[str, Any] | None = None
+    recent: list[dict[str, Any]] = []
+    outcomes: list[dict[str, Any]] = []
+    for event in database.events():
+        if event.event_type == "portfolio.selection_recorded":
+            payload = dict(event.payload)
+            entry = {
+                "decision_id": payload.get("decision_id"),
+                "decision": payload.get("decision"),
+                "selected_class": payload.get("selected_class"),
+                "entity_id": payload.get("entity_id"),
+                "reason": payload.get("reason"),
+                "why_now": payload.get("why_now"),
+                "expected_value": payload.get("expected_value"),
+                "uncertainty": payload.get("uncertainty"),
+                "capacity_check": payload.get("capacity_check"),
+                "wake_on": list(payload.get("wake_on") or []),
+                "revisit_at": payload.get("revisit_at"),
+                "alternatives": list(payload.get("alternatives") or [])[:5],
+                "recorded_at": event.recorded_at,
+            }
+            if latest is None:
+                latest = entry
+            if len(recent) < limit:
+                recent.append(entry)
+        elif event.event_type == "portfolio.outcome_recorded":
+            if len(outcomes) < limit:
+                outcomes.append({
+                    "outcome_id": event.payload.get("outcome_id"),
+                    "entity_id": event.payload.get("entity_id"),
+                    "kind": event.payload.get("kind"),
+                    "status": event.payload.get("status"),
+                    "repair_count": event.payload.get("repair_count"),
+                    "recorded_at": event.recorded_at,
+                })
+    incidents: list[dict[str, Any]] = []
+    statuses: dict[str, str] = {}
+    for event in database.events():
+        if event.event_type == "incident.detected":
+            statuses[str(event.payload.get("incident_id"))] = "DETECTED"
+            incidents.append({
+                "incident_id": event.payload.get("incident_id"),
+                "kind": event.payload.get("kind"),
+                "severity": event.payload.get("severity"),
+                "correlation_key": event.payload.get("correlation_key"),
+                "status": "DETECTED",
+                "detected_at": event.recorded_at,
+            })
+        elif event.event_type == "incident.transitioned":
+            incident_id = str(event.payload.get("incident_id") or "")
+            statuses[incident_id] = str(event.payload.get("status") or "")
+    for incident in incidents:
+        incident["status"] = statuses.get(
+            str(incident["incident_id"]), incident["status"])
+    return {
+        "latest_decision": latest,
+        "recent_decisions": recent,
+        "outcomes": outcomes,
+        "incidents": incidents[:limit],
+        "open_incident_count": sum(
+            1 for i in incidents
+            if i["status"] not in {"RECOVERED", "BLOCKED", "ESCALATED",
+                                   "UNKNOWN"}),
+    }
+
+
 def _executive_projection(database: FoundryDatabase, *, limit: int = 25) -> dict[str, Any]:
     """Project Executive Intelligence decisions from the durable ledger.
 
@@ -1205,6 +1278,7 @@ def build_snapshot(
         "evolution_truth": evolution_truth,
         "timeline": decision_timeline(database, limit=timeline_limit),
         "executive": _executive_projection(database, limit=25),
+        "portfolio": _portfolio_projection(database, limit=10),
         "discovery": _discovery_projection(
             connection,
             cycle_enabled=None if discovery_cycle_enabled is None
