@@ -1,14 +1,14 @@
 {
   "lane": "live-github-research-activation",
-  "date": "2026-08-24T18:54:08Z",
+  "date": "2026-08-24T19:28:36Z",
   "frozen_base": "079245aec0eed9e1026df87548817a1baf3be036",
   "api_calls_total": 21,
   "identity": {
     "authenticated_login": "Blemeh",
     "rate_limit": {
       "limit": 5000,
-      "remaining": 4994,
-      "reset_epoch": 1787599487
+      "remaining": 5000,
+      "reset_epoch": 1787603318
     }
   },
   "inventory": [
@@ -19,7 +19,7 @@
       "visibility": "PRIVATE",
       "default_branch": "main",
       "head_sha": "079245aec0eed9e1026df87548817a1baf3be036",
-      "pushed_at": "2026-08-24T18:08:28Z",
+      "pushed_at": "2026-08-24T19:16:57Z",
       "language": "Python",
       "issues_enabled": true,
       "open_issues_count": 0,
@@ -261,10 +261,10 @@
       "visibility": "PRIVATE",
       "default_branch": "main",
       "head_sha": "a7ccc12cc056d3a0aed0db3aa332e3904c2290cc",
-      "pushed_at": "2026-08-24T18:08:25Z",
+      "pushed_at": "2026-08-24T19:06:59Z",
       "language": "Python",
       "issues_enabled": true,
-      "open_issues_count": 0,
+      "open_issues_count": 1,
       "ci_recent": [],
       "releases_recent": [],
       "local_checkout_path": null,
@@ -970,7 +970,7 @@
         {
           "type": "github_api",
           "location": "/repos/Blemeh/Hoowen/actions/runs/32760688893/jobs",
-          "retrieved_at": "2026-08-24T18:54:08Z"
+          "retrieved_at": "2026-08-24T19:28:36Z"
         }
       ],
       "conflicts": [],
@@ -988,12 +988,12 @@
         {
           "type": "github_api",
           "location": "/repos/Blemeh/JARVIS-Foundry/actions/runs?per_page=1",
-          "retrieved_at": "2026-08-24T18:54:08Z"
+          "retrieved_at": "2026-08-24T19:28:36Z"
         },
         {
           "type": "github_api",
-          "location": "/repos/Blemeth/JARVIS-Foundry/contents/.github/workflows/windows-ci.yml",
-          "retrieved_at": "2026-08-24T18:54:08Z"
+          "location": "/repos/Blemeh/JARVIS-Foundry/contents/.github/workflows/windows-ci.yml",
+          "retrieved_at": "2026-08-24T19:28:36Z"
         }
       ],
       "conflicts": [],
@@ -1009,7 +1009,7 @@
         {
           "type": "github_api",
           "location": "/repos/Blemeh/LeadGen/actions/runs",
-          "retrieved_at": "2026-08-24T18:54:08Z"
+          "retrieved_at": "2026-08-24T19:28:36Z"
         }
       ],
       "conflicts": [],
@@ -1025,12 +1025,12 @@
         {
           "type": "package_registry",
           "location": "https://pypi.org/pypi/pytest/json",
-          "retrieved_at": "2026-08-24T18:54:08Z"
+          "retrieved_at": "2026-08-24T19:28:36Z"
         },
         {
           "type": "github_api",
           "location": "/repos/pytest-dev/pytest/releases/latest",
-          "retrieved_at": "2026-08-24T18:54:08Z"
+          "retrieved_at": "2026-08-24T19:28:36Z"
         }
       ],
       "conflicts": [
@@ -1050,7 +1050,7 @@
         {
           "type": "github_search",
           "location": "/search/issues?q=repo:Blemeh/Hoowen+is:issue+is:open+CI",
-          "retrieved_at": "2026-08-24T18:54:08Z"
+          "retrieved_at": "2026-08-24T19:28:36Z"
         }
       ],
       "conflicts": [],
@@ -1102,21 +1102,21 @@
     "fed": [
       {
         "duplicate_key": "dupkey-Blemeh/JARVIS-Foundry-CI_FAILURE-c063bd71a8ec",
-        "candidate_id": "cand-3a88c9b397e5",
+        "candidate_id": "cand-8d66f291129a",
         "score": 0.305,
         "portfolio_item_id": "pw-dupkey-Blemeh/JARVIS-Foundry-CI_FAILURE-c063bd71a8ec",
         "portfolio_class": "REPAIR"
       },
       {
         "duplicate_key": "dupkey-Blemeh/LeadGen-MISSING_TEST-a30823888ab1",
-        "candidate_id": "cand-ee97071cbc27",
+        "candidate_id": "cand-9b10cb474443",
         "score": 0.239,
         "portfolio_item_id": "pw-dupkey-Blemeh/LeadGen-MISSING_TEST-a30823888ab1",
         "portfolio_class": "MAINTENANCE"
       },
       {
         "duplicate_key": "dupkey-Blemeh/Hoowen-CI_FAILURE-6515f8858c3b",
-        "candidate_id": "cand-a72133166254",
+        "candidate_id": "cand-7209962efb3c",
         "score": 0.487,
         "portfolio_item_id": "pw-dupkey-Blemeh/Hoowen-CI_FAILURE-6515f8858c3b",
         "portfolio_class": "REPAIR"
@@ -1125,7 +1125,7 @@
     "passing_min_score": [
       {
         "duplicate_key": "dupkey-Blemeh/Hoowen-CI_FAILURE-6515f8858c3b",
-        "candidate_id": "cand-a72133166254",
+        "candidate_id": "cand-7209962efb3c",
         "score": 0.487,
         "portfolio_item_id": "pw-dupkey-Blemeh/Hoowen-CI_FAILURE-6515f8858c3b",
         "portfolio_class": "REPAIR"
@@ -1133,35 +1133,42 @@
     ],
     "decision": "SELECT_CANDIDATES",
     "wait_reason": null,
-    "generated_at": "2026-08-24T18:54:26Z"
+    "generated_at": "2026-08-24T19:28:54Z"
   },
   "observations": [
     {
       "observation_type": "CI_FAILED",
       "repository": "Blemeh/JARVIS-Foundry",
       "detail": "workflow '.github/workflows/windows-ci.yml' concluded failure at 2026-08-19T03:42:59Z",
-      "observed_at": "2026-08-24T18:54:23Z",
+      "observed_at": "2026-08-24T19:28:50Z",
       "evidence_ref": "github:Blemeh/JARVIS-Foundry@main"
     },
     {
       "observation_type": "NO_CI_ON_DEFAULT",
       "repository": "Blemeh/LeadGen",
       "detail": "no recent CI runs observable on the default branch",
-      "observed_at": "2026-08-24T18:54:23Z",
+      "observed_at": "2026-08-24T19:28:50Z",
+      "evidence_ref": "github:Blemeh/LeadGen@main"
+    },
+    {
+      "observation_type": "NEW_ISSUE",
+      "repository": "Blemeh/LeadGen",
+      "detail": "1 open issue(s)/PR(s) present",
+      "observed_at": "2026-08-24T19:28:50Z",
       "evidence_ref": "github:Blemeh/LeadGen@main"
     },
     {
       "observation_type": "CI_FAILED",
       "repository": "Blemeh/Hoowen",
       "detail": "workflow 'CI' concluded failure at 2026-08-24T18:08:26Z",
-      "observed_at": "2026-08-24T18:54:23Z",
+      "observed_at": "2026-08-24T19:28:50Z",
       "evidence_ref": "github:Blemeh/Hoowen@main"
     },
     {
       "observation_type": "CI_FAILED",
       "repository": "Blemeh/Hoowen",
       "detail": "3 recent failing runs \u2014 recurring failure pattern",
-      "observed_at": "2026-08-24T18:54:23Z",
+      "observed_at": "2026-08-24T19:28:50Z",
       "evidence_ref": "github:Blemeh/Hoowen@main"
     }
   ],

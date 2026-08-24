@@ -4,7 +4,7 @@ Discovered live via `GitHubResearchConnector` (gh-brokered auth) on 2026-08-24.
 Exact remote identity from API reads; local checkouts deduplicated by remote
 URL/identity.
 
-| Field | Blemeh/JARVIS-Foundry | Blemeh/LeadGen | Blemeth→Blemeh/Hoowen |
+| Field | Blemeh/JARVIS-Foundry | Blemeh/LeadGen | Blemeh/Hoowen |
 |---|---|---|---|
 | resource_key | github:Blemeh/JARVIS-Foundry | github:Blemeh/LeadGen | github:Blemeh/Hoowen |
 | provider | github | github | github |
@@ -14,7 +14,7 @@ URL/identity.
 | last activity | 2026-08-24T18:08:28Z | 2026-08-24T18:08:25Z | 2026-08-24T18:08:24Z |
 | language/stack | Python (+UI) | Python, TypeScript, CSS, Dockerfile | Python, TypeScript, JS, PLpgSQL |
 | issues enabled | true (open: 0) | true (open: 0) | true (open: 0) |
-| PR/check state | windows-ci failed run on side branch `remaster/post-v7-purpose`; no CI on default | zero Actions runs ever | CI workflow present; 3 recent runs ALL failing |
+| PR/check state | windows-ci failed run on side branch `remaster/post-v7-purpose`; no CI on default | zero Actions runs on record (API total_count=0) | CI workflow present; 3 recent runs ALL failing |
 | release state | none | none | none |
 | local checkout | YES — canonical worktree + ~100 registered worktrees under C:\temp (this lane's worktree is one of them) | YES — C:\Users\b\Documents\LeadGen on main, DIRTY (66 entries; owner work preserved, untouched by this lane) | not found in common locations |
 | build/test commands | pytest tests/foundry (+ convergence for FULL) | not probed (no CI config to copy) | vitest + backend unit/integration per CI workflow names |
