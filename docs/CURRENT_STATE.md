@@ -6,112 +6,51 @@ every promotion/remaster mission (see `docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.
 If this document and another current-status document disagree, THIS document wins
 for "what exists now" claims; the architecture contract wins for binding invariants.
 
-Last reconciled: 2026-08-24 (canonical V4/V5/V6 plus cinematic Command Center
-source promotion; source and live runtime are reported separately below)
+Last reconciled: 2026-08-24 (V7 Full Autonomy stage: V7A portfolio + V7B
+broad operations + V7C resilience integrated onto canonical, released, and
+proven live; source and live runtime reported together below)
 
 ```text
-CURRENT CANONICAL HEAD:      08dad95 (canonical main/origin; pushed)
-INTEGRATION BASE:            6db467a2b0e6bdc37adbc4cbfac309418e33afec
-                             (fresh origin/main base)
-AUDIT SOURCE:                evidence/integration/v456-stage/FINAL_SOURCE_REPORT.md
-CURRENT WORK BRANCH:         main
-LOCAL RUNTIME LANE CHECKPOINT: 08dad95 (source checkpoint; no live mutation)
-CURRENT STATE RECORD:        this document is reconciled to canonical main;
-                             live promotion remains a separate boundary
-TESTED CODE HEAD:            08dad95; V4, V5, V6, cross-lane truth bridges,
-                             and Command Center UI were exercised and promoted
-FINAL EVIDENCE HEAD:         evidence/integration/v456-stage/STAGE_GATE.json;
-                             release-factory evidence is under
-                             C:/temp/JARVIS-Overnight-Release-Candidate/
-FULL SUITE:                  PASS — 1,981 collected, 1,980 passed, 0 failures,
-                             0 errors, 1 explicit filesystem-boundary skip
-FOCUSED REMEDIATION TESTS:   V4/V5/V6 focused gates, V3 independent verifier,
-                             and Command Center UI
-                             typecheck, lint, 115 tests, build, product 212/212,
-                             and security scan PASS in this isolated lane
-FULL SUITE FINAL GATE:       SOURCE PASS; V3 four-hour proving window is
-                             NOT_TESTED, and no live provider, database,
-                             scheduler, or runtime promotion claim follows from
-                             source tests
-DEPLOYED RELEASE:            769715a7f8aee22bf4ab2db8870c37e6e9c9ef1b (CURRENT)
-PREVIOUS RELEASE:            9a10910f78a4a618fba4c916b418056e4ada1991 (PREVIOUS)
-DEPLOYED MANIFEST:           rel-769715a7f8ae-060c9abc; legacy pre-remediation
-                             manifest has source_sha but lacks git_commit and
-                             git_tree; replacement after verifier PASS is required
-PROVIDER CONFIG:             live provider dispatch was not exercised in this
-                             stage; credentials remain environment-only
-CURRENT SCHEMA:              v34 live deployed database baseline (production unchanged)
-                             V2 KNOWLEDGE SCHEMA: v35 (24h-integration knowledge brain)
-                             V3 DISCOVERY/BUILDING SCHEMA: v36 (integrated on main)
-                             CURRENT/CANDIDATE SCHEMA: v36 (migrations.SCHEMA_VERSION);
-                             live database remains v34 until owner-approved migration;
-                             LIVE_PROMOTION_DEFERRED
-FOCUSED EXECUTIVE SUITE:     32 passed (tests/foundry/test_executive_intelligence.py)
-FRONTEND:                    isolated source stage typecheck/lint clean; Vitest
-                             115/115, product 212/212, build, and security scan
-                             PASS; live UI remains unproven
-EXECUTIVE INTELLIGENCE:      ACTIVE-CAPABLE, feature-flag OFF by default
-                             (worker config `executive.selection_enabled`).
-                             Durable owner goals from authenticated GOAL
-                             directives; organic candidate eligibility via
-                             trusted admission events (epoch-gated); historical
-                             firewall; comparative decision model with recorded
-                             rejection rationale for every runner-up; keyword-
-                             bait damping; useful idleness as distinct WAIT kinds
-                             (NO_ELIGIBLE_CANDIDATES vs COMPARATIVE_WAIT);
-                             outcome calibration PASSED positive / FAILED negative /
-                             BLOCKED neutral; predictions recorded before SELECT;
-                             restart-idempotent decision cycles; STOP/veto checked
-                             at selection AND materialization.
-COMMAND CENTER:              /executive route + snapshot.executive section project
-                             the decision spine (latest decision, rationale,
-                             rejected alternatives, prediction-vs-actual,
-                             calibration history) from ledger events only.
-SUPERVISOR STATE:            fresh read-only check observed RUNNING supervisor,
-                             active worker-loop, STOP false, schema v34, and
-                             runtime health UNKNOWN because live PID identity
-                             was unavailable; this is not post-promotion proof
-STOP STATE:                  SOURCE_GATED_ONLY (STOP/PID controls pass isolated
-                             tests; production STOP state was not changed)
-TRUST STATE:                 LAB / SOURCE_CHECKPOINT
-RELEASE AUTHORITY:           FILESYSTEM_ONLY_AUTHORITY is explicit and detected
-                             by doctor: CURRENT/PREVIOUS are canonical, DB
-                             release records are a projection/audit cache and
-                             currently contain 0 rows; no manual DB fabrication
-PID LEDGER:                  startup/heartbeat reconciliation requires live PID,
-                             matching creation identity, and JARVIS ownership;
-                             dead PID 15452 classification and reuse rejection
-                             are covered by focused regressions
-OWNER-GOAL:                  SUPERSEDED_BY_NEWER_IMPLEMENTATION — authenticated
-                             GOAL directives in executive/goals.py are current
-RELEASE-HANDOFF:            SUPERSEDED — immutable CURRENT/PREVIOUS release
-                             authority replaces the deleted handoff mechanism
-SCHEDULER AUTHORITY:         JARVIS-Foundry-Supervisor Ready is the production
-                             lifecycle authority; JARVIS-Foundry-Worker-Loop is
-                             LEGACY_DISABLED and fail-closed against enabling;
-                             R3 proving monitor remains a separate read-only task
-HEADLESS FIX:                preserved and integrated; live promotion proof pending
-AUDIT LIVE STATUS:           BLOCKED_AT_LEGACY_RELEASE — live CURRENT is
-                             769715a7..., filesystem-only authority, schema v34;
-                             canonical source is 08dad95 and expects v36; no
-                             post-stage restart, migration, or provider proof
-                             has been performed
-MISSION STATE:               isolated stage and lab databases only; live home,
-                             scheduler tasks, and production processes were left
-                             untouched
-LIVE PROOF (2026-08-21):     scripts/m2_live_product_proof.py — 12/12 PASS on an
-                             isolated lab ledger through production code paths:
-                             durable goal -> organic portfolio -> firewall ->
-                             selection w/ alternatives -> planted false-success
-                             rejected by evidence reconciliation -> auto-repair ->
-                             fresh verifier PASS -> outcome calibration both
-                             directions -> prediction recorded -> CC projection
-                             newest-first -> restart continuity.
-WORKER IMPLEMENTATIONS:      Hermes adapter + OpenHands adapter — CANONICAL (merged)
-OWNER FILES:                 6 tracked docs under docs/handoffs/, docs/planning/
-PERCEPTION INPUT (Phase 2):  SCREENPIPE-LOCAL registered read-only; unchanged
-WORKFLOW DISCOVERY (Phase 3): unchanged (disabled by default)
-PROCEDURAL LEARNING (Phase 4): unchanged (disabled by default)
+CURRENT CANONICAL HEAD:      0887a3b (canonical main/origin; pushed)
+V7 STAGE INTEGRATION:        integration/v7-full-autonomy-20260824 merged;
+                             lanes V7A 9accb24d + V7B 8662fae7 +
+                             V7C 22422059 all represented (no missing work)
+STAGE EVIDENCE:              evidence/integration/v7-stage/
+FULL SUITE:                  PASS — 1,972 collected, 0 failures, 1 explicit
+                             skip at final integration head
+DEPLOYED RELEASE:            rel-f12a2215f0bc-c3bb04f6 (CURRENT,
+                             git_commit f12a2215..., tree e5054369...)
+PREVIOUS RELEASE:            rel-441113bcfd27-de548929 (PREVIOUS)
+CURRENT SCHEMA:              v36 live and current (V2 knowledge schema v35 and
+                             V3 discovery/building schema v36 are applied);
+                             no pending migration
+SUPERVISOR STATE:            RUNNING singleton on the live release;
+                             heartbeat advancing; STOP false
+STOP/RESUME PROOF:           PASS live (sentinel freeze -> FROZEN/SUSPENDED,
+                             resume -> RUNNING) on 2026-08-24
+V7A PORTFOLIO TIER:          ACTIVE live via worker config
+                             executive.portfolio_selection_enabled=true:
+                             selects/executes/verifies/records outcomes,
+                             retires unexecutable repair targets, closes
+                             completed items (mirror shadowing), reaches
+                             honest WAIT with wake conditions
+V7B BROAD OPERATIONS:        live multi-capability disposable procedure
+                             proven (filesystem/git/http/deploy with exact
+                             targets, effect tickets, freeze->reconcile)
+V7C RESILIENCE:              coordinator ARMED live (worker config
+                             resilience.coordinator_enabled=true): detected
+                             real connector outage + duplicate authority;
+                             DETECTED->TRIAGED->CONTAINED->DIAGNOSED->
+                             honest BLOCKED lifecycle recorded
+COMMAND CENTER:              /api/command-center projects ledger truth incl.
+                             new additive "portfolio" section (decisions,
+                             wake conditions, outcomes, incidents); source
+                             of truth = append-only ledger; release identity
+                             from immutable pointers; cinematic UI unchanged
+DB BACKUP/ROLLBACK:          pre-V7 backup verified (quick_check ok, sha256
+                             matches record); PREVIOUS release validates;
+                             restore path resolves
+VOICE/LOCALIZATION:          DEFERRED_BY_OWNER
 ```
 
 ## What exists now
