@@ -1,0 +1,33 @@
+{
+  "schema": "lane3.project_contract.v1",
+  "PROJECT_ID": "taskward",
+  "date": "2026-08-24",
+  "candidate_id": "cand-taskward-20260824",
+  "problem": "Windows Task Scheduler state that autonomous software depends on (supervisor continuity, worker restart) is managed through hand-written schtasks subprocess calls and hand-copied XML, with recorded byte-fidelity incidents, recurring shared-staging lane blockers, and host residue.",
+  "owner_goal_alignment": "IDEA.md requires continuous operation with tested releases and rollback on a Windows host; Task Scheduler is the continuity backbone (installer.py, packaging/, V7 release management). A safe declarative manager removes a recurring blocker class for every future lane.",
+  "mvp": [
+    "export: snapshot live tasks under a scope folder to canonical JSON plus byte-exact XML artifacts with SHA-256, re-read-verified",
+    "validate: lint a declared JSON task set (schema, trigger/action sanity, scope guards)",
+    "plan: declared-vs-live diff gate producing create/update/delete/noop with CI exit codes and machine-readable output",
+    "apply: idempotent apply restricted to an explicit scope folder prefix, dry-run default, post-apply independent re-export verification"
+  ],
+  "non_goals": ["GUI", "remote hosts", "credential storage", "root/system folder management", "cron-format translation", "auto-fix of out-of-scope drift"],
+  "acceptance_criteria": [
+    "AC1 export produces stable canonical JSON and XML bytes whose sha256 matches on immediate re-read",
+    "AC2 validate rejects malformed definitions with precise errors and exit 2",
+    "AC3 plan reports exactly the expected delta for staged scenarios (create/update/delete/noop) and exits 1 when drift exists in gate mode",
+    "AC4 apply creates a lab task on the real host non-elevated, verifies it independently by re-export, is idempotent (second apply = noop)",
+    "AC5 out-of-band live modification is detected by plan as update drift",
+    "AC6 delete via apply removes the task and re-export confirms absence",
+    "AC7 refusal semantics: root scope, wildcard scope, path outside prefix, missing PowerShell, access-denied each produce clear BLOCKED/error outcomes, never partial silent mutation",
+    "AC8 unit suite passes offline with an injected fake PS bridge; live integration suite passes on this host under \\JarvisLab\\"
+  ],
+  "architecture_constraints": ["Python >=3.10 stdlib only", "PowerShell CIM cmdlets over subprocess (no pywin32)", "injectable process runner for deterministic tests", "no network"],
+  "tech_stack": ["Python 3.13 (host)", "PowerShell 5.1", "git", "unittest"],
+  "milestones": ["M0 scaffold", "M1 core value path (export+validate)", "M2 end-to-end plan/apply cycle", "M3 negative paths", "M4 v0.1.0 release", "M5 post-MVP improvement"],
+  "risk": "Scheduler API differences across Windows builds; mitigation: structured CIM cmdlets instead of schtasks text parsing; live probes scoped to lab folder",
+  "budget": {"cost_usd": 0, "resources": ["local disk", "existing PowerShell"]},
+  "test_strategy": "unit tests against injected fake bridge (offline deterministic) + opt-in live integration marker TASKWARD_LIVE=1 + independent verifier script exercising AC1-AC8",
+  "rollback_deletion_path": "new standalone repository; deletion of C:/temp/JARVIS-Autonomous-Project-Lab/taskward and its remote fully reverses; no JARVIS runtime coupling",
+  "maintenance_revisit_conditions": ["Windows build changes Task Scheduler cmdlet behavior", "drift false-positive rate > threshold", "owner requests scheduler automation integration handoff"]
+}

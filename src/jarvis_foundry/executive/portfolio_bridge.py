@@ -280,7 +280,7 @@ def materialize_portfolio_selection(
                 "blocked_reason": None}
 
     if kind not in ("MAINTENANCE", "RESEARCH", "UNKNOWN", "IMPROVEMENT",
-                    "INCIDENT", "NEW_MISSION"):
+                    "INCIDENT", "NEW_MISSION", "NEW_PROJECT"):
         return {"materialized": False, "mission_id": None,
                 "blocked_reason": f"unsupported portfolio class {kind!r}"}
 

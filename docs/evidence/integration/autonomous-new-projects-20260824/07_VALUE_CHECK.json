@@ -1,0 +1,24 @@
+{
+  "schema": "lane3.value_check.v1",
+  "date": "2026-08-24",
+  "project": "taskward",
+  "predicted": {"expected_value": 0.85, "effort": 0.35, "cost_usd": 0.0,
+                "mvp_boundary": "export/validate/plan/apply scoped to lab folder"},
+  "actual": {
+    "problem_solved_at_mvp_scope": true,
+    "functional_scenarios_proven": [
+      "byte-exact XML snapshot with SHA-256 re-read verification (AC1) - directly addresses the recorded JARVIS S3 incident class",
+      "declared-file validation with precise errors and exit codes (AC2)",
+      "create/update/delete/noop plan classification with CI drift gate exit 1 (AC3)",
+      "real-host non-elevated create with independent Get-ScheduledTask verification (AC4)",
+      "out-of-band tamper detected as update drift then converged idempotently (AC4/AC5)",
+      "delete with independent absence verification (AC6)",
+      "refusal semantics for root/wildcard/out-of-scope/missing PowerShell/access denied (AC7)",
+      "logon trigger declaration with mandatory user_id (post-MVP v0.2.0)"
+    ],
+    "automation_saved_estimate": "Replaces hand-written schtasks subprocess handling and manual XML copying per continuity change; eliminates the recorded residue/byte-fidelity failure class for future lanes.",
+    "calibration_delta_vs_predicted": "effort slightly underestimated (PowerShell quoting + marker protocol defects surfaced by the live host); value confirmed by successful real-host cycles",
+    "cost_usd_actual": 0.0
+  },
+  "feeds_calibration": true
+}
