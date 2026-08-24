@@ -14,6 +14,7 @@ if str(SRC) not in sys.path:
 from jarvis_foundry.acceptance_harness.adversarial import run_false_pass_factory  # noqa: E402
 from jarvis_foundry.acceptance_harness.contracts import ScenarioSpec  # noqa: E402
 from jarvis_foundry.acceptance_harness.runner import AcceptanceRunner  # noqa: E402
+from jarvis_foundry.database import FoundryDatabase  # noqa: E402
 
 
 PROFILE_PATHS = {
@@ -43,6 +44,9 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--false-pass-factory", action="store_true")
     parser.add_argument("--validate", action="store_true")
     parser.add_argument("--allow-long-profile", action="store_true")
+    parser.add_argument("--canonical-database", type=Path)
+    parser.add_argument("--canonical-stop-path", type=Path)
+    parser.add_argument("--canonical-release-root", type=Path)
     return parser
 
 
@@ -69,6 +73,10 @@ def main(argv: list[str] | None = None) -> int:
     output = args.output
     if output is None:
         output = ROOT / scenario.evidence_output
+    canonical_database = (
+        FoundryDatabase(args.canonical_database)
+        if args.canonical_database is not None else None
+    )
     runner = AcceptanceRunner(
         scenario,
         output,
@@ -79,6 +87,9 @@ def main(argv: list[str] | None = None) -> int:
         run_false_pass_factory=not args.no_false_pass,
         run_interruption_probe=not args.no_interruption_probe,
         interrupt_after_steps=args.interrupt_after_steps,
+        canonical_database=canonical_database,
+        canonical_stop_path=args.canonical_stop_path,
+        canonical_release_root=args.canonical_release_root,
     )
     result = runner.run()
     print(json.dumps(result, indent=2, sort_keys=True))

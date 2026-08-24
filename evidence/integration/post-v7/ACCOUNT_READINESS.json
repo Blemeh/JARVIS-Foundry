@@ -1,0 +1,31 @@
+{
+  "status": "SOURCE_READY_LIVE_UNCONFIGURED",
+  "source_matrix": {
+    "gmail": "READY_SOURCE",
+    "google_calendar": "READY_SOURCE",
+    "github": "READY_SOURCE",
+    "authenticated_browser": "READY_SOURCE",
+    "drive_files": "DEFERRED"
+  },
+  "live_accounts": {
+    "status": "UNCONFIGURED",
+    "owner_activation_required": true,
+    "provider_mode": "DISABLED",
+    "real_credentials": false,
+    "real_external_effects": false,
+    "accounts": []
+  },
+  "safety_boundary": {
+    "credential_values_recorded": false,
+    "real_provider_calls": false,
+    "real_messages_events_pushes_or_prs": false,
+    "fixture_leakage": false,
+    "owner_authorization_for_real_accounts": "NOT_GRANTED"
+  },
+  "evidence_refs": [
+    "evidence/parallel-20260824/postv7-activation/ACCOUNT_MATRIX.md",
+    "scripts/postv7_activation_factory.py"
+  ],
+  "captured_against": "canonical main release 9f9cb51241d42713a86b5e1c881e2bbdcdbbd331",
+  "note": "Source adapter readiness is proven in disposable factories; live account activation remains an explicit owner action."
+}

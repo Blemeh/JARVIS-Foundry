@@ -461,6 +461,137 @@ def _portfolio_projection(database: FoundryDatabase, *, limit: int = 10) -> dict
     }
 
 
+def _postv7_projection(
+    database: FoundryDatabase,
+    *,
+    portfolio: dict[str, Any],
+    effect_truth: dict[str, Any],
+    limit: int = 100,
+) -> dict[str, Any]:
+    """Expose Post-V7 seams without creating a second source of truth.
+
+    Account state, procedure bindings, incidents, and portfolio decisions are
+    reconstructed from the canonical ledger.  A missing live account or
+    procedure event is reported as an explicit boundary, never as activation.
+    Credential references and raw provider payloads are intentionally omitted.
+    """
+    try:
+        from .connectors.account_activation import activation_records
+        from .procedure_library.definitions import build_catalog
+
+        account_rows: list[dict[str, Any]] = []
+        for record in activation_records(database):
+            row = record.to_dict()
+            for secret_key in (
+                "credential_reference", "last_probe", "last_reconcile",
+                "last_write_eligibility",
+            ):
+                row.pop(secret_key, None)
+            account_rows.append(row)
+        if not account_rows:
+            account_status = "UNCONFIGURED"
+        elif all(str(row.get("readiness")).upper() == "READY" for row in account_rows):
+            account_status = "READY"
+        else:
+            account_status = "DEGRADED"
+
+        catalog = build_catalog()
+        proof_counts: dict[str, int] = {}
+        for definition in catalog.definitions:
+            status = str(definition.proof_status)
+            proof_counts[status] = proof_counts.get(status, 0) + 1
+
+        procedure_events: list[dict[str, Any]] = []
+        for event in database.events(
+            readonly=True,
+            event_type_prefixes=("procedure.library.", "operation.procedure."),
+            limit=max(1, min(int(limit), 400)),
+            newest_first=True,
+        ):
+            payload = event.payload if isinstance(event.payload, dict) else {}
+            procedure_events.append({
+                "event_id": event.event_id,
+                "event_type": event.event_type,
+                "occurred_at": event.occurred_at,
+                "procedure_id": payload.get("procedure_id") or payload.get("library_procedure_id"),
+                "mission_id": payload.get("mission_id"),
+                "step_id": payload.get("step_id"),
+                "outcome": payload.get("outcome") or payload.get("status"),
+                "verifier_id": (payload.get("verification") or {}).get("verifier_id")
+                if isinstance(payload.get("verification"), dict) else None,
+            })
+
+        manual_rows = database.events(
+            readonly=True,
+            event_types=("manual_continuation_required",),
+            limit=1,
+            newest_first=True,
+        )
+        manual_count = len(manual_rows)
+        return {
+            "account_readiness": {
+                "status": account_status,
+                "owner_activation_required": not account_rows
+                or account_status != "READY",
+                "records": account_rows,
+                "real_credentials": False,
+                "real_external_effects": False,
+            },
+            "procedure_library": {
+                "status": "LIVE_BOUND" if procedure_events else "SOURCE_ONLY",
+                "catalog_count": len(catalog.definitions),
+                "proof_status_counts": proof_counts,
+                "events": procedure_events,
+                "trusted_count": proof_counts.get("TRUSTED", 0),
+            },
+            "incidents": list(portfolio.get("incidents") or []),
+            "open_incident_count": int(portfolio.get("open_incident_count") or 0),
+            "autonomy": {
+                "latest_decision": portfolio.get("latest_decision"),
+                "wait": portfolio.get("latest_decision")
+                if (portfolio.get("latest_decision") or {}).get("decision") == "WAIT"
+                else None,
+                "outcomes": list(portfolio.get("outcomes") or [])[:limit],
+                "manual_continuation_required": manual_count,
+            },
+            "effects": dict(effect_truth.get("summary") or {}),
+            "fixture_leakage": False,
+            "manual_continuation_required": manual_count,
+            "source": "canonical_append_only_ledger",
+        }
+    except Exception as error:  # additive read model must fail closed
+        return {
+            "status": "NOT_AVAILABLE",
+            "reason": type(error).__name__,
+            "source": "canonical_append_only_ledger",
+            "account_readiness": {
+                "status": "NOT_TESTED",
+                "owner_activation_required": True,
+                "records": [],
+                "real_credentials": False,
+                "real_external_effects": False,
+            },
+            "procedure_library": {
+                "status": "NOT_TESTED",
+                "catalog_count": 0,
+                "proof_status_counts": {},
+                "events": [],
+                "trusted_count": 0,
+            },
+            "incidents": [],
+            "open_incident_count": None,
+            "autonomy": {
+                "latest_decision": None,
+                "wait": None,
+                "outcomes": [],
+                "manual_continuation_required": None,
+            },
+            "effects": {},
+            "fixture_leakage": False,
+            "manual_continuation_required": None,
+        }
+
+
 def _executive_projection(database: FoundryDatabase, *, limit: int = 25) -> dict[str, Any]:
     """Project Executive Intelligence decisions from the durable ledger.
 
@@ -1223,6 +1354,20 @@ def build_snapshot(
                 value[field[:-5] if field.endswith("_json") else field] = _json_value(value[field])
         return value
 
+    portfolio_projection = _portfolio_projection(database, limit=10)
+    executive_projection = _executive_projection(database, limit=25)
+    postv7_projection = _postv7_projection(
+        database,
+        portfolio=portfolio_projection,
+        effect_truth=effect_truth,
+        limit=100,
+    )
+    # Preserve the established top-level snapshot contract.  Post-V7 fields
+    # are an additive, ledger-backed subprojection of the existing portfolio
+    # surface so older consumers retain their exact key set.
+    portfolio_projection = dict(portfolio_projection)
+    portfolio_projection["postv7"] = postv7_projection
+
     snapshot_payload = {
         "generated_at": generated_at,
         "source_of_truth": {"kind": "append_only_event_ledger", "ledger_head_sequence": event_count, "event_count": event_count},
@@ -1292,8 +1437,8 @@ def build_snapshot(
         "effect_truth": effect_truth,
         "evolution_truth": evolution_truth,
         "timeline": decision_timeline(database, limit=timeline_limit),
-        "executive": _executive_projection(database, limit=25),
-        "portfolio": _portfolio_projection(database, limit=10),
+        "executive": executive_projection,
+        "portfolio": portfolio_projection,
         "discovery": discovery_projection,
     }
     # The packet is an additive read-only export contract.  Import lazily to
