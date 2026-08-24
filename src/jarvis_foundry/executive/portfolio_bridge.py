@@ -21,6 +21,7 @@ permission to attempt materialization, never irrevocable authority.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import uuid
 from typing import Any, Iterable, Mapping
@@ -213,7 +214,14 @@ def materialize_portfolio_selection(
                 f"mission.state_changed:{mission_id}:{state}:portfolio"),
         ))
 
-    artifact_name = f"report-{decision_id[:8] or 'portfolio'}.md"
+    # Unique artifact per decision: a shared name plus deterministic
+    # content would collapse every mission's evidence delta to empty
+    # (live incident 2026-08-24: every selection targeted the same
+    # report-portfoli.md and exhausted its repair budget on a false
+    # evidence_mismatch).
+    artifact_suffix = hashlib.sha256(
+        f"{decision_id}:{item_id}".encode("utf-8")).hexdigest()[:10]
+    artifact_name = f"report-portfolio-{artifact_suffix}.md"
     contract = MissionStepContract(
         mission_id=mission_id,
         step_id="portfolio-step",
