@@ -35,6 +35,7 @@ from ..operations.procedure import (
     ProcedurePlan,
     create_procedure,
 )
+from ..supervisor.evolution_control import EvolutionControlError
 from .missions import materialize_selection
 
 
@@ -394,7 +395,10 @@ def record_mission_portfolio_outcome(
     source_id: str = "v7-portfolio-bridge",
 ) -> str:
     """Reconcile a materialized selection's terminal truth into calibration."""
-    from ..evolution.executive_portfolio import record_portfolio_outcome
+    from ..evolution.executive_portfolio import (
+        record_portfolio_outcome,
+        set_work_status,
+    )
 
     if status not in _OUTCOME_STATUS:
         raise ValueError(f"unsupported outcome status: {status!r}")
@@ -418,4 +422,27 @@ def record_mission_portfolio_outcome(
         actual_cost_usd=float(actual_cost_usd or 0.0),
         source_id=source_id,
     )
+    # Close the loop: a terminal outcome retires the portfolio item so the
+    # next selection cycle cannot re-admit completed work as busywork.
+    closing_status = {
+        "PASSED": "COMPLETED",
+        "FAILED": "FAILED",
+        "BLOCKED": "BLOCKED",
+        "NOT_TESTED": "BLOCKED",
+    }[status]
+    entity = str(item.get("item_id") or "")
+    if entity:
+        try:
+            set_work_status(
+                database, entity, closing_status,
+                reason=f"mission {mission_id} terminal: {status}",
+                source_type="supervisor", source_id=source_id)
+        except (ValueError, KeyError, EvolutionControlError) as error:
+            database.append(Event.create(
+                "portfolio.work_status_close_blocked",
+                {"item_id": entity, "reason": str(error)},
+                source_type="supervisor", source_id=source_id,
+                idempotency_key=(
+                    f"portfolio.work_status_close_blocked:{entity}:{resolved_id}"),
+            ))
     return resolved_id
