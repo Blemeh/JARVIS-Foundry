@@ -165,6 +165,52 @@ def materialize_portfolio_selection(
         if not mission_id:
             return {"materialized": False, "mission_id": None,
                     "blocked_reason": f"{kind} item lacks mission_id"}
+        from ..mission.contracts import next_executable_contract
+        mission = database.row("missions", "mission_id", mission_id)
+        if mission is None:
+            return {"materialized": False, "mission_id": None,
+                    "blocked_reason": f"{kind} target mission is unknown"}
+        if next_executable_contract(database, mission_id) is None:
+            # A repairable mission without any remaining executable contract
+            # can only produce an endless blocked-cycle (live incident
+            # 2026-08-24). Retire it durably so the selector stops ranking
+            # it; the ledger keeps the full history.
+            database.append(Event.create(
+                "mission.state_changed",
+                {
+                    "mission_id": mission_id,
+                    "state": "CANCELLED",
+                    "next_action": (
+                        f"retired by portfolio: no executable step contract "
+                        f"remains ({kind} selection)"),
+                    "reason": (
+                        "bounded portfolio policy: repair without an "
+                        "executable contract cannot make progress"),
+                },
+                source_type="supervisor",
+                source_id=source_id,
+                idempotency_key=(
+                    f"mission.state_changed:{mission_id}:CANCELLED:"
+                    f"portfolio-unexecutable"),
+            ))
+            database.append(Event.create(
+                "portfolio.repair_retired",
+                {
+                    "decision_id": decision_id,
+                    "item_id": item_id,
+                    "kind": kind,
+                    "mission_id": mission_id,
+                    "reason": "no remaining executable step contract",
+                },
+                source_type="supervisor",
+                source_id=source_id,
+                idempotency_key=(
+                    f"portfolio.repair_retired:{decision_id}"),
+            ))
+            return {"materialized": False, "mission_id": None,
+                    "blocked_reason": (
+                        f"{kind} target {mission_id} has no executable "
+                        f"contract; retired")}
         return {"materialized": True, "mission_id": mission_id,
                 "blocked_reason": None}
 
