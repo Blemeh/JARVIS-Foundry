@@ -157,7 +157,21 @@ def _current_failed_workers(
 def decision_timeline(database: FoundryDatabase, *, limit: int = 200) -> list[dict[str, Any]]:
     """Return a compact trace of material ledger decisions and outcomes."""
     limit = max(1, min(int(limit), 2000))
-    events = database.events(readonly=True)
+    events = list(
+        reversed(
+            database.events(
+                readonly=True,
+                limit=max(1000, limit * 20),
+                newest_first=True,
+                exclude_event_types=(
+                    "supervisor.heartbeat",
+                    "worker_loop.cycle_started",
+                    "worker_loop.waiting",
+                    "agent_run.heartbeat",
+                ),
+            )
+        )
+    )
     material = []
     for sequence, event in enumerate(events, start=1):
         payload = dict(event.payload) if isinstance(event.payload, dict) else {}
@@ -387,7 +401,7 @@ def _executive_projection(database: FoundryDatabase, *, limit: int = 25) -> dict
     calibrations: list[dict[str, Any]] = []
     activation_epoch: str | None = None
     admission_authority: str = "UNKNOWN"
-    for event in database.events(readonly=True):
+    for event in database.events(readonly=True, event_type_prefixes=("executive.",)):
         etype = str(event.event_type or "")
         payload = event.payload if isinstance(event.payload, dict) else {}
         if etype == "executive.activation_recorded":
@@ -1287,6 +1301,7 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
+        self._cors_headers()
         self.end_headers()
         self.wfile.write(body)
 

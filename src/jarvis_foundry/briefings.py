@@ -67,7 +67,8 @@ class BriefingPlanner:
             self.database,
             after_sequence=0,
             now=snapshot["generated_at"],
-            limit=max(DEFAULT_ITEM_LIMIT, len(self.database.events(readonly=True))),
+            limit=max(DEFAULT_ITEM_LIMIT, self.database.event_count(readonly=True)),
+            max_scan=10000,
         )
         digest_input = {
             "kind": kind,
@@ -127,6 +128,7 @@ class BriefingPlanner:
             after_sequence=cursor_start,
             now=now,
             limit=max(limit * 4, limit),
+            max_scan=10000,
         )
         filtered = projected
         if kind == "EXCEPTION":
@@ -134,7 +136,7 @@ class BriefingPlanner:
         deduped_count = sum(1 for item in filtered if item.dedupe_key in prior_keys)
         candidates = [item for item in filtered if item.dedupe_key not in prior_keys]
         selected = candidates[: max(1, _safe_int(limit, DEFAULT_ITEM_LIMIT))]
-        head = len(self.database.events(readonly=True))
+        head = self.database.event_count(readonly=True)
         if selected:
             # The lowest selected sequence is the safe checkpoint.  Priority
             # sorting may put a newer item before older unselected items; a

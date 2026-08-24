@@ -59,7 +59,15 @@ def build_owner_attention_queue(
     No queue row is written.  Resolution is reconstructed from later durable
     events so a restart or projection rebuild cannot lose owner context.
     """
-    events = list(database.events(readonly=True))
+    events = list(
+        reversed(
+            database.events(
+                readonly=True,
+                limit=10000,
+                newest_first=True,
+            )
+        )
+    )
     event_by_id = {event.event_id: event for event in events}
     directive_status: dict[str, tuple[str, str]] = {}
     decision_status: dict[str, tuple[str, str]] = {}
@@ -89,6 +97,7 @@ def build_owner_attention_queue(
         after_sequence=0,
         now=now,
         limit=max(1, int(limit) * 4),
+        max_scan=10000,
     )
     records: list[dict[str, Any]] = []
     for item in items:

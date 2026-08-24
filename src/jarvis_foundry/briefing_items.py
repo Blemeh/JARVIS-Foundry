@@ -278,10 +278,22 @@ def project_briefing_items(
     after_sequence: int = 0,
     now: datetime | str | None = None,
     limit: int = DEFAULT_ITEM_LIMIT,
+    max_scan: int | None = None,
 ) -> list[BriefingItem]:
     """Project deterministic items after a ledger cursor in ledger order."""
     items: list[BriefingItem] = []
-    for sequence, event in enumerate(database.events(readonly=True), start=1):
+    events = database.events(
+        readonly=True,
+        limit=max_scan,
+        newest_first=max_scan is not None,
+    )
+    if max_scan is not None:
+        head = database.event_count(readonly=True)
+        events = list(reversed(events))
+        start = max(1, head - len(events) + 1)
+    else:
+        start = 1
+    for sequence, event in enumerate(events, start=start):
         if sequence <= max(0, int(after_sequence)):
             continue
         item = event_to_item(event, sequence, now=now)

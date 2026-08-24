@@ -130,9 +130,46 @@ class FoundryDatabase:
             results.append((int(cursor.lastrowid), True))
         return results
 
-    def events(self, *, readonly: bool = False) -> list[Event]:
+    def events(
+        self,
+        *,
+        readonly: bool = False,
+        limit: int | None = None,
+        newest_first: bool = False,
+        event_types: tuple[str, ...] | None = None,
+        event_type_prefixes: tuple[str, ...] | None = None,
+        exclude_event_types: tuple[str, ...] | None = None,
+    ) -> list[Event]:
+        """Read ledger events with optional bounded/filtering controls.
+
+        The default remains the complete ledger in sequence order.  Read-only
+        owner projections can request a newest bounded window and exclude
+        heartbeat/noise records without materializing hundreds of thousands of
+        historical ``Event`` objects on every HTTP refresh.
+        """
+        clauses: list[str] = []
+        args: list[object] = []
+        if event_types:
+            placeholders = ", ".join("?" for _ in event_types)
+            clauses.append(f"event_type IN ({placeholders})")
+            args.extend(event_types)
+        if event_type_prefixes:
+            clauses.append("(" + " OR ".join("event_type LIKE ?" for _ in event_type_prefixes) + ")")
+            args.extend(f"{prefix}%" for prefix in event_type_prefixes)
+        if exclude_event_types:
+            placeholders = ", ".join("?" for _ in exclude_event_types)
+            clauses.append(f"event_type NOT IN ({placeholders})")
+            args.extend(exclude_event_types)
+        where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
+        order = "DESC" if newest_first else "ASC"
+        limit_sql = " LIMIT ?" if limit is not None else ""
+        if limit is not None:
+            args.append(max(1, int(limit)))
         with self.connect(readonly=readonly) as connection:
-            rows = connection.execute("SELECT * FROM events ORDER BY sequence").fetchall()
+            rows = connection.execute(
+                f"SELECT * FROM events{where} ORDER BY sequence {order}{limit_sql}",
+                tuple(args),
+            ).fetchall()
         return [self._row_to_event(row) for row in rows]
 
     def event_count(self, *, readonly: bool = False, event_type: str | None = None) -> int:

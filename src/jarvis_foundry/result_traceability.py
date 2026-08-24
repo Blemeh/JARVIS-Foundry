@@ -34,7 +34,8 @@ def _json_object(value: Any) -> dict[str, Any]:
 
 
 def _event_sequence(database: FoundryDatabase) -> list[tuple[int, Any]]:
-    return list(enumerate(database.events(readonly=True), start=1))
+    events = list(reversed(database.events(readonly=True, limit=10000, newest_first=True)))
+    return list(enumerate(events, start=1))
 
 
 def _projection_rows(database: FoundryDatabase, table: str, mission_id: str) -> list[dict[str, Any]]:

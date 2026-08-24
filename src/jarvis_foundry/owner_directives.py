@@ -336,7 +336,18 @@ def project_owner_directives(
     records: dict[str, OwnerDirectiveRecord] = {}
     order: list[str] = []
 
-    for sequence, event in enumerate(database.events(readonly=True), start=1):
+    for sequence, event in enumerate(
+        database.events(
+            readonly=True,
+            event_types=(
+                "owner_control.nonce_used",
+                "owner_directive.recorded",
+                "owner_directive.revoked",
+                "owner_directive.superseded",
+            ),
+        ),
+        start=1,
+    ):
         payload = event.payload if isinstance(event.payload, dict) else {}
         if event.event_type == "owner_control.nonce_used":
             nonce = payload.get("nonce")
