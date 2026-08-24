@@ -344,6 +344,9 @@ class ScoredWork:
             "calibration_adjustment": self.calibration_adjustment,
             "capacity": dict(self.capacity),
             "factors": dict(self.factors),
+            "metadata": dict(self.item.metadata),
+            "evidence_refs": list(self.item.evidence_refs),
+            "provenance": dict(self.item.provenance),
         }
 
 

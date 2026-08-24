@@ -1,0 +1,57 @@
+{
+  "schema": "post4.taskward_lineage.v1",
+  "purpose": "WP5 durable project lineage closure for taskward. Does not rewrite disposable Lane-3 history (project_id was null in the transcript); this is the canonical post-integration linkage.",
+  "opportunity": {
+    "sources": "docs/evidence/integration/autonomous-new-projects-20260824/01_OPPORTUNITY_SOURCES.json",
+    "detected_problem": "Windows Task Scheduler state for autonomous software is managed via hand-written schtasks + hand-copied XML with byte-fidelity incidents",
+    "evidence": "installer.py:139-422; docs/evidence/V7_S2_MIGRATION_REHEARSAL.md F1"
+  },
+  "candidate": {
+    "candidate_id": "cand-taskward-20260824",
+    "contract": "docs/evidence/integration/autonomous-new-projects-20260824/03_CANDIDATE_CONTRACTS.json",
+    "selection_evidence": "docs/evidence/integration/autonomous-new-projects-20260824/06_V7A_SELECTION_SESSION.json",
+    "selection_decision": "SELECT NEW_PROJECT new-project:cand-taskward-20260824 scored 0.752",
+    "v7a_engine": "jarvis_foundry.evolution.executive_portfolio (existing V7A, disposable DB)"
+  },
+  "project": {
+    "project_id": "taskward",
+    "slug": "taskward",
+    "contract": "docs/evidence/integration/autonomous-new-projects-20260824/05_PROJECT_CONTRACT.json",
+    "why_created": "Lead lane's disposable transcript had project_id=null; post-integration canonical linkage created without rewriting history"
+  },
+  "resource": {
+    "resource_id": "res-taskward",
+    "kind": "git_worktree",
+    "local_path_example": "C:/temp/JARVIS-Autonomous-Project-Lab/taskward",
+    "disposable_test_path": "tmp_path/greenfield/taskward (factory proof)",
+    "alias_examples": ["path:c:\\temp\\jarvis-autonomous-project-lab\\taskward", "slug:taskward", "remote:blemeh/taskward"],
+    "registration_mechanism": "software_intelligence.project_identity.ProjectIdentityResolver.register_repository -> project.registered + memory.alias.bound -> tier_c_project_aliases projection",
+    "determinism": "canonical identity prefers hosted slug Blemeh/taskward when remote exists, else resolved filesystem root"
+  },
+  "repository": {
+    "local_git": "init main, scaffold commits, tests",
+    "remote": {
+      "slug": "Blemeh/taskward",
+      "visibility": "PRIVATE",
+      "remote_main_mvp": "28a5b386d9ac677d4fdcea72587c7138a3974924",
+      "remote_main_v0_2_0": "909dd2bb9f6fb37eda4476404c822c945b4676d7",
+      "creation_cmd": "gh repo create --private --source .",
+      "reconciled": true
+    }
+  },
+  "missions": {
+    "note": "Missions are bound to the resource_id above; verifier verdict drives portfolio outcome",
+    "example_mission": "mission-* via portfolio_bridge.materialize_portfolio_selection for NEW_PROJECT (greenfield seam)",
+    "step_contract": "new-project-implementation -> NEW_PROJECT_IMPLEMENTATION.md (real product, not generic report)",
+    "verifier": "taskward/tools/verify_acceptance.py PASS AC1-AC8 critical=0 high=0",
+    "versions": ["v0.1.0 debc2be", "v0.2.0 909dd2b"]
+  },
+  "outcome": {
+    "portfolio_outcome": "PASSED (06_V7A_SELECTION_SESSION.json outcome lane3-outcome-1)",
+    "lifecycle": "DEPLOYED (private remote reconciled, maintenance queue active)",
+    "maintenance": "taskward/MAINTENANCE.md wake 2026-09-24",
+    "verification": "independent verifier PASS, no accepted work stranded"
+  },
+  "future_new_project_automation": "New candidates with NEW_PROJECT_OPPORTUNITY -> CANDIDATE 07 flow now uses project_discovery._PORTFOLIO_CLASS NEW_PROJECT -> V7A NEW_PROJECT -> executive.new_project_factory.ensure_new_project_resource (bounded slug, greenfield path, git init, register, alias, portfolio.new_project_created). Lineage automatically populated; no pre-existing resource required.",
+  "non_rewrite_note": "This file supplements history; it does not claim Lane-3's disposable DB had project_id=taskward at selection time (that transcript was deliberately isolated and had project_id=null). All future runs populate linkage automatically via the factory."
+}

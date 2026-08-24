@@ -41,6 +41,9 @@ OPPORTUNITY_TYPES = frozenset({
 })
 
 # Portfolio classes are the EXISTING canonical set.
+# WP3 (post-4 integration): NEW_PROJECT_OPPORTUNITY maps to the canonical
+# NEW_PROJECT work class (Lane 3). Lane 1's older CANDIDATE generic is
+# superseded; V7A remains the single selector.
 _PORTFOLIO_CLASS = {
     "BUG": "REPAIR",
     "CI_FAILURE": "REPAIR",
@@ -53,7 +56,7 @@ _PORTFOLIO_CLASS = {
     "REFACTOR_WITH_MEASURABLE_VALUE": "IMPROVEMENT",
     "UX_FRICTION": "IMPROVEMENT",
     "MISSING_FEATURE": "CANDIDATE",
-    "NEW_PROJECT_OPPORTUNITY": "CANDIDATE",
+    "NEW_PROJECT_OPPORTUNITY": "NEW_PROJECT",
     "UNKNOWN_REQUIRING_RESEARCH": "RESEARCH",
 }
 

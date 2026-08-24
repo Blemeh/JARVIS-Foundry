@@ -279,8 +279,130 @@ def materialize_portfolio_selection(
         return {"materialized": True, "mission_id": mission_id,
                 "blocked_reason": None}
 
+    # NEW_PROJECT greenfield seam (WP4): no pre-existing resource required.
+    # This is the ONLY path that may create a project resource; every other
+    # class reuses an existing resource_id supplied by the caller.
+    if kind == "NEW_PROJECT":
+        from ..executive.new_project_factory import (
+            derive_slug_from_item,
+            ensure_new_project_resource,
+            new_project_mission_contract,
+        )
+
+        # Mirror the work item first so outcome lifecycle can retire it.
+        from ..evolution.executive_portfolio import register_work_item
+
+        try:
+            register_work_item(
+                database,
+                item_id=item_id,
+                kind=kind,
+                project_id=str(item.get("project_id") or derive_slug_from_item(item)) or None,
+                objective=objective,
+                expected_value=item.get("expected_value"),
+                urgency=item.get("urgency"),
+                confidence=item.get("confidence"),
+                reversibility=item.get("reversibility"),
+                requires_verifier=bool(item.get("requires_verifier", True)),
+                metadata=dict(item.get("metadata") or {}),
+                source_type="supervisor",
+                source_id=source_id,
+            )
+        except EventConflict:
+            pass
+        except Exception as error:  # noqa: BLE001
+            database.append(Event.create(
+                "portfolio.work_item_mirror_blocked",
+                {"item_id": item_id, "reason": str(error)[:200]},
+                source_type="supervisor",
+                source_id=source_id,
+                idempotency_key=f"portfolio.work_item_mirror_blocked:{item_id}:{decision_id}",
+            ))
+
+        # Idempotency: a prior materialization for this decision reuses the same
+        # mission so retries do not create duplicate greenfield repos.
+        prior = _materialization_for_decision(database, decision_id)
+        if prior is not None:
+            return {"materialized": True, "mission_id": prior, "blocked_reason": None}
+
+        # Ensure the greenfield resource exists (bounded creation). For tests
+        # the database lives under a disposable tmp_path, so the greenfield root
+        # is automatically isolated. No second orchestrator is introduced.
+        try:
+            greenfield_override = item.get("metadata", {}).get("greenfield_root_override")
+            ensured = ensure_new_project_resource(
+                database, item, decision_id, source_id=source_id,
+                greenfield_root_override=greenfield_override,
+            )
+        except Exception as error:  # noqa: BLE001 — fail closed, honest state
+            return {"materialized": False, "mission_id": None, "blocked_reason": str(error)}
+        resource_id = ensured
+        slug = derive_slug_from_item(item)
+
+        mission_id = f"mission-{uuid.uuid4().hex[:12]}"
+        acceptance = [
+            f"{objective} completed within declared capacity/budget",
+            "independent verification PASS or honest BLOCKED with evidence",
+            f"greenfield project {slug} exists at resource {resource_id}",
+        ]
+        database.append(Event.create(
+            "mission.created",
+            {
+                "mission_id": mission_id,
+                "objective": objective,
+                "resource_id": resource_id,
+                "state": "PLANNED",
+                "acceptance_criteria": acceptance,
+                "next_action": f"execute: {objective}",
+                "created_from": f"portfolio:{item_id}",
+            },
+            source_type="supervisor",
+            source_id=source_id,
+            correlation_id=resource_id,
+            idempotency_key=f"mission.created:portfolio:{item_id}:{decision_id}",
+        ))
+        for state, next_action in (
+            ("ORIENTING", f"orient: {objective}"),
+            ("ACTION_SELECTION", f"execute: {objective}"),
+            ("READY", f"execute: {objective}"),
+        ):
+            database.append(Event.create(
+                "mission.state_changed",
+                {"mission_id": mission_id, "state": state, "next_action": next_action},
+                source_type="supervisor",
+                source_id=source_id,
+                idempotency_key=f"mission.state_changed:{mission_id}:{state}:portfolio",
+            ))
+
+        contract = new_project_mission_contract(
+            mission_id=mission_id,
+            resource_id=resource_id,
+            objective=objective,
+            slug=slug,
+            item=item,
+            decision_id=decision_id,
+            capability=capability,
+        )
+        record_step_contract(database, contract)
+        database.append(Event.create(
+            "portfolio.selection_materialized",
+            {
+                "decision_id": decision_id,
+                "item_id": item_id,
+                "kind": kind,
+                "mission_id": mission_id,
+                "contract_id": contract.contract_id,
+                "resource_id": resource_id,
+                "slug": slug,
+            },
+            source_type="supervisor",
+            source_id=source_id,
+            idempotency_key=f"portfolio.selection_materialized:{decision_id}",
+        ))
+        return {"materialized": True, "mission_id": mission_id, "blocked_reason": None}
+
     if kind not in ("MAINTENANCE", "RESEARCH", "UNKNOWN", "IMPROVEMENT",
-                    "INCIDENT", "NEW_MISSION", "NEW_PROJECT"):
+                    "INCIDENT", "NEW_MISSION"):
         return {"materialized": False, "mission_id": None,
                 "blocked_reason": f"unsupported portfolio class {kind!r}"}
 
