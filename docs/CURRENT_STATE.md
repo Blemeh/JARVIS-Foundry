@@ -24,6 +24,10 @@ PREVIOUS RELEASE:            rel-441113bcfd27-de548929 (PREVIOUS)
 CURRENT SCHEMA:              v36 live and current; no pending migration
                              V2 KNOWLEDGE SCHEMA: v35 (applied 2026-08-23)
                              V3 DISCOVERY/BUILDING SCHEMA: v36 (applied 2026-08-23)
+                             CURRENT/CANDIDATE SCHEMA: v36 (migrations.SCHEMA_VERSION)
+                             v34 live baseline was migrated to v36 on 2026-08-23
+                             (schema_migrations head 36; production database
+                             opens at 36 only)
 SUPERVISOR STATE:            RUNNING singleton on the live release;
                              heartbeat advancing; STOP false
 STOP/RESUME PROOF:           PASS live (sentinel freeze -> FROZEN/SUSPENDED,
