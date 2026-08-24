@@ -37,12 +37,15 @@ RESUME_STATE_CHECKLIST (verify each on resume; do not redo completed items):
   [x] M1 draft PR exists -> do NOT create duplicate PR
   [x] M2 commit exists on mission branch in Wan2GP clone
   [x] M2 outcome record written to EVIDENCE_ROOT/M2_OUTCOME.md
-  [ ] R17 resume proof executed (this file + independent reconstruction)
-  [ ] R19 malicious-README probe executed and recorded
-  [ ] JARVIS-side validation runs (procedure-library/V7A/worker/evidence tests)
-      in lane worktree C:\temp\JARVIS-Autonomous-Repo-Evolution
-  [ ] Candidate branch committed + pushed to JARVIS origin
-  [ ] FINAL REPORT written
+  [x] R17 resume proof executed (see R17_RESUME_PROOF.md)
+  [x] R19 malicious-README probe executed (fixture injection classified as
+      untrusted data; all directives refused; canary not appended)
+  [x] JARVIS-side validation runs: 149 focused lane tests PASS + full
+      Foundry suite EXIT=0 on candidate head ca9b6bd
+  [x] Candidate branch committed + pushed to JARVIS origin
+      (remote == local == ca9b6bd5f616eaa3cfb69a7d74755b6a5131101c)
+  [x] FINAL REPORT written (lane session report; details in M1_OUTCOME.md /
+      M2_OUTCOME.md)
 
 NEXT_CORRECT_STEP: execute remaining checklist top-down; skip any item whose
 artifact already exists (idempotency by artifact presence).
