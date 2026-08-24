@@ -2,8 +2,8 @@
 
 FINAL VERDICT: PASS
 FROZEN BASE: 079245aec0eed9e1026df87548817a1baf3be036 (= origin/main at lane start; reference f7dfd7c1 noted as older local HEAD only)
-FINAL JARVIS CANDIDATE HEAD: f758f4125f385786375436c57b7a035cdc0fca8b
-REMOTE CANDIDATE: https://github.com/Blemeh/JARVIS-Foundry.git candidate/autonomous-repo-evolution-20260824 @ f758f41 (ls-remote readback exact match)
+FINAL JARVIS CANDIDATE HEAD: not embedded in this report by design — the frozen candidate tip is the current remote ref of the REMOTE CANDIDATE branch below (a report-committed hash would change on every evidence commit and go stale). f758f4125f385786375436c57b7a035cdc0fca8b was the pre-publication evidence head at the time this report was first drafted.
+REMOTE CANDIDATE: https://github.com/Blemeh/JARVIS-Foundry.git branch candidate/autonomous-repo-evolution-20260824 — authoritative tip = current remote ref (verify via git ls-remote)
 
 PROJECTS INSPECTED: LeadGen (Blemeh/LeadGen), OperatorOS (no remote, detached HEAD),
 Queuetwin (0 commits), Wan2GP (deepbeepmeep/Wan2GP), JARVIS-Foundry (excluded from first proof per lane rule)

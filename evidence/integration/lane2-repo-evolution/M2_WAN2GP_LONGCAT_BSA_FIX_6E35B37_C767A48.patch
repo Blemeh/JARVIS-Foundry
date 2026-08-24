@@ -1,0 +1,66 @@
+From c767a48043c1bb13b917a8683bd71dc72234a6f6 Mon Sep 17 00:00:00 2001
+From: BlendiM <bblleennddiii@gmail.com>
+Date: Mon, 24 Aug 2026 21:52:40 +0200
+Subject: [PATCH] fix: repair indentation errors that made LongCat BSA
+ flash-attention unparseable
+
+flash_attn_bsa_varlen_mask.py contained six mis-indented statements across _attn_fwd_bsa_varlen (lines 111, 140, 143) and _attn_fwd_bsa_varlen_align (lines 247, 273, 276), causing IndentationError at parse time for any import or byte-compilation of the module since its introduction in 96e3438.
+
+Indentation-only repair: qk_scale log2 scaling moved to kernel-body level; acc/l_i updates moved into their loop bodies at the same nesting depth as sibling statements, matching the canonical triton flash-attention structure used by the other kernels in this file. No token or logic changes.
+
+Evidence: ast.parse OK (all 8 kernels); whole-tree compileall exit 0; diff confined to one file, 6 lines, whitespace-only.
+---
+ .../flash_attn_bsa_varlen_mask.py                    | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/models/longcat/modules/block_sparse_attention/flash_attn_bsa_varlen_mask.py b/models/longcat/modules/block_sparse_attention/flash_attn_bsa_varlen_mask.py
+index 64171c7..a5cb821 100644
+--- a/models/longcat/modules/block_sparse_attention/flash_attn_bsa_varlen_mask.py
++++ b/models/longcat/modules/block_sparse_attention/flash_attn_bsa_varlen_mask.py
+@@ -108,7 +108,7 @@ def _attn_fwd_bsa_varlen(
+     acc = tl.zeros([BLOCK_M, HEAD_DIM], dtype=tl.float32)
+     # load scales
+     qk_scale = sm_scale
+-        qk_scale *= 1.44269504  # 1/ln2; exp2(x/ln2) == exp(x)
++    qk_scale *= 1.44269504  # 1/ln2; exp2(x/ln2) == exp(x)
+     # load q: it will stay in SRAM throughout
+     q = tl.load(Q_block_ptr)
+     S = tl.load(block_indices_lens)
+@@ -137,10 +137,10 @@ def _attn_fwd_bsa_varlen(
+             acc = acc * alpha[:, None]
+             # update acc
+             v = tl.load(V_block_ptr_i)
+-                    acc = tl.dot(p.to(v.dtype), v, acc)  # keep in log2 domain for FA2 optimization
++            acc = tl.dot(p.to(v.dtype), v, acc)  # keep in log2 domain for FA2 optimization
+             # update m_i and l_i
+             # place this at the end of the loop to reduce register pressure: https://github.com/triton-lang/triton/commit/ee6abd9
+-                    l_i = l_i * alpha + l_ij  # running sum of exp
++            l_i = l_i * alpha + l_ij  # running sum of exp
+             m_i = m_ij
+             V_block_ptr_i = tl.advance(V_block_ptr_i, (BLOCK_N, 0))
+             KT_block_ptr_i = tl.advance(KT_block_ptr_i, (0, BLOCK_N))
+@@ -244,7 +244,7 @@ def _attn_fwd_bsa_varlen_align(
+     acc = tl.zeros([BLOCK_M, HEAD_DIM], dtype=tl.float32)
+     # load scales
+     qk_scale = sm_scale
+-        qk_scale *= 1.44269504  # 1/ln2; exp2(x/ln2) == exp(x)
++    qk_scale *= 1.44269504  # 1/ln2; exp2(x/ln2) == exp(x)
+     # load q: it will stay in SRAM throughout
+     q = tl.load(Q_block_ptr)
+     S = tl.load(block_indices_lens)
+@@ -270,10 +270,10 @@ def _attn_fwd_bsa_varlen_align(
+         acc = acc * alpha[:, None]
+         # update acc
+         v = tl.load(V_block_ptr_i)
+-                acc = tl.dot(p.to(v.dtype), v, acc)  # keep in log2 domain for FA2 optimization
++        acc = tl.dot(p.to(v.dtype), v, acc)  # keep in log2 domain for FA2 optimization
+         # update m_i and l_i
+         # place this at the end of the loop to reduce register pressure: https://github.com/triton-lang/triton/commit/ee6abd9
+-                l_i = l_i * alpha + l_ij  # running sum of exp
++        l_i = l_i * alpha + l_ij  # running sum of exp
+         m_i = m_ij
+ 
+     
+-- 
+2.50.1.windows.1
+
