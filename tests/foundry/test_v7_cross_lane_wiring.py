@@ -289,7 +289,7 @@ def test_repair_of_contractless_blocked_mission_is_retired_not_looped(
     result = materialize_portfolio_selection(
         db, decision=payload, resource_id="resource-1")
     assert result["materialized"] is False
-    assert "no executable contract" in (result["blocked_reason"] or "")
+    assert "retired" in (result["blocked_reason"] or "")
     state = db.row("missions", "mission_id", "mission-broken")
     assert str(state["state"]) == "CANCELLED"
     retired = [e for e in db.events()
