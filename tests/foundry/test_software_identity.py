@@ -39,7 +39,12 @@ def _init_repo(path: Path, slug: str | None = None) -> Path:
     _git(path, "init", "-q")
     _git(path, "config", "user.email", "lane4@example.invalid")
     _git(path, "config", "user.name", "Lane 4 Test")
-    (path / "README.md").write_text("# fixture\n", encoding="utf-8")
+    # unique content per repo: identical trees with identical timestamps
+    # hash to identical SHAs, which would make distinct repos indistinguishable
+    import uuid as _uuid
+
+    (path / "README.md").write_text(f"# fixture {path.name}\n", encoding="utf-8")
+    (path / ".seed").write_text(_uuid.uuid4().hex + "\n", encoding="utf-8")
     _git(path, "add", "-A")
     _git(path, "commit", "-q", "-m", "init")
     if slug:
