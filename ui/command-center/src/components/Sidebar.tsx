@@ -33,7 +33,13 @@ const nav = [
 ];
 
 export function SidebarContent() {
-  const { openTrustDialog } = useCommandCenter();
+  const { openTrustDialog, sourceMode } = useCommandCenter();
+  const ownerLabel =
+    sourceMode === "SIMULATED"
+      ? "ID: OWNER-01 · SIMULATED"
+      : sourceMode === "LIVE"
+        ? "ID: OWNER-01 · LIVE"
+        : `ID: OWNER-01 · ${sourceMode}`;
 
   return (
     <>
@@ -74,8 +80,17 @@ export function SidebarContent() {
         </span>
         <div>
           <p className="t-label">Owner Operator</p>
-          <p className="t-mono sidebar-owner-id" title="Fixture persona for simulated Command Center demos; not an authenticated owner session.">
-            ID: OWNER-01 · SIMULATED
+          <p
+            className="t-mono sidebar-owner-id"
+            title={
+              sourceMode === "SIMULATED"
+                ? "Fixture persona for simulated Command Center demos; not an authenticated owner session."
+                : sourceMode === "LIVE"
+                  ? "Owner identity label shown with the canonical live data source."
+                  : "Owner identity label shown while the canonical data source is unavailable."
+            }
+          >
+            {ownerLabel}
           </p>
         </div>
       </div>
