@@ -1,0 +1,27 @@
+scenario_id: SHORT_REAL_TIME
+duration_seconds: 900
+clock_mode: REAL_TIME
+seed: 20260824
+initial_state:
+  stop_available: true
+  provider_mode: fake-local
+required_capabilities: [supervisor, portfolio, effects, database, provider]
+scheduled_faults:
+  - {fault_id: worker-crash, at_seconds: 30, kind: PROCESS_CRASH, target: owned-worker, parameters: {recovery_after_seconds: 30}}
+  - {fault_id: provider-outage, at_seconds: 120, kind: PROVIDER_OUTAGE, target: fake-provider, parameters: {recovery_after_seconds: 30}}
+  - {fault_id: ambiguous-effect, at_seconds: 240, kind: RESPONSE_LOST_AFTER_EFFECT, target: fake-provider, parameters: {recovery_after_seconds: 30}}
+  - {fault_id: database-lock, at_seconds: 360, kind: DATABASE_LOCK, target: disposable-sqlite, parameters: {recovery_after_seconds: 30}}
+  - {fault_id: resource-pressure, at_seconds: 480, kind: RESOURCE_PRESSURE, target: owned-fixture, parameters: {memory_bytes: 33554432, task_count: 2, provider_cost: 1.0, recovery_after_seconds: 30}}
+  - {fault_id: release-degradation, at_seconds: 600, kind: RELEASE_DEGRADATION, target: disposable-release}
+  - {fault_id: stop-window, at_seconds: 720, kind: STOP, target: stop-sentinel, parameters: {clear_after_seconds: 30}}
+  - {fault_id: provider-timeout, at_seconds: 840, kind: PROVIDER_TIMEOUT, target: fake-provider, parameters: {recovery_after_seconds: 30}}
+expected_invariants: [STOP_AVAILABLE, SINGLE_SUPERVISOR, HEARTBEAT_CONTINUITY, MISSION_PROGRESS, PORTFOLIO_CONTINUATION, MANUAL_CONTINUATION_REQUIRED, WAIT_IS_HONEST, NO_DUPLICATE_MISSION, NO_DUPLICATE_EFFECT, EFFECT_UNKNOWN_FROZEN, INCIDENT_CONTAINED, DB_DURABLE, RESOURCE_ENVELOPE, OWNER_BRIEFING_BOUND, BUSYWORK_BOUND, RELEASE_ROLLBACK_READY, RESTART_RESUMABLE, EVIDENCE_COMPLETE]
+resource_envelope: {max_event_count: 100000, max_db_bytes: 67108864, max_retry_count: 10000, max_provider_cost: 5.0, max_processes: 512, max_workers: 64, max_task_count: 64, max_memory_bytes: 67108864}
+owner_spam_threshold: 8
+busywork_threshold: 2
+restart_checkpoints: [PRE_RESTART, POST_RESTART]
+required_end_state: CONTINUABLE
+rollback_requirement: HEALTHY_AFTER_ROLLBACK
+evidence_output: evidence/runs/short-realtime
+sample_interval_seconds: 30
+wall_time_invariants: [HEARTBEAT_CONTINUITY, RESTART_RESUMABLE]

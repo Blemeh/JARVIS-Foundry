@@ -1,0 +1,290 @@
+{
+  "acceptance_label": "ACCELERATED_EQUIVALENT_ONLY",
+  "clock_mode": "ACCELERATED_DISPOSABLE",
+  "component_results": {
+    "accelerated_proof": {
+      "evidence": {
+        "duration_seconds": 43200.0
+      },
+      "reason": "logical 12-hour-equivalent sequence completed",
+      "status": "PASS"
+    },
+    "busywork": {
+      "evidence": {
+        "maximum_repeat": 0
+      },
+      "reason": "repeated work stayed within threshold",
+      "status": "PASS"
+    },
+    "checkpoint_resume": {
+      "evidence": {
+        "step_count": 720
+      },
+      "reason": "checkpoint persisted at every sampling boundary",
+      "status": "PASS"
+    },
+    "continuation": {
+      "evidence": {
+        "continuation_count": 713,
+        "wait_count": 7
+      },
+      "reason": "terminal outcome led to next selection or honest WAIT",
+      "status": "PASS"
+    },
+    "database_fault": {
+      "evidence": {
+        "mode": "healthy"
+      },
+      "reason": "disposable database returned to healthy state",
+      "status": "PASS"
+    },
+    "effect_ambiguity": {
+      "evidence": {
+        "ambiguities": 1,
+        "reconciled": 1
+      },
+      "reason": "ambiguous effects froze and were explicitly reconciled",
+      "status": "PASS"
+    },
+    "evidence_bundle": {
+      "evidence": {
+        "missing": []
+      },
+      "reason": "supporting evidence artifacts are present",
+      "status": "PASS"
+    },
+    "false_pass_factory": {
+      "evidence": {
+        "summary": {
+          "fail": 0,
+          "pass": 8,
+          "total": 8
+        }
+      },
+      "reason": "false-PASS adversarial cases refused PASS",
+      "status": "PASS"
+    },
+    "fault_scheduler": {
+      "evidence": {
+        "actual_order": [
+          "worker-crash",
+          "provider-outage",
+          "ambiguous-effect",
+          "database-lock",
+          "resource-pressure",
+          "release-degradation",
+          "process-restart",
+          "provider-timeout",
+          "stop-window",
+          "supervisor-crash",
+          "provider-5xx",
+          "final-stop-window"
+        ],
+        "expected_order": [
+          "worker-crash",
+          "provider-outage",
+          "ambiguous-effect",
+          "database-lock",
+          "resource-pressure",
+          "release-degradation",
+          "process-restart",
+          "provider-timeout",
+          "stop-window",
+          "supervisor-crash",
+          "provider-5xx",
+          "final-stop-window"
+        ]
+      },
+      "reason": "faults fired deterministically in schedule order",
+      "status": "PASS"
+    },
+    "interruption_resume": {
+      "evidence": {
+        "fault_ids": [
+          "provider"
+        ],
+        "fault_rows": 1,
+        "first_status": "INTERRUPTED",
+        "proof_root": "evidence\\parallel-20260824\\unattended-harness\\runs\\ACCELERATED_12H_EQUIVALENT\\interruption-resume",
+        "resumed_verdict": "PASS",
+        "same_run_id": true
+      },
+      "reason": "same run resumes without duplicate faults",
+      "status": "PASS"
+    },
+    "invariant_sampler": {
+      "evidence": {
+        "count": 12258
+      },
+      "reason": "invariant records are present",
+      "status": "PASS"
+    },
+    "owner_spam": {
+      "evidence": {
+        "owner_action_count": 8
+      },
+      "reason": "owner-action briefing count stayed within threshold",
+      "status": "PASS"
+    },
+    "process_fault": {
+      "evidence": {
+        "distinct_process_identity": true,
+        "event_count": 7,
+        "first_pid": 16964,
+        "first_returncode": 1,
+        "marker_one": "supervisor-live",
+        "marker_two": "supervisor-live",
+        "second_pid": 36012,
+        "second_returncode": 1
+      },
+      "reason": "owned process crash and replacement probe",
+      "status": "PASS"
+    },
+    "provider_fault": {
+      "evidence": {
+        "summary": {
+          "fail": 0,
+          "pass": 21,
+          "total": 21
+        },
+        "verdict": "PASS"
+      },
+      "reason": "canonical V7 disposable fault matrix rerun",
+      "status": "PASS"
+    },
+    "realtime_proof": {
+      "evidence": {},
+      "reason": "real wall-clock proof is a separate run",
+      "status": "NOT_TESTED"
+    },
+    "release_rollback": {
+      "evidence": {
+        "rollback_attempts": 1,
+        "rollback_succeeded": true
+      },
+      "reason": "release rollback was freeze-first and healthy",
+      "status": "PASS"
+    },
+    "resource_envelope": {
+      "evidence": {
+        "violations": []
+      },
+      "reason": "resource samples stayed below scenario ceilings",
+      "status": "PASS"
+    },
+    "restart_contract": {
+      "evidence": {
+        "distinct_process_identity": true,
+        "event_count": 7,
+        "first_pid": 16964,
+        "first_returncode": 1,
+        "marker_one": "supervisor-live",
+        "marker_two": "supervisor-live",
+        "second_pid": 36012,
+        "second_returncode": 1
+      },
+      "reason": "replacement identity and state continuity probe",
+      "status": "PASS"
+    },
+    "scenario_contract": {
+      "evidence": {},
+      "reason": "scenario contract remained immutable",
+      "status": "PASS"
+    },
+    "v7_fault_matrix": {
+      "artifact": "evidence\\parallel-20260824\\unattended-harness\\runs\\ACCELERATED_12H_EQUIVALENT\\V7_FAULT_MATRIX.json",
+      "status": "PASS",
+      "summary": {
+        "fail": 0,
+        "pass": 21,
+        "total": 21
+      },
+      "verdict": "PASS"
+    },
+    "verdict_engine": {
+      "evidence": {},
+      "reason": "verdict derived from structured evidence",
+      "status": "PASS"
+    }
+  },
+  "critical_failures": [],
+  "evidence_hash_mismatches": [],
+  "evidence_missing": [],
+  "fired_faults": [
+    "worker-crash",
+    "provider-outage",
+    "ambiguous-effect",
+    "database-lock",
+    "resource-pressure",
+    "release-degradation",
+    "process-restart",
+    "provider-timeout",
+    "stop-window",
+    "supervisor-crash",
+    "provider-5xx",
+    "final-stop-window"
+  ],
+  "invariant_statuses": {
+    "BUSYWORK_BOUND": "PASS",
+    "DB_DURABLE": "PASS",
+    "EFFECT_UNKNOWN_FROZEN": "PASS",
+    "EVIDENCE_COMPLETE": "PASS",
+    "HEARTBEAT_CONTINUITY": "PASS",
+    "INCIDENT_CONTAINED": "PASS",
+    "MANUAL_CONTINUATION_REQUIRED": "PASS",
+    "MISSION_PROGRESS": "PASS",
+    "NO_DUPLICATE_EFFECT": "PASS",
+    "NO_DUPLICATE_MISSION": "PASS",
+    "OWNER_BRIEFING_BOUND": "PASS",
+    "PORTFOLIO_CONTINUATION": "PASS",
+    "RELEASE_ROLLBACK_READY": "PASS",
+    "RESOURCE_ENVELOPE": "PASS",
+    "RESTART_RESUMABLE": "PASS",
+    "SINGLE_SUPERVISOR": "PASS",
+    "STOP_AVAILABLE": "PASS",
+    "WAIT_IS_HONEST": "PASS"
+  },
+  "live_db_modified": false,
+  "live_scheduler_modified": false,
+  "main_modified": false,
+  "production_modified": false,
+  "reasons": [],
+  "required_faults": [
+    "worker-crash",
+    "provider-outage",
+    "ambiguous-effect",
+    "database-lock",
+    "resource-pressure",
+    "release-degradation",
+    "process-restart",
+    "provider-timeout",
+    "stop-window",
+    "supervisor-crash",
+    "provider-5xx",
+    "final-stop-window"
+  ],
+  "required_invariants": [
+    "STOP_AVAILABLE",
+    "SINGLE_SUPERVISOR",
+    "HEARTBEAT_CONTINUITY",
+    "MISSION_PROGRESS",
+    "PORTFOLIO_CONTINUATION",
+    "MANUAL_CONTINUATION_REQUIRED",
+    "WAIT_IS_HONEST",
+    "NO_DUPLICATE_MISSION",
+    "NO_DUPLICATE_EFFECT",
+    "EFFECT_UNKNOWN_FROZEN",
+    "INCIDENT_CONTAINED",
+    "DB_DURABLE",
+    "RESOURCE_ENVELOPE",
+    "OWNER_BRIEFING_BOUND",
+    "BUSYWORK_BOUND",
+    "RELEASE_ROLLBACK_READY",
+    "RESTART_RESUMABLE",
+    "EVIDENCE_COMPLETE"
+  ],
+  "resource_sample_count": 721,
+  "run_status": "COMPLETED",
+  "scenario_id": "ACCELERATED_12H_EQUIVALENT",
+  "verdict": "PASS"
+}

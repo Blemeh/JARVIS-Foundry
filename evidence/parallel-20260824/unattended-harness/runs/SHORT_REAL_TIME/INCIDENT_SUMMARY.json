@@ -1,0 +1,105 @@
+{
+  "active": {
+    "incident:ambiguous-effect": "RECOVERED",
+    "incident:database-lock": "RECOVERED",
+    "incident:provider-outage": "RECOVERED",
+    "incident:provider-timeout": "RECOVERED",
+    "incident:release-degradation": "RECOVERED",
+    "incident:resource-pressure": "RECOVERED",
+    "incident:stop-window": "RECOVERED",
+    "incident:worker-crash": "RECOVERED"
+  },
+  "count": 15,
+  "history": [
+    {
+      "incident_id": "incident:worker-crash",
+      "reason": "owned worker process crashed",
+      "sequence": 0,
+      "status": "CONTAINED"
+    },
+    {
+      "incident_id": "incident:worker-crash",
+      "reason": "owned worker identity replaced and heartbeat resumed",
+      "sequence": 2,
+      "status": "RECOVERED"
+    },
+    {
+      "incident_id": "incident:provider-outage",
+      "reason": "fake provider fault PROVIDER_OUTAGE",
+      "sequence": 15,
+      "status": "BLOCKED"
+    },
+    {
+      "incident_id": "incident:provider-outage",
+      "reason": "fake provider health restored",
+      "sequence": 17,
+      "status": "RECOVERED"
+    },
+    {
+      "incident_id": "incident:ambiguous-effect",
+      "reason": "external effect may have landed but response was lost",
+      "sequence": 36,
+      "status": "UNKNOWN"
+    },
+    {
+      "incident_id": "incident:ambiguous-effect",
+      "reason": "explicit fake-provider reconciliation matched",
+      "sequence": 43,
+      "status": "RECOVERED"
+    },
+    {
+      "incident_id": "incident:database-lock",
+      "reason": "exclusive lock on disposable database",
+      "sequence": 62,
+      "status": "BLOCKED"
+    },
+    {
+      "incident_id": "incident:database-lock",
+      "reason": "owned lock released and fresh quick check passed",
+      "sequence": 63,
+      "status": "RECOVERED"
+    },
+    {
+      "incident_id": "incident:resource-pressure",
+      "reason": "bounded resource envelope fault",
+      "sequence": 82,
+      "status": "BLOCKED"
+    },
+    {
+      "incident_id": "incident:resource-pressure",
+      "reason": "bounded pressure released",
+      "sequence": 89,
+      "status": "RECOVERED"
+    },
+    {
+      "incident_id": "incident:release-degradation",
+      "reason": "freeze preceded disposable rollback and health proof",
+      "sequence": 108,
+      "status": "RECOVERED"
+    },
+    {
+      "incident_id": "incident:stop-window",
+      "reason": "scenario STOP sentinel active",
+      "sequence": 133,
+      "status": "BLOCKED"
+    },
+    {
+      "incident_id": "incident:stop-window",
+      "reason": "fixture STOP cleared by scenario",
+      "sequence": 135,
+      "status": "RECOVERED"
+    },
+    {
+      "incident_id": "incident:provider-timeout",
+      "reason": "fake provider fault PROVIDER_TIMEOUT",
+      "sequence": 154,
+      "status": "BLOCKED"
+    },
+    {
+      "incident_id": "incident:provider-timeout",
+      "reason": "fake provider health restored",
+      "sequence": 156,
+      "status": "RECOVERED"
+    }
+  ]
+}
