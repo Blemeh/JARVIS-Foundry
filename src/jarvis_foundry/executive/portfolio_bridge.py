@@ -165,12 +165,21 @@ def materialize_portfolio_selection(
         if not mission_id:
             return {"materialized": False, "mission_id": None,
                     "blocked_reason": f"{kind} item lacks mission_id"}
-        from ..mission.contracts import next_executable_contract
+        from ..mission.contracts import (
+            MissionStepContractError,
+            next_executable_contract,
+        )
         mission = database.row("missions", "mission_id", mission_id)
         if mission is None:
             return {"materialized": False, "mission_id": None,
                     "blocked_reason": f"{kind} target mission is unknown"}
-        if next_executable_contract(database, mission_id) is None:
+        try:
+            executable = next_executable_contract(database, mission_id)
+        except MissionStepContractError:
+            # A BLOCKED/terminal mission refuses contracts outright; that is
+            # exactly the unrepairable case this branch retires.
+            executable = None
+        if executable is None:
             # A repairable mission without any remaining executable contract
             # can only produce an endless blocked-cycle (live incident
             # 2026-08-24). Retire it durably so the selector stops ranking
