@@ -1,0 +1,250 @@
+{
+  "artifacts": {
+    "component_results": {
+      "accelerated_proof": {
+        "evidence": {
+          "duration_seconds": 4.0
+        },
+        "reason": "logical 12-hour-equivalent sequence completed",
+        "status": "PASS"
+      },
+      "busywork": {
+        "evidence": {
+          "maximum_repeat": 0
+        },
+        "reason": "repeated work stayed within threshold",
+        "status": "PASS"
+      },
+      "checkpoint_resume": {
+        "evidence": {
+          "step_count": 4
+        },
+        "reason": "checkpoint persisted at every sampling boundary",
+        "status": "PASS"
+      },
+      "continuation": {
+        "evidence": {
+          "continuation_count": 3,
+          "wait_count": 1
+        },
+        "reason": "terminal outcome led to next selection or honest WAIT",
+        "status": "PASS"
+      },
+      "database_fault": {
+        "evidence": {
+          "mode": "healthy"
+        },
+        "reason": "disposable database returned to healthy state",
+        "status": "PASS"
+      },
+      "effect_ambiguity": {
+        "evidence": {
+          "ambiguities": 0,
+          "reconciled": 0
+        },
+        "reason": "ambiguous effects froze and were explicitly reconciled",
+        "status": "PASS"
+      },
+      "evidence_bundle": {
+        "evidence": {
+          "missing": []
+        },
+        "reason": "supporting evidence artifacts are present",
+        "status": "PASS"
+      },
+      "false_pass_factory": {
+        "evidence": {},
+        "reason": "false-PASS proof is a separate adversarial run",
+        "status": "NOT_TESTED"
+      },
+      "fault_scheduler": {
+        "evidence": {
+          "actual_order": [
+            "provider"
+          ],
+          "expected_order": [
+            "provider"
+          ]
+        },
+        "reason": "faults fired deterministically in schedule order",
+        "status": "PASS"
+      },
+      "interruption_resume": {
+        "evidence": {},
+        "reason": "interruption proof is a separate resumed run",
+        "status": "NOT_TESTED"
+      },
+      "invariant_sampler": {
+        "evidence": {
+          "count": 16
+        },
+        "reason": "invariant records are present",
+        "status": "PASS"
+      },
+      "owner_spam": {
+        "evidence": {
+          "owner_action_count": 1
+        },
+        "reason": "owner-action briefing count stayed within threshold",
+        "status": "PASS"
+      },
+      "process_fault": {
+        "evidence": {},
+        "reason": "no owned process probe was run",
+        "status": "NOT_TESTED"
+      },
+      "provider_fault": {
+        "evidence": {},
+        "reason": "fixture provider schedule exercised",
+        "status": "PASS"
+      },
+      "realtime_proof": {
+        "evidence": {},
+        "reason": "real wall-clock proof is a separate run",
+        "status": "NOT_TESTED"
+      },
+      "release_rollback": {
+        "evidence": {
+          "rollback_attempts": 0,
+          "rollback_succeeded": false
+        },
+        "reason": "no release degradation was required",
+        "status": "PASS"
+      },
+      "resource_envelope": {
+        "evidence": {
+          "violations": []
+        },
+        "reason": "resource samples stayed below scenario ceilings",
+        "status": "PASS"
+      },
+      "restart_contract": {
+        "evidence": {},
+        "reason": "no process restart was required",
+        "status": "PASS"
+      },
+      "scenario_contract": {
+        "evidence": {},
+        "reason": "scenario contract remained immutable",
+        "status": "PASS"
+      },
+      "verdict_engine": {
+        "evidence": {},
+        "reason": "verdict derived from structured evidence",
+        "status": "PASS"
+      }
+    },
+    "state": {
+      "active_incidents": {
+        "incident:provider": "RECOVERED"
+      },
+      "briefings": [
+        {
+          "category": "EXCEPTION",
+          "dedupe_key": "incident:incident:provider:BLOCKED",
+          "incident_id": "incident:provider",
+          "owner_action_required": true
+        }
+      ],
+      "busywork_fingerprints": [],
+      "completed_missions": [
+        "mission-0",
+        "mission-1",
+        "mission-2",
+        "mission-3"
+      ],
+      "continuation_count": 3,
+      "cpu_seconds": 0.0,
+      "db_mode": "healthy",
+      "duplicate_authority": false,
+      "duplicate_effects": 0,
+      "effect_ambiguities": 0,
+      "effect_calls": {
+        "effect-mission-0": 1,
+        "effect-mission-1": 1,
+        "effect-mission-2": 1,
+        "effect-mission-3": 1
+      },
+      "effect_states": {
+        "effect-mission-0": "COMPLETED",
+        "effect-mission-1": "COMPLETED",
+        "effect-mission-2": "COMPLETED",
+        "effect-mission-3": "COMPLETED"
+      },
+      "event_count": 27,
+      "event_sequence": 27,
+      "fault_outcomes": {
+        "provider": {
+          "incident_id": "incident:provider",
+          "kind": "PROVIDER_OUTAGE",
+          "target": "fake"
+        }
+      },
+      "heartbeat_count": 5,
+      "manual_continuation_required": 0,
+      "memory_bytes": 20971520,
+      "mission_sequence": 4,
+      "outcome_ids": [
+        "outcome-mission-0",
+        "outcome-mission-1",
+        "outcome-mission-2",
+        "outcome-mission-3"
+      ],
+      "process_count": 1,
+      "provider_calls": 0,
+      "provider_cost": 0.0,
+      "provider_mode": "healthy",
+      "reconciled_effects": 0,
+      "recovery_due": {},
+      "release_current": "candidate",
+      "release_frozen": false,
+      "release_health": "HEALTHY",
+      "release_previous": "previous",
+      "repair_attempts": 0,
+      "restarted": false,
+      "resume_count": 0,
+      "retry_count": 0,
+      "rollback_attempts": 0,
+      "rollback_succeeded": false,
+      "selected_missions": [
+        "mission-0",
+        "mission-1",
+        "mission-2",
+        "mission-3"
+      ],
+      "stop_active": false,
+      "stop_available": true,
+      "supervisor_id": "supervisor-0",
+      "supervisor_running": true,
+      "task_count": 1,
+      "wait_count": 1,
+      "wake_events": 1,
+      "worker_count": 1,
+      "worker_id": "worker-0",
+      "worker_running": true
+    },
+    "step_count": 4,
+    "wall_elapsed_seconds": 0.15166100003989413
+  },
+  "fired_fault_ids": [
+    "provider"
+  ],
+  "jarvis_identities": {
+    "supervisor_id": "supervisor-0",
+    "worker_id": "worker-0"
+  },
+  "logical_time_seconds": 4.0,
+  "next_checkpoint": null,
+  "next_fault_index": 1,
+  "phase": "FINAL",
+  "run_id": "interrupted-proof",
+  "sampled_invariants": [
+    "EVIDENCE_COMPLETE",
+    "HEARTBEAT_CONTINUITY",
+    "MISSION_PROGRESS",
+    "STOP_AVAILABLE"
+  ],
+  "saved_at": "2026-08-24T14:02:40.530687Z",
+  "scenario_id": "INTERRUPTION_PROOF",
+  "status": "COMPLETED"
+}

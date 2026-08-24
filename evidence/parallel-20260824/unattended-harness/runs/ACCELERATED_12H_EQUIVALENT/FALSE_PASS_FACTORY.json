@@ -1,0 +1,84 @@
+{
+  "harness": "false-pass-adversarial-factory",
+  "rows": [
+    {
+      "case_id": "missing-artifact",
+      "expected_not_pass": true,
+      "observed_verdict": "INCOMPLETE",
+      "reasons": [
+        "missing evidence artifacts: TIMELINE.jsonl"
+      ],
+      "verdict": "PASS"
+    },
+    {
+      "case_id": "stale-heartbeat",
+      "expected_not_pass": true,
+      "observed_verdict": "FAIL",
+      "reasons": [
+        "HEARTBEAT_CONTINUITY: stale"
+      ],
+      "verdict": "PASS"
+    },
+    {
+      "case_id": "forged-pass",
+      "expected_not_pass": true,
+      "observed_verdict": "FAIL",
+      "reasons": [
+        "HEARTBEAT_CONTINUITY: forged PASS ignored"
+      ],
+      "verdict": "PASS"
+    },
+    {
+      "case_id": "required-fault-not-fired",
+      "expected_not_pass": true,
+      "observed_verdict": "INCOMPLETE",
+      "reasons": [
+        "required faults did not fire: required-fault"
+      ],
+      "verdict": "PASS"
+    },
+    {
+      "case_id": "hidden-duplicate-effect",
+      "expected_not_pass": true,
+      "observed_verdict": "FAIL",
+      "reasons": [
+        "NO_DUPLICATE_EFFECT: duplicate provider call"
+      ],
+      "verdict": "PASS"
+    },
+    {
+      "case_id": "owner-spam-omitted",
+      "expected_not_pass": true,
+      "observed_verdict": "INCOMPLETE",
+      "reasons": [
+        "OWNER_BRIEFING_BOUND: missing"
+      ],
+      "verdict": "PASS"
+    },
+    {
+      "case_id": "resource-samples-missing",
+      "expected_not_pass": true,
+      "observed_verdict": "INCOMPLETE",
+      "reasons": [
+        "RESOURCE_ENVELOPE: missing"
+      ],
+      "verdict": "PASS"
+    },
+    {
+      "case_id": "interrupted-run-marked-complete",
+      "expected_not_pass": true,
+      "observed_verdict": "ABORTED",
+      "reasons": [
+        "harness interruption was recorded"
+      ],
+      "verdict": "PASS"
+    }
+  ],
+  "scope": "verdict engine only; no production state",
+  "summary": {
+    "fail": 0,
+    "pass": 8,
+    "total": 8
+  },
+  "verdict": "PASS"
+}

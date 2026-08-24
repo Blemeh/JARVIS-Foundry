@@ -1,0 +1,526 @@
+{
+  "artifacts": {
+    "component_results": {
+      "accelerated_proof": {
+        "evidence": {},
+        "reason": "accelerated proof is a separate run",
+        "status": "NOT_TESTED"
+      },
+      "busywork": {
+        "evidence": {
+          "maximum_repeat": 0
+        },
+        "reason": "repeated work stayed within threshold",
+        "status": "PASS"
+      },
+      "checkpoint_resume": {
+        "evidence": {
+          "step_count": 30
+        },
+        "reason": "checkpoint persisted at every sampling boundary",
+        "status": "PASS"
+      },
+      "continuation": {
+        "evidence": {
+          "continuation_count": 25,
+          "wait_count": 5
+        },
+        "reason": "terminal outcome led to next selection or honest WAIT",
+        "status": "PASS"
+      },
+      "database_fault": {
+        "evidence": {
+          "mode": "healthy"
+        },
+        "reason": "disposable database returned to healthy state",
+        "status": "PASS"
+      },
+      "effect_ambiguity": {
+        "evidence": {
+          "ambiguities": 1,
+          "reconciled": 1
+        },
+        "reason": "ambiguous effects froze and were explicitly reconciled",
+        "status": "PASS"
+      },
+      "evidence_bundle": {
+        "evidence": {
+          "missing": []
+        },
+        "reason": "supporting evidence artifacts are present",
+        "status": "PASS"
+      },
+      "false_pass_factory": {
+        "evidence": {
+          "summary": {
+            "fail": 0,
+            "pass": 8,
+            "total": 8
+          }
+        },
+        "reason": "false-PASS adversarial cases refused PASS",
+        "status": "PASS"
+      },
+      "fault_scheduler": {
+        "evidence": {
+          "actual_order": [
+            "worker-crash",
+            "provider-outage",
+            "ambiguous-effect",
+            "database-lock",
+            "resource-pressure",
+            "release-degradation",
+            "stop-window",
+            "provider-timeout"
+          ],
+          "expected_order": [
+            "worker-crash",
+            "provider-outage",
+            "ambiguous-effect",
+            "database-lock",
+            "resource-pressure",
+            "release-degradation",
+            "stop-window",
+            "provider-timeout"
+          ]
+        },
+        "reason": "faults fired deterministically in schedule order",
+        "status": "PASS"
+      },
+      "interruption_resume": {
+        "evidence": {
+          "fault_ids": [
+            "provider"
+          ],
+          "fault_rows": 1,
+          "first_status": "INTERRUPTED",
+          "proof_root": "evidence\\parallel-20260824\\unattended-harness\\runs\\SHORT_REAL_TIME\\interruption-resume",
+          "resumed_verdict": "PASS",
+          "same_run_id": true
+        },
+        "reason": "same run resumes without duplicate faults",
+        "status": "PASS"
+      },
+      "invariant_sampler": {
+        "evidence": {
+          "count": 528
+        },
+        "reason": "invariant records are present",
+        "status": "PASS"
+      },
+      "owner_spam": {
+        "evidence": {
+          "owner_action_count": 6
+        },
+        "reason": "owner-action briefing count stayed within threshold",
+        "status": "PASS"
+      },
+      "process_fault": {
+        "evidence": {
+          "distinct_process_identity": true,
+          "event_count": 7,
+          "first_pid": 29344,
+          "first_returncode": 1,
+          "marker_one": "supervisor-live",
+          "marker_two": "supervisor-live",
+          "second_pid": 33736,
+          "second_returncode": 1
+        },
+        "reason": "owned process crash and replacement probe",
+        "status": "PASS"
+      },
+      "provider_fault": {
+        "evidence": {},
+        "reason": "fixture provider schedule exercised",
+        "status": "PASS"
+      },
+      "realtime_proof": {
+        "evidence": {
+          "duration_seconds": 900.0184359000414
+        },
+        "reason": "wall-clock sampling and scheduled faults completed",
+        "status": "PASS"
+      },
+      "release_rollback": {
+        "evidence": {
+          "rollback_attempts": 1,
+          "rollback_succeeded": true
+        },
+        "reason": "release rollback was freeze-first and healthy",
+        "status": "PASS"
+      },
+      "resource_envelope": {
+        "evidence": {
+          "violations": []
+        },
+        "reason": "resource samples stayed below scenario ceilings",
+        "status": "PASS"
+      },
+      "restart_contract": {
+        "evidence": {
+          "distinct_process_identity": true,
+          "event_count": 7,
+          "first_pid": 29344,
+          "first_returncode": 1,
+          "marker_one": "supervisor-live",
+          "marker_two": "supervisor-live",
+          "second_pid": 33736,
+          "second_returncode": 1
+        },
+        "reason": "replacement identity and state continuity probe",
+        "status": "PASS"
+      },
+      "scenario_contract": {
+        "evidence": {},
+        "reason": "scenario contract remained immutable",
+        "status": "PASS"
+      },
+      "verdict_engine": {
+        "evidence": {},
+        "reason": "verdict derived from structured evidence",
+        "status": "PASS"
+      }
+    },
+    "state": {
+      "active_incidents": {
+        "incident:ambiguous-effect": "RECOVERED",
+        "incident:database-lock": "RECOVERED",
+        "incident:provider-outage": "RECOVERED",
+        "incident:provider-timeout": "RECOVERED",
+        "incident:release-degradation": "RECOVERED",
+        "incident:resource-pressure": "RECOVERED",
+        "incident:stop-window": "RECOVERED",
+        "incident:worker-crash": "RECOVERED"
+      },
+      "briefings": [
+        {
+          "category": "EXCEPTION",
+          "dedupe_key": "incident:incident:worker-crash:CONTAINED",
+          "incident_id": "incident:worker-crash",
+          "owner_action_required": false
+        },
+        {
+          "category": "EXCEPTION",
+          "dedupe_key": "incident:incident:provider-outage:BLOCKED",
+          "incident_id": "incident:provider-outage",
+          "owner_action_required": true
+        },
+        {
+          "category": "EXCEPTION",
+          "dedupe_key": "incident:incident:ambiguous-effect:UNKNOWN",
+          "incident_id": "incident:ambiguous-effect",
+          "owner_action_required": true
+        },
+        {
+          "category": "EXCEPTION",
+          "dedupe_key": "incident:incident:database-lock:BLOCKED",
+          "incident_id": "incident:database-lock",
+          "owner_action_required": true
+        },
+        {
+          "category": "EXCEPTION",
+          "dedupe_key": "incident:incident:resource-pressure:BLOCKED",
+          "incident_id": "incident:resource-pressure",
+          "owner_action_required": true
+        },
+        {
+          "category": "EXCEPTION",
+          "dedupe_key": "incident:incident:release-degradation:RECOVERED",
+          "incident_id": "incident:release-degradation",
+          "owner_action_required": false
+        },
+        {
+          "category": "EXCEPTION",
+          "dedupe_key": "incident:incident:stop-window:BLOCKED",
+          "incident_id": "incident:stop-window",
+          "owner_action_required": true
+        },
+        {
+          "category": "EXCEPTION",
+          "dedupe_key": "incident:incident:provider-timeout:BLOCKED",
+          "incident_id": "incident:provider-timeout",
+          "owner_action_required": true
+        }
+      ],
+      "busywork_fingerprints": [],
+      "completed_missions": [
+        "mission-0",
+        "mission-1",
+        "mission-2",
+        "mission-3",
+        "mission-4",
+        "mission-5",
+        "mission-6",
+        "mission-7",
+        "mission-8",
+        "mission-9",
+        "mission-10",
+        "mission-11",
+        "mission-12",
+        "mission-13",
+        "mission-14",
+        "mission-15",
+        "mission-16",
+        "mission-17",
+        "mission-18",
+        "mission-19",
+        "mission-20",
+        "mission-21",
+        "mission-22",
+        "mission-23",
+        "mission-24",
+        "mission-25"
+      ],
+      "continuation_count": 25,
+      "cpu_seconds": 0.0,
+      "db_mode": "healthy",
+      "duplicate_authority": false,
+      "duplicate_effects": 0,
+      "effect_ambiguities": 1,
+      "effect_calls": {
+        "effect-ambiguity": 1,
+        "effect-mission-0": 1,
+        "effect-mission-1": 1,
+        "effect-mission-10": 1,
+        "effect-mission-11": 1,
+        "effect-mission-12": 1,
+        "effect-mission-13": 1,
+        "effect-mission-14": 1,
+        "effect-mission-15": 1,
+        "effect-mission-16": 1,
+        "effect-mission-17": 1,
+        "effect-mission-18": 1,
+        "effect-mission-19": 1,
+        "effect-mission-2": 1,
+        "effect-mission-20": 1,
+        "effect-mission-21": 1,
+        "effect-mission-22": 1,
+        "effect-mission-23": 1,
+        "effect-mission-24": 1,
+        "effect-mission-25": 1,
+        "effect-mission-3": 1,
+        "effect-mission-4": 1,
+        "effect-mission-5": 1,
+        "effect-mission-6": 1,
+        "effect-mission-7": 1,
+        "effect-mission-8": 1,
+        "effect-mission-9": 1
+      },
+      "effect_states": {
+        "effect-ambiguity": "RECONCILED",
+        "effect-mission-0": "COMPLETED",
+        "effect-mission-1": "COMPLETED",
+        "effect-mission-10": "COMPLETED",
+        "effect-mission-11": "COMPLETED",
+        "effect-mission-12": "COMPLETED",
+        "effect-mission-13": "COMPLETED",
+        "effect-mission-14": "COMPLETED",
+        "effect-mission-15": "COMPLETED",
+        "effect-mission-16": "COMPLETED",
+        "effect-mission-17": "COMPLETED",
+        "effect-mission-18": "COMPLETED",
+        "effect-mission-19": "COMPLETED",
+        "effect-mission-2": "COMPLETED",
+        "effect-mission-20": "COMPLETED",
+        "effect-mission-21": "COMPLETED",
+        "effect-mission-22": "COMPLETED",
+        "effect-mission-23": "COMPLETED",
+        "effect-mission-24": "COMPLETED",
+        "effect-mission-25": "COMPLETED",
+        "effect-mission-3": "COMPLETED",
+        "effect-mission-4": "COMPLETED",
+        "effect-mission-5": "COMPLETED",
+        "effect-mission-6": "COMPLETED",
+        "effect-mission-7": "COMPLETED",
+        "effect-mission-8": "COMPLETED",
+        "effect-mission-9": "COMPLETED"
+      },
+      "event_count": 175,
+      "event_sequence": 175,
+      "fault_outcomes": {
+        "ambiguous-effect": {
+          "action_key": "effect-ambiguity",
+          "incident_id": "incident:ambiguous-effect",
+          "kind": "RESPONSE_LOST_AFTER_EFFECT",
+          "target": "fake-provider"
+        },
+        "database-lock": {
+          "incident_id": "incident:database-lock",
+          "kind": "DATABASE_LOCK",
+          "target": "disposable-sqlite"
+        },
+        "provider-outage": {
+          "incident_id": "incident:provider-outage",
+          "kind": "PROVIDER_OUTAGE",
+          "target": "fake-provider"
+        },
+        "provider-timeout": {
+          "incident_id": "incident:provider-timeout",
+          "kind": "PROVIDER_TIMEOUT",
+          "target": "fake-provider"
+        },
+        "release-degradation": {
+          "frozen_before_rollback": true,
+          "incident_id": "incident:release-degradation",
+          "kind": "RELEASE_DEGRADATION",
+          "target": "disposable-release"
+        },
+        "resource-pressure": {
+          "incident_id": "incident:resource-pressure",
+          "kind": "RESOURCE_PRESSURE",
+          "target": "owned-fixture"
+        },
+        "stop-window": {
+          "incident_id": "incident:stop-window",
+          "kind": "STOP",
+          "target": "stop-sentinel"
+        },
+        "worker-crash": {
+          "incident_id": "incident:worker-crash",
+          "kind": "PROCESS_CRASH",
+          "process_probe": {
+            "distinct_process_identity": true,
+            "event_count": 7,
+            "first_pid": 29344,
+            "first_returncode": 1,
+            "marker_one": "supervisor-live",
+            "marker_two": "supervisor-live",
+            "second_pid": 33736,
+            "second_returncode": 1,
+            "status": "PASS"
+          },
+          "target": "owned-worker"
+        }
+      },
+      "heartbeat_count": 30,
+      "manual_continuation_required": 0,
+      "memory_bytes": 20971520,
+      "outcome_ids": [
+        "outcome-mission-0",
+        "outcome-mission-1",
+        "outcome-mission-2",
+        "outcome-mission-3",
+        "outcome-mission-4",
+        "outcome-mission-5",
+        "outcome-mission-6",
+        "outcome-mission-7",
+        "outcome-mission-8",
+        "outcome-mission-9",
+        "outcome-mission-10",
+        "outcome-mission-11",
+        "outcome-mission-12",
+        "outcome-mission-13",
+        "outcome-mission-14",
+        "outcome-mission-15",
+        "outcome-mission-16",
+        "outcome-mission-17",
+        "outcome-mission-18",
+        "outcome-mission-19",
+        "outcome-mission-20",
+        "outcome-mission-21",
+        "outcome-mission-22",
+        "outcome-mission-23",
+        "outcome-mission-24",
+        "outcome-mission-25"
+      ],
+      "process_count": 1,
+      "provider_calls": 1,
+      "provider_cost": 0.0,
+      "provider_mode": "healthy",
+      "reconciled_effects": 1,
+      "recovery_due": {},
+      "release_current": "previous",
+      "release_frozen": true,
+      "release_health": "HEALTHY",
+      "release_previous": "candidate",
+      "repair_attempts": 0,
+      "restarted": false,
+      "resume_count": 0,
+      "retry_count": 0,
+      "rollback_attempts": 1,
+      "rollback_succeeded": true,
+      "selected_missions": [
+        "mission-0",
+        "mission-1",
+        "mission-2",
+        "mission-3",
+        "mission-4",
+        "mission-5",
+        "mission-6",
+        "mission-7",
+        "mission-8",
+        "mission-9",
+        "mission-10",
+        "mission-11",
+        "mission-12",
+        "mission-13",
+        "mission-14",
+        "mission-15",
+        "mission-16",
+        "mission-17",
+        "mission-18",
+        "mission-19",
+        "mission-20",
+        "mission-21",
+        "mission-22",
+        "mission-23",
+        "mission-24",
+        "mission-25"
+      ],
+      "stop_active": false,
+      "stop_available": true,
+      "supervisor_id": "supervisor-0",
+      "supervisor_running": true,
+      "task_count": 1,
+      "wait_count": 5,
+      "wake_events": 2,
+      "worker_count": 1,
+      "worker_id": "worker-0-recovered-1",
+      "worker_running": true
+    },
+    "step_count": 30,
+    "wall_elapsed_seconds": 900.2943348000408
+  },
+  "fired_fault_ids": [
+    "ambiguous-effect",
+    "database-lock",
+    "provider-outage",
+    "provider-timeout",
+    "release-degradation",
+    "resource-pressure",
+    "stop-window",
+    "worker-crash"
+  ],
+  "jarvis_identities": {
+    "supervisor_id": "supervisor-0",
+    "worker_id": "worker-0-recovered-1"
+  },
+  "logical_time_seconds": 900.0,
+  "next_checkpoint": null,
+  "next_fault_index": 8,
+  "phase": "FINAL",
+  "run_id": "short_real_time-c7bbf0aee42d",
+  "sampled_invariants": [
+    "BUSYWORK_BOUND",
+    "DB_DURABLE",
+    "EFFECT_UNKNOWN_FROZEN",
+    "EVIDENCE_COMPLETE",
+    "HEARTBEAT_CONTINUITY",
+    "INCIDENT_CONTAINED",
+    "MANUAL_CONTINUATION_REQUIRED",
+    "MISSION_PROGRESS",
+    "NO_DUPLICATE_EFFECT",
+    "NO_DUPLICATE_MISSION",
+    "OWNER_BRIEFING_BOUND",
+    "PORTFOLIO_CONTINUATION",
+    "RELEASE_ROLLBACK_READY",
+    "RESOURCE_ENVELOPE",
+    "RESTART_RESUMABLE",
+    "SINGLE_SUPERVISOR",
+    "STOP_AVAILABLE",
+    "WAIT_IS_HONEST"
+  ],
+  "saved_at": "2026-08-24T13:48:15.246484Z",
+  "scenario_id": "SHORT_REAL_TIME",
+  "status": "COMPLETED"
+}

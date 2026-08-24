@@ -14,6 +14,16 @@ from .migrations import migrate
 from .projections import apply_event, reset
 
 
+class _ClosingConnection(sqlite3.Connection):
+    """Close SQLite handles when their transaction context exits."""
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        try:
+            return super().__exit__(exc_type, exc_value, traceback)
+        finally:
+            self.close()
+
+
 class FoundryDatabase:
     def __init__(self, path: str | Path) -> None:
         self.path = Path(path).expanduser().resolve()
@@ -28,11 +38,16 @@ class FoundryDatabase:
                 raise FileNotFoundError(self.path)
             uri = f"file:{self.path.resolve().as_posix()}?mode=ro"
             connection = sqlite3.connect(
-                uri, uri=True, timeout=10, isolation_level=None)
+                uri, uri=True, timeout=10, isolation_level=None,
+                # Read-only projections are short-lived and are reclaimed by
+                # their owning scope; avoid the writable close/transaction
+                # finalization cost on every poll-loop read handle.
+                factory=sqlite3.Connection)
         else:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             connection = sqlite3.connect(
-                self.path, timeout=10, isolation_level=None)
+                self.path, timeout=10, isolation_level=None,
+                factory=_ClosingConnection)
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA foreign_keys = ON")
         connection.execute("PRAGMA busy_timeout = 10000")
@@ -133,7 +148,7 @@ class FoundryDatabase:
     def events(
         self,
         *,
-        readonly: bool = False,
+        readonly: bool = True,
         limit: int | None = None,
         newest_first: bool = False,
         event_types: tuple[str, ...] | None = None,
@@ -172,7 +187,7 @@ class FoundryDatabase:
             ).fetchall()
         return [self._row_to_event(row) for row in rows]
 
-    def event_count(self, *, readonly: bool = False, event_type: str | None = None) -> int:
+    def event_count(self, *, readonly: bool = True, event_type: str | None = None) -> int:
         """Row count without materializing the ledger."""
         with self.connect(readonly=readonly) as connection:
             if event_type is None:
@@ -194,7 +209,7 @@ class FoundryDatabase:
                 apply_event(connection, event)
             return len(rows)
 
-    def quick_check(self, *, readonly: bool = False) -> str:
+    def quick_check(self, *, readonly: bool = True) -> str:
         with self.connect(readonly=readonly) as connection:
             return str(connection.execute("PRAGMA quick_check").fetchone()[0])
 

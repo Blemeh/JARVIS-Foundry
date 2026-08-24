@@ -398,7 +398,7 @@ def _portfolio_projection(database: FoundryDatabase, *, limit: int = 10) -> dict
     latest: dict[str, Any] | None = None
     recent: list[dict[str, Any]] = []
     outcomes: list[dict[str, Any]] = []
-    for event in database.events():
+    for event in database.events(readonly=True):
         if event.event_type == "portfolio.selection_recorded":
             payload = dict(event.payload)
             entry = {
@@ -432,7 +432,7 @@ def _portfolio_projection(database: FoundryDatabase, *, limit: int = 10) -> dict
                 })
     incidents: list[dict[str, Any]] = []
     statuses: dict[str, str] = {}
-    for event in database.events():
+    for event in database.events(readonly=True):
         if event.event_type == "incident.detected":
             statuses[str(event.payload.get("incident_id"))] = "DETECTED"
             incidents.append({
@@ -1140,6 +1140,18 @@ def build_snapshot(
             "ORDER BY updated_at DESC LIMIT 100")
         effect_truth = _effect_truth_projection(connection)
         evolution_truth = _evolution_truth_projection(connection)
+        # Keep discovery on the same bounded read handle.  An active owner
+        # veto is already available here; STOP and pause only alter the honest
+        # next-action text and are applied after the control projection below.
+        discovery_projection = _discovery_projection(
+            connection,
+            cycle_enabled=None if discovery_cycle_enabled is None
+            else bool(discovery_cycle_enabled),
+            hold_active=any(
+                d.get("command_type") in {"VETO_ACTION", "STOP_MISSION", "STOP_EVERYTHING"}
+                for d in directives
+            ),
+        )
 
     stop = EmergencyStop(stop_path).read() if stop_path is not None else None
     owner_directives = owner_directive_snapshot(database, now=generated_at)
@@ -1179,6 +1191,9 @@ def build_snapshot(
     )
     paused = bool(control_state["paused"])
     hold_active = bool(active_vetoes) or bool(stop) or paused
+    if hold_active:
+        discovery_projection = dict(discovery_projection)
+        discovery_projection["next_action"] = "HOLD: owner veto/STOP active"
     decision_queue = build_owner_attention_queue(
         database,
         now=generated_at,
@@ -1279,12 +1294,7 @@ def build_snapshot(
         "timeline": decision_timeline(database, limit=timeline_limit),
         "executive": _executive_projection(database, limit=25),
         "portfolio": _portfolio_projection(database, limit=10),
-        "discovery": _discovery_projection(
-            connection,
-            cycle_enabled=None if discovery_cycle_enabled is None
-            else bool(discovery_cycle_enabled),
-            hold_active=hold_active,
-        ),
+        "discovery": discovery_projection,
     }
     # The packet is an additive read-only export contract.  Import lazily to
     # avoid a module cycle: the packet builder reuses this snapshot function
