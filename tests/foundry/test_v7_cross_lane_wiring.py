@@ -56,7 +56,7 @@ def register_resource(db: FoundryDatabase, *, resource_id: str = "resource-1") -
             "root_path": "/tmp/worktree",
             "resolved_root": "/tmp/worktree",
             "baseline": {"head": "base"},
-            "capabilities": {"safe-work": "ACTIVE"},
+            "capabilities": {"write_registered_worktree_files": "ACTIVE"},
             "readiness_state": "READY",
         },
         source_type="test", source_id="v7-wiring-tests",
@@ -225,6 +225,36 @@ def test_distinct_decisions_target_distinct_artifacts(tmp_path: Path) -> None:
 def test_active_mission_selection_returns_existing_mission(
         tmp_path: Path) -> None:
     db = database(tmp_path)
+    register_resource(db)
+    db.append(Event.create(
+        "mission.created",
+        {
+            "mission_id": "mission-existing",
+            "objective": "already running",
+            "resource_id": "resource-1",
+            "state": "EXECUTING",
+            "acceptance_criteria": ["done"],
+            "created_from": None,
+        },
+        source_type="test", source_id="v7-wiring-tests",
+        idempotency_key="mission.created:mission-existing",
+    ))
+    from jarvis_foundry.mission.contracts import (
+        MissionStepContract,
+        record_step_contract,
+    )
+    record_step_contract(db, MissionStepContract(
+        mission_id="mission-existing",
+        step_id="existing-step",
+        version=1,
+        resource_id="resource-1",
+        capability="write_registered_worktree_files",
+        target_relative_path="report-existing.md",
+        instructions="continue",
+        expected_effects=("report-existing.md exists",),
+        rollback={"method": "delete_file", "reversible": True},
+        verification_criteria=("report-existing.md exists",),
+    ))
     payload = decision_payload_for("am-1", "ACTIVE_MISSION")
     payload["selected_item"]["mission_id"] = "mission-existing"
     result = materialize_portfolio_selection(
@@ -232,6 +262,39 @@ def test_active_mission_selection_returns_existing_mission(
     assert result == {"materialized": True,
                       "mission_id": "mission-existing",
                       "blocked_reason": None}
+
+
+def test_repair_of_contractless_blocked_mission_is_retired_not_looped(
+        tmp_path: Path) -> None:
+    """Live incident 2026-08-24 regression: a REPAIR selection whose target
+    mission has no remaining executable contract must be retired durably
+    instead of producing an endless blocked cycle."""
+    db = database(tmp_path)
+    register_resource(db)
+    db.append(Event.create(
+        "mission.created",
+        {
+            "mission_id": "mission-broken",
+            "objective": "legacy blocked probe",
+            "resource_id": "resource-1",
+            "state": "BLOCKED",
+            "acceptance_criteria": ["done"],
+            "created_from": None,
+        },
+        source_type="test", source_id="v7-wiring-tests",
+        idempotency_key="mission.created:mission-broken",
+    ))
+    payload = decision_payload_for("rep-1", "REPAIR")
+    payload["selected_item"]["mission_id"] = "mission-broken"
+    result = materialize_portfolio_selection(
+        db, decision=payload, resource_id="resource-1")
+    assert result["materialized"] is False
+    assert "no executable contract" in (result["blocked_reason"] or "")
+    state = db.row("missions", "mission_id", "mission-broken")
+    assert str(state["state"]) == "CANCELLED"
+    retired = [e for e in db.events()
+               if e.event_type == "portfolio.repair_retired"]
+    assert len(retired) == 1
 
 
 # ---------------------------------------------------------------------------
