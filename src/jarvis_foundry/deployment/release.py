@@ -404,16 +404,22 @@ def _build_command_center_bundle(
             destination = build_root / Path(relative).relative_to("ui/command-center")
             destination.parent.mkdir(parents=True, exist_ok=True)
             destination.write_bytes(blob.stdout)
-        npm = "npm.cmd" if os.name == "nt" else "npm"
+        _node_dir = pathlib.Path("C:/Program Files/nodejs")
+        _npm_cli = _node_dir / "node_modules" / "npm" / "bin" / "npm-cli.js"
+        _node_exe = _node_dir / "node.exe"
+        if _npm_cli.is_file() and _node_exe.is_file():
+            _npm_cmd = [str(_node_exe), str(_npm_cli)]
+        else:
+            _npm_cmd = ["npm.cmd" if os.name == "nt" else "npm"]
         installed = subprocess.run(
-            [npm, "ci"], cwd=build_root,
+            [*_npm_cmd, "ci"], cwd=build_root,
             capture_output=True, text=True, timeout=300, check=False)
         if installed.returncode != 0:
             raise ReleaseError(
                 installed.stderr.strip() or installed.stdout.strip()
                 or "Command Center npm ci failed")
         built = subprocess.run(
-            [npm, "run", "build"], cwd=build_root,
+            [*_npm_cmd, "run", "build"], cwd=build_root,
             capture_output=True, text=True, timeout=300, check=False)
         if built.returncode != 0:
             raise ReleaseError(
