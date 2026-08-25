@@ -152,6 +152,12 @@ class HermesWorkerAdapter:
             **provider_env,
             "HERMES_HOME": str(self.hermes_home),
             **result_env(contract.working_root),
+            # Hermes resolves its terminal environment while the CLI module
+            # is starting, before ``--in`` performs its later ``chdir``.
+            # Pin the terminal cwd explicitly so the first tool call cannot
+            # fall back to the launcher/home directory (and escape the
+            # registered worktree).
+            "TERMINAL_CWD": str(contract.working_root),
             # The session must operate INSIDE the contract working root so
             # every write lands in the worker's allowed scope. The checkout
             # code is resolved via PYTHONPATH (prepended before site-packages),

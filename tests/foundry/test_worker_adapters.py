@@ -469,6 +469,7 @@ def test_hermes_passes_result_path_env(tmp_path):
             hermes_module, "configured_api_key", return_value=None):
         adapter.dispatch(contract(tmp_path), heartbeat=lambda: None)
     assert captured["env"][RESULT_PATH_ENV] == str(result_path(tmp_path))
+    assert captured["env"]["TERMINAL_CWD"] == str(tmp_path)
 
 
 def test_hermes_timeout_ingests_result_file_but_never_passes(tmp_path):
