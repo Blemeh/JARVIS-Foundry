@@ -43,11 +43,13 @@ WorkClass = Literal[
     "UNKNOWN",
     "INCIDENT",
     "IMPROVEMENT",
+    "NEW_PROJECT",
 ]
 
 _WORK_CLASSES = frozenset({
     "ACTIVE_MISSION", "REPAIR", "CANDIDATE", "NEW_MISSION",
     "MAINTENANCE", "RESEARCH", "UNKNOWN", "INCIDENT", "IMPROVEMENT",
+    "NEW_PROJECT",
 })
 _TERMINAL_MISSION_STATES = frozenset({"COMPLETE", "FAILED", "BLOCKED", "CANCELLED"})
 _WAKE_EVENT_TYPES = frozenset({
@@ -342,6 +344,9 @@ class ScoredWork:
             "calibration_adjustment": self.calibration_adjustment,
             "capacity": dict(self.capacity),
             "factors": dict(self.factors),
+            "metadata": dict(self.item.metadata),
+            "evidence_refs": list(self.item.evidence_refs),
+            "provenance": dict(self.item.provenance),
         }
 
 

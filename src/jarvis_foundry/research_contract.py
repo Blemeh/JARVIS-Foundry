@@ -1,0 +1,348 @@
+"""Research evidence contract over the EXISTING knowledge machinery.
+
+This module is the one governed interface between untrusted external
+content (GitHub API documents, documentation pages, search results) and
+JARVIS's epistemic store. It introduces NO new database, registry, or
+scorer: claims are recorded through the canonical
+``knowledge.claim_recorded`` event, evidence links through the canonical
+append-only ``knowledge.evidence_linked`` event, and contradiction
+detection stays exactly the deterministic projection logic that already
+exists.
+
+Epistemic kinds map onto ``claim_type`` values:
+
+- ``observation``  — something directly encountered via a connector read.
+- ``evidence``     — a preserved source artifact with provenance.
+- ``claim``        — a proposition derived from observations/evidence.
+- ``unknown``      — an honest open question with information value.
+- ``conflict``     — two sources disagree; both remain visible.
+
+CLAIM IDENTITY vs RETRIEVAL OBSERVATION:
+
+- The DURABLE CLAIM IDENTITY is the stable proposition/source identity:
+  (claim_kind, source_type, canonical location, statement). It never
+  includes the wall clock.
+- A RETRIEVAL/REVALIDATION OBSERVATION is when a source was (re)read.
+  The first retrieval is preserved inside the claim's immutable
+  provenance; later retrievals of an identical proposition from the same
+  canonical location record ``research.revalidation_recorded`` events —
+  freshness/revalidation evidence in the SAME ledger — instead of
+  minting duplicate claims just because time passed.
+
+DATA_ONLY rule: content retrieved from the outside world is data. It is
+hashed and recorded, but it can never become an owner directive, veto,
+STOP mutation, capability expansion, or scope change. ``classify_content``
+detects control-shaped language so callers can label it; the recording
+functions refuse to elevate any content into a directive event type —
+there is no code path here that appends anything other than knowledge
+and research events.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import uuid
+from typing import Any
+
+from .database import FoundryDatabase
+from .events import Event
+
+CLAIM_KINDS = frozenset(
+    {"observation", "evidence", "claim", "unknown", "conflict"})
+
+# Control-shaped phrases that must never be treated as instructions when
+# they appear in retrieved content. Detection is lexical and bounded;
+# the structural protection is that no retrieval path can append
+# directive/veto/stop events at all.
+_CONTROL_MARKERS = (
+    "ignore previous", "ignore all previous", "disregard the owner",
+    "ignore the owner", "disable stop", "disable emergency",
+    "push directly to main", "merge to main", "force push",
+    "reveal the token", "expose the token", "new owner directive",
+    "cancel the veto", "you are now", "act as owner",
+    "run this unrelated command", "as the maintainer",
+    "use this token instead", "redirect the mission",
+)
+
+
+class ResearchContractError(ValueError):
+    """A research record violates the evidence contract."""
+
+
+def classify_content(text: str) -> dict[str, Any]:
+    """Lexically flag control-shaped language in untrusted content."""
+    lowered = text.lower()
+    matches = [marker for marker in _CONTROL_MARKERS if marker in lowered]
+    return {"data_only": True, "control_markers": matches,
+            "is_control_shaped": bool(matches)}
+
+
+def _content_hash(parts: dict[str, Any]) -> str:
+    return hashlib.sha256(
+        json.dumps(parts, sort_keys=True).encode("utf-8")).hexdigest()[:16]
+
+
+def claim_identity(
+    *,
+    claim_kind: str,
+    statement: str,
+    source_type: str,
+    location: str,
+) -> str:
+    """The STABLE durable identity of a research claim.
+
+    Deliberately clock-free: the same proposition from the same
+    canonical location is ONE epistemic claim no matter when it is
+    retrieved. Retrieval time belongs to revalidation evidence, not to
+    identity.
+    """
+    return _content_hash({
+        "claim_kind": claim_kind,
+        "source_type": source_type,
+        "location": location,
+        "statement": statement})
+
+
+def _claim_exists(db: FoundryDatabase, claim_id: str) -> bool:
+    with db.connect() as connection:
+        row = connection.execute(
+            "SELECT 1 FROM knowledge_claims WHERE claim_id = ?",
+            (claim_id,)).fetchone()
+    return row is not None
+
+
+def record_revalidation(
+    db: FoundryDatabase,
+    *,
+    claim_id: str,
+    retrieved_at: str,
+    content_sha256_16: str,
+) -> dict[str, Any]:
+    """Record one retrieval/revalidation observation for an existing claim.
+
+    This is freshness evidence in the same append-only ledger — never a
+    new or rewritten claim. Identical (claim, timestamp) re-delivery
+    dedupes; a later timestamp appends distinct history.
+    """
+    db.append(Event.create(
+        "research.revalidation_recorded",
+        {"claim_id": claim_id, "retrieved_at": retrieved_at,
+         "content_sha256_16": content_sha256_16},
+        source_type="supervisor", source_id="research-contract",
+        idempotency_key=(
+            f"research.revalidation_recorded:{claim_id}:{retrieved_at}")))
+    return {"claim_id": claim_id, "revalidated": True,
+            "retrieved_at": retrieved_at}
+
+
+def revalidations_for(db: FoundryDatabase, claim_id: str) -> list[str]:
+    """Chronological retrieval timestamps recorded for a claim."""
+    return [event.payload["retrieved_at"]
+            for event in db.events(
+                event_type_prefixes=("research.revalidation_recorded",))
+            if event.payload.get("claim_id") == claim_id]
+
+
+def _provenance_statement(
+    *,
+    statement: str,
+) -> str:
+    """The projected claim statement stays CLEAN (canonical contradiction
+    detection compares propositions); full provenance travels in the
+    immutable claim-event payload under ``provenance``."""
+    return statement.strip()
+
+
+def record_research_item(
+    db: FoundryDatabase,
+    *,
+    mission_id: str,
+    claim_kind: str,
+    statement: str,
+    source_type: str,
+    location: str,
+    retrieved_at: str,
+    title: str | None = None,
+    confidence: float = 0.6,
+    fresh_until: str | None = None,
+) -> dict[str, Any]:
+    """Record ONE research item as a canonical knowledge claim.
+
+    Identity is the stable proposition/source identity (see
+    ``claim_identity``): re-recording the SAME proposition from the SAME
+    canonical location at a LATER time does not duplicate the claim — it
+    records revalidation evidence instead. A materially different
+    proposition, or the same proposition from an independent source
+    location, remains a distinct claim. Provenance (source type,
+    canonical location, retrieval time, title, content hash) is stored
+    in the append-only event payload and linked evidence rows — never
+    lost, never merged into the proposition text.
+    """
+    if claim_kind not in CLAIM_KINDS:
+        raise ResearchContractError(
+            f"claim_kind must be one of {sorted(CLAIM_KINDS)}")
+    if not statement.strip():
+        raise ResearchContractError("statement is required")
+    if not location.strip() or not source_type.strip():
+        raise ResearchContractError("source location/type are required")
+    identity_hash = claim_identity(
+        claim_kind=claim_kind, statement=statement,
+        source_type=source_type, location=location)
+    claim_id = f"claim-{claim_kind}-{identity_hash}"
+    if _claim_exists(db, claim_id):
+        revalidation = record_revalidation(
+            db, claim_id=claim_id, retrieved_at=retrieved_at,
+            content_sha256_16=identity_hash)
+        return {"claim_id": claim_id,
+                "content_hash": identity_hash,
+                "created": False,
+                "duplicate": False,
+                "revalidated": True,
+                "first_recorded": True,
+                "retrieved_at": revalidation["retrieved_at"],
+                "classification": classify_content(statement)}
+    applied = db.append(Event.create(
+        "knowledge.claim_recorded",
+        {"claim_id": claim_id, "mission_id": mission_id,
+         "statement": _provenance_statement(statement=statement),
+         "claim_type": claim_kind,
+         "confidence": max(0.0, min(1.0, float(confidence))),
+         "fresh_until": fresh_until,
+         "source": {"run_id": f"research-{identity_hash}",
+                    "event_id": f"{location}:{identity_hash}"},
+         "provenance": {
+             "provider": source_type,
+             "canonical_location": location,
+             "retrieved_at": retrieved_at,
+             "title": title,
+             "content_sha256_16": identity_hash,
+             "data_only": True}},
+        source_type="supervisor", source_id="research-contract",
+        idempotency_key=f"knowledge.claim_recorded:{claim_id}"))
+    return {"claim_id": claim_id, "content_hash": identity_hash,
+            "created": bool(applied[1]), "duplicate": False,
+            "revalidated": False, "classification":
+            classify_content(statement)}
+
+
+def record_unknown(
+    db: FoundryDatabase,
+    *,
+    mission_id: str,
+    question: str,
+    why_it_matters: str,
+    expected_information_value: float = 0.5,
+    recommended_experiment: str | None = None,
+    location_hint: str | None = None,
+    retrieved_at: str,
+) -> dict[str, Any]:
+    """An unknown stays UNKNOWN until evidence resolves it."""
+    statement = (
+        f"UNKNOWN: {question.strip()} | why_it_matters="
+        f"{why_it_matters.strip()} | expected_information_value="
+        f"{max(0.0, min(1.0, float(expected_information_value)))}"
+        + (f" | recommended_experiment={recommended_experiment.strip()}"
+           if recommended_experiment else ""))
+    return record_research_item(
+        db, mission_id=mission_id, claim_kind="unknown",
+        statement=statement,
+        source_type="research_question",
+        location=location_hint or f"question:{_content_hash({'q': question})}",
+        retrieved_at=retrieved_at,
+        confidence=max(0.1, min(1.0, float(expected_information_value))))
+
+
+def record_conflict(
+    db: FoundryDatabase,
+    *,
+    mission_id: str,
+    proposition: str,
+    side_a: dict[str, Any],
+    side_b: dict[str, Any],
+    retrieved_at: str,
+    recommended_experiment: str | None = None,
+) -> dict[str, Any]:
+    """Record both sides of a disagreement; neither side is deleted.
+
+    ``side_a``/``side_b`` each need: statement, source_type, location.
+    Returns both claim ids plus the conflict claim id.
+    """
+    for side_name, side in (("side_a", side_a), ("side_b", side_b)):
+        for field in ("statement", "source_type", "location"):
+            if not str(side.get(field, "")).strip():
+                raise ResearchContractError(
+                    f"{side_name}.{field} is required")
+    recorded_a = record_research_item(
+        db, mission_id=mission_id, claim_kind="evidence",
+        statement=str(side_a["statement"]),
+        source_type=str(side_a["source_type"]),
+        location=str(side_a["location"]),
+        retrieved_at=retrieved_at,
+        title=side_a.get("title"),
+        confidence=float(side_a.get("confidence", 0.5)))
+    recorded_b = record_research_item(
+        db, mission_id=mission_id, claim_kind="evidence",
+        statement=str(side_b["statement"]),
+        source_type=str(side_b["source_type"]),
+        location=str(side_b["location"]),
+        retrieved_at=retrieved_at,
+        title=side_b.get("title"),
+        confidence=float(side_b.get("confidence", 0.5)))
+    conflict = record_research_item(
+        db, mission_id=mission_id, claim_kind="conflict",
+        statement=(
+            f"CONFLICT on '{proposition.strip()}': "
+            f"A({recorded_a['claim_id']} from {side_a['location']}) vs "
+            f"B({recorded_b['claim_id']} from {side_b['location']})"
+            + (f" | recommended_experiment={recommended_experiment.strip()}"
+               if recommended_experiment else "")),
+        source_type="conflict_record",
+        location=(f"conflict:{recorded_a['content_hash']}:"
+                  f"{recorded_b['content_hash']}"),
+        retrieved_at=retrieved_at,
+        confidence=0.9)
+    return {"conflict_claim_id": conflict["claim_id"],
+            "side_a_claim_id": recorded_a["claim_id"],
+            "side_b_claim_id": recorded_b["claim_id"]}
+
+
+def link_attempt_evidence(
+    db: FoundryDatabase,
+    *,
+    claim_id: str,
+    attempt_evidence: dict[str, Any],
+) -> str:
+    """Append-only link between a claim and a connector attempt record.
+
+    The evidence id derives from the attempt identity; identical
+    re-delivery dedupes on the canonical event key.
+    """
+    attempt_id = str(attempt_evidence.get("attempt_id") or "").strip()
+    payload_hash = str(attempt_evidence.get("payload_hash") or "").strip()
+    if not attempt_id or not payload_hash:
+        raise ResearchContractError(
+            "attempt evidence requires attempt_id and payload_hash")
+    evidence_id = f"ev-{attempt_id}-{payload_hash[:12]}"
+    db.append(Event.create(
+        "knowledge.evidence_linked",
+        {"claim_id": claim_id, "evidence_id": evidence_id,
+         "payload_hash": payload_hash},
+        source_type="supervisor", source_id="research-contract",
+        idempotency_key=(
+            f"knowledge.evidence_linked:{claim_id}:{evidence_id}")))
+    return evidence_id
+
+
+__all__ = [
+    "CLAIM_KINDS",
+    "ResearchContractError",
+    "claim_identity",
+    "classify_content",
+    "link_attempt_evidence",
+    "record_conflict",
+    "record_research_item",
+    "record_revalidation",
+    "record_unknown",
+    "revalidations_for",
+]

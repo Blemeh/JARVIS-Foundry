@@ -42,7 +42,9 @@ class ObsidianWriter:
     before any file or ledger mutation.
     """
 
-    def __init__(self, vault_root: str | Path, v1_write_root: str = "JARVIS/V1") -> None:
+    def __init__(self, vault_root: str | Path,
+                 v1_write_root: str = "JARVIS/V1", *,
+                 allow_projects: bool = False) -> None:
         self.vault = Path(vault_root).expanduser().resolve()
         # Root-cause fix (review deleg_1e6e9421, R4): historical callers
         # passed the governed dir itself (…/JARVIS/V1) or the JARVIS dir
@@ -63,6 +65,8 @@ class ObsidianWriter:
         else:
             write_root = self.vault / v1_write_root
         self.write_root = write_root.resolve()
+        #: software-intelligence extension: Projects/ subnamespace opt-in
+        self.allow_projects = bool(allow_projects)
         if self.write_root != self.vault and self.vault not in self.write_root.parents:
             raise ObsidianPolicyError(
                 f"v1_write_root must live inside the vault: {self.write_root}")
@@ -80,6 +84,18 @@ class ObsidianWriter:
         if not note_name or not str(note_name).strip():
             raise ObsidianPolicyError("note name is required")
         name = str(note_name).strip()
+        # Software-intelligence lane: governed project-intelligence namespace.
+        # Opt-in per writer instance; never enabled for the live V1 writer.
+        # Exactly one safe path segment under Projects/.
+        if self.allow_projects and (
+                name.startswith("Projects/") or name.startswith("Projects\\")):
+            separator = "/" if name.startswith("Projects/") else "\\"
+            tail = name.split(separator, 1)[1]
+            if not tail or tail in {".", ".."} or "/" in tail or "\\" in tail \
+                    or tail.strip() != tail:
+                raise ObsidianPolicyError(
+                    f"unsafe project note name: {name!r}")
+            return name
         if "/" in name or "\\" in name or name in {".", ".."}:
             raise ObsidianPolicyError(f"note name must be a plain file name: {name!r}")
         if name in V1_NOTE_NAMES:
@@ -96,6 +112,13 @@ class ObsidianWriter:
         if not self._inside(path, self.write_root):
             raise ObsidianPolicyError("note path escapes the V1 write root")
         return path
+
+    @staticmethod
+    def _ensure_parent(path: Path) -> None:
+        """Create the note's parent directory when missing (Projects/x)."""
+        parent = path.parent
+        if not parent.exists():
+            parent.mkdir(parents=True, exist_ok=True)
 
     def audit_path(self, relative: str) -> Path:
         """Resolve a path under the Audit/ area (conflict preserves, trail)."""
