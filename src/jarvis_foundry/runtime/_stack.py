@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from ..deployment.layout import install_root
 from ..database import FoundryDatabase
 from ..paths import FoundryPaths
 from ..supervisor.worker import WorkerController
@@ -36,12 +37,45 @@ class WorkerStack:
 
 
 def _resolve_root(raw: str | None, run_id: str, *, kind: str, home: Path) -> Path:
-    base = Path(raw).expanduser() if raw else (home / "var" / "worker-runtime")
-    if not base.is_absolute():
-        base = home / base
+    configured = Path(raw).expanduser() if raw else Path("var") / "worker-runtime"
+    if configured.is_absolute():
+        base = configured
+    else:
+        base = home / configured
+        # The installed Foundry home normally lives below the live Hermes
+        # profile.  A relative runtime root would therefore put disposable
+        # Hermes state inside that profile, which the adapter correctly
+        # refuses.  Keep relative config convenient for lab/test homes, but
+        # redirect the production case to the JARVIS-owned install prefix.
+        live_hermes = FoundryPaths.hermes_home().resolve()
+        resolved_home = home.resolve()
+        if resolved_home == live_hermes or live_hermes in resolved_home.parents:
+            base = install_root() / "runtime" / "worker-runtime"
     root = base / f"{kind}-{run_id}"
     root.mkdir(parents=True, exist_ok=True)
     return root.resolve()
+
+
+def _prepare_hermes_home(home: Path, hermes: dict[str, Any]) -> None:
+    """Materialize explicit non-interactive model consent in the run home.
+
+    Hermes intentionally fails closed for contributor-tier models unless the
+    owner records the data-training acknowledgement.  Each JARVIS run uses a
+    fresh isolated ``HERMES_HOME``; carrying the acknowledgement into that
+    home is therefore part of the runtime contract, not a live-profile write.
+    """
+    if hermes.get("allow_data_training_tiers_noninteractive") is not True:
+        return
+    config_path = home / "config.yaml"
+    if config_path.exists():
+        # Never overwrite a pre-existing run profile: an explicit false or a
+        # malformed file must remain fail-closed and observable to Hermes.
+        return
+    config_path.write_text(
+        "security:\n"
+        "  allow_data_training_tiers_noninteractive: true\n",
+        encoding="utf-8",
+    )
 
 
 def build_worker_stack(
@@ -87,6 +121,7 @@ def build_worker_stack(
     if hermes.get("enabled", False) and not config.lab_scripted_hermes:
         home = run_root / "hermes-home"
         home.mkdir(parents=True, exist_ok=True)
+        _prepare_hermes_home(home, hermes)
         root = Path(str(hermes.get("root", ""))).expanduser()
         if not root.is_absolute():
             from ..workers.adapters.base import AdapterConfigurationError

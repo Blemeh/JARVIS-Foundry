@@ -27,6 +27,9 @@ hermes:
   root: ""
   python_exe: ""
   timeout_seconds: 900
+  # Explicit owner acknowledgement for discounted contributor-tier models.
+  # Keep false until the owner accepts the provider's data-training policy.
+  allow_data_training_tiers_noninteractive: false
 
 openhands:
   enabled: false

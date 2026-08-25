@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 import pytest
@@ -10,7 +11,7 @@ from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.mission.loop import FAILED, MissionLoop
 from jarvis_foundry.paths import FoundryPaths
 from jarvis_foundry.roles.router import RoleRouter
-from jarvis_foundry.runtime._stack import build_worker_stack
+from jarvis_foundry.runtime._stack import _resolve_root, build_worker_stack
 from jarvis_foundry.runtime.config import WorkerRuntimeConfig
 from jarvis_foundry.runtime.worker_loop import (
     _adapter_runtime_environment,
@@ -54,6 +55,38 @@ def test_config_roundtrip(tmp_path):
     assert cfg.enabled is True
     assert cfg.max_repairs == 3
     assert cfg.role_signals["builder"]["bounded"] is True
+
+
+def test_relative_runtime_root_moves_outside_live_hermes_profile(tmp_path, monkeypatch):
+    local = tmp_path / "local"
+    monkeypatch.setenv("LOCALAPPDATA", str(local))
+    monkeypatch.setenv("HERMES_HOME", str(local / "hermes"))
+    home = local / "hermes" / "foundry"
+    root = _resolve_root("var/worker-runtime", "containment", kind="run", home=home)
+    assert root.is_relative_to(local / "JARVIS" / "runtime" / "worker-runtime")
+    assert not root.is_relative_to(local / "hermes")
+
+
+def test_contributor_acknowledgement_is_materialized_in_isolated_home(tmp_path):
+    database = FoundryDatabase(tmp_path / "db.sqlite")
+    database.initialize()
+    cfg = WorkerRuntimeConfig(
+        enabled=True,
+        hermes={
+            "enabled": True,
+            "root": str(tmp_path),
+            "python_exe": sys.executable,
+            "allow_data_training_tiers_noninteractive": True,
+        },
+        runtime_state_root=str(tmp_path / "state"),
+    )
+    stack = build_worker_stack(
+        database, FoundryPaths(tmp_path / "foundry"), cfg, run_id="consent")
+    config = stack.disposable_root / "hermes-home" / "config.yaml"
+    assert config.read_text(encoding="utf-8") == (
+        "security:\n"
+        "  allow_data_training_tiers_noninteractive: true\n"
+    )
 
 
 def test_run_cycle_disabled(tmp_path):
