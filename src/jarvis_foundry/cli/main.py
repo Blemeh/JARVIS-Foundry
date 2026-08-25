@@ -86,6 +86,10 @@ def _parser() -> argparse.ArgumentParser:
     rel_activate.add_argument("--install-root", type=Path, default=None)
     rel_activate.add_argument("--worker-config", type=Path, default=None)
     rel_activate.add_argument("--spawn-worker-loop", action="store_true")
+    rel_activate.add_argument(
+        "--command-center-port", type=int, default=8767,
+        help="localhost Command Center port for the production Supervisor (default: 8767)",
+    )
     rollback = release_sub.add_parser("rollback")
     rollback.add_argument("--install-root", type=Path, default=None)
     setup = sub.add_parser("setup", help="configure machine-local LLM provider")
@@ -291,11 +295,14 @@ def _release_command(args, paths: FoundryPaths) -> int:
         task_command, task_prefix = headless_task_command(root)
         spawn = bool(getattr(args, "spawn_worker_loop", False))
         worker_config = getattr(args, "worker_config", None)
+        command_center_port = getattr(args, "command_center_port", None)
         extra = ""
         if spawn:
             extra += " --spawn-worker-loop"
         if worker_config:
             extra += f' --worker-loop-config "{Path(worker_config).resolve()}"'
+        if command_center_port is not None:
+            extra += f" --command-center-port {int(command_center_port)}"
         installer = Installer(
             FoundryDatabase(paths.database),
             task_name=V1_TASK_NAME,
@@ -308,6 +315,9 @@ def _release_command(args, paths: FoundryPaths) -> int:
                 "start_record": str(paths.database),
                 "spawn_worker_loop": "true" if spawn else "false",
                 "worker_config_path": str(Path(worker_config).resolve()) if worker_config else "",
+                "command_center_port": (
+                    int(command_center_port) if command_center_port is not None else ""
+                ),
                 "release_sha": args.sha,
             },
         )
