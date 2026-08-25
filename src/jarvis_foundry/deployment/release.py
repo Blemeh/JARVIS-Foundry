@@ -411,16 +411,20 @@ def _build_command_center_bundle(
             _npm_cmd = [str(_node_exe), str(_npm_cli)]
         else:
             _npm_cmd = ["npm.cmd" if os.name == "nt" else "npm"]
+        _npm_env = dict(os.environ)
+        _npm_env["PATH"] = str(_node_dir) + os.pathsep + _npm_env.get("PATH", "")
         installed = subprocess.run(
             [*_npm_cmd, "ci"], cwd=build_root,
-            capture_output=True, text=True, timeout=300, check=False)
+            capture_output=True, text=True, timeout=300, check=False,
+            env=_npm_env)
         if installed.returncode != 0:
             raise ReleaseError(
                 installed.stderr.strip() or installed.stdout.strip()
                 or "Command Center npm ci failed")
         built = subprocess.run(
             [*_npm_cmd, "run", "build"], cwd=build_root,
-            capture_output=True, text=True, timeout=300, check=False)
+            capture_output=True, text=True, timeout=300, check=False,
+            env=_npm_env)
         if built.returncode != 0:
             raise ReleaseError(
                 built.stderr.strip() or built.stdout.strip()
