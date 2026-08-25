@@ -323,6 +323,22 @@ class Supervisor:
         reaped = self.workers.reap()
         request = latest_request(self.database)
         if request is not None and request.action in {"STOP", "RESTART"}:
+            # A RESTART request is intentionally durable across the stopped
+            # process boundary.  Once the replacement instance has recorded
+            # its own ``started`` resolution, that instance has adopted the
+            # request; re-applying it on the first heartbeat would make the
+            # repeating scheduled trigger stop every replacement forever.
+            resolution = latest_resolution(self.database, request.request_id)
+            adopted_restart = (
+                request.action == "RESTART"
+                and resolution is not None
+                and resolution.payload.get("status") == "RUNNING"
+                and resolution.payload.get("phase") in {"started", "recovered"}
+                and resolution.payload.get("instance_id") == self.instance_id
+            )
+            if adopted_restart:
+                request = None
+        if request is not None and request.action in {"STOP", "RESTART"}:
             if request_is_stale(request):
                 self._record_resolution(
                     request,

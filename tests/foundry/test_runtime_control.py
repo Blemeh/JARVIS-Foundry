@@ -248,6 +248,10 @@ def test_restart_request_stops_then_new_instance_adopts_request(tmp_path):
     after = inspect_control(database, stop_path=str(stop_path))
     assert after.status == "RUNNING"
     assert after.request_status == "APPLIED"
+    # The replacement instance must not re-apply the same durable RESTART on
+    # its first heartbeat, or the repeating scheduler can never stay healthy.
+    assert second.heartbeat() == "RUNNING"
+    assert second.started is True
     second.stop()
 
 
