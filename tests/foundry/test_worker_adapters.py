@@ -178,6 +178,16 @@ def test_openhands_structured_verdict_parsing():
         "VERDICT: PASSED") == VERDICT_NOT_TESTED  # word boundary
 
 
+def test_hermes_structured_verdict_parsing_accepts_late_exact_line():
+    transcript = "\n".join(["inspection line"] * 40 + ["VERDICT: FAIL"])
+    assert HermesWorkerAdapter._structured_verdict(transcript) == "FAIL"
+
+
+def test_hermes_structured_verdict_parsing_ignores_instruction_echo():
+    assert HermesWorkerAdapter._structured_verdict(
+        "End with VERDICT: PASS | FAIL | BLOCKED | NOT_TESTED") is None
+
+
 def test_redact_secrets_removes_token_and_configured_key():
     token = "sk-" + "A" * 24
     key = "sk-cXX" + "B" * 40

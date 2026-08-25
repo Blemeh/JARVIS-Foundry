@@ -69,6 +69,15 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, ReleaseError, ValueError) as error:
         print(json.dumps({"launcher": "FAIL_CLOSED", "error": str(error)}), flush=True)
         return 2
+    manifest = identity.get("manifest")
+    release_id = manifest.get("release_id") if isinstance(manifest, dict) else None
+    if not isinstance(release_id, str) or not release_id.strip():
+        print(json.dumps({
+            "launcher": "FAIL_CLOSED",
+            "error": "validated release manifest has no release_id",
+        }), flush=True)
+        return 2
+    os.environ["JARVIS_RELEASE_ID"] = release_id.strip()
     if args.validate_only:
         print(json.dumps({"launcher": "OK", "identity": {
             "source_sha": identity["source_sha"],
