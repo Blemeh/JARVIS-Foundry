@@ -414,8 +414,9 @@ def _build_command_center_bundle(
         _npm_env = dict(os.environ)
         _npm_env["PATH"] = str(_node_dir) + os.pathsep + _npm_env.get(
             "PATH", _npm_env.get("Path", ""))
-        if os.name == "nt" and len(_npm_env["PATH"]) > 8190:
-            _npm_env["PATH"] = _npm_env["PATH"][:8190]
+        if os.name == "nt" and len(_npm_env["PATH"]) > 7000:
+            # npm adds node_modules/.bin entries before cmd.exe runs scripts.
+            _npm_env["PATH"] = _npm_env["PATH"][:7000]
         if "Path" in _npm_env:
             _npm_env["Path"] = _npm_env["PATH"]
         installed = subprocess.run(
