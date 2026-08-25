@@ -11,6 +11,7 @@ from jarvis_foundry.events import Event, EventConflict
 from jarvis_foundry.supervisor.control import (
     CONTROL_REQUESTED,
     inspect_control,
+    latest_resolution,
     record_claim,
     reconcile_control,
     request_is_stale,
@@ -253,6 +254,21 @@ def test_restart_request_stops_then_new_instance_adopts_request(tmp_path):
     assert second.heartbeat() == "RUNNING"
     assert second.started is True
     second.stop()
+
+
+def test_reconcile_does_not_adopt_live_restart_before_heartbeat(tmp_path):
+    database = _database(tmp_path)
+    stop_path = tmp_path / "EMERGENCY_STOP"
+    supervisor = Supervisor(database, stop_path, instance_id="restart-live")
+    assert supervisor.start() == "RUNNING"
+    request = submit_request(database, "restart", request_id="restart-live-1")
+
+    state = reconcile_control(database, stop_path=str(stop_path))
+    assert state.status == "RUNNING"
+    assert state.request_id == request.request_id
+    assert state.request_status == "PENDING"
+    assert latest_resolution(database, request.request_id) is None
+    assert supervisor.heartbeat() == "STOPPED"
 
 
 def test_duplicate_scheduler_does_not_resolve_stop_while_lease_is_live(tmp_path):

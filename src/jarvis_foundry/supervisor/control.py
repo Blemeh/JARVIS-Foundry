@@ -562,8 +562,10 @@ def inspect_control(
                 reason = reason or "stop request is waiting for the owner heartbeat"
             elif status == "BLOCKED":
                 request_status = "BLOCKED"
-            elif status == "RUNNING" and request.action in {"START", "RESTART"}:
+            elif status == "RUNNING" and request.action == "START":
                 request_status = "APPLIED"
+            elif status == "RUNNING" and request.action == "RESTART":
+                request_status = "PENDING"
             else:
                 status = "UNKNOWN"
                 reason = reason or "owner request has no durable process outcome"
@@ -611,7 +613,7 @@ def reconcile_control(
         record_resolution(
             database, request, status="STOPPED", phase="already_stopped",
             reason="supervisor was already stopped")
-    elif resolution is None and state.status == "RUNNING" and request.action in {"START", "RESTART"}:
+    elif resolution is None and state.status == "RUNNING" and request.action == "START":
         record_resolution(
             database, request, status="RUNNING", phase="recovered",
             reason="durable supervisor event proves the request outcome",
