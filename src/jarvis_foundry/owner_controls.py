@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import os
 import secrets
 from dataclasses import dataclass
 from pathlib import Path
@@ -36,6 +37,50 @@ _COMMANDS = frozenset({
     "GOAL", "CONSTRAINT", "ADD_CONSTRAINT", "VETO_ACTION", "STOP_MISSION", "STOP_EVERYTHING",
     "PAUSE", "RESUME", "REPRIORITIZE", "REDIRECT", "RESTART_RECOVERY",
 })
+
+
+def load_or_create_owner_secret(path: str | Path) -> bytes:
+    """Return a stable machine-local owner secret without exposing it to UI.
+
+    The localhost Command Center endpoint signs owner commands inside the
+    Supervisor process.  Persisting a random key makes restart recovery
+    possible while keeping replay protection and durable HMAC provenance.
+    """
+    secret_path = Path(path).expanduser().resolve()
+    secret_path.parent.mkdir(parents=True, exist_ok=True)
+
+    def _read() -> bytes:
+        raw = secret_path.read_text(encoding="ascii").strip()
+        try:
+            value = bytes.fromhex(raw)
+        except ValueError as error:
+            raise OwnerAuthenticationError(
+                f"owner secret file is malformed: {secret_path}") from error
+        if len(value) < 32:
+            raise OwnerAuthenticationError(
+                f"owner secret file is too short: {secret_path}")
+        return value
+
+    if secret_path.is_file():
+        return _read()
+    encoded = secrets.token_bytes(32).hex().encode("ascii") + b"\n"
+    try:
+        descriptor = os.open(
+            secret_path,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+            0o600,
+        )
+    except FileExistsError:
+        return _read()
+    try:
+        os.write(descriptor, encoded)
+    finally:
+        os.close(descriptor)
+    try:
+        os.chmod(secret_path, 0o600)
+    except OSError:
+        pass
+    return _read()
 
 
 def canonical_command(

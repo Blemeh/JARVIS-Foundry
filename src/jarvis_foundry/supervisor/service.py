@@ -53,6 +53,8 @@ class Supervisor:
         ledger_heartbeat_seconds: int = 60,
         provider_settings: ProviderSettings | None = None,
         resilience: ResilienceCoordinator | None = None,
+        command_center_port: int | None = None,
+        owner_secret_path: str | Path | None = None,
     ) -> None:
         self.database = database
         self.estop = EmergencyStop(stop_path)
@@ -68,6 +70,12 @@ class Supervisor:
         self._provider_settings = provider_settings
         self.resilience = resilience
         self._start_generation = 0
+        self.command_center_port = command_center_port
+        self.owner_secret_path = (
+            Path(owner_secret_path).resolve()
+            if owner_secret_path is not None else
+            Path(self.database.path).resolve().parent / "owner-control.key")
+        self._command_center = None
 
     def _release_id(self) -> str | None:
         """Return only an explicitly supplied release identity.
@@ -273,6 +281,15 @@ class Supervisor:
                 f"{payload.get('stop_id') or 'start'}:{self._start_generation}"),
         ))
         self.started = True
+        if self.command_center_port is not None:
+            try:
+                self._start_command_center()
+            except Exception:
+                # Command Center ownership is part of the requested production
+                # service.  A bind/auth failure must not leave a seemingly
+                # healthy Supervisor holding the singleton lease.
+                self.stop()
+                raise
         if request is not None and request.action in {"START", "RESTART"}:
             self._record_resolution(request, status="RUNNING", phase="started")
         elif request is not None and request.action == "STOP":
@@ -415,6 +432,9 @@ class Supervisor:
                     control_request, status="STOPPED", phase="already_stopped",
                     reason="supervisor was already stopped")
             return
+        if self._command_center is not None:
+            self._command_center.close()
+            self._command_center = None
         self.workers.terminate_all()
         pid, identity = current_process_identity()
         self.database.append(Event.create(
@@ -442,6 +462,44 @@ class Supervisor:
                 reason="owner control request applied",
             )
 
+    def _start_command_center(self) -> None:
+        if self._command_center is not None:
+            return
+        from ..command_center import CommandCenterServer
+        from ..owner_controls import load_or_create_owner_secret
+
+        secret = load_or_create_owner_secret(self.owner_secret_path)
+        discovery_cycle_enabled = None
+        static_root = None
+        release_id = self._release_id()
+        if release_id:
+            from ..deployment.release import release_dir
+            candidate_static_root = release_dir(release_id) / "command-center"
+            if (candidate_static_root / "index.html").is_file():
+                static_root = candidate_static_root
+        if self.worker_loop_config is not None:
+            try:
+                from ..runtime.config import WorkerRuntimeConfig
+                discovery_cycle_enabled = WorkerRuntimeConfig.from_yaml(
+                    self.worker_loop_config,
+                    provider_settings=self._provider_settings,
+                ).discovery_cycle_enabled
+            except Exception:  # noqa: BLE001 - projection stays honest/unregistered
+                # The worker-loop activation path records the durable fault.
+                # Command Center remains available and reports UNREGISTERED.
+                pass
+        server = CommandCenterServer(
+            self.database,
+            stop_path=self.estop.path,
+            host="127.0.0.1",
+            port=int(self.command_center_port or 0),
+            discovery_cycle_enabled=discovery_cycle_enabled,
+            static_root=static_root,
+        )
+        server.configure_owner(secret)
+        server.start()
+        self._command_center = server
+
     def _reap_and_recover(self) -> None:
         """Deterministic stale-session hygiene (plan F3 wiring).
 
@@ -462,7 +520,15 @@ class Supervisor:
         from ..roles.reaper import reap_stale_role_runs, recover_stale_mission_state
         try:
             reap_stale_role_runs(self.database)
-            recover_stale_mission_state(self.database)
+            # A live one-shot worker-loop process legitimately has tiny gaps
+            # between a completed builder lease, VERIFYING, and acquisition of
+            # the fresh verifier lease.  Treating that in-process handoff as a
+            # crash races the child and corrupts the state machine.  Once the
+            # owned child exits (normally or by crash), the next heartbeat
+            # performs the same durable recovery immediately.
+            worker_loop = self.workers.status(WORKER_LOOP_RUN_ID)
+            if not worker_loop.alive:
+                recover_stale_mission_state(self.database)
         except Exception as error:  # noqa: BLE001 — maintenance must not kill the daemon
             try:
                 self.database.append(Event.create(
@@ -496,7 +562,9 @@ class Supervisor:
                 self.worker_loop_config,
                 provider_settings=self._provider_settings,
             )
-        except (OSError, ValueError, TypeError, ProviderConfigError):
+        except Exception as error:  # noqa: BLE001 - persist all activation faults
+            self._record_worker_loop_activation_blocked(
+                phase="configuration", error=error)
             return
         if not config.enabled:
             return
@@ -517,8 +585,33 @@ class Supervisor:
                 worker_type="worker_loop",
                 stop_path=self.estop.path,
             )
-        except (LeaseUnavailable, OSError):
+        except (LeaseUnavailable, OSError) as error:
+            self._record_worker_loop_activation_blocked(
+                phase="launch", error=error)
             return
+
+    def _record_worker_loop_activation_blocked(
+        self, *, phase: str, error: BaseException,
+    ) -> None:
+        """Persist loss of autonomous dispatch instead of hiding it."""
+        try:
+            self.database.append(Event.create(
+                "worker_loop.activation_blocked",
+                {
+                    "instance_id": self.instance_id,
+                    "phase": phase,
+                    "error_class": type(error).__name__,
+                    "error": str(error)[:300],
+                    "trust_state": "UNKNOWN",
+                },
+                source_type="supervisor",
+                source_id=self.instance_id,
+                idempotency_key=(
+                    f"worker_loop.activation_blocked:{self.instance_id}:{phase}"
+                ),
+            ))
+        except Exception:  # noqa: BLE001 - heartbeat must remain alive
+            pass
 
     def doctor(self) -> dict[str, object]:
         """Inspect without migrating. Live homes are already at schema;

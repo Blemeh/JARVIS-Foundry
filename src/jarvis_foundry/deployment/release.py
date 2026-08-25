@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import shutil
 import sqlite3
@@ -9,6 +10,7 @@ import subprocess
 import sys
 import uuid
 import re
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -137,6 +139,17 @@ def read_release_json(path: Path) -> dict[str, Any]:
 
 _GIT_OBJECT_RE = re.compile(r"^[0-9a-f]{40,64}$")
 _MISSING = object()
+
+
+def _directory_digest(directory: Path) -> tuple[str, int]:
+    digest = hashlib.sha256()
+    files = sorted(path for path in directory.rglob("*") if path.is_file())
+    for path in files:
+        relative = path.relative_to(directory).as_posix()
+        digest.update(relative.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+    return digest.hexdigest(), len(files)
 
 
 def _runtime_identity(manifest: dict[str, Any], source_sha: str) -> dict[str, Any]:
@@ -307,6 +320,17 @@ def validate_release(
         raise ReleaseError("RELEASE.json provenance source_repo is missing")
     if provenance.get("git_commit") != git_commit or provenance.get("git_tree") != git_tree:
         raise ReleaseError("RELEASE.json provenance does not match git identity")
+    bundle = manifest.get("command_center_bundle", _MISSING)
+    if bundle is not _MISSING and bundle is not None:
+        if not isinstance(bundle, dict) or not isinstance(bundle.get("sha256"), str):
+            raise ReleaseError("RELEASE.json Command Center bundle identity is invalid")
+        bundle_root = directory / "command-center"
+        if not (bundle_root / "index.html").is_file():
+            raise ReleaseError("release Command Center bundle is missing")
+        observed_digest, observed_count = _directory_digest(bundle_root)
+        if (observed_digest != bundle["sha256"]
+                or observed_count != int(bundle.get("file_count", -1))):
+            raise ReleaseError("release Command Center bundle hash mismatch")
     previous_runtime = manifest.get("previous_runtime", _MISSING)
     if previous_runtime is _MISSING:
         raise ReleaseError("RELEASE.json missing previous_runtime identity")
@@ -348,6 +372,64 @@ def _copy_source_snapshot(source_repo: Path, staging: Path) -> None:
             shutil.copytree(origin, destination, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
         else:
             shutil.copy2(origin, destination)
+
+
+def _build_command_center_bundle(
+    source_repo: Path, source_sha: str, directory: Path,
+) -> dict[str, Any] | None:
+    """Build the React client from tracked files at the release commit."""
+    listed = subprocess.run(
+        ["git", "-C", str(source_repo), "ls-tree", "-r", "--name-only",
+         source_sha, "ui/command-center"],
+        capture_output=True, text=True, timeout=30, check=False,
+    )
+    tracked = [line.strip() for line in listed.stdout.splitlines()
+               if line.strip()]
+    if listed.returncode != 0:
+        raise ReleaseError(listed.stderr.strip() or "could not list Command Center source")
+    if not tracked:
+        return None
+    with tempfile.TemporaryDirectory(prefix="jarvis-command-center-") as raw:
+        build_root = Path(raw)
+        for relative in tracked:
+            blob = subprocess.run(
+                ["git", "-C", str(source_repo), "show",
+                 f"{source_sha}:{relative}"],
+                capture_output=True, timeout=30, check=False,
+            )
+            if blob.returncode != 0:
+                raise ReleaseError(
+                    blob.stderr.decode(errors="replace").strip()
+                    or f"could not read tracked UI file {relative}")
+            destination = build_root / Path(relative).relative_to("ui/command-center")
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(blob.stdout)
+        npm = "npm.cmd" if os.name == "nt" else "npm"
+        installed = subprocess.run(
+            [npm, "ci"], cwd=build_root,
+            capture_output=True, text=True, timeout=300, check=False)
+        if installed.returncode != 0:
+            raise ReleaseError(
+                installed.stderr.strip() or installed.stdout.strip()
+                or "Command Center npm ci failed")
+        built = subprocess.run(
+            [npm, "run", "build"], cwd=build_root,
+            capture_output=True, text=True, timeout=300, check=False)
+        if built.returncode != 0:
+            raise ReleaseError(
+                built.stderr.strip() or built.stdout.strip()
+                or "Command Center build failed")
+        dist = build_root / "dist"
+        if not (dist / "index.html").is_file():
+            raise ReleaseError("Command Center build did not produce dist/index.html")
+        destination = directory / "command-center"
+        shutil.copytree(dist, destination)
+    digest, file_count = _directory_digest(destination)
+    return {
+        "status": "BUILT_FROM_TRACKED_SOURCE",
+        "file_count": file_count,
+        "sha256": digest,
+    }
 
 
 def build_release(
@@ -402,6 +484,7 @@ def build_release(
     directory.mkdir(parents=True)
     staging = directory / "source"
     _copy_source_snapshot(repo, staging)
+    command_center_bundle = _build_command_center_bundle(repo, sha, directory)
     venv = directory / ".venv"
     builder = str(Path(python_exe or sys.executable).resolve())
     created = subprocess.run(
@@ -441,6 +524,7 @@ def build_release(
         },
         "previous_runtime": previous_runtime,
         "created_at": isoformat(),
+        "command_center_bundle": command_center_bundle,
     }
     (directory / "RELEASE.json").write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")

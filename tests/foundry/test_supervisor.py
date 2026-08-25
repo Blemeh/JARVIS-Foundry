@@ -232,7 +232,7 @@ def test_spawn_worker_loop_registers_child_when_enabled(tmp_path, monkeypatch):
 
 def test_spawn_worker_loop_bad_yaml_does_not_crash_heartbeat(tmp_path):
     config = tmp_path / "workers.yaml"
-    config.write_text("enabled: true\nprovider: wrong\nmodel: wrong\n", encoding="utf-8")
+    config.write_text("- not-a-mapping\n", encoding="utf-8")
     database = FoundryDatabase(tmp_path / "foundry.db")
     supervisor = Supervisor(
         database, tmp_path / "STOP", instance_id="bad-yaml",
@@ -240,5 +240,9 @@ def test_spawn_worker_loop_bad_yaml_does_not_crash_heartbeat(tmp_path):
     )
     assert supervisor.start() == "RUNNING"
     assert supervisor.heartbeat() == "RUNNING"
+    blocked = [event for event in database.events()
+               if event.event_type == "worker_loop.activation_blocked"]
+    assert len(blocked) == 1
+    assert blocked[0].payload["phase"] == "configuration"
     supervisor.stop()
 

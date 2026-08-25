@@ -37,12 +37,14 @@ class LabHermesAdapter(ScriptedWorkerAdapter):
         *,
         crash_after_write: bool = False,
         crash_step_id: str = "step-a",
+        false_success_step_id: str | None = "step-b",
         workers: WorkerController | None = None,
     ) -> None:
         super().__init__(WORKER_HERMES)
         self.expected = expected or DEFAULT_EXPECTED
         self.crash_after_write = crash_after_write
         self.crash_step_id = crash_step_id
+        self.false_success_step_id = false_success_step_id
         self.workers = workers
         self.last_owned_pid: int | None = None
 
@@ -62,7 +64,7 @@ class LabHermesAdapter(ScriptedWorkerAdapter):
         if contract.role in ("builder", "repair"):
             defect = (
                 contract.role == "builder"
-                and contract.step_id == "step-b"
+                and contract.step_id == self.false_success_step_id
                 and int(contract.attempt) == 1
                 and not crash
             )
@@ -87,10 +89,20 @@ class LabHermesAdapter(ScriptedWorkerAdapter):
     def _dispatch_dynamic(self, contract, *, heartbeat):
         """Handle executive and other dynamic contract steps."""
         artifacts = tuple(contract.expected_artifacts or ())
+        crash = (
+            self.crash_after_write
+            and contract.role == "builder"
+            and contract.step_id == self.crash_step_id
+            and int(contract.attempt) == 1
+            and bool(artifacts)
+        )
+        if crash:
+            self._mutate_then_hold(
+                contract, Path(contract.working_root) / artifacts[0], heartbeat)
         if contract.role in ("builder", "repair"):
             defect = (
-                self.crash_after_write
-                and contract.step_id == self.crash_step_id
+                contract.role == "builder"
+                and contract.step_id == self.false_success_step_id
                 and int(contract.attempt) == 1
             )
             for rel in artifacts:

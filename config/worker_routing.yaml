@@ -8,8 +8,8 @@
 # load time. Provider/model/api_key/base_url are owned by the machine-local
 # file ``%LOCALAPPDATA%/JARVIS/config/provider.yaml`` (never committed).
 schema_version: 1
-status: "ACTIVE"            # proven live 2026-08-16; see docs/evidence/HYBRID_WORKER_LIVE_ACTIVATION.md
-enabled: true               # driver only runs cycles when explicitly launched
+status: "UNCONFIGURED"      # machine-local activation must be proven afresh
+enabled: false              # fail closed until exact worker coordinates are installed
 
 mission_id: "mission-wfm-optimizer"
 resource_id: "resource-wfm-optimizer"
@@ -23,27 +23,25 @@ model: "muse-spark-1.2-contributor"
 # checkout. Live spawn_worker_loop remains default OFF.
 
 hermes:
-  enabled: true              # proven live: isolated .h + disposable home
-  root: ".h"                # isolated development checkout (never live install)
-  python_exe: "C:\\Users\\b\\AppData\\Local\\hermes\\hermes-agent\\venv\\Scripts\\python.exe"
+  enabled: false
+  root: ""
+  python_exe: ""
   timeout_seconds: 900
 
 openhands:
-  enabled: true              # proven live: containment PASS (completed + forced termination)
-  exe: "C:\\Users\\b\\Documents\\JARVIS-Lab\\.uv\\bin\\openhands.exe"
+  enabled: false
+  exe: ""
   timeout_seconds: 900
 
 readiness:
   hermes:
-    state: "READY"
-    note: "isolated .h checkout + disposable HERMES_HOME; live install refused"
-    evidence: ["canonical-hybrid-worker-integration-2026-08-16"]
+    state: "NOT_READY"
+    note: "Install an isolated absolute worker root and prove provider readiness on this machine."
+    evidence: []
   openhands:
-    state: "READY"
-    note: "containment proven live 2026-08-16: disposable home, zero owner ~/.openhands violations (completed + forced termination)"
-    evidence:
-      - "containment-probe-completed-run-2026-08-16"
-      - "containment-probe-forced-termination-2026-08-16"
+    state: "NOT_READY"
+    note: "Install and re-prove an isolated executable before activation."
+    evidence: []
 
 role_signals:
   builder:

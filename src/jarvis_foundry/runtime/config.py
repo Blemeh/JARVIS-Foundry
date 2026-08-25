@@ -38,6 +38,7 @@ class WorkerRuntimeConfig:
     lab_scripted_hermes: bool = False
     lab_crash_after_write: bool = False
     lab_crash_step_id: str = "step-a"
+    lab_false_success_step_id: str | None = None
     provider_settings: ProviderSettings = field(default_factory=default_provider_settings)
     executive_selection_enabled: bool = False
     executive_min_action_score: float = 0.40
@@ -95,6 +96,9 @@ class WorkerRuntimeConfig:
             lab_scripted_hermes=bool(raw.get("lab_scripted_hermes", False)),
             lab_crash_after_write=bool(raw.get("lab_crash_after_write", False)),
             lab_crash_step_id=str(raw.get("lab_crash_step_id", "step-a")),
+            lab_false_success_step_id=(
+                str(raw["lab_false_success_step_id"])
+                if raw.get("lab_false_success_step_id") else None),
             provider_settings=settings,
             executive_selection_enabled=bool(
                 raw.get("executive", {}).get("selection_enabled", False)),

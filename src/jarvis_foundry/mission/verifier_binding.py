@@ -124,6 +124,11 @@ class BindingCapture:
 def _hash_target_tree(target: Path, *, limit: int = 200) -> dict[str, str]:
     """Deterministic per-file sha256 map of the frozen step target."""
     hashes: dict[str, str] = {}
+    if target.is_file():
+        try:
+            return {target.name: hashlib.sha256(target.read_bytes()).hexdigest()}
+        except OSError:
+            return {}
     if not target.is_dir():
         return hashes
     import itertools

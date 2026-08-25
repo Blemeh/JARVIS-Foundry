@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from jarvis_foundry.command_center import build_snapshot
+from jarvis_foundry.command_center import _safe_table, build_snapshot
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.events import Event
 from jarvis_foundry.supervisor.estop import EmergencyStop
@@ -188,3 +188,18 @@ def test_stop_remains_active_without_rewriting_health_history(
     assert snapshot["stop"]["active"] is True
     assert snapshot["health"]["crashed_workers"] == []
     assert snapshot["health"]["degraded"] is False
+
+
+def test_optional_projection_failure_is_visible(db: FoundryDatabase) -> None:
+    errors: list[dict[str, str]] = []
+    with db.connect(readonly=True) as connection:
+        rows = _safe_table(
+            connection, "missing_projection",
+            "SELECT * FROM table_that_does_not_exist", errors=errors)
+    assert rows == []
+    assert errors == [{
+        "projection": "missing_projection",
+        "status": "UNAVAILABLE",
+        "error_class": "OperationalError",
+        "reason": "no such table: table_that_does_not_exist",
+    }]

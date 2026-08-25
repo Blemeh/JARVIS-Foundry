@@ -402,6 +402,7 @@ export type Scenario =
   | "STREAM_DISCONNECTED";
 
 export type MockEventType =
+  | "ledger.event"
   | "mission.started"
   | "step.started"
   | "worker.active"
@@ -510,7 +511,7 @@ export interface JarvisClient {
   runScenario(name: Scenario): Promise<void>;
   disconnectStream(): Promise<void>;
   reconnectStream(): Promise<void>;
-  requestGateReevaluation(missionId: string): Promise<{ accepted: true; simulatedAt: string; missionId: string }>;
+  requestGateReevaluation(missionId: string): Promise<{ accepted: boolean; simulatedAt: string; missionId: string; error?: string }>;
   requestHalt(missionId: string): Promise<{ accepted: boolean; simulatedAt: string; missionId: string; error?: string }>;
   submitOwnerGoal(objective: string): Promise<OwnerGoalResult>;
   activateStop(reason: string): Promise<StopResult>;

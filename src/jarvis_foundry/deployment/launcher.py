@@ -59,6 +59,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--interval", type=float, default=5.0)
     parser.add_argument("--spawn-worker-loop", action="store_true")
     parser.add_argument("--worker-loop-config", type=Path, default=None)
+    parser.add_argument("--command-center-port", type=int, default=None)
+    parser.add_argument("--owner-secret-path", type=Path, default=None)
     parser.add_argument("--validate-only", action="store_true")
     args = parser.parse_args(argv)
     home = Path(args.home).expanduser().resolve()
@@ -82,6 +84,10 @@ def main(argv: list[str] | None = None) -> int:
         supervisor_args.append("--spawn-worker-loop")
     if args.worker_loop_config is not None:
         supervisor_args.extend(["--worker-loop-config", str(args.worker_loop_config.resolve())])
+    if args.command_center_port is not None:
+        supervisor_args.extend(["--command-center-port", str(args.command_center_port)])
+    if args.owner_secret_path is not None:
+        supervisor_args.extend(["--owner-secret-path", str(args.owner_secret_path.resolve())])
     from ..supervisor.run import main as supervisor_main
     return supervisor_main(supervisor_args)
 

@@ -23,6 +23,7 @@ from typing import Any, Callable
 
 from ..clock import isoformat, utc_now
 from ..database import FoundryDatabase
+from ..events import Event
 from ..supervisor.estop import EmergencyStop
 from ..roles.adapter import RoleAdapter
 from ..roles.manifest import ContextManifest
@@ -70,6 +71,12 @@ class HybridWorkerRoleAdapter:
 
     def _signals_for(self, manifest: ContextManifest) -> dict[str, Any]:
         signals = dict(self.role_signals.get(manifest.role, self.task_signals))
+        # A repair pass is itself durable evidence of a failed first attempt.
+        # Route it through the diagnostic/recovery path instead of repeating
+        # the same bounded fast-path worker that produced the defect.
+        if manifest.role == "repair":
+            signals["recovery"] = True
+            signals["root_cause_required"] = True
         return signals
 
     def _advisory_context(self, manifest: ContextManifest, instructions: str) -> str:
@@ -163,6 +170,14 @@ class HybridWorkerRoleAdapter:
             verification_criteria=tuple(manifest.verification_criteria),
         )
         decision = self.router.route(contract)
+        self.database.append(Event.create(
+            "worker.route_decided",
+            {**decision.to_payload(), "run_id": manifest.run_id,
+             "role": manifest.role},
+            source_type="supervisor",
+            source_id="hybrid-worker-bridge",
+            idempotency_key=f"worker.route_decided:{manifest.run_id}",
+        ))
         if not decision.selected_worker:
             return RoleResult(
                 run_id=manifest.run_id, role=manifest.role,
@@ -173,18 +188,63 @@ class HybridWorkerRoleAdapter:
                 started_at=started, finished_at=isoformat(utc_now()),
             )
         before = self.reconciler.capture_before(contract)
-        adapter = self.registry.get(decision.selected_worker)
-        try:
-            envelope = adapter.dispatch(contract, heartbeat=heartbeat)
-        except ProviderUnavailable as error:
+        envelope = None
+        provider_errors: list[str] = []
+        selected_worker = decision.selected_worker
+        candidates = (decision.selected_worker,) + tuple(
+            worker for worker in decision.fallback
+            if worker in decision.eligible_workers)
+        for index, worker in enumerate(candidates):
+            adapter = self.registry.get(worker)
+            try:
+                envelope = adapter.dispatch(contract, heartbeat=heartbeat)
+                selected_worker = worker
+                break
+            except ProviderUnavailable as error:
+                provider_errors.append(f"{worker}: {error}")
+                if index + 1 < len(candidates):
+                    self.database.append(Event.create(
+                        "worker.fallback_triggered",
+                        {
+                            "run_id": manifest.run_id,
+                            "mission_id": manifest.mission_id,
+                            "step_id": manifest.step_id,
+                            "from_worker": worker,
+                            "to_worker": candidates[index + 1],
+                            "trigger": "worker_runtime_defect",
+                            "reason": str(error),
+                        },
+                        source_type="supervisor",
+                        source_id="hybrid-worker-bridge",
+                        idempotency_key=(
+                            f"worker.fallback_triggered:{manifest.run_id}:"
+                            f"{worker}:{candidates[index + 1]}"),
+                    ))
+            except Exception as error:  # noqa: BLE001 - crash classification
+                return RoleResult(
+                    run_id=manifest.run_id, role=manifest.role,
+                    status=FAILED, provider=manifest.provider,
+                    model=manifest.model, verdict=VERDICT_NOT_TESTED,
+                    error_class="worker_crash",
+                    error_detail=f"{type(error).__name__}: {str(error)[-400:]}",
+                    started_at=started, finished_at=isoformat(utc_now()),
+                )
+        if envelope is None:
             return RoleResult(
                 run_id=manifest.run_id, role=manifest.role,
                 status=BLOCKED, provider=manifest.provider,
                 model=manifest.model, verdict=VERDICT_NOT_TESTED,
                 error_class="provider_unavailable",
-                error_detail=str(error),
+                error_detail="; ".join(provider_errors) or "provider unavailable",
                 started_at=started, finished_at=isoformat(utc_now()),
             )
+        try:
+            report = self.reconciler.reconcile(
+                contract, envelope, before=before,
+                # Every role is accountable only for the delta it introduced
+                # since capture. Accepted prior-step files (committed or not)
+                # must not poison the next step's evidence.
+                delta_baseline=before.changed_files)
         except Exception as error:  # noqa: BLE001 - crash classification
             return RoleResult(
                 run_id=manifest.run_id, role=manifest.role,
@@ -194,12 +254,6 @@ class HybridWorkerRoleAdapter:
                 error_detail=f"{type(error).__name__}: {str(error)[-400:]}",
                 started_at=started, finished_at=isoformat(utc_now()),
             )
-        report = self.reconciler.reconcile(
-            contract, envelope, before=before,
-            # Every role is accountable only for the delta it introduced
-            # since capture. Accepted prior-step files (committed or not)
-            # must not poison the next step's evidence.
-            delta_baseline=before.changed_files)
         agree = report.agree and envelope.worker_status == COMPLETED
         # MissionLoop treats COMPLETED as "send to verifier". A mismatched
         # or incomplete claim must not stay COMPLETED or a later verifier
@@ -217,6 +271,26 @@ class HybridWorkerRoleAdapter:
                 "evidence_mismatch" if not report.agree else None)
             error_detail = (
                 "; ".join(report.mismatches) if not report.agree else None)
+            if (selected_worker == "openhands"
+                    and self.router.requires_fallback(
+                        "claimed_success_contradicted_by_evidence")):
+                self.database.append(Event.create(
+                    "worker.fallback_triggered",
+                    {
+                        "run_id": manifest.run_id,
+                        "mission_id": manifest.mission_id,
+                        "step_id": manifest.step_id,
+                        "from_worker": selected_worker,
+                        "to_worker": "hermes",
+                        "trigger": "claimed_success_contradicted_by_evidence",
+                        "reason": error_detail,
+                    },
+                    source_type="supervisor",
+                    source_id="hybrid-worker-bridge",
+                    idempotency_key=(
+                        f"worker.fallback_triggered:{manifest.run_id}:"
+                        "evidence-mismatch"),
+                ))
         return RoleResult(
             run_id=manifest.run_id, role=manifest.role,
             status=status,

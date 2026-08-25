@@ -29,8 +29,29 @@ def test_health_endpoint_reports_projection(db: FoundryDatabase, tmp_path: Path)
         base = f"http://{server.address[0]}:{server.address[1]}"
         with urlopen(f"{base}/api/health", timeout=3) as response:
             payload = json.loads(response.read())
-        assert payload["status"] == "OK"
+        assert payload["status"] == "DEGRADED"
         assert payload["controls_configured"] is False
+    finally:
+        server.close()
+
+
+def test_server_serves_bundled_react_app_and_spa_routes(
+    db: FoundryDatabase, tmp_path: Path,
+) -> None:
+    static_root = tmp_path / "command-center"
+    static_root.mkdir()
+    (static_root / "index.html").write_text(
+        "<!doctype html><div id='root'>bundled-react</div>", encoding="utf-8")
+    server = CommandCenterServer(
+        db, stop_path=tmp_path / "STOP", static_root=static_root)
+    server.start()
+    try:
+        base = f"http://{server.address[0]}:{server.address[1]}"
+        with urlopen(f"{base}/missions/example", timeout=3) as response:
+            assert b"bundled-react" in response.read()
+        with urlopen(f"{base}/api/command-center", timeout=3) as response:
+            payload = json.loads(response.read())
+        assert payload["source_of_truth"]["kind"] == "append_only_event_ledger"
     finally:
         server.close()
 

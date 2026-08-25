@@ -19,6 +19,7 @@ and re-runnable (idempotent events, ledger replay in the dispatcher).
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import uuid
 from dataclasses import dataclass
@@ -70,9 +71,13 @@ def _hash_target(target: Path, *, limit: int = 50) -> dict[str, str]:
     Paths are relative, forward-slash normalized; unreadable files are
     skipped (their absence from the map is visible in the bundle)."""
     hashes: dict[str, str] = {}
+    if target.is_file():
+        try:
+            return {target.name: hashlib.sha256(target.read_bytes()).hexdigest()}
+        except OSError:
+            return {}
     if not target.is_dir():
         return hashes
-    import hashlib
     import itertools
     for path in itertools.islice(target.rglob("*"), limit * 8):
         if not path.is_file():
@@ -200,7 +205,13 @@ class MissionLoop:
             root = target if target.is_dir() else target.parent
             for rel in expected_artifacts:
                 candidate = Path(rel)
-                path = candidate if candidate.is_absolute() else root / rel
+                if candidate.is_absolute():
+                    path = candidate
+                elif (target.is_file() and len(candidate.parts) <= len(target.parts)
+                      and tuple(target.parts[-len(candidate.parts):]) == candidate.parts):
+                    path = target
+                else:
+                    path = root / rel
                 if not path.exists():
                     missing.append(rel)
             if missing:
@@ -251,17 +262,44 @@ class MissionLoop:
                 next_action=remaining.instructions, run_id=run_id)
             return
         if contract_rows(self.database, mission_id):
-            self._advance(mission_id, "COMPLETE", next_action=None, run_id=run_id)
-            self.database.append(Event.create(
+            completed = Event.create(
                 "mission.completed",
                 {"mission_id": mission_id, "outcome": "PASSED", "run_id": run_id},
                 source_type="supervisor",
                 source_id="mission-loop",
                 idempotency_key=f"mission.completed:{mission_id}",
-            ))
+            )
+            self._advance_with_event(
+                mission_id, "COMPLETE", event=completed,
+                next_action=None, run_id=run_id)
             invoke_fault_hook(self.fault_hook, "post mission.completed")
             return
         self._advance(mission_id, "ACTION_SELECTION", next_action=None, run_id=run_id)
+
+    def _advance_with_event(
+        self,
+        mission_id: str,
+        state: str,
+        *,
+        event: Event,
+        next_action: str | None,
+        run_id: str | None,
+    ) -> None:
+        """Commit a terminal state transition and its lifecycle event once."""
+        current = self._mission(mission_id)
+        if str(current["state"]) == state:
+            return
+        key = f"mission.state_changed:{mission_id}:{state}:{next_action or 'none'}"
+        if run_id is not None:
+            key = f"{key}:run-{run_id}"
+        transition = Event.create(
+            "mission.state_changed",
+            {"mission_id": mission_id, "state": state, "next_action": next_action},
+            source_type="supervisor",
+            source_id="mission-loop",
+            idempotency_key=key,
+        )
+        self.database.append_events([transition, event])
 
     # -- durable helpers ----------------------------------------------------
 
@@ -451,6 +489,7 @@ class MissionLoop:
 
         role = "repair" if state == "REPAIRING" else "builder"
         attempt = failed_verdict_count(self.database, mission_id, step_id) + 1
+        repair_context_text = ""
 
         # D2: envelope contract validated BEFORE any dispatch — unknown step/
         # capability/rollback and out-of-root targets are rejected here, never
@@ -466,6 +505,24 @@ class MissionLoop:
             if latest is None or latest["status"] != "FAIL":
                 raise ProposalError(
                     f"repair requested for {mission_id} step {step_id} but no FAIL verdict exists")
+            try:
+                findings = tuple(json.loads(str(latest.get("findings_json") or "[]")))
+                requirements = tuple(json.loads(str(
+                    latest.get("repair_requirements_json") or "[]")))
+            except (TypeError, ValueError, json.JSONDecodeError):
+                findings = ()
+                requirements = ()
+            repair_context = [
+                "This is an automatic repair pass after an independent FAIL.",
+                "Inspect the current partial state before changing it; preserve valid work.",
+            ]
+            if findings:
+                repair_context.append("Verifier findings:")
+                repair_context.extend(f"- {value}" for value in findings)
+            if requirements:
+                repair_context.append("Repair requirements:")
+                repair_context.extend(f"- {value}" for value in requirements)
+            repair_context_text = "\n".join(repair_context)
 
         if state not in {"EXECUTING", "VERIFYING"}:
             self._advance(mission_id, "READY", run_id=run_id)
@@ -499,6 +556,9 @@ class MissionLoop:
                     "do not infer an additional rule from ambiguous text.")
             dispatch_instructions = (
                 "\n".join(constraint_lines) + "\n\n" + dispatch_instructions)
+        if repair_context_text:
+            dispatch_instructions = (
+                repair_context_text + "\n\n" + dispatch_instructions)
         if state == "VERIFYING":
             row = self.database.row("agent_runs", "run_id", run_id)
             try:
@@ -891,25 +951,28 @@ class MissionLoop:
             current = self._mission(mission_id)
             if str(current["state"]) == "ACCEPTING":
                 self._advance(mission_id, "ACTION_SELECTION",
-                              next_action=None, run_id=run_id)
-            return
+                              next_action=None,
+                              run_id=f"stop-accepting-{mission_id}")
+            return StepOutcome(
+                outcome=BLOCKED_OUTCOME,
+                step_id=step_id,
+                reason=f"STOP active: {self._stop_reason()}",
+            )
         mission = self._mission(mission_id)
         if (str(mission["state"]) == "ACTION_SELECTION"
                 and contract_rows(self.database, mission_id)
                 and next_executable_contract(self.database, mission_id) is None):
             run_id = f"resume-complete-{mission_id}"
-            self._advance(mission_id, "COMPLETE", next_action=None,
-                          run_id=run_id)
-            if not any(
-                    e.event_type == "mission.completed"
-                    and e.payload.get("mission_id") == mission_id
-                    for e in self.database.events()):
-                self.database.append(Event.create(
-                    "mission.completed",
-                    {"mission_id": mission_id, "outcome": "PASSED",
-                     "run_id": run_id},
-                    source_type="supervisor", source_id="mission-loop",
-                    idempotency_key=f"mission.completed:{mission_id}"))
+            completed = Event.create(
+                "mission.completed",
+                {"mission_id": mission_id, "outcome": "PASSED", "run_id": run_id},
+                source_type="supervisor",
+                source_id="mission-loop",
+                idempotency_key=f"mission.completed:{mission_id}",
+            )
+            self._advance_with_event(
+                mission_id, "COMPLETE", event=completed,
+                next_action=None, run_id=run_id)
             invoke_fault_hook(self.fault_hook, "post mission.completed")
             return StepOutcome(outcome=PASSED, step_id=step_id,
                                run_id=run_id)

@@ -1,33 +1,46 @@
 import type { MockEvent, MockEventStream } from "./contracts";
 
-/** Poll-driven refresh signal for live mode (no mock fixture events). */
+/** Polls the live ledger projection and emits only events returned by it. */
 export class PollingEventStream implements MockEventStream {
   private listeners = new Set<(event: MockEvent) => void>();
   private _connected = true;
   private timer: ReturnType<typeof setInterval> | null = null;
 
-  constructor(private readonly intervalMs = 5000, private readonly onPoll?: () => void) {}
+  constructor(
+    private readonly intervalMs = 5000,
+    private readonly onPoll?: () => Promise<MockEvent[]>,
+  ) {}
+
+  private startTimer(): void {
+    if (this.timer || !this._connected || this.listeners.size === 0) return;
+    this.timer = setInterval(async () => {
+      if (!this._connected) return;
+      try {
+        const events = (await this.onPoll?.()) ?? [];
+        for (const event of events) {
+          for (const fn of this.listeners) fn(event);
+        }
+      } catch {
+        // The adapter records the fetch error in its connection state. A poll
+        // failure is not a ledger event and must never be synthesized as one.
+      }
+    }, this.intervalMs);
+  }
 
   subscribe(listener: (event: MockEvent) => void): () => void {
     this.listeners.add(listener);
-    if (!this.timer && this._connected) {
-      this.timer = setInterval(() => {
-        if (!this._connected) return;
-        this.onPoll?.();
-        const event: MockEvent = {
-          id: `poll-${Date.now()}`,
-          type: "mission.started",
-          at: new Date().toISOString(),
-          detail: "snapshot refresh",
-        };
-        for (const fn of this.listeners) fn(event);
-      }, this.intervalMs);
-    }
-    return () => this.listeners.delete(listener);
+    this.startTimer();
+    return () => {
+      this.listeners.delete(listener);
+      if (this.listeners.size === 0 && this.timer) {
+        clearInterval(this.timer);
+        this.timer = null;
+      }
+    };
   }
 
-  emit(_event: MockEvent): void {
-    /* live mode does not emit synthetic fixture events */
+  emit(event: MockEvent): void {
+    for (const fn of this.listeners) fn(event);
   }
 
   disconnect(): void {
@@ -40,6 +53,7 @@ export class PollingEventStream implements MockEventStream {
 
   reconnect(): void {
     this._connected = true;
+    this.startTimer();
   }
 
   get connected(): boolean {

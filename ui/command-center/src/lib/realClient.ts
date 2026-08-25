@@ -65,9 +65,7 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
   constructor(options?: { apiBase?: string; pollMs?: number }) {
     this.apiBase = options?.apiBase ?? import.meta.env.VITE_JARVIS_API_BASE ?? DEFAULT_API;
     this.pollMs = options?.pollMs ?? Number(import.meta.env.VITE_JARVIS_POLL_MS ?? 5000);
-    this.stream = new PollingEventStream(this.pollMs, () => {
-      void this.refreshSnapshot();
-    });
+    this.stream = new PollingEventStream(this.pollMs, () => this.pollLedgerEvents());
   }
 
   get source(): DataSource {
@@ -117,8 +115,24 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
   }
 
   private async snapshotOrFetch(): Promise<FoundrySnapshot> {
-    if (this.snapshot) return this.snapshot;
+    const stale = !this.lastFetchedAt || Date.now() - new Date(this.lastFetchedAt).getTime() > this.pollMs * 2;
+    if (this.snapshot && !this.lastError && !stale) return this.snapshot;
     return this.refreshSnapshot();
+  }
+
+  private async pollLedgerEvents(): Promise<MockEvent[]> {
+    const previous = this.snapshot;
+    const previousIds = new Set(previous?.timeline.map((event) => event.event_id) ?? []);
+    const snapshot = await this.refreshSnapshot();
+    if (!previous) return [];
+    return snapshot.timeline
+      .filter((event) => !previousIds.has(event.event_id))
+      .map((event) => ({
+        id: event.event_id,
+        type: "ledger.event" as const,
+        at: event.occurred_at ?? event.recorded_at ?? snapshot.generated_at,
+        detail: event.summary ?? event.event_type,
+      }));
   }
 
   private async ownerCommand(command_type: string, exact_text: string, target?: string | null): Promise<OwnerCommandResponse> {
@@ -251,7 +265,13 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
         kind: "evidence",
         label: e.event_type,
         detail: e.summary ?? "",
-        status: e.event_type.includes("fail") ? "FAIL" : "PASS",
+        status: /fail|reject|error|crash/i.test(e.event_type)
+          ? "FAIL"
+          : /pass|complete|accepted|verified/i.test(e.event_type)
+            ? "PASS"
+            : /start|running|active|dispatch/i.test(e.event_type)
+              ? "ACTIVE"
+              : "PENDING",
         refs: [{ kind: "mission", id: missionId, label: missionId }],
       }));
   }
@@ -278,11 +298,11 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
   }
 
   async acknowledgeNotification(_id: string): Promise<void> {
-    /* UI-local only; canonical ledger has no notification ack surface */
+    return unavailable("acknowledgeNotification");
   }
 
   async resolveNotification(_id: string): Promise<void> {
-    /* UI-local only */
+    return unavailable("resolveNotification");
   }
 
   async getRelatedEntities(_kind: EntityKind, _id: string): Promise<RelatedEntities> {
@@ -312,7 +332,12 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
   }
 
   async requestGateReevaluation(missionId: string) {
-    return { accepted: true as const, simulatedAt: new Date().toISOString(), missionId };
+    return {
+      accepted: false,
+      simulatedAt: new Date().toISOString(),
+      missionId,
+      error: "UNAVAILABLE in live mode: canonical gate re-evaluation command is not implemented",
+    };
   }
 
   async requestHalt(missionId: string) {

@@ -402,7 +402,7 @@ def materialize_portfolio_selection(
         return {"materialized": True, "mission_id": mission_id, "blocked_reason": None}
 
     if kind not in ("MAINTENANCE", "RESEARCH", "UNKNOWN", "IMPROVEMENT",
-                    "INCIDENT", "NEW_MISSION"):
+                    "INCIDENT", "NEW_MISSION", "OWNER_GOAL"):
         return {"materialized": False, "mission_id": None,
                 "blocked_reason": f"unsupported portfolio class {kind!r}"}
 
@@ -478,6 +478,106 @@ def materialize_portfolio_selection(
             idempotency_key=(
                 f"mission.state_changed:{mission_id}:{state}:portfolio"),
         ))
+
+    # Authenticated owner goals need an actual plan followed by execution.
+    # Both steps stay under the canonical MissionLoop and ordered immutable
+    # contracts; no parallel mission engine or manual continuation is added.
+    if kind == "OWNER_GOAL":
+        goal_token = hashlib.sha256(
+            f"{decision_id}:{item_id}".encode("utf-8")).hexdigest()[:10]
+        plan_name = f".jarvis/owner-goals/{goal_token}/plan.md"
+        outcome_name = f".jarvis/owner-goals/{goal_token}/outcome.md"
+        metadata = dict(item.get("metadata") or {})
+        success = tuple(
+            str(value) for value in metadata.get("success_criteria") or ()
+            if str(value).strip())
+        objective_criteria = success or (
+            f"the registered resource satisfies the owner objective: {objective}",)
+        provenance = {
+            "decision_id": decision_id,
+            "portfolio_item_id": item_id,
+            "portfolio_class": kind,
+            "goal_id": metadata.get("goal_id"),
+        }
+        plan = MissionStepContract(
+            mission_id=mission_id,
+            step_id="01-plan",
+            version=1,
+            resource_id=resource_id,
+            capability=capability,
+            target_relative_path=plan_name,
+            instructions=(
+                f"Orient to the registered resource and the authenticated owner goal below.\n"
+                f"OWNER GOAL: {objective}\n"
+                f"Create {plan_name} with a concise executable plan, the current-state "
+                "observations that justify it, explicit verification criteria, risks, "
+                "rollback, and the next useful action. Do not claim the goal is complete."
+            ),
+            expected_effects=(f"{plan_name} contains an evidence-aware execution plan",),
+            rollback={"method": "delete_file", "reversible": True},
+            risk_class="C1",
+            verification_criteria=(
+                f"{plan_name} exists",
+                "the plan is specific to the owner goal and registered resource",
+                "the plan includes verification and rollback",
+            ),
+            expected_artifacts=(plan_name,),
+            forbidden_paths=(),
+            recorded_by="supervisor",
+            source="owner-goal-admission",
+            provenance=provenance,
+        )
+        execute = MissionStepContract(
+            mission_id=mission_id,
+            step_id="02-execute",
+            version=1,
+            resource_id=resource_id,
+            capability=capability,
+            target_relative_path=outcome_name,
+            instructions=(
+                f"Read {plan_name}, then perform the authenticated owner goal in the "
+                f"registered resource: {objective}\n"
+                "Do the real bounded work; do not merely describe it. Run relevant "
+                "checks. Finally create " + outcome_name + " containing the changes, "
+                "commands/checks and observed results, remaining uncertainty, rollback, "
+                "and whether each owner success criterion is satisfied."
+            ),
+            expected_effects=(
+                f"the registered resource is changed to satisfy: {objective}",
+                f"{outcome_name} records actual checks and observed results",
+            ),
+            rollback={
+                "method": "revert registered-resource changes and delete owner-goal artifacts",
+                "reversible": True,
+            },
+            risk_class="C1",
+            verification_criteria=tuple(objective_criteria) + (
+                f"{outcome_name} exists and its claims agree with direct inspection",
+            ),
+            expected_artifacts=(outcome_name,),
+            forbidden_paths=(),
+            recorded_by="supervisor",
+            source="owner-goal-admission",
+            provenance=provenance,
+        )
+        record_step_contract(database, plan)
+        record_step_contract(database, execute)
+        database.append(Event.create(
+            "portfolio.selection_materialized",
+            {
+                "decision_id": decision_id,
+                "item_id": item_id,
+                "kind": kind,
+                "mission_id": mission_id,
+                "contract_ids": [plan.contract_id, execute.contract_id],
+                "goal_id": metadata.get("goal_id"),
+            },
+            source_type="supervisor",
+            source_id=source_id,
+            idempotency_key=f"portfolio.selection_materialized:{decision_id}",
+        ))
+        return {"materialized": True, "mission_id": mission_id,
+                "blocked_reason": None}
 
     # Unique artifact per decision: a shared name plus deterministic
     # content would collapse every mission's evidence delta to empty

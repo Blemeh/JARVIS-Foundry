@@ -7,6 +7,7 @@ second operational truth and it never starts a worker, sender, or connector.
 from __future__ import annotations
 
 import json
+import mimetypes
 import secrets
 import sqlite3
 import threading
@@ -193,12 +194,22 @@ def decision_timeline(database: FoundryDatabase, *, limit: int = 200) -> list[di
     return material[-limit:]
 
 
-def _safe_table(connection, table: str, query: str, args: tuple[Any, ...] = ()) -> list[dict[str, Any]]:
+def _safe_table(
+    connection, table: str, query: str, args: tuple[Any, ...] = (),
+    *, errors: list[dict[str, str]] | None = None,
+) -> list[dict[str, Any]]:
     try:
         return _rows(connection, query, args)
-    except Exception:
+    except Exception as error:
         # A V4 UI pointed at an older read-only candidate reports NOT_TESTED
         # rather than turning a missing additive table into fabricated state.
+        if errors is not None:
+            errors.append({
+                "projection": table,
+                "status": "UNAVAILABLE",
+                "error_class": type(error).__name__,
+                "reason": str(error)[:300],
+            })
         return []
 
 
@@ -1192,6 +1203,7 @@ def build_snapshot(
     honest ``UNREGISTERED`` state; callers with a live config pass its value.
     """
     generated_at = now or _now_iso()
+    projection_errors: list[dict[str, str]] = []
     with command_center_readonly_connection(database) as connection:
         head = connection.execute("SELECT COALESCE(MAX(sequence), 0) FROM events").fetchone()[0]
         event_count = int(head or 0)
@@ -1232,8 +1244,8 @@ def build_snapshot(
         directives = _rows(connection, "SELECT * FROM directives WHERE active = 1 ORDER BY updated_at DESC")
         leases = _rows(connection, "SELECT * FROM leases ORDER BY heartbeat_at DESC")
         budgets = _rows(connection, "SELECT * FROM budgets ORDER BY provider")
-        systems = _safe_table(connection, "systems", "SELECT * FROM systems ORDER BY updated_at DESC")
-        costs = _safe_table(connection, "cost_measurements", "SELECT * FROM cost_measurements ORDER BY recorded_at DESC LIMIT 200")
+        systems = _safe_table(connection, "systems", "SELECT * FROM systems ORDER BY updated_at DESC", errors=projection_errors)
+        costs = _safe_table(connection, "cost_measurements", "SELECT * FROM cost_measurements ORDER BY recorded_at DESC LIMIT 200", errors=projection_errors)
         measured_run_ids = {str(c.get("run_id")) for c in costs if c.get("run_id")}
         # Existing agent_run cost payloads are authoritative measurements when
         # present.  They are read into the V4 view without rewriting the
@@ -1257,22 +1269,24 @@ def build_snapshot(
                     "recorded_at": run.get("finished_at") or run.get("updated_at"),
                     "last_event_id": run.get("last_event_id"), "updated_at": run.get("updated_at"),
                 })
-        briefings = _safe_table(connection, "briefing_outbox", "SELECT * FROM briefing_outbox ORDER BY updated_at DESC LIMIT 100")
-        voices = _safe_table(connection, "voice_interactions", "SELECT * FROM voice_interactions ORDER BY updated_at DESC LIMIT 100")
-        candidates = _safe_table(connection, "candidates", "SELECT * FROM candidates ORDER BY updated_at DESC LIMIT 200")
+        briefings = _safe_table(connection, "briefing_outbox", "SELECT * FROM briefing_outbox ORDER BY updated_at DESC LIMIT 100", errors=projection_errors)
+        voices = _safe_table(connection, "voice_interactions", "SELECT * FROM voice_interactions ORDER BY updated_at DESC LIMIT 100", errors=projection_errors)
+        candidates = _safe_table(connection, "candidates", "SELECT * FROM candidates ORDER BY updated_at DESC LIMIT 200", errors=projection_errors)
         memories = _safe_table(
             connection, "tier_c_memories",
             "SELECT memory_id, state, mem_type, scope, mission_id, updated_at, last_event_id "
-            "FROM tier_c_memories ORDER BY updated_at DESC LIMIT 100")
+            "FROM tier_c_memories ORDER BY updated_at DESC LIMIT 100",
+            errors=projection_errors)
         procedures = _safe_table(
             connection, "tier_c_procedures",
             "SELECT procedure_id, state, scope, updated_at, last_event_id "
-            "FROM tier_c_procedures ORDER BY updated_at DESC LIMIT 100")
+            "FROM tier_c_procedures ORDER BY updated_at DESC LIMIT 100",
+            errors=projection_errors)
         steps = _safe_table(
             connection, "mission_step_contracts",
             "SELECT contract_id, mission_id, step_id, version, capability, "
             "last_event_id, updated_at FROM mission_step_contracts "
-            "ORDER BY updated_at DESC LIMIT 100")
+            "ORDER BY updated_at DESC LIMIT 100", errors=projection_errors)
         effect_truth = _effect_truth_projection(connection)
         evolution_truth = _evolution_truth_projection(connection)
         # Keep discovery on the same bounded read handle.  An active owner
@@ -1411,7 +1425,9 @@ def build_snapshot(
             "active_leases": len(leases) - len(stale_leases),
             "stale_leases": [with_ref(l, "lease", "lease_key") for l in stale_leases],
             "crashed_workers": [with_ref(w, "agent_run", "run_id") for w in crashed_workers],
-            "degraded": supervisor.get("status") == "DEGRADED" or bool(stale_leases or crashed_workers),
+            "degraded": supervisor.get("status") == "DEGRADED" or bool(
+                stale_leases or crashed_workers or projection_errors),
+            "projection_errors": projection_errors,
         },
         "resources": [with_ref(r, "resource", "resource_id") for r in resources],
         "systems": [with_ref(s, "system", "system_id") for s in systems],
@@ -1477,6 +1493,37 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
     owner_secret: bytes | None
     owner_id: str = "local-owner"
     timeline_limit: int = 200
+    discovery_cycle_enabled: bool | None = None
+    static_root: Path | None = None
+
+    def _serve_static(self, route: str) -> bool:
+        root = self.static_root
+        if root is None:
+            return False
+        requested = "index.html" if route == "/" else unquote(route.lstrip("/"))
+        candidate = (root / requested).resolve()
+        try:
+            candidate.relative_to(root)
+        except ValueError:
+            self.send_error(404)
+            return True
+        if not candidate.is_file():
+            candidate = root / "index.html"
+        if not candidate.is_file():
+            self.send_error(404)
+            return True
+        body = candidate.read_bytes()
+        content_type = mimetypes.guess_type(candidate.name)[0] or "application/octet-stream"
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header(
+            "Cache-Control", "no-cache" if candidate.name == "index.html"
+            else "public, max-age=31536000, immutable")
+        self._cors_headers()
+        self.end_headers()
+        self.wfile.write(body)
+        return True
 
     def do_OPTIONS(self) -> None:  # noqa: N802
         self.send_response(204)
@@ -1485,6 +1532,8 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802
         route = self.path.split("?", 1)[0]
+        if not route.startswith("/api/") and self._serve_static(route):
+            return
         if route == "/assets/Tektur.ttf":
             body = (Path(__file__).with_name("assets") / "Tektur.ttf").read_bytes()
             self.send_response(200)
@@ -1499,7 +1548,10 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
             if len(parts) != 5 or parts[2] != "record" or parts[3] not in {"mission", "event"} or not parts[4]:
                 self.send_error(404)
                 return
-            snapshot = build_snapshot(self.database, stop_path=self.stop_path, timeline_limit=self.timeline_limit)
+            snapshot = build_snapshot(
+                self.database, stop_path=self.stop_path,
+                timeline_limit=self.timeline_limit,
+                discovery_cycle_enabled=self.discovery_cycle_enabled)
             record_kind, record_id = parts[3], unquote(parts[4])
             if record_kind == "mission":
                 record = next((item for item in snapshot["missions"] if str(item.get("mission_id")) == record_id), None)
@@ -1511,20 +1563,32 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
             self._json_response({"status": "FOUND", "kind": record_kind, "record": record}, status=200)
             return
         if route == "/api/health":
-            snapshot = build_snapshot(self.database, stop_path=self.stop_path, timeline_limit=self.timeline_limit)
+            snapshot = build_snapshot(
+                self.database, stop_path=self.stop_path,
+                timeline_limit=self.timeline_limit,
+                discovery_cycle_enabled=self.discovery_cycle_enabled)
+            degraded = bool(snapshot["health"].get("degraded"))
+            supervisor_status = snapshot["health"].get("supervisor_status", "UNKNOWN")
+            controls_configured = bool(self.owner_secret)
             self._json_response({
-                "status": "OK",
+                "status": (
+                    "OK" if not degraded and controls_configured
+                    and supervisor_status in {"RUNNING", "FROZEN"}
+                    else "DEGRADED"),
                 "generated_at": snapshot["generated_at"],
                 "stop_active": bool(snapshot["stop"]["active"]),
-                "supervisor_status": snapshot["health"].get("supervisor_status", "UNKNOWN"),
-                "degraded": bool(snapshot["health"].get("degraded")),
-                "controls_configured": bool(self.owner_secret),
+                "supervisor_status": supervisor_status,
+                "degraded": degraded,
+                "controls_configured": controls_configured,
             }, status=200)
             return
         if route not in {"/", "/api/command-center", "/api/timeline"}:
             self.send_error(404)
             return
-        snapshot = build_snapshot(self.database, stop_path=self.stop_path, timeline_limit=self.timeline_limit)
+        snapshot = build_snapshot(
+            self.database, stop_path=self.stop_path,
+            timeline_limit=self.timeline_limit,
+            discovery_cycle_enabled=self.discovery_cycle_enabled)
         if route == "/":
             body = self._html(snapshot).encode("utf-8")
             content_type = "text/html; charset=utf-8"
@@ -1831,14 +1895,22 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
 
 
 class CommandCenterServer:
-    """Opt-in local-only HTTP projection; never starts automatically."""
+    """Local-only HTTP projection, optionally owned by the Supervisor."""
 
-    def __init__(self, database: FoundryDatabase, *, stop_path: str | Path | None = None, host: str = "127.0.0.1", port: int = 0) -> None:
+    def __init__(
+        self, database: FoundryDatabase, *,
+        stop_path: str | Path | None = None,
+        host: str = "127.0.0.1", port: int = 0,
+        discovery_cycle_enabled: bool | None = None,
+        static_root: str | Path | None = None,
+    ) -> None:
         handler = type("BoundCommandCenterHandler", (_CommandCenterHandler,), {})
         handler.database = database
         handler.stop_path = Path(stop_path).resolve() if stop_path else None
         handler.owner_secret = None
         handler.owner_id = "local-owner"
+        handler.discovery_cycle_enabled = discovery_cycle_enabled
+        handler.static_root = Path(static_root).resolve() if static_root else None
         self._handler = handler
         self.httpd = ThreadingHTTPServer((host, port), handler)
         self.thread: threading.Thread | None = None

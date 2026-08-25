@@ -837,7 +837,13 @@ def run_cycle(
                 )
             _advisory_accepted_outcome_writeback(
                 database, mission_id=mission_id, outcome=outcome)
-        if terminal in ("PASSED", "FAILED", "BLOCKED"):
+        mission_after = database.row("missions", "mission_id", mission_id) or {}
+        portfolio_terminal = (
+            terminal in ("FAILED", "BLOCKED")
+            or (terminal == "PASSED"
+                and str(mission_after.get("state") or "") == "COMPLETE")
+        )
+        if portfolio_terminal:
             _record_executive_outcome(
                 database, mission_id=mission_id, outcome=outcome,
                 instance_id=instance_id)

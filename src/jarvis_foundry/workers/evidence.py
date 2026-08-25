@@ -54,7 +54,11 @@ def git_diff_hash(root: Path) -> str:
 
 
 def git_changed_files(root: Path) -> tuple[str, ...]:
-    result = _run(["git", "status", "--porcelain"], cwd=root)
+    # File-level untracked output is required for claim reconciliation.
+    # Git's default collapses a new directory to ``?? dir/``, making a worker
+    # that truthfully claims ``dir/artifact`` look like a false success.
+    result = _run(
+        ["git", "status", "--porcelain", "--untracked-files=all"], cwd=root)
     changed: list[str] = []
     for line in result.stdout.splitlines():
         rel = _porcelain_path(line)

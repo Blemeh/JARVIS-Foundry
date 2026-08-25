@@ -44,12 +44,13 @@ WorkClass = Literal[
     "INCIDENT",
     "IMPROVEMENT",
     "NEW_PROJECT",
+    "OWNER_GOAL",
 ]
 
 _WORK_CLASSES = frozenset({
     "ACTIVE_MISSION", "REPAIR", "CANDIDATE", "NEW_MISSION",
     "MAINTENANCE", "RESEARCH", "UNKNOWN", "INCIDENT", "IMPROVEMENT",
-    "NEW_PROJECT",
+    "NEW_PROJECT", "OWNER_GOAL",
 })
 _TERMINAL_MISSION_STATES = frozenset({"COMPLETE", "FAILED", "BLOCKED", "CANCELLED"})
 _WAKE_EVENT_TYPES = frozenset({
@@ -1228,6 +1229,55 @@ def _project_items(state: PortfolioState) -> list[WorkItem]:
     return items
 
 
+def _owner_goal_items(
+    database: FoundryDatabase, goals: Sequence[StructuredGoal],
+) -> list[WorkItem]:
+    """Expose each authenticated owner goal as first-class portfolio work.
+
+    Goals used to influence scoring only.  With no independently discovered
+    candidate in the ledger, that left the owner-facing path at a durable
+    directive and made the executive WAIT forever.  The portfolio remains the
+    sole selection authority: this adapter contributes comparable work items;
+    it does not create missions or dispatch workers.
+    """
+    admitted: set[str] = set()
+    with database.connect(readonly=True) as connection:
+        rows = connection.execute(
+            "SELECT created_from, state FROM missions "
+            "WHERE created_from LIKE 'portfolio:owner-goal:%'"
+        ).fetchall()
+    for row in rows:
+        if str(row["state"] or "") != "CANCELLED":
+            admitted.add(str(row["created_from"]).split("portfolio:", 1)[1])
+    items: list[WorkItem] = []
+    for goal in goals:
+        if f"owner-goal:{goal.goal_id}" in admitted:
+            continue
+        priority = max(0.0, float(goal.priority))
+        items.append(WorkItem(
+            item_id=f"owner-goal:{goal.goal_id}",
+            kind="OWNER_GOAL",
+            objective=goal.objective,
+            status="OPEN",
+            goal_ids=(goal.goal_id,),
+            expected_value=0.9,
+            urgency=max(0.2, min(1.0, priority / 3.0)),
+            information_gain=0.4,
+            confidence=0.8,
+            reversibility=0.8,
+            requires_verifier=True,
+            metadata={
+                "goal_id": goal.goal_id,
+                "success_criteria": list(goal.success_criteria),
+                "constraints": list(goal.constraints),
+                "time_horizon": goal.time_horizon,
+                "goal_alignment": 1.0,
+            },
+            provenance=dict(goal.provenance),
+        ))
+    return items
+
+
 def _mission_items(database: FoundryDatabase) -> list[WorkItem]:
     items: list[WorkItem] = []
     with database.connect() as connection:
@@ -1435,7 +1485,8 @@ def _all_work_items(
     for item in state.work_items.values():
         identities.setdefault(item.item_id, item)
     derived: list[WorkItem] = []
-    for item in (_project_items(state) + _mission_items(database)):
+    for item in (_project_items(state) + _owner_goal_items(database, goals)
+                 + _mission_items(database)):
         if item.item_id not in identities:
             derived.append(item)
     for item in _candidate_items(

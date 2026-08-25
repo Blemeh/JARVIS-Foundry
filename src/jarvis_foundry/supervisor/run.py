@@ -214,6 +214,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--worker-loop-config", type=Path, default=None,
         help="worker runtime YAML used only when --spawn-worker-loop is set")
+    parser.add_argument(
+        "--command-center-port", type=int, default=None,
+        help="Supervisor-owned localhost Command Center port")
+    parser.add_argument(
+        "--owner-secret-path", type=Path, default=None,
+        help="machine-local owner HMAC key path")
     return parser
 
 
@@ -223,6 +229,8 @@ def _run_frozen_supervisor(
     spawn_worker_loop: bool,
     worker_loop_config: Path | None,
     once: bool,
+    command_center_port: int | None = None,
+    owner_secret_path: Path | None = None,
 ) -> int:
     """STOP-active entry: freeze without resolving provider configuration."""
     database = FoundryDatabase(paths.database)
@@ -231,6 +239,8 @@ def _run_frozen_supervisor(
         paths.emergency_stop,
         spawn_worker_loop=spawn_worker_loop,
         worker_loop_config=worker_loop_config,
+        command_center_port=command_center_port,
+        owner_secret_path=owner_secret_path,
     )
     console_handler = make_console_handler(supervisor)
     console_handler.install()
@@ -290,6 +300,8 @@ def main(argv: list[str] | None = None) -> int:
             spawn_worker_loop=bool(args.spawn_worker_loop),
             worker_loop_config=getattr(args, "worker_loop_config", None),
             once=bool(args.once),
+            command_center_port=getattr(args, "command_center_port", None),
+            owner_secret_path=getattr(args, "owner_secret_path", None),
         )
     from ..runtime.authority import resolve_runtime_authority
     authority = resolve_runtime_authority(
@@ -306,6 +318,8 @@ def main(argv: list[str] | None = None) -> int:
         provider_settings=authority.provider_settings,
         resilience=_resilience_coordinator(
             database, getattr(args, "worker_loop_config", None)),
+        command_center_port=getattr(args, "command_center_port", None),
+        owner_secret_path=getattr(args, "owner_secret_path", None),
     )
     console_handler = make_console_handler(supervisor)
     console_handler.install()

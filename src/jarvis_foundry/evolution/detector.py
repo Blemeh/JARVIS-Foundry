@@ -460,15 +460,20 @@ def detect_weaknesses(database: FoundryDatabase, *,
     evidence_ids: dict[str, list[str]] = {}
     for row in event_rows:
         try:
+            payload = json.loads(row["payload_json"])
+        except (TypeError, ValueError):
+            continue
+        # Recurrence belongs to the observation window, not to the wall-clock
+        # moment when the durable ledger happened to ingest that observation.
+        # Falling back to occurred_at preserves compatibility with older
+        # events that predate the explicit observed_at contract.
+        observed_at = payload.get("observed_at") or row["occurred_at"]
+        try:
             moment = datetime.fromisoformat(
-                str(row["occurred_at"]).replace("Z", "+00:00"))
+                str(observed_at).replace("Z", "+00:00"))
         except ValueError:
             continue
         if not (start <= moment <= end):
-            continue
-        try:
-            payload = json.loads(row["payload_json"])
-        except (TypeError, ValueError):
             continue
         key = str(payload.get("correlation_key") or "unknown")
         by_correlation[key] = by_correlation.get(key, 0) + 1

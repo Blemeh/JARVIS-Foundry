@@ -72,6 +72,7 @@ def build_worker_stack(
             LabHermesAdapter(
                 crash_after_write=config.lab_crash_after_write,
                 crash_step_id=config.lab_crash_step_id,
+                false_success_step_id=config.lab_false_success_step_id,
                 workers=workers,
             ),
         )

@@ -7,6 +7,7 @@ from pathlib import Path
 
 from jarvis_foundry.cli.main import main
 from jarvis_foundry.database import FoundryDatabase
+from jarvis_foundry.events import Event
 from jarvis_foundry.mission.loop import (
     BLOCKED_OUTCOME,
     FAILED,
@@ -77,6 +78,29 @@ def test_mission_loop_refuses_new_work_when_stop_active(tmp_path):
     assert outcome.outcome == BLOCKED_OUTCOME
     settled = loop.run_until_settled(**step_kwargs())
     assert settled.outcome == BLOCKED_OUTCOME
+
+
+def test_stop_race_while_accepting_returns_blocked_without_child_crash(
+        tmp_path, monkeypatch):
+    database, repository, policy, router = mission_fixture(tmp_path)
+    for state in ("READY", "EXECUTING", "VERIFYING", "ACCEPTING"):
+        database.append(Event.create(
+            "mission.state_changed",
+            {"mission_id": "mission-1", "state": state,
+             "next_action": "deliver feature X"},
+            source_type="test", source_id="stop-accepting-race",
+            idempotency_key=f"stop-accepting-race:{state}",
+        ))
+    loop = MissionLoop(
+        database, router, FakeHermesAdapter(working_root=repository),
+        policy=policy, stop_path=tmp_path / "STOP",
+    )
+    checks = iter((None, None, "race stop", "race stop"))
+    monkeypatch.setattr(loop, "_stop_reason", lambda: next(checks, "race stop"))
+    outcome = loop.run_until_settled(**step_kwargs())
+    assert outcome.outcome == BLOCKED_OUTCOME
+    assert "race stop" in str(outcome.reason)
+    assert database.row("missions", "mission_id", "mission-1")["state"] == "ACTION_SELECTION"
 
 
 def test_status_doctor_events_are_sqlite_readonly(tmp_path, capsys, monkeypatch):
