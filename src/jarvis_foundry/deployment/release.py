@@ -404,7 +404,7 @@ def _build_command_center_bundle(
             destination = build_root / Path(relative).relative_to("ui/command-center")
             destination.parent.mkdir(parents=True, exist_ok=True)
             destination.write_bytes(blob.stdout)
-        _node_dir = pathlib.Path("C:/Program Files/nodejs")
+        _node_dir = Path("C:/Program Files/nodejs")
         _npm_cli = _node_dir / "node_modules" / "npm" / "bin" / "npm-cli.js"
         _node_exe = _node_dir / "node.exe"
         if _npm_cli.is_file() and _node_exe.is_file():
