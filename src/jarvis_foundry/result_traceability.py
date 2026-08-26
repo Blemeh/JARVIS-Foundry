@@ -38,8 +38,15 @@ def _event_sequence(database: FoundryDatabase) -> list[tuple[int, Any]]:
     return list(enumerate(events, start=1))
 
 
-def _projection_rows(database: FoundryDatabase, table: str, mission_id: str) -> list[dict[str, Any]]:
-    """Read additive projections without widening FoundryDatabase's generic allowlist."""
+def _projection_rows(
+    database: FoundryDatabase, table: str, mission_id: str,
+) -> list[dict[str, Any]]:
+    """Read one additive projection for compatibility callers.
+
+    ``build_result_traceability`` uses the bulk form below.  Keeping this
+    narrow helper preserves the defensive behavior for older schemas and
+    avoids making a generic ``FoundryDatabase`` table allowlist broader.
+    """
     try:
         with database.connect(readonly=True) as connection:
             rows = connection.execute(
@@ -49,6 +56,64 @@ def _projection_rows(database: FoundryDatabase, table: str, mission_id: str) -> 
     except Exception:  # noqa: BLE001 - an older candidate may lack an additive table
         return []
     return [dict(row) for row in rows]
+
+
+def _bulk_projection_rows(
+    database: FoundryDatabase, table: str, mission_ids: set[str],
+) -> dict[str, list[dict[str, Any]]]:
+    """Load a bounded projection once, grouped by mission.
+
+    The traceability packet is an owner-facing read model.  Opening several
+    writable SQLite connections for every outcome made a high-cardinality
+    ledger scale as O(results * connections), and on Windows each connection
+    also paid WAL/handle setup cost.  A single read-only query per projection
+    keeps the same rows and ordering while making the cost proportional to the
+    bounded packet rather than the number of results times the number of
+    joins.
+    """
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    if not mission_ids:
+        return grouped
+    # SQLite's default variable limit is at least 999 on supported builds;
+    # traceability itself is capped at 500 rows, so this remains one query.
+    placeholders = ", ".join("?" for _ in mission_ids)
+    try:
+        with database.connect(readonly=True) as connection:
+            rows = connection.execute(
+                f"SELECT * FROM {table} WHERE mission_id IN ({placeholders}) ORDER BY rowid",
+                tuple(sorted(mission_ids)),
+            ).fetchall()
+    except Exception:  # noqa: BLE001 - an older candidate may lack an additive table
+        return grouped
+    for row in rows:
+        item = dict(row)
+        mission_id = str(item.get("mission_id") or "")
+        grouped.setdefault(mission_id, []).append(item)
+    return grouped
+
+
+def _bulk_rows(
+    database: FoundryDatabase, table: str, key: str, values: set[str],
+) -> dict[str, dict[str, Any]]:
+    """Load projection rows keyed by an explicit identifier in one read."""
+    result: dict[str, dict[str, Any]] = {}
+    if not values:
+        return result
+    placeholders = ", ".join("?" for _ in values)
+    try:
+        with database.connect(readonly=True) as connection:
+            rows = connection.execute(
+                f"SELECT * FROM {table} WHERE {key} IN ({placeholders}) ORDER BY rowid",
+                tuple(sorted(values)),
+            ).fetchall()
+    except Exception:  # noqa: BLE001 - an older candidate may lack a projection
+        return result
+    for row in rows:
+        item = dict(row)
+        identifier = str(item.get(key) or "")
+        if identifier and identifier not in result:
+            result[identifier] = item
+    return result
 
 
 def _payload_matches(payload: dict[str, Any], *, candidate_id: str,
@@ -113,9 +178,9 @@ def _events_for_mission(events: Iterable[tuple[int, Any]], *, candidate_id: str,
     return rows
 
 
-def _owner_decisions(database: FoundryDatabase, *, candidate_id: str,
-                     mission_id: str, now: str | None) -> list[dict[str, Any]]:
-    snapshot = owner_directive_snapshot(database, now=now)
+def _owner_decisions_from_snapshot(
+    snapshot: dict[str, Any], *, candidate_id: str, mission_id: str,
+) -> list[dict[str, Any]]:
     relevant: list[dict[str, Any]] = []
     identifiers = {candidate_id, mission_id, "GLOBAL", "global"}
     for record in snapshot.get("records", ()):  # history is useful for why/what changed
@@ -137,6 +202,16 @@ def _owner_decisions(database: FoundryDatabase, *, candidate_id: str,
     return relevant
 
 
+def _owner_decisions(database: FoundryDatabase, *, candidate_id: str,
+                     mission_id: str, now: str | None) -> list[dict[str, Any]]:
+    """Compatibility wrapper for callers that trace one row directly."""
+    return _owner_decisions_from_snapshot(
+        owner_directive_snapshot(database, now=now),
+        candidate_id=candidate_id,
+        mission_id=mission_id,
+    )
+
+
 def _next_action(mission: dict[str, Any] | None, outcome: dict[str, Any],
                  failures: list[dict[str, Any]]) -> dict[str, Any]:
     if mission and mission.get("next_action"):
@@ -151,19 +226,33 @@ def _next_action(mission: dict[str, Any] | None, outcome: dict[str, Any],
     return _unknown("no durable next_action or safe derived transition is available")
 
 
-def _trace_for_row(database: FoundryDatabase, row: dict[str, Any],
-                   events: list[tuple[int, Any]], *, now: str | None) -> dict[str, Any]:
+def _trace_for_row(
+    database: FoundryDatabase, row: dict[str, Any],
+    events: list[tuple[int, Any]], *, now: str | None,
+    candidates: dict[str, dict[str, Any]] | None = None,
+    missions: dict[str, dict[str, Any]] | None = None,
+    workers_by_mission: dict[str, list[dict[str, Any]]] | None = None,
+    verifiers_by_mission: dict[str, list[dict[str, Any]]] | None = None,
+    evidence_by_mission: dict[str, list[dict[str, Any]]] | None = None,
+    owner_snapshot: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     candidate_id = str(row.get("candidate_id") or "")
     mission_id = str(row.get("mission_id") or "")
-    candidate = database.row("candidates", "candidate_id", candidate_id)
-    mission = database.row("missions", "mission_id", mission_id)
+    candidate = ((candidates or {}).get(candidate_id)
+                 if candidates is not None else
+                 database.row("candidates", "candidate_id", candidate_id))
+    mission = ((missions or {}).get(mission_id)
+               if missions is not None else
+               database.row("missions", "mission_id", mission_id))
     workers = [
         {
             "run_id": item.get("run_id"), "role": item.get("role"),
             "provider": item.get("provider"), "model": item.get("model"),
             "status": item.get("status"), "last_event_id": item.get("last_event_id"),
         }
-        for item in _projection_rows(database, "agent_runs", mission_id)
+        for item in ((workers_by_mission or {}).get(mission_id, [])
+                     if workers_by_mission is not None else
+                     _projection_rows(database, "agent_runs", mission_id))
     ]
     verifiers = [
         {
@@ -172,14 +261,18 @@ def _trace_for_row(database: FoundryDatabase, row: dict[str, Any],
             "builder_run_id": item.get("builder_run_id"),
             "last_event_id": item.get("last_event_id"),
         }
-        for item in _projection_rows(database, "verification_verdicts", mission_id)
+        for item in ((verifiers_by_mission or {}).get(mission_id, [])
+                     if verifiers_by_mission is not None else
+                     _projection_rows(database, "verification_verdicts", mission_id))
     ]
     evidence = [
         {
             "bundle_id": item.get("bundle_id"), "status": item.get("status"),
             "kind": item.get("kind"), "last_event_id": item.get("last_event_id"),
         }
-        for item in _projection_rows(database, "evidence_bundles", mission_id)
+        for item in ((evidence_by_mission or {}).get(mission_id, [])
+                     if evidence_by_mission is not None else
+                     _projection_rows(database, "evidence_bundles", mission_id))
     ]
     failures = _events_for_mission(
         events, candidate_id=candidate_id, mission_id=mission_id,
@@ -212,8 +305,13 @@ def _trace_for_row(database: FoundryDatabase, row: dict[str, Any],
         evidence_refs.append(str(decision_event["event_id"]))
     evidence_refs.extend(str(item["event_id"]) for item in failures if item.get("event_id"))
     evidence_refs.extend(str(item["event_id"]) for item in external if item.get("event_id"))
-    owner_decisions = _owner_decisions(
-        database, candidate_id=candidate_id, mission_id=mission_id, now=now
+    owner_decisions = (
+        _owner_decisions_from_snapshot(
+            owner_snapshot, candidate_id=candidate_id, mission_id=mission_id,
+        )
+        if owner_snapshot is not None else _owner_decisions(
+            database, candidate_id=candidate_id, mission_id=mission_id, now=now,
+        )
     )
     evidence_refs.extend(str(item["event_id"]) for item in owner_decisions if item.get("event_id"))
     return {
@@ -249,15 +347,33 @@ def build_result_traceability(database: FoundryDatabase, *, now: str | None = No
     """Build bounded, restart-safe result lineage from local durable truth."""
     limit = max(1, min(int(limit), 500))
     try:
-        rows = sorted(
-            database.all("candidate_outcomes"),
-            key=lambda item: str(item.get("updated_at") or ""),
-            reverse=True,
-        )[:limit]
+        with database.connect(readonly=True) as connection:
+            rows = [dict(row) for row in connection.execute(
+                "SELECT * FROM candidate_outcomes ORDER BY updated_at DESC, rowid DESC LIMIT ?",
+                (limit,),
+            ).fetchall()]
     except Exception:  # noqa: BLE001 - older schemas remain honestly empty
         rows = []
     events = _event_sequence(database)
-    results = [_trace_for_row(database, row, events, now=now) for row in rows]
+    candidate_ids = {str(row.get("candidate_id") or "") for row in rows if row.get("candidate_id")}
+    mission_ids = {str(row.get("mission_id") or "") for row in rows if row.get("mission_id")}
+    candidates = _bulk_rows(database, "candidates", "candidate_id", candidate_ids)
+    missions = _bulk_rows(database, "missions", "mission_id", mission_ids)
+    workers_by_mission = _bulk_projection_rows(database, "agent_runs", mission_ids)
+    verifiers_by_mission = _bulk_projection_rows(database, "verification_verdicts", mission_ids)
+    evidence_by_mission = _bulk_projection_rows(database, "evidence_bundles", mission_ids)
+    owner_snapshot = owner_directive_snapshot(database, now=now)
+    results = [
+        _trace_for_row(
+            database, row, events, now=now,
+            candidates=candidates, missions=missions,
+            workers_by_mission=workers_by_mission,
+            verifiers_by_mission=verifiers_by_mission,
+            evidence_by_mission=evidence_by_mission,
+            owner_snapshot=owner_snapshot,
+        )
+        for row in rows
+    ]
     return {
         "schema": TRACEABILITY_SCHEMA,
         "status": "FRESH" if results else "UNKNOWN",
