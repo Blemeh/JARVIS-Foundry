@@ -36,5 +36,10 @@ For i = 0 To WScript.Arguments.Count - 1
 Next
 
 cmd = """" & pyw & """ -m jarvis_foundry.deployment.headless_launcher" & args
-shell.Run cmd, 0, False
+' Keep the scheduled action alive for the actual Supervisor process.  A
+' detached child makes Task Scheduler believe the instance finished, so a
+' repeating trigger can launch overlapping Supervisors even with IgnoreNew.
+' Waiting preserves the scheduler's instance identity and makes restart
+' policy deterministic; the Supervisor itself owns the singleton lease.
+shell.Run cmd, 0, True
 WScript.Quit 0

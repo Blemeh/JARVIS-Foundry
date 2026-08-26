@@ -394,6 +394,14 @@ def test_task_xml_has_repeating_time_trigger_for_bounded_restart(tmp_path):
         teardown(installer)
 
 
+def test_headless_launcher_waits_for_supervisor_process():
+    """Task Scheduler must retain instance ownership while the child runs."""
+    template = Path(__file__).resolve().parents[2] / "packaging" / "jarvis-supervisor-headless.vbs"
+    text = template.read_text(encoding="utf-8")
+    assert "shell.Run cmd, 0, True" in text
+    assert "shell.Run cmd, 0, False" not in text
+
+
 def test_worker_loop_task_xml_is_separate_disabled_and_configured(tmp_path):
     home = tmp_path / "foundry-home"
     database = FoundryDatabase(tmp_path / "foundry.db")
