@@ -39,10 +39,11 @@ class FoundryDatabase:
             uri = f"file:{self.path.resolve().as_posix()}?mode=ro"
             connection = sqlite3.connect(
                 uri, uri=True, timeout=10, isolation_level=None,
-                # Read-only projections are short-lived and are reclaimed by
-                # their owning scope; avoid the writable close/transaction
-                # finalization cost on every poll-loop read handle.
-                factory=sqlite3.Connection)
+                # Read-only projections are frequently used through a
+                # ``with`` block.  Use the same close-on-exit connection
+                # contract as writable handles so status/health polling does
+                # not leak Windows file handles or WAL readers.
+                factory=_ClosingConnection)
         else:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             connection = sqlite3.connect(
