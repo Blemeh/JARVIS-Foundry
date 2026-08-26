@@ -305,7 +305,14 @@ def build_operational_status_snapshot(
             worker_counts = grouped("agent_runs", "status")
             directive_counts = grouped("directives", "active")
             active_lease_count = int(connection.execute(
-                "SELECT COUNT(*) FROM leases WHERE expires_at >= CURRENT_TIMESTAMP"
+                # Lease timestamps are canonical ISO-8601 (``T``/``Z``),
+                # while SQLite's CURRENT_TIMESTAMP uses a space separator.
+                # Lexical comparison therefore counts an expired same-day
+                # lease as live.  julianday parses both forms and treats
+                # malformed timestamps as non-live instead of inflating the
+                # operator status.
+                "SELECT COUNT(*) FROM leases "
+                "WHERE julianday(expires_at) >= julianday('now')"
             ).fetchone()[0])
             recent_events = [
                 dict(row) for row in connection.execute(

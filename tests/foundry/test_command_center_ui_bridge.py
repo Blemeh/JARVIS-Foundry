@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -129,6 +130,34 @@ def test_operational_status_is_bounded_and_separate_from_full_snapshot(
         assert "missions" not in payload
     finally:
         server.close()
+
+
+def test_operational_status_excludes_expired_iso_leases(
+    db: FoundryDatabase, tmp_path: Path,
+) -> None:
+    """ISO ``T`` timestamps must not make expired same-day leases look live."""
+    now = datetime.now(timezone.utc)
+    with db.connect() as connection:
+        connection.execute(
+            "INSERT INTO leases (lease_key, owner_id, expires_at, heartbeat_at) "
+            "VALUES (?, ?, ?, ?)",
+            (
+                "expired-status-lease", "stale-owner",
+                (now - timedelta(days=1)).isoformat().replace("+00:00", "Z"),
+                (now - timedelta(days=1)).isoformat().replace("+00:00", "Z"),
+            ),
+        )
+        connection.execute(
+            "INSERT INTO leases (lease_key, owner_id, expires_at, heartbeat_at) "
+            "VALUES (?, ?, ?, ?)",
+            (
+                "active-status-lease", "live-owner",
+                (now + timedelta(days=1)).isoformat().replace("+00:00", "Z"),
+                now.isoformat().replace("+00:00", "Z"),
+            ),
+        )
+    status = build_operational_status_snapshot(db, runtime_home=tmp_path)
+    assert status["active_lease_count"] == 1
 
 
 def test_owner_command_localhost_auto_signs(db: FoundryDatabase, tmp_path: Path) -> None:
