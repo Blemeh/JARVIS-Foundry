@@ -98,6 +98,8 @@ def test_verifier_instructions_demand_structured_verdict(tmp_path):
     verifier_instructions = adapter.received[-1].instructions
     assert "VERDICT:" in verifier_instructions
     assert "NOT_TESTED" in verifier_instructions
+    assert "read-only inspection only" in verifier_instructions
+    assert ".jarvis-result.json" in verifier_instructions
 
 
 def test_pass_path_binds_artifact_hashes(tmp_path):

@@ -713,7 +713,10 @@ class MissionLoop:
             instructions=(
                 f"independently verify step {step_id} of {mission_id}: "
                 "inspect the frozen artifact directly and confirm each "
-                "criterion. End your response with a line: "
+                "criterion. Use read-only inspection only: do not create, "
+                "edit, delete, commit, or rewrite any file, including "
+                ".jarvis-result.json; leave the frozen worktree unchanged. "
+                "End your response with a line: "
                 "VERDICT: PASS | FAIL | BLOCKED | NOT_TESTED "
                 "(NOT_TESTED when you cannot determine a verdict)."),
             expected_artifacts=expected_artifacts,
