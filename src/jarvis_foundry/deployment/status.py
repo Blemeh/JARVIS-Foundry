@@ -120,10 +120,15 @@ def production_status(*, home: Path | None = None, source_repo: Path | None = No
     installed_sha = current
     runtime_shas = [item.get("release_sha") for item in active_processes]
     control_pid = (runtime_diagnostic.get("runtime_control", {}) or {}).get("pid")
+    recorded_release_id = str(
+        supervisor.get("release_id")
+        or (runtime_diagnostic.get("runtime_control", {}) or {}).get("release_id")
+        or ""
+    ).strip()
     if (len(active_processes) == 1
             and not any(runtime_shas)
             and control_pid == active_processes[0].get("pid")):
-        recorded_sha = release_sha_for_id(supervisor.get("release_id"))
+        recorded_sha = release_sha_for_id(recorded_release_id)
         if recorded_sha:
             runtime_shas = [recorded_sha]
     parity = parity_state(

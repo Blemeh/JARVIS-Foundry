@@ -105,7 +105,7 @@ def build_health_snapshot(
         control = inspect_control(database, stop_path=str(stop_path) if stop_path else None)
         with command_center_readonly_connection(database) as connection:
             state_row = connection.execute(
-                "SELECT status, trust_state, last_heartbeat_at, release_id "
+                "SELECT status, trust_state, last_heartbeat_at "
                 "FROM supervisor_state WHERE singleton = 1").fetchone()
             event_count = int(connection.execute("SELECT COUNT(*) FROM events").fetchone()[0])
             schema_row = connection.execute(
@@ -150,6 +150,13 @@ def build_health_snapshot(
             except (OSError, subprocess.TimeoutExpired):
                 canonical_source_sha = None
     state = dict(state_row) if state_row else {}
+    # ``release_id`` is event/control provenance, not a column on the compact
+    # supervisor_state projection.  Reading a non-existent column here would
+    # make every health poll fail closed with OperationalError and hide the
+    # very release identity the endpoint is meant to expose.
+    recorded_release_id = str(getattr(control, "release_id", "") or "").strip() or None
+    if recorded_release_id:
+        state["release_id"] = recorded_release_id
     runtime_release_sha = current if (
         current and release_manifest and state.get("release_id")
         and str(state.get("release_id")) == str(release_manifest.get("release_id"))

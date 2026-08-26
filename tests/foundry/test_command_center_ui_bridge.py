@@ -9,10 +9,13 @@ from urllib.request import Request, urlopen
 
 import pytest
 
-from jarvis_foundry.command_center import CommandCenterServer, build_snapshot
+from jarvis_foundry.command_center import (
+    CommandCenterServer, build_health_snapshot, build_snapshot,
+)
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.events import Event
 from jarvis_foundry.owner_controls import sign_command
+from jarvis_foundry.deployment import runtime_identity
 
 
 @pytest.fixture()
@@ -33,6 +36,54 @@ def test_health_endpoint_reports_projection(db: FoundryDatabase, tmp_path: Path)
         assert payload["controls_configured"] is False
     finally:
         server.close()
+
+
+def test_health_snapshot_exposes_release_parity_and_duplicate_supervisors(
+    db: FoundryDatabase, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Health must fail closed on duplicate authorities and show all identities."""
+    install = tmp_path / "install"
+    sha = "a" * 40
+    release = install / "releases" / sha
+    release.mkdir(parents=True)
+    (install / "CURRENT").write_text(sha + "\n", encoding="utf-8")
+    (release / "RELEASE.json").write_text(
+        '{"source_sha":"%s","release_id":"rel-health"}' % sha,
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("JARVIS_INSTALL_ROOT", str(install))
+    db.append(Event.create(
+        "supervisor.started",
+        {"instance_id": "health-owner", "trust_state": "LAB",
+         "release_id": "rel-health", "pid": 123},
+        source_type="supervisor", source_id="health-owner",
+        idempotency_key="supervisor.started:health-owner",
+    ))
+
+    def process(pid: int) -> dict:
+        return {
+            "pid": pid,
+            "parent_pid": 1,
+            "module": "jarvis_foundry.deployment.headless_launcher",
+            "command_line": (
+                f'pythonw.exe -m jarvis_foundry.deployment.headless_launcher '
+                f'--home "{db.path.parent}"'),
+            "release_sha": None,
+            "identity_status": "VALID",
+            "live": True,
+            "creation_identity": {"pid": pid, "create_time": pid},
+        }
+
+    monkeypatch.setattr(runtime_identity, "supervisor_processes",
+                        lambda: [process(123), process(456)])
+    health = build_health_snapshot(db, runtime_home=db.path.parent)
+    assert health["canonical_source_sha"] is None
+    assert health["installed_release_sha"] == sha
+    assert health["runtime_release_sha"] is None
+    assert health["parity_state"] == "DUPLICATE_SUPERVISOR"
+    assert health["release"]["supervisor_count"] == 2
+    assert health["status"] == "DEGRADED"
+    assert health["reason"]
 
 
 def test_server_serves_bundled_react_app_and_spa_routes(
