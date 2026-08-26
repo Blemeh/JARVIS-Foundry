@@ -5,22 +5,24 @@ recovery candidate. Source, immutable release, runtime, canonical checkout,
 trust, and acceptance evidence are reported separately; a candidate is not
 described as live merely because it builds or passes a disposable test.
 
-DOCUMENTATION STATE BASE SHA: `aca2ecc17834d0d5b085a6249f1c504dec7fda16`
+DOCUMENTATION STATE BASE SHA: `4f48f42092e947068dd26c51f58bac042cdd34c6`
 
 The SHA above is the source parent of the final documentation reconciliation
-commit. The freshness gate requires that relationship and rejects source or
-test drift after the pin.
+commit. It includes the isolated UI endurance-harness hardening; the immutable
+runtime release remains the separately identified `fe3eee6…` code build. The
+freshness gate requires this relationship and rejects source or test drift
+after the pin.
 
 ## Identity and release truth
 
 ```text
 STARTING CANDIDATE SHA:       260abd961ea5f3dca5f0a429a2db4642b828c078
 CANDIDATE RELEASE CODE SHA:   fe3eee6340ad2264bd185608807cdc13aedd1445
-DOCUMENTED SOURCE PARENT:     aca2ecc17834d0d5b085a6249f1c504dec7fda16
+DOCUMENTED SOURCE PARENT:     4f48f42092e947068dd26c51f58bac042cdd34c6
 CANONICAL MAIN SHA:           8dfb981876985525621cf10b8b9b67e34468b450
 CANDIDATE INSTALLED SHA:      fe3eee6340ad2264bd185608807cdc13aedd1445
 CANDIDATE LAST RUNTIME SHA:   fe3eee6340ad2264bd185608807cdc13aedd1445
-CANDIDATE SOURCE/RELEASE:     SOURCE_AHEAD (docs-only head after release build)
+CANDIDATE SOURCE/RELEASE:     SOURCE_AHEAD (test-harness/docs commits after release build)
 CANDIDATE LAST PARITY:        MATCH (release-code worktree while running)
 CANDIDATE CURRENT RUNTIME:    STOPPED_AFTER_PROOF (MISSING_RUNTIME)
 CANDIDATE INSTALL ROOT:       C:\temp\JARVIS-Full-Product-Recovery-install-fe3eee6
@@ -133,14 +135,20 @@ process. The final candidate was also stopped and restarted directly; stopped
 state reported `MISSING_RUNTIME`, and the restarted endpoint reported one
 logical Supervisor with `MATCH` parity. The isolated console-check launched a
 source-backed Vite preview on an allocated port and passed all 12 routes with
-zero errors. The release was built from the code parent `fe3eee6…`; the
-subsequent documentation-only commits intentionally make the candidate source
-HEAD `SOURCE_AHEAD` under strict SHA parity without changing runtime code.
+zero errors. The long-run endurance harness now uses the same allocated-port,
+direct-Node, shell-free ownership contract (static launch gate passed). The
+release was built from the code parent `fe3eee6…`; the subsequent test-harness
+and documentation-only commits intentionally make the candidate source HEAD
+`SOURCE_AHEAD` under strict SHA parity without changing the shipped runtime
+code.
 
 ## Known limitations and honest boundaries
 
 - The candidate is not promoted to canonical `main` or the live Hermes home;
   live remains on the starting SHA and therefore reports `SOURCE_AHEAD`.
+- The candidate release is immutable at `fe3eee6…`; post-build UI harness and
+  documentation commits are outside that runtime package and are reported as
+  source-ahead rather than silently relabeled as the installed release.
 - Candidate and live release authority are filesystem-only until an activation
   records the matching database release manifest; health intentionally remains
   degraded rather than presenting a false current/healthy state.
