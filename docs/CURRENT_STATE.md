@@ -5,20 +5,20 @@ recovery candidate. Source, immutable release, runtime, canonical checkout,
 trust, and acceptance evidence are reported separately; a candidate is not
 described as live merely because it builds or passes a disposable test.
 
-DOCUMENTATION STATE BASE SHA: `08024de4c3b881a3bfcef08e4c7d363540636443`
+DOCUMENTATION STATE BASE SHA: `0f822859b742ceb9267ca5b4d993988ee2c22fb2`
 
 The SHA above is the source parent of the final documentation reconciliation
-commit. It includes the isolated UI endurance-harness hardening; the immutable
-runtime release remains the separately identified `fe3eee6…` code build. The
-freshness gate requires this relationship and rejects source or test drift
-after the pin.
+commit. It includes the isolated UI endurance-harness hardening and the
+settled-route accessibility synchronization; the immutable runtime release
+remains the separately identified `fe3eee6…` code build. The freshness gate
+requires this relationship and rejects source or test drift after the pin.
 
 ## Identity and release truth
 
 ```text
 STARTING CANDIDATE SHA:       260abd961ea5f3dca5f0a429a2db4642b828c078
 CANDIDATE RELEASE CODE SHA:   fe3eee6340ad2264bd185608807cdc13aedd1445
-DOCUMENTED SOURCE PARENT:     08024de4c3b881a3bfcef08e4c7d363540636443
+DOCUMENTED SOURCE PARENT:     0f822859b742ceb9267ca5b4d993988ee2c22fb2
 CANONICAL MAIN SHA:           8dfb981876985525621cf10b8b9b67e34468b450
 CANDIDATE INSTALLED SHA:      fe3eee6340ad2264bd185608807cdc13aedd1445
 CANDIDATE LAST RUNTIME SHA:   fe3eee6340ad2264bd185608807cdc13aedd1445
