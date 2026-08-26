@@ -259,6 +259,91 @@ def build_health_snapshot(
     }
 
 
+def build_operational_status_snapshot(
+    database: FoundryDatabase,
+    *,
+    stop_path: str | Path | None = None,
+    controls_configured: bool = False,
+    runtime_home: str | Path | None = None,
+    source_repo: str | Path | None = None,
+) -> dict[str, Any]:
+    """Build bounded operational status without materializing the UI packet.
+
+    ``/api/health`` is intentionally a liveness/readiness probe.  This
+    companion status projection adds small aggregate views useful to an
+    operator (mission/worker/lease/directive counts and a bounded tail of
+    event types) while keeping the expensive full Command Center snapshot on
+    its explicit route.
+    """
+    health = build_health_snapshot(
+        database,
+        stop_path=stop_path,
+        controls_configured=controls_configured,
+        runtime_home=runtime_home,
+        source_repo=source_repo,
+    )
+    if not Path(database.path).is_file():
+        return {
+            "status": health.get("status", "DEGRADED"),
+            "generated_at": health.get("generated_at", _now_iso()),
+            "health": health,
+            "mission_counts": {},
+            "worker_counts": {},
+            "active_lease_count": 0,
+            "directive_counts": {},
+            "recent_events": [],
+        }
+    try:
+        with command_center_readonly_connection(database) as connection:
+            def grouped(table: str, column: str) -> dict[str, int]:
+                rows = connection.execute(
+                    f"SELECT {column}, COUNT(*) FROM {table} GROUP BY {column}"  # noqa: S608 - fixed table/column constants
+                ).fetchall()
+                return {str(row[0] or "UNKNOWN"): int(row[1]) for row in rows}
+
+            mission_counts = grouped("missions", "state")
+            worker_counts = grouped("agent_runs", "status")
+            directive_counts = grouped("directives", "active")
+            active_lease_count = int(connection.execute(
+                "SELECT COUNT(*) FROM leases WHERE expires_at >= CURRENT_TIMESTAMP"
+            ).fetchone()[0])
+            recent_events = [
+                dict(row) for row in connection.execute(
+                    "SELECT event_id, event_type, recorded_at, source_type, source_id "
+                    "FROM events ORDER BY sequence DESC LIMIT 20"
+                ).fetchall()
+            ]
+    except Exception as error:  # noqa: BLE001 - status fails closed
+        return {
+            "status": "DEGRADED",
+            "generated_at": health.get("generated_at", _now_iso()),
+            "reason": f"operational status read failed: {type(error).__name__}",
+            "health": health,
+            "mission_counts": {},
+            "worker_counts": {},
+            "active_lease_count": 0,
+            "directive_counts": {},
+            "recent_events": [],
+        }
+    return {
+        "status": health.get("status", "DEGRADED"),
+        "generated_at": health.get("generated_at", _now_iso()),
+        "reason": health.get("reason"),
+        "supervisor_status": health.get("supervisor_status", "UNKNOWN"),
+        "trust_state": health.get("trust_state", "UNKNOWN"),
+        "stop_active": health.get("stop_active", False),
+        "mission_counts": mission_counts,
+        "worker_counts": worker_counts,
+        "active_lease_count": active_lease_count,
+        "directive_counts": directive_counts,
+        "recent_events": recent_events,
+        "release": health.get("release", {}),
+        "schema": health.get("schema", {}),
+        "parity_state": health.get("parity_state", "UNKNOWN"),
+        "release_authority": health.get("release_authority", {}),
+    }
+
+
 @contextmanager
 def command_center_readonly_connection(database: FoundryDatabase):
     """Yield a mechanically read-only SQLite handle for Command Center reads.
@@ -1784,6 +1869,15 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
                 runtime_home=self.runtime_home,
                 source_repo=self.source_repo)
             self._json_response(health, status=200)
+            return
+        if route == "/api/status":
+            status = build_operational_status_snapshot(
+                self.database,
+                stop_path=self.stop_path,
+                controls_configured=bool(self.owner_secret),
+                runtime_home=self.runtime_home,
+                source_repo=self.source_repo)
+            self._json_response(status, status=200)
             return
         if route not in {"/", "/api/command-center", "/api/timeline"}:
             self.send_error(404)

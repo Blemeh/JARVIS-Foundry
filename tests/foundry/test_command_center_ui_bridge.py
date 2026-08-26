@@ -10,7 +10,8 @@ from urllib.request import Request, urlopen
 import pytest
 
 from jarvis_foundry.command_center import (
-    CommandCenterServer, build_health_snapshot, build_snapshot,
+    CommandCenterServer, build_health_snapshot, build_operational_status_snapshot,
+    build_snapshot,
 )
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.events import Event
@@ -103,6 +104,29 @@ def test_server_serves_bundled_react_app_and_spa_routes(
         with urlopen(f"{base}/api/command-center", timeout=3) as response:
             payload = json.loads(response.read())
         assert payload["source_of_truth"]["kind"] == "append_only_event_ledger"
+    finally:
+        server.close()
+
+
+def test_operational_status_is_bounded_and_separate_from_full_snapshot(
+    db: FoundryDatabase, tmp_path: Path,
+) -> None:
+    status = build_operational_status_snapshot(db, runtime_home=tmp_path)
+    assert status["status"] in {"OK", "DEGRADED", "BLOCKED"}
+    assert "mission_counts" in status
+    assert "recent_events" in status
+    assert "missions" not in status
+    assert len(json.dumps(status)) < 64_000
+
+    server = CommandCenterServer(db, stop_path=tmp_path / "STOP", runtime_home=tmp_path)
+    server.start()
+    try:
+        base = f"http://{server.address[0]}:{server.address[1]}"
+        with urlopen(f"{base}/api/status", timeout=3) as response:
+            payload = json.loads(response.read())
+        assert payload["status"] in {"OK", "DEGRADED", "BLOCKED"}
+        assert "mission_counts" in payload
+        assert "missions" not in payload
     finally:
         server.close()
 
