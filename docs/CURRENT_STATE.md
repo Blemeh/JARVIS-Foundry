@@ -5,7 +5,7 @@ recovery candidate. Source, immutable release, runtime, canonical checkout,
 trust, and acceptance evidence are reported separately; a candidate is not
 described as live merely because it builds or passes a disposable test.
 
-DOCUMENTATION STATE BASE SHA: `0f822859b742ceb9267ca5b4d993988ee2c22fb2`
+DOCUMENTATION STATE BASE SHA: `5510dd27c5ca0158c53ad99154e74cc8aa8df4ab`
 
 The SHA above is the source parent of the final documentation reconciliation
 commit. It includes the isolated UI endurance-harness hardening and the
@@ -18,7 +18,7 @@ requires this relationship and rejects source or test drift after the pin.
 ```text
 STARTING CANDIDATE SHA:       260abd961ea5f3dca5f0a429a2db4642b828c078
 CANDIDATE RELEASE CODE SHA:   fe3eee6340ad2264bd185608807cdc13aedd1445
-DOCUMENTED SOURCE PARENT:     0f822859b742ceb9267ca5b4d993988ee2c22fb2
+DOCUMENTED SOURCE PARENT:     5510dd27c5ca0158c53ad99154e74cc8aa8df4ab
 CANONICAL MAIN SHA:           8dfb981876985525621cf10b8b9b67e34468b450
 CANDIDATE INSTALLED SHA:      fe3eee6340ad2264bd185608807cdc13aedd1445
 CANDIDATE LAST RUNTIME SHA:   fe3eee6340ad2264bd185608807cdc13aedd1445
@@ -98,6 +98,12 @@ convergence, and acceptance: 2,302 passed, one host-capability test was
 skipped, and zero failed. Focused verifier, replay, owner-control, trust,
 runtime identity, scheduler, migration, API, adversarial, and convergence
 suites are included.
+
+Frontend validation is also closed: Vitest reports 24 files and 115 tests
+passed; the isolated Playwright sweep reports 169 passed (including 11
+accessibility scans, responsive, cohesion, route-matrix, STOP, and truth-lane
+coverage); product verification reports 212 checks passed and zero failures;
+TypeScript, ESLint, Vite build, design, security, and console checks pass.
 
 Acceptance evidence is retained outside the repository:
 
