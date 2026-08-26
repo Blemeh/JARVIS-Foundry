@@ -532,10 +532,22 @@ class MissionLoop:
                     and str(prior.get("builder_run_id") or "") == run_id
                     and builder_row is not None
                     and builder_row.get("status") == "COMPLETED"):
-                return StepOutcome(
-                    outcome=PASSED, step_id=step_id, run_id=run_id,
-                    verdict_id=str(prior.get("verdict_id") or ""),
+                # A duplicate delivery is a replay only while the frozen
+                # acceptance seal still matches the live tree.  Re-check the
+                # canonical gate here; otherwise a post-PASS mutation could
+                # be reported as healthy before the normal verifier-revision
+                # path gets a chance to re-evaluate it.
+                replay_decision = AcceptanceGate(
+                    self.database, stop_path=self.stop_path,
+                ).evaluate(
+                    mission_id=mission_id, step_id=step_id, target=target,
+                    builder_run_id=run_id,
                 )
+                if replay_decision.accepted:
+                    return StepOutcome(
+                        outcome=PASSED, step_id=step_id, run_id=run_id,
+                        verdict_id=str(prior.get("verdict_id") or ""),
+                    )
         if state in {"EXECUTING", "VERIFYING"}:
             proposal = SimpleNamespace(
                 redirected=False,
@@ -784,6 +796,40 @@ class MissionLoop:
             )
         )
 
+        def _completed_verifier_is_reusable(run: str) -> bool:
+            """Only reuse a completed verifier whose PASS still seals the tree.
+
+            A historical verifier process can be complete while its frozen
+            artifact or working-tree seal has become stale.  Replaying that
+            provider result would turn the next acceptance check into a
+            terminal failure instead of letting the current release perform a
+            fresh read-only evaluation.  A missing verdict is intentionally
+            reusable for crash recovery: the completed provider result can be
+            sealed by a newly recorded outcome without another provider call.
+            """
+            verdict = verdict_for_verifier_run(
+                self.database, mission_id=mission_id, step_id=step_id,
+                verifier_run_id=run,
+            )
+            if verdict is None:
+                return True
+            if str(verdict.get("status") or "") != "PASS":
+                return False
+            return AcceptanceGate(
+                self.database, stop_path=self.stop_path,
+            ).evaluate(
+                mission_id=mission_id, step_id=step_id,
+                target=target, builder_run_id=run_id,
+            ).accepted
+
+        # A completed legacy run is only a replay when its durable PASS still
+        # matches the live artifact.  If the tree drifted, force a new
+        # content-addressed verifier session; the old evidence remains
+        # immutable history and cannot be silently re-authorized.
+        if base_compatible and verifier_row is not None:
+            if not _completed_verifier_is_reusable(base_verifier_run_id):
+                base_compatible = False
+
         if base_compatible:
             verifier_revision = 1
             verifier_use_base = True
@@ -817,6 +863,9 @@ class MissionLoop:
                 if (row_dict.get("status") == "COMPLETED"
                         and str(row_dict.get("context_manifest_hash") or "")
                         == _manifest_hash_for_row(row_dict, candidate_manifest)):
+                    if not _completed_verifier_is_reusable(str(row_dict["run_id"])):
+                        verifier_revision = max(verifier_revision, 2)
+                        continue
                     verifier_use_base = False
                     # Preserve an exact completed content-addressed session.
                     verifier_revision = int(str(row_dict["run_id"]).rsplit("-r", 1)[1]) \

@@ -387,7 +387,7 @@ def verifier_replay_state(
             (mission_id, SUBJECT_STEP, step_id, builder_run_id, f"{base}%"),
         ).fetchall()
     max_revision = 0
-    reusable: dict[str, Any] | None = None
+    latest: dict[str, Any] | None = None
     for row in rows:
         item = dict(row)
         run_id = str(item.get("verifier_run_id") or "")
@@ -396,9 +396,12 @@ def verifier_replay_state(
         if suffix.startswith("-r") and suffix[2:].isdigit():
             revision = int(suffix[2:])
         max_revision = max(max_revision, revision)
-        if str(item.get("status") or "") == "PASS":
-            reusable = item
-    if reusable is not None:
+        # The rows are ledger-sequence ordered.  A later STARTED/FAIL/BLOCKED
+        # attempt supersedes an earlier PASS for this contract family; never
+        # let the old green row bypass a retry or crash recovery.
+        latest = item
+    if latest is not None and str(latest.get("status") or "") == "PASS":
+        reusable = latest
         reusable_run = str(reusable.get("verifier_run_id") or "")
         reusable_suffix = reusable_run[len(base):] if reusable_run.startswith(base) else ""
         reusable_revision = 1

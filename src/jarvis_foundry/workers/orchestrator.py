@@ -318,7 +318,17 @@ class HybridStepController:
                 target=contract.working_root,
                 builder_run_id=envelope.run_id,
             )
-            return ("PASS" if decision.accepted else "FAIL"), existing_verdict_id
+            if decision.accepted:
+                return "PASS", existing_verdict_id
+            # A stale/fabricated historical PASS is not an authorization, but
+            # it also must not wedge the mission at FAIL.  Re-open a fresh,
+            # content-addressed verifier session so the current release can
+            # re-evaluate the live evidence.  STOP/veto remain terminal
+            # controls and are never bypassed by this recovery path.
+            if any(key in decision.checks for key in ("stop_active", "veto_active")):
+                return "STOPPED", existing_verdict_id
+            reusable = None
+            revision = max(int(revision) + 1, 2)
         verdict_id, verifier_run_id = fresh_verifier_identity(
             contract.run_id,
             attempt=contract.attempt,
