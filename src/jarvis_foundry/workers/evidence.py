@@ -251,6 +251,20 @@ class EvidenceReconciler:
                 rel for rel, digest in current_hashes.items()
                 if before.file_hashes.get(rel) != digest
             }
+            # A worktree-scoped result file survives across mission steps.
+            # Providers can therefore repeat a prior step's deliverable list
+            # even when only the current step's outcome changed. A claim for
+            # a path that was already dirty at capture and is byte-identical
+            # now is stale metadata, not a new mutation. Drop only those
+            # provably unchanged prior claims; a prior path whose bytes did
+            # change remains accountable to this run and still fails closed if
+            # the worker omitted it.
+            stale_claims = {
+                rel for rel in claimed
+                if rel in before.file_hashes
+                and current_hashes.get(rel) == before.file_hashes[rel]
+            }
+            claimed -= stale_claims
             unrecorded = sorted(own_changes - claimed)
             if claimed != own_changes:
                 mismatches.append(
