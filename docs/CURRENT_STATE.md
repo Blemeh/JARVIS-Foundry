@@ -5,7 +5,7 @@ recovery candidate. Source, immutable release, runtime, canonical checkout,
 trust, and acceptance evidence are reported separately; a candidate is not
 described as live merely because it builds or passes a disposable test.
 
-DOCUMENTATION STATE BASE SHA: `fe3eee6340ad2264bd185608807cdc13aedd1445`
+DOCUMENTATION STATE BASE SHA: `fe8ce8205562e326eeb79c91dffbdf126b754a20`
 
 The SHA above is the source parent of the final documentation reconciliation
 commit. The freshness gate requires that relationship and rejects source or
@@ -18,9 +18,10 @@ STARTING CANDIDATE SHA:       260abd961ea5f3dca5f0a429a2db4642b828c078
 CANDIDATE SOURCE SHA:         fe3eee6340ad2264bd185608807cdc13aedd1445
 CANONICAL MAIN SHA:           8dfb981876985525621cf10b8b9b67e34468b450
 CANDIDATE INSTALLED SHA:      fe3eee6340ad2264bd185608807cdc13aedd1445
-CANDIDATE RUNTIME SHA:        fe3eee6340ad2264bd185608807cdc13aedd1445
+CANDIDATE LAST RUNTIME SHA:   fe3eee6340ad2264bd185608807cdc13aedd1445
 CANDIDATE RELEASE ID:         rel-fe3eee6340ad-72487465
-CANDIDATE PARITY:             MATCH
+CANDIDATE LAST PARITY:        MATCH (while running)
+CANDIDATE CURRENT RUNTIME:    STOPPED_AFTER_PROOF (MISSING_RUNTIME)
 CANDIDATE INSTALL ROOT:       C:\temp\JARVIS-Full-Product-Recovery-install-fe3eee6
 CANDIDATE RUNTIME HOME:       C:\temp\JARVIS-Full-Product-Recovery-runtime-fe3eee6
 
