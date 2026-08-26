@@ -164,7 +164,14 @@ def record_trust_evidence(
     event = Event.create(
         "trust.evidence_recorded", payload,
         source_type="supervisor", source_id=controller,
-        idempotency_key=f"trust.evidence_recorded:{evidence_key}:{evidence_hash}",
+        # Status and profile are part of the evidence identity.  A later
+        # failing observation of the same evidence subject must be able to
+        # supersede an earlier PASS; omitting them made that transition hit
+        # an idempotency collision and could leave trust incorrectly green.
+        idempotency_key=(
+            f"trust.evidence_recorded:{evidence_key}:{normalized}:"
+            f"{profile_id or ''}:{evidence_hash}"
+        ),
     )
     try:
         _sequence, created = database.append(event)

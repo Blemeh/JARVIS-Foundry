@@ -112,3 +112,36 @@ def test_trusted_state_survives_supervisor_restart(tmp_path):
         assert started.payload["trust_state"] == "TRUSTED_AUTONOMOUS"
     finally:
         second.stop()
+
+
+def test_evidence_status_change_is_append_only_and_demotes_recommendation(tmp_path):
+    database = _database(tmp_path)
+    first = record_trust_evidence(
+        database, "release_parity", status="PASS", evidence={"sha": "a"},
+        profile_id="release-1",
+    )
+    second = record_trust_evidence(
+        database, "release_parity", status="FAIL", evidence={"sha": "a"},
+        profile_id="release-1",
+    )
+    assert first.event_id != second.event_id
+    assessment = assess_trust(database)
+    assert assessment.checks["release_parity"] == "FAIL"
+    assert "release_parity" in assessment.missing
+    assert len([
+        event for event in database.events()
+        if event.event_type == "trust.evidence_recorded"
+    ]) == 2
+
+
+def test_evidence_profiles_have_independent_idempotency_keys(tmp_path):
+    database = _database(tmp_path)
+    first = record_trust_evidence(
+        database, "runtime_durability", status="PASS", evidence={"run": "x"},
+        profile_id="profile-a",
+    )
+    second = record_trust_evidence(
+        database, "runtime_durability", status="PASS", evidence={"run": "x"},
+        profile_id="profile-b",
+    )
+    assert first.event_id != second.event_id
