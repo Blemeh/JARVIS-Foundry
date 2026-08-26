@@ -5,7 +5,7 @@ recovery candidate. Source, immutable release, runtime, canonical checkout,
 trust, and acceptance evidence are reported separately; a candidate is not
 described as live merely because it builds or passes a disposable test.
 
-DOCUMENTATION STATE BASE SHA: `fe8ce8205562e326eeb79c91dffbdf126b754a20`
+DOCUMENTATION STATE BASE SHA: `aca2ecc17834d0d5b085a6249f1c504dec7fda16`
 
 The SHA above is the source parent of the final documentation reconciliation
 commit. The freshness gate requires that relationship and rejects source or
@@ -15,12 +15,13 @@ test drift after the pin.
 
 ```text
 STARTING CANDIDATE SHA:       260abd961ea5f3dca5f0a429a2db4642b828c078
-CANDIDATE SOURCE SHA:         fe3eee6340ad2264bd185608807cdc13aedd1445
+CANDIDATE RELEASE CODE SHA:   fe3eee6340ad2264bd185608807cdc13aedd1445
+DOCUMENTED SOURCE PARENT:     aca2ecc17834d0d5b085a6249f1c504dec7fda16
 CANONICAL MAIN SHA:           8dfb981876985525621cf10b8b9b67e34468b450
 CANDIDATE INSTALLED SHA:      fe3eee6340ad2264bd185608807cdc13aedd1445
 CANDIDATE LAST RUNTIME SHA:   fe3eee6340ad2264bd185608807cdc13aedd1445
-CANDIDATE RELEASE ID:         rel-fe3eee6340ad-72487465
-CANDIDATE LAST PARITY:        MATCH (while running)
+CANDIDATE SOURCE/RELEASE:     SOURCE_AHEAD (docs-only head after release build)
+CANDIDATE LAST PARITY:        MATCH (release-code worktree while running)
 CANDIDATE CURRENT RUNTIME:    STOPPED_AFTER_PROOF (MISSING_RUNTIME)
 CANDIDATE INSTALL ROOT:       C:\temp\JARVIS-Full-Product-Recovery-install-fe3eee6
 CANDIDATE RUNTIME HOME:       C:\temp\JARVIS-Full-Product-Recovery-runtime-fe3eee6
@@ -132,7 +133,9 @@ process. The final candidate was also stopped and restarted directly; stopped
 state reported `MISSING_RUNTIME`, and the restarted endpoint reported one
 logical Supervisor with `MATCH` parity. The isolated console-check launched a
 source-backed Vite preview on an allocated port and passed all 12 routes with
-zero errors.
+zero errors. The release was built from the code parent `fe3eee6…`; the
+subsequent documentation-only commits intentionally make the candidate source
+HEAD `SOURCE_AHEAD` under strict SHA parity without changing runtime code.
 
 ## Known limitations and honest boundaries
 
