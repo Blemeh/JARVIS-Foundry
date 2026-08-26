@@ -41,5 +41,6 @@ cmd = """" & pyw & """ -m jarvis_foundry.deployment.headless_launcher" & args
 ' repeating trigger can launch overlapping Supervisors even with IgnoreNew.
 ' Waiting preserves the scheduler's instance identity and makes restart
 ' policy deterministic; the Supervisor itself owns the singleton lease.
-shell.Run cmd, 0, True
-WScript.Quit 0
+Dim exitCode
+exitCode = shell.Run(cmd, 0, True)
+WScript.Quit exitCode
