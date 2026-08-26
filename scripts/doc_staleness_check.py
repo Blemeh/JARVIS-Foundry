@@ -31,7 +31,17 @@ CURRENT_SURFACES = (
     "docs/CURRENT_STATE.md",
     "docs/architecture/00_READ_FIRST.md",
     "docs/architecture/05_POST_V1_ROADMAP.md",
+    "tests/acceptance/README.md",
 )
+
+# These are the complete documentation surfaces that may change in the final
+# reconciliation commit. Keeping the set here makes the freshness rule
+# authoritative instead of duplicating a second, subtly different allowlist.
+DOC_ONLY_ALLOWED_PATHS = frozenset({
+    "docs/CURRENT_STATE.md",
+    "docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.md",
+    "tests/acceptance/README.md",
+})
 
 CURRENT_CANDIDATE_SCHEMA_RE = re.compile(
     r"CURRENT/CANDIDATE SCHEMA:\s*v(\d+)",
@@ -144,8 +154,9 @@ def main() -> int:
     changed = subprocess.run(
         ["git", "-C", str(REPO), "diff-tree", "--no-commit-id", "--name-only",
          "-r", head], capture_output=True, text=True, check=False).stdout.splitlines()
-    allowed = {"docs/CURRENT_STATE.md", "docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.md"}
-    unexpected = sorted(path for path in changed if path and path not in allowed)
+    unexpected = sorted(
+        path for path in changed if path and path not in DOC_ONLY_ALLOWED_PATHS
+    )
     if unexpected:
         failures.append(
             "CURRENT_STATE.md must be the final docs-only commit; changed paths: "

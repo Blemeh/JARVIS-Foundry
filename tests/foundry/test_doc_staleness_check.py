@@ -86,7 +86,8 @@ def test_schema_check_rejects_contradictory_current_v35_claim():
 def test_forbidden_stale_phrases_absent_from_current_surfaces():
     surfaces = ("docs/CURRENT_STATE.md",
                 "docs/architecture/00_READ_FIRST.md",
-                "docs/architecture/05_POST_V1_ROADMAP.md")
+                "docs/architecture/05_POST_V1_ROADMAP.md",
+                "tests/acceptance/README.md")
     forbidden = ("BUILD NOT STARTED", "IMPLEMENTATION: NOT STARTED",
                  "START BUILD RECEIVED: NO", "Designed, not built",
                  "has not started implementation", "execution remains not started")
