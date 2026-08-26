@@ -5,7 +5,7 @@ recovery candidate. Source, immutable release, runtime, canonical checkout,
 trust, and acceptance evidence are reported separately; a candidate is not
 described as live merely because it builds or passes a disposable test.
 
-DOCUMENTATION STATE BASE SHA: `befce0390d437cb99a09ee9bbaf2970186981400`
+DOCUMENTATION STATE BASE SHA: `fe3eee6340ad2264bd185608807cdc13aedd1445`
 
 The SHA above is the source parent of the final documentation reconciliation
 commit. The freshness gate requires that relationship and rejects source or
@@ -15,14 +15,14 @@ test drift after the pin.
 
 ```text
 STARTING CANDIDATE SHA:       260abd961ea5f3dca5f0a429a2db4642b828c078
-CANDIDATE SOURCE SHA:         befce0390d437cb99a09ee9bbaf2970186981400
+CANDIDATE SOURCE SHA:         fe3eee6340ad2264bd185608807cdc13aedd1445
 CANONICAL MAIN SHA:           8dfb981876985525621cf10b8b9b67e34468b450
-CANDIDATE INSTALLED SHA:      befce0390d437cb99a09ee9bbaf2970186981400
-CANDIDATE RUNTIME SHA:        befce0390d437cb99a09ee9bbaf2970186981400
-CANDIDATE RELEASE ID:         rel-befce0390d43-21d356ad
+CANDIDATE INSTALLED SHA:      fe3eee6340ad2264bd185608807cdc13aedd1445
+CANDIDATE RUNTIME SHA:        fe3eee6340ad2264bd185608807cdc13aedd1445
+CANDIDATE RELEASE ID:         rel-fe3eee6340ad-72487465
 CANDIDATE PARITY:             MATCH
-CANDIDATE INSTALL ROOT:       C:\temp\JARVIS-Full-Product-Recovery-install-befce03
-CANDIDATE RUNTIME HOME:       C:\temp\JARVIS-Full-Product-Recovery-runtime-befce03
+CANDIDATE INSTALL ROOT:       C:\temp\JARVIS-Full-Product-Recovery-install-fe3eee6
+CANDIDATE RUNTIME HOME:       C:\temp\JARVIS-Full-Product-Recovery-runtime-fe3eee6
 
 LIVE INSTALLED SHA:           260abd961ea5f3dca5f0a429a2db4642b828c078
 LIVE RUNTIME SHA:             260abd961ea5f3dca5f0a429a2db4642b828c078
@@ -90,9 +90,10 @@ The closure repairs include:
 ## Latest validated evidence
 
 The final closure collection contains 2,303 Python tests across Foundry,
-convergence, and acceptance. The closure run records the exact pass/skip
-summary; focused verifier, replay, owner-control, trust, runtime identity,
-scheduler, migration, API, adversarial, and convergence suites are included.
+convergence, and acceptance: 2,302 passed, one host-capability test was
+skipped, and zero failed. Focused verifier, replay, owner-control, trust,
+runtime identity, scheduler, migration, API, adversarial, and convergence
+suites are included.
 
 Acceptance evidence is retained outside the repository:
 
@@ -109,13 +110,14 @@ seconds (`REAL_TIME_DISPOSABLE`). Both include interruption/restart and
 false-PASS checks; the 12-hour and 24-hour real profiles are `NOT_RUN`.
 
 The isolated final endpoint measured five `/api/health` calls at roughly
-0.65–0.78 seconds with a 3.8 KB payload, and three `/api/status` calls at
-roughly 0.63–0.71 seconds with a 4.2–5.1 KB bounded payload. Before the repair,
-health construction took approximately 3.6–4.5 seconds and built an
-approximately 0.9 MB Command Center snapshot. The high-cardinality full
-snapshot benchmark now completes in approximately 0.35–0.42 seconds at about
-460 KiB. The endpoint reports `DEGRADED` when release authority is only
-filesystem-backed, even while parity is `MATCH`.
+0.67–0.70 seconds after a 0.99-second cold call, with a stable 3,793-byte
+payload. Three `/api/status` calls measured roughly 0.70–0.74 seconds with a
+4,424-byte bounded payload. Before the repair, health construction took
+approximately 3.6–4.5 seconds and built an approximately 0.9 MB Command
+Center snapshot. The high-cardinality full snapshot benchmark now completes
+in approximately 0.35–0.42 seconds at about 460 KiB. The endpoint reports
+`DEGRADED` when release authority is only filesystem-backed, even while parity
+is `MATCH`.
 
 The old live idle pattern was approximately 16,500 events per reason per day
 (about 49,500 across the three repetitive reasons). The repaired loop emits
@@ -127,7 +129,9 @@ The disposable Windows hard-kill/repeating-trigger probe completed in 125.48
 seconds, observed a new scheduled Supervisor owner, and left no test task or
 process. The final candidate was also stopped and restarted directly; stopped
 state reported `MISSING_RUNTIME`, and the restarted endpoint reported one
-logical Supervisor with `MATCH` parity.
+logical Supervisor with `MATCH` parity. The isolated console-check launched a
+source-backed Vite preview on an allocated port and passed all 12 routes with
+zero errors.
 
 ## Known limitations and honest boundaries
 
