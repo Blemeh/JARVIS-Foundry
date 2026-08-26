@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import os
 import secrets
 import sqlite3
 import threading
@@ -32,6 +33,7 @@ from .decision_queue import build_owner_attention_queue
 from .result_traceability import build_result_traceability
 from .supervisor.estop import EmergencyStop
 from .v3_teams import DEFAULT_REPAIR_BUDGET
+from .migrations import SCHEMA_VERSION
 
 
 def _now_iso() -> str:
@@ -49,6 +51,205 @@ def _json_value(value: Any) -> Any:
 
 def _rows(connection, query: str, args: tuple[Any, ...] = ()) -> list[dict[str, Any]]:
     return [dict(row) for row in connection.execute(query, args).fetchall()]
+
+
+def build_health_snapshot(
+    database: FoundryDatabase,
+    *,
+    stop_path: str | Path | None = None,
+    controls_configured: bool = False,
+    runtime_home: str | Path | None = None,
+    source_repo: str | Path | None = None,
+) -> dict[str, Any]:
+    """Build the cheap liveness/readiness projection.
+
+    Health polling must not materialize missions, timeline, discovery,
+    briefings, or the full Command Center packet.  It reads only the durable
+    Supervisor control row, a bounded event count, SQLite quick-check, and
+    immutable release pointers.  Operational/full state remains owned by
+    :func:`build_snapshot` and its explicit API routes.
+    """
+    from .deployment.release import (
+        read_current, read_previous, read_release_json, release_authority_report,
+        release_dir,
+    )
+    from .deployment.runtime_identity import (
+        parity_state, process_matches_home, release_sha_for_id,
+        supervisor_processes,
+    )
+    from .supervisor.control import inspect_control
+    from .trust import trust_status
+
+    now = _now_iso()
+    database_path = Path(database.path)
+    observed_home = Path(runtime_home or database_path.parent).expanduser().resolve()
+    if not database_path.is_file():
+        return {
+            "status": "DEGRADED", "ready": False, "generated_at": now,
+            "reason": "database missing", "database": str(database_path),
+            "controls_configured": controls_configured,
+            "canonical_source_sha": None,
+            "installed_release_sha": None,
+            "runtime_release_sha": None,
+            "parity_state": "MISSING_RUNTIME",
+            "release_authority": {"status": "DATABASE_MISSING", "consistent": False},
+            "schema": {"live": 0, "package": None},
+            "release": {
+                "current": None, "previous": None, "status": "UNKNOWN",
+                "canonical_source_sha": None, "installed_release_sha": None,
+                "runtime_release_sha": None, "parity_state": "MISSING_RUNTIME",
+                "release_authority": {"status": "DATABASE_MISSING", "consistent": False},
+            },
+        }
+    try:
+        control = inspect_control(database, stop_path=str(stop_path) if stop_path else None)
+        with command_center_readonly_connection(database) as connection:
+            state_row = connection.execute(
+                "SELECT status, trust_state, last_heartbeat_at, release_id "
+                "FROM supervisor_state WHERE singleton = 1").fetchone()
+            event_count = int(connection.execute("SELECT COUNT(*) FROM events").fetchone()[0])
+            schema_row = connection.execute(
+                "SELECT COALESCE(MAX(version), 0) FROM schema_migrations").fetchone()
+        quick_check = database.quick_check(readonly=True)
+    except Exception as error:  # noqa: BLE001 - health is fail-closed
+        return {
+            "status": "DEGRADED", "ready": False, "generated_at": now,
+            "reason": f"health read failed: {type(error).__name__}",
+            "controls_configured": controls_configured,
+            "canonical_source_sha": None,
+            "installed_release_sha": None,
+            "runtime_release_sha": None,
+            "parity_state": "UNKNOWN",
+            "release_authority": {"status": "UNKNOWN", "consistent": False},
+        }
+    current = read_current()
+    previous = read_previous()
+    release_status = "UNKNOWN"
+    release_manifest: dict[str, Any] | None = None
+    if current:
+        manifest_path = release_dir(current) / "RELEASE.json"
+        try:
+            release_manifest = read_release_json(manifest_path)
+            release_status = "VALID" if str(release_manifest.get("source_sha")) == current else "DEGRADED"
+        except (OSError, ValueError):
+            release_status = "DEGRADED"
+    canonical_source_sha: str | None = None
+    source_root = source_repo or os.environ.get("JARVIS_SOURCE_REPO")
+    if source_root:
+        import subprocess
+
+        source_path = Path(source_root).expanduser().resolve()
+        if (source_path / ".git").exists():
+            try:
+                result = subprocess.run(
+                    ["git", "-C", str(source_path), "rev-parse", "HEAD"],
+                    capture_output=True, text=True, timeout=15, check=False,
+                )
+                if result.returncode == 0:
+                    canonical_source_sha = result.stdout.strip() or None
+            except (OSError, subprocess.TimeoutExpired):
+                canonical_source_sha = None
+    state = dict(state_row) if state_row else {}
+    runtime_release_sha = current if (
+        current and release_manifest and state.get("release_id")
+        and str(state.get("release_id")) == str(release_manifest.get("release_id"))
+    ) else None
+    all_processes = supervisor_processes()
+    scoped_processes = [
+        item for item in all_processes if process_matches_home(item, observed_home)
+    ]
+    active_processes = [
+        item for item in scoped_processes
+        if item.get("identity_status", "VALID") == "VALID" and item.get("live", True)
+    ]
+    stale_processes = [item for item in scoped_processes if item not in active_processes]
+    runtime_shas = [item.get("release_sha") for item in active_processes]
+    # The process command line often omits the immutable SHA (the headless
+    # launcher resolves CURRENT internally).  If the one identity-validated
+    # process is also the durable control owner, resolve its recorded release
+    # id through the immutable manifest; never guess from the package version.
+    if (len(active_processes) == 1
+            and not any(runtime_shas)
+            and control.pid == active_processes[0].get("pid")):
+        recorded_sha = release_sha_for_id(state.get("release_id"))
+        if recorded_sha:
+            runtime_shas = [recorded_sha]
+    runtime_release_sha = (
+        next(iter({str(value).lower() for value in runtime_shas if value}))
+        if len({str(value).lower() for value in runtime_shas if value}) == 1 else None
+    )
+    parity = parity_state(
+        canonical_sha=canonical_source_sha,
+        installed_sha=current,
+        runtime_shas=runtime_shas,
+        supervisor_count=len(active_processes),
+    )
+    authority = release_authority_report(foundry_home=observed_home)
+    live_schema = int(schema_row[0] if schema_row else 0)
+    stop_active = bool(stop_path and EmergencyStop(stop_path).active())
+    runtime_status = str(control.status or state.get("status") or "UNKNOWN").upper()
+    if stop_active or runtime_status == "BLOCKED":
+        status, reason = "BLOCKED", "emergency STOP or runtime block is active"
+    elif runtime_status not in {"RUNNING", "FROZEN"}:
+        status, reason = "DEGRADED", f"Supervisor control status is {runtime_status}"
+    elif quick_check != "ok":
+        status, reason = "DEGRADED", f"SQLite quick_check is {quick_check}"
+    elif live_schema != SCHEMA_VERSION:
+        status, reason = "DEGRADED", (
+            f"schema mismatch: live={live_schema} package={SCHEMA_VERSION}")
+    elif release_status != "VALID":
+        status, reason = "DEGRADED", f"release identity status is {release_status}"
+    elif authority.get("status") != "CONSISTENT":
+        status, reason = "DEGRADED", (
+            f"release authority is {authority.get('status')}")
+    elif parity != "MATCH":
+        status, reason = "DEGRADED", f"source/installed/runtime parity is {parity}"
+    elif not controls_configured:
+        status, reason = "DEGRADED", "owner authentication secret is not configured"
+    else:
+        status, reason = "OK", "liveness and readiness proven"
+    trust = trust_status(database)
+    return {
+        "status": status,
+        "ready": status == "OK",
+        "degraded": status != "OK",
+        "generated_at": now,
+        "reason": reason,
+        "stop_active": stop_active,
+        "controls_configured": controls_configured,
+        "supervisor_status": runtime_status,
+        "trust_state": state.get("trust_state", "UNKNOWN"),
+        "trust": trust,
+        "heartbeat_at": state.get("last_heartbeat_at") or control.observed_at,
+        "pid": control.pid,
+        "creation_identity": control.creation_identity,
+        "runtime_instance_id": control.instance_id,
+        "canonical_source_sha": canonical_source_sha,
+        "installed_release_sha": current,
+        "runtime_release_sha": runtime_release_sha,
+        "parity_state": parity,
+        "release_authority": authority,
+        "event_count": event_count,
+        "database": str(database_path),
+        "database_quick_check": quick_check,
+        "schema": {"live": int(schema_row[0] if schema_row else 0), "package": SCHEMA_VERSION},
+        "release": {
+            "current": current,
+            "previous": previous,
+            "canonical_source_sha": canonical_source_sha,
+            "source_sha": release_manifest.get("source_sha") if release_manifest else None,
+            "installed_release_sha": current,
+            "runtime_sha": runtime_release_sha,
+            "runtime_release_sha": runtime_release_sha,
+            "release_id": release_manifest.get("release_id") if release_manifest else None,
+            "status": release_status,
+            "parity_state": parity,
+            "release_authority": authority,
+            "supervisor_count": len(active_processes),
+            "active_supervisor_processes": active_processes,
+            "stale_supervisor_processes": stale_processes,
+        },
+    }
 
 
 @contextmanager
@@ -1475,6 +1676,11 @@ def build_snapshot(
         stop_path=str(stop_path) if stop_path is not None else None,
         snapshot=snapshot_payload,
     )
+    # Trust is an additive health subprojection.  Keep the established
+    # top-level Command Center contract stable for existing consumers while
+    # exposing the evidence-backed lifecycle under ``health``.
+    from .trust import trust_status
+    snapshot_payload["health"]["trust_assessment"] = trust_status(database)
     return snapshot_payload
 
 
@@ -1492,6 +1698,8 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
     stop_path: Path | None
     owner_secret: bytes | None
     owner_id: str = "local-owner"
+    runtime_home: Path | None = None
+    source_repo: Path | None = None
     timeline_limit: int = 200
     discovery_cycle_enabled: bool | None = None
     static_root: Path | None = None
@@ -1563,24 +1771,12 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
             self._json_response({"status": "FOUND", "kind": record_kind, "record": record}, status=200)
             return
         if route == "/api/health":
-            snapshot = build_snapshot(
+            health = build_health_snapshot(
                 self.database, stop_path=self.stop_path,
-                timeline_limit=self.timeline_limit,
-                discovery_cycle_enabled=self.discovery_cycle_enabled)
-            degraded = bool(snapshot["health"].get("degraded"))
-            supervisor_status = snapshot["health"].get("supervisor_status", "UNKNOWN")
-            controls_configured = bool(self.owner_secret)
-            self._json_response({
-                "status": (
-                    "OK" if not degraded and controls_configured
-                    and supervisor_status in {"RUNNING", "FROZEN"}
-                    else "DEGRADED"),
-                "generated_at": snapshot["generated_at"],
-                "stop_active": bool(snapshot["stop"]["active"]),
-                "supervisor_status": supervisor_status,
-                "degraded": degraded,
-                "controls_configured": controls_configured,
-            }, status=200)
+                controls_configured=bool(self.owner_secret),
+                runtime_home=self.runtime_home,
+                source_repo=self.source_repo)
+            self._json_response(health, status=200)
             return
         if route not in {"/", "/api/command-center", "/api/timeline"}:
             self.send_error(404)
@@ -1640,8 +1836,13 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
                 nonce = str(payload.get("nonce", ""))
                 signature = str(payload.get("signature", ""))
             if command_type == "RESUME":
-                event_ids = service.resume(nonce=nonce, signature=signature, exact_text=exact_text or "resume jarvis")
-                result: dict[str, Any] = {"status": "APPLIED", "command_type": command_type, "event_ids": event_ids}
+                event_ids = service.resume(
+                    target=str(target or "GLOBAL"), nonce=nonce,
+                    signature=signature, exact_text=exact_text or "resume jarvis")
+                result: dict[str, Any] = {
+                    "status": "APPLIED", "command_type": command_type,
+                    "target": target or "GLOBAL", "event_ids": event_ids,
+                }
             else:
                 applied = service.apply(
                     command_type,
@@ -1660,6 +1861,8 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
                     "directive_id": applied.directive_id,
                     "event_id": applied.event_id,
                     "superseded_directive_id": applied.superseded_directive_id,
+                    "outcome": applied.outcome,
+                    "details": applied.details,
                 }
             self._json_response(result, status=200)
         except OwnerReplayError as error:
@@ -1903,12 +2106,20 @@ class CommandCenterServer:
         host: str = "127.0.0.1", port: int = 0,
         discovery_cycle_enabled: bool | None = None,
         static_root: str | Path | None = None,
+        runtime_home: str | Path | None = None,
+        source_repo: str | Path | None = None,
     ) -> None:
         handler = type("BoundCommandCenterHandler", (_CommandCenterHandler,), {})
         handler.database = database
         handler.stop_path = Path(stop_path).resolve() if stop_path else None
         handler.owner_secret = None
         handler.owner_id = "local-owner"
+        handler.runtime_home = (
+            Path(runtime_home).expanduser().resolve()
+            if runtime_home is not None else Path(database.path).resolve().parent)
+        handler.source_repo = (
+            Path(source_repo).expanduser().resolve()
+            if source_repo is not None else None)
         handler.discovery_cycle_enabled = discovery_cycle_enabled
         handler.static_root = Path(static_root).resolve() if static_root else None
         self._handler = handler

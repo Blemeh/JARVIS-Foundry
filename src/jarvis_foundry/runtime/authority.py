@@ -31,6 +31,10 @@ PRODUCTION_EXECUTOR_COUNT = 1
 
 ALLOWED_TRUST_STATES = (
     "LAB",
+    # ``PROVING`` is the canonical evidence-collection state.  Keep the
+    # historical ``PROVEN`` token readable for old ledgers, but never emit it
+    # from the repaired lifecycle.
+    "PROVING",
     "PROVEN",
     "TRUSTED_AUTONOMOUS",
     "DEGRADED",

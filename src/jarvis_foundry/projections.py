@@ -2035,12 +2035,40 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             "emergency_stop.reconciled": "SUSPENDED",
         }.get(event.event_type)
         if status:
-            trust = "SUSPENDED" if event.event_type.startswith("emergency_stop.") else payload.get("trust_state", "LAB")
+            if event.event_type.startswith("emergency_stop."):
+                trust = "SUSPENDED"
+            else:
+                trust = payload.get("trust_state", "LAB")
+                # Older Supervisor/degraded events carried LAB as a default
+                # even after an explicit trust transition.  A health event is
+                # not an implicit trust transition; preserve the durable
+                # lifecycle state unless the event explicitly supplies a
+                # different state.
+                current_trust = connection.execute(
+                    "SELECT trust_state FROM supervisor_state WHERE singleton = 1"
+                ).fetchone()
+                if (trust == "LAB" and current_trust is not None
+                        and str(current_trust[0] or "LAB") != "LAB"):
+                    trust = str(current_trust[0])
             connection.execute(
                 """UPDATE supervisor_state SET instance_id = ?, status = ?, trust_state = ?,
                    last_heartbeat_at = ?, last_event_id = ? WHERE singleton = 1""",
                 (payload.get("instance_id"), status, trust, event.recorded_at, event.event_id),
             )
+    elif event.event_type == "trust.state_changed":
+        # Trust is a Supervisor-owned authority.  Preserve a forged or
+        # imported event in the append-only ledger for reconciliation evidence,
+        # but never let a builder/owner/test source mutate the trust projection.
+        if event.source_type != "supervisor" or event.source_id != "supervisor":
+            return
+        target = str(payload.get("to_state") or "LAB").upper()
+        if target not in {"LAB", "PROVING", "TRUSTED_AUTONOMOUS", "DEGRADED", "SUSPENDED"}:
+            raise ValueError(f"invalid trust state: {target}")
+        connection.execute(
+            "UPDATE supervisor_state SET trust_state = ?, last_event_id = ?, "
+            "last_heartbeat_at = ? WHERE singleton = 1",
+            (target, event.event_id, event.recorded_at),
+        )
     elif event.event_type == "memory.observed":
         connection.execute(
             """INSERT INTO tier_c_memories (

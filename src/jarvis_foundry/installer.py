@@ -258,8 +258,14 @@ class Installer:
         start_boundary = (now - timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%S")
         command = self.exec_command or Path(
             background_python_executable(self.python_exe))
+        # The scheduled action must enter through the immutable-release
+        # launcher.  It clears developer ``PYTHONPATH``/``PYTHONHOME`` and
+        # validates CURRENT, release provenance, and schema before importing
+        # Supervisor.  Staging tests may supply explicit arguments for their
+        # disposable source-root bootstrap; production has no such override.
         arguments = self.exec_arguments or (
-            f'-m jarvis_foundry.supervisor.run --home "{self.foundry_home}"'
+            f'-m jarvis_foundry.deployment.headless_launcher '
+            f'--home "{self.foundry_home}"'
         )
         return TASK_XML_TEMPLATE.format(
             hermes_home=xml_escape(str(self.hermes_home)),
@@ -365,11 +371,13 @@ class Installer:
         self.profile_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     def uninstall(self) -> dict[str, Any]:
-        # Stop any running instance first, then delete the task (idempotent:
-        # an absent task is fine — schtasks reports
-        # "cannot find the file specified" in that case).
-        _run_schtasks("/end", "/tn", self.task_name)
+        # Disable before ending so a repeating trigger or RestartOnFailure
+        # cannot launch a replacement between ``/end`` and ``/delete``.
+        # This ordering is important on Windows: deleting a running task does
+        # not necessarily cancel an already queued restart instance.
         if self.task_exists():
+            _run_schtasks("/change", "/tn", self.task_name, "/disable")
+            _run_schtasks("/end", "/tn", self.task_name)
             result = _run_schtasks("/delete", "/tn", self.task_name, "/f")
             if result.returncode != 0:
                 raise InstallerError(

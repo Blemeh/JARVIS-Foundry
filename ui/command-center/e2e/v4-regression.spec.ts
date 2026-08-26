@@ -1,8 +1,12 @@
 import { expect, test } from "@playwright/test";
+import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
-const evidenceDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "evidence");
+function capturePath(testInfo: { outputPath: (name: string) => string }, name: string): string {
+  const root = testInfo.outputPath("captures");
+  fs.mkdirSync(root, { recursive: true });
+  return path.join(root, name);
+}
 
 async function assertNoOverflow(page: import("@playwright/test").Page) {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
@@ -10,7 +14,7 @@ async function assertNoOverflow(page: import("@playwright/test").Page) {
 }
 
 // V4 visual regression: 1120 compact rail and 700 mobile downlink
-test("V4 command deck at 1120 shows compact rail and stacked telemetry", async ({ page }) => {
+test("V4 command deck at 1120 shows compact rail and stacked telemetry", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1120, height: 900 });
   await page.goto("/");
   await page.waitForTimeout(500);
@@ -34,10 +38,10 @@ test("V4 command deck at 1120 shows compact rail and stacked telemetry", async (
   });
   expect(clipPath).toContain("polygon");
   await assertNoOverflow(page);
-  await page.screenshot({ path: path.join(evidenceDir, "command-deck-1120x900.png"), fullPage: false });
+  await page.screenshot({ path: capturePath(testInfo, "command-deck-1120x900.png"), fullPage: false });
 });
 
-test("V4 command deck at 700 shows mobile header, 2-col telemetry, and orbital core", async ({ page }) => {
+test("V4 command deck at 700 shows mobile header, 2-col telemetry, and orbital core", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 700, height: 900 });
   await page.goto("/");
   await page.waitForTimeout(500);
@@ -62,10 +66,10 @@ test("V4 command deck at 700 shows mobile header, 2-col telemetry, and orbital c
   // Evidence spine diamond nodes
   await expect(page.locator(".timeline-node").first()).toBeVisible();
   await assertNoOverflow(page);
-  await page.screenshot({ path: path.join(evidenceDir, "command-deck-700x900.png"), fullPage: false });
+  await page.screenshot({ path: capturePath(testInfo, "command-deck-700x900.png"), fullPage: false });
 });
 
-test("V4 visual components are present at desktop 1600", async ({ page }) => {
+test("V4 visual components are present at desktop 1600", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1600, height: 900 });
   await page.goto("/");
   await page.waitForTimeout(500);
@@ -93,7 +97,7 @@ test("V4 visual components are present at desktop 1600", async ({ page }) => {
   const firstNode = page.locator(".timeline-node").first();
   await expect(firstNode).toBeVisible();
   await assertNoOverflow(page);
-  await page.screenshot({ path: path.join(evidenceDir, "command-deck-1600x900.png"), fullPage: false });
+  await page.screenshot({ path: capturePath(testInfo, "command-deck-1600x900.png"), fullPage: false });
 });
 
 test("V4 route-mapped headings are present", async ({ page }) => {

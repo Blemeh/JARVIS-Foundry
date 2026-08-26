@@ -166,8 +166,14 @@ def test_builder_cannot_certify_own_work(tmp_path):
 
 
 def test_hybrid_controller_never_reuses_builder_run_for_verifier(tmp_path):
+    verifier_contracts = []
+
+    def isolated_verifier(contract, *, envelope=None, report=None):
+        verifier_contracts.append(contract)
+        return fake_verifier(contract, envelope=envelope, report=report)
+
     controller, database, repo = make_controller(
-        tmp_path, router=openhands_ready_router(), verifier_factory=fake_verifier)
+        tmp_path, router=openhands_ready_router(), verifier_factory=isolated_verifier)
     openhands = MutatingScriptedAdapter(
         WORKER_OPENHANDS, write_files=("feature.py",),
         outcome=ScriptedOutcome(files_changed=("feature.py",)))
@@ -182,6 +188,15 @@ def test_hybrid_controller_never_reuses_builder_run_for_verifier(tmp_path):
     assert started, "expected binding-carrying verification.started"
     binding = started[-1]["binding"]
     assert binding["verifier_run_id"] != binding["builder_run_id"]
+    assert verifier_contracts
+    verifier = verifier_contracts[-1]
+    assert verifier.action_envelope == {}
+    assert "read-only inspection only" in verifier.instructions
+    assert "builder claim" not in verifier.instructions.lower()
+    assert "observed mismatch" not in verifier.instructions.lower()
+    independence = started[-1]["independence"]
+    assert independence["session_independent"] is True
+    assert independence["provider_independent"] is False
 
 
 # ---------------------------------------------------------------------------

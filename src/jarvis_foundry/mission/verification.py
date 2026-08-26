@@ -139,3 +139,49 @@ def dangling_verdict_for_run(database: FoundryDatabase,
             "WHERE verifier_run_id = ? AND status = 'STARTED' "
             "ORDER BY rowid LIMIT 1", (verifier_run_id,)).fetchone()
     return dict(row) if row else None
+
+
+def dangling_verdicts_for_run_prefix(
+    database: FoundryDatabase, verifier_run_prefix: str,
+) -> list[dict]:
+    """Return every interrupted verifier pass for a builder's run family.
+
+    A verifier contract revision may move a resumed pass from the legacy
+    ``<builder>-verify`` id to a content-addressed ``-verify-v<digest>`` id.
+    Recovery must supersede *all* prior STARTED rows in that family, not only
+    the legacy id, while preserving each row and its evidence as history.
+    """
+    with database.connect() as connection:
+        rows = connection.execute(
+            "SELECT verdict_id, mission_id, subject_type, subject_id, "
+            "verifier_run_id FROM verification_verdicts "
+            "WHERE verifier_run_id LIKE ? AND status = 'STARTED' "
+            "ORDER BY rowid ASC",
+            (f"{verifier_run_prefix}%",),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def verdict_for_verifier_run(
+    database: FoundryDatabase,
+    *,
+    mission_id: str,
+    step_id: str,
+    verifier_run_id: str,
+) -> dict | None:
+    """Find the durable verdict bound to one verifier session.
+
+    Existing releases used random verdict ids, so replay first consults this
+    lookup before deriving a new deterministic id.  That preserves the
+    original verdict identity and its immutable evidence on exact replay.
+    """
+    with database.connect() as connection:
+        row = connection.execute(
+            "SELECT v.* FROM verification_verdicts v "
+            "JOIN events e ON e.event_id = v.last_event_id "
+            "WHERE v.mission_id = ? AND v.subject_type = ? "
+            "AND v.subject_id = ? AND v.verifier_run_id = ? "
+            "ORDER BY e.sequence DESC LIMIT 1",
+            (mission_id, SUBJECT_STEP, step_id, verifier_run_id),
+        ).fetchone()
+    return dict(row) if row else None

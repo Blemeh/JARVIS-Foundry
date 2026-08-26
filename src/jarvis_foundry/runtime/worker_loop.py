@@ -37,7 +37,8 @@ from types import SimpleNamespace
 from typing import Any, Callable, Iterator, Iterable
 
 from ..database import FoundryDatabase
-from ..events import Event
+from ..clock import parse, utc_now
+from ..events import Event, EventConflict
 from ..paths import FoundryPaths
 from ..roles.router import RoleRouter
 from ..supervisor.estop import EmergencyStop
@@ -60,6 +61,7 @@ from .config import WorkerRuntimeConfig
 from .provider_config import ProviderConfigError
 
 LOOP_LEASE_KEY = "worker-loop:singleton"
+IDLE_HEARTBEAT_SECONDS = 300
 DEFAULT_MISSION_ID = "mission-wfm-optimizer"
 DEFAULT_RESOURCE_ID = "resource-wfm-optimizer"
 
@@ -100,26 +102,36 @@ def _executive_waiting_report(
     database: FoundryDatabase, *, loop_id: str, instance_id: str,
     decision: Any, reason: str,
 ) -> dict[str, Any]:
-    database.append(Event.create(
-        "worker_loop.executive_waiting",
-        {
-            "loop_id": loop_id, "instance_id": instance_id,
-            "decision_id": decision.decision_id,
-            "reason": reason,
-            "wait": {
-                "reconsider_condition": (
-                    decision.wait.reconsider_condition if decision.wait else ""),
-                "best_candidate_id": (
-                    decision.wait.best_candidate_id if decision.wait else None),
-                "best_score": (
-                    decision.wait.best_score if decision.wait else None),
-                "wait_kind": (
-                    decision.wait.wait_kind if decision.wait else None),
-            },
+    import hashlib
+
+    payload = {
+        "loop_id": loop_id, "instance_id": instance_id,
+        "decision_id": decision.decision_id,
+        "reason": reason,
+        "episode_key": hashlib.sha256(str(reason).strip().encode("utf-8")).hexdigest()[:20],
+        "wait": {
+            "reconsider_condition": (
+                decision.wait.reconsider_condition if decision.wait else ""),
+            "best_candidate_id": (
+                decision.wait.best_candidate_id if decision.wait else None),
+            "best_score": (
+                decision.wait.best_score if decision.wait else None),
+            "wait_kind": (
+                decision.wait.wait_kind if decision.wait else None),
         },
-        source_type="supervisor", source_id=instance_id,
-        idempotency_key=f"worker_loop.executive_waiting:{loop_id}",
-    ))
+    }
+    recent = database.events(
+        readonly=True, limit=100, newest_first=True,
+        event_types=("worker_loop.executive_waiting",),
+    )
+    latest = recent[0].payload if recent else None
+    if not isinstance(latest, dict) or latest.get("episode_key") != payload["episode_key"]:
+        sequence = recent[0].sequence if recent else 0
+        database.append(Event.create(
+            "worker_loop.executive_waiting", payload,
+            source_type="supervisor", source_id=instance_id,
+            idempotency_key=f"worker_loop.executive_waiting:{payload['episode_key']}:{sequence + 1}",
+        ))
     return {
         "loop_id": loop_id,
         "outcome": "WAITING",
@@ -290,22 +302,34 @@ def _maybe_portfolio_select(
         source_id=f"worker-loop:{instance_id}",
     )
     if decision.kind != "SELECT" or decision.entity_id is None:
-        database.append(Event.create(
-            "worker_loop.portfolio_waiting",
-            {
-                "loop_id": loop_id,
-                "instance_id": instance_id,
-                "decision_id": decision.decision_id,
-                "selected_class": decision.selected_class,
-                "reason": decision.reason,
-                "why_now": decision.why_now,
-                "wake_on": list(decision.wake_on),
-                "revisit_at": decision.revisit_at,
-            },
-            source_type="supervisor",
-            source_id=f"worker-loop:{instance_id}",
-            idempotency_key=f"worker_loop.portfolio_waiting:{loop_id}",
-        ))
+        import hashlib
+
+        reason = str(decision.reason or "portfolio waiting")
+        episode_key = hashlib.sha256(reason.strip().encode("utf-8")).hexdigest()[:20]
+        recent = database.events(
+            readonly=True, limit=100, newest_first=True,
+            event_types=("worker_loop.portfolio_waiting",),
+        )
+        latest = recent[0].payload if recent else None
+        if not isinstance(latest, dict) or latest.get("episode_key") != episode_key:
+            sequence = recent[0].sequence if recent else 0
+            database.append(Event.create(
+                "worker_loop.portfolio_waiting",
+                {
+                    "loop_id": loop_id,
+                    "instance_id": instance_id,
+                    "decision_id": decision.decision_id,
+                    "selected_class": decision.selected_class,
+                    "reason": decision.reason,
+                    "why_now": decision.why_now,
+                    "wake_on": list(decision.wake_on),
+                    "revisit_at": decision.revisit_at,
+                    "episode_key": episode_key,
+                },
+                source_type="supervisor",
+                source_id=f"worker-loop:{instance_id}",
+                idempotency_key=f"worker_loop.portfolio_waiting:{episode_key}:{sequence + 1}",
+            ))
         return None
     payload = decision.to_payload()
     result = materialize_portfolio_selection(
@@ -526,13 +550,157 @@ def _recover_v3_terminal(database: FoundryDatabase, *, loop_id: str,
 
 def _waiting_report(database: FoundryDatabase, *, loop_id: str,
                     instance_id: str, reason: str) -> dict[str, Any]:
-    database.append(Event.create(
+    """Record an idle episode once, then emit sparse audit heartbeats.
+
+    ``loop_id`` is intentionally excluded from the episode identity: the
+    Supervisor launches short-lived one-shot workers and historically each
+    generated a fresh UUID, producing tens of thousands of identical idle
+    events.  A reason transition starts a new episode; an unchanged reason
+    gets at most one heartbeat every five minutes.
+    """
+    import hashlib
+
+    episode_key = hashlib.sha256(str(reason).strip().encode("utf-8")).hexdigest()[:20]
+    active: dict[str, Any] | None = None
+    # Count every prior start for this reason, not only the currently open
+    # episode.  If an idle reason recurs after a closed episode, the ordinal
+    # must advance or the new durable event would collide with the old one.
+    # Count historical episodes in SQLite rather than a bounded Python window;
+    # otherwise a busy-but-legitimate reason that recurs after >200 episodes
+    # could reuse an old idempotency key.  JSON1 is part of the SQLite builds
+    # supported by Foundry; a malformed legacy payload simply contributes zero.
+    with database.connect(readonly=True) as connection:
+        starts = int(connection.execute(
+            "SELECT COUNT(*) FROM events "
+            "WHERE event_type IN ('worker_loop.waiting_started', 'worker_loop.waiting') "
+            "AND json_extract(payload_json, '$.episode_key') = ?",
+            (episode_key,),
+        ).fetchone()[0])
+        latest_row = connection.execute(
+            "SELECT event_type, payload_json, recorded_at FROM events "
+            "WHERE event_type IN ('worker_loop.waiting_started', "
+            "'worker_loop.waiting_heartbeat', 'worker_loop.waiting_ended', "
+            "'worker_loop.waiting') "
+            "AND json_extract(payload_json, '$.episode_key') = ? "
+            "ORDER BY sequence DESC LIMIT 1",
+            (episode_key,),
+        ).fetchone()
+        latest_any_row = connection.execute(
+            "SELECT event_type, payload_json FROM events "
+            "WHERE event_type IN ('worker_loop.waiting_started', "
+            "'worker_loop.waiting_heartbeat', 'worker_loop.waiting_ended', "
+            "'worker_loop.waiting') ORDER BY sequence DESC LIMIT 1"
+        ).fetchone()
+    active_types = {
+        "worker_loop.waiting_started", "worker_loop.waiting_heartbeat",
         "worker_loop.waiting",
-        {"loop_id": loop_id, "instance_id": instance_id, "reason": reason},
-        source_type="supervisor", source_id=instance_id,
-        idempotency_key=f"worker_loop.waiting:{loop_id}",
-    ))
+    }
+    # A reason change closes the prior episode before opening the new one.
+    # Without this transition, alternating reasons could leave several active
+    # episodes and make a later return to reason A look like a no-op.
+    if latest_any_row is not None and latest_any_row[0] in active_types:
+        try:
+            prior_payload = json.loads(str(latest_any_row[1]))
+        except (TypeError, ValueError):
+            prior_payload = {}
+        if prior_payload.get("episode_key") != episode_key:
+            prior_episode = str(prior_payload.get("episode_id") or "")
+            if prior_episode:
+                try:
+                    database.append(Event.create(
+                        "worker_loop.waiting_ended",
+                        {"loop_id": loop_id, "instance_id": instance_id,
+                         "episode_key": prior_payload.get("episode_key"),
+                         "episode_id": prior_episode,
+                         "reason": "idle reason changed"},
+                        source_type="supervisor", source_id=instance_id,
+                        idempotency_key=f"worker_loop.waiting_ended:{prior_episode}",
+                    ))
+                except EventConflict:
+                    pass
+            latest_row = None
+    if latest_row is not None and latest_row[0] in active_types:
+        try:
+            latest_payload = json.loads(str(latest_row[1]))
+        except (TypeError, ValueError):
+            latest_payload = {}
+        active = {
+            "episode_id": str(latest_payload.get("episode_id") or f"{episode_key}:1"),
+            "recorded_at": latest_row[2],
+        }
+    now = utc_now()
+    if active is None:
+        episode_id = f"{episode_key}:{starts + 1}"
+        try:
+            database.append(Event.create(
+                "worker_loop.waiting_started",
+                {"loop_id": loop_id, "instance_id": instance_id, "reason": reason,
+                 "episode_key": episode_key, "episode_id": episode_id},
+                source_type="supervisor", source_id=instance_id,
+                idempotency_key=f"worker_loop.waiting_started:{episode_id}",
+            ))
+        except EventConflict:
+            # Another short-lived loop won the same reason episode race.  The
+            # durable row is already the truthful outcome; do not turn a
+            # harmless duplicate poll into a worker failure.
+            pass
+    else:
+        try:
+            age = (now - parse(str(active.get("recorded_at")))).total_seconds()
+        except (TypeError, ValueError, OverflowError):
+            age = IDLE_HEARTBEAT_SECONDS
+        if age >= IDLE_HEARTBEAT_SECONDS:
+            bucket = int(now.timestamp() // IDLE_HEARTBEAT_SECONDS)
+            try:
+                database.append(Event.create(
+                    "worker_loop.waiting_heartbeat",
+                    {"loop_id": loop_id, "instance_id": instance_id, "reason": reason,
+                     "episode_key": episode_key,
+                     "episode_id": active["episode_id"], "age_seconds": max(0, int(age))},
+                    source_type="supervisor", source_id=instance_id,
+                    idempotency_key=(
+                        f"worker_loop.waiting_heartbeat:{active['episode_id']}:{bucket}"),
+                ))
+            except EventConflict:
+                pass
     return {"loop_id": loop_id, "outcome": "WAITING", "reason": reason}
+
+
+def _end_waiting_episode(database: FoundryDatabase, *, loop_id: str,
+                         instance_id: str) -> None:
+    """Close the newest idle episode when actionable work appears."""
+    with database.connect(readonly=True) as connection:
+        latest_row = connection.execute(
+            "SELECT event_type, payload_json FROM events "
+            "WHERE event_type IN ('worker_loop.waiting_started', "
+            "'worker_loop.waiting_heartbeat', 'worker_loop.waiting_ended', "
+            "'worker_loop.waiting') ORDER BY sequence DESC LIMIT 1"
+        ).fetchone()
+    active = None
+    if latest_row is not None and latest_row[0] in {
+        "worker_loop.waiting_started", "worker_loop.waiting_heartbeat",
+        "worker_loop.waiting"
+    }:
+        try:
+            active = json.loads(str(latest_row[1]))
+        except (TypeError, ValueError):
+            active = None
+    if not active:
+        return
+    episode_id = str(active.get("episode_id") or "")
+    if not episode_id:
+        return
+    try:
+        database.append(Event.create(
+            "worker_loop.waiting_ended",
+            {"loop_id": loop_id, "instance_id": instance_id,
+             "episode_key": active.get("episode_key"), "episode_id": episode_id,
+             "reason": "actionable mission selected"},
+            source_type="supervisor", source_id=instance_id,
+            idempotency_key=f"worker_loop.waiting_ended:{episode_id}",
+        ))
+    except EventConflict:
+        pass
 
 
 def _blocked_contract_report(database: FoundryDatabase, *, loop_id: str,
@@ -751,6 +919,8 @@ def run_cycle(
                 database, loop_id=loop_id, instance_id=instance_id,
                 reason="no dispatchable mission has an authoritative executable contract",
             )
+        _end_waiting_episode(
+            database, loop_id=loop_id, instance_id=instance_id)
         try:
             contract = next_executable_contract(database, mission_id)
             if contract is None:

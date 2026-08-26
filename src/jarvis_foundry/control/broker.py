@@ -141,7 +141,8 @@ def resolve_envelope_targets(database: FoundryDatabase,
 
 
 def emergency_stop_reason(database: FoundryDatabase,
-                          stop_path: str | Path | None) -> str | None:
+                          stop_path: str | Path | None,
+                          identities: set[str] | frozenset[str] | None = None) -> str | None:
     """Shared deterministic emergency-stop read (contract §9): stop
     marker, active STOP_EVERYTHING directive, FROZEN/SUSPENDED
     supervisor. Used by the broker AND the capability broker so the two
@@ -149,21 +150,35 @@ def emergency_stop_reason(database: FoundryDatabase,
     if stop_path is not None and Path(stop_path).exists():
         return "emergency stop marker is present"
     with database.connect() as connection:
-        stopped = connection.execute(
-            "SELECT directive_id, command_type FROM directives "
+        stopped_rows = connection.execute(
+            "SELECT directive_id, command_type, target FROM directives "
             "WHERE active = 1 AND command_type IN ('STOP_EVERYTHING', 'PAUSE') "
-            "ORDER BY updated_at DESC LIMIT 1"
-        ).fetchone()
-        if stopped:
+            "ORDER BY updated_at DESC"
+        ).fetchall()
+        scope = {str(value) for value in identities or ()}
+        scope.add("GLOBAL")
+        for stopped in stopped_rows:
+            target = stopped[2]
+            if stopped[1] == "PAUSE" and identities is not None and target not in scope:
+                continue
             if stopped[1] == "PAUSE":
                 return f"PAUSE directive {stopped[0]} is active"
-            return f"STOP_EVERYTHING directive {stopped[0]} is active"
+            if identities is None or target in (None, "", "GLOBAL") or target in scope:
+                return f"STOP_EVERYTHING directive {stopped[0]} is active"
         state = connection.execute(
             "SELECT status FROM supervisor_state WHERE singleton = 1"
         ).fetchone()
     if state is not None and state[0] in ("FROZEN", "SUSPENDED"):
         return f"supervisor is {state[0]}"
     return None
+
+
+def matching_pause_reason(
+    database: FoundryDatabase,
+    identities: set[str] | frozenset[str],
+) -> str | None:
+    """Return an active PAUSE/STOP directive that applies to one scope."""
+    return emergency_stop_reason(database, None, identities=identities)
 
 
 def veto_identities_for(envelope: ActionEnvelope, canonical_kind: str,
@@ -241,7 +256,7 @@ class PolicyBroker:
             return BrokerResult(BrokerDecision.NOT_READY, str(exc))
 
         # 1 — emergency STOP (fresh durable state every call)
-        stop = self._emergency_stop_active()
+        stop = self._emergency_stop_active(envelope)
         if stop:
             return BrokerResult(BrokerDecision.EMERGENCY_STOPPED, stop,
                                 canonical_kind)
@@ -348,8 +363,14 @@ class PolicyBroker:
             return "reversibility must be 'reversible' or 'irreversible'"
         return None
 
-    def _emergency_stop_active(self) -> str | None:
-        return emergency_stop_reason(self.database, self.stop_path)
+    def _emergency_stop_active(self, envelope: ActionEnvelope | None = None) -> str | None:
+        identities = None
+        if envelope is not None:
+            identities = {
+                "GLOBAL", str(envelope.action_id), str(envelope.mission_id),
+                str(envelope.resource_id), str(envelope.capability),
+            }
+        return emergency_stop_reason(self.database, self.stop_path, identities=identities)
 
     def _resolve_targets(self, envelope: ActionEnvelope) -> tuple[str, ...]:
         return resolve_envelope_targets(self.database, envelope)

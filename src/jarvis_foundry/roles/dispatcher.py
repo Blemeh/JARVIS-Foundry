@@ -30,7 +30,7 @@ from typing import Callable
 from ..clock import isoformat, utc_now
 from ..database import FoundryDatabase
 from ..events import Event
-from ..supervisor.leases import LeaseManager
+from ..supervisor.leases import LeaseManager, LeaseUnavailable
 from .adapter import ProviderUnavailable, RoleAdapter
 from .manifest import ContextManifest
 from .results import BLOCKED, COMPLETED, FAILED, RoleResult
@@ -66,6 +66,12 @@ class RoleDispatcher:
         self.startup_grace_seconds = 30  # V7-S5 promotion (cycle-r2b):
         # cover adapter boot before the first session heartbeat
         self._heartbeat_count: dict[str, int] = {}
+        # A duplicate caller for the same durable run is allowed to wait for
+        # the owner of that run to finish.  This is deliberately bounded: a
+        # genuinely orphaned session remains visible as RUNNING/BLOCKED and
+        # is recovered by the reaper, while a concurrent retry converges on
+        # the one durable result instead of racing its idempotency key.
+        self.replay_wait_seconds = 30.0
 
     # -- durable events -----------------------------------------------------
 
@@ -150,6 +156,42 @@ class RoleDispatcher:
             attempt=attempt,
         )
 
+    def manifest_for(
+        self,
+        run_id: str,
+        role: str,
+        mission_id: str,
+        step_id: str | None,
+        resource_id: str,
+        capability: str,
+        instructions: str,
+        duration_seconds: int,
+        budget_usd: float,
+        provider: str,
+        config,
+        *,
+        expected_artifacts: tuple[str, ...] = (),
+        verification_criteria: tuple[str, ...] = (),
+        forbidden_paths: tuple[str, ...] = (),
+        attempt: int = 1,
+    ) -> ContextManifest:
+        """Build the exact manifest that :meth:`dispatch` will persist.
+
+        MissionLoop uses this public, side-effect-free helper to decide
+        whether a historical verifier session is compatible before selecting
+        a legacy or versioned identity.  Keeping construction in one place
+        prevents the identity decision and the dispatched context from
+        drifting apart.
+        """
+        return self._manifest(
+            run_id, role, mission_id, step_id, resource_id, capability,
+            instructions, duration_seconds, budget_usd, provider, config,
+            expected_artifacts=expected_artifacts,
+            verification_criteria=verification_criteria,
+            forbidden_paths=forbidden_paths,
+            attempt=attempt,
+        )
+
     def _replay_completed(self, run_id: str, prospective: ContextManifest) -> RoleResult | None:
         """Replay a completed run from the ledger when the caller retries the
         exact same context (crashed-caller recovery). Returns None when there
@@ -227,6 +269,58 @@ class RoleDispatcher:
         try:
             self.leases.acquire(lease_key, run_id,
                                duration_seconds + self.startup_grace_seconds)
+        except LeaseUnavailable as error:
+            # Only a caller retrying the SAME run id may wait.  A different
+            # run id is a competing session and must be blocked immediately;
+            # this preserves the lease invariant and avoids turning a stale
+            # lease into an unbounded wait.
+            existing = self.database.row("agent_runs", "run_id", run_id)
+            if existing is not None and existing.get("status") == "RUNNING":
+                import time
+                deadline = time.monotonic() + self.replay_wait_seconds
+                while time.monotonic() < deadline:
+                    time.sleep(0.05)
+                    settled = self.database.row("agent_runs", "run_id", run_id)
+                    if settled is None:
+                        break
+                    if settled.get("status") == "COMPLETED":
+                        replayed = self._replay_completed(run_id, prospective)
+                        if replayed is not None:
+                            return replayed
+                        # A terminal row with a changed context is never
+                        # silently reused; the caller receives a precise
+                        # conflict instead of corrupting the old run.
+                        break
+                    if settled.get("status") == "FAILED":
+                        break
+                settled = self.database.row("agent_runs", "run_id", run_id)
+                if settled is not None and settled.get("status") == "COMPLETED":
+                    replayed = self._replay_completed(run_id, prospective)
+                    if replayed is not None:
+                        return replayed
+                return RoleResult(
+                    run_id=run_id, role=role, status=BLOCKED,
+                    provider=str(existing.get("provider") or ""),
+                    model=str(existing.get("model") or ""),
+                    verdict="BLOCKED", error_class="run_in_progress",
+                    error_detail=(
+                        f"run {run_id} is already owned by a live dispatcher; "
+                        "the bounded replay wait expired"),
+                    started_at=isoformat(utc_now()), finished_at=isoformat(utc_now()),
+                )
+            # Do not append agent_run.failed for a competing caller: doing so
+            # would mutate the owner’s still-live run into FAILED.  A lease
+            # refusal is an honest, non-mutating result for this caller.  If
+            # this run id has never been projected, the denial itself is still
+            # recorded for auditability (the projection remains empty).
+            if existing is None:
+                self._fail_run(run_id, "lease_unavailable", str(error))
+            return RoleResult(
+                run_id=run_id, role=role, status=BLOCKED, provider="", model="",
+                verdict="BLOCKED", error_class="lease_unavailable",
+                error_detail=str(error),
+                started_at=isoformat(utc_now()), finished_at=isoformat(utc_now()),
+            )
         except Exception as error:
             self._fail_run(run_id, "lease_unavailable", str(error))
             return RoleResult(

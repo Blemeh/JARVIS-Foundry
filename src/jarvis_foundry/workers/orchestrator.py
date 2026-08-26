@@ -40,6 +40,9 @@ from ..mission.verifier_binding import (
     build_terminal_evidence,
     capture_binding,
     fresh_verifier_identity,
+    VERIFIER_CONTRACT_VERSION,
+    verifier_contract_digest,
+    verifier_replay_state,
 )
 from .adapters.base import ProviderUnavailable, WorkerAdapter
 from .adapters.registry import WorkerRegistry
@@ -141,24 +144,34 @@ class HybridStepController:
 
     # -- STOP gate ----------------------------------------------------------
 
-    def _stop_verdict(self) -> str | None:
+    def _stop_verdict(self, contract: WorkerStepContract | None = None) -> str | None:
         """Returns a stop reason when STOP/veto forbids dispatch, else None."""
         if self.stop_path is not None and self.stop_path.exists():
             return "emergency stop sentinel present"
         if self.policy is not None:
-            with self.database.connect() as connection:
-                paused = connection.execute(
-                    "SELECT directive_id FROM directives WHERE active = 1 "
-                    "AND command_type = 'PAUSE' ORDER BY updated_at DESC LIMIT 1"
-                ).fetchone()
-                if paused:
-                    return f"owner pause directive {paused[0]} is active"
-                stopped = connection.execute(
-                    "SELECT directive_id FROM directives WHERE active = 1 "
-                    "AND command_type = 'STOP_EVERYTHING' ORDER BY updated_at DESC LIMIT 1"
-                ).fetchone()
-                if stopped:
-                    return f"owner stop directive {stopped[0]} is active"
+            from ..control.broker import emergency_stop_reason
+
+            identities = None
+            if contract is not None:
+                identities = {"GLOBAL", contract.mission_id}
+                if contract.action_envelope is not None:
+                    envelope = contract.action_envelope
+                    if isinstance(envelope, dict):
+                        envelope_values = (
+                            envelope.get("action_id"),
+                            envelope.get("resource_id"),
+                            envelope.get("capability"),
+                        )
+                    else:
+                        envelope_values = (
+                            getattr(envelope, "action_id", None),
+                            getattr(envelope, "resource_id", None),
+                            getattr(envelope, "capability", None),
+                        )
+                    identities.update({
+                        str(value) for value in envelope_values if value is not None
+                    })
+            return emergency_stop_reason(self.database, self.stop_path, identities=identities)
         return None
 
     def _record_stop_blocked(self, contract: WorkerStepContract, reason: str) -> None:
@@ -235,6 +248,7 @@ class HybridStepController:
         contract: WorkerStepContract,
         envelope: ResultEnvelope,
         report: EvidenceReport,
+        before: BeforeState | None = None,
     ) -> tuple[str, str | None]:
         """Independent verification; returns (verdict, verdict_id).
 
@@ -244,25 +258,87 @@ class HybridStepController:
         frozen before the verifier session starts and every terminal
         outcome carries the hash-bound evidence set.
         """
-        stop_reason = self._stop_verdict()
+        stop_reason = self._stop_verdict(contract)
         if stop_reason:
             self._record_stop_blocked(contract, stop_reason)
             return "STOPPED", None
-        verdict_id, verifier_run_id = fresh_verifier_identity(contract.run_id)
+        criteria = list(contract.verification_criteria) or [
+            "worker outcome agrees with observed evidence",
+        ]
+        verifier_instructions = (
+            f"Independently verify step {contract.step_id} of "
+            f"{contract.mission_id}. Acceptance criteria: "
+            f"{'; '.join(criteria)}. Verifier contract "
+            f"{VERIFIER_CONTRACT_VERSION}; read-only inspection only: "
+            f"inspect the frozen artifact "
+            f"directly (worktree {contract.working_root}). The "
+            ".jarvis-result.json marker is a control record only; do not "
+            "treat its claims as independent proof. Reconstruct the "
+            "acceptance facts from the artifact, repository and criteria "
+            "available to this read-only session. End your "
+            "response with a line: VERDICT: PASS | FAIL | BLOCKED | "
+            "NOT_TESTED (NOT_TESTED when you cannot determine)."
+        )
+        verifier_context = {
+            "mission_id": contract.mission_id,
+            "step_id": contract.step_id,
+            "target": str(contract.working_root.resolve()),
+            "objective": contract.objective,
+            "instructions": verifier_instructions,
+            "criteria": criteria,
+            "allowed_paths": [str(path.resolve()) for path in contract.allowed_paths],
+            "forbidden_paths": [str(path.resolve()) for path in contract.forbidden_paths],
+            "provider": envelope.provider_actual,
+            "model": envelope.model_actual,
+            "attempt": contract.attempt,
+            "verifier_contract_version": VERIFIER_CONTRACT_VERSION,
+            # Builder claims and the builder's reconciliation report are not
+            # verifier input.  They remain in the durable binding/audit record
+            # only, so a verifier can independently reconstruct the result.
+            "before_state": {
+                "head": before.head,
+                "diff_hash": before.diff_hash,
+                "changed_files": list(before.changed_files),
+                "file_hashes": dict(before.file_hashes),
+            } if before is not None else {},
+        }
+        contract_digest = verifier_contract_digest(verifier_context)
+        reusable, revision = verifier_replay_state(
+            self.database,
+            mission_id=contract.mission_id,
+            step_id=contract.step_id,
+            builder_run_id=contract.run_id,
+            contract_digest=contract_digest,
+        )
+        if reusable is not None:
+            existing_verdict_id = str(reusable.get("verdict_id") or "")
+            decision = AcceptanceGate(self.database, stop_path=self.stop_path).evaluate(
+                mission_id=contract.mission_id,
+                step_id=contract.step_id,
+                target=contract.working_root,
+                builder_run_id=envelope.run_id,
+            )
+            return ("PASS" if decision.accepted else "FAIL"), existing_verdict_id
+        verdict_id, verifier_run_id = fresh_verifier_identity(
+            contract.run_id,
+            attempt=contract.attempt,
+            identity_context=verifier_context,
+            base_verifier_run_id=f"{contract.run_id}-verify",
+            revision=revision,
+        )
         independence = {
             "builder_worker": envelope.framework,
             "builder_provider": envelope.provider_actual,
             "verifier_provider": envelope.provider_actual,
             "provider_diverse": False,
+            "session_independent": True,
+            "provider_independent": False,
             "same_provider_limitation": (
                 "same-provider verification: reduced provider independence "
                 "(owner model-lock mandate); isolation enforced through a "
                 "fresh verifier session with distinct run identity"),
             "session_isolation": "fresh-session",
         }
-        criteria = list(contract.verification_criteria) or [
-            "worker outcome agrees with observed evidence",
-        ]
         capture = capture_binding(
             self.database,
             verdict_id=verdict_id,
@@ -284,23 +360,15 @@ class HybridStepController:
             attempt=contract.attempt,
             role="verifier",
             objective=contract.objective,
-            instructions=(
-                f"Independently verify step {contract.step_id} of "
-                f"{contract.mission_id}. Acceptance criteria: "
-                f"{'; '.join(criteria)}. Inspect the frozen artifact "
-                f"directly (worktree {contract.working_root}). Worker "
-                f"claim: {envelope.claimed_outcome or 'none'}. Evidence "
-                f"mismatches reported by JARVIS: "
-                f"{'; '.join(report.mismatches) or 'none'}. End your "
-                "response with a line: VERDICT: PASS | FAIL | BLOCKED | "
-                "NOT_TESTED (NOT_TESTED when you cannot determine)."
-            ),
+            instructions=verifier_instructions,
             working_root=contract.working_root,
             allowed_paths=contract.allowed_paths,
             forbidden_paths=contract.forbidden_paths,
             context_manifest_id=contract.context_manifest_id,
             context_manifest_hash=contract.context_manifest_hash,
-            action_envelope=contract.action_envelope,
+            # Do not share the builder's mutable action envelope with the
+            # verifier session; verification is read-only and contract-only.
+            action_envelope={},
             provider=contract.provider,
             model=contract.model,
             duration_seconds=contract.duration_seconds,
@@ -407,7 +475,7 @@ class HybridStepController:
                 expected_artifacts=contract.expected_artifacts,
                 verification_criteria=contract.verification_criteria,
             )
-        stop_reason = self._stop_verdict()
+        stop_reason = self._stop_verdict(contract)
         if stop_reason:
             self._record_stop_blocked(contract, stop_reason)
             return HybridStepOutcome(
@@ -483,7 +551,7 @@ class HybridStepController:
             and envelope.verdict == VERDICT_PASS
         )
         if clean:
-            verdict, verdict_id = self._verify(contract, envelope, report)
+            verdict, verdict_id = self._verify(contract, envelope, report, before)
             if verdict == "STOPPED":
                 return HybridStepOutcome(
                     outcome=STOPPED_OUTCOME, step_id=contract.step_id,
@@ -527,7 +595,7 @@ class HybridStepController:
         if report.unrecorded_mutations:
             trigger = "claimed_success_contradicted_by_evidence"
         self._record_fallback(envelope, trigger)
-        verdict, verdict_id = self._verify(contract, envelope, report)
+        verdict, verdict_id = self._verify(contract, envelope, report, before)
         if verdict == "STOPPED":
             return HybridStepOutcome(
                 outcome=STOPPED_OUTCOME, step_id=contract.step_id,
@@ -569,7 +637,7 @@ class HybridStepController:
         repair_run = 0
         last_outcome: HybridStepOutcome | None = None
         while repair_run < self.max_repairs:
-            stop_reason = self._stop_verdict()
+            stop_reason = self._stop_verdict(original)
             if stop_reason:
                 self._record_stop_blocked(original, stop_reason)
                 self._advance(original.mission_id, "BLOCKED", run_id=original.run_id)
@@ -667,7 +735,8 @@ class HybridStepController:
                     repair_run_id=repair_run_id, verdict_id=failed_verdict_id,
                     reason="; ".join(repair_report.mismatches) or "repair evidence mismatch")
                 continue
-            verdict, verdict_id = self._verify(repair_contract, repair_envelope, repair_report)
+            verdict, verdict_id = self._verify(
+                repair_contract, repair_envelope, repair_report, repair_before)
             if verdict == "STOPPED":
                 return HybridStepOutcome(
                     outcome=STOPPED_OUTCOME, step_id=original.step_id,

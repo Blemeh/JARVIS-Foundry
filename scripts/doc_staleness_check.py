@@ -1,7 +1,8 @@
 """JARVIS documentation staleness check (deterministic).
 
 Verifies the current-truth surfaces against the repository:
-1. docs/CURRENT_STATE.md HEAD claim == `git rev-parse HEAD`
+1. docs/CURRENT_STATE.md documentation-state base == the immediate parent of
+   the current docs-only commit (the source state the prose describes)
 2. schema claim == jarvis_foundry.migrations.SCHEMA_VERSION (semantic markers)
 3. no forbidden stale phrases in current-status surfaces
 4. referenced evidence paths exist
@@ -34,6 +35,10 @@ CURRENT_SURFACES = (
 
 CURRENT_CANDIDATE_SCHEMA_RE = re.compile(
     r"CURRENT/CANDIDATE SCHEMA:\s*v(\d+)",
+    re.IGNORECASE,
+)
+DOCUMENTATION_STATE_SHA_RE = re.compile(
+    r"DOCUMENTATION STATE BASE SHA:\s*`?([0-9a-f]{7,64})`?",
     re.IGNORECASE,
 )
 V34_BASELINE_RE = re.compile(
@@ -88,6 +93,37 @@ def _git_head() -> str:
     return out.stdout.strip()
 
 
+def documentation_state_sha(head: str | None = None) -> str:
+    """Return the source commit that a docs-only HEAD is allowed to describe.
+
+    A document cannot contain the SHA of the commit that contains the document
+    without a self-referential hash.  The repository contract therefore makes
+    the current-state commit the final docs-only commit and pins the prose to
+    its immediate parent.  Any later code commit, or a docs commit that also
+    changes source, fails closed instead of accepting an arbitrary historical
+    SHA.
+    """
+    commit = (head or _git_head()).strip()
+    parent = subprocess.run(
+        ["git", "-C", str(REPO), "rev-parse", f"{commit}^"],
+        capture_output=True, text=True, check=False,
+    )
+    return parent.stdout.strip() if parent.returncode == 0 else commit
+
+
+def validate_documentation_pin(text: str, state_sha: str) -> list[str]:
+    failures: list[str] = []
+    match = DOCUMENTATION_STATE_SHA_RE.search(text)
+    if match is None:
+        failures.append("CURRENT_STATE.md missing DOCUMENTATION STATE BASE SHA marker")
+    elif not (match.group(1).lower() == state_sha.lower()
+              or state_sha.lower().startswith(match.group(1).lower())):
+        failures.append(
+            "CURRENT_STATE.md documentation-state pin is stale: "
+            f"named {match.group(1)}, expected {state_sha}")
+    return failures
+
+
 def _schema_version() -> int:
     sys.path.insert(0, str(REPO / "src"))
     from jarvis_foundry.migrations import SCHEMA_VERSION  # type: ignore[import-not-found]
@@ -100,23 +136,20 @@ def main() -> int:
     schema = _schema_version()
     text = CURRENT_STATE.read_text(encoding="utf-8")
 
-    depth = subprocess.run(
-        ["git", "-C", str(REPO), "rev-list", "--count", f"{head}~20..{head}"],
-        capture_output=True, text=True).stdout.strip()
-    try:
-        horizon = int(depth) if depth else 0
-    except ValueError:
-        horizon = 0
-    pin_ok = False
-    for i in range(horizon + 1):
-        sha = subprocess.run(
-            ["git", "-C", str(REPO), "rev-parse", f"HEAD~{i}"],
-            capture_output=True, text=True).stdout.strip()
-        if sha[:7] in text or sha in text:
-            pin_ok = True
-            break
-    if not pin_ok:
-        failures.append(f"CURRENT_STATE.md pin is stale: no HEAD..HEAD~{horizon} sha named")
+    state_sha = documentation_state_sha(head)
+    failures.extend(validate_documentation_pin(text, state_sha))
+    # The pin is meaningful only when the current commit is a docs-only
+    # reconciliation.  A source change after the pinned commit must force a
+    # new CURRENT_STATE update rather than being hidden by a 20-commit window.
+    changed = subprocess.run(
+        ["git", "-C", str(REPO), "diff-tree", "--no-commit-id", "--name-only",
+         "-r", head], capture_output=True, text=True, check=False).stdout.splitlines()
+    allowed = {"docs/CURRENT_STATE.md", "docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.md"}
+    unexpected = sorted(path for path in changed if path and path not in allowed)
+    if unexpected:
+        failures.append(
+            "CURRENT_STATE.md must be the final docs-only commit; changed paths: "
+            + ", ".join(unexpected[:8]))
     failures.extend(validate_schema_documentation(text, schema))
 
     for surface in CURRENT_SURFACES:

@@ -265,7 +265,10 @@ class Supervisor:
         event_type = "emergency_stop.frozen" if stop else "supervisor.started"
         payload = {
             "instance_id": self.instance_id,
-            "trust_state": "SUSPENDED" if stop else "LAB",
+            # Startup is not a trust promotion.  Preserve the previously
+            # certified/demoted state across a restart; an active STOP still
+            # forces SUSPENDED until an explicit owner-authorized transition.
+            "trust_state": "SUSPENDED" if stop else self._preserved_trust(),
             "stop_id": stop.get("stop_id") if stop else None,
             "reaped_workers": reaped_workers,
             "pid": pid,
@@ -427,6 +430,8 @@ class Supervisor:
                 ).fetchone()
             if row is not None and row["trust_state"] in ALLOWED_TRUST_STATES:
                 trust = str(row["trust_state"])
+                if trust == "PROVEN":
+                    trust = "PROVING"
         except Exception:  # noqa: BLE001 — fail closed to LAB
             trust = "LAB"
         return trust
@@ -511,6 +516,8 @@ class Supervisor:
             port=int(self.command_center_port or 0),
             discovery_cycle_enabled=discovery_cycle_enabled,
             static_root=static_root,
+            runtime_home=Path(self.database.path).resolve().parent,
+            source_repo=os.environ.get("JARVIS_SOURCE_REPO"),
         )
         server.configure_owner(secret)
         server.start()
