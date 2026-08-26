@@ -12,7 +12,7 @@
     "lint": "eslint src e2e --max-warnings 0",
     "test": "vitest run",
     "test:watch": "vitest",
-    "e2e": "playwright test",
+    "e2e": "node scripts/run-playwright.mjs",
     "e2e:ui": "playwright test --ui",
     "verify:product": "node scripts/product-verify.mjs",
     "verify:design": "node scripts/design-detector.mjs",

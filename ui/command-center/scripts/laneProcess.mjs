@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 
 const laneDir = join(process.cwd(), ".lane");
 
@@ -31,9 +31,16 @@ export function clearLaneRecord(laneId) {
 /** Returns PIDs listening on a TCP port on Windows, empty if unknown/unavailable. */
 export function pidsOnPort(port) {
   try {
-    const out = execSync(`netstat -ano | findstr :${port}`, { encoding: "utf8" });
+    // Do not depend on PATH, PowerShell modules, or a shell pipeline.  The
+    // Codex/Windows host can expose a restricted PATH even though the native
+    // tools are present.  Parse netstat output directly and use absolute
+    // System32 paths where available.
+    const systemRoot = process.env.SystemRoot || process.env.WINDIR || "C:\\Windows";
+    const netstat = process.platform === "win32" ? join(systemRoot, "System32", "netstat.exe") : "netstat";
+    const out = execFileSync(netstat, ["-ano"], { encoding: "utf8", windowsHide: true });
     const pids = new Set();
     for (const line of out.split(/\r?\n/)) {
+      if (!line.includes(`:${port}`)) continue;
       if (!line.includes("LISTENING")) continue;
       const parts = line.trim().split(/\s+/);
       const pid = Number(parts[parts.length - 1]);
@@ -47,7 +54,13 @@ export function pidsOnPort(port) {
 
 export function killPid(pid) {
   try {
-    execSync(`taskkill /PID ${pid} /T /F`, { stdio: "ignore" });
+    const systemRoot = process.env.SystemRoot || process.env.WINDIR || "C:\\Windows";
+    const taskkill = process.platform === "win32" ? join(systemRoot, "System32", "taskkill.exe") : "kill";
+    if (process.platform === "win32") {
+      execFileSync(taskkill, ["/PID", String(pid), "/T", "/F"], { stdio: "ignore", windowsHide: true });
+    } else {
+      execFileSync(taskkill, ["-TERM", String(pid)], { stdio: "ignore" });
+    }
     return true;
   } catch {
     return false;

@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -80,9 +81,12 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
   const [trustSummary, setTrustSummary] = useState<TrustSummary | null>(null);
   const [trustSummaryStatus, setTrustSummaryStatus] = useState<"loading" | "ready" | "error">("loading");
   const [notifyOpen, setNotifyOpen] = useState(false);
-  const appliedScenario = useState<Scenario | null>(null);
-  const appliedScenarioRef = appliedScenario[0];
-  const setAppliedScenario = appliedScenario[1];
+  // ScenarioBootstrap runs from a StrictMode effect in development.  A
+  // state-only guard is asynchronous, so the effect can apply the same
+  // scenario twice before React commits the state update (duplicating
+  // timeline/notification IDs).  A ref is the synchronous idempotency key;
+  // the public scenario state remains the render-visible projection.
+  const appliedScenarioRef = useRef<Scenario | null>(null);
 
   const refreshNotifications = useCallback(async () => {
     try {
@@ -165,15 +169,15 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
     async (name: Scenario) => {
       if (mode === "live") return;
       if (!mockClient) return;
-      if (appliedScenarioRef === name) return;
-      setAppliedScenario(name);
+      if (appliedScenarioRef.current === name) return;
+      appliedScenarioRef.current = name;
       await mockClient.runScenario(name);
       setScenario(name);
       setStreamConnected(mockClient.subscribeEvents().connected);
       setVersion((v) => v + 1);
       void refreshNotifications();
     },
-    [mockClient, mode, refreshNotifications, appliedScenarioRef, setAppliedScenario],
+    [mockClient, mode, refreshNotifications],
   );
 
   const reconnectStream = useCallback(async () => {
