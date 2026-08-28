@@ -136,6 +136,7 @@ def build_health_snapshot(
         except (OSError, ValueError):
             release_status = "DEGRADED"
     canonical_source_sha: str | None = None
+    canonical_source_origin: str | None = None
     source_root = source_repo or os.environ.get("JARVIS_SOURCE_REPO")
     if source_root:
         import subprocess
@@ -149,6 +150,8 @@ def build_health_snapshot(
                 )
                 if result.returncode == 0:
                     canonical_source_sha = result.stdout.strip() or None
+                    if canonical_source_sha:
+                        canonical_source_origin = "source_checkout"
             except (OSError, subprocess.TimeoutExpired):
                 canonical_source_sha = None
     state = dict(state_row) if state_row else {}
@@ -172,6 +175,17 @@ def build_health_snapshot(
         if item.get("identity_status", "VALID") == "VALID" and item.get("live", True)
     ]
     stale_processes = [item for item in scoped_processes if item not in active_processes]
+    # A headless immutable release may intentionally have no mutable source
+    # checkout configured.  Its validated manifest still carries the exact
+    # source identity used to build the release, so use that identity only
+    # after one live Supervisor is proven; duplicates stay fail-closed.
+    if (canonical_source_sha is None and len(active_processes) == 1
+            and release_status == "VALID" and release_manifest is not None
+            and current):
+        manifest_sha = str(release_manifest.get("source_sha") or "").strip().lower()
+        if manifest_sha == str(current).lower():
+            canonical_source_sha = manifest_sha
+            canonical_source_origin = "immutable_release_manifest"
     runtime_shas = [item.get("release_sha") for item in active_processes]
     # The process command line often omits the immutable SHA (the headless
     # launcher resolves CURRENT internally).  If the one identity-validated
@@ -234,6 +248,7 @@ def build_health_snapshot(
         "creation_identity": control.creation_identity,
         "runtime_instance_id": control.instance_id,
         "canonical_source_sha": canonical_source_sha,
+        "canonical_source_origin": canonical_source_origin,
         "installed_release_sha": current,
         "runtime_release_sha": runtime_release_sha,
         "parity_state": parity,
@@ -246,6 +261,7 @@ def build_health_snapshot(
             "current": current,
             "previous": previous,
             "canonical_source_sha": canonical_source_sha,
+            "canonical_source_origin": canonical_source_origin,
             "source_sha": release_manifest.get("source_sha") if release_manifest else None,
             "installed_release_sha": current,
             "runtime_sha": runtime_release_sha,
