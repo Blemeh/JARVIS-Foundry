@@ -83,6 +83,35 @@ def test_headless_launcher_is_synchronous_and_identity_bound(tmp_path: Path) -> 
     assert "JARVIS_INSTALL_ROOT does not match task launcher" in text
 
 
+def test_failed_release_build_does_not_publish_partial_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import jarvis_foundry.deployment.release as release
+
+    repo = Path(__file__).resolve().parents[2]
+    sha = subprocess.run(
+        ["git", "-C", str(repo), "rev-parse", "HEAD"],
+        capture_output=True, text=True, check=True,
+    ).stdout.strip()
+    source = tmp_path / "source"
+    subprocess.run(
+        ["git", "clone", "--local", "--no-hardlinks", str(repo), str(source)],
+        capture_output=True, text=True, check=True,
+    )
+
+    def fail_bundle(*args: object, **kwargs: object) -> None:
+        raise ReleaseError("disposable bundle failure")
+
+    monkeypatch.setattr(release, "_build_command_center_bundle", fail_bundle)
+    with pytest.raises(ReleaseError, match="disposable bundle failure"):
+        release.build_release(
+            source_repo=source, source_sha=sha, root=tmp_path / "install",
+        )
+    releases = tmp_path / "install" / "releases"
+    assert not (releases / sha).exists()
+    assert not list(releases.glob(".staging-*"))
+
+
 def test_set_current_records_database_live_authority_and_rollback(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
