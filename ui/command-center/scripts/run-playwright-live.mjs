@@ -110,7 +110,12 @@ try {
     ),
   )
   await waitFor(`http://127.0.0.1:${uiPort}/`, vite, "Vite Command Center")
-  const child = spawn(process.execPath, [cli, "test", ...process.argv.slice(2)], {
+  // The live fixture proves the source-backed autonomy journey.  The rest of
+  // the browser suite intentionally targets the simulated scenario matrix
+  // (and asserts SIMULATED data-source labels), so running it against this
+  // disposable live server would report contract mismatches rather than
+  // runtime failures.
+  const child = spawn(process.execPath, [cli, "test", "e2e/live-autonomy-proof.spec.ts", ...process.argv.slice(2)], {
     cwd: process.cwd(),
     stdio: "inherit",
     env: {
