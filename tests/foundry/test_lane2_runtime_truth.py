@@ -224,9 +224,13 @@ def test_unchanged_idle_state_is_coalesced_but_transitions_are_recorded(
     _waiting_report(database, loop_id="one", instance_id="i-one", reason="no work")
     _waiting_report(database, loop_id="two", instance_id="i-two", reason="no work")
     _waiting_report(database, loop_id="three", instance_id="i-three", reason="STOP active")
+    # Lane 1's canonical waiting lifecycle is the authoritative event family;
+    # its ``waiting_started`` records are coalesced by episode key and retain
+    # the same transition truth that Lane 2 originally exercised through the
+    # older generic ``worker_loop.waiting`` event.
     waiting = [
         event for event in database.events()
-        if event.event_type == "worker_loop.waiting"
+        if event.event_type == "worker_loop.waiting_started"
     ]
     assert len(waiting) == 2
     assert [event.payload["reason"] for event in waiting] == [

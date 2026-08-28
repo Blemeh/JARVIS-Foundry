@@ -336,6 +336,7 @@ def build_operational_status_snapshot(
         }
     return {
         "status": health.get("status", "DEGRADED"),
+        "health": health,
         "generated_at": health.get("generated_at", _now_iso()),
         "reason": health.get("reason"),
         "supervisor_status": health.get("supervisor_status", "UNKNOWN"),
