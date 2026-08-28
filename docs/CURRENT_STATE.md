@@ -5,7 +5,7 @@ convergence candidate. Source, immutable installation, database authority,
 and live runtime are separate truths until the guarded promotion procedure
 proves their parity.
 
-DOCUMENTATION STATE BASE SHA: `92d6937d81159dc686d4760a9fff42cd7b59c6ee`
+DOCUMENTATION STATE BASE SHA: `bd7033cc3ffb6d52493525302a3fece05feead8d`
 
 The SHA above is the source parent of this final documentation-only
 reconciliation commit. The freshness gate requires that relationship and
@@ -19,8 +19,8 @@ LANE 1 SOURCE SHA:           a319017231de3361a11e819e7fff965004e138c9
 LANE 2 IMPLEMENTATION SHA:   dc8bfbc136b70d85fecfe16d8a07ab3b94880209
 LANE 2 EVIDENCE SHA:         c8b97b842072b851b4e7b9f0731c006bf1b53aa6
 LANE 3 SOURCE SHA:           186aeda568bede4fa4bd410f317327893349e9a6
-CONVERGED SOURCE BASE:       92d6937d81159dc686d4760a9fff42cd7b59c6ee
-CONVERGED SOURCE TREE:       1e1ffc465458ff4b70287d6cef30b9b503fd396a
+CONVERGED SOURCE BASE:       bd7033cc3ffb6d52493525302a3fece05feead8d
+CONVERGED SOURCE TREE:       4f6c801a87ffdd5a011c273bef8bcded0b00855e
 CANONICAL CHECKOUT:          DIRTY / PRESERVED / NOT MODIFIED
 PRODUCTION RUNTIME:          NOT TOUCHED BEFORE GUARDED PROMOTION
 LIVE DATABASE:               NOT TOUCHED BEFORE GUARDED PROMOTION
