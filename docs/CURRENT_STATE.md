@@ -5,7 +5,7 @@ convergence candidate. Source, immutable installation, database authority,
 and live runtime are separate truths until the guarded promotion procedure
 proves their parity.
 
-DOCUMENTATION STATE BASE SHA: `bd7033cc3ffb6d52493525302a3fece05feead8d`
+DOCUMENTATION STATE BASE SHA: `39cda3bcacf99dd8cdb3ba2195be5f6380b8e05e`
 
 The SHA above is the source parent of this final documentation-only
 reconciliation commit. The freshness gate requires that relationship and
@@ -19,12 +19,12 @@ LANE 1 SOURCE SHA:           a319017231de3361a11e819e7fff965004e138c9
 LANE 2 IMPLEMENTATION SHA:   dc8bfbc136b70d85fecfe16d8a07ab3b94880209
 LANE 2 EVIDENCE SHA:         c8b97b842072b851b4e7b9f0731c006bf1b53aa6
 LANE 3 SOURCE SHA:           186aeda568bede4fa4bd410f317327893349e9a6
-CONVERGED SOURCE BASE:       bd7033cc3ffb6d52493525302a3fece05feead8d
-CONVERGED SOURCE TREE:       4f6c801a87ffdd5a011c273bef8bcded0b00855e
+CONVERGED SOURCE BASE:       39cda3bcacf99dd8cdb3ba2195be5f6380b8e05e
+CONVERGED SOURCE TREE:       0c4fdf3490b50658d4e2f30a99e2b596e6a378fd
 CANONICAL CHECKOUT:          DIRTY / PRESERVED / NOT MODIFIED
-PRODUCTION RUNTIME:          NOT TOUCHED BEFORE GUARDED PROMOTION
-LIVE DATABASE:               NOT TOUCHED BEFORE GUARDED PROMOTION
-SCHEDULER / REMOTE:          NOT TOUCHED BEFORE GUARDED PROMOTION
+PRODUCTION RUNTIME:          DURABLY STOPPED FOR FINAL SOURCE REBUILD
+LIVE DATABASE:               BACKED UP; PROJECTION RECONCILIATION VERIFIED
+SCHEDULER / REMOTE:          EXACT OWNED TASK RETARGETED ONLY BY RELEASE PROCEDURE
 ```
 
 The candidate was created in a new isolated worktree from Lane 1's exact
@@ -66,6 +66,7 @@ in the deployment runtime-identity authority.
 | V7C resilience and continuity | `PRESERVED` with release, rollback, recovery, and reconciliation gates |
 | Lane 2 runtime/release truth | `INTEGRATED`; immutable staging/publication, DB live-slot authority, identity parity, process census, scheduler contract, idle truth, and recovery proof |
 | Lane 3 Command Center/product truth | `INTEGRATED`; one cinematic surface, source/trust labels, owner-goal state, live fixture proof, and autonomy evidence |
+| Final runtime-truth hardening | `INTEGRATED`; Windows venv wrapper collapse, start-baselined idle growth, canonical clone projection rebuild, and compact parity-to-health mapping |
 
 No accepted lane is `PARTIALLY_MISSING` or `MISSING`. Superseded UI drafts,
 unused orbit variants, and planning-only artifacts were excluded; no duplicate
@@ -105,11 +106,11 @@ trust/reconciliation/idle checks, signed STOP/PAUSE/RESUME/REVOKE, hard-kill
 restart, and rollback/recovery. Any failed gate requires safe rollback and
 diagnosis; no failure may be hidden or patched around.
 
-Before that operation, the live installation remains an older, intentionally
-degraded state and this candidate does not claim production promotion. The
-final session handoff must record the resulting live release SHA, Supervisor
-state, schema/reconciliation, health/status, owner-control proofs, rollback
-result, and any blocker.
+During the final source rebuild the live Supervisor is durably stopped. This
+candidate does not claim production promotion until the immutable build,
+database-first activation, parity, owner-control, hard-kill restart, and
+rollback/recovery proofs complete. The final session handoff records those
+results separately from this source-state pin.
 
 ## Documentation freshness contract
 
