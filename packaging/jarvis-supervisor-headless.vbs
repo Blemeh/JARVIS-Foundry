@@ -2,16 +2,28 @@ Option Explicit
 ' Stable headless production launcher. Resolves CURRENT exactly like jarvis-supervisor.cmd.
 ' Invoked by Task Scheduler via wscript.exe //B //Nologo (no console host).
 
-Dim fso, shell, environment, installRoot, currentFile, sha, release, pyw, args, i, arg, cmd, exitCode
+Dim fso, shell, environment, installRoot, scriptInstallRoot, configuredRoot
+Dim currentFile, sha, release, pyw, args, i, arg, cmd, exitCode
 
 Set fso = CreateObject("Scripting.FileSystemObject")
 Set shell = CreateObject("WScript.Shell")
 Set environment = shell.Environment("Process")
 
-installRoot = shell.ExpandEnvironmentStrings("%JARVIS_INSTALL_ROOT%")
-If installRoot = "%JARVIS_INSTALL_ROOT%" Or Len(Trim(installRoot)) = 0 Then
-  installRoot = shell.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\JARVIS"
+' The task action is bound to this exact VBS file.  Derive the install root
+' from that path so a stale process environment can never redirect a Scheduler
+' trigger to another release tree.  An explicitly configured root is accepted
+' only when it agrees with the bound path.
+scriptInstallRoot = fso.GetParentFolderName(fso.GetParentFolderName(WScript.ScriptFullName))
+scriptInstallRoot = fso.GetAbsolutePathName(scriptInstallRoot)
+configuredRoot = shell.ExpandEnvironmentStrings("%JARVIS_INSTALL_ROOT%")
+If configuredRoot <> "%JARVIS_INSTALL_ROOT%" And Len(Trim(configuredRoot)) > 0 Then
+  configuredRoot = fso.GetAbsolutePathName(configuredRoot)
+  If LCase(configuredRoot) <> LCase(scriptInstallRoot) Then
+    WScript.Echo "FAIL_CLOSED: JARVIS_INSTALL_ROOT does not match task launcher"
+    WScript.Quit 2
+  End If
 End If
+installRoot = scriptInstallRoot
 
 If Not fso.FileExists(installRoot & "\CURRENT") Then
   WScript.Echo "FAIL_CLOSED: CURRENT pointer missing"

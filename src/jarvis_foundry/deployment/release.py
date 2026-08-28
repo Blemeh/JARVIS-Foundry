@@ -699,53 +699,71 @@ def build_release(
                 f"previous CURRENT release manifest missing: {previous_manifest_path}")
         previous_manifest = read_release_json(previous_manifest_path)
         previous_runtime = _runtime_identity(previous_manifest, previous_sha)
-    directory.mkdir(parents=True)
-    staging = directory / "source"
-    _copy_source_snapshot(repo, staging)
-    command_center_bundle = _build_command_center_bundle(repo, sha, directory)
-    venv = directory / ".venv"
-    builder = str(Path(python_exe or sys.executable).resolve())
-    created = subprocess.run(
-        [builder, "-m", "venv", str(venv)],
-        capture_output=True, text=True, timeout=180, check=False,
+    # Build under a unique hidden sibling and publish with one rename.  A
+    # Scheduler/status reader can therefore observe either no release or a
+    # complete immutable release, never a half-populated venv/bundle.
+    staging_directory = directory.parent / (
+        f".staging-{sha[:12]}-{uuid.uuid4().hex[:12]}"
     )
-    if created.returncode != 0:
-        raise ReleaseError(created.stderr.strip() or "venv create failed")
-    release_python = venv / "Scripts" / "python.exe"
-    installed = subprocess.run(
-        [str(release_python), "-m", "pip", "install", "--disable-pip-version-check", str(staging)],
-        capture_output=True, text=True, timeout=300, check=False,
-    )
-    if installed.returncode != 0:
-        raise ReleaseError(installed.stderr.strip() or installed.stdout.strip() or "pip install failed")
-    py_ver = subprocess.run(
-        [str(release_python), "-c", "import sys; print(sys.version.split()[0])"],
-        capture_output=True, text=True, timeout=30, check=True,
-    )
-    manifest = {
-        "release_id": f"rel-{sha[:12]}-{uuid.uuid4().hex[:8]}",
-        "source_sha": sha,
-        "git_commit": sha,
-        "git_tree": tree,
-        "python_version": py_ver.stdout.strip(),
-        "package_version": PACKAGE_VERSION,
-        "schema_compatibility": {
-            "package_schema": SCHEMA_VERSION,
-            "opens_min": SCHEMA_VERSION,
-            "opens_max": SCHEMA_VERSION,
-        },
-        "provenance": {
-            "builder": "jarvis_foundry.deployment.release",
-            "source_repo": str(repo),
+    staging_directory.mkdir(parents=True, exist_ok=False)
+    try:
+        staging = staging_directory / "source"
+        _copy_source_snapshot(repo, staging)
+        command_center_bundle = _build_command_center_bundle(
+            repo, sha, staging_directory)
+        venv = staging_directory / ".venv"
+        builder = str(Path(python_exe or sys.executable).resolve())
+        created = subprocess.run(
+            [builder, "-m", "venv", str(venv)],
+            capture_output=True, text=True, timeout=180, check=False,
+        )
+        if created.returncode != 0:
+            raise ReleaseError(created.stderr.strip() or "venv create failed")
+        release_python = venv / "Scripts" / "python.exe"
+        installed = subprocess.run(
+            [str(release_python), "-m", "pip", "install",
+             "--disable-pip-version-check", str(staging)],
+            capture_output=True, text=True, timeout=300, check=False,
+        )
+        if installed.returncode != 0:
+            raise ReleaseError(
+                installed.stderr.strip() or installed.stdout.strip()
+                or "pip install failed")
+        py_ver = subprocess.run(
+            [str(release_python), "-c",
+             "import sys; print(sys.version.split()[0])"],
+            capture_output=True, text=True, timeout=30, check=True,
+        )
+        manifest = {
+            "release_id": f"rel-{sha[:12]}-{uuid.uuid4().hex[:8]}",
+            "source_sha": sha,
             "git_commit": sha,
             "git_tree": tree,
-        },
-        "previous_runtime": previous_runtime,
-        "created_at": isoformat(),
-        "command_center_bundle": command_center_bundle,
-    }
-    (directory / "RELEASE.json").write_text(
-        json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            "python_version": py_ver.stdout.strip(),
+            "package_version": PACKAGE_VERSION,
+            "schema_compatibility": {
+                "package_schema": SCHEMA_VERSION,
+                "opens_min": SCHEMA_VERSION,
+                "opens_max": SCHEMA_VERSION,
+            },
+            "provenance": {
+                "builder": "jarvis_foundry.deployment.release",
+                "source_repo": str(repo),
+                "git_commit": sha,
+                "git_tree": tree,
+            },
+            "previous_runtime": previous_runtime,
+            "created_at": isoformat(),
+            "command_center_bundle": command_center_bundle,
+        }
+        (staging_directory / "RELEASE.json").write_text(
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8")
+        os.replace(staging_directory, directory)
+    except BaseException:
+        shutil.rmtree(staging_directory, ignore_errors=True)
+        raise
+    release_python = directory / ".venv" / "Scripts" / "python.exe"
     _install_stable_launcher(root)
     return {"release_dir": str(directory), "manifest": manifest, "python_exe": str(release_python)}
 
@@ -1016,7 +1034,11 @@ def release_authority_report(
             )
         except (ReleaseError, TypeError, ValueError):
             filesystem_runtime_identity = None
-    identity_keys = ("source_sha", "git_commit", "git_tree", "schema")
+    # The release id is part of the immutable runtime identity too.  Matching
+    # only the source/tree would let two separately built manifests for the
+    # same commit appear interchangeable even when their artifact hashes or
+    # registry records differ.
+    identity_keys = ("source_sha", "release_id", "git_commit", "git_tree", "schema")
     runtime_identity_match = None
     if active_source_sha and database_runtime_identity is not None:
         runtime_identity_match = bool(

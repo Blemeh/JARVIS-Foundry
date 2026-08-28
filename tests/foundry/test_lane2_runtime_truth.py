@@ -21,7 +21,10 @@ from jarvis_foundry.deployment.release import (
     set_current,
 )
 from jarvis_foundry.migrations import SCHEMA_VERSION
-from jarvis_foundry.runtime.worker_loop import _waiting_report
+from jarvis_foundry.runtime.worker_loop import (
+    _append_coalesced_idle_event,
+    _waiting_report,
+)
 
 
 def _fake_release(root: Path, sha: str, *, previous: str | None = None) -> None:
@@ -76,6 +79,8 @@ def test_headless_launcher_is_synchronous_and_identity_bound(tmp_path: Path) -> 
     assert "shell.Run(cmd, 0, True)" in text
     assert "WScript.Quit exitCode" in text
     assert "shell.Run cmd, 0, False" not in text
+    assert "WScript.ScriptFullName" in text
+    assert "JARVIS_INSTALL_ROOT does not match task launcher" in text
 
 
 def test_set_current_records_database_live_authority_and_rollback(
@@ -163,6 +168,40 @@ def test_unchanged_idle_state_is_coalesced_but_transitions_are_recorded(
     assert len(waiting) == 2
     assert [event.payload["reason"] for event in waiting] == [
         "no work", "STOP active"]
+
+
+def test_portfolio_poll_deadline_does_not_break_idle_coalescing(
+    tmp_path: Path,
+) -> None:
+    """A fresh polling deadline is metadata, not a new idle state."""
+
+    database = FoundryDatabase(tmp_path / "foundry.db")
+    database.initialize()
+    for index in range(3):
+        _append_coalesced_idle_event(
+            database,
+            "worker_loop.portfolio_waiting",
+            {
+                "loop_id": f"poll-{index}",
+                "instance_id": f"instance-{index}",
+                "decision_id": f"decision-{index}",
+                "reason": "no positive-value work is currently executable",
+                "wake_on": ["time", "new_evidence"],
+                "revisit_at": f"2026-08-28T12:0{index}:00Z",
+            },
+            stable_fields={
+                "selected_class": "WAIT",
+                "reason": "no positive-value work is currently executable",
+                "why_now": "no candidate has positive executable value",
+                "wake_on": ["time", "new_evidence"],
+            },
+            source_id=f"worker-loop:instance-{index}",
+        )
+    waiting = [
+        event for event in database.events()
+        if event.event_type == "worker_loop.portfolio_waiting"
+    ]
+    assert len(waiting) == 1
 
 
 def test_process_census_classifies_duplicate_and_stale_rows(

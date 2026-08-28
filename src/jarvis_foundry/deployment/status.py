@@ -522,26 +522,27 @@ def production_status(*, home: Path | None = None, source_repo: Path | None = No
     except (OSError, sqlite3.Error):
         latest_runtime = None
     # A process whose executable resides in the immutable release directory
-    # is the strongest running-identity observation.  Ledger payloads are a
-    # durable fallback for a stopped/restarting process, never a substitute
-    # for a live process census when one is available.
+    # is the strongest running-identity observation.  A process census is the
+    # only observation that can support the word
+    # "running".  Keep the ledger-derived identity separately as a last-known
+    # value for restart diagnostics; it must never complete source/install/
+    # runtime parity while no currently valid owner is observed.
     runtime_sha = (
         valid_owners[0].get("release_sha") if len(valid_owners) == 1 else None
     )
     runtime_release_id = None
+    last_runtime_sha = None
     if latest_runtime is not None:
         value = latest_runtime["payload"].get("release_id")
         runtime_release_id = str(value) if value not in (None, "") else None
-        if runtime_sha is None and runtime_release_id:
+        if runtime_release_id:
             if runtime_release_id == current:
-                runtime_sha = current
+                last_runtime_sha = current
             elif current_manifest and runtime_release_id == current_manifest.get("release_id"):
-                runtime_sha = current
+                last_runtime_sha = current
             elif len(runtime_release_id) in {40, 64} and _RELEASE_PATH_RE.fullmatch(
                     f"/releases/{runtime_release_id}"):
-                runtime_sha = runtime_release_id.lower()
-    if runtime_sha is None and valid_owners:
-        runtime_sha = valid_owners[0].get("release_sha")
+                last_runtime_sha = runtime_release_id.lower()
     parity_values = {
         "canonical_source_sha": source_sha,
         "installed_release_sha": current,
@@ -553,6 +554,8 @@ def production_status(*, home: Path | None = None, source_repo: Path | None = No
     parity = {
         **parity_values,
         "running_runtime_release_id": runtime_release_id,
+        "last_known_runtime_sha": last_runtime_sha,
+        "running_runtime_verified": runtime_sha is not None,
         "status": (
             "FAIL" if parity_mismatch else
             "PASS" if len(known_parity) == len(parity_values) else

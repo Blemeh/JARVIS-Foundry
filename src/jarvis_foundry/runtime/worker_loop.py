@@ -363,6 +363,12 @@ def _maybe_portfolio_select(
             "why_now": decision.why_now,
             "wake_on": list(decision.wake_on),
         }
+        # ``revisit_at`` is a polling deadline, not a change in the idle
+        # state.  The selector creates a new deadline for each fresh loop
+        # id; hashing it here would turn every unchanged WAIT poll back into
+        # an event and recreate the legacy ledger-growth incident.  Keep the
+        # current deadline in the payload for operators, but key coalescing
+        # on the durable reason/wake conditions only.
         _append_coalesced_idle_event(
             database,
             "worker_loop.portfolio_waiting",
