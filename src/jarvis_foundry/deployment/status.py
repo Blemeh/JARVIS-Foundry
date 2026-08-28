@@ -17,9 +17,7 @@ from ..migrations import SCHEMA_VERSION
 from ..paths import FoundryPaths
 from ..reconcile import inspect as inspect_ledger
 from .layout import install_root
-from .runtime_identity import (
-    parity_state, process_matches_home, release_sha_for_id, supervisor_processes,
-)
+from .runtime_identity import parity_state, supervisor_process_census
 from .release import (
     ReleaseError,
     read_current,
@@ -41,147 +39,13 @@ def _supervisor_processes(
     expected_root: Path | None = None,
     active_creation_identity: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
-    """Return a bounded process census with identity classifications.
-
-    The database lease remains the owner authority.  This census is an
-    independent observation used to detect duplicate launchers, stale release
-    processes, and PID reuse; it never kills or adopts a process.
-    """
-    from ..platform.windows_subprocess import headless_run_kwargs
-
-    # Avoid Select-Object/ConvertTo-Json: on some repaired Windows PowerShell
-    # installations those Microsoft.PowerShell.Utility cmdlets fail to
-    # autoload under a hidden child.  CIM + a tab-delimited/base64 record is
-    # equally read-only and works in both Windows PowerShell and pwsh.
-    script = (
-        "Get-CimInstance Win32_Process | "
-        "Where-Object { $_.CommandLine -match "
-        "'jarvis_foundry\\.(supervisor\\.run|deployment\\.(headless_launcher|launcher))' } | "
-        "ForEach-Object { \"$($_.ProcessId)`t$($_.ParentProcessId)`t"
-        "$([Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes([string]$_.ExecutablePath)))`t"
-        "$([Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes([string]$_.CommandLine)))`t"
-        "$($_.CreationDate)\" }"
+    """Compatibility wrapper around the single runtime identity authority."""
+    return supervisor_process_census(
+        expected_sha=expected_sha,
+        active_pid=active_pid,
+        expected_root=expected_root,
+        active_creation_identity=active_creation_identity,
     )
-    command = ["powershell", "-NoProfile", "-Command", script]
-    try:
-        result = subprocess.run(
-            command,
-            capture_output=True, text=True, timeout=30, check=False,
-            **headless_run_kwargs(),
-        )
-        # Some Windows hosts have a broken PowerShell module autoload path
-        # only when STARTUPINFO is supplied for hidden execution.  Retry the
-        # same read-only census plainly rather than turning an available
-        # process observation into a false empty result.
-        if result.returncode != 0 and not (result.stdout or "").strip():
-            result = subprocess.run(
-                command, capture_output=True, text=True, timeout=30, check=False)
-    except OSError:
-        return []
-    raw = (result.stdout or "").strip()
-    if not raw:
-        return []
-    try:
-        payload = json.loads(raw)
-        rows = [payload] if isinstance(payload, dict) else list(payload)
-    except json.JSONDecodeError:
-        rows = []
-        for line in raw.splitlines():
-            parts = line.split("\t")
-            if len(parts) != 5:
-                continue
-            try:
-                executable = base64.b64decode(parts[2]).decode("utf-8")
-                command_line = base64.b64decode(parts[3]).decode("utf-8")
-            except (ValueError, UnicodeDecodeError):
-                continue
-            rows.append({
-                "ProcessId": parts[0],
-                "ParentProcessId": parts[1],
-                "ExecutablePath": executable,
-                "CommandLine": command_line,
-                "CreationDate": parts[4],
-            })
-    root_needle = None
-    if expected_root is not None:
-        root_needle = (
-            str(Path(expected_root).expanduser().resolve())
-            .replace("/", "\\")
-            .rstrip("\\")
-            + "\\releases\\"
-        ).lower()
-    observed: list[dict[str, Any]] = []
-    from ..supervisor.worker import process_creation_identity
-    for row in rows:
-        if not isinstance(row, dict):
-            continue
-        command_line = str(row.get("CommandLine") or "")
-        executable = str(row.get("ExecutablePath") or "")
-        if root_needle is not None:
-            process_text = f"{command_line} {executable}".replace("/", "\\").lower()
-            # A status probe for a disposable or explicitly selected install
-            # must not count an unrelated production process on the same
-            # machine as a duplicate/stale owner.
-            if root_needle not in process_text:
-                continue
-        match = _RELEASE_PATH_RE.search(f"{command_line} {executable}")
-        release_sha = match.group(1).lower() if match else None
-        try:
-            pid = int(row.get("ProcessId"))
-        except (TypeError, ValueError):
-            pid = None
-        try:
-            parent_pid = int(row.get("ParentProcessId"))
-        except (TypeError, ValueError):
-            parent_pid = None
-        pid_match = (
-            active_pid is not None and pid is not None and pid == active_pid
-        )
-        observed_identity = None
-        identity_match = pid_match
-        if pid_match and active_creation_identity is not None:
-            try:
-                observed_identity = process_creation_identity(pid)
-            except (OSError, ValueError):
-                observed_identity = {"pid": pid, "error": "identity probe failed"}
-            expected_create_time = active_creation_identity.get("create_time")
-            expected_exe = active_creation_identity.get("exe")
-            observed_create_time = observed_identity.get("create_time")
-            observed_exe = observed_identity.get("exe")
-            identity_match = bool(
-                expected_create_time is not None
-                and expected_exe
-                and observed_create_time == expected_create_time
-                and observed_exe
-                and str(observed_exe).lower() == str(expected_exe).lower()
-            )
-        record: dict[str, Any] = {
-            "pid": pid,
-            "parent_pid": parent_pid,
-            "executable": executable or None,
-            "command_line": command_line or None,
-            "creation_time": row.get("CreationDate"),
-            "release_sha": release_sha,
-            "matches_installed_release": (
-                release_sha == str(expected_sha).lower()
-                if expected_sha and release_sha else False
-            ),
-            "is_database_owner": identity_match,
-            "identity_match": identity_match,
-            "observed_creation_identity": observed_identity,
-        }
-        if record["is_database_owner"] and record["matches_installed_release"]:
-            record["classification"] = "VALID_OWNER"
-        elif pid_match and active_creation_identity is not None:
-            record["classification"] = "STALE_PROCESS_IDENTITY"
-        elif expected_sha and release_sha and release_sha != str(expected_sha).lower():
-            record["classification"] = "STALE_RELEASE"
-        elif record["matches_installed_release"]:
-            record["classification"] = "DUPLICATE_OR_UNOWNED"
-        else:
-            record["classification"] = "UNIDENTIFIED"
-        observed.append(record)
-    return observed
 
 
 def _latest_runtime_payload(database: FoundryDatabase) -> dict[str, Any] | None:

@@ -12,6 +12,7 @@ correlated when that evidence is available.
 """
 from __future__ import annotations
 
+import base64
 import json
 import os
 import re
@@ -28,6 +29,8 @@ SUPERVISOR_MODULES: tuple[str, ...] = (
     "jarvis_foundry.deployment.headless_launcher",
 )
 _SHA_RE = re.compile(r"^[0-9a-f]{40,64}$", re.IGNORECASE)
+_RELEASE_PATH_RE = re.compile(
+    r"[\\/]releases[\\/]([0-9a-f]{40,64})(?:[\\/]|$)", re.IGNORECASE)
 
 
 def _powershell_executable() -> str:
@@ -380,6 +383,142 @@ def supervisor_processes(
     )
 
 
+def supervisor_process_census(
+    *, expected_sha: str | None = None, active_pid: int | None = None,
+    expected_root: Path | None = None,
+    active_creation_identity: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """Classify observed Supervisor rows against one durable owner.
+
+    This is the production process-truth authority used by the status and
+    Command Center projections. It is deliberately read-only: the database
+    lease remains the owner authority, while this census detects stale release
+    rows, PID reuse, duplicates, and unidentified launchers.
+    """
+    script = (
+        "Get-CimInstance Win32_Process | "
+        "Where-Object { $_.CommandLine -match "
+        "'jarvis_foundry\\.(supervisor\\.run|deployment\\.(headless_launcher|launcher))' } | "
+        "ForEach-Object { \"$($_.ProcessId)`t$($_.ParentProcessId)`t"
+        "$([Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes([string]$_.ExecutablePath)))`t"
+        "$([Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes([string]$_.CommandLine)))`t"
+        "$($_.CreationDate)\" }"
+    )
+    command = [_powershell_executable(), "-NoProfile", "-Command", script]
+    try:
+        result = subprocess.run(
+            command,
+            capture_output=True, text=True, timeout=30, check=False,
+            **headless_run_kwargs(),
+        )
+        if result.returncode != 0 and not (result.stdout or "").strip():
+            result = subprocess.run(
+                command, capture_output=True, text=True, timeout=30, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+    raw = (result.stdout or "").strip()
+    if not raw:
+        return []
+    try:
+        payload = json.loads(raw)
+        rows = [payload] if isinstance(payload, dict) else list(payload)
+    except (TypeError, ValueError):
+        rows = []
+        for line in raw.splitlines():
+            parts = line.split("\t")
+            if len(parts) != 5:
+                continue
+            try:
+                executable = base64.b64decode(parts[2]).decode("utf-8")
+                command_line = base64.b64decode(parts[3]).decode("utf-8")
+            except (ValueError, UnicodeDecodeError):
+                continue
+            rows.append({
+                "ProcessId": parts[0],
+                "ParentProcessId": parts[1],
+                "ExecutablePath": executable,
+                "CommandLine": command_line,
+                "CreationDate": parts[4],
+            })
+    root_needle = None
+    if expected_root is not None:
+        root_needle = (
+            str(Path(expected_root).expanduser().resolve())
+            .replace("/", "\\")
+            .rstrip("\\")
+            + "\\releases\\"
+        ).lower()
+    observed: list[dict[str, Any]] = []
+    from ..supervisor.worker import process_creation_identity
+    for row in rows:
+        if not isinstance(row, Mapping):
+            continue
+        command_line = str(row.get("CommandLine") or "")
+        executable = str(row.get("ExecutablePath") or "")
+        if root_needle is not None:
+            process_text = f"{command_line} {executable}".replace("/", "\\").lower()
+            if root_needle not in process_text:
+                continue
+        match = _RELEASE_PATH_RE.search(f"{command_line} {executable}")
+        release_sha = match.group(1).lower() if match else None
+        try:
+            pid = int(row.get("ProcessId"))
+        except (TypeError, ValueError):
+            pid = None
+        try:
+            parent_pid = int(row.get("ParentProcessId"))
+        except (TypeError, ValueError):
+            parent_pid = None
+        pid_match = (
+            active_pid is not None and pid is not None and pid == active_pid
+        )
+        observed_identity = None
+        identity_match = pid_match
+        if pid_match and active_creation_identity is not None:
+            try:
+                observed_identity = process_creation_identity(pid)
+            except (OSError, ValueError):
+                observed_identity = {"pid": pid, "error": "identity probe failed"}
+            expected_create_time = active_creation_identity.get("create_time")
+            expected_exe = active_creation_identity.get("exe")
+            observed_create_time = observed_identity.get("create_time")
+            observed_exe = observed_identity.get("exe")
+            identity_match = bool(
+                expected_create_time is not None
+                and expected_exe
+                and observed_create_time == expected_create_time
+                and observed_exe
+                and str(observed_exe).lower() == str(expected_exe).lower()
+            )
+        record: dict[str, Any] = {
+            "pid": pid,
+            "parent_pid": parent_pid,
+            "executable": executable or None,
+            "command_line": command_line or None,
+            "creation_time": row.get("CreationDate"),
+            "release_sha": release_sha,
+            "matches_installed_release": (
+                release_sha == str(expected_sha).lower()
+                if expected_sha and release_sha else False
+            ),
+            "is_database_owner": identity_match,
+            "identity_match": identity_match,
+            "observed_creation_identity": observed_identity,
+        }
+        if record["is_database_owner"] and record["matches_installed_release"]:
+            record["classification"] = "VALID_OWNER"
+        elif pid_match and active_creation_identity is not None:
+            record["classification"] = "STALE_PROCESS_IDENTITY"
+        elif expected_sha and release_sha and release_sha != str(expected_sha).lower():
+            record["classification"] = "STALE_RELEASE"
+        elif record["matches_installed_release"]:
+            record["classification"] = "DUPLICATE_OR_UNOWNED"
+        else:
+            record["classification"] = "UNIDENTIFIED"
+        observed.append(record)
+    return sorted(observed, key=lambda item: int(item["pid"] or 0))
+
+
 def release_sha_for_id(release_id: str | None, *, root: str | Path | None = None) -> str | None:
     """Resolve a durable ``release_id`` back to its immutable source SHA.
 
@@ -457,5 +596,6 @@ __all__ = [
     "SUPERVISOR_MODULES", "normalize_process", "parity_state",
     "process_home", "process_matches_home",
     "query_processes", "release_sha_for_id", "supervisor_processes",
+    "supervisor_process_census",
     "with_creation_identity",
 ]
