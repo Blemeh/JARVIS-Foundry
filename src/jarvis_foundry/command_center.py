@@ -2001,6 +2001,7 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
     # CommandCenterServer while concurrent polls still share one bounded read.
     _snapshot_cache_at: float = 0.0
     _snapshot_cache_payload: dict[str, Any] | None = None
+    _snapshot_cache_ledger_head: int | None = None
     _snapshot_cache_lock = threading.Lock()
     SNAPSHOT_CACHE_SEC = 60.0
 
@@ -2009,17 +2010,33 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
         with cls._snapshot_cache_lock:
             cls._snapshot_cache_payload = None
             cls._snapshot_cache_at = 0.0
+            cls._snapshot_cache_ledger_head = None
 
     def _cached_snapshot(self) -> dict[str, Any]:
         handler_cls = type(self)
         now = time.monotonic()
+        try:
+            with command_center_readonly_connection(self.database) as connection:
+                ledger_head = int(connection.execute(
+                    "SELECT COALESCE(MAX(sequence), 0) FROM events"
+                ).fetchone()[0])
+        except (OSError, sqlite3.Error):
+            ledger_head = None
         cached = handler_cls._snapshot_cache_payload
-        if cached is not None and now - handler_cls._snapshot_cache_at < handler_cls.SNAPSHOT_CACHE_SEC:
+        if (
+            cached is not None
+            and now - handler_cls._snapshot_cache_at < handler_cls.SNAPSHOT_CACHE_SEC
+            and (ledger_head is None or ledger_head == handler_cls._snapshot_cache_ledger_head)
+        ):
             return cached
         with handler_cls._snapshot_cache_lock:
             now = time.monotonic()
             cached = handler_cls._snapshot_cache_payload
-            if cached is not None and now - handler_cls._snapshot_cache_at < handler_cls.SNAPSHOT_CACHE_SEC:
+            if (
+                cached is not None
+                and now - handler_cls._snapshot_cache_at < handler_cls.SNAPSHOT_CACHE_SEC
+                and (ledger_head is None or ledger_head == handler_cls._snapshot_cache_ledger_head)
+            ):
                 return cached
             payload = build_snapshot(
                 self.database,
@@ -2029,6 +2046,10 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
             )
             handler_cls._snapshot_cache_payload = payload
             handler_cls._snapshot_cache_at = now
+            observed_head = payload.get("source_of_truth", {}).get("ledger_head_sequence")
+            handler_cls._snapshot_cache_ledger_head = (
+                int(observed_head) if observed_head is not None else ledger_head
+            )
             return payload
 
     def do_OPTIONS(self) -> None:  # noqa: N802
