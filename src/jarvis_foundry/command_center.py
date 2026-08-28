@@ -2137,6 +2137,22 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
             })
             self._json_response(status, status=200)
             return
+        if route in {"/api/executive", "/api/executive/objectives", "/api/executive/briefing"}:
+            try:
+                from .executive.autonomy import executive_autonomy_snapshot
+                projection = executive_autonomy_snapshot(self.database)
+            except Exception as error:  # noqa: BLE001 - additive API stays truthful
+                projection = {"status": "UNAVAILABLE", "reason": f"{type(error).__name__}: {error}"}
+            if route.endswith("/objectives"):
+                projection = {
+                    "objectives": projection.get("objectives", {}),
+                    "priorities": projection.get("priorities", []),
+                    "progress": projection.get("progress", {}),
+                }
+            elif route.endswith("/briefing"):
+                projection = {"briefing": projection.get("briefing"), "escalations": projection.get("escalations", {}), "continuations": projection.get("continuations", {})}
+            self._json_response(projection, status=200)
+            return
         if route == "/api/vault/graph":
             vault_root = _vault_root_from_db(self.database)
             if vault_root is None:
