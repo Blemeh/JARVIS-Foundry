@@ -325,6 +325,7 @@ def production_status(*, home: Path | None = None, source_repo: Path | None = No
                 "reason": "CURRENT release manifest missing",
             }
     source_sha = None
+    source_sha_origin = None
     if source_repo and (Path(source_repo) / ".git").exists():
         import subprocess
 
@@ -336,6 +337,13 @@ def production_status(*, home: Path | None = None, source_repo: Path | None = No
             **headless_run_kwargs(),
         )
         source_sha = result.stdout.strip() or None
+        if source_sha:
+            source_sha_origin = "source_checkout"
+    if source_sha is None and current_manifest is not None and current:
+        manifest_sha = str(current_manifest.get("source_sha") or "").strip().lower()
+        if manifest_sha == str(current).lower():
+            source_sha = manifest_sha
+            source_sha_origin = "immutable_release_manifest"
     supervisor = {}
     runtime_diagnostic = {
         "runtime_control": {
@@ -541,6 +549,7 @@ def production_status(*, home: Path | None = None, source_repo: Path | None = No
         "status": health["status"],
         "canonical_source": source_sha,
         "canonical_source_sha": source_sha,
+        "canonical_source_origin": source_sha_origin,
         "current_release": current,
         "installed_release_sha": installed_sha,
         "runtime_release_sha": runtime_release_sha,
