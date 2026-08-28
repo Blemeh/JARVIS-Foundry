@@ -297,7 +297,14 @@ def _same_logical_command(left: Mapping[str, Any], right: Mapping[str, Any]) -> 
         return False
     # FILETIME units are 100 ns.  A redirector handoff is effectively
     # immediate; a wider window could hide a genuine duplicate launch.
-    return abs(int(left_time) - int(right_time)) <= 5 * 10_000_000
+    try:
+        return abs(int(left_time) - int(right_time)) <= 5 * 10_000_000
+    except (TypeError, ValueError):
+        # CIM's CreationDate is second-resolution text while the native
+        # identity probe returns FILETIME.  The census deliberately avoids a
+        # second probe for every process; equal CIM timestamps plus the
+        # parent/redirector evidence are sufficient to collapse that pair.
+        return str(left_time).strip() == str(right_time).strip()
 
 
 def _collapse_interpreter_wrappers(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -448,25 +455,47 @@ def supervisor_process_census(
             .rstrip("\\")
             + "\\releases\\"
         ).lower()
-    observed: list[dict[str, Any]] = []
-    from ..supervisor.worker import process_creation_identity
-    for row in rows:
-        if not isinstance(row, Mapping):
+    census_rows: list[dict[str, Any]] = []
+    for raw_row in rows:
+        if not isinstance(raw_row, Mapping):
             continue
-        command_line = str(row.get("CommandLine") or "")
-        executable = str(row.get("ExecutablePath") or "")
+        command_line = str(raw_row.get("CommandLine") or "")
+        executable = str(raw_row.get("ExecutablePath") or "")
         if root_needle is not None:
             process_text = f"{command_line} {executable}".replace("/", "\\").lower()
             if root_needle not in process_text:
                 continue
-        match = _RELEASE_PATH_RE.search(f"{command_line} {executable}")
-        release_sha = match.group(1).lower() if match else None
+        normalized = normalize_process(raw_row)
+        if normalized is None:
+            continue
+        # Keep the provider's timestamp as an internal collapse key.  The
+        # durable owner identity is still probed below only for active_pid;
+        # an unprobed row must never be presented as authenticated evidence.
+        normalized["creation_time"] = raw_row.get("CreationDate")
+        normalized["creation_identity"] = {
+            "pid": normalized["pid"],
+            "create_time": raw_row.get("CreationDate"),
+            "exe": normalized.get("executable"),
+        }
+        census_rows.append(normalized)
+
+    # A Windows venv launch normally appears as a redirector plus its base
+    # interpreter.  Collapse only the proven parent/child pair; independent
+    # launches remain separate duplicate evidence.
+    census_rows = _collapse_interpreter_wrappers(census_rows)
+
+    observed: list[dict[str, Any]] = []
+    from ..supervisor.worker import process_creation_identity
+    for row in census_rows:
+        command_line = str(row.get("command_line") or "")
+        executable = str(row.get("executable") or "")
+        release_sha = row.get("release_sha")
         try:
-            pid = int(row.get("ProcessId"))
+            pid = int(row.get("pid"))
         except (TypeError, ValueError):
             pid = None
         try:
-            parent_pid = int(row.get("ParentProcessId"))
+            parent_pid = int(row.get("parent_pid"))
         except (TypeError, ValueError):
             parent_pid = None
         pid_match = (
@@ -505,6 +534,11 @@ def supervisor_process_census(
             "identity_match": identity_match,
             "observed_creation_identity": observed_identity,
         }
+        if row.get("interpreter_wrapper_pid") is not None:
+            record["interpreter_wrapper_pid"] = row["interpreter_wrapper_pid"]
+            record["interpreter_wrapper_identity"] = row.get(
+                "interpreter_wrapper_identity")
+            record["logical_identity_key"] = row.get("logical_identity_key")
         if record["is_database_owner"] and record["matches_installed_release"]:
             record["classification"] = "VALID_OWNER"
         elif pid_match and active_creation_identity is not None:

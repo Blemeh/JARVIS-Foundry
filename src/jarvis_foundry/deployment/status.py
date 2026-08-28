@@ -111,6 +111,11 @@ def _idle_event_growth(database: FoundryDatabase) -> dict[str, Any]:
     try:
         head = int(connection.execute(
             "SELECT COALESCE(MAX(sequence), 0) FROM events").fetchone()[0])
+        started_row = connection.execute(
+            "SELECT sequence, recorded_at, payload_json FROM events "
+            "WHERE event_type = 'supervisor.started' "
+            "ORDER BY sequence DESC LIMIT 1"
+        ).fetchone()
         rows = connection.execute(
             "SELECT event_type, sequence, payload_json FROM events "
             f"WHERE event_type IN ({placeholders}) ORDER BY sequence DESC",
@@ -120,14 +125,38 @@ def _idle_event_growth(database: FoundryDatabase) -> dict[str, Any]:
         connection.close()
     totals = {event_type: 0 for event_type in idle_types}
     legacy = {event_type: 0 for event_type in idle_types}
+    ledger_recent_legacy = {event_type: 0 for event_type in idle_types}
     recent_legacy = {event_type: 0 for event_type in idle_types}
-    recent_floor = max(0, head - 1000)
+    ledger_recent_floor = max(0, head - 1000)
+    baseline_sequence = None
+    baseline_recorded_at = None
+    baseline_instance_id = None
+    if started_row is not None:
+        baseline_sequence = int(started_row["sequence"])
+        baseline_recorded_at = started_row["recorded_at"]
+        try:
+            baseline_payload = json.loads(started_row["payload_json"] or "{}")
+        except (TypeError, ValueError):
+            baseline_payload = {}
+        if isinstance(baseline_payload, dict):
+            baseline_instance_id = baseline_payload.get("instance_id")
+    # Historical legacy rows are retained as evidence, but a production
+    # readiness check must measure growth attributable to the currently
+    # started Supervisor.  Fall back to the bounded ledger window when there
+    # is no start marker (for example, an unbooted database).
+    recent_floor = max(ledger_recent_floor, baseline_sequence or 0)
     recent_total = 0
     recent_coalesced = 0
     for row in rows:
         event_type = str(row["event_type"])
         totals[event_type] += 1
-        is_recent = int(row["sequence"]) > recent_floor
+        sequence = int(row["sequence"])
+        is_ledger_recent = sequence > ledger_recent_floor
+        is_recent = sequence > recent_floor
+        if is_ledger_recent:
+            # Filled below after payload parsing once legacy/coalesced state
+            # is known; this is intentionally separate from current growth.
+            pass
         if is_recent:
             recent_total += 1
         try:
@@ -137,6 +166,8 @@ def _idle_event_growth(database: FoundryDatabase) -> dict[str, Any]:
         is_legacy = not isinstance(payload, dict) or not payload.get("_coalesced_state")
         if is_legacy:
             legacy[event_type] += 1
+            if is_ledger_recent:
+                ledger_recent_legacy[event_type] += 1
             if is_recent:
                 recent_legacy[event_type] += 1
         elif is_recent:
@@ -148,13 +179,22 @@ def _idle_event_growth(database: FoundryDatabase) -> dict[str, Any]:
         "event_types": list(idle_types),
         "totals": totals,
         "legacy_uncoalesced_totals": legacy,
+        "legacy_uncoalesced_ledger_window": ledger_recent_legacy,
         "legacy_uncoalesced_recent_window": recent_legacy,
         "legacy_uncoalesced_total": legacy_total,
         "recent_window_events": recent_total,
         "recent_window_coalesced_events": recent_coalesced,
         "recent_window_size_events": 1000,
+        "baseline": {
+            "event_type": "supervisor.started",
+            "sequence": baseline_sequence,
+            "recorded_at": baseline_recorded_at,
+            "instance_id": baseline_instance_id,
+        },
+        "ledger_recent_floor": ledger_recent_floor,
+        "current_runtime_recent_floor": recent_floor,
         "reason": (
-            "current idle states are coalesced"
+            "current idle states are coalesced since the latest Supervisor start"
             if recent_legacy_total == 0 else
             "legacy or uncoalesced idle events remain in the recent ledger window"
         ),
@@ -465,7 +505,10 @@ def production_status(*, home: Path | None = None, source_repo: Path | None = No
         release_status=release_status,
         stop_active=paths.emergency_stop.exists(),
         supervisor_count=len(active_processes),
-        parity=parity,
+        # ``derive_health`` consumes the compact parity contract while this
+        # report retains the full identity evidence for operators.
+        parity=("MATCH" if parity.get("status") == "PASS"
+                else str(parity.get("status") or "UNKNOWN")),
         trust_state=str(supervisor.get("trust_state") or "UNKNOWN"),
     )
     truth_failures: list[str] = []

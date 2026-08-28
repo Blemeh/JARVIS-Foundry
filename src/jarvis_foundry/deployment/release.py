@@ -1166,6 +1166,11 @@ def migrate_clone(source: Path, destination: Path) -> dict[str, Any]:
     backup_database(source, destination)
     cloned = FoundryDatabase(destination)
     version = cloned.initialize()
+    # Migrations update schema only; derived projections can legitimately be
+    # stale in a byte-for-byte backup.  Rebuild them on the disposable clone
+    # before reporting reconciliation so this command rehearses the same
+    # canonical recovery path used by production restart/rollback checks.
+    event_count = cloned.rebuild_projections()
     integrity = cloned.quick_check()
     if integrity != "ok":
         raise ReleaseError(f"migrated clone failed integrity: {integrity}")
@@ -1177,7 +1182,7 @@ def migrate_clone(source: Path, destination: Path) -> dict[str, Any]:
         "integrity": integrity,
         "consistent": report.consistent,
         "mismatch_count": len(report.mismatches),
-        "event_count": cloned.event_count(),
+        "event_count": event_count,
     }
 
 
