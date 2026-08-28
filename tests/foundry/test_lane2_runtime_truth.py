@@ -175,6 +175,31 @@ def test_set_current_records_database_live_authority_and_rollback(
     assert database.rebuild_projections() > 0
 
 
+def test_release_authority_can_reactivate_same_pair_after_rollback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A rollback followed by reactivation is a new durable transition."""
+
+    install = tmp_path / "install"
+    monkeypatch.setenv("JARVIS_INSTALL_ROOT", str(install))
+    first, second = "a" * 40, "b" * 40
+    _fake_release(install, first)
+    _fake_release(install, second, previous=first)
+    home = tmp_path / "home"
+    database = FoundryDatabase(home / "foundry.db")
+    database.initialize()
+
+    set_current(first, root=install)
+    set_current(second, root=install, database=database)
+    assert rollback_current(root=install, foundry_home=home)["current"] == first
+    set_current(second, root=install, database=database)
+
+    report = release_authority_report(root=install, foundry_home=home)
+    assert report["consistent"] is True
+    assert report["database_active_source_sha"] == second
+    assert not (install / "RELEASE_TRANSITION.json").exists()
+
+
 def test_database_authority_is_not_claimed_when_pointer_write_fails(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:

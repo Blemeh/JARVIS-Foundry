@@ -128,15 +128,18 @@ def _transition_marker(root: Path | None) -> Path:
 
 def _write_transition_marker(
     root: Path | None, *, target: str, previous: str | None, phase: str,
+    transition_id: str | None = None,
 ) -> Path:
     path = _transition_marker(root)
     path.parent.mkdir(parents=True, exist_ok=True)
+    transition_id = transition_id or uuid.uuid4().hex
     temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
     temporary.write_text(
         json.dumps({
             "target_source_sha": target,
             "previous_source_sha": previous,
             "phase": phase,
+            "transition_id": transition_id,
             "recorded_at": isoformat(),
         }, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
@@ -225,6 +228,7 @@ def record_active_release(
     database: FoundryDatabase,
     reason: str = "explicit immutable release activation",
     controller: str = "supervisor",
+    transition_id: str | None = None,
 ) -> dict[str, Any]:
     """Record an installed release as the database-backed live authority.
 
@@ -240,6 +244,7 @@ def record_active_release(
     if not reason or not reason.strip():
         raise ReleaseError("release activation reason must be non-empty")
     sha = source_sha.strip()
+    transition_id = transition_id or uuid.uuid4().hex
     if not database.path.is_file():
         raise ReleaseError(f"database missing: {database.path}")
     # Refuse to make a DB authority claim until the immutable release's
@@ -299,7 +304,7 @@ def record_active_release(
                  "controller": controller},
                 source_type="supervisor", source_id="deployment-authority",
                 idempotency_key=(
-                    f"release.slot_changed:runtime-previous:{prior}:{release_id}"),
+                    f"release.slot_changed:runtime-previous:{prior}:{release_id}:{transition_id}"),
             ))
         events.append(Event.create(
             "release.slot_changed",
@@ -308,7 +313,7 @@ def record_active_release(
              "controller": controller},
             source_type="supervisor", source_id="deployment-authority",
             idempotency_key=(
-                f"release.slot_changed:runtime-live:{release_id}:{prior or 'none'}"),
+                f"release.slot_changed:runtime-live:{release_id}:{prior or 'none'}:{transition_id}"),
         ))
     if events:
         database.append_events(events)
@@ -813,13 +818,16 @@ def set_current(
                 "candidate previous_runtime does not match the CURRENT release")
     marker = None
     if database is not None:
+        transition_id = uuid.uuid4().hex
         marker = _write_transition_marker(
-            root, target=source_sha, previous=previous, phase="DB_AUTHORITY_PENDING")
+            root, target=source_sha, previous=previous, phase="DB_AUTHORITY_PENDING",
+            transition_id=transition_id)
         # The ledger is authoritative during a transition.  If the process
         # dies before the pointer write, startup/status sees the mismatch and
         # the marker gives recovery an unambiguous target.
         record_active_release(
-            source_sha, root=root, database=database, reason=reason)
+            source_sha, root=root, database=database, reason=reason,
+            transition_id=transition_id)
     try:
         if previous and previous != source_sha:
             write_pointer(previous_pointer(root), previous)
@@ -833,6 +841,7 @@ def set_current(
                 target=source_sha,
                 previous=previous,
                 phase="POINTER_WRITE_PENDING",
+                transition_id=transition_id,
             )
         raise
     return {"current": source_sha, "previous": read_previous(root)}
@@ -865,6 +874,7 @@ def recover_release_transition(
     previous_sha = str(previous).strip() if previous not in (None, "") else None
     if not target:
         raise ReleaseError("release transition marker has no target source SHA")
+    transition_id = str(payload.get("transition_id") or uuid.uuid4().hex)
     validate_release(target, root=root, require_schema_match=False)
     authority_database = database
     if authority_database is None and foundry_home is not None:
@@ -872,7 +882,8 @@ def recover_release_transition(
     if authority_database is not None:
         record_active_release(
             target, root=root, database=authority_database,
-            reason="recover interrupted immutable release transition")
+            reason="recover interrupted immutable release transition",
+            transition_id=transition_id)
     if previous_sha and previous_sha != target:
         write_pointer(previous_pointer(root), previous_sha)
     write_pointer(current_pointer(root), target)
@@ -1127,10 +1138,13 @@ def rollback_current(
         }
     marker = None
     if authority_database is not None:
+        transition_id = uuid.uuid4().hex
         marker = _write_transition_marker(
-            root, target=previous, previous=current, phase="DB_AUTHORITY_PENDING")
+            root, target=previous, previous=current, phase="DB_AUTHORITY_PENDING",
+            transition_id=transition_id)
         record_active_release(
-            previous, root=root, database=authority_database, reason=reason)
+            previous, root=root, database=authority_database, reason=reason,
+            transition_id=transition_id)
     try:
         write_pointer(current_pointer(root), previous)
         if current:
@@ -1144,6 +1158,7 @@ def rollback_current(
                 target=previous,
                 previous=current,
                 phase="POINTER_WRITE_PENDING",
+                transition_id=transition_id,
             )
         raise
     generation = None
