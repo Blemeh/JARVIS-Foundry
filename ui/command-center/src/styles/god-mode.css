@@ -94,7 +94,9 @@
 
 .nav-rail-flyout {
   position: absolute;
-  left: calc(100% + 4px);
+  /* Keep the pointer path contiguous so a hover-opened flyout cannot close
+     while the pointer crosses a gap between the rail item and its menu. */
+  left: 100%;
   top: 0;
   min-width: 168px;
   padding: 12px 0;
