@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import os
-import base64
 import json
 import re
 import sqlite3
@@ -17,7 +16,7 @@ from ..migrations import SCHEMA_VERSION
 from ..paths import FoundryPaths
 from ..reconcile import inspect as inspect_ledger
 from .layout import install_root
-from .runtime_identity import parity_state, supervisor_process_census
+from .runtime_identity import supervisor_process_census
 from .release import (
     ReleaseError,
     read_current,
