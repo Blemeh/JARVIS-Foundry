@@ -178,6 +178,33 @@ def test_owner_command_localhost_auto_signs(db: FoundryDatabase, tmp_path: Path)
         server.close()
 
 
+def test_owner_command_invalidates_cached_snapshot(db: FoundryDatabase, tmp_path: Path) -> None:
+    """A successful owner command must be visible on the next UI poll."""
+    secret = b"ui-bridge-secret"
+    server = CommandCenterServer(db, stop_path=tmp_path / "STOP")
+    server.configure_owner(secret)
+    server.start()
+    try:
+        base = f"http://{server.address[0]}:{server.address[1]}"
+        with urlopen(f"{base}/api/command-center", timeout=3) as response:
+            before = json.loads(response.read())
+        assert before["controls"]["goals"] == []
+        body = json.dumps({
+            "command_type": "GOAL",
+            "target": "GLOBAL",
+            "exact_text": "refresh cached owner goal",
+        }).encode()
+        with urlopen(Request(f"{base}/api/owner-command", data=body, method="POST"), timeout=3) as response:
+            assert json.loads(response.read())["status"] == "APPLIED"
+        with urlopen(f"{base}/api/command-center", timeout=3) as response:
+            after = json.loads(response.read())
+        assert [goal["exact_text"] for goal in after["controls"]["goals"]] == [
+            "refresh cached owner goal",
+        ]
+    finally:
+        server.close()
+
+
 def test_owner_command_stop_everything_activates_sentinel(db: FoundryDatabase, tmp_path: Path) -> None:
     secret = b"ui-bridge-secret"
     stop_path = tmp_path / "STOP"

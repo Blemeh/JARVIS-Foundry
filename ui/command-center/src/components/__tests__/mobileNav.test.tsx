@@ -1,8 +1,9 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { AppShell } from "../AppShell";
+import { Overview } from "../../routes/Overview";
 import { CommandCenterProvider } from "../../context/CommandCenterContext";
 
 describe("Mobile navigation", () => {
@@ -11,7 +12,11 @@ describe("Mobile navigation", () => {
     render(
       <MemoryRouter initialEntries={["/"]}>
         <CommandCenterProvider>
-          <AppShell />
+          <Routes>
+            <Route element={<AppShell />}>
+              <Route path="/" element={<Overview />} />
+            </Route>
+          </Routes>
         </CommandCenterProvider>
       </MemoryRouter>,
     );
@@ -23,7 +28,7 @@ describe("Mobile navigation", () => {
     await user.click(screen.getByRole("button", { name: "Open all sections" }));
     const drawer = screen.getByRole("dialog", { name: "Navigation" });
     expect(drawer).toBeInTheDocument();
-    expect(screen.getAllByText("Timeline").length).toBeGreaterThan(0);
+    expect(within(drawer).getByText("Timeline")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Close navigation" }));
     expect(screen.queryByRole("dialog", { name: "Navigation" })).not.toBeInTheDocument();
   });

@@ -12,7 +12,9 @@ export type RouteQueryResult<T> = {
 export const useRouteQuery = <T>(
   fetcher: () => Promise<T>,
   deps: readonly unknown[],
+  options?: { keepPreviousWhileLoading?: boolean },
 ): RouteQueryResult<T> => {
+  const keepPrevious = options?.keepPreviousWhileLoading ?? false
   const [status, setStatus] = useState<RouteQueryStatus>("loading")
   const [data, setData] = useState<T | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -22,11 +24,14 @@ export const useRouteQuery = <T>(
 
   useEffect(() => {
     let cancelled = false
-    queueMicrotask(() => {
-      if (cancelled) return
-      setStatus("loading")
-      setError(null)
-    })
+    const shouldShowLoading = !keepPrevious || data === null
+    if (shouldShowLoading) {
+      queueMicrotask(() => {
+        if (cancelled) return
+        setStatus("loading")
+        setError(null)
+      })
+    }
 
     fetcher()
       .then((result) => {

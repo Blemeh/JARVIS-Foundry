@@ -20,6 +20,7 @@ const Systems = lazy(() => import("./routes/Systems").then((m) => ({ default: m.
 const SystemDetail = lazy(() => import("./routes/SystemDetail").then((m) => ({ default: m.SystemDetail })));
 const Notifications = lazy(() => import("./routes/Notifications").then((m) => ({ default: m.Notifications })));
 const OwnerManagement = lazy(() => import("./routes/OwnerManagement").then((m) => ({ default: m.OwnerManagement })));
+const OperationsHub = lazy(() => import("./routes/OperationsHub").then((m) => ({ default: m.OperationsHub })));
 
 function RouteSuspense({ children }: { children: ReactNode }) {
   return (
@@ -42,6 +43,7 @@ export function App() {
       <Routes>
         <Route element={<AppShell />}>
           <Route path="/" element={<RouteSuspense><Overview /></RouteSuspense>} />
+          <Route path="/operations" element={<RouteSuspense><OperationsHub /></RouteSuspense>} />
           <Route path="/missions" element={<RouteSuspense><Missions /></RouteSuspense>} />
           <Route path="/missions/:missionId" element={<RouteSuspense><MissionDetail /></RouteSuspense>} />
           <Route path="/agents" element={<RouteSuspense><Agents /></RouteSuspense>} />

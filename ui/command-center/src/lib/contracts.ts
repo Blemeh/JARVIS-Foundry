@@ -6,7 +6,10 @@
  * current mission ships MockJarvisClient behind the same interface.
  */
 import type { FoundryExecutive } from "./snapshotTypes";
+import type { ObsidianVaultFile } from "./obsidianVault";
 import type { V3DiscoveryView } from "./v3Models";
+
+export type { ObsidianVaultFile } from "./obsidianVault";
 
 export type DataSource = "SIMULATED" | "LIVE" | "DEGRADED" | "DISCONNECTED" | "UNKNOWN";
 
@@ -488,6 +491,7 @@ export interface JarvisClient {
   listTimeline(): Promise<TimelineEvent[]>;
   getTimelineEvent(id: string): Promise<TimelineEvent | null>;
   getMemoryGraph(): Promise<MemoryGraph>;
+  getObsidianVault(): Promise<ObsidianVaultFile[]>;
   getMemoryNode(id: string): Promise<MemoryNode | null>;
   getExecutive(): Promise<FoundryExecutive>;
   /**

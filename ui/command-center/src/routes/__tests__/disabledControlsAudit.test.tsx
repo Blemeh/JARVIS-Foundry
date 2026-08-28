@@ -1,5 +1,4 @@
 import { render, screen, waitFor } from "@testing-library/react"
-import userEvent from "@testing-library/user-event"
 import { MemoryRouter, Route, Routes } from "react-router-dom"
 import { describe, expect, it } from "vitest"
 import { CommandCenterProvider } from "../../context/CommandCenterContext"
@@ -21,12 +20,6 @@ function renderRoute(path: string, routePath: string, element: React.ReactNode) 
 }
 
 const disabledControlExpectations = [
-  {
-    path: "/",
-    routePath: "*",
-    label: /Owner channel locked/i,
-    reason: /locked/i,
-  },
   {
     path: "/evidence",
     routePath: "*",
@@ -54,22 +47,17 @@ describe("disabled control audit (simulated mode)", () => {
   for (const control of disabledControlExpectations) {
     it(`${control.path} exposes honest control semantics for ${control.label}`, async () => {
       const routeElement =
-        control.path === "/"
-          ? <Overview />
-          : control.path === "/evidence"
-            ? <Evidence />
-            : control.path === "/agents"
-              ? <Agents />
-              : <MissionDetail />
+        control.path === "/evidence"
+          ? <Evidence />
+          : control.path === "/agents"
+            ? <Agents />
+            : <MissionDetail />
 
       renderRoute(control.path, control.routePath, routeElement)
 
       const button = await screen.findByRole("button", { name: control.label })
-      if ("enabledInSimulated" in control && control.enabledInSimulated) {
+      if (control.enabledInSimulated) {
         expect(button).toBeEnabled()
-      } else if ("enabledInSimulated" in control) {
-        expect(button).toBeDisabled()
-        expect(button.getAttribute("aria-label") ?? button.getAttribute("title") ?? "").toMatch(control.reason)
       } else {
         expect(button).toBeDisabled()
         expect(button.getAttribute("aria-label") ?? button.getAttribute("title") ?? "").toMatch(control.reason)
@@ -77,12 +65,12 @@ describe("disabled control audit (simulated mode)", () => {
     })
   }
 
-  it("overview owner channel cannot be activated", async () => {
+  it("overview command surface accepts owner input in simulated mode", async () => {
     renderRoute("/", "*", <Overview />)
-    const locked = await screen.findByRole("button", { name: /Owner channel locked/i })
-    expect(locked).toBeDisabled()
-    await userEvent.click(locked)
-    expect(locked).toBeDisabled()
+    const input = await screen.findByPlaceholderText(/Tell JARVIS what you want/i)
+    expect(input).toBeEnabled()
+    const submit = screen.getByRole("button", { name: /Submit objective/i })
+    expect(submit).toBeDisabled()
   })
 
   it("mission halt explains simulated-only contract when enabled", async () => {

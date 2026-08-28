@@ -215,7 +215,7 @@ export function CommandBar() {
   const intent = parseIntent(value);
 
   return (
-    <footer className="commandbar" role="contentinfo" aria-label="Command surface">
+    <div className="commandbar" role="region" aria-label="Command surface">
       <div className="commandbar-inner">
         <Terminal size={18} className="commandbar-icon" aria-hidden="true" />
         <form className="commandbar-form" onSubmit={submit} aria-label={`${sourceModeLabel(sourceMode)} command and search`}>
@@ -347,6 +347,6 @@ export function CommandBar() {
           <span className="t-mono text-dim command-help-note">Navigation is local. No live JARVIS command is ever invoked.</span>
         </div>
       ) : null}
-    </footer>
+    </div>
   );
 }

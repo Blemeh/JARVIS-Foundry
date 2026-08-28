@@ -66,6 +66,19 @@ export interface FoundrySnapshot {
   briefing_packet?: Record<string, unknown>;
   /** Additive §3.13 projection; absent on backends older than its landing. */
   discovery?: unknown;
+  /** Indexed Obsidian vault files (ACTIVE rows from vault_files). */
+  vault?: {
+    files?: FoundryVaultFile[];
+    count?: number;
+  };
+}
+
+export interface FoundryVaultFile {
+  rel_path: string;
+  content_sha256?: string;
+  status?: string;
+  updated_at?: string;
+  last_event_id?: string;
 }
 
 export interface FoundryExecutiveDecision {

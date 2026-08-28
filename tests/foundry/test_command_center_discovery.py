@@ -459,7 +459,9 @@ def test_existing_non_discovery_consumers_unchanged(db):
                 "effect_truth",
                 "evolution_truth",
                 "portfolio",
+                "vault",
             }
     assert set(legacy_keys) == expected
     assert set(pinned["candidates"][0]) >= {"candidate_id"}
+    assert pinned["vault"] == {"files": [], "count": 0}
     assert pinned["generated_at"] == "2026-08-22T12:00:00Z"

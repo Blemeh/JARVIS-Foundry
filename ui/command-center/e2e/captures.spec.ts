@@ -81,7 +81,7 @@ test("capture cohesion surfaces", async ({ page }, testInfo) => {
   await page.getByRole("button", { name: "Simulate STOP" }).click();
   await page.waitForTimeout(500);
   await page.keyboard.press("Escape");
-  await page.locator(".sidebar-nav").getByRole("link", { name: "Overview" }).click();
+  await page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "JARVIS", exact: true }).click();
   await page.waitForTimeout(400);
   await page.screenshot({ path: capturePath(testInfo, "overview-stop-1600x1280.png"), fullPage: false });
 

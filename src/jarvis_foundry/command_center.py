@@ -9,9 +9,11 @@ from __future__ import annotations
 import json
 import mimetypes
 import os
+import re
 import secrets
 import sqlite3
 import threading
+import time
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from html import escape
@@ -19,7 +21,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from ipaddress import ip_address
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote, unquote
+from urllib.parse import parse_qs, quote, unquote, urlparse
 
 from .database import FoundryDatabase
 from .owner_controls import (
@@ -1587,6 +1589,11 @@ def build_snapshot(
             "SELECT contract_id, mission_id, step_id, version, capability, "
             "last_event_id, updated_at FROM mission_step_contracts "
             "ORDER BY updated_at DESC LIMIT 100", errors=projection_errors)
+        vault_files = _safe_table(
+            connection, "vault_files",
+            "SELECT rel_path, content_sha256, status, updated_at, last_event_id "
+            "FROM vault_files WHERE status = 'ACTIVE' ORDER BY rel_path LIMIT 500",
+            errors=projection_errors)
         effect_truth = _effect_truth_projection(connection)
         evolution_truth = _evolution_truth_projection(connection)
         # Keep discovery on the same bounded read handle.  An active owner
@@ -1734,6 +1741,10 @@ def build_snapshot(
         "candidates": [with_ref(c, "candidate", "candidate_id") for c in candidates],
         "mission_steps": [with_ref(s, "mission_step", "contract_id") for s in steps],
         "memory": [with_ref(m, "memory", "memory_id") for m in memories],
+        "vault": {
+            "files": [with_ref(f, "vault_file", "rel_path") for f in vault_files],
+            "count": len(vault_files),
+        },
         "procedures": [with_ref(p, "procedure", "procedure_id") for p in procedures],
         "release_identity": release_identity,
         "releases_canaries_rollbacks": release_events or {"status": "NOT_AVAILABLE", "evidence_refs": []},
@@ -1792,6 +1803,139 @@ def _is_loopback(host: str | None) -> bool:
         return host in {"localhost", "::1"}
 
 
+_WIKILINK_RE = re.compile(r"\[\[([^\]]+)\]")
+
+
+def _vault_root_from_db(database: FoundryDatabase) -> Path | None:
+    for env_key in ("OBSIDIAN_VAULT", "JARVIS_OBSIDIAN_VAULT"):
+        env_root = os.environ.get(env_key)
+        if env_root:
+            candidate = Path(env_root).expanduser().resolve()
+            if candidate.is_dir():
+                return candidate
+    try:
+        with database.connect(readonly=True) as connection:
+            row = connection.execute(
+                "SELECT root FROM vault_sync_state WHERE root IS NOT NULL "
+                "ORDER BY updated_at DESC LIMIT 1",
+            ).fetchone()
+    except sqlite3.OperationalError:
+        # A database from before the vault integration must report an honest
+        # unavailable projection instead of turning the local UI into a 500.
+        return None
+    if not row:
+        return None
+    root = Path(str(row[0])).expanduser().resolve()
+    if not root.is_dir():
+        return None
+    # If sync rooted at a subfolder, prefer the Obsidian vault root when present.
+    for parent in [root, *root.parents]:
+        if (parent / ".obsidian").is_dir():
+            return parent
+    return root
+
+
+def _wikilink_targets(body: str) -> list[str]:
+    targets: list[str] = []
+    for match in _WIKILINK_RE.finditer(body):
+        raw = match.group(1).split("|", 1)[0].strip()
+        if "/" in raw:
+            raw = raw.rsplit("/", 1)[-1]
+        if raw:
+            targets.append(raw)
+    return targets
+
+
+def _vault_label_index(rel_paths: list[str]) -> dict[str, str]:
+    index: dict[str, str] = {}
+    for rel in rel_paths:
+        stem = Path(rel).stem
+        index[stem] = rel
+        index[stem.lower()] = rel
+        index[rel] = rel
+        index[rel.lower()] = rel
+    return index
+
+
+def _resolve_vault_target(target: str, index: dict[str, str]) -> str | None:
+    candidates = [
+        target,
+        target.lower(),
+        Path(target).stem,
+        Path(target).stem.lower(),
+        f"{target}.md",
+        f"{target}.md".lower(),
+    ]
+    for candidate in candidates:
+        hit = index.get(candidate)
+        if hit:
+            return hit
+    return None
+
+
+def build_vault_graph(database: FoundryDatabase, vault_root: Path) -> dict[str, Any]:
+    with database.connect(readonly=True) as connection:
+        rows = connection.execute(
+            "SELECT rel_path FROM vault_files WHERE status = 'ACTIVE' ORDER BY rel_path",
+        ).fetchall()
+    rel_paths = [str(row[0]) for row in rows]
+    index = _vault_label_index(rel_paths)
+    nodes = [
+        {"id": rel, "label": Path(rel).stem, "rel_path": rel}
+        for rel in rel_paths
+    ]
+    links: list[dict[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for rel in rel_paths:
+        note_path = (vault_root / rel).resolve()
+        try:
+            note_path.relative_to(vault_root.resolve())
+        except ValueError:
+            continue
+        if not note_path.is_file():
+            continue
+        try:
+            body = note_path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        for target in _wikilink_targets(body):
+            resolved = _resolve_vault_target(target, index)
+            if not resolved or resolved == rel:
+                continue
+            edge = (rel, resolved)
+            if edge in seen:
+                continue
+            seen.add(edge)
+            links.append({"source": rel, "target": resolved})
+    return {
+        "vault_root": str(vault_root),
+        "nodes": nodes,
+        "links": links,
+        "count": len(nodes),
+    }
+
+
+def read_vault_note(vault_root: Path, rel_path: str, *, allowed: set[str]) -> dict[str, Any]:
+    rel = rel_path.replace("\\", "/").lstrip("/")
+    if rel not in allowed:
+        raise FileNotFoundError(rel)
+    note_path = (vault_root / rel).resolve()
+    try:
+        note_path.relative_to(vault_root.resolve())
+    except ValueError:
+        raise FileNotFoundError(rel)
+    if not note_path.is_file():
+        raise FileNotFoundError(rel)
+    content = note_path.read_text(encoding="utf-8")
+    return {
+        "rel_path": rel,
+        "label": Path(rel).stem,
+        "content": content,
+        "vault_root": str(vault_root),
+        "absolute_path": str(note_path),
+    }
+
+
 class _CommandCenterHandler(BaseHTTPRequestHandler):
     database: FoundryDatabase
     stop_path: Path | None
@@ -1832,6 +1976,40 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
         return True
 
+    # The server binds a fresh handler subclass, so this cache is isolated per
+    # CommandCenterServer while concurrent polls still share one bounded read.
+    _snapshot_cache_at: float = 0.0
+    _snapshot_cache_payload: dict[str, Any] | None = None
+    _snapshot_cache_lock = threading.Lock()
+    SNAPSHOT_CACHE_SEC = 60.0
+
+    @classmethod
+    def _invalidate_snapshot_cache(cls) -> None:
+        with cls._snapshot_cache_lock:
+            cls._snapshot_cache_payload = None
+            cls._snapshot_cache_at = 0.0
+
+    def _cached_snapshot(self) -> dict[str, Any]:
+        handler_cls = type(self)
+        now = time.monotonic()
+        cached = handler_cls._snapshot_cache_payload
+        if cached is not None and now - handler_cls._snapshot_cache_at < handler_cls.SNAPSHOT_CACHE_SEC:
+            return cached
+        with handler_cls._snapshot_cache_lock:
+            now = time.monotonic()
+            cached = handler_cls._snapshot_cache_payload
+            if cached is not None and now - handler_cls._snapshot_cache_at < handler_cls.SNAPSHOT_CACHE_SEC:
+                return cached
+            payload = build_snapshot(
+                self.database,
+                stop_path=self.stop_path,
+                timeline_limit=self.timeline_limit,
+                discovery_cycle_enabled=self.discovery_cycle_enabled,
+            )
+            handler_cls._snapshot_cache_payload = payload
+            handler_cls._snapshot_cache_at = now
+            return payload
+
     def do_OPTIONS(self) -> None:  # noqa: N802
         self.send_response(204)
         self._cors_headers()
@@ -1855,10 +2033,7 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
             if len(parts) != 5 or parts[2] != "record" or parts[3] not in {"mission", "event"} or not parts[4]:
                 self.send_error(404)
                 return
-            snapshot = build_snapshot(
-                self.database, stop_path=self.stop_path,
-                timeline_limit=self.timeline_limit,
-                discovery_cycle_enabled=self.discovery_cycle_enabled)
+            snapshot = self._cached_snapshot()
             record_kind, record_id = parts[3], unquote(parts[4])
             if record_kind == "mission":
                 record = next((item for item in snapshot["missions"] if str(item.get("mission_id")) == record_id), None)
@@ -1886,13 +2061,60 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
                 source_repo=self.source_repo)
             self._json_response(status, status=200)
             return
+        if route == "/api/vault/graph":
+            vault_root = _vault_root_from_db(self.database)
+            if vault_root is None:
+                self._json_response(
+                    {"status": "NOT_AVAILABLE", "reason": "vault root unknown", "nodes": [], "links": []},
+                    status=503,
+                )
+                return
+            try:
+                graph = build_vault_graph(self.database, vault_root)
+            except sqlite3.OperationalError:
+                self._json_response(
+                    {"status": "NOT_AVAILABLE", "reason": "vault index unavailable", "nodes": [], "links": []},
+                    status=503,
+                )
+                return
+            self._json_response(graph, status=200)
+            return
+        if route == "/api/vault/note":
+            vault_root = _vault_root_from_db(self.database)
+            if vault_root is None:
+                self._json_response({"status": "NOT_AVAILABLE", "reason": "vault root unknown"}, status=503)
+                return
+            rel_path = unquote(parse_qs(urlparse(self.path).query).get("path", [""])[0])
+            if not rel_path:
+                self._json_response({"status": "BAD_REQUEST", "reason": "path required"}, status=400)
+                return
+            try:
+                with self.database.connect(readonly=True) as connection:
+                    allowed = {
+                        str(row[0])
+                        for row in connection.execute(
+                            "SELECT rel_path FROM vault_files WHERE status = 'ACTIVE'",
+                        ).fetchall()
+                    }
+            except sqlite3.OperationalError:
+                self._json_response(
+                    {"status": "NOT_AVAILABLE", "reason": "vault index unavailable"}, status=503,
+                )
+                return
+            try:
+                note = read_vault_note(vault_root, rel_path, allowed=allowed)
+            except FileNotFoundError:
+                self._json_response({"status": "NOT_FOUND", "rel_path": rel_path}, status=404)
+                return
+            except (OSError, UnicodeError):
+                self._json_response({"status": "NOT_AVAILABLE", "rel_path": rel_path}, status=503)
+                return
+            self._json_response(note, status=200)
+            return
         if route not in {"/", "/api/command-center", "/api/timeline"}:
             self.send_error(404)
             return
-        snapshot = build_snapshot(
-            self.database, stop_path=self.stop_path,
-            timeline_limit=self.timeline_limit,
-            discovery_cycle_enabled=self.discovery_cycle_enabled)
+        snapshot = self._cached_snapshot()
         if route == "/":
             body = self._html(snapshot).encode("utf-8")
             content_type = "text/html; charset=utf-8"
@@ -1972,6 +2194,9 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
                     "outcome": applied.outcome,
                     "details": applied.details,
                 }
+            # Owner controls append ledger events; do not leave the UI serving
+            # a pre-command snapshot during the bounded cache window.
+            type(self)._invalidate_snapshot_cache()
             self._json_response(result, status=200)
         except OwnerReplayError as error:
             self._json_response({"status": "REJECTED", "reason": str(error)}, status=409)
@@ -2244,6 +2469,7 @@ class CommandCenterServer:
             raise ValueError("owner secret cannot be empty")
         self._handler.owner_secret = bytes(secret)
         self._handler.owner_id = owner_id
+        self._handler._invalidate_snapshot_cache()
 
     def start(self) -> None:
         if self.thread is not None:

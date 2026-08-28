@@ -26,7 +26,9 @@ import type {
   TimelineEvent,
   TrustSummary,
   Worker,
+  ObsidianVaultFile,
 } from "./contracts";
+import { mapObsidianVault } from "./obsidianVault";
 import { PollingEventStream } from "./pollingEventStream";
 import type { V3DiscoveryView } from "./v3Models";
 import { mapDiscovery } from "./discoveryMapper";
@@ -47,6 +49,14 @@ import {
 import type { FoundrySnapshot, FoundryExecutive, OwnerCommandResponse } from "./snapshotTypes";
 
 const DEFAULT_API = "/api";
+const SNAPSHOT_FETCH_TIMEOUT_MS = 120_000;
+
+function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
+  if (typeof AbortSignal !== "undefined" && "timeout" in AbortSignal) {
+    return fetch(url, { ...init, signal: AbortSignal.timeout(SNAPSHOT_FETCH_TIMEOUT_MS) });
+  }
+  return fetch(url, init);
+}
 
 function unavailable<T>(feature: string): Promise<T> {
   return Promise.reject(new Error(`UNAVAILABLE in live mode: ${feature}`));
@@ -93,7 +103,9 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
     if (this.snapshotRequest) return this.snapshotRequest;
     const request = (async () => {
       try {
-        const response = await fetch(`${this.apiBase}/command-center`, { headers: { Accept: "application/json" } });
+        const response = await fetchWithTimeout(`${this.apiBase}/command-center`, {
+          headers: { Accept: "application/json" },
+        });
         if (!response.ok) throw new Error(`snapshot HTTP ${response.status}`);
         const payload = (await response.json()) as FoundrySnapshot;
         this.snapshot = payload;
@@ -112,6 +124,11 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
     })();
     this.snapshotRequest = request;
     return request;
+  }
+
+  /** Public entry for routes that map many surfaces from one snapshot. */
+  async fetchSnapshot(): Promise<FoundrySnapshot> {
+    return this.snapshotOrFetch();
   }
 
   private async snapshotOrFetch(): Promise<FoundrySnapshot> {
@@ -207,6 +224,10 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
 
   async getMemoryGraph(): Promise<MemoryGraph> {
     return mapMemoryGraph(await this.snapshotOrFetch());
+  }
+
+  async getObsidianVault(): Promise<ObsidianVaultFile[]> {
+    return mapObsidianVault(await this.snapshotOrFetch());
   }
 
   async getExecutive(): Promise<FoundryExecutive> {
