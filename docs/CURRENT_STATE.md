@@ -5,7 +5,7 @@ convergence candidate. Source, immutable installation, database authority,
 and live runtime are separate truths until the guarded promotion procedure
 proves their parity.
 
-DOCUMENTATION STATE BASE SHA: `45668a98872b8c90c77b0196a5b98502ee69933a`
+DOCUMENTATION STATE BASE SHA: `f69c01ce3b1b77699690f727555dda4ba71af2ba`
 
 The SHA above is the source parent of this final documentation-only
 reconciliation commit. The freshness gate requires that relationship and
@@ -19,12 +19,12 @@ LANE 1 SOURCE SHA:           a319017231de3361a11e819e7fff965004e138c9
 LANE 2 IMPLEMENTATION SHA:   dc8bfbc136b70d85fecfe16d8a07ab3b94880209
 LANE 2 EVIDENCE SHA:         c8b97b842072b851b4e7b9f0731c006bf1b53aa6
 LANE 3 SOURCE SHA:           186aeda568bede4fa4bd410f317327893349e9a6
-CONVERGED SOURCE BASE:       45668a98872b8c90c77b0196a5b98502ee69933a
-CONVERGED SOURCE TREE:       79c2292d2787fe92acfc6494648974a4d53a7c82
+CONVERGED SOURCE BASE:       f69c01ce3b1b77699690f727555dda4ba71af2ba
+CONVERGED SOURCE TREE:       1dd2c4cae30bf524a7aa6d4e0f2fe78830d2b3a8
 CANONICAL CHECKOUT:          DIRTY / PRESERVED / NOT MODIFIED
-PRODUCTION RUNTIME:          DURABLY STOPPED FOR FINAL WRAPPER-FIX REBUILD
+PRODUCTION RUNTIME:          FINAL IMMUTABLE RELEASE; CURRENT/DB/RUNTIME PARITY VERIFIED
 LIVE DATABASE:               SCHEMA v37; DATABASE_LIVE_SLOT CONSISTENT; backed up
-SCHEDULER / REMOTE:          EXACT OWNED task held Ready during rebuild
+SCHEDULER / REMOTE:          EXACT OWNED task RUNNING; action contract PASS
 ```
 
 The candidate was created in a new isolated worktree from Lane 1's exact
@@ -81,7 +81,7 @@ separately and points to the exact immutable release and runtime.
 
 | Surface | Result |
 | --- | --- |
-| Python Foundry + convergence + acceptance | 2,316 collected; 2,315 passed, 1 expected host/environment skip, 0 failed |
+| Python Foundry + convergence + acceptance | 2,317 collected; 2,316 passed, 1 expected host/environment skip, 0 failed |
 | Lane 2/Lane 3 focused Python suites | PASS; covered again by the complete run |
 | Frontend Vitest | 25 files, 118 tests passed |
 | Frontend typecheck | Direct TypeScript `tsc -b --noEmit` passed (npm shim is malformed on this host) |
@@ -91,10 +91,10 @@ separately and points to the exact immutable release and runtime.
 | Simulated Playwright sweep | PASS; 169 tests, 0 failures (all non-live browser specs) |
 | Static design/accessibility/security checks | PASS; no detector findings, 12-route console check clean, and no frontend security findings |
 | Live autonomy fixture proof | PASS; 2 Playwright tests; disposable fixture DB and API, not production |
-| Prior live promotion | RECORDED; final wrapper-census fix requires a fresh exact-source promotion proof |
-| Signed owner-control recovery | RECORDED; PAUSE/RESUME, VETO/REVOKE, STOP/RESUME proof will be rerun on wrapper-fixed source |
-| Hard-kill restart | RECORDED; exact-owner restart proof will be rerun on wrapper-fixed source |
-| Rollback/recovery | RECORDED; transition-scoped rollback proof will be rerun on wrapper-fixed source |
+| Final live promotion | PASS; source/install/DB/runtime parity, schema, reconciliation, trust, idle, process census, and Scheduler contract |
+| Signed owner-control recovery | PASS; PAUSE/RESUME, VETO/REVOKE, STOP/RESUME with observed BLOCKED and return to OK |
+| Hard-kill restart | PASS; exact owner PID/creation identity changed and Scheduler recovered the same immutable release |
+| Rollback/recovery | PASS; DB/pointers switched to the previous immutable release under STOP, then reactivated to the final release with consistent authority |
 
 The acceptance README remains explicit that accelerated time is
 `ACCELERATED_EQUIVALENT_ONLY`, and that full 12-hour, 24-hour, and reboot-
@@ -112,11 +112,11 @@ signed STOP/PAUSE/RESUME/REVOKE, hard-kill restart, and rollback/recovery.
 The first rollback reactivation attempt exposed a real idempotency-key defect;
 it was stopped safely, repaired in the transition-scoped release authority
 commit, covered by regression tests, and rerun successfully. A subsequent
-live census exposed a missing-CIM-timestamp wrapper case; source
-`45668a98872b8c90c77b0196a5b98502ee69933a` adds the strict parent/venv-path
-collapse and regression coverage. The Supervisor is durably stopped while
-that wrapper-fixed source is rebuilt; no final production-converged claim is
-valid until its exact release passes all live gates. Evidence packets are
+live census exposed a missing-CIM-timestamp wrapper case; the wrapper-fixed
+source adds the strict parent/venv-path collapse and regression coverage. The
+final documentation-only commit is the last source pin; its immutable release
+manifest, CURRENT pointer, database live slot, and runtime identity are the
+handoff authorities and are required to remain equal. Evidence packets are
 retained under `C:\\temp`.
 
 ## Documentation freshness contract
