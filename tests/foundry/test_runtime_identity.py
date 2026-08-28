@@ -68,6 +68,22 @@ def test_venv_redirector_pair_is_one_logical_authority():
     assert collapsed[0]["interpreter_wrapper_pid"] == 100
 
 
+def test_venv_redirector_pair_collapses_when_cim_omits_wrapper_creation_time():
+    wrapper = _record(
+        100, parent_pid=1,
+        executable=r"C:\runtime\releases\aaaaaaaa\.venv\Scripts\pythonw.exe",
+        create_time=10_000_000_000,
+    )
+    wrapper["creation_identity"]["create_time"] = None
+    child = _record(
+        101, parent_pid=100, executable=r"C:\Python313\pythonw.exe",
+        create_time=10_000_010_000,
+    )
+    collapsed = _collapse_interpreter_wrappers([wrapper, child])
+    assert [item["pid"] for item in collapsed] == [101]
+    assert collapsed[0]["interpreter_wrapper_pid"] == 100
+
+
 def test_independent_same_home_launches_remain_duplicate():
     left = _record(
         100, parent_pid=1,

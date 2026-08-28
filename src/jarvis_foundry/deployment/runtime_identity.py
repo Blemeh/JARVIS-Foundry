@@ -294,7 +294,11 @@ def _same_logical_command(left: Mapping[str, Any], right: Mapping[str, Any]) -> 
     left_time = (left.get("creation_identity") or {}).get("create_time")
     right_time = (right.get("creation_identity") or {}).get("create_time")
     if left_time is None or right_time is None:
-        return False
+        # Some CIM providers omit CreationDate for the venv redirector even
+        # while retaining its executable, command, and parent-child fields.
+        # Those strict path/parent checks above still distinguish this wrapper
+        # handoff from an independent Supervisor launch.
+        return True
     # FILETIME units are 100 ns.  A redirector handoff is effectively
     # immediate; a wider window could hide a genuine duplicate launch.
     try:
