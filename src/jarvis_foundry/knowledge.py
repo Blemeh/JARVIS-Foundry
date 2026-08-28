@@ -11,6 +11,7 @@ canonicalized statement with a leading negation prefix removed."""
 from __future__ import annotations
 
 import re
+from functools import lru_cache
 
 _CONTRACTIONS: dict[str, str] = {
     # apostrophe forms (expanded BEFORE punctuation stripping, which would
@@ -85,6 +86,10 @@ def normalize_source_run_id(run_id: str) -> str:
     return run_id
 
 
+# Reconciliation replays historical claim pairs; bounded memoization keeps
+# deterministic contradiction checks from repeatedly running the same regex
+# pipeline while preventing unbounded growth from external statements.
+@lru_cache(maxsize=8192)
 def canonicalize_statement(statement: str) -> str:
     """Lowercase, expand contractions, collapse whitespace, strip punctuation."""
     text = expand_contractions(statement)
@@ -92,6 +97,7 @@ def canonicalize_statement(statement: str) -> str:
     return _WHITESPACE.sub(" ", text).strip()
 
 
+@lru_cache(maxsize=8192)
 def split_negation(statement: str) -> tuple[str, bool]:
     """Return (canonical core, negated?) — the negation fingerprint.
 
