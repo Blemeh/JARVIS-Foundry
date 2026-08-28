@@ -112,6 +112,40 @@ def test_failed_release_build_does_not_publish_partial_directory(
     assert not list(releases.glob(".staging-*"))
 
 
+def test_scheduler_contract_keeps_wscript_switches(monkeypatch: pytest.MonkeyPatch,
+                                                   tmp_path: Path) -> None:
+    import jarvis_foundry.deployment.status as deployment_status
+    from jarvis_foundry.deployment.layout import headless_launcher_cmd
+    from jarvis_foundry.deployment.release import _install_stable_launcher
+
+    install = tmp_path / "install"
+    home = tmp_path / "home"
+    _install_stable_launcher(install)
+    launcher = headless_launcher_cmd(install)
+
+    class Result:
+        returncode = 0
+        stderr = ""
+        stdout = (
+            "<Command>C:\\Windows\\System32\\wscript.exe</Command>"
+            f"<Arguments>//B //Nologo \"{launcher}\" --home \"{home}\"</Arguments>"
+            "<MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>"
+            "<Interval>PT1M</Interval><Duration>P30D</Duration>"
+        )
+
+    monkeypatch.setattr(deployment_status.subprocess, "run", lambda *args, **kwargs: Result())
+    report = deployment_status._scheduler_contract(
+        install, home,
+        {
+            "installed": True,
+            "owned_for_home": True,
+            "task_name": "JARVIS-Foundry-Supervisor",
+        },
+    )
+    assert report["action_contract"] is True
+    assert report["status"] == "PASS"
+
+
 def test_set_current_records_database_live_authority_and_rollback(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:

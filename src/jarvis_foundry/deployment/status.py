@@ -346,14 +346,19 @@ def _scheduler_contract(
             )
             action_queried = result.returncode == 0
             if action_queried:
-                xml = (result.stdout or "").replace("/", "\\").lower()
+                # Preserve the forward slashes in WScript's ``//B //Nologo``
+                # switches.  Normalize only the expected path so a task
+                # emitted with either slash style is accepted.
+                xml = (result.stdout or "").lower()
                 expected = str(stable_path.resolve()).replace("/", "\\").lower()
-                action_contract = all(
-                    marker in xml for marker in (
-                        "wscript.exe", expected,
-                        "//b //nologo", "<multipleinstancespolicy>ignorenew",
-                        "<interval>pt1m", "<duration>p30d",
-                    )
+                action_markers = (
+                    "wscript.exe", "//b //nologo",
+                    "<multipleinstancespolicy>ignorenew",
+                    "<interval>pt1m", "<duration>p30d",
+                )
+                expected_path = expected in xml or expected.replace("\\", "/") in xml
+                action_contract = expected_path and all(
+                    marker in xml for marker in action_markers
                 )
             else:
                 action_error = (result.stderr or result.stdout or "query failed")[-300:]
