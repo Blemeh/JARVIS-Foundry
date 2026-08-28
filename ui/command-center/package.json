@@ -13,6 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "node scripts/run-playwright.mjs",
+    "e2e:live": "node scripts/run-playwright-live.mjs",
     "e2e:ui": "playwright test --ui",
     "verify:product": "node scripts/product-verify.mjs",
     "verify:design": "node scripts/design-detector.mjs",

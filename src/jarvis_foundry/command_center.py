@@ -490,6 +490,11 @@ def decision_timeline(database: FoundryDatabase, *, limit: int = 200) -> list[di
             "causation_id": event.causation_id,
             "summary": payload.get("reason") or payload.get("objective") or payload.get("status") or event_type,
             "decision": payload.get("decision") or payload.get("verdict") or payload.get("outcome"),
+            # State transitions are material lifecycle evidence. Keep these
+            # bounded scalar fields in the projection so consumers can expose
+            # repair/retry without reconstructing or guessing from prose.
+            "state": payload.get("state") if isinstance(payload.get("state"), str) else None,
+            "next_action": payload.get("next_action") if isinstance(payload.get("next_action"), str) else None,
             "rejected_alternative": payload.get("rejection_reason") or payload.get("reason") if "reject" in event_type else None,
             "evidence_refs": _event_refs(payload, event.event_id),
         })
@@ -1576,7 +1581,9 @@ def build_snapshot(
         candidates = _safe_table(connection, "candidates", "SELECT * FROM candidates ORDER BY updated_at DESC LIMIT 200", errors=projection_errors)
         memories = _safe_table(
             connection, "tier_c_memories",
-            "SELECT memory_id, state, mem_type, scope, mission_id, updated_at, last_event_id "
+            "SELECT memory_id, state, mem_type, scope, mission_id, agent_run_id, "
+            "created_by, content, confidence, source_ids_json, evidence_ids_json, "
+            "last_verified, updated_at, last_event_id "
             "FROM tier_c_memories ORDER BY updated_at DESC LIMIT 100",
             errors=projection_errors)
         procedures = _safe_table(
@@ -1674,7 +1681,7 @@ def build_snapshot(
     def with_ref(row: dict[str, Any], kind: str, key: str) -> dict[str, Any]:
         value = dict(row)
         value["record_ref"] = _record_ref(kind, row.get(key), row.get("last_event_id"))
-        for field in ("acceptance_json", "tool_policy_json", "cost_json", "criteria_json", "evidence_json", "resource_json", "artifact_hashes_json"):
+        for field in ("acceptance_json", "tool_policy_json", "cost_json", "criteria_json", "evidence_json", "resource_json", "artifact_hashes_json", "source_ids_json", "evidence_ids_json", "builder_claim_json", "uncertainty_json", "repair_requirements_json", "missing_proof_json", "result_json"):
             if field in value:
                 value[field[:-5] if field.endswith("_json") else field] = _json_value(value[field])
         return value
@@ -1947,6 +1954,19 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
     discovery_cycle_enabled: bool | None = None
     static_root: Path | None = None
 
+    def _write_body(self, body: bytes) -> bool:
+        """Write an HTTP body while treating a client navigation as normal.
+
+        Command Center pages poll and navigate between projections. A browser
+        may cancel a still-streaming snapshot during navigation; that is not a
+        runtime failure and must not emit a traceback or change ledger truth.
+        """
+        try:
+            self.wfile.write(body)
+        except (BrokenPipeError, ConnectionAbortedError):
+            return False
+        return True
+
     def _serve_static(self, route: str) -> bool:
         root = self.static_root
         if root is None:
@@ -1973,7 +1993,7 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
             else "public, max-age=31536000, immutable")
         self._cors_headers()
         self.end_headers()
-        self.wfile.write(body)
+        self._write_body(body)
         return True
 
     # The server binds a fresh handler subclass, so this cache is isolated per
@@ -2026,7 +2046,7 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
             self.send_header("Cache-Control", "public, max-age=86400")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
-            self.wfile.write(body)
+            self._write_body(body)
             return
         if route.startswith("/api/record/"):
             parts = route.split("/")
@@ -2144,7 +2164,7 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self._cors_headers()
         self.end_headers()
-        self.wfile.write(body)
+        self._write_body(body)
 
     def do_POST(self) -> None:  # noqa: N802
         route = self.path.split("?", 1)[0]
@@ -2238,7 +2258,7 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
         self._cors_headers()
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
-        self.wfile.write(body)
+        self._write_body(body)
 
     @staticmethod
     def _html(snapshot: dict[str, Any]) -> str:

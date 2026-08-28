@@ -28,7 +28,9 @@ export type MissionStatus =
   | "BLOCKED"
   | "HALTED"
   | "INTERVENTION"
-  | "COMPLETE";
+  | "COMPLETE"
+  | "CANCELLED"
+  | "UNKNOWN";
 
 export type Priority = "CRITICAL" | "HIGH" | "ELEVATED" | "NORMAL";
 
@@ -48,7 +50,17 @@ export interface Mission {
   owner: string;
 }
 
-export type PipelineStageState = "COMPLETE" | "ACTIVE" | "PENDING";
+/** Lifecycle truth is deliberately closed over explicit absence. */
+export type PipelineStageState = "COMPLETE" | "ACTIVE" | "PENDING" | "FAILED" | "UNKNOWN" | "UNAVAILABLE";
+
+export interface AutonomyLifecycleRecord {
+  key: string;
+  label: string;
+  state: PipelineStageState;
+  detail: string;
+  refs: EntityRef[];
+  eventIds: string[];
+}
 
 export interface PipelineStage {
   key: string;
@@ -69,7 +81,7 @@ export interface DataStream {
   name: string;
   icon: "database" | "api" | "memory" | "route" | "ledger";
   status: string;
-  state: "LIVE" | "POLLING" | "CACHED" | "WRITING";
+  state: "LIVE" | "POLLING" | "CACHED" | "WRITING" | "UNKNOWN" | "UNAVAILABLE";
 }
 
 export type VerdictState = "PASSED" | "WARN_ACCEPT" | "EVALUATING" | "FAILED";
@@ -86,6 +98,7 @@ export interface VerifierVerdict {
 export interface MissionRun {
   missionId: string;
   pipeline: PipelineStage[];
+  lifecycle?: AutonomyLifecycleRecord[];
   telemetry: TelemetryEntry[];
   streams: DataStream[];
   verdicts: VerifierVerdict[];
@@ -97,7 +110,7 @@ export interface MissionRun {
   };
 }
 
-export type WorkerStatus = "ACTIVE" | "STANDBY" | "DEGRADED" | "RATE_LIMITED" | "FAILED" | "RECOVERING";
+export type WorkerStatus = "ACTIVE" | "STANDBY" | "DEGRADED" | "RATE_LIMITED" | "FAILED" | "RECOVERING" | "UNKNOWN" | "UNAVAILABLE";
 export type WorkerRunStatus = "ACTIVE" | "FAILED" | "RECOVERING" | "COMPLETE" | "QUEUED";
 
 export interface Worker {
@@ -147,7 +160,8 @@ export type MemoryNodeCategory =
   | "DECISION"
   | "PROCEDURE"
   | "OBSERVATION"
-  | "RESOURCE";
+  | "RESOURCE"
+  | "UNKNOWN";
 
 export interface MemoryNode {
   id: string;
@@ -195,7 +209,7 @@ export interface TimelineEvent {
   memoryId?: string;
 }
 
-export type ComponentState = "RUNNING" | "STANDBY" | "STOPPED" | "ARMED" | "ACTIVE";
+export type ComponentState = "RUNNING" | "STANDBY" | "STOPPED" | "ARMED" | "ACTIVE" | "UNKNOWN" | "UNAVAILABLE";
 export type Health = "HEALTHY" | "DEGRADED" | "CRITICAL" | "UNKNOWN";
 export type Readiness = "READY" | "NOT_READY" | "DEGRADED" | "UNKNOWN";
 
@@ -215,8 +229,8 @@ export interface SystemComponent {
   incidentEventIds?: string[];
 }
 
-export type TrustState = "SIMULATED" | "PROVEN" | "DEGRADED" | "SUSPENDED";
-export type GateStatus = "OPEN" | "GATED" | "PASS" | "FAIL" | "NOT_APPLICABLE";
+export type TrustState = "SIMULATED" | "PROVEN" | "DEGRADED" | "SUSPENDED" | "UNKNOWN" | "UNAVAILABLE";
+export type GateStatus = "OPEN" | "GATED" | "PASS" | "FAIL" | "NOT_APPLICABLE" | "UNKNOWN" | "UNAVAILABLE";
 
 export interface TrustFactor {
   id: string;

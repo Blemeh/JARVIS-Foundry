@@ -160,7 +160,7 @@ try {
             const headingLocator =
               route.emptyHeading && scenario === "EMPTY_STATE"
                 ? page.getByText(expectedHeading)
-                : page.getByRole("heading", { name: expectedHeading })
+            : page.getByRole("heading", { name: expectedHeading, exact: true })
             await headingLocator.waitFor({ state: "visible", timeout: 10_000 })
             const pill = page.locator(".data-source-pill")
             const pillText = await pill.innerText()

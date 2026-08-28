@@ -16,7 +16,7 @@ test.describe("owner workflow navigation", () => {
   for (const route of primaryRoutes) {
     test(`${route.nav} route is reachable with active nav and data source label`, async ({ page }) => {
       await page.goto(route.path)
-      await expect(page.getByRole("heading", { name: route.heading })).toBeVisible()
+      await expect(page.getByRole("heading", { name: route.heading, exact: true })).toBeVisible()
       await expect(page.locator(".data-source-pill")).toContainText("SIMULATED")
       const nav = page.getByRole("navigation", { name: "Primary" })
       await expect(nav.getByRole("link", { name: route.nav })).toHaveAttribute("aria-current", "page")

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mapMissionStatus, mapMissions, mapSystemOverview, mapTrustSummary, mapWorkers } from "../snapshotMapper";
+import { mapMemoryGraph, mapMissionRun, mapMissionStatus, mapMissions, mapSystemOverview, mapSystems, mapTrustSummary, mapWorkers } from "../snapshotMapper";
 import type { FoundrySnapshot } from "../snapshotTypes";
 import { MEASURED_COST_LABEL, NOT_REPORTED_NUMERIC } from "../truthFormat";
 import { allSnapshotTruthCases } from "./snapshotTruthCases";
@@ -76,6 +76,27 @@ describe("snapshotMapper", () => {
     const snapshot = baseSnapshot();
     const missions = mapMissions(snapshot);
     expect(missions[0].completion).toBe(NOT_REPORTED_NUMERIC);
+  });
+
+  it("keeps unsupported live fields UNKNOWN and exposes the canonical lifecycle", () => {
+    const snapshot = baseSnapshot();
+    snapshot.missions[0].state = "UNRECOGNIZED_STATE";
+    snapshot.workers[0].status = "UNRECOGNIZED_STATUS";
+    snapshot.systems = [{ system_id: "sys-unknown", readiness_state: "NOT_TESTED" }];
+    snapshot.memory = [{ memory_id: "memory-unknown", mem_type: "future-type" }];
+
+    expect(mapMissions(snapshot)[0].status).toBe("UNKNOWN");
+    expect(mapWorkers(snapshot)[0].status).toBe("UNKNOWN");
+    expect(mapSystems(snapshot)[0]).toMatchObject({ health: "UNKNOWN", readiness: "UNKNOWN", state: "UNKNOWN", recovery: "UNKNOWN", version: "UNKNOWN" });
+    expect(mapMemoryGraph(snapshot).nodes[0]).toMatchObject({ category: "UNKNOWN", summary: "UNKNOWN", confidence: NOT_REPORTED_NUMERIC });
+
+    const run = mapMissionRun(snapshot, "m-1");
+    expect(run.streams[0]).toMatchObject({ state: "POLLING", status: "canonical snapshot" });
+    expect(run.pipeline[0].state).toBe("UNKNOWN");
+    expect(run.lifecycle?.map((stage) => stage.key)).toEqual([
+      "owner_goal", "plan", "mission", "worker", "action_artifact",
+      "evidence", "verifier", "repair_retry", "memory", "owner_briefing",
+    ]);
   });
 
   it("maps authoritative zero cost and computed verification coverage", () => {

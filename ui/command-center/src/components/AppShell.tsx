@@ -20,6 +20,7 @@ const routeTitles: Record<string, string> = {
   "/agents": "Agents",
   "/evidence": "Evidence",
   "/memory": "Memory",
+  "/evolution": "Evolution",
   "/systems": "Systems",
   "/timeline": "Timeline",
   "/notifications": "Notifications",

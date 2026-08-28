@@ -3,6 +3,7 @@ import type {
   JarvisClient,
   Mission,
   OwnerAttentionRecord,
+  OwnerControlSurface,
   SystemOverview,
   TimelineEvent,
   TrustSummary,
@@ -32,6 +33,7 @@ export type OverviewData = {
   executive: FoundryExecutive | null
   ownerAttention: OwnerAttentionRecord[]
   obsidianVault: ObsidianVaultFile[]
+  ownerSurface: OwnerControlSurface | null
 }
 
 /** One snapshot round-trip for live mode; parallel mock calls for simulated mode. */
@@ -49,6 +51,7 @@ export async function loadOverviewData(client: JarvisClient): Promise<OverviewDa
       executive: snapshot.executive ?? null,
       ownerAttention: ownerSurface.decisionQueue?.open ?? [],
       obsidianVault: mapObsidianVault(snapshot),
+      ownerSurface,
     }
   }
 
@@ -84,5 +87,6 @@ export async function loadOverviewData(client: JarvisClient): Promise<OverviewDa
     executive,
     ownerAttention: ownerSurface?.decisionQueue?.open ?? [],
     obsidianVault,
+    ownerSurface,
   }
 }

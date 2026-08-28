@@ -775,6 +775,27 @@
   color: var(--text-muted);
 }
 
+.md-stage .ref-row {
+  width: 100%;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.md-stage .ref-link {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.md-stage-ref-count,
+.md-stage-events {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 9px;
+}
+
 .md-grid {
   display: grid;
   grid-template-columns: 8fr 4fr;

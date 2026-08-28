@@ -19,8 +19,10 @@ type Status =
   | "FAIL"
   | "NOT_TESTED"
   | "FAILED"
+  | "CANCELLED"
   | "RECOVERING"
   | "QUEUED"
+  | "UNAVAILABLE"
   | MemoryNodeCategory;
 
 const variantMap: Record<string, "accent" | "teal" | "amber" | "error" | "muted"> = {
@@ -51,11 +53,13 @@ const variantMap: Record<string, "accent" | "teal" | "amber" | "error" | "muted"
   CRITICAL: "error",
   SUSPENDED: "error",
   STOPPED: "error",
+  CANCELLED: "error",
   RATE_LIMITED: "error",
   SIMULATED: "muted",
   NOT_READY: "muted",
   NOT_TESTED: "muted",
   UNKNOWN: "muted",
+  UNAVAILABLE: "muted",
   MISSION: "accent",
   EVIDENCE: "teal",
   BELIEF: "muted",

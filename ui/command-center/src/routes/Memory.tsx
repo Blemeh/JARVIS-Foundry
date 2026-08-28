@@ -42,7 +42,7 @@ function MemoryContent({ graph }: { graph: MemoryGraph }) {
     if (missionParam) {
       return graph.nodes.find((n) => n.ref?.kind === "mission" && n.ref.id === missionParam) ?? null;
     }
-    return graph.nodes.find((n) => n.id === "n-mission") ?? graph.nodes[0] ?? null;
+    return graph.nodes[0] ?? null;
   }, [graph, memoryId, missionParam]);
 
   const selected = manualSelected ?? derivedSelected;
@@ -115,8 +115,8 @@ function MemoryContent({ graph }: { graph: MemoryGraph }) {
             <p className="t-label text-muted page-kicker">Knowledge Graph</p>
             <h1 className="t-display">Knowledge Graph</h1>
             <p className="prose page-desc">
-              Epistemic state, not a flat store: observations, evidence, claims, beliefs, decisions, procedures,
-              missions, and resources are distinct categories with distinct provenance.
+              Epistemic state from the canonical memory projection. Node placement is presentation-only; categories,
+              content, confidence, and links are shown only when the backend records them.
             </p>
           </div>
           <div className="memory-head-meta">

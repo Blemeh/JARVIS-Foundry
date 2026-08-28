@@ -31,6 +31,7 @@ export interface FoundrySnapshot {
     degraded?: boolean;
     crashed_workers?: Record<string, unknown>[];
     stale_leases?: Record<string, unknown>[];
+    trust_assessment?: Record<string, unknown>;
   };
   systems: FoundrySystem[];
   memory: FoundryMemory[];
@@ -138,6 +139,8 @@ export interface FoundryMission {
   updated_at?: string;
   created_from?: string;
   acceptance?: unknown;
+  last_event_id?: string;
+  record_ref?: Record<string, unknown>;
 }
 
 export interface FoundryWorker {
@@ -150,6 +153,10 @@ export interface FoundryWorker {
   heartbeat_at?: string;
   updated_at?: string;
   failure_class?: string;
+  step_id?: string;
+  last_event_id?: string;
+  record_ref?: Record<string, unknown>;
+  result?: unknown;
 }
 
 export interface FoundryEvidence {
@@ -160,6 +167,11 @@ export interface FoundryEvidence {
   status?: string;
   updated_at?: string;
   artifact_hashes?: Record<string, string>;
+  builder_claim?: unknown;
+  verifier_verdict_id?: string;
+  uncertainty?: unknown;
+  last_event_id?: string;
+  record_ref?: Record<string, unknown>;
 }
 
 export interface FoundryVerification {
@@ -169,6 +181,14 @@ export interface FoundryVerification {
   status?: string;
   findings?: unknown;
   updated_at?: string;
+  subject_type?: string;
+  subject_id?: string;
+  verifier_run_id?: string;
+  builder_run_id?: string;
+  repair_requirements?: unknown;
+  missing_proof?: unknown;
+  last_event_id?: string;
+  record_ref?: Record<string, unknown>;
 }
 
 export interface FoundrySystem {
@@ -178,6 +198,16 @@ export interface FoundrySystem {
   readiness_state?: string;
   updated_at?: string;
   last_heartbeat_at?: string;
+  last_probe_at?: string;
+  readiness?: string;
+  capabilities?: Record<string, unknown>;
+  state?: string;
+  health?: string;
+  dependencies?: string[];
+  recovery_state?: string;
+  version?: string;
+  last_event_id?: string;
+  record_ref?: Record<string, unknown>;
 }
 
 export interface FoundryMemory {
@@ -187,6 +217,15 @@ export interface FoundryMemory {
   scope?: string;
   mission_id?: string;
   updated_at?: string;
+  agent_run_id?: string;
+  created_by?: string;
+  content?: string;
+  confidence?: number;
+  source_ids?: string[];
+  evidence_ids?: string[];
+  last_verified?: string;
+  last_event_id?: string;
+  record_ref?: Record<string, unknown>;
 }
 
 export interface FoundryTimelineEvent {
@@ -197,7 +236,13 @@ export interface FoundryTimelineEvent {
   recorded_at?: string;
   summary?: string;
   decision?: string;
+  state?: string;
+  next_action?: string;
   evidence_refs?: { kind: string; id?: string; event_id?: string }[];
+  source?: { type?: string; id?: string };
+  correlation_id?: string;
+  causation_id?: string;
+  rejected_alternative?: string | null;
 }
 
 export interface OwnerCommandResponse {

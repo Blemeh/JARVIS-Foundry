@@ -101,7 +101,10 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
       setTrustSummaryStatus("ready");
       setConnection(client.connection);
       if (mode === "live") {
-        const active = trust.gateStatus === "GATED" || trust.state === "SUSPENDED";
+        // A gated trust decision is not the same thing as an active STOP.
+        // Only the canonical suspended state (derived from the STOP
+        // sentinel/directive) may freeze the Command Center surfaces.
+        const active = trust.state === "SUSPENDED";
         setStopActive(active);
       }
     } catch (err: unknown) {

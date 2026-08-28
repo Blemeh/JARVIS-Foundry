@@ -1,0 +1,2570 @@
+{
+  "schema": "lane3.autonomy-proof.v1",
+  "source": "disposable_foundry_database",
+  "api": "http://127.0.0.1:50564",
+  "mission_id": "mission-1bd6f9b5be66",
+  "goal": {
+    "status": "APPLIED",
+    "command_type": "GOAL",
+    "directive_id": "owner-a33dc54a56d3a945c9ee73da",
+    "event_id": "cca58028-f2cd-4de7-852c-28e585f7aba1",
+    "superseded_directive_id": null,
+    "outcome": null,
+    "details": null
+  },
+  "cycles": [
+    {
+      "loop_id": "lane3-plan",
+      "outcome": "PASSED",
+      "mission_id": "mission-1bd6f9b5be66",
+      "step_id": "01-plan",
+      "run_id": "run-75c25c0e3ec9",
+      "verdict_id": "verdict-v2-fe2097099136305addbd28f1",
+      "reason": null
+    },
+    {
+      "loop_id": "lane3-execute",
+      "outcome": "PASSED",
+      "mission_id": "mission-1bd6f9b5be66",
+      "step_id": "02-execute",
+      "run_id": "run-876899ff22fd",
+      "verdict_id": "verdict-v2-b131ed3b0a93754f714c948b",
+      "reason": null
+    }
+  ],
+  "mission_state": "COMPLETE",
+  "verification_statuses": [
+    "PASS",
+    "FAIL",
+    "PASS"
+  ],
+  "evidence_bundles": [
+    "bundle-6cd612b31f6734b897019174",
+    "bundle-bfbddeccf18f73cdb2be77ee"
+  ],
+  "memory_ids": [
+    "memory-lane3-mission-1bd6f9b5be66",
+    "a6720ff75f754c52",
+    "d53435bab0db4318"
+  ],
+  "briefing": {
+    "briefing_id": "briefing-64d423db5c2b0b5bc2c24753",
+    "status": null,
+    "created": true
+  },
+  "briefing_packet": {
+    "schema": "v4.briefing-packet.v1",
+    "packet_id": "TWICE_DAILY:2026-08-28:AM",
+    "window": {
+      "kind": "TWICE_DAILY",
+      "period_key": "2026-08-28:AM",
+      "generated_at": "2026-08-28T11:46:31.466281Z"
+    },
+    "items": [
+      {
+        "item_id": "brief-item-5cb6a1de326c3f825a030d5a",
+        "dedupe_key": "project.registered:7f10103f-099d-4c92-97d4-8b3bfc059e2b",
+        "item_version": "1.1",
+        "category": "EVENT",
+        "importance": 1,
+        "freshness": "FRESH",
+        "entity_kind": "resource",
+        "entity_id": "lane3-proof-resource",
+        "mission_id": null,
+        "source_event_id": "7f10103f-099d-4c92-97d4-8b3bfc059e2b",
+        "source_event_type": "project.registered",
+        "source_sequence": 1,
+        "occurred_at": "2026-08-28T11:46:23.409554Z",
+        "summary": "{\"baseline\": {\"branch\": \"master\", \"head\": \"d6e7a46893f56ad22be9ff0d10b2896444775e6a\", \"remotes\": [], \"status_porcelain\": []}, \"capabilities\": {\"git_local_commit\": \"PROBING\", \"git_push\": \"DISCOVERED\", \"read_registered_files\": \"READY\", \"run_registered_local_commands\": \"READY\", \"write_registered_worktree_files\": \"READY\"}\u2026",
+        "owner_action_required": "UNKNOWN",
+        "evidence_refs": [
+          "7f10103f-099d-4c92-97d4-8b3bfc059e2b"
+        ],
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "wp0",
+          "correlation_id": "7f10103f-099d-4c92-97d4-8b3bfc059e2b",
+          "causation_id": null
+        }
+      },
+      {
+        "item_id": "brief-item-2f4b71849f4661f1510346a1",
+        "dedupe_key": "capability.state_changed:c1d2ec60-6251-4b64-b1bc-53ae8f4d7086",
+        "item_version": "1.1",
+        "category": "EVENT",
+        "importance": 1,
+        "freshness": "FRESH",
+        "entity_kind": "resource",
+        "entity_id": "lane3-proof-resource",
+        "mission_id": null,
+        "source_event_id": "c1d2ec60-6251-4b64-b1bc-53ae8f4d7086",
+        "source_event_type": "capability.state_changed",
+        "source_sequence": 2,
+        "occurred_at": "2026-08-28T11:46:23.455595Z",
+        "summary": "{\"capability\": \"write_registered_worktree_files\", \"evidence\": {\"source\": \"lane3-disposable-proof\"}, \"resource_id\": \"lane3-proof-resource\", \"state\": \"READY\"}",
+        "owner_action_required": "UNKNOWN",
+        "evidence_refs": [
+          "c1d2ec60-6251-4b64-b1bc-53ae8f4d7086"
+        ],
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "capability-control",
+          "correlation_id": "lane3-proof-resource",
+          "causation_id": null
+        }
+      },
+      {
+        "item_id": "brief-item-23fc6460c52754eb2111ca42",
+        "dedupe_key": "worker_loop.cycle_started:5878e9c1-cce5-46a0-91ca-3fcee078cc05",
+        "item_version": "1.1",
+        "category": "EVENT",
+        "importance": 1,
+        "freshness": "FRESH",
+        "entity_kind": "resource",
+        "entity_id": "lane3-proof-resource",
+        "mission_id": null,
+        "source_event_id": "5878e9c1-cce5-46a0-91ca-3fcee078cc05",
+        "source_event_type": "worker_loop.cycle_started",
+        "source_sequence": 5,
+        "occurred_at": "2026-08-28T11:46:23.588376Z",
+        "summary": "{\"capability\": \"write_registered_worktree_files\", \"instance_id\": \"lane3-supervisor-1\", \"loop_id\": \"lane3-plan\", \"resource_id\": \"lane3-proof-resource\"}",
+        "owner_action_required": "UNKNOWN",
+        "evidence_refs": [
+          "5878e9c1-cce5-46a0-91ca-3fcee078cc05"
+        ],
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "lane3-supervisor-1",
+          "correlation_id": "5878e9c1-cce5-46a0-91ca-3fcee078cc05",
+          "causation_id": null
+        }
+      },
+      {
+        "item_id": "brief-item-ca4be809bfb298de93b7bcdf",
+        "dedupe_key": "worker_loop.portfolio_selected:b7d2e1fb-162b-42ec-84a0-6c52a92d719f",
+        "item_version": "1.1",
+        "category": "EVENT",
+        "importance": 1,
+        "freshness": "FRESH",
+        "entity_kind": "mission",
+        "entity_id": "mission-1bd6f9b5be66",
+        "mission_id": "mission-1bd6f9b5be66",
+        "source_event_id": "b7d2e1fb-162b-42ec-84a0-6c52a92d719f",
+        "source_event_type": "worker_loop.portfolio_selected",
+        "source_sequence": 17,
+        "occurred_at": "2026-08-28T11:46:24.200375Z",
+        "summary": "{\"claim\": {\"acquired\": true, \"claim\": {\"controller\": \"supervisor\", \"cost_usd\": 0.0, \"decision_id\": \"portfolio-portfolio:lane3-plan:d35aa290\", \"entity_id\": \"owner-goal:owner-a33dc54a56d3a945c9ee73da\", \"expires_at\": \"2026-08-28T11:51:24.171700+00:00\", \"lease_id\": \"lease:portfolio-portfolio:lane3-plan:d35aa290\", \"loop_id\u2026",
+        "owner_action_required": "UNKNOWN",
+        "evidence_refs": [
+          "b7d2e1fb-162b-42ec-84a0-6c52a92d719f"
+        ],
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "worker-loop:lane3-supervisor-1",
+          "correlation_id": "b7d2e1fb-162b-42ec-84a0-6c52a92d719f",
+          "causation_id": null
+        }
+      },
+      {
+        "item_id": "brief-item-e058521fdeed10e27f2b9db5",
+        "dedupe_key": "worker.route_decided:3d34ba40-a86f-4165-ae10-e78cd05ee626",
+        "item_version": "1.1",
+        "category": "EVENT",
+        "importance": 1,
+        "freshness": "FRESH",
+        "entity_kind": "mission",
+        "entity_id": "mission-1bd6f9b5be66",
+        "mission_id": "mission-1bd6f9b5be66",
+        "source_event_id": "3d34ba40-a86f-4165-ae10-e78cd05ee626",
+        "source_event_type": "worker.route_decided",
+        "source_sequence": 21,
+        "occurred_at": "2026-08-28T11:46:24.645667Z",
+        "summary": "ambiguous/root-cause task; Hermes primary diagnostic path",
+        "owner_action_required": "UNKNOWN",
+        "evidence_refs": [
+          "3d34ba40-a86f-4165-ae10-e78cd05ee626"
+        ],
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "hybrid-worker-bridge",
+          "correlation_id": "3d34ba40-a86f-4165-ae10-e78cd05ee626",
+          "causation_id": null
+        }
+      },
+      {
+        "item_id": "brief-item-555fc382845d64963fbdab47",
+        "dedupe_key": "verification.started:2893ae9b-5899-420e-bfde-c80ad46a9e2f",
+        "item_version": "1.1",
+        "category": "EVENT",
+        "importance": 1,
+        "freshness": "FRESH",
+        "entity_kind": "mission",
+        "entity_id": "mission-1bd6f9b5be66",
+        "mission_id": "mission-1bd6f9b5be66",
+        "source_event_id": "2893ae9b-5899-420e-bfde-c80ad46a9e2f",
+        "source_event_type": "verification.started",
+        "source_sequence": 25,
+        "occurred_at": "2026-08-28T11:46:25.419443Z",
+        "summary": "{\"binding\": {\"artifact_hashes\": {\"plan.md\": \"cd9594998b76e83660ac18a373a3f6f05a377448a91de66568c70facef66bb2b\"}, \"binding_hash\": \"a96828a8bbea8109e4b58f97b93bb1b87ea7b83170a5b6d32d8d807b4e9ac80b\", \"builder_run_id\": \"run-75c25c0e3ec9\", \"context_manifest_hash\": \"a985d9117c42edcca0b36c9084a1131cc58978a593d1fb61b6cf408690\u2026",
+        "owner_action_required": "UNKNOWN",
+        "evidence_refs": [
+          "2893ae9b-5899-420e-bfde-c80ad46a9e2f",
+          "verdict-v2-fe2097099136305addbd28f1"
+        ],
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "mission-loop",
+          "correlation_id": "2893ae9b-5899-420e-bfde-c80ad46a9e2f",
+          "causation_id": null
+        }
+      },
+      {
+        "item_id": "brief-item-cbe7675ab97f4e4c76a175f2",
+        "dedupe_key": "worker.route_decided:d7dc5ce4-2664-46ce-8d81-ccd551ad64b8",
+        "item_version": "1.1",
+        "category": "EVENT",
+        "importance": 1,
+        "freshness": "FRESH",
+        "entity_kind": "mission",
+        "entity_id": "mission-1bd6f9b5be66",
+        "mission_id": "mission-1bd6f9b5be66",
+        "source_event_id": "d7dc5ce4-2664-46ce-8d81-ccd551ad64b8",
+        "source_event_type": "worker.route_decided",
+        "source_sequence": 27,
+        "occurred_at": "2026-08-28T11:46:25.557167Z",
+        "summary": "ambiguous/root-cause task; Hermes primary diagnostic path",
+        "owner_action_required": "UNKNOWN",
+        "evidence_refs": [
+          "d7dc5ce4-2664-46ce-8d81-ccd551ad64b8"
+        ],
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "hybrid-worker-bridge",
+          "correlation_id": "d7dc5ce4-2664-46ce-8d81-ccd551ad64b8",
+          "causation_id": null
+        }
+      },
+      {
+        "item_id": "brief-item-be16bc4ed7d6726b2645ff80",
+        "dedupe_key": "verification.passed:5c5eae8d-6df1-4182-8de9-bd51bb93e506",
+        "item_version": "1.1",
+        "category": "EVENT",
+        "importance": 1,
+        "freshness": "FRESH",
+        "entity_kind": null,
+        "entity_id": null,
+        "mission_id": null,
+        "source_event_id": "5c5eae8d-6df1-4182-8de9-bd51bb93e506",
+        "source_event_type": "verification.passed",
+        "source_sequence": 30,
+        "occurred_at": "2026-08-28T11:46:26.186687Z",
+        "summary": "{\"evidence\": {\"artifact_hashes\": {\"plan.md\": \"cd9594998b76e83660ac18a373a3f6f05a377448a91de66568c70facef66bb2b\"}, \"binding_hash\": \"a96828a8bbea8109e4b58f97b93bb1b87ea7b83170a5b6d32d8d807b4e9ac80b\", \"binding_schema\": \"verifier-binding-v1\", \"builder_run_id\": \"run-75c25c0e3ec9\", \"context_manifest_hash\": \"a985d9117c42edcc\u2026",
+        "owner_action_required": "UNKNOWN",
+        "evidence_refs": [
+          "5c5eae8d-6df1-4182-8de9-bd51bb93e506",
+          "verdict-v2-fe2097099136305addbd28f1"
+        ],
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "mission-loop",
+          "correlation_id": "5c5eae8d-6df1-4182-8de9-bd51bb93e506",
+          "causation_id": null
+        }
+      },
+      {
+        "item_id": "brief-item-fc5bcdd6fd98369fd4e49be6",
+        "dedupe_key": "evidence.created:9dcaacd9-87a5-42ae-8a72-26f1db40f601",
+        "item_version": "1.1",
+        "category": "EVENT",
+        "importance": 1,
+        "freshness": "FRESH",
+        "entity_kind": "mission",
+        "entity_id": "mission-1bd6f9b5be66",
+        "mission_id": "mission-1bd6f9b5be66",
+        "source_event_id": "9dcaacd9-87a5-42ae-8a72-26f1db40f601",
+        "source_event_type": "evidence.created",
+        "source_sequence": 32,
+        "occurred_at": "2026-08-28T11:46:26.397318Z",
+        "summary": "Create a durable Lane 3 proof artifact. success: outcome receipt exists; direct inspection agrees",
+        "owner_action_required": "UNKNOWN",
+        "evidence_refs": [
+          "9dcaacd9-87a5-42ae-8a72-26f1db40f601"
+        ],
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "mission-loop",
+          "correlation_id": "9dcaacd9-87a5-42ae-8a72-26f1db40f601",
+          "causation_id": null
+        }
+      },
+      {
+        "item_id": "brief-item-6bae30050742c3936b40203d",
+        "dedupe_key": "worker_loop.cycle_started:bca9f38f-074e-4c1b-892c-04fd65a5b8a9",
+        "item_version": "1.1",
+        "category": "EVENT",
+        "importance": 1,
+        "freshness": "FRESH",
+        "entity_kind": "resource",
+        "entity_id": "lane3-proof-resource",
+        "mission_id": null,
+        "source_event_id": "bca9f38f-074e-4c1b-892c-04fd65a5b8a9",
+        "source_event_type": "worker_loop.cycle_started",
+        "source_sequence": 35,
+        "occurred_at": "2026-08-28T11:46:26.624398Z",
+        "summary": "{\"capability\": \"write_registered_worktree_files\", \"instance_id\": \"lane3-supervisor-2\", \"loop_id\": \"lane3-execute\", \"resource_id\": \"lane3-proof-resource\"}",
+        "owner_action_required": "UNKNOWN",
+        "evidence_refs": [
+          "bca9f38f-074e-4c1b-892c-04fd65a5b8a9"
+        ],
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "lane3-supervisor-2",
+          "correlation_id": "bca9f38f-074e-4c1b-892c-04fd65a5b8a9",
+          "causation_id": null
+        }
+      },
+      {
+        "item_id": "brief-item-ae5f3ec5bb9b6088f7f27fff",
+        "dedupe_key": "worker.route_decided:bb534af4-2964-4fa5-ae06-e3a98265b8cc",
+        "item_version": "1.1",
+        "category": "EVENT",
+        "importance": 1,
+        "freshness": "FRESH",
+        "entity_kind": "mission",
+        "entity_id": "mission-1bd6f9b5be66",
+        "mission_id": "mission-1bd6f9b5be66",
+        "source_event_id": "bb534af4-2964-4fa5-ae06-e3a98265b8cc",
+        "source_event_type": "worker.route_decided",
+        "source_sequence": 39,
+        "occurred_at": "2026-08-28T11:46:27.174417Z",
+        "summary": "ambiguous/root-cause task; Hermes primary diagnostic path",
+        "owner_action_required": "UNKNOWN",
+        "evidence_refs": [
+          "bb534af4-2964-4fa5-ae06-e3a98265b8cc"
+        ],
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "hybrid-worker-bridge",
+          "correlation_id": "bb534af4-2964-4fa5-ae06-e3a98265b8cc",
+          "causation_id": null
+        }
+      },
+      {
+        "item_id": "brief-item-72758e9f6136c8fd2b79e525",
+        "dedupe_key": "verification.started:c358db24-9acb-4dd9-bf69-d73265c9d41f",
+        "item_version": "1.1",
+        "category": "EVENT",
+        "importance": 1,
+        "freshness": "FRESH",
+        "entity_kind": "mission",
+        "entity_id": "mission-1bd6f9b5be66",
+        "mission_id": "mission-1bd6f9b5be66",
+        "source_event_id": "c358db24-9acb-4dd9-bf69-d73265c9d41f",
+        "source_event_type": "verification.started",
+        "source_sequence": 43,
+        "occurred_at": "2026-08-28T11:46:27.936622Z",
+        "summary": "{\"binding\": {\"artifact_hashes\": {\"outcome.md\": \"c9d6d60abde50637630b8ab969ecbcf799a8d23e43e32aff397938c59165f80f\"}, \"binding_hash\": \"65f775ec45a6b6b177bade599049ca68c81571dc48355326917953485156c161\", \"builder_run_id\": \"run-9b40d26f0b54\", \"context_manifest_hash\": \"5f431b62d14ad954f2e4ac3a8f598f3eebcb1b9bbaecf07ca67ba16\u2026",
+        "owner_action_required": "UNKNOWN",
+        "evidence_refs": [
+          "c358db24-9acb-4dd9-bf69-d73265c9d41f",
+          "verdict-v2-399d0ac93b515f3767ca5611"
+        ],
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "mission-loop",
+          "correlation_id": "c358db24-9acb-4dd9-bf69-d73265c9d41f",
+          "causation_id": null
+        }
+      },
+      {
+        "item_id": "brief-item-dd87dad45a9cc9d1a254c558",
+        "dedupe_key": "worker.route_decided:72b67f28-2a64-4a0d-9664-1274739f30bb",
+        "item_version": "1.1",
+        "category": "EVENT",
+        "importance": 1,
+        "freshness": "FRESH",
+        "entity_kind": "mission",
+        "entity_id": "mission-1bd6f9b5be66",
+        "mission_id": "mission-1bd6f9b5be66",
+        "source_event_id": "72b67f28-2a64-4a0d-9664-1274739f30bb",
+        "source_event_type": "worker.route_decided",
+        "source_sequence": 45,
+        "occurred_at": "2026-08-28T11:46:28.012345Z",
+        "summary": "ambiguous/root-cause task; Hermes primary diagnostic path",
+        "owner_action_required": "UNKNOWN",
+        "evidence_refs": [
+          "72b67f28-2a64-4a0d-9664-1274739f30bb"
+        ],
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "hybrid-worker-bridge",
+          "correlation_id": "72b67f28-2a64-4a0d-9664-1274739f30bb",
+          "causation_id": null
+        }
+      },
+      {
+        "item_id": "brief-item-97569d1dbbb7ba24552b8e72",
+        "dedupe_key": "verification.failed:d7948b02-5f43-4ac2-8cd1-0f5f2e44a8f9",
+        "item_version": "1.1",
+        "category": "EVENT",
+        "importance": 1,
+        "freshness": "FRESH",
+        "entity_kind": null,
+        "entity_id": null,
+        "mission_id": null,
+        "source_event_id": "d7948b02-5f43-4ac2-8cd1-0f5f2e44a8f9",
+        "source_event_type": "verification.failed",
+        "source_sequence": 48,
+        "occurred_at": "2026-08-28T11:46:28.654094Z",
+        "summary": "{\"evidence\": {\"verifier_run_id\": \"run-9b40d26f0b54-verify\"}, \"findings\": [\"missing ['.jarvis/owner-goals/a059cd16f7/outcome.md']\"], \"repair_requirements\": [\"rebuild the step artifact and re-verify\"], \"verdict_id\": \"verdict-v2-399d0ac93b515f3767ca5611\"}",
+        "owner_action_required": "UNKNOWN",
+        "evidence_refs": [
+          "d7948b02-5f43-4ac2-8cd1-0f5f2e44a8f9",
+          "verdict-v2-399d0ac93b515f3767ca5611"
+        ],
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "mission-loop",
+          "correlation_id": "d7948b02-5f43-4ac2-8cd1-0f5f2e44a8f9",
+          "causation_id": null
+        }
+      },
+      {
+        "item_id": "brief-item-6979d54cac7fe58f42de778e",
+        "dedupe_key": "worker.route_decided:aa4d7d24-5c17-490e-83f1-ad94ccbc852c",
+        "item_version": "1.1",
+        "category": "EVENT",
+        "importance": 1,
+        "freshness": "FRESH",
+        "entity_kind": "mission",
+        "entity_id": "mission-1bd6f9b5be66",
+        "mission_id": "mission-1bd6f9b5be66",
+        "source_event_id": "aa4d7d24-5c17-490e-83f1-ad94ccbc852c",
+        "source_event_type": "worker.route_decided",
+        "source_sequence": 53,
+        "occurred_at": "2026-08-28T11:46:29.017521Z",
+        "summary": "ambiguous/root-cause task; Hermes primary diagnostic path",
+        "owner_action_required": "UNKNOWN",
+        "evidence_refs": [
+          "aa4d7d24-5c17-490e-83f1-ad94ccbc852c"
+        ],
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "hybrid-worker-bridge",
+          "correlation_id": "aa4d7d24-5c17-490e-83f1-ad94ccbc852c",
+          "causation_id": null
+        }
+      },
+      {
+        "item_id": "brief-item-40de971523556c1beb085ece",
+        "dedupe_key": "verification.started:9344445b-048a-4420-9192-4d52a9677554",
+        "item_version": "1.1",
+        "category": "EVENT",
+        "importance": 1,
+        "freshness": "FRESH",
+        "entity_kind": "mission",
+        "entity_id": "mission-1bd6f9b5be66",
+        "mission_id": "mission-1bd6f9b5be66",
+        "source_event_id": "9344445b-048a-4420-9192-4d52a9677554",
+        "source_event_type": "verification.started",
+        "source_sequence": 57,
+        "occurred_at": "2026-08-28T11:46:29.822390Z",
+        "summary": "{\"binding\": {\"artifact_hashes\": {\"outcome.md\": \"cd9594998b76e83660ac18a373a3f6f05a377448a91de66568c70facef66bb2b\"}, \"binding_hash\": \"b22c34c073694426494f4b9558fe9deb717b2bf4082c841cdd46b1d368441476\", \"builder_run_id\": \"run-876899ff22fd\", \"context_manifest_hash\": \"811d66ab6617ee80d4965234dff79c56b9428bed2f98e58d4fc3d88\u2026",
+        "owner_action_required": "UNKNOWN",
+        "evidence_refs": [
+          "9344445b-048a-4420-9192-4d52a9677554",
+          "verdict-v2-b131ed3b0a93754f714c948b"
+        ],
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "mission-loop",
+          "correlation_id": "9344445b-048a-4420-9192-4d52a9677554",
+          "causation_id": null
+        }
+      },
+      {
+        "item_id": "brief-item-95f858e6af05468f4148f8d9",
+        "dedupe_key": "worker.route_decided:f593416a-903f-4622-91b4-acac85ed6c9e",
+        "item_version": "1.1",
+        "category": "EVENT",
+        "importance": 1,
+        "freshness": "FRESH",
+        "entity_kind": "mission",
+        "entity_id": "mission-1bd6f9b5be66",
+        "mission_id": "mission-1bd6f9b5be66",
+        "source_event_id": "f593416a-903f-4622-91b4-acac85ed6c9e",
+        "source_event_type": "worker.route_decided",
+        "source_sequence": 59,
+        "occurred_at": "2026-08-28T11:46:29.912036Z",
+        "summary": "ambiguous/root-cause task; Hermes primary diagnostic path",
+        "owner_action_required": "UNKNOWN",
+        "evidence_refs": [
+          "f593416a-903f-4622-91b4-acac85ed6c9e"
+        ],
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "hybrid-worker-bridge",
+          "correlation_id": "f593416a-903f-4622-91b4-acac85ed6c9e",
+          "causation_id": null
+        }
+      },
+      {
+        "item_id": "brief-item-19e6c05a54d9770beed4732d",
+        "dedupe_key": "verification.passed:06ee4da3-3e08-4cbd-a884-c7e1a15544f1",
+        "item_version": "1.1",
+        "category": "EVENT",
+        "importance": 1,
+        "freshness": "FRESH",
+        "entity_kind": null,
+        "entity_id": null,
+        "mission_id": null,
+        "source_event_id": "06ee4da3-3e08-4cbd-a884-c7e1a15544f1",
+        "source_event_type": "verification.passed",
+        "source_sequence": 62,
+        "occurred_at": "2026-08-28T11:46:30.478149Z",
+        "summary": "{\"evidence\": {\"artifact_hashes\": {\"outcome.md\": \"cd9594998b76e83660ac18a373a3f6f05a377448a91de66568c70facef66bb2b\"}, \"binding_hash\": \"b22c34c073694426494f4b9558fe9deb717b2bf4082c841cdd46b1d368441476\", \"binding_schema\": \"verifier-binding-v1\", \"builder_run_id\": \"run-876899ff22fd\", \"context_manifest_hash\": \"811d66ab6617e\u2026",
+        "owner_action_required": "UNKNOWN",
+        "evidence_refs": [
+          "06ee4da3-3e08-4cbd-a884-c7e1a15544f1",
+          "verdict-v2-b131ed3b0a93754f714c948b"
+        ],
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "mission-loop",
+          "correlation_id": "06ee4da3-3e08-4cbd-a884-c7e1a15544f1",
+          "causation_id": null
+        }
+      },
+      {
+        "item_id": "brief-item-ab1f3b0188534ab6ebf420a6",
+        "dedupe_key": "evidence.created:7f414af0-c6b9-4668-996a-bf7a9ea052c2",
+        "item_version": "1.1",
+        "category": "EVENT",
+        "importance": 1,
+        "freshness": "FRESH",
+        "entity_kind": "mission",
+        "entity_id": "mission-1bd6f9b5be66",
+        "mission_id": "mission-1bd6f9b5be66",
+        "source_event_id": "7f414af0-c6b9-4668-996a-bf7a9ea052c2",
+        "source_event_type": "evidence.created",
+        "source_sequence": 64,
+        "occurred_at": "2026-08-28T11:46:30.685390Z",
+        "summary": "Create a durable Lane 3 proof artifact. success: outcome receipt exists; direct inspection agrees",
+        "owner_action_required": "UNKNOWN",
+        "evidence_refs": [
+          "7f414af0-c6b9-4668-996a-bf7a9ea052c2"
+        ],
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "mission-loop",
+          "correlation_id": "7f414af0-c6b9-4668-996a-bf7a9ea052c2",
+          "causation_id": null
+        }
+      }
+    ],
+    "effect_truth": {
+      "schema": "v5.effect-truth.v1",
+      "status": "EMPTY",
+      "source": "append_only_event_ledger",
+      "external_payloads": "UNTRUSTED",
+      "attempts": [],
+      "lineage": [],
+      "actions": [],
+      "summary": {
+        "attempts": 0,
+        "lineage": 0,
+        "actions": 0,
+        "unknown": 0,
+        "failures_or_frozen": 0,
+        "pending": 0
+      }
+    },
+    "evolution_truth": {
+      "schema": "v6.evolution-truth.v1",
+      "status": "EMPTY",
+      "source": "governed_evidence_and_independent_verdicts",
+      "ui_authority": "NONE",
+      "records": [],
+      "summary": {
+        "records": 0,
+        "eligible_decisions": 0,
+        "by_status": {}
+      }
+    },
+    "decision_required": [
+      {
+        "queue_version": "1.0",
+        "queue_id": "attention:project.registered:7f10103f-099d-4c92-97d4-8b3bfc059e2b",
+        "dedupe_key": "project.registered:7f10103f-099d-4c92-97d4-8b3bfc059e2b",
+        "status": "OPEN",
+        "classification": "UNKNOWN",
+        "summary": "{\"baseline\": {\"branch\": \"master\", \"head\": \"d6e7a46893f56ad22be9ff0d10b2896444775e6a\", \"remotes\": [], \"status_porcelain\": []}, \"capabilities\": {\"git_local_commit\": \"PROBING\", \"git_push\": \"DISCOVERED\", \"read_registered_files\": \"READY\", \"run_registered_local_commands\": \"READY\", \"write_registered_worktree_files\": \"READY\"}\u2026",
+        "consequence": "the source is present but its authority or semantics are not trustworthy",
+        "options": [],
+        "item": {
+          "item_id": "brief-item-5cb6a1de326c3f825a030d5a",
+          "dedupe_key": "project.registered:7f10103f-099d-4c92-97d4-8b3bfc059e2b",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": "resource",
+          "entity_id": "lane3-proof-resource",
+          "mission_id": null,
+          "source_event_id": "7f10103f-099d-4c92-97d4-8b3bfc059e2b",
+          "source_event_type": "project.registered",
+          "source_sequence": 1,
+          "occurred_at": "2026-08-28T11:46:23.409554Z",
+          "summary": "{\"baseline\": {\"branch\": \"master\", \"head\": \"d6e7a46893f56ad22be9ff0d10b2896444775e6a\", \"remotes\": [], \"status_porcelain\": []}, \"capabilities\": {\"git_local_commit\": \"PROBING\", \"git_push\": \"DISCOVERED\", \"read_registered_files\": \"READY\", \"run_registered_local_commands\": \"READY\", \"write_registered_worktree_files\": \"READY\"}\u2026",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "7f10103f-099d-4c92-97d4-8b3bfc059e2b"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "wp0",
+            "correlation_id": "7f10103f-099d-4c92-97d4-8b3bfc059e2b",
+            "causation_id": null
+          }
+        },
+        "source_event_id": "7f10103f-099d-4c92-97d4-8b3bfc059e2b",
+        "source_event_type": "project.registered",
+        "evidence_refs": [
+          "7f10103f-099d-4c92-97d4-8b3bfc059e2b"
+        ],
+        "entity_kind": "resource",
+        "entity_id": "lane3-proof-resource",
+        "mission_id": null,
+        "resolution_event_id": null,
+        "opened_at": "2026-08-28T11:46:23.409554Z",
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "wp0",
+          "correlation_id": "7f10103f-099d-4c92-97d4-8b3bfc059e2b",
+          "causation_id": null
+        },
+        "payload_shape": [
+          "baseline",
+          "capabilities",
+          "kind",
+          "readiness_state",
+          "resolved_root",
+          "resource_id",
+          "root_path"
+        ]
+      },
+      {
+        "queue_version": "1.0",
+        "queue_id": "attention:capability.state_changed:c1d2ec60-6251-4b64-b1bc-53ae8f4d7086",
+        "dedupe_key": "capability.state_changed:c1d2ec60-6251-4b64-b1bc-53ae8f4d7086",
+        "status": "OPEN",
+        "classification": "UNKNOWN",
+        "summary": "{\"capability\": \"write_registered_worktree_files\", \"evidence\": {\"source\": \"lane3-disposable-proof\"}, \"resource_id\": \"lane3-proof-resource\", \"state\": \"READY\"}",
+        "consequence": "the source is present but its authority or semantics are not trustworthy",
+        "options": [],
+        "item": {
+          "item_id": "brief-item-2f4b71849f4661f1510346a1",
+          "dedupe_key": "capability.state_changed:c1d2ec60-6251-4b64-b1bc-53ae8f4d7086",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": "resource",
+          "entity_id": "lane3-proof-resource",
+          "mission_id": null,
+          "source_event_id": "c1d2ec60-6251-4b64-b1bc-53ae8f4d7086",
+          "source_event_type": "capability.state_changed",
+          "source_sequence": 2,
+          "occurred_at": "2026-08-28T11:46:23.455595Z",
+          "summary": "{\"capability\": \"write_registered_worktree_files\", \"evidence\": {\"source\": \"lane3-disposable-proof\"}, \"resource_id\": \"lane3-proof-resource\", \"state\": \"READY\"}",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "c1d2ec60-6251-4b64-b1bc-53ae8f4d7086"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "capability-control",
+            "correlation_id": "lane3-proof-resource",
+            "causation_id": null
+          }
+        },
+        "source_event_id": "c1d2ec60-6251-4b64-b1bc-53ae8f4d7086",
+        "source_event_type": "capability.state_changed",
+        "evidence_refs": [
+          "c1d2ec60-6251-4b64-b1bc-53ae8f4d7086"
+        ],
+        "entity_kind": "resource",
+        "entity_id": "lane3-proof-resource",
+        "mission_id": null,
+        "resolution_event_id": null,
+        "opened_at": "2026-08-28T11:46:23.455595Z",
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "capability-control",
+          "correlation_id": "lane3-proof-resource",
+          "causation_id": null
+        },
+        "payload_shape": [
+          "capability",
+          "evidence",
+          "resource_id",
+          "state"
+        ]
+      },
+      {
+        "queue_version": "1.0",
+        "queue_id": "attention:worker_loop.cycle_started:5878e9c1-cce5-46a0-91ca-3fcee078cc05",
+        "dedupe_key": "worker_loop.cycle_started:5878e9c1-cce5-46a0-91ca-3fcee078cc05",
+        "status": "OPEN",
+        "classification": "UNKNOWN",
+        "summary": "{\"capability\": \"write_registered_worktree_files\", \"instance_id\": \"lane3-supervisor-1\", \"loop_id\": \"lane3-plan\", \"resource_id\": \"lane3-proof-resource\"}",
+        "consequence": "the source is present but its authority or semantics are not trustworthy",
+        "options": [],
+        "item": {
+          "item_id": "brief-item-23fc6460c52754eb2111ca42",
+          "dedupe_key": "worker_loop.cycle_started:5878e9c1-cce5-46a0-91ca-3fcee078cc05",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": "resource",
+          "entity_id": "lane3-proof-resource",
+          "mission_id": null,
+          "source_event_id": "5878e9c1-cce5-46a0-91ca-3fcee078cc05",
+          "source_event_type": "worker_loop.cycle_started",
+          "source_sequence": 5,
+          "occurred_at": "2026-08-28T11:46:23.588376Z",
+          "summary": "{\"capability\": \"write_registered_worktree_files\", \"instance_id\": \"lane3-supervisor-1\", \"loop_id\": \"lane3-plan\", \"resource_id\": \"lane3-proof-resource\"}",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "5878e9c1-cce5-46a0-91ca-3fcee078cc05"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "lane3-supervisor-1",
+            "correlation_id": "5878e9c1-cce5-46a0-91ca-3fcee078cc05",
+            "causation_id": null
+          }
+        },
+        "source_event_id": "5878e9c1-cce5-46a0-91ca-3fcee078cc05",
+        "source_event_type": "worker_loop.cycle_started",
+        "evidence_refs": [
+          "5878e9c1-cce5-46a0-91ca-3fcee078cc05"
+        ],
+        "entity_kind": "resource",
+        "entity_id": "lane3-proof-resource",
+        "mission_id": null,
+        "resolution_event_id": null,
+        "opened_at": "2026-08-28T11:46:23.588376Z",
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "lane3-supervisor-1",
+          "correlation_id": "5878e9c1-cce5-46a0-91ca-3fcee078cc05",
+          "causation_id": null
+        },
+        "payload_shape": [
+          "capability",
+          "instance_id",
+          "loop_id",
+          "resource_id"
+        ]
+      },
+      {
+        "queue_version": "1.0",
+        "queue_id": "attention:worker_loop.portfolio_selected:b7d2e1fb-162b-42ec-84a0-6c52a92d719f",
+        "dedupe_key": "worker_loop.portfolio_selected:b7d2e1fb-162b-42ec-84a0-6c52a92d719f",
+        "status": "OPEN",
+        "classification": "UNKNOWN",
+        "summary": "{\"claim\": {\"acquired\": true, \"claim\": {\"controller\": \"supervisor\", \"cost_usd\": 0.0, \"decision_id\": \"portfolio-portfolio:lane3-plan:d35aa290\", \"entity_id\": \"owner-goal:owner-a33dc54a56d3a945c9ee73da\", \"expires_at\": \"2026-08-28T11:51:24.171700+00:00\", \"lease_id\": \"lease:portfolio-portfolio:lane3-plan:d35aa290\", \"loop_id\u2026",
+        "consequence": "the source is present but its authority or semantics are not trustworthy",
+        "options": [],
+        "item": {
+          "item_id": "brief-item-ca4be809bfb298de93b7bcdf",
+          "dedupe_key": "worker_loop.portfolio_selected:b7d2e1fb-162b-42ec-84a0-6c52a92d719f",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": "mission",
+          "entity_id": "mission-1bd6f9b5be66",
+          "mission_id": "mission-1bd6f9b5be66",
+          "source_event_id": "b7d2e1fb-162b-42ec-84a0-6c52a92d719f",
+          "source_event_type": "worker_loop.portfolio_selected",
+          "source_sequence": 17,
+          "occurred_at": "2026-08-28T11:46:24.200375Z",
+          "summary": "{\"claim\": {\"acquired\": true, \"claim\": {\"controller\": \"supervisor\", \"cost_usd\": 0.0, \"decision_id\": \"portfolio-portfolio:lane3-plan:d35aa290\", \"entity_id\": \"owner-goal:owner-a33dc54a56d3a945c9ee73da\", \"expires_at\": \"2026-08-28T11:51:24.171700+00:00\", \"lease_id\": \"lease:portfolio-portfolio:lane3-plan:d35aa290\", \"loop_id\u2026",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "b7d2e1fb-162b-42ec-84a0-6c52a92d719f"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "worker-loop:lane3-supervisor-1",
+            "correlation_id": "b7d2e1fb-162b-42ec-84a0-6c52a92d719f",
+            "causation_id": null
+          }
+        },
+        "source_event_id": "b7d2e1fb-162b-42ec-84a0-6c52a92d719f",
+        "source_event_type": "worker_loop.portfolio_selected",
+        "evidence_refs": [
+          "b7d2e1fb-162b-42ec-84a0-6c52a92d719f"
+        ],
+        "entity_kind": "mission",
+        "entity_id": "mission-1bd6f9b5be66",
+        "mission_id": "mission-1bd6f9b5be66",
+        "resolution_event_id": null,
+        "opened_at": "2026-08-28T11:46:24.200375Z",
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "worker-loop:lane3-supervisor-1",
+          "correlation_id": "b7d2e1fb-162b-42ec-84a0-6c52a92d719f",
+          "causation_id": null
+        },
+        "payload_shape": [
+          "claim",
+          "decision_id",
+          "instance_id",
+          "item_id",
+          "loop_id",
+          "mission_id",
+          "selected_class"
+        ]
+      },
+      {
+        "queue_version": "1.0",
+        "queue_id": "attention:worker.route_decided:3d34ba40-a86f-4165-ae10-e78cd05ee626",
+        "dedupe_key": "worker.route_decided:3d34ba40-a86f-4165-ae10-e78cd05ee626",
+        "status": "OPEN",
+        "classification": "UNKNOWN",
+        "summary": "ambiguous/root-cause task; Hermes primary diagnostic path",
+        "consequence": "the source is present but its authority or semantics are not trustworthy",
+        "options": [],
+        "item": {
+          "item_id": "brief-item-e058521fdeed10e27f2b9db5",
+          "dedupe_key": "worker.route_decided:3d34ba40-a86f-4165-ae10-e78cd05ee626",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": "mission",
+          "entity_id": "mission-1bd6f9b5be66",
+          "mission_id": "mission-1bd6f9b5be66",
+          "source_event_id": "3d34ba40-a86f-4165-ae10-e78cd05ee626",
+          "source_event_type": "worker.route_decided",
+          "source_sequence": 21,
+          "occurred_at": "2026-08-28T11:46:24.645667Z",
+          "summary": "ambiguous/root-cause task; Hermes primary diagnostic path",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "3d34ba40-a86f-4165-ae10-e78cd05ee626"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "hybrid-worker-bridge",
+            "correlation_id": "3d34ba40-a86f-4165-ae10-e78cd05ee626",
+            "causation_id": null
+          }
+        },
+        "source_event_id": "3d34ba40-a86f-4165-ae10-e78cd05ee626",
+        "source_event_type": "worker.route_decided",
+        "evidence_refs": [
+          "3d34ba40-a86f-4165-ae10-e78cd05ee626"
+        ],
+        "entity_kind": "mission",
+        "entity_id": "mission-1bd6f9b5be66",
+        "mission_id": "mission-1bd6f9b5be66",
+        "resolution_event_id": null,
+        "opened_at": "2026-08-28T11:46:24.645667Z",
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "hybrid-worker-bridge",
+          "correlation_id": "3d34ba40-a86f-4165-ae10-e78cd05ee626",
+          "causation_id": null
+        },
+        "payload_shape": [
+          "confidence",
+          "eligible_workers",
+          "evidence_considered",
+          "expected_cost",
+          "expected_latency",
+          "fallback",
+          "mission_id",
+          "policy_version",
+          "reason",
+          "role",
+          "route_decision_id",
+          "run_id",
+          "selected_worker",
+          "step_id",
+          "task_classification"
+        ]
+      },
+      {
+        "queue_version": "1.0",
+        "queue_id": "attention:verification.started:2893ae9b-5899-420e-bfde-c80ad46a9e2f",
+        "dedupe_key": "verification.started:2893ae9b-5899-420e-bfde-c80ad46a9e2f",
+        "status": "OPEN",
+        "classification": "UNKNOWN",
+        "summary": "{\"binding\": {\"artifact_hashes\": {\"plan.md\": \"cd9594998b76e83660ac18a373a3f6f05a377448a91de66568c70facef66bb2b\"}, \"binding_hash\": \"a96828a8bbea8109e4b58f97b93bb1b87ea7b83170a5b6d32d8d807b4e9ac80b\", \"builder_run_id\": \"run-75c25c0e3ec9\", \"context_manifest_hash\": \"a985d9117c42edcca0b36c9084a1131cc58978a593d1fb61b6cf408690\u2026",
+        "consequence": "the source is present but its authority or semantics are not trustworthy",
+        "options": [],
+        "item": {
+          "item_id": "brief-item-555fc382845d64963fbdab47",
+          "dedupe_key": "verification.started:2893ae9b-5899-420e-bfde-c80ad46a9e2f",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": "mission",
+          "entity_id": "mission-1bd6f9b5be66",
+          "mission_id": "mission-1bd6f9b5be66",
+          "source_event_id": "2893ae9b-5899-420e-bfde-c80ad46a9e2f",
+          "source_event_type": "verification.started",
+          "source_sequence": 25,
+          "occurred_at": "2026-08-28T11:46:25.419443Z",
+          "summary": "{\"binding\": {\"artifact_hashes\": {\"plan.md\": \"cd9594998b76e83660ac18a373a3f6f05a377448a91de66568c70facef66bb2b\"}, \"binding_hash\": \"a96828a8bbea8109e4b58f97b93bb1b87ea7b83170a5b6d32d8d807b4e9ac80b\", \"builder_run_id\": \"run-75c25c0e3ec9\", \"context_manifest_hash\": \"a985d9117c42edcca0b36c9084a1131cc58978a593d1fb61b6cf408690\u2026",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "2893ae9b-5899-420e-bfde-c80ad46a9e2f",
+            "verdict-v2-fe2097099136305addbd28f1"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "mission-loop",
+            "correlation_id": "2893ae9b-5899-420e-bfde-c80ad46a9e2f",
+            "causation_id": null
+          }
+        },
+        "source_event_id": "2893ae9b-5899-420e-bfde-c80ad46a9e2f",
+        "source_event_type": "verification.started",
+        "evidence_refs": [
+          "2893ae9b-5899-420e-bfde-c80ad46a9e2f",
+          "verdict-v2-fe2097099136305addbd28f1"
+        ],
+        "entity_kind": "mission",
+        "entity_id": "mission-1bd6f9b5be66",
+        "mission_id": "mission-1bd6f9b5be66",
+        "resolution_event_id": null,
+        "opened_at": "2026-08-28T11:46:25.419443Z",
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "mission-loop",
+          "correlation_id": "2893ae9b-5899-420e-bfde-c80ad46a9e2f",
+          "causation_id": null
+        },
+        "payload_shape": [
+          "binding",
+          "builder_run_id",
+          "criteria",
+          "independence",
+          "mission_id",
+          "subject_id",
+          "subject_type",
+          "verdict_id",
+          "verifier_run_id"
+        ]
+      },
+      {
+        "queue_version": "1.0",
+        "queue_id": "attention:worker.route_decided:d7dc5ce4-2664-46ce-8d81-ccd551ad64b8",
+        "dedupe_key": "worker.route_decided:d7dc5ce4-2664-46ce-8d81-ccd551ad64b8",
+        "status": "OPEN",
+        "classification": "UNKNOWN",
+        "summary": "ambiguous/root-cause task; Hermes primary diagnostic path",
+        "consequence": "the source is present but its authority or semantics are not trustworthy",
+        "options": [],
+        "item": {
+          "item_id": "brief-item-cbe7675ab97f4e4c76a175f2",
+          "dedupe_key": "worker.route_decided:d7dc5ce4-2664-46ce-8d81-ccd551ad64b8",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": "mission",
+          "entity_id": "mission-1bd6f9b5be66",
+          "mission_id": "mission-1bd6f9b5be66",
+          "source_event_id": "d7dc5ce4-2664-46ce-8d81-ccd551ad64b8",
+          "source_event_type": "worker.route_decided",
+          "source_sequence": 27,
+          "occurred_at": "2026-08-28T11:46:25.557167Z",
+          "summary": "ambiguous/root-cause task; Hermes primary diagnostic path",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "d7dc5ce4-2664-46ce-8d81-ccd551ad64b8"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "hybrid-worker-bridge",
+            "correlation_id": "d7dc5ce4-2664-46ce-8d81-ccd551ad64b8",
+            "causation_id": null
+          }
+        },
+        "source_event_id": "d7dc5ce4-2664-46ce-8d81-ccd551ad64b8",
+        "source_event_type": "worker.route_decided",
+        "evidence_refs": [
+          "d7dc5ce4-2664-46ce-8d81-ccd551ad64b8"
+        ],
+        "entity_kind": "mission",
+        "entity_id": "mission-1bd6f9b5be66",
+        "mission_id": "mission-1bd6f9b5be66",
+        "resolution_event_id": null,
+        "opened_at": "2026-08-28T11:46:25.557167Z",
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "hybrid-worker-bridge",
+          "correlation_id": "d7dc5ce4-2664-46ce-8d81-ccd551ad64b8",
+          "causation_id": null
+        },
+        "payload_shape": [
+          "confidence",
+          "eligible_workers",
+          "evidence_considered",
+          "expected_cost",
+          "expected_latency",
+          "fallback",
+          "mission_id",
+          "policy_version",
+          "reason",
+          "role",
+          "route_decision_id",
+          "run_id",
+          "selected_worker",
+          "step_id",
+          "task_classification"
+        ]
+      },
+      {
+        "queue_version": "1.0",
+        "queue_id": "attention:verification.passed:5c5eae8d-6df1-4182-8de9-bd51bb93e506",
+        "dedupe_key": "verification.passed:5c5eae8d-6df1-4182-8de9-bd51bb93e506",
+        "status": "OPEN",
+        "classification": "UNKNOWN",
+        "summary": "{\"evidence\": {\"artifact_hashes\": {\"plan.md\": \"cd9594998b76e83660ac18a373a3f6f05a377448a91de66568c70facef66bb2b\"}, \"binding_hash\": \"a96828a8bbea8109e4b58f97b93bb1b87ea7b83170a5b6d32d8d807b4e9ac80b\", \"binding_schema\": \"verifier-binding-v1\", \"builder_run_id\": \"run-75c25c0e3ec9\", \"context_manifest_hash\": \"a985d9117c42edcc\u2026",
+        "consequence": "the source is present but its authority or semantics are not trustworthy",
+        "options": [],
+        "item": {
+          "item_id": "brief-item-be16bc4ed7d6726b2645ff80",
+          "dedupe_key": "verification.passed:5c5eae8d-6df1-4182-8de9-bd51bb93e506",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": null,
+          "entity_id": null,
+          "mission_id": null,
+          "source_event_id": "5c5eae8d-6df1-4182-8de9-bd51bb93e506",
+          "source_event_type": "verification.passed",
+          "source_sequence": 30,
+          "occurred_at": "2026-08-28T11:46:26.186687Z",
+          "summary": "{\"evidence\": {\"artifact_hashes\": {\"plan.md\": \"cd9594998b76e83660ac18a373a3f6f05a377448a91de66568c70facef66bb2b\"}, \"binding_hash\": \"a96828a8bbea8109e4b58f97b93bb1b87ea7b83170a5b6d32d8d807b4e9ac80b\", \"binding_schema\": \"verifier-binding-v1\", \"builder_run_id\": \"run-75c25c0e3ec9\", \"context_manifest_hash\": \"a985d9117c42edcc\u2026",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "5c5eae8d-6df1-4182-8de9-bd51bb93e506",
+            "verdict-v2-fe2097099136305addbd28f1"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "mission-loop",
+            "correlation_id": "5c5eae8d-6df1-4182-8de9-bd51bb93e506",
+            "causation_id": null
+          }
+        },
+        "source_event_id": "5c5eae8d-6df1-4182-8de9-bd51bb93e506",
+        "source_event_type": "verification.passed",
+        "evidence_refs": [
+          "5c5eae8d-6df1-4182-8de9-bd51bb93e506",
+          "verdict-v2-fe2097099136305addbd28f1"
+        ],
+        "entity_kind": null,
+        "entity_id": null,
+        "mission_id": null,
+        "resolution_event_id": null,
+        "opened_at": "2026-08-28T11:46:26.186687Z",
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "mission-loop",
+          "correlation_id": "5c5eae8d-6df1-4182-8de9-bd51bb93e506",
+          "causation_id": null
+        },
+        "payload_shape": [
+          "evidence",
+          "findings",
+          "verdict_id"
+        ]
+      },
+      {
+        "queue_version": "1.0",
+        "queue_id": "attention:evidence.created:9dcaacd9-87a5-42ae-8a72-26f1db40f601",
+        "dedupe_key": "evidence.created:9dcaacd9-87a5-42ae-8a72-26f1db40f601",
+        "status": "OPEN",
+        "classification": "UNKNOWN",
+        "summary": "Create a durable Lane 3 proof artifact. success: outcome receipt exists; direct inspection agrees",
+        "consequence": "the source is present but its authority or semantics are not trustworthy",
+        "options": [],
+        "item": {
+          "item_id": "brief-item-fc5bcdd6fd98369fd4e49be6",
+          "dedupe_key": "evidence.created:9dcaacd9-87a5-42ae-8a72-26f1db40f601",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": "mission",
+          "entity_id": "mission-1bd6f9b5be66",
+          "mission_id": "mission-1bd6f9b5be66",
+          "source_event_id": "9dcaacd9-87a5-42ae-8a72-26f1db40f601",
+          "source_event_type": "evidence.created",
+          "source_sequence": 32,
+          "occurred_at": "2026-08-28T11:46:26.397318Z",
+          "summary": "Create a durable Lane 3 proof artifact. success: outcome receipt exists; direct inspection agrees",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "9dcaacd9-87a5-42ae-8a72-26f1db40f601"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "mission-loop",
+            "correlation_id": "9dcaacd9-87a5-42ae-8a72-26f1db40f601",
+            "causation_id": null
+          }
+        },
+        "source_event_id": "9dcaacd9-87a5-42ae-8a72-26f1db40f601",
+        "source_event_type": "evidence.created",
+        "evidence_refs": [
+          "9dcaacd9-87a5-42ae-8a72-26f1db40f601"
+        ],
+        "entity_kind": "mission",
+        "entity_id": "mission-1bd6f9b5be66",
+        "mission_id": "mission-1bd6f9b5be66",
+        "resolution_event_id": null,
+        "opened_at": "2026-08-28T11:46:26.397318Z",
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "mission-loop",
+          "correlation_id": "9dcaacd9-87a5-42ae-8a72-26f1db40f601",
+          "causation_id": null
+        },
+        "payload_shape": [
+          "after_state",
+          "artifact_hashes",
+          "baseline_commit",
+          "before_state",
+          "builder_claim",
+          "bundle_id",
+          "commands_run",
+          "criteria",
+          "files_changed",
+          "final_diff",
+          "mission_id",
+          "objective",
+          "rollback_proof",
+          "step_id",
+          "uncertainty",
+          "verifier_verdict_id"
+        ]
+      },
+      {
+        "queue_version": "1.0",
+        "queue_id": "attention:worker_loop.cycle_started:bca9f38f-074e-4c1b-892c-04fd65a5b8a9",
+        "dedupe_key": "worker_loop.cycle_started:bca9f38f-074e-4c1b-892c-04fd65a5b8a9",
+        "status": "OPEN",
+        "classification": "UNKNOWN",
+        "summary": "{\"capability\": \"write_registered_worktree_files\", \"instance_id\": \"lane3-supervisor-2\", \"loop_id\": \"lane3-execute\", \"resource_id\": \"lane3-proof-resource\"}",
+        "consequence": "the source is present but its authority or semantics are not trustworthy",
+        "options": [],
+        "item": {
+          "item_id": "brief-item-6bae30050742c3936b40203d",
+          "dedupe_key": "worker_loop.cycle_started:bca9f38f-074e-4c1b-892c-04fd65a5b8a9",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": "resource",
+          "entity_id": "lane3-proof-resource",
+          "mission_id": null,
+          "source_event_id": "bca9f38f-074e-4c1b-892c-04fd65a5b8a9",
+          "source_event_type": "worker_loop.cycle_started",
+          "source_sequence": 35,
+          "occurred_at": "2026-08-28T11:46:26.624398Z",
+          "summary": "{\"capability\": \"write_registered_worktree_files\", \"instance_id\": \"lane3-supervisor-2\", \"loop_id\": \"lane3-execute\", \"resource_id\": \"lane3-proof-resource\"}",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "bca9f38f-074e-4c1b-892c-04fd65a5b8a9"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "lane3-supervisor-2",
+            "correlation_id": "bca9f38f-074e-4c1b-892c-04fd65a5b8a9",
+            "causation_id": null
+          }
+        },
+        "source_event_id": "bca9f38f-074e-4c1b-892c-04fd65a5b8a9",
+        "source_event_type": "worker_loop.cycle_started",
+        "evidence_refs": [
+          "bca9f38f-074e-4c1b-892c-04fd65a5b8a9"
+        ],
+        "entity_kind": "resource",
+        "entity_id": "lane3-proof-resource",
+        "mission_id": null,
+        "resolution_event_id": null,
+        "opened_at": "2026-08-28T11:46:26.624398Z",
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "lane3-supervisor-2",
+          "correlation_id": "bca9f38f-074e-4c1b-892c-04fd65a5b8a9",
+          "causation_id": null
+        },
+        "payload_shape": [
+          "capability",
+          "instance_id",
+          "loop_id",
+          "resource_id"
+        ]
+      },
+      {
+        "queue_version": "1.0",
+        "queue_id": "attention:worker.route_decided:bb534af4-2964-4fa5-ae06-e3a98265b8cc",
+        "dedupe_key": "worker.route_decided:bb534af4-2964-4fa5-ae06-e3a98265b8cc",
+        "status": "OPEN",
+        "classification": "UNKNOWN",
+        "summary": "ambiguous/root-cause task; Hermes primary diagnostic path",
+        "consequence": "the source is present but its authority or semantics are not trustworthy",
+        "options": [],
+        "item": {
+          "item_id": "brief-item-ae5f3ec5bb9b6088f7f27fff",
+          "dedupe_key": "worker.route_decided:bb534af4-2964-4fa5-ae06-e3a98265b8cc",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": "mission",
+          "entity_id": "mission-1bd6f9b5be66",
+          "mission_id": "mission-1bd6f9b5be66",
+          "source_event_id": "bb534af4-2964-4fa5-ae06-e3a98265b8cc",
+          "source_event_type": "worker.route_decided",
+          "source_sequence": 39,
+          "occurred_at": "2026-08-28T11:46:27.174417Z",
+          "summary": "ambiguous/root-cause task; Hermes primary diagnostic path",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "bb534af4-2964-4fa5-ae06-e3a98265b8cc"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "hybrid-worker-bridge",
+            "correlation_id": "bb534af4-2964-4fa5-ae06-e3a98265b8cc",
+            "causation_id": null
+          }
+        },
+        "source_event_id": "bb534af4-2964-4fa5-ae06-e3a98265b8cc",
+        "source_event_type": "worker.route_decided",
+        "evidence_refs": [
+          "bb534af4-2964-4fa5-ae06-e3a98265b8cc"
+        ],
+        "entity_kind": "mission",
+        "entity_id": "mission-1bd6f9b5be66",
+        "mission_id": "mission-1bd6f9b5be66",
+        "resolution_event_id": null,
+        "opened_at": "2026-08-28T11:46:27.174417Z",
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "hybrid-worker-bridge",
+          "correlation_id": "bb534af4-2964-4fa5-ae06-e3a98265b8cc",
+          "causation_id": null
+        },
+        "payload_shape": [
+          "confidence",
+          "eligible_workers",
+          "evidence_considered",
+          "expected_cost",
+          "expected_latency",
+          "fallback",
+          "mission_id",
+          "policy_version",
+          "reason",
+          "role",
+          "route_decision_id",
+          "run_id",
+          "selected_worker",
+          "step_id",
+          "task_classification"
+        ]
+      },
+      {
+        "queue_version": "1.0",
+        "queue_id": "attention:verification.started:c358db24-9acb-4dd9-bf69-d73265c9d41f",
+        "dedupe_key": "verification.started:c358db24-9acb-4dd9-bf69-d73265c9d41f",
+        "status": "OPEN",
+        "classification": "UNKNOWN",
+        "summary": "{\"binding\": {\"artifact_hashes\": {\"outcome.md\": \"c9d6d60abde50637630b8ab969ecbcf799a8d23e43e32aff397938c59165f80f\"}, \"binding_hash\": \"65f775ec45a6b6b177bade599049ca68c81571dc48355326917953485156c161\", \"builder_run_id\": \"run-9b40d26f0b54\", \"context_manifest_hash\": \"5f431b62d14ad954f2e4ac3a8f598f3eebcb1b9bbaecf07ca67ba16\u2026",
+        "consequence": "the source is present but its authority or semantics are not trustworthy",
+        "options": [],
+        "item": {
+          "item_id": "brief-item-72758e9f6136c8fd2b79e525",
+          "dedupe_key": "verification.started:c358db24-9acb-4dd9-bf69-d73265c9d41f",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": "mission",
+          "entity_id": "mission-1bd6f9b5be66",
+          "mission_id": "mission-1bd6f9b5be66",
+          "source_event_id": "c358db24-9acb-4dd9-bf69-d73265c9d41f",
+          "source_event_type": "verification.started",
+          "source_sequence": 43,
+          "occurred_at": "2026-08-28T11:46:27.936622Z",
+          "summary": "{\"binding\": {\"artifact_hashes\": {\"outcome.md\": \"c9d6d60abde50637630b8ab969ecbcf799a8d23e43e32aff397938c59165f80f\"}, \"binding_hash\": \"65f775ec45a6b6b177bade599049ca68c81571dc48355326917953485156c161\", \"builder_run_id\": \"run-9b40d26f0b54\", \"context_manifest_hash\": \"5f431b62d14ad954f2e4ac3a8f598f3eebcb1b9bbaecf07ca67ba16\u2026",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "c358db24-9acb-4dd9-bf69-d73265c9d41f",
+            "verdict-v2-399d0ac93b515f3767ca5611"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "mission-loop",
+            "correlation_id": "c358db24-9acb-4dd9-bf69-d73265c9d41f",
+            "causation_id": null
+          }
+        },
+        "source_event_id": "c358db24-9acb-4dd9-bf69-d73265c9d41f",
+        "source_event_type": "verification.started",
+        "evidence_refs": [
+          "c358db24-9acb-4dd9-bf69-d73265c9d41f",
+          "verdict-v2-399d0ac93b515f3767ca5611"
+        ],
+        "entity_kind": "mission",
+        "entity_id": "mission-1bd6f9b5be66",
+        "mission_id": "mission-1bd6f9b5be66",
+        "resolution_event_id": null,
+        "opened_at": "2026-08-28T11:46:27.936622Z",
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "mission-loop",
+          "correlation_id": "c358db24-9acb-4dd9-bf69-d73265c9d41f",
+          "causation_id": null
+        },
+        "payload_shape": [
+          "binding",
+          "builder_run_id",
+          "criteria",
+          "independence",
+          "mission_id",
+          "subject_id",
+          "subject_type",
+          "verdict_id",
+          "verifier_run_id"
+        ]
+      },
+      {
+        "queue_version": "1.0",
+        "queue_id": "attention:worker.route_decided:72b67f28-2a64-4a0d-9664-1274739f30bb",
+        "dedupe_key": "worker.route_decided:72b67f28-2a64-4a0d-9664-1274739f30bb",
+        "status": "OPEN",
+        "classification": "UNKNOWN",
+        "summary": "ambiguous/root-cause task; Hermes primary diagnostic path",
+        "consequence": "the source is present but its authority or semantics are not trustworthy",
+        "options": [],
+        "item": {
+          "item_id": "brief-item-dd87dad45a9cc9d1a254c558",
+          "dedupe_key": "worker.route_decided:72b67f28-2a64-4a0d-9664-1274739f30bb",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": "mission",
+          "entity_id": "mission-1bd6f9b5be66",
+          "mission_id": "mission-1bd6f9b5be66",
+          "source_event_id": "72b67f28-2a64-4a0d-9664-1274739f30bb",
+          "source_event_type": "worker.route_decided",
+          "source_sequence": 45,
+          "occurred_at": "2026-08-28T11:46:28.012345Z",
+          "summary": "ambiguous/root-cause task; Hermes primary diagnostic path",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "72b67f28-2a64-4a0d-9664-1274739f30bb"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "hybrid-worker-bridge",
+            "correlation_id": "72b67f28-2a64-4a0d-9664-1274739f30bb",
+            "causation_id": null
+          }
+        },
+        "source_event_id": "72b67f28-2a64-4a0d-9664-1274739f30bb",
+        "source_event_type": "worker.route_decided",
+        "evidence_refs": [
+          "72b67f28-2a64-4a0d-9664-1274739f30bb"
+        ],
+        "entity_kind": "mission",
+        "entity_id": "mission-1bd6f9b5be66",
+        "mission_id": "mission-1bd6f9b5be66",
+        "resolution_event_id": null,
+        "opened_at": "2026-08-28T11:46:28.012345Z",
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "hybrid-worker-bridge",
+          "correlation_id": "72b67f28-2a64-4a0d-9664-1274739f30bb",
+          "causation_id": null
+        },
+        "payload_shape": [
+          "confidence",
+          "eligible_workers",
+          "evidence_considered",
+          "expected_cost",
+          "expected_latency",
+          "fallback",
+          "mission_id",
+          "policy_version",
+          "reason",
+          "role",
+          "route_decision_id",
+          "run_id",
+          "selected_worker",
+          "step_id",
+          "task_classification"
+        ]
+      },
+      {
+        "queue_version": "1.0",
+        "queue_id": "attention:verification.failed:d7948b02-5f43-4ac2-8cd1-0f5f2e44a8f9",
+        "dedupe_key": "verification.failed:d7948b02-5f43-4ac2-8cd1-0f5f2e44a8f9",
+        "status": "OPEN",
+        "classification": "UNKNOWN",
+        "summary": "{\"evidence\": {\"verifier_run_id\": \"run-9b40d26f0b54-verify\"}, \"findings\": [\"missing ['.jarvis/owner-goals/a059cd16f7/outcome.md']\"], \"repair_requirements\": [\"rebuild the step artifact and re-verify\"], \"verdict_id\": \"verdict-v2-399d0ac93b515f3767ca5611\"}",
+        "consequence": "the source is present but its authority or semantics are not trustworthy",
+        "options": [],
+        "item": {
+          "item_id": "brief-item-97569d1dbbb7ba24552b8e72",
+          "dedupe_key": "verification.failed:d7948b02-5f43-4ac2-8cd1-0f5f2e44a8f9",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": null,
+          "entity_id": null,
+          "mission_id": null,
+          "source_event_id": "d7948b02-5f43-4ac2-8cd1-0f5f2e44a8f9",
+          "source_event_type": "verification.failed",
+          "source_sequence": 48,
+          "occurred_at": "2026-08-28T11:46:28.654094Z",
+          "summary": "{\"evidence\": {\"verifier_run_id\": \"run-9b40d26f0b54-verify\"}, \"findings\": [\"missing ['.jarvis/owner-goals/a059cd16f7/outcome.md']\"], \"repair_requirements\": [\"rebuild the step artifact and re-verify\"], \"verdict_id\": \"verdict-v2-399d0ac93b515f3767ca5611\"}",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "d7948b02-5f43-4ac2-8cd1-0f5f2e44a8f9",
+            "verdict-v2-399d0ac93b515f3767ca5611"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "mission-loop",
+            "correlation_id": "d7948b02-5f43-4ac2-8cd1-0f5f2e44a8f9",
+            "causation_id": null
+          }
+        },
+        "source_event_id": "d7948b02-5f43-4ac2-8cd1-0f5f2e44a8f9",
+        "source_event_type": "verification.failed",
+        "evidence_refs": [
+          "d7948b02-5f43-4ac2-8cd1-0f5f2e44a8f9",
+          "verdict-v2-399d0ac93b515f3767ca5611"
+        ],
+        "entity_kind": null,
+        "entity_id": null,
+        "mission_id": null,
+        "resolution_event_id": null,
+        "opened_at": "2026-08-28T11:46:28.654094Z",
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "mission-loop",
+          "correlation_id": "d7948b02-5f43-4ac2-8cd1-0f5f2e44a8f9",
+          "causation_id": null
+        },
+        "payload_shape": [
+          "evidence",
+          "findings",
+          "repair_requirements",
+          "verdict_id"
+        ]
+      },
+      {
+        "queue_version": "1.0",
+        "queue_id": "attention:worker.route_decided:aa4d7d24-5c17-490e-83f1-ad94ccbc852c",
+        "dedupe_key": "worker.route_decided:aa4d7d24-5c17-490e-83f1-ad94ccbc852c",
+        "status": "OPEN",
+        "classification": "UNKNOWN",
+        "summary": "ambiguous/root-cause task; Hermes primary diagnostic path",
+        "consequence": "the source is present but its authority or semantics are not trustworthy",
+        "options": [],
+        "item": {
+          "item_id": "brief-item-6979d54cac7fe58f42de778e",
+          "dedupe_key": "worker.route_decided:aa4d7d24-5c17-490e-83f1-ad94ccbc852c",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": "mission",
+          "entity_id": "mission-1bd6f9b5be66",
+          "mission_id": "mission-1bd6f9b5be66",
+          "source_event_id": "aa4d7d24-5c17-490e-83f1-ad94ccbc852c",
+          "source_event_type": "worker.route_decided",
+          "source_sequence": 53,
+          "occurred_at": "2026-08-28T11:46:29.017521Z",
+          "summary": "ambiguous/root-cause task; Hermes primary diagnostic path",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "aa4d7d24-5c17-490e-83f1-ad94ccbc852c"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "hybrid-worker-bridge",
+            "correlation_id": "aa4d7d24-5c17-490e-83f1-ad94ccbc852c",
+            "causation_id": null
+          }
+        },
+        "source_event_id": "aa4d7d24-5c17-490e-83f1-ad94ccbc852c",
+        "source_event_type": "worker.route_decided",
+        "evidence_refs": [
+          "aa4d7d24-5c17-490e-83f1-ad94ccbc852c"
+        ],
+        "entity_kind": "mission",
+        "entity_id": "mission-1bd6f9b5be66",
+        "mission_id": "mission-1bd6f9b5be66",
+        "resolution_event_id": null,
+        "opened_at": "2026-08-28T11:46:29.017521Z",
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "hybrid-worker-bridge",
+          "correlation_id": "aa4d7d24-5c17-490e-83f1-ad94ccbc852c",
+          "causation_id": null
+        },
+        "payload_shape": [
+          "confidence",
+          "eligible_workers",
+          "evidence_considered",
+          "expected_cost",
+          "expected_latency",
+          "fallback",
+          "mission_id",
+          "policy_version",
+          "reason",
+          "role",
+          "route_decision_id",
+          "run_id",
+          "selected_worker",
+          "step_id",
+          "task_classification"
+        ]
+      },
+      {
+        "queue_version": "1.0",
+        "queue_id": "attention:verification.started:9344445b-048a-4420-9192-4d52a9677554",
+        "dedupe_key": "verification.started:9344445b-048a-4420-9192-4d52a9677554",
+        "status": "OPEN",
+        "classification": "UNKNOWN",
+        "summary": "{\"binding\": {\"artifact_hashes\": {\"outcome.md\": \"cd9594998b76e83660ac18a373a3f6f05a377448a91de66568c70facef66bb2b\"}, \"binding_hash\": \"b22c34c073694426494f4b9558fe9deb717b2bf4082c841cdd46b1d368441476\", \"builder_run_id\": \"run-876899ff22fd\", \"context_manifest_hash\": \"811d66ab6617ee80d4965234dff79c56b9428bed2f98e58d4fc3d88\u2026",
+        "consequence": "the source is present but its authority or semantics are not trustworthy",
+        "options": [],
+        "item": {
+          "item_id": "brief-item-40de971523556c1beb085ece",
+          "dedupe_key": "verification.started:9344445b-048a-4420-9192-4d52a9677554",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": "mission",
+          "entity_id": "mission-1bd6f9b5be66",
+          "mission_id": "mission-1bd6f9b5be66",
+          "source_event_id": "9344445b-048a-4420-9192-4d52a9677554",
+          "source_event_type": "verification.started",
+          "source_sequence": 57,
+          "occurred_at": "2026-08-28T11:46:29.822390Z",
+          "summary": "{\"binding\": {\"artifact_hashes\": {\"outcome.md\": \"cd9594998b76e83660ac18a373a3f6f05a377448a91de66568c70facef66bb2b\"}, \"binding_hash\": \"b22c34c073694426494f4b9558fe9deb717b2bf4082c841cdd46b1d368441476\", \"builder_run_id\": \"run-876899ff22fd\", \"context_manifest_hash\": \"811d66ab6617ee80d4965234dff79c56b9428bed2f98e58d4fc3d88\u2026",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "9344445b-048a-4420-9192-4d52a9677554",
+            "verdict-v2-b131ed3b0a93754f714c948b"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "mission-loop",
+            "correlation_id": "9344445b-048a-4420-9192-4d52a9677554",
+            "causation_id": null
+          }
+        },
+        "source_event_id": "9344445b-048a-4420-9192-4d52a9677554",
+        "source_event_type": "verification.started",
+        "evidence_refs": [
+          "9344445b-048a-4420-9192-4d52a9677554",
+          "verdict-v2-b131ed3b0a93754f714c948b"
+        ],
+        "entity_kind": "mission",
+        "entity_id": "mission-1bd6f9b5be66",
+        "mission_id": "mission-1bd6f9b5be66",
+        "resolution_event_id": null,
+        "opened_at": "2026-08-28T11:46:29.822390Z",
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "mission-loop",
+          "correlation_id": "9344445b-048a-4420-9192-4d52a9677554",
+          "causation_id": null
+        },
+        "payload_shape": [
+          "binding",
+          "builder_run_id",
+          "criteria",
+          "independence",
+          "mission_id",
+          "subject_id",
+          "subject_type",
+          "verdict_id",
+          "verifier_run_id"
+        ]
+      },
+      {
+        "queue_version": "1.0",
+        "queue_id": "attention:worker.route_decided:f593416a-903f-4622-91b4-acac85ed6c9e",
+        "dedupe_key": "worker.route_decided:f593416a-903f-4622-91b4-acac85ed6c9e",
+        "status": "OPEN",
+        "classification": "UNKNOWN",
+        "summary": "ambiguous/root-cause task; Hermes primary diagnostic path",
+        "consequence": "the source is present but its authority or semantics are not trustworthy",
+        "options": [],
+        "item": {
+          "item_id": "brief-item-95f858e6af05468f4148f8d9",
+          "dedupe_key": "worker.route_decided:f593416a-903f-4622-91b4-acac85ed6c9e",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": "mission",
+          "entity_id": "mission-1bd6f9b5be66",
+          "mission_id": "mission-1bd6f9b5be66",
+          "source_event_id": "f593416a-903f-4622-91b4-acac85ed6c9e",
+          "source_event_type": "worker.route_decided",
+          "source_sequence": 59,
+          "occurred_at": "2026-08-28T11:46:29.912036Z",
+          "summary": "ambiguous/root-cause task; Hermes primary diagnostic path",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "f593416a-903f-4622-91b4-acac85ed6c9e"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "hybrid-worker-bridge",
+            "correlation_id": "f593416a-903f-4622-91b4-acac85ed6c9e",
+            "causation_id": null
+          }
+        },
+        "source_event_id": "f593416a-903f-4622-91b4-acac85ed6c9e",
+        "source_event_type": "worker.route_decided",
+        "evidence_refs": [
+          "f593416a-903f-4622-91b4-acac85ed6c9e"
+        ],
+        "entity_kind": "mission",
+        "entity_id": "mission-1bd6f9b5be66",
+        "mission_id": "mission-1bd6f9b5be66",
+        "resolution_event_id": null,
+        "opened_at": "2026-08-28T11:46:29.912036Z",
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "hybrid-worker-bridge",
+          "correlation_id": "f593416a-903f-4622-91b4-acac85ed6c9e",
+          "causation_id": null
+        },
+        "payload_shape": [
+          "confidence",
+          "eligible_workers",
+          "evidence_considered",
+          "expected_cost",
+          "expected_latency",
+          "fallback",
+          "mission_id",
+          "policy_version",
+          "reason",
+          "role",
+          "route_decision_id",
+          "run_id",
+          "selected_worker",
+          "step_id",
+          "task_classification"
+        ]
+      },
+      {
+        "queue_version": "1.0",
+        "queue_id": "attention:verification.passed:06ee4da3-3e08-4cbd-a884-c7e1a15544f1",
+        "dedupe_key": "verification.passed:06ee4da3-3e08-4cbd-a884-c7e1a15544f1",
+        "status": "OPEN",
+        "classification": "UNKNOWN",
+        "summary": "{\"evidence\": {\"artifact_hashes\": {\"outcome.md\": \"cd9594998b76e83660ac18a373a3f6f05a377448a91de66568c70facef66bb2b\"}, \"binding_hash\": \"b22c34c073694426494f4b9558fe9deb717b2bf4082c841cdd46b1d368441476\", \"binding_schema\": \"verifier-binding-v1\", \"builder_run_id\": \"run-876899ff22fd\", \"context_manifest_hash\": \"811d66ab6617e\u2026",
+        "consequence": "the source is present but its authority or semantics are not trustworthy",
+        "options": [],
+        "item": {
+          "item_id": "brief-item-19e6c05a54d9770beed4732d",
+          "dedupe_key": "verification.passed:06ee4da3-3e08-4cbd-a884-c7e1a15544f1",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": null,
+          "entity_id": null,
+          "mission_id": null,
+          "source_event_id": "06ee4da3-3e08-4cbd-a884-c7e1a15544f1",
+          "source_event_type": "verification.passed",
+          "source_sequence": 62,
+          "occurred_at": "2026-08-28T11:46:30.478149Z",
+          "summary": "{\"evidence\": {\"artifact_hashes\": {\"outcome.md\": \"cd9594998b76e83660ac18a373a3f6f05a377448a91de66568c70facef66bb2b\"}, \"binding_hash\": \"b22c34c073694426494f4b9558fe9deb717b2bf4082c841cdd46b1d368441476\", \"binding_schema\": \"verifier-binding-v1\", \"builder_run_id\": \"run-876899ff22fd\", \"context_manifest_hash\": \"811d66ab6617e\u2026",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "06ee4da3-3e08-4cbd-a884-c7e1a15544f1",
+            "verdict-v2-b131ed3b0a93754f714c948b"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "mission-loop",
+            "correlation_id": "06ee4da3-3e08-4cbd-a884-c7e1a15544f1",
+            "causation_id": null
+          }
+        },
+        "source_event_id": "06ee4da3-3e08-4cbd-a884-c7e1a15544f1",
+        "source_event_type": "verification.passed",
+        "evidence_refs": [
+          "06ee4da3-3e08-4cbd-a884-c7e1a15544f1",
+          "verdict-v2-b131ed3b0a93754f714c948b"
+        ],
+        "entity_kind": null,
+        "entity_id": null,
+        "mission_id": null,
+        "resolution_event_id": null,
+        "opened_at": "2026-08-28T11:46:30.478149Z",
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "mission-loop",
+          "correlation_id": "06ee4da3-3e08-4cbd-a884-c7e1a15544f1",
+          "causation_id": null
+        },
+        "payload_shape": [
+          "evidence",
+          "findings",
+          "verdict_id"
+        ]
+      },
+      {
+        "queue_version": "1.0",
+        "queue_id": "attention:evidence.created:7f414af0-c6b9-4668-996a-bf7a9ea052c2",
+        "dedupe_key": "evidence.created:7f414af0-c6b9-4668-996a-bf7a9ea052c2",
+        "status": "OPEN",
+        "classification": "UNKNOWN",
+        "summary": "Create a durable Lane 3 proof artifact. success: outcome receipt exists; direct inspection agrees",
+        "consequence": "the source is present but its authority or semantics are not trustworthy",
+        "options": [],
+        "item": {
+          "item_id": "brief-item-ab1f3b0188534ab6ebf420a6",
+          "dedupe_key": "evidence.created:7f414af0-c6b9-4668-996a-bf7a9ea052c2",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": "mission",
+          "entity_id": "mission-1bd6f9b5be66",
+          "mission_id": "mission-1bd6f9b5be66",
+          "source_event_id": "7f414af0-c6b9-4668-996a-bf7a9ea052c2",
+          "source_event_type": "evidence.created",
+          "source_sequence": 64,
+          "occurred_at": "2026-08-28T11:46:30.685390Z",
+          "summary": "Create a durable Lane 3 proof artifact. success: outcome receipt exists; direct inspection agrees",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "7f414af0-c6b9-4668-996a-bf7a9ea052c2"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "mission-loop",
+            "correlation_id": "7f414af0-c6b9-4668-996a-bf7a9ea052c2",
+            "causation_id": null
+          }
+        },
+        "source_event_id": "7f414af0-c6b9-4668-996a-bf7a9ea052c2",
+        "source_event_type": "evidence.created",
+        "evidence_refs": [
+          "7f414af0-c6b9-4668-996a-bf7a9ea052c2"
+        ],
+        "entity_kind": "mission",
+        "entity_id": "mission-1bd6f9b5be66",
+        "mission_id": "mission-1bd6f9b5be66",
+        "resolution_event_id": null,
+        "opened_at": "2026-08-28T11:46:30.685390Z",
+        "metadata": {
+          "source_type": "supervisor",
+          "source_id": "mission-loop",
+          "correlation_id": "7f414af0-c6b9-4668-996a-bf7a9ea052c2",
+          "causation_id": null
+        },
+        "payload_shape": [
+          "after_state",
+          "artifact_hashes",
+          "baseline_commit",
+          "before_state",
+          "builder_claim",
+          "bundle_id",
+          "commands_run",
+          "criteria",
+          "files_changed",
+          "final_diff",
+          "mission_id",
+          "objective",
+          "rollback_proof",
+          "step_id",
+          "uncertainty",
+          "verifier_verdict_id"
+        ]
+      }
+    ],
+    "source_refs": [
+      "7f10103f-099d-4c92-97d4-8b3bfc059e2b",
+      "c1d2ec60-6251-4b64-b1bc-53ae8f4d7086",
+      "5878e9c1-cce5-46a0-91ca-3fcee078cc05",
+      "b7d2e1fb-162b-42ec-84a0-6c52a92d719f",
+      "3d34ba40-a86f-4165-ae10-e78cd05ee626",
+      "2893ae9b-5899-420e-bfde-c80ad46a9e2f",
+      "verdict-v2-fe2097099136305addbd28f1",
+      "d7dc5ce4-2664-46ce-8d81-ccd551ad64b8",
+      "5c5eae8d-6df1-4182-8de9-bd51bb93e506",
+      "9dcaacd9-87a5-42ae-8a72-26f1db40f601",
+      "bca9f38f-074e-4c1b-892c-04fd65a5b8a9",
+      "bb534af4-2964-4fa5-ae06-e3a98265b8cc",
+      "c358db24-9acb-4dd9-bf69-d73265c9d41f",
+      "verdict-v2-399d0ac93b515f3767ca5611",
+      "72b67f28-2a64-4a0d-9664-1274739f30bb",
+      "d7948b02-5f43-4ac2-8cd1-0f5f2e44a8f9",
+      "aa4d7d24-5c17-490e-83f1-ad94ccbc852c",
+      "9344445b-048a-4420-9192-4d52a9677554",
+      "verdict-v2-b131ed3b0a93754f714c948b",
+      "f593416a-903f-4622-91b4-acac85ed6c9e",
+      "06ee4da3-3e08-4cbd-a884-c7e1a15544f1",
+      "7f414af0-c6b9-4668-996a-bf7a9ea052c2"
+    ],
+    "next_action_summary": [
+      {
+        "item_id": "brief-item-5cb6a1de326c3f825a030d5a",
+        "action": "{\"baseline\": {\"branch\": \"master\", \"head\": \"d6e7a46893f56ad22be9ff0d10b2896444775e6a\", \"remotes\": [], \"status_porcelain\": []}, \"capabilities\": {\"git_local_commit\": \"PROBING\", \"git_push\": \"DISCOVERED\", \"read_registered_files\": \"READY\", \"run_registered_local_commands\": \"READY\", \"write_registered_worktree_files\": \"READY\"}\u2026",
+        "status": "DERIVED",
+        "source_event_id": "7f10103f-099d-4c92-97d4-8b3bfc059e2b"
+      },
+      {
+        "item_id": "brief-item-2f4b71849f4661f1510346a1",
+        "action": "{\"capability\": \"write_registered_worktree_files\", \"evidence\": {\"source\": \"lane3-disposable-proof\"}, \"resource_id\": \"lane3-proof-resource\", \"state\": \"READY\"}",
+        "status": "DERIVED",
+        "source_event_id": "c1d2ec60-6251-4b64-b1bc-53ae8f4d7086"
+      },
+      {
+        "item_id": "brief-item-23fc6460c52754eb2111ca42",
+        "action": "{\"capability\": \"write_registered_worktree_files\", \"instance_id\": \"lane3-supervisor-1\", \"loop_id\": \"lane3-plan\", \"resource_id\": \"lane3-proof-resource\"}",
+        "status": "DERIVED",
+        "source_event_id": "5878e9c1-cce5-46a0-91ca-3fcee078cc05"
+      },
+      {
+        "item_id": "brief-item-ca4be809bfb298de93b7bcdf",
+        "action": "{\"claim\": {\"acquired\": true, \"claim\": {\"controller\": \"supervisor\", \"cost_usd\": 0.0, \"decision_id\": \"portfolio-portfolio:lane3-plan:d35aa290\", \"entity_id\": \"owner-goal:owner-a33dc54a56d3a945c9ee73da\", \"expires_at\": \"2026-08-28T11:51:24.171700+00:00\", \"lease_id\": \"lease:portfolio-portfolio:lane3-plan:d35aa290\", \"loop_id\u2026",
+        "status": "DERIVED",
+        "source_event_id": "b7d2e1fb-162b-42ec-84a0-6c52a92d719f"
+      },
+      {
+        "item_id": "brief-item-e058521fdeed10e27f2b9db5",
+        "action": "ambiguous/root-cause task; Hermes primary diagnostic path",
+        "status": "DERIVED",
+        "source_event_id": "3d34ba40-a86f-4165-ae10-e78cd05ee626"
+      },
+      {
+        "item_id": "brief-item-555fc382845d64963fbdab47",
+        "action": "{\"binding\": {\"artifact_hashes\": {\"plan.md\": \"cd9594998b76e83660ac18a373a3f6f05a377448a91de66568c70facef66bb2b\"}, \"binding_hash\": \"a96828a8bbea8109e4b58f97b93bb1b87ea7b83170a5b6d32d8d807b4e9ac80b\", \"builder_run_id\": \"run-75c25c0e3ec9\", \"context_manifest_hash\": \"a985d9117c42edcca0b36c9084a1131cc58978a593d1fb61b6cf408690\u2026",
+        "status": "DERIVED",
+        "source_event_id": "2893ae9b-5899-420e-bfde-c80ad46a9e2f"
+      },
+      {
+        "item_id": "brief-item-cbe7675ab97f4e4c76a175f2",
+        "action": "ambiguous/root-cause task; Hermes primary diagnostic path",
+        "status": "DERIVED",
+        "source_event_id": "d7dc5ce4-2664-46ce-8d81-ccd551ad64b8"
+      },
+      {
+        "item_id": "brief-item-be16bc4ed7d6726b2645ff80",
+        "action": "{\"evidence\": {\"artifact_hashes\": {\"plan.md\": \"cd9594998b76e83660ac18a373a3f6f05a377448a91de66568c70facef66bb2b\"}, \"binding_hash\": \"a96828a8bbea8109e4b58f97b93bb1b87ea7b83170a5b6d32d8d807b4e9ac80b\", \"binding_schema\": \"verifier-binding-v1\", \"builder_run_id\": \"run-75c25c0e3ec9\", \"context_manifest_hash\": \"a985d9117c42edcc\u2026",
+        "status": "DERIVED",
+        "source_event_id": "5c5eae8d-6df1-4182-8de9-bd51bb93e506"
+      },
+      {
+        "item_id": "brief-item-fc5bcdd6fd98369fd4e49be6",
+        "action": "Create a durable Lane 3 proof artifact. success: outcome receipt exists; direct inspection agrees",
+        "status": "DERIVED",
+        "source_event_id": "9dcaacd9-87a5-42ae-8a72-26f1db40f601"
+      },
+      {
+        "item_id": "brief-item-6bae30050742c3936b40203d",
+        "action": "{\"capability\": \"write_registered_worktree_files\", \"instance_id\": \"lane3-supervisor-2\", \"loop_id\": \"lane3-execute\", \"resource_id\": \"lane3-proof-resource\"}",
+        "status": "DERIVED",
+        "source_event_id": "bca9f38f-074e-4c1b-892c-04fd65a5b8a9"
+      },
+      {
+        "item_id": "brief-item-ae5f3ec5bb9b6088f7f27fff",
+        "action": "ambiguous/root-cause task; Hermes primary diagnostic path",
+        "status": "DERIVED",
+        "source_event_id": "bb534af4-2964-4fa5-ae06-e3a98265b8cc"
+      },
+      {
+        "item_id": "brief-item-72758e9f6136c8fd2b79e525",
+        "action": "{\"binding\": {\"artifact_hashes\": {\"outcome.md\": \"c9d6d60abde50637630b8ab969ecbcf799a8d23e43e32aff397938c59165f80f\"}, \"binding_hash\": \"65f775ec45a6b6b177bade599049ca68c81571dc48355326917953485156c161\", \"builder_run_id\": \"run-9b40d26f0b54\", \"context_manifest_hash\": \"5f431b62d14ad954f2e4ac3a8f598f3eebcb1b9bbaecf07ca67ba16\u2026",
+        "status": "DERIVED",
+        "source_event_id": "c358db24-9acb-4dd9-bf69-d73265c9d41f"
+      },
+      {
+        "item_id": "brief-item-dd87dad45a9cc9d1a254c558",
+        "action": "ambiguous/root-cause task; Hermes primary diagnostic path",
+        "status": "DERIVED",
+        "source_event_id": "72b67f28-2a64-4a0d-9664-1274739f30bb"
+      },
+      {
+        "item_id": "brief-item-97569d1dbbb7ba24552b8e72",
+        "action": "{\"evidence\": {\"verifier_run_id\": \"run-9b40d26f0b54-verify\"}, \"findings\": [\"missing ['.jarvis/owner-goals/a059cd16f7/outcome.md']\"], \"repair_requirements\": [\"rebuild the step artifact and re-verify\"], \"verdict_id\": \"verdict-v2-399d0ac93b515f3767ca5611\"}",
+        "status": "DERIVED",
+        "source_event_id": "d7948b02-5f43-4ac2-8cd1-0f5f2e44a8f9"
+      },
+      {
+        "item_id": "brief-item-6979d54cac7fe58f42de778e",
+        "action": "ambiguous/root-cause task; Hermes primary diagnostic path",
+        "status": "DERIVED",
+        "source_event_id": "aa4d7d24-5c17-490e-83f1-ad94ccbc852c"
+      },
+      {
+        "item_id": "brief-item-40de971523556c1beb085ece",
+        "action": "{\"binding\": {\"artifact_hashes\": {\"outcome.md\": \"cd9594998b76e83660ac18a373a3f6f05a377448a91de66568c70facef66bb2b\"}, \"binding_hash\": \"b22c34c073694426494f4b9558fe9deb717b2bf4082c841cdd46b1d368441476\", \"builder_run_id\": \"run-876899ff22fd\", \"context_manifest_hash\": \"811d66ab6617ee80d4965234dff79c56b9428bed2f98e58d4fc3d88\u2026",
+        "status": "DERIVED",
+        "source_event_id": "9344445b-048a-4420-9192-4d52a9677554"
+      },
+      {
+        "item_id": "brief-item-95f858e6af05468f4148f8d9",
+        "action": "ambiguous/root-cause task; Hermes primary diagnostic path",
+        "status": "DERIVED",
+        "source_event_id": "f593416a-903f-4622-91b4-acac85ed6c9e"
+      },
+      {
+        "item_id": "brief-item-19e6c05a54d9770beed4732d",
+        "action": "{\"evidence\": {\"artifact_hashes\": {\"outcome.md\": \"cd9594998b76e83660ac18a373a3f6f05a377448a91de66568c70facef66bb2b\"}, \"binding_hash\": \"b22c34c073694426494f4b9558fe9deb717b2bf4082c841cdd46b1d368441476\", \"binding_schema\": \"verifier-binding-v1\", \"builder_run_id\": \"run-876899ff22fd\", \"context_manifest_hash\": \"811d66ab6617e\u2026",
+        "status": "DERIVED",
+        "source_event_id": "06ee4da3-3e08-4cbd-a884-c7e1a15544f1"
+      },
+      {
+        "item_id": "brief-item-ab1f3b0188534ab6ebf420a6",
+        "action": "Create a durable Lane 3 proof artifact. success: outcome receipt exists; direct inspection agrees",
+        "status": "DERIVED",
+        "source_event_id": "7f414af0-c6b9-4668-996a-bf7a9ea052c2"
+      }
+    ],
+    "uncertainty": [],
+    "selection": {
+      "kind": "TWICE_DAILY",
+      "period_key": "2026-08-28:AM",
+      "cursor_start": 0,
+      "cursor_end": 1,
+      "ledger_head": 71,
+      "selected_count": 19,
+      "deduped_count": 50,
+      "late_event_count": 0,
+      "future_event_count": 0,
+      "zero_change": false,
+      "items": [
+        {
+          "item_id": "brief-item-5cb6a1de326c3f825a030d5a",
+          "dedupe_key": "project.registered:7f10103f-099d-4c92-97d4-8b3bfc059e2b",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": "resource",
+          "entity_id": "lane3-proof-resource",
+          "mission_id": null,
+          "source_event_id": "7f10103f-099d-4c92-97d4-8b3bfc059e2b",
+          "source_event_type": "project.registered",
+          "source_sequence": 1,
+          "occurred_at": "2026-08-28T11:46:23.409554Z",
+          "summary": "{\"baseline\": {\"branch\": \"master\", \"head\": \"d6e7a46893f56ad22be9ff0d10b2896444775e6a\", \"remotes\": [], \"status_porcelain\": []}, \"capabilities\": {\"git_local_commit\": \"PROBING\", \"git_push\": \"DISCOVERED\", \"read_registered_files\": \"READY\", \"run_registered_local_commands\": \"READY\", \"write_registered_worktree_files\": \"READY\"}\u2026",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "7f10103f-099d-4c92-97d4-8b3bfc059e2b"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "wp0",
+            "correlation_id": "7f10103f-099d-4c92-97d4-8b3bfc059e2b",
+            "causation_id": null
+          }
+        },
+        {
+          "item_id": "brief-item-2f4b71849f4661f1510346a1",
+          "dedupe_key": "capability.state_changed:c1d2ec60-6251-4b64-b1bc-53ae8f4d7086",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": "resource",
+          "entity_id": "lane3-proof-resource",
+          "mission_id": null,
+          "source_event_id": "c1d2ec60-6251-4b64-b1bc-53ae8f4d7086",
+          "source_event_type": "capability.state_changed",
+          "source_sequence": 2,
+          "occurred_at": "2026-08-28T11:46:23.455595Z",
+          "summary": "{\"capability\": \"write_registered_worktree_files\", \"evidence\": {\"source\": \"lane3-disposable-proof\"}, \"resource_id\": \"lane3-proof-resource\", \"state\": \"READY\"}",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "c1d2ec60-6251-4b64-b1bc-53ae8f4d7086"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "capability-control",
+            "correlation_id": "lane3-proof-resource",
+            "causation_id": null
+          }
+        },
+        {
+          "item_id": "brief-item-23fc6460c52754eb2111ca42",
+          "dedupe_key": "worker_loop.cycle_started:5878e9c1-cce5-46a0-91ca-3fcee078cc05",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": "resource",
+          "entity_id": "lane3-proof-resource",
+          "mission_id": null,
+          "source_event_id": "5878e9c1-cce5-46a0-91ca-3fcee078cc05",
+          "source_event_type": "worker_loop.cycle_started",
+          "source_sequence": 5,
+          "occurred_at": "2026-08-28T11:46:23.588376Z",
+          "summary": "{\"capability\": \"write_registered_worktree_files\", \"instance_id\": \"lane3-supervisor-1\", \"loop_id\": \"lane3-plan\", \"resource_id\": \"lane3-proof-resource\"}",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "5878e9c1-cce5-46a0-91ca-3fcee078cc05"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "lane3-supervisor-1",
+            "correlation_id": "5878e9c1-cce5-46a0-91ca-3fcee078cc05",
+            "causation_id": null
+          }
+        },
+        {
+          "item_id": "brief-item-ca4be809bfb298de93b7bcdf",
+          "dedupe_key": "worker_loop.portfolio_selected:b7d2e1fb-162b-42ec-84a0-6c52a92d719f",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": "mission",
+          "entity_id": "mission-1bd6f9b5be66",
+          "mission_id": "mission-1bd6f9b5be66",
+          "source_event_id": "b7d2e1fb-162b-42ec-84a0-6c52a92d719f",
+          "source_event_type": "worker_loop.portfolio_selected",
+          "source_sequence": 17,
+          "occurred_at": "2026-08-28T11:46:24.200375Z",
+          "summary": "{\"claim\": {\"acquired\": true, \"claim\": {\"controller\": \"supervisor\", \"cost_usd\": 0.0, \"decision_id\": \"portfolio-portfolio:lane3-plan:d35aa290\", \"entity_id\": \"owner-goal:owner-a33dc54a56d3a945c9ee73da\", \"expires_at\": \"2026-08-28T11:51:24.171700+00:00\", \"lease_id\": \"lease:portfolio-portfolio:lane3-plan:d35aa290\", \"loop_id\u2026",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "b7d2e1fb-162b-42ec-84a0-6c52a92d719f"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "worker-loop:lane3-supervisor-1",
+            "correlation_id": "b7d2e1fb-162b-42ec-84a0-6c52a92d719f",
+            "causation_id": null
+          }
+        },
+        {
+          "item_id": "brief-item-e058521fdeed10e27f2b9db5",
+          "dedupe_key": "worker.route_decided:3d34ba40-a86f-4165-ae10-e78cd05ee626",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": "mission",
+          "entity_id": "mission-1bd6f9b5be66",
+          "mission_id": "mission-1bd6f9b5be66",
+          "source_event_id": "3d34ba40-a86f-4165-ae10-e78cd05ee626",
+          "source_event_type": "worker.route_decided",
+          "source_sequence": 21,
+          "occurred_at": "2026-08-28T11:46:24.645667Z",
+          "summary": "ambiguous/root-cause task; Hermes primary diagnostic path",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "3d34ba40-a86f-4165-ae10-e78cd05ee626"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "hybrid-worker-bridge",
+            "correlation_id": "3d34ba40-a86f-4165-ae10-e78cd05ee626",
+            "causation_id": null
+          }
+        },
+        {
+          "item_id": "brief-item-555fc382845d64963fbdab47",
+          "dedupe_key": "verification.started:2893ae9b-5899-420e-bfde-c80ad46a9e2f",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": "mission",
+          "entity_id": "mission-1bd6f9b5be66",
+          "mission_id": "mission-1bd6f9b5be66",
+          "source_event_id": "2893ae9b-5899-420e-bfde-c80ad46a9e2f",
+          "source_event_type": "verification.started",
+          "source_sequence": 25,
+          "occurred_at": "2026-08-28T11:46:25.419443Z",
+          "summary": "{\"binding\": {\"artifact_hashes\": {\"plan.md\": \"cd9594998b76e83660ac18a373a3f6f05a377448a91de66568c70facef66bb2b\"}, \"binding_hash\": \"a96828a8bbea8109e4b58f97b93bb1b87ea7b83170a5b6d32d8d807b4e9ac80b\", \"builder_run_id\": \"run-75c25c0e3ec9\", \"context_manifest_hash\": \"a985d9117c42edcca0b36c9084a1131cc58978a593d1fb61b6cf408690\u2026",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "2893ae9b-5899-420e-bfde-c80ad46a9e2f",
+            "verdict-v2-fe2097099136305addbd28f1"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "mission-loop",
+            "correlation_id": "2893ae9b-5899-420e-bfde-c80ad46a9e2f",
+            "causation_id": null
+          }
+        },
+        {
+          "item_id": "brief-item-cbe7675ab97f4e4c76a175f2",
+          "dedupe_key": "worker.route_decided:d7dc5ce4-2664-46ce-8d81-ccd551ad64b8",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": "mission",
+          "entity_id": "mission-1bd6f9b5be66",
+          "mission_id": "mission-1bd6f9b5be66",
+          "source_event_id": "d7dc5ce4-2664-46ce-8d81-ccd551ad64b8",
+          "source_event_type": "worker.route_decided",
+          "source_sequence": 27,
+          "occurred_at": "2026-08-28T11:46:25.557167Z",
+          "summary": "ambiguous/root-cause task; Hermes primary diagnostic path",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "d7dc5ce4-2664-46ce-8d81-ccd551ad64b8"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "hybrid-worker-bridge",
+            "correlation_id": "d7dc5ce4-2664-46ce-8d81-ccd551ad64b8",
+            "causation_id": null
+          }
+        },
+        {
+          "item_id": "brief-item-be16bc4ed7d6726b2645ff80",
+          "dedupe_key": "verification.passed:5c5eae8d-6df1-4182-8de9-bd51bb93e506",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": null,
+          "entity_id": null,
+          "mission_id": null,
+          "source_event_id": "5c5eae8d-6df1-4182-8de9-bd51bb93e506",
+          "source_event_type": "verification.passed",
+          "source_sequence": 30,
+          "occurred_at": "2026-08-28T11:46:26.186687Z",
+          "summary": "{\"evidence\": {\"artifact_hashes\": {\"plan.md\": \"cd9594998b76e83660ac18a373a3f6f05a377448a91de66568c70facef66bb2b\"}, \"binding_hash\": \"a96828a8bbea8109e4b58f97b93bb1b87ea7b83170a5b6d32d8d807b4e9ac80b\", \"binding_schema\": \"verifier-binding-v1\", \"builder_run_id\": \"run-75c25c0e3ec9\", \"context_manifest_hash\": \"a985d9117c42edcc\u2026",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "5c5eae8d-6df1-4182-8de9-bd51bb93e506",
+            "verdict-v2-fe2097099136305addbd28f1"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "mission-loop",
+            "correlation_id": "5c5eae8d-6df1-4182-8de9-bd51bb93e506",
+            "causation_id": null
+          }
+        },
+        {
+          "item_id": "brief-item-fc5bcdd6fd98369fd4e49be6",
+          "dedupe_key": "evidence.created:9dcaacd9-87a5-42ae-8a72-26f1db40f601",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": "mission",
+          "entity_id": "mission-1bd6f9b5be66",
+          "mission_id": "mission-1bd6f9b5be66",
+          "source_event_id": "9dcaacd9-87a5-42ae-8a72-26f1db40f601",
+          "source_event_type": "evidence.created",
+          "source_sequence": 32,
+          "occurred_at": "2026-08-28T11:46:26.397318Z",
+          "summary": "Create a durable Lane 3 proof artifact. success: outcome receipt exists; direct inspection agrees",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "9dcaacd9-87a5-42ae-8a72-26f1db40f601"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "mission-loop",
+            "correlation_id": "9dcaacd9-87a5-42ae-8a72-26f1db40f601",
+            "causation_id": null
+          }
+        },
+        {
+          "item_id": "brief-item-6bae30050742c3936b40203d",
+          "dedupe_key": "worker_loop.cycle_started:bca9f38f-074e-4c1b-892c-04fd65a5b8a9",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": "resource",
+          "entity_id": "lane3-proof-resource",
+          "mission_id": null,
+          "source_event_id": "bca9f38f-074e-4c1b-892c-04fd65a5b8a9",
+          "source_event_type": "worker_loop.cycle_started",
+          "source_sequence": 35,
+          "occurred_at": "2026-08-28T11:46:26.624398Z",
+          "summary": "{\"capability\": \"write_registered_worktree_files\", \"instance_id\": \"lane3-supervisor-2\", \"loop_id\": \"lane3-execute\", \"resource_id\": \"lane3-proof-resource\"}",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "bca9f38f-074e-4c1b-892c-04fd65a5b8a9"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "lane3-supervisor-2",
+            "correlation_id": "bca9f38f-074e-4c1b-892c-04fd65a5b8a9",
+            "causation_id": null
+          }
+        },
+        {
+          "item_id": "brief-item-ae5f3ec5bb9b6088f7f27fff",
+          "dedupe_key": "worker.route_decided:bb534af4-2964-4fa5-ae06-e3a98265b8cc",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": "mission",
+          "entity_id": "mission-1bd6f9b5be66",
+          "mission_id": "mission-1bd6f9b5be66",
+          "source_event_id": "bb534af4-2964-4fa5-ae06-e3a98265b8cc",
+          "source_event_type": "worker.route_decided",
+          "source_sequence": 39,
+          "occurred_at": "2026-08-28T11:46:27.174417Z",
+          "summary": "ambiguous/root-cause task; Hermes primary diagnostic path",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "bb534af4-2964-4fa5-ae06-e3a98265b8cc"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "hybrid-worker-bridge",
+            "correlation_id": "bb534af4-2964-4fa5-ae06-e3a98265b8cc",
+            "causation_id": null
+          }
+        },
+        {
+          "item_id": "brief-item-72758e9f6136c8fd2b79e525",
+          "dedupe_key": "verification.started:c358db24-9acb-4dd9-bf69-d73265c9d41f",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": "mission",
+          "entity_id": "mission-1bd6f9b5be66",
+          "mission_id": "mission-1bd6f9b5be66",
+          "source_event_id": "c358db24-9acb-4dd9-bf69-d73265c9d41f",
+          "source_event_type": "verification.started",
+          "source_sequence": 43,
+          "occurred_at": "2026-08-28T11:46:27.936622Z",
+          "summary": "{\"binding\": {\"artifact_hashes\": {\"outcome.md\": \"c9d6d60abde50637630b8ab969ecbcf799a8d23e43e32aff397938c59165f80f\"}, \"binding_hash\": \"65f775ec45a6b6b177bade599049ca68c81571dc48355326917953485156c161\", \"builder_run_id\": \"run-9b40d26f0b54\", \"context_manifest_hash\": \"5f431b62d14ad954f2e4ac3a8f598f3eebcb1b9bbaecf07ca67ba16\u2026",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "c358db24-9acb-4dd9-bf69-d73265c9d41f",
+            "verdict-v2-399d0ac93b515f3767ca5611"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "mission-loop",
+            "correlation_id": "c358db24-9acb-4dd9-bf69-d73265c9d41f",
+            "causation_id": null
+          }
+        },
+        {
+          "item_id": "brief-item-dd87dad45a9cc9d1a254c558",
+          "dedupe_key": "worker.route_decided:72b67f28-2a64-4a0d-9664-1274739f30bb",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": "mission",
+          "entity_id": "mission-1bd6f9b5be66",
+          "mission_id": "mission-1bd6f9b5be66",
+          "source_event_id": "72b67f28-2a64-4a0d-9664-1274739f30bb",
+          "source_event_type": "worker.route_decided",
+          "source_sequence": 45,
+          "occurred_at": "2026-08-28T11:46:28.012345Z",
+          "summary": "ambiguous/root-cause task; Hermes primary diagnostic path",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "72b67f28-2a64-4a0d-9664-1274739f30bb"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "hybrid-worker-bridge",
+            "correlation_id": "72b67f28-2a64-4a0d-9664-1274739f30bb",
+            "causation_id": null
+          }
+        },
+        {
+          "item_id": "brief-item-97569d1dbbb7ba24552b8e72",
+          "dedupe_key": "verification.failed:d7948b02-5f43-4ac2-8cd1-0f5f2e44a8f9",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": null,
+          "entity_id": null,
+          "mission_id": null,
+          "source_event_id": "d7948b02-5f43-4ac2-8cd1-0f5f2e44a8f9",
+          "source_event_type": "verification.failed",
+          "source_sequence": 48,
+          "occurred_at": "2026-08-28T11:46:28.654094Z",
+          "summary": "{\"evidence\": {\"verifier_run_id\": \"run-9b40d26f0b54-verify\"}, \"findings\": [\"missing ['.jarvis/owner-goals/a059cd16f7/outcome.md']\"], \"repair_requirements\": [\"rebuild the step artifact and re-verify\"], \"verdict_id\": \"verdict-v2-399d0ac93b515f3767ca5611\"}",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "d7948b02-5f43-4ac2-8cd1-0f5f2e44a8f9",
+            "verdict-v2-399d0ac93b515f3767ca5611"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "mission-loop",
+            "correlation_id": "d7948b02-5f43-4ac2-8cd1-0f5f2e44a8f9",
+            "causation_id": null
+          }
+        },
+        {
+          "item_id": "brief-item-6979d54cac7fe58f42de778e",
+          "dedupe_key": "worker.route_decided:aa4d7d24-5c17-490e-83f1-ad94ccbc852c",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": "mission",
+          "entity_id": "mission-1bd6f9b5be66",
+          "mission_id": "mission-1bd6f9b5be66",
+          "source_event_id": "aa4d7d24-5c17-490e-83f1-ad94ccbc852c",
+          "source_event_type": "worker.route_decided",
+          "source_sequence": 53,
+          "occurred_at": "2026-08-28T11:46:29.017521Z",
+          "summary": "ambiguous/root-cause task; Hermes primary diagnostic path",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "aa4d7d24-5c17-490e-83f1-ad94ccbc852c"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "hybrid-worker-bridge",
+            "correlation_id": "aa4d7d24-5c17-490e-83f1-ad94ccbc852c",
+            "causation_id": null
+          }
+        },
+        {
+          "item_id": "brief-item-40de971523556c1beb085ece",
+          "dedupe_key": "verification.started:9344445b-048a-4420-9192-4d52a9677554",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": "mission",
+          "entity_id": "mission-1bd6f9b5be66",
+          "mission_id": "mission-1bd6f9b5be66",
+          "source_event_id": "9344445b-048a-4420-9192-4d52a9677554",
+          "source_event_type": "verification.started",
+          "source_sequence": 57,
+          "occurred_at": "2026-08-28T11:46:29.822390Z",
+          "summary": "{\"binding\": {\"artifact_hashes\": {\"outcome.md\": \"cd9594998b76e83660ac18a373a3f6f05a377448a91de66568c70facef66bb2b\"}, \"binding_hash\": \"b22c34c073694426494f4b9558fe9deb717b2bf4082c841cdd46b1d368441476\", \"builder_run_id\": \"run-876899ff22fd\", \"context_manifest_hash\": \"811d66ab6617ee80d4965234dff79c56b9428bed2f98e58d4fc3d88\u2026",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "9344445b-048a-4420-9192-4d52a9677554",
+            "verdict-v2-b131ed3b0a93754f714c948b"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "mission-loop",
+            "correlation_id": "9344445b-048a-4420-9192-4d52a9677554",
+            "causation_id": null
+          }
+        },
+        {
+          "item_id": "brief-item-95f858e6af05468f4148f8d9",
+          "dedupe_key": "worker.route_decided:f593416a-903f-4622-91b4-acac85ed6c9e",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": "mission",
+          "entity_id": "mission-1bd6f9b5be66",
+          "mission_id": "mission-1bd6f9b5be66",
+          "source_event_id": "f593416a-903f-4622-91b4-acac85ed6c9e",
+          "source_event_type": "worker.route_decided",
+          "source_sequence": 59,
+          "occurred_at": "2026-08-28T11:46:29.912036Z",
+          "summary": "ambiguous/root-cause task; Hermes primary diagnostic path",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "f593416a-903f-4622-91b4-acac85ed6c9e"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "hybrid-worker-bridge",
+            "correlation_id": "f593416a-903f-4622-91b4-acac85ed6c9e",
+            "causation_id": null
+          }
+        },
+        {
+          "item_id": "brief-item-19e6c05a54d9770beed4732d",
+          "dedupe_key": "verification.passed:06ee4da3-3e08-4cbd-a884-c7e1a15544f1",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": null,
+          "entity_id": null,
+          "mission_id": null,
+          "source_event_id": "06ee4da3-3e08-4cbd-a884-c7e1a15544f1",
+          "source_event_type": "verification.passed",
+          "source_sequence": 62,
+          "occurred_at": "2026-08-28T11:46:30.478149Z",
+          "summary": "{\"evidence\": {\"artifact_hashes\": {\"outcome.md\": \"cd9594998b76e83660ac18a373a3f6f05a377448a91de66568c70facef66bb2b\"}, \"binding_hash\": \"b22c34c073694426494f4b9558fe9deb717b2bf4082c841cdd46b1d368441476\", \"binding_schema\": \"verifier-binding-v1\", \"builder_run_id\": \"run-876899ff22fd\", \"context_manifest_hash\": \"811d66ab6617e\u2026",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "06ee4da3-3e08-4cbd-a884-c7e1a15544f1",
+            "verdict-v2-b131ed3b0a93754f714c948b"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "mission-loop",
+            "correlation_id": "06ee4da3-3e08-4cbd-a884-c7e1a15544f1",
+            "causation_id": null
+          }
+        },
+        {
+          "item_id": "brief-item-ab1f3b0188534ab6ebf420a6",
+          "dedupe_key": "evidence.created:7f414af0-c6b9-4668-996a-bf7a9ea052c2",
+          "item_version": "1.1",
+          "category": "EVENT",
+          "importance": 1,
+          "freshness": "FRESH",
+          "entity_kind": "mission",
+          "entity_id": "mission-1bd6f9b5be66",
+          "mission_id": "mission-1bd6f9b5be66",
+          "source_event_id": "7f414af0-c6b9-4668-996a-bf7a9ea052c2",
+          "source_event_type": "evidence.created",
+          "source_sequence": 64,
+          "occurred_at": "2026-08-28T11:46:30.685390Z",
+          "summary": "Create a durable Lane 3 proof artifact. success: outcome receipt exists; direct inspection agrees",
+          "owner_action_required": "UNKNOWN",
+          "evidence_refs": [
+            "7f414af0-c6b9-4668-996a-bf7a9ea052c2"
+          ],
+          "metadata": {
+            "source_type": "supervisor",
+            "source_id": "mission-loop",
+            "correlation_id": "7f414af0-c6b9-4668-996a-bf7a9ea052c2",
+            "causation_id": null
+          }
+        }
+      ]
+    },
+    "delivery_eligibility": {
+      "local_export": {
+        "status": "ELIGIBLE",
+        "format": "application/json"
+      },
+      "external_sinks": {
+        "status": "NOT_IMPLEMENTED",
+        "reason": "connector delivery is outside V4 packet scope"
+      },
+      "runtime_health": "STOPPED"
+    },
+    "content_digest": "129e0fef09bb5f6b6b50dda6a1fdf6276feaf26ef0c2c387f6c8ebb6295aa272"
+  },
+  "event_types": [
+    "project.registered",
+    "capability.state_changed",
+    "owner_control.nonce_used",
+    "owner_directive.recorded",
+    "worker_loop.cycle_started",
+    "portfolio.selection_recorded",
+    "portfolio.work_registered",
+    "mission.created",
+    "mission.state_changed",
+    "mission.state_changed",
+    "mission.state_changed",
+    "mission.step_contract_recorded",
+    "mission.step_contract_recorded",
+    "portfolio.selection_materialized",
+    "portfolio.selection_claimed",
+    "portfolio.capacity_lease_acquired",
+    "worker_loop.portfolio_selected",
+    "portfolio.selection_released",
+    "mission.state_changed",
+    "agent_run.started",
+    "worker.route_decided",
+    "agent_run.heartbeat",
+    "agent_run.completed",
+    "mission.state_changed",
+    "verification.started",
+    "agent_run.started",
+    "worker.route_decided",
+    "agent_run.heartbeat",
+    "agent_run.completed",
+    "verification.passed",
+    "mission.state_changed",
+    "evidence.created",
+    "mission.state_changed",
+    "memory.observed",
+    "worker_loop.cycle_started",
+    "mission.state_changed",
+    "mission.state_changed",
+    "agent_run.started",
+    "worker.route_decided",
+    "agent_run.heartbeat",
+    "agent_run.completed",
+    "mission.state_changed",
+    "verification.started",
+    "agent_run.started",
+    "worker.route_decided",
+    "agent_run.heartbeat",
+    "agent_run.completed",
+    "verification.failed",
+    "mission.state_changed",
+    "mission.state_changed",
+    "mission.state_changed",
+    "agent_run.started",
+    "worker.route_decided",
+    "agent_run.heartbeat",
+    "agent_run.completed",
+    "mission.state_changed",
+    "verification.started",
+    "agent_run.started",
+    "worker.route_decided",
+    "agent_run.heartbeat",
+    "agent_run.completed",
+    "verification.passed",
+    "mission.state_changed",
+    "evidence.created",
+    "mission.state_changed",
+    "mission.completed",
+    "memory.observed",
+    "portfolio.outcome_recorded",
+    "portfolio.work_status_changed",
+    "memory.observed",
+    "briefing.planned"
+  ],
+  "adversarial_coverage": {
+    "worker_false_claim": "PASS",
+    "failed_verifier": "PASS",
+    "repair_retry": "PASS",
+    "provider_failure": "COVERED_BY_EXISTING_CANONICAL_TEST",
+    "duplicate_execution": "COVERED_BY_EXISTING_CANONICAL_TEST",
+    "cancel": "COVERED_BY_EXISTING_CANONICAL_TEST",
+    "pause_revoke": "COVERED_BY_EXISTING_CANONICAL_TEST",
+    "crash_restart_resume": "COVERED_BY_EXISTING_CANONICAL_TEST"
+  }
+}

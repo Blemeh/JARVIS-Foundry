@@ -12,6 +12,7 @@ import { ContextChip, EntityRefLink } from "../components/EntityRefLink";
 import { useRouteQuery } from "../hooks/useRouteQuery";
 import { formatHash } from "../lib/format";
 import { sourceCopy, sourceModeLabel } from "../lib/sourceMode";
+import { NOT_REPORTED_NUMERIC, formatCoveragePercent } from "../lib/truthFormat";
 
 const PAGE_SIZE = 6;
 const sources = ["ALL", "VERIFIER", "WORKER", "LEDGER", "MEMORY"] as const;
@@ -61,7 +62,8 @@ export function Evidence() {
       {(items) => {
         const verified = items.filter((i) => i.verdict === "VERIFIED").length;
         const flagged = items.filter((i) => i.verdict === "TAMPERED" || i.verdict === "FAILED" || i.verdict === "WARN").length;
-        const verificationRate = items.length === 0 ? 0 : Math.round((verified / items.length) * 1000) / 10;
+        const verificationRate = items.length === 0 ? NOT_REPORTED_NUMERIC : Math.round((verified / items.length) * 1000) / 10;
+        const activeEvidence = items.find((item) => item.verdict === "EVALUATING") ?? items[0] ?? null;
 
         return (
     <div className="shell-content">
@@ -117,14 +119,12 @@ export function Evidence() {
 
       <div className="evidence-stats">
         <MetricCard label="Total artifacts" value={items.length.toLocaleString()} delta={`${verified} verified`} tone="accent" />
-        <MetricCard label="Verification rate" value={`${verificationRate}%`} delta={`${flagged} flagged`} />
+        <MetricCard label="Verification rate" value={formatCoveragePercent(verificationRate)} delta={`${flagged} flagged`} />
         <div className="panel panel-corner evidence-directive">
           <div className="evidence-directive-main">
-            <span className="t-label text-muted">Active ingestion directive</span>
-            <span className="t-mono evidence-directive-target">VERIFIER_RUN_1142</span>
-            <div className="meter">
-              <div className="meter-fill" style={{ width: "65%" }} />
-            </div>
+            <span className="t-label text-muted">Latest verifier record</span>
+            <span className="t-mono evidence-directive-target">{activeEvidence?.verdictId ?? activeEvidence?.id ?? "UNKNOWN"}</span>
+            <span className="t-mono text-muted">{activeEvidence?.verdict ?? "UNKNOWN"} · no progress estimate recorded</span>
           </div>
           <Fingerprint size={34} className="evidence-directive-icon text-muted" aria-hidden="true" />
         </div>
