@@ -5,7 +5,7 @@ convergence candidate. Source, immutable installation, database authority,
 and live runtime are separate truths until the guarded promotion procedure
 proves their parity.
 
-DOCUMENTATION STATE BASE SHA: `a0545cc6598e54a845e18345cdbd8e130e8afac5`
+DOCUMENTATION STATE BASE SHA: `93c86c472926264a1d4f087aac0fbe6764e15076`
 
 The SHA above is the source parent of this final documentation-only
 reconciliation commit. The freshness gate requires that relationship and
@@ -19,8 +19,8 @@ LANE 1 SOURCE SHA:           a319017231de3361a11e819e7fff965004e138c9
 LANE 2 IMPLEMENTATION SHA:   dc8bfbc136b70d85fecfe16d8a07ab3b94880209
 LANE 2 EVIDENCE SHA:         c8b97b842072b851b4e7b9f0731c006bf1b53aa6
 LANE 3 SOURCE SHA:           186aeda568bede4fa4bd410f317327893349e9a6
-CONVERGED SOURCE BASE:       a0545cc6598e54a845e18345cdbd8e130e8afac5
-CONVERGED SOURCE TREE:       82b212d4abff380a9a4afa3cd7999ccfe67d2df7
+CONVERGED SOURCE BASE:       93c86c472926264a1d4f087aac0fbe6764e15076
+CONVERGED SOURCE TREE:       d10d1143e42c91c1c25ce4e36c81408e4871f8aa
 CANONICAL CHECKOUT:          DIRTY / PRESERVED / NOT MODIFIED
 PRODUCTION RUNTIME:          NOT TOUCHED BEFORE GUARDED PROMOTION
 LIVE DATABASE:               NOT TOUCHED BEFORE GUARDED PROMOTION
@@ -79,9 +79,8 @@ promotion evidence packet records the live results separately.
 
 | Surface | Result |
 | --- | --- |
-| Python Foundry + convergence | 2,304 collected; final rerun required after this docs-only pin; one host/environment skip is retained and failures are fail-closed |
-| Python acceptance tests | Included as a separate required suite; result recorded with the final promotion packet |
-| Lane 2/Lane 3 focused Python suites | PASS before docs-only pin |
+| Python Foundry + convergence + acceptance | 2,315 collected; 2,314 passed, 1 expected host/environment skip, 0 failed |
+| Lane 2/Lane 3 focused Python suites | PASS; covered again by the complete run |
 | Frontend Vitest | 25 files, 118 tests passed |
 | Frontend typecheck | Direct TypeScript `tsc -b --noEmit` passed (npm shim is malformed on this host) |
 | Frontend lint | Direct ESLint `src e2e --max-warnings 0` passed |
