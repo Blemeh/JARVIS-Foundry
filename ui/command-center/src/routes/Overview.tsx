@@ -10,6 +10,7 @@ import { useRouteQuery } from "../hooks/useRouteQuery"
 import { loadOverviewData, type OverviewData } from "../lib/overviewLoader"
 import { sourceModeLabel } from "../lib/sourceMode"
 import { findMeasuredCostResource, formatMeasuredCostDisplay } from "../lib/truthFormat"
+import { OperationalSignalPanel } from "../components/OperationalSignalPanel"
 
 function OverviewContent({
   missions,
@@ -22,6 +23,7 @@ function OverviewContent({
   ownerAttention,
   obsidianVault,
   ownerSurface,
+  operationalIntelligence,
 }: OverviewData) {
   const { sourceMode, stopActive, streamConnected } = useCommandCenter()
   const activeMissionCount = missions.filter((mission) => mission.status === "ACTIVE" || mission.status === "IN_PROGRESS").length
@@ -124,6 +126,8 @@ function OverviewContent({
       </section>
 
       <OwnerCommandSurface />
+
+      <OperationalSignalPanel operational={operationalIntelligence} />
 
       <div className="jarvis-os-lower">
         <ActiveOperations missions={missions} workers={workers} />

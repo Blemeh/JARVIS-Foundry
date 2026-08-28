@@ -90,6 +90,40 @@ def build_briefing_packet(
             })
     source_refs = list(dict.fromkeys(source_refs))
     health = snapshot.get("health") if isinstance(snapshot.get("health"), dict) else {}
+    discovery = snapshot.get("discovery") if isinstance(snapshot.get("discovery"), dict) else {}
+    operational = discovery.get("operational_intelligence") if isinstance(
+        discovery.get("operational_intelligence"), dict
+    ) else {}
+    # Operational follow-ups are a read-only extension of the packet. They
+    # never become owner approvals or execution commands.
+    for followup in operational.get("followups") or []:
+        if not isinstance(followup, dict):
+            continue
+        source_refs.extend(_item_refs(followup))
+        if followup.get("state") == "OPEN":
+            decision_required.append({
+                "follow_up_id": followup.get("follow_up_id"),
+                "classification": followup.get("salience", "UNKNOWN"),
+                "status": "OPEN",
+                "summary": followup.get("summary"),
+                "consequence": "follow-up is evidence-backed; execution remains with existing authorities",
+                "evidence_refs": _item_refs(followup),
+            })
+            next_actions.append({
+                "follow_up_id": followup.get("follow_up_id"),
+                "action": followup.get("next_action", "UNKNOWN"),
+                "status": "EVIDENCED",
+                "source_event_ids": followup.get("source_event_ids", []),
+            })
+    source_refs = list(dict.fromkeys(source_refs))
+    for unknown in (operational.get("context") or {}).get("unknowns") or []:
+        if isinstance(unknown, dict):
+            uncertainty.append({
+                "kind": "operational_unknown",
+                "subject": unknown.get("subject"),
+                "reason": unknown.get("reason", "UNKNOWN"),
+                "evidence_refs": unknown.get("evidence_refs", []),
+            })
     external_status = "UNKNOWN" if not snapshot.get("source_of_truth") else "NOT_IMPLEMENTED"
     packet = {
         "schema": PACKET_SCHEMA,
@@ -101,6 +135,7 @@ def build_briefing_packet(
         # They are read-only projections; neither grants authority.
         "effect_truth": dict(snapshot.get("effect_truth") or {}),
         "evolution_truth": dict(snapshot.get("evolution_truth") or {}),
+        "operational_intelligence": dict(operational),
         "decision_required": decision_required,
         "source_refs": source_refs,
         "next_action_summary": next_actions,
@@ -115,6 +150,7 @@ def build_briefing_packet(
     packet["content_digest"] = hashlib.sha256(_stable_json({
         "window": packet["window"], "items": items, "decision_required": decision_required,
         "source_refs": source_refs, "uncertainty": uncertainty,
+        "operational_intelligence": operational,
     }).encode("utf-8")).hexdigest()
     return packet
 

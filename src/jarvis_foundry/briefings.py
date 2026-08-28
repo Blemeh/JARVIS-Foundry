@@ -56,6 +56,7 @@ class BriefingPlanner:
             "unknowns_and_blockers": snapshot["recovery"]["provider_or_connector_unknowns"] + snapshot["recovery"]["blocked_missions"],
             "effect_truth": dict(snapshot.get("effect_truth") or {}),
             "evolution_truth": dict(snapshot.get("evolution_truth") or {}),
+            "operational_intelligence": {},
             "items": list(selection.get("items") or []),
             "selection": dict(selection),
             "decision_required_items": [
@@ -63,6 +64,27 @@ class BriefingPlanner:
                 if item.get("owner_action_required") != "INFORM"
             ],
         }
+        discovery = snapshot.get("discovery")
+        if isinstance(discovery, dict) and isinstance(
+            discovery.get("operational_intelligence"), dict
+        ):
+            payload["operational_intelligence"] = dict(
+                discovery["operational_intelligence"]
+            )
+        operational = payload["operational_intelligence"]
+        followups = [
+            item for item in operational.get("followups", [])
+            if isinstance(item, dict) and item.get("state") == "OPEN"
+        ]
+        payload["operational_followups"] = followups[:20]
+        payload["next_actions"] = payload["next_actions"] + [
+            {
+                "follow_up_id": item.get("follow_up_id"),
+                "next_action": item.get("next_action", "UNKNOWN"),
+                "evidence": item.get("evidence_refs", []),
+            }
+            for item in followups[:20]
+        ]
         ledger_items = project_briefing_items(
             self.database,
             after_sequence=0,
