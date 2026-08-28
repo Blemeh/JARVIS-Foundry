@@ -118,6 +118,32 @@ def test_trusted_state_survives_supervisor_restart(tmp_path):
         second.stop()
 
 
+def test_limited_state_survives_supervisor_restart(tmp_path):
+    database = _database(tmp_path)
+    for key in LIMITED_AUTONOMY_EVIDENCE:
+        record_trust_evidence(
+            database, key, status="PASS", evidence={"profile": key},
+        )
+    transition_trust(database, "PROVING", reason="bounded proof recorded")
+    transition_trust(database, "LIMITED_AUTONOMY", reason="bounded gate passed")
+
+    stop_path = tmp_path / "EMERGENCY_STOP"
+    first = Supervisor(database, stop_path, instance_id="limited-restart-a")
+    assert first.start() == "RUNNING"
+    first.stop()
+    assert trust_status(database)["state"] == "LIMITED_AUTONOMY"
+
+    second = Supervisor(database, stop_path, instance_id="limited-restart-b")
+    assert second.start() == "RUNNING"
+    try:
+        assert trust_status(database)["state"] == "LIMITED_AUTONOMY"
+        started = [event for event in database.events()
+                   if event.event_type == "supervisor.started"][-1]
+        assert started.payload["trust_state"] == "LIMITED_AUTONOMY"
+    finally:
+        second.stop()
+
+
 def test_evidence_status_change_is_append_only_and_demotes_recommendation(tmp_path):
     database = _database(tmp_path)
     first = record_trust_evidence(
