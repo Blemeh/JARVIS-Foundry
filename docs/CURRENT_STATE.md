@@ -5,7 +5,7 @@ convergence candidate. Source, immutable installation, database authority,
 and live runtime are separate truths until the guarded promotion procedure
 proves their parity.
 
-DOCUMENTATION STATE BASE SHA: `808a3ed1b077f9811858df2d600ea3a425a2e754`
+DOCUMENTATION STATE BASE SHA: `f2714eaffa42edba3c32b7b7fb5ab1d221374ac5`
 
 The SHA above is the source parent of this final documentation-only
 reconciliation commit. The freshness gate requires that relationship and
@@ -19,12 +19,12 @@ LANE 1 SOURCE SHA:           a319017231de3361a11e819e7fff965004e138c9
 LANE 2 IMPLEMENTATION SHA:   dc8bfbc136b70d85fecfe16d8a07ab3b94880209
 LANE 2 EVIDENCE SHA:         c8b97b842072b851b4e7b9f0731c006bf1b53aa6
 LANE 3 SOURCE SHA:           186aeda568bede4fa4bd410f317327893349e9a6
-CONVERGED SOURCE BASE:       808a3ed1b077f9811858df2d600ea3a425a2e754
-CONVERGED SOURCE TREE:       aa29197d48f5698bea3bc8b79915ceb0988f7df2
+CONVERGED SOURCE BASE:       f2714eaffa42edba3c32b7b7fb5ab1d221374ac5
+CONVERGED SOURCE TREE:       9f4e1339dba6fe941415a1793cea80c5a9d2a525
 CANONICAL CHECKOUT:          DIRTY / PRESERVED / NOT MODIFIED
-PRODUCTION RUNTIME:          DURABLY STOPPED AFTER ROLLBACK REHEARSAL FAILURE
-LIVE DATABASE:               BACKED UP; PRIOR RELEASE AUTHORITY RECONCILED
-SCHEDULER / REMOTE:          EXACT OWNED TASK RETAINED; OLD RUNTIME STOPPED
+PRODUCTION RUNTIME:          PROMOTED; repaired release RUNNING and verified
+LIVE DATABASE:               SCHEMA v37; DATABASE_LIVE_SLOT CONSISTENT; backed up
+SCHEDULER / REMOTE:          EXACT OWNED task RUNNING; action contract PASS
 ```
 
 The candidate was created in a new isolated worktree from Lane 1's exact
@@ -76,12 +76,12 @@ runtime, mission engine, ledger, STOP plane, or owner-control path was added.
 ## Verification
 
 All candidate verification ran in the isolated final worktree. The counts
-below are the completed gates available before production promotion; a final
-promotion evidence packet records the live results separately.
+below are the completed candidate gates; live promotion evidence is recorded
+separately and points to the exact immutable release and runtime.
 
 | Surface | Result |
 | --- | --- |
-| Python Foundry + convergence + acceptance | 2,315 collected; 2,314 passed, 1 expected host/environment skip, 0 failed |
+| Python Foundry + convergence + acceptance | 2,316 collected; 2,315 passed, 1 expected host/environment skip, 0 failed |
 | Lane 2/Lane 3 focused Python suites | PASS; covered again by the complete run |
 | Frontend Vitest | 25 files, 118 tests passed |
 | Frontend typecheck | Direct TypeScript `tsc -b --noEmit` passed (npm shim is malformed on this host) |
@@ -91,6 +91,10 @@ promotion evidence packet records the live results separately.
 | Simulated Playwright sweep | PASS; 169 tests, 0 failures (all non-live browser specs) |
 | Static design/accessibility/security checks | PASS; no detector findings, 12-route console check clean, and no frontend security findings |
 | Live autonomy fixture proof | PASS; 2 Playwright tests; disposable fixture DB and API, not production |
+| Repaired live promotion | PASS; source/install/DB/runtime parity, schema, reconciliation, trust, idle, process census, and Scheduler contract |
+| Signed owner-control recovery | PASS; PAUSE/RESUME, VETO/REVOKE, STOP/RESUME with observed BLOCKED and return to OK |
+| Hard-kill restart | PASS; exact owner PID/creation identity changed and Scheduler recovered the same immutable release |
+| Rollback/recovery | PASS; DB/pointers switched to `84a659ca…` under STOP, then reactivated to the repaired release with consistent authority |
 
 The acceptance README remains explicit that accelerated time is
 `ACCELERATED_EQUIVALENT_ONLY`, and that full 12-hour, 24-hour, and reboot-
@@ -99,20 +103,21 @@ claim is inferred from disposable evidence.
 
 ## Promotion boundary
 
-Promotion is a separate guarded operation. It must follow the Lane 2 runbook:
-read-only preflight, live DB backup, disposable migration rehearsal, exact
-owner STOP, immutable build, database authority before atomic pointers,
-single Supervisor launch, source/install/DB/runtime identity parity, health and
-trust/reconciliation/idle checks, signed STOP/PAUSE/RESUME/REVOKE, hard-kill
-restart, and rollback/recovery. Any failed gate requires safe rollback and
-diagnosis; no failure may be hidden or patched around.
+Promotion followed the Lane 2 runbook: read-only preflight, live DB backup,
+disposable migration rehearsal, exact owner STOP, immutable build, database
+authority before atomic pointers, single Supervisor launch, source/install/
+DB/runtime identity parity, health and trust/reconciliation/idle checks,
+signed STOP/PAUSE/RESUME/REVOKE, hard-kill restart, and rollback/recovery.
 
-During the final source rebuild the live Supervisor is durably stopped. A
-rollback/re-activation rehearsal exposed and recorded a real idempotency-key
-failure; source `808a3ed1b077f9811858df2d600ea3a425a2e754` adds a
-transition-scoped key and regression coverage. The prior runtime was stopped
-again, and promotion must be rerun from this fixed source before any
-production-converged claim.
+The first rollback reactivation attempt exposed a real idempotency-key defect;
+it was stopped safely, repaired in the transition-scoped release authority
+commit, covered by regression tests, and rerun. The repaired promotion now
+passes with source/install/DB/runtime `f2714eaffa42edba3c32b7b7fb5ab1d221374ac5`
+and immutable release `rel-f2714eaffa42-4e0fa9e8`. Live evidence is retained at
+`C:\\temp\\lane2-live-post-rollback-recovery-f2714ea.json`,
+`C:\\temp\\owner-control-recovery-repaired-f2714ea.json`,
+`C:\\temp\\hard-kill-restart-repaired-f2714ea.json`, and
+`C:\\temp\\rollback-recovery-repaired-f2714ea.json`.
 
 ## Documentation freshness contract
 
