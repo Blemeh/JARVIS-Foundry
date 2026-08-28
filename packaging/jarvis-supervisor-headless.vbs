@@ -2,12 +2,16 @@ Option Explicit
 ' Stable headless production launcher. Resolves CURRENT exactly like jarvis-supervisor.cmd.
 ' Invoked by Task Scheduler via wscript.exe //B //Nologo (no console host).
 
-Dim fso, shell, installRoot, currentFile, sha, release, pyw, args, i, arg, cmd
+Dim fso, shell, environment, installRoot, currentFile, sha, release, pyw, args, i, arg, cmd, exitCode
 
 Set fso = CreateObject("Scripting.FileSystemObject")
 Set shell = CreateObject("WScript.Shell")
+Set environment = shell.Environment("Process")
 
-installRoot = shell.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\JARVIS"
+installRoot = shell.ExpandEnvironmentStrings("%JARVIS_INSTALL_ROOT%")
+If installRoot = "%JARVIS_INSTALL_ROOT%" Or Len(Trim(installRoot)) = 0 Then
+  installRoot = shell.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\JARVIS"
+End If
 
 If Not fso.FileExists(installRoot & "\CURRENT") Then
   WScript.Echo "FAIL_CLOSED: CURRENT pointer missing"
@@ -25,6 +29,13 @@ If Not fso.FileExists(pyw) Then
   WScript.Quit 2
 End If
 
+' Make the source identity explicit to the child.  The launcher still
+' re-reads CURRENT and validates sys.prefix, so this is an observation and
+' not an authority that can override the immutable release pointer.
+environment("JARVIS_INSTALL_ROOT") = installRoot
+environment("JARVIS_RELEASE_ID") = sha
+environment("JARVIS_RELEASE_SHA") = sha
+
 args = ""
 For i = 0 To WScript.Arguments.Count - 1
   arg = WScript.Arguments(i)
@@ -41,6 +52,5 @@ cmd = """" & pyw & """ -m jarvis_foundry.deployment.headless_launcher" & args
 ' repeating trigger can launch overlapping Supervisors even with IgnoreNew.
 ' Waiting preserves the scheduler's instance identity and makes restart
 ' policy deterministic; the Supervisor itself owns the singleton lease.
-Dim exitCode
 exitCode = shell.Run(cmd, 0, True)
 WScript.Quit exitCode

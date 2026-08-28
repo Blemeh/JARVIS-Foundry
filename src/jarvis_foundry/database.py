@@ -4,6 +4,7 @@ import json
 import os
 import sqlite3
 import tempfile
+import uuid
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
@@ -39,10 +40,10 @@ class FoundryDatabase:
             uri = f"file:{self.path.resolve().as_posix()}?mode=ro"
             connection = sqlite3.connect(
                 uri, uri=True, timeout=10, isolation_level=None,
-                # Read-only projections are frequently used through a
-                # ``with`` block.  Use the same close-on-exit connection
-                # contract as writable handles so status/health polling does
-                # not leak Windows file handles or WAL readers.
+                # Read-only callers commonly use ``with`` and Windows keeps
+                # an open SQLite handle from being removed during disposable
+                # recovery cleanup.  The closing subclass has no writable
+                # journal work, but guarantees the scope releases its handle.
                 factory=_ClosingConnection)
         else:
             self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -223,17 +224,27 @@ class FoundryDatabase:
     def backup_to(self, target: str | Path) -> Path:
         destination_path = Path(target).expanduser().resolve()
         destination_path.parent.mkdir(parents=True, exist_ok=True)
-        destination = sqlite3.connect(destination_path)
+        temporary_path = destination_path.with_name(
+            f".{destination_path.name}.{uuid.uuid4().hex}.tmp")
+        temporary_path.unlink(missing_ok=True)
+        destination = sqlite3.connect(temporary_path)
+        source: sqlite3.Connection | None = None
         try:
-            with self.connect() as source:
-                source.backup(destination)
-                result = destination.execute(
-                    "PRAGMA quick_check").fetchone()[0]
-                if result != "ok":
-                    raise sqlite3.DatabaseError(
-                        f"backup integrity check failed: {result}")
+            source = self.connect(readonly=True)
+            source.backup(destination)
+            result = destination.execute(
+                "PRAGMA quick_check").fetchone()[0]
+            if result != "ok":
+                raise sqlite3.DatabaseError(
+                    f"backup integrity check failed: {result}")
+        except BaseException:
+            temporary_path.unlink(missing_ok=True)
+            raise
         finally:
+            if source is not None:
+                source.close()
             destination.close()
+        os.replace(temporary_path, destination_path)
         return destination_path
 
     def restore_from(self, source_path: str | Path) -> int:

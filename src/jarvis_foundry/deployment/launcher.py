@@ -33,7 +33,21 @@ def _release_python_executables(python_exe: Path) -> set[Path]:
 
 def validate_running_identity(home: Path) -> dict[str, object]:
     root = install_root()
-    current = current_pointer().read_text(encoding="utf-8").strip().splitlines()[0].strip()
+    pointer = current_pointer(root)
+    if not pointer.is_file():
+        raise ReleaseError(f"CURRENT pointer missing: {pointer}")
+    current = pointer.read_text(encoding="utf-8").strip().splitlines()[0].strip()
+    supplied_sha = (
+        os.environ.get("JARVIS_RELEASE_SHA")
+        or os.environ.get("JARVIS_RELEASE_ID")
+    )
+    if supplied_sha and supplied_sha.strip() != current:
+        raise ReleaseError(
+            f"launcher release identity {supplied_sha.strip()} != CURRENT {current}")
+    # Direct validation/start invocations (outside the stable wrappers) still
+    # carry the same immutable source identity into Supervisor events.
+    os.environ.setdefault("JARVIS_RELEASE_SHA", current)
+    os.environ.setdefault("JARVIS_RELEASE_ID", current)
     observed_dir = _release_root_from_prefix()
     expected_dir = release_dir(current).resolve()
     if observed_dir != expected_dir:
@@ -48,6 +62,18 @@ def validate_running_identity(home: Path) -> dict[str, object]:
     origin = Path(__import__("jarvis_foundry").__file__).resolve()
     if str(expected_dir) not in str(origin):
         raise ReleaseError(f"jarvis_foundry imported from {origin}, not the release")
+    from .release import release_authority_report
+
+    authority = release_authority_report(root=root, foundry_home=home)
+    if (
+        authority.get("status") != "CONSISTENT"
+        or authority.get("database_authority_mode") != "DATABASE_LIVE_SLOT"
+    ):
+        raise ReleaseError(
+            "database-backed release authority is not consistent: "
+            f"{authority.get('status')}"
+            f"/{authority.get('database_authority_mode')}"
+        )
     return identity
 
 

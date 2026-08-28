@@ -19,6 +19,7 @@ from jarvis_foundry.deployment.layout import (
     default_live_foundry_home,
     release_dir,
 )
+from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.deployment.release import (
     build_release,
     read_current,
@@ -71,12 +72,25 @@ def main() -> int:
     EVIDENCE.mkdir(parents=True, exist_ok=True)
     before = {"current": read_current(), "previous": read_previous()}
     built = build_release(source_repo=REPO, source_sha=SHA)
-    promoted = set_current(SHA)
+    database = FoundryDatabase(HOME / "foundry.db")
+    promoted = set_current(
+        SHA,
+        database=database,
+        reason="M2 promotion: immutable release activation",
+    )
     record_generation(foundry_home=HOME)
     after_promote = validate()
-    rolled = rollback_current(foundry_home=HOME)
+    rolled = rollback_current(
+        foundry_home=HOME,
+        database=database,
+        reason="M2 promotion: rollback drill",
+    )
     after_rollback = validate()
-    returned = set_current(SHA)
+    returned = set_current(
+        SHA,
+        database=database,
+        reason="M2 promotion: return after rollback drill",
+    )
     record_generation(foundry_home=HOME)
     after_return = validate()
     report = {

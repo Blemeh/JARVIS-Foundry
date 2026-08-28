@@ -288,7 +288,11 @@ def _release_command(args, paths: FoundryPaths) -> int:
         return 0
     if args.release_command == "activate":
         os.environ.setdefault("JARVIS_INSTALL_ROOT", str(resolve_install_root(root)))
-        pointers = set_current(args.sha, root=root)
+        pointers = set_current(
+            args.sha, root=root,
+            database=FoundryDatabase(paths.database),
+            reason="CLI release activation",
+        )
         from ..deployment.layout import headless_task_command
         from ..deployment.release import validate_release
         identity = validate_release(args.sha, root=root, require_schema_match=False)

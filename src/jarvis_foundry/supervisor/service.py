@@ -84,7 +84,10 @@ class Supervisor:
         guessed source or package value.
         """
 
-        value = os.environ.get("JARVIS_RELEASE_ID")
+        value = (
+            os.environ.get("JARVIS_RELEASE_SHA")
+            or os.environ.get("JARVIS_RELEASE_ID")
+        )
         return value.strip() if value and value.strip() else None
 
     def _record_resolution(

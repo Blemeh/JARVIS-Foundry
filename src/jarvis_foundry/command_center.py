@@ -2059,6 +2059,24 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
                 controls_configured=bool(self.owner_secret),
                 runtime_home=self.runtime_home,
                 source_repo=self.source_repo)
+            try:
+                from .deployment.status import production_status
+                deployment_status = production_status(
+                    home=Path(self.database.path).parent,
+                    source_repo=self.source_repo)
+            except Exception as error:  # noqa: BLE001 - status stays truthful
+                deployment_status = {
+                    "status": "UNKNOWN",
+                    "health": {"status": "UNKNOWN", "reason": str(error)},
+                }
+            status.update({
+                "deployment_health": deployment_status.get("health", {}),
+                "release_authority": deployment_status.get("release_authority", {}),
+                "parity": deployment_status.get("parity", {}),
+                "process_truth": deployment_status.get("process_truth", {}),
+                "scheduler": deployment_status.get("scheduler", {}),
+                "deployment_status": deployment_status,
+            })
             self._json_response(status, status=200)
             return
         if route == "/api/vault/graph":

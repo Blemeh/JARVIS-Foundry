@@ -27,6 +27,7 @@ with legacy env compatibility) at process start.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import time
@@ -38,7 +39,7 @@ from typing import Any, Callable, Iterator, Iterable
 
 from ..database import FoundryDatabase
 from ..clock import parse, utc_now
-from ..events import Event, EventConflict
+from ..events import Event, EventConflict, canonical_json
 from ..paths import FoundryPaths
 from ..roles.router import RoleRouter
 from ..supervisor.estop import EmergencyStop
@@ -68,6 +69,63 @@ DEFAULT_RESOURCE_ID = "resource-wfm-optimizer"
 
 def _default_stop_path(paths: FoundryPaths, config: WorkerRuntimeConfig) -> Path:
     return config.resolve_stop_path(paths.home)
+
+
+def _append_coalesced_idle_event(
+    database: FoundryDatabase,
+    event_type: str,
+    payload: dict[str, Any],
+    *,
+    stable_fields: dict[str, Any],
+    source_id: str,
+) -> bool:
+    """Record an idle state transition once, not once per polling tick.
+
+    The worker loop remains a polling process, but an unchanged WAIT state is
+    not a new fact.  Compare the latest ledger record inside a short read and
+    key each real transition by its predecessor sequence plus a canonical
+    state hash.  A concurrent duplicate loses harmlessly to the unique
+    idempotency key; no second authority or mutable idle table is introduced.
+    """
+
+    state_key = hashlib.sha256(
+        canonical_json(stable_fields).encode("utf-8")
+    ).hexdigest()[:24]
+    connection = database.connect(readonly=True)
+    try:
+        row = connection.execute(
+            "SELECT sequence, payload_json FROM events "
+            "WHERE event_type = ? ORDER BY sequence DESC LIMIT 1",
+            (event_type,),
+        ).fetchone()
+    finally:
+        connection.close()
+    if row is not None:
+        try:
+            prior = json.loads(row["payload_json"] or "{}")
+        except (TypeError, ValueError):
+            prior = {}
+        if isinstance(prior, dict) and prior.get("_coalesced_state") == state_key:
+            return False
+        predecessor = int(row["sequence"])
+    else:
+        predecessor = 0
+    enriched = dict(payload)
+    enriched["_coalesced_state"] = state_key
+    try:
+        database.append(Event.create(
+            event_type,
+            enriched,
+            source_type="supervisor",
+            source_id=source_id,
+            idempotency_key=(
+                f"{event_type}:transition:{predecessor}:{state_key}"),
+        ))
+    except EventConflict:
+        # Another valid loop owner recorded the same transition between the
+        # read and append.  Treat that as the desired coalesced outcome.
+        return False
+    return True
 
 
 @contextmanager
@@ -120,18 +178,13 @@ def _executive_waiting_report(
                 decision.wait.wait_kind if decision.wait else None),
         },
     }
-    recent = database.events(
-        readonly=True, limit=100, newest_first=True,
-        event_types=("worker_loop.executive_waiting",),
+    _append_coalesced_idle_event(
+        database,
+        "worker_loop.executive_waiting",
+        payload,
+        stable_fields={"reason": reason, "wait": payload["wait"]},
+        source_id=instance_id,
     )
-    latest = recent[0].payload if recent else None
-    if not isinstance(latest, dict) or latest.get("episode_key") != payload["episode_key"]:
-        sequence = recent[0].sequence if recent else 0
-        database.append(Event.create(
-            "worker_loop.executive_waiting", payload,
-            source_type="supervisor", source_id=instance_id,
-            idempotency_key=f"worker_loop.executive_waiting:{payload['episode_key']}:{sequence + 1}",
-        ))
     return {
         "loop_id": loop_id,
         "outcome": "WAITING",
@@ -302,34 +355,28 @@ def _maybe_portfolio_select(
         source_id=f"worker-loop:{instance_id}",
     )
     if decision.kind != "SELECT" or decision.entity_id is None:
-        import hashlib
-
         reason = str(decision.reason or "portfolio waiting")
         episode_key = hashlib.sha256(reason.strip().encode("utf-8")).hexdigest()[:20]
-        recent = database.events(
-            readonly=True, limit=100, newest_first=True,
-            event_types=("worker_loop.portfolio_waiting",),
+        stable = {
+            "selected_class": decision.selected_class,
+            "reason": decision.reason,
+            "why_now": decision.why_now,
+            "wake_on": list(decision.wake_on),
+        }
+        _append_coalesced_idle_event(
+            database,
+            "worker_loop.portfolio_waiting",
+            {
+                "loop_id": loop_id,
+                "instance_id": instance_id,
+                "decision_id": decision.decision_id,
+                **stable,
+                "revisit_at": decision.revisit_at,
+                "episode_key": episode_key,
+            },
+            stable_fields=stable,
+            source_id=f"worker-loop:{instance_id}",
         )
-        latest = recent[0].payload if recent else None
-        if not isinstance(latest, dict) or latest.get("episode_key") != episode_key:
-            sequence = recent[0].sequence if recent else 0
-            database.append(Event.create(
-                "worker_loop.portfolio_waiting",
-                {
-                    "loop_id": loop_id,
-                    "instance_id": instance_id,
-                    "decision_id": decision.decision_id,
-                    "selected_class": decision.selected_class,
-                    "reason": decision.reason,
-                    "why_now": decision.why_now,
-                    "wake_on": list(decision.wake_on),
-                    "revisit_at": decision.revisit_at,
-                    "episode_key": episode_key,
-                },
-                source_type="supervisor",
-                source_id=f"worker-loop:{instance_id}",
-                idempotency_key=f"worker_loop.portfolio_waiting:{episode_key}:{sequence + 1}",
-            ))
         return None
     payload = decision.to_payload()
     result = materialize_portfolio_selection(

@@ -78,13 +78,26 @@ def main() -> int:
     EVIDENCE.mkdir(parents=True, exist_ok=True)
     before = {"current": read_current(), "previous": read_previous()}
     built = build_release(source_repo=REPO, source_sha=SHA)
-    promoted = set_current(SHA)
+    database = FoundryDatabase(FoundryPaths(HOME).database)
+    promoted = set_current(
+        SHA,
+        database=database,
+        reason="Prompt 4 M10: immutable release activation",
+    )
     record_generation(foundry_home=HOME)
     after_promote = validate()
     html_after = html_probe()
-    rolled = rollback_current(foundry_home=HOME)
+    rolled = rollback_current(
+        foundry_home=HOME,
+        database=database,
+        reason="Prompt 4 M10: rollback drill",
+    )
     after_rollback = validate()
-    returned = set_current(SHA)
+    returned = set_current(
+        SHA,
+        database=database,
+        reason="Prompt 4 M10: return after rollback drill",
+    )
     record_generation(foundry_home=HOME)
     after_return = validate()
     html_return = html_probe()
