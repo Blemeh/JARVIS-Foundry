@@ -14,12 +14,16 @@ from typing import Any
 from .clock import isoformat
 from .database import FoundryDatabase
 from .events import Event, EventConflict, canonical_json
-
-TRUST_STATES = ("LAB", "PROVING", "TRUSTED_AUTONOMOUS", "DEGRADED", "SUSPENDED")
+from .trust_states import TRUST_STATES
 _ALLOWED_TRANSITIONS = {
     "LAB": frozenset({"PROVING", "DEGRADED", "SUSPENDED"}),
-    "PROVING": frozenset({"TRUSTED_AUTONOMOUS", "LAB", "DEGRADED", "SUSPENDED"}),
-    "TRUSTED_AUTONOMOUS": frozenset({"DEGRADED", "SUSPENDED", "PROVING"}),
+    "PROVING": frozenset({"LIMITED_AUTONOMY", "LAB", "DEGRADED", "SUSPENDED"}),
+    "LIMITED_AUTONOMY": frozenset({
+        "TRUSTED_AUTONOMOUS", "PROVING", "DEGRADED", "SUSPENDED",
+    }),
+    "TRUSTED_AUTONOMOUS": frozenset({
+        "LIMITED_AUTONOMY", "DEGRADED", "SUSPENDED", "PROVING",
+    }),
     "DEGRADED": frozenset({"PROVING", "LAB", "SUSPENDED"}),
     "SUSPENDED": frozenset({"PROVING", "DEGRADED", "LAB"}),
 }
@@ -31,6 +35,22 @@ REQUIRED_EVIDENCE = (
     "verifier_integrity",
     "false_pass_resistance",
     "provider_routing",
+    "release_parity",
+    "bounded_failures",
+    "schema_integrity",
+    "owner_control_gates",
+)
+
+# Limited autonomy is deliberately a smaller, local-safety gate.  Provider
+# routing remains outside this gate because a runtime that has not proved its
+# provider/fallback contract must not claim unrestricted autonomous scope.
+LIMITED_AUTONOMY_EVIDENCE = (
+    "acceptance_profiles",
+    "runtime_durability",
+    "restart_recovery",
+    "stop_revocation",
+    "verifier_integrity",
+    "false_pass_resistance",
     "release_parity",
     "bounded_failures",
     "schema_integrity",
@@ -50,6 +70,8 @@ class TrustAssessment:
     checks: dict[str, str]
     missing: tuple[str, ...]
     evidence_digest: str
+    limited_eligible: bool
+    limited_missing: tuple[str, ...]
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -60,6 +82,9 @@ class TrustAssessment:
             "missing": list(self.missing),
             "evidence_digest": self.evidence_digest,
             "required_evidence": list(REQUIRED_EVIDENCE),
+            "limited_autonomy_evidence": list(LIMITED_AUTONOMY_EVIDENCE),
+            "limited_eligible": self.limited_eligible,
+            "limited_missing": list(self.limited_missing),
         }
 
 
@@ -110,6 +135,9 @@ def assess_trust(database: FoundryDatabase) -> TrustAssessment:
         else:
             checks[key] = status
     missing = tuple(key for key in REQUIRED_EVIDENCE if checks.get(key) != "PASS")
+    limited_missing = tuple(
+        key for key in LIMITED_AUTONOMY_EVIDENCE if checks.get(key) != "PASS"
+    )
     digest_payload = {
         key: {
             "status": event.payload.get("status"),
@@ -123,6 +151,12 @@ def assess_trust(database: FoundryDatabase) -> TrustAssessment:
         recommended = current
     elif not latest:
         recommended = "LAB"
+    elif current == "PROVING" and not limited_missing:
+        recommended = (
+            "TRUSTED_AUTONOMOUS" if not missing else "LIMITED_AUTONOMY"
+        )
+    elif current == "LIMITED_AUTONOMY" and not missing:
+        recommended = "TRUSTED_AUTONOMOUS"
     elif missing:
         recommended = "PROVING"
     else:
@@ -130,6 +164,7 @@ def assess_trust(database: FoundryDatabase) -> TrustAssessment:
     return TrustAssessment(
         state=current, recommended_state=recommended, eligible=not missing,
         checks=checks, missing=missing, evidence_digest=digest,
+        limited_eligible=not limited_missing, limited_missing=limited_missing,
     )
 
 
@@ -218,10 +253,17 @@ def transition_trust(
         raise TrustError("trust transitions require a reason")
     assessment = assess_trust(database)
     current = _current_state(database)
-    if target == "TRUSTED_AUTONOMOUS" and not assessment.eligible:
+    gate_evidence = {
+        "LIMITED_AUTONOMY": LIMITED_AUTONOMY_EVIDENCE,
+        "TRUSTED_AUTONOMOUS": REQUIRED_EVIDENCE,
+    }.get(target, ())
+    gate_missing = tuple(
+        key for key in gate_evidence if assessment.checks.get(key) != "PASS"
+    )
+    if gate_missing:
         raise TrustError(
-            "trust promotion refused; missing evidence: "
-            + ", ".join(assessment.missing)
+            f"trust promotion refused for {target}; missing evidence: "
+            + ", ".join(gate_missing)
         )
     if target != current and target not in _ALLOWED_TRANSITIONS.get(current, frozenset()):
         raise TrustError(f"invalid trust transition: {current} -> {target}")
@@ -242,6 +284,8 @@ def transition_trust(
         "evidence_digest": assessment.evidence_digest,
         "checks": dict(assessment.checks),
         "missing": list(assessment.missing),
+        "gate_required_evidence": list(gate_evidence),
+        "gate_missing": list(gate_missing),
     }
     event = Event.create(
         "trust.state_changed", payload,
