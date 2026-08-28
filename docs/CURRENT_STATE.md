@@ -5,7 +5,7 @@ convergence candidate. Source, immutable installation, database authority,
 and live runtime are separate truths until the guarded promotion procedure
 proves their parity.
 
-DOCUMENTATION STATE BASE SHA: `93c86c472926264a1d4f087aac0fbe6764e15076`
+DOCUMENTATION STATE BASE SHA: `92d6937d81159dc686d4760a9fff42cd7b59c6ee`
 
 The SHA above is the source parent of this final documentation-only
 reconciliation commit. The freshness gate requires that relationship and
@@ -19,8 +19,8 @@ LANE 1 SOURCE SHA:           a319017231de3361a11e819e7fff965004e138c9
 LANE 2 IMPLEMENTATION SHA:   dc8bfbc136b70d85fecfe16d8a07ab3b94880209
 LANE 2 EVIDENCE SHA:         c8b97b842072b851b4e7b9f0731c006bf1b53aa6
 LANE 3 SOURCE SHA:           186aeda568bede4fa4bd410f317327893349e9a6
-CONVERGED SOURCE BASE:       93c86c472926264a1d4f087aac0fbe6764e15076
-CONVERGED SOURCE TREE:       d10d1143e42c91c1c25ce4e36c81408e4871f8aa
+CONVERGED SOURCE BASE:       92d6937d81159dc686d4760a9fff42cd7b59c6ee
+CONVERGED SOURCE TREE:       1e1ffc465458ff4b70287d6cef30b9b503fd396a
 CANONICAL CHECKOUT:          DIRTY / PRESERVED / NOT MODIFIED
 PRODUCTION RUNTIME:          NOT TOUCHED BEFORE GUARDED PROMOTION
 LIVE DATABASE:               NOT TOUCHED BEFORE GUARDED PROMOTION
@@ -86,6 +86,7 @@ promotion evidence packet records the live results separately.
 | Frontend lint | Direct ESLint `src e2e --max-warnings 0` passed |
 | Frontend production build | Direct TypeScript build plus Vite build passed; only the existing dynamic/static vault chunking advisory was emitted |
 | Product verifier | PASS; 212 checks, 0 failures (15 routes × 7 scenarios × 2 viewports plus navigation) |
+| Simulated Playwright sweep | PASS; 169 tests, 0 failures (all non-live browser specs) |
 | Static design/accessibility/security checks | PASS; no detector findings, 12-route console check clean, and no frontend security findings |
 | Live autonomy fixture proof | PASS; 2 Playwright tests; disposable fixture DB and API, not production |
 
