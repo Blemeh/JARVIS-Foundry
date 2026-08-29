@@ -56,6 +56,9 @@ _PROVIDER_SERVICES: dict[str, ProviderService] = {
         hermes_base_url_env="OPENCODE_GO_BASE_URL",
         default_model="muse-spark-1.2-contributor",
         known_models=("muse-spark-1.2-contributor",),
+        capabilities=("structured_reasoning", "code", "tools"),
+        tool_support=("hermes_oneshot",),
+        limits={"unattended": "requires allow_data_training_tiers_noninteractive"},
     ),
     "opencode_zen": ProviderService(
         provider_id="opencode_zen",
@@ -68,6 +71,9 @@ _PROVIDER_SERVICES: dict[str, ProviderService] = {
         free_test_model="x-preview-f-free",
         live_test_allowed_for_free_model=True,
         known_models=("x-preview-f-free",),
+        capabilities=("structured_reasoning",),
+        tool_support=("hermes_oneshot",),
+        limits={"live_test": "free_model_only"},
     ),
 }
 
