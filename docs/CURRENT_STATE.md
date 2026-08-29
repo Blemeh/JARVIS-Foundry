@@ -5,7 +5,7 @@ convergence candidate. Source, immutable installation, database authority,
 and live runtime are separate truths until the guarded promotion procedure
 proves their parity.
 
-DOCUMENTATION STATE BASE SHA: `f69c01ce3b1b77699690f727555dda4ba71af2ba`
+DOCUMENTATION STATE BASE SHA: `3de96e12627b038c5fec07317098217a78f683f3`
 
 The SHA above is the source parent of this final documentation-only
 reconciliation commit. The freshness gate requires that relationship and
@@ -15,14 +15,14 @@ rejects source or test drift after the pin.
 
 ```text
 FINAL CANDIDATE BRANCH:      candidate/final-production-convergence-20260828
-LANE 1 SOURCE SHA:           a319017231de3361a11e819e7fff965004e138c9
-LANE 2 IMPLEMENTATION SHA:   dc8bfbc136b70d85fecfe16d8a07ab3b94880209
-LANE 2 EVIDENCE SHA:         c8b97b842072b851b4e7b9f0731c006bf1b53aa6
-LANE 3 SOURCE SHA:           186aeda568bede4fa4bd410f317327893349e9a6
-CONVERGED SOURCE BASE:       f69c01ce3b1b77699690f727555dda4ba71af2ba
-CONVERGED SOURCE TREE:       1dd2c4cae30bf524a7aa6d4e0f2fe78830d2b3a8
+LANE 1 SOURCE SHA:           ba652babf91e7faa06053864b965ff5f42abeb4b
+LANE 2 IMPLEMENTATION SHA:   7e222d8b983c5f55c9576cbb0a01576d6c3578b1
+LANE 2 EVIDENCE SHA:         3de96e12627b038c5fec07317098217a78f683f3
+LANE 3 SOURCE SHA:           ba652babf91e7faa06053864b965ff5f42abeb4b
+CONVERGED SOURCE BASE:       ba652babf91e7faa06053864b965ff5f42abeb4b
+CONVERGED SOURCE TREE:       e8b0e87e348cf445df2c08532feead7360bbb5c4
 CANONICAL CHECKOUT:          DIRTY / PRESERVED / NOT MODIFIED
-PRODUCTION RUNTIME:          FINAL IMMUTABLE RELEASE; CURRENT/DB/RUNTIME PARITY VERIFIED
+PRODUCTION RUNTIME:          LIVE BASE ba652…; candidate hardening isolated / NOT PROMOTED
 LIVE DATABASE:               SCHEMA v37; DATABASE_LIVE_SLOT CONSISTENT; backed up
 SCHEDULER / REMOTE:          EXACT OWNED task RUNNING; action contract PASS
 ```
@@ -34,6 +34,11 @@ carried Lane 2's release/runtime/state fixes, and selectively forward-ported
 Lane 3's truth-aware Command Center and autonomy proof. The complete Lane 1
 graph classification remains in
 `docs/evidence/integration/canonical-convergence-20260828/RECONCILIATION.md`.
+
+The 2026-08-29 production-proving continuation is recorded in
+`docs/evidence/PRODUCTION_PROVING_AND_HARDENING_20260829.md`. It adds the
+evidence-gated `LIMITED_AUTONOMY` stage, bounds high-cardinality reconciliation
+normalization, and preserves the live base as a separate, untouched truth.
 
 ## Schema, authority, and trust
 
@@ -68,6 +73,7 @@ in the deployment runtime-identity authority.
 | Lane 3 Command Center/product truth | `INTEGRATED`; one cinematic surface, source/trust labels, owner-goal state, live fixture proof, and autonomy evidence |
 | Final runtime-truth hardening | `INTEGRATED`; Windows venv wrapper collapse, start-baselined idle growth, canonical clone projection rebuild, and compact parity-to-health mapping |
 | Rollback-cycle release authority | `INTEGRATED`; transition-scoped idempotency preserves safe reactivation after rollback |
+| Production proving and trust hardening | `INTEGRATED` in the isolated candidate; live base remains `SUSPENDED` and unmodified pending approved destructive, provider, reboot, and long-soak proof |
 
 No accepted lane is `PARTIALLY_MISSING` or `MISSING`. Superseded UI drafts,
 unused orbit variants, and planning-only artifacts were excluded; no duplicate
@@ -81,7 +87,7 @@ separately and points to the exact immutable release and runtime.
 
 | Surface | Result |
 | --- | --- |
-| Python Foundry + convergence + acceptance | 2,317 collected; 2,316 passed, 1 expected host/environment skip, 0 failed |
+| Python Foundry + convergence + acceptance | 2,310 collected; 2,309 passed, 1 expected host/environment skip, 0 failed after the final docs-only pin (the pre-pin run had only the two expected freshness rows) |
 | Lane 2/Lane 3 focused Python suites | PASS; covered again by the complete run |
 | Frontend Vitest | 25 files, 118 tests passed |
 | Frontend typecheck | Direct TypeScript `tsc -b --noEmit` passed (npm shim is malformed on this host) |
@@ -91,33 +97,32 @@ separately and points to the exact immutable release and runtime.
 | Simulated Playwright sweep | PASS; 169 tests, 0 failures (all non-live browser specs) |
 | Static design/accessibility/security checks | PASS; no detector findings, 12-route console check clean, and no frontend security findings |
 | Live autonomy fixture proof | PASS; 2 Playwright tests; disposable fixture DB and API, not production |
-| Final live promotion | PASS; source/install/DB/runtime parity, schema, reconciliation, trust, idle, process census, and Scheduler contract |
-| Signed owner-control recovery | PASS; PAUSE/RESUME, VETO/REVOKE, STOP/RESUME with observed BLOCKED and return to OK |
-| Hard-kill restart | PASS; exact owner PID/creation identity changed and Scheduler recovered the same immutable release |
-| Rollback/recovery | PASS; DB/pointers switched to the previous immutable release under STOP, then reactivated to the final release with consistent authority |
+| Final live promotion | NOT_RUN in this lane; live base remains `ba652…`, while candidate hardening is isolated |
+| Signed owner-control recovery | PASS disposable; prior live evidence retained, no new live mutation issued |
+| Hard-kill restart | PASS prior evidence; NOT_RUN fresh in this isolated lane |
+| Rollback/recovery | PASS disposable; candidate live rollback NOT_RUN |
 
 The acceptance README remains explicit that accelerated time is
 `ACCELERATED_EQUIVALENT_ONLY`, and that full 12-hour, 24-hour, and reboot-
-assisted real-time profiles are `NOT_RUN`. No provider-backed or production
-claim is inferred from disposable evidence.
+assisted real-time profiles are `NOT_RUN`. The bounded live endurance window
+and health-latency attack are recorded separately; no provider-backed or
+candidate-production claim is inferred from disposable evidence.
 
 ## Promotion boundary
 
-Promotion followed the Lane 2 runbook: read-only preflight, live DB backup,
-disposable migration rehearsal, exact owner STOP, immutable build, database
-authority before atomic pointers, single Supervisor launch, source/install/
-DB/runtime identity parity, health and trust/reconciliation/idle checks,
-signed STOP/PAUSE/RESUME/REVOKE, hard-kill restart, and rollback/recovery.
+The prior final handoff documented the Lane 2 promotion runbook and its
+historical live proof. This continuation performed read-only live preflight,
+bounded endurance/latency observation, disposable recovery/chaos harnesses,
+and candidate-only hardening. It did not issue live STOP, migrate or restore
+the live database, retarget pointers or Scheduler, kill a production process,
+or activate the candidate release.
 
 The first rollback reactivation attempt exposed a real idempotency-key defect;
-it was stopped safely, repaired in the transition-scoped release authority
-commit, covered by regression tests, and rerun successfully. A subsequent
-live census exposed a missing-CIM-timestamp wrapper case; the wrapper-fixed
-source adds the strict parent/venv-path collapse and regression coverage. The
-final documentation-only commit is the last source pin; its immutable release
-manifest, CURRENT pointer, database live slot, and runtime identity are the
-handoff authorities and are required to remain equal. Evidence packets are
-retained under `C:\\temp`.
+it was stopped safely and repaired in the earlier transition-scoped release
+authority work. The current candidate's trust and reconciliation changes are
+committed in the isolated lane; its source identity is not the live install
+until a separate guarded promotion. Evidence packets are retained under
+`C:\\temp`, and the durable continuation report is linked above.
 
 ## Documentation freshness contract
 
