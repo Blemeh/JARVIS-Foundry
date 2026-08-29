@@ -11,8 +11,11 @@ This module is the single reconciliation seam between the four V7 surfaces:
   a real mission id (``plan_broad_operation``), keeping effect tickets and
   lineage intact.
 - V5 governance stays authoritative for execution readiness:
-  ``capability_readiness`` reads the durable capability state plane so
-  incident suspensions (STOPPED/VETOED/DEGRADED) block procedure steps.
+  ``capability_readiness`` reads the durable capability state plane.
+  Missing records are UNKNOWN and not ready. Incident suspensions
+  (STOPPED/VETOED/DEGRADED) block procedure steps. The procedure gate
+  itself only refuses those suspensions; callers that dispatch work must
+  treat UNKNOWN as not ready.
 - Mission terminal outcomes flow back into portfolio calibration through
   ``record_mission_portfolio_outcome``.
 
@@ -66,6 +69,7 @@ def latest_capability_state(
 
 
 _BLOCKING_CAPABILITY_STATES = frozenset({"STOPPED", "VETOED", "DEGRADED"})
+_READY_CAPABILITY_STATES = frozenset({"READY", "ACTIVE"})
 
 
 def capability_readiness(
@@ -76,13 +80,18 @@ def capability_readiness(
 ) -> dict[str, Any]:
     """Report whether a capability may execute right now.
 
-    An incident suspension recorded on the capability plane blocks execution;
-    an unregistered capability is UNKNOWN and left to the caller's policy.
+    An incident suspension recorded on the capability plane blocks execution.
+    A missing record is UNKNOWN, never ready. Callers that only care about
+    incident STOPPED/VETOED/DEGRADED must inspect ``state``, not ``ready``.
     """
     latest = latest_capability_state(database, resource_id, capability)
     if latest is None:
-        return {"ready": True, "state": "UNREGISTERED",
-                "reason": "no capability state recorded", "blocked_by": None}
+        return {
+            "ready": False,
+            "state": "UNKNOWN",
+            "reason": "no capability state recorded",
+            "blocked_by": None,
+        }
     state = latest["state"]
     if state in _BLOCKING_CAPABILITY_STATES:
         return {
@@ -90,7 +99,14 @@ def capability_readiness(
             "reason": f"capability {capability} is {state}",
             "blocked_by": latest["source_id"],
         }
-    return {"ready": True, "state": state, "reason": "", "blocked_by": None}
+    if state in _READY_CAPABILITY_STATES:
+        return {"ready": True, "state": state, "reason": "", "blocked_by": None}
+    return {
+        "ready": False,
+        "state": state,
+        "reason": f"capability {capability} is {state}",
+        "blocked_by": None,
+    }
 
 
 def _retire_unexecutable(
@@ -745,7 +761,7 @@ def gate_procedure_step_capability(
             f"operations.capability_gate_checked:{procedure_id}:"
             f"{step_id}:{effect_ticket}"),
     ))
-    if not readiness["ready"]:
+    if not readiness["ready"] and readiness["state"] in _BLOCKING_CAPABILITY_STATES:
         raise OperationError(
             f"capability gate blocked step {step_id} of {procedure_id}: "
             f"{readiness['reason']} (by {readiness['blocked_by']})")

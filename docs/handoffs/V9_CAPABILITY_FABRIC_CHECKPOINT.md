@@ -13,6 +13,7 @@ Base: `84db5d338313d835b2540796dbed24489646ceae`
 - Real actions: filesystem, dir.list, git inspect/commit, GitHub read family, issue create via explicit transport, system diagnose, pytest, owned-root script, research artifact.
 - `jarvis --home <disposable> fabric catalog` lists actual capabilities. Live home is refused.
 - Ten required workflows plus CLI/dir/git-inspect proofs in `tests/foundry/test_v9_capability_fabric.py`.
+- V7 `capability_readiness` reports missing records as UNKNOWN and not ready. Procedure eligibility fails closed. The procedure step gate still only refuses STOPPED/VETOED/DEGRADED.
 
 ## Decisions
 
@@ -29,7 +30,7 @@ Base: `84db5d338313d835b2540796dbed24489646ceae`
 ## Next gaps
 
 - GitHub mutating actions against a disposable repo only when explicitly targeted.
-- Wire `github.search.read` / check / release through the same research executor.
+- Compose fabric routing with `roles/router.route_provider_candidates` if that removes duplication without a second authority.
 - Honest email/calendar if a real interface exists; otherwise leave UNKNOWN.
 
 ## Blockers

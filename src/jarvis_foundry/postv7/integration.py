@@ -284,10 +284,10 @@ def procedure_eligibility(
             database, resource_id=resolved_resource or "unresolved", capability=capability
         )
         state = str(readiness.get("state") or "")
-        if not readiness.get("ready"):
-            blocked.append(f"capability:{capability}:{readiness.get('reason') or state}")
-        elif activation_id and require_projected_account and state == "UNREGISTERED":
+        if activation_id and require_projected_account and state in {"UNREGISTERED", "UNKNOWN"}:
             blocked.append(f"capability:{capability}:account_projection_missing")
+        elif not readiness.get("ready"):
+            blocked.append(f"capability:{capability}:{readiness.get('reason') or state}")
     receipt = ProcedureEligibility(
         eligible=not blocked,
         procedure_id=definition.procedure_id,
