@@ -1,6 +1,6 @@
 import type { ComponentState, EvidenceVerdict, Health, MemoryNodeCategory, MissionStatus, VerdictState, WorkerStatus } from "../lib/contracts";
 
-type Status =
+export type Status =
   | MissionStatus
   | WorkerStatus
   | EvidenceVerdict
@@ -76,7 +76,7 @@ const variantMap: Record<string, "accent" | "teal" | "amber" | "error" | "muted"
   PENDING: "amber",
 };
 
-export function StatusBadge({ status, pulse = false }: { status: Status; pulse?: boolean }) {
+export function StatusBadge({ status, pulse = false }: { status: Status | string; pulse?: boolean }) {
   const variant = variantMap[status] ?? "muted";
   return (
     <span className={`badge badge-${variant}`}>

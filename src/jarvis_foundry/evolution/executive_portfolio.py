@@ -1478,6 +1478,7 @@ def _all_work_items(
     candidate_limit: int,
     goals: Sequence[StructuredGoal],
     now: datetime,
+    objective_id: str | None = None,
 ) -> list[WorkItem]:
     # Registered items occupy their identities even when closed: a terminal
     # mirror must shadow any derived duplicate (busywork guard).
@@ -1503,10 +1504,21 @@ def _all_work_items(
         item for item in identities.values()
         if item.status in ("OPEN", "PLANNED", "ELIGIBLE")
     ]
-    return actionable + [
+    result = actionable + [
         item for item in derived
         if all(item.item_id != kept.item_id for kept in actionable)
     ]
+    if objective_id is not None:
+        # Executive Autonomy may ask the canonical portfolio selector to
+        # choose among work belonging to one objective.  Keep the selector,
+        # scoring, leases, and materialization authority unchanged; this is a
+        # deterministic scope filter that prevents an active objective from
+        # accidentally materializing another objective's item.
+        result = [
+            item for item in result
+            if str(item.metadata.get("executive_objective_id") or "") == str(objective_id)
+        ]
+    return result
 
 
 def _latest_wait(state: PortfolioState) -> dict[str, Any] | None:
@@ -1581,6 +1593,7 @@ def select_next_work(
     now: datetime | str | None = None,
     source_type: str = "supervisor",
     source_id: str = "v7-portfolio",
+    objective_id: str | None = None,
 ) -> PortfolioDecision:
     """Compare every available work class and record exactly one outcome."""
     _controller_identity_gate(controller)
@@ -1615,6 +1628,7 @@ def select_next_work(
         items = _all_work_items(
             database, state, resource_id=resource_id, capability=capability,
             candidate_limit=candidate_limit, goals=goals, now=current,
+            objective_id=objective_id,
         )
         ranked: list[ScoredWork] = []
         rejected: list[dict[str, Any]] = []

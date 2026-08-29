@@ -129,6 +129,24 @@ export interface FoundryExecutive {
     calibration_version?: string;
     event_id?: string;
   }[];
+  /** V8 durable objectives, plans, continuation, and operational proposals. */
+  autonomy?: FoundryExecutiveAutonomy;
+}
+
+export interface FoundryExecutiveAutonomy {
+  objectives?: Record<string, Record<string, unknown>>;
+  plans?: Record<string, Record<string, unknown>>;
+  priorities?: Record<string, unknown>[];
+  continuations?: Record<string, Record<string, unknown>>;
+  escalations?: Record<string, Record<string, unknown>>;
+  coordination?: Record<string, Record<string, unknown>>;
+  progress?: Record<string, Record<string, unknown>>;
+  mission_requests?: Record<string, Record<string, unknown>>;
+  operational_followup_proposals?: Record<string, Record<string, unknown>>;
+  latest_cycle?: Record<string, unknown>;
+  briefing?: Record<string, unknown> | null;
+  status?: string;
+  reason?: string;
 }
 
 export interface FoundryMission {

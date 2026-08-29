@@ -443,6 +443,34 @@ class Supervisor:
         """Coalesce non-material heartbeats; keep reap events distinct."""
         if self.ledger_heartbeat_seconds <= 0:
             return str(uuid.uuid4())
+        # Wall-clock buckets are useful for a bounded key, but a call that
+        # straddles a minute boundary can otherwise emit two non-material
+        # heartbeats back-to-back.  Anchor coalescing to the last durable
+        # heartbeat for this instance/generation so the configured interval
+        # is an elapsed-time guarantee rather than a calendar-boundary guess.
+        if not reaped:
+            try:
+                latest = self.database.events(
+                    readonly=True, limit=1, newest_first=True,
+                    event_types=("supervisor.heartbeat",),
+                )
+                if latest:
+                    event = latest[0]
+                    payload = event.payload if isinstance(event.payload, dict) else {}
+                    if (
+                        str(payload.get("instance_id") or "") == self.instance_id
+                        and int(payload.get("generation") or -1) == self._start_generation
+                    ):
+                        elapsed = (
+                            utc_now() - parse(event.recorded_at)
+                        ).total_seconds()
+                        if elapsed < float(self.ledger_heartbeat_seconds):
+                            return event.idempotency_key
+            except (OSError, TypeError, ValueError, OverflowError):
+                # Heartbeat durability remains the primary path; if the
+                # read-side probe is unavailable, fall back to the bounded
+                # deterministic bucket below.
+                pass
         bucket = int(utc_now().timestamp() // self.ledger_heartbeat_seconds)
         reap_token = ",".join(str(item) for item in (reaped or ()))
         return (

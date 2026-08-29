@@ -12,6 +12,7 @@ import json
 import math
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
 from ..clock import isoformat
@@ -427,6 +428,11 @@ class ExecutiveAutonomyState:
     briefings: dict[str, ExecutiveBriefing] = field(default_factory=dict)
     mission_requests: dict[str, dict[str, Any]] = field(default_factory=dict)
     progress: dict[str, ProgressEvaluation] = field(default_factory=dict)
+    # Operational intelligence is advisory input to Executive Autonomy.  The
+    # proposal records below are durable receipts of that hand-off; they are
+    # deliberately not objectives or missions and therefore cannot bypass the
+    # owner/trust/mission authorities.
+    operational_followup_proposals: dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
 class ExecutiveAutonomyService:
@@ -509,6 +515,7 @@ def rebuild_executive_state(database: FoundryDatabase) -> ExecutiveAutonomyState
     briefings: dict[str, ExecutiveBriefing] = {}
     mission_requests: dict[str, dict[str, Any]] = {}
     progress: dict[str, ProgressEvaluation] = {}
+    operational_followup_proposals: dict[str, dict[str, Any]] = {}
     for event in database.events(event_type_prefixes=("executive.",)):
         payload = event.payload
         typ = event.event_type
@@ -602,6 +609,10 @@ def rebuild_executive_state(database: FoundryDatabase) -> ExecutiveAutonomyState
         elif typ == "executive.mission_requested":
             key = str(payload.get("request_id") or payload.get("objective_id") or event.idempotency_key)
             mission_requests[key] = dict(payload)
+        elif typ == "executive.operational_followup_proposed":
+            key = str(payload.get("proposal_id") or event.idempotency_key)
+            if key:
+                operational_followup_proposals[key] = dict(payload)
         elif typ == "executive.briefing_recorded":
             try:
                 briefing = ExecutiveBriefing(
@@ -618,13 +629,24 @@ def rebuild_executive_state(database: FoundryDatabase) -> ExecutiveAutonomyState
                     briefings[briefing.briefing_id] = briefing
             except (TypeError, ValueError):
                 pass
-    return ExecutiveAutonomyState(objectives, plans, continuations, escalations, coordination, briefings, mission_requests, progress)
+    return ExecutiveAutonomyState(
+        objectives, plans, continuations, escalations, coordination, briefings,
+        mission_requests, progress, operational_followup_proposals,
+    )
 
 
-def _gate(database: FoundryDatabase, controller: str) -> None:
+def _gate(
+    database: FoundryDatabase,
+    controller: str,
+    *,
+    stop_path: str | Path | None = None,
+) -> None:
     if controller != SUPERVISOR_CONTROLLER:
         raise PermissionError("executive autonomy is Supervisor-owned")
-    stop = emergency_stop_reason(database, database.path.parent / "EMERGENCY_STOP")
+    stop = emergency_stop_reason(
+        database,
+        Path(stop_path) if stop_path is not None else database.path.parent / "EMERGENCY_STOP",
+    )
     if stop:
         raise RuntimeError(f"STOP active: {stop}")
     veto = matching_veto_reason(database, {"GLOBAL", "executive", "objectives"})
@@ -959,6 +981,103 @@ def active_plan(database: FoundryDatabase, objective_id: str) -> PlanRecord | No
     return max(plans, key=lambda plan: (plan.version, plan.updated_at), default=None)
 
 
+def _provider_observation_blockers(
+    database: FoundryDatabase,
+    provider_id: str,
+    model_id: str | None = None,
+) -> tuple[str, ...]:
+    """Return fail-closed blockers for a capability's provider binding.
+
+    The operational projection is intentionally read-only, but Executive
+    Autonomy must still consult the same provider evidence before creating
+    work.  A registered provider with no complete health/auth/availability
+    sample is UNKNOWN, never silently healthy.  A model-specific sample wins;
+    a provider-level sample is the only permitted fallback.
+    """
+    provider_id = str(provider_id or "").strip()
+    if not provider_id:
+        return ()
+    selected: dict[str, Any] | None = None
+    provider_level: dict[str, Any] | None = None
+    try:
+        events = database.events(
+            readonly=True, newest_first=True, limit=500,
+            event_type_prefixes=("provider.",),
+        )
+    except Exception:
+        return (f"provider:{provider_id}:UNKNOWN",)
+    for event in events:
+        payload = event.payload if isinstance(event.payload, dict) else {}
+        observed_provider = str(payload.get("provider_id") or payload.get("provider") or "").strip()
+        if observed_provider != provider_id:
+            continue
+        observed_model = str(payload.get("model_id") or payload.get("model") or "").strip()
+        row = dict(payload)
+        row["event_id"] = event.event_id
+        if model_id and observed_model == str(model_id):
+            selected = row
+            break
+        if not observed_model and provider_level is None:
+            provider_level = row
+    sample = selected or provider_level
+    if sample is None:
+        return (f"provider:{provider_id}:UNKNOWN",)
+    blockers: list[str] = []
+    health = str(sample.get("health") or sample.get("status") or "UNKNOWN").upper()
+    auth = str(sample.get("auth_state") or "UNKNOWN").upper()
+    availability = str(sample.get("availability") or "UNKNOWN").upper()
+    if health not in {"HEALTHY", "READY"}:
+        blockers.append(f"provider:{provider_id}:{health}")
+    if auth not in {"READY", "CONFIGURED"}:
+        blockers.append(f"provider:{provider_id}:AUTH_{auth}")
+    if availability not in {"AVAILABLE", "READY"}:
+        blockers.append(f"provider:{provider_id}:AVAILABILITY_{availability}")
+    return tuple(dict.fromkeys(blockers))
+
+
+def _operational_capability_blockers(
+    database: FoundryDatabase,
+    capability: str,
+) -> tuple[str, ...]:
+    """Join the authoritative capability registry to provider observations."""
+    try:
+        from ..capabilities.registry import discover_capabilities
+        rows = discover_capabilities(database)
+    except Exception:
+        # A missing/failed registry is an unknown execution precondition.  The
+        # legacy capability-state plane below still supplies its own answer.
+        return (f"capability:{capability}:UNKNOWN",)
+    matches = [
+        row for row in rows
+        if str(row.get("capability_id") or "") == capability
+        or str(row.get("name") or "") == capability
+        or capability in tuple(str(value) for value in (row.get("surfaces") or ()))
+    ]
+    if not matches:
+        return ()
+    # A capability id is the strongest identity.  Otherwise deterministic
+    # lexical ordering keeps a surface alias stable when several rows expose
+    # the same name.
+    row = sorted(matches, key=lambda item: str(item.get("capability_id") or ""))[0]
+    blockers: list[str] = []
+    health = str(row.get("health") or "UNKNOWN").upper()
+    auth = str(row.get("auth_state") or "UNKNOWN").upper()
+    availability = str(row.get("availability") or "UNKNOWN").upper()
+    if health not in {"HEALTHY", "READY"}:
+        blockers.append(f"capability:{capability}:{health}")
+    if auth not in {"READY", "CONFIGURED"}:
+        blockers.append(f"capability:{capability}:AUTH_{auth}")
+    if availability not in {"AVAILABLE", "READY"}:
+        blockers.append(f"capability:{capability}:AVAILABILITY_{availability}")
+    provider_id = row.get("provider_id")
+    if provider_id:
+        blockers.extend(_provider_observation_blockers(
+            database, str(provider_id),
+            str(row.get("model_id")) if row.get("model_id") else None,
+        ))
+    return tuple(dict.fromkeys(blockers))
+
+
 def _capability_blockers(database: FoundryDatabase, step: PlanStep, *, resource_id: str | None = None) -> tuple[str, ...]:
     resource = resource_id or step.resource_id
     if not resource and step.required_capabilities:
@@ -971,7 +1090,8 @@ def _capability_blockers(database: FoundryDatabase, step: PlanStep, *, resource_
         readiness = capability_readiness(database, resource_id=str(resource), capability=capability)
         if not readiness.get("ready", False) or str(readiness.get("state") or "UNKNOWN") in {"UNREGISTERED", "UNKNOWN"}:
             blockers.append(f"{capability}:{readiness.get('state') or 'UNKNOWN'}")
-    return tuple(blockers)
+        blockers.extend(_operational_capability_blockers(database, capability))
+    return tuple(dict.fromkeys(blockers))
 
 
 def plan_ready_steps(database: FoundryDatabase, objective_id: str, *, resource_id: str | None = None) -> list[PlanStep]:
@@ -1125,10 +1245,12 @@ def observe_mission_outcome(
             set_work_status(database, item_id, str(truth["status"]), reason=f"mission {mission_id} observed as {truth['status']}", controller=controller, source_id="v8-executive-autonomy")
     state = rebuild_executive_state(database)
     changed_steps: list[tuple[str, str]] = []
+    affected_objectives: set[str] = set()
     for plan in state.plans.values():
         for step in plan.steps:
             if step.mission_id != mission_id:
                 continue
+            affected_objectives.add(plan.objective_id)
             new_status = str(truth["status"])
             if new_status == "RUNNING":
                 new_status = "RUNNING"
@@ -1140,6 +1262,18 @@ def observe_mission_outcome(
                 updated = PlanRecord(plan_id=plan.plan_id, objective_id=plan.objective_id, steps=updated_steps, critical_path=plan.critical_path, status=plan.status, version=plan.version + 1)
                 _append(database, "executive.plan_updated", updated.to_payload(), key=f"executive.plan_updated:{plan.plan_id}:{updated.version}", correlation_id=plan.objective_id)
                 break
+    # A terminal mission result is not merely an observation for the next
+    # polling tick: reconcile objective progress immediately so the executive
+    # state, operational projection, portfolio status, and memory writeback
+    # share one durable outcome boundary.
+    if truth.get("status") in {"COMPLETED", "FAILED", "BLOCKED"}:
+        for objective_id in sorted(affected_objectives):
+            try:
+                evaluate_objective_progress(database, objective_id, controller=controller)
+            except (ValueError, RuntimeError):
+                # The mission/verifier truth remains authoritative even if a
+                # malformed historical plan cannot be evaluated.
+                continue
     return {**truth, "changed_steps": [{"plan_id": pid, "step_id": sid} for pid, sid in changed_steps]}
 
 
@@ -1288,6 +1422,27 @@ def _objective_blockers(database: FoundryDatabase, objective: ObjectiveRecord) -
     return tuple(dict.fromkeys(blockers))
 
 
+def _objective_has_retryable_failure(
+    database: FoundryDatabase,
+    objective: ObjectiveRecord,
+) -> bool:
+    """A FAILED objective may be reopened only for a bounded retry."""
+    plan = active_plan(database, objective.objective_id)
+    if plan is None:
+        return False
+    return any(
+        step.status == "FAILED"
+        and _failure_count(database, objective.objective_id, step.step_id) < step.max_retries
+        for step in plan.steps
+    )
+def _objective_has_failed_step(
+    database: FoundryDatabase,
+    objective: ObjectiveRecord,
+) -> bool:
+    plan = active_plan(database, objective.objective_id)
+    return bool(plan and any(step.status == "FAILED" for step in plan.steps))
+
+
 def _objective_failure_history(database: FoundryDatabase, objective_id: str) -> float:
     failures = 0
     attempts = 0
@@ -1324,7 +1479,14 @@ def rank_objectives(
                 descendants[dependency] += 1
     result: list[PriorityScore] = []
     for objective in state.objectives.values():
-        if not include_terminal and objective.status in _TERMINAL_OBJECTIVE:
+        if (
+            not include_terminal
+            and objective.status in _TERMINAL_OBJECTIVE
+            and not (
+                objective.status == "FAILED"
+                and _objective_has_failed_step(database, objective)
+            )
+        ):
             continue
         blockers = _objective_blockers(database, objective)
         age = 0.0
@@ -1349,7 +1511,13 @@ def rank_objectives(
             "reversibility": _clamp(objective.reversibility),
         }
         score = sum(_PRIORITY_WEIGHTS[name] * factors[name] for name in _PRIORITY_WEIGHTS)
-        eligible = not blockers and objective.status in _ACTIVE_OBJECTIVE
+        eligible = not blockers and (
+            objective.status in _ACTIVE_OBJECTIVE
+            or (
+                objective.status == "FAILED"
+                and _objective_has_failed_step(database, objective)
+            )
+        )
         if not eligible:
             score = 0.0
         parts = ", ".join(f"{name}={value:.2f}" for name, value in factors.items() if value)
@@ -1474,6 +1642,105 @@ def decide_continuation(
     return decision
 
 
+def propose_operational_followups(
+    database: FoundryDatabase,
+    *,
+    controller: str = SUPERVISOR_CONTROLLER,
+    stop_path: str | Path | None = None,
+    max_proposals: int = 5,
+) -> list[dict[str, Any]]:
+    """Admit salient operational discoveries as non-executable proposals.
+
+    This is the only Executive/Operational hand-off.  It records a durable,
+    provenance-backed proposal and deliberately does *not* create an
+    objective, portfolio item, mission, schedule, or provider call.  An owner
+    directive or an existing policy must subsequently authorize any work.
+    """
+    _gate(database, controller, stop_path=stop_path)
+    from ..operational_intelligence import project_operational_intelligence
+
+    projection = project_operational_intelligence(
+        database,
+        stop_path=stop_path,
+    )
+    followups = list(projection.get("followups") or ())
+    recurring = projection.get("recurring_work") or {}
+    patterns = {
+        str(row.get("fingerprint") or "")
+        for row in (recurring.get("patterns") or ())
+        if isinstance(row, Mapping)
+    }
+    eligible: list[dict[str, Any]] = []
+    for followup in followups:
+        if not isinstance(followup, Mapping):
+            continue
+        if str(followup.get("state") or "").upper() != "OPEN":
+            continue
+        salience = str(followup.get("salience") or "UNKNOWN").upper()
+        recurrence = max(0, int(_number(followup.get("recurrence_count"))))
+        if salience not in {"CREATE_WORK", "OWNER_ATTENTION", "URGENT"} and (
+            recurrence < 2 or str(followup.get("fingerprint") or "") not in patterns
+        ):
+            continue
+        eligible.append(dict(followup))
+    eligible.sort(key=lambda row: (
+        {"URGENT": 0, "OWNER_ATTENTION": 1, "CREATE_WORK": 2}.get(
+            str(row.get("salience") or "").upper(), 3
+        ),
+        -max(0, int(_number(row.get("recurrence_count")))),
+        str(row.get("follow_up_id") or ""),
+    ))
+    prior_state = rebuild_executive_state(database)
+    prior_by_followup = {
+        str(row.get("follow_up_id") or ""): row
+        for row in prior_state.operational_followup_proposals.values()
+        if str(row.get("status") or "").upper() == "PROPOSED"
+    }
+    proposals: list[dict[str, Any]] = []
+    for followup in eligible[: max(0, int(max_proposals))]:
+        followup_id = str(followup.get("follow_up_id") or "")
+        if not followup_id:
+            continue
+        # One open operational follow-up maps to one executive proposal.  A
+        # fresh projection may contain more recurrence evidence, but that is a
+        # refresh of the same concern—not permission to append another work
+        # request on every polling cycle.
+        prior = prior_by_followup.get(followup_id)
+        if prior is not None:
+            proposals.append(dict(prior))
+            continue
+        source_events = tuple(str(value) for value in (followup.get("source_event_ids") or ()) if value)
+        proposal_id = f"operational-followup:{followup_id}"
+        payload = {
+            "proposal_id": proposal_id,
+            "follow_up_id": followup_id,
+            "signal_id": followup.get("provenance", {}).get("signal_id") if isinstance(followup.get("provenance"), Mapping) else None,
+            "fingerprint": followup.get("fingerprint"),
+            "kind": followup.get("kind"),
+            "salience": str(followup.get("salience") or "UNKNOWN").upper(),
+            "summary": followup.get("summary"),
+            "next_action": followup.get("next_action"),
+            "source_event_ids": list(source_events),
+            "evidence_refs": list(followup.get("evidence_refs") or ()),
+            "mission_id": followup.get("mission_id"),
+            "recurrence_count": max(0, int(_number(followup.get("recurrence_count")))),
+            "status": "PROPOSED",
+            "requires_owner_or_policy": True,
+            "auto_create_objective": False,
+            "auto_materialize": False,
+            "authority": "owner_control_and_existing_executive_policy",
+        }
+        _append(
+            database,
+            "executive.operational_followup_proposed",
+            payload,
+            key=f"executive.operational_followup_proposed:{proposal_id}",
+            source_id="v8-operational-executive-bridge",
+        )
+        proposals.append(payload)
+    return proposals
+
+
 @dataclass(frozen=True, slots=True)
 class AutonomyCycle:
     cycle_id: str
@@ -1487,6 +1754,7 @@ class AutonomyCycle:
     continuation: ContinuationDecision | None
     status: str
     reason: str
+    operational_proposals: tuple[dict[str, Any], ...] = ()
 
     def to_payload(self) -> dict[str, Any]:
         return {
@@ -1498,7 +1766,83 @@ class AutonomyCycle:
             "portfolio_decision": dict(self.portfolio_decision), "materialization": dict(self.materialization),
             "continuation": self.continuation.to_payload() if self.continuation else None,
             "status": self.status, "reason": self.reason,
+            "operational_proposals": [dict(row) for row in self.operational_proposals],
         }
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "AutonomyCycle":
+        """Restore a previously recorded cycle without re-running it."""
+        coordination_payload = _json(payload.get("coordination"))
+        coordination = CoordinationDecision(
+            decision_id=str(coordination_payload.get("decision_id") or ""),
+            objective_ids=_tuple(coordination_payload.get("objective_ids")),
+            selected_objective_id=(
+                str(coordination_payload["selected_objective_id"])
+                if coordination_payload.get("selected_objective_id") else None
+            ),
+            reason=str(coordination_payload.get("reason") or ""),
+            conflicts=tuple(
+                dict(row) for row in (coordination_payload.get("conflicts") or ())
+                if isinstance(row, Mapping)
+            ),
+            concurrency=_json(coordination_payload.get("concurrency")),
+            allocations=_json(coordination_payload.get("allocations")),
+        )
+        ranking = tuple(
+            PriorityScore(
+                objective_id=str(row.get("objective_id") or ""),
+                score=_number(row.get("score")),
+                factors={str(key): _number(value) for key, value in _json(row.get("factors")).items()},
+                explanation=str(row.get("explanation") or ""),
+                eligible=bool(row.get("eligible", True)),
+                blockers=_tuple(row.get("blockers")),
+            )
+            for row in (payload.get("ranking") or ())
+            if isinstance(row, Mapping)
+        )
+        continuation_payload = payload.get("continuation")
+        continuation = None
+        if isinstance(continuation_payload, Mapping):
+            continuation = ContinuationDecision(
+                objective_id=str(continuation_payload.get("objective_id") or ""),
+                action=str(continuation_payload.get("action") or "WAIT"),
+                reason=str(continuation_payload.get("reason") or ""),
+                evidence_refs=_tuple(continuation_payload.get("evidence_refs")),
+                next_step_id=(
+                    str(continuation_payload["next_step_id"])
+                    if continuation_payload.get("next_step_id") else None
+                ),
+                retry_number=max(0, int(_number(continuation_payload.get("retry_number")))),
+                escalation_id=(
+                    str(continuation_payload["escalation_id"])
+                    if continuation_payload.get("escalation_id") else None
+                ),
+                wake_on=_tuple(continuation_payload.get("wake_on")),
+            )
+        return cls(
+            cycle_id=str(payload.get("cycle_id") or ""),
+            objective_id=(str(payload["objective_id"]) if payload.get("objective_id") else None),
+            coordination=coordination,
+            ranking=ranking,
+            plans=tuple(
+                PlanRecord.from_payload(row)
+                for row in (payload.get("plans") or ())
+                if isinstance(row, Mapping)
+            ),
+            mission_requests=tuple(
+                dict(row) for row in (payload.get("mission_requests") or ())
+                if isinstance(row, Mapping)
+            ),
+            portfolio_decision=_json(payload.get("portfolio_decision")),
+            materialization=_json(payload.get("materialization")),
+            continuation=continuation,
+            status=str(payload.get("status") or "UNKNOWN"),
+            reason=str(payload.get("reason") or ""),
+            operational_proposals=tuple(
+                dict(row) for row in (payload.get("operational_proposals") or ())
+                if isinstance(row, Mapping)
+            ),
+        )
 
 
 def run_autonomy_cycle(
@@ -1509,9 +1853,39 @@ def run_autonomy_cycle(
     capability: str = "write_registered_worktree_files",
     controller: str = SUPERVISOR_CONTROLLER,
     max_new_missions: int = 1,
+    stop_path: str | Path | None = None,
 ) -> AutonomyCycle:
     """Run one bounded executive pass through existing portfolio and mission authorities."""
-    _gate(database, controller)
+    _gate(database, controller, stop_path=stop_path)
+    # A cycle id is a durable idempotency boundary.  Replaying it after a
+    # crash or duplicate scheduler tick returns the recorded decision rather
+    # than creating another plan, portfolio item, or mission request.  Query
+    # the immutable idempotency key directly instead of a bounded recent-event
+    # window so an old cycle remains replay-safe after thousands of later
+    # ledger events.
+    cycle_key = f"executive.autonomy_cycle_recorded:{cycle_id}"
+    with database.connect(readonly=True) as connection:
+        recorded = connection.execute(
+            "SELECT payload_json FROM events "
+            "WHERE event_type = 'executive.autonomy_cycle_recorded' "
+            "AND idempotency_key = ? ORDER BY sequence DESC LIMIT 1",
+            (cycle_key,),
+        ).fetchone()
+    if recorded is not None:
+        try:
+            payload = json.loads(str(recorded[0]))
+            return AutonomyCycle.from_payload(payload)
+        except (TypeError, ValueError, KeyError) as error:
+            # A corrupt receipt is an authority-integrity failure.  Do not
+            # rerun and risk a conflicting append under the same idempotency
+            # key; surface the failure for the Supervisor to reconcile.
+            raise RuntimeError("recorded autonomy cycle payload is invalid") from error
+    operational_proposals = tuple(propose_operational_followups(
+        database,
+        controller=controller,
+        stop_path=stop_path,
+        max_proposals=5,
+    ))
     sync_owner_goals(database, controller=controller)
     state = rebuild_executive_state(database)
     plans: list[PlanRecord] = []
@@ -1541,7 +1915,14 @@ def run_autonomy_cycle(
     if selected_oid is not None and (pre_continuation is None or pre_continuation.action != "CLOSE"):
         from ..evolution.executive_portfolio import claim_selection, release_selection_claim, select_next_work
         from .portfolio_bridge import materialize_portfolio_selection
-        decision = select_next_work(database, loop_id=f"executive:{cycle_id}", resource_id=resource_id or state.objectives[selected_oid].resource_id, capability=capability, source_id="v8-executive-autonomy")
+        decision = select_next_work(
+            database,
+            loop_id=f"executive:{cycle_id}",
+            resource_id=resource_id or state.objectives[selected_oid].resource_id,
+            capability=capability,
+            source_id="v8-executive-autonomy",
+            objective_id=selected_oid,
+        )
         portfolio_payload = decision.to_payload()
         if decision.kind == "SELECT" and decision.entity_id:
             resolved_resource = str(decision.selected_item.get("resource_id") or resource_id or state.objectives[selected_oid].resource_id or "")
@@ -1565,7 +1946,11 @@ def run_autonomy_cycle(
     reason = str(materialization.get("blocked_reason") or portfolio_payload.get("reason") or "cycle completed")
     if continuation is not None and continuation.action == "CLOSE":
         status, reason = "CLOSED", continuation.reason
-    cycle = AutonomyCycle(cycle_id, selected_oid, coordination, ranking, tuple(plans), tuple(requests), portfolio_payload, materialization, continuation, status, reason)
+    cycle = AutonomyCycle(
+        cycle_id, selected_oid, coordination, ranking, tuple(plans),
+        tuple(requests), portfolio_payload, materialization, continuation,
+        status, reason, operational_proposals,
+    )
     _append(database, "executive.autonomy_cycle_recorded", cycle.to_payload(), key=f"executive.autonomy_cycle_recorded:{cycle_id}", source_id="v8-executive-autonomy", correlation_id=selected_oid)
     return cycle
 
@@ -1635,6 +2020,9 @@ def executive_autonomy_snapshot(database: FoundryDatabase, *, include_briefing: 
         "coordination": {key: value.to_payload() for key, value in state.coordination.items()},
         "progress": {key: value.to_payload() for key, value in state.progress.items()},
         "mission_requests": {key: dict(value) for key, value in state.mission_requests.items()},
+        "operational_followup_proposals": {
+            key: dict(value) for key, value in state.operational_followup_proposals.items()
+        },
         "latest_cycle": dict(latest_cycle or {}),
         "briefing": briefing.to_payload() if briefing else None,
     }
@@ -1648,6 +2036,6 @@ __all__ = [
     "build_plan", "active_plan", "plan_ready_steps", "generate_missions_for_objective",
     "bind_mission_to_step", "observe_mission_outcome", "evaluate_objective_progress",
     "decide_continuation", "record_escalation", "resolve_escalation", "rank_objectives",
-    "coordinate_objectives", "run_autonomy_cycle", "build_executive_briefing",
+    "coordinate_objectives", "propose_operational_followups", "run_autonomy_cycle", "build_executive_briefing",
     "record_executive_briefing", "executive_autonomy_snapshot",
 ]

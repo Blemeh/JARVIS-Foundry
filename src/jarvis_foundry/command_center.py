@@ -1706,6 +1706,31 @@ def build_snapshot(
 
     portfolio_projection = _portfolio_projection(database, limit=10)
     executive_projection = _executive_projection(database, limit=25)
+    # V8 Executive Autonomy is an additive subprojection of the established
+    # executive decision surface.  Both views are derived from the same
+    # ledger; the autonomy service is the sole owner of objectives/plans and
+    # the legacy projection remains the sole owner of V3 decision history.
+    try:
+        from .executive.autonomy import executive_autonomy_snapshot
+        autonomy_projection = executive_autonomy_snapshot(database)
+    except Exception as error:  # noqa: BLE001 - read model fails closed
+        autonomy_projection = {
+            "status": "UNKNOWN",
+            "reason": f"{type(error).__name__}: {error}",
+            "objectives": {},
+            "plans": {},
+            "priorities": [],
+            "continuations": {},
+            "escalations": {},
+            "coordination": {},
+            "progress": {},
+            "mission_requests": {},
+            "operational_followup_proposals": {},
+            "latest_cycle": {},
+            "briefing": None,
+        }
+    executive_projection = dict(executive_projection)
+    executive_projection["autonomy"] = autonomy_projection
     postv7_projection = _postv7_projection(
         database,
         portfolio=portfolio_projection,

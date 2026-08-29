@@ -442,6 +442,7 @@ def _maybe_executive_autonomy(
     database: FoundryDatabase,
     config: WorkerRuntimeConfig,
     *,
+    paths: FoundryPaths,
     loop_id: str,
     instance_id: str,
 ) -> str | None:
@@ -457,6 +458,7 @@ def _maybe_executive_autonomy(
             resource_id=config.resource_id,
             capability=config.capability,
             max_new_missions=1,
+            stop_path=_default_stop_path(paths, config),
         )
     except Exception as error:  # noqa: BLE001 - fail closed and keep loop alive
         database.append(Event.create(
@@ -884,6 +886,42 @@ def _advisory_accepted_outcome_writeback(
         return
 
 
+def _advisory_mission_outcome_writeback(
+    database: FoundryDatabase, *, mission_id: str, outcome: Any,
+) -> None:
+    """Record every terminal result as advisory, provenance-backed memory.
+
+    Verified PASS retains the historical accepted-outcome record.  FAILED and
+    BLOCKED results are equally valuable for future executive planning, but
+    remain advisory and can never override the mission/verifier projection.
+    """
+    status = str(getattr(outcome, "outcome", "UNKNOWN") or "UNKNOWN").upper()
+    if status == "PASSED":
+        _advisory_accepted_outcome_writeback(
+            database, mission_id=mission_id, outcome=outcome)
+        return
+    if status not in {"FAILED", "BLOCKED", "CANCELLED"}:
+        return
+    try:
+        from ..hybrid_memory.lifecycle import TierCMemoryStore
+        run_id = getattr(outcome, "run_id", None) or "unknown"
+        step_id = getattr(outcome, "step_id", None) or "unknown"
+        reason = str(getattr(outcome, "reason", "") or "").strip()
+        store = TierCMemoryStore(database)
+        store.record_observation(
+            f"mission outcome {status.lower()} mission={mission_id} step={step_id}"
+            + (f" reason={reason[:240]}" if reason else ""),
+            mission_id=mission_id,
+            created_by="worker-loop",
+            source_ids=[f"mission:{mission_id}", f"run:{run_id}"],
+            evidence_ids=[str(getattr(outcome, "verdict_id", "") or "")],
+            confidence=0.65,
+            idempotency_key=f"memory.observed:outcome:{mission_id}:{run_id}:{status}",
+        )
+    except Exception:
+        return
+
+
 def _commit_envelope(
     database: FoundryDatabase, contract: MissionStepContract,
 ) -> ActionEnvelope | None:
@@ -1017,7 +1055,8 @@ def run_cycle(
             mission_id = _select_contract(database)
             if mission_id is None and config.executive_autonomy_enabled:
                 mission_id = _maybe_executive_autonomy(
-                    database, config, loop_id=loop_id, instance_id=instance_id)
+                    database, config, paths=paths,
+                    loop_id=loop_id, instance_id=instance_id)
             if mission_id is None and config.executive_selection_enabled:
                 mission_id = _maybe_executive_select(
                     database, config, loop_id=loop_id, instance_id=instance_id)
@@ -1115,7 +1154,7 @@ def run_cycle(
                     mission_id=mission_id,
                     reason=f"V3 outcome proof blocked: {error}",
                 )
-            _advisory_accepted_outcome_writeback(
+            _advisory_mission_outcome_writeback(
                 database, mission_id=mission_id, outcome=outcome)
         mission_after = database.row("missions", "mission_id", mission_id) or {}
         portfolio_terminal = (
@@ -1124,6 +1163,12 @@ def run_cycle(
                 and str(mission_after.get("state") or "") == "COMPLETE")
         )
         if portfolio_terminal:
+            # Keep the memory/knowledge authority in the same terminal
+            # boundary for PASS, FAIL, and BLOCKED outcomes.  The writeback is
+            # advisory; mission and verifier projections remain authoritative.
+            if terminal != "PASSED":
+                _advisory_mission_outcome_writeback(
+                    database, mission_id=mission_id, outcome=outcome)
             _record_executive_outcome(
                 database, mission_id=mission_id, outcome=outcome,
                 instance_id=instance_id)

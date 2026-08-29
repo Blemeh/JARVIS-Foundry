@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { BrainCircuit, CircleSlash, Clock, MinusCircle } from "lucide-react";
 import { useCommandCenter } from "../context/CommandCenterContext";
-import type { FoundryExecutiveDecision } from "../lib/snapshotTypes";
+import type { FoundryExecutive, FoundryExecutiveAutonomy, FoundryExecutiveDecision } from "../lib/snapshotTypes";
 import type { OwnerControlSurface } from "../lib/contracts";
 import { SectionHeader } from "../components/SectionHeader";
 import { StatusBadge } from "../components/StatusBadge";
@@ -119,7 +119,68 @@ type ExecutiveData = {
   epoch: string | null;
   authority: string;
   ownerSurface: OwnerControlSurface | null;
+  autonomy: FoundryExecutiveAutonomy | null;
 };
+
+function autonomyText(value: unknown, fallback = "UNKNOWN"): string {
+  if (typeof value === "string" && value.trim()) return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return fallback;
+}
+
+function AutonomySurface({ autonomy }: { autonomy: FoundryExecutiveAutonomy | null }) {
+  const objectives = Object.values(autonomy?.objectives ?? {});
+  const priorities = autonomy?.priorities ?? [];
+  const proposals = Object.values(autonomy?.operational_followup_proposals ?? {});
+  const cycle = autonomy?.latest_cycle;
+  const briefing = autonomy?.briefing;
+  return (
+    <section className="panel" aria-label="V8 executive autonomy">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="t-label">Autonomous objectives</h2>
+          <p className="mt-1 text-xs opacity-60">Durable objectives and operational proposals projected from Supervisor-owned ledger state.</p>
+        </div>
+        <StatusBadge status={autonomy ? autonomyText(autonomy.status, objectives.length ? "READY" : "EMPTY_LEDGER") : "UNKNOWN"} />
+      </div>
+      {objectives.length === 0 ? (
+        <p className="mt-3 text-sm opacity-60">No durable objective is recorded. Operational discoveries remain proposals until owner or policy authority admits them.</p>
+      ) : (
+        <div className="mt-3 grid gap-2 md:grid-cols-2">
+          {objectives.slice(0, 8).map((objective) => {
+            const id = autonomyText(objective.objective_id);
+            const status = autonomyText(objective.status);
+            const progress = typeof objective.progress === "number" && Number.isFinite(objective.progress)
+              ? `${Math.round(objective.progress * 100)}%`
+              : "UNKNOWN";
+            const priority = typeof objective.priority === "number" && Number.isFinite(objective.priority)
+              ? objective.priority.toFixed(2)
+              : "UNKNOWN";
+            return (
+              <article key={id} className="rounded border border-white/10 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="t-label truncate">{id}</span>
+                  <StatusBadge status={status} />
+                </div>
+                <p className="mt-2 text-sm">{autonomyText(objective.objective)}</p>
+                <p className="mt-1 text-xs opacity-60">priority {priority} · progress {progress}</p>
+              </article>
+            );
+          })}
+        </div>
+      )}
+      <div className="mt-3 grid gap-2 text-xs opacity-75 md:grid-cols-3">
+        <span>Ranked {priorities.length || "UNKNOWN"}</span>
+        <span>Operational proposals {proposals.length || "NONE"}</span>
+        <span>Last cycle {autonomyText(cycle?.cycle_id, "NONE")}</span>
+      </div>
+      {proposals.length > 0 && (
+        <p className="mt-2 text-xs opacity-60">Proposal state is non-executable: owner/policy authority is required before objective or mission creation.</p>
+      )}
+      {briefing && <p className="mt-2 text-xs opacity-50">Briefing {autonomyText(briefing.briefing_id)} · evidence-backed next-work selection remains Supervisor-owned.</p>}
+    </section>
+  );
+}
 
 function recordText(value: unknown): string {
   if (typeof value === "string" && value.trim()) return value;
@@ -232,6 +293,7 @@ export function Executive() {
         epoch: e.activation_epoch,
         authority: e.admission_authority,
         ownerSurface,
+        autonomy: (e as FoundryExecutive).autonomy ?? null,
       } satisfies ExecutiveData)),
     [client, version],
   );
@@ -244,7 +306,7 @@ export function Executive() {
       surface="Executive decision spine"
       shellClass="space-y-4"
     >
-      {({ decisions, epoch, authority, ownerSurface }) => (
+      {({ decisions, epoch, authority, ownerSurface, autonomy }) => (
     <div className="space-y-4">
       <SectionHeader
         title="Executive"
@@ -254,6 +316,7 @@ export function Executive() {
         }
       />
       <BriefingPacket packet={ownerSurface?.briefingPacket ?? null} />
+      <AutonomySurface autonomy={autonomy} />
       {decisions.length === 0 ? (
         <EmptyState
           label="No executive decisions recorded"

@@ -120,9 +120,10 @@ function normalizeOperationalIntelligence(value: unknown): OperationalIntelligen
 /** One snapshot round-trip for live mode; parallel mock calls for simulated mode. */
 export async function loadOverviewData(client: JarvisClient): Promise<OverviewData> {
   if (client instanceof RealJarvisRuntimeAdapter) {
-    const snapshot = await client.fetchSnapshot()
-    const ownerSurface = mapOwnerControlSurface(snapshot)
-    const discovery = isRecord(snapshot.discovery) ? snapshot.discovery : null
+      const snapshot = await client.fetchSnapshot()
+      const ownerSurface = mapOwnerControlSurface(snapshot)
+      const discovery = isRecord(snapshot.discovery) ? snapshot.discovery : null
+      const operationalRaw = discovery?.operational_intelligence
     return {
       missions: mapMissions(snapshot),
       overview: mapSystemOverview(snapshot),
@@ -134,7 +135,7 @@ export async function loadOverviewData(client: JarvisClient): Promise<OverviewDa
       ownerAttention: ownerSurface.decisionQueue?.open ?? [],
       obsidianVault: mapObsidianVault(snapshot),
       ownerSurface,
-      operationalIntelligence: normalizeOperationalIntelligence(discovery?.operational_intelligence),
+        operationalIntelligence: normalizeOperationalIntelligence(operationalRaw),
     }
   }
 
