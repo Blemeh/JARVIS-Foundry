@@ -75,6 +75,28 @@ def filesystem_read(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
     }
 
 
+def dir_list(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
+    target = str(payload.get("target") or ".")
+    path = (ctx.owned_root / target).resolve() if target != "." else ctx.owned_root
+    try:
+        path.relative_to(ctx.owned_root)
+    except ValueError as error:
+        raise FabricError("dir.list target escapes owned root") from error
+    if not path.is_dir():
+        return {"claimed": "FAILED", "target": target, "names": [], "error_code": "not_a_directory"}
+    names = sorted(
+        item.name for item in path.iterdir()
+        if item.name != FilesystemConnector.LEDGER_NAME
+    )
+    return {
+        "claimed": "COMPLETED",
+        "target": target,
+        "path": str(path),
+        "names": names,
+        "count": len(names),
+    }
+
+
 def _git_connector(ctx: ExecutorContext) -> GitConnector:
     return GitConnector(ctx.database, owned_root=ctx.owned_root)
 
@@ -285,12 +307,16 @@ def script_hash_file(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[s
 HANDLERS: dict[str, Callable[[ExecutorContext, Mapping[str, Any]], dict[str, Any]]] = {
     "file.write": filesystem_write,
     "file.read": filesystem_read,
+    "dir.list": dir_list,
     "git.inspect": git_inspect,
     "git.commit": git_commit,
     "github.repo.read": github_research,
     "github.issue.read": github_research,
     "github.pull_request.read": github_research,
     "github.commit.read": github_research,
+    "github.check.read": github_research,
+    "github.release.read": github_research,
+    "github.search.read": github_research,
     "github.identity.read": github_identity,
     "github.issue.create": github_issue_create,
     "system.diagnose": system_diagnose,

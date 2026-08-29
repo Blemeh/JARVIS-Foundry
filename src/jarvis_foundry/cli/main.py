@@ -100,6 +100,12 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         help="sync provider credentials into Hermes home .env",
     )
+    fabric = sub.add_parser(
+        "fabric", parents=[home_option],
+        help="inspect the capability fabric catalog in a disposable home",
+    )
+    fabric_sub = fabric.add_subparsers(dest="fabric_command", required=True)
+    fabric_sub.add_parser("catalog", parents=[home_option])
     backup = release_sub.add_parser("backup-db")
     backup.add_argument("--destination", type=Path, required=True)
     migrate = release_sub.add_parser("migrate-clone")
@@ -262,6 +268,19 @@ def main(argv: list[str] | None = None) -> int:
         if args.apply:
             return run_apply()
         return run_interactive_setup()
+    elif args.command == "fabric":
+        live_home = FoundryPaths.discover(None).home
+        if getattr(args, "home", None) is None or paths.home == live_home:
+            print(json.dumps({
+                "error": "fabric catalog requires an explicit disposable --home",
+                "live_home": str(live_home),
+            }, indent=2))
+            return 1
+        database.initialize()
+        from ..fabric import catalog_snapshot, seed_builtins
+        seed_builtins(database)
+        print(json.dumps(catalog_snapshot(database), indent=2))
+        return 0
     elif args.command == "release":
         return _release_command(args, paths)
     return 0

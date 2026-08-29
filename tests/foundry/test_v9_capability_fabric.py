@@ -323,6 +323,44 @@ def test_live_github_identity_when_gh_is_authenticated() -> None:
     assert remaining is None or isinstance(remaining, int)
 
 
+def test_dir_list_and_cli_catalog(tmp_path: Path) -> None:
+    database = _db(tmp_path)
+    ctx = _ctx(tmp_path, database)
+    seed_builtins(database)
+    (ctx.owned_root / "alpha.txt").write_text("a", encoding="utf-8")
+    listed = execute_action(
+        database, ctx, _intent("dir.list"), "dir.list", {"target": "."},
+    )
+    assert listed.success is True
+    assert "alpha.txt" in listed.claimed_effect["names"]
+
+    from jarvis_foundry.cli.main import main
+    home = tmp_path / "cli-home"
+    home.mkdir()
+    code = main(["--home", str(home), "fabric", "catalog"])
+    assert code == 0
+    refuse = main(["fabric", "catalog"])
+    assert refuse == 1
+
+
+def test_git_inspect_after_commit(tmp_path: Path) -> None:
+    database = _db(tmp_path)
+    ctx = _ctx(tmp_path, database)
+    seed_builtins(database)
+    work, bare = _clone_repo(tmp_path, ctx.owned_root)
+    committed = execute_action(
+        database, ctx, _intent("git.commit"), "git.commit",
+        {"worktree": str(work), "changes": {"seen.txt": "inspect\n"}, "message": "inspect me"},
+    )
+    assert committed.success is True
+    inspected = execute_action(
+        database, ctx, _intent("git.inspect"), "git.inspect",
+        {"worktree": str(work), "remote": str(bare)},
+    )
+    assert inspected.success is True
+    assert inspected.claimed_effect["head"] == committed.claimed_effect["head"]
+
+
 def test_tests_and_owned_script_run(tmp_path: Path) -> None:
     database = _db(tmp_path)
     ctx = _ctx(tmp_path, database)

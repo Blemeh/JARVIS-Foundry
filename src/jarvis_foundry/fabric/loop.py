@@ -49,6 +49,11 @@ def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
             unattended=UnattendedMode.ALLOWED,
         ),
         CapabilitySpec(
+            capability_id="cap.dir.list", version="1.0.0", kind=Kind.TOOL,
+            action_kind="dir.list", semantic=Semantic.READ, executor="local",
+            unattended=UnattendedMode.ALLOWED,
+        ),
+        CapabilitySpec(
             capability_id="cap.git.inspect", version="1.0.0", kind=Kind.CONNECTOR,
             action_kind="git.inspect", semantic=Semantic.READ, executor="git",
             unattended=UnattendedMode.ALLOWED,
@@ -251,6 +256,14 @@ def _verify(action_kind: str, claimed: Mapping[str, Any], owned_root: Path) -> V
         return VerifyVerdict.MATCH if claimed.get("head") else VerifyVerdict.MISMATCH
     if action_kind == "file.read":
         return VerifyVerdict.MATCH if claimed.get("exists") else VerifyVerdict.MISMATCH
+    if action_kind == "dir.list":
+        names = claimed.get("names") or []
+        path = Path(claimed.get("path") or owned_root)
+        if claimed.get("claimed") != "COMPLETED" or not path.is_dir():
+            return VerifyVerdict.MISMATCH
+        if all((path / name).exists() for name in names):
+            return VerifyVerdict.MATCH
+        return VerifyVerdict.MISMATCH
     if action_kind == "llm.dispatch":
         return VerifyVerdict.UNKNOWN
     return VerifyVerdict.UNKNOWN

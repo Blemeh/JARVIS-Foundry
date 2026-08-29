@@ -1,6 +1,6 @@
 # V9 Capability Fabric checkpoint
 
-SHA: (update after commit)
+SHA: `2be4c09d004af28b4d3b015520a685a55a755900` (milestone 1; update after next commit)
 Branch: `candidate/v9-capability-fabric-20260830`
 Worktree: `C:\temp\JARVIS-V9-Capability-Fabric-20260830`
 Base: `84db5d338313d835b2540796dbed24489646ceae`
@@ -8,11 +8,11 @@ Base: `84db5d338313d835b2540796dbed24489646ceae`
 ## Completed
 
 - Event-sourced capability catalog. Registration is not readiness. UNKNOWN stays UNKNOWN. READY requires verified SUCCESS.
-- INTENT loop: select → execute via existing connectors/tools → verify actual effect → remember outcome.
-- NEED loop: detect missing action, specify gap, write candidate under owned root, focused test, reject or register, retry.
-- Provider routing: OpenCode contributor models are INTERACTIVE_REQUIRED without Hermes noninteractive consent. No silent LLM substitution.
-- Real actions: filesystem, git commit, GitHub read/identity/issue-create (injected write), system diagnose, pytest, owned-root script, research→artifact workflow.
-- Ten required workflows proven in `tests/foundry/test_v9_capability_fabric.py`.
+- INTENT and NEED loops with owned-root candidate generation.
+- Provider routing: OpenCode contributor models are INTERACTIVE_REQUIRED without Hermes noninteractive consent.
+- Real actions: filesystem, dir.list, git inspect/commit, GitHub read family, issue create via explicit transport, system diagnose, pytest, owned-root script, research artifact.
+- `jarvis --home <disposable> fabric catalog` lists actual capabilities. Live home is refused.
+- Ten required workflows plus CLI/dir/git-inspect proofs in `tests/foundry/test_v9_capability_fabric.py`.
 
 ## Decisions
 
