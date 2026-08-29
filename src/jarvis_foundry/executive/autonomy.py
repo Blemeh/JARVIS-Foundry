@@ -1,0 +1,1653 @@
+"""Event-derived executive autonomy over the canonical mission spine.
+
+This module owns executive intent, planning, prioritisation and continuation
+decisions.  It deliberately does not execute work: portfolio selection,
+mission materialisation, the Supervisor and MissionLoop remain the existing
+authorities for those boundaries.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import math
+from dataclasses import dataclass, field, replace
+from datetime import datetime, timezone
+from typing import Any, Iterable, Mapping, Sequence
+
+from ..clock import isoformat
+from ..control.broker import emergency_stop_reason, matching_veto_reason
+from ..database import FoundryDatabase
+from ..events import Event, EventConflict, canonical_json
+from ..owner_directives import active_directives_for
+
+SUPERVISOR_CONTROLLER = "supervisor"
+_TERMINAL_OBJECTIVE = frozenset({"COMPLETED", "FAILED", "CANCELLED", "SUSPENDED"})
+_ACTIVE_OBJECTIVE = frozenset({"ACTIVE", "BLOCKED", "WAITING", "PLANNING", "REGRESSED"})
+_TERMINAL_STEP = frozenset({"COMPLETED", "FAILED", "CANCELLED"})
+
+
+def _number(value: Any, default: float = 0.0) -> float:
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return default
+    return value if math.isfinite(value) else default
+
+
+def _clamp(value: Any, low: float = 0.0, high: float = 1.0) -> float:
+    return max(low, min(high, _number(value)))
+
+
+def _tuple(values: Any) -> tuple[str, ...]:
+    if values is None:
+        return ()
+    if isinstance(values, str):
+        return (values,) if values else ()
+    try:
+        return tuple(str(value) for value in values if str(value))
+    except TypeError:
+        return (str(values),)
+
+
+def _hash(value: Any) -> str:
+    return hashlib.sha256(canonical_json(value).encode("utf-8")).hexdigest()[:24]
+
+
+def _timestamp(value: Any = None) -> str:
+    if value:
+        return str(value)
+    return isoformat()
+
+
+def _dt(value: Any) -> datetime | None:
+    if not value:
+        return None
+    if isinstance(value, datetime):
+        result = value
+    else:
+        text = str(value).replace("Z", "+00:00")
+        try:
+            result = datetime.fromisoformat(text)
+        except ValueError:
+            return None
+    return result if result.tzinfo else result.replace(tzinfo=timezone.utc)
+
+
+def _json(value: Any) -> dict[str, Any]:
+    return dict(value) if isinstance(value, Mapping) else {}
+
+
+def _append(
+    database: FoundryDatabase,
+    event_type: str,
+    payload: Mapping[str, Any],
+    *,
+    key: str,
+    source_id: str = "v8-executive-autonomy",
+    correlation_id: str | None = None,
+) -> str:
+    event = Event.create(
+        event_type,
+        dict(payload),
+        source_type="supervisor",
+        source_id=source_id,
+        correlation_id=correlation_id,
+        idempotency_key=key,
+    )
+    return str(database.append(event)[0])
+
+
+@dataclass(frozen=True, slots=True)
+class ObjectiveRecord:
+    objective_id: str
+    objective: str
+    parent_id: str | None = None
+    priority: float = 1.0
+    urgency: float = 0.0
+    deadline: str | None = None
+    constraints: tuple[str, ...] = ()
+    success_criteria: tuple[str, ...] = ()
+    failure_criteria: tuple[str, ...] = ()
+    dependencies: tuple[str, ...] = ()
+    owner_authority: str = "owner"
+    autonomy_boundaries: tuple[str, ...] = ()
+    budget: dict[str, float] = field(default_factory=dict)
+    expected_impact: float = 0.5
+    effort: float = 0.5
+    risk: float = 0.5
+    opportunity_cost: float = 0.0
+    blocking_value: float = 0.0
+    reversibility: float = 0.5
+    confidence: float = 0.5
+    resource_id: str | None = None
+    required_capabilities: tuple[str, ...] = ()
+    status: str = "ACTIVE"
+    progress: float = 0.0
+    provenance: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
+    mission_ids: tuple[str, ...] = ()
+    plan_ids: tuple[str, ...] = ()
+    conflicts_with: tuple[str, ...] = ()
+    version: int = 1
+    created_at: str = field(default_factory=isoformat)
+    updated_at: str = field(default_factory=isoformat)
+
+    def __post_init__(self) -> None:
+        if not self.objective_id or not self.objective.strip():
+            raise ValueError("objective_id and objective are required")
+        if self.status not in _ACTIVE_OBJECTIVE | _TERMINAL_OBJECTIVE:
+            raise ValueError(f"unsupported objective status: {self.status}")
+        if self.progress < 0 or self.progress > 1:
+            raise ValueError("progress must be between 0 and 1")
+
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "objective_id": self.objective_id,
+            "objective": self.objective,
+            "parent_id": self.parent_id,
+            "priority": self.priority,
+            "urgency": self.urgency,
+            "deadline": self.deadline,
+            "constraints": list(self.constraints),
+            "success_criteria": list(self.success_criteria),
+            "failure_criteria": list(self.failure_criteria),
+            "dependencies": list(self.dependencies),
+            "owner_authority": self.owner_authority,
+            "autonomy_boundaries": list(self.autonomy_boundaries),
+            "budget": dict(self.budget),
+            "expected_impact": self.expected_impact,
+            "effort": self.effort,
+            "risk": self.risk,
+            "opportunity_cost": self.opportunity_cost,
+            "blocking_value": self.blocking_value,
+            "reversibility": self.reversibility,
+            "confidence": self.confidence,
+            "resource_id": self.resource_id,
+            "required_capabilities": list(self.required_capabilities),
+            "status": self.status,
+            "progress": self.progress,
+            "provenance": dict(self.provenance),
+            "metadata": dict(self.metadata),
+            "mission_ids": list(self.mission_ids),
+            "plan_ids": list(self.plan_ids),
+            "conflicts_with": list(self.conflicts_with),
+            "version": self.version,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+        }
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "ObjectiveRecord":
+        p = dict(payload)
+        return cls(
+            objective_id=str(p.get("objective_id") or ""),
+            objective=str(p.get("objective") or ""),
+            parent_id=str(p["parent_id"]) if p.get("parent_id") else None,
+            priority=_number(p.get("priority"), 1.0),
+            urgency=_clamp(p.get("urgency"), -1.0, 1.0),
+            deadline=str(p["deadline"]) if p.get("deadline") else None,
+            constraints=_tuple(p.get("constraints")),
+            success_criteria=_tuple(p.get("success_criteria")),
+            failure_criteria=_tuple(p.get("failure_criteria")),
+            dependencies=_tuple(p.get("dependencies")),
+            owner_authority=str(p.get("owner_authority") or "owner"),
+            autonomy_boundaries=_tuple(p.get("autonomy_boundaries")),
+            budget={str(k): _number(v) for k, v in _json(p.get("budget")).items()},
+            expected_impact=_clamp(p.get("expected_impact")),
+            effort=_clamp(p.get("effort")),
+            risk=_clamp(p.get("risk")),
+            opportunity_cost=_clamp(p.get("opportunity_cost")),
+            blocking_value=_clamp(p.get("blocking_value")),
+            reversibility=_clamp(p.get("reversibility")),
+            confidence=_clamp(p.get("confidence")),
+            resource_id=str(p["resource_id"]) if p.get("resource_id") else None,
+            required_capabilities=_tuple(p.get("required_capabilities")),
+            status=str(p.get("status") or "ACTIVE"),
+            progress=_clamp(p.get("progress")),
+            provenance=_json(p.get("provenance")),
+            metadata=_json(p.get("metadata")),
+            mission_ids=_tuple(p.get("mission_ids")),
+            plan_ids=_tuple(p.get("plan_ids")),
+            conflicts_with=_tuple(p.get("conflicts_with")),
+            version=max(1, int(_number(p.get("version"), 1))),
+            created_at=_timestamp(p.get("created_at")),
+            updated_at=_timestamp(p.get("updated_at")),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class PlanStep:
+    step_id: str
+    objective_id: str
+    description: str
+    dependencies: tuple[str, ...] = ()
+    required_capabilities: tuple[str, ...] = ()
+    resource_id: str | None = None
+    output_contract: tuple[str, ...] = ()
+    verification_contract: tuple[str, ...] = ()
+    fallback: str | None = None
+    status: str = "READY"
+    mission_id: str | None = None
+    retries: int = 0
+    max_retries: int = 1
+    evidence_refs: tuple[str, ...] = ()
+
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "step_id": self.step_id, "objective_id": self.objective_id,
+            "description": self.description, "dependencies": list(self.dependencies),
+            "required_capabilities": list(self.required_capabilities),
+            "resource_id": self.resource_id, "output_contract": list(self.output_contract),
+            "verification_contract": list(self.verification_contract), "fallback": self.fallback,
+            "status": self.status, "mission_id": self.mission_id, "retries": self.retries,
+            "max_retries": self.max_retries, "evidence_refs": list(self.evidence_refs),
+        }
+
+    @classmethod
+    def from_payload(cls, p: Mapping[str, Any]) -> "PlanStep":
+        return cls(
+            step_id=str(p.get("step_id") or ""), objective_id=str(p.get("objective_id") or ""),
+            description=str(p.get("description") or ""), dependencies=_tuple(p.get("dependencies")),
+            required_capabilities=_tuple(p.get("required_capabilities")),
+            resource_id=str(p["resource_id"]) if p.get("resource_id") else None,
+            output_contract=_tuple(p.get("output_contract")),
+            verification_contract=_tuple(p.get("verification_contract")),
+            fallback=str(p["fallback"]) if p.get("fallback") else None,
+            status=str(p.get("status") or "READY"),
+            mission_id=str(p["mission_id"]) if p.get("mission_id") else None,
+            retries=max(0, int(_number(p.get("retries")))),
+            max_retries=max(0, int(_number(p.get("max_retries"), 1))),
+            evidence_refs=_tuple(p.get("evidence_refs")),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class PlanRecord:
+    plan_id: str
+    objective_id: str
+    steps: tuple[PlanStep, ...]
+    critical_path: tuple[str, ...] = ()
+    status: str = "ACTIVE"
+    version: int = 1
+    created_at: str = field(default_factory=isoformat)
+    updated_at: str = field(default_factory=isoformat)
+
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "plan_id": self.plan_id, "objective_id": self.objective_id,
+            "steps": [step.to_payload() for step in self.steps],
+            "critical_path": list(self.critical_path), "status": self.status,
+            "version": self.version, "created_at": self.created_at, "updated_at": self.updated_at,
+        }
+
+    @classmethod
+    def from_payload(cls, p: Mapping[str, Any]) -> "PlanRecord":
+        return cls(
+            plan_id=str(p.get("plan_id") or ""), objective_id=str(p.get("objective_id") or ""),
+            steps=tuple(PlanStep.from_payload(row) for row in (p.get("steps") or ()) if isinstance(row, Mapping)),
+            critical_path=_tuple(p.get("critical_path")), status=str(p.get("status") or "ACTIVE"),
+            version=max(1, int(_number(p.get("version"), 1))), created_at=_timestamp(p.get("created_at")),
+            updated_at=_timestamp(p.get("updated_at")),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class PriorityScore:
+    objective_id: str
+    score: float
+    factors: dict[str, float]
+    explanation: str
+    eligible: bool = True
+    blockers: tuple[str, ...] = ()
+
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "objective_id": self.objective_id, "score": self.score,
+            "factors": dict(self.factors), "explanation": self.explanation,
+            "eligible": self.eligible, "blockers": list(self.blockers),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ProgressEvaluation:
+    objective_id: str
+    status: str
+    progress: float
+    confidence: float
+    evidence_refs: tuple[str, ...]
+    completed_steps: int
+    failed_steps: int
+    stale: bool
+    explanation: str
+    regressed: bool = False
+
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "objective_id": self.objective_id, "status": self.status, "progress": self.progress,
+            "confidence": self.confidence, "evidence_refs": list(self.evidence_refs),
+            "completed_steps": self.completed_steps, "failed_steps": self.failed_steps,
+            "stale": self.stale, "explanation": self.explanation,
+            "regressed": self.regressed,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ContinuationDecision:
+    objective_id: str
+    action: str
+    reason: str
+    evidence_refs: tuple[str, ...] = ()
+    next_step_id: str | None = None
+    retry_number: int = 0
+    escalation_id: str | None = None
+    wake_on: tuple[str, ...] = ()
+
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "objective_id": self.objective_id, "action": self.action, "reason": self.reason,
+            "evidence_refs": list(self.evidence_refs), "next_step_id": self.next_step_id,
+            "retry_number": self.retry_number, "escalation_id": self.escalation_id,
+            "wake_on": list(self.wake_on),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class EscalationRecord:
+    escalation_id: str
+    objective_id: str
+    decision: str
+    why: str
+    evidence_refs: tuple[str, ...]
+    options: tuple[str, ...]
+    recommendation: str
+    delay_consequence: str
+    status: str = "OPEN"
+    created_at: str = field(default_factory=isoformat)
+
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "escalation_id": self.escalation_id, "objective_id": self.objective_id,
+            "decision": self.decision, "why": self.why, "evidence_refs": list(self.evidence_refs),
+            "options": list(self.options), "recommendation": self.recommendation,
+            "delay_consequence": self.delay_consequence, "status": self.status,
+            "created_at": self.created_at,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class CoordinationDecision:
+    decision_id: str
+    objective_ids: tuple[str, ...]
+    selected_objective_id: str | None
+    reason: str
+    conflicts: tuple[dict[str, Any], ...] = ()
+    concurrency: dict[str, Any] = field(default_factory=dict)
+    allocations: dict[str, Any] = field(default_factory=dict)
+
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "decision_id": self.decision_id, "objective_ids": list(self.objective_ids),
+            "selected_objective_id": self.selected_objective_id, "reason": self.reason,
+            "conflicts": [dict(row) for row in self.conflicts],
+            "concurrency": dict(self.concurrency), "allocations": dict(self.allocations),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ExecutiveBriefing:
+    briefing_id: str
+    generated_at: str
+    advanced: tuple[dict[str, Any], ...]
+    failed: tuple[dict[str, Any], ...]
+    changed_priorities: tuple[dict[str, Any], ...]
+    decisions: tuple[dict[str, Any], ...]
+    owner_actions: tuple[dict[str, Any], ...]
+    next_actions: tuple[dict[str, Any], ...]
+    blockers: tuple[dict[str, Any], ...]
+
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "briefing_id": self.briefing_id, "generated_at": self.generated_at,
+            "advanced": [dict(row) for row in self.advanced], "failed": [dict(row) for row in self.failed],
+            "changed_priorities": [dict(row) for row in self.changed_priorities],
+            "decisions": [dict(row) for row in self.decisions],
+            "owner_actions": [dict(row) for row in self.owner_actions],
+            "next_actions": [dict(row) for row in self.next_actions],
+            "blockers": [dict(row) for row in self.blockers],
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ExecutiveAutonomyState:
+    objectives: dict[str, ObjectiveRecord] = field(default_factory=dict)
+    plans: dict[str, PlanRecord] = field(default_factory=dict)
+    continuations: dict[str, ContinuationDecision] = field(default_factory=dict)
+    escalations: dict[str, EscalationRecord] = field(default_factory=dict)
+    coordination: dict[str, CoordinationDecision] = field(default_factory=dict)
+    briefings: dict[str, ExecutiveBriefing] = field(default_factory=dict)
+    mission_requests: dict[str, dict[str, Any]] = field(default_factory=dict)
+    progress: dict[str, ProgressEvaluation] = field(default_factory=dict)
+
+
+class ExecutiveAutonomyService:
+    """Small Supervisor-owned facade over the event-derived autonomy API."""
+
+    def __init__(self, database: FoundryDatabase, *, controller: str = SUPERVISOR_CONTROLLER) -> None:
+        self.database = database
+        self.controller = controller
+
+    def state(self) -> ExecutiveAutonomyState:
+        return rebuild_executive_state(self.database)
+
+    def sync_owner_goals(self) -> list[ObjectiveRecord]:
+        return sync_owner_goals(self.database, controller=self.controller)
+
+    def create_objective(self, objective: str, **kwargs: Any) -> ObjectiveRecord:
+        return create_objective(self.database, objective, controller=self.controller, **kwargs)
+
+    def update_objective(self, objective_id: str, changes: Mapping[str, Any]) -> ObjectiveRecord:
+        return update_objective(self.database, objective_id, changes, controller=self.controller)
+
+    def build_plan(self, objective_id: str, steps: Sequence[PlanStep | Mapping[str, Any]], **kwargs: Any) -> PlanRecord:
+        return build_plan(self.database, objective_id, steps, controller=self.controller, **kwargs)
+
+    def rank(self, **kwargs: Any) -> list[PriorityScore]:
+        return rank_objectives(self.database, controller=self.controller, **kwargs)
+
+    def coordinate(self, **kwargs: Any) -> CoordinationDecision:
+        return coordinate_objectives(self.database, controller=self.controller, **kwargs)
+
+    def decide_continuation(self, objective_id: str, **kwargs: Any) -> ContinuationDecision:
+        return decide_continuation(self.database, objective_id, controller=self.controller, **kwargs)
+
+    def cycle(self, cycle_id: str, **kwargs: Any) -> AutonomyCycle:
+        return run_autonomy_cycle(self.database, cycle_id=cycle_id, controller=self.controller, **kwargs)
+
+    def briefing(self, **kwargs: Any) -> ExecutiveBriefing:
+        return build_executive_briefing(self.database, controller=self.controller, **kwargs)
+
+
+def _apply_objective_update(
+    objectives: dict[str, ObjectiveRecord], payload: Mapping[str, Any], *, replace: bool = False,
+) -> None:
+    changes = _json(payload.get("changes"))
+    if changes:
+        oid = str(payload.get("objective_id") or changes.get("objective_id") or "")
+        prior = objectives.get(oid)
+        if prior is None:
+            try:
+                objectives[oid] = ObjectiveRecord.from_payload(changes)
+            except (TypeError, ValueError):
+                return
+            return
+        merged = prior.to_payload()
+        merged.update(changes)
+        merged["objective_id"] = prior.objective_id
+        try:
+            objectives[prior.objective_id] = ObjectiveRecord.from_payload(merged)
+        except (TypeError, ValueError):
+            return
+        return
+    try:
+        incoming = ObjectiveRecord.from_payload(payload)
+    except (TypeError, ValueError):
+        return
+    prior = objectives.get(incoming.objective_id)
+    if replace or prior is None:
+        objectives[incoming.objective_id] = incoming
+    else:
+        objectives[incoming.objective_id] = incoming
+
+
+def rebuild_executive_state(database: FoundryDatabase) -> ExecutiveAutonomyState:
+    """Rebuild executive state solely from the append-only event ledger."""
+    objectives: dict[str, ObjectiveRecord] = {}
+    plans: dict[str, PlanRecord] = {}
+    continuations: dict[str, ContinuationDecision] = {}
+    escalations: dict[str, EscalationRecord] = {}
+    coordination: dict[str, CoordinationDecision] = {}
+    briefings: dict[str, ExecutiveBriefing] = {}
+    mission_requests: dict[str, dict[str, Any]] = {}
+    progress: dict[str, ProgressEvaluation] = {}
+    for event in database.events(event_type_prefixes=("executive.",)):
+        payload = event.payload
+        typ = event.event_type
+        if typ == "executive.objective_created":
+            _apply_objective_update(objectives, payload, replace=True)
+        elif typ == "executive.objective_updated":
+            _apply_objective_update(objectives, payload)
+        elif typ == "executive.objective_status_changed":
+            oid = str(payload.get("objective_id") or "")
+            if oid in objectives:
+                merged = objectives[oid].to_payload()
+                merged.update({"status": payload.get("status"), "updated_at": payload.get("updated_at"), "version": payload.get("version", objectives[oid].version + 1)})
+                try:
+                    objectives[oid] = ObjectiveRecord.from_payload(merged)
+                except (TypeError, ValueError):
+                    pass
+        elif typ == "executive.objective_progress_recorded":
+            oid = str(payload.get("objective_id") or "")
+            if oid in objectives:
+                merged = objectives[oid].to_payload()
+                merged.update({"progress": payload.get("progress"), "status": payload.get("status", objectives[oid].status),
+                               "confidence": payload.get("confidence", objectives[oid].confidence)})
+                if payload.get("updated_at"):
+                    merged["updated_at"] = payload.get("updated_at")
+                try:
+                    objectives[oid] = ObjectiveRecord.from_payload(merged)
+                except (TypeError, ValueError):
+                    pass
+            try:
+                progress[oid] = ProgressEvaluation(
+                    objective_id=oid, status=str(payload.get("status") or "UNKNOWN"),
+                    progress=_clamp(payload.get("progress")), confidence=_clamp(payload.get("confidence")),
+                    evidence_refs=_tuple(payload.get("evidence_refs")),
+                    completed_steps=max(0, int(_number(payload.get("completed_steps")))),
+                    failed_steps=max(0, int(_number(payload.get("failed_steps")))),
+                    stale=bool(payload.get("stale")), explanation=str(payload.get("explanation") or ""),
+                    regressed=bool(payload.get("regressed")),
+                )
+            except (TypeError, ValueError):
+                pass
+        elif typ == "executive.plan_created" or typ == "executive.plan_updated":
+            try:
+                plan = PlanRecord.from_payload(payload)
+                if plan.plan_id:
+                    plans[plan.plan_id] = plan
+            except (TypeError, ValueError):
+                pass
+        elif typ == "executive.continuation_decided":
+            try:
+                row = ContinuationDecision(
+                    objective_id=str(payload.get("objective_id") or ""), action=str(payload.get("action") or "WAIT"),
+                    reason=str(payload.get("reason") or ""), evidence_refs=_tuple(payload.get("evidence_refs")),
+                    next_step_id=str(payload["next_step_id"]) if payload.get("next_step_id") else None,
+                    retry_number=max(0, int(_number(payload.get("retry_number")))),
+                    escalation_id=str(payload["escalation_id"]) if payload.get("escalation_id") else None,
+                    wake_on=_tuple(payload.get("wake_on")),
+                )
+                if row.objective_id:
+                    continuations[row.objective_id] = row
+            except (TypeError, ValueError):
+                pass
+        elif typ == "executive.escalation_opened" or typ == "executive.escalation_resolved":
+            try:
+                row = EscalationRecord(
+                    escalation_id=str(payload.get("escalation_id") or ""),
+                    objective_id=str(payload.get("objective_id") or ""),
+                    decision=str(payload.get("decision") or ""), why=str(payload.get("why") or ""),
+                    evidence_refs=_tuple(payload.get("evidence_refs")), options=_tuple(payload.get("options")),
+                    recommendation=str(payload.get("recommendation") or ""),
+                    delay_consequence=str(payload.get("delay_consequence") or ""),
+                    status=str(payload.get("status") or ("RESOLVED" if "resolved" in typ else "OPEN")),
+                    created_at=_timestamp(payload.get("created_at")),
+                )
+                if row.escalation_id:
+                    escalations[row.escalation_id] = row
+            except (TypeError, ValueError):
+                pass
+        elif typ == "executive.coordination_decided":
+            try:
+                row = CoordinationDecision(
+                    decision_id=str(payload.get("decision_id") or ""), objective_ids=_tuple(payload.get("objective_ids")),
+                    selected_objective_id=str(payload["selected_objective_id"]) if payload.get("selected_objective_id") else None,
+                    reason=str(payload.get("reason") or ""),
+                    conflicts=tuple(dict(v) for v in (payload.get("conflicts") or ()) if isinstance(v, Mapping)),
+                    concurrency=_json(payload.get("concurrency")), allocations=_json(payload.get("allocations")),
+                )
+                if row.decision_id:
+                    coordination[row.decision_id] = row
+            except (TypeError, ValueError):
+                pass
+        elif typ == "executive.mission_requested":
+            key = str(payload.get("request_id") or payload.get("objective_id") or event.idempotency_key)
+            mission_requests[key] = dict(payload)
+        elif typ == "executive.briefing_recorded":
+            try:
+                briefing = ExecutiveBriefing(
+                    briefing_id=str(payload.get("briefing_id") or ""), generated_at=_timestamp(payload.get("generated_at")),
+                    advanced=tuple(dict(v) for v in (payload.get("advanced") or ()) if isinstance(v, Mapping)),
+                    failed=tuple(dict(v) for v in (payload.get("failed") or ()) if isinstance(v, Mapping)),
+                    changed_priorities=tuple(dict(v) for v in (payload.get("changed_priorities") or ()) if isinstance(v, Mapping)),
+                    decisions=tuple(dict(v) for v in (payload.get("decisions") or ()) if isinstance(v, Mapping)),
+                    owner_actions=tuple(dict(v) for v in (payload.get("owner_actions") or ()) if isinstance(v, Mapping)),
+                    next_actions=tuple(dict(v) for v in (payload.get("next_actions") or ()) if isinstance(v, Mapping)),
+                    blockers=tuple(dict(v) for v in (payload.get("blockers") or ()) if isinstance(v, Mapping)),
+                )
+                if briefing.briefing_id:
+                    briefings[briefing.briefing_id] = briefing
+            except (TypeError, ValueError):
+                pass
+    return ExecutiveAutonomyState(objectives, plans, continuations, escalations, coordination, briefings, mission_requests, progress)
+
+
+def _gate(database: FoundryDatabase, controller: str) -> None:
+    if controller != SUPERVISOR_CONTROLLER:
+        raise PermissionError("executive autonomy is Supervisor-owned")
+    stop = emergency_stop_reason(database, database.path.parent / "EMERGENCY_STOP")
+    if stop:
+        raise RuntimeError(f"STOP active: {stop}")
+    veto = matching_veto_reason(database, {"GLOBAL", "executive", "objectives"})
+    if veto:
+        raise RuntimeError(f"owner veto active: {veto}")
+
+
+def _assert_acyclic(graph: Mapping[str, Sequence[str]]) -> None:
+    visiting: set[str] = set()
+    visited: set[str] = set()
+
+    def visit(node: str) -> None:
+        if node in visiting:
+            raise ValueError(f"dependency cycle detected at {node}")
+        if node in visited:
+            return
+        visiting.add(node)
+        for dependency in graph.get(node, ()):
+            if dependency in graph:
+                visit(dependency)
+        visiting.remove(node)
+        visited.add(node)
+
+    for node in graph:
+        visit(node)
+
+
+def _parse_goal_metadata(record: Any) -> dict[str, Any]:
+    text = str(getattr(record, "exact_text", "") or "")
+    lowered = text.lower()
+    priority = None
+    urgency = None
+    deadline = None
+    for token in ("priority", "urgency", "deadline"):
+        import re
+        match = re.search(rf"{token}\s*(?:=|:)\s*([-+]?\d+(?:\.\d+)?|\S+)", text, re.I)
+        if match:
+            value = match.group(1)
+            if token == "deadline":
+                deadline = value
+            elif token == "priority":
+                priority = _number(value, 1.0)
+            else:
+                urgency = _number(value, 0.0)
+    def section(name: str) -> tuple[str, ...]:
+        import re
+        match = re.search(rf"{name}\s*(?:=|:)\s*(.+?)(?=\s+(?:priority|urgency|deadline|constraints?|depends?[_ -]?on|success|failure)\s*(?:=|:)|$)", text, re.I)
+        if not match:
+            return ()
+        return tuple(part.strip() for part in re.split(r"[;,]", match.group(1)) if part.strip())
+    return {
+        "priority": priority if priority is not None else (3.0 if any(w in lowered for w in ("critical", "urgent", "p0")) else 1.0),
+        "urgency": urgency if urgency is not None else (1.0 if any(w in lowered for w in ("urgent", "today", "now")) else 0.0),
+        "deadline": deadline,
+        "constraints": section("constraints?"),
+        "dependencies": section(r"depends?[_ -]?on"),
+        "success_criteria": section("success(?: criteria)?"),
+        "failure_criteria": section("failure(?: criteria)?"),
+    }
+
+
+def create_objective(
+    database: FoundryDatabase,
+    objective: str,
+    *,
+    objective_id: str | None = None,
+    parent_id: str | None = None,
+    controller: str = SUPERVISOR_CONTROLLER,
+    priority: float = 1.0,
+    urgency: float = 0.0,
+    deadline: str | None = None,
+    constraints: Sequence[str] = (),
+    success_criteria: Sequence[str] = (),
+    failure_criteria: Sequence[str] = (),
+    dependencies: Sequence[str] = (),
+    owner_authority: str = "owner",
+    autonomy_boundaries: Sequence[str] = (),
+    budget: Mapping[str, float] | None = None,
+    expected_impact: float = 0.5,
+    effort: float = 0.5,
+    risk: float = 0.5,
+    opportunity_cost: float = 0.0,
+    blocking_value: float = 0.0,
+    reversibility: float = 0.5,
+    confidence: float = 0.5,
+    resource_id: str | None = None,
+    required_capabilities: Sequence[str] = (),
+    status: str = "ACTIVE",
+    progress: float = 0.0,
+    provenance: Mapping[str, Any] | None = None,
+    metadata: Mapping[str, Any] | None = None,
+    source_id: str = "v8-executive-autonomy",
+) -> ObjectiveRecord:
+    _gate(database, controller)
+    oid = objective_id or f"objective-{_hash({'objective': objective, 'parent_id': parent_id})}"
+    state = rebuild_executive_state(database)
+    prior = state.objectives.get(oid)
+    if prior is not None:
+        if prior.objective != objective:
+            raise ValueError(f"objective id already names a different objective: {oid}")
+        return prior
+    record = ObjectiveRecord(
+        objective_id=oid, objective=objective, parent_id=parent_id, priority=_number(priority, 1.0),
+        urgency=_clamp(urgency, -1.0, 1.0), deadline=deadline, constraints=_tuple(constraints),
+        success_criteria=_tuple(success_criteria), failure_criteria=_tuple(failure_criteria), dependencies=_tuple(dependencies),
+        owner_authority=owner_authority, autonomy_boundaries=_tuple(autonomy_boundaries),
+        budget={str(k): _number(v) for k, v in dict(budget or {}).items()}, expected_impact=_clamp(expected_impact),
+        effort=_clamp(effort), risk=_clamp(risk), opportunity_cost=_clamp(opportunity_cost), blocking_value=_clamp(blocking_value),
+        reversibility=_clamp(reversibility), confidence=_clamp(confidence), resource_id=resource_id,
+        required_capabilities=_tuple(required_capabilities), status=status, progress=_clamp(progress),
+        provenance=_json(provenance), metadata=_json(metadata),
+    )
+    if parent_id and parent_id not in state.objectives:
+        raise ValueError(f"unknown parent objective: {parent_id}")
+    if any(dep == oid for dep in record.dependencies):
+        raise ValueError("objective cannot depend on itself")
+    graph = {key: value.dependencies for key, value in state.objectives.items()}
+    graph[oid] = record.dependencies
+    _assert_acyclic(graph)
+    _append(database, "executive.objective_created", record.to_payload(), key=f"executive.objective_created:{oid}", source_id=source_id)
+    return record
+
+
+def sync_owner_goals(database: FoundryDatabase, *, controller: str = SUPERVISOR_CONTROLLER) -> list[ObjectiveRecord]:
+    """Admit each authenticated active GOAL exactly once with full provenance."""
+    _gate(database, controller)
+    state = rebuild_executive_state(database)
+    active_records = list(active_directives_for(database, command_types=frozenset({"GOAL"})))
+    active_directive_ids = {str(record.directive_id) for record in active_records}
+    created: list[ObjectiveRecord] = []
+    for record in active_records:
+        oid = f"owner-goal:{record.directive_id}"
+        if oid in state.objectives:
+            continue
+        metadata = _parse_goal_metadata(record)
+        created.append(create_objective(
+            database,
+            str(record.exact_text or "owner goal"),
+            objective_id=oid,
+            controller=controller,
+            priority=metadata["priority"], urgency=metadata["urgency"], deadline=metadata["deadline"],
+            constraints=metadata["constraints"], success_criteria=metadata["success_criteria"],
+            failure_criteria=metadata["failure_criteria"], dependencies=metadata["dependencies"],
+            owner_authority=str(getattr(record, "source_id", "owner") or "owner"),
+            provenance={"directive_id": record.directive_id, "event_id": record.event_id,
+                        "correlation_id": record.correlation_id, "nonce": record.nonce,
+                        "authenticated": bool(record.authenticated)},
+            metadata={"target": record.target, "command_type": record.command_type},
+            source_id="v8-owner-goal-admission",
+        ))
+    revoked = [objective for objective in state.objectives.values()
+               if objective.objective_id.startswith("owner-goal:")
+               and str(objective.provenance.get("directive_id") or "") not in active_directive_ids
+               and objective.status not in _TERMINAL_OBJECTIVE]
+    for objective in revoked:
+        set_objective_status(
+            database, objective.objective_id, "SUSPENDED", controller=controller,
+            reason="owner GOAL directive was revoked; autonomous authority is withdrawn",
+            evidence_refs=(str(objective.provenance.get("event_id") or ""),),
+        )
+        _append(database, "executive.objective_authority_revoked", {
+            "objective_id": objective.objective_id,
+            "directive_id": objective.provenance.get("directive_id"),
+            "reason": "owner GOAL directive revoked",
+        }, key=f"executive.objective_authority_revoked:{objective.objective_id}", correlation_id=objective.objective_id)
+        for mission_id in objective.mission_ids:
+            mission = database.row("missions", "mission_id", mission_id)
+            if mission is None or str(mission.get("state") or "") in {"COMPLETE", "FAILED", "BLOCKED", "CANCELLED"}:
+                continue
+            try:
+                _append(database, "mission.state_changed", {
+                    "mission_id": mission_id, "state": "CANCELLED",
+                    "next_action": "owner authority revoked",
+                    "reason": "owner GOAL directive was revoked",
+                }, key=f"mission.state_changed:{mission_id}:CANCELLED:executive-authority-revoked")
+            except ValueError:
+                pass
+        try:
+            from ..evolution.executive_portfolio import rebuild_portfolio_state, set_work_status
+            portfolio = rebuild_portfolio_state(database)
+            for item in portfolio.work_items.values():
+                if item.metadata.get("executive_objective_id") == objective.objective_id and item.status not in {"COMPLETED", "FAILED", "BLOCKED", "CANCELLED"}:
+                    set_work_status(database, item.item_id, "CANCELLED", reason="owner authority revoked", controller=controller, source_id="v8-owner-goal-admission")
+        except (ValueError, KeyError):
+            pass
+    return created
+
+
+def update_objective(
+    database: FoundryDatabase, objective_id: str, changes: Mapping[str, Any], *,
+    controller: str = SUPERVISOR_CONTROLLER, source_id: str = "v8-executive-autonomy",
+) -> ObjectiveRecord:
+    _gate(database, controller)
+    prior = rebuild_executive_state(database).objectives.get(objective_id)
+    if prior is None:
+        raise ValueError(f"unknown objective: {objective_id}")
+    allowed = set(prior.to_payload()) - {"objective_id", "created_at", "version"}
+    clean = {key: value for key, value in dict(changes).items() if key in allowed}
+    if not clean:
+        return prior
+    merged = prior.to_payload()
+    merged.update(clean)
+    merged["updated_at"] = isoformat()
+    merged["version"] = prior.version + 1
+    candidate = ObjectiveRecord.from_payload(merged)
+    graph = {key: value.dependencies for key, value in rebuild_executive_state(database).objectives.items()}
+    graph[objective_id] = candidate.dependencies
+    _assert_acyclic(graph)
+    _append(database, "executive.objective_updated", {"objective_id": objective_id, "changes": candidate.to_payload(), "updated_at": candidate.updated_at}, key=f"executive.objective_updated:{objective_id}:{candidate.version}", source_id=source_id)
+    return candidate
+
+
+def set_objective_status(database: FoundryDatabase, objective_id: str, status: str, *, controller: str = SUPERVISOR_CONTROLLER, reason: str = "", evidence_refs: Sequence[str] = ()) -> ObjectiveRecord:
+    if status not in _ACTIVE_OBJECTIVE | _TERMINAL_OBJECTIVE:
+        raise ValueError(f"unsupported objective status: {status}")
+    prior = rebuild_executive_state(database).objectives.get(objective_id)
+    if prior is None:
+        raise ValueError(f"unknown objective: {objective_id}")
+    if prior.status == status:
+        return prior
+    if status == "COMPLETED" and not tuple(evidence_refs) and not prior.success_criteria:
+        raise ValueError("completion requires evidence or success criteria")
+    _gate(database, controller)
+    now = isoformat()
+    _append(database, "executive.objective_status_changed", {"objective_id": objective_id, "status": status, "reason": reason, "evidence_refs": list(evidence_refs), "updated_at": now, "version": prior.version + 1}, key=f"executive.objective_status_changed:{objective_id}:{prior.version + 1}:{status}")
+    return ObjectiveRecord.from_payload({**prior.to_payload(), "status": status, "updated_at": now, "version": prior.version + 1})
+
+
+def record_objective_progress(database: FoundryDatabase, evaluation: ProgressEvaluation, *, controller: str = SUPERVISOR_CONTROLLER) -> None:
+    _gate(database, controller)
+    _append(database, "executive.objective_progress_recorded", evaluation.to_payload(), key=f"executive.objective_progress_recorded:{evaluation.objective_id}:{_hash(evaluation.to_payload())}")
+
+
+def _topological_steps(steps: Sequence[PlanStep]) -> tuple[PlanStep, ...]:
+    by_id = {step.step_id: step for step in steps}
+    graph = {step.step_id: tuple(dep for dep in step.dependencies if dep in by_id) for step in steps}
+    _assert_acyclic(graph)
+    ordered: list[PlanStep] = []
+    remaining = set(by_id)
+    while remaining:
+        ready = sorted(step_id for step_id in remaining if all(dep not in remaining for dep in graph[step_id]))
+        if not ready:
+            raise ValueError("plan dependency graph is cyclic")
+        ordered.extend(by_id[step_id] for step_id in ready)
+        remaining.difference_update(ready)
+    return tuple(ordered)
+
+
+def _critical_path(steps: Sequence[PlanStep]) -> tuple[str, ...]:
+    by_id = {step.step_id: step for step in steps}
+    ordered = _topological_steps(steps)
+    distance: dict[str, int] = {}
+    parent: dict[str, str | None] = {}
+    for step in ordered:
+        dep = max((distance.get(item, 0) for item in step.dependencies), default=0)
+        distance[step.step_id] = dep + 1
+        parent[step.step_id] = max(
+            (item for item in step.dependencies),
+            key=lambda item: distance.get(item, 0), default=None,
+        )
+    if not distance:
+        return ()
+    current = max(distance, key=lambda item: (distance[item], item))
+    path: list[str] = []
+    while current:
+        path.append(current)
+        current = parent.get(current)
+    return tuple(reversed(path))
+
+
+def build_plan(
+    database: FoundryDatabase,
+    objective_id: str,
+    steps: Sequence[PlanStep | Mapping[str, Any]],
+    *,
+    plan_id: str | None = None,
+    controller: str = SUPERVISOR_CONTROLLER,
+    source_id: str = "v8-executive-autonomy",
+) -> PlanRecord:
+    _gate(database, controller)
+    objective = rebuild_executive_state(database).objectives.get(objective_id)
+    if objective is None:
+        raise ValueError(f"unknown objective: {objective_id}")
+    normalized: list[PlanStep] = []
+    for raw in steps:
+        if isinstance(raw, PlanStep):
+            step = raw
+        else:
+            data = dict(raw)
+            step = PlanStep(
+                step_id=str(data.get("step_id") or ""), objective_id=objective_id,
+                description=str(data.get("description") or data.get("objective") or ""),
+                dependencies=_tuple(data.get("dependencies")),
+                required_capabilities=_tuple(data.get("required_capabilities") or objective.required_capabilities),
+                resource_id=str(data["resource_id"]) if data.get("resource_id") else objective.resource_id,
+                output_contract=_tuple(data.get("output_contract")), verification_contract=_tuple(data.get("verification_contract")),
+                fallback=str(data["fallback"]) if data.get("fallback") else None,
+                status=str(data.get("status") or "READY"), mission_id=str(data["mission_id"]) if data.get("mission_id") else None,
+                retries=max(0, int(_number(data.get("retries")))), max_retries=max(0, int(_number(data.get("max_retries"), 1))),
+                evidence_refs=_tuple(data.get("evidence_refs")),
+            )
+        if not step.step_id or not step.description:
+            raise ValueError("plan steps require step_id and description")
+        if step.objective_id != objective_id:
+            step = replace(step, objective_id=objective_id)
+        normalized.append(step)
+    if not normalized:
+        raise ValueError("plan requires at least one executable step")
+    if len({step.step_id for step in normalized}) != len(normalized):
+        raise ValueError("plan step ids must be unique")
+    by_id = {step.step_id: step for step in normalized}
+    unknown = {dep for step in normalized for dep in step.dependencies if dep not in by_id}
+    if unknown:
+        raise ValueError(f"plan depends on unknown steps: {sorted(unknown)}")
+    ordered = _topological_steps(normalized)
+    pid = plan_id or f"plan:{objective_id}:{_hash([step.to_payload() for step in ordered])}"
+    state = rebuild_executive_state(database)
+    prior = state.plans.get(pid)
+    if prior is not None:
+        return prior
+    plan = PlanRecord(plan_id=pid, objective_id=objective_id, steps=ordered, critical_path=_critical_path(ordered))
+    _append(database, "executive.plan_created", plan.to_payload(), key=f"executive.plan_created:{pid}", source_id=source_id, correlation_id=objective_id)
+    current = rebuild_executive_state(database).objectives[objective_id]
+    if pid not in current.plan_ids:
+        update_objective(database, objective_id, {"plan_ids": [*current.plan_ids, pid]}, controller=controller, source_id=source_id)
+    return plan
+
+
+def active_plan(database: FoundryDatabase, objective_id: str) -> PlanRecord | None:
+    state = rebuild_executive_state(database)
+    plans = [plan for plan in state.plans.values() if plan.objective_id == objective_id and plan.status == "ACTIVE"]
+    return max(plans, key=lambda plan: (plan.version, plan.updated_at), default=None)
+
+
+def _capability_blockers(database: FoundryDatabase, step: PlanStep, *, resource_id: str | None = None) -> tuple[str, ...]:
+    resource = resource_id or step.resource_id
+    if not resource and step.required_capabilities:
+        return ("resource_unconfigured",)
+    if not step.required_capabilities:
+        return ()
+    from .portfolio_bridge import capability_readiness
+    blockers: list[str] = []
+    for capability in step.required_capabilities:
+        readiness = capability_readiness(database, resource_id=str(resource), capability=capability)
+        if not readiness.get("ready", False) or str(readiness.get("state") or "UNKNOWN") in {"UNREGISTERED", "UNKNOWN"}:
+            blockers.append(f"{capability}:{readiness.get('state') or 'UNKNOWN'}")
+    return tuple(blockers)
+
+
+def plan_ready_steps(database: FoundryDatabase, objective_id: str, *, resource_id: str | None = None) -> list[PlanStep]:
+    plan = active_plan(database, objective_id)
+    if plan is None:
+        return []
+    completed = {step.step_id for step in plan.steps if step.status == "COMPLETED"}
+    ready: list[PlanStep] = []
+    for step in plan.steps:
+        if step.status in _TERMINAL_STEP or step.status in {"RUNNING", "IN_PROGRESS"}:
+            continue
+        if any(dep not in completed for dep in step.dependencies):
+            continue
+        if _capability_blockers(database, step, resource_id=resource_id):
+            continue
+        ready.append(step)
+    return ready
+
+
+def generate_missions_for_objective(
+    database: FoundryDatabase,
+    objective_id: str,
+    *,
+    controller: str = SUPERVISOR_CONTROLLER,
+    max_new: int = 1,
+    source_id: str = "v8-executive-autonomy",
+) -> list[dict[str, Any]]:
+    """Generate bounded portfolio work, never a parallel mission engine."""
+    _gate(database, controller)
+    state = rebuild_executive_state(database)
+    objective = state.objectives.get(objective_id)
+    if objective is None:
+        raise ValueError(f"unknown objective: {objective_id}")
+    plan = active_plan(database, objective_id)
+    if plan is None:
+        return []
+    from ..evolution.executive_portfolio import register_work_item, rebuild_portfolio_state
+    portfolio = rebuild_portfolio_state(database)
+    existing = set(portfolio.work_items)
+    requests: list[dict[str, Any]] = []
+    max_missions = int(_number(objective.budget.get("max_missions"), 0))
+    if max_missions > 0 and len(objective.mission_ids) >= max_missions:
+        _append(database, "executive.mission_generation_blocked", {"objective_id": objective_id, "reason": "objective mission budget exhausted", "max_missions": max_missions}, key=f"executive.mission_generation_blocked:budget:{objective_id}", source_id=source_id, correlation_id=objective_id)
+        return requests
+    for step in plan_ready_steps(database, objective_id):
+        if len(requests) >= max(0, int(max_new)):
+            break
+        directive_id = str(objective.provenance.get("directive_id") or "")
+        base_item_id = f"owner-goal:{directive_id}" if directive_id else f"executive-step:{objective_id}:{step.step_id}"
+        suffix = f":retry:{step.retries}" if step.retries else ""
+        item_id = f"{base_item_id}{suffix}"
+        if item_id in existing:
+            continue
+        blockers = _capability_blockers(database, step)
+        if blockers:
+            _append(database, "executive.mission_generation_blocked", {"objective_id": objective_id, "step_id": step.step_id, "blockers": list(blockers)}, key=f"executive.mission_generation_blocked:{item_id}", source_id=source_id, correlation_id=objective_id)
+            continue
+        register_work_item(
+            database, item_id=item_id, kind="OWNER_GOAL", objective=step.description,
+            controller=controller, goal_ids=(directive_id or objective_id,), project_id=objective.metadata.get("project_id"),
+            resource_id=step.resource_id or objective.resource_id, expected_value=max(0.9, objective.expected_impact),
+            urgency=max(0.2, objective.urgency), confidence=max(0.8, objective.confidence), effort=objective.effort,
+            risk=objective.risk, reversibility=objective.reversibility, opportunity_cost=objective.opportunity_cost,
+            dependencies=tuple(f"executive-step:{objective_id}:{dep}" for dep in step.dependencies),
+            due_at=objective.deadline, owner_only=False, requires_verifier=True,
+            evidence_refs=step.evidence_refs, provenance={**objective.provenance, "objective_id": objective_id, "plan_id": plan.plan_id, "step_id": step.step_id},
+            metadata={"executive_objective_id": objective_id, "executive_plan_id": plan.plan_id,
+                      "executive_step_id": step.step_id, "required_capabilities": list(step.required_capabilities),
+                      "goal_id": objective.provenance.get("directive_id"),
+                      "success_criteria": list(objective.success_criteria),
+                      "constraints": list(objective.constraints),
+                      "time_horizon": objective.deadline},
+            source_type="supervisor", source_id=source_id,
+        )
+        request = {"request_id": item_id, "objective_id": objective_id, "plan_id": plan.plan_id, "step_id": step.step_id, "item_id": item_id, "status": "REQUESTED"}
+        _append(database, "executive.mission_requested", request, key=f"executive.mission_requested:{item_id}", source_id=source_id, correlation_id=objective_id)
+        requests.append(request)
+    return requests
+
+
+def bind_mission_to_step(database: FoundryDatabase, objective_id: str, step_id: str, mission_id: str, *, controller: str = SUPERVISOR_CONTROLLER) -> PlanStep:
+    _gate(database, controller)
+    plan = active_plan(database, objective_id)
+    if plan is None:
+        raise ValueError(f"no active plan for {objective_id}")
+    target = next((step for step in plan.steps if step.step_id == step_id), None)
+    if target is None:
+        raise ValueError(f"unknown plan step: {step_id}")
+    if target.mission_id == mission_id:
+        return target
+    changed = PlanStep(**{field: getattr(target, field) for field in PlanStep.__dataclass_fields__} | {"mission_id": mission_id, "status": "RUNNING"})
+    steps = tuple(changed if step.step_id == step_id else step for step in plan.steps)
+    updated = PlanRecord(plan_id=plan.plan_id, objective_id=plan.objective_id, steps=steps, critical_path=plan.critical_path, status=plan.status, version=plan.version + 1)
+    _append(database, "executive.plan_updated", updated.to_payload(), key=f"executive.plan_updated:{plan.plan_id}:{updated.version}", correlation_id=objective_id)
+    objective = rebuild_executive_state(database).objectives.get(objective_id)
+    if objective is not None and mission_id not in objective.mission_ids:
+        update_objective(database, objective_id, {"mission_ids": [*objective.mission_ids, mission_id]}, controller=controller)
+    return changed
+
+
+def _mission_truth(database: FoundryDatabase, mission_id: str) -> dict[str, Any]:
+    mission = database.row("missions", "mission_id", mission_id)
+    result: dict[str, Any] = {"mission_id": mission_id, "state": "UNKNOWN", "status": "UNKNOWN", "evidence_refs": []}
+    if mission is None:
+        result["status"] = "BLOCKED"
+        result["reason"] = "mission is not present in the authoritative projection"
+        return result
+    state = str(mission.get("state") or "UNKNOWN")
+    result.update({"state": state, "objective": mission.get("objective"), "updated_at": mission.get("updated_at")})
+    if state == "COMPLETE":
+        result["status"] = "COMPLETED"
+    elif state in {"FAILED", "CANCELLED"}:
+        result["status"] = "FAILED"
+    elif state == "BLOCKED":
+        result["status"] = "BLOCKED"
+    else:
+        result["status"] = "RUNNING"
+    with database.connect(readonly=True) as connection:
+        rows = connection.execute(
+            "SELECT verdict_id, subject_id, status, reason, blocking_dependency, issued_at "
+            "FROM verification_verdicts WHERE mission_id = ? ORDER BY rowid", (mission_id,)
+        ).fetchall()
+    if rows:
+        latest = dict(rows[-1])
+        result["verdict"] = latest
+        result["evidence_refs"] = [str(latest.get("verdict_id") or "")]
+        if latest.get("status") == "FAIL":
+            result["status"] = "FAILED"
+        if latest.get("status") in {"BLOCKED", "NOT_TESTED"} and result["status"] == "RUNNING":
+            result["status"] = "BLOCKED"
+    return result
+
+
+def observe_mission_outcome(
+    database: FoundryDatabase,
+    mission_id: str,
+    *,
+    controller: str = SUPERVISOR_CONTROLLER,
+    evidence_refs: Sequence[str] = (),
+) -> dict[str, Any]:
+    """Reconcile authoritative mission/verifier truth into the executive DAG."""
+    _gate(database, controller)
+    truth = _mission_truth(database, mission_id)
+    mission_row = database.row("missions", "mission_id", mission_id) or {}
+    created_from = str(mission_row.get("created_from") or "")
+    if created_from.startswith("portfolio:") and truth.get("status") in {"COMPLETED", "FAILED", "BLOCKED"}:
+        from ..evolution.executive_portfolio import rebuild_portfolio_state, set_work_status
+        item_id = created_from.split("portfolio:", 1)[1]
+        item = rebuild_portfolio_state(database).work_items.get(item_id)
+        if item is not None and item.status != str(truth["status"]):
+            set_work_status(database, item_id, str(truth["status"]), reason=f"mission {mission_id} observed as {truth['status']}", controller=controller, source_id="v8-executive-autonomy")
+    state = rebuild_executive_state(database)
+    changed_steps: list[tuple[str, str]] = []
+    for plan in state.plans.values():
+        for step in plan.steps:
+            if step.mission_id != mission_id:
+                continue
+            new_status = str(truth["status"])
+            if new_status == "RUNNING":
+                new_status = "RUNNING"
+            if step.status != new_status or tuple(evidence_refs) and not set(evidence_refs).issubset(step.evidence_refs):
+                refs = tuple(dict.fromkeys((*step.evidence_refs, *tuple(evidence_refs), *tuple(truth.get("evidence_refs") or ()))))
+                changed_steps.append((plan.plan_id, step.step_id))
+                replacement = replace(step, status=new_status, evidence_refs=refs)
+                updated_steps = tuple(replacement if row.step_id == step.step_id else row for row in plan.steps)
+                updated = PlanRecord(plan_id=plan.plan_id, objective_id=plan.objective_id, steps=updated_steps, critical_path=plan.critical_path, status=plan.status, version=plan.version + 1)
+                _append(database, "executive.plan_updated", updated.to_payload(), key=f"executive.plan_updated:{plan.plan_id}:{updated.version}", correlation_id=plan.objective_id)
+                break
+    return {**truth, "changed_steps": [{"plan_id": pid, "step_id": sid} for pid, sid in changed_steps]}
+
+
+def evaluate_objective_progress(
+    database: FoundryDatabase,
+    objective_id: str,
+    *,
+    controller: str = SUPERVISOR_CONTROLLER,
+    stale_after_seconds: float = 3600.0,
+) -> ProgressEvaluation:
+    _gate(database, controller)
+    state = rebuild_executive_state(database)
+    objective = state.objectives.get(objective_id)
+    if objective is None:
+        raise ValueError(f"unknown objective: {objective_id}")
+    plan = active_plan(database, objective_id)
+    if plan is None or not plan.steps:
+        evaluation = ProgressEvaluation(objective_id, objective.status, objective.progress, objective.confidence, (), 0, 0, False, "no executable plan has been recorded", False)
+        record_objective_progress(database, evaluation, controller=controller)
+        return evaluation
+    completed = sum(step.status == "COMPLETED" for step in plan.steps)
+    failed = sum(step.status == "FAILED" for step in plan.steps)
+    blocked = sum(step.status == "BLOCKED" for step in plan.steps)
+    progress = completed / len(plan.steps)
+    refs = tuple(dict.fromkeys(ref for step in plan.steps for ref in step.evidence_refs))
+    stale = bool(objective.updated_at and _dt(objective.updated_at) and (datetime.now(timezone.utc) - _dt(objective.updated_at)).total_seconds() > stale_after_seconds and progress < 1.0)
+    prior_evaluation = state.progress.get(objective_id)
+    regressed = prior_evaluation is not None and progress < prior_evaluation.progress
+    if completed == len(plan.steps):
+        status = "COMPLETED"
+        explanation = "every planned step has independent completion evidence"
+    elif failed:
+        status = "FAILED"
+        explanation = f"{failed} planned step(s) failed; continuation policy must choose repair or escalation"
+    elif blocked:
+        status = "BLOCKED"
+        explanation = f"{blocked} planned step(s) are blocked by an authoritative dependency"
+    elif stale:
+        status = "WAITING"
+        explanation = "no fresh evidence has advanced the objective within the stale threshold"
+    elif regressed:
+        status = "REGRESSED"
+        explanation = f"evidence-backed progress regressed from {prior_evaluation.progress:.3f} to {progress:.3f}; reassessment is required"
+    else:
+        status = "ACTIVE"
+        explanation = f"{completed}/{len(plan.steps)} planned step(s) completed"
+    evaluation = ProgressEvaluation(objective_id, status, progress, _clamp(objective.confidence), refs, completed, failed + blocked, stale, explanation, regressed)
+    record_objective_progress(database, evaluation, controller=controller)
+    if status != objective.status and status in {"COMPLETED", "FAILED", "BLOCKED", "WAITING", "ACTIVE"}:
+        try:
+            set_objective_status(database, objective_id, status, controller=controller, reason=explanation, evidence_refs=refs)
+        except ValueError:
+            pass
+    return evaluation
+
+
+def _failure_count(database: FoundryDatabase, objective_id: str, step_id: str) -> int:
+    count = 0
+    for event in database.events(event_types=("executive.continuation_decided",)):
+        if event.payload.get("objective_id") == objective_id and event.payload.get("next_step_id") == step_id and event.payload.get("action") == "RETRY":
+            count += 1
+    return count
+
+
+def record_escalation(
+    database: FoundryDatabase,
+    *,
+    objective_id: str,
+    decision: str,
+    why: str,
+    evidence_refs: Sequence[str] = (),
+    options: Sequence[str] = (),
+    recommendation: str = "",
+    delay_consequence: str = "",
+    controller: str = SUPERVISOR_CONTROLLER,
+    escalation_id: str | None = None,
+) -> EscalationRecord:
+    _gate(database, controller)
+    eid = escalation_id or f"escalation:{objective_id}:{_hash({'decision': decision, 'why': why, 'evidence': list(evidence_refs)})}"
+    prior = rebuild_executive_state(database).escalations.get(eid)
+    if prior is not None:
+        return prior
+    record = EscalationRecord(eid, objective_id, decision, why, _tuple(evidence_refs), _tuple(options), recommendation, delay_consequence)
+    _append(database, "executive.escalation_opened", record.to_payload(), key=f"executive.escalation_opened:{eid}", correlation_id=objective_id)
+    return record
+
+
+def resolve_escalation(database: FoundryDatabase, escalation_id: str, *, resolution: str, controller: str = SUPERVISOR_CONTROLLER) -> EscalationRecord:
+    _gate(database, controller)
+    prior = rebuild_executive_state(database).escalations.get(escalation_id)
+    if prior is None:
+        raise ValueError(f"unknown escalation: {escalation_id}")
+    if prior.status == "RESOLVED":
+        return prior
+    payload = {**prior.to_payload(), "status": "RESOLVED", "resolution": resolution}
+    _append(database, "executive.escalation_resolved", payload, key=f"executive.escalation_resolved:{escalation_id}", correlation_id=prior.objective_id)
+    return EscalationRecord(**{field: getattr(prior, field) for field in EscalationRecord.__dataclass_fields__} | {"status": "RESOLVED"})
+
+
+_PRIORITY_WEIGHTS = {
+    "owner_priority": 0.19,
+    "deadline": 0.12,
+    "expected_impact": 0.12,
+    "dependency_value": 0.09,
+    "urgency": 0.10,
+    "risk": 0.05,
+    "effort": 0.07,
+    "resource_availability": 0.07,
+    "opportunity_cost": 0.04,
+    "failure_history": 0.04,
+    "stale_age": 0.03,
+    "blocking_value": 0.04,
+    "confidence": 0.02,
+    "reversibility": 0.02,
+}
+
+
+def _deadline_factor(deadline: str | None, *, now: datetime) -> float:
+    when = _dt(deadline)
+    if when is None:
+        return 0.0
+    seconds = (when - now).total_seconds()
+    if seconds <= 0:
+        return 1.0
+    return _clamp(1.0 - seconds / (14 * 86400.0))
+
+
+def _objective_blockers(database: FoundryDatabase, objective: ObjectiveRecord) -> tuple[str, ...]:
+    state = rebuild_executive_state(database)
+    blockers: list[str] = []
+    veto = matching_veto_reason(database, {"GLOBAL", "executive", "objectives", objective.objective_id})
+    if veto:
+        blockers.append(f"veto:{veto}")
+    for dependency in objective.dependencies:
+        row = state.objectives.get(dependency)
+        if row is None:
+            blockers.append(f"missing_dependency:{dependency}")
+        elif row.status != "COMPLETED":
+            blockers.append(f"dependency:{dependency}:{row.status}")
+    plan = active_plan(database, objective.objective_id)
+    if plan is not None:
+        for step in plan.steps:
+            blockers.extend(_capability_blockers(database, step))
+    if objective.resource_id is None and objective.required_capabilities:
+        blockers.append("resource_unconfigured")
+    return tuple(dict.fromkeys(blockers))
+
+
+def _objective_failure_history(database: FoundryDatabase, objective_id: str) -> float:
+    failures = 0
+    attempts = 0
+    for event in database.events(event_type_prefixes=("executive.",)):
+        if event.event_type in {"executive.continuation_decided", "executive.objective_progress_recorded"} and event.payload.get("objective_id") == objective_id:
+            attempts += 1
+            if event.payload.get("action") in {"RETRY", "ESCALATE"} or event.payload.get("status") == "FAILED":
+                failures += 1
+    return _clamp(failures / max(1, attempts))
+
+
+def rank_objectives(
+    database: FoundryDatabase,
+    *,
+    controller: str = SUPERVISOR_CONTROLLER,
+    now: datetime | str | None = None,
+    include_terminal: bool = False,
+) -> list[PriorityScore]:
+    """Rank active objectives with a deterministic, explainable factor vector."""
+    if controller != SUPERVISOR_CONTROLLER:
+        raise PermissionError("only the Supervisor can rank executive objectives")
+    current = _dt(now) or datetime.now(timezone.utc)
+    state = rebuild_executive_state(database)
+    try:
+        from .goals import active_priorities
+        repriorities = active_priorities(database, targets=set(state.objectives))
+    except Exception:
+        repriorities = []
+    explicit = {str(row.get("target")): _number(row.get("value")) for row in repriorities}
+    descendants: dict[str, int] = {oid: 0 for oid in state.objectives}
+    for row in state.objectives.values():
+        for dependency in row.dependencies:
+            if dependency in descendants:
+                descendants[dependency] += 1
+    result: list[PriorityScore] = []
+    for objective in state.objectives.values():
+        if not include_terminal and objective.status in _TERMINAL_OBJECTIVE:
+            continue
+        blockers = _objective_blockers(database, objective)
+        age = 0.0
+        updated = _dt(objective.updated_at)
+        if updated is not None:
+            age = _clamp((current - updated).total_seconds() / (7 * 86400.0))
+        owner_priority = _clamp(objective.priority / 3.0 + explicit.get(objective.objective_id, 0.0), -1.0, 1.0)
+        factors = {
+            "owner_priority": owner_priority,
+            "deadline": _deadline_factor(objective.deadline, now=current),
+            "expected_impact": _clamp(objective.expected_impact),
+            "dependency_value": _clamp(descendants.get(objective.objective_id, 0) / max(1.0, len(state.objectives))),
+            "urgency": _clamp((objective.urgency + 1.0) / 2.0),
+            "risk": _clamp(objective.risk),
+            "effort": 1.0 - _clamp(objective.effort),
+            "resource_availability": 0.0 if "resource_unconfigured" in blockers else 1.0,
+            "opportunity_cost": 1.0 - _clamp(objective.opportunity_cost),
+            "failure_history": 1.0 - _objective_failure_history(database, objective.objective_id),
+            "stale_age": age,
+            "blocking_value": _clamp(objective.blocking_value),
+            "confidence": _clamp(objective.confidence),
+            "reversibility": _clamp(objective.reversibility),
+        }
+        score = sum(_PRIORITY_WEIGHTS[name] * factors[name] for name in _PRIORITY_WEIGHTS)
+        eligible = not blockers and objective.status in _ACTIVE_OBJECTIVE
+        if not eligible:
+            score = 0.0
+        parts = ", ".join(f"{name}={value:.2f}" for name, value in factors.items() if value)
+        explanation = f"score {score:.3f}; {parts or 'no positive factors'}"
+        if blockers:
+            explanation += f"; blocked by {', '.join(blockers)}"
+        result.append(PriorityScore(objective.objective_id, score, factors, explanation, eligible, blockers))
+    result.sort(key=lambda row: (-row.score, not row.eligible, row.objective_id))
+    return result
+
+
+def coordinate_objectives(
+    database: FoundryDatabase,
+    *,
+    controller: str = SUPERVISOR_CONTROLLER,
+    available_workers: int = 1,
+    resource_capacity: Mapping[str, int] | None = None,
+) -> CoordinationDecision:
+    """Resolve cross-objective dependencies, contention and priority inversion."""
+    _gate(database, controller)
+    state = rebuild_executive_state(database)
+    ranked = rank_objectives(database, controller=controller)
+    objective_ids = tuple(row.objective_id for row in ranked)
+    conflicts: list[dict[str, Any]] = []
+    for index, left in enumerate(ranked):
+        a = state.objectives[left.objective_id]
+        for right in ranked[index + 1:]:
+            b = state.objectives[right.objective_id]
+            same_resource = a.resource_id and a.resource_id == b.resource_id
+            explicit_conflict = b.objective_id in a.conflicts_with or a.objective_id in b.conflicts_with
+            if same_resource or explicit_conflict:
+                conflicts.append({"left": a.objective_id, "right": b.objective_id, "reason": "shared_resource" if same_resource else "owner_declared_conflict", "winner": left.objective_id if left.score >= right.score else right.objective_id})
+    selected = next((row.objective_id for row in ranked if row.eligible), None)
+    capacity = {str(k): max(0, int(v)) for k, v in dict(resource_capacity or {}).items()}
+    if selected is not None:
+        chosen = state.objectives[selected]
+        if available_workers < 1:
+            selected = None
+        elif chosen.resource_id and chosen.resource_id in capacity and capacity[chosen.resource_id] <= 0:
+            selected = None
+    reason = "highest explainable eligible priority"
+    if selected is None:
+        reason = "no objective is executable with current dependencies, capability or capacity"
+    decision_id = f"coordination:{_hash({'objectives': objective_ids, 'selected': selected, 'capacity': capacity, 'workers': available_workers, 'conflicts': conflicts})}"
+    prior = rebuild_executive_state(database).coordination.get(decision_id)
+    if prior is not None:
+        return prior
+    decision = CoordinationDecision(decision_id, objective_ids, selected, reason, tuple(conflicts), {"available_workers": max(0, int(available_workers))}, {"resource_capacity": capacity})
+    _append(database, "executive.coordination_decided", decision.to_payload(), key=f"executive.coordination_decided:{decision_id}")
+    return decision
+
+
+def decide_continuation(
+    database: FoundryDatabase,
+    objective_id: str,
+    *,
+    controller: str = SUPERVISOR_CONTROLLER,
+    wake_on: Sequence[str] = ("mission.completed", "mission.failed", "capability.state_changed", "owner_directive.recorded"),
+) -> ContinuationDecision:
+    """Choose the next autonomous action after current evidence, without prompting."""
+    _gate(database, controller)
+    state = rebuild_executive_state(database)
+    objective = state.objectives.get(objective_id)
+    if objective is None:
+        raise ValueError(f"unknown objective: {objective_id}")
+    progress = evaluate_objective_progress(database, objective_id, controller=controller)
+    plan = active_plan(database, objective_id)
+    action = "WAIT"
+    reason = progress.explanation
+    next_step_id: str | None = None
+    retry_number = 0
+    escalation_id: str | None = None
+    if progress.status == "COMPLETED":
+        action = "CLOSE"
+        reason = "objective has complete evidence and must not generate more work"
+    elif progress.status == "REGRESSED":
+        action = "REASSESS"
+        reason = "new evidence reduced measured progress; reassess the plan before more execution"
+    elif plan is None:
+        action = "PLAN"
+        reason = "objective has no active dependency-aware plan"
+    else:
+        failed_step = next((step for step in plan.steps if step.status == "FAILED"), None)
+        blocked_step = next((step for step in plan.steps if step.status == "BLOCKED"), None)
+        if failed_step is not None:
+            next_step_id = failed_step.step_id
+            retry_number = _failure_count(database, objective_id, failed_step.step_id)
+            if retry_number < failed_step.max_retries:
+                action = "RETRY"
+                reason = f"step {failed_step.step_id} failed; retry {retry_number + 1}/{failed_step.max_retries} remains within budget"
+                replacement = replace(failed_step, status="READY", mission_id=None, retries=failed_step.retries + 1)
+                updated = PlanRecord(plan_id=plan.plan_id, objective_id=plan.objective_id, steps=tuple(replacement if row.step_id == failed_step.step_id else row for row in plan.steps), critical_path=plan.critical_path, status=plan.status, version=plan.version + 1)
+                _append(database, "executive.plan_updated", updated.to_payload(), key=f"executive.plan_updated:{plan.plan_id}:{updated.version}", correlation_id=objective_id)
+                if objective.status == "FAILED":
+                    set_objective_status(database, objective_id, "ACTIVE", controller=controller, reason="bounded retry reopened the objective", evidence_refs=failed_step.evidence_refs)
+            else:
+                action = "ESCALATE"
+                reason = f"step {failed_step.step_id} exhausted bounded retry budget"
+                escalation = record_escalation(database, objective_id=objective_id, decision="retry budget exhausted", why=reason, evidence_refs=failed_step.evidence_refs, options=("owner changes strategy", "owner grants a new capability or budget", "suspend objective"), recommendation="suspend until owner direction or a materially different capability is available", delay_consequence="objective remains incomplete and downstream work stays blocked", controller=controller)
+                escalation_id = escalation.escalation_id
+        elif blocked_step is not None:
+            action = "WAIT"
+            next_step_id = blocked_step.step_id
+            reason = f"step {blocked_step.step_id} is blocked by an authoritative capability or dependency; wake on state change"
+        else:
+            ready = plan_ready_steps(database, objective_id)
+            if ready:
+                action = "CONTINUE"
+                next_step_id = ready[0].step_id
+                reason = f"continue with dependency-ready step {next_step_id}"
+            elif progress.stale:
+                action = "REPRIORITIZE"
+                reason = "objective is stale without evidence; recompute priority before creating more work"
+            else:
+                action = "WAIT"
+                reason = "no ready step is available; wait for mission evidence or capability recovery"
+    decision = ContinuationDecision(objective_id, action, reason, progress.evidence_refs, next_step_id, retry_number, escalation_id, _tuple(wake_on))
+    prior = rebuild_executive_state(database).continuations.get(objective_id)
+    if prior is not None and prior.to_payload() == decision.to_payload():
+        return prior
+    _append(database, "executive.continuation_decided", decision.to_payload(), key=f"executive.continuation_decided:{objective_id}:{_hash(decision.to_payload())}", correlation_id=objective_id)
+    return decision
+
+
+@dataclass(frozen=True, slots=True)
+class AutonomyCycle:
+    cycle_id: str
+    objective_id: str | None
+    coordination: CoordinationDecision
+    ranking: tuple[PriorityScore, ...]
+    plans: tuple[PlanRecord, ...]
+    mission_requests: tuple[dict[str, Any], ...]
+    portfolio_decision: dict[str, Any]
+    materialization: dict[str, Any]
+    continuation: ContinuationDecision | None
+    status: str
+    reason: str
+
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "cycle_id": self.cycle_id, "objective_id": self.objective_id,
+            "coordination": self.coordination.to_payload(),
+            "ranking": [row.to_payload() for row in self.ranking],
+            "plans": [row.to_payload() for row in self.plans],
+            "mission_requests": [dict(row) for row in self.mission_requests],
+            "portfolio_decision": dict(self.portfolio_decision), "materialization": dict(self.materialization),
+            "continuation": self.continuation.to_payload() if self.continuation else None,
+            "status": self.status, "reason": self.reason,
+        }
+
+
+def run_autonomy_cycle(
+    database: FoundryDatabase,
+    *,
+    cycle_id: str,
+    resource_id: str | None = None,
+    capability: str = "write_registered_worktree_files",
+    controller: str = SUPERVISOR_CONTROLLER,
+    max_new_missions: int = 1,
+) -> AutonomyCycle:
+    """Run one bounded executive pass through existing portfolio and mission authorities."""
+    _gate(database, controller)
+    sync_owner_goals(database, controller=controller)
+    state = rebuild_executive_state(database)
+    plans: list[PlanRecord] = []
+    for objective in state.objectives.values():
+        if objective.status in _TERMINAL_OBJECTIVE or active_plan(database, objective.objective_id) is not None:
+            continue
+        step = PlanStep(
+            step_id="execute", objective_id=objective.objective_id, description=objective.objective,
+            required_capabilities=objective.required_capabilities or (capability,), resource_id=objective.resource_id or resource_id,
+            output_contract=objective.success_criteria or ("durable outcome evidence",),
+            verification_contract=objective.success_criteria or ("independent verification agrees with direct inspection",),
+            max_retries=int(_number(objective.budget.get("max_retries"), 1)),
+        )
+        plans.append(build_plan(database, objective.objective_id, (step,), controller=controller))
+    ranking = tuple(rank_objectives(database, controller=controller))
+    coordination = coordinate_objectives(database, controller=controller)
+    selected_oid = coordination.selected_objective_id or (ranking[0].objective_id if ranking and ranking[0].eligible else None)
+    requests: list[dict[str, Any]] = []
+    pre_continuation: ContinuationDecision | None = None
+    if selected_oid is not None:
+        pre_continuation = decide_continuation(database, selected_oid, controller=controller)
+        if pre_continuation.action != "CLOSE":
+            requests = generate_missions_for_objective(database, selected_oid, controller=controller, max_new=max_new_missions)
+    portfolio_payload: dict[str, Any] = {"decision": "WAIT", "reason": "no objective selected"}
+    materialization: dict[str, Any] = {"materialized": False, "mission_id": None, "blocked_reason": None}
+    continuation: ContinuationDecision | None = None
+    if selected_oid is not None and (pre_continuation is None or pre_continuation.action != "CLOSE"):
+        from ..evolution.executive_portfolio import claim_selection, release_selection_claim, select_next_work
+        from .portfolio_bridge import materialize_portfolio_selection
+        decision = select_next_work(database, loop_id=f"executive:{cycle_id}", resource_id=resource_id or state.objectives[selected_oid].resource_id, capability=capability, source_id="v8-executive-autonomy")
+        portfolio_payload = decision.to_payload()
+        if decision.kind == "SELECT" and decision.entity_id:
+            resolved_resource = str(decision.selected_item.get("resource_id") or resource_id or state.objectives[selected_oid].resource_id or "")
+            materialization = materialize_portfolio_selection(database, decision=portfolio_payload, resource_id=resolved_resource, capability=capability, source_id="v8-executive-autonomy")
+            if materialization.get("materialized"):
+                try:
+                    claim_selection(database, decision, controller=controller, source_id="v8-executive-autonomy")
+                finally:
+                    try:
+                        release_selection_claim(database, decision.entity_id, controller=controller, source_id="v8-executive-autonomy")
+                    except Exception:
+                        pass
+                item = decision.selected_item
+                item_meta = _json(item.get("metadata"))
+                if item_meta.get("executive_objective_id") == selected_oid and item_meta.get("executive_step_id"):
+                    bind_mission_to_step(database, selected_oid, str(item_meta["executive_step_id"]), str(materialization.get("mission_id")), controller=controller)
+        continuation = decide_continuation(database, selected_oid, controller=controller)
+    elif pre_continuation is not None:
+        continuation = pre_continuation
+    status = "MISSION_MATERIALIZED" if materialization.get("materialized") else ("WAITING" if portfolio_payload.get("decision") != "SELECT" else "BLOCKED")
+    reason = str(materialization.get("blocked_reason") or portfolio_payload.get("reason") or "cycle completed")
+    if continuation is not None and continuation.action == "CLOSE":
+        status, reason = "CLOSED", continuation.reason
+    cycle = AutonomyCycle(cycle_id, selected_oid, coordination, ranking, tuple(plans), tuple(requests), portfolio_payload, materialization, continuation, status, reason)
+    _append(database, "executive.autonomy_cycle_recorded", cycle.to_payload(), key=f"executive.autonomy_cycle_recorded:{cycle_id}", source_id="v8-executive-autonomy", correlation_id=selected_oid)
+    return cycle
+
+
+def build_executive_briefing(
+    database: FoundryDatabase,
+    *,
+    controller: str = SUPERVISOR_CONTROLLER,
+    limit: int = 20,
+) -> ExecutiveBriefing:
+    """Build an owner-readable briefing from durable decisions and evidence."""
+    if controller != SUPERVISOR_CONTROLLER:
+        raise PermissionError("only the Supervisor can build executive briefings")
+    state = rebuild_executive_state(database)
+    ranked = rank_objectives(database, controller=controller)
+    advanced: list[dict[str, Any]] = []
+    failed: list[dict[str, Any]] = []
+    blockers: list[dict[str, Any]] = []
+    for objective in state.objectives.values():
+        evaluation = state.progress.get(objective.objective_id)
+        if evaluation is None:
+            continue
+        row = {"objective_id": objective.objective_id, "objective": objective.objective, "progress": evaluation.progress, "status": evaluation.status, "explanation": evaluation.explanation, "evidence_refs": list(evaluation.evidence_refs)}
+        if evaluation.status == "COMPLETED" or evaluation.progress > objective.progress:
+            advanced.append(row)
+        if evaluation.status == "FAILED":
+            failed.append(row)
+        if evaluation.status in {"BLOCKED", "WAITING"}:
+            blockers.append(row)
+    decisions = [row.to_payload() for row in state.continuations.values() if row.action not in {"WAIT"}]
+    decisions.extend({"decision_id": row.decision_id, "selected_objective_id": row.selected_objective_id, "reason": row.reason} for row in state.coordination.values())
+    owner_actions: list[dict[str, Any]] = []
+    for escalation in state.escalations.values():
+        if escalation.status == "OPEN":
+            owner_actions.append({"escalation_id": escalation.escalation_id, "objective_id": escalation.objective_id, "decision": escalation.decision, "recommendation": escalation.recommendation, "options": list(escalation.options)})
+    next_actions: list[dict[str, Any]] = []
+    for score in ranked:
+        if score.eligible and score.score > 0:
+            next_actions.append({"objective_id": score.objective_id, "score": score.score, "action": "continue or generate next ready mission", "why": score.explanation})
+    briefing = ExecutiveBriefing(
+        briefing_id=f"briefing:{_hash({'objectives': sorted(state.objectives), 'progress': {key: value.to_payload() for key, value in state.progress.items()}, 'continuations': {key: value.to_payload() for key, value in state.continuations.items()}})}",
+        generated_at=isoformat(), advanced=tuple(advanced[:limit]), failed=tuple(failed[:limit]),
+        changed_priorities=tuple({"objective_id": row.objective_id, "score": row.score, "factors": row.factors} for row in ranked[:limit]),
+        decisions=tuple(decisions[:limit]), owner_actions=tuple(owner_actions[:limit]), next_actions=tuple(next_actions[:limit]), blockers=tuple(blockers[:limit]),
+    )
+    return briefing
+
+
+def record_executive_briefing(database: FoundryDatabase, briefing: ExecutiveBriefing, *, controller: str = SUPERVISOR_CONTROLLER) -> ExecutiveBriefing:
+    _gate(database, controller)
+    _append(database, "executive.briefing_recorded", briefing.to_payload(), key=f"executive.briefing_recorded:{briefing.briefing_id}:{_hash(briefing.to_payload())}")
+    return briefing
+
+
+def executive_autonomy_snapshot(database: FoundryDatabase, *, include_briefing: bool = True) -> dict[str, Any]:
+    """Return a stable read projection for Command Center/API consumers."""
+    state = rebuild_executive_state(database)
+    ranking = rank_objectives(database)
+    latest_cycle = next((event.payload for event in reversed(database.events(event_type_prefixes=("executive.",))) if event.event_type == "executive.autonomy_cycle_recorded"), None)
+    briefing = build_executive_briefing(database) if include_briefing else None
+    return {
+        "objectives": {key: value.to_payload() for key, value in state.objectives.items()},
+        "plans": {key: value.to_payload() for key, value in state.plans.items()},
+        "priorities": [row.to_payload() for row in ranking],
+        "continuations": {key: value.to_payload() for key, value in state.continuations.items()},
+        "escalations": {key: value.to_payload() for key, value in state.escalations.items()},
+        "coordination": {key: value.to_payload() for key, value in state.coordination.items()},
+        "progress": {key: value.to_payload() for key, value in state.progress.items()},
+        "mission_requests": {key: dict(value) for key, value in state.mission_requests.items()},
+        "latest_cycle": dict(latest_cycle or {}),
+        "briefing": briefing.to_payload() if briefing else None,
+    }
+
+
+__all__ = [
+    "ObjectiveRecord", "PlanStep", "PlanRecord", "PriorityScore", "ProgressEvaluation",
+    "ContinuationDecision", "EscalationRecord", "CoordinationDecision", "ExecutiveBriefing",
+    "ExecutiveAutonomyState", "ExecutiveAutonomyService", "AutonomyCycle", "rebuild_executive_state", "create_objective",
+    "sync_owner_goals", "update_objective", "set_objective_status", "record_objective_progress",
+    "build_plan", "active_plan", "plan_ready_steps", "generate_missions_for_objective",
+    "bind_mission_to_step", "observe_mission_outcome", "evaluate_objective_progress",
+    "decide_continuation", "record_escalation", "resolve_escalation", "rank_objectives",
+    "coordinate_objectives", "run_autonomy_cycle", "build_executive_briefing",
+    "record_executive_briefing", "executive_autonomy_snapshot",
+]

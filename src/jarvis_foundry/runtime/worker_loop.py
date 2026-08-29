@@ -438,6 +438,48 @@ def _maybe_portfolio_select(
     return mission_id
 
 
+def _maybe_executive_autonomy(
+    database: FoundryDatabase,
+    config: WorkerRuntimeConfig,
+    *,
+    loop_id: str,
+    instance_id: str,
+) -> str | None:
+    """Run the V8 executive pass through the existing V7/mission seams."""
+    if not config.executive_autonomy_enabled:
+        return None
+    from ..executive.autonomy import run_autonomy_cycle
+
+    try:
+        cycle = run_autonomy_cycle(
+            database,
+            cycle_id=f"worker:{loop_id}",
+            resource_id=config.resource_id,
+            capability=config.capability,
+            max_new_missions=1,
+        )
+    except Exception as error:  # noqa: BLE001 - fail closed and keep loop alive
+        database.append(Event.create(
+            "worker_loop.executive_autonomy_blocked",
+            {"loop_id": loop_id, "instance_id": instance_id,
+             "reason": f"{type(error).__name__}: {error}"[:500]},
+            source_type="supervisor", source_id=f"worker-loop:{instance_id}",
+            idempotency_key=f"worker_loop.executive_autonomy_blocked:{loop_id}",
+        ))
+        return None
+    mission_id = str(cycle.materialization.get("mission_id") or "")
+    database.append(Event.create(
+        "worker_loop.executive_autonomy_observed",
+        {"loop_id": loop_id, "instance_id": instance_id,
+         "cycle_id": cycle.cycle_id, "objective_id": cycle.objective_id,
+         "status": cycle.status, "reason": cycle.reason,
+         "mission_id": mission_id or None},
+        source_type="supervisor", source_id=f"worker-loop:{instance_id}",
+        idempotency_key=f"worker_loop.executive_autonomy_observed:{loop_id}",
+    ))
+    return mission_id or None
+
+
 def _record_mission_portfolio_outcome(
     database: FoundryDatabase,
     *,
@@ -960,7 +1002,22 @@ def run_cycle(
                            f"{report.reason or 'no mission compiled'}",
                 )
         else:
+            if config.executive_autonomy_enabled:
+                try:
+                    from ..executive.autonomy import sync_owner_goals
+                    sync_owner_goals(database)
+                except Exception as error:  # noqa: BLE001 - authority reconciliation fails closed
+                    database.append(Event.create(
+                        "worker_loop.executive_authority_sync_blocked",
+                        {"loop_id": loop_id, "instance_id": instance_id,
+                         "reason": f"{type(error).__name__}: {error}"[:500]},
+                        source_type="supervisor", source_id=instance_id,
+                        idempotency_key=f"worker_loop.executive_authority_sync_blocked:{loop_id}",
+                    ))
             mission_id = _select_contract(database)
+            if mission_id is None and config.executive_autonomy_enabled:
+                mission_id = _maybe_executive_autonomy(
+                    database, config, loop_id=loop_id, instance_id=instance_id)
             if mission_id is None and config.executive_selection_enabled:
                 mission_id = _maybe_executive_select(
                     database, config, loop_id=loop_id, instance_id=instance_id)
@@ -1073,6 +1130,18 @@ def run_cycle(
             _record_mission_portfolio_outcome(
                 database, mission_id=mission_id, outcome=outcome,
                 status=terminal, instance_id=instance_id)
+            if config.executive_autonomy_enabled:
+                try:
+                    from ..executive.autonomy import observe_mission_outcome
+                    observe_mission_outcome(database, mission_id)
+                except Exception as error:  # noqa: BLE001 - outcome remains authoritative
+                    database.append(Event.create(
+                        "worker_loop.executive_autonomy_observation_blocked",
+                        {"loop_id": loop_id, "mission_id": mission_id,
+                         "reason": f"{type(error).__name__}: {error}"[:500]},
+                        source_type="supervisor", source_id=instance_id,
+                        idempotency_key=f"worker_loop.executive_autonomy_observation_blocked:{loop_id}",
+                    ))
         # V3 WP-B single authoritative closure seam: when the discovery
         # cycle is enabled, a terminal harmless result is handed to the
         # OutcomeService automatically (idempotent; PASSED-only inside).
