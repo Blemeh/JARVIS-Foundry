@@ -31,9 +31,9 @@
       "entity_id": "opencode_go",
       "entity_kind": "provider",
       "evidence_refs": [
-        "1f10e947-9479-454c-be7f-d50f37d68969",
+        "3f647e72-5e3c-484a-aaac-045968c5eab7",
         "failure-proof-0",
-        "e9985d82-e57b-4338-977a-860bed25258e",
+        "36af8d4b-d38c-4c31-b1b8-25d15f78119b",
         "failure-proof-1"
       ],
       "fingerprint": "86509cd4f7e2aca42d5b7afee0222bc3",
@@ -43,7 +43,7 @@
       "next_action": "recheck capability health and route only to an explicitly eligible fallback",
       "observed_at": "2026-08-29T10:00:00+00:00",
       "provenance": {
-        "latest_event_id": "e9985d82-e57b-4338-977a-860bed25258e",
+        "latest_event_id": "36af8d4b-d38c-4c31-b1b8-25d15f78119b",
         "projection": "append_only_event_ledger_and_durable_projections",
         "resolution_event_id": null,
         "source_types": [
@@ -56,8 +56,8 @@
       "score": 67.43,
       "signal_id": "signal-86509cd4f7e2aca42d5b7afe",
       "source_event_ids": [
-        "1f10e947-9479-454c-be7f-d50f37d68969",
-        "e9985d82-e57b-4338-977a-860bed25258e"
+        "3f647e72-5e3c-484a-aaac-045968c5eab7",
+        "36af8d4b-d38c-4c31-b1b8-25d15f78119b"
       ],
       "state": "OPEN",
       "summary": "provider_timeout",
@@ -127,9 +127,9 @@
       "entity_id": "opencode_go",
       "entity_kind": "provider",
       "evidence_refs": [
-        "1f10e947-9479-454c-be7f-d50f37d68969",
+        "3f647e72-5e3c-484a-aaac-045968c5eab7",
         "failure-proof-0",
-        "e9985d82-e57b-4338-977a-860bed25258e",
+        "36af8d4b-d38c-4c31-b1b8-25d15f78119b",
         "failure-proof-1"
       ],
       "fingerprint": "86509cd4f7e2aca42d5b7afee0222bc3",
@@ -139,21 +139,21 @@
       "next_action": "recheck capability health and route only to an explicitly eligible fallback",
       "observed_at": "2026-08-29T10:00:00+00:00",
       "provenance": {
-        "latest_event_id": "e9985d82-e57b-4338-977a-860bed25258e",
+        "latest_event_id": "36af8d4b-d38c-4c31-b1b8-25d15f78119b",
         "projection": "append_only_event_ledger_and_durable_projections",
-        "resolution_event_id": "7a6a8daa-1e70-4a76-b44c-c9acf4961002",
+        "resolution_event_id": "0a0fe9f1-9335-4113-9c0e-aedece4647f6",
         "source_types": [
           "v8-proof"
         ]
       },
       "recurrence_count": 2,
-      "resolution_event_id": "7a6a8daa-1e70-4a76-b44c-c9acf4961002",
+      "resolution_event_id": "0a0fe9f1-9335-4113-9c0e-aedece4647f6",
       "salience": "CREATE_WORK",
       "score": 67.43,
       "signal_id": "signal-86509cd4f7e2aca42d5b7afe",
       "source_event_ids": [
-        "1f10e947-9479-454c-be7f-d50f37d68969",
-        "e9985d82-e57b-4338-977a-860bed25258e"
+        "3f647e72-5e3c-484a-aaac-045968c5eab7",
+        "36af8d4b-d38c-4c31-b1b8-25d15f78119b"
       ],
       "state": "RESOLVED",
       "summary": "provider_timeout",
