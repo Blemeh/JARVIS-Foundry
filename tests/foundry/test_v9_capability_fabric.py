@@ -278,6 +278,23 @@ def test_github_issue_read_uses_research_connector(tmp_path: Path) -> None:
     assert result.claimed_effect["document"]["number"] == 7
 
 
+def test_github_search_read(tmp_path: Path) -> None:
+    database = _db(tmp_path)
+
+    def fetch(endpoint: str) -> tuple[int, bytes]:
+        assert "search/issues" in endpoint
+        return 200, json.dumps({"total_count": 1, "items": [{"title": "found"}]}).encode("utf-8")
+
+    ctx = _ctx(tmp_path, database, github_api=fetch)
+    seed_builtins(database)
+    result = execute_action(
+        database, ctx, _intent("github.search.read"), "github.search.read",
+        {"action": "github.search.read", "endpoint": "/search/issues?q=repo:owner/demo"},
+    )
+    assert result.success is True
+    assert result.claimed_effect["document"]["total_count"] == 1
+
+
 def test_provider_refuses_unattended_contributor_without_consent() -> None:
     settings = ProviderSettings(
         provider="opencode_go",

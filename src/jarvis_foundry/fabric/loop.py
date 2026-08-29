@@ -86,6 +86,12 @@ def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
             unattended=UnattendedMode.ALLOWED,
         ),
         CapabilitySpec(
+            capability_id="cap.github.search.read", version="1.0.0", kind=Kind.CONNECTOR,
+            action_kind="github.search.read", semantic=Semantic.READ, executor="github_research",
+            unattended=UnattendedMode.ALLOWED,
+            limitations=("code search is refused",),
+        ),
+        CapabilitySpec(
             capability_id="cap.github.issue.create", version="1.0.0", kind=Kind.CONNECTOR,
             action_kind="github.issue.create", semantic=Semantic.EXTERNAL_EFFECT,
             executor="github_write",

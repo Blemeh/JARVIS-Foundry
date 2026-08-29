@@ -1,6 +1,6 @@
 # V9 Capability Fabric checkpoint
 
-SHA: `2be4c09d004af28b4d3b015520a685a55a755900` (milestone 1; update after next commit)
+SHA: `9f8f8ffd96f643782dcb109ec5f681c718877109`
 Branch: `candidate/v9-capability-fabric-20260830`
 Worktree: `C:\temp\JARVIS-V9-Capability-Fabric-20260830`
 Base: `84db5d338313d835b2540796dbed24489646ceae`
