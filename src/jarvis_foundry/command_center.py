@@ -33,6 +33,7 @@ from .owner_controls import (
 from .owner_directives import owner_control_state, owner_directive_snapshot
 from .decision_queue import build_owner_attention_queue
 from .result_traceability import build_result_traceability
+from .operational_intelligence import project_operational_intelligence
 from .supervisor.estop import EmergencyStop
 from .v3_teams import DEFAULT_REPAIR_BUDGET
 from .migrations import SCHEMA_VERSION
@@ -1717,6 +1718,17 @@ def build_snapshot(
     portfolio_projection = dict(portfolio_projection)
     portfolio_projection["postv7"] = postv7_projection
 
+    operational_intelligence = project_operational_intelligence(
+        database,
+        now=generated_at,
+        stop_path=stop_path,
+    )
+    discovery_surface = dict(discovery_projection)
+    # Keep the established top-level contract stable.  Operational
+    # intelligence is an additive sub-surface alongside the existing V3
+    # discovery projection, not a second Command Center authority.
+    discovery_surface["operational_intelligence"] = operational_intelligence
+
     snapshot_payload = {
         "generated_at": generated_at,
         "source_of_truth": {"kind": "append_only_event_ledger", "ledger_head_sequence": event_count, "event_count": event_count},
@@ -1794,7 +1806,7 @@ def build_snapshot(
         "timeline": decision_timeline(database, limit=timeline_limit),
         "executive": executive_projection,
         "portfolio": portfolio_projection,
-        "discovery": discovery_projection,
+        "discovery": discovery_surface,
     }
     # The packet is an additive read-only export contract.  Import lazily to
     # avoid a module cycle: the packet builder reuses this snapshot function

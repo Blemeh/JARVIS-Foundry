@@ -8,6 +8,9 @@ type Status =
   | ComponentState
   | Health
   | "READY"
+  | "AVAILABLE"
+  | "PARTIAL"
+  | "EMPTY_LEDGER"
   | "NOT_READY"
   | "DEGRADED"
   | "SIMULATED"
@@ -31,6 +34,9 @@ const variantMap: Record<string, "accent" | "teal" | "amber" | "error" | "muted"
   ARMED: "accent",
   RUNNING: "accent",
   READY: "accent",
+  AVAILABLE: "teal",
+  PARTIAL: "amber",
+  EMPTY_LEDGER: "muted",
   PASSED: "teal",
   VERIFIED: "teal",
   PASS: "teal",

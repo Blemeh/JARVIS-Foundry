@@ -22,9 +22,10 @@ The router is pure configuration logic; it never launches anything.
 from __future__ import annotations
 
 import copy
+import math
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 try:
     import yaml
@@ -126,6 +127,215 @@ class RoleConfigurationError(RuntimeError):
     pass
 
 
+@dataclass(frozen=True, slots=True)
+class ProviderRouteCandidate:
+    """Observed provider/model capability used by the read-only route planner.
+
+    A candidate is not considered usable when health, authentication, or
+    availability is unknown.  This keeps an unprobed provider from becoming a
+    silent fallback while allowing the strict production directive to remain
+    enforced by :meth:`RoleRouter.enforce_directive_routing`.
+    """
+
+    provider: str
+    model: str
+    capabilities: tuple[str, ...] = field(default_factory=tuple)
+    context_window_tokens: int | None = None
+    latency_ms: float | None = None
+    reliability: float | None = None
+    cost_usd: float | None = None
+    health: str = "UNKNOWN"
+    auth_state: str = "UNKNOWN"
+    availability: str = "UNKNOWN"
+    evidence_refs: tuple[str, ...] = field(default_factory=tuple)
+
+
+@dataclass(frozen=True, slots=True)
+class RoutingRequest:
+    """Capability and operating constraints for one deterministic route plan."""
+
+    task_type: str
+    required_capabilities: tuple[str, ...] = field(default_factory=tuple)
+    reasoning: str = "standard"
+    context_tokens: int | None = None
+    latency_budget_ms: float | None = None
+    reliability_floor: float | None = None
+    max_cost_usd: float | None = None
+    preferred_provider: str | None = None
+    strict_identity: tuple[str, str] | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class RoutingDecision:
+    """Auditable route result; a refusal is a first-class result."""
+
+    status: str
+    selected: ProviderRouteCandidate | None
+    attempted: tuple[ProviderRouteCandidate, ...]
+    rejected: tuple[dict[str, Any], ...]
+    failure_class: str | None
+    reason: str
+    fallback_used: bool = False
+    evidence_refs: tuple[str, ...] = field(default_factory=tuple)
+
+    def to_dict(self) -> dict[str, Any]:
+        selected = None
+        if self.selected is not None:
+            selected = _candidate_dict(self.selected)
+        return {
+            "status": self.status,
+            "selected": selected,
+            "attempted": [_candidate_dict(item) for item in self.attempted],
+            "rejected": [dict(item) for item in self.rejected],
+            "failure_class": self.failure_class,
+            "reason": self.reason,
+            "fallback_used": self.fallback_used,
+            "evidence_refs": list(self.evidence_refs),
+        }
+
+
+def _candidate_dict(candidate: ProviderRouteCandidate) -> dict[str, Any]:
+    return {
+        "provider": candidate.provider,
+        "model": candidate.model,
+        "capabilities": list(candidate.capabilities),
+        "context_window_tokens": candidate.context_window_tokens,
+        "latency_ms": candidate.latency_ms,
+        "reliability": candidate.reliability,
+        "cost_usd": candidate.cost_usd,
+        "health": candidate.health,
+        "auth_state": candidate.auth_state,
+        "availability": candidate.availability,
+        "evidence_refs": list(candidate.evidence_refs),
+    }
+
+
+def route_provider_candidates(
+    request: RoutingRequest,
+    candidates: Iterable[ProviderRouteCandidate],
+) -> RoutingDecision:
+    """Choose a capable, observed provider/model without inventing readiness.
+
+    This function is pure and does not dispatch or mutate the ledger.  The
+    caller can use ``strict_identity`` for the mandatory internal route, while
+    staging/research callers may provide explicit, observed fallbacks.
+    """
+    if not request.task_type.strip():
+        return RoutingDecision(
+            "BLOCKED", None, (), (), "INVALID_REQUEST", "task_type is required")
+    if request.context_tokens is not None and request.context_tokens < 0:
+        return RoutingDecision(
+            "BLOCKED", None, (), (), "INVALID_REQUEST", "context_tokens must be non-negative")
+    candidates_list = [item for item in candidates if item.provider and item.model]
+    # Stable preference order first, then a deterministic quality key.  The
+    # quality key only uses measured values; unknown measurements are rejected
+    # below instead of being treated as zero-cost/zero-latency.
+    preferred = request.preferred_provider
+    if preferred is None and request.strict_identity is not None:
+        preferred = request.strict_identity[0]
+    candidates_list.sort(key=lambda item: (
+        0 if preferred and item.provider == preferred else 1,
+        -float(item.reliability) if item.reliability is not None else 0.0,
+        float(item.latency_ms) if item.latency_ms is not None else math.inf,
+        float(item.cost_usd) if item.cost_usd is not None else math.inf,
+        item.provider,
+        item.model,
+    ))
+    rejected: list[dict[str, Any]] = []
+    eligible: list[ProviderRouteCandidate] = []
+    for candidate in candidates_list:
+        reason: str | None = None
+        failure_class: str | None = None
+        if request.strict_identity is not None and (
+            candidate.provider, candidate.model
+        ) != request.strict_identity:
+            reason, failure_class = "strict directive identity mismatch", "DIRECTIVE_MISMATCH"
+        elif candidate.health not in {"HEALTHY", "READY"}:
+            health_class = "HEALTH_UNKNOWN" if candidate.health == "UNKNOWN" else "HEALTH_UNAVAILABLE"
+            reason, failure_class = f"health is {candidate.health}", health_class
+        elif candidate.auth_state not in {"READY", "CONFIGURED"}:
+            auth_class = "AUTH_UNKNOWN" if candidate.auth_state == "UNKNOWN" else "AUTH_UNAVAILABLE"
+            reason, failure_class = f"auth is {candidate.auth_state}", auth_class
+        elif candidate.availability not in {"AVAILABLE", "READY"}:
+            availability_class = "PROVIDER_UNKNOWN" if candidate.availability == "UNKNOWN" else "PROVIDER_UNAVAILABLE"
+            reason, failure_class = f"availability is {candidate.availability}", availability_class
+        elif request.required_capabilities:
+            declared = set(candidate.capabilities)
+            missing = sorted(set(request.required_capabilities) - declared)
+            if missing:
+                reason, failure_class = (
+                    f"missing capabilities: {', '.join(missing)}",
+                    "CAPABILITY_MISMATCH",
+                )
+        if reason is None and request.context_tokens is not None:
+            if candidate.context_window_tokens is None:
+                reason, failure_class = "context window is UNKNOWN", "CONTEXT_UNKNOWN"
+            elif candidate.context_window_tokens < request.context_tokens:
+                reason, failure_class = "context window is too small", "CONTEXT_LIMIT"
+        if reason is None and request.latency_budget_ms is not None:
+            if candidate.latency_ms is None:
+                reason, failure_class = "latency is UNKNOWN", "LATENCY_UNKNOWN"
+            elif candidate.latency_ms > request.latency_budget_ms:
+                reason, failure_class = "latency budget exceeded", "LATENCY_LIMIT"
+        if reason is None and request.reliability_floor is not None:
+            if candidate.reliability is None:
+                reason, failure_class = "reliability is UNKNOWN", "RELIABILITY_UNKNOWN"
+            elif candidate.reliability < request.reliability_floor:
+                reason, failure_class = "reliability floor not met", "RELIABILITY_LIMIT"
+        if reason is None and request.max_cost_usd is not None:
+            if candidate.cost_usd is None:
+                reason, failure_class = "cost is UNKNOWN", "COST_UNKNOWN"
+            elif candidate.cost_usd > request.max_cost_usd:
+                reason, failure_class = "cost limit exceeded", "COST_LIMIT"
+        if reason is None:
+            eligible.append(candidate)
+        else:
+            rejected.append({
+                "provider": candidate.provider,
+                "model": candidate.model,
+                "reason": reason,
+                "failure_class": failure_class,
+                "evidence_refs": list(candidate.evidence_refs),
+            })
+    if eligible:
+        selected = eligible[0]
+        fallback_used = bool(preferred and selected.provider != preferred)
+        return RoutingDecision(
+            "FALLBACK" if fallback_used else "SELECTED",
+            selected,
+            tuple(eligible),
+            tuple(rejected),
+            None,
+            "selected observed capable provider/model" if not fallback_used
+            else f"rerouted from {preferred}: preferred candidate was not eligible",
+            fallback_used=fallback_used,
+            evidence_refs=tuple(dict.fromkeys(
+                ref for item in (selected, *eligible[1:]) for ref in item.evidence_refs)),
+        )
+    if not candidates_list:
+        return RoutingDecision(
+            "UNKNOWN", None, (), (), "NO_CANDIDATES",
+            "no provider/model candidates were registered")
+    unknown_classes = {
+        "HEALTH_UNAVAILABLE", "HEALTH_UNKNOWN", "AUTH_UNAVAILABLE", "AUTH_UNKNOWN",
+        "PROVIDER_UNAVAILABLE", "PROVIDER_UNKNOWN",
+        "CONTEXT_UNKNOWN", "LATENCY_UNKNOWN", "RELIABILITY_UNKNOWN", "COST_UNKNOWN",
+    }
+    failures = [item.get("failure_class") for item in rejected]
+    if any(item in unknown_classes for item in failures):
+        status = "UNKNOWN" if any(item and item.endswith("UNKNOWN") for item in failures) else "UNAVAILABLE"
+    else:
+        status = "BLOCKED"
+    first = rejected[0] if rejected else {}
+    return RoutingDecision(
+        status, None, (), tuple(rejected),
+        str(first.get("failure_class") or "NO_ELIGIBLE_PROVIDER"),
+        "no candidate satisfied the requested capability and operating constraints",
+        evidence_refs=tuple(dict.fromkeys(
+            ref for item in candidates_list for ref in item.evidence_refs)),
+    )
+
+
 class RoleRouter:
     def __init__(
         self,
@@ -188,6 +398,11 @@ class RoleRouter:
     def known_roles(self) -> tuple[str, ...]:
         return tuple(sorted(self._roles))
 
+    @property
+    def provider_settings(self) -> ProviderSettings:
+        """Trusted provider policy used to construct this router."""
+        return self._provider_settings
+
     def config(self, role: str) -> RoleConfig:
         if role not in self._roles:
             raise RoleConfigurationError(f"unknown role: {role!r}")
@@ -195,6 +410,40 @@ class RoleRouter:
 
     def provider_chain(self, role: str) -> tuple[str, ...]:
         return self.config(role).provider_chain()
+
+    def route(
+        self,
+        request: RoutingRequest,
+        candidates: Iterable[ProviderRouteCandidate],
+        *,
+        role: str | None = None,
+    ) -> RoutingDecision:
+        """Plan a capability-aware route using this router's role policy.
+
+        ``role`` only supplies the preferred provider and required capability
+        defaults.  The result is still a pure, read-only decision; production
+        dispatch must continue to call ``enforce_directive_routing`` before
+        executing any real work.
+        """
+        if role is None:
+            return route_provider_candidates(request, candidates)
+        config = self.config(role)
+        required = request.required_capabilities or config.required_capabilities
+        preferred = request.preferred_provider or config.preferred_provider
+        return route_provider_candidates(
+            RoutingRequest(
+                task_type=request.task_type,
+                required_capabilities=tuple(required),
+                reasoning=request.reasoning,
+                context_tokens=request.context_tokens,
+                latency_budget_ms=request.latency_budget_ms,
+                reliability_floor=request.reliability_floor,
+                max_cost_usd=request.max_cost_usd,
+                preferred_provider=preferred,
+                strict_identity=request.strict_identity,
+            ),
+            candidates,
+        )
 
     def enforce_directive_routing(self) -> None:
         """Reject any configuration that deviates from DIR-2026-08-12.

@@ -105,6 +105,16 @@ def _registered_specs(database: FoundryDatabase) -> list[ConnectorSpec]:
     return sorted((spec for spec in specs if spec is not None), key=lambda item: item.connector_id)
 
 
+def list_operational_statuses(database: FoundryDatabase) -> list[dict[str, Any]]:
+    """Return bounded connector status for owner/read-model consumers.
+
+    The connector registry remains the authority; this helper only enumerates
+    its already-derived status and never creates a synthetic connector.
+    """
+    return [operational_status(database, spec.connector_id)
+            for spec in _registered_specs(database)]
+
+
 def select_operational_connector(
     database: FoundryDatabase,
     action_kind: str,
@@ -154,4 +164,7 @@ def select_operational_connector(
     return RoutingOutcome(None, "; ".join(gaps))
 
 
-__all__ = ["operational_status", "record_cost_sample", "record_operational_health", "select_operational_connector"]
+__all__ = [
+    "list_operational_statuses", "operational_status", "record_cost_sample",
+    "record_operational_health", "select_operational_connector",
+]

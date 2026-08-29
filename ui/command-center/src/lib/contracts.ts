@@ -322,6 +322,54 @@ export interface OwnerControlSurface {
   };
 }
 
+/** Additive V8 operational-intelligence surface; absent means unavailable. */
+export type OperationalSalience =
+  | "IGNORE"
+  | "REMEMBER"
+  | "MONITOR"
+  | "RECOMMEND"
+  | "CREATE_WORK"
+  | "OWNER_ATTENTION"
+  | "URGENT"
+
+export interface OperationalSignalSurface {
+  signal_id: string
+  fingerprint: string
+  salience: OperationalSalience | string
+  score: number | null
+  state: "OPEN" | "RESOLVED" | "SUPPRESSED" | "UNKNOWN" | string
+  kind: string
+  summary: string
+  recurrence_count: number | null
+  suppressed_count: number | null
+  next_action: string
+  entity_kind?: string | null
+  entity_id?: string | null
+  source_event_ids?: string[]
+  evidence_refs?: string[]
+}
+
+export interface OperationalIntelligenceSurface {
+  schema: string
+  status: string
+  generated_at: string
+  signals: OperationalSignalSurface[]
+  followups: Record<string, unknown>[]
+  attention?: {
+    open_count?: number
+    owner_attention_count?: number
+    deduped_occurrences?: number
+    counts_by_salience?: Record<string, number>
+  }
+  providers?: Record<string, unknown>
+  routing?: Record<string, unknown>
+  recurring_work?: Record<string, unknown>
+  context?: Record<string, unknown>
+  memory?: Record<string, unknown>
+  knowledge?: Record<string, unknown>
+  evolution?: Record<string, unknown>
+}
+
 export interface SystemOverview {
   version: string;
   build: string;
