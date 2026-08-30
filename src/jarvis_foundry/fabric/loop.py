@@ -13,6 +13,7 @@ from .catalog import (
     record_gap,
     record_outcome,
     register_capability,
+    reliability,
     specs_for_action,
 )
 from .executors import ExecutorContext, dispatch
@@ -49,6 +50,11 @@ def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
             unattended=UnattendedMode.ALLOWED,
         ),
         CapabilitySpec(
+            capability_id="cap.file.replace", version="1.0.0", kind=Kind.CONNECTOR,
+            action_kind="file.replace", semantic=Semantic.WRITE, executor="filesystem",
+            unattended=UnattendedMode.ALLOWED,
+        ),
+        CapabilitySpec(
             capability_id="cap.dir.list", version="1.0.0", kind=Kind.TOOL,
             action_kind="dir.list", semantic=Semantic.READ, executor="local",
             unattended=UnattendedMode.ALLOWED,
@@ -59,10 +65,27 @@ def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
             unattended=UnattendedMode.ALLOWED,
         ),
         CapabilitySpec(
+            capability_id="cap.git.diff", version="1.0.0", kind=Kind.CONNECTOR,
+            action_kind="git.diff", semantic=Semantic.READ, executor="git",
+            unattended=UnattendedMode.ALLOWED,
+        ),
+        CapabilitySpec(
+            capability_id="cap.git.branch", version="1.0.0", kind=Kind.CONNECTOR,
+            action_kind="git.branch", semantic=Semantic.WRITE, executor="git",
+            unattended=UnattendedMode.ALLOWED,
+            limitations=("owned clean worktree only",),
+        ),
+        CapabilitySpec(
             capability_id="cap.git.commit", version="1.0.0", kind=Kind.CONNECTOR,
             action_kind="git.commit", semantic=Semantic.WRITE, executor="git",
             unattended=UnattendedMode.ALLOWED,
             limitations=("owned clean worktree only",),
+        ),
+        CapabilitySpec(
+            capability_id="cap.git.push", version="1.0.0", kind=Kind.CONNECTOR,
+            action_kind="git.push", semantic=Semantic.EXTERNAL_EFFECT, executor="git",
+            unattended=UnattendedMode.ALLOWED,
+            limitations=("owned disposable remote only; no live production remotes",),
         ),
         CapabilitySpec(
             capability_id="cap.github.repo.read", version="1.0.0", kind=Kind.CONNECTOR,
@@ -136,7 +159,7 @@ def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
     return tuple(registered)
 
 
-def _rank(spec: CapabilitySpec, readiness) -> tuple[int, str]:
+def _rank(spec: CapabilitySpec, readiness, stats: Mapping[str, int]) -> tuple:
     state_rank = {
         Readiness.READY: 0,
         Readiness.UNKNOWN: 1,
@@ -146,7 +169,13 @@ def _rank(spec: CapabilitySpec, readiness) -> tuple[int, str]:
         Readiness.MISSING: 5,
     }
     unattended_rank = 0 if spec.unattended is UnattendedMode.ALLOWED else 1
-    return (state_rank.get(readiness.state, 9), unattended_rank, spec.capability_id)
+    return (
+        state_rank.get(readiness.state, 9),
+        unattended_rank,
+        -int(stats.get("successes") or 0),
+        int(stats.get("failures") or 0),
+        spec.capability_id,
+    )
 
 
 def select_capability(
@@ -182,8 +211,8 @@ def select_capability(
         if intent.unattended and spec.unattended is UnattendedMode.INTERACTIVE_REQUIRED:
             skipped.append(f"{spec.capability_id} INTERACTIVE_REQUIRED")
             continue
-        ranked.append((spec, readiness))
-    ranked.sort(key=lambda item: _rank(item[0], item[1]))
+        ranked.append((spec, readiness, reliability(database, spec.capability_id)))
+    ranked.sort(key=lambda item: _rank(item[0], item[1], item[2]))
     if intent.preferred:
         preferred = [item for item in ranked if item[0].capability_id == intent.preferred]
         others = [item for item in ranked if item[0].capability_id != intent.preferred]
@@ -225,7 +254,7 @@ def _verify(action_kind: str, claimed: Mapping[str, Any], owned_root: Path) -> V
     claimed_status = str(claimed.get("claimed") or "UNKNOWN")
     if claimed_status != "COMPLETED":
         return VerifyVerdict.UNKNOWN if claimed_status == "UNKNOWN" else VerifyVerdict.MISMATCH
-    if action_kind in {"file.write", "artifact.write", "artifact.research"}:
+    if action_kind in {"file.write", "file.replace", "artifact.write", "artifact.research"}:
         path = Path(claimed.get("path") or (owned_root / str(claimed.get("target") or "")))
         if not path.is_file():
             return VerifyVerdict.MISMATCH
@@ -235,9 +264,17 @@ def _verify(action_kind: str, claimed: Mapping[str, Any], owned_root: Path) -> V
             snap = FilesystemConnector(owned_root).snapshot(str(claimed.get("target")))
             if snap.content_hash != expected:
                 return VerifyVerdict.MISMATCH
+        if action_kind == "file.replace" and not claimed.get("replaced"):
+            return VerifyVerdict.MISMATCH
         return VerifyVerdict.MATCH
+    if action_kind == "file.read":
+        return VerifyVerdict.MATCH if claimed.get("exists") else VerifyVerdict.MISMATCH
     if action_kind == "git.commit":
         if claimed.get("head") and claimed.get("head") == claimed.get("observed_head"):
+            return VerifyVerdict.MATCH
+        return VerifyVerdict.MISMATCH
+    if action_kind == "git.push":
+        if claimed.get("remote_head") and claimed.get("remote_head") == claimed.get("observed_remote_head"):
             return VerifyVerdict.MATCH
         return VerifyVerdict.MISMATCH
     if action_kind == "hash.file.sha256":
@@ -260,8 +297,10 @@ def _verify(action_kind: str, claimed: Mapping[str, Any], owned_root: Path) -> V
         return VerifyVerdict.MISMATCH
     if action_kind == "git.inspect":
         return VerifyVerdict.MATCH if claimed.get("head") else VerifyVerdict.MISMATCH
-    if action_kind == "file.read":
-        return VerifyVerdict.MATCH if claimed.get("exists") else VerifyVerdict.MISMATCH
+    if action_kind == "git.diff":
+        return VerifyVerdict.MATCH if claimed.get("head") else VerifyVerdict.MISMATCH
+    if action_kind == "git.branch":
+        return VerifyVerdict.MATCH if claimed.get("branch") and claimed.get("head") else VerifyVerdict.MISMATCH
     if action_kind == "dir.list":
         names = claimed.get("names") or []
         path = Path(claimed.get("path") or owned_root)

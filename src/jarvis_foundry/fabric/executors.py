@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -47,13 +48,19 @@ def filesystem_write(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[s
         idempotency_key=str(payload.get("idempotency_key") or f"write:{target}"),
     )
     snap = connector.snapshot(target)
+    path = ctx.owned_root / target
+    observed_text = path.read_text(encoding="utf-8") if path.is_file() else None
+    observed_ok = (
+        observed_text is not None
+        and observed_text.replace("\r\n", "\n") == content.replace("\r\n", "\n")
+    )
     return {
-        "claimed": attempt.outcome,
+        "claimed": "COMPLETED" if observed_ok else attempt.outcome,
         "target": target,
-        "path": str(ctx.owned_root / target),
+        "path": str(path),
         "content_hash": snap.content_hash,
         "exists": snap.exists,
-        "error_code": attempt.error_code,
+        "error_code": "" if observed_ok else attempt.error_code,
     }
 
 
@@ -73,6 +80,43 @@ def filesystem_read(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
         "text": text,
         "error_code": attempt.error_code,
     }
+
+
+def file_replace(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
+    target = str(payload["target"])
+    old = str(payload["old"])
+    new = str(payload["new"])
+    read = filesystem_read(ctx, {"target": target})
+    if not read.get("exists") or read.get("text") is None:
+        return {
+            "claimed": "FAILED", "target": target, "exists": False,
+            "error_code": "missing_file",
+        }
+    text = str(read["text"])
+    if old not in text:
+        return {
+            "claimed": "FAILED", "target": target, "exists": True,
+            "error_code": "pattern_not_found",
+        }
+    written = filesystem_write(ctx, {
+        "target": target,
+        "content": text.replace(old, new, 1),
+        "idempotency_key": str(payload.get("idempotency_key") or f"replace:{target}"),
+    })
+    path = ctx.owned_root / target
+    observed_text = path.read_text(encoding="utf-8") if path.is_file() else ""
+    replaced = new in observed_text
+    written["replaced"] = replaced
+    if replaced:
+        snap = FilesystemConnector(ctx.owned_root).snapshot(target)
+        written["claimed"] = "COMPLETED"
+        written["exists"] = True
+        written["content_hash"] = snap.content_hash
+        written["error_code"] = ""
+    else:
+        written["claimed"] = "FAILED"
+        written["error_code"] = written.get("error_code") or "replace_not_observed"
+    return written
 
 
 def dir_list(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -115,6 +159,18 @@ def git_inspect(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, A
     }
 
 
+def git_diff(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
+    worktree = Path(payload.get("worktree") or ctx.owned_root / "repo")
+    observed = _git_connector(ctx).diff(worktree)
+    return {"claimed": "COMPLETED", **observed}
+
+
+def git_branch(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
+    worktree = Path(payload["worktree"])
+    observed = _git_connector(ctx).create_branch(worktree, str(payload["name"]))
+    return {"claimed": "COMPLETED", **observed}
+
+
 def git_commit(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
     worktree = Path(payload["worktree"])
     changes = dict(payload["changes"])
@@ -131,6 +187,30 @@ def git_commit(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, An
         "head": head,
         "observed_head": observed.stdout.strip(),
         "message": message,
+    }
+
+
+def git_push(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
+    worktree = Path(payload["worktree"])
+    remote = payload["remote"]
+    branch = str(payload.get("branch") or "main")
+    action_id = str(payload.get("action_id") or f"fabric-push:{branch}")
+    pushed = _git_connector(ctx).push(
+        action_id=action_id, worktree=worktree, remote=remote, branch=branch,
+    )
+    observed = GitConnector.read_ref(remote, branch)
+    outcome = str(pushed.get("outcome") or "FAILED")
+    remote_head = pushed.get("remote_head") or observed
+    claimed = "COMPLETED" if outcome == "COMPLETED" and remote_head and remote_head == observed else "FAILED"
+    return {
+        "claimed": claimed,
+        "worktree": str(worktree),
+        "remote": str(remote),
+        "branch": branch,
+        "remote_head": remote_head,
+        "observed_remote_head": observed,
+        "performed": pushed.get("performed"),
+        "action_id": action_id,
     }
 
 
@@ -209,6 +289,8 @@ def system_diagnose(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
         "gh_present": bool(gh),
         "owned_root_exists": ctx.owned_root.is_dir(),
         "free_bytes": int(disk.free),
+        "pid": os.getpid(),
+        "cwd": os.getcwd(),
     }
 
 
@@ -307,9 +389,13 @@ def script_hash_file(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[s
 HANDLERS: dict[str, Callable[[ExecutorContext, Mapping[str, Any]], dict[str, Any]]] = {
     "file.write": filesystem_write,
     "file.read": filesystem_read,
+    "file.replace": file_replace,
     "dir.list": dir_list,
     "git.inspect": git_inspect,
+    "git.diff": git_diff,
+    "git.branch": git_branch,
     "git.commit": git_commit,
+    "git.push": git_push,
     "github.repo.read": github_research,
     "github.issue.read": github_research,
     "github.pull_request.read": github_research,

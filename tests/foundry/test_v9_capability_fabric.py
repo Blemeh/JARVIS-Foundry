@@ -18,14 +18,18 @@ from jarvis_foundry.fabric import (
     TaskIntent,
     UnattendedMode,
     VerifyVerdict,
+    WorkflowStep,
     acquire_hash_capability,
     catalog_snapshot,
     execute_action,
+    execute_for_spine,
     observed_readiness,
     record_outcome,
     register_capability,
+    reliability,
     route_provider,
     run_intent,
+    run_workflow,
     seed_builtins,
     select_capability,
     unattended_mode_for,
@@ -395,3 +399,198 @@ def test_tests_and_owned_script_run(tmp_path: Path) -> None:
     )
     assert result["success"] is True
     assert "script-ok" in result["results"][0]["claimed_effect"]["stdout"]
+
+
+def test_workflow_issue_inspect_branch_commit_test_and_receipt(tmp_path: Path) -> None:
+    database = _db(tmp_path)
+    ctx = _ctx(
+        tmp_path, database,
+        github_api=lambda endpoint: (
+            200,
+            json.dumps({"number": 7, "title": "fix timeout", "state": "open"}).encode(),
+        ),
+    )
+    seed_builtins(database)
+    work, bare = _clone_repo(tmp_path, ctx.owned_root)
+    (ctx.owned_root / "test_timeout.py").write_text(
+        "def test_timeout_constant():\n    assert True\n", encoding="utf-8",
+    )
+    result = run_workflow(
+        database, ctx, _intent("github.issue.read"),
+        (
+            WorkflowStep(
+                "issue", "github.issue.read",
+                {"action": "github.issue.read", "endpoint": "/repos/acme/demo/issues/7"},
+            ),
+            WorkflowStep(
+                "inspect", "git.inspect",
+                {"worktree": str(work), "remote": str(bare)},
+            ),
+            WorkflowStep(
+                "branch", "git.branch",
+                {"worktree": "$inspect.worktree", "name": "v9-timeout"},
+            ),
+            WorkflowStep(
+                "commit", "git.commit",
+                {
+                    "worktree": "$branch.worktree",
+                    "changes": {"timeout.py": "TIMEOUT = 30\n"},
+                    "message": "fix timeout from issue 7",
+                },
+            ),
+            WorkflowStep("diff", "git.diff", {"worktree": "$commit.worktree"}),
+            WorkflowStep("tests", "tests.run", {"target": "test_timeout.py"}),
+            WorkflowStep(
+                "receipt", "file.write",
+                {"target": "receipt.txt", "content": "$commit.head"},
+            ),
+        ),
+    )
+    assert result["success"] is True
+    assert result["stopped_at"] is None
+    assert result["context"]["issue"]["document"]["number"] == 7
+    assert result["context"]["branch"]["branch"] == "v9-timeout"
+    assert result["context"]["diff"]["dirty"] is False
+    receipt = (ctx.owned_root / "receipt.txt").read_text(encoding="utf-8")
+    assert receipt == result["context"]["commit"]["head"]
+    current = subprocess.run(
+        ["git", "-C", str(work), "branch", "--show-current"],
+        capture_output=True, text=True, check=True,
+    ).stdout.strip()
+    assert current == "v9-timeout"
+    assert (work / "timeout.py").read_text(encoding="utf-8") == "TIMEOUT = 30\n"
+
+
+def test_workflow_diagnose_replace_run_and_list(tmp_path: Path) -> None:
+    database = _db(tmp_path)
+    ctx = _ctx(tmp_path, database)
+    seed_builtins(database)
+    result = run_workflow(
+        database, ctx, _intent("system.diagnose"),
+        (
+            WorkflowStep("diag", "system.diagnose", {}),
+            WorkflowStep(
+                "seed", "file.write",
+                {"target": "broken.py", "content": "print('broken')\n"},
+            ),
+            WorkflowStep(
+                "repair", "file.replace",
+                {"target": "broken.py", "old": "broken", "new": "repaired"},
+            ),
+            WorkflowStep("run", "script.run", {"target": "broken.py"}),
+            WorkflowStep("list", "dir.list", {"target": "."}),
+        ),
+    )
+    assert result["success"] is True
+    assert result["context"]["diag"]["pid"]
+    assert "repaired" in result["context"]["run"]["stdout"]
+    assert "broken.py" in result["context"]["list"]["names"]
+    repaired = (ctx.owned_root / "broken.py").read_text(encoding="utf-8")
+    assert "repaired" in repaired
+    assert "broken" not in repaired
+
+
+def test_workflow_continue_after_failed_step(tmp_path: Path) -> None:
+    database = _db(tmp_path)
+    ctx = _ctx(tmp_path, database)
+    seed_builtins(database)
+    result = run_workflow(
+        database, ctx, _intent("file.read"),
+        (
+            WorkflowStep(
+                "missing", "file.read", {"target": "absent.txt"}, on_failure="continue",
+            ),
+            WorkflowStep(
+                "write", "file.write", {"target": "present.txt", "content": "ok"},
+            ),
+        ),
+    )
+    assert result["success"] is False
+    assert result["stopped_at"] is None
+    assert result["results"][0]["verified"] == "MISMATCH"
+    assert result["results"][1]["claimed"] == "COMPLETED"
+    assert (ctx.owned_root / "present.txt").read_text(encoding="utf-8") == "ok"
+
+
+def test_spine_journals_verified_effect_for_mission_step(tmp_path: Path) -> None:
+    database = _db(tmp_path)
+    ctx = _ctx(tmp_path, database)
+    receipt = execute_for_spine(
+        database, ctx,
+        mission_id="mission-fabric-1",
+        step_id="write-notes",
+        action_kind="file.write",
+        payload={"target": "notes.txt", "content": "spine"},
+    )
+    assert receipt["success"] is True
+    assert receipt["verified"] == "MATCH"
+    assert receipt["mission_id"] == "mission-fabric-1"
+    journaled = [
+        event for event in database.events()
+        if event.event_type == "fabric.spine.result"
+    ]
+    assert len(journaled) == 1
+    assert (ctx.owned_root / "notes.txt").read_text(encoding="utf-8") == "spine"
+
+
+def test_reliability_prefers_the_capability_with_more_verified_successes(
+        tmp_path: Path) -> None:
+    database = _db(tmp_path)
+    seed_builtins(database)
+    register_capability(database, CapabilitySpec(
+        capability_id="cap.file.write.peer", version="1.0.0", kind=Kind.CONNECTOR,
+        action_kind="file.write", semantic=Semantic.WRITE, executor="filesystem",
+        unattended=UnattendedMode.ALLOWED,
+    ))
+    record_outcome(
+        database, "cap.file.write", success=True, verified=VerifyVerdict.MATCH, note="once",
+    )
+    record_outcome(
+        database, "cap.file.write.peer", success=True, verified=VerifyVerdict.MATCH, note="a",
+    )
+    record_outcome(
+        database, "cap.file.write.peer", success=True, verified=VerifyVerdict.MATCH, note="b",
+    )
+    assert reliability(database, "cap.file.write.peer")["successes"] == 2
+    selection = select_capability(database, _intent("file.write"), "file.write")
+    assert selection.capability_id == "cap.file.write.peer"
+
+
+def test_workflow_commit_and_push_to_owned_remote(tmp_path: Path) -> None:
+    database = _db(tmp_path)
+    ctx = _ctx(tmp_path, database)
+    seed_builtins(database)
+    work, bare = _clone_repo(tmp_path, ctx.owned_root)
+    result = run_workflow(
+        database, ctx, _intent("git.commit"),
+        (
+            WorkflowStep(
+                "inspect", "git.inspect",
+                {"worktree": str(work), "remote": str(bare)},
+            ),
+            WorkflowStep(
+                "commit", "git.commit",
+                {
+                    "worktree": "$inspect.worktree",
+                    "changes": {"pushed.txt": "from fabric\n"},
+                    "message": "fabric push proof",
+                },
+            ),
+            WorkflowStep(
+                "push", "git.push",
+                {
+                    "worktree": "$commit.worktree",
+                    "remote": str(bare),
+                    "branch": "main",
+                    "action_id": "fabric-push-main",
+                },
+            ),
+        ),
+    )
+    assert result["success"] is True
+    remote_head = subprocess.run(
+        ["git", "--git-dir", str(bare), "rev-parse", "refs/heads/main"],
+        capture_output=True, text=True, check=True,
+    ).stdout.strip()
+    assert remote_head == result["context"]["commit"]["head"]
+    assert result["context"]["push"]["observed_remote_head"] == remote_head

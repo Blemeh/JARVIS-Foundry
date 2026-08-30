@@ -1,0 +1,61 @@
+"""Mission/worker consumption of fabric results.
+
+This is not a second mission loop. Callers on the canonical spine inject
+``execute_for_spine`` as the effect executor and receive a journaled
+evidence receipt they can attach to a step.
+"""
+from __future__ import annotations
+
+from typing import Any, Mapping
+
+from ..database import FoundryDatabase
+from ..events import Event, payload_hash
+from .executors import ExecutorContext
+from .loop import execute_action, seed_builtins
+from .model import TaskIntent
+
+SPINE_RESULT = "fabric.spine.result"
+
+
+def execute_for_spine(
+    database: FoundryDatabase,
+    ctx: ExecutorContext,
+    *,
+    mission_id: str,
+    step_id: str,
+    action_kind: str,
+    payload: Mapping[str, Any],
+    source_id: str = "v9-fabric-spine",
+) -> dict[str, Any]:
+    """Run one fabric action and journal an evidence receipt for the spine."""
+    seed_builtins(database)
+    intent = TaskIntent(
+        task_id=f"mission.{mission_id}",
+        required_actions=(action_kind,),
+        unattended=True,
+    )
+    result = execute_action(database, ctx, intent, action_kind, payload)
+    observed = {
+        key: value for key, value in result.observed.items()
+        if key not in {"document", "text", "stdout", "stderr", "patch"}
+    }
+    receipt = {
+        "mission_id": mission_id,
+        "step_id": step_id,
+        "action_kind": action_kind,
+        "capability_id": result.capability_id,
+        "claimed": result.claimed.value,
+        "verified": result.verified.value,
+        "success": result.success,
+        "note": result.note,
+        "observed": observed,
+    }
+    database.append(Event.create(
+        SPINE_RESULT,
+        receipt,
+        source_type="supervisor",
+        source_id=source_id,
+        correlation_id=mission_id,
+        idempotency_key=f"{SPINE_RESULT}:{mission_id}:{step_id}:{payload_hash(receipt)}",
+    ))
+    return receipt

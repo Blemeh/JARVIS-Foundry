@@ -31,12 +31,16 @@ class GitConnector:
         actions={
             "git.inspect": "read",
             "git.read_ref": "read",
+            "git.diff": "read",
+            "git.branch": "write",
             "git.commit": "write",
             "git.push": "external_effect",
         },
         capabilities={
             "inspect": "READY",
             "read_refs": "READY",
+            "diff": "READY",
+            "local_branch": "READY",
             "local_commit": "READY",
             "push": "NOT_TESTED",
         },
@@ -142,6 +146,43 @@ class GitConnector:
         if len(head) != 40:
             raise GitConnectorError("git commit did not return a full object id")
         return head
+
+    def create_branch(self, worktree: str | Path, name: str) -> dict[str, Any]:
+        """Create and check out ``name`` from a clean owned worktree."""
+        owned = self._owned_worktree(worktree)
+        if not isinstance(name, str) or not name.strip() or any(
+            char in name for char in (" ", "..", "\\", "\n")
+        ):
+            raise GitConnectorError("branch name must be an exact identity")
+        status = self._run(owned, "status", "--porcelain")
+        if status:
+            raise GitConnectorError(f"dirty worktree: refusing git branch for {owned}")
+        self._run(owned, "checkout", "-b", name.strip())
+        return {
+            "worktree": str(owned),
+            "branch": self._run(owned, "branch", "--show-current"),
+            "head": self._run(owned, "rev-parse", "HEAD"),
+        }
+
+    def diff(self, worktree: str | Path) -> dict[str, Any]:
+        """Observe status, unstaged+staged patch, and HEAD. Does not mutate."""
+        owned = self._owned_worktree(worktree)
+        status = self._run(owned, "status", "--porcelain")
+        patch = subprocess.run(
+            ["git", "-C", str(owned), "diff", "HEAD"],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            timeout=60, check=False,
+        )
+        if patch.returncode != 0:
+            raise GitConnectorError(patch.stderr.strip() or "git diff failed")
+        return {
+            "worktree": str(owned),
+            "head": self._run(owned, "rev-parse", "HEAD"),
+            "branch": self._run(owned, "branch", "--show-current") or "DETACHED",
+            "dirty": bool(status),
+            "status": status,
+            "patch": patch.stdout,
+        }
 
     def push(
         self,

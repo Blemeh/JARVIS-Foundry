@@ -227,6 +227,27 @@ class ObservedReadiness:
 
 
 @dataclass(frozen=True, slots=True)
+class WorkflowStep:
+    """One bound action in a multi-capability workflow.
+
+    Payload strings starting with ``$`` resolve against prior step
+    observations (``$write.path``). Combinations are data, not code.
+    """
+
+    step_id: str
+    action_kind: str
+    payload: Mapping[str, Any] = field(default_factory=dict)
+    on_failure: str = "stop"
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "step_id", _identity(self.step_id, "step_id"))
+        object.__setattr__(self, "action_kind", _identity(self.action_kind, "action_kind"))
+        if self.on_failure not in {"stop", "continue"}:
+            raise FabricError("on_failure must be stop or continue")
+        object.__setattr__(self, "payload", dict(self.payload))
+
+
+@dataclass(frozen=True, slots=True)
 class TaskIntent:
     task_id: str
     required_actions: tuple[str, ...]

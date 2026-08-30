@@ -206,6 +206,21 @@ def specs_for_action(database: FoundryDatabase, action_kind: str) -> tuple[Capab
     )
 
 
+def reliability(database: FoundryDatabase, capability_id: str) -> dict[str, int]:
+    """Count verified successes and failures from durable outcome events."""
+    successes = 0
+    failures = 0
+    for event in database.events(event_types=(OUTCOME,), readonly=True):
+        payload = event.payload
+        if str(payload.get("capability_id")) != capability_id:
+            continue
+        if payload.get("success") and payload.get("verified") == "MATCH":
+            successes += 1
+        else:
+            failures += 1
+    return {"successes": successes, "failures": failures}
+
+
 def require_registered(database: FoundryDatabase, capability_id: str) -> CapabilitySpec:
     spec = get_spec(database, capability_id)
     if spec is None:
