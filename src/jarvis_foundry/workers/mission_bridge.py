@@ -56,6 +56,7 @@ class HybridWorkerRoleAdapter:
         role_signals: dict[str, dict[str, Any]] | None = None,
         stop_path: str | Path | None = None,
         vault_root: str | Path | None = None,
+        use_fabric: bool = False,
     ) -> None:
         self.database = database
         self.router = router
@@ -68,6 +69,9 @@ class HybridWorkerRoleAdapter:
         self.framework = "hybrid"
         self.stop_path = Path(stop_path).resolve() if stop_path else None
         self.vault_root = Path(vault_root).resolve() if vault_root else None
+        # Structured fabric effects on the canonical worker path. Lab
+        # scripted Hermes stays off this so fault-injection adapters still run.
+        self.use_fabric = bool(use_fabric)
 
     def _signals_for(self, manifest: ContextManifest) -> dict[str, Any]:
         signals = dict(self.role_signals.get(manifest.role, self.task_signals))
@@ -141,6 +145,15 @@ class HybridWorkerRoleAdapter:
                 error_detail=str(error),
                 started_at=started, finished_at=isoformat(utc_now()),
             )
+        if self.use_fabric:
+            from ..fabric.adapter import try_fabric_dispatch
+            fabric_result = try_fabric_dispatch(
+                self.database, manifest, heartbeat,
+                owned_root=root,
+                structured_only=True,
+            )
+            if fabric_result is not None:
+                return fabric_result
         instructions = manifest.instructions
         instructions = result_instruction(instructions, working_root=root)
         instructions = self._advisory_context(manifest, instructions)

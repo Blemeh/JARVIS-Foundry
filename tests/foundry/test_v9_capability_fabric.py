@@ -542,7 +542,8 @@ def test_workflow_continue_after_failed_step(tmp_path: Path) -> None:
     )
     assert result["success"] is False
     assert result["stopped_at"] is None
-    assert result["results"][0]["verified"] == "MISMATCH"
+    assert result["results"][0]["claimed"] == "FAILED"
+    assert result["results"][0]["verified"] == "MATCH"
     assert result["results"][1]["claimed"] == "COMPLETED"
     assert (ctx.owned_root / "present.txt").read_text(encoding="utf-8") == "ok"
 
@@ -983,3 +984,131 @@ def test_mission_read_registered_files_via_fabric(tmp_path: Path) -> None:
     assert outcome.outcome == PASSED
     builders = [item for item in inner.received if item.role == "builder"]
     assert builders == []
+
+
+def test_fabric_adapter_uses_registered_resource_not_constructor_root(tmp_path: Path) -> None:
+    from jarvis_foundry.mission.loop import PASSED, MissionLoop
+    from test_mission_loop import ScriptedAdapter, mission_fixture, step_kwargs
+
+    database, repository, policy, router = mission_fixture(tmp_path)
+    decoy = tmp_path / "decoy-owned"
+    decoy.mkdir()
+    inner = ScriptedAdapter(repository, artifact_name="notes.txt")
+    adapter = FabricRoleAdapter(database, owned_root=decoy, inner=inner)
+    outcome = MissionLoop(database, router, adapter, policy=policy).run_step(
+        **step_kwargs(
+            target=repository,
+            expected_artifacts=("notes.txt",),
+            instructions="from registered resource",
+        ),
+    )
+    assert outcome.outcome == PASSED
+    assert (repository / "notes.txt").is_file()
+    assert not (decoy / "notes.txt").exists()
+
+
+def test_worker_stack_structured_write_uses_fabric_without_hermes(tmp_path: Path) -> None:
+    from jarvis_foundry.paths import FoundryPaths
+    from jarvis_foundry.roles.manifest import ContextManifest
+    from jarvis_foundry.roles.results import BLOCKED, COMPLETED
+    from jarvis_foundry.runtime._stack import build_worker_stack
+    from jarvis_foundry.runtime.config import WorkerRuntimeConfig
+    from test_mission_loop import mission_fixture
+
+    database, repository, _policy, _router = mission_fixture(tmp_path)
+    home = tmp_path / "foundry-home"
+    home.mkdir()
+    cfg = WorkerRuntimeConfig(enabled=True, runtime_state_root=str(tmp_path / "state"))
+    stack = build_worker_stack(database, FoundryPaths(home), cfg, run_id="fabric")
+    assert stack.bridge.use_fabric is True
+    written = stack.bridge.dispatch(
+        ContextManifest(
+            run_id="run-fabric-stack", role="builder",
+            mission_id="mission-1", step_id="step-1",
+            resource_id="resource-1",
+            capability="write_registered_worktree_files",
+            provider="opencode_go", model="local",
+            isolation_group="g",
+            instructions=json.dumps({"target": "from-stack.txt", "content": "via fabric\n"}),
+            expected_artifacts=("from-stack.txt",),
+        ),
+        heartbeat=lambda: None,
+    )
+    assert written.status == COMPLETED
+    assert written.provider == "fabric"
+    text = (repository / "from-stack.txt").read_text(encoding="utf-8")
+    assert "via fabric" in text.replace("\r\n", "\n")
+
+    unstructured = stack.bridge.dispatch(
+        ContextManifest(
+            run_id="run-fabric-unstructured", role="builder",
+            mission_id="mission-1", step_id="step-2",
+            resource_id="resource-1",
+            capability="write_registered_worktree_files",
+            provider="opencode_go", model="local",
+            isolation_group="g",
+            instructions="please implement the feature in prose",
+            expected_artifacts=("feature.py",),
+        ),
+        heartbeat=lambda: None,
+    )
+    assert unstructured.status == BLOCKED
+    assert unstructured.error_class == "no_eligible_worker"
+    assert not (repository / "feature.py").exists()
+
+
+def test_lab_stack_does_not_enable_fabric(tmp_path: Path) -> None:
+    from jarvis_foundry.paths import FoundryPaths
+    from jarvis_foundry.runtime._stack import build_worker_stack
+    from jarvis_foundry.runtime.config import WorkerRuntimeConfig
+
+    database = _db(tmp_path)
+    home = tmp_path / "foundry-home"
+    home.mkdir()
+    cfg = WorkerRuntimeConfig(
+        enabled=True,
+        lab_scripted_hermes=True,
+        runtime_state_root=str(tmp_path / "state"),
+    )
+    stack = build_worker_stack(database, FoundryPaths(home), cfg, run_id="lab")
+    assert stack.bridge.use_fabric is False
+
+
+def test_file_append_and_failed_script_repair(tmp_path: Path) -> None:
+    database = _db(tmp_path)
+    ctx = _ctx(tmp_path, database)
+    seed_builtins(database)
+    written = execute_action(
+        database, ctx, _intent("file.write"), "file.write",
+        {"target": "log.txt", "content": "start"},
+    )
+    assert written.success is True
+    appended = execute_action(
+        database, ctx, _intent("file.append"), "file.append",
+        {"target": "log.txt", "content": "\nmore"},
+    )
+    assert appended.success is True
+    text = (ctx.owned_root / "log.txt").read_text(encoding="utf-8")
+    assert "start" in text.replace("\r\n", "\n")
+    assert "more" in text.replace("\r\n", "\n")
+
+    execute_action(
+        database, ctx, _intent("file.write"), "file.write",
+        {"target": "tool.py", "content": "raise SystemExit(2)\n"},
+    )
+    failed = execute_action(
+        database, ctx, _intent("script.run"), "script.run",
+        {"target": "tool.py"},
+    )
+    assert failed.success is False
+    repaired = execute_action(
+        database, ctx, _intent("file.replace"), "file.replace",
+        {"target": "tool.py", "old": "raise SystemExit(2)", "new": "print('repaired')"},
+    )
+    assert repaired.success is True
+    rerun = execute_action(
+        database, ctx, _intent("script.run"), "script.run",
+        {"target": "tool.py"},
+    )
+    assert rerun.success is True
+    assert "repaired" in (rerun.claimed_effect.get("stdout") or "")

@@ -55,6 +55,11 @@ def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
             unattended=UnattendedMode.ALLOWED,
         ),
         CapabilitySpec(
+            capability_id="cap.file.append", version="1.0.0", kind=Kind.CONNECTOR,
+            action_kind="file.append", semantic=Semantic.WRITE, executor="filesystem",
+            unattended=UnattendedMode.ALLOWED,
+        ),
+        CapabilitySpec(
             capability_id="cap.dir.list", version="1.0.0", kind=Kind.TOOL,
             action_kind="dir.list", semantic=Semantic.READ, executor="local",
             unattended=UnattendedMode.ALLOWED,
@@ -307,8 +312,14 @@ def select_capability(
 
 def _verify(action_kind: str, claimed: Mapping[str, Any], owned_root: Path) -> VerifyVerdict:
     claimed_status = str(claimed.get("claimed") or "UNKNOWN")
-    if claimed_status != "COMPLETED":
-        return VerifyVerdict.UNKNOWN if claimed_status == "UNKNOWN" else VerifyVerdict.MISMATCH
+    if claimed_status == "UNKNOWN":
+        return VerifyVerdict.UNKNOWN
+    if claimed_status == "BLOCKED":
+        return VerifyVerdict.UNKNOWN
+    if claimed_status == "FAILED":
+        # Honest failure is not a lying claim. Keep the capability retryable
+        # until consecutive failures trip DEGRADED.
+        return VerifyVerdict.MATCH
     if action_kind in {"file.write", "file.replace", "artifact.write", "artifact.research"}:
         path = Path(claimed.get("path") or (owned_root / str(claimed.get("target") or "")))
         if not path.is_file():
@@ -320,6 +331,11 @@ def _verify(action_kind: str, claimed: Mapping[str, Any], owned_root: Path) -> V
             if snap.content_hash != expected:
                 return VerifyVerdict.MISMATCH
         if action_kind == "file.replace" and not claimed.get("replaced"):
+            return VerifyVerdict.MISMATCH
+        return VerifyVerdict.MATCH
+    if action_kind == "file.append":
+        path = Path(claimed.get("path") or (owned_root / str(claimed.get("target") or "")))
+        if not path.is_file() or not claimed.get("appended"):
             return VerifyVerdict.MISMATCH
         return VerifyVerdict.MATCH
     if action_kind == "file.read":

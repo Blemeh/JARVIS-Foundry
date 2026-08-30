@@ -203,6 +203,7 @@ def build_worker_stack(
         role_signals=dict(config.role_signals),
         stop_path=config.resolve_stop_path(paths.home),
         vault_root=vault if vault.is_dir() else None,
+        use_fabric=not config.lab_scripted_hermes,
     )
     return WorkerStack(
         bridge=bridge, router=router, registry=registry,

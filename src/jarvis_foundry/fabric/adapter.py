@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from ..roles.adapter import RoleAdapter
 from ..roles.manifest import ContextManifest
@@ -23,6 +23,17 @@ V5_TO_FABRIC = {
     "run_registered_local_commands": "script.run",
     "git_local_commit": "git.commit",
     "git_push": "git.push",
+}
+
+# Local reads that do not need a JSON envelope on the worker path.
+_STRUCTURED_READS = {
+    "file.read",
+    "dir.list",
+    "git.inspect",
+    "git.diff",
+    "git.log",
+    "system.diagnose",
+    "system.runtime",
 }
 
 
@@ -43,14 +54,39 @@ def _json_object(text: str) -> dict[str, Any] | None:
     return obj if isinstance(obj, dict) else None
 
 
+def owned_root_for_manifest(
+    database,
+    manifest: ContextManifest,
+    fallback: Path | None = None,
+) -> Path | None:
+    """Prefer the registered resource root over a constructor default."""
+    resource = database.row("resources", "resource_id", manifest.resource_id)
+    raw = None
+    if resource is not None:
+        raw = resource.get("resolved_root") or resource.get("root_path")
+    if raw:
+        root = Path(str(raw)).expanduser().resolve()
+        if root.is_file():
+            root = root.parent
+        if root.is_dir():
+            return root
+    if fallback is not None:
+        return Path(fallback).expanduser().resolve()
+    return None
+
+
 def payload_from_manifest(
     manifest: ContextManifest,
     action_kind: str,
     owned_root: Path,
+    *,
+    structured_only: bool = False,
 ) -> dict[str, Any] | None:
     parsed = _json_object(manifest.instructions)
     if parsed is not None:
         payload = dict(parsed)
+    elif structured_only and action_kind not in _STRUCTURED_READS:
+        return None
     elif action_kind == "file.write":
         name = manifest.expected_artifacts[0] if manifest.expected_artifacts else "result.txt"
         payload = {
@@ -62,9 +98,7 @@ def payload_from_manifest(
         payload = {"target": str(name)}
     elif action_kind == "dir.list":
         payload = {"target": "."}
-    elif action_kind == "system.diagnose":
-        payload = {}
-    elif action_kind == "system.runtime":
+    elif action_kind in {"system.diagnose", "system.runtime"}:
         payload = {}
     elif action_kind in {"git.inspect", "git.diff", "git.log"}:
         payload = {"worktree": str(owned_root)}
@@ -73,6 +107,51 @@ def payload_from_manifest(
     if action_kind.startswith("git.") and "worktree" not in payload:
         payload["worktree"] = str(owned_root)
     return payload
+
+
+def try_fabric_dispatch(
+    database,
+    manifest: ContextManifest,
+    heartbeat: Callable[[], Any],
+    *,
+    owned_root: Path,
+    structured_only: bool = False,
+) -> RoleResult | None:
+    """Run a mapped fabric action or return None so the inner adapter can."""
+    action = resolve_fabric_action(manifest.capability)
+    if manifest.role not in {"builder", "repair"} or action is None:
+        return None
+    payload = payload_from_manifest(
+        manifest, action, owned_root, structured_only=structured_only,
+    )
+    if payload is None:
+        return None
+    heartbeat()
+    ctx = ExecutorContext(database=database, owned_root=owned_root)
+    receipt = execute_for_spine(
+        database,
+        ctx,
+        mission_id=manifest.mission_id,
+        step_id=str(manifest.step_id or "step"),
+        action_kind=action,
+        payload=payload,
+    )
+    success = bool(receipt.get("success"))
+    return RoleResult(
+        run_id=manifest.run_id,
+        role=manifest.role,
+        status=COMPLETED if success else FAILED,
+        provider="fabric",
+        model="local",
+        verdict=VERDICT_PASS if success else VERDICT_FAIL,
+        evidence=(
+            f"fabric:{action}",
+            f"verified:{receipt.get('verified')}",
+            f"capability:{receipt.get('capability_id')}",
+        ),
+        error_class=None if success else "fabric_effect_failed",
+        error_detail=str(receipt.get("note") or "") or None,
+    )
 
 
 class FabricRoleAdapter:
@@ -84,41 +163,24 @@ class FabricRoleAdapter:
         *,
         owned_root: str | Path,
         inner: RoleAdapter,
+        structured_only: bool = False,
     ) -> None:
         self.database = database
         self.owned_root = Path(owned_root).expanduser().resolve()
         self.inner = inner
+        self.structured_only = structured_only
 
     def dispatch(self, manifest: ContextManifest, *, heartbeat) -> RoleResult:
-        action = resolve_fabric_action(manifest.capability)
-        if manifest.role not in {"builder", "repair"} or action is None:
-            return self.inner.dispatch(manifest, heartbeat=heartbeat)
-        payload = payload_from_manifest(manifest, action, self.owned_root)
-        if payload is None:
-            return self.inner.dispatch(manifest, heartbeat=heartbeat)
-        heartbeat()
-        ctx = ExecutorContext(database=self.database, owned_root=self.owned_root)
-        receipt = execute_for_spine(
-            self.database,
-            ctx,
-            mission_id=manifest.mission_id,
-            step_id=str(manifest.step_id or "step"),
-            action_kind=action,
-            payload=payload,
+        root = owned_root_for_manifest(
+            self.database, manifest, fallback=self.owned_root,
         )
-        success = bool(receipt.get("success"))
-        return RoleResult(
-            run_id=manifest.run_id,
-            role=manifest.role,
-            status=COMPLETED if success else FAILED,
-            provider="fabric",
-            model="local",
-            verdict=VERDICT_PASS if success else VERDICT_FAIL,
-            evidence=(
-                f"fabric:{action}",
-                f"verified:{receipt.get('verified')}",
-                f"capability:{receipt.get('capability_id')}",
-            ),
-            error_class=None if success else "fabric_effect_failed",
-            error_detail=str(receipt.get("note") or "") or None,
+        if root is None:
+            return self.inner.dispatch(manifest, heartbeat=heartbeat)
+        result = try_fabric_dispatch(
+            self.database, manifest, heartbeat,
+            owned_root=root,
+            structured_only=self.structured_only,
         )
+        if result is None:
+            return self.inner.dispatch(manifest, heartbeat=heartbeat)
+        return result

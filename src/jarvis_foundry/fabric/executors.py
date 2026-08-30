@@ -71,6 +71,31 @@ def filesystem_write(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[s
     }
 
 
+def filesystem_append(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
+    target = str(payload["target"])
+    content = str(payload["content"])
+    path = (ctx.owned_root / target).resolve()
+    try:
+        path.relative_to(ctx.owned_root)
+    except ValueError as error:
+        raise FabricError("file.append target escapes owned root") from error
+    path.parent.mkdir(parents=True, exist_ok=True)
+    connector = FilesystemConnector(ctx.owned_root)
+    connector.perform(target, content, action="file.append")
+    snap = connector.snapshot(target)
+    observed = path.read_text(encoding="utf-8") if path.is_file() else ""
+    ok = content.replace("\r\n", "\n") in observed.replace("\r\n", "\n")
+    return {
+        "claimed": "COMPLETED" if ok else "FAILED",
+        "target": target,
+        "path": str(path),
+        "content_hash": snap.content_hash,
+        "exists": snap.exists,
+        "appended": ok,
+        "error_code": "" if ok else "append_not_observed",
+    }
+
+
 def filesystem_read(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
     target = str(payload["target"])
     connector = FilesystemConnector(ctx.owned_root)
@@ -563,6 +588,7 @@ HANDLERS: dict[str, Callable[[ExecutorContext, Mapping[str, Any]], dict[str, Any
     "file.write": filesystem_write,
     "file.read": filesystem_read,
     "file.replace": file_replace,
+    "file.append": filesystem_append,
     "dir.list": dir_list,
     "git.inspect": git_inspect,
     "git.diff": git_diff,

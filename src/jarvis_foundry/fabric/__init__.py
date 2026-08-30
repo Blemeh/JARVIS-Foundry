@@ -1,6 +1,6 @@
 """V9 action and capability fabric."""
 
-from .adapter import FabricRoleAdapter, resolve_fabric_action
+from .adapter import FabricRoleAdapter, resolve_fabric_action, try_fabric_dispatch
 from .catalog import (
     catalog_snapshot,
     listed_capabilities,
@@ -62,6 +62,7 @@ __all__ = [
     "register_capability",
     "reliability",
     "resolve_fabric_action",
+    "try_fabric_dispatch",
     "route_provider",
     "run_intent",
     "run_workflow",
