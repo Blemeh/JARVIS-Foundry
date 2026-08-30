@@ -13,6 +13,7 @@ Base: `84db5d338313d835b2540796dbed24489646ceae`
 - Real actions: filesystem, dir.list, file.replace, git inspect/diff/branch/commit/push, GitHub read family, issue and pull-request create via explicit transport, system diagnose, pytest, owned-root script, research artifact.
 - Generic workflow composition: `$step.field` binding, stop or continue on failure. Combinations are data, not hardcoded paths.
 - Mission spine adapter `execute_for_spine` journals `fabric.spine.result` evidence.
+- `FabricRoleAdapter` runs mapped builder/repair actions on the canonical RoleAdapter path; Hermes remains the inner adapter for everything else.
 - Selection ranks by readiness then verified success count.
 - `jarvis --home <disposable> fabric catalog` lists actual capabilities. Live home is refused.
 - Workflows: issue→inspect→branch→commit→diff→test→receipt; diagnose→write→replace→run→list; commit→push to owned remote; branch→commit→push→PR create→read.
@@ -29,7 +30,6 @@ Base: `84db5d338313d835b2540796dbed24489646ceae`
 ## In progress
 
 - Live GitHub mutation only against an explicit disposable repo.
-- Deeper MissionLoop wiring without replacing the worker adapter.
 
 ## Next gaps
 

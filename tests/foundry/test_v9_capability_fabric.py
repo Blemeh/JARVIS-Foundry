@@ -12,6 +12,7 @@ from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.fabric import (
     CapabilitySpec,
     ExecutorContext,
+    FabricRoleAdapter,
     Kind,
     POOR_HASH_CANDIDATE_SOURCE,
     Readiness,
@@ -669,3 +670,86 @@ def test_workflow_branch_push_and_pull_request_create_then_read(
     assert result["context"]["open"]["number"] == 11
     assert result["context"]["read"]["document"]["number"] == 11
     assert result["context"]["push"]["branch"] == "v9-pr"
+
+
+def test_mission_loop_builder_writes_through_fabric(tmp_path: Path) -> None:
+    from jarvis_foundry.mission.loop import PASSED, MissionLoop
+    from test_mission_loop import ScriptedAdapter, mission_fixture, step_kwargs
+
+    database, repository, policy, router = mission_fixture(tmp_path)
+    inner = ScriptedAdapter(repository, artifact_name="notes.txt")
+    adapter = FabricRoleAdapter(database, owned_root=repository, inner=inner)
+    outcome = MissionLoop(database, router, adapter, policy=policy).run_step(
+        **step_kwargs(
+            target=repository,
+            expected_artifacts=("notes.txt",),
+            instructions="fabric notes from mission",
+        ),
+    )
+    assert outcome.outcome == PASSED
+    assert inner.attempts["builder"] == 0
+    assert inner.attempts["repair"] == 0
+    text = (repository / "notes.txt").read_text(encoding="utf-8")
+    assert "fabric notes from mission" in text.replace("\r\n", "\n")
+    spine = [
+        event for event in database.events()
+        if event.event_type == "fabric.spine.result"
+    ]
+    assert len(spine) == 1
+    assert spine[0].payload["success"] is True
+    assert spine[0].payload["action_kind"] == "file.write"
+
+
+def test_mission_loop_commit_uses_fabric_json_payload(tmp_path: Path) -> None:
+    from jarvis_foundry.mission.loop import PASSED, MissionLoop
+    from jarvis_foundry.roles.adapter import FakeHermesAdapter
+    from test_mission_loop import mission_fixture, step_kwargs
+
+    database, repository, policy, router = mission_fixture(tmp_path)
+    inner = FakeHermesAdapter(working_root=repository)
+    adapter = FabricRoleAdapter(database, owned_root=repository, inner=inner)
+    payload = {
+        "changes": {"mission.txt": "from mission\n"},
+        "message": "fabric mission commit",
+    }
+    before = subprocess.run(
+        ["git", "-C", str(repository), "rev-parse", "HEAD"],
+        capture_output=True, text=True, check=True,
+    ).stdout.strip()
+    outcome = MissionLoop(database, router, adapter, policy=policy).run_step(
+        **step_kwargs(
+            capability="git_local_commit",
+            target=repository,
+            instructions=json.dumps(payload),
+            expected_effects=("create local commit",),
+            rollback={"kind": "git_reset_soft"},
+        ),
+    )
+    assert outcome.outcome == PASSED
+    head = subprocess.run(
+        ["git", "-C", str(repository), "rev-parse", "HEAD"],
+        capture_output=True, text=True, check=True,
+    ).stdout.strip()
+    assert head != before
+    assert "from mission" in (repository / "mission.txt").read_text(encoding="utf-8")
+    builders = [item for item in inner.received if item.role == "builder"]
+    assert builders == []
+
+
+def test_unmapped_script_capability_still_uses_inner_adapter(tmp_path: Path) -> None:
+    from jarvis_foundry.mission.loop import PASSED, MissionLoop
+    from jarvis_foundry.roles.adapter import FakeHermesAdapter
+    from test_mission_loop import mission_fixture, step_kwargs
+
+    database, repository, policy, router = mission_fixture(tmp_path)
+    inner = FakeHermesAdapter(working_root=repository)
+    adapter = FabricRoleAdapter(database, owned_root=repository, inner=inner)
+    outcome = MissionLoop(database, router, adapter, policy=policy).run_step(
+        **step_kwargs(
+            capability="run_registered_local_commands",
+            target=repository,
+            expected_artifacts=("result.txt",),
+        ),
+    )
+    assert outcome.outcome == PASSED
+    assert any(item.role == "builder" for item in inner.received)
