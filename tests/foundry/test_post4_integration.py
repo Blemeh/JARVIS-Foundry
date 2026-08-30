@@ -455,8 +455,9 @@ def test_wp11_schema_v37_migration_and_rebuild_preserves_all_domains(tmp_path):
     from jarvis_foundry.projections import reset as reset_projections
     from jarvis_foundry.reconcile import reconcile as do_reconcile
 
-    assert SCHEMA_VERSION == 37
-    # Create disposable baseline at v36, then migrate to 37
+    assert SCHEMA_VERSION >= 37
+    # Create disposable baseline at v36, then migrate through the v37
+    # contract (and any additive V9 tail migrations).
     base_db_path = tmp_path / "wp11-base.db"
     db = FoundryDatabase(base_db_path)
     # initialize to 36 first (disposable)
@@ -472,12 +473,15 @@ def test_wp11_schema_v37_migration_and_rebuild_preserves_all_domains(tmp_path):
         conn.commit()
     finally:
         conn.close()
-    # Now open via FoundryDatabase which will migrate to 37
+    # Now open via FoundryDatabase which will migrate to the current schema.
     db2 = FoundryDatabase(base_db_path)
     db2.initialize()
     with db2.connect(readonly=True) as conn:
         v = conn.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0]
-        assert int(v) == 37
+        assert int(v) == SCHEMA_VERSION
+        assert conn.execute(
+            "SELECT 1 FROM schema_migrations WHERE version = 37"
+        ).fetchone() is not None
         # alias table must exist after migration
         assert conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='tier_c_project_aliases'").fetchone() is not None
 
@@ -535,5 +539,5 @@ def test_wp11_schema_v37_migration_and_rebuild_preserves_all_domains(tmp_path):
     copy_db = FoundryDatabase(copy_path)
     copy_db.initialize()
     with copy_db.connect(readonly=True) as conn:
-        assert conn.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0] == 37
+        assert conn.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0] == SCHEMA_VERSION
         assert conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='tier_c_project_aliases'").fetchone() is not None
