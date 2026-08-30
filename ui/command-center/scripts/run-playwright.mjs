@@ -1,4 +1,5 @@
 import { execFileSync, spawn } from "node:child_process"
+import { readdirSync } from "node:fs"
 import net from "node:net"
 import { join } from "node:path"
 
@@ -56,6 +57,16 @@ function stopVite() {
   }
 }
 
+// The default runner is the simulated Command Center matrix.  The
+// source-backed live proof has a separate fixture server and launcher; do not
+// import it here without its API contract or it will fail at module load.
+const requestedArgs = process.argv.slice(2)
+const defaultSpecs = readdirSync(join(process.cwd(), "e2e"))
+  .filter((name) => name.endsWith(".spec.ts") && name !== "live-autonomy-proof.spec.ts")
+  .map((name) => `e2e/${name}`)
+const hasExplicitSpec = requestedArgs.some((arg) => /\.spec\.(?:ts|js|mjs|cjs)$/.test(arg))
+const playwrightArgs = hasExplicitSpec ? requestedArgs : [...defaultSpecs, ...requestedArgs]
+
 try {
   await waitForServer()
 } catch (error) {
@@ -64,7 +75,7 @@ try {
   process.exit(1)
 }
 
-const child = spawn(process.execPath, [cli, "test", ...process.argv.slice(2)], {
+const child = spawn(process.execPath, [cli, "test", ...playwrightArgs], {
   cwd: process.cwd(),
   stdio: "inherit",
   env: {
