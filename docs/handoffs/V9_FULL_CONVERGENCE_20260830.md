@@ -5,6 +5,7 @@ Branch: `candidate/v9-full-convergence-20260830`
 Worktree: `C:\\temp\\JARVIS-V9-Full-Convergence-20260830`  
 Authoritative base: `84db5d338313d835b2540796dbed24489646ceae`  
 Functional integration tip before evidence/report commits: `dc0d94cadd505c1b7c0ee89a07e445b37a7c1bdc`  
+Cross-lane verified-retry proof tip: `e47eae237a92f3be70603383b85891cc2cc59704`  
 Disposable UI evidence commit: `d9366ecf73cb42b228ff18ced0ccc109936578fc`
 
 ## Verdict
