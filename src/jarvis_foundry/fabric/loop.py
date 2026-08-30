@@ -87,6 +87,11 @@ def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
             unattended=UnattendedMode.ALLOWED,
         ),
         CapabilitySpec(
+            capability_id="cap.git.log", version="1.0.0", kind=Kind.CONNECTOR,
+            action_kind="git.log", semantic=Semantic.READ, executor="git",
+            unattended=UnattendedMode.ALLOWED,
+        ),
+        CapabilitySpec(
             capability_id="cap.git.push", version="1.0.0", kind=Kind.CONNECTOR,
             action_kind="git.push", semantic=Semantic.EXTERNAL_EFFECT, executor="git",
             unattended=UnattendedMode.ALLOWED,
@@ -111,6 +116,21 @@ def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
         CapabilitySpec(
             capability_id="cap.github.pull_request.read", version="1.0.0", kind=Kind.CONNECTOR,
             action_kind="github.pull_request.read", semantic=Semantic.READ, executor="github_research",
+            unattended=UnattendedMode.ALLOWED,
+        ),
+        CapabilitySpec(
+            capability_id="cap.github.commit.read", version="1.0.0", kind=Kind.CONNECTOR,
+            action_kind="github.commit.read", semantic=Semantic.READ, executor="github_research",
+            unattended=UnattendedMode.ALLOWED,
+        ),
+        CapabilitySpec(
+            capability_id="cap.github.check.read", version="1.0.0", kind=Kind.CONNECTOR,
+            action_kind="github.check.read", semantic=Semantic.READ, executor="github_research",
+            unattended=UnattendedMode.ALLOWED,
+        ),
+        CapabilitySpec(
+            capability_id="cap.github.release.read", version="1.0.0", kind=Kind.CONNECTOR,
+            action_kind="github.release.read", semantic=Semantic.READ, executor="github_research",
             unattended=UnattendedMode.ALLOWED,
         ),
         CapabilitySpec(
@@ -140,6 +160,12 @@ def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
             limitations=("loopback services only",),
         ),
         CapabilitySpec(
+            capability_id="cap.http.write", version="1.0.0", kind=Kind.CONNECTOR,
+            action_kind="http.write", semantic=Semantic.EXTERNAL_EFFECT, executor="http",
+            unattended=UnattendedMode.ALLOWED,
+            limitations=("loopback services only",),
+        ),
+        CapabilitySpec(
             capability_id="cap.http.doc.read", version="1.0.0", kind=Kind.CONNECTOR,
             action_kind="http.doc.read", semantic=Semantic.READ, executor="github_research",
             unattended=UnattendedMode.ALLOWED,
@@ -148,6 +174,11 @@ def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
         CapabilitySpec(
             capability_id="cap.system.diagnose", version="1.0.0", kind=Kind.TOOL,
             action_kind="system.diagnose", semantic=Semantic.READ, executor="local",
+            unattended=UnattendedMode.ALLOWED,
+        ),
+        CapabilitySpec(
+            capability_id="cap.system.runtime", version="1.0.0", kind=Kind.TOOL,
+            action_kind="system.runtime", semantic=Semantic.READ, executor="local",
             unattended=UnattendedMode.ALLOWED,
         ),
         CapabilitySpec(
@@ -303,6 +334,8 @@ def _verify(action_kind: str, claimed: Mapping[str, Any], owned_root: Path) -> V
         return VerifyVerdict.MISMATCH
     if action_kind == "git.read_ref":
         return VerifyVerdict.MATCH if claimed.get("head") else VerifyVerdict.MISMATCH
+    if action_kind == "git.log":
+        return VerifyVerdict.MATCH if claimed.get("head") else VerifyVerdict.MISMATCH
     if action_kind == "hash.file.sha256":
         path = Path(claimed["path"])
         import hashlib
@@ -321,10 +354,23 @@ def _verify(action_kind: str, claimed: Mapping[str, Any], owned_root: Path) -> V
         return VerifyVerdict.MATCH if claimed.get("number") else VerifyVerdict.MISMATCH
     if action_kind == "http.read":
         return VerifyVerdict.MATCH if claimed.get("document") is not None else VerifyVerdict.MISMATCH
+    if action_kind == "http.write":
+        observed = claimed.get("observed_state") or {}
+        if (
+            claimed.get("claimed") == "COMPLETED"
+            and claimed.get("idempotency_key")
+            and observed.get("last_key") == claimed.get("idempotency_key")
+        ):
+            return VerifyVerdict.MATCH
+        return VerifyVerdict.MISMATCH
     if action_kind == "http.doc.read":
         return VerifyVerdict.MATCH if claimed.get("raw_sha256") else VerifyVerdict.MISMATCH
     if action_kind == "system.diagnose":
         if claimed.get("python") and claimed.get("owned_root_exists"):
+            return VerifyVerdict.MATCH
+        return VerifyVerdict.MISMATCH
+    if action_kind == "system.runtime":
+        if claimed.get("python") and claimed.get("source_kind"):
             return VerifyVerdict.MATCH
         return VerifyVerdict.MISMATCH
     if action_kind == "git.inspect":

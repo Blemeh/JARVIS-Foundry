@@ -64,7 +64,9 @@ def payload_from_manifest(
         payload = {"target": "."}
     elif action_kind == "system.diagnose":
         payload = {}
-    elif action_kind in {"git.inspect", "git.diff"}:
+    elif action_kind == "system.runtime":
+        payload = {}
+    elif action_kind in {"git.inspect", "git.diff", "git.log"}:
         payload = {"worktree": str(owned_root)}
     else:
         return None

@@ -853,3 +853,133 @@ def test_cli_fabric_run_workflow(tmp_path: Path) -> None:
     assert code == 0
     written = (home / "fabric-work" / "cli.txt").read_text(encoding="utf-8")
     assert "from-cli" in written.replace("\r\n", "\n")
+
+
+def test_github_commit_check_release_workflow(tmp_path: Path) -> None:
+    database = _db(tmp_path)
+
+    def fetch(endpoint: str) -> tuple[int, bytes]:
+        if "/commits/" in endpoint:
+            return 200, json.dumps({"sha": "abc123", "commit": {"message": "fix"}}).encode()
+        if "/actions/runs" in endpoint:
+            return 200, json.dumps({
+                "total_count": 1,
+                "workflow_runs": [{"conclusion": "success"}],
+            }).encode()
+        if "/releases/" in endpoint:
+            return 200, json.dumps({"tag_name": "v1.0.0", "draft": False}).encode()
+        return 404, b"{}"
+
+    ctx = _ctx(tmp_path, database, github_api=fetch)
+    seed_builtins(database)
+    result = run_workflow(
+        database, ctx, _intent("github.commit.read"),
+        (
+            WorkflowStep(
+                "commit", "github.commit.read",
+                {"endpoint": "/repos/acme/demo/commits/abc123"},
+            ),
+            WorkflowStep(
+                "check", "github.check.read",
+                {"endpoint": "/repos/acme/demo/actions/runs"},
+            ),
+            WorkflowStep(
+                "release", "github.release.read",
+                {"endpoint": "/repos/acme/demo/releases/latest"},
+            ),
+            WorkflowStep(
+                "note", "file.write",
+                {"target": "research/sha.txt", "content": "$commit.document.sha"},
+            ),
+        ),
+    )
+    assert result["success"] is True
+    assert result["results"][0]["claimed_effect"]["document"]["sha"] == "abc123"
+    assert result["results"][1]["claimed_effect"]["document"]["total_count"] == 1
+    assert result["results"][2]["claimed_effect"]["document"]["tag_name"] == "v1.0.0"
+    text = (ctx.owned_root / "research" / "sha.txt").read_text(encoding="utf-8")
+    assert "abc123" in text.replace("\r\n", "\n")
+
+
+def test_http_write_then_read_and_git_log(tmp_path: Path) -> None:
+    from test_http_connector import _Fixture
+
+    database = _db(tmp_path)
+    ctx = _ctx(tmp_path, database)
+    seed_builtins(database)
+    work, _bare = _clone_repo(tmp_path, ctx.owned_root)
+    fixture = _Fixture()
+    try:
+        result = run_workflow(
+            database, ctx, _intent("http.write"),
+            (
+                WorkflowStep("probe", "http.read", {"base_url": fixture.url, "path": "/state"}),
+                WorkflowStep("write", "http.write", {
+                    "base_url": fixture.url,
+                    "path": "/write",
+                    "body": {"value": "from-fabric"},
+                    "idempotency_key": "fabric-http-1",
+                }),
+                WorkflowStep("confirm", "http.read", {"base_url": fixture.url, "path": "/state"}),
+            ),
+        )
+    finally:
+        fixture.close()
+    assert result["success"] is True
+    assert result["results"][0]["claimed_effect"]["document"]["value"] == "initial"
+    assert result["results"][1]["claimed_effect"]["observed_state"]["value"] == "from-fabric"
+    assert result["results"][1]["claimed_effect"]["observed_state"]["last_key"] == "fabric-http-1"
+    assert result["results"][2]["claimed_effect"]["document"]["value"] == "from-fabric"
+
+    committed = execute_action(
+        database, ctx, _intent("git.commit"), "git.commit",
+        {"worktree": str(work), "changes": {"log.txt": "logged\n"}, "message": "log me"},
+    )
+    assert committed.success is True
+    logged = execute_action(
+        database, ctx, _intent("git.log"), "git.log",
+        {"worktree": str(work), "max_count": 5},
+    )
+    assert logged.success is True
+    assert logged.claimed_effect["head"] == committed.claimed_effect["head"]
+    assert logged.claimed_effect["count"] >= 2
+
+
+def test_system_runtime_reports_source_identity(tmp_path: Path) -> None:
+    database = _db(tmp_path)
+    ctx = _ctx(tmp_path, database)
+    seed_builtins(database)
+    result = execute_action(
+        database, ctx, _intent("system.runtime"), "system.runtime", {},
+    )
+    assert result.success is True
+    assert result.claimed_effect["source_kind"] in {"git_checkout", "installed_package"}
+    assert result.claimed_effect["python"]
+    assert "runtime_status" in result.claimed_effect
+
+
+def test_mission_read_registered_files_via_fabric(tmp_path: Path) -> None:
+    from jarvis_foundry.control.capabilities import set_capability_state
+    from jarvis_foundry.mission.loop import PASSED, MissionLoop
+    from jarvis_foundry.roles.adapter import FakeHermesAdapter
+    from test_mission_loop import mission_fixture, step_kwargs
+
+    database, repository, policy, router = mission_fixture(tmp_path)
+    (repository / "result.txt").write_text("hello-from-disk\n", encoding="utf-8")
+    set_capability_state(
+        database, "resource-1", "read_registered_files", "READY",
+        evidence={"source": "v9-fabric"},
+    )
+    inner = FakeHermesAdapter(working_root=repository)
+    adapter = FabricRoleAdapter(database, owned_root=repository, inner=inner)
+    outcome = MissionLoop(database, router, adapter, policy=policy).run_step(
+        **step_kwargs(
+            capability="read_registered_files",
+            target=repository / "result.txt",
+            expected_artifacts=("result.txt",),
+            expected_effects=("read result.txt",),
+        ),
+    )
+    assert outcome.outcome == PASSED
+    builders = [item for item in inner.received if item.role == "builder"]
+    assert builders == []

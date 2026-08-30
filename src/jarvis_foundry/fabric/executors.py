@@ -43,6 +43,12 @@ def _sha256_file(path: Path) -> str:
 def filesystem_write(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
     target = str(payload["target"])
     content = str(payload["content"])
+    path = (ctx.owned_root / target).resolve()
+    try:
+        path.relative_to(ctx.owned_root)
+    except ValueError as error:
+        raise FabricError("file.write target escapes owned root") from error
+    path.parent.mkdir(parents=True, exist_ok=True)
     connector = FilesystemConnector(ctx.owned_root)
     attempt = connector.request(
         "file.write", target, content,
@@ -203,6 +209,26 @@ def git_read_ref(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, 
     }
 
 
+def git_log(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
+    worktree = Path(payload.get("worktree") or ctx.owned_root / "repo")
+    owned = _git_connector(ctx)._owned_worktree(worktree)
+    max_count = max(1, min(int(payload.get("max_count") or 10), 50))
+    text = GitConnector._run(owned, "log", f"-{max_count}", "--format=%H%x09%s")
+    commits: list[dict[str, str]] = []
+    for line in text.splitlines():
+        sha, _, subject = line.partition("\t")
+        if sha:
+            commits.append({"sha": sha, "subject": subject})
+    head = commits[0]["sha"] if commits else None
+    return {
+        "claimed": "COMPLETED" if head else "FAILED",
+        "worktree": str(owned),
+        "head": head,
+        "commits": commits,
+        "count": len(commits),
+    }
+
+
 def git_push(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
     worktree = Path(payload["worktree"])
     remote = payload["remote"]
@@ -230,6 +256,12 @@ def git_push(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]
 def github_research(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
     connector = GitHubResearchConnector(api_transport=ctx.github_api)
     action = str(payload.get("action") or "github.repo.read")
+    if action not in {
+        "github.repo.read", "github.commit.read", "github.issue.read",
+        "github.pull_request.read", "github.check.read", "github.release.read",
+        "github.search.read",
+    }:
+        action = "github.repo.read"
     endpoint = str(payload["endpoint"])
     attempt, document = connector.read_api(action, endpoint)
     return {
@@ -344,6 +376,38 @@ def http_read(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any
     }
 
 
+def http_write(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Write JSON to a loopback HTTP service, then read the observed state."""
+    from urllib.parse import urlsplit
+
+    from ..connectors.http import HttpServiceConnector
+
+    base = str(payload["base_url"])
+    path = str(payload.get("path") or "/write")
+    host = (urlsplit(base).hostname or "").lower()
+    if host not in {"127.0.0.1", "localhost", "::1"}:
+        raise FabricError("http.write is limited to loopback services")
+    body = dict(payload.get("body") or {})
+    key = str(payload.get("idempotency_key") or "").strip()
+    if not key:
+        raise FabricError("http.write requires idempotency_key")
+    connector = HttpServiceConnector(base, timeout_s=float(payload.get("timeout_s") or 2.0))
+    attempt = connector.write(path, body, idempotency_key=key)
+    observed = None
+    if attempt.outcome == "COMPLETED":
+        _, observed = connector.read_document("/state")
+    return {
+        "claimed": attempt.outcome,
+        "base_url": connector.base_url,
+        "path": path,
+        "idempotency_key": key,
+        "response_hash": (attempt.after_state or {}).get("response_hash"),
+        "observed_state": observed,
+        "replayed": attempt.replayed,
+        "error_code": attempt.error_code,
+    }
+
+
 def http_doc_read(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
     hosts = tuple(str(item) for item in (payload.get("allowed_hosts") or ()))
     connector = GitHubResearchConnector(
@@ -359,6 +423,27 @@ def http_doc_read(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str,
         "raw_sha256": None if content is None else content.raw_sha256,
         "final_url": None if content is None else content.final_url,
         "error_code": attempt.error_code,
+    }
+
+
+def system_runtime(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Honest local runtime identity plus durable control snapshot."""
+    from ..diagnostics.runtime import diagnostic_snapshot
+    from ..runtime.authority import runtime_source_identity
+
+    identity = runtime_source_identity()
+    snapshot = diagnostic_snapshot(ctx.database)
+    control = snapshot.get("runtime_control") or {}
+    return {
+        "claimed": "COMPLETED",
+        "python": sys.version.split()[0],
+        "pid": os.getpid(),
+        "source_sha": identity.get("source_sha"),
+        "source_kind": identity.get("source_kind"),
+        "code_origin": identity.get("code_origin"),
+        "runtime_status": control.get("status"),
+        "correlation": snapshot.get("correlation"),
+        "runtime_control": control,
     }
 
 
@@ -484,6 +569,7 @@ HANDLERS: dict[str, Callable[[ExecutorContext, Mapping[str, Any]], dict[str, Any
     "git.branch": git_branch,
     "git.commit": git_commit,
     "git.read_ref": git_read_ref,
+    "git.log": git_log,
     "git.push": git_push,
     "github.repo.read": github_research,
     "github.issue.read": github_research,
@@ -496,8 +582,10 @@ HANDLERS: dict[str, Callable[[ExecutorContext, Mapping[str, Any]], dict[str, Any
     "github.issue.create": github_issue_create,
     "github.pull_request.create": github_pull_request_create,
     "http.read": http_read,
+    "http.write": http_write,
     "http.doc.read": http_doc_read,
     "system.diagnose": system_diagnose,
+    "system.runtime": system_runtime,
     "tests.run": tests_run,
     "artifact.write": artifact_write,
     "artifact.research": produce_research_artifact,
@@ -510,7 +598,10 @@ def dispatch(ctx: ExecutorContext, action_kind: str, payload: Mapping[str, Any])
     handler = HANDLERS.get(action_kind)
     if handler is None:
         raise FabricError(f"no executor for {action_kind}")
-    result = handler(ctx, payload)
+    bound = dict(payload)
+    if action_kind.startswith("github.") and action_kind.endswith(".read"):
+        bound.setdefault("action", action_kind)
+    result = handler(ctx, bound)
     if "claimed" not in result:
         result["claimed"] = ClaimOutcome.UNKNOWN.value
     return result
