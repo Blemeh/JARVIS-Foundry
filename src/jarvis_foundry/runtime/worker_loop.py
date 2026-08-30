@@ -438,6 +438,42 @@ def _maybe_portfolio_select(
     return mission_id
 
 
+
+def _maybe_continuous_cycle(database, config, *, paths, loop_id, instance_id):
+    """V9 Continuous Executive: durable wake-aware cycle (opt-in)."""
+    if not getattr(config, "continuous_enabled", False):
+        return None
+    try:
+        from ..executive.continuous import run_continuous_cycle, auto_wake_for_blocked
+    except Exception as e:
+        database.append(Event.create("worker_loop.continuous_blocked", {"loop_id": loop_id, "reason": f"import failed: {e}"}, source_type="supervisor", source_id=f"worker-loop:{instance_id}", idempotency_key=f"worker_loop.continuous_blocked:{loop_id}"))
+        return None
+    try:
+        auto_wake_for_blocked(database, controller="supervisor")
+    except Exception:
+        pass
+    try:
+        result = run_continuous_cycle(database, cycle_id=f"continuous:{loop_id}", controller="supervisor")
+        # run_continuous_cycle already does wake tick + autonomy cycle; return its mission if any
+        ac = result.get("autonomy_cycle") if isinstance(result, dict) else None
+        mid = None
+        if isinstance(ac, dict):
+            mat = ac.get("materialization") or {}
+            if isinstance(mat, dict):
+                mid = mat.get("mission_id")
+        if mid:
+            return str(mid)
+        # Also check direct mission_id
+        if isinstance(result, dict) and result.get("mission_id"):
+            return str(result.get("mission_id"))
+        return None
+    except Exception as e:
+        try:
+            database.append(Event.create("worker_loop.continuous_blocked", {"loop_id": loop_id, "reason": f"{type(e).__name__}: {e}"[:500]}, source_type="supervisor", source_id=f"worker-loop:{instance_id}", idempotency_key=f"worker_loop.continuous_blocked:{loop_id}"))
+        except Exception:
+            pass
+        return None
+
 def _maybe_executive_autonomy(
     database: FoundryDatabase,
     config: WorkerRuntimeConfig,
@@ -1053,6 +1089,8 @@ def run_cycle(
                         idempotency_key=f"worker_loop.executive_authority_sync_blocked:{loop_id}",
                     ))
             mission_id = _select_contract(database)
+            if mission_id is None and getattr(config, "continuous_enabled", False):
+                mission_id = _maybe_continuous_cycle(database, config, paths=paths, loop_id=loop_id, instance_id=instance_id)
             if mission_id is None and config.executive_autonomy_enabled:
                 mission_id = _maybe_executive_autonomy(
                     database, config, paths=paths,

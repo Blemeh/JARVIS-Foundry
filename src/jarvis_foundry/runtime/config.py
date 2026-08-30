@@ -55,6 +55,9 @@ class WorkerRuntimeConfig:
     # V3 Discovery and Building: the unified cycle stays OFF by default;
     # production keeps the v3_loop WAIT + executive selection split.
     discovery_cycle_enabled: bool = False
+    # V9 Continuous Executive: durable wake/condition system above autonomy.
+    # OFF by default; when ON the loop uses run_continuous_cycle as the single wake-aware path.
+    continuous_enabled: bool = False
 
     @classmethod
     def from_yaml(
@@ -119,6 +122,8 @@ class WorkerRuntimeConfig:
                                              False)),
             discovery_cycle_enabled=bool(
                 raw.get("discovery", {}).get("cycle_enabled", False)),
+            continuous_enabled=bool(
+                raw.get("executive", {}).get("continuous_enabled", False) or raw.get("continuous", {}).get("enabled", False)),
         )
         cfg.validate()
         return cfg

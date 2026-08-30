@@ -1731,6 +1731,14 @@ def build_snapshot(
         }
     executive_projection = dict(executive_projection)
     executive_projection["autonomy"] = autonomy_projection
+    # V9 Continuous Executive: additive wake/condition subprojection
+    try:
+        from .executive.continuous import continuous_snapshot
+        continuous_full = continuous_snapshot(database)
+        continuous_projection = continuous_full.get("continuous", continuous_full)
+    except Exception as error:  # noqa: BLE001 - read model fails closed
+        continuous_projection = {"status": "UNKNOWN", "reason": f"{type(error).__name__}: {error}", "wake_state": {}, "exec_states": {}, "due_wakes": []}
+    executive_projection["continuous"] = continuous_projection
     postv7_projection = _postv7_projection(
         database,
         portfolio=portfolio_projection,

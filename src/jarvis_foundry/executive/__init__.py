@@ -11,6 +11,21 @@ from .decisions import (
     ExecutiveWait,
 )
 from .goals import StructuredGoal, active_goals
+from .continuous import (  # V9 Continuous Executive
+    WakeCondition,
+    create_wake,
+    clear_wake,
+    trigger_wake,
+    rebuild_wake_state,
+    is_wake_due,
+    due_wakes,
+    tick_wakes,
+    continuous_snapshot,
+    blocker_for,
+    run_continuous_cycle,
+    schedule_wait_until,
+    schedule_wait_for_dependency,
+)
 from .autonomy import (
     AutonomyCycle,
     ContinuationDecision,
@@ -69,4 +84,17 @@ __all__ = [
     "rebuild_executive_state",
     "run_autonomy_cycle",
     "sync_owner_goals",
+    "WakeCondition",
+    "create_wake",
+    "clear_wake",
+    "trigger_wake",
+    "rebuild_wake_state",
+    "is_wake_due",
+    "due_wakes",
+    "tick_wakes",
+    "continuous_snapshot",
+    "blocker_for",
+    "run_continuous_cycle",
+    "schedule_wait_until",
+    "schedule_wait_for_dependency",
 ]
