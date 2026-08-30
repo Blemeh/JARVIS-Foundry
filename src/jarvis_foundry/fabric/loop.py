@@ -82,6 +82,11 @@ def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
             limitations=("owned clean worktree only",),
         ),
         CapabilitySpec(
+            capability_id="cap.git.read_ref", version="1.0.0", kind=Kind.CONNECTOR,
+            action_kind="git.read_ref", semantic=Semantic.READ, executor="git",
+            unattended=UnattendedMode.ALLOWED,
+        ),
+        CapabilitySpec(
             capability_id="cap.git.push", version="1.0.0", kind=Kind.CONNECTOR,
             action_kind="git.push", semantic=Semantic.EXTERNAL_EFFECT, executor="git",
             unattended=UnattendedMode.ALLOWED,
@@ -127,6 +132,18 @@ def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
             executor="github_write",
             unattended=UnattendedMode.ALLOWED,
             limitations=("explicit write transport required; no silent live mutation",),
+        ),
+        CapabilitySpec(
+            capability_id="cap.http.read", version="1.0.0", kind=Kind.CONNECTOR,
+            action_kind="http.read", semantic=Semantic.READ, executor="http",
+            unattended=UnattendedMode.ALLOWED,
+            limitations=("loopback services only",),
+        ),
+        CapabilitySpec(
+            capability_id="cap.http.doc.read", version="1.0.0", kind=Kind.CONNECTOR,
+            action_kind="http.doc.read", semantic=Semantic.READ, executor="github_research",
+            unattended=UnattendedMode.ALLOWED,
+            limitations=("HTTPS documents; host allow-list required for untrusted hosts",),
         ),
         CapabilitySpec(
             capability_id="cap.system.diagnose", version="1.0.0", kind=Kind.TOOL,
@@ -284,6 +301,8 @@ def _verify(action_kind: str, claimed: Mapping[str, Any], owned_root: Path) -> V
         if claimed.get("remote_head") and claimed.get("remote_head") == claimed.get("observed_remote_head"):
             return VerifyVerdict.MATCH
         return VerifyVerdict.MISMATCH
+    if action_kind == "git.read_ref":
+        return VerifyVerdict.MATCH if claimed.get("head") else VerifyVerdict.MISMATCH
     if action_kind == "hash.file.sha256":
         path = Path(claimed["path"])
         import hashlib
@@ -300,6 +319,10 @@ def _verify(action_kind: str, claimed: Mapping[str, Any], owned_root: Path) -> V
         return VerifyVerdict.MATCH if claimed.get("number") else VerifyVerdict.MISMATCH
     if action_kind == "github.pull_request.create":
         return VerifyVerdict.MATCH if claimed.get("number") else VerifyVerdict.MISMATCH
+    if action_kind == "http.read":
+        return VerifyVerdict.MATCH if claimed.get("document") is not None else VerifyVerdict.MISMATCH
+    if action_kind == "http.doc.read":
+        return VerifyVerdict.MATCH if claimed.get("raw_sha256") else VerifyVerdict.MISMATCH
     if action_kind == "system.diagnose":
         if claimed.get("python") and claimed.get("owned_root_exists"):
             return VerifyVerdict.MATCH

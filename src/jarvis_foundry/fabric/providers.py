@@ -7,7 +7,7 @@ fabricates a READY provider.
 """
 from __future__ import annotations
 
-from typing import Any, Mapping
+from typing import Any, Iterable, Mapping
 
 from ..runtime.provider_config import ProviderSettings, default_provider_settings
 from ..runtime.provider_registry import get_service
@@ -58,12 +58,15 @@ def route_provider(
     settings: ProviderSettings | None = None,
     hermes_noninteractive_consent: bool | None = None,
     runtime_config: Mapping[str, Any] | None = None,
+    observations: Iterable[Any] | None = None,
 ) -> ProviderRoute:
     """Select the configured provider only when it can satisfy the work.
 
     No alternate LLM is chosen. If the provider is interactive-only and
     the work is unattended, selection is refused so a local tool can run
-    instead.
+    instead. Optional ``observations`` are planned through
+    ``route_provider_candidates`` so UNKNOWN health/auth cannot be treated
+    as READY.
     """
     authority = settings or default_provider_settings()
     if runtime_config is not None and hermes_noninteractive_consent is None:
@@ -112,6 +115,26 @@ def route_provider(
                 f"{authority.provider}/{authority.model} unattended ability is "
                 "UNKNOWN; refusing silent use"
             ),
+            capabilities=known,
+        )
+    if observations is not None:
+        from ..roles.router import RoutingRequest, route_provider_candidates
+        decision = route_provider_candidates(
+            RoutingRequest(
+                task_type="llm.dispatch",
+                required_capabilities=required_capabilities,
+                preferred_provider=authority.provider,
+                strict_identity=(authority.provider, authority.model),
+            ),
+            observations,
+        )
+        selected = decision.status in {"SELECTED", "FALLBACK"} and decision.selected is not None
+        return ProviderRoute(
+            provider=authority.provider,
+            model=authority.model,
+            unattended=mode,
+            selected=selected,
+            reason=decision.reason,
             capabilities=known,
         )
     if not authority.api_key and authority.source == "default":

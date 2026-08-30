@@ -29,6 +29,7 @@ class ExecutorContext:
     owned_root: Path
     github_api: Callable[[str], tuple[int, bytes]] | None = None
     github_write: Callable[[str, Mapping[str, Any]], tuple[int, bytes]] | None = None
+    doc_transport: Callable[[str], tuple[int, bytes]] | None = None
 
     def __post_init__(self) -> None:
         self.owned_root = Path(self.owned_root).expanduser().resolve()
@@ -190,6 +191,18 @@ def git_commit(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, An
     }
 
 
+def git_read_ref(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
+    remote = payload["remote"]
+    branch = str(payload.get("branch") or "main")
+    head = GitConnector.read_ref(remote, branch)
+    return {
+        "claimed": "COMPLETED" if head else "FAILED",
+        "remote": str(remote),
+        "branch": branch,
+        "head": head,
+    }
+
+
 def git_push(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
     worktree = Path(payload["worktree"])
     remote = payload["remote"]
@@ -305,6 +318,47 @@ def github_pull_request_create(ctx: ExecutorContext, payload: Mapping[str, Any])
         "base": base,
         "status": status,
         "title": title,
+    }
+
+
+def http_read(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Read JSON from a loopback HTTP service. Not an open network proxy."""
+    from urllib.parse import urlsplit
+
+    from ..connectors.http import HttpServiceConnector
+
+    base = str(payload["base_url"])
+    path = str(payload.get("path") or "/state")
+    host = (urlsplit(base).hostname or "").lower()
+    if host not in {"127.0.0.1", "localhost", "::1"}:
+        raise FabricError("http.read is limited to loopback services")
+    connector = HttpServiceConnector(base, timeout_s=float(payload.get("timeout_s") or 2.0))
+    attempt, document = connector.read_document(path)
+    return {
+        "claimed": attempt.outcome,
+        "base_url": connector.base_url,
+        "path": path,
+        "document": document,
+        "response_hash": (attempt.after_state or {}).get("response_hash"),
+        "error_code": attempt.error_code,
+    }
+
+
+def http_doc_read(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
+    hosts = tuple(str(item) for item in (payload.get("allowed_hosts") or ()))
+    connector = GitHubResearchConnector(
+        api_transport=ctx.github_api,
+        doc_transport=ctx.doc_transport,
+        allowed_doc_hosts=hosts,
+    )
+    attempt, content = connector.read_document(str(payload["url"]))
+    return {
+        "claimed": attempt.outcome,
+        "url": str(payload["url"]),
+        "text": None if content is None else content.text,
+        "raw_sha256": None if content is None else content.raw_sha256,
+        "final_url": None if content is None else content.final_url,
+        "error_code": attempt.error_code,
     }
 
 
@@ -429,6 +483,7 @@ HANDLERS: dict[str, Callable[[ExecutorContext, Mapping[str, Any]], dict[str, Any
     "git.diff": git_diff,
     "git.branch": git_branch,
     "git.commit": git_commit,
+    "git.read_ref": git_read_ref,
     "git.push": git_push,
     "github.repo.read": github_research,
     "github.issue.read": github_research,
@@ -440,6 +495,8 @@ HANDLERS: dict[str, Callable[[ExecutorContext, Mapping[str, Any]], dict[str, Any
     "github.identity.read": github_identity,
     "github.issue.create": github_issue_create,
     "github.pull_request.create": github_pull_request_create,
+    "http.read": http_read,
+    "http.doc.read": http_doc_read,
     "system.diagnose": system_diagnose,
     "tests.run": tests_run,
     "artifact.write": artifact_write,

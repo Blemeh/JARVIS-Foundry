@@ -106,6 +106,11 @@ def _parser() -> argparse.ArgumentParser:
     )
     fabric_sub = fabric.add_subparsers(dest="fabric_command", required=True)
     fabric_sub.add_parser("catalog", parents=[home_option])
+    fabric_run = fabric_sub.add_parser("run", parents=[home_option])
+    fabric_run.add_argument(
+        "--workflow", type=Path, required=True,
+        help="JSON workflow file inside the disposable home",
+    )
     backup = release_sub.add_parser("backup-db")
     backup.add_argument("--destination", type=Path, required=True)
     migrate = release_sub.add_parser("migrate-clone")
@@ -279,11 +284,64 @@ def main(argv: list[str] | None = None) -> int:
         database.initialize()
         from ..fabric import catalog_snapshot, seed_builtins
         seed_builtins(database)
+        if getattr(args, "fabric_command", "catalog") == "run":
+            return _fabric_run(args, paths, database)
         print(json.dumps(catalog_snapshot(database), indent=2))
         return 0
     elif args.command == "release":
         return _release_command(args, paths)
     return 0
+
+
+def _fabric_run(args, paths: FoundryPaths, database: FoundryDatabase) -> int:
+    from ..fabric import ExecutorContext, TaskIntent, WorkflowStep, run_workflow
+
+    workflow_path = Path(args.workflow)
+    home = paths.home.resolve()
+    if not workflow_path.is_absolute():
+        workflow_path = home / workflow_path
+    workflow_path = workflow_path.resolve()
+    try:
+        workflow_path.relative_to(home)
+    except ValueError:
+        print(json.dumps({
+            "error": "workflow file must be inside the disposable home",
+            "home": str(home),
+        }, indent=2))
+        return 1
+    if not workflow_path.is_file():
+        print(json.dumps({"error": "workflow file not found", "path": str(workflow_path)}, indent=2))
+        return 1
+    spec = json.loads(workflow_path.read_text(encoding="utf-8"))
+    steps = tuple(
+        WorkflowStep(
+            step_id=str(item["step_id"]),
+            action_kind=str(item["action_kind"]),
+            payload=dict(item.get("payload") or {}),
+            on_failure=str(item.get("on_failure") or "stop"),
+        )
+        for item in spec["steps"]
+    )
+    owned = Path(spec.get("owned_root") or (home / "fabric-work"))
+    if not owned.is_absolute():
+        owned = home / owned
+    owned = owned.resolve()
+    try:
+        owned.relative_to(home)
+    except ValueError:
+        print(json.dumps({
+            "error": "owned_root must be inside the disposable home",
+            "home": str(home),
+        }, indent=2))
+        return 1
+    ctx = ExecutorContext(database=database, owned_root=owned)
+    intent = TaskIntent(
+        task_id=str(spec.get("task_id") or "cli.workflow"),
+        required_actions=tuple(step.action_kind for step in steps),
+    )
+    result = run_workflow(database, ctx, intent, steps)
+    print(json.dumps(result, indent=2, default=str))
+    return 0 if result.get("success") else 1
 
 
 def _release_command(args, paths: FoundryPaths) -> int:

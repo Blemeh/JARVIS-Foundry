@@ -322,6 +322,40 @@ def test_provider_refuses_unattended_contributor_without_consent() -> None:
     assert allowed.selected is True
 
 
+def test_observed_unknown_provider_is_not_selected() -> None:
+    from jarvis_foundry.roles.router import ProviderRouteCandidate
+
+    settings = ProviderSettings(
+        provider="opencode_go",
+        model="muse-spark-1.2-contributor",
+        base_url="https://opencode.ai/zen/go/v1",
+        api_key="sk-test-not-used-here-000000",
+        source="test",
+    )
+    unknown = route_provider(
+        settings=settings, unattended=True, hermes_noninteractive_consent=True,
+        observations=(ProviderRouteCandidate(
+            provider="opencode_go",
+            model="muse-spark-1.2-contributor",
+            health="UNKNOWN",
+            auth_state="UNKNOWN",
+            availability="UNKNOWN",
+        ),),
+    )
+    assert unknown.selected is False
+    ready = route_provider(
+        settings=settings, unattended=True, hermes_noninteractive_consent=True,
+        observations=(ProviderRouteCandidate(
+            provider="opencode_go",
+            model="muse-spark-1.2-contributor",
+            health="READY",
+            auth_state="READY",
+            availability="READY",
+        ),),
+    )
+    assert ready.selected is True
+
+
 def test_unattended_llm_dispatch_is_not_silently_selected(tmp_path: Path) -> None:
     database = _db(tmp_path)
     seed_builtins(database)
@@ -753,3 +787,69 @@ def test_unmapped_script_capability_still_uses_inner_adapter(tmp_path: Path) -> 
     )
     assert outcome.outcome == PASSED
     assert any(item.role == "builder" for item in inner.received)
+
+
+def test_git_read_ref_http_read_and_doc_read_compose(tmp_path: Path) -> None:
+    from test_http_connector import _Fixture
+
+    database = _db(tmp_path)
+    seed_builtins(database)
+    ctx = _ctx(tmp_path, database)
+    work, bare = _clone_repo(tmp_path, ctx.owned_root)
+    committed = execute_action(
+        database, ctx, _intent("git.commit"), "git.commit",
+        {"worktree": str(work), "changes": {"ref.txt": "head\n"}, "message": "read-ref"},
+    )
+    assert committed.success is True
+    subprocess.run(
+        ["git", "-C", str(work), "push", "-q", "origin", "HEAD:main"], check=True,
+    )
+    ref = execute_action(
+        database, ctx, _intent("git.read_ref"), "git.read_ref",
+        {"remote": str(bare), "branch": "main"},
+    )
+    assert ref.success is True
+    assert ref.claimed_effect["head"] == committed.claimed_effect["head"]
+
+    fixture = _Fixture()
+    try:
+        http = execute_action(
+            database, ctx, _intent("http.read"), "http.read",
+            {"base_url": fixture.url, "path": "/state"},
+        )
+    finally:
+        fixture.close()
+    assert http.success is True
+    assert http.claimed_effect["document"]["value"] == "initial"
+
+    def fetch_doc(url: str):
+        from jarvis_foundry.connectors.github_research import DocumentResponse
+        assert url.startswith("https://docs.example/")
+        return DocumentResponse(status=200, headers={}, body=b"# official guide\n")
+
+    ctx.doc_transport = fetch_doc
+    document = execute_action(
+        database, ctx, _intent("http.doc.read"), "http.doc.read",
+        {"url": "https://docs.example/guide", "allowed_hosts": ("docs.example",)},
+    )
+    assert document.success is True
+    assert "guide" in (document.claimed_effect.get("text") or "")
+
+
+def test_cli_fabric_run_workflow(tmp_path: Path) -> None:
+    from jarvis_foundry.cli.main import main
+
+    home = tmp_path / "cli-home"
+    home.mkdir()
+    (home / "workflow.json").write_text(json.dumps({
+        "task_id": "cli.workflow",
+        "steps": [{
+            "step_id": "write",
+            "action_kind": "file.write",
+            "payload": {"target": "cli.txt", "content": "from-cli"},
+        }],
+    }), encoding="utf-8")
+    code = main(["--home", str(home), "fabric", "run", "--workflow", "workflow.json"])
+    assert code == 0
+    written = (home / "fabric-work" / "cli.txt").read_text(encoding="utf-8")
+    assert "from-cli" in written.replace("\r\n", "\n")
