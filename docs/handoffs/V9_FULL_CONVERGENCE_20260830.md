@@ -147,8 +147,8 @@ was not rerun.
 The documentation authority reports:
 
 ```text
-STALE: CURRENT_STATE.md documentation-state pin is stale: named 4513eb166ea0df2478264cf5a338c7d7c64e14b4, expected d9366ecf73cb42b228ff18ced0ccc109936578fc
-STALE: CURRENT_STATE.md must be the final docs-only commit; changed paths: docs/handoffs/V9_FULL_CONVERGENCE_20260830.md
+STALE: CURRENT_STATE.md documentation-state pin is stale: named 4513eb166ea0df2478264cf5a338c7d7c64e14b4, expected 20d70e7e59f8110a22dd942f8d7379030f6afacf
+STALE: CURRENT_STATE.md must be the final docs-only commit; changed paths: docs/handoffs/V9_FULL_CONVERGENCE_20260830.md, tests/foundry/test_v9_full_convergence.py
 STALE: CURRENT_STATE.md CURRENT/CANDIDATE SCHEMA is v37, expected v38
 DOCUMENTATION STALENESS CHECK: FAIL
 ```
