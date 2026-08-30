@@ -1,171 +1,166 @@
-# JARVIS FOUNDRY — CURRENT STATE
+# JARVIS FOUNDRY - CURRENT STATE
 
-This is the authoritative current-truth surface for the isolated JARVIS V8
-full-convergence candidate. Source, installation, database authority, process
-identity, scheduler state, provider state, and live production remain separate
-truths until the guarded promotion procedure proves parity.
+Closure date: 2026-08-31
 
-DOCUMENTATION STATE BASE SHA: `4513eb166ea0df2478264cf5a338c7d7c64e14b4`
+This is the authoritative current-truth surface for the isolated JARVIS V9
+final-closure candidate. Candidate source, installation, database authority,
+process identity, Scheduler state, provider state, and live production remain
+separate truths. Candidate proof does not become production proof by assertion.
 
-The SHA above is the immediate parent of the final documentation-only
-reconciliation commit. The freshness gate requires this relationship and
-rejects source or test drift after the pin.
+DOCUMENTATION STATE BASE SHA: `10bb83e34dd5c4bb8b4dab9a1bcb33c2721b6eb4`
 
-## Identity and boundaries
+The SHA above is the immediate parent of this final documentation-only
+reconciliation commit. The freshness authority requires that relationship.
+This file cannot contain the hash of its own commit without becoming
+self-referential; the final terminal SHA is recorded by the closure report.
+
+## Candidate identity and protected boundaries
 
 ```text
-FINAL CANDIDATE BRANCH:      candidate/v8-full-convergence-20260829
-FINAL CANDIDATE WORKTREE:    C:\temp\JARVIS-V8-Full-Convergence-20260829
-PRODUCTION BASELINE:         ba652babf91e7faa06053864b965ff5f42abeb4b
-SOURCE/TEST INTEGRATION SHA: a91a3ea4a9ab3ca0353811c5e445c58558597600
-EVIDENCE/DOCUMENTATION BASE: 4513eb166ea0df2478264cf5a338c7d7c64e14b4
-CANONICAL CHECKOUT:          DIRTY / PRESERVED / NOT MODIFIED
-LIVE PRODUCTION:             NOT MODIFIED; trust remains SUSPENDED
-LIVE DATABASE:               NOT RETARGETED / NOT MIGRATED BY THIS CANDIDATE
-LIVE SCHEDULER:              NOT RETARGETED BY THIS CANDIDATE
-LIVE PROVIDERS:              NOT RETARGETED; real credentials not asserted
+FINAL CANDIDATE BRANCH:       candidate/v9-full-convergence-20260830
+FINAL CANDIDATE WORKTREE:     C:\temp\JARVIS-V9-Full-Convergence-20260830
+AUTHORITATIVE COMMON BASE:    84db5d338313d835b2540796dbed24489646ceae
+STARTING CONVERGENCE SHA:     6b049036b02492082455c6a64a1fcfb2358440b2
+SOURCE CLOSURE COMMIT:        0bc2c398e5e2c68604368ab5a183029a97843e04
+UI EVIDENCE COMMIT:           10bb83e34dd5c4bb8b4dab9a1bcb33c2721b6eb4
+FINAL TERMINAL SHA:           this documentation-only commit; see closure report
+CANONICAL MAIN REF:           8dfb981876985525621cf10b8b9b67e34468b450
+PROTECTED CHECKOUT OBSERVED:  candidate/promotion-rehearsal-20260830
+PROTECTED CHECKOUT HEAD:      e317de50ac829ef40503322c59285073995a13db
+PROTECTED CHECKOUT STATUS:    clean and not modified by this closure
+LIVE PRODUCTION LINE:         V8 remains current until separately promoted
+LIVE PRODUCTION:              NOT ACTIVATED BY THIS CANDIDATE
+LIVE TRUST:                   SUSPENDED
 ```
 
-The candidate was created from the exact production baseline in a new
-worktree. The three lane histories were inspected by ancestry, changed-file
-inventory, semantic diff, schemas, APIs, state models, projections, tests, and
-documentation before integration. No blind merge or canonical-checkout
-mutation was used. The complete reconciliation and evidence record is in
-`docs/evidence/V8_FULL_CONVERGENCE_20260829.md`.
+The V9 work stayed in the named candidate worktree. No merge, push, live
+activation, live database migration, live release-pointer retarget, or live
+Supervisor/Scheduler mutation was performed. The canonical `main` ref stayed
+at `8dfb981...`; the protected checkout was observed separately on its
+promotion-rehearsal branch and left untouched.
 
-## Schema, authority, and trust
+## Schema, authorities, and V9 architecture
 
 ```text
-CURRENT/CANDIDATE SCHEMA:     v37
-CURRENT SCHEMA:               v37 (v34 live baseline migrated through v35/v36)
+CURRENT/CANDIDATE SCHEMA:     v38
+CURRENT SCHEMA:               v38 in the V9 candidate
 V2 KNOWLEDGE SCHEMA:          v35
 V3 DISCOVERY/BUILDING SCHEMA: v36
+v34 live baseline:            historical predecessor retained for migration proof
 ```
 
-The append-only ledger, Supervisor, OwnerControl, MissionLoop, evidence and
-verifier contracts, trust/release authority, and memory/knowledge lifecycle
-remain canonical. There is one capability registry, one objective/executive
-authority, and one operational-intelligence projection. The Command Center is
-read-only projection plus authenticated owner controls; it is not a second
-mission engine, scheduler, ledger, STOP plane, registry, or scoring system.
+Migration history remains additive and testable. Historical v34, v35, and v36
+markers are retained for migration durability; current V9 behavior uses v38.
+The append-only event ledger remains truth and projections, including the V9
+world tables, rebuild deterministically from it. Reconciliation covers the
+world entities, relationships, observations, signals, predictions, knowledge
+gaps, patterns, and calibration projections.
 
-`UNKNOWN`, `UNAVAILABLE`, `NOT_TESTED`, `BLOCKED`, `WAIT`, and `UNCONFIGURED`
-remain truthful outcomes. Missing provider, process, database, scheduler, or
-evidence state never becomes healthy through a hidden fallback.
-
-## V8 accepted capability
-
-| Area | Final candidate state |
+| Authority or lane | Candidate truth |
 | --- | --- |
-| Production hardening | `INTEGRATED`: staged trust gates, bounded reconciliation/knowledge normalization, restart persistence, proving contracts, performance fixes, and state documentation. |
-| Executive Autonomy | `INTEGRATED`: durable objectives and hierarchy, explainable prioritization, dependency/DAG planning, capability gating, mission generation through the canonical portfolio/worker path, continuation, retry/strategy change, coordination, progress, escalation, owner override, persistent cycles, and briefings. |
-| Operational Intelligence | `INTEGRATED`: authoritative capability/provider truth, observed routing/fallback metadata, bounded observations, salience, dedupe/resolution, provenance-backed context, follow-ups, recurring-work detection, memory/knowledge quality, evolution recommendations, and operational briefing data. |
-| Cross-system bridge | `INTEGRATED`: operational follow-ups become owner/policy-gated executive proposals; no proposal silently creates an objective or mission. Mission outcomes update evidence, advisory memory, operational state, and objective progress consistently. |
-| Command Center | `INTEGRATED`: existing cinematic surface shows authoritative objectives, plans, active work, discoveries, capabilities/providers, follow-ups, knowledge, evolution, decisions, escalations, next actions, and trust/runtime truth without fixture fallback in live mode. |
-| Legacy V4–V7 authorities | `PRESERVED`: owner control, mission lifecycle, recovery, release/rollback, Supervisor, memory tiers, verifier, and existing projections remain the single canonical paths. |
+| UNDERSTANDING / World Intelligence | `PROVEN_CURRENT`: durable observations derive advisory entities, patterns, predictions, gaps, and signals; mission outcomes write back once with replay deduplication. |
+| AGENCY / Continuous Executive | `PROVEN_CURRENT`: durable wakes and conditions rank objectives, wait for blocked dependencies, replan, retry/escalate, and honor STOP/PAUSE/RESUME. |
+| ABILITY / Capability Fabric | `PROVEN_CURRENT`: the canonical worker path selects eligible capabilities, performs disposable or real-shaped effects, verifies effects, and preserves `UNKNOWN`/`DEGRADED` truth. |
+| ACTION / VERIFIER | `PROVEN_CURRENT`: effects and verifier outcomes remain on the existing MissionLoop, worker, evidence, and verifier spine; no competing executor or verifier was introduced. |
+| Command Center | `PROVEN_CURRENT` as a read projection: executive and world-intelligence state are exposed without becoming a second scheduler, ledger, mission, or control authority. |
+| Production trust | `SUSPENDED`: candidate evidence does not prove live provider, reboot, endurance, installation, or four-way production parity. |
 
-Historical lane-only UI drafts and duplicate projections were excluded. No
-parallel runtime, mission engine, ledger, owner path, capability registry, or
-STOP/control plane was introduced.
+The integrated V9 path is:
+
+```text
+UNDERSTANDING signal
+  -> AGENCY wake / objective choice
+  -> ABILITY capability selection
+  -> ACTION effect
+  -> VERIFIER effect validation
+  -> WORLD MODEL outcome learning
+  -> EXECUTIVE continuation, replan, wait, or finish
+```
+
+## Closure changes and repair reconciliation
+
+The accepted Windows repair input was inspected at
+`candidate/windows-test-harness-reliability-20260830` /
+`2aa1b0be10b2c8b200cec87b85f51a913bf4fde0`. It was not merged wholesale.
+
+| Repair surface | Classification | Closure result |
+| --- | --- | --- |
+| `src/jarvis_foundry/reconcile.py` V9 world-table keys | `ALREADY_PRESENT` | The candidate already reconciled all eight V9 world projections; the repair branch changed only a comment. |
+| `src/jarvis_foundry/platform/windows_subprocess.py` | `MISSING_AND_APPLICABLE` | Added safe PSModulePath copying/filtering for Windows PowerShell and reused bounded headless process calls. |
+| `tests/foundry/scheduler_guard.py` | `MISSING_AND_APPLICABLE` | Added headless, sanitized, timeout-bounded inventory/XML/delete probes and overall teardown deadlines. |
+| `tests/foundry/conftest.py` | `MISSING_AND_APPLICABLE` | Candidate-local helper import precedence, sanitized child environment, and bounded best-effort staging cleanup. |
+| Runtime and lifecycle helpers | `MISSING_AND_APPLICABLE` | Applied the same bounded/sanitized handling to runtime identity, status, installer, owned acceptance processes, OpenAdapt process trees, lab workers, and adapter subprocesses. |
+| Candidate schema-history assertion | `SUPERSEDED` | The V9 candidate already used an all-marker schema-aware assertion; the repair branch's last-three-marker change was not applicable to v38 and was omitted. |
+| Other repair-branch Lane 3 or unrelated changes | `NOT_APPLICABLE` | No unrelated product content was copied. |
+
+The coherent harness closure commit is
+`0bc2c398e5e2c68604368ab5a183029a97843e04`. The fresh UI verification
+timestamp evidence is recorded at `10bb83e34dd5c4bb8b4dab9a1bcb33c2721b6eb4`.
 
 ## Verification record
 
-All checks below ran from the isolated candidate. Candidate engineering is
-complete; the production trust boundary is not changed by these results.
+All candidate checks below used the isolated V9 worktree. No production claim
+is inferred from disposable fixtures or simulated UI state.
 
 | Gate | Result |
 | --- | --- |
-| Python Foundry + convergence + acceptance | `2343` collected; after the final documentation pin, `2342` passed, `1` explicit host skip, `0` failed. |
-| Integrated V8 scenarios | `7` passed; Executive focused suite `9` passed; Operational Intelligence focused suite passed. |
-| Python compile and diff checks | `compileall` passed; `git diff --check` passed. |
-| Frontend TypeScript / ESLint / build | Typecheck passed; lint passed; production build passed with only the pre-existing vault chunking advisory. |
-| Frontend Vitest | `26` files, `121` tests passed. |
-| Product verifier | `212` checks, `0` failures; `15` routes × `7` scenarios × `2` viewports plus navigation. |
-| Simulated Playwright | `169` tests, `0` failures across accessibility, responsive, cohesion, owner workflow, truth, crash, and regression specs. |
-| Disposable live Playwright | `2` passed against a temporary API/database; no production claim inferred. |
-| Console and design verification | `12` routes, `0` console errors; design verification passed; Impeccable detector returned no findings on changed UI targets. |
-| Operational Intelligence probe | All `12` checks passed, including dedupe, follow-up, recurring work, memory quality, evolution gating, recovery, STOP, and snapshot surface. |
-| Adversarial memory battery | `13` PASS, `0` FAIL, `1` documented INFO limitation. |
-| V8 memory benchmark | Canonical and governed hybrid truth precedence passed; flat self-editing comparison failed as designed. |
+| V9 integrated lanes, migration, reconciliation, runtime identity, and Command Center focused batch | `PASS`; all selected tests passed at source closure SHA. |
+| Protected Scheduler restart gate | `PASS`; `tests/foundry/test_installer.py::test_task_restarts_after_hard_kill_via_repeating_trigger`, `123.10s` pytest call / `126.47s` total; no `JF-WP7Gate-*` task remained after teardown. |
+| Scheduler harness unit coverage | `PASS`; `5` focused installer/harness tests, including timeout fail-closed behavior. |
+| Python broad regression | `2438` collected; `2437` passed, `1` skipped, `0` failed in `1633.72s` (`27:13`), covering `tests/foundry` and `tests/convergence`; only the documentation-staleness test was excluded until the final docs pin. |
+| Broad-regression skip | `EXTERNAL_HOST_LIMITATION`; `test_path_escape_symlink_and_reserved_ledger_are_refused` could not create a symlink on this host. The test was not relabeled as passed. |
+| Python compile and diff checks | `PASS`; `compileall` and `git diff --check`. |
+| UI typecheck and lint | `PASS`; TypeScript build check and ESLint with zero warnings. |
+| UI production build | `PASS`; Vite build completed with the existing dynamic-import chunk advisory only. |
+| UI unit tests | `PASS`; `26` files, `121` tests. |
+| Simulated Playwright E2E | `PASS`; `169` tests in approximately `1.9m`. |
+| Product verifier | `PASS`; `212` checks, `0` failures; fresh result at `evidence/overnight/command-center-truth/PRODUCT_VERIFY_RESULT.json`. |
+| UI design, console, and frontend security verifiers | `PASS`; design detector passed, console check covered `12` routes with `0` errors, security scan found no possible secrets or unsafe target-blank links. |
+| Documentation staleness authority | `PASS` after this documentation-only commit; schema marker, pin, allowed-path, forbidden-phrase, and referenced-evidence checks all pass. |
 
-Fresh evidence is retained at
-`evidence/overnight/command-center-truth/PRODUCT_VERIFY_RESULT.json`,
-`evidence/lane3-product-truth/autonomy-proof.json`,
-`evidence/v8-operational-intelligence/proof.json`,
-`evidence/v8-adversarial-raw.json`, and
-`evidence/v8-benchmark-raw.json`.
+The integrated V9 proof covers a successful disposable action, verified
+alternate retry, provider/capability degradation, durable WAIT and recovery,
+restart persistence, STOP/PAUSE/RESUME truth, and intentional idle when no
+useful work exists. The three mandatory cross-lane scenarios remain `3/3`
+passed: signal-to-action effect and verification, provider-wait recovery, and
+failed-effect alternate retry with world-model resolution.
 
-## Integrated loop and adversarial coverage
+## Production-trust boundary
 
-The integrated proof exercises the target loop: owner objectives are ranked
-against live capability/provider truth; operational discoveries become
-provenance-backed, owner-gated proposals; approved work uses the canonical
-worker; verifier outcomes update evidence, advisory memory, operational
-signals, and objective progress; failed strategies affect later planning; and
-continuation/briefing remains governed by owner control, trust, and policy.
+The source candidate is closed; production trust is not restored by this
+source-closure task. The following remain `UNKNOWN`, `NOT_TESTED`, or require a
+separately authorized promotion run:
 
-The adversarial matrix covers competing and reprioritized objectives, blocked
-dependencies, provider degradation, disappearing capabilities, false worker
-completion, verifier `FAIL` and repair, repeated failure and strategy change,
-crash/restart, duplicate prevention, completion and autonomous next work,
-stale/conflicting objectives, STOP/PAUSE/REVOKE, owner override, budget and
-constraint exhaustion, useful versus irrelevant discovery, recurring work,
-follow-up creation, memory contradiction/supersession, executive briefings,
-and the correct decision to do nothing. Detailed test/evidence mapping is in
-`docs/evidence/V8_FULL_CONVERGENCE_20260829.md`.
+- real provider/network smoke and credential readiness;
+- physical reboot and live hard-kill recovery;
+- long-duration real-time endurance and production latency window;
+- candidate installation/publication and live release-pointer retargeting;
+- source = install = database release authority = running runtime parity after promotion;
+- destructive live recovery, rollback, and owner-authorized trust restoration.
 
-## Performance and data quality
+These boundaries are intentional. The V9 candidate did not self-promote, edit
+the live database, alter the live Scheduler, or convert unproven provider or
+reboot evidence into healthy status.
 
-Operational scans, provider-event inspection, context, signals, and follow-ups
-are bounded. Follow-up proposals are keyed by `follow_up_id`; cycle replay is
-looked up by its durable idempotency key; selected portfolio work is filtered
-to the selected objective; and heartbeat writes reuse the latest instance /
-generation key within the configured interval. Advisory Tier C memory writes
-are idempotent, bounded, provenance-backed, and never override Tier A/B truth.
-The tested UI poll is bounded at 60 seconds, with no runaway observation,
-repeated objective generation, duplicate mission, or projection divergence
-observed. No production long-duration latency/endurance claim is made.
+## Mandatory final gap accounting
 
-## Trust and release boundary
+| Closure item | Status |
+| --- | --- |
+| CURRENT_STATE/docs truth | `DONE` |
+| Test-harness reconciliation | `DONE` |
+| Protected Scheduler restart gate | `DONE` |
+| Schema/reconciliation consistency | `DONE` |
+| Cross-lane integrated proof | `DONE` |
+| Final regression and UI/E2E gates | `DONE` |
+| Clean terminal SHA | `DONE` after this docs-only commit; no later changes are authorized by this closure. |
 
-Candidate engineering state is `READY_FOR_PROMOTION`. Live production trust is
-`SUSPENDED`; the live installation, database, Scheduler, providers, and
-canonical dirty checkout were not changed. Candidate tests, a release build,
-HTTP success, or a disposable provider fixture do not promote trust.
+## Final verdict
 
-The following are `NOT_RUN` or `NOT_TESTED` for the live boundary:
+```text
+V9_FINAL_CLOSURE_READY
+```
 
-- real production reboot and hard-kill restart;
-- destructive live recovery, restore, or migration;
-- real-provider/network calls and provider credential readiness;
-- candidate installation/publication, pointer retargeting, Scheduler
-  retargeting, or promotion;
-- long-duration real-time endurance/soak and production latency window;
-- live source/install/database/process/Scheduler parity after promotion;
-- owner authorization to change live state.
-
-## Promotion requirements and remaining gaps
-
-Promotion requires a separately approved, reversible runbook that verifies the
-exact candidate SHA and immutable release identity; establishes the required
-STOP or maintenance boundary; backs up and validates the live database;
-installs without touching the canonical dirty checkout; proves source,
-installation, database, process, Scheduler, and endpoint parity; runs real
-provider/network, reboot, destructive recovery, rollback, and bounded
-endurance gates with durable evidence; and releases trust only after the
-canonical verifier and trust authorities accept that fresh evidence.
-
-The highest-value remaining work is this guarded promotion proving. The
-candidate intentionally does not self-promote, silently repair production, or
-convert `UNKNOWN` into healthy. Full details, exact lane commits, overlap
-decisions, scenario results, and next actions are in
-`docs/evidence/V8_FULL_CONVERGENCE_20260829.md`.
-
-## Documentation freshness contract
-
-`scripts/doc_staleness_check.py` is the single freshness authority. It pins
-this file to the immediate parent source commit, validates schema v37 and the
-historical v34/v35/v36 markers, rejects forbidden stale claims, and checks
-referenced evidence paths. The final reconciliation commit may change only
-`docs/CURRENT_STATE.md`, `docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.md`, and
-`tests/acceptance/README.md`.
+This verdict applies to the exact terminal candidate SHA recorded by the
+closure report after this final documentation-only commit. It means the V9
+source candidate is promotion-ready for a separately authorized rehearsal; it
+does not mean live production trust is restored.
