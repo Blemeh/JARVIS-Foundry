@@ -25,6 +25,7 @@ from .continuous import (  # V9 Continuous Executive
     run_continuous_cycle,
     schedule_wait_until,
     schedule_wait_for_dependency,
+    escalate_stale_wakes,
 )
 from .autonomy import (
     AutonomyCycle,
@@ -97,4 +98,5 @@ __all__ = [
     "run_continuous_cycle",
     "schedule_wait_until",
     "schedule_wait_for_dependency",
+    "escalate_stale_wakes",
 ]

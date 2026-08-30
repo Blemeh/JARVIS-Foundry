@@ -101,15 +101,53 @@ def is_wake_due(db, wake: dict, now=None):
             return not _cb(db, step, resource_id=rid)
         except Exception: return False
     if k == "WAIT_FOR_PROVIDER":
-        # Provider available check: unknown is not available, so not due
         pid = wake.get("provider_id")
         if not pid: return False
+        # Re-probe via capability fabric if available; else check provider ledger signal
+        try:
+            # If any objective with this provider prefix has a capability that is now unblocked, treat as due
+            for ev in db.events(event_type_prefixes=("provider.", "capability.")):
+                p = ev.payload
+                if pid in str(p.get("provider_id") or "") or pid in str(p.get("capability") or ""):
+                    # A provider/capability readiness event for this pid is a wake signal
+                    return True
+        except Exception:
+            pass
+        # Also due if a provider availability event exists at all (probed once)
+        # Without provider ledger events, stay parked — will be woken by on_capability_changed / tick
         return False
     if k == "WAIT_FOR_OWNER":
+        # Wakes on next owner directive (GOAL, VETO, CANCEL, etc.)
+        try:
+            for ev in db.events(event_type_prefixes=("owner_directive.", "executive.objective_", "owner_controls.")):
+                if _dt(wake.get("created_at")) and _dt(ev.recorded_at) and _dt(ev.recorded_at) > _dt(wake.get("created_at")):
+                    return True
+        except Exception:
+            pass
         return False
     if k == "WAIT_FOR_SIGNAL":
+        sig = wake.get("signal")
+        if not sig: return False
+        try:
+            for ev in db.events(event_type_prefixes=(sig,)):
+                if _dt(wake.get("created_at")) and _dt(ev.recorded_at) and _dt(ev.recorded_at) > _dt(wake.get("created_at")):
+                    return True
+        except Exception:
+            pass
         return False
     if k == "WAIT_FOR_RESOURCE":
+        rid = wake.get("resource_id")
+        if not rid: return False
+        try:
+            from ..executive.autonomy import rebuild_executive_state as _reb2
+            # Resource exists as a capability target — check if resource-registered
+            for ev in db.events(event_type_prefixes=("project.registered", "capability.")):
+                p = ev.payload
+                if rid in str(p.get("resource_id") or ""):
+                    if _dt(wake.get("created_at")) and _dt(ev.recorded_at) and _dt(ev.recorded_at) > _dt(wake.get("created_at")):
+                        return True
+        except Exception:
+            pass
         return False
     return False
 def due_wakes(db, now=None):
@@ -236,6 +274,24 @@ def run_continuous_cycle(db, *, cycle_id: str, controller="supervisor", now=None
         return {"cycle_id": cycle_id, "status": "OWNER_BLOCKED", "reason": f"veto: {veto}"}
     # Wake phase
     triggered = tick_wakes(db, controller=controller, now=now)
+    # Strategy guard: if top runnable objective is in retry loop, surface escalation instead of re-attempting same strategy
+    try:
+        from ..executive.autonomy import rank_objectives as _rank2, rebuild_executive_state as _reb2
+        rows = _rank2(db)
+        top = next((r for r in rows if r.eligible), None)
+        if top is not None:
+            recent = recent_strategies(db, top.objective_id, limit=3)
+            if len(recent) >= 3 and len(set(recent[:3])) == 1:
+                loop_strategy = recent[0]
+                # Record escalation (idempotent) and block this cycle from re-attempting same strategy
+                try:
+                    from ..executive.autonomy import record_escalation as _esc
+                    _esc(db, objective_id=top.objective_id, decision=f"retry loop on {loop_strategy}", why=f"strategy {loop_strategy!r} attempted 3 times consecutively", evidence_refs=[], options=next_strategy_options(db, top.objective_id)[:4], recommendation="switch strategy or escalate to owner", delay_consequence="repeated failure without strategy change", controller=controller)
+                except Exception:
+                    pass
+                return {"cycle_id": cycle_id, "status": "ESCALATE", "reason": f"retry loop detected for {top.objective_id} on {loop_strategy!r} — escalation recorded", "triggered_wakes": triggered}
+    except Exception:
+        pass
     # Autonomy phase: delegate to existing authoritative cycle
     from ..executive.autonomy import run_autonomy_cycle as _run_auto
     try:
@@ -404,6 +460,10 @@ def on_mission_outcome(db, mission_id: str, *, controller="supervisor"):
         return {"error": f"{type(e).__name__}: {e}"}
 
 def on_capability_changed(db, *, controller="supervisor"):
+    try:
+        auto_wake_for_blocked(db, controller=controller)
+    except Exception:
+        pass
     tick_wakes(db, controller=controller)
 
 def on_owner_directive(db, *, controller="supervisor"):
@@ -413,5 +473,21 @@ def on_owner_directive(db, *, controller="supervisor"):
         _sync(db, controller=controller)
     except Exception: pass
     tick_wakes(db, controller=controller)
+
+def escalate_stale_wakes(db, *, stale_after_seconds=3600.0, controller="supervisor"):
+    """Surface escalation for wakes parked too long without progress."""
+    stale = stale_wakes(db, stale_after_seconds=stale_after_seconds)
+    escalated = []
+    for w in stale:
+        oid = w.get("objective_id")
+        if not oid:
+            continue
+        try:
+            from ..executive.autonomy import record_escalation as _esc
+            _esc(db, objective_id=str(oid), decision=f"stale wake {w.get('wake_id')}", why=f"wake {w.get('kind')} for {oid} has been parked >{int(stale_after_seconds)}s without progress", evidence_refs=[], options=["owner cancel", "owner reprioritize", "wait longer"], recommendation="review stale blocker or cancel", delay_consequence="objective remains blocked", controller=controller)
+            escalated.append(w.get("wake_id"))
+        except Exception:
+            pass
+    return escalated
 
 __all__ = ["WakeCondition", "create_wake", "clear_wake", "trigger_wake", "rebuild_wake_state", "is_wake_due", "due_wakes", "tick_wakes", "continuous_snapshot", "blocker_for", "run_continuous_cycle", "record_strategy_attempt", "recent_strategies", "is_retry_loop", "next_strategy_options", "schedule_wait_until", "schedule_wait_for_dependency", "schedule_wait_for_capability", "schedule_wait_for_provider", "schedule_wait_for_owner", "schedule_wait_for_signal", "schedule_wait_for_resource", "clear_wakes_for_objective", "on_mission_outcome", "on_capability_changed", "on_owner_directive", "deadline_urgency", "stale_wakes", "auto_wake_for_blocked"]
