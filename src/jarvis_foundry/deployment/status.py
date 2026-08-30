@@ -238,13 +238,14 @@ def _scheduler_contract(
     action_contract = False
     action_error = None
     if task.get("installed"):
-        from ..platform.windows_subprocess import headless_run_kwargs
+        from ..platform.windows_subprocess import headless_run_kwargs, sanitized_env
 
         try:
             result = subprocess.run(
                 ["schtasks", "/query", "/tn", str(task.get("task_name") or ""),
                  "/xml"],
-                capture_output=True, text=True, timeout=30, check=False,
+                capture_output=True, text=True, timeout=15, check=False,
+                env=sanitized_env(),
                 **headless_run_kwargs(),
             )
             action_queried = result.returncode == 0

@@ -310,6 +310,19 @@ def test_scheduler_guard_deletes_only_selected_tasks(monkeypatch):
     ]
 
 
+def test_scheduler_guard_timeout_is_fail_closed(monkeypatch):
+    import subprocess
+    import tests.foundry.scheduler_guard as scheduler_guard
+
+    def timeout(*args, **kwargs):
+        raise subprocess.TimeoutExpired(args[0], kwargs["timeout"])
+
+    monkeypatch.setattr(scheduler_guard.subprocess, "run", timeout)
+    assert scheduler_guard.query_scheduled_task_names(timeout=0.01) is None
+    assert scheduler_guard.task_xml("\\JF-WP7Gate-timeout", timeout=0.01) is None
+    assert scheduler_guard.delete_scheduled_tasks(["\\JF-WP7Gate-timeout"]) == []
+
+
 def test_profile_written_and_removed_with_install(tmp_path):
     home, database, gate_verdict, installer = installer_fixture(tmp_path)
     try:

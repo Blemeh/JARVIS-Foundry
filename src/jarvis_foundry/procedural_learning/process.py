@@ -15,7 +15,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from ..platform.windows_subprocess import headless_popen_kwargs, headless_run_kwargs
+from ..platform.windows_subprocess import (
+    headless_popen_kwargs,
+    headless_run_kwargs,
+    pid_alive as _platform_pid_alive,
+    sanitized_env,
+)
 
 
 def _windows_process_rows() -> list[tuple[int, int]]:
@@ -29,17 +34,65 @@ def _windows_process_rows() -> list[tuple[int, int]]:
         result = subprocess.run(
             ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
             capture_output=True, text=True, timeout=5, check=False,
+            env=sanitized_env(),
             **headless_run_kwargs(),
         )
     except (OSError, subprocess.TimeoutExpired):
-        return []
+        result = None
     rows: list[tuple[int, int]] = []
-    for line in result.stdout.splitlines():
+    if result is not None and result.returncode == 0:
+        for line in result.stdout.splitlines():
+            try:
+                child, parent = line.strip().split("|", 1)
+                rows.append((int(child), int(parent)))
+            except (ValueError, AttributeError):
+                continue
+        if rows:
+            return rows
+
+    # CIM is optional and can be shadowed or absent on managed hosts. The
+    # Toolhelp snapshot is a read-only kernel fallback with the same parent /
+    # child data, so a provider failure does not silently lose owned children.
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        TH32CS_SNAPPROCESS = 0x00000002
+
+        class PROCESSENTRY32W(ctypes.Structure):
+            _fields_ = [
+                ("dwSize", wintypes.DWORD),
+                ("cntUsage", wintypes.DWORD),
+                ("th32ProcessID", wintypes.DWORD),
+                ("th32DefaultHeapID", ctypes.POINTER(ctypes.c_ulong)),
+                ("th32ModuleID", wintypes.DWORD),
+                ("cntThreads", wintypes.DWORD),
+                ("th32ParentProcessID", wintypes.DWORD),
+                ("pcPriClassBase", ctypes.c_long),
+                ("dwFlags", wintypes.DWORD),
+                ("szExeFile", wintypes.WCHAR * 260),
+            ]
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        snapshot = kernel32.CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)
+        invalid_snapshot = ctypes.c_void_p(-1).value
+        if snapshot in (-1, invalid_snapshot):
+            return []
         try:
-            child, parent = line.strip().split("|", 1)
-            rows.append((int(child), int(parent)))
-        except (ValueError, AttributeError):
-            continue
+            entry = PROCESSENTRY32W()
+            entry.dwSize = ctypes.sizeof(PROCESSENTRY32W)
+            first = kernel32.Process32FirstW
+            next_process = kernel32.Process32NextW
+            first.argtypes = [wintypes.HANDLE, ctypes.POINTER(PROCESSENTRY32W)]
+            next_process.argtypes = [wintypes.HANDLE, ctypes.POINTER(PROCESSENTRY32W)]
+            ok = first(snapshot, ctypes.byref(entry))
+            while ok:
+                rows.append((int(entry.th32ProcessID), int(entry.th32ParentProcessID)))
+                ok = next_process(snapshot, ctypes.byref(entry))
+        finally:
+            kernel32.CloseHandle(snapshot)
+    except Exception:  # noqa: BLE001 - advisory fallback
+        return []
     return rows
 
 
@@ -67,17 +120,7 @@ def pid_alive(pid: int) -> bool:
     if pid <= 0:
         return False
     if os.name == "nt":
-        try:
-            result = subprocess.run(
-                ["powershell", "-NoProfile", "-NonInteractive", "-Command",
-                 f"$p=Get-Process -Id {int(pid)} -ErrorAction SilentlyContinue; "
-                 "if($p){'1'}else{'0'}"],
-                capture_output=True, text=True, timeout=5, check=False,
-                **headless_run_kwargs(),
-            )
-            return result.stdout.strip() == "1"
-        except (OSError, subprocess.TimeoutExpired):
-            return False
+        return _platform_pid_alive(pid)
     try:
         os.kill(pid, 0)
     except (OSError, ProcessLookupError):
@@ -179,7 +222,7 @@ def launch_owned(
 ) -> OwnedProcessHandle:
     kwargs: dict[str, Any] = headless_popen_kwargs(
         cwd=str(cwd) if cwd else None,
-        env=env,
+        env=sanitized_env(env),
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,

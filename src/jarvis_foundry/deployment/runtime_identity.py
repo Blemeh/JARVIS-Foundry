@@ -21,7 +21,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping
 
-from ..platform.windows_subprocess import headless_run_kwargs
+from ..platform.windows_subprocess import headless_run_kwargs, sanitized_env
 
 SUPERVISOR_MODULES: tuple[str, ...] = (
     "jarvis_foundry.supervisor.run",
@@ -65,8 +65,9 @@ def query_processes() -> list[dict[str, Any]]:
     )
     try:
         result = subprocess.run(
-            [_powershell_executable(), "-NoProfile", "-Command", script],
-            capture_output=True, text=True, timeout=30, check=False,
+            [_powershell_executable(), "-NoProfile", "-NonInteractive", "-Command", script],
+            capture_output=True, text=True, timeout=15, check=False,
+            env=sanitized_env(),
             **headless_run_kwargs(),
         )
     except (OSError, subprocess.TimeoutExpired):
@@ -91,7 +92,8 @@ def query_processes() -> list[dict[str, Any]]:
     try:
         legacy = subprocess.run(
             [wmic, "process", "get", "ProcessId,ParentProcessId,ExecutablePath,CommandLine", "/format:list"],
-            capture_output=True, text=True, timeout=30, check=False,
+            capture_output=True, text=True, timeout=15, check=False,
+            env=sanitized_env(),
             **headless_run_kwargs(),
         )
     except (OSError, subprocess.TimeoutExpired):
@@ -415,16 +417,18 @@ def supervisor_process_census(
         "$([Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes([string]$_.CommandLine)))`t"
         "$($_.CreationDate)\" }"
     )
-    command = [_powershell_executable(), "-NoProfile", "-Command", script]
+    command = [_powershell_executable(), "-NoProfile", "-NonInteractive", "-Command", script]
     try:
         result = subprocess.run(
             command,
-            capture_output=True, text=True, timeout=30, check=False,
+            capture_output=True, text=True, timeout=15, check=False,
+            env=sanitized_env(),
             **headless_run_kwargs(),
         )
         if result.returncode != 0 and not (result.stdout or "").strip():
             result = subprocess.run(
-                command, capture_output=True, text=True, timeout=30, check=False)
+                command, capture_output=True, text=True, timeout=15, check=False,
+                env=sanitized_env(), **headless_run_kwargs())
     except (OSError, subprocess.TimeoutExpired):
         return []
     raw = (result.stdout or "").strip()

@@ -4,17 +4,25 @@ from __future__ import annotations
 import csv
 import re
 import subprocess
+import time
+
+from jarvis_foundry.platform.windows_subprocess import headless_run_kwargs, sanitized_env
 
 
 STAGING_TASK_PREFIX = "\\JF-WP7Gate-"
 
 
-def query_scheduled_task_names() -> set[str] | None:
-    result = subprocess.run(
-        ["schtasks", "/Query", "/FO", "CSV", "/NH"],
-        capture_output=True, text=True, encoding="utf-8", errors="replace",
-        timeout=60, check=False,
-    )
+def query_scheduled_task_names(*, timeout: float = 15) -> set[str] | None:
+    try:
+        result = subprocess.run(
+            ["schtasks", "/Query", "/FO", "CSV", "/NH"],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            timeout=timeout, check=False,
+            env=sanitized_env(),
+            **headless_run_kwargs(),
+        )
+    except subprocess.TimeoutExpired:
+        return None
     if result.returncode != 0:
         return None
     try:
@@ -36,18 +44,24 @@ def select_created_staging_tasks(
     )
 
 
-def task_xml(name: str) -> str | None:
+def task_xml(name: str, *, timeout: float = 8) -> str | None:
     """Read one task definition without relying on PowerShell CIM modules."""
-    result = subprocess.run(
-        ["schtasks", "/Query", "/TN", name, "/XML"],
-        capture_output=True, text=True, encoding="utf-8", errors="replace",
-        timeout=60, check=False,
-    )
+    try:
+        result = subprocess.run(
+            ["schtasks", "/Query", "/TN", name, "/XML"],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            timeout=timeout, check=False,
+            env=sanitized_env(),
+            **headless_run_kwargs(),
+        )
+    except subprocess.TimeoutExpired:
+        return None
     return result.stdout if result.returncode == 0 else None
 
 
 def select_abandoned_staging_tasks(
     names: set[str] | None = None,
+    *, timeout: float = 8, deadline: float | None = None,
 ) -> list[str]:
     """Select only leaked staging tasks whose XML proves pytest/temp ownership.
 
@@ -61,9 +75,16 @@ def select_abandoned_staging_tasks(
         return []
     abandoned: list[str] = []
     for name in sorted(inventory):
+        if deadline is not None:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            xml_timeout = min(timeout, max(0.1, remaining))
+        else:
+            xml_timeout = timeout
         if not name.casefold().startswith(STAGING_TASK_PREFIX.casefold()):
             continue
-        xml = task_xml(name)
+        xml = task_xml(name, timeout=xml_timeout)
         if not xml:
             continue
         lowered = xml.casefold()
@@ -81,14 +102,27 @@ def select_abandoned_staging_tasks(
     return abandoned
 
 
-def delete_scheduled_tasks(names: list[str]) -> list[str]:
+def delete_scheduled_tasks(
+    names: list[str], *, timeout: float = 10, deadline: float | None = None,
+) -> list[str]:
     removed: list[str] = []
     for name in names:
-        result = subprocess.run(
-            ["schtasks", "/Delete", "/TN", name, "/F"],
-            capture_output=True, text=True, encoding="utf-8", errors="replace",
-            timeout=60, check=False,
-        )
+        call_timeout = timeout
+        if deadline is not None:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            call_timeout = min(timeout, max(0.1, remaining))
+        try:
+            result = subprocess.run(
+                ["schtasks", "/Delete", "/TN", name, "/F"],
+                capture_output=True, text=True, encoding="utf-8", errors="replace",
+                timeout=call_timeout, check=False,
+                env=sanitized_env(),
+                **headless_run_kwargs(),
+            )
+        except subprocess.TimeoutExpired:
+            continue
         if result.returncode == 0:
             removed.append(name)
     return removed
