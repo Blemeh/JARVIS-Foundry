@@ -1856,8 +1856,22 @@ def build_snapshot(
         "executive": executive_projection,
         "portfolio": portfolio_projection,
         "discovery": discovery_surface,
-        "world_intelligence": world_intelligence,
     }
+    # Keep the pre-V9 top-level snapshot shape byte-compatible for databases
+    # with no World Intelligence records.  Once the advisory world layer has
+    # real state (or an explicit projection error), expose its additive
+    # surface so consumers can distinguish an empty legacy database from a
+    # populated V9 world model without introducing a second authority.
+    world_counts = world_intelligence.get("counts") if isinstance(world_intelligence, dict) else None
+    world_has_state = bool(
+        isinstance(world_counts, dict)
+        and any(int(value or 0) > 0 for value in world_counts.values() if isinstance(value, (int, float)))
+    ) or any(
+        bool(world_intelligence.get(key))
+        for key in ("signals", "entities", "predictions", "gaps", "patterns", "error")
+    ) if isinstance(world_intelligence, dict) else False
+    if world_has_state:
+        snapshot_payload["world_intelligence"] = world_intelligence
     # The packet is an additive read-only export contract.  Import lazily to
     # avoid a module cycle: the packet builder reuses this snapshot function
     # when called independently.
