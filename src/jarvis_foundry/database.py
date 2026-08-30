@@ -344,6 +344,15 @@ class FoundryDatabase:
             "acceptance_runs": "run_id",
             # Software-intelligence (Lane 4): derived alias projection
             "tier_c_project_aliases": "alias",
+            # V9 World Intelligence: event-derived projections
+            "world_entities": "entity_id",
+            "world_relationships": "relationship_id",
+            "world_observations": "observation_id",
+            "world_signals": "signal_id",
+            "world_predictions": "prediction_id",
+            "world_knowledge_gaps": "gap_id",
+            "world_patterns": "pattern_id",
+            "world_calibration": "calibration_id",
         }
         if allowed.get(table) != key_column:
             raise ValueError("unsupported projection lookup")
@@ -361,7 +370,10 @@ class FoundryDatabase:
                    "scoring_policy_registry", "discovery_portfolio",
                    "monitors", "vault_files",
                    "vault_sync_state", "ingestion_cursors", "research_queue",
-                   "worker_manifests", "consolidation_ops", "mission_step_contracts"}
+                   "worker_manifests", "consolidation_ops", "mission_step_contracts",
+                   "world_entities", "world_relationships", "world_observations",
+                   "world_signals", "world_predictions", "world_knowledge_gaps",
+                   "world_patterns", "world_calibration"}
         allowed.update({"tier_c_project_aliases"})
         allowed.update({"cost_measurements", "briefing_outbox", "voice_interactions", "control_nonces", "improvement_records", "release_manifests", "release_slots", "candidate_builds", "evaluation_runs", "verifications", "shadow_runs", "canaries", "promotions", "release_control", "restore_points", "discovery_runs", "cycles", "acceptance_runs"})
         if table not in allowed:
@@ -384,7 +396,10 @@ class FoundryDatabase:
                    "scoring_policy_registry", "discovery_portfolio",
                    "monitors", "vault_files",
                    "vault_sync_state", "ingestion_cursors", "research_queue",
-                   "worker_manifests", "consolidation_ops", "mission_step_contracts", "tier_c_project_aliases"}
+                   "worker_manifests", "consolidation_ops", "mission_step_contracts",
+                   "tier_c_project_aliases", "world_entities", "world_relationships",
+                   "world_observations", "world_signals", "world_predictions",
+                   "world_knowledge_gaps", "world_patterns", "world_calibration"}
         allowed.update({"cost_measurements", "briefing_outbox", "voice_interactions", "control_nonces", "improvement_records", "release_manifests", "release_slots", "candidate_builds", "evaluation_runs", "verifications", "shadow_runs", "canaries", "promotions", "release_control", "restore_points", "discovery_runs", "cycles", "acceptance_runs"})
         if table not in allowed:
             raise ValueError("unsupported projection count")

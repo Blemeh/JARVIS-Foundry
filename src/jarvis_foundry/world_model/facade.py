@@ -56,8 +56,18 @@ class WorldModel:
         *,
         provenance: dict[str, Any] | None = None,
         source_id: str = "world-model",
+        observation_id: str | None = None,
+        idempotency_key: str | None = None,
     ) -> dict[str, Any]:
-        return self.intelligence.observe(source_kind, source_ref, payload, provenance=provenance, source_id=source_id)
+        return self.intelligence.observe(
+            source_kind,
+            source_ref,
+            payload,
+            provenance=provenance,
+            source_id=source_id,
+            observation_id=observation_id,
+            idempotency_key=idempotency_key,
+        )
 
     def observe_event(self, event: Any, source_id: str = "world-model") -> dict[str, Any]:
         return self.intelligence.observe_ledger_event(event, source_id=source_id)

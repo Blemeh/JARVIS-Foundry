@@ -1207,6 +1207,44 @@ def run_cycle(
             if terminal != "PASSED":
                 _advisory_mission_outcome_writeback(
                     database, mission_id=mission_id, outcome=outcome)
+            # World Intelligence receives the same terminal fact before the
+            # Executive continuation decision.  This is an advisory,
+            # event-derived projection and cannot alter mission/verifier
+            # truth; the stable observation identity makes recovery replay
+            # exactly-once for world learning.
+            try:
+                from ..world_model.connector import writeback_mission_outcome
+                writeback_mission_outcome(
+                    database,
+                    mission_id,
+                    terminal or "UNKNOWN",
+                    {
+                        "state": mission_after.get("state"),
+                        "objective": mission_after.get("objective"),
+                    },
+                    evidence_refs=tuple(
+                        ref for ref in (getattr(outcome, "verdict_id", None),)
+                        if ref
+                    ),
+                    source_id=f"worker-loop:{instance_id}",
+                )
+            except Exception as error:  # noqa: BLE001 - advisory writeback cannot block closure
+                try:
+                    database.append(Event.create(
+                        "worker_loop.world_intelligence_writeback_blocked",
+                        {
+                            "loop_id": loop_id,
+                            "mission_id": mission_id,
+                            "reason": f"{type(error).__name__}: {error}"[:500],
+                        },
+                        source_type="supervisor",
+                        source_id=instance_id,
+                        idempotency_key=(
+                            f"worker_loop.world_intelligence_writeback_blocked:"
+                            f"{mission_id}:{terminal}"),
+                    ))
+                except Exception:
+                    pass
             _record_executive_outcome(
                 database, mission_id=mission_id, outcome=outcome,
                 instance_id=instance_id)
@@ -1224,6 +1262,18 @@ def run_cycle(
                          "reason": f"{type(error).__name__}: {error}"[:500]},
                         source_type="supervisor", source_id=instance_id,
                         idempotency_key=f"worker_loop.executive_autonomy_observation_blocked:{loop_id}",
+                    ))
+            elif getattr(config, "continuous_enabled", False):
+                try:
+                    from ..executive.continuous import on_mission_outcome
+                    on_mission_outcome(database, mission_id)
+                except Exception as error:  # noqa: BLE001 - outcome remains authoritative
+                    database.append(Event.create(
+                        "worker_loop.continuous_outcome_observation_blocked",
+                        {"loop_id": loop_id, "mission_id": mission_id,
+                         "reason": f"{type(error).__name__}: {error}"[:500]},
+                        source_type="supervisor", source_id=instance_id,
+                        idempotency_key=f"worker_loop.continuous_outcome_observation_blocked:{loop_id}",
                     ))
         # V3 WP-B single authoritative closure seam: when the discovery
         # cycle is enabled, a terminal harmless result is handed to the

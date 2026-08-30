@@ -63,12 +63,35 @@ class WorldIntelligenceEngine:
         *,
         provenance: dict[str, Any] | None = None,
         source_id: str = "world-intelligence",
+        observation_id: str | None = None,
+        idempotency_key: str | None = None,
     ) -> dict[str, Any]:
         """Primary entry: observe something, update world state, maybe signal."""
-        result = self.observations.record(source_kind, source_ref, payload, provenance=provenance, source_id=source_id)
+        # A stable observation identity is the replay boundary for runtime
+        # writeback (for example, a mission terminal result delivered again
+        # after restart).  Do not re-run detection or increment patterns when
+        # the same observation is already projected.
+        if observation_id:
+            prior = self.observations.get(observation_id)
+            if prior is not None:
+                return {
+                    "observation_id": observation_id,
+                    "signals": [],
+                    "entities": list(prior.get("entities") or []),
+                    "deduplicated": True,
+                }
+        result = self.observations.record(
+            source_kind,
+            source_ref,
+            payload,
+            observation_id=observation_id,
+            idempotency_key=idempotency_key,
+            provenance=provenance,
+            source_id=source_id,
+        )
         # Auto-process: detect what matters
         signals = self._detect_from_observation(result["observation_id"], payload, source_kind)
-        return {"observation_id": result["observation_id"], "signals": signals, "entities": result["entities"]}
+        return {"observation_id": result["observation_id"], "signals": signals, "entities": result["entities"], "deduplicated": False}
 
     def observe_ledger_event(self, event: Any, source_id: str = "world-intelligence") -> dict[str, Any]:
         """Observe a ledger event and update world understanding."""
@@ -82,6 +105,18 @@ class WorldIntelligenceEngine:
     def _detect_from_observation(self, observation_id: str, payload: dict[str, Any], source_kind: str) -> list[dict[str, Any]]:
         signals: list[dict[str, Any]] = []
         text = json.dumps(payload, sort_keys=True).lower()
+        # Preserve explicit cross-system identity on every derived signal so
+        # the Executive can wake only the objectives named by the observation.
+        # World Intelligence still owns the signal; this is provenance, not a
+        # scheduling decision.
+        affected_entities = [
+            str(payload[key])
+            for key in (
+                "objective_id", "mission_id", "project_id", "provider_id",
+                "capability_id", "resource_id",
+            )
+            if payload.get(key)
+        ]
 
         # Provider/capability degradation
         if any(w in text for w in ("degraded", "unavailable", "rate_limited", "quota", "timeout", "outage")):
@@ -89,7 +124,7 @@ class WorldIntelligenceEngine:
                 r = self.signals.record(
                     "PROVIDER_DEGRADATION", f"Provider/capability degradation detected: {source_kind}",
                     summary=f"Observation {observation_id} indicates degraded provider or capability",
-                    affected_entities=[], evidence=[observation_id],
+                    affected_entities=affected_entities, evidence=[observation_id],
                     provenance={"observation_id": observation_id, "source_kind": source_kind},
                     confidence=0.7, importance=0.7, urgency=0.6,
                 )
@@ -102,7 +137,7 @@ class WorldIntelligenceEngine:
             r = self.signals.record(
                 "BLOCKER", f"Blocker detected: {source_kind}",
                 summary=f"Observation {observation_id} indicates a blocker",
-                affected_entities=[], evidence=[observation_id],
+                affected_entities=affected_entities, evidence=[observation_id],
                 provenance={"observation_id": observation_id},
                 confidence=0.7, importance=0.8, urgency=0.7,
             )
@@ -119,7 +154,7 @@ class WorldIntelligenceEngine:
                 r = self.signals.record(
                     "RECURRING_PATTERN", f"Recurring failure pattern: {source_kind} ({pat['occurrences']} occurrences)",
                     summary=f"Same failure class has occurred {pat['occurrences']} times",
-                    affected_entities=[], evidence=[observation_id],
+                    affected_entities=affected_entities, evidence=[observation_id],
                     provenance={"pattern_id": pat["pattern_id"], "observation_id": observation_id},
                     confidence=0.6, importance=0.6, urgency=0.5,
                 )
@@ -132,7 +167,7 @@ class WorldIntelligenceEngine:
             r = self.signals.record(
                 "FOLLOW_UP", f"Follow-up needed: {source_kind}",
                 summary=f"Observation {observation_id} indicates pending follow-up",
-                affected_entities=[], evidence=[observation_id],
+                affected_entities=affected_entities, evidence=[observation_id],
                 provenance={"observation_id": observation_id},
                 confidence=0.5, importance=0.5, urgency=0.4,
             )
@@ -151,7 +186,7 @@ class WorldIntelligenceEngine:
                         r = self.signals.record(
                             "DEADLINE_APPROACHING", f"Deadline approaching: {payload.get(key)}",
                             summary=f"Deadline {payload[key]} is within 3 days",
-                            affected_entities=[], evidence=[observation_id],
+                            affected_entities=affected_entities, evidence=[observation_id],
                             provenance={"observation_id": observation_id, "deadline": payload[key]},
                             confidence=0.8, importance=0.7, urgency=0.8, due_at=payload[key],
                         )
@@ -162,7 +197,7 @@ class WorldIntelligenceEngine:
                         r = self.signals.record(
                             "STALE_KNOWLEDGE", f"Overdue: {payload.get(key)}",
                             summary=f"Deadline {payload[key]} has passed",
-                            affected_entities=[], evidence=[observation_id],
+                            affected_entities=affected_entities, evidence=[observation_id],
                             provenance={"observation_id": observation_id},
                             confidence=0.8, importance=0.7, urgency=0.8,
                         )

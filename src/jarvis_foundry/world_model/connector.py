@@ -8,6 +8,81 @@ from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.world_model.facade import WorldModel
 
 
+def writeback_mission_outcome(
+    db: FoundryDatabase,
+    mission_id: str,
+    outcome: str,
+    payload: dict[str, Any] | None = None,
+    *,
+    evidence_refs: tuple[str, ...] = (),
+    source_id: str = "world-model-runtime",
+) -> dict[str, Any]:
+    """Record one canonical MissionLoop terminal result in World Intelligence.
+
+    The Worker calls this only at its terminal boundary.  The stable
+    observation id makes redelivery after restart exactly-once for world
+    pattern/signal derivation; the Mission and verifier projections remain
+    authoritative and this helper cannot change them.
+    """
+    mission_id = str(mission_id or "").strip()
+    if not mission_id:
+        raise ValueError("mission_id is required")
+    status = str(outcome or "UNKNOWN").upper()
+    details = dict(payload or {})
+    details.update({
+        "mission_id": mission_id,
+        "outcome": status,
+        "evidence_refs": list(evidence_refs),
+    })
+    mission = db.row("missions", "mission_id", mission_id)
+    wm = WorldModel(db)
+    if wm.entities.get(mission_id) is None:
+        state = (
+            "RESOLVED" if status in {"PASS", "PASSED", "COMPLETED", "SUCCESS"}
+            else "STALE" if status in {"FAIL", "FAILED", "FAILED_VERIFICATION"}
+            else "ACTIVE"
+        )
+        wm.entities.record(
+            "MISSION",
+            str((mission or {}).get("objective") or mission_id)[:200],
+            entity_id=mission_id,
+            state=state,
+            attributes={"outcome": status, "state": (mission or {}).get("state")},
+            provenance={"source": source_id, "mission_id": mission_id},
+            authority="SYSTEM_OBSERVATION",
+            record_kind="RESULT",
+            source_id=source_id,
+        )
+    observed = wm.observe(
+        "mission:outcome",
+        mission_id,
+        details,
+        provenance={
+            "mission_id": mission_id,
+            "outcome": status,
+            "evidence_refs": list(evidence_refs),
+        },
+        source_id=source_id,
+        observation_id=f"mission-outcome:{mission_id}:{status}",
+        idempotency_key=f"world.observation_recorded:mission-outcome:{mission_id}:{status}",
+    )
+    learning = None
+    if not observed.get("deduplicated"):
+        learning = wm.learn_from_mission_result(
+            mission_id,
+            status,
+            details,
+            source_id=source_id,
+        )
+    return {
+        "mission_id": mission_id,
+        "outcome": status,
+        "observation": observed,
+        "learning": learning,
+        "deduplicated": bool(observed.get("deduplicated")),
+    }
+
+
 def scan_and_connect(db: FoundryDatabase, wm: WorldModel | None = None) -> dict[str, Any]:
     """Scan existing JARVIS state for understanding gaps and connect them.
 

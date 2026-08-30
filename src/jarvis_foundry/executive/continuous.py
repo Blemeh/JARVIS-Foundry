@@ -103,18 +103,43 @@ def is_wake_due(db, wake: dict, now=None):
     if k == "WAIT_FOR_PROVIDER":
         pid = wake.get("provider_id")
         if not pid: return False
-        # Re-probe via capability fabric if available; else check provider ledger signal
+        created = _dt(wake.get("created_at"))
+        # Re-probe via the provider ledger.  Historical outage events that
+        # caused this wake must not immediately satisfy it; only a later,
+        # positive health/auth/availability observation can release the park.
         try:
-            # If any objective with this provider prefix has a capability that is now unblocked, treat as due
-            for ev in db.events(event_type_prefixes=("provider.", "capability.")):
+            for ev in db.events(
+                readonly=True,
+                newest_first=True,
+                limit=500,
+                event_type_prefixes=("provider.", "capability."),
+            ):
                 p = ev.payload
-                if pid in str(p.get("provider_id") or "") or pid in str(p.get("capability") or ""):
-                    # A provider/capability readiness event for this pid is a wake signal
+                if not (
+                    pid in str(p.get("provider_id") or "")
+                    or pid in str(p.get("provider") or "")
+                    or pid in str(p.get("capability") or "")
+                ):
+                    continue
+                observed_at = _dt(ev.recorded_at)
+                if created is not None and (
+                    observed_at is None or observed_at <= created
+                ):
+                    continue
+                health = str(p.get("health") or p.get("status") or "UNKNOWN").upper()
+                auth = str(p.get("auth_state") or "UNKNOWN").upper()
+                availability = str(p.get("availability") or "UNKNOWN").upper()
+                if (
+                    health in {"HEALTHY", "READY"}
+                    and auth in {"READY", "CONFIGURED"}
+                    and availability in {"AVAILABLE", "READY"}
+                ):
                     return True
         except Exception:
             pass
-        # Also due if a provider availability event exists at all (probed once)
-        # Without provider ledger events, stay parked — will be woken by on_capability_changed / tick
+        # Without a later positive provider observation, stay parked.  The
+        # Supervisor may still explicitly trigger the wake after a verified
+        # recovery event through the same durable API.
         return False
     if k == "WAIT_FOR_OWNER":
         # Wakes on next owner directive (GOAL, VETO, CANCEL, etc.)
@@ -211,6 +236,117 @@ def tick_wakes(db, *, controller="supervisor", now=None):
             triggered.append(w["wake_id"])
         except Exception: pass
     return triggered
+
+
+def bridge_world_signals(
+    db,
+    *,
+    controller="supervisor",
+    limit=100,
+):
+    """Admit objective-targeted World Intelligence signals as Executive wakes.
+
+    World Intelligence owns observations and signals; it does not create
+    objectives, missions, or schedules.  This narrow Supervisor-owned bridge
+    consumes only active signals that explicitly name an existing objective
+    (in ``affected_entities`` or provenance), creates one coalesced
+    ``WAIT_FOR_SIGNAL`` wake per signal/objective pair, and triggers it once.
+    A signal is already durable by the time this reader sees it, so the wake
+    is triggered directly rather than pretending a future ledger event is
+    required.  Replays converge on the same wake idempotency keys.
+    """
+    if controller != SUPERVISOR_CONTROLLER:
+        raise PermissionError("world-signal bridging is Supervisor-owned")
+    try:
+        from ..control.broker import emergency_stop_reason as _esr
+        from pathlib import Path as _P
+        if _esr(db, _P(db.path).parent / "EMERGENCY_STOP"):
+            return []
+    except Exception:
+        return []
+
+    try:
+        state = __import__(
+            "jarvis_foundry.executive.autonomy",
+            fromlist=["rebuild_executive_state"],
+        ).rebuild_executive_state(db)
+        objective_ids = set(state.objectives)
+        with db.connect(readonly=True) as connection:
+            rows = connection.execute(
+                "SELECT signal_id, signal_kind, title, summary, salience, "
+                "affected_entities_json, provenance_json "
+                "FROM world_signals "
+                "WHERE state IN ('OPEN', 'MONITORING', 'ACKNOWLEDGED') "
+                "ORDER BY urgency DESC, importance DESC, signal_id LIMIT ?",
+                (max(1, min(int(limit), 500)),),
+            ).fetchall()
+    except Exception:
+        # Older/mid-migration databases, or a malformed advisory row, must not
+        # stop the canonical Executive cycle.  The next cycle can retry.
+        return []
+
+    wakes = rebuild_wake_state(db)
+    bridged: list[str] = []
+    for row in rows:
+        try:
+            affected = json.loads(row["affected_entities_json"] or "[]")
+        except (TypeError, ValueError, json.JSONDecodeError):
+            affected = []
+        try:
+            provenance = json.loads(row["provenance_json"] or "{}")
+        except (TypeError, ValueError, json.JSONDecodeError):
+            provenance = {}
+        targets = {
+            str(value) for value in affected
+            if str(value) in objective_ids
+        }
+        if isinstance(provenance, Mapping):
+            for key in ("objective_id", "objective_ids"):
+                value = provenance.get(key)
+                values = value if isinstance(value, (list, tuple, set)) else (value,)
+                targets.update(str(item) for item in values if str(item) in objective_ids)
+        signal_id = str(row["signal_id"] or "")
+        if not signal_id or not targets:
+            continue
+        for objective_id in sorted(targets):
+            wake_id = f"wake:{objective_id}:world-signal:{signal_id}"
+            wake = wakes.get(wake_id)
+            if wake is None:
+                reason = (
+                    f"world signal {signal_id}: "
+                    f"{str(row['title'] or row['signal_kind'] or 'signal')[:240]}"
+                )
+                wake_payload = WakeCondition(
+                    wake_id=wake_id,
+                    objective_id=objective_id,
+                    kind="WAIT_FOR_SIGNAL",
+                    reason=reason,
+                    created_at=isoformat(),
+                    signal=f"world.signal_recorded:{signal_id}",
+                ).to_payload()
+                try:
+                    create_wake(
+                        db,
+                        WakeCondition(**wake_payload),
+                        controller=controller,
+                    )
+                    wakes[wake_id] = wake_payload
+                    wake = wake_payload
+                except Exception:
+                    continue
+            if wake.get("status") == "ACTIVE":
+                try:
+                    trigger_wake(
+                        db,
+                        wake_id,
+                        controller=controller,
+                        reason=f"world signal {signal_id} is active",
+                    )
+                    bridged.append(wake_id)
+                    wake["status"] = "TRIGGERED"
+                except Exception:
+                    continue
+    return bridged
 # PART 2 of continuous engine — appended after engine_full_draft
 # Strategy history, deadline awareness, blocker model, idempotency, continuous cycle
 
@@ -272,8 +408,18 @@ def run_continuous_cycle(db, *, cycle_id: str, controller="supervisor", now=None
     veto = __import__("jarvis_foundry.control.broker", fromlist=["matching_veto_reason"]).matching_veto_reason(db, {"GLOBAL", "executive", "objectives"})
     if veto:
         return {"cycle_id": cycle_id, "status": "OWNER_BLOCKED", "reason": f"veto: {veto}"}
+    # Park blocked objectives before evaluating wakes.  This keeps the
+    # Supervisor-owned cycle self-contained across direct invocation and
+    # restart; the Worker wrapper may call the helper too, but idempotent wake
+    # keys make that replay harmless.
+    parked = auto_wake_for_blocked(db, controller=controller)
+    # World Intelligence is advisory input only.  The Executive bridge admits
+    # objective-targeted signals as durable wake conditions; it never creates
+    # work itself.
+    world_triggered = bridge_world_signals(db, controller=controller)
     # Wake phase
     triggered = tick_wakes(db, controller=controller, now=now)
+    triggered = list(dict.fromkeys([*world_triggered, *triggered]))
     # Strategy guard: if top runnable objective is in retry loop, surface escalation instead of re-attempting same strategy
     try:
         from ..executive.autonomy import rank_objectives as _rank2, rebuild_executive_state as _reb2
@@ -289,16 +435,16 @@ def run_continuous_cycle(db, *, cycle_id: str, controller="supervisor", now=None
                     _esc(db, objective_id=top.objective_id, decision=f"retry loop on {loop_strategy}", why=f"strategy {loop_strategy!r} attempted 3 times consecutively", evidence_refs=[], options=next_strategy_options(db, top.objective_id)[:4], recommendation="switch strategy or escalate to owner", delay_consequence="repeated failure without strategy change", controller=controller)
                 except Exception:
                     pass
-                return {"cycle_id": cycle_id, "status": "ESCALATE", "reason": f"retry loop detected for {top.objective_id} on {loop_strategy!r} — escalation recorded", "triggered_wakes": triggered}
+                return {"cycle_id": cycle_id, "status": "ESCALATE", "reason": f"retry loop detected for {top.objective_id} on {loop_strategy!r} — escalation recorded", "triggered_wakes": triggered, "parked_objectives": parked}
     except Exception:
         pass
     # Autonomy phase: delegate to existing authoritative cycle
     from ..executive.autonomy import run_autonomy_cycle as _run_auto
     try:
         cycle = _run_auto(db, cycle_id=cycle_id, controller=controller)
-        return {"cycle_id": cycle_id, "status": cycle.status, "reason": cycle.reason, "triggered_wakes": triggered, "autonomy_cycle": cycle.to_payload() if hasattr(cycle, "to_payload") else dict(cycle) if isinstance(cycle, dict) else str(cycle)}
+        return {"cycle_id": cycle_id, "status": cycle.status, "reason": cycle.reason, "triggered_wakes": triggered, "parked_objectives": parked, "autonomy_cycle": cycle.to_payload() if hasattr(cycle, "to_payload") else dict(cycle) if isinstance(cycle, dict) else str(cycle)}
     except Exception as e:
-        return {"cycle_id": cycle_id, "status": "BLOCKED", "reason": f"{type(e).__name__}: {e}", "triggered_wakes": triggered}
+        return {"cycle_id": cycle_id, "status": "BLOCKED", "reason": f"{type(e).__name__}: {e}", "triggered_wakes": triggered, "parked_objectives": parked}
 
 def schedule_wait_until(db, objective_id: str, *, not_before: str, reason="", controller="supervisor"):
     wid = f"wake:{objective_id}:until:{_hash(not_before)}"
@@ -362,7 +508,30 @@ def auto_wake_for_blocked(db, *, controller="supervisor"):
             if oid in active_wake_oids: continue
             obj=st.objectives.get(oid)
             if obj is None: continue
-            # Infer kind from blockers
+            # Infer kind from blockers.  A bound provider is the narrower
+            # recovery contract: preserve its identity so a later positive
+            # provider sample can release this exact wait.  This must win
+            # over the generic capability-health blocker emitted for the same
+            # observation; otherwise provider recovery can never wake it.
+            provider_blockers = [
+                b for b in row.blockers
+                if str(b).lower().startswith("provider:")
+            ]
+            if provider_blockers:
+                provider_id = str(provider_blockers[0]).split(":", 2)[1]
+                if provider_id:
+                    try:
+                        schedule_wait_for_provider(
+                            db,
+                            oid,
+                            provider_id=provider_id,
+                            reason=f"wait for provider {provider_id}",
+                            controller=controller,
+                        )
+                        created.append(oid)
+                    except Exception:
+                        pass
+                    continue
             if any("dependency" in b for b in row.blockers):
                 for b in row.blockers:
                     if b.startswith("dependency:"):
@@ -490,4 +659,4 @@ def escalate_stale_wakes(db, *, stale_after_seconds=3600.0, controller="supervis
             pass
     return escalated
 
-__all__ = ["WakeCondition", "create_wake", "clear_wake", "trigger_wake", "rebuild_wake_state", "is_wake_due", "due_wakes", "tick_wakes", "continuous_snapshot", "blocker_for", "run_continuous_cycle", "record_strategy_attempt", "recent_strategies", "is_retry_loop", "next_strategy_options", "schedule_wait_until", "schedule_wait_for_dependency", "schedule_wait_for_capability", "schedule_wait_for_provider", "schedule_wait_for_owner", "schedule_wait_for_signal", "schedule_wait_for_resource", "clear_wakes_for_objective", "on_mission_outcome", "on_capability_changed", "on_owner_directive", "deadline_urgency", "stale_wakes", "auto_wake_for_blocked"]
+__all__ = ["WakeCondition", "create_wake", "clear_wake", "trigger_wake", "rebuild_wake_state", "is_wake_due", "due_wakes", "tick_wakes", "bridge_world_signals", "continuous_snapshot", "blocker_for", "run_continuous_cycle", "record_strategy_attempt", "recent_strategies", "is_retry_loop", "next_strategy_options", "schedule_wait_until", "schedule_wait_for_dependency", "schedule_wait_for_capability", "schedule_wait_for_provider", "schedule_wait_for_owner", "schedule_wait_for_signal", "schedule_wait_for_resource", "clear_wakes_for_objective", "on_mission_outcome", "on_capability_changed", "on_owner_directive", "deadline_urgency", "stale_wakes", "auto_wake_for_blocked"]
