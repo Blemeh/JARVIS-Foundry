@@ -101,7 +101,10 @@ closures were fully superseded as listed above.
    provider event releases it exactly once and materializes one mission.
 3. A real verifier FAIL writes the mission outcome back to the world model once
    (replay is deduplicated), marks the mission STALE, and the executive chooses
-   RETRY/ESCALATE/WAIT with an alternate strategy rather than looping.
+   RETRY/ESCALATE/WAIT with an alternate strategy rather than looping. When the
+   bounded RETRY branch is selected, it materializes a distinct mission,
+   requires a verifier PASS, writes the resolved world outcome, and observes
+   `COMPLETED` before closing the continuation.
 
 The lane tests also cover priority changes midstream, STOP/RESUME, capability
 degradation and alternate routes, wake idempotency/storm guards, and truthful

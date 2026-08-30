@@ -365,6 +365,46 @@ def test_terminal_mission_updates_world_then_executive_and_replans_without_dupli
     if continuation.action == "RETRY":
         assert continuation.next_step_id == "execute"
 
+        # The retry is a new mission identity, uses the reopened step, and
+        # cannot be considered successful until the independent verifier
+        # records a PASS.  This closes the failure -> alternate route -> retry
+        # -> verified success seam across Executive, Mission, Verifier and
+        # World Intelligence.
+        retry_cycle = run_continuous_cycle(db, cycle_id="v9-replan-retry")
+        assert retry_cycle["status"] == "MISSION_MATERIALIZED"
+        retry_mission_id = str(
+            retry_cycle["autonomy_cycle"]["materialization"]["mission_id"]
+        )
+        assert retry_mission_id and retry_mission_id != mission_id
+        start_verification(
+            db,
+            verdict_id="verdict-v9-retry-pass",
+            mission_id=retry_mission_id,
+            step_id="execute",
+            builder_run_id="builder-v9-retry",
+            verifier_run_id="verifier-v9-retry",
+            independence={"builder_provider": "provider-a", "verifier_provider": "provider-b"},
+            criteria=["alternate provider response is independently checked"],
+        )
+        record_verification_outcome(
+            db,
+            verdict_id="verdict-v9-retry-pass",
+            outcome="PASS",
+            findings=["alternate provider response verified"],
+            evidence={"observed": "alternate provider success"},
+            reason="alternate strategy succeeded",
+        )
+        success = writeback_mission_outcome(
+            db,
+            retry_mission_id,
+            "COMPLETED",
+            {"state": "COMPLETED", "strategy": "alternate_provider"},
+            evidence_refs=("verdict-v9-retry-pass",),
+        )
+        assert success["deduplicated"] is False
+        assert db.row("world_entities", "entity_id", retry_mission_id)["state"] == "RESOLVED"
+        assert observe_mission_outcome(db, retry_mission_id)["status"] == "COMPLETED"
+
     # Strategy history forces a materially different next route rather than a
     # storm of identical retries; the existing Executive gate records the
     # escalation durably.
