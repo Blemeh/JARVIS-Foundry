@@ -1112,3 +1112,165 @@ def test_file_append_and_failed_script_repair(tmp_path: Path) -> None:
     )
     assert rerun.success is True
     assert "repaired" in (rerun.claimed_effect.get("stdout") or "")
+
+
+def test_mission_spine_mixed_fabric_hermes_degrade_and_recovery(tmp_path: Path) -> None:
+    """Canonical MissionLoop: fabric for structured effects, Hermes for
+    general work, degrade falls back, recovery returns to fabric, and a
+    failed fabric effect does not also run the worker."""
+    from jarvis_foundry.control.capabilities import set_capability_state
+    from jarvis_foundry.events import Event
+    from jarvis_foundry.mission.loop import PASSED, MissionLoop
+    from jarvis_foundry.roles.manifest import ContextManifest
+    from jarvis_foundry.roles.results import FAILED
+    from jarvis_foundry.workers.adapters.fakes import ScriptedOutcome, ScriptedWorkerAdapter
+    from jarvis_foundry.workers.adapters.registry import WorkerRegistry
+    from jarvis_foundry.workers.contracts import WORKER_HERMES, WORKER_OPENHANDS
+    from jarvis_foundry.workers.mission_bridge import HybridWorkerRoleAdapter
+    from jarvis_foundry.workers.router import READY, WorkerRouter
+    from test_mission_loop import mission_fixture, step_kwargs
+
+    class ArtifactWriter(ScriptedWorkerAdapter):
+        def dispatch(self, contract, *, heartbeat):
+            names = tuple(contract.expected_artifacts) or ("hermes-reason.txt",)
+            for rel in names:
+                path = contract.working_root / rel
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(f"hermes:{rel}\n", encoding="utf-8")
+            self.outcome = ScriptedOutcome(files_changed=names)
+            return super().dispatch(contract, heartbeat=heartbeat)
+
+    database, repository, policy, role_router = mission_fixture(tmp_path)
+    set_capability_state(
+        database, "resource-1", "write_registered_worktree_files", "READY",
+        evidence={"source": "v9-fabric"},
+    )
+    set_capability_state(
+        database, "resource-1", "run_registered_local_commands", "READY",
+        evidence={"source": "v9-fabric"},
+    )
+    worker_router = WorkerRouter()
+    worker_router.mark_ready(WORKER_HERMES, state=READY, note="v9", evidence=("test",))
+    worker_router.mark_ready(WORKER_OPENHANDS, state=READY, note="v9", evidence=("test",))
+    hermes = ArtifactWriter(WORKER_HERMES)
+    verifier = ScriptedWorkerAdapter(
+        WORKER_OPENHANDS, outcome=ScriptedOutcome(verdict="PASS"))
+    adapter = HybridWorkerRoleAdapter(
+        database=database,
+        router=worker_router,
+        registry=WorkerRegistry({WORKER_HERMES: hermes, WORKER_OPENHANDS: verifier}),
+        use_fabric=True,
+        role_signals={
+            "builder": {"ambiguous": True, "root_cause_required": True},
+            "repair": {"ambiguous": True, "root_cause_required": True},
+            "verifier": {
+                "bounded": True, "explicit_acceptance": True,
+                "tests_available": True, "narrow_scope": True,
+            },
+        },
+    )
+    loop = MissionLoop(database, role_router, adapter, policy=policy)
+
+    def schedule(next_action: str, key: str) -> None:
+        database.append(Event.create(
+            "mission.directive_interpreted",
+            {
+                "mission_id": "mission-1",
+                "command_type": "REDIRECT",
+                "next_action": next_action,
+            },
+            source_type="owner",
+            source_id="v9-fabric",
+            idempotency_key=key,
+        ))
+
+    fabric_step = loop.run_step(
+        **step_kwargs(
+            target=repository,
+            step_id="step-fabric",
+            instructions=json.dumps({"target": "fabric.txt", "content": "from fabric\n"}),
+            expected_artifacts=("fabric.txt",),
+            expected_effects=("create fabric.txt",),
+        ),
+    )
+    assert fabric_step.outcome == PASSED
+    assert "from fabric" in (repository / "fabric.txt").read_text(encoding="utf-8").replace("\r\n", "\n")
+    assert [item.role for item in hermes.received] == []
+    spine = [event for event in database.events() if event.event_type == "fabric.spine.result"]
+    assert len(spine) == 1
+    assert spine[0].payload["action_kind"] == "file.write"
+
+    schedule("reason about the next change", "mission.state_changed:mission-1:ACTION_SELECTION:hermes")
+    hermes_step = loop.run_step(
+        **step_kwargs(
+            target=repository,
+            step_id="step-hermes",
+            capability="run_registered_local_commands",
+            instructions="reason about the next change",
+            expected_artifacts=("hermes-reason.txt",),
+            expected_effects=("create hermes-reason.txt",),
+        ),
+    )
+    assert hermes_step.outcome == PASSED
+    assert any(item.role == "builder" for item in hermes.received)
+    assert (repository / "hermes-reason.txt").is_file()
+    builders_after_hermes = len([item for item in hermes.received if item.role == "builder"])
+
+    seed_builtins(database)
+    record_outcome(
+        database, "cap.file.write",
+        success=False, verified=VerifyVerdict.MISMATCH, note="mission degrade",
+    )
+    assert observed_readiness(database, "cap.file.write").state is Readiness.DEGRADED
+    schedule("create fallback.txt", "mission.state_changed:mission-1:ACTION_SELECTION:fallback")
+    fallback = loop.run_step(
+        **step_kwargs(
+            target=repository,
+            step_id="step-fallback",
+            instructions=json.dumps({"target": "fallback.txt", "content": "unused\n"}),
+            expected_artifacts=("fallback.txt",),
+            expected_effects=("create fallback.txt",),
+        ),
+    )
+    assert fallback.outcome == PASSED
+    assert (repository / "fallback.txt").is_file()
+    assert "hermes:fallback.txt" in (repository / "fallback.txt").read_text(encoding="utf-8")
+    builders_after_fallback = len([item for item in hermes.received if item.role == "builder"])
+    assert builders_after_fallback == builders_after_hermes + 1
+    assert len([event for event in database.events() if event.event_type == "fabric.spine.result"]) == 1
+
+    record_outcome(
+        database, "cap.file.write",
+        success=True, verified=VerifyVerdict.MATCH, note="mission recover",
+    )
+    assert observed_readiness(database, "cap.file.write").state is Readiness.READY
+    schedule("create recovered.txt", "mission.state_changed:mission-1:ACTION_SELECTION:recovered")
+    recovered = loop.run_step(
+        **step_kwargs(
+            target=repository,
+            step_id="step-recovered",
+            instructions=json.dumps({"target": "recovered.txt", "content": "fabric again\n"}),
+            expected_artifacts=("recovered.txt",),
+            expected_effects=("create recovered.txt",),
+        ),
+    )
+    assert recovered.outcome == PASSED
+    assert "fabric again" in (repository / "recovered.txt").read_text(encoding="utf-8").replace("\r\n", "\n")
+    assert len([item for item in hermes.received if item.role == "builder"]) == builders_after_fallback
+    assert len([event for event in database.events() if event.event_type == "fabric.spine.result"]) == 2
+
+    failed = adapter.dispatch(
+        ContextManifest(
+            run_id="run-fabric-fail", role="builder",
+            mission_id="mission-1", step_id="step-fail",
+            resource_id="resource-1",
+            capability="run_registered_local_commands",
+            provider="opencode_go", model="local",
+            isolation_group="g",
+            instructions=json.dumps({"target": "missing-script.py"}),
+        ),
+        heartbeat=lambda: None,
+    )
+    assert failed.status == FAILED
+    assert failed.provider == "fabric"
+    assert len([item for item in hermes.received if item.role == "builder"]) == builders_after_fallback

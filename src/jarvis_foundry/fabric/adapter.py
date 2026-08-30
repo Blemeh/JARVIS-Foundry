@@ -15,6 +15,8 @@ from ..roles.adapter import RoleAdapter
 from ..roles.manifest import ContextManifest
 from ..roles.results import COMPLETED, FAILED, RoleResult, VERDICT_FAIL, VERDICT_PASS
 from .executors import HANDLERS, ExecutorContext
+from .loop import seed_builtins, select_capability
+from .model import FabricError, TaskIntent
 from .spine import execute_for_spine
 
 V5_TO_FABRIC = {
@@ -126,16 +128,44 @@ def try_fabric_dispatch(
     )
     if payload is None:
         return None
+    seed_builtins(database)
+    selection = select_capability(
+        database,
+        TaskIntent(
+            task_id=f"mission.{manifest.mission_id}",
+            required_actions=(action,),
+            unattended=True,
+        ),
+        action,
+    )
+    if not selection.available:
+        # DEGRADED / VETOED / missing: do not execute, and do not claim
+        # the step. The inner Hermes path may still satisfy it.
+        return None
     heartbeat()
     ctx = ExecutorContext(database=database, owned_root=owned_root)
-    receipt = execute_for_spine(
-        database,
-        ctx,
-        mission_id=manifest.mission_id,
-        step_id=str(manifest.step_id or "step"),
-        action_kind=action,
-        payload=payload,
-    )
+    try:
+        receipt = execute_for_spine(
+            database,
+            ctx,
+            mission_id=manifest.mission_id,
+            step_id=str(manifest.step_id or "step"),
+            action_kind=action,
+            payload=payload,
+        )
+    except FabricError as error:
+        # An attempted fabric effect must not also run Hermes.
+        return RoleResult(
+            run_id=manifest.run_id,
+            role=manifest.role,
+            status=FAILED,
+            provider="fabric",
+            model="local",
+            verdict=VERDICT_FAIL,
+            evidence=(f"fabric:{action}", "verified:UNKNOWN"),
+            error_class="fabric_effect_failed",
+            error_detail=str(error),
+        )
     success = bool(receipt.get("success"))
     return RoleResult(
         run_id=manifest.run_id,
