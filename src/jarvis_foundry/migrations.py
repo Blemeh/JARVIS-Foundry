@@ -5,7 +5,7 @@ import sqlite3
 from .v4_schema import ensure_v4_tables
 
 
-SCHEMA_VERSION = 37
+SCHEMA_VERSION = 38
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -1148,6 +1148,149 @@ MIGRATIONS: dict[int, str] = {
     );
     CREATE INDEX IF NOT EXISTS tier_c_project_aliases_resource
         ON tier_c_project_aliases(resource_id);
+    """,
+
+    38: """
+    -- V9 World Model Lane 3
+    CREATE TABLE IF NOT EXISTS world_entities (
+        entity_id TEXT PRIMARY KEY,
+        entity_type TEXT NOT NULL,
+        display_name TEXT NOT NULL,
+        state TEXT NOT NULL DEFAULT 'ACTIVE',
+        attributes_json TEXT NOT NULL DEFAULT '{}',
+        valid_from TEXT NOT NULL,
+        valid_until TEXT,
+        observed_at TEXT NOT NULL,
+        superseded_at TEXT,
+        last_verified TEXT,
+        stale_after TEXT,
+        due_at TEXT,
+        resolved_at TEXT,
+        provenance_json TEXT NOT NULL DEFAULT '{}',
+        confidence REAL NOT NULL DEFAULT 0.5,
+        salience REAL NOT NULL DEFAULT 0.5,
+        authority TEXT NOT NULL DEFAULT 'DERIVED',
+        record_kind TEXT NOT NULL DEFAULT 'FACT',
+        supersedes TEXT,
+        derived_from_json TEXT NOT NULL DEFAULT '[]',
+        source_event_id TEXT NOT NULL,
+        last_event_id TEXT NOT NULL,
+        version INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS world_entities_type ON world_entities(entity_type);
+    CREATE INDEX IF NOT EXISTS world_entities_state ON world_entities(state);
+    CREATE TABLE IF NOT EXISTS world_relationships (
+        relationship_id TEXT PRIMARY KEY,
+        source_id TEXT NOT NULL,
+        target_id TEXT NOT NULL,
+        relationship_type TEXT NOT NULL,
+        strength REAL NOT NULL DEFAULT 1.0,
+        valid_from TEXT NOT NULL,
+        valid_until TEXT,
+        observed_at TEXT NOT NULL,
+        provenance_json TEXT NOT NULL DEFAULT '{}',
+        confidence REAL NOT NULL DEFAULT 0.5,
+        source_event_id TEXT NOT NULL,
+        last_event_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS world_observations (
+        observation_id TEXT PRIMARY KEY,
+        source_kind TEXT NOT NULL,
+        source_ref TEXT NOT NULL,
+        observed_at TEXT NOT NULL,
+        payload_json TEXT NOT NULL DEFAULT '{}',
+        normalized_json TEXT NOT NULL DEFAULT '{}',
+        entities_json TEXT NOT NULL DEFAULT '[]',
+        relationships_json TEXT NOT NULL DEFAULT '[]',
+        provenance_json TEXT NOT NULL DEFAULT '{}',
+        processed INTEGER NOT NULL DEFAULT 0,
+        last_event_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS world_signals (
+        signal_id TEXT PRIMARY KEY,
+        signal_kind TEXT NOT NULL,
+        salience TEXT NOT NULL,
+        state TEXT NOT NULL DEFAULT 'OPEN',
+        title TEXT NOT NULL,
+        summary TEXT NOT NULL DEFAULT '',
+        affected_entities_json TEXT NOT NULL DEFAULT '[]',
+        evidence_json TEXT NOT NULL DEFAULT '[]',
+        provenance_json TEXT NOT NULL DEFAULT '{}',
+        confidence REAL NOT NULL DEFAULT 0.5,
+        importance REAL NOT NULL DEFAULT 0.5,
+        urgency REAL NOT NULL DEFAULT 0.5,
+        dedupe_key TEXT NOT NULL,
+        supersedes TEXT,
+        resolved_at TEXT,
+        stale_after TEXT,
+        due_at TEXT,
+        recommended_action TEXT,
+        last_event_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS world_predictions (
+        prediction_id TEXT PRIMARY KEY,
+        subject_type TEXT NOT NULL,
+        subject_id TEXT NOT NULL,
+        prediction_kind TEXT NOT NULL,
+        predicted_value_json TEXT NOT NULL DEFAULT '{}',
+        confidence REAL NOT NULL DEFAULT 0.5,
+        predicted_at TEXT NOT NULL,
+        horizon_until TEXT,
+        outcome TEXT,
+        outcome_value_json TEXT NOT NULL DEFAULT '{}',
+        outcome_at TEXT,
+        calibration_delta REAL,
+        provenance_json TEXT NOT NULL DEFAULT '{}',
+        last_event_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS world_knowledge_gaps (
+        gap_id TEXT PRIMARY KEY,
+        gap_kind TEXT NOT NULL,
+        subject_type TEXT,
+        subject_id TEXT,
+        description TEXT NOT NULL,
+        blocking INTEGER NOT NULL DEFAULT 0,
+        resolved INTEGER NOT NULL DEFAULT 0,
+        resolved_by TEXT,
+        last_event_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS world_patterns (
+        pattern_id TEXT PRIMARY KEY,
+        pattern_kind TEXT NOT NULL,
+        description TEXT NOT NULL,
+        occurrences INTEGER NOT NULL DEFAULT 1,
+        first_seen TEXT NOT NULL,
+        last_seen TEXT NOT NULL,
+        evidence_json TEXT NOT NULL DEFAULT '[]',
+        confidence REAL NOT NULL DEFAULT 0.5,
+        last_event_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS world_calibration (
+        calibration_id TEXT PRIMARY KEY,
+        subject_type TEXT NOT NULL,
+        subject_id TEXT NOT NULL,
+        predictions_total INTEGER NOT NULL DEFAULT 0,
+        predictions_confirmed INTEGER NOT NULL DEFAULT 0,
+        predictions_refuted INTEGER NOT NULL DEFAULT 0,
+        calibration_score REAL NOT NULL DEFAULT 0.0,
+        adjustment REAL NOT NULL DEFAULT 0.0,
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
     """,
 }
 

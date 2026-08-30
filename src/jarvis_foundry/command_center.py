@@ -1753,6 +1753,22 @@ def build_snapshot(
     # intelligence is an additive sub-surface alongside the existing V3
     # discovery projection, not a second Command Center authority.
     discovery_surface["operational_intelligence"] = operational_intelligence
+    # V9 World Intelligence is an additive understanding layer.  It exposes
+    # current state, history, signals, predictions, and gaps without
+    # becoming a second scheduler or mission engine.
+    try:
+        from jarvis_foundry.world_model.read_model import project_world_intelligence
+        world_intelligence = project_world_intelligence(database, limit=50)
+    except Exception as _wi_err:  # noqa: BLE001 - read model fails closed
+        world_intelligence = {
+            "counts": {},
+            "signals": [],
+            "entities": [],
+            "predictions": [],
+            "gaps": [],
+            "patterns": [],
+            "error": f"{type(_wi_err).__name__}: {_wi_err}",
+        }
 
     snapshot_payload = {
         "generated_at": generated_at,
@@ -1832,6 +1848,7 @@ def build_snapshot(
         "executive": executive_projection,
         "portfolio": portfolio_projection,
         "discovery": discovery_surface,
+        "world_intelligence": world_intelligence,
     }
     # The packet is an additive read-only export contract.  Import lazily to
     # avoid a module cycle: the packet builder reuses this snapshot function

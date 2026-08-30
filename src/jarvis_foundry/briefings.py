@@ -76,6 +76,27 @@ class BriefingPlanner:
             item for item in operational.get("followups", [])
             if isinstance(item, dict) and item.get("state") == "OPEN"
         ]
+        # V9 World Intelligence: surface active signals and gaps in briefings
+        world_intel = snapshot.get("world_intelligence") or {}
+        world_signals = [s for s in world_intel.get("signals", []) if isinstance(s, dict) and s.get("state") in ("OPEN", "MONITORING")]
+        payload["world_intelligence"] = {
+            "counts": dict(world_intel.get("counts") or {}),
+            "active_signals": world_signals[:10],
+            "urgent_signals": [s for s in world_signals if s.get("salience") == "URGENT"][:5],
+            "gaps": list(world_intel.get("gaps") or [])[:5],
+            "predictions": list(world_intel.get("predictions") or [])[:5],
+        }
+        if world_signals:
+            payload["next_actions"] = payload["next_actions"] + [
+                {
+                    "signal_id": s.get("signal_id"),
+                    "signal_kind": s.get("signal_kind"),
+                    "salience": s.get("salience"),
+                    "title": s.get("title"),
+                    "recommended_action": s.get("recommended_action"),
+                }
+                for s in world_signals[:5]
+            ]
         payload["operational_followups"] = followups[:20]
         payload["next_actions"] = payload["next_actions"] + [
             {

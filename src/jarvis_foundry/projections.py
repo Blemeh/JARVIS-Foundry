@@ -89,6 +89,14 @@ PROJECTION_TABLES = (
     # Software-intelligence (Lane 4): derived alias projection. Deleted with
     # the other Tier-C-derived tables; rebuilt from memory.alias.bound events.
     "tier_c_project_aliases",
+    "world_entities",
+    "world_relationships",
+    "world_observations",
+    "world_signals",
+    "world_predictions",
+    "world_knowledge_gaps",
+    "world_patterns",
+    "world_calibration",
 )
 
 
@@ -2202,6 +2210,272 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
                  updated_at=excluded.updated_at""",
             (alias, payload["resource_id"], payload.get("alias_kind"),
              event.event_id, event.recorded_at))
+    # ---- V9 World Model (Lane 3): event-derived understanding ----
+    elif event.event_type == "world.entity_recorded":
+        connection.execute(
+            """INSERT INTO world_entities(
+                entity_id, entity_type, display_name, state, attributes_json,
+                valid_from, valid_until, observed_at, superseded_at,
+                last_verified, stale_after, due_at, resolved_at,
+                provenance_json, confidence, salience, authority, record_kind,
+                supersedes, derived_from_json, source_event_id, last_event_id,
+                version, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(entity_id) DO UPDATE SET
+                entity_type=excluded.entity_type, display_name=excluded.display_name,
+                state=excluded.state, attributes_json=excluded.attributes_json,
+                valid_from=excluded.valid_from, valid_until=excluded.valid_until,
+                observed_at=excluded.observed_at, superseded_at=excluded.superseded_at,
+                last_verified=excluded.last_verified, stale_after=excluded.stale_after,
+                due_at=excluded.due_at, resolved_at=excluded.resolved_at,
+                provenance_json=excluded.provenance_json, confidence=excluded.confidence,
+                salience=excluded.salience, authority=excluded.authority,
+                record_kind=excluded.record_kind, supersedes=excluded.supersedes,
+                derived_from_json=excluded.derived_from_json,
+                last_event_id=excluded.last_event_id,
+                version=excluded.version, updated_at=excluded.updated_at""",
+            (
+                payload["entity_id"], payload["entity_type"], payload["display_name"],
+                payload.get("state", "ACTIVE"), canonical_json(payload.get("attributes") or {}),
+                payload.get("valid_from", event.recorded_at), payload.get("valid_until"),
+                payload.get("observed_at", event.recorded_at), payload.get("superseded_at"),
+                payload.get("last_verified"), payload.get("stale_after"),
+                payload.get("due_at"), payload.get("resolved_at"),
+                canonical_json(payload.get("provenance") or {}),
+                float(payload.get("confidence", 0.5)), float(payload.get("salience", 0.5)),
+                payload.get("authority", "DERIVED"), payload.get("record_kind", "FACT"),
+                payload.get("supersedes"), canonical_json(payload.get("derived_from") or []),
+                payload.get("source_event_id", event.event_id), event.event_id,
+                int(payload.get("version", 1)), event.recorded_at, event.recorded_at,
+            ),
+        )
+    elif event.event_type == "world.entity_state_changed":
+        row = connection.execute(
+            "SELECT entity_id FROM world_entities WHERE entity_id = ?",
+            (payload["entity_id"],)).fetchone()
+        if row is None:
+            raise ValueError(f"world.entity_state_changed: unknown entity {payload.get('entity_id')}")
+        updates: dict[str, object] = {"last_event_id": event.event_id, "updated_at": event.recorded_at}
+        for key in ("state", "superseded_at", "last_verified", "stale_after", "due_at",
+                     "resolved_at", "confidence", "salience", "supersedes", "valid_until"):
+            if key in payload:
+                updates[key] = payload[key]
+        if "attributes" in payload:
+            updates["attributes_json"] = canonical_json(payload["attributes"])
+        if "provenance" in payload:
+            updates["provenance_json"] = canonical_json(payload["provenance"])
+        if updates:
+            sets = ", ".join(f"{k} = ?" for k in updates)
+            connection.execute(
+                f"UPDATE world_entities SET {sets} WHERE entity_id = ?",
+                tuple(updates.values()) + (payload["entity_id"],),
+            )
+            connection.execute(
+                "UPDATE world_entities SET version = version + 1 WHERE entity_id = ?",
+                (payload["entity_id"],),
+            )
+    elif event.event_type == "world.relationship_recorded":
+        connection.execute(
+            """INSERT INTO world_relationships(
+                relationship_id, source_id, target_id, relationship_type,
+                strength, valid_from, valid_until, observed_at,
+                provenance_json, confidence, source_event_id, last_event_id,
+                created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(relationship_id) DO UPDATE SET
+                strength=excluded.strength, valid_from=excluded.valid_from,
+                valid_until=excluded.valid_until, observed_at=excluded.observed_at,
+                provenance_json=excluded.provenance_json, confidence=excluded.confidence,
+                last_event_id=excluded.last_event_id, updated_at=excluded.updated_at""",
+            (
+                payload["relationship_id"], payload["source_id"], payload["target_id"],
+                payload["relationship_type"], float(payload.get("strength", 1.0)),
+                payload.get("valid_from", event.recorded_at), payload.get("valid_until"),
+                payload.get("observed_at", event.recorded_at),
+                canonical_json(payload.get("provenance") or {}),
+                float(payload.get("confidence", 0.5)),
+                payload.get("source_event_id", event.event_id), event.event_id,
+                event.recorded_at, event.recorded_at,
+            ),
+        )
+    elif event.event_type == "world.observation_recorded":
+        connection.execute(
+            """INSERT INTO world_observations(
+                observation_id, source_kind, source_ref, observed_at,
+                payload_json, normalized_json, entities_json, relationships_json,
+                provenance_json, processed, last_event_id, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(observation_id) DO UPDATE SET
+                normalized_json=excluded.normalized_json,
+                entities_json=excluded.entities_json,
+                relationships_json=excluded.relationships_json,
+                provenance_json=excluded.provenance_json,
+                processed=excluded.processed,
+                last_event_id=excluded.last_event_id, updated_at=excluded.updated_at""",
+            (
+                payload["observation_id"], payload["source_kind"], payload["source_ref"],
+                payload.get("observed_at", event.recorded_at),
+                canonical_json(payload.get("payload") or {}),
+                canonical_json(payload.get("normalized") or {}),
+                canonical_json(payload.get("entities") or []),
+                canonical_json(payload.get("relationships") or []),
+                canonical_json(payload.get("provenance") or {}),
+                int(bool(payload.get("processed", 0))),
+                event.event_id, event.recorded_at, event.recorded_at,
+            ),
+        )
+    elif event.event_type == "world.signal_recorded":
+        connection.execute(
+            """INSERT INTO world_signals(
+                signal_id, signal_kind, salience, state, title, summary,
+                affected_entities_json, evidence_json, provenance_json,
+                confidence, importance, urgency, dedupe_key, supersedes,
+                resolved_at, stale_after, due_at, recommended_action,
+                last_event_id, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(signal_id) DO UPDATE SET
+                salience=excluded.salience, state=excluded.state,
+                title=excluded.title, summary=excluded.summary,
+                affected_entities_json=excluded.affected_entities_json,
+                evidence_json=excluded.evidence_json,
+                provenance_json=excluded.provenance_json,
+                confidence=excluded.confidence, importance=excluded.importance,
+                urgency=excluded.urgency, dedupe_key=excluded.dedupe_key,
+                supersedes=excluded.supersedes, resolved_at=excluded.resolved_at,
+                stale_after=excluded.stale_after, due_at=excluded.due_at,
+                recommended_action=excluded.recommended_action,
+                last_event_id=excluded.last_event_id, updated_at=excluded.updated_at""",
+            (
+                payload["signal_id"], payload["signal_kind"], payload["salience"],
+                payload.get("state", "OPEN"), payload["title"],
+                payload.get("summary", ""),
+                canonical_json(payload.get("affected_entities") or []),
+                canonical_json(payload.get("evidence") or []),
+                canonical_json(payload.get("provenance") or {}),
+                float(payload.get("confidence", 0.5)), float(payload.get("importance", 0.5)),
+                float(payload.get("urgency", 0.5)), payload["dedupe_key"],
+                payload.get("supersedes"), payload.get("resolved_at"),
+                payload.get("stale_after"), payload.get("due_at"),
+                payload.get("recommended_action"),
+                event.event_id, event.recorded_at, event.recorded_at,
+            ),
+        )
+    elif event.event_type == "world.signal_state_changed":
+        row = connection.execute(
+            "SELECT signal_id FROM world_signals WHERE signal_id = ?",
+            (payload["signal_id"],)).fetchone()
+        if row is None:
+            raise ValueError(f"world.signal_state_changed: unknown signal {payload.get('signal_id')}")
+        connection.execute(
+            """UPDATE world_signals SET state = ?, resolved_at = COALESCE(?, resolved_at),
+               supersedes = COALESCE(?, supersedes), last_event_id = ?, updated_at = ?
+               WHERE signal_id = ?""",
+            (payload["state"], payload.get("resolved_at"), payload.get("supersedes"),
+             event.event_id, event.recorded_at, payload["signal_id"]),
+        )
+    elif event.event_type == "world.prediction_recorded":
+        connection.execute(
+            """INSERT INTO world_predictions(
+                prediction_id, subject_type, subject_id, prediction_kind,
+                predicted_value_json, confidence, predicted_at, horizon_until,
+                outcome, outcome_value_json, outcome_at, calibration_delta,
+                provenance_json, last_event_id, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(prediction_id) DO UPDATE SET
+                predicted_value_json=excluded.predicted_value_json,
+                confidence=excluded.confidence, horizon_until=excluded.horizon_until,
+                outcome=COALESCE(excluded.outcome, world_predictions.outcome),
+                outcome_value_json=excluded.outcome_value_json,
+                outcome_at=excluded.outcome_at, calibration_delta=excluded.calibration_delta,
+                provenance_json=excluded.provenance_json,
+                last_event_id=excluded.last_event_id, updated_at=excluded.updated_at""",
+            (
+                payload["prediction_id"], payload["subject_type"], payload["subject_id"],
+                payload["prediction_kind"], canonical_json(payload.get("predicted_value") or {}),
+                float(payload.get("confidence", 0.5)), payload.get("predicted_at", event.recorded_at),
+                payload.get("horizon_until"), payload.get("outcome", "PENDING"),
+                canonical_json(payload.get("outcome_value") or {}),
+                payload.get("outcome_at"), payload.get("calibration_delta"),
+                canonical_json(payload.get("provenance") or {}),
+                event.event_id, event.recorded_at, event.recorded_at,
+            ),
+        )
+    elif event.event_type == "world.prediction_outcome_recorded":
+        row = connection.execute(
+            "SELECT prediction_id FROM world_predictions WHERE prediction_id = ?",
+            (payload["prediction_id"],)).fetchone()
+        if row is None:
+            raise ValueError(f"world.prediction_outcome_recorded: unknown prediction {payload.get('prediction_id')}")
+        connection.execute(
+            """UPDATE world_predictions SET outcome = ?, outcome_value_json = ?,
+               outcome_at = ?, calibration_delta = ?, last_event_id = ?, updated_at = ?
+               WHERE prediction_id = ?""",
+            (payload["outcome"], canonical_json(payload.get("outcome_value") or {}),
+             payload.get("outcome_at", event.recorded_at), payload.get("calibration_delta"),
+             event.event_id, event.recorded_at, payload["prediction_id"]),
+        )
+    elif event.event_type == "world.knowledge_gap_recorded":
+        connection.execute(
+            """INSERT INTO world_knowledge_gaps(
+                gap_id, gap_kind, subject_type, subject_id, description,
+                blocking, resolved, resolved_by, last_event_id, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(gap_id) DO UPDATE SET
+                description=excluded.description, blocking=excluded.blocking,
+                resolved=excluded.resolved, resolved_by=excluded.resolved_by,
+                last_event_id=excluded.last_event_id, updated_at=excluded.updated_at""",
+            (
+                payload["gap_id"], payload["gap_kind"], payload.get("subject_type"),
+                payload.get("subject_id"), payload["description"],
+                int(bool(payload.get("blocking", 0))), int(bool(payload.get("resolved", 0))),
+                payload.get("resolved_by"), event.event_id, event.recorded_at, event.recorded_at,
+            ),
+        )
+    elif event.event_type == "world.pattern_recorded":
+        connection.execute(
+            """INSERT INTO world_patterns(
+                pattern_id, pattern_kind, description, occurrences,
+                first_seen, last_seen, evidence_json, confidence,
+                last_event_id, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(pattern_id) DO UPDATE SET
+                occurrences=excluded.occurrences, last_seen=excluded.last_seen,
+                evidence_json=excluded.evidence_json, confidence=excluded.confidence,
+                last_event_id=excluded.last_event_id, updated_at=excluded.updated_at""",
+            (
+                payload["pattern_id"], payload["pattern_kind"], payload["description"],
+                int(payload.get("occurrences", 1)),
+                payload.get("first_seen", event.recorded_at),
+                payload.get("last_seen", event.recorded_at),
+                canonical_json(payload.get("evidence") or []),
+                float(payload.get("confidence", 0.5)),
+                event.event_id, event.recorded_at, event.recorded_at,
+            ),
+        )
+    elif event.event_type == "world.calibration_recorded":
+        connection.execute(
+            """INSERT INTO world_calibration(
+                calibration_id, subject_type, subject_id,
+                predictions_total, predictions_confirmed, predictions_refuted,
+                calibration_score, adjustment, last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(calibration_id) DO UPDATE SET
+                predictions_total=excluded.predictions_total,
+                predictions_confirmed=excluded.predictions_confirmed,
+                predictions_refuted=excluded.predictions_refuted,
+                calibration_score=excluded.calibration_score,
+                adjustment=excluded.adjustment,
+                last_event_id=excluded.last_event_id, updated_at=excluded.updated_at""",
+            (
+                payload["calibration_id"], payload["subject_type"], payload["subject_id"],
+                int(payload.get("predictions_total", 0)),
+                int(payload.get("predictions_confirmed", 0)),
+                int(payload.get("predictions_refuted", 0)),
+                float(payload.get("calibration_score", 0.0)),
+                float(payload.get("adjustment", 0.0)),
+                event.event_id, event.recorded_at,
+            ),
+        )
 
 
 def reset(connection: sqlite3.Connection) -> None:
