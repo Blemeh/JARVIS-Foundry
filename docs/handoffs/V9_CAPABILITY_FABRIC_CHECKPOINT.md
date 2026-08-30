@@ -10,12 +10,12 @@ Base: `84db5d338313d835b2540796dbed24489646ceae`
 - Event-sourced capability catalog. Registration is not readiness. UNKNOWN stays UNKNOWN. READY requires verified SUCCESS.
 - INTENT and NEED loops with owned-root candidate generation.
 - Provider routing: OpenCode contributor models are INTERACTIVE_REQUIRED without Hermes noninteractive consent.
-- Real actions: filesystem, dir.list, file.replace, git inspect/diff/branch/commit/push, GitHub read family, issue create via explicit transport, system diagnose, pytest, owned-root script, research artifact.
+- Real actions: filesystem, dir.list, file.replace, git inspect/diff/branch/commit/push, GitHub read family, issue and pull-request create via explicit transport, system diagnose, pytest, owned-root script, research artifact.
 - Generic workflow composition: `$step.field` binding, stop or continue on failure. Combinations are data, not hardcoded paths.
 - Mission spine adapter `execute_for_spine` journals `fabric.spine.result` evidence.
 - Selection ranks by readiness then verified success count.
 - `jarvis --home <disposable> fabric catalog` lists actual capabilities. Live home is refused.
-- Workflows: issue→inspect→branch→commit→diff→test→receipt; diagnose→write→replace→run→list; commit→push to owned remote.
+- Workflows: issue→inspect→branch→commit→diff→test→receipt; diagnose→write→replace→run→list; commit→push to owned remote; branch→commit→push→PR create→read.
 - V7 `capability_readiness` reports missing records as UNKNOWN and not ready.
 
 ## Decisions
@@ -28,7 +28,7 @@ Base: `84db5d338313d835b2540796dbed24489646ceae`
 
 ## In progress
 
-- GitHub PR/write only through explicit transport.
+- Live GitHub mutation only against an explicit disposable repo.
 - Deeper MissionLoop wiring without replacing the worker adapter.
 
 ## Next gaps

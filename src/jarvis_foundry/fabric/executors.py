@@ -274,6 +274,40 @@ def github_issue_create(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dic
     }
 
 
+def github_pull_request_create(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Open a pull request via injected write transport. No silent live mutation."""
+    owner = str(payload["owner"])
+    repo = str(payload["repo"])
+    title = str(payload["title"])
+    head = str(payload["head"])
+    base = str(payload.get("base") or "main")
+    body = str(payload.get("body") or "")
+    endpoint = f"/repos/{owner}/{repo}/pulls"
+    transport = ctx.github_write
+    if transport is None:
+        raise FabricError("github.pull_request.create requires an explicit write transport")
+    status, raw = transport(endpoint, {
+        "title": title, "head": head, "base": base, "body": body,
+    })
+    document = None
+    if status in {200, 201}:
+        try:
+            document = json.loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            document = None
+    number = document.get("number") if isinstance(document, dict) else None
+    return {
+        "claimed": "COMPLETED" if number is not None else "FAILED",
+        "endpoint": endpoint,
+        "number": number,
+        "html_url": document.get("html_url") if isinstance(document, dict) else None,
+        "head": head,
+        "base": base,
+        "status": status,
+        "title": title,
+    }
+
+
 def system_diagnose(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
     git = subprocess.run(
         ["git", "--version"], capture_output=True, text=True, encoding="utf-8",
@@ -405,6 +439,7 @@ HANDLERS: dict[str, Callable[[ExecutorContext, Mapping[str, Any]], dict[str, Any
     "github.search.read": github_research,
     "github.identity.read": github_identity,
     "github.issue.create": github_issue_create,
+    "github.pull_request.create": github_pull_request_create,
     "system.diagnose": system_diagnose,
     "tests.run": tests_run,
     "artifact.write": artifact_write,

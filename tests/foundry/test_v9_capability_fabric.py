@@ -594,3 +594,78 @@ def test_workflow_commit_and_push_to_owned_remote(tmp_path: Path) -> None:
     ).stdout.strip()
     assert remote_head == result["context"]["commit"]["head"]
     assert result["context"]["push"]["observed_remote_head"] == remote_head
+
+
+def test_workflow_branch_push_and_pull_request_create_then_read(
+        tmp_path: Path) -> None:
+    created = {}
+
+    def write(endpoint: str, request: dict) -> tuple[int, bytes]:
+        created["pr"] = {
+            "number": 11,
+            "title": request["title"],
+            "html_url": "https://example.invalid/acme/demo/pull/11",
+            "head": {"ref": request["head"]},
+            "base": {"ref": request["base"]},
+        }
+        return 201, json.dumps(created["pr"]).encode()
+
+    def api(endpoint: str) -> tuple[int, bytes]:
+        if endpoint == "/repos/acme/demo/pulls/11" and "pr" in created:
+            return 200, json.dumps(created["pr"]).encode()
+        return 404, b"{}"
+
+    database = _db(tmp_path)
+    ctx = _ctx(tmp_path, database, github_api=api, github_write=write)
+    seed_builtins(database)
+    work, bare = _clone_repo(tmp_path, ctx.owned_root)
+    result = run_workflow(
+        database, ctx, _intent("git.branch"),
+        (
+            WorkflowStep(
+                "inspect", "git.inspect",
+                {"worktree": str(work), "remote": str(bare)},
+            ),
+            WorkflowStep(
+                "branch", "git.branch",
+                {"worktree": "$inspect.worktree", "name": "v9-pr"},
+            ),
+            WorkflowStep(
+                "commit", "git.commit",
+                {
+                    "worktree": "$branch.worktree",
+                    "changes": {"feature.txt": "pr body\n"},
+                    "message": "open a fabric pull request",
+                },
+            ),
+            WorkflowStep(
+                "push", "git.push",
+                {
+                    "worktree": "$commit.worktree",
+                    "remote": str(bare),
+                    "branch": "v9-pr",
+                    "action_id": "fabric-push-v9-pr",
+                },
+            ),
+            WorkflowStep(
+                "open", "github.pull_request.create",
+                {
+                    "owner": "acme", "repo": "demo",
+                    "title": "fabric pull request",
+                    "head": "v9-pr", "base": "main",
+                    "body": "opened from capability fabric",
+                },
+            ),
+            WorkflowStep(
+                "read", "github.pull_request.read",
+                {
+                    "action": "github.pull_request.read",
+                    "endpoint": "/repos/acme/demo/pulls/11",
+                },
+            ),
+        ),
+    )
+    assert result["success"] is True
+    assert result["context"]["open"]["number"] == 11
+    assert result["context"]["read"]["document"]["number"] == 11
+    assert result["context"]["push"]["branch"] == "v9-pr"

@@ -122,6 +122,13 @@ def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
             limitations=("explicit write transport required; no silent live mutation",),
         ),
         CapabilitySpec(
+            capability_id="cap.github.pull_request.create", version="1.0.0", kind=Kind.CONNECTOR,
+            action_kind="github.pull_request.create", semantic=Semantic.EXTERNAL_EFFECT,
+            executor="github_write",
+            unattended=UnattendedMode.ALLOWED,
+            limitations=("explicit write transport required; no silent live mutation",),
+        ),
+        CapabilitySpec(
             capability_id="cap.system.diagnose", version="1.0.0", kind=Kind.TOOL,
             action_kind="system.diagnose", semantic=Semantic.READ, executor="local",
             unattended=UnattendedMode.ALLOWED,
@@ -290,6 +297,8 @@ def _verify(action_kind: str, claimed: Mapping[str, Any], owned_root: Path) -> V
             return VerifyVerdict.MATCH
         return VerifyVerdict.MISMATCH
     if action_kind == "github.issue.create":
+        return VerifyVerdict.MATCH if claimed.get("number") else VerifyVerdict.MISMATCH
+    if action_kind == "github.pull_request.create":
         return VerifyVerdict.MATCH if claimed.get("number") else VerifyVerdict.MISMATCH
     if action_kind == "system.diagnose":
         if claimed.get("python") and claimed.get("owned_root_exists"):
