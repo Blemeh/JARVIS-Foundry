@@ -12,18 +12,18 @@ The accepted V9 stabilization history is now represented in canonical source.
 This task did not promote, restart, migrate, STOP/RESUME, alter Scheduler, write
 the live database, or change live release pointers.
 
-DOCUMENTATION STATE BASE SHA: `a9e6a48bdff79811adab6f48201db96065011138`
+DOCUMENTATION STATE BASE SHA: `789e47f87d6e5b754f4f8970dc1231c87f973464`
 
-The SHA above is the temporary parent pin used while resolving the source
-integration. The final docs-only reconciliation commit updates it to the
-immediate parent required by `scripts/doc_staleness_check.py`.
+The SHA above is the immediate parent of this final docs-only reconciliation
+commit, as required by `scripts/doc_staleness_check.py`.
 
 ```text
 CANONICAL SOURCE START:       fe0592991e98de3f5de27c53d40339f4281156f1
 CANONICAL MAIN START:         681d1f777106a01998551f4706d981233ccf0e43
 PRODUCT STABILIZATION SHA:    c41a3ad8ef3debda6f84e6d4dac2e0ac525c0864
 PRODUCT SHA RELATIONSHIP:     c41a3ad is an ancestor of the canonical integration line
-CANONICAL PRODUCT INTEGRATION: this source integration merge; see final report
+CANONICAL PRODUCT INTEGRATION: `789e47f87d6e5b754f4f8970dc1231c87f973464`
+CANONICAL MAIN FINAL:          this docs-only reconciliation tip; see final report
 ROADMAP SOURCE COMMIT:        e62b2451de15896bf4266d07f47c6346105b17d2
 ROADMAP CONTENT LANDING:      ec6b164ec912697c07463a302efe60d6395ef41e
 CONTROL-TOWER SOURCE:         921bd82562ebcf09abc17589416a526b266ba568
@@ -124,14 +124,22 @@ LIVE RUNTIME SHA:              c41a3ad8ef3debda6f84e6d4dac2e0ac525c0864
 LIVE INSTALLED SHA:            c41a3ad8ef3debda6f84e6d4dac2e0ac525c0864
 LIVE RELEASE ID:               rel-c41a3ad8ef3d-876ae617
 LIVE RELEASE AUTHORITY:        DATABASE_LIVE_SLOT / CONSISTENT
+LIVE DATABASE IDENTITY:        c41a3ad8ef3debda6f84e6d4dac2e0ac525c0864 /
+                                tree 6e82cca2209e983173458e6d536b55114d4fdf59 /
+                                schema 38 / match TRUE
 LIVE HEALTH:                   RUNNING
 LIVE TRUST:                    SUSPENDED
 LIVE PARITY:                   PASS (source/install/database/runtime match)
-LIVE RECONCILIATION:           CONSISTENT; 140730 events at capture
+LIVE RECONCILIATION:           CONSISTENT; 141049 events at capture
 LIVE STOP:                     FALSE
-LIVE SUPERVISOR:               exactly one valid owner; PID 24572 at capture
-LIVE SCHEDULER:                contract PASS; IgnoreNew last result 0x800710E0
-LIVE OBSERVED:                 2026-09-01 read-only status capture
+LIVE SUPERVISOR:               exactly one valid owner; PID 24572 at capture;
+                                heartbeat 2026-08-31T23:41:12.206270Z
+LIVE SCHEDULER:                contract PASS; IgnoreNew; last result 0x800710E0
+LIVE IDLE GROWTH:              PASS; recent legacy uncoalesced window is zero;
+                                current idle states are coalesced; historical
+                                legacy uncoalesced total remains 65728
+LIVE OBSERVED:                 2026-09-01T01:41:23.641691+02:00 /
+                                2026-08-31T23:41:23.641766Z read-only capture
 LIVE MUTATED BY THIS TASK:     NO
 STABILIZATION STATUS:          STABILIZATION_CANONICAL_AND_LIVE
 ```
@@ -176,8 +184,12 @@ current live and canonical claims are recorded here after fresh reconciliation.
 | Post-V7 canonical convergence (R7–R12) | PASS_WITH_BOUNDARY; live/provider/elapsed boundaries remain explicit |
 | V9 world intelligence, continuous executive, and capability fabric source gates | PASS in disposable cross-lane evidence; live external effects remain separately bounded |
 | V9 integrated source closure | PASS — focused cross-lane scenarios and source regression recorded in `docs/handoffs/V9_FULL_CONVERGENCE_20260830.md` |
-| V9 stabilization focused contracts | PENDING until the post-integration focused validation run completes |
-| Repository-wide source regression | PENDING until the post-integration broad validation run completes |
+| V9 stabilization focused contracts | PASS — 211 tests passed; 0 failures |
+| Repository-wide source regression | PASS — 2448 tests passed, 1 skipped; 0 failures |
+| Command Center UI validation | PASS — 123 unit tests; typecheck, ESLint, and production build exit 0 |
+| Python source compilation | PASS — `compileall -q src` exit 0 |
+| 136,346-event disposable V9 performance sanity | PASS — Command Center 1.597s cold / 0.147s warm, timeline 0.109s, executive 0.091s; 0 writable connections and 0 `BEGIN IMMEDIATE` |
+| Documentation staleness | PASS — merge-parent preflight passed; final docs-only pin verified after commit |
 | Live release/runtime identity and four-way parity | PASS at this observation; all four identities are `c41a3ad...` |
 | Live health / reconciliation | RUNNING / CONSISTENT at this observation |
 | Production trust | SUSPENDED — provider, reboot, endurance, and trust-gate proof remain incomplete |
