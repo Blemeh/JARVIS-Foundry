@@ -72,7 +72,7 @@ def rebuild_wake_state(db):
             wid = str(p.get("wake_id") or "")
             if wid in wakes: wakes[wid]["status"] = "TRIGGERED"; wakes[wid]["triggered_at"] = p.get("triggered_at")
     return wakes
-def is_wake_due(db, wake: dict, now=None):
+def is_wake_due(db, wake: dict, now=None, *, state=None):
     from datetime import datetime, timezone
     n = now or datetime.now(timezone.utc)
     k = wake.get("kind") or ""
@@ -88,7 +88,7 @@ def is_wake_due(db, wake: dict, now=None):
         if not dep: return False
         try:
             from ..executive.autonomy import rebuild_executive_state as _reb
-            st = _reb(db)
+            st = state or _reb(db)
             obj = st.objectives.get(str(dep))
             return obj is not None and obj.status == "COMPLETED"
         except Exception: return False
@@ -175,17 +175,34 @@ def is_wake_due(db, wake: dict, now=None):
             pass
         return False
     return False
-def due_wakes(db, now=None):
-    wakes = rebuild_wake_state(db)
-    return [w for w in wakes.values() if w.get("status") == "ACTIVE" and is_wake_due(db, w, now=now)]
-def _exec_state_for_objective(db, objective_id: str, wakes: dict | None = None):
-    from ..executive.autonomy import rebuild_executive_state as _reb, evaluate_objective_progress as _eval
-    st = _reb(db)
+def due_wakes(db, now=None, *, wakes: dict | None = None, state=None):
+    current_wakes = wakes if wakes is not None else rebuild_wake_state(db)
+    return [
+        wake for wake in current_wakes.values()
+        if wake.get("status") == "ACTIVE"
+        and is_wake_due(db, wake, now=now, state=state)
+    ]
+
+
+def _exec_state_for_objective(
+    db,
+    objective_id: str,
+    wakes: dict | None = None,
+    *,
+    state=None,
+    ranking=None,
+):
+    from ..executive.autonomy import (
+        _evaluate_objective_progress_pure as _eval_pure,
+        rebuild_executive_state as _reb,
+        rank_objectives as _rank,
+    )
+    st = state or _reb(db)
     obj = st.objectives.get(objective_id)
     if obj is None: return "UNKNOWN"
     wakes = wakes if wakes is not None else rebuild_wake_state(db)
     my_wakes = [w for w in wakes.values() if w.get("objective_id") == objective_id and w.get("status") == "ACTIVE"]
-    has_due = any(is_wake_due(db, w) for w in my_wakes)
+    has_due = any(is_wake_due(db, w, state=st) for w in my_wakes)
     if obj.status == "COMPLETED": return "COMPLETE"
     if obj.status in ("CANCELLED", "SUSPENDED"):
         if obj.status == "SUSPENDED": return "OWNER_BLOCKED"
@@ -197,8 +214,7 @@ def _exec_state_for_objective(db, objective_id: str, wakes: dict | None = None):
     if emergency_stop_reason(db, db.path.parent / "EMERGENCY_STOP"): return "OWNER_BLOCKED"
     # Capability/provider blocked via progress blockers
     try:
-        from ..executive.autonomy import rank_objectives
-        rows = rank_objectives(db)
+        rows = ranking if ranking is not None else _rank(db, _state=st)
         row = next((r for r in rows if r.objective_id == objective_id), None)
         if row and not row.eligible and any("capability" in b or "provider" in b.lower() for b in row.blockers):
             if any("provider" in b.lower() for b in row.blockers): return "PROVIDER_BLOCKED"
@@ -209,21 +225,30 @@ def _exec_state_for_objective(db, objective_id: str, wakes: dict | None = None):
     if has_due: return "DUE"
     # Stale detection
     try:
-        ev = _eval(db, objective_id)
+        ev = _eval_pure(db, objective_id, state=st)
         if ev.stale: return "STALE"
     except Exception: pass
     if obj.status == "ACTIVE": return "RUNNABLE"
     return obj.status
 def continuous_snapshot(db, *, include_wakes=True):
-    from ..executive.autonomy import rebuild_executive_state as _reb, rank_objectives as _rank, rebuild_executive_state
-    from ..executive.autonomy import executive_autonomy_snapshot as _snap
+    from ..executive.autonomy import (
+        executive_autonomy_snapshot as _snap,
+        rank_objectives as _rank,
+        rebuild_executive_state as _reb,
+    )
+    executive_events = db.events(event_type_prefixes=("executive.",))
+    st = _reb(db, _events=executive_events)
+    ranking = _rank(db, _state=st, _events=executive_events)
     wakes = rebuild_wake_state(db) if include_wakes else {}
     states = {}
-    st = _reb(db)
     for oid in st.objectives:
-        states[oid] = _exec_state_for_objective(db, oid, wakes=wakes)
-    due = due_wakes(db) if include_wakes else []
-    base = _snap(db)
+        states[oid] = _exec_state_for_objective(
+            db, oid, wakes=wakes, state=st, ranking=ranking
+        )
+    due = due_wakes(db, wakes=wakes, state=st) if include_wakes else []
+    base = _snap(
+        db, _state=st, _ranking=ranking, _events=executive_events
+    )
     base["continuous"] = {"wake_state": wakes, "exec_states": states, "due_wakes": due}
     return base
 def tick_wakes(db, *, controller="supervisor", now=None):

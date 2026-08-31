@@ -128,7 +128,7 @@ def resolve_envelope_targets(database: FoundryDatabase,
         raise ValueError("no target resources declared")
     resolved: list[str] = []
     for ref in refs:
-        with database.connect() as connection:
+        with database.connect(readonly=True) as connection:
             registered = connection.execute(
                 "SELECT 1 FROM systems WHERE system_id = ?",
                 (ref,)).fetchone() is not None
@@ -149,7 +149,7 @@ def emergency_stop_reason(database: FoundryDatabase,
     can never disagree about what a STOP means."""
     if stop_path is not None and Path(stop_path).exists():
         return "emergency stop marker is present"
-    with database.connect() as connection:
+    with database.connect(readonly=True) as connection:
         stopped_rows = connection.execute(
             "SELECT directive_id, command_type, target FROM directives "
             "WHERE active = 1 AND command_type IN ('STOP_EVERYTHING', 'PAUSE') "
@@ -211,7 +211,7 @@ def matching_veto_reason(database: FoundryDatabase,
     VETO_ACTION / STOP_MISSION directive whose target matches one of the
     identities returns its directive id. Used by the broker AND the
     capability broker."""
-    with database.connect() as connection:
+    with database.connect(readonly=True) as connection:
         rows = connection.execute(
             "SELECT directive_id, command_type, target FROM directives "
             "WHERE active = 1"

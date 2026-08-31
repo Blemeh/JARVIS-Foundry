@@ -49,7 +49,7 @@ def latest_capability_state(
     capability: str,
 ) -> dict[str, Any] | None:
     """Return the newest durable capability.state_changed for the pair."""
-    with database.connect() as connection:
+    with database.connect(readonly=True) as connection:
         row = connection.execute(
             "SELECT payload_json, source_id FROM events "
             "WHERE event_type = 'capability.state_changed' "

@@ -734,7 +734,16 @@ def _portfolio_projection(database: FoundryDatabase, *, limit: int = 10) -> dict
     latest: dict[str, Any] | None = None
     recent: list[dict[str, Any]] = []
     outcomes: list[dict[str, Any]] = []
-    for event in database.events(readonly=True):
+    portfolio_events = database.events(
+        readonly=True,
+        event_types=(
+            "portfolio.selection_recorded",
+            "portfolio.outcome_recorded",
+            "incident.detected",
+            "incident.transitioned",
+        ),
+    )
+    for event in portfolio_events:
         if event.event_type == "portfolio.selection_recorded":
             payload = dict(event.payload)
             entry = {
@@ -768,7 +777,7 @@ def _portfolio_projection(database: FoundryDatabase, *, limit: int = 10) -> dict
                 })
     incidents: list[dict[str, Any]] = []
     statuses: dict[str, str] = {}
-    for event in database.events(readonly=True):
+    for event in portfolio_events:
         if event.event_type == "incident.detected":
             statuses[str(event.payload.get("incident_id"))] = "DETECTED"
             incidents.append({
@@ -1520,6 +1529,25 @@ def build_snapshot(
     timeline_limit: int = 200,
     discovery_cycle_enabled: bool | None = None,
 ) -> dict[str, Any]:
+    """Build one complete snapshot inside a shared read-only context."""
+    with database.read_snapshot():
+        return _build_snapshot(
+            database,
+            stop_path=stop_path,
+            now=now,
+            timeline_limit=timeline_limit,
+            discovery_cycle_enabled=discovery_cycle_enabled,
+        )
+
+
+def _build_snapshot(
+    database: FoundryDatabase,
+    *,
+    stop_path: str | Path | None = None,
+    now: str | None = None,
+    timeline_limit: int = 200,
+    discovery_cycle_enabled: bool | None = None,
+) -> dict[str, Any]:
     """Build the complete JSON-safe Command Center projection.
 
     ``discovery_cycle_enabled`` carries the registered runtime flag
@@ -1532,6 +1560,10 @@ def build_snapshot(
     with command_center_readonly_connection(database) as connection:
         head = connection.execute("SELECT COALESCE(MAX(sequence), 0) FROM events").fetchone()[0]
         event_count = int(head or 0)
+        schema_row = connection.execute(
+            "SELECT COALESCE(MAX(version), 0) FROM schema_migrations"
+        ).fetchone()
+        live_schema = int(schema_row[0] if schema_row else 0)
         supervisor_row = connection.execute(
             "SELECT * FROM supervisor_state WHERE singleton = 1"
         ).fetchone()
@@ -1814,6 +1846,7 @@ def build_snapshot(
             "supervisor_status": supervisor.get("status", "UNKNOWN"),
             "trust_state": supervisor.get("trust_state", "UNKNOWN"),
             "heartbeat_at": supervisor.get("last_heartbeat_at"),
+            "schema": {"live": live_schema, "package": SCHEMA_VERSION},
             "active_leases": len(leases) - len(stale_leases),
             "stale_leases": [with_ref(l, "lease", "lease_key") for l in stale_leases],
             "crashed_workers": [with_ref(w, "agent_run", "run_id") for w in crashed_workers],
@@ -2096,6 +2129,15 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
     _snapshot_cache_ledger_head: int | None = None
     _snapshot_cache_lock = threading.Lock()
     SNAPSHOT_CACHE_SEC = 60.0
+    # Heartbeats keep runtime health current but do not alter the expensive
+    # mission/objective/world projection.  They must not defeat the bounded
+    # product snapshot cache on every scheduler tick.
+    SNAPSHOT_CACHE_IGNORED_EVENTS = (
+        "supervisor.heartbeat",
+        "worker_loop.cycle_started",
+        "worker_loop.waiting",
+        "agent_run.heartbeat",
+    )
 
     @classmethod
     def _invalidate_snapshot_cache(cls) -> None:
@@ -2108,28 +2150,30 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
         handler_cls = type(self)
         now = time.monotonic()
         try:
-            with command_center_readonly_connection(self.database) as connection:
-                ledger_head = int(connection.execute(
-                    "SELECT COALESCE(MAX(sequence), 0) FROM events"
-                ).fetchone()[0])
+            with self.database.read_snapshot() as read_context:
+                ledger_head = read_context.projection_head(
+                    handler_cls.SNAPSHOT_CACHE_IGNORED_EVENTS
+                )
         except (OSError, sqlite3.Error):
             ledger_head = None
         cached = handler_cls._snapshot_cache_payload
         if (
             cached is not None
             and now - handler_cls._snapshot_cache_at < handler_cls.SNAPSHOT_CACHE_SEC
-            and (ledger_head is None or ledger_head == handler_cls._snapshot_cache_ledger_head)
+            and ledger_head is not None
+            and ledger_head == handler_cls._snapshot_cache_ledger_head
         ):
-            return cached
+            return self._fresh_runtime_health(cached)
         with handler_cls._snapshot_cache_lock:
             now = time.monotonic()
             cached = handler_cls._snapshot_cache_payload
             if (
                 cached is not None
                 and now - handler_cls._snapshot_cache_at < handler_cls.SNAPSHOT_CACHE_SEC
-                and (ledger_head is None or ledger_head == handler_cls._snapshot_cache_ledger_head)
+                and ledger_head is not None
+                and ledger_head == handler_cls._snapshot_cache_ledger_head
             ):
-                return cached
+                return self._fresh_runtime_health(cached)
             payload = build_snapshot(
                 self.database,
                 stop_path=self.stop_path,
@@ -2138,11 +2182,61 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
             )
             handler_cls._snapshot_cache_payload = payload
             handler_cls._snapshot_cache_at = now
-            observed_head = payload.get("source_of_truth", {}).get("ledger_head_sequence")
-            handler_cls._snapshot_cache_ledger_head = (
-                int(observed_head) if observed_head is not None else ledger_head
-            )
+            handler_cls._snapshot_cache_ledger_head = ledger_head
             return payload
+
+    def _fresh_runtime_health(self, cached: dict[str, Any]) -> dict[str, Any]:
+        """Refresh only cheap runtime fields on a cached product snapshot."""
+        try:
+            with command_center_readonly_connection(self.database) as connection:
+                state_row = connection.execute(
+                    "SELECT status, trust_state, last_heartbeat_at "
+                    "FROM supervisor_state WHERE singleton = 1"
+                ).fetchone()
+                ledger_row = connection.execute(
+                    "SELECT COALESCE(MAX(sequence), 0), COUNT(*) FROM events"
+                ).fetchone()
+                leases = connection.execute(
+                    "SELECT lease_key, owner_id, expires_at, heartbeat_at "
+                    "FROM leases ORDER BY heartbeat_at DESC"
+                ).fetchall()
+            health = dict(cached.get("health") or {})
+            state = dict(state_row) if state_row else {}
+            now_iso = _now_iso()
+            stale = [
+                dict(row) for row in leases
+                if row["expires_at"] and str(row["expires_at"]) < now_iso
+            ]
+            health.update({
+                "supervisor_status": state.get(
+                    "status", health.get("supervisor_status", "UNKNOWN")
+                ),
+                "trust_state": state.get(
+                    "trust_state", health.get("trust_state", "UNKNOWN")
+                ),
+                "heartbeat_at": state.get(
+                    "last_heartbeat_at", health.get("heartbeat_at")
+                ),
+                "active_leases": max(0, len(leases) - len(stale)),
+                "stale_leases": stale,
+                "degraded": (
+                    state.get("status") == "DEGRADED"
+                    or bool(stale)
+                    or bool(health.get("crashed_workers"))
+                    or bool(health.get("projection_errors"))
+                ),
+            })
+            refreshed = dict(cached)
+            refreshed["health"] = health
+            source = dict(refreshed.get("source_of_truth") or {})
+            source.update({
+                "ledger_head_sequence": int(ledger_row[0] or 0),
+                "event_count": int(ledger_row[1] or 0),
+            })
+            refreshed["source_of_truth"] = source
+            return refreshed
+        except (OSError, sqlite3.Error):
+            return cached
 
     def do_OPTIONS(self) -> None:  # noqa: N802
         self.send_response(204)
@@ -2216,7 +2310,8 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
         if route in {"/api/executive", "/api/executive/objectives", "/api/executive/briefing"}:
             try:
                 from .executive.autonomy import executive_autonomy_snapshot
-                projection = executive_autonomy_snapshot(self.database)
+                with self.database.read_snapshot():
+                    projection = executive_autonomy_snapshot(self.database)
             except Exception as error:  # noqa: BLE001 - additive API stays truthful
                 projection = {"status": "UNAVAILABLE", "reason": f"{type(error).__name__}: {error}"}
             if route.endswith("/objectives"):
@@ -2228,6 +2323,20 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
             elif route.endswith("/briefing"):
                 projection = {"briefing": projection.get("briefing"), "escalations": projection.get("escalations", {}), "continuations": projection.get("continuations", {})}
             self._json_response(projection, status=200)
+            return
+        if route == "/api/timeline":
+            try:
+                with self.database.read_snapshot():
+                    timeline = decision_timeline(
+                        self.database, limit=self.timeline_limit
+                    )
+            except Exception as error:  # noqa: BLE001 - bounded read stays honest
+                self._json_response(
+                    {"status": "UNAVAILABLE", "reason": f"{type(error).__name__}: {error}"},
+                    status=503,
+                )
+                return
+            self._json_response(timeline, status=200)
             return
         if route == "/api/vault/graph":
             vault_root = _vault_root_from_db(self.database)
@@ -2279,7 +2388,7 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
                 return
             self._json_response(note, status=200)
             return
-        if route not in {"/", "/api/command-center", "/api/timeline"}:
+        if route not in {"/", "/api/command-center"}:
             self.send_error(404)
             return
         snapshot = self._cached_snapshot()
@@ -2287,7 +2396,7 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
             body = self._html(snapshot).encode("utf-8")
             content_type = "text/html; charset=utf-8"
         else:
-            body = json.dumps(snapshot if route != "/api/timeline" else snapshot["timeline"], ensure_ascii=True).encode()
+            body = json.dumps(snapshot, ensure_ascii=True).encode()
             content_type = "application/json; charset=utf-8"
         self.send_response(200)
         self.send_header("Content-Type", content_type)

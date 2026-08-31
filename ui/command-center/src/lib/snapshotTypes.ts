@@ -27,6 +27,7 @@ export interface FoundrySnapshot {
   health: {
     supervisor_status: string;
     trust_state: string;
+    schema?: { live?: number | null; package?: number | null };
     heartbeat_at?: string;
     degraded?: boolean;
     crashed_workers?: Record<string, unknown>[];

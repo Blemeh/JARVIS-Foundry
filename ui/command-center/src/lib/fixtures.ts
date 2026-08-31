@@ -1047,6 +1047,7 @@ export const systemComponents: SystemComponent[] = [
 
 export const systemOverview: SystemOverview = {
   version: "0.9.0",
+  schema: null,
   build: "cc-ui-candidate-2026-08-16",
   releaseState: "CANDIDATE - UI SIMULATION",
   uptime: "30d 0h",

@@ -13,7 +13,7 @@ def project_world_intelligence(db: FoundryDatabase, limit: int = 50) -> dict[str
     Reads only the derived world tables - never scans the full ledger.
     Every query is bounded by limit.
     """
-    with db.connect() as conn:
+    with db.connect(readonly=True) as conn:
         # Counts
         entity_count = conn.execute("SELECT COUNT(*) FROM world_entities").fetchone()[0]
         active_entity_count = conn.execute("SELECT COUNT(*) FROM world_entities WHERE state = 'ACTIVE'").fetchone()[0]

@@ -505,7 +505,11 @@ def _apply_objective_update(
         objectives[incoming.objective_id] = incoming
 
 
-def rebuild_executive_state(database: FoundryDatabase) -> ExecutiveAutonomyState:
+def rebuild_executive_state(
+    database: FoundryDatabase,
+    *,
+    _events: Sequence[Event] | None = None,
+) -> ExecutiveAutonomyState:
     """Rebuild executive state solely from the append-only event ledger."""
     objectives: dict[str, ObjectiveRecord] = {}
     plans: dict[str, PlanRecord] = {}
@@ -516,7 +520,12 @@ def rebuild_executive_state(database: FoundryDatabase) -> ExecutiveAutonomyState
     mission_requests: dict[str, dict[str, Any]] = {}
     progress: dict[str, ProgressEvaluation] = {}
     operational_followup_proposals: dict[str, dict[str, Any]] = {}
-    for event in database.events(event_type_prefixes=("executive.",)):
+    executive_events = (
+        _events
+        if _events is not None
+        else database.events(event_type_prefixes=("executive.",))
+    )
+    for event in executive_events:
         payload = event.payload
         typ = event.event_type
         if typ == "executive.objective_created":
@@ -977,7 +986,17 @@ def build_plan(
 
 def active_plan(database: FoundryDatabase, objective_id: str) -> PlanRecord | None:
     state = rebuild_executive_state(database)
-    plans = [plan for plan in state.plans.values() if plan.objective_id == objective_id and plan.status == "ACTIVE"]
+    return _active_plan_from_state(state, objective_id)
+
+
+def _active_plan_from_state(
+    state: ExecutiveAutonomyState, objective_id: str,
+) -> PlanRecord | None:
+    """Return an active plan without replaying the ledger again."""
+    plans = [
+        plan for plan in state.plans.values()
+        if plan.objective_id == objective_id and plan.status == "ACTIVE"
+    ]
     return max(plans, key=lambda plan: (plan.version, plan.updated_at), default=None)
 
 
@@ -1277,6 +1296,78 @@ def observe_mission_outcome(
     return {**truth, "changed_steps": [{"plan_id": pid, "step_id": sid} for pid, sid in changed_steps]}
 
 
+def _evaluate_objective_progress_pure(
+    database: FoundryDatabase,
+    objective_id: str,
+    *,
+    state: ExecutiveAutonomyState | None = None,
+    stale_after_seconds: float = 3600.0,
+) -> ProgressEvaluation:
+    """Calculate objective progress without gates, appends, or status writes."""
+    current_state = state or rebuild_executive_state(database)
+    objective = current_state.objectives.get(objective_id)
+    if objective is None:
+        raise ValueError(f"unknown objective: {objective_id}")
+    plan = _active_plan_from_state(current_state, objective_id)
+    if plan is None or not plan.steps:
+        return ProgressEvaluation(
+            objective_id, objective.status, objective.progress,
+            objective.confidence, (), 0, 0, False,
+            "no executable plan has been recorded", False,
+        )
+    completed = sum(step.status == "COMPLETED" for step in plan.steps)
+    failed = sum(step.status == "FAILED" for step in plan.steps)
+    blocked = sum(step.status == "BLOCKED" for step in plan.steps)
+    progress = completed / len(plan.steps)
+    refs = tuple(dict.fromkeys(
+        ref for step in plan.steps for ref in step.evidence_refs
+    ))
+    updated_at = _dt(objective.updated_at)
+    stale = bool(
+        updated_at
+        and (datetime.now(timezone.utc) - updated_at).total_seconds()
+        > stale_after_seconds
+        and progress < 1.0
+    )
+    prior_evaluation = current_state.progress.get(objective_id)
+    regressed = prior_evaluation is not None and progress < prior_evaluation.progress
+    if completed == len(plan.steps):
+        status = "COMPLETED"
+        explanation = "every planned step has independent completion evidence"
+    elif failed:
+        status = "FAILED"
+        explanation = (
+            f"{failed} planned step(s) failed; continuation policy must "
+            "choose repair or escalation"
+        )
+    elif blocked:
+        status = "BLOCKED"
+        explanation = (
+            f"{blocked} planned step(s) are blocked by an authoritative "
+            "dependency"
+        )
+    elif stale:
+        status = "WAITING"
+        explanation = (
+            "no fresh evidence has advanced the objective within the stale "
+            "threshold"
+        )
+    elif regressed:
+        status = "REGRESSED"
+        explanation = (
+            f"evidence-backed progress regressed from "
+            f"{prior_evaluation.progress:.3f} to {progress:.3f}; "
+            "reassessment is required"
+        )
+    else:
+        status = "ACTIVE"
+        explanation = f"{completed}/{len(plan.steps)} planned step(s) completed"
+    return ProgressEvaluation(
+        objective_id, status, progress, _clamp(objective.confidence), refs,
+        completed, failed + blocked, stale, explanation, regressed,
+    )
+
+
 def evaluate_objective_progress(
     database: FoundryDatabase,
     objective_id: str,
@@ -1287,44 +1378,22 @@ def evaluate_objective_progress(
     _gate(database, controller)
     state = rebuild_executive_state(database)
     objective = state.objectives.get(objective_id)
-    if objective is None:
-        raise ValueError(f"unknown objective: {objective_id}")
-    plan = active_plan(database, objective_id)
-    if plan is None or not plan.steps:
-        evaluation = ProgressEvaluation(objective_id, objective.status, objective.progress, objective.confidence, (), 0, 0, False, "no executable plan has been recorded", False)
-        record_objective_progress(database, evaluation, controller=controller)
-        return evaluation
-    completed = sum(step.status == "COMPLETED" for step in plan.steps)
-    failed = sum(step.status == "FAILED" for step in plan.steps)
-    blocked = sum(step.status == "BLOCKED" for step in plan.steps)
-    progress = completed / len(plan.steps)
-    refs = tuple(dict.fromkeys(ref for step in plan.steps for ref in step.evidence_refs))
-    stale = bool(objective.updated_at and _dt(objective.updated_at) and (datetime.now(timezone.utc) - _dt(objective.updated_at)).total_seconds() > stale_after_seconds and progress < 1.0)
-    prior_evaluation = state.progress.get(objective_id)
-    regressed = prior_evaluation is not None and progress < prior_evaluation.progress
-    if completed == len(plan.steps):
-        status = "COMPLETED"
-        explanation = "every planned step has independent completion evidence"
-    elif failed:
-        status = "FAILED"
-        explanation = f"{failed} planned step(s) failed; continuation policy must choose repair or escalation"
-    elif blocked:
-        status = "BLOCKED"
-        explanation = f"{blocked} planned step(s) are blocked by an authoritative dependency"
-    elif stale:
-        status = "WAITING"
-        explanation = "no fresh evidence has advanced the objective within the stale threshold"
-    elif regressed:
-        status = "REGRESSED"
-        explanation = f"evidence-backed progress regressed from {prior_evaluation.progress:.3f} to {progress:.3f}; reassessment is required"
-    else:
-        status = "ACTIVE"
-        explanation = f"{completed}/{len(plan.steps)} planned step(s) completed"
-    evaluation = ProgressEvaluation(objective_id, status, progress, _clamp(objective.confidence), refs, completed, failed + blocked, stale, explanation, regressed)
+    evaluation = _evaluate_objective_progress_pure(
+        database, objective_id, state=state,
+        stale_after_seconds=stale_after_seconds,
+    )
     record_objective_progress(database, evaluation, controller=controller)
-    if status != objective.status and status in {"COMPLETED", "FAILED", "BLOCKED", "WAITING", "ACTIVE"}:
+    if (
+        objective is not None
+        and evaluation.status != objective.status
+        and evaluation.status in {"COMPLETED", "FAILED", "BLOCKED", "WAITING", "ACTIVE"}
+    ):
         try:
-            set_objective_status(database, objective_id, status, controller=controller, reason=explanation, evidence_refs=refs)
+            set_objective_status(
+                database, objective_id, evaluation.status, controller=controller,
+                reason=evaluation.explanation,
+                evidence_refs=evaluation.evidence_refs,
+            )
         except ValueError:
             pass
     return evaluation
@@ -1401,19 +1470,27 @@ def _deadline_factor(deadline: str | None, *, now: datetime) -> float:
     return _clamp(1.0 - seconds / (14 * 86400.0))
 
 
-def _objective_blockers(database: FoundryDatabase, objective: ObjectiveRecord) -> tuple[str, ...]:
-    state = rebuild_executive_state(database)
+def _objective_blockers(
+    database: FoundryDatabase,
+    objective: ObjectiveRecord,
+    *,
+    state: ExecutiveAutonomyState | None = None,
+    plan: PlanRecord | None = None,
+) -> tuple[str, ...]:
+    current_state = state or rebuild_executive_state(database)
     blockers: list[str] = []
     veto = matching_veto_reason(database, {"GLOBAL", "executive", "objectives", objective.objective_id})
     if veto:
         blockers.append(f"veto:{veto}")
     for dependency in objective.dependencies:
-        row = state.objectives.get(dependency)
+        row = current_state.objectives.get(dependency)
         if row is None:
             blockers.append(f"missing_dependency:{dependency}")
         elif row.status != "COMPLETED":
             blockers.append(f"dependency:{dependency}:{row.status}")
-    plan = active_plan(database, objective.objective_id)
+    plan = plan if plan is not None else _active_plan_from_state(
+        current_state, objective.objective_id
+    )
     if plan is not None:
         for step in plan.steps:
             blockers.extend(_capability_blockers(database, step))
@@ -1438,15 +1515,27 @@ def _objective_has_retryable_failure(
 def _objective_has_failed_step(
     database: FoundryDatabase,
     objective: ObjectiveRecord,
+    *,
+    plan: PlanRecord | None = None,
 ) -> bool:
-    plan = active_plan(database, objective.objective_id)
+    plan = plan if plan is not None else active_plan(database, objective.objective_id)
     return bool(plan and any(step.status == "FAILED" for step in plan.steps))
 
 
-def _objective_failure_history(database: FoundryDatabase, objective_id: str) -> float:
+def _objective_failure_history(
+    database: FoundryDatabase,
+    objective_id: str,
+    *,
+    events: Sequence[Event] | None = None,
+) -> float:
     failures = 0
     attempts = 0
-    for event in database.events(event_type_prefixes=("executive.",)):
+    source_events = (
+        events
+        if events is not None
+        else database.events(event_type_prefixes=("executive.",))
+    )
+    for event in source_events:
         if event.event_type in {"executive.continuation_decided", "executive.objective_progress_recorded"} and event.payload.get("objective_id") == objective_id:
             attempts += 1
             if event.payload.get("action") in {"RETRY", "ESCALATE"} or event.payload.get("status") == "FAILED":
@@ -1460,12 +1549,50 @@ def rank_objectives(
     controller: str = SUPERVISOR_CONTROLLER,
     now: datetime | str | None = None,
     include_terminal: bool = False,
+    _state: ExecutiveAutonomyState | None = None,
+    _events: Sequence[Event] | None = None,
 ) -> list[PriorityScore]:
     """Rank active objectives with a deterministic, explainable factor vector."""
     if controller != SUPERVISOR_CONTROLLER:
         raise PermissionError("only the Supervisor can rank executive objectives")
     current = _dt(now) or datetime.now(timezone.utc)
-    state = rebuild_executive_state(database)
+    executive_events = (
+        list(_events)
+        if _events is not None
+        else database.events(event_type_prefixes=("executive.",))
+    )
+    state = _state or rebuild_executive_state(
+        database, _events=executive_events
+    )
+    plans_by_objective: dict[str, PlanRecord] = {}
+    for plan in state.plans.values():
+        if plan.status != "ACTIVE":
+            continue
+        prior = plans_by_objective.get(plan.objective_id)
+        if prior is None or (plan.version, plan.updated_at) > (prior.version, prior.updated_at):
+            plans_by_objective[plan.objective_id] = plan
+    failure_history: dict[str, float] = {}
+    attempts_by_objective: dict[str, int] = {}
+    failures_by_objective: dict[str, int] = {}
+    for event in executive_events:
+        if event.event_type not in {
+            "executive.continuation_decided",
+            "executive.objective_progress_recorded",
+        }:
+            continue
+        objective_id = str(event.payload.get("objective_id") or "")
+        if not objective_id:
+            continue
+        attempts_by_objective[objective_id] = attempts_by_objective.get(objective_id, 0) + 1
+        if (
+            event.payload.get("action") in {"RETRY", "ESCALATE"}
+            or event.payload.get("status") == "FAILED"
+        ):
+            failures_by_objective[objective_id] = failures_by_objective.get(objective_id, 0) + 1
+    for objective_id, attempts in attempts_by_objective.items():
+        failure_history[objective_id] = _clamp(
+            failures_by_objective.get(objective_id, 0) / max(1, attempts)
+        )
     try:
         from .goals import active_priorities
         repriorities = active_priorities(database, targets=set(state.objectives))
@@ -1484,11 +1611,17 @@ def rank_objectives(
             and objective.status in _TERMINAL_OBJECTIVE
             and not (
                 objective.status == "FAILED"
-                and _objective_has_failed_step(database, objective)
+                and _objective_has_failed_step(
+                    database, objective,
+                    plan=plans_by_objective.get(objective.objective_id),
+                )
             )
         ):
             continue
-        blockers = _objective_blockers(database, objective)
+        blockers = _objective_blockers(
+            database, objective, state=state,
+            plan=plans_by_objective.get(objective.objective_id),
+        )
         age = 0.0
         updated = _dt(objective.updated_at)
         if updated is not None:
@@ -1504,7 +1637,7 @@ def rank_objectives(
             "effort": 1.0 - _clamp(objective.effort),
             "resource_availability": 0.0 if "resource_unconfigured" in blockers else 1.0,
             "opportunity_cost": 1.0 - _clamp(objective.opportunity_cost),
-            "failure_history": 1.0 - _objective_failure_history(database, objective.objective_id),
+            "failure_history": 1.0 - failure_history.get(objective.objective_id, 0.0),
             "stale_age": age,
             "blocking_value": _clamp(objective.blocking_value),
             "confidence": _clamp(objective.confidence),
@@ -1515,7 +1648,10 @@ def rank_objectives(
             objective.status in _ACTIVE_OBJECTIVE
             or (
                 objective.status == "FAILED"
-                and _objective_has_failed_step(database, objective)
+                and _objective_has_failed_step(
+                    database, objective,
+                    plan=plans_by_objective.get(objective.objective_id),
+                )
             )
         )
         if not eligible:
@@ -1960,12 +2096,17 @@ def build_executive_briefing(
     *,
     controller: str = SUPERVISOR_CONTROLLER,
     limit: int = 20,
+    _state: ExecutiveAutonomyState | None = None,
+    _ranked: Sequence[PriorityScore] | None = None,
+    _events: Sequence[Event] | None = None,
 ) -> ExecutiveBriefing:
     """Build an owner-readable briefing from durable decisions and evidence."""
     if controller != SUPERVISOR_CONTROLLER:
         raise PermissionError("only the Supervisor can build executive briefings")
-    state = rebuild_executive_state(database)
-    ranked = rank_objectives(database, controller=controller)
+    state = _state or rebuild_executive_state(database, _events=_events)
+    ranked = list(_ranked) if _ranked is not None else rank_objectives(
+        database, controller=controller, _state=state, _events=_events
+    )
     advanced: list[dict[str, Any]] = []
     failed: list[dict[str, Any]] = []
     blockers: list[dict[str, Any]] = []
@@ -2005,12 +2146,40 @@ def record_executive_briefing(database: FoundryDatabase, briefing: ExecutiveBrie
     return briefing
 
 
-def executive_autonomy_snapshot(database: FoundryDatabase, *, include_briefing: bool = True) -> dict[str, Any]:
+def executive_autonomy_snapshot(
+    database: FoundryDatabase,
+    *,
+    include_briefing: bool = True,
+    _state: ExecutiveAutonomyState | None = None,
+    _ranking: Sequence[PriorityScore] | None = None,
+    _events: Sequence[Event] | None = None,
+) -> dict[str, Any]:
     """Return a stable read projection for Command Center/API consumers."""
-    state = rebuild_executive_state(database)
-    ranking = rank_objectives(database)
-    latest_cycle = next((event.payload for event in reversed(database.events(event_type_prefixes=("executive.",))) if event.event_type == "executive.autonomy_cycle_recorded"), None)
-    briefing = build_executive_briefing(database) if include_briefing else None
+    executive_events = (
+        list(_events)
+        if _events is not None
+        else database.events(event_type_prefixes=("executive.",))
+    )
+    state = _state or rebuild_executive_state(
+        database, _events=executive_events
+    )
+    ranking = list(_ranking) if _ranking is not None else rank_objectives(
+        database, _state=state, _events=executive_events
+    )
+    latest_cycle = next(
+        (
+            event.payload for event in reversed(executive_events)
+            if event.event_type == "executive.autonomy_cycle_recorded"
+        ),
+        None,
+    )
+    briefing = (
+        build_executive_briefing(
+            database, _state=state, _ranked=ranking,
+            _events=executive_events,
+        )
+        if include_briefing else None
+    )
     return {
         "objectives": {key: value.to_payload() for key, value in state.objectives.items()},
         "plans": {key: value.to_payload() for key, value in state.plans.items()},

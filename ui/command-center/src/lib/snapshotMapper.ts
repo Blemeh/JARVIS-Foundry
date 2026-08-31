@@ -297,9 +297,14 @@ const mapMeasuredCostResource = (snapshot: FoundrySnapshot): SystemOverview["res
 export function mapSystemOverview(snapshot: FoundrySnapshot): SystemOverview {
   const current = snapshot.release_identity?.current;
   const sha = typeof current === "string" ? current.slice(0, 12) : "unknown";
+  const rawSchema = snapshot.health.schema?.live;
+  const schema = typeof rawSchema === "number" && Number.isInteger(rawSchema) && rawSchema >= 0
+    ? rawSchema
+    : null;
   const resourceUsage = [...mapResourceUsage(snapshot), mapMeasuredCostResource(snapshot)];
   return {
     version: sha,
+    schema,
     build: String(snapshot.source_of_truth.ledger_head_sequence),
     releaseState: snapshot.health.supervisor_status ?? "UNKNOWN",
     uptime: snapshot.health.heartbeat_at ?? "UNKNOWN",
@@ -312,6 +317,7 @@ const mapTrustState = (trust: string, stop: boolean): TrustSummary["state"] => {
   const normalized = trust.toUpperCase()
   if (normalized === "PROVEN") return "PROVEN"
   if (normalized === "SIMULATED") return "SIMULATED"
+  if (normalized === "SUSPENDED") return "SUSPENDED"
   if (normalized === "LAB" || normalized === "PROVING" || normalized === "DEGRADED") {
     return "DEGRADED"
   }

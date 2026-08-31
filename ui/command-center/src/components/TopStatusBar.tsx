@@ -25,7 +25,8 @@ export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
   } = useCommandCenter();
 
   const schemaQuery = useRouteQuery(() => client.getSystemOverview(), [client, version]);
-  const schemaLabel = schemaQuery.data?.version ?? "UNKNOWN";
+  const schemaValue = schemaQuery.data?.schema;
+  const schemaLabel = schemaValue == null ? "UNKNOWN" : String(schemaValue);
 
   // Keep source mode and trust state separate.  Source mode tells the owner
   // where this projection came from; trust state tells them whether its

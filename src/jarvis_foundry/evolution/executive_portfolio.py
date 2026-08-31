@@ -827,7 +827,7 @@ def register_research(
 def _active_counts(
     database: FoundryDatabase, state: PortfolioState, now: datetime,
 ) -> dict[str, Any]:
-    with database.connect() as connection:
+    with database.connect(readonly=True) as connection:
         active_rows = connection.execute(
             "SELECT mission_id, resource_id, state FROM missions "
             "WHERE state IN (" + ",".join("?" for _ in ACTIVE_MISSION_STATES) + ")",
@@ -891,20 +891,24 @@ def _active_counts(
 
 
 def _project_active_counts(database: FoundryDatabase) -> dict[str, int]:
-    counts: dict[str, int] = {}
-    for event in database.events():
-        if event.event_type != "mission.created":
-            continue
-        payload = event.payload
-        project_id = payload.get("project_id")
-        mission_id = str(payload.get("mission_id") or "")
-        if not project_id or not mission_id:
-            continue
-        row = database.row("missions", "mission_id", mission_id)
-        if row and row.get("state") in ACTIVE_MISSION_STATES:
-            key = str(project_id)
-            counts[key] = counts.get(key, 0) + 1
-    return counts
+    active_states = tuple(sorted(ACTIVE_MISSION_STATES))
+    placeholders = ", ".join("?" for _ in active_states)
+    try:
+        with database.connect(readonly=True) as connection:
+            rows = connection.execute(
+                "SELECT json_extract(e.payload_json, '$.project_id') AS project_id, "
+                "COUNT(*) FROM events e "
+                "JOIN missions m ON m.mission_id = "
+                "json_extract(e.payload_json, '$.mission_id') "
+                "WHERE e.event_type = 'mission.created' "
+                f"AND m.state IN ({placeholders}) "
+                "AND json_extract(e.payload_json, '$.project_id') IS NOT NULL "
+                "GROUP BY project_id",
+                active_states,
+            ).fetchall()
+    except Exception:  # optional historical payloads remain non-blocking
+        return {}
+    return {str(row[0]): int(row[1]) for row in rows if row[0]}
 
 
 def _capacity_check(
@@ -914,6 +918,7 @@ def _capacity_check(
     *,
     now: datetime,
     counts: dict[str, Any],
+    project_active_counts: dict[str, int] | None = None,
 ) -> dict[str, Any]:
     policy = state.policy
     reasons: list[str] = []
@@ -972,7 +977,7 @@ def _capacity_check(
             reasons.append("capacity:provider_calls")
     if item.project_id:
         cap = policy.project_share_caps.get(item.project_id)
-        active = _project_active_counts(database).get(item.project_id, 0)
+        active = (project_active_counts or {}).get(item.project_id, 0)
         claimed = counts.get("claimed_projects", {}).get(item.project_id, 0)
         if cap is not None and active + claimed + 1 > cap:
             reasons.append(f"capacity:project_share:{item.project_id}")
@@ -1625,6 +1630,7 @@ def select_next_work(
 
         goals = active_goals(database)
         counts = _active_counts(database, state, current)
+        project_active_counts = _project_active_counts(database)
         items = _all_work_items(
             database, state, resource_id=resource_id, capability=capability,
             candidate_limit=candidate_limit, goals=goals, now=current,
@@ -1633,7 +1639,10 @@ def select_next_work(
         ranked: list[ScoredWork] = []
         rejected: list[dict[str, Any]] = []
         for item in items:
-            capacity = _capacity_check(database, state, item, now=current, counts=counts)
+            capacity = _capacity_check(
+                database, state, item, now=current, counts=counts,
+                project_active_counts=project_active_counts,
+            )
             score = _work_score(database, state, item, goals=goals,
                                 capacity=capacity, now=current)
             if capacity["eligible"]:
@@ -1729,12 +1738,16 @@ def rank_portfolio_work(
     state = rebuild_portfolio_state(database)
     goals = active_goals(database)
     counts = _active_counts(database, state, current)
+    project_active_counts = _project_active_counts(database)
     scored: list[ScoredWork] = []
     rejected: list[dict[str, Any]] = []
     for item in _all_work_items(
             database, state, resource_id=resource_id, capability=capability,
             candidate_limit=candidate_limit, goals=goals, now=current):
-        capacity = _capacity_check(database, state, item, now=current, counts=counts)
+        capacity = _capacity_check(
+            database, state, item, now=current, counts=counts,
+            project_active_counts=project_active_counts,
+        )
         row = _work_score(database, state, item, goals=goals,
                           capacity=capacity, now=current)
         if capacity["eligible"]:

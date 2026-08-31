@@ -47,7 +47,7 @@ def record_cost_sample(database: FoundryDatabase, connector_id: str, *, cost_usd
 
 
 def _latest_payload(database: FoundryDatabase, event_type: str, connector_id: str) -> dict[str, Any] | None:
-    with database.connect() as connection:
+    with database.connect(readonly=True) as connection:
         row = connection.execute(
             "SELECT payload_json, sequence FROM events WHERE event_type = ? AND "
             "json_extract(payload_json, '$.connector_id') = ? ORDER BY sequence DESC LIMIT 1",
@@ -96,7 +96,7 @@ def operational_status(database: FoundryDatabase, connector_id: str) -> dict[str
 
 
 def _registered_specs(database: FoundryDatabase) -> list[ConnectorSpec]:
-    with database.connect() as connection:
+    with database.connect(readonly=True) as connection:
         rows = connection.execute(
             "SELECT DISTINCT json_extract(payload_json, '$.connector_id') "
             "AS connector_id FROM events WHERE event_type = 'connector.registered'"

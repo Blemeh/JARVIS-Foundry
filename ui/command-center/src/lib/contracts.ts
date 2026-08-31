@@ -372,6 +372,8 @@ export interface OperationalIntelligenceSurface {
 
 export interface SystemOverview {
   version: string;
+  /** Authoritative numeric schema from the canonical snapshot, when available. */
+  schema: number | null;
   build: string;
   releaseState: string;
   uptime: string;

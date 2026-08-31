@@ -64,6 +64,21 @@ describe("snapshotMapper", () => {
     expect(trust.factors.some((f) => f.id === "stale-leases")).toBe(true);
   });
 
+  it("uses the authoritative numeric schema and preserves release identity separately", () => {
+    const snapshot = baseSnapshot();
+    snapshot.health.schema = { live: 38, package: 38 };
+    snapshot.release_identity = { current: "5167e2cbaa5df3c1ad00b660138a5a8b6b2bd1bd" };
+    const overview = mapSystemOverview(snapshot);
+    expect(overview.schema).toBe(38);
+    expect(overview.version).toBe("5167e2cbaa5d");
+  });
+
+  it("preserves SUSPENDED trust without downgrading it to UNKNOWN", () => {
+    const snapshot = baseSnapshot();
+    snapshot.health.trust_state = "SUSPENDED";
+    expect(mapTrustSummary(snapshot).state).toBe("SUSPENDED");
+  });
+
   it("treats UNKNOWN cost token as not reported", () => {
     const snapshot = baseSnapshot();
     snapshot.costs = { measured_actual_total_usd: "UNKNOWN", unknown_measurements: 1 };

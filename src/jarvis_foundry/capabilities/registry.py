@@ -63,7 +63,9 @@ def _gate(database: FoundryDatabase, controller: str) -> None:
 
 def _rebuild(database: FoundryDatabase) -> dict[str, dict[str, Any]]:
     caps: dict[str, dict[str, Any]] = {}
-    for event in database.events():
+    for event in database.events(
+        event_types=("capability.registered", "capability.observed"),
+    ):
         if event.event_type == "capability.registered":
             payload = event.payload
             capability_id = payload["capability_id"]
