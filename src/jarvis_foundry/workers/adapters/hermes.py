@@ -79,7 +79,9 @@ class HermesWorkerAdapter:
     )
     _FAILURE_REPORT_HTTP = re.compile(r"^HTTP \d{3}[:\s]")
     _VERDICT_LINE = re.compile(
-        r"^\s*VERDICT\s*:\s*(PASS|FAIL|BLOCKED|NOT_TESTED)\b", re.IGNORECASE)
+        r"^\s*VERDICT\s*:\s*(PASS|FAIL|BLOCKED|NOT_TESTED)\s*$",
+        re.IGNORECASE,
+    )
     _VERDICT_VALUES = {"PASS", "FAIL", "BLOCKED", "NOT_TESTED"}
 
     def __init__(
@@ -150,6 +152,12 @@ class HermesWorkerAdapter:
             **provider_env,
             "HERMES_HOME": str(self.hermes_home),
             **result_env(contract.working_root),
+            # Hermes resolves its terminal environment while the CLI module
+            # is starting, before ``--in`` performs its later ``chdir``.
+            # Pin the terminal cwd explicitly so the first tool call cannot
+            # fall back to the launcher/home directory (and escape the
+            # registered worktree).
+            "TERMINAL_CWD": str(contract.working_root),
             # The session must operate INSIDE the contract working root so
             # every write lands in the worker's allowed scope. The checkout
             # code is resolved via PYTHONPATH (prepended before site-packages),
@@ -259,10 +267,19 @@ class HermesWorkerAdapter:
 
     @classmethod
     def _structured_verdict(cls, stdout: str) -> str | None:
-        for line in (stdout or "").splitlines()[:20]:
+        """Read the last explicit verdict without accepting prompt echoes.
+
+        Real Hermes sessions may place the final verdict after a long
+        inspection transcript. The line grammar is deliberately exact, so a
+        quoted instruction such as ``VERDICT: PASS | FAIL`` is not a verdict;
+        the last exact line wins when a session reports more than one.
+        """
+        verdict: str | None = None
+        for line in (stdout or "").splitlines():
             match = cls._VERDICT_LINE.match(line)
             if match:
-                return match.group(1).upper()
+                verdict = match.group(1).upper()
+                continue
             stripped = line.strip()
             if stripped.startswith("{") and stripped.endswith("}"):
                 try:
@@ -270,8 +287,8 @@ class HermesWorkerAdapter:
                 except ValueError:
                     continue
                 if value in cls._VERDICT_VALUES:
-                    return value
-        return None
+                    verdict = value
+        return verdict
 
     @staticmethod
     def _read_usage_cost(usage_path: Path | None) -> float:

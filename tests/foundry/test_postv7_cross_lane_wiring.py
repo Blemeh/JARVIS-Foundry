@@ -10,7 +10,9 @@ from jarvis_foundry.connectors.account_activation import (
     FakeCredentialStore,
     FakeGmailProvider,
 )
+from jarvis_foundry.control.capabilities import set_capability_state
 from jarvis_foundry.database import FoundryDatabase
+from jarvis_foundry.events import Event
 from jarvis_foundry.evolution.executive_portfolio import rebuild_portfolio_state
 from jarvis_foundry.operations.procedure import load_procedure
 from jarvis_foundry.postv7 import (
@@ -31,6 +33,34 @@ def db(tmp_path: Path) -> FoundryDatabase:
     database = FoundryDatabase(tmp_path / "foundry.db")
     database.initialize()
     return database
+
+
+def _mark_ready(db: FoundryDatabase, resource_id: str, definition) -> None:
+    if db.row("resources", "resource_id", resource_id) is None:
+        db.append(Event.create(
+            "project.registered",
+            {
+                "resource_id": resource_id,
+                "kind": "git_worktree",
+                "root_path": "/tmp/postv7",
+                "resolved_root": "/tmp/postv7",
+                "baseline": {"head": "base"},
+                "capabilities": {},
+                "readiness_state": "READY",
+            },
+            source_type="test",
+            source_id="postv7-test",
+            idempotency_key=f"project.registered:{resource_id}",
+        ))
+    capabilities = set(str(item) for item in definition.capabilities)
+    for step in definition.steps:
+        capabilities.update(str(item) for item in step.capabilities)
+    for capability in capabilities:
+        set_capability_state(
+            db, resource_id, capability, "READY",
+            source_id=f"postv7-test:{definition.procedure_id}",
+            evidence={"source": "recorded-ready"},
+        )
 
 
 def _proven(catalog, *procedure_ids):
@@ -120,11 +150,19 @@ def test_account_readiness_projects_to_capability_and_blocks_until_handoff(
     ).eligible is False
 
 
+def test_unrecorded_capability_is_not_eligible(db: FoundryDatabase) -> None:
+    definition = _proven(build_catalog(), "jarvis.bug-triage").get("jarvis.bug-triage")
+    receipt = procedure_eligibility(db, definition, "disposable:postv7")
+    assert receipt.eligible is False
+    assert any("no capability state recorded" in reason for reason in receipt.blocked_reasons)
+
+
 def test_portfolio_binds_typed_procedure_and_records_outcome(
     db: FoundryDatabase,
 ) -> None:
     catalog = _proven(build_catalog(), "jarvis.bug-triage")
     definition = catalog.get("jarvis.bug-triage")
+    _mark_ready(db, "disposable:postv7", definition)
     selected = select_library_work(
         db,
         catalog,
@@ -200,6 +238,9 @@ def test_ambiguous_effect_freezes_and_creates_incident_without_self_certificatio
 ) -> None:
     catalog = _proven(build_catalog(), "jarvis.bug-triage", "jarvis.flake-diagnosis")
     definition = catalog.get("jarvis.bug-triage")
+    flake = catalog.get("jarvis.flake-diagnosis")
+    _mark_ready(db, "disposable:postv7", definition)
+    _mark_ready(db, "disposable:postv7", flake)
     plan = plan_library_procedure(
         db,
         definition,
@@ -223,8 +264,9 @@ def test_ambiguous_effect_freezes_and_creates_incident_without_self_certificatio
     assert incidents and incidents[0].effect_action_key == plan.steps[0].effect_ticket
     unrelated = procedure_eligibility(
         db,
-        catalog.get("jarvis.flake-diagnosis"),
+        flake,
         "disposable:postv7",
     )
     assert unrelated.eligible is True
+    assert not any("incident" in reason for reason in unrelated.blocked_reasons)
     assert load_procedure(db, plan.procedure_id).step("orient").status.value == "FROZEN"

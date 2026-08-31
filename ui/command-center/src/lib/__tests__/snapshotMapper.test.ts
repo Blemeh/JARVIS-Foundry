@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mapMissionStatus, mapMissions, mapSystemOverview, mapTrustSummary, mapWorkers } from "../snapshotMapper";
+import { mapMemoryGraph, mapMissionRun, mapMissionStatus, mapMissions, mapSystemOverview, mapSystems, mapTrustSummary, mapWorkers } from "../snapshotMapper";
 import type { FoundrySnapshot } from "../snapshotTypes";
 import { MEASURED_COST_LABEL, NOT_REPORTED_NUMERIC } from "../truthFormat";
 import { allSnapshotTruthCases } from "./snapshotTruthCases";
@@ -64,6 +64,21 @@ describe("snapshotMapper", () => {
     expect(trust.factors.some((f) => f.id === "stale-leases")).toBe(true);
   });
 
+  it("uses the authoritative numeric schema and preserves release identity separately", () => {
+    const snapshot = baseSnapshot();
+    snapshot.health.schema = { live: 38, package: 38 };
+    snapshot.release_identity = { current: "5167e2cbaa5df3c1ad00b660138a5a8b6b2bd1bd" };
+    const overview = mapSystemOverview(snapshot);
+    expect(overview.schema).toBe(38);
+    expect(overview.version).toBe("5167e2cbaa5d");
+  });
+
+  it("preserves SUSPENDED trust without downgrading it to UNKNOWN", () => {
+    const snapshot = baseSnapshot();
+    snapshot.health.trust_state = "SUSPENDED";
+    expect(mapTrustSummary(snapshot).state).toBe("SUSPENDED");
+  });
+
   it("treats UNKNOWN cost token as not reported", () => {
     const snapshot = baseSnapshot();
     snapshot.costs = { measured_actual_total_usd: "UNKNOWN", unknown_measurements: 1 };
@@ -76,6 +91,27 @@ describe("snapshotMapper", () => {
     const snapshot = baseSnapshot();
     const missions = mapMissions(snapshot);
     expect(missions[0].completion).toBe(NOT_REPORTED_NUMERIC);
+  });
+
+  it("keeps unsupported live fields UNKNOWN and exposes the canonical lifecycle", () => {
+    const snapshot = baseSnapshot();
+    snapshot.missions[0].state = "UNRECOGNIZED_STATE";
+    snapshot.workers[0].status = "UNRECOGNIZED_STATUS";
+    snapshot.systems = [{ system_id: "sys-unknown", readiness_state: "NOT_TESTED" }];
+    snapshot.memory = [{ memory_id: "memory-unknown", mem_type: "future-type" }];
+
+    expect(mapMissions(snapshot)[0].status).toBe("UNKNOWN");
+    expect(mapWorkers(snapshot)[0].status).toBe("UNKNOWN");
+    expect(mapSystems(snapshot)[0]).toMatchObject({ health: "UNKNOWN", readiness: "UNKNOWN", state: "UNKNOWN", recovery: "UNKNOWN", version: "UNKNOWN" });
+    expect(mapMemoryGraph(snapshot).nodes[0]).toMatchObject({ category: "UNKNOWN", summary: "UNKNOWN", confidence: NOT_REPORTED_NUMERIC });
+
+    const run = mapMissionRun(snapshot, "m-1");
+    expect(run.streams[0]).toMatchObject({ state: "POLLING", status: "canonical snapshot" });
+    expect(run.pipeline[0].state).toBe("UNKNOWN");
+    expect(run.lifecycle?.map((stage) => stage.key)).toEqual([
+      "owner_goal", "plan", "mission", "worker", "action_artifact",
+      "evidence", "verifier", "repair_retry", "memory", "owner_briefing",
+    ]);
   });
 
   it("maps authoritative zero cost and computed verification coverage", () => {

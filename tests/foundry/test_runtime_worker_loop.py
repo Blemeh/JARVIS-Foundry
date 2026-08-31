@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 import pytest
@@ -10,10 +11,12 @@ from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.mission.loop import FAILED, MissionLoop
 from jarvis_foundry.paths import FoundryPaths
 from jarvis_foundry.roles.router import RoleRouter
-from jarvis_foundry.runtime._stack import build_worker_stack
+from jarvis_foundry.runtime._stack import _resolve_root, build_worker_stack
 from jarvis_foundry.runtime.config import WorkerRuntimeConfig
 from jarvis_foundry.runtime.worker_loop import (
     _adapter_runtime_environment,
+    _end_waiting_episode,
+    _waiting_report,
     run_cycle,
 )
 from jarvis_foundry.workers.adapters.fakes import ScriptedOutcome, ScriptedWorkerAdapter
@@ -56,6 +59,38 @@ def test_config_roundtrip(tmp_path):
     assert cfg.role_signals["builder"]["bounded"] is True
 
 
+def test_relative_runtime_root_moves_outside_live_hermes_profile(tmp_path, monkeypatch):
+    local = tmp_path / "local"
+    monkeypatch.setenv("LOCALAPPDATA", str(local))
+    monkeypatch.setenv("HERMES_HOME", str(local / "hermes"))
+    home = local / "hermes" / "foundry"
+    root = _resolve_root("var/worker-runtime", "containment", kind="run", home=home)
+    assert root.is_relative_to(local / "JARVIS" / "runtime" / "worker-runtime")
+    assert not root.is_relative_to(local / "hermes")
+
+
+def test_contributor_acknowledgement_is_materialized_in_isolated_home(tmp_path):
+    database = FoundryDatabase(tmp_path / "db.sqlite")
+    database.initialize()
+    cfg = WorkerRuntimeConfig(
+        enabled=True,
+        hermes={
+            "enabled": True,
+            "root": str(tmp_path),
+            "python_exe": sys.executable,
+            "allow_data_training_tiers_noninteractive": True,
+        },
+        runtime_state_root=str(tmp_path / "state"),
+    )
+    stack = build_worker_stack(
+        database, FoundryPaths(tmp_path / "foundry"), cfg, run_id="consent")
+    config = stack.disposable_root / "hermes-home" / "config.yaml"
+    assert config.read_text(encoding="utf-8") == (
+        "security:\n"
+        "  allow_data_training_tiers_noninteractive: true\n"
+    )
+
+
 def test_run_cycle_disabled(tmp_path):
     database = FoundryDatabase(tmp_path / "db.sqlite")
     database.initialize()
@@ -63,6 +98,45 @@ def test_run_cycle_disabled(tmp_path):
         database, FoundryPaths(tmp_path), WorkerRuntimeConfig(),
         loop_id="l1", instance_id="i1")
     assert report["outcome"] == "DISABLED"
+
+
+def test_idle_waiting_is_one_episode_not_one_event_per_poll(tmp_path):
+    database = FoundryDatabase(tmp_path / "db.sqlite")
+    database.initialize()
+    for index in range(500):
+        _waiting_report(
+            database, loop_id=f"loop-{index}", instance_id=f"instance-{index}",
+            reason="no dispatchable mission",
+        )
+    waiting = [
+        event for event in database.events()
+        if event.event_type.startswith("worker_loop.waiting")
+    ]
+    assert [event.event_type for event in waiting] == [
+        "worker_loop.waiting_started"
+    ]
+
+
+def test_idle_reason_transition_and_restart_are_auditable(tmp_path):
+    database = FoundryDatabase(tmp_path / "db.sqlite")
+    database.initialize()
+    _waiting_report(database, loop_id="a", instance_id="i", reason="reason-a")
+    _waiting_report(database, loop_id="b", instance_id="i", reason="reason-b")
+    _waiting_report(database, loop_id="c", instance_id="i", reason="reason-a")
+    _end_waiting_episode(database, loop_id="d", instance_id="i")
+    events = [event.event_type for event in database.events()
+              if event.event_type.startswith("worker_loop.waiting")]
+    assert events == [
+        "worker_loop.waiting_started",
+        "worker_loop.waiting_ended",
+        "worker_loop.waiting_started",
+        "worker_loop.waiting_ended",
+        "worker_loop.waiting_started",
+        "worker_loop.waiting_ended",
+    ]
+    starts = [event for event in database.events()
+              if event.event_type == "worker_loop.waiting_started"]
+    assert starts[0].payload["episode_id"] != starts[-1].payload["episode_id"]
 
 
 def test_adapter_runtime_environment_is_scoped_and_restored(tmp_path):

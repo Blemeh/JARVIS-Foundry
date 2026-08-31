@@ -35,7 +35,8 @@ class OwnerCommandError(ValueError):
 
 _COMMANDS = frozenset({
     "GOAL", "CONSTRAINT", "ADD_CONSTRAINT", "VETO_ACTION", "STOP_MISSION", "STOP_EVERYTHING",
-    "PAUSE", "RESUME", "REPRIORITIZE", "REDIRECT", "RESTART_RECOVERY",
+    "PAUSE", "RESUME", "REVOKE", "CANCEL_MISSION", "GATE_REEVALUATE",
+    "REPRIORITIZE", "REDIRECT", "RESTART_RECOVERY",
 })
 
 
@@ -141,6 +142,8 @@ class OwnerCommandResult:
     command_type: str
     nonce: str
     superseded_directive_id: str | None = None
+    outcome: str | None = None
+    details: dict[str, Any] | None = None
 
 
 class OwnerControlService:
@@ -192,6 +195,116 @@ class OwnerControlService:
     def _existing_directive_id(self, directive_id: str) -> bool:
         return self._existing_directive(directive_id) is not None
 
+    def _active_owner_records(self) -> list[dict[str, Any]]:
+        """Read authenticated directive truth from the append-only ledger."""
+        from .owner_directives import active_owner_directives
+
+        return [record.to_dict() for record in active_owner_directives(self.database)]
+
+    def _clear_stop_sentinel_if_unblocked(self) -> None:
+        """Clear the STOP mirror only after durable global STOP revocation."""
+        if self.stop is None:
+            return
+        if not any(
+            value.get("command_type") == "STOP_EVERYTHING"
+            for value in self._active_owner_records()
+        ):
+            self.stop.clear()
+
+    def _gate_decision(
+        self,
+        *,
+        mission_id: str | None,
+        metadata: dict[str, Any] | None,
+    ) -> tuple[str, str, dict[str, Any]]:
+        """Evaluate a requested acceptance gate without inventing missing context."""
+        from .mission.verifier_binding import AcceptanceGate
+
+        values = dict(metadata or {})
+        if not mission_id or not mission_id.strip():
+            return "REFUSE", "GATE_REEVALUATE requires a mission target", {
+                "input_valid": "no",
+            }
+        mission = self.database.row("missions", "mission_id", mission_id)
+        if mission is None:
+            return "REFUSE", f"unknown mission: {mission_id}", {"input_valid": "no"}
+        step_id = str(values.get("step_id") or "").strip()
+        builder_run_id = str(values.get("builder_run_id") or "").strip()
+        if not step_id or not builder_run_id:
+            return "REFUSE", "GATE_REEVALUATE requires metadata.step_id and metadata.builder_run_id", {
+                "input_valid": "no",
+            }
+        resource_id = str(mission.get("resource_id") or "").strip()
+        resource = self.database.row("resources", "resource_id", resource_id) if resource_id else None
+        root = Path(str(resource.get("resolved_root"))) if resource and resource.get("resolved_root") else None
+        target_raw = values.get("target_path") or values.get("path")
+        target = Path(str(target_raw)).expanduser() if target_raw else root
+        if target is None:
+            return "REFUSE", "GATE_REEVALUATE cannot resolve a registered resource root", {
+                "input_valid": "no",
+            }
+        target = target.resolve(strict=False)
+        if root is not None:
+            root = root.resolve(strict=False)
+            try:
+                target.relative_to(root)
+            except ValueError:
+                return "REFUSE", "gate target escapes the mission resource root", {
+                    "input_valid": "no", "target": str(target), "root": str(root),
+                }
+        decision = AcceptanceGate(
+            self.database,
+            stop_path=self.stop.path if self.stop is not None else None,
+        ).evaluate(
+            mission_id=mission_id, step_id=step_id, target=target,
+            builder_run_id=builder_run_id,
+        )
+        return decision.decision, decision.reason, dict(decision.checks)
+
+    def _revoke_authenticated(
+        self,
+        directive_id: str,
+        *,
+        command_type: str,
+        nonce: str,
+        signature: str,
+        exact_text: str,
+    ) -> OwnerCommandResult:
+        """Revoke one directive under a signed REVOKE (or legacy RESUME) command."""
+        existing = self._existing_directive(directive_id)
+        if existing is None:
+            raise OwnerCommandError(f"cannot revoke unknown directive: {directive_id}")
+        self._verify(command_type, directive_id, exact_text, nonce, signature)
+        now = isoformat()
+        command_hash = hashlib.sha256(
+            canonical_command(command_type, directive_id, exact_text, nonce)
+        ).hexdigest()
+        nonce_event = Event.create(
+            "owner_control.nonce_used",
+            {"nonce": nonce, "command_hash": command_hash, "issued_at": now, "used_at": now},
+            source_type="owner", source_id=self.owner_id,
+            idempotency_key=f"owner_control.nonce_used:{nonce}",
+        )
+        event = Event.create(
+            "owner_directive.revoked",
+            {
+                "directive_id": directive_id, "command_type": command_type,
+                "nonce": nonce, "command_hash": command_hash,
+                "authenticated": True, "reason": exact_text,
+                "owner_id": self.owner_id,
+            },
+            source_type="owner", source_id=self.owner_id,
+            correlation_id=nonce_event.correlation_id,
+            causation_id=nonce_event.event_id,
+            idempotency_key=f"owner_directive.revoked:{directive_id}:{nonce}",
+        )
+        self.database.append_events([nonce_event, event])
+        self._clear_stop_sentinel_if_unblocked()
+        return OwnerCommandResult(
+            directive_id, event.event_id, command_type, nonce,
+            outcome="REVOKED", details={"revoked_directive_id": directive_id},
+        )
+
     def apply(
         self,
         command_type: str,
@@ -215,6 +328,58 @@ class OwnerControlService:
             expires_at=expires_at,
             metadata=metadata,
         )
+        if command_type == "REVOKE":
+            if not isinstance(target, str) or not target.strip():
+                raise OwnerCommandError("REVOKE requires target directive_id")
+            # The command was already authenticated above; use the dedicated
+            # path only for validation/recording and avoid a second nonce use.
+            existing = self._existing_directive(target)
+            if existing is None:
+                raise OwnerCommandError(f"cannot revoke unknown directive: {target}")
+            now = isoformat()
+            command_hash = hashlib.sha256(canonical_command(
+                command_type, target, exact_text, nonce,
+                supersedes=supersedes_directive_id,
+                expires_at=expires_at, metadata=metadata,
+            )).hexdigest()
+            nonce_event = Event.create(
+                "owner_control.nonce_used",
+                {"nonce": nonce, "command_hash": command_hash, "issued_at": now, "used_at": now},
+                source_type="owner", source_id=self.owner_id,
+                idempotency_key=f"owner_control.nonce_used:{nonce}",
+            )
+            revoked = Event.create(
+                "owner_directive.revoked",
+                {"directive_id": target, "command_type": command_type,
+                 "nonce": nonce, "command_hash": command_hash,
+                 "authenticated": True, "reason": exact_text,
+                 "owner_id": self.owner_id},
+                source_type="owner", source_id=self.owner_id,
+                correlation_id=nonce_event.correlation_id,
+                causation_id=nonce_event.event_id,
+                idempotency_key=f"owner_directive.revoked:{target}:{nonce}",
+            )
+            self.database.append_events([nonce_event, revoked])
+            self._clear_stop_sentinel_if_unblocked()
+            return OwnerCommandResult(
+                target, revoked.event_id, command_type, nonce,
+                outcome="REVOKED", details={"revoked_directive_id": target},
+            )
+
+        gate_outcome: tuple[str, str, dict[str, Any]] | None = None
+        if command_type == "GATE_REEVALUATE":
+            gate_outcome = self._gate_decision(mission_id=target, metadata=metadata)
+        if command_type == "CANCEL_MISSION":
+            if not isinstance(target, str) or not target.strip():
+                raise OwnerCommandError("CANCEL_MISSION requires target mission_id")
+            mission = self.database.row("missions", "mission_id", target)
+            if mission is None:
+                raise OwnerCommandError(f"unknown mission: {target}")
+            from .domain import require_transition
+            try:
+                require_transition(str(mission["state"]), "CANCELLED")
+            except ValueError as error:
+                raise OwnerCommandError(str(error)) from error
         directive_id = directive_id or f"owner-{secrets.token_hex(12)}"
         if self._existing_directive_id(directive_id):
             raise OwnerCommandError(
@@ -259,6 +424,29 @@ class OwnerControlService:
             idempotency_key=f"owner_directive.recorded:{directive_id}:{command_hash}",
         )
         events = [nonce_event, directive_event]
+        if command_type == "CANCEL_MISSION":
+            events.append(Event.create(
+                "mission.state_changed",
+                {"mission_id": target, "state": "CANCELLED",
+                 "next_action": "cancelled by authenticated owner directive",
+                 "owner_directive_id": directive_id},
+                source_type="supervisor", source_id="owner-control",
+                correlation_id=nonce_event.correlation_id,
+                causation_id=directive_event.event_id,
+                idempotency_key=f"mission.state_changed:{target}:CANCELLED:owner:{directive_id}",
+            ))
+        if gate_outcome is not None:
+            decision, reason, checks = gate_outcome
+            events.append(Event.create(
+                "acceptance.gate_reevaluated",
+                {"directive_id": directive_id, "mission_id": target,
+                 "decision": decision, "reason": reason, "checks": checks,
+                 "metadata": dict(metadata or {})},
+                source_type="owner", source_id=self.owner_id,
+                correlation_id=nonce_event.correlation_id,
+                causation_id=directive_event.event_id,
+                idempotency_key=f"acceptance.gate_reevaluated:{directive_id}",
+            ))
         if supersedes_directive_id is not None:
             events.append(Event.create(
                 "owner_directive.superseded",
@@ -287,32 +475,30 @@ class OwnerControlService:
         return OwnerCommandResult(
             directive_id, directive_event.event_id, command_type, nonce,
             supersedes_directive_id,
+            outcome=gate_outcome[0] if gate_outcome is not None else (
+                "CANCELLED" if command_type == "CANCEL_MISSION" else None),
+            details=(
+                {"reason": gate_outcome[1], "checks": gate_outcome[2]}
+                if gate_outcome is not None else None
+            ),
         )
 
     def revoke(self, directive_id: str, *, nonce: str, signature: str, exact_text: str = "revoke owner directive") -> str:
-        self._verify("RESUME", directive_id, exact_text, nonce, signature)
-        now = isoformat()
-        command_hash = hashlib.sha256(canonical_command("RESUME", directive_id, exact_text, nonce)).hexdigest()
-        nonce_event = Event.create(
-            "owner_control.nonce_used",
-            {"nonce": nonce, "command_hash": command_hash, "issued_at": now, "used_at": now},
-            source_type="owner", source_id=self.owner_id,
-            idempotency_key=f"owner_control.nonce_used:{nonce}",
+        # RESUME was the historical spelling for this operation.  Accept it
+        # only for existing callers while preferring the explicit REVOKE verb.
+        accepted = None
+        for candidate in ("REVOKE", "RESUME"):
+            expected = sign_command(self.secret, candidate, directive_id, exact_text, nonce)
+            if hmac.compare_digest(expected, signature or ""):
+                accepted = candidate
+                break
+        if accepted is None:
+            raise OwnerAuthenticationError("owner command authentication failed")
+        result = self._revoke_authenticated(
+            directive_id, command_type=accepted, nonce=nonce,
+            signature=signature, exact_text=exact_text,
         )
-        event = Event.create(
-            "owner_directive.revoked",
-            {
-                "directive_id": directive_id, "nonce": nonce,
-                "authenticated": True, "reason": exact_text,
-                "owner_id": self.owner_id,
-            },
-            source_type="owner", source_id=self.owner_id,
-            correlation_id=nonce_event.correlation_id,
-            causation_id=nonce_event.event_id,
-            idempotency_key=f"owner_directive.revoked:{directive_id}:{nonce}",
-        )
-        self.database.append_events([nonce_event, event])
-        return event.event_id
+        return result.event_id
 
     def stop_now(self, *, reason: str, nonce: str, signature: str) -> OwnerCommandResult:
         return self.apply("STOP_EVERYTHING", target="GLOBAL", exact_text=reason, nonce=nonce, signature=signature)
@@ -335,14 +521,21 @@ class OwnerControlService:
             nonce=nonce, signature=signature, directive_id=directive_id,
         )
 
-    def resume(self, *, nonce: str, signature: str, exact_text: str = "resume jarvis") -> list[str]:
-        self._verify("RESUME", "GLOBAL", exact_text, nonce, signature)
-        with self.database.connect() as connection:
-            rows = connection.execute(
-                "SELECT directive_id FROM directives WHERE active = 1 AND command_type IN ('STOP_EVERYTHING', 'PAUSE')"
-            ).fetchall()
+    def resume(self, *, nonce: str, signature: str, target: str = "GLOBAL", exact_text: str = "resume jarvis") -> list[str]:
+        """Revoke only the requested scope; GLOBAL retains legacy all-stop behavior."""
+        self._verify("RESUME", target, exact_text, nonce, signature)
+        active = [
+            value for value in self._active_owner_records()
+            if value.get("command_type") in {"STOP_EVERYTHING", "PAUSE"}
+        ]
+        if target == "GLOBAL":
+            selected = active
+        elif any(value.get("directive_id") == target for value in active):
+            selected = [value for value in active if value.get("directive_id") == target]
+        else:
+            selected = [value for value in active if value.get("target") == target]
         now = isoformat()
-        command_hash = hashlib.sha256(canonical_command("RESUME", "GLOBAL", exact_text, nonce)).hexdigest()
+        command_hash = hashlib.sha256(canonical_command("RESUME", target, exact_text, nonce)).hexdigest()
         events = [Event.create(
             "owner_control.nonce_used",
             {"nonce": nonce, "command_hash": command_hash, "issued_at": now, "used_at": now},
@@ -350,21 +543,21 @@ class OwnerControlService:
             idempotency_key=f"owner_control.nonce_used:{nonce}",
         )]
         event_ids = []
-        for row in rows:
+        for value in selected:
             event = Event.create(
                 "owner_directive.revoked", {
-                    "directive_id": str(row[0]), "nonce": nonce,
+                    "directive_id": str(value["directive_id"]), "command_type": "RESUME",
+                    "nonce": nonce, "command_hash": command_hash,
                     "authenticated": True, "reason": exact_text,
                     "owner_id": self.owner_id,
                 },
                 source_type="owner", source_id=self.owner_id,
                 correlation_id=events[0].correlation_id,
                 causation_id=events[0].event_id,
-                idempotency_key=f"owner_directive.revoked:{row[0]}:{nonce}",
-            )
+                    idempotency_key=f"owner_directive.revoked:{value['directive_id']}:{nonce}",
+                )
             events.append(event)
             event_ids.append(event.event_id)
         self.database.append_events(events)
-        if self.stop is not None:
-            self.stop.clear()
+        self._clear_stop_sentinel_if_unblocked()
         return event_ids

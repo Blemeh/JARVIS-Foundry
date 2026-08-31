@@ -1,6 +1,8 @@
 import type {
   EvidenceArtifact,
   EvidenceVerdict,
+  AutonomyLifecycleRecord,
+  EntityRef,
   Health,
   MemoryGraph,
   MemoryNode,
@@ -32,10 +34,11 @@ export function mapMissionStatus(state: string | undefined): MissionStatus {
   const normalized = (state ?? "UNKNOWN").toUpperCase();
   if (normalized === "BLOCKED") return "BLOCKED";
   if (normalized === "COMPLETE" || normalized === "COMPLETED") return "COMPLETE";
+  if (normalized === "CANCELLED" || normalized === "CANCELED") return "CANCELLED";
   if (normalized === "HALTED" || normalized === "FAILED") return "HALTED";
   if (ACTIVE_MISSION_STATES.has(normalized)) return normalized === "ORIENTING" ? "IN_PROGRESS" : "ACTIVE";
   if (STANDBY_MISSION_STATES.has(normalized)) return normalized.startsWith("COMP") ? "COMPLETE" : "STANDBY";
-  return "STANDBY";
+  return "UNKNOWN";
 }
 
 export function mapWorkerStatus(status: string | undefined): WorkerStatus {
@@ -44,7 +47,8 @@ export function mapWorkerStatus(status: string | undefined): WorkerStatus {
   if (normalized === "FAILED") return "FAILED";
   if (normalized === "COMPLETED") return "STANDBY";
   if (normalized === "RECOVERING") return "RECOVERING";
-  return "STANDBY";
+  if (normalized === "CANCELLED" || normalized === "CANCELED") return "FAILED";
+  return "UNKNOWN";
 }
 
 export function mapHealth(value: string | undefined): Health {
@@ -90,28 +94,37 @@ export function mapMissions(snapshot: FoundrySnapshot): Mission[] {
     priority: missionPriority(m),
     agentsActive: workerCounts.get(m.mission_id) ?? 0,
     completion: missionCompletion(m.state),
-    nextAction: m.next_action ?? "—",
+    nextAction: m.next_action ?? "UNKNOWN",
     stage: m.state ?? "UNKNOWN",
-    startedAt: m.updated_at ?? snapshot.generated_at,
-    objective: m.objective ?? "",
-    owner: "canonical-ledger",
+    startedAt: m.updated_at ?? "UNKNOWN",
+    objective: m.objective ?? "UNKNOWN",
+    owner: m.created_from ?? "UNKNOWN",
   }));
 }
 
 export function mapWorkers(snapshot: FoundrySnapshot): Worker[] {
+  const evidenceByRun = new Map<string, string[]>();
+  for (const evidence of snapshot.evidence) {
+    const claim = evidence.builder_claim && typeof evidence.builder_claim === "object"
+      ? evidence.builder_claim as Record<string, unknown>
+      : null;
+    const runId = typeof claim?.run_id === "string" ? claim.run_id : null;
+    if (runId) evidenceByRun.set(runId, [...(evidenceByRun.get(runId) ?? []), evidence.bundle_id]);
+  }
   return snapshot.workers.map((w) => ({
     id: w.run_id,
     name: `${w.role ?? "worker"}-${w.run_id.slice(-4)}`,
-    role: w.role ?? "worker",
-    provider: w.provider ?? "unknown",
+    role: w.role ?? "UNKNOWN",
+    provider: w.provider ?? "UNKNOWN",
     status: mapWorkerStatus(w.status),
-    currentTask: w.mission_id ? `mission ${w.mission_id}` : "idle",
-    uptime: "—",
+    currentTask: w.mission_id ? `mission ${w.mission_id}` : "UNKNOWN",
+    uptime: "UNKNOWN",
     latencyMs: null,
     log: w.failure_class ? [`failure: ${w.failure_class}`] : [],
     lastHeartbeat: w.heartbeat_at ?? w.updated_at,
     missionIds: w.mission_id ? [w.mission_id] : [],
     failures: w.status === "FAILED" ? 1 : 0,
+    evidenceIds: evidenceByRun.get(w.run_id) ?? [],
   }));
 }
 
@@ -121,7 +134,10 @@ export function mapEvidence(snapshot: FoundrySnapshot, verification: FoundryVeri
     if (v.run_id) verdictByRun.set(v.run_id, v);
   }
   return snapshot.evidence.map((e) => {
-    const hash = e.artifact_hashes ? Object.values(e.artifact_hashes)[0] ?? "—" : "—";
+    const hash = e.artifact_hashes ? Object.values(e.artifact_hashes)[0] ?? "UNKNOWN" : "UNKNOWN";
+    const claim = e.builder_claim && typeof e.builder_claim === "object"
+      ? e.builder_claim as Record<string, unknown>
+      : {};
     return {
       id: e.bundle_id,
       kind: "bundle",
@@ -131,9 +147,13 @@ export function mapEvidence(snapshot: FoundrySnapshot, verification: FoundryVeri
       hash,
       verdict: mapEvidenceVerdict(e.status),
       capturedAt: e.updated_at ?? snapshot.generated_at,
-      missionRef: e.mission_id ?? "—",
-      note: e.objective ?? "",
+      missionRef: e.mission_id ?? "UNKNOWN",
+      note: e.objective ?? "UNKNOWN",
       stepId: e.step_id,
+      workerId: typeof claim.run_id === "string" ? claim.run_id : undefined,
+      verdictId: e.verifier_verdict_id,
+      claim: typeof claim.status === "string" ? claim.status : undefined,
+      relatedEventId: e.last_event_id,
     };
   });
 }
@@ -141,48 +161,101 @@ export function mapEvidence(snapshot: FoundrySnapshot, verification: FoundryVeri
 export function mapTimeline(snapshot: FoundrySnapshot): TimelineEvent[] {
   return snapshot.timeline.map((e) => ({
     id: e.event_id,
-    at: e.recorded_at ?? e.occurred_at ?? snapshot.generated_at,
+    at: e.recorded_at ?? e.occurred_at ?? "UNKNOWN",
     group: e.event_type.split(".")[0] ?? "system",
-    category: e.event_type.includes("owner") ? "COMMAND" : e.event_type.includes("mission") ? "MILESTONE" : "SYSTEM",
+    category: /fail|crash|blocked|degraded|frozen|mismatch/i.test(e.event_type)
+      ? "INCIDENT"
+      : e.event_type.includes("owner") || e.event_type.includes("directive")
+        ? "COMMAND"
+        : e.event_type.includes("mission") || e.event_type.includes("verification") || e.event_type.includes("evidence")
+          ? "MILESTONE"
+          : "SYSTEM",
     title: e.event_type,
-    detail: e.summary ?? e.decision ?? e.event_type,
+    detail: e.summary ?? e.decision ?? "UNKNOWN",
     meta: [{ label: "sequence", value: String(e.sequence) }],
     actions: [{ label: "View", kind: "view" }],
-    severity: e.event_type.includes("fail") || e.event_type.includes("stop") ? "CRITICAL" : "INFO",
+    severity: /fail|crash|stop|blocked|frozen/i.test(e.event_type)
+      ? "CRITICAL"
+      : /degraded|unknown|not_tested/i.test(e.event_type) ? "WARNING" : "INFO",
     missionId: e.evidence_refs?.find((r) => r.kind === "mission")?.id,
+    evidenceId: e.evidence_refs?.find((r) => r.kind === "evidence")?.id,
+    verdictId: e.evidence_refs?.find((r) => r.kind === "verification")?.id,
+    agentId: e.evidence_refs?.find((r) => r.kind === "agent_run")?.id,
   }));
 }
 
 export function mapSystems(snapshot: FoundrySnapshot): SystemComponent[] {
-  return snapshot.systems.map((s) => ({
+  return snapshot.systems.map((s) => {
+    const rawReadiness = String(s.readiness_state ?? s.readiness ?? "UNKNOWN").toUpperCase();
+    const rawHealth = String(s.health ?? "").toUpperCase();
+    const health: Health = rawHealth === "HEALTHY" || rawHealth === "DEGRADED" || rawHealth === "CRITICAL"
+      ? rawHealth
+      : rawReadiness === "READY" ? "HEALTHY" : rawReadiness === "UNREADY" ? "DEGRADED" : "UNKNOWN";
+    const readiness = rawReadiness === "READY" ? "READY" : rawReadiness === "UNREADY" ? "NOT_READY" : "UNKNOWN";
+    const capabilities = s.capabilities && typeof s.capabilities === "object" ? s.capabilities as Record<string, unknown> : {};
+    const dependencies = Array.isArray(capabilities.dependencies) ? capabilities.dependencies.filter((value): value is string => typeof value === "string") : [];
+    return {
     id: s.system_id,
     name: s.name ?? s.system_id,
-    description: s.description ?? "",
-    state: mapHealth(s.readiness_state) === "HEALTHY" ? "RUNNING" : "STANDBY",
-    health: mapHealth(s.readiness_state),
-    readiness: mapHealth(s.readiness_state) === "HEALTHY" ? "READY" : "DEGRADED",
-    dependencies: [],
-    lastHeartbeat: s.last_heartbeat_at ?? s.updated_at ?? snapshot.generated_at,
-    recovery: "canonical projection",
-    version: "live",
-    checks: [{ label: "readiness", state: mapHealth(s.readiness_state) === "HEALTHY" ? "PASS" : "WARN", detail: s.readiness_state ?? "UNKNOWN" }],
-  }));
+    description: s.description ?? "UNKNOWN",
+    state: s.state === "STOPPED" ? "STOPPED" : s.state === "ACTIVE" ? "ACTIVE" : rawReadiness === "READY" ? "RUNNING" : "UNKNOWN",
+    health,
+    readiness,
+    dependencies,
+    lastHeartbeat: s.last_heartbeat_at ?? s.last_probe_at ?? "UNKNOWN",
+    recovery: s.recovery_state ?? "UNKNOWN",
+    version: s.version ?? "UNKNOWN",
+    checks: [{ label: "readiness", state: rawReadiness === "READY" ? "PASS" : rawReadiness === "UNREADY" ? "FAIL" : "NOT_TESTED", detail: rawReadiness }],
+    missionIds: [],
+    incidentEventIds: s.last_event_id ? [s.last_event_id] : [],
+  };
+  });
 }
 
 export function mapMemoryGraph(snapshot: FoundrySnapshot): MemoryGraph {
-  const nodes: MemoryNode[] = snapshot.memory.map((m, index) => ({
+  const nodes: MemoryNode[] = snapshot.memory.map((m, index) => {
+    const rawType = String(m.mem_type ?? "").toUpperCase();
+    const category: MemoryNode["category"] = rawType === "PROCEDURAL"
+      ? "PROCEDURE"
+      : rawType === "CORE"
+        ? "BELIEF"
+        : rawType === "EPISODIC"
+          ? "OBSERVATION"
+          : "UNKNOWN";
+    const content = typeof m.content === "string" && m.content.trim() ? m.content : "UNKNOWN";
+    const confidence = typeof m.confidence === "number" && Number.isFinite(m.confidence)
+      ? Math.round(Math.max(0, Math.min(1, m.confidence)) * 100)
+      : NOT_REPORTED_NUMERIC;
+    const unknowns = [
+      ...(content === "UNKNOWN" ? ["content"] : []),
+      ...(confidence === NOT_REPORTED_NUMERIC ? ["confidence"] : []),
+      ...(m.evidence_ids?.length ? [] : ["evidence linkage"]),
+    ];
+    const ref: EntityRef | undefined = m.mission_id
+      ? { kind: "mission", id: m.mission_id, label: m.mission_id }
+      : m.agent_run_id
+        ? { kind: "agent", id: m.agent_run_id, label: m.agent_run_id }
+        : undefined;
+    return {
     id: m.memory_id,
     label: m.memory_id,
-    category: "OBSERVATION",
+    category,
     x: 120 + (index % 5) * 90,
     y: 100 + Math.floor(index / 5) * 80,
     r: 18,
-    summary: `${m.mem_type ?? "memory"} · ${m.state ?? "UNKNOWN"}`,
-    confidence: NOT_REPORTED_NUMERIC,
-    freshness: m.updated_at ?? snapshot.generated_at,
-    unknowns: [],
-  }));
-  return { nodes, edges: [] };
+    summary: content,
+    confidence,
+    freshness: m.updated_at ?? "UNKNOWN",
+    unknowns,
+    ref,
+  };
+  });
+  const nodeIds = new Set(nodes.map((node) => node.id));
+  const edges = snapshot.memory.flatMap((memory) => {
+    const sources = [...(memory.source_ids ?? []), ...(memory.evidence_ids ?? [])];
+    return sources.filter((source) => nodeIds.has(source)).map((source) => ({ from: memory.memory_id, to: source, label: "source" }));
+  });
+  return { nodes, edges };
 }
 
 const mapResourceUsage = (snapshot: FoundrySnapshot): SystemOverview["resourceUsage"] => {
@@ -224,12 +297,17 @@ const mapMeasuredCostResource = (snapshot: FoundrySnapshot): SystemOverview["res
 export function mapSystemOverview(snapshot: FoundrySnapshot): SystemOverview {
   const current = snapshot.release_identity?.current;
   const sha = typeof current === "string" ? current.slice(0, 12) : "unknown";
+  const rawSchema = snapshot.health.schema?.live;
+  const schema = typeof rawSchema === "number" && Number.isInteger(rawSchema) && rawSchema >= 0
+    ? rawSchema
+    : null;
   const resourceUsage = [...mapResourceUsage(snapshot), mapMeasuredCostResource(snapshot)];
   return {
     version: sha,
+    schema,
     build: String(snapshot.source_of_truth.ledger_head_sequence),
     releaseState: snapshot.health.supervisor_status ?? "UNKNOWN",
-    uptime: snapshot.health.heartbeat_at ?? snapshot.generated_at,
+    uptime: snapshot.health.heartbeat_at ?? "UNKNOWN",
     resourceUsage,
   };
 }
@@ -239,10 +317,11 @@ const mapTrustState = (trust: string, stop: boolean): TrustSummary["state"] => {
   const normalized = trust.toUpperCase()
   if (normalized === "PROVEN") return "PROVEN"
   if (normalized === "SIMULATED") return "SIMULATED"
-  if (normalized === "DEGRADED" || normalized === "LAB" || normalized === "UNKNOWN" || normalized === "NOT_AVAILABLE" || normalized === "NOT_REPORTED") {
+  if (normalized === "SUSPENDED") return "SUSPENDED"
+  if (normalized === "LAB" || normalized === "PROVING" || normalized === "DEGRADED") {
     return "DEGRADED"
   }
-  return "DEGRADED"
+  return "UNKNOWN"
 }
 
 const mapEvidenceCoverage = (snapshot: FoundrySnapshot): number => {
@@ -260,10 +339,18 @@ export function mapTrustSummary(snapshot: FoundrySnapshot): TrustSummary {
   const staleLeases = snapshot.health.stale_leases ?? [];
   const constraints = snapshot.controls.constraints ?? [];
   const coverage = mapEvidenceCoverage(snapshot);
+  const assessment = snapshot.health.trust_assessment as Record<string, unknown> | undefined;
+  const gateStatus: TrustSummary["gateStatus"] = stop
+    ? "GATED"
+    : assessment && assessment.eligible === true
+      ? "PASS"
+      : assessment
+        ? "GATED"
+        : "UNKNOWN";
   return {
     state: mapTrustState(trust, stop),
     score: null,
-    gateStatus: stop ? "GATED" : "OPEN",
+    gateStatus,
     evidenceCoverage: coverage,
     unresolvedFindings: snapshot.verification.filter((v) => v.status === "FAIL").length,
     health: mapHealth(snapshot.health.supervisor_status),
@@ -271,7 +358,7 @@ export function mapTrustSummary(snapshot: FoundrySnapshot): TrustSummary {
     factors: [
       { id: "supervisor", label: "Supervisor", state: snapshot.health.supervisor_status === "RUNNING" ? "PASS" : "WARN", detail: snapshot.health.supervisor_status ?? "UNKNOWN" },
       { id: "stop", label: "STOP sentinel", state: stop ? "FAIL" : "PASS", detail: stop ? "ACTIVE" : "CLEAR" },
-      { id: "ledger", label: "Ledger head", state: "PASS", detail: String(snapshot.source_of_truth.ledger_head_sequence) },
+      { id: "ledger", label: "Ledger head", state: snapshot.source_of_truth ? "PASS" : "PENDING", detail: snapshot.source_of_truth ? String(snapshot.source_of_truth.ledger_head_sequence) : "UNKNOWN" },
       { id: "coverage", label: "Evidence coverage", state: coverage === NOT_REPORTED_NUMERIC ? "PENDING" : "PASS", detail: coverage === NOT_REPORTED_NUMERIC ? "No verification records in canonical projection." : `${coverage}% of verification records passed.` },
       { id: "constraints", label: "Owner constraints", state: constraints.length > 0 ? "WARN" : "PASS", detail: `${constraints.length} active constraint${constraints.length === 1 ? "" : "s"} in durable controls.` },
       { id: "stale-leases", label: "Stale leases", state: staleLeases.length > 0 ? "WARN" : "PASS", detail: `${staleLeases.length} stale lease${staleLeases.length === 1 ? "" : "s"} reported by supervisor health.` },
@@ -281,6 +368,27 @@ export function mapTrustSummary(snapshot: FoundrySnapshot): TrustSummary {
 
 export function mapNotifications(snapshot: FoundrySnapshot): Notification[] {
   const items: Notification[] = [];
+  for (const record of snapshot.decision_queue?.open ?? []) {
+    const classification = String(record.classification ?? "UNKNOWN").toUpperCase();
+    const category: Notification["category"] = classification === "BLOCKED_EXTERNAL_DEPENDENCY"
+      ? "PROVIDER_DEGRADED"
+      : classification === "OWNER_VETO_ACTIVE"
+        ? "STOP_ACTIVATED"
+        : classification === "DECISION_REQUIRED"
+          ? "VERIFICATION_PENDING"
+          : "RECONCILIATION";
+    const missionId = typeof record.mission_id === "string" ? record.mission_id : null;
+    items.push({
+      id: String(record.queue_id ?? record.source_event_id ?? `attention-${items.length}`),
+      severity: classification === "BLOCKED_EXTERNAL_DEPENDENCY" || classification === "OWNER_VETO_ACTIVE" ? "CRITICAL" : "WARNING",
+      state: "UNREAD",
+      category,
+      title: typeof record.summary === "string" && record.summary ? record.summary : `Owner attention: ${classification}`,
+      detail: typeof record.consequence === "string" && record.consequence ? record.consequence : "Owner attention record is open in the canonical decision queue.",
+      createdAt: typeof record.opened_at === "string" ? record.opened_at : "UNKNOWN",
+      refs: missionId ? [{ kind: "mission", id: missionId, label: missionId }] : [],
+    });
+  }
   if (snapshot.stop.active) {
     items.push({
       id: "notif-stop",
@@ -361,6 +469,122 @@ export function mapOwnerControlSurface(snapshot: FoundrySnapshot): OwnerControlS
   };
 }
 
+const lifecycleRef = (kind: EntityRef["kind"], id: unknown): EntityRef[] =>
+  typeof id === "string" && id.trim() ? [{ kind, id, label: id }] : [];
+
+function missionEventRefs(event: FoundrySnapshot["timeline"][number], missionId: string): EntityRef[] {
+  const refs: EntityRef[] = [];
+  for (const raw of event.evidence_refs ?? []) {
+    if (!raw.id || raw.id === missionId && raw.kind !== "mission") continue;
+    const kind = raw.kind === "agent_run" ? "agent"
+      : raw.kind === "verification" ? "verdict"
+        : raw.kind === "directive" ? "timeline"
+          : raw.kind === "mission" ? "mission"
+            : raw.kind === "evidence" ? "evidence"
+              : raw.kind === "system" ? "system"
+                : raw.kind === "memory" ? "memory"
+                  : null;
+    if (kind) refs.push({ kind, id: raw.id, label: raw.id });
+  }
+  if (!refs.some((ref) => ref.kind === "mission")) refs.push({ kind: "mission", id: missionId, label: missionId });
+  return refs;
+}
+
+function lifecycleForMission(snapshot: FoundrySnapshot, missionId: string): AutonomyLifecycleRecord[] {
+  const mission = snapshot.missions.find((item) => item.mission_id === missionId);
+  const workers = snapshot.workers.filter((item) => item.mission_id === missionId);
+  const evidence = snapshot.evidence.filter((item) => item.mission_id === missionId);
+  const verdicts = snapshot.verification.filter((item) => item.mission_id === missionId);
+  const events = snapshot.timeline.filter((event) =>
+    event.evidence_refs?.some((ref) => ref.id === missionId && ref.kind === "mission")
+      || event.evidence_refs?.some((ref) => ref.id === missionId),
+  );
+  const eventIds = (...patterns: RegExp[]): string[] => events
+    .filter((event) => patterns.some((pattern) => pattern.test(event.event_type)))
+    .map((event) => event.event_id);
+  const eventRefs = (...patterns: RegExp[]): EntityRef[] => events
+    .filter((event) => patterns.some((pattern) => pattern.test(event.event_type)))
+    .flatMap((event) => missionEventRefs(event, missionId))
+    .filter((ref, index, all) => all.findIndex((candidate) => candidate.kind === ref.kind && candidate.id === ref.id) === index);
+  const state = String(mission?.state ?? "UNKNOWN").toUpperCase();
+  const missionState: AutonomyLifecycleRecord["state"] =
+    ["COMPLETE", "COMPLETED"].includes(state) ? "COMPLETE"
+      : ["BLOCKED", "FAILED", "HALTED", "CANCELLED", "CANCELED"].includes(state) ? "FAILED"
+        : ACTIVE_MISSION_STATES.has(state) ? "ACTIVE"
+          : STANDBY_MISSION_STATES.has(state) ? "PENDING"
+            : "UNKNOWN";
+  const make = (
+    key: string,
+    label: string,
+    lifecycleState: AutonomyLifecycleRecord["state"],
+    detail: string,
+    refs: EntityRef[],
+    ids: string[],
+  ): AutonomyLifecycleRecord => ({ key, label, state: lifecycleState, detail, refs, eventIds: ids });
+
+  const goal = snapshot.controls?.goals?.find((record) => {
+    const target = String(record.target ?? "GLOBAL");
+    return target === "GLOBAL" || target === missionId;
+  });
+  const goalId = goal?.directive_id ?? goal?.id;
+  const goalEvents = eventIds(/^owner_directive\.recorded$/);
+  const planEvents = eventIds(/mission\.created|mission_step\.recorded|executive\.decision_materialized|portfolio\..*selected|worker_loop\.portfolio_selected/);
+  const workerEvents = eventIds(/agent_run\.|worker\.(route_decided|run_recorded|crashed|fallback_triggered)/);
+  const actionEvents = eventIds(/system\.action_(started|completed|failed)|effect\./);
+  const evidenceEvents = eventIds(/evidence\.created|worker\.evidence_reconciled/);
+  const verifierEvents = eventIds(/verification\.(started|passed|failed|blocked)/);
+  const repairStateEvents = events
+    .filter((event) => event.event_type === "mission.state_changed" && String(event.state ?? "").toUpperCase() === "REPAIRING")
+    .map((event) => event.event_id);
+  const repairEvents = eventIds(/fallback|repair|retry/i).concat(repairStateEvents);
+  const memoryEvents = eventIds(/memory\./);
+  const briefingEvents = eventIds(/briefing\./);
+  const completedWorker = workers.find((worker) => String(worker.status).toUpperCase() === "COMPLETED");
+  const failedWorker = workers.find((worker) => ["FAILED", "CANCELLED"].includes(String(worker.status).toUpperCase()));
+  const runningWorker = workers.find((worker) => String(worker.status).toUpperCase() === "RUNNING");
+  const latestVerdict = verdicts[0];
+  const hasArtifact = evidence.some((item) => Object.keys(item.artifact_hashes ?? {}).length > 0);
+  const latestBriefing = snapshot.briefing_packet;
+
+  return [
+    make("owner_goal", "Owner goal", goal || goalEvents.length ? "COMPLETE" : "UNKNOWN",
+      typeof goal?.exact_text === "string" ? goal.exact_text : goal ? "Recorded owner goal" : "No owner goal is recorded for this mission.",
+      lifecycleRef("timeline", goalId).concat(eventRefs(/^owner_directive\.recorded$/)), goalEvents),
+    make("plan", "Plan", planEvents.length ? "COMPLETE" : mission ? "PENDING" : "UNKNOWN",
+      planEvents.length ? "Plan and mission admission are recorded in the ledger." : "No plan admission event is recorded.",
+      eventRefs(/mission\.created|mission_step\.recorded|executive\.|portfolio\./), planEvents),
+    make("mission", "Mission", missionState,
+      mission ? `${state}${mission.next_action ? ` · next ${mission.next_action}` : ""}` : "Mission record unavailable.",
+      lifecycleRef("mission", missionId).concat(lifecycleRef("timeline", mission?.last_event_id)),
+      mission?.last_event_id ? [mission.last_event_id] : []),
+    make("worker", "Worker", failedWorker ? "FAILED" : completedWorker ? "COMPLETE" : runningWorker ? "ACTIVE" : mission ? "PENDING" : "UNKNOWN",
+      failedWorker ? `Worker failure: ${failedWorker.failure_class ?? "UNKNOWN"}` : completedWorker ? "Worker run completed." : runningWorker ? "Worker run active." : "No worker run is recorded.",
+      workers.flatMap((worker) => lifecycleRef("agent", worker.run_id)).concat(eventRefs(/agent_run\.|worker\./)),
+      workerEvents.concat(workers.map((worker) => worker.last_event_id).filter((id): id is string => Boolean(id)))),
+    make("action_artifact", "Action / artifact", hasArtifact ? "COMPLETE" : actionEvents.some((id) => id) ? "ACTIVE" : mission ? "PENDING" : "UNKNOWN",
+      hasArtifact ? "Artifact hash is recorded in an evidence bundle." : actionEvents.length ? "Effect/action event is recorded; completion is not yet evidenced." : "No action or artifact record is available.",
+      eventRefs(/system\.action_|effect\.|evidence\.created/), actionEvents),
+    make("evidence", "Evidence", evidence.length ? "COMPLETE" : mission ? "PENDING" : "UNKNOWN",
+      evidence.length ? `${evidence.length} evidence bundle${evidence.length === 1 ? "" : "s"} recorded.` : "No evidence bundle is recorded.",
+      evidence.flatMap((item) => lifecycleRef("evidence", item.bundle_id)).concat(eventRefs(/evidence\.|worker\.evidence_reconciled/)),
+      evidenceEvents.concat(evidence.map((item) => item.last_event_id).filter((id): id is string => Boolean(id)))),
+    make("verifier", "Verifier", latestVerdict?.status === "PASS" ? "COMPLETE" : latestVerdict?.status === "FAIL" ? "FAILED" : latestVerdict?.status === "STARTED" ? "ACTIVE" : mission ? "PENDING" : "UNKNOWN",
+      latestVerdict ? `${latestVerdict.status}${latestVerdict.findings ? ` · ${String(latestVerdict.findings)}` : ""}` : "No independent verifier verdict is recorded.",
+      verdicts.flatMap((item) => lifecycleRef("verdict", item.verdict_id)).concat(eventRefs(/verification\./)),
+      verifierEvents.concat(verdicts.map((item) => item.last_event_id).filter((id): id is string => Boolean(id)))),
+    make("repair_retry", "Repair / retry", repairEvents.length ? "COMPLETE" : latestVerdict?.status === "FAIL" ? "PENDING" : "PENDING",
+      repairEvents.length ? "Repair or retry lineage is recorded." : latestVerdict?.status === "FAIL" ? "Verifier failed; no repair event is recorded yet." : "No repair or retry is recorded.",
+      eventRefs(/fallback|repair|retry/i), repairEvents),
+    make("memory", "Memory", snapshot.memory.some((item) => item.mission_id === missionId) ? "COMPLETE" : missionState === "COMPLETE" ? "UNKNOWN" : mission ? "PENDING" : "UNKNOWN",
+      snapshot.memory.some((item) => item.mission_id === missionId) ? "Mission-linked memory write is recorded." : "No mission-linked memory write is recorded.",
+      snapshot.memory.filter((item) => item.mission_id === missionId).flatMap((item) => lifecycleRef("memory", item.memory_id)).concat(eventRefs(/memory\./)),
+      memoryEvents),
+    make("owner_briefing", "Owner briefing", latestBriefing ? "COMPLETE" : "UNKNOWN",
+      latestBriefing ? "Briefing packet projection is available." : "No briefing packet projection is available.",
+      eventRefs(/briefing\./), briefingEvents),
+  ];
+}
+
 export function mapMissionRun(snapshot: FoundrySnapshot, missionId: string): MissionRun {
   const mission = snapshot.missions.find((m) => m.mission_id === missionId);
   const steps = snapshot.mission_steps.filter((s) => s.mission_id === missionId);
@@ -368,14 +592,15 @@ export function mapMissionRun(snapshot: FoundrySnapshot, missionId: string): Mis
   const activeWorkers = snapshot.workers.filter((w) => w.mission_id === missionId && w.status === "RUNNING").length;
   return {
     missionId,
+    lifecycle: lifecycleForMission(snapshot, missionId),
     pipeline: steps.length
       ? steps.map((s, i) => ({
           key: String(s.step_id ?? i),
           label: String(s.capability ?? s.step_id ?? `step-${i + 1}`),
-          state: i === 0 ? "ACTIVE" : "PENDING",
-          detail: String(s.capability ?? ""),
+          state: "UNKNOWN",
+          detail: String(s.capability ?? "UNKNOWN"),
         }))
-      : [{ key: "state", label: mission?.state ?? "UNKNOWN", state: "ACTIVE", detail: mission?.next_action ?? "" }],
+      : [{ key: "state", label: mission?.state ?? "UNKNOWN", state: mission ? (mapMissionStatus(mission.state) === "COMPLETE" ? "COMPLETE" : mapMissionStatus(mission.state) === "UNKNOWN" ? "UNKNOWN" : "ACTIVE") : "UNKNOWN", detail: mission?.next_action ?? "UNKNOWN" }],
     telemetry: snapshot.timeline
       .filter((e) => e.evidence_refs?.some((r) => r.id === missionId))
       .slice(-8)
@@ -385,15 +610,15 @@ export function mapMissionRun(snapshot: FoundrySnapshot, missionId: string): Mis
         level: e.event_type.includes("fail") ? "ERROR" : "INFO",
         text: e.summary ?? e.event_type,
       })),
-    streams: [{ id: "ledger", name: "Event ledger", icon: "ledger", status: "connected", state: "LIVE" }],
+    streams: [{ id: "ledger", name: "Event ledger", icon: "ledger", status: "canonical snapshot", state: "POLLING" }],
     verdicts: snapshot.verification
       .filter((v) => v.mission_id === missionId)
       .map((v) => ({
         id: v.verdict_id,
         title: v.status ?? "verification",
         state: v.status === "PASS" ? "PASSED" : v.status === "FAIL" ? "FAILED" : "EVALUATING",
-        detail: String(v.findings ?? ""),
-        workerId: v.run_id,
+        detail: v.findings ? String(v.findings) : "UNKNOWN",
+        workerId: v.verifier_run_id ?? v.run_id,
       })),
     stats: {
       elapsed: "—",
@@ -412,8 +637,8 @@ export function mapMissionSteps(snapshot: FoundrySnapshot, missionId: string): M
       missionId,
       key: String(s.step_id ?? i),
       label: String(s.capability ?? s.step_id ?? `step-${i + 1}`),
-      state: i === 0 ? "ACTIVE" : "PENDING",
-      detail: String(s.capability ?? ""),
+      state: "UNKNOWN",
+      detail: String(s.capability ?? "UNKNOWN"),
       evidenceIds: snapshot.evidence.filter((e) => e.mission_id === missionId && e.step_id === s.step_id).map((e) => e.bundle_id),
     }));
 }

@@ -112,10 +112,16 @@ if (managePreview) {
     )
     process.exit(2)
   }
-  previewProcess = spawn("npx", ["vite", "preview", "--port", String(port), "--strictPort"], {
+  const viteBin = join(process.cwd(), "node_modules", "vite", "bin", "vite.js")
+  // Scenario assertions require the explicitly simulated client.  Start a
+  // source-backed Vite dev lane so VITE_JARVIS_MODE is applied at module
+  // load, while keeping the launch independent of npm/npx PATH shims.
+  previewProcess = spawn(process.execPath, [viteBin, "--host", "127.0.0.1", "--port", String(port), "--strictPort"], {
     cwd: process.cwd(),
-    shell: true,
+    shell: false,
     stdio: "ignore",
+    windowsHide: true,
+    env: { ...process.env, VITE_JARVIS_MODE: process.env.VERIFY_JARVIS_MODE ?? "simulated" },
   })
   if (previewProcess.pid) registerLaneProcess(laneId, port, previewProcess.pid)
   previewProcess.on("exit", () => clearLaneRecord(laneId))
@@ -154,7 +160,7 @@ try {
             const headingLocator =
               route.emptyHeading && scenario === "EMPTY_STATE"
                 ? page.getByText(expectedHeading)
-                : page.getByRole("heading", { name: expectedHeading })
+            : page.getByRole("heading", { name: expectedHeading, exact: true })
             await headingLocator.waitFor({ state: "visible", timeout: 10_000 })
             const pill = page.locator(".data-source-pill")
             const pillText = await pill.innerText()

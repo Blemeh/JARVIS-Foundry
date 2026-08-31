@@ -28,7 +28,7 @@ const matrixRoutes: MatrixRoute[] = [
     path: "/executive",
     slug: "executive",
     assertVisible: async (page) => {
-      await expect(page.getByRole("heading", { name: "Executive" })).toBeVisible()
+      await expect(page.getByRole("heading", { name: "Executive", exact: true })).toBeVisible()
     },
   },
   {

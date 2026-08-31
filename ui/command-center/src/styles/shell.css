@@ -7,7 +7,7 @@
 .shell-main {
   position: relative;
   height: 100dvh;
-  margin-left: var(--sidebar-width);
+  margin-left: 0;
   padding-top: var(--topbar-height);
   padding-bottom: var(--bottombar-height);
   overflow-y: auto;
@@ -273,6 +273,10 @@
   -webkit-backdrop-filter: blur(18px);
   border-bottom: 1px solid var(--structural-line);
   z-index: 50;
+}
+
+.topbar--god {
+  left: 0;
 }
 
 .topbar-left,

@@ -6,7 +6,10 @@
  * current mission ships MockJarvisClient behind the same interface.
  */
 import type { FoundryExecutive } from "./snapshotTypes";
+import type { ObsidianVaultFile } from "./obsidianVault";
 import type { V3DiscoveryView } from "./v3Models";
+
+export type { ObsidianVaultFile } from "./obsidianVault";
 
 export type DataSource = "SIMULATED" | "LIVE" | "DEGRADED" | "DISCONNECTED" | "UNKNOWN";
 
@@ -25,7 +28,9 @@ export type MissionStatus =
   | "BLOCKED"
   | "HALTED"
   | "INTERVENTION"
-  | "COMPLETE";
+  | "COMPLETE"
+  | "CANCELLED"
+  | "UNKNOWN";
 
 export type Priority = "CRITICAL" | "HIGH" | "ELEVATED" | "NORMAL";
 
@@ -45,7 +50,17 @@ export interface Mission {
   owner: string;
 }
 
-export type PipelineStageState = "COMPLETE" | "ACTIVE" | "PENDING";
+/** Lifecycle truth is deliberately closed over explicit absence. */
+export type PipelineStageState = "COMPLETE" | "ACTIVE" | "PENDING" | "FAILED" | "UNKNOWN" | "UNAVAILABLE";
+
+export interface AutonomyLifecycleRecord {
+  key: string;
+  label: string;
+  state: PipelineStageState;
+  detail: string;
+  refs: EntityRef[];
+  eventIds: string[];
+}
 
 export interface PipelineStage {
   key: string;
@@ -66,7 +81,7 @@ export interface DataStream {
   name: string;
   icon: "database" | "api" | "memory" | "route" | "ledger";
   status: string;
-  state: "LIVE" | "POLLING" | "CACHED" | "WRITING";
+  state: "LIVE" | "POLLING" | "CACHED" | "WRITING" | "UNKNOWN" | "UNAVAILABLE";
 }
 
 export type VerdictState = "PASSED" | "WARN_ACCEPT" | "EVALUATING" | "FAILED";
@@ -83,6 +98,7 @@ export interface VerifierVerdict {
 export interface MissionRun {
   missionId: string;
   pipeline: PipelineStage[];
+  lifecycle?: AutonomyLifecycleRecord[];
   telemetry: TelemetryEntry[];
   streams: DataStream[];
   verdicts: VerifierVerdict[];
@@ -94,7 +110,7 @@ export interface MissionRun {
   };
 }
 
-export type WorkerStatus = "ACTIVE" | "STANDBY" | "DEGRADED" | "RATE_LIMITED" | "FAILED" | "RECOVERING";
+export type WorkerStatus = "ACTIVE" | "STANDBY" | "DEGRADED" | "RATE_LIMITED" | "FAILED" | "RECOVERING" | "UNKNOWN" | "UNAVAILABLE";
 export type WorkerRunStatus = "ACTIVE" | "FAILED" | "RECOVERING" | "COMPLETE" | "QUEUED";
 
 export interface Worker {
@@ -144,7 +160,8 @@ export type MemoryNodeCategory =
   | "DECISION"
   | "PROCEDURE"
   | "OBSERVATION"
-  | "RESOURCE";
+  | "RESOURCE"
+  | "UNKNOWN";
 
 export interface MemoryNode {
   id: string;
@@ -192,7 +209,7 @@ export interface TimelineEvent {
   memoryId?: string;
 }
 
-export type ComponentState = "RUNNING" | "STANDBY" | "STOPPED" | "ARMED" | "ACTIVE";
+export type ComponentState = "RUNNING" | "STANDBY" | "STOPPED" | "ARMED" | "ACTIVE" | "UNKNOWN" | "UNAVAILABLE";
 export type Health = "HEALTHY" | "DEGRADED" | "CRITICAL" | "UNKNOWN";
 export type Readiness = "READY" | "NOT_READY" | "DEGRADED" | "UNKNOWN";
 
@@ -212,8 +229,8 @@ export interface SystemComponent {
   incidentEventIds?: string[];
 }
 
-export type TrustState = "SIMULATED" | "PROVEN" | "DEGRADED" | "SUSPENDED";
-export type GateStatus = "OPEN" | "GATED" | "PASS" | "FAIL" | "NOT_APPLICABLE";
+export type TrustState = "SIMULATED" | "PROVEN" | "DEGRADED" | "SUSPENDED" | "UNKNOWN" | "UNAVAILABLE";
+export type GateStatus = "OPEN" | "GATED" | "PASS" | "FAIL" | "NOT_APPLICABLE" | "UNKNOWN" | "UNAVAILABLE";
 
 export interface TrustFactor {
   id: string;
@@ -305,8 +322,58 @@ export interface OwnerControlSurface {
   };
 }
 
+/** Additive V8 operational-intelligence surface; absent means unavailable. */
+export type OperationalSalience =
+  | "IGNORE"
+  | "REMEMBER"
+  | "MONITOR"
+  | "RECOMMEND"
+  | "CREATE_WORK"
+  | "OWNER_ATTENTION"
+  | "URGENT"
+
+export interface OperationalSignalSurface {
+  signal_id: string
+  fingerprint: string
+  salience: OperationalSalience | string
+  score: number | null
+  state: "OPEN" | "RESOLVED" | "SUPPRESSED" | "UNKNOWN" | string
+  kind: string
+  summary: string
+  recurrence_count: number | null
+  suppressed_count: number | null
+  next_action: string
+  entity_kind?: string | null
+  entity_id?: string | null
+  source_event_ids?: string[]
+  evidence_refs?: string[]
+}
+
+export interface OperationalIntelligenceSurface {
+  schema: string
+  status: string
+  generated_at: string
+  signals: OperationalSignalSurface[]
+  followups: Record<string, unknown>[]
+  attention?: {
+    open_count?: number
+    owner_attention_count?: number
+    deduped_occurrences?: number
+    counts_by_salience?: Record<string, number>
+  }
+  providers?: Record<string, unknown>
+  routing?: Record<string, unknown>
+  recurring_work?: Record<string, unknown>
+  context?: Record<string, unknown>
+  memory?: Record<string, unknown>
+  knowledge?: Record<string, unknown>
+  evolution?: Record<string, unknown>
+}
+
 export interface SystemOverview {
   version: string;
+  /** Authoritative numeric schema from the canonical snapshot, when available. */
+  schema: number | null;
   build: string;
   releaseState: string;
   uptime: string;
@@ -488,6 +555,7 @@ export interface JarvisClient {
   listTimeline(): Promise<TimelineEvent[]>;
   getTimelineEvent(id: string): Promise<TimelineEvent | null>;
   getMemoryGraph(): Promise<MemoryGraph>;
+  getObsidianVault(): Promise<ObsidianVaultFile[]>;
   getMemoryNode(id: string): Promise<MemoryNode | null>;
   getExecutive(): Promise<FoundryExecutive>;
   /**

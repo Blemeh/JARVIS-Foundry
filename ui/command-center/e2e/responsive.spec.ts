@@ -5,14 +5,14 @@ async function assertNoHorizontalOverflow(page: import("@playwright/test").Page)
   expect(overflow).toBeLessThanOrEqual(1);
 }
 
-test("V4 compact rail at 1120 has 78px sidebar and no overflow", async ({ page }) => {
+test("GOD MODE nav rail at 1120 has 64px rail and no overflow", async ({ page }) => {
   await page.setViewportSize({ width: 1120, height: 900 });
   await page.goto("/");
-  const sidebarWidth = await page.evaluate(() => {
-    const el = document.querySelector(".sidebar") as HTMLElement;
+  const railWidth = await page.evaluate(() => {
+    const el = document.querySelector(".nav-rail-shell") as HTMLElement;
     return el ? el.getBoundingClientRect().width : 0;
   });
-  expect(sidebarWidth).toBeCloseTo(78, 1);
+  expect(railWidth).toBeCloseTo(64, 2);
   await assertNoHorizontalOverflow(page);
 });
 
@@ -28,15 +28,14 @@ test("mobile drawer opens and closes with all sections", async ({ page }) => {
   await expect(page.getByRole("dialog", { name: "Navigation" })).toHaveCount(0);
 });
 
-test("tablet layout at 834 has compact rail and no horizontal overflow", async ({ page }) => {
+test("tablet layout at 834 has nav rail and no horizontal overflow", async ({ page }) => {
   await page.setViewportSize({ width: 834, height: 1112 });
   await page.goto("/missions");
-  const sidebarWidth = await page.evaluate(() => {
-    const el = document.querySelector(".sidebar") as HTMLElement;
+  const railWidth = await page.evaluate(() => {
+    const el = document.querySelector(".nav-rail-shell") as HTMLElement;
     return el ? el.getBoundingClientRect().width : 0;
   });
-  // At 834, V4 is still compact rail (between 700 and 1120)
-  expect(sidebarWidth).toBeCloseTo(78, 1);
+  expect(railWidth).toBeCloseTo(64, 2);
   await assertNoHorizontalOverflow(page);
 });
 
@@ -54,11 +53,11 @@ test("desktop 1280 layout renders without horizontal overflow", async ({ page })
   await assertNoHorizontalOverflow(page);
 });
 
-test("mobile 700 downlink has 2-col telemetry and no overflow", async ({ page }) => {
+test("mobile 700 homepage has core and no overflow", async ({ page }) => {
   await page.setViewportSize({ width: 700, height: 900 });
   await page.goto("/");
   await assertNoHorizontalOverflow(page);
-  await expect(page.locator(".v4-downlink")).toBeVisible();
+  await expect(page.locator(".jarvis-os")).toBeVisible();
   await expect(page.locator("[data-jarvis-core-state]")).toBeVisible();
 });
 

@@ -4,7 +4,19 @@ Single authoritative capability status. Classifications:
 `IMPLEMENTED_AND_PROVEN` · `IMPLEMENTED_UNPROVEN` · `PARTIAL` · `MISSING` · `SUPERSEDED`.
 
 Evidence roots: `docs/evidence/`, `evidence/`, git history, live runtime state.
-Current work reference, reconciled 2026-08-24:
+Current work reference, reconciled 2026-08-28:
+the isolated convergence branch is `candidate/canonical-convergence-20260828`,
+starting from recovery base `58baca5e7feccf2507614cde75d641bddc15ed98`.
+Canonical `main` is `8dfb981876985525621cf10b8b9b67e34468b450`; fetched
+`origin/main` is `fe0592991e98de3f5de27c53d40339f4281156f1`. The canonical
+checkout is dirty and untouched by this lane. This candidate contains the
+reconciled backend projection and the cinematic Command Center/NavRail surface;
+its source, UI, test, and lane-classification evidence is recorded in
+`docs/evidence/integration/canonical-convergence-20260828/RECONCILIATION.md`.
+This lane makes no live or production claim and did not restart, migrate,
+deploy, or otherwise mutate a runtime, database, Scheduler task, or remote.
+
+Historical V456 stage (2026-08-24), retained for lineage:
 canonical `main`/`origin/main` at `08dad95` (V4/V5/V6 plus cinematic Command
 Center, migration-script repair, fresh operational evidence, and source
 promotion). The deployed runtime remains immutable release
@@ -56,12 +68,12 @@ is PASS with provider mode DISABLED and no scheduler installation.
 | Event reconciliation | V1 | reconcile() + rebuild_projections + doctor | test_reconcile; live consistent=True | IMPLEMENTED_AND_PROVEN | none |
 | Hybrid Memory (Tier C) | V8 (Letta influence, native) | lifecycle/stamps, blocks, recall, procedures, curation, defense, git versioning, compiler; schema v33 | V8_CANONICAL_PROMOTION_REPORT; live canary; 41 tests | IMPLEMENTED_AND_PROVEN | semantic recall hook reserved |
 | Knowledge claims/evidence | V2 | knowledge_claims (freshness/contradictions), evidence bundles, retrieval manifests | WP9–WP12 gates, V2/V3 operational gates | IMPLEMENTED_AND_PROVEN | none |
-| Obsidian integration | V1 | vault write-back, indexing, snapshots | WP6, WP11; live connector-root | IMPLEMENTED_AND_PROVEN | vault is external (read-only canonical boundary) |
+| Obsidian integration | V1 | vault write-back, indexing, snapshots, bounded graph/note projection | WP6, WP11; candidate vault graph contract | IMPLEMENTED_AND_PROVEN | vault is external (read-only canonical boundary) |
 | Autonomous continuation | V7 | standing mandate, auto-continuation, continuity slices | V7_S12, V7_S13 FINAL GATE | IMPLEMENTED_AND_PROVEN | owner START/STOP authority preserved |
 | Provider routing | V4 | model routing + provider identity, family rules | V4_MR1, V7_S11 | IMPLEMENTED_AND_PROVEN | single-family verification pool |
 | Resource registration | V1 | discovery + registration, resource scoring | WP8_RESOURCE_SCORING, V7_S4 | IMPLEMENTED_AND_PROVEN | none |
 | External actions | V5 | connectors + effects + broker | V5_S4/S6 | IMPLEMENTED_AND_PROVEN | platform-specific connectors |
-| Command Center | V4 | monitors, scoring, capability states, support semantics | V4 gate + V7_S8 | IMPLEMENTED_AND_PROVEN | UI surface limited |
+| Command Center | V4 | monitors, scoring, capability states, owner controls, briefings, cinematic core, NavRail, bounded vault graph | V4/V7 gates + candidate browser/product suites | IMPLEMENTED_AND_PROVEN | live provider/runtime inspection remains separate |
 | Voice | — | voice_interactions table exists; no full voice pipeline | migrations | PARTIAL | end-to-end voice UX |
 | Multi-system operation | V5 | systems registry + broker | V5 slices | IMPLEMENTED_AND_PROVEN | single host |
 | Self-evolution | V6 | builder/lab/verifier, shadow, canary, promote, restore, discovery, cycles | V6_S0–S13 | IMPLEMENTED_AND_PROVEN | none |

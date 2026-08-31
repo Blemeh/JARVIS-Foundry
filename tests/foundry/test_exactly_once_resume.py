@@ -179,13 +179,16 @@ def test_resume_after_interrupted_verifier_runs_builder_exactly_once(tmp_path):
     assert count_started(database, "run-x1") == 1
     # the deliverable was mutated exactly once: byte-identical after resume
     assert hashlib.sha256(deliverable.read_bytes()).hexdigest() == before_hash
-    # the verifier was dispatched under a FRESH run id and completed
-    assert count_started(database, "run-x1-verify-r1") == 1
+    # the verifier was dispatched under one deterministic, content-addressed
+    # fresh run id and completed.  The exact suffix is a contract digest, not
+    # a process-local counter.
     with database.connect() as connection:
-        row = connection.execute(
-            "SELECT status FROM agent_runs WHERE run_id = 'run-x1-verify-r1'"
-        ).fetchone()
-    assert row[0] == "COMPLETED"
+        rows = connection.execute(
+            "SELECT run_id, status FROM agent_runs "
+            "WHERE run_id LIKE 'run-x1-verify-v%'"
+        ).fetchall()
+    assert len(rows) == 1
+    assert rows[0][1] == "COMPLETED"
     # the dangling STARTED verdict got the additive correction
     assert verdict_status(database, "verdict-v1") == "BLOCKED"
     # a fresh verdict was recorded PASS
@@ -218,20 +221,29 @@ def test_resume_after_reaped_verifier_row_uses_fresh_id(tmp_path):
         verification_criteria=["deliverable exists", "deliverable is correct"])
 
     assert outcome.outcome == "PASSED"
-    assert count_started(database, "run-x1-verify-r1") == 1
+    with database.connect() as connection:
+        fresh = connection.execute(
+            "SELECT run_id, status FROM agent_runs "
+            "WHERE run_id LIKE 'run-x1-verify-v%'"
+        ).fetchall()
+    assert len(fresh) == 1
+    assert fresh[0][1] == "COMPLETED"
     # the reaped row stays FAILED (monotonic), the fresh row COMPLETED
     with database.connect() as connection:
         rows = dict(connection.execute(
             "SELECT run_id, status FROM agent_runs ORDER BY run_id").fetchall())
     assert rows["run-x1-verify"] == "FAILED"
-    assert rows["run-x1-verify-r1"] == "COMPLETED"
+    assert rows[fresh[0][0]] == "COMPLETED"
     assert verdict_status(database, "verdict-v1") == "BLOCKED"
 
 
-def test_completed_verifier_replays_without_new_session(tmp_path):
-    """When the pass-1 verifier DID complete, the resume replays its
-    result (no new session, no new verifier events) — and the dangling
-    STARTED verdict still gets the additive correction."""
+def test_completed_verifier_with_changed_manifest_is_re_evaluated(tmp_path):
+    """A completed verifier from an older manifest is immutable history.
+
+    The repaired loop must create a fresh content-addressed verifier session
+    when its instructions/contract change, rather than silently replaying an
+    incompatible PASS.
+    """
     database, repository, policy, router = mission_fixture(tmp_path)
     target = repository / "step-out"
     target.mkdir()
@@ -265,16 +277,21 @@ def test_completed_verifier_replays_without_new_session(tmp_path):
         rollback={"kind": "git_reset_soft"}, risk_class="C1",
         verification_criteria=["deliverable exists", "deliverable is correct"])
 
-    # the replayed verifier result (PASS from pass-1) decides — the fake
-    # adapter was never reached for the verifier role
-    assert outcome.outcome == "PASSED"
-    # no fresh verifier session was started
+    # The changed contract is evaluated by the fake verifier, which returns
+    # FAIL; the historical PASS is not reused as authorization.
+    assert outcome.outcome == "FAILED"
     assert count_started(database, "run-x1-verify") == 1
-    assert count_started(database, "run-x1-verify-r1") == 0
-    # the dangling verdict was corrected; the fresh verdict recorded PASS
+    with database.connect() as connection:
+        fresh = connection.execute(
+            "SELECT run_id, status FROM agent_runs "
+            "WHERE run_id LIKE 'run-x1-verify-v%'"
+        ).fetchall()
+    assert len(fresh) == 1
+    assert fresh[0][1] == "COMPLETED"
+    # the dangling verdict was corrected; the fresh verdict recorded FAIL
     assert verdict_status(database, "verdict-v1") == "BLOCKED"
     with database.connect() as connection:
         passed = connection.execute(
             "SELECT COUNT(*) FROM verification_verdicts WHERE status = 'PASS'"
         ).fetchone()[0]
-    assert passed == 1
+    assert passed == 0

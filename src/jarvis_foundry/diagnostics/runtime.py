@@ -24,10 +24,17 @@ def derive_health(
     reconciliation_consistent: bool,
     release_status: str | None,
     stop_active: bool,
+    supervisor_count: int | None = None,
+    parity: str | None = None,
+    trust_state: str | None = None,
 ) -> dict[str, Any]:
     """Derive an honest operational status without a fabricated healthy default."""
 
     runtime_status = str(runtime_status).upper()
+    if supervisor_count == 0:
+        return {"status": "DEGRADED", "reason": "canonical Supervisor process is missing"}
+    if supervisor_count is not None and supervisor_count > 1:
+        return {"status": "DEGRADED", "reason": "duplicate canonical Supervisor processes detected"}
     if stop_active or runtime_status == "BLOCKED":
         return {"status": "BLOCKED", "reason": "emergency STOP or runtime block is active"}
     if runtime_status in {"UNKNOWN", "DEGRADED"}:
@@ -38,6 +45,8 @@ def derive_health(
         return {"status": "DEGRADED", "reason": "event/projection reconciliation is inconsistent"}
     if release_status not in (None, "VALID"):
         return {"status": "DEGRADED", "reason": f"release identity status is {release_status}"}
+    if parity not in (None, "MATCH"):
+        return {"status": "DEGRADED", "reason": f"source/installed/runtime parity is {parity}"}
     if runtime_status == "RUNNING":
         return {"status": "RUNNING", "reason": "live lease and process identity are proven"}
     return {"status": "UNKNOWN", "reason": f"unrecognized runtime status: {runtime_status}"}

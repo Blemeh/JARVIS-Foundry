@@ -181,6 +181,7 @@ Allowed trust states:
 | `DESIGN_ONLY` | No runtime exists or implementation is not activated. |
 | `LAB` | Runtime exists only in controlled proving conditions. |
 | `PROVEN` | A bounded acceptance gate passed. |
+| `LIMITED_AUTONOMY` | Local runtime, recovery, verifier, release, schema, and owner-control gates pass; provider routing or another full-scope criterion remains unproven, so operation stays bounded. |
 | `TRUSTED_AUTONOMOUS` | Repeated unattended evidence supports continuous autonomous operation. |
 | `DEGRADED` | Health or behavior no longer meets the active trust gate. |
 | `SUSPENDED` | Owner or watchdog froze operation. |

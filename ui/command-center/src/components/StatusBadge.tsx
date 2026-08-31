@@ -1,6 +1,6 @@
 import type { ComponentState, EvidenceVerdict, Health, MemoryNodeCategory, MissionStatus, VerdictState, WorkerStatus } from "../lib/contracts";
 
-type Status =
+export type Status =
   | MissionStatus
   | WorkerStatus
   | EvidenceVerdict
@@ -8,6 +8,9 @@ type Status =
   | ComponentState
   | Health
   | "READY"
+  | "AVAILABLE"
+  | "PARTIAL"
+  | "EMPTY_LEDGER"
   | "NOT_READY"
   | "DEGRADED"
   | "SIMULATED"
@@ -19,8 +22,10 @@ type Status =
   | "FAIL"
   | "NOT_TESTED"
   | "FAILED"
+  | "CANCELLED"
   | "RECOVERING"
   | "QUEUED"
+  | "UNAVAILABLE"
   | MemoryNodeCategory;
 
 const variantMap: Record<string, "accent" | "teal" | "amber" | "error" | "muted"> = {
@@ -29,6 +34,9 @@ const variantMap: Record<string, "accent" | "teal" | "amber" | "error" | "muted"
   ARMED: "accent",
   RUNNING: "accent",
   READY: "accent",
+  AVAILABLE: "teal",
+  PARTIAL: "amber",
+  EMPTY_LEDGER: "muted",
   PASSED: "teal",
   VERIFIED: "teal",
   PASS: "teal",
@@ -51,11 +59,13 @@ const variantMap: Record<string, "accent" | "teal" | "amber" | "error" | "muted"
   CRITICAL: "error",
   SUSPENDED: "error",
   STOPPED: "error",
+  CANCELLED: "error",
   RATE_LIMITED: "error",
   SIMULATED: "muted",
   NOT_READY: "muted",
   NOT_TESTED: "muted",
   UNKNOWN: "muted",
+  UNAVAILABLE: "muted",
   MISSION: "accent",
   EVIDENCE: "teal",
   BELIEF: "muted",
@@ -66,7 +76,7 @@ const variantMap: Record<string, "accent" | "teal" | "amber" | "error" | "muted"
   PENDING: "amber",
 };
 
-export function StatusBadge({ status, pulse = false }: { status: Status; pulse?: boolean }) {
+export function StatusBadge({ status, pulse = false }: { status: Status | string; pulse?: boolean }) {
   const variant = variantMap[status] ?? "muted";
   return (
     <span className={`badge badge-${variant}`}>

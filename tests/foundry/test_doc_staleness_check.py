@@ -1,8 +1,9 @@
 """Documentation staleness check (anti-stale contract, Phase 10).
 
-Wraps scripts/doc_staleness_check.py: CURRENT_STATE.md must name the real
-git HEAD and schema; current-status surfaces must not carry forbidden
-stale phrases; referenced evidence paths must exist.
+Wraps scripts/doc_staleness_check.py: CURRENT_STATE.md must pin the source
+state immediately before the final docs-only reconciliation commit and name
+the schema; current-status surfaces must not carry forbidden stale phrases;
+referenced evidence paths must exist.
 """
 from __future__ import annotations
 
@@ -27,18 +28,9 @@ def test_current_state_names_real_head_and_schema():
     staleness = _load_staleness_module()
     head = sp.run(["git", "-C", str(REPO), "rev-parse", "HEAD"],
                   capture_output=True, text=True, check=True).stdout.strip()
+    state_sha = staleness.documentation_state_sha(head)
     text = (REPO / "docs" / "CURRENT_STATE.md").read_text(encoding="utf-8")
-    found = head[:7] in text or head in text
-    if not found:
-        for i in range(1, 21):
-            sha = sp.run(["git", "-C", str(REPO), "rev-parse", f"HEAD~{i}"],
-                         capture_output=True, text=True).stdout.strip()
-            if not sha or sha == head:
-                break
-            if sha[:7] in text or sha in text:
-                found = True
-                break
-    assert found
+    assert staleness.validate_documentation_pin(text, state_sha) == []
     sys.path.insert(0, str(REPO / "src"))
     from jarvis_foundry.migrations import SCHEMA_VERSION
     assert staleness.validate_schema_documentation(text, SCHEMA_VERSION) == []
@@ -94,7 +86,8 @@ def test_schema_check_rejects_contradictory_current_v35_claim():
 def test_forbidden_stale_phrases_absent_from_current_surfaces():
     surfaces = ("docs/CURRENT_STATE.md",
                 "docs/architecture/00_READ_FIRST.md",
-                "docs/architecture/05_POST_V1_ROADMAP.md")
+                "docs/architecture/05_POST_V1_ROADMAP.md",
+                "tests/acceptance/README.md")
     forbidden = ("BUILD NOT STARTED", "IMPLEMENTATION: NOT STARTED",
                  "START BUILD RECEIVED: NO", "Designed, not built",
                  "has not started implementation", "execution remains not started")

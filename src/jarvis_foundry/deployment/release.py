@@ -18,6 +18,7 @@ from typing import Any
 from .. import __version__ as PACKAGE_VERSION
 from ..clock import isoformat
 from ..database import FoundryDatabase
+from ..events import Event
 from ..migrations import SCHEMA_VERSION
 from .layout import (
     cli_cmd,
@@ -47,6 +48,8 @@ if not exist "%PY%" (
   echo FAIL_CLOSED: release python missing>&2
   exit /b 2
 )
+set "JARVIS_RELEASE_ID=%SHA%"
+set "JARVIS_RELEASE_SHA=%SHA%"
 "%PY%" -m jarvis_foundry.deployment.launcher %*
 exit /b %ERRORLEVEL%
 """
@@ -115,6 +118,210 @@ def write_pointer(path: Path, sha: str) -> None:
     temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
     temporary.write_text(sha.strip() + "\n", encoding="utf-8")
     os.replace(temporary, path)
+
+
+def _transition_marker(root: Path | None) -> Path:
+    """Return the recoverable filesystem/ledger transition marker."""
+
+    return install_root(root) / "RELEASE_TRANSITION.json"
+
+
+def _write_transition_marker(
+    root: Path | None, *, target: str, previous: str | None, phase: str,
+    transition_id: str | None = None,
+) -> Path:
+    path = _transition_marker(root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    transition_id = transition_id or uuid.uuid4().hex
+    temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+    temporary.write_text(
+        json.dumps({
+            "target_source_sha": target,
+            "previous_source_sha": previous,
+            "phase": phase,
+            "transition_id": transition_id,
+            "recorded_at": isoformat(),
+        }, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    try:
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
+    return path
+
+
+def _database_active_release(database: FoundryDatabase) -> dict[str, Any]:
+    """Read the canonical database live slot and its immutable manifest."""
+
+    with database.connect(readonly=True) as connection:
+        slot = connection.execute(
+            "SELECT slot, release_id, updated_at, last_event_id "
+            "FROM release_slots WHERE slot = 'live'"
+        ).fetchone()
+        if slot is None or slot["release_id"] in (None, ""):
+            return {
+                "slot": "live", "release_id": None, "source_sha": None,
+                "manifest": None, "updated_at": None,
+                "last_event_id": None,
+            }
+        manifest = connection.execute(
+            "SELECT * FROM release_manifests WHERE release_id = ?",
+            (slot["release_id"],),
+        ).fetchone()
+    return {
+        "slot": "live",
+        "release_id": str(slot["release_id"]),
+        "source_sha": str(manifest["source_commit"]) if manifest else None,
+        "manifest": dict(manifest) if manifest else None,
+        "updated_at": slot["updated_at"],
+        "last_event_id": slot["last_event_id"],
+    }
+
+
+def _installed_manifest_event(
+    identity: dict[str, Any], *, source_sha: str,
+) -> Event:
+    """Create the ledger record for an immutable installed release.
+
+    The V6 release registry already owns ``release_manifests``.  This small
+    deployment bridge records the exact ``RELEASE.json`` identity in that
+    registry so the runtime can prove source/install/DB parity without
+    introducing a second authority or mutating the event ledger directly.
+    """
+
+    manifest = dict(identity["manifest"])
+    release_id = str(manifest["release_id"])
+    release_root = Path(str(identity["release_dir"]))
+    release_json = release_root / "RELEASE.json"
+    artifact_hashes = {
+        "RELEASE.json": hashlib.sha256(release_json.read_bytes()).hexdigest(),
+    }
+    runtime_identity = dict(identity["runtime_identity"])
+    payload = {
+        "release_id": release_id,
+        "source_commit": source_sha,
+        "artifact_hashes": artifact_hashes,
+        "dependencies": [],
+        "runtime_identity": runtime_identity,
+        "parent_release_id": None,
+        "improvement_id": f"deployment:{source_sha}",
+        "risk_class": "R0",
+        "migrations": [int(runtime_identity["schema"])],
+        "verdicts": [],
+        "rollback_target": None,
+        "authority_kind": "immutable_installed_release",
+    }
+    return Event.create(
+        "release.manifest_recorded",
+        payload,
+        source_type="supervisor",
+        source_id="deployment-authority",
+        idempotency_key=f"release.manifest_recorded:{release_id}",
+    )
+
+
+def record_active_release(
+    source_sha: str,
+    *,
+    root: Path | None = None,
+    database: FoundryDatabase,
+    reason: str = "explicit immutable release activation",
+    controller: str = "supervisor",
+    transition_id: str | None = None,
+) -> dict[str, Any]:
+    """Record an installed release as the database-backed live authority.
+
+    This is deliberately separate from ``build_release``: building and
+    installing an immutable directory never changes live state.  The caller
+    invokes it only in the explicit promotion/rollback window, where the
+    manifest and the live slot are appended atomically.  Filesystem pointers
+    are reconciled by ``set_current`` after this ledger transaction.
+    """
+
+    if controller != "supervisor":
+        raise ReleaseError("only the Supervisor may activate a release")
+    if not reason or not reason.strip():
+        raise ReleaseError("release activation reason must be non-empty")
+    sha = source_sha.strip()
+    transition_id = transition_id or uuid.uuid4().hex
+    if not database.path.is_file():
+        raise ReleaseError(f"database missing: {database.path}")
+    # Refuse to make a DB authority claim until the immutable release's
+    # declared schema window actually opens the target database.  This keeps
+    # a failed promotion from leaving a live slot that the launcher can never
+    # start.
+    identity = validate_release(
+        sha,
+        root=root,
+        foundry_home=database.path.parent,
+        require_schema_match=True,
+    )
+
+    active = _database_active_release(database)
+    release_id = str(identity["manifest"]["release_id"])
+    events: list[Event] = []
+    with database.connect(readonly=True) as connection:
+        existing = connection.execute(
+            "SELECT source_commit, artifact_hashes_json, runtime_identity_json "
+            "FROM release_manifests "
+            "WHERE release_id = ?", (release_id,)
+        ).fetchone()
+    if existing is None:
+        events.append(_installed_manifest_event(identity, source_sha=sha))
+    else:
+        if str(existing["source_commit"]) != sha:
+            raise ReleaseError(
+                f"database manifest {release_id} source {existing['source_commit']} "
+                f"!= installed source {sha}")
+        try:
+            existing_runtime = json.loads(
+                str(existing["runtime_identity_json"] or "{}"))
+            existing_artifacts = json.loads(
+                str(existing["artifact_hashes_json"] or "{}"))
+        except (TypeError, ValueError) as error:
+            raise ReleaseError(
+                f"database manifest {release_id} identity is unreadable") from error
+        expected_artifacts = {
+            "RELEASE.json": hashlib.sha256(
+                (Path(str(identity["release_dir"])) / "RELEASE.json").read_bytes()
+            ).hexdigest()
+        }
+        if (
+            existing_runtime != identity["runtime_identity"]
+            or existing_artifacts != expected_artifacts
+        ):
+            raise ReleaseError(
+                f"database manifest {release_id} does not match immutable install")
+
+    if active["release_id"] != release_id:
+        prior = active["release_id"]
+        if prior:
+            events.append(Event.create(
+                "release.slot_changed",
+                {"slot": "previous", "release_id": prior,
+                 "previous_release_id": None, "reason": reason,
+                 "controller": controller},
+                source_type="supervisor", source_id="deployment-authority",
+                idempotency_key=(
+                    f"release.slot_changed:runtime-previous:{prior}:{release_id}:{transition_id}"),
+            ))
+        events.append(Event.create(
+            "release.slot_changed",
+            {"slot": "live", "release_id": release_id,
+             "previous_release_id": prior, "reason": reason,
+             "controller": controller},
+            source_type="supervisor", source_id="deployment-authority",
+            idempotency_key=(
+                f"release.slot_changed:runtime-live:{release_id}:{prior or 'none'}:{transition_id}"),
+        ))
+    if events:
+        database.append_events(events)
+    report = _database_active_release(database)
+    if report["source_sha"] != sha:
+        raise ReleaseError(
+            f"database live authority {report['source_sha']!r} != {sha}")
+    return report
 
 
 def schema_version(database_path: Path) -> int:
@@ -497,53 +704,71 @@ def build_release(
                 f"previous CURRENT release manifest missing: {previous_manifest_path}")
         previous_manifest = read_release_json(previous_manifest_path)
         previous_runtime = _runtime_identity(previous_manifest, previous_sha)
-    directory.mkdir(parents=True)
-    staging = directory / "source"
-    _copy_source_snapshot(repo, staging)
-    command_center_bundle = _build_command_center_bundle(repo, sha, directory)
-    venv = directory / ".venv"
-    builder = str(Path(python_exe or sys.executable).resolve())
-    created = subprocess.run(
-        [builder, "-m", "venv", str(venv)],
-        capture_output=True, text=True, timeout=180, check=False,
+    # Build under a unique hidden sibling and publish with one rename.  A
+    # Scheduler/status reader can therefore observe either no release or a
+    # complete immutable release, never a half-populated venv/bundle.
+    staging_directory = directory.parent / (
+        f".staging-{sha[:12]}-{uuid.uuid4().hex[:12]}"
     )
-    if created.returncode != 0:
-        raise ReleaseError(created.stderr.strip() or "venv create failed")
-    release_python = venv / "Scripts" / "python.exe"
-    installed = subprocess.run(
-        [str(release_python), "-m", "pip", "install", "--disable-pip-version-check", str(staging)],
-        capture_output=True, text=True, timeout=300, check=False,
-    )
-    if installed.returncode != 0:
-        raise ReleaseError(installed.stderr.strip() or installed.stdout.strip() or "pip install failed")
-    py_ver = subprocess.run(
-        [str(release_python), "-c", "import sys; print(sys.version.split()[0])"],
-        capture_output=True, text=True, timeout=30, check=True,
-    )
-    manifest = {
-        "release_id": f"rel-{sha[:12]}-{uuid.uuid4().hex[:8]}",
-        "source_sha": sha,
-        "git_commit": sha,
-        "git_tree": tree,
-        "python_version": py_ver.stdout.strip(),
-        "package_version": PACKAGE_VERSION,
-        "schema_compatibility": {
-            "package_schema": SCHEMA_VERSION,
-            "opens_min": SCHEMA_VERSION,
-            "opens_max": SCHEMA_VERSION,
-        },
-        "provenance": {
-            "builder": "jarvis_foundry.deployment.release",
-            "source_repo": str(repo),
+    staging_directory.mkdir(parents=True, exist_ok=False)
+    try:
+        staging = staging_directory / "source"
+        _copy_source_snapshot(repo, staging)
+        command_center_bundle = _build_command_center_bundle(
+            repo, sha, staging_directory)
+        venv = staging_directory / ".venv"
+        builder = str(Path(python_exe or sys.executable).resolve())
+        created = subprocess.run(
+            [builder, "-m", "venv", str(venv)],
+            capture_output=True, text=True, timeout=180, check=False,
+        )
+        if created.returncode != 0:
+            raise ReleaseError(created.stderr.strip() or "venv create failed")
+        release_python = venv / "Scripts" / "python.exe"
+        installed = subprocess.run(
+            [str(release_python), "-m", "pip", "install",
+             "--disable-pip-version-check", str(staging)],
+            capture_output=True, text=True, timeout=300, check=False,
+        )
+        if installed.returncode != 0:
+            raise ReleaseError(
+                installed.stderr.strip() or installed.stdout.strip()
+                or "pip install failed")
+        py_ver = subprocess.run(
+            [str(release_python), "-c",
+             "import sys; print(sys.version.split()[0])"],
+            capture_output=True, text=True, timeout=30, check=True,
+        )
+        manifest = {
+            "release_id": f"rel-{sha[:12]}-{uuid.uuid4().hex[:8]}",
+            "source_sha": sha,
             "git_commit": sha,
             "git_tree": tree,
-        },
-        "previous_runtime": previous_runtime,
-        "created_at": isoformat(),
-        "command_center_bundle": command_center_bundle,
-    }
-    (directory / "RELEASE.json").write_text(
-        json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            "python_version": py_ver.stdout.strip(),
+            "package_version": PACKAGE_VERSION,
+            "schema_compatibility": {
+                "package_schema": SCHEMA_VERSION,
+                "opens_min": SCHEMA_VERSION,
+                "opens_max": SCHEMA_VERSION,
+            },
+            "provenance": {
+                "builder": "jarvis_foundry.deployment.release",
+                "source_repo": str(repo),
+                "git_commit": sha,
+                "git_tree": tree,
+            },
+            "previous_runtime": previous_runtime,
+            "created_at": isoformat(),
+            "command_center_bundle": command_center_bundle,
+        }
+        (staging_directory / "RELEASE.json").write_text(
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8")
+        os.replace(staging_directory, directory)
+    except BaseException:
+        shutil.rmtree(staging_directory, ignore_errors=True)
+        raise
+    release_python = directory / ".venv" / "Scripts" / "python.exe"
     _install_stable_launcher(root)
     return {"release_dir": str(directory), "manifest": manifest, "python_exe": str(release_python)}
 
@@ -567,10 +792,14 @@ def _install_stable_launcher(root: Path | None = None) -> Path:
     return destination
 
 
-def set_current(source_sha: str, *, root: Path | None = None) -> dict[str, str | None]:
+def set_current(
+    source_sha: str, *, root: Path | None = None,
+    database: FoundryDatabase | None = None,
+    reason: str = "explicit immutable release activation",
+) -> dict[str, str | None]:
     candidate = validate_release(source_sha, root=root, require_schema_match=False)
     previous = read_current(root)
-    if previous == source_sha:
+    if previous == source_sha and database is None:
         return {"current": source_sha, "previous": read_previous(root)}
     candidate_previous = candidate["manifest"].get("previous_runtime")
     if previous is None:
@@ -587,10 +816,87 @@ def set_current(source_sha: str, *, root: Path | None = None) -> dict[str, str |
         if candidate_previous != previous_identity:
             raise ReleaseError(
                 "candidate previous_runtime does not match the CURRENT release")
-    if previous and previous != source_sha:
-        write_pointer(previous_pointer(root), previous)
-    write_pointer(current_pointer(root), source_sha)
+    marker = None
+    if database is not None:
+        transition_id = uuid.uuid4().hex
+        marker = _write_transition_marker(
+            root, target=source_sha, previous=previous, phase="DB_AUTHORITY_PENDING",
+            transition_id=transition_id)
+        # The ledger is authoritative during a transition.  If the process
+        # dies before the pointer write, startup/status sees the mismatch and
+        # the marker gives recovery an unambiguous target.
+        record_active_release(
+            source_sha, root=root, database=database, reason=reason,
+            transition_id=transition_id)
+    try:
+        if previous and previous != source_sha:
+            write_pointer(previous_pointer(root), previous)
+        write_pointer(current_pointer(root), source_sha)
+        if marker is not None:
+            marker.unlink(missing_ok=True)
+    except BaseException:
+        if marker is not None:
+            _write_transition_marker(
+                root,
+                target=source_sha,
+                previous=previous,
+                phase="POINTER_WRITE_PENDING",
+                transition_id=transition_id,
+            )
+        raise
     return {"current": source_sha, "previous": read_previous(root)}
+
+
+def recover_release_transition(
+    *,
+    root: Path | None = None,
+    foundry_home: Path | None = None,
+    database: FoundryDatabase | None = None,
+) -> dict[str, Any]:
+    """Complete an interrupted DB-authority/pointer transition safely.
+
+    Recovery is explicit and bounded: it reads the marker, validates the
+    immutable target, confirms (or records) the database live authority, then
+    rewrites only the two JARVIS-owned pointers.  It never migrates, deletes,
+    or rewrites the live database and is suitable for reboot/hard-kill
+    startup probes.
+    """
+
+    marker = _transition_marker(root)
+    if not marker.is_file():
+        raise ReleaseError(f"release transition marker missing: {marker}")
+    try:
+        payload = json.loads(marker.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        raise ReleaseError(f"release transition marker is unreadable: {marker}") from error
+    target = str(payload.get("target_source_sha") or "").strip()
+    previous = payload.get("previous_source_sha")
+    previous_sha = str(previous).strip() if previous not in (None, "") else None
+    if not target:
+        raise ReleaseError("release transition marker has no target source SHA")
+    transition_id = str(payload.get("transition_id") or uuid.uuid4().hex)
+    validate_release(target, root=root, require_schema_match=False)
+    authority_database = database
+    if authority_database is None and foundry_home is not None:
+        authority_database = FoundryDatabase(Path(foundry_home) / "foundry.db")
+    if authority_database is not None:
+        record_active_release(
+            target, root=root, database=authority_database,
+            reason="recover interrupted immutable release transition",
+            transition_id=transition_id)
+    if previous_sha and previous_sha != target:
+        write_pointer(previous_pointer(root), previous_sha)
+    write_pointer(current_pointer(root), target)
+    marker.unlink(missing_ok=True)
+    return {
+        "current": target,
+        "previous": read_previous(root),
+        "recovered": True,
+        "authority": (
+            release_authority_report(root=root, foundry_home=foundry_home)
+            if foundry_home is not None else None
+        ),
+    }
 
 
 def record_generation(
@@ -643,6 +949,12 @@ def release_authority_report(
             "previous": previous,
             "database_release_records": 0,
             "database_current_recorded": False,
+            "database_active_release_id": None,
+            "database_active_source_sha": None,
+            "database_authority_mode": "UNAVAILABLE",
+            "database_runtime_identity": None,
+            "filesystem_runtime_identity": None,
+            "database_runtime_identity_match": None,
             "consistent": False,
             "status": "FOUNDRY_HOME_MISSING",
         }
@@ -654,6 +966,12 @@ def release_authority_report(
             "previous": previous,
             "database_release_records": 0,
             "database_current_recorded": False,
+            "database_active_release_id": None,
+            "database_active_source_sha": None,
+            "database_authority_mode": "FILESYSTEM_ONLY",
+            "database_runtime_identity": None,
+            "filesystem_runtime_identity": None,
+            "database_runtime_identity_match": None,
             "consistent": False,
             "status": "DATABASE_MISSING",
         }
@@ -666,28 +984,122 @@ def release_authority_report(
                 "SELECT COUNT(*) FROM release_manifests WHERE source_commit = ?",
                 (current,),
             ).fetchone()[0]) if current else 0
+            live_slot = connection.execute(
+                "SELECT release_id, updated_at, last_event_id FROM release_slots "
+                "WHERE slot = 'live'"
+            ).fetchone()
+            active_manifest = None
+            if live_slot is not None and live_slot["release_id"]:
+                active_manifest = connection.execute(
+                    "SELECT release_id, source_commit, runtime_identity_json "
+                    "FROM release_manifests WHERE release_id = ?",
+                    (live_slot["release_id"],),
+                ).fetchone()
     except sqlite3.OperationalError as error:
         return {
             "current": current,
             "previous": previous,
             "database_release_records": 0,
             "database_current_recorded": False,
+            "database_active_release_id": None,
+            "database_active_source_sha": None,
+            "database_authority_mode": "UNAVAILABLE",
+            "database_runtime_identity": None,
+            "filesystem_runtime_identity": None,
+            "database_runtime_identity_match": None,
             "consistent": False,
             "status": "RELEASE_SCHEMA_UNAVAILABLE",
             "error": str(error),
         }
 
-    if not current:
+    active_release_id = (
+        str(live_slot["release_id"])
+        if live_slot is not None and live_slot["release_id"] else None
+    )
+    active_source_sha = (
+        str(active_manifest["source_commit"])
+        if active_manifest is not None else None
+    )
+    database_runtime_identity = None
+    if active_manifest is not None:
+        try:
+            parsed_runtime = json.loads(
+                str(active_manifest["runtime_identity_json"] or "{}"))
+            database_runtime_identity = (
+                parsed_runtime if isinstance(parsed_runtime, dict) else None)
+        except (TypeError, ValueError):
+            database_runtime_identity = None
+    current_manifest = None
+    if current:
+        manifest_path = release_dir(current, root) / "RELEASE.json"
+        try:
+            current_manifest = read_release_json(manifest_path)
+        except (OSError, ReleaseError, ValueError):
+            current_manifest = None
+    filesystem_runtime_identity = None
+    if current and current_manifest:
+        try:
+            filesystem_runtime_identity = _runtime_identity(
+                {**current_manifest, "release_id": current_manifest.get("release_id")},
+                current,
+            )
+        except (ReleaseError, TypeError, ValueError):
+            filesystem_runtime_identity = None
+    # The release id is part of the immutable runtime identity too.  Matching
+    # only the source/tree would let two separately built manifests for the
+    # same commit appear interchangeable even when their artifact hashes or
+    # registry records differ.
+    identity_keys = ("source_sha", "release_id", "git_commit", "git_tree", "schema")
+    runtime_identity_match = None
+    if active_source_sha and database_runtime_identity is not None:
+        runtime_identity_match = bool(
+            filesystem_runtime_identity is not None
+            and all(
+                database_runtime_identity.get(key)
+                == filesystem_runtime_identity.get(key)
+                for key in identity_keys
+            )
+        )
+    if active_release_id and active_manifest is None:
+        status = "DATABASE_AUTHORITY_MANIFEST_MISSING"
+        authority_mode = "LIVE_SLOT_WITHOUT_MANIFEST"
+    elif active_source_sha and current and active_source_sha != current:
+        status = "DATABASE_FILESYSTEM_MISMATCH"
+        authority_mode = "DATABASE_LIVE_SLOT"
+    elif (active_source_sha and current and active_source_sha == current
+          and runtime_identity_match is False):
+        status = "DATABASE_RUNTIME_IDENTITY_MISMATCH"
+        authority_mode = "DATABASE_LIVE_SLOT"
+    elif active_source_sha and current and active_source_sha == current:
+        status = "CONSISTENT"
+        authority_mode = "DATABASE_LIVE_SLOT"
+    elif not current:
         status = "NO_FILESYSTEM_AUTHORITY"
+        authority_mode = "NONE"
     elif not recorded:
         status = "FILESYSTEM_ONLY_AUTHORITY"
+        authority_mode = "FILESYSTEM_ONLY"
     else:
+        # Compatibility for pre-Lane-2 ledgers that recorded the immutable
+        # manifest before the live slot projection existed.  The report is
+        # explicit about this weaker mode so callers can require a live slot.
         status = "CONSISTENT"
+        authority_mode = "MANIFEST_SOURCE_COMPATIBILITY"
     return {
         "current": current,
         "previous": previous,
         "database_release_records": total,
         "database_current_recorded": bool(recorded),
+        "database_active_release_id": active_release_id,
+        "database_active_source_sha": active_source_sha,
+        "database_runtime_identity": database_runtime_identity,
+        "filesystem_runtime_identity": filesystem_runtime_identity,
+        "database_runtime_identity_match": runtime_identity_match,
+        "database_authority_mode": authority_mode,
+        "database_live_slot_updated_at": (
+            live_slot["updated_at"] if live_slot is not None else None),
+        "database_live_slot_event_id": (
+            live_slot["last_event_id"] if live_slot is not None else None),
         "consistent": status == "CONSISTENT",
         "status": status,
     }
@@ -697,6 +1109,8 @@ def rollback_current(
     *,
     root: Path | None = None,
     foundry_home: Path | None = None,
+    database: FoundryDatabase | None = None,
+    reason: str = "explicit immutable release rollback",
 ) -> dict[str, Any]:
     previous = read_previous(root)
     if not previous:
@@ -709,16 +1123,44 @@ def rollback_current(
     )
     if current:
         validate_release(current, root=root, require_schema_match=False)
+    authority_database = database
+    if authority_database is None and foundry_home is not None:
+        authority_database = FoundryDatabase(Path(foundry_home) / "foundry.db")
     if current == previous:
+        if authority_database is not None:
+            record_active_release(
+                previous, root=root, database=authority_database, reason=reason)
         return {
             "current": current,
             "previous": read_previous(root),
             "generation": None,
             "switched": False,
         }
-    write_pointer(current_pointer(root), previous)
-    if current:
-        write_pointer(previous_pointer(root), current)
+    marker = None
+    if authority_database is not None:
+        transition_id = uuid.uuid4().hex
+        marker = _write_transition_marker(
+            root, target=previous, previous=current, phase="DB_AUTHORITY_PENDING",
+            transition_id=transition_id)
+        record_active_release(
+            previous, root=root, database=authority_database, reason=reason,
+            transition_id=transition_id)
+    try:
+        write_pointer(current_pointer(root), previous)
+        if current:
+            write_pointer(previous_pointer(root), current)
+        if marker is not None:
+            marker.unlink(missing_ok=True)
+    except BaseException:
+        if marker is not None:
+            _write_transition_marker(
+                root,
+                target=previous,
+                previous=current,
+                phase="POINTER_WRITE_PENDING",
+                transition_id=transition_id,
+            )
+        raise
     generation = None
     if foundry_home is not None:
         generation = record_generation(root=root, foundry_home=foundry_home)
@@ -739,6 +1181,11 @@ def migrate_clone(source: Path, destination: Path) -> dict[str, Any]:
     backup_database(source, destination)
     cloned = FoundryDatabase(destination)
     version = cloned.initialize()
+    # Migrations update schema only; derived projections can legitimately be
+    # stale in a byte-for-byte backup.  Rebuild them on the disposable clone
+    # before reporting reconciliation so this command rehearses the same
+    # canonical recovery path used by production restart/rollback checks.
+    event_count = cloned.rebuild_projections()
     integrity = cloned.quick_check()
     if integrity != "ok":
         raise ReleaseError(f"migrated clone failed integrity: {integrity}")
@@ -750,7 +1197,7 @@ def migrate_clone(source: Path, destination: Path) -> dict[str, Any]:
         "integrity": integrity,
         "consistent": report.consistent,
         "mismatch_count": len(report.mismatches),
-        "event_count": cloned.event_count(),
+        "event_count": event_count,
     }
 
 

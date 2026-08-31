@@ -49,8 +49,8 @@ type MissionDetailData = {
 
 export function MissionDetail() {
   const { missionId } = useParams();
-  const { client, version, notifications, stopActive, openTrustDialog, sourceMode } = useCommandCenter();
-  const missionIdResolved = missionId ?? "M-HYB-014";
+  const { client, version, notifications, stopActive, openTrustDialog, sourceMode, trustSummary, mode } = useCommandCenter();
+  const missionIdResolved = missionId ?? (mode === "simulated" ? "M-HYB-014" : "");
   const detailQuery = useRouteQuery(
     async () => {
       const mission = await client.getMission(missionIdResolved);
@@ -90,6 +90,10 @@ export function MissionDetail() {
     >
       {({ mission, run, workers, evidence, lineage, steps, related }) => {
   const stepByKey = Object.fromEntries(steps.map((s) => [s.key, s]));
+  const lifecycle = run.lifecycle ?? [];
+  const lifecycleKnown = lifecycle.filter((record) => record.state !== "UNKNOWN" && record.state !== "UNAVAILABLE");
+  const lifecycleComplete = lifecycleKnown.filter((record) => record.state === "COMPLETE").length;
+  const lifecycleProgress = lifecycleKnown.length > 0 ? Math.round((lifecycleComplete / lifecycleKnown.length) * 100) : null;
   const blocking = notifications.find((n) => n.refs.some((r) => r.kind === "mission" && r.id === mission.id) && n.state !== "RESOLVED");
   const blockingEventRef = blocking?.refs.find((r) => r.kind === "timeline");
   const contextLinks = [
@@ -174,11 +178,15 @@ export function MissionDetail() {
         </h2>
         <div className="md-stages">
           <div className="md-track" aria-hidden="true">
-            <span className="md-track-fill" style={{ width: "45%" }} />
+            {lifecycleProgress !== null ? <span className="md-track-fill" style={{ width: `${lifecycleProgress}%` }} /> : null}
           </div>
-          {run.pipeline.map((stage) => {
+          {(lifecycle.length > 0 ? lifecycle : run.pipeline.map((stage) => ({ ...stage, refs: [], eventIds: [] }))).map((stage) => {
             const Icon = stageIcons[stage.key] ?? Check;
             const step = stepByKey[stage.key];
+            const compactRefs = stage.refs.slice(0, 2).map((ref) => ({
+              ...ref,
+              label: ref.label.length > 16 ? `${ref.label.slice(0, 13)}…` : ref.label,
+            }));
             return (
               <div key={stage.key} className={`md-stage md-stage-${stage.state.toLowerCase()}`}>
                 <div className="md-stage-dot">
@@ -186,11 +194,19 @@ export function MissionDetail() {
                 </div>
                 <span className="t-label md-stage-label">{stage.label}</span>
                 <span className="t-mono md-stage-detail">{stage.detail}</span>
+                <StatusBadge status={stage.state} />
                 {step?.workerId ? (
                   <EntityRefLink entity={{ kind: "agent", id: step.workerId, label: step.workerId }} />
                 ) : null}
                 {step?.evidenceIds && step.evidenceIds.length > 0 ? (
                   <RefChipRow refs={step.evidenceIds.map((id) => ({ kind: "evidence" as const, id, label: id }))} />
+                ) : null}
+                {compactRefs.length > 0 ? <RefChipRow refs={compactRefs} /> : null}
+                {stage.refs.length > compactRefs.length ? <span className="t-mono text-muted md-stage-ref-count">+{stage.refs.length - compactRefs.length} linked refs</span> : null}
+                {stage.eventIds.length > 0 ? (
+                  <span className="t-mono text-muted md-stage-events" title={stage.eventIds.join(", ")}>
+                    {stage.eventIds.length} event{stage.eventIds.length === 1 ? "" : "s"} · latest {stage.eventIds[stage.eventIds.length - 1].slice(0, 8)}…
+                  </span>
                 ) : null}
               </div>
             );
@@ -321,14 +337,13 @@ export function MissionDetail() {
             <div className="md-trust-row">
               <ShieldQuestion size={14} className="text-muted" aria-hidden="true" />
               <span className="t-label text-muted">Trust state</span>
-              <span className="t-mono md-trust-value">{sourceModeLabel(sourceMode)}</span>
+              <span className="t-mono md-trust-value">{trustSummary?.state ?? "UNKNOWN"} · gate {trustSummary?.gateStatus ?? "UNKNOWN"}</span>
               <button type="button" className="text-link" onClick={openTrustDialog}>
                 Explain
               </button>
             </div>
             <p className="prose md-trust-note">
-              Gate V-2 is gated. Advancement remains conditional on canonical runtime evidence; this candidate never
-              fabricates verification PASS.
+              {trustSummary?.factors?.find((factor) => factor.id === "coverage")?.detail ?? "Trust factors are UNKNOWN until the canonical projection reports them."}
             </p>
           </section>
         </div>

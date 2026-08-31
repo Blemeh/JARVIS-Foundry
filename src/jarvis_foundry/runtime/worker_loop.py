@@ -27,6 +27,7 @@ with legacy env compatibility) at process start.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import time
@@ -37,7 +38,8 @@ from types import SimpleNamespace
 from typing import Any, Callable, Iterator, Iterable
 
 from ..database import FoundryDatabase
-from ..events import Event
+from ..clock import parse, utc_now
+from ..events import Event, EventConflict, canonical_json
 from ..paths import FoundryPaths
 from ..roles.router import RoleRouter
 from ..supervisor.estop import EmergencyStop
@@ -60,12 +62,70 @@ from .config import WorkerRuntimeConfig
 from .provider_config import ProviderConfigError
 
 LOOP_LEASE_KEY = "worker-loop:singleton"
+IDLE_HEARTBEAT_SECONDS = 300
 DEFAULT_MISSION_ID = "mission-wfm-optimizer"
 DEFAULT_RESOURCE_ID = "resource-wfm-optimizer"
 
 
 def _default_stop_path(paths: FoundryPaths, config: WorkerRuntimeConfig) -> Path:
     return config.resolve_stop_path(paths.home)
+
+
+def _append_coalesced_idle_event(
+    database: FoundryDatabase,
+    event_type: str,
+    payload: dict[str, Any],
+    *,
+    stable_fields: dict[str, Any],
+    source_id: str,
+) -> bool:
+    """Record an idle state transition once, not once per polling tick.
+
+    The worker loop remains a polling process, but an unchanged WAIT state is
+    not a new fact.  Compare the latest ledger record inside a short read and
+    key each real transition by its predecessor sequence plus a canonical
+    state hash.  A concurrent duplicate loses harmlessly to the unique
+    idempotency key; no second authority or mutable idle table is introduced.
+    """
+
+    state_key = hashlib.sha256(
+        canonical_json(stable_fields).encode("utf-8")
+    ).hexdigest()[:24]
+    connection = database.connect(readonly=True)
+    try:
+        row = connection.execute(
+            "SELECT sequence, payload_json FROM events "
+            "WHERE event_type = ? ORDER BY sequence DESC LIMIT 1",
+            (event_type,),
+        ).fetchone()
+    finally:
+        connection.close()
+    if row is not None:
+        try:
+            prior = json.loads(row["payload_json"] or "{}")
+        except (TypeError, ValueError):
+            prior = {}
+        if isinstance(prior, dict) and prior.get("_coalesced_state") == state_key:
+            return False
+        predecessor = int(row["sequence"])
+    else:
+        predecessor = 0
+    enriched = dict(payload)
+    enriched["_coalesced_state"] = state_key
+    try:
+        database.append(Event.create(
+            event_type,
+            enriched,
+            source_type="supervisor",
+            source_id=source_id,
+            idempotency_key=(
+                f"{event_type}:transition:{predecessor}:{state_key}"),
+        ))
+    except EventConflict:
+        # Another valid loop owner recorded the same transition between the
+        # read and append.  Treat that as the desired coalesced outcome.
+        return False
+    return True
 
 
 @contextmanager
@@ -100,26 +160,31 @@ def _executive_waiting_report(
     database: FoundryDatabase, *, loop_id: str, instance_id: str,
     decision: Any, reason: str,
 ) -> dict[str, Any]:
-    database.append(Event.create(
-        "worker_loop.executive_waiting",
-        {
-            "loop_id": loop_id, "instance_id": instance_id,
-            "decision_id": decision.decision_id,
-            "reason": reason,
-            "wait": {
-                "reconsider_condition": (
-                    decision.wait.reconsider_condition if decision.wait else ""),
-                "best_candidate_id": (
-                    decision.wait.best_candidate_id if decision.wait else None),
-                "best_score": (
-                    decision.wait.best_score if decision.wait else None),
-                "wait_kind": (
-                    decision.wait.wait_kind if decision.wait else None),
-            },
+    import hashlib
+
+    payload = {
+        "loop_id": loop_id, "instance_id": instance_id,
+        "decision_id": decision.decision_id,
+        "reason": reason,
+        "episode_key": hashlib.sha256(str(reason).strip().encode("utf-8")).hexdigest()[:20],
+        "wait": {
+            "reconsider_condition": (
+                decision.wait.reconsider_condition if decision.wait else ""),
+            "best_candidate_id": (
+                decision.wait.best_candidate_id if decision.wait else None),
+            "best_score": (
+                decision.wait.best_score if decision.wait else None),
+            "wait_kind": (
+                decision.wait.wait_kind if decision.wait else None),
         },
-        source_type="supervisor", source_id=instance_id,
-        idempotency_key=f"worker_loop.executive_waiting:{loop_id}",
-    ))
+    }
+    _append_coalesced_idle_event(
+        database,
+        "worker_loop.executive_waiting",
+        payload,
+        stable_fields={"reason": reason, "wait": payload["wait"]},
+        source_id=instance_id,
+    )
     return {
         "loop_id": loop_id,
         "outcome": "WAITING",
@@ -290,22 +355,34 @@ def _maybe_portfolio_select(
         source_id=f"worker-loop:{instance_id}",
     )
     if decision.kind != "SELECT" or decision.entity_id is None:
-        database.append(Event.create(
+        reason = str(decision.reason or "portfolio waiting")
+        episode_key = hashlib.sha256(reason.strip().encode("utf-8")).hexdigest()[:20]
+        stable = {
+            "selected_class": decision.selected_class,
+            "reason": decision.reason,
+            "why_now": decision.why_now,
+            "wake_on": list(decision.wake_on),
+        }
+        # ``revisit_at`` is a polling deadline, not a change in the idle
+        # state.  The selector creates a new deadline for each fresh loop
+        # id; hashing it here would turn every unchanged WAIT poll back into
+        # an event and recreate the legacy ledger-growth incident.  Keep the
+        # current deadline in the payload for operators, but key coalescing
+        # on the durable reason/wake conditions only.
+        _append_coalesced_idle_event(
+            database,
             "worker_loop.portfolio_waiting",
             {
                 "loop_id": loop_id,
                 "instance_id": instance_id,
                 "decision_id": decision.decision_id,
-                "selected_class": decision.selected_class,
-                "reason": decision.reason,
-                "why_now": decision.why_now,
-                "wake_on": list(decision.wake_on),
+                **stable,
                 "revisit_at": decision.revisit_at,
+                "episode_key": episode_key,
             },
-            source_type="supervisor",
+            stable_fields=stable,
             source_id=f"worker-loop:{instance_id}",
-            idempotency_key=f"worker_loop.portfolio_waiting:{loop_id}",
-        ))
+        )
         return None
     payload = decision.to_payload()
     result = materialize_portfolio_selection(
@@ -359,6 +436,86 @@ def _maybe_portfolio_select(
     except Exception:  # noqa: BLE001 - lease TTL bounds any leak
         pass
     return mission_id
+
+
+
+def _maybe_continuous_cycle(database, config, *, paths, loop_id, instance_id):
+    """V9 Continuous Executive: durable wake-aware cycle (opt-in)."""
+    if not getattr(config, "continuous_enabled", False):
+        return None
+    try:
+        from ..executive.continuous import run_continuous_cycle, auto_wake_for_blocked
+    except Exception as e:
+        database.append(Event.create("worker_loop.continuous_blocked", {"loop_id": loop_id, "reason": f"import failed: {e}"}, source_type="supervisor", source_id=f"worker-loop:{instance_id}", idempotency_key=f"worker_loop.continuous_blocked:{loop_id}"))
+        return None
+    try:
+        auto_wake_for_blocked(database, controller="supervisor")
+    except Exception:
+        pass
+    try:
+        result = run_continuous_cycle(database, cycle_id=f"continuous:{loop_id}", controller="supervisor")
+        # run_continuous_cycle already does wake tick + autonomy cycle; return its mission if any
+        ac = result.get("autonomy_cycle") if isinstance(result, dict) else None
+        mid = None
+        if isinstance(ac, dict):
+            mat = ac.get("materialization") or {}
+            if isinstance(mat, dict):
+                mid = mat.get("mission_id")
+        if mid:
+            return str(mid)
+        # Also check direct mission_id
+        if isinstance(result, dict) and result.get("mission_id"):
+            return str(result.get("mission_id"))
+        return None
+    except Exception as e:
+        try:
+            database.append(Event.create("worker_loop.continuous_blocked", {"loop_id": loop_id, "reason": f"{type(e).__name__}: {e}"[:500]}, source_type="supervisor", source_id=f"worker-loop:{instance_id}", idempotency_key=f"worker_loop.continuous_blocked:{loop_id}"))
+        except Exception:
+            pass
+        return None
+
+def _maybe_executive_autonomy(
+    database: FoundryDatabase,
+    config: WorkerRuntimeConfig,
+    *,
+    paths: FoundryPaths,
+    loop_id: str,
+    instance_id: str,
+) -> str | None:
+    """Run the V8 executive pass through the existing V7/mission seams."""
+    if not config.executive_autonomy_enabled:
+        return None
+    from ..executive.autonomy import run_autonomy_cycle
+
+    try:
+        cycle = run_autonomy_cycle(
+            database,
+            cycle_id=f"worker:{loop_id}",
+            resource_id=config.resource_id,
+            capability=config.capability,
+            max_new_missions=1,
+            stop_path=_default_stop_path(paths, config),
+        )
+    except Exception as error:  # noqa: BLE001 - fail closed and keep loop alive
+        database.append(Event.create(
+            "worker_loop.executive_autonomy_blocked",
+            {"loop_id": loop_id, "instance_id": instance_id,
+             "reason": f"{type(error).__name__}: {error}"[:500]},
+            source_type="supervisor", source_id=f"worker-loop:{instance_id}",
+            idempotency_key=f"worker_loop.executive_autonomy_blocked:{loop_id}",
+        ))
+        return None
+    mission_id = str(cycle.materialization.get("mission_id") or "")
+    database.append(Event.create(
+        "worker_loop.executive_autonomy_observed",
+        {"loop_id": loop_id, "instance_id": instance_id,
+         "cycle_id": cycle.cycle_id, "objective_id": cycle.objective_id,
+         "status": cycle.status, "reason": cycle.reason,
+         "mission_id": mission_id or None},
+        source_type="supervisor", source_id=f"worker-loop:{instance_id}",
+        idempotency_key=f"worker_loop.executive_autonomy_observed:{loop_id}",
+    ))
+    return mission_id or None
 
 
 def _record_mission_portfolio_outcome(
@@ -526,13 +683,157 @@ def _recover_v3_terminal(database: FoundryDatabase, *, loop_id: str,
 
 def _waiting_report(database: FoundryDatabase, *, loop_id: str,
                     instance_id: str, reason: str) -> dict[str, Any]:
-    database.append(Event.create(
+    """Record an idle episode once, then emit sparse audit heartbeats.
+
+    ``loop_id`` is intentionally excluded from the episode identity: the
+    Supervisor launches short-lived one-shot workers and historically each
+    generated a fresh UUID, producing tens of thousands of identical idle
+    events.  A reason transition starts a new episode; an unchanged reason
+    gets at most one heartbeat every five minutes.
+    """
+    import hashlib
+
+    episode_key = hashlib.sha256(str(reason).strip().encode("utf-8")).hexdigest()[:20]
+    active: dict[str, Any] | None = None
+    # Count every prior start for this reason, not only the currently open
+    # episode.  If an idle reason recurs after a closed episode, the ordinal
+    # must advance or the new durable event would collide with the old one.
+    # Count historical episodes in SQLite rather than a bounded Python window;
+    # otherwise a busy-but-legitimate reason that recurs after >200 episodes
+    # could reuse an old idempotency key.  JSON1 is part of the SQLite builds
+    # supported by Foundry; a malformed legacy payload simply contributes zero.
+    with database.connect(readonly=True) as connection:
+        starts = int(connection.execute(
+            "SELECT COUNT(*) FROM events "
+            "WHERE event_type IN ('worker_loop.waiting_started', 'worker_loop.waiting') "
+            "AND json_extract(payload_json, '$.episode_key') = ?",
+            (episode_key,),
+        ).fetchone()[0])
+        latest_row = connection.execute(
+            "SELECT event_type, payload_json, recorded_at FROM events "
+            "WHERE event_type IN ('worker_loop.waiting_started', "
+            "'worker_loop.waiting_heartbeat', 'worker_loop.waiting_ended', "
+            "'worker_loop.waiting') "
+            "AND json_extract(payload_json, '$.episode_key') = ? "
+            "ORDER BY sequence DESC LIMIT 1",
+            (episode_key,),
+        ).fetchone()
+        latest_any_row = connection.execute(
+            "SELECT event_type, payload_json FROM events "
+            "WHERE event_type IN ('worker_loop.waiting_started', "
+            "'worker_loop.waiting_heartbeat', 'worker_loop.waiting_ended', "
+            "'worker_loop.waiting') ORDER BY sequence DESC LIMIT 1"
+        ).fetchone()
+    active_types = {
+        "worker_loop.waiting_started", "worker_loop.waiting_heartbeat",
         "worker_loop.waiting",
-        {"loop_id": loop_id, "instance_id": instance_id, "reason": reason},
-        source_type="supervisor", source_id=instance_id,
-        idempotency_key=f"worker_loop.waiting:{loop_id}",
-    ))
+    }
+    # A reason change closes the prior episode before opening the new one.
+    # Without this transition, alternating reasons could leave several active
+    # episodes and make a later return to reason A look like a no-op.
+    if latest_any_row is not None and latest_any_row[0] in active_types:
+        try:
+            prior_payload = json.loads(str(latest_any_row[1]))
+        except (TypeError, ValueError):
+            prior_payload = {}
+        if prior_payload.get("episode_key") != episode_key:
+            prior_episode = str(prior_payload.get("episode_id") or "")
+            if prior_episode:
+                try:
+                    database.append(Event.create(
+                        "worker_loop.waiting_ended",
+                        {"loop_id": loop_id, "instance_id": instance_id,
+                         "episode_key": prior_payload.get("episode_key"),
+                         "episode_id": prior_episode,
+                         "reason": "idle reason changed"},
+                        source_type="supervisor", source_id=instance_id,
+                        idempotency_key=f"worker_loop.waiting_ended:{prior_episode}",
+                    ))
+                except EventConflict:
+                    pass
+            latest_row = None
+    if latest_row is not None and latest_row[0] in active_types:
+        try:
+            latest_payload = json.loads(str(latest_row[1]))
+        except (TypeError, ValueError):
+            latest_payload = {}
+        active = {
+            "episode_id": str(latest_payload.get("episode_id") or f"{episode_key}:1"),
+            "recorded_at": latest_row[2],
+        }
+    now = utc_now()
+    if active is None:
+        episode_id = f"{episode_key}:{starts + 1}"
+        try:
+            database.append(Event.create(
+                "worker_loop.waiting_started",
+                {"loop_id": loop_id, "instance_id": instance_id, "reason": reason,
+                 "episode_key": episode_key, "episode_id": episode_id},
+                source_type="supervisor", source_id=instance_id,
+                idempotency_key=f"worker_loop.waiting_started:{episode_id}",
+            ))
+        except EventConflict:
+            # Another short-lived loop won the same reason episode race.  The
+            # durable row is already the truthful outcome; do not turn a
+            # harmless duplicate poll into a worker failure.
+            pass
+    else:
+        try:
+            age = (now - parse(str(active.get("recorded_at")))).total_seconds()
+        except (TypeError, ValueError, OverflowError):
+            age = IDLE_HEARTBEAT_SECONDS
+        if age >= IDLE_HEARTBEAT_SECONDS:
+            bucket = int(now.timestamp() // IDLE_HEARTBEAT_SECONDS)
+            try:
+                database.append(Event.create(
+                    "worker_loop.waiting_heartbeat",
+                    {"loop_id": loop_id, "instance_id": instance_id, "reason": reason,
+                     "episode_key": episode_key,
+                     "episode_id": active["episode_id"], "age_seconds": max(0, int(age))},
+                    source_type="supervisor", source_id=instance_id,
+                    idempotency_key=(
+                        f"worker_loop.waiting_heartbeat:{active['episode_id']}:{bucket}"),
+                ))
+            except EventConflict:
+                pass
     return {"loop_id": loop_id, "outcome": "WAITING", "reason": reason}
+
+
+def _end_waiting_episode(database: FoundryDatabase, *, loop_id: str,
+                         instance_id: str) -> None:
+    """Close the newest idle episode when actionable work appears."""
+    with database.connect(readonly=True) as connection:
+        latest_row = connection.execute(
+            "SELECT event_type, payload_json FROM events "
+            "WHERE event_type IN ('worker_loop.waiting_started', "
+            "'worker_loop.waiting_heartbeat', 'worker_loop.waiting_ended', "
+            "'worker_loop.waiting') ORDER BY sequence DESC LIMIT 1"
+        ).fetchone()
+    active = None
+    if latest_row is not None and latest_row[0] in {
+        "worker_loop.waiting_started", "worker_loop.waiting_heartbeat",
+        "worker_loop.waiting"
+    }:
+        try:
+            active = json.loads(str(latest_row[1]))
+        except (TypeError, ValueError):
+            active = None
+    if not active:
+        return
+    episode_id = str(active.get("episode_id") or "")
+    if not episode_id:
+        return
+    try:
+        database.append(Event.create(
+            "worker_loop.waiting_ended",
+            {"loop_id": loop_id, "instance_id": instance_id,
+             "episode_key": active.get("episode_key"), "episode_id": episode_id,
+             "reason": "actionable mission selected"},
+            source_type="supervisor", source_id=instance_id,
+            idempotency_key=f"worker_loop.waiting_ended:{episode_id}",
+        ))
+    except EventConflict:
+        pass
 
 
 def _blocked_contract_report(database: FoundryDatabase, *, loop_id: str,
@@ -616,6 +917,42 @@ def _advisory_accepted_outcome_writeback(
             evidence_ids=[str(getattr(outcome, "verdict_id", "") or "")],
             confidence=0.8,
             idempotency_key=f"memory.observed:accepted:{mission_id}:{run_id}",
+        )
+    except Exception:
+        return
+
+
+def _advisory_mission_outcome_writeback(
+    database: FoundryDatabase, *, mission_id: str, outcome: Any,
+) -> None:
+    """Record every terminal result as advisory, provenance-backed memory.
+
+    Verified PASS retains the historical accepted-outcome record.  FAILED and
+    BLOCKED results are equally valuable for future executive planning, but
+    remain advisory and can never override the mission/verifier projection.
+    """
+    status = str(getattr(outcome, "outcome", "UNKNOWN") or "UNKNOWN").upper()
+    if status == "PASSED":
+        _advisory_accepted_outcome_writeback(
+            database, mission_id=mission_id, outcome=outcome)
+        return
+    if status not in {"FAILED", "BLOCKED", "CANCELLED"}:
+        return
+    try:
+        from ..hybrid_memory.lifecycle import TierCMemoryStore
+        run_id = getattr(outcome, "run_id", None) or "unknown"
+        step_id = getattr(outcome, "step_id", None) or "unknown"
+        reason = str(getattr(outcome, "reason", "") or "").strip()
+        store = TierCMemoryStore(database)
+        store.record_observation(
+            f"mission outcome {status.lower()} mission={mission_id} step={step_id}"
+            + (f" reason={reason[:240]}" if reason else ""),
+            mission_id=mission_id,
+            created_by="worker-loop",
+            source_ids=[f"mission:{mission_id}", f"run:{run_id}"],
+            evidence_ids=[str(getattr(outcome, "verdict_id", "") or "")],
+            confidence=0.65,
+            idempotency_key=f"memory.observed:outcome:{mission_id}:{run_id}:{status}",
         )
     except Exception:
         return
@@ -739,7 +1076,25 @@ def run_cycle(
                            f"{report.reason or 'no mission compiled'}",
                 )
         else:
+            if config.executive_autonomy_enabled:
+                try:
+                    from ..executive.autonomy import sync_owner_goals
+                    sync_owner_goals(database)
+                except Exception as error:  # noqa: BLE001 - authority reconciliation fails closed
+                    database.append(Event.create(
+                        "worker_loop.executive_authority_sync_blocked",
+                        {"loop_id": loop_id, "instance_id": instance_id,
+                         "reason": f"{type(error).__name__}: {error}"[:500]},
+                        source_type="supervisor", source_id=instance_id,
+                        idempotency_key=f"worker_loop.executive_authority_sync_blocked:{loop_id}",
+                    ))
             mission_id = _select_contract(database)
+            if mission_id is None and getattr(config, "continuous_enabled", False):
+                mission_id = _maybe_continuous_cycle(database, config, paths=paths, loop_id=loop_id, instance_id=instance_id)
+            if mission_id is None and config.executive_autonomy_enabled:
+                mission_id = _maybe_executive_autonomy(
+                    database, config, paths=paths,
+                    loop_id=loop_id, instance_id=instance_id)
             if mission_id is None and config.executive_selection_enabled:
                 mission_id = _maybe_executive_select(
                     database, config, loop_id=loop_id, instance_id=instance_id)
@@ -751,6 +1106,8 @@ def run_cycle(
                 database, loop_id=loop_id, instance_id=instance_id,
                 reason="no dispatchable mission has an authoritative executable contract",
             )
+        _end_waiting_episode(
+            database, loop_id=loop_id, instance_id=instance_id)
         try:
             contract = next_executable_contract(database, mission_id)
             if contract is None:
@@ -835,7 +1192,7 @@ def run_cycle(
                     mission_id=mission_id,
                     reason=f"V3 outcome proof blocked: {error}",
                 )
-            _advisory_accepted_outcome_writeback(
+            _advisory_mission_outcome_writeback(
                 database, mission_id=mission_id, outcome=outcome)
         mission_after = database.row("missions", "mission_id", mission_id) or {}
         portfolio_terminal = (
@@ -844,12 +1201,80 @@ def run_cycle(
                 and str(mission_after.get("state") or "") == "COMPLETE")
         )
         if portfolio_terminal:
+            # Keep the memory/knowledge authority in the same terminal
+            # boundary for PASS, FAIL, and BLOCKED outcomes.  The writeback is
+            # advisory; mission and verifier projections remain authoritative.
+            if terminal != "PASSED":
+                _advisory_mission_outcome_writeback(
+                    database, mission_id=mission_id, outcome=outcome)
+            # World Intelligence receives the same terminal fact before the
+            # Executive continuation decision.  This is an advisory,
+            # event-derived projection and cannot alter mission/verifier
+            # truth; the stable observation identity makes recovery replay
+            # exactly-once for world learning.
+            try:
+                from ..world_model.connector import writeback_mission_outcome
+                writeback_mission_outcome(
+                    database,
+                    mission_id,
+                    terminal or "UNKNOWN",
+                    {
+                        "state": mission_after.get("state"),
+                        "objective": mission_after.get("objective"),
+                    },
+                    evidence_refs=tuple(
+                        ref for ref in (getattr(outcome, "verdict_id", None),)
+                        if ref
+                    ),
+                    source_id=f"worker-loop:{instance_id}",
+                )
+            except Exception as error:  # noqa: BLE001 - advisory writeback cannot block closure
+                try:
+                    database.append(Event.create(
+                        "worker_loop.world_intelligence_writeback_blocked",
+                        {
+                            "loop_id": loop_id,
+                            "mission_id": mission_id,
+                            "reason": f"{type(error).__name__}: {error}"[:500],
+                        },
+                        source_type="supervisor",
+                        source_id=instance_id,
+                        idempotency_key=(
+                            f"worker_loop.world_intelligence_writeback_blocked:"
+                            f"{mission_id}:{terminal}"),
+                    ))
+                except Exception:
+                    pass
             _record_executive_outcome(
                 database, mission_id=mission_id, outcome=outcome,
                 instance_id=instance_id)
             _record_mission_portfolio_outcome(
                 database, mission_id=mission_id, outcome=outcome,
                 status=terminal, instance_id=instance_id)
+            if config.executive_autonomy_enabled:
+                try:
+                    from ..executive.autonomy import observe_mission_outcome
+                    observe_mission_outcome(database, mission_id)
+                except Exception as error:  # noqa: BLE001 - outcome remains authoritative
+                    database.append(Event.create(
+                        "worker_loop.executive_autonomy_observation_blocked",
+                        {"loop_id": loop_id, "mission_id": mission_id,
+                         "reason": f"{type(error).__name__}: {error}"[:500]},
+                        source_type="supervisor", source_id=instance_id,
+                        idempotency_key=f"worker_loop.executive_autonomy_observation_blocked:{loop_id}",
+                    ))
+            elif getattr(config, "continuous_enabled", False):
+                try:
+                    from ..executive.continuous import on_mission_outcome
+                    on_mission_outcome(database, mission_id)
+                except Exception as error:  # noqa: BLE001 - outcome remains authoritative
+                    database.append(Event.create(
+                        "worker_loop.continuous_outcome_observation_blocked",
+                        {"loop_id": loop_id, "mission_id": mission_id,
+                         "reason": f"{type(error).__name__}: {error}"[:500]},
+                        source_type="supervisor", source_id=instance_id,
+                        idempotency_key=f"worker_loop.continuous_outcome_observation_blocked:{loop_id}",
+                    ))
         # V3 WP-B single authoritative closure seam: when the discovery
         # cycle is enabled, a terminal harmless result is handed to the
         # OutcomeService automatically (idempotent; PASSED-only inside).

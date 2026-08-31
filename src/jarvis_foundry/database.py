@@ -4,6 +4,8 @@ import json
 import os
 import sqlite3
 import tempfile
+import uuid
+from contextvars import ContextVar
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
@@ -24,6 +26,159 @@ class _ClosingConnection(sqlite3.Connection):
             self.close()
 
 
+_ACTIVE_READ_SNAPSHOT: ContextVar["ReadSnapshotContext | None"] = ContextVar(
+    "jarvis_foundry_active_read_snapshot", default=None
+)
+
+
+class ReadSnapshotContext:
+    """One request-scoped, mechanically read-only view of a ledger.
+
+    Command Center projections are composed from several older read models.
+    Those models intentionally keep their public ``FoundryDatabase`` API, so
+    this context is the narrow shared seam: repeated event/table reads during
+    one projection request reuse the same read handle and decoded result.  It
+    is never used by ``transaction`` or append paths.
+    """
+
+    def __init__(self, database: "FoundryDatabase") -> None:
+        self.database = database
+        self.connection: sqlite3.Connection | None = None
+        self._token = None
+        self._event_cache: dict[tuple[object, ...], list[Event]] = {}
+        self._event_count_cache: dict[str | None, int] = {}
+        self._row_cache: dict[tuple[str, str, str], dict[str, object] | None] = {}
+        self._count_cache: dict[str, int] = {}
+
+    def __enter__(self) -> "ReadSnapshotContext":
+        if self.connection is not None:
+            raise RuntimeError("read snapshot context cannot be re-entered")
+        self.connection = self.database.connect(readonly=True)
+        # Pin one SQLite read transaction for the complete projection. This
+        # keeps related fields mutually consistent while remaining explicitly
+        # read-only; write paths continue to use transaction()/BEGIN IMMEDIATE.
+        self.connection.execute("BEGIN")
+        self._token = _ACTIVE_READ_SNAPSHOT.set(self)
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
+        if self._token is not None:
+            _ACTIVE_READ_SNAPSHOT.reset(self._token)
+            self._token = None
+        if self.connection is not None:
+            self.connection.close()
+            self.connection = None
+        self._event_cache.clear()
+        self._event_count_cache.clear()
+        self._row_cache.clear()
+        self._count_cache.clear()
+
+    def _connection(self) -> sqlite3.Connection:
+        if self.connection is None:
+            raise RuntimeError("read snapshot context is not active")
+        return self.connection
+
+    def events(
+        self,
+        *,
+        limit: int | None = None,
+        newest_first: bool = False,
+        event_types: tuple[str, ...] | None = None,
+        event_type_prefixes: tuple[str, ...] | None = None,
+        exclude_event_types: tuple[str, ...] | None = None,
+    ) -> list[Event]:
+        key = (
+            limit,
+            newest_first,
+            tuple(event_types or ()),
+            tuple(event_type_prefixes or ()),
+            tuple(exclude_event_types or ()),
+        )
+        cached = self._event_cache.get(key)
+        if cached is not None:
+            return cached
+
+        clauses: list[str] = []
+        args: list[object] = []
+        if event_types:
+            placeholders = ", ".join("?" for _ in event_types)
+            clauses.append(f"event_type IN ({placeholders})")
+            args.extend(event_types)
+        if event_type_prefixes:
+            clauses.append(
+                "(" + " OR ".join("event_type LIKE ?" for _ in event_type_prefixes) + ")"
+            )
+            args.extend(f"{prefix}%" for prefix in event_type_prefixes)
+        if exclude_event_types:
+            placeholders = ", ".join("?" for _ in exclude_event_types)
+            clauses.append(f"event_type NOT IN ({placeholders})")
+            args.extend(exclude_event_types)
+        where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
+        order = "DESC" if newest_first else "ASC"
+        limit_sql = " LIMIT ?" if limit is not None else ""
+        if limit is not None:
+            args.append(max(1, int(limit)))
+        rows = self._connection().execute(
+            f"SELECT * FROM events{where} ORDER BY sequence {order}{limit_sql}",
+            tuple(args),
+        ).fetchall()
+        events = [self.database._row_to_event(row) for row in rows]
+        self._event_cache[key] = events
+        return events
+
+    def event_count(self, event_type: str | None = None) -> int:
+        if event_type in self._event_count_cache:
+            return self._event_count_cache[event_type]
+        if event_type is None:
+            row = self._connection().execute(
+                "SELECT COUNT(*) FROM events"
+            ).fetchone()
+        else:
+            row = self._connection().execute(
+                "SELECT COUNT(*) FROM events WHERE event_type = ?",
+                (event_type,),
+            ).fetchone()
+        value = int(row[0])
+        self._event_count_cache[event_type] = value
+        return value
+
+    def projection_head(self, exclude_event_types: tuple[str, ...]) -> int:
+        placeholders = ", ".join("?" for _ in exclude_event_types)
+        row = self._connection().execute(
+            "SELECT COALESCE(MAX(sequence), 0) FROM events "
+            f"WHERE event_type NOT IN ({placeholders})",
+            tuple(exclude_event_types),
+        ).fetchone()
+        return int(row[0] or 0)
+
+    def row(self, table: str, key_column: str, key: str) -> dict[str, object] | None:
+        cache_key = (table, key_column, key)
+        if cache_key not in self._row_cache:
+            row = self._connection().execute(
+                f"SELECT * FROM {table} WHERE {key_column} = ?", (key,)
+            ).fetchone()
+            self._row_cache[cache_key] = dict(row) if row else None
+        return self._row_cache[cache_key]
+
+    def all(self, table: str, filters: dict[str, object]) -> list[dict[str, object]]:
+        clauses = [f"{column} = ?" for column in filters]
+        where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
+        rows = self._connection().execute(
+            f"SELECT * FROM {table}{where} ORDER BY rowid",
+            tuple(filters.values()),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+    def count(self, table: str) -> int:
+        if table not in self._count_cache:
+            self._count_cache[table] = int(
+                self._connection().execute(
+                    f"SELECT COUNT(*) FROM {table}"
+                ).fetchone()[0]
+            )
+        return self._count_cache[table]
+
+
 class FoundryDatabase:
     def __init__(self, path: str | Path) -> None:
         self.path = Path(path).expanduser().resolve()
@@ -39,10 +194,11 @@ class FoundryDatabase:
             uri = f"file:{self.path.resolve().as_posix()}?mode=ro"
             connection = sqlite3.connect(
                 uri, uri=True, timeout=10, isolation_level=None,
-                # Read-only projections are short-lived and are reclaimed by
-                # their owning scope; avoid the writable close/transaction
-                # finalization cost on every poll-loop read handle.
-                factory=sqlite3.Connection)
+                # Read-only callers commonly use ``with`` and Windows keeps
+                # an open SQLite handle from being removed during disposable
+                # recovery cleanup.  The closing subclass has no writable
+                # journal work, but guarantees the scope releases its handle.
+                factory=_ClosingConnection)
         else:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             connection = sqlite3.connect(
@@ -55,6 +211,15 @@ class FoundryDatabase:
             connection.execute("PRAGMA synchronous = FULL")
             connection.execute("PRAGMA journal_mode = WAL")
         return connection
+
+    def read_snapshot(self) -> ReadSnapshotContext:
+        """Return a bounded request-scoped read context.
+
+        The context owns one ``mode=ro`` connection and is deliberately
+        separate from the write transaction API.  Nested database readers
+        called while it is active automatically reuse its cached reads.
+        """
+        return ReadSnapshotContext(self)
 
     def initialize(self, target: int | None = None) -> int:
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -162,6 +327,16 @@ class FoundryDatabase:
         heartbeat/noise records without materializing hundreds of thousands of
         historical ``Event`` objects on every HTTP refresh.
         """
+        active_context = _ACTIVE_READ_SNAPSHOT.get()
+        if active_context is not None and active_context.database is self and readonly:
+            return active_context.events(
+                limit=limit,
+                newest_first=newest_first,
+                event_types=event_types,
+                event_type_prefixes=event_type_prefixes,
+                exclude_event_types=exclude_event_types,
+            )
+
         clauses: list[str] = []
         args: list[object] = []
         if event_types:
@@ -189,6 +364,9 @@ class FoundryDatabase:
 
     def event_count(self, *, readonly: bool = True, event_type: str | None = None) -> int:
         """Row count without materializing the ledger."""
+        active_context = _ACTIVE_READ_SNAPSHOT.get()
+        if active_context is not None and active_context.database is self and readonly:
+            return active_context.event_count(event_type)
         with self.connect(readonly=readonly) as connection:
             if event_type is None:
                 row = connection.execute("SELECT COUNT(*) FROM events").fetchone()
@@ -222,17 +400,27 @@ class FoundryDatabase:
     def backup_to(self, target: str | Path) -> Path:
         destination_path = Path(target).expanduser().resolve()
         destination_path.parent.mkdir(parents=True, exist_ok=True)
-        destination = sqlite3.connect(destination_path)
+        temporary_path = destination_path.with_name(
+            f".{destination_path.name}.{uuid.uuid4().hex}.tmp")
+        temporary_path.unlink(missing_ok=True)
+        destination = sqlite3.connect(temporary_path)
+        source: sqlite3.Connection | None = None
         try:
-            with self.connect() as source:
-                source.backup(destination)
-                result = destination.execute(
-                    "PRAGMA quick_check").fetchone()[0]
-                if result != "ok":
-                    raise sqlite3.DatabaseError(
-                        f"backup integrity check failed: {result}")
+            source = self.connect(readonly=True)
+            source.backup(destination)
+            result = destination.execute(
+                "PRAGMA quick_check").fetchone()[0]
+            if result != "ok":
+                raise sqlite3.DatabaseError(
+                    f"backup integrity check failed: {result}")
+        except BaseException:
+            temporary_path.unlink(missing_ok=True)
+            raise
         finally:
+            if source is not None:
+                source.close()
             destination.close()
+        os.replace(temporary_path, destination_path)
         return destination_path
 
     def restore_from(self, source_path: str | Path) -> int:
@@ -332,10 +520,22 @@ class FoundryDatabase:
             "acceptance_runs": "run_id",
             # Software-intelligence (Lane 4): derived alias projection
             "tier_c_project_aliases": "alias",
+            # V9 World Intelligence: event-derived projections
+            "world_entities": "entity_id",
+            "world_relationships": "relationship_id",
+            "world_observations": "observation_id",
+            "world_signals": "signal_id",
+            "world_predictions": "prediction_id",
+            "world_knowledge_gaps": "gap_id",
+            "world_patterns": "pattern_id",
+            "world_calibration": "calibration_id",
         }
         if allowed.get(table) != key_column:
             raise ValueError("unsupported projection lookup")
-        with self.connect() as connection:
+        active_context = _ACTIVE_READ_SNAPSHOT.get()
+        if active_context is not None and active_context.database is self:
+            return active_context.row(table, key_column, key)
+        with self.connect(readonly=True) as connection:
             row = connection.execute(f"SELECT * FROM {table} WHERE {key_column} = ?", (key,)).fetchone()
         return dict(row) if row else None
 
@@ -349,7 +549,10 @@ class FoundryDatabase:
                    "scoring_policy_registry", "discovery_portfolio",
                    "monitors", "vault_files",
                    "vault_sync_state", "ingestion_cursors", "research_queue",
-                   "worker_manifests", "consolidation_ops", "mission_step_contracts"}
+                   "worker_manifests", "consolidation_ops", "mission_step_contracts",
+                   "world_entities", "world_relationships", "world_observations",
+                   "world_signals", "world_predictions", "world_knowledge_gaps",
+                   "world_patterns", "world_calibration"}
         allowed.update({"tier_c_project_aliases"})
         allowed.update({"cost_measurements", "briefing_outbox", "voice_interactions", "control_nonces", "improvement_records", "release_manifests", "release_slots", "candidate_builds", "evaluation_runs", "verifications", "shadow_runs", "canaries", "promotions", "release_control", "restore_points", "discovery_runs", "cycles", "acceptance_runs"})
         if table not in allowed:
@@ -359,7 +562,10 @@ class FoundryDatabase:
             clauses.append(f"{column} = ?")
             args.append(value)
         where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
-        with self.connect() as connection:
+        active_context = _ACTIVE_READ_SNAPSHOT.get()
+        if active_context is not None and active_context.database is self:
+            return active_context.all(table, filters)
+        with self.connect(readonly=True) as connection:
             rows = connection.execute(f"SELECT * FROM {table}{where} ORDER BY rowid", args).fetchall()
         return [dict(r) for r in rows]
 
@@ -372,11 +578,17 @@ class FoundryDatabase:
                    "scoring_policy_registry", "discovery_portfolio",
                    "monitors", "vault_files",
                    "vault_sync_state", "ingestion_cursors", "research_queue",
-                   "worker_manifests", "consolidation_ops", "mission_step_contracts", "tier_c_project_aliases"}
+                   "worker_manifests", "consolidation_ops", "mission_step_contracts",
+                   "tier_c_project_aliases", "world_entities", "world_relationships",
+                   "world_observations", "world_signals", "world_predictions",
+                   "world_knowledge_gaps", "world_patterns", "world_calibration"}
         allowed.update({"cost_measurements", "briefing_outbox", "voice_interactions", "control_nonces", "improvement_records", "release_manifests", "release_slots", "candidate_builds", "evaluation_runs", "verifications", "shadow_runs", "canaries", "promotions", "release_control", "restore_points", "discovery_runs", "cycles", "acceptance_runs"})
         if table not in allowed:
             raise ValueError("unsupported projection count")
-        with self.connect() as connection:
+        active_context = _ACTIVE_READ_SNAPSHOT.get()
+        if active_context is not None and active_context.database is self:
+            return active_context.count(table)
+        with self.connect(readonly=True) as connection:
             return connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
 
     @staticmethod

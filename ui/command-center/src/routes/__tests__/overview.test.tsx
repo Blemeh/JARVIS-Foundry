@@ -15,20 +15,21 @@ function renderOverview() {
 }
 
 describe("Overview truth lane", () => {
-  it("does not show fabricated currency when measured cost is absent", async () => {
-    const { container } = renderOverview()
-    await waitFor(() => expect(screen.getByLabelText(/Measured cost/i)).toBeInTheDocument())
-    expect(container.textContent).not.toContain("$0.38")
-    expect(screen.getByLabelText(/Measured cost UNKNOWN · SIMULATED/i)).toBeInTheDocument()
+  it("shows UNKNOWN confidence when executive prediction is absent", async () => {
+    renderOverview()
+    await waitFor(() => expect(screen.getByText("Confidence")).toBeInTheDocument())
+    expect(screen.getAllByText("UNKNOWN").length).toBeGreaterThan(0)
   })
 
-  it("labels simulated source explicitly in the footer", async () => {
+  it("renders the GOD MODE command surface", async () => {
     renderOverview()
-    await waitFor(() => expect(screen.getByText(/source SIMULATED/i)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Command JARVIS" })).toBeInTheDocument())
+    expect(screen.getByPlaceholderText(/Tell JARVIS what you want/i)).toBeInTheDocument()
   })
 
-  it("renders mission operations when partial data is still loading", async () => {
+  it("renders active operations and intelligence stream", async () => {
     renderOverview()
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Mission operations" })).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText("Active operations")).toBeInTheDocument())
+    expect(screen.getByText("Intelligence stream")).toBeInTheDocument()
   })
 })

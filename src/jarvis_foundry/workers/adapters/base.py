@@ -106,10 +106,10 @@ def run_subprocess_with_heartbeat(
         unregister_adapter_pid,
     )
 
-    from ...platform.windows_subprocess import headless_popen_kwargs
+    from ...platform.windows_subprocess import headless_popen_kwargs, sanitized_env
     popen_kwargs: dict[str, object] = headless_popen_kwargs(
         cwd=cwd,
-        env=env,
+        env=sanitized_env(env),
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
@@ -158,7 +158,7 @@ def run_subprocess_with_heartbeat(
     poll = max(0.05, float(stop_poll_seconds))
     try:
         while thread.is_alive():
-            if stop is not None and stop.exists():
+            if stop is not None and stop.exists() and not stopped.is_set():
                 stopped.set()
                 terminate_popen(process, timeout=5)
             if deadline is not None and time.monotonic() >= deadline:
@@ -170,6 +170,14 @@ def run_subprocess_with_heartbeat(
                 heartbeat()
                 last_beat = time.monotonic()
         thread.join(timeout=1)
+        if thread.is_alive():
+            # A child that ignored termination must not leave pipe-drain work
+            # holding the test/session teardown open indefinitely.
+            try:
+                process.kill()
+            except OSError:
+                pass
+            thread.join(timeout=1)
         if "error" in holder:
             error = holder["error"]
             raise error  # type: ignore[misc]

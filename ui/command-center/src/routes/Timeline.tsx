@@ -98,7 +98,7 @@ function TimelineContent({ events }: { events: TimelineEvent[] }) {
             {sourceMode === "SIMULATED" ? "Simulated ledger sequence for missions, handoffs, verifier gates, recovery, and STOP drills. Detail views are local only and every reference is navigable." : sourceMode === "LIVE" ? "Canonical ledger sequence for missions, handoffs, verifier gates, recovery, and STOP directives. Every reference is navigable." : `Timeline source ${sourceModeLabel(sourceMode)}: canonical events are unavailable and no fixture fallback is shown.`}
           </p>
         </div>
-        <span className="t-mono text-muted timeline-head-hash">SYSTEM AUDIT HASH: {sourceMode === "SIMULATED" ? "8F9A.22C (FIXTURE)" : sourceMode === "LIVE" ? "CANONICAL" : sourceModeLabel(sourceMode)}</span>
+        <span className="t-mono text-muted timeline-head-hash">LEDGER SOURCE: {sourceModeLabel(sourceMode)} · event identity is recorded by the backend</span>
       </div>
 
       {missionFilter || agentFilter || systemFilter || severityFilter || categoryFilter ? (

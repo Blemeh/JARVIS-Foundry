@@ -34,6 +34,21 @@ from .service import Supervisor
 MAX_CONSECUTIVE_FAILURES = 5
 
 
+def _ensure_stdio() -> None:
+    """Give ``pythonw.exe`` safe output streams.
+
+    Windows scheduled tasks commonly use the GUI-subsystem interpreter, for
+    which ``sys.stdout``/``sys.stderr`` are ``None``.  A diagnostic ``print``
+    with ``flush=True`` would otherwise raise immediately after Supervisor
+    startup, leaving a live lease with no heartbeat and making scheduler
+    recovery look like a process-discovery failure.
+    """
+    if sys.stdout is None:
+        sys.stdout = open(os.devnull, "w", encoding="utf-8", buffering=1)
+    if sys.stderr is None:
+        sys.stderr = open(os.devnull, "w", encoding="utf-8", buffering=1)
+
+
 def _record_degraded(supervisor: Supervisor, cause: str,
                      details: dict[str, object], *,
                      throttle: float, last_recorded_at: float) -> bool:
@@ -283,6 +298,7 @@ def _resilience_coordinator(database, config_path):
 
 
 def main(argv: list[str] | None = None) -> int:
+    _ensure_stdio()
     parser = build_parser()
     args = parser.parse_args(argv)
 

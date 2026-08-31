@@ -84,7 +84,10 @@ class Supervisor:
         guessed source or package value.
         """
 
-        value = os.environ.get("JARVIS_RELEASE_ID")
+        value = (
+            os.environ.get("JARVIS_RELEASE_SHA")
+            or os.environ.get("JARVIS_RELEASE_ID")
+        )
         return value.strip() if value and value.strip() else None
 
     def _record_resolution(
@@ -265,7 +268,10 @@ class Supervisor:
         event_type = "emergency_stop.frozen" if stop else "supervisor.started"
         payload = {
             "instance_id": self.instance_id,
-            "trust_state": "SUSPENDED" if stop else "LAB",
+            # Startup is not a trust promotion.  Preserve the previously
+            # certified/demoted state across a restart; an active STOP still
+            # forces SUSPENDED until an explicit owner-authorized transition.
+            "trust_state": "SUSPENDED" if stop else self._preserved_trust(),
             "stop_id": stop.get("stop_id") if stop else None,
             "reaped_workers": reaped_workers,
             "pid": pid,
@@ -322,6 +328,22 @@ class Supervisor:
             raise
         reaped = self.workers.reap()
         request = latest_request(self.database)
+        if request is not None and request.action in {"STOP", "RESTART"}:
+            # A RESTART request is intentionally durable across the stopped
+            # process boundary.  Once the replacement instance has recorded
+            # its own ``started`` resolution, that instance has adopted the
+            # request; re-applying it on the first heartbeat would make the
+            # repeating scheduled trigger stop every replacement forever.
+            resolution = latest_resolution(self.database, request.request_id)
+            adopted_restart = (
+                request.action == "RESTART"
+                and resolution is not None
+                and resolution.payload.get("status") == "RUNNING"
+                and resolution.payload.get("phase") in {"started", "recovered"}
+                and resolution.payload.get("instance_id") == self.instance_id
+            )
+            if adopted_restart:
+                request = None
         if request is not None and request.action in {"STOP", "RESTART"}:
             if request_is_stale(request):
                 self._record_resolution(
@@ -411,6 +433,8 @@ class Supervisor:
                 ).fetchone()
             if row is not None and row["trust_state"] in ALLOWED_TRUST_STATES:
                 trust = str(row["trust_state"])
+                if trust == "PROVEN":
+                    trust = "PROVING"
         except Exception:  # noqa: BLE001 — fail closed to LAB
             trust = "LAB"
         return trust
@@ -419,6 +443,34 @@ class Supervisor:
         """Coalesce non-material heartbeats; keep reap events distinct."""
         if self.ledger_heartbeat_seconds <= 0:
             return str(uuid.uuid4())
+        # Wall-clock buckets are useful for a bounded key, but a call that
+        # straddles a minute boundary can otherwise emit two non-material
+        # heartbeats back-to-back.  Anchor coalescing to the last durable
+        # heartbeat for this instance/generation so the configured interval
+        # is an elapsed-time guarantee rather than a calendar-boundary guess.
+        if not reaped:
+            try:
+                latest = self.database.events(
+                    readonly=True, limit=1, newest_first=True,
+                    event_types=("supervisor.heartbeat",),
+                )
+                if latest:
+                    event = latest[0]
+                    payload = event.payload if isinstance(event.payload, dict) else {}
+                    if (
+                        str(payload.get("instance_id") or "") == self.instance_id
+                        and int(payload.get("generation") or -1) == self._start_generation
+                    ):
+                        elapsed = (
+                            utc_now() - parse(event.recorded_at)
+                        ).total_seconds()
+                        if elapsed < float(self.ledger_heartbeat_seconds):
+                            return event.idempotency_key
+            except (OSError, TypeError, ValueError, OverflowError):
+                # Heartbeat durability remains the primary path; if the
+                # read-side probe is unavailable, fall back to the bounded
+                # deterministic bucket below.
+                pass
         bucket = int(utc_now().timestamp() // self.ledger_heartbeat_seconds)
         reap_token = ",".join(str(item) for item in (reaped or ()))
         return (
@@ -495,6 +547,8 @@ class Supervisor:
             port=int(self.command_center_port or 0),
             discovery_cycle_enabled=discovery_cycle_enabled,
             static_root=static_root,
+            runtime_home=Path(self.database.path).resolve().parent,
+            source_repo=os.environ.get("JARVIS_SOURCE_REPO"),
         )
         server.configure_owner(secret)
         server.start()

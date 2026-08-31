@@ -5,7 +5,8 @@ and Hermes environment variable names.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any
 
 OPENCODE_FAMILY_ID = "opencode"
 
@@ -27,6 +28,15 @@ class ProviderService:
     default_model: str
     free_test_model: str | None = None
     live_test_allowed_for_free_model: bool = False
+    # Capability/limit declarations are intentionally optional.  Empty or
+    # absent values mean UNKNOWN to the operational route planner, never
+    # "supports everything".
+    known_models: tuple[str, ...] = ()
+    capabilities: tuple[str, ...] = ()
+    context_window_tokens: int | None = None
+    tool_support: tuple[str, ...] = ()
+    limits: dict[str, Any] = field(default_factory=dict)
+    required_authority: str = "SUPERVISOR_CONTROLLER"
 
 
 _PROVIDER_FAMILIES: dict[str, ProviderFamily] = {
@@ -45,6 +55,10 @@ _PROVIDER_SERVICES: dict[str, ProviderService] = {
         hermes_api_key_env="OPENCODE_GO_API_KEY",
         hermes_base_url_env="OPENCODE_GO_BASE_URL",
         default_model="muse-spark-1.2-contributor",
+        known_models=("muse-spark-1.2-contributor",),
+        capabilities=("structured_reasoning", "code", "tools"),
+        tool_support=("hermes_oneshot",),
+        limits={"unattended": "requires allow_data_training_tiers_noninteractive"},
     ),
     "opencode_zen": ProviderService(
         provider_id="opencode_zen",
@@ -56,6 +70,10 @@ _PROVIDER_SERVICES: dict[str, ProviderService] = {
         default_model="x-preview-f-free",
         free_test_model="x-preview-f-free",
         live_test_allowed_for_free_model=True,
+        known_models=("x-preview-f-free",),
+        capabilities=("structured_reasoning",),
+        tool_support=("hermes_oneshot",),
+        limits={"live_test": "free_model_only"},
     ),
 }
 

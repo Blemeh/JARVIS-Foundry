@@ -27,10 +27,12 @@ export interface FoundrySnapshot {
   health: {
     supervisor_status: string;
     trust_state: string;
+    schema?: { live?: number | null; package?: number | null };
     heartbeat_at?: string;
     degraded?: boolean;
     crashed_workers?: Record<string, unknown>[];
     stale_leases?: Record<string, unknown>[];
+    trust_assessment?: Record<string, unknown>;
   };
   systems: FoundrySystem[];
   memory: FoundryMemory[];
@@ -66,6 +68,19 @@ export interface FoundrySnapshot {
   briefing_packet?: Record<string, unknown>;
   /** Additive §3.13 projection; absent on backends older than its landing. */
   discovery?: unknown;
+  /** Indexed Obsidian vault files (ACTIVE rows from vault_files). */
+  vault?: {
+    files?: FoundryVaultFile[];
+    count?: number;
+  };
+}
+
+export interface FoundryVaultFile {
+  rel_path: string;
+  content_sha256?: string;
+  status?: string;
+  updated_at?: string;
+  last_event_id?: string;
 }
 
 export interface FoundryExecutiveDecision {
@@ -115,6 +130,24 @@ export interface FoundryExecutive {
     calibration_version?: string;
     event_id?: string;
   }[];
+  /** V8 durable objectives, plans, continuation, and operational proposals. */
+  autonomy?: FoundryExecutiveAutonomy;
+}
+
+export interface FoundryExecutiveAutonomy {
+  objectives?: Record<string, Record<string, unknown>>;
+  plans?: Record<string, Record<string, unknown>>;
+  priorities?: Record<string, unknown>[];
+  continuations?: Record<string, Record<string, unknown>>;
+  escalations?: Record<string, Record<string, unknown>>;
+  coordination?: Record<string, Record<string, unknown>>;
+  progress?: Record<string, Record<string, unknown>>;
+  mission_requests?: Record<string, Record<string, unknown>>;
+  operational_followup_proposals?: Record<string, Record<string, unknown>>;
+  latest_cycle?: Record<string, unknown>;
+  briefing?: Record<string, unknown> | null;
+  status?: string;
+  reason?: string;
 }
 
 export interface FoundryMission {
@@ -125,6 +158,8 @@ export interface FoundryMission {
   updated_at?: string;
   created_from?: string;
   acceptance?: unknown;
+  last_event_id?: string;
+  record_ref?: Record<string, unknown>;
 }
 
 export interface FoundryWorker {
@@ -137,6 +172,10 @@ export interface FoundryWorker {
   heartbeat_at?: string;
   updated_at?: string;
   failure_class?: string;
+  step_id?: string;
+  last_event_id?: string;
+  record_ref?: Record<string, unknown>;
+  result?: unknown;
 }
 
 export interface FoundryEvidence {
@@ -147,6 +186,11 @@ export interface FoundryEvidence {
   status?: string;
   updated_at?: string;
   artifact_hashes?: Record<string, string>;
+  builder_claim?: unknown;
+  verifier_verdict_id?: string;
+  uncertainty?: unknown;
+  last_event_id?: string;
+  record_ref?: Record<string, unknown>;
 }
 
 export interface FoundryVerification {
@@ -156,6 +200,14 @@ export interface FoundryVerification {
   status?: string;
   findings?: unknown;
   updated_at?: string;
+  subject_type?: string;
+  subject_id?: string;
+  verifier_run_id?: string;
+  builder_run_id?: string;
+  repair_requirements?: unknown;
+  missing_proof?: unknown;
+  last_event_id?: string;
+  record_ref?: Record<string, unknown>;
 }
 
 export interface FoundrySystem {
@@ -165,6 +217,16 @@ export interface FoundrySystem {
   readiness_state?: string;
   updated_at?: string;
   last_heartbeat_at?: string;
+  last_probe_at?: string;
+  readiness?: string;
+  capabilities?: Record<string, unknown>;
+  state?: string;
+  health?: string;
+  dependencies?: string[];
+  recovery_state?: string;
+  version?: string;
+  last_event_id?: string;
+  record_ref?: Record<string, unknown>;
 }
 
 export interface FoundryMemory {
@@ -174,6 +236,15 @@ export interface FoundryMemory {
   scope?: string;
   mission_id?: string;
   updated_at?: string;
+  agent_run_id?: string;
+  created_by?: string;
+  content?: string;
+  confidence?: number;
+  source_ids?: string[];
+  evidence_ids?: string[];
+  last_verified?: string;
+  last_event_id?: string;
+  record_ref?: Record<string, unknown>;
 }
 
 export interface FoundryTimelineEvent {
@@ -184,7 +255,13 @@ export interface FoundryTimelineEvent {
   recorded_at?: string;
   summary?: string;
   decision?: string;
+  state?: string;
+  next_action?: string;
   evidence_refs?: { kind: string; id?: string; event_id?: string }[];
+  source?: { type?: string; id?: string };
+  correlation_id?: string;
+  causation_id?: string;
+  rejected_alternative?: string | null;
 }
 
 export interface OwnerCommandResponse {

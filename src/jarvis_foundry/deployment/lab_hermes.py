@@ -10,7 +10,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from ..supervisor.worker import WorkerController
+from ..supervisor.worker import WorkerController, terminate_popen
 from ..workers.adapters.fakes import ScriptedOutcome, ScriptedWorkerAdapter
 from ..workers.contracts import WORKER_HERMES
 
@@ -161,7 +161,10 @@ class LabHermesAdapter(ScriptedWorkerAdapter):
                 working_directory=contract.working_root,
             )
         heartbeat()
-        holder.wait()
+        try:
+            holder.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            terminate_popen(holder, timeout=5)
         if self.workers is not None:
             self.workers.reap()
         raise WorkerInterrupted(

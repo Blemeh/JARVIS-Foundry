@@ -1,6 +1,7 @@
 import { Clock, Database, Menu, OctagonX, ShieldQuestion, Wifi, WifiOff } from "lucide-react";
 import { useClock } from "../lib/useClock";
 import { useCommandCenter } from "../context/CommandCenterContext";
+import { useRouteQuery } from "../hooks/useRouteQuery";
 import { StopControl } from "./EmergencyStop";
 import { TrustDialog } from "./TrustDialog";
 import { NotificationBell } from "./NotificationBell";
@@ -13,26 +14,40 @@ export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
     trustDialogOpen,
     openTrustDialog,
     closeTrustDialog,
-    connection,
     sourceMode,
     streamConnected,
-    reconnectStream,
     trustSummary,
     trustSummaryStatus,
+    connection,
+    reconnectStream,
+    client,
+    version,
   } = useCommandCenter();
-  const trustStateLabel = trustSummaryStatus === "ready" && trustSummary
-    ? trustSummary.state
-    : trustSummaryStatus === "error"
-      ? "UNAVAILABLE"
-      : "LOADING";
-  const pillClass =
-    sourceMode === "DISCONNECTED"
-      ? "data-source-pill data-source-disconnected"
-      : sourceMode === "DEGRADED" || sourceMode === "UNKNOWN"
-        ? "data-source-pill data-source-degraded"
-        : sourceMode === "LIVE"
-          ? "data-source-pill data-source-live"
-        : "data-source-pill";
+
+  const schemaQuery = useRouteQuery(() => client.getSystemOverview(), [client, version]);
+  const schemaValue = schemaQuery.data?.schema;
+  const schemaLabel = schemaValue == null ? "UNKNOWN" : String(schemaValue);
+
+  // Keep source mode and trust state separate.  Source mode tells the owner
+  // where this projection came from; trust state tells them whether its
+  // claims have a canonical proof.  Neither is silently promoted to LIVE.
+  const trustStateLabel = stopActive
+    ? "SUSPENDED"
+    : trustSummaryStatus === "ready" && trustSummary
+      ? trustSummary.state?.toUpperCase() ?? "UNKNOWN"
+      : trustSummaryStatus === "error"
+        ? "UNAVAILABLE"
+        : "LOADING";
+
+  const sourcePillClass =
+    sourceMode === "LIVE"
+      ? "data-source-live topbar-god-pill--live"
+      : sourceMode === "SIMULATED"
+        ? "topbar-god-pill--caution"
+        : sourceMode === "DEGRADED" || sourceMode === "UNKNOWN"
+          ? "data-source-degraded topbar-god-pill--caution"
+          : "data-source-disconnected topbar-god-pill--critical";
+
   const neuralState = stopActive
     ? "SUSPENDED"
     : !streamConnected
@@ -43,28 +58,52 @@ export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
           ? "SIM"
           : "GATED";
 
+  const neuralClass = stopActive
+    ? "neural-link-suspended"
+    : neuralState === "LIVE"
+      ? "neural-link-live"
+      : neuralState === "SIM"
+        ? "neural-link-sim"
+        : "";
+
+  const trustClass =
+    stopActive || trustStateLabel === "UNAVAILABLE" || trustStateLabel === "SUSPENDED"
+      ? "topbar-god-pill--critical"
+      : trustStateLabel === "PROVEN"
+        ? "topbar-god-pill--nominal"
+        : "topbar-god-pill--caution";
+
+  const schemaVersion = schemaLabel;
+
   return (
     <>
-      <header className="topbar" role="banner">
+      <header className="topbar topbar--god" role="banner">
         <div className="topbar-left">
           <button type="button" className="icon-btn mobile-menu-btn" aria-label="Open navigation" onClick={onOpenMobileNav}>
             <Menu size={18} />
           </button>
-          <span className={pillClass} title={connection.error ?? `Data source: ${connection.source}`}>
+          <div className="topbar-brand-block">
+            <p className="topbar-brand-title">J.A.R.V.I.S.</p>
+            <p className="topbar-brand-sub">Autonomous intelligence system</p>
+          </div>
+        </div>
+        <div className="topbar-right topbar-god-meta">
+          <NotificationBell />
+          <span
+            className={`topbar-god-pill data-source-pill ${sourcePillClass}`}
+            title={connection.error ?? `Data source: ${sourceModeLabel(sourceMode)}`}
+          >
             {sourceMode === "DISCONNECTED" ? <WifiOff size={11} aria-hidden="true" /> : <Database size={11} aria-hidden="true" />}
-            <span className="t-label">Data Source: {sourceModeLabel(sourceMode)}</span>
+            <span>DATA SOURCE: {sourceModeLabel(sourceMode)}</span>
           </span>
           <span
-            className={`neural-link-pill ${stopActive ? "neural-link-suspended" : neuralState === "LIVE" ? "neural-link-live" : neuralState === "SIM" ? "neural-link-sim" : ""}`}
+            className={`topbar-god-pill neural-link-pill ${neuralClass}`}
             title={`Neural Link state: ${neuralState}. This is an interface status, not voice capability.`}
           >
             <Wifi size={11} aria-hidden="true" />
-            <span className="t-label">Neural Link</span>
-            <span className="t-label neural-link-state">{neuralState}</span>
+            <span>NEURAL LINK</span>
+            <span className="neural-link-state">{neuralState}</span>
           </span>
-        </div>
-        <div className="topbar-right">
-          <NotificationBell />
           {!streamConnected ? (
             <span
               className="topbar-stream-chip"
@@ -90,28 +129,37 @@ export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
             </span>
           ) : null}
           {stopActive ? (
-            <span className="topbar-stop-chip" title={sourceMode === "LIVE" ? "STOP active in canonical runtime" : sourceMode === "SIMULATED" ? "SIMULATED STOP - UI CANDIDATE" : `STOP state ${sourceModeLabel(sourceMode)}; runtime state unavailable`}>
+            <span
+              className="topbar-stop-chip"
+              title={
+                sourceMode === "LIVE"
+                  ? "STOP active in canonical runtime"
+                  : sourceMode === "SIMULATED"
+                    ? "SIMULATED STOP - UI CANDIDATE"
+                    : `STOP state ${sourceModeLabel(sourceMode)}; runtime state unavailable`
+              }
+            >
               <OctagonX size={11} aria-hidden="true" />
               <span className="t-label">Suspended</span>
             </span>
           ) : null}
-          <button type="button" className="trust-pill" onClick={openTrustDialog} aria-label={`Trust state ${trustStateLabel}. Open trust explanation.`}>
+          <span className="topbar-god-pill topbar-schema-pill" title="Active schema version">
+            Schema {schemaVersion}
+          </span>
+          <button
+            type="button"
+            className={`topbar-god-pill trust-pill ${trustClass}`}
+            onClick={openTrustDialog}
+            aria-label={`Trust state ${trustStateLabel}. Open trust explanation.`}
+            title={trustSummary ? `Trust state ${trustStateLabel}; health ${trustSummary.health}.` : "Trust state is not available."}
+          >
             <ShieldQuestion size={13} aria-hidden="true" />
-            <span className="t-label">
-              Trust:{" "}
-              <span className={stopActive || trustStateLabel === "SUSPENDED" || trustStateLabel === "UNAVAILABLE" ? "trust-state-error" : trustStateLabel === "SIMULATED" ? "trust-state-sim" : trustStateLabel === "PROVEN" ? "trust-state-live" : "trust-state-error"}>
-                {trustStateLabel}
-              </span>
-            </span>
+            <span>Trust {trustStateLabel}</span>
           </button>
-          <span className="topbar-divider" aria-hidden="true" />
-          <span className="topbar-clock" aria-label={`Local time ${clock.time}, ${clock.date}`}>
+          <span className="topbar-clock" aria-label={`Local time ${clock.time}`}>
             <Clock size={14} aria-hidden="true" />
             <span className="t-num topbar-clock-time">{clock.time}</span>
-            <span className="t-mono topbar-clock-date">{clock.date}</span>
-            <span className="t-mono topbar-clock-tz">{clock.tz}</span>
           </span>
-          <span className="topbar-divider" aria-hidden="true" />
           <StopControl compact />
         </div>
       </header>

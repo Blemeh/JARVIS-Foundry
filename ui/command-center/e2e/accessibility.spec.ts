@@ -18,6 +18,10 @@ for (const route of routes) {
     await page.goto(route.path)
     await page.locator("main#main-content").waitFor({ state: "visible" })
     await page.waitForLoadState("networkidle")
+    // RouteQueryGate renders a loading shell before the page content.  Wait
+    // for the page-level heading so axe evaluates the settled route rather
+    // than a transient loading DOM (which previously flaked Systems).
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible()
 
     const results = await new AxeBuilder({ page })
       .withTags(["wcag2a", "wcag2aa", "best-practice"])

@@ -1,4 +1,6 @@
 import { spawn } from "node:child_process"
+import net from "node:net"
+import { join } from "node:path"
 import { setTimeout as delay } from "node:timers/promises"
 import {
   assertLanePortFree,
@@ -7,9 +9,32 @@ import {
   shutdownLane,
 } from "./laneProcess.mjs"
 
-const port = Number(process.env.ENDURANCE_PORT ?? 4523)
+async function allocatePort() {
+  const server = net.createServer()
+  return await new Promise((resolve, reject) => {
+    server.once("error", reject)
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address()
+      const port = typeof address === "object" && address ? address.port : 0
+      server.close((error) => {
+        if (error) return reject(error)
+        if (!port) return reject(new Error("could not allocate an isolated endurance port"))
+        resolve(port)
+      })
+    })
+  })
+}
+
+const configuredPort = Number(process.env.ENDURANCE_PORT)
+const port = Number.isInteger(configuredPort) && configuredPort > 0
+  ? configuredPort
+  : await allocatePort()
 const laneId = `endurance-${port}`
-const baseUrl = `http://localhost:${port}`
+const baseUrl = `http://127.0.0.1:${port}`
+const systemRoot = process.env.SystemRoot || process.env.WINDIR || "C:\\Windows"
+const pathValue = [join(systemRoot, "System32"), join(systemRoot), process.env.PATH]
+  .filter(Boolean)
+  .join(process.platform === "win32" ? ";" : ":")
 
 async function waitForPort(timeoutMs = 60_000) {
   const deadline = Date.now() + timeoutMs
@@ -32,42 +57,67 @@ if (!assertLanePortFree(laneId, port)) {
   process.exit(2)
 }
 
-const preview = spawn("npx", ["vite", "preview", "--port", String(port), "--strictPort"], {
+const viteBin = join(process.cwd(), "node_modules", "vite", "bin", "vite.js")
+let stopping = false
+const shutdown = (code = 1) => {
+  if (stopping) return
+  stopping = true
+  shutdownLane(laneId)
+  process.exit(code)
+}
+
+process.once("SIGINT", () => shutdown(130))
+process.once("SIGTERM", () => shutdown(143))
+
+const preview = spawn(process.execPath, [viteBin, "preview", "--host", "127.0.0.1", "--port", String(port), "--strictPort"], {
   cwd: process.cwd(),
-  shell: true,
+  shell: false,
   stdio: "inherit",
+  windowsHide: true,
+  env: { ...process.env, PATH: pathValue },
 })
 
 if (preview.pid) registerLaneProcess(laneId, port, preview.pid)
 
 preview.on("error", (err) => {
   console.error("Failed to start preview:", err)
-  shutdownLane(laneId)
-  process.exit(1)
+  shutdown(1)
 })
 
-await waitForPort()
+try {
+  await waitForPort()
+} catch (error) {
+  console.error(error instanceof Error ? error.message : String(error))
+  shutdown(1)
+}
 
-const endurance = spawn("node", ["scripts/endurance-runner.mjs"], {
+const endurance = spawn(process.execPath, ["scripts/endurance-runner.mjs"], {
   cwd: process.cwd(),
-  shell: true,
+  shell: false,
   stdio: "inherit",
-  env: { ...process.env, ENDURANCE_BASE: baseUrl },
+  windowsHide: true,
+  env: { ...process.env, PATH: pathValue, ENDURANCE_BASE: baseUrl },
 })
 
 if (endurance.pid) registerLaneProcess(laneId, port, endurance.pid)
 
-const shutdown = (code = 1) => {
-  shutdownLane(laneId)
-  process.exit(code)
-}
+preview.on("exit", (code) => {
+  if (!stopping) {
+    console.error(`Preview exited before endurance completed (code ${code ?? "unknown"})`)
+    shutdown(1)
+    return
+  }
+  clearLaneRecord(laneId)
+})
 
-process.on("SIGINT", () => shutdown(130))
-process.on("SIGTERM", () => shutdown(143))
-
-preview.on("exit", () => clearLaneRecord(laneId))
+endurance.on("error", (error) => {
+  console.error("Failed to start endurance runner:", error)
+  shutdown(1)
+})
 
 endurance.on("exit", (code) => {
+  if (stopping) return
+  stopping = true
   shutdownLane(laneId)
   process.exit(code ?? 1)
 })

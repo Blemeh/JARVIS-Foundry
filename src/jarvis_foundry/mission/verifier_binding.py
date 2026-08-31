@@ -54,7 +54,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -67,6 +66,11 @@ from .verification import SUBJECT_STEP, latest_verdict_for_step
 VERDICTS = ("PASS", "FAIL", "BLOCKED", "NOT_TESTED")
 
 BINDING_SCHEMA = "verifier-binding-v1"
+
+# The verifier prompt and manifest are executable protocol, not presentation.
+# This version is included in the identity digest so a protocol change creates
+# a new verifier run while leaving the historical run/evidence immutable.
+VERIFIER_CONTRACT_VERSION = "verifier-contract-v2"
 
 # Evidence-set keys that must ALL be present in a terminal outcome event
 # for the verdict to be eligible for acceptance (missing evidence fails
@@ -278,25 +282,133 @@ def _binding_digest(payload: dict[str, Any]) -> str:
     return _sha256_text(canonical_json(material))
 
 
-def fresh_verifier_identity(
-    builder_run_id: str, *, attempt: int | None = None,
-) -> tuple[str, str]:
-    """Fresh verdict + verifier-run identities for ONE verification pass.
+def verifier_contract_digest(context: dict[str, Any]) -> str:
+    """Return the stable identity digest for one verifier contract.
 
-    The verifier run id is distinct from the builder's identity and from
-    every other verification attempt. Derivation is DETERMINISTIC
-    (``{builder}-verify[-rN]``) so a crashed caller resumes into the same
-    identity and the dispatcher replays the completed run instead of
-    creating an orphan session (exactly-once resume contract) — freshness
-    here means "not shared with the builder and not reused across
-    attempts", never "random per call".
+    The caller supplies the exact provider-facing contract fields except the
+    derived ``run_id``.  Keeping the digest independent of the derived id
+    means a release can deterministically decide whether the legacy verifier
+    id is compatible before it chooses a versioned id.
     """
-    if attempt is None:
-        return f"verdict-{uuid.uuid4().hex[:12]}", f"{builder_run_id}-verify"
-    return (
-        f"verdict-{uuid.uuid4().hex[:12]}",
-        f"{builder_run_id}-verify-r{attempt}",
+    material = {"schema": VERIFIER_CONTRACT_VERSION, **context}
+    return _sha256_text(canonical_json(material))
+
+
+def deterministic_verdict_id(
+    *,
+    mission_id: str,
+    step_id: str,
+    builder_run_id: str,
+    verifier_run_id: str,
+    contract_digest: str,
+) -> str:
+    """Derive a stable verdict identity from the immutable pass contract."""
+    material = {
+        "schema": VERIFIER_CONTRACT_VERSION,
+        "mission_id": mission_id,
+        "step_id": step_id,
+        "builder_run_id": builder_run_id,
+        "verifier_run_id": verifier_run_id,
+        "contract_digest": contract_digest,
+    }
+    return f"verdict-v2-{_sha256_text(canonical_json(material))[:24]}"
+
+
+def fresh_verifier_identity(
+    builder_run_id: str,
+    *,
+    attempt: int | None = None,
+    identity_context: dict[str, Any] | None = None,
+    base_verifier_run_id: str | None = None,
+    use_base: bool = False,
+    revision: int = 1,
+) -> tuple[str, str]:
+    """Return deterministic identities for one fresh verifier pass.
+
+    ``use_base`` is true only when the caller has proven that the historical
+    base verifier manifest is compatible.  Otherwise a content-addressed
+    ``-verify-v<digest>`` id is used.  If that content-addressed identity was
+    already terminally failed, ``revision`` adds a deterministic ``-rN``
+    suffix so a retry cannot collide with the old idempotency keys.  The
+    optional context keeps this helper backward-compatible for the hybrid
+    worker path while eliminating random verdict ids for new calls.
+    """
+    base = base_verifier_run_id or f"{builder_run_id}-verify"
+    context = dict(identity_context or {
+        "builder_run_id": builder_run_id,
+        "attempt": int(attempt or 1),
+    })
+    digest = verifier_contract_digest(context)
+    if use_base:
+        verifier_run_id = base
+    else:
+        verifier_run_id = f"{base}-v{digest[:20]}"
+        if int(revision) > 1:
+            verifier_run_id = f"{verifier_run_id}-r{int(revision)}"
+    mission_id = str(context.get("mission_id") or "unknown-mission")
+    step_id = str(context.get("step_id") or "unknown-step")
+    verdict_id = deterministic_verdict_id(
+        mission_id=mission_id,
+        step_id=step_id,
+        builder_run_id=builder_run_id,
+        verifier_run_id=verifier_run_id,
+        contract_digest=digest,
     )
+    return verdict_id, verifier_run_id
+
+
+def verifier_replay_state(
+    database: FoundryDatabase,
+    *,
+    mission_id: str,
+    step_id: str,
+    builder_run_id: str,
+    contract_digest: str,
+) -> tuple[dict[str, Any] | None, int]:
+    """Return the reusable PASS row and the next safe revision.
+
+    A verifier identity is content addressed, but a terminal non-PASS (or an
+    interrupted STARTED row) must never be reused for a retry.  This lookup is
+    deliberately scoped to the exact mission/step/builder/contract family;
+    it makes retries deterministic while keeping every previous verdict
+    immutable.  A completed PASS is the only terminal result eligible for an
+    exact duplicate invocation.
+    """
+    base = f"{builder_run_id}-verify-v{contract_digest[:20]}"
+    with database.connect() as connection:
+        rows = connection.execute(
+            "SELECT v.*, e.sequence AS terminal_sequence "
+            "FROM verification_verdicts v "
+            "LEFT JOIN events e ON e.event_id = v.last_event_id "
+            "WHERE v.mission_id = ? AND v.subject_type = ? "
+            "AND v.subject_id = ? AND v.builder_run_id = ? "
+            "AND v.verifier_run_id LIKE ? "
+            "ORDER BY COALESCE(e.sequence, 0) ASC, v.rowid ASC",
+            (mission_id, SUBJECT_STEP, step_id, builder_run_id, f"{base}%"),
+        ).fetchall()
+    max_revision = 0
+    latest: dict[str, Any] | None = None
+    for row in rows:
+        item = dict(row)
+        run_id = str(item.get("verifier_run_id") or "")
+        suffix = run_id[len(base):] if run_id.startswith(base) else ""
+        revision = 1
+        if suffix.startswith("-r") and suffix[2:].isdigit():
+            revision = int(suffix[2:])
+        max_revision = max(max_revision, revision)
+        # The rows are ledger-sequence ordered.  A later STARTED/FAIL/BLOCKED
+        # attempt supersedes an earlier PASS for this contract family; never
+        # let the old green row bypass a retry or crash recovery.
+        latest = item
+    if latest is not None and str(latest.get("status") or "") == "PASS":
+        reusable = latest
+        reusable_run = str(reusable.get("verifier_run_id") or "")
+        reusable_suffix = reusable_run[len(base):] if reusable_run.startswith(base) else ""
+        reusable_revision = 1
+        if reusable_suffix.startswith("-r") and reusable_suffix[2:].isdigit():
+            reusable_revision = int(reusable_suffix[2:])
+        return reusable, reusable_revision
+    return None, max_revision + 1 if max_revision else 1
 
 
 @dataclass(frozen=True, slots=True)
@@ -358,13 +470,18 @@ class AcceptanceGate:
         checks: dict[str, str] = {}
 
         # (8) STOP / veto precedence: deterministic block before anything else.
-        stop_reason = emergency_stop_reason(self.database, self.stop_path)
+        mission_for_scope = self.database.row("missions", "mission_id", mission_id)
+        stop_identities = {"GLOBAL", mission_id}
+        if mission_for_scope is not None and mission_for_scope.get("resource_id"):
+            stop_identities.add(str(mission_for_scope["resource_id"]))
+        stop_reason = emergency_stop_reason(
+            self.database, self.stop_path, identities=stop_identities)
         if stop_reason:
             return GateDecision(
                 decision="REFUSE", reason=f"STOP active at acceptance: {stop_reason}",
                 checks={_STOP_BLOCKING_DEPENDENCY: stop_reason})
 
-        mission = self.database.row("missions", "mission_id", mission_id)
+        mission = mission_for_scope
         veto_identities = {"GLOBAL", mission_id}
         if mission is not None and mission.get("resource_id"):
             veto_identities.add(str(mission["resource_id"]))

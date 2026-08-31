@@ -30,7 +30,7 @@ for (const section of sections) {
     const errors = await collectErrors(page);
     await page.goto(section.path);
     await expect(page.locator("main#main-content")).toBeVisible();
-    await expect(page.getByRole("heading", { name: section.heading })).toBeVisible();
+    await expect(page.getByRole("heading", { name: section.heading, exact: true })).toBeVisible();
     const text = await page.evaluate(() => document.body.innerText.length);
     expect(text).toBeGreaterThan(600);
     expect(errors).toEqual([]);
@@ -73,8 +73,9 @@ test("Emergency STOP simulates without touching the network or real runtime", as
   const requests: string[] = [];
   const errors = await collectErrors(page);
   await page.goto("/");
+  const pageOrigin = new URL(page.url()).origin;
   page.on("request", (req) => {
-    if (!req.url().startsWith("http://localhost:4173")) requests.push(req.url());
+    if (!req.url().startsWith(pageOrigin)) requests.push(req.url());
   });
 
   await page.getByRole("button", { name: /Emergency STOP/i }).first().click();

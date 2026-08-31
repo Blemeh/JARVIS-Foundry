@@ -47,16 +47,21 @@ from .proposal import ProposalError, Waiting, propose_next_action
 from ..v3_fault import invoke_fault_hook
 from .verification import (
     dangling_verdict_for_run,
+    dangling_verdicts_for_run_prefix,
     failed_verdict_count,
     latest_verdict_for_step,
     record_verification_outcome,
     start_verification,
+    verdict_for_verifier_run,
 )
 from .verifier_binding import (
     AcceptanceGate,
     build_terminal_evidence,
     capture_binding,
+    deterministic_verdict_id,
     fresh_verifier_identity,
+    VERIFIER_CONTRACT_VERSION,
+    verifier_contract_digest,
 )
 
 PASSED = "PASSED"
@@ -136,8 +141,37 @@ class MissionLoop:
             # Same identity as jarvis stop / Supervisor: {foundry_home}/EMERGENCY_STOP
             self.stop_path = Path(database.path).resolve().parent / "EMERGENCY_STOP"
 
-    def _stop_reason(self) -> str | None:
-        return emergency_stop_reason(self.database, self.stop_path)
+    def _stop_reason(self, mission_id: str | None = None) -> str | None:
+        identities = None
+        if mission_id:
+            mission = self.database.row("missions", "mission_id", mission_id)
+            if mission is not None:
+                identities = {
+                    "GLOBAL", mission_id, str(mission.get("resource_id") or ""),
+                }
+        return emergency_stop_reason(self.database, self.stop_path, identities=identities)
+
+    def _scoped_stop_reason(self, mission_id: str) -> str | None:
+        """Call the scope-aware stop probe with a narrow legacy fallback.
+
+        Older embedders occasionally replace ``_stop_reason`` with a
+        zero-argument callback. Detect that callable shape before invoking it
+        so the canonical implementation still receives the mission scope and
+        no TypeError escapes from a compatibility hook.
+        """
+        import inspect
+
+        try:
+            parameters = inspect.signature(self._stop_reason).parameters.values()
+            accepts_positional = any(
+                parameter.kind in (parameter.POSITIONAL_ONLY,
+                                   parameter.POSITIONAL_OR_KEYWORD,
+                                   parameter.VAR_POSITIONAL)
+                for parameter in parameters
+            )
+        except (TypeError, ValueError):
+            accepts_positional = True
+        return self._stop_reason(mission_id) if accepts_positional else self._stop_reason()
 
     def _stop_blocked(self, mission_id: str, *, step_id: str,
                       run_id: str | None = None) -> StepOutcome | None:
@@ -148,7 +182,7 @@ class MissionLoop:
         stop; no builder, verifier, commit, or completion event is emitted
         after the gate observes STOP.
         """
-        reason = self._stop_reason()
+        reason = self._scoped_stop_reason(mission_id)
         if not reason:
             return None
         mission = self._mission(mission_id)
@@ -178,7 +212,7 @@ class MissionLoop:
 
     def _reorient_after_stop(self, mission_id: str) -> None:
         """Move a STOP-blocked mission back to its scheduled action once clear."""
-        if self._stop_reason():
+        if self._scoped_stop_reason(mission_id):
             return
         mission = self._mission(mission_id)
         if str(mission["state"]) != "BLOCKED":
@@ -399,7 +433,21 @@ class MissionLoop:
         role: str,
         artifact_hashes: dict[str, str] | None = None,
     ) -> None:
-        bundle_id = f"bundle-{uuid.uuid4().hex[:12]}"
+        # Evidence identity is derived from the immutable pass contract.  A
+        # duplicate caller therefore re-delivers the same event instead of
+        # creating an unbounded set of otherwise identical bundles.
+        bundle_material = {
+            "schema": "evidence-bundle-v2",
+            "mission_id": mission_id,
+            "step_id": step_id,
+            "run_id": run_id,
+            "verdict_id": verdict_id,
+            "artifact_hashes": artifact_hashes or {},
+            "commit_head": (commit_state or {}).get("commit_head"),
+        }
+        bundle_id = "bundle-" + hashlib.sha256(
+            json.dumps(bundle_material, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()[:24]
         event = Event.create(
             "evidence.created",
             {
@@ -451,7 +499,7 @@ class MissionLoop:
         repair budget remains — the caller continues with
         ``run_step(..., run_id=<repair>)`` or calls ``run_until_settled``.
         """
-        stop_reason = self._stop_reason()
+        stop_reason = self._scoped_stop_reason(mission_id)
         if stop_reason:
             return StepOutcome(outcome=BLOCKED_OUTCOME, reason=stop_reason)
         self._reorient_after_stop(mission_id)
@@ -473,6 +521,33 @@ class MissionLoop:
                 ).fetchone()
             run_id = str(row[0]) if row else None
         run_id = run_id or f"run-{uuid.uuid4().hex[:12]}"
+        # A duplicate delivery after a durable PASS is a replay, not a new
+        # mission attempt.  This guard is intentionally scoped to the exact
+        # builder run and step; a later repair run or a different step must
+        # still execute and produce a new verifier binding.
+        if state in {"ACTION_SELECTION", "ACCEPTING", "COMPLETE"}:
+            prior = latest_verdict_for_step(self.database, mission_id, step_id)
+            builder_row = self.database.row("agent_runs", "run_id", run_id)
+            if (prior is not None and prior.get("status") == "PASS"
+                    and str(prior.get("builder_run_id") or "") == run_id
+                    and builder_row is not None
+                    and builder_row.get("status") == "COMPLETED"):
+                # A duplicate delivery is a replay only while the frozen
+                # acceptance seal still matches the live tree.  Re-check the
+                # canonical gate here; otherwise a post-PASS mutation could
+                # be reported as healthy before the normal verifier-revision
+                # path gets a chance to re-evaluate it.
+                replay_decision = AcceptanceGate(
+                    self.database, stop_path=self.stop_path,
+                ).evaluate(
+                    mission_id=mission_id, step_id=step_id, target=target,
+                    builder_run_id=run_id,
+                )
+                if replay_decision.accepted:
+                    return StepOutcome(
+                        outcome=PASSED, step_id=step_id, run_id=run_id,
+                        verdict_id=str(prior.get("verdict_id") or ""),
+                    )
         if state in {"EXECUTING", "VERIFYING"}:
             proposal = SimpleNamespace(
                 redirected=False,
@@ -484,7 +559,16 @@ class MissionLoop:
             proposal = propose_next_action(self.database, mission_id)
             if isinstance(proposal, Waiting):
                 return StepOutcome(outcome=WAITING_OUTCOME, reason=proposal.reason)
-        verdict_id = f"verdict-{uuid.uuid4().hex[:12]}"
+        verdict_id = deterministic_verdict_id(
+            mission_id=mission_id, step_id=step_id, builder_run_id=run_id,
+            verifier_run_id=f"{run_id}-crash",
+            contract_digest=verifier_contract_digest({
+                "mission_id": mission_id, "step_id": step_id,
+                "role": "builder", "instructions": instructions,
+                "capability": capability, "attempt": failed_verdict_count(
+                    self.database, mission_id, step_id) + 1,
+            }),
+        )
         criteria = verification_criteria or ["step result is verified by an independent verifier"]
 
         role = "repair" if state == "REPAIRING" else "builder"
@@ -597,18 +681,30 @@ class MissionLoop:
                 reason=f"{role} session blocked: {result.error_class or result.status}",
             )
         if result.status != COMPLETED:
-            verdict_id = f"verdict-{uuid.uuid4().hex[:12]}"
+            crash_context = {
+                "mission_id": mission_id, "step_id": step_id,
+                "role": role, "instructions": dispatch_instructions,
+                "capability": capability, "attempt": attempt,
+            }
+            crash_verifier_id = f"{run_id}-crash"
+            verdict_id = deterministic_verdict_id(
+                mission_id=mission_id, step_id=step_id,
+                builder_run_id=run_id, verifier_run_id=crash_verifier_id,
+                contract_digest=verifier_contract_digest(crash_context),
+            )
             start_verification(
                 self.database,
                 verdict_id=verdict_id,
                 mission_id=mission_id,
                 step_id=step_id,
                 builder_run_id=run_id,
-                verifier_run_id=f"{run_id}-crash",
+                verifier_run_id=crash_verifier_id,
                 independence={
                     "builder_provider": result.provider,
                     "verifier_provider": "jarvis",
                     "provider_diverse": True,
+                    "session_independent": True,
+                    "provider_independent": True,
                     "same_provider_limitation": "",
                 },
                 criteria=criteria,
@@ -634,46 +730,194 @@ class MissionLoop:
         self._advance(mission_id, "VERIFYING", run_id=run_id)
         verifier_provider = self.router.diversity_resolution(result.provider)
         base_verifier_run_id = f"{run_id}-verify"
-        verify_attempt: int | None = None
+        verifier_criteria = (
+            tuple(verification_criteria)
+            if verification_criteria is not None else ())
+        # Keep the provider-facing verifier contract intentionally free of
+        # builder claims.  The immutable target, criteria and forbidden-path
+        # fields live in the manifest and are independently re-hashed at the
+        # acceptance gate.
+        verifier_instructions = (
+            f"independently verify step {step_id} of {mission_id}: "
+            f"verifier contract {VERIFIER_CONTRACT_VERSION}; "
+            "read-only inspection only: inspect the frozen artifact "
+            "directly and confirm each "
+            "criterion. The .jarvis-result.json marker is a control record "
+            "only; do not treat its claims as independent proof. "
+            "End your response with a line: "
+            "VERDICT: PASS | FAIL | BLOCKED | NOT_TESTED "
+            "(NOT_TESTED when you cannot determine a verdict).")
+        verifier_config = self.router.config("verifier")
+        base_manifest = self.dispatcher.manifest_for(
+            base_verifier_run_id, "verifier", mission_id, step_id,
+            str(mission["resource_id"]), "verification",
+            verifier_instructions, 300, 0.0, verifier_provider,
+            verifier_config,
+            expected_artifacts=expected_artifacts,
+            verification_criteria=verifier_criteria,
+            forbidden_paths=forbidden_paths,
+            attempt=attempt,
+        )
+        verifier_context = {
+            "mission_id": mission_id,
+            "step_id": step_id,
+            "resource_id": str(mission["resource_id"]),
+            "capability": "verification",
+            "provider": verifier_provider,
+            "model": verifier_config.preferred_model,
+            "instructions": verifier_instructions,
+            "expected_artifacts": list(expected_artifacts),
+            "verification_criteria": list(verifier_criteria),
+            "forbidden_paths": list(forbidden_paths),
+            "attempt": attempt,
+            "verifier_contract_version": VERIFIER_CONTRACT_VERSION,
+        }
 
-        # DIR-2026-08-12 item 3 (exactly-once recovery): when this pass
-        # resumes a run whose builder COMPLETED earlier, verification may
-        # have been interrupted mid-flight. Recovery is state-aware and
-        # generic:
-        # (a) a STARTED verdict whose verifier run never reached a
-        #     terminal is corrected additively (verification.blocked:
-        #     interrupted; superseded) — never left dangling;
-        # (b) if the pass's verifier run row exists WITHOUT a terminal
-        #     status (interrupted RUNNING or reaped FAILED), the verifier
-        #     is dispatched under a FRESH run id — re-dispatching under
-        #     the old id would share the row with a possibly-live orphan
-        #     session, and its completion event would either conflict on
-        #     the started idempotency key or be blocked by the terminal
-        #     guard (S3);
-        # (c) a COMPLETED verifier row replays through the dispatcher (no
-        #     new session) — the builder is NEVER re-executed (its run
-        #     replays from the ledger: exactly-once mutation).
-        dangling = dangling_verdict_for_run(self.database, f"{run_id}-verify")
-        if dangling is not None:
+        # Select the legacy verifier id only when the persisted manifest is
+        # byte-for-byte compatible.  Any changed instruction, provider,
+        # model, criteria or scope receives a deterministic content-addressed
+        # identity, preserving the old run/evidence as immutable history.
+        verifier_row = self.database.row("agent_runs", "run_id", base_verifier_run_id)
+
+        def _manifest_hash_for_row(row: dict[str, Any], manifest) -> str:
+            from dataclasses import replace
+            return replace(
+                manifest,
+                provider=str(row.get("provider") or manifest.provider),
+                model=str(row.get("model") or manifest.model),
+            ).content_hash()
+
+        base_compatible = (
+            verifier_row is None
+            or (
+                verifier_row.get("status") == "COMPLETED"
+                and str(verifier_row.get("context_manifest_hash") or "")
+                == _manifest_hash_for_row(verifier_row, base_manifest)
+            )
+        )
+
+        def _completed_verifier_is_reusable(run: str) -> bool:
+            """Only reuse a completed verifier whose PASS still seals the tree.
+
+            A historical verifier process can be complete while its frozen
+            artifact or working-tree seal has become stale.  Replaying that
+            provider result would turn the next acceptance check into a
+            terminal failure instead of letting the current release perform a
+            fresh read-only evaluation.  A missing verdict is intentionally
+            reusable for crash recovery: the completed provider result can be
+            sealed by a newly recorded outcome without another provider call.
+            """
+            verdict = verdict_for_verifier_run(
+                self.database, mission_id=mission_id, step_id=step_id,
+                verifier_run_id=run,
+            )
+            if verdict is None:
+                return True
+            if str(verdict.get("status") or "") != "PASS":
+                return False
+            return AcceptanceGate(
+                self.database, stop_path=self.stop_path,
+            ).evaluate(
+                mission_id=mission_id, step_id=step_id,
+                target=target, builder_run_id=run_id,
+            ).accepted
+
+        # A completed legacy run is only a replay when its durable PASS still
+        # matches the live artifact.  If the tree drifted, force a new
+        # content-addressed verifier session; the old evidence remains
+        # immutable history and cannot be silently re-authorized.
+        if base_compatible and verifier_row is not None:
+            if not _completed_verifier_is_reusable(base_verifier_run_id):
+                base_compatible = False
+
+        if base_compatible:
+            verifier_revision = 1
+            verifier_use_base = True
+        else:
+            # A failed/reaped verifier cannot be restarted under its old
+            # idempotency key.  Reuse a completed content-addressed revision
+            # when its manifest is exact; otherwise choose the next stable
+            # revision.  The database is the source of truth, so concurrent
+            # callers converge on this same identity.
+            verifier_revision = 1
+            verifier_use_base = False
+            with self.database.connect() as connection:
+                rows = connection.execute(
+                    "SELECT run_id, status, context_manifest_hash, provider, model "
+                    "FROM agent_runs WHERE mission_id = ? AND step_id = ? "
+                    "AND role = 'verifier' AND run_id LIKE ? ORDER BY rowid",
+                    (mission_id, step_id, f"{base_verifier_run_id}-v%"),
+                ).fetchall()
+            for row in rows:
+                row_dict = dict(row)
+                candidate_manifest = self.dispatcher.manifest_for(
+                    str(row_dict["run_id"]), "verifier", mission_id, step_id,
+                    str(mission["resource_id"]), "verification",
+                    verifier_instructions, 300, 0.0, verifier_provider,
+                    verifier_config,
+                    expected_artifacts=expected_artifacts,
+                    verification_criteria=verifier_criteria,
+                    forbidden_paths=forbidden_paths,
+                    attempt=attempt,
+                )
+                if (row_dict.get("status") == "COMPLETED"
+                        and str(row_dict.get("context_manifest_hash") or "")
+                        == _manifest_hash_for_row(row_dict, candidate_manifest)):
+                    if not _completed_verifier_is_reusable(str(row_dict["run_id"])):
+                        verifier_revision = max(verifier_revision, 2)
+                        continue
+                    verifier_use_base = False
+                    # Preserve an exact completed content-addressed session.
+                    verifier_revision = int(str(row_dict["run_id"]).rsplit("-r", 1)[1]) \
+                        if "-r" in str(row_dict["run_id"]) and str(row_dict["run_id"]).rsplit("-r", 1)[1].isdigit() else 1
+                    break
+                if str(row_dict.get("run_id") or "").startswith(base_verifier_run_id + "-v"):
+                    suffix = str(row_dict["run_id"]).rsplit("-r", 1)[1] \
+                        if "-r" in str(row_dict["run_id"]) and str(row_dict["run_id"]).rsplit("-r", 1)[1].isdigit() else "1"
+                    verifier_revision = max(verifier_revision, int(suffix) + 1)
+
+        verdict_id, verifier_run_id = fresh_verifier_identity(
+            run_id,
+            attempt=attempt,
+            identity_context=verifier_context,
+            base_verifier_run_id=base_verifier_run_id,
+            use_base=verifier_use_base,
+            revision=verifier_revision,
+        )
+        verifier_manifest = self.dispatcher.manifest_for(
+            verifier_run_id, "verifier", mission_id, step_id,
+            str(mission["resource_id"]), "verification",
+            verifier_instructions, 300, 0.0, verifier_provider,
+            verifier_config,
+            expected_artifacts=expected_artifacts,
+            verification_criteria=verifier_criteria,
+            forbidden_paths=forbidden_paths,
+            attempt=attempt,
+        )
+        # If a legacy/random release already recorded a verdict for this
+        # exact verifier session, retain its immutable verdict identity on an
+        # exact replay.  New content-addressed sessions use the deterministic
+        # v2 id above.
+        existing_verdict = verdict_for_verifier_run(
+            self.database, mission_id=mission_id, step_id=step_id,
+            verifier_run_id=verifier_run_id)
+        if existing_verdict is not None and existing_verdict.get("status") != "STARTED":
+            verdict_id = str(existing_verdict["verdict_id"])
+
+        # Every interrupted STARTED verdict in this builder's verifier family
+        # is corrected additively before the new attempt.  No old event or
+        # evidence row is edited or deleted.
+        for dangling in dangling_verdicts_for_run_prefix(self.database, base_verifier_run_id):
+            if str(dangling.get("verdict_id")) == verdict_id:
+                continue
             record_verification_outcome(
                 self.database, verdict_id=dangling["verdict_id"],
                 outcome="BLOCKED", findings=[], evidence={},
                 reason="verification pass interrupted before its outcome "
                        "was recorded; superseded by the resumed pass")
-        verifier_row = self.database.row("agent_runs", "run_id", base_verifier_run_id)
-        if verifier_row is not None and verifier_row["status"] != "COMPLETED":
-            with self.database.connect() as connection:
-                attempt = connection.execute(
-                    "SELECT COUNT(*) FROM agent_runs WHERE run_id LIKE ?",
-                    (f"{base_verifier_run_id}%",)).fetchone()[0]
-            verify_attempt: int | None = attempt
 
-        # Master Goal 2: the verifier is a fresh isolated run with its own
-        # identity (distinct from the builder's, unique per verification
-        # attempt), and the verdict binding is frozen BEFORE any verifier
-        # session starts (artifact hashes, diff hash, HEAD, manifest).
-        verdict_id, verifier_run_id = fresh_verifier_identity(
-            run_id, attempt=verify_attempt)
+        # Master Goal 2: the verifier is a fresh isolated run and the verdict
+        # binding is frozen BEFORE any verifier session starts.
         capture = capture_binding(
             self.database,
             verdict_id=verdict_id,
@@ -682,11 +926,13 @@ class MissionLoop:
             target=target,
             builder_run_id=run_id,
             verifier_run_id=verifier_run_id,
-            context_manifest_hash=str(mission.get("context_manifest_hash") or ""),
+            context_manifest_hash=verifier_manifest.content_hash(),
             independence={
                 "builder_provider": result.provider,
                 "verifier_provider": verifier_provider,
                 "provider_diverse": result.provider != verifier_provider,
+                "session_independent": True,
+                "provider_independent": result.provider != verifier_provider,
                 "same_provider_limitation": (
                     "same-provider verification: reduced provider "
                     "independence; isolation enforced through a fresh "
@@ -710,16 +956,9 @@ class MissionLoop:
             step_id=step_id,
             run_id=verifier_run_id,
             provider_override=verifier_provider,
-            instructions=(
-                f"independently verify step {step_id} of {mission_id}: "
-                "inspect the frozen artifact directly and confirm each "
-                "criterion. End your response with a line: "
-                "VERDICT: PASS | FAIL | BLOCKED | NOT_TESTED "
-                "(NOT_TESTED when you cannot determine a verdict)."),
+            instructions=verifier_instructions,
             expected_artifacts=expected_artifacts,
-            verification_criteria=(
-                tuple(verification_criteria)
-                if verification_criteria is not None else ()),
+            verification_criteria=verifier_criteria,
             forbidden_paths=forbidden_paths,
             attempt=attempt,
         )
@@ -938,7 +1177,10 @@ class MissionLoop:
     ) -> StepOutcome:
         """Run the step through FAIL -> repair cycles until PASSED, BLOCKED,
         or WAITING — never looping beyond the durable repair budget."""
-        stop_reason = self._stop_reason()
+        # Keep the scoped mission identity on the canonical path.  The helper
+        # also handles the narrow zero-argument callback shape used by older
+        # embedders without weakening production scope enforcement.
+        stop_reason = self._scoped_stop_reason(mission_id)
         if stop_reason:
             return StepOutcome(outcome=BLOCKED_OUTCOME, reason=stop_reason)
         self._reorient_after_stop(mission_id)
@@ -947,7 +1189,7 @@ class MissionLoop:
         # contract exactly once without redispatching the worker.
         from .contracts import contract_rows, next_executable_contract
 
-        if self._stop_reason():
+        if self._scoped_stop_reason(mission_id):
             current = self._mission(mission_id)
             if str(current["state"]) == "ACCEPTING":
                 self._advance(mission_id, "ACTION_SELECTION",
@@ -956,7 +1198,7 @@ class MissionLoop:
             return StepOutcome(
                 outcome=BLOCKED_OUTCOME,
                 step_id=step_id,
-                reason=f"STOP active: {self._stop_reason()}",
+                reason=f"STOP active: {self._scoped_stop_reason(mission_id)}",
             )
         mission = self._mission(mission_id)
         if (str(mission["state"]) == "ACTION_SELECTION"

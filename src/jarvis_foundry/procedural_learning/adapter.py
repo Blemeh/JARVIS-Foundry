@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from ..control.redaction import redact_text
+from ..platform.windows_subprocess import sanitized_env
 from .bundle import verify_bundle
 from .contracts import (
     OpenAdaptUnavailable,
@@ -41,7 +42,7 @@ class OpenAdaptConfig:
 
 def _clean_env() -> dict[str, str]:
     """Remove credentials from the child environment."""
-    env = dict(os.environ)
+    env = sanitized_env()
     for key in list(env):
         upper = key.upper()
         if upper.endswith(("_API_KEY", "_TOKEN", "_SECRET", "_PASSWORD")):
@@ -64,7 +65,7 @@ def check_openadapt(config: OpenAdaptConfig) -> dict[str, Any]:
 
         result = subprocess.run(
             [str(executable), "--version"], capture_output=True, text=True,
-            timeout=15, check=False, env=_clean_env(),
+            timeout=15, check=False, env=sanitized_env(_clean_env()),
             **headless_run_kwargs(),
         )
     except (OSError, subprocess.TimeoutExpired) as exc:

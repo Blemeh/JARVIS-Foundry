@@ -5,6 +5,7 @@ from pathlib import Path
 
 from ..database import FoundryDatabase
 from ..domain import ActionDecision, ActionEnvelope, PolicyVerdict
+from .broker import matching_pause_reason
 
 _VALID_RISK_CLASSES = frozenset({"C0", "C1", "C2", "C3"})
 
@@ -37,13 +38,13 @@ class ActionPolicy:
     def evaluate(self, envelope: ActionEnvelope) -> PolicyVerdict:
         if self.stop_path.exists():
             return PolicyVerdict(ActionDecision.STOPPED, "emergency stop is active")
-        with self.database.connect() as connection:
-            paused = connection.execute(
-                "SELECT directive_id FROM directives WHERE active = 1 AND command_type = 'PAUSE' "
-                "ORDER BY updated_at DESC LIMIT 1"
-            ).fetchone()
+        paused = matching_pause_reason(
+            self.database,
+            {"GLOBAL", str(envelope.action_id), str(envelope.mission_id),
+             str(envelope.resource_id), str(envelope.capability)},
+        )
         if paused:
-            return PolicyVerdict(ActionDecision.STOPPED, f"owner pause directive {paused[0]} is active")
+            return PolicyVerdict(ActionDecision.STOPPED, paused)
         validation_error = _validate_envelope(envelope)
         if validation_error:
             return PolicyVerdict(ActionDecision.NOT_READY, validation_error)

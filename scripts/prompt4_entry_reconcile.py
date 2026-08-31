@@ -65,7 +65,11 @@ def main() -> int:
     promoted = None
     if before["current"] != TARGET_SHA:
         built = build_release(source_repo=REPO, source_sha=TARGET_SHA)
-        promoted = set_current(TARGET_SHA)
+        promoted = set_current(
+            TARGET_SHA,
+            database=database,
+            reason="Prompt 4 entry reconcile: immutable release activation",
+        )
         generation = record_generation(foundry_home=home)
     else:
         generation = None

@@ -120,6 +120,18 @@ def _table_key_column(table: str) -> str:
         "tier_c_procedures": "procedure_id",
         # Software-intelligence (Lane 4): derived alias projection
         "tier_c_project_aliases": "alias",
+        # V9 world intelligence projections.  These tables are event-derived
+        # like every other projection and must participate in the same
+        # row-by-row reconciliation rather than causing an unknown-table
+        # failure during Supervisor startup/recovery.
+        "world_entities": "entity_id",
+        "world_relationships": "relationship_id",
+        "world_observations": "observation_id",
+        "world_signals": "signal_id",
+        "world_predictions": "prediction_id",
+        "world_knowledge_gaps": "gap_id",
+        "world_patterns": "pattern_id",
+        "world_calibration": "calibration_id",
     }
     return key_columns[table]
 

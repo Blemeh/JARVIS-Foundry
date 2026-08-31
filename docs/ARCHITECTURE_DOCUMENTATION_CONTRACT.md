@@ -50,11 +50,20 @@ HISTORICAL and must never be read as current truth.
 
 `scripts/doc_staleness_check.py` verifies:
 
-1. `docs/CURRENT_STATE.md` HEAD claim == `git rev-parse HEAD`;
-2. schema claim == `jarvis_foundry.migrations.SCHEMA_VERSION`;
+1. `docs/CURRENT_STATE.md` pins the immediate parent of the current
+   documentation-only commit in `DOCUMENTATION STATE BASE SHA`; a current
+   commit that changes source or tests fails closed (a document cannot contain
+   its own commit SHA without a self-reference);
+2. the current/candidate schema claim == `jarvis_foundry.migrations.SCHEMA_VERSION`;
 3. no forbidden stale phrase in current-status surfaces
-   (CURRENT_STATE.md, 00_READ_FIRST.md, 05_POST_V1_ROADMAP.md);
+   (CURRENT_STATE.md, 00_READ_FIRST.md, 05_POST_V1_ROADMAP.md,
+   tests/acceptance/README.md);
 4. referenced evidence paths exist.
+
+The final reconciliation commit may change only
+`docs/CURRENT_STATE.md`, this contract, and `tests/acceptance/README.md`.
+That allowlist is defined once in `scripts/doc_staleness_check.py`; any source
+or test change after the pinned commit fails closed.
 
 Run before closing any gate; the test `tests/foundry/test_doc_staleness_check.py`
 wraps the script. Fixes to documentation counts/hashes follow evidence discipline:

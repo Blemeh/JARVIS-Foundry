@@ -11,7 +11,18 @@ async function collectErrors(page: Page) {
 
 test("JOURNEY A + event consistency: verification failure through repair to pass", async ({ page }) => {
   const errors = await collectErrors(page);
-  const navLink = (name: string) => page.locator(".sidebar-nav").getByRole("link", { name });
+  const navLink = (name: string) => ({
+    click: async () => {
+      const section = name === "Overview" ? "JARVIS" : name === "Notifications" || name === "Timeline" || name === "Systems" ? "SYSTEMS" : "OPERATIONS";
+      if (name === "Overview" || name === "Systems") {
+        await page.getByRole("link", { name: section, exact: true }).click();
+        return;
+      }
+      const item = page.locator(".nav-rail-item").filter({ has: page.getByRole("link", { name: section, exact: true }) }).first();
+      await item.hover();
+      await item.getByRole("menuitem", { name, exact: true }).click();
+    },
+  });
   await page.goto("/notifications");
   await expect(page.getByRole("heading", { name: "Notification / Exception Center" })).toBeVisible();
 
@@ -59,7 +70,18 @@ test("JOURNEY A + event consistency: verification failure through repair to pass
 
 test("JOURNEY B: worker crash propagates and recovery reconciles", async ({ page }) => {
   const errors = await collectErrors(page);
-  const navLink = (name: string) => page.locator(".sidebar-nav").getByRole("link", { name });
+  const navLink = (name: string) => ({
+    click: async () => {
+      const section = name === "Overview" ? "JARVIS" : name === "Notifications" || name === "Timeline" || name === "Systems" ? "SYSTEMS" : "OPERATIONS";
+      if (name === "Overview" || name === "Systems") {
+        await page.getByRole("link", { name: section, exact: true }).click();
+        return;
+      }
+      const item = page.locator(".nav-rail-item").filter({ has: page.getByRole("link", { name: section, exact: true }) }).first();
+      await item.hover();
+      await item.getByRole("menuitem", { name, exact: true }).click();
+    },
+  });
   await page.goto("/?scenario=WORKER_CRASH");
   await page.getByRole("button", { name: /Notifications, \d+ unread/ }).click();
   await expect(page.getByText("Worker crashed", { exact: true })).toBeVisible();
@@ -127,7 +149,18 @@ test("JOURNEY C: evidence provenance is traceable end to end", async ({ page }) 
 
 test("JOURNEY D: simulated STOP propagates everywhere and resume restores", async ({ page }) => {
   const errors = await collectErrors(page);
-  const navLink = (name: string) => page.locator(".sidebar-nav").getByRole("link", { name });
+  const navLink = (name: string) => ({
+    click: async () => {
+      const section = name === "Overview" ? "JARVIS" : name === "Notifications" || name === "Timeline" || name === "Systems" ? "SYSTEMS" : "OPERATIONS";
+      if (name === "Overview" || name === "Systems") {
+        await page.getByRole("link", { name: section, exact: true }).click();
+        return;
+      }
+      const item = page.locator(".nav-rail-item").filter({ has: page.getByRole("link", { name: section, exact: true }) }).first();
+      await item.hover();
+      await item.getByRole("menuitem", { name, exact: true }).click();
+    },
+  });
   await page.goto("/");
   await page.getByRole("button", { name: /Emergency STOP/i }).first().click();
   await page.getByRole("button", { name: "Simulate STOP" }).click();

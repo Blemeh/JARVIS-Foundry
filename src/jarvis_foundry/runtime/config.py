@@ -41,6 +41,9 @@ class WorkerRuntimeConfig:
     lab_false_success_step_id: str | None = None
     provider_settings: ProviderSettings = field(default_factory=default_provider_settings)
     executive_selection_enabled: bool = False
+    # V8 Executive Autonomy: opt-in orchestration above the existing V7
+    # portfolio selector.  It only plans/advises through canonical seams.
+    executive_autonomy_enabled: bool = False
     executive_min_action_score: float = 0.40
     executive_wait_margin: float = 0.05
     executive_activation_epoch: str | None = None
@@ -52,6 +55,9 @@ class WorkerRuntimeConfig:
     # V3 Discovery and Building: the unified cycle stays OFF by default;
     # production keeps the v3_loop WAIT + executive selection split.
     discovery_cycle_enabled: bool = False
+    # V9 Continuous Executive: durable wake/condition system above autonomy.
+    # OFF by default; when ON the loop uses run_continuous_cycle as the single wake-aware path.
+    continuous_enabled: bool = False
 
     @classmethod
     def from_yaml(
@@ -102,6 +108,8 @@ class WorkerRuntimeConfig:
             provider_settings=settings,
             executive_selection_enabled=bool(
                 raw.get("executive", {}).get("selection_enabled", False)),
+            executive_autonomy_enabled=bool(
+                raw.get("executive", {}).get("autonomy_enabled", False)),
             executive_min_action_score=float(
                 raw.get("executive", {}).get("min_action_score", 0.40)),
             executive_wait_margin=float(
@@ -114,6 +122,8 @@ class WorkerRuntimeConfig:
                                              False)),
             discovery_cycle_enabled=bool(
                 raw.get("discovery", {}).get("cycle_enabled", False)),
+            continuous_enabled=bool(
+                raw.get("executive", {}).get("continuous_enabled", False) or raw.get("continuous", {}).get("enabled", False)),
         )
         cfg.validate()
         return cfg

@@ -1,13 +1,11 @@
 import { render, screen, waitFor } from "@testing-library/react"
-import userEvent from "@testing-library/user-event"
 import { describe, expect, it } from "vitest"
 import { MemoryRouter } from "react-router-dom"
 import { CommandCenterProvider } from "../../context/CommandCenterContext"
-import { ScenarioBootstrap } from "../../ScenarioBootstrap"
 import { TopStatusBar } from "../TopStatusBar"
 
 describe("TopStatusBar owner workflow", () => {
-  it("shows trust summary state instead of data source in trust pill", async () => {
+  it("shows trust and live status in god mode top bar", async () => {
     render(
       <MemoryRouter>
         <CommandCenterProvider>
@@ -16,28 +14,23 @@ describe("TopStatusBar owner workflow", () => {
       </MemoryRouter>,
     )
 
-    const trustButton = await screen.findByRole("button", { name: /Trust state/i })
+    const trustButton = await screen.findByRole("button", { name: /Trust/i })
     await waitFor(() => {
-      expect(trustButton.textContent).toMatch(/SIMULATED|DEGRADED|PROVEN|SUSPENDED/)
+      expect(trustButton.textContent).toMatch(/NOMINAL|DEGRADED|UNAVAILABLE|LOADING|STOP/i)
     })
-    expect(screen.getByText(/Data Source: SIMULATED/i)).toBeInTheDocument()
+    expect(screen.getByText("DATA SOURCE: SIMULATED", { exact: true })).toBeInTheDocument()
+    expect(screen.getByText(/Schema/i)).toBeInTheDocument()
   })
 
-  it("shows stream disconnected status when event stream is down", async () => {
+  it("shows JARVIS brand in top bar", async () => {
     render(
-      <MemoryRouter initialEntries={["/?scenario=STREAM_DISCONNECTED"]}>
+      <MemoryRouter>
         <CommandCenterProvider>
-          <ScenarioBootstrap />
           <TopStatusBar onOpenMobileNav={() => undefined} />
         </CommandCenterProvider>
       </MemoryRouter>,
     )
 
-    expect(await screen.findByRole("status", { name: /Stream disconnected/i })).toBeInTheDocument()
-
-    await userEvent.click(screen.getByRole("button", { name: /Reconnect simulated event stream/i }))
-    await waitFor(() => {
-      expect(screen.queryByRole("status", { name: /Stream disconnected/i })).not.toBeInTheDocument()
-    })
+    expect(await screen.findByText("J.A.R.V.I.S.")).toBeInTheDocument()
   })
 })

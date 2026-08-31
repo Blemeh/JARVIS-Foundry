@@ -54,6 +54,7 @@ export function Systems() {
   const healthy = components.filter((c) => c.health === "HEALTHY").length;
   const degraded = components.filter((c) => c.health === "DEGRADED").length;
   const stopped = components.filter((c) => c.state === "STOPPED").length;
+  const unknown = components.filter((c) => c.health === "UNKNOWN" || c.readiness === "UNKNOWN").length;
   const percentResources = overview.resourceUsage.filter((r) => r.unit === "%");
 
   return (
@@ -137,6 +138,7 @@ export function Systems() {
         <MetricCard label="Healthy" value={healthy} tone="teal" />
         <MetricCard label="Degraded" value={degraded} tone={degraded ? "amber" : "default"} />
         <MetricCard label="Stopped" value={stopped} tone={stopped ? "error" : "default"} />
+        <MetricCard label="Unknown" value={unknown} tone={unknown ? "amber" : "default"} />
       </div>
 
       <div className="systems-overview panel panel-corner">
@@ -203,7 +205,7 @@ export function Systems() {
                 <span className="systems-cell"><StatusBadge status={c.health} /></span>
                 <span className="systems-cell"><StatusBadge status={c.readiness} /></span>
                 <span className="t-mono text-muted systems-cell-deps">{c.dependencies.length === 0 ? "none" : c.dependencies.join(", ")}</span>
-                <span className="t-mono systems-cell-hb">{c.lastHeartbeat.slice(11, 19)}Z</span>
+                <span className="t-mono systems-cell-hb">{c.lastHeartbeat.includes("T") ? c.lastHeartbeat.slice(11, 19) : "UNKNOWN"}</span>
                 <span className="t-mono systems-cell-recovery">{c.recovery}</span>
                 <span className="t-mono text-muted">{c.version}</span>
               </button>

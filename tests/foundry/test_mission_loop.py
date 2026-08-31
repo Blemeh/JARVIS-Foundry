@@ -226,6 +226,63 @@ def test_authenticated_redirect_reaches_mission_loop_dispatch(tmp_path):
     assert database.quick_check() == "ok"
 
 
+def test_duplicate_pass_with_mutated_tree_gets_fresh_verifier_revision(tmp_path):
+    """A replayed mission delivery must not trust a stale PASS binding.
+
+    The builder result may be safely replayed, but the verifier session and
+    acceptance seal must be renewed after the artifact changes.
+    """
+    database, repository, policy, router = mission_fixture(tmp_path)
+    target = repository / "step-out"
+
+    class StableArtifactAdapter(FakeHermesAdapter):
+        def __init__(self):
+            super().__init__(working_root=repository)
+            self.verifier_calls = 0
+
+        def dispatch(self, manifest, *, heartbeat):
+            if manifest.role == "builder":
+                path = repository / "step-out" / "report.md"
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("stable\n", encoding="utf-8")
+            if manifest.role == "verifier":
+                self.verifier_calls += 1
+            return super().dispatch(manifest, heartbeat=heartbeat)
+
+    adapter = StableArtifactAdapter()
+    loop = MissionLoop(database, router, adapter, policy=policy)
+    kwargs = step_kwargs(
+        run_id="run-stale-replay",
+        target=target,
+        expected_artifacts=("report.md",),
+        verification_criteria=("report exists",),
+    )
+    first = loop.run_step(**kwargs)
+    assert first.outcome == PASSED
+    first_verdict = first.verdict_id
+    (target / "report.md").write_text("mutated after PASS\n", encoding="utf-8")
+    # Re-open the durable action slot to model a duplicate delivery after a
+    # caller restart; the stale PASS must be checked before this retry runs.
+    database.append(Event.create(
+        "mission.state_changed",
+        {"mission_id": "mission-1", "state": "READY",
+         "next_action": "retry stale artifact"},
+        source_type="supervisor", source_id="test-retry",
+        idempotency_key="mission.state_changed:mission-1:ready-retry-stale",
+    ))
+
+    second = loop.run_step(**kwargs)
+    assert second.outcome == PASSED
+    assert second.verdict_id != first_verdict
+    assert adapter.verifier_calls == 2
+    started = [
+        event for event in database.events()
+        if event.event_type == "verification.started"
+    ]
+    assert len(started) == 2
+    assert started[0].payload["verifier_run_id"] != started[1].payload["verifier_run_id"]
+
+
 def test_stop_arriving_after_builder_blocks_verifier_and_completion(tmp_path):
     database, repository, policy, router = mission_fixture(tmp_path)
     stop_path = tmp_path / "STOP"

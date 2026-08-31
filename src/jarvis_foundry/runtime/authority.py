@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from ..paths import FoundryPaths
+from ..trust_states import ALLOWED_TRUST_STATES
 from .provider_config import ProviderSettings, load_provider_settings
 
 FOUNDRY_YAML_ROLE = "TEMPLATE"
@@ -28,14 +29,6 @@ FULL_TEST_COMMAND = "pytest tests/foundry tests/convergence"
 
 PRODUCTION_EXECUTOR = "runtime.worker_loop -> MissionLoop -> HybridWorkerRoleAdapter"
 PRODUCTION_EXECUTOR_COUNT = 1
-
-ALLOWED_TRUST_STATES = (
-    "LAB",
-    "PROVEN",
-    "TRUSTED_AUTONOMOUS",
-    "DEGRADED",
-    "SUSPENDED",
-)
 
 CONFIG_PRECEDENCE = (
     "cli",

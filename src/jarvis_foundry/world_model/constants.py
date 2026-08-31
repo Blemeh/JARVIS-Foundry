@@ -1,0 +1,79 @@
+"""World model constants and type registries."""
+from __future__ import annotations
+
+ENTITY_TYPES = frozenset({
+    "OWNER_OBJECTIVE", "PROJECT", "MISSION", "TASK", "SYSTEM",
+    "CAPABILITY", "PROVIDER", "ARTIFACT", "COMMITMENT", "DECISION",
+    "DEPENDENCY", "EVENT", "BLOCKER", "FOLLOW_UP", "RISK",
+    "OPPORTUNITY", "KNOWLEDGE_CLAIM", "PROCEDURE", "PERSON",
+    "ORGANIZATION",
+})
+
+RELATIONSHIP_TYPES = frozenset({
+    "DEPENDS_ON", "BLOCKED_BY", "PRODUCED", "AFFECTS", "SUPERSEDES",
+    "SUPPORTS", "CONTRADICTS", "REQUIRES", "OWNED_BY", "RELATES_TO",
+    "DERIVED_FROM", "RESOLVES", "FOLLOWS", "OBSERVED_IN",
+    "USES_CAPABILITY", "USES_PROVIDER",
+})
+
+ENTITY_STATES = frozenset({"ACTIVE", "STALE", "SUPERSEDED", "RESOLVED", "ARCHIVED", "UNKNOWN"})
+
+AUTHORITY_LEVELS = frozenset({
+    "OWNER_STATEMENT", "VERIFIED_EVIDENCE", "SYSTEM_OBSERVATION",
+    "VERIFIER_RESULT", "DERIVED", "EXTERNAL_UNVERIFIED", "STALE_EVIDENCE",
+})
+
+# Authority precedence: higher index = higher authority
+AUTHORITY_PRECEDENCE = {
+    "EXTERNAL_UNVERIFIED": 0,
+    "STALE_EVIDENCE": 1,
+    "DERIVED": 2,
+    "SYSTEM_OBSERVATION": 3,
+    "VERIFIER_RESULT": 4,
+    "VERIFIED_EVIDENCE": 5,
+    "OWNER_STATEMENT": 6,
+}
+
+RECORD_KINDS = frozenset({
+    "FACT", "OBSERVATION", "HYPOTHESIS", "DECISION",
+    "PREDICTION", "RESULT", "PROCEDURE", "EXTERNAL_CLAIM",
+})
+
+SIGNAL_KINDS = frozenset({
+    "BLOCKER", "RISK", "OPPORTUNITY", "FOLLOW_UP", "STALE_KNOWLEDGE",
+    "CONTRADICTION", "DEPENDENCY_CHANGE", "PROVIDER_DEGRADATION",
+    "RECURRING_PATTERN", "DEADLINE_APPROACHING", "MISSING_NEXT_STEP",
+    "ABANDONED_WORK", "UNRESOLVED_DECISION", "STALLED_OBJECTIVE",
+    "PROJECT_DRIFT", "OBJECTIVE_DRIFT", "KNOWLEDGE_GAP",
+})
+
+SALIENCE_LEVELS = ("IGNORE", "REMEMBER", "MONITOR", "RECOMMEND", "FOLLOW_UP",
+                    "WORK_CANDIDATE", "OWNER_ATTENTION", "URGENT")
+
+SIGNAL_STATES = frozenset({"OPEN", "MONITORING", "ACKNOWLEDGED", "RESOLVED", "SUPERSEDED", "STALE"})
+
+GAP_KINDS = frozenset({
+    "UNKNOWN_OWNER_DECISION", "UNKNOWN_PROVIDER_STATE",
+    "UNKNOWN_DEPENDENCY", "UNKNOWN_DEADLINE",
+    "UNKNOWN_CURRENT_VERSION", "UNKNOWN_CAPABILITY",
+    "UNKNOWN_PROJECT_STATE", "UNKNOWN_OBJECTIVE_STATE",
+    "UNKNOWN_PROCEDURE", "UNKNOWN_EXTERNAL",
+})
+
+PREDICTION_OUTCOMES = frozenset({"PENDING", "CONFIRMED", "REFUTED", "EXPIRED", "SUPERSEDED"})
+
+
+def validate_entity_type(value: str) -> str:
+    if value not in ENTITY_TYPES:
+        raise ValueError(f"invalid entity_type {value!r}")
+    return value
+
+
+def validate_relationship_type(value: str) -> str:
+    if value not in RELATIONSHIP_TYPES:
+        raise ValueError(f"invalid relationship_type {value!r}")
+    return value
+
+
+def authority_rank(authority: str) -> int:
+    return AUTHORITY_PRECEDENCE.get(authority, -1)

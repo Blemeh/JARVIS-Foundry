@@ -14,6 +14,7 @@ import type {
   MockEventStream,
   MockEventType,
   Notification,
+  ObsidianVaultFile,
   OwnerGoalResult,
   RelatedEntities,
   Scenario,
@@ -134,6 +135,12 @@ export class MockJarvisClient implements JarvisClient {
   async getMemoryGraph(): Promise<MemoryGraph> {
     await delay();
     return this.universe.memoryGraph;
+  }
+
+  async getObsidianVault(): Promise<ObsidianVaultFile[]> {
+    await delay();
+    const { OBSIDIAN_VAULT_FIXTURE } = await import("./obsidianVault");
+    return OBSIDIAN_VAULT_FIXTURE;
   }
 
   async getExecutive(): Promise<FoundryExecutive> {

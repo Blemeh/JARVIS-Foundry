@@ -321,7 +321,7 @@ export function Missions() {
                 </div>
                 <div className="mission-card-stat">
                   <span className="t-label text-muted">Agents</span>
-                  <span className="t-mono">{m.agentsActive} active</span>
+                  <span className="t-mono">{m.agentsActive < 0 ? "UNKNOWN" : m.agentsActive} active</span>
                 </div>
                 <div className="mission-card-stat">
                   <span className="t-label text-muted">Stage</span>
@@ -331,10 +331,10 @@ export function Missions() {
               <div className="mission-card-progress">
                 <div className="mission-card-progress-head">
                   <span className="t-label text-muted">Completion</span>
-                  <span className="t-mono mission-card-progress-value">{m.completion}%</span>
+                  <span className="t-mono mission-card-progress-value">{m.completion < 0 ? "UNKNOWN" : `${m.completion}%`}</span>
                 </div>
                 <div className="meter">
-                  <div className={`meter-fill ${m.status === "HALTED" || m.status === "BLOCKED" ? "meter-fill-amber" : ""}`} style={{ width: `${m.completion}%` }} />
+                  {m.completion >= 0 ? <div className={`meter-fill ${m.status === "HALTED" || m.status === "BLOCKED" || m.status === "CANCELLED" ? "meter-fill-amber" : ""}`} style={{ width: `${m.completion}%` }} /> : null}
                 </div>
               </div>
               <div className="mission-card-action">

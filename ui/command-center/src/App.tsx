@@ -11,6 +11,7 @@ const MissionDetail = lazy(() => import("./routes/MissionDetail").then((m) => ({
 const Agents = lazy(() => import("./routes/Agents").then((m) => ({ default: m.Agents })));
 const AgentDetail = lazy(() => import("./routes/AgentDetail").then((m) => ({ default: m.AgentDetail })));
 const Memory = lazy(() => import("./routes/Memory").then((m) => ({ default: m.Memory })));
+const Evolution = lazy(() => import("./routes/Evolution").then((m) => ({ default: m.Evolution })));
 const Executive = lazy(() => import("./routes/Executive").then((m) => ({ default: m.Executive })));
 const Discovery = lazy(() => import("./routes/Discovery").then((m) => ({ default: m.Discovery })));
 const Evidence = lazy(() => import("./routes/Evidence").then((m) => ({ default: m.Evidence })));
@@ -20,6 +21,7 @@ const Systems = lazy(() => import("./routes/Systems").then((m) => ({ default: m.
 const SystemDetail = lazy(() => import("./routes/SystemDetail").then((m) => ({ default: m.SystemDetail })));
 const Notifications = lazy(() => import("./routes/Notifications").then((m) => ({ default: m.Notifications })));
 const OwnerManagement = lazy(() => import("./routes/OwnerManagement").then((m) => ({ default: m.OwnerManagement })));
+const OperationsHub = lazy(() => import("./routes/OperationsHub").then((m) => ({ default: m.OperationsHub })));
 
 function RouteSuspense({ children }: { children: ReactNode }) {
   return (
@@ -42,12 +44,14 @@ export function App() {
       <Routes>
         <Route element={<AppShell />}>
           <Route path="/" element={<RouteSuspense><Overview /></RouteSuspense>} />
+          <Route path="/operations" element={<RouteSuspense><OperationsHub /></RouteSuspense>} />
           <Route path="/missions" element={<RouteSuspense><Missions /></RouteSuspense>} />
           <Route path="/missions/:missionId" element={<RouteSuspense><MissionDetail /></RouteSuspense>} />
           <Route path="/agents" element={<RouteSuspense><Agents /></RouteSuspense>} />
           <Route path="/agents/:agentId" element={<RouteSuspense><AgentDetail /></RouteSuspense>} />
           <Route path="/memory" element={<RouteSuspense><Memory /></RouteSuspense>} />
           <Route path="/memory/:memoryId" element={<RouteSuspense><Memory /></RouteSuspense>} />
+          <Route path="/evolution" element={<RouteSuspense><Evolution /></RouteSuspense>} />
           <Route path="/executive" element={<RouteSuspense><Executive /></RouteSuspense>} />
           <Route path="/discovery" element={<RouteSuspense><Discovery /></RouteSuspense>} />
           <Route path="/evidence" element={<RouteSuspense><Evidence /></RouteSuspense>} />

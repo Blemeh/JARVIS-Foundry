@@ -46,6 +46,8 @@ from jarvis_foundry.mission.verifier_binding import (
     build_terminal_evidence,
     capture_binding,
     fresh_verifier_identity,
+    verifier_contract_digest,
+    verifier_replay_state,
 )
 from jarvis_foundry.workers.adapters.fakes import ScriptedOutcome
 from jarvis_foundry.workers.adapters.registry import WorkerRegistry
@@ -166,8 +168,14 @@ def test_builder_cannot_certify_own_work(tmp_path):
 
 
 def test_hybrid_controller_never_reuses_builder_run_for_verifier(tmp_path):
+    verifier_contracts = []
+
+    def isolated_verifier(contract, *, envelope=None, report=None):
+        verifier_contracts.append(contract)
+        return fake_verifier(contract, envelope=envelope, report=report)
+
     controller, database, repo = make_controller(
-        tmp_path, router=openhands_ready_router(), verifier_factory=fake_verifier)
+        tmp_path, router=openhands_ready_router(), verifier_factory=isolated_verifier)
     openhands = MutatingScriptedAdapter(
         WORKER_OPENHANDS, write_files=("feature.py",),
         outcome=ScriptedOutcome(files_changed=("feature.py",)))
@@ -182,6 +190,15 @@ def test_hybrid_controller_never_reuses_builder_run_for_verifier(tmp_path):
     assert started, "expected binding-carrying verification.started"
     binding = started[-1]["binding"]
     assert binding["verifier_run_id"] != binding["builder_run_id"]
+    assert verifier_contracts
+    verifier = verifier_contracts[-1]
+    assert verifier.action_envelope == {}
+    assert "read-only inspection only" in verifier.instructions
+    assert "builder claim" not in verifier.instructions.lower()
+    assert "observed mismatch" not in verifier.instructions.lower()
+    independence = started[-1]["independence"]
+    assert independence["session_independent"] is True
+    assert independence["provider_independent"] is False
 
 
 # ---------------------------------------------------------------------------
@@ -436,6 +453,84 @@ def test_duplicate_completion_is_idempotent(tmp_path):
         mission_id="mission-1", step_id="step-1", target=target,
         builder_run_id="run-a")
     assert decision.accepted
+
+
+def test_stale_completed_pass_is_not_replayed_as_authority(tmp_path):
+    """A completed historical PASS remains immutable but cannot authorize a
+    tree that changed after it.  A current verifier family must advance to a
+    fresh revision instead of reusing the stale session."""
+    database, repository, _policy, _router = mission_fixture(tmp_path)
+    target = repository / "step-out"
+    target.mkdir()
+    (target / "f.txt").write_text("before\n", encoding="utf-8")
+    old_id, old_run = fresh_verifier_identity(
+        "run-a", identity_context={"mission_id": "mission-1", "step_id": "step-1", "release": "old"})
+    capture = capture_binding(
+        database, verdict_id=old_id, mission_id="mission-1", step_id="step-1",
+        target=target, builder_run_id="run-a", verifier_run_id=old_run,
+        independence={"session_independent": True}, criteria=["c"],
+    )
+    evidence = build_terminal_evidence(capture=capture, verifier_session_id=old_run)
+    record_verification_outcome(
+        database, verdict_id=old_id, outcome="PASS", findings=[], evidence=evidence,
+    )
+    (target / "f.txt").write_text("after\n", encoding="utf-8")
+    replay, revision = verifier_replay_state(
+        database, mission_id="mission-1", step_id="step-1", builder_run_id="run-a",
+        contract_digest=verifier_contract_digest({"mission_id": "mission-1", "step_id": "step-1", "release": "old"}),
+    )
+    assert replay is not None  # lookup preserves the immutable historical row
+    gate = gate_from(database, tmp_path)
+    assert not gate.evaluate(
+        mission_id="mission-1", step_id="step-1", target=target,
+        builder_run_id="run-a",
+    ).accepted
+    assert revision == 1
+    new_id, new_run = fresh_verifier_identity(
+        "run-a", identity_context={"mission_id": "mission-1", "step_id": "step-1", "release": "old"},
+        revision=2,
+    )
+    assert new_id != old_id
+    assert new_run != old_run
+
+
+def test_newer_non_pass_attempt_supersedes_historical_pass(tmp_path):
+    """A later failed/interrupted attempt in one contract family must not
+    resurrect an older PASS during replay."""
+    database, repository, _policy, _router = mission_fixture(tmp_path)
+    target = repository / "step-out"
+    target.mkdir()
+    (target / "f.txt").write_text("stable\n", encoding="utf-8")
+    context = {"mission_id": "mission-1", "step_id": "step-1", "release": "same"}
+    old_id, old_run = fresh_verifier_identity("run-a", identity_context=context)
+    old_capture = capture_binding(
+        database, verdict_id=old_id, mission_id="mission-1", step_id="step-1",
+        target=target, builder_run_id="run-a", verifier_run_id=old_run,
+        independence={"session_independent": True}, criteria=["c"],
+    )
+    record_verification_outcome(
+        database, verdict_id=old_id, outcome="PASS", findings=[],
+        evidence=build_terminal_evidence(capture=old_capture, verifier_session_id=old_run),
+    )
+    digest = verifier_contract_digest(context)
+    next_id, next_run = fresh_verifier_identity(
+        "run-a", identity_context=context, revision=2,
+    )
+    next_capture = capture_binding(
+        database, verdict_id=next_id, mission_id="mission-1", step_id="step-1",
+        target=target, builder_run_id="run-a", verifier_run_id=next_run,
+        independence={"session_independent": True}, criteria=["c"],
+    )
+    record_verification_outcome(
+        database, verdict_id=next_id, outcome="BLOCKED", findings=["crashed"],
+        evidence={}, reason="verifier crashed",
+    )
+    reusable, revision = verifier_replay_state(
+        database, mission_id="mission-1", step_id="step-1", builder_run_id="run-a",
+        contract_digest=digest,
+    )
+    assert reusable is None
+    assert revision == 3
 
 
 def test_non_pass_verdicts_never_authorize(tmp_path):

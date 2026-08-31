@@ -18,7 +18,7 @@ _HORIZON_RE = re.compile(
     re.IGNORECASE,
 )
 _SUCCESS_RE = re.compile(
-    r"(?:success|criteria|done when)\s*(?:=|:)?\s*(.+)$",
+    r"(?<![\w-])(?:success|criteria|done when)\b\s*(?:=|:)?\s*(.+)$",
     re.IGNORECASE | re.MULTILINE,
 )
 

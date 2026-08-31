@@ -482,11 +482,13 @@ def test_migration_v35_rehearsal_on_disposable_copy(tmp_path):
                         for r in healed.all("knowledge_claims"))
     assert statements == mig_baseline["statements"]
     with healed.connect() as conn:
-        markers = [r[0] for r in conn.execute(
-            "SELECT version FROM schema_migrations ORDER BY version")][-3:]
-    # tail extends additively past V3's 36 (Lane 4 v37); 35 must be present
-    assert markers[-1] >= 36
-    assert 35 in markers
+        all_markers = [r[0] for r in conn.execute(
+            "SELECT version FROM schema_migrations ORDER BY version")]
+    # The V9 world-model migration extends the historical tail beyond V3's
+    # v36 (and Lane 4's v37); assert the v35 marker by identity rather than
+    # assuming it remains in the final three rows.
+    assert all_markers[-1] >= 36
+    assert 35 in all_markers
 
     # -- restore equality: original v34 bytes still restorable --
     restored_v34 = tmp_path / "restored-v34.db"

@@ -3,16 +3,21 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 import pytest
 
-from jarvis_foundry.command_center import CommandCenterServer, build_snapshot
+from jarvis_foundry.command_center import (
+    CommandCenterServer, build_health_snapshot, build_operational_status_snapshot,
+    build_snapshot,
+)
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.events import Event
 from jarvis_foundry.owner_controls import sign_command
+from jarvis_foundry.deployment import runtime_identity
 
 
 @pytest.fixture()
@@ -33,6 +38,54 @@ def test_health_endpoint_reports_projection(db: FoundryDatabase, tmp_path: Path)
         assert payload["controls_configured"] is False
     finally:
         server.close()
+
+
+def test_health_snapshot_exposes_release_parity_and_duplicate_supervisors(
+    db: FoundryDatabase, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Health must fail closed on duplicate authorities and show all identities."""
+    install = tmp_path / "install"
+    sha = "a" * 40
+    release = install / "releases" / sha
+    release.mkdir(parents=True)
+    (install / "CURRENT").write_text(sha + "\n", encoding="utf-8")
+    (release / "RELEASE.json").write_text(
+        '{"source_sha":"%s","release_id":"rel-health"}' % sha,
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("JARVIS_INSTALL_ROOT", str(install))
+    db.append(Event.create(
+        "supervisor.started",
+        {"instance_id": "health-owner", "trust_state": "LAB",
+         "release_id": "rel-health", "pid": 123},
+        source_type="supervisor", source_id="health-owner",
+        idempotency_key="supervisor.started:health-owner",
+    ))
+
+    def process(pid: int) -> dict:
+        return {
+            "pid": pid,
+            "parent_pid": 1,
+            "module": "jarvis_foundry.deployment.headless_launcher",
+            "command_line": (
+                f'pythonw.exe -m jarvis_foundry.deployment.headless_launcher '
+                f'--home "{db.path.parent}"'),
+            "release_sha": None,
+            "identity_status": "VALID",
+            "live": True,
+            "creation_identity": {"pid": pid, "create_time": pid},
+        }
+
+    monkeypatch.setattr(runtime_identity, "supervisor_processes",
+                        lambda: [process(123), process(456)])
+    health = build_health_snapshot(db, runtime_home=db.path.parent)
+    assert health["canonical_source_sha"] is None
+    assert health["installed_release_sha"] == sha
+    assert health["runtime_release_sha"] is None
+    assert health["parity_state"] == "DUPLICATE_SUPERVISOR"
+    assert health["release"]["supervisor_count"] == 2
+    assert health["status"] == "DEGRADED"
+    assert health["reason"]
 
 
 def test_server_serves_bundled_react_app_and_spa_routes(
@@ -56,6 +109,57 @@ def test_server_serves_bundled_react_app_and_spa_routes(
         server.close()
 
 
+def test_operational_status_is_bounded_and_separate_from_full_snapshot(
+    db: FoundryDatabase, tmp_path: Path,
+) -> None:
+    status = build_operational_status_snapshot(db, runtime_home=tmp_path)
+    assert status["status"] in {"OK", "DEGRADED", "BLOCKED"}
+    assert "mission_counts" in status
+    assert "recent_events" in status
+    assert "missions" not in status
+    assert len(json.dumps(status)) < 64_000
+
+    server = CommandCenterServer(db, stop_path=tmp_path / "STOP", runtime_home=tmp_path)
+    server.start()
+    try:
+        base = f"http://{server.address[0]}:{server.address[1]}"
+        with urlopen(f"{base}/api/status", timeout=3) as response:
+            payload = json.loads(response.read())
+        assert payload["status"] in {"OK", "DEGRADED", "BLOCKED"}
+        assert "mission_counts" in payload
+        assert "missions" not in payload
+    finally:
+        server.close()
+
+
+def test_operational_status_excludes_expired_iso_leases(
+    db: FoundryDatabase, tmp_path: Path,
+) -> None:
+    """ISO ``T`` timestamps must not make expired same-day leases look live."""
+    now = datetime.now(timezone.utc)
+    with db.connect() as connection:
+        connection.execute(
+            "INSERT INTO leases (lease_key, owner_id, expires_at, heartbeat_at) "
+            "VALUES (?, ?, ?, ?)",
+            (
+                "expired-status-lease", "stale-owner",
+                (now - timedelta(days=1)).isoformat().replace("+00:00", "Z"),
+                (now - timedelta(days=1)).isoformat().replace("+00:00", "Z"),
+            ),
+        )
+        connection.execute(
+            "INSERT INTO leases (lease_key, owner_id, expires_at, heartbeat_at) "
+            "VALUES (?, ?, ?, ?)",
+            (
+                "active-status-lease", "live-owner",
+                (now + timedelta(days=1)).isoformat().replace("+00:00", "Z"),
+                now.isoformat().replace("+00:00", "Z"),
+            ),
+        )
+    status = build_operational_status_snapshot(db, runtime_home=tmp_path)
+    assert status["active_lease_count"] == 1
+
+
 def test_owner_command_localhost_auto_signs(db: FoundryDatabase, tmp_path: Path) -> None:
     secret = b"ui-bridge-secret"
     server = CommandCenterServer(db, stop_path=tmp_path / "STOP")
@@ -70,6 +174,33 @@ def test_owner_command_localhost_auto_signs(db: FoundryDatabase, tmp_path: Path)
         assert payload["command_type"] == "GOAL"
         snapshot = build_snapshot(db, stop_path=tmp_path / "STOP")
         assert snapshot["controls"]["goals"]
+    finally:
+        server.close()
+
+
+def test_owner_command_invalidates_cached_snapshot(db: FoundryDatabase, tmp_path: Path) -> None:
+    """A successful owner command must be visible on the next UI poll."""
+    secret = b"ui-bridge-secret"
+    server = CommandCenterServer(db, stop_path=tmp_path / "STOP")
+    server.configure_owner(secret)
+    server.start()
+    try:
+        base = f"http://{server.address[0]}:{server.address[1]}"
+        with urlopen(f"{base}/api/command-center", timeout=3) as response:
+            before = json.loads(response.read())
+        assert before["controls"]["goals"] == []
+        body = json.dumps({
+            "command_type": "GOAL",
+            "target": "GLOBAL",
+            "exact_text": "refresh cached owner goal",
+        }).encode()
+        with urlopen(Request(f"{base}/api/owner-command", data=body, method="POST"), timeout=3) as response:
+            assert json.loads(response.read())["status"] == "APPLIED"
+        with urlopen(f"{base}/api/command-center", timeout=3) as response:
+            after = json.loads(response.read())
+        assert [goal["exact_text"] for goal in after["controls"]["goals"]] == [
+            "refresh cached owner goal",
+        ]
     finally:
         server.close()
 

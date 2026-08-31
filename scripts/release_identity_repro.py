@@ -66,7 +66,12 @@ def _run(source_repo: Path, root: Path, home: Path) -> dict[str, object]:
     first = build_release(source_repo=source_repo, source_sha=first_sha, root=root)
     first_identity = validate_release(
         first_sha, root=root, foundry_home=home, require_schema_match=True)
-    set_current(first_sha, root=root)
+    set_current(
+        first_sha,
+        root=root,
+        database=FoundryDatabase(home / "foundry.db"),
+        reason="disposable release identity rehearsal: first activation",
+    )
     first_start = _run_release_python(Path(first["python_exe"]), root=root, home=home)
 
     # Create a second immutable identity in the disposable clone without
@@ -77,7 +82,12 @@ def _run(source_repo: Path, root: Path, home: Path) -> dict[str, object]:
     second = build_release(source_repo=source_repo, source_sha=second_sha, root=root)
     second_identity = validate_release(
         second_sha, root=root, foundry_home=home, require_schema_match=True)
-    set_current(second_sha, root=root)
+    set_current(
+        second_sha,
+        root=root,
+        database=FoundryDatabase(home / "foundry.db"),
+        reason="disposable release identity rehearsal: second activation",
+    )
     second_start = _run_release_python(Path(second["python_exe"]), root=root, home=home)
 
     rolled_back = rollback_current(root=root, foundry_home=home)

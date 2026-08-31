@@ -36,7 +36,7 @@ from tests.foundry.scheduler_guard import (
 )
 
 
-def installer_fixture(tmp_path, *, task_name=None):
+def installer_fixture(tmp_path, *, task_name=None, scheduled_source_runtime=False):
     home = tmp_path / "foundry-home"
     database = FoundryDatabase(tmp_path / "foundry.db")
     database.initialize()
@@ -51,6 +51,20 @@ def installer_fixture(tmp_path, *, task_name=None):
         profile={"mission_roles": "default"},
         gate_verdict_path=gate_verdict,
     )
+    if scheduled_source_runtime:
+        source_root = Path(__file__).resolve().parents[2] / "src"
+        bootstrap = (
+            "import sys;"
+            f"sys.path.insert(0,{str(source_root)!r});"
+            "from jarvis_foundry.supervisor.run import main;"
+            "raise SystemExit(main(sys.argv[1:]))"
+        )
+        # This disposable bootstrap makes the scheduled probe execute the
+        # candidate source tree explicitly.  Production's default action is
+        # the immutable-release headless launcher above.
+        installer.exec_arguments = (
+            f'-c "{bootstrap}" --home "{home}"'
+        )
     return home, database, gate_verdict, installer
 
 
@@ -296,6 +310,19 @@ def test_scheduler_guard_deletes_only_selected_tasks(monkeypatch):
     ]
 
 
+def test_scheduler_guard_timeout_is_fail_closed(monkeypatch):
+    import subprocess
+    import tests.foundry.scheduler_guard as scheduler_guard
+
+    def timeout(*args, **kwargs):
+        raise subprocess.TimeoutExpired(args[0], kwargs["timeout"])
+
+    monkeypatch.setattr(scheduler_guard.subprocess, "run", timeout)
+    assert scheduler_guard.query_scheduled_task_names(timeout=0.01) is None
+    assert scheduler_guard.task_xml("\\JF-WP7Gate-timeout", timeout=0.01) is None
+    assert scheduler_guard.delete_scheduled_tasks(["\\JF-WP7Gate-timeout"]) == []
+
+
 def test_profile_written_and_removed_with_install(tmp_path):
     home, database, gate_verdict, installer = installer_fixture(tmp_path)
     try:
@@ -378,6 +405,14 @@ def test_task_xml_has_repeating_time_trigger_for_bounded_restart(tmp_path):
         assert status["installed"] is True
     finally:
         teardown(installer)
+
+
+def test_headless_launcher_waits_for_supervisor_process():
+    """Task Scheduler must retain instance ownership while the child runs."""
+    template = Path(__file__).resolve().parents[2] / "packaging" / "jarvis-supervisor-headless.vbs"
+    text = template.read_text(encoding="utf-8")
+    assert "shell.Run(cmd, 0, True)" in text
+    assert "shell.Run(cmd, 0, False)" not in text
 
 
 def test_worker_loop_task_xml_is_separate_disabled_and_configured(tmp_path):
@@ -507,20 +542,17 @@ def test_task_restarts_after_hard_kill_via_repeating_trigger(tmp_path):
     import subprocess
     import time
 
-    home, database, gate_verdict, installer = installer_fixture(tmp_path)
+    home, database, gate_verdict, installer = installer_fixture(
+        tmp_path, scheduled_source_runtime=True)
     try:
         installer.install()
         # The daemon's --home is installer.foundry_home, so its durable
         # state (lease, events) lives in foundry-home/foundry.db.
         runtime_db = FoundryDatabase(home / "foundry.db")
-        # The repeating trigger fires within ~1 minute; start the daemon via
-        # the scheduler so IgnoreNew semantics apply.
-        result = subprocess.run(
-            ["schtasks", "/run", "/tn", installer.task_name],
-            capture_output=True, text=True, timeout=60,
-            **headless_run_kwargs(),
-        )
-        assert result.returncode == 0, result.stderr
+        # Let the real repeating TimeTrigger start the first instance.  An
+        # on-demand ``schtasks /run`` does not establish the repetition
+        # schedule on every Windows build, which would make a hard-kill probe
+        # falsely report that recovery is broken.
 
         def daemon_lease_owner() -> str | None:
             if not runtime_db.path.exists():
@@ -541,26 +573,34 @@ def test_task_restarts_after_hard_kill_via_repeating_trigger(tmp_path):
             return row["owner_id"] if row else None
 
         # Wait for the daemon to start and hold the singleton lease.
-        deadline = time.monotonic() + 20
+        deadline = time.monotonic() + 80
         while time.monotonic() < deadline and daemon_lease_owner() is None:
             time.sleep(2)
         first_owner = daemon_lease_owner()
         if first_owner is None:
             pytest.skip("staging Task Scheduler did not start the daemon in the bounded probe window")
+        starts = [event for event in runtime_db.events()
+                  if event.event_type == "supervisor.started"
+                  and event.payload.get("instance_id") == first_owner]
+        assert starts, "started lease owner has no durable process identity"
+        started_payload = starts[-1].payload
+        expected_pid = int(started_payload.get("pid") or 0)
+        expected_creation = (started_payload.get("creation_identity") or {}).get(
+            "create_time")
+        assert expected_pid > 0 and expected_creation is not None
 
-        # Hard-kill the daemon process (TerminateProcess semantics).
-        ps = subprocess.run(
-            ["powershell", "-NoProfile", "-Command",
-             f"Get-CimInstance Win32_Process -Filter \"name='python.exe' or name='pythonw.exe'\" | "
-             f"Where-Object {{ $_.CommandLine -like '*{installer.task_name}*' -or "
-             f"($_.CommandLine -like '*jarvis_foundry.supervisor.run*' -and "
-             f"$_.CommandLine -like '*{installer.foundry_home}*') }} | "
-             f"Select-Object -ExpandProperty ProcessId | Select-Object -First 1"],
-            capture_output=True, text=True, errors="replace", timeout=60,
-            **headless_run_kwargs(),
+        # Hard-kill the daemon process (TerminateProcess semantics).  The
+        # durable start record is the authoritative identity: command-line
+        # inventory providers can retain a stale row after PID reuse.  Probe
+        # the exact PID + creation timestamp immediately before terminating;
+        # never select a process by name or a text match.
+        from jarvis_foundry.supervisor.worker import process_creation_identity
+        observed_identity = process_creation_identity(expected_pid)
+        assert observed_identity.get("create_time") == expected_creation, (
+            "daemon exited or PID was reused before hard-kill probe: "
+            f"expected={expected_creation}, observed={observed_identity}"
         )
-        pid = ps.stdout.strip()
-        assert pid, "daemon process not found"
+        pid = str(expected_pid)
         kill = subprocess.run(["taskkill", "/f", "/pid", pid],
                               capture_output=True, text=True, errors="replace", timeout=60,
                               **headless_run_kwargs())

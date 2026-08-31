@@ -8,9 +8,12 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import os
+import re
 import secrets
 import sqlite3
 import threading
+import time
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from html import escape
@@ -18,7 +21,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from ipaddress import ip_address
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote, unquote
+from urllib.parse import parse_qs, quote, unquote, urlparse
 
 from .database import FoundryDatabase
 from .owner_controls import (
@@ -30,8 +33,10 @@ from .owner_controls import (
 from .owner_directives import owner_control_state, owner_directive_snapshot
 from .decision_queue import build_owner_attention_queue
 from .result_traceability import build_result_traceability
+from .operational_intelligence import project_operational_intelligence
 from .supervisor.estop import EmergencyStop
 from .v3_teams import DEFAULT_REPAIR_BUDGET
+from .migrations import SCHEMA_VERSION
 
 
 def _now_iso() -> str:
@@ -49,6 +54,321 @@ def _json_value(value: Any) -> Any:
 
 def _rows(connection, query: str, args: tuple[Any, ...] = ()) -> list[dict[str, Any]]:
     return [dict(row) for row in connection.execute(query, args).fetchall()]
+
+
+def build_health_snapshot(
+    database: FoundryDatabase,
+    *,
+    stop_path: str | Path | None = None,
+    controls_configured: bool = False,
+    runtime_home: str | Path | None = None,
+    source_repo: str | Path | None = None,
+) -> dict[str, Any]:
+    """Build the cheap liveness/readiness projection.
+
+    Health polling must not materialize missions, timeline, discovery,
+    briefings, or the full Command Center packet.  It reads only the durable
+    Supervisor control row, a bounded event count, SQLite quick-check, and
+    immutable release pointers.  Operational/full state remains owned by
+    :func:`build_snapshot` and its explicit API routes.
+    """
+    from .deployment.release import (
+        read_current, read_previous, read_release_json, release_authority_report,
+        release_dir,
+    )
+    from .deployment.runtime_identity import (
+        parity_state, process_matches_home, release_sha_for_id,
+        supervisor_processes,
+    )
+    from .supervisor.control import inspect_control
+    from .trust import trust_status
+
+    now = _now_iso()
+    database_path = Path(database.path)
+    observed_home = Path(runtime_home or database_path.parent).expanduser().resolve()
+    if not database_path.is_file():
+        return {
+            "status": "DEGRADED", "ready": False, "generated_at": now,
+            "reason": "database missing", "database": str(database_path),
+            "controls_configured": controls_configured,
+            "canonical_source_sha": None,
+            "installed_release_sha": None,
+            "runtime_release_sha": None,
+            "parity_state": "MISSING_RUNTIME",
+            "release_authority": {"status": "DATABASE_MISSING", "consistent": False},
+            "schema": {"live": 0, "package": None},
+            "release": {
+                "current": None, "previous": None, "status": "UNKNOWN",
+                "canonical_source_sha": None, "installed_release_sha": None,
+                "runtime_release_sha": None, "parity_state": "MISSING_RUNTIME",
+                "release_authority": {"status": "DATABASE_MISSING", "consistent": False},
+            },
+        }
+    try:
+        control = inspect_control(database, stop_path=str(stop_path) if stop_path else None)
+        with command_center_readonly_connection(database) as connection:
+            state_row = connection.execute(
+                "SELECT status, trust_state, last_heartbeat_at "
+                "FROM supervisor_state WHERE singleton = 1").fetchone()
+            event_count = int(connection.execute("SELECT COUNT(*) FROM events").fetchone()[0])
+            schema_row = connection.execute(
+                "SELECT COALESCE(MAX(version), 0) FROM schema_migrations").fetchone()
+        quick_check = database.quick_check(readonly=True)
+    except Exception as error:  # noqa: BLE001 - health is fail-closed
+        return {
+            "status": "DEGRADED", "ready": False, "generated_at": now,
+            "reason": f"health read failed: {type(error).__name__}",
+            "controls_configured": controls_configured,
+            "canonical_source_sha": None,
+            "installed_release_sha": None,
+            "runtime_release_sha": None,
+            "parity_state": "UNKNOWN",
+            "release_authority": {"status": "UNKNOWN", "consistent": False},
+        }
+    current = read_current()
+    previous = read_previous()
+    release_status = "UNKNOWN"
+    release_manifest: dict[str, Any] | None = None
+    if current:
+        manifest_path = release_dir(current) / "RELEASE.json"
+        try:
+            release_manifest = read_release_json(manifest_path)
+            release_status = "VALID" if str(release_manifest.get("source_sha")) == current else "DEGRADED"
+        except (OSError, ValueError):
+            release_status = "DEGRADED"
+    canonical_source_sha: str | None = None
+    canonical_source_origin: str | None = None
+    source_root = source_repo or os.environ.get("JARVIS_SOURCE_REPO")
+    if source_root:
+        import subprocess
+
+        source_path = Path(source_root).expanduser().resolve()
+        if (source_path / ".git").exists():
+            try:
+                result = subprocess.run(
+                    ["git", "-C", str(source_path), "rev-parse", "HEAD"],
+                    capture_output=True, text=True, timeout=15, check=False,
+                )
+                if result.returncode == 0:
+                    canonical_source_sha = result.stdout.strip() or None
+                    if canonical_source_sha:
+                        canonical_source_origin = "source_checkout"
+            except (OSError, subprocess.TimeoutExpired):
+                canonical_source_sha = None
+    state = dict(state_row) if state_row else {}
+    # ``release_id`` is event/control provenance, not a column on the compact
+    # supervisor_state projection.  Reading a non-existent column here would
+    # make every health poll fail closed with OperationalError and hide the
+    # very release identity the endpoint is meant to expose.
+    recorded_release_id = str(getattr(control, "release_id", "") or "").strip() or None
+    if recorded_release_id:
+        state["release_id"] = recorded_release_id
+    runtime_release_sha = current if (
+        current and release_manifest and state.get("release_id")
+        and str(state.get("release_id")) == str(release_manifest.get("release_id"))
+    ) else None
+    all_processes = supervisor_processes()
+    scoped_processes = [
+        item for item in all_processes if process_matches_home(item, observed_home)
+    ]
+    active_processes = [
+        item for item in scoped_processes
+        if item.get("identity_status", "VALID") == "VALID" and item.get("live", True)
+    ]
+    stale_processes = [item for item in scoped_processes if item not in active_processes]
+    # A headless immutable release may intentionally have no mutable source
+    # checkout configured.  Its validated manifest still carries the exact
+    # source identity used to build the release, so use that identity only
+    # after one live Supervisor is proven; duplicates stay fail-closed.
+    if (canonical_source_sha is None and len(active_processes) == 1
+            and release_status == "VALID" and release_manifest is not None
+            and current):
+        manifest_sha = str(release_manifest.get("source_sha") or "").strip().lower()
+        if manifest_sha == str(current).lower():
+            canonical_source_sha = manifest_sha
+            canonical_source_origin = "immutable_release_manifest"
+    runtime_shas = [item.get("release_sha") for item in active_processes]
+    # The process command line often omits the immutable SHA (the headless
+    # launcher resolves CURRENT internally).  If the one identity-validated
+    # process is also the durable control owner, resolve its recorded release
+    # id through the immutable manifest; never guess from the package version.
+    if (len(active_processes) == 1
+            and not any(runtime_shas)
+            and control.pid == active_processes[0].get("pid")):
+        recorded_sha = release_sha_for_id(state.get("release_id"))
+        if recorded_sha:
+            runtime_shas = [recorded_sha]
+    runtime_release_sha = (
+        next(iter({str(value).lower() for value in runtime_shas if value}))
+        if len({str(value).lower() for value in runtime_shas if value}) == 1 else None
+    )
+    parity = parity_state(
+        canonical_sha=canonical_source_sha,
+        installed_sha=current,
+        runtime_shas=runtime_shas,
+        supervisor_count=len(active_processes),
+    )
+    authority = release_authority_report(foundry_home=observed_home)
+    live_schema = int(schema_row[0] if schema_row else 0)
+    stop_active = bool(stop_path and EmergencyStop(stop_path).active())
+    runtime_status = str(control.status or state.get("status") or "UNKNOWN").upper()
+    if stop_active or runtime_status == "BLOCKED":
+        status, reason = "BLOCKED", "emergency STOP or runtime block is active"
+    elif runtime_status not in {"RUNNING", "FROZEN"}:
+        status, reason = "DEGRADED", f"Supervisor control status is {runtime_status}"
+    elif quick_check != "ok":
+        status, reason = "DEGRADED", f"SQLite quick_check is {quick_check}"
+    elif live_schema != SCHEMA_VERSION:
+        status, reason = "DEGRADED", (
+            f"schema mismatch: live={live_schema} package={SCHEMA_VERSION}")
+    elif release_status != "VALID":
+        status, reason = "DEGRADED", f"release identity status is {release_status}"
+    elif authority.get("status") != "CONSISTENT":
+        status, reason = "DEGRADED", (
+            f"release authority is {authority.get('status')}")
+    elif parity != "MATCH":
+        status, reason = "DEGRADED", f"source/installed/runtime parity is {parity}"
+    elif not controls_configured:
+        status, reason = "DEGRADED", "owner authentication secret is not configured"
+    else:
+        status, reason = "OK", "liveness and readiness proven"
+    trust = trust_status(database)
+    return {
+        "status": status,
+        "ready": status == "OK",
+        "degraded": status != "OK",
+        "generated_at": now,
+        "reason": reason,
+        "stop_active": stop_active,
+        "controls_configured": controls_configured,
+        "supervisor_status": runtime_status,
+        "trust_state": state.get("trust_state", "UNKNOWN"),
+        "trust": trust,
+        "heartbeat_at": state.get("last_heartbeat_at") or control.observed_at,
+        "pid": control.pid,
+        "creation_identity": control.creation_identity,
+        "runtime_instance_id": control.instance_id,
+        "canonical_source_sha": canonical_source_sha,
+        "canonical_source_origin": canonical_source_origin,
+        "installed_release_sha": current,
+        "runtime_release_sha": runtime_release_sha,
+        "parity_state": parity,
+        "release_authority": authority,
+        "event_count": event_count,
+        "database": str(database_path),
+        "database_quick_check": quick_check,
+        "schema": {"live": int(schema_row[0] if schema_row else 0), "package": SCHEMA_VERSION},
+        "release": {
+            "current": current,
+            "previous": previous,
+            "canonical_source_sha": canonical_source_sha,
+            "canonical_source_origin": canonical_source_origin,
+            "source_sha": release_manifest.get("source_sha") if release_manifest else None,
+            "installed_release_sha": current,
+            "runtime_sha": runtime_release_sha,
+            "runtime_release_sha": runtime_release_sha,
+            "release_id": release_manifest.get("release_id") if release_manifest else None,
+            "status": release_status,
+            "parity_state": parity,
+            "release_authority": authority,
+            "supervisor_count": len(active_processes),
+            "active_supervisor_processes": active_processes,
+            "stale_supervisor_processes": stale_processes,
+        },
+    }
+
+
+def build_operational_status_snapshot(
+    database: FoundryDatabase,
+    *,
+    stop_path: str | Path | None = None,
+    controls_configured: bool = False,
+    runtime_home: str | Path | None = None,
+    source_repo: str | Path | None = None,
+) -> dict[str, Any]:
+    """Build bounded operational status without materializing the UI packet.
+
+    ``/api/health`` is intentionally a liveness/readiness probe.  This
+    companion status projection adds small aggregate views useful to an
+    operator (mission/worker/lease/directive counts and a bounded tail of
+    event types) while keeping the expensive full Command Center snapshot on
+    its explicit route.
+    """
+    health = build_health_snapshot(
+        database,
+        stop_path=stop_path,
+        controls_configured=controls_configured,
+        runtime_home=runtime_home,
+        source_repo=source_repo,
+    )
+    if not Path(database.path).is_file():
+        return {
+            "status": health.get("status", "DEGRADED"),
+            "generated_at": health.get("generated_at", _now_iso()),
+            "health": health,
+            "mission_counts": {},
+            "worker_counts": {},
+            "active_lease_count": 0,
+            "directive_counts": {},
+            "recent_events": [],
+        }
+    try:
+        with command_center_readonly_connection(database) as connection:
+            def grouped(table: str, column: str) -> dict[str, int]:
+                rows = connection.execute(
+                    f"SELECT {column}, COUNT(*) FROM {table} GROUP BY {column}"  # noqa: S608 - fixed table/column constants
+                ).fetchall()
+                return {str(row[0] or "UNKNOWN"): int(row[1]) for row in rows}
+
+            mission_counts = grouped("missions", "state")
+            worker_counts = grouped("agent_runs", "status")
+            directive_counts = grouped("directives", "active")
+            active_lease_count = int(connection.execute(
+                # Lease timestamps are canonical ISO-8601 (``T``/``Z``),
+                # while SQLite's CURRENT_TIMESTAMP uses a space separator.
+                # Lexical comparison therefore counts an expired same-day
+                # lease as live.  julianday parses both forms and treats
+                # malformed timestamps as non-live instead of inflating the
+                # operator status.
+                "SELECT COUNT(*) FROM leases "
+                "WHERE julianday(expires_at) >= julianday('now')"
+            ).fetchone()[0])
+            recent_events = [
+                dict(row) for row in connection.execute(
+                    "SELECT event_id, event_type, recorded_at, source_type, source_id "
+                    "FROM events ORDER BY sequence DESC LIMIT 20"
+                ).fetchall()
+            ]
+    except Exception as error:  # noqa: BLE001 - status fails closed
+        return {
+            "status": "DEGRADED",
+            "generated_at": health.get("generated_at", _now_iso()),
+            "reason": f"operational status read failed: {type(error).__name__}",
+            "health": health,
+            "mission_counts": {},
+            "worker_counts": {},
+            "active_lease_count": 0,
+            "directive_counts": {},
+            "recent_events": [],
+        }
+    return {
+        "status": health.get("status", "DEGRADED"),
+        "health": health,
+        "generated_at": health.get("generated_at", _now_iso()),
+        "reason": health.get("reason"),
+        "supervisor_status": health.get("supervisor_status", "UNKNOWN"),
+        "trust_state": health.get("trust_state", "UNKNOWN"),
+        "stop_active": health.get("stop_active", False),
+        "mission_counts": mission_counts,
+        "worker_counts": worker_counts,
+        "active_lease_count": active_lease_count,
+        "directive_counts": directive_counts,
+        "recent_events": recent_events,
+        "release": health.get("release", {}),
+        "schema": health.get("schema", {}),
+        "parity_state": health.get("parity_state", "UNKNOWN"),
+        "release_authority": health.get("release_authority", {}),
+    }
 
 
 @contextmanager
@@ -188,6 +508,11 @@ def decision_timeline(database: FoundryDatabase, *, limit: int = 200) -> list[di
             "causation_id": event.causation_id,
             "summary": payload.get("reason") or payload.get("objective") or payload.get("status") or event_type,
             "decision": payload.get("decision") or payload.get("verdict") or payload.get("outcome"),
+            # State transitions are material lifecycle evidence. Keep these
+            # bounded scalar fields in the projection so consumers can expose
+            # repair/retry without reconstructing or guessing from prose.
+            "state": payload.get("state") if isinstance(payload.get("state"), str) else None,
+            "next_action": payload.get("next_action") if isinstance(payload.get("next_action"), str) else None,
             "rejected_alternative": payload.get("rejection_reason") or payload.get("reason") if "reject" in event_type else None,
             "evidence_refs": _event_refs(payload, event.event_id),
         })
@@ -409,7 +734,16 @@ def _portfolio_projection(database: FoundryDatabase, *, limit: int = 10) -> dict
     latest: dict[str, Any] | None = None
     recent: list[dict[str, Any]] = []
     outcomes: list[dict[str, Any]] = []
-    for event in database.events(readonly=True):
+    portfolio_events = database.events(
+        readonly=True,
+        event_types=(
+            "portfolio.selection_recorded",
+            "portfolio.outcome_recorded",
+            "incident.detected",
+            "incident.transitioned",
+        ),
+    )
+    for event in portfolio_events:
         if event.event_type == "portfolio.selection_recorded":
             payload = dict(event.payload)
             entry = {
@@ -443,7 +777,7 @@ def _portfolio_projection(database: FoundryDatabase, *, limit: int = 10) -> dict
                 })
     incidents: list[dict[str, Any]] = []
     statuses: dict[str, str] = {}
-    for event in database.events(readonly=True):
+    for event in portfolio_events:
         if event.event_type == "incident.detected":
             statuses[str(event.payload.get("incident_id"))] = "DETECTED"
             incidents.append({
@@ -1195,6 +1529,25 @@ def build_snapshot(
     timeline_limit: int = 200,
     discovery_cycle_enabled: bool | None = None,
 ) -> dict[str, Any]:
+    """Build one complete snapshot inside a shared read-only context."""
+    with database.read_snapshot():
+        return _build_snapshot(
+            database,
+            stop_path=stop_path,
+            now=now,
+            timeline_limit=timeline_limit,
+            discovery_cycle_enabled=discovery_cycle_enabled,
+        )
+
+
+def _build_snapshot(
+    database: FoundryDatabase,
+    *,
+    stop_path: str | Path | None = None,
+    now: str | None = None,
+    timeline_limit: int = 200,
+    discovery_cycle_enabled: bool | None = None,
+) -> dict[str, Any]:
     """Build the complete JSON-safe Command Center projection.
 
     ``discovery_cycle_enabled`` carries the registered runtime flag
@@ -1207,6 +1560,10 @@ def build_snapshot(
     with command_center_readonly_connection(database) as connection:
         head = connection.execute("SELECT COALESCE(MAX(sequence), 0) FROM events").fetchone()[0]
         event_count = int(head or 0)
+        schema_row = connection.execute(
+            "SELECT COALESCE(MAX(version), 0) FROM schema_migrations"
+        ).fetchone()
+        live_schema = int(schema_row[0] if schema_row else 0)
         supervisor_row = connection.execute(
             "SELECT * FROM supervisor_state WHERE singleton = 1"
         ).fetchone()
@@ -1274,7 +1631,9 @@ def build_snapshot(
         candidates = _safe_table(connection, "candidates", "SELECT * FROM candidates ORDER BY updated_at DESC LIMIT 200", errors=projection_errors)
         memories = _safe_table(
             connection, "tier_c_memories",
-            "SELECT memory_id, state, mem_type, scope, mission_id, updated_at, last_event_id "
+            "SELECT memory_id, state, mem_type, scope, mission_id, agent_run_id, "
+            "created_by, content, confidence, source_ids_json, evidence_ids_json, "
+            "last_verified, updated_at, last_event_id "
             "FROM tier_c_memories ORDER BY updated_at DESC LIMIT 100",
             errors=projection_errors)
         procedures = _safe_table(
@@ -1287,6 +1646,11 @@ def build_snapshot(
             "SELECT contract_id, mission_id, step_id, version, capability, "
             "last_event_id, updated_at FROM mission_step_contracts "
             "ORDER BY updated_at DESC LIMIT 100", errors=projection_errors)
+        vault_files = _safe_table(
+            connection, "vault_files",
+            "SELECT rel_path, content_sha256, status, updated_at, last_event_id "
+            "FROM vault_files WHERE status = 'ACTIVE' ORDER BY rel_path LIMIT 500",
+            errors=projection_errors)
         effect_truth = _effect_truth_projection(connection)
         evolution_truth = _evolution_truth_projection(connection)
         # Keep discovery on the same bounded read handle.  An active owner
@@ -1367,13 +1731,46 @@ def build_snapshot(
     def with_ref(row: dict[str, Any], kind: str, key: str) -> dict[str, Any]:
         value = dict(row)
         value["record_ref"] = _record_ref(kind, row.get(key), row.get("last_event_id"))
-        for field in ("acceptance_json", "tool_policy_json", "cost_json", "criteria_json", "evidence_json", "resource_json", "artifact_hashes_json"):
+        for field in ("acceptance_json", "tool_policy_json", "cost_json", "criteria_json", "evidence_json", "resource_json", "artifact_hashes_json", "source_ids_json", "evidence_ids_json", "builder_claim_json", "uncertainty_json", "repair_requirements_json", "missing_proof_json", "result_json"):
             if field in value:
                 value[field[:-5] if field.endswith("_json") else field] = _json_value(value[field])
         return value
 
     portfolio_projection = _portfolio_projection(database, limit=10)
     executive_projection = _executive_projection(database, limit=25)
+    # V8 Executive Autonomy is an additive subprojection of the established
+    # executive decision surface.  Both views are derived from the same
+    # ledger; the autonomy service is the sole owner of objectives/plans and
+    # the legacy projection remains the sole owner of V3 decision history.
+    try:
+        from .executive.autonomy import executive_autonomy_snapshot
+        autonomy_projection = executive_autonomy_snapshot(database)
+    except Exception as error:  # noqa: BLE001 - read model fails closed
+        autonomy_projection = {
+            "status": "UNKNOWN",
+            "reason": f"{type(error).__name__}: {error}",
+            "objectives": {},
+            "plans": {},
+            "priorities": [],
+            "continuations": {},
+            "escalations": {},
+            "coordination": {},
+            "progress": {},
+            "mission_requests": {},
+            "operational_followup_proposals": {},
+            "latest_cycle": {},
+            "briefing": None,
+        }
+    executive_projection = dict(executive_projection)
+    executive_projection["autonomy"] = autonomy_projection
+    # V9 Continuous Executive: additive wake/condition subprojection
+    try:
+        from .executive.continuous import continuous_snapshot
+        continuous_full = continuous_snapshot(database)
+        continuous_projection = continuous_full.get("continuous", continuous_full)
+    except Exception as error:  # noqa: BLE001 - read model fails closed
+        continuous_projection = {"status": "UNKNOWN", "reason": f"{type(error).__name__}: {error}", "wake_state": {}, "exec_states": {}, "due_wakes": []}
+    executive_projection["continuous"] = continuous_projection
     postv7_projection = _postv7_projection(
         database,
         portfolio=portfolio_projection,
@@ -1385,6 +1782,33 @@ def build_snapshot(
     # surface so older consumers retain their exact key set.
     portfolio_projection = dict(portfolio_projection)
     portfolio_projection["postv7"] = postv7_projection
+
+    operational_intelligence = project_operational_intelligence(
+        database,
+        now=generated_at,
+        stop_path=stop_path,
+    )
+    discovery_surface = dict(discovery_projection)
+    # Keep the established top-level contract stable.  Operational
+    # intelligence is an additive sub-surface alongside the existing V3
+    # discovery projection, not a second Command Center authority.
+    discovery_surface["operational_intelligence"] = operational_intelligence
+    # V9 World Intelligence is an additive understanding layer.  It exposes
+    # current state, history, signals, predictions, and gaps without
+    # becoming a second scheduler or mission engine.
+    try:
+        from jarvis_foundry.world_model.read_model import project_world_intelligence
+        world_intelligence = project_world_intelligence(database, limit=50)
+    except Exception as _wi_err:  # noqa: BLE001 - read model fails closed
+        world_intelligence = {
+            "counts": {},
+            "signals": [],
+            "entities": [],
+            "predictions": [],
+            "gaps": [],
+            "patterns": [],
+            "error": f"{type(_wi_err).__name__}: {_wi_err}",
+        }
 
     snapshot_payload = {
         "generated_at": generated_at,
@@ -1422,6 +1846,7 @@ def build_snapshot(
             "supervisor_status": supervisor.get("status", "UNKNOWN"),
             "trust_state": supervisor.get("trust_state", "UNKNOWN"),
             "heartbeat_at": supervisor.get("last_heartbeat_at"),
+            "schema": {"live": live_schema, "package": SCHEMA_VERSION},
             "active_leases": len(leases) - len(stale_leases),
             "stale_leases": [with_ref(l, "lease", "lease_key") for l in stale_leases],
             "crashed_workers": [with_ref(w, "agent_run", "run_id") for w in crashed_workers],
@@ -1434,6 +1859,10 @@ def build_snapshot(
         "candidates": [with_ref(c, "candidate", "candidate_id") for c in candidates],
         "mission_steps": [with_ref(s, "mission_step", "contract_id") for s in steps],
         "memory": [with_ref(m, "memory", "memory_id") for m in memories],
+        "vault": {
+            "files": [with_ref(f, "vault_file", "rel_path") for f in vault_files],
+            "count": len(vault_files),
+        },
         "procedures": [with_ref(p, "procedure", "procedure_id") for p in procedures],
         "release_identity": release_identity,
         "releases_canaries_rollbacks": release_events or {"status": "NOT_AVAILABLE", "evidence_refs": []},
@@ -1459,8 +1888,23 @@ def build_snapshot(
         "timeline": decision_timeline(database, limit=timeline_limit),
         "executive": executive_projection,
         "portfolio": portfolio_projection,
-        "discovery": discovery_projection,
+        "discovery": discovery_surface,
     }
+    # Keep the pre-V9 top-level snapshot shape byte-compatible for databases
+    # with no World Intelligence records.  Once the advisory world layer has
+    # real state (or an explicit projection error), expose its additive
+    # surface so consumers can distinguish an empty legacy database from a
+    # populated V9 world model without introducing a second authority.
+    world_counts = world_intelligence.get("counts") if isinstance(world_intelligence, dict) else None
+    world_has_state = bool(
+        isinstance(world_counts, dict)
+        and any(int(value or 0) > 0 for value in world_counts.values() if isinstance(value, (int, float)))
+    ) or any(
+        bool(world_intelligence.get(key))
+        for key in ("signals", "entities", "predictions", "gaps", "patterns", "error")
+    ) if isinstance(world_intelligence, dict) else False
+    if world_has_state:
+        snapshot_payload["world_intelligence"] = world_intelligence
     # The packet is an additive read-only export contract.  Import lazily to
     # avoid a module cycle: the packet builder reuses this snapshot function
     # when called independently.
@@ -1475,6 +1919,11 @@ def build_snapshot(
         stop_path=str(stop_path) if stop_path is not None else None,
         snapshot=snapshot_payload,
     )
+    # Trust is an additive health subprojection.  Keep the established
+    # top-level Command Center contract stable for existing consumers while
+    # exposing the evidence-backed lifecycle under ``health``.
+    from .trust import trust_status
+    snapshot_payload["health"]["trust_assessment"] = trust_status(database)
     return snapshot_payload
 
 
@@ -1487,14 +1936,162 @@ def _is_loopback(host: str | None) -> bool:
         return host in {"localhost", "::1"}
 
 
+_WIKILINK_RE = re.compile(r"\[\[([^\]]+)\]")
+
+
+def _vault_root_from_db(database: FoundryDatabase) -> Path | None:
+    for env_key in ("OBSIDIAN_VAULT", "JARVIS_OBSIDIAN_VAULT"):
+        env_root = os.environ.get(env_key)
+        if env_root:
+            candidate = Path(env_root).expanduser().resolve()
+            if candidate.is_dir():
+                return candidate
+    try:
+        with database.connect(readonly=True) as connection:
+            row = connection.execute(
+                "SELECT root FROM vault_sync_state WHERE root IS NOT NULL "
+                "ORDER BY updated_at DESC LIMIT 1",
+            ).fetchone()
+    except sqlite3.OperationalError:
+        # A database from before the vault integration must report an honest
+        # unavailable projection instead of turning the local UI into a 500.
+        return None
+    if not row:
+        return None
+    root = Path(str(row[0])).expanduser().resolve()
+    if not root.is_dir():
+        return None
+    # If sync rooted at a subfolder, prefer the Obsidian vault root when present.
+    for parent in [root, *root.parents]:
+        if (parent / ".obsidian").is_dir():
+            return parent
+    return root
+
+
+def _wikilink_targets(body: str) -> list[str]:
+    targets: list[str] = []
+    for match in _WIKILINK_RE.finditer(body):
+        raw = match.group(1).split("|", 1)[0].strip()
+        if "/" in raw:
+            raw = raw.rsplit("/", 1)[-1]
+        if raw:
+            targets.append(raw)
+    return targets
+
+
+def _vault_label_index(rel_paths: list[str]) -> dict[str, str]:
+    index: dict[str, str] = {}
+    for rel in rel_paths:
+        stem = Path(rel).stem
+        index[stem] = rel
+        index[stem.lower()] = rel
+        index[rel] = rel
+        index[rel.lower()] = rel
+    return index
+
+
+def _resolve_vault_target(target: str, index: dict[str, str]) -> str | None:
+    candidates = [
+        target,
+        target.lower(),
+        Path(target).stem,
+        Path(target).stem.lower(),
+        f"{target}.md",
+        f"{target}.md".lower(),
+    ]
+    for candidate in candidates:
+        hit = index.get(candidate)
+        if hit:
+            return hit
+    return None
+
+
+def build_vault_graph(database: FoundryDatabase, vault_root: Path) -> dict[str, Any]:
+    with database.connect(readonly=True) as connection:
+        rows = connection.execute(
+            "SELECT rel_path FROM vault_files WHERE status = 'ACTIVE' ORDER BY rel_path",
+        ).fetchall()
+    rel_paths = [str(row[0]) for row in rows]
+    index = _vault_label_index(rel_paths)
+    nodes = [
+        {"id": rel, "label": Path(rel).stem, "rel_path": rel}
+        for rel in rel_paths
+    ]
+    links: list[dict[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for rel in rel_paths:
+        note_path = (vault_root / rel).resolve()
+        try:
+            note_path.relative_to(vault_root.resolve())
+        except ValueError:
+            continue
+        if not note_path.is_file():
+            continue
+        try:
+            body = note_path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        for target in _wikilink_targets(body):
+            resolved = _resolve_vault_target(target, index)
+            if not resolved or resolved == rel:
+                continue
+            edge = (rel, resolved)
+            if edge in seen:
+                continue
+            seen.add(edge)
+            links.append({"source": rel, "target": resolved})
+    return {
+        "vault_root": str(vault_root),
+        "nodes": nodes,
+        "links": links,
+        "count": len(nodes),
+    }
+
+
+def read_vault_note(vault_root: Path, rel_path: str, *, allowed: set[str]) -> dict[str, Any]:
+    rel = rel_path.replace("\\", "/").lstrip("/")
+    if rel not in allowed:
+        raise FileNotFoundError(rel)
+    note_path = (vault_root / rel).resolve()
+    try:
+        note_path.relative_to(vault_root.resolve())
+    except ValueError:
+        raise FileNotFoundError(rel)
+    if not note_path.is_file():
+        raise FileNotFoundError(rel)
+    content = note_path.read_text(encoding="utf-8")
+    return {
+        "rel_path": rel,
+        "label": Path(rel).stem,
+        "content": content,
+        "vault_root": str(vault_root),
+        "absolute_path": str(note_path),
+    }
+
+
 class _CommandCenterHandler(BaseHTTPRequestHandler):
     database: FoundryDatabase
     stop_path: Path | None
     owner_secret: bytes | None
     owner_id: str = "local-owner"
+    runtime_home: Path | None = None
+    source_repo: Path | None = None
     timeline_limit: int = 200
     discovery_cycle_enabled: bool | None = None
     static_root: Path | None = None
+
+    def _write_body(self, body: bytes) -> bool:
+        """Write an HTTP body while treating a client navigation as normal.
+
+        Command Center pages poll and navigate between projections. A browser
+        may cancel a still-streaming snapshot during navigation; that is not a
+        runtime failure and must not emit a traceback or change ledger truth.
+        """
+        try:
+            self.wfile.write(body)
+        except (BrokenPipeError, ConnectionAbortedError):
+            return False
+        return True
 
     def _serve_static(self, route: str) -> bool:
         root = self.static_root
@@ -1522,8 +2119,124 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
             else "public, max-age=31536000, immutable")
         self._cors_headers()
         self.end_headers()
-        self.wfile.write(body)
+        self._write_body(body)
         return True
+
+    # The server binds a fresh handler subclass, so this cache is isolated per
+    # CommandCenterServer while concurrent polls still share one bounded read.
+    _snapshot_cache_at: float = 0.0
+    _snapshot_cache_payload: dict[str, Any] | None = None
+    _snapshot_cache_ledger_head: int | None = None
+    _snapshot_cache_lock = threading.Lock()
+    SNAPSHOT_CACHE_SEC = 60.0
+    # Heartbeats keep runtime health current but do not alter the expensive
+    # mission/objective/world projection.  They must not defeat the bounded
+    # product snapshot cache on every scheduler tick.
+    SNAPSHOT_CACHE_IGNORED_EVENTS = (
+        "supervisor.heartbeat",
+        "worker_loop.cycle_started",
+        "worker_loop.waiting",
+        "agent_run.heartbeat",
+    )
+
+    @classmethod
+    def _invalidate_snapshot_cache(cls) -> None:
+        with cls._snapshot_cache_lock:
+            cls._snapshot_cache_payload = None
+            cls._snapshot_cache_at = 0.0
+            cls._snapshot_cache_ledger_head = None
+
+    def _cached_snapshot(self) -> dict[str, Any]:
+        handler_cls = type(self)
+        now = time.monotonic()
+        try:
+            with self.database.read_snapshot() as read_context:
+                ledger_head = read_context.projection_head(
+                    handler_cls.SNAPSHOT_CACHE_IGNORED_EVENTS
+                )
+        except (OSError, sqlite3.Error):
+            ledger_head = None
+        cached = handler_cls._snapshot_cache_payload
+        if (
+            cached is not None
+            and now - handler_cls._snapshot_cache_at < handler_cls.SNAPSHOT_CACHE_SEC
+            and ledger_head is not None
+            and ledger_head == handler_cls._snapshot_cache_ledger_head
+        ):
+            return self._fresh_runtime_health(cached)
+        with handler_cls._snapshot_cache_lock:
+            now = time.monotonic()
+            cached = handler_cls._snapshot_cache_payload
+            if (
+                cached is not None
+                and now - handler_cls._snapshot_cache_at < handler_cls.SNAPSHOT_CACHE_SEC
+                and ledger_head is not None
+                and ledger_head == handler_cls._snapshot_cache_ledger_head
+            ):
+                return self._fresh_runtime_health(cached)
+            payload = build_snapshot(
+                self.database,
+                stop_path=self.stop_path,
+                timeline_limit=self.timeline_limit,
+                discovery_cycle_enabled=self.discovery_cycle_enabled,
+            )
+            handler_cls._snapshot_cache_payload = payload
+            handler_cls._snapshot_cache_at = now
+            handler_cls._snapshot_cache_ledger_head = ledger_head
+            return payload
+
+    def _fresh_runtime_health(self, cached: dict[str, Any]) -> dict[str, Any]:
+        """Refresh only cheap runtime fields on a cached product snapshot."""
+        try:
+            with command_center_readonly_connection(self.database) as connection:
+                state_row = connection.execute(
+                    "SELECT status, trust_state, last_heartbeat_at "
+                    "FROM supervisor_state WHERE singleton = 1"
+                ).fetchone()
+                ledger_row = connection.execute(
+                    "SELECT COALESCE(MAX(sequence), 0), COUNT(*) FROM events"
+                ).fetchone()
+                leases = connection.execute(
+                    "SELECT lease_key, owner_id, expires_at, heartbeat_at "
+                    "FROM leases ORDER BY heartbeat_at DESC"
+                ).fetchall()
+            health = dict(cached.get("health") or {})
+            state = dict(state_row) if state_row else {}
+            now_iso = _now_iso()
+            stale = [
+                dict(row) for row in leases
+                if row["expires_at"] and str(row["expires_at"]) < now_iso
+            ]
+            health.update({
+                "supervisor_status": state.get(
+                    "status", health.get("supervisor_status", "UNKNOWN")
+                ),
+                "trust_state": state.get(
+                    "trust_state", health.get("trust_state", "UNKNOWN")
+                ),
+                "heartbeat_at": state.get(
+                    "last_heartbeat_at", health.get("heartbeat_at")
+                ),
+                "active_leases": max(0, len(leases) - len(stale)),
+                "stale_leases": stale,
+                "degraded": (
+                    state.get("status") == "DEGRADED"
+                    or bool(stale)
+                    or bool(health.get("crashed_workers"))
+                    or bool(health.get("projection_errors"))
+                ),
+            })
+            refreshed = dict(cached)
+            refreshed["health"] = health
+            source = dict(refreshed.get("source_of_truth") or {})
+            source.update({
+                "ledger_head_sequence": int(ledger_row[0] or 0),
+                "event_count": int(ledger_row[1] or 0),
+            })
+            refreshed["source_of_truth"] = source
+            return refreshed
+        except (OSError, sqlite3.Error):
+            return cached
 
     def do_OPTIONS(self) -> None:  # noqa: N802
         self.send_response(204)
@@ -1541,17 +2254,14 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
             self.send_header("Cache-Control", "public, max-age=86400")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
-            self.wfile.write(body)
+            self._write_body(body)
             return
         if route.startswith("/api/record/"):
             parts = route.split("/")
             if len(parts) != 5 or parts[2] != "record" or parts[3] not in {"mission", "event"} or not parts[4]:
                 self.send_error(404)
                 return
-            snapshot = build_snapshot(
-                self.database, stop_path=self.stop_path,
-                timeline_limit=self.timeline_limit,
-                discovery_cycle_enabled=self.discovery_cycle_enabled)
+            snapshot = self._cached_snapshot()
             record_kind, record_id = parts[3], unquote(parts[4])
             if record_kind == "mission":
                 record = next((item for item in snapshot["missions"] if str(item.get("mission_id")) == record_id), None)
@@ -1563,44 +2273,137 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
             self._json_response({"status": "FOUND", "kind": record_kind, "record": record}, status=200)
             return
         if route == "/api/health":
-            snapshot = build_snapshot(
+            health = build_health_snapshot(
                 self.database, stop_path=self.stop_path,
-                timeline_limit=self.timeline_limit,
-                discovery_cycle_enabled=self.discovery_cycle_enabled)
-            degraded = bool(snapshot["health"].get("degraded"))
-            supervisor_status = snapshot["health"].get("supervisor_status", "UNKNOWN")
-            controls_configured = bool(self.owner_secret)
-            self._json_response({
-                "status": (
-                    "OK" if not degraded and controls_configured
-                    and supervisor_status in {"RUNNING", "FROZEN"}
-                    else "DEGRADED"),
-                "generated_at": snapshot["generated_at"],
-                "stop_active": bool(snapshot["stop"]["active"]),
-                "supervisor_status": supervisor_status,
-                "degraded": degraded,
-                "controls_configured": controls_configured,
-            }, status=200)
+                controls_configured=bool(self.owner_secret),
+                runtime_home=self.runtime_home,
+                source_repo=self.source_repo)
+            self._json_response(health, status=200)
             return
-        if route not in {"/", "/api/command-center", "/api/timeline"}:
+        if route == "/api/status":
+            status = build_operational_status_snapshot(
+                self.database,
+                stop_path=self.stop_path,
+                controls_configured=bool(self.owner_secret),
+                runtime_home=self.runtime_home,
+                source_repo=self.source_repo)
+            try:
+                from .deployment.status import production_status
+                deployment_status = production_status(
+                    home=Path(self.database.path).parent,
+                    source_repo=self.source_repo)
+            except Exception as error:  # noqa: BLE001 - status stays truthful
+                deployment_status = {
+                    "status": "UNKNOWN",
+                    "health": {"status": "UNKNOWN", "reason": str(error)},
+                }
+            status.update({
+                "deployment_health": deployment_status.get("health", {}),
+                "release_authority": deployment_status.get("release_authority", {}),
+                "parity": deployment_status.get("parity", {}),
+                "process_truth": deployment_status.get("process_truth", {}),
+                "scheduler": deployment_status.get("scheduler", {}),
+                "deployment_status": deployment_status,
+            })
+            self._json_response(status, status=200)
+            return
+        if route in {"/api/executive", "/api/executive/objectives", "/api/executive/briefing"}:
+            try:
+                from .executive.autonomy import executive_autonomy_snapshot
+                with self.database.read_snapshot():
+                    projection = executive_autonomy_snapshot(self.database)
+            except Exception as error:  # noqa: BLE001 - additive API stays truthful
+                projection = {"status": "UNAVAILABLE", "reason": f"{type(error).__name__}: {error}"}
+            if route.endswith("/objectives"):
+                projection = {
+                    "objectives": projection.get("objectives", {}),
+                    "priorities": projection.get("priorities", []),
+                    "progress": projection.get("progress", {}),
+                }
+            elif route.endswith("/briefing"):
+                projection = {"briefing": projection.get("briefing"), "escalations": projection.get("escalations", {}), "continuations": projection.get("continuations", {})}
+            self._json_response(projection, status=200)
+            return
+        if route == "/api/timeline":
+            try:
+                with self.database.read_snapshot():
+                    timeline = decision_timeline(
+                        self.database, limit=self.timeline_limit
+                    )
+            except Exception as error:  # noqa: BLE001 - bounded read stays honest
+                self._json_response(
+                    {"status": "UNAVAILABLE", "reason": f"{type(error).__name__}: {error}"},
+                    status=503,
+                )
+                return
+            self._json_response(timeline, status=200)
+            return
+        if route == "/api/vault/graph":
+            vault_root = _vault_root_from_db(self.database)
+            if vault_root is None:
+                self._json_response(
+                    {"status": "NOT_AVAILABLE", "reason": "vault root unknown", "nodes": [], "links": []},
+                    status=503,
+                )
+                return
+            try:
+                graph = build_vault_graph(self.database, vault_root)
+            except sqlite3.OperationalError:
+                self._json_response(
+                    {"status": "NOT_AVAILABLE", "reason": "vault index unavailable", "nodes": [], "links": []},
+                    status=503,
+                )
+                return
+            self._json_response(graph, status=200)
+            return
+        if route == "/api/vault/note":
+            vault_root = _vault_root_from_db(self.database)
+            if vault_root is None:
+                self._json_response({"status": "NOT_AVAILABLE", "reason": "vault root unknown"}, status=503)
+                return
+            rel_path = unquote(parse_qs(urlparse(self.path).query).get("path", [""])[0])
+            if not rel_path:
+                self._json_response({"status": "BAD_REQUEST", "reason": "path required"}, status=400)
+                return
+            try:
+                with self.database.connect(readonly=True) as connection:
+                    allowed = {
+                        str(row[0])
+                        for row in connection.execute(
+                            "SELECT rel_path FROM vault_files WHERE status = 'ACTIVE'",
+                        ).fetchall()
+                    }
+            except sqlite3.OperationalError:
+                self._json_response(
+                    {"status": "NOT_AVAILABLE", "reason": "vault index unavailable"}, status=503,
+                )
+                return
+            try:
+                note = read_vault_note(vault_root, rel_path, allowed=allowed)
+            except FileNotFoundError:
+                self._json_response({"status": "NOT_FOUND", "rel_path": rel_path}, status=404)
+                return
+            except (OSError, UnicodeError):
+                self._json_response({"status": "NOT_AVAILABLE", "rel_path": rel_path}, status=503)
+                return
+            self._json_response(note, status=200)
+            return
+        if route not in {"/", "/api/command-center"}:
             self.send_error(404)
             return
-        snapshot = build_snapshot(
-            self.database, stop_path=self.stop_path,
-            timeline_limit=self.timeline_limit,
-            discovery_cycle_enabled=self.discovery_cycle_enabled)
+        snapshot = self._cached_snapshot()
         if route == "/":
             body = self._html(snapshot).encode("utf-8")
             content_type = "text/html; charset=utf-8"
         else:
-            body = json.dumps(snapshot if route != "/api/timeline" else snapshot["timeline"], ensure_ascii=True).encode()
+            body = json.dumps(snapshot, ensure_ascii=True).encode()
             content_type = "application/json; charset=utf-8"
         self.send_response(200)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
         self._cors_headers()
         self.end_headers()
-        self.wfile.write(body)
+        self._write_body(body)
 
     def do_POST(self) -> None:  # noqa: N802
         route = self.path.split("?", 1)[0]
@@ -1640,8 +2443,13 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
                 nonce = str(payload.get("nonce", ""))
                 signature = str(payload.get("signature", ""))
             if command_type == "RESUME":
-                event_ids = service.resume(nonce=nonce, signature=signature, exact_text=exact_text or "resume jarvis")
-                result: dict[str, Any] = {"status": "APPLIED", "command_type": command_type, "event_ids": event_ids}
+                event_ids = service.resume(
+                    target=str(target or "GLOBAL"), nonce=nonce,
+                    signature=signature, exact_text=exact_text or "resume jarvis")
+                result: dict[str, Any] = {
+                    "status": "APPLIED", "command_type": command_type,
+                    "target": target or "GLOBAL", "event_ids": event_ids,
+                }
             else:
                 applied = service.apply(
                     command_type,
@@ -1660,7 +2468,12 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
                     "directive_id": applied.directive_id,
                     "event_id": applied.event_id,
                     "superseded_directive_id": applied.superseded_directive_id,
+                    "outcome": applied.outcome,
+                    "details": applied.details,
                 }
+            # Owner controls append ledger events; do not leave the UI serving
+            # a pre-command snapshot during the bounded cache window.
+            type(self)._invalidate_snapshot_cache()
             self._json_response(result, status=200)
         except OwnerReplayError as error:
             self._json_response({"status": "REJECTED", "reason": str(error)}, status=409)
@@ -1684,7 +2497,7 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
         self._cors_headers()
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
-        self.wfile.write(body)
+        self._write_body(body)
 
     @staticmethod
     def _html(snapshot: dict[str, Any]) -> str:
@@ -1903,12 +2716,20 @@ class CommandCenterServer:
         host: str = "127.0.0.1", port: int = 0,
         discovery_cycle_enabled: bool | None = None,
         static_root: str | Path | None = None,
+        runtime_home: str | Path | None = None,
+        source_repo: str | Path | None = None,
     ) -> None:
         handler = type("BoundCommandCenterHandler", (_CommandCenterHandler,), {})
         handler.database = database
         handler.stop_path = Path(stop_path).resolve() if stop_path else None
         handler.owner_secret = None
         handler.owner_id = "local-owner"
+        handler.runtime_home = (
+            Path(runtime_home).expanduser().resolve()
+            if runtime_home is not None else Path(database.path).resolve().parent)
+        handler.source_repo = (
+            Path(source_repo).expanduser().resolve()
+            if source_repo is not None else None)
         handler.discovery_cycle_enabled = discovery_cycle_enabled
         handler.static_root = Path(static_root).resolve() if static_root else None
         self._handler = handler
@@ -1925,6 +2746,7 @@ class CommandCenterServer:
             raise ValueError("owner secret cannot be empty")
         self._handler.owner_secret = bytes(secret)
         self._handler.owner_id = owner_id
+        self._handler._invalidate_snapshot_cache()
 
     def start(self) -> None:
         if self.thread is not None:

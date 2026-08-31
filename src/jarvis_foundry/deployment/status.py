@@ -2,6 +2,10 @@
 from __future__ import annotations
 
 import os
+import json
+import re
+import sqlite3
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -12,62 +16,296 @@ from ..migrations import SCHEMA_VERSION
 from ..paths import FoundryPaths
 from ..reconcile import inspect as inspect_ledger
 from .layout import install_root
+from .runtime_identity import supervisor_process_census
 from .release import (
     ReleaseError,
     read_current,
     read_previous,
     read_release_json,
     release_dir,
+    release_authority_report,
     schema_version,
     validate_release,
 )
 
 
-def _supervisor_processes() -> list[dict[str, Any]]:
-    import json
-    import subprocess
+_RELEASE_PATH_RE = re.compile(
+    r"[\\/]releases[\\/]([0-9a-f]{40,64})(?:[\\/]|$)", re.IGNORECASE)
 
-    from ..platform.windows_subprocess import headless_run_kwargs
 
-    script = (
-        "Get-CimInstance Win32_Process | "
-        "Where-Object { $_.CommandLine -match 'jarvis_foundry.(supervisor.run|deployment.launcher)' } | "
-        "Select-Object ProcessId, ExecutablePath, CommandLine | ConvertTo-Json -Compress"
+def _supervisor_processes(
+    *, expected_sha: str | None = None, active_pid: int | None = None,
+    expected_root: Path | None = None,
+    active_creation_identity: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """Compatibility wrapper around the single runtime identity authority."""
+    return supervisor_process_census(
+        expected_sha=expected_sha,
+        active_pid=active_pid,
+        expected_root=expected_root,
+        active_creation_identity=active_creation_identity,
     )
-    result = subprocess.run(
-        ["powershell", "-NoProfile", "-Command", script],
-        capture_output=True, text=True, timeout=30, check=False,
-        **headless_run_kwargs(),
-    )
-    raw = (result.stdout or "").strip()
-    if not raw:
-        return []
+
+
+def _latest_runtime_payload(database: FoundryDatabase) -> dict[str, Any] | None:
+    """Read the newest Supervisor/STOP ledger payload without mutating state."""
+
+    connection = database.connect(readonly=True)
     try:
-        payload = json.loads(raw)
-    except json.JSONDecodeError:
-        return []
-    if isinstance(payload, dict):
-        return [payload]
-    return list(payload)
+        row = connection.execute(
+            "SELECT event_id, event_type, sequence, recorded_at, payload_json "
+            "FROM events WHERE event_type IN ("
+            "'supervisor.started','supervisor.heartbeat','supervisor.degraded',"
+            "'supervisor.stopped','emergency_stop.requested','emergency_stop.frozen',"
+            "'emergency_stop.reconciled') ORDER BY sequence DESC LIMIT 1"
+        ).fetchone()
+    finally:
+        connection.close()
+    if row is None:
+        return None
+    try:
+        payload = json.loads(row["payload_json"] or "{}")
+    except (TypeError, ValueError):
+        payload = {}
+    return {
+        "event_id": row["event_id"],
+        "event_type": row["event_type"],
+        "sequence": int(row["sequence"]),
+        "recorded_at": row["recorded_at"],
+        "payload": payload if isinstance(payload, dict) else {},
+    }
+
+
+def _trust_projection_report(
+    database: FoundryDatabase, supervisor: dict[str, Any],
+    reconciliation: dict[str, Any],
+) -> dict[str, Any]:
+    latest = _latest_runtime_payload(database)
+    if latest is None:
+        return {"status": "NOT_TESTED", "reason": "no runtime event recorded"}
+    payload = latest["payload"]
+    expected = payload.get("trust_state")
+    actual = supervisor.get("trust_state")
+    consistent = bool(reconciliation.get("consistent")) and (
+        expected in (None, actual)
+    )
+    return {
+        "status": "PASS" if consistent else "FAIL",
+        "consistent": consistent,
+        "projected_trust_state": actual,
+        "latest_ledger_trust_state": expected,
+        "latest_runtime_event_id": latest["event_id"],
+        "latest_runtime_event_type": latest["event_type"],
+    }
+
+
+def _idle_event_growth(database: FoundryDatabase) -> dict[str, Any]:
+    """Report legacy idle-event history separately from current coalescing."""
+
+    idle_types = (
+        "worker_loop.waiting", "worker_loop.portfolio_waiting",
+        "worker_loop.executive_waiting",
+    )
+    placeholders = ",".join("?" for _ in idle_types)
+    connection = database.connect(readonly=True)
+    try:
+        head = int(connection.execute(
+            "SELECT COALESCE(MAX(sequence), 0) FROM events").fetchone()[0])
+        started_row = connection.execute(
+            "SELECT sequence, recorded_at, payload_json FROM events "
+            "WHERE event_type = 'supervisor.started' "
+            "ORDER BY sequence DESC LIMIT 1"
+        ).fetchone()
+        rows = connection.execute(
+            "SELECT event_type, sequence, payload_json FROM events "
+            f"WHERE event_type IN ({placeholders}) ORDER BY sequence DESC",
+            idle_types,
+        ).fetchall()
+    finally:
+        connection.close()
+    totals = {event_type: 0 for event_type in idle_types}
+    legacy = {event_type: 0 for event_type in idle_types}
+    ledger_recent_legacy = {event_type: 0 for event_type in idle_types}
+    recent_legacy = {event_type: 0 for event_type in idle_types}
+    ledger_recent_floor = max(0, head - 1000)
+    baseline_sequence = None
+    baseline_recorded_at = None
+    baseline_instance_id = None
+    if started_row is not None:
+        baseline_sequence = int(started_row["sequence"])
+        baseline_recorded_at = started_row["recorded_at"]
+        try:
+            baseline_payload = json.loads(started_row["payload_json"] or "{}")
+        except (TypeError, ValueError):
+            baseline_payload = {}
+        if isinstance(baseline_payload, dict):
+            baseline_instance_id = baseline_payload.get("instance_id")
+    # Historical legacy rows are retained as evidence, but a production
+    # readiness check must measure growth attributable to the currently
+    # started Supervisor.  Fall back to the bounded ledger window when there
+    # is no start marker (for example, an unbooted database).
+    recent_floor = max(ledger_recent_floor, baseline_sequence or 0)
+    recent_total = 0
+    recent_coalesced = 0
+    for row in rows:
+        event_type = str(row["event_type"])
+        totals[event_type] += 1
+        sequence = int(row["sequence"])
+        is_ledger_recent = sequence > ledger_recent_floor
+        is_recent = sequence > recent_floor
+        if is_ledger_recent:
+            # Filled below after payload parsing once legacy/coalesced state
+            # is known; this is intentionally separate from current growth.
+            pass
+        if is_recent:
+            recent_total += 1
+        try:
+            payload = json.loads(row["payload_json"] or "{}")
+        except (TypeError, ValueError):
+            payload = {}
+        is_legacy = not isinstance(payload, dict) or not payload.get("_coalesced_state")
+        if is_legacy:
+            legacy[event_type] += 1
+            if is_ledger_recent:
+                ledger_recent_legacy[event_type] += 1
+            if is_recent:
+                recent_legacy[event_type] += 1
+        elif is_recent:
+            recent_coalesced += 1
+    legacy_total = sum(legacy.values())
+    recent_legacy_total = sum(recent_legacy.values())
+    return {
+        "status": "PASS" if recent_legacy_total == 0 else "DEGRADED",
+        "event_types": list(idle_types),
+        "totals": totals,
+        "legacy_uncoalesced_totals": legacy,
+        "legacy_uncoalesced_ledger_window": ledger_recent_legacy,
+        "legacy_uncoalesced_recent_window": recent_legacy,
+        "legacy_uncoalesced_total": legacy_total,
+        "recent_window_events": recent_total,
+        "recent_window_coalesced_events": recent_coalesced,
+        "recent_window_size_events": 1000,
+        "baseline": {
+            "event_type": "supervisor.started",
+            "sequence": baseline_sequence,
+            "recorded_at": baseline_recorded_at,
+            "instance_id": baseline_instance_id,
+        },
+        "ledger_recent_floor": ledger_recent_floor,
+        "current_runtime_recent_floor": recent_floor,
+        "reason": (
+            "current idle states are coalesced since the latest Supervisor start"
+            if recent_legacy_total == 0 else
+            "legacy or uncoalesced idle events remain in the recent ledger window"
+        ),
+    }
+
+
+def _task_owned_for_home(task: dict[str, Any], home: Path) -> bool:
+    """Prove the named task's JARVIS profile belongs to this Foundry home."""
+
+    if not task.get("installed") or not task.get("profile_present"):
+        return False
+    profile_path = Path(str(task.get("profile_path") or ""))
+    try:
+        for line in profile_path.read_text(encoding="utf-8").splitlines():
+            if line.startswith("foundry_home:"):
+                configured = Path(line.split(":", 1)[1].strip()).expanduser().resolve()
+                return configured == home.expanduser().resolve()
+    except (OSError, ValueError):
+        return False
+    return False
+
+
+def _scheduler_contract(
+    install: Path, home: Path, task: dict[str, Any],
+) -> dict[str, Any]:
+    """Check the installed task action against the stable launcher contract."""
+
+    stable_path = install / "bin" / "jarvis-supervisor-headless.vbs"
+    stable_text = None
+    try:
+        stable_text = stable_path.read_text(encoding="utf-8")
+    except OSError:
+        pass
+    launcher_contract = bool(
+        stable_text
+        and "shell.Run(cmd, 0, True)" in stable_text
+        and "WScript.Quit exitCode" in stable_text
+        and 'environment("JARVIS_RELEASE_SHA") = sha' in stable_text
+    )
+    action_queried = False
+    action_contract = False
+    action_error = None
+    if task.get("installed"):
+        from ..platform.windows_subprocess import headless_run_kwargs, sanitized_env
+
+        try:
+            result = subprocess.run(
+                ["schtasks", "/query", "/tn", str(task.get("task_name") or ""),
+                 "/xml"],
+                capture_output=True, text=True, timeout=15, check=False,
+                env=sanitized_env(),
+                **headless_run_kwargs(),
+            )
+            action_queried = result.returncode == 0
+            if action_queried:
+                # Preserve the forward slashes in WScript's ``//B //Nologo``
+                # switches.  Normalize only the expected path so a task
+                # emitted with either slash style is accepted.
+                xml = (result.stdout or "").lower()
+                expected = str(stable_path.resolve()).replace("/", "\\").lower()
+                action_markers = (
+                    "wscript.exe", "//b //nologo",
+                    "<multipleinstancespolicy>ignorenew",
+                    "<interval>pt1m", "<duration>p30d",
+                )
+                expected_path = expected in xml or expected.replace("\\", "/") in xml
+                action_contract = expected_path and all(
+                    marker in xml for marker in action_markers
+                )
+            else:
+                action_error = (result.stderr or result.stdout or "query failed")[-300:]
+        except (OSError, subprocess.SubprocessError) as error:
+            action_error = f"{type(error).__name__}: {error}"
+    owned = bool(task.get("owned_for_home"))
+    if not task.get("installed"):
+        status = "NOT_TESTED"
+    elif owned and launcher_contract and action_queried and action_contract:
+        status = "PASS"
+    else:
+        status = "FAIL"
+    return {
+        "status": status,
+        "task_name": task.get("task_name"),
+        "owned_for_home": owned,
+        "stable_launcher": str(stable_path),
+        "launcher_contract": launcher_contract,
+        "action_queried": action_queried,
+        "action_contract": action_contract,
+        "action_error": action_error,
+        "expected_home": str(home.resolve()),
+    }
 
 
 def production_status(*, home: Path | None = None, source_repo: Path | None = None) -> dict[str, Any]:
     paths = FoundryPaths.discover(home)
     database = FoundryDatabase(paths.database)
+    install = install_root()
     installer = Installer(
         database, task_name=V1_TASK_NAME, foundry_home=paths.home,
         hermes_home=FoundryPaths.hermes_home(),
     )
     live_schema = schema_version(paths.database) if paths.database.is_file() else 0
-    current = read_current()
-    previous = read_previous()
+    current = read_current(install)
+    previous = read_previous(install)
     current_manifest = None
     release_identity = {
         "status": "UNKNOWN",
         "reason": "CURRENT pointer missing",
     }
     if current:
-        manifest_path = release_dir(current) / "RELEASE.json"
+        manifest_path = release_dir(current, install) / "RELEASE.json"
         if manifest_path.is_file():
             try:
                 current_manifest = read_release_json(manifest_path)
@@ -88,6 +326,7 @@ def production_status(*, home: Path | None = None, source_repo: Path | None = No
                 "reason": "CURRENT release manifest missing",
             }
     source_sha = None
+    source_sha_origin = None
     if source_repo and (Path(source_repo) / ".git").exists():
         import subprocess
 
@@ -99,6 +338,13 @@ def production_status(*, home: Path | None = None, source_repo: Path | None = No
             **headless_run_kwargs(),
         )
         source_sha = result.stdout.strip() or None
+        if source_sha:
+            source_sha_origin = "source_checkout"
+    if source_sha is None and current_manifest is not None and current:
+        manifest_sha = str(current_manifest.get("source_sha") or "").strip().lower()
+        if manifest_sha == str(current).lower():
+            source_sha = manifest_sha
+            source_sha_origin = "immutable_release_manifest"
     supervisor = {}
     runtime_diagnostic = {
         "runtime_control": {
@@ -112,6 +358,8 @@ def production_status(*, home: Path | None = None, source_repo: Path | None = No
         "events": [],
     }
     reconciliation = {"consistent": False, "reason": "database missing"}
+    trust_projection = {"status": "NOT_TESTED", "reason": "database missing"}
+    idle_event_growth = {"status": "NOT_TESTED", "reason": "database missing"}
     if paths.database.is_file():
         try:
             with database.connect(readonly=True) as connection:
@@ -121,32 +369,197 @@ def production_status(*, home: Path | None = None, source_repo: Path | None = No
             runtime_diagnostic = diagnostic_snapshot(
                 database, stop_path=str(paths.emergency_stop))
             reconciliation = inspect_ledger(database).to_json()
+            trust_projection = _trust_projection_report(
+                database, supervisor, reconciliation)
+            idle_event_growth = _idle_event_growth(database)
         except Exception as error:  # noqa: BLE001
             supervisor = {"error": str(error)}
             runtime_diagnostic["runtime_control"] = {
                 "status": "UNKNOWN",
                 "reason": f"diagnostic read failed: {type(error).__name__}",
             }
+            trust_projection = {
+                "status": "UNKNOWN",
+                "reason": f"diagnostic read failed: {type(error).__name__}",
+            }
+            idle_event_growth = {
+                "status": "UNKNOWN",
+                "reason": f"diagnostic read failed: {type(error).__name__}",
+            }
+    from .release import release_authority_report
+    authority = release_authority_report(root=install, foundry_home=paths.home)
+    runtime_control = runtime_diagnostic.get("runtime_control") or {}
+    try:
+        active_pid = int(runtime_control.get("pid"))
+    except (TypeError, ValueError):
+        active_pid = None
+    processes = _supervisor_processes(
+        expected_sha=current,
+        active_pid=active_pid,
+        expected_root=install,
+        active_creation_identity=(
+            runtime_control.get("creation_identity")
+            if isinstance(runtime_control.get("creation_identity"), dict)
+            else ({} if active_pid is not None else None)
+        ),
+    )
+    valid_owners = [
+        process for process in processes
+        if process.get("classification") == "VALID_OWNER"
+    ]
+    stale_processes = [
+        process for process in processes
+        if process.get("classification") in {
+            "STALE_RELEASE", "STALE_PROCESS_IDENTITY",
+        }
+    ]
+    duplicate_processes = [
+        process for process in processes
+        if process.get("classification") in {"DUPLICATE_OR_UNOWNED", "UNIDENTIFIED"}
+    ]
+    if active_pid is not None or str(runtime_control.get("status")) == "RUNNING":
+        process_status = "PASS" if len(valid_owners) == 1 and not stale_processes and not duplicate_processes else "FAIL"
+    elif processes:
+        process_status = "FAIL"
+    else:
+        process_status = "STOPPED"
+    process_truth = {
+        "status": process_status,
+        "exactly_one_valid_supervisor": len(valid_owners) == 1,
+        "valid_owner_count": len(valid_owners),
+        "duplicate_count": len(duplicate_processes),
+        "stale_count": len(stale_processes),
+        "active_database_pid": active_pid,
+        "duplicates": duplicate_processes,
+        "stale_processes": stale_processes,
+    }
+    try:
+        latest_runtime = (
+            _latest_runtime_payload(database) if paths.database.is_file() else None)
+    except (OSError, sqlite3.Error):
+        latest_runtime = None
+    # A process whose executable resides in the immutable release directory
+    # is the strongest running-identity observation.  A process census is the
+    # only observation that can support the word
+    # "running".  Keep the ledger-derived identity separately as a last-known
+    # value for restart diagnostics; it must never complete source/install/
+    # runtime parity while no currently valid owner is observed.
+    runtime_sha = (
+        valid_owners[0].get("release_sha") if len(valid_owners) == 1 else None
+    )
+    runtime_release_id = None
+    last_runtime_sha = None
+    if latest_runtime is not None:
+        value = latest_runtime["payload"].get("release_id")
+        runtime_release_id = str(value) if value not in (None, "") else None
+        if runtime_release_id:
+            if runtime_release_id == current:
+                last_runtime_sha = current
+            elif current_manifest and runtime_release_id == current_manifest.get("release_id"):
+                last_runtime_sha = current
+            elif len(runtime_release_id) in {40, 64} and _RELEASE_PATH_RE.fullmatch(
+                    f"/releases/{runtime_release_id}"):
+                last_runtime_sha = runtime_release_id.lower()
+    parity_values = {
+        "canonical_source_sha": source_sha,
+        "installed_release_sha": current,
+        "database_active_source_sha": authority.get("database_active_source_sha"),
+        "running_runtime_sha": runtime_sha,
+    }
+    known_parity = [value for value in parity_values.values() if value]
+    parity_mismatch = len(set(known_parity)) > 1
+    parity = {
+        **parity_values,
+        "running_runtime_release_id": runtime_release_id,
+        "last_known_runtime_sha": last_runtime_sha,
+        "running_runtime_verified": runtime_sha is not None,
+        "status": (
+            "FAIL" if parity_mismatch else
+            "PASS" if len(known_parity) == len(parity_values) else
+            "NOT_TESTED"
+        ),
+        "complete": len(known_parity) == len(parity_values),
+        "reason": (
+            "all source/install/database/runtime identities match"
+            if not parity_mismatch and len(known_parity) == len(parity_values)
+            else "one or more identity observations are unavailable"
+            if not parity_mismatch else
+            "source/install/database/runtime identities disagree"
+        ),
+    }
+    installed_sha = current
+    runtime_release_sha = runtime_sha
+    active_processes = valid_owners
+    release_identity["authority"] = authority
+    transition_marker = install / "RELEASE_TRANSITION.json"
+    transition = None
+    if transition_marker.is_file():
+        try:
+            transition = json.loads(transition_marker.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            transition = {"status": "UNREADABLE"}
     task = installer.status()
+    task["owned_for_home"] = _task_owned_for_home(task, paths.home)
+    scheduler = _scheduler_contract(install, paths.home, task)
+    release_status = (
+        "VALID" if release_identity.get("status") == "VALID"
+        and authority.get("status") == "CONSISTENT"
+        and authority.get("database_authority_mode") == "DATABASE_LIVE_SLOT"
+        else str(authority.get("status") or "UNKNOWN")
+    )
     health = derive_health(
         runtime_status=str(
             runtime_diagnostic.get("runtime_control", {}).get("status") or "UNKNOWN"),
         reconciliation_consistent=bool(reconciliation.get("consistent")),
-        release_status=str(release_identity.get("status") or "UNKNOWN"),
+        release_status=release_status,
         stop_active=paths.emergency_stop.exists(),
+        supervisor_count=len(active_processes),
+        # ``derive_health`` consumes the compact parity contract while this
+        # report retains the full identity evidence for operators.
+        parity=("MATCH" if parity.get("status") == "PASS"
+                else str(parity.get("status") or "UNKNOWN")),
+        trust_state=str(supervisor.get("trust_state") or "UNKNOWN"),
     )
-    if health["status"] == "RUNNING" and not task.get("installed"):
+    truth_failures: list[str] = []
+    if process_truth["status"] == "FAIL":
+        truth_failures.append("Supervisor process census did not prove exactly one owner")
+    if scheduler["status"] == "FAIL":
+        truth_failures.append("Windows Scheduler action is not the stable identity-bound launcher")
+    if trust_projection.get("status") == "FAIL":
+        truth_failures.append("trust projection disagrees with the runtime ledger")
+    if idle_event_growth.get("status") == "DEGRADED":
+        truth_failures.append("legacy idle events are still growing in the recent window")
+    if parity.get("status") == "FAIL":
+        truth_failures.append("source/install/database/runtime SHA parity failed")
+    if transition is not None:
+        truth_failures.append("release transition marker requires recovery")
+    if truth_failures and health["status"] not in {"BLOCKED", "STOPPED"}:
+        health = {
+            "status": "DEGRADED",
+            "reason": "; ".join(
+                [str(health.get("reason") or "operational truth failed"),
+                 *truth_failures]
+            ),
+        }
+    if health["status"] == "RUNNING" and not task.get("owned_for_home"):
         health = {
             "status": "DEGRADED",
             "reason": "Supervisor Task Scheduler ownership is not proven",
         }
     return {
+        "status": health["status"],
         "canonical_source": source_sha,
+        "canonical_source_sha": source_sha,
+        "canonical_source_origin": source_sha_origin,
         "current_release": current,
+        "installed_release_sha": installed_sha,
+        "runtime_release_sha": runtime_release_sha,
+        "parity_state": parity,
+        "release_authority": authority,
         "previous_release": previous,
         "current_manifest": current_manifest,
         "release_identity": release_identity,
-        "install_root": str(install_root()),
+        "install_root": str(install),
         "live_db": str(paths.database),
         "live_schema": live_schema,
         "package_schema": SCHEMA_VERSION,
@@ -154,9 +567,18 @@ def production_status(*, home: Path | None = None, source_repo: Path | None = No
         "stop_path": str(paths.emergency_stop),
         "supervisor_state": supervisor,
         "task": task,
+        "scheduler": scheduler,
         "health": health,
         "reconciliation": reconciliation,
+        "trust_projection": trust_projection,
+        "idle_event_growth": idle_event_growth,
+        "release_authority": authority,
+        "release_transition": transition,
+        "process_truth": process_truth,
+        "parity": parity,
         "runtime_diagnostic": runtime_diagnostic,
-        "supervisor_processes": _supervisor_processes(),
+        "supervisor_processes": processes,
+        "active_supervisor_processes": active_processes,
+        "stale_supervisor_processes": stale_processes,
         "pid": os.getpid(),
     }

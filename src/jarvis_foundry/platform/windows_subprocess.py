@@ -92,3 +92,46 @@ def background_python_executable(preferred: str | Path | None = None) -> str:
         if pythonw.is_file():
             return str(pythonw.resolve())
     return str(exe.resolve())
+
+
+def _sanitized_psmodulepath(raw: str | None = None) -> str | None:
+    """Return a PSModulePath safe for Windows PowerShell 5.1.
+
+    The Codex host can inject PowerShell 7 module roots ahead of the native
+    Windows PowerShell modules. When ``powershell.exe`` resolves a 7-only
+    module first, CIM/cmdlet probes fail with ``InsufficientPowerShellVersion``.
+    Keep the native 5.1 root and unrelated entries while removing known PS7
+    roots. A caller-supplied environment is never mutated.
+    """
+    if raw is None:
+        raw = os.environ.get("PSModulePath", "")
+    if not raw:
+        return None
+    parts = raw.split(os.pathsep)
+
+    def _is_windows_powershell_module_root(path: str) -> bool:
+        normalized = path.replace("/", "\\").rstrip("\\").lower()
+        return normalized.endswith("\\windowspowershell\\v1.0\\modules")
+
+    filtered = [
+        part for part in parts
+        if part
+        and "codex-primary-runtime" not in part.lower()
+        and (
+            not part.replace("/", "\\").rstrip("\\").lower().endswith("\\powershell\\modules")
+            or _is_windows_powershell_module_root(part)
+        )
+    ]
+    if not filtered:
+        windir = os.environ.get("WINDIR", r"C:\Windows")
+        filtered = [windir + r"\System32\WindowsPowerShell\v1.0\Modules"]
+    return os.pathsep.join(filtered)
+
+
+def sanitized_env(base: dict[str, str] | None = None) -> dict[str, str]:
+    """Copy an environment with a Windows-PowerShell-safe module path."""
+    env = dict(base if base is not None else os.environ)
+    fixed = _sanitized_psmodulepath(env.get("PSModulePath"))
+    if fixed is not None:
+        env["PSModulePath"] = fixed
+    return env

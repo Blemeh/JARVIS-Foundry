@@ -86,6 +86,10 @@ def _parser() -> argparse.ArgumentParser:
     rel_activate.add_argument("--install-root", type=Path, default=None)
     rel_activate.add_argument("--worker-config", type=Path, default=None)
     rel_activate.add_argument("--spawn-worker-loop", action="store_true")
+    rel_activate.add_argument(
+        "--command-center-port", type=int, default=8767,
+        help="localhost Command Center port for the production Supervisor (default: 8767)",
+    )
     rollback = release_sub.add_parser("rollback")
     rollback.add_argument("--install-root", type=Path, default=None)
     setup = sub.add_parser("setup", help="configure machine-local LLM provider")
@@ -95,6 +99,17 @@ def _parser() -> argparse.ArgumentParser:
         "--apply",
         action="store_true",
         help="sync provider credentials into Hermes home .env",
+    )
+    fabric = sub.add_parser(
+        "fabric", parents=[home_option],
+        help="inspect the capability fabric catalog in a disposable home",
+    )
+    fabric_sub = fabric.add_subparsers(dest="fabric_command", required=True)
+    fabric_sub.add_parser("catalog", parents=[home_option])
+    fabric_run = fabric_sub.add_parser("run", parents=[home_option])
+    fabric_run.add_argument(
+        "--workflow", type=Path, required=True,
+        help="JSON workflow file inside the disposable home",
     )
     backup = release_sub.add_parser("backup-db")
     backup.add_argument("--destination", type=Path, required=True)
@@ -258,9 +273,75 @@ def main(argv: list[str] | None = None) -> int:
         if args.apply:
             return run_apply()
         return run_interactive_setup()
+    elif args.command == "fabric":
+        live_home = FoundryPaths.discover(None).home
+        if getattr(args, "home", None) is None or paths.home == live_home:
+            print(json.dumps({
+                "error": "fabric catalog requires an explicit disposable --home",
+                "live_home": str(live_home),
+            }, indent=2))
+            return 1
+        database.initialize()
+        from ..fabric import catalog_snapshot, seed_builtins
+        seed_builtins(database)
+        if getattr(args, "fabric_command", "catalog") == "run":
+            return _fabric_run(args, paths, database)
+        print(json.dumps(catalog_snapshot(database), indent=2))
+        return 0
     elif args.command == "release":
         return _release_command(args, paths)
     return 0
+
+
+def _fabric_run(args, paths: FoundryPaths, database: FoundryDatabase) -> int:
+    from ..fabric import ExecutorContext, TaskIntent, WorkflowStep, run_workflow
+
+    workflow_path = Path(args.workflow)
+    home = paths.home.resolve()
+    if not workflow_path.is_absolute():
+        workflow_path = home / workflow_path
+    workflow_path = workflow_path.resolve()
+    try:
+        workflow_path.relative_to(home)
+    except ValueError:
+        print(json.dumps({
+            "error": "workflow file must be inside the disposable home",
+            "home": str(home),
+        }, indent=2))
+        return 1
+    if not workflow_path.is_file():
+        print(json.dumps({"error": "workflow file not found", "path": str(workflow_path)}, indent=2))
+        return 1
+    spec = json.loads(workflow_path.read_text(encoding="utf-8"))
+    steps = tuple(
+        WorkflowStep(
+            step_id=str(item["step_id"]),
+            action_kind=str(item["action_kind"]),
+            payload=dict(item.get("payload") or {}),
+            on_failure=str(item.get("on_failure") or "stop"),
+        )
+        for item in spec["steps"]
+    )
+    owned = Path(spec.get("owned_root") or (home / "fabric-work"))
+    if not owned.is_absolute():
+        owned = home / owned
+    owned = owned.resolve()
+    try:
+        owned.relative_to(home)
+    except ValueError:
+        print(json.dumps({
+            "error": "owned_root must be inside the disposable home",
+            "home": str(home),
+        }, indent=2))
+        return 1
+    ctx = ExecutorContext(database=database, owned_root=owned)
+    intent = TaskIntent(
+        task_id=str(spec.get("task_id") or "cli.workflow"),
+        required_actions=tuple(step.action_kind for step in steps),
+    )
+    result = run_workflow(database, ctx, intent, steps)
+    print(json.dumps(result, indent=2, default=str))
+    return 0 if result.get("success") else 1
 
 
 def _release_command(args, paths: FoundryPaths) -> int:
@@ -284,18 +365,25 @@ def _release_command(args, paths: FoundryPaths) -> int:
         return 0
     if args.release_command == "activate":
         os.environ.setdefault("JARVIS_INSTALL_ROOT", str(resolve_install_root(root)))
-        pointers = set_current(args.sha, root=root)
+        pointers = set_current(
+            args.sha, root=root,
+            database=FoundryDatabase(paths.database),
+            reason="CLI release activation",
+        )
         from ..deployment.layout import headless_task_command
         from ..deployment.release import validate_release
         identity = validate_release(args.sha, root=root, require_schema_match=False)
         task_command, task_prefix = headless_task_command(root)
         spawn = bool(getattr(args, "spawn_worker_loop", False))
         worker_config = getattr(args, "worker_config", None)
+        command_center_port = getattr(args, "command_center_port", None)
         extra = ""
         if spawn:
             extra += " --spawn-worker-loop"
         if worker_config:
             extra += f' --worker-loop-config "{Path(worker_config).resolve()}"'
+        if command_center_port is not None:
+            extra += f" --command-center-port {int(command_center_port)}"
         installer = Installer(
             FoundryDatabase(paths.database),
             task_name=V1_TASK_NAME,
@@ -308,6 +396,9 @@ def _release_command(args, paths: FoundryPaths) -> int:
                 "start_record": str(paths.database),
                 "spawn_worker_loop": "true" if spawn else "false",
                 "worker_config_path": str(Path(worker_config).resolve()) if worker_config else "",
+                "command_center_port": (
+                    int(command_center_port) if command_center_port is not None else ""
+                ),
                 "release_sha": args.sha,
             },
         )

@@ -26,7 +26,9 @@ import type {
   TimelineEvent,
   TrustSummary,
   Worker,
+  ObsidianVaultFile,
 } from "./contracts";
+import { mapObsidianVault } from "./obsidianVault";
 import { PollingEventStream } from "./pollingEventStream";
 import type { V3DiscoveryView } from "./v3Models";
 import { mapDiscovery } from "./discoveryMapper";
@@ -47,6 +49,14 @@ import {
 import type { FoundrySnapshot, FoundryExecutive, OwnerCommandResponse } from "./snapshotTypes";
 
 const DEFAULT_API = "/api";
+const SNAPSHOT_FETCH_TIMEOUT_MS = 120_000;
+
+function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
+  if (typeof AbortSignal !== "undefined" && "timeout" in AbortSignal) {
+    return fetch(url, { ...init, signal: AbortSignal.timeout(SNAPSHOT_FETCH_TIMEOUT_MS) });
+  }
+  return fetch(url, init);
+}
 
 function unavailable<T>(feature: string): Promise<T> {
   return Promise.reject(new Error(`UNAVAILABLE in live mode: ${feature}`));
@@ -93,14 +103,20 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
     if (this.snapshotRequest) return this.snapshotRequest;
     const request = (async () => {
       try {
-        const response = await fetch(`${this.apiBase}/command-center`, { headers: { Accept: "application/json" } });
+        const response = await fetchWithTimeout(`${this.apiBase}/command-center`, {
+          headers: { Accept: "application/json" },
+        });
         if (!response.ok) throw new Error(`snapshot HTTP ${response.status}`);
-        const payload = (await response.json()) as FoundrySnapshot;
-        this.snapshot = payload;
+        const payload = (await response.json()) as Partial<FoundrySnapshot>;
+        if (!payload || typeof payload !== "object" || !payload.health || !payload.source_of_truth) {
+          throw new Error("snapshot is missing canonical health or source-of-truth metadata");
+        }
+        const snapshot = payload as FoundrySnapshot;
+        this.snapshot = snapshot;
         this.lastFetchedAt = new Date().toISOString();
         this.lastError = null;
-        this._source = payload.health.degraded ? "DEGRADED" : "LIVE";
-        return payload;
+        this._source = snapshot.health.degraded ? "DEGRADED" : "LIVE";
+        return snapshot;
       } catch (error) {
         this.lastError = error instanceof Error ? error.message : String(error);
         this._source = "DISCONNECTED";
@@ -112,6 +128,11 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
     })();
     this.snapshotRequest = request;
     return request;
+  }
+
+  /** Public entry for routes that map many surfaces from one snapshot. */
+  async fetchSnapshot(): Promise<FoundrySnapshot> {
+    return this.snapshotOrFetch();
   }
 
   private async snapshotOrFetch(): Promise<FoundrySnapshot> {
@@ -175,16 +196,18 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
 
   async getAgentRuns(agentId: string): Promise<AgentRun[]> {
     const snap = await this.snapshotOrFetch();
+    const evidence = mapEvidence(snap, snap.verification);
     return snap.workers
       .filter((w) => w.run_id === agentId)
       .map((w) => ({
         id: w.run_id,
         missionId: w.mission_id ?? "",
         workerId: w.run_id,
-        state: w.status === "RUNNING" ? "ACTIVE" : w.status === "FAILED" ? "FAILED" : "COMPLETE",
-        summary: w.role ?? "agent run",
+        state: w.status === "RUNNING" ? "ACTIVE" : w.status === "FAILED" || w.status === "CANCELLED" ? "FAILED" : w.status === "COMPLETED" ? "COMPLETE" : "QUEUED",
+        summary: w.failure_class ?? w.role ?? "UNKNOWN",
         startedAt: w.updated_at ?? snap.generated_at,
-        evidenceIds: [],
+        endedAt: w.status === "RUNNING" ? undefined : w.updated_at,
+        evidenceIds: evidence.filter((item) => item.workerId === w.run_id).map((item) => item.id),
       }));
   }
 
@@ -207,6 +230,10 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
 
   async getMemoryGraph(): Promise<MemoryGraph> {
     return mapMemoryGraph(await this.snapshotOrFetch());
+  }
+
+  async getObsidianVault(): Promise<ObsidianVaultFile[]> {
+    return mapObsidianVault(await this.snapshotOrFetch());
   }
 
   async getExecutive(): Promise<FoundryExecutive> {
@@ -257,23 +284,15 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
 
   async getLineage(missionId: string): Promise<LineageNode[]> {
     const snap = await this.snapshotOrFetch();
-    return snap.timeline
-      .filter((e) => e.evidence_refs?.some((r) => r.id === missionId))
-      .slice(-6)
-      .map((e) => ({
-        id: e.event_id,
-        kind: "evidence",
-        label: e.event_type,
-        detail: e.summary ?? "",
-        status: /fail|reject|error|crash/i.test(e.event_type)
-          ? "FAIL"
-          : /pass|complete|accepted|verified/i.test(e.event_type)
-            ? "PASS"
-            : /start|running|active|dispatch/i.test(e.event_type)
-              ? "ACTIVE"
-              : "PENDING",
-        refs: [{ kind: "mission", id: missionId, label: missionId }],
-      }));
+    const lifecycle = mapMissionRun(snap, missionId).lifecycle ?? [];
+    return lifecycle.map((record) => ({
+      id: record.eventIds[record.eventIds.length - 1] ?? `${missionId}:${record.key}`,
+      kind: record.key === "verifier" ? "verifier" : record.key === "repair_retry" ? "repair" : record.key === "evidence" || record.key === "memory" || record.key === "action_artifact" || record.key === "owner_briefing" ? "evidence" : "builder",
+      label: record.label,
+      detail: record.detail,
+      status: record.state === "COMPLETE" ? "PASS" : record.state === "FAILED" ? "FAIL" : record.state === "ACTIVE" ? "ACTIVE" : "PENDING",
+      refs: record.refs,
+    }));
   }
 
   async search(query: string): Promise<SearchResults> {
@@ -286,7 +305,19 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
     const agents = mapWorkers(snap)
       .filter((w) => w.name.toLowerCase().includes(q) || w.id.toLowerCase().includes(q))
       .map((w) => ({ id: w.id, label: w.name, sublabel: w.role, kind: "agent" as const, to: `/agents/${w.id}` }));
-    return { missions, agents, evidence: [], systems: [], memory: [], timeline: [] };
+    const evidence = mapEvidence(snap, snap.verification)
+      .filter((item) => `${item.id} ${item.typeLabel} ${item.missionRef} ${item.note}`.toLowerCase().includes(q))
+      .map((item) => ({ id: item.id, label: item.id, sublabel: item.verdict, kind: "evidence" as const, to: `/evidence/${item.id}` }));
+    const systems = mapSystems(snap)
+      .filter((item) => `${item.id} ${item.name} ${item.health} ${item.readiness}`.toLowerCase().includes(q))
+      .map((item) => ({ id: item.id, label: item.name, sublabel: item.health, kind: "system" as const, to: `/systems/${item.id}` }));
+    const memory = mapMemoryGraph(snap).nodes
+      .filter((item) => `${item.id} ${item.label} ${item.category} ${item.summary}`.toLowerCase().includes(q))
+      .map((item) => ({ id: item.id, label: item.label, sublabel: item.category, kind: "memory" as const, to: `/memory/${item.id}` }));
+    const timeline = mapTimeline(snap)
+      .filter((item) => `${item.id} ${item.title} ${item.detail}`.toLowerCase().includes(q))
+      .map((item) => ({ id: item.id, label: item.title, sublabel: item.at, kind: "timeline" as const, to: `/timeline?event=${encodeURIComponent(item.id)}` }));
+    return { missions, agents, evidence, systems, memory, timeline };
   }
 
   async listNotifications(): Promise<Notification[]> {
@@ -305,8 +336,38 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
     return unavailable("resolveNotification");
   }
 
-  async getRelatedEntities(_kind: EntityKind, _id: string): Promise<RelatedEntities> {
-    return { missions: [], agents: [], evidence: [], systems: [], memory: [], timeline: [], notifications: [] };
+  async getRelatedEntities(kind: EntityKind, id: string): Promise<RelatedEntities> {
+    const snap = await this.snapshotOrFetch();
+    const missions = mapMissions(snap);
+    const agents = mapWorkers(snap);
+    const evidence = mapEvidence(snap, snap.verification);
+    const systems = mapSystems(snap);
+    const memory = mapMemoryGraph(snap).nodes;
+    const timeline = mapTimeline(snap);
+    const notifications = mapNotifications(snap);
+    const ref = (refKind: EntityKind, refId: string, label: string): { kind: EntityKind; id: string; label: string } => ({ kind: refKind, id: refId, label });
+    const missionIds = new Set<string>();
+    if (kind === "mission") missionIds.add(id);
+    if (kind === "agent") agents.filter((item) => item.id === id).flatMap((item) => item.missionIds ?? []).forEach((missionId) => missionIds.add(missionId));
+    if (kind === "evidence") evidence.filter((item) => item.id === id && item.missionRef !== "UNKNOWN").forEach((item) => missionIds.add(item.missionRef));
+    if (kind === "memory") memory.filter((item) => item.id === id && item.ref?.kind === "mission").forEach((item) => missionIds.add(item.ref!.id));
+    if (kind === "timeline") timeline.filter((item) => item.id === id && item.missionId).forEach((item) => missionIds.add(item.missionId!));
+    if (kind === "system") systems.filter((item) => item.id === id).flatMap((item) => item.missionIds ?? []).forEach((missionId) => missionIds.add(missionId));
+    const relatedMissionRows = missions.filter((item) => missionIds.has(item.id));
+    const relatedAgentRows = agents.filter((item) => item.missionIds?.some((missionId) => missionIds.has(missionId)) || (kind === "mission" && item.id === id));
+    const relatedEvidenceRows = evidence.filter((item) => missionIds.has(item.missionRef) || (kind === "evidence" && item.id === id));
+    const relatedMemoryRows = memory.filter((item) => (item.ref?.kind === "mission" && missionIds.has(item.ref.id)) || (kind === "memory" && item.id === id));
+    const relatedTimelineRows = timeline.filter((item) => (item.missionId && missionIds.has(item.missionId)) || (kind === "timeline" && item.id === id));
+    const relatedNotifications = notifications.filter((item) => item.refs.some((itemRef) => itemRef.id === id));
+    return {
+      missions: relatedMissionRows.map((item) => ref("mission", item.id, item.title)),
+      agents: relatedAgentRows.map((item) => ref("agent", item.id, item.name)),
+      evidence: relatedEvidenceRows.map((item) => ref("evidence", item.id, item.id)),
+      systems: kind === "system" ? systems.filter((item) => item.id === id).map((item) => ref("system", item.id, item.name)) : [],
+      memory: relatedMemoryRows.map((item) => ref("memory", item.id, item.label)),
+      timeline: relatedTimelineRows.map((item) => ref("timeline", item.id, item.title)),
+      notifications: relatedNotifications.map((item) => ref("timeline", item.id, item.title)),
+    };
   }
 
   subscribeEvents(): MockEventStream {

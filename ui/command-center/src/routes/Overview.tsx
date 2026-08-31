@@ -1,306 +1,137 @@
-import { Link } from "react-router-dom"
-import { Mic } from "lucide-react"
+import { ObsidianGraphView } from "../components/ObsidianGraphView"
 import { JarvisCoreStage } from "../components/jarvis-core/JarvisCoreStage"
+import { IntelligenceRail } from "../components/IntelligenceRail"
+import { OwnerCommandSurface } from "../components/OwnerCommandSurface"
+import { ActiveOperations } from "../components/ActiveOperations"
+import { IntelligenceStream } from "../components/IntelligenceStream"
 import { useCommandCenter } from "../context/CommandCenterContext"
-import type { EvidenceArtifact, Mission, SystemComponent, SystemOverview, TimelineEvent, TrustSummary, Worker } from "../lib/contracts"
 import { RouteQueryGate } from "../components/RouteQueryGate"
-import { RefChipRow } from "../components/EntityRefLink"
 import { useRouteQuery } from "../hooks/useRouteQuery"
-import { refsFromTimelineEvent } from "../lib/entityRefs"
-import { sourceCopy, sourceModeLabel } from "../lib/sourceMode"
-import {
-  findMeasuredCostResource,
-  formatMeasuredCostDisplay,
-  formatFreshnessLabel,
-  trustFactorNumericDetail,
-} from "../lib/truthFormat"
-
-function toneForStatus(status: string) {
-  const s = (status ?? "UNKNOWN").toUpperCase()
-  if (["BLOCKED", "HALTED", "FAILED", "CRITICAL", "STOPPED"].includes(s)) return "critical"
-  if (["DEGRADED", "UNKNOWN", "NOT_TESTED", "NOT_AVAILABLE", "GATED", "WARN"].includes(s)) return "caution"
-  return "nominal"
-}
-
-type OverviewData = {
-  missions: Mission[]
-  overview: SystemOverview
-  trust: TrustSummary
-  workers: Worker[]
-  evidence: EvidenceArtifact[]
-  timeline: TimelineEvent[]
-  systems: SystemComponent[]
-}
+import { loadOverviewData, type OverviewData } from "../lib/overviewLoader"
+import { sourceModeLabel } from "../lib/sourceMode"
+import { findMeasuredCostResource, formatMeasuredCostDisplay } from "../lib/truthFormat"
+import { OperationalSignalPanel } from "../components/OperationalSignalPanel"
 
 function OverviewContent({
   missions,
   overview,
-  trust,
   workers,
-  evidence,
   timeline,
+  evidence,
+  trust,
+  executive,
+  ownerAttention,
+  obsidianVault,
+  ownerSurface,
+  operationalIntelligence,
 }: OverviewData) {
   const { sourceMode, stopActive, streamConnected } = useCommandCenter()
-
-  const safeMissions = missions
-  const safeWorkers = workers
-  const safeEvidence = evidence
-  const safeTimeline = timeline
-  const safeTrust = trust
-  const measuredCostBase = findMeasuredCostResource(overview.resourceUsage) ?? {
+  const activeMissionCount = missions.filter((mission) => mission.status === "ACTIVE" || mission.status === "IN_PROGRESS").length
+  const verifyingCount = evidence.filter((item) => item.verdict === "EVALUATING").length
+  const measuredCost = findMeasuredCostResource(overview.resourceUsage) ?? {
     display: "UNKNOWN",
     source: "NOT_REPORTED" as const,
     unknownMeasurements: null,
   }
-  const measuredCostDisplay = formatMeasuredCostDisplay(measuredCostBase, sourceMode)
-  const freshness = formatFreshnessLabel(overview.uptime, new Date().toISOString())
-  const constraintsFactor = safeTrust.factors?.find((f) => f.id === "constraints")
-  const staleLeasesFactor = safeTrust.factors?.find((f) => f.id === "stale-leases")
-  const constraintCount = constraintsFactor ? trustFactorNumericDetail(constraintsFactor.detail) ?? 0 : 0
-  const staleLeases = staleLeasesFactor ? trustFactorNumericDetail(staleLeasesFactor.detail) ?? 0 : 0
-  const systemPosture = safeTrust.health === "HEALTHY" ? "NOMINAL" : safeTrust.health === "DEGRADED" ? "DEGRADED" : "UNKNOWN"
-  const activeWorkers = safeWorkers.filter((w) => w.status === "ACTIVE")
-  const verified = safeEvidence.filter((e) => e.verdict === "VERIFIED").length
-  const verifying = safeEvidence.filter((e) => e.verdict === "EVALUATING").length
-  const activeMissionCount = safeMissions.filter((m) => m.status === "ACTIVE" || m.status === "IN_PROGRESS").length
-  const blocked = safeMissions.filter((m) => m.status === "BLOCKED" || m.status === "HALTED").length
+  const measuredCostDisplay = formatMeasuredCostDisplay(measuredCost, sourceMode)
 
-  const currentGoal = safeMissions.find((m) => m.status === "ACTIVE" || m.status === "IN_PROGRESS")?.title ?? safeMissions[0]?.title ?? "No durable goal recorded"
-  const goalText = currentGoal
-
-  const missionVectors = safeMissions.slice(0, 6)
-  const decisionSignal = [...safeTimeline].slice(0, 8)
+  const vaultStatus =
+    obsidianVault.length > 0
+      ? `Obsidian vault · ${obsidianVault.length} indexed notes · two-finger scroll to zoom`
+      : sourceMode === "LIVE"
+        ? "Obsidian vault · awaiting index sync"
+        : `Obsidian vault · ${sourceModeLabel(sourceMode)}`
+  const ownerGoal = ownerSurface?.goals[0]
+  const ownerGoalText = ownerGoal && typeof ownerGoal.exact_text === "string" && ownerGoal.exact_text.trim()
+    ? ownerGoal.exact_text
+    : ownerGoal && typeof ownerGoal.objective === "string" && ownerGoal.objective.trim()
+      ? ownerGoal.objective
+      : null
+  const activeMission = missions.find((mission) => mission.status === "ACTIVE" || mission.status === "IN_PROGRESS")
+  const goalText = ownerGoalText ?? activeMission?.title ?? "No durable owner goal recorded"
+  const goalMeta = ownerGoal
+    ? `directive ${String(ownerGoal.directive_id ?? ownerGoal.event_id ?? "UNKNOWN")}`
+    : activeMission
+      ? `active mission ${activeMission.id}`
+      : "owner goal UNKNOWN"
+  const runtimeState = ownerSurface?.runtimeState || "UNKNOWN"
   const sourceReady = sourceMode === "LIVE" || sourceMode === "SIMULATED"
   const linkState = stopActive ? "SUSPENDED" : sourceReady ? sourceModeLabel(sourceMode) : "GATED"
 
   return (
-    <div className="command-deck-wrap">
-      <div className="v4-downlink">
-        <div className="v4-calibration" aria-hidden="true" />
-
-        <div className="command-deck-grid">
-          <div className="command-field">
-            <div className="command-copy">
-              <span className="signal-label">Owner Downlink</span>
-              <h1>What should JARVIS move next?</h1>
-              <p>
-                Goals, constraints, vetoes, pause, resume, and deterministic STOP enter one audited control path. Routine operation continues without
-                becoming an approval queue.
-              </p>
-
-              <div className="directive-box" aria-label="Owner communication preview">
-                <Mic aria-hidden="true" />
-                <input value="Owner console preview — authentication is not configured" readOnly aria-label="Owner directive preview" />
-                <button type="button" disabled aria-label="Owner channel locked">
-                  CHANNEL LOCKED
-                </button>
-              </div>
-
-              <div className="directive-note">
-                <span className="t-mono" style={{ color: "var(--caution-amber)" }}>
-                  ● NOT_TESTED
-                </span>
-                <small>Real English STT/TTS remains explicitly gated.</small>
-              </div>
-
-              <p className="t-mono text-muted" style={{ marginTop: 12, fontSize: 11 }}>
-                {sourceCopy(sourceMode, {
-                  live: "Operational projection of the JARVIS autonomy runtime from the canonical Foundry ledger and Supervisor.",
-                  simulated: "Operational projection of the JARVIS autonomy runtime using local fixture data for tests and demos.",
-                  unavailable: `Operational projection unavailable: the Foundry data source is ${sourceMode.toLowerCase()}; no fixture fallback is shown.`,
-                })}
-              </p>
-
-              <div className="neural-console" aria-label="JARVIS neural link status">
-                <div className="neural-console-head">
-                  <span className="neural-console-title">Neural Link</span>
-                  <span className={`neural-console-state ${stopActive ? "critical" : sourceReady ? "nominal" : "caution"}`}>
-                    {linkState}
-                  </span>
-                </div>
-                <div className="neural-console-line">
-                  <span className={`neural-console-code ${sourceReady ? "nominal" : "caution"}`}>{sourceReady ? "[OK]" : "[WAIT]"}</span>
-                  <span>FOUNDRY LEDGER PROJECTION</span>
-                  <span className="neural-console-value">{sourceModeLabel(sourceMode)}</span>
-                </div>
-                <div className="neural-console-line">
-                  <span className={`neural-console-code ${streamConnected ? "nominal" : "critical"}`}>{streamConnected ? "[OK]" : "[WAIT]"}</span>
-                  <span>EVENT STREAM</span>
-                  <span className="neural-console-value">{streamConnected ? "CONNECTED" : "DISCONNECTED"}</span>
-                </div>
-                <div className="neural-console-line">
-                  <span className="neural-console-code caution">[GATED]</span>
-                  <span>OWNER VOICE CHANNEL</span>
-                  <span className="neural-console-value">NOT_TESTED</span>
-                </div>
-              </div>
-            </div>
+    <div className="jarvis-os">
+      <header className="jarvis-os-heading">
+        <span className="jarvis-os-kicker">OWNER CONTROL // AUTONOMOUS OPERATING SURFACE</span>
+        <h1>What should JARVIS move next?</h1>
+        <p>
+          Goals, constraints, vetoes, pause, resume, and deterministic STOP enter one audited control path. Routine operation continues without becoming an approval queue.
+        </p>
+      </header>
+      <div className="jarvis-os-hero">
+        <div className="jarvis-os-core-zone jarvis-os-core-zone--obsidian">
+          <div className="jarvis-os-cinematic-core" aria-label="JARVIS core status">
+            <JarvisCoreStage
+              activeMissionCount={activeMissionCount}
+              verifyingCount={verifyingCount}
+              trustHealth={trust.health}
+            />
           </div>
-
-          <aside className="goal-panel" aria-label="Current owner intent">
-            <div>
-              <JarvisCoreStage
-                activeMissionCount={activeMissionCount}
-                verifyingCount={verifying}
-                trustHealth={safeTrust.health}
-              />
-              <blockquote>{goalText}</blockquote>
-              <p className="t-mono text-muted" style={{ fontSize: 11 }}>
-                Complete roadmap V4 without touching live state
-              </p>
-            </div>
-            <div className="goal-meta">
-              <div className="datum">
-                <span>Constraints</span>
-                <b aria-label={`${constraintCount} owner constraints`}>{String(constraintCount).padStart(2, "0")}</b>
-              </div>
-              <div className="datum">
-                <span>Trust state</span>
-                <b aria-label={`Trust state ${safeTrust.state}`}>{safeTrust.state}</b>
-              </div>
-            </div>
-          </aside>
+          <ObsidianGraphView key={sourceMode} live={sourceMode === "LIVE"} />
+          <p className="jarvis-os-core-status">{vaultStatus}</p>
+          <p className="jarvis-os-cost-status" aria-label={`Measured cost ${measuredCostDisplay}`}>
+            Measured cost {measuredCostDisplay}
+          </p>
         </div>
 
-        <div className="telemetry" aria-label="Cross-check telemetry">
-          <Link to="/systems" className="telemetry-link" aria-label={`System posture ${systemPosture}. Open systems.`}>
-            <article>
-              <span>System posture</span>
-              <strong className={systemPosture === "NOMINAL" ? "v4-nominal" : ""}>{systemPosture}</strong>
-              <small>{staleLeases > 0 ? `${staleLeases} stale lease${staleLeases === 1 ? "" : "s"}` : freshness === "STALE" ? "stale heartbeat" : freshness === "CURRENT" ? "heartbeat current" : "freshness unknown"}</small>
-            </article>
-          </Link>
-          <Link to="/agents?status=active" className="telemetry-link" aria-label={`${activeWorkers.length} active workers. Open agents.`}>
-            <article>
-              <span>Active workers</span>
-              <strong>{String(activeWorkers.length).padStart(2, "0")}</strong>
-              <small>{safeWorkers.length} durable run records</small>
-            </article>
-          </Link>
-          <Link to="/evidence?verdict=VERIFIED" className="telemetry-link" aria-label={`${verified} verified records. Open evidence.`}>
-            <article>
-              <span>Verified</span>
-              <strong>{String(verified).padStart(2, "0")}</strong>
-              <small>independent verdicts passed</small>
-            </article>
-          </Link>
-          <Link to="/missions?status=blocked" className="telemetry-link" aria-label={`${blocked} blocked missions. Open missions.`}>
-            <article>
-              <span>Blocked work</span>
-              <strong>{String(blocked).padStart(2, "0")}</strong>
-              <small>reclaimable mission records</small>
-            </article>
-          </Link>
-          <article>
-            <span>Measured cost</span>
-            <strong aria-label={`Measured cost ${measuredCostDisplay}`}>{measuredCostDisplay}</strong>
-            <small>
-              {measuredCostBase.unknownMeasurements === null
-                ? "measurement source not reported"
-                : `${measuredCostBase.unknownMeasurements} unknown measurement${measuredCostBase.unknownMeasurements === 1 ? "" : "s"}`}
-            </small>
-          </article>
+        <IntelligenceRail missions={missions} executive={executive} ownerAttention={ownerAttention} />
+      </div>
+
+      <div className="telemetry overview-truth-strip" aria-label="Operational truth at a glance">
+        <article>
+          <span>Runtime</span>
+          <strong>{runtimeState}</strong>
+          <small>{ownerSurface?.stateReason ?? "Runtime state UNKNOWN"}</small>
+        </article>
+        <article>
+          <span>Trust</span>
+          <strong>{trust.state}</strong>
+          <small>gate {trust.gateStatus}</small>
+        </article>
+        <article>
+          <span>Active mission</span>
+          <strong>{activeMissionCount ? String(activeMissionCount).padStart(2, "0") : "NONE"}</strong>
+          <small>{activeMission?.id ?? "No mission is active"}</small>
+        </article>
+        <article>
+          <span>Health</span>
+          <strong>{trust.health}</strong>
+          <small>{linkState}</small>
+        </article>
+        <article>
+          <span>Alerts</span>
+          <strong>{ownerSurface ? String(ownerSurface.decisionQueue.open_count).padStart(2, "0") : "UNKNOWN"}</strong>
+          <small>{ownerSurface ? "open owner attention items" : "decision queue unavailable"}</small>
+        </article>
+      </div>
+
+      <section className="panel owner-goal-panel" aria-label="Current owner intent">
+        <div>
+          <h2>Current owner goal</h2>
+          <p>{goalText}</p>
+          <small className="t-mono text-muted">{goalMeta}</small>
         </div>
-
-        <div className="operations">
-          <section className="panel" aria-label="Mission operations">
-            <header className="panel-head">
-              <div>
-                <h2>Mission operations</h2>
-                <p>Current intent, execution state, and next action from durable records.</p>
-              </div>
-              <span className="t-label" style={{ color: "var(--telemetry-dim)", fontSize: 9 }}>
-                ● BRIEFING PLANNED
-              </span>
-            </header>
-
-            <div className="mission-list">
-              {missionVectors.length === 0 ? (
-                <div className="mission-thread" style={{ padding: 28, textAlign: "center", color: "var(--telemetry-muted)" }}>
-                  No durable missions recorded. JARVIS is honestly waiting.
-                </div>
-              ) : (
-                missionVectors.map((m) => {
-                  const tone = toneForStatus(m.status)
-                  return (
-                    <Link key={m.id} to={`/missions/${m.id}`} className={`mission-thread ${tone}`} aria-label={`Open durable mission record for ${m.id}`}>
-                      <div className="mission-thread-head">
-                        <span className="t-mono" style={{ color: "var(--evidence-cyan)", fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-                          {m.code ?? m.id}
-                        </span>
-                        <span className="t-label" style={{ color: tone === "critical" ? "var(--stop-pink)" : tone === "caution" ? "var(--caution-amber)" : "var(--electric-signal)", fontSize: 9, display: "inline-flex", alignItems: "center", gap: 6 }}>
-                          <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor", display: "inline-block", boxShadow: tone === "nominal" ? "0 0 9px rgba(138,255,239,0.6)" : "none" }} />
-                          {m.status}
-                        </span>
-                      </div>
-                      <h3>{m.title}</h3>
-                      <div className="mission-thread-foot">
-                        <span>next vector</span>
-                        <strong>{m.nextAction ?? m.stage}</strong>
-                      </div>
-                      <div className="mission-progress">
-                        <span>progress UNKNOWN / state-derived signal only</span>
-                      </div>
-                    </Link>
-                  )
-                })
-              )}
-            </div>
-          </section>
-
-          <aside className="panel timeline-panel" aria-label="Decision signal">
-            <header className="panel-head">
-              <div>
-                <h2>Decision signal</h2>
-                <p>Newest ledger events first.</p>
-              </div>
-              <Link to="/timeline" style={{ color: "var(--evidence-cyan)", fontFamily: "var(--font-mono)", fontSize: 10, fontWeight: 700, textDecoration: "none", letterSpacing: "0.06em" }}>
-                OPEN JSON
-              </Link>
-            </header>
-
-            <ol className="timeline-list">
-              {decisionSignal.length === 0 ? (
-                <li className="timeline-event">
-                  <small className="t-label text-muted">No ledger events</small>
-                  <strong>EMPTY STATE</strong>
-                  <p>No durable decisions recorded yet.</p>
-                </li>
-              ) : (
-                decisionSignal.map((e, idx) => {
-                  const sev = (e.severity ?? "INFO").toUpperCase()
-                  const sevTone = sev === "CRITICAL" ? "critical" : sev === "WARNING" ? "caution" : "nominal"
-                  const eventRefs = refsFromTimelineEvent(e)
-                  return (
-                    <li key={e.id} className={`timeline-event ${sevTone}`}>
-                      <span className="timeline-node" aria-hidden="true" />
-                      <div className="event-head">
-                        <Link to={`/timeline?event=${e.id}`} style={{ color: "var(--evidence-cyan)" }}>
-                          EVT-{String(idx + 1).padStart(4, "0")}
-                        </Link>
-                        <time>{e.at ? String(e.at).slice(11, 19) : "--:--:--"}</time>
-                      </div>
-                      <strong>{e.title ?? e.id}</strong>
-                      <p>{e.detail ?? e.id}</p>
-                      {eventRefs.length > 0 ? (
-                        <div className="overview-event-refs">
-                          <RefChipRow refs={eventRefs} />
-                        </div>
-                      ) : null}
-                    </li>
-                  )
-                })
-              )}
-            </ol>
-          </aside>
+        <div className="t-mono text-muted" aria-label={`Event stream ${streamConnected ? "connected" : "disconnected"}`}>
+          {streamConnected ? "EVENT STREAM CONNECTED" : "EVENT STREAM DISCONNECTED"}
         </div>
+      </section>
 
-        <div className="v4-footer">
-          <span>
-            Foundry ledger projection • observed {overview.uptime} • source {sourceMode === "SIMULATED" ? "SIMULATED" : sourceMode}
-          </span>
-          <Link to="/evidence" className="v4-footer-link">Inspect evidence</Link>
-        </div>
+      <OwnerCommandSurface />
+
+      <OperationalSignalPanel operational={operationalIntelligence} />
+
+      <div className="jarvis-os-lower">
+        <ActiveOperations missions={missions} workers={workers} />
+        <IntelligenceStream events={timeline} />
       </div>
     </div>
   )
@@ -309,34 +140,17 @@ function OverviewContent({
 export function Overview() {
   const { client, version } = useCommandCenter()
   const overviewQuery = useRouteQuery(
-    () =>
-      Promise.all([
-        client.listMissions(),
-        client.getSystemOverview(),
-        client.getTrustSummary(),
-        client.listWorkers(),
-        client.listEvidence(),
-        client.listTimeline(),
-        client.listSystemComponents(),
-      ]).then(([missions, overview, trust, workers, evidence, timeline, systems]) => ({
-        missions,
-        overview,
-        trust,
-        workers,
-        evidence,
-        timeline,
-        systems,
-      } satisfies OverviewData)),
+    () => loadOverviewData(client),
     [client, version],
+    { keepPreviousWhileLoading: true },
   )
 
   return (
     <RouteQueryGate
       query={overviewQuery}
-      loadingLabel="Loading command deck"
-      errorLabel="Command deck unavailable"
-      surface="Command deck"
-      shellClass="command-deck-wrap"
+      loadingLabel="Loading JARVIS"
+      errorLabel="Overview unavailable"
+      surface="Overview projection"
     >
       {(data) => <OverviewContent {...data} />}
     </RouteQueryGate>

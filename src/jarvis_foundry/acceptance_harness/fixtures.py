@@ -9,13 +9,15 @@ import time
 from pathlib import Path
 from typing import Any
 
+from ..platform.windows_subprocess import headless_popen_kwargs, sanitized_env
+
 
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[3]
 
 
 def _environment() -> dict[str, str]:
-    environment = dict(os.environ)
+    environment = sanitized_env()
     source = str(_repo_root() / "src")
     existing = environment.get("PYTHONPATH", "")
     environment["PYTHONPATH"] = source if not existing else source + os.pathsep + existing
@@ -46,27 +48,40 @@ def run_owned_supervisor_restart_probe(output_root: str | Path, *, timeout_secon
     FoundryDatabase(database_path).initialize()
     script = _repo_root() / "tests" / "foundry" / "supervisor_fixture.py"
     command = [sys.executable, str(script), str(database_path), str(stop_path), str(marker_one), "5"]
-    first = subprocess.Popen(command, cwd=_repo_root(), env=_environment(), text=True,
-                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    def _stop(process: subprocess.Popen[str]) -> int:
+        if process.poll() is None:
+            process.kill()
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait(timeout=5)
+        return int(process.returncode if process.returncode is not None else -1)
+
+    first = subprocess.Popen(
+        command, cwd=_repo_root(), env=_environment(), text=True,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        **headless_popen_kwargs(),
+    )
     first_started = _wait_for_marker(marker_one, first, timeout_seconds)
     first_pid = first.pid
     if not first_started:
-        first.kill()
-        first.communicate(timeout=5)
+        _stop(first)
         return {
             "status": "BLOCKED_EXTERNAL",
             "reason": "owned supervisor fixture did not reach its marker",
             "first_pid": first_pid,
         }
-    first.kill()
-    first_returncode = first.wait(timeout=5)
+    first_returncode = _stop(first)
     replacement_command = [sys.executable, str(script), str(database_path), str(stop_path), str(marker_two), "5"]
-    second = subprocess.Popen(replacement_command, cwd=_repo_root(), env=_environment(), text=True,
-                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    second = subprocess.Popen(
+        replacement_command, cwd=_repo_root(), env=_environment(), text=True,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        **headless_popen_kwargs(),
+    )
     replacement_started = _wait_for_marker(marker_two, second, timeout_seconds)
     second_pid = second.pid
-    second.kill()
-    second_returncode = second.wait(timeout=5)
+    second_returncode = _stop(second)
     if not replacement_started:
         return {
             "status": "FAIL",
@@ -99,7 +114,7 @@ def run_v7_fault_matrix(output_root: str | Path, *, timeout_seconds: float = 90.
     result = subprocess.run(
         [sys.executable, str(script), "--output", str(output)],
         cwd=_repo_root(), env=_environment(), capture_output=True, text=True,
-        timeout=timeout_seconds, check=False,
+        timeout=timeout_seconds, check=False, **headless_popen_kwargs(),
     )
     if not output.exists():
         return {

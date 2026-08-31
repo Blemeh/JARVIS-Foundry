@@ -204,10 +204,6 @@ def use_capability(
     if state != "ISSUED":
         raise CapabilityError(
             f"capability {capability_id} is {state} — not usable")
-    stop = emergency_stop_reason(database, stop_path)
-    if stop:
-        raise CapabilityError(
-            f"capability {capability_id} revoked by STOP: {stop}")
     with database.connect() as connection:
         issued = connection.execute(
             "SELECT payload_json FROM events WHERE event_type = "
@@ -218,6 +214,10 @@ def use_capability(
     veto_identities = {"GLOBAL", binding["action_kind"],
                        binding["mission_id"], binding["target"],
                        *bound_targets}
+    stop = emergency_stop_reason(database, stop_path, identities=veto_identities)
+    if stop:
+        raise CapabilityError(
+            f"capability {capability_id} revoked by STOP: {stop}")
     # F1 carry (S3 verifier deleg_deff8b38): a veto on the BARE system id
     # must deny capability use exactly as it denies the envelope — the
     # broker's F1 fix applies to use_capability too. (Loop variable is

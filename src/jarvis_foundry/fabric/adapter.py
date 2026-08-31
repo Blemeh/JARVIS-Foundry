@@ -1,0 +1,216 @@
+"""RoleAdapter that executes fabric actions on the mission/worker path.
+
+Hermes stays the adapter for roles and capabilities the fabric cannot
+run. This wrapper intercepts builder/repair sessions whose capability
+maps to a real fabric action, executes through ``execute_for_spine``,
+and returns a structured RoleResult. It is not a second mission loop.
+"""
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Any, Callable
+
+from ..roles.adapter import RoleAdapter
+from ..roles.manifest import ContextManifest
+from ..roles.results import COMPLETED, FAILED, RoleResult, VERDICT_FAIL, VERDICT_PASS
+from .executors import HANDLERS, ExecutorContext
+from .loop import seed_builtins, select_capability
+from .model import FabricError, TaskIntent
+from .spine import execute_for_spine
+
+V5_TO_FABRIC = {
+    "write_registered_worktree_files": "file.write",
+    "read_registered_files": "file.read",
+    "run_registered_local_commands": "script.run",
+    "git_local_commit": "git.commit",
+    "git_push": "git.push",
+}
+
+# Local reads that do not need a JSON envelope on the worker path.
+_STRUCTURED_READS = {
+    "file.read",
+    "dir.list",
+    "git.inspect",
+    "git.diff",
+    "git.log",
+    "system.diagnose",
+    "system.runtime",
+}
+
+
+def resolve_fabric_action(capability: str) -> str | None:
+    if capability in HANDLERS:
+        return capability
+    return V5_TO_FABRIC.get(capability)
+
+
+def _json_object(text: str) -> dict[str, Any] | None:
+    start = text.find("{")
+    if start < 0:
+        return None
+    try:
+        obj, _end = json.JSONDecoder().raw_decode(text[start:])
+    except json.JSONDecodeError:
+        return None
+    return obj if isinstance(obj, dict) else None
+
+
+def owned_root_for_manifest(
+    database,
+    manifest: ContextManifest,
+    fallback: Path | None = None,
+) -> Path | None:
+    """Prefer the registered resource root over a constructor default."""
+    resource = database.row("resources", "resource_id", manifest.resource_id)
+    raw = None
+    if resource is not None:
+        raw = resource.get("resolved_root") or resource.get("root_path")
+    if raw:
+        root = Path(str(raw)).expanduser().resolve()
+        if root.is_file():
+            root = root.parent
+        if root.is_dir():
+            return root
+    if fallback is not None:
+        return Path(fallback).expanduser().resolve()
+    return None
+
+
+def payload_from_manifest(
+    manifest: ContextManifest,
+    action_kind: str,
+    owned_root: Path,
+    *,
+    structured_only: bool = False,
+) -> dict[str, Any] | None:
+    parsed = _json_object(manifest.instructions)
+    if parsed is not None:
+        payload = dict(parsed)
+    elif structured_only and action_kind not in _STRUCTURED_READS:
+        return None
+    elif action_kind == "file.write":
+        name = manifest.expected_artifacts[0] if manifest.expected_artifacts else "result.txt"
+        payload = {
+            "target": str(name),
+            "content": manifest.instructions.strip() or "fabric-delivered\n",
+        }
+    elif action_kind == "file.read":
+        name = manifest.expected_artifacts[0] if manifest.expected_artifacts else "result.txt"
+        payload = {"target": str(name)}
+    elif action_kind == "dir.list":
+        payload = {"target": "."}
+    elif action_kind in {"system.diagnose", "system.runtime"}:
+        payload = {}
+    elif action_kind in {"git.inspect", "git.diff", "git.log"}:
+        payload = {"worktree": str(owned_root)}
+    else:
+        return None
+    if action_kind.startswith("git.") and "worktree" not in payload:
+        payload["worktree"] = str(owned_root)
+    return payload
+
+
+def try_fabric_dispatch(
+    database,
+    manifest: ContextManifest,
+    heartbeat: Callable[[], Any],
+    *,
+    owned_root: Path,
+    structured_only: bool = False,
+) -> RoleResult | None:
+    """Run a mapped fabric action or return None so the inner adapter can."""
+    action = resolve_fabric_action(manifest.capability)
+    if manifest.role not in {"builder", "repair"} or action is None:
+        return None
+    payload = payload_from_manifest(
+        manifest, action, owned_root, structured_only=structured_only,
+    )
+    if payload is None:
+        return None
+    seed_builtins(database)
+    selection = select_capability(
+        database,
+        TaskIntent(
+            task_id=f"mission.{manifest.mission_id}",
+            required_actions=(action,),
+            unattended=True,
+        ),
+        action,
+    )
+    if not selection.available:
+        # DEGRADED / VETOED / missing: do not execute, and do not claim
+        # the step. The inner Hermes path may still satisfy it.
+        return None
+    heartbeat()
+    ctx = ExecutorContext(database=database, owned_root=owned_root)
+    try:
+        receipt = execute_for_spine(
+            database,
+            ctx,
+            mission_id=manifest.mission_id,
+            step_id=str(manifest.step_id or "step"),
+            action_kind=action,
+            payload=payload,
+        )
+    except FabricError as error:
+        # An attempted fabric effect must not also run Hermes.
+        return RoleResult(
+            run_id=manifest.run_id,
+            role=manifest.role,
+            status=FAILED,
+            provider="fabric",
+            model="local",
+            verdict=VERDICT_FAIL,
+            evidence=(f"fabric:{action}", "verified:UNKNOWN"),
+            error_class="fabric_effect_failed",
+            error_detail=str(error),
+        )
+    success = bool(receipt.get("success"))
+    return RoleResult(
+        run_id=manifest.run_id,
+        role=manifest.role,
+        status=COMPLETED if success else FAILED,
+        provider="fabric",
+        model="local",
+        verdict=VERDICT_PASS if success else VERDICT_FAIL,
+        evidence=(
+            f"fabric:{action}",
+            f"verified:{receipt.get('verified')}",
+            f"capability:{receipt.get('capability_id')}",
+        ),
+        error_class=None if success else "fabric_effect_failed",
+        error_detail=str(receipt.get("note") or "") or None,
+    )
+
+
+class FabricRoleAdapter:
+    """Prefer fabric execution; delegate unknown work to ``inner``."""
+
+    def __init__(
+        self,
+        database,
+        *,
+        owned_root: str | Path,
+        inner: RoleAdapter,
+        structured_only: bool = False,
+    ) -> None:
+        self.database = database
+        self.owned_root = Path(owned_root).expanduser().resolve()
+        self.inner = inner
+        self.structured_only = structured_only
+
+    def dispatch(self, manifest: ContextManifest, *, heartbeat) -> RoleResult:
+        root = owned_root_for_manifest(
+            self.database, manifest, fallback=self.owned_root,
+        )
+        if root is None:
+            return self.inner.dispatch(manifest, heartbeat=heartbeat)
+        result = try_fabric_dispatch(
+            self.database, manifest, heartbeat,
+            owned_root=root,
+            structured_only=self.structured_only,
+        )
+        if result is None:
+            return self.inner.dispatch(manifest, heartbeat=heartbeat)
+        return result

@@ -1,0 +1,175 @@
+{
+  "checks": {
+    "evolution_recommendation_visible": true,
+    "fallback_capability_checked": true,
+    "followup_open": true,
+    "knowledge_quality_visible": true,
+    "memory_quality_visible": true,
+    "projection_did_not_append": true,
+    "recovery_resolved": true,
+    "recurring_work_observed": true,
+    "repeated_failure_create_work": true,
+    "repeated_failure_deduped": true,
+    "snapshot_surface_present": true,
+    "stop_non_authorizing": true
+  },
+  "evidence": {
+    "event_count": 14,
+    "failure_signal": {
+      "dedupe_count": 2,
+      "dimensions": {
+        "confidence": 0.55,
+        "coverage": 1.0,
+        "impact": 0.84,
+        "novelty": 0.5,
+        "recurrence": 0.3333333333333333,
+        "relevance": 0.84,
+        "reversibility": 0.68,
+        "urgency": 0.58
+      },
+      "due_at": null,
+      "entity_id": "opencode_go",
+      "entity_kind": "provider",
+      "evidence_refs": [
+        "3f647e72-5e3c-484a-aaac-045968c5eab7",
+        "failure-proof-0",
+        "36af8d4b-d38c-4c31-b1b8-25d15f78119b",
+        "failure-proof-1"
+      ],
+      "fingerprint": "86509cd4f7e2aca42d5b7afee0222bc3",
+      "kind": "FAILED",
+      "last_seen": "2026-08-29T11:00:00+00:00",
+      "mission_id": "proof-mission",
+      "next_action": "recheck capability health and route only to an explicitly eligible fallback",
+      "observed_at": "2026-08-29T10:00:00+00:00",
+      "provenance": {
+        "latest_event_id": "36af8d4b-d38c-4c31-b1b8-25d15f78119b",
+        "projection": "append_only_event_ledger_and_durable_projections",
+        "resolution_event_id": null,
+        "source_types": [
+          "v8-proof"
+        ]
+      },
+      "recurrence_count": 2,
+      "resolution_event_id": null,
+      "salience": "CREATE_WORK",
+      "score": 67.43,
+      "signal_id": "signal-86509cd4f7e2aca42d5b7afe",
+      "source_event_ids": [
+        "3f647e72-5e3c-484a-aaac-045968c5eab7",
+        "36af8d4b-d38c-4c31-b1b8-25d15f78119b"
+      ],
+      "state": "OPEN",
+      "summary": "provider_timeout",
+      "suppressed_count": 1
+    },
+    "fallback_status": {
+      "attempted": [
+        {
+          "auth_state": "READY",
+          "availability": "AVAILABLE",
+          "capabilities": [
+            "code"
+          ],
+          "context_window_tokens": 16000,
+          "cost_usd": null,
+          "evidence_refs": [],
+          "health": "HEALTHY",
+          "latency_ms": 120,
+          "model": "model-1",
+          "provider": "backup",
+          "reliability": 0.9
+        }
+      ],
+      "evidence_refs": [],
+      "failure_class": null,
+      "fallback_used": true,
+      "reason": "rerouted from primary: preferred candidate was not eligible",
+      "rejected": [
+        {
+          "evidence_refs": [],
+          "failure_class": "CAPABILITY_MISMATCH",
+          "model": "model-1",
+          "provider": "primary",
+          "reason": "missing capabilities: code"
+        }
+      ],
+      "selected": {
+        "auth_state": "READY",
+        "availability": "AVAILABLE",
+        "capabilities": [
+          "code"
+        ],
+        "context_window_tokens": 16000,
+        "cost_usd": null,
+        "evidence_refs": [],
+        "health": "HEALTHY",
+        "latency_ms": 120,
+        "model": "model-1",
+        "provider": "backup",
+        "reliability": 0.9
+      },
+      "status": "FALLBACK"
+    },
+    "recovered_signal": {
+      "dedupe_count": 2,
+      "dimensions": {
+        "confidence": 0.55,
+        "coverage": 1.0,
+        "impact": 0.84,
+        "novelty": 0.5,
+        "recurrence": 0.3333333333333333,
+        "relevance": 0.84,
+        "reversibility": 0.68,
+        "urgency": 0.58
+      },
+      "due_at": null,
+      "entity_id": "opencode_go",
+      "entity_kind": "provider",
+      "evidence_refs": [
+        "3f647e72-5e3c-484a-aaac-045968c5eab7",
+        "failure-proof-0",
+        "36af8d4b-d38c-4c31-b1b8-25d15f78119b",
+        "failure-proof-1"
+      ],
+      "fingerprint": "86509cd4f7e2aca42d5b7afee0222bc3",
+      "kind": "FAILED",
+      "last_seen": "2026-08-29T11:00:00+00:00",
+      "mission_id": "proof-mission",
+      "next_action": "recheck capability health and route only to an explicitly eligible fallback",
+      "observed_at": "2026-08-29T10:00:00+00:00",
+      "provenance": {
+        "latest_event_id": "36af8d4b-d38c-4c31-b1b8-25d15f78119b",
+        "projection": "append_only_event_ledger_and_durable_projections",
+        "resolution_event_id": "0a0fe9f1-9335-4113-9c0e-aedece4647f6",
+        "source_types": [
+          "v8-proof"
+        ]
+      },
+      "recurrence_count": 2,
+      "resolution_event_id": "0a0fe9f1-9335-4113-9c0e-aedece4647f6",
+      "salience": "CREATE_WORK",
+      "score": 67.43,
+      "signal_id": "signal-86509cd4f7e2aca42d5b7afe",
+      "source_event_ids": [
+        "3f647e72-5e3c-484a-aaac-045968c5eab7",
+        "36af8d4b-d38c-4c31-b1b8-25d15f78119b"
+      ],
+      "state": "RESOLVED",
+      "summary": "provider_timeout",
+      "suppressed_count": 1
+    },
+    "snapshot_status": "AVAILABLE"
+  },
+  "schema": "v8.operational-intelligence.proof.v1",
+  "workflow": [
+    "capability registration and health observation",
+    "repeated provider degradation",
+    "repeated agent failure classified as CREATE_WORK",
+    "memory and knowledge quality/consolidation candidates surfaced",
+    "existing EvolutionControl path receives a read-only improvement recommendation",
+    "explicit fallback selected only for a capable observed candidate",
+    "provider recovery resolves the signal",
+    "STOP leaves read projections intact and non-authorizing"
+  ]
+}

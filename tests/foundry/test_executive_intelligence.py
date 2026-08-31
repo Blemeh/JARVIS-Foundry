@@ -22,7 +22,11 @@ from jarvis_foundry.executive.eligibility import (
     grant_fresh_override,
     has_trusted_fresh_override,
 )
-from jarvis_foundry.executive.goals import active_goals, goal_alignment_score
+from jarvis_foundry.executive.goals import (
+    _parse_success_criteria,
+    active_goals,
+    goal_alignment_score,
+)
 from jarvis_foundry.executive.scoring import rank_candidates
 from jarvis_foundry.owner_controls import OwnerControlService, sign_command
 from jarvis_foundry.paths import FoundryPaths
@@ -32,6 +36,17 @@ from jarvis_foundry.runtime.worker_loop import run_cycle
 from worker_test_helpers import mission_database
 
 EPOCH = "proof-epoch-m1"
+
+
+def test_success_parser_ignores_filename_substrings():
+    text = (
+        "Create owner-success.txt, then finish the review. "
+        "success: owner-success.txt has exact bytes; outcome.md agrees"
+    )
+    assert _parse_success_criteria(text) == (
+        "owner-success.txt has exact bytes",
+        "outcome.md agrees",
+    )
 
 
 def _register_resource(database: FoundryDatabase, repository: Path, resource_id: str = "resource-1") -> None:

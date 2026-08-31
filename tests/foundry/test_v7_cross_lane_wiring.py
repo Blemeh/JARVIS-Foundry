@@ -332,6 +332,21 @@ def test_capability_gate_blocks_suspended_and_passes_ready(
     assert len(journaled) == 2
 
 
+def test_missing_capability_state_is_unknown_not_ready(tmp_path: Path) -> None:
+    db = database(tmp_path)
+    register_resource(db)
+    readiness = capability_readiness(
+        db, resource_id="resource-1", capability="http-client")
+    assert readiness["ready"] is False
+    assert readiness["state"] == "UNKNOWN"
+    receipt = gate_procedure_step_capability(
+        db, resource_id="resource-1", capability="http-client",
+        procedure_id="proc-unknown", step_id="step-1",
+        effect_ticket="effect:proc-unknown:step-1")
+    assert receipt["state"] == "UNKNOWN"
+    assert receipt["ready"] is False
+
+
 # ---------------------------------------------------------------------------
 # V7A -> V7B: procedures bind to missions with intact effect tickets
 # ---------------------------------------------------------------------------

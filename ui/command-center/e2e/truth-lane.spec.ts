@@ -15,14 +15,14 @@ for (const route of routes) {
   test(`truth lane ${route.slug} has no fabricated cost on overview`, async ({ page }) => {
     if (route.slug !== "overview") return
     await page.goto("/")
-    await expect(page.getByRole("heading", { name: route.heading })).toBeVisible()
+    await expect(page.getByRole("heading", { name: route.heading, exact: true })).toBeVisible()
     await expect(page.locator("body")).not.toContainText("$0.38")
     await expect(page.getByLabel(/Measured cost UNKNOWN · SIMULATED/i)).toBeVisible()
   })
 
   test(`truth lane smoke ${route.slug}`, async ({ page }) => {
     await page.goto(route.path)
-    await expect(page.getByRole("heading", { name: route.heading })).toBeVisible()
+    await expect(page.getByRole("heading", { name: route.heading, exact: true })).toBeVisible()
     await expect(page.locator(".data-source-pill")).toContainText("SIMULATED")
   })
 }

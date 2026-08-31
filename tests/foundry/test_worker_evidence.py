@@ -207,6 +207,34 @@ def test_verifier_delta_mode_ignores_preexisting_builder_work(tmp_path):
     assert report.agree is True
 
 
+def test_delta_mode_discards_stale_prior_claims_but_keeps_new_changes(tmp_path):
+    """A reused result file may repeat an unchanged prior path.
+
+    The reconciler removes only that stale claim. If the same prior path is
+    actually rewritten during this run, it remains part of the accountable
+    delta and the worker must claim it.
+    """
+    repository = make_repo(tmp_path)
+    (repository / "feature.py").write_text("builder work\n", encoding="utf-8")
+    reconciler = EvidenceReconciler()
+    step = contract(repository)
+    before = reconciler.capture_before(step)
+
+    unchanged = success_envelope(repository, files_changed=("feature.py",))
+    report = reconciler.reconcile(
+        step, unchanged, before=before,
+        delta_baseline=before.changed_files)
+    assert report.agree is True
+    assert report.unrecorded_mutations == ()
+
+    (repository / "feature.py").write_text("current-step work\n", encoding="utf-8")
+    changed = success_envelope(repository, files_changed=("feature.py",))
+    report_changed = reconciler.reconcile(
+        step, changed, before=before,
+        delta_baseline=before.changed_files)
+    assert report_changed.agree is True
+
+
 def test_result_control_file_does_not_condemn_claim(tmp_path):
     """The .jarvis-result.json control file must not force a worker claim
     mismatch: the worker lists only its business files and the control file

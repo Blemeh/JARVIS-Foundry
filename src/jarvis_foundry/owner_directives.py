@@ -9,6 +9,7 @@ cannot become a second control authority.
 from __future__ import annotations
 
 import hashlib
+import sqlite3
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -27,6 +28,9 @@ OWNER_COMMANDS = frozenset({
     "STOP_EVERYTHING",
     "PAUSE",
     "RESUME",
+    "REVOKE",
+    "CANCEL_MISSION",
+    "GATE_REEVALUATE",
     "REPRIORITIZE",
     "REDIRECT",
     "RESTART_RECOVERY",
@@ -163,26 +167,53 @@ def _target_status(database: FoundryDatabase, target: str | None) -> str:
     if target == "GLOBAL":
         return "KNOWN"
 
-    candidates = (
-        ("missions", "mission_id", target),
-        ("resources", "resource_id", target),
-        ("systems", "system_id", target),
+    try:
+        with database.connect(readonly=True) as connection:
+            # Resolve all core target namespaces with one indexed lookup. The
+            # previous three-query loop ran once for every directive and was
+            # visible as a systems-table N+1 in the Command Center trace.
+            row = connection.execute(
+                "SELECT EXISTS(SELECT 1 FROM missions WHERE mission_id = ?) "
+                "OR EXISTS(SELECT 1 FROM resources WHERE resource_id = ?) "
+                "OR EXISTS(SELECT 1 FROM systems WHERE system_id = ?)",
+                (target, target, target),
+            ).fetchone()
+            if row is not None and bool(row[0]):
+                return "KNOWN"
+    except (OSError, KeyError, sqlite3.Error):
+        return "UNKNOWN"
+    return "UNKNOWN"
+
+
+def _target_statuses(
+    database: FoundryDatabase, targets: set[str],
+) -> dict[str, str]:
+    """Resolve all directive targets with one indexed batch lookup."""
+    normalized = {
+        target.strip() for target in targets
+        if isinstance(target, str) and target.strip() and target.strip() != "GLOBAL"
+    }
+    statuses = {"GLOBAL": "KNOWN"}
+    statuses.update({target: "UNKNOWN" for target in normalized})
+    if not normalized:
+        return statuses
+    values = tuple(sorted(normalized))
+    placeholders = ", ".join("?" for _ in values)
+    query = (
+        "SELECT mission_id AS target FROM missions WHERE mission_id IN (" + placeholders + ") "
+        "UNION SELECT resource_id AS target FROM resources WHERE resource_id IN (" + placeholders + ") "
+        "UNION SELECT system_id AS target FROM systems WHERE system_id IN (" + placeholders + ")"
     )
     try:
         with database.connect(readonly=True) as connection:
-            for table, key, value in candidates:
-                try:
-                    row = connection.execute(
-                        f"SELECT 1 FROM {table} WHERE {key} = ? LIMIT 1",
-                        (value,),
-                    ).fetchone()
-                except Exception:  # additive tables may not exist on old state
-                    row = None
-                if row is not None:
-                    return "KNOWN"
-    except (OSError, KeyError):
-        return "UNKNOWN"
-    return "UNKNOWN"
+            rows = connection.execute(query, values + values + values).fetchall()
+    except (OSError, sqlite3.Error):
+        return statuses
+    for row in rows:
+        target = str(row[0] or "")
+        if target in statuses:
+            statuses[target] = "KNOWN"
+    return statuses
 
 
 def _unknown_fields(
@@ -264,6 +295,7 @@ def _event_record(
     event: Event,
     sequence: int,
     nonce_events: dict[str, Event],
+    target_status: str | None = None,
 ) -> OwnerDirectiveRecord:
     payload = event.payload if isinstance(event.payload, dict) else {}
     raw_id = payload.get("directive_id")
@@ -307,7 +339,10 @@ def _event_record(
         superseded_by=None,
         revoked_at=None,
         expires_at=expires_at,
-        target_status=_target_status(database, target),
+        target_status=(
+            target_status if target_status is not None
+            else _target_status(database, target)
+        ),
         metadata=dict(metadata),
         unknown_fields=tuple(dict.fromkeys(unknown)),
     )
@@ -336,18 +371,27 @@ def project_owner_directives(
     records: dict[str, OwnerDirectiveRecord] = {}
     order: list[str] = []
 
-    for sequence, event in enumerate(
-        database.events(
-            readonly=True,
-            event_types=(
-                "owner_control.nonce_used",
-                "owner_directive.recorded",
-                "owner_directive.revoked",
-                "owner_directive.superseded",
-            ),
+    directive_events = database.events(
+        readonly=True,
+        event_types=(
+            "owner_control.nonce_used",
+            "owner_directive.recorded",
+            "owner_directive.revoked",
+            "owner_directive.superseded",
         ),
-        start=1,
-    ):
+    )
+    target_status = _target_statuses(
+        database,
+        {
+            str(event.payload.get("target"))
+            for event in directive_events
+            if event.event_type == "owner_directive.recorded"
+            and isinstance(event.payload, dict)
+            and isinstance(event.payload.get("target"), str)
+        },
+    )
+
+    for sequence, event in enumerate(directive_events, start=1):
         payload = event.payload if isinstance(event.payload, dict) else {}
         if event.event_type == "owner_control.nonce_used":
             nonce = payload.get("nonce")
@@ -355,7 +399,12 @@ def project_owner_directives(
                 nonce_events[nonce] = event
             continue
         if event.event_type == "owner_directive.recorded":
-            record = _event_record(database, event, sequence, nonce_events)
+            target = event.payload.get("target") if isinstance(event.payload, dict) else None
+            record = _event_record(
+                database, event, sequence, nonce_events,
+                target_status=target_status.get(str(target).strip(), "UNKNOWN")
+                if isinstance(target, str) else "UNKNOWN",
+            )
             if record.directive_id in records:
                 # A duplicate directive id is a visible integrity problem, not
                 # a replacement of the first admitted owner intent.
