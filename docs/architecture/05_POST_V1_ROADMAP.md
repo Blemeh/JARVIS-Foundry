@@ -1,14 +1,19 @@
-# JARVIS FOUNDRY - AUTOMATIC CAPABILITY ROADMAP
+# JARVIS FOUNDRY - HISTORICAL V1-V7 CAPABILITY ROADMAP
 
 Version: 3.1
-Status: SEQUENCE COMPLETE - SUPERSEDED IN PART (all stages implemented; see §14)
+Status: HISTORICAL - SUPERSEDED FOR FUTURE SEQUENCING
 Date: 2026-08-11 (status header reconciled 2026-08-16)
 Owner control: VETO AND STOP
 
+> Current roadmap: use
+> `../handoffs/JARVIS_POST_V9_TO_V16_ROADMAP_HANDOFF_2026-08-31.md` for the
+> V9-V16 sequence and post-V9 doctrine. This file preserves the original V1-V7
+> plan and evidence history; it does not activate or reorder current work.
+
 ## 1. Purpose
 
-This roadmap preserves the complete JARVIS destination and defines the
-automatic order in which capabilities are built and proven.
+This historical roadmap preserves the original V1-V7 destination and the order
+in which those capabilities were intended to be built and proven.
 
 It is not a permission queue. After the owner gives the single initial
 `START BUILD` instruction, JARVIS advances through this roadmap without asking

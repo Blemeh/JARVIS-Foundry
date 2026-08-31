@@ -4,6 +4,11 @@ Status: owner-supplied governing context for future development; imported as
 repository memory on 2026-09-01. This document is not evidence that any live
 mutation, promotion, merge, or V10 implementation occurred.
 
+Canonicalization update (2026-09-01): the owner separately authorized landing
+this roadmap plus the agent-control documentation to canonical `main`. That
+authorization does not promote the `c41a3ad...` product candidate, start V10,
+or permit live runtime/database/Scheduler/install/release/trust mutation.
+
 Source: `C:\Users\b\Downloads\JARVIS_MASTER_HANDOFF_POST_V9_TO_V16_2026-08-31.txt`
 
 Source SHA-256: `91105DC4D235DCAD4E698E495D1BDE4CE54C753E871ECD5F639F9A4462C44089`
@@ -16,10 +21,11 @@ Repository base used for this import:
 
 ## Interpretation boundary
 
-The source handoff contains instructions to future coding agents. In the
-2026-09-01 request, the owner asked only that the document be read, understood,
-analyzed, and saved in memory. Therefore this import records the doctrine and
-roadmap but does not execute its operational instructions.
+The source handoff contains instructions to future coding agents. The initial
+2026-09-01 request authorized only reading, analysis, and memory preservation;
+a later 2026-09-01 directive authorized documentation/control-plane
+canonicalization. Neither directive by itself authorizes product-phase or live
+operational instructions from the source handoff.
 
 The handoff's Git, release, runtime, schema, process, trust, provider, reboot,
 and promotion statements are point-in-time claims. Before any present-tense

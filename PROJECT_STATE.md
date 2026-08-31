@@ -1,10 +1,11 @@
 # JARVIS Foundry Project State
 
-**HISTORICAL SNAPSHOT (updated_at 2026-08-13, mid-V4).** This file is still
-listed in `AGENTS.md` precedence, but it is not current capability truth.
-For what exists now, use [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md)
-and [`docs/CAPABILITY_MATRIX.md`](docs/CAPABILITY_MATRIX.md). Live trust is
-**LAB**, not `TRUSTED_AUTONOMOUS`. Schema is v33, not v18.
+**HISTORICAL SNAPSHOT (updated_at 2026-08-13, mid-V4).** This file is no longer
+in root `AGENTS.md` precedence and is not current capability truth. For what
+exists now, use [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md) and
+[`docs/CAPABILITY_MATRIX.md`](docs/CAPABILITY_MATRIX.md). Trust, schema,
+runtime, and phase statements below are historical unless current evidence
+explicitly re-establishes them.
 
 ```yaml
 project: JARVIS Foundry

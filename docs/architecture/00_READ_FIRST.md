@@ -1,7 +1,7 @@
 # JARVIS FOUNDRY - READ FIRST
 
 Version: 4.0
-Status: CURRENT ENTRY POINT — IMPLEMENTATION LIVE (see docs/CURRENT_STATE.md)
+Status: ARCHITECTURE ENTRY — CURRENT IMPLEMENTATION LIVES IN docs/CURRENT_STATE.md
 Date: 2026-08-11 (status header reconciled 2026-08-16)
 Owner: Blendi Mehmeti
 System identity: JARVIS
@@ -11,34 +11,34 @@ Permission model: STANDING AUTONOMY WITH OWNER VETO
 
 ## 1. Purpose
 
-This is the entry point for every human or agent working on JARVIS Foundry.
-It prevents two forms of drift:
+This is the entry point to the permanent architecture set. Repository agents
+start at root `AGENTS.md`; current implementation truth lives in
+`../CURRENT_STATE.md`. This document prevents two forms of architecture drift:
 
 1. reducing the full autonomous destination into a supervised assistant;
 2. building unverified complexity before the autonomy kernel works.
 
 Sequencing is technical. It is not a chain of permission requests.
 
-**Current implementation truth:** the autonomy kernel, knowledge brain,
-command center, multi-system layer, self-evolution, full autonomous
-operation (V1–V7), and Hybrid Memory (V8) are IMPLEMENTED and running in
-canonical. See `../CURRENT_STATE.md` (what exists now) and
-`../CAPABILITY_MATRIX.md` (per-capability status with evidence). Older
-version documents describe the original plan and are HISTORICAL where
-they conflict with those two files.
+**Current implementation truth:** use `../CURRENT_STATE.md` for canonical,
+candidate, runtime, schema, trust, and evidence claims. Use
+`../CAPABILITY_MATRIX.md` for per-capability evidence. Older version documents
+are HISTORICAL where they conflict with those surfaces.
 
 ## 2. Canonical Documents
 
-Read in this order:
+For architecture work, read in this order after root `AGENTS.md`:
 
 0. `../CURRENT_STATE.md` (current truth — anti-staleness surface)
-1. `../governance/AUTONOMY_MANDATE.md`
-2. `00_READ_FIRST.md`
-3. `01_NORTH_STAR.md`
-4. `02_ARCHITECTURE_CONTRACT.md`
-5. `03_V1_AUTONOMY_KERNEL_SPEC.md` (historical specification + conformance header)
-6. `04_V1_ACCEPTANCE_GATE.md` (historical gate + criterion mapping)
-7. `05_POST_V1_ROADMAP.md` (reality-based stage status)
+1. `../handoffs/JARVIS_POST_V9_TO_V16_ROADMAP_HANDOFF_2026-08-31.md`
+   (current roadmap; task-relevant only)
+2. `../governance/AUTONOMY_MANDATE.md`
+3. `00_READ_FIRST.md`
+4. `01_NORTH_STAR.md`
+5. `02_ARCHITECTURE_CONTRACT.md`
+6. `03_V1_AUTONOMY_KERNEL_SPEC.md` (historical specification)
+7. `04_V1_ACCEPTANCE_GATE.md` (historical gate)
+8. `05_POST_V1_ROADMAP.md` (historical V1–V7 roadmap)
 
 The standing mandate overrides every earlier permission-first statement.
 Words such as `authority`, `enrollment`, `approval`, `allowed`, and `denied`
@@ -52,13 +52,13 @@ Documentation maintenance is contractual: see `../ARCHITECTURE_DOCUMENTATION_CON
 When instructions conflict:
 
 1. latest authenticated owner veto, STOP, constraint, or goal;
-2. `../governance/AUTONOMY_MANDATE.md`;
-3. this V3 entry point;
-4. `02_ARCHITECTURE_CONTRACT.md`;
+2. `../CURRENT_STATE.md` for current-state facts;
+3. `../governance/AUTONOMY_MANDATE.md` and `02_ARCHITECTURE_CONTRACT.md`
+   for durable authority and invariants;
+4. the current roadmap handoff for product sequence and doctrine;
 5. current capability specification and evidence gate;
-6. durable mission and resource state;
-7. repository-local instructions;
-8. autonomous engineering judgment.
+6. durable mission/resource state and scoped repository instructions;
+7. autonomous engineering judgment.
 
 If a conflict remains, freeze only the conflicting action, record it, and
 continue useful independent work. Do not transform uncertainty into a routine

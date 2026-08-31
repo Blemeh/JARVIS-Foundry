@@ -5,9 +5,9 @@ Issued by: Blendi Mehmeti
 Date: 2026-08-11
 Permission model: OPT-OUT AUTONOMY
 
-> Current status (2026-08-16): implementation started; the mandate is
-> OPERATIVE. The canonical runtime is live; STOP/owner veto remain the
-> override authority (docs/CURRENT_STATE.md).
+> The mandate is OPERATIVE. STOP and authenticated owner directives remain the
+> override authority. Canonical/runtime/trust status is time-sensitive and
+> lives only in `../CURRENT_STATE.md` plus fresh authorized evidence.
 
 ## 1. Governing Intent
 

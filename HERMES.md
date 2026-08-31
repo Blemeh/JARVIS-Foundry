@@ -1,10 +1,15 @@
 # Hermes Repository Boundary
 
+Scope note: this file defines the Hermes/JARVIS boundary. Any concrete commit,
+path, process, or access statement below is a historical baseline until it is
+re-verified. Root `AGENTS.md` and `docs/CURRENT_STATE.md` control current task
+routing and present-state claims.
+
 Hermes is JARVIS's agent execution substrate. It is not JARVIS's durable
 supervisor, autonomous action control plane, emergency stop, or final source
 of project state.
 
-## Current State
+## Historical baseline to re-verify
 
 - Live Hermes home: `C:\Users\b\AppData\Local\hermes`.
 - Live source commit: `244d296646909aca1dd16c9759491da0ef4cd163`.
