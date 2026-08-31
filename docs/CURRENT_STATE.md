@@ -6,67 +6,61 @@ every promotion/remaster mission (see `docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.
 If this document and another current-status document disagree, THIS document wins
 for "what exists now" claims; the architecture contract wins for binding invariants.
 
-Last reconciled: 2026-08-24 (Lane 4 software-intelligence brain activation
-candidate: additive schema v37 alias projection, deterministic project
-identity, governed writeback/context layers; canonical head named below is
-the integration base this candidate builds on)
+Last reconciled: 2026-09-01 for roadmap and agent-control documentation only.
+No product source, live runtime, database, Scheduler, installation, release
+pointer, provider, or trust state was changed or refreshed by this task.
+
+DOCUMENTATION STATE BASE SHA: `a9e6a48bdff79811adab6f48201db96065011138`
+
+The SHA above is the immediate parent of the final current-state reconciliation
+commit. It contains the selectively landed roadmap and agent control tower.
 
 ```text
-CANDIDATE HEAD:              cadb1b2+ (candidate/software-intelligence-brain-activation-20260824; this file's staleness check runs against the working tree)
-CURRENT CANONICAL HEAD:      0887a3b (canonical main/origin; pushed)
-V7 STAGE INTEGRATION:        integration/v7-full-autonomy-20260824 merged;
-                             lanes V7A 9accb24d + V7B 8662fae7 +
-                             V7C 22422059 all represented (no missing work)
-STAGE EVIDENCE:              evidence/integration/v7-stage/
-FULL SUITE:                  PASS — 1,972 collected, 0 failures, 1 explicit
-                             skip at final integration head
-DEPLOYED RELEASE:            rel-f12a2215f0bc-c3bb04f6 (CURRENT,
-                             git_commit f12a2215..., tree e5054369...)
-PREVIOUS RELEASE:            rel-441113bcfd27-de548929 (PREVIOUS)
-CURRENT SCHEMA:              v37 live and current; no pending migration
-                             V2 KNOWLEDGE SCHEMA: v35 (applied 2026-08-23)
-                             V3 DISCOVERY/BUILDING SCHEMA: v36 (applied 2026-08-23)
-                             SOFTWARE-INTELLIGENCE ALIASES: v37 (Lane 4
-                             candidate, 2026-08-24; additive derived
-                             tier_c_project_aliases projection)
-                             CURRENT/CANDIDATE SCHEMA: v37 (migrations.SCHEMA_VERSION)
-                             v34 live baseline was migrated to v36 on 2026-08-23
-                             (schema_migrations head 36; production database
-                             opens at the current source version only)
-SUPERVISOR STATE:            RUNNING singleton on the live release;
-                             heartbeat advancing; STOP false
-STOP/RESUME PROOF:           PASS live (sentinel freeze -> FROZEN/SUSPENDED,
-                             resume -> RUNNING) on 2026-08-24
-V7A PORTFOLIO TIER:          ACTIVE live via worker config
-                             executive.portfolio_selection_enabled=true:
-                             selects/executes/verifies/records outcomes,
-                             retires unexecutable repair targets, closes
-                             completed items (mirror shadowing), reaches
-                             honest WAIT with wake conditions
-V7B BROAD OPERATIONS:        live multi-capability disposable procedure
-                             proven (filesystem/git/http/deploy with exact
-                             targets, effect tickets, freeze->reconcile)
-V7C RESILIENCE:              coordinator ARMED live (worker config
-                             resilience.coordinator_enabled=true): detected
-                             real connector outage + duplicate authority;
-                             DETECTED->TRIAGED->CONTAINED->DIAGNOSED->
-                             honest BLOCKED lifecycle recorded
-COMMAND CENTER:              /api/command-center projects ledger truth incl.
-                             new additive "portfolio" section (decisions,
-                             wake conditions, outcomes, incidents); source
-                             of truth = append-only ledger; release identity
-                             from immutable pointers; cinematic UI unchanged
-DB BACKUP/ROLLBACK:          pre-V7 backup verified (quick_check ok, sha256
-                             matches record); PREVIOUS release validates;
-                             restore path resolves
-VOICE/LOCALIZATION:          DEFERRED_BY_OWNER
+CANONICAL SOURCE START:      fe0592991e98de3f5de27c53d40339f4281156f1
+ROADMAP SOURCE COMMIT:       e62b2451de15896bf4266d07f47c6346105b17d2
+ROADMAP CONTENT LANDING:     ec6b164ec912697c07463a302efe60d6395ef41e
+CONTROL-TOWER SOURCE:        921bd82562ebcf09abc17589416a526b266ba568
+CONTROL-TOWER LANDING:       a9e6a48bdff79811adab6f48201db96065011138
+PRODUCT STABILIZATION SHA:   c41a3ad8ef3debda6f84e6d4dac2e0ac525c0864
+PRODUCT SHA RELATIONSHIP:    c41a3ad is NOT an ancestor of this canonical line;
+                             no V9 product history was imported by this task
+CURRENT/CANDIDATE SCHEMA:    v37 (canonical source migrations.SCHEMA_VERSION)
+V2 KNOWLEDGE SCHEMA:         v35 (historical additive migration)
+V3 DISCOVERY/BUILDING SCHEMA:v36 (historical additive migration)
+v34 live baseline:           historical recorded baseline; not refreshed here
+LIVE CURRENT/PREVIOUS:       NOT INSPECTED BY THIS DOCUMENTATION TASK
+LIVE SUPERVISOR/STOP/TRUST:  NOT INSPECTED BY THIS DOCUMENTATION TASK
+VOICE/LOCALIZATION:          PLANNED FOR V15 BY POST-V9 ROADMAP
 ```
 
-## What exists now
+## Roadmap and control-plane state
 
-(Sections below inherited from the cc5cde2 reconciliation remain accurate for
-subsystems M2 did not touch. Executive Intelligence entries above supersede any
-older text elsewhere in this file.)
+The canonical roadmap is
+`docs/handoffs/JARVIS_POST_V9_TO_V16_ROADMAP_HANDOFF_2026-08-31.md`:
+
+```text
+V9 Core Loop -> V10 Capability -> V11 Long-Horizon -> V12 Self-Expansion
+-> V13 Personal Executive -> V14 Digital Operator -> V15 Human Interface
+-> V16 Final Convergence / JARVIS 1.0
+```
+
+Root `AGENTS.md` is the cross-agent control tower. It routes agents to this
+current-state authority, the post-V9 roadmap, and the bounded build,
+convergence, promotion, and proving workflows under `docs/agent/`. Historical
+V6/V7 plans remain preserved but are not mandatory root guidance for unrelated
+V10+ work.
+
+The roadmap branch was based on `c41a3ad...`, while canonical `main` started at
+its ancestor `fe059299...`. Integration therefore cherry-picked only the
+roadmap/control documentation and did not merge or fast-forward the V9 product
+candidate line. The V9 candidate, canonical source, installed release, running
+runtime, and production trust remain separate truths.
+
+## Canonical source capability record
+
+(The inventory below is inherited from earlier recorded source/evidence
+reconciliations. This documentation task did not re-run or upgrade those
+product gates.)
 
 - **Deterministic autonomy kernel (V1)** — Supervisor independent of Hermes/LLM
   health: durable append-only event ledger, event-derived projections, directives,
@@ -112,10 +106,11 @@ older text elsewhere in this file.)
   replay. Proven by the Phase-4 remediation evidence package and 1,225-test
   integration suite; disabled by default; native desktop remains PROBING.
 
-## What is running
+## Last recorded runtime snapshot (not refreshed here)
 
-Live Supervisor uses home `C:\Users\b\AppData\Local\hermes\foundry`. The fresh
-read-only doctor/status check observed schema v34 versus source v36, STOP false,
+At the earlier recorded observation, the live Supervisor used home
+`C:\Users\b\AppData\Local\hermes\foundry`. That read-only doctor/status check
+observed schema v34 versus source v36, STOP false,
 one active `worker-loop`, and CURRENT `769715a7...` under filesystem-only release
 authority. The live manifest has source provenance but no git commit/tree fields.
 No live database, scheduler, provider, process, or release mutation was made by
@@ -149,7 +144,7 @@ Procedural Learning is not wired into a continuous learner or autonomous
 promotion loop. Only the explicit bounded local probe can call the governed
 browser substrate, and it cannot activate native desktop execution.
 
-## What has been proven
+## Recorded proof history
 
 | Gate | Result |
 |---|---|
@@ -198,10 +193,11 @@ browser substrate, and it cannot activate native desktop execution.
 3. `scripts/doc_staleness_check.py` mechanically validates this document's HEAD/schema claims against the repository (run in CI or before gate closure).
 4. Old planning/version documents are HISTORICAL: interpret their status lines through `docs/CAPABILITY_MATRIX.md`, never as current truth.
 
-## Next real architectural dependency
+## Next development action
 
-The next architectural dependency is the owner-authorized Phase 5 learned-
-procedure gate. It requires a fresh canonical reconciliation, preserved
-ActionEnvelope/effect/STOP authority, and an independent end-to-end verifier.
-Phase 5 is not started by this promotion; native desktop and autonomous
-continuous learning remain outside the current boundary.
+Run the V10 inventory plus external-capability gap map defined by the post-V9
+roadmap. Before V10 implementation, verify the actual V9 stabilization/live
+state read-only; inventory existing and historical JARVIS capabilities; compare
+mature OSS, APIs, SDKs, MCP servers, and tools; classify wiring/proof gaps; and
+select the smallest non-overlapping lanes plus one real end-to-end proof
+scenario. This documentation task does not start V10 or authorize live changes.
