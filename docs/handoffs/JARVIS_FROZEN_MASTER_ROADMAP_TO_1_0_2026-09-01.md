@@ -86,7 +86,7 @@ Scores are against "what 1.0 needs," not against generic agent systems.
 |---|---|---|
 | Architecture | 9/10 | Spine complete and proven; single authority chain; schema/ledger/effect discipline. Only missing: initiative wiring. |
 | Autonomy | 6/10 | Selects/executes/verifies/waits/retries within a given portfolio; never originates its own work; honest WAIT/BLOCKED proven. |
-| Capability breadth | 5/10 | Real web read, full document suite, Git/GitHub read + local write, disposable releases. No interactive browser, no live provider effects, no Windows control. |
+| Capability breadth | 6/10 | Real web read plus bounded interactive/authenticated browser substrate, full document suite, Git/GitHub read + local write, disposable releases. Live provider effects and Windows control remain unproven/deferred. |
 | Reliability | 8/10 | STOP/RESUME, restart recovery, effect reconciliation, rollback all proven live — but at mission scale, not campaign (multi-day) scale. |
 | Real-world operation | 4/10 | Reads the world well; changes it barely (no authenticated sessions, no mail send, no public GitHub write exercised). |
 | Self-improvement | 3/10 | Seams exist (`gaps.py`, `fabric/expansion.py`, `operations/reuse.py`, V6 shadow/canary machinery) but no end-to-end gap→integrate→register→resume path has ever run. |
@@ -98,7 +98,7 @@ Scores are against "what 1.0 needs," not against generic agent systems.
 | Capability | Status | Note |
 |---|---|---|
 | Web research (read) | CURRENT | Playwright + Trafilatura, provenance, DATA_ONLY |
-| Interactive browser | MISSING → V10 completion | Click/type/session/auth on existing substrate |
+| Interactive browser | IMPLEMENTED / DISPOSABLE_PROVED → LIVE_AUTH_PROVED BLOCKED | Click/type/session/auth on existing substrate; safe live owner session unavailable |
 | Documents/data | CURRENT | PDF/DOCX/XLSX/CSV/PPTX/images, readback checks |
 | Coding | CURRENT | Local repo change/test/commit, disposable releases |
 | Git/GitHub | PARTIAL | Read + write adapter exist; public write unexercised |
@@ -130,8 +130,10 @@ Scores are against "what 1.0 needs," not against generic agent systems.
 4. **Outcome → prioritization learning.** Mission outcomes must adjust scoring
    priors (`world_model/calibration.py` ↔ `executive/calibration.py` exist on
    both sides; unwired).
-5. **Interactive + authenticated browser.** Research-grade read exists;
-   discovery and operation both need click/type/login/session persistence.
+5. **Interactive + authenticated browser live proof.** The bounded
+   click/type/login/session-persistence implementation is complete in the
+   V10_EXIT candidate; a safe owner-authorized live session is still required
+   for the promotion gate.
 6. **Campaign-scale durability proof.** Restart/reboot/outage/wait survival
    exists at mission scale; must be proven across a multi-day, multi-mission
    objective.
@@ -294,7 +296,7 @@ Capability classes used throughout:
 | Capability | Class |
 |---|---|
 | Lanes A–D semantic convergence, suite, exact-SHA | EXIT REQUIREMENT |
-| Interactive browser actions + auth session persistence | EXIT REQUIREMENT |
+| Interactive browser actions + auth session persistence | EXIT REQUIREMENT — IMPLEMENTED / DISPOSABLE_PROVED in V10_EXIT candidate |
 | Gmail live read | MISSION-PULLED / OPTIONAL (`BLOCKED/DEFERRED` if no credentials) |
 | Mail send, calendar, Windows UIA, OCR, MCP | explicitly out (later phases) |
 
@@ -310,6 +312,25 @@ Capability classes used throughout:
   possible (every interaction has a receipt).
 - **NOT in phase:** mail send, calendar, Windows UIA, MCP, OCR, any discovery
   logic.
+
+### V10_EXIT status — 2026-09-01
+
+The single V10_EXIT candidate is `V10_EXIT_READY_FOR_PROMOTION` for the next
+authorized rehearsal → promotion → live-validation sequence. Its product
+predecessor is `71d71da3f0998538a579a807a152c4bd9d3282d0`; the exact source tip
+is `4a645c0b939cf1f4d09e37e1cdfd04dba564e179`; the roadmap-authority commit is
+`e9b2155bd669887c4778db0b16a4ef7861d2c9ff`; and the candidate worktree is
+`C:\temp\JARVIS-V10-Exit-20260901` on branch
+`candidate/v10-exit-20260901`.
+
+Bounded Playwright interaction, authenticated storage-state persistence and
+restore, expiry detection, STOP behavior, effect identity/replay, readback,
+and disposable authenticated proof are implemented and proven. No safe
+owner-authorized live authenticated site was available, so
+`LIVE_AUTH_PROVED` remains `BLOCKED/NOT_TESTED`; Gmail remains
+`BLOCKED/DEFERRED` without credentials. The execution state remains
+`current_phase=V10_CLOSE`, `current_gate=V10_EXIT`, `gate_status=NOT_PASSED`;
+V11 is not started.
 
 ## V11 — INITIATIVE (the decisive phase)
 
@@ -785,11 +806,11 @@ contract already enforces it).
 
 # NEXT 3 ENGINEERING JOBS
 
-1. **V10 sensory completion** — interactive browser actions + authenticated
-   session persistence on the existing Playwright substrate
-   (`connectors/browser.py`), inside the current V10 candidate line; Gmail
-   read only if credentials exist, else `BLOCKED/DEFERRED`. Then the single
-   final V10 exact-SHA convergence → rehearsal → promotion → live validation.
+1. **V10_EXIT rehearsal and live validation** — use the exact clean candidate
+   above for the single rehearsal → promotion → live-validation sequence.
+   Re-read provider credentials, release, database, Scheduler, reboot, and
+   endurance boundaries before any operational action; Gmail remains
+   `BLOCKED/DEFERRED` unless credentials are already available.
 2. **V11 Lanes 1+2 (parallel worktrees)** — observation cycles (owner GitHub,
    web watchlist, project/filesystem drift, world-model signals) into
    `discovery_monitors` → `discovery_candidates` with fingerprint dedup
@@ -817,10 +838,9 @@ Campaign (A8). Gmail is never a blocker before V13; voice/Albanian is post-1.0
 by product decision; all listed architectural decisions are frozen absent new
 evidence.
 
-# IMMEDIATE NEXT ACTION AFTER V10 CONVERGENCE
+# IMMEDIATE NEXT ACTION AFTER V10_EXIT CANDIDATE
 
-Land interactive browser actions + authenticated session persistence in the
-current V10 candidate line (Gmail read only if credentials are already
-available, otherwise record `BLOCKED/DEFERRED`), then run the single final V10
-exact-SHA convergence and the combined rehearsal → promotion → live-validation
-session, and open V11 Lanes 1+2 from the promoted base.
+Run the single exact-SHA V10 rehearsal → promotion → live-validation session
+after fresh read-only boundary checks. If and only if that live gate passes,
+open V11 Lanes 1+2 from the promoted base. Do not start V11 from this
+candidate while `V10_EXIT` remains `NOT_PASSED`.

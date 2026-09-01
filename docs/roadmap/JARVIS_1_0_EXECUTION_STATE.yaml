@@ -29,7 +29,15 @@ observed_repo_state:
   live_schema: v38               # per docs/CURRENT_STATE.md reconciliation 2026-09-01
   live_runtime: "untouched by this control-tower session (no DB/Scheduler/release mutation)"
   v9_status: "established and stabilized; represented in canonical source"
-  v10_status: "convergence IN_PROGRESS in isolated worktrees (not yet on canonical main)"
+  v10_status: "V10_EXIT_READY_FOR_PROMOTION in isolated candidate; live promotion/validation not performed"
+  v10_exit:
+    predecessor_sha: "71d71da3f0998538a579a807a152c4bd9d3282d0"
+    source_tip: "4a645c0b939cf1f4d09e37e1cdfd04dba564e179"
+    branch: "candidate/v10-exit-20260901"
+    worktree: "C:\\temp\\JARVIS-V10-Exit-20260901"
+    roadmap_authority: "e9b2155bd669887c4778db0b16a4ef7861d2c9ff"
+    schema: v38
+    status: "READY_FOR_PROMOTION; candidate-only; no live mutation"
   v10_lanes_observed_2026_09_01:
     inventory:            { branch: planning/v10-inventory-20260901,            head: 5d2a173 }
     a_web_research:       { branch: candidate/v10-a-web-research-20260901,      head: a15bcc7 }
@@ -37,9 +45,10 @@ observed_repo_state:
     c_developer_provider: { branch: candidate/v10-c-developer-provider-20260901, head: 6df9a85 }
     c_workflow_audit:     { branch: candidate/v10-c-workflow-audit-20260901,    head: 39edae7 }
     d_historical_reuse:   { branch: candidate/v10-d-historical-reuse-20260901,  head: 96d776d }
-    full_convergence:     { branch: candidate/v10-full-convergence-20260901,    head: 8a8d8c2 }
+    full_convergence:     { branch: candidate/v10-full-convergence-20260901,    head: 71d71da }
 
 current_phase: V10_CLOSE
+current_gate: V10_EXIT
 authorized_next_gate: V10_EXIT
 authorized_next_gate_definition: >
   Single V10 release cycle: finish lane convergence; land sensory completion
@@ -55,7 +64,7 @@ phases:
     status: IN_PROGRESS
     gate: V10_EXIT
     gate_status: NOT_PASSED
-    notes: "one release cycle only; sensory completion is part of V10, not a second promotion"
+    notes: "candidate is ready for the one rehearsal -> promotion -> live-validation sequence; sensory completion is part of V10, not a second promotion"
   V11_INITIATIVE:
     status: NOT_STARTED
     gates: [A2, A3, A4]
@@ -78,6 +87,13 @@ phases:
     definition: "72-hour Owner-Absent Campaign, live, on the installed release"
 
 capability_flags:
+  interactive_browser:
+    state: IMPLEMENTED_DISPOSABLE_PROVED
+    reason: "bounded Playwright navigation, structural targets, click/fill/select/check/submit, session restore/expiry, receipts, readback, STOP, and effect replay are proven in the V10_EXIT candidate"
+    live_authorized_site: BLOCKED_NOT_TESTED
+  browser_live_auth:
+    state: BLOCKED_NOT_TESTED
+    reason: "no safe owner-authorized authenticated website/session was available for live proof; disposable authenticated proof passed"
   gmail_read:
     state: BLOCKED_DEFERRED
     reason: "no real Gmail credentials available as of 2026-09-01"
@@ -110,3 +126,10 @@ update_log:
   - date: "2026-09-01"
     change: "file created; program position = V10 close, authorized gate = V10_EXIT"
     session: "control/roadmap-authority-20260901"
+  - date: "2026-09-01"
+    change: "V10_EXIT source candidate frozen after semantic control-tower integration, bounded browser/session completion, final journeys, and regression gates; promotion/live validation remain pending"
+    session: "candidate/v10-exit-20260901"
+    predecessor_sha: "71d71da3f0998538a579a807a152c4bd9d3282d0"
+    source_tip: "4a645c0b939cf1f4d09e37e1cdfd04dba564e179"
+    roadmap_authority: "e9b2155bd669887c4778db0b16a4ef7861d2c9ff"
+    evidence_root: "C:\\temp\\JARVIS-V10-Exit-20260901-evidence-exact"
