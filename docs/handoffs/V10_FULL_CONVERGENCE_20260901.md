@@ -195,3 +195,101 @@ ORIGIN/MAIN MUTATED: NO
 WORKTREE:            clean after the final docs-only reconciliation commit
 NEXT:                exact-SHA V10 rehearsal/promotion preparation
 ```
+
+---
+
+## V10_EXIT closure handoff — 2026-09-01
+
+### Exact source and control boundary
+
+```text
+VERDICT:                    V10_EXIT_READY_FOR_PROMOTION
+PRODUCT PREDECESSOR SHA:    71d71da3f0998538a579a807a152c4bd9d3282d0
+ROADMAP-AUTHORITY SHA:      e9b2155bd669887c4778db0b16a4ef7861d2c9ff
+FINAL SOURCE TIP:           4a645c0b939cf1f4d09e37e1cdfd04dba564e179
+BRANCH:                     candidate/v10-exit-20260901
+WORKTREE:                   C:\temp\JARVIS-V10-Exit-20260901
+SCHEMA:                     v38
+CONTRACT:                   jarvis.v10.adapter.v1
+CURRENT PHASE:              V10_CLOSE
+CURRENT GATE:               V10_EXIT
+GATE STATUS:                NOT_PASSED pending rehearsal/promotion/live validation
+```
+
+The final clean candidate is the exact `git rev-parse HEAD` recorded after the
+docs-only reconciliation commit; this handoff deliberately records the final
+source tip separately because `CURRENT_STATE.md` cannot self-pin its own
+commit under the repository anti-staleness contract.
+
+### Sensory and authenticated-session result
+
+- Interactive browser: `IMPLEMENTED`; existing Playwright substrate extended
+  with bounded navigate, structural target resolution, click, fill/input,
+  select, check, submit, state/readback verification, and safe receipts.
+- Auth session persistence: `IMPLEMENTED` / `DISPOSABLE_PROVED`; Playwright
+  storage state is bound to opaque session/profile/site/owner references and a
+  sidecar hash, restores only on a matching binding, detects expiry, exposes an
+  explicit re-auth seam, refuses unavailable re-auth as `BLOCKED`, and closes
+  page/context/browser/process resources.
+- Live auth site proof: `BLOCKED/NOT_TESTED`; no safe owner-authorized live
+  account/session was available. No credentials were requested or exposed.
+- Gmail LIVE: `BLOCKED/DEFERRED`; the existing brokered Gmail read seam has no
+  valid credential material in this runtime. No mail send was implemented or
+  attempted.
+- GitHub READ: `PROVED`; GitHub WRITE: `IMPLEMENTED`, local/contract covered,
+  `NO PUBLIC WRITE PROOF`.
+- External page content remains `DATA_ONLY`; no second capability authority,
+  effect journal, MissionLoop, Executive, scheduler, browser framework, or
+  secrets system was introduced.
+
+### Failure, recovery, and world-model proofs
+
+The exit harness `tests/foundry/test_v10_exit_browser.py` passed all seven
+tests. It proves STOP before dispatch with zero request, STOP after dispatch
+with an honest `UNKNOWN`/`stop_after_effect`, session expiry detection and
+`BLOCKED` without re-auth, timeout-after-action with readback and the same
+effect/idempotency identity, replay without a second external effect, stale
+started-effect crash reaping without dispatch, and no WorldModel write from a
+blocked/unverified browser outcome. The final disposable site observed one
+toggle and one slow action, never a duplicate.
+
+### Final-source golden journeys
+
+Evidence root: `C:\temp\JARVIS-V10-Exit-20260901-evidence-exact`.
+
+- J1 real public web → Markdown artifact: `PASS`; independent verifier and
+  WorldModel report passed; artifact SHA
+  `6769fd3871af16ece97a89a739014797cffc9d360191d89904a24f5507a4bb46`;
+  duplicate effects `0`, unverified effects `0`.
+- J2 real workbook → DOCX: `PASS`; 53 rows x 30 columns, `Needs Review=50`,
+  `Ready to Contact=3`, score sum `2651`; source SHA
+  `68c8aa34e96e5eb259ed9493080cd396db6d015327d4e8cd7d84a7d03abde3c7`;
+  DOCX SHA `d6955ccae94e83dad246e9791d6f0ab6ef99bac3f2b009cdbb74aa4bf728554c`.
+- J3 real GitHub read → local change/test/commit/disposable release: `PASS`;
+  response SHA `b31825bbd08dc29e859c0169e516c045cf6513b6f92260decbf999c3724c884b`;
+  local disposable commit `ac29d8576640906b2ccca74a132f253ed94c4084`; no public
+  push, release verification and rollback passed.
+
+### Regression and live boundary
+
+- Focused browser/session/effect/Fabric/MissionLoop/verifier/WorldModel and
+  V10 A/B/C/shared-contract suites: `PASS`.
+- Full Foundry: one valid `python -m pytest tests/foundry -q` run after the
+  final source commit; all product tests passed. Two documentation pin tests
+  failed only because this final docs-only reconciliation had not yet landed;
+  they are rerun with the staleness gate after this commit. The initial plain
+  `pytest` collection failure was an entry-point root-import environment issue.
+- UI: 123 tests, typecheck, ESLint, and production build `PASS`; only existing
+  canvas test warnings and the existing dynamic-import build warning remain.
+- `uv lock --check`, import health, compileall, and `git diff --check`: `PASS`.
+- Live read-only reconciliation: current c41a3ad8, previous 5167e2cba,
+  schema 38, SQLite integrity `ok`, `PRAGMA query_only=1`, 145900 events at
+  capture, Supervisor owner lineage present, Scheduler `Running` with
+  `IgnoreNew` and retained `0x800710E0`; live trust remains `SUSPENDED`.
+
+```text
+LIVE MUTATED:        NO
+MAIN/ORIGIN MUTATED: NO
+NEXT AUTHORIZED:     exact-SHA V10 rehearsal -> promotion -> live validation
+V11 STARTED:         NO
+```
