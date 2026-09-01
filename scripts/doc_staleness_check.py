@@ -40,6 +40,8 @@ CURRENT_SURFACES = (
 DOC_ONLY_ALLOWED_PATHS = frozenset({
     "docs/CURRENT_STATE.md",
     "docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.md",
+    "docs/handoffs/V10_FULL_CONVERGENCE_20260901.md",
+    "docs/handoffs/V10_INTEGRATION_MANIFEST_20260901.md",
     "tests/acceptance/README.md",
 })
 
