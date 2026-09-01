@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Mapping
 
 from ..clock import isoformat
+from ..control.broker import emergency_stop_reason
 from ..database import FoundryDatabase
 from .catalog import (
     catalog_snapshot,
@@ -32,6 +33,13 @@ from .model import (
     TaskIntent,
     UnattendedMode,
     VerifyVerdict,
+)
+from .contracts import (
+    AdapterRequest,
+    PostconditionStatus,
+    build_adapter_request,
+    evaluate_postconditions,
+    normalize_receipt,
 )
 from .providers import route_provider
 
@@ -358,7 +366,7 @@ def select_capability(
     )
 
 
-def _verify(
+def _verify_action(
     action_kind: str,
     claimed: Mapping[str, Any],
     owned_root: Path,
@@ -583,6 +591,41 @@ def _verify(
     return VerifyVerdict.UNKNOWN
 
 
+def _verify_with_postconditions(
+    action_kind: str,
+    claimed: Mapping[str, Any],
+    owned_root: Path,
+    payload: Mapping[str, Any] | None = None,
+) -> tuple[VerifyVerdict, tuple[Any, ...]]:
+    """Run the existing action verifier plus declared postconditions."""
+
+    verdict = _verify_action(action_kind, claimed, owned_root, payload)
+    results = evaluate_postconditions(
+        claimed,
+        payload.get("postconditions") if payload is not None else (),
+    )
+    if verdict is VerifyVerdict.MATCH and results:
+        statuses = {item.status for item in results}
+        if PostconditionStatus.FAIL in statuses:
+            verdict = VerifyVerdict.MISMATCH
+        elif PostconditionStatus.UNKNOWN in statuses:
+            verdict = VerifyVerdict.UNKNOWN
+    return verdict, results
+
+
+def _verify(
+    action_kind: str,
+    claimed: Mapping[str, Any],
+    owned_root: Path,
+    payload: Mapping[str, Any] | None = None,
+) -> VerifyVerdict:
+    """Preserve the historical verifier return shape for existing callers."""
+
+    return _verify_with_postconditions(
+        action_kind, claimed, owned_root, payload,
+    )[0]
+
+
 def execute_action(
     database: FoundryDatabase,
     ctx: ExecutorContext,
@@ -591,7 +634,24 @@ def execute_action(
     payload: Mapping[str, Any],
     *,
     claim_override: Mapping[str, Any] | None = None,
+    workflow_id: str | None = None,
+    step_id: str | None = None,
+    step_version: int = 1,
+    attempt: int = 1,
 ) -> ActionResult:
+    stop = emergency_stop_reason(
+        database,
+        payload.get("stop_path"),
+        identities={"GLOBAL", intent.task_id},
+    )
+    if stop:
+        return ActionResult(
+            capability_id="blocked",
+            action_kind=action_kind,
+            claimed=ClaimOutcome.BLOCKED,
+            verified=VerifyVerdict.UNKNOWN,
+            note=f"STOP active: {stop}",
+        )
     selection = select_capability(database, intent, action_kind)
     if not selection.available:
         return ActionResult(
@@ -602,6 +662,21 @@ def execute_action(
             note=selection.reason,
         )
     spec = get_spec(database, selection.capability_id)
+    request: AdapterRequest | None = None
+    if spec is not None:
+        request = build_adapter_request(
+            mission_id=intent.task_id,
+            workflow_id=workflow_id,
+            step_id=step_id or action_kind,
+            step_version=step_version,
+            attempt=attempt,
+            action_kind=action_kind,
+            payload=payload,
+            spec=spec,
+        )
+    execution_payload = dict(payload)
+    if request is not None and request.effect_class.value != "READ_ONLY":
+        execution_payload.setdefault("idempotency_key", request.idempotency_key)
     if claim_override is not None:
         claimed = dict(claim_override)
     elif spec is not None and spec.kind is Kind.SCRIPT:
@@ -613,13 +688,27 @@ def execute_action(
         digest = module.run(str(path))
         claimed = {"claimed": "COMPLETED", "path": str(path), "sha256": digest}
     else:
-        claimed = dispatch(ctx, action_kind, payload)
-    verdict = _verify(action_kind, claimed, ctx.owned_root, payload)
+        claimed = dispatch(ctx, action_kind, execution_payload)
+    verdict, postconditions = _verify_with_postconditions(
+        action_kind, claimed, ctx.owned_root, payload,
+    )
     claimed_outcome = ClaimOutcome(str(claimed.get("claimed") or "UNKNOWN"))
     if claimed_outcome is ClaimOutcome.COMPLETED and verdict is VerifyVerdict.MISMATCH:
         note = "worker claim diverged from observed effect"
     else:
         note = str(claimed.get("error_code") or "")
+    receipt = (
+        normalize_receipt(
+            request,
+            claimed=claimed,
+            claimed_outcome=claimed_outcome.value,
+            verified=verdict.value,
+            note=note,
+            postcondition_results=postconditions,
+        ).as_dict()
+        if request is not None
+        else {}
+    )
     result = ActionResult(
         capability_id=selection.capability_id or "missing",
         action_kind=action_kind,
@@ -628,6 +717,7 @@ def execute_action(
         observed={"verified_at": isoformat(), **{k: v for k, v in claimed.items() if k != "document" or action_kind != "artifact.research"}},
         claimed_effect=dict(claimed),
         note=note,
+        receipt=receipt,
     )
     record_outcome(
         database, result.capability_id,

@@ -238,12 +238,29 @@ class WorkflowStep:
     action_kind: str
     payload: Mapping[str, Any] = field(default_factory=dict)
     on_failure: str = "stop"
+    step_version: int = 1
+    postconditions: tuple[object, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "step_id", _identity(self.step_id, "step_id"))
         object.__setattr__(self, "action_kind", _identity(self.action_kind, "action_kind"))
         if self.on_failure not in {"stop", "continue"}:
             raise FabricError("on_failure must be stop or continue")
+        if (
+            not isinstance(self.step_version, int)
+            or isinstance(self.step_version, bool)
+            or self.step_version < 1
+        ):
+            raise FabricError("step_version must be a positive integer")
+        normalized_postconditions: list[object] = []
+        for item in self.postconditions:
+            if isinstance(item, str):
+                normalized_postconditions.append(_text(item, "postcondition"))
+            elif isinstance(item, Mapping):
+                normalized_postconditions.append(dict(item))
+            else:
+                raise FabricError("postcondition must be a string or mapping")
+        object.__setattr__(self, "postconditions", tuple(normalized_postconditions))
         object.__setattr__(self, "payload", dict(self.payload))
 
 
@@ -319,13 +336,14 @@ class ActionResult:
     observed: dict[str, Any] = field(default_factory=dict)
     claimed_effect: dict[str, Any] = field(default_factory=dict)
     note: str = ""
+    receipt: dict[str, Any] = field(default_factory=dict)
 
     @property
     def success(self) -> bool:
         return self.claimed is ClaimOutcome.COMPLETED and self.verified is VerifyVerdict.MATCH
 
     def as_dict(self) -> dict[str, Any]:
-        return {
+        payload = {
             "capability_id": self.capability_id,
             "action_kind": self.action_kind,
             "claimed": self.claimed.value,
@@ -334,6 +352,9 @@ class ActionResult:
             "claimed_effect": dict(self.claimed_effect),
             "note": self.note,
         }
+        if self.receipt:
+            payload["receipt"] = dict(self.receipt)
+        return payload
 
 
 @dataclass(frozen=True, slots=True)

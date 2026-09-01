@@ -5,11 +5,12 @@ readiness. A restart rebuilds state from append-only fabric events.
 """
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Mapping
 
 from ..clock import isoformat
 from ..database import FoundryDatabase
 from ..events import Event, payload_hash
+from .contracts import CapabilityMetadata, metadata_for_spec
 from .model import (
     FAILURE_THRESHOLD,
     CapabilitySpec,
@@ -44,9 +45,18 @@ def register_capability(
     spec: CapabilitySpec,
     *,
     note: str = "registered",
+    metadata: CapabilityMetadata | Mapping[str, Any] | None = None,
 ) -> CapabilitySpec:
     payload = spec.as_dict()
     payload["note"] = note
+    descriptor = (
+        metadata
+        if isinstance(metadata, CapabilityMetadata)
+        else CapabilityMetadata.from_mapping(metadata)
+        if metadata is not None
+        else metadata_for_spec(spec)
+    )
+    payload["adapter_metadata"] = descriptor.as_dict()
     _append(database, REGISTERED, payload)
     if spec.supersedes:
         _append(database, SUPERSEDED, {
@@ -55,6 +65,30 @@ def register_capability(
             "version": spec.version,
         })
     return spec
+
+
+def capability_metadata(
+    database: FoundryDatabase,
+    capability_id: str,
+) -> CapabilityMetadata | None:
+    """Return the latest typed descriptor sidecar for a Fabric capability."""
+
+    with database.connect() as connection:
+        row = connection.execute(
+            "SELECT payload_json FROM events WHERE event_type = ? AND "
+            "json_extract(payload_json, '$.capability_id') = ? "
+            "ORDER BY sequence DESC LIMIT 1",
+            (REGISTERED, capability_id),
+        ).fetchone()
+    if row is None:
+        return None
+    import json
+    payload = json.loads(row[0])
+    raw = payload.get("adapter_metadata")
+    if isinstance(raw, Mapping):
+        return CapabilityMetadata.from_mapping(raw)
+    spec = CapabilitySpec.from_mapping(payload)
+    return metadata_for_spec(spec)
 
 
 def record_outcome(
@@ -173,7 +207,12 @@ def catalog_snapshot(database: FoundryDatabase) -> dict[str, Any]:
     rows = []
     for spec in listed_capabilities(database):
         ready = observed_readiness(database, spec.capability_id)
-        rows.append({"spec": spec.as_dict(), "readiness": ready.as_dict()})
+        descriptor = capability_metadata(database, spec.capability_id)
+        rows.append({
+            "spec": spec.as_dict(),
+            "metadata": descriptor.as_dict() if descriptor is not None else None,
+            "readiness": ready.as_dict(),
+        })
     return {"capabilities": rows, "count": len(rows)}
 
 

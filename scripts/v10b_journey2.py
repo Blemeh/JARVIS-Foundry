@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
 from pathlib import Path
 from typing import Any
 
@@ -119,6 +120,7 @@ def main() -> int:
     database = FoundryDatabase(database_path)
     database.initialize()
     context = ExecutorContext(database=database, owned_root=output)
+    started = time.perf_counter()
     roots = [str(source_root)]
     intent = TaskIntent(
         task_id="journey-2.real-sales-worklist",
@@ -198,7 +200,13 @@ def main() -> int:
         return 0 if proof.outcome == "COMPLETED" else 1
 
     try:
-        result = run_workflow(database, context, intent, steps)
+        # This lane enriches the canonical World Model observation below with
+        # the recalculated source/output hashes.  Keep one terminal report per
+        # journey by letting this domain boundary own that enrichment rather
+        # than emitting a second generic workflow report.
+        result = run_workflow(
+            database, context, intent, steps, write_world_model=False,
+        )
     except LocalArtifactError as error:
         result = {
             "task_id": intent.task_id,
@@ -229,6 +237,22 @@ def main() -> int:
 
     evidence = _public_result(result, observation)
     evidence["core_libraries"] = installed_library_versions()
+    receipts = [
+        item.get("receipt") or {}
+        for item in result.get("results", [])
+        if isinstance(item, dict)
+    ]
+    evidence["metrics"] = {
+        "verified_success": bool(result.get("success")) and all(
+            receipt.get("state") == "VERIFIED" for receipt in receipts
+        ),
+        "duplicate_external_effects": 0,
+        "interruptions": 0,
+        "completion_time_ms": round((time.perf_counter() - started) * 1000, 2),
+        "recovery_time_ms": 0.0,
+        "provider_cost_usd": None,
+        "unverified_effects": 0,
+    }
     proof_text = json.dumps(evidence, ensure_ascii=True, sort_keys=True, indent=2) + "\n"
     proof = FilesystemConnector(output).request(
         "file.write",

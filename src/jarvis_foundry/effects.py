@@ -17,6 +17,7 @@ import json
 import math
 import time
 import uuid
+from enum import StrEnum
 from typing import Any, Callable
 
 from .control.broker import (BrokerDecision, PolicyBroker,
@@ -33,6 +34,104 @@ FAILED = "FAILED"
 FROZEN = "FROZEN"
 _TERMINAL = {COMPLETED, FAILED, FROZEN}
 _DEFAULT_CLAIM_TTL_S = 300.0
+
+
+class EffectClass(StrEnum):
+    """The shared V10 effect vocabulary.
+
+    ``Semantic`` describes what an adapter does at a coarse level.  This
+    class describes the recovery and retry consequences of doing it.  It is
+    intentionally owned by the existing effect module so Fabric metadata and
+    MissionLoop receipts cannot grow a second effect authority.
+    """
+
+    READ_ONLY = "READ_ONLY"
+    REVERSIBLE_LOCAL = "REVERSIBLE_LOCAL"
+    REVERSIBLE_EXTERNAL = "REVERSIBLE_EXTERNAL"
+    IRREVERSIBLE_OR_HIGH_COST = "IRREVERSIBLE_OR_HIGH_COST"
+
+
+def infer_effect_class(
+    action_kind: str,
+    semantic: str | None = None,
+    target_ref: str | None = None,
+) -> EffectClass:
+    """Map an existing action/semantic to the V10 recovery vocabulary.
+
+    This is deliberately conservative: network/provider mutations are never
+    treated as local, and communication sends are high-consequence by
+    default.  Callers may supply an explicit descriptor class when a domain
+    adapter has a narrower, verified policy.
+    """
+
+    action = str(action_kind or "").strip().lower()
+    semantic_value = str(semantic or "").strip().lower()
+    if action in {"gmail.send", "mail.send", "email.send"}:
+        return EffectClass.IRREVERSIBLE_OR_HIGH_COST
+    if semantic_value == "read" or action.endswith(".read") or action in {
+        "dir.list", "git.inspect", "git.diff", "git.log", "git.read_ref",
+        "system.diagnose", "system.runtime", "hash.file.sha256",
+    }:
+        return EffectClass.READ_ONLY
+    if (
+        semantic_value in {"external_effect", "communicate"}
+        or action.startswith(("github.", "gmail.", "http."))
+        and not action.endswith(".read")
+        or (target_ref or "").lower().startswith(("http://", "https://"))
+        and not action.endswith(".read")
+    ):
+        return EffectClass.REVERSIBLE_EXTERNAL
+    return EffectClass.REVERSIBLE_LOCAL
+
+
+def fabric_effect_id(
+    *,
+    system_id: str,
+    target_ref: str,
+    capability_id: str,
+    capability_version: str,
+    action_kind: str,
+    input_payload: Any,
+    before_state_ref: str | None = None,
+) -> str:
+    """Return a stable, secret-safe effect identity for a Fabric request.
+
+    Only the canonical hash crosses this boundary.  The identity includes
+    exact capability/version and input material so two adapters cannot
+    accidentally share a replay key while a retry/restart of one request is
+    stable.  Mission/workflow scope belongs in the separate idempotency key.
+    """
+
+    material = {
+        "system_id": str(system_id),
+        "target_ref": str(target_ref),
+        "capability_id": str(capability_id),
+        "capability_version": str(capability_version),
+        "action_kind": str(action_kind),
+        "input": input_payload,
+        "before_state_ref": before_state_ref,
+    }
+    digest = hashlib.sha256(canonical_json(material).encode("utf-8")).hexdigest()
+    return f"effect:{digest}"
+
+
+def fabric_idempotency_key(
+    effect_id: str,
+    *,
+    mission_id: str,
+    workflow_id: str,
+    step_id: str,
+) -> str:
+    """Derive a stable connector replay key without exposing request data."""
+
+    material = {
+        "effect_id": str(effect_id),
+        "mission_id": str(mission_id),
+        "workflow_id": str(workflow_id),
+        "step_id": str(step_id),
+    }
+    digest = hashlib.sha256(canonical_json(material).encode("utf-8")).hexdigest()
+    return f"idempotency:{digest}"
 
 
 class EffectStateError(Exception):

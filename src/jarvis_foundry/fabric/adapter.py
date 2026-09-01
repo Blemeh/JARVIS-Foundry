@@ -152,6 +152,7 @@ def try_fabric_dispatch(
             step_id=str(manifest.step_id or "step"),
             action_kind=action,
             payload=payload,
+            workflow_id=f"workflow:{manifest.mission_id}",
         )
     except FabricError as error:
         # An attempted fabric effect must not also run Hermes.
@@ -178,6 +179,11 @@ def try_fabric_dispatch(
             f"fabric:{action}",
             f"verified:{receipt.get('verified')}",
             f"capability:{receipt.get('capability_id')}",
+            *(
+                (f"receipt:{receipt['receipt_id']}", f"effect:{receipt['effect_id']}")
+                if receipt.get("receipt_id") and receipt.get("effect_id")
+                else ()
+            ),
         ),
         error_class=None if success else "fabric_effect_failed",
         error_detail=str(receipt.get("note") or "") or None,

@@ -2,7 +2,9 @@
 
 from .adapter import FabricRoleAdapter, resolve_fabric_action, try_fabric_dispatch
 from .catalog import (
+    capability_metadata,
     catalog_snapshot,
+    get_spec,
     listed_capabilities,
     observed_readiness,
     record_gap,
@@ -11,6 +13,19 @@ from .catalog import (
     reliability,
 )
 from .compose import run_workflow
+from .contracts import (
+    AdapterReceipt,
+    AdapterRequest,
+    CapabilityMetadata,
+    ContractError,
+    EffectClass,
+    PostconditionResult,
+    PostconditionStatus,
+    build_adapter_request,
+    evaluate_postconditions,
+    metadata_for_spec,
+    normalize_receipt,
+)
 from .executors import ExecutorContext, dispatch
 from .expansion import (
     HASH_CANDIDATE_SOURCE,
@@ -36,8 +51,13 @@ from .spine import execute_for_spine
 
 __all__ = [
     "ActionResult",
+    "AdapterReceipt",
+    "AdapterRequest",
     "CapabilitySpec",
+    "CapabilityMetadata",
     "ClaimOutcome",
+    "ContractError",
+    "EffectClass",
     "ExecutorContext",
     "FabricRoleAdapter",
     "GapKind",
@@ -45,17 +65,24 @@ __all__ = [
     "HASH_CANDIDATE_SOURCE",
     "Kind",
     "POOR_HASH_CANDIDATE_SOURCE",
+    "PostconditionResult",
+    "PostconditionStatus",
     "Readiness",
     "TaskIntent",
     "UnattendedMode",
     "VerifyVerdict",
     "WorkflowStep",
     "acquire_hash_capability",
+    "build_adapter_request",
+    "capability_metadata",
     "catalog_snapshot",
     "dispatch",
     "execute_action",
     "execute_for_spine",
+    "evaluate_postconditions",
+    "get_spec",
     "listed_capabilities",
+    "metadata_for_spec",
     "observed_readiness",
     "record_gap",
     "record_outcome",
@@ -66,6 +93,7 @@ __all__ = [
     "route_provider",
     "run_intent",
     "run_workflow",
+    "normalize_receipt",
     "seed_builtins",
     "select_capability",
     "try_acquire",

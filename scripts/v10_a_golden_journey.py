@@ -318,9 +318,9 @@ def _timeout_after_write_proof(
     class _TimeoutAfterWrite(FilesystemConnector):
         writes = 0
 
-        def _perform_unlocked(self, ref: str, payload: str | None, *, action: str) -> str:
+        def _write_bytes_unlocked(self, ref: str, payload: bytes) -> None:
             self.writes += 1
-            return super()._perform_unlocked(ref, payload, action=action)
+            return super()._write_bytes_unlocked(ref, payload)
 
         def _write_ledger(self, ledger: dict[str, dict[str, Any]]) -> None:
             raise TimeoutError("injected timeout after file replacement")
