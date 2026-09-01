@@ -24,6 +24,7 @@ from ..connectors.local_artifacts import (
     LocalArtifactConnector,
     LocalArtifactError,
 )
+from ..connectors.github_write import GitHubWriteAdapter
 from ..database import FoundryDatabase
 from .model import ClaimOutcome, FabricError
 
@@ -34,6 +35,7 @@ class ExecutorContext:
     owned_root: Path
     github_api: Callable[[str], tuple[int, bytes]] | None = None
     github_write: Callable[[str, Mapping[str, Any]], tuple[int, bytes]] | None = None
+    github_write_adapter: GitHubWriteAdapter | None = None
     doc_transport: Callable[[str], tuple[int, bytes]] | None = None
 
     def __post_init__(self) -> None:
@@ -210,10 +212,31 @@ def git_branch(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, An
 
 def git_commit(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
     worktree = Path(payload["worktree"])
-    changes = dict(payload["changes"])
     message = str(payload["message"])
+    stop_value = payload.get("stop_path")
+    if stop_value:
+        stop_path = Path(str(stop_value))
+        if not stop_path.is_absolute():
+            stop_path = ctx.owned_root / stop_path
+        stop_path = stop_path.expanduser().resolve(strict=False)
+        try:
+            stop_path.relative_to(ctx.owned_root)
+        except ValueError as error:
+            raise FabricError("git.commit stop_path escapes owned root") from error
+        if stop_path.exists():
+            return {
+                "claimed": "BLOCKED",
+                "error_code": "stop_active",
+                "worktree": str(worktree),
+                "stop_path": str(stop_path),
+            }
     connector = _git_connector(ctx)
-    head = connector.create_commit(worktree, changes, message)
+    if payload.get("existing"):
+        paths = tuple(str(item) for item in (payload.get("paths") or ()))
+        head = connector.commit_existing(worktree, paths, message)
+    else:
+        changes = dict(payload["changes"])
+        head = connector.create_commit(worktree, changes, message)
     observed = subprocess.run(
         ["git", "-C", str(worktree), "rev-parse", "HEAD"],
         capture_output=True, text=True, encoding="utf-8", timeout=30, check=False,
@@ -317,36 +340,18 @@ def github_identity(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
 
 
 def github_issue_create(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
-    """Create an issue via brokered ``gh api``. Transport is injectable.
-
-    Live GitHub writes are not performed unless the caller supplies a real
-    transport. Default tests inject a fake.
-    """
+    """Create an issue through the explicit GitHub write seam."""
     owner = str(payload["owner"])
     repo = str(payload["repo"])
     title = str(payload["title"])
     body = str(payload.get("body") or "")
     endpoint = f"/repos/{owner}/{repo}/issues"
-    request = {"title": title, "body": body}
-    transport = ctx.github_write
-    if transport is None:
-        raise FabricError("github.issue.create requires an explicit write transport")
-    status, raw = transport(endpoint, request)
-    document = None
-    if status in {200, 201}:
-        try:
-            document = json.loads(raw.decode("utf-8"))
-        except (UnicodeDecodeError, json.JSONDecodeError):
-            document = None
-    number = document.get("number") if isinstance(document, dict) else None
-    return {
-        "claimed": "COMPLETED" if number is not None else "FAILED",
-        "endpoint": endpoint,
-        "number": number,
-        "html_url": document.get("html_url") if isinstance(document, dict) else None,
-        "status": status,
-        "title": title,
-    }
+    return _github_write(
+        ctx,
+        "github.issue.create",
+        endpoint,
+        {"title": title, "body": body},
+    )
 
 
 def github_pull_request_create(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -358,29 +363,37 @@ def github_pull_request_create(ctx: ExecutorContext, payload: Mapping[str, Any])
     base = str(payload.get("base") or "main")
     body = str(payload.get("body") or "")
     endpoint = f"/repos/{owner}/{repo}/pulls"
+    return _github_write(
+        ctx,
+        "github.pull_request.create",
+        endpoint,
+        {"title": title, "head": head, "base": base, "body": body},
+    )
+
+
+def _github_write(
+    ctx: ExecutorContext,
+    action_kind: str,
+    endpoint: str,
+    request: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Run one explicit write with stable identity and optional readback."""
+
+    if ctx.github_write_adapter is not None:
+        return ctx.github_write_adapter.write(action_kind, endpoint, request)
     transport = ctx.github_write
     if transport is None:
-        raise FabricError("github.pull_request.create requires an explicit write transport")
-    status, raw = transport(endpoint, {
-        "title": title, "head": head, "base": base, "body": body,
-    })
-    document = None
-    if status in {200, 201}:
-        try:
-            document = json.loads(raw.decode("utf-8"))
-        except (UnicodeDecodeError, json.JSONDecodeError):
-            document = None
-    number = document.get("number") if isinstance(document, dict) else None
-    return {
-        "claimed": "COMPLETED" if number is not None else "FAILED",
-        "endpoint": endpoint,
-        "number": number,
-        "html_url": document.get("html_url") if isinstance(document, dict) else None,
-        "head": head,
-        "base": base,
-        "status": status,
-        "title": title,
-    }
+        raise FabricError(f"{action_kind} requires an explicit write transport")
+    # Preserve the historical callback shape while applying the same
+    # lifecycle semantics as a caller-owned adapter.  The instance is
+    # intentionally per action; durable dedupe belongs to the existing
+    # effect/ledger spine, while a reusable GitHubWriteAdapter provides
+    # process-level ambiguity protection when the caller opts into it.
+    adapter = GitHubWriteAdapter(
+        transport=transport,
+        read_transport=ctx.github_api,
+    )
+    return adapter.write(action_kind, endpoint, request)
 
 
 def http_read(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:

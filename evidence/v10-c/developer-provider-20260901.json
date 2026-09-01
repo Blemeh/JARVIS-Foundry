@@ -1,0 +1,49 @@
+{
+  "schema": "jarvis.v10-c.developer-provider.v1",
+  "base_sha": "0cc0cbd9572db39f7754cb90de8a3977db829410",
+  "required_c41_ancestor_proven": true,
+  "branch": "candidate/v10-c-developer-provider-20260901",
+  "worktree": "C:/temp/JARVIS-V10-C-Developer-Provider-20260901",
+  "github_read": {
+    "outcome": "COMPLETED",
+    "connector": "conn-github-research-v1",
+    "endpoint": "/repos/microsoft/playwright-mcp/issues?state=open&per_page=1",
+    "provider_ref": "https://api.github.com/repos/microsoft/playwright-mcp/issues?state=open&per_page=1",
+    "response_sha256": "b31825bbd08dc29e859c0169e516c045cf6513b6f92260decbf999c3724c884b",
+    "bytes": 2868,
+    "item_count": 1,
+    "data_only": true,
+    "read_only": true
+  },
+  "github_write": {
+    "adapter": "conn-github-write-v1",
+    "transport": "explicit gh api POST callback",
+    "provider_id_preserved": true,
+    "deterministic_effect_key": true,
+    "readback_and_reconciliation": true,
+    "timeout_is_unknown": true,
+    "duplicate_prevention": true,
+    "public_write_performed": false,
+    "status": "NOT_TESTED"
+  },
+  "gmail": {
+    "adapter": "conn-gmail-api-v1",
+    "identity_and_read_probe": "IMPLEMENTED",
+    "credential_material": "NOT_CONFIGURED",
+    "activation_status": "BLOCKED",
+    "live_effect": "NOT_TESTED",
+    "oauth_consent_or_live_account_mutated": false
+  },
+  "golden_journey_3": {
+    "local_disposable_release": "VERIFIED",
+    "independent_head_tree_manifest_slot_checks": true,
+    "rollback": "VERIFIED",
+    "forced_test_failure_no_commit_or_release": "VERIFIED",
+    "stop_before_commit_no_commit_or_release": "VERIFIED",
+    "focused_tests_collected": 87,
+    "focused_tests_passed": 87
+  },
+  "live_mutated": false,
+  "canonical_checkout_mutated": false,
+  "production_release_or_trust_changed": false
+}

@@ -147,6 +147,56 @@ class GitConnector:
             raise GitConnectorError("git commit did not return a full object id")
         return head
 
+    def commit_existing(
+        self,
+        worktree: str | Path,
+        paths: tuple[str, ...] | list[str],
+        message: str,
+    ) -> str:
+        """Commit named worker changes that were already tested in place.
+
+        ``create_commit`` remains the atomic write-and-commit primitive for
+        callers that have no pre-commit test phase.  Journey 3 needs the
+        stronger ordering worker patch -> tests -> commit, so this companion
+        stages only the named paths and performs no additional file writes.
+        """
+
+        owned = self._owned_worktree(worktree)
+        if not isinstance(message, str) or not message.strip():
+            raise GitConnectorError("commit message is required")
+        selected = tuple(paths)
+        if not selected:
+            raise GitConnectorError("commit requires at least one existing path")
+        status = self._run(owned, "status", "--porcelain")
+        if not status:
+            raise GitConnectorError("worktree has no existing changes to commit")
+        relative_paths: list[str] = []
+        for relative in selected:
+            if not isinstance(relative, str) or not relative or relative != relative.strip():
+                raise GitConnectorError("commit path must be a trimmed relative path")
+            target = (owned / relative).resolve(strict=False)
+            try:
+                inside = os.path.commonpath(
+                    [os.path.normcase(str(target)), os.path.normcase(str(owned))]
+                ) == os.path.normcase(str(owned))
+            except ValueError as error:
+                raise GitConnectorError("commit path is outside the owned worktree") from error
+            if not inside or target == owned or ".git" in target.relative_to(owned).parts:
+                raise GitConnectorError("commit path is outside the owned worktree")
+            relative_paths.append(str(target.relative_to(owned)))
+        self._run(owned, "add", "--", *relative_paths)
+        staged = subprocess.run(
+            ["git", "-C", str(owned), "diff", "--cached", "--quiet"],
+            capture_output=True, text=True, timeout=60, check=False,
+        )
+        if staged.returncode == 0:
+            raise GitConnectorError("named paths produced no Git diff")
+        self._run(owned, "commit", "-m", message)
+        head = self._run(owned, "rev-parse", "HEAD")
+        if len(head) != 40:
+            raise GitConnectorError("git commit did not return a full object id")
+        return head
+
     def create_branch(self, worktree: str | Path, name: str) -> dict[str, Any]:
         """Create and check out ``name`` from a clean owned worktree."""
         owned = self._owned_worktree(worktree)

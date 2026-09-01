@@ -28,6 +28,7 @@ from .composition import (
     VetoGate,
 )
 from .deployment import ArtifactIdentity, DeploymentError, DeploymentReceipt, DisposableDeploymentSlot
+from .golden_journey import GoldenJourneyVerificationError, independent_verify_release
 from .lab import DigitalOfficeLab, DigitalOfficeReport
 from .planning import (
     Checkpoint,
@@ -109,6 +110,8 @@ __all__ = [
     "DeploymentError",
     "DeploymentReceipt",
     "DisposableDeploymentSlot",
+    "GoldenJourneyVerificationError",
+    "independent_verify_release",
     "DigitalOfficeLab",
     "DigitalOfficeReport",
     "Checkpoint",
