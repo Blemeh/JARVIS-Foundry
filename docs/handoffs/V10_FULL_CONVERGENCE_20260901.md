@@ -206,7 +206,9 @@ NEXT:                exact-SHA V10 rehearsal/promotion preparation
 VERDICT:                    V10_EXIT_READY_FOR_PROMOTION
 PRODUCT PREDECESSOR SHA:    71d71da3f0998538a579a807a152c4bd9d3282d0
 ROADMAP-AUTHORITY SHA:      e9b2155bd669887c4778db0b16a4ef7861d2c9ff
-FINAL SOURCE TIP:           4a645c0b939cf1f4d09e37e1cdfd04dba564e179
+FINAL SOURCE TIP:           5e466b103b73065b292fd41883fb9fd3f6fc751d
+AUTHORITY/TRUTH FIX TIP:    03e6f64bd045a8ca560896d5d5dbf8c552eb9767
+PRODUCT IMPLEMENTATION TIP: 4a645c0b939cf1f4d09e37e1cdfd04dba564e179
 BRANCH:                     candidate/v10-exit-20260901
 WORKTREE:                   C:\temp\JARVIS-V10-Exit-20260901
 SCHEMA:                     v38
@@ -217,9 +219,22 @@ GATE STATUS:                NOT_PASSED pending rehearsal/promotion/live validati
 ```
 
 The final clean candidate is the exact `git rev-parse HEAD` recorded after the
-docs-only reconciliation commit; this handoff deliberately records the final
-source tip separately because `CURRENT_STATE.md` cannot self-pin its own
-commit under the repository anti-staleness contract.
+docs-only reconciliation commit; this handoff records the final source/test
+tip separately because `CURRENT_STATE.md` cannot self-pin its own commit under
+the repository anti-staleness contract.
+
+### Independent authority/truth audit — 2026-09-02
+
+| Finding | Status | Current call path | Promotion blocker |
+|---|---|---|---|
+| Capability authority | SAFE_COMPATIBILITY | Fabric/Executive: `fabric.loop.select_capability` → `fabric.catalog`; Executive blocker/readiness uses `fabric.catalog.get_spec/observed_readiness`. Legacy-only: gated `capabilities.registry` writers remain reachable from `procedural_learning.registry`/legacy callers and are not used for Fabric IDs. | NO |
+| Fabric effect path | RESOLVED | `fabric.loop.execute_action` → `fabric.contracts.AdapterRequest` → existing `effects.execute_fabric_effect` for mutating file/git/GitHub actions → connector → independent `_verify_with_postconditions`; terminal/replay identity is the same effect key. `git.push` and `browser.web.execute` retain their existing canonical effect drivers. | NO |
+| STOP authority | SAFE_COMPATIBILITY | Owner STOP/RESUME and all CLI/tray/hotkey sentinel operations converge at `control.broker.emergency_stop_reason`; durable owner directives continue to block after a local sentinel clear until revoked. | NO |
+| Verification truth | RESOLVED | `verification.passed` → preliminary projection only; `AcceptanceGate` → `mission.verification.record_verification_acceptance` → final mission/WorldModel/learning/proving/briefing consumers. Latest PASS identity must match the acceptance receipt. | NO |
+
+Focused proof: `tests/foundry/test_v10_exit_audit.py` covers all four findings;
+the V3 closure/outcome regressions additionally prove an unaccepted PASS cannot
+enter the candidate outcome seam.
 
 ### Sensory and authenticated-session result
 
@@ -274,11 +289,12 @@ Evidence root: `C:\temp\JARVIS-V10-Exit-20260901-evidence-exact`.
 
 - Focused browser/session/effect/Fabric/MissionLoop/verifier/WorldModel and
   V10 A/B/C/shared-contract suites: `PASS`.
-- Full Foundry: one valid `python -m pytest tests/foundry -q` run after the
-  final source commit; all product tests passed. Two documentation pin tests
-  failed only because this final docs-only reconciliation had not yet landed;
-  they are rerun with the staleness gate after this commit. The initial plain
-  `pytest` collection failure was an entry-point root-import environment issue.
+- Full Foundry: one final-source/test run collected 2396 tests; the audited and
+  product paths passed, one existing test was skipped, and one Command Center
+  HTTP test timed out only under suite load. That test passed in isolation on
+  both this candidate and the clean V10 convergence baseline, so it is
+  classified as host-load-only. The pre-freeze documentation pin is rerun and
+  passes with the final staleness gate below.
 - UI: 123 tests, typecheck, ESLint, and production build `PASS`; only existing
   canvas test warnings and the existing dynamic-import build warning remain.
 - `uv lock --check`, import health, compileall, and `git diff --check`: `PASS`.

@@ -6,13 +6,13 @@ every promotion/remaster mission (see `docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.
 If this document and another current-status document disagree, this document wins
 for "what exists now" claims; the architecture contract wins for binding invariants.
 
-Last reconciled: 2026-09-01 for the V10_EXIT exact-SHA candidate and read-only
-live-state reconciliation.
+Last reconciled: 2026-09-02 for the V10_EXIT exact-SHA candidate, independent
+authority/truth audit, and read-only live-state reconciliation.
 The accepted V10 exit candidate is frozen on an isolated branch. This task did
 not promote, deploy, restart, migrate, STOP/RESUME, alter live Scheduler state,
 write the live database, or change live release pointers.
 
-DOCUMENTATION STATE BASE SHA: `049e9e0c5277ef24681577b033ed83d7497e2b00`
+DOCUMENTATION STATE BASE SHA: `1f795bf1d6ecebd4e254e324aff4aabcb2fdd8d6`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`.
@@ -22,7 +22,9 @@ CANONICAL MAIN START:         0cc0cbd9572db39f7754cb90de8a3977db829410
 V9 LIVE STABILIZATION SHA:    c41a3ad8ef3debda6f84e6d4dac2e0ac525c0864
 V10 PRODUCT PREDECESSOR:      71d71da3f0998538a579a807a152c4bd9d3282d0
 V10 BASE SHA:                 0cc0cbd9572db39f7754cb90de8a3977db829410
-V10 SOURCE TIP:               4a645c0b939cf1f4d09e37e1cdfd04dba564e179
+V10 IMPLEMENTATION TIP:       4a645c0b939cf1f4d09e37e1cdfd04dba564e179
+V10 AUDIT FIX TIP:            03e6f64bd045a8ca560896d5d5dbf8c552eb9767
+V10 SOURCE/TEST TIP:          5e466b103b73065b292fd41883fb9fd3f6fc751d
 V10 ROADMAP AUTHORITY SHA:    e9b2155bd669887c4778db0b16a4ef7861d2c9ff
 V10 EXIT BRANCH:              candidate/v10-exit-20260901
 V10 EXIT WORKTREE:            C:\temp\JARVIS-V10-Exit-20260901
@@ -119,8 +121,9 @@ production trust.
 
 The accepted V10 full-convergence product predecessor is
 `71d71da3f0998538a579a807a152c4bd9d3282d0`. The control-tower authority is
-`e9b2155bd669887c4778db0b16a4ef7861d2c9ff`. The exact committed V10 source tip
-is `4a645c0b939cf1f4d09e37e1cdfd04dba564e179`, on branch
+`e9b2155bd669887c4778db0b16a4ef7861d2c9ff`. The product implementation tip
+is `4a645c0b939cf1f4d09e37e1cdfd04dba564e179`; the exact V10 audit-fix source
+tip is `03e6f64bd045a8ca560896d5d5dbf8c552eb9767`, on branch
 `candidate/v10-exit-20260901` in
 `C:\temp\JARVIS-V10-Exit-20260901`. The final clean candidate is the exact
 tip reported after the final docs-only reconciliation; it is not represented
@@ -142,6 +145,25 @@ persistence/restore, expiry detection, explicit re-authentication seam,
 cleanup, STOP behavior, stable effect identity, and replay/crash reconciliation
 are covered by the exit harness. No browser framework, browser brain, scheduler,
 MissionLoop, workflow engine, or secrets system was added.
+
+### V10 independent authority/truth audit — 2026-09-02
+
+- Capability authority: the legacy `capabilities/registry.py` writer remains
+  only as a gated OpenAdapt/legacy compatibility seam. Fabric capability IDs
+  and Executive readiness now resolve through `fabric/catalog.py`; the legacy
+  registry is not authoritative for that path.
+- Fabric effects: mutating `file.*`, `git.commit`, and GitHub write actions
+  enter the existing `effects.py` identity/journal once, replay terminal state
+  without a second provider call, and require independent postcondition or
+  provider readback before action success. Existing connector-specific
+  `git.push` and browser effect drivers remain the single established path.
+- STOP authority: owner directives, CLI, tray/hotkey, and the sentinel all
+  resolve through `control/broker.py::emergency_stop_reason`; a local sentinel
+  clear cannot override an active durable owner STOP.
+- Verification truth: raw `verification.passed` remains preliminary. The
+  immutable `verification.accepted` receipt is required for final mission
+  outcome, WorldModel/learning writeback, proving counts, and owner-facing
+  verified status; the latest PASS identity must be the accepted one.
 
 The three final-source journeys passed with zero duplicate or unverified
 effects. Evidence was generated outside the repository under
@@ -250,15 +272,15 @@ current live and canonical claims are recorded here after fresh reconciliation.
 | V9 integrated source closure | PASS — focused cross-lane scenarios and source regression recorded in `docs/handoffs/V9_FULL_CONVERGENCE_20260830.md` |
 | V9 stabilization focused contracts | PASS — 211 tests passed; 0 failures |
 | V9 canonical repository-wide source regression | PASS — 2448 tests passed, 1 skipped; 0 failures |
-| V10 focused A/B/C/shared/effects/MissionLoop/verifier/WorldModel regression | PASS — exit harness and requested focused suites completed; no product failures |
-| V10 full Foundry regression | One valid root-import run completed; two pre-final docs-pin assertions failed before this docs-only freeze, while all product tests passed; final staleness/doc assertions are rerun below |
+| V10 focused A/B/C/shared/effects/MissionLoop/verifier/WorldModel regression | PASS — exit harness, four-finding audit, and requested focused suites completed; no product failures |
+| V10 full Foundry regression | PASS WITH HOST CLASSIFICATION — 2396 collected on the final source/test tip; one Command Center HTTP timeout occurred only under suite load and passed isolated on the candidate and clean V10 convergence baseline; one existing skip; the pre-freeze documentation pin is resolved by the final staleness gate |
 | V10 browser/session failure and recovery proofs | PASS — STOP-before-action, STOP-after-dispatch, expiry/block, timeout/readback/reconcile, crash-reap/restart, replay deduplication, and no-world-write block |
-| V10 exact-source golden journeys | PASS — J1/J2/J3 on committed source `4a645c0`; zero duplicate or unverified effects; J3 local-only with no public push |
+| V10 exact-source golden journeys | PASS — J1/J2/J3 evidence retained from the converged source line; audit fix is authority/acceptance gating only, with zero duplicate or unverified effects and J3 local-only |
 | Command Center UI validation | PASS — 123 tests; typecheck, ESLint, and production build exit 0 (existing canvas test warnings only) |
 | Python source compilation | PASS — `compileall -q src scripts tests/foundry` exit 0 |
 | 136,346-event disposable V9 performance sanity | PASS — Command Center 1.597s cold / 0.147s warm, timeline 0.109s, executive 0.091s; 0 writable connections and 0 `BEGIN IMMEDIATE` |
 | Scheduler staging restart probe | PASS on candidate and canonical baseline; native RestartOnFailure limitation classified HOST_ENVIRONMENT_FAILURE; repeating-trigger path retained |
-| Documentation staleness | PASS — final docs-only reconciliation pins state commit `049e9e0c5277ef24681577b033ed83d7497e2b00` |
+| Documentation staleness | PASS — final docs-only reconciliation pins immediate parent `1f795bf1d6ecebd4e254e324aff4aabcb2fdd8d6` |
 | Live release/runtime identity and four-way parity | PASS at this observation; all four identities are `c41a3ad...` |
 | Live health / reconciliation | RUNNING / CONSISTENT at this observation; 145900 events, SQLite integrity `ok`, read-only capture |
 | Production trust | SUSPENDED — provider, reboot, endurance, and trust-gate proof remain incomplete |
