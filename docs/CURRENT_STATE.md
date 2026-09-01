@@ -6,24 +6,25 @@ every promotion/remaster mission (see `docs/ARCHITECTURE_DOCUMENTATION_CONTRACT.
 If this document and another current-status document disagree, this document wins
 for "what exists now" claims; the architecture contract wins for binding invariants.
 
-Last reconciled: 2026-09-01 for V9 stabilization source canonicalization and
-read-only live-state reconciliation.
-The accepted V9 stabilization history is now represented in canonical source.
-This task did not promote, restart, migrate, STOP/RESUME, alter Scheduler, write
-the live database, or change live release pointers.
+Last reconciled: 2026-09-01 for V10 full product convergence and read-only live
+state reconciliation.
+The accepted V10 candidate is frozen on an isolated branch. This task did not
+promote, deploy, restart, migrate, STOP/RESUME, alter live Scheduler state,
+write the live database, or change live release pointers.
 
-DOCUMENTATION STATE BASE SHA: `789e47f87d6e5b754f4f8970dc1231c87f973464`
+DOCUMENTATION STATE BASE SHA: `14286136ad8f0b67af970d0d2850c10d2fbb8d10`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`.
 
 ```text
-CANONICAL SOURCE START:       fe0592991e98de3f5de27c53d40339f4281156f1
-CANONICAL MAIN START:         681d1f777106a01998551f4706d981233ccf0e43
-PRODUCT STABILIZATION SHA:    c41a3ad8ef3debda6f84e6d4dac2e0ac525c0864
-PRODUCT SHA RELATIONSHIP:     c41a3ad is an ancestor of the canonical integration line
-CANONICAL PRODUCT INTEGRATION: `789e47f87d6e5b754f4f8970dc1231c87f973464`
-CANONICAL MAIN FINAL:          this docs-only reconciliation tip; see final report
+CANONICAL MAIN START:         0cc0cbd9572db39f7754cb90de8a3977db829410
+V9 LIVE STABILIZATION SHA:    c41a3ad8ef3debda6f84e6d4dac2e0ac525c0864
+V10 BASE SHA:                 0cc0cbd9572db39f7754cb90de8a3977db829410
+V10 IMPLEMENTATION SHA:       87ddd17809bf5a4e4b2b71c6e7a562c8212ad0e6
+V10 DOC AUTHORITY SHA:        14286136ad8f0b67af970d0d2850c10d2fbb8d10
+V10 FINAL SOURCE CANDIDATE:   14286136ad8f0b67af970d0d2850c10d2fbb8d10
+CANONICAL MAIN FINAL:         this docs-only reconciliation tip; see final report
 ROADMAP SOURCE COMMIT:        e62b2451de15896bf4266d07f47c6346105b17d2
 ROADMAP CONTENT LANDING:      ec6b164ec912697c07463a302efe60d6395ef41e
 CONTROL-TOWER SOURCE:         921bd82562ebcf09abc17589416a526b266ba568
@@ -34,6 +35,7 @@ V2 KNOWLEDGE SCHEMA:          v35 (historical additive migration)
 V3 DISCOVERY/BUILDING SCHEMA: v36 (historical additive migration)
 v34 live baseline:            historical predecessor retained for migration proof
 VOICE/LOCALIZATION:           PLANNED FOR V15 BY POST-V9 ROADMAP
+V10 STATUS:                   V10_FULL_CONVERGENCE_READY
 ```
 
 ## Roadmap and control-plane state
@@ -110,6 +112,42 @@ production trust.
   GET-side write attempts and `BEGIN IMMEDIATE` activity are guarded by focused
   tests; schema and trust labels use backend truth.
 
+## V10 full convergence candidate
+
+`V10_FULL_CONVERGENCE_READY` is frozen at source SHA
+`87ddd17809bf5a4e4b2b71c6e7a562c8212ad0e6`, with the documentation-authority
+allowlist at `14286136ad8f0b67af970d0d2850c10d2fbb8d10`, on branch
+`candidate/v10-full-convergence-20260901` in
+`C:\temp\JARVIS-V10-Full-Convergence-20260901`. The complete selective
+integration record is [V10_INTEGRATION_MANIFEST_20260901.md](handoffs/V10_INTEGRATION_MANIFEST_20260901.md)
+and the proof handoff is [V10_FULL_CONVERGENCE_20260901.md](handoffs/V10_FULL_CONVERGENCE_20260901.md).
+
+The candidate keeps one authority spine: World Intelligence -> Continuous
+Executive -> Capability Fabric -> MissionLoop/effects/evidence/verifier ->
+World update -> continuation. Fabric metadata and versioned workflow
+postconditions are typed sidecars; `effects.py` owns effect identity and the
+four effect classes; MissionLoop/evidence/verifier own durable progression and
+acceptance. Only independently verified observations compose or write terminal
+WorldModel outcomes. STOP/veto remains authoritative, and ambiguous external
+outcomes remain `UNKNOWN`/`FROZEN` until reconciliation.
+
+The three clean journeys passed with zero duplicate or unverified effects:
+
+- Journey 1: real Playwright/Trafilatura fetch of the three requested sources,
+  source/extraction hashes, `DATA_ONLY`, one Markdown artifact, independent
+  verifier PASS, WorldModel report, and interrupt/timeout/STOP failure proofs.
+- Journey 2: real LeadGen workbook recomputed at 53 rows x 30 columns, 50
+  `Needs Review`, 3 `Ready to Contact`, score sum 2651, one independently
+  reopened DOCX, source preserved, and one enriched WorldModel observation.
+- Journey 3: real public GitHub READ, bounded disposable local change, tests,
+  commit, independent disposable release verification, readback, rollback,
+  and forced-failure/STOP/interruption proofs.
+
+GitHub READ is `PROVED`; GitHub WRITE is `IMPLEMENTED` with no public write and
+live write `NOT_TESTED`. Gmail remains `BLOCKED/NOT_TESTED` without a credential
+broker. Production trust remains `SUSPENDED`; candidate proofs do not establish
+live provider, reboot, endurance, or owner-authorized trust.
+
 ## Live production observation
 
 The live install and runtime were observed read-only during this task. These are
@@ -185,11 +223,14 @@ current live and canonical claims are recorded here after fresh reconciliation.
 | V9 world intelligence, continuous executive, and capability fabric source gates | PASS in disposable cross-lane evidence; live external effects remain separately bounded |
 | V9 integrated source closure | PASS — focused cross-lane scenarios and source regression recorded in `docs/handoffs/V9_FULL_CONVERGENCE_20260830.md` |
 | V9 stabilization focused contracts | PASS — 211 tests passed; 0 failures |
-| Repository-wide source regression | PASS — 2448 tests passed, 1 skipped; 0 failures |
+| V9 canonical repository-wide source regression | PASS — 2448 tests passed, 1 skipped; 0 failures |
+| V10 focused A/B/C/shared/effects/MissionLoop/filesystem/Git/HTTP/GitHub/WorldModel regression | PASS — 242 collected, 241 passed, 1 host skip; exit 0 |
+| V10 full Foundry regression | One valid run completed with 3 failures: 2 pre-final docs-pin assertions, resolved by the final docs-only pin, and 1 isolated Command Center HTTP timeout classified FLAKE; no V10 test failed |
 | Command Center UI validation | PASS — 123 unit tests; typecheck, ESLint, and production build exit 0 |
-| Python source compilation | PASS — `compileall -q src` exit 0 |
+| Python source compilation | PASS — `compileall -q src scripts tests/foundry` exit 0 |
 | 136,346-event disposable V9 performance sanity | PASS — Command Center 1.597s cold / 0.147s warm, timeline 0.109s, executive 0.091s; 0 writable connections and 0 `BEGIN IMMEDIATE` |
-| Documentation staleness | PASS — merge-parent preflight passed; final docs-only pin verified after commit |
+| Scheduler staging restart probe | PASS on candidate and canonical baseline; native RestartOnFailure limitation classified HOST_ENVIRONMENT_FAILURE; repeating-trigger path retained |
+| Documentation staleness | PASS — final docs-only V10 pin verified after commit |
 | Live release/runtime identity and four-way parity | PASS at this observation; all four identities are `c41a3ad...` |
 | Live health / reconciliation | RUNNING / CONSISTENT at this observation |
 | Production trust | SUSPENDED — provider, reboot, endurance, and trust-gate proof remain incomplete |
@@ -216,6 +257,10 @@ current live and canonical claims are recorded here after fresh reconciliation.
 - Live production trust remains `SUSPENDED` until provider, reboot, endurance, and
   owner-authorized trust evidence is complete, even though c41a3ad is live and
   current source/install/database/runtime identities match.
+- V10 GitHub WRITE is an explicit local/contract adapter only: public writes are
+  disabled and live write verification is `NOT_TESTED`.
+- V10 Gmail remains `BLOCKED/NOT_TESTED` because this runtime has no credential
+  broker; the adapter does not imply a live account capability.
 - Rollback remains restore-oriented; schema v38 has no reverse migration.
 - Live UI beyond the inspected local Command Center projection and any real
   provider/network effects remain unproven by this source task.
@@ -232,9 +277,8 @@ current live and canonical claims are recorded here after fresh reconciliation.
 
 ## Next development action
 
-V10 INVENTORY + EXTERNAL CAPABILITY GAP MAP: verify the actual live stabilization
-state read-only before any operational action; inventory existing and historical
-JARVIS capabilities; compare mature OSS, APIs, SDKs, MCP servers, and tools;
-classify wiring and proof gaps; select the smallest non-overlapping lanes; and
-define one real end-to-end V10 proof scenario. Do not start V10 implementation
-in this canonicalization task.
+Exact-SHA V10 rehearsal/promotion preparation only: re-read live state, provider
+credentials, Scheduler, release, database, reboot, and endurance boundaries
+read-only before any operational action. Do not deploy, promote, or mutate live
+production from this candidate without the separate authorized rehearsal and
+trust gates. Do not start V11.
