@@ -32,7 +32,7 @@ observed_repo_state:
   v10_status: "V10_EXIT_READY_FOR_PROMOTION in isolated candidate; live promotion/validation not performed"
   v10_exit:
     predecessor_sha: "71d71da3f0998538a579a807a152c4bd9d3282d0"
-    source_tip: "03e6f64bd045a8ca560896d5d5dbf8c552eb9767"
+    source_tip: "5e466b103b73065b292fd41883fb9fd3f6fc751d"
     branch: "candidate/v10-exit-20260901"
     worktree: "C:\\temp\\JARVIS-V10-Exit-20260901"
     roadmap_authority: "e9b2155bd669887c4778db0b16a4ef7861d2c9ff"
@@ -138,6 +138,6 @@ update_log:
     change: "V10_EXIT independent authority/truth audit closed capability authority, Fabric effect identity/readback, STOP convergence, and preliminary-verifier truth findings; no live mutation"
     session: "candidate/v10-exit-20260901"
     predecessor_sha: "71d71da3f0998538a579a807a152c4bd9d3282d0"
-    source_tip: "03e6f64bd045a8ca560896d5d5dbf8c552eb9767"
+    source_tip: "5e466b103b73065b292fd41883fb9fd3f6fc751d"
     roadmap_authority: "e9b2155bd669887c4778db0b16a4ef7861d2c9ff"
     evidence_root: "C:\\temp\\JARVIS-V10-Exit-20260901-evidence-exact"
