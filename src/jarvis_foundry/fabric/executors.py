@@ -384,15 +384,15 @@ def _github_write(
     transport = ctx.github_write
     if transport is None:
         raise FabricError(f"{action_kind} requires an explicit write transport")
-    # Preserve the historical callback shape while applying the same
-    # lifecycle semantics as a caller-owned adapter.  The instance is
-    # intentionally per action; durable dedupe belongs to the existing
-    # effect/ledger spine, while a reusable GitHubWriteAdapter provides
-    # process-level ambiguity protection when the caller opts into it.
+    # Preserve the historical callback shape while reusing one lifecycle
+    # adapter for this executor context. Durable dedupe belongs to the
+    # existing effect/ledger spine, while this cached adapter prevents a
+    # second provider request during an ambiguous in-process retry.
     adapter = GitHubWriteAdapter(
         transport=transport,
         read_transport=ctx.github_api,
     )
+    ctx.github_write_adapter = adapter
     return adapter.write(action_kind, endpoint, request)
 
 
