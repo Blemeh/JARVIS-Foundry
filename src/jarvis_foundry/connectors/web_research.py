@@ -19,23 +19,29 @@ import importlib.metadata
 import json
 import os
 import re
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Mapping, Sequence
+from typing import Any, Callable, Sequence
 from urllib.parse import urlsplit
 
 from ..clock import isoformat
 from ..control.redaction import contains_secret_like, redact_text
 from ..events import canonical_json
+from .browser import BrowserTarget
 from .contract import ConnectorAttempt, ConnectorSpec
-from .safety import SafetyBoundaryError, sanitize_external_content
+from .safety import (
+    SafetyBoundaryError,
+    sanitize_external_content,
+    validate_redirect_chain,
+)
 
 
 MAX_SOURCE_BYTES = 256 * 1024
 MAX_EXTRACTED_CHARS = 32 * 1024
 MAX_TARGET_ID_LENGTH = 128
 MAX_TARGET_NAME_LENGTH = 512
+MAX_URL_LENGTH = 2048
+MAX_REDIRECTS = 5
 _LOCAL_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
 _IDENTITY = re.compile(r"^[A-Za-z][A-Za-z0-9_.:/-]*$")
 
@@ -105,17 +111,14 @@ class BrowserReadResult:
 
 
 @dataclass(frozen=True, slots=True)
-class PlaywrightTarget:
-    """A named accessibility target bound to one page revision."""
+class PlaywrightTarget(BrowserTarget):
+    """The existing structural target contract plus web page identity."""
 
-    target_id: str
     document_id: str
     final_url: str
     page_revision: str
-    structural_hash: str
     role: str
     name: str
-    action: str
 
     def to_evidence(self) -> dict[str, Any]:
         return {
@@ -200,6 +203,23 @@ def _normalize_hosts(hosts: Sequence[str] | None) -> frozenset[str]:
     return frozenset(normalized)
 
 
+def _safe_url_ref(value: object) -> str:
+    """Return a bounded URL reference safe for failed-attempt evidence."""
+    if not isinstance(value, str) or not value or len(value) > MAX_URL_LENGTH:
+        return "[INVALID_URL]"
+    if value != value.strip() or any(ord(char) < 0x20 for char in value):
+        return "[INVALID_URL]"
+    if contains_secret_like(value):
+        return "[INVALID_URL_SECRET_LIKE]"
+    try:
+        parsed = urlsplit(value)
+        if parsed.username is not None or parsed.password is not None:
+            return "[INVALID_URL_CREDENTIALS]"
+    except ValueError:
+        return "[INVALID_URL]"
+    return value
+
+
 class PlaywrightBrowserConnector:
     """Direct Playwright browser adapter with bounded read/target semantics."""
 
@@ -235,8 +255,14 @@ class PlaywrightBrowserConnector:
             raise WebResearchError("browser_name must be chromium, firefox, or webkit")
         if not isinstance(timeout_ms, int) or timeout_ms < 100 or timeout_ms > 120_000:
             raise WebResearchError("timeout_ms must be between 100 and 120000")
-        if not isinstance(max_source_bytes, int) or max_source_bytes < 1024:
-            raise WebResearchError("max_source_bytes must be at least 1024")
+        if (
+            not isinstance(max_source_bytes, int)
+            or max_source_bytes < 1024
+            or max_source_bytes > MAX_SOURCE_BYTES
+        ):
+            raise WebResearchError(
+                f"max_source_bytes must be between 1024 and {MAX_SOURCE_BYTES}"
+            )
         self.browser_name = browser_name
         self.headless = bool(headless)
         self.timeout_ms = timeout_ms
@@ -249,6 +275,7 @@ class PlaywrightBrowserConnector:
         """Report package and binary health without installing anything."""
         if self._health_cache is not None:
             return dict(self._health_cache)
+        browser_version: str | None = None
         try:
             package_version = importlib.metadata.version("playwright")
             from playwright.sync_api import sync_playwright
@@ -259,7 +286,10 @@ class PlaywrightBrowserConnector:
                 if not executable.is_file():
                     raise FileNotFoundError(str(executable))
                 smoke_browser = browser_type.launch(headless=True)
-                smoke_browser.close()
+                try:
+                    browser_version = smoke_browser.version
+                finally:
+                    smoke_browser.close()
         except (ImportError, importlib.metadata.PackageNotFoundError) as error:
             return {
                 "status": "NOT_READY",
@@ -277,21 +307,6 @@ class PlaywrightBrowserConnector:
                 "detail": str(error)[:300],
             }
 
-        browser_version: str | None = None
-        if executable.is_file():
-            try:
-                probe = subprocess.run(
-                    [str(executable), "--version"],
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    timeout=10,
-                    check=False,
-                )
-                if probe.returncode == 0:
-                    browser_version = probe.stdout.strip()[:120]
-            except (OSError, subprocess.TimeoutExpired):
-                browser_version = None
         available = executable.is_file()
         result = {
             "status": "READY" if available else "NOT_READY",
@@ -418,10 +433,22 @@ class PlaywrightBrowserConnector:
     ) -> str:
         if not isinstance(url, str) or not url or url != url.strip():
             raise WebResearchError("URL must be a trimmed string")
+        if len(url) > MAX_URL_LENGTH:
+            raise WebResearchError("URL exceeds maximum length")
         if any(ord(char) < 0x20 for char in url):
             raise WebResearchError("URL contains control characters")
-        parsed = urlsplit(url)
-        host = (parsed.hostname or "").lower()
+        if any(char.isspace() for char in url):
+            raise WebResearchError("URL contains whitespace")
+        if contains_secret_like(url):
+            raise WebResearchError("URL contains secret-like material")
+        try:
+            parsed = urlsplit(url)
+            host = (parsed.hostname or "").lower()
+            # Force validation of malformed ports instead of deferring it to
+            # the browser driver.
+            _ = parsed.port
+        except ValueError as error:
+            raise WebResearchError("URL is malformed") from error
         if not host or parsed.username is not None or parsed.password is not None:
             raise WebResearchError("URL host or credentials are invalid")
         if parsed.fragment:
@@ -479,9 +506,18 @@ class PlaywrightBrowserConnector:
         page_revision_content: str,
         structure: list[dict[str, Any]],
         redirects: tuple[str, ...],
-    ) -> BrowserPageIdentity:
+        ) -> BrowserPageIdentity:
         source_sha256 = _sha256_bytes(source)
         structural_hash = _digest(structure)
+        bounded_title = str(title)[:MAX_TARGET_NAME_LENGTH]
+        try:
+            safe_title = sanitize_external_content(
+                redact_text(bounded_title),
+                source_ref=final_url,
+                max_chars=MAX_TARGET_NAME_LENGTH,
+            ).text
+        except SafetyBoundaryError:
+            safe_title = "[UNTRUSTED_PAGE_TITLE]"
         page_revision = _digest({
             "final_url": final_url,
             "title": title,
@@ -499,7 +535,7 @@ class PlaywrightBrowserConnector:
             content_type=content_type,
             source_sha256=source_sha256,
             source_bytes=len(source),
-            title=title[:MAX_TARGET_NAME_LENGTH],
+            title=safe_title,
             document_id=document_id,
             page_revision=page_revision,
             structural_hash=structural_hash,
@@ -522,19 +558,23 @@ class PlaywrightBrowserConnector:
         before_state: dict[str, Any] | None = None,
         reconciled: bool = False,
     ) -> ConnectorAttempt:
+        safe_url = _safe_url_ref(url)
+        safe_provider_ref = (
+            _safe_url_ref(provider_ref) if provider_ref is not None else safe_url
+        )
         return ConnectorAttempt(
-            attempt_id=f"playwright-{_digest({'url': url, 'idempotency_key': idempotency_key, 'created_at': isoformat()})[:24]}",
+            attempt_id=f"playwright-{_digest({'url': safe_url, 'idempotency_key': idempotency_key, 'created_at': isoformat()})[:24]}",
             connector_id=self.spec.connector_id,
             action_kind=action_kind,
-            target_ref=url,
+            target_ref=safe_url,
             idempotency_key=idempotency_key,
             payload_hash=payload_hash,
             outcome=outcome,
-            before_state=before_state or {"requested_url": url},
+            before_state=before_state or {"requested_url": safe_url},
             after_state=after_state,
-            provider_ref=provider_ref or url,
+            provider_ref=safe_provider_ref,
             error_code=error_code,
-            evidence_refs=(f"browser-url:{_digest(url)[:24]}",),
+            evidence_refs=(f"browser-url:{_digest(safe_url)[:24]}",),
             cost={"browser_sessions": 1},
             reconciled=reconciled,
         )
@@ -617,6 +657,10 @@ class PlaywrightBrowserSession:
                 route.abort()
                 return
             self._navigation_urls.append(request.url)
+            if len(self._navigation_urls) > MAX_REDIRECTS + 1:
+                self._route_error = "redirect_limit"
+                route.abort()
+                return
         route.continue_()
 
     @staticmethod
@@ -675,9 +719,12 @@ class PlaywrightBrowserSession:
             if self._route_error == "stop_requested":
                 outcome = "CANCELLED"
                 code = "stop_requested"
-            elif self._route_error == "redirect_policy_rejected":
+            elif self._route_error in {"redirect_policy_rejected", "redirect_limit"}:
                 outcome = "FAILED"
-                code = "redirect_policy_rejected"
+                code = self._route_error
+            elif self._route_error == "mutating_request_blocked":
+                outcome = "UNKNOWN"
+                code = "mutating_request_blocked"
             else:
                 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
@@ -710,6 +757,25 @@ class PlaywrightBrowserSession:
                 ),
                 page=None,
             )
+        if self._route_error == "redirect_limit":
+            return BrowserReadResult(
+                attempt=self.connector._attempt(
+                    action_kind="browser.web.read", url=url,
+                    idempotency_key=key, payload_hash=request_hash,
+                    outcome="FAILED", error_code="redirect_limit",
+                    after_state={"redirects_seen": max(len(self._navigation_urls) - 1, 0)},
+                ),
+                page=None,
+            )
+        if self._route_error == "mutating_request_blocked":
+            return BrowserReadResult(
+                attempt=self.connector._attempt(
+                    action_kind="browser.web.read", url=url,
+                    idempotency_key=key, payload_hash=request_hash,
+                    outcome="UNKNOWN", error_code="mutating_request_blocked",
+                ),
+                page=None,
+            )
         if response is None:
             return BrowserReadResult(
                 attempt=self.connector._attempt(
@@ -731,6 +797,46 @@ class PlaywrightBrowserSession:
                 ),
                 page=None,
             )
+        announced_length = str(response.headers.get("content-length") or "").strip()
+        if announced_length:
+            try:
+                content_length = int(announced_length)
+            except ValueError:
+                return BrowserReadResult(
+                    attempt=self.connector._attempt(
+                        action_kind="browser.web.read", url=url,
+                        idempotency_key=key, payload_hash=request_hash,
+                        outcome="FAILED", error_code="invalid_content_length",
+                        after_state={"status": status},
+                        provider_ref=self.page.url,
+                    ),
+                    page=None,
+                )
+            if content_length < 0:
+                return BrowserReadResult(
+                    attempt=self.connector._attempt(
+                        action_kind="browser.web.read", url=url,
+                        idempotency_key=key, payload_hash=request_hash,
+                        outcome="FAILED", error_code="invalid_content_length",
+                        after_state={"status": status},
+                        provider_ref=self.page.url,
+                    ),
+                    page=None,
+                )
+            if content_length > self.connector.max_source_bytes:
+                return BrowserReadResult(
+                    attempt=self.connector._attempt(
+                        action_kind="browser.web.read", url=url,
+                        idempotency_key=key, payload_hash=request_hash,
+                        outcome="FAILED", error_code="source_too_large",
+                        after_state={
+                            "status": status,
+                            "announced_source_bytes": content_length,
+                        },
+                        provider_ref=self.page.url,
+                    ),
+                    page=None,
+                )
         try:
             source = response.body()
         except Exception as error:
@@ -755,6 +861,37 @@ class PlaywrightBrowserSession:
                 page=None,
             )
         final_url = self.page.url
+        redirects = self._redirects(response, self._navigation_urls)
+        try:
+            redirect_chain = validate_redirect_chain(
+                [*redirects, str(self.page.url)],
+                max_hops=MAX_REDIRECTS,
+            )
+            for redirect_url in redirect_chain:
+                self.connector._validate_url(
+                    redirect_url,
+                    allowed_hosts=self.allowed_hosts,
+                    expected_host=self._initial_host,
+                )
+            redirects = tuple(redirect_chain[:-1])
+        except (SafetyBoundaryError, WebResearchError) as error:
+            code = (
+                "redirect_limit" if "hops" in str(error)
+                else "redirect_policy_rejected"
+            )
+            return BrowserReadResult(
+                attempt=self.connector._attempt(
+                    action_kind="browser.web.read", url=url,
+                    idempotency_key=key, payload_hash=request_hash,
+                    outcome="FAILED", error_code=code,
+                    after_state={
+                        "detail": str(error)[:300],
+                        "redirects": [_safe_url_ref(item) for item in redirects],
+                    },
+                    provider_ref=final_url,
+                ),
+                page=None,
+            )
         try:
             self.connector._validate_url(
                 final_url,
@@ -778,7 +915,7 @@ class PlaywrightBrowserSession:
                     action_kind="browser.web.read", url=url,
                     idempotency_key=key, payload_hash=request_hash,
                     outcome="FAILED", error_code="unsupported_content_type",
-                    after_state={"content_type": content_type},
+                    after_state={"content_type_supported": False},
                     provider_ref=final_url,
                 ),
                 page=None,
@@ -806,7 +943,7 @@ class PlaywrightBrowserSession:
             title=title,
             page_revision_content=page_content,
             structure=structure,
-            redirects=self._redirects(response, self._navigation_urls),
+            redirects=redirects,
         )
         self._last_identity = identity
         attempt = self.connector._attempt(
@@ -848,6 +985,8 @@ class PlaywrightBrowserSession:
         if not isinstance(name, str) or not name.strip() or len(name.strip()) > MAX_TARGET_NAME_LENGTH:
             raise BrowserTargetError("target name is required and bounded")
         name = name.strip()
+        if any(ord(char) < 0x20 for char in name) or contains_secret_like(name):
+            raise BrowserTargetError("target name contains unsafe material")
         if action not in {"click", "fill"}:
             raise BrowserTargetError("only click and fill actions are supported")
         locator = self.page.get_by_role(role, name=name, exact=True)
@@ -861,13 +1000,15 @@ class PlaywrightBrowserSession:
             raise BrowserTargetError("target is disabled")
         return PlaywrightTarget(
             target_id=target_id,
+            locator={"role": role, "name": name},
+            action=action,
+            version=1,
+            structural_hash=self._last_identity.structural_hash,
             document_id=self._last_identity.document_id,
             final_url=self._last_identity.final_url,
             page_revision=self._last_identity.page_revision,
-            structural_hash=self._last_identity.structural_hash,
             role=role,
             name=name,
-            action=action,
         )
 
     def execute(
@@ -960,7 +1101,8 @@ class PlaywrightBrowserSession:
             "action": target.action,
         }
         if self._route_error in {
-            "mutating_request_blocked", "redirect_policy_rejected", "stop_requested",
+            "mutating_request_blocked", "redirect_policy_rejected", "redirect_limit",
+            "stop_requested",
         }:
             return self.connector._attempt(
                 action_kind="browser.web.execute", url=after_url,
@@ -1006,8 +1148,14 @@ class TrafilaturaExtractor:
     )
 
     def __init__(self, *, max_chars: int = MAX_EXTRACTED_CHARS) -> None:
-        if not isinstance(max_chars, int) or max_chars < 256:
-            raise WebResearchError("max_chars must be at least 256")
+        if (
+            not isinstance(max_chars, int)
+            or max_chars < 256
+            or max_chars > MAX_EXTRACTED_CHARS
+        ):
+            raise WebResearchError(
+                f"max_chars must be between 256 and {MAX_EXTRACTED_CHARS}"
+            )
         self.max_chars = max_chars
 
     def health(self) -> dict[str, Any]:
@@ -1033,9 +1181,9 @@ class TrafilaturaExtractor:
             return None
         if isinstance(value, (list, tuple)):
             return [TrafilaturaExtractor._safe_metadata(item, source_ref=source_ref) for item in value[:20]]
-        if not isinstance(value, str):
-            return str(value)[:512]
-        bounded = redact_text(value)[:512]
+        bounded = redact_text(
+            value if isinstance(value, str) else str(value)
+        )[:512]
         try:
             return sanitize_external_content(
                 bounded, source_ref=source_ref, max_chars=512,
@@ -1091,6 +1239,24 @@ class TrafilaturaExtractor:
                 error_code="source_unavailable",
             )
             return HtmlExtractionResult(attempt, page, "", {}, None, None)
+        actual_source_sha256 = _sha256_bytes(source)
+        if (
+            actual_source_sha256 != page.source_sha256
+            or len(source) != page.source_bytes
+        ):
+            attempt = self._attempt(
+                page=page,
+                source_sha256=source_sha256,
+                outcome="FAILED",
+                error_code="source_hash_mismatch",
+                after_state={
+                    "expected_source_sha256": page.source_sha256,
+                    "actual_source_sha256": actual_source_sha256,
+                    "expected_source_bytes": page.source_bytes,
+                    "actual_source_bytes": len(source),
+                },
+            )
+            return HtmlExtractionResult(attempt, page, "", {}, None, None)
         if stop_check is not None and stop_check():
             attempt = self._attempt(
                 page=page,
@@ -1137,9 +1303,14 @@ class TrafilaturaExtractor:
             safe_record = sanitize_external_content(
                 redact_text(bounded_text),
                 source_ref=page.final_url,
-                max_chars=self.max_chars,
+                # HTML escaping can expand a bounded text slice (for example,
+                # ``<`` becomes ``&lt;``).  Give normalization a finite larger
+                # budget, then enforce the public safe-text bound below.
+                max_chars=max(self.max_chars * 8, len(bounded_text) * 8 + 128),
             )
-            safe_text = safe_record.text
+            safe_truncated = len(safe_record.text) > self.max_chars
+            safe_text = safe_record.text[:self.max_chars]
+            truncated = truncated or safe_truncated
             safe_text_sha256 = _sha256_text(safe_text)
             metadata = {
                 key: self._safe_metadata(document.get(key), source_ref=page.final_url)
@@ -1263,7 +1434,9 @@ __all__ = [
     "BrowserTargetError",
     "HtmlExtractionResult",
     "MAX_EXTRACTED_CHARS",
+    "MAX_REDIRECTS",
     "MAX_SOURCE_BYTES",
+    "MAX_URL_LENGTH",
     "PlaywrightBrowserConnector",
     "PlaywrightBrowserSession",
     "PlaywrightTarget",

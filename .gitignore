@@ -63,3 +63,6 @@ full-suite-run.log
 # Disposable overnight release-factory marker and evidence stay local.
 OVERNIGHT_FACTORY_ROOT.json
 evidence/release/overnight/
+
+# Disposable V10-A golden-journey evidence stays outside the source history.
+evidence-v10-a-golden-journey-1*.json
