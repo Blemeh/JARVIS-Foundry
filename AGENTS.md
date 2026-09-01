@@ -26,8 +26,11 @@ When sources conflict, use this order:
 3. `IDEA.md`, `docs/governance/AUTONOMY_MANDATE.md`, and
    `docs/architecture/02_ARCHITECTURE_CONTRACT.md` for durable mission and
    invariants.
-4. `docs/handoffs/JARVIS_POST_V9_TO_V16_ROADMAP_HANDOFF_2026-08-31.md` for the
-   current product roadmap and post-V9 engineering doctrine.
+4. `docs/handoffs/JARVIS_FROZEN_MASTER_ROADMAP_TO_1_0_2026-09-01.md` (frozen
+   roadmap) plus `docs/roadmap/JARVIS_1_0_EXECUTION_STATE.yaml` (program
+   position) for the current product roadmap. The post-V9 handoff
+   (`docs/handoffs/JARVIS_POST_V9_TO_V16_ROADMAP_HANDOFF_2026-08-31.md`)
+   remains engineering doctrine but its V11–V16 phase structure is superseded.
 5. The active task specification, acceptance gate, and directory-scoped
    `AGENTS.md` files.
 6. This file, `docs/agent/README.md`, and task-relevant workflow guidance.
@@ -53,16 +56,34 @@ current docs, and authorized runtime evidence—not conversational memory alone.
 
 ## Roadmap
 
-Full doctrine and phase gates live in the post-V9 roadmap handoff:
+The frozen roadmap to 1.0 is
+`docs/handoffs/JARVIS_FROZEN_MASTER_ROADMAP_TO_1_0_2026-09-01.md`. It
+supersedes the older V9→V16 phase listing:
 
 ```text
-V9 Core Loop -> V10 Capability -> V11 Long-Horizon -> V12 Self-Expansion
--> V13 Personal Executive -> V14 Digital Operator -> V15 Human Interface
--> V16 Final Convergence / JARVIS 1.0
+V10 Close (single release cycle) -> V11 Initiative
+-> V12 Endurance + Self-Expansion -> V13 Personal Operator
+-> V14 Final Convergence / JARVIS 1.0
 ```
 
 Before a major phase, inventory JARVIS, external options, wiring, and proof.
 Observed gaps determine lanes; a version label does not imply a blank slate.
+
+## Roadmap authority
+
+Every session MUST read the frozen roadmap and
+`docs/roadmap/JARVIS_1_0_EXECUTION_STATE.yaml` before any planning or
+mutation. Binding rules:
+
+- The current phase and gate cannot be expanded, reordered, or redefined
+  without new evidence recorded in the roadmap decision log.
+- Out-of-phase discoveries are DEFERRED (recorded as candidates/notes), never
+  implemented in the current phase.
+- Rejected architectural decisions (roadmap "Rejected alternatives" and
+  "Not to be revisited" sections) cannot be reopened without new evidence.
+- The acceptance ladder A2–A8 is authoritative; feature count proves nothing.
+- The execution-state file identifies the ONLY authorized next gate; work
+  toward any other gate requires an explicit owner redirect.
 
 ## Reuse-first doctrine
 

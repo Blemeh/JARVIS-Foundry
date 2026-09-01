@@ -1,0 +1,112 @@
+# JARVIS 1.0 EXECUTION STATE
+# ---------------------------------------------------------------------------
+# This file is the single authoritative pointer for "where the program is"
+# on the frozen roadmap. Every future session MUST read this file plus
+# docs/handoffs/JARVIS_FROZEN_MASTER_ROADMAP_TO_1_0_2026-09-01.md before
+# planning or mutating anything.
+#
+# Rules:
+# - Only the gate named in `authorized_next_gate` may be pursued.
+# - Phases/gates cannot be expanded, reordered, or redefined without new
+#   evidence recorded in the roadmap decision log.
+# - Out-of-phase discoveries are DEFERRED (recorded, not implemented).
+# - This file is updated only at real phase/gate transitions, by the session
+#   that closes a gate, with exact SHAs and evidence roots.
+# ---------------------------------------------------------------------------
+
+meta:
+  created: "2026-09-01"
+  created_by: "control-tower roadmap-authority session (Fable 5)"
+  roadmap_document: "docs/handoffs/JARVIS_FROZEN_MASTER_ROADMAP_TO_1_0_2026-09-01.md"
+  roadmap_status: FROZEN
+  acceptance_ladder_authoritative: true   # A2-A8 are the only phase gates
+  last_reconciled: "2026-09-01"
+
+observed_repo_state:
+  canonical_main: "0cc0cbd9572db39f7754cb90de8a3977db829410"
+  canonical_main_summary: "docs: reconcile canonical V9 and live state"
+  current_schema: v38            # canonical source migrations.SCHEMA_VERSION
+  live_schema: v38               # per docs/CURRENT_STATE.md reconciliation 2026-09-01
+  live_runtime: "untouched by this control-tower session (no DB/Scheduler/release mutation)"
+  v9_status: "established and stabilized; represented in canonical source"
+  v10_status: "convergence IN_PROGRESS in isolated worktrees (not yet on canonical main)"
+  v10_lanes_observed_2026_09_01:
+    inventory:            { branch: planning/v10-inventory-20260901,            head: 5d2a173 }
+    a_web_research:       { branch: candidate/v10-a-web-research-20260901,      head: a15bcc7 }
+    b_local_documents:    { branch: candidate/v10-b-local-documents-20260901,   head: a418c77 }
+    c_developer_provider: { branch: candidate/v10-c-developer-provider-20260901, head: 6df9a85 }
+    c_workflow_audit:     { branch: candidate/v10-c-workflow-audit-20260901,    head: 39edae7 }
+    d_historical_reuse:   { branch: candidate/v10-d-historical-reuse-20260901,  head: 96d776d }
+    full_convergence:     { branch: candidate/v10-full-convergence-20260901,    head: 8a8d8c2 }
+
+current_phase: V10_CLOSE
+authorized_next_gate: V10_EXIT
+authorized_next_gate_definition: >
+  Single V10 release cycle: finish lane convergence; land sensory completion
+  (interactive browser actions + authenticated session persistence; Gmail read
+  only if credentials already exist, else BLOCKED/DEFERRED) inside the same
+  candidate line; one final exact-SHA convergence; one rehearsal -> promotion
+  -> live validation. Exit proof: live authenticated-site interaction with
+  effect receipts + STOP-mid-browser-action reconciliation, suite green,
+  promoted and live-validated.
+
+phases:
+  V10_CLOSE:
+    status: IN_PROGRESS
+    gate: V10_EXIT
+    gate_status: NOT_PASSED
+    notes: "one release cycle only; sensory completion is part of V10, not a second promotion"
+  V11_INITIATIVE:
+    status: NOT_STARTED
+    gates: [A2, A3, A4]
+    gate_status: { A2: NOT_TESTED, A3: NOT_TESTED, A4: NOT_TESTED }
+    hard_entry: "promoted V10 base + interactive browser"
+  V12_ENDURANCE_SELF_EXPANSION:
+    status: NOT_STARTED
+    gates: [A5, A6]
+    gate_status: { A5: NOT_TESTED, A6: NOT_TESTED }
+    hard_entry: "A3/A4 passed on promoted V11 base"
+  V13_PERSONAL_OPERATOR:
+    status: NOT_STARTED
+    gates: [A7]
+    gate_status: { A7: NOT_TESTED }
+    hard_entry: "Gmail live read active (first real personal signal stream)"
+  V14_JARVIS_1_0:
+    status: NOT_STARTED
+    gates: [A8]
+    gate_status: { A8: NOT_TESTED }
+    definition: "72-hour Owner-Absent Campaign, live, on the installed release"
+
+capability_flags:
+  gmail_read:
+    state: BLOCKED_DEFERRED
+    reason: "no real Gmail credentials available as of 2026-09-01"
+    policy: "never blocks V10/V11/V12; HARD ENTRY requirement for V13"
+  gmail_send:
+    state: NOT_STARTED
+    policy: "V13 exit-path capability under reversibility policy"
+  voice_albanian:
+    state: POST_1_0
+    policy: "explicit product decision (roadmap decision D10); supersedes older 'planned for V15' notes"
+  mcp_client:
+    state: NOT_STARTED
+    policy: "MISSION-PULLED; preferred first self-expansion target in V12; not a gate"
+  windows_uia:
+    state: NOT_STARTED
+    policy: "MISSION-PULLED verbs only (V13); recover Phase-4/5 prior art first; no RPA platform"
+
+elapsed_proving_policy: >
+  Elapsed-time proving windows (48h in V11, two weeks in V13) must not idle
+  engineering: once the functional candidate is frozen for the window,
+  next-phase planning and isolated development may proceed in parallel;
+  next-phase live promotion remains blocked until the preceding gate passes.
+
+capability_authority: >
+  The Capability Fabric Catalog (fabric/catalog.py) is the single canonical
+  capability/readiness authority. capabilities/registry.py may persist only as
+  a read-only compatibility projection. Never two writable authorities.
+
+update_log:
+  - date: "2026-09-01"
+    change: "file created; program position = V10 close, authorized gate = V10_EXIT"
+    session: "control/roadmap-authority-20260901"
