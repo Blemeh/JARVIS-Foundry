@@ -318,7 +318,7 @@ Capability classes used throughout:
 The single V10_EXIT candidate is `V10_EXIT_READY_FOR_PROMOTION` for the next
 authorized rehearsal → promotion → live-validation sequence. Its product
 predecessor is `71d71da3f0998538a579a807a152c4bd9d3282d0`; the exact source tip
-is the V10 audit-fix tip `42bed8e4ee7003d357cfa30ca9d818b667f65189` (built from
+is the V10 audit-fix tip `03e6f64bd045a8ca560896d5d5dbf8c552eb9767` (built from
 implementation tip `4a645c0b939cf1f4d09e37e1cdfd04dba564e179`); the
 roadmap-authority commit is
 `e9b2155bd669887c4778db0b16a4ef7861d2c9ff`; and the candidate worktree is
