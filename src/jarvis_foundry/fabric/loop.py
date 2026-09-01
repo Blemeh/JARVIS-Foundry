@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Mapping
+from typing import Any, Mapping
 
 from ..clock import isoformat
 from ..control.broker import emergency_stop_reason
@@ -36,11 +36,14 @@ from .model import (
 )
 from .contracts import (
     AdapterRequest,
+    system_id_for_action,
+    EffectClass,
     PostconditionStatus,
     build_adapter_request,
     evaluate_postconditions,
     normalize_receipt,
 )
+from ..effects import execute_fabric_effect
 from .providers import route_provider
 
 
@@ -565,10 +568,20 @@ def _verify_action(
         if claimed.get("document") is not None or claimed.get("authenticated_login"):
             return VerifyVerdict.MATCH
         return VerifyVerdict.MISMATCH
+    def github_write_readback_verified() -> bool:
+        readback = claimed.get("readback")
+        return (
+            claimed_status == "COMPLETED"
+            and bool(claimed.get("number"))
+            and claimed.get("reconciled") is True
+            and claimed.get("readback_status") == "MATCH"
+            and isinstance(readback, Mapping)
+            and readback.get("matches") is True
+        )
     if action_kind == "github.issue.create":
-        return VerifyVerdict.MATCH if claimed.get("number") else VerifyVerdict.MISMATCH
+        return VerifyVerdict.MATCH if github_write_readback_verified() else VerifyVerdict.MISMATCH
     if action_kind == "github.pull_request.create":
-        return VerifyVerdict.MATCH if claimed.get("number") else VerifyVerdict.MISMATCH
+        return VerifyVerdict.MATCH if github_write_readback_verified() else VerifyVerdict.MISMATCH
     if action_kind == "http.read":
         return VerifyVerdict.MATCH if claimed.get("document") is not None else VerifyVerdict.MISMATCH
     if action_kind == "http.write":
@@ -715,18 +728,25 @@ def execute_action(
             note=selection.reason,
         )
     spec = get_spec(database, selection.capability_id)
-    request: AdapterRequest | None = None
-    if spec is not None:
-        request = build_adapter_request(
-            mission_id=intent.task_id,
-            workflow_id=workflow_id,
-            step_id=step_id or action_kind,
-            step_version=step_version,
-            attempt=attempt,
+    if spec is None:
+        return ActionResult(
+            capability_id=selection.capability_id or "missing",
             action_kind=action_kind,
-            payload=payload,
-            spec=spec,
+            claimed=ClaimOutcome.BLOCKED,
+            verified=VerifyVerdict.UNKNOWN,
+            note="selected capability is missing from the Fabric catalog",
         )
+    request: AdapterRequest | None = None
+    request = build_adapter_request(
+        mission_id=intent.task_id,
+        workflow_id=workflow_id,
+        step_id=step_id or action_kind,
+        step_version=step_version,
+        attempt=attempt,
+        action_kind=action_kind,
+        payload=payload,
+        spec=spec,
+    )
     execution_payload = dict(payload)
     if request is not None:
         # The selected adapter receives the canonical identity sidecar, never
@@ -737,18 +757,57 @@ def execute_action(
         execution_payload["_adapter_request"] = request.to_evidence()
     if request is not None and request.effect_class.value != "READ_ONLY":
         execution_payload.setdefault("idempotency_key", request.idempotency_key)
-    if claim_override is not None:
-        claimed = dict(claim_override)
-    elif spec is not None and spec.kind is Kind.SCRIPT:
-        from .expansion import load_candidate
-        path = Path(str(payload["path"]))
-        if not path.is_absolute():
-            path = ctx.owned_root / path
-        module = load_candidate(Path(spec.executor))
-        digest = module.run(str(path))
-        claimed = {"claimed": "COMPLETED", "path": str(path), "sha256": digest}
+    def perform() -> Mapping[str, Any]:
+        if claim_override is not None:
+            return dict(claim_override)
+        if spec.kind is Kind.SCRIPT:
+            from .expansion import load_candidate
+
+            path = Path(str(payload["path"]))
+            if not path.is_absolute():
+                path = ctx.owned_root / path
+            module = load_candidate(Path(spec.executor))
+            digest = module.run(str(path))
+            return {"claimed": "COMPLETED", "path": str(path), "sha256": digest}
+        return dispatch(ctx, action_kind, execution_payload)
+
+    # git.push and browser.web.execute already use their established
+    # connector-specific canonical effect drivers. Every other mutating
+    # Fabric action must cross the shared V5 effect journal exactly once.
+    canonical_effect_required = (
+        request.effect_class is not EffectClass.READ_ONLY
+        and action_kind not in {"git.push", "browser.web.execute"}
+    )
+    if canonical_effect_required:
+        stop_identities = set(request.stop_scope)
+        stop_identities.update({"GLOBAL", intent.task_id})
+        claimed = execute_fabric_effect(
+            database,
+            action_key=request.effect_id,
+            system_id=system_id_for_action(action_kind, request.target_ref),
+            target_ref=request.target_ref,
+            payload_hash=request.input_hash,
+            kind=action_kind,
+            connector_id=f"fabric:{request.capability_id}",
+            before_state_capture=(
+                {"before_state_ref": request.before_state_ref}
+                if request.before_state_ref is not None else {}
+            ),
+            expected_effects=(action_kind,),
+            action_id=request.request_id,
+            request_identity=request.to_evidence(),
+            perform=perform,
+            stop_check=lambda: bool(
+                emergency_stop_reason(
+                    database,
+                    payload.get("stop_path"),
+                    identities=stop_identities,
+                )
+            ),
+            claim_ttl_s=float(payload.get("claim_ttl_s") or 300.0),
+        )
     else:
-        claimed = dispatch(ctx, action_kind, execution_payload)
+        claimed = perform()
     verdict, postconditions = _verify_with_postconditions(
         action_kind, claimed, ctx.owned_root, payload,
     )

@@ -12,7 +12,8 @@ def detect_procedures(db: FoundryDatabase, wm: WorldModel | None = None, min_occ
     """Detect repeated successful procedures that should become PROCEDURE knowledge.
 
     Looks at: successful mission completions with same capability/pattern,
-    recovery successes, verification passes.
+    recovery successes, and AcceptanceGate-accepted verifications.  A raw
+    ``verification.passed`` event is preliminary and is intentionally ignored.
 
     This lane owns UNDERSTANDING that the procedure exists and what evidence
     supports it. Lane 2 owns executable capability creation.
@@ -54,7 +55,7 @@ def detect_procedures(db: FoundryDatabase, wm: WorldModel | None = None, min_occ
         # Find repeated successful verifications
         try:
             rows = conn.execute(
-                "SELECT payload_json FROM events WHERE event_type = 'verification.passed' ORDER BY sequence DESC LIMIT 50"
+                "SELECT payload_json FROM events WHERE event_type = 'verification.accepted' ORDER BY sequence DESC LIMIT 50"
             ).fetchall()
             if len(rows) >= min_occurrences:
                 # Generic verification procedure

@@ -256,7 +256,17 @@ def test_github_issue_create_uses_injected_transport(tmp_path: Path) -> None:
         })
         return 201, body.encode("utf-8")
 
-    ctx = _ctx(tmp_path, database, github_write=write)
+    def read(endpoint: str) -> tuple[int, bytes]:
+        assert endpoint == "/repos/owner/demo/issues/7"
+        body = json.dumps({
+            "number": 7,
+            "html_url": "https://github.com/owner/demo/issues/7",
+            "title": "v9",
+            "body": "from fabric",
+        })
+        return 200, body.encode("utf-8")
+
+    ctx = _ctx(tmp_path, database, github_write=write, github_api=read)
     seed_builtins(database)
     result = execute_action(
         database, ctx, _intent("github.issue.create"), "github.issue.create",
@@ -1106,9 +1116,12 @@ def test_file_append_and_failed_script_repair(tmp_path: Path) -> None:
         {"target": "tool.py", "old": "raise SystemExit(2)", "new": "print('repaired')"},
     )
     assert repaired.success is True
+    # A corrected script is a new logical attempt.  The before-state
+    # reference changes its canonical effect identity, so a prior FAILED
+    # attempt is never blindly re-executed.
     rerun = execute_action(
         database, ctx, _intent("script.run"), "script.run",
-        {"target": "tool.py"},
+        {"target": "tool.py", "before_state_ref": "after-repair"},
     )
     assert rerun.success is True
     assert "repaired" in (rerun.claimed_effect.get("stdout") or "")

@@ -7,6 +7,8 @@ from .directives import DirectiveEffect, consume_directives, matching_effects, s
 from .loop import MissionLoop, StepOutcome
 from .proposal import Proposal, ProposalError, Waiting, propose_next_action
 from .verification import (
+    accepted_verifications,
+    record_verification_acceptance,
     record_verification_outcome,
     start_verification,
 )
@@ -24,6 +26,8 @@ __all__ = [
     "matching_effects",
     "select_dispatchable_mission",
     "propose_next_action",
+    "accepted_verifications",
+    "record_verification_acceptance",
     "record_verification_outcome",
     "start_verification",
     "verification_outcome",

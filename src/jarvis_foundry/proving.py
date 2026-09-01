@@ -5,7 +5,7 @@ append-only ledger events on the existing ``FoundryDatabase`` / ``Event``
 APIs. No elapsed time is fabricated: healthy-day counts are derived from real
 ``supervisor.heartbeat``, ``supervisor.degraded``, and owner STOP/PAUSE
 evidence in the ledger, and verified-mission counts are derived from durable
-mission / evidence / verdict state. Provider, voice, UI, and external
+mission / evidence / accepted-verdict state. Provider, voice, UI, and external
 connector effects are never claimed here; they remain ``NOT_TESTED``
 boundaries in every status snapshot.
 """
@@ -195,25 +195,25 @@ def verified_mission_count(
     *,
     started_at: datetime | str | None = None,
 ) -> int:
-    """Missions with durable completion, evidence, and an independent PASS.
+    """Missions with durable completion, evidence, and an accepted PASS.
 
     A mission counts only when it exists in the ledger, has a durable
     completion event (``mission.completed`` or ``mission.state_changed`` to
     COMPLETE), has at least one evidence bundle, and has at least one PASS
-    verdict whose verifier run is distinct from the builder run (a worker
-    never verifies itself). When ``started_at`` is provided, the mission's
-    creation, completion, evidence, and PASS verdict must all be recorded on
-    or after that timestamp, so a proving window never reuses work that
-    predates it.
+    verdict with an AcceptanceGate receipt whose verifier run is distinct
+    from the builder run (a worker never verifies itself). When
+    ``started_at`` is provided, the mission's creation, completion, evidence,
+    and accepted verdict must all be recorded on or after that timestamp, so
+    a proving window never reuses work that predates it.
     """
     started = _as_datetime(started_at) if started_at is not None else None
     created_at: dict[str, datetime] = {}
     completed_at: dict[str, datetime] = {}
     evidence_at: dict[str, datetime] = {}
-    verdict_at: dict[str, datetime] = {}
     verdict_builder: dict[str, str | None] = {}
     verdict_verifier: dict[str, str | None] = {}
     verdict_status: dict[str, str] = {}
+    accepted_at: dict[str, datetime] = {}
     for event in database.events():
         payload = event.payload
         occurred = parse(event.occurred_at)
@@ -235,11 +235,13 @@ def verified_mission_count(
             verdict_builder[verdict_id] = payload.get("builder_run_id")
             verdict_verifier[verdict_id] = payload.get("verifier_run_id")
             verdict_status[verdict_id] = "STARTED"
-            verdict_at[verdict_id] = occurred
         elif event.event_type == "verification.passed":
             verdict_id = str(payload["verdict_id"])
             verdict_status[verdict_id] = "PASS"
-            verdict_at[verdict_id] = occurred
+        elif event.event_type == "verification.accepted":
+            verdict_id = str(payload.get("verdict_id") or "")
+            if payload.get("decision") == "ACCEPT" and verdict_id:
+                accepted_at[verdict_id] = occurred
     with database.connect() as connection:
         rows = connection.execute(
             """SELECT v.verdict_id, v.mission_id FROM verification_verdicts v
@@ -252,6 +254,8 @@ def verified_mission_count(
         verdict_id = str(row["verdict_id"])
         mission_id = str(row["mission_id"])
         if verdict_id not in verdict_status or verdict_status[verdict_id] != "PASS":
+            continue
+        if verdict_id not in accepted_at:
             continue
         if not verdict_verifier.get(verdict_id):
             continue
@@ -271,7 +275,7 @@ def verified_mission_count(
             evidence = evidence_at.get(mission_id)
             if evidence is None or evidence < started:
                 continue
-            verdict = verdict_at.get(verdict_id)
+            verdict = accepted_at.get(verdict_id)
             if verdict is None or verdict < started:
                 continue
         counted.add(mission_id)

@@ -35,6 +35,7 @@ from .decision_queue import build_owner_attention_queue
 from .result_traceability import build_result_traceability
 from .operational_intelligence import project_operational_intelligence
 from .supervisor.estop import EmergencyStop
+from .mission.verification import accepted_verifications
 from .v3_teams import DEFAULT_REPAIR_BUDGET
 from .migrations import SCHEMA_VERSION
 
@@ -1415,30 +1416,43 @@ def _discovery_projection(
             for r in team_rows
         ]
         verdict_rows = connection.execute(
-            "SELECT verdict, status, verifier_run_id, builder_run_id,"
+            "SELECT verdict_id, verdict, status, verifier_run_id, builder_run_id,"
             " independence_json FROM verification_verdicts"
             " WHERE mission_id = ? ORDER BY rowid DESC LIMIT 5",
             (selected_mission,),
         ).fetchall()
+        accepted_for_selected = {
+            str(row[0]) for row in connection.execute(
+                "SELECT json_extract(payload_json, '$.verdict_id') FROM events "
+                "WHERE event_type = 'verification.accepted' "
+                "AND json_extract(payload_json, '$.mission_id') = ?",
+                (selected_mission,),
+            ).fetchall()
+            if row[0]
+        }
         repair_rounds = int(connection.execute(
             "SELECT COUNT(*) FROM verification_verdicts"
             " WHERE mission_id = ? AND verdict = 'FAIL'",
             (selected_mission,),
         ).fetchone()[0])
         for v_row in verdict_rows:
-            verdict = v_row[0] or (None if v_row[1] == "STARTED" else v_row[1])
+            verdict = v_row[1] or (None if v_row[2] == "STARTED" else v_row[2])
             if verdict is None:
                 continue
-            independence, ind_bad = _load_json_object(v_row[4])
+            independence, ind_bad = _load_json_object(v_row[5])
             partial = partial or ind_bad
             verifier = {
                 "mission_id": selected_mission,
                 "verdict": str(verdict),
+                "acceptance_status": (
+                    "ACCEPTED" if str(v_row[0]) in accepted_for_selected
+                    else "PENDING"
+                ),
                 "fresh_session": independence.get("fresh_session"),
                 "independence": independence.get("independence"),
                 "provider": independence.get("provider"),
-                "builder_run_id": v_row[3],
-                "verifier_run_id": v_row[2],
+                "builder_run_id": v_row[4],
+                "verifier_run_id": v_row[3],
                 "repair_rounds_used": repair_rounds,
                 "repair_budget": DEFAULT_REPAIR_BUDGET,
             }
@@ -1597,6 +1611,12 @@ def _build_snapshot(
         )
         evidence = _rows(connection, "SELECT * FROM evidence_bundles ORDER BY updated_at DESC LIMIT 100")
         verdicts = _rows(connection, "SELECT * FROM verification_verdicts ORDER BY updated_at DESC LIMIT 100")
+        accepted_ids = set(accepted_verifications(database))
+        for verdict in verdicts:
+            verdict["acceptance_status"] = (
+                "ACCEPTED" if str(verdict.get("verdict_id") or "") in accepted_ids
+                else "PENDING"
+            )
         resources = _rows(connection, "SELECT * FROM resources ORDER BY updated_at DESC LIMIT 100")
         directives = _rows(connection, "SELECT * FROM directives WHERE active = 1 ORDER BY updated_at DESC")
         leases = _rows(connection, "SELECT * FROM leases ORDER BY heartbeat_at DESC")
@@ -2547,7 +2567,11 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
         goal = controls["goals"][0].get("exact_text") if controls["goals"] else "No active owner goal"
         constraint_count = len(controls["constraints"])
         active_workers = sum(1 for worker in snapshot["workers"] if worker.get("status") == "RUNNING")
-        verified = sum(1 for verdict in snapshot["verification"] if verdict.get("status") == "PASS")
+        verified = sum(
+            1 for verdict in snapshot["verification"]
+            if verdict.get("status") == "PASS"
+            and verdict.get("acceptance_status") == "ACCEPTED"
+        )
         blocked = len(snapshot["recovery"]["blocked_missions"])
         briefing_status = snapshot["briefings"][0].get("status") if snapshot["briefings"] else "NOT_AVAILABLE"
         voice_status = snapshot["voice"][0].get("status") if snapshot["voice"] else "NOT_TESTED"

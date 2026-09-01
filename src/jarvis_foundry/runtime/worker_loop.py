@@ -603,6 +603,10 @@ def _record_v3_outcome(
     from ..v3_outcomes import record_outcome
 
     actual = outcome_from_mission(database, mission_id)
+    if actual.get("outcome") != "PASSED":
+        raise ValueError(
+            "V3 outcome proof requires final AcceptanceGate acceptance for "
+            "the latest verifier PASS")
     payload = record_outcome(
         database,
         candidate_id=candidate_id,

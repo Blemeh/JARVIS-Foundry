@@ -19,6 +19,11 @@ from jarvis_foundry.events import Event
 from jarvis_foundry.executive.eligibility import (
     enable_admission_authority,
 )
+from jarvis_foundry.mission.verification import (
+    record_verification_acceptance,
+    record_verification_outcome,
+    start_verification,
+)
 from jarvis_foundry.paths import FoundryPaths
 from jarvis_foundry.runtime.config import WorkerRuntimeConfig
 from jarvis_foundry.runtime.worker_loop import run_cycle
@@ -172,6 +177,33 @@ def test_crash_window_result_written_outcome_absent_is_reconciled_once(tmp_path)
          "created_from": f"candidate:{second['candidate_id']}"},
         source_type="supervisor", source_id="v3-closure-test",
         idempotency_key=f"mission.created:{crash_mission_id}"))
+    crash_verdict_id = f"verdict-{crash_mission_id}"
+    start_verification(
+        database,
+        verdict_id=crash_verdict_id,
+        mission_id=crash_mission_id,
+        step_id="execute",
+        builder_run_id=f"builder-{crash_mission_id}",
+        verifier_run_id=f"verifier-{crash_mission_id}",
+        independence={"session_independent": True},
+        criteria=["root cause documented"],
+    )
+    record_verification_outcome(
+        database,
+        verdict_id=crash_verdict_id,
+        outcome="PASS",
+        findings=[],
+        evidence={"root_cause": "documented"},
+    )
+    record_verification_acceptance(
+        database,
+        verdict_id=crash_verdict_id,
+        mission_id=crash_mission_id,
+        step_id="execute",
+        builder_run_id=f"builder-{crash_mission_id}",
+        verifier_run_id=f"verifier-{crash_mission_id}",
+        checks={"root_cause": "accepted"},
+    )
     for state in ("ORIENTING", "ACTION_SELECTION", "COMPLETE"):
         database.append(Event.create(
             "mission.state_changed",
@@ -316,6 +348,66 @@ def test_forged_non_passed_completion_event_never_records(tmp_path):
     scan = reconcile_pending_outcomes(database)
     assert scan["reconciled"] == 0
     assert len(_outcomes(database)) == 1  # still exactly the control outcome
+
+
+def test_unaccepted_pass_completion_never_records_learning_outcome(tmp_path):
+    """A raw PASS plus completion cannot bypass AcceptanceGate."""
+    from jarvis_foundry.v3_outcomes import reconcile_mission_outcome
+
+    database, _repository = _env(tmp_path)
+    second = generate_candidate(
+        database, "mission-seed", "maintenance",
+        "Investigate an unaccepted verifier pass",
+        [{"kind": "log", "ref": "run-unaccepted"}],
+        typed={"expected_outcome": "verified: acceptance required",
+               "candidate_type": "research"})
+    mission_id = f"mission-unaccepted-{second['candidate_id']}"
+    database.append(Event.create(
+        "mission.created",
+        {"mission_id": mission_id,
+         "objective": "Investigate an unaccepted verifier pass",
+         "resource_id": "resource-1", "state": "PLANNED",
+         "acceptance_criteria": ["acceptance required"],
+         "created_from": f"candidate:{second['candidate_id']}"},
+        source_type="supervisor", source_id="v3-closure-test",
+        idempotency_key=f"mission.created:{mission_id}"))
+    start_verification(
+        database,
+        verdict_id=f"verdict-{mission_id}",
+        mission_id=mission_id,
+        step_id="execute",
+        builder_run_id="builder-unaccepted",
+        verifier_run_id="verifier-unaccepted",
+        independence={"session_independent": True},
+        criteria=["acceptance required"],
+    )
+    record_verification_outcome(
+        database,
+        verdict_id=f"verdict-{mission_id}",
+        outcome="PASS",
+        findings=[],
+        evidence={"raw": True},
+    )
+    for state in ("ORIENTING", "ACTION_SELECTION", "COMPLETE"):
+        database.append(Event.create(
+            "mission.state_changed",
+            {"mission_id": mission_id, "state": state},
+            source_type="supervisor", source_id="v3-closure-test",
+            idempotency_key=f"mission.state_changed:{mission_id}:{state}"))
+    database.append(Event.create(
+        "mission.completed",
+        {"mission_id": mission_id, "outcome": "PASSED"},
+        source_type="supervisor", source_id="v3-closure-test",
+        idempotency_key=f"mission.completed:{mission_id}"))
+
+    result = reconcile_mission_outcome(database, mission_id=mission_id)
+    assert result["recorded"] is False
+    assert "AcceptanceGate" in (result["skipped_reason"] or "")
+    assert not [
+        event for event in database.events()
+        if event.event_type == "discovery.candidate_outcome_recorded"
+        and event.payload.get("mission_id") == mission_id
+    ]
 
 
 def test_flag_off_records_no_new_outcome_events(tmp_path):

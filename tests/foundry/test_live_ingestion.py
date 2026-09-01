@@ -127,11 +127,16 @@ def test_system_event_source(db: FoundryDatabase):
          "subject_id": "s", "criteria": ["c"], "verifier_run_id": "r"},
         source_type="test", source_id="test-suite",
         idempotency_key="verification.passed:v1"))
+    db.append(Event.create(
+        "verification.accepted",
+        {"decision": "ACCEPT", "verdict_id": "v1", "mission_id": "m"},
+        source_type="test", source_id="test-suite",
+        idempotency_key="verification.accepted:v1"))
     from jarvis_foundry.live_ingestion import run_ingestion_cycle
     report = run_ingestion_cycle(db, sources=["system"])
     assert report["system"]["claims_created"] == 1
     claims = _claims(db, "system:")
-    assert "verification.passed" in claims[0]["statement"]
+    assert "verification.accepted" in claims[0]["statement"]
     rerun = run_ingestion_cycle(db, sources=["system"])
     assert rerun["system"]["claims_created"] == 0  # cursor advanced
     db.append(Event.create(

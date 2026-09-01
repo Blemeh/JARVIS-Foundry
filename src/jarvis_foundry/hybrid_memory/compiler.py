@@ -17,6 +17,7 @@ from typing import Any
 from ..clock import isoformat
 from ..database import FoundryDatabase
 from ..knowledge_retrieval import build_context_manifest
+from ..mission.verification import accepted_verifications
 from ..supervisor.estop import EmergencyStop
 from .blocks import CoreMemoryRegistry
 from .lifecycle import TierCMemoryStore
@@ -111,9 +112,10 @@ class ContextCompiler:
                 "SELECT mission_id, objective, state, next_action FROM missions "
                 "WHERE mission_id=?", (mission_id,)).fetchone()
             verdicts = conn.execute(
-                "SELECT subject_id, status FROM verification_verdicts "
+                "SELECT verdict_id, subject_id, status FROM verification_verdicts "
                 "WHERE mission_id=? AND verdict IS NOT NULL ORDER BY rowid DESC LIMIT 5",
                 (mission_id,)).fetchall()
+        accepted = accepted_verifications(self.db, mission_id=mission_id)
         lines = []
         if row:
             lines.append(f"mission {row['mission_id']}: state={row['state']} objective={row['objective']}")
@@ -122,7 +124,10 @@ class ContextCompiler:
         else:
             lines.append(f"mission {mission_id}: (no mission record)")
         for v in verdicts:
-            lines.append(f"verdict {v['subject_id']}: {v['status']}")
+            if v["status"] == "PASS" and v["verdict_id"] not in accepted:
+                continue
+            suffix = " [ACCEPTED]" if v["verdict_id"] in accepted else ""
+            lines.append(f"verdict {v['subject_id']}: {v['status']}{suffix}")
         return "\n".join(lines)
 
     def _evidence_section(self, mission_id: str) -> str:

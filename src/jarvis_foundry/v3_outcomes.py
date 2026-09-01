@@ -155,6 +155,18 @@ def record_outcome(
             f"candidate {candidate_id!r} is not the durable candidate linked "
             f"to mission {mission_id!r}")
 
+    # A mission.completed/PASSED event is not sufficient by itself. The
+    # exact latest PASS verdict must also carry the durable AcceptanceGate
+    # receipt; this prevents a preliminary verification.passed from feeding
+    # candidate learning or calibration.
+    from .executive.calibration import outcome_from_mission
+
+    actual_truth = outcome_from_mission(database, mission_id)
+    if actual_truth.get("outcome") != "PASSED":
+        raise ValueError(
+            f"outcome mission {mission_id!r} lacks final AcceptanceGate "
+            "acceptance for its latest verifier PASS")
+
     # Missing measurements stay missing.  The terminal event proves that the
     # mission passed, but a technical PASS is not a measured actual value.
     # Runtime callers that have real predicted/actual values must supply them.
@@ -369,6 +381,11 @@ def reconcile_mission_outcome(
     from .executive.calibration import outcome_from_mission
 
     actual_value = outcome_from_mission(database, mission_id)
+    if actual_value.get("outcome") != "PASSED":
+        return {"recorded": False, "idempotent": False,
+                "skipped_reason": (
+                    "mission has no final AcceptanceGate acceptance for "
+                    "its latest verifier PASS")}
 
     record_outcome(
         database, candidate_id=candidate_id, mission_id=mission_id,

@@ -331,7 +331,9 @@ def _target_ref(action_kind: str, payload: Mapping[str, Any]) -> str:
     return action_kind
 
 
-def _system_id(action_kind: str, target_ref: str) -> str:
+def system_id_for_action(action_kind: str, target_ref: str) -> str:
+    """Return the canonical V5 effect-journal system for a Fabric action."""
+
     action = action_kind.lower()
     if action.startswith("github."):
         return "github"
@@ -412,7 +414,7 @@ class AdapterRequest:
         workflow = str(workflow_id or f"workflow:{mission_id}")
         input_hash = _digest(dict(payload))
         effect_id = fabric_effect_id(
-            system_id=_system_id(action_kind, target),
+            system_id=system_id_for_action(action_kind, target),
             target_ref=target,
             capability_id=str(spec.capability_id),
             capability_version=str(spec.version),
@@ -482,7 +484,13 @@ def _safe_observed(claimed: Mapping[str, Any]) -> dict[str, Any]:
     return {
         str(key): value
         for key, value in claimed.items()
-        if str(key) not in {"document", "text", "stdout", "stderr", "patch", "content"}
+        if str(key) not in {
+            "document", "text", "stdout", "stderr", "patch", "content",
+            # Execution/replay markers belong to the effect journal, not the
+            # stable adapter receipt.  Keeping them out makes the spine's
+            # idempotent receipt identical on a durable replay.
+            "performed", "replayed", "journal_state", "action_key",
+        }
     }
 
 

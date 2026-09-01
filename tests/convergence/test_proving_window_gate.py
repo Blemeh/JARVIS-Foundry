@@ -18,6 +18,7 @@ from jarvis_foundry.clock import isoformat
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.events import Event
 from jarvis_foundry.mission.verification import (
+    record_verification_acceptance,
     record_verification_outcome,
     start_verification,
 )
@@ -111,6 +112,15 @@ def _verified_mission(db: FoundryDatabase, mission_id: str, *,
         outcome="PASS",
         findings=[],
         evidence={"artifact": f"evidence-{mission_id}"},
+    )
+    record_verification_acceptance(
+        db,
+        verdict_id=f"verdict-{mission_id}",
+        mission_id=mission_id,
+        step_id="step-1",
+        builder_run_id=builder,
+        verifier_run_id=verifier,
+        checks={"test": "accepted"},
     )
 
 

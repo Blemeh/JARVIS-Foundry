@@ -7,6 +7,7 @@ from typing import Any
 
 from ..database import FoundryDatabase
 from ..knowledge import canonicalize_statement
+from ..mission.verification import accepted_verifications
 
 CALIBRATION_VERSION = "1.0.0"
 MAX_SOURCE_PENALTY = 0.25
@@ -141,7 +142,7 @@ def _authoritative_terminal_key(
     for event in reversed(list(database.events())):
         event_type = event.event_type
         if event_type in (
-            "verification.passed", "verification.failed", "verification.blocked",
+            "verification.accepted", "verification.failed", "verification.blocked",
             "mission.completed",
         ):
             payload = event.payload
@@ -161,7 +162,8 @@ def outcome_from_mission(database: FoundryDatabase, mission_id: str) -> dict[str
         return {"outcome": "UNKNOWN"}
     with database.connect() as connection:
         verdicts = connection.execute(
-            "SELECT status, findings_json FROM verification_verdicts "
+            "SELECT verdict_id, status, verdict, findings_json "
+            "FROM verification_verdicts "
             "WHERE mission_id = ? ORDER BY rowid DESC LIMIT 5",
             (mission_id,),
         ).fetchall()
@@ -180,9 +182,36 @@ def outcome_from_mission(database: FoundryDatabase, mission_id: str) -> dict[str
             "'worker_loop.contract_blocked' AND payload_json LIKE ? LIMIT 1",
             (f'%"mission_id":"{mission_id}"%',),
         ).fetchone()
-    last_verdict = str(verdicts[0][0]) if verdicts else "UNKNOWN"
+    accepted = accepted_verifications(database, mission_id=mission_id)
+    completion_passed = False
+    for event in database.events():
+        if event.event_type != "mission.completed":
+            continue
+        if str(event.payload.get("mission_id") or "") != mission_id:
+            continue
+        completion = event.payload.get("outcome")
+        if isinstance(completion, dict):
+            completion_passed = any(
+                str(value).upper() == "PASSED"
+                for value in completion.values()
+            )
+        else:
+            completion_passed = str(completion or "").upper() == "PASSED"
+        if completion_passed:
+            break
+    last_verdict_id = str(verdicts[0][0]) if verdicts else ""
+    last_verdict_status = str(verdicts[0][1]) if verdicts else "UNKNOWN"
+    last_verdict_value = str(verdicts[0][2]) if verdicts else "UNKNOWN"
+    last_verdict = last_verdict_status
     mission_state = str(mission["state"])
-    if last_verdict == "PASS":
+    # Acceptance is bound to the exact latest verdict identity. An older
+    # accepted PASS must never authorize a newer preliminary PASS.
+    accepted_pass = (
+        last_verdict_status == "PASS"
+        and last_verdict_value == "PASS"
+        and last_verdict_id in accepted
+    )
+    if accepted_pass and mission_state == "COMPLETE" and completion_passed:
         outcome = "PASSED"
     elif last_verdict == "FAIL":
         outcome = "FAILED_VERIFICATION"

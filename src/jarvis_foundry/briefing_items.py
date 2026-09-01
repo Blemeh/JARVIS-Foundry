@@ -25,6 +25,9 @@ _SKIP_EVENT_TYPES = frozenset({
     "briefing.delivered",
     "briefing.failed",
     "supervisor.heartbeat",
+    # A verifier PASS is preliminary until AcceptanceGate records its
+    # immutable acceptance receipt below.
+    "verification.passed",
 })
 
 
@@ -165,6 +168,8 @@ def _rule(event: Event) -> tuple[str, int, str]:
         return "KNOWLEDGE", 2, "INFORM"
     if event_type in {"resource.usage_recorded", "provider.usage_recorded"}:
         return "COST", 3, "INFORM"
+    if event_type == "verification.accepted":
+        return "VERIFICATION", 4, "INFORM"
     # V5 effect truth is useful to an owner only after it is reduced to the
     # durable attempt/lineage state.  Raw provider content never changes the
     # category or authority of an item.

@@ -2,18 +2,21 @@
 
 Verification lifecycle is append-only via ``verification.started`` and
 ``verification.passed`` / ``verification.failed`` / ``verification.blocked``
-events, projected into ``verification_verdicts`` (schema v3). Independence
-metadata (builder vs verifier provider identity, diversity, same-provider
-limitation) is recorded at start — never retrofitted.
+events, projected into ``verification_verdicts`` (schema v3). A separate
+``verification.accepted`` receipt records the existing AcceptanceGate
+decision; raw PASS is never final truth. Independence metadata (builder vs
+verifier provider identity, diversity, same-provider limitation) is recorded
+at start — never retrofitted.
 """
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Mapping
 
 from ..database import FoundryDatabase
 from ..events import Event
 
 SUBJECT_STEP = "mission_step"
+ACCEPTANCE_EVENT = "verification.accepted"
 
 
 def start_verification(
@@ -91,6 +94,71 @@ def record_verification_outcome(
         idempotency_key=f"{event_type}:{verdict_id}",
     )
     database.append(event)
+
+
+def record_verification_acceptance(
+    database: FoundryDatabase,
+    *,
+    verdict_id: str,
+    mission_id: str,
+    step_id: str,
+    builder_run_id: str,
+    verifier_run_id: str,
+    checks: Mapping[str, Any],
+    source_id: str = "mission-loop",
+) -> None:
+    """Record the existing AcceptanceGate decision as an immutable receipt.
+
+    This is deliberately not another gate or readiness authority.  Consumers
+    that need final verification truth can require this receipt instead of
+    treating the preliminary ``verification.passed`` event as terminal.
+    """
+
+    if verdict_id in accepted_verifications(database):
+        return
+
+    event = Event.create(
+        ACCEPTANCE_EVENT,
+        {
+            "decision": "ACCEPT",
+            "verdict_id": verdict_id,
+            "mission_id": mission_id,
+            "subject_type": SUBJECT_STEP,
+            "subject_id": step_id,
+            "builder_run_id": builder_run_id,
+            "verifier_run_id": verifier_run_id,
+            "checks": dict(checks),
+        },
+        source_type="supervisor",
+        source_id=source_id,
+        idempotency_key=f"{ACCEPTANCE_EVENT}:{verdict_id}",
+    )
+    database.append(event)
+
+
+def accepted_verifications(
+    database: FoundryDatabase,
+    *,
+    mission_id: str | None = None,
+) -> dict[str, dict[str, Any]]:
+    """Return durable AcceptanceGate receipts keyed by verdict id."""
+
+    accepted: dict[str, dict[str, Any]] = {}
+    for event in database.events(event_types=(ACCEPTANCE_EVENT,), readonly=True):
+        payload = event.payload if isinstance(event.payload, Mapping) else {}
+        if payload.get("decision") != "ACCEPT":
+            continue
+        if mission_id is not None and str(payload.get("mission_id")) != str(mission_id):
+            continue
+        verdict_id = str(payload.get("verdict_id") or "").strip()
+        if not verdict_id:
+            continue
+        accepted[verdict_id] = {
+            **dict(payload),
+            "acceptance_event_id": event.event_id,
+            "accepted_at": event.occurred_at,
+        }
+    return accepted
 
 
 def latest_verdict_for_step(database: FoundryDatabase, mission_id: str, step_id: str) -> dict | None:

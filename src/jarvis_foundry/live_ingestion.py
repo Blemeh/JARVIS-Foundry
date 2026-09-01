@@ -31,7 +31,7 @@ from .events import Event
 from .knowledge_extract import extract_statements
 
 _MISSION_DEFAULT = "mission-wfm-optimizer"
-_EVENT_TYPES = ("verification.passed", "verification.failed",
+_EVENT_TYPES = ("verification.accepted", "verification.failed",
                 "evidence.created", "mission.completed", "step.completed",
                 "fault_injection.completed")
 _MAX_STATEMENT = 300

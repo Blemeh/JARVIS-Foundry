@@ -7,6 +7,11 @@ import pytest
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.discovery_candidates import approve_candidate, generate_candidate
 from jarvis_foundry.events import Event
+from jarvis_foundry.mission.verification import (
+    record_verification_acceptance,
+    record_verification_outcome,
+    start_verification,
+)
 from jarvis_foundry.v3_outcomes import (
     maintenance_scan_hook,
     outcome_for_mission,
@@ -40,6 +45,33 @@ def _linked(db, label: str):
         {"mission_id": mission_id, "outcome": "PASSED", "objective": label},
         source_type="supervisor", source_id="test",
         idempotency_key=f"test:completed:{mission_id}"))
+    verdict_id = f"verdict-{mission_id}"
+    start_verification(
+        db,
+        verdict_id=verdict_id,
+        mission_id=mission_id,
+        step_id="step-1",
+        builder_run_id=f"builder-{mission_id}",
+        verifier_run_id=f"verifier-{mission_id}",
+        independence={"session_independent": True},
+        criteria=["durable pass"],
+    )
+    record_verification_outcome(
+        db,
+        verdict_id=verdict_id,
+        outcome="PASS",
+        findings=[],
+        evidence={"durable": True},
+    )
+    record_verification_acceptance(
+        db,
+        verdict_id=verdict_id,
+        mission_id=mission_id,
+        step_id="step-1",
+        builder_run_id=f"builder-{mission_id}",
+        verifier_run_id=f"verifier-{mission_id}",
+        checks={"durable": "accepted"},
+    )
     return candidate_id, mission_id
 
 
@@ -147,6 +179,33 @@ def test_mission_to_candidate_outcome_linkage(tmp_path):
         {"mission_id": mission_id, "outcome": "PASSED"},
         source_type="supervisor", source_id="test",
         idempotency_key=f"test:completed:{mission_id}"))
+    verdict_id = f"verdict-{mission_id}"
+    start_verification(
+        database,
+        verdict_id=verdict_id,
+        mission_id=mission_id,
+        step_id="step-1",
+        builder_run_id=f"builder-{mission_id}",
+        verifier_run_id=f"verifier-{mission_id}",
+        independence={"session_independent": True},
+        criteria=["durable pass"],
+    )
+    record_verification_outcome(
+        database,
+        verdict_id=verdict_id,
+        outcome="PASS",
+        findings=[],
+        evidence={"durable": True},
+    )
+    record_verification_acceptance(
+        database,
+        verdict_id=verdict_id,
+        mission_id=mission_id,
+        step_id="step-1",
+        builder_run_id=f"builder-{mission_id}",
+        verifier_run_id=f"verifier-{mission_id}",
+        checks={"durable": "accepted"},
+    )
     record_outcome(
         database, candidate_id=generated["candidate_id"],
         mission_id=mission_id, mission_outcome="PASSED",

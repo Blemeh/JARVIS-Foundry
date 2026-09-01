@@ -138,6 +138,12 @@ def test_next_executable_contract_skips_passed_steps(tmp_path):
         source_type="supervisor", source_id="mission-loop",
         idempotency_key="verification.passed:v-a",
     ))
+    database.append(Event.create(
+        "verification.accepted",
+        {"decision": "ACCEPT", "verdict_id": "v-a", "mission_id": "mission-1"},
+        source_type="supervisor", source_id="mission-loop",
+        idempotency_key="verification.accepted:v-a",
+    ))
     assert next_executable_contract(database, "mission-1").step_id == "step-b"
     assert latest_contract(database, "mission-1", step_id="step-a") == first
 

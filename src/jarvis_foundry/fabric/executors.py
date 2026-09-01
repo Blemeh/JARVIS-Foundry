@@ -382,21 +382,31 @@ def _github_write(
 ) -> dict[str, Any]:
     """Run one explicit write with stable identity and optional readback."""
 
-    if ctx.github_write_adapter is not None:
-        return ctx.github_write_adapter.write(action_kind, endpoint, request)
-    transport = ctx.github_write
-    if transport is None:
-        raise FabricError(f"{action_kind} requires an explicit write transport")
-    # Preserve the historical callback shape while reusing one lifecycle
-    # adapter for this executor context. Durable dedupe belongs to the
-    # existing effect/ledger spine, while this cached adapter prevents a
-    # second provider request during an ambiguous in-process retry.
-    adapter = GitHubWriteAdapter(
-        transport=transport,
-        read_transport=ctx.github_api,
-    )
-    ctx.github_write_adapter = adapter
-    return adapter.write(action_kind, endpoint, request)
+    adapter = ctx.github_write_adapter
+    if adapter is None:
+        transport = ctx.github_write
+        if transport is None:
+            raise FabricError(f"{action_kind} requires an explicit write transport")
+        # Preserve the historical callback shape while reusing one lifecycle
+        # adapter for this executor context. Durable dedupe belongs to the
+        # existing effect/ledger spine, while this cached adapter prevents a
+        # second provider request during an ambiguous in-process retry.
+        adapter = GitHubWriteAdapter(
+            transport=transport,
+            read_transport=ctx.github_api,
+        )
+        ctx.github_write_adapter = adapter
+    result = adapter.write(action_kind, endpoint, request)
+    # A provider response is only a claim.  When an independent read
+    # transport exists, reconcile the provider identity before Fabric can
+    # accept the action.  Without it the verifier remains NOT_TESTED.
+    if (
+        result.get("claimed") == "COMPLETED"
+        and adapter.read_transport is not None
+        and result.get("reconciled") is not True
+    ):
+        result = adapter.reconcile(str(result.get("idempotency_key") or ""))
+    return result
 
 
 def _browser_connector(payload: Mapping[str, Any]) -> Any:

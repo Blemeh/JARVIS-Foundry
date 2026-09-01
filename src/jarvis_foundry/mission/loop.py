@@ -50,6 +50,7 @@ from .verification import (
     dangling_verdicts_for_run_prefix,
     failed_verdict_count,
     latest_verdict_for_step,
+    record_verification_acceptance,
     record_verification_outcome,
     start_verification,
     verdict_for_verifier_run,
@@ -544,6 +545,17 @@ class MissionLoop:
                     builder_run_id=run_id,
                 )
                 if replay_decision.accepted:
+                    record_verification_acceptance(
+                        self.database,
+                        verdict_id=str(prior.get("verdict_id") or ""),
+                        mission_id=mission_id,
+                        step_id=step_id,
+                        builder_run_id=str(prior.get("builder_run_id") or run_id),
+                        verifier_run_id=str(
+                            prior.get("verifier_run_id") or f"{run_id}-replay"
+                        ),
+                        checks=replay_decision.checks,
+                    )
                     return StepOutcome(
                         outcome=PASSED, step_id=step_id, run_id=run_id,
                         verdict_id=str(prior.get("verdict_id") or ""),
@@ -1064,6 +1076,15 @@ class MissionLoop:
                     verdict_id=verdict_id, findings=[decision.reason],
                     reason=f"acceptance gate refused: {decision.reason}",
                 )
+            record_verification_acceptance(
+                self.database,
+                verdict_id=verdict_id,
+                mission_id=mission_id,
+                step_id=step_id,
+                builder_run_id=run_id,
+                verifier_run_id=getattr(verifier, "session_id", "") or verifier_run_id,
+                checks=decision.checks,
+            )
             # The commit happens while still VERIFYING (only after the PASS
             # verdict is durable); a failed commit blocks from VERIFYING,
             # which the state machine allows. ACCEPTING is entered only when

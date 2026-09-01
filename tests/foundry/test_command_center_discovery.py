@@ -13,6 +13,11 @@ import pytest
 from jarvis_foundry.command_center import build_snapshot
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.events import Event
+from jarvis_foundry.mission.verification import (
+    record_verification_acceptance,
+    record_verification_outcome,
+    start_verification,
+)
 from jarvis_foundry.v3_scoring import DIMENSIONS, POLICY_VERSION, register_policy
 from jarvis_foundry.v3_outcomes import record_outcome
 
@@ -68,6 +73,36 @@ def _mission_row(database, mission_id, created_from, *, state="PLANNED"):
             " updated_at) VALUES (?, ?, 'res', ?, '[]', NULL, ?, ?, ?)",
             (mission_id, f"objective {mission_id}", state, created_from,
              f"m:{mission_id}", "2026-08-22T10:00:00+00:00"))
+
+
+def _accepted_pass(database, mission_id: str) -> None:
+    verdict_id = f"verdict-{mission_id}"
+    start_verification(
+        database,
+        verdict_id=verdict_id,
+        mission_id=mission_id,
+        step_id="step-1",
+        builder_run_id=f"builder-{mission_id}",
+        verifier_run_id=f"verifier-{mission_id}",
+        independence={"session_independent": True},
+        criteria=["durable pass"],
+    )
+    record_verification_outcome(
+        database,
+        verdict_id=verdict_id,
+        outcome="PASS",
+        findings=[],
+        evidence={"durable": True},
+    )
+    record_verification_acceptance(
+        database,
+        verdict_id=verdict_id,
+        mission_id=mission_id,
+        step_id="step-1",
+        builder_run_id=f"builder-{mission_id}",
+        verifier_run_id=f"verifier-{mission_id}",
+        checks={"durable": "accepted"},
+    )
 
 
 def _valid_policy(*, version=POLICY_VERSION, strategic_fit_weight=1.0):
@@ -382,6 +417,7 @@ def test_outcome_predicted_actual_distinct_unknown_honest(db):
     _append(db, "mission.completed",
             {"mission_id": "M-OUT", "outcome": {"technical": "PASSED"}},
             "mission.completed:M-OUT")
+    _accepted_pass(db, "M-OUT")
     record_outcome(
         db, candidate_id="cand-out", mission_id="M-OUT",
         mission_outcome="PASSED",
@@ -398,6 +434,7 @@ def test_outcome_predicted_actual_distinct_unknown_honest(db):
     _append(db, "mission.completed",
             {"mission_id": "M-OUT2", "outcome": {"technical": "PASSED"}},
             "mission.completed:M-OUT2")
+    _accepted_pass(db, "M-OUT2")
     record_outcome(
         db, candidate_id="cand-out2", mission_id="M-OUT2",
         mission_outcome="PASSED",

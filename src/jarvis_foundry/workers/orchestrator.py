@@ -33,6 +33,7 @@ from ..database import FoundryDatabase
 from ..domain import require_transition
 from ..events import Event
 from ..mission.verification import (
+    record_verification_acceptance,
     record_verification_outcome,
 )
 from ..mission.verifier_binding import (
@@ -319,6 +320,17 @@ class HybridStepController:
                 builder_run_id=envelope.run_id,
             )
             if decision.accepted:
+                record_verification_acceptance(
+                    self.database,
+                    verdict_id=existing_verdict_id,
+                    mission_id=contract.mission_id,
+                    step_id=contract.step_id,
+                    builder_run_id=envelope.run_id,
+                    verifier_run_id=str(
+                        reusable.get("verifier_run_id") or f"{envelope.run_id}-replay"
+                    ),
+                    checks=decision.checks,
+                )
                 return "PASS", existing_verdict_id
             # A stale/fabricated historical PASS is not an authorization, but
             # it also must not wedge the mission at FAIL.  Re-open a fresh,
@@ -452,6 +464,15 @@ class HybridStepController:
                 reason=f"acceptance gate refused: {decision.reason}",
             )
             return "FAIL", verdict_id
+        record_verification_acceptance(
+            self.database,
+            verdict_id=verdict_id,
+            mission_id=contract.mission_id,
+            step_id=contract.step_id,
+            builder_run_id=envelope.run_id,
+            verifier_run_id=getattr(result, "session_id", "") or verifier_run_id,
+            checks=decision.checks,
+        )
         return "PASS", verdict_id
 
     # -- main flow ----------------------------------------------------------

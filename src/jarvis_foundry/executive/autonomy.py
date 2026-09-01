@@ -1054,17 +1054,37 @@ def _provider_observation_blockers(
     return tuple(dict.fromkeys(blockers))
 
 
-def _operational_capability_blockers(
+def _fabric_capability_blockers(
     database: FoundryDatabase,
     capability: str,
 ) -> tuple[str, ...]:
-    """Join the authoritative capability registry to provider observations."""
+    """Read Fabric capability readiness from the single catalog authority."""
+
+    from ..fabric.catalog import get_spec, observed_readiness
+
+    spec = get_spec(database, capability)
+    if spec is None:
+        return ()
+    readiness = observed_readiness(database, capability)
+    blockers: list[str] = []
+    if readiness.state.value != "READY":
+        blockers.append(f"capability:{capability}:{readiness.state.value}")
+    for provider_id in spec.provider_deps:
+        blockers.extend(_provider_observation_blockers(database, provider_id))
+    return tuple(dict.fromkeys(blockers))
+
+
+def _legacy_operational_capability_blockers(
+    database: FoundryDatabase,
+    capability: str,
+) -> tuple[str, ...]:
+    """Read the gated pre-Fabric registry only for legacy compatibility ids."""
     try:
         from ..capabilities.registry import discover_capabilities
         rows = discover_capabilities(database)
     except Exception:
-        # A missing/failed registry is an unknown execution precondition.  The
-        # legacy capability-state plane below still supplies its own answer.
+        # A missing/failed compatibility projection is an unknown execution
+        # precondition for the legacy id; Fabric ids never use this path.
         return (f"capability:{capability}:UNKNOWN",)
     matches = [
         row for row in rows
@@ -1097,6 +1117,19 @@ def _operational_capability_blockers(
     return tuple(dict.fromkeys(blockers))
 
 
+def _operational_capability_blockers(
+    database: FoundryDatabase,
+    capability: str,
+) -> tuple[str, ...]:
+    """Use Fabric readiness first; retain the old registry as a fallback only."""
+
+    from ..fabric.catalog import get_spec
+
+    if get_spec(database, capability) is not None:
+        return _fabric_capability_blockers(database, capability)
+    return _legacy_operational_capability_blockers(database, capability)
+
+
 def _capability_blockers(database: FoundryDatabase, step: PlanStep, *, resource_id: str | None = None) -> tuple[str, ...]:
     resource = resource_id or step.resource_id
     if not resource and step.required_capabilities:
@@ -1104,12 +1137,21 @@ def _capability_blockers(database: FoundryDatabase, step: PlanStep, *, resource_
     if not step.required_capabilities:
         return ()
     from .portfolio_bridge import capability_readiness
+    from ..fabric.catalog import get_spec, observed_readiness
     blockers: list[str] = []
     for capability in step.required_capabilities:
+        # Fabric catalog ids are the canonical selection/readiness authority.
+        # Do not let the legacy portfolio or capability registry override it.
+        if get_spec(database, capability) is not None:
+            readiness = observed_readiness(database, capability)
+            if readiness.state.value != "READY":
+                blockers.append(f"{capability}:{readiness.state.value}")
+            blockers.extend(_fabric_capability_blockers(database, capability))
+            continue
         readiness = capability_readiness(database, resource_id=str(resource), capability=capability)
         if not readiness.get("ready", False) or str(readiness.get("state") or "UNKNOWN") in {"UNREGISTERED", "UNKNOWN"}:
             blockers.append(f"{capability}:{readiness.get('state') or 'UNKNOWN'}")
-        blockers.extend(_operational_capability_blockers(database, capability))
+        blockers.extend(_legacy_operational_capability_blockers(database, capability))
     return tuple(dict.fromkeys(blockers))
 
 

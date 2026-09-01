@@ -364,12 +364,17 @@ def next_executable_contract(
     a single unbound contract; this selector is the production owner for
     sequential dispatch.
     """
-    from .verification import latest_verdict_for_step
+    from .verification import accepted_verifications, latest_verdict_for_step
+    accepted = accepted_verifications(database, mission_id=mission_id)
 
     remaining: list[MissionStepContract] = []
     for step_id, contract in latest_contracts_by_step(database, mission_id).items():
         verdict = latest_verdict_for_step(database, mission_id, step_id)
-        if verdict is not None and str(verdict.get("status") or "") == "PASS":
+        if (
+            verdict is not None
+            and str(verdict.get("status") or "") == "PASS"
+            and str(verdict.get("verdict_id") or "") in accepted
+        ):
             continue
         remaining.append(contract)
     remaining.sort(key=lambda item: (item.step_id, item.version))
