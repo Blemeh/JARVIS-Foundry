@@ -655,7 +655,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--evidence-path", type=Path)
     parser.add_argument("--browser-path", type=Path)
     parser.add_argument("--timeout-ms", type=int, default=30_000)
-    parser.add_argument("--max-source-bytes", type=int, default=256 * 1024)
+    parser.add_argument("--max-source-bytes", type=int, default=2 * 1024 * 1024)
     parser.add_argument("--max-extract-chars", type=int, default=32 * 1024)
     return parser
 
