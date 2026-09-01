@@ -163,8 +163,10 @@ def outcome_from_mission(database: FoundryDatabase, mission_id: str) -> dict[str
     with database.connect() as connection:
         verdicts = connection.execute(
             "SELECT verdict_id, status, verdict, findings_json "
-            "FROM verification_verdicts "
-            "WHERE mission_id = ? ORDER BY rowid DESC LIMIT 5",
+            "FROM verification_verdicts v "
+            "LEFT JOIN events e ON e.event_id = v.last_event_id "
+            "WHERE v.mission_id = ? "
+            "ORDER BY COALESCE(e.sequence, v.rowid) DESC LIMIT 5",
             (mission_id,),
         ).fetchall()
         runs = connection.execute(
