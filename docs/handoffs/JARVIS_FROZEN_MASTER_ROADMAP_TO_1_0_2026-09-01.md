@@ -318,7 +318,9 @@ Capability classes used throughout:
 The single V10_EXIT candidate is `V10_EXIT_READY_FOR_PROMOTION` for the next
 authorized rehearsal → promotion → live-validation sequence. Its product
 predecessor is `71d71da3f0998538a579a807a152c4bd9d3282d0`; the exact source tip
-is `4a645c0b939cf1f4d09e37e1cdfd04dba564e179`; the roadmap-authority commit is
+is the V10 audit-fix tip `42bed8e4ee7003d357cfa30ca9d818b667f65189` (built from
+implementation tip `4a645c0b939cf1f4d09e37e1cdfd04dba564e179`); the
+roadmap-authority commit is
 `e9b2155bd669887c4778db0b16a4ef7861d2c9ff`; and the candidate worktree is
 `C:\temp\JARVIS-V10-Exit-20260901` on branch
 `candidate/v10-exit-20260901`.
@@ -331,6 +333,15 @@ owner-authorized live authenticated site was available, so
 `BLOCKED/DEFERRED` without credentials. The execution state remains
 `current_phase=V10_CLOSE`, `current_gate=V10_EXIT`, `gate_status=NOT_PASSED`;
 V11 is not started.
+
+The 2026-09-02 independent authority/truth audit is closed on that tip:
+Fabric/Executive uses `fabric/catalog.py` for Fabric readiness, mutating Fabric
+actions use the existing canonical effect journal and independent readback,
+STOP surfaces converge through `control/broker.py`, and raw
+`verification.passed` cannot become final mission, WorldModel, learning, or
+briefing truth before the exact `verification.accepted` receipt. The legacy
+capability registry remains only a gated compatibility seam for non-Fabric
+callers. No phase or roadmap scope changed.
 
 ## V11 — INITIATIVE (the decisive phase)
 

@@ -20,7 +20,7 @@ meta:
   roadmap_document: "docs/handoffs/JARVIS_FROZEN_MASTER_ROADMAP_TO_1_0_2026-09-01.md"
   roadmap_status: FROZEN
   acceptance_ladder_authoritative: true   # A2-A8 are the only phase gates
-  last_reconciled: "2026-09-01"
+  last_reconciled: "2026-09-02"
 
 observed_repo_state:
   canonical_main: "0cc0cbd9572db39f7754cb90de8a3977db829410"
@@ -32,7 +32,7 @@ observed_repo_state:
   v10_status: "V10_EXIT_READY_FOR_PROMOTION in isolated candidate; live promotion/validation not performed"
   v10_exit:
     predecessor_sha: "71d71da3f0998538a579a807a152c4bd9d3282d0"
-    source_tip: "4a645c0b939cf1f4d09e37e1cdfd04dba564e179"
+    source_tip: "42bed8e4ee7003d357cfa30ca9d818b667f65189"
     branch: "candidate/v10-exit-20260901"
     worktree: "C:\\temp\\JARVIS-V10-Exit-20260901"
     roadmap_authority: "e9b2155bd669887c4778db0b16a4ef7861d2c9ff"
@@ -119,8 +119,9 @@ elapsed_proving_policy: >
 
 capability_authority: >
   The Capability Fabric Catalog (fabric/catalog.py) is the single canonical
-  capability/readiness authority. capabilities/registry.py may persist only as
-  a read-only compatibility projection. Never two writable authorities.
+  capability/readiness authority. capabilities/registry.py may retain gated
+  legacy compatibility records for non-Fabric callers, but never governs a
+  Fabric capability or Executive readiness decision. Never two authorities.
 
 update_log:
   - date: "2026-09-01"
@@ -131,5 +132,12 @@ update_log:
     session: "candidate/v10-exit-20260901"
     predecessor_sha: "71d71da3f0998538a579a807a152c4bd9d3282d0"
     source_tip: "4a645c0b939cf1f4d09e37e1cdfd04dba564e179"
+    roadmap_authority: "e9b2155bd669887c4778db0b16a4ef7861d2c9ff"
+    evidence_root: "C:\\temp\\JARVIS-V10-Exit-20260901-evidence-exact"
+  - date: "2026-09-02"
+    change: "V10_EXIT independent authority/truth audit closed capability authority, Fabric effect identity/readback, STOP convergence, and preliminary-verifier truth findings; no live mutation"
+    session: "candidate/v10-exit-20260901"
+    predecessor_sha: "71d71da3f0998538a579a807a152c4bd9d3282d0"
+    source_tip: "42bed8e4ee7003d357cfa30ca9d818b667f65189"
     roadmap_authority: "e9b2155bd669887c4778db0b16a4ef7861d2c9ff"
     evidence_root: "C:\\temp\\JARVIS-V10-Exit-20260901-evidence-exact"
