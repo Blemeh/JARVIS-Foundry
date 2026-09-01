@@ -16,6 +16,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Mapping
 
+from ..control.broker import emergency_stop_reason
+from ..control.redaction import redact_text
 from ..connectors.filesystem import FilesystemConnector
 from ..connectors.git import GitConnector
 from ..connectors.github_research import GitHubResearchConnector
@@ -26,6 +28,7 @@ from ..connectors.local_artifacts import (
 )
 from ..connectors.github_write import GitHubWriteAdapter
 from ..database import FoundryDatabase
+from ..effects import execute_fabric_effect
 from .model import ClaimOutcome, FabricError
 
 
@@ -394,6 +397,353 @@ def _github_write(
     )
     ctx.github_write_adapter = adapter
     return adapter.write(action_kind, endpoint, request)
+
+
+def _browser_connector(payload: Mapping[str, Any]) -> Any:
+    from ..connectors.web_research import PlaywrightBrowserConnector
+
+    allowed_hosts = payload.get("allowed_hosts")
+    if isinstance(allowed_hosts, str):
+        allowed_hosts = (allowed_hosts,)
+    return PlaywrightBrowserConnector(
+        browser_name=str(payload.get("browser_name") or "chromium"),
+        headless=bool(payload.get("headless", True)),
+        timeout_ms=int(payload.get("timeout_ms") or 30_000),
+        allowed_hosts=allowed_hosts,
+        allow_insecure_localhost=bool(payload.get("allow_insecure_localhost", False)),
+    )
+
+
+def _browser_stop_check(
+    ctx: ExecutorContext, payload: Mapping[str, Any],
+) -> Callable[[], bool]:
+    identities = {"GLOBAL"}
+    for key in ("mission_id", "workflow_id", "stop_scope"):
+        value = payload.get(key)
+        values = (value,) if isinstance(value, str) else (value or ())
+        identities.update(str(item) for item in values if str(item).strip())
+
+    def check() -> bool:
+        return bool(emergency_stop_reason(
+            ctx.database,
+            payload.get("stop_path"),
+            identities=identities,
+        ))
+
+    return check
+
+
+def _browser_session_kwargs(payload: Mapping[str, Any]) -> dict[str, Any]:
+    kwargs: dict[str, Any] = {
+        "profile_id": str(payload.get("profile_id") or "default"),
+        "owner_scope": str(payload.get("owner_scope") or "owner-local"),
+        "persist_session": bool(payload.get("persist_session", True)),
+        "credential_reference": payload.get("credential_reference"),
+        "auth_marker": payload.get("auth_marker"),
+        "expired_url_prefixes": payload.get("expired_url_prefixes"),
+        "reauthenticate": payload.get("reauthenticate"),
+        "allowed_action_methods": payload.get("allowed_action_methods") or ("POST",),
+        "max_action_requests": int(payload.get("max_action_requests") or 8),
+    }
+    for key in ("site_origin", "session_state_path", "session_ref"):
+        if payload.get(key) is not None:
+            kwargs[key] = payload[key]
+    return kwargs
+
+
+def _browser_attempt_payload(
+    attempt: Any,
+    *,
+    page: Any | None = None,
+    session: Any | None = None,
+    effect_id: str | None = None,
+    session_persisted: bool | None = None,
+) -> dict[str, Any]:
+    after = dict(attempt.after_state or {})
+    before = dict(attempt.before_state or {})
+    status = None
+    if session is not None:
+        try:
+            status = session.session_status().to_evidence()
+        except Exception:
+            status = None
+    page_evidence = page.to_evidence() if page is not None else {}
+    outcome = str(attempt.outcome or "UNKNOWN")
+    if outcome == "COMPLETED":
+        claimed = "COMPLETED"
+    elif outcome == "FAILED":
+        claimed = "FAILED"
+    elif outcome == "BLOCKED":
+        claimed = "BLOCKED"
+    elif outcome == "CANCELLED" and attempt.error_code == "stop_requested":
+        claimed = "BLOCKED"
+    else:
+        claimed = "UNKNOWN"
+    result: dict[str, Any] = {
+        "claimed": claimed,
+        "attempt_id": attempt.attempt_id,
+        "connector_id": attempt.connector_id,
+        "target_ref": attempt.target_ref,
+        "idempotency_key": attempt.idempotency_key,
+        "payload_hash": attempt.payload_hash,
+        "final_url": after.get("final_url") or attempt.provider_ref,
+        "status": page_evidence.get("status") or after.get("status"),
+        "source_sha256": page_evidence.get("source_sha256"),
+        "source_bytes": page_evidence.get("source_bytes"),
+        "document_id": page_evidence.get("document_id") or before.get("document_id"),
+        "page_revision": after.get("page_revision") or page_evidence.get("page_revision"),
+        "structural_hash": after.get("structural_hash") or page_evidence.get("structural_hash"),
+        "target_id": after.get("target_id") or before.get("target_id"),
+        "action": after.get("action") or before.get("action"),
+        "readback": after.get("readback"),
+        "readback_verified": bool(after.get("readback_verified")),
+        "session": status,
+        "session_persisted": session_persisted,
+        "authority": "DATA_ONLY",
+        "provider_ref": attempt.provider_ref,
+        "reconciled": bool(attempt.reconciled),
+        "performed": bool(
+            attempt.outcome == "COMPLETED"
+            or after.get("action_request_seen")
+        ),
+        "action_request_count": after.get("action_request_count", 0),
+        "action_request_seen": bool(after.get("action_request_seen")),
+        "effect_id": effect_id,
+        "error_code": attempt.error_code,
+        "evidence_refs": list(attempt.evidence_refs),
+        "cost": dict(attempt.cost),
+    }
+    if page is not None:
+        result["redirects"] = list(page.redirects)
+        result["target_count"] = page.target_count
+    return result
+
+
+def browser_read(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Read one bounded page through the existing Playwright substrate."""
+
+    from ..connectors.web_research import WebResearchError
+
+    url = str(payload.get("url") or payload.get("target_ref") or "")
+    stop_check = _browser_stop_check(ctx, payload)
+    session_requested = any(
+        payload.get(key) is not None
+        for key in (
+            "session_state_path", "site_origin", "auth_marker",
+            "credential_reference",
+        )
+    )
+    try:
+        connector = _browser_connector(payload)
+        if session_requested:
+            with connector.session(
+                stop_check=stop_check,
+                **_browser_session_kwargs(payload),
+            ) as session:
+                capture = session.navigate(url)
+                status = session.session_status()
+                if bool(payload.get("require_authenticated")):
+                    if payload.get("auth_marker") is None:
+                        return {
+                            "claimed": "BLOCKED",
+                            "error_code": "auth_marker_required",
+                            "session": status.to_evidence(),
+                            "authority": "DATA_ONLY",
+                        }
+                    status = session.ensure_authenticated()
+                    if not status.authenticated:
+                        return {
+                            "claimed": "BLOCKED",
+                            "error_code": "session_expired" if status.state == "EXPIRED"
+                            else "session_not_authenticated",
+                            "session": status.to_evidence(),
+                            "authority": "DATA_ONLY",
+                        }
+                return _browser_attempt_payload(
+                    capture.attempt, page=capture.page, session=session,
+                ) | {
+                    "claimed": (
+                        capture.attempt.outcome
+                        if capture.attempt.outcome in {"COMPLETED", "FAILED"}
+                        else "BLOCKED"
+                        if capture.attempt.error_code == "stop_requested"
+                    else "UNKNOWN",
+                    ),
+                    "authority": "DATA_ONLY",
+                }
+        capture = connector.read(url, stop_check=stop_check)
+        return _browser_attempt_payload(capture.attempt, page=capture.page) | {
+            "claimed": capture.attempt.outcome
+            if capture.attempt.outcome in {"COMPLETED", "FAILED"}
+            else "BLOCKED" if capture.attempt.error_code == "stop_requested"
+            else "UNKNOWN",
+            "authority": "DATA_ONLY",
+        }
+    except (ImportError, WebResearchError, TypeError, ValueError) as error:
+        return {
+            "claimed": "FAILED",
+            "error_code": "browser_configuration_error",
+            "detail": redact_text(str(error))[:300],
+            "authority": "DATA_ONLY",
+        }
+
+
+def browser_execute(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Run one bounded browser action under the canonical effect journal."""
+
+    from ..connectors.web_research import BrowserTargetError, WebResearchError
+
+    identity = payload.get("_adapter_request")
+    identity = identity if isinstance(identity, Mapping) else {}
+    url = str(payload.get("url") or payload.get("target_ref") or "")
+    target_id = str(payload.get("target_id") or "")
+    role = str(payload.get("role") or "")
+    name = str(payload.get("name") or "")
+    action = str(payload.get("action") or "click")
+    browser_identity = {
+        "url": url,
+        "target_id": target_id,
+        "role": role,
+        "name": name,
+        "action": action,
+        "value": payload.get("value"),
+    }
+    fallback_hash = hashlib.sha256(
+        json.dumps(browser_identity, sort_keys=True, default=str).encode("utf-8")
+    ).hexdigest()
+    effect_id = str(identity.get("effect_id") or payload.get("effect_id") or "")
+    action_key = effect_id or str(
+        payload.get("idempotency_key") or f"browser-effect:{fallback_hash}"
+    )
+    idempotency_key = str(
+        identity.get("idempotency_key")
+        or payload.get("idempotency_key")
+        or action_key
+    )
+    request_hash = str(identity.get("input_hash") or "")
+    if len(request_hash) != 64:
+        request_hash = hashlib.sha256(
+            json.dumps(dict(payload), sort_keys=True, default=str).encode("utf-8")
+        ).hexdigest()
+    before = {
+        "url": url,
+        "target_id": target_id,
+        "role": role,
+        "name": name,
+        "action": action,
+        "authority": "DATA_ONLY",
+    }
+    stop_check = _browser_stop_check(ctx, payload)
+    try:
+        connector = _browser_connector(payload)
+    except (ImportError, WebResearchError, TypeError, ValueError) as error:
+        return {
+            "claimed": "FAILED",
+            "error_code": "browser_configuration_error",
+            "detail": redact_text(str(error))[:300],
+            "authority": "DATA_ONLY",
+        }
+    state_path = payload.get("session_state_path")
+    state_path = (
+        Path(state_path).expanduser().resolve(strict=False)
+        if state_path else None
+    )
+    metadata_path = Path(f"{state_path}.meta.json") if state_path else None
+    persisted = False
+
+    def perform() -> Mapping[str, Any]:
+        nonlocal persisted
+        try:
+            with connector.session(
+                stop_check=stop_check,
+                **_browser_session_kwargs(payload),
+            ) as session:
+                capture = session.navigate(url)
+                if not capture.success:
+                    return _browser_attempt_payload(
+                        capture.attempt, page=capture.page, session=session,
+                        effect_id=effect_id or None,
+                    )
+                if bool(payload.get("require_authenticated")):
+                    if payload.get("auth_marker") is None:
+                        return {
+                            "claimed": "BLOCKED",
+                            "error_code": "auth_marker_required",
+                            "session": session.session_status().to_evidence(),
+                            "authority": "DATA_ONLY",
+                        }
+                    auth = session.ensure_authenticated()
+                    if not auth.authenticated:
+                        return {
+                            "claimed": "BLOCKED",
+                            "error_code": "session_expired" if auth.state == "EXPIRED"
+                            else "session_not_authenticated",
+                            "session": auth.to_evidence(),
+                            "authority": "DATA_ONLY",
+                        }
+                target = session.discover_target(
+                    target_id=target_id,
+                    role=role,
+                    name=name,
+                    action=action,
+                )
+                attempt = session.execute(
+                    target,
+                    value=payload.get("value"),
+                    stop_check=stop_check,
+                    effect_id=effect_id or None,
+                    idempotency_key=idempotency_key,
+                    readback_target=(
+                        payload.get("readback_target")
+                        if isinstance(payload.get("readback_target"), Mapping)
+                        else None
+                    ),
+                )
+                result = _browser_attempt_payload(
+                    attempt,
+                    page=capture.page,
+                    session=session,
+                    effect_id=effect_id or None,
+                )
+            persisted = bool(
+                state_path is not None
+                and metadata_path is not None
+                and state_path.is_file()
+                and metadata_path.is_file()
+            )
+            result["session_persisted"] = persisted
+            return result
+        except BrowserTargetError as error:
+            return {
+                "claimed": "FAILED",
+                "error_code": "browser_target_error",
+                "detail": redact_text(str(error))[:300],
+                "authority": "DATA_ONLY",
+            }
+        except (ImportError, WebResearchError) as error:
+            return {
+                "claimed": "FAILED",
+                "error_code": "browser_configuration_error",
+                "detail": redact_text(str(error))[:300],
+                "authority": "DATA_ONLY",
+            }
+
+    return execute_fabric_effect(
+        ctx.database,
+        action_key=action_key,
+        system_id="browser",
+        target_ref=url or "browser:unknown",
+        payload_hash=request_hash,
+        kind="browser.web.execute",
+        connector_id=connector.spec.connector_id,
+        before_state_capture=before,
+        expected_effects=("bounded browser action",),
+        action_id=str(identity.get("request_id") or action_key),
+        request_identity=identity,
+        perform=perform,
+        stop_check=stop_check,
+        claim_ttl_s=float(payload.get("claim_ttl_s") or 300.0),
+    )
 
 
 def http_read(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -854,6 +1204,8 @@ HANDLERS: dict[str, Callable[[ExecutorContext, Mapping[str, Any]], dict[str, Any
     "http.read": http_read,
     "http.write": http_write,
     "http.doc.read": http_doc_read,
+    "browser.web.read": browser_read,
+    "browser.web.execute": browser_execute,
     "system.diagnose": system_diagnose,
     "system.runtime": system_runtime,
     "tests.run": tests_run,

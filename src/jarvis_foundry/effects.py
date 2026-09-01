@@ -18,11 +18,12 @@ import math
 import time
 import uuid
 from enum import StrEnum
-from typing import Any, Callable
+from typing import Any, Callable, Mapping
 
 from .control.broker import (BrokerDecision, PolicyBroker,
                              resolve_envelope_targets)
-from .control.redaction import redact_text
+from .control.redaction import contains_secret_like, redact_text
+from .clock import isoformat
 from .database import FoundryDatabase
 from .domain import ActionEnvelope
 from .events import Event, canonical_json, payload_hash
@@ -461,6 +462,293 @@ def execute_effect(
                           f"action:{envelope.action_id}"]}, "completed")
     return {"outcome": COMPLETED, "action_key": key, "reaped": False,
             "after_state": after_state}
+
+
+def _fabric_effect_result(
+    database: FoundryDatabase,
+    action_key: str,
+    *,
+    status: str,
+) -> dict[str, Any] | None:
+    """Return the safe result recorded by a Fabric-owned journal transition."""
+
+    event_types = (
+        "system.action_completed",
+        "system.action_failed",
+        "effect.frozen",
+    )
+    candidates: list[dict[str, Any]] = []
+    for event_type in event_types:
+        candidates.extend(_event_payloads(database, event_type, action_key))
+    if not candidates:
+        return None
+    candidate = min(candidates, key=lambda item: int(item.get("_sequence", 0)))
+    raw = candidate.get("result")
+    if not isinstance(raw, Mapping):
+        return None
+    result = dict(raw)
+    result.setdefault("claimed", "UNKNOWN" if status == FROZEN else status)
+    result.update({
+        "action_key": action_key,
+        "journal_state": status,
+        "performed": False,
+        "replayed": True,
+    })
+    return result
+
+
+def execute_fabric_effect(
+    database: FoundryDatabase,
+    *,
+    action_key: str,
+    system_id: str,
+    target_ref: str,
+    payload_hash: str,
+    kind: str,
+    connector_id: str,
+    before_state_capture: Mapping[str, Any] | None = None,
+    expected_effects: tuple[str, ...] = (),
+    action_id: str | None = None,
+    request_identity: Mapping[str, Any] | None = None,
+    perform: Callable[[], Mapping[str, Any]],
+    stop_check: Callable[[], bool] | None = None,
+    claim_ttl_s: float = _DEFAULT_CLAIM_TTL_S,
+) -> dict[str, Any]:
+    """Run a Fabric adapter through the canonical V5 effect journal.
+
+    Fabric already owns capability selection and V10 owns request identity.
+    This helper supplies the missing durable claim at that seam by reusing
+    system_actions and the existing effect events.  It is not a second
+    journal: the same STARTED/COMPLETED/FAILED/FROZEN projection and
+    crash-reap rules are used for browser effects.
+    """
+
+    key = str(action_key)
+    identity = dict(request_identity or {})
+    if identity:
+        try:
+            encoded_identity = canonical_json(identity)
+        except (TypeError, ValueError) as error:
+            raise ValueError("Fabric effect request identity must be JSON-safe") from error
+        if (
+            len(encoded_identity.encode("utf-8")) > 16 * 1024
+            or contains_secret_like(encoded_identity)
+        ):
+            raise ValueError("Fabric effect request identity is unsafe to persist")
+    if stop_check is not None and stop_check():
+        return {
+            "claimed": "BLOCKED",
+            "action_key": key,
+            "journal_state": "NOT_STARTED",
+            "performed": False,
+            "replayed": False,
+            "error_code": "stop_requested",
+        }
+    state = effect_state(database, key)
+    if state.get("status") in _TERMINAL:
+        recorded = _fabric_effect_result(
+            database, key, status=str(state["status"]),
+        )
+        if recorded is not None:
+            return recorded
+        return {
+            "claimed": "UNKNOWN" if state["status"] == FROZEN else state["status"],
+            "action_key": key,
+            "journal_state": state["status"],
+            "performed": False,
+            "replayed": True,
+            "error_code": "terminal_effect_recorded",
+        }
+    claim_mode, observed = _claim_effect(
+        database,
+        action_key=key,
+        start_payload={
+            "action_key": key,
+            "system_id": str(system_id),
+            "target_ref": str(target_ref),
+            "payload_hash": str(payload_hash),
+            "kind": str(kind),
+            "connector_id": str(connector_id),
+                "before_state_capture": dict(before_state_capture or {}),
+                "expected_effects": list(expected_effects),
+                "action_id": action_id,
+                "request_identity": identity,
+            },
+        claim_token=uuid.uuid4().hex,
+        claim_ttl_s=claim_ttl_s,
+    )
+    if claim_mode == "TERMINAL":
+        recorded = _fabric_effect_result(
+            database, key, status=str(observed.get("status") or FROZEN),
+        )
+        return recorded or {
+            "claimed": "UNKNOWN",
+            "action_key": key,
+            "journal_state": str(observed.get("status") or FROZEN),
+            "performed": False,
+            "replayed": True,
+            "error_code": "terminal_effect_recorded",
+        }
+    if claim_mode == "ACTIVE":
+        return {
+            "claimed": "UNKNOWN",
+            "action_key": key,
+            "journal_state": STARTED,
+            "performed": False,
+            "replayed": False,
+            "error_code": "effect_claim_active",
+        }
+    if claim_mode == "STALE":
+        _append(database, "effect.crash_reaped", {
+            "action_key": key,
+            "connector_id": str(connector_id),
+            "system_id": str(system_id),
+            "target_ref": str(target_ref),
+            "payload_hash": str(payload_hash),
+            "reaped_at": isoformat(),
+        }, "crash")
+        _append(database, "effect.frozen", {
+            "action_key": key,
+            "reason": (
+                "crash between browser action start and completion — "
+                "effect may or may not have landed; no second execution"
+            ),
+            "connector_id": str(connector_id),
+        }, "frozen")
+        return {
+            "claimed": "UNKNOWN",
+            "action_key": key,
+            "journal_state": FROZEN,
+            "performed": False,
+            "replayed": False,
+            "reaped": True,
+            "error_code": "crash_reaped",
+        }
+
+    try:
+        raw = perform()
+        if not isinstance(raw, Mapping):
+            raise TypeError("Fabric effect performer must return an object")
+        result = dict(raw)
+        encoded = canonical_json(result)
+        if len(encoded.encode("utf-8")) > 128 * 1024 or contains_secret_like(encoded):
+            raise ValueError("Fabric effect result is unsafe to persist")
+        claimed = str(result.get("claimed") or result.get("outcome") or "UNKNOWN").upper()
+        result["claimed"] = claimed
+        result["action_key"] = key
+        result["performed"] = bool(
+            result.get("performed")
+            if "performed" in result
+            else claimed == "COMPLETED"
+        )
+        result["replayed"] = False
+    except TimeoutError as error:
+        result = {
+            "claimed": "UNKNOWN",
+            "action_key": key,
+            "performed": False,
+            "replayed": False,
+            "error_code": "timeout_after_action",
+            "detail": redact_text(str(error))[:300],
+        }
+        _append(database, "effect.reconcile_pending", {
+            "action_key": key,
+            "system_id": str(system_id),
+            "target_ref": str(target_ref),
+            "payload_hash": str(payload_hash),
+            "kind": str(kind),
+            "reason": "Fabric effect performer timed out",
+            "provider_state": "UNKNOWN",
+            "result": result,
+        }, "pending.timeout", full_payload_key=True)
+        _append(database, "effect.frozen", {
+            "action_key": key,
+            "reason": "browser effect timed out after claim; reconcile before retry",
+            "connector_id": str(connector_id),
+            "result": result,
+        }, "frozen.timeout", full_payload_key=True)
+        result["journal_state"] = FROZEN
+        return result
+    except BaseException as error:  # noqa: BLE001 - journal every failure
+        result = {
+            "claimed": "FAILED",
+            "action_key": key,
+            "performed": False,
+            "replayed": False,
+            "error_code": "effect_performer_failed",
+            "detail": redact_text(str(error))[:300],
+        }
+        _append(database, "system.action_failed", {
+            "action_key": key,
+            "system_id": str(system_id),
+            "target_ref": str(target_ref),
+            "payload_hash": str(payload_hash),
+            "kind": str(kind),
+            "reason": redact_text(str(error))[:300],
+            "result": result,
+        }, "failed")
+        result["journal_state"] = FAILED
+        return result
+
+    if claimed == "COMPLETED":
+        _append(database, "system.action_completed", {
+            "action_key": key,
+            "system_id": str(system_id),
+            "target_ref": str(target_ref),
+            "payload_hash": str(payload_hash),
+            "kind": str(kind),
+            "connector_id": str(connector_id),
+            "after_state": encoded,
+            "result": result,
+            "evidence_refs": [f"connector:{connector_id}"],
+        }, "completed")
+        result["journal_state"] = COMPLETED
+        return result
+    if claimed == "BLOCKED":
+        _append(database, "system.action_failed", {
+            "action_key": key,
+            "system_id": str(system_id),
+            "target_ref": str(target_ref),
+            "payload_hash": str(payload_hash),
+            "kind": str(kind),
+            "reason": str(result.get("error_code") or "blocked"),
+            "result": result,
+        }, "blocked")
+        result["performed"] = False
+        result["journal_state"] = FAILED
+        return result
+    if claimed == "UNKNOWN" or result.get("ambiguous"):
+        result["claimed"] = "UNKNOWN"
+        _append(database, "effect.reconcile_pending", {
+            "action_key": key,
+            "system_id": str(system_id),
+            "target_ref": str(target_ref),
+            "payload_hash": str(payload_hash),
+            "kind": str(kind),
+            "reason": str(result.get("error_code") or "ambiguous_browser_effect"),
+            "provider_state": "UNKNOWN",
+            "result": result,
+        }, "pending.ambiguous", full_payload_key=True)
+        _append(database, "effect.frozen", {
+            "action_key": key,
+            "reason": "browser effect outcome is ambiguous; reconcile before retry",
+            "connector_id": str(connector_id),
+            "result": result,
+        }, "frozen.ambiguous", full_payload_key=True)
+        result["journal_state"] = FROZEN
+        return result
+    result["claimed"] = "FAILED"
+    _append(database, "system.action_failed", {
+        "action_key": key,
+        "system_id": str(system_id),
+        "target_ref": str(target_ref),
+        "payload_hash": str(payload_hash),
+        "kind": str(kind),
+        "reason": str(result.get("error_code") or "effect_failed"),
+        "result": result,
+    }, "failed.result")
+    result["journal_state"] = FAILED
+    return result
 
 
 def freeze_effect(database: FoundryDatabase, action_key: str, *,

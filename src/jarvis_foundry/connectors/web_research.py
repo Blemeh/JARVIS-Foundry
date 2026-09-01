@@ -21,7 +21,7 @@ import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Sequence
+from typing import Any, Callable, Mapping, Sequence
 from urllib.parse import urlsplit
 
 from ..clock import isoformat
@@ -42,8 +42,12 @@ MAX_TARGET_ID_LENGTH = 128
 MAX_TARGET_NAME_LENGTH = 512
 MAX_URL_LENGTH = 2048
 MAX_REDIRECTS = 5
+MAX_SESSION_STATE_BYTES = 8 * 1024 * 1024
+MAX_SESSION_METADATA_BYTES = 16 * 1024
+MAX_ACTION_REQUESTS = 8
 _LOCAL_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
 _IDENTITY = re.compile(r"^[A-Za-z][A-Za-z0-9_.:/-]*$")
+_OPAQUE_REFERENCE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/-]{2,255}$")
 
 
 class WebResearchError(ValueError):
@@ -107,6 +111,50 @@ class BrowserReadResult:
         return {
             "attempt": self.attempt.to_evidence(),
             "page": self.page.to_evidence() if self.page else None,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class BrowserSessionStatus:
+    """Safe observation of one bound browser session.
+
+    Storage state is deliberately not exposed.  The state file is consumed
+    only by Playwright; durable receipts carry this reference and its hash,
+    never cookies, headers, tokens, or credential material.
+    """
+
+    state: str
+    session_ref: str
+    profile_id: str
+    site_origin: str
+    owner_scope: str
+    restored: bool
+    storage_state_present: bool
+    checked_at: str
+    current_url: str | None = None
+    auth_marker_found: bool | None = None
+    state_sha256: str | None = None
+    reason: str | None = None
+
+    @property
+    def authenticated(self) -> bool:
+        return self.state == "AUTHENTICATED"
+
+    def to_evidence(self) -> dict[str, Any]:
+        return {
+            "state": self.state,
+            "session_ref": self.session_ref,
+            "profile_id": self.profile_id,
+            "site_origin": self.site_origin,
+            "owner_scope": self.owner_scope,
+            "restored": self.restored,
+            "storage_state_present": self.storage_state_present,
+            "checked_at": self.checked_at,
+            "current_url": _safe_url_ref(self.current_url)
+            if self.current_url else None,
+            "auth_marker_found": self.auth_marker_found,
+            "state_sha256": self.state_sha256,
+            "reason": redact_text(str(self.reason or ""))[:300] or None,
         }
 
 
@@ -189,6 +237,62 @@ def _safe_identity(value: str, field_name: str) -> str:
     if len(result) > MAX_TARGET_ID_LENGTH:
         raise WebResearchError(f"{field_name} exceeds maximum length")
     return result
+
+
+def _safe_opaque_reference(value: object, field_name: str) -> str:
+    """Validate a broker/session reference without accepting secret material."""
+
+    if not isinstance(value, str) or not value.strip():
+        raise WebResearchError(f"{field_name} is required")
+    result = value.strip()
+    if len(result) > 256 or not _OPAQUE_REFERENCE.fullmatch(result):
+        raise WebResearchError(f"{field_name} must be an opaque reference")
+    if contains_secret_like(result) or re.search(
+        r"(?i)(bearer\s|sk-[a-z0-9]{8,}|-----begin|token=|secret=)", result,
+    ):
+        raise WebResearchError(f"{field_name} contains secret-like material")
+    return result
+
+
+def _normalize_auth_marker(
+    value: Mapping[str, Any] | Sequence[str] | None,
+) -> tuple[str, str] | None:
+    if value is None:
+        return None
+    if isinstance(value, Mapping):
+        role = value.get("role")
+        name = value.get("name")
+    elif isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
+        if len(value) != 2:
+            raise WebResearchError("auth_marker must contain role and name")
+        role, name = value[0], value[1]
+    else:
+        raise WebResearchError("auth_marker must be a role/name mapping")
+    if not isinstance(role, str) or not role.strip():
+        raise WebResearchError("auth_marker.role is required")
+    if not isinstance(name, str) or not name.strip():
+        raise WebResearchError("auth_marker.name is required")
+    safe_role = _safe_identity(role, "auth_marker.role")
+    bounded_name = name.strip()
+    if len(bounded_name) > MAX_TARGET_NAME_LENGTH or any(
+        ord(char) < 0x20 for char in bounded_name
+    ) or contains_secret_like(bounded_name):
+        raise WebResearchError("auth_marker.name is invalid")
+    return safe_role, bounded_name
+
+
+def _normalize_prefixes(value: Sequence[str] | None, field_name: str) -> tuple[str, ...]:
+    prefixes: list[str] = []
+    for item in value or ():
+        if not isinstance(item, str) or not item.strip():
+            raise WebResearchError(f"{field_name} must contain non-empty strings")
+        prefix = item.strip()
+        if len(prefix) > MAX_URL_LENGTH or any(ord(char) < 0x20 for char in prefix):
+            raise WebResearchError(f"{field_name} contains an invalid prefix")
+        if contains_secret_like(prefix):
+            raise WebResearchError(f"{field_name} contains secret-like material")
+        prefixes.append(prefix)
+    return tuple(dict.fromkeys(prefixes))
 
 
 def _normalize_hosts(hosts: Sequence[str] | None) -> frozenset[str]:
@@ -328,6 +432,19 @@ class PlaywrightBrowserConnector:
         *,
         stop_check: Callable[[], bool] | None = None,
         allowed_hosts: Sequence[str] | None = None,
+        profile_id: str = "default",
+        site_origin: str | None = None,
+        owner_scope: str = "owner-local",
+        session_state_path: str | Path | None = None,
+        session_ref: str | None = None,
+        credential_reference: str | None = None,
+        auth_marker: Mapping[str, Any] | Sequence[str] | None = None,
+        expired_url_prefixes: Sequence[str] | None = None,
+        expiry_url_prefixes: Sequence[str] | None = None,
+        reauthenticate: Callable[["PlaywrightBrowserSession"], bool] | None = None,
+        persist_session: bool = True,
+        allowed_action_methods: Sequence[str] = ("POST",),
+        max_action_requests: int = MAX_ACTION_REQUESTS,
     ) -> "PlaywrightBrowserSession":
         return PlaywrightBrowserSession(
             self,
@@ -336,6 +453,21 @@ class PlaywrightBrowserConnector:
                 self.allowed_hosts
                 if allowed_hosts is None else _normalize_hosts(allowed_hosts)
             ),
+            profile_id=profile_id,
+            site_origin=site_origin,
+            owner_scope=owner_scope,
+            session_state_path=session_state_path,
+            session_ref=session_ref,
+            credential_reference=credential_reference,
+            auth_marker=auth_marker,
+            expired_url_prefixes=(
+                expired_url_prefixes
+                if expiry_url_prefixes is None else expiry_url_prefixes
+            ),
+            reauthenticate=reauthenticate,
+            persist_session=persist_session,
+            allowed_action_methods=allowed_action_methods,
+            max_action_requests=max_action_requests,
         )
 
     def read(
@@ -589,10 +721,72 @@ class PlaywrightBrowserSession:
         *,
         stop_check: Callable[[], bool] | None,
         allowed_hosts: frozenset[str],
+        profile_id: str,
+        site_origin: str | None,
+        owner_scope: str,
+        session_state_path: str | Path | None,
+        session_ref: str | None,
+        credential_reference: str | None,
+        auth_marker: Mapping[str, Any] | Sequence[str] | None,
+        expired_url_prefixes: Sequence[str] | None,
+        reauthenticate: Callable[["PlaywrightBrowserSession"], bool] | None,
+        persist_session: bool,
+        allowed_action_methods: Sequence[str],
+        max_action_requests: int,
     ) -> None:
         self.connector = connector
         self.stop_check = stop_check
         self.allowed_hosts = allowed_hosts
+        self.profile_id = _safe_opaque_reference(profile_id, "profile_id")
+        self.owner_scope = _safe_opaque_reference(owner_scope, "owner_scope")
+        self.credential_reference = (
+            None
+            if credential_reference is None
+            else _safe_opaque_reference(credential_reference, "credential_reference")
+        )
+        self.auth_marker = _normalize_auth_marker(auth_marker)
+        self.reauthenticate = reauthenticate
+        self.expired_url_prefixes = _normalize_prefixes(
+            expired_url_prefixes, "expired_url_prefixes",
+        )
+        if self.auth_marker and not self.expired_url_prefixes:
+            self.expired_url_prefixes = (
+                "/login", "/signin", "/sign-in", "/auth/login",
+            )
+        if (
+            not isinstance(persist_session, bool)
+            or not isinstance(max_action_requests, int)
+            or max_action_requests < 1
+            or max_action_requests > 32
+        ):
+            raise WebResearchError("invalid browser session persistence/action bounds")
+        methods = tuple(str(method).strip().upper() for method in allowed_action_methods)
+        if not methods or any(method not in {"POST", "PUT", "PATCH"} for method in methods):
+            raise WebResearchError(
+                "allowed_action_methods must contain only bounded POST/PUT/PATCH methods"
+            )
+        self.persist_session = persist_session
+        self.allowed_action_methods = tuple(dict.fromkeys(methods))
+        self.max_action_requests = max_action_requests
+        if session_state_path is not None:
+            state_path = Path(session_state_path).expanduser().resolve(strict=False)
+            self.session_state_path: Path | None = state_path
+            self._session_metadata_path = Path(f"{state_path}.meta.json")
+        else:
+            self.session_state_path = None
+            self._session_metadata_path = None
+        self.site_origin = self._normalize_site_origin(site_origin)
+        binding_site = self.site_origin or "unbound"
+        computed_ref = f"session:{_digest({
+            'profile_id': self.profile_id,
+            'site_origin': binding_site,
+            'owner_scope': self.owner_scope,
+            'credential_reference': self.credential_reference,
+        })[:40]}"
+        self.session_ref = (
+            _safe_opaque_reference(session_ref, "session_ref")
+            if session_ref is not None else computed_ref
+        )
         self.page: Any | None = None
         self._playwright: Any | None = None
         self._browser: Any | None = None
@@ -601,21 +795,190 @@ class PlaywrightBrowserSession:
         self._navigation_urls: list[str] = []
         self._route_error: str | None = None
         self._last_identity: BrowserPageIdentity | None = None
+        self._restored = False
+        self._state_usable = False
+        self._can_persist = self.session_state_path is not None and self.persist_session
+        self._state_reason: str | None = None
+        self._state_sha256: str | None = None
+        self._auth_status = "UNKNOWN"
+        self._auth_marker_found: bool | None = None
+        self._session_checked_at = isoformat()
+        self._action_in_progress = False
+        self._action_request_count = 0
+        self._action_request_seen = False
+        self._reauth_attempted = False
+        self._reauth_in_progress = False
+
+    @staticmethod
+    def _origin(url: str) -> str:
+        parsed = urlsplit(url)
+        host = (parsed.hostname or "").lower()
+        if ":" in host and not host.startswith("["):
+            host = f"[{host}]"
+        port = parsed.port
+        default_port = (parsed.scheme.lower() == "https" and port == 443) or (
+            parsed.scheme.lower() == "http" and port == 80
+        )
+        suffix = "" if port is None or default_port else f":{port}"
+        return f"{parsed.scheme.lower()}://{host}{suffix}"
+
+    def _normalize_site_origin(self, value: str | None) -> str | None:
+        if value is None:
+            if self.session_state_path is not None:
+                raise WebResearchError(
+                    "site_origin is required when session_state_path is configured"
+                )
+            return None
+        if not isinstance(value, str) or not value.strip():
+            raise WebResearchError("site_origin must be a non-empty origin")
+        origin = value.strip().rstrip("/")
+        try:
+            parsed = urlsplit(origin)
+            if not parsed.scheme or not parsed.hostname or parsed.path not in {"", "/"}:
+                raise ValueError
+            if parsed.query or parsed.fragment or parsed.username or parsed.password:
+                raise ValueError
+            _ = parsed.port
+            normalized = self._origin(origin)
+            self.connector._validate_url(
+                f"{normalized}/", allowed_hosts=self.allowed_hosts,
+            )
+        except (ValueError, WebResearchError) as error:
+            raise WebResearchError("site_origin must be a valid allowed origin") from error
+        return normalized
+
+    def _binding_payload(self) -> dict[str, Any]:
+        return {
+            "schema_version": 1,
+            "session_ref": self.session_ref,
+            "profile_id": self.profile_id,
+            "site_origin": self.site_origin,
+            "owner_scope": self.owner_scope,
+            "credential_reference": self.credential_reference,
+        }
+
+    def _prepare_session_state(self) -> None:
+        path = self.session_state_path
+        metadata_path = self._session_metadata_path
+        if path is None or metadata_path is None or not self.persist_session:
+            self._can_persist = False
+            return
+        path.parent.mkdir(parents=True, exist_ok=True)
+        state_exists = path.is_file()
+        metadata_exists = metadata_path.is_file()
+        if not state_exists and not metadata_exists:
+            self._can_persist = True
+            return
+        if not state_exists or not metadata_exists:
+            self._can_persist = False
+            self._state_reason = "session_state_unbound"
+            return
+        try:
+            if path.stat().st_size > MAX_SESSION_STATE_BYTES:
+                raise WebResearchError("session_state_too_large")
+            if metadata_path.stat().st_size > MAX_SESSION_METADATA_BYTES:
+                raise WebResearchError("session_metadata_too_large")
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            if not isinstance(metadata, Mapping):
+                raise WebResearchError("session_metadata_malformed")
+            expected = self._binding_payload()
+            if any(metadata.get(key) != value for key, value in expected.items()):
+                raise WebResearchError("session_binding_mismatch")
+            state_hash = _sha256_bytes(path.read_bytes())
+            if metadata.get("storage_state_sha256") != state_hash:
+                raise WebResearchError("session_state_hash_mismatch")
+        except (OSError, ValueError, WebResearchError) as error:
+            self._can_persist = False
+            self._state_reason = str(error)[:120]
+            return
+        self._state_usable = True
+        self._restored = True
+        self._state_sha256 = state_hash
+
+    def _persist_session_state(self) -> None:
+        path = self.session_state_path
+        metadata_path = self._session_metadata_path
+        if (
+            path is None or metadata_path is None or not self._can_persist
+            or self._context is None or self._auth_status != "AUTHENTICATED"
+        ):
+            return
+        temporary_state = Path(f"{path}.tmp")
+        temporary_metadata = Path(f"{metadata_path}.tmp")
+        try:
+            self._context.storage_state(path=str(temporary_state))
+            state_hash = _sha256_bytes(temporary_state.read_bytes())
+            temporary_state.replace(path)
+            metadata = self._binding_payload()
+            metadata.update({
+                "storage_state_sha256": state_hash,
+                "auth_state": self._auth_status,
+                "persisted_at": isoformat(),
+            })
+            temporary_metadata.write_text(
+                json.dumps(
+                    metadata, ensure_ascii=True, sort_keys=True,
+                    separators=(",", ":"),
+                ),
+                encoding="utf-8",
+            )
+            temporary_metadata.replace(metadata_path)
+            self._state_sha256 = state_hash
+            self._state_usable = True
+        except Exception:  # pragma: no cover - driver/filesystem-specific
+            self._state_reason = "session_state_persist_failed"
+            try:
+                temporary_state.unlink(missing_ok=True)
+                temporary_metadata.unlink(missing_ok=True)
+            except OSError:
+                pass
 
     def __enter__(self) -> "PlaywrightBrowserSession":
         from playwright.sync_api import sync_playwright
 
-        self._playwright = sync_playwright().start()
-        browser_type = getattr(self._playwright, self.connector.browser_name)
-        self._browser = browser_type.launch(headless=self.connector.headless)
-        self._context = self._browser.new_context(accept_downloads=False)
-        self.page = self._context.new_page()
-        self.page.set_default_timeout(self.connector.timeout_ms)
-        self.page.route("**/*", self._route)
-        return self
+        self._prepare_session_state()
+        try:
+            self._playwright = sync_playwright().start()
+            browser_type = getattr(self._playwright, self.connector.browser_name)
+            self._browser = browser_type.launch(headless=self.connector.headless)
+            context_kwargs: dict[str, Any] = {"accept_downloads": False}
+            if self._state_usable and self.session_state_path is not None:
+                context_kwargs["storage_state"] = str(self.session_state_path)
+            try:
+                self._context = self._browser.new_context(**context_kwargs)
+            except Exception:
+                if "storage_state" not in context_kwargs:
+                    raise
+                # A corrupt or driver-incompatible state is never silently
+                # treated as authenticated. Keep the bound file untouched and
+                # start an empty context so the caller receives UNKNOWN/BLOCKED.
+                self._state_usable = False
+                self._restored = False
+                self._can_persist = False
+                self._state_reason = "session_state_restore_failed"
+                self._context = self._browser.new_context(accept_downloads=False)
+            self.page = self._context.new_page()
+            self.page.set_default_timeout(self.connector.timeout_ms)
+            self.page.route("**/*", self._route)
+            return self
+        except BaseException:
+            # Context entry can fail after a browser process has started. Run
+            # the same best-effort teardown as normal exit so failed starts do
+            # not leave an orphaned browser/profile authority behind.
+            try:
+                self.__exit__(None, None, None)
+            except Exception:
+                pass
+            raise
 
     def __exit__(self, exc_type, exc_value, traceback) -> bool:
         try:
+            if self.page is not None:
+                try:
+                    self._refresh_session_status()
+                except Exception:
+                    pass
+            self._persist_session_state()
             if self.page is not None:
                 try:
                     self.page.unroute_all(behavior="wait")
@@ -641,10 +1004,32 @@ class PlaywrightBrowserSession:
             self._route_error = "stop_requested"
             route.abort()
             return
-        if str(request.method).upper() not in {"GET", "HEAD", "OPTIONS"}:
-            self._route_error = "mutating_request_blocked"
-            route.abort()
-            return
+        method = str(request.method).upper()
+        if method not in {"GET", "HEAD", "OPTIONS"}:
+            if not self._action_in_progress:
+                self._route_error = "mutating_request_blocked"
+                route.abort()
+                return
+            if method not in self.allowed_action_methods:
+                self._route_error = "action_method_blocked"
+                route.abort()
+                return
+            try:
+                self.connector._validate_url(
+                    request.url,
+                    allowed_hosts=self.allowed_hosts,
+                    expected_host=self._initial_host,
+                )
+            except WebResearchError:
+                self._route_error = "action_origin_blocked"
+                route.abort()
+                return
+            self._action_request_count += 1
+            self._action_request_seen = True
+            if self._action_request_count > self.max_action_requests:
+                self._route_error = "action_request_limit"
+                route.abort()
+                return
         if request.is_navigation_request():
             try:
                 self.connector._validate_url(
@@ -662,6 +1047,137 @@ class PlaywrightBrowserSession:
                 route.abort()
                 return
         route.continue_()
+
+    def _is_expiry_url(self, url: str) -> bool:
+        if not self.expired_url_prefixes:
+            return False
+        safe_url = _safe_url_ref(url)
+        path = urlsplit(url).path or "/"
+        return any(
+            safe_url.startswith(prefix) or path.startswith(prefix)
+            for prefix in self.expired_url_prefixes
+        )
+
+    def _refresh_session_status(self) -> BrowserSessionStatus:
+        current_url: str | None = None
+        if self.page is not None:
+            try:
+                candidate = str(self.page.url)
+                if candidate and candidate != "about:blank":
+                    current_url = candidate
+            except Exception:
+                current_url = None
+        marker_found: bool | None = None
+        state = "UNKNOWN"
+        reason = self._state_reason
+        if current_url and self._is_expiry_url(current_url):
+            state = "EXPIRED"
+            marker_found = False
+            reason = "session expiry URL observed"
+        elif self.page is not None and self.auth_marker is not None:
+            role, name = self.auth_marker
+            try:
+                locator = self.page.get_by_role(role, name=name, exact=True)
+                marker_found = locator.count() == 1 and locator.is_visible()
+            except Exception:
+                marker_found = False
+            if marker_found:
+                state = "AUTHENTICATED"
+                reason = None
+            else:
+                state = "MISSING"
+                reason = reason or "configured authentication marker was not observed"
+        self._auth_status = state
+        self._auth_marker_found = marker_found
+        self._session_checked_at = isoformat()
+        return BrowserSessionStatus(
+            state=state,
+            session_ref=self.session_ref,
+            profile_id=self.profile_id,
+            site_origin=self.site_origin or "UNBOUND",
+            owner_scope=self.owner_scope,
+            restored=self._restored,
+            storage_state_present=bool(
+                self.session_state_path is not None and self.session_state_path.is_file()
+            ),
+            checked_at=self._session_checked_at,
+            current_url=current_url,
+            auth_marker_found=marker_found,
+            state_sha256=self._state_sha256,
+            reason=reason,
+        )
+
+    def session_status(self, *, refresh: bool = True) -> BrowserSessionStatus:
+        """Return bound session truth without exposing storage-state contents."""
+
+        if refresh:
+            return self._refresh_session_status()
+        return BrowserSessionStatus(
+            state=self._auth_status,
+            session_ref=self.session_ref,
+            profile_id=self.profile_id,
+            site_origin=self.site_origin or "UNBOUND",
+            owner_scope=self.owner_scope,
+            restored=self._restored,
+            storage_state_present=bool(
+                self.session_state_path is not None and self.session_state_path.is_file()
+            ),
+            checked_at=self._session_checked_at,
+            current_url=(str(self.page.url) if self.page is not None else None),
+            auth_marker_found=self._auth_marker_found,
+            state_sha256=self._state_sha256,
+            reason=self._state_reason,
+        )
+
+    def check_session(self) -> BrowserSessionStatus:
+        """Alias used by callers that treat expiry detection as a probe."""
+
+        return self.session_status(refresh=True)
+
+    def session_info(self) -> dict[str, Any]:
+        return self.session_status().to_evidence()
+
+    def ensure_authenticated(self) -> BrowserSessionStatus:
+        """Check the marker and use only an explicitly supplied re-auth seam."""
+
+        status = self.session_status()
+        if status.authenticated or self.auth_marker is None:
+            return status
+        if self._reauth_attempted or self.reauthenticate is None:
+            return status
+        if self.stop_check is not None and self.stop_check():
+            return BrowserSessionStatus(
+                **{**status.to_evidence(), "state": "BLOCKED", "reason": "stop_requested"}
+            )
+        self._reauth_attempted = True
+        self._reauth_in_progress = True
+        try:
+            reauthenticated = bool(self.reauthenticate(self))
+        except Exception as error:  # pragma: no cover - caller/provider-specific
+            reauthenticated = False
+            self._state_reason = "reauthentication_failed"
+            reason = redact_text(str(error))[:300]
+        else:
+            reason = None
+        finally:
+            self._reauth_in_progress = False
+        refreshed = self.session_status()
+        if reauthenticated and refreshed.authenticated:
+            return refreshed
+        return BrowserSessionStatus(
+            state="BLOCKED",
+            session_ref=refreshed.session_ref,
+            profile_id=refreshed.profile_id,
+            site_origin=refreshed.site_origin,
+            owner_scope=refreshed.owner_scope,
+            restored=refreshed.restored,
+            storage_state_present=refreshed.storage_state_present,
+            checked_at=refreshed.checked_at,
+            current_url=refreshed.current_url,
+            auth_marker_found=refreshed.auth_marker_found,
+            state_sha256=refreshed.state_sha256,
+            reason=reason or "reauthentication was unavailable or unsuccessful",
+        )
 
     @staticmethod
     def _redirects(response: Any, navigation_urls: list[str]) -> tuple[str, ...]:
@@ -687,6 +1203,8 @@ class PlaywrightBrowserSession:
                 url,
                 allowed_hosts=self.allowed_hosts,
             )
+            if self.site_origin is not None and self._origin(url) != self.site_origin:
+                raise WebResearchError("navigation crossed the bound session origin")
         except WebResearchError as error:
             return BrowserReadResult(
                 attempt=self.connector._attempt(
@@ -946,6 +1464,7 @@ class PlaywrightBrowserSession:
             redirects=redirects,
         )
         self._last_identity = identity
+        self._refresh_session_status()
         attempt = self.connector._attempt(
             action_kind="browser.web.read", url=url,
             idempotency_key=key, payload_hash=request_hash,
@@ -987,8 +1506,12 @@ class PlaywrightBrowserSession:
         name = name.strip()
         if any(ord(char) < 0x20 for char in name) or contains_secret_like(name):
             raise BrowserTargetError("target name contains unsafe material")
-        if action not in {"click", "fill"}:
-            raise BrowserTargetError("only click and fill actions are supported")
+        if action not in {"click", "fill", "input", "select", "check", "submit"}:
+            raise BrowserTargetError(
+                "only bounded click, fill, select, check, and submit actions are supported"
+            )
+        if action == "input":
+            action = "fill"
         locator = self.page.get_by_role(role, name=name, exact=True)
         count = locator.count()
         if count != 1:
@@ -1011,28 +1534,188 @@ class PlaywrightBrowserSession:
             name=name,
         )
 
+    @staticmethod
+    def _action_reference(value: str | None, field_name: str) -> str | None:
+        if value is None:
+            return None
+        return _safe_opaque_reference(value, field_name)
+
+    def _readback_locator(
+        self,
+        *,
+        target: PlaywrightTarget | None = None,
+        role: str | None = None,
+        name: str | None = None,
+    ) -> tuple[Any | None, str | None]:
+        if self.page is None:
+            return None, "browser session is not open"
+        target_role = target.role if target is not None else role
+        target_name = target.name if target is not None else name
+        if not target_role or not target_name:
+            return None, None
+        locator = self.page.get_by_role(target_role, name=target_name, exact=True)
+        count = locator.count()
+        if count != 1:
+            return None, "target_missing" if count == 0 else "target_ambiguous"
+        return locator, None
+
+    def readback(
+        self,
+        *,
+        target: PlaywrightTarget | None = None,
+        role: str | None = None,
+        name: str | None = None,
+        expected_value: Any = None,
+    ) -> dict[str, Any]:
+        """Read bounded page state for independent action reconciliation."""
+
+        try:
+            final_url, revision, structural_hash = self._current_revision()
+        except Exception as error:
+            return {
+                "verified": False,
+                "error_code": "page_snapshot_unavailable",
+                "detail": redact_text(str(error))[:300],
+                "authority": "DATA_ONLY",
+            }
+        status = self.session_status()
+        result: dict[str, Any] = {
+            "verified": status.state != "EXPIRED",
+            "final_url": _safe_url_ref(final_url),
+            "page_revision": revision,
+            "structural_hash": structural_hash,
+            "session_state": status.state,
+            "session_ref": self.session_ref,
+            "authority": "DATA_ONLY",
+        }
+        locator, error_code = self._readback_locator(
+            target=target, role=role, name=name,
+        )
+        if error_code:
+            result.update({"verified": False, "error_code": error_code})
+            return result
+        if locator is None:
+            return result
+        try:
+            result.update({
+                "target_present": True,
+                "target_visible": locator.is_visible(),
+                "target_enabled": locator.is_enabled(),
+            })
+            action = target.action if target is not None else ""
+            if action == "fill":
+                current = locator.input_value(timeout=self.connector.timeout_ms)
+                result["value_sha256"] = _sha256_text(current)
+                if isinstance(expected_value, str):
+                    result["verified"] = result["verified"] and current == expected_value
+            elif action == "select":
+                selected = locator.evaluate(
+                    "element => Array.from(element.selectedOptions || []).map(option => option.value)"
+                )
+                selected_values = (
+                    [str(item) for item in selected]
+                    if isinstance(selected, list) else []
+                )
+                result["selected_count"] = len(selected_values)
+                result["selected_values_sha256"] = _digest(selected_values)
+                if isinstance(expected_value, str):
+                    result["verified"] = (
+                        result["verified"] and selected_values == [expected_value]
+                    )
+                elif isinstance(expected_value, (list, tuple)):
+                    expected = [str(item) for item in expected_value]
+                    result["verified"] = (
+                        result["verified"] and selected_values == expected
+                    )
+            elif action == "check" and isinstance(expected_value, bool):
+                result["checked"] = locator.is_checked()
+                result["verified"] = (
+                    result["verified"] and result["checked"] == expected_value
+                )
+        except Exception as error:
+            result.update({
+                "verified": False,
+                "error_code": "readback_failed",
+                "detail": redact_text(str(error))[:300],
+            })
+        return result
+
     def execute(
         self,
         target: PlaywrightTarget,
         *,
-        value: str | None = None,
+        value: Any = None,
         stop_check: Callable[[], bool] | None = None,
+        effect_id: str | None = None,
+        idempotency_key: str | None = None,
+        readback_target: Mapping[str, Any] | None = None,
     ) -> ConnectorAttempt:
         if self.page is None:
             raise BrowserTargetError("browser session is not open")
         stop_check = stop_check or self.stop_check
+        effect_id = self._action_reference(effect_id, "effect_id")
+        key = self._action_reference(idempotency_key, "idempotency_key") or (
+            f"browser-execute:{_digest({
+                'target_id': target.target_id,
+                'page_revision': target.page_revision,
+                'action': target.action,
+            })}"
+        )
+        if target.action == "fill":
+            if not isinstance(value, str) or len(value) > 4096:
+                raise BrowserTargetError("fill value must be bounded text")
+            if any(ord(char) < 0x20 and char not in "\r\n\t" for char in value):
+                raise BrowserTargetError("fill value contains control characters")
+            if contains_secret_like(value):
+                raise BrowserTargetError("secret-like fill values are refused")
+        elif target.action == "select":
+            values = [value] if isinstance(value, str) else value
+            if not isinstance(values, (list, tuple)) or not values or len(values) > 32:
+                raise BrowserTargetError("select requires one to thirty-two bounded values")
+            if any(
+                not isinstance(item, str) or not item or len(item) > 256
+                or any(ord(char) < 0x20 for char in item)
+                or contains_secret_like(item)
+                for item in values
+            ):
+                raise BrowserTargetError("select values are invalid")
+            value = list(values)
+        elif target.action == "check":
+            if value is None:
+                value = True
+            if not isinstance(value, bool):
+                raise BrowserTargetError("check value must be boolean")
         request_hash = _digest({
             "target": target.to_evidence(),
             "value": value,
+            "effect_id": effect_id,
+            "idempotency_key": key,
         })
-        key = f"browser-execute:{_digest({'target_id': target.target_id, 'page_revision': target.page_revision, 'action': target.action})}"
+        before = target.to_evidence()
         if stop_check is not None and stop_check():
             return self.connector._attempt(
                 action_kind="browser.web.execute", url=target.final_url,
                 idempotency_key=key, payload_hash=request_hash,
                 outcome="CANCELLED", error_code="stop_requested",
-                before_state=target.to_evidence(),
+                before_state=before,
             )
+        if self.auth_marker is not None and not self._reauth_in_progress:
+            status = self.ensure_authenticated()
+            if not status.authenticated:
+                return self.connector._attempt(
+                    action_kind="browser.web.execute", url=target.final_url,
+                    idempotency_key=key, payload_hash=request_hash,
+                    outcome="BLOCKED",
+                    error_code=(
+                        "stop_requested"
+                        if status.state == "BLOCKED"
+                        and status.reason == "stop_requested"
+                        else "session_expired"
+                        if status.state == "EXPIRED"
+                        else "session_not_authenticated"
+                    ),
+                    before_state={**before, "session": status.to_evidence()},
+                )
         try:
             final_url, revision, structural_hash = self._current_revision()
         except Exception as error:
@@ -1040,7 +1723,7 @@ class PlaywrightBrowserSession:
                 action_kind="browser.web.execute", url=target.final_url,
                 idempotency_key=key, payload_hash=request_hash,
                 outcome="UNKNOWN", error_code="page_snapshot_unavailable",
-                before_state=target.to_evidence(),
+                before_state=before,
                 after_state={"detail": redact_text(str(error))[:300]},
             )
         if (
@@ -1052,77 +1735,254 @@ class PlaywrightBrowserSession:
                 action_kind="browser.web.execute", url=final_url,
                 idempotency_key=key, payload_hash=request_hash,
                 outcome="UNKNOWN", error_code="target_drift",
-                before_state=target.to_evidence(),
+                before_state=before,
                 after_state={
-                    "final_url": final_url,
+                    "final_url": _safe_url_ref(final_url),
                     "page_revision": revision,
                     "structural_hash": structural_hash,
                 },
             )
-        if target.action == "fill":
-            if not isinstance(value, str) or len(value) > 4096:
-                raise BrowserTargetError("fill value must be bounded text")
-            if any(ord(char) < 0x20 and char not in "\r\n\t" for char in value):
-                raise BrowserTargetError("fill value contains control characters")
-            if contains_secret_like(value):
-                raise BrowserTargetError("secret-like fill values are refused")
         locator = self.page.get_by_role(target.role, name=target.name, exact=True)
         if locator.count() != 1:
             return self.connector._attempt(
                 action_kind="browser.web.execute", url=final_url,
                 idempotency_key=key, payload_hash=request_hash,
                 outcome="UNKNOWN", error_code="target_drift",
-                before_state=target.to_evidence(),
+                before_state=before,
             )
         self._route_error = None
+        self._action_in_progress = True
+        self._action_request_count = 0
+        self._action_request_seen = False
         try:
-            if target.action == "click":
+            if target.action in {"click", "submit"}:
                 locator.click(timeout=self.connector.timeout_ms)
-            else:
-                locator.fill(value or "", timeout=self.connector.timeout_ms)
+            elif target.action == "fill":
+                locator.fill(value, timeout=self.connector.timeout_ms)
+            elif target.action == "select":
+                locator.select_option(value=value, timeout=self.connector.timeout_ms)
+            elif target.action == "check":
+                if value:
+                    locator.check(timeout=self.connector.timeout_ms)
+                else:
+                    locator.uncheck(timeout=self.connector.timeout_ms)
+            else:  # pragma: no cover - discover_target normalizes before this point
+                raise BrowserTargetError("unsupported browser action")
         except Exception as error:
             from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
-            outcome = "UNKNOWN" if isinstance(error, PlaywrightTimeoutError) else "FAILED"
+            self._action_in_progress = False
+            if self._route_error == "stop_requested":
+                outcome = "UNKNOWN" if self._action_request_seen else "CANCELLED"
+                code = "stop_after_effect" if self._action_request_seen else "stop_requested"
+            elif isinstance(error, PlaywrightTimeoutError):
+                outcome = "UNKNOWN"
+                code = (
+                    "timeout_after_action" if self._action_request_seen
+                    else "timeout_before_action"
+                )
+            elif self._action_request_seen:
+                outcome = "UNKNOWN"
+                code = "action_ambiguous"
+            elif self._route_error:
+                outcome = "UNKNOWN"
+                code = self._route_error
+            else:
+                outcome = "FAILED"
+                code = "browser_action_failed"
+            after_state: dict[str, Any] = {
+                "detail": redact_text(str(error))[:300],
+                "action_request_count": self._action_request_count,
+                "action_request_seen": self._action_request_seen,
+                "effect_id": effect_id,
+                "idempotency_key": key,
+            }
+            try:
+                if readback_target is not None:
+                    after_state["readback"] = self.readback(
+                        role=(
+                            str(readback_target["role"])
+                            if readback_target.get("role") is not None else None
+                        ),
+                        name=(
+                            str(readback_target["name"])
+                            if readback_target.get("name") is not None else None
+                        ),
+                        expected_value=readback_target.get("expected_value"),
+                    )
+                else:
+                    after_state["readback"] = self.readback(
+                        target=target, expected_value=value,
+                    )
+            except Exception:
+                pass
             return self.connector._attempt(
-                action_kind="browser.web.execute", url=final_url,
+                action_kind="browser.web.execute", url=target.final_url,
                 idempotency_key=key, payload_hash=request_hash,
-                outcome=outcome,
-                error_code="timeout" if outcome == "UNKNOWN" else "browser_action_failed",
-                before_state=target.to_evidence(),
+                outcome=outcome, error_code=code,
+                before_state=before, after_state=after_state,
+            )
+        finally:
+            self._action_in_progress = False
+        try:
+            after_url, after_revision, after_structure_hash = self._current_revision()
+        except Exception as error:
+            return self.connector._attempt(
+                action_kind="browser.web.execute", url=target.final_url,
+                idempotency_key=key, payload_hash=request_hash,
+                outcome="UNKNOWN", error_code="page_snapshot_unavailable_after_action",
+                before_state=before,
                 after_state={"detail": redact_text(str(error))[:300]},
             )
-        after_url, after_revision, after_structure_hash = self._current_revision()
         after = {
-            "final_url": after_url,
+            "final_url": _safe_url_ref(after_url),
             "page_revision": after_revision,
             "structural_hash": after_structure_hash,
             "target_id": target.target_id,
             "action": target.action,
+            "effect_id": effect_id,
+            "idempotency_key": key,
+            "action_request_count": self._action_request_count,
+            "action_request_seen": self._action_request_seen,
         }
         if self._route_error in {
-            "mutating_request_blocked", "redirect_policy_rejected", "redirect_limit",
+            "mutating_request_blocked", "action_method_blocked", "action_origin_blocked",
+            "action_request_limit", "redirect_policy_rejected", "redirect_limit",
             "stop_requested",
         }:
+            try:
+                after["readback"] = (
+                    self.readback(
+                        role=(
+                            str(readback_target["role"])
+                            if readback_target is not None
+                            and readback_target.get("role") is not None else None
+                        ),
+                        name=(
+                            str(readback_target["name"])
+                            if readback_target is not None
+                            and readback_target.get("name") is not None else None
+                        ),
+                    )
+                    if readback_target is not None
+                    else self.readback(target=target)
+                )
+            except Exception:
+                pass
+            stop_outcome = (
+                "UNKNOWN" if self._route_error == "stop_requested" and self._action_request_seen
+                else "CANCELLED" if self._route_error == "stop_requested" else "UNKNOWN"
+            )
+            stop_code = (
+                "stop_after_effect"
+                if self._route_error == "stop_requested" and self._action_request_seen
+                else self._route_error
+            )
             return self.connector._attempt(
                 action_kind="browser.web.execute", url=after_url,
                 idempotency_key=key, payload_hash=request_hash,
-                outcome="CANCELLED" if self._route_error == "stop_requested" else "UNKNOWN",
-                error_code=self._route_error,
-                before_state=target.to_evidence(), after_state=after,
+                outcome=stop_outcome, error_code=stop_code,
+                before_state=before, after_state=after,
             )
         if stop_check is not None and stop_check():
             return self.connector._attempt(
                 action_kind="browser.web.execute", url=after_url,
                 idempotency_key=key, payload_hash=request_hash,
                 outcome="UNKNOWN", error_code="stop_after_effect",
-                before_state=target.to_evidence(), after_state=after,
+                before_state=before, after_state=after,
+            )
+        status = self.session_status()
+        if self.auth_marker is not None and not status.authenticated:
+            after["session"] = status.to_evidence()
+            return self.connector._attempt(
+                action_kind="browser.web.execute", url=after_url,
+                idempotency_key=key, payload_hash=request_hash,
+                outcome="UNKNOWN", error_code="session_expired_after_action",
+                before_state=before, after_state=after,
+            )
+        if readback_target is not None:
+            rb = self.readback(
+                role=(str(readback_target["role"])
+                      if readback_target.get("role") is not None else None),
+                name=(str(readback_target["name"])
+                      if readback_target.get("name") is not None else None),
+                expected_value=readback_target.get("expected_value"),
+            )
+        else:
+            rb = self.readback(target=target, expected_value=value)
+        after["readback"] = rb
+        after["readback_verified"] = bool(rb.get("verified"))
+        after["session"] = status.to_evidence()
+        if not rb.get("verified"):
+            return self.connector._attempt(
+                action_kind="browser.web.execute", url=after_url,
+                idempotency_key=key, payload_hash=request_hash,
+                outcome="UNKNOWN", error_code="readback_not_verified",
+                before_state=before, after_state=after,
             )
         return self.connector._attempt(
             action_kind="browser.web.execute", url=after_url,
             idempotency_key=key, payload_hash=request_hash,
-            outcome="COMPLETED", before_state=target.to_evidence(),
+            outcome="COMPLETED", before_state=before,
             after_state=after, provider_ref=after_url, reconciled=True,
+        )
+
+    def reconcile(
+        self,
+        *,
+        target: PlaywrightTarget | None = None,
+        role: str | None = None,
+        name: str | None = None,
+        expected_value: Any = None,
+        effect_id: str | None = None,
+        idempotency_key: str | None = None,
+    ) -> ConnectorAttempt:
+        """Re-read one stable effect; this method never repeats the action."""
+
+        effect_id = self._action_reference(effect_id, "effect_id")
+        key = self._action_reference(idempotency_key, "idempotency_key") or (
+            f"browser-reconcile:{_digest({
+                'effect_id': effect_id,
+                'target_id': target.target_id if target else None,
+                'role': role,
+                'name': name,
+            })}"
+        )
+        request_hash = _digest({
+            "effect_id": effect_id,
+            "idempotency_key": key,
+            "target": target.to_evidence()
+            if target else {"role": role, "name": name},
+            "expected_value": expected_value,
+        })
+        status = self.session_status()
+        if status.state == "EXPIRED":
+            return self.connector._attempt(
+                action_kind="browser.web.execute",
+                url=status.current_url or (self.site_origin or "https://browser.invalid"),
+                idempotency_key=key, payload_hash=request_hash,
+                outcome="UNKNOWN", error_code="session_expired",
+                after_state={"session": status.to_evidence()},
+            )
+        rb = self.readback(
+            target=target, role=role, name=name, expected_value=expected_value,
+        )
+        outcome = "COMPLETED" if rb.get("verified") else "UNKNOWN"
+        return self.connector._attempt(
+            action_kind="browser.web.execute",
+            url=str(rb.get("final_url") or self.site_origin or "https://browser.invalid"),
+            idempotency_key=key, payload_hash=request_hash,
+            outcome=outcome,
+            error_code=None if outcome == "COMPLETED" else str(
+                rb.get("error_code") or "reconciliation_not_verified"
+            ),
+            after_state={
+                **rb,
+                "effect_id": effect_id,
+                "idempotency_key": key,
+                "reconciled": outcome == "COMPLETED",
+            },
+            reconciled=outcome == "COMPLETED",
         )
 
 
@@ -1431,6 +2291,7 @@ def render_research_brief(
 __all__ = [
     "BrowserPageIdentity",
     "BrowserReadResult",
+    "BrowserSessionStatus",
     "BrowserTargetError",
     "HtmlExtractionResult",
     "MAX_EXTRACTED_CHARS",

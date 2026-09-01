@@ -185,6 +185,24 @@ def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
             limitations=("HTTPS documents; host allow-list required for untrusted hosts",),
         ),
         CapabilitySpec(
+            capability_id="cap.browser.web.read", version="1.0.0", kind=Kind.CONNECTOR,
+            action_kind="browser.web.read", semantic=Semantic.READ, executor="browser",
+            unattended=UnattendedMode.ALLOWED,
+            limitations=(
+                "one bounded Playwright page; structural identity; external page data is DATA_ONLY",
+            ),
+        ),
+        CapabilitySpec(
+            capability_id="cap.browser.web.execute", version="1.0.0", kind=Kind.CONNECTOR,
+            action_kind="browser.web.execute", semantic=Semantic.EXTERNAL_EFFECT,
+            executor="browser",
+            unattended=UnattendedMode.INTERACTIVE_REQUIRED,
+            limitations=(
+                "owner-authorized bounded click/fill/select/check/submit only; "
+                "effect journal and readback required; no destructive/public actions",
+            ),
+        ),
+        CapabilitySpec(
             capability_id="cap.system.diagnose", version="1.0.0", kind=Kind.TOOL,
             action_kind="system.diagnose", semantic=Semantic.READ, executor="local",
             unattended=UnattendedMode.ALLOWED,
@@ -564,6 +582,41 @@ def _verify_action(
         return VerifyVerdict.MISMATCH
     if action_kind == "http.doc.read":
         return VerifyVerdict.MATCH if claimed.get("raw_sha256") else VerifyVerdict.MISMATCH
+    if action_kind == "browser.web.read":
+        if (
+            claimed_status == "COMPLETED"
+            and claimed.get("authority") == "DATA_ONLY"
+            and claimed.get("source_sha256")
+            and claimed.get("document_id")
+            and claimed.get("page_revision")
+        ):
+            if payload is not None and payload.get("require_authenticated"):
+                session = claimed.get("session") or {}
+                return (
+                    VerifyVerdict.MATCH
+                    if session.get("state") == "AUTHENTICATED"
+                    else VerifyVerdict.MISMATCH
+                )
+            return VerifyVerdict.MATCH
+        return VerifyVerdict.MISMATCH
+    if action_kind == "browser.web.execute":
+        session = claimed.get("session") or {}
+        auth_ok = (
+            not (payload is not None and payload.get("require_authenticated"))
+            or session.get("state") == "AUTHENTICATED"
+        )
+        if (
+            claimed_status == "COMPLETED"
+            and claimed.get("authority") == "DATA_ONLY"
+            and claimed.get("effect_id")
+            and claimed.get("idempotency_key")
+            and claimed.get("page_revision")
+            and claimed.get("readback_verified") is True
+            and claimed.get("reconciled") is True
+            and auth_ok
+        ):
+            return VerifyVerdict.MATCH
+        return VerifyVerdict.MISMATCH
     if action_kind == "system.diagnose":
         if claimed.get("python") and claimed.get("owned_root_exists"):
             return VerifyVerdict.MATCH
@@ -675,6 +728,13 @@ def execute_action(
             spec=spec,
         )
     execution_payload = dict(payload)
+    if request is not None:
+        # The selected adapter receives the canonical identity sidecar, never
+        # a second identity/effect implementation or the raw request payload.
+        execution_payload.setdefault("mission_id", request.mission_id)
+        execution_payload.setdefault("workflow_id", request.workflow_id)
+        execution_payload.setdefault("stop_scope", request.stop_scope)
+        execution_payload["_adapter_request"] = request.to_evidence()
     if request is not None and request.effect_class.value != "READ_ONLY":
         execution_payload.setdefault("idempotency_key", request.idempotency_key)
     if claim_override is not None:
