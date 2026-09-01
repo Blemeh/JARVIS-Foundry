@@ -128,8 +128,180 @@ class FilesystemConnector(FsConnector):
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
     @staticmethod
+    def _bytes_payload_hash(payload: bytes) -> str:
+        return hashlib.sha256(payload).hexdigest()
+
+    @staticmethod
     def _attempt_id() -> str:
         return f"fs-attempt-{uuid.uuid4().hex}"
+
+    def _write_bytes_unlocked(self, target_ref: str, payload: bytes) -> None:
+        """Atomically write binary content below the owned root.
+
+        The original connector's ``perform`` contract is intentionally text
+        oriented. Format-aware Lane B adapters use this narrow companion path
+        so OOXML, PDF, and image bytes still receive the same root, locking,
+        and readback guarantees without encoding binary data as text.
+        """
+        target = self._resolve_contract_ref(target_ref)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temporary: str | None = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="wb", dir=target.parent, prefix=f".{target.name}.",
+                suffix=".tmp", delete=False,
+            ) as handle:
+                temporary = handle.name
+                handle.write(payload)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temporary, target)
+            temporary = None
+        finally:
+            if temporary is not None:
+                try:
+                    os.unlink(temporary)
+                except OSError:
+                    pass
+
+    def request_bytes(
+        self,
+        target_ref: str,
+        payload: bytes,
+        *,
+        idempotency_key: str,
+        overwrite: bool = False,
+    ) -> ConnectorAttempt:
+        """Write bytes with explicit no-overwrite and replay semantics.
+
+        A new binary output target is never silently replaced. Replaying the
+        same idempotency key is safe when the target hash matches; a target
+        that already contains different bytes is returned as ``FAILED`` with
+        ``target_exists`` unless the caller explicitly opts into overwrite.
+        """
+        if not idempotency_key or not idempotency_key.strip():
+            raise FilesystemConnectorError("idempotency_key is required")
+        if not isinstance(payload, bytes):
+            raise FilesystemConnectorError("binary payload must be bytes")
+        action_kind = "file.write"
+        payload_hash = self._bytes_payload_hash(payload)
+        desired_hash = _content_hash(payload)
+        with self._lock:
+            before = self.snapshot(target_ref)
+            ledger = self._load_ledger()
+            previous = ledger.get(idempotency_key)
+            if previous is not None:
+                if (
+                    previous.get("payload_hash") != payload_hash
+                    or previous.get("target_ref") != target_ref
+                ):
+                    return self._failed(
+                        action_kind=action_kind, target_ref=target_ref,
+                        idempotency_key=idempotency_key,
+                        payload_hash=payload_hash, before=before,
+                        error_code="idempotency_conflict",
+                    )
+                expected = previous.get("after_hash")
+                if before.content_hash == expected:
+                    return ConnectorAttempt(
+                        attempt_id=self._attempt_id(),
+                        connector_id=self.spec.connector_id,
+                        action_kind=action_kind, target_ref=target_ref,
+                        idempotency_key=idempotency_key,
+                        payload_hash=payload_hash,
+                        outcome="COMPLETED",
+                        before_state=before.as_state(),
+                        after_state=before.as_state(),
+                        provider_ref=target_ref,
+                        evidence_refs=(f"filesystem:{target_ref}",),
+                        reconciled=True, replayed=True,
+                    )
+                return self._failed(
+                    action_kind=action_kind, target_ref=target_ref,
+                    idempotency_key=idempotency_key,
+                    payload_hash=payload_hash, before=before,
+                    error_code="state_drift",
+                )
+
+            if before.content_hash == desired_hash:
+                ledger[idempotency_key] = {
+                    "target_ref": target_ref, "payload_hash": payload_hash,
+                    "after_hash": desired_hash,
+                }
+                try:
+                    self._write_ledger(ledger)
+                except OSError:
+                    return self._failed(
+                        action_kind=action_kind, target_ref=target_ref,
+                        idempotency_key=idempotency_key,
+                        payload_hash=payload_hash, before=before,
+                        error_code="ledger_write_failed",
+                    )
+                return ConnectorAttempt(
+                    attempt_id=self._attempt_id(), connector_id=self.spec.connector_id,
+                    action_kind=action_kind, target_ref=target_ref,
+                    idempotency_key=idempotency_key, payload_hash=payload_hash,
+                    outcome="COMPLETED", before_state=before.as_state(),
+                    after_state=before.as_state(), provider_ref=target_ref,
+                    evidence_refs=(f"filesystem:{target_ref}",),
+                    reconciled=True, replayed=True,
+                )
+
+            target = self._resolve_contract_ref(target_ref)
+            if before.exists and not overwrite:
+                return self._failed(
+                    action_kind=action_kind, target_ref=target_ref,
+                    idempotency_key=idempotency_key,
+                    payload_hash=payload_hash, before=before,
+                    error_code="target_exists",
+                )
+            if target.exists() and not (
+                target.stat().st_mode & (stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH)
+            ):
+                return self._failed(
+                    action_kind=action_kind, target_ref=target_ref,
+                    idempotency_key=idempotency_key,
+                    payload_hash=payload_hash, before=before,
+                    error_code="read_only",
+                )
+            try:
+                self._write_bytes_unlocked(target_ref, payload)
+                after = self.snapshot(target_ref)
+                if after.content_hash != desired_hash:
+                    return self._failed(
+                        action_kind=action_kind, target_ref=target_ref,
+                        idempotency_key=idempotency_key,
+                        payload_hash=payload_hash, before=before,
+                        error_code="readback_mismatch",
+                    )
+                ledger[idempotency_key] = {
+                    "target_ref": target_ref, "payload_hash": payload_hash,
+                    "after_hash": desired_hash,
+                }
+                try:
+                    self._write_ledger(ledger)
+                except OSError:
+                    return self._failed(
+                        action_kind=action_kind, target_ref=target_ref,
+                        idempotency_key=idempotency_key,
+                        payload_hash=payload_hash, before=before,
+                        error_code="ledger_write_failed",
+                    )
+            except (OSError, ValueError) as error:
+                return self._failed(
+                    action_kind=action_kind, target_ref=target_ref,
+                    idempotency_key=idempotency_key,
+                    payload_hash=payload_hash, before=before,
+                    error_code="write_failed",
+                )
+            return ConnectorAttempt(
+                attempt_id=self._attempt_id(), connector_id=self.spec.connector_id,
+                action_kind=action_kind, target_ref=target_ref,
+                idempotency_key=idempotency_key, payload_hash=payload_hash,
+                outcome="COMPLETED", before_state=before.as_state(),
+                after_state=after.as_state(), provider_ref=target_ref,
+                evidence_refs=(f"filesystem:{target_ref}",),
+            )
 
     def _failed(
         self,
@@ -243,7 +415,10 @@ class FilesystemConnector(FsConnector):
                     idempotency_key=idempotency_key, payload_hash=digest,
                     before=before, error_code="read_only")
             try:
-                self._perform_unlocked(target_ref, text, action="file.write")
+                # Keep the requested UTF-8 bytes stable across Windows and
+                # POSIX; TextIO newline translation would otherwise make the
+                # desired hash differ from the read-back hash.
+                self._write_bytes_unlocked(target_ref, desired)
                 after = self.snapshot(target_ref)
                 if after.content_hash != desired_hash:
                     return self._failed(

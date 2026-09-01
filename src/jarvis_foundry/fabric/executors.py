@@ -19,6 +19,11 @@ from typing import Any, Callable, Mapping
 from ..connectors.filesystem import FilesystemConnector
 from ..connectors.git import GitConnector
 from ..connectors.github_research import GitHubResearchConnector
+from ..connectors.local_artifacts import (
+    ArtifactValidationError,
+    LocalArtifactConnector,
+    LocalArtifactError,
+)
 from ..database import FoundryDatabase
 from .model import ClaimOutcome, FabricError
 
@@ -519,6 +524,232 @@ def artifact_write(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str
     return filesystem_write(ctx, payload)
 
 
+def _artifact_connector(
+    ctx: ExecutorContext, payload: Mapping[str, Any]
+) -> LocalArtifactConnector:
+    source_roots = payload.get("source_roots")
+    if source_roots is None and payload.get("source_root") is not None:
+        source_roots = [payload.get("source_root")]
+    return LocalArtifactConnector(ctx.owned_root, source_roots=source_roots)
+
+
+def _artifact_source(payload: Mapping[str, Any]) -> str:
+    source = payload.get("source")
+    if not isinstance(source, (str, Path)) or not str(source).strip():
+        raise ArtifactValidationError("source is required")
+    return str(source)
+
+
+def _artifact_target(payload: Mapping[str, Any]) -> str:
+    target = payload.get("target")
+    if not isinstance(target, (str, Path)) or not str(target).strip():
+        raise ArtifactValidationError("target is required")
+    return str(target)
+
+
+def _artifact_parse_options(payload: Mapping[str, Any]) -> dict[str, Any]:
+    options: dict[str, Any] = {
+        "expected_columns": payload.get("expected_columns"),
+        "sheet": payload.get("sheet"),
+    }
+    for name in ("allow_formulas", "allow_external_links"):
+        value = payload.get(name, False)
+        if not isinstance(value, bool):
+            raise ArtifactValidationError(f"{name} must be boolean")
+        options[name] = value
+    return options
+
+
+def _artifact_blocked(error: LocalArtifactError) -> dict[str, Any]:
+    return {
+        "claimed": "BLOCKED",
+        "error_code": getattr(error, "error_code", "artifact_error"),
+        "error": str(error),
+    }
+
+
+def artifact_parse(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
+    try:
+        parsed = _artifact_connector(ctx, payload).parse(
+            _artifact_source(payload),
+            **_artifact_parse_options(payload),
+        )
+    except LocalArtifactError as error:
+        return _artifact_blocked(error)
+    result: dict[str, Any] = {
+        "claimed": "COMPLETED",
+        "source": parsed.source.as_dict(),
+        "source_ref": parsed.source.source_ref,
+        "source_sha256": parsed.source.sha256,
+        "format": parsed.source.format,
+        "kind": parsed.kind,
+        "details": dict(parsed.details),
+    }
+    if parsed.table is not None:
+        result["schema"] = list(parsed.table.headers)
+        result["row_count"] = parsed.table.row_count
+        result["column_count"] = parsed.table.column_count
+        result["preview_rows"] = parsed.table.as_dict()["preview_rows"]
+    return result
+
+
+def artifact_table_summary(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
+    try:
+        connector = _artifact_connector(ctx, payload)
+        parsed = connector.parse(
+            _artifact_source(payload),
+            **_artifact_parse_options(payload),
+        )
+        summary = connector.summarize_table(
+            parsed,
+            group_by=payload.get("group_by"),
+            sum_column=payload.get("sum_column"),
+        )
+    except LocalArtifactError as error:
+        return _artifact_blocked(error)
+    return {
+        "claimed": "COMPLETED",
+        "source": parsed.source.as_dict(),
+        "source_ref": parsed.source.source_ref,
+        "source_sha256": parsed.source.sha256,
+        "format": parsed.source.format,
+        "summary": summary,
+        **summary,
+    }
+
+
+def artifact_docx_create(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
+    try:
+        connector = _artifact_connector(ctx, payload)
+        parsed = connector.parse(
+            _artifact_source(payload),
+            **_artifact_parse_options(payload),
+        )
+        summary = connector.summarize_table(
+            parsed,
+            group_by=payload.get("group_by"),
+            sum_column=payload.get("sum_column"),
+        )
+        receipt = connector.create_docx_report(
+            parsed, summary,
+            target_ref=_artifact_target(payload),
+            idempotency_key=str(payload.get("idempotency_key") or f"artifact.docx:{_artifact_target(payload)}"),
+            title=str(payload.get("title") or "JARVIS local data report"),
+            fault_after_write=bool(payload.get("fault_after_write", False)),
+        )
+    except LocalArtifactError as error:
+        return _artifact_blocked(error)
+    return {
+        "claimed": "COMPLETED",
+        "source": parsed.source.as_dict(),
+        "source_ref": parsed.source.source_ref,
+        "source_sha256": parsed.source.sha256,
+        "summary": summary,
+        **receipt.as_dict(),
+    }
+
+
+def artifact_docx_verify(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
+    try:
+        connector = _artifact_connector(ctx, payload)
+        readback = connector.verify_docx(
+            _artifact_target(payload),
+            expected_sha256=payload.get("expected_sha256"),
+            required_values=payload.get("required_values") or (),
+        )
+    except LocalArtifactError as error:
+        return _artifact_blocked(error)
+    return {
+        "claimed": "COMPLETED" if readback.get("verified") else "FAILED",
+        "target_ref": readback.get("target_ref"),
+        "output_sha256": readback.get("sha256"),
+        "readback": readback,
+        "readback_verified": bool(readback.get("verified")),
+    }
+
+
+def artifact_table_export(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
+    try:
+        connector = _artifact_connector(ctx, payload)
+        parsed = connector.parse(
+            _artifact_source(payload),
+            **_artifact_parse_options(payload),
+        )
+        receipt = connector.export_table(
+            parsed,
+            target_ref=_artifact_target(payload),
+            idempotency_key=str(payload.get("idempotency_key") or f"artifact.table:{_artifact_target(payload)}"),
+        )
+    except LocalArtifactError as error:
+        return _artifact_blocked(error)
+    return {
+        "claimed": "COMPLETED",
+        "source_ref": parsed.source.source_ref,
+        "source_sha256": parsed.source.sha256,
+        **receipt.as_dict(),
+    }
+
+
+def artifact_pdf_copy(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
+    try:
+        connector = _artifact_connector(ctx, payload)
+        parsed = connector.parse(_artifact_source(payload))
+        receipt = connector.copy_pdf(
+            parsed,
+            target_ref=_artifact_target(payload),
+            idempotency_key=str(payload.get("idempotency_key") or f"artifact.pdf:{_artifact_target(payload)}"),
+        )
+    except LocalArtifactError as error:
+        return _artifact_blocked(error)
+    return {
+        "claimed": "COMPLETED",
+        "source_ref": parsed.source.source_ref,
+        "source_sha256": parsed.source.sha256,
+        **receipt.as_dict(),
+    }
+
+
+def artifact_pptx_copy(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
+    try:
+        connector = _artifact_connector(ctx, payload)
+        parsed = connector.parse(_artifact_source(payload))
+        receipt = connector.copy_pptx(
+            parsed,
+            target_ref=_artifact_target(payload),
+            idempotency_key=str(payload.get("idempotency_key") or f"artifact.pptx:{_artifact_target(payload)}"),
+        )
+    except LocalArtifactError as error:
+        return _artifact_blocked(error)
+    return {
+        "claimed": "COMPLETED",
+        "source_ref": parsed.source.source_ref,
+        "source_sha256": parsed.source.sha256,
+        **receipt.as_dict(),
+    }
+
+
+def artifact_image_transform(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
+    try:
+        connector = _artifact_connector(ctx, payload)
+        parsed = connector.parse(_artifact_source(payload))
+        receipt = connector.transform_image(
+            parsed,
+            target_ref=_artifact_target(payload),
+            idempotency_key=str(payload.get("idempotency_key") or f"artifact.image:{_artifact_target(payload)}"),
+            width=payload.get("width"),
+            height=payload.get("height"),
+            output_format=payload.get("output_format"),
+        )
+    except LocalArtifactError as error:
+        return _artifact_blocked(error)
+    return {
+        "claimed": "COMPLETED",
+        "source_ref": parsed.source.source_ref,
+        "source_sha256": parsed.source.sha256,
+        **receipt.as_dict(),
+    }
+
+
 def produce_research_artifact(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
     research = github_research(ctx, {
         "action": payload.get("action") or "github.repo.read",
@@ -615,6 +846,14 @@ HANDLERS: dict[str, Callable[[ExecutorContext, Mapping[str, Any]], dict[str, Any
     "tests.run": tests_run,
     "artifact.write": artifact_write,
     "artifact.research": produce_research_artifact,
+    "artifact.parse": artifact_parse,
+    "artifact.table.summary": artifact_table_summary,
+    "artifact.docx.create": artifact_docx_create,
+    "artifact.docx.verify": artifact_docx_verify,
+    "artifact.table.export": artifact_table_export,
+    "artifact.pdf.copy": artifact_pdf_copy,
+    "artifact.pptx.copy": artifact_pptx_copy,
+    "artifact.image.transform": artifact_image_transform,
     "hash.file.sha256": script_hash_file,
     "script.run": script_run,
 }

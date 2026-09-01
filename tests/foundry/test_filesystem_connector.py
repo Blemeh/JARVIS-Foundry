@@ -100,3 +100,17 @@ def test_read_only_file_is_refused_without_mutation(tmp_path: Path) -> None:
         target.chmod(0o644)
     assert target.read_text(encoding="utf-8") == "before"
 
+
+def test_text_write_hash_is_stable_for_newlines(tmp_path: Path) -> None:
+    root = tmp_path / "owned"
+    root.mkdir()
+    connector = FilesystemConnector(root)
+
+    result = connector.request(
+        "file.write", "newlines.txt", "first\nsecond\n", idempotency_key="newlines"
+    )
+
+    assert result.outcome == "COMPLETED"
+    assert (root / "newlines.txt").read_bytes() == b"first\nsecond\n"
+    assert result.after_state["content_hash"] == connector.snapshot("newlines.txt").content_hash
+

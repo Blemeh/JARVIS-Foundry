@@ -204,6 +204,54 @@ def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
             unattended=UnattendedMode.ALLOWED,
         ),
         CapabilitySpec(
+            capability_id="cap.artifact.parse", version="1.0.0", kind=Kind.ADAPTER,
+            action_kind="artifact.parse", semantic=Semantic.READ, executor="local_artifacts",
+            unattended=UnattendedMode.ALLOWED,
+            limitations=("owned output root plus explicitly registered read-only source roots; bounded parser output; external content is DATA_ONLY",),
+        ),
+        CapabilitySpec(
+            capability_id="cap.artifact.table.summary", version="1.0.0", kind=Kind.ADAPTER,
+            action_kind="artifact.table.summary", semantic=Semantic.EXECUTE, executor="local_artifacts",
+            requirements=("artifact.parse",), unattended=UnattendedMode.ALLOWED,
+            limitations=("named columns and bounded calculations only",),
+        ),
+        CapabilitySpec(
+            capability_id="cap.artifact.docx.create", version="1.0.0", kind=Kind.ADAPTER,
+            action_kind="artifact.docx.create", semantic=Semantic.WRITE, executor="local_artifacts",
+            requirements=("artifact.table.summary",), unattended=UnattendedMode.ALLOWED,
+            limitations=("new owned-root DOCX target; source is never overwritten",),
+        ),
+        CapabilitySpec(
+            capability_id="cap.artifact.docx.verify", version="1.0.0", kind=Kind.ADAPTER,
+            action_kind="artifact.docx.verify", semantic=Semantic.READ, executor="local_artifacts",
+            unattended=UnattendedMode.ALLOWED,
+            limitations=("independent reopen/readback of an owned-root DOCX",),
+        ),
+        CapabilitySpec(
+            capability_id="cap.artifact.table.export", version="1.0.0", kind=Kind.ADAPTER,
+            action_kind="artifact.table.export", semantic=Semantic.WRITE, executor="local_artifacts",
+            requirements=("artifact.parse",), unattended=UnattendedMode.ALLOWED,
+            limitations=("new CSV/TSV/XLSX target; source is never overwritten",),
+        ),
+        CapabilitySpec(
+            capability_id="cap.artifact.pdf.copy", version="1.0.0", kind=Kind.ADAPTER,
+            action_kind="artifact.pdf.copy", semantic=Semantic.WRITE, executor="local_artifacts",
+            requirements=("artifact.parse",), unattended=UnattendedMode.ALLOWED,
+            limitations=("bounded pypdf readback; new target only",),
+        ),
+        CapabilitySpec(
+            capability_id="cap.artifact.pptx.copy", version="1.0.0", kind=Kind.ADAPTER,
+            action_kind="artifact.pptx.copy", semantic=Semantic.WRITE, executor="local_artifacts",
+            requirements=("artifact.parse",), unattended=UnattendedMode.ALLOWED,
+            limitations=("bounded python-pptx readback; new target only",),
+        ),
+        CapabilitySpec(
+            capability_id="cap.artifact.image.transform", version="1.0.0", kind=Kind.ADAPTER,
+            action_kind="artifact.image.transform", semantic=Semantic.WRITE, executor="local_artifacts",
+            requirements=("artifact.parse",), unattended=UnattendedMode.ALLOWED,
+            limitations=("bounded Pillow resize/format transform; new target only",),
+        ),
+        CapabilitySpec(
             capability_id="cap.llm.dispatch", version="1.0.0", kind=Kind.PROVIDER,
             action_kind="llm.dispatch", semantic=Semantic.EXECUTE, executor="hermes",
             provider_deps=("opencode_go",),
@@ -310,7 +358,12 @@ def select_capability(
     )
 
 
-def _verify(action_kind: str, claimed: Mapping[str, Any], owned_root: Path) -> VerifyVerdict:
+def _verify(
+    action_kind: str,
+    claimed: Mapping[str, Any],
+    owned_root: Path,
+    payload: Mapping[str, Any] | None = None,
+) -> VerifyVerdict:
     claimed_status = str(claimed.get("claimed") or "UNKNOWN")
     if claimed_status == "UNKNOWN":
         return VerifyVerdict.UNKNOWN
@@ -320,6 +373,28 @@ def _verify(action_kind: str, claimed: Mapping[str, Any], owned_root: Path) -> V
         # Honest failure is not a lying claim. Keep the capability retryable
         # until consecutive failures trip DEGRADED.
         return VerifyVerdict.MATCH
+
+    source_roots = None
+    if payload is not None:
+        source_roots = payload.get("source_roots")
+        if source_roots is None and payload.get("source_root") is not None:
+            source_roots = [payload.get("source_root")]
+
+    def artifact_connector():
+        from ..connectors.local_artifacts import LocalArtifactConnector
+        return LocalArtifactConnector(owned_root, source_roots=source_roots)
+
+    def artifact_parse_options() -> dict[str, object]:
+        """Carry the requested parser policy into independent verification."""
+        options: dict[str, object] = {}
+        if payload is not None:
+            for key in (
+                "expected_columns", "allow_formulas", "allow_external_links", "sheet",
+            ):
+                if key in payload:
+                    options[key] = payload[key]
+        return options
+
     if action_kind in {"file.write", "file.replace", "artifact.write", "artifact.research"}:
         path = Path(claimed.get("path") or (owned_root / str(claimed.get("target") or "")))
         if not path.is_file():
@@ -338,6 +413,106 @@ def _verify(action_kind: str, claimed: Mapping[str, Any], owned_root: Path) -> V
         if not path.is_file() or not claimed.get("appended"):
             return VerifyVerdict.MISMATCH
         return VerifyVerdict.MATCH
+    if action_kind == "artifact.parse":
+        source_ref = claimed.get("source_ref")
+        source_hash = claimed.get("source_sha256")
+        if claimed_status != "COMPLETED" or not source_ref or not source_hash:
+            return VerifyVerdict.MISMATCH
+        try:
+            parsed = artifact_connector().parse(
+                str(source_ref), **artifact_parse_options()
+            )
+        except Exception:  # noqa: BLE001 - verifier fails closed
+            return VerifyVerdict.MISMATCH
+        return VerifyVerdict.MATCH if parsed.source.sha256 == source_hash else VerifyVerdict.MISMATCH
+    if action_kind == "artifact.table.summary":
+        summary = claimed.get("summary") or {}
+        source_ref = claimed.get("source_ref") or summary.get("source_ref")
+        source_hash = claimed.get("source_sha256") or summary.get("source_sha256")
+        if claimed_status != "COMPLETED" or not source_ref or not source_hash:
+            return VerifyVerdict.MISMATCH
+        try:
+            connector = artifact_connector()
+            parse_options = artifact_parse_options()
+            parse_options["expected_columns"] = summary.get("headers")
+            parse_options["sheet"] = summary.get("sheet_name")
+            parsed = connector.parse(str(source_ref), **parse_options)
+            if parsed.source.sha256 != source_hash:
+                return VerifyVerdict.MISMATCH
+            recalculated = connector.summarize_table(
+                parsed,
+                group_by=summary.get("group_by"),
+                sum_column=summary.get("sum_column"),
+            )
+        except Exception:  # noqa: BLE001 - verifier fails closed
+            return VerifyVerdict.MISMATCH
+        for key in ("row_count", "column_count", "missing_by_column", "group_counts", "sum_value"):
+            if key in summary and recalculated.get(key) != summary.get(key):
+                return VerifyVerdict.MISMATCH
+        return VerifyVerdict.MATCH
+    if action_kind == "artifact.docx.create":
+        target_ref = claimed.get("target_ref")
+        expected_hash = claimed.get("output_sha256")
+        source_hash = claimed.get("source_sha256")
+        summary = claimed.get("summary") or {}
+        if claimed_status != "COMPLETED" or not target_ref or not expected_hash or not source_hash:
+            return VerifyVerdict.MISMATCH
+        try:
+            connector = artifact_connector()
+            current_source = connector.capture(str(claimed.get("source_ref")))
+            if current_source.sha256 != source_hash:
+                return VerifyVerdict.MISMATCH
+            readback = connector.verify_docx(
+                str(target_ref), expected_sha256=str(expected_hash),
+                required_values=(str(source_hash), str(summary.get("row_count", ""))),
+            )
+        except Exception:  # noqa: BLE001 - verifier fails closed
+            return VerifyVerdict.MISMATCH
+        return VerifyVerdict.MATCH if readback.get("verified") else VerifyVerdict.MISMATCH
+    if action_kind == "artifact.docx.verify":
+        target_ref = claimed.get("target_ref")
+        expected_hash = claimed.get("output_sha256")
+        required_values = ()
+        if payload is not None:
+            required_values = payload.get("required_values") or ()
+            expected_hash = payload.get("expected_sha256") or expected_hash
+            target_ref = payload.get("target") or target_ref
+        if claimed_status != "COMPLETED" or not target_ref or not expected_hash:
+            return VerifyVerdict.MISMATCH
+        try:
+            readback = artifact_connector().verify_docx(
+                str(target_ref), expected_sha256=str(expected_hash),
+                required_values=required_values,
+            )
+        except Exception:  # noqa: BLE001 - verifier fails closed
+            return VerifyVerdict.MISMATCH
+        return VerifyVerdict.MATCH if (
+            claimed.get("readback_verified")
+            and readback.get("verified")
+            and readback.get("sha256") == str(claimed.get("output_sha256"))
+        ) else VerifyVerdict.MISMATCH
+    if action_kind in {
+        "artifact.table.export", "artifact.pdf.copy",
+        "artifact.pptx.copy", "artifact.image.transform",
+    }:
+        target_ref = claimed.get("target_ref")
+        expected_hash = claimed.get("output_sha256")
+        if claimed_status != "COMPLETED" or not target_ref or not expected_hash:
+            return VerifyVerdict.MISMATCH
+        try:
+            connector = artifact_connector()
+            source_ref = claimed.get("source_ref")
+            source_hash = claimed.get("source_sha256")
+            if source_ref and source_hash:
+                current_source = connector.capture(str(source_ref))
+                if current_source.sha256 != source_hash:
+                    return VerifyVerdict.MISMATCH
+            parsed = connector.parse(str(target_ref))
+        except Exception:  # noqa: BLE001 - verifier fails closed
+            return VerifyVerdict.MISMATCH
+        return VerifyVerdict.MATCH if (
+            parsed.source.sha256 == expected_hash and claimed.get("readback_verified")
+        ) else VerifyVerdict.MISMATCH
     if action_kind == "file.read":
         return VerifyVerdict.MATCH if claimed.get("exists") else VerifyVerdict.MISMATCH
     if action_kind == "git.commit":
@@ -439,7 +614,7 @@ def execute_action(
         claimed = {"claimed": "COMPLETED", "path": str(path), "sha256": digest}
     else:
         claimed = dispatch(ctx, action_kind, payload)
-    verdict = _verify(action_kind, claimed, ctx.owned_root)
+    verdict = _verify(action_kind, claimed, ctx.owned_root, payload)
     claimed_outcome = ClaimOutcome(str(claimed.get("claimed") or "UNKNOWN"))
     if claimed_outcome is ClaimOutcome.COMPLETED and verdict is VerifyVerdict.MISMATCH:
         note = "worker claim diverged from observed effect"
