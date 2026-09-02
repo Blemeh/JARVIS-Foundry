@@ -15,6 +15,11 @@ from .verification import (
     record_verification_outcome,
     start_verification,
 )
+from .verification_planning import (
+    VerificationPlan,
+    VerificationPlanningError,
+    compile_verification_plan,
+)
 
 __all__ = [
     "CommitError",
@@ -36,5 +41,8 @@ __all__ = [
     "record_verification_acceptance",
     "record_verification_outcome",
     "start_verification",
+    "VerificationPlan",
+    "VerificationPlanningError",
+    "compile_verification_plan",
     "verification_outcome",
 ]
