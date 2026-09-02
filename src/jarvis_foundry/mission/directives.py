@@ -212,7 +212,9 @@ def select_dispatchable_mission(database: FoundryDatabase,
     candidates: list[tuple[float, int, str]] = []
     for index, mission_id in enumerate(mission_ids):
         mission = database.row("missions", "mission_id", mission_id)
-        if mission is None or mission["state"] not in {"ACTION_SELECTION", "REPAIRING", "READY"}:
+        if mission is None or mission["state"] not in {
+            "ACTION_SELECTION", "REPAIRING", "READY", "VERIFYING",
+        }:
             continue
         effects = consume_directives(database, mission_id)
         priorities = [e.dispatch_priority for e in effects

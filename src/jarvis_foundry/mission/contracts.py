@@ -19,7 +19,9 @@ from ..events import Event, canonical_json
 
 SUPERVISOR_CONTROLLER = "supervisor"
 CONTRACT_EVENT = "mission.step_contract_recorded"
-DISPATCHABLE_STATES = frozenset({"ACTION_SELECTION", "REPAIRING", "READY"})
+DISPATCHABLE_STATES = frozenset({
+    "ACTION_SELECTION", "REPAIRING", "READY", "VERIFYING",
+})
 RISK_CLASSES = frozenset({"C0", "C1", "C2", "C3"})
 
 
@@ -385,7 +387,8 @@ def dispatchable_contract_missions(database: FoundryDatabase) -> tuple[str, ...]
     """Return existing dispatchable missions with an authoritative contract."""
     with database.connect() as connection:
         rows = connection.execute(
-            "SELECT mission_id FROM missions WHERE state IN ('ACTION_SELECTION', 'REPAIRING', 'READY') "
+            "SELECT mission_id FROM missions WHERE state IN "
+            "('ACTION_SELECTION', 'REPAIRING', 'READY', 'VERIFYING') "
             "ORDER BY updated_at, mission_id"
         ).fetchall()
     result: list[str] = []

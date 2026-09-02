@@ -9,9 +9,9 @@
 4. intake the structured result and advance to VERIFYING;
 5. dispatch an independent verifier (provider-diverse when possible),
    recording the verdict with full independence metadata;
-6. PASS -> ACCEPTING -> local commit (only after verified PASS) -> evidence
-   bundle -> ACTION_SELECTION; FAIL -> bounded repair (REPAIRING) or BLOCKED
-   with a precise reason when the repair budget is exhausted;
+6. PASS -> governed local commit (only after verified PASS) -> ACCEPTING ->
+   evidence bundle -> ACTION_SELECTION; FAIL -> bounded repair (REPAIRING)
+   or BLOCKED with a precise reason when the repair budget is exhausted;
 7. honest waiting when no next action is scheduled (no invented work).
 
 Every transition and verdict is a durable event; the loop is deterministic
@@ -46,6 +46,7 @@ from .commit import CommitError, commit_after_pass
 from .proposal import ProposalError, Waiting, propose_next_action
 from ..v3_fault import invoke_fault_hook
 from .verification import (
+    accepted_verifications,
     dangling_verdict_for_run,
     dangling_verdicts_for_run_prefix,
     failed_verdict_count,
@@ -329,7 +330,12 @@ class MissionLoop:
             key = f"{key}:run-{run_id}"
         transition = Event.create(
             "mission.state_changed",
-            {"mission_id": mission_id, "state": state, "next_action": next_action},
+            {
+                "mission_id": mission_id,
+                "state": state,
+                "next_action": next_action,
+                "run_id": run_id,
+            },
             source_type="supervisor",
             source_id="mission-loop",
             idempotency_key=key,
@@ -415,7 +421,12 @@ class MissionLoop:
             key = f"{key}:run-{run_id}"
         event = Event.create(
             "mission.state_changed",
-            {"mission_id": mission_id, "state": state, "next_action": next_action},
+            {
+                "mission_id": mission_id,
+                "state": state,
+                "next_action": next_action,
+                "run_id": run_id,
+            },
             source_type="supervisor",
             source_id="mission-loop",
             idempotency_key=key,
@@ -506,6 +517,8 @@ class MissionLoop:
         self._reorient_after_stop(mission_id)
         mission = self._mission(mission_id)
         state = str(mission["state"])
+        from .contracts import contract_rows
+        contract_driven = bool(contract_rows(self.database, mission_id))
         # A deliberate crash can leave the canonical mission in EXECUTING or
         # VERIFYING.  Resume the durable run instead of asking the proposal
         # layer (which correctly rejects those in-flight states) to invent a
@@ -521,12 +534,29 @@ class MissionLoop:
                     (mission_id, step_id),
                 ).fetchone()
             run_id = str(row[0]) if row else None
+        if contract_driven and run_id is None and state in {
+            "ACTION_SELECTION", "ACCEPTING", "COMPLETE",
+        }:
+            prior = latest_verdict_for_step(
+                self.database, mission_id, step_id,
+            )
+            accepted = accepted_verifications(
+                self.database, mission_id=mission_id,
+            )
+            if (
+                prior is not None
+                and str(prior.get("status") or "") == "PASS"
+                and str(prior.get("verdict_id") or "") in accepted
+            ):
+                run_id = str(prior.get("builder_run_id") or "") or None
         run_id = run_id or f"run-{uuid.uuid4().hex[:12]}"
         # A duplicate delivery after a durable PASS is a replay, not a new
         # mission attempt.  This guard is intentionally scoped to the exact
         # builder run and step; a later repair run or a different step must
         # still execute and produce a new verifier binding.
-        if state in {"ACTION_SELECTION", "ACCEPTING", "COMPLETE"}:
+        if contract_driven and state in {
+            "ACTION_SELECTION", "ACCEPTING", "COMPLETE",
+        }:
             prior = latest_verdict_for_step(self.database, mission_id, step_id)
             builder_row = self.database.row("agent_runs", "run_id", run_id)
             if (prior is not None and prior.get("status") == "PASS"
@@ -545,6 +575,39 @@ class MissionLoop:
                     builder_run_id=run_id,
                 )
                 if replay_decision.accepted:
+                    commit_state: dict[str, Any] | None = None
+                    if commit_envelope is not None and self.policy is not None:
+                        resource = self.database.row(
+                            "resources", "resource_id",
+                            str(mission["resource_id"]),
+                        )
+                        if resource is None:
+                            return StepOutcome(
+                                outcome=BLOCKED_OUTCOME,
+                                step_id=step_id,
+                                run_id=run_id,
+                                verdict_id=str(prior.get("verdict_id") or ""),
+                                reason="resource record missing for commit replay",
+                            )
+                        try:
+                            commit_state = commit_after_pass(
+                                self.database,
+                                mission_id=mission_id,
+                                step_id=step_id,
+                                run_id=run_id,
+                                worktree=Path(str(resource["resolved_root"])),
+                                policy=self.policy,
+                                envelope=commit_envelope,
+                                fault_hook=self.fault_hook,
+                            )
+                        except CommitError as error:
+                            return StepOutcome(
+                                outcome=BLOCKED_OUTCOME,
+                                step_id=step_id,
+                                run_id=run_id,
+                                verdict_id=str(prior.get("verdict_id") or ""),
+                                reason=f"commit replay after PASS failed: {error}",
+                            )
                     record_verification_acceptance(
                         self.database,
                         verdict_id=str(prior.get("verdict_id") or ""),
@@ -556,9 +619,32 @@ class MissionLoop:
                         ),
                         checks=replay_decision.checks,
                     )
+                    stopped = self._stop_blocked(
+                        mission_id, step_id=step_id, run_id=run_id,
+                    )
+                    if stopped is not None:
+                        return stopped
+                    self._record_evidence(
+                        mission_id=mission_id,
+                        step_id=step_id,
+                        run_id=run_id,
+                        verdict_id=str(prior.get("verdict_id") or ""),
+                        commit_state=commit_state,
+                        criteria=(
+                            verification_criteria
+                            or [
+                                "step result is verified by an independent "
+                                "verifier"
+                            ]
+                        ),
+                        role=str(builder_row.get("role") or "builder"),
+                        artifact_hashes=_hash_target(target),
+                    )
+                    self._continue_after_pass(mission_id, run_id=run_id)
                     return StepOutcome(
                         outcome=PASSED, step_id=step_id, run_id=run_id,
                         verdict_id=str(prior.get("verdict_id") or ""),
+                        commit_head=(commit_state or {}).get("commit_head"),
                     )
         if state in {"EXECUTING", "VERIFYING"}:
             proposal = SimpleNamespace(
@@ -1076,19 +1162,10 @@ class MissionLoop:
                     verdict_id=verdict_id, findings=[decision.reason],
                     reason=f"acceptance gate refused: {decision.reason}",
                 )
-            record_verification_acceptance(
-                self.database,
-                verdict_id=verdict_id,
-                mission_id=mission_id,
-                step_id=step_id,
-                builder_run_id=run_id,
-                verifier_run_id=getattr(verifier, "session_id", "") or verifier_run_id,
-                checks=decision.checks,
-            )
             # The commit happens while still VERIFYING (only after the PASS
-            # verdict is durable); a failed commit blocks from VERIFYING,
-            # which the state machine allows. ACCEPTING is entered only when
-            # the verified work is fully accepted.
+            # verdict and acceptance-gate decision are durable). The final
+            # acceptance receipt is deliberately recorded AFTER this governed
+            # effect, so a crash cannot make an uncommitted step look accepted.
             commit_state: dict[str, Any] | None = None
             stopped = self._stop_blocked(mission_id, step_id=step_id,
                                          run_id=run_id)
@@ -1111,6 +1188,7 @@ class MissionLoop:
                         worktree=Path(str(resource["resolved_root"])),
                         policy=self.policy,
                         envelope=commit_envelope,
+                        fault_hook=self.fault_hook,
                     )
                 except CommitError as error:
                     self._advance(mission_id, "BLOCKED", run_id=run_id)
@@ -1118,6 +1196,19 @@ class MissionLoop:
                         outcome=BLOCKED_OUTCOME, step_id=step_id, run_id=run_id,
                         verdict_id=verdict_id, reason=f"commit after PASS failed: {error}",
                     )
+            record_verification_acceptance(
+                self.database,
+                verdict_id=verdict_id,
+                mission_id=mission_id,
+                step_id=step_id,
+                builder_run_id=run_id,
+                verifier_run_id=getattr(verifier, "session_id", "") or verifier_run_id,
+                checks=decision.checks,
+            )
+            invoke_fault_hook(self.fault_hook, "post verification.accepted")
+            invoke_fault_hook(
+                self.fault_hook, f"post verification.accepted:{step_id}"
+            )
             stopped = self._stop_blocked(mission_id, step_id=step_id,
                                          run_id=run_id)
             if stopped is not None:
@@ -1205,11 +1296,6 @@ class MissionLoop:
         if stop_reason:
             return StepOutcome(outcome=BLOCKED_OUTCOME, reason=stop_reason)
         self._reorient_after_stop(mission_id)
-        # A STOP can arrive after a PASS was accepted but before the terminal
-        # completion event.  On the next clean pass, close that durable
-        # contract exactly once without redispatching the worker.
-        from .contracts import contract_rows, next_executable_contract
-
         if self._scoped_stop_reason(mission_id):
             current = self._mission(mission_id)
             if str(current["state"]) == "ACCEPTING":
@@ -1221,24 +1307,6 @@ class MissionLoop:
                 step_id=step_id,
                 reason=f"STOP active: {self._scoped_stop_reason(mission_id)}",
             )
-        mission = self._mission(mission_id)
-        if (str(mission["state"]) == "ACTION_SELECTION"
-                and contract_rows(self.database, mission_id)
-                and next_executable_contract(self.database, mission_id) is None):
-            run_id = f"resume-complete-{mission_id}"
-            completed = Event.create(
-                "mission.completed",
-                {"mission_id": mission_id, "outcome": "PASSED", "run_id": run_id},
-                source_type="supervisor",
-                source_id="mission-loop",
-                idempotency_key=f"mission.completed:{mission_id}",
-            )
-            self._advance_with_event(
-                mission_id, "COMPLETE", event=completed,
-                next_action=None, run_id=run_id)
-            invoke_fault_hook(self.fault_hook, "post mission.completed")
-            return StepOutcome(outcome=PASSED, step_id=step_id,
-                               run_id=run_id)
         for attempt in range(self.max_repairs + 2):
             outcome = self.run_step(
                 mission_id=mission_id, step_id=step_id, capability=capability,

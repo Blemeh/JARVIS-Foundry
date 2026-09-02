@@ -1338,6 +1338,41 @@ def observe_mission_outcome(
     return {**truth, "changed_steps": [{"plan_id": pid, "step_id": sid} for pid, sid in changed_steps]}
 
 
+def reconcile_terminal_mission_outcomes(
+    database: FoundryDatabase,
+    *,
+    controller: str = SUPERVISOR_CONTROLLER,
+) -> list[str]:
+    """Replay terminal child-mission truth into objective state exactly once.
+
+    A worker can be hard-killed after MissionLoop atomically completes a
+    mission but before the worker records the parent plan/objective outcome.
+    Rebuild the bindings from ledger truth and reuse ``observe_mission_outcome``
+    instead of creating a second continuation or recovery authority.
+    """
+    _gate(database, controller)
+    state = rebuild_executive_state(database)
+    candidates = sorted({
+        str(step.mission_id)
+        for plan in state.plans.values()
+        for step in plan.steps
+        if step.mission_id
+        and step.status not in {"COMPLETED", "FAILED", "BLOCKED"}
+    })
+    reconciled: list[str] = []
+    for mission_id in candidates:
+        if _mission_truth(database, mission_id).get("status") not in {
+            "COMPLETED", "FAILED", "BLOCKED",
+        }:
+            continue
+        result = observe_mission_outcome(
+            database, mission_id, controller=controller,
+        )
+        if result.get("changed_steps"):
+            reconciled.append(mission_id)
+    return reconciled
+
+
 def _evaluate_objective_progress_pure(
     database: FoundryDatabase,
     objective_id: str,
@@ -2058,6 +2093,7 @@ def run_autonomy_cycle(
             # rerun and risk a conflicting append under the same idempotency
             # key; surface the failure for the Supervisor to reconcile.
             raise RuntimeError("recorded autonomy cycle payload is invalid") from error
+    reconcile_terminal_mission_outcomes(database, controller=controller)
     operational_proposals = tuple(propose_operational_followups(
         database,
         controller=controller,

@@ -14,6 +14,8 @@ the independent Supervisor, at startup, or as a one-shot maintenance command.
 """
 from __future__ import annotations
 
+import json
+
 from ..clock import isoformat, parse, utc_now
 from ..database import FoundryDatabase
 from ..events import Event
@@ -145,6 +147,56 @@ def recover_stale_mission_state(database: FoundryDatabase, *, now=None) -> list[
                for r in running):
             continue  # a session is genuinely alive; never disturb it
         incident = str(mission["last_event_id"])
+        # The state-transition event carries the exact run identity for this
+        # in-flight incident. Never borrow an older completed builder from a
+        # prior contract: a kill after EXECUTING but before dispatch must go
+        # back through action selection, not skip straight to verification.
+        with database.connect() as connection:
+            transition = connection.execute(
+                "SELECT payload_json, idempotency_key FROM events "
+                "WHERE event_id = ?",
+                (incident,),
+            ).fetchone()
+            try:
+                transition_payload = json.loads(str(transition[0])) \
+                    if transition is not None else {}
+            except (TypeError, ValueError, json.JSONDecodeError):
+                transition_payload = {}
+            incident_run_id = str(transition_payload.get("run_id") or "")
+            if not incident_run_id and transition is not None:
+                key = str(transition["idempotency_key"] or "")
+                if ":run-" in key:
+                    incident_run_id = key.rsplit(":run-", 1)[1]
+            completed_builder = connection.execute(
+                "SELECT run_id, step_id FROM agent_runs "
+                "WHERE mission_id = ? AND run_id = ? "
+                "AND role IN ('builder', 'repair') AND status = 'COMPLETED'",
+                (mission_id, incident_run_id),
+            ).fetchone() if incident_run_id else None
+        if completed_builder is not None:
+            # The external worker dispatch already has a durable result. Do
+            # not reopen ACTION_SELECTION and dispatch it again. EXECUTING can
+            # advance to the existing VERIFYING resume path; VERIFYING is
+            # already the exact resumable state and is selected after the
+            # dead outer loop releases its singleton lease.
+            if str(mission["state"]) == "EXECUTING":
+                database.append(Event.create(
+                    "mission.state_changed",
+                    {
+                        "mission_id": mission_id,
+                        "state": "VERIFYING",
+                        "next_action": next_action,
+                        "run_id": incident_run_id,
+                        "reason": "resume_after_completed_dispatch",
+                    },
+                    source_type="supervisor", source_id="role-reaper",
+                    idempotency_key=(
+                        f"mission.state_changed:{mission_id}:VERIFYING:"
+                        f"completed_dispatch:{incident}"
+                    ),
+                ))
+            recovered.append(mission_id)
+            continue
         block = Event.create(
             "mission.state_changed",
             {"mission_id": mission_id, "state": "BLOCKED",

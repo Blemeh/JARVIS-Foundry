@@ -11,12 +11,25 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from ..control.action_envelope import evaluate_and_record
+from ..control.broker import emergency_stop_reason
 from ..control.policy import ActionPolicy
 from ..database import FoundryDatabase
 from ..domain import ActionDecision, ActionEnvelope
+from ..effects import (
+    COMPLETED,
+    FAILED,
+    FROZEN,
+    STARTED,
+    effect_state,
+    execute_fabric_effect,
+    fabric_effect_id,
+    freeze_effect,
+    reconcile_effect,
+)
+from ..v3_fault import invoke_fault_hook
 from ..workers.result_contract import RESULT_FILENAME
 from .verification import latest_verdict_for_step
 
@@ -38,6 +51,53 @@ def _git(root: Path, *args: str) -> str:
     return result.stdout.strip()
 
 
+def _commit_effect_id(
+    *, mission_id: str, step_id: str, run_id: str,
+    worktree: Path, envelope: ActionEnvelope,
+) -> str:
+    """Bind the governed local commit to one stable effect identity."""
+    return fabric_effect_id(
+        system_id=str(envelope.resource_id or "git-local"),
+        target_ref=str(worktree),
+        capability_id="git_local_commit",
+        capability_version="v1",
+        action_kind=str(envelope.action_kind or "git_commit"),
+        input_payload={
+            "mission_id": mission_id,
+            "step_id": step_id,
+            "run_id": run_id,
+            "action_id": envelope.action_id,
+        },
+    )
+
+
+def _recorded_commit(root: Path, message: str) -> str | None:
+    """Find the exact deterministic commit receipt in durable Git truth."""
+    raw = _git(root, "log", "--format=%H%x00%B%x00")
+    parts = raw.split("\x00")
+    for index in range(0, len(parts) - 1, 2):
+        commit_id = parts[index].strip()
+        body = parts[index + 1].strip()
+        if commit_id and body == message:
+            return commit_id
+    return None
+
+
+def _commit_result(root: Path, commit_id: str, message: str) -> dict[str, Any]:
+    baseline = _git(root, "rev-parse", f"{commit_id}^")
+    return {
+        "claimed": COMPLETED,
+        "performed": False,
+        "baseline_commit": baseline,
+        "commit_head": commit_id,
+        "message": message,
+        "diff_stat": _git(root, "diff", "--stat", f"{baseline}..{commit_id}"),
+        "files_changed": _git(
+            root, "diff", "--name-only", f"{baseline}..{commit_id}"
+        ).splitlines(),
+    }
+
+
 def commit_after_pass(
     database: FoundryDatabase,
     *,
@@ -47,6 +107,7 @@ def commit_after_pass(
     worktree: Path,
     policy: ActionPolicy,
     envelope: ActionEnvelope,
+    fault_hook: Callable[[str], None] | None = None,
 ) -> dict[str, Any]:
     """Create one local commit for a verified step; return before/after state.
 
@@ -71,17 +132,96 @@ def commit_after_pass(
         raise CommitError(f"commit not allowed: {decision.reason}")
 
     worktree = worktree.resolve()
-    before = _git(worktree, "rev-parse", "HEAD")
     message = f"jarvis: {mission_id} {step_id} verified PASS (run {run_id})"
-    _git(worktree, "reset", "-q", "--", RESULT_FILENAME)
-    _git(worktree, "add", "-A")
-    _git(worktree, "reset", "-q", "--", RESULT_FILENAME)
-    _git(worktree, "commit", "-m", message)
-    after = _git(worktree, "rev-parse", "HEAD")
-    return {
-        "baseline_commit": before,
-        "commit_head": after,
-        "message": message,
-        "diff_stat": _git(worktree, "diff", "--stat", f"{before}..{after}"),
-        "files_changed": _git(worktree, "diff", "--name-only", f"{before}..{after}").splitlines(),
-    }
+    action_key = _commit_effect_id(
+        mission_id=mission_id, step_id=step_id, run_id=run_id,
+        worktree=worktree, envelope=envelope,
+    )
+
+    # A process may die after Git durably accepted the commit but before the
+    # effect journal received its terminal event. Reconstruct from Git, freeze
+    # the interrupted claim, and reconcile it before continuation. Nothing is
+    # re-dispatched and the same logical effect identity is retained.
+    state = effect_state(database, action_key)
+    if state.get("status") in {STARTED, FROZEN}:
+        landed = _recorded_commit(worktree, message)
+        if landed is not None:
+            if state.get("status") == STARTED:
+                freeze_effect(
+                    database, action_key,
+                    reason="process interrupted after local commit dispatch",
+                )
+            reconciliation = reconcile_effect(
+                database, action_key,
+                provider_state={"exists": True, "commit_id": landed},
+            )
+            if reconciliation.get("reconciled") is True:
+                recovered = _commit_result(worktree, landed, message)
+                recovered.update({
+                    "action_key": action_key,
+                    "journal_state": FROZEN,
+                    "replayed": True,
+                    "reconciled": True,
+                })
+                return recovered
+        else:
+            reconcile_effect(
+                database, action_key,
+                provider_state={"exists": False, "commit_id": None},
+            )
+        raise CommitError(
+            "local commit effect is unresolved after interruption; "
+            "reconciliation refused a blind retry"
+        )
+    if state.get("status") == FAILED:
+        raise CommitError("local commit effect previously failed")
+
+    def perform() -> dict[str, Any]:
+        before = _git(worktree, "rev-parse", "HEAD")
+        _git(worktree, "reset", "-q", "--", RESULT_FILENAME)
+        _git(worktree, "add", "-A")
+        _git(worktree, "reset", "-q", "--", RESULT_FILENAME)
+        _git(worktree, "commit", "-m", message)
+        after = _git(worktree, "rev-parse", "HEAD")
+        invoke_fault_hook(fault_hook, "post effect dispatch")
+        return {
+            "claimed": COMPLETED,
+            "performed": True,
+            "baseline_commit": before,
+            "commit_head": after,
+            "message": message,
+            "diff_stat": _git(
+                worktree, "diff", "--stat", f"{before}..{after}"
+            ),
+            "files_changed": _git(
+                worktree, "diff", "--name-only", f"{before}..{after}"
+            ).splitlines(),
+        }
+
+    invoke_fault_hook(fault_hook, "pre effect dispatch")
+    result = execute_fabric_effect(
+        database,
+        action_key=action_key,
+        system_id=str(envelope.resource_id or "git-local"),
+        target_ref=str(worktree),
+        payload_hash=action_key.removeprefix("effect:"),
+        kind=str(envelope.action_kind or "git_commit"),
+        connector_id="git-local-commit",
+        expected_effects=("create one verified local commit",),
+        action_id=envelope.action_id,
+        request_identity={
+            "mission_id": mission_id,
+            "step_id": step_id,
+            "run_id": run_id,
+        },
+        perform=perform,
+        stop_check=lambda: emergency_stop_reason(
+            database, policy.stop_path
+        ) is not None,
+    )
+    if result.get("journal_state") != COMPLETED:
+        raise CommitError(
+            "local commit effect did not complete: "
+            f"{result.get('error_code') or result.get('journal_state') or 'UNKNOWN'}"
+        )
+    return result

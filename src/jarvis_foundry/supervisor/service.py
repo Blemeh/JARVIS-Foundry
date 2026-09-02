@@ -562,8 +562,12 @@ class Supervisor:
           expired role leases (the ``role:*`` counterpart of
           ``workers.reap()``);
         - ``recover_stale_mission_state`` resumes missions left stuck in
-          EXECUTING/VERIFYING by a killed session to ACTION_SELECTION so a
-          fresh loop instance re-claims the step (partial work preserved).
+          EXECUTING/VERIFYING from their exact durable run: completed work
+          continues at verification/acceptance, while an undispatched or
+          failed run returns to ACTION_SELECTION.
+        - the worker-loop singleton is reclaimed only when its recorded PID
+          and creation identity prove the owner process is gone; a live
+          external loop suppresses mission recovery during dispatch gaps.
 
         Both are pure ledger logic, idempotent, and append events only when
         something is actually stale. A maintenance failure is recorded as a
@@ -572,7 +576,12 @@ class Supervisor:
         the heartbeat; skipping one maintenance pass only delays recovery).
         """
         from ..roles.reaper import reap_stale_role_runs, recover_stale_mission_state
+        from ..runtime.worker_loop import (
+            reclaim_orphaned_loop_lease,
+            worker_loop_lease_is_live,
+        )
         try:
+            reclaim_orphaned_loop_lease(self.database)
             reap_stale_role_runs(self.database)
             # A live one-shot worker-loop process legitimately has tiny gaps
             # between a completed builder lease, VERIFYING, and acquisition of
@@ -581,7 +590,9 @@ class Supervisor:
             # owned child exits (normally or by crash), the next heartbeat
             # performs the same durable recovery immediately.
             worker_loop = self.workers.status(WORKER_LOOP_RUN_ID)
-            if not worker_loop.alive:
+            if not worker_loop.alive and not worker_loop_lease_is_live(
+                self.database
+            ):
                 recover_stale_mission_state(self.database)
         except Exception as error:  # noqa: BLE001 — maintenance must not kill the daemon
             try:

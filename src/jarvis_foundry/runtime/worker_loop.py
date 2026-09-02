@@ -44,7 +44,10 @@ from ..paths import FoundryPaths
 from ..roles.router import RoleRouter
 from ..supervisor.estop import EmergencyStop
 from ..supervisor.leases import LeaseManager
+from ..supervisor.worker import pid_alive, process_creation_identity
 from ..mission.contracts import (
+    contract_rows,
+    latest_contracts_by_step,
     MissionStepContract,
     MissionStepContractError,
     dispatchable_contract_missions,
@@ -67,8 +70,122 @@ DEFAULT_MISSION_ID = "mission-wfm-optimizer"
 DEFAULT_RESOURCE_ID = "resource-wfm-optimizer"
 
 
+def _loop_lease_process(
+    database: FoundryDatabase,
+) -> tuple[str, str, int | None, dict[str, Any] | None]:
+    """Return durable lease/process identity without mutating the ledger."""
+    with database.connect(readonly=True) as connection:
+        lease = connection.execute(
+            "SELECT owner_id, expires_at FROM leases WHERE lease_key = ?",
+            (LOOP_LEASE_KEY,),
+        ).fetchone()
+        if lease is None:
+            return "", "", None, None
+        owner_id = str(lease["owner_id"])
+        row = connection.execute(
+            "SELECT payload_json FROM events "
+            "WHERE event_type = 'worker_loop.cycle_started' "
+            "AND json_extract(payload_json, '$.instance_id') = ? "
+            "ORDER BY sequence DESC LIMIT 1",
+            (owner_id,),
+        ).fetchone()
+    if row is None:
+        return owner_id, str(lease["expires_at"]), None, None
+    try:
+        payload = json.loads(str(row["payload_json"]))
+        return (
+            owner_id,
+            str(lease["expires_at"]),
+            int(payload["pid"]),
+            dict(payload["creation_identity"]),
+        )
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+        return owner_id, str(lease["expires_at"]), None, None
+
+
+def worker_loop_lease_is_live(database: FoundryDatabase) -> bool:
+    """Recognize a live external loop or an unexpired legacy lease."""
+    owner_id, expires_at, pid, expected = _loop_lease_process(database)
+    if not owner_id:
+        return False
+    if pid is None or expected is None:
+        try:
+            return parse(expires_at) > utc_now()
+        except (TypeError, ValueError):
+            return True
+    if pid > 0 and pid_alive(pid):
+        observed = process_creation_identity(pid)
+        if observed.get("create_time") == expected.get("create_time"):
+            return True
+    return False
+
+
+def reclaim_orphaned_loop_lease(database: FoundryDatabase) -> bool:
+    """Release the worker-loop lease only when its recorded process is dead."""
+    owner_id, expires_at, pid, expected = _loop_lease_process(database)
+    if not owner_id or worker_loop_lease_is_live(database):
+        return False
+    if pid is None or expected is None:
+        reason = "legacy worker-loop lease expired without process identity"
+    elif pid > 0 and pid_alive(pid):
+        reason = "worker-loop PID creation identity was reused"
+    else:
+        reason = "worker-loop process is no longer alive"
+    if not LeaseManager(database).release(LOOP_LEASE_KEY, owner_id):
+        return False
+    database.append(Event.create(
+        "worker_loop.lease_reclaimed",
+        {
+            "instance_id": owner_id,
+            "pid": pid,
+            "lease_expires_at": expires_at,
+            "reason": reason,
+        },
+        source_type="supervisor", source_id="worker-loop-recovery",
+        idempotency_key=(
+            f"worker_loop.lease_reclaimed:{owner_id}:{expires_at}"
+        ),
+    ))
+    return True
+
+
 def _default_stop_path(paths: FoundryPaths, config: WorkerRuntimeConfig) -> Path:
     return config.resolve_stop_path(paths.home)
+
+
+def _accepted_contract_pending_evidence(
+    database: FoundryDatabase, mission_id: str,
+) -> MissionStepContract | None:
+    """Find accepted work whose canonical evidence/continuation was cut off."""
+    from ..mission.verification import (
+        accepted_verifications,
+        latest_verdict_for_step,
+    )
+
+    accepted = accepted_verifications(database, mission_id=mission_id)
+    for step_id, contract in sorted(
+        latest_contracts_by_step(database, mission_id).items()
+    ):
+        verdict = latest_verdict_for_step(database, mission_id, step_id)
+        if (
+            verdict is None
+            or str(verdict.get("status") or "") != "PASS"
+            or str(verdict.get("verdict_id") or "") not in accepted
+        ):
+            continue
+        verdict_id = str(verdict["verdict_id"])
+        with database.connect(readonly=True) as connection:
+            evidence = connection.execute(
+                "SELECT 1 FROM events WHERE event_type = 'evidence.created' "
+                "AND json_extract(payload_json, '$.mission_id') = ? "
+                "AND json_extract(payload_json, '$.step_id') = ? "
+                "AND json_extract(payload_json, '$.verifier_verdict_id') = ? "
+                "LIMIT 1",
+                (mission_id, step_id, verdict_id),
+            ).fetchone()
+        if evidence is None:
+            return contract
+    return None
 
 
 def _append_coalesced_idle_event(
@@ -1043,7 +1160,9 @@ def run_cycle(
             "worker_loop.cycle_started",
             {"instance_id": instance_id, "loop_id": loop_id,
              "resource_id": config.resource_id,
-             "capability": config.capability},
+             "capability": config.capability,
+             "pid": os.getpid(),
+             "creation_identity": process_creation_identity(os.getpid())},
             source_type="supervisor", source_id=instance_id,
             idempotency_key=f"worker_loop.cycle_started:{loop_id}",
         ))
@@ -1154,7 +1273,24 @@ def run_cycle(
         _end_waiting_episode(
             database, loop_id=loop_id, instance_id=instance_id)
         try:
-            contract = next_executable_contract(database, mission_id)
+            mission_row = database.row("missions", "mission_id", mission_id)
+            state = str((mission_row or {}).get("state") or "")
+            contract = None
+            if state in {"ACTION_SELECTION", "VERIFYING"}:
+                contract = _accepted_contract_pending_evidence(
+                    database, mission_id,
+                )
+            contract = contract or next_executable_contract(database, mission_id)
+            if contract is None:
+                contracts = latest_contracts_by_step(database, mission_id)
+                # Recovery may reopen an already accepted terminal contract
+                # at ACTION_SELECTION. Supply one immutable contract only to
+                # enter MissionLoop's accepted-result replay path; it restores
+                # missing evidence and continuation without redispatch.
+                if state == "ACTION_SELECTION" and contract_rows(
+                    database, mission_id
+                ) and contracts:
+                    contract = contracts[sorted(contracts)[-1]]
             if contract is None:
                 # A dispatchable-state mission without any remaining
                 # executable contract is residue: re-selecting it forever
