@@ -23,21 +23,22 @@ meta:
   last_reconciled: "2026-09-02"
 
 observed_repo_state:
-  canonical_main: "0cc0cbd9572db39f7754cb90de8a3977db829410"
-  canonical_main_summary: "docs: reconcile canonical V9 and live state"
+  canonical_main: "faa861c67399d5a3755d778224ff65513bd933a1"
+  canonical_main_summary: "release: package V10 browser runtime"
   current_schema: v38            # canonical source migrations.SCHEMA_VERSION
   live_schema: v38               # per docs/CURRENT_STATE.md reconciliation 2026-09-01
-  live_runtime: "untouched by this control-tower session (no DB/Scheduler/release mutation)"
+  live_runtime: "faa861c67399d5a3755d778224ff65513bd933a1 / rel-faa861c67399-5afeb024"
   v9_status: "established and stabilized; represented in canonical source"
-  v10_status: "V10_EXIT_READY_FOR_PROMOTION in isolated candidate; live promotion/validation not performed"
+  v10_status: "CLOSED; exact-SHA live promotion, validation, control/recovery, bounded observation, and canonicalization passed"
   v10_exit:
-    predecessor_sha: "71d71da3f0998538a579a807a152c4bd9d3282d0"
-    source_tip: "5e466b103b73065b292fd41883fb9fd3f6fc751d"
-    branch: "candidate/v10-exit-20260901"
-    worktree: "C:\\temp\\JARVIS-V10-Exit-20260901"
+    predecessor_sha: "042942680687b0ee0382b439b1ddba5a9db7f089"
+    source_tip: "faa861c67399d5a3755d778224ff65513bd933a1"
+    canonical_landing_sha: "faa861c67399d5a3755d778224ff65513bd933a1"
+    branch: "candidate/v10-packaging-repair-20260902"
+    worktree: "C:\\temp\\JARVIS-V10-Packaging-Repair-20260902"
     roadmap_authority: "e9b2155bd669887c4778db0b16a4ef7861d2c9ff"
     schema: v38
-    status: "READY_FOR_PROMOTION; candidate-only; no live mutation"
+    status: "PASSED; V10 CLOSED"
   v10_lanes_observed_2026_09_01:
     inventory:            { branch: planning/v10-inventory-20260901,            head: 5d2a173 }
     a_web_research:       { branch: candidate/v10-a-web-research-20260901,      head: a15bcc7 }
@@ -47,26 +48,23 @@ observed_repo_state:
     d_historical_reuse:   { branch: candidate/v10-d-historical-reuse-20260901,  head: 96d776d }
     full_convergence:     { branch: candidate/v10-full-convergence-20260901,    head: 71d71da }
 
-current_phase: V10_CLOSE
-current_gate: V10_EXIT
-authorized_next_gate: V10_EXIT
+current_phase: V11_INITIATIVE
+current_gate: A2
+status: READY_TO_START
+authorized_next_gate: A2
 authorized_next_gate_definition: >
-  Single V10 release cycle: finish lane convergence; land sensory completion
-  (interactive browser actions + authenticated session persistence; Gmail read
-  only if credentials already exist, else BLOCKED/DEFERRED) inside the same
-  candidate line; one final exact-SHA convergence; one rehearsal -> promotion
-  -> live validation. Exit proof: live authenticated-site interaction with
-  effect receipts + STOP-mid-browser-action reconciliation, suite green,
-  promoted and live-validated.
+  Unprompted observation cycle produces real candidates and reasoned rejections
+  without executing effects. A2 is authorized to start in a future session;
+  this V10 closure session did not implement or start V11.
 
 phases:
   V10_CLOSE:
-    status: IN_PROGRESS
+    status: CLOSED
     gate: V10_EXIT
-    gate_status: NOT_PASSED
-    notes: "candidate is ready for the one rehearsal -> promotion -> live-validation sequence; sensory completion is part of V10, not a second promotion"
+    gate_status: PASSED
+    notes: "exact faa861c promoted and live-validated; rollback, STOP/RESUME, hard-kill recovery, browser packaging, and canonicalization passed"
   V11_INITIATIVE:
-    status: NOT_STARTED
+    status: READY_TO_START
     gates: [A2, A3, A4]
     gate_status: { A2: NOT_TESTED, A3: NOT_TESTED, A4: NOT_TESTED }
     hard_entry: "promoted V10 base + interactive browser"
@@ -141,3 +139,10 @@ update_log:
     source_tip: "5e466b103b73065b292fd41883fb9fd3f6fc751d"
     roadmap_authority: "e9b2155bd669887c4778db0b16a4ef7861d2c9ff"
     evidence_root: "C:\\temp\\JARVIS-V10-Exit-20260901-evidence-exact"
+  - date: "2026-09-02"
+    change: "V10_EXIT passed and V10 closed after exact-SHA promotion, installed-release capability validation, rollback/control/recovery proof, 316.4-second live observation, and canonical fast-forward"
+    session: "v10-exact-sha-live-closure-20260902"
+    predecessor_sha: "042942680687b0ee0382b439b1ddba5a9db7f089"
+    product_sha: "faa861c67399d5a3755d778224ff65513bd933a1"
+    live_release_id: "rel-faa861c67399-5afeb024"
+    evidence_root: "C:\\temp\\JARVIS-V10-Live-Closure-20260902"
