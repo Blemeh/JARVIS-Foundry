@@ -1,5 +1,7 @@
 import type {
   AgentRun,
+  AutonomyCandidateFilter,
+  AutonomyProjection,
   ConnectionState,
   DataSource,
   EntityKind,
@@ -249,6 +251,28 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
       };
     }
     return snapshot.executive;
+  }
+
+  async getAutonomy(filter: AutonomyCandidateFilter = "all"): Promise<AutonomyProjection> {
+    try {
+      const query = new URLSearchParams({ filter, limit: "50", timeline_limit: "100" });
+      const response = await fetchWithTimeout(`${this.apiBase}/autonomy?${query.toString()}`, {
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) throw new Error(`autonomy projection HTTP ${response.status}`);
+      const payload = (await response.json()) as Partial<AutonomyProjection>;
+      if (payload.schema !== "v11.command-center-autonomy.v1" || !payload.executive || !payload.funnel) {
+        throw new Error("autonomy projection contract is invalid");
+      }
+      this.lastFetchedAt = new Date().toISOString();
+      this.lastError = null;
+      this._source = "LIVE";
+      return payload as AutonomyProjection;
+    } catch (error) {
+      this.lastError = error instanceof Error ? error.message : String(error);
+      this._source = "DISCONNECTED";
+      throw error;
+    }
   }
 
   async getMemoryNode(id: string): Promise<MemoryNode | null> {

@@ -14,7 +14,7 @@ import { useDocumentTitle } from "../hooks/useDocumentTitle";
 const routeTitles: Record<string, string> = {
   "/": "JARVIS",
   "/operations": "Operations",
-  "/executive": "Executive",
+  "/executive": "Autonomy",
   "/discovery": "Discovery",
   "/missions": "Missions",
   "/agents": "Agents",

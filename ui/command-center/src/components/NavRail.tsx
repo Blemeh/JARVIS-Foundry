@@ -20,7 +20,7 @@ const sections: NavSection[] = [
       { label: "Operations hub", to: "/operations" },
       { label: "Missions", to: "/missions" },
       { label: "Agents", to: "/agents" },
-      { label: "Executive", to: "/executive" },
+      { label: "Autonomy", to: "/executive" },
     ],
   },
   {

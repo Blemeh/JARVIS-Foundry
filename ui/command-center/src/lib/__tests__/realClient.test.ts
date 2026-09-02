@@ -87,4 +87,23 @@ describe("RealJarvisRuntimeAdapter", () => {
     expect(result.accepted).toBe(true);
     expect(result.directiveId).toBe("d-1");
   });
+
+  it("requests the bounded autonomy endpoint with the selected filter", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo) => {
+      expect(String(input)).toBe("/api/autonomy?filter=rejected&limit=50&timeline_limit=100");
+      return new Response(JSON.stringify({
+        schema: "v11.command-center-autonomy.v1",
+        status: "EMPTY",
+        reason: null,
+        generated_at: "2026-09-02T12:00:00Z",
+        executive: { state: "WAIT", cycle_id: null, stage: null, last_observation_cycle: null, next_wake: null, wait_reason: null, active_wip: { value: null, status: "UNAVAILABLE" } },
+        funnel: {}, candidates: [], sources: [], timeline: [], current_work: null,
+        limits: { candidate_limit: 50, timeline_limit: 100 },
+      }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+    const client = new RealJarvisRuntimeAdapter({ apiBase: "/api", pollMs: 60000 });
+    const result = await client.getAutonomy("rejected");
+    expect(result.status).toBe("EMPTY");
+    expect(client.connection.connected).toBe(true);
+  });
 });

@@ -540,6 +540,148 @@ export interface LineageNode {
   refs: EntityRef[];
 }
 
+export type AutonomyCandidateFilter = "all" | "eligible" | "rejected" | "researched" | "stale";
+export type ProjectionAvailability = "AVAILABLE" | "UNAVAILABLE";
+
+export interface AutonomyMetric {
+  value: number | null;
+  status: ProjectionAvailability;
+}
+
+export interface AutonomyFactor {
+  factor: string;
+  value: number | string | boolean | null;
+  kind: string;
+  contribution: number | null;
+}
+
+export interface AutonomyWorkField {
+  status: string;
+  [key: string]: unknown;
+}
+
+export interface AutonomyOutcome {
+  state: string;
+  mission_state: string;
+  verification: {
+    status: string;
+    verdict_id: string | null;
+    acceptance: string;
+    acceptance_event_id: string | null;
+    reason: string | null;
+  };
+  repair_attempts: number | null;
+  actual: Record<string, unknown> | null;
+  measurement_status: string;
+  learned_calibration: Record<string, unknown> | null;
+  next_action: string | null;
+  candidate_id: string;
+}
+
+export interface AutonomyCurrentWork {
+  candidate?: { candidate_id: string; title: string; state: string; event_id: string | null };
+  objective: AutonomyWorkField;
+  mission: AutonomyWorkField;
+  worktree: AutonomyWorkField;
+  current_step: AutonomyWorkField;
+  worker: AutonomyWorkField;
+  verifier: AutonomyWorkField;
+  final_outcome: AutonomyOutcome;
+}
+
+export interface AutonomyCandidate {
+  candidate_id: string;
+  title: string;
+  expected_outcome: string | null;
+  project: string | null;
+  sources: Array<{
+    kind: string | null;
+    identity: string | null;
+    ref: string | null;
+    authority: string | null;
+    event_id: string | null;
+  }>;
+  score: number | null;
+  rank: number | null;
+  confidence: number | null;
+  research: {
+    status: string;
+    research_id: string | null;
+    source_ref: string | null;
+    budget_used: number | null;
+    completed_at: string | null;
+    event_id: string | null;
+  };
+  state: string;
+  rejection: { reason_code: string | null; reason: string | null; event_id: string | null } | null;
+  judgment: {
+    decision_id: string | null;
+    policy_version: string | null;
+    do_nothing_won: boolean;
+    reason_code: string | null;
+    reason: string | null;
+    evidence: Record<string, AutonomyFactor[] | Record<string, unknown>>;
+    event_id: string | null;
+  };
+  age_seconds: number | null;
+  expires_at: string | null;
+  ttl_seconds: number | null;
+  stale: boolean;
+  current_work: AutonomyCurrentWork;
+}
+
+export interface AutonomyProjection {
+  schema: "v11.command-center-autonomy.v1";
+  status: "AVAILABLE" | "EMPTY" | "UNAVAILABLE";
+  reason: string | null;
+  generated_at: string;
+  executive: {
+    state: string;
+    supervisor_state?: string;
+    trust_state?: string;
+    cycle_id: string | null;
+    stage: string | null;
+    last_observation_cycle: string | null;
+    next_wake: string | null;
+    wait_reason: string | null;
+    wait_boundary?: string | null;
+    wait_reason_code?: string | null;
+    owner_action?: { value: string | null; status: ProjectionAvailability };
+    active_wip: AutonomyMetric;
+  };
+  funnel: Record<string, AutonomyMetric>;
+  candidates: AutonomyCandidate[];
+  candidate_filter?: AutonomyCandidateFilter;
+  sources: Array<{
+    source_kind: string;
+    source_identity: string;
+    state: string;
+    readiness: string;
+    last_checked: string | null;
+    last_meaningful_change: string | null;
+    next_due: string | null;
+    last_error: string | null;
+    observations: number;
+    candidates: number;
+    event_id: string | null;
+  }>;
+  timeline: Array<{
+    sequence: number;
+    event_id: string;
+    event_type: string;
+    occurred_at: string;
+    stage: string;
+    summary: string;
+    candidate_id: string | null;
+    mission_id: string | null;
+    objective_id: string | null;
+    verdict_id: string | null;
+    decision: string | null;
+  }>;
+  current_work: AutonomyCurrentWork | null;
+  limits: Record<string, number>;
+}
+
 export interface JarvisClient {
   readonly source: DataSource;
   readonly connection: ConnectionState;
@@ -558,6 +700,8 @@ export interface JarvisClient {
   getObsidianVault(): Promise<ObsidianVaultFile[]>;
   getMemoryNode(id: string): Promise<MemoryNode | null>;
   getExecutive(): Promise<FoundryExecutive>;
+  /** Bounded, read-only V11 projection. Runtime clients must not synthesize records. */
+  getAutonomy(filter?: AutonomyCandidateFilter): Promise<AutonomyProjection>;
   /**
    * V3 discovery projection (§3.13). Live backends without the additive
    * snapshot section return { available: false } instead of fixtures.

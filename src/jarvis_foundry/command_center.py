@@ -2327,6 +2327,32 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
             })
             self._json_response(status, status=200)
             return
+        if route == "/api/autonomy":
+            query = parse_qs(urlparse(self.path).query)
+            try:
+                from .autonomy_projection import build_autonomy_projection
+                projection = build_autonomy_projection(
+                    self.database,
+                    candidate_filter=str(query.get("filter", ["all"])[0]),
+                    candidate_limit=int(query.get("limit", ["50"])[0]),
+                    timeline_limit=int(query.get("timeline_limit", ["100"])[0]),
+                )
+            except (TypeError, ValueError) as error:
+                self._json_response(
+                    {"status": "BAD_REQUEST", "reason": str(error)}, status=400,
+                )
+                return
+            except Exception as error:  # noqa: BLE001 - optional projection stays truthful
+                self._json_response(
+                    {
+                        "status": "UNAVAILABLE",
+                        "reason": f"{type(error).__name__}: {error}",
+                    },
+                    status=503,
+                )
+                return
+            self._json_response(projection, status=200)
+            return
         if route in {"/api/executive", "/api/executive/objectives", "/api/executive/briefing"}:
             try:
                 from .executive.autonomy import executive_autonomy_snapshot

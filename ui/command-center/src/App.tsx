@@ -12,7 +12,7 @@ const Agents = lazy(() => import("./routes/Agents").then((m) => ({ default: m.Ag
 const AgentDetail = lazy(() => import("./routes/AgentDetail").then((m) => ({ default: m.AgentDetail })));
 const Memory = lazy(() => import("./routes/Memory").then((m) => ({ default: m.Memory })));
 const Evolution = lazy(() => import("./routes/Evolution").then((m) => ({ default: m.Evolution })));
-const Executive = lazy(() => import("./routes/Executive").then((m) => ({ default: m.Executive })));
+const Autonomy = lazy(() => import("./routes/Autonomy").then((m) => ({ default: m.Autonomy })));
 const Discovery = lazy(() => import("./routes/Discovery").then((m) => ({ default: m.Discovery })));
 const Evidence = lazy(() => import("./routes/Evidence").then((m) => ({ default: m.Evidence })));
 const EvidenceDetail = lazy(() => import("./routes/EvidenceDetail").then((m) => ({ default: m.EvidenceDetail })));
@@ -52,7 +52,7 @@ export function App() {
           <Route path="/memory" element={<RouteSuspense><Memory /></RouteSuspense>} />
           <Route path="/memory/:memoryId" element={<RouteSuspense><Memory /></RouteSuspense>} />
           <Route path="/evolution" element={<RouteSuspense><Evolution /></RouteSuspense>} />
-          <Route path="/executive" element={<RouteSuspense><Executive /></RouteSuspense>} />
+          <Route path="/executive" element={<RouteSuspense><Autonomy /></RouteSuspense>} />
           <Route path="/discovery" element={<RouteSuspense><Discovery /></RouteSuspense>} />
           <Route path="/evidence" element={<RouteSuspense><Evidence /></RouteSuspense>} />
           <Route path="/evidence/:evidenceId" element={<RouteSuspense><EvidenceDetail /></RouteSuspense>} />

@@ -1,5 +1,7 @@
 import type {
   AgentRun,
+  AutonomyCandidateFilter,
+  AutonomyProjection,
   ConnectionState,
   EntityKind,
   EvidenceArtifact,
@@ -152,6 +154,29 @@ export class MockJarvisClient implements JarvisClient {
       latest_decision: null,
       recent_decisions: [],
       calibrations: [],
+    };
+  }
+
+  async getAutonomy(_filter: AutonomyCandidateFilter = "all"): Promise<AutonomyProjection> {
+    await delay();
+    const unavailable = { value: null, status: "UNAVAILABLE" as const };
+    return {
+      schema: "v11.command-center-autonomy.v1",
+      status: "UNAVAILABLE",
+      reason: "Durable autonomy projection is unavailable in simulated mode.",
+      generated_at: new Date(0).toISOString(),
+      executive: {
+        state: "UNAVAILABLE", cycle_id: null, stage: null,
+        last_observation_cycle: null, next_wake: null, wait_reason: null,
+        active_wip: unavailable,
+      },
+      funnel: {
+        observed: unavailable, generated: unavailable, deduped: unavailable,
+        researched: unavailable, rejected: unavailable, eligible: unavailable,
+        executing: unavailable, verified_outcome: unavailable,
+      },
+      candidates: [], sources: [], timeline: [], current_work: null,
+      limits: { candidate_limit: 50, timeline_limit: 100 },
     };
   }
 
