@@ -1476,25 +1476,44 @@ MIGRATIONS: dict[int, str] = {
     -- reason. Restore the original generated evidence once so v39 live rows
     -- reconcile with a clean event replay under the preservation contract.
     UPDATE candidates
-    SET evidence_json = COALESCE((
-        SELECT CASE
-            WHEN json_extract(events.payload_json, '$.duplicate_of') IS NOT NULL
-            THEN json_insert(
-                COALESCE(json_extract(events.payload_json, '$.evidence'), '[]'),
-                '$[#]',
-                json_object(
-                    'duplicate_of',
-                    json_extract(events.payload_json, '$.duplicate_of')
+    SET evidence_json = json_insert(
+        COALESCE((
+            SELECT CASE
+                WHEN json_extract(events.payload_json, '$.duplicate_of') IS NOT NULL
+                THEN json_insert(
+                    COALESCE(json_extract(events.payload_json, '$.evidence'), '[]'),
+                    '$[#]',
+                    json_object(
+                        'duplicate_of',
+                        json_extract(events.payload_json, '$.duplicate_of')
+                    )
                 )
-            )
-            ELSE COALESCE(json_extract(events.payload_json, '$.evidence'), '[]')
-        END
-        FROM events
-        WHERE events.event_type = 'discovery.candidate_generated'
-          AND json_extract(events.payload_json, '$.candidate_id') = candidates.candidate_id
-        ORDER BY events.sequence
-        LIMIT 1
-    ), evidence_json)
+                ELSE COALESCE(json_extract(events.payload_json, '$.evidence'), '[]')
+            END
+            FROM events
+            WHERE events.event_type = 'discovery.candidate_generated'
+              AND json_extract(events.payload_json, '$.candidate_id') = candidates.candidate_id
+            ORDER BY events.sequence
+            LIMIT 1
+        ), '[]'),
+        '$[#]',
+        json_object(
+            'rejection_reason', COALESCE((
+                SELECT json_extract(events.payload_json, '$.reason')
+                FROM events
+                WHERE events.event_type = 'discovery.candidate_rejected'
+                  AND json_extract(events.payload_json, '$.candidate_id') = candidates.candidate_id
+                ORDER BY events.sequence DESC LIMIT 1
+            ), ''),
+            'reason_code', COALESCE((
+                SELECT json_extract(events.payload_json, '$.reason_code')
+                FROM events
+                WHERE events.event_type = 'discovery.candidate_rejected'
+                  AND json_extract(events.payload_json, '$.candidate_id') = candidates.candidate_id
+                ORDER BY events.sequence DESC LIMIT 1
+            ), 'LEGACY_REJECTION')
+        )
+    )
     WHERE status = 'REJECTED';
 
     -- Existing rejection events become first-class history immediately on

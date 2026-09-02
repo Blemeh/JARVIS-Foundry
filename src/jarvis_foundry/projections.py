@@ -1023,9 +1023,17 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             (event.event_id, event.recorded_at, payload["candidate_id"]))
     elif event.event_type == "discovery.candidate_rejected":
         connection.execute(
-            "UPDATE candidates SET status = 'REJECTED', last_event_id = ?, "
-            "updated_at = ? WHERE candidate_id = ?",
-            (event.event_id, event.recorded_at, payload["candidate_id"]))
+            """UPDATE candidates SET status = 'REJECTED',
+               evidence_json = json_insert(
+                   CASE WHEN json_valid(evidence_json)
+                             AND json_type(evidence_json) = 'array'
+                        THEN evidence_json ELSE '[]' END,
+                   '$[#]', json_object(
+                       'rejection_reason', ?, 'reason_code', ?)),
+               last_event_id = ?, updated_at = ? WHERE candidate_id = ?""",
+            (str(payload.get("reason") or ""),
+             str(payload.get("reason_code") or "LEGACY_REJECTION"),
+             event.event_id, event.recorded_at, payload["candidate_id"]))
         if _has_table(connection, "candidate_judgments"):
             connection.execute(
                 """INSERT OR IGNORE INTO candidate_judgments(

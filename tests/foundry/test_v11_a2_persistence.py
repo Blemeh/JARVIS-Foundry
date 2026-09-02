@@ -75,6 +75,10 @@ def test_v39_upgrade_preserves_legacy_queue_and_repairs_rejection_history(tmp_pa
     candidate = database.row("candidates", "candidate_id", "candidate-a2")
     assert json.loads(str(candidate["evidence_json"])) == [
         {"observation_id": "observation-a2", "authority": "DATA_ONLY"},
+        {
+            "rejection_reason": "Doing nothing is better",
+            "reason_code": "LOW_VALUE",
+        },
     ]
     legacy = database.row("research_queue", "item_id", "legacy-research")
     assert legacy["claim_id"] == "claim-a2"

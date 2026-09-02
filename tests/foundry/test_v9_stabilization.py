@@ -12,6 +12,7 @@ from jarvis_foundry.command_center import CommandCenterServer, build_snapshot
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.events import Event
 from jarvis_foundry.executive.continuous import continuous_snapshot
+from jarvis_foundry.migrations import SCHEMA_VERSION
 
 
 @pytest.fixture()
@@ -119,8 +120,8 @@ def test_snapshot_exposes_schema_and_trust_truth(
 ) -> None:
     monkeypatch.setenv("JARVIS_INSTALL_ROOT", str(tmp_path / "isolated-install"))
     snapshot = build_snapshot(db)
-    assert snapshot["health"]["schema"]["live"] == 38
-    assert snapshot["health"]["schema"]["package"] == 38
+    assert snapshot["health"]["schema"]["live"] == SCHEMA_VERSION
+    assert snapshot["health"]["schema"]["package"] == SCHEMA_VERSION
     assert snapshot["health"]["trust_state"] == "SUSPENDED"
     assert snapshot["release_identity"]["current"] is None
 

@@ -5,6 +5,8 @@ objective (vs existing candidates AND missions); calibrated deterministic
 scoring (registry-driven weights); approval creates a mission
 (mission.created carries the candidate_id); rejection + outcome tracking
 (prediction vs reality); deterministic rebuild + reconcile (schema v10)."""
+import json
+
 import pytest
 
 from jarvis_foundry.database import FoundryDatabase
@@ -118,7 +120,10 @@ def test_rejection_sets_status(tmp_path):
     reject_candidate(db, result["candidate_id"], "low value")
     row = db.row("candidates", "candidate_id", result["candidate_id"])
     assert row["status"] == "REJECTED"
-    assert row["evidence_json"] == "[]"
+    assert json.loads(row["evidence_json"]) == [{
+        "rejection_reason": "low value",
+        "reason_code": "LEGACY_REJECTION",
+    }]
     judgments = db.all("candidate_judgments", candidate_id=result["candidate_id"])
     assert len(judgments) == 1
     assert judgments[0]["outcome"] == "REJECTED"
