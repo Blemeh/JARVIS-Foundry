@@ -6,12 +6,12 @@ This document is the authoritative current-state record. The frozen roadmap
 remains authoritative for sequencing and scope; its execution pointer is
 `docs/roadmap/JARVIS_1_0_EXECUTION_STATE.yaml`.
 
-Last reconciled: 2026-09-02 after isolated V11 pre-convergence combined the
-accepted A2 observation/judgment candidate, A4 restart/replay durability, and
-accepted-outcome learning truth. A3 remains external and unintegrated. V10
-remains live.
+Last reconciled: 2026-09-02 after isolated V11 Integration Base 2 combined A2
+judgment, A4 restart/replay durability, accepted-outcome learning truth, and
+productionized continuous observation. A3 remains external and unintegrated.
+V10 remains live.
 
-DOCUMENTATION STATE BASE SHA: `51eb998642fee713458998bd3f44219a76ab670d`
+DOCUMENTATION STATE BASE SHA: `899e2d3affee41d02145514acb9c308db57afaf6`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`.
@@ -22,7 +22,7 @@ V10 PROMOTED PRODUCT SHA:     faa861c67399d5a3755d778224ff65513bd933a1
 V10 CANONICAL LANDING SHA:    faa861c67399d5a3755d778224ff65513bd933a1
 V10 LIVE RELEASE ID:          rel-faa861c67399-5afeb024
 V10 ROADMAP AUTHORITY SHA:    e9b2155bd669887c4778db0b16a4ef7861d2c9ff
-CURRENT/CANDIDATE SCHEMA:     v39 (isolated pre-convergence candidate only)
+CURRENT/CANDIDATE SCHEMA:     v40 (isolated Integration Base 2 candidate only)
 LIVE SCHEMA:                  v38
 V2 KNOWLEDGE SCHEMA:          v35 (historical additive migration)
 V3 DISCOVERY/BUILDING SCHEMA: v36 (historical additive migration)
@@ -37,6 +37,8 @@ V11 COMPLETE:                 NO
 V11 PROMOTED/LIVE:            NO
 A2 IMPLEMENTATION SHA:        91c3deaeefb3fc71ffd091ad0f4abc2e2fd8023c
 PRECONVERGENCE SOURCE SHA:    51eb998642fee713458998bd3f44219a76ab670d
+CONTINUOUS OBSERVATION INPUT: 8004a8c16aceb888db1d1401c3bc67842cb4746f
+INTEGRATION BASE 2 SOURCE:    899e2d3affee41d02145514acb9c308db57afaf6
 A4 INPUT SHA:                 daae32cb14d6d8882166d30d515daa9d796c6857
 OUTCOME-TRUTH INPUT SHA:      02e62a85a50bd642a1abdc6e415a2215ac5d2689
 ```
@@ -47,10 +49,10 @@ The frozen authority is
 `docs/handoffs/JARVIS_FROZEN_MASTER_ROADMAP_TO_1_0_2026-09-01.md`.
 `V10_EXIT = PASSED` and `V10 = CLOSED`. The isolated V11 A2 candidate is now
 `PASSED_CANDIDATE`; V11 itself is neither complete nor promoted. The isolated
-pre-convergence base now carries A2, the A4 durability foundation, and
-accepted-outcome truth together. The next authorized scope remains
-`V11_L3_A3_A4`. A3's candidate-to-objective bridge is not present in this
-candidate and was not implemented by pre-convergence.
+Integration Base 2 now carries A2, the A4 durability foundation,
+accepted-outcome truth, and continuous observation together. The next
+authorized scope remains `V11_L3_A3_A4`. A3's candidate-to-objective bridge is
+not present in this candidate and was not implemented by this convergence.
 
 The accepted history contains the V10 convergence line, the semantic
 roadmap/control-tower authority, V10_EXIT sensory completion and audit fixes,
@@ -91,6 +93,46 @@ cannot create success learning and accepted replay is exactly-once.
 This is a pre-convergence source base, not A3, not the V11 exit gate, and not a
 promotion candidate. The final broad V11 regression, A3 flagship, elapsed
 unattended gate, live activation, and production trust remain untested.
+
+## V11 Integration Base 2 candidate truth
+
+Branch `candidate/v11-integration-base2-20260902` in
+`C:\temp\JARVIS-V11-Integration-Base2-20260902` starts at exact
+pre-convergence SHA `d5cca15df800831f0409253b8a65d90ea16249ba`.
+Continuous-observation implementation `5282a31dd6e7f52aaa280e665cf03deefdf4057f`
+was selected from source tip `8004a8c16aceb888db1d1401c3bc67842cb4746f`
+as an exact stable patch (`ae7ea2f13c0093d48556756795bbd6744ece792d`),
+not by merging its terminal history. Integration source is `899e2d3...`.
+
+Schema v40 is one additive successor to A2's v39 migration. It extends the
+existing monitor projection as the durable source/configuration/due/backoff
+authority and adds per-evidence-revision identity to the existing ResearchQueue.
+The disposable migration test now explicitly reopens one database through
+v38 -> v39 -> v40, verifies one migration row per version, reopens v40 again as
+a no-op, and passes SQLite quick check and ledger/projection reconciliation.
+
+Continuous observation remains at the A2 boundary:
+`observe -> candidate -> dedupe -> research -> reject/eligible -> WAIT`.
+It uses existing Continuous Executive time wakes, dispatches only due monitors
+in a bounded rotation, suppresses unchanged input before candidate work,
+permits one bounded research pass per meaningful evidence revision, persists
+cadence/backoff/readiness across reopen, and checks STOP before configuration,
+wake, source read, or research dispatch. It creates no objective, mission,
+effect, worktree, external write, scheduler, Executive, MissionLoop, or
+capability authority.
+
+The fresh A2 flagship passed on schema v40 with 192 reconciled events, zero
+objectives/missions/effects/external writes, and same-input replay delta zero.
+The fresh continuous-observation proof passed with 148 reconciled events:
+pre-due added zero events; unchanged due input added zero observations,
+candidates, refreshes, or research; one changed revision refreshed one existing
+candidate and ran one research pass; reopen preserved the due cycle; STOP added
+zero events. GitHub/project/World reads were READY, local web was honestly
+unavailable, and Gmail remained `BLOCKED/DEFERRED`.
+
+The combined focused set contains 57 tests: A2, continuous observation, A4's
+eight-point durability harness, 11 outcome-learning cases, and migrations.
+A3 and the final broad V11 suite remain intentionally unrun here.
 
 ## V11 A2 candidate truth
 
@@ -216,8 +258,9 @@ migration.
 
 ## Evidence and maintenance
 
-The V11 pre-convergence handoff and exact A3 integration map are
-`docs/handoffs/V11_PRECONVERGENCE_20260902.md`. The earlier A2 handoff is
+The current Integration Base 2 handoff and exact A3 integration map are
+`docs/handoffs/V11_INTEGRATION_BASE2_20260902.md`. The pre-convergence handoff
+remains `docs/handoffs/V11_PRECONVERGENCE_20260902.md`; the earlier A2 handoff is
 `docs/handoffs/V11_A2_CANDIDATE_20260902.md`. The compact V10 live-closure record is
 `docs/handoffs/V10_LIVE_CLOSURE_20260902.md`. Detailed disposable evidence and
 probe scripts are retained outside the repository under
@@ -231,7 +274,8 @@ documentation staleness check must remain green.
 
 ## Next authorized action
 
-Integrate the separately running A3 candidate semantically onto exact
-pre-convergence source `51eb998...`, using the A3 map in the handoff. Preserve
-A2's inert boundary, A4 identities/recovery, and final-outcome truth. Do not
-treat this candidate as promotion authority or production trust.
+Integrate the separately running A3 candidate semantically onto Integration
+Base 2, using the exact map in the handoff. Preserve continuous observation's
+due/unchanged/revision contracts, A2's inert boundary, A4 identities/recovery,
+and final-outcome truth. Do not treat this candidate as promotion authority or
+production trust.

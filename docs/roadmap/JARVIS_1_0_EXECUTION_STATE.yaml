@@ -25,10 +25,10 @@ meta:
 observed_repo_state:
   canonical_main: "2905c206fed0461bf3085bc0cb43773be913300a"
   canonical_main_summary: "docs: record V10 live closure and open V11 A2"
-  candidate_source: "51eb998642fee713458998bd3f44219a76ab670d"
-  candidate_branch: "candidate/v11-preconvergence-20260902"
-  candidate_worktree: "C:\\temp\\JARVIS-V11-PreConvergence-20260902"
-  current_schema: v39            # isolated pre-convergence source migrations.SCHEMA_VERSION
+  candidate_source: "899e2d3affee41d02145514acb9c308db57afaf6"
+  candidate_branch: "candidate/v11-integration-base2-20260902"
+  candidate_worktree: "C:\\temp\\JARVIS-V11-Integration-Base2-20260902"
+  current_schema: v40            # isolated Integration Base 2 migrations.SCHEMA_VERSION
   live_schema: v38               # live V10 remains unchanged
   live_runtime: "faa861c67399d5a3755d778224ff65513bd933a1 / rel-faa861c67399-5afeb024"
   v9_status: "established and stabilized; represented in canonical source"
@@ -59,6 +59,14 @@ observed_repo_state:
     source_tip: "51eb998642fee713458998bd3f44219a76ab670d"
     schema: v39
     note: "A3 not integrated; broad V11 regression and live proof not run"
+  v11_integration_base2:
+    status: READY_FOR_A3_INTEGRATION
+    predecessor: "d5cca15df800831f0409253b8a65d90ea16249ba"
+    continuous_observation_input: "8004a8c16aceb888db1d1401c3bc67842cb4746f"
+    continuous_observation_source: "5282a31dd6e7f52aaa280e665cf03deefdf4057f"
+    source_tip: "899e2d3affee41d02145514acb9c308db57afaf6"
+    schema: v40
+    note: "A2+A4+outcome truth+continuous observation; A3 not integrated; broad V11 suite and live proof not run"
 
 current_phase: V11_INITIATIVE
 current_gate: A2
@@ -98,6 +106,18 @@ phases:
     definition: "72-hour Owner-Absent Campaign, live, on the installed release"
 
 capability_flags:
+  initiative_integration_base2:
+    state: READY_FOR_A3_INTEGRATION_NOT_LIVE
+    reason: "A2 judgment, due-driven continuous observation, restart/replay durability, and accepted-outcome truth passed focused combined proof; A3 remains external"
+    source: "899e2d3affee41d02145514acb9c308db57afaf6"
+    evidence_root: "C:\\temp\\JARVIS-V11-Integration-Base2-20260902-evidence"
+  continuous_observation:
+    state: READY_CANDIDATE_NOT_LIVE
+    reason: "durable due-only source lifecycle, bounded rotation/research, stable change detection, restart-safe Executive time wakes, STOP-before-dispatch, and zero objective/mission/effect/write proof passed"
+    base_sha: "d5cca15df800831f0409253b8a65d90ea16249ba"
+    implementation_source: "5282a31dd6e7f52aaa280e665cf03deefdf4057f"
+    integration_source: "899e2d3affee41d02145514acb9c308db57afaf6"
+    evidence_root: "C:\\temp\\JARVIS-V11-Integration-Base2-20260902-evidence\\continuous-observation"
   initiative_preconvergence:
     state: READY_FOR_A3_INTEGRATION_NOT_LIVE
     reason: "A2 plus restart/replay durability plus accepted-outcome truth passed focused combined proof; A3 remains external"
@@ -145,6 +165,14 @@ capability_authority: >
   Fabric capability or Executive readiness decision. Never two authorities.
 
 update_log:
+  - date: "2026-09-02"
+    change: "V11 Integration Base 2 semantically combined pre-convergence A2+A4+accepted-outcome truth with additive schema-v40 continuous observation; due/revision/replay/STOP/restart and zero-execution proof passed; A3 remains external"
+    session: "candidate/v11-integration-base2-20260902"
+    predecessor_sha: "d5cca15df800831f0409253b8a65d90ea16249ba"
+    continuous_observation_input: "8004a8c16aceb888db1d1401c3bc67842cb4746f"
+    source_tip: "899e2d3affee41d02145514acb9c308db57afaf6"
+    schema: v40
+    evidence_root: "C:\\temp\\JARVIS-V11-Integration-Base2-20260902-evidence"
   - date: "2026-09-01"
     change: "file created; program position = V10 close, authorized gate = V10_EXIT"
     session: "control/roadmap-authority-20260901"
