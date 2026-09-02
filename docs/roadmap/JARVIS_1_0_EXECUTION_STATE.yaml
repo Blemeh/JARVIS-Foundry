@@ -25,7 +25,7 @@ meta:
 observed_repo_state:
   canonical_main: "2905c206fed0461bf3085bc0cb43773be913300a"
   canonical_main_summary: "docs: record V10 live closure and open V11 A2"
-  candidate_source: "1ba21612f52a5050f6f24550ce64a31715f491de"
+  candidate_source: "91c3deaeefb3fc71ffd091ad0f4abc2e2fd8023c"
   candidate_branch: "candidate/v11-a2-initiative-20260902"
   candidate_worktree: "C:\\temp\\JARVIS-V11-A2-Initiative-20260902"
   current_schema: v39            # isolated A2 candidate source migrations.SCHEMA_VERSION
@@ -92,7 +92,7 @@ capability_flags:
   initiative_a2:
     state: PASSED_CANDIDATE_NOT_LIVE
     reason: "real read-only GitHub/web/project observation, candidate dedupe, bounded research, rejection-first judgment, replay/STOP/failure proof, and zero objective/mission/effect/worktree/provider writes passed in disposable schema v39"
-    implementation_source: "1ba21612f52a5050f6f24550ce64a31715f491de"
+    implementation_source: "91c3deaeefb3fc71ffd091ad0f4abc2e2fd8023c"
     evidence_root: "C:\\temp\\JARVIS-V11-A2-Initiative-20260902-evidence-final4"
   interactive_browser:
     state: IMPLEMENTED_DISPOSABLE_PROVED
@@ -159,6 +159,6 @@ update_log:
     change: "V11 A2 passed as an isolated candidate after real-source observation, deterministic dedupe, bounded research, rejection-first Executive judgment, replay/STOP/failure recovery, and a hard zero-execution barrier"
     session: "candidate/v11-a2-initiative-20260902"
     predecessor_sha: "2905c206fed0461bf3085bc0cb43773be913300a"
-    source_tip: "1ba21612f52a5050f6f24550ce64a31715f491de"
+    source_tip: "91c3deaeefb3fc71ffd091ad0f4abc2e2fd8023c"
     schema: v39
     evidence_root: "C:\\temp\\JARVIS-V11-A2-Initiative-20260902-evidence-final4"

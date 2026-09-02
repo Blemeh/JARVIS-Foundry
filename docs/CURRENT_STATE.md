@@ -10,7 +10,7 @@ Last reconciled: 2026-09-02 after the isolated V11 A2 candidate proved real
 read-only observation, durable candidate identity, bounded research, and
 rejection-first judgment with zero autonomous execution. V10 remains live.
 
-DOCUMENTATION STATE BASE SHA: `1ba21612f52a5050f6f24550ce64a31715f491de`
+DOCUMENTATION STATE BASE SHA: `91c3deaeefb3fc71ffd091ad0f4abc2e2fd8023c`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`.
@@ -34,7 +34,7 @@ EXECUTION STATUS:             V11_INITIATIVE / A2 / PASSED_CANDIDATE
 V11 STARTED:                  YES (candidate only)
 V11 COMPLETE:                 NO
 V11 PROMOTED/LIVE:            NO
-A2 IMPLEMENTATION SHA:        1ba21612f52a5050f6f24550ce64a31715f491de
+A2 IMPLEMENTATION SHA:        91c3deaeefb3fc71ffd091ad0f4abc2e2fd8023c
 ```
 
 ## Roadmap and execution state
@@ -58,7 +58,7 @@ CHECKPOINT files were not swept into canonical history.
 The isolated branch `candidate/v11-a2-initiative-20260902` was built from
 verified `origin/main` `2905c206fed0461bf3085bc0cb43773be913300a` in
 `C:\temp\JARVIS-V11-A2-Initiative-20260902`. Implementation source is
-`1ba21612f52a5050f6f24550ce64a31715f491de`; canonical main/origin and live
+`91c3deaeefb3fc71ffd091ad0f4abc2e2fd8023c`; canonical main/origin and live
 production were not changed.
 
 A2 reuses World Intelligence observations, discovery candidates/monitors, the
