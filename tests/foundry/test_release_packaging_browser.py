@@ -12,6 +12,7 @@ from pathlib import Path
 
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.deployment.release import build_release, set_current
+from jarvis_foundry.migrations import SCHEMA_VERSION
 
 
 PAGE = b"""<!doctype html>
@@ -116,7 +117,7 @@ def test_fresh_immutable_release_contains_and_runs_v10_web_runtime(tmp_path: Pat
     runtime = manifest["web_runtime"]
     assert manifest["source_sha"] == sha
     assert manifest["git_commit"] == sha
-    assert manifest["schema_compatibility"]["package_schema"] == 38
+    assert manifest["schema_compatibility"]["package_schema"] == SCHEMA_VERSION
     assert runtime["contract"] == "release-local"
     assert runtime["browsers_path"] == ".pw"
     assert browser_root.is_dir()
