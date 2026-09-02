@@ -1,6 +1,6 @@
 """Run the disposable, real-source V11 A2 flagship proof.
 
-The proof uses only read connectors and a disposable v39 database.  It never
+The proof uses only read connectors and a disposable current-schema database. It never
 loads the live database or runtime configuration and has no objective,
 mission, effect, worktree-creation, or provider-write operation.
 """
@@ -383,8 +383,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     worktrees_before = _worktree_snapshot(repository)
     database = FoundryDatabase(evidence_root / "v11-a2.db")
     schema = database.initialize()
-    if schema != 39:
-        raise AssertionError(f"expected disposable schema 39, got {schema}")
+    if schema != 40:
+        raise AssertionError(f"expected disposable schema 40, got {schema}")
     _seed_context(database, repository, project_root)
     seed_builtins(database)
     capability_preflight = _prove_read_capabilities(database, project_root)

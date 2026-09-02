@@ -5,7 +5,7 @@ import sqlite3
 from .v4_schema import ensure_v4_tables
 
 
-SCHEMA_VERSION = 39
+SCHEMA_VERSION = 40
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -1536,6 +1536,44 @@ MIGRATIONS: dict[int, str] = {
     FROM events
     WHERE events.event_type = 'discovery.candidate_rejected'
       AND json_extract(events.payload_json, '$.candidate_id') IS NOT NULL;
+    """,
+    40: """
+    -- V11 continuous observation: productionize the existing monitor as the
+    -- single durable watch-source/schedule authority.  No scheduler or
+    -- discovery queue is introduced.
+    ALTER TABLE monitors ADD COLUMN source_id TEXT;
+    ALTER TABLE monitors ADD COLUMN config_json TEXT NOT NULL DEFAULT '{}';
+    ALTER TABLE monitors ADD COLUMN config_hash TEXT;
+    ALTER TABLE monitors ADD COLUMN readiness_state TEXT NOT NULL DEFAULT 'IDLE'
+        CHECK(readiness_state IN ('READY', 'BLOCKED', 'UNKNOWN', 'IDLE', 'DISABLED'));
+    ALTER TABLE monitors ADD COLUMN next_due_at TEXT;
+    ALTER TABLE monitors ADD COLUMN last_attempt_at TEXT;
+    ALTER TABLE monitors ADD COLUMN last_observation_at TEXT;
+    ALTER TABLE monitors ADD COLUMN last_success_at TEXT;
+    ALTER TABLE monitors ADD COLUMN last_failure_at TEXT;
+    ALTER TABLE monitors ADD COLUMN last_meaningful_change_at TEXT;
+    ALTER TABLE monitors ADD COLUMN last_content_hash TEXT;
+    ALTER TABLE monitors ADD COLUMN consecutive_failures INTEGER NOT NULL DEFAULT 0
+        CHECK(consecutive_failures >= 0);
+    ALTER TABLE monitors ADD COLUMN backoff_until TEXT;
+    ALTER TABLE monitors ADD COLUMN blocked_reason TEXT NOT NULL DEFAULT '';
+    CREATE UNIQUE INDEX IF NOT EXISTS monitors_source_id
+        ON monitors(source_id) WHERE source_id IS NOT NULL;
+    CREATE INDEX IF NOT EXISTS monitors_durable_due
+        ON monitors(enabled, next_due_at, backoff_until, last_attempt_at);
+
+    -- Research remains in the one canonical queue, but its normal one-pass
+    -- budget is now per meaningful candidate revision.  Unchanged input can
+    -- never be researched twice, while changed evidence may receive one new pass.
+    ALTER TABLE research_queue ADD COLUMN input_hash TEXT;
+    DROP INDEX IF EXISTS research_queue_candidate_pass;
+    CREATE UNIQUE INDEX IF NOT EXISTS research_queue_candidate_revision_pass
+        ON research_queue(candidate_id, input_hash, pass_number)
+        WHERE candidate_id IS NOT NULL
+          AND input_hash IS NOT NULL
+          AND pass_number IS NOT NULL;
+    CREATE INDEX IF NOT EXISTS research_queue_candidate_input
+        ON research_queue(candidate_id, input_hash, status);
     """,
 }
 

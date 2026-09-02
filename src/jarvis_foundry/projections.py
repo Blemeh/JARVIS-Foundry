@@ -10,7 +10,7 @@ from .trust_states import ALLOWED_TRUST_STATES, TRUST_STATES
 
 _V3_COLUMN_PROBE_TABLES = frozenset({
     "candidates", "candidate_outcomes", "scoring_policy_registry",
-    "discovery_portfolio",
+    "discovery_portfolio", "monitors",
 })
 
 
@@ -874,7 +874,36 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
              payload.get("observed_at", event.recorded_at),
              payload.get("fresh_until"),
              str(payload.get("authority") or "DATA_ONLY"),
-             event.event_id, event.recorded_at, event.recorded_at),
+              event.event_id, event.recorded_at, event.recorded_at),
+        )
+    elif event.event_type == "discovery.candidate_refreshed":
+        candidate_id = str(payload.get("candidate_id") or "")
+        if not candidate_id or connection.execute(
+                "SELECT 1 FROM candidates WHERE candidate_id = ?",
+                (candidate_id,)).fetchone() is None:
+            raise ValueError(
+                "discovery.candidate_refreshed references unknown candidate "
+                f"{candidate_id}")
+        # New source evidence reopens only pre-admission truth.  Executed,
+        # approved, and superseded work remain monotonic while prior rejection
+        # decisions stay available in candidate_judgments.
+        connection.execute(
+            """UPDATE candidates SET
+               objective = ?, objective_canonical = ?,
+               expected_outcome = COALESCE(?, expected_outcome),
+               provenance_hash = COALESCE(?, provenance_hash),
+               expires_at = COALESCE(?, expires_at),
+               status = CASE
+                   WHEN status IN ('NEW', 'SCORED', 'ELIGIBLE',
+                                   'REJECTED', 'DEFERRED') THEN 'NEW'
+                   ELSE status
+               END,
+               last_event_id = ?, updated_at = ?
+               WHERE candidate_id = ?""",
+            (payload["objective"], payload["objective_canonical"],
+             payload.get("expected_outcome"), payload.get("provenance_hash"),
+             payload.get("expires_at"), event.event_id, event.recorded_at,
+             candidate_id),
         )
     elif event.event_type == "discovery.candidate_judged":
         if not _has_table(connection, "candidate_judgments"):
@@ -1106,6 +1135,47 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
              payload.get("poll_interval_s", 300),
              event.event_id, event.recorded_at),
         )
+    elif event.event_type == "discovery.monitor_configured":
+        columns = _table_columns(connection, "monitors")
+        if "source_id" not in columns:
+            return
+        monitor_id = str(payload.get("monitor_id") or "")
+        if not monitor_id or connection.execute(
+                "SELECT 1 FROM monitors WHERE monitor_id = ?",
+                (monitor_id,)).fetchone() is None:
+            raise ValueError(
+                "discovery.monitor_configured references unknown monitor "
+                f"{monitor_id}")
+        enabled = 1 if bool(payload.get("enabled", True)) else 0
+        connection.execute(
+            """UPDATE monitors SET
+               source_id = ?, source_kind = ?, source_ref = ?,
+               poll_interval_s = ?, config_json = ?, config_hash = ?,
+               enabled = ?,
+               readiness_state = CASE WHEN ? = 1 THEN readiness_state
+                                      ELSE 'DISABLED' END,
+               next_due_at = CASE
+                   WHEN ? = 1 AND (config_hash IS NULL OR config_hash != ?)
+                       THEN ?
+                   WHEN ? = 0 THEN NULL
+                   ELSE next_due_at
+               END,
+               backoff_until = CASE
+                   WHEN config_hash IS NULL OR config_hash != ? THEN NULL
+                   ELSE backoff_until
+               END,
+               blocked_reason = CASE WHEN ? = 1 THEN blocked_reason ELSE ? END,
+               last_event_id = ?, updated_at = ?
+               WHERE monitor_id = ?""",
+            (payload["source_id"], payload["source_kind"],
+             payload["source_identity"], int(payload["poll_interval_s"]),
+             canonical_json(payload.get("config") or {}), payload["config_hash"],
+             enabled, enabled, enabled, payload["config_hash"],
+             payload.get("next_due_at", event.recorded_at), enabled,
+             payload["config_hash"], enabled,
+             str(payload.get("reason") or "disabled by configuration"),
+             event.event_id, event.recorded_at, monitor_id),
+        )
     elif event.event_type == "discovery.monitor_polled":
         # V4-S5 round 2 (deleg_71efdc9e LOW): a poll for an unknown
         # monitor must fail the append atomically — no silent 0-row
@@ -1117,12 +1187,46 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             raise ValueError(
                 f"discovery.monitor_polled references unknown monitor "
                 f"{payload['monitor_id']}")
-        connection.execute(
-            "UPDATE monitors SET last_poll_at = ?, last_event_id = ?, "
-            "updated_at = ? WHERE monitor_id = ?",
-            (event.recorded_at, event.event_id, event.recorded_at,
-             payload["monitor_id"]),
-        )
+        columns = _table_columns(connection, "monitors")
+        if "readiness_state" not in columns:
+            connection.execute(
+                "UPDATE monitors SET last_poll_at = ?, last_event_id = ?, "
+                "updated_at = ? WHERE monitor_id = ?",
+                (event.recorded_at, event.event_id, event.recorded_at,
+                 payload["monitor_id"]),
+            )
+        else:
+            status = str(payload.get("status") or "READY").upper()
+            if status not in {"READY", "BLOCKED", "UNKNOWN", "IDLE"}:
+                raise ValueError(f"unsupported monitor readiness {status}")
+            meaningful = bool(payload.get("meaningful_change", False))
+            attempted_at = payload.get("attempted_at", event.recorded_at)
+            observation_at = payload.get("observation_at")
+            failed = status in {"BLOCKED", "UNKNOWN"}
+            connection.execute(
+                """UPDATE monitors SET
+                   last_poll_at = ?, last_attempt_at = ?,
+                   last_observation_at = COALESCE(?, last_observation_at),
+                   last_success_at = CASE WHEN ? = 0 THEN ? ELSE last_success_at END,
+                   last_failure_at = CASE WHEN ? = 1 THEN ? ELSE last_failure_at END,
+                   last_meaningful_change_at = CASE
+                       WHEN ? = 1 THEN ? ELSE last_meaningful_change_at END,
+                   last_content_hash = CASE
+                       WHEN ? = 1 THEN ? ELSE last_content_hash END,
+                   readiness_state = ?, next_due_at = ?,
+                   consecutive_failures = ?, backoff_until = ?,
+                   blocked_reason = ?, last_event_id = ?, updated_at = ?
+                   WHERE monitor_id = ?""",
+                (attempted_at, attempted_at, observation_at,
+                 int(failed), attempted_at, int(failed), attempted_at,
+                 int(meaningful), attempted_at, int(meaningful),
+                 payload.get("content_hash"), status,
+                 payload.get("next_due_at"),
+                 max(0, int(payload.get("consecutive_failures") or 0)),
+                 payload.get("backoff_until"),
+                 str(payload.get("reason") or "") if failed else "",
+                 event.event_id, event.recorded_at, payload["monitor_id"]),
+            )
     elif event.event_type == "system.registered":
         # V5-S1: the durable system catalog (Multi-System Intelligence).
         connection.execute(
@@ -1216,11 +1320,20 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             "AND status IN ('COMPLETED', 'FAILED')",
             (event.event_id, event.recorded_at, payload["action_key"]))
     elif event.event_type == "discovery.monitor_disabled":
-        connection.execute(
-            "UPDATE monitors SET enabled = 0, last_event_id = ?, "
-            "updated_at = ? WHERE monitor_id = ?",
-            (event.event_id, event.recorded_at, payload["monitor_id"]),
-        )
+        if "readiness_state" in _table_columns(connection, "monitors"):
+            connection.execute(
+                "UPDATE monitors SET enabled = 0, readiness_state = 'DISABLED', "
+                "next_due_at = NULL, backoff_until = NULL, blocked_reason = ?, "
+                "last_event_id = ?, updated_at = ? WHERE monitor_id = ?",
+                (str(payload.get("reason") or "disabled"), event.event_id,
+                 event.recorded_at, payload["monitor_id"]),
+            )
+        else:
+            connection.execute(
+                "UPDATE monitors SET enabled = 0, last_event_id = ?, "
+                "updated_at = ? WHERE monitor_id = ?",
+                (event.event_id, event.recorded_at, payload["monitor_id"]),
+            )
     elif event.event_type == "vault.file_indexed":
         # WP11 slice A: upsert the file row; prior hashes stay in the
         # event history (append-only), the row keeps the latest state.
@@ -1321,16 +1434,16 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             """INSERT OR IGNORE INTO research_queue(
                 item_id, claim_id, reason, evidence_json, status,
                 candidate_id, cycle_id, pass_number, budget_used, budget_json,
-                content_hash, source, source_ref, queued_at, started_at,
+                content_hash, input_hash, source, source_ref, queued_at, started_at,
                 completed_at, result_json, last_event_id, updated_at
-            ) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, '{}', ?, ?, ?, ?, ?, NULL,
+            ) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, '{}', ?, ?, ?, ?, ?, ?, NULL,
                       '{}', ?, ?)""",
             (research_id, str(payload.get("reason") or "candidate_research"),
              canonical_json(payload.get("evidence") or []), status,
              candidate_id, payload.get("cycle_id"), int(pass_number),
-             float(payload.get("budget_used") or 0.0),
-             payload.get("content_hash"),
-             str(payload.get("source") or "candidate"),
+              float(payload.get("budget_used") or 0.0),
+              payload.get("content_hash"), payload.get("input_hash"),
+              str(payload.get("source") or "candidate"),
              payload.get("source_ref"), event.recorded_at,
              payload.get("attempted_at"), event.event_id, event.recorded_at),
         )

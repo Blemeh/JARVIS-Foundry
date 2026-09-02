@@ -63,6 +63,11 @@ class WorkerRuntimeConfig:
     # with every execution-capable selector and remains OFF in production.
     initiative_a2_enabled: bool = False
     initiative_a2: dict[str, Any] = field(default_factory=dict)
+    # Durable due-driven productionization of A2. It reuses monitor rows,
+    # ResearchQueue, Executive judgment, and Executive time wakes, and remains
+    # admission-boundary-only while A3 owns objective creation.
+    continuous_observation_enabled: bool = False
+    continuous_observation: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_yaml(
@@ -132,6 +137,9 @@ class WorkerRuntimeConfig:
             initiative_a2_enabled=bool(
                 raw.get("initiative_a2", {}).get("enabled", False)),
             initiative_a2=dict(raw.get("initiative_a2") or {}),
+            continuous_observation_enabled=bool(
+                raw.get("continuous_observation", {}).get("enabled", False)),
+            continuous_observation=dict(raw.get("continuous_observation") or {}),
         )
         cfg.validate()
         return cfg
@@ -158,7 +166,11 @@ class WorkerRuntimeConfig:
                 f"{self.provider_settings.provider!r} + "
                 f"{self.provider_settings.model!r} only, got "
                 f"{self.provider!r} + {self.model!r}")
-        if self.initiative_a2_enabled:
+        if self.initiative_a2_enabled and self.continuous_observation_enabled:
+            raise ValueError(
+                "initiative_a2 and continuous_observation are alternate "
+                "admission-boundary drivers and cannot both be enabled")
+        if self.initiative_a2_enabled or self.continuous_observation_enabled:
             execution_flags = {
                 "discovery.cycle_enabled": self.discovery_cycle_enabled,
                 "executive.selection_enabled": self.executive_selection_enabled,
@@ -170,5 +182,5 @@ class WorkerRuntimeConfig:
             active = [name for name, enabled in execution_flags.items() if enabled]
             if active:
                 raise ValueError(
-                    "initiative_a2 is zero-execution and cannot be combined "
+                    "observation/judgment is zero-execution and cannot be combined "
                     f"with execution-capable runtime flags: {', '.join(active)}")

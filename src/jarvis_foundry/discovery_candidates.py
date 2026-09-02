@@ -189,7 +189,13 @@ def ingest_observed_candidate(
             link_key_suffix = hashlib.sha256(
                 canonical_json(link_payload).encode("utf-8")
             ).hexdigest()[:24]
-            _results = db.append_events_on_connection(connection, [Event.create(
+            known_revision = connection.execute(
+                "SELECT 1 FROM candidate_sources WHERE candidate_id = ? "
+                "AND source_kind = ? AND source_identity = ? "
+                "AND IFNULL(content_hash, '') = ? LIMIT 1",
+                (candidate_id, source_kind, source_identity, content_hash),
+            ).fetchone() is not None
+            link_event = Event.create(
                 "discovery.candidate_source_linked",
                 link_payload,
                 source_type="supervisor",
@@ -197,7 +203,33 @@ def ingest_observed_candidate(
                 idempotency_key=(
                     f"discovery.candidate_source_linked:{link_key_suffix}"
                 ),
-            )])
+            )
+            events = [link_event]
+            if not known_revision and covering_status not in {
+                    "APPROVED", "EXECUTED", "SUPERSEDED"}:
+                refresh_payload = {
+                    "candidate_id": candidate_id,
+                    "observation_id": observation_id,
+                    "source_kind": source_kind,
+                    "source_identity": source_identity,
+                    "content_hash": content_hash,
+                    "objective": str(objective).strip(),
+                    "objective_canonical": canonical,
+                    "expected_outcome": expected_outcome or str(objective).strip(),
+                    "provenance_hash": content_hash[7:],
+                    "expires_at": expires_at,
+                }
+                events.append(Event.create(
+                    "discovery.candidate_refreshed",
+                    refresh_payload,
+                    source_type="supervisor",
+                    source_id="v11-continuous-observation",
+                    idempotency_key=(
+                        f"discovery.candidate_refreshed:{candidate_id}:"
+                        f"{content_hash[7:]}"
+                    ),
+                ))
+            _results = db.append_events_on_connection(connection, events)
             return {
                 "candidate_id": candidate_id,
                 "created": False,
@@ -205,6 +237,7 @@ def ingest_observed_candidate(
                 "fingerprint": fingerprint,
                 "history_status": covering_status,
                 "source_linked": bool(_results[0][1]),
+                "refreshed": len(_results) > 1 and bool(_results[1][1]),
             }
 
         bounded_confidence = None if confidence is None else max(

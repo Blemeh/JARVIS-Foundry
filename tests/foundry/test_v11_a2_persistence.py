@@ -1,4 +1,4 @@
-"""Focused v39 persistence and replay coverage for V11 A2 initiative."""
+"""Focused v38 -> v39 -> v40 persistence and replay coverage for V11."""
 
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ def _candidate(candidate_id: str = "candidate-a2") -> Event:
     )
 
 
-def test_v39_upgrade_preserves_legacy_queue_and_repairs_rejection_history(tmp_path):
+def test_v38_to_v39_to_v40_preserves_queue_and_rejection_history(tmp_path):
     database = FoundryDatabase(tmp_path / "foundry-v38.db")
     assert database.initialize(target=38) == 38
     database.append(_candidate())
@@ -71,7 +71,22 @@ def test_v39_upgrade_preserves_legacy_queue_and_repairs_rejection_history(tmp_pa
             ('[{"rejection_reason":"Doing nothing is better"}]', "candidate-a2"),
         )
 
-    assert database.initialize() == SCHEMA_VERSION == 39
+    # Exercise the integration sequence explicitly. The A2 migration remains
+    # the sole v39 authority, then continuous observation advances the same
+    # database through additive v40 on reopen.
+    assert database.initialize(target=39) == 39
+    with database.connect(readonly=True) as connection:
+        assert connection.execute(
+            "SELECT MAX(version) FROM schema_migrations"
+        ).fetchone()[0] == 39
+        assert "candidate_judgments" in {
+            row[0] for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table'"
+            )
+        }
+
+    database = FoundryDatabase(database.path)
+    assert database.initialize() == SCHEMA_VERSION == 40
     candidate = database.row("candidates", "candidate_id", "candidate-a2")
     assert json.loads(str(candidate["evidence_json"])) == [
         {"observation_id": "observation-a2", "authority": "DATA_ONLY"},
@@ -96,11 +111,27 @@ def test_v39_upgrade_preserves_legacy_queue_and_repairs_rejection_history(tmp_pa
     assert judgments[0]["last_event_id"] == rejected.event_id
 
     with database.connect(readonly=True) as connection:
+        assert [row[0] for row in connection.execute(
+            "SELECT version FROM schema_migrations ORDER BY version"
+        )] == list(range(1, 41))
         indexes = {
             row[0] for row in connection.execute(
                 "SELECT name FROM sqlite_master WHERE type = 'index'"
             )
         }
+        monitor_columns = {
+            row[1] for row in connection.execute("PRAGMA table_info(monitors)")
+        }
+        research_columns = {
+            row[1] for row in connection.execute(
+                "PRAGMA table_info(research_queue)"
+            )
+        }
+    assert {
+        "source_id", "config_hash", "readiness_state", "next_due_at",
+        "last_content_hash", "consecutive_failures", "backoff_until",
+    } <= monitor_columns
+    assert "input_hash" in research_columns
     assert {
         "candidates_status_expiry",
         "candidates_fingerprint_status",
@@ -109,12 +140,21 @@ def test_v39_upgrade_preserves_legacy_queue_and_repairs_rejection_history(tmp_pa
         "world_signals_state_stale",
         "world_signals_dedupe",
         "monitors_due_lookup",
-        "research_queue_candidate_pass",
+        "research_queue_candidate_revision_pass",
+        "monitors_durable_due",
     } <= indexes
+    # A second reopen is a no-op: no duplicate authority or migration row.
+    database = FoundryDatabase(database.path)
+    assert database.initialize() == 40
+    with database.connect(readonly=True) as connection:
+        assert connection.execute(
+            "SELECT COUNT(*) FROM schema_migrations WHERE version IN (39, 40)"
+        ).fetchone()[0] == 2
+        assert connection.execute("PRAGMA quick_check").fetchone()[0] == "ok"
     assert reconcile(database).consistent is True
 
 
-def test_v39_projects_candidate_lineage_judgment_research_and_cycle_replay(tmp_path):
+def test_v40_projects_candidate_lineage_judgment_research_and_cycle_replay(tmp_path):
     database = FoundryDatabase(tmp_path / "foundry.db")
     database.initialize()
     database.append(_candidate())

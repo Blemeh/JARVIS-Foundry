@@ -77,6 +77,7 @@ class SourceSpec:
     source_identity: str
     poll_interval_s: int = 300
     config: Mapping[str, Any] = field(default_factory=dict)
+    enabled: bool = True
 
     def __post_init__(self) -> None:
         if not self.source_id.strip() or not self.source_identity.strip():
@@ -567,6 +568,7 @@ def run_source_observation_cycle(
             ))
             source_results.append(payload)
             continue
+        monitor_row = db.row("monitors", "monitor_id", monitor_id) or {}
 
         try:
             if spec.source_kind in reader_map:
@@ -584,16 +586,19 @@ def run_source_observation_cycle(
         except Exception as error:  # isolate one real-source failure
             result = SourceReadResult("UNKNOWN", reason=f"{type(error).__name__}: {_bounded_text(error, 240)}")
 
-        recorded = created = raw_candidates = duplicates = 0
+        recorded = created = raw_candidates = duplicates = refreshed = 0
         hashes: list[str] = []
         for item in result.observations[:100]:
             if stop_check():
                 break
             hashes.append(item.content_hash)
-            recorded += int(_record_observation(
+            observation_recorded = _record_observation(
                 db, item, observed_at, expires_at=default_expiry,
-            ))
-            if item.proposed_outcome and remaining > 0:
+            )
+            recorded += int(observation_recorded)
+            # Stable observation identity is the change gate. An unchanged
+            # source never relinks, refreshes, or regenerates candidate work.
+            if observation_recorded and item.proposed_outcome and remaining > 0:
                 raw_candidates += 1
                 ingested = ingest_observed_candidate(
                     db, mission_id, observation_id=item.observation_id,
@@ -613,8 +618,29 @@ def run_source_observation_cycle(
                 )
                 created += int(bool(ingested["created"]))
                 duplicates += int(not bool(ingested["created"]))
+                refreshed += int(bool(ingested.get("refreshed")))
                 remaining -= int(bool(ingested["created"]))
-        next_due_at = _iso(current + timedelta(seconds=spec.poll_interval_s))
+        aggregate_hash = content_hash(sorted(hashes))
+        failure = result.status in {"BLOCKED", "UNKNOWN"}
+        prior_failures = int(monitor_row.get("consecutive_failures") or 0)
+        consecutive_failures = prior_failures + 1 if failure else 0
+        base_backoff = max(
+            int(spec.poll_interval_s),
+            max(1, int(spec.config.get("failure_backoff_s", spec.poll_interval_s))),
+        )
+        max_backoff = max(
+            base_backoff,
+            min(int(spec.config.get("max_backoff_s", 86_400)), 604_800),
+        )
+        delay_s = (
+            min(max_backoff, base_backoff * (2 ** min(consecutive_failures - 1, 10)))
+            if failure else int(spec.poll_interval_s)
+        )
+        next_due_at = _iso(current + timedelta(seconds=delay_s))
+        prior_hash = monitor_row.get("last_content_hash")
+        meaningful_change = (
+            result.status == "READY" and aggregate_hash != prior_hash
+        )
         payload = {
             "cycle_id": cycle_id, "source_id": source_run_id,
             "source_kind": spec.source_kind, "source_identity": spec.source_identity,
@@ -622,7 +648,12 @@ def run_source_observation_cycle(
             "candidates_recorded": created,
             "raw_candidates": raw_candidates,
             "duplicates_suppressed": duplicates,
-            "content_hash": content_hash(sorted(hashes)) if hashes else None,
+            "candidates_refreshed": refreshed,
+            "content_hash": aggregate_hash,
+            "meaningful_change": meaningful_change,
+            "unchanged": result.status == "READY" and not meaningful_change,
+            "consecutive_failures": consecutive_failures,
+            "backoff_seconds": delay_s if failure else 0,
             "reason": result.reason or None, "next_due_at": next_due_at,
         }
         source_event = Event.create(
@@ -637,6 +668,14 @@ def run_source_observation_cycle(
             db, monitor_id, poll_key=cycle_id,
             items_seen=len(result.observations), candidates_found=created,
             additional_events=(source_event,),
+            status=result.status, attempted_at=observed_at,
+            observation_at=observed_at if result.observations else None,
+            content_hash=aggregate_hash,
+            meaningful_change=meaningful_change,
+            next_due_at=next_due_at,
+            consecutive_failures=consecutive_failures,
+            backoff_until=next_due_at if failure else None,
+            reason=result.reason,
         )
         source_results.append(payload)
     return {
@@ -646,4 +685,6 @@ def run_source_observation_cycle(
         "candidates_created": candidate_limit - remaining,
         "raw_candidates": sum(int(item.get("raw_candidates", 0)) for item in source_results),
         "duplicates_suppressed": sum(int(item.get("duplicates_suppressed", 0)) for item in source_results),
+        "candidates_refreshed": sum(int(item.get("candidates_refreshed", 0)) for item in source_results),
+        "meaningful_changes": sum(int(bool(item.get("meaningful_change"))) for item in source_results),
     }

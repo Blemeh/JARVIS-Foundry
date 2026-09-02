@@ -170,8 +170,8 @@ _CANDIDATE_RESEARCH_EVENTS = (
 )
 
 
-def _candidate_research_id(candidate_id: str, cycle_id: str, pass_number: int) -> str:
-    material = f"{candidate_id}\x1f{cycle_id}\x1f{pass_number}"
+def _candidate_research_id(candidate_id: str, input_hash: str, pass_number: int) -> str:
+    material = f"{candidate_id}\x1f{input_hash}\x1f{pass_number}"
     return f"research-{hashlib.sha256(material.encode('utf-8')).hexdigest()[:16]}"
 
 
@@ -255,6 +255,7 @@ def _research_queue_row(row: Any) -> dict[str, Any]:
         "budget_used": float(row["budget_used"] or 0.0),
         "source_ref": row["source_ref"],
         "content_hash": row["content_hash"],
+        "input_hash": row["input_hash"] if "input_hash" in row.keys() else None,
         "evidence": evidence,
         "attempted_at": row["started_at"],
         "completed_at": row["completed_at"],
@@ -275,6 +276,7 @@ def enqueue_candidate_research(
     source_ref: str | None = None,
     evidence: Mapping[str, Any] | None = None,
     attempted_at: str | None = None,
+    input_hash: str | None = None,
 ) -> dict[str, Any]:
     """Enqueue one bounded research pass with deterministic replay identity.
 
@@ -304,12 +306,21 @@ def enqueue_candidate_research(
     )):
         raise ValueError("research budgets must be finite and non-negative")
 
-    research_id = _candidate_research_id(candidate_id, cycle_id, pass_number)
+    if input_hash is None:
+        candidate = db.row("candidates", "candidate_id", candidate_id) or {}
+        input_hash = str(candidate.get("provenance_hash") or candidate.get("fingerprint")
+                         or f"legacy:{candidate_id}")
+    input_hash = str(input_hash).strip()
+    if not input_hash:
+        raise ValueError("input_hash is required")
+    research_id = _candidate_research_id(candidate_id, input_hash, pass_number)
     for row in candidate_research_state(db, candidate_id=candidate_id, cycle_id=cycle_id):
         if row.get("research_id") == research_id:
             return row
     prior_passes = candidate_research_state(db, candidate_id=candidate_id)
-    if any(int(row.get("pass_number") or 0) >= max_normal_passes for row in prior_passes):
+    if any(row.get("input_hash") == input_hash
+           and int(row.get("pass_number") or 0) >= max_normal_passes
+           for row in prior_passes):
         return {
             "research_id": research_id,
             "candidate_id": candidate_id,
@@ -335,6 +346,7 @@ def enqueue_candidate_research(
         "cycle_id": cycle_id,
         "pass_number": int(pass_number),
         "status": "ENQUEUED",
+        "input_hash": input_hash,
         "budget_used": requested,
         "evidence": dict(evidence or {}),
         "attempted_at": attempted_at or _now(),

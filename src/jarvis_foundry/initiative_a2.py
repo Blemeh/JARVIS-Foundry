@@ -24,7 +24,17 @@ from .connectors.github_research import GitHubResearchConnector
 from .connectors.web_research import PlaywrightBrowserConnector, TrafilaturaExtractor
 from .control.broker import emergency_stop_reason
 from .database import FoundryDatabase
-from .discovery_sources import SourceSpec, content_hash, run_source_observation_cycle
+from .discovery_sources import (
+    SourceReadResult,
+    SourceSpec,
+    content_hash,
+    run_source_observation_cycle,
+)
+from .discovery_monitors import (
+    configure_monitor,
+    due_monitors,
+    next_monitor_due_at,
+)
 from .events import Event, canonical_json
 from .executive.decisions import ExecutiveDecisionService, a2_precondition
 from .executive.scoring import A2GovernorBounds
@@ -36,6 +46,7 @@ from .research_queue import (
 
 
 ResearchReader = Callable[[FoundryDatabase, Mapping[str, Any]], dict[str, Any]]
+SourceReader = Callable[[SourceSpec, Callable[[], bool]], SourceReadResult]
 FaultHook = Callable[[str], None]
 
 
@@ -291,6 +302,7 @@ def _run_research(
             cycle_budget=bounds.research_budget_per_cycle,
             max_normal_passes=bounds.research_passes_per_candidate,
             evidence={"preliminary_score": score.composite, "authority": "DATA_ONLY"},
+            input_hash=str(row.get("provenance_hash") or row.get("fingerprint") or ""),
         )
         if queued.get("status") != "ENQUEUED":
             continue
@@ -367,6 +379,7 @@ def run_initiative_a2_cycle(
     research_reader: ResearchReader = default_research_reader,
     fault_hook: FaultHook | None = None,
     now: datetime | str | None = None,
+    source_readers: Mapping[str, SourceReader] | None = None,
 ) -> dict[str, Any]:
     """Run one replay-safe A2 pass and return WAIT/IDLE, never work."""
     if not cycle_id.strip():
@@ -419,6 +432,7 @@ def run_initiative_a2_cycle(
             candidate_ttl_hours=policy.candidate_ttl_hours,
             now=now,
             stop_path=stop_path,
+            readers=source_readers,
         )
         _append_stage(database, cycle_id, "OBSERVATIONS_RECORDED")
         if fault_hook:
@@ -426,6 +440,76 @@ def run_initiative_a2_cycle(
         stopped = _stop_reason(database, stop_path)
         if stopped:
             return _complete_stopped(database, cycle_id, stopped, observed, started, start_sequence)
+
+        expiry_cutoff = _time_text(_current_time(now))
+        with database.connect(readonly=True) as connection:
+            expired_due = connection.execute(
+                "SELECT 1 FROM candidates WHERE source = 'initiative_observation' "
+                "AND status IN ('NEW', 'SCORED', 'ELIGIBLE', 'DEFERRED') "
+                "AND expires_at IS NOT NULL AND expires_at <= ? LIMIT 1",
+                (expiry_cutoff,),
+            ).fetchone() is not None
+        if (not expired_due
+                and int(observed.get("candidates_created") or 0) == 0
+                and int(observed.get("candidates_refreshed") or 0) == 0
+                and int(observed.get("meaningful_changes") or 0) == 0):
+            source_rows = list(observed.get("sources") or ())
+            status = (
+                "IDLE" if source_rows
+                and all(row.get("status") == "IDLE" for row in source_rows)
+                else "WAIT"
+            )
+            zero = _event_delta_counts(database, start_sequence)
+            metrics = {
+                "source_classes_attempted": sorted({
+                    str(row.get("source_kind")) for row in source_rows
+                }),
+                "source_classes_ready": sorted({
+                    str(row.get("source_kind")) for row in source_rows
+                    if row.get("status") == "READY"
+                }),
+                "observations_recorded": int(
+                    observed.get("observations_recorded") or 0),
+                "raw_candidates_generated": 0,
+                "unique_candidates": 0,
+                "candidate_duplicates_suppressed": 0,
+                "candidates_refreshed": 0,
+                "meaningful_source_changes": 0,
+                "candidates_researched": 0,
+                "candidates_rejected": 0,
+                "candidates_deferred": 0,
+                "candidates_eligible": 0,
+                "cycles_completed": 1,
+                "cycle_duration_ms": round(
+                    (time.perf_counter() - started) * 1000, 3),
+                "research_calls": 0,
+                "research_budget_used": 0.0,
+                **zero,
+                "duplicate_candidate_records": 0,
+                "unbounded_loop_detected": False,
+            }
+            database.append(Event.create(
+                "initiative.cycle_completed",
+                {
+                    "cycle_id": cycle_id,
+                    "status": status,
+                    "completed_at": isoformat(),
+                    "budgets": {"research_used": 0.0},
+                    "metrics": metrics,
+                    "reason": "no meaningful source change",
+                    "next_due_at": min((
+                        row.get("next_due_at") for row in source_rows
+                        if row.get("next_due_at")
+                    ), default=None),
+                },
+                source_type="supervisor",
+                source_id="v11-continuous-observation",
+                idempotency_key=f"initiative.cycle_completed:{cycle_id}",
+            ))
+            return {
+                "cycle_id": cycle_id, "outcome": status,
+                "reason": "no meaningful source change", "metrics": metrics,
+            }
 
         _append_stage(database, cycle_id, "CANDIDATES_READY")
         if fault_hook:
@@ -484,6 +568,8 @@ def run_initiative_a2_cycle(
         "raw_candidates_generated": int(observed.get("raw_candidates") or observed.get("candidates_created") or 0),
         "unique_candidates": int(observed.get("candidates_created") or 0),
         "candidate_duplicates_suppressed": int(observed.get("duplicates_suppressed") or 0),
+        "candidates_refreshed": int(observed.get("candidates_refreshed") or 0),
+        "meaningful_source_changes": int(observed.get("meaningful_changes") or 0),
         "candidates_researched": len(research),
         **judgment,
         "cycles_completed": 1,
@@ -550,8 +636,210 @@ def _complete_stopped(
     return {"cycle_id": cycle_id, "outcome": "STOPPED", "reason": reason, "metrics": metrics}
 
 
+_OBSERVATION_WAKE_SUBJECT = "system:continuous-observation"
+
+
+def _current_time(value: datetime | str | None) -> datetime:
+    if value is None:
+        return datetime.now(timezone.utc)
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+
+def _time_text(value: datetime) -> str:
+    return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _ensure_observation_wake(
+    database: FoundryDatabase,
+    *,
+    not_before: str | None,
+) -> dict[str, Any] | None:
+    """Coalesce the subsystem onto one existing Executive time wake."""
+    from .executive.continuous import (
+        WakeCondition,
+        clear_wake,
+        create_wake,
+        rebuild_wake_state,
+    )
+
+    wakes = rebuild_wake_state(database)
+    with database.connect(readonly=True) as connection:
+        schedule_rows = [dict(row) for row in connection.execute(
+            "SELECT source_id, next_due_at, backoff_until, last_attempt_at "
+            "FROM monitors WHERE source_id IS NOT NULL AND enabled = 1 "
+            "ORDER BY source_id"
+        ).fetchall()]
+    base_wake_id = (
+        "wake:system:continuous-observation:until:"
+        + _hash({"not_before": not_before, "schedule": schedule_rows})[:16]
+    )
+    active = [
+        wake for wake in wakes.values()
+        if wake.get("objective_id") == _OBSERVATION_WAKE_SUBJECT
+        and wake.get("status") == "ACTIVE"
+    ]
+    matching = next((wake for wake in active
+                     if wake.get("wake_id", "").startswith(base_wake_id)
+                     and wake.get("not_before") == not_before), None)
+    if matching is not None:
+        return matching
+    for wake in active:
+        clear_wake(
+            database, str(wake["wake_id"]), controller="supervisor",
+            reason="continuous observation due time replaced",
+        )
+    if not not_before:
+        return None
+    prior = sum(str(wake_id).startswith(base_wake_id) for wake_id in wakes)
+    wake_id = base_wake_id if prior == 0 else f"{base_wake_id}:retry:{prior}"
+    wake_condition = WakeCondition(
+        wake_id=wake_id,
+        objective_id=_OBSERVATION_WAKE_SUBJECT,
+        kind="WAIT_UNTIL_TIME",
+        reason="next durable watch source is due",
+        created_at=isoformat(),
+        not_before=not_before,
+    )
+    create_wake(database, wake_condition, controller="supervisor")
+    return wake_condition.to_payload()
+
+
+def run_continuous_observation_cycle(
+    database: FoundryDatabase,
+    *,
+    sources: Sequence[SourceSpec] = (),
+    bounds: InitiativeA2Bounds | None = None,
+    resource_id: str = "v11-continuous-observation",
+    capability: str = "cap.file.read",
+    stop_path: str | Path | None = None,
+    research_reader: ResearchReader = default_research_reader,
+    source_readers: Mapping[str, SourceReader] | None = None,
+    fault_hook: FaultHook | None = None,
+    now: datetime | str | None = None,
+) -> dict[str, Any]:
+    """Dispatch at most one due observation pass from one Executive wake.
+
+    Runtime configuration is projected into the existing monitor table once.
+    Later invocations read schedule/readiness/backoff from SQLite, so restart
+    does not reset cadence. Calls before the durable due time append nothing.
+    """
+    policy = bounds or InitiativeA2Bounds()
+    current = _current_time(now)
+    current_text = _time_text(current)
+    stopped = _stop_reason(database, stop_path)
+    if stopped:
+        return {
+            "outcome": "STOPPED", "reason": stopped,
+            "cycles_dispatched": 0, "research_dispatches": 0,
+            "next_due_at": next_monitor_due_at(database),
+        }
+
+    # A non-empty source list is the complete desired configuration. Empty is
+    # a restart path: continue from durable configuration without requiring
+    # the YAML to be reparsed by this function.
+    if sources:
+        desired_ids = {spec.source_id for spec in sources}
+        for spec in sources:
+            configure_monitor(
+                database,
+                source_id=spec.source_id,
+                source_kind=spec.source_kind,
+                source_identity=spec.source_identity,
+                poll_interval_s=spec.poll_interval_s,
+                config=spec.config,
+                enabled=spec.enabled,
+                now=current,
+            )
+        from .discovery_monitors import configured_monitors, set_monitor_enabled
+        for row in configured_monitors(database, enabled_only=True):
+            if str(row.get("source_id")) not in desired_ids:
+                set_monitor_enabled(
+                    database, str(row["source_id"]), False,
+                    reason="removed from continuous observation configuration",
+                    now=current,
+                )
+
+    due = due_monitors(database, now=current, limit=policy.source_limit)
+    earliest = next_monitor_due_at(database)
+    wake = _ensure_observation_wake(database, not_before=earliest)
+    if not due:
+        return {
+            "outcome": "WAIT",
+            "reason": ("no watch source is due" if earliest
+                       else "no enabled watch source is configured"),
+            "cycles_dispatched": 0,
+            "research_dispatches": 0,
+            "next_due_at": earliest,
+            "wake_id": wake.get("wake_id") if wake else None,
+        }
+
+    # The due schedule itself is the replay identity. A crash before source
+    # attempt commit sees the same monitor due time and therefore the same
+    # wake/cycle id on restart.
+    from .executive.continuous import is_wake_due, trigger_wake
+    if wake is None or not is_wake_due(database, wake, now=current):
+        return {
+            "outcome": "WAIT", "reason": "durable wake is not due",
+            "cycles_dispatched": 0, "research_dispatches": 0,
+            "next_due_at": earliest,
+            "wake_id": wake.get("wake_id") if wake else None,
+        }
+    trigger_wake(
+        database, str(wake["wake_id"]), controller="supervisor",
+        reason="continuous observation source due",
+    )
+    specs = tuple(SourceSpec(
+        source_id=str(row["source_id"]),
+        source_kind=str(row["source_kind"]),
+        source_identity=str(row["source_ref"]),
+        poll_interval_s=int(row["poll_interval_s"]),
+        config=dict(row.get("config") or {}),
+        enabled=True,
+    ) for row in due)
+    cycle_material = {
+        "wake_id": wake["wake_id"],
+        "sources": [
+            {"source_id": row["source_id"],
+             "due": row.get("backoff_until") or row.get("next_due_at")}
+            for row in due
+        ],
+    }
+    cycle_id = "continuous-observation-" + _hash(cycle_material)[:20]
+    report = run_initiative_a2_cycle(
+        database,
+        cycle_id=cycle_id,
+        sources=specs,
+        resource_id=resource_id,
+        capability=capability,
+        bounds=policy,
+        stop_path=stop_path,
+        research_reader=research_reader,
+        source_readers=source_readers,
+        fault_hook=fault_hook,
+        now=current,
+    )
+    next_due = next_monitor_due_at(database)
+    next_wake = None
+    if report.get("outcome") != "STOPPED":
+        next_wake = _ensure_observation_wake(database, not_before=next_due)
+    metrics = dict(report.get("metrics") or {})
+    return {
+        **report,
+        "cycle_id": cycle_id,
+        "cycles_dispatched": 1,
+        "research_dispatches": int(metrics.get("research_calls") or 0),
+        "next_due_at": next_due,
+        "wake_id": next_wake.get("wake_id") if next_wake else None,
+        "dispatched_at": current_text,
+    }
+
+
 __all__ = [
     "InitiativeA2Bounds",
     "default_research_reader",
+    "run_continuous_observation_cycle",
     "run_initiative_a2_cycle",
 ]
