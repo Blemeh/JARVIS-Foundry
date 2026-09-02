@@ -23,10 +23,13 @@ meta:
   last_reconciled: "2026-09-02"
 
 observed_repo_state:
-  canonical_main: "faa861c67399d5a3755d778224ff65513bd933a1"
-  canonical_main_summary: "release: package V10 browser runtime"
-  current_schema: v38            # canonical source migrations.SCHEMA_VERSION
-  live_schema: v38               # per docs/CURRENT_STATE.md reconciliation 2026-09-01
+  canonical_main: "2905c206fed0461bf3085bc0cb43773be913300a"
+  canonical_main_summary: "docs: record V10 live closure and open V11 A2"
+  candidate_source: "1ba21612f52a5050f6f24550ce64a31715f491de"
+  candidate_branch: "candidate/v11-a2-initiative-20260902"
+  candidate_worktree: "C:\\temp\\JARVIS-V11-A2-Initiative-20260902"
+  current_schema: v39            # isolated A2 candidate source migrations.SCHEMA_VERSION
+  live_schema: v38               # live V10 remains unchanged
   live_runtime: "faa861c67399d5a3755d778224ff65513bd933a1 / rel-faa861c67399-5afeb024"
   v9_status: "established and stabilized; represented in canonical source"
   v10_status: "CLOSED; exact-SHA live promotion, validation, control/recovery, bounded observation, and canonicalization passed"
@@ -50,12 +53,13 @@ observed_repo_state:
 
 current_phase: V11_INITIATIVE
 current_gate: A2
-status: READY_TO_START
-authorized_next_gate: A2
+status: PASSED_CANDIDATE
+authorized_next_gate: A3
+next_authorized: V11_L3_A3_A4
 authorized_next_gate_definition: >
-  Unprompted observation cycle produces real candidates and reasoned rejections
-  without executing effects. A2 is authorized to start in a future session;
-  this V10 closure session did not implement or start V11.
+  Build the candidate-to-objective bridge only through the existing authority
+  spine and converge A3/A4 in a later isolated session. A2 stopped at the
+  admission boundary and grants no promotion or live-mutation authority.
 
 phases:
   V10_CLOSE:
@@ -64,9 +68,9 @@ phases:
     gate_status: PASSED
     notes: "exact faa861c promoted and live-validated; rollback, STOP/RESUME, hard-kill recovery, browser packaging, and canonicalization passed"
   V11_INITIATIVE:
-    status: READY_TO_START
+    status: A2_PASSED_CANDIDATE
     gates: [A2, A3, A4]
-    gate_status: { A2: NOT_TESTED, A3: NOT_TESTED, A4: NOT_TESTED }
+    gate_status: { A2: PASSED_CANDIDATE, A3: NOT_TESTED, A4: NOT_TESTED }
     hard_entry: "promoted V10 base + interactive browser"
   V12_ENDURANCE_SELF_EXPANSION:
     status: NOT_STARTED
@@ -85,6 +89,11 @@ phases:
     definition: "72-hour Owner-Absent Campaign, live, on the installed release"
 
 capability_flags:
+  initiative_a2:
+    state: PASSED_CANDIDATE_NOT_LIVE
+    reason: "real read-only GitHub/web/project observation, candidate dedupe, bounded research, rejection-first judgment, replay/STOP/failure proof, and zero objective/mission/effect/worktree/provider writes passed in disposable schema v39"
+    implementation_source: "1ba21612f52a5050f6f24550ce64a31715f491de"
+    evidence_root: "C:\\temp\\JARVIS-V11-A2-Initiative-20260902-evidence-final4"
   interactive_browser:
     state: IMPLEMENTED_DISPOSABLE_PROVED
     reason: "bounded Playwright navigation, structural targets, click/fill/select/check/submit, session restore/expiry, receipts, readback, STOP, and effect replay are proven in the V10_EXIT candidate"
@@ -146,3 +155,10 @@ update_log:
     product_sha: "faa861c67399d5a3755d778224ff65513bd933a1"
     live_release_id: "rel-faa861c67399-5afeb024"
     evidence_root: "C:\\temp\\JARVIS-V10-Live-Closure-20260902"
+  - date: "2026-09-02"
+    change: "V11 A2 passed as an isolated candidate after real-source observation, deterministic dedupe, bounded research, rejection-first Executive judgment, replay/STOP/failure recovery, and a hard zero-execution barrier"
+    session: "candidate/v11-a2-initiative-20260902"
+    predecessor_sha: "2905c206fed0461bf3085bc0cb43773be913300a"
+    source_tip: "1ba21612f52a5050f6f24550ce64a31715f491de"
+    schema: v39
+    evidence_root: "C:\\temp\\JARVIS-V11-A2-Initiative-20260902-evidence-final4"
