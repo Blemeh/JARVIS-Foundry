@@ -94,6 +94,11 @@ def build_briefing_packet(
     operational = discovery.get("operational_intelligence") if isinstance(
         discovery.get("operational_intelligence"), dict
     ) else {}
+    executive = snapshot.get("executive") if isinstance(snapshot.get("executive"), dict) else {}
+    autonomy = executive.get("autonomy") if isinstance(executive.get("autonomy"), dict) else {}
+    outcome_learning = autonomy.get("outcome_learning") if isinstance(
+        autonomy.get("outcome_learning"), dict
+    ) else {}
     # Operational follow-ups are a read-only extension of the packet. They
     # never become owner approvals or execution commands.
     for followup in operational.get("followups") or []:
@@ -136,6 +141,7 @@ def build_briefing_packet(
         "effect_truth": dict(snapshot.get("effect_truth") or {}),
         "evolution_truth": dict(snapshot.get("evolution_truth") or {}),
         "operational_intelligence": dict(operational),
+        "autonomy_briefing": dict(outcome_learning),
         "decision_required": decision_required,
         "source_refs": source_refs,
         "next_action_summary": next_actions,
@@ -151,6 +157,7 @@ def build_briefing_packet(
         "window": packet["window"], "items": items, "decision_required": decision_required,
         "source_refs": source_refs, "uncertainty": uncertainty,
         "operational_intelligence": operational,
+        "autonomy_briefing": outcome_learning,
     }).encode("utf-8")).hexdigest()
     return packet
 

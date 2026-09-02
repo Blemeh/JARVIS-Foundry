@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, Mapping
 
 from jarvis_foundry.clock import isoformat
 from jarvis_foundry.database import FoundryDatabase
+from jarvis_foundry.mission.verification import validate_final_outcome_contract
 
 from jarvis_foundry.world_model.entities import WorldEntityStore
 from jarvis_foundry.world_model.relationships import WorldRelationshipStore
@@ -80,12 +81,62 @@ class WorldModel:
         outcome: str,
         payload: dict[str, Any] | None = None,
         *,
+        final_outcome_id: str,
         source_id: str = "world-model",
     ) -> dict[str, Any]:
-        """Update world understanding from a mission/verifier outcome."""
-        payload = payload or {}
+        """Update world understanding from one accepted final-outcome record.
+
+        The public facade deliberately refuses caller-supplied mission status
+        unless it resolves to the exact durable ``mission.outcome_finalized``
+        identity. This keeps worker/provider assertions out of terminal world
+        truth while retaining the existing pattern and prediction engines.
+        """
+        with self.db.connect(readonly=True) as connection:
+            row = connection.execute(
+                "SELECT payload_json, source_type, source_id FROM events WHERE event_type = "
+                "'mission.outcome_finalized' "
+                "AND json_extract(payload_json, '$.outcome_id') = ? "
+                "ORDER BY sequence DESC LIMIT 1",
+                (str(final_outcome_id),),
+            ).fetchone()
+        if row is None:
+            raise ValueError("mission outcome learning requires accepted final truth")
+        try:
+            durable = json.loads(str(row[0]))
+        except (TypeError, ValueError) as error:
+            raise ValueError("durable final outcome is malformed") from error
+        if not isinstance(durable, Mapping):
+            raise ValueError("mission outcome learning requires accepted final truth")
+        durable = {
+            **dict(durable),
+            "outcome_source_type": str(row[1]),
+            "outcome_source_id": str(row[2]),
+        }
+        if not validate_final_outcome_contract(self.db, durable):
+            raise ValueError("mission outcome learning requires accepted final truth")
+        if str(durable.get("mission_id") or "") != str(mission_id):
+            raise ValueError("final outcome belongs to a different mission")
+        aliases = {
+            "PASS": "SUCCEEDED", "PASSED": "SUCCEEDED",
+            "COMPLETED": "SUCCEEDED", "SUCCESS": "SUCCEEDED",
+            "FAIL": "FAILED", "FAILED_VERIFICATION": "FAILED",
+        }
+        requested = aliases.get(str(outcome or "").upper(), str(outcome or "").upper())
+        durable_status = str(durable.get("status") or "").upper()
+        if requested != durable_status:
+            raise ValueError(
+                f"reported outcome {requested!r} disagrees with durable "
+                f"final truth {durable_status!r}")
+        payload = dict(durable.get("actual_observed") or {})
+        payload.update({
+            "outcome_id": final_outcome_id,
+            "objective_id": durable.get("objective_id"),
+            "candidate_id": durable.get("candidate_id"),
+            "project_id": durable.get("project_id"),
+            "repair_attempts": durable.get("repair_attempts") or [],
+        })
         signals: list[dict[str, Any]] = []
-        outcome_upper = outcome.upper()
+        outcome_upper = durable_status
 
         if outcome_upper in ("FAILED", "FAIL", "FAILED_VERIFICATION"):
             # Record pattern
@@ -119,7 +170,7 @@ class WorldModel:
             except (ValueError, Exception):
                 pass
 
-        elif outcome_upper in ("PASSED", "PASS", "COMPLETED", "SUCCESS"):
+        elif outcome_upper in ("SUCCEEDED", "PASSED", "PASS", "COMPLETED", "SUCCESS"):
             # Successful procedure reinforces knowledge
             proc_id = payload.get("procedure_id")
             if proc_id:
@@ -147,7 +198,12 @@ class WorldModel:
                 )
                 self.calibration.record_outcome(pred["subject_type"], pred["subject_id"], "CONFIRMED" if is_confirmed else "REFUTED", source_id=source_id)
 
-        return {"mission_id": mission_id, "outcome": outcome, "signals": signals}
+        return {
+            "mission_id": mission_id,
+            "outcome": durable_status,
+            "final_outcome_id": final_outcome_id,
+            "signals": signals,
+        }
 
     # ---- prediction + calibration ----
 

@@ -98,6 +98,13 @@ class BriefingPlanner:
                 for s in world_signals[:5]
             ]
         payload["operational_followups"] = followups[:20]
+        executive = snapshot.get("executive") or {}
+        autonomy = executive.get("autonomy") if isinstance(executive, dict) else {}
+        outcome_learning = (
+            autonomy.get("outcome_learning")
+            if isinstance(autonomy, dict) else {}
+        )
+        payload["autonomy_briefing"] = dict(outcome_learning or {})
         payload["next_actions"] = payload["next_actions"] + [
             {
                 "follow_up_id": item.get("follow_up_id"),
@@ -123,6 +130,7 @@ class BriefingPlanner:
             "controls": snapshot["controls"],
             "health": snapshot["health"],
             "costs": snapshot["costs"],
+            "autonomy_briefing": payload["autonomy_briefing"],
         }
         payload["content_digest"] = hashlib.sha256(
             json.dumps(digest_input, sort_keys=True, separators=(",", ":")).encode()

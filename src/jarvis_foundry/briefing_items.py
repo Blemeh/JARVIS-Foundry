@@ -112,6 +112,13 @@ def _text(value: Any, *, limit: int = 320) -> str:
 
 def _payload_summary(event: Event) -> str:
     payload = event.payload if isinstance(event.payload, dict) else {}
+    if event.event_type == "mission.outcome_finalized":
+        briefing = payload.get("briefing")
+        if isinstance(briefing, dict):
+            attempted = _text(briefing.get("what_was_attempted"), limit=180)
+            result = _text(briefing.get("result"), limit=40)
+            if attempted and result:
+                return f"{attempted} -> {result}"
     for key in (
         "reason", "exact_text", "objective", "summary", "error",
         "failure_class", "next_action", "status", "question",
@@ -170,6 +177,8 @@ def _rule(event: Event) -> tuple[str, int, str]:
         return "COST", 3, "INFORM"
     if event_type == "verification.accepted":
         return "VERIFICATION", 4, "INFORM"
+    if event_type == "mission.outcome_finalized":
+        return "OUTCOME", 4, "INFORM"
     # V5 effect truth is useful to an owner only after it is reduced to the
     # durable attempt/lineage state.  Raw provider content never changes the
     # category or authority of an item.

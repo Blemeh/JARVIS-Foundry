@@ -405,6 +405,7 @@ class ExecutiveBriefing:
     owner_actions: tuple[dict[str, Any], ...]
     next_actions: tuple[dict[str, Any], ...]
     blockers: tuple[dict[str, Any], ...]
+    outcomes: tuple[dict[str, Any], ...]
 
     def to_payload(self) -> dict[str, Any]:
         return {
@@ -415,6 +416,7 @@ class ExecutiveBriefing:
             "owner_actions": [dict(row) for row in self.owner_actions],
             "next_actions": [dict(row) for row in self.next_actions],
             "blockers": [dict(row) for row in self.blockers],
+            "outcomes": [dict(row) for row in self.outcomes],
         }
 
 
@@ -633,6 +635,7 @@ def rebuild_executive_state(
                     owner_actions=tuple(dict(v) for v in (payload.get("owner_actions") or ()) if isinstance(v, Mapping)),
                     next_actions=tuple(dict(v) for v in (payload.get("next_actions") or ()) if isinstance(v, Mapping)),
                     blockers=tuple(dict(v) for v in (payload.get("blockers") or ()) if isinstance(v, Mapping)),
+                    outcomes=tuple(dict(v) for v in (payload.get("outcomes") or ()) if isinstance(v, Mapping)),
                 )
                 if briefing.briefing_id:
                     briefings[briefing.briefing_id] = briefing
@@ -2209,11 +2212,26 @@ def build_executive_briefing(
     for score in ranked:
         if score.eligible and score.score > 0:
             next_actions.append({"objective_id": score.objective_id, "score": score.score, "action": "continue or generate next ready mission", "why": score.explanation})
+    from ..mission.verification import final_outcome_projection
+
+    outcome_projection = final_outcome_projection(database, limit=limit)
+    outcome_rows = tuple(
+        {
+            **dict(item.get("briefing") or {}),
+            "outcome_id": item.get("outcome_id"),
+            "mission_id": item.get("mission_id"),
+            "objective_id": item.get("objective_id"),
+            "status": item.get("status"),
+            "evidence_refs": list(item.get("evidence_refs") or []),
+        }
+        for item in outcome_projection.get("history") or []
+    )
     briefing = ExecutiveBriefing(
-        briefing_id=f"briefing:{_hash({'objectives': sorted(state.objectives), 'progress': {key: value.to_payload() for key, value in state.progress.items()}, 'continuations': {key: value.to_payload() for key, value in state.continuations.items()}})}",
+        briefing_id=f"briefing:{_hash({'objectives': sorted(state.objectives), 'progress': {key: value.to_payload() for key, value in state.progress.items()}, 'continuations': {key: value.to_payload() for key, value in state.continuations.items()}, 'outcomes': [row.get('outcome_id') for row in outcome_rows]})}",
         generated_at=isoformat(), advanced=tuple(advanced[:limit]), failed=tuple(failed[:limit]),
         changed_priorities=tuple({"objective_id": row.objective_id, "score": row.score, "factors": row.factors} for row in ranked[:limit]),
         decisions=tuple(decisions[:limit]), owner_actions=tuple(owner_actions[:limit]), next_actions=tuple(next_actions[:limit]), blockers=tuple(blockers[:limit]),
+        outcomes=outcome_rows[:limit],
     )
     return briefing
 
@@ -2258,6 +2276,8 @@ def executive_autonomy_snapshot(
         )
         if include_briefing else None
     )
+    from ..mission.verification import final_outcome_projection
+
     return {
         "objectives": {key: value.to_payload() for key, value in state.objectives.items()},
         "plans": {key: value.to_payload() for key, value in state.plans.items()},
@@ -2272,6 +2292,7 @@ def executive_autonomy_snapshot(
         },
         "latest_cycle": dict(latest_cycle or {}),
         "briefing": briefing.to_payload() if briefing else None,
+        "outcome_learning": final_outcome_projection(database, limit=20),
     }
 
 

@@ -81,8 +81,13 @@ class TestLongitudinalScenario:
         for s in sigs:
             wm.signals.resolve(s["signal_id"])
 
-        # 9. Mission completes -> world state updates
-        wm.learn_from_mission_result("mission-alpha-1", "COMPLETED", {"project_id": proj})
+        # 9. The accepted-outcome learning lifecycle is covered by the V11
+        # fixture suite; this longitudinal WorldModel scenario records the
+        # resolved mission entity it would consume downstream.
+        wm.entities.record(
+            "MISSION", "Alpha delivery", entity_id="mission-alpha-1",
+            state="RESOLVED", attributes={"project_id": proj},
+        )
 
         # 10. Briefing accurately summarizes the sequence
         briefing = wm.briefing_context()

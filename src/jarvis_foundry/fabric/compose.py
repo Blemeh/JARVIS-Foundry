@@ -6,10 +6,12 @@ module does not hardcode research-to-commit or diagnose-to-repair paths.
 """
 from __future__ import annotations
 
+import hashlib
+import json
 from typing import Any, Mapping
 
 from ..database import FoundryDatabase
-from ..world_model import writeback_mission_outcome
+from ..world_model import WorldModel
 from .catalog import catalog_snapshot
 from .executors import ExecutorContext
 from .loop import execute_action, seed_builtins, try_acquire
@@ -156,20 +158,54 @@ def run_workflow(
             for item in results
         )
         if verified_terminal:
-            world_report = writeback_mission_outcome(
-                database,
-                intent.task_id,
-                outcome,
+            # Fabric verification is authoritative for the observed workflow,
+            # but it is not an AcceptanceGate decision for a mission. Preserve
+            # the V10 world observation without promoting it into terminal
+            # mission learning or Executive calibration.
+            observation_identity = hashlib.sha256(
+                json.dumps(
+                    {
+                        "workflow_id": resolved_workflow_id,
+                        "outcome": outcome,
+                        "evidence_refs": evidence_refs,
+                    },
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ).encode("utf-8")
+            ).hexdigest()
+            observation = WorldModel(database).observe(
+                "fabric:verified_workflow",
+                resolved_workflow_id,
                 {
+                    "task_id": intent.task_id,
                     "workflow_id": resolved_workflow_id,
+                    "outcome": outcome,
                     "terminal": len(results) == len(ordered) or stopped_at is not None,
                     "verified_success": success,
                     "receipts": safe_receipts,
+                    "evidence_refs": list(evidence_refs),
+                    "mission_terminal_truth": False,
                 },
-                evidence_refs=evidence_refs,
+                provenance={
+                    "authority": "fabric-independent-verification",
+                    "evidence_refs": list(evidence_refs),
+                    "mission_terminal_truth": False,
+                },
                 source_id="v10-fabric-workflow",
+                observation_id=f"fabric-workflow:{observation_identity}",
+                idempotency_key=(
+                    f"world.observation_recorded:fabric-workflow:{observation_identity}"
+                ),
             )
-            observation_id = (world_report.get("observation") or {}).get("observation_id")
+            world_report = {
+                "status": "OBSERVED",
+                "outcome": outcome,
+                "verified_success": success,
+                "mission_terminal_truth": False,
+                "observation": observation,
+                "deduplicated": bool(observation.get("deduplicated")),
+            }
+            observation_id = observation.get("observation_id")
             if observation_id:
                 for item in results:
                     receipt = item.get("receipt")

@@ -19,8 +19,9 @@ SUCCESS_BONUS_CAP = 0.10
 NEGATIVE_OUTCOMES = frozenset({"FAILED", "FAILED_VERIFICATION", "FAIL"})
 NEUTRAL_OUTCOMES = frozenset({
     "BLOCKED", "BLOCKED_EXTERNAL_DEPENDENCY", "BLOCKED_CAPABILITY", "NOT_TESTED",
+    "REJECTED",
 })
-POSITIVE_OUTCOMES = frozenset({"PASSED", "PASS"})
+POSITIVE_OUTCOMES = frozenset({"PASSED", "PASS", "SUCCEEDED"})
 
 
 @dataclass
@@ -57,9 +58,9 @@ def _normalize_outcome(outcome: str) -> str:
 
 def rebuild_calibration(database: FoundryDatabase) -> CalibrationState:
     state = CalibrationState()
-    for event in database.events():
-        if event.event_type != "executive.calibration_recorded":
-            continue
+    for event in database.events(
+        readonly=True, event_types=("executive.calibration_recorded",),
+    ):
         payload = event.payload
         source = str(payload.get("source") or "")
         objective = str(payload.get("objective") or "")
@@ -139,7 +140,15 @@ def _authoritative_terminal_key(
     outcome: str,
 ) -> str:
     """Derive idempotency key from the authoritative terminal mission application."""
-    for event in reversed(list(database.events())):
+    for event in database.events(
+        readonly=True,
+        event_types=(
+            "verification.accepted", "verification.failed",
+            "verification.blocked", "mission.completed",
+        ),
+        newest_first=True,
+        limit=500,
+    ):
         event_type = event.event_type
         if event_type in (
             "verification.accepted", "verification.failed", "verification.blocked",
@@ -185,13 +194,20 @@ def outcome_from_mission(database: FoundryDatabase, mission_id: str) -> dict[str
             (f'%"mission_id":"{mission_id}"%',),
         ).fetchone()
     accepted = accepted_verifications(database, mission_id=mission_id)
+    with database.connect(readonly=True) as connection:
+        completion_row = connection.execute(
+            "SELECT payload_json FROM events WHERE event_type = 'mission.completed' "
+            "AND json_extract(payload_json, '$.mission_id') = ? "
+            "ORDER BY sequence DESC LIMIT 1",
+            (mission_id,),
+        ).fetchone()
     completion_passed = False
-    for event in database.events():
-        if event.event_type != "mission.completed":
-            continue
-        if str(event.payload.get("mission_id") or "") != mission_id:
-            continue
-        completion = event.payload.get("outcome")
+    if completion_row is not None:
+        try:
+            completion_payload = json.loads(str(completion_row[0]))
+        except (TypeError, ValueError):
+            completion_payload = {}
+        completion = completion_payload.get("outcome")
         if isinstance(completion, dict):
             completion_passed = any(
                 str(value).upper() == "PASSED"
@@ -199,8 +215,6 @@ def outcome_from_mission(database: FoundryDatabase, mission_id: str) -> dict[str
             )
         else:
             completion_passed = str(completion or "").upper() == "PASSED"
-        if completion_passed:
-            break
     last_verdict_id = str(verdicts[0][0]) if verdicts else ""
     last_verdict_status = str(verdicts[0][1]) if verdicts else "UNKNOWN"
     last_verdict_value = str(verdicts[0][2]) if verdicts else "UNKNOWN"

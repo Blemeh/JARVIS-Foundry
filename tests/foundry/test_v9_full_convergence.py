@@ -37,10 +37,14 @@ from jarvis_foundry.fabric import (
     seed_builtins,
 )
 from jarvis_foundry.mission.verification import (
+    record_verification_acceptance,
     record_verification_outcome,
     start_verification,
 )
-from jarvis_foundry.world_model import WorldModel, writeback_mission_outcome
+from jarvis_foundry.world_model import (
+    WorldModel,
+    reconcile_outcome_learning,
+)
 
 
 def _git(*args: str, cwd: Path) -> None:
@@ -67,6 +71,19 @@ def _runtime(tmp_path: Path) -> tuple[FoundryDatabase, Path]:
         evidence={"source": "v9-full-convergence-test"},
     )
     return db, repo
+
+
+def _transition_mission(
+    db: FoundryDatabase, mission_id: str, states: tuple[str, ...], *, suffix: str,
+) -> None:
+    for state in states:
+        db.append(Event.create(
+            "mission.state_changed",
+            {"mission_id": mission_id, "state": state, "next_action": state.lower()},
+            source_type="supervisor",
+            source_id="v9-full-convergence-test",
+            idempotency_key=f"mission.state_changed:{mission_id}:{state}:{suffix}",
+        ))
 
 
 def _register_provider_capability(db: FoundryDatabase, *, health: str) -> None:
@@ -335,26 +352,21 @@ def test_terminal_mission_updates_world_then_executive_and_replans_without_dupli
         repair_requirements=["use alternate provider"],
         reason="provider timeout",
     )
+    _transition_mission(
+        db, mission_id, ("BLOCKED",), suffix="accepted-failure",
+    )
 
-    failure = writeback_mission_outcome(
-        db,
-        mission_id,
-        "FAILED",
-        {"state": "FAILED", "reason": "provider timeout"},
-        evidence_refs=("verdict-v9-fail",),
-    )
+    failure = reconcile_outcome_learning(
+        db, mission_id=mission_id, source_id="v9-full-convergence-test",
+    )["world"]
     assert failure["deduplicated"] is False
-    duplicate = writeback_mission_outcome(
-        db,
-        mission_id,
-        "FAILED",
-        {"state": "FAILED", "reason": "provider timeout"},
-        evidence_refs=("verdict-v9-fail",),
-    )
+    duplicate = reconcile_outcome_learning(
+        db, mission_id=mission_id, source_id="v9-full-convergence-test",
+    )["world"]
     assert duplicate["deduplicated"] is True
     assert len([
         e for e in db.events(event_type_prefixes=("world.observation_recorded",))
-        if e.idempotency_key.endswith(f"{mission_id}:FAILED")
+        if (e.payload.get("payload") or {}).get("mission_id") == mission_id
     ]) == 1
     assert db.row("world_entities", "entity_id", mission_id)["state"] == "STALE"
 
@@ -394,13 +406,42 @@ def test_terminal_mission_updates_world_then_executive_and_replans_without_dupli
             evidence={"observed": "alternate provider success"},
             reason="alternate strategy succeeded",
         )
-        success = writeback_mission_outcome(
+        record_verification_acceptance(
+            db,
+            verdict_id="verdict-v9-retry-pass",
+            mission_id=retry_mission_id,
+            step_id="execute",
+            builder_run_id="builder-v9-retry",
+            verifier_run_id="verifier-v9-retry",
+            checks={"independent_verifier": "PASS"},
+            source_id="v9-full-convergence-test",
+        )
+        _transition_mission(
             db,
             retry_mission_id,
-            "COMPLETED",
-            {"state": "COMPLETED", "strategy": "alternate_provider"},
-            evidence_refs=("verdict-v9-retry-pass",),
+            ("EXECUTING", "VERIFYING", "ACCEPTING"),
+            suffix="accepted-success",
         )
+        db.append(Event.create(
+            "mission.completed",
+            {
+                "mission_id": retry_mission_id,
+                "objective": objective.objective,
+                "outcome": "PASSED",
+            },
+            source_type="supervisor",
+            source_id="v9-full-convergence-test",
+            idempotency_key=f"mission.completed:{retry_mission_id}:accepted-success",
+        ))
+        _transition_mission(
+            db, retry_mission_id, ("COMPLETE",), suffix="accepted-success",
+        )
+        success = reconcile_outcome_learning(
+            db,
+            mission_id=retry_mission_id,
+            source_id="v9-full-convergence-test",
+        )
+        success = success["world"]
         assert success["deduplicated"] is False
         assert db.row("world_entities", "entity_id", retry_mission_id)["state"] == "RESOLVED"
         assert observe_mission_outcome(db, retry_mission_id)["status"] == "COMPLETED"

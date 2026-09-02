@@ -2,10 +2,28 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, Mapping
 
 from jarvis_foundry.database import FoundryDatabase
+from jarvis_foundry.mission.verification import (
+    final_outcome_history,
+    record_final_outcome,
+    validate_final_outcome_contract,
+)
 from jarvis_foundry.world_model.facade import WorldModel
+
+
+def _normalized_status(value: str) -> str:
+    status = str(value or "UNKNOWN").upper()
+    return {
+        "PASS": "SUCCEEDED",
+        "PASSED": "SUCCEEDED",
+        "COMPLETED": "SUCCEEDED",
+        "SUCCESS": "SUCCEEDED",
+        "FAIL": "FAILED",
+        "FAILED_VERIFICATION": "FAILED",
+        "CANCELLED": "REJECTED",
+    }.get(status, status)
 
 
 def writeback_mission_outcome(
@@ -15,30 +33,77 @@ def writeback_mission_outcome(
     payload: dict[str, Any] | None = None,
     *,
     evidence_refs: tuple[str, ...] = (),
+    final_outcome_id: str | None = None,
     source_id: str = "world-model-runtime",
 ) -> dict[str, Any]:
-    """Record one canonical MissionLoop terminal result in World Intelligence.
+    """Project one accepted final mission outcome into World Intelligence.
 
-    The Worker calls this only at its terminal boundary.  The stable
-    observation id makes redelivery after restart exactly-once for world
-    pattern/signal derivation; the Mission and verifier projections remain
-    authoritative and this helper cannot change them.
+    The status and evidence are read from ``mission.outcome_finalized``. The
+    caller's value is checked for disagreement but is never treated as truth.
+    Stable outcome identity makes redelivery exactly-once while a changed
+    AcceptanceGate/verifier identity becomes a new preserved truth revision.
     """
     mission_id = str(mission_id or "").strip()
     if not mission_id:
         raise ValueError("mission_id is required")
-    status = str(outcome or "UNKNOWN").upper()
-    details = dict(payload or {})
+    history = final_outcome_history(db, mission_id=mission_id, limit=20)
+    final = next(
+        (
+            item for item in history
+            if (
+                final_outcome_id is None
+                or str(item.get("outcome_id") or "") == str(final_outcome_id)
+            ) and validate_final_outcome_contract(db, item)
+        ),
+        None,
+    )
+    if final is None:
+        return {
+            "status": "NOT_EMITTED",
+            "reason": "mission has no accepted final outcome truth",
+            "mission_id": mission_id,
+            "reported_outcome": _normalized_status(outcome),
+            "accepted": False,
+            "deduplicated": True,
+        }
+    status = str(final.get("status") or "UNKNOWN").upper()
+    reported = _normalized_status(outcome)
+    if reported != status:
+        return {
+            "status": "NOT_EMITTED",
+            "reason": (
+                f"reported outcome {reported!r} disagrees with accepted "
+                f"final truth {status!r}"),
+            "mission_id": mission_id,
+            "final_outcome_id": final.get("outcome_id"),
+            "accepted": False,
+            "deduplicated": True,
+        }
+    accepted_refs = [
+        str(value) for value in final.get("evidence_refs") or [] if value
+    ]
+    # Legacy callers may supply references, but only references already bound
+    # into the accepted contract can reach the WorldModel.
+    accepted_refs.extend(
+        ref for ref in evidence_refs if ref in set(accepted_refs)
+    )
+    accepted_refs = list(dict.fromkeys(accepted_refs))[:30]
+    details = dict(final.get("actual_observed") or {})
     details.update({
         "mission_id": mission_id,
+        "objective_id": final.get("objective_id"),
+        "candidate_id": final.get("candidate_id"),
+        "project_id": final.get("project_id"),
         "outcome": status,
-        "evidence_refs": list(evidence_refs),
+        "outcome_id": final.get("outcome_id"),
+        "evidence_refs": accepted_refs,
+        "repair_attempts": list(final.get("repair_attempts") or []),
     })
     mission = db.row("missions", "mission_id", mission_id)
     wm = WorldModel(db)
     if wm.entities.get(mission_id) is None:
         state = (
-            "RESOLVED" if status in {"PASS", "PASSED", "COMPLETED", "SUCCESS"}
+            "RESOLVED" if status in {"SUCCEEDED", "REJECTED"}
             else "STALE" if status in {"FAIL", "FAILED", "FAILED_VERIFICATION"}
             else "ACTIVE"
         )
@@ -60,11 +125,13 @@ def writeback_mission_outcome(
         provenance={
             "mission_id": mission_id,
             "outcome": status,
-            "evidence_refs": list(evidence_refs),
+            "outcome_id": final.get("outcome_id"),
+            "evidence_refs": accepted_refs,
         },
         source_id=source_id,
-        observation_id=f"mission-outcome:{mission_id}:{status}",
-        idempotency_key=f"world.observation_recorded:mission-outcome:{mission_id}:{status}",
+        observation_id=f"mission-outcome:{final['outcome_id']}",
+        idempotency_key=(
+            f"world.observation_recorded:mission-outcome:{final['outcome_id']}"),
     )
     learning = None
     if not observed.get("deduplicated"):
@@ -72,14 +139,126 @@ def writeback_mission_outcome(
             mission_id,
             status,
             details,
+            final_outcome_id=str(final["outcome_id"]),
             source_id=source_id,
         )
     return {
         "mission_id": mission_id,
         "outcome": status,
+        "final_outcome_id": final.get("outcome_id"),
+        "accepted": True,
         "observation": observed,
         "learning": learning,
         "deduplicated": bool(observed.get("deduplicated")),
+    }
+
+
+def _record_hybrid_outcome(
+    db: FoundryDatabase, final: Mapping[str, Any], *, source_id: str,
+) -> dict[str, Any]:
+    """Feed the accepted contract into the existing Tier-C observation seam."""
+
+    from jarvis_foundry.hybrid_memory.lifecycle import TierCMemoryStore
+
+    mission_id = str(final.get("mission_id") or "")
+    status = str(final.get("status") or "UNKNOWN")
+    outcome_id = str(final.get("outcome_id") or "")
+    idempotency_key = f"memory.observed:final-outcome:{outcome_id}"
+    with db.connect(readonly=True) as connection:
+        prior = connection.execute(
+            "SELECT payload_json FROM events WHERE event_type = 'memory.observed' "
+            "AND idempotency_key = ? ORDER BY sequence DESC LIMIT 1",
+            (idempotency_key,),
+        ).fetchone()
+    if prior is not None:
+        try:
+            prior_payload = json.loads(str(prior[0]))
+        except (TypeError, ValueError):
+            prior_payload = {}
+        return {
+            "memory_id": str(prior_payload.get("memory_id") or ""),
+            "outcome_id": outcome_id,
+            "deduplicated": True,
+        }
+    store = TierCMemoryStore(db)
+    memory_id = store.record_observation(
+        f"accepted final outcome mission={mission_id} result={status}",
+        mission_id=mission_id,
+        created_by=source_id,
+        source_ids=[f"mission:{mission_id}", f"outcome:{outcome_id}"],
+        evidence_ids=[str(value) for value in final.get("evidence_refs") or []],
+        confidence=0.85,
+        idempotency_key=idempotency_key,
+    )
+    return {
+        "memory_id": memory_id,
+        "outcome_id": outcome_id,
+        "deduplicated": False,
+    }
+
+
+def reconcile_outcome_learning(
+    db: FoundryDatabase,
+    *,
+    mission_id: str,
+    source_id: str = "outcome-reconciler",
+) -> dict[str, Any]:
+    """Close final truth -> calibration -> WorldModel -> Tier-C exactly once.
+
+    This is wiring over the existing authorities, not a learning or scoring
+    engine. It can be retried after any crash: every downstream record is
+    keyed by the accepted final outcome identity.
+    """
+
+    final = record_final_outcome(
+        db, mission_id=mission_id, source_id=source_id)
+    if not final.get("finalized"):
+        return {
+            "finalized": False,
+            "mission_id": mission_id,
+            "reason": final.get("reason"),
+            "calibration": None,
+            "world": None,
+            "memory": None,
+        }
+
+    from jarvis_foundry.executive.calibration import record_calibration
+
+    outcome_id = str(final.get("outcome_id") or "")
+    calibration = record_calibration(
+        db,
+        decision_id=str(final.get("decision_id") or f"post-{mission_id}"),
+        candidate_id=str(final.get("candidate_id") or ""),
+        mission_id=mission_id,
+        source=str((final.get("provenance") or {}).get("source") or "mission"),
+        objective=str(final.get("attempted") or mission_id),
+        outcome=str(final.get("status") or "UNKNOWN"),
+        repair_count=len(final.get("repair_attempts") or []),
+        actual=dict(final.get("actual_observed") or {}),
+        source_id=source_id,
+        terminal_event_id=outcome_id,
+    )
+    world = writeback_mission_outcome(
+        db,
+        mission_id,
+        str(final.get("status") or "UNKNOWN"),
+        final_outcome_id=outcome_id,
+        source_id=source_id,
+    )
+    try:
+        memory = _record_hybrid_outcome(db, final, source_id=source_id)
+    except Exception as error:  # noqa: BLE001 - advisory memory cannot rewrite truth
+        memory = {"status": "NOT_EMITTED", "reason": type(error).__name__}
+    return {
+        "finalized": True,
+        "created": bool(final.get("created")),
+        "mission_id": mission_id,
+        "outcome_id": outcome_id,
+        "status": final.get("status"),
+        "final": final,
+        "calibration": calibration,
+        "world": world,
+        "memory": memory,
     }
 
 

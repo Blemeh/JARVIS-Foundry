@@ -393,58 +393,6 @@ def _maybe_executive_select(
     return str(materialized["mission_id"])
 
 
-def _record_executive_outcome(
-    database: FoundryDatabase,
-    *,
-    mission_id: str,
-    outcome: Any,
-    instance_id: str,
-) -> None:
-    """Capture actuals and calibration after a verified mission step."""
-    from ..executive.calibration import outcome_from_mission, record_calibration
-
-    mission = database.row("missions", "mission_id", mission_id)
-    if mission is None:
-        return
-    created_from = str(mission.get("created_from") or "")
-    if not created_from.startswith("candidate:"):
-        return
-    candidate_id = created_from.split(":", 1)[1]
-    actual = outcome_from_mission(database, mission_id)
-    with database.connect() as connection:
-        row = connection.execute(
-            "SELECT source, objective FROM candidates WHERE candidate_id = ?",
-            (candidate_id,),
-        ).fetchone()
-    source = str(row[0]) if row else ""
-    objective = str(row[1]) if row else str(mission.get("objective") or "")
-    decision_events = [
-        e for e in database.events()
-        if e.event_type in ("executive.decision_recorded", "executive.decision_materialized")
-        and e.payload.get("candidate_id") == candidate_id
-        and (
-            e.payload.get("mission_id") in (mission_id, None)
-            or e.event_type == "executive.decision_recorded"
-        )
-    ]
-    decision_id = (
-        str(decision_events[-1].payload.get("decision_id"))
-        if decision_events else f"post-{mission_id}"
-    )
-    record_calibration(
-        database,
-        decision_id=decision_id,
-        candidate_id=candidate_id,
-        mission_id=mission_id,
-        source=source,
-        objective=objective,
-        outcome=str(actual.get("outcome") or getattr(outcome, "outcome", "UNKNOWN")),
-        repair_count=int(actual.get("repair_count") or 0),
-        actual=actual,
-        source_id=f"worker-loop:{instance_id}",
-    )
-
-
 def _maybe_portfolio_select(
     database: FoundryDatabase,
     config: WorkerRuntimeConfig,
@@ -1018,67 +966,6 @@ def _pin_routing_to_hermes(stack: Any, config: WorkerRuntimeConfig | None = None
     )
 
 
-def _advisory_accepted_outcome_writeback(
-    database: FoundryDatabase, *, mission_id: str, outcome: Any,
-) -> None:
-    """Governed observation writeback after a verified PASS.
-
-    Memory remains advisory. Failure here never changes mission state.
-    """
-    try:
-        from ..hybrid_memory.lifecycle import TierCMemoryStore
-        run_id = getattr(outcome, "run_id", None) or "unknown"
-        step_id = getattr(outcome, "step_id", None) or "unknown"
-        store = TierCMemoryStore(database)
-        store.record_observation(
-            f"accepted verified outcome mission={mission_id} step={step_id}",
-            mission_id=mission_id,
-            created_by="worker-loop",
-            source_ids=[f"mission:{mission_id}", f"run:{run_id}"],
-            evidence_ids=[str(getattr(outcome, "verdict_id", "") or "")],
-            confidence=0.8,
-            idempotency_key=f"memory.observed:accepted:{mission_id}:{run_id}",
-        )
-    except Exception:
-        return
-
-
-def _advisory_mission_outcome_writeback(
-    database: FoundryDatabase, *, mission_id: str, outcome: Any,
-) -> None:
-    """Record every terminal result as advisory, provenance-backed memory.
-
-    Verified PASS retains the historical accepted-outcome record.  FAILED and
-    BLOCKED results are equally valuable for future executive planning, but
-    remain advisory and can never override the mission/verifier projection.
-    """
-    status = str(getattr(outcome, "outcome", "UNKNOWN") or "UNKNOWN").upper()
-    if status == "PASSED":
-        _advisory_accepted_outcome_writeback(
-            database, mission_id=mission_id, outcome=outcome)
-        return
-    if status not in {"FAILED", "BLOCKED", "CANCELLED"}:
-        return
-    try:
-        from ..hybrid_memory.lifecycle import TierCMemoryStore
-        run_id = getattr(outcome, "run_id", None) or "unknown"
-        step_id = getattr(outcome, "step_id", None) or "unknown"
-        reason = str(getattr(outcome, "reason", "") or "").strip()
-        store = TierCMemoryStore(database)
-        store.record_observation(
-            f"mission outcome {status.lower()} mission={mission_id} step={step_id}"
-            + (f" reason={reason[:240]}" if reason else ""),
-            mission_id=mission_id,
-            created_by="worker-loop",
-            source_ids=[f"mission:{mission_id}", f"run:{run_id}"],
-            evidence_ids=[str(getattr(outcome, "verdict_id", "") or "")],
-            confidence=0.65,
-            idempotency_key=f"memory.observed:outcome:{mission_id}:{run_id}:{status}",
-        )
-    except Exception:
-        return
-
-
 def _commit_envelope(
     database: FoundryDatabase, contract: MissionStepContract,
 ) -> ActionEnvelope | None:
@@ -1373,8 +1260,6 @@ def run_cycle(
                     mission_id=mission_id,
                     reason=f"V3 outcome proof blocked: {error}",
                 )
-            _advisory_mission_outcome_writeback(
-                database, mission_id=mission_id, outcome=outcome)
         mission_after = database.row("missions", "mission_id", mission_id) or {}
         portfolio_terminal = (
             terminal in ("FAILED", "BLOCKED")
@@ -1382,31 +1267,14 @@ def run_cycle(
                 and str(mission_after.get("state") or "") == "COMPLETE")
         )
         if portfolio_terminal:
-            # Keep the memory/knowledge authority in the same terminal
-            # boundary for PASS, FAIL, and BLOCKED outcomes.  The writeback is
-            # advisory; mission and verifier projections remain authoritative.
-            if terminal != "PASSED":
-                _advisory_mission_outcome_writeback(
-                    database, mission_id=mission_id, outcome=outcome)
-            # World Intelligence receives the same terminal fact before the
-            # Executive continuation decision.  This is an advisory,
-            # event-derived projection and cannot alter mission/verifier
-            # truth; the stable observation identity makes recovery replay
-            # exactly-once for world learning.
+            # One accepted, event-derived outcome contract is the only input
+            # to calibration, World Intelligence, and Tier-C memory. Runtime
+            # StepOutcome/provider claims are intentionally not forwarded.
+            learning: dict[str, Any] = {"finalized": False}
             try:
-                from ..world_model.connector import writeback_mission_outcome
-                writeback_mission_outcome(
-                    database,
-                    mission_id,
-                    terminal or "UNKNOWN",
-                    {
-                        "state": mission_after.get("state"),
-                        "objective": mission_after.get("objective"),
-                    },
-                    evidence_refs=tuple(
-                        ref for ref in (getattr(outcome, "verdict_id", None),)
-                        if ref
-                    ),
+                from ..world_model.connector import reconcile_outcome_learning
+                learning = reconcile_outcome_learning(
+                    database, mission_id=mission_id,
                     source_id=f"worker-loop:{instance_id}",
                 )
             except Exception as error:  # noqa: BLE001 - advisory writeback cannot block closure
@@ -1426,13 +1294,17 @@ def run_cycle(
                     ))
                 except Exception:
                     pass
-            _record_executive_outcome(
-                database, mission_id=mission_id, outcome=outcome,
-                instance_id=instance_id)
-            _record_mission_portfolio_outcome(
-                database, mission_id=mission_id, outcome=outcome,
-                status=terminal, instance_id=instance_id)
-            if config.executive_autonomy_enabled:
+            if learning.get("finalized"):
+                portfolio_status = {
+                    "SUCCEEDED": "PASSED",
+                    "FAILED": "FAILED",
+                    "BLOCKED": "BLOCKED",
+                    "REJECTED": "CANCELLED",
+                }.get(str(learning.get("status") or ""), "UNKNOWN")
+                _record_mission_portfolio_outcome(
+                    database, mission_id=mission_id, outcome=outcome,
+                    status=portfolio_status, instance_id=instance_id)
+            if learning.get("finalized") and config.executive_autonomy_enabled:
                 try:
                     from ..executive.autonomy import observe_mission_outcome
                     observe_mission_outcome(database, mission_id)
@@ -1444,7 +1316,7 @@ def run_cycle(
                         source_type="supervisor", source_id=instance_id,
                         idempotency_key=f"worker_loop.executive_autonomy_observation_blocked:{loop_id}",
                     ))
-            elif getattr(config, "continuous_enabled", False):
+            elif learning.get("finalized") and getattr(config, "continuous_enabled", False):
                 try:
                     from ..executive.continuous import on_mission_outcome
                     on_mission_outcome(database, mission_id)

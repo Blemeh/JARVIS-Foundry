@@ -8,6 +8,9 @@ from .loop import MissionLoop, StepOutcome
 from .proposal import Proposal, ProposalError, Waiting, propose_next_action
 from .verification import (
     accepted_verifications,
+    final_outcome_history,
+    final_outcome_projection,
+    record_final_outcome,
     record_verification_acceptance,
     record_verification_outcome,
     start_verification,
@@ -27,6 +30,9 @@ __all__ = [
     "select_dispatchable_mission",
     "propose_next_action",
     "accepted_verifications",
+    "final_outcome_history",
+    "final_outcome_projection",
+    "record_final_outcome",
     "record_verification_acceptance",
     "record_verification_outcome",
     "start_verification",

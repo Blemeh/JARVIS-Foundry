@@ -22,16 +22,21 @@ def detect_procedures(db: FoundryDatabase, wm: WorldModel | None = None, min_occ
     procedures: list[dict[str, Any]] = []
 
     with db.connect() as conn:
-        # Find repeated successful mission patterns
+        # Find repeated accepted-success mission patterns. A mission.completed
+        # row by itself is insufficient because AcceptanceGate may later
+        # refuse or supersede the verifier identity.
         try:
             rows = conn.execute(
-                "SELECT payload_json FROM events WHERE event_type = 'mission.completed' ORDER BY sequence DESC LIMIT 100"
+                "SELECT payload_json FROM events WHERE event_type = "
+                "'mission.outcome_finalized' "
+                "AND json_extract(payload_json, '$.status') = 'SUCCEEDED' "
+                "ORDER BY sequence DESC LIMIT 100"
             ).fetchall()
             patterns: dict[str, int] = {}
             for row in rows:
                 try:
                     p = json.loads(row[0])
-                    obj = str(p.get("objective", ""))[:80].lower()
+                    obj = str(p.get("attempted", ""))[:80].lower()
                     if obj:
                         patterns[obj] = patterns.get(obj, 0) + 1
                 except Exception:
