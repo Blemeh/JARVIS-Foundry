@@ -6,11 +6,12 @@ This document is the authoritative current-state record. The frozen roadmap
 remains authoritative for sequencing and scope; its execution pointer is
 `docs/roadmap/JARVIS_1_0_EXECUTION_STATE.yaml`.
 
-Last reconciled: 2026-09-02 after the isolated V11 A2 candidate proved real
-read-only observation, durable candidate identity, bounded research, and
-rejection-first judgment with zero autonomous execution. V10 remains live.
+Last reconciled: 2026-09-02 after isolated V11 pre-convergence combined the
+accepted A2 observation/judgment candidate, A4 restart/replay durability, and
+accepted-outcome learning truth. A3 remains external and unintegrated. V10
+remains live.
 
-DOCUMENTATION STATE BASE SHA: `91c3deaeefb3fc71ffd091ad0f4abc2e2fd8023c`
+DOCUMENTATION STATE BASE SHA: `51eb998642fee713458998bd3f44219a76ab670d`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`.
@@ -21,7 +22,7 @@ V10 PROMOTED PRODUCT SHA:     faa861c67399d5a3755d778224ff65513bd933a1
 V10 CANONICAL LANDING SHA:    faa861c67399d5a3755d778224ff65513bd933a1
 V10 LIVE RELEASE ID:          rel-faa861c67399-5afeb024
 V10 ROADMAP AUTHORITY SHA:    e9b2155bd669887c4778db0b16a4ef7861d2c9ff
-CURRENT/CANDIDATE SCHEMA:     v39 (isolated A2 candidate only)
+CURRENT/CANDIDATE SCHEMA:     v39 (isolated pre-convergence candidate only)
 LIVE SCHEMA:                  v38
 V2 KNOWLEDGE SCHEMA:          v35 (historical additive migration)
 V3 DISCOVERY/BUILDING SCHEMA: v36 (historical additive migration)
@@ -35,6 +36,9 @@ V11 STARTED:                  YES (candidate only)
 V11 COMPLETE:                 NO
 V11 PROMOTED/LIVE:            NO
 A2 IMPLEMENTATION SHA:        91c3deaeefb3fc71ffd091ad0f4abc2e2fd8023c
+PRECONVERGENCE SOURCE SHA:    51eb998642fee713458998bd3f44219a76ab670d
+A4 INPUT SHA:                 daae32cb14d6d8882166d30d515daa9d796c6857
+OUTCOME-TRUTH INPUT SHA:      02e62a85a50bd642a1abdc6e415a2215ac5d2689
 ```
 
 ## Roadmap and execution state
@@ -42,16 +46,51 @@ A2 IMPLEMENTATION SHA:        91c3deaeefb3fc71ffd091ad0f4abc2e2fd8023c
 The frozen authority is
 `docs/handoffs/JARVIS_FROZEN_MASTER_ROADMAP_TO_1_0_2026-09-01.md`.
 `V10_EXIT = PASSED` and `V10 = CLOSED`. The isolated V11 A2 candidate is now
-`PASSED_CANDIDATE`; V11 itself is neither complete nor promoted. The next
-authorized scope is `V11_L3_A3_A4`. It may bridge an eligible candidate to the
-existing objective/execution spine and converge A3/A4, but no such bridge or
-execution was implemented by A2.
+`PASSED_CANDIDATE`; V11 itself is neither complete nor promoted. The isolated
+pre-convergence base now carries A2, the A4 durability foundation, and
+accepted-outcome truth together. The next authorized scope remains
+`V11_L3_A3_A4`. A3's candidate-to-objective bridge is not present in this
+candidate and was not implemented by pre-convergence.
 
 The accepted history contains the V10 convergence line, the semantic
 roadmap/control-tower authority, V10_EXIT sensory completion and audit fixes,
 and packaging repair `faa861c...`. Canonical integration was a clean
 fast-forward. Promotion-rehearsal worktree changes and externally deleted
 CHECKPOINT files were not swept into canonical history.
+
+## V11 pre-convergence candidate truth
+
+Branch `candidate/v11-preconvergence-20260902` in
+`C:\temp\JARVIS-V11-PreConvergence-20260902` starts at exact A2 head
+`00ee2e148c12151699a796649a1cb87ed892a69b`. A4 input
+`daae32cb14d6d8882166d30d515daa9d796c6857` and accepted-outcome truth input
+`02e62a85a50bd642a1abdc6e415a2215ac5d2689` were selected as patch-equivalent
+single commits from their shared canonical base `2905c206...`, not merged as
+terminal histories. Their preserved integration commits are `318f73f...` and
+`6743d1e...`.
+
+The only cross-lane semantic repair is `51eb998...`: if a process dies after
+the atomic `mission.completed` append but before WorkerLoop writeback, the
+existing Executive terminal reconciler now creates or replays final outcome,
+calibration, WorldModel, and Tier-C learning before parent-plan continuation.
+This preserves the canonical order `verification.accepted -> evidence ->
+mission completion -> final outcome -> learning/briefing` and prevents an
+accepted outcome from being lost after restart.
+
+The A2 real-source flagship was rerun from this tree and passed with schema
+v39, three ready source classes (GitHub, project, World), truthful local web
+unavailability, zero objective/mission/effect/external-write creation, zero
+duplicate candidates, replay event delta zero, STOP-before/after proof, SQLite
+quick check `ok`, and 188-event reconciliation with zero discrepancies. The
+A4 eight-point hard-kill/restart/STOP harness passed, including zero duplicate
+missions, builder steps, effects, and terminal continuation. Post-completion
+replay created exactly one final outcome, calibration, World observation, and
+memory observation. The 11 accepted-outcome tests proved preliminary PASS
+cannot create success learning and accepted replay is exactly-once.
+
+This is a pre-convergence source base, not A3, not the V11 exit gate, and not a
+promotion candidate. The final broad V11 regression, A3 flagship, elapsed
+unattended gate, live activation, and production trust remain untested.
 
 ## V11 A2 candidate truth
 
@@ -177,7 +216,8 @@ migration.
 
 ## Evidence and maintenance
 
-The V11 A2 candidate handoff is
+The V11 pre-convergence handoff and exact A3 integration map are
+`docs/handoffs/V11_PRECONVERGENCE_20260902.md`. The earlier A2 handoff is
 `docs/handoffs/V11_A2_CANDIDATE_20260902.md`. The compact V10 live-closure record is
 `docs/handoffs/V10_LIVE_CLOSURE_20260902.md`. Detailed disposable evidence and
 probe scripts are retained outside the repository under
@@ -191,6 +231,7 @@ documentation staleness check must remain green.
 
 ## Next authorized action
 
-V11 L3 — candidate-to-objective execution bridge plus A3/A4 convergence, in a
-new isolated session under the frozen roadmap. Do not treat A2 candidate proof
-as promotion authority or production trust.
+Integrate the separately running A3 candidate semantically onto exact
+pre-convergence source `51eb998...`, using the A3 map in the handoff. Preserve
+A2's inert boundary, A4 identities/recovery, and final-outcome truth. Do not
+treat this candidate as promotion authority or production trust.

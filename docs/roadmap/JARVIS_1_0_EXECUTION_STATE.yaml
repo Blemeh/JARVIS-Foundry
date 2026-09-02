@@ -25,10 +25,10 @@ meta:
 observed_repo_state:
   canonical_main: "2905c206fed0461bf3085bc0cb43773be913300a"
   canonical_main_summary: "docs: record V10 live closure and open V11 A2"
-  candidate_source: "91c3deaeefb3fc71ffd091ad0f4abc2e2fd8023c"
-  candidate_branch: "candidate/v11-a2-initiative-20260902"
-  candidate_worktree: "C:\\temp\\JARVIS-V11-A2-Initiative-20260902"
-  current_schema: v39            # isolated A2 candidate source migrations.SCHEMA_VERSION
+  candidate_source: "51eb998642fee713458998bd3f44219a76ab670d"
+  candidate_branch: "candidate/v11-preconvergence-20260902"
+  candidate_worktree: "C:\\temp\\JARVIS-V11-PreConvergence-20260902"
+  current_schema: v39            # isolated pre-convergence source migrations.SCHEMA_VERSION
   live_schema: v38               # live V10 remains unchanged
   live_runtime: "faa861c67399d5a3755d778224ff65513bd933a1 / rel-faa861c67399-5afeb024"
   v9_status: "established and stabilized; represented in canonical source"
@@ -50,6 +50,15 @@ observed_repo_state:
     c_workflow_audit:     { branch: candidate/v10-c-workflow-audit-20260901,    head: 39edae7 }
     d_historical_reuse:   { branch: candidate/v10-d-historical-reuse-20260901,  head: 96d776d }
     full_convergence:     { branch: candidate/v10-full-convergence-20260901,    head: 71d71da }
+  v11_preconvergence:
+    status: READY_FOR_A3_INTEGRATION
+    a2_head: "00ee2e148c12151699a796649a1cb87ed892a69b"
+    a2_source: "91c3deaeefb3fc71ffd091ad0f4abc2e2fd8023c"
+    a4_input: "daae32cb14d6d8882166d30d515daa9d796c6857"
+    outcome_truth_input: "02e62a85a50bd642a1abdc6e415a2215ac5d2689"
+    source_tip: "51eb998642fee713458998bd3f44219a76ab670d"
+    schema: v39
+    note: "A3 not integrated; broad V11 regression and live proof not run"
 
 current_phase: V11_INITIATIVE
 current_gate: A2
@@ -89,6 +98,11 @@ phases:
     definition: "72-hour Owner-Absent Campaign, live, on the installed release"
 
 capability_flags:
+  initiative_preconvergence:
+    state: READY_FOR_A3_INTEGRATION_NOT_LIVE
+    reason: "A2 plus restart/replay durability plus accepted-outcome truth passed focused combined proof; A3 remains external"
+    source: "51eb998642fee713458998bd3f44219a76ab670d"
+    evidence_root: "C:\\temp\\JARVIS-V11-PreConvergence-20260902-evidence"
   initiative_a2:
     state: PASSED_CANDIDATE_NOT_LIVE
     reason: "real read-only GitHub/web/project observation, candidate dedupe, bounded research, rejection-first judgment, replay/STOP/failure proof, and zero objective/mission/effect/worktree/provider writes passed in disposable schema v39"
@@ -162,3 +176,10 @@ update_log:
     source_tip: "91c3deaeefb3fc71ffd091ad0f4abc2e2fd8023c"
     schema: v39
     evidence_root: "C:\\temp\\JARVIS-V11-A2-Initiative-20260902-evidence-final4"
+  - date: "2026-09-02"
+    change: "V11 pre-convergence combined A2, A4 durability, and accepted-outcome truth; repaired post-completion learning recovery; A3 and broad V11 regression remain pending"
+    session: "candidate/v11-preconvergence-20260902"
+    predecessor_sha: "00ee2e148c12151699a796649a1cb87ed892a69b"
+    source_tip: "51eb998642fee713458998bd3f44219a76ab670d"
+    schema: v39
+    evidence_root: "C:\\temp\\JARVIS-V11-PreConvergence-20260902-evidence"
