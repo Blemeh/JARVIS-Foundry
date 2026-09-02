@@ -118,7 +118,11 @@ def test_rejection_sets_status(tmp_path):
     reject_candidate(db, result["candidate_id"], "low value")
     row = db.row("candidates", "candidate_id", result["candidate_id"])
     assert row["status"] == "REJECTED"
-    assert "low value" in row["evidence_json"]
+    assert row["evidence_json"] == "[]"
+    judgments = db.all("candidate_judgments", candidate_id=result["candidate_id"])
+    assert len(judgments) == 1
+    assert judgments[0]["outcome"] == "REJECTED"
+    assert judgments[0]["reason_detail"] == "low value"
 
 
 def test_outcome_tracking(tmp_path):

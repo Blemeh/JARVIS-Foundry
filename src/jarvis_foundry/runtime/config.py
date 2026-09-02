@@ -58,6 +58,11 @@ class WorkerRuntimeConfig:
     # V9 Continuous Executive: durable wake/condition system above autonomy.
     # OFF by default; when ON the loop uses run_continuous_cycle as the single wake-aware path.
     continuous_enabled: bool = False
+    # V11 A2 initiative observation/judgment is an inert admission-boundary
+    # probe.  It may observe, research, and rank, but it is mutually exclusive
+    # with every execution-capable selector and remains OFF in production.
+    initiative_a2_enabled: bool = False
+    initiative_a2: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_yaml(
@@ -124,6 +129,9 @@ class WorkerRuntimeConfig:
                 raw.get("discovery", {}).get("cycle_enabled", False)),
             continuous_enabled=bool(
                 raw.get("executive", {}).get("continuous_enabled", False) or raw.get("continuous", {}).get("enabled", False)),
+            initiative_a2_enabled=bool(
+                raw.get("initiative_a2", {}).get("enabled", False)),
+            initiative_a2=dict(raw.get("initiative_a2") or {}),
         )
         cfg.validate()
         return cfg
@@ -150,3 +158,17 @@ class WorkerRuntimeConfig:
                 f"{self.provider_settings.provider!r} + "
                 f"{self.provider_settings.model!r} only, got "
                 f"{self.provider!r} + {self.model!r}")
+        if self.initiative_a2_enabled:
+            execution_flags = {
+                "discovery.cycle_enabled": self.discovery_cycle_enabled,
+                "executive.selection_enabled": self.executive_selection_enabled,
+                "executive.autonomy_enabled": self.executive_autonomy_enabled,
+                "executive.portfolio_selection_enabled": (
+                    self.portfolio_selection_enabled),
+                "executive.continuous_enabled": self.continuous_enabled,
+            }
+            active = [name for name, enabled in execution_flags.items() if enabled]
+            if active:
+                raise ValueError(
+                    "initiative_a2 is zero-execution and cannot be combined "
+                    f"with execution-capable runtime flags: {', '.join(active)}")

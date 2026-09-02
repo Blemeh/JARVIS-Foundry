@@ -15,13 +15,14 @@ Bounded, deterministic, test-driven:
 from __future__ import annotations
 
 import json
+import hashlib
 import math
 import sqlite3
 import uuid
 from typing import Any
 
 from .database import FoundryDatabase
-from .events import Event
+from .events import Event, canonical_json
 from .knowledge import canonicalize_statement
 
 # Registry-driven calibrated weights (deterministic; values 0..1)
@@ -33,6 +34,233 @@ INFORMATION_TERMS = ("unknown", "unclear", "investigate", "why", "root cause",
 URGENCY_TERMS = ("now", "urgent", "tonight", "today", "blocked", "deadline")
 EFFORT_TERMS = ("rename", "typo", "cosmetic", "document", "label")
 _COSTLY_TERMS = ("migrate", "refactor", "rewrite", "replatform")
+
+
+def candidate_fingerprint(
+    objective: str,
+    *,
+    target_project: str = "",
+    alias_key: str | None = None,
+) -> str:
+    """Return the bounded V11 opportunity identity used before candidate ingest.
+
+    ``alias_key`` is an owner/configured or adapter-derived identity such as a
+    GitHub issue id or World Signal dedupe key.  It deliberately excludes the
+    source adapter and observation timestamp so the same opportunity observed
+    through two sources converges on one candidate.  Without an alias, the
+    canonical proposed outcome plus target project is the deterministic
+    fallback; raw external prose never becomes an instruction or authority.
+    """
+    canonical = canonicalize_statement(str(objective or ""))
+    if not canonical:
+        raise ValueError("candidate objective must be non-empty")
+    identity = {
+        "version": "jarvis.v11.candidate-fingerprint.v1",
+        "target_project": canonicalize_statement(str(target_project or "")),
+        "opportunity": canonicalize_statement(str(alias_key or canonical)),
+    }
+    digest = hashlib.sha256(canonical_json(identity).encode("utf-8")).hexdigest()
+    return f"a2-{digest}"
+
+
+def _candidate_covering_identity(
+    connection: sqlite3.Connection,
+    *,
+    fingerprint: str,
+    objective_canonical: str,
+) -> tuple[str | None, str | None, str | None]:
+    """Return ``(candidate_id, status, mission_id)`` for known work.
+
+    Fingerprint is authoritative for A2 identity.  Canonical objective keeps
+    compatibility with pre-V11 candidates that do not carry a fingerprint.
+    Completed/rejected candidates remain covering history and therefore cannot
+    return every cycle as new work.
+    """
+    row = connection.execute(
+        "SELECT candidate_id, status FROM candidates "
+        "WHERE fingerprint = ? ORDER BY rowid LIMIT 1",
+        (fingerprint,),
+    ).fetchone()
+    if row is None:
+        row = connection.execute(
+            "SELECT candidate_id, status FROM candidates "
+            "WHERE objective_canonical = ? "
+            "AND (fingerprint IS NULL OR fingerprint = '') "
+            "ORDER BY rowid LIMIT 1",
+            (objective_canonical,),
+        ).fetchone()
+    if row is not None:
+        return str(row[0]), str(row[1]), None
+    # Historical missions store raw objectives.  This bounded compatibility
+    # pass prevents already-completed/known work from being manufactured as a
+    # new candidate.  No mission is created or changed here.
+    for mission in connection.execute(
+        "SELECT mission_id, objective FROM missions ORDER BY rowid DESC LIMIT 1000"
+    ).fetchall():
+        if canonicalize_statement(str(mission[1] or "")) == objective_canonical:
+            return None, None, str(mission[0])
+    return None, None, None
+
+
+def ingest_observed_candidate(
+    db: FoundryDatabase,
+    mission_id: str,
+    *,
+    observation_id: str,
+    source_kind: str,
+    source_identity: str,
+    content_hash: str,
+    objective: str,
+    source_ref: str | None = None,
+    observed_at: str | None = None,
+    authority: str = "DATA_ONLY",
+    fresh_until: str | None = None,
+    target_project: str = "",
+    alias_key: str | None = None,
+    evidence: list[dict[str, Any]] | None = None,
+    candidate_type: str | None = None,
+    expected_outcome: str | None = None,
+    confidence: float | None = None,
+    expires_at: str | None = None,
+) -> dict[str, Any]:
+    """Ingest one A2 observation without crossing the admission boundary.
+
+    Unlike legacy :func:`generate_candidate`, this function checks the stable
+    fingerprint *before* emitting a candidate event and never stamps Executive
+    eligibility.  Replays and cross-source equivalents therefore add only an
+    idempotent source link; they do not create duplicate candidate records,
+    objectives, missions, effects, or provider writes.
+    """
+    observation_id = str(observation_id or "").strip()
+    source_kind = str(source_kind or "").strip()
+    source_identity = str(source_identity or "").strip()
+    content_hash = str(content_hash or "").strip().lower()
+    if not observation_id or not source_kind or not source_identity:
+        raise ValueError("observation and source identity are required")
+    if not content_hash.startswith("sha256:") or len(content_hash) != 71:
+        raise ValueError("content_hash must be sha256:<64 lowercase hex>")
+    try:
+        int(content_hash[7:], 16)
+    except ValueError as error:
+        raise ValueError("content_hash must be sha256:<64 lowercase hex>") from error
+
+    canonical = canonicalize_statement(str(objective or ""))
+    if not canonical:
+        raise ValueError("candidate objective must be non-empty")
+    fingerprint = candidate_fingerprint(
+        objective, target_project=target_project, alias_key=alias_key,
+    )
+    candidate_id = f"cand-{fingerprint[:15]}"
+    provenance_hash = content_hash[7:]
+    link_payload = {
+        "candidate_id": candidate_id,
+        "observation_id": observation_id,
+        "source_kind": source_kind,
+        "source_identity": source_identity,
+        "content_hash": content_hash,
+        "source_ref": source_ref,
+        "observed_at": observed_at,
+        "authority": authority,
+        "fresh_until": fresh_until or expires_at,
+    }
+    link_key_suffix = hashlib.sha256(
+        canonical_json(link_payload).encode("utf-8")
+    ).hexdigest()[:24]
+
+    with db.transaction() as connection:
+        covering_candidate, covering_status, covering_mission = \
+            _candidate_covering_identity(
+                connection,
+                fingerprint=fingerprint,
+                objective_canonical=canonical,
+            )
+        if covering_mission is not None:
+            return {
+                "candidate_id": None,
+                "created": False,
+                "duplicate_of": covering_mission,
+                "fingerprint": fingerprint,
+                "history_status": "KNOWN_MISSION",
+                "source_linked": False,
+            }
+        if covering_candidate is not None:
+            candidate_id = covering_candidate
+            link_payload["candidate_id"] = candidate_id
+            link_key_suffix = hashlib.sha256(
+                canonical_json(link_payload).encode("utf-8")
+            ).hexdigest()[:24]
+            _results = db.append_events_on_connection(connection, [Event.create(
+                "discovery.candidate_source_linked",
+                link_payload,
+                source_type="supervisor",
+                source_id="v11-a2-observation",
+                idempotency_key=(
+                    f"discovery.candidate_source_linked:{link_key_suffix}"
+                ),
+            )])
+            return {
+                "candidate_id": candidate_id,
+                "created": False,
+                "duplicate_of": candidate_id,
+                "fingerprint": fingerprint,
+                "history_status": covering_status,
+                "source_linked": bool(_results[0][1]),
+            }
+
+        bounded_confidence = None if confidence is None else max(
+            0.0, min(1.0, float(confidence)))
+        evidence_items = list(evidence or [])
+        evidence_items.append({
+            "observation_id": observation_id,
+            "source_kind": source_kind,
+            "source_identity": source_identity,
+            "content_hash": content_hash,
+            "authority": "DATA_ONLY",
+            "target_project": target_project or None,
+            "initial_confidence": bounded_confidence,
+        })
+        payload: dict[str, Any] = {
+            "candidate_id": candidate_id,
+            "mission_id": mission_id,
+            "source": "initiative_observation",
+            "objective": str(objective).strip(),
+            "objective_canonical": canonical,
+            "evidence": evidence_items,
+            "duplicate_of": None,
+            "created_from": f"observation:{observation_id}",
+            "fingerprint": fingerprint,
+            "candidate_type": candidate_type,
+            "expected_outcome": expected_outcome or str(objective).strip(),
+            "provenance_hash": provenance_hash,
+            "expires_at": expires_at,
+        }
+        events = [
+            Event.create(
+                "discovery.candidate_generated",
+                payload,
+                source_type="supervisor",
+                source_id="v11-a2-observation",
+                idempotency_key=f"discovery.candidate_generated:{candidate_id}",
+            ),
+            Event.create(
+                "discovery.candidate_source_linked",
+                link_payload,
+                source_type="supervisor",
+                source_id="v11-a2-observation",
+                idempotency_key=(
+                    f"discovery.candidate_source_linked:{link_key_suffix}"
+                ),
+            ),
+        ]
+        results = db.append_events_on_connection(connection, events)
+    return {
+        "candidate_id": candidate_id,
+        "created": bool(results[0][1]),
+        "duplicate_of": None,
+        "fingerprint": fingerprint,
+        "history_status": None,
+        "source_linked": bool(results[1][1]),
+    }
 
 
 def _count_terms(objective: str, terms: tuple[str, ...]) -> int:

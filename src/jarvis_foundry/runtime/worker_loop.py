@@ -1047,6 +1047,47 @@ def run_cycle(
             source_type="supervisor", source_id=instance_id,
             idempotency_key=f"worker_loop.cycle_started:{loop_id}",
         ))
+        # V11 A2 is an inert branch at the existing worker scheduling choke
+        # point.  It returns WAIT/IDLE before any contract recovery, mission
+        # selection, objective admission, effect, or provider dispatch.
+        if config.initiative_a2_enabled:
+            from ..discovery_sources import SourceSpec
+            from ..initiative_a2 import InitiativeA2Bounds, run_initiative_a2_cycle
+
+            raw = dict(config.initiative_a2 or {})
+            sources = tuple(SourceSpec(
+                source_id=str(item["source_id"]),
+                source_kind=str(item["source_kind"]),
+                source_identity=str(item["source_identity"]),
+                poll_interval_s=int(item.get("poll_interval_s", 300)),
+                config=dict(item.get("config") or {}),
+            ) for item in (raw.get("sources") or ()) if isinstance(item, dict))
+            if not sources:
+                return _waiting_report(
+                    database, loop_id=loop_id, instance_id=instance_id,
+                    reason="V11 A2 has no configured observation sources",
+                )
+            bounds_raw = dict(raw.get("bounds") or {})
+            allowed_bounds = {
+                name: value for name, value in bounds_raw.items()
+                if name in InitiativeA2Bounds.__dataclass_fields__
+            }
+            report = run_initiative_a2_cycle(
+                database,
+                cycle_id=f"initiative-{loop_id}",
+                sources=sources,
+                resource_id=config.resource_id,
+                bounds=InitiativeA2Bounds(**allowed_bounds),
+                stop_path=_default_stop_path(paths, config),
+                fault_hook=fault_hook,
+            )
+            return _waiting_report(
+                database, loop_id=loop_id, instance_id=instance_id,
+                reason=(
+                    f"V11 A2 {report['outcome']}: "
+                    f"{report.get('reason') or 'admission boundary reached'}"
+                ),
+            )
         _recover_v3_terminal(database, loop_id=loop_id,
                              fault_hook=fault_hook)
         # V3 WP3 single choke point: when discovery.cycle_enabled the

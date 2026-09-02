@@ -249,6 +249,44 @@ def load_active_policy(db: FoundryDatabase) -> dict[str, Any]:
     return _validate_policy(policy)
 
 
+def _canonical_fabric_snapshot(db: FoundryDatabase) -> dict[str, dict[str, str]]:
+    """Return one bounded Catalog snapshot for scoring readiness checks."""
+    from .fabric.catalog import catalog_snapshot
+
+    result: dict[str, dict[str, str]] = {}
+    for row in catalog_snapshot(db).get("capabilities", ()):
+        if not isinstance(row, dict):
+            continue
+        spec = row.get("spec") or {}
+        readiness = row.get("readiness") or {}
+        capability_id = str(spec.get("capability_id") or "")
+        if capability_id:
+            result[capability_id] = {
+                "state": str(readiness.get("state") or "UNKNOWN"),
+                "unattended": str(spec.get("unattended") or "UNKNOWN"),
+            }
+    return result
+
+
+def _apply_fabric_truth(
+    candidate: dict[str, Any],
+    snapshot: dict[str, dict[str, str]],
+) -> dict[str, Any]:
+    """Replace any candidate-supplied readiness claims with Catalog truth."""
+    required = tuple(str(value) for value in (candidate.get("required_capabilities") or ()))
+    readiness: dict[str, str] = {}
+    for capability_id in required:
+        row = snapshot.get(capability_id)
+        if row is None:
+            readiness[capability_id] = "MISSING"
+            continue
+        state = row["state"]
+        if row["unattended"] != "ALLOWED":
+            state = "NOT_READY"
+        readiness[capability_id] = state
+    return {**candidate, "capability_readiness": readiness}
+
+
 def _load_json(raw: str | None) -> dict[str, Any]:
     import json
     try:
@@ -286,7 +324,9 @@ class ScoringService:
     def score_candidate(self, candidate_id: str, *,
                         dimensions: dict[str, float] | None = None,
                         stop_reason: str | None = None,
-                        veto_reason: str | None = None) -> dict[str, Any]:
+                        veto_reason: str | None = None,
+                        _fabric_snapshot: dict[str, dict[str, str]] | None = None,
+                        ) -> dict[str, Any]:
         """Score one candidate under the active policy.
 
         Emits ``discovery.candidate_scored`` (with policy_version + full
@@ -324,6 +364,11 @@ class ScoringService:
                 return {"candidate_id": candidate_id, "status": status,
                         "total": None, "trace": {}, "appended": False}
             candidate = self._candidate_state(connection, candidate_id)
+        candidate = _apply_fabric_truth(
+            candidate,
+            _fabric_snapshot if _fabric_snapshot is not None
+            else _canonical_fabric_snapshot(self._db),
+        )
         dims = dimensions or derive_dimensions(
             candidate["objective"],
             evidence_count=len(candidate["evidence_refs"]),
@@ -428,8 +473,11 @@ class ScoringService:
             rows = connection.execute(
                 "SELECT candidate_id FROM candidates WHERE status = 'NEW' "
                 "ORDER BY rowid LIMIT ?", (int(limit),)).fetchall()
-        return [self.score_candidate(r[0], stop_reason=stop_reason,
-                                     veto_reason=veto_reason) for r in rows]
+        fabric_snapshot = _canonical_fabric_snapshot(self._db)
+        return [self.score_candidate(
+            r[0], stop_reason=stop_reason, veto_reason=veto_reason,
+            _fabric_snapshot=fabric_snapshot,
+        ) for r in rows]
 
     @staticmethod
     def _candidate_state(connection: sqlite3.Connection,
@@ -465,6 +513,11 @@ class ScoringService:
                     )
                     if key in payload
                 }
+                if "required_capabilities" not in extras:
+                    for item in refs:
+                        if item.get("required_capabilities") is not None:
+                            extras["required_capabilities"] = item.get("required_capabilities")
+                            break
             except (TypeError, ValueError):
                 extras = {"malformed_payload": True}
         return {

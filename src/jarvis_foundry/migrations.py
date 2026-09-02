@@ -5,7 +5,7 @@ import sqlite3
 from .v4_schema import ensure_v4_tables
 
 
-SCHEMA_VERSION = 38
+SCHEMA_VERSION = 39
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -1291,6 +1291,232 @@ MIGRATIONS: dict[int, str] = {
         last_event_id TEXT NOT NULL,
         updated_at TEXT NOT NULL
     );
+    """,
+    39: """
+    -- V11 A2 Initiative: durable observation lineage, rejection-first
+    -- judgment history, bounded candidate research, and restart-safe cycle
+    -- state.  The event ledger remains authoritative. These are additive
+    -- machine-rate projections over that ledger.
+
+    CREATE TABLE IF NOT EXISTS candidate_sources (
+        link_id TEXT PRIMARY KEY,
+        candidate_id TEXT NOT NULL,
+        observation_id TEXT,
+        source_kind TEXT NOT NULL,
+        source_identity TEXT NOT NULL,
+        source_ref TEXT,
+        provenance_json TEXT NOT NULL DEFAULT '{}',
+        content_hash TEXT,
+        observed_at TEXT,
+        fresh_until TEXT,
+        authority TEXT NOT NULL DEFAULT 'DATA_ONLY',
+        last_event_id TEXT NOT NULL UNIQUE,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS candidate_sources_identity
+        ON candidate_sources(
+            candidate_id, source_kind, source_identity,
+            IFNULL(content_hash, '')
+        );
+    CREATE INDEX IF NOT EXISTS candidate_sources_candidate
+        ON candidate_sources(candidate_id, observed_at);
+    CREATE INDEX IF NOT EXISTS candidate_sources_observation
+        ON candidate_sources(observation_id)
+        WHERE observation_id IS NOT NULL;
+
+    CREATE TABLE IF NOT EXISTS candidate_judgments (
+        judgment_id TEXT PRIMARY KEY,
+        candidate_id TEXT NOT NULL,
+        fingerprint TEXT,
+        decision_id TEXT,
+        cycle_id TEXT,
+        stage TEXT NOT NULL,
+        outcome TEXT NOT NULL,
+        reason_code TEXT NOT NULL,
+        reason_detail TEXT NOT NULL DEFAULT '',
+        score REAL,
+        factors_json TEXT NOT NULL DEFAULT '{}',
+        evidence_json TEXT NOT NULL DEFAULT '[]',
+        rank INTEGER,
+        do_nothing_won INTEGER NOT NULL DEFAULT 0
+            CHECK(do_nothing_won IN (0, 1)),
+        policy_version TEXT,
+        evidence_hash TEXT,
+        decided_at TEXT NOT NULL,
+        last_event_id TEXT NOT NULL UNIQUE,
+        updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS candidate_judgments_candidate
+        ON candidate_judgments(candidate_id, decided_at);
+    CREATE INDEX IF NOT EXISTS candidate_judgments_cycle_outcome
+        ON candidate_judgments(cycle_id, outcome, decided_at);
+    CREATE INDEX IF NOT EXISTS candidate_judgments_reason
+        ON candidate_judgments(reason_code, decided_at);
+    CREATE UNIQUE INDEX IF NOT EXISTS candidate_judgments_decision
+        ON candidate_judgments(decision_id, candidate_id, outcome)
+        WHERE decision_id IS NOT NULL;
+
+    -- Rebuild the legacy claim research queue so candidate research can use
+    -- the same queue without inventing a second queue authority.  Existing
+    -- rows and legacy states remain valid.
+    CREATE TABLE research_queue_v39 (
+        item_id TEXT PRIMARY KEY,
+        claim_id TEXT,
+        reason TEXT NOT NULL,
+        evidence_json TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'OPEN'
+            CHECK(status IN (
+                'OPEN', 'CANDIDATE_CREATED', 'REJECTED',
+                'QUEUED', 'ENQUEUED', 'IN_PROGRESS', 'COMPLETED',
+                'BLOCKED', 'DEFERRED', 'FAILED', 'UNKNOWN'
+            )),
+        candidate_id TEXT,
+        cycle_id TEXT,
+        pass_number INTEGER CHECK(pass_number IS NULL OR pass_number > 0),
+        budget_used REAL NOT NULL DEFAULT 0.0
+            CHECK(budget_used >= 0.0),
+        budget_json TEXT NOT NULL DEFAULT '{}',
+        content_hash TEXT,
+        source TEXT,
+        source_ref TEXT,
+        queued_at TEXT,
+        started_at TEXT,
+        completed_at TEXT,
+        result_json TEXT NOT NULL DEFAULT '{}',
+        last_event_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        CHECK(claim_id IS NOT NULL OR candidate_id IS NOT NULL)
+    );
+    INSERT INTO research_queue_v39(
+        item_id, claim_id, reason, evidence_json, status,
+        last_event_id, updated_at
+    )
+    SELECT item_id, claim_id, reason, evidence_json, status,
+           last_event_id, updated_at
+    FROM research_queue;
+    DROP TABLE research_queue;
+    ALTER TABLE research_queue_v39 RENAME TO research_queue;
+    CREATE INDEX IF NOT EXISTS research_queue_status
+        ON research_queue(status);
+    CREATE UNIQUE INDEX IF NOT EXISTS research_queue_candidate_pass
+        ON research_queue(candidate_id, pass_number)
+        WHERE candidate_id IS NOT NULL AND pass_number IS NOT NULL;
+    CREATE INDEX IF NOT EXISTS research_queue_cycle_status
+        ON research_queue(cycle_id, status, updated_at);
+    CREATE INDEX IF NOT EXISTS research_queue_claim_reason
+        ON research_queue(claim_id, reason)
+        WHERE claim_id IS NOT NULL;
+
+    CREATE TABLE IF NOT EXISTS initiative_cycles (
+        cycle_id TEXT PRIMARY KEY,
+        stage TEXT NOT NULL DEFAULT 'STARTED',
+        status TEXT NOT NULL DEFAULT 'RUNNING'
+            CHECK(status IN (
+                'RUNNING', 'WAIT', 'IDLE', 'COMPLETED', 'STOPPED',
+                'BLOCKED', 'INTERRUPTED', 'FAILED'
+            )),
+        started_at TEXT NOT NULL,
+        completed_at TEXT,
+        bounds_json TEXT NOT NULL DEFAULT '{}',
+        budgets_json TEXT NOT NULL DEFAULT '{}',
+        metrics_json TEXT NOT NULL DEFAULT '{}',
+        reason TEXT NOT NULL DEFAULT '',
+        next_due_at TEXT,
+        last_event_id TEXT NOT NULL UNIQUE,
+        updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS initiative_cycles_status_updated
+        ON initiative_cycles(status, updated_at);
+
+    CREATE TABLE IF NOT EXISTS initiative_source_runs (
+        source_run_id TEXT PRIMARY KEY,
+        cycle_id TEXT NOT NULL,
+        source_class TEXT NOT NULL,
+        source_identity TEXT NOT NULL,
+        status TEXT NOT NULL
+            CHECK(status IN (
+                'READY', 'COMPLETED', 'BLOCKED', 'UNKNOWN', 'IDLE',
+                'SKIPPED', 'FAILED'
+            )),
+        attempted_at TEXT NOT NULL,
+        completed_at TEXT,
+        observations_count INTEGER NOT NULL DEFAULT 0
+            CHECK(observations_count >= 0),
+        candidates_count INTEGER NOT NULL DEFAULT 0
+            CHECK(candidates_count >= 0),
+        content_hash TEXT,
+        next_due_at TEXT,
+        provenance_json TEXT NOT NULL DEFAULT '{}',
+        error_json TEXT NOT NULL DEFAULT '{}',
+        reason TEXT NOT NULL DEFAULT '',
+        last_event_id TEXT NOT NULL UNIQUE,
+        updated_at TEXT NOT NULL,
+        UNIQUE(cycle_id, source_class, source_identity)
+    );
+    CREATE INDEX IF NOT EXISTS initiative_source_runs_cycle_status
+        ON initiative_source_runs(cycle_id, status, source_class);
+
+    CREATE INDEX IF NOT EXISTS candidates_status_expiry
+        ON candidates(status, expires_at, updated_at);
+    CREATE INDEX IF NOT EXISTS candidates_fingerprint_status
+        ON candidates(fingerprint, status);
+    CREATE INDEX IF NOT EXISTS monitors_due_lookup
+        ON monitors(enabled, last_poll_at, poll_interval_s);
+    CREATE INDEX IF NOT EXISTS world_observations_source_processed_time
+        ON world_observations(source_kind, processed, observed_at);
+    CREATE INDEX IF NOT EXISTS world_signals_state_due
+        ON world_signals(state, due_at);
+    CREATE INDEX IF NOT EXISTS world_signals_state_stale
+        ON world_signals(state, stale_after);
+    CREATE INDEX IF NOT EXISTS world_signals_dedupe
+        ON world_signals(dedupe_key);
+
+    -- v38 rejection projection replaced source evidence with the rejection
+    -- reason. Restore the original generated evidence once so v39 live rows
+    -- reconcile with a clean event replay under the preservation contract.
+    UPDATE candidates
+    SET evidence_json = COALESCE((
+        SELECT CASE
+            WHEN json_extract(events.payload_json, '$.duplicate_of') IS NOT NULL
+            THEN json_insert(
+                COALESCE(json_extract(events.payload_json, '$.evidence'), '[]'),
+                '$[#]',
+                json_object(
+                    'duplicate_of',
+                    json_extract(events.payload_json, '$.duplicate_of')
+                )
+            )
+            ELSE COALESCE(json_extract(events.payload_json, '$.evidence'), '[]')
+        END
+        FROM events
+        WHERE events.event_type = 'discovery.candidate_generated'
+          AND json_extract(events.payload_json, '$.candidate_id') = candidates.candidate_id
+        ORDER BY events.sequence
+        LIMIT 1
+    ), evidence_json)
+    WHERE status = 'REJECTED';
+
+    -- Existing rejection events become first-class history immediately on
+    -- upgrade.  The same deterministic ids are used by replay projection.
+    INSERT OR IGNORE INTO candidate_judgments(
+        judgment_id, candidate_id, fingerprint, decision_id, cycle_id,
+        stage, outcome, reason_code, reason_detail, score, factors_json,
+        evidence_json, rank, do_nothing_won, policy_version, evidence_hash,
+        decided_at, last_event_id, updated_at
+    )
+    SELECT
+        'legacy-rejection:' || events.idempotency_key,
+        json_extract(events.payload_json, '$.candidate_id'),
+        NULL, NULL, NULL, 'FINAL', 'REJECTED',
+        COALESCE(json_extract(events.payload_json, '$.reason_code'),
+                 'LEGACY_REJECTION'),
+        COALESCE(json_extract(events.payload_json, '$.reason'), ''),
+        NULL, '{}', '[]', NULL, 0, NULL, NULL,
+        events.recorded_at, events.event_id, events.recorded_at
+    FROM events
+    WHERE events.event_type = 'discovery.candidate_rejected'
+      AND json_extract(events.payload_json, '$.candidate_id') IS NOT NULL;
     """,
 }
 

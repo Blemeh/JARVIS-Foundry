@@ -45,6 +45,8 @@ PROJECTION_TABLES = (
     "knowledge_claim_entities",
     "knowledge_ingestions",
     "knowledge_snapshots",
+    "candidate_sources",
+    "candidate_judgments",
     "candidates",
     "candidate_scores",
     "candidate_outcomes",
@@ -57,6 +59,8 @@ PROJECTION_TABLES = (
     "vault_sync_state",
     "ingestion_cursors",
     "research_queue",
+    "initiative_source_runs",
+    "initiative_cycles",
     "worker_manifests",
     "consolidation_ops",
     "cost_measurements",
@@ -838,6 +842,93 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
                  duplicate_of, payload.get("created_from"),
                  event.event_id, event.recorded_at),
             )
+    elif event.event_type == "discovery.candidate_source_linked":
+        if not _has_table(connection, "candidate_sources"):
+            return
+        candidate_id = str(payload.get("candidate_id") or "")
+        source_kind = str(payload.get("source_kind") or "")
+        source_identity = str(payload.get("source_identity") or "")
+        if not candidate_id or not source_kind or not source_identity:
+            raise ValueError(
+                "discovery.candidate_source_linked requires candidate_id, "
+                "source_kind, and source_identity")
+        if connection.execute(
+                "SELECT 1 FROM candidates WHERE candidate_id = ?",
+                (candidate_id,)).fetchone() is None:
+            raise ValueError(
+                "discovery.candidate_source_linked references unknown "
+                f"candidate {candidate_id}")
+        link_id = str(payload.get("link_id") or payload.get("source_link_id")
+                      or event.idempotency_key)
+        connection.execute(
+            """INSERT OR IGNORE INTO candidate_sources(
+                link_id, candidate_id, observation_id, source_kind,
+                source_identity, source_ref, provenance_json, content_hash,
+                observed_at, fresh_until, authority, last_event_id,
+                created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (link_id, candidate_id, payload.get("observation_id"),
+             source_kind, source_identity, payload.get("source_ref"),
+             canonical_json(payload.get("provenance") or {}),
+             payload.get("content_hash"),
+             payload.get("observed_at", event.recorded_at),
+             payload.get("fresh_until"),
+             str(payload.get("authority") or "DATA_ONLY"),
+             event.event_id, event.recorded_at, event.recorded_at),
+        )
+    elif event.event_type == "discovery.candidate_judged":
+        if not _has_table(connection, "candidate_judgments"):
+            return
+        candidate_id = str(payload.get("candidate_id") or "")
+        judgment_id = str(payload.get("judgment_id") or "")
+        outcome = str(payload.get("outcome") or "")
+        reason_code = str(payload.get("reason_code") or "")
+        allowed_outcomes = {
+            "REJECTED", "DEFERRED", "ELIGIBLE", "WAIT", "SUPERSEDED",
+        }
+        if (not candidate_id or not judgment_id or not reason_code
+                or outcome not in allowed_outcomes):
+            raise ValueError(
+                "discovery.candidate_judged requires judgment_id, "
+                "candidate_id, a supported outcome, and reason_code")
+        if connection.execute(
+                "SELECT 1 FROM candidates WHERE candidate_id = ?",
+                (candidate_id,)).fetchone() is None:
+            raise ValueError(
+                f"discovery.candidate_judged references unknown candidate {candidate_id}")
+        score = payload.get("score")
+        connection.execute(
+            """INSERT OR IGNORE INTO candidate_judgments(
+                judgment_id, candidate_id, fingerprint, decision_id, cycle_id,
+                stage, outcome, reason_code, reason_detail, score,
+                factors_json, evidence_json, rank, do_nothing_won,
+                policy_version, evidence_hash, decided_at, last_event_id,
+                updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (judgment_id, candidate_id, payload.get("fingerprint"),
+             payload.get("decision_id"), payload.get("cycle_id"),
+             str(payload.get("stage") or "FINAL"), outcome, reason_code,
+             str(payload.get("reason_detail") or ""),
+             float(score) if score is not None else None,
+             canonical_json(payload.get("factors") or {}),
+             canonical_json(payload.get("evidence") or []),
+             payload.get("rank"), int(bool(payload.get("do_nothing_won"))),
+             payload.get("policy_version"), payload.get("evidence_hash"),
+             payload.get("decided_at", event.recorded_at), event.event_id,
+             event.recorded_at),
+        )
+        projected_status = {
+            "REJECTED": "REJECTED",
+            "DEFERRED": "DEFERRED",
+            "WAIT": "DEFERRED",
+            "ELIGIBLE": "ELIGIBLE",
+            "SUPERSEDED": "SUPERSEDED",
+        }[outcome]
+        connection.execute(
+            "UPDATE candidates SET status = ?, last_event_id = ?, "
+            "updated_at = ? WHERE candidate_id = ?",
+            (projected_status, event.event_id, event.recorded_at, candidate_id),
+        )
     elif event.event_type == "discovery.candidate_scored":
         connection.execute(
             "UPDATE candidates SET status = 'SCORED', last_event_id = ?, "
@@ -932,10 +1023,25 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             (event.event_id, event.recorded_at, payload["candidate_id"]))
     elif event.event_type == "discovery.candidate_rejected":
         connection.execute(
-            "UPDATE candidates SET status = 'REJECTED', evidence_json = ?, "
-            "last_event_id = ?, updated_at = ? WHERE candidate_id = ?",
-            (canonical_json([{"rejection_reason": payload.get("reason", "")}]),
-             event.event_id, event.recorded_at, payload["candidate_id"]))
+            "UPDATE candidates SET status = 'REJECTED', last_event_id = ?, "
+            "updated_at = ? WHERE candidate_id = ?",
+            (event.event_id, event.recorded_at, payload["candidate_id"]))
+        if _has_table(connection, "candidate_judgments"):
+            connection.execute(
+                """INSERT OR IGNORE INTO candidate_judgments(
+                    judgment_id, candidate_id, fingerprint, decision_id,
+                    cycle_id, stage, outcome, reason_code, reason_detail,
+                    score, factors_json, evidence_json, rank,
+                    do_nothing_won, policy_version, evidence_hash, decided_at,
+                    last_event_id, updated_at
+                ) VALUES (?, ?, NULL, NULL, NULL, 'FINAL', 'REJECTED', ?, ?,
+                          NULL, '{}', '[]', NULL, 0, NULL, NULL, ?, ?, ?)""",
+                (f"legacy-rejection:{event.idempotency_key}",
+                 payload["candidate_id"],
+                 str(payload.get("reason_code") or "LEGACY_REJECTION"),
+                 str(payload.get("reason") or ""), event.recorded_at,
+                 event.event_id, event.recorded_at),
+            )
     elif event.event_type == "discovery.candidate_superseded":
         # V4-S1 additive correction: a candidate whose premise was
         # re-measured false is superseded — never deleted, never
@@ -1185,6 +1291,194 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             "last_event_id = ?, updated_at = ? WHERE item_id = ?",
             (payload["status"], canonical_json(payload.get("evidence", {})),
              event.event_id, event.recorded_at, payload["item_id"]),
+        )
+    elif event.event_type == "research.candidate_enqueued":
+        research_id = str(payload.get("research_id") or "")
+        candidate_id = str(payload.get("candidate_id") or "")
+        pass_number = payload.get("pass_number")
+        status = str(payload.get("status") or "QUEUED")
+        if (not research_id or not candidate_id or pass_number is None
+                or status not in {
+                    "QUEUED", "ENQUEUED", "IN_PROGRESS", "BLOCKED", "DEFERRED",
+                }):
+            raise ValueError(
+                "research.candidate_enqueued requires research_id, "
+                "candidate_id, pass_number, and a candidate research status")
+        if connection.execute(
+                "SELECT 1 FROM candidates WHERE candidate_id = ?",
+                (candidate_id,)).fetchone() is None:
+            raise ValueError(
+                f"research.candidate_enqueued references unknown candidate {candidate_id}")
+        connection.execute(
+            """INSERT OR IGNORE INTO research_queue(
+                item_id, claim_id, reason, evidence_json, status,
+                candidate_id, cycle_id, pass_number, budget_used, budget_json,
+                content_hash, source, source_ref, queued_at, started_at,
+                completed_at, result_json, last_event_id, updated_at
+            ) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, '{}', ?, ?, ?, ?, ?, NULL,
+                      '{}', ?, ?)""",
+            (research_id, str(payload.get("reason") or "candidate_research"),
+             canonical_json(payload.get("evidence") or []), status,
+             candidate_id, payload.get("cycle_id"), int(pass_number),
+             float(payload.get("budget_used") or 0.0),
+             payload.get("content_hash"),
+             str(payload.get("source") or "candidate"),
+             payload.get("source_ref"), event.recorded_at,
+             payload.get("attempted_at"), event.event_id, event.recorded_at),
+        )
+    elif event.event_type == "research.candidate_started":
+        research_id = str(payload.get("research_id") or "")
+        if not research_id:
+            raise ValueError("research.candidate_started requires research_id")
+        cursor = connection.execute(
+            """UPDATE research_queue SET status = 'IN_PROGRESS',
+               started_at = ?, last_event_id = ?, updated_at = ?
+               WHERE item_id = ? AND status = 'ENQUEUED'""",
+            (payload.get("attempted_at", event.recorded_at), event.event_id,
+             event.recorded_at, research_id),
+        )
+        if cursor.rowcount == 0:
+            raise ValueError(
+                "research.candidate_started references no ENQUEUED research "
+                f"item {research_id}"
+            )
+    elif event.event_type == "research.candidate_completed":
+        research_id = str(payload.get("research_id") or "")
+        status = str(payload.get("status") or "COMPLETED")
+        if not research_id or status not in {
+                "COMPLETED", "BLOCKED", "DEFERRED", "FAILED", "REJECTED",
+                "UNKNOWN",
+        }:
+            raise ValueError(
+                "research.candidate_completed requires research_id and a "
+                "terminal candidate research status")
+        if connection.execute(
+                "SELECT 1 FROM research_queue WHERE item_id = ? "
+                "AND status = 'IN_PROGRESS'",
+                (research_id,)).fetchone() is None:
+            raise ValueError(
+                "research.candidate_completed references no IN_PROGRESS "
+                f"research item {research_id}")
+        connection.execute(
+            """UPDATE research_queue SET
+                status = ?, budget_used = ?, content_hash = COALESCE(?, content_hash),
+                source_ref = COALESCE(?, source_ref), evidence_json = ?,
+                result_json = ?, started_at = COALESCE(started_at, ?),
+                completed_at = ?, last_event_id = ?, updated_at = ?
+               WHERE item_id = ?""",
+            (status, float(payload.get("budget_used") or 0.0),
+             payload.get("content_hash"), payload.get("source_ref"),
+             canonical_json(payload.get("evidence") or []),
+             canonical_json(payload.get("result") or {}),
+             payload.get("attempted_at"),
+             payload.get("completed_at", event.recorded_at),
+             event.event_id, event.recorded_at, research_id),
+        )
+
+    elif event.event_type == "initiative.cycle_started":
+        if not _has_table(connection, "initiative_cycles"):
+            return
+        cycle_id = str(payload.get("cycle_id") or "")
+        status = str(payload.get("status") or "RUNNING")
+        if not cycle_id:
+            raise ValueError("initiative.cycle_started requires cycle_id")
+        connection.execute(
+            """INSERT OR IGNORE INTO initiative_cycles(
+                cycle_id, stage, status, started_at, completed_at,
+                bounds_json, budgets_json, metrics_json, reason, next_due_at,
+                last_event_id, updated_at
+            ) VALUES (?, 'STARTED', ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?)""",
+            (cycle_id, status, payload.get("started_at", event.recorded_at),
+             canonical_json(payload.get("bounds") or {}),
+             canonical_json(payload.get("budgets") or {}),
+             canonical_json(payload.get("metrics") or {}),
+             str(payload.get("reason") or ""), payload.get("next_due_at"),
+             event.event_id, event.recorded_at),
+        )
+    elif event.event_type == "initiative.cycle_stage_changed":
+        if not _has_table(connection, "initiative_cycles"):
+            return
+        cycle_id = str(payload.get("cycle_id") or "")
+        stage = str(payload.get("stage") or "")
+        if not cycle_id or not stage:
+            raise ValueError(
+                "initiative.cycle_stage_changed requires cycle_id and stage")
+        if connection.execute(
+                "SELECT 1 FROM initiative_cycles WHERE cycle_id = ?",
+                (cycle_id,)).fetchone() is None:
+            raise ValueError(
+                f"initiative.cycle_stage_changed references unknown cycle {cycle_id}")
+        connection.execute(
+            """UPDATE initiative_cycles SET stage = ?,
+               status = COALESCE(?, status), last_event_id = ?, updated_at = ?
+               WHERE cycle_id = ?""",
+            (stage, payload.get("status"), event.event_id,
+             event.recorded_at, cycle_id),
+        )
+    elif event.event_type == "initiative.cycle_completed":
+        if not _has_table(connection, "initiative_cycles"):
+            return
+        cycle_id = str(payload.get("cycle_id") or "")
+        if not cycle_id or connection.execute(
+                "SELECT 1 FROM initiative_cycles WHERE cycle_id = ?",
+                (cycle_id,)).fetchone() is None:
+            raise ValueError(
+                f"initiative.cycle_completed references unknown cycle {cycle_id}")
+        connection.execute(
+            """UPDATE initiative_cycles SET stage = 'COMPLETED', status = ?,
+               completed_at = ?, budgets_json = ?, metrics_json = ?,
+               reason = ?, next_due_at = ?, last_event_id = ?, updated_at = ?
+               WHERE cycle_id = ?""",
+            (str(payload.get("status") or "COMPLETED"),
+             payload.get("completed_at", event.recorded_at),
+             canonical_json(payload.get("budgets") or {}),
+             canonical_json(payload.get("metrics") or {}),
+             str(payload.get("reason") or ""), payload.get("next_due_at"),
+             event.event_id, event.recorded_at, cycle_id),
+        )
+    elif event.event_type == "initiative.source_recorded":
+        if not _has_table(connection, "initiative_source_runs"):
+            return
+        cycle_id = str(payload.get("cycle_id") or "")
+        source_run_id = str(payload.get("source_id") or "")
+        source_kind = str(payload.get("source_kind") or "")
+        source_identity = str(payload.get("source_identity") or "")
+        status = str(payload.get("status") or "")
+        if (not cycle_id or not source_run_id or not source_kind
+                or not source_identity
+                or status not in {"READY", "BLOCKED", "UNKNOWN", "IDLE"}):
+            raise ValueError(
+                "initiative.source_recorded requires cycle_id, source_id, "
+                "source_kind, source_identity, and a supported status")
+        if connection.execute(
+                "SELECT 1 FROM initiative_cycles WHERE cycle_id = ?",
+                (cycle_id,)).fetchone() is None:
+            raise ValueError(
+                f"initiative.source_recorded references unknown cycle {cycle_id}")
+        connection.execute(
+            """INSERT INTO initiative_source_runs(
+                source_run_id, cycle_id, source_class, source_identity,
+                status, attempted_at, completed_at, observations_count,
+                candidates_count, content_hash, next_due_at, provenance_json,
+                error_json, reason, last_event_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '{}', '{}', ?, ?, ?)
+            ON CONFLICT(cycle_id, source_class, source_identity) DO UPDATE SET
+                status=excluded.status,
+                observations_count=excluded.observations_count,
+                candidates_count=excluded.candidates_count,
+                content_hash=excluded.content_hash,
+                next_due_at=excluded.next_due_at,
+                reason=excluded.reason,
+                last_event_id=excluded.last_event_id,
+                updated_at=excluded.updated_at""",
+            (source_run_id, cycle_id, source_kind, source_identity, status,
+             event.recorded_at, event.recorded_at,
+             max(0, int(payload.get("observations_recorded") or 0)),
+             max(0, int(payload.get(
+                 "candidates_recorded", payload.get("candidates_count", 0)) or 0)),
+             payload.get("content_hash"), payload.get("next_due_at"),
+             str(payload.get("reason") or ""), event.event_id,
+             event.recorded_at),
         )
 
     elif event.event_type == "worker.manifest_delivered":
