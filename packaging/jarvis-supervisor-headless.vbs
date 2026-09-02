@@ -47,6 +47,7 @@ End If
 environment("JARVIS_INSTALL_ROOT") = installRoot
 environment("JARVIS_RELEASE_ID") = sha
 environment("JARVIS_RELEASE_SHA") = sha
+environment("PLAYWRIGHT_BROWSERS_PATH") = release & "\.pw"
 
 args = ""
 For i = 0 To WScript.Arguments.Count - 1

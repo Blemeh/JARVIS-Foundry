@@ -19,6 +19,7 @@ import importlib.metadata
 import json
 import os
 import re
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
@@ -48,6 +49,26 @@ MAX_ACTION_REQUESTS = 8
 _LOCAL_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
 _IDENTITY = re.compile(r"^[A-Za-z][A-Za-z0-9_.:/-]*$")
 _OPAQUE_REFERENCE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/-]{2,255}$")
+
+
+def _release_local_browser_runtime() -> tuple[Path | None, str | None]:
+    """Reject a silent fallback from an immutable release to host browsers."""
+    prefix = Path(sys.prefix).resolve()
+    if prefix.name.lower() != ".venv":
+        return None, None
+    release_root = prefix.parent
+    if not (release_root / "RELEASE.json").is_file():
+        return None, None
+    expected = (release_root / ".pw").resolve()
+    configured = os.environ.get("PLAYWRIGHT_BROWSERS_PATH")
+    if configured:
+        if Path(configured).expanduser().resolve() != expected:
+            return None, "browser_path_mismatch"
+    else:
+        os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(expected)
+    if not expected.is_dir():
+        return expected, "browser_binary_missing"
+    return expected, None
 
 
 class WebResearchError(ValueError):
@@ -379,6 +400,20 @@ class PlaywrightBrowserConnector:
         """Report package and binary health without installing anything."""
         if self._health_cache is not None:
             return dict(self._health_cache)
+        browser_path, browser_path_error = _release_local_browser_runtime()
+        if browser_path_error is not None:
+            return {
+                "status": "NOT_READY",
+                "available": False,
+                "browser": self.browser_name,
+                "browsers_path": str(browser_path) if browser_path is not None else None,
+                "error_code": browser_path_error,
+                "detail": (
+                    "immutable release browser assets are missing"
+                    if browser_path_error == "browser_binary_missing"
+                    else "immutable release browser path does not match PLAYWRIGHT_BROWSERS_PATH"
+                ),
+            }
         browser_version: str | None = None
         try:
             package_version = importlib.metadata.version("playwright")

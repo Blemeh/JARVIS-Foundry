@@ -10,7 +10,11 @@ from pathlib import Path
 from ..migrations import SCHEMA_VERSION
 from ..paths import FoundryPaths
 from .layout import current_pointer, install_root, release_dir
-from .release import ReleaseError, validate_release
+from .release import (
+    ReleaseError,
+    configure_release_browser_runtime,
+    validate_release,
+)
 
 
 def _clear_import_collision_env() -> None:
@@ -74,6 +78,7 @@ def validate_running_identity(home: Path) -> dict[str, object]:
             f"{authority.get('status')}"
             f"/{authority.get('database_authority_mode')}"
         )
+    configure_release_browser_runtime(identity)
     return identity
 
 

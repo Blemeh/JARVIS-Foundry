@@ -30,6 +30,9 @@ from .layout import (
     release_dir,
 )
 
+RELEASE_BROWSER_ASSET_DIR = ".pw"
+RELEASE_WEB_EXTRA = "web"
+
 LAUNCHER_CMD_TEXT = """@echo off
 setlocal EnableExtensions
 set "PYTHONPATH="
@@ -50,6 +53,7 @@ if not exist "%PY%" (
 )
 set "JARVIS_RELEASE_ID=%SHA%"
 set "JARVIS_RELEASE_SHA=%SHA%"
+set "PLAYWRIGHT_BROWSERS_PATH=%RELEASE%\\.pw"
 "%PY%" -m jarvis_foundry.deployment.launcher %*
 exit /b %ERRORLEVEL%
 """
@@ -550,6 +554,9 @@ def validate_release(
             _validate_legacy_runtime_identity(previous_runtime, field="previous_runtime")
         else:
             _validate_runtime_identity(previous_runtime, field="previous_runtime")
+    web_runtime = manifest.get("web_runtime")
+    if web_runtime is not None:
+        _validate_web_runtime_manifest(directory, web_runtime)
     if foundry_home is not None and require_schema_match:
         live_schema = schema_version(Path(foundry_home) / "foundry.db")
         if live_schema != package_schema:
@@ -655,6 +662,196 @@ def _build_command_center_bundle(
     }
 
 
+def _release_subprocess_env(*, browser_path: Path | None = None) -> dict[str, str]:
+    """Return an install/probe environment isolated from developer Python."""
+    environment = dict(os.environ)
+    for name in ("PYTHONPATH", "PYTHONHOME", "VIRTUAL_ENV"):
+        environment.pop(name, None)
+    environment["PYTHONNOUSERSITE"] = "1"
+    environment["PIP_DISABLE_PIP_VERSION_CHECK"] = "1"
+    environment["PIP_NO_INPUT"] = "1"
+    environment["PIP_NO_CACHE_DIR"] = "1"
+    # A caller must opt into browser downloads through this build path.  A
+    # developer setting that disables downloads must never produce a partial
+    # immutable release.
+    environment.pop("PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD", None)
+    if browser_path is not None:
+        environment["PLAYWRIGHT_BROWSERS_PATH"] = str(browser_path.resolve())
+    return environment
+
+
+def _process_error(result: subprocess.CompletedProcess[str]) -> str:
+    detail = (result.stderr or result.stdout or "process failed").strip()
+    return detail[-2000:]
+
+
+def _provision_release_web_runtime(
+    *, release_python: Path, staging_directory: Path,
+) -> dict[str, Any]:
+    """Install V10 web extras and Chromium entirely inside one release."""
+    browser_path = (staging_directory / RELEASE_BROWSER_ASSET_DIR).resolve()
+    browser_path.mkdir(parents=True, exist_ok=False)
+    environment = _release_subprocess_env(browser_path=browser_path)
+    source = staging_directory / "source"
+
+    installed = subprocess.run(
+        [
+            str(release_python), "-m", "pip", "install",
+            "--disable-pip-version-check", "--no-cache-dir",
+            f"{source}[{RELEASE_WEB_EXTRA}]",
+        ],
+        cwd=staging_directory,
+        capture_output=True,
+        text=True,
+        timeout=600,
+        check=False,
+        env=environment,
+    )
+    if installed.returncode != 0:
+        raise ReleaseError(
+            "release web dependency install failed: " + _process_error(installed))
+
+    browser_install = subprocess.run(
+        [str(release_python), "-m", "playwright", "install", "chromium"],
+        cwd=staging_directory,
+        capture_output=True,
+        text=True,
+        timeout=900,
+        check=False,
+        env=environment,
+    )
+    if browser_install.returncode != 0:
+        raise ReleaseError(
+            "release Chromium provisioning failed: "
+            + _process_error(browser_install))
+
+    probe_code = """
+import json
+from jarvis_foundry.connectors.web_research import (
+    PlaywrightBrowserConnector,
+    TrafilaturaExtractor,
+)
+
+browser = PlaywrightBrowserConnector(headless=True, timeout_ms=30000)
+extractor = TrafilaturaExtractor()
+browser_health = browser.health()
+extractor_health = extractor.health()
+if not browser_health.get("available") or browser_health.get("status") != "READY":
+    raise SystemExit(json.dumps({"browser_health": browser_health}, sort_keys=True))
+if not extractor_health.get("available"):
+    raise SystemExit(json.dumps({"extractor_health": extractor_health}, sort_keys=True))
+print(json.dumps({
+    "browser": browser_health,
+    "extractor": extractor_health,
+}, sort_keys=True))
+"""
+    probed = subprocess.run(
+        [str(release_python), "-c", probe_code],
+        cwd=staging_directory,
+        capture_output=True,
+        text=True,
+        timeout=180,
+        check=False,
+        env=environment,
+    )
+    if probed.returncode != 0:
+        raise ReleaseError(
+            "release web runtime health probe failed: " + _process_error(probed))
+    try:
+        payload = json.loads(probed.stdout.strip().splitlines()[-1])
+        browser_health = payload["browser"]
+        extractor_health = payload["extractor"]
+    except (IndexError, KeyError, TypeError, ValueError) as error:
+        raise ReleaseError(
+            "release web runtime health probe returned invalid JSON") from error
+
+    executable_raw = browser_health.get("browser_executable")
+    if not isinstance(executable_raw, str) or not executable_raw:
+        raise ReleaseError("release browser health omitted browser_executable")
+    executable = Path(executable_raw).resolve()
+    try:
+        executable.relative_to(browser_path)
+    except ValueError as error:
+        raise ReleaseError(
+            "release browser executable escaped the release-local browser path") from error
+    if not executable.is_file():
+        raise ReleaseError(f"release browser executable missing: {executable}")
+    if browser_health.get("browsers_path") != str(browser_path):
+        raise ReleaseError("release browser health path does not match release-local path")
+    browser_version = browser_health.get("browser_version")
+    playwright_version = browser_health.get("playwright_version")
+    trafilatura_version = extractor_health.get("trafilatura_version")
+    if not all(
+        isinstance(value, str) and value.strip()
+        for value in (browser_version, playwright_version, trafilatura_version)
+    ):
+        raise ReleaseError("release web runtime health omitted dependency versions")
+
+    relative_executable = executable.relative_to(staging_directory).as_posix()
+    return {
+        "contract": "release-local",
+        "browser_name": "chromium",
+        "browsers_path": RELEASE_BROWSER_ASSET_DIR,
+        "browser_executable": relative_executable,
+        "browser_version": browser_version,
+        "playwright_version": playwright_version,
+        "trafilatura_version": trafilatura_version,
+    }
+
+
+def _validate_web_runtime_manifest(
+    directory: Path, runtime: Any,
+) -> None:
+    """Validate the release-local web asset contract without launching it."""
+    if not isinstance(runtime, dict):
+        raise ReleaseError("RELEASE.json web_runtime must be an object")
+    if runtime.get("contract") != "release-local":
+        raise ReleaseError("RELEASE.json web_runtime contract is invalid")
+    if runtime.get("browser_name") != "chromium":
+        raise ReleaseError("RELEASE.json web_runtime browser is invalid")
+    if runtime.get("browsers_path") != RELEASE_BROWSER_ASSET_DIR:
+        raise ReleaseError("RELEASE.json web_runtime browsers_path is not release-local")
+    for field in ("browser_version", "playwright_version", "trafilatura_version"):
+        if not isinstance(runtime.get(field), str) or not runtime[field].strip():
+            raise ReleaseError(f"RELEASE.json web_runtime missing {field}")
+    browsers_path = (directory / runtime["browsers_path"]).resolve()
+    try:
+        browsers_path.relative_to(directory.resolve())
+    except ValueError as error:
+        raise ReleaseError("RELEASE.json web_runtime path escaped release") from error
+    if not browsers_path.is_dir():
+        raise ReleaseError(f"release-local browser path missing: {browsers_path}")
+    executable_raw = runtime.get("browser_executable")
+    if not isinstance(executable_raw, str) or not executable_raw:
+        raise ReleaseError("RELEASE.json web_runtime missing browser_executable")
+    executable = (directory / executable_raw).resolve()
+    try:
+        executable.relative_to(browsers_path)
+    except ValueError as error:
+        raise ReleaseError("RELEASE.json browser executable escaped browser path") from error
+    if not executable.is_file():
+        raise ReleaseError(f"release-local browser executable missing: {executable}")
+
+
+def configure_release_browser_runtime(identity: dict[str, Any]) -> Path | None:
+    """Bind Playwright to the validated browser assets of the current release."""
+    manifest = identity.get("manifest")
+    if not isinstance(manifest, dict):
+        raise ReleaseError("validated release identity has no manifest")
+    runtime = manifest.get("web_runtime")
+    if runtime is None:
+        return None
+    directory = Path(str(identity["release_dir"])).resolve()
+    _validate_web_runtime_manifest(directory, runtime)
+    browser_path = (directory / RELEASE_BROWSER_ASSET_DIR).resolve()
+    configured = os.environ.get("PLAYWRIGHT_BROWSERS_PATH")
+    if configured and Path(configured).expanduser().resolve() != browser_path:
+        raise ReleaseError(
+            "PLAYWRIGHT_BROWSERS_PATH does not match the current release")
+    os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(browser_path)
+    return browser_path
+
+
 def build_release(
     *,
     source_repo: Path,
@@ -725,15 +922,10 @@ def build_release(
         if created.returncode != 0:
             raise ReleaseError(created.stderr.strip() or "venv create failed")
         release_python = venv / "Scripts" / "python.exe"
-        installed = subprocess.run(
-            [str(release_python), "-m", "pip", "install",
-             "--disable-pip-version-check", str(staging)],
-            capture_output=True, text=True, timeout=300, check=False,
+        web_runtime = _provision_release_web_runtime(
+            release_python=release_python,
+            staging_directory=staging_directory,
         )
-        if installed.returncode != 0:
-            raise ReleaseError(
-                installed.stderr.strip() or installed.stdout.strip()
-                or "pip install failed")
         py_ver = subprocess.run(
             [str(release_python), "-c",
              "import sys; print(sys.version.split()[0])"],
@@ -760,6 +952,7 @@ def build_release(
             "previous_runtime": previous_runtime,
             "created_at": isoformat(),
             "command_center_bundle": command_center_bundle,
+            "web_runtime": web_runtime,
         }
         (staging_directory / "RELEASE.json").write_text(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n",
