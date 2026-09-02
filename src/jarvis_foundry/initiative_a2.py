@@ -497,6 +497,7 @@ def run_initiative_a2_cycle(
                     "budgets": {"research_used": 0.0},
                     "metrics": metrics,
                     "reason": "no meaningful source change",
+                    "source_digest": observed.get("source_digest", {}),
                     "next_due_at": min((
                         row.get("next_due_at") for row in source_rows
                         if row.get("next_due_at")
@@ -509,6 +510,7 @@ def run_initiative_a2_cycle(
             return {
                 "cycle_id": cycle_id, "outcome": status,
                 "reason": "no meaningful source change", "metrics": metrics,
+                "source_digest": observed.get("source_digest", {}),
             }
 
         _append_stage(database, cycle_id, "CANDIDATES_READY")
@@ -589,6 +591,7 @@ def run_initiative_a2_cycle(
             "budgets": {"research_used": metrics["research_budget_used"]},
             "metrics": metrics,
             "reason": decision.reason,
+            "source_digest": observed.get("source_digest", {}),
             "next_due_at": min((row.get("next_due_at") for row in source_rows if row.get("next_due_at")), default=None),
         },
         source_type="supervisor",
@@ -601,6 +604,7 @@ def run_initiative_a2_cycle(
         "reason": decision.reason,
         "decision": decision,
         "metrics": metrics,
+        "source_digest": observed.get("source_digest", {}),
     }
 
 
@@ -628,12 +632,16 @@ def _complete_stopped(
             "metrics": metrics,
             "budgets": {"research_used": 0.0},
             "reason": reason,
+            "source_digest": observed.get("source_digest", {}),
         },
         source_type="supervisor",
         source_id="v11-a2-initiative",
         idempotency_key=f"initiative.cycle_completed:{cycle_id}",
     ))
-    return {"cycle_id": cycle_id, "outcome": "STOPPED", "reason": reason, "metrics": metrics}
+    return {
+        "cycle_id": cycle_id, "outcome": "STOPPED", "reason": reason,
+        "metrics": metrics, "source_digest": observed.get("source_digest", {}),
+    }
 
 
 _OBSERVATION_WAKE_SUBJECT = "system:continuous-observation"
