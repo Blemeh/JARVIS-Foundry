@@ -5,6 +5,10 @@ The acceptance contract is executable. The primary runner is
 this directory and the Foundry/convergence suites exercise the same durable
 contracts.
 
+The candidate-neutral V11 A3/A4 proving runner is covered by
+`test_v11_a3a4_proving.py`. Its operator contract and guarded 48-hour commands
+are documented in `docs/handoffs/V11_A3A4_PROVING_HARNESS_PREP_20260902.md`.
+
 ## Executed profiles
 
 | Profile | Result | Wall-clock truth |
