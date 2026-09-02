@@ -1368,6 +1368,20 @@ def reconcile_terminal_mission_outcomes(
             "COMPLETED", "FAILED", "BLOCKED",
         }:
             continue
+        # MissionLoop can be interrupted after its atomic terminal append but
+        # before WorkerLoop projects the accepted outcome into calibration and
+        # World Intelligence.  Recover that boundary before advancing the
+        # parent plan so a later cycle cannot make objective completion outrun
+        # final-outcome truth or lose the learning writeback permanently.
+        from ..world_model.connector import reconcile_outcome_learning
+
+        learning = reconcile_outcome_learning(
+            database,
+            mission_id=mission_id,
+            source_id="executive-terminal-reconciler",
+        )
+        if not learning.get("finalized"):
+            continue
         result = observe_mission_outcome(
             database, mission_id, controller=controller,
         )

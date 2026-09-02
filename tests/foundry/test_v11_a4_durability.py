@@ -148,6 +148,16 @@ def _count(database: FoundryDatabase, event_type: str) -> int:
     return database.event_count(event_type=event_type)
 
 
+def _last_sequence(database: FoundryDatabase, event_type: str) -> int:
+    with database.connect(readonly=True) as connection:
+        row = connection.execute(
+            "SELECT MAX(sequence) FROM events WHERE event_type = ?",
+            (event_type,),
+        ).fetchone()
+    assert row is not None and row[0] is not None
+    return int(row[0])
+
+
 def _role_count(database: FoundryDatabase, role: str) -> int:
     with database.connect(readonly=True) as connection:
         return int(connection.execute(
@@ -294,6 +304,19 @@ def test_h_post_completion_kill_and_repeated_replay_converge(tmp_path: Path) -> 
     assert _count(database, "verification.accepted") == 2
     assert _count(database, "evidence.created") == 2
     assert _count(database, "mission.completed") == 1
+    assert _count(database, "mission.outcome_finalized") == 1
+    assert _count(database, "executive.calibration_recorded") == 1
+    assert _count(database, "world.observation_recorded") == 1
+    assert _count(database, "memory.observed") == 1
+    assert (
+        _last_sequence(database, "verification.accepted")
+        < _last_sequence(database, "evidence.created")
+        < _last_sequence(database, "mission.completed")
+        < _last_sequence(database, "mission.outcome_finalized")
+        < _last_sequence(database, "executive.calibration_recorded")
+        < _last_sequence(database, "world.observation_recorded")
+        < _last_sequence(database, "memory.observed")
+    )
     terminal_progress_events = [
         event for event in database.events(
             event_types=("executive.objective_progress_recorded",)
