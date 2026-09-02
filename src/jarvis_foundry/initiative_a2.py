@@ -14,7 +14,7 @@ import math
 import subprocess
 import time
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
 from urllib.parse import urlsplit
@@ -38,10 +38,9 @@ from .discovery_monitors import (
 from .events import Event, canonical_json
 from .executive.decisions import ExecutiveDecisionService, a2_precondition
 from .executive.scoring import A2GovernorBounds
-from .research_queue import (
-    complete_candidate_research,
-    enqueue_candidate_research,
-    start_candidate_research,
+from .research_dossier import (
+    ResearchDossierPolicy,
+    research_candidate_dossier,
 )
 
 
@@ -140,115 +139,400 @@ def _candidate_rows(database: FoundryDatabase, limit: int) -> list[dict[str, Any
     return [dict(row) for row in rows]
 
 
-def _research_source(database: FoundryDatabase, candidate_id: str) -> dict[str, Any] | None:
+def _research_sources(database: FoundryDatabase, candidate_id: str) -> list[dict[str, Any]]:
     with database.connect(readonly=True) as connection:
-        row = connection.execute(
+        rows = connection.execute(
             "SELECT cs.source_kind, cs.source_identity, "
             "COALESCE(cs.source_ref, wo.source_ref) AS source_ref, "
+            "cs.content_hash, cs.observed_at, cs.fresh_until, cs.authority, "
             "wo.payload_json, wo.provenance_json "
             "FROM candidate_sources cs "
             "LEFT JOIN world_observations wo "
             "ON wo.observation_id = cs.observation_id "
-            "WHERE cs.candidate_id = ? ORDER BY cs.rowid LIMIT 1",
+            "WHERE cs.candidate_id = ? ORDER BY cs.rowid",
             (candidate_id,),
-        ).fetchone()
-    if row is None:
-        return None
-    result = dict(row)
-    for key in ("payload_json", "provenance_json"):
-        try:
-            result[key.removesuffix("_json")] = json.loads(str(result.pop(key) or "{}"))
-        except (TypeError, ValueError):
-            result[key.removesuffix("_json")] = {}
+        ).fetchall()
+    result: list[dict[str, Any]] = []
+    for row in rows:
+        item = dict(row)
+        for key in ("payload_json", "provenance_json"):
+            try:
+                item[key.removesuffix("_json")] = json.loads(
+                    str(item.pop(key) or "{}")
+                )
+            except (TypeError, ValueError):
+                item[key.removesuffix("_json")] = {}
+        result.append(item)
     return result
+
+
+def _evidence_expiry(
+    source: Mapping[str, Any],
+    *,
+    hours: float,
+    preserve_expired: bool = False,
+) -> str:
+    explicit = source.get("fresh_until")
+    if explicit:
+        try:
+            parsed = datetime.fromisoformat(str(explicit).replace("Z", "+00:00"))
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            if preserve_expired or parsed > datetime.now(timezone.utc):
+                return str(explicit)
+        except ValueError:
+            pass
+    return (
+        datetime.now(timezone.utc) + timedelta(hours=hours)
+    ).isoformat().replace("+00:00", "Z")
+
+
+def _candidate_tokens(candidate: Mapping[str, Any]) -> set[str]:
+    return {
+        token.lower().strip(".,:;()[]{}")
+        for token in str(candidate.get("objective") or "").split()
+        if len(token.strip(".,:;()[]{}")) >= 5
+    }
+
+
+def _github_source_evidence(
+    source: Mapping[str, Any],
+    candidate: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    payload = dict(source.get("payload") or {})
+    repo = str(payload.get("repo") or "")
+    if payload.get("kind") == "workflow_run" and repo and payload.get("run_id"):
+        endpoint = f"/repos/{repo}/actions/runs/{payload['run_id']}"
+        action = "github.check.read"
+    elif payload.get("kind") == "issue" and repo and payload.get("number"):
+        endpoint = f"/repos/{repo}/issues/{payload['number']}"
+        action = "github.issue.read"
+    elif repo:
+        endpoint = f"/repos/{repo}"
+        action = "github.repo.read"
+    else:
+        return None
+    attempt, document = GitHubResearchConnector().read_api(action, endpoint)
+    if attempt.outcome != "COMPLETED" or not isinstance(document, dict):
+        return None
+    kind = str(payload.get("kind") or "repository")
+    if kind == "issue":
+        statement = (
+            f"GitHub issue #{document.get('number')} in {repo} is "
+            f"{document.get('state')}; title={str(document.get('title') or '')[:240]}; "
+            f"updated_at={document.get('updated_at')}."
+        )
+        stance = "SUPPORTING"
+        evidence_types = ["EXPECTED_BENEFIT", "PROJECT_CONTEXT", "FRESHNESS"]
+        confidence = 0.82
+    elif kind == "workflow_run":
+        conclusion = str(document.get("conclusion") or "").lower()
+        statement = (
+            f"GitHub workflow {document.get('name') or payload.get('name')} in "
+            f"{repo} has status={document.get('status')} and "
+            f"conclusion={document.get('conclusion')} at head={document.get('head_sha')}."
+        )
+        stance = (
+            "CONTRADICTING" if conclusion in {
+                "failure", "timed_out", "cancelled", "startup_failure",
+            } else "SUPPORTING" if conclusion == "success" else "CONTEXT"
+        )
+        evidence_types = [
+            "EXPECTED_BENEFIT", "DEPENDENCY", "PROJECT_CONTEXT", "FRESHNESS",
+        ]
+        confidence = 0.85
+    else:
+        statement = (
+            f"GitHub repository {repo} reports default_branch="
+            f"{document.get('default_branch')}, open_issues="
+            f"{document.get('open_issues_count')}, updated_at={document.get('updated_at')}."
+        )
+        stance = "CONTEXT"
+        evidence_types = ["PROJECT_CONTEXT", "FRESHNESS"]
+        confidence = 0.78
+    return {
+        "source_kind": "github",
+        "source_ref": attempt.provider_ref or endpoint,
+        "source_title": f"GitHub {kind} read",
+        "statement": statement,
+        "stance": stance,
+        "claim_key": "candidate_viability",
+        "confidence": confidence,
+        "content_hash": (attempt.after_state or {}).get("response_hash"),
+        "retrieved_at": datetime.now(timezone.utc),
+        "fresh_until": _evidence_expiry(source, hours=72.0),
+        "evidence_types": evidence_types,
+        "outcome": attempt.outcome,
+        "independent_source": f"github:{repo}",
+    }
+
+
+def _web_source_evidence(
+    source: Mapping[str, Any],
+    candidate: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    source_ref = str(source.get("source_ref") or source.get("source_identity") or "")
+    parsed = urlsplit(source_ref)
+    if parsed.scheme != "https" or not parsed.hostname:
+        return None
+    browser = PlaywrightBrowserConnector(allowed_hosts=(parsed.hostname,))
+    capture = browser.read(source_ref, allowed_hosts=(parsed.hostname,))
+    if capture.attempt.outcome != "COMPLETED" or capture.page is None:
+        return None
+    extraction = TrafilaturaExtractor().extract(capture)
+    page = capture.page
+    title = str(
+        extraction.metadata.get("title")
+        if extraction.success else page.title
+    )[:240]
+    excerpt = (
+        " ".join(extraction.text.split())[:500]
+        if extraction.success else
+        f"HTTP {page.status}; page title '{page.title}'."
+    )
+    tokens = _candidate_tokens(candidate)
+    overlap = sum(token in f"{title} {excerpt}".lower() for token in tokens)
+    return {
+        "source_kind": "web",
+        "source_ref": page.final_url,
+        "source_title": title,
+        "statement": (
+            f"The configured web source '{title or page.final_url}' "
+            f"contains candidate-relevant material: {excerpt}"
+        ),
+        "stance": "SUPPORTING" if overlap else "CONTEXT",
+        "claim_key": "candidate_viability",
+        "confidence": (
+            0.72 if overlap and extraction.success else
+            0.62 if overlap else 0.50
+        ),
+        "content_hash": extraction.safe_text_sha256 or page.source_sha256,
+        "retrieved_at": page.fetched_at,
+        "fresh_until": _evidence_expiry(source, hours=72.0),
+        "evidence_types": [
+            "EXPECTED_BENEFIT", "PROJECT_CONTEXT", "FRESHNESS",
+        ],
+        "outcome": extraction.attempt.outcome,
+        "independent_source": f"web:{parsed.hostname.lower()}",
+    }
+
+
+def _project_source_evidence(
+    source: Mapping[str, Any],
+    candidate: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    del candidate
+    payload = dict(source.get("payload") or {})
+    source_ref = str(source.get("source_ref") or source.get("source_identity") or "")
+    root = Path(source_ref.split("#", 1)[0])
+    if not root.is_dir():
+        return None
+    try:
+        head = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "HEAD"],
+            capture_output=True, check=False, timeout=15,
+        )
+        diff = subprocess.run(
+            ["git", "-C", str(root), "diff", "--stat", "--no-ext-diff"],
+            capture_output=True, check=False, timeout=15,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if head.returncode != 0 or diff.returncode != 0:
+        return None
+    marker = str(payload.get("text") or payload.get("kind") or "project observation")[:300]
+    digest = hashlib.sha256(head.stdout + b"\x00" + diff.stdout).hexdigest()
+    return {
+        "source_kind": "local",
+        "source_ref": source_ref,
+        "source_title": f"Local project {payload.get('project_id') or root.name}",
+        "statement": (
+            f"Local project evidence records {marker}; HEAD="
+            f"{head.stdout.decode('utf-8', errors='replace').strip()[:40]}; "
+            f"working_tree_diff_bytes={len(diff.stdout)}."
+        ),
+        "stance": (
+            "SUPPORTING" if payload.get("kind") in {
+                "tracked_work_marker", "working_tree_drift",
+            } else "CONTEXT"
+        ),
+        "claim_key": "candidate_viability",
+        "confidence": 0.88,
+        "content_hash": digest,
+        "retrieved_at": datetime.now(timezone.utc),
+        "fresh_until": _evidence_expiry(source, hours=24.0),
+        "evidence_types": ["EFFORT", "DEPENDENCY", "PROJECT_CONTEXT", "FRESHNESS"],
+        "outcome": "COMPLETED",
+        "independent_source": f"local:{root.resolve()}",
+    }
+
+
+def _world_source_evidence(
+    source: Mapping[str, Any],
+    candidate: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    del candidate
+    payload = dict(source.get("payload") or {})
+    statement = str(
+        payload.get("summary") or payload.get("title")
+        or payload.get("recommended_action") or ""
+    ).strip()
+    if not statement:
+        return None
+    return {
+        "source_kind": "world",
+        "source_ref": source.get("source_ref") or source.get("source_identity"),
+        "source_title": "JARVIS world observation",
+        "statement": statement,
+        "stance": "SUPPORTING" if payload.get("recommended_action") else "CONTEXT",
+        "claim_key": "candidate_viability",
+        "confidence": payload.get("confidence", 0.65),
+        "content_hash": str(source.get("content_hash") or "").removeprefix("sha256:"),
+        "retrieved_at": source.get("observed_at") or datetime.now(timezone.utc),
+        "fresh_until": _evidence_expiry(
+            source, hours=24.0, preserve_expired=True,
+        ),
+        "evidence_types": ["EXPECTED_BENEFIT", "PROJECT_CONTEXT", "FRESHNESS"],
+        "outcome": "COMPLETED",
+        "independent_source": "world:jarvis",
+    }
+
+
+def _source_evidence(
+    source: Mapping[str, Any],
+    candidate: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    kind = str(source.get("source_kind") or "").lower()
+    if kind == "github":
+        return _github_source_evidence(source, candidate)
+    if kind == "web":
+        return _web_source_evidence(source, candidate)
+    if kind == "project":
+        return _project_source_evidence(source, candidate)
+    if kind == "world":
+        return _world_source_evidence(source, candidate)
+    return None
 
 
 def default_research_reader(
     database: FoundryDatabase,
     candidate: Mapping[str, Any],
 ) -> dict[str, Any]:
-    """Perform one read-only, source-bounded research pass."""
+    """Collect several read-only source receipts for dossier synthesis."""
     candidate_id = str(candidate.get("candidate_id") or "")
-    source = _research_source(database, candidate_id)
-    if source is None:
-        return {"status": "UNKNOWN", "evidence": {"authority": "DATA_ONLY", "reason": "source lineage unavailable"}}
-    kind = str(source.get("source_kind") or "")
-    payload = dict(source.get("payload") or {})
-    source_ref = str(source.get("source_ref") or source.get("source_identity") or "")
-    evidence: dict[str, Any] = {
-        "authority": "DATA_ONLY" if kind != "world" else "SYSTEM_OBSERVATION",
-        "source_kind": kind,
-        "source_ref": source_ref,
+    sources = _research_sources(database, candidate_id)
+    if not sources:
+        return {
+            "status": "UNKNOWN",
+            "source_evidence": [],
+            "unresolved_unknowns": [{
+                "unknown_id": "source-lineage-unavailable",
+                "question": "Which bounded source can substantiate this candidate?",
+                "why_it_matters": "A dossier cannot infer evidence without provenance.",
+                "expected_information_value": 1.0,
+            }],
+            "budget_used": 0.0,
+        }
+    evidence_items = [
+        item for item in (
+            _source_evidence(source, candidate) for source in sources[:4]
+        ) if item is not None
+    ]
+    evidence_types = {
+        kind for item in evidence_items for kind in item.get("evidence_types", ())
     }
-    status = "UNKNOWN"
-    if kind == "github":
-        repo = str(payload.get("repo") or "")
-        if payload.get("kind") == "workflow_run" and repo and payload.get("run_id"):
-            endpoint = f"/repos/{repo}/actions/runs/{payload['run_id']}"
-            attempt, document = GitHubResearchConnector().read_api("github.check.read", endpoint)
-        elif payload.get("kind") == "issue" and repo and payload.get("number"):
-            endpoint = f"/repos/{repo}/issues/{payload['number']}"
-            attempt, document = GitHubResearchConnector().read_api("github.issue.read", endpoint)
-        else:
-            endpoint = f"/repos/{repo}" if repo else ""
-            if not endpoint:
-                return {"status": "UNKNOWN", "evidence": {**evidence, "reason": "invalid GitHub lineage"}, "source_ref": source_ref}
-            attempt, document = GitHubResearchConnector().read_api("github.repo.read", endpoint)
-        status = "COMPLETED" if attempt.outcome == "COMPLETED" and document is not None else "BLOCKED"
-        evidence.update({
-            "provider_ref": attempt.provider_ref,
-            "response_hash": (attempt.after_state or {}).get("response_hash"),
-            "outcome": attempt.outcome,
-            "error_code": attempt.error_code,
-            "summary": {
-                key: document.get(key) for key in (
-                    "id", "number", "name", "status", "conclusion", "state",
-                    "updated_at", "head_sha", "html_url",
-                ) if isinstance(document, dict) and key in document
-            },
+    independent = {item.get("independent_source") for item in evidence_items}
+    unknowns: list[dict[str, Any]] = []
+    if "EXPECTED_BENEFIT" not in evidence_types:
+        unknowns.append({
+            "unknown_id": "expected-benefit",
+            "question": "What measurable owner or project benefit would this candidate deliver?",
+            "why_it_matters": "Expected benefit must be evidence-backed before scoring.",
+            "expected_information_value": 0.85,
         })
-    elif kind == "web":
-        parsed = urlsplit(source_ref)
-        if parsed.scheme != "https" or not parsed.hostname:
-            return {"status": "BLOCKED", "evidence": {**evidence, "reason": "invalid web lineage"}, "source_ref": source_ref}
-        browser = PlaywrightBrowserConnector(allowed_hosts=(parsed.hostname,))
-        capture = browser.read(source_ref, allowed_hosts=(parsed.hostname,))
-        extraction = TrafilaturaExtractor().extract(capture)
-        status = "COMPLETED" if extraction.success and extraction.page is not None else "BLOCKED"
-        evidence.update({
-            "source_sha256": getattr(extraction.page, "source_sha256", None),
-            "safe_text_sha256": extraction.safe_text_sha256,
-            "outcome": extraction.attempt.outcome,
-            "error_code": extraction.attempt.error_code,
-            "title": str(extraction.metadata.get("title") or "")[:240],
+    if not {"EFFORT", "DEPENDENCY"}.intersection(evidence_types):
+        unknowns.append({
+            "unknown_id": "effort-dependency",
+            "question": "What implementation effort and dependency changes would this candidate require?",
+            "why_it_matters": "Hidden migration or dependency work can reverse the decision.",
+            "expected_information_value": 0.95,
         })
-    elif kind == "project":
-        root = Path(source_ref.split("#", 1)[0])
-        try:
-            result = subprocess.run(
-                ["git", "-C", str(root), "diff", "--stat", "--no-ext-diff"],
-                capture_output=True, check=False, timeout=15,
-            )
-            status = "COMPLETED" if result.returncode == 0 else "BLOCKED"
-            evidence.update({
-                "git_returncode": result.returncode,
-                "diff_stat_sha256": hashlib.sha256(result.stdout).hexdigest(),
-                "bytes": len(result.stdout),
-            })
-        except (OSError, subprocess.TimeoutExpired) as error:
-            status = "BLOCKED"
-            evidence["error"] = type(error).__name__
-    elif kind == "world":
-        status = "COMPLETED"
-        evidence["observation_hash"] = _hash(payload)
-    else:
-        evidence["reason"] = f"research unsupported for source kind {kind or 'unknown'}"
+    if len(independent - {None}) < 2:
+        unknowns.append({
+            "unknown_id": "independent-corroboration",
+            "question": "Can an independent source corroborate the candidate premise?",
+            "why_it_matters": "One-source evidence is too fragile for a durable dossier.",
+            "expected_information_value": 0.80,
+        })
     return {
-        "status": status,
-        "evidence": evidence,
-        "source_ref": source_ref,
-        "content_hash": content_hash(evidence)[7:],
-        "budget_used": 1.0,
+        "status": "COMPLETED" if evidence_items else "UNKNOWN",
+        "source_evidence": evidence_items,
+        "unresolved_unknowns": unknowns,
+        "source_ref": str(sources[0].get("source_ref") or ""),
+        "budget_used": 1.0 if evidence_items else 0.0,
+    }
+
+
+def _default_follow_up_reader(
+    unknown: dict[str, Any],
+    candidate: dict[str, Any],
+    _research_question: str,
+    _policy: ResearchDossierPolicy,
+) -> dict[str, Any]:
+    """Target a high-value unknown with bounded current-source inspection."""
+    unknown_id = str(unknown.get("unknown_id") or "")
+    target = f"{candidate.get('target_project', '')} {candidate.get('objective', '')}".lower()
+    if unknown_id != "effort-dependency" or "jarvis" not in target:
+        return {
+            "status": "UNKNOWN",
+            "resolved": False,
+            "reason": "no configured bounded follow-up source for this unknown",
+            "evidence": [],
+        }
+    root = Path(__file__).resolve().parents[2]
+    manifest = root / "pyproject.toml"
+    launcher = root / "src" / "jarvis_foundry" / "deployment" / "release.py"
+    if not manifest.is_file() or not launcher.is_file():
+        return {
+            "status": "UNKNOWN", "resolved": False,
+            "reason": "JARVIS dependency/launcher sources unavailable", "evidence": [],
+        }
+    manifest_text = manifest.read_text(encoding="utf-8")[:64_000]
+    launcher_text = launcher.read_text(encoding="utf-8")[:128_000]
+    digest = hashlib.sha256(
+        manifest_text.encode("utf-8") + b"\x00" + launcher_text.encode("utf-8")
+    ).hexdigest()
+    python_314 = "3.14" in str(candidate.get("objective") or "")
+    launcher_313 = "py -3.13" in launcher_text
+    contradicts = python_314 and launcher_313
+    statement = (
+        "JARVIS declares Python >=3.13, but its Windows release launcher is "
+        "explicitly pinned to py -3.13; a Python 3.14 adoption candidate "
+        "therefore requires launcher, dependency, and regression proof."
+        if contradicts else
+        "JARVIS dependency metadata and its release launcher were inspected; "
+        "implementation effort remains tied to the current Python runtime contract."
+    )
+    now = datetime.now(timezone.utc)
+    return {
+        "status": "COMPLETED",
+        "resolved": True,
+        "reason": "bounded local dependency and launcher inspection",
+        "evidence": [{
+            "source_kind": "local",
+            "source_ref": f"{root}#pyproject.toml+src/jarvis_foundry/deployment/release.py",
+            "source_title": "JARVIS runtime and release contract",
+            "statement": statement,
+            "stance": "CONTRADICTING" if contradicts else "CONTEXT",
+            "claim_key": "candidate_viability",
+            "confidence": 0.96,
+            "content_hash": digest,
+            "retrieved_at": now,
+            "fresh_until": now + timedelta(hours=24),
+            "evidence_types": ["EFFORT", "DEPENDENCY", "PROJECT_CONTEXT"],
+            "outcome": "COMPLETED",
+            "independent_source": f"local:{root}",
+        }],
     }
 
 
@@ -261,6 +545,7 @@ def _run_research(
     research_reader: ResearchReader,
     stop_path: str | Path | None,
     resource_id: str,
+    now: datetime | str | None = None,
 ) -> list[dict[str, Any]]:
     threshold = max(0.0, bounds.do_nothing_score - bounds.research_near_threshold_margin)
     preview = ExecutiveDecisionService(
@@ -292,40 +577,45 @@ def _run_research(
         planned = min(bounds.research_budget_per_candidate, remaining_budget)
         if planned <= 0.0:
             break
-        queued = enqueue_candidate_research(
+        def initial_reader(
+            _identity: dict[str, Any],
+            _question: str,
+            _policy: ResearchDossierPolicy,
+        ) -> Mapping[str, Any]:
+            if _stop_reason(database, stop_path):
+                return {
+                    "status": "BLOCKED", "source_evidence": [],
+                    "unresolved_unknowns": [{
+                        "unknown_id": "owner-stop",
+                        "question": "Can research resume after owner STOP?",
+                        "why_it_matters": "STOP dominates every research read.",
+                        "expected_information_value": 1.0,
+                    }],
+                    "budget_used": 0.0,
+                }
+            return research_reader(database, row)
+
+        completed = research_candidate_dossier(
             database,
             candidate_id=str(row["candidate_id"]),
             cycle_id=cycle_id,
-            pass_number=1,
-            budget_used=planned,
+            initial_reader=initial_reader,
+            follow_up_reader=(
+                _default_follow_up_reader
+                if research_reader is default_research_reader else None
+            ),
+            policy=ResearchDossierPolicy(),
+            reserved_budget=planned,
             per_candidate_budget=bounds.research_budget_per_candidate,
             cycle_budget=bounds.research_budget_per_cycle,
-            max_normal_passes=bounds.research_passes_per_candidate,
-            evidence={"preliminary_score": score.composite, "authority": "DATA_ONLY"},
-            input_hash=str(row.get("provenance_hash") or row.get("fingerprint") or ""),
+            now=now,
         )
-        if queued.get("status") != "ENQUEUED":
-            continue
-        if _stop_reason(database, stop_path):
-            break
-        started = start_candidate_research(
-            database, research_id=str(queued["research_id"]),
-        )
-        if started.get("status") != "IN_PROGRESS":
-            continue
-        receipt = research_reader(database, row)
-        used = min(planned, max(0.0, float(receipt.get("budget_used", planned))))
-        completed = complete_candidate_research(
-            database,
-            research_id=str(queued["research_id"]),
-            status=str(receipt.get("status") or "UNKNOWN"),
-            evidence=dict(receipt.get("evidence") or {}),
-            budget_used=used,
-            source_ref=receipt.get("source_ref"),
-            content_hash=receipt.get("content_hash"),
-        )
-        results.append(completed)
-        remaining_budget -= used
+        if completed.get("status") in {
+            "COMPLETED", "BLOCKED", "FAILED", "UNKNOWN", "REUSED",
+        }:
+            results.append(completed)
+            used = float(completed.get("budget_used") or 0.0)
+            remaining_budget -= used
     return results
 
 
@@ -525,6 +815,7 @@ def run_initiative_a2_cycle(
             research_reader=research_reader,
             stop_path=stop_path,
             resource_id=resource_id,
+            now=now,
         )
         _append_stage(database, cycle_id, "RESEARCHED")
         if fault_hook:

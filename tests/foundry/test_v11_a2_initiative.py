@@ -87,6 +87,14 @@ def test_cycle_researches_judges_waits_and_replays_without_execution(tmp_path: P
     assert result["metrics"]["duplicate_candidate_records"] == 0
     assert result["metrics"]["unbounded_loop_detected"] is False
     with database.connect(readonly=True) as connection:
+        research = connection.execute(
+            "SELECT evidence_json FROM research_queue "
+            "WHERE candidate_id IS NOT NULL ORDER BY pass_number DESC LIMIT 1"
+        ).fetchone()
+        dossier = json.loads(research[0])["dossier"]
+        assert dossier["contract"] == "jarvis.v11.research-dossier.v1"
+        assert dossier["source_provenance"]
+        assert dossier["authority"] == "DATA_ONLY"
         row = connection.execute(
             "SELECT provenance_json FROM world_observations "
             "WHERE source_kind = 'project' ORDER BY rowid LIMIT 1"

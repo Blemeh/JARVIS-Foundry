@@ -1813,6 +1813,27 @@ def _build_snapshot(
     # intelligence is an additive sub-surface alongside the existing V3
     # discovery projection, not a second Command Center authority.
     discovery_surface["operational_intelligence"] = operational_intelligence
+    # V11 Research Intelligence remains a read-only evidence surface beneath
+    # the existing Executive scorer/admission authority.  Only dossiers that
+    # already exist in ResearchQueue are projected here; rendering the Command
+    # Center never starts research or creates work.
+    try:
+        from .research_dossier import project_research_dossiers
+        research_intelligence = project_research_dossiers(
+            database, limit=20, now=generated_at,
+        )
+    except Exception as _ri_err:  # noqa: BLE001 - additive read model fails closed
+        research_intelligence = {
+            "contract": "jarvis.v11.research-dossier.v1",
+            "status": "UNAVAILABLE",
+            "count": 0,
+            "fresh_count": 0,
+            "stale_count": 0,
+            "dossiers": [],
+            "authority": "READ_ONLY_PROJECTION",
+            "error": f"{type(_ri_err).__name__}: {_ri_err}",
+        }
+    discovery_surface["research_intelligence"] = research_intelligence
     # V9 World Intelligence is an additive understanding layer.  It exposes
     # current state, history, signals, predictions, and gaps without
     # becoming a second scheduler or mission engine.
@@ -2357,6 +2378,28 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
                 )
                 return
             self._json_response(timeline, status=200)
+            return
+        if route == "/api/research/dossiers":
+            try:
+                from .research_dossier import project_research_dossiers
+                with self.database.read_snapshot():
+                    projection = project_research_dossiers(
+                        self.database, limit=20,
+                    )
+            except Exception as error:  # noqa: BLE001 - bounded read stays honest
+                self._json_response(
+                    {
+                        "contract": "jarvis.v11.research-dossier.v1",
+                        "status": "UNAVAILABLE",
+                        "count": 0,
+                        "dossiers": [],
+                        "authority": "READ_ONLY_PROJECTION",
+                        "reason": f"{type(error).__name__}: {error}",
+                    },
+                    status=503,
+                )
+                return
+            self._json_response(projection, status=200)
             return
         if route == "/api/vault/graph":
             vault_root = _vault_root_from_db(self.database)
