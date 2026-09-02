@@ -10,6 +10,9 @@ import pytest
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.discovery_sources import SourceSpec
 from jarvis_foundry.executive.owner_context import seed_owner_context
+from jarvis_foundry.fabric.catalog import record_outcome
+from jarvis_foundry.fabric.loop import seed_builtins
+from jarvis_foundry.fabric.model import VerifyVerdict
 from jarvis_foundry.initiative_a2 import InitiativeA2Bounds, run_initiative_a2_cycle
 from jarvis_foundry.runtime.config import WorkerRuntimeConfig
 from jarvis_foundry.paths import FoundryPaths
@@ -49,6 +52,19 @@ def _seed(database: FoundryDatabase) -> None:
             "source_hash": digest,
         }],
     )
+    seed_builtins(database)
+    for capability_id in (
+        "cap.file.read", "cap.file.write", "cap.git.inspect", "cap.git.diff",
+        "cap.git.commit", "cap.script.run", "cap.tests.run",
+    ):
+        record_outcome(
+            database,
+            capability_id,
+            success=True,
+            verified=VerifyVerdict.MATCH,
+            note="focused A2 local-candidate fixture",
+            at="2026-09-02T00:00:00Z",
+        )
 
 
 def _source(root: Path, *, interval: int = 1) -> SourceSpec:

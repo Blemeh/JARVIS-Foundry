@@ -1378,6 +1378,27 @@ def run_source_observation_cycle(
                     alias_key=item.alias_key or item.opportunity_key,
                     candidate_type=item.candidate_type, confidence=item.confidence,
                     expires_at=item.expires_at or default_expiry,
+                    trusted_requirements={
+                        "required_capability_ids": list(
+                            spec.config.get("required_capabilities") or ()),
+                        "optional_capability_ids": list(
+                            spec.config.get("optional_capabilities") or ()),
+                        "required_actions": list(
+                            spec.config.get("required_actions") or ()),
+                        "optional_actions": list(
+                            spec.config.get("optional_actions") or ()),
+                        "action_metadata": list(
+                            spec.config.get("action_metadata") or ()),
+                        "proposed_target": {
+                            "kind": item.source_kind,
+                            "target_project": item.target_project or None,
+                            "resource_id": spec.config.get("resource_id"),
+                            "operation": spec.config.get("proposed_operation"),
+                        },
+                        "project_profile": dict(
+                            spec.config.get("project_profile") or {}),
+                        "source": f"SourceSpec.config:{spec.source_id}",
+                    },
                     evidence=[{
                         "ref": item.source_ref,
                         "authority": item.authority,

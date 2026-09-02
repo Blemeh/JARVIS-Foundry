@@ -19,7 +19,7 @@ import hashlib
 import math
 import sqlite3
 import uuid
-from typing import Any
+from typing import Any, Mapping
 
 from .database import FoundryDatabase
 from .events import Event, canonical_json
@@ -122,6 +122,7 @@ def ingest_observed_candidate(
     expected_outcome: str | None = None,
     confidence: float | None = None,
     expires_at: str | None = None,
+    trusted_requirements: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Ingest one A2 observation without crossing the admission boundary.
 
@@ -147,6 +148,23 @@ def ingest_observed_candidate(
     canonical = canonicalize_statement(str(objective or ""))
     if not canonical:
         raise ValueError("candidate objective must be non-empty")
+    from .capability_requirements import (
+        TRUSTED_CONTEXT_RECORD,
+        trusted_requirement_context,
+    )
+    trusted_context_record: dict[str, Any] | None = None
+    if trusted_requirements is not None:
+        context = dict(trusted_requirements)
+        trusted_context_record = trusted_requirement_context(
+            required_capability_ids=context.get("required_capability_ids") or (),
+            optional_capability_ids=context.get("optional_capability_ids") or (),
+            required_actions=context.get("required_actions") or (),
+            optional_actions=context.get("optional_actions") or (),
+            proposed_target=context.get("proposed_target") or {},
+            project_profile=context.get("project_profile") or {},
+            action_metadata=context.get("action_metadata") or (),
+            source=str(context.get("source") or "candidate-ingest"),
+        )
     fingerprint = candidate_fingerprint(
         objective, target_project=target_project, alias_key=alias_key,
     )
@@ -162,6 +180,10 @@ def ingest_observed_candidate(
         "observed_at": observed_at,
         "authority": authority,
         "fresh_until": fresh_until or expires_at,
+        "provenance": (
+            {"capability_requirement_context": trusted_context_record}
+            if trusted_context_record is not None else {}
+        ),
     }
     link_key_suffix = hashlib.sha256(
         canonical_json(link_payload).encode("utf-8")
@@ -242,7 +264,17 @@ def ingest_observed_candidate(
 
         bounded_confidence = None if confidence is None else max(
             0.0, min(1.0, float(confidence)))
-        evidence_items = list(evidence or [])
+        # Generic observation evidence is DATA_ONLY.  It may describe a
+        # capability claim, but it cannot create the reserved trusted context
+        # record consumed by V11 requirement inference.
+        evidence_items: list[dict[str, Any]] = []
+        for item in evidence or []:
+            copied = dict(item)
+            if copied.get("record_type") == TRUSTED_CONTEXT_RECORD:
+                copied["record_type"] = "external.capability_requirement_claim"
+                copied["authority"] = "DATA_ONLY"
+                copied["ignored_by_capability_inference"] = True
+            evidence_items.append(copied)
         evidence_items.append({
             "observation_id": observation_id,
             "source_kind": source_kind,
@@ -252,6 +284,10 @@ def ingest_observed_candidate(
             "target_project": target_project or None,
             "initial_confidence": bounded_confidence,
         })
+        if trusted_context_record is not None:
+            # Audit copy only. Requirement inference reads the separately
+            # projected candidate-source provenance, never generic evidence.
+            evidence_items.append(trusted_context_record)
         payload: dict[str, Any] = {
             "candidate_id": candidate_id,
             "mission_id": mission_id,

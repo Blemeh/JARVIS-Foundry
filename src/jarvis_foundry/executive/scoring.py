@@ -148,22 +148,12 @@ def _fabric_snapshot(database: FoundryDatabase) -> dict[str, dict[str, Any]]:
     return {
         str(row.get("spec", {}).get("capability_id")): {
             "spec": dict(row.get("spec") or {}),
+            "metadata": dict(row.get("metadata") or {}),
             "readiness": dict(row.get("readiness") or {}),
         }
         for row in snapshot.get("capabilities", ())
         if isinstance(row, dict) and row.get("spec", {}).get("capability_id")
     }
-
-
-def _required_capabilities(row: dict[str, Any]) -> tuple[str, ...]:
-    raw = _context_value(row, "required_capabilities", "capability_requirements")
-    if isinstance(raw, str):
-        try:
-            parsed = json.loads(raw)
-            raw = parsed if isinstance(parsed, list) else [raw]
-        except (TypeError, ValueError):
-            raw = [raw]
-    return tuple(sorted({str(value).strip() for value in (raw or ()) if str(value).strip()}))
 
 
 def _dependency_state(database: FoundryDatabase, row: dict[str, Any]) -> tuple[float | None, dict[str, Any]]:
@@ -474,27 +464,31 @@ def score_candidate_for_executive(
         standing_rejection = _best_context_overlap(
             objective, list(owner_context.get("standing_rejections") or ()))
 
-        required = _required_capabilities(row)
-        capability_states: dict[str, str] = {}
-        unattended_states: dict[str, str] = {}
-        capability_values: list[float] = []
-        for capability_id in required:
-            catalog_row = fabric_snapshot.get(capability_id)
-            if catalog_row is None:
-                capability_states[capability_id] = "MISSING"
-                unattended_states[capability_id] = "UNKNOWN"
-                capability_values.append(0.0)
-                continue
-            readiness = str(catalog_row["readiness"].get("state") or "UNKNOWN")
-            unattended = str(catalog_row["spec"].get("unattended") or "UNKNOWN")
-            capability_states[capability_id] = readiness
-            unattended_states[capability_id] = unattended
-            ready_value = 1.0 if readiness == "READY" else 0.25 if readiness == "DEGRADED" else 0.0
-            if unattended == "INTERACTIVE_REQUIRED":
-                ready_value = 0.0
-            elif unattended == "UNKNOWN":
-                ready_value = min(ready_value, 0.25)
-            capability_values.append(ready_value)
+        from ..capability_requirements import resolve_capability_requirements
+        requirement_set = resolve_capability_requirements(
+            database,
+            row,
+            unattended=True,
+            catalog=fabric_snapshot,
+        )
+        required = requirement_set.required_capability_ids
+        required_evidence = {
+            item.capability_id: item
+            for item in requirement_set.capability_evidence
+            if item.requirement_kind == "REQUIRED"
+        }
+        capability_states = {
+            capability_id: required_evidence[capability_id].state
+            for capability_id in required
+        }
+        unattended_states = {
+            capability_id: required_evidence[capability_id].unattended
+            for capability_id in required
+        }
+        capability_values = [
+            1.0 if item.usable else 0.25 if item.state == "DEGRADED" else 0.0
+            for item in required_evidence.values()
+        ]
         capability_readiness = (
             sum(capability_values) / len(capability_values) if capability_values else None
         )
@@ -564,6 +558,9 @@ def score_candidate_for_executive(
             "required_capabilities": list(required),
             "capability_states": capability_states,
             "unattended_states": unattended_states,
+            "capability_requirement_set": requirement_set.as_dict(),
+            "capability_requirement_set_id": requirement_set.requirement_set_id,
+            "capability_requirement_snapshot_id": requirement_set.snapshot_id,
             "dependencies": dependency_meta,
             "history": history,
             "autonomous_wip": wip,

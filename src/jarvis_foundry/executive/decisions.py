@@ -766,6 +766,25 @@ def a2_precondition(score: CandidateScore) -> tuple[str, str, str] | None:
         )
     capability_states = meta.get("capability_states") or {}
     unattended_states = meta.get("unattended_states") or {}
+    requirement_set = meta.get("capability_requirement_set") or {}
+    if requirement_set and not bool(requirement_set.get("executable")):
+        blocker_rows = requirement_set.get("blockers") or ()
+        details = []
+        for row in blocker_rows[:8]:
+            if not isinstance(row, dict):
+                continue
+            code = str(row.get("code") or "CAPABILITY_UNAVAILABLE")
+            capability_id = str(row.get("capability_id") or "")
+            action_kind = str(row.get("action_kind") or "")
+            target = capability_id or action_kind
+            details.append(f"{target}:{code}" if target else code)
+        reason = ", ".join(details) or str(
+            requirement_set.get("readiness") or "BLOCKED"
+        )
+        return (
+            "DEFERRED", "CAPABILITY_UNAVAILABLE",
+            "canonical Fabric capability requirements unavailable: " + reason,
+        )
     unavailable = [
         capability_id for capability_id, state in capability_states.items()
         if state != "READY" or unattended_states.get(capability_id) != "ALLOWED"

@@ -62,10 +62,13 @@ def _candidate(db: FoundryDatabase, objective: str, *, token: str) -> str:
         target_project="JARVIS Foundry",
         evidence=[{
             "source_ref": f"repo://owner/project/{token}",
-            "required_capabilities": [CAPABILITY],
             "dependencies": [],
         }],
-        candidate_type="build",
+        candidate_type="test_opportunity",
+        trusted_requirements={
+            "required_capability_ids": [CAPABILITY],
+            "source": "a2-test-fixture",
+        },
         expected_outcome="bounded repository improvement",
         confidence=0.8,
         expires_at="2099-01-01T00:00:00Z",
@@ -206,6 +209,11 @@ def test_a2_preview_research_then_final_judgment_rescores_without_admission(
         governor=A2GovernorBounds(do_nothing_score=0.10),
     )
     assert before and before[0].candidate_id == candidate_id
+    requirement_set = before[0].a2_metadata["capability_requirement_set"]
+    assert requirement_set["contract_version"] == \
+        "jarvis.v11.capability-requirements.v1"
+    assert requirement_set["candidate_identity"]["candidate_id"] == candidate_id
+    assert requirement_set["executable"] is True
     assert not any(
         event.event_type == "discovery.candidate_judged" for event in db.events()
     )
