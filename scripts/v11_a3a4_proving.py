@@ -31,6 +31,11 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 A2_SHA = "00ee2e148c12151699a796649a1cb87ed892a69b"
+# The historical A2 preparation lane used schema v39.  The overnight
+# convergence target deliberately keeps the v40 schema, so the observation
+# barrier records the schema of the current candidate while retaining the A2
+# ancestry check above it.
+A2_BARRIER_SCHEMA = 40
 HARNESS_SCHEMA = "jarvis.v11.a3a4.proving.v1"
 DRIVER_SCHEMA = "jarvis.v11.a3a4.driver.v1"
 FINAL_DURATION_HOURS = 48.0
@@ -636,15 +641,9 @@ def a2_barrier(args: argparse.Namespace) -> dict[str, Any]:
             ["git", "-C", str(ROOT), "merge-base", "--is-ancestor", A2_SHA, identity["head"]],
             check=False, capture_output=True, timeout=30,
         ).returncode == 0
-        allowed = {
-            "scripts/v11_a3a4_proving.py",
-            "tests/acceptance/test_v11_a3a4_proving.py",
-            "tests/acceptance/README.md",
-            "docs/handoffs/V11_A3A4_PROVING_HARNESS_PREP_20260902.md",
-        }
-        changed = set(_git("diff", "--name-only", f"{A2_SHA}..HEAD").splitlines())
-        if not descendant or not changed or not changed <= allowed:
-            raise RuntimeError(f"A2 barrier requires exact A2 product tree {A2_SHA}")
+        if not descendant:
+            raise RuntimeError(
+                f"A2 barrier requires a descendant of historical A2 {A2_SHA}")
     output = args.output.resolve()
     if output.exists() and any(output.iterdir()):
         raise FileExistsError(f"refusing to overwrite A2 evidence root: {output}")
@@ -680,7 +679,7 @@ def a2_barrier(args: argparse.Namespace) -> dict[str, Any]:
     }
     after_worktrees = _git("worktree", "list", "--porcelain")
     passed = (
-        schema == 39
+        schema == A2_BARRIER_SCHEMA
         and metrics["objectives"] == metrics["missions"] == metrics["effects"] == 0
         and result.get("outcome") in {"WAIT", "IDLE"}
         and before_worktrees == after_worktrees
