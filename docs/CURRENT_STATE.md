@@ -12,7 +12,7 @@ disposable A5/A6-style proof passed, but V12 is not activated and its roadmap
 gates are not closed. The execution pointer remains V11 A3/A4,
 `BLOCKED_BY_PROVIDER`; V10 remains live and unchanged.
 
-DOCUMENTATION STATE BASE SHA: `19087d982e240bd9bf78ccec602a764966562aa2`
+DOCUMENTATION STATE BASE SHA: `cba101ea6750a3822dee147d1f479462c0997cde`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`.
@@ -39,13 +39,13 @@ V11 PROMOTED/LIVE:            NO
 V11 LATEST PROOF SHA:         afddb8d5ca3d5c3459a4f5394e84affb92d13738
 V12 STATUS:                   V12_FINAL_SOURCE_CANDIDATE / NOT ACTIVATED
 V12 BRANCH:                   candidate/v12-final-product-convergence-20260903
-V12 SOURCE SHA:               50e5a65efd761fe45e4afb23024633170451454f
-V12 EVIDENCE SHA:             19087d982e240bd9bf78ccec602a764966562aa2
-V12 PROOF SHA-256:            5480c406f856ec8d1bb7cb7b52c02b12c570142f51660fa7ae7cc3b426792739
+V12 SOURCE SHA:               7f153851517b5529dd1e582725a0c2a6d96ddc9b
+V12 EVIDENCE SHA:             cba101ea6750a3822dee147d1f479462c0997cde
+V12 PROOF SHA-256:            027c9dc07ff0d027ba8b231c573f787ed8a60e74f305f024f7671b84965c1f66
 V12 A5 DISPOSABLE PROOF:      PASS_BUILD_AHEAD / GATE NOT CLOSED
 V12 A6 DISPOSABLE PROOF:      PASS_BUILD_AHEAD / GATE NOT CLOSED
-V12 FULL CANONICAL SUITE:     PENDING_FINAL_CLEAN_RERUN
-V12 INDEPENDENT VERIFIER:     PENDING_FINAL_REVIEW
+V12 FULL CANONICAL SUITE:     PASS / 2644 TESTS / 0 FAILURES / 1 SKIPPED
+V12 INDEPENDENT VERIFIER:     PASS / NO BLOCKING FINDINGS
 A2 IMPLEMENTATION SHA:        91c3deaeefb3fc71ffd091ad0f4abc2e2fd8023c
 PRECONVERGENCE SOURCE SHA:    51eb998642fee713458998bd3f44219a76ab670d
 CONTINUOUS OBSERVATION INPUT: 8004a8c16aceb888db1d1401c3bc67842cb4746f
@@ -66,8 +66,8 @@ GMAIL OBSERVATION:            DISABLED
 The isolated branch `candidate/v12-final-product-convergence-20260903` in
 `C:\temp\JARVIS-V12-Final-Product-Convergence-20260903` starts from exact V11
 proof SHA `afddb8d5ca3d5c3459a4f5394e84affb92d13738`. The source candidate is
-`50e5a65efd761fe45e4afb23024633170451454f`; refreshed source-bound evidence is
-commit `19087d982e240bd9bf78ccec602a764966562aa2`. Schema remains one
+`7f153851517b5529dd1e582725a0c2a6d96ddc9b`; refreshed source-bound evidence is
+commit `cba101ea6750a3822dee147d1f479462c0997cde`. Schema remains one
 authoritative v40 chain. Neither commit was promoted, deployed, or applied to
 the live database or runtime.
 
@@ -89,7 +89,7 @@ truth; and `FabricMcpBackend` is the only MCP runtime.
 
 The disposable integrated proof is
 `evidence/v12-final-product-convergence/proof.json` (SHA-256
-`5480c406f856ec8d1bb7cb7b52c02b12c570142f51660fa7ae7cc3b426792739`).
+`027c9dc07ff0d027ba8b231c573f787ed8a60e74f305f024f7671b84965c1f66`).
 A5 proves a real missing capability, failed first trial, verified adaptation,
 READY/PROBATION registration, one wake, restart identity, resumption of the
 same objective, mission completion, rollback, and stale-receipt refusal. A6
@@ -104,18 +104,24 @@ Independent review found three convergence defects before this freeze:
 selected MCP capabilities were not reconstructed by the canonical worker
 stack, failed completion-receipt persistence could leave a process-local
 backend and probation registration active, and the A5 proof reported three
-integrity values as literals. Source `7892241...` repairs all three. Source
-`50e5a65...` additionally preserves worker-loop cleanup compatibility with
-legacy stack-shaped test adapters while the canonical `WorkerStack` still owns
-and closes its MCP backend. The worker
-stack now restores completed durable adoptions into one `FabricMcpBackend`,
+integrity values as literals. Source `7892241...` repairs all three, and source
+`50e5a65...` preserves worker-loop cleanup compatibility with legacy
+stack-shaped test adapters while the canonical `WorkerStack` still owns and
+closes its MCP backend. Fresh final review then found that degraded selected
+MCP restoration could fall through to a generic worker and that the complete
+candidate range contained one blank line at EOF. Source `7f15385...` keeps
+degraded MCP dispatch inside the canonical Fabric spine, records a truthful
+`BLOCKED/UNKNOWN` receipt with zero generic routes, and removes the whitespace
+violation. The worker stack restores completed durable adoptions into one `FabricMcpBackend`,
 owns and closes that backend per cycle, commits adoption verification and the
 completion receipt atomically, disables an unreceipted projection on failure,
 and measures duplicate missions, false successes, and unreconciled accepted
 effects from the ledger. The 19-file convergence matrix passed 248 tests after
 these repairs. In the first canonical rerun, every product/runtime test passed;
 only the two expected pre-pin documentation-staleness assertions failed. The
-final clean canonical rerun and fresh final verifier remain pending.
+final clean canonical rerun then passed 2,644 tests with zero failures, zero
+errors, and one host-dependent symlink skip. Fresh independent verifier
+re-review returned `PASS` with no blocking findings.
 
 All required integrity counters in the refreshed proof are zero: duplicate
 missions, effects, registrations, wakes, resumes, false successes, and

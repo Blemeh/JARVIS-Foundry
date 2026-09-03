@@ -13,8 +13,8 @@ V11_EXIT, activate V12, modify production, start A4/48H, or change main.
 V11 BASE SHA:        afddb8d5ca3d5c3459a4f5394e84affb92d13738
 BRANCH:              candidate/v12-final-product-convergence-20260903
 WORKTREE:            C:\temp\JARVIS-V12-Final-Product-Convergence-20260903
-SOURCE SHA:          50e5a65efd761fe45e4afb23024633170451454f
-EVIDENCE SHA:        19087d982e240bd9bf78ccec602a764966562aa2
+SOURCE SHA:          7f153851517b5529dd1e582725a0c2a6d96ddc9b
+EVIDENCE SHA:        cba101ea6750a3822dee147d1f479462c0997cde
 SCHEMA:              v40
 MAIN / ORIGIN MAIN:  2905c206fed0461bf3085bc0cb43773be913300a
 LIVE MUTATED:        NO
@@ -125,24 +125,36 @@ while the canonical `WorkerStack` still owns and closes its MCP backend:
 - Regression proof covers canonical worker-stack dispatch after restart and a
   simulated completion-receipt persistence failure.
 
+Fresh final review then found that degraded selected MCP restoration could
+return `None` from Fabric and fall through to a generic worker, plus one blank
+line at EOF in the complete candidate range. Source `7f15385...` repairs both:
+
+- Exact MCP actions with unavailable readiness continue through the canonical
+  Fabric spine and return one failed `BLOCKED/UNKNOWN` receipt.
+- The degraded-restart proof asserts zero generic dispatches and zero
+  `worker.route_decided` events.
+- Missing selected MCP Catalog entries, unstructured selected MCP payloads,
+  and missing resource roots remain Fabric-owned blocked results.
+- The complete V11-base-to-source `git diff --check` is clean.
+
 ## Disposable proof
 
 Primary evidence:
 `evidence/v12-final-product-convergence/proof.json`
 
 SHA-256:
-`5480c406f856ec8d1bb7cb7b52c02b12c570142f51660fa7ae7cc3b426792739`
+`027c9dc07ff0d027ba8b231c573f787ed8a60e74f305f024f7671b84965c1f66`
 
 Child receipts:
 
 - `a5-self-expansion.json`:
-  `b86ab13c6c3377694977a2245b6f376b151ef4b05cbd24cbe633f6573504d4c2`
+  `44ff1c73417123c721df1cc8e7085cd1b7a03833fe5e211e4286efc2ede402f2`
 - `a6-endurance.json`:
-  `e95e1e77fd3170bd4d42a187dae73f352b71747673ba88a41bcee9d387aa08f9`
+  `ccb8e7085d31b55e7e890424fd46f64e77e89c76b7e23251253e8b72c471d2da`
 - `mcp-backend.json`:
-  `72564d5dd2475ce1c57f78a1aa7c74f9706e673b6c1bca5e996108a6eb2587d6`
+  `84493c03525dac0b0aadc0ab0e937123afad1be7a27fe2476b1275a772be3c93`
 - `selected-mcp-adoption.json`:
-  `4a976a07a61c27f1bc5152dbebe66d4c91b9c8b7374f89e407a68301c286c233`
+  `0cb3fc0f9dbf0b61a647154f0a3299a70536d0f6a78fa15f0586702163a07291`
 
 A5 passed with one durable gap, two trials, a failed first trial, independent
 verification, one probation registration, one wake, one resume, the same
@@ -178,9 +190,12 @@ UNRECONCILED ACCEPTED EFFECTS:  0
 - `compileall`: PASS.
 - `git diff --check`: PASS.
 - Source-bound A5/A6/MCP proof: PASS.
-- Full canonical Foundry suite: `PENDING_FINAL_CLEAN_RERUN`.
-- Fresh final independent verifier: `PENDING_FINAL_REVIEW`.
-- Documentation staleness: `PENDING_POST_PIN`.
+- Full canonical Foundry suite: PASS; 2,644 tests, zero failures, zero errors,
+  one host-dependent symlink skip, 2,882.715 seconds.
+- Final JUnit SHA-256:
+  `c8101888635bfcb72a4e156b56c6cdd9e76a90c3358db537399829fa1cdf6f8e`.
+- Fresh final independent verifier: PASS; no blocking findings.
+- Documentation staleness: PASS after final docs-only amend.
 
 ## Gmail
 
