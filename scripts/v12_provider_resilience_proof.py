@@ -21,6 +21,8 @@ BASE_SHA = "30998ef06d9be73adb30387c10a7fa72ef910d28"
 TEST_FILE = "tests/foundry/test_v12_provider_resilience.py"
 SCENARIOS = {
     "A_PRIMARY_HEALTHY": "test_primary_healthy_routes_normally",
+    "CONFIGURED_PROVIDER_POOL": (
+        "test_machine_provider_pool_extends_existing_primary_boundary"),
     "B_PRIMARY_OUTAGE_FALLBACK": (
         "test_outage_and_rate_limit_take_one_compatible_alternate[outage]"),
     "C_RATE_LIMIT_BOUNDED_ALTERNATE": (
@@ -29,6 +31,8 @@ SCENARIOS = {
         "test_incompatible_policy_blocked_and_over_budget_fallbacks_are_rejected"),
     "E_POLICY_BLOCKED_REJECTED": (
         "test_incompatible_policy_blocked_and_over_budget_fallbacks_are_rejected"),
+    "POLICY_OWNER_CONSENT_IMMUTABLE": (
+        "test_profile_cannot_enable_noninteractive_training_policy"),
     "F_ALL_UNAVAILABLE_WAIT": (
         "test_all_down_wait_then_positive_recovery_resumes_same_mission_and_run"),
     "G_PROVIDER_RECOVERY_EXACT_RESUME": (
