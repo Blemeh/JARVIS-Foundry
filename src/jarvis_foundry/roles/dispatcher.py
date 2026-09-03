@@ -315,10 +315,32 @@ class RoleDispatcher:
                 and str(event.payload.get("run_id") or "") == run_id
             ):
                 last_resume = index
+        terminal_attempts = {
+            (
+                int(event.payload.get("attempt_ordinal") or 0),
+                str(event.payload.get("provider")
+                    or event.payload.get("provider_id") or ""),
+            )
+            for index, event in enumerate(events)
+            if index > last_resume
+            and event.event_type == "provider.dispatch_failed"
+            and str(event.payload.get("run_id") or "") == run_id
+        }
         for index, event in enumerate(events):
             if index <= last_resume or event.event_type != "provider.dispatch_attempted":
                 continue
-            if str(event.payload.get("run_id") or "") == run_id:
+            attempt_identity = (
+                int(event.payload.get("attempt_ordinal") or 0),
+                str(event.payload.get("provider")
+                    or event.payload.get("provider_id") or ""),
+            )
+            # A durable attempt marker without a classified terminal failure
+            # is a crash window before/inside adapter dispatch, not consumed
+            # retry budget.  Replay that exact attempt identity once.
+            if (
+                str(event.payload.get("run_id") or "") == run_id
+                and attempt_identity in terminal_attempts
+            ):
                 rows.append(dict(event.payload))
         return rows
 
@@ -854,6 +876,11 @@ class RoleDispatcher:
             terminal_class = failure_classes[-1] if failure_classes else (
                 route_failure or "OUTAGE")
             error_class = self._failure_error_class(terminal_class)
+            if not self.provider_candidates:
+                # Preserve the pre-V12 public result contract for legacy
+                # single-provider dispatch while classification remains
+                # durable in provider.dispatch_failed.
+                error_class = "provider_unavailable"
             self._fail_run(run_id, error_class, detail, suffix="exhausted")
             return RoleResult(
                 run_id=run_id, role=role, status=BLOCKED, provider=tried[-1] if tried else "",

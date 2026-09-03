@@ -108,6 +108,7 @@ class HermesWorkerAdapter:
         self.python_exe = python_exe
         self.framework = "hermes"
         self.provider_settings = provider_settings or default_provider_settings()
+        self.strict_provider_identity = provider_settings_by_id is not None
         self.provider_settings_by_id = dict(provider_settings_by_id or {})
         self.provider_settings_by_id.setdefault(
             self.provider_settings.provider, self.provider_settings)
@@ -144,8 +145,13 @@ class HermesWorkerAdapter:
             raise ProviderUnavailable(
                 "real Hermes dispatch is disabled; enable explicitly with "
                 "an isolated HERMES_HOME")
-        settings = self.provider_settings_by_id.get(contract.provider)
-        if settings is None or settings.model != contract.model:
+        settings = (
+            self.provider_settings_by_id.get(contract.provider)
+            if self.strict_provider_identity else self.provider_settings
+        )
+        if settings is None or (
+            self.strict_provider_identity and settings.model != contract.model
+        ):
             raise ProviderFailure(
                 f"provider/model identity is not configured: "
                 f"{contract.provider}/{contract.model}",
@@ -249,7 +255,10 @@ class HermesWorkerAdapter:
         if (first_line.startswith(self.FAILURE_REPORT_PREFIXES)
                 or self._FAILURE_REPORT_HTTP.match(first_line)):
             failure_class = classify_provider_failure(first_line)
-            raise ProviderFailure(
+            failure_type = (
+                ProviderUnavailable
+                if failure_class == "OUTAGE" else ProviderFailure)
+            raise failure_type(
                 f"oneshot reported provider failure (exit 0): {first_line[:200]}",
                 failure_class=failure_class,
                 retryable=failure_class in {"OUTAGE", "DEGRADED"},

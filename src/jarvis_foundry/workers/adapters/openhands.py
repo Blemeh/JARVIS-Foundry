@@ -99,6 +99,7 @@ class OpenHandsWorkerAdapter:
         self.timeout_seconds = timeout_seconds
         self.framework = "openhands"
         self.provider_settings = provider_settings or default_provider_settings()
+        self.strict_provider_identity = provider_settings_by_id is not None
         self.provider_settings_by_id = dict(provider_settings_by_id or {})
         self.provider_settings_by_id.setdefault(
             self.provider_settings.provider, self.provider_settings)
@@ -132,8 +133,13 @@ class OpenHandsWorkerAdapter:
             raise ProviderUnavailable(
                 "real OpenHands dispatch is disabled; enable explicitly "
                 "with a disposable OPENHANDS_DATA_DIR")
-        settings = self.provider_settings_by_id.get(contract.provider)
-        if settings is None or settings.model != contract.model:
+        settings = (
+            self.provider_settings_by_id.get(contract.provider)
+            if self.strict_provider_identity else self.provider_settings
+        )
+        if settings is None or (
+            self.strict_provider_identity and settings.model != contract.model
+        ):
             raise ProviderFailure(
                 f"provider/model identity is not configured: "
                 f"{contract.provider}/{contract.model}",

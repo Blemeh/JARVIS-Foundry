@@ -363,7 +363,10 @@ class HermesOneshotAdapter:
             # configured the step lands in an honest
             # BLOCKED/provider_unavailable state (WP8 F5/F6).
             failure_class = classify_provider_failure(first_line)
-            raise ProviderFailure(
+            failure_type = (
+                ProviderUnavailable
+                if failure_class == "OUTAGE" else ProviderFailure)
+            raise failure_type(
                 f"oneshot reported provider failure (exit 0): {first_line[:200]}",
                 failure_class=failure_class,
                 retryable=failure_class in {"OUTAGE", "DEGRADED"},

@@ -1609,7 +1609,8 @@ def run_cycle(
             stop_path=stop_path,
             policy=ActionPolicy(database, stop_path),
             fault_hook=fault_hook,
-            provider_candidates=stack.provider_candidates,
+            provider_candidates=tuple(
+                getattr(stack, "provider_candidates", ()) or ()),
             max_provider_attempts=int(retry.get("max_total_attempts", 4)),
             max_provider_retries=int(
                 retry.get("max_retries_per_provider", 0)),
