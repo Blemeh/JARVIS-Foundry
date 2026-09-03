@@ -148,6 +148,46 @@ describe("V11 Autonomy Command Center", () => {
     expect(screen.queryByText(/no durable AcceptanceGate receipt exists/i)).not.toBeInTheDocument();
   });
 
+  it("opens the owner-facing candidate brief with research, readiness, context, and plan", async () => {
+    const enriched = candidate();
+    enriched.research = {
+      ...enriched.research,
+      dossier: {
+        status: "COMPLETED", contract: "jarvis.v11.research-dossier.v1",
+        human_summary: "Evidence supports the bounded retry change.",
+        supporting_evidence: [{ statement: "Release notes identify the retry regression." }],
+        contradicting_evidence: [{ statement: "No independent runtime benchmark is recorded." }],
+        contradictions: [{ claim_key: "runtime_cost", status: "UNRESOLVED" }],
+        unresolved_unknowns: ["Production latency baseline"],
+        final_research_conclusion: { verdict: "SUPPORTED", summary: "Proceed to verification." },
+      },
+    };
+    enriched.capability_readiness = {
+      status: "PARTIALLY_READY", contract: "jarvis.v11.capability-requirements.v1",
+      required_capability_ids: ["cap.repo.read"], missing_capabilities: ["cap.repo.write"],
+      decision: "BLOCKED", executable: false,
+    };
+    enriched.project_context = {
+      status: "AVAILABLE", contract: "jarvis.actionable-project-context.v1",
+      stack: { language: "TypeScript" }, repository_state: { branch: "candidate" },
+      context_gaps: ["CI receipt unavailable"],
+    };
+    enriched.verification_plan = {
+      status: "READY", contract: "jarvis.verification-plan.v1",
+      objective: "Verify retry latency reduction", acceptance_criteria: ["focused tests pass"],
+      expected_artifacts: ["verification receipt"], forbidden_paths: [".env"],
+    };
+    renderAutonomy(<AutonomyView projection={projection({ candidates: [enriched] })} filter="all" onFilter={() => undefined} />);
+    await userEvent.click(screen.getByRole("button", { name: /Inspect complete candidate brief/i }));
+    const drawer = screen.getByRole("dialog", { name: "Candidate evidence brief" });
+    expect(within(drawer).getByText("Evidence supports the bounded retry change.")).toBeInTheDocument();
+    expect(within(drawer).getByText("No independent runtime benchmark is recorded.")).toBeInTheDocument();
+    expect(within(drawer).getByText("cap.repo.write")).toBeInTheDocument();
+    expect(within(drawer).getByText("Verify retry latency reduction")).toBeInTheDocument();
+    await userEvent.click(within(drawer).getByRole("button", { name: "Close panel" }));
+    expect(screen.queryByRole("dialog", { name: "Candidate evidence brief" })).not.toBeInTheDocument();
+  });
+
   it("renders an honest empty state without candidate or activity placeholders", () => {
     renderAutonomy(<AutonomyView projection={projection({ status: "EMPTY", candidates: [], timeline: [], current_work: null })} filter="all" onFilter={() => undefined} />);
     expect(screen.getByText("No candidates match this durable projection.")).toBeInTheDocument();

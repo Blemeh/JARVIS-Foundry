@@ -560,6 +560,15 @@ export interface AutonomyWorkField {
   [key: string]: unknown;
 }
 
+/** Additive V11 contracts stay data-only and may be unavailable on older ledgers. */
+export interface AutonomyContractProjection {
+  status: string;
+  contract?: string;
+  authority?: string;
+  reason?: string | null;
+  [key: string]: unknown;
+}
+
 export interface AutonomyOutcome {
   state: string;
   mission_state: string;
@@ -569,6 +578,7 @@ export interface AutonomyOutcome {
     acceptance: string;
     acceptance_event_id: string | null;
     reason: string | null;
+    acceptance_receipt?: Record<string, unknown> | null;
   };
   repair_attempts: number | null;
   actual: Record<string, unknown> | null;
@@ -586,6 +596,7 @@ export interface AutonomyCurrentWork {
   current_step: AutonomyWorkField;
   worker: AutonomyWorkField;
   verifier: AutonomyWorkField;
+  verification_plan?: AutonomyContractProjection;
   final_outcome: AutonomyOutcome;
 }
 
@@ -611,7 +622,11 @@ export interface AutonomyCandidate {
     budget_used: number | null;
     completed_at: string | null;
     event_id: string | null;
+    dossier?: AutonomyContractProjection;
   };
+  capability_readiness?: AutonomyContractProjection;
+  project_context?: AutonomyContractProjection;
+  verification_plan?: AutonomyContractProjection;
   state: string;
   rejection: { reason_code: string | null; reason: string | null; event_id: string | null } | null;
   judgment: {
@@ -664,6 +679,9 @@ export interface AutonomyProjection {
     observations: number;
     candidates: number;
     event_id: string | null;
+    meaningful_changes?: Array<Record<string, unknown>>;
+    candidate_worthy_signals?: Array<Record<string, unknown>>;
+    noise_suppressed?: number | null;
   }>;
   timeline: Array<{
     sequence: number;
@@ -679,6 +697,11 @@ export interface AutonomyProjection {
     decision: string | null;
   }>;
   current_work: AutonomyCurrentWork | null;
+  overview?: AutonomyContractProjection;
+  source_digest?: AutonomyContractProjection;
+  learning?: AutonomyContractProjection;
+  wait?: AutonomyContractProjection;
+  contract_versions?: Record<string, string>;
   limits: Record<string, number>;
 }
 

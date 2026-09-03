@@ -1,17 +1,19 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import {
   Activity, ArrowRight, BrainCircuit, Clock3, DatabaseZap,
   ChevronDown, FileSearch2, GitBranch, ShieldCheck, TimerReset,
+  BookOpenCheck, CircleAlert, Layers3, Lightbulb, ListChecks,
 } from "lucide-react";
 import { useCommandCenter } from "../context/CommandCenterContext";
 import { RouteQueryGate } from "../components/RouteQueryGate";
 import { SectionHeader } from "../components/SectionHeader";
 import { StatusBadge } from "../components/StatusBadge";
+import { Drawer } from "../components/Drawer";
 import { useRouteQuery } from "../hooks/useRouteQuery";
 import type {
   AutonomyCandidate, AutonomyCandidateFilter, AutonomyFactor,
-  AutonomyMetric, AutonomyProjection, AutonomyWorkField,
+  AutonomyContractProjection, AutonomyMetric, AutonomyProjection, AutonomyWorkField,
 } from "../lib/contracts";
 
 const FILTERS: AutonomyCandidateFilter[] = ["eligible", "rejected", "researched", "stale", "all"];
@@ -57,6 +59,50 @@ function fieldIdentity(field: AutonomyWorkField, keys: string[]): string {
   return field.status === "PENDING" ? "Pending bridge" : "Unavailable";
 }
 
+function textValue(value: unknown, fallback = "Unavailable"): string {
+  if (value === null || value === undefined || value === "") return fallback;
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return fallback;
+}
+
+function listValue(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function contractState(contract: AutonomyContractProjection | undefined): string {
+  return contract?.status ?? "UNAVAILABLE";
+}
+
+function contractReason(contract: AutonomyContractProjection | undefined): string {
+  return textValue(contract?.reason, "No durable record is available for this contract.");
+}
+
+function ContractList({ value, empty = "Unavailable" }: { value: unknown; empty?: string }) {
+  const items = listValue(value);
+  if (!items.length) return <p className="autonomy-muted">{empty}</p>;
+  return (
+    <ul className="contract-list">
+      {items.map((item, index) => (
+        <li key={`${String(item)}:${index}`}>{typeof item === "object" ? textValue((item as Record<string, unknown>).statement ?? (item as Record<string, unknown>).name ?? (item as Record<string, unknown>).id) : textValue(item)}</li>
+      ))}
+    </ul>
+  );
+}
+
+function ContractPanel({
+  icon, title, contract, children,
+}: { icon: ReactNode; title: string; contract?: AutonomyContractProjection; children: ReactNode }) {
+  return (
+    <section className="drawer-contract">
+      <header><div className="drawer-contract-title">{icon}<h3>{title}</h3></div><StatusBadge status={contractState(contract)} /></header>
+      {contract?.contract ? <small className="contract-id">{contract.contract}</small> : null}
+      {children}
+      {contract?.status === "UNAVAILABLE" ? <p className="contract-reason">{contractReason(contract)}</p> : null}
+    </section>
+  );
+}
+
 function FactorRows({ factors }: { factors: AutonomyFactor[] }) {
   if (!factors.length) return <p className="autonomy-muted">No stored factors in this group.</p>;
   return (
@@ -75,7 +121,7 @@ function FactorRows({ factors }: { factors: AutonomyFactor[] }) {
   );
 }
 
-function CandidateCard({ candidate }: { candidate: AutonomyCandidate }) {
+function CandidateCard({ candidate, onOpen }: { candidate: AutonomyCandidate; onOpen: () => void }) {
   const source = candidate.sources[0];
   return (
     <details className="candidate-record" open={candidate.state === "ELIGIBLE"}>
@@ -132,8 +178,179 @@ function CandidateCard({ candidate }: { candidate: AutonomyCandidate }) {
             </section>
           ))}
         </div>
+        <button type="button" className="candidate-inspect" onClick={onOpen}>
+          Inspect complete candidate brief <ArrowRight size={13} aria-hidden />
+        </button>
       </div>
     </details>
+  );
+}
+
+function CandidateDetailDrawer({
+  candidate, open, onClose,
+}: { candidate: AutonomyCandidate | null; open: boolean; onClose: () => void }) {
+  if (!candidate) return null;
+  const dossier = candidate.research.dossier;
+  const capabilities = candidate.capability_readiness;
+  const context = candidate.project_context;
+  const plan = candidate.verification_plan ?? candidate.current_work.verification_plan;
+  const outcome = candidate.current_work.final_outcome;
+  const verification = outcome.verification;
+  return (
+    <Drawer open={open} title="Candidate evidence brief" onClose={onClose}>
+      <div className="drawer-candidate-heading">
+        <div>
+          <span className="section-kicker">{candidate.candidate_id}</span>
+          <h2>{candidate.title}</h2>
+          <p>{candidate.expected_outcome ?? "Expected outcome unavailable."}</p>
+        </div>
+        <StatusBadge status={candidate.state} />
+      </div>
+
+      <section className="drawer-summary-grid" aria-label="Candidate summary">
+        <div><small>Rank</small><strong>#{candidate.rank ?? "—"}</strong></div>
+        <div><small>Score</small><strong>{numeric(candidate.score, 3)}</strong></div>
+        <div><small>Confidence</small><strong>{numeric(candidate.confidence, 3)}</strong></div>
+        <div><small>Age / TTL</small><strong>{duration(candidate.age_seconds)} / {candidate.stale ? "STALE" : duration(candidate.ttl_seconds)}</strong></div>
+      </section>
+
+      <section className="drawer-contract drawer-observation">
+        <header><div className="drawer-contract-title"><DatabaseZap size={14} aria-hidden /><h3>Observed sources</h3></div><StatusBadge status={candidate.sources.length ? "AVAILABLE" : "UNAVAILABLE"} /></header>
+        {candidate.sources.length ? <ul className="contract-list">
+          {candidate.sources.map((source, index) => <li key={`${source.ref}:${index}`}>
+            <span>{textValue(source.kind, "UNKNOWN")} · {textValue(source.ref ?? source.identity)}</span>
+            {source.event_id ? <Link to={`/timeline?event=${encodeURIComponent(source.event_id)}`}>source event</Link> : null}
+          </li>)}
+        </ul> : <p className="contract-reason">No durable source link is available.</p>}
+      </section>
+
+      <ContractPanel icon={<BookOpenCheck size={14} aria-hidden />} title="Research dossier" contract={dossier}>
+        <p className="contract-summary">{textValue(dossier?.human_summary, "No durable research summary is recorded.")}</p>
+        <div className="evidence-columns">
+          <div><small>Supporting evidence</small><ContractList value={dossier?.supporting_evidence} /></div>
+          <div><small>Contradicting evidence</small><ContractList value={dossier?.contradicting_evidence} empty="No stored contradictions." /></div>
+        </div>
+        <div className="contract-subsection"><small>Contradiction records</small><ContractList value={dossier?.contradictions} empty="No contradiction record is available." /></div>
+        <div className="contract-subsection"><small>Unresolved unknowns</small><ContractList value={dossier?.unresolved_unknowns} empty="No unresolved unknowns are recorded." /></div>
+        {dossier?.final_research_conclusion ? <p className="contract-note">Conclusion: {textValue((dossier.final_research_conclusion as Record<string, unknown>).summary ?? (dossier.final_research_conclusion as Record<string, unknown>).verdict)}</p> : null}
+      </ContractPanel>
+
+      <ContractPanel icon={<Layers3 size={14} aria-hidden />} title="Capability readiness" contract={capabilities}>
+        <div className="evidence-columns">
+          <div><small>Required capabilities</small><ContractList value={capabilities?.required_capability_ids} /></div>
+          <div><small>Missing / blocked</small><ContractList value={[...listValue(capabilities?.missing_capabilities), ...listValue(capabilities?.blocked_capabilities)]} empty="No durable missing capability list." /></div>
+        </div>
+        <p className="contract-note">Decision: {textValue(capabilities?.decision)} · Executable: {textValue(capabilities?.executable)}</p>
+      </ContractPanel>
+
+      <ContractPanel icon={<GitBranch size={14} aria-hidden />} title="Project profile / context" contract={context}>
+        <p className="contract-summary">{textValue((context?.context as Record<string, unknown> | undefined)?.purpose ?? (context?.profile as Record<string, unknown> | undefined)?.name, "No durable project context summary is recorded.")}</p>
+        <div className="evidence-columns">
+          <div><small>Stack</small><p className="contract-value">{textValue(JSON.stringify(context?.stack), "Unavailable")}</p></div>
+          <div><small>Repository state</small><p className="contract-value">{textValue(JSON.stringify(context?.repository_state), "Unavailable")}</p></div>
+        </div>
+        <div className="contract-subsection"><small>Context gaps / constraints</small><ContractList value={[...listValue(context?.context_gaps), ...listValue(context?.known_constraints)]} empty="No durable context gaps are recorded." /></div>
+      </ContractPanel>
+
+      <ContractPanel icon={<ListChecks size={14} aria-hidden />} title="Verification plan" contract={plan}>
+        <p className="contract-summary">{textValue(plan?.objective, "Verification objective unavailable.")}</p>
+        <div className="evidence-columns">
+          <div><small>Acceptance criteria</small><ContractList value={plan?.acceptance_criteria ?? plan?.checks_to_run} /></div>
+          <div><small>Expected artifacts</small><ContractList value={plan?.expected_artifacts} /></div>
+        </div>
+        <div className="contract-subsection"><small>Forbidden paths / side effects</small><ContractList value={[...listValue(plan?.forbidden_paths), ...listValue(plan?.forbidden_side_effects)]} empty="No durable forbidden-effect scope is recorded." /></div>
+      </ContractPanel>
+
+      <ContractPanel icon={<CircleAlert size={14} aria-hidden />} title="Outcome and learning" contract={{ status: outcome.state, contract: "verification.accepted / candidate outcome" }}>
+        <div className="outcome-detail-grid">
+          <div><small>Verification</small><strong>{verification.status}</strong><span>{verification.acceptance}</span></div>
+          <div><small>Acceptance receipt</small><strong>{textValue(verification.acceptance_event_id)}</strong></div>
+          <div><small>Repair attempts</small><strong>{textValue(outcome.repair_attempts)}</strong></div>
+          <div><small>Next action</small><strong>{textValue(outcome.next_action)}</strong></div>
+          <div><small>Measured actual</small><strong>{textValue(outcome.measurement_status)}</strong><span>{textValue(JSON.stringify(outcome.actual), "No durable actual value")}</span></div>
+        </div>
+        <p className="contract-note"><Lightbulb size={13} aria-hidden /> Learning: {outcome.learned_calibration ? "durable calibration recorded" : "no durable calibration record"}</p>
+        {outcome.state === "PRELIMINARY_PASS" ? <p className="preliminary-note"><ShieldCheck size={14} aria-hidden /> PASS is preliminary until the durable AcceptanceGate receipt is present.</p> : null}
+      </ContractPanel>
+    </Drawer>
+  );
+}
+
+function OverviewPanel({ projection }: { projection: AutonomyProjection }) {
+  const rejected = projection.candidates.find((item) => item.state === "REJECTED");
+  const chosen = projection.overview?.chosen as Record<string, unknown> | undefined;
+  const active = projection.current_work;
+  const learning = projection.learning;
+  const wait = projection.wait;
+  const rows: Array<[string, string, string]> = [
+    ["Observed", metricValue(projection.funnel.observed), "Continuous source digest"],
+    ["Opportunities", metricValue(projection.funnel.generated), "Candidate funnel"],
+    ["Rejected + why", metricValue(projection.funnel.rejected), `Reason on first rejection: ${textValue(rejected?.rejection?.reason, "No durable rejection reason recorded.")}`],
+    ["Researched", metricValue(projection.funnel.researched), "Evidence and contradiction review"],
+    ["Chosen", textValue(chosen?.title ?? active?.candidate?.title), "Selection remains subordinate to durable judgment"],
+    ["Doing", textValue(active?.mission.objective, projection.executive.state), textValue(active?.current_step.capability, "No active build step recorded.")],
+    ["Verification", textValue(active?.final_outcome.state, textValue((projection.overview?.verification as Record<string, unknown> | undefined)?.status)), textValue(active?.final_outcome.verification.acceptance, "Acceptance unavailable")],
+    ["Learned", textValue(learning?.status), textValue((learning?.latest as Record<string, unknown> | undefined)?.summary, "No durable calibration summary recorded.")],
+    ["Waiting / continuing", textValue(wait?.status, projection.executive.state), `Durable wake reason: ${textValue(wait?.continuation, projection.executive.wait_reason ?? "No durable wake reason recorded.")}`],
+  ];
+  return (
+    <section className="autonomy-section overview-panel" aria-labelledby="overview-title">
+      <header><div><span className="section-kicker">Owner brief</span><h2 id="overview-title">Executive overview</h2></div><StatusBadge status={projection.overview?.status ?? projection.status} /></header>
+      <div className="overview-grid">
+        {rows.map(([label, value, detail]) => <article key={label}><small>{label}</small><strong>{value}</strong><p>{detail}</p></article>)}
+      </div>
+    </section>
+  );
+}
+
+function SourceDigestPanel({ projection }: { projection: AutonomyProjection }) {
+  const digest = projection.source_digest;
+  const changes = listValue(digest?.meaningful_changes);
+  const signals = listValue(digest?.candidate_worthy_signals);
+  return (
+    <section className="autonomy-section source-digest" aria-labelledby="source-digest-title">
+      <header><div><span className="section-kicker">Meaningful change intelligence</span><h2 id="source-digest-title">Source digest</h2></div><StatusBadge status={contractState(digest)} /></header>
+      {digest?.status === "UNAVAILABLE" || !digest ? <p className="honest-empty">{contractReason(digest)}</p> : <>
+        <div className="digest-metrics">
+          <div><small>Sources checked</small><strong>{listValue(digest.sources_checked).length || projection.sources.length}</strong></div>
+          <div><small>Meaningful changes</small><strong>{changes.length}</strong></div>
+          <div><small>Candidate-worthy signals</small><strong>{signals.length}</strong></div>
+          <div><small>Noise suppressed</small><strong>{textValue(digest.noise_suppressed)}</strong></div>
+        </div>
+        {changes.length ? <ul className="change-list">
+          {changes.map((change, index) => {
+            const item = (typeof change === "object" && change !== null) ? change as Record<string, unknown> : {};
+            const eventId = textValue(item.event_id, "");
+            return <li key={`${eventId}:${index}`}><div><strong>{textValue(item.change_type, "MEANINGFUL CHANGE")}</strong><span>{textValue(item.source_identity ?? item.source_ref)}</span></div><p>{textValue(item.statement ?? item.summary ?? item.changed_fields, "Durable source change recorded.")}</p>{eventId ? <Link to={`/timeline?event=${encodeURIComponent(eventId)}`}>event {eventId}</Link> : null}</li>;
+          })}
+        </ul> : <p className="honest-empty">No meaningful source changes are recorded for this cycle.</p>}
+      </>}
+    </section>
+  );
+}
+
+function LearningWaitPanels({ projection }: { projection: AutonomyProjection }) {
+  const learning = projection.learning;
+  const wait = projection.wait;
+  return (
+    <div className="learning-wait-grid">
+      <section className="autonomy-section learning-panel" aria-labelledby="learning-title">
+        <header><div><span className="section-kicker">Calibration / outcomes</span><h2 id="learning-title">What JARVIS learned</h2></div><StatusBadge status={contractState(learning)} /></header>
+        {learning?.status === "UNAVAILABLE" || !learning ? <p className="honest-empty">{contractReason(learning)}</p> : <>
+          <p className="contract-summary">{textValue((learning.latest as Record<string, unknown> | undefined)?.summary ?? (learning.latest as Record<string, unknown> | undefined)?.reason, "Durable learning is recorded; no narrative summary was supplied.")}</p>
+          <div className="learning-meta"><span>{listValue(learning.history).length} durable learning records</span><span>{textValue((learning.latest as Record<string, unknown> | undefined)?.event_id)}</span></div>
+        </>}
+      </section>
+      <section className="autonomy-section wait-panel" aria-labelledby="wait-title">
+        <header><div><span className="section-kicker">Control boundary</span><h2 id="wait-title">WAIT / next wake</h2></div><StatusBadge status={textValue(wait?.status, "UNAVAILABLE")} /></header>
+        <dl className="wait-facts">
+          <div><dt>Reason</dt><dd>Recorded: {textValue(wait?.reason ?? projection.executive.wait_reason)}</dd></div>
+          <div><dt>Boundary</dt><dd>Recorded: {textValue(wait?.boundary ?? projection.executive.wait_boundary)}</dd></div>
+          <div><dt>Next wake</dt><dd>{instant(typeof wait?.next_wake === "string" ? wait.next_wake : projection.executive.next_wake)}</dd></div>
+          <div><dt>Continuation</dt><dd>{textValue(wait?.continuation, "No durable continuation instruction is recorded.")}</dd></div>
+        </dl>
+      </section>
+    </div>
   );
 }
 
@@ -171,6 +388,16 @@ function CurrentWork({ projection }: { projection: AutonomyProjection }) {
           <div><small>Next action</small><strong>{work.final_outcome.next_action ?? "Unavailable"}</strong></div>
         </div>
       )}
+      {work && (
+        <div className="work-detail-grid" aria-label="Durable execution context">
+          <div><small>Mission / objective</small><strong>{textValue(work.mission.mission_id)} · {textValue(work.objective.objective_id)}</strong><span>{textValue(work.mission.objective)}</span></div>
+          <div><small>Worktree</small><strong>{textValue(work.worktree.path)}</strong><span>{textValue(work.worktree.resource_id)}</span></div>
+          <div><small>Build step / worker</small><strong>{textValue(work.current_step.step_id)} · {textValue(work.worker.run_id)}</strong><span>{textValue(work.worker.provider)} / {textValue(work.worker.model)}</span></div>
+          <div><small>Verifier evidence</small><strong>{textValue(work.verifier.verdict_id)}</strong><span>{textValue(work.verifier.reason, "No durable verifier reason recorded.")}</span></div>
+          <div><small>Verification plan</small><strong>{contractState(work.verification_plan)}</strong><span>{textValue(work.verification_plan?.contract)}</span></div>
+          <div><small>Acceptance receipt</small><strong>{textValue(work.final_outcome.verification.acceptance_event_id)}</strong><span>{textValue(work.final_outcome.verification.reason, "No durable acceptance reason recorded.")}</span></div>
+        </div>
+      )}
       {work?.final_outcome.state === "PRELIMINARY_PASS" && (
         <p className="preliminary-note"><ShieldCheck size={14} aria-hidden /> Verification passed, but no durable AcceptanceGate receipt exists. This is not final success.</p>
       )}
@@ -182,6 +409,7 @@ export function AutonomyView({
   projection, filter, onFilter,
 }: { projection: AutonomyProjection; filter: AutonomyCandidateFilter; onFilter: (filter: AutonomyCandidateFilter) => void }) {
   const unavailable = projection.status === "UNAVAILABLE";
+  const [selectedCandidate, setSelectedCandidate] = useState<AutonomyCandidate | null>(null);
   return (
     <div className="shell-content autonomy-page">
       <SectionHeader
@@ -190,6 +418,8 @@ export function AutonomyView({
         description="A bounded read-only evidence chain: what JARVIS observed, judged, selected, verified, and learned."
         cinematic={false}
       />
+
+      <OverviewPanel projection={projection} />
 
       <section className="autonomy-command" aria-label="Autonomy overview">
         <div className="autonomy-state">
@@ -225,7 +455,7 @@ export function AutonomyView({
           <div className="candidate-filters" role="group" aria-label="Filter candidates">
             {FILTERS.map((value) => <button key={value} type="button" className={filter === value ? "is-active" : ""} aria-pressed={filter === value} onClick={() => onFilter(value)}>{value}</button>)}
           </div>
-          {projection.candidates.length === 0 ? <p className="honest-empty">No candidates match this durable projection.</p> : projection.candidates.map((candidate) => <CandidateCard key={candidate.candidate_id} candidate={candidate} />)}
+          {projection.candidates.length === 0 ? <p className="honest-empty">No candidates match this durable projection.</p> : projection.candidates.map((candidate) => <CandidateCard key={candidate.candidate_id} candidate={candidate} onOpen={() => setSelectedCandidate(candidate)} />)}
         </section>
 
         <section className="autonomy-section timeline-stream" aria-labelledby="autonomy-timeline-title">
@@ -249,6 +479,7 @@ export function AutonomyView({
       </div>
 
       <CurrentWork projection={projection} />
+      <SourceDigestPanel projection={projection} />
       <section className="source-strip" aria-labelledby="source-health-title">
         <header><div><span className="section-kicker">Observation fabric</span><h2 id="source-health-title">Source health</h2></div><span>{projection.sources.length} durable source records</span></header>
         {projection.sources.length === 0 ? <p className="honest-empty">No durable source checks are recorded.</p> : (
@@ -269,6 +500,8 @@ export function AutonomyView({
           </div>
         )}
       </section>
+      <LearningWaitPanels projection={projection} />
+      <CandidateDetailDrawer candidate={selectedCandidate} open={selectedCandidate !== null} onClose={() => setSelectedCandidate(null)} />
       <footer className="projection-footnote">
         <span>Projection {projection.schema}</span><span>Generated {instant(projection.generated_at)}</span><span>Candidate cap {projection.limits.candidate_limit ?? "—"}</span><span>Timeline cap {projection.limits.timeline_limit ?? "—"}</span>
       </footer>

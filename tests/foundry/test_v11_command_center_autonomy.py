@@ -30,7 +30,8 @@ def _append(database: FoundryDatabase, event_type: str, payload: dict,
 
 def _candidate(database: FoundryDatabase, candidate_id: str, *,
                outcome: str, rank: int, reason: str,
-               factors: dict | None = None) -> None:
+               factors: dict | None = None,
+               evidence: list[dict] | None = None) -> None:
     _append(database, "discovery.candidate_generated", {
         "candidate_id": candidate_id,
         "mission_id": "v11-a2-candidate-holding",
@@ -38,7 +39,7 @@ def _candidate(database: FoundryDatabase, candidate_id: str, *,
         "objective": f"Investigate {candidate_id} for the owner",
         "objective_canonical": f"investigate {candidate_id}",
         "expected_outcome": f"Resolve {candidate_id}",
-        "evidence": [{"authority": "DATA_ONLY"}],
+        "evidence": evidence or [{"authority": "DATA_ONLY"}],
         "fingerprint": candidate_id.ljust(64, "f")[:64],
         "expires_at": "2026-09-09T00:00:00Z",
     }, f"candidate:{candidate_id}")
@@ -153,6 +154,10 @@ def test_projection_exposes_funnel_reasons_sources_wait_and_candidate_details(tm
     assert projection["executive"]["state"] == "WAIT"
     assert "admission boundary" in projection["executive"]["wait_reason"]
     assert projection["executive"]["next_wake"] == "2026-09-02T10:00:00Z"
+    assert projection["source_digest"]["contract"] == "jarvis.source-digest.v1"
+    assert projection["source_digest"]["status"] == "AVAILABLE"
+    assert projection["wait"]["status"] == "WAITING"
+    assert projection["overview"]["chosen"]["candidate_id"] == "candidate-eligible"
     gmail = next(item for item in projection["sources"] if item["source_kind"] == "gmail")
     assert gmail["state"] == "BLOCKED"
     assert gmail["readiness"] == "DEFERRED"
@@ -164,6 +169,68 @@ def test_projection_exposes_funnel_reasons_sources_wait_and_candidate_details(tm
     rejected = build_autonomy_projection(database, candidate_filter="rejected")
     assert [item["candidate_id"] for item in rejected["candidates"]] == ["candidate-rejected"]
     assert rejected["candidates"][0]["rejection"]["reason_code"] == "LOW_OWNER_RELEVANCE"
+
+
+def test_projection_keeps_optional_research_capability_and_context_contracts_durable(tmp_path):
+    database = FoundryDatabase(tmp_path / "contracts.db")
+    database.initialize()
+    _seed(database)
+    _append(database, "research.candidate_enqueued", {
+        "research_id": "research-eligible-2", "candidate_id": "candidate-eligible",
+        "cycle_id": "cycle-1", "pass_number": 2, "status": "ENQUEUED",
+        "budget_used": 0.5,
+    }, "research-enqueued-2")
+    _append(database, "research.candidate_started", {
+        "research_id": "research-eligible-2", "candidate_id": "candidate-eligible",
+        "cycle_id": "cycle-1", "pass_number": 2, "status": "IN_PROGRESS",
+    }, "research-started-2")
+    _append(database, "research.candidate_completed", {
+        "research_id": "research-eligible-2", "candidate_id": "candidate-eligible",
+        "cycle_id": "cycle-1", "pass_number": 2, "status": "COMPLETED",
+        "budget_used": 0.5, "completed_at": "2026-09-02T09:06:00Z",
+        "result": {"dossier": {
+            "contract": "jarvis.v11.research-dossier.v1",
+            "human_summary": "Bounded evidence supports the candidate.",
+            "supporting_evidence": [{"evidence_id": "support-1", "statement": "A durable source supports this."}],
+            "contradicting_evidence": [{"evidence_id": "contra-1", "statement": "A second source remains uncertain."}],
+            "contradictions": [{"claim_key": "cost", "status": "UNRESOLVED"}],
+            "freshness": {"status": "FRESH"},
+            "confidence": {"score": 0.7},
+            "final_research_conclusion": {"verdict": "SUPPORTED"},
+        }},
+    }, "research-completed-2")
+    # A later candidate revision can carry trusted, system-created optional
+    # context without changing the scorer or admission authority.
+    _candidate(
+        database, "candidate-context", outcome="ELIGIBLE", rank=3,
+        reason="Context fixture", evidence=[{
+            "authority": "DATA_ONLY",
+            "capability_requirements": {
+                "contract_version": "jarvis.v11.capability-requirements.v1",
+                "required_capability_ids": ["cap.repo.read"],
+                "readiness": {"state": "PARTIALLY_READY"},
+                "missing_capabilities": ["cap.repo.write"],
+            },
+            "project_profile": {
+                "schema": "jarvis.project-profile.v1", "profile_id": "profile-1",
+                "project_id": "JARVIS", "stack": {"language": "Python"},
+            },
+            "project_context": {
+                "schema": "jarvis.actionable-project-context.v1",
+                "profile_ref": {"profile_id": "profile-1"},
+                "context_gaps": ["CI evidence unavailable"],
+            },
+        }],
+    )
+    projection = build_autonomy_projection(database)
+    eligible = next(item for item in projection["candidates"] if item["candidate_id"] == "candidate-eligible")
+    assert eligible["research"]["dossier"]["available"] is True
+    assert eligible["research"]["dossier"]["contradictions"][0]["status"] == "UNRESOLVED"
+    contextual = next(item for item in projection["candidates"] if item["candidate_id"] == "candidate-context")
+    assert contextual["capability_readiness"]["status"] == "PARTIALLY_READY"
+    assert contextual["capability_readiness"]["missing_capabilities"] == ["cap.repo.write"]
+    assert contextual["project_context"]["profile"]["profile_id"] == "profile-1"
+    assert contextual["project_context"]["context_gaps"] == ["CI evidence unavailable"]
 
 
 def test_projection_empty_state_is_honest(tmp_path):
