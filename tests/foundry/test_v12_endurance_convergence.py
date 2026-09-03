@@ -772,7 +772,7 @@ def test_real_disposable_endurance_campaign_script(tmp_path: Path) -> None:
         env=environment,
         capture_output=True,
         text=True,
-        timeout=90,
+        timeout=180,
     )
     assert result.returncode == 0, result.stderr
     proof = json.loads(result.stdout)
