@@ -12,6 +12,18 @@
   "probation": true,
   "registration_count": 1,
   "restart_replayed_same_receipt": true,
+  "restoration_failure": {
+    "generic_dispatches": 0,
+    "readiness": "DEGRADED",
+    "result_error_class": "fabric_effect_failed",
+    "result_provider": "fabric",
+    "result_status": "FAILED",
+    "spine_claimed": "BLOCKED",
+    "spine_result_count": 1,
+    "spine_success": false,
+    "spine_verified": "UNKNOWN",
+    "worker_route_event_delta": 0
+  },
   "resume_count": 1,
   "runtime": "jarvis_foundry.mcp_backend.FabricMcpBackend",
   "second_mcp_runtime": false,

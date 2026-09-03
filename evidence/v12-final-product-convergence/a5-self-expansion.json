@@ -2,7 +2,7 @@
   "adapter_action": {
     "claimed": "COMPLETED",
     "readback_matches": true,
-    "receipt_id": "receipt:effect:222d6cd57a52da042aeb8c0f7e48e3cb65a074681bd7eca43a7539424291d7d9:attempt:1",
+    "receipt_id": "receipt:effect:73ef551846e32636e59476fbafc8ab521f3504a933bd885931871f5d28dd9c28:attempt:1",
     "verified": "MATCH"
   },
   "adapter_protocol": "jarvis.capability.adapter.v1",
@@ -14,7 +14,7 @@
   "discovery": {
     "candidate_count": 73,
     "external_results_authority": "DATA_ONLY",
-    "first_failed_candidate_id": "sol-49b03cf36974916a2ad9f671",
+    "first_failed_candidate_id": "sol-05dc7c6dd2a98165fd2a6389",
     "reuse_order": [
       "FABRIC_CATALOG",
       "JARVIS_SOURCE",
@@ -28,7 +28,7 @@
       "JARVIS_GIT",
       "EXTERNAL"
     ],
-    "selected_candidate_id": "sol-a311b577598ec6f0fce11e2a"
+    "selected_candidate_id": "sol-42bea6752d7fa040d22bf44a"
   },
   "disposable": true,
   "duplicate_gaps": 0,
@@ -45,7 +45,7 @@
   "live_mutated": false,
   "main_or_origin_mutated": false,
   "mission_final_state": "COMPLETE",
-  "mission_id": "mission-604838c68d20",
+  "mission_id": "mission-a3f2e82fe85e",
   "mission_pass_verdicts": 2,
   "nested_expansion_count": 0,
   "objective_final_status": "COMPLETED",
@@ -53,7 +53,7 @@
   "passed": true,
   "probation": true,
   "registration_count": 1,
-  "registration_id": "fabric-registration:artifact-trial:88064374c31bda2329c2b6c4",
+  "registration_id": "fabric-registration:artifact-trial:54246e037975e59e452dbf4b",
   "resume_count": 1,
   "rollback": {
     "catalog_after_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -93,6 +93,18 @@
     "probation": true,
     "registration_count": 1,
     "restart_replayed_same_receipt": true,
+    "restoration_failure": {
+      "generic_dispatches": 0,
+      "readiness": "DEGRADED",
+      "result_error_class": "fabric_effect_failed",
+      "result_provider": "fabric",
+      "result_status": "FAILED",
+      "spine_claimed": "BLOCKED",
+      "spine_result_count": 1,
+      "spine_success": false,
+      "spine_verified": "UNKNOWN",
+      "worker_route_event_delta": 0
+    },
     "resume_count": 1,
     "runtime": "jarvis_foundry.mcp_backend.FabricMcpBackend",
     "second_mcp_runtime": false,
@@ -115,8 +127,8 @@
   "stop_paused_before_bridge_receipt": true,
   "trial_count": 2,
   "trial_ids": [
-    "trial:c376c50f689bab80aacc0267",
-    "trial:88064374c31bda2329c2b6c4"
+    "trial:a293aeb25edc0154d07b8e0e",
+    "trial:54246e037975e59e452dbf4b"
   ],
   "unreconciled_accepted_effects": 0,
   "wake_count": 1

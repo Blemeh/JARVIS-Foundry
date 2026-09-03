@@ -25,7 +25,7 @@
         "campaign-v12-endurance-disposable"
       ],
       "wait_ids": [
-        "provider-wait-dffa8295163d637919d7de01"
+        "provider-wait-f9403ba820e3cbc2d46536d3"
       ]
     },
     "ambiguity": {
@@ -34,7 +34,7 @@
       "first_outcome": "BLOCKED",
       "reconcile_before_fallback": true,
       "resume_ids": [
-        "provider-wait-95ba09397cfec7f98b24549f"
+        "provider-wait-f2a57204ca056c602132e1dd"
       ]
     },
     "campaign": {
@@ -43,7 +43,7 @@
       "child_requirements": {
         "ambiguous-child": {
           "effect_action_key": "effect:v12:ambiguous",
-          "isolation_key": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-50e5a65\\a6-runtime\\resources\\ambiguous-child",
+          "isolation_key": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-7f15385\\a6-runtime\\resources\\ambiguous-child",
           "mission_id": "mission-v12-ambiguous",
           "routing_identity": "a8e0760266d98ecebeb059b396eeb444d5ee666391d4c9a48b915e75c566fd76",
           "routing_requirements": {
@@ -75,7 +75,7 @@
         },
         "fallback-child": {
           "effect_action_key": "effect:v12:fallback",
-          "isolation_key": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-50e5a65\\a6-runtime\\resources\\fallback-child",
+          "isolation_key": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-7f15385\\a6-runtime\\resources\\fallback-child",
           "mission_id": "mission-v12-fallback",
           "routing_identity": "048bc7cee61c1f22046d15ee3802eab7cd0830112017334904994074bb5f12b1",
           "routing_requirements": {
@@ -107,7 +107,7 @@
         },
         "wait-child": {
           "effect_action_key": "effect:v12:wait",
-          "isolation_key": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-50e5a65\\a6-runtime\\resources\\wait-child",
+          "isolation_key": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-7f15385\\a6-runtime\\resources\\wait-child",
           "mission_id": "mission-v12-wait",
           "routing_identity": "2fdb337b0feedf7607c3c7d1669d6f6c6096481c0c4fcc16c0a7f92c53770878",
           "routing_requirements": {
@@ -156,9 +156,9 @@
     "joins": {
       "all": {
         "accepted_outcome_ids": [
-          "outcome-44057211c80539d33b78f0ea",
-          "outcome-5d56987125bc0a5353c18df7",
-          "outcome-29af1f24219f6c7dedbc31bb"
+          "outcome-f744d46641e314bec7f71c28",
+          "outcome-e384eb91fe17e6a261b79297",
+          "outcome-20423a716e0bc86d4ef3a59a"
         ],
         "child_ids": [
           "ambiguous-child",
@@ -171,7 +171,7 @@
       },
       "any": {
         "accepted_outcome_ids": [
-          "outcome-5d56987125bc0a5353c18df7"
+          "outcome-e384eb91fe17e6a261b79297"
         ],
         "child_ids": [
           "ambiguous-child",
@@ -201,7 +201,7 @@
       "final_outcome": "PASSED",
       "resume_receipts": 1,
       "wait_resume_ids": [
-        "provider-wait-dffa8295163d637919d7de01"
+        "provider-wait-f9403ba820e3cbc2d46536d3"
       ]
     },
     "restart": {
@@ -234,11 +234,11 @@
         "C:\\temp\\JARVIS-V12-Final-Product-Convergence-20260903\\.venv\\Scripts\\python.exe",
         "C:\\temp\\JARVIS-V12-Final-Product-Convergence-20260903\\scripts\\v12_self_expansion_convergence_proof.py",
         "--output",
-        "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-50e5a65\\a5-self-expansion.json"
+        "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-7f15385\\a5-self-expansion.json"
       ],
       "returncode": 0,
       "stderr_tail": "",
-      "stdout_tail": "{\"duplicate_registrations\": 0, \"passed\": true, \"proof\": \"C:\\\\temp\\\\JARVIS-V12-Final-Product-Proof-20260903-50e5a65\\\\a5-self-expansion.json\", \"trial_count\": 2}"
+      "stdout_tail": "{\"duplicate_registrations\": 0, \"passed\": true, \"proof\": \"C:\\\\temp\\\\JARVIS-V12-Final-Product-Proof-20260903-7f15385\\\\a5-self-expansion.json\", \"trial_count\": 2}"
     },
     {
       "command": [
@@ -247,24 +247,24 @@
         "--mode",
         "full",
         "--root",
-        "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-50e5a65\\a6-runtime",
+        "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-7f15385\\a6-runtime",
         "--output",
-        "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-50e5a65\\a6-endurance.json"
+        "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-7f15385\\a6-endurance.json"
       ],
       "returncode": 0,
       "stderr_tail": "",
-      "stdout_tail": "\\resources\\\\wait-child\"\n    },\n    \"limit\": 2,\n    \"logical_overlap_proven\": true,\n    \"peak_running_observed\": 2\n  },\n  \"provider_credentials_used\": false,\n  \"provider_routing\": {\n    \"fallback_provider\": \"fallback-alternate\",\n    \"fallback_used\": true,\n    \"identity\": {\n      \"builder_run_id\": \"builder-run-v12-fallback\",\n      \"campaign_id\": \"campaign-v12-endurance-disposable\",\n      \"child_id\": \"fallback-child\",\n      \"effect_action_key\": \"effect:v12:fallback\",\n      \"mission_id\": \"mission-v12-fallback\",\n      \"objective_id\": \"objective-v12-endurance-disposable\",\n      \"routing_identity\": \"048bc7cee61c1f22046d15ee3802eab7cd0830112017334904994074bb5f12b1\"\n    }\n  },\n  \"recovery\": {\n    \"builder_run_id\": \"builder-run-v12-wait\",\n    \"final_outcome\": \"PASSED\",\n    \"resume_receipts\": 1,\n    \"wait_resume_ids\": [\n      \"provider-wait-dffa8295163d637919d7de01\"\n    ]\n  },\n  \"root\": \"C:\\\\temp\\\\JARVIS-V12-Final-Product-Proof-20260903-50e5a65\\\\a6-runtime\",\n  \"schema\": \"jarvis-v12-endurance-convergence-proof-v1\",\n  \"source\": {\n    \"activation_authorized\": false,\n    \"base_v11_sha\": \"afddb8d5ca3d5c3459a4f5394e84affb92d13738\",\n    \"branch\": \"candidate/v12-final-product-convergence-20260903\",\n    \"campaign_input_sha\": \"db685fe0bd0bc22b25a1f717bafdd8612cdfd19d\",\n    \"endurance_final_sha\": \"49b2c2337a0579519d0b782a5a260673079eb398\",\n    \"endurance_implementation_sha\": \"43da572ca0fb24ae82222cdd02c2e23a76bf95f6\",\n    \"implementation_sha\": \"50e5a65efd761fe45e4afb23024633170451454f\",\n    \"provider_resilience_input_sha\": \"eedc4b293daa6400907f3196924514b21a61010c\",\n    \"schema_version\": 40,\n    \"worktree_clean_before_proof\": true\n  },\n  \"startup_resume\": {\n    \"final_status\": \"READY\",\n    \"fresh_process_status\": \"WAITING\",\n    \"hard_kill_returncode\": 86,\n    \"post_join_campaign_status\": \"COMPLETED\"\n  },\n  \"stop\": {\n    \"dispatches_during_stop\": 0,\n    \"stopped_campaigns\": [\n      \"campaign-v12-endurance-disposable\"\n    ],\n    \"wait_resumed_during_stop\": false\n  },\n  \"verdict\": \"PASS\"\n}"
+      "stdout_tail": "\\resources\\\\wait-child\"\n    },\n    \"limit\": 2,\n    \"logical_overlap_proven\": true,\n    \"peak_running_observed\": 2\n  },\n  \"provider_credentials_used\": false,\n  \"provider_routing\": {\n    \"fallback_provider\": \"fallback-alternate\",\n    \"fallback_used\": true,\n    \"identity\": {\n      \"builder_run_id\": \"builder-run-v12-fallback\",\n      \"campaign_id\": \"campaign-v12-endurance-disposable\",\n      \"child_id\": \"fallback-child\",\n      \"effect_action_key\": \"effect:v12:fallback\",\n      \"mission_id\": \"mission-v12-fallback\",\n      \"objective_id\": \"objective-v12-endurance-disposable\",\n      \"routing_identity\": \"048bc7cee61c1f22046d15ee3802eab7cd0830112017334904994074bb5f12b1\"\n    }\n  },\n  \"recovery\": {\n    \"builder_run_id\": \"builder-run-v12-wait\",\n    \"final_outcome\": \"PASSED\",\n    \"resume_receipts\": 1,\n    \"wait_resume_ids\": [\n      \"provider-wait-f9403ba820e3cbc2d46536d3\"\n    ]\n  },\n  \"root\": \"C:\\\\temp\\\\JARVIS-V12-Final-Product-Proof-20260903-7f15385\\\\a6-runtime\",\n  \"schema\": \"jarvis-v12-endurance-convergence-proof-v1\",\n  \"source\": {\n    \"activation_authorized\": false,\n    \"base_v11_sha\": \"afddb8d5ca3d5c3459a4f5394e84affb92d13738\",\n    \"branch\": \"candidate/v12-final-product-convergence-20260903\",\n    \"campaign_input_sha\": \"db685fe0bd0bc22b25a1f717bafdd8612cdfd19d\",\n    \"endurance_final_sha\": \"49b2c2337a0579519d0b782a5a260673079eb398\",\n    \"endurance_implementation_sha\": \"43da572ca0fb24ae82222cdd02c2e23a76bf95f6\",\n    \"implementation_sha\": \"7f153851517b5529dd1e582725a0c2a6d96ddc9b\",\n    \"provider_resilience_input_sha\": \"eedc4b293daa6400907f3196924514b21a61010c\",\n    \"schema_version\": 40,\n    \"worktree_clean_before_proof\": true\n  },\n  \"startup_resume\": {\n    \"final_status\": \"READY\",\n    \"fresh_process_status\": \"WAITING\",\n    \"hard_kill_returncode\": 86,\n    \"post_join_campaign_status\": \"COMPLETED\"\n  },\n  \"stop\": {\n    \"dispatches_during_stop\": 0,\n    \"stopped_campaigns\": [\n      \"campaign-v12-endurance-disposable\"\n    ],\n    \"wait_resumed_during_stop\": false\n  },\n  \"verdict\": \"PASS\"\n}"
     },
     {
       "command": [
         "C:\\temp\\JARVIS-V12-Final-Product-Convergence-20260903\\.venv\\Scripts\\python.exe",
         "C:\\temp\\JARVIS-V12-Final-Product-Convergence-20260903\\scripts\\v12_mcp_backend_proof.py",
         "--output-root",
-        "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-50e5a65\\mcp-backend"
+        "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-7f15385\\mcp-backend"
       ],
       "returncode": 0,
       "stderr_tail": "",
-      "stdout_tail": "{\"evidence\": \"C:\\\\temp\\\\JARVIS-V12-Final-Product-Proof-20260903-50e5a65\\\\mcp-backend\\\\V12_MCP_BACKEND_REAL_PROOF.json\", \"passed\": true, \"sha256\": \"72564d5dd2475ce1c57f78a1aa7c74f9706e673b6c1bca5e996108a6eb2587d6\"}"
+      "stdout_tail": "{\"evidence\": \"C:\\\\temp\\\\JARVIS-V12-Final-Product-Proof-20260903-7f15385\\\\mcp-backend\\\\V12_MCP_BACKEND_REAL_PROOF.json\", \"passed\": true, \"sha256\": \"84493c03525dac0b0aadc0ab0e937123afad1be7a27fe2476b1275a772be3c93\"}"
     }
   ],
   "contract_version": "jarvis.v12.final-product-convergence-proof.v1",
@@ -318,19 +318,19 @@
   "receipts": {
     "a5": {
       "path": "evidence/v12-final-product-convergence/a5-self-expansion.json",
-      "sha256": "b86ab13c6c3377694977a2245b6f376b151ef4b05cbd24cbe633f6573504d4c2"
+      "sha256": "44ff1c73417123c721df1cc8e7085cd1b7a03833fe5e211e4286efc2ede402f2"
     },
     "a6": {
       "path": "evidence/v12-final-product-convergence/a6-endurance.json",
-      "sha256": "e95e1e77fd3170bd4d42a187dae73f352b71747673ba88a41bcee9d387aa08f9"
+      "sha256": "ccb8e7085d31b55e7e890424fd46f64e77e89c76b7e23251253e8b72c471d2da"
     },
     "mcp": {
       "path": "evidence/v12-final-product-convergence/mcp-backend.json",
-      "sha256": "72564d5dd2475ce1c57f78a1aa7c74f9706e673b6c1bca5e996108a6eb2587d6"
+      "sha256": "84493c03525dac0b0aadc0ab0e937123afad1be7a27fe2476b1275a772be3c93"
     },
     "selected_mcp": {
       "path": "evidence/v12-final-product-convergence/selected-mcp-adoption.json",
-      "sha256": "4a976a07a61c27f1bc5152dbebe66d4c91b9c8b7374f89e407a68301c286c233"
+      "sha256": "0cb3fc0f9dbf0b61a647154f0a3299a70536d0f6a78fa15f0586702163a07291"
     }
   },
   "selected_mcp_adoption": {
@@ -338,6 +338,18 @@
     "passed": true,
     "probation": true,
     "restart_replayed_same_receipt": true,
+    "restoration_failure": {
+      "generic_dispatches": 0,
+      "readiness": "DEGRADED",
+      "result_error_class": "fabric_effect_failed",
+      "result_provider": "fabric",
+      "result_status": "FAILED",
+      "spine_claimed": "BLOCKED",
+      "spine_result_count": 1,
+      "spine_success": false,
+      "spine_verified": "UNKNOWN",
+      "worker_route_event_delta": 0
+    },
     "runtime": "jarvis_foundry.mcp_backend.FabricMcpBackend",
     "second_mcp_runtime": false,
     "trial_mode": "FABRIC_MCP_INVOCATION",
@@ -362,7 +374,7 @@
     "origin_main_sha_after": "2905c206fed0461bf3085bc0cb43773be913300a",
     "origin_main_sha_before": "2905c206fed0461bf3085bc0cb43773be913300a",
     "schema_version": 40,
-    "source_sha": "50e5a65efd761fe45e4afb23024633170451454f",
+    "source_sha": "7f153851517b5529dd1e582725a0c2a6d96ddc9b",
     "v11_base_sha": "afddb8d5ca3d5c3459a4f5394e84affb92d13738",
     "worktree": "C:\\temp\\JARVIS-V12-Final-Product-Convergence-20260903",
     "worktree_clean_after_disposable_proofs": true,
