@@ -117,7 +117,12 @@ def _event_rows(
 
 def _database_schema(database: FoundryDatabase) -> int:
     with database.connect(readonly=True) as connection:
-        return int(connection.execute("PRAGMA user_version").fetchone()[0])
+        row = connection.execute(
+            "SELECT MAX(version) FROM schema_migrations"
+        ).fetchone()
+    if row is None or row[0] is None:
+        raise RuntimeError("Foundry schema-migration authority is unavailable")
+    return int(row[0])
 
 
 def _clone_source(source_repo: Path, target: Path, expected_sha: str) -> None:
