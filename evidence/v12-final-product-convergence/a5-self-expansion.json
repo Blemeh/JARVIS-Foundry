@@ -1,0 +1,123 @@
+{
+  "adapter_action": {
+    "claimed": "COMPLETED",
+    "readback_matches": true,
+    "receipt_id": "receipt:effect:6f7824a859a9807deee9e9c84a996db93d7092bd5601c15b150198fca2ae5c18:attempt:1",
+    "verified": "MATCH"
+  },
+  "adapter_protocol": "jarvis.capability.adapter.v1",
+  "attempt_dispatched_count": 1,
+  "attempt_id_after_restart": "expansion-attempt-30feaba818df900b7a6f9c13",
+  "attempt_id_before_stop": "expansion-attempt-30feaba818df900b7a6f9c13",
+  "attempt_started_count": 1,
+  "contract_version": "jarvis.v12.self-expansion-proof.v1",
+  "discovery": {
+    "candidate_count": 73,
+    "external_results_authority": "DATA_ONLY",
+    "first_failed_candidate_id": "sol-1314118439004e4374066abe",
+    "reuse_order": [
+      "FABRIC_CATALOG",
+      "JARVIS_SOURCE",
+      "JARVIS_GIT",
+      "EXTERNAL",
+      "CUSTOM_BUILD"
+    ],
+    "search_stages": [
+      "FABRIC_CATALOG",
+      "JARVIS_SOURCE",
+      "JARVIS_GIT",
+      "EXTERNAL"
+    ],
+    "selected_candidate_id": "sol-6c94f66fd5758a7c8b374020"
+  },
+  "disposable": true,
+  "duplicate_gaps": 0,
+  "duplicate_missions": 0,
+  "duplicate_registrations": 0,
+  "duplicate_resumes": 0,
+  "duplicate_trials": 0,
+  "duplicate_wakes": 0,
+  "failed_trial_catalog_unchanged": true,
+  "false_successes": 0,
+  "gap_count": 1,
+  "gap_id": "cap-gap-a6b6358972de760573d19077",
+  "independent_trial_verification": "PASS",
+  "live_mutated": false,
+  "main_or_origin_mutated": false,
+  "mission_final_state": "COMPLETE",
+  "mission_id": "mission-6261fa1bd52f",
+  "mission_pass_verdicts": 2,
+  "nested_expansion_count": 0,
+  "objective_final_status": "COMPLETED",
+  "objective_id": "objective-v12-self-expansion",
+  "passed": true,
+  "probation": true,
+  "registration_count": 1,
+  "registration_id": "fabric-registration:artifact-trial:f8d29119ac391d509d0e42e2",
+  "resume_count": 1,
+  "rollback": {
+    "catalog_after_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "catalog_before_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "restored": true,
+    "stale_receipt_failed_closed": "ADOPTION_NO_LONGER_ACTIVE",
+    "status": "RESTORED"
+  },
+  "runner": {
+    "command": [
+      "C:\\Users\\b\\AppData\\Local\\hermes\\bin\\uv.EXE",
+      "run",
+      "--extra",
+      "dev",
+      "--extra",
+      "web",
+      "python",
+      "-m",
+      "pytest",
+      "-q",
+      "tests/foundry/test_v12_self_expansion_convergence.py"
+    ],
+    "returncode": 0,
+    "stdout": "..                                                                       [100%]"
+  },
+  "selected_mcp_adoption": {
+    "action_kind": "mcp.v12-selected-expansion.tool.echo.5fe4ac9d1b46",
+    "capability_id": "cap.mcp.v12-selected-expansion.tool.echo.5fe4ac9d1b46",
+    "contract_version": "jarvis.v12.selected-mcp-adoption-proof.v1",
+    "disposable": true,
+    "duplicate_registrations": 0,
+    "duplicate_resumes": 0,
+    "duplicate_wakes": 0,
+    "live_mutated": false,
+    "main_or_origin_mutated": false,
+    "passed": true,
+    "probation": true,
+    "registration_count": 1,
+    "restart_replayed_same_receipt": true,
+    "resume_count": 1,
+    "runtime": "jarvis_foundry.mcp_backend.FabricMcpBackend",
+    "second_mcp_runtime": false,
+    "trial_mode": "FABRIC_MCP_INVOCATION",
+    "wake_count": 1,
+    "worker_dispatch": {
+      "evidence": [
+        "fabric:mcp.v12-selected-expansion.tool.echo.5fe4ac9d1b46",
+        "verified:MATCH",
+        "capability:cap.mcp.v12-selected-expansion.tool.echo.5fe4ac9d1b46",
+        "receipt:receipt:effect:03eaf278206cce37fc01cc4bfc402be52f80a4e6649f487b6556dccb5ef04e77:attempt:1",
+        "effect:effect:03eaf278206cce37fc01cc4bfc402be52f80a4e6649f487b6556dccb5ef04e77"
+      ],
+      "inner_dispatches": 0,
+      "provider": "fabric",
+      "status": "COMPLETED"
+    }
+  },
+  "sqlite_quick_check": "ok",
+  "stop_paused_before_bridge_receipt": true,
+  "trial_count": 2,
+  "trial_ids": [
+    "trial:631a2f34f6565e3bc1e2786d",
+    "trial:f8d29119ac391d509d0e42e2"
+  ],
+  "unreconciled_accepted_effects": 0,
+  "wake_count": 1
+}

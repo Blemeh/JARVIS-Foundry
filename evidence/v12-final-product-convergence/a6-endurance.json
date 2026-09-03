@@ -1,0 +1,254 @@
+{
+  "all_down_wait": {
+    "first_outcome": "BLOCKED",
+    "restart_waiting_campaigns": [
+      "campaign-v12-endurance-disposable"
+    ],
+    "wait_ids": [
+      "provider-wait-f0c505c9d2b426e1d615e01c"
+    ]
+  },
+  "ambiguous_effect": {
+    "alternate_attempts_before_reconcile": 0,
+    "final_outcome": "PASSED",
+    "first_outcome": "BLOCKED",
+    "reconcile_before_fallback": true,
+    "resume_ids": [
+      "provider-wait-2b972f73cc0fd3f3f12db0c5"
+    ]
+  },
+  "campaign": {
+    "accepted_child_count": 3,
+    "campaign_id": "campaign-v12-endurance-disposable",
+    "child_requirements": {
+      "ambiguous-child": {
+        "effect_action_key": "effect:v12:ambiguous",
+        "isolation_key": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\a6-runtime\\resources\\ambiguous-child",
+        "mission_id": "mission-v12-ambiguous",
+        "routing_identity": "a8e0760266d98ecebeb059b396eeb444d5ee666391d4c9a48b915e75c566fd76",
+        "routing_requirements": {
+          "allowed_data_use": [
+            "NO_TRAINING"
+          ],
+          "allowed_providers": [
+            "ambiguous-primary",
+            "ambiguous-alternate"
+          ],
+          "context_tokens": null,
+          "denied_providers": [],
+          "latency_budget_ms": null,
+          "max_cost_usd": null,
+          "preferred_provider": "ambiguous-primary",
+          "reasoning": "standard",
+          "reliability_floor": null,
+          "required_capabilities": [
+            "code",
+            "tests"
+          ],
+          "required_tools": [
+            "hermes_oneshot"
+          ],
+          "strict_identity": null,
+          "task_type": "builder",
+          "unattended": true
+        }
+      },
+      "fallback-child": {
+        "effect_action_key": "effect:v12:fallback",
+        "isolation_key": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\a6-runtime\\resources\\fallback-child",
+        "mission_id": "mission-v12-fallback",
+        "routing_identity": "048bc7cee61c1f22046d15ee3802eab7cd0830112017334904994074bb5f12b1",
+        "routing_requirements": {
+          "allowed_data_use": [
+            "NO_TRAINING"
+          ],
+          "allowed_providers": [
+            "fallback-primary",
+            "fallback-alternate"
+          ],
+          "context_tokens": null,
+          "denied_providers": [],
+          "latency_budget_ms": null,
+          "max_cost_usd": null,
+          "preferred_provider": "fallback-primary",
+          "reasoning": "standard",
+          "reliability_floor": null,
+          "required_capabilities": [
+            "code",
+            "tests"
+          ],
+          "required_tools": [
+            "hermes_oneshot"
+          ],
+          "strict_identity": null,
+          "task_type": "builder",
+          "unattended": true
+        }
+      },
+      "wait-child": {
+        "effect_action_key": "effect:v12:wait",
+        "isolation_key": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\a6-runtime\\resources\\wait-child",
+        "mission_id": "mission-v12-wait",
+        "routing_identity": "2fdb337b0feedf7607c3c7d1669d6f6c6096481c0c4fcc16c0a7f92c53770878",
+        "routing_requirements": {
+          "allowed_data_use": [
+            "NO_TRAINING"
+          ],
+          "allowed_providers": [
+            "wait-primary",
+            "wait-alternate"
+          ],
+          "context_tokens": null,
+          "denied_providers": [],
+          "latency_budget_ms": null,
+          "max_cost_usd": null,
+          "preferred_provider": "wait-primary",
+          "reasoning": "standard",
+          "reliability_floor": null,
+          "required_capabilities": [
+            "code",
+            "tests"
+          ],
+          "required_tools": [
+            "hermes_oneshot"
+          ],
+          "strict_identity": null,
+          "task_type": "builder",
+          "unattended": true
+        }
+      }
+    },
+    "child_statuses": {
+      "ambiguous-child": "SUCCEEDED",
+      "fallback-child": "SUCCEEDED",
+      "wait-child": "SUCCEEDED"
+    },
+    "objective_id": "objective-v12-endurance-disposable",
+    "status": "COMPLETED"
+  },
+  "deadlines": {
+    "applied_deadline": "2099-09-03T12:00:00Z",
+    "replan_required": [
+      "campaign-v12-endurance-disposable"
+    ],
+    "silent_expiry": false
+  },
+  "duplicates": {
+    "continuations": 0,
+    "effects": 0,
+    "missions": 0
+  },
+  "event_count": 264,
+  "fallback": {
+    "builder_run_id": "builder-run-v12-fallback",
+    "outcome": "PASSED",
+    "providers": [
+      "fallback-primary",
+      "fallback-alternate"
+    ]
+  },
+  "integrity": {
+    "false_successes": 0,
+    "unreconciled_accepted_effects": 0
+  },
+  "joins": {
+    "all": {
+      "accepted_outcome_ids": [
+        "outcome-5b1d5689f37dd2f552841344",
+        "outcome-3d2529d899dade7a1612d75b",
+        "outcome-17862ee9d483aec0b4037a37"
+      ],
+      "child_ids": [
+        "ambiguous-child",
+        "fallback-child",
+        "wait-child"
+      ],
+      "reason": "join all-provider-children has accepted child truth",
+      "status": "SATISFIED",
+      "unresolved": []
+    },
+    "any": {
+      "accepted_outcome_ids": [
+        "outcome-3d2529d899dade7a1612d75b"
+      ],
+      "child_ids": [
+        "ambiguous-child",
+        "fallback-child",
+        "wait-child"
+      ],
+      "reason": "join any-provider-child has accepted child truth",
+      "status": "SATISFIED",
+      "unresolved": [
+        "ambiguous-child",
+        "wait-child"
+      ]
+    },
+    "completed": true
+  },
+  "live_mutated": false,
+  "objective_status": "COMPLETED",
+  "parallel_children": {
+    "initial_dispatchable": [
+      "mission-v12-ambiguous",
+      "mission-v12-fallback"
+    ],
+    "isolated_roots": {
+      "ambiguous-child": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\a6-runtime\\resources\\ambiguous-child",
+      "fallback-child": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\a6-runtime\\resources\\fallback-child",
+      "wait-child": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\a6-runtime\\resources\\wait-child"
+    },
+    "limit": 2,
+    "logical_overlap_proven": true,
+    "peak_running_observed": 2
+  },
+  "provider_credentials_used": false,
+  "provider_routing": {
+    "fallback_provider": "fallback-alternate",
+    "fallback_used": true,
+    "identity": {
+      "builder_run_id": "builder-run-v12-fallback",
+      "campaign_id": "campaign-v12-endurance-disposable",
+      "child_id": "fallback-child",
+      "effect_action_key": "effect:v12:fallback",
+      "mission_id": "mission-v12-fallback",
+      "objective_id": "objective-v12-endurance-disposable",
+      "routing_identity": "048bc7cee61c1f22046d15ee3802eab7cd0830112017334904994074bb5f12b1"
+    }
+  },
+  "recovery": {
+    "builder_run_id": "builder-run-v12-wait",
+    "final_outcome": "PASSED",
+    "resume_receipts": 1,
+    "wait_resume_ids": [
+      "provider-wait-f0c505c9d2b426e1d615e01c"
+    ]
+  },
+  "root": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\a6-runtime",
+  "schema": "jarvis-v12-endurance-convergence-proof-v1",
+  "source": {
+    "activation_authorized": false,
+    "base_v11_sha": "afddb8d5ca3d5c3459a4f5394e84affb92d13738",
+    "branch": "candidate/v12-final-product-convergence-20260903",
+    "campaign_input_sha": "db685fe0bd0bc22b25a1f717bafdd8612cdfd19d",
+    "endurance_final_sha": "49b2c2337a0579519d0b782a5a260673079eb398",
+    "endurance_implementation_sha": "43da572ca0fb24ae82222cdd02c2e23a76bf95f6",
+    "implementation_sha": "321dfb48165fc76cf4f11a9d8076c1a0700f5e2b",
+    "provider_resilience_input_sha": "eedc4b293daa6400907f3196924514b21a61010c",
+    "schema_version": 40,
+    "worktree_clean_before_proof": true
+  },
+  "startup_resume": {
+    "final_status": "READY",
+    "fresh_process_status": "WAITING",
+    "hard_kill_returncode": 86,
+    "post_join_campaign_status": "COMPLETED"
+  },
+  "stop": {
+    "dispatches_during_stop": 0,
+    "stopped_campaigns": [
+      "campaign-v12-endurance-disposable"
+    ],
+    "wait_resumed_during_stop": false
+  },
+  "verdict": "PASS"
+}

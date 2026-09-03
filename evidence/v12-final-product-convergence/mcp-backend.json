@@ -1,0 +1,1826 @@
+{
+  "accepted_effect_unverified": false,
+  "connected": {
+    "authority": "DATA_ONLY",
+    "checked_at": "2026-09-03T17:20:15.391474Z",
+    "connected_at": "2026-09-03T17:20:15.391474Z",
+    "generation": 1,
+    "last_error": null,
+    "protocol_version": "2026-07-28",
+    "remote_name_data_only": "jarvis-v12-disposable",
+    "remote_version_data_only": "1.0.0",
+    "resource_count": 1,
+    "server_id": "v12-disposable",
+    "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+    "state": "READY",
+    "tool_count": 6
+  },
+  "disconnect": {
+    "authority": "DATA_ONLY",
+    "checked_at": "2026-09-03T17:20:18.502445Z",
+    "connected_at": "2026-09-03T17:20:15.391474Z",
+    "generation": 1,
+    "last_error": null,
+    "protocol_version": "2026-07-28",
+    "remote_name_data_only": "jarvis-v12-disposable",
+    "remote_version_data_only": "1.0.0",
+    "resource_count": 1,
+    "server_id": "v12-disposable",
+    "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+    "state": "DISCONNECTED",
+    "tool_count": 6
+  },
+  "duplicate_effects": 0,
+  "effect_event_counts": {
+    "effect.acceptance_recorded": 1,
+    "effect.provider_receipt": 1,
+    "effect.readback_observed": 1,
+    "effect.reconciled": 1,
+    "effect.terminal_truth": 1,
+    "system.action_completed": 1,
+    "system.action_started": 1
+  },
+  "effect_event_types": [
+    "system.action_started",
+    "system.action_completed",
+    "effect.provider_receipt",
+    "effect.readback_observed",
+    "effect.reconciled",
+    "effect.acceptance_recorded",
+    "effect.terminal_truth"
+  ],
+  "effect_state": {
+    "accepted": true,
+    "action_key": "effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1",
+    "after_state": "{\"acceptance_evidence\":{\"authority\":\"disposable-filesystem-readback\",\"sha256\":\"217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2\"},\"after_state_ref\":\"sha256:217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2\",\"arguments_sha256\":\"d405d97d31bf8164e7a9afb6664ee562375585756d47eff48a77f3efae0a7d0c\",\"authority\":\"DATA_ONLY\",\"bounded\":true,\"claimed\":\"COMPLETED\",\"effect_class\":\"REVERSIBLE_LOCAL\",\"effect_id\":\"effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1\",\"evidence_refs\":[\"mcp-server:mcp.server.v12-disposable.c2dff1b1eb\",\"mcp-invocation:request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1\",\"mcp-result:sha256:bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43\",\"file:sha256:217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2\"],\"idempotency_key\":\"idempotency:c0191605e508fd95c91803aa6ec1df54fdaff98795ff7959da07caf7b0c719d5\",\"invocation_id\":\"request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1\",\"mcp_receipt\":{\"action_kind\":\"mcp.v12-disposable.tool.write-disposable.0b4404bd7949\",\"arguments_sha256\":\"d405d97d31bf8164e7a9afb6664ee562375585756d47eff48a77f3efae0a7d0c\",\"authority\":\"DATA_ONLY\",\"capability_id\":\"cap.mcp.v12-disposable.tool.write-disposable.0b4404bd7949\",\"error_code\":null,\"finished_at\":\"2026-09-03T17:20:16.730384Z\",\"invocation_id\":\"request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1\",\"note\":\"\",\"outcome\":\"COMPLETED\",\"protocol_version\":\"2026-07-28\",\"result\":{\"authority\":\"DATA_ONLY\",\"content\":[{\"sha256\":\"1f71f822a216f20fc13c44bf56605c0b589b1003343683d7496cb5a66b8870b8\",\"text\":\"{\\n  \\\"path\\\": \\\"C:\\\\\\\\temp\\\\\\\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\\\\\\\mcp-backend\\\\\\\\disposable\\\\\\\\proof.txt\\\",\\n  \\\"sha256\\\": \\\"217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2\\\",\\n  \\\"bytes\\\": 18,\\n  \\\"call_count\\\": 1\\n}\",\"truncated\":false,\"type\":\"text\"}],\"content_count\":1,\"is_error\":false,\"raw_bytes\":686,\"result_sha256\":\"bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43\",\"structured_bytes\":206,\"structured_content\":{\"bytes\":18,\"call_count\":1,\"path\":\"C:\\\\temp\\\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\\\mcp-backend\\\\disposable\\\\proof.txt\",\"sha256\":\"217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2\"},\"structured_sha256\":\"592de77e288dfd9015fcdf084b5f613363e84f14506740e7313e9ad2eab0ab34\",\"truncated\":false},\"result_sha256\":\"bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43\",\"server_id\":\"v12-disposable\",\"server_identity\":\"mcp.server.v12-disposable.c2dff1b1eb\",\"session_generation\":1,\"started_at\":\"2026-09-03T17:20:16.724242Z\",\"tool_name\":\"write_disposable\"},\"protocol_version\":\"2026-07-28\",\"provider_receipt\":{\"arguments_sha256\":\"d405d97d31bf8164e7a9afb6664ee562375585756d47eff48a77f3efae0a7d0c\",\"invocation_id\":\"request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1\",\"protocol_version\":\"2026-07-28\",\"provider_id\":\"mcp:mcp.server.v12-disposable.c2dff1b1eb\",\"provider_ref\":\"mcp-invocation:request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1\",\"result_sha256\":\"bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43\",\"server_id\":\"v12-disposable\",\"server_identity\":\"mcp.server.v12-disposable.c2dff1b1eb\",\"session_generation\":1,\"tool_name\":\"write_disposable\"},\"readback\":{\"matches\":true,\"path\":\"C:\\\\temp\\\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\\\mcp-backend\\\\disposable\\\\proof.txt\",\"sha256\":\"217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2\",\"status\":\"MATCH\"},\"readback_verified\":true,\"reconciled\":true,\"result_sha256\":\"bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43\",\"server_id\":\"v12-disposable\",\"server_identity\":\"mcp.server.v12-disposable.c2dff1b1eb\",\"session_generation\":1,\"tool_name\":\"write_disposable\",\"truncated\":false}",
+    "before_state": {
+      "before_state_ref": "disposable:absent"
+    },
+    "claim_active": false,
+    "claim_expires_at": 1788456316.6686487,
+    "claimed_at": 1788456016.6686487,
+    "cost": null,
+    "expected_effects": [
+      "mcp.v12-disposable.tool.write-disposable.0b4404bd7949"
+    ],
+    "reconciled": true,
+    "status": "COMPLETED",
+    "terminal_outcome": "COMPLETED"
+  },
+  "event_count": 55,
+  "expected_terminal_sequence": [
+    "system.action_started",
+    "system.action_completed",
+    "effect.provider_receipt",
+    "effect.readback_observed",
+    "effect.reconciled",
+    "effect.acceptance_recorded",
+    "effect.terminal_truth"
+  ],
+  "mutating_invocation": {
+    "action_kind": "mcp.v12-disposable.tool.write-disposable.0b4404bd7949",
+    "capability_id": "cap.mcp.v12-disposable.tool.write-disposable.0b4404bd7949",
+    "claimed": "COMPLETED",
+    "claimed_effect": {
+      "acceptance_evidence": {
+        "authority": "disposable-filesystem-readback",
+        "sha256": "217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2"
+      },
+      "accepted": true,
+      "action_key": "effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1",
+      "after_state_ref": "sha256:217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2",
+      "arguments_sha256": "d405d97d31bf8164e7a9afb6664ee562375585756d47eff48a77f3efae0a7d0c",
+      "authority": "DATA_ONLY",
+      "bounded": true,
+      "claimed": "COMPLETED",
+      "effect_class": "REVERSIBLE_LOCAL",
+      "effect_id": "effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1",
+      "evidence_refs": [
+        "mcp-server:mcp.server.v12-disposable.c2dff1b1eb",
+        "mcp-invocation:request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+        "mcp-result:sha256:bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43",
+        "file:sha256:217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2",
+        "provider:mcp-invocation:request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1"
+      ],
+      "idempotency_key": "idempotency:c0191605e508fd95c91803aa6ec1df54fdaff98795ff7959da07caf7b0c719d5",
+      "invocation_id": "request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+      "journal_state": "COMPLETED",
+      "mcp_receipt": {
+        "action_kind": "mcp.v12-disposable.tool.write-disposable.0b4404bd7949",
+        "arguments_sha256": "d405d97d31bf8164e7a9afb6664ee562375585756d47eff48a77f3efae0a7d0c",
+        "authority": "DATA_ONLY",
+        "capability_id": "cap.mcp.v12-disposable.tool.write-disposable.0b4404bd7949",
+        "error_code": null,
+        "finished_at": "2026-09-03T17:20:16.730384Z",
+        "invocation_id": "request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+        "note": "",
+        "outcome": "COMPLETED",
+        "protocol_version": "2026-07-28",
+        "result": {
+          "authority": "DATA_ONLY",
+          "content": [
+            {
+              "sha256": "1f71f822a216f20fc13c44bf56605c0b589b1003343683d7496cb5a66b8870b8",
+              "text": "{\n  \"path\": \"C:\\\\temp\\\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\\\mcp-backend\\\\disposable\\\\proof.txt\",\n  \"sha256\": \"217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2\",\n  \"bytes\": 18,\n  \"call_count\": 1\n}",
+              "truncated": false,
+              "type": "text"
+            }
+          ],
+          "content_count": 1,
+          "is_error": false,
+          "raw_bytes": 686,
+          "result_sha256": "bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43",
+          "structured_bytes": 206,
+          "structured_content": {
+            "bytes": 18,
+            "call_count": 1,
+            "path": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\mcp-backend\\disposable\\proof.txt",
+            "sha256": "217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2"
+          },
+          "structured_sha256": "592de77e288dfd9015fcdf084b5f613363e84f14506740e7313e9ad2eab0ab34",
+          "truncated": false
+        },
+        "result_sha256": "bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43",
+        "server_id": "v12-disposable",
+        "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+        "session_generation": 1,
+        "started_at": "2026-09-03T17:20:16.724242Z",
+        "tool_name": "write_disposable"
+      },
+      "performed": true,
+      "protocol_version": "2026-07-28",
+      "provider_receipt": {
+        "arguments_sha256": "d405d97d31bf8164e7a9afb6664ee562375585756d47eff48a77f3efae0a7d0c",
+        "invocation_id": "request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+        "protocol_version": "2026-07-28",
+        "provider_id": "mcp:mcp.server.v12-disposable.c2dff1b1eb",
+        "provider_ref": "mcp-invocation:request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+        "result_sha256": "bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43",
+        "server_id": "v12-disposable",
+        "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+        "session_generation": 1,
+        "tool_name": "write_disposable"
+      },
+      "readback": {
+        "matches": true,
+        "path": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\mcp-backend\\disposable\\proof.txt",
+        "sha256": "217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2",
+        "status": "MATCH"
+      },
+      "readback_verified": true,
+      "reconciled": true,
+      "recovered_from_ambiguity": true,
+      "replayed": false,
+      "result_sha256": "bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43",
+      "server_id": "v12-disposable",
+      "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+      "session_generation": 1,
+      "terminal_truth": true,
+      "tool_name": "write_disposable",
+      "truncated": false
+    },
+    "note": "",
+    "observed": {
+      "acceptance_evidence": {
+        "authority": "disposable-filesystem-readback",
+        "sha256": "217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2"
+      },
+      "accepted": true,
+      "action_key": "effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1",
+      "after_state_ref": "sha256:217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2",
+      "arguments_sha256": "d405d97d31bf8164e7a9afb6664ee562375585756d47eff48a77f3efae0a7d0c",
+      "authority": "DATA_ONLY",
+      "bounded": true,
+      "claimed": "COMPLETED",
+      "effect_class": "REVERSIBLE_LOCAL",
+      "effect_id": "effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1",
+      "evidence_refs": [
+        "mcp-server:mcp.server.v12-disposable.c2dff1b1eb",
+        "mcp-invocation:request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+        "mcp-result:sha256:bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43",
+        "file:sha256:217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2",
+        "provider:mcp-invocation:request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1"
+      ],
+      "idempotency_key": "idempotency:c0191605e508fd95c91803aa6ec1df54fdaff98795ff7959da07caf7b0c719d5",
+      "invocation_id": "request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+      "journal_state": "COMPLETED",
+      "mcp_receipt": {
+        "action_kind": "mcp.v12-disposable.tool.write-disposable.0b4404bd7949",
+        "arguments_sha256": "d405d97d31bf8164e7a9afb6664ee562375585756d47eff48a77f3efae0a7d0c",
+        "authority": "DATA_ONLY",
+        "capability_id": "cap.mcp.v12-disposable.tool.write-disposable.0b4404bd7949",
+        "error_code": null,
+        "finished_at": "2026-09-03T17:20:16.730384Z",
+        "invocation_id": "request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+        "note": "",
+        "outcome": "COMPLETED",
+        "protocol_version": "2026-07-28",
+        "result": {
+          "authority": "DATA_ONLY",
+          "content": [
+            {
+              "sha256": "1f71f822a216f20fc13c44bf56605c0b589b1003343683d7496cb5a66b8870b8",
+              "text": "{\n  \"path\": \"C:\\\\temp\\\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\\\mcp-backend\\\\disposable\\\\proof.txt\",\n  \"sha256\": \"217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2\",\n  \"bytes\": 18,\n  \"call_count\": 1\n}",
+              "truncated": false,
+              "type": "text"
+            }
+          ],
+          "content_count": 1,
+          "is_error": false,
+          "raw_bytes": 686,
+          "result_sha256": "bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43",
+          "structured_bytes": 206,
+          "structured_content": {
+            "bytes": 18,
+            "call_count": 1,
+            "path": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\mcp-backend\\disposable\\proof.txt",
+            "sha256": "217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2"
+          },
+          "structured_sha256": "592de77e288dfd9015fcdf084b5f613363e84f14506740e7313e9ad2eab0ab34",
+          "truncated": false
+        },
+        "result_sha256": "bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43",
+        "server_id": "v12-disposable",
+        "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+        "session_generation": 1,
+        "started_at": "2026-09-03T17:20:16.724242Z",
+        "tool_name": "write_disposable"
+      },
+      "performed": true,
+      "protocol_version": "2026-07-28",
+      "provider_receipt": {
+        "arguments_sha256": "d405d97d31bf8164e7a9afb6664ee562375585756d47eff48a77f3efae0a7d0c",
+        "invocation_id": "request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+        "protocol_version": "2026-07-28",
+        "provider_id": "mcp:mcp.server.v12-disposable.c2dff1b1eb",
+        "provider_ref": "mcp-invocation:request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+        "result_sha256": "bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43",
+        "server_id": "v12-disposable",
+        "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+        "session_generation": 1,
+        "tool_name": "write_disposable"
+      },
+      "readback": {
+        "matches": true,
+        "path": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\mcp-backend\\disposable\\proof.txt",
+        "sha256": "217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2",
+        "status": "MATCH"
+      },
+      "readback_verified": true,
+      "reconciled": true,
+      "recovered_from_ambiguity": true,
+      "replayed": false,
+      "result_sha256": "bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43",
+      "server_id": "v12-disposable",
+      "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+      "session_generation": 1,
+      "terminal_truth": true,
+      "tool_name": "write_disposable",
+      "truncated": false,
+      "verified_at": "2026-09-03T17:20:16.902095Z"
+    },
+    "receipt": {
+      "action_kind": "mcp.v12-disposable.tool.write-disposable.0b4404bd7949",
+      "after_state_ref": "sha256:217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2",
+      "attempt": 1,
+      "before_state_ref": "disposable:absent",
+      "capability_id": "cap.mcp.v12-disposable.tool.write-disposable.0b4404bd7949",
+      "capability_version": "1.0.0",
+      "claimed_outcome": "COMPLETED",
+      "contract_version": "jarvis.v10.adapter.v1",
+      "cost": {},
+      "effect_class": "REVERSIBLE_LOCAL",
+      "effect_id": "effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1",
+      "error": null,
+      "evidence_refs": [
+        "mcp-server:mcp.server.v12-disposable.c2dff1b1eb",
+        "mcp-invocation:request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+        "mcp-result:sha256:bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43",
+        "file:sha256:217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2",
+        "provider:mcp-invocation:request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+        "capability:cap.mcp.v12-disposable.tool.write-disposable.0b4404bd7949",
+        "effect:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1"
+      ],
+      "idempotency_key": "idempotency:c0191605e508fd95c91803aa6ec1df54fdaff98795ff7959da07caf7b0c719d5",
+      "mission_id": "v12.mcp.write",
+      "observed": {
+        "acceptance_evidence": {
+          "authority": "disposable-filesystem-readback",
+          "sha256": "217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2"
+        },
+        "accepted": true,
+        "after_state_ref": "sha256:217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2",
+        "arguments_sha256": "d405d97d31bf8164e7a9afb6664ee562375585756d47eff48a77f3efae0a7d0c",
+        "authority": "DATA_ONLY",
+        "bounded": true,
+        "claimed": "COMPLETED",
+        "effect_class": "REVERSIBLE_LOCAL",
+        "effect_id": "effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1",
+        "evidence_refs": [
+          "mcp-server:mcp.server.v12-disposable.c2dff1b1eb",
+          "mcp-invocation:request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+          "mcp-result:sha256:bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43",
+          "file:sha256:217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2",
+          "provider:mcp-invocation:request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1"
+        ],
+        "idempotency_key": "idempotency:c0191605e508fd95c91803aa6ec1df54fdaff98795ff7959da07caf7b0c719d5",
+        "invocation_id": "request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+        "mcp_receipt": {
+          "action_kind": "mcp.v12-disposable.tool.write-disposable.0b4404bd7949",
+          "arguments_sha256": "d405d97d31bf8164e7a9afb6664ee562375585756d47eff48a77f3efae0a7d0c",
+          "authority": "DATA_ONLY",
+          "capability_id": "cap.mcp.v12-disposable.tool.write-disposable.0b4404bd7949",
+          "error_code": null,
+          "finished_at": "2026-09-03T17:20:16.730384Z",
+          "invocation_id": "request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+          "note": "",
+          "outcome": "COMPLETED",
+          "protocol_version": "2026-07-28",
+          "result": {
+            "authority": "DATA_ONLY",
+            "content": [
+              {
+                "sha256": "1f71f822a216f20fc13c44bf56605c0b589b1003343683d7496cb5a66b8870b8",
+                "text": "{\n  \"path\": \"C:\\\\temp\\\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\\\mcp-backend\\\\disposable\\\\proof.txt\",\n  \"sha256\": \"217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2\",\n  \"bytes\": 18,\n  \"call_count\": 1\n}",
+                "truncated": false,
+                "type": "text"
+              }
+            ],
+            "content_count": 1,
+            "is_error": false,
+            "raw_bytes": 686,
+            "result_sha256": "bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43",
+            "structured_bytes": 206,
+            "structured_content": {
+              "bytes": 18,
+              "call_count": 1,
+              "path": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\mcp-backend\\disposable\\proof.txt",
+              "sha256": "217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2"
+            },
+            "structured_sha256": "592de77e288dfd9015fcdf084b5f613363e84f14506740e7313e9ad2eab0ab34",
+            "truncated": false
+          },
+          "result_sha256": "bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43",
+          "server_id": "v12-disposable",
+          "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+          "session_generation": 1,
+          "started_at": "2026-09-03T17:20:16.724242Z",
+          "tool_name": "write_disposable"
+        },
+        "protocol_version": "2026-07-28",
+        "provider_receipt": {
+          "arguments_sha256": "d405d97d31bf8164e7a9afb6664ee562375585756d47eff48a77f3efae0a7d0c",
+          "invocation_id": "request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+          "protocol_version": "2026-07-28",
+          "provider_id": "mcp:mcp.server.v12-disposable.c2dff1b1eb",
+          "provider_ref": "mcp-invocation:request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+          "result_sha256": "bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43",
+          "server_id": "v12-disposable",
+          "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+          "session_generation": 1,
+          "tool_name": "write_disposable"
+        },
+        "readback": {
+          "matches": true,
+          "path": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\mcp-backend\\disposable\\proof.txt",
+          "sha256": "217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2",
+          "status": "MATCH"
+        },
+        "readback_verified": true,
+        "reconciled": true,
+        "recovered_from_ambiguity": true,
+        "result_sha256": "bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43",
+        "server_id": "v12-disposable",
+        "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+        "session_generation": 1,
+        "terminal_truth": true,
+        "tool_name": "write_disposable",
+        "truncated": false
+      },
+      "observed_outcome": "VERIFIED",
+      "postcondition_results": [],
+      "provider_ref": null,
+      "receipt_id": "receipt:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+      "state": "VERIFIED",
+      "step_id": "mcp.v12-disposable.tool.write-disposable.0b4404bd7949",
+      "workflow_id": "workflow:v12.mcp.write",
+      "world_model_refs": []
+    },
+    "verified": "MATCH"
+  },
+  "mutating_replay": {
+    "action_kind": "mcp.v12-disposable.tool.write-disposable.0b4404bd7949",
+    "capability_id": "cap.mcp.v12-disposable.tool.write-disposable.0b4404bd7949",
+    "claimed": "COMPLETED",
+    "claimed_effect": {
+      "acceptance_evidence": {
+        "authority": "disposable-filesystem-readback",
+        "sha256": "217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2"
+      },
+      "accepted": true,
+      "action_key": "effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1",
+      "after_state_ref": "sha256:217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2",
+      "arguments_sha256": "d405d97d31bf8164e7a9afb6664ee562375585756d47eff48a77f3efae0a7d0c",
+      "authority": "DATA_ONLY",
+      "bounded": true,
+      "claimed": "COMPLETED",
+      "effect_class": "REVERSIBLE_LOCAL",
+      "effect_id": "effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1",
+      "evidence_refs": [
+        "mcp-server:mcp.server.v12-disposable.c2dff1b1eb",
+        "mcp-invocation:request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+        "mcp-result:sha256:bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43",
+        "file:sha256:217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2",
+        "provider:mcp-invocation:request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1"
+      ],
+      "idempotency_key": "idempotency:c0191605e508fd95c91803aa6ec1df54fdaff98795ff7959da07caf7b0c719d5",
+      "invocation_id": "request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+      "journal_state": "COMPLETED",
+      "mcp_receipt": {
+        "action_kind": "mcp.v12-disposable.tool.write-disposable.0b4404bd7949",
+        "arguments_sha256": "d405d97d31bf8164e7a9afb6664ee562375585756d47eff48a77f3efae0a7d0c",
+        "authority": "DATA_ONLY",
+        "capability_id": "cap.mcp.v12-disposable.tool.write-disposable.0b4404bd7949",
+        "error_code": null,
+        "finished_at": "2026-09-03T17:20:16.730384Z",
+        "invocation_id": "request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+        "note": "",
+        "outcome": "COMPLETED",
+        "protocol_version": "2026-07-28",
+        "result": {
+          "authority": "DATA_ONLY",
+          "content": [
+            {
+              "sha256": "1f71f822a216f20fc13c44bf56605c0b589b1003343683d7496cb5a66b8870b8",
+              "text": "{\n  \"path\": \"C:\\\\temp\\\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\\\mcp-backend\\\\disposable\\\\proof.txt\",\n  \"sha256\": \"217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2\",\n  \"bytes\": 18,\n  \"call_count\": 1\n}",
+              "truncated": false,
+              "type": "text"
+            }
+          ],
+          "content_count": 1,
+          "is_error": false,
+          "raw_bytes": 686,
+          "result_sha256": "bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43",
+          "structured_bytes": 206,
+          "structured_content": {
+            "bytes": 18,
+            "call_count": 1,
+            "path": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\mcp-backend\\disposable\\proof.txt",
+            "sha256": "217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2"
+          },
+          "structured_sha256": "592de77e288dfd9015fcdf084b5f613363e84f14506740e7313e9ad2eab0ab34",
+          "truncated": false
+        },
+        "result_sha256": "bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43",
+        "server_id": "v12-disposable",
+        "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+        "session_generation": 1,
+        "started_at": "2026-09-03T17:20:16.724242Z",
+        "tool_name": "write_disposable"
+      },
+      "performed": false,
+      "protocol_version": "2026-07-28",
+      "provider_receipt": {
+        "arguments_sha256": "d405d97d31bf8164e7a9afb6664ee562375585756d47eff48a77f3efae0a7d0c",
+        "invocation_id": "request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+        "protocol_version": "2026-07-28",
+        "provider_id": "mcp:mcp.server.v12-disposable.c2dff1b1eb",
+        "provider_ref": "mcp-invocation:request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+        "result_sha256": "bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43",
+        "server_id": "v12-disposable",
+        "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+        "session_generation": 1,
+        "tool_name": "write_disposable"
+      },
+      "readback": {
+        "matches": true,
+        "path": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\mcp-backend\\disposable\\proof.txt",
+        "sha256": "217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2",
+        "status": "MATCH"
+      },
+      "readback_verified": true,
+      "reconciled": true,
+      "replayed": true,
+      "result_sha256": "bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43",
+      "server_id": "v12-disposable",
+      "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+      "session_generation": 1,
+      "terminal_truth": true,
+      "tool_name": "write_disposable",
+      "truncated": false
+    },
+    "note": "",
+    "observed": {
+      "acceptance_evidence": {
+        "authority": "disposable-filesystem-readback",
+        "sha256": "217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2"
+      },
+      "accepted": true,
+      "action_key": "effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1",
+      "after_state_ref": "sha256:217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2",
+      "arguments_sha256": "d405d97d31bf8164e7a9afb6664ee562375585756d47eff48a77f3efae0a7d0c",
+      "authority": "DATA_ONLY",
+      "bounded": true,
+      "claimed": "COMPLETED",
+      "effect_class": "REVERSIBLE_LOCAL",
+      "effect_id": "effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1",
+      "evidence_refs": [
+        "mcp-server:mcp.server.v12-disposable.c2dff1b1eb",
+        "mcp-invocation:request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+        "mcp-result:sha256:bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43",
+        "file:sha256:217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2",
+        "provider:mcp-invocation:request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1"
+      ],
+      "idempotency_key": "idempotency:c0191605e508fd95c91803aa6ec1df54fdaff98795ff7959da07caf7b0c719d5",
+      "invocation_id": "request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+      "journal_state": "COMPLETED",
+      "mcp_receipt": {
+        "action_kind": "mcp.v12-disposable.tool.write-disposable.0b4404bd7949",
+        "arguments_sha256": "d405d97d31bf8164e7a9afb6664ee562375585756d47eff48a77f3efae0a7d0c",
+        "authority": "DATA_ONLY",
+        "capability_id": "cap.mcp.v12-disposable.tool.write-disposable.0b4404bd7949",
+        "error_code": null,
+        "finished_at": "2026-09-03T17:20:16.730384Z",
+        "invocation_id": "request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+        "note": "",
+        "outcome": "COMPLETED",
+        "protocol_version": "2026-07-28",
+        "result": {
+          "authority": "DATA_ONLY",
+          "content": [
+            {
+              "sha256": "1f71f822a216f20fc13c44bf56605c0b589b1003343683d7496cb5a66b8870b8",
+              "text": "{\n  \"path\": \"C:\\\\temp\\\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\\\mcp-backend\\\\disposable\\\\proof.txt\",\n  \"sha256\": \"217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2\",\n  \"bytes\": 18,\n  \"call_count\": 1\n}",
+              "truncated": false,
+              "type": "text"
+            }
+          ],
+          "content_count": 1,
+          "is_error": false,
+          "raw_bytes": 686,
+          "result_sha256": "bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43",
+          "structured_bytes": 206,
+          "structured_content": {
+            "bytes": 18,
+            "call_count": 1,
+            "path": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\mcp-backend\\disposable\\proof.txt",
+            "sha256": "217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2"
+          },
+          "structured_sha256": "592de77e288dfd9015fcdf084b5f613363e84f14506740e7313e9ad2eab0ab34",
+          "truncated": false
+        },
+        "result_sha256": "bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43",
+        "server_id": "v12-disposable",
+        "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+        "session_generation": 1,
+        "started_at": "2026-09-03T17:20:16.724242Z",
+        "tool_name": "write_disposable"
+      },
+      "performed": false,
+      "protocol_version": "2026-07-28",
+      "provider_receipt": {
+        "arguments_sha256": "d405d97d31bf8164e7a9afb6664ee562375585756d47eff48a77f3efae0a7d0c",
+        "invocation_id": "request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+        "protocol_version": "2026-07-28",
+        "provider_id": "mcp:mcp.server.v12-disposable.c2dff1b1eb",
+        "provider_ref": "mcp-invocation:request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+        "result_sha256": "bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43",
+        "server_id": "v12-disposable",
+        "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+        "session_generation": 1,
+        "tool_name": "write_disposable"
+      },
+      "readback": {
+        "matches": true,
+        "path": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\mcp-backend\\disposable\\proof.txt",
+        "sha256": "217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2",
+        "status": "MATCH"
+      },
+      "readback_verified": true,
+      "reconciled": true,
+      "replayed": true,
+      "result_sha256": "bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43",
+      "server_id": "v12-disposable",
+      "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+      "session_generation": 1,
+      "terminal_truth": true,
+      "tool_name": "write_disposable",
+      "truncated": false,
+      "verified_at": "2026-09-03T17:20:17.095548Z"
+    },
+    "receipt": {
+      "action_kind": "mcp.v12-disposable.tool.write-disposable.0b4404bd7949",
+      "after_state_ref": "sha256:217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2",
+      "attempt": 1,
+      "before_state_ref": "disposable:absent",
+      "capability_id": "cap.mcp.v12-disposable.tool.write-disposable.0b4404bd7949",
+      "capability_version": "1.0.0",
+      "claimed_outcome": "COMPLETED",
+      "contract_version": "jarvis.v10.adapter.v1",
+      "cost": {},
+      "effect_class": "REVERSIBLE_LOCAL",
+      "effect_id": "effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1",
+      "error": null,
+      "evidence_refs": [
+        "mcp-server:mcp.server.v12-disposable.c2dff1b1eb",
+        "mcp-invocation:request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+        "mcp-result:sha256:bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43",
+        "file:sha256:217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2",
+        "provider:mcp-invocation:request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+        "capability:cap.mcp.v12-disposable.tool.write-disposable.0b4404bd7949",
+        "effect:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1"
+      ],
+      "idempotency_key": "idempotency:c0191605e508fd95c91803aa6ec1df54fdaff98795ff7959da07caf7b0c719d5",
+      "mission_id": "v12.mcp.write",
+      "observed": {
+        "acceptance_evidence": {
+          "authority": "disposable-filesystem-readback",
+          "sha256": "217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2"
+        },
+        "accepted": true,
+        "after_state_ref": "sha256:217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2",
+        "arguments_sha256": "d405d97d31bf8164e7a9afb6664ee562375585756d47eff48a77f3efae0a7d0c",
+        "authority": "DATA_ONLY",
+        "bounded": true,
+        "claimed": "COMPLETED",
+        "effect_class": "REVERSIBLE_LOCAL",
+        "effect_id": "effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1",
+        "evidence_refs": [
+          "mcp-server:mcp.server.v12-disposable.c2dff1b1eb",
+          "mcp-invocation:request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+          "mcp-result:sha256:bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43",
+          "file:sha256:217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2",
+          "provider:mcp-invocation:request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1"
+        ],
+        "idempotency_key": "idempotency:c0191605e508fd95c91803aa6ec1df54fdaff98795ff7959da07caf7b0c719d5",
+        "invocation_id": "request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+        "mcp_receipt": {
+          "action_kind": "mcp.v12-disposable.tool.write-disposable.0b4404bd7949",
+          "arguments_sha256": "d405d97d31bf8164e7a9afb6664ee562375585756d47eff48a77f3efae0a7d0c",
+          "authority": "DATA_ONLY",
+          "capability_id": "cap.mcp.v12-disposable.tool.write-disposable.0b4404bd7949",
+          "error_code": null,
+          "finished_at": "2026-09-03T17:20:16.730384Z",
+          "invocation_id": "request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+          "note": "",
+          "outcome": "COMPLETED",
+          "protocol_version": "2026-07-28",
+          "result": {
+            "authority": "DATA_ONLY",
+            "content": [
+              {
+                "sha256": "1f71f822a216f20fc13c44bf56605c0b589b1003343683d7496cb5a66b8870b8",
+                "text": "{\n  \"path\": \"C:\\\\temp\\\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\\\mcp-backend\\\\disposable\\\\proof.txt\",\n  \"sha256\": \"217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2\",\n  \"bytes\": 18,\n  \"call_count\": 1\n}",
+                "truncated": false,
+                "type": "text"
+              }
+            ],
+            "content_count": 1,
+            "is_error": false,
+            "raw_bytes": 686,
+            "result_sha256": "bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43",
+            "structured_bytes": 206,
+            "structured_content": {
+              "bytes": 18,
+              "call_count": 1,
+              "path": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\mcp-backend\\disposable\\proof.txt",
+              "sha256": "217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2"
+            },
+            "structured_sha256": "592de77e288dfd9015fcdf084b5f613363e84f14506740e7313e9ad2eab0ab34",
+            "truncated": false
+          },
+          "result_sha256": "bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43",
+          "server_id": "v12-disposable",
+          "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+          "session_generation": 1,
+          "started_at": "2026-09-03T17:20:16.724242Z",
+          "tool_name": "write_disposable"
+        },
+        "protocol_version": "2026-07-28",
+        "provider_receipt": {
+          "arguments_sha256": "d405d97d31bf8164e7a9afb6664ee562375585756d47eff48a77f3efae0a7d0c",
+          "invocation_id": "request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+          "protocol_version": "2026-07-28",
+          "provider_id": "mcp:mcp.server.v12-disposable.c2dff1b1eb",
+          "provider_ref": "mcp-invocation:request:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+          "result_sha256": "bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43",
+          "server_id": "v12-disposable",
+          "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+          "session_generation": 1,
+          "tool_name": "write_disposable"
+        },
+        "readback": {
+          "matches": true,
+          "path": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\mcp-backend\\disposable\\proof.txt",
+          "sha256": "217a9afde8027ac60e2a043adc170f6b468d7b43a507b29423c124e95c48deb2",
+          "status": "MATCH"
+        },
+        "readback_verified": true,
+        "reconciled": true,
+        "result_sha256": "bcc3ffc06454d334de5b31aef4afc9146f554fe02d53d3d6ff9e1bc6df244a43",
+        "server_id": "v12-disposable",
+        "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+        "session_generation": 1,
+        "terminal_truth": true,
+        "tool_name": "write_disposable",
+        "truncated": false
+      },
+      "observed_outcome": "VERIFIED",
+      "postcondition_results": [],
+      "provider_ref": null,
+      "receipt_id": "receipt:effect:a8ce1c67c92d203540b1dd72a0d4cf2427a4c345284b8f4108ad0622ac433fc1:attempt:1",
+      "state": "VERIFIED",
+      "step_id": "mcp.v12-disposable.tool.write-disposable.0b4404bd7949",
+      "workflow_id": "workflow:v12.mcp.write",
+      "world_model_refs": []
+    },
+    "verified": "MATCH"
+  },
+  "mutation_resource_readback": {
+    "authority": "DATA_ONLY",
+    "content": [
+      {
+        "data": {
+          "_meta": null,
+          "mimeType": "application/json",
+          "text": "{\n  \"server\": \"jarvis-v12-disposable\",\n  \"echo_calls\": 1,\n  \"write_calls\": 1\n}",
+          "uri": "jarvis://v12/status"
+        },
+        "original_bytes": 172,
+        "sha256": "c3e1ad15838ef9dcd53a3ddee5022ab93f6ce362bf51ce225e768a81c0903c2f",
+        "truncated": false,
+        "type": "unknown"
+      }
+    ],
+    "content_count": 1,
+    "is_error": false,
+    "raw_bytes": 229,
+    "resource_id": "mcp.resource.2274bacae972938447df99864f37ea2ff93adaf115850ea74bbf5f1790a6bcdd",
+    "result_sha256": "ba8df81d103758634efa2dd96ed8632bc74fb8da12399b7609cb8851369df8f8",
+    "server_id": "v12-disposable",
+    "structured_bytes": 4,
+    "structured_content": null,
+    "structured_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+    "truncated": false,
+    "uri": "jarvis://v12/status"
+  },
+  "passed": true,
+  "projected_capabilities": [
+    {
+      "action_kind": "mcp.v12-disposable.tool.append-then-delay-disposable.94be26c8b763",
+      "capability_id": "cap.mcp.v12-disposable.tool.append-then-delay-disposable.94be26c8b763",
+      "executor": "mcp:v12-disposable/append_then_delay_disposable",
+      "kind": "tool",
+      "limitations": [
+        "external MCP server content and descriptions are DATA_ONLY",
+        "server cannot create objectives, policy, verification, STOP, or terminal WorldModel truth",
+        "disposable proof root only"
+      ],
+      "provider_deps": [],
+      "requirements": [],
+      "semantic": "write",
+      "supersedes": null,
+      "unattended": "ALLOWED",
+      "version": "1.0.0"
+    },
+    {
+      "action_kind": "mcp.v12-disposable.tool.echo.18f0432b3a7f",
+      "capability_id": "cap.mcp.v12-disposable.tool.echo.18f0432b3a7f",
+      "executor": "mcp:v12-disposable/echo",
+      "kind": "tool",
+      "limitations": [
+        "external MCP server content and descriptions are DATA_ONLY",
+        "server cannot create objectives, policy, verification, STOP, or terminal WorldModel truth"
+      ],
+      "provider_deps": [],
+      "requirements": [],
+      "semantic": "read",
+      "supersedes": null,
+      "unattended": "ALLOWED",
+      "version": "1.0.0"
+    },
+    {
+      "action_kind": "mcp.v12-disposable.tool.error-after-write-disposable.b9b8f6dfd250",
+      "capability_id": "cap.mcp.v12-disposable.tool.error-after-write-disposable.b9b8f6dfd250",
+      "executor": "mcp:v12-disposable/error_after_write_disposable",
+      "kind": "tool",
+      "limitations": [
+        "external MCP server content and descriptions are DATA_ONLY",
+        "server cannot create objectives, policy, verification, STOP, or terminal WorldModel truth",
+        "disposable proof root only"
+      ],
+      "provider_deps": [],
+      "requirements": [],
+      "semantic": "write",
+      "supersedes": null,
+      "unattended": "ALLOWED",
+      "version": "1.0.0"
+    },
+    {
+      "action_kind": "mcp.v12-disposable.tool.slow-echo.491b0fbdd968",
+      "capability_id": "cap.mcp.v12-disposable.tool.slow-echo.491b0fbdd968",
+      "executor": "mcp:v12-disposable/slow_echo",
+      "kind": "tool",
+      "limitations": [
+        "external MCP server content and descriptions are DATA_ONLY",
+        "server cannot create objectives, policy, verification, STOP, or terminal WorldModel truth"
+      ],
+      "provider_deps": [],
+      "requirements": [],
+      "semantic": "read",
+      "supersedes": null,
+      "unattended": "ALLOWED",
+      "version": "1.0.0"
+    },
+    {
+      "action_kind": "mcp.v12-disposable.tool.slow-write-disposable.6cb3dc1c98b8",
+      "capability_id": "cap.mcp.v12-disposable.tool.slow-write-disposable.6cb3dc1c98b8",
+      "executor": "mcp:v12-disposable/slow_write_disposable",
+      "kind": "tool",
+      "limitations": [
+        "external MCP server content and descriptions are DATA_ONLY",
+        "server cannot create objectives, policy, verification, STOP, or terminal WorldModel truth",
+        "disposable proof root only"
+      ],
+      "provider_deps": [],
+      "requirements": [],
+      "semantic": "write",
+      "supersedes": null,
+      "unattended": "ALLOWED",
+      "version": "1.0.0"
+    },
+    {
+      "action_kind": "mcp.v12-disposable.tool.write-disposable.0b4404bd7949",
+      "capability_id": "cap.mcp.v12-disposable.tool.write-disposable.0b4404bd7949",
+      "executor": "mcp:v12-disposable/write_disposable",
+      "kind": "tool",
+      "limitations": [
+        "external MCP server content and descriptions are DATA_ONLY",
+        "server cannot create objectives, policy, verification, STOP, or terminal WorldModel truth",
+        "disposable proof root only"
+      ],
+      "provider_deps": [],
+      "requirements": [],
+      "semantic": "write",
+      "supersedes": null,
+      "unattended": "ALLOWED",
+      "version": "1.0.0"
+    }
+  ],
+  "proof": "JARVIS_V12_MCP_BACKEND_REAL_SERVER",
+  "read_invocation": {
+    "action_kind": "mcp.v12-disposable.tool.echo.18f0432b3a7f",
+    "capability_id": "cap.mcp.v12-disposable.tool.echo.18f0432b3a7f",
+    "claimed": "COMPLETED",
+    "claimed_effect": {
+      "arguments_sha256": "3023397b76299b806ac4908fd2b65a234441e7bfcccbafb405aa98851a028edb",
+      "authority": "DATA_ONLY",
+      "bounded": true,
+      "claimed": "COMPLETED",
+      "effect_class": "READ_ONLY",
+      "effect_id": "effect:d7f977a2025b2f6bea01980f84d798bfe7d7ce64c93bf6ae8b3426c7963e9671",
+      "evidence_refs": [
+        "mcp-server:mcp.server.v12-disposable.c2dff1b1eb",
+        "mcp-invocation:request:effect:d7f977a2025b2f6bea01980f84d798bfe7d7ce64c93bf6ae8b3426c7963e9671:attempt:1",
+        "mcp-result:sha256:1eeedb245a8b5b49d29d1f30d12987b583e5a348b2c4ac5005b7a4e53aba982a"
+      ],
+      "idempotency_key": "idempotency:87428f533a04e5e16ed55a2239218a653b81c6aadf5c0257b778a64ac96eadd9",
+      "invocation_id": "request:effect:d7f977a2025b2f6bea01980f84d798bfe7d7ce64c93bf6ae8b3426c7963e9671:attempt:1",
+      "mcp_receipt": {
+        "action_kind": "mcp.v12-disposable.tool.echo.18f0432b3a7f",
+        "arguments_sha256": "3023397b76299b806ac4908fd2b65a234441e7bfcccbafb405aa98851a028edb",
+        "authority": "DATA_ONLY",
+        "capability_id": "cap.mcp.v12-disposable.tool.echo.18f0432b3a7f",
+        "error_code": null,
+        "finished_at": "2026-09-03T17:20:16.207162Z",
+        "invocation_id": "request:effect:d7f977a2025b2f6bea01980f84d798bfe7d7ce64c93bf6ae8b3426c7963e9671:attempt:1",
+        "note": "",
+        "outcome": "COMPLETED",
+        "protocol_version": "2026-07-28",
+        "result": {
+          "authority": "DATA_ONLY",
+          "content": [
+            {
+              "sha256": "0a140b86d12fc11683bfa76c309e2ab16d09a01326c2c827d94cec38b3060d5f",
+              "text": "{\n  \"value\": \"jarvisjarvis\",\n  \"sha256\": \"4d1fe0ad67059f28c69f62803e57e7fd1ac4c0ae29ec4eaebd518e1174c3da53\",\n  \"call_count\": 1\n}",
+              "truncated": false,
+              "type": "text"
+            }
+          ],
+          "content_count": 1,
+          "is_error": false,
+          "raw_bytes": 487,
+          "result_sha256": "1eeedb245a8b5b49d29d1f30d12987b583e5a348b2c4ac5005b7a4e53aba982a",
+          "structured_bytes": 115,
+          "structured_content": {
+            "call_count": 1,
+            "sha256": "4d1fe0ad67059f28c69f62803e57e7fd1ac4c0ae29ec4eaebd518e1174c3da53",
+            "value": "jarvisjarvis"
+          },
+          "structured_sha256": "0e0adeae1be42b5392631136b9dddea214ecb3c9b273f8c364fb9cd23f6447f4",
+          "truncated": false
+        },
+        "result_sha256": "1eeedb245a8b5b49d29d1f30d12987b583e5a348b2c4ac5005b7a4e53aba982a",
+        "server_id": "v12-disposable",
+        "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+        "session_generation": 1,
+        "started_at": "2026-09-03T17:20:16.201121Z",
+        "tool_name": "echo"
+      },
+      "observation": {
+        "authority": "DATA_ONLY",
+        "content": [
+          {
+            "sha256": "0a140b86d12fc11683bfa76c309e2ab16d09a01326c2c827d94cec38b3060d5f",
+            "text": "{\n  \"value\": \"jarvisjarvis\",\n  \"sha256\": \"4d1fe0ad67059f28c69f62803e57e7fd1ac4c0ae29ec4eaebd518e1174c3da53\",\n  \"call_count\": 1\n}",
+            "truncated": false,
+            "type": "text"
+          }
+        ],
+        "content_count": 1,
+        "is_error": false,
+        "raw_bytes": 487,
+        "result_sha256": "1eeedb245a8b5b49d29d1f30d12987b583e5a348b2c4ac5005b7a4e53aba982a",
+        "structured_bytes": 115,
+        "structured_content": {
+          "call_count": 1,
+          "sha256": "4d1fe0ad67059f28c69f62803e57e7fd1ac4c0ae29ec4eaebd518e1174c3da53",
+          "value": "jarvisjarvis"
+        },
+        "structured_sha256": "0e0adeae1be42b5392631136b9dddea214ecb3c9b273f8c364fb9cd23f6447f4",
+        "truncated": false
+      },
+      "protocol_version": "2026-07-28",
+      "provider_receipt": {
+        "arguments_sha256": "3023397b76299b806ac4908fd2b65a234441e7bfcccbafb405aa98851a028edb",
+        "invocation_id": "request:effect:d7f977a2025b2f6bea01980f84d798bfe7d7ce64c93bf6ae8b3426c7963e9671:attempt:1",
+        "protocol_version": "2026-07-28",
+        "provider_id": "mcp:mcp.server.v12-disposable.c2dff1b1eb",
+        "provider_ref": "mcp-invocation:request:effect:d7f977a2025b2f6bea01980f84d798bfe7d7ce64c93bf6ae8b3426c7963e9671:attempt:1",
+        "result_sha256": "1eeedb245a8b5b49d29d1f30d12987b583e5a348b2c4ac5005b7a4e53aba982a",
+        "server_id": "v12-disposable",
+        "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+        "session_generation": 1,
+        "tool_name": "echo"
+      },
+      "result_sha256": "1eeedb245a8b5b49d29d1f30d12987b583e5a348b2c4ac5005b7a4e53aba982a",
+      "server_id": "v12-disposable",
+      "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+      "session_generation": 1,
+      "tool_name": "echo",
+      "truncated": false
+    },
+    "note": "",
+    "observed": {
+      "arguments_sha256": "3023397b76299b806ac4908fd2b65a234441e7bfcccbafb405aa98851a028edb",
+      "authority": "DATA_ONLY",
+      "bounded": true,
+      "claimed": "COMPLETED",
+      "effect_class": "READ_ONLY",
+      "effect_id": "effect:d7f977a2025b2f6bea01980f84d798bfe7d7ce64c93bf6ae8b3426c7963e9671",
+      "evidence_refs": [
+        "mcp-server:mcp.server.v12-disposable.c2dff1b1eb",
+        "mcp-invocation:request:effect:d7f977a2025b2f6bea01980f84d798bfe7d7ce64c93bf6ae8b3426c7963e9671:attempt:1",
+        "mcp-result:sha256:1eeedb245a8b5b49d29d1f30d12987b583e5a348b2c4ac5005b7a4e53aba982a"
+      ],
+      "idempotency_key": "idempotency:87428f533a04e5e16ed55a2239218a653b81c6aadf5c0257b778a64ac96eadd9",
+      "invocation_id": "request:effect:d7f977a2025b2f6bea01980f84d798bfe7d7ce64c93bf6ae8b3426c7963e9671:attempt:1",
+      "mcp_receipt": {
+        "action_kind": "mcp.v12-disposable.tool.echo.18f0432b3a7f",
+        "arguments_sha256": "3023397b76299b806ac4908fd2b65a234441e7bfcccbafb405aa98851a028edb",
+        "authority": "DATA_ONLY",
+        "capability_id": "cap.mcp.v12-disposable.tool.echo.18f0432b3a7f",
+        "error_code": null,
+        "finished_at": "2026-09-03T17:20:16.207162Z",
+        "invocation_id": "request:effect:d7f977a2025b2f6bea01980f84d798bfe7d7ce64c93bf6ae8b3426c7963e9671:attempt:1",
+        "note": "",
+        "outcome": "COMPLETED",
+        "protocol_version": "2026-07-28",
+        "result": {
+          "authority": "DATA_ONLY",
+          "content": [
+            {
+              "sha256": "0a140b86d12fc11683bfa76c309e2ab16d09a01326c2c827d94cec38b3060d5f",
+              "text": "{\n  \"value\": \"jarvisjarvis\",\n  \"sha256\": \"4d1fe0ad67059f28c69f62803e57e7fd1ac4c0ae29ec4eaebd518e1174c3da53\",\n  \"call_count\": 1\n}",
+              "truncated": false,
+              "type": "text"
+            }
+          ],
+          "content_count": 1,
+          "is_error": false,
+          "raw_bytes": 487,
+          "result_sha256": "1eeedb245a8b5b49d29d1f30d12987b583e5a348b2c4ac5005b7a4e53aba982a",
+          "structured_bytes": 115,
+          "structured_content": {
+            "call_count": 1,
+            "sha256": "4d1fe0ad67059f28c69f62803e57e7fd1ac4c0ae29ec4eaebd518e1174c3da53",
+            "value": "jarvisjarvis"
+          },
+          "structured_sha256": "0e0adeae1be42b5392631136b9dddea214ecb3c9b273f8c364fb9cd23f6447f4",
+          "truncated": false
+        },
+        "result_sha256": "1eeedb245a8b5b49d29d1f30d12987b583e5a348b2c4ac5005b7a4e53aba982a",
+        "server_id": "v12-disposable",
+        "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+        "session_generation": 1,
+        "started_at": "2026-09-03T17:20:16.201121Z",
+        "tool_name": "echo"
+      },
+      "observation": {
+        "authority": "DATA_ONLY",
+        "content": [
+          {
+            "sha256": "0a140b86d12fc11683bfa76c309e2ab16d09a01326c2c827d94cec38b3060d5f",
+            "text": "{\n  \"value\": \"jarvisjarvis\",\n  \"sha256\": \"4d1fe0ad67059f28c69f62803e57e7fd1ac4c0ae29ec4eaebd518e1174c3da53\",\n  \"call_count\": 1\n}",
+            "truncated": false,
+            "type": "text"
+          }
+        ],
+        "content_count": 1,
+        "is_error": false,
+        "raw_bytes": 487,
+        "result_sha256": "1eeedb245a8b5b49d29d1f30d12987b583e5a348b2c4ac5005b7a4e53aba982a",
+        "structured_bytes": 115,
+        "structured_content": {
+          "call_count": 1,
+          "sha256": "4d1fe0ad67059f28c69f62803e57e7fd1ac4c0ae29ec4eaebd518e1174c3da53",
+          "value": "jarvisjarvis"
+        },
+        "structured_sha256": "0e0adeae1be42b5392631136b9dddea214ecb3c9b273f8c364fb9cd23f6447f4",
+        "truncated": false
+      },
+      "protocol_version": "2026-07-28",
+      "provider_receipt": {
+        "arguments_sha256": "3023397b76299b806ac4908fd2b65a234441e7bfcccbafb405aa98851a028edb",
+        "invocation_id": "request:effect:d7f977a2025b2f6bea01980f84d798bfe7d7ce64c93bf6ae8b3426c7963e9671:attempt:1",
+        "protocol_version": "2026-07-28",
+        "provider_id": "mcp:mcp.server.v12-disposable.c2dff1b1eb",
+        "provider_ref": "mcp-invocation:request:effect:d7f977a2025b2f6bea01980f84d798bfe7d7ce64c93bf6ae8b3426c7963e9671:attempt:1",
+        "result_sha256": "1eeedb245a8b5b49d29d1f30d12987b583e5a348b2c4ac5005b7a4e53aba982a",
+        "server_id": "v12-disposable",
+        "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+        "session_generation": 1,
+        "tool_name": "echo"
+      },
+      "result_sha256": "1eeedb245a8b5b49d29d1f30d12987b583e5a348b2c4ac5005b7a4e53aba982a",
+      "server_id": "v12-disposable",
+      "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+      "session_generation": 1,
+      "tool_name": "echo",
+      "truncated": false,
+      "verified_at": "2026-09-03T17:20:16.207531Z"
+    },
+    "receipt": {
+      "action_kind": "mcp.v12-disposable.tool.echo.18f0432b3a7f",
+      "after_state_ref": null,
+      "attempt": 1,
+      "before_state_ref": null,
+      "capability_id": "cap.mcp.v12-disposable.tool.echo.18f0432b3a7f",
+      "capability_version": "1.0.0",
+      "claimed_outcome": "COMPLETED",
+      "contract_version": "jarvis.v10.adapter.v1",
+      "cost": {},
+      "effect_class": "READ_ONLY",
+      "effect_id": "effect:d7f977a2025b2f6bea01980f84d798bfe7d7ce64c93bf6ae8b3426c7963e9671",
+      "error": null,
+      "evidence_refs": [
+        "mcp-server:mcp.server.v12-disposable.c2dff1b1eb",
+        "mcp-invocation:request:effect:d7f977a2025b2f6bea01980f84d798bfe7d7ce64c93bf6ae8b3426c7963e9671:attempt:1",
+        "mcp-result:sha256:1eeedb245a8b5b49d29d1f30d12987b583e5a348b2c4ac5005b7a4e53aba982a",
+        "capability:cap.mcp.v12-disposable.tool.echo.18f0432b3a7f",
+        "effect:effect:d7f977a2025b2f6bea01980f84d798bfe7d7ce64c93bf6ae8b3426c7963e9671"
+      ],
+      "idempotency_key": "idempotency:87428f533a04e5e16ed55a2239218a653b81c6aadf5c0257b778a64ac96eadd9",
+      "mission_id": "v12.mcp.read",
+      "observed": {
+        "arguments_sha256": "3023397b76299b806ac4908fd2b65a234441e7bfcccbafb405aa98851a028edb",
+        "authority": "DATA_ONLY",
+        "bounded": true,
+        "claimed": "COMPLETED",
+        "effect_class": "READ_ONLY",
+        "effect_id": "effect:d7f977a2025b2f6bea01980f84d798bfe7d7ce64c93bf6ae8b3426c7963e9671",
+        "evidence_refs": [
+          "mcp-server:mcp.server.v12-disposable.c2dff1b1eb",
+          "mcp-invocation:request:effect:d7f977a2025b2f6bea01980f84d798bfe7d7ce64c93bf6ae8b3426c7963e9671:attempt:1",
+          "mcp-result:sha256:1eeedb245a8b5b49d29d1f30d12987b583e5a348b2c4ac5005b7a4e53aba982a"
+        ],
+        "idempotency_key": "idempotency:87428f533a04e5e16ed55a2239218a653b81c6aadf5c0257b778a64ac96eadd9",
+        "invocation_id": "request:effect:d7f977a2025b2f6bea01980f84d798bfe7d7ce64c93bf6ae8b3426c7963e9671:attempt:1",
+        "mcp_receipt": {
+          "action_kind": "mcp.v12-disposable.tool.echo.18f0432b3a7f",
+          "arguments_sha256": "3023397b76299b806ac4908fd2b65a234441e7bfcccbafb405aa98851a028edb",
+          "authority": "DATA_ONLY",
+          "capability_id": "cap.mcp.v12-disposable.tool.echo.18f0432b3a7f",
+          "error_code": null,
+          "finished_at": "2026-09-03T17:20:16.207162Z",
+          "invocation_id": "request:effect:d7f977a2025b2f6bea01980f84d798bfe7d7ce64c93bf6ae8b3426c7963e9671:attempt:1",
+          "note": "",
+          "outcome": "COMPLETED",
+          "protocol_version": "2026-07-28",
+          "result": {
+            "authority": "DATA_ONLY",
+            "content": [
+              {
+                "sha256": "0a140b86d12fc11683bfa76c309e2ab16d09a01326c2c827d94cec38b3060d5f",
+                "text": "{\n  \"value\": \"jarvisjarvis\",\n  \"sha256\": \"4d1fe0ad67059f28c69f62803e57e7fd1ac4c0ae29ec4eaebd518e1174c3da53\",\n  \"call_count\": 1\n}",
+                "truncated": false,
+                "type": "text"
+              }
+            ],
+            "content_count": 1,
+            "is_error": false,
+            "raw_bytes": 487,
+            "result_sha256": "1eeedb245a8b5b49d29d1f30d12987b583e5a348b2c4ac5005b7a4e53aba982a",
+            "structured_bytes": 115,
+            "structured_content": {
+              "call_count": 1,
+              "sha256": "4d1fe0ad67059f28c69f62803e57e7fd1ac4c0ae29ec4eaebd518e1174c3da53",
+              "value": "jarvisjarvis"
+            },
+            "structured_sha256": "0e0adeae1be42b5392631136b9dddea214ecb3c9b273f8c364fb9cd23f6447f4",
+            "truncated": false
+          },
+          "result_sha256": "1eeedb245a8b5b49d29d1f30d12987b583e5a348b2c4ac5005b7a4e53aba982a",
+          "server_id": "v12-disposable",
+          "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+          "session_generation": 1,
+          "started_at": "2026-09-03T17:20:16.201121Z",
+          "tool_name": "echo"
+        },
+        "observation": {
+          "authority": "DATA_ONLY",
+          "content": [
+            {
+              "sha256": "0a140b86d12fc11683bfa76c309e2ab16d09a01326c2c827d94cec38b3060d5f",
+              "text": "{\n  \"value\": \"jarvisjarvis\",\n  \"sha256\": \"4d1fe0ad67059f28c69f62803e57e7fd1ac4c0ae29ec4eaebd518e1174c3da53\",\n  \"call_count\": 1\n}",
+              "truncated": false,
+              "type": "text"
+            }
+          ],
+          "content_count": 1,
+          "is_error": false,
+          "raw_bytes": 487,
+          "result_sha256": "1eeedb245a8b5b49d29d1f30d12987b583e5a348b2c4ac5005b7a4e53aba982a",
+          "structured_bytes": 115,
+          "structured_content": {
+            "call_count": 1,
+            "sha256": "4d1fe0ad67059f28c69f62803e57e7fd1ac4c0ae29ec4eaebd518e1174c3da53",
+            "value": "jarvisjarvis"
+          },
+          "structured_sha256": "0e0adeae1be42b5392631136b9dddea214ecb3c9b273f8c364fb9cd23f6447f4",
+          "truncated": false
+        },
+        "protocol_version": "2026-07-28",
+        "provider_receipt": {
+          "arguments_sha256": "3023397b76299b806ac4908fd2b65a234441e7bfcccbafb405aa98851a028edb",
+          "invocation_id": "request:effect:d7f977a2025b2f6bea01980f84d798bfe7d7ce64c93bf6ae8b3426c7963e9671:attempt:1",
+          "protocol_version": "2026-07-28",
+          "provider_id": "mcp:mcp.server.v12-disposable.c2dff1b1eb",
+          "provider_ref": "mcp-invocation:request:effect:d7f977a2025b2f6bea01980f84d798bfe7d7ce64c93bf6ae8b3426c7963e9671:attempt:1",
+          "result_sha256": "1eeedb245a8b5b49d29d1f30d12987b583e5a348b2c4ac5005b7a4e53aba982a",
+          "server_id": "v12-disposable",
+          "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+          "session_generation": 1,
+          "tool_name": "echo"
+        },
+        "result_sha256": "1eeedb245a8b5b49d29d1f30d12987b583e5a348b2c4ac5005b7a4e53aba982a",
+        "server_id": "v12-disposable",
+        "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+        "session_generation": 1,
+        "tool_name": "echo",
+        "truncated": false
+      },
+      "observed_outcome": "VERIFIED",
+      "postcondition_results": [],
+      "provider_ref": null,
+      "receipt_id": "receipt:effect:d7f977a2025b2f6bea01980f84d798bfe7d7ce64c93bf6ae8b3426c7963e9671:attempt:1",
+      "state": "VERIFIED",
+      "step_id": "mcp.v12-disposable.tool.echo.18f0432b3a7f",
+      "workflow_id": "workflow:v12.mcp.read",
+      "world_model_refs": []
+    },
+    "verified": "MATCH"
+  },
+  "readiness_after_disconnect": {
+    "cap.mcp.v12-disposable.tool.append-then-delay-disposable.94be26c8b763": "DEGRADED",
+    "cap.mcp.v12-disposable.tool.echo.18f0432b3a7f": "DEGRADED",
+    "cap.mcp.v12-disposable.tool.error-after-write-disposable.b9b8f6dfd250": "DEGRADED",
+    "cap.mcp.v12-disposable.tool.slow-echo.491b0fbdd968": "DEGRADED",
+    "cap.mcp.v12-disposable.tool.slow-write-disposable.6cb3dc1c98b8": "DEGRADED",
+    "cap.mcp.v12-disposable.tool.write-disposable.0b4404bd7949": "DEGRADED"
+  },
+  "readiness_after_reconnect": {
+    "cap.mcp.v12-disposable.tool.append-then-delay-disposable.94be26c8b763": "READY",
+    "cap.mcp.v12-disposable.tool.echo.18f0432b3a7f": "READY",
+    "cap.mcp.v12-disposable.tool.error-after-write-disposable.b9b8f6dfd250": "READY",
+    "cap.mcp.v12-disposable.tool.slow-echo.491b0fbdd968": "READY",
+    "cap.mcp.v12-disposable.tool.slow-write-disposable.6cb3dc1c98b8": "READY",
+    "cap.mcp.v12-disposable.tool.write-disposable.0b4404bd7949": "READY"
+  },
+  "real_tools": [
+    "append_then_delay_disposable",
+    "echo",
+    "error_after_write_disposable",
+    "slow_echo",
+    "slow_write_disposable",
+    "write_disposable"
+  ],
+  "reconnect": {
+    "authority": "DATA_ONLY",
+    "checked_at": "2026-09-03T17:20:20.644293Z",
+    "connected_at": "2026-09-03T17:20:20.644293Z",
+    "generation": 2,
+    "last_error": null,
+    "protocol_version": "2026-07-28",
+    "remote_name_data_only": "jarvis-v12-disposable",
+    "remote_version_data_only": "1.0.0",
+    "resource_count": 1,
+    "server_id": "v12-disposable",
+    "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+    "state": "READY",
+    "tool_count": 6
+  },
+  "resource_read": {
+    "authority": "DATA_ONLY",
+    "content": [
+      {
+        "data": {
+          "_meta": null,
+          "mimeType": "application/json",
+          "text": "{\n  \"server\": \"jarvis-v12-disposable\",\n  \"echo_calls\": 1,\n  \"write_calls\": 0\n}",
+          "uri": "jarvis://v12/status"
+        },
+        "original_bytes": 172,
+        "sha256": "f12ca4e2ba31015929516117188d5634743073a650e94e3e2ee7ac0302d3d188",
+        "truncated": false,
+        "type": "unknown"
+      }
+    ],
+    "content_count": 1,
+    "is_error": false,
+    "raw_bytes": 229,
+    "resource_id": "mcp.resource.2274bacae972938447df99864f37ea2ff93adaf115850ea74bbf5f1790a6bcdd",
+    "result_sha256": "af3b0213f687521e6109e357972487a1b2d0c9d9e65efc5d82d50dad2dd7a645",
+    "server_id": "v12-disposable",
+    "structured_bytes": 4,
+    "structured_content": null,
+    "structured_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+    "truncated": false,
+    "uri": "jarvis://v12/status"
+  },
+  "resources": [
+    {
+      "authority": "DATA_ONLY",
+      "description_data_only": "Process-local counters for disposable proof only.",
+      "mime_type": "application/json",
+      "name": "V12 disposable MCP status",
+      "resource_id": "mcp.resource.2274bacae972938447df99864f37ea2ff93adaf115850ea74bbf5f1790a6bcdd",
+      "server_id": "v12-disposable",
+      "uri": "jarvis://v12/status"
+    }
+  ],
+  "server_script": "C:\\temp\\JARVIS-V12-Final-Product-Convergence-20260903\\scripts\\v12_disposable_mcp_server.py",
+  "stable_identities_after": {
+    "append_then_delay_disposable": [
+      "cap.mcp.v12-disposable.tool.append-then-delay-disposable.94be26c8b763",
+      "mcp.v12-disposable.tool.append-then-delay-disposable.94be26c8b763"
+    ],
+    "echo": [
+      "cap.mcp.v12-disposable.tool.echo.18f0432b3a7f",
+      "mcp.v12-disposable.tool.echo.18f0432b3a7f"
+    ],
+    "error_after_write_disposable": [
+      "cap.mcp.v12-disposable.tool.error-after-write-disposable.b9b8f6dfd250",
+      "mcp.v12-disposable.tool.error-after-write-disposable.b9b8f6dfd250"
+    ],
+    "slow_echo": [
+      "cap.mcp.v12-disposable.tool.slow-echo.491b0fbdd968",
+      "mcp.v12-disposable.tool.slow-echo.491b0fbdd968"
+    ],
+    "slow_write_disposable": [
+      "cap.mcp.v12-disposable.tool.slow-write-disposable.6cb3dc1c98b8",
+      "mcp.v12-disposable.tool.slow-write-disposable.6cb3dc1c98b8"
+    ],
+    "write_disposable": [
+      "cap.mcp.v12-disposable.tool.write-disposable.0b4404bd7949",
+      "mcp.v12-disposable.tool.write-disposable.0b4404bd7949"
+    ]
+  },
+  "stable_identities_before": {
+    "append_then_delay_disposable": [
+      "cap.mcp.v12-disposable.tool.append-then-delay-disposable.94be26c8b763",
+      "mcp.v12-disposable.tool.append-then-delay-disposable.94be26c8b763"
+    ],
+    "echo": [
+      "cap.mcp.v12-disposable.tool.echo.18f0432b3a7f",
+      "mcp.v12-disposable.tool.echo.18f0432b3a7f"
+    ],
+    "error_after_write_disposable": [
+      "cap.mcp.v12-disposable.tool.error-after-write-disposable.b9b8f6dfd250",
+      "mcp.v12-disposable.tool.error-after-write-disposable.b9b8f6dfd250"
+    ],
+    "slow_echo": [
+      "cap.mcp.v12-disposable.tool.slow-echo.491b0fbdd968",
+      "mcp.v12-disposable.tool.slow-echo.491b0fbdd968"
+    ],
+    "slow_write_disposable": [
+      "cap.mcp.v12-disposable.tool.slow-write-disposable.6cb3dc1c98b8",
+      "mcp.v12-disposable.tool.slow-write-disposable.6cb3dc1c98b8"
+    ],
+    "write_disposable": [
+      "cap.mcp.v12-disposable.tool.write-disposable.0b4404bd7949",
+      "mcp.v12-disposable.tool.write-disposable.0b4404bd7949"
+    ]
+  },
+  "stop_errors": [],
+  "stop_result": {
+    "action_kind": "mcp.v12-disposable.tool.slow-write-disposable.6cb3dc1c98b8",
+    "capability_id": "cap.mcp.v12-disposable.tool.slow-write-disposable.6cb3dc1c98b8",
+    "claimed": "UNKNOWN",
+    "claimed_effect": {
+      "action_key": "effect:e672684913126373000b1acced7ea1b86bfc8a53d34f7066d738b5d70d53fbd3",
+      "claimed": "UNKNOWN",
+      "detail": "STOP cancelled MCP invocation",
+      "error_code": "mcp_reconciliation_required",
+      "evidence_refs": [],
+      "journal_state": "FROZEN",
+      "performed": false,
+      "readback": {
+        "matches": false,
+        "status": "NOT_OBSERVED"
+      },
+      "readback_verified": false,
+      "reconciled": false,
+      "replayed": false
+    },
+    "note": "mcp_reconciliation_required",
+    "observed": {
+      "action_key": "effect:e672684913126373000b1acced7ea1b86bfc8a53d34f7066d738b5d70d53fbd3",
+      "claimed": "UNKNOWN",
+      "detail": "STOP cancelled MCP invocation",
+      "error_code": "mcp_reconciliation_required",
+      "evidence_refs": [],
+      "journal_state": "FROZEN",
+      "performed": false,
+      "readback": {
+        "matches": false,
+        "status": "NOT_OBSERVED"
+      },
+      "readback_verified": false,
+      "reconciled": false,
+      "replayed": false,
+      "verified_at": "2026-09-03T17:20:18.267608Z"
+    },
+    "receipt": {
+      "action_kind": "mcp.v12-disposable.tool.slow-write-disposable.6cb3dc1c98b8",
+      "after_state_ref": null,
+      "attempt": 1,
+      "before_state_ref": "disposable:absent",
+      "capability_id": "cap.mcp.v12-disposable.tool.slow-write-disposable.6cb3dc1c98b8",
+      "capability_version": "1.0.0",
+      "claimed_outcome": "UNKNOWN",
+      "contract_version": "jarvis.v10.adapter.v1",
+      "cost": {},
+      "effect_class": "REVERSIBLE_LOCAL",
+      "effect_id": "effect:e672684913126373000b1acced7ea1b86bfc8a53d34f7066d738b5d70d53fbd3",
+      "error": {
+        "class": "mcp_reconciliation_required",
+        "detail": "mcp_reconciliation_required",
+        "retryable": false
+      },
+      "evidence_refs": [
+        "capability:cap.mcp.v12-disposable.tool.slow-write-disposable.6cb3dc1c98b8",
+        "effect:effect:e672684913126373000b1acced7ea1b86bfc8a53d34f7066d738b5d70d53fbd3"
+      ],
+      "idempotency_key": "idempotency:18b20101280720a28bf1178aa672cbbba4fb2964c2c9920a1b37c95363933c8d",
+      "mission_id": "v12.mcp.stop",
+      "observed": {
+        "claimed": "UNKNOWN",
+        "detail": "STOP cancelled MCP invocation",
+        "error_code": "mcp_reconciliation_required",
+        "evidence_refs": [],
+        "readback": {
+          "matches": false,
+          "status": "NOT_OBSERVED"
+        },
+        "readback_verified": false,
+        "reconciled": false
+      },
+      "observed_outcome": "UNKNOWN",
+      "postcondition_results": [],
+      "provider_ref": null,
+      "receipt_id": "receipt:effect:e672684913126373000b1acced7ea1b86bfc8a53d34f7066d738b5d70d53fbd3:attempt:1",
+      "state": "UNKNOWN",
+      "step_id": "mcp.v12-disposable.tool.slow-write-disposable.6cb3dc1c98b8",
+      "workflow_id": "workflow:v12.mcp.stop",
+      "world_model_refs": []
+    },
+    "verified": "UNKNOWN"
+  },
+  "stop_target_exists": false,
+  "timeout": {
+    "action_kind": "mcp.v12-disposable.tool.slow-echo.491b0fbdd968",
+    "capability_id": "cap.mcp.v12-disposable.tool.slow-echo.491b0fbdd968",
+    "claimed": "FAILED",
+    "claimed_effect": {
+      "authority": "DATA_ONLY",
+      "bounded": true,
+      "claimed": "FAILED",
+      "effect_class": "READ_ONLY",
+      "error_code": "mcp_timeout"
+    },
+    "note": "mcp_timeout",
+    "observed": {
+      "authority": "DATA_ONLY",
+      "bounded": true,
+      "claimed": "FAILED",
+      "effect_class": "READ_ONLY",
+      "error_code": "mcp_timeout",
+      "verified_at": "2026-09-03T17:20:16.484382Z"
+    },
+    "receipt": {
+      "action_kind": "mcp.v12-disposable.tool.slow-echo.491b0fbdd968",
+      "after_state_ref": null,
+      "attempt": 1,
+      "before_state_ref": null,
+      "capability_id": "cap.mcp.v12-disposable.tool.slow-echo.491b0fbdd968",
+      "capability_version": "1.0.0",
+      "claimed_outcome": "FAILED",
+      "contract_version": "jarvis.v10.adapter.v1",
+      "cost": {},
+      "effect_class": "READ_ONLY",
+      "effect_id": "effect:13f9aa95f666755947af577a78e9d3efd6362f5e3df57e3d7c1de0f65dd40edf",
+      "error": {
+        "class": "mcp_timeout",
+        "detail": "mcp_timeout",
+        "retryable": true
+      },
+      "evidence_refs": [
+        "capability:cap.mcp.v12-disposable.tool.slow-echo.491b0fbdd968",
+        "effect:effect:13f9aa95f666755947af577a78e9d3efd6362f5e3df57e3d7c1de0f65dd40edf"
+      ],
+      "idempotency_key": "idempotency:3a165723ebf8773f6e6e10d374fe84d75a0d255076682411937c8b866e37178b",
+      "mission_id": "v12.mcp.timeout",
+      "observed": {
+        "authority": "DATA_ONLY",
+        "bounded": true,
+        "claimed": "FAILED",
+        "effect_class": "READ_ONLY",
+        "error_code": "mcp_timeout"
+      },
+      "observed_outcome": "FAILED",
+      "postcondition_results": [],
+      "provider_ref": null,
+      "receipt_id": "receipt:effect:13f9aa95f666755947af577a78e9d3efd6362f5e3df57e3d7c1de0f65dd40edf:attempt:1",
+      "state": "FAILED",
+      "step_id": "mcp.v12-disposable.tool.slow-echo.491b0fbdd968",
+      "workflow_id": "workflow:v12.mcp.timeout",
+      "world_model_refs": []
+    },
+    "verified": "MATCH"
+  },
+  "timeout_after_effect": {
+    "action_kind": "mcp.v12-disposable.tool.append-then-delay-disposable.94be26c8b763",
+    "capability_id": "cap.mcp.v12-disposable.tool.append-then-delay-disposable.94be26c8b763",
+    "claimed": "COMPLETED",
+    "claimed_effect": {
+      "acceptance_evidence": {
+        "authority": "disposable-filesystem-readback",
+        "sha256": "a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b"
+      },
+      "accepted": true,
+      "action_key": "effect:fdd25752a6bd15b31acad744915467ed3a87fc4621dc07ce58d2871de5aa473a",
+      "after_state_ref": "sha256:a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b",
+      "authority": "DATA_ONLY",
+      "bounded": true,
+      "claimed": "COMPLETED",
+      "detail": "MCP operation exceeded its local deadline",
+      "effect_class": "REVERSIBLE_LOCAL",
+      "effect_id": "effect:fdd25752a6bd15b31acad744915467ed3a87fc4621dc07ce58d2871de5aa473a",
+      "error_code": "timeout_after_action",
+      "evidence_refs": [
+        "file:sha256:a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b",
+        "provider:file:sha256:a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b"
+      ],
+      "idempotency_key": "idempotency:59b07b1e7eb7ba0a52e769ef70db5da68236ce7db1a2a3d05e927f8d2d7c4df9",
+      "journal_state": "FROZEN",
+      "performed": false,
+      "provider_receipt": {
+        "provider_id": "mcp:disposable-filesystem",
+        "provider_ref": "file:sha256:a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b"
+      },
+      "readback": {
+        "matches": true,
+        "path": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\mcp-backend\\disposable\\landed-once.txt",
+        "sha256": "a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b",
+        "status": "MATCH"
+      },
+      "readback_verified": true,
+      "reconciled": true,
+      "recovered_from_ambiguity": true,
+      "replayed": false,
+      "result_sha256": "a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b",
+      "server_id": "v12-disposable",
+      "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+      "terminal_truth": true,
+      "tool_name": "append_then_delay_disposable"
+    },
+    "note": "timeout_after_action",
+    "observed": {
+      "acceptance_evidence": {
+        "authority": "disposable-filesystem-readback",
+        "sha256": "a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b"
+      },
+      "accepted": true,
+      "action_key": "effect:fdd25752a6bd15b31acad744915467ed3a87fc4621dc07ce58d2871de5aa473a",
+      "after_state_ref": "sha256:a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b",
+      "authority": "DATA_ONLY",
+      "bounded": true,
+      "claimed": "COMPLETED",
+      "detail": "MCP operation exceeded its local deadline",
+      "effect_class": "REVERSIBLE_LOCAL",
+      "effect_id": "effect:fdd25752a6bd15b31acad744915467ed3a87fc4621dc07ce58d2871de5aa473a",
+      "error_code": "timeout_after_action",
+      "evidence_refs": [
+        "file:sha256:a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b",
+        "provider:file:sha256:a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b"
+      ],
+      "idempotency_key": "idempotency:59b07b1e7eb7ba0a52e769ef70db5da68236ce7db1a2a3d05e927f8d2d7c4df9",
+      "journal_state": "FROZEN",
+      "performed": false,
+      "provider_receipt": {
+        "provider_id": "mcp:disposable-filesystem",
+        "provider_ref": "file:sha256:a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b"
+      },
+      "readback": {
+        "matches": true,
+        "path": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\mcp-backend\\disposable\\landed-once.txt",
+        "sha256": "a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b",
+        "status": "MATCH"
+      },
+      "readback_verified": true,
+      "reconciled": true,
+      "recovered_from_ambiguity": true,
+      "replayed": false,
+      "result_sha256": "a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b",
+      "server_id": "v12-disposable",
+      "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+      "terminal_truth": true,
+      "tool_name": "append_then_delay_disposable",
+      "verified_at": "2026-09-03T17:20:17.651483Z"
+    },
+    "receipt": {
+      "action_kind": "mcp.v12-disposable.tool.append-then-delay-disposable.94be26c8b763",
+      "after_state_ref": "sha256:a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b",
+      "attempt": 1,
+      "before_state_ref": "disposable:absent",
+      "capability_id": "cap.mcp.v12-disposable.tool.append-then-delay-disposable.94be26c8b763",
+      "capability_version": "1.0.0",
+      "claimed_outcome": "COMPLETED",
+      "contract_version": "jarvis.v10.adapter.v1",
+      "cost": {},
+      "effect_class": "REVERSIBLE_LOCAL",
+      "effect_id": "effect:fdd25752a6bd15b31acad744915467ed3a87fc4621dc07ce58d2871de5aa473a",
+      "error": {
+        "class": "timeout_after_action",
+        "detail": "timeout_after_action",
+        "retryable": false
+      },
+      "evidence_refs": [
+        "file:sha256:a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b",
+        "provider:file:sha256:a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b",
+        "capability:cap.mcp.v12-disposable.tool.append-then-delay-disposable.94be26c8b763",
+        "effect:effect:fdd25752a6bd15b31acad744915467ed3a87fc4621dc07ce58d2871de5aa473a"
+      ],
+      "idempotency_key": "idempotency:59b07b1e7eb7ba0a52e769ef70db5da68236ce7db1a2a3d05e927f8d2d7c4df9",
+      "mission_id": "v12.mcp.timeout-after-effect",
+      "observed": {
+        "acceptance_evidence": {
+          "authority": "disposable-filesystem-readback",
+          "sha256": "a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b"
+        },
+        "accepted": true,
+        "after_state_ref": "sha256:a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b",
+        "authority": "DATA_ONLY",
+        "bounded": true,
+        "claimed": "COMPLETED",
+        "detail": "MCP operation exceeded its local deadline",
+        "effect_class": "REVERSIBLE_LOCAL",
+        "effect_id": "effect:fdd25752a6bd15b31acad744915467ed3a87fc4621dc07ce58d2871de5aa473a",
+        "error_code": "timeout_after_action",
+        "evidence_refs": [
+          "file:sha256:a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b",
+          "provider:file:sha256:a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b"
+        ],
+        "idempotency_key": "idempotency:59b07b1e7eb7ba0a52e769ef70db5da68236ce7db1a2a3d05e927f8d2d7c4df9",
+        "provider_receipt": {
+          "provider_id": "mcp:disposable-filesystem",
+          "provider_ref": "file:sha256:a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b"
+        },
+        "readback": {
+          "matches": true,
+          "path": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\mcp-backend\\disposable\\landed-once.txt",
+          "sha256": "a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b",
+          "status": "MATCH"
+        },
+        "readback_verified": true,
+        "reconciled": true,
+        "recovered_from_ambiguity": true,
+        "result_sha256": "a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b",
+        "server_id": "v12-disposable",
+        "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+        "terminal_truth": true,
+        "tool_name": "append_then_delay_disposable"
+      },
+      "observed_outcome": "VERIFIED",
+      "postcondition_results": [],
+      "provider_ref": null,
+      "receipt_id": "receipt:effect:fdd25752a6bd15b31acad744915467ed3a87fc4621dc07ce58d2871de5aa473a:attempt:1",
+      "state": "VERIFIED",
+      "step_id": "mcp.v12-disposable.tool.append-then-delay-disposable.94be26c8b763",
+      "workflow_id": "workflow:v12.mcp.timeout-after-effect",
+      "world_model_refs": []
+    },
+    "verified": "MATCH"
+  },
+  "timeout_after_effect_replay_under_stop": {
+    "action_kind": "mcp.v12-disposable.tool.append-then-delay-disposable.94be26c8b763",
+    "capability_id": "cap.mcp.v12-disposable.tool.append-then-delay-disposable.94be26c8b763",
+    "claimed": "COMPLETED",
+    "claimed_effect": {
+      "acceptance_evidence": {
+        "authority": "disposable-filesystem-readback",
+        "sha256": "a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b"
+      },
+      "accepted": true,
+      "action_key": "effect:fdd25752a6bd15b31acad744915467ed3a87fc4621dc07ce58d2871de5aa473a",
+      "after_state_ref": "sha256:a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b",
+      "authority": "DATA_ONLY",
+      "bounded": true,
+      "claimed": "COMPLETED",
+      "detail": "MCP operation exceeded its local deadline",
+      "effect_class": "REVERSIBLE_LOCAL",
+      "effect_id": "effect:fdd25752a6bd15b31acad744915467ed3a87fc4621dc07ce58d2871de5aa473a",
+      "error_code": "timeout_after_action",
+      "evidence_refs": [
+        "file:sha256:a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b",
+        "provider:file:sha256:a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b"
+      ],
+      "idempotency_key": "idempotency:59b07b1e7eb7ba0a52e769ef70db5da68236ce7db1a2a3d05e927f8d2d7c4df9",
+      "journal_state": "FROZEN",
+      "performed": false,
+      "provider_receipt": {
+        "provider_id": "mcp:disposable-filesystem",
+        "provider_ref": "file:sha256:a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b"
+      },
+      "readback": {
+        "matches": true,
+        "path": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\mcp-backend\\disposable\\landed-once.txt",
+        "sha256": "a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b",
+        "status": "MATCH"
+      },
+      "readback_verified": true,
+      "reconciled": true,
+      "replayed": true,
+      "result_sha256": "a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b",
+      "server_id": "v12-disposable",
+      "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+      "terminal_truth": true,
+      "tool_name": "append_then_delay_disposable"
+    },
+    "note": "timeout_after_action",
+    "observed": {
+      "acceptance_evidence": {
+        "authority": "disposable-filesystem-readback",
+        "sha256": "a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b"
+      },
+      "accepted": true,
+      "action_key": "effect:fdd25752a6bd15b31acad744915467ed3a87fc4621dc07ce58d2871de5aa473a",
+      "after_state_ref": "sha256:a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b",
+      "authority": "DATA_ONLY",
+      "bounded": true,
+      "claimed": "COMPLETED",
+      "detail": "MCP operation exceeded its local deadline",
+      "effect_class": "REVERSIBLE_LOCAL",
+      "effect_id": "effect:fdd25752a6bd15b31acad744915467ed3a87fc4621dc07ce58d2871de5aa473a",
+      "error_code": "timeout_after_action",
+      "evidence_refs": [
+        "file:sha256:a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b",
+        "provider:file:sha256:a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b"
+      ],
+      "idempotency_key": "idempotency:59b07b1e7eb7ba0a52e769ef70db5da68236ce7db1a2a3d05e927f8d2d7c4df9",
+      "journal_state": "FROZEN",
+      "performed": false,
+      "provider_receipt": {
+        "provider_id": "mcp:disposable-filesystem",
+        "provider_ref": "file:sha256:a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b"
+      },
+      "readback": {
+        "matches": true,
+        "path": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\mcp-backend\\disposable\\landed-once.txt",
+        "sha256": "a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b",
+        "status": "MATCH"
+      },
+      "readback_verified": true,
+      "reconciled": true,
+      "replayed": true,
+      "result_sha256": "a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b",
+      "server_id": "v12-disposable",
+      "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+      "terminal_truth": true,
+      "tool_name": "append_then_delay_disposable",
+      "verified_at": "2026-09-03T17:20:17.861520Z"
+    },
+    "receipt": {
+      "action_kind": "mcp.v12-disposable.tool.append-then-delay-disposable.94be26c8b763",
+      "after_state_ref": "sha256:a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b",
+      "attempt": 1,
+      "before_state_ref": "disposable:absent",
+      "capability_id": "cap.mcp.v12-disposable.tool.append-then-delay-disposable.94be26c8b763",
+      "capability_version": "1.0.0",
+      "claimed_outcome": "COMPLETED",
+      "contract_version": "jarvis.v10.adapter.v1",
+      "cost": {},
+      "effect_class": "REVERSIBLE_LOCAL",
+      "effect_id": "effect:fdd25752a6bd15b31acad744915467ed3a87fc4621dc07ce58d2871de5aa473a",
+      "error": {
+        "class": "timeout_after_action",
+        "detail": "timeout_after_action",
+        "retryable": false
+      },
+      "evidence_refs": [
+        "file:sha256:a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b",
+        "provider:file:sha256:a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b",
+        "capability:cap.mcp.v12-disposable.tool.append-then-delay-disposable.94be26c8b763",
+        "effect:effect:fdd25752a6bd15b31acad744915467ed3a87fc4621dc07ce58d2871de5aa473a"
+      ],
+      "idempotency_key": "idempotency:59b07b1e7eb7ba0a52e769ef70db5da68236ce7db1a2a3d05e927f8d2d7c4df9",
+      "mission_id": "v12.mcp.timeout-after-effect",
+      "observed": {
+        "acceptance_evidence": {
+          "authority": "disposable-filesystem-readback",
+          "sha256": "a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b"
+        },
+        "accepted": true,
+        "after_state_ref": "sha256:a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b",
+        "authority": "DATA_ONLY",
+        "bounded": true,
+        "claimed": "COMPLETED",
+        "detail": "MCP operation exceeded its local deadline",
+        "effect_class": "REVERSIBLE_LOCAL",
+        "effect_id": "effect:fdd25752a6bd15b31acad744915467ed3a87fc4621dc07ce58d2871de5aa473a",
+        "error_code": "timeout_after_action",
+        "evidence_refs": [
+          "file:sha256:a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b",
+          "provider:file:sha256:a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b"
+        ],
+        "idempotency_key": "idempotency:59b07b1e7eb7ba0a52e769ef70db5da68236ce7db1a2a3d05e927f8d2d7c4df9",
+        "provider_receipt": {
+          "provider_id": "mcp:disposable-filesystem",
+          "provider_ref": "file:sha256:a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b"
+        },
+        "readback": {
+          "matches": true,
+          "path": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\mcp-backend\\disposable\\landed-once.txt",
+          "sha256": "a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b",
+          "status": "MATCH"
+        },
+        "readback_verified": true,
+        "reconciled": true,
+        "result_sha256": "a08d6eab6cd48f47a43b221bc6490c0aaf5034b1145aed7910b0c3655b172e4b",
+        "server_id": "v12-disposable",
+        "server_identity": "mcp.server.v12-disposable.c2dff1b1eb",
+        "terminal_truth": true,
+        "tool_name": "append_then_delay_disposable"
+      },
+      "observed_outcome": "VERIFIED",
+      "postcondition_results": [],
+      "provider_ref": null,
+      "receipt_id": "receipt:effect:fdd25752a6bd15b31acad744915467ed3a87fc4621dc07ce58d2871de5aa473a:attempt:1",
+      "state": "VERIFIED",
+      "step_id": "mcp.v12-disposable.tool.append-then-delay-disposable.94be26c8b763",
+      "workflow_id": "workflow:v12.mcp.timeout-after-effect",
+      "world_model_refs": []
+    },
+    "verified": "MATCH"
+  },
+  "timeout_after_effect_state": {
+    "accepted": true,
+    "action_key": "effect:fdd25752a6bd15b31acad744915467ed3a87fc4621dc07ce58d2871de5aa473a",
+    "before_state": {
+      "before_state_ref": "disposable:absent"
+    },
+    "claim_active": false,
+    "claim_expires_at": 1788456317.3007498,
+    "claimed_at": 1788456017.3007498,
+    "expected_effects": [
+      "mcp.v12-disposable.tool.append-then-delay-disposable.94be26c8b763"
+    ],
+    "frozen_reason": "effect timed out after claim; reconcile before retry",
+    "reconciled": true,
+    "status": "FROZEN",
+    "terminal_outcome": "COMPLETED"
+  },
+  "timeout_after_effect_target": "landed exactly once\n",
+  "transport": "stdio"
+}

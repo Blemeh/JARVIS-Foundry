@@ -1,0 +1,32 @@
+{
+  "action_kind": "mcp.v12-selected-expansion.tool.echo.5fe4ac9d1b46",
+  "capability_id": "cap.mcp.v12-selected-expansion.tool.echo.5fe4ac9d1b46",
+  "contract_version": "jarvis.v12.selected-mcp-adoption-proof.v1",
+  "disposable": true,
+  "duplicate_registrations": 0,
+  "duplicate_resumes": 0,
+  "duplicate_wakes": 0,
+  "live_mutated": false,
+  "main_or_origin_mutated": false,
+  "passed": true,
+  "probation": true,
+  "registration_count": 1,
+  "restart_replayed_same_receipt": true,
+  "resume_count": 1,
+  "runtime": "jarvis_foundry.mcp_backend.FabricMcpBackend",
+  "second_mcp_runtime": false,
+  "trial_mode": "FABRIC_MCP_INVOCATION",
+  "wake_count": 1,
+  "worker_dispatch": {
+    "evidence": [
+      "fabric:mcp.v12-selected-expansion.tool.echo.5fe4ac9d1b46",
+      "verified:MATCH",
+      "capability:cap.mcp.v12-selected-expansion.tool.echo.5fe4ac9d1b46",
+      "receipt:receipt:effect:03eaf278206cce37fc01cc4bfc402be52f80a4e6649f487b6556dccb5ef04e77:attempt:1",
+      "effect:effect:03eaf278206cce37fc01cc4bfc402be52f80a4e6649f487b6556dccb5ef04e77"
+    ],
+    "inner_dispatches": 0,
+    "provider": "fabric",
+    "status": "COMPLETED"
+  }
+}
