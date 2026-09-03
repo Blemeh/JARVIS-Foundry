@@ -13,8 +13,8 @@ V11_EXIT, activate V12, modify production, start A4/48H, or change main.
 V11 BASE SHA:        afddb8d5ca3d5c3459a4f5394e84affb92d13738
 BRANCH:              candidate/v12-final-product-convergence-20260903
 WORKTREE:            C:\temp\JARVIS-V12-Final-Product-Convergence-20260903
-SOURCE SHA:          78922410127de74a37b1aa7cdde3ab144f49ea5c
-EVIDENCE SHA:        90ab7da4820666e195c9d7c4bbf46f385d101597
+SOURCE SHA:          50e5a65efd761fe45e4afb23024633170451454f
+EVIDENCE SHA:        19087d982e240bd9bf78ccec602a764966562aa2
 SCHEMA:              v40
 MAIN / ORIGIN MAIN:  2905c206fed0461bf3085bc0cb43773be913300a
 LIVE MUTATED:        NO
@@ -106,7 +106,9 @@ findings and one expected documentation finding:
    as literals instead of measuring the ledger.
 4. Current-state documentation still described the earlier V11 freeze.
 
-Source `7892241...` repairs the product findings:
+Source `7892241...` repairs the product findings. Source `50e5a65...` also
+preserves worker-loop cleanup compatibility with legacy stack-shaped adapters
+while the canonical `WorkerStack` still owns and closes its MCP backend:
 
 - `build_worker_stack()` reconstructs active durable adoptions into one
   `FabricMcpBackend`, passes it through the canonical Hybrid worker/Fabric
@@ -129,16 +131,16 @@ Primary evidence:
 `evidence/v12-final-product-convergence/proof.json`
 
 SHA-256:
-`5be3ff13e8082187d7c78e027ade45e30499ecfc30a025a6c97b7fbb9e835677`
+`5480c406f856ec8d1bb7cb7b52c02b12c570142f51660fa7ae7cc3b426792739`
 
 Child receipts:
 
 - `a5-self-expansion.json`:
-  `16ec139273773855db3f429ce8da9e9dd7b1afeddf33cba532f4ada7ccd13652`
+  `b86ab13c6c3377694977a2245b6f376b151ef4b05cbd24cbe633f6573504d4c2`
 - `a6-endurance.json`:
-  `df8538e007435aedd1e564a61b4d3281e1a29cd1b0920c55da27f247795005e1`
+  `e95e1e77fd3170bd4d42a187dae73f352b71747673ba88a41bcee9d387aa08f9`
 - `mcp-backend.json`:
-  `c2b6224839f55ee668696b7ece456aadeaa9907d84fb28c558cccf9bce23d8ae`
+  `72564d5dd2475ce1c57f78a1aa7c74f9706e673b6c1bca5e996108a6eb2587d6`
 - `selected-mcp-adoption.json`:
   `4a976a07a61c27f1bc5152dbebe66d4c91b9c8b7374f89e407a68301c286c233`
 
@@ -176,8 +178,8 @@ UNRECONCILED ACCEPTED EFFECTS:  0
 - `compileall`: PASS.
 - `git diff --check`: PASS.
 - Source-bound A5/A6/MCP proof: PASS.
-- Full canonical Foundry suite: `PENDING_POST_PIN`.
-- Fresh final independent verifier: `PENDING_POST_PIN`.
+- Full canonical Foundry suite: `PENDING_FINAL_CLEAN_RERUN`.
+- Fresh final independent verifier: `PENDING_FINAL_REVIEW`.
 - Documentation staleness: `PENDING_POST_PIN`.
 
 ## Gmail

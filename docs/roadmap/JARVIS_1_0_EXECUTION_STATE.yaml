@@ -25,8 +25,8 @@ meta:
 observed_repo_state:
   canonical_main: "2905c206fed0461bf3085bc0cb43773be913300a"
   canonical_main_summary: "docs: record V10 live closure and open V11 A2"
-  candidate_source: "78922410127de74a37b1aa7cdde3ab144f49ea5c"
-  candidate_evidence: "90ab7da4820666e195c9d7c4bbf46f385d101597"
+  candidate_source: "50e5a65efd761fe45e4afb23024633170451454f"
+  candidate_evidence: "19087d982e240bd9bf78ccec602a764966562aa2"
   candidate_branch: "candidate/v12-final-product-convergence-20260903"
   candidate_worktree: "C:\\temp\\JARVIS-V12-Final-Product-Convergence-20260903"
   current_schema: v40            # isolated V12 candidate migrations.SCHEMA_VERSION
@@ -92,18 +92,20 @@ observed_repo_state:
   v12_final_product_convergence:
     status: V12_FINAL_SOURCE_CANDIDATE_BUILD_AHEAD_NOT_ACTIVATED
     v11_base: "afddb8d5ca3d5c3459a4f5394e84affb92d13738"
-    source_tip: "78922410127de74a37b1aa7cdde3ab144f49ea5c"
-    evidence_tip: "90ab7da4820666e195c9d7c4bbf46f385d101597"
+    source_tip: "50e5a65efd761fe45e4afb23024633170451454f"
+    evidence_tip: "19087d982e240bd9bf78ccec602a764966562aa2"
     branch: "candidate/v12-final-product-convergence-20260903"
     worktree: "C:\\temp\\JARVIS-V12-Final-Product-Convergence-20260903"
     schema: v40
     proof: "evidence/v12-final-product-convergence/proof.json"
-    proof_sha256: "5be3ff13e8082187d7c78e027ade45e30499ecfc30a025a6c97b7fbb9e835677"
+    proof_sha256: "5480c406f856ec8d1bb7cb7b52c02b12c570142f51660fa7ae7cc3b426792739"
     endurance_input: "49b2c2337a0579519d0b782a5a260673079eb398 / implementation 43da572ca0fb24ae82222cdd02c2e23a76bf95f6"
     self_expansion_input: "e159437daeca4f5c5008bf0345adfeafae469c66 / source ceede0eeb766216765add95525f840f9ac382224"
     mcp_effects_input: "1d72dbfe7af40e35d37ce20edacc6bfaeb8badd6 / implementation b730b708451b0399165e8adbdb037150126cc6c1"
     a5_disposable: PASS_BUILD_AHEAD_GATE_NOT_CLOSED
     a6_disposable: PASS_BUILD_AHEAD_GATE_NOT_CLOSED
+    canonical_suite: PENDING_FINAL_CLEAN_RERUN
+    independent_verifier: PENDING_FINAL_REVIEW
     integrity: "zero duplicate missions/effects/registrations/wakes/resumes, zero false successes, zero unreconciled accepted effects"
     gmail: "read DEFERRED_BY_OWNER; send DEFERRED_BY_OWNER; observation DISABLED"
     note: "source-only convergence; no promotion, activation, live mutation, V11 gate closure, or 48-hour start"
@@ -151,8 +153,8 @@ capability_flags:
     state: V12_FINAL_SOURCE_CANDIDATE_NOT_LIVE
     reason: "one source candidate integrates Endurance, Self-Expansion, MCP, and canonical effects; disposable A5/A6-style proof passed with all integrity counters zero, but V11 hard entry is not met"
     base: "afddb8d5ca3d5c3459a4f5394e84affb92d13738"
-    source: "78922410127de74a37b1aa7cdde3ab144f49ea5c"
-    evidence: "90ab7da4820666e195c9d7c4bbf46f385d101597"
+    source: "50e5a65efd761fe45e4afb23024633170451454f"
+    evidence: "19087d982e240bd9bf78ccec602a764966562aa2"
     evidence_root: "evidence/v12-final-product-convergence"
   self_expansion:
     state: IMPLEMENTED_DISPOSABLE_PROVED_CANDIDATE_NOT_LIVE
@@ -233,8 +235,8 @@ update_log:
     change: "V12 final product source candidate semantically integrated Endurance, Self-Expansion, and MCP/Effects on exact V11 proof state; source-bound disposable A5/A6/MCP proof passed with all integrity counters zero; execution pointer remains V11 A3/A4 BLOCKED_BY_PROVIDER"
     session: "candidate/v12-final-product-convergence-20260903"
     predecessor_sha: "afddb8d5ca3d5c3459a4f5394e84affb92d13738"
-    source_tip: "78922410127de74a37b1aa7cdde3ab144f49ea5c"
-    evidence_tip: "90ab7da4820666e195c9d7c4bbf46f385d101597"
+    source_tip: "50e5a65efd761fe45e4afb23024633170451454f"
+    evidence_tip: "19087d982e240bd9bf78ccec602a764966562aa2"
     schema: v40
     evidence_root: "evidence/v12-final-product-convergence"
   - date: "2026-09-03"
