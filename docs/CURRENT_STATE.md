@@ -11,7 +11,7 @@ The A3 bridge is integrated and the candidate-neutral A3/A4 runner is ready;
 real A3, immediate A4, and the 48-hour elapsed gate are still pending at this
 documentation boundary. V10 remains live and unchanged.
 
-DOCUMENTATION STATE BASE SHA: `5f8646289c8d4cdc8ddb27bc688ce9141d8cc973`
+DOCUMENTATION STATE BASE SHA: `ea6be6ddebe21f95f10021db4b1972b2dcf2c00a`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`.
@@ -30,8 +30,8 @@ v34 live baseline:            historical predecessor retained for migration proo
 V10 STATUS:                   CLOSED
 V10 EXIT GATE:                PASSED
 CURRENT PHASE:                V11_INITIATIVE
-CURRENT GATE:                 A3_A4_EXIT / PROOF_READY
-EXECUTION STATUS:             V11_INITIATIVE / A3_A4_EXIT / PROOF_READY
+CURRENT GATE:                 A3_A4_EXIT / BLOCKED_BY_PROVIDER
+EXECUTION STATUS:             V11_INITIATIVE / A3_A4_EXIT / BLOCKED_BY_PROVIDER
 V11 STARTED:                  YES (candidate only)
 V11 COMPLETE:                 NO (A3 real-provider and A4 endurance gates remain)
 V11 PROMOTED/LIVE:            NO
@@ -44,7 +44,7 @@ OUTCOME-TRUTH INPUT SHA:      02e62a85a50bd642a1abdc6e415a2215ac5d2689
 AUTHORITATIVE V11 INPUT:      ae9ac06b6f9174c810b0e658daaf81c7b683ae8b
 SOURCE FREEZE:                f7cee034384ac191dfbac9f910dd6f6d3eb520d4
 A3/A4 HARNESS INPUT:          3716294bf7d104f03e1fa2d990b2a28654ada1cb
-EXIT-PROOF SOURCE SHA:        5f8646289c8d4cdc8ddb27bc688ce9141d8cc973
+EXIT-PROOF SOURCE SHA:        ea6be6ddebe21f95f10021db4b1972b2dcf2c00a
 TRAINING-TIER POLICY:         OWNER_AUTHORIZED / CANONICAL CONFIG ENABLED
 ```
 
@@ -54,7 +54,7 @@ The isolated proof candidate is branch `candidate/v11-exit-proof-20260903` in
 `C:\temp\JARVIS-V11-Exit-Proof-20260903`. It starts from the exact overnight
 candidate `ae9ac06b6f9174c810b0e658daaf81c7b683ae8b`, retains source freeze
 `f7cee034384ac191dfbac9f910dd6f6d3eb520d4`, and remains schema v40. Exit-proof
-implementation source is `5f8646289c8d4cdc8ddb27bc688ce9141d8cc973`;
+implementation source is `ea6be6ddebe21f95f10021db4b1972b2dcf2c00a`;
 the final proof SHA is the clean docs-only commit immediately following that
 source, as enforced by `scripts/doc_staleness_check.py`.
 
@@ -101,6 +101,14 @@ bounded retries. It created no effect or accepted completion. The observer now
 uses Python comment tokens and anchored markers, and the pinned Ruff receipt
 truthfully establishes `cap.system.diagnose`; all affected proof restarts from
 the new exact SHA.
+
+The repaired cold restart against `0cb5b21ea4731e36179e5c7b8e1afd951be8b37f`
+produced the intended 13-candidate ledger (12 rejected, one selected) but the
+same provider returned HTTP 500 after three retries, again with zero effects.
+An isolated no-tools `PROBE_OK` request reproduced the HTTP 500, ruling out
+repository context or mission size. A snapshot-only schema label was also
+corrected to read the canonical `schema_migrations` authority (v40), not
+SQLite's unused `user_version`; the database schema itself did not change.
 
 Accepted final mission outcomes now feed calibration, World Intelligence, and
 Tier-C memory exactly once by outcome identity. Failed and blocked outcomes
@@ -353,9 +361,10 @@ documentation staleness check must remain green.
 
 ## Next authorized action
 
-Run the genuine cold A3 flagship against the final clean proof SHA, then the
-immediate six-point A4 campaign. Only after both pass, start the separately
-prepared 48-hour runner with `--allow-48h` against that same SHA. Until the
-elapsed gate completes, V11 exit remains pending. Only a later, separate
-owner-authorized promotion gate may consider live state; this candidate is not
-promotion authority or production trust.
+When the configured provider becomes available, restart the genuine cold A3
+flagship against the final clean proof SHA; no further owner consent is needed.
+Then run the immediate six-point A4 campaign. Only after both pass, start the
+separately prepared 48-hour runner with `--allow-48h` against that same SHA.
+Until the elapsed gate completes, V11 exit remains pending. Only a later,
+separate owner-authorized promotion gate may consider live state; this
+candidate is not promotion authority or production trust.
