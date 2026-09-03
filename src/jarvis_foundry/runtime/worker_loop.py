@@ -1785,7 +1785,9 @@ def run_cycle(
         return result
     finally:
         if stack is not None:
-            stack.close()
+            close_stack = getattr(stack, "close", None)
+            if callable(close_stack):
+                close_stack()
         leases.release(LOOP_LEASE_KEY, instance_id)
 
 
