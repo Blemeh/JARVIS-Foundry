@@ -1,0 +1,78 @@
+{
+  "adapter_action": {
+    "claimed": "COMPLETED",
+    "readback_matches": true,
+    "receipt_id": "receipt:effect:cc511df088711e1325b31155201892687fba7887942d1e37abd901f3605b5731:attempt:1",
+    "verified": "MATCH"
+  },
+  "adapter_protocol": "jarvis.capability.adapter.v1",
+  "attempt_dispatched_count": 1,
+  "attempt_id_after_restart": "expansion-attempt-30feaba818df900b7a6f9c13",
+  "attempt_id_before_stop": "expansion-attempt-30feaba818df900b7a6f9c13",
+  "attempt_started_count": 1,
+  "contract_version": "jarvis.v12.self-expansion-proof.v1",
+  "discovery": {
+    "candidate_count": 73,
+    "external_results_authority": "DATA_ONLY",
+    "first_failed_candidate_id": "sol-6f1c7a497b2d5fd2eab1ef5a",
+    "reuse_order": [
+      "FABRIC_CATALOG",
+      "JARVIS_SOURCE",
+      "JARVIS_GIT",
+      "EXTERNAL",
+      "CUSTOM_BUILD"
+    ],
+    "search_stages": [
+      "FABRIC_CATALOG",
+      "JARVIS_SOURCE",
+      "JARVIS_GIT",
+      "EXTERNAL"
+    ],
+    "selected_candidate_id": "sol-8fbf6ecdec66eed338c0b3ff"
+  },
+  "disposable": true,
+  "duplicate_gaps": 0,
+  "duplicate_registrations": 0,
+  "duplicate_trials": 0,
+  "failed_trial_catalog_unchanged": true,
+  "gap_count": 1,
+  "gap_id": "cap-gap-a6b6358972de760573d19077",
+  "independent_trial_verification": "PASS",
+  "live_mutated": false,
+  "main_or_origin_mutated": false,
+  "mission_final_state": "COMPLETE",
+  "mission_id": "mission-103101d91be5",
+  "mission_pass_verdicts": 2,
+  "nested_expansion_count": 0,
+  "objective_final_status": "COMPLETED",
+  "objective_id": "objective-v12-self-expansion",
+  "passed": true,
+  "probation": true,
+  "registration_count": 1,
+  "registration_id": "fabric-registration:artifact-trial:818a2e92042fc42022c06a70",
+  "resume_count": 1,
+  "rollback": {
+    "catalog_after_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "catalog_before_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "restored": true,
+    "stale_receipt_failed_closed": "ADOPTION_NO_LONGER_ACTIVE",
+    "status": "RESTORED"
+  },
+  "runner": {
+    "command": [
+      "C:\\Python313\\Scripts\\pytest.EXE",
+      "-q",
+      "tests/foundry/test_v12_self_expansion_convergence.py"
+    ],
+    "returncode": 0,
+    "stdout": ".                                                                        [100%]"
+  },
+  "sqlite_quick_check": "ok",
+  "stop_paused_before_bridge_receipt": true,
+  "trial_count": 2,
+  "trial_ids": [
+    "trial:6cd26caefee7db02136697f0",
+    "trial:818a2e92042fc42022c06a70"
+  ],
+  "wake_count": 1
+}
