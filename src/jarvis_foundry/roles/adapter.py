@@ -42,8 +42,63 @@ from .results import (
 )
 
 
-class ProviderUnavailable(RuntimeError):
-    """The requested provider cannot serve a session right now."""
+class ProviderFailure(RuntimeError):
+    """Classified provider failure crossing the single adapter boundary."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        failure_class: str = "OUTAGE",
+        retryable: bool = False,
+        retry_after_seconds: float | None = None,
+        possible_effect: bool = False,
+        effect_action_key: str | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.failure_class = str(failure_class or "OUTAGE").upper()
+        self.retryable = bool(retryable)
+        self.retry_after_seconds = retry_after_seconds
+        self.possible_effect = bool(possible_effect)
+        self.effect_action_key = effect_action_key
+
+
+class ProviderUnavailable(ProviderFailure):
+    """Backward-compatible outage exception used by existing adapters."""
+
+    def __init__(self, message: str, **kwargs: Any) -> None:
+        kwargs.setdefault("failure_class", "OUTAGE")
+        super().__init__(message, **kwargs)
+
+
+def classify_provider_failure(text: str) -> str:
+    """Classify known provider/transport refusal text without guessing PASS."""
+
+    lowered = str(text or "").lower()
+    if any(token in lowered for token in (
+        "allow_data_training_tiers_noninteractive", "data training",
+        "privacy policy", "policy blocked", "interactive required",
+    )):
+        return "BLOCKED_POLICY"
+    if any(token in lowered for token in (
+        "http 429", "rate limit", "rate-limit", "too many requests", "quota",
+    )):
+        return "RATE_LIMITED"
+    if any(token in lowered for token in (
+        "not supported", "unsupported model", "incompatible", "context length",
+        "payload too large", "invalid tool call", "output length limit",
+    )):
+        return "INCOMPATIBLE"
+    if any(token in lowered for token in (
+        "billing", "credits exhausted", "insufficient funds", "budget",
+    )):
+        return "COST_BLOCKED"
+    if any(token in lowered for token in (
+        "timeout", "timed out", "connection", "network", "unavailable",
+        "could not launch", "http 5",
+    )):
+        return "OUTAGE"
+    return "DEGRADED"
 
 
 class AdapterConfigurationError(RuntimeError):
@@ -307,8 +362,12 @@ class HermesOneshotAdapter:
             # engages the provider fallback chain; with no fallback
             # configured the step lands in an honest
             # BLOCKED/provider_unavailable state (WP8 F5/F6).
-            raise ProviderUnavailable(
-                f"oneshot reported provider failure (exit 0): {first_line[:200]}")
+            failure_class = classify_provider_failure(first_line)
+            raise ProviderFailure(
+                f"oneshot reported provider failure (exit 0): {first_line[:200]}",
+                failure_class=failure_class,
+                retryable=failure_class in {"OUTAGE", "DEGRADED"},
+            )
         # DIR-2026-08-12 verifier truth: the verdict must be an EXPLICIT
         # STRUCTURED VERDICT in the session output, never the exit code.
         # Missing/ambiguous output is NOT_TESTED — never PASS.

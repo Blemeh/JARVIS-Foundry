@@ -332,6 +332,7 @@ def main(argv: list[str] | None = None) -> int:
         spawn_worker_loop=bool(args.spawn_worker_loop or authority.spawn_worker_loop),
         worker_loop_config=getattr(args, "worker_loop_config", None) or authority.worker_yaml,
         provider_settings=authority.provider_settings,
+        provider_settings_pool=authority.provider_settings_pool,
         resilience=_resilience_coordinator(
             database, getattr(args, "worker_loop_config", None)),
         command_center_port=getattr(args, "command_center_port", None),

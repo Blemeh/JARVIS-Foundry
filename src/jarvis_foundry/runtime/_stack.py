@@ -20,6 +20,16 @@ from ..workers.adapters.openhands import OpenHandsWorkerAdapter
 from ..workers.adapters.registry import WorkerRegistry
 from ..workers.mission_bridge import HybridWorkerRoleAdapter
 from ..workers.router import READY, NOT_READY, WorkerRouter
+from ..roles.router import ProviderRouteCandidate
+from ..fabric.model import UnattendedMode
+from ..fabric.providers import unattended_mode_for
+from .provider_registry import (
+    ProviderReadiness,
+    latest_provider_readiness,
+    provider_profile,
+    record_provider_profile,
+    record_provider_readiness,
+)
 from .config import WorkerRuntimeConfig
 from .authority import require_existing_executable
 
@@ -34,6 +44,112 @@ class WorkerStack:
     stop_path: Path | None = None
     pid_table: Path | None = None
     workers: WorkerController | None = None
+    provider_candidates: tuple[ProviderRouteCandidate, ...] = ()
+
+
+def _provider_candidates(
+    database: FoundryDatabase,
+    config: WorkerRuntimeConfig,
+) -> tuple[ProviderRouteCandidate, ...]:
+    """Build routing observations from the existing registry + ledger."""
+
+    if not config.provider_resilience_enabled:
+        return ()
+    raw = dict(config.provider_resilience or {})
+    profiles = raw.get("profiles") or {}
+    if not isinstance(profiles, dict):
+        raise ValueError("provider_resilience.profiles must be a mapping")
+    candidates: list[ProviderRouteCandidate] = []
+    for settings in config.provider_settings_pool:
+        override = profiles.get(settings.provider) or {}
+        if not isinstance(override, dict):
+            raise ValueError(
+                f"provider profile {settings.provider!r} must be a mapping")
+        static = provider_profile(settings.provider, settings.model)
+        profile = record_provider_profile(
+            database,
+            provider_id=settings.provider,
+            model=settings.model,
+            profile_overrides=override,
+            source_id="worker-runtime-provider-profile",
+        )
+        observed = latest_provider_readiness(
+            database, settings.provider, settings.model)
+        configured_state = str(override.get("readiness") or "UNKNOWN").upper()
+        evidence = tuple(str(item) for item in override.get("evidence_refs") or ())
+        if observed is None and configured_state in {
+            state.value for state in ProviderReadiness
+        }:
+            # READY/DEGRADED require positive evidence.  Negative states may
+            # be configured explicitly so an unavailable provider is never
+            # probed merely because credentials exist.
+            if configured_state not in {"READY", "DEGRADED"} or evidence:
+                observed = record_provider_readiness(
+                    database,
+                    provider_id=settings.provider,
+                    model=settings.model,
+                    readiness=configured_state,
+                    reason=str(override.get("readiness_reason") or "runtime configuration"),
+                    evidence_refs=evidence,
+                    notify_wakes=False,
+                    source_id="worker-runtime-provider-profile",
+                )
+        readiness = str((observed or {}).get("readiness") or "UNKNOWN").upper()
+        if static.get("known_model") is False:
+            readiness = "INCOMPATIBLE"
+        # One existing Hermes policy knob remains authoritative.  Provider
+        # profile data cannot auto-enable training-tier noninteractive use.
+        consent = config.hermes.get(
+            "allow_data_training_tiers_noninteractive")
+        unattended_mode = unattended_mode_for(
+            settings,
+            hermes_noninteractive_consent=(
+                bool(consent) if consent is not None else None),
+        )
+        auth_state = str(
+            override.get("auth_state")
+            or ("READY" if settings.api_key else "UNAVAILABLE")
+        ).upper()
+        if readiness in {"READY", "DEGRADED"}:
+            health = "READY" if readiness == "READY" else "DEGRADED"
+            availability = "AVAILABLE"
+        else:
+            health = readiness
+            availability = readiness
+        data_class = str(
+            profile.get("data_use_classification") or "UNKNOWN_POLICY")
+        if data_class == "UNKNOWN":
+            data_class = "UNKNOWN_POLICY"
+        candidates.append(ProviderRouteCandidate(
+            provider=settings.provider,
+            model=settings.model,
+            capabilities=tuple(str(item) for item in profile.get("capabilities") or ()),
+            task_classes=tuple(str(item) for item in profile.get("task_classes") or ()),
+            tool_support=tuple(str(item) for item in profile.get("tool_support") or ()),
+            context_window_tokens=profile.get("context_window_tokens"),
+            latency_ms=(
+                float(override["latency_ms"])
+                if override.get("latency_ms") is not None else None),
+            reliability=(
+                float(override["reliability"])
+                if override.get("reliability") is not None else None),
+            cost_usd=(
+                float(profile["estimated_cost_usd"])
+                if profile.get("estimated_cost_usd") is not None else None),
+            health=health,
+            auth_state=auth_state,
+            availability=availability,
+            readiness=readiness,
+            data_use_classification=data_class,
+            noninteractive_allowed=(unattended_mode is UnattendedMode.ALLOWED),
+            owner_allowed=bool(override.get("owner_allowed", True)),
+            limits=dict(profile.get("limits") or {}),
+            evidence_refs=tuple(dict.fromkeys([
+                *evidence,
+                *(str(item) for item in (observed or {}).get("evidence_refs") or ()),
+            ])),
+        ))
+    return tuple(candidates)
 
 
 def _resolve_root(raw: str | None, run_id: str, *, kind: str, home: Path) -> Path:
@@ -94,6 +210,10 @@ def build_worker_stack(
     stop_path = config.resolve_stop_path(paths.home)
     pid_table = paths.home / "adapter_worker_pids.json"
     workers = WorkerController(database)
+    provider_candidates = _provider_candidates(database, config)
+    provider_settings_by_id = {
+        item.provider: item for item in config.provider_settings_pool
+    }
     router = WorkerRouter()
     registry = WorkerRegistry()
     enabled: list[str] = []
@@ -140,6 +260,7 @@ def build_worker_stack(
                 pid_table=pid_table,
                 workers=workers,
                 provider_settings=config.provider_settings,
+                provider_settings_by_id=provider_settings_by_id,
             ),
         )
         enabled.append("hermes")
@@ -160,6 +281,7 @@ def build_worker_stack(
                 pid_table=pid_table,
                 workers=workers,
                 provider_settings=config.provider_settings,
+                provider_settings_by_id=provider_settings_by_id,
             ),
         )
         enabled.append("openhands")
@@ -209,4 +331,5 @@ def build_worker_stack(
         bridge=bridge, router=router, registry=registry,
         disposable_root=run_root, enabled_frameworks=tuple(enabled),
         stop_path=stop_path, pid_table=pid_table, workers=workers,
+        provider_candidates=provider_candidates,
     )

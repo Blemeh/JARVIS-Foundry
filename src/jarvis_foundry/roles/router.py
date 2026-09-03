@@ -140,6 +140,8 @@ class ProviderRouteCandidate:
     provider: str
     model: str
     capabilities: tuple[str, ...] = field(default_factory=tuple)
+    task_classes: tuple[str, ...] = field(default_factory=tuple)
+    tool_support: tuple[str, ...] = field(default_factory=tuple)
     context_window_tokens: int | None = None
     latency_ms: float | None = None
     reliability: float | None = None
@@ -147,6 +149,11 @@ class ProviderRouteCandidate:
     health: str = "UNKNOWN"
     auth_state: str = "UNKNOWN"
     availability: str = "UNKNOWN"
+    readiness: str = "UNKNOWN"
+    data_use_classification: str = "UNKNOWN"
+    noninteractive_allowed: bool | None = None
+    owner_allowed: bool = True
+    limits: dict[str, Any] = field(default_factory=dict)
     evidence_refs: tuple[str, ...] = field(default_factory=tuple)
 
 
@@ -156,13 +163,18 @@ class RoutingRequest:
 
     task_type: str
     required_capabilities: tuple[str, ...] = field(default_factory=tuple)
+    required_tools: tuple[str, ...] = field(default_factory=tuple)
     reasoning: str = "standard"
+    unattended: bool = True
     context_tokens: int | None = None
     latency_budget_ms: float | None = None
     reliability_floor: float | None = None
     max_cost_usd: float | None = None
     preferred_provider: str | None = None
     strict_identity: tuple[str, str] | None = None
+    allowed_providers: tuple[str, ...] = field(default_factory=tuple)
+    denied_providers: tuple[str, ...] = field(default_factory=tuple)
+    allowed_data_use: tuple[str, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True, slots=True)
@@ -199,6 +211,8 @@ def _candidate_dict(candidate: ProviderRouteCandidate) -> dict[str, Any]:
         "provider": candidate.provider,
         "model": candidate.model,
         "capabilities": list(candidate.capabilities),
+        "task_classes": list(candidate.task_classes),
+        "tool_support": list(candidate.tool_support),
         "context_window_tokens": candidate.context_window_tokens,
         "latency_ms": candidate.latency_ms,
         "reliability": candidate.reliability,
@@ -206,6 +220,11 @@ def _candidate_dict(candidate: ProviderRouteCandidate) -> dict[str, Any]:
         "health": candidate.health,
         "auth_state": candidate.auth_state,
         "availability": candidate.availability,
+        "readiness": candidate.readiness,
+        "data_use_classification": candidate.data_use_classification,
+        "noninteractive_allowed": candidate.noninteractive_allowed,
+        "owner_allowed": candidate.owner_allowed,
+        "limits": dict(candidate.limits),
         "evidence_refs": list(candidate.evidence_refs),
     }
 
@@ -235,6 +254,7 @@ def route_provider_candidates(
         preferred = request.strict_identity[0]
     candidates_list.sort(key=lambda item: (
         0 if preferred and item.provider == preferred else 1,
+        0 if item.readiness.upper() == "READY" else 1,
         -float(item.reliability) if item.reliability is not None else 0.0,
         float(item.latency_ms) if item.latency_ms is not None else math.inf,
         float(item.cost_usd) if item.cost_usd is not None else math.inf,
@@ -246,11 +266,52 @@ def route_provider_candidates(
     for candidate in candidates_list:
         reason: str | None = None
         failure_class: str | None = None
-        if request.strict_identity is not None and (
+        readiness = str(candidate.readiness or "UNKNOWN").upper()
+        if not candidate.owner_allowed:
+            reason, failure_class = "provider is blocked by owner restriction", "OWNER_RESTRICTED"
+        elif request.allowed_providers and candidate.provider not in set(request.allowed_providers):
+            reason, failure_class = "provider is outside the owner-allowed set", "OWNER_RESTRICTED"
+        elif candidate.provider in set(request.denied_providers):
+            reason, failure_class = "provider is explicitly owner-restricted", "OWNER_RESTRICTED"
+        elif request.strict_identity is not None and (
             candidate.provider, candidate.model
         ) != request.strict_identity:
             reason, failure_class = "strict directive identity mismatch", "DIRECTIVE_MISMATCH"
-        elif candidate.health not in {"HEALTHY", "READY"}:
+        elif readiness == "BLOCKED_POLICY":
+            reason, failure_class = "provider is blocked by data-use/privacy policy", "BLOCKED_POLICY"
+        elif readiness == "INCOMPATIBLE":
+            reason, failure_class = "provider/model is incompatible", "INCOMPATIBLE"
+        elif readiness == "RATE_LIMITED":
+            reason, failure_class = "provider is rate limited", "RATE_LIMITED"
+        elif readiness == "OUTAGE":
+            reason, failure_class = "provider is in outage", "OUTAGE"
+        elif readiness not in {"UNKNOWN", "READY", "DEGRADED"}:
+            reason, failure_class = f"provider readiness is {readiness}", "PROVIDER_UNAVAILABLE"
+        elif (
+            request.unattended
+            and candidate.data_use_classification != "UNKNOWN"
+            and candidate.noninteractive_allowed is not True
+        ):
+            reason, failure_class = (
+                "provider is not policy-cleared for noninteractive use",
+                "BLOCKED_POLICY",
+            )
+        elif request.allowed_data_use and (
+            candidate.data_use_classification not in set(request.allowed_data_use)
+        ):
+            reason, failure_class = (
+                f"data-use class {candidate.data_use_classification} is not allowed",
+                "BLOCKED_POLICY",
+            )
+        elif candidate.task_classes and (
+            request.task_type not in candidate.task_classes
+            and "*" not in candidate.task_classes
+        ):
+            reason, failure_class = (
+                f"task class {request.task_type} is not supported",
+                "INCOMPATIBLE",
+            )
+        elif readiness == "UNKNOWN" and candidate.health not in {"HEALTHY", "READY"}:
             health_class = "HEALTH_UNKNOWN" if candidate.health == "UNKNOWN" else "HEALTH_UNAVAILABLE"
             reason, failure_class = f"health is {candidate.health}", health_class
         elif candidate.auth_state not in {"READY", "CONFIGURED"}:
@@ -266,6 +327,14 @@ def route_provider_candidates(
                 reason, failure_class = (
                     f"missing capabilities: {', '.join(missing)}",
                     "CAPABILITY_MISMATCH",
+                )
+        if reason is None and request.required_tools:
+            declared_tools = set(candidate.tool_support)
+            missing_tools = sorted(set(request.required_tools) - declared_tools)
+            if missing_tools:
+                reason, failure_class = (
+                    f"missing tool support: {', '.join(missing_tools)}",
+                    "INCOMPATIBLE",
                 )
         if reason is None and request.context_tokens is not None:
             if candidate.context_window_tokens is None:
@@ -320,6 +389,7 @@ def route_provider_candidates(
         "HEALTH_UNAVAILABLE", "HEALTH_UNKNOWN", "AUTH_UNAVAILABLE", "AUTH_UNKNOWN",
         "PROVIDER_UNAVAILABLE", "PROVIDER_UNKNOWN",
         "CONTEXT_UNKNOWN", "LATENCY_UNKNOWN", "RELIABILITY_UNKNOWN", "COST_UNKNOWN",
+        "RATE_LIMITED", "OUTAGE",
     }
     failures = [item.get("failure_class") for item in rejected]
     if any(item in unknown_classes for item in failures):
@@ -327,9 +397,17 @@ def route_provider_candidates(
     else:
         status = "BLOCKED"
     first = rejected[0] if rejected else {}
+    priority = (
+        "BLOCKED_POLICY", "OWNER_RESTRICTED", "INCOMPATIBLE", "RATE_LIMITED",
+        "OUTAGE", "PROVIDER_UNAVAILABLE", "PROVIDER_UNKNOWN",
+    )
+    chosen_failure = next(
+        (item for name in priority for item in failures if item == name),
+        first.get("failure_class") or "NO_ELIGIBLE_PROVIDER",
+    )
     return RoutingDecision(
         status, None, (), tuple(rejected),
-        str(first.get("failure_class") or "NO_ELIGIBLE_PROVIDER"),
+        str(chosen_failure),
         "no candidate satisfied the requested capability and operating constraints",
         evidence_refs=tuple(dict.fromkeys(
             ref for item in candidates_list for ref in item.evidence_refs)),
@@ -434,18 +512,28 @@ class RoleRouter:
             RoutingRequest(
                 task_type=request.task_type,
                 required_capabilities=tuple(required),
+                required_tools=request.required_tools,
                 reasoning=request.reasoning,
+                unattended=request.unattended,
                 context_tokens=request.context_tokens,
                 latency_budget_ms=request.latency_budget_ms,
                 reliability_floor=request.reliability_floor,
                 max_cost_usd=request.max_cost_usd,
                 preferred_provider=preferred,
                 strict_identity=request.strict_identity,
+                allowed_providers=request.allowed_providers,
+                denied_providers=request.denied_providers,
+                allowed_data_use=request.allowed_data_use,
             ),
             candidates,
         )
 
-    def enforce_directive_routing(self) -> None:
+    def enforce_directive_routing(
+        self,
+        *,
+        allow_safe_fallbacks: bool = False,
+        allowed_providers: tuple[str, ...] = (),
+    ) -> None:
         """Reject any configuration that deviates from DIR-2026-08-12.
 
         Every role must resolve to exactly ``DIRECTIVE_PROVIDER`` +
@@ -456,19 +544,31 @@ class RoleRouter:
         live loop drivers) BEFORE any mutation or dispatch.
         """
         authority = self._provider_settings
+        allowed = set(allowed_providers)
         offenders = sorted(
             role for role, cfg in self._roles.items()
             if cfg.preferred_provider != authority.provider
             or cfg.preferred_model != authority.model
-            or bool(cfg.fallbacks)
+            or (
+                bool(cfg.fallbacks)
+                and (
+                    not allow_safe_fallbacks
+                    or not set(cfg.fallbacks).issubset(allowed)
+                )
+            )
         )
         if offenders:
             raise RoleConfigurationError(
                 "DIR-2026-08-12 mandatory model routing violated for roles "
                 f"{offenders}: every real JARVIS role must resolve to "
                 f"provider={authority.provider!r} model={authority.model!r} "
-                "with no fallbacks; a non-compliant role must be recorded "
-                "BLOCKED, never substituted with another model")
+                + (
+                    "; only the explicitly configured V12 provider pool may "
+                    "supply capability/policy-safe fallbacks"
+                    if allow_safe_fallbacks else
+                    " with no fallbacks; a non-compliant role must be recorded "
+                    "BLOCKED, never substituted with another model"
+                ))
 
     def prefer_diversity(self) -> bool:
         """Provider diversity (builder != verifier) is the standing preference.

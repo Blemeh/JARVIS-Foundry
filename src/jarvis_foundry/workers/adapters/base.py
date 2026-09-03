@@ -10,6 +10,7 @@ from ..contracts import WorkerStepContract
 from ..envelope import ResultEnvelope
 
 from ...runtime.provider_config import ProviderSettings
+from ...roles.adapter import ProviderFailure, ProviderUnavailable
 
 if TYPE_CHECKING:
     from ...supervisor.worker import WorkerController
@@ -17,10 +18,6 @@ if TYPE_CHECKING:
 #: STOP is polled independently of lease heartbeat. A 30s heartbeat
 #: interval must not become a 30s STOP detection delay.
 STOP_POLL_SECONDS = 1.0
-
-
-class ProviderUnavailable(RuntimeError):
-    """The requested provider cannot serve a worker session right now."""
 
 
 class AdapterConfigurationError(RuntimeError):

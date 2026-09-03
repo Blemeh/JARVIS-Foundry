@@ -9,6 +9,7 @@ from .provider_config import (
     ProviderSettings,
     default_provider_settings,
     load_provider_settings,
+    load_provider_settings_pool,
 )
 
 
@@ -40,6 +41,11 @@ class WorkerRuntimeConfig:
     lab_crash_step_id: str = "step-a"
     lab_false_success_step_id: str | None = None
     provider_settings: ProviderSettings = field(default_factory=default_provider_settings)
+    provider_settings_pool: tuple[ProviderSettings, ...] = field(default_factory=tuple)
+    # V12 provider routing is opt-in.  The pool is still resolved at the
+    # runtime boundary when disabled, but no fallback behavior changes.
+    provider_resilience_enabled: bool = False
+    provider_resilience: dict[str, Any] = field(default_factory=dict)
     executive_selection_enabled: bool = False
     # V8 Executive Autonomy: opt-in orchestration above the existing V7
     # portfolio selector.  It only plans/advises through canonical seams.
@@ -91,14 +97,28 @@ class WorkerRuntimeConfig:
         path: str | Path | None,
         *,
         provider_settings: ProviderSettings | None = None,
+        provider_settings_pool: tuple[ProviderSettings, ...] | None = None,
     ) -> "WorkerRuntimeConfig":
-        settings = provider_settings or load_provider_settings()
+        if provider_settings is None and provider_settings_pool is None:
+            # Preserve the single, patchable primary-resolution boundary used
+            # by the existing runtime contract.  The pool loader receives that
+            # already-resolved identity and therefore never resolves it twice.
+            settings = load_provider_settings()
+            resolved_pool = load_provider_settings_pool(
+                primary_settings=settings)
+            settings_pool = resolved_pool.providers
+        else:
+            settings = provider_settings or load_provider_settings()
+            settings_pool = tuple(provider_settings_pool or (settings,))
+        if not settings_pool:
+            settings_pool = (settings,)
         if path is None:
             return replace(
                 cls(),
                 provider=settings.provider,
                 model=settings.model,
                 provider_settings=settings,
+                provider_settings_pool=settings_pool,
             )
         import yaml
 
@@ -134,6 +154,10 @@ class WorkerRuntimeConfig:
                 str(raw["lab_false_success_step_id"])
                 if raw.get("lab_false_success_step_id") else None),
             provider_settings=settings,
+            provider_settings_pool=settings_pool,
+            provider_resilience_enabled=bool(
+                raw.get("provider_resilience", {}).get("enabled", False)),
+            provider_resilience=dict(raw.get("provider_resilience") or {}),
             executive_selection_enabled=bool(
                 raw.get("executive", {}).get("selection_enabled", False)),
             executive_autonomy_enabled=bool(
@@ -193,6 +217,29 @@ class WorkerRuntimeConfig:
                 f"{self.provider_settings.provider!r} + "
                 f"{self.provider_settings.model!r} only, got "
                 f"{self.provider!r} + {self.model!r}")
+        if self.provider_resilience_enabled:
+            identities = [(item.provider, item.model) for item in self.provider_settings_pool]
+            if not identities or identities[0] != (
+                self.provider_settings.provider, self.provider_settings.model,
+            ):
+                raise ValueError(
+                    "provider resilience pool must start with the resolved primary identity")
+            if len({provider for provider, _model in identities}) != len(identities):
+                raise ValueError(
+                    "provider resilience requires one configured model per provider")
+            bounds = dict(self.provider_resilience.get("retry") or {})
+            max_total = int(bounds.get("max_total_attempts", 4))
+            max_same = int(bounds.get("max_retries_per_provider", 0))
+            if max_total < 1 or max_total > 12:
+                raise ValueError("provider max_total_attempts must be between 1 and 12")
+            if max_same < 0 or max_same > 2:
+                raise ValueError("provider max_retries_per_provider must be between 0 and 2")
+            max_cost = float(self.provider_resilience.get("max_cost_usd") or 0.0)
+            if max_cost < 0:
+                raise ValueError("provider max_cost_usd must be non-negative")
+            constraints = self.provider_resilience.get("constraints") or {}
+            if not isinstance(constraints, dict):
+                raise ValueError("provider resilience constraints must be a mapping")
         if self.initiative_a2_enabled and self.continuous_observation_enabled:
             raise ValueError(
                 "initiative_a2 and continuous_observation are alternate "

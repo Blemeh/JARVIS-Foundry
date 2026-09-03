@@ -1224,6 +1224,14 @@ def run_cycle(
         # remains the sole execution authority in both cases.
         _recover_v3_terminal(database, loop_id=loop_id,
                              fault_hook=fault_hook)
+        if config.provider_resilience_enabled:
+            # Effect reconciliation or provider recovery may occur while no
+            # worker process is alive. Re-evaluate the existing durable waits
+            # before any observation, admission, or mission selection so the
+            # exact blocked mission can become dispatchable once.
+            from ..executive.continuous import resume_mission_provider_waits
+
+            resume_mission_provider_waits(database)
         # V11 continuous observation is the durable, due-driven successor to
         # the A2 probe. It uses the existing monitor/ResearchQueue/Executive
         # wake path and still returns before objective or mission admission.
@@ -1570,11 +1578,30 @@ def run_cycle(
             )
 
         role_router = RoleRouter(provider_settings=config.provider_settings)
-        role_router.enforce_directive_routing()
+        pool_providers = tuple(
+            item.provider for item in config.provider_settings_pool)
+        fallback_providers = tuple(
+            provider for provider in pool_providers
+            if provider != config.provider_settings.provider)
+        if config.provider_resilience_enabled and fallback_providers:
+            role_router = role_router.clone_with({
+                role: {"fallbacks": fallback_providers}
+                for role in (
+                    "executive", "builder", "verifier", "critic", "repair",
+                    "researcher", "premium_reviewer",
+                )
+            })
+        role_router.enforce_directive_routing(
+            allow_safe_fallbacks=config.provider_resilience_enabled,
+            allowed_providers=pool_providers,
+        )
         stack = build_worker_stack(
             database, paths, config, run_id=f"loop-{loop_id}")
         _pin_routing_to_hermes(stack, config)
         stop_path = _default_stop_path(paths, config)
+        resilience = dict(config.provider_resilience or {})
+        retry = dict(resilience.get("retry") or {})
+        policy = dict(resilience.get("policy") or {})
         loop = MissionLoop(
             database, router=role_router, adapter=stack.bridge,
             leases=leases, max_repairs=config.max_repairs,
@@ -1582,6 +1609,20 @@ def run_cycle(
             stop_path=stop_path,
             policy=ActionPolicy(database, stop_path),
             fault_hook=fault_hook,
+            provider_candidates=stack.provider_candidates,
+            max_provider_attempts=int(retry.get("max_total_attempts", 4)),
+            max_provider_retries=int(
+                retry.get("max_retries_per_provider", 0)),
+            allowed_data_use=tuple(
+                str(item) for item in policy.get("allowed_data_use") or ()),
+            allowed_providers=tuple(
+                str(item) for item in resilience.get("allowed_providers") or ()),
+            denied_providers=tuple(
+                str(item) for item in resilience.get("denied_providers") or ()),
+            provider_budget_usd=float(
+                resilience.get("max_cost_usd") or 0.0),
+            provider_routing_constraints=dict(
+                resilience.get("constraints") or {}),
         )
         try:
             with _adapter_runtime_environment(paths, config):

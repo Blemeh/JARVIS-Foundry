@@ -25,7 +25,7 @@ from ..clock import isoformat, utc_now
 from ..database import FoundryDatabase
 from ..events import Event
 from ..supervisor.estop import EmergencyStop
-from ..roles.adapter import RoleAdapter
+from ..roles.adapter import ProviderFailure, RoleAdapter
 from ..roles.manifest import ContextManifest
 from ..roles.results import (
     BLOCKED,
@@ -189,7 +189,10 @@ class HybridWorkerRoleAdapter:
              "role": manifest.role},
             source_type="supervisor",
             source_id="hybrid-worker-bridge",
-            idempotency_key=f"worker.route_decided:{manifest.run_id}",
+            idempotency_key=(
+                f"worker.route_decided:{manifest.run_id}:"
+                f"{manifest.provider}:{manifest.model}"
+            ),
         ))
         if not decision.selected_worker:
             return RoleResult(
@@ -213,7 +216,14 @@ class HybridWorkerRoleAdapter:
                 envelope = adapter.dispatch(contract, heartbeat=heartbeat)
                 selected_worker = worker
                 break
-            except ProviderUnavailable as error:
+            except ProviderFailure as error:
+                # Preserve classified provider failures (including ambiguous
+                # post-effect timeouts) across the canonical worker bridge so
+                # RoleDispatcher can reconcile, update readiness, and choose
+                # a provider fallback.  The legacy unclassified outage keeps
+                # the existing same-provider framework fallback below.
+                if not isinstance(error, ProviderUnavailable):
+                    raise
                 provider_errors.append(f"{worker}: {error}")
                 if index + 1 < len(candidates):
                     self.database.append(Event.create(

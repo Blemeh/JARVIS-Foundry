@@ -658,13 +658,248 @@ def schedule_wait_for_capability(db, objective_id: str, *, capability: str, reso
     create_wake(db, w, controller=controller)
     return w.to_payload() if hasattr(w, "to_payload") else dict(w.__dict__)
 
-def schedule_wait_for_provider(db, objective_id: str, *, provider_id: str, reason="", controller="supervisor"):
+def schedule_wait_for_provider(db, objective_id: str, *, provider_id: str, reason="", controller="supervisor", episode_id: str | None = None):
+    # An episode suffix permits the same objective/provider pair to recover,
+    # run, and later enter a genuinely new outage without colliding with the
+    # immutable wake from the earlier episode.  Legacy callers retain the
+    # original stable identity.
     wid = f"wake:{objective_id}:provider:{provider_id}"
+    if episode_id:
+        wid = f"{wid}:{episode_id}"
     wakes = rebuild_wake_state(db)
     if wid in wakes and wakes[wid].get("status")=="ACTIVE": return wakes[wid]
     w = WakeCondition(wake_id=wid, objective_id=objective_id, kind="WAIT_FOR_PROVIDER", reason=reason or f"wait for provider {provider_id}", created_at=__import__("jarvis_foundry.clock", fromlist=["isoformat"]).isoformat(), provider_id=provider_id)
     create_wake(db, w, controller=controller)
     return w.to_payload() if hasattr(w, "to_payload") else dict(w.__dict__)
+
+
+def _objective_for_mission(db, mission_id: str) -> str:
+    """Return the existing owning objective, or a mission-scoped wake key."""
+
+    try:
+        from ..executive.autonomy import rebuild_executive_state
+        state = rebuild_executive_state(db)
+        for objective_id, objective in state.objectives.items():
+            if mission_id in objective.mission_ids:
+                return str(objective_id)
+    except Exception:
+        pass
+    # Disposable/direct missions may not be Executive-owned.  Wakes are
+    # still durable and Supervisor-owned; this does not invent an objective.
+    return f"mission:{mission_id}"
+
+
+def schedule_mission_provider_wait(
+    db,
+    *,
+    mission_id: str,
+    step_id: str,
+    run_id: str,
+    provider_ids: Sequence[str] = (),
+    reason: str,
+    error_class: str,
+    effect_action_key: str | None = None,
+    controller: str = "supervisor",
+):
+    """Park one existing mission/run on existing Executive wake authority."""
+
+    if controller != SUPERVISOR_CONTROLLER:
+        raise PermissionError("provider mission waits are Supervisor-owned")
+    material = {
+        "mission_id": mission_id,
+        "step_id": step_id,
+        "run_id": run_id,
+        "provider_ids": sorted(set(str(p) for p in provider_ids if str(p))),
+        "effect_action_key": effect_action_key,
+        "error_class": error_class,
+    }
+    wait_id = "provider-wait-" + hashlib.sha256(
+        canonical_json(material).encode("utf-8")
+    ).hexdigest()[:24]
+    objective_id = _objective_for_mission(db, mission_id)
+    wake_ids: list[str] = []
+    for provider_id in material["provider_ids"]:
+        wake = schedule_wait_for_provider(
+            db,
+            objective_id,
+            provider_id=provider_id,
+            reason=reason,
+            controller=controller,
+            episode_id=wait_id,
+        )
+        wake_ids.append(str(wake["wake_id"]))
+    payload = {
+        **material,
+        "wait_id": wait_id,
+        "objective_id": objective_id,
+        "wake_ids": wake_ids,
+        "reason": str(reason)[:1000],
+        "created_at": isoformat(),
+    }
+    _append(
+        db,
+        "mission.provider_wait_started",
+        payload,
+        key=f"mission.provider_wait_started:{wait_id}",
+        source_id="provider-resilience",
+        correlation_id=mission_id,
+    )
+    return payload
+
+
+def _effect_has_reconciliation(db, action_key: str) -> bool:
+    return any(
+        event.event_type in {"effect.reconciled", "provider.effect_reconciled"}
+        and str(event.payload.get("action_key")
+                or event.payload.get("effect_action_key") or "") == action_key
+        for event in db.events(
+            readonly=True,
+            event_type_prefixes=("effect.reconciled", "provider.effect_reconciled"),
+        )
+    )
+
+
+def provider_resume_run_id(db, *, mission_id: str, step_id: str) -> str | None:
+    """Recover the exact builder run released by the latest provider wait."""
+
+    for event in db.events(
+        readonly=True,
+        newest_first=True,
+        limit=1000,
+        event_type_prefixes=("mission.provider_wait_resumed",),
+    ):
+        payload = event.payload
+        if (
+            str(payload.get("mission_id") or "") == mission_id
+            and str(payload.get("step_id") or "") == step_id
+        ):
+            return str(payload.get("run_id") or "") or None
+    return None
+
+
+def resume_mission_provider_waits(
+    db,
+    *,
+    provider_id: str | None = None,
+    controller: str = "supervisor",
+):
+    """Release due provider/effect waits exactly once, preserving identity."""
+
+    if controller != SUPERVISOR_CONTROLLER:
+        raise PermissionError("provider wait recovery is Supervisor-owned")
+    tick_wakes(db, controller=controller)
+    wake_state = rebuild_wake_state(db)
+    events = db.events(
+        readonly=True,
+        event_type_prefixes=("mission.provider_wait_",),
+    )
+    resumed_waits = {
+        str(event.payload.get("wait_id") or "")
+        for event in events
+        if event.event_type == "mission.provider_wait_resumed"
+    }
+    resumed: list[str] = []
+    for event in events:
+        if event.event_type != "mission.provider_wait_started":
+            continue
+        payload = dict(event.payload)
+        wait_id = str(payload.get("wait_id") or "")
+        if not wait_id or wait_id in resumed_waits:
+            continue
+        providers = tuple(str(item) for item in payload.get("provider_ids") or ())
+        if provider_id is not None and provider_id not in providers:
+            continue
+        action_key = str(payload.get("effect_action_key") or "")
+        if action_key:
+            due = _effect_has_reconciliation(db, action_key)
+            if due and not any(
+                item.event_type == "provider.effect_reconciled"
+                and str(item.payload.get("effect_action_key") or "") == action_key
+                and str(item.payload.get("run_id") or "")
+                    == str(payload.get("run_id") or "")
+                for item in db.events(
+                    readonly=True,
+                    event_type_prefixes=("provider.effect_reconciled",),
+                )
+            ):
+                _append(
+                    db,
+                    "provider.effect_reconciled",
+                    {
+                        "wait_id": wait_id,
+                        "mission_id": payload.get("mission_id"),
+                        "step_id": payload.get("step_id"),
+                        "run_id": payload.get("run_id"),
+                        "effect_action_key": action_key,
+                    },
+                    key=(
+                        f"provider.effect_reconciled:"
+                        f"{payload.get('run_id')}:{action_key}"
+                    ),
+                    source_id="provider-resilience",
+                    correlation_id=str(payload.get("mission_id") or ""),
+                )
+        else:
+            due = any(
+                wake_state.get(str(wake_id), {}).get("status") == "TRIGGERED"
+                for wake_id in payload.get("wake_ids") or ()
+            )
+        if not due:
+            continue
+        mission_id = str(payload.get("mission_id") or "")
+        mission = db.row("missions", "mission_id", mission_id)
+        if mission is None or str(mission.get("state") or "") != "BLOCKED":
+            continue
+        run_id = str(payload.get("run_id") or "")
+        resumed_event = Event.create(
+            "mission.provider_wait_resumed",
+            {
+                **payload,
+                "resumed_at": isoformat(),
+                "recovery_provider_id": provider_id,
+            },
+            source_type="supervisor",
+            source_id="provider-resilience",
+            correlation_id=mission_id,
+            idempotency_key=f"mission.provider_wait_resumed:{wait_id}",
+        )
+        state_event = Event.create(
+            "mission.state_changed",
+            {
+                "mission_id": mission_id,
+                "state": "ACTION_SELECTION",
+                "next_action": mission.get("next_action"),
+                "run_id": run_id,
+                "reason": "provider wait condition satisfied",
+            },
+            source_type="supervisor",
+            source_id="provider-resilience",
+            correlation_id=mission_id,
+            idempotency_key=(
+                f"mission.state_changed:{mission_id}:ACTION_SELECTION:"
+                f"provider-resume:{wait_id}"
+            ),
+        )
+        try:
+            db.append_events([resumed_event, state_event])
+        except EventConflict:
+            continue
+        resumed.append(wait_id)
+        resumed_waits.add(wait_id)
+    return resumed
+
+
+def on_provider_readiness_changed(
+    db,
+    *,
+    provider_id: str,
+    model: str = "",
+    controller: str = "supervisor",
+):
+    """Existing wake callback for one observed positive provider recovery."""
+
+    return resume_mission_provider_waits(
+        db, provider_id=provider_id, controller=controller)
 
 def schedule_wait_for_owner(db, objective_id: str, *, signal: str = "owner_directive", reason="", controller="supervisor"):
     wid = f"wake:{objective_id}:owner:{signal}"
@@ -746,4 +981,4 @@ def escalate_stale_wakes(db, *, stale_after_seconds=3600.0, controller="supervis
             pass
     return escalated
 
-__all__ = ["WakeCondition", "create_wake", "clear_wake", "trigger_wake", "rebuild_wake_state", "is_wake_due", "due_wakes", "tick_wakes", "bridge_world_signals", "continuous_snapshot", "blocker_for", "run_continuous_cycle", "record_strategy_attempt", "recent_strategies", "is_retry_loop", "next_strategy_options", "schedule_wait_until", "schedule_wait_for_dependency", "schedule_wait_for_capability", "schedule_wait_for_provider", "schedule_wait_for_owner", "schedule_wait_for_signal", "schedule_wait_for_resource", "clear_wakes_for_objective", "on_mission_outcome", "on_capability_changed", "on_owner_directive", "deadline_urgency", "stale_wakes", "auto_wake_for_blocked"]
+__all__ = ["WakeCondition", "create_wake", "clear_wake", "trigger_wake", "rebuild_wake_state", "is_wake_due", "due_wakes", "tick_wakes", "bridge_world_signals", "continuous_snapshot", "blocker_for", "run_continuous_cycle", "record_strategy_attempt", "recent_strategies", "is_retry_loop", "next_strategy_options", "schedule_wait_until", "schedule_wait_for_dependency", "schedule_wait_for_capability", "schedule_wait_for_provider", "schedule_mission_provider_wait", "resume_mission_provider_waits", "provider_resume_run_id", "on_provider_readiness_changed", "schedule_wait_for_owner", "schedule_wait_for_signal", "schedule_wait_for_resource", "clear_wakes_for_objective", "on_mission_outcome", "on_capability_changed", "on_owner_directive", "deadline_urgency", "stale_wakes", "auto_wake_for_blocked"]

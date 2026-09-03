@@ -44,6 +44,7 @@ from ...runtime.provider_config import (
     ProviderSettings,
     apply_hermes_provider_env,
 )
+from ...roles.adapter import ProviderFailure, classify_provider_failure
 from .base import (
     AdapterConfigurationError,
     ProviderUnavailable,
@@ -96,6 +97,7 @@ class HermesWorkerAdapter:
         pid_table: Path | str | None = None,
         workers: Any = None,
         provider_settings: ProviderSettings | None = None,
+        provider_settings_by_id: dict[str, ProviderSettings] | None = None,
     ) -> None:
         from ...runtime.provider_config import default_provider_settings
 
@@ -106,6 +108,9 @@ class HermesWorkerAdapter:
         self.python_exe = python_exe
         self.framework = "hermes"
         self.provider_settings = provider_settings or default_provider_settings()
+        self.provider_settings_by_id = dict(provider_settings_by_id or {})
+        self.provider_settings_by_id.setdefault(
+            self.provider_settings.provider, self.provider_settings)
         self.stop_path = Path(stop_path).resolve() if stop_path is not None else None
         self.pid_table = Path(pid_table).resolve() if pid_table is not None else None
         self.workers = workers
@@ -139,11 +144,18 @@ class HermesWorkerAdapter:
             raise ProviderUnavailable(
                 "real Hermes dispatch is disabled; enable explicitly with "
                 "an isolated HERMES_HOME")
+        settings = self.provider_settings_by_id.get(contract.provider)
+        if settings is None or settings.model != contract.model:
+            raise ProviderFailure(
+                f"provider/model identity is not configured: "
+                f"{contract.provider}/{contract.model}",
+                failure_class="INCOMPATIBLE",
+            )
         try:
             provider_env = apply_hermes_provider_env(
-                self.provider_settings, os.environ)
+                settings, os.environ)
         except ProviderCredentialError as error:
-            raise ProviderUnavailable(str(error)) from error
+            raise ProviderUnavailable(str(error), retryable=False) from error
         started = isoformat(utc_now())
         usage_path: Path | None = None
         if self.timeout_seconds > 0:
@@ -217,9 +229,9 @@ class HermesWorkerAdapter:
         cost = self._read_usage_cost(usage_path)
         usage_availability = "available" if cost not in (0.0, None) else NOT_AVAILABLE
         stdout = redact_secrets(
-            process.stdout or "", configured_key=configured_api_key(self.provider_settings))
+            process.stdout or "", configured_key=configured_api_key(settings))
         stderr = redact_secrets(
-            process.stderr or "", configured_key=configured_api_key(self.provider_settings))
+            process.stderr or "", configured_key=configured_api_key(settings))
         self._scrub_disposable_home()
         if process.returncode != 0:
             return ResultEnvelope.from_contract(
@@ -236,8 +248,12 @@ class HermesWorkerAdapter:
         first_line = (stdout.strip().splitlines() or [""])[0]
         if (first_line.startswith(self.FAILURE_REPORT_PREFIXES)
                 or self._FAILURE_REPORT_HTTP.match(first_line)):
-            raise ProviderUnavailable(
-                f"oneshot reported provider failure (exit 0): {first_line[:200]}")
+            failure_class = classify_provider_failure(first_line)
+            raise ProviderFailure(
+                f"oneshot reported provider failure (exit 0): {first_line[:200]}",
+                failure_class=failure_class,
+                retryable=failure_class in {"OUTAGE", "DEGRADED"},
+            )
         verdict = self._structured_verdict(stdout)
         note = ""
         if verdict is None:
@@ -309,7 +325,12 @@ class HermesWorkerAdapter:
         """Redact credential-shaped tokens from the disposable HERMES_HOME
         (state.db, auth.json, sessions) so no retained run-state file ever
         holds the secret value."""
-        key = configured_api_key(self.provider_settings)
+        keys = tuple(
+            key for key in (
+                configured_api_key(settings)
+                for settings in self.provider_settings_by_id.values()
+            ) if key
+        )
         if not self.hermes_home.exists():
             return
         scanned = 0
@@ -329,7 +350,9 @@ class HermesWorkerAdapter:
                 text = data.decode("utf-8")
             except UnicodeDecodeError:
                 continue
-            redacted = redact_secrets(text, configured_key=key)
+            redacted = text
+            for key in keys or (None,):
+                redacted = redact_secrets(redacted, configured_key=key)
             if redacted != text:
                 try:
                     path.write_bytes(redacted.encode("utf-8"))

@@ -52,6 +52,7 @@ class Supervisor:
         worker_loop_config: str | Path | None = None,
         ledger_heartbeat_seconds: int = 60,
         provider_settings: ProviderSettings | None = None,
+        provider_settings_pool: tuple[ProviderSettings, ...] | None = None,
         resilience: ResilienceCoordinator | None = None,
         command_center_port: int | None = None,
         owner_secret_path: str | Path | None = None,
@@ -68,6 +69,7 @@ class Supervisor:
             Path(worker_loop_config) if worker_loop_config is not None else None)
         self.ledger_heartbeat_seconds = ledger_heartbeat_seconds
         self._provider_settings = provider_settings
+        self._provider_settings_pool = tuple(provider_settings_pool or ())
         self.resilience = resilience
         self._start_generation = 0
         self.command_center_port = command_center_port
@@ -610,6 +612,7 @@ class Supervisor:
                 discovery_cycle_enabled = WorkerRuntimeConfig.from_yaml(
                     self.worker_loop_config,
                     provider_settings=self._provider_settings,
+                    provider_settings_pool=self._provider_settings_pool or None,
                 ).discovery_cycle_enabled
             except Exception:  # noqa: BLE001 - projection stays honest/unregistered
                 # The worker-loop activation path records the durable fault.
@@ -701,6 +704,7 @@ class Supervisor:
             config = WorkerRuntimeConfig.from_yaml(
                 self.worker_loop_config,
                 provider_settings=self._provider_settings,
+                provider_settings_pool=self._provider_settings_pool or None,
             )
         except Exception as error:  # noqa: BLE001 - persist all activation faults
             self._record_worker_loop_activation_blocked(

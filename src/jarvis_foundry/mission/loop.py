@@ -25,7 +25,7 @@ import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Callable
+from typing import Any, Callable, Iterable
 
 from ..control.broker import emergency_stop_reason
 from ..control.policy import ActionPolicy
@@ -40,7 +40,7 @@ from ..roles.results import (
     FAILED,
     RoleResult,
 )
-from ..roles.router import RoleRouter
+from ..roles.router import ProviderRouteCandidate, RoleRouter
 from ..supervisor.leases import LeaseManager
 from .commit import CommitError, commit_after_pass
 from .proposal import ProposalError, Waiting, propose_next_action
@@ -123,15 +123,33 @@ class MissionLoop:
         heartbeat_interval_seconds: int = 60,
         stop_path: Path | str | None = None,
         fault_hook: Callable[[str], None] | None = None,
+        provider_candidates: Iterable[ProviderRouteCandidate] = (),
+        max_provider_attempts: int = 4,
+        max_provider_retries: int = 0,
+        allowed_data_use: tuple[str, ...] = (),
+        allowed_providers: tuple[str, ...] = (),
+        denied_providers: tuple[str, ...] = (),
+        provider_budget_usd: float = 0.0,
+        provider_routing_constraints: dict[str, Any] | None = None,
     ) -> None:
         self.database = database
         self.router = router
+        provider_candidates = tuple(provider_candidates)
         self.dispatcher = RoleDispatcher(
             database, router, adapter,
             leases=leases, source_id=source_id,
             heartbeat_interval_seconds=heartbeat_interval_seconds,
             fault_hook=fault_hook,
+            provider_candidates=provider_candidates,
+            max_total_attempts=max_provider_attempts,
+            max_retries_per_provider=max_provider_retries,
+            allowed_data_use=allowed_data_use,
+            allowed_providers=allowed_providers,
+            denied_providers=denied_providers,
+            provider_override_allows_fallback=bool(provider_candidates),
+            routing_constraints=provider_routing_constraints,
         )
+        self.provider_budget_usd = max(0.0, float(provider_budget_usd))
         self.policy = policy
         self.max_repairs = max_repairs
         self.fault_hook = fault_hook
@@ -328,6 +346,9 @@ class MissionLoop:
         key = f"mission.state_changed:{mission_id}:{state}:{next_action or 'none'}"
         if run_id is not None:
             key = f"{key}:run-{run_id}"
+            epoch = self._provider_transition_epoch(mission_id, run_id)
+            if epoch:
+                key = f"{key}:resume-{epoch}"
         transition = Event.create(
             "mission.state_changed",
             {
@@ -419,6 +440,9 @@ class MissionLoop:
         key = f"mission.state_changed:{mission_id}:{state}:{next_action or 'none'}"
         if run_id is not None:
             key = f"{key}:run-{run_id}"
+            epoch = self._provider_transition_epoch(mission_id, run_id)
+            if epoch:
+                key = f"{key}:resume-{epoch}"
         event = Event.create(
             "mission.state_changed",
             {
@@ -432,6 +456,31 @@ class MissionLoop:
             idempotency_key=key,
         )
         self.database.append(event)
+
+    def _provider_transition_epoch(
+        self, mission_id: str, run_id: str,
+    ) -> str | None:
+        """Distinct transition delivery epoch for a resumed provider wait.
+
+        The mission and agent run identities stay unchanged.  Only the
+        append-only state-transition delivery key gains the wait episode, so
+        BLOCKED -> ACTION_SELECTION can legally walk READY/EXECUTING again
+        without an old idempotency key suppressing the projection update.
+        """
+
+        for event in self.database.events(
+            readonly=True,
+            newest_first=True,
+            limit=1000,
+            event_type_prefixes=("mission.provider_wait_resumed",),
+        ):
+            payload = event.payload
+            if (
+                str(payload.get("mission_id") or "") == mission_id
+                and str(payload.get("run_id") or "") == run_id
+            ):
+                return str(payload.get("wait_id") or "") or None
+        return None
 
     def _record_evidence(
         self,
@@ -517,6 +566,10 @@ class MissionLoop:
         self._reorient_after_stop(mission_id)
         mission = self._mission(mission_id)
         state = str(mission["state"])
+        if run_id is None and state in {"ACTION_SELECTION", "READY"}:
+            from ..executive.continuous import provider_resume_run_id
+            run_id = provider_resume_run_id(
+                self.database, mission_id=mission_id, step_id=step_id)
         from .contracts import contract_rows
         contract_driven = bool(contract_rows(self.database, mission_id))
         # A deliberate crash can leave the canonical mission in EXECUTING or
@@ -771,8 +824,24 @@ class MissionLoop:
                     if verification_criteria is not None else ()),
                 forbidden_paths=forbidden_paths,
                 attempt=attempt,
+                budget_usd=self.provider_budget_usd,
             )
         if result.status == BLOCKED:
+            if str(result.error_class or "").startswith("provider_"):
+                from ..executive.continuous import schedule_mission_provider_wait
+                schedule_mission_provider_wait(
+                    self.database,
+                    mission_id=mission_id,
+                    step_id=step_id,
+                    run_id=run_id,
+                    provider_ids=result.wait_for_providers,
+                    reason=(
+                        result.error_detail
+                        or f"{role} session blocked: {result.error_class}"
+                    ),
+                    error_class=str(result.error_class),
+                    effect_action_key=result.effect_action_key,
+                )
             self._advance(mission_id, "BLOCKED", run_id=run_id)
             return StepOutcome(
                 outcome=BLOCKED_OUTCOME, step_id=step_id, run_id=run_id,
@@ -849,7 +918,7 @@ class MissionLoop:
         base_manifest = self.dispatcher.manifest_for(
             base_verifier_run_id, "verifier", mission_id, step_id,
             str(mission["resource_id"]), "verification",
-            verifier_instructions, 300, 0.0, verifier_provider,
+            verifier_instructions, 300, self.provider_budget_usd, verifier_provider,
             verifier_config,
             expected_artifacts=expected_artifacts,
             verification_criteria=verifier_criteria,
@@ -985,7 +1054,7 @@ class MissionLoop:
         verifier_manifest = self.dispatcher.manifest_for(
             verifier_run_id, "verifier", mission_id, step_id,
             str(mission["resource_id"]), "verification",
-            verifier_instructions, 300, 0.0, verifier_provider,
+            verifier_instructions, 300, self.provider_budget_usd, verifier_provider,
             verifier_config,
             expected_artifacts=expected_artifacts,
             verification_criteria=verifier_criteria,
@@ -1059,6 +1128,7 @@ class MissionLoop:
             verification_criteria=verifier_criteria,
             forbidden_paths=forbidden_paths,
             attempt=attempt,
+            budget_usd=self.provider_budget_usd,
         )
         stopped = self._stop_blocked(mission_id, step_id=step_id,
                                      run_id=run_id)
@@ -1094,6 +1164,21 @@ class MissionLoop:
                 reason=f"verifier session did not complete: {verifier.error_class or verifier.status}",
                 blocking_dependency=verifier.error_class,
             )
+            if str(verifier.error_class or "").startswith("provider_"):
+                from ..executive.continuous import schedule_mission_provider_wait
+                schedule_mission_provider_wait(
+                    self.database,
+                    mission_id=mission_id,
+                    step_id=step_id,
+                    run_id=run_id,
+                    provider_ids=verifier.wait_for_providers,
+                    reason=(
+                        verifier.error_detail
+                        or f"verifier session blocked: {verifier.error_class}"
+                    ),
+                    error_class=str(verifier.error_class),
+                    effect_action_key=verifier.effect_action_key,
+                )
             self._advance(mission_id, "BLOCKED", run_id=run_id)
             return StepOutcome(
                 outcome=BLOCKED_OUTCOME, step_id=step_id, run_id=run_id,

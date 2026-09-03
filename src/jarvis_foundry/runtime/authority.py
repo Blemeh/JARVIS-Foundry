@@ -17,7 +17,11 @@ from typing import Any, Mapping
 
 from ..paths import FoundryPaths
 from ..trust_states import ALLOWED_TRUST_STATES
-from .provider_config import ProviderSettings, load_provider_settings
+from .provider_config import (
+    ProviderSettings,
+    load_provider_settings,
+    load_provider_settings_pool,
+)
 
 FOUNDRY_YAML_ROLE = "TEMPLATE"
 FOUNDRY_YAML_RELATIVE = Path("config") / "foundry.yaml"
@@ -64,6 +68,7 @@ class RuntimeAuthority:
     python_executable: Path
     hermes_home: Path
     provider_settings: ProviderSettings
+    provider_settings_pool: tuple[ProviderSettings, ...] = ()
     foundry_yaml_role: str = FOUNDRY_YAML_ROLE
     precedence: tuple[str, ...] = CONFIG_PRECEDENCE
 
@@ -95,6 +100,7 @@ def resolve_runtime_authority(
 
     paths = FoundryPaths.discover(home)
     provider_settings = load_provider_settings()
+    provider_pool = load_provider_settings_pool(primary_settings=provider_settings)
     profile = _read_profile(paths.home / "foundry-profile.yaml")
 
     interval = heartbeat_seconds
@@ -119,7 +125,10 @@ def resolve_runtime_authority(
         worker_yaml = profile["worker_config_path"]
     worker_path = Path(worker_yaml).expanduser().resolve() if worker_yaml else None
     worker_cfg = WorkerRuntimeConfig.from_yaml(
-        worker_path, provider_settings=provider_settings)
+        worker_path,
+        provider_settings=provider_settings,
+        provider_settings_pool=provider_pool.providers,
+    )
     python = python_executable or os.environ.get("JARVIS_PYTHON_EXE") or sys.executable
     return RuntimeAuthority(
         home=paths.home,
@@ -131,6 +140,7 @@ def resolve_runtime_authority(
         python_executable=Path(python).expanduser().resolve(),
         hermes_home=FoundryPaths.hermes_home(),
         provider_settings=provider_settings,
+        provider_settings_pool=provider_pool.providers,
     )
 
 

@@ -109,6 +109,20 @@ class ProviderSettings:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class ProviderPoolSettings:
+    """One owner-configured primary plus bounded compatible alternates."""
+
+    primary: ProviderSettings
+    providers: tuple[ProviderSettings, ...]
+
+    def by_provider(self) -> dict[str, ProviderSettings]:
+        return {item.provider: item for item in self.providers}
+
+    def identities(self) -> tuple[tuple[str, str], ...]:
+        return tuple((item.provider, item.model) for item in self.providers)
+
+
 def matches_persisted_identity(
     persisted: dict[str, Any],
     identity: dict[str, Any],
@@ -305,6 +319,68 @@ def load_provider_settings(
     )
 
 
+def load_provider_settings_pool(
+    *,
+    config_path: str | Path | None = None,
+    overrides: dict[str, Any] | None = None,
+    primary_settings: ProviderSettings | None = None,
+) -> ProviderPoolSettings:
+    """Resolve the primary and optional ``providers`` entries at the boundary.
+
+    The legacy top-level fields remain the primary authority.  Additional
+    entries are opt-in and may not redefine that primary identity.  Secrets
+    stay in ``ProviderSettings`` and are never copied into profile events.
+    """
+
+    path = (
+        Path(config_path).expanduser().resolve()
+        if config_path is not None
+        else default_provider_config_path()
+    )
+    primary = primary_settings or load_provider_settings(
+        config_path=path, overrides=overrides)
+    yaml_cfg = _load_yaml_config(path)
+    raw_entries = yaml_cfg.get("providers") or []
+    if not isinstance(raw_entries, list):
+        raise ProviderConfigError("providers must be a list of provider mappings")
+    providers: list[ProviderSettings] = [primary]
+    seen = {(primary.provider, primary.model)}
+    seen_providers = {primary.provider}
+    for raw in raw_entries:
+        if not isinstance(raw, dict):
+            raise ProviderConfigError("each providers entry must be a mapping")
+        provider_id = str(raw.get("provider") or "").strip()
+        if not provider_id:
+            raise ProviderConfigError("each providers entry requires provider")
+        try:
+            service = require_service(provider_id)
+        except UnsupportedProviderError as error:
+            raise ProviderConfigError(str(error)) from error
+        model = str(raw.get("model") or service.default_model).strip()
+        identity = (provider_id, model)
+        if identity in seen:
+            continue
+        if provider_id in seen_providers:
+            raise ProviderConfigError(
+                f"provider {provider_id!r} is configured with multiple models; "
+                "use one runtime model identity per provider")
+        base_url = str(raw.get("base_url") or service.default_base_url).strip()
+        raw_key = raw.get("api_key")
+        api_key = str(raw_key).strip() if raw_key is not None else ""
+        if not api_key:
+            api_key = _first_env((service.hermes_api_key_env,)) or ""
+        providers.append(ProviderSettings(
+            provider=provider_id,
+            model=model,
+            base_url=base_url,
+            api_key=api_key or None,
+            source="provider_yaml_pool" if raw_key is not None else "provider_env_pool",
+        ))
+        seen.add(identity)
+        seen_providers.add(provider_id)
+    return ProviderPoolSettings(primary=primary, providers=tuple(providers))
+
+
 def hermes_provider_env(settings: ProviderSettings) -> dict[str, str]:
     """Hermes subprocess env fragment (authoritative over inherited env)."""
     try:
@@ -349,6 +425,9 @@ def ensure_provider_template(path: Path | None = None) -> Path:
         f"model: {DEFAULT_MODEL}\n"
         f"base_url: {DEFAULT_BASE_URL}\n"
         'api_key: ""\n'
+        "# Optional bounded alternates (never selected without readiness, capability,\n"
+        "# policy, owner-restriction, and budget checks):\n"
+        "# providers: []\n"
     )
     target.write_text(template, encoding="utf-8")
     return target

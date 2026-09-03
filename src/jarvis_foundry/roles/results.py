@@ -42,6 +42,8 @@ class RoleResult:
     error_class: str | None = None
     error_detail: str | None = None
     cost_usd: float = 0.0
+    wait_for_providers: tuple[str, ...] = field(default_factory=tuple)
+    effect_action_key: str | None = None
     started_at: str = field(default_factory=isoformat)
     finished_at: str = field(default_factory=isoformat)
 
@@ -63,6 +65,8 @@ class RoleResult:
             "error_class": self.error_class,
             "error_detail": self.error_detail,
             "cost_usd": self.cost_usd,
+            "wait_for_providers": list(self.wait_for_providers),
+            "effect_action_key": self.effect_action_key,
             "started_at": self.started_at,
             "finished_at": self.finished_at,
         }
@@ -80,6 +84,8 @@ class RoleResult:
             error_class=payload.get("error_class"),
             error_detail=payload.get("error_detail"),
             cost_usd=float(payload.get("cost_usd", 0.0)),
+            wait_for_providers=tuple(payload.get("wait_for_providers", [])),
+            effect_action_key=payload.get("effect_action_key"),
             started_at=payload.get("started_at", ""),
             finished_at=payload.get("finished_at", ""),
         )

@@ -25,16 +25,30 @@ from __future__ import annotations
 
 from dataclasses import replace
 import json
-from typing import Callable
+from typing import Any, Callable, Iterable
 
 from ..clock import isoformat, utc_now
 from ..database import FoundryDatabase
-from ..events import Event
+from ..events import Event, EventConflict
 from ..supervisor.leases import LeaseManager, LeaseUnavailable
-from .adapter import ProviderUnavailable, RoleAdapter
+from .adapter import (
+    ProviderFailure,
+    ProviderUnavailable,
+    RoleAdapter,
+    classify_provider_failure,
+)
 from .manifest import ContextManifest
 from .results import BLOCKED, COMPLETED, FAILED, RoleResult
-from .router import RoleRouter
+from .router import (
+    ProviderRouteCandidate,
+    RoleRouter,
+    RoutingRequest,
+)
+from ..runtime.provider_registry import (
+    ProviderReadiness,
+    latest_provider_readiness,
+    record_provider_readiness,
+)
 from ..v3_fault import invoke_fault_hook
 
 
@@ -54,6 +68,14 @@ class RoleDispatcher:
         source_id: str = "role-dispatcher",
         heartbeat_interval_seconds: int = 60,
         fault_hook: Callable[[str], None] | None = None,
+        provider_candidates: Iterable[ProviderRouteCandidate] = (),
+        max_total_attempts: int = 4,
+        max_retries_per_provider: int = 0,
+        allowed_data_use: tuple[str, ...] = (),
+        allowed_providers: tuple[str, ...] = (),
+        denied_providers: tuple[str, ...] = (),
+        provider_override_allows_fallback: bool = False,
+        routing_constraints: dict[str, Any] | None = None,
     ) -> None:
         self.database = database
         self.router = router
@@ -63,6 +85,16 @@ class RoleDispatcher:
         self.source_id = source_id
         self.heartbeat_interval_seconds = heartbeat_interval_seconds
         self.fault_hook = fault_hook
+        self.provider_candidates = tuple(provider_candidates)
+        self.max_total_attempts = max(1, min(int(max_total_attempts), 12))
+        self.max_retries_per_provider = max(
+            0, min(int(max_retries_per_provider), 2))
+        self.allowed_data_use = tuple(allowed_data_use)
+        self.allowed_providers = tuple(allowed_providers)
+        self.denied_providers = tuple(denied_providers)
+        self.provider_override_allows_fallback = bool(
+            provider_override_allows_fallback)
+        self.routing_constraints = dict(routing_constraints or {})
         self.startup_grace_seconds = 30  # V7-S5 promotion (cycle-r2b):
         # cover adapter boot before the first session heartbeat
         self._heartbeat_count: dict[str, int] = {}
@@ -137,6 +169,7 @@ class RoleDispatcher:
         provider: str,
         config,
         *,
+        model: str | None = None,
         expected_artifacts: tuple[str, ...] = (),
         verification_criteria: tuple[str, ...] = (),
         forbidden_paths: tuple[str, ...] = (),
@@ -145,7 +178,7 @@ class RoleDispatcher:
         return ContextManifest(
             run_id=run_id, role=role, mission_id=mission_id,
             step_id=step_id, resource_id=resource_id, capability=capability,
-            provider=provider, model=config.preferred_model,
+            provider=provider, model=model or config.preferred_model,
             isolation_group=config.independence_group,
             tool_policy=config.required_capabilities,
             budget_usd=budget_usd, duration_seconds=duration_seconds,
@@ -170,6 +203,7 @@ class RoleDispatcher:
         provider: str,
         config,
         *,
+        model: str | None = None,
         expected_artifacts: tuple[str, ...] = (),
         verification_criteria: tuple[str, ...] = (),
         forbidden_paths: tuple[str, ...] = (),
@@ -186,6 +220,7 @@ class RoleDispatcher:
         return self._manifest(
             run_id, role, mission_id, step_id, resource_id, capability,
             instructions, duration_seconds, budget_usd, provider, config,
+            model=model,
             expected_artifacts=expected_artifacts,
             verification_criteria=verification_criteria,
             forbidden_paths=forbidden_paths,
@@ -214,6 +249,139 @@ class RoleDispatcher:
         except (KeyError, TypeError, ValueError):
             return None
 
+    def _candidate_snapshot(self) -> tuple[ProviderRouteCandidate, ...]:
+        """Overlay configured profiles with the latest durable readiness."""
+
+        current: list[ProviderRouteCandidate] = []
+        for candidate in self.provider_candidates:
+            observed = latest_provider_readiness(
+                self.database, candidate.provider, candidate.model)
+            if observed is None:
+                current.append(candidate)
+                continue
+            readiness = str(
+                observed.get("readiness") or observed.get("status") or "UNKNOWN"
+            ).upper()
+            if readiness in {"READY", "DEGRADED"}:
+                health = "READY" if readiness == "READY" else "DEGRADED"
+                availability = "AVAILABLE"
+            else:
+                health = readiness
+                availability = readiness
+            current.append(replace(
+                candidate,
+                readiness=readiness,
+                health=health,
+                auth_state=str(observed.get("auth_state") or candidate.auth_state),
+                availability=availability,
+                evidence_refs=tuple(dict.fromkeys([
+                    *candidate.evidence_refs,
+                    *(str(item) for item in observed.get("evidence_refs") or ()),
+                ])),
+            ))
+        return tuple(current)
+
+    def _record_provider_attempt(
+        self,
+        *,
+        run_id: str,
+        mission_id: str,
+        step_id: str | None,
+        role: str,
+        candidate: ProviderRouteCandidate,
+        ordinal: int,
+    ) -> None:
+        self._append("provider.dispatch_attempted", {
+            "run_id": run_id,
+            "mission_id": mission_id,
+            "step_id": step_id,
+            "role": role,
+            "provider_id": candidate.provider,
+            "provider": candidate.provider,
+            "model_id": candidate.model,
+            "model": candidate.model,
+            "attempt_ordinal": ordinal,
+        }, idempotency_key=(
+            f"provider.dispatch_attempted:{run_id}:{ordinal}:"
+            f"{candidate.provider}:{candidate.model}"))
+
+    def _attempt_history(self, run_id: str) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        events = self.database.events(readonly=True)
+        last_resume = -1
+        for index, event in enumerate(events):
+            if (
+                event.event_type == "mission.provider_wait_resumed"
+                and str(event.payload.get("run_id") or "") == run_id
+            ):
+                last_resume = index
+        for index, event in enumerate(events):
+            if index <= last_resume or event.event_type != "provider.dispatch_attempted":
+                continue
+            if str(event.payload.get("run_id") or "") == run_id:
+                rows.append(dict(event.payload))
+        return rows
+
+    def _pending_effect_reconciliation(
+        self, run_id: str,
+    ) -> tuple[str, str] | None:
+        required: list[tuple[int, str, str]] = []
+        resolved: set[str] = set()
+        for index, event in enumerate(self.database.events(readonly=True)):
+            if str(event.payload.get("run_id") or "") != run_id:
+                continue
+            action_key = str(event.payload.get("effect_action_key") or "")
+            if not action_key:
+                continue
+            if event.event_type == "provider.effect_reconciliation_required":
+                required.append((index, action_key, str(event.payload.get("provider") or "")))
+            elif event.event_type == "provider.effect_reconciled":
+                resolved.add(action_key)
+        for _index, action_key, provider in reversed(required):
+            if action_key in resolved:
+                continue
+            try:
+                from ..effects import COMPLETED as EFFECT_COMPLETED
+                from ..effects import FAILED as EFFECT_FAILED
+                from ..effects import effect_state
+
+                state = effect_state(self.database, action_key)
+                status = str(state.get("status") or "")
+                reconciled = any(
+                    event.event_type == "effect.reconciled"
+                    and str(event.payload.get("action_key") or "") == action_key
+                    for event in self.database.events(readonly=True)
+                )
+                if reconciled:
+                    status = "RECONCILED"
+                if status in {EFFECT_COMPLETED, EFFECT_FAILED, "RECONCILED"}:
+                    self._append("provider.effect_reconciled", {
+                        "run_id": run_id,
+                        "provider": provider,
+                        "effect_action_key": action_key,
+                        "status": status,
+                        "replayed": bool(state.get("replayed")),
+                    }, idempotency_key=(
+                        f"provider.effect_reconciled:{run_id}:{action_key}:{status}"))
+                    continue
+            except Exception:
+                pass
+            return action_key, provider
+        return None
+
+    @staticmethod
+    def _failure_error_class(failure_class: str) -> str:
+        return {
+            "RATE_LIMITED": "provider_rate_limited",
+            "OUTAGE": "provider_unavailable",
+            "DEGRADED": "provider_degraded",
+            "INCOMPATIBLE": "provider_incompatible",
+            "BLOCKED_POLICY": "provider_policy_blocked",
+            "OWNER_RESTRICTED": "provider_owner_restricted",
+            "COST_BLOCKED": "provider_cost_blocked",
+            "COST_LIMIT": "provider_cost_blocked",
+        }.get(str(failure_class).upper(), "provider_unavailable")
+
     def dispatch(
         self,
         *,
@@ -236,9 +404,107 @@ class RoleDispatcher:
         run_id = run_id or f"run-{uuid.uuid4()}"
         lease_key = f"role:{role}:{mission_id}:{step_id or 'start'}"
 
-        # 1. provider chain (override only for tests/staging)
-        chain = (provider_override,) if provider_override else self.router.provider_chain(role)
-        if not chain:
+        config = self.router.config(role)
+        legacy_chain = (
+            (provider_override,) if provider_override
+            else self.router.provider_chain(role)
+        )
+        candidates = self._candidate_snapshot()
+        route_failure: str | None = None
+        if candidates:
+            if provider_override and not self.provider_override_allows_fallback:
+                candidates = tuple(
+                    item for item in candidates
+                    if item.provider == provider_override)
+            raw_constraints = self.routing_constraints
+            role_constraints = raw_constraints.get(role)
+            constraints = (
+                dict(role_constraints)
+                if isinstance(role_constraints, dict)
+                else raw_constraints
+            )
+            configured_cost = constraints.get("max_cost_usd")
+            max_cost = (
+                budget_usd if budget_usd > 0
+                else float(configured_cost) if configured_cost is not None
+                else None
+            )
+            decision = self.router.route(
+                RoutingRequest(
+                    task_type=role,
+                    required_tools=tuple(
+                        str(item) for item in constraints.get("required_tools") or ()),
+                    unattended=bool(constraints.get("unattended", True)),
+                    context_tokens=(
+                        int(constraints["context_tokens"])
+                        if constraints.get("context_tokens") is not None else None),
+                    latency_budget_ms=(
+                        float(constraints["latency_budget_ms"])
+                        if constraints.get("latency_budget_ms") is not None else None),
+                    reliability_floor=(
+                        float(constraints["reliability_floor"])
+                        if constraints.get("reliability_floor") is not None else None),
+                    max_cost_usd=max_cost,
+                    preferred_provider=(provider_override or config.preferred_provider),
+                    allowed_providers=self.allowed_providers,
+                    denied_providers=self.denied_providers,
+                    allowed_data_use=self.allowed_data_use,
+                ),
+                candidates,
+                role=role,
+            )
+            self._append("provider.route_decided", {
+                "run_id": run_id,
+                "mission_id": mission_id,
+                "step_id": step_id,
+                "role": role,
+                **decision.to_dict(),
+            }, idempotency_key=(
+                f"provider.route_decided:{run_id}:{attempt}:"
+                f"{decision.status}:{decision.failure_class or 'selected'}"))
+            chain_candidates = tuple(decision.attempted)
+            route_failure = decision.failure_class
+        else:
+            chain_candidates = tuple(ProviderRouteCandidate(
+                provider=provider,
+                model=config.preferred_model,
+                readiness="READY",
+                health="READY",
+                auth_state="READY",
+                availability="AVAILABLE",
+                noninteractive_allowed=True,
+            ) for provider in legacy_chain)
+
+        if not chain_candidates:
+            failure_class = route_failure or "NO_CANDIDATES"
+            error_class = self._failure_error_class(failure_class)
+            wait_providers = tuple(
+                dict.fromkeys(item.provider for item in candidates)
+            )
+            detail = (
+                f"no safe provider satisfied role {role}: {failure_class}")
+            self._fail_run(run_id, error_class, detail)
+            return RoleResult(
+                run_id=run_id, role=role, status=BLOCKED, provider="", model="",
+                verdict="BLOCKED", error_class=error_class,
+                error_detail=detail, wait_for_providers=wait_providers,
+                started_at=isoformat(utc_now()), finished_at=isoformat(utc_now()),
+            )
+
+        pending_effect = self._pending_effect_reconciliation(run_id)
+        if pending_effect is not None:
+            action_key, provider = pending_effect
+            detail = (
+                f"provider effect {action_key} remains ambiguous; reconcile before fallback")
+            return RoleResult(
+                run_id=run_id, role=role, status=BLOCKED,
+                provider=provider, model="", verdict="BLOCKED",
+                error_class="provider_effect_reconciliation_required",
+                error_detail=detail, effect_action_key=action_key,
+                started_at=isoformat(utc_now()), finished_at=isoformat(utc_now()),
+            )
+
+        if not legacy_chain and not candidates:
             self._fail_run(run_id, "provider_unavailable", f"no providers configured for role {role}")
             return RoleResult(
                 run_id=run_id, role=role, status=BLOCKED, provider="", model="",
@@ -247,15 +513,15 @@ class RoleDispatcher:
                 started_at=isoformat(utc_now()), finished_at=isoformat(utc_now()),
             )
 
-        config = self.router.config(role)
-
         # 1b. crashed-caller recovery: identical context + completed run replays
         # from the ledger (no re-run, no new events). A changed context under
         # the same run_id proceeds and fails loudly on the event idempotency
         # key (first write stands, WP3 B6 semantics).
         prospective = self._manifest(
             run_id, role, mission_id, step_id, resource_id, capability,
-            instructions, duration_seconds, budget_usd, chain[0], config,
+            instructions, duration_seconds, budget_usd,
+            chain_candidates[0].provider, config,
+            model=chain_candidates[0].model,
             expected_artifacts=expected_artifacts,
             verification_criteria=verification_criteria,
             forbidden_paths=forbidden_paths,
@@ -264,6 +530,13 @@ class RoleDispatcher:
         replayed = self._replay_completed(run_id, prospective)
         if replayed is not None:
             return replayed
+        completed = self.database.row("agent_runs", "run_id", run_id)
+        if completed is not None and completed.get("status") == "COMPLETED":
+            # A completed identity is immutable.  Retry history would
+            # otherwise suppress every candidate before agent_run.started
+            # gets a chance to enforce the original first-write conflict.
+            raise EventConflict(
+                f"completed run {run_id} was redispatched with changed context")
 
         # 2. lease
         try:
@@ -332,16 +605,40 @@ class RoleDispatcher:
 
         last_error: Exception | None = None
         tried: list[str] = []
+        history = self._attempt_history(run_id)
+        provider_counts: dict[str, int] = {}
+        for row in history:
+            provider = str(row.get("provider") or row.get("provider_id") or "")
+            provider_counts[provider] = provider_counts.get(provider, 0) + 1
+        total_attempts = len(history)
+        failure_classes: list[str] = []
         try:
-            for provider in chain:
-                model = config.preferred_model
+            queue = list(chain_candidates)
+            while queue and total_attempts < self.max_total_attempts:
+                candidate = queue.pop(0)
+                provider = candidate.provider
+                model = candidate.model
+                count = provider_counts.get(provider, 0)
+                if count >= 1 + self.max_retries_per_provider:
+                    continue
+                total_attempts += 1
+                provider_counts[provider] = count + 1
                 manifest = self._manifest(
                     run_id, role, mission_id, step_id, resource_id, capability,
-                    instructions, duration_seconds, budget_usd, provider, config,
+                    instructions, duration_seconds, budget_usd,
+                    provider, config, model=model,
                     expected_artifacts=expected_artifacts,
                     verification_criteria=verification_criteria,
                     forbidden_paths=forbidden_paths,
                     attempt=attempt,
+                )
+                self._record_provider_attempt(
+                    run_id=run_id,
+                    mission_id=mission_id,
+                    step_id=step_id,
+                    role=role,
+                    candidate=candidate,
+                    ordinal=total_attempts,
                 )
                 self._start_run(manifest, provider, model)
                 # The start event is durable before the provider adapter is
@@ -365,9 +662,88 @@ class RoleDispatcher:
                         manifest,
                         heartbeat=_beat,
                     )
-                except ProviderUnavailable as error:
+                except ProviderFailure as error:
                     last_error = error
-                    self._fail_run(run_id, "provider_unavailable", str(error), suffix=provider)
+                    failure_class = str(error.failure_class or "OUTAGE").upper()
+                    failure_classes.append(failure_class)
+                    error_class = self._failure_error_class(failure_class)
+                    self._fail_run(
+                        run_id, error_class, str(error),
+                        suffix=f"{provider}:{total_attempts}")
+                    self._append("provider.dispatch_failed", {
+                        "run_id": run_id,
+                        "mission_id": mission_id,
+                        "step_id": step_id,
+                        "role": role,
+                        "provider_id": provider,
+                        "provider": provider,
+                        "model_id": model,
+                        "model": model,
+                        "failure_class": failure_class,
+                        "retryable": error.retryable,
+                        "retry_after_seconds": error.retry_after_seconds,
+                        "possible_effect": error.possible_effect,
+                        "effect_action_key": error.effect_action_key,
+                        "attempt_ordinal": total_attempts,
+                    }, idempotency_key=(
+                        f"provider.dispatch_failed:{run_id}:{total_attempts}:"
+                        f"{provider}:{failure_class}"))
+                    readiness = (
+                        ProviderReadiness.RATE_LIMITED
+                        if failure_class == "RATE_LIMITED" else
+                        ProviderReadiness.INCOMPATIBLE
+                        if failure_class == "INCOMPATIBLE" else
+                        ProviderReadiness.BLOCKED_POLICY
+                        if failure_class in {"BLOCKED_POLICY", "OWNER_RESTRICTED"} else
+                        ProviderReadiness.DEGRADED
+                        if failure_class == "DEGRADED" else
+                        ProviderReadiness.OUTAGE
+                    )
+                    record_provider_readiness(
+                        self.database,
+                        provider_id=provider,
+                        model=model,
+                        readiness=readiness,
+                        reason=str(error),
+                        retry_after_seconds=error.retry_after_seconds,
+                        notify_wakes=False,
+                        source_id=self.source_id,
+                    )
+                    if error.possible_effect:
+                        action_key = str(error.effect_action_key or "").strip()
+                        if not action_key:
+                            action_key = f"provider-effect:{mission_id}:{step_id or 'start'}:{run_id}"
+                        self._append("provider.effect_reconciliation_required", {
+                            "run_id": run_id,
+                            "mission_id": mission_id,
+                            "step_id": step_id,
+                            "provider": provider,
+                            "model": model,
+                            "effect_action_key": action_key,
+                            "failure_class": failure_class,
+                            "reason": str(error)[:500],
+                        }, idempotency_key=(
+                            f"provider.effect_reconciliation_required:"
+                            f"{run_id}:{action_key}"))
+                        return RoleResult(
+                            run_id=run_id, role=role, status=BLOCKED,
+                            provider=provider, model=model, verdict="BLOCKED",
+                            error_class="provider_effect_reconciliation_required",
+                            error_detail=(
+                                "possible external mutation must be reconciled "
+                                "before any alternate provider dispatch"),
+                            effect_action_key=action_key,
+                            started_at=isoformat(utc_now()),
+                            finished_at=isoformat(utc_now()),
+                        )
+                    # A retry is only justified when explicitly classified,
+                    # has no required backoff, and remains within both bounds.
+                    if (
+                        error.retryable
+                        and not error.retry_after_seconds
+                        and provider_counts[provider] < 1 + self.max_retries_per_provider
+                    ):
+                        queue.insert(0, replace(candidate, readiness="DEGRADED"))
                     continue
                 except Exception as error:  # adapter crash -> failed run
                     last_error = error
@@ -381,18 +757,114 @@ class RoleDispatcher:
                     )
                 if result.status == COMPLETED:
                     self._complete_run(result)
-                else:
-                    self._fail_run(run_id, result.error_class or "session_failed",
-                                   result.error_detail, suffix=provider)
+                    self._append("provider.dispatch_succeeded", {
+                        "run_id": run_id,
+                        "mission_id": mission_id,
+                        "step_id": step_id,
+                        "role": role,
+                        "provider_id": result.provider,
+                        "provider": result.provider,
+                        "model_id": result.model,
+                        "model": result.model,
+                        "attempt_ordinal": total_attempts,
+                        "fallback_used": len(tried) > 1,
+                        "cost_usd": result.cost_usd,
+                    }, idempotency_key=(
+                        f"provider.dispatch_succeeded:{run_id}:"
+                        f"{result.provider}:{result.model}"))
+                    record_provider_readiness(
+                        self.database,
+                        provider_id=result.provider,
+                        model=result.model,
+                        readiness=ProviderReadiness.READY,
+                        reason="provider dispatch completed",
+                        evidence_refs=(f"agent_run:{run_id}",),
+                        notify_wakes=False,
+                        source_id=self.source_id,
+                    )
+                    return result
+                result_failure = {
+                    "provider_rate_limited": "RATE_LIMITED",
+                    "provider_degraded": "DEGRADED",
+                    "provider_incompatible": "INCOMPATIBLE",
+                    "provider_policy_blocked": "BLOCKED_POLICY",
+                    "provider_cost_blocked": "COST_BLOCKED",
+                }.get(
+                    str(result.error_class or ""),
+                    classify_provider_failure(
+                        f"{result.error_class or ''} {result.error_detail or ''}"),
+                )
+                if result.error_class in {
+                    "provider_unavailable", "provider_rate_limited",
+                    "provider_degraded", "provider_incompatible",
+                    "provider_policy_blocked", "provider_cost_blocked",
+                }:
+                    last_error = ProviderFailure(
+                        result.error_detail or result.error_class or "provider failed",
+                        failure_class=result_failure,
+                    )
+                    failure_classes.append(result_failure)
+                    self._fail_run(
+                        run_id, result.error_class or "provider_unavailable",
+                        result.error_detail, suffix=f"{provider}:{total_attempts}")
+                    self._append("provider.dispatch_failed", {
+                        "run_id": run_id,
+                        "mission_id": mission_id,
+                        "step_id": step_id,
+                        "role": role,
+                        "provider_id": provider,
+                        "provider": provider,
+                        "model_id": model,
+                        "model": model,
+                        "failure_class": result_failure,
+                        "retryable": False,
+                        "possible_effect": False,
+                        "effect_action_key": None,
+                        "attempt_ordinal": total_attempts,
+                    }, idempotency_key=(
+                        f"provider.dispatch_failed:{run_id}:{total_attempts}:"
+                        f"{provider}:{result_failure}"))
+                    readiness = (
+                        ProviderReadiness.RATE_LIMITED
+                        if result_failure == "RATE_LIMITED" else
+                        ProviderReadiness.INCOMPATIBLE
+                        if result_failure == "INCOMPATIBLE" else
+                        ProviderReadiness.BLOCKED_POLICY
+                        if result_failure == "BLOCKED_POLICY" else
+                        ProviderReadiness.DEGRADED
+                        if result_failure == "DEGRADED" else
+                        ProviderReadiness.OUTAGE
+                    )
+                    record_provider_readiness(
+                        self.database,
+                        provider_id=provider,
+                        model=model,
+                        readiness=readiness,
+                        reason=result.error_detail or result.error_class or "provider failed",
+                        notify_wakes=False,
+                        source_id=self.source_id,
+                    )
+                    continue
+                self._fail_run(run_id, result.error_class or "session_failed",
+                               result.error_detail, suffix=provider)
                 return result
 
             # 4. all providers exhausted
             detail = f"all providers failed for role {role}: tried={tried}; last={last_error}"
-            self._fail_run(run_id, "provider_unavailable", detail, suffix="exhausted")
+            terminal_class = failure_classes[-1] if failure_classes else (
+                route_failure or "OUTAGE")
+            error_class = self._failure_error_class(terminal_class)
+            self._fail_run(run_id, error_class, detail, suffix="exhausted")
             return RoleResult(
                 run_id=run_id, role=role, status=BLOCKED, provider=tried[-1] if tried else "",
-                model=config.preferred_model, verdict="BLOCKED",
-                error_class="provider_unavailable", error_detail=detail,
+                model=(
+                    next((item.model for item in reversed(chain_candidates)
+                          if item.provider in tried), config.preferred_model)
+                ), verdict="BLOCKED",
+                error_class=error_class, error_detail=detail,
+                wait_for_providers=tuple(dict.fromkeys(
+                    item.provider for item in chain_candidates
+                )),
                 started_at=isoformat(utc_now()), finished_at=isoformat(utc_now()),
             )
         finally:

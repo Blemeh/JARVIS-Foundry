@@ -56,6 +56,7 @@ from ...runtime.provider_config import (
     ProviderSettings,
     openhands_provider_env,
 )
+from ...roles.adapter import ProviderFailure
 from .base import (
     AdapterConfigurationError,
     ProviderUnavailable,
@@ -88,6 +89,7 @@ class OpenHandsWorkerAdapter:
         pid_table: Path | str | None = None,
         workers: Any = None,
         provider_settings: ProviderSettings | None = None,
+        provider_settings_by_id: dict[str, ProviderSettings] | None = None,
     ) -> None:
         from ...runtime.provider_config import default_provider_settings
 
@@ -97,6 +99,9 @@ class OpenHandsWorkerAdapter:
         self.timeout_seconds = timeout_seconds
         self.framework = "openhands"
         self.provider_settings = provider_settings or default_provider_settings()
+        self.provider_settings_by_id = dict(provider_settings_by_id or {})
+        self.provider_settings_by_id.setdefault(
+            self.provider_settings.provider, self.provider_settings)
         self._owner_openhands = self.LIVE_OPENHANDS
         self.stop_path = Path(stop_path).resolve() if stop_path is not None else None
         self.pid_table = Path(pid_table).resolve() if pid_table is not None else None
@@ -127,10 +132,17 @@ class OpenHandsWorkerAdapter:
             raise ProviderUnavailable(
                 "real OpenHands dispatch is disabled; enable explicitly "
                 "with a disposable OPENHANDS_DATA_DIR")
+        settings = self.provider_settings_by_id.get(contract.provider)
+        if settings is None or settings.model != contract.model:
+            raise ProviderFailure(
+                f"provider/model identity is not configured: "
+                f"{contract.provider}/{contract.model}",
+                failure_class="INCOMPATIBLE",
+            )
         try:
-            provider_env = openhands_provider_env(self.provider_settings)
+            provider_env = openhands_provider_env(settings)
         except ProviderCredentialError as error:
-            raise ProviderUnavailable(str(error)) from error
+            raise ProviderUnavailable(str(error), retryable=False) from error
         started = isoformat(utc_now())
         env = dict(os.environ)
         env.update(result_env(contract.working_root))
@@ -230,7 +242,7 @@ class OpenHandsWorkerAdapter:
         # baseline; any new/removed/modified entry in the owner state after
         # the run forces a fail-closed BLOCKED result.
         stdout = redact_secrets(
-            process.stdout or "", configured_key=configured_api_key(self.provider_settings))
+            process.stdout or "", configured_key=configured_api_key(settings))
         events = self._parse_jsonl(stdout)
         model_actual = contract.model
         for event in events:
@@ -264,7 +276,7 @@ class OpenHandsWorkerAdapter:
                 claimed_outcome="OpenHands CLI exited non-zero",
                 summary=redact_secrets(
                     process.stderr or stdout,
-                    configured_key=configured_api_key(self.provider_settings))[-800:],
+                    configured_key=configured_api_key(settings))[-800:],
                 started_at=started,
                 model_actual=model_actual,
                 exit_state=f"EXIT_{process.returncode}",
@@ -311,7 +323,12 @@ class OpenHandsWorkerAdapter:
         """Redact credential-shaped tokens from disposable run-state files
         (contained-home conversation events, editor history, etc.) so no
         retained artifact ever holds the secret value."""
-        key = configured_api_key(self.provider_settings)
+        keys = tuple(
+            key for key in (
+                configured_api_key(settings)
+                for settings in self.provider_settings_by_id.values()
+            ) if key
+        )
         if not self.data_dir.exists():
             return
         scanned = 0
@@ -331,7 +348,9 @@ class OpenHandsWorkerAdapter:
                 text = data.decode("utf-8")
             except UnicodeDecodeError:
                 continue
-            redacted = redact_secrets(text, configured_key=key)
+            redacted = text
+            for key in keys or (None,):
+                redacted = redact_secrets(redacted, configured_key=key)
             if redacted != text:
                 try:
                     path.write_bytes(redacted.encode("utf-8"))
