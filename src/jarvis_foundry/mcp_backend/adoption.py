@@ -13,9 +13,15 @@ import re
 from dataclasses import dataclass
 from typing import Any, Mapping
 
+from ..control.redaction import redact_text
 from ..database import FoundryDatabase
 from ..events import canonical_json
-from ..fabric.model import CapabilityTrust, Semantic, UnattendedMode
+from ..fabric.model import (
+    CapabilityTrust,
+    Semantic,
+    UnattendedMode,
+    VerifyVerdict,
+)
 from .config import (
     McpBackendConfig,
     McpConfigurationError,
@@ -225,10 +231,168 @@ def selected_solution_mcp_adoption(
     )
 
 
+def _active_selected_mcp_adoptions(
+    database: FoundryDatabase,
+) -> tuple[tuple[SelectedMcpAdoption, tuple[str, ...]], ...]:
+    from ..fabric.catalog import capability_registration
+
+    selected: dict[tuple[str, str], dict[str, Any]] = {}
+    completed: dict[str, dict[str, Any]] = {}
+    for event in database.events(
+        readonly=True,
+        event_types=(
+            "fabric.self_expansion.solution_selected",
+            "fabric.self_expansion.completed",
+        ),
+    ):
+        payload = event.payload
+        run_id = str(payload.get("run_id") or "")
+        if not run_id:
+            continue
+        if event.event_type == "fabric.self_expansion.solution_selected":
+            descriptor = payload.get("mcp_descriptor")
+            candidate_id = str(payload.get("candidate_id") or "")
+            if candidate_id and isinstance(descriptor, Mapping):
+                selected[(run_id, candidate_id)] = dict(descriptor)
+            continue
+        receipt = payload.get("receipt")
+        if (
+            isinstance(receipt, Mapping)
+            and receipt.get("status") == "REGISTERED"
+            and receipt.get("runtime") == CANONICAL_MCP_RUNTIME
+        ):
+            completed[run_id] = dict(receipt)
+
+    active: list[tuple[SelectedMcpAdoption, tuple[str, ...]]] = []
+    for run_id, receipt in completed.items():
+        candidate_id = str(receipt.get("candidate_id") or "")
+        descriptor = selected.get((run_id, candidate_id))
+        if descriptor is None:
+            continue
+        capabilities = descriptor.get("capabilities")
+        if not isinstance(capabilities, list) or not capabilities:
+            continue
+        capability_ids = tuple(
+            str(item.get("capability_id") or "")
+            for item in capabilities
+            if isinstance(item, Mapping)
+        )
+        if (
+            not capability_ids
+            or len(capability_ids) != len(capabilities)
+            or any(not capability_id for capability_id in capability_ids)
+        ):
+            continue
+        registrations = [
+            capability_registration(database, capability_id)
+            for capability_id in capability_ids
+        ]
+        if any(registration is None for registration in registrations):
+            continue
+        if len(registrations) == 1 and (
+            registrations[0].get("registration_id")
+            != receipt.get("registration_id")
+        ):
+            continue
+        if any(
+            str(registration.get("trust") or "")
+            not in {
+                CapabilityTrust.PROBATION.value,
+                CapabilityTrust.ESTABLISHED.value,
+            }
+            for registration in registrations
+            if registration is not None
+        ):
+            continue
+        active.append(
+            (
+                selected_solution_mcp_adoption(descriptor),
+                capability_ids,
+            )
+        )
+    return tuple(
+        sorted(
+            active,
+            key=lambda item: item[0].config.servers[0].server_id,
+        )
+    )
+
+
+def restore_selected_mcp_backend(
+    database: FoundryDatabase,
+) -> FabricMcpBackend | None:
+    """Reconstruct one canonical backend from completed active adoptions."""
+
+    from ..fabric.catalog import record_outcome
+
+    active = _active_selected_mcp_adoptions(database)
+    if not active:
+        return None
+    servers: dict[str, Any] = {}
+    capabilities_by_server: dict[str, set[str]] = {}
+    for adoption, capability_ids in active:
+        server = adoption.config.servers[0]
+        prior = servers.get(server.server_id)
+        if prior is not None and prior != server:
+            note = (
+                f"conflicting durable MCP settings for server {server.server_id}"
+            )
+            for capability_id in capability_ids:
+                record_outcome(
+                    database,
+                    capability_id,
+                    success=False,
+                    verified=VerifyVerdict.MISMATCH,
+                    note=note,
+                )
+            return None
+        servers[server.server_id] = server
+        capabilities_by_server.setdefault(server.server_id, set()).update(
+            capability_ids
+        )
+
+    backend = FabricMcpBackend(
+        database,
+        McpBackendConfig(
+            tuple(servers[server_id] for server_id in sorted(servers))
+        ),
+    )
+    try:
+        for server_id, expected_ids in capabilities_by_server.items():
+            health, projected = backend.connect_server(
+                server_id,
+                include_disabled=False,
+            )
+            projected_ids = {item.capability_id for item in projected}
+            if health.state.value != "READY" or projected_ids != expected_ids:
+                raise McpConfigurationError(
+                    f"restored MCP server {server_id} did not reproduce "
+                    "its completed Catalog projection"
+                )
+        return backend
+    except Exception as error:
+        note = redact_text(
+            f"durable MCP runtime restoration failed: "
+            f"{type(error).__name__}: {error}"
+        )[:400]
+        for capability_ids in capabilities_by_server.values():
+            for capability_id in capability_ids:
+                record_outcome(
+                    database,
+                    capability_id,
+                    success=False,
+                    verified=VerifyVerdict.MISMATCH,
+                    note=note,
+                )
+        backend.close(preserve_catalog_readiness=True)
+        return None
+
+
 __all__ = [
     "CANONICAL_MCP_RUNTIME",
     "MCP_ADOPTION_SEAM_VERSION",
     "SELECTED_SOLUTION_CONTRACT",
     "SelectedMcpAdoption",
+    "restore_selected_mcp_backend",
     "selected_solution_mcp_adoption",
 ]

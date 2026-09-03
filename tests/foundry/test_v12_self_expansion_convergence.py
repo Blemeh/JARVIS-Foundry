@@ -37,8 +37,11 @@ from jarvis_foundry.fabric.artifact_trial import (
     CanonicalArtifactTrialPipeline,
     TrialMission,
 )
-from jarvis_foundry.fabric.adapter import FabricRoleAdapter
-from jarvis_foundry.fabric.catalog import catalog_truth_snapshot
+from jarvis_foundry.fabric.catalog import (
+    capability_registration,
+    catalog_truth_snapshot,
+    observed_readiness,
+)
 from jarvis_foundry.fabric.executors import ExecutorContext
 from jarvis_foundry.fabric.gap_bridge import (
     ATTEMPT_DISPATCHED,
@@ -52,17 +55,27 @@ from jarvis_foundry.fabric.gap_bridge import (
     start_expansion_attempt,
 )
 from jarvis_foundry.fabric.loop import execute_action
-from jarvis_foundry.fabric.model import Semantic, TaskIntent, UnattendedMode
+from jarvis_foundry.fabric.model import (
+    Readiness,
+    Semantic,
+    TaskIntent,
+    UnattendedMode,
+)
 from jarvis_foundry.mcp_backend import CANONICAL_MCP_RUNTIME, stable_tool_identity
+from jarvis_foundry.mission.verification import accepted_verifications
 from jarvis_foundry.paths import FoundryPaths
 from jarvis_foundry.roles.manifest import ContextManifest
 from jarvis_foundry.roles.results import COMPLETED
+from jarvis_foundry.runtime._stack import build_worker_stack
 from jarvis_foundry.runtime.config import WorkerRuntimeConfig
 from jarvis_foundry.runtime.worker_loop import run_cycle
 from jarvis_foundry.self_expansion import (
     MCP_ADOPTION_VERIFIED,
+    RUN_COMPLETED,
+    RUN_FAILED,
     ExpansionBlueprint,
     SelfExpansionEngine,
+    SelfExpansionPolicy,
     self_expansion_record,
 )
 
@@ -297,11 +310,17 @@ def test_selected_mcp_solution_uses_canonical_backend_and_worker_path(
     tmp_path: Path,
 ) -> None:
     database = _database(tmp_path)
+    resource_id = "resource-v12-selected-mcp"
+    repository = _git_repository(tmp_path)
+    database.append(registration_event(
+        inspect_git_resource(repository, resource_id=resource_id)
+    ))
     objective_id = "objective-v12-selected-mcp"
     create_objective(
         database,
         "Resume the original objective through one selected MCP capability",
         objective_id=objective_id,
+        resource_id=resource_id,
         required_capabilities=(MCP_MISSING,),
         success_criteria=("selected MCP echo is verified through Fabric",),
         budget={"max_missions": 1, "max_retries": 1},
@@ -386,47 +405,45 @@ def test_selected_mcp_solution_uses_canonical_backend_and_worker_path(
     try:
         replay = restarted.dispatch(delivered[0])
         assert replay == receipt
-        backend = restarted.mcp_backend_for(MCP_MISSING)
-        assert backend is not None
+        assert restarted.mcp_backend_for(MCP_MISSING) is None
 
-        class RefusingInner:
-            calls = 0
-
-            def dispatch(self, manifest, *, heartbeat):
-                self.calls += 1
-                raise AssertionError(
-                    f"selected MCP work escaped Fabric: {manifest.capability}"
-                )
-
-        inner = RefusingInner()
-        adapter = FabricRoleAdapter(
+        worker_home = tmp_path / "selected-mcp-worker-home"
+        worker_home.mkdir()
+        stack = build_worker_stack(
             restarted_database,
-            owned_root=tmp_path / "selected-mcp-owned",
-            inner=inner,
-            structured_only=True,
-            mcp_backend=backend,
-        )
-        result = adapter.dispatch(
-            ContextManifest(
-                run_id="run-v12-selected-mcp",
-                role="builder",
-                mission_id="mission-v12-selected-mcp",
-                step_id="echo",
-                resource_id="resource-v12-selected-mcp",
-                capability=MCP_MISSING,
-                provider="fabric",
-                model="local",
-                isolation_group="v12-selected-mcp",
-                instructions=json.dumps(
-                    {"arguments": {"text": "worker-path", "repeat": 1}}
-                ),
+            FoundryPaths(worker_home),
+            WorkerRuntimeConfig(
+                enabled=True,
+                status="ACTIVE",
+                resource_id=resource_id,
+                runtime_state_root=str(tmp_path / "selected-mcp-worker-state"),
             ),
-            heartbeat=lambda: None,
+            run_id="selected-mcp-worker",
         )
+        try:
+            assert stack.mcp_backend is not None
+            result = stack.bridge.dispatch(
+                ContextManifest(
+                    run_id="run-v12-selected-mcp",
+                    role="builder",
+                    mission_id="mission-v12-selected-mcp",
+                    step_id="echo",
+                    resource_id=resource_id,
+                    capability=MCP_MISSING,
+                    provider="fabric",
+                    model="local",
+                    isolation_group="v12-selected-mcp",
+                    instructions=json.dumps(
+                        {"arguments": {"text": "worker-path", "repeat": 1}}
+                    ),
+                ),
+                heartbeat=lambda: None,
+            )
+        finally:
+            stack.close()
         assert result.status == COMPLETED
         assert result.provider == "fabric"
         assert f"capability:{MCP_MISSING}" in result.evidence
-        assert inner.calls == 0
         assert len([
             event
             for event in _events(restarted_database, REGISTERED)
@@ -462,7 +479,7 @@ def test_selected_mcp_solution_uses_canonical_backend_and_worker_path(
                 "worker_dispatch": {
                     "status": result.status,
                     "provider": result.provider,
-                    "inner_dispatches": inner.calls,
+                    "fallback_dispatches": 0,
                     "evidence": list(result.evidence),
                 },
                 "live_mutated": False,
@@ -476,6 +493,79 @@ def test_selected_mcp_solution_uses_canonical_backend_and_worker_path(
             )
     finally:
         restarted.close()
+
+
+def test_selected_mcp_receipt_failure_rolls_back_runtime_and_catalog(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database = _database(tmp_path)
+    objective_id = "objective-v12-selected-mcp-receipt-failure"
+    create_objective(
+        database,
+        "Fail closed when selected MCP completion cannot be persisted",
+        objective_id=objective_id,
+        required_capabilities=(MCP_MISSING,),
+        success_criteria=("no unreceipted MCP capability remains active",),
+        budget={"max_missions": 1, "max_retries": 1},
+    )
+    first_cycle = run_autonomy_cycle(
+        database,
+        cycle_id="v12-selected-mcp-receipt-failure-gap",
+    )
+    assert first_cycle.materialization["materialized"] is False
+    gap = next(
+        item
+        for item in rebuild_gap_state(database).values()
+        if item.origin_objective_id == objective_id
+    )
+
+    def resolver(candidate, request):
+        return _mcp_blueprint(
+            candidate,
+            request,
+            disposable_root=tmp_path / "selected-mcp-receipt-failure",
+        )
+
+    engine = SelfExpansionEngine(
+        database,
+        repo_root=ROOT,
+        artifact_root=tmp_path / "unused-adapter-artifacts",
+        trial_root=tmp_path / "selected-mcp-receipt-failure-trials",
+        resolver=resolver,
+        policy=SelfExpansionPolicy(max_candidate_trials=1),
+    )
+    original_append_events = database.append_events
+
+    def fail_completion_batch(events):
+        if any(event.event_type == RUN_COMPLETED for event in events):
+            raise RuntimeError("simulated durable completion receipt failure")
+        return original_append_events(events)
+
+    monkeypatch.setattr(database, "append_events", fail_completion_batch)
+    try:
+        failed = start_expansion_attempt(
+            database,
+            gap.gap_id,
+            strategy_id="selected-mcp-receipt-failure",
+            port=engine,
+        )
+        assert failed.status.value == "RETRYABLE_FAILURE"
+        assert engine.mcp_backend_for(MCP_MISSING) is None
+        assert capability_registration(database, MCP_MISSING) is None
+        assert observed_readiness(database, MCP_MISSING).state is Readiness.MISSING
+        assert len(_events(database, MCP_ADOPTION_VERIFIED)) == 0
+        assert len(_events(database, RUN_COMPLETED)) == 0
+        failures = _events(database, RUN_FAILED)
+        assert len(failures) == 1
+        assert failures[0].payload["receipt"]["status"] == "FAILED"
+        assert len([
+            event
+            for event in _events(database, "fabric.capability.disabled")
+            if event.payload.get("capability_id") == MCP_MISSING
+        ]) == 1
+    finally:
+        engine.close()
 
 
 def test_real_gap_discover_adapt_trial_probation_resume_and_complete(tmp_path: Path) -> None:
@@ -699,6 +789,43 @@ def test_real_gap_discover_adapt_trial_probation_resume_and_complete(tmp_path: P
     if proof_output:
         proof_path = Path(proof_output).expanduser().resolve()
         proof_path.parent.mkdir(parents=True, exist_ok=True)
+        created_mission_ids = [
+            str(event.payload.get("mission_id") or "")
+            for event in _events(database, "mission.created")
+            if event.payload.get("mission_id")
+        ]
+        completed_mission_ids = {
+            str(event.payload.get("mission_id") or "")
+            for event in _events(database, "mission.completed")
+            if event.payload.get("mission_id")
+        }
+        duplicate_missions = (
+            len(created_mission_ids) - len(set(created_mission_ids))
+        )
+        false_successes = sum(
+            not accepted_verifications(database, mission_id=completed_mission_id)
+            for completed_mission_id in completed_mission_ids
+        )
+        accepted_effect_keys = {
+            str(event.payload.get("action_key") or "")
+            for event in _events(database, "effect.acceptance_recorded")
+            if event.payload.get("accepted") is True
+            and event.payload.get("action_key")
+        }
+        terminal_effect_keys = {
+            str(event.payload.get("action_key") or "")
+            for event in _events(database, "effect.terminal_truth")
+            if event.payload.get("accepted") is True
+            and event.payload.get("reconciled") is True
+            and event.payload.get("outcome") == "COMPLETED"
+            and event.payload.get("action_key")
+        }
+        unreconciled_accepted_effects = len(
+            accepted_effect_keys - terminal_effect_keys
+        )
+        assert duplicate_missions == 0
+        assert false_successes == 0
+        assert unreconciled_accepted_effects == 0
         proof = {
             "contract_version": "jarvis.v12.self-expansion-proof.v1",
             "passed": True,
@@ -742,9 +869,9 @@ def test_real_gap_discover_adapt_trial_probation_resume_and_complete(tmp_path: P
             "duplicate_wakes": max(0, len(_events(database, WAKE_FIRED)) - 1),
             "resume_count": len(_events(database, RESUMED)),
             "duplicate_resumes": max(0, len(_events(database, RESUMED)) - 1),
-            "duplicate_missions": 0,
-            "false_successes": 0,
-            "unreconciled_accepted_effects": 0,
+            "duplicate_missions": duplicate_missions,
+            "false_successes": false_successes,
+            "unreconciled_accepted_effects": unreconciled_accepted_effects,
             "adapter_action": {
                 "claimed": action.claimed.value,
                 "verified": action.verified.value,

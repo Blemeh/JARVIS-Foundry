@@ -45,6 +45,11 @@ class WorkerStack:
     pid_table: Path | None = None
     workers: WorkerController | None = None
     provider_candidates: tuple[ProviderRouteCandidate, ...] = ()
+    mcp_backend: Any | None = None
+
+    def close(self) -> None:
+        if self.mcp_backend is not None:
+            self.mcp_backend.close(preserve_catalog_readiness=True)
 
 
 def _provider_candidates(
@@ -214,6 +219,16 @@ def build_worker_stack(
     provider_settings_by_id = {
         item.provider: item for item in config.provider_settings_pool
     }
+    mcp_backend = None
+    if not config.lab_scripted_hermes:
+        try:
+            from ..mcp_backend import restore_selected_mcp_backend
+
+            mcp_backend = restore_selected_mcp_backend(database)
+        except Exception:
+            # A malformed or unavailable optional adoption cannot create a
+            # second runtime or prevent non-MCP worker work from proceeding.
+            mcp_backend = None
     router = WorkerRouter()
     registry = WorkerRegistry()
     enabled: list[str] = []
@@ -326,10 +341,12 @@ def build_worker_stack(
         stop_path=config.resolve_stop_path(paths.home),
         vault_root=vault if vault.is_dir() else None,
         use_fabric=not config.lab_scripted_hermes,
+        mcp_backend=mcp_backend,
     )
     return WorkerStack(
         bridge=bridge, router=router, registry=registry,
         disposable_root=run_root, enabled_frameworks=tuple(enabled),
         stop_path=stop_path, pid_table=pid_table, workers=workers,
         provider_candidates=provider_candidates,
+        mcp_backend=mcp_backend,
     )

@@ -320,7 +320,11 @@ class FabricMcpBackend:
             self._mark_server_unavailable(descriptor.server_id, str(error))
             raise
 
-    def close(self) -> None:
+    def close(self, *, preserve_catalog_readiness: bool = False) -> None:
+        if preserve_catalog_readiness:
+            self.client.close()
+            self.last_close_errors = ()
+            return
         errors: list[str] = []
         for server in self.config.servers:
             health = self.client.health(server.server_id)

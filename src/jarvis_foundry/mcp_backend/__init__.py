@@ -5,6 +5,7 @@ from .adoption import (
     MCP_ADOPTION_SEAM_VERSION,
     SELECTED_SOLUTION_CONTRACT,
     SelectedMcpAdoption,
+    restore_selected_mcp_backend,
     selected_solution_mcp_adoption,
 )
 
@@ -70,6 +71,7 @@ __all__ = [
     "load_mcp_config",
     "normalize_json_schema",
     "normalize_result",
+    "restore_selected_mcp_backend",
     "stable_server_identity",
     "stable_tool_identity",
     "selected_solution_mcp_adoption",

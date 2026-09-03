@@ -135,6 +135,23 @@ def stable_expansion_run_id(request: ExpansionWorkRequest) -> str:
     return f"self-expansion:{digest}"
 
 
+def _expansion_event(
+    event_type: str,
+    run_id: str,
+    payload: Mapping[str, Any],
+    *,
+    suffix: str = "",
+) -> Event:
+    return Event.create(
+        event_type,
+        {"contract_version": CONTRACT_VERSION, "run_id": run_id, **dict(payload)},
+        source_type="supervisor",
+        source_id=SOURCE_ID,
+        correlation_id=run_id,
+        idempotency_key=f"{event_type}:{run_id}{':' + suffix if suffix else ''}",
+    )
+
+
 def _append(
     database: FoundryDatabase,
     event_type: str,
@@ -143,13 +160,11 @@ def _append(
     *,
     suffix: str = "",
 ) -> None:
-    database.append(Event.create(
+    database.append(_expansion_event(
         event_type,
-        {"contract_version": CONTRACT_VERSION, "run_id": run_id, **dict(payload)},
-        source_type="supervisor",
-        source_id=SOURCE_ID,
-        correlation_id=run_id,
-        idempotency_key=f"{event_type}:{run_id}{':' + suffix if suffix else ''}",
+        run_id,
+        payload,
+        suffix=suffix,
     ))
 
 
@@ -287,6 +302,33 @@ class SelfExpansionEngine(ExpansionWorkPort):
                     f"MCP capability {capability_id} already has an active backend"
                 )
             self._mcp_backends[capability_id] = backend
+
+    def _discard_mcp_backend(
+        self,
+        backend: FabricMcpBackend,
+        capability_ids: tuple[str, ...],
+        *,
+        registration_id: str,
+        reason: str,
+    ) -> None:
+        for capability_id in capability_ids:
+            if self._mcp_backends.get(capability_id) is backend:
+                self._mcp_backends.pop(capability_id, None)
+        try:
+            backend.close()
+        finally:
+            for capability_id in capability_ids:
+                registration = capability_registration(
+                    self.database, capability_id
+                )
+                if registration is None:
+                    continue
+                disable_capability(
+                    self.database,
+                    capability_id,
+                    registration_id=registration_id,
+                    reason=reason,
+                )
 
     def _connect_selected_mcp(
         self,
@@ -594,10 +636,8 @@ class SelfExpansionEngine(ExpansionWorkPort):
             receipt = dict(prior["receipt"])
             if receipt.get("status") != "REGISTERED":
                 return receipt
-            if (
-                receipt.get("runtime") == CANONICAL_MCP_RUNTIME
-                and self.mcp_backend_for(request.required_capability_id) is None
-            ):
+            is_mcp = receipt.get("runtime") == CANONICAL_MCP_RUNTIME
+            if is_mcp:
                 descriptor = prior.get("mcp_descriptor")
                 if not isinstance(descriptor, Mapping):
                     receipt = {
@@ -618,32 +658,7 @@ class SelfExpansionEngine(ExpansionWorkPort):
                         suffix="mcp-record-missing",
                     )
                     return receipt
-                try:
-                    self._connect_selected_mcp(
-                        SelectedSolutionDescriptor.from_mapping(descriptor),
-                        request,
-                        run_id,
-                        mission=None,
-                        verify_trial=False,
-                    )
-                except Exception as error:
-                    receipt = {
-                        **receipt,
-                        "status": "FAILED",
-                        "reason_code": "MCP_ADOPTION_NO_LONGER_ACTIVE",
-                        "reason": redact_text(
-                            f"{type(error).__name__}: {error}"
-                        )[:600],
-                        "retryable": True,
-                    }
-                    _append(
-                        self.database,
-                        RUN_FAILED,
-                        run_id,
-                        {"receipt": receipt},
-                        suffix="mcp-inactive",
-                    )
-                    return receipt
+                SelectedSolutionDescriptor.from_mapping(descriptor)
             registration = capability_registration(
                 self.database, request.required_capability_id
             )
@@ -653,8 +668,8 @@ class SelfExpansionEngine(ExpansionWorkPort):
             if (
                 registration
                 and registration.get("registration_id") == receipt.get("registration_id")
-                and readiness.state is Readiness.READY
                 and readiness.trust_state is CapabilityTrust.PROBATION
+                and (is_mcp or readiness.state is Readiness.READY)
             ):
                 return receipt
             stale = {
@@ -692,6 +707,9 @@ class SelfExpansionEngine(ExpansionWorkPort):
                 continue
             attempted += 1
             self._gate(request, candidate_id)
+            mcp_backend: FabricMcpBackend | None = None
+            mcp_registration_id = ""
+            mcp_capability_ids: tuple[str, ...] = ()
             try:
                 blueprint = self.resolver(candidate, request)
                 if blueprint is None:
@@ -720,12 +738,16 @@ class SelfExpansionEngine(ExpansionWorkPort):
                 )
                 if blueprint.descriptor.solution_class is SolutionClass.MCP_STDIO:
                     self._gate(request, candidate_id, "canonical-mcp-backend")
-                    _backend, mcp = self._connect_selected_mcp(
+                    mcp_backend, mcp = self._connect_selected_mcp(
                         blueprint.descriptor,
                         request,
                         run_id,
                         mission=blueprint.mission,
                         verify_trial=True,
+                    )
+                    mcp_registration_id = str(mcp["registration_id"])
+                    mcp_capability_ids = (
+                        request.required_capability_id,
                     )
                     verification = dict(mcp["verification"])
                     trial_id = (
@@ -734,21 +756,15 @@ class SelfExpansionEngine(ExpansionWorkPort):
                             f"{run_id}\0{candidate_id}".encode("utf-8")
                         ).hexdigest()[:24]
                     )
-                    _append(
-                        self.database,
-                        MCP_ADOPTION_VERIFIED,
-                        run_id,
-                        {
-                            "gap_id": request.gap_id,
-                            "attempt_id": request.attempt_id,
-                            "candidate_id": candidate_id,
-                            "trial_id": trial_id,
-                            "registration_id": mcp["registration_id"],
-                            "verification": verification,
-                            "mcp_adoption": mcp["adoption"],
-                        },
-                        suffix=candidate_id,
-                    )
+                    adoption_payload = {
+                        "gap_id": request.gap_id,
+                        "attempt_id": request.attempt_id,
+                        "candidate_id": candidate_id,
+                        "trial_id": trial_id,
+                        "registration_id": mcp["registration_id"],
+                        "verification": verification,
+                        "mcp_adoption": mcp["adoption"],
+                    }
                     receipt = {
                         "contract_version": CONTRACT_VERSION,
                         "status": "REGISTERED",
@@ -772,17 +788,24 @@ class SelfExpansionEngine(ExpansionWorkPort):
                         "trial_mode": verification["trial_mode"],
                         "nested_expansion": False,
                     }
-                    _append(
-                        self.database,
-                        RUN_COMPLETED,
-                        run_id,
-                        {
-                            "receipt": receipt,
-                            "discovery_comparison_id": discovery_record.get(
-                                "comparison_id"
-                            ),
-                        },
-                    )
+                    self.database.append_events([
+                        _expansion_event(
+                            MCP_ADOPTION_VERIFIED,
+                            run_id,
+                            adoption_payload,
+                            suffix=candidate_id,
+                        ),
+                        _expansion_event(
+                            RUN_COMPLETED,
+                            run_id,
+                            {
+                                "receipt": receipt,
+                                "discovery_comparison_id": discovery_record.get(
+                                    "comparison_id"
+                                ),
+                            },
+                        ),
+                    ])
                     return receipt
                 self._gate(request, candidate_id, "adapter-factory")
                 artifact = AdapterFactory(self.artifact_root).build(blueprint.descriptor)
@@ -874,14 +897,41 @@ class SelfExpansionEngine(ExpansionWorkPort):
                 })
                 return receipt
             except (GapBridgeStopped, ArtifactTrialStopped):
+                if mcp_backend is not None:
+                    self._discard_mcp_backend(
+                        mcp_backend,
+                        mcp_capability_ids,
+                        registration_id=mcp_registration_id,
+                        reason=(
+                            "selected MCP adoption paused before its durable "
+                            "completion receipt"
+                        ),
+                    )
                 raise GapBridgeStopped("STOP/veto paused the stable expansion attempt")
             except Exception as error:  # candidate failure is bounded fallback evidence
+                failure_reason = f"{type(error).__name__}: {error}"
+                if mcp_backend is not None:
+                    try:
+                        self._discard_mcp_backend(
+                            mcp_backend,
+                            mcp_capability_ids,
+                            registration_id=mcp_registration_id,
+                            reason=(
+                                "selected MCP adoption failed before its "
+                                "durable completion receipt"
+                            ),
+                        )
+                    except Exception as cleanup_error:
+                        failure_reason += (
+                            "; cleanup failed: "
+                            f"{type(cleanup_error).__name__}: {cleanup_error}"
+                        )
                 self._reject(
                     run_id,
                     request,
                     candidate,
                     stage="blueprint_or_factory",
-                    reason=f"{type(error).__name__}: {error}",
+                    reason=failure_reason,
                 )
                 continue
         receipt = {

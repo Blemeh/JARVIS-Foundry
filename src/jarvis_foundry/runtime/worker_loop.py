@@ -1122,6 +1122,7 @@ def run_cycle(
     except Exception as error:  # noqa: BLE001 - lease conflict is honest
         return {"loop_id": loop_id, "outcome": "LEASE_UNAVAILABLE",
                 "reason": f"{type(error).__name__}: {error}"}
+    stack = None
     try:
         database.append(Event.create(
             "worker_loop.cycle_started",
@@ -1783,6 +1784,8 @@ def run_cycle(
             result["campaign_resume"] = campaign_resume_payload
         return result
     finally:
+        if stack is not None:
+            stack.close()
         leases.release(LOOP_LEASE_KEY, instance_id)
 
 
