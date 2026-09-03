@@ -28,6 +28,7 @@ from ..control.broker import emergency_stop_reason, matching_veto_reason
 from ..database import FoundryDatabase
 from ..effects import EffectStateError, effect_state, freeze_effect
 from ..events import Event, EventConflict, canonical_json
+from ..roles.router import RoutingRequest
 from .continuous import (
     WakeCondition,
     clear_wake,
@@ -241,6 +242,10 @@ class ChildMissionRecord:
     sibling_group: str | None = None
     join_ids: tuple[str, ...] = ()
     provider_id: str | None = None
+    routing_requirements: dict[str, Any] = field(default_factory=dict)
+    routing_identity: str | None = None
+    isolation_key: str | None = None
+    effect_action_key: str | None = None
     effect_keys: tuple[str, ...] = ()
     status: str = "PENDING"
     wait_kind: str | None = None
@@ -274,6 +279,19 @@ class ChildMissionRecord:
             raise CampaignError(f"unsupported child resume status: {self.resume_status}")
         if self.attempt < 0 or self.max_retries < 0 or self.retries_used < 0:
             raise CampaignError("child retry counters cannot be negative")
+        if bool(self.routing_requirements) != bool(self.routing_identity):
+            raise CampaignError(
+                "child routing requirements and identity must be supplied together"
+            )
+        if self.routing_requirements:
+            try:
+                request = RoutingRequest.from_mapping(self.routing_requirements)
+            except (TypeError, ValueError) as error:
+                raise CampaignError(f"invalid child routing requirements: {error}") from error
+            if request.identity_hash() != self.routing_identity:
+                raise CampaignError("child routing identity does not match requirements")
+        if self.effect_action_key and self.effect_action_key not in self.effect_keys:
+            raise CampaignError("child effect identity must be present in effect_keys")
 
     def to_payload(self) -> dict[str, Any]:
         return {
@@ -286,6 +304,10 @@ class ChildMissionRecord:
             "sibling_group": self.sibling_group,
             "join_ids": list(self.join_ids),
             "provider_id": self.provider_id,
+            "routing_requirements": dict(self.routing_requirements),
+            "routing_identity": self.routing_identity,
+            "isolation_key": self.isolation_key,
+            "effect_action_key": self.effect_action_key,
             "effect_keys": list(self.effect_keys),
             "status": self.status,
             "wait_kind": self.wait_kind,
@@ -319,6 +341,14 @@ class ChildMissionRecord:
             sibling_group=str(p["sibling_group"]) if p.get("sibling_group") else None,
             join_ids=_tuple(p.get("join_ids")),
             provider_id=str(p["provider_id"]) if p.get("provider_id") else None,
+            routing_requirements=_mapping(p.get("routing_requirements")),
+            routing_identity=(
+                str(p["routing_identity"]) if p.get("routing_identity") else None
+            ),
+            isolation_key=str(p["isolation_key"]) if p.get("isolation_key") else None,
+            effect_action_key=(
+                str(p["effect_action_key"]) if p.get("effect_action_key") else None
+            ),
             effect_keys=_tuple(p.get("effect_keys")),
             status=str(p.get("status") or "PENDING"),
             wait_kind=str(p["wait_kind"]) if p.get("wait_kind") else None,
@@ -348,6 +378,7 @@ class CampaignRecord:
     status: str = "EXECUTING"
     deadline: str | None = None
     max_replans: int = 1
+    max_parallel_children: int = 2
     replans_used: int = 0
     retry_budget: dict[str, float] = field(default_factory=dict)
     retries_used: int = 0
@@ -381,6 +412,8 @@ class CampaignRecord:
             or any(not math.isfinite(float(value)) or float(value) < 0 for value in self.retry_budget.values())
         ):
             raise CampaignError("campaign retry/replan counters and budgets must be finite and non-negative")
+        if not 1 <= int(self.max_parallel_children) <= 64:
+            raise CampaignError("campaign max_parallel_children is outside [1, 64]")
 
     def to_payload(self) -> dict[str, Any]:
         return {
@@ -390,6 +423,7 @@ class CampaignRecord:
             "status": self.status,
             "deadline": self.deadline,
             "max_replans": self.max_replans,
+            "max_parallel_children": self.max_parallel_children,
             "replans_used": self.replans_used,
             "retry_budget": dict(self.retry_budget),
             "retries_used": self.retries_used,
@@ -417,6 +451,10 @@ class CampaignRecord:
             status=str(p.get("status") or "EXECUTING"),
             deadline=str(p["deadline"]) if p.get("deadline") else None,
             max_replans=max(0, int(float(p.get("max_replans") if p.get("max_replans") is not None else 1))),
+            max_parallel_children=int(float(
+                p.get("max_parallel_children")
+                if p.get("max_parallel_children") is not None else 2
+            )),
             replans_used=max(0, int(float(p.get("replans_used") or 0))),
             retry_budget={str(k): float(v) for k, v in _mapping(p.get("retry_budget")).items()},
             retries_used=max(0, int(float(p.get("retries_used") or 0))),
@@ -837,6 +875,7 @@ def create_campaign(
     campaign_id: str | None = None,
     deadline: str | None = None,
     max_replans: int = 1,
+    max_parallel_children: int = 2,
     retry_budget: Mapping[str, float] | None = None,
     join_conditions: Mapping[str, Any] | None = None,
     metadata: Mapping[str, Any] | None = None,
@@ -858,7 +897,10 @@ def create_campaign(
     effective_deadline = deadline or objective.deadline
     if effective_deadline is not None and _dt(effective_deadline) is None:
         raise CampaignError("campaign deadline must be an ISO-8601 timestamp")
-    cid = campaign_id or f"campaign:{objective_id}:{_hash({'deadline': effective_deadline, 'max_replans': max(0, int(max_replans)), 'retry_budget': clean_budget, 'joins': joins, 'metadata': dict(metadata or {})})}"
+    parallel_limit = int(max_parallel_children)
+    if not 1 <= parallel_limit <= 64:
+        raise CampaignError("campaign max_parallel_children is outside [1, 64]")
+    cid = campaign_id or f"campaign:{objective_id}:{_hash({'deadline': effective_deadline, 'max_replans': max(0, int(max_replans)), 'max_parallel_children': parallel_limit, 'retry_budget': clean_budget, 'joins': joins, 'metadata': dict(metadata or {})})}"
     state = rebuild_campaign_state(database)
     prior = state.campaigns.get(cid)
     if prior is not None:
@@ -871,6 +913,7 @@ def create_campaign(
         if (
             prior.deadline != effective_deadline
             or prior.max_replans != max(0, int(max_replans))
+            or prior.max_parallel_children != parallel_limit
             or prior.retry_budget != clean_budget
             or prior.join_conditions != joins
             or prior.metadata != requested_metadata
@@ -885,6 +928,7 @@ def create_campaign(
         status="EXECUTING",
         deadline=effective_deadline,
         max_replans=max(0, int(max_replans)),
+        max_parallel_children=parallel_limit,
         retry_budget=clean_budget,
         join_conditions=joins,
         metadata=_mapping(metadata),
@@ -905,6 +949,7 @@ def create_campaign(
             concurrent.objective_id != str(objective_id)
             or concurrent.deadline != effective_deadline
             or concurrent.max_replans != max(0, int(max_replans))
+            or concurrent.max_parallel_children != parallel_limit
             or concurrent.retry_budget != clean_budget
             or concurrent.join_conditions != joins
             or concurrent.metadata != _mapping(metadata)
@@ -1169,6 +1214,63 @@ def _mirror_objective_active_after_campaign_resume(
         pass
 
 
+def _child_routing_request(
+    *,
+    provider_id: str | None,
+    task_type: str,
+    required_capabilities: Sequence[str],
+    required_tools: Sequence[str],
+    routing_requirements: Mapping[str, Any] | RoutingRequest | None,
+) -> RoutingRequest:
+    """Normalize one immutable child requirement onto the canonical router type."""
+
+    if isinstance(routing_requirements, RoutingRequest):
+        request = routing_requirements
+    elif routing_requirements is not None:
+        request = RoutingRequest.from_mapping(routing_requirements)
+    else:
+        request = RoutingRequest(
+            task_type=str(task_type or "builder"),
+            required_capabilities=tuple(dict.fromkeys(
+                str(item) for item in required_capabilities if str(item)
+            )),
+            required_tools=tuple(dict.fromkeys(
+                str(item) for item in required_tools if str(item)
+            )),
+            preferred_provider=str(provider_id) if provider_id else None,
+            allowed_providers=(str(provider_id),) if provider_id else (),
+        )
+    capabilities = tuple(dict.fromkeys((
+        *request.required_capabilities,
+        *(str(item) for item in required_capabilities if str(item)),
+    )))
+    tools = tuple(dict.fromkeys((
+        *request.required_tools,
+        *(str(item) for item in required_tools if str(item)),
+    )))
+    preferred = request.preferred_provider
+    if provider_id:
+        if preferred and preferred != str(provider_id):
+            raise CampaignError(
+                "child provider_id conflicts with routing preferred_provider"
+            )
+        preferred = str(provider_id)
+    if (
+        request.allowed_providers
+        and preferred
+        and preferred not in request.allowed_providers
+    ):
+        raise CampaignError(
+            "child preferred provider must be included in allowed_providers"
+        )
+    return replace(
+        request,
+        required_capabilities=capabilities,
+        required_tools=tools,
+        preferred_provider=preferred,
+    )
+
+
 def declare_child_mission(
     database: FoundryDatabase,
     campaign_id: str,
@@ -1180,6 +1282,12 @@ def declare_child_mission(
     sibling_group: str | None = None,
     join_ids: Sequence[str] = (),
     provider_id: str | None = None,
+    task_type: str = "builder",
+    required_capabilities: Sequence[str] = (),
+    required_tools: Sequence[str] = (),
+    routing_requirements: Mapping[str, Any] | RoutingRequest | None = None,
+    isolation_key: str | None = None,
+    effect_action_key: str | None = None,
     effect_keys: Sequence[str] = (),
     max_retries: int = 1,
     metadata: Mapping[str, Any] | None = None,
@@ -1194,7 +1302,22 @@ def declare_child_mission(
     sid = str(step_id or "")
     normalized_dependencies = tuple(dict.fromkeys(str(v) for v in dependencies if str(v)))
     normalized_join_ids = tuple(dict.fromkeys(str(v) for v in join_ids if str(v)))
-    cid = child_id or f"child:{campaign_id}:{sid or _hash({'mission_id': mission_id, 'step_id': step_id, 'deps': list(normalized_dependencies), 'joins': list(normalized_join_ids), 'provider_id': provider_id, 'effects': list(effect_keys), 'sibling_group': sibling_group})}"
+    request = _child_routing_request(
+        provider_id=provider_id,
+        task_type=task_type,
+        required_capabilities=required_capabilities,
+        required_tools=required_tools,
+        routing_requirements=routing_requirements,
+    )
+    routing_payload = request.to_dict()
+    routing_identity = request.identity_hash()
+    normalized_effects = tuple(dict.fromkeys(
+        str(v) for v in effect_keys if str(v)
+    ))
+    primary_effect = str(effect_action_key) if effect_action_key else None
+    if primary_effect and primary_effect not in normalized_effects:
+        normalized_effects = (*normalized_effects, primary_effect)
+    cid = child_id or f"child:{campaign_id}:{sid or _hash({'mission_id': mission_id, 'step_id': step_id, 'deps': list(normalized_dependencies), 'joins': list(normalized_join_ids), 'routing_identity': routing_identity, 'effects': list(normalized_effects), 'effect_action_key': primary_effect, 'sibling_group': sibling_group, 'isolation_key': isolation_key})}"
     prior = state.children.get(cid)
     if prior is not None:
         identity = (
@@ -1205,6 +1328,10 @@ def declare_child_mission(
             prior.sibling_group,
             prior.join_ids,
             prior.provider_id,
+            prior.routing_requirements,
+            prior.routing_identity,
+            prior.isolation_key,
+            prior.effect_action_key,
             prior.effect_keys,
             prior.max_retries,
             prior.metadata,
@@ -1217,13 +1344,47 @@ def declare_child_mission(
             str(sibling_group) if sibling_group else None,
             normalized_join_ids,
             str(provider_id) if provider_id else None,
-            tuple(dict.fromkeys(str(v) for v in effect_keys if str(v))),
+            routing_payload,
+            routing_identity,
+            str(isolation_key) if isolation_key else None,
+            primary_effect,
+            normalized_effects,
             max(0, int(max_retries)),
             _mapping(metadata),
         )
         if identity != requested_identity:
             raise CampaignError(f"child id already names different work: {cid}")
         return prior
+    requested_mission_id = str(mission_id) if mission_id else None
+    if requested_mission_id:
+        if database.row("missions", "mission_id", requested_mission_id) is None:
+            raise CampaignError(
+                f"bound mission {requested_mission_id} is absent from the authoritative projection"
+            )
+        duplicate = next(
+            (
+                other for other in state.children.values()
+                if other.mission_id == requested_mission_id
+            ),
+            None,
+        )
+        if duplicate is not None:
+            raise CampaignError(
+                f"mission {requested_mission_id} is already bound to child {duplicate.child_id}"
+            )
+        from .autonomy import rebuild_executive_state, update_objective
+
+        objective = rebuild_executive_state(database).objectives.get(
+            campaign.objective_id
+        )
+        if objective is None:
+            raise CampaignError(
+                f"campaign objective disappeared before child declaration: {campaign.objective_id}"
+            )
+        objective_needs_link = requested_mission_id not in objective.mission_ids
+    else:
+        objective = None
+        objective_needs_link = False
     deps = normalized_dependencies
     unknown = {
         dependency for dependency in deps
@@ -1235,13 +1396,17 @@ def declare_child_mission(
     record = ChildMissionRecord(
         child_id=cid,
         campaign_id=str(campaign_id),
-        mission_id=str(mission_id) if mission_id else None,
+        mission_id=requested_mission_id,
         step_id=str(step_id) if step_id else None,
         dependencies=deps,
         sibling_group=str(sibling_group) if sibling_group else None,
         join_ids=tuple(dict.fromkeys(normalized_join_ids)),
         provider_id=str(provider_id) if provider_id else None,
-        effect_keys=tuple(dict.fromkeys(str(v) for v in effect_keys if str(v))),
+        routing_requirements=routing_payload,
+        routing_identity=routing_identity,
+        isolation_key=str(isolation_key) if isolation_key else None,
+        effect_action_key=primary_effect,
+        effect_keys=normalized_effects,
         max_retries=max(0, int(max_retries)),
         metadata=_mapping(metadata),
     )
@@ -1257,6 +1422,14 @@ def declare_child_mission(
     # Validate the complete graph before appending.  A rejected declaration
     # must not leave an irreversible event that later replay cannot remove.
     _assert_child_dag({**state.children, cid: record})
+    if objective_needs_link and objective is not None and requested_mission_id:
+        update_objective(
+            database,
+            campaign.objective_id,
+            {"mission_ids": [*objective.mission_ids, requested_mission_id]},
+            controller=controller,
+            source_id="campaign-runtime",
+        )
     try:
         _append(
             database,
@@ -1277,6 +1450,10 @@ def declare_child_mission(
             or concurrent.sibling_group != record.sibling_group
             or concurrent.join_ids != record.join_ids
             or concurrent.provider_id != record.provider_id
+            or concurrent.routing_requirements != record.routing_requirements
+            or concurrent.routing_identity != record.routing_identity
+            or concurrent.isolation_key != record.isolation_key
+            or concurrent.effect_action_key != record.effect_action_key
             or concurrent.effect_keys != record.effect_keys
             or concurrent.max_retries != record.max_retries
             or concurrent.metadata != record.metadata
@@ -1331,6 +1508,29 @@ def bind_child_mission(
     if duplicate is not None:
         raise CampaignError(
             f"mission {requested_mission_id} is already bound to child {duplicate.child_id}"
+        )
+    # The campaign edge and the Executive objective edge must agree.  Link
+    # the already-existing mission into the existing objective before
+    # recording the child binding; a crash in between leaves only a harmless
+    # canonical objective relation, never a child that routes around its
+    # owning objective.
+    campaign = state.campaign(child.campaign_id)
+    from .autonomy import rebuild_executive_state, update_objective
+
+    objective = rebuild_executive_state(database).objectives.get(
+        campaign.objective_id
+    )
+    if objective is None:
+        raise CampaignError(
+            f"campaign objective disappeared before child binding: {campaign.objective_id}"
+        )
+    if requested_mission_id not in objective.mission_ids:
+        update_objective(
+            database,
+            campaign.objective_id,
+            {"mission_ids": [*objective.mission_ids, requested_mission_id]},
+            controller=controller,
+            source_id="campaign-runtime",
         )
     version = child.version + 1
     payload = {
@@ -1446,9 +1646,34 @@ def _safe_effect_status(database: FoundryDatabase, effect_key: str) -> str:
     """Read an effect projection without converting missing truth to a crash."""
 
     try:
-        return str(effect_state(database, effect_key).get("status") or "UNKNOWN").upper()
+        status = str(
+            effect_state(database, effect_key).get("status") or "UNKNOWN"
+        ).upper()
     except Exception:  # noqa: BLE001 - an absent effect is durable UNKNOWN truth
-        return "UNKNOWN"
+        status = "UNKNOWN"
+    # The legacy system_actions projection retains FROZEN after an additive
+    # provider reconciliation.  Campaign joins must consume the complete
+    # event truth: a later positive effect.reconciled receipt resolves that
+    # ambiguity, while any still-later mismatch/freeze wins again.
+    for event in database.events(
+        readonly=True,
+        event_type_prefixes=("system.action_", "effect."),
+    ):
+        if str(event.payload.get("action_key") or "") != effect_key:
+            continue
+        if event.event_type == "system.action_started":
+            status = "STARTED"
+        elif event.event_type == "system.action_completed":
+            status = "COMPLETED"
+        elif event.event_type == "system.action_failed":
+            status = "FAILED"
+        elif event.event_type in {
+            "effect.frozen", "effect.reconcile_mismatch", "effect.compensated",
+        }:
+            status = "FROZEN"
+        elif event.event_type == "effect.reconciled":
+            status = "COMPLETED"
+    return status
 
 
 def _child_mission_truth(database: FoundryDatabase, child: ChildMissionRecord) -> dict[str, Any]:
@@ -1770,8 +1995,12 @@ def record_child_state(
         raise CampaignError("TIME waits require wait_until")
     if target == "WAITING" and wait_until and _dt(wait_until) is None:
         raise CampaignError("wait_until must be an ISO-8601 timestamp")
-    if target == "WAITING" and wait_kind == "PROVIDER" and not child.provider_id:
-        raise CampaignError("PROVIDER waits require a bound provider_id")
+    if (
+        target == "WAITING"
+        and wait_kind == "PROVIDER"
+        and not _child_provider_ids(database, child)
+    ):
+        raise CampaignError("PROVIDER waits require a compatible provider set")
     result = _append_child_state_event(
         database,
         child,
@@ -1820,8 +2049,41 @@ def reconcile_child_effects(
             try:
                 before = effect_state(database, key)
             except Exception as error:  # noqa: BLE001 - unknown effect is a blocker
-                before = {"action_key": key, "status": "UNKNOWN", "reason": type(error).__name__}
-            status = str(before.get("status") or "UNKNOWN").upper()
+                planned_not_started = bool(
+                    child.effect_action_key == key
+                    and child.wait_kind != "EFFECT_RECONCILIATION"
+                    and not any(
+                        event.event_type == "system.action_started"
+                        and str(event.payload.get("action_key") or "") == key
+                        for event in database.events(
+                            readonly=True,
+                            event_type_prefixes=("system.action_",),
+                        )
+                    )
+                )
+                before = {
+                    "action_key": key,
+                    "status": "NOT_STARTED" if planned_not_started else "UNKNOWN",
+                    "reason": (
+                        "declared campaign effect has not been attempted"
+                        if planned_not_started else type(error).__name__
+                    ),
+                }
+            status = _safe_effect_status(database, key)
+            if (
+                status == "UNKNOWN"
+                and child.effect_action_key == key
+                and child.wait_kind != "EFFECT_RECONCILIATION"
+                and not any(
+                    event.event_type == "system.action_started"
+                    and str(event.payload.get("action_key") or "") == key
+                    for event in database.events(
+                        readonly=True,
+                        event_type_prefixes=("system.action_",),
+                    )
+                )
+            ):
+                status = "NOT_STARTED"
             if status == "STARTED":
                 try:
                     freeze_effect(database, key, reason="campaign startup found an in-flight effect; provider reconciliation is required")
@@ -1834,7 +2096,13 @@ def reconcile_child_effects(
                 "child_id": child.child_id,
                 "action_key": key,
                 "status": status,
-                "reason": ("effect is terminal" if status in {"COMPLETED", "FAILED"} else "effect requires explicit reconciliation"),
+                "reason": (
+                    "declared effect has not been attempted"
+                    if status == "NOT_STARTED"
+                    else "effect is terminal"
+                    if status in {"COMPLETED", "FAILED"}
+                    else "effect requires explicit reconciliation"
+                ),
             }
             try:
                 _append(
@@ -1904,13 +2172,38 @@ def reconcile_campaign_children(
     for child in tuple(state.children.values()):
         if child.campaign_id != campaign_id or child.status == "STOPPED":
             continue
+        mission_row = (
+            database.row("missions", "mission_id", child.mission_id)
+            if child.mission_id else None
+        )
+        if (
+            mission_row is not None
+            and str(mission_row.get("state") or "").upper() == "COMPLETE"
+            and _accepted_outcome(database, child.mission_id) is None
+        ):
+            # Campaign missions are objective-owned even when they are not a
+            # step in the legacy Executive plan projection.  Close the same
+            # canonical V11 final-outcome/learning boundary used by global
+            # terminal reconciliation before evaluating child acceptance.
+            from ..world_model.connector import reconcile_outcome_learning
+
+            reconcile_outcome_learning(
+                database,
+                mission_id=child.mission_id,
+                source_id="campaign-terminal-reconciler",
+            )
         truth = _child_mission_truth(database, child)
         target = str(truth.get("status") or "UNKNOWN")
         if (
             child.status == "WAITING"
             and child.wait_kind == "PROVIDER"
-            and child.provider_id
-            and not _provider_available(database, child.provider_id)
+            and (
+                not _child_provider_ids(database, child)
+                or not any(
+                    _provider_available(database, provider_id)
+                    for provider_id in _child_provider_ids(database, child)
+                )
+            )
         ):
             # Mission state may still be EXECUTING while its provider is
             # unavailable.  Keep the durable provider wait until a positive
@@ -2254,6 +2547,57 @@ def _provider_available(database: FoundryDatabase, provider_id: str) -> bool:
     return True
 
 
+def _open_mission_provider_wait(
+    database: FoundryDatabase,
+    child: ChildMissionRecord,
+) -> tuple[str, ...] | None:
+    if not child.mission_id:
+        return None
+    events = database.events(
+        readonly=True,
+        event_type_prefixes=("mission.provider_wait_",),
+    )
+    resumed = {
+        str(event.payload.get("wait_id") or "")
+        for event in events
+        if event.event_type == "mission.provider_wait_resumed"
+    }
+    for event in reversed(events):
+        if event.event_type != "mission.provider_wait_started":
+            continue
+        payload = event.payload
+        if (
+            str(payload.get("mission_id") or "") == child.mission_id
+            and str(payload.get("wait_id") or "") not in resumed
+        ):
+            return tuple(dict.fromkeys(
+                str(item) for item in payload.get("provider_ids") or ()
+                if str(item)
+            ))
+    return None
+
+
+def _child_provider_ids(
+    database: FoundryDatabase,
+    child: ChildMissionRecord,
+) -> tuple[str, ...]:
+    open_wait = _open_mission_provider_wait(database, child)
+    if open_wait is not None:
+        return open_wait
+    if child.routing_requirements:
+        request = RoutingRequest.from_mapping(child.routing_requirements)
+        if request.strict_identity is not None:
+            return (request.strict_identity[0],)
+        # An explicit allow-set is the exact compatible provider universe.
+        # Without one, provider discovery/routing remains the registry's job;
+        # the campaign must not park on only its preference and hide a valid
+        # alternate from the canonical router.
+        if request.allowed_providers:
+            return tuple(request.allowed_providers)
+        return ()
+    return (child.provider_id,) if child.provider_id else ()
+
+
 def _handle_provider_states(
     database: FoundryDatabase,
     campaign_id: str,
@@ -2266,33 +2610,68 @@ def _handle_provider_states(
     waiting: list[str] = []
     recovered: list[str] = []
     for child in tuple(state.children.values()):
-        if child.campaign_id != campaign_id or not child.provider_id:
+        provider_ids = _child_provider_ids(database, child)
+        if child.campaign_id != campaign_id or not provider_ids:
             continue
         if _unmet_dependencies(state, child):
             # Dependency ordering is evaluated before provider readiness.  A
             # provider outage is re-probed once the sibling join releases the
             # child, avoiding a lossy overwrite of the dependency wait.
             continue
-        sample = _latest_provider_observation(database, child.provider_id)
-        status = str((sample or {}).get("status") or "UNKNOWN").upper()
+        samples = {
+            provider: _latest_provider_observation(database, provider)
+            for provider in provider_ids
+        }
+        if (
+            _open_mission_provider_wait(database, child) is None
+            and any(sample is None for sample in samples.values())
+        ):
+            # Pre-dispatch campaign reconstruction does not invent provider
+            # unavailability from a missing sample.  The canonical router
+            # has the registered profiles; once it classifies an all-down
+            # episode, mission.provider_wait_started becomes the exact wait
+            # universe consumed here on every restart.
+            continue
+        statuses = {
+            provider: str((sample or {}).get("status") or "UNKNOWN").upper()
+            for provider, sample in samples.items()
+        }
         if child.status in TERMINAL_CHILD_STATUSES:
             continue
-        provider_available = _provider_available(database, child.provider_id)
+        available = tuple(
+            provider for provider in provider_ids
+            if _provider_available(database, provider)
+        )
+        provider_available = bool(available)
+        open_mission_wait = _open_mission_provider_wait(database, child)
         if not provider_available:
-            status = status if sample is not None else "UNKNOWN"
             if child.status not in {"WAITING", "STOPPED"} or child.wait_kind != "PROVIDER":
                 _append_child_state_event(
                     database,
                     child,
                     "WAITING",
-                    reason=f"provider {child.provider_id} is {status}",
+                    reason=(
+                        "all compatible providers unavailable: "
+                        + ", ".join(
+                            f"{provider}={statuses[provider]}"
+                            for provider in provider_ids
+                        )
+                    ),
                     wait_kind="PROVIDER",
-                    wait_reason=f"provider recovery required: {child.provider_id}",
+                    wait_reason=(
+                        "WAIT_FOR_PROVIDER: " + ", ".join(provider_ids)
+                    ),
                     controller=controller,
                     stop_path=stop_path,
                 )
             waiting.append(child.child_id)
-        elif child.status == "WAITING" and child.wait_kind == "PROVIDER" and _provider_available(database, child.provider_id):
+        elif child.status == "WAITING" and child.wait_kind == "PROVIDER":
+            if open_mission_wait is not None:
+                # The mission wait carries the exact run and compatible
+                # provider set.  Only resume_mission_provider_waits may
+                # release it; campaign startup must not race that authority.
+                continue
+            recovered_provider = available[0]
             recovered.append(child.child_id)
             # Make the recovery observable through the existing wake
             # authority before releasing the child.  A positive provider
@@ -2306,7 +2685,7 @@ def _handle_provider_states(
                     and wake.get("kind") == "WAIT_FOR_PROVIDER"
                     and str(wake.get("objective_id") or "") == campaign.objective_id
                     and (
-                        str(wake.get("provider_id") or "") == child.provider_id
+                        str(wake.get("provider_id") or "") in available
                         or f":campaign:{campaign_id}:child:{child.child_id}:" in wake_id
                     )
                 ):
@@ -2315,7 +2694,7 @@ def _handle_provider_states(
                             database,
                             wake_id,
                             controller=controller,
-                            reason=f"provider {child.provider_id} recovery observed",
+                            reason=f"provider {recovered_provider} recovery observed",
                         )
                     except (EventConflict, ValueError):
                         pass
@@ -2337,7 +2716,7 @@ def _handle_provider_states(
                     database,
                     child,
                     target,
-                    reason=f"provider {child.provider_id} recovered; wake released",
+                    reason=f"provider {recovered_provider} recovered; wake released",
                     controller=controller,
                     stop_path=stop_path,
                 )
@@ -2422,14 +2801,20 @@ def rebuild_required_wakes(
     for child in sorted(unresolved, key=lambda row: row.child_id):
         if child.status == "WAITING":
             kind = str(child.wait_kind or "SIGNAL").upper()
-            condition: dict[str, Any] = {
-                "wait_kind": kind,
-                "wait_until": child.wait_until,
-                "provider_id": child.provider_id,
-                "reason": child.wait_reason,
-                "generation": child.version,
-            }
-            specs.append((child.child_id, kind, condition, child.wait_until))
+            provider_ids = (
+                _child_provider_ids(database, child)
+                if kind == "PROVIDER" else ()
+            )
+            conditions = provider_ids or (None,)
+            for provider_id in conditions:
+                condition: dict[str, Any] = {
+                    "wait_kind": kind,
+                    "wait_until": child.wait_until,
+                    "provider_id": provider_id,
+                    "reason": child.wait_reason,
+                    "generation": child.version,
+                }
+                specs.append((child.child_id, kind, condition, child.wait_until))
         unmet = [dep for dep in child.dependencies if state.children.get(dep) is None or state.children[dep].status != "SUCCEEDED"]
         if (
             unmet
@@ -2519,7 +2904,11 @@ def rebuild_required_wakes(
             reason=reason,
             created_at=isoformat(),
             not_before=not_before if wake_kind == "WAIT_UNTIL_TIME" else None,
-            provider_id=(child.provider_id if child is not None and wake_kind == "WAIT_FOR_PROVIDER" else None),
+            provider_id=(
+                str(condition.get("provider_id"))
+                if wake_kind == "WAIT_FOR_PROVIDER" and condition.get("provider_id")
+                else None
+            ),
             signal=(
                 str(condition.get("signal") or "campaign.child_state_changed")
                 if wake_kind == "WAIT_FOR_SIGNAL" else None
@@ -2606,9 +2995,19 @@ def _recover_triggered_waits(
                     # A concurrent recovery pass may already have re-armed it.
                     pass
 
-        if child.wait_kind == "PROVIDER" and child.provider_id and not _provider_available(database, child.provider_id):
-            rearm_matching("campaign child provider predicate still false")
-            continue
+        if child.wait_kind == "PROVIDER":
+            provider_ids = _child_provider_ids(database, child)
+            if _open_mission_provider_wait(database, child) is not None:
+                rearm_matching(
+                    "exact MissionLoop provider wait has not resumed yet"
+                )
+                continue
+            if not provider_ids or not any(
+                _provider_available(database, provider_id)
+                for provider_id in provider_ids
+            ):
+                rearm_matching("campaign child provider predicate still false")
+                continue
         if child.wait_kind == "DEPENDENCY" and _unmet_dependencies(state, child):
             # The wake is only a notification; sibling acceptance truth is
             # still re-read before releasing this child.
@@ -4064,6 +4463,83 @@ def campaign_snapshot(database: FoundryDatabase, campaign_id: str | None = None)
     return {"schema": CAMPAIGN_SCHEMA, "campaigns": payload}
 
 
+def campaign_dispatch_context(
+    database: FoundryDatabase,
+    *,
+    mission_id: str,
+    step_id: str | None = None,
+) -> dict[str, Any] | None:
+    """Resolve the one immutable campaign/routing identity for a mission."""
+
+    state = rebuild_campaign_state(database)
+    matches = [
+        child for child in state.children.values()
+        if child.mission_id == str(mission_id)
+    ]
+    if not matches:
+        return None
+    if len(matches) != 1:
+        raise CampaignError(
+            f"mission {mission_id} has multiple campaign child bindings"
+        )
+    child = matches[0]
+    campaign = state.campaigns.get(child.campaign_id)
+    if campaign is None:
+        raise CampaignError(f"campaign is absent for child {child.child_id}")
+    if campaign.status != "EXECUTING":
+        raise CampaignError(
+            f"campaign {campaign.campaign_id} is not dispatchable: {campaign.status}"
+        )
+    if child.status not in {"READY", "RUNNING"}:
+        raise CampaignError(
+            f"campaign child {child.child_id} is not dispatchable: {child.status}"
+        )
+    if (
+        child.status == "READY"
+        and str(mission_id) not in campaign_dispatchable_mission_ids(database)
+    ):
+        raise CampaignError(
+            f"campaign child {child.child_id} is outside its bounded admission slots"
+        )
+    if child.step_id and step_id and child.step_id != str(step_id):
+        raise CampaignError(
+            f"campaign child {child.child_id} is bound to step {child.step_id}, not {step_id}"
+        )
+    if not child.routing_requirements or not child.routing_identity:
+        raise CampaignError(
+            f"campaign child {child.child_id} has no exact routing contract"
+        )
+    request = RoutingRequest.from_mapping(child.routing_requirements)
+    if request.identity_hash() != child.routing_identity:
+        raise CampaignError(
+            f"campaign child {child.child_id} routing contract hash drifted"
+        )
+    from .autonomy import rebuild_executive_state
+
+    objective = rebuild_executive_state(database).objectives.get(
+        campaign.objective_id
+    )
+    if objective is None or str(mission_id) not in objective.mission_ids:
+        raise CampaignError(
+            f"campaign child {child.child_id} is not bound to objective {campaign.objective_id}"
+        )
+    effect_action_key = child.effect_action_key
+    if effect_action_key is None and len(child.effect_keys) == 1:
+        effect_action_key = child.effect_keys[0]
+    return {
+        "objective_id": campaign.objective_id,
+        "campaign_id": campaign.campaign_id,
+        "child_id": child.child_id,
+        "mission_id": str(mission_id),
+        "step_id": child.step_id,
+        "routing_request": request,
+        "routing_identity": child.routing_identity,
+        "isolation_key": child.isolation_key,
+        "effect_action_key": effect_action_key,
+        "child_status": child.status,
+    }
+
+
 def campaign_dispatchable_mission_ids(database: FoundryDatabase) -> tuple[str, ...]:
     """Return campaign child missions allowed through the normal selector."""
 
@@ -4079,21 +4555,72 @@ def campaign_dispatchable_mission_ids(database: FoundryDatabase) -> tuple[str, .
         for objective_id, objective in objective_state.objectives.items()
         if objective.status in {"COMPLETED", "FAILED", "CANCELLED", "SUSPENDED", "BLOCKED"}
     }
-    result = [
-        child.mission_id
-        for child in state.children.values()
-        if child.mission_id
-        and child.status in {"READY", "RUNNING"}
-        and (
-            (database.row("missions", "mission_id", child.mission_id) or {}).get("state")
-            in {"ACTION_SELECTION", "REPAIRING", "READY", "VERIFYING"}
+    result: list[str] = []
+    dispatchable_states = {"ACTION_SELECTION", "REPAIRING", "READY", "VERIFYING"}
+    for campaign in sorted(state.campaigns.values(), key=lambda row: row.campaign_id):
+        if (
+            campaign.status != "EXECUTING"
+            or campaign.objective_id in objective_blocked
+        ):
+            continue
+        children = sorted(
+            (
+                child for child in state.children.values()
+                if child.campaign_id == campaign.campaign_id
+            ),
+            key=lambda row: row.child_id,
         )
-        and not _unmet_dependencies(state, child)
-        and state.campaigns.get(child.campaign_id) is not None
-        and state.campaigns[child.campaign_id].status == "EXECUTING"
-        and state.campaigns[child.campaign_id].objective_id not in objective_blocked
-    ]
-    return tuple(sorted(dict.fromkeys(str(value) for value in result)))
+        running = [
+            child for child in children
+            if child.status == "RUNNING"
+            and child.mission_id
+        ]
+        if any(_unmet_dependencies(state, child) for child in running):
+            raise CampaignError(
+                f"campaign {campaign.campaign_id} has a running child with unmet dependencies"
+            )
+        if len(running) > campaign.max_parallel_children:
+            raise CampaignError(
+                f"campaign {campaign.campaign_id} exceeds its parallel child limit"
+            )
+        running_isolation = [
+            child.isolation_key for child in running if child.isolation_key
+        ]
+        if len(running_isolation) != len(set(running_isolation)):
+            raise CampaignError(
+                f"campaign {campaign.campaign_id} has overlapping sibling isolation"
+            )
+        active_isolation = {
+            *running_isolation
+        }
+        # Existing in-flight work keeps its continuation slot.  Only new
+        # READY siblings consume remaining capacity.
+        for child in running:
+            mission = database.row("missions", "mission_id", child.mission_id)
+            if (mission or {}).get("state") in dispatchable_states:
+                result.append(str(child.mission_id))
+        remaining = max(0, campaign.max_parallel_children - len(running))
+        for child in children:
+            if remaining <= 0:
+                break
+            if (
+                child.status != "READY"
+                or not child.mission_id
+                or _unmet_dependencies(state, child)
+                or (
+                    child.isolation_key
+                    and child.isolation_key in active_isolation
+                )
+            ):
+                continue
+            mission = database.row("missions", "mission_id", child.mission_id)
+            if (mission or {}).get("state") not in dispatchable_states:
+                continue
+            result.append(str(child.mission_id))
+            remaining -= 1
+            if child.isolation_key:
+                active_isolation.add(child.isolation_key)
+    return tuple(dict.fromkeys(result))
 
 
 def campaign_blocked_mission_ids(database: FoundryDatabase) -> tuple[str, ...]:
@@ -4156,5 +4683,6 @@ __all__ = [
     "complete_campaign", "reserve_child_retry", "handle_deadlines",
     "apply_replan", "propagate_stop", "cancel_campaign", "cancel_child_mission", "resume_campaign",
     "startup_resume_pass", "resume_campaigns", "campaign_snapshot",
-    "campaign_dispatchable_mission_ids", "campaign_blocked_mission_ids",
+    "campaign_dispatch_context", "campaign_dispatchable_mission_ids",
+    "campaign_blocked_mission_ids",
 ]

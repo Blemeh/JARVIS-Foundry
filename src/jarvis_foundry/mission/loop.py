@@ -566,6 +566,59 @@ class MissionLoop:
         self._reorient_after_stop(mission_id)
         mission = self._mission(mission_id)
         state = str(mission["state"])
+        campaign_context = None
+        if self.database.event_count(event_type="campaign.created") > 0:
+            try:
+                from ..executive.campaigns import (
+                    CampaignError,
+                    campaign_dispatch_context,
+                )
+
+                campaign_context = campaign_dispatch_context(
+                    self.database,
+                    mission_id=mission_id,
+                    step_id=step_id,
+                )
+            except CampaignError as error:
+                return StepOutcome(
+                    outcome=BLOCKED_OUTCOME,
+                    step_id=step_id,
+                    run_id=run_id,
+                    reason=f"campaign dispatch contract blocked: {error}",
+                )
+        campaign_lineage = None
+        campaign_routing_request = None
+        campaign_isolation_key = None
+        campaign_effect_action_key = None
+        if campaign_context is not None:
+            campaign_lineage = {
+                "objective_id": str(campaign_context["objective_id"]),
+                "campaign_id": str(campaign_context["campaign_id"]),
+                "child_id": str(campaign_context["child_id"]),
+            }
+            campaign_routing_request = campaign_context["routing_request"]
+            campaign_isolation_key = campaign_context.get("isolation_key")
+            campaign_effect_action_key = campaign_context.get(
+                "effect_action_key"
+            )
+            if campaign_context.get("child_status") == "READY":
+                try:
+                    from ..executive.campaigns import record_child_state
+
+                    record_child_state(
+                        self.database,
+                        str(campaign_context["child_id"]),
+                        "RUNNING",
+                        reason="canonical MissionLoop admitted exact campaign child",
+                        stop_path=self.stop_path,
+                    )
+                except CampaignError as error:
+                    return StepOutcome(
+                        outcome=BLOCKED_OUTCOME,
+                        step_id=step_id,
+                        run_id=run_id,
+                        reason=f"campaign dispatch admission blocked: {error}",
+                    )
         if run_id is None and state in {"ACTION_SELECTION", "READY"}:
             from ..executive.continuous import provider_resume_run_id
             run_id = provider_resume_run_id(
@@ -825,9 +878,22 @@ class MissionLoop:
                 forbidden_paths=forbidden_paths,
                 attempt=attempt,
                 budget_usd=self.provider_budget_usd,
+                routing_request=campaign_routing_request,
+                campaign_lineage=campaign_lineage,
+                campaign_isolation_key=campaign_isolation_key,
+                effect_action_key=campaign_effect_action_key,
             )
         if result.status == BLOCKED:
-            if str(result.error_class or "").startswith("provider_"):
+            effect_wait_key = (
+                result.effect_action_key
+                if result.error_class
+                == "provider_effect_reconciliation_required"
+                else None
+            )
+            if (
+                str(result.error_class or "").startswith("provider_")
+                and (result.wait_for_providers or effect_wait_key)
+            ):
                 from ..executive.continuous import schedule_mission_provider_wait
                 schedule_mission_provider_wait(
                     self.database,
@@ -840,7 +906,14 @@ class MissionLoop:
                         or f"{role} session blocked: {result.error_class}"
                     ),
                     error_class=str(result.error_class),
-                    effect_action_key=result.effect_action_key,
+                    effect_action_key=effect_wait_key,
+                    campaign_lineage=campaign_lineage,
+                    routing_identity=(
+                        campaign_routing_request.identity_hash()
+                        if campaign_routing_request is not None else None
+                    ),
+                    campaign_isolation_key=campaign_isolation_key,
+                    stop_path=self.stop_path,
                 )
             self._advance(mission_id, "BLOCKED", run_id=run_id)
             return StepOutcome(

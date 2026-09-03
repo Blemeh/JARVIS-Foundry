@@ -22,10 +22,11 @@ The router is pure configuration logic; it never launches anything.
 from __future__ import annotations
 
 import copy
+import hashlib
 import math
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, Mapping
 
 try:
     import yaml
@@ -33,6 +34,7 @@ except ImportError:  # pragma: no cover - venv provides pyyaml
     yaml = None  # type: ignore[assignment]
 
 from ..runtime.provider_config import ProviderSettings, default_provider_settings
+from ..events import canonical_json
 
 #: Template defaults mirrored in provider.yaml.example.
 DIRECTIVE_PROVIDER = "opencode_go"
@@ -175,6 +177,132 @@ class RoutingRequest:
     allowed_providers: tuple[str, ...] = field(default_factory=tuple)
     denied_providers: tuple[str, ...] = field(default_factory=tuple)
     allowed_data_use: tuple[str, ...] = field(default_factory=tuple)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.task_type, str) or not self.task_type.strip():
+            raise ValueError("routing task_type is required")
+        if not isinstance(self.reasoning, str) or not self.reasoning.strip():
+            raise ValueError("routing reasoning is required")
+        if not isinstance(self.unattended, bool):
+            raise ValueError("routing unattended must be boolean")
+        if self.preferred_provider is not None and (
+            not isinstance(self.preferred_provider, str)
+            or not self.preferred_provider.strip()
+            or len(self.preferred_provider) > 256
+        ):
+            raise ValueError("routing preferred_provider is invalid")
+        for name, values in (
+            ("required_capabilities", self.required_capabilities),
+            ("required_tools", self.required_tools),
+            ("allowed_providers", self.allowed_providers),
+            ("denied_providers", self.denied_providers),
+            ("allowed_data_use", self.allowed_data_use),
+        ):
+            if not isinstance(values, (tuple, list)) or len(values) > 128:
+                raise ValueError(f"routing {name} is too large")
+            if any(
+                not isinstance(item, str) or not item.strip() or len(item) > 256
+                for item in values
+            ):
+                raise ValueError(f"routing {name} contains an invalid entry")
+        if self.strict_identity is not None and (
+            len(self.strict_identity) != 2
+            or any(not str(item).strip() for item in self.strict_identity)
+        ):
+            raise ValueError("routing strict_identity requires provider and model")
+        for name, value in (
+            ("context_tokens", self.context_tokens),
+            ("latency_budget_ms", self.latency_budget_ms),
+            ("reliability_floor", self.reliability_floor),
+            ("max_cost_usd", self.max_cost_usd),
+        ):
+            if value is not None and (
+                not math.isfinite(float(value)) or float(value) < 0
+            ):
+                raise ValueError(f"routing {name} must be finite and non-negative")
+
+    def to_dict(self) -> dict[str, Any]:
+        """Canonical, credential-free child dispatch contract."""
+
+        return {
+            "task_type": self.task_type,
+            "required_capabilities": list(self.required_capabilities),
+            "required_tools": list(self.required_tools),
+            "reasoning": self.reasoning,
+            "unattended": self.unattended,
+            "context_tokens": self.context_tokens,
+            "latency_budget_ms": self.latency_budget_ms,
+            "reliability_floor": self.reliability_floor,
+            "max_cost_usd": self.max_cost_usd,
+            "preferred_provider": self.preferred_provider,
+            "strict_identity": (
+                list(self.strict_identity) if self.strict_identity is not None else None
+            ),
+            "allowed_providers": list(self.allowed_providers),
+            "denied_providers": list(self.denied_providers),
+            "allowed_data_use": list(self.allowed_data_use),
+        }
+
+    def identity_hash(self) -> str:
+        return hashlib.sha256(
+            canonical_json(self.to_dict()).encode("utf-8")
+        ).hexdigest()
+
+    @classmethod
+    def from_mapping(cls, payload: Mapping[str, Any]) -> "RoutingRequest":
+        def string_tuple(name: str) -> tuple[str, ...]:
+            raw = payload.get(name) or ()
+            if isinstance(raw, (str, bytes)) or not isinstance(raw, (tuple, list)):
+                raise ValueError(f"routing {name} must be a sequence")
+            return tuple(dict.fromkeys(str(item) for item in raw))
+
+        strict = payload.get("strict_identity")
+        unattended = payload.get("unattended", True)
+        if not isinstance(unattended, bool):
+            raise ValueError("routing unattended must be boolean")
+        strict_identity = None
+        if strict:
+            if isinstance(strict, (str, bytes)) or not isinstance(
+                strict, (tuple, list)
+            ):
+                raise ValueError(
+                    "routing strict_identity requires provider and model"
+                )
+            values = tuple(str(item) for item in strict)
+            if len(values) != 2:
+                raise ValueError("routing strict_identity requires provider and model")
+            strict_identity = (values[0], values[1])
+        return cls(
+            task_type=str(payload.get("task_type") or ""),
+            required_capabilities=string_tuple("required_capabilities"),
+            required_tools=string_tuple("required_tools"),
+            reasoning=str(payload.get("reasoning") or "standard"),
+            unattended=unattended,
+            context_tokens=(
+                int(payload["context_tokens"])
+                if payload.get("context_tokens") is not None else None
+            ),
+            latency_budget_ms=(
+                float(payload["latency_budget_ms"])
+                if payload.get("latency_budget_ms") is not None else None
+            ),
+            reliability_floor=(
+                float(payload["reliability_floor"])
+                if payload.get("reliability_floor") is not None else None
+            ),
+            max_cost_usd=(
+                float(payload["max_cost_usd"])
+                if payload.get("max_cost_usd") is not None else None
+            ),
+            preferred_provider=(
+                str(payload["preferred_provider"])
+                if payload.get("preferred_provider") else None
+            ),
+            strict_identity=strict_identity,
+            allowed_providers=string_tuple("allowed_providers"),
+            denied_providers=string_tuple("denied_providers"),
+            allowed_data_use=string_tuple("allowed_data_use"),
+        )
 
 
 @dataclass(frozen=True, slots=True)

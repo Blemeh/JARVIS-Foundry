@@ -3,6 +3,7 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
 from typing import Any, Mapping, Sequence
 from ..clock import isoformat, parse
 from ..control.broker import emergency_stop_reason, matching_veto_reason
@@ -699,13 +700,20 @@ def schedule_mission_provider_wait(
     reason: str,
     error_class: str,
     effect_action_key: str | None = None,
+    campaign_lineage: Mapping[str, str] | None = None,
+    routing_identity: str | None = None,
+    campaign_isolation_key: str | None = None,
+    stop_path: str | Path | None = None,
     controller: str = "supervisor",
 ):
     """Park one existing mission/run on existing Executive wake authority."""
 
     if controller != SUPERVISOR_CONTROLLER:
         raise PermissionError("provider mission waits are Supervisor-owned")
-    material = {
+    resolved_stop_path = (
+        str(Path(stop_path).expanduser().resolve()) if stop_path is not None else None
+    )
+    material: dict[str, Any] = {
         "mission_id": mission_id,
         "step_id": step_id,
         "run_id": run_id,
@@ -713,10 +721,55 @@ def schedule_mission_provider_wait(
         "effect_action_key": effect_action_key,
         "error_class": error_class,
     }
+    campaign_child_id = ""
+    if campaign_lineage:
+        material.update({
+            "objective_id": (
+                str(campaign_lineage.get("objective_id") or "") or None
+            ),
+            "campaign_id": (
+                str(campaign_lineage.get("campaign_id") or "") or None
+            ),
+            "child_id": (
+                str(campaign_lineage.get("child_id") or "") or None
+            ),
+            "builder_run_id": run_id,
+            "routing_identity": routing_identity,
+            "campaign_isolation_key": campaign_isolation_key,
+            "stop_path": resolved_stop_path,
+        })
+        # Validate the immutable edge before creating any wake or wait event.
+        # A malformed caller must not leave a partially durable wait behind.
+        from .campaigns import CampaignError, rebuild_campaign_state
+
+        campaign_child_id = str(campaign_lineage.get("child_id") or "")
+        state = rebuild_campaign_state(db)
+        child = state.children.get(campaign_child_id)
+        campaign = state.campaigns.get(
+            str(campaign_lineage.get("campaign_id") or "")
+        )
+        if (
+            child is None
+            or campaign is None
+            or child.campaign_id != campaign.campaign_id
+            or campaign.objective_id
+            != str(campaign_lineage.get("objective_id") or "")
+            or child.mission_id != mission_id
+            or child.routing_identity != routing_identity
+            or (
+                effect_action_key is not None
+                and effect_action_key not in child.effect_keys
+            )
+        ):
+            raise CampaignError(
+                "provider wait lineage does not match the bound campaign child"
+            )
     wait_id = "provider-wait-" + hashlib.sha256(
         canonical_json(material).encode("utf-8")
     ).hexdigest()[:24]
-    objective_id = _objective_for_mission(db, mission_id)
+    objective_id = str(material.get("objective_id") or "") or _objective_for_mission(
+        db, mission_id
+    )
     wake_ids: list[str] = []
     for provider_id in material["provider_ids"]:
         wake = schedule_wait_for_provider(
@@ -736,14 +789,56 @@ def schedule_mission_provider_wait(
         "reason": str(reason)[:1000],
         "created_at": isoformat(),
     }
-    _append(
-        db,
-        "mission.provider_wait_started",
-        payload,
-        key=f"mission.provider_wait_started:{wait_id}",
-        source_id="provider-resilience",
-        correlation_id=mission_id,
-    )
+    try:
+        _append(
+            db,
+            "mission.provider_wait_started",
+            payload,
+            key=f"mission.provider_wait_started:{wait_id}",
+            source_id="provider-resilience",
+            correlation_id=mission_id,
+        )
+    except EventConflict:
+        # A crash after the wait receipt but before mission/child projection
+        # can replay this boundary.  ``created_at`` is observational, so
+        # recover the first immutable receipt only when its identity material
+        # is byte-equivalent; a changed contract remains a hard conflict.
+        prior = next((
+            event.payload
+            for event in reversed(db.events(
+                readonly=True,
+                event_type_prefixes=("mission.provider_wait_started",),
+            ))
+            if str(event.payload.get("wait_id") or "") == wait_id
+        ), None)
+        if prior is None or any(
+            prior.get(key) != value for key, value in material.items()
+        ):
+            raise
+        payload = dict(prior)
+    if campaign_lineage:
+        # Project the same durable wait into the campaign aggregate.  This is
+        # not a second wake authority: the mission.provider_wait_* receipt
+        # and existing Executive wake ids remain the release condition.
+        from .campaigns import record_child_state
+
+        wait_kind = (
+            "EFFECT_RECONCILIATION" if effect_action_key else "PROVIDER"
+        )
+        record_child_state(
+            db,
+            campaign_child_id,
+            "WAITING",
+            reason=str(reason)[:1000],
+            wait_kind=wait_kind,
+            wait_reason=(
+                f"reconcile effect {effect_action_key} before retry or fallback"
+                if effect_action_key
+                else "WAIT_FOR_PROVIDER: " + ", ".join(material["provider_ids"])
+            ),
+            controller=controller,
+            stop_path=resolved_stop_path,
+        )
     return payload
 
 
@@ -781,6 +876,7 @@ def resume_mission_provider_waits(
     db,
     *,
     provider_id: str | None = None,
+    stop_path: str | Path | None = None,
     controller: str = "supervisor",
 ):
     """Release due provider/effect waits exactly once, preserving identity."""
@@ -808,6 +904,30 @@ def resume_mission_provider_waits(
             continue
         providers = tuple(str(item) for item in payload.get("provider_ids") or ())
         if provider_id is not None and provider_id not in providers:
+            continue
+        identities = {
+            "GLOBAL",
+            "executive",
+            "campaigns",
+            str(payload.get("objective_id") or ""),
+            str(payload.get("campaign_id") or ""),
+            str(payload.get("child_id") or ""),
+            str(payload.get("mission_id") or ""),
+        }
+        identities.discard("")
+        effective_stop_path = (
+            Path(stop_path).expanduser().resolve()
+            if stop_path is not None
+            else Path(str(payload.get("stop_path"))).expanduser().resolve()
+            if payload.get("stop_path")
+            else Path(db.path).resolve().parent / "EMERGENCY_STOP"
+        )
+        stop_reason = emergency_stop_reason(
+            db,
+            effective_stop_path,
+            identities=identities,
+        ) or matching_veto_reason(db, identities)
+        if stop_reason:
             continue
         action_key = str(payload.get("effect_action_key") or "")
         if action_key:
@@ -851,12 +971,20 @@ def resume_mission_provider_waits(
         if mission is None or str(mission.get("state") or "") != "BLOCKED":
             continue
         run_id = str(payload.get("run_id") or "")
+        recovery_provider_id = provider_id
+        if recovery_provider_id is None and providers:
+            for candidate_provider, wake_id in zip(
+                providers, payload.get("wake_ids") or (), strict=False
+            ):
+                if wake_state.get(str(wake_id), {}).get("status") == "TRIGGERED":
+                    recovery_provider_id = candidate_provider
+                    break
         resumed_event = Event.create(
             "mission.provider_wait_resumed",
             {
                 **payload,
                 "resumed_at": isoformat(),
-                "recovery_provider_id": provider_id,
+                "recovery_provider_id": recovery_provider_id,
             },
             source_type="supervisor",
             source_id="provider-resilience",
@@ -886,6 +1014,27 @@ def resume_mission_provider_waits(
             continue
         resumed.append(wait_id)
         resumed_waits.add(wait_id)
+        child_id = str(payload.get("child_id") or "")
+        if child_id:
+            try:
+                from .campaigns import record_child_state
+
+                record_child_state(
+                    db,
+                    child_id,
+                    "READY",
+                    reason=(
+                        f"provider {recovery_provider_id} recovery released exact child"
+                        if recovery_provider_id
+                        else "effect reconciliation released exact child"
+                    ),
+                    controller=controller,
+                    stop_path=effective_stop_path,
+                )
+            except (KeyError, ValueError):
+                # Startup reconciliation will retry the projection from the
+                # durable mission.provider_wait_resumed receipt.
+                pass
     return resumed
 
 

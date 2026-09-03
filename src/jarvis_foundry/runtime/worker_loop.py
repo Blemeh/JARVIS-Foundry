@@ -1231,7 +1231,22 @@ def run_cycle(
             # exact blocked mission can become dispatchable once.
             from ..executive.continuous import resume_mission_provider_waits
 
-            resume_mission_provider_waits(database)
+            resume_mission_provider_waits(
+                database,
+                stop_path=_default_stop_path(paths, config),
+            )
+            if campaign_runtime_active:
+                # Provider recovery can release the exact campaign child in
+                # this same cycle.  Refresh the selector boundary from
+                # durable state instead of waiting for a second poll or
+                # using the pre-recovery startup snapshot.
+                from ..executive.campaigns import (
+                    campaign_blocked_mission_ids as _campaign_blocked,
+                    campaign_dispatchable_mission_ids as _campaign_ready,
+                )
+
+                campaign_blocked_mission_ids = _campaign_blocked(database)
+                campaign_dispatchable_mission_ids = _campaign_ready(database)
         # V11 continuous observation is the durable, due-driven successor to
         # the A2 probe. It uses the existing monitor/ResearchQueue/Executive
         # wake path and still returns before objective or mission admission.

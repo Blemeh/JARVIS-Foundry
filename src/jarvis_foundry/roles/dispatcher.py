@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 import json
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Iterable, Mapping
 
 from ..clock import isoformat, utc_now
 from ..database import FoundryDatabase
@@ -44,12 +44,24 @@ from .router import (
     RoleRouter,
     RoutingRequest,
 )
+
 from ..runtime.provider_registry import (
     ProviderReadiness,
     latest_provider_readiness,
     record_provider_readiness,
 )
 from ..v3_fault import invoke_fault_hook
+
+_TRANSIENT_PROVIDER_FAILURES = frozenset({
+    "RATE_LIMITED", "OUTAGE", "DEGRADED",
+    "HEALTH_UNAVAILABLE", "HEALTH_UNKNOWN",
+    "AUTH_UNAVAILABLE", "AUTH_UNKNOWN",
+    "PROVIDER_UNAVAILABLE", "PROVIDER_UNKNOWN",
+})
+_INCOMPATIBLE_PROVIDER_FAILURES = frozenset({
+    "INCOMPATIBLE", "CAPABILITY_MISMATCH", "DIRECTIVE_MISMATCH",
+    "CONTEXT_LIMIT", "LATENCY_LIMIT", "RELIABILITY_LIMIT",
+})
 
 
 class DispatchError(RuntimeError):
@@ -105,6 +117,128 @@ class RoleDispatcher:
         # the one durable result instead of racing its idempotency key.
         self.replay_wait_seconds = 30.0
 
+    @staticmethod
+    def _bounded_min(*values: Any) -> float | None:
+        present = [float(value) for value in values if value is not None]
+        return min(present) if present else None
+
+    @staticmethod
+    def _allowed_intersection(
+        requested: tuple[str, ...], policy: tuple[str, ...], *, empty: str,
+    ) -> tuple[str, ...]:
+        if requested and policy:
+            intersection = tuple(
+                item for item in requested if item in set(policy)
+            )
+            return intersection or (empty,)
+        return requested or policy
+
+    def _effective_routing_request(
+        self,
+        *,
+        role: str,
+        config: Any,
+        budget_usd: float,
+        provider_override: str | None,
+        routing_request: RoutingRequest | None,
+    ) -> RoutingRequest:
+        """Merge child requirements with the stricter runtime policy."""
+
+        raw_constraints = self.routing_constraints
+        role_constraints = raw_constraints.get(role)
+        constraints = (
+            dict(role_constraints)
+            if isinstance(role_constraints, dict)
+            else raw_constraints
+        )
+        requested = routing_request or RoutingRequest(task_type=role)
+        configured_cost = constraints.get("max_cost_usd")
+        max_cost = self._bounded_min(
+            requested.max_cost_usd,
+            budget_usd if budget_usd > 0 else None,
+            float(configured_cost) if configured_cost is not None else None,
+        )
+        allowed = self._allowed_intersection(
+            requested.allowed_providers,
+            self.allowed_providers,
+            empty="__NO_PROVIDER_ALLOWED__",
+        )
+        allowed_data_use = self._allowed_intersection(
+            requested.allowed_data_use,
+            self.allowed_data_use,
+            empty="__NO_DATA_USE_ALLOWED__",
+        )
+        required_tools = tuple(dict.fromkeys((
+            *requested.required_tools,
+            *(str(item) for item in constraints.get("required_tools") or ()),
+        )))
+        context_tokens = max(
+            (
+                int(value) for value in (
+                    requested.context_tokens,
+                    constraints.get("context_tokens"),
+                ) if value is not None
+            ),
+            default=None,
+        )
+        reliability_floor = max(
+            (
+                float(value) for value in (
+                    requested.reliability_floor,
+                    constraints.get("reliability_floor"),
+                ) if value is not None
+            ),
+            default=None,
+        )
+        latency_budget = self._bounded_min(
+            requested.latency_budget_ms,
+            constraints.get("latency_budget_ms"),
+        )
+        return replace(
+            requested,
+            required_tools=required_tools,
+            unattended=(
+                requested.unattended
+                or bool(constraints.get("unattended", True))
+            ),
+            context_tokens=context_tokens,
+            latency_budget_ms=latency_budget,
+            reliability_floor=reliability_floor,
+            max_cost_usd=max_cost,
+            preferred_provider=(
+                provider_override
+                or requested.preferred_provider
+                or config.preferred_provider
+            ),
+            allowed_providers=allowed,
+            denied_providers=tuple(dict.fromkeys((
+                *requested.denied_providers,
+                *self.denied_providers,
+            ))),
+            allowed_data_use=allowed_data_use,
+        )
+
+    @staticmethod
+    def _lineage_payload(
+        campaign_lineage: Mapping[str, str] | None,
+        *,
+        run_id: str,
+        routing_request: RoutingRequest | None,
+        effect_action_key: str | None,
+    ) -> dict[str, Any]:
+        if not campaign_lineage:
+            return {}
+        return {
+            "objective_id": str(campaign_lineage.get("objective_id") or ""),
+            "campaign_id": str(campaign_lineage.get("campaign_id") or ""),
+            "child_id": str(campaign_lineage.get("child_id") or ""),
+            "builder_run_id": run_id,
+            "routing_identity": (
+                routing_request.identity_hash() if routing_request is not None else None
+            ),
+            "effect_action_key": effect_action_key,
+        }
+
     # -- durable events -----------------------------------------------------
 
     def _append(self, event_type: str, payload: dict, *, idempotency_key: str) -> None:
@@ -118,7 +252,7 @@ class RoleDispatcher:
     def _start_run(self, manifest: ContextManifest, provider: str, model: str) -> None:
         # provider is part of the key so a fallback re-start is a distinct
         # durable event; the projection upsert keeps one row per run_id.
-        self._append("agent_run.started", {
+        payload = {
             "run_id": manifest.run_id,
             "mission_id": manifest.mission_id,
             "step_id": manifest.step_id,
@@ -127,7 +261,21 @@ class RoleDispatcher:
             "model": model,
             "context_manifest_hash": manifest.content_hash(),
             "tool_policy": list(manifest.tool_policy),
-        }, idempotency_key=f"agent_run.started:{manifest.run_id}:{provider}")
+        }
+        if manifest.campaign_id:
+            payload.update({
+                "objective_id": manifest.objective_id,
+                "campaign_id": manifest.campaign_id,
+                "child_id": manifest.child_id,
+                "builder_run_id": manifest.run_id,
+                "routing_identity": manifest.routing_identity,
+                "effect_action_key": manifest.effect_action_key,
+            })
+        self._append(
+            "agent_run.started",
+            payload,
+            idempotency_key=f"agent_run.started:{manifest.run_id}:{provider}",
+        )
 
     def _heartbeat(self, run_id: str) -> None:
         # unique per (run, attempt) via an incrementing counter — never
@@ -174,7 +322,12 @@ class RoleDispatcher:
         verification_criteria: tuple[str, ...] = (),
         forbidden_paths: tuple[str, ...] = (),
         attempt: int = 1,
+        routing_request: RoutingRequest | None = None,
+        campaign_lineage: Mapping[str, str] | None = None,
+        campaign_isolation_key: str | None = None,
+        effect_action_key: str | None = None,
     ) -> ContextManifest:
+        lineage = dict(campaign_lineage or {})
         return ContextManifest(
             run_id=run_id, role=role, mission_id=mission_id,
             step_id=step_id, resource_id=resource_id, capability=capability,
@@ -187,6 +340,23 @@ class RoleDispatcher:
             verification_criteria=verification_criteria,
             forbidden_paths=forbidden_paths,
             attempt=attempt,
+            objective_id=(
+                str(lineage.get("objective_id")) if lineage.get("objective_id") else None
+            ),
+            campaign_id=(
+                str(lineage.get("campaign_id")) if lineage.get("campaign_id") else None
+            ),
+            child_id=(
+                str(lineage.get("child_id")) if lineage.get("child_id") else None
+            ),
+            campaign_isolation_key=campaign_isolation_key,
+            routing_requirements=(
+                routing_request.to_dict() if routing_request is not None else {}
+            ),
+            routing_identity=(
+                routing_request.identity_hash() if routing_request is not None else None
+            ),
+            effect_action_key=effect_action_key,
         )
 
     def manifest_for(
@@ -208,6 +378,10 @@ class RoleDispatcher:
         verification_criteria: tuple[str, ...] = (),
         forbidden_paths: tuple[str, ...] = (),
         attempt: int = 1,
+        routing_request: RoutingRequest | None = None,
+        campaign_lineage: Mapping[str, str] | None = None,
+        campaign_isolation_key: str | None = None,
+        effect_action_key: str | None = None,
     ) -> ContextManifest:
         """Build the exact manifest that :meth:`dispatch` will persist.
 
@@ -225,6 +399,10 @@ class RoleDispatcher:
             verification_criteria=verification_criteria,
             forbidden_paths=forbidden_paths,
             attempt=attempt,
+            routing_request=routing_request,
+            campaign_lineage=campaign_lineage,
+            campaign_isolation_key=campaign_isolation_key,
+            effect_action_key=effect_action_key,
         )
 
     def _replay_completed(self, run_id: str, prospective: ContextManifest) -> RoleResult | None:
@@ -290,6 +468,7 @@ class RoleDispatcher:
         role: str,
         candidate: ProviderRouteCandidate,
         ordinal: int,
+        lineage: Mapping[str, Any] | None = None,
     ) -> None:
         self._append("provider.dispatch_attempted", {
             "run_id": run_id,
@@ -302,6 +481,7 @@ class RoleDispatcher:
             "model": candidate.model,
             "attempt_ordinal": ordinal,
             "estimated_cost_usd": candidate.cost_usd,
+            **dict(lineage or {}),
         }, idempotency_key=(
             f"provider.dispatch_attempted:{run_id}:{ordinal}:"
             f"{candidate.provider}:{candidate.model}"))
@@ -391,6 +571,11 @@ class RoleDispatcher:
             "OUTAGE": "provider_unavailable",
             "DEGRADED": "provider_degraded",
             "INCOMPATIBLE": "provider_incompatible",
+            "CAPABILITY_MISMATCH": "provider_incompatible",
+            "DIRECTIVE_MISMATCH": "provider_incompatible",
+            "CONTEXT_LIMIT": "provider_incompatible",
+            "LATENCY_LIMIT": "provider_incompatible",
+            "RELIABILITY_LIMIT": "provider_incompatible",
             "BLOCKED_POLICY": "provider_policy_blocked",
             "OWNER_RESTRICTED": "provider_owner_restricted",
             "COST_BLOCKED": "provider_cost_blocked",
@@ -414,10 +599,24 @@ class RoleDispatcher:
         verification_criteria: tuple[str, ...] = (),
         forbidden_paths: tuple[str, ...] = (),
         attempt: int = 1,
+        routing_request: RoutingRequest | None = None,
+        campaign_lineage: Mapping[str, str] | None = None,
+        campaign_isolation_key: str | None = None,
+        effect_action_key: str | None = None,
     ) -> RoleResult:
         import uuid
         run_id = run_id or f"run-{uuid.uuid4()}"
         lease_key = f"role:{role}:{mission_id}:{step_id or 'start'}"
+
+        if campaign_lineage:
+            required_lineage = {
+                str(campaign_lineage.get(name) or "")
+                for name in ("objective_id", "campaign_id", "child_id")
+            }
+            if "" in required_lineage or routing_request is None:
+                raise ValueError(
+                    "campaign dispatch requires complete lineage and routing contract"
+                )
 
         config = self.router.config(role)
         legacy_chain = (
@@ -426,47 +625,28 @@ class RoleDispatcher:
         )
         candidates = self._candidate_snapshot()
         route_failure: str | None = None
-        task_budget: float | None = budget_usd if budget_usd > 0 else None
+        effective_request = self._effective_routing_request(
+            role=role,
+            config=config,
+            budget_usd=budget_usd,
+            provider_override=provider_override,
+            routing_request=routing_request,
+        )
+        task_budget: float | None = effective_request.max_cost_usd
+        lineage = self._lineage_payload(
+            campaign_lineage,
+            run_id=run_id,
+            routing_request=routing_request,
+            effect_action_key=effect_action_key,
+        )
+        decision = None
         if candidates:
             if provider_override and not self.provider_override_allows_fallback:
                 candidates = tuple(
                     item for item in candidates
                     if item.provider == provider_override)
-            raw_constraints = self.routing_constraints
-            role_constraints = raw_constraints.get(role)
-            constraints = (
-                dict(role_constraints)
-                if isinstance(role_constraints, dict)
-                else raw_constraints
-            )
-            configured_cost = constraints.get("max_cost_usd")
-            max_cost = (
-                budget_usd if budget_usd > 0
-                else float(configured_cost) if configured_cost is not None
-                else None
-            )
-            task_budget = max_cost
             decision = self.router.route(
-                RoutingRequest(
-                    task_type=role,
-                    required_tools=tuple(
-                        str(item) for item in constraints.get("required_tools") or ()),
-                    unattended=bool(constraints.get("unattended", True)),
-                    context_tokens=(
-                        int(constraints["context_tokens"])
-                        if constraints.get("context_tokens") is not None else None),
-                    latency_budget_ms=(
-                        float(constraints["latency_budget_ms"])
-                        if constraints.get("latency_budget_ms") is not None else None),
-                    reliability_floor=(
-                        float(constraints["reliability_floor"])
-                        if constraints.get("reliability_floor") is not None else None),
-                    max_cost_usd=max_cost,
-                    preferred_provider=(provider_override or config.preferred_provider),
-                    allowed_providers=self.allowed_providers,
-                    denied_providers=self.denied_providers,
-                    allowed_data_use=self.allowed_data_use,
-                ),
+                effective_request,
                 candidates,
                 role=role,
             )
@@ -475,6 +655,11 @@ class RoleDispatcher:
                 "mission_id": mission_id,
                 "step_id": step_id,
                 "role": role,
+                "routing_request": (
+                    routing_request.to_dict() if routing_request is not None else None
+                ),
+                "effective_routing_request": effective_request.to_dict(),
+                **lineage,
                 **decision.to_dict(),
             }, idempotency_key=(
                 f"provider.route_decided:{run_id}:{attempt}:"
@@ -482,30 +667,20 @@ class RoleDispatcher:
             chain_candidates = tuple(decision.attempted)
             route_failure = decision.failure_class
         else:
-            chain_candidates = tuple(ProviderRouteCandidate(
-                provider=provider,
-                model=config.preferred_model,
-                readiness="READY",
-                health="READY",
-                auth_state="READY",
-                availability="AVAILABLE",
-                noninteractive_allowed=True,
-            ) for provider in legacy_chain)
-
-        if not chain_candidates:
-            failure_class = route_failure or "NO_CANDIDATES"
-            error_class = self._failure_error_class(failure_class)
-            wait_providers = tuple(
-                dict.fromkeys(item.provider for item in candidates)
-            )
-            detail = (
-                f"no safe provider satisfied role {role}: {failure_class}")
-            self._fail_run(run_id, error_class, detail)
-            return RoleResult(
-                run_id=run_id, role=role, status=BLOCKED, provider="", model="",
-                verdict="BLOCKED", error_class=error_class,
-                error_detail=detail, wait_for_providers=wait_providers,
-                started_at=isoformat(utc_now()), finished_at=isoformat(utc_now()),
+            # A campaign child requires observed provider/capability truth.
+            # Legacy non-campaign callers retain the pre-V12 configured-chain
+            # behavior so historical manifests and local fabric tests remain
+            # replay compatible.
+            chain_candidates = () if routing_request is not None else tuple(
+                ProviderRouteCandidate(
+                    provider=provider,
+                    model=config.preferred_model,
+                    readiness="READY",
+                    health="READY",
+                    auth_state="READY",
+                    availability="AVAILABLE",
+                    noninteractive_allowed=True,
+                ) for provider in legacy_chain
             )
 
         pending_effect = self._pending_effect_reconciliation(run_id)
@@ -518,6 +693,27 @@ class RoleDispatcher:
                 provider=provider, model="", verdict="BLOCKED",
                 error_class="provider_effect_reconciliation_required",
                 error_detail=detail, effect_action_key=action_key,
+                started_at=isoformat(utc_now()), finished_at=isoformat(utc_now()),
+            )
+
+        if not chain_candidates:
+            rejected = decision.rejected if decision is not None else ()
+            wait_providers = tuple(dict.fromkeys(
+                str(item.get("provider") or "")
+                for item in rejected
+                if str(item.get("failure_class") or "")
+                in _TRANSIENT_PROVIDER_FAILURES
+                and str(item.get("provider") or "")
+            ))
+            failure_class = route_failure or "NO_CANDIDATES"
+            error_class = self._failure_error_class(failure_class)
+            detail = (
+                f"no safe provider satisfied role {role}: {failure_class}")
+            self._fail_run(run_id, error_class, detail)
+            return RoleResult(
+                run_id=run_id, role=role, status=BLOCKED, provider="", model="",
+                verdict="BLOCKED", error_class=error_class,
+                error_detail=detail, wait_for_providers=wait_providers,
                 started_at=isoformat(utc_now()), finished_at=isoformat(utc_now()),
             )
 
@@ -543,6 +739,10 @@ class RoleDispatcher:
             verification_criteria=verification_criteria,
             forbidden_paths=forbidden_paths,
             attempt=attempt,
+            routing_request=routing_request,
+            campaign_lineage=campaign_lineage,
+            campaign_isolation_key=campaign_isolation_key,
+            effect_action_key=effect_action_key,
         )
         replayed = self._replay_completed(run_id, prospective)
         if replayed is not None:
@@ -633,6 +833,7 @@ class RoleDispatcher:
             for row in history
         )
         failure_classes: list[str] = []
+        wait_eligible: list[str] = []
         try:
             queue = list(chain_candidates)
             while queue and total_attempts < self.max_total_attempts:
@@ -664,6 +865,7 @@ class RoleDispatcher:
                         "estimated_spend_usd": estimated_spend,
                         "candidate_estimated_cost_usd": estimate,
                         "budget_usd": task_budget,
+                        **lineage,
                     }, idempotency_key=(
                         f"provider.dispatch_skipped:{run_id}:{provider}:"
                         f"cost:{estimated_spend}:{task_budget}"))
@@ -679,6 +881,10 @@ class RoleDispatcher:
                     verification_criteria=verification_criteria,
                     forbidden_paths=forbidden_paths,
                     attempt=attempt,
+                    routing_request=routing_request,
+                    campaign_lineage=campaign_lineage,
+                    campaign_isolation_key=campaign_isolation_key,
+                    effect_action_key=effect_action_key,
                 )
                 self._record_provider_attempt(
                     run_id=run_id,
@@ -687,6 +893,7 @@ class RoleDispatcher:
                     role=role,
                     candidate=candidate,
                     ordinal=total_attempts,
+                    lineage=lineage,
                 )
                 self._start_run(manifest, provider, model)
                 # The start event is durable before the provider adapter is
@@ -714,7 +921,20 @@ class RoleDispatcher:
                     last_error = error
                     failure_class = str(error.failure_class or "OUTAGE").upper()
                     failure_classes.append(failure_class)
+                    if failure_class in _TRANSIENT_PROVIDER_FAILURES:
+                        wait_eligible.append(provider)
                     error_class = self._failure_error_class(failure_class)
+                    reported_action_key = str(
+                        error.effect_action_key or ""
+                    ).strip()
+                    resolved_action_key = (
+                        reported_action_key or effect_action_key
+                    )
+                    effect_identity_mismatch = bool(
+                        effect_action_key
+                        and reported_action_key
+                        and reported_action_key != effect_action_key
+                    )
                     self._fail_run(
                         run_id, error_class, str(error),
                         suffix=f"{provider}:{total_attempts}")
@@ -731,8 +951,9 @@ class RoleDispatcher:
                         "retryable": error.retryable,
                         "retry_after_seconds": error.retry_after_seconds,
                         "possible_effect": error.possible_effect,
-                        "effect_action_key": error.effect_action_key,
                         "attempt_ordinal": total_attempts,
+                        **lineage,
+                        "effect_action_key": resolved_action_key,
                     }, idempotency_key=(
                         f"provider.dispatch_failed:{run_id}:{total_attempts}:"
                         f"{provider}:{failure_class}"))
@@ -740,7 +961,7 @@ class RoleDispatcher:
                         ProviderReadiness.RATE_LIMITED
                         if failure_class == "RATE_LIMITED" else
                         ProviderReadiness.INCOMPATIBLE
-                        if failure_class == "INCOMPATIBLE" else
+                        if failure_class in _INCOMPATIBLE_PROVIDER_FAILURES else
                         ProviderReadiness.BLOCKED_POLICY
                         if failure_class in {"BLOCKED_POLICY", "OWNER_RESTRICTED"} else
                         ProviderReadiness.DEGRADED
@@ -758,25 +979,43 @@ class RoleDispatcher:
                         source_id=self.source_id,
                     )
                     if error.possible_effect:
-                        action_key = str(error.effect_action_key or "").strip()
+                        action_key = resolved_action_key
                         if not action_key:
                             action_key = f"provider-effect:{mission_id}:{step_id or 'start'}:{run_id}"
+                        if effect_identity_mismatch:
+                            self._append("provider.effect_identity_mismatch", {
+                                "run_id": run_id,
+                                "mission_id": mission_id,
+                                "step_id": step_id,
+                                "provider": provider,
+                                "expected_effect_action_key": effect_action_key,
+                                "observed_effect_action_key": reported_action_key,
+                                **lineage,
+                            }, idempotency_key=(
+                                f"provider.effect_identity_mismatch:{run_id}:"
+                                f"{reported_action_key}"
+                            ))
                         self._append("provider.effect_reconciliation_required", {
                             "run_id": run_id,
                             "mission_id": mission_id,
                             "step_id": step_id,
                             "provider": provider,
                             "model": model,
-                            "effect_action_key": action_key,
                             "failure_class": failure_class,
                             "reason": str(error)[:500],
+                            **lineage,
+                            "effect_action_key": action_key,
                         }, idempotency_key=(
                             f"provider.effect_reconciliation_required:"
                             f"{run_id}:{action_key}"))
                         return RoleResult(
                             run_id=run_id, role=role, status=BLOCKED,
                             provider=provider, model=model, verdict="BLOCKED",
-                            error_class="provider_effect_reconciliation_required",
+                            error_class=(
+                                "provider_effect_identity_mismatch"
+                                if effect_identity_mismatch
+                                else "provider_effect_reconciliation_required"
+                            ),
                             error_detail=(
                                 "possible external mutation must be reconciled "
                                 "before any alternate provider dispatch"),
@@ -803,6 +1042,63 @@ class RoleDispatcher:
                         error_detail=str(error),
                         started_at=isoformat(utc_now()), finished_at=isoformat(utc_now()),
                     )
+                if (
+                    effect_action_key
+                    and result.effect_action_key
+                    and result.effect_action_key != effect_action_key
+                ):
+                    observed_action_key = str(result.effect_action_key)
+                    detail = (
+                        "provider returned a different effect identity: "
+                        f"expected={effect_action_key} observed={observed_action_key}"
+                    )
+                    self._fail_run(
+                        run_id,
+                        "provider_incompatible",
+                        detail,
+                        suffix=f"effect-identity:{provider}:{total_attempts}",
+                    )
+                    self._append("provider.effect_identity_mismatch", {
+                        "run_id": run_id,
+                        "mission_id": mission_id,
+                        "step_id": step_id,
+                        "provider": provider,
+                        "expected_effect_action_key": effect_action_key,
+                        "observed_effect_action_key": observed_action_key,
+                        **lineage,
+                    }, idempotency_key=(
+                        f"provider.effect_identity_mismatch:{run_id}:"
+                        f"{observed_action_key}"
+                    ))
+                    self._append("provider.effect_reconciliation_required", {
+                        "run_id": run_id,
+                        "mission_id": mission_id,
+                        "step_id": step_id,
+                        "provider": provider,
+                        "model": model,
+                        "failure_class": "INCOMPATIBLE",
+                        "reason": detail,
+                        **lineage,
+                        "effect_action_key": observed_action_key,
+                    }, idempotency_key=(
+                        f"provider.effect_reconciliation_required:"
+                        f"{run_id}:{observed_action_key}"
+                    ))
+                    return RoleResult(
+                        run_id=run_id,
+                        role=role,
+                        status=BLOCKED,
+                        provider=provider,
+                        model=model,
+                        verdict="BLOCKED",
+                        error_class="provider_effect_identity_mismatch",
+                        error_detail=detail,
+                        effect_action_key=observed_action_key,
+                        started_at=result.started_at,
+                        finished_at=result.finished_at,
+                    )
+                if effect_action_key and not result.effect_action_key:
+                    result = replace(result, effect_action_key=effect_action_key)
                 if result.status == COMPLETED:
                     identity_changed = (
                         result.provider != provider
@@ -834,6 +1130,7 @@ class RoleDispatcher:
                             "observed_provider": result.provider,
                             "observed_model": result.model,
                             "reason": detail,
+                            **lineage,
                         }, idempotency_key=(
                             f"provider.identity_mismatch:{run_id}:"
                             f"{provider}:{model}"))
@@ -861,6 +1158,7 @@ class RoleDispatcher:
                             "observed_model": result.model,
                             "authority": "canonical_capability_fabric",
                             "evidence": list(result.evidence),
+                            **lineage,
                         }, idempotency_key=(
                             f"provider.identity_transition_authorized:{run_id}:"
                             f"{provider}:{model}:{result.provider}:{result.model}"))
@@ -875,8 +1173,12 @@ class RoleDispatcher:
                         "model_id": result.model,
                         "model": result.model,
                         "attempt_ordinal": total_attempts,
-                        "fallback_used": len(tried) > 1,
+                        "fallback_used": (
+                            len(tried) > 1
+                            or bool(decision and decision.fallback_used)
+                        ),
                         "cost_usd": result.cost_usd,
+                        **lineage,
                     }, idempotency_key=(
                         f"provider.dispatch_succeeded:{run_id}:"
                         f"{result.provider}:{result.model}"))
@@ -912,6 +1214,8 @@ class RoleDispatcher:
                         failure_class=result_failure,
                     )
                     failure_classes.append(result_failure)
+                    if result_failure in _TRANSIENT_PROVIDER_FAILURES:
+                        wait_eligible.append(provider)
                     self._fail_run(
                         run_id, result.error_class or "provider_unavailable",
                         result.error_detail, suffix=f"{provider}:{total_attempts}")
@@ -929,6 +1233,7 @@ class RoleDispatcher:
                         "possible_effect": False,
                         "effect_action_key": None,
                         "attempt_ordinal": total_attempts,
+                        **lineage,
                     }, idempotency_key=(
                         f"provider.dispatch_failed:{run_id}:{total_attempts}:"
                         f"{provider}:{result_failure}"))
@@ -968,6 +1273,13 @@ class RoleDispatcher:
                 # durable in provider.dispatch_failed.
                 error_class = "provider_unavailable"
             self._fail_run(run_id, error_class, detail, suffix="exhausted")
+            rejected_waits = tuple(
+                str(item.get("provider") or "")
+                for item in (decision.rejected if decision is not None else ())
+                if str(item.get("failure_class") or "")
+                in _TRANSIENT_PROVIDER_FAILURES
+                and str(item.get("provider") or "")
+            )
             return RoleResult(
                 run_id=run_id, role=role, status=BLOCKED, provider=tried[-1] if tried else "",
                 model=(
@@ -976,7 +1288,7 @@ class RoleDispatcher:
                 ), verdict="BLOCKED",
                 error_class=error_class, error_detail=detail,
                 wait_for_providers=tuple(dict.fromkeys(
-                    item.provider for item in chain_candidates
+                    (*rejected_waits, *wait_eligible)
                 )),
                 started_at=isoformat(utc_now()), finished_at=isoformat(utc_now()),
             )
