@@ -301,6 +301,7 @@ class RoleDispatcher:
             "model_id": candidate.model,
             "model": candidate.model,
             "attempt_ordinal": ordinal,
+            "estimated_cost_usd": candidate.cost_usd,
         }, idempotency_key=(
             f"provider.dispatch_attempted:{run_id}:{ordinal}:"
             f"{candidate.provider}:{candidate.model}"))
@@ -425,6 +426,7 @@ class RoleDispatcher:
         )
         candidates = self._candidate_snapshot()
         route_failure: str | None = None
+        task_budget: float | None = budget_usd if budget_usd > 0 else None
         if candidates:
             if provider_override and not self.provider_override_allows_fallback:
                 candidates = tuple(
@@ -443,6 +445,7 @@ class RoleDispatcher:
                 else float(configured_cost) if configured_cost is not None
                 else None
             )
+            task_budget = max_cost
             decision = self.router.route(
                 RoutingRequest(
                     task_type=role,
@@ -625,6 +628,10 @@ class RoleDispatcher:
             provider = str(row.get("provider") or row.get("provider_id") or "")
             provider_counts[provider] = provider_counts.get(provider, 0) + 1
         total_attempts = len(history)
+        estimated_spend = sum(
+            max(0.0, float(row.get("estimated_cost_usd") or 0.0))
+            for row in history
+        )
         failure_classes: list[str] = []
         try:
             queue = list(chain_candidates)
@@ -635,8 +642,35 @@ class RoleDispatcher:
                 count = provider_counts.get(provider, 0)
                 if count >= 1 + self.max_retries_per_provider:
                     continue
+                estimate = max(0.0, float(candidate.cost_usd or 0.0))
+                if (
+                    task_budget is not None
+                    and estimated_spend + estimate > task_budget
+                ):
+                    failure_classes.append("COST_LIMIT")
+                    last_error = ProviderFailure(
+                        f"cumulative provider estimate would exceed budget: "
+                        f"{estimated_spend + estimate:.6f} > {task_budget:.6f}",
+                        failure_class="COST_LIMIT",
+                    )
+                    self._append("provider.dispatch_skipped", {
+                        "run_id": run_id,
+                        "mission_id": mission_id,
+                        "step_id": step_id,
+                        "role": role,
+                        "provider": provider,
+                        "model": model,
+                        "failure_class": "COST_LIMIT",
+                        "estimated_spend_usd": estimated_spend,
+                        "candidate_estimated_cost_usd": estimate,
+                        "budget_usd": task_budget,
+                    }, idempotency_key=(
+                        f"provider.dispatch_skipped:{run_id}:{provider}:"
+                        f"cost:{estimated_spend}:{task_budget}"))
+                    continue
                 total_attempts += 1
                 provider_counts[provider] = count + 1
+                estimated_spend += estimate
                 manifest = self._manifest(
                     run_id, role, mission_id, step_id, resource_id, capability,
                     instructions, duration_seconds, budget_usd,
@@ -770,6 +804,43 @@ class RoleDispatcher:
                         started_at=isoformat(utc_now()), finished_at=isoformat(utc_now()),
                     )
                 if result.status == COMPLETED:
+                    if (
+                        result.provider != provider
+                        or result.model != model
+                    ):
+                        detail = (
+                            "provider/model identity changed during dispatch: "
+                            f"requested={provider}/{model} "
+                            f"observed={result.provider}/{result.model}"
+                        )
+                        self._fail_run(
+                            run_id, "provider_incompatible", detail,
+                            suffix=f"identity:{provider}:{total_attempts}")
+                        self._append("provider.identity_mismatch", {
+                            "run_id": run_id,
+                            "mission_id": mission_id,
+                            "step_id": step_id,
+                            "role": role,
+                            "requested_provider": provider,
+                            "requested_model": model,
+                            "observed_provider": result.provider,
+                            "observed_model": result.model,
+                            "reason": detail,
+                        }, idempotency_key=(
+                            f"provider.identity_mismatch:{run_id}:"
+                            f"{provider}:{model}"))
+                        return RoleResult(
+                            run_id=run_id,
+                            role=role,
+                            status=BLOCKED,
+                            provider=result.provider,
+                            model=result.model,
+                            verdict="BLOCKED",
+                            error_class="provider_incompatible",
+                            error_detail=detail,
+                            started_at=result.started_at,
+                            finished_at=result.finished_at,
+                        )
                     self._complete_run(result)
                     self._append("provider.dispatch_succeeded", {
                         "run_id": run_id,

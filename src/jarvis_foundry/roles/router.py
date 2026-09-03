@@ -289,6 +289,14 @@ def route_provider_candidates(
             reason, failure_class = f"provider readiness is {readiness}", "PROVIDER_UNAVAILABLE"
         elif (
             request.unattended
+            and candidate.data_use_classification == "UNKNOWN_POLICY"
+        ):
+            reason, failure_class = (
+                "provider data-use/privacy classification is unknown",
+                "BLOCKED_POLICY",
+            )
+        elif (
+            request.unattended
             and candidate.data_use_classification != "UNKNOWN"
             and candidate.noninteractive_allowed is not True
         ):

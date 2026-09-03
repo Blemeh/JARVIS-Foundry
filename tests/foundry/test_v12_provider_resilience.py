@@ -1,6 +1,7 @@
 """V12 product proof through the canonical mission/provider runtime path."""
 from __future__ import annotations
 
+from dataclasses import replace
 import subprocess
 from pathlib import Path
 
@@ -287,6 +288,34 @@ def test_profile_cannot_enable_noninteractive_training_policy(tmp_path):
         "allow_data_training_tiers_noninteractive") is not True
 
 
+def test_unknown_data_use_policy_fails_closed_even_with_noninteractive_flag(tmp_path):
+    db = database(tmp_path)
+    adapter = ProviderScript()
+    unknown_policy = replace(
+        candidate("provider-b", policy_allowed=True),
+        data_use_classification="UNKNOWN_POLICY",
+    )
+    result = dispatch(
+        db,
+        adapter,
+        (candidate("provider-a", readiness="OUTAGE"), unknown_policy),
+        run_id="run-unknown-policy",
+    )
+    assert result.error_class == "provider_policy_blocked"
+    assert adapter.received == []
+    rejected = [
+        item
+        for event in db.events()
+        if event.event_type == "provider.route_decided"
+        for item in event.payload["rejected"]
+    ]
+    assert any(
+        item["provider"] == "provider-b"
+        and item["failure_class"] == "BLOCKED_POLICY"
+        for item in rejected
+    )
+
+
 def test_outage_and_rate_limit_take_one_compatible_alternate(tmp_path):
     for name, failure in (
         ("outage", ProviderFailure("network outage", failure_class="OUTAGE")),
@@ -382,6 +411,59 @@ def test_incompatible_policy_blocked_and_over_budget_fallbacks_are_rejected(tmp_
         decisions = [event.payload for event in db.events()
                      if event.event_type == "provider.route_decided"]
         assert decisions and decisions[-1]["rejected"]
+
+
+def test_fallback_chain_enforces_cumulative_cost_budget(tmp_path):
+    db = database(tmp_path)
+    adapter = ProviderScript({
+        "provider-a": [ProviderFailure("outage", failure_class="OUTAGE")],
+    })
+    result = dispatch(
+        db,
+        adapter,
+        (candidate("provider-a", cost_usd=0.40),
+         candidate("provider-b", cost_usd=0.40)),
+        run_id="run-cumulative-cost",
+        budget_usd=0.50,
+    )
+    assert result.error_class == "provider_cost_blocked"
+    assert [item.provider for item in adapter.received] == ["provider-a"]
+    skipped = [event.payload for event in db.events()
+               if event.event_type == "provider.dispatch_skipped"]
+    assert len(skipped) == 1
+    assert skipped[0]["provider"] == "provider-b"
+    assert skipped[0]["failure_class"] == "COST_LIMIT"
+
+
+def test_provider_identity_switch_is_blocked_without_alternate_replay(tmp_path):
+    class IdentitySwitchAdapter(ProviderScript):
+        def dispatch(self, manifest, *, heartbeat) -> RoleResult:
+            self.received.append(manifest)
+            heartbeat()
+            return RoleResult(
+                run_id=manifest.run_id,
+                role=manifest.role,
+                status=COMPLETED,
+                provider="provider-z",
+                model="provider-z-model",
+                verdict="PASS",
+            )
+
+    db = database(tmp_path)
+    adapter = IdentitySwitchAdapter()
+    result = dispatch(
+        db,
+        adapter,
+        (candidate("provider-a"), candidate("provider-b")),
+        run_id="run-identity-switch",
+    )
+    assert result.error_class == "provider_incompatible"
+    assert [item.provider for item in adapter.received] == ["provider-a"]
+    mismatches = [event.payload for event in db.events()
+                  if event.event_type == "provider.identity_mismatch"]
+    assert len(mismatches) == 1
+    assert mismatches[0]["requested_provider"] == "provider-a"
+    assert mismatches[0]["observed_provider"] == "provider-z"
 
 
 def test_all_down_wait_then_positive_recovery_resumes_same_mission_and_run(tmp_path):

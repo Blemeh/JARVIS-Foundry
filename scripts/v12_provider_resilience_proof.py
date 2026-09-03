@@ -33,6 +33,12 @@ SCENARIOS = {
         "test_incompatible_policy_blocked_and_over_budget_fallbacks_are_rejected"),
     "POLICY_OWNER_CONSENT_IMMUTABLE": (
         "test_profile_cannot_enable_noninteractive_training_policy"),
+    "POLICY_UNKNOWN_FAILS_CLOSED": (
+        "test_unknown_data_use_policy_fails_closed_even_with_noninteractive_flag"),
+    "CUMULATIVE_COST_BUDGET": (
+        "test_fallback_chain_enforces_cumulative_cost_budget"),
+    "PROVIDER_IDENTITY_SWITCH_BLOCKED": (
+        "test_provider_identity_switch_is_blocked_without_alternate_replay"),
     "F_ALL_UNAVAILABLE_WAIT": (
         "test_all_down_wait_then_positive_recovery_resumes_same_mission_and_run"),
     "G_PROVIDER_RECOVERY_EXACT_RESUME": (
