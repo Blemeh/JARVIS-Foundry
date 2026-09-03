@@ -71,6 +71,8 @@ class _SessionRuntime:
     discovery_errors: tuple[str, ...] = ()
     invocation_tasks: dict[str, asyncio.Task[Any]] = field(default_factory=dict)
     invocation_limit: asyncio.Semaphore | None = None
+    session_task: asyncio.Task[None] | None = None
+    session_close: asyncio.Event | None = None
 
     def health(self) -> McpServerHealth:
         return McpServerHealth(
@@ -278,19 +280,21 @@ class McpClientBackend:
             seen_cursors.add(cursor)
         return resources
 
-    async def _connect(self, server_id: str, reconnect: bool) -> McpServerHealth:
-        runtime = self._runtime(server_id)
-        if not runtime.config.enabled:
-            runtime.state = McpSessionState.DISABLED
-            return runtime.health()
-        if runtime.state is McpSessionState.READY and runtime.client is not None:
-            return runtime.health()
-        runtime.state = (
-            McpSessionState.RECONNECTING if reconnect else McpSessionState.CONNECTING
-        )
-        runtime.last_error = None
+    async def _session_owner(
+        self,
+        runtime: _SessionRuntime,
+        ready: asyncio.Future[McpServerHealth],
+    ) -> None:
+        """Own the SDK context for its full lifetime in one asyncio task.
+
+        The official transports use AnyIO cancel scopes, which must be exited
+        by the same task that entered them. Public calls can use the live
+        client concurrently, but only this owner opens and closes the session.
+        """
         client = None
         http_client = None
+        failure: BaseException | None = None
+        ready_error: BaseException | None = None
         try:
             client, http_client = await self._build_client(runtime)
             await asyncio.wait_for(
@@ -326,32 +330,88 @@ class McpClientBackend:
             runtime.checked_at = runtime.connected_at
             runtime.state = McpSessionState.READY
             runtime.last_error = "; ".join(errors)[:400] or None
-            return runtime.health()
-        except BaseException as error:
-            if client is not None:
-                try:
-                    await client.__aexit__(type(error), error, error.__traceback__)
-                except Exception as close_error:  # noqa: BLE001 - preserve primary connect error
-                    runtime.last_error = redact_text(
-                        f"client cleanup failed: {close_error}"
-                    )[:400]
-            if http_client is not None:
-                try:
-                    await http_client.__aexit__(type(error), error, error.__traceback__)
-                except Exception as close_error:  # noqa: BLE001 - preserve primary connect error
-                    runtime.last_error = redact_text(
-                        f"HTTP cleanup failed: {close_error}"
-                    )[:400]
-            runtime.client = None
-            runtime.http_client = None
+            ready.set_result(runtime.health())
+            assert runtime.session_close is not None
+            await runtime.session_close.wait()
+        except BaseException as error:  # noqa: BLE001 - includes task cancellation
+            failure = error
             runtime.state = McpSessionState.DEGRADED
             runtime.checked_at = isoformat()
             runtime.last_error = redact_text(str(error))[:400]
-            if isinstance(error, (McpBackendError, McpContractError)):
-                raise
+            ready_error = (
+                error
+                if isinstance(error, (McpBackendError, McpContractError))
+                else McpServerUnavailable(
+                    f"MCP server {runtime.config.server_id!r} failed to connect: "
+                    f"{redact_text(str(error))}"
+                )
+            )
+        finally:
+            cleanup_error: BaseException | None = None
+            if client is not None:
+                try:
+                    await asyncio.wait_for(
+                        client.__aexit__(
+                            type(failure) if failure is not None else None,
+                            failure,
+                            failure.__traceback__ if failure is not None else None,
+                        ),
+                        runtime.config.shutdown_timeout_s,
+                    )
+                except BaseException as error:  # noqa: BLE001 - cleanup boundary
+                    cleanup_error = error
+            if http_client is not None:
+                try:
+                    await asyncio.wait_for(
+                        http_client.__aexit__(
+                            type(failure) if failure is not None else None,
+                            failure,
+                            failure.__traceback__ if failure is not None else None,
+                        ),
+                        runtime.config.shutdown_timeout_s,
+                    )
+                except BaseException as error:  # noqa: BLE001 - cleanup boundary
+                    cleanup_error = cleanup_error or error
+            runtime.client = None
+            runtime.http_client = None
+            if cleanup_error is not None:
+                runtime.last_error = redact_text(str(cleanup_error))[:400]
+                ready_error = ready_error or McpServerUnavailable(
+                    f"MCP server {runtime.config.server_id!r} cleanup failed: "
+                    f"{redact_text(str(cleanup_error))}"
+                )
+            if not ready.done():
+                ready.set_exception(
+                    ready_error
+                    or McpServerUnavailable(
+                        f"MCP server {runtime.config.server_id!r} closed before readiness"
+                    )
+                )
+
+    async def _connect(self, server_id: str, reconnect: bool) -> McpServerHealth:
+        runtime = self._runtime(server_id)
+        if not runtime.config.enabled:
+            runtime.state = McpSessionState.DISABLED
+            return runtime.health()
+        if runtime.state is McpSessionState.READY and runtime.client is not None:
+            return runtime.health()
+        if runtime.session_task is not None and not runtime.session_task.done():
             raise McpServerUnavailable(
-                f"MCP server {server_id!r} failed to connect: {redact_text(str(error))}"
-            ) from error
+                f"MCP server {server_id!r} already owns an active session; reconnect it"
+            )
+        runtime.state = (
+            McpSessionState.RECONNECTING if reconnect else McpSessionState.CONNECTING
+        )
+        runtime.last_error = None
+        runtime.session_close = asyncio.Event()
+        ready: asyncio.Future[McpServerHealth] = (
+            asyncio.get_running_loop().create_future()
+        )
+        runtime.session_task = asyncio.create_task(
+            self._session_owner(runtime, ready),
+            name=f"mcp-session:{server_id}",
+        )
+        return await ready
 
     def connect(self, server_id: str) -> McpServerHealth:
         config = self._runtime(server_id).config
@@ -372,26 +432,22 @@ class McpClientBackend:
                 *runtime.invocation_tasks.values(), return_exceptions=True
             )
         runtime.invocation_tasks.clear()
-        client = runtime.client
-        http_client = runtime.http_client
-        runtime.client = None
-        runtime.http_client = None
-        if client is not None:
+        owner = runtime.session_task
+        if runtime.session_close is not None:
+            runtime.session_close.set()
+        if owner is not None:
             try:
                 await asyncio.wait_for(
-                    client.__aexit__(None, None, None),
-                    runtime.config.shutdown_timeout_s,
+                    owner,
+                    runtime.config.shutdown_timeout_s * 2,
                 )
             except BaseException as error:  # noqa: BLE001 - shutdown remains best effort
                 runtime.last_error = redact_text(str(error))[:400]
-        if http_client is not None:
-            try:
-                await asyncio.wait_for(
-                    http_client.__aexit__(None, None, None),
-                    runtime.config.shutdown_timeout_s,
-                )
-            except Exception as error:  # noqa: BLE001 - shutdown remains best effort
-                runtime.last_error = str(error)[:400]
+                if not owner.done():
+                    owner.cancel()
+                    await asyncio.gather(owner, return_exceptions=True)
+        runtime.session_task = None
+        runtime.session_close = None
         runtime.state = (
             McpSessionState.STOPPED if stopped else McpSessionState.DISCONNECTED
         )

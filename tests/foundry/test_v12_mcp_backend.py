@@ -263,6 +263,7 @@ def test_real_stdio_discovery_projection_read_resource_disconnect_reconnect(
         assert resource["result_sha256"]
         disconnected = backend.disconnect_server("v12-test")
         assert disconnected.state is McpSessionState.DISCONNECTED
+        assert disconnected.last_error is None
         assert all(
             observed_readiness(database, item.capability_id).state is Readiness.DEGRADED
             for item in projected
@@ -614,6 +615,7 @@ def test_real_streamable_http_disappearance_and_reconnect(tmp_path: Path) -> Non
         process = _start_http_server(tmp_path, port)
         recovered, recovered_projection = backend.reconnect_server("v12-test")
         assert recovered.state is McpSessionState.READY
+        assert recovered.last_error is None
         assert identities == {
             item.tool_name: (item.capability_id, item.action_kind)
             for item in backend.client.tools("v12-test")
