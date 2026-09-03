@@ -166,6 +166,7 @@ def try_fabric_dispatch(
             evidence=(f"fabric:{action}", "verified:UNKNOWN"),
             error_class="fabric_effect_failed",
             error_detail=str(error),
+            identity_transition_authorized=True,
         )
     success = bool(receipt.get("success"))
     return RoleResult(
@@ -187,6 +188,7 @@ def try_fabric_dispatch(
         ),
         error_class=None if success else "fabric_effect_failed",
         error_detail=str(receipt.get("note") or "") or None,
+        identity_transition_authorized=True,
     )
 
 

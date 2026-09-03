@@ -47,6 +47,8 @@ SCENARIOS = {
         "test_ambiguous_effect_reconciles_before_alternate_dispatch"),
     "HYBRID_RUNTIME_INTEGRATION": (
         "test_classified_failure_crosses_real_hybrid_worker_bridge"),
+    "CANONICAL_FABRIC_IDENTITY_TRANSITION": (
+        "test_canonical_local_fabric_transition_is_explicit_and_compatible"),
     "RECURRENT_OUTAGE_AFTER_RECOVERY": (
         "test_identical_outage_can_recur_after_a_recovery_transition"),
 }

@@ -12,6 +12,7 @@ from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.effects import execute_fabric_effect, reconcile_effect
 from jarvis_foundry.events import Event
 from jarvis_foundry.executive.continuous import resume_mission_provider_waits
+from jarvis_foundry.fabric.adapter import FabricRoleAdapter
 from jarvis_foundry.mission.loop import BLOCKED_OUTCOME, MissionLoop, PASSED
 from jarvis_foundry.roles.adapter import ProviderFailure
 from jarvis_foundry.roles.dispatcher import RoleDispatcher
@@ -386,6 +387,27 @@ def test_classified_failure_crosses_real_hybrid_worker_bridge(tmp_path):
     assert result.status == COMPLETED, result.to_payload()
     assert worker.providers == ["provider-a", "provider-b"]
     assert result.provider == "provider-b"
+
+
+def test_canonical_local_fabric_transition_is_explicit_and_compatible(tmp_path):
+    db, repository, policy = mission_fixture(tmp_path)
+    inner = ProviderScript(worktree=repository)
+    adapter = FabricRoleAdapter(db, owned_root=repository, inner=inner)
+    loop = MissionLoop(
+        db,
+        router(verifier_provider="provider-a"),
+        adapter,
+        policy=policy,
+        provider_candidates=(candidate("provider-a"), candidate("provider-b")),
+    )
+    outcome = loop.run_step(**step(repository, run_id="run-fabric-transition"))
+    assert outcome.outcome == PASSED
+    assert [item for item in inner.received if item.role == "builder"] == []
+    transitions = [event.payload for event in db.events()
+                   if event.event_type == "provider.identity_transition_authorized"]
+    assert len(transitions) == 1
+    assert transitions[0]["observed_provider"] == "fabric"
+    assert transitions[0]["authority"] == "canonical_capability_fabric"
 
 
 def test_incompatible_policy_blocked_and_over_budget_fallbacks_are_rejected(tmp_path):

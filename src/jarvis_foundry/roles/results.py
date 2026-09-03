@@ -44,6 +44,7 @@ class RoleResult:
     cost_usd: float = 0.0
     wait_for_providers: tuple[str, ...] = field(default_factory=tuple)
     effect_action_key: str | None = None
+    identity_transition_authorized: bool = False
     started_at: str = field(default_factory=isoformat)
     finished_at: str = field(default_factory=isoformat)
 
@@ -54,7 +55,7 @@ class RoleResult:
             raise ValueError(f"invalid role result verdict: {self.verdict!r}")
 
     def to_payload(self) -> dict[str, Any]:
-        return {
+        payload = {
             "run_id": self.run_id,
             "role": self.role,
             "status": self.status,
@@ -70,6 +71,9 @@ class RoleResult:
             "started_at": self.started_at,
             "finished_at": self.finished_at,
         }
+        if self.identity_transition_authorized:
+            payload["identity_transition_authorized"] = True
+        return payload
 
     @classmethod
     def from_payload(cls, payload: dict[str, Any]) -> "RoleResult":
@@ -86,6 +90,8 @@ class RoleResult:
             cost_usd=float(payload.get("cost_usd", 0.0)),
             wait_for_providers=tuple(payload.get("wait_for_providers", [])),
             effect_action_key=payload.get("effect_action_key"),
+            identity_transition_authorized=bool(
+                payload.get("identity_transition_authorized", False)),
             started_at=payload.get("started_at", ""),
             finished_at=payload.get("finished_at", ""),
         )

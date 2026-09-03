@@ -804,10 +804,18 @@ class RoleDispatcher:
                         started_at=isoformat(utc_now()), finished_at=isoformat(utc_now()),
                     )
                 if result.status == COMPLETED:
-                    if (
+                    identity_changed = (
                         result.provider != provider
                         or result.model != model
-                    ):
+                    )
+                    authorized_local_fabric = (
+                        result.identity_transition_authorized
+                        and result.provider == "fabric"
+                        and result.model == "local"
+                        and any(str(item).startswith("fabric:")
+                                for item in result.evidence)
+                    )
+                    if identity_changed and not authorized_local_fabric:
                         detail = (
                             "provider/model identity changed during dispatch: "
                             f"requested={provider}/{model} "
@@ -841,6 +849,21 @@ class RoleDispatcher:
                             started_at=result.started_at,
                             finished_at=result.finished_at,
                         )
+                    if identity_changed:
+                        self._append("provider.identity_transition_authorized", {
+                            "run_id": run_id,
+                            "mission_id": mission_id,
+                            "step_id": step_id,
+                            "role": role,
+                            "requested_provider": provider,
+                            "requested_model": model,
+                            "observed_provider": result.provider,
+                            "observed_model": result.model,
+                            "authority": "canonical_capability_fabric",
+                            "evidence": list(result.evidence),
+                        }, idempotency_key=(
+                            f"provider.identity_transition_authorized:{run_id}:"
+                            f"{provider}:{model}:{result.provider}:{result.model}"))
                     self._complete_run(result)
                     self._append("provider.dispatch_succeeded", {
                         "run_id": run_id,
