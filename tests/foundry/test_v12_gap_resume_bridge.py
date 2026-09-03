@@ -23,6 +23,7 @@ from jarvis_foundry.fabric.catalog import (
     register_capability,
 )
 from jarvis_foundry.fabric.gap_bridge import (
+    ATTEMPT_DISPATCHED,
     ATTEMPT_STARTED,
     GAP_DEFERRED,
     GAP_OPENED,
@@ -469,6 +470,56 @@ def test_stop_blocks_gap_and_attempt_without_any_bridge_mutation(tmp_path: Path)
             database, gap.gap_id, strategy_id="session6.blocked-by-stop"
         )
     assert len(database.events()) == count
+
+
+def test_stop_arriving_during_dispatch_prevents_post_dispatch_transition(
+    tmp_path: Path,
+) -> None:
+    database = _database(tmp_path)
+    objective_id, _ = _objective_with_gap(database)
+    gap = bridge_missing_plan_capabilities(database, objective_id)[0]
+    stop = tmp_path / "EMERGENCY_STOP"
+    calls = []
+
+    class StopDuringDispatchPort:
+        def dispatch(self, request):
+            calls.append(request.attempt_id)
+            stop.write_text("owner stop during dispatch\n", encoding="utf-8")
+            return {"status": "ACCEPTED"}
+
+    with pytest.raises(GapBridgeStopped, match="STOP active"):
+        start_expansion_attempt(
+            database,
+            gap.gap_id,
+            strategy_id="session6.stop-race",
+            port=StopDuringDispatchPort(),
+        )
+    state = rebuild_gap_state(database)[gap.gap_id]
+    assert state.active_attempt is not None
+    attempt_id = state.active_attempt.attempt_id
+    assert calls == [attempt_id]
+    assert state.active_attempt.dispatched_at is None
+    assert len(_events(database, ATTEMPT_STARTED)) == 1
+    assert len(_events(database, ATTEMPT_DISPATCHED)) == 0
+
+    stop.unlink()
+
+    class ResumePort:
+        def dispatch(self, request):
+            calls.append(request.attempt_id)
+            return {"status": "ACCEPTED"}
+
+    resumed = start_expansion_attempt(
+        database,
+        gap.gap_id,
+        strategy_id="ignored-on-stable-redelivery",
+        port=ResumePort(),
+    )
+    assert calls == [attempt_id, attempt_id]
+    assert resumed.active_attempt is not None
+    assert resumed.active_attempt.dispatched_at is not None
+    assert len(_events(database, ATTEMPT_STARTED)) == 1
+    assert len(_events(database, ATTEMPT_DISPATCHED)) == 1
 
 
 def _git_repository(tmp_path: Path) -> Path:

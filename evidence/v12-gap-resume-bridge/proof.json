@@ -19,7 +19,7 @@
       "claimed_vs_verified": "MATCH",
       "consecutive_failures": 0,
       "last_outcome": "SUCCESS",
-      "last_verified_at": "2026-09-03T07:41:38.925003Z",
+      "last_verified_at": "2026-09-03T08:05:24.751616Z",
       "note": "disposable verifier matched",
       "state": "READY",
       "trust_state": "PROBATION"
@@ -30,7 +30,7 @@
     "effective_resume_state": "PROBATION",
     "external_claim_authority": "DATA_ONLY",
     "gap_id": "cap-gap-a0869c553ec728158fc73d89",
-    "mission_id": "mission-1400b3b20018",
+    "mission_id": "mission-1f50f4c5d92e",
     "mission_state": "COMPLETE",
     "origin_objective_id": "objective-v12-gap-resume-proof",
     "reconciliation_consistent": true,

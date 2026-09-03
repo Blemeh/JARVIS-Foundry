@@ -943,6 +943,10 @@ def start_expansion_attempt(
             reason_code="EXPANSION_PORT_FAILED",
             retryable=True,
         )
+    # STOP may arrive while external search/trial work is in flight.  Do not
+    # append its receipt or advance bridge state after owner control changed.
+    # On RESUME the same stable attempt id is redelivered for port-side dedupe.
+    _gate(database, state.origin_objective_id, gap_id, attempt_id)
     # Port output is an opaque receipt.  A claim such as REGISTERED can never
     # release the mission; reconciliation below re-reads the real Catalog.
     safe_receipt = {
