@@ -661,6 +661,11 @@ def _verification_plan_projection(
             raw = record.get("payload")
             if not isinstance(raw, dict) or (mission_id and str(raw.get("mission_id") or "") not in {"", mission_id}):
                 continue
+            payload_candidate = str(_find_value(raw, ("candidate_id",)) or "")
+            if candidate_id and payload_candidate and payload_candidate != candidate_id:
+                continue
+            if candidate_id and not payload_candidate and not mission_id:
+                continue
             if raw.get("schema") == VERIFICATION_PLAN_CONTRACT or raw.get("plan_id"):
                 payload = {**raw, "event_id": record.get("event_id"), "occurred_at": record.get("occurred_at")}
                 break
@@ -721,6 +726,11 @@ def _objective_projection(
         for record in records:
             raw = record.get("payload")
             if not isinstance(raw, dict) or (mission_id and str(raw.get("mission_id") or "") not in {"", mission_id}):
+                continue
+            payload_candidate = str(_find_value(raw, ("candidate_id",)) or "")
+            if candidate_id and payload_candidate and payload_candidate != candidate_id:
+                continue
+            if candidate_id and not payload_candidate and not mission_id:
                 continue
             if record.get("event_type") in {"executive.objective_created", "executive.objective_recorded"} \
                     and (raw.get("objective_id") or raw.get("objective")):
