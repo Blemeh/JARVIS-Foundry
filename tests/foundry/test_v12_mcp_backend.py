@@ -303,6 +303,26 @@ def test_exact_tool_allowlist_projects_disabled_tools_as_degraded(
         backend.close()
 
 
+def test_connect_all_contains_untrusted_discovery_contract_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database = _database(tmp_path)
+    backend = FabricMcpBackend(database, _config(tmp_path))
+
+    async def reject_remote_schema(_runtime: object) -> object:
+        raise McpContractError("remote schema exceeded bounded contract")
+
+    monkeypatch.setattr(backend.client, "_list_tools", reject_remote_schema)
+    try:
+        report = backend.connect_all()
+        assert report["v12-test"]["health"]["state"] == "DEGRADED"
+        assert "failed handshake or discovery" in report["v12-test"]["error"]
+        assert backend.client.health("v12-test").state is McpSessionState.DEGRADED
+    finally:
+        backend.close()
+
+
 def test_invalid_arguments_and_read_timeout_fail_without_effect(tmp_path: Path) -> None:
     database = _database(tmp_path)
     backend = FabricMcpBackend(database, _config(tmp_path))

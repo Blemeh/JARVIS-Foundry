@@ -340,9 +340,9 @@ class McpClientBackend:
             runtime.last_error = redact_text(str(error))[:400]
             ready_error = (
                 error
-                if isinstance(error, (McpBackendError, McpContractError))
+                if isinstance(error, McpBackendError)
                 else McpServerUnavailable(
-                    f"MCP server {runtime.config.server_id!r} failed to connect: "
+                    f"MCP server {runtime.config.server_id!r} failed handshake or discovery: "
                     f"{redact_text(str(error))}"
                 )
             )
