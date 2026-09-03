@@ -178,7 +178,7 @@ function CandidateCard({ candidate, onOpen }: { candidate: AutonomyCandidate; on
             </section>
           ))}
         </div>
-        <button type="button" className="candidate-inspect" onClick={onOpen}>
+        <button type="button" className="candidate-inspect" aria-label={`Open candidate detail — inspect complete candidate brief for ${candidate.title}`} onClick={onOpen}>
           Inspect complete candidate brief <ArrowRight size={13} aria-hidden />
         </button>
       </div>
