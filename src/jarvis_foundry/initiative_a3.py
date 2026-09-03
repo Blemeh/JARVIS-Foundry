@@ -61,6 +61,7 @@ class A3AdmissionPolicy:
         "cap.git.inspect",
         "cap.git.diff",
         "cap.git.commit",
+        "cap.tests.run",
     )
     allowed_action_classes: frozenset[str] = _ALLOWED_ACTION_CLASSES
 
