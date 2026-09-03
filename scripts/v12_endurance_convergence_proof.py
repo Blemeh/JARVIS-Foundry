@@ -737,6 +737,17 @@ def _run_full(root: Path) -> dict[str, Any]:
                 for child in state.children.values()
                 if child.campaign_id == CAMPAIGN_ID
             },
+            "child_requirements": {
+                child.child_id: {
+                    "mission_id": child.mission_id,
+                    "routing_requirements": child.routing_requirements,
+                    "routing_identity": child.routing_identity,
+                    "isolation_key": child.isolation_key,
+                    "effect_action_key": child.effect_action_key,
+                }
+                for child in state.children.values()
+                if child.campaign_id == CAMPAIGN_ID
+            },
             "accepted_child_count": snapshot["accepted_child_count"],
         },
         "provider_routing": {
@@ -745,7 +756,7 @@ def _run_full(root: Path) -> dict[str, Any]:
             "identity": {
                 key: fallback_success.payload.get(key)
                 for key in (
-                    "objective_id", "campaign_id", "child_id",
+                    "objective_id", "campaign_id", "child_id", "mission_id",
                     "builder_run_id", "effect_action_key", "routing_identity",
                 )
             },

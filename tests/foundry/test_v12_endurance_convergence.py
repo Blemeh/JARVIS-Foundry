@@ -782,7 +782,38 @@ def test_real_disposable_endurance_campaign_script(tmp_path: Path) -> None:
     assert proof["source"]["activation_authorized"] is False
     assert proof["campaign"]["status"] == "COMPLETED"
     assert proof["campaign"]["accepted_child_count"] == 3
+    expected_children = {
+        "ambiguous-child": {
+            "mission_id": "mission-v12-ambiguous",
+            "providers": ["ambiguous-primary", "ambiguous-alternate"],
+            "effect": "effect:v12:ambiguous",
+        },
+        "fallback-child": {
+            "mission_id": "mission-v12-fallback",
+            "providers": ["fallback-primary", "fallback-alternate"],
+            "effect": "effect:v12:fallback",
+        },
+        "wait-child": {
+            "mission_id": "mission-v12-wait",
+            "providers": ["wait-primary", "wait-alternate"],
+            "effect": "effect:v12:wait",
+        },
+    }
+    assert set(proof["campaign"]["child_requirements"]) == set(expected_children)
+    for child_id, requirements in proof["campaign"]["child_requirements"].items():
+        assert requirements["mission_id"] == expected_children[child_id]["mission_id"]
+        assert requirements["routing_requirements"]["required_capabilities"] == [
+            "code", "tests",
+        ]
+        assert requirements["routing_requirements"]["allowed_providers"] == (
+            expected_children[child_id]["providers"]
+        )
+        assert requirements["routing_identity"]
+        assert requirements["effect_action_key"] == expected_children[child_id]["effect"]
     assert proof["provider_routing"]["fallback_used"] is True
+    assert proof["provider_routing"]["identity"]["mission_id"] == (
+        expected_children["fallback-child"]["mission_id"]
+    )
     assert proof["all_down_wait"]["first_outcome"] == "BLOCKED"
     assert proof["recovery"]["resume_receipts"] == 1
     assert proof["deadlines"]["silent_expiry"] is False
