@@ -32,6 +32,7 @@ from .discovery_sources import (
 )
 from .discovery_monitors import (
     configure_monitor,
+    configured_monitors,
     due_monitors,
     next_monitor_due_at,
 )
@@ -938,6 +939,33 @@ def _complete_stopped(
 _OBSERVATION_WAKE_SUBJECT = "system:continuous-observation"
 
 
+def _interrupted_continuous_cycle(database: FoundryDatabase) -> str | None:
+    """Return the oldest incomplete due-cycle identity, if one exists."""
+    with database.connect(readonly=True) as connection:
+        row = connection.execute(
+            "SELECT cycle_id FROM initiative_cycles "
+            "WHERE cycle_id LIKE 'continuous-observation-%' "
+            "AND stage != 'COMPLETED' "
+            "AND status IN ('RUNNING', 'INTERRUPTED') "
+            "ORDER BY started_at, rowid LIMIT 1"
+        ).fetchone()
+    return str(row[0]) if row is not None else None
+
+
+def _configured_source_specs(database: FoundryDatabase) -> tuple[SourceSpec, ...]:
+    return tuple(
+        SourceSpec(
+            source_id=str(row["source_id"]),
+            source_kind=str(row["source_kind"]),
+            source_identity=str(row["source_ref"]),
+            poll_interval_s=int(row["poll_interval_s"]),
+            config=dict(row.get("config") or {}),
+            enabled=True,
+        )
+        for row in configured_monitors(database, enabled_only=True)
+    )
+
+
 def _current_time(value: datetime | str | None) -> datetime:
     if value is None:
         return datetime.now(timezone.utc)
@@ -1052,7 +1080,7 @@ def run_continuous_observation_cycle(
                 enabled=spec.enabled,
                 now=current,
             )
-        from .discovery_monitors import configured_monitors, set_monitor_enabled
+        from .discovery_monitors import set_monitor_enabled
         for row in configured_monitors(database, enabled_only=True):
             if str(row.get("source_id")) not in desired_ids:
                 set_monitor_enabled(
@@ -1060,6 +1088,42 @@ def run_continuous_observation_cycle(
                     reason="removed from continuous observation configuration",
                     now=current,
                 )
+
+    # A hard stop after candidate generation has already advanced every
+    # monitor clock, but the A2 decision is still incomplete. Resume that
+    # durable cycle before consulting the next-due schedule; otherwise the
+    # selected candidate can be stranded until an unrelated later poll.
+    interrupted_cycle = _interrupted_continuous_cycle(database)
+    if interrupted_cycle:
+        resume_sources = tuple(sources) or _configured_source_specs(database)
+        report = run_initiative_a2_cycle(
+            database,
+            cycle_id=interrupted_cycle,
+            sources=resume_sources,
+            resource_id=resource_id,
+            capability=capability,
+            bounds=policy,
+            stop_path=stop_path,
+            research_reader=research_reader,
+            source_readers=source_readers,
+            fault_hook=fault_hook,
+            now=current,
+        )
+        next_due = next_monitor_due_at(database)
+        next_wake = None
+        if report.get("outcome") != "STOPPED":
+            next_wake = _ensure_observation_wake(database, not_before=next_due)
+        metrics = dict(report.get("metrics") or {})
+        return {
+            **report,
+            "cycle_id": interrupted_cycle,
+            "cycles_dispatched": 1,
+            "research_dispatches": int(metrics.get("research_calls") or 0),
+            "next_due_at": next_due,
+            "wake_id": next_wake.get("wake_id") if next_wake else None,
+            "dispatched_at": current_text,
+            "resumed_interrupted_cycle": True,
+        }
 
     due = due_monitors(database, now=current, limit=policy.source_limit)
     earliest = next_monitor_due_at(database)

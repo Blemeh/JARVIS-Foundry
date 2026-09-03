@@ -1053,6 +1053,7 @@ def run_cycle(
             source_type="supervisor", source_id=instance_id,
             idempotency_key=f"worker_loop.cycle_started:{loop_id}",
         ))
+        invoke_fault_hook(fault_hook, "post worker_loop.cycle_started")
         initiative_mission_id: str | None = None
         # Recover accepted terminal work before optional observation or
         # admission.  MissionLoop remains the sole execution authority.
@@ -1157,6 +1158,7 @@ def run_cycle(
                 InitiativeAdmissionAuthority,
                 active_initiative_objective,
                 continue_initiative_objective,
+                pending_initiative_decision,
             )
             raw = dict(config.initiative_a3 or {})
             sources = tuple(SourceSpec(
@@ -1177,6 +1179,21 @@ def run_cycle(
                 name: value for name, value in bounds_raw.items()
                 if name in InitiativeA2Bounds.__dataclass_fields__
             }
+            policy_raw = dict(raw.get("policy") or {})
+            if "allowed_action_classes" in policy_raw:
+                policy_raw["allowed_action_classes"] = frozenset(
+                    str(value) for value in policy_raw["allowed_action_classes"])
+            allowed_policy = {
+                name: value for name, value in policy_raw.items()
+                if name in A3AdmissionPolicy.__dataclass_fields__
+            }
+            authority = InitiativeAdmissionAuthority(
+                database,
+                worktree_parent=str(raw.get("worktree_parent") or ""),
+                project_roots=dict(raw.get("project_roots") or {}),
+                policy=A3AdmissionPolicy(**allowed_policy),
+                stop_path=_default_stop_path(paths, config),
+            )
 
             # Existing mission contracts always run before another observation
             # or admission pass. This is the normal MissionLoop continuation,
@@ -1191,43 +1208,34 @@ def run_cycle(
                         cycle_id=f"initiative-executive-{loop_id}",
                     )
                 else:
-                    report = run_continuous_observation_cycle(
-                        database,
-                        sources=sources,
-                        resource_id=config.resource_id,
-                        capability=config.capability,
-                        bounds=InitiativeA2Bounds(**allowed_bounds),
-                        stop_path=_default_stop_path(paths, config),
-                        fault_hook=fault_hook,
-                    )
-                    decision = report.get("decision")
-                    if getattr(decision, "kind", None) != "SELECT":
-                        return _waiting_report(
-                            database, loop_id=loop_id, instance_id=instance_id,
-                            reason=f"V11 A3 WAIT: {report.get('reason') or 'no eligible candidate'}",
+                    decision = pending_initiative_decision(database)
+                    if decision is None:
+                        report = run_continuous_observation_cycle(
+                            database,
+                            sources=sources,
+                            resource_id=config.resource_id,
+                            capability=config.capability,
+                            bounds=InitiativeA2Bounds(**allowed_bounds),
+                            stop_path=_default_stop_path(paths, config),
+                            fault_hook=fault_hook,
                         )
-                    policy_raw = dict(raw.get("policy") or {})
-                    if "allowed_action_classes" in policy_raw:
-                        policy_raw["allowed_action_classes"] = frozenset(
-                            str(value) for value in policy_raw["allowed_action_classes"])
-                    allowed_policy = {
-                        name: value for name, value in policy_raw.items()
-                        if name in A3AdmissionPolicy.__dataclass_fields__
-                    }
-                    authority = InitiativeAdmissionAuthority(
-                        database,
-                        worktree_parent=str(raw.get("worktree_parent") or ""),
-                        project_roots=dict(raw.get("project_roots") or {}),
-                        policy=A3AdmissionPolicy(**allowed_policy),
-                        stop_path=_default_stop_path(paths, config),
-                    )
+                        decision = report.get("decision")
+                        if getattr(decision, "kind", None) != "SELECT":
+                            return _waiting_report(
+                                database, loop_id=loop_id, instance_id=instance_id,
+                                reason=f"V11 A3 WAIT: {report.get('reason') or 'no eligible candidate'}",
+                            )
+                        invoke_fault_hook(fault_hook, "post initiative.selection")
                     admission = authority.admit(decision)
                     if admission.admitted and admission.objective_id:
+                        invoke_fault_hook(fault_hook, "post initiative.objective_created")
                         admission = continue_initiative_objective(
                             database,
                             admission.objective_id,
                             cycle_id=f"initiative-executive-{loop_id}",
                         )
+                if admission.mission_id:
+                    invoke_fault_hook(fault_hook, "post initiative.mission_created")
                 initiative_mission_id = admission.mission_id
                 if initiative_mission_id is None:
                     return _waiting_report(

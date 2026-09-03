@@ -23,6 +23,7 @@ from jarvis_foundry.initiative_a3 import (
     A3AdmissionPolicy,
     InitiativeAdmissionAuthority,
     continue_initiative_objective,
+    pending_initiative_decision,
 )
 from jarvis_foundry.paths import FoundryPaths
 from jarvis_foundry.runtime.config import WorkerRuntimeConfig
@@ -199,6 +200,29 @@ def test_eligible_candidate_admits_once_with_stable_objective_and_worktree(tmp_p
     assert database.event_count(event_type="initiative.candidate_admitted") == 1
     assert database.event_count(event_type="initiative.worktree_prepared") == 1
     assert database.event_count(event_type="executive.objective_created") == 1
+
+
+def test_durable_select_is_resumed_once_after_pre_admission_restart(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    _repo(root)
+    database = _ready_database(tmp_path)
+    decision = _a2(database, root)
+
+    recovered = pending_initiative_decision(database)
+    assert recovered is not None
+    assert recovered.kind == "SELECT"
+    assert recovered.decision_id == decision.decision_id
+    assert recovered.candidate_id == decision.candidate_id
+
+    authority = _authority(database, tmp_path, root)
+    first = authority.admit(recovered)
+    replay = authority.admit(recovered)
+
+    assert first.admitted and replay.admitted and replay.replayed
+    assert pending_initiative_decision(database) is None
+    assert database.event_count(event_type="initiative.candidate_admitted") == 1
+    assert database.event_count(event_type="executive.objective_created") == 1
+    assert database.event_count(event_type="initiative.worktree_prepared") == 1
 
 
 def test_wait_stop_stale_equivalent_and_missing_capability_never_admit(tmp_path: Path) -> None:

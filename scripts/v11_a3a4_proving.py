@@ -195,6 +195,7 @@ def blank_state(*, run_id: str, expected_sha: str, duration_hours: float) -> dic
         "last_status": "PREPARED",
         "last_snapshot_at": None,
         "recovery_durations_seconds": [],
+        "unbounded_loop_cycles": [],
     }
 
 
@@ -221,6 +222,10 @@ def record_snapshot(state: MutableMapping[str, Any], snapshot: Mapping[str, Any]
             state["stages_seen"].append(stage_name)
     state["last_status"] = str(snapshot.get("status") or "UNKNOWN").upper()
     state["last_snapshot_at"] = utc_now()
+    if snapshot.get("unbounded_loop_detected") is True:
+        unbounded = state.setdefault("unbounded_loop_cycles", [])
+        if cycle_id not in unbounded:
+            unbounded.append(cycle_id)
     if state["last_status"] == "WAIT" and cycle_id not in state["completed_cycles"]:
         state["completed_cycles"].append(cycle_id)
 
@@ -284,10 +289,12 @@ def derive_metrics(state: Mapping[str, Any]) -> dict[str, Any]:
         "duplicate_candidates": _duplicates(state, "candidates"),
         "duplicate_objectives": _duplicates(state, "objectives"),
         "duplicate_missions": _duplicates(state, "missions"),
+        "duplicate_builder_runs": _duplicates(state, "builder_runs"),
         "duplicate_effects": _duplicates(state, "effects"),
         "duplicate_learning": _duplicates(state, "learning"),
         "false_successes": false_successes,
         "unverified_completions": unverified_completions,
+        "unbounded_loops": len(state.get("unbounded_loop_cycles", [])),
         "repair_attempts": len(rows["repairs"]),
         "completed_cycles": len(state.get("completed_cycles", [])),
         "faults_injected": sum(row.get("injected") is True for row in state.get("faults", {}).values()),
@@ -305,8 +312,8 @@ def evaluate(state: Mapping[str, Any], *, require_full_gate: bool) -> dict[str, 
     metrics = derive_metrics(state)
     hard_zero = (
         "duplicate_candidates", "duplicate_objectives", "duplicate_missions",
-        "duplicate_effects", "duplicate_learning", "false_successes",
-        "unverified_completions",
+        "duplicate_builder_runs", "duplicate_effects", "duplicate_learning", "false_successes",
+        "unverified_completions", "unbounded_loops",
     )
     reasons = [f"{key}={metrics[key]}" for key in hard_zero if metrics[key] != 0]
     if require_full_gate:
@@ -338,6 +345,40 @@ def evaluate(state: Mapping[str, Any], *, require_full_gate: bool) -> dict[str, 
         "require_full_gate": require_full_gate,
         "hard_assertions": {key: metrics[key] == 0 for key in hard_zero},
         "metrics": metrics,
+        "reasons": reasons,
+    }
+
+
+def evaluate_immediate_a4(state: Mapping[str, Any]) -> dict[str, Any]:
+    """Evaluate the complete fault campaign without starting elapsed time."""
+    verdict = evaluate(state, require_full_gate=False)
+    metrics = verdict["metrics"]
+    checks = {
+        "real_observations": metrics["observations"] >= 1 and all(
+            row.get("real") is True and row.get("provenance")
+            for row in state["records"]["observations"].values()
+        ),
+        "ten_candidates": metrics["candidates"] >= 10,
+        "majority_rejected": metrics["rejected"] > metrics["candidates"] / 2,
+        "one_eligible_finalist": metrics["eligible"] == 1,
+        "one_objective": metrics["objectives"] == 1,
+        "one_mission": metrics["missions"] == 1,
+        "completed_builder": metrics["builder_runs"] >= 1,
+        "one_effect": metrics["effects"] == 1,
+        "independent_acceptance": metrics["verified_outcomes"] == 1,
+        "one_learning_update": metrics["learning_updates"] == 1,
+        "all_faults_injected": metrics["faults_injected"] == len(FAULT_POINTS),
+        "all_faults_recovered": metrics["faults_recovered"] == len(FAULT_POINTS),
+        "full_flow_seen": all(stage in state["stages_seen"] for stage in REQUIRED_FLOW),
+        "returned_to_wait": state.get("last_status") == "WAIT",
+        "elapsed_gate_not_started": state.get("started_at") is None,
+    }
+    reasons = [*verdict["reasons"], *(name for name, passed in checks.items() if not passed)]
+    return {
+        **verdict,
+        "verdict": "PASS" if not reasons else "FAIL",
+        "mode": "IMMEDIATE_A4_FAULT_CAMPAIGN",
+        "checks": checks,
         "reasons": reasons,
     }
 
@@ -490,7 +531,9 @@ def run_one_cycle(
 def _manifest(output: Path, state: Mapping[str, Any], status: str) -> dict[str, Any]:
     names = (
         "HARNESS_CONTRACT.json", "FAULT_PLAN.json", "CHECKPOINT.json",
+        "RUNNER_PROCESS.json",
         "DRIVER_CALLS.jsonl", "SNAPSHOTS.jsonl", "SAMPLES.jsonl", "FAULTS.jsonl",
+        "IMMEDIATE_A4_METRICS.json", "IMMEDIATE_A4_VERDICT.json",
         "FINAL_METRICS.json", "FINAL_VERDICT.json", "FINAL_REPORT.md",
     )
     hashes = {name: _sha256(output / name) for name in names if (output / name).exists()}
@@ -534,6 +577,7 @@ def prepare_bundle(output: Path, *, expected_sha: str, duration_hours: float, ru
             "records": {kind: [{"id": "stable id", "identity_key": "semantic idempotency key"}] for kind in RECORD_KINDS},
             "fault": {"point": "requested point", "status": "INJECTED or RECOVERED"},
             "stop_new_dispatch_blocked": "required true after stop-resume recovery",
+            "unbounded_loop_detected": "true only when a bounded settle limit is exhausted",
         },
         "independent_acceptance": {
             "acceptance_fields": ["mission_id", "builder_run_id", "verifier_run_id", "independent", "verdict"],
@@ -603,6 +647,14 @@ def run_harness(args: argparse.Namespace) -> dict[str, Any]:
     if not args.allow_48h:
         raise PermissionError("48-hour runner is prepared only; pass --allow-48h after final V11 integration freezes")
     argv = _driver_argv(args.driver_spec.resolve())
+    _atomic_json(output / "RUNNER_PROCESS.json", {
+        "schema": HARNESS_SCHEMA,
+        "pid": os.getpid(),
+        "recorded_at": utc_now(),
+        "expected_sha": args.expected_sha,
+        "allow_48h": bool(args.allow_48h),
+        "driver_spec_sha256": _sha256(args.driver_spec.resolve()),
+    })
     if not state.get("started_at"):
         started = datetime.now(UTC)
         state["started_at"] = started.isoformat().replace("+00:00", "Z")
@@ -627,6 +679,32 @@ def run_harness(args: argparse.Namespace) -> dict[str, Any]:
             time.sleep(min(float(args.interval_seconds), remaining))
     verdict = evaluate(state, require_full_gate=True)
     _write_final(output, state, verdict)
+    return verdict
+
+
+def run_fault_campaign(args: argparse.Namespace) -> dict[str, Any]:
+    """Run all prepared faults now, leaving the 48-hour clock untouched."""
+    output = args.output.resolve()
+    state = _load_state(output)
+    identity = git_identity(ROOT)
+    if identity["head"] != args.expected_sha or state["expected_sha"] != args.expected_sha:
+        raise RuntimeError("exact candidate SHA does not match prepared/working-tree identity")
+    if identity["status_porcelain"]:
+        raise RuntimeError("immediate A4 proving requires a clean frozen worktree")
+    if state.get("started_at") is not None:
+        raise RuntimeError("immediate A4 bundle already has an elapsed-time start")
+    argv = _driver_argv(args.driver_spec.resolve())
+    while int(state.get("fault_cursor", 0)) < len(FAULT_POINTS):
+        run_one_cycle(
+            state,
+            argv,
+            output,
+            driver_timeout_seconds=float(args.driver_timeout_seconds),
+        )
+    verdict = evaluate_immediate_a4(state)
+    _atomic_json(output / "IMMEDIATE_A4_METRICS.json", verdict["metrics"])
+    _atomic_json(output / "IMMEDIATE_A4_VERDICT.json", verdict)
+    _manifest(output, state, "IMMEDIATE_A4_COMPLETE" if verdict["verdict"] == "PASS" else "IMMEDIATE_A4_FAILED")
     return verdict
 
 
@@ -730,6 +808,15 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--driver-timeout-seconds", type=float, default=1800.0)
     run.add_argument("--once", action="store_true")
     run.add_argument("--allow-48h", action="store_true")
+
+    campaign = commands.add_parser(
+        "fault-campaign",
+        help="run the six immediate A4 faults without starting the 48-hour clock",
+    )
+    campaign.add_argument("--output", type=Path, required=True)
+    campaign.add_argument("--expected-sha", required=True)
+    campaign.add_argument("--driver-spec", type=Path, required=True)
+    campaign.add_argument("--driver-timeout-seconds", type=float, default=1800.0)
     return parser
 
 
@@ -745,8 +832,10 @@ def main(argv: list[str] | None = None) -> int:
             )
         elif args.command == "a2-barrier":
             result = a2_barrier(args)
-        else:
+        elif args.command == "run":
             result = run_harness(args)
+        else:
+            result = run_fault_campaign(args)
     except (FileExistsError, FileNotFoundError, PermissionError, RuntimeError, ValueError) as error:
         result = {"verdict": "BLOCKED", "reason": str(error), "48h_started": False}
         print(json.dumps(result, indent=2, sort_keys=True))

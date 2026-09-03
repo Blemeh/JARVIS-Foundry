@@ -86,10 +86,12 @@ def test_duplicate_identity_false_success_and_unverified_completion_fail_closed(
     HARNESS.record_snapshot(state, first)
     bad = _good_snapshot("cycle-2")
     bad["records"]["candidates"][0]["id"] = "candidate-duplicate-id"
+    bad["records"]["builder_runs"][0]["id"] = "builder-duplicate-id"
     bad["records"]["outcomes"][0].update({
         "id": "outcome-fabricated", "identity_key": "fabricated-outcome",
         "acceptance_id": "missing-acceptance",
     })
+    bad["unbounded_loop_detected"] = True
     bad["records"]["missions"].append(
         _record("mission-unverified", "unverified-mission", state="COMPLETE")
     )
@@ -99,8 +101,10 @@ def test_duplicate_identity_false_success_and_unverified_completion_fail_closed(
 
     assert verdict["verdict"] == "FAIL"
     assert verdict["metrics"]["duplicate_candidates"] == 1
+    assert verdict["metrics"]["duplicate_builder_runs"] == 1
     assert verdict["metrics"]["false_successes"] == 1
     assert verdict["metrics"]["unverified_completions"] == 1
+    assert verdict["metrics"]["unbounded_loops"] == 1
 
 
 def test_prepare_bundle_is_not_started_and_refuses_overwrite(tmp_path: Path) -> None:
@@ -170,11 +174,28 @@ print(json.dumps({'schema':'jarvis.v11.a3a4.driver.v1','cycle_id':r['cycle_id'],
     assert metrics["duplicate_candidates"] == 0
     assert metrics["duplicate_objectives"] == 0
     assert metrics["duplicate_missions"] == 0
+    assert metrics["duplicate_builder_runs"] == 0
     assert metrics["duplicate_effects"] == 0
     assert metrics["duplicate_learning"] == 0
     checkpoint = HARNESS._load_state(output)
     assert checkpoint["run_id"] == "resume-run"
     assert checkpoint["fault_cursor"] == len(HARNESS.FAULT_POINTS)
+
+
+def test_immediate_a4_requires_complete_fault_flow_without_starting_clock() -> None:
+    state = HARNESS.blank_state(run_id="run", expected_sha="f" * 40, duration_hours=48)
+    snapshot = _good_snapshot("cycle-immediate")
+    for index, candidate in enumerate(snapshot["records"]["candidates"]):
+        candidate["status"] = "SELECTED" if index == 10 else "REJECTED"
+    HARNESS.record_snapshot(state, snapshot)
+    for point in HARNESS.FAULT_POINTS:
+        state["faults"][point] = {"injected": True, "recovered": True}
+
+    verdict = HARNESS.evaluate_immediate_a4(state)
+
+    assert verdict["verdict"] == "PASS"
+    assert verdict["checks"]["elapsed_gate_not_started"] is True
+    assert state["started_at"] is None
 
 
 def test_a2_barrier_runs_real_project_observation_with_zero_execution(tmp_path: Path) -> None:

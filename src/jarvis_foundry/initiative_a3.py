@@ -172,6 +172,60 @@ def _recorded_select(database: FoundryDatabase, decision_id: str, candidate_id: 
     return False
 
 
+def pending_initiative_decision(database: FoundryDatabase) -> ExecutiveDecision | None:
+    """Recover the newest durable A2 SELECT that has not crossed admission.
+
+    A2 records the decision and final eligibility judgment atomically before
+    A3 is allowed to create an objective.  A process can therefore stop in
+    that intentional seam.  Replaying a new observation cycle would abandon
+    the already-durable choice, so A3 resumes it by identity instead.  The
+    admission authority still rechecks STOP, freshness, WIP, budget,
+    capability readiness, and every other mutable boundary.
+    """
+    admitted = {
+        str(event.payload.get("candidate_id") or "")
+        for event in database.events(
+            event_types=("initiative.candidate_admitted",), readonly=True,
+        )
+    }
+    decisions = database.events(
+        event_types=("executive.decision_recorded",), readonly=True,
+    )
+    for event in reversed(decisions):
+        payload = dict(event.payload)
+        if str(payload.get("decision") or "") != "SELECT":
+            continue
+        candidate_id = str(payload.get("candidate_id") or "")
+        decision_id = str(payload.get("decision_id") or "")
+        if not candidate_id or not decision_id or candidate_id in admitted:
+            continue
+        candidate = database.row("candidates", "candidate_id", candidate_id)
+        judgment = _judgment(database, candidate_id)
+        if (
+            candidate is None
+            or str(candidate.get("status") or "") != "ELIGIBLE"
+            or judgment is None
+            or str(judgment.get("decision_id") or "") != decision_id
+            or str(judgment.get("outcome") or "") != "ELIGIBLE"
+            or str(judgment.get("reason_code") or "") != "READY_FOR_ADMISSION"
+        ):
+            continue
+        return ExecutiveDecision(
+            kind="SELECT",
+            decision_id=decision_id,
+            reason=str(payload.get("reason") or "resumed durable A2 selection"),
+            candidate_id=candidate_id,
+            rejected=tuple(payload.get("rejected") or ()),
+            deferred=tuple(payload.get("deferred") or ()),
+            factor_breakdown=dict(payload.get("factor_breakdown") or {}),
+            active_goals=tuple(payload.get("active_goals") or ()),
+            eligibility=dict(payload.get("eligibility") or {}),
+            calibration_version=str(payload.get("calibration_version") or ""),
+            owner_controls=dict(payload.get("owner_controls") or {}),
+        )
+    return None
+
+
 def _candidate_context(candidate: Mapping[str, Any]) -> tuple[list[dict[str, Any]], str, tuple[str, ...]]:
     evidence = _json(candidate.get("evidence_json"), [])
     rows = [dict(row) for row in evidence if isinstance(row, Mapping)] if isinstance(evidence, list) else []
@@ -784,5 +838,6 @@ __all__ = [
     "InitiativeAdmissionAuthority",
     "active_initiative_objective",
     "continue_initiative_objective",
+    "pending_initiative_decision",
     "record_terminal_initiative_outcome",
 ]

@@ -27,9 +27,10 @@ hermes:
   root: ""
   python_exe: ""
   timeout_seconds: 900
-  # Explicit owner acknowledgement for discounted contributor-tier models.
-  # Keep false until the owner accepts the provider's data-training policy.
-  allow_data_training_tiers_noninteractive: false
+  # Explicit owner authorization for unattended contributor/training-tier use
+  # in the bounded V11 A3/A4 exit proof. All other routing, budget, capability,
+  # allowlist, and STOP controls remain authoritative.
+  allow_data_training_tiers_noninteractive: true
 
 openhands:
   enabled: false

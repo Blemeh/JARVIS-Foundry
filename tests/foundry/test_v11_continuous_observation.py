@@ -218,6 +218,55 @@ def test_due_unchanged_changed_restart_and_stop(tmp_path) -> None:
     }
 
 
+def test_interrupted_due_cycle_resumes_before_next_monitor_due(tmp_path) -> None:
+    database = _database(tmp_path)
+    source = _source(interval=300)
+    reads: list[str] = []
+
+    def reader(spec, stop_check):
+        assert not stop_check()
+        reads.append(spec.source_id)
+        return SourceReadResult(
+            "READY", (_observation(spec.source_id, "interrupted"),),
+        )
+
+    def interrupt(stage: str) -> None:
+        if stage == "after_candidate_generation":
+            raise RuntimeError("post-candidate interruption")
+
+    base = datetime.now(timezone.utc).replace(microsecond=0)
+    with pytest.raises(RuntimeError, match="post-candidate interruption"):
+        run_continuous_observation_cycle(
+            database,
+            sources=[source],
+            now=base,
+            source_readers={"project": reader},
+            research_reader=_research,
+            fault_hook=interrupt,
+        )
+
+    restarted = FoundryDatabase(database.path)
+    restarted.initialize()
+    resumed = run_continuous_observation_cycle(
+        restarted,
+        sources=[source],
+        now=base + timedelta(seconds=1),
+        source_readers={"project": reader},
+        research_reader=_research,
+    )
+
+    assert resumed["outcome"] == "WAIT"
+    assert resumed["cycles_dispatched"] == 1
+    assert resumed["resumed_interrupted_cycle"] is True
+    assert resumed["metrics"]["duplicate_candidate_records"] == 0
+    assert reads == [source.source_id]
+    with restarted.connect(readonly=True) as connection:
+        cycles = connection.execute(
+            "SELECT stage, status FROM initiative_cycles"
+        ).fetchall()
+    assert [(row[0], row[1]) for row in cycles] == [("COMPLETED", "WAIT")]
+
+
 def test_source_failure_backoff_and_readiness_recovery(tmp_path) -> None:
     database = _database(tmp_path)
     source = _source(interval=10, failure_backoff_s=60, max_backoff_s=300)
