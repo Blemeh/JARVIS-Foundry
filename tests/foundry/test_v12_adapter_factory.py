@@ -16,6 +16,7 @@ from jarvis_foundry.adapter_factory import (
     AdapterFactoryError,
     AdapterShape,
     CapabilityAdapterContract,
+    ConfigurationRequirement,
     ContractCase,
     DependencyDeclaration,
     DependencyKind,
@@ -439,3 +440,21 @@ def test_parent_enforces_timeout_and_cancellation_for_generated_adapter(tmp_path
     cancelled = invoke_artifact(artifact.root, "cap.time.sleep", {}, cancel_check=lambda: True)
     assert cancelled["claimed"] == "BLOCKED"
     assert cancelled["error_code"] == "adapter_cancelled"
+
+
+def test_readiness_accepts_required_runtime_configuration_over_bounded_stdin(tmp_path: Path) -> None:
+    descriptor = replace(
+        _cli_descriptor(tmp_path),
+        adapter_id="adapter.local.configured",
+        configuration=(ConfigurationRequirement(
+            "V12_PROOF_CREDENTIAL", source="runtime", required=True, secret=True,
+            description="disposable readiness credential",
+        ),),
+    )
+    artifact = AdapterFactory(tmp_path / "configured").build(descriptor)
+    absent = probe_artifact(artifact.root)
+    assert absent["ready"] is False
+    assert absent["error_code"] == "readiness_probe_failed"
+    supplied = probe_artifact(artifact.root, config={"V12_PROOF_CREDENTIAL": "fixture-value"})
+    assert supplied["ready"] is True
+    assert "fixture-value" not in json.dumps(supplied)

@@ -654,7 +654,9 @@ def child_main(descriptor_path: str | Path, argv: list[str] | None = None) -> in
             "adapter_protocol": ADAPTER_PROTOCOL, "adapter_id": descriptor.adapter_id,
         }
     elif args.command == "probe":
-        result = probe_descriptor(descriptor)
+        raw = sys.stdin.read(MAX_RESULT_BYTES + 1)
+        envelope = _json_object(raw, "adapter probe input") if raw.strip() else {}
+        result = probe_descriptor(descriptor, config=envelope.get("config") or {})
         if len(descriptor.capabilities) == 1:
             result["capability_id"] = descriptor.capabilities[0].capability_id
             result["action_kind"] = descriptor.capabilities[0].action_kind
@@ -775,7 +777,7 @@ def _run_adapter_process(
 
 def probe_artifact(
     root_or_manifest: str | Path, *, python_executable: str | Path | None = None,
-    timeout_s: float = 30.0,
+    timeout_s: float = 30.0, config: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     root, manifest, descriptor = load_verified_artifact(root_or_manifest)
     if (root / DISABLED_FILE).exists():
@@ -786,7 +788,7 @@ def probe_artifact(
     adapter = _contained(root / str(manifest.get("wrapper_path") or "adapter.py"), root, "wrapper")
     result = _run_adapter_process(
         [str(python_executable or sys.executable), str(adapter), "probe", "--manifest", str(root / MANIFEST_FILE)],
-        "", timeout_s=timeout_s,
+        canonical_json({"config": dict(config or {})}), timeout_s=timeout_s,
     )
     result["adapter_manifest_sha256"] = _sha256(root / MANIFEST_FILE)
     return result
