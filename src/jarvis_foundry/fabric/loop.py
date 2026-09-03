@@ -26,7 +26,6 @@ from .model import (
     ActionResult,
     CapabilityTrust,
     CapabilitySpec,
-    CapabilityTrust,
     ClaimOutcome,
     GapKind,
     GapRecord,
@@ -703,6 +702,67 @@ def _verify(
     )[0]
 
 
+def _verify_canonical_artifact(
+    executor: str,
+    capability_id: str,
+    payload: Mapping[str, Any],
+    claimed: Mapping[str, Any],
+    *,
+    python_executable: str | None,
+    owned_root: Path,
+) -> tuple[VerifyVerdict, dict[str, Any]]:
+    """Independently replay a read-only Factory artifact through its contract."""
+
+    from ..adapter_factory import invoke_artifact, load_verified_artifact, validate_schema
+
+    try:
+        root, manifest, descriptor = load_verified_artifact(executor)
+        capability = next(
+            item for item in descriptor.capabilities
+            if item.capability_id == capability_id
+        )
+        errors = validate_schema(claimed, capability.output_schema)
+        status = str(claimed.get("claimed") or "UNKNOWN")
+        evidence: dict[str, Any] = {
+            "adapter_protocol": manifest.get("protocol"),
+            "output_schema_valid": not errors,
+            "output_schema_errors": list(errors),
+            "independent_readback": None,
+        }
+        if status == "FAILED":
+            return VerifyVerdict.MATCH, evidence
+        if status != "COMPLETED" or errors:
+            return (
+                VerifyVerdict.UNKNOWN if status == "BLOCKED" else VerifyVerdict.MISMATCH,
+                evidence,
+            )
+        if capability.effect_class is not EffectClass.READ_ONLY:
+            # Mutating adapters remain under the effect journal and their
+            # declared reconciliation seam.  This build-ahead engine adopts
+            # only read-only artifacts, so it never promotes an unverified
+            # mutation from this conservative fallback.
+            return VerifyVerdict.UNKNOWN, evidence
+        readback = invoke_artifact(
+            root,
+            capability_id,
+            payload,
+            python_executable=python_executable,
+            allowed_root=owned_root,
+        )
+        readback_errors = validate_schema(readback, capability.output_schema)
+        evidence["independent_readback"] = readback
+        evidence["readback_schema_valid"] = not readback_errors
+        evidence["readback_matches"] = readback == dict(claimed)
+        if readback_errors or readback != dict(claimed):
+            return VerifyVerdict.MISMATCH, evidence
+        return VerifyVerdict.MATCH, evidence
+    except Exception as error:  # noqa: BLE001 - verification fails closed
+        return VerifyVerdict.UNKNOWN, {
+            "adapter_protocol": "jarvis.capability.adapter.v1",
+            "verification_error": type(error).__name__,
+        }
+
+
 def execute_action(
     database: FoundryDatabase,
     ctx: ExecutorContext,
@@ -794,15 +854,29 @@ def execute_action(
         execution_payload["_adapter_request"] = request.to_evidence()
     if request is not None and request.effect_class.value != "READ_ONLY":
         execution_payload.setdefault("idempotency_key", request.idempotency_key)
+    # The existing Fabric effect journal remains the sole authority for every
+    # mutating adapter invocation. Read-only adapters need no effect claim.
+    canonical_effect_required = (
+        request.effect_class is not EffectClass.READ_ONLY
+        and action_kind not in {"git.push", "browser.web.execute"}
+    )
+    canonical_artifact = bool(
+        spec.kind is Kind.ADAPTER and metadata.execute.get("artifact_id")
+    )
     def perform() -> Mapping[str, Any]:
         if claim_override is not None:
             return dict(claim_override)
-        if spec.kind is Kind.ADAPTER:
-            from .installed_adapter import run_installed_adapter
+        if canonical_artifact:
+            from ..adapter_factory import invoke_artifact
 
-            return run_installed_adapter(
+            return invoke_artifact(
                 spec.executor,
-                execution_payload,
+                spec.capability_id,
+                payload,
+                adapter_request=request.to_evidence(),
+                canonical_effect_authorized=canonical_effect_required,
+                python_executable=metadata.execute.get("python_executable"),
+                stop_path=payload.get("stop_path"),
                 allowed_root=ctx.owned_root,
                 timeout_s=float(payload.get("adapter_timeout_s") or 120.0),
             )
@@ -820,10 +894,6 @@ def execute_action(
     # git.push and browser.web.execute already use their established
     # connector-specific canonical effect drivers. Every other mutating
     # Fabric action must cross the shared V5 effect journal exactly once.
-    canonical_effect_required = (
-        request.effect_class is not EffectClass.READ_ONLY
-        and action_kind not in {"git.push", "browser.web.execute"}
-    )
     if canonical_effect_required:
         stop_identities = set(request.stop_scope)
         stop_identities.update({"GLOBAL", intent.task_id})
@@ -854,9 +924,26 @@ def execute_action(
         )
     else:
         claimed = perform()
-    verdict, postconditions = _verify_with_postconditions(
-        action_kind, claimed, ctx.owned_root, payload,
-    )
+    adapter_verification: dict[str, Any] = {}
+    if canonical_artifact and claim_override is None:
+        verdict, adapter_verification = _verify_canonical_artifact(
+            spec.executor,
+            spec.capability_id,
+            payload,
+            claimed,
+            python_executable=str(metadata.execute.get("python_executable") or "") or None,
+            owned_root=ctx.owned_root,
+        )
+        postconditions = evaluate_postconditions(claimed, payload.get("postconditions") or ())
+        statuses = {item.status for item in postconditions}
+        if verdict is VerifyVerdict.MATCH and PostconditionStatus.FAIL in statuses:
+            verdict = VerifyVerdict.MISMATCH
+        elif verdict is VerifyVerdict.MATCH and PostconditionStatus.UNKNOWN in statuses:
+            verdict = VerifyVerdict.UNKNOWN
+    else:
+        verdict, postconditions = _verify_with_postconditions(
+            action_kind, claimed, ctx.owned_root, payload,
+        )
     claimed_outcome = ClaimOutcome(str(claimed.get("claimed") or "UNKNOWN"))
     if claimed_outcome is ClaimOutcome.COMPLETED and verdict is VerifyVerdict.MISMATCH:
         note = "worker claim diverged from observed effect"
@@ -879,7 +966,11 @@ def execute_action(
         action_kind=action_kind,
         claimed=claimed_outcome,
         verified=verdict,
-        observed={"verified_at": isoformat(), **{k: v for k, v in claimed.items() if k != "document" or action_kind != "artifact.research"}},
+        observed={
+            "verified_at": isoformat(),
+            **{k: v for k, v in claimed.items() if k != "document" or action_kind != "artifact.research"},
+            **({"adapter_verification": adapter_verification} if adapter_verification else {}),
+        },
         claimed_effect=dict(claimed),
         note=note,
         receipt=receipt,

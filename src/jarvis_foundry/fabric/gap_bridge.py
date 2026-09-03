@@ -934,6 +934,10 @@ def start_expansion_attempt(
     request = _work_request(state, attempt)
     try:
         raw = dict(port.dispatch(request))
+    except GapBridgeStopped:
+        # STOP/veto pauses rather than consumes the stable attempt.  RESUME
+        # redelivers the exact same attempt identity to the port-side ledger.
+        raise
     except Exception as error:
         return fail_expansion_attempt(
             database,

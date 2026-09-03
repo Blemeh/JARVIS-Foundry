@@ -1,9 +1,9 @@
 """Typed inputs and outputs for the V12 thin-adapter factory.
 
-The factory consumes a *selected* solution.  It does not rank solutions and it
-does not register capabilities.  Its records are deliberately JSON-safe so a
-Session-6 recommendation can be frozen, inspected, and handed to Session 7
-without importing either lane's implementation.
+The factory consumes a *selected* discovery solution.  It does not rank
+solutions and it does not register capabilities.  Its records are deliberately
+JSON-safe so the canonical artifact trial can consume the exact descriptor
+without inventing a second adapter interpretation.
 """
 from __future__ import annotations
 
@@ -490,7 +490,7 @@ class SelectedSolutionDescriptor:
     configuration: tuple[ConfigurationRequirement, ...] = ()
     provenance: Mapping[str, Any] = field(default_factory=dict)
     selection: Mapping[str, Any] = field(default_factory=dict)
-    disable_reason: str = "adapter disabled before Session-7 adoption"
+    disable_reason: str = "adapter disabled before probation adoption"
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "adapter_id", _identity(self.adapter_id, "adapter_id"))
@@ -570,7 +570,7 @@ class SelectedSolutionDescriptor:
                 for key in ("candidate_id", "gap_id", "tier", "summary", "compatibility", "integration_cost")
                 if value.get(key) is not None
             },
-            disable_reason=str(value.get("disable_reason") or "adapter disabled before Session-7 adoption"),
+            disable_reason=str(value.get("disable_reason") or "adapter disabled before probation adoption"),
         )
 
     @classmethod

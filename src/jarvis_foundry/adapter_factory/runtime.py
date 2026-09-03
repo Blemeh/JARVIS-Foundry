@@ -2,7 +2,7 @@
 
 Generated adapters contain only a frozen descriptor and a tiny entry point.
 This module is the reviewable semantic composer: it validates schemas, maps a
-typed JARVIS request to a package/CLI/API/MCP/component call, enforces bounded
+typed JARVIS request to a package/CLI/API/component call, enforces bounded
 process execution, and normalizes the result into the existing V10 receipt.
 It owns no catalog, effect journal, scheduler, worker pool, or trust state.
 """
@@ -399,57 +399,6 @@ def _command_call(target: str, mapping: InvocationMapping, context: Mapping[str,
     }
 
 
-def _mcp_exchange(command: list[str], messages: list[dict[str, Any]], *, timeout_s: float) -> list[dict[str, Any]]:
-    executable = shutil.which(command[0]) or (str(Path(command[0]).resolve()) if Path(command[0]).is_file() else None)
-    if not executable:
-        raise AdapterRuntimeError(f"MCP executable is not available: {command[0]}")
-    payload = "".join(canonical_json(item) + "\n" for item in messages)
-    try:
-        completed = subprocess.run(
-            [executable, *command[1:]], input=payload, capture_output=True,
-            text=True, encoding="utf-8", errors="replace", timeout=timeout_s,
-            check=False, env=sanitized_env(),
-        )
-    except subprocess.TimeoutExpired as error:
-        raise AdapterRuntimeError("MCP adapter timed out") from error
-    if completed.returncode not in {0, None}:
-        raise AdapterRuntimeError(f"MCP backend exited with code {completed.returncode}")
-    responses: list[dict[str, Any]] = []
-    for line in (completed.stdout or "").splitlines():
-        try:
-            value = json.loads(line)
-        except ValueError:
-            continue
-        if isinstance(value, dict):
-            responses.append(value)
-    return responses
-
-
-def _mcp_messages(method: str, params: Mapping[str, Any] | None = None) -> list[dict[str, Any]]:
-    return [
-        {
-            "jsonrpc": "2.0", "id": 1, "method": "initialize",
-            "params": {
-                "protocolVersion": "2025-06-18",
-                "capabilities": {},
-                "clientInfo": {"name": "jarvis-adapter-factory", "version": "1.0.0"},
-            },
-        },
-        {"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}},
-        {"jsonrpc": "2.0", "id": 2, "method": method, "params": dict(params or {})},
-    ]
-
-
-def _mcp_call(descriptor: SelectedSolutionDescriptor, mapping: InvocationMapping, context: Mapping[str, Any], *, timeout_s: float) -> dict[str, Any]:
-    command = [descriptor.readiness.target, *descriptor.readiness.arguments]
-    params = {"name": mapping.target, "arguments": _resolve(mapping.keyword_arguments, context)}
-    responses = _mcp_exchange(command, _mcp_messages("tools/call", params), timeout_s=timeout_s)
-    response = next((item for item in responses if item.get("id") == 2), None)
-    if response is None or response.get("error") is not None:
-        raise AdapterRuntimeError("MCP tools/call did not return a successful response")
-    return {"result": response.get("result"), "responses": responses}
-
-
 def _invoke_mapping(
     descriptor: SelectedSolutionDescriptor,
     capability: CapabilityAdapterContract,
@@ -477,8 +426,9 @@ def _invoke_mapping(
         raw = _http_call(mapping, context, timeout_s=timeout_s)
         claimed = "COMPLETED" if 200 <= int(raw.get("status") or 0) < 300 else "FAILED"
     elif descriptor.solution_class is SolutionClass.MCP_STDIO:
-        raw = _mcp_call(descriptor, mapping, context, timeout_s=timeout_s)
-        claimed = "COMPLETED"
+        raise AdapterRuntimeError(
+            "MCP runtime is intentionally deferred to the Session 4 canonical backend"
+        )
     else:  # pragma: no cover - enum validation prevents this
         raise AdapterRuntimeError("unsupported solution class")
     context["raw"] = raw
@@ -541,14 +491,9 @@ def probe_descriptor(descriptor: SelectedSolutionDescriptor, *, config: Mapping[
                 "artifact": {}, "artifact_root": "",
             }, timeout_s=timeout_s)
         elif probe.kind is ProbeKind.MCP_TOOLS_LIST:
-            responses = _mcp_exchange(
-                [probe.target, *probe.arguments], _mcp_messages("tools/list"), timeout_s=timeout_s,
+            raise AdapterRuntimeError(
+                "MCP runtime is intentionally deferred to the Session 4 canonical backend"
             )
-            response = next((item for item in responses if item.get("id") == 2), {})
-            observed = {
-                "tools": ((response.get("result") or {}).get("tools") or []),
-                "initialize": next((item.get("result") for item in responses if item.get("id") == 1), None),
-            }
         else:  # pragma: no cover
             raise AdapterRuntimeError("unsupported readiness probe")
         expected = {key: value for key, value in probe.expected.items() if key != "allowed_origins"}

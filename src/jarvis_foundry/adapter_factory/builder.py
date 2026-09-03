@@ -150,7 +150,7 @@ def _install_instructions(descriptor: SelectedSolutionDescriptor) -> str:
         "2. Install the exact JARVIS candidate wheel into that environment.",
         "3. Satisfy the dependency declarations in `dependency-manifest.json`.",
         "4. Run `adapter.py probe --manifest adapter-manifest.json`.",
-        "5. Run `tests/test_contract.py` before handing the artifact to Session 7.", "",
+        "5. Hand the unchanged manifest to the canonical artifact trial.", "",
         "Every command must use argv execution; no generated shell fragments are required.", "",
     ]
     return "\n".join(lines)
@@ -162,7 +162,7 @@ def _removal_instructions(descriptor: SelectedSolutionDescriptor) -> str:
         "Disable writes only `ADAPTER_DISABLED.json` inside this artifact.",
         "Removal first verifies the manifest, exact adapter identity, and artifact root,",
         "then removes only this generated directory. It does not change Fabric catalog state.",
-        "Session 7 owns catalog disable/restoration after adoption.", "",
+        "The Capability Fabric Catalog owns disable/restoration after adoption.", "",
     ])
 
 
@@ -221,7 +221,7 @@ def _metadata(descriptor: SelectedSolutionDescriptor, capability, executor: str)
 
 
 def inspect_solution(descriptor: SelectedSolutionDescriptor) -> dict[str, Any]:
-    """Inspect only the bounded interface surface declared by Session 6."""
+    """Inspect only the bounded interface surface declared by discovery."""
 
     surface: dict[str, Any] = {
         "solution_class": descriptor.solution_class.value,
@@ -323,7 +323,7 @@ class AdapterFactory:
                 fabric_records.append({
                     "spec": capability.fabric_spec(executor=executor).as_dict(),
                     "metadata": _metadata(descriptor, capability, executor).as_dict(),
-                    "registration_owner": "SESSION_7",
+                    "registration_owner": "CANONICAL_ARTIFACT_TRIAL",
                     "registered": False,
                 })
                 schema_root = staging / "schemas" / _safe_name(capability.capability_id)
@@ -350,7 +350,7 @@ class AdapterFactory:
                     for capability in descriptor.capabilities
                 ],
                 "requested_trust": "PROBATION",
-                "registration_owner": "SESSION_7",
+                "registration_owner": "CANONICAL_ARTIFACT_TRIAL",
                 "registered": False,
             })
             connector_strategy = "none"
@@ -394,7 +394,7 @@ class AdapterFactory:
                 "disable_marker": DISABLED_FILE,
                 "disable_reason": descriptor.disable_reason,
                 "remove_requires": ["verified manifest", "exact adapter_id", "artifact-root containment"],
-                "catalog_owner": "SESSION_7",
+                "catalog_owner": "CAPABILITY_FABRIC_CATALOG",
                 "catalog_mutated": False,
             })
             (staging / "INSTALL.md").write_text(_install_instructions(descriptor), encoding="utf-8")
@@ -426,8 +426,8 @@ class AdapterFactory:
                 "descriptor_sha256": files["descriptor.json"],
                 "wrapper_path": "adapter.py",
                 "wrapper_sha256": adapter_hash,
-                # Compatibility with Session 7's current installed-adapter
-                # verifier; this factory artifact is already the solution.
+                # The canonical trial consumes this exact artifact; there is
+                # no second installed-adapter wrapper or descriptor.
                 "solution_path": "adapter.py",
                 "solution_sha256": adapter_hash,
                 "config_path": None,
@@ -596,7 +596,13 @@ def install_isolated_runtime(
     try:
         wheel = _build_candidate_wheel(Path(project_root).resolve(), wheels)
         installed = subprocess.run(
-            [str(python), "-m", "pip", "install", "--no-deps", str(wheel)],
+            [
+                str(python), "-m", "pip", "install", "--no-deps",
+                # The caller may itself run under ``uv run`` with the same
+                # distribution version visible.  Force installation so pip
+                # cannot mistake that parent environment for this fresh venv.
+                "--force-reinstall", str(wheel),
+            ],
             capture_output=True, text=True, encoding="utf-8", errors="replace",
             timeout=300, check=False, env=env, **headless_run_kwargs(),
         )

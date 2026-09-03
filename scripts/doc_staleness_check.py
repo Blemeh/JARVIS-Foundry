@@ -46,6 +46,7 @@ DOC_ONLY_ALLOWED_PATHS = frozenset({
     "docs/handoffs/V11_INTEGRATION_BASE2_20260902.md",
     "docs/handoffs/V11_PRECONVERGENCE_20260902.md",
     "docs/handoffs/V12_CAPABILITY_DISCOVERY_20260902.md",
+    "docs/handoffs/V12_SELF_EXPANSION_CONVERGENCE_20260903.md",
     "docs/roadmap/JARVIS_1_0_EXECUTION_STATE.yaml",
     "tests/acceptance/README.md",
 })

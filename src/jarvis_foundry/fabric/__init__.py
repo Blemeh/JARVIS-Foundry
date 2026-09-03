@@ -38,17 +38,10 @@ from .expansion import (
     acquire_hash_capability,
 )
 from .loop import execute_action, run_intent, seed_builtins, select_capability, try_acquire
-from .installed_adapter import (
-    ADAPTER_PROTOCOL,
-    AdapterInvocationError,
-    probe_installed_adapter,
-    run_installed_adapter,
-)
 from .model import (
     ActionResult,
     CapabilityTrust,
     CapabilitySpec,
-    CapabilityTrust,
     ClaimOutcome,
     GapKind,
     GapRecord,
@@ -59,16 +52,16 @@ from .model import (
     VerifyVerdict,
     WorkflowStep,
 )
-from .trial import (
-    CapabilityTrialPipeline,
-    DependencyPin,
-    SelectedCapabilitySolution,
+from .artifact_trial import (
+    ADAPTER_PROTOCOL,
+    ArtifactTrialError,
+    ArtifactTrialResult,
+    ArtifactTrialStatus,
+    ArtifactTrialStopped,
+    CanonicalArtifactTrialPipeline,
     TRIAL_PROTOCOL,
-    TrialCase,
-    TrialError,
-    TrialResult,
-    TrialStatus,
-    trial_record,
+    TrialMission,
+    artifact_trial_record,
 )
 from .providers import route_provider, unattended_mode_for
 from .spine import execute_for_spine
@@ -76,7 +69,6 @@ from .spine import execute_for_spine
 __all__ = [
     "ActionResult",
     "ADAPTER_PROTOCOL",
-    "AdapterInvocationError",
     "AdapterReceipt",
     "AdapterRequest",
     "CapabilitySpec",
@@ -100,13 +92,12 @@ __all__ = [
     "VerifyVerdict",
     "WorkflowStep",
     "acquire_hash_capability",
-    "CapabilityTrialPipeline",
-    "DependencyPin",
-    "SelectedCapabilitySolution",
-    "TrialCase",
-    "TrialError",
-    "TrialResult",
-    "TrialStatus",
+    "ArtifactTrialError",
+    "ArtifactTrialResult",
+    "ArtifactTrialStatus",
+    "ArtifactTrialStopped",
+    "CanonicalArtifactTrialPipeline",
+    "TrialMission",
     "TRIAL_PROTOCOL",
     "build_adapter_request",
     "capability_registration",
@@ -134,11 +125,9 @@ __all__ = [
     "run_intent",
     "run_workflow",
     "normalize_receipt",
-    "probe_installed_adapter",
-    "run_installed_adapter",
     "seed_builtins",
     "select_capability",
     "try_acquire",
-    "trial_record",
+    "artifact_trial_record",
     "unattended_mode_for",
 ]

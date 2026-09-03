@@ -197,7 +197,7 @@ def test_cli_build_probe_typed_receipt_disable_enable_and_remove(tmp_path: Path)
     assert manifest["registered"] is False
     assert json.loads((root / "fabric-capabilities.json").read_text())["catalog_mutated"] is False
     admission = json.loads((root / "trial-admission.json").read_text())
-    assert admission["registration_owner"] == "SESSION_7"
+    assert admission["registration_owner"] == "CANONICAL_ARTIFACT_TRIAL"
     assert admission["registered"] is False
     assert json.loads((root / "connector-spec.json").read_text())["capabilities"] == {"cap.local.echo": "DISCOVERED"}
     connector = json.loads((root / "connector-spec.json").read_text())
@@ -294,7 +294,7 @@ def test_python_sdk_and_existing_jarvis_component_shapes(tmp_path: Path) -> None
     assert invoke_artifact(jarvis.root, "cap.jarvis.canonical-json", {"value": {"z": 1}})["text"] == "{\"z\":1}"
 
 
-def test_mcp_stdio_surface_is_probed_and_called(tmp_path: Path) -> None:
+def test_mcp_stdio_descriptor_is_thin_but_runtime_is_deferred(tmp_path: Path) -> None:
     server = tmp_path / "mcp_server.py"
     server.write_text(
         "import json,sys\n"
@@ -320,9 +320,14 @@ def test_mcp_stdio_surface_is_probed_and_called(tmp_path: Path) -> None:
         dependencies=(DependencyDeclaration("mcp-fixture", DependencyKind.EXECUTABLE, "1.0.0", str(server)),),
     )
     artifact = AdapterFactory(tmp_path / "mcp").build(descriptor)
-    assert probe_artifact(artifact.root)["ready"] is True
+    probe = probe_artifact(artifact.root)
+    assert probe["ready"] is False
+    assert probe["error_code"] == "readiness_probe_failed"
+    assert "Session 4 canonical backend" in probe["detail"]
     result = invoke_artifact(artifact.root, "cap.mcp.echo", {"text": "hello"})
-    assert result["content"] == [{"type": "text", "text": "hello"}]
+    assert result["claimed"] == "FAILED"
+    assert result["error_code"] == "adapter_exit_nonzero"
+    assert "Session 4 canonical backend" in result["detail"]
 
 
 def test_worker_shape_uses_worker_contract_but_keeps_independent_verification(tmp_path: Path) -> None:
