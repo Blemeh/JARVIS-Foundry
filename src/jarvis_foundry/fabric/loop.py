@@ -8,8 +8,8 @@ from ..clock import isoformat
 from ..control.broker import emergency_stop_reason
 from ..database import FoundryDatabase
 from .catalog import (
-    catalog_snapshot,
     capability_metadata,
+    catalog_snapshot,
     capability_trust,
     get_spec,
     observed_readiness,
@@ -173,6 +173,26 @@ def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
             executor="github_write",
             unattended=UnattendedMode.ALLOWED,
             limitations=("explicit write transport required; no silent live mutation",),
+        ),
+        CapabilitySpec(
+            capability_id="cap.github.pull_request.publish", version="1.0.0", kind=Kind.CONNECTOR,
+            action_kind="github.pull_request.publish", semantic=Semantic.EXTERNAL_EFFECT,
+            executor="github_write",
+            unattended=UnattendedMode.INTERACTIVE_REQUIRED,
+            limitations=(
+                "disabled by default; exact owner repository/base/remote authorization required; "
+                "deterministic branch, canonical effect journal, and provider readback required",
+            ),
+        ),
+        CapabilitySpec(
+            capability_id="cap.gmail.send", version="1.0.0", kind=Kind.CONNECTOR,
+            action_kind="gmail.send", semantic=Semantic.COMMUNICATE,
+            executor="gmail_api",
+            unattended=UnattendedMode.INTERACTIVE_REQUIRED,
+            limitations=(
+                "disabled by default; exact owner self-recipient authorization required; "
+                "PROBATION capabilities forbidden; provider readback required",
+            ),
         ),
         CapabilitySpec(
             capability_id="cap.http.read", version="1.0.0", kind=Kind.CONNECTOR,
@@ -592,6 +612,38 @@ def _verify_action(
         return VerifyVerdict.MATCH if github_write_readback_verified() else VerifyVerdict.MISMATCH
     if action_kind == "github.pull_request.create":
         return VerifyVerdict.MATCH if github_write_readback_verified() else VerifyVerdict.MISMATCH
+    if action_kind == "github.pull_request.publish":
+        push = claimed.get("push_effect")
+        pull_request = claimed.get("pull_request_effect")
+        if (
+            claimed_status == "COMPLETED"
+            and claimed.get("accepted") is True
+            and claimed.get("terminal_truth") is True
+            and isinstance(push, Mapping)
+            and push.get("accepted") is True
+            and push.get("readback_status") == "MATCH"
+            and isinstance(pull_request, Mapping)
+            and pull_request.get("accepted") is True
+            and pull_request.get("readback_status") == "MATCH"
+            and claimed.get("provider_ref")
+            and claimed.get("number")
+        ):
+            return VerifyVerdict.MATCH
+        return VerifyVerdict.UNKNOWN if claimed_status in {"UNKNOWN", "BLOCKED"} else VerifyVerdict.MISMATCH
+    if action_kind == "gmail.send":
+        readback = claimed.get("readback")
+        if (
+            claimed_status == "COMPLETED"
+            and claimed.get("accepted") is True
+            and claimed.get("terminal_truth") is True
+            and claimed.get("provider_id")
+            and claimed.get("provider_ref")
+            and isinstance(readback, Mapping)
+            and readback.get("status") == "MATCH"
+            and readback.get("matches") is True
+        ):
+            return VerifyVerdict.MATCH
+        return VerifyVerdict.UNKNOWN if claimed_status in {"UNKNOWN", "BLOCKED"} else VerifyVerdict.MISMATCH
     if action_kind == "http.read":
         return VerifyVerdict.MATCH if claimed.get("document") is not None else VerifyVerdict.MISMATCH
     if action_kind == "http.write":
@@ -858,7 +910,12 @@ def execute_action(
     # mutating adapter invocation. Read-only adapters need no effect claim.
     canonical_effect_required = (
         request.effect_class is not EffectClass.READ_ONLY
-        and action_kind not in {"git.push", "browser.web.execute"}
+        and action_kind not in {
+            "git.push",
+            "browser.web.execute",
+            "github.pull_request.publish",
+            "gmail.send",
+        }
     )
     canonical_artifact = bool(
         spec.kind is Kind.ADAPTER and metadata.execute.get("artifact_id")
@@ -891,9 +948,6 @@ def execute_action(
             return {"claimed": "COMPLETED", "path": str(path), "sha256": digest}
         return dispatch(ctx, action_kind, execution_payload)
 
-    # git.push and browser.web.execute already use their established
-    # connector-specific canonical effect drivers. Every other mutating
-    # Fabric action must cross the shared V5 effect journal exactly once.
     if canonical_effect_required:
         stop_identities = set(request.stop_scope)
         stop_identities.update({"GLOBAL", intent.task_id})

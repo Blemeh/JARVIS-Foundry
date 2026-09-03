@@ -67,7 +67,10 @@ def infer_effect_class(
 
     action = str(action_kind or "").strip().lower()
     semantic_value = str(semantic or "").strip().lower()
-    if action in {"gmail.send", "mail.send", "email.send"}:
+    if action in {
+        "gmail.send", "mail.send", "email.send", "git.push",
+        "github.pull_request.create", "github.pull_request.publish",
+    }:
         return EffectClass.IRREVERSIBLE_OR_HIGH_COST
     if semantic_value == "read" or action.endswith(".read") or action in {
         "dir.list", "git.inspect", "git.diff", "git.log", "git.read_ref",

@@ -37,6 +37,13 @@ class PostconditionStatus(StrEnum):
     UNKNOWN = "UNKNOWN"
 
 
+class CapabilityTrust(StrEnum):
+    """Execution trust of a catalog entry, separate from observed readiness."""
+
+    ESTABLISHED = "ESTABLISHED"
+    PROBATION = "PROBATION"
+
+
 def _text(value: object, field_name: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ContractError(f"{field_name} must be a non-empty string")
@@ -88,6 +95,7 @@ class CapabilityMetadata:
     input_schema: str
     output_schema: str
     effect_class: EffectClass
+    trust_state: CapabilityTrust = CapabilityTrust.ESTABLISHED
     requirements: tuple[str, ...] = ()
     credential_refs: tuple[str, ...] = ()
     preconditions: tuple[str, ...] = ()
@@ -143,6 +151,7 @@ class CapabilityMetadata:
             input_schema=f"jarvis.action.{action}.input.v1",
             output_schema=f"jarvis.action.{action}.receipt.v1",
             effect_class=effect_class,
+            trust_state=CapabilityTrust.ESTABLISHED,
             requirements=tuple(spec.requirements),
             idempotency={
                 "required": effect_class is not EffectClass.READ_ONLY,
@@ -197,6 +206,11 @@ class CapabilityMetadata:
             input_schema=_text(value.get("input_schema"), "input_schema"),
             output_schema=_text(value.get("output_schema"), "output_schema"),
             effect_class=EffectClass(effect or infer_effect_class(action, semantic)),
+            trust_state=CapabilityTrust(
+                value.get("trust_state")
+                or (value.get("provenance") or {}).get("trust_state")
+                or CapabilityTrust.ESTABLISHED
+            ),
             requirements=_tuple_text(value.get("requirements"), "requirements"),
             credential_refs=_tuple_text(value.get("credential_refs"), "credential_refs"),
             preconditions=_tuple_text(value.get("preconditions"), "preconditions"),
@@ -221,6 +235,7 @@ class CapabilityMetadata:
             "input_schema": self.input_schema,
             "output_schema": self.output_schema,
             "effect_class": self.effect_class.value,
+            "trust_state": self.trust_state.value,
             "requirements": list(self.requirements),
             "credential_refs": list(self.credential_refs),
             "preconditions": list(self.preconditions),

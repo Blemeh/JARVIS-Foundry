@@ -21,12 +21,23 @@ from ..control.redaction import redact_text
 from ..connectors.filesystem import FilesystemConnector
 from ..connectors.git import GitConnector
 from ..connectors.github_research import GitHubResearchConnector
+from ..connectors.account_activation import CredentialHandle, ProviderIdentity
+from ..connectors.gmail_api import (
+    GmailApiProvider,
+    GmailSendAuthorization,
+    GmailSendEffectDriver,
+)
 from ..connectors.local_artifacts import (
     ArtifactValidationError,
     LocalArtifactConnector,
     LocalArtifactError,
 )
-from ..connectors.github_write import GitHubWriteAdapter
+from ..connectors.github_write import (
+    GitHubPullRequestEffectDriver,
+    GitHubRepositoryAuthorization,
+    GitHubWriteAdapter,
+    GitPushTransport,
+)
 from ..database import FoundryDatabase
 from ..effects import execute_fabric_effect
 from .model import ClaimOutcome, FabricError
@@ -41,6 +52,12 @@ class ExecutorContext:
     github_write_adapter: GitHubWriteAdapter | None = None
     github_writes_enabled: bool = False
     github_authorized_repositories: tuple[str, ...] = ()
+    github_repository_authorization: GitHubRepositoryAuthorization | None = None
+    github_push_transport: GitPushTransport | None = None
+    gmail_api_provider: GmailApiProvider | None = None
+    gmail_credential: CredentialHandle | None = None
+    gmail_identity: ProviderIdentity | None = None
+    gmail_send_authorization: GmailSendAuthorization | None = None
     doc_transport: Callable[[str], tuple[int, bytes]] | None = None
 
     def __post_init__(self) -> None:
@@ -373,6 +390,84 @@ def github_pull_request_create(ctx: ExecutorContext, payload: Mapping[str, Any])
         "github.pull_request.create",
         endpoint,
         {"title": title, "head": head, "base": base, "body": body},
+    )
+
+
+def github_pull_request_publish(
+    ctx: ExecutorContext, payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Run deterministic branch/push/PR through the V12 journaled driver."""
+
+    authorization = ctx.github_repository_authorization
+    if authorization is None:
+        return {
+            "claimed": "BLOCKED", "performed": False,
+            "error_code": "owner_repository_authorization_required",
+        }
+    adapter = ctx.github_write_adapter
+    if adapter is None:
+        if ctx.github_write is None:
+            return {
+                "claimed": "BLOCKED", "performed": False,
+                "error_code": "github_write_transport_required",
+            }
+        adapter = GitHubWriteAdapter(
+            transport=ctx.github_write,
+            read_transport=ctx.github_api,
+            dispatch_enabled=ctx.github_writes_enabled,
+            authorized_repositories=ctx.github_authorized_repositories,
+        )
+        ctx.github_write_adapter = adapter
+    request = payload.get("_adapter_request")
+    effect_id = request.get("effect_id") if isinstance(request, Mapping) else None
+    driver = GitHubPullRequestEffectDriver(
+        ctx.database,
+        owned_root=ctx.owned_root,
+        adapter=adapter,
+        push_transport=ctx.github_push_transport,
+    )
+    return driver.publish(
+        authorization=authorization,
+        worktree=str(payload["worktree"]),
+        owner=str(payload["owner"]),
+        repo=str(payload["repo"]),
+        remote=str(payload["remote"]),
+        base=str(payload.get("base") or "main"),
+        head_sha=str(payload["head_sha"]),
+        title=str(payload["title"]),
+        body=str(payload.get("body") or ""),
+        effect_id=str(effect_id) if effect_id else None,
+        mission_id=str(payload.get("mission_id") or "") or None,
+        stop_path=str(payload.get("stop_path")) if payload.get("stop_path") else None,
+    )
+
+
+def gmail_send(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Send one owner-only message through the V12 journaled Gmail driver."""
+
+    if (
+        ctx.gmail_api_provider is None
+        or ctx.gmail_credential is None
+        or ctx.gmail_identity is None
+        or ctx.gmail_send_authorization is None
+    ):
+        return {
+            "claimed": "BLOCKED", "performed": False,
+            "error_code": "gmail_send_activation_required",
+        }
+    request = payload.get("_adapter_request")
+    effect_id = request.get("effect_id") if isinstance(request, Mapping) else None
+    driver = GmailSendEffectDriver(ctx.database, ctx.gmail_api_provider)
+    return driver.send(
+        authorization=ctx.gmail_send_authorization,
+        credential=ctx.gmail_credential,
+        identity=ctx.gmail_identity,
+        recipient=str(payload["recipient"]),
+        subject=str(payload["subject"]),
+        body_text=str(payload["body_text"]),
+        effect_id=str(effect_id) if effect_id else None,
+        mission_id=str(payload.get("mission_id") or "") or None,
+        stop_path=str(payload.get("stop_path")) if payload.get("stop_path") else None,
     )
 
 
@@ -1215,6 +1310,8 @@ HANDLERS: dict[str, Callable[[ExecutorContext, Mapping[str, Any]], dict[str, Any
     "github.identity.read": github_identity,
     "github.issue.create": github_issue_create,
     "github.pull_request.create": github_pull_request_create,
+    "github.pull_request.publish": github_pull_request_publish,
+    "gmail.send": gmail_send,
     "http.read": http_read,
     "http.write": http_write,
     "http.doc.read": http_doc_read,
