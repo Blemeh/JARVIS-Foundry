@@ -148,6 +148,8 @@ def test_fabric_mutations_use_one_effect_identity_and_independent_github_readbac
         database=database,
         owned_root=owned,
         github_write=github_write,
+        github_writes_enabled=True,
+        github_authorized_repositories=("owner/repo",),
     )
     github_payload = {
         "owner": "owner", "repo": "repo",

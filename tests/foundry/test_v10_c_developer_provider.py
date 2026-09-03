@@ -156,7 +156,12 @@ def test_github_write_adapter_identity_readback_and_duplicate_prevention() -> No
         assert endpoint == "/repos/owner/demo/issues/7"
         return 200, json.dumps(document).encode("utf-8")
 
-    adapter = GitHubWriteAdapter(transport=transport, read_transport=read)
+    adapter = GitHubWriteAdapter(
+        transport=transport,
+        read_transport=read,
+        dispatch_enabled=True,
+        authorized_repositories=("owner/demo",),
+    )
     payload = {"title": "bounded issue", "body": "from V10-C"}
     result = adapter.write("github.issue.create", "/repos/owner/demo/issues", payload)
     assert result["claimed"] == "COMPLETED"
@@ -194,7 +199,12 @@ def test_github_timeout_stays_unknown_until_collection_reconciliation() -> None:
         assert endpoint == "/repos/owner/demo/issues/12"
         return 200, json.dumps(item).encode("utf-8")
 
-    adapter = GitHubWriteAdapter(transport=timeout, read_transport=read)
+    adapter = GitHubWriteAdapter(
+        transport=timeout,
+        read_transport=read,
+        dispatch_enabled=True,
+        authorized_repositories=("owner/demo",),
+    )
     payload = {"title": "ambiguous issue", "body": "timeout-after-effect"}
     first = adapter.write("github.issue.create", "/repos/owner/demo/issues", payload)
     assert first["claimed"] == "UNKNOWN"

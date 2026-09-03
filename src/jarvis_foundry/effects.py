@@ -224,6 +224,9 @@ def effect_state(database: FoundryDatabase,
     failed = _event_payloads(database, "system.action_failed", action_key)
     frozen = _event_payloads(database, "effect.frozen", action_key)
     compensated = _event_payloads(database, "effect.compensated", action_key)
+    terminal_truth = _event_payloads(
+        database, "effect.terminal_truth", action_key,
+    )
     if journal is None and not started:
         state["status"] = "UNKNOWN"
         return state
@@ -262,6 +265,11 @@ def effect_state(database: FoundryDatabase,
         state["frozen_reason"] = frozen[-1].get("reason")
     if compensated:
         state["compensation_ref"] = compensated[-1].get("compensation_ref")
+    if terminal_truth:
+        truth = terminal_truth[-1]
+        state["terminal_outcome"] = truth.get("outcome")
+        state["accepted"] = bool(truth.get("accepted"))
+        state["reconciled"] = bool(truth.get("reconciled"))
     return state
 
 
@@ -472,6 +480,23 @@ def _fabric_effect_result(
 ) -> dict[str, Any] | None:
     """Return the safe result recorded by a Fabric-owned journal transition."""
 
+    truths = _event_payloads(database, "effect.terminal_truth", action_key)
+    if truths:
+        raw_truth = truths[-1].get("result")
+        if isinstance(raw_truth, Mapping):
+            result = dict(raw_truth)
+            result.update({
+                "claimed": str(truths[-1].get("outcome") or COMPLETED),
+                "action_key": action_key,
+                "journal_state": status,
+                "performed": False,
+                "replayed": True,
+                "reconciled": bool(truths[-1].get("reconciled")),
+                "accepted": bool(truths[-1].get("accepted")),
+                "terminal_truth": True,
+            })
+            return result
+
     event_types = (
         "system.action_completed",
         "system.action_failed",
@@ -495,6 +520,111 @@ def _fabric_effect_result(
         "replayed": True,
     })
     return result
+
+
+def _safe_effect_evidence(
+    value: Mapping[str, Any], *, field_name: str,
+) -> dict[str, Any]:
+    """Return a bounded secret-safe evidence object for the effect ledger."""
+
+    if not isinstance(value, Mapping):
+        raise ValueError(f"{field_name} must be an object")
+    try:
+        encoded = canonical_json(dict(value))
+    except (TypeError, ValueError) as error:
+        raise ValueError(f"{field_name} must be JSON-safe") from error
+    if len(encoded.encode("utf-8")) > 128 * 1024:
+        raise ValueError(f"{field_name} exceeds the effect evidence limit")
+    if contains_secret_like(encoded):
+        raise ValueError(f"{field_name} contains secret-like material")
+    decoded = json.loads(encoded)
+    if not isinstance(decoded, dict):
+        raise ValueError(f"{field_name} must be an object")
+    return decoded
+
+
+def finalize_verified_effect(
+    database: FoundryDatabase,
+    action_key: str,
+    *,
+    provider_receipt: Mapping[str, Any],
+    readback: Mapping[str, Any],
+    result: Mapping[str, Any],
+    acceptance_evidence: Mapping[str, Any] | None = None,
+    reconciled: bool = False,
+) -> dict[str, Any]:
+    """Append provider proof and accepted terminal truth to one journaled effect.
+
+    This is the reconciliation completion seam for irreversible effects.  It
+    never rewrites the original ``COMPLETED``/``FROZEN`` projection.  A
+    provider receipt, independent matching readback, acceptance record, and
+    terminal truth are appended in that order.  A later replay can therefore
+    return the accepted result without dispatching again, including when the
+    original call timed out after the provider accepted it.
+    """
+
+    state = effect_state(database, action_key)
+    if state.get("status") not in _TERMINAL:
+        raise EffectStateError(
+            f"effect {action_key} is {state.get('status')} — terminal "
+            "provider proof requires a terminal journal state"
+        )
+    receipt = _safe_effect_evidence(
+        provider_receipt, field_name="provider_receipt",
+    )
+    observed = _safe_effect_evidence(readback, field_name="readback")
+    safe_result = _safe_effect_evidence(result, field_name="result")
+    acceptance = _safe_effect_evidence(
+        acceptance_evidence or {}, field_name="acceptance_evidence",
+    )
+    if observed.get("status") != "MATCH" or observed.get("matches") is not True:
+        raise EffectStateError(
+            "independent provider readback must be MATCH before acceptance"
+        )
+    if not receipt.get("provider_id") or not receipt.get("provider_ref"):
+        raise EffectStateError(
+            "provider receipt requires provider_id and provider_ref"
+        )
+
+    _append(database, "effect.provider_receipt", {
+        "action_key": action_key,
+        "provider_receipt": receipt,
+    }, "provider-receipt", full_payload_key=True)
+    _append(database, "effect.readback_observed", {
+        "action_key": action_key,
+        "readback": observed,
+    }, "readback", full_payload_key=True)
+    if state.get("status") == FROZEN or reconciled:
+        _append(database, "effect.reconciled", {
+            "action_key": action_key,
+            "provider_claim": observed,
+            "provider_receipt": receipt,
+        }, "reconciled.accepted", full_payload_key=True)
+    _append(database, "effect.acceptance_recorded", {
+        "action_key": action_key,
+        "accepted": True,
+        "provider_id": receipt["provider_id"],
+        "provider_ref": receipt["provider_ref"],
+        "evidence": acceptance,
+    }, "acceptance", full_payload_key=True)
+    _append(database, "effect.terminal_truth", {
+        "action_key": action_key,
+        "outcome": COMPLETED,
+        "accepted": True,
+        "reconciled": bool(state.get("status") == FROZEN or reconciled),
+        "provider_id": receipt["provider_id"],
+        "provider_ref": receipt["provider_ref"],
+        "result": safe_result,
+    }, "terminal-truth", full_payload_key=True)
+    return {
+        **safe_result,
+        "claimed": COMPLETED,
+        "action_key": action_key,
+        "journal_state": state["status"],
+        "accepted": True,
+        "reconciled": bool(state.get("status") == FROZEN or reconciled),
+        "terminal_truth": True,
+    }
 
 
 def execute_fabric_effect(

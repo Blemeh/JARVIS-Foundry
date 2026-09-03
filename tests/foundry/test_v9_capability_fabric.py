@@ -266,7 +266,14 @@ def test_github_issue_create_uses_injected_transport(tmp_path: Path) -> None:
         })
         return 200, body.encode("utf-8")
 
-    ctx = _ctx(tmp_path, database, github_write=write, github_api=read)
+    ctx = _ctx(
+        tmp_path,
+        database,
+        github_write=write,
+        github_api=read,
+        github_writes_enabled=True,
+        github_authorized_repositories=("owner/demo",),
+    )
     seed_builtins(database)
     result = execute_action(
         database, ctx, _intent("github.issue.create"), "github.issue.create",
@@ -662,7 +669,14 @@ def test_workflow_branch_push_and_pull_request_create_then_read(
         return 404, b"{}"
 
     database = _db(tmp_path)
-    ctx = _ctx(tmp_path, database, github_api=api, github_write=write)
+    ctx = _ctx(
+        tmp_path,
+        database,
+        github_api=api,
+        github_write=write,
+        github_writes_enabled=True,
+        github_authorized_repositories=("acme/demo",),
+    )
     seed_builtins(database)
     work, bare = _clone_repo(tmp_path, ctx.owned_root)
     result = run_workflow(

@@ -39,6 +39,8 @@ class ExecutorContext:
     github_api: Callable[[str], tuple[int, bytes]] | None = None
     github_write: Callable[[str, Mapping[str, Any]], tuple[int, bytes]] | None = None
     github_write_adapter: GitHubWriteAdapter | None = None
+    github_writes_enabled: bool = False
+    github_authorized_repositories: tuple[str, ...] = ()
     doc_transport: Callable[[str], tuple[int, bytes]] | None = None
 
     def __post_init__(self) -> None:
@@ -394,6 +396,8 @@ def _github_write(
         adapter = GitHubWriteAdapter(
             transport=transport,
             read_transport=ctx.github_api,
+            dispatch_enabled=ctx.github_writes_enabled,
+            authorized_repositories=ctx.github_authorized_repositories,
         )
         ctx.github_write_adapter = adapter
     result = adapter.write(action_kind, endpoint, request)

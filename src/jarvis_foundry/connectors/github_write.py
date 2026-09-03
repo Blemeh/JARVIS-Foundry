@@ -22,12 +22,27 @@ import re
 import shutil
 import subprocess
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Callable, Mapping
 
+from ..control.broker import emergency_stop_reason
 from ..control.redaction import redact_text
+from ..database import FoundryDatabase
+from ..effects import (
+    COMPLETED,
+    FAILED,
+    FROZEN,
+    STARTED,
+    effect_state,
+    execute_fabric_effect,
+    fabric_effect_id,
+    finalize_verified_effect,
+    freeze_effect,
+)
 from ..events import canonical_json
 from ..systems import external_action_key
 from .contract import ConnectorSpec
+from .git import GitConnector
 
 _ENDPOINT = re.compile(r"^/repos/([^/\s]+)/([^/\s]+)/(issues|pulls)$")
 _MAX_RESPONSE_BYTES = 256 * 1024
@@ -35,6 +50,8 @@ _WRITE_ACTIONS = frozenset({
     "github.issue.create",
     "github.pull_request.create",
 })
+_REPOSITORY = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+_BRANCH = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$")
 
 GITHUB_WRITE_SPEC = ConnectorSpec(
     connector_id="conn-github-write-v1",
@@ -281,9 +298,21 @@ class GitHubWriteAdapter:
         *,
         transport: Callable[[str, Mapping[str, Any]], tuple[int, bytes]] = gh_api_write_transport,
         read_transport: Callable[[str], tuple[int, bytes]] | None = None,
+        dispatch_enabled: bool = False,
+        authorized_repositories: tuple[str, ...] = (),
     ) -> None:
         self.transport = transport
         self.read_transport = read_transport
+        self.dispatch_enabled = bool(dispatch_enabled)
+        normalized: set[str] = set()
+        for repository in authorized_repositories:
+            candidate = str(repository).strip()
+            if not _REPOSITORY.fullmatch(candidate):
+                raise GitHubWriteError(
+                    "authorized GitHub repositories must use exact owner/repo identities"
+                )
+            normalized.add(candidate.casefold())
+        self.authorized_repositories = frozenset(normalized)
         self._pending: dict[str, GitHubWriteRequest] = {}
         self._requests: dict[str, GitHubWriteRequest] = {}
         self._completed: dict[str, dict[str, Any]] = {}
@@ -412,6 +441,21 @@ class GitHubWriteAdapter:
     ) -> dict[str, Any]:
         request = GitHubWriteRequest.build(action_kind, endpoint, payload)
         key = request.idempotency_key
+        repository = f"{request.owner}/{request.repo}".casefold()
+        if not self.dispatch_enabled:
+            return self._base_result(
+                request,
+                claimed="BLOCKED",
+                status=None,
+                error_code="github_writes_disabled",
+            )
+        if repository not in self.authorized_repositories:
+            return self._base_result(
+                request,
+                claimed="BLOCKED",
+                status=None,
+                error_code="repository_not_authorized",
+            )
         self._requests[key] = request
         prior = self._completed.get(key)
         if prior is not None:
@@ -604,13 +648,739 @@ class GitHubWriteAdapter:
             return result
         return self._reconcile_collection(request)
 
+    def reconcile_request(
+        self,
+        action_kind: str,
+        endpoint: str,
+        payload: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Reconcile a deterministic request after process-local state was lost.
+
+        Reconciliation is read-only and remains available while dispatch is
+        disabled or STOP is active.  The caller must still supply the exact
+        canonical request, which reconstructs the same effect key.
+        """
+
+        request = GitHubWriteRequest.build(action_kind, endpoint, payload)
+        repository = f"{request.owner}/{request.repo}".casefold()
+        if repository not in self.authorized_repositories:
+            result = self._base_result(
+                request,
+                claimed="BLOCKED",
+                status=None,
+                error_code="repository_not_authorized",
+            )
+            result["reconciliation_required"] = True
+            return result
+        self._requests[request.idempotency_key] = request
+        return self._reconcile_collection(request)
+
     def __call__(self, endpoint: str, payload: Mapping[str, Any]) -> tuple[int, bytes]:
         """Expose the legacy callback shape for explicit seam injection."""
 
         return self.transport(endpoint, payload)
 
 
+@dataclass(frozen=True, slots=True)
+class GitHubRepositoryAuthorization:
+    """Exact owner grant for one repository and bounded PR bases."""
+
+    authorization_id: str
+    repository: str
+    remote: str
+    allowed_base_branches: tuple[str, ...] = ("main",)
+    owner_authorized: bool = False
+    dispatch_enabled: bool = False
+    capability_trust: str = "ESTABLISHED"
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.authorization_id, str) or not self.authorization_id.strip():
+            raise GitHubWriteError("GitHub authorization_id is required")
+        repository = str(self.repository).strip()
+        if not _REPOSITORY.fullmatch(repository):
+            raise GitHubWriteError("GitHub repository must use exact owner/repo identity")
+        if not isinstance(self.remote, str) or not self.remote.strip():
+            raise GitHubWriteError("GitHub authorized remote is required")
+        bases = tuple(str(item).strip() for item in self.allowed_base_branches)
+        if not bases or any(not _BRANCH.fullmatch(item) for item in bases):
+            raise GitHubWriteError("GitHub allowed base branches are invalid")
+        object.__setattr__(self, "authorization_id", self.authorization_id.strip())
+        object.__setattr__(self, "repository", repository)
+        object.__setattr__(self, "remote", self.remote.strip())
+        object.__setattr__(self, "allowed_base_branches", bases)
+        object.__setattr__(self, "capability_trust", str(self.capability_trust).upper())
+
+    def refusal(
+        self, *, repository: str, remote: str, base: str,
+    ) -> str | None:
+        if self.capability_trust == "PROBATION":
+            return "probation_capability_irreversible_effect_forbidden"
+        if not self.owner_authorized:
+            return "owner_authorization_required"
+        if not self.dispatch_enabled:
+            return "github_writes_disabled"
+        if repository.casefold() != self.repository.casefold():
+            return "repository_not_authorized"
+        if str(remote) != self.remote:
+            return "remote_not_authorized"
+        if base not in self.allowed_base_branches:
+            return "base_branch_not_authorized"
+        return None
+
+
+@dataclass(frozen=True, slots=True)
+class GitHubPullRequestPlan:
+    """Stable branch, push, and PR identities for one owner intent."""
+
+    owner: str
+    repo: str
+    remote: str
+    base: str
+    head_sha: str
+    title: str
+    body: str
+    branch: str
+    intent_id: str
+    branch_effect_id: str
+    push_effect_id: str
+    pull_request_effect_id: str
+
+    @classmethod
+    def build(
+        cls,
+        *,
+        owner: str,
+        repo: str,
+        remote: str,
+        base: str,
+        head_sha: str,
+        title: str,
+        body: str = "",
+        effect_id: str | None = None,
+    ) -> "GitHubPullRequestPlan":
+        repository = f"{str(owner).strip()}/{str(repo).strip()}"
+        if not _REPOSITORY.fullmatch(repository):
+            raise GitHubWriteError("GitHub owner/repo identity is invalid")
+        base_value = str(base).strip()
+        if not _BRANCH.fullmatch(base_value):
+            raise GitHubWriteError("GitHub base branch is invalid")
+        sha = str(head_sha).strip().lower()
+        if not re.fullmatch(r"[0-9a-f]{40}", sha):
+            raise GitHubWriteError("GitHub head_sha must be a full Git object id")
+        title_value = str(title).strip()
+        if not title_value or len(title_value) > 256:
+            raise GitHubWriteError("GitHub pull request title is required and bounded")
+        body_value = str(body)
+        if len(body_value.encode("utf-8")) > 64 * 1024:
+            raise GitHubWriteError("GitHub pull request body exceeds the bounded limit")
+        identity_material = {
+            "repository": repository.casefold(),
+            "base": base_value,
+            "head_sha": sha,
+            "title": title_value,
+            "body_hash": hashlib.sha256(body_value.encode("utf-8")).hexdigest(),
+        }
+        digest = hashlib.sha256(
+            canonical_json(identity_material).encode("utf-8")
+        ).hexdigest()
+        branch = f"jarvis/effect-{digest[:16]}"
+        root_effect = effect_id or fabric_effect_id(
+            system_id="github",
+            target_ref=repository,
+            capability_id="cap.github.pull_request.publish",
+            capability_version="1.0.0",
+            action_kind="github.pull_request.publish",
+            input_payload=identity_material,
+        )
+        branch_effect = fabric_effect_id(
+            system_id="git",
+            target_ref=branch,
+            capability_id="cap.git.branch",
+            capability_version="1.0.0",
+            action_kind="git.branch",
+            input_payload={"branch": branch, "head_sha": sha},
+        )
+        push_effect = fabric_effect_id(
+            system_id="github",
+            target_ref=f"{repository}:{branch}",
+            capability_id="cap.git.push",
+            capability_version="1.0.0",
+            action_kind="git.push",
+            input_payload={
+                "repository": repository.casefold(),
+                "remote": str(remote),
+                "branch": branch,
+                "head_sha": sha,
+            },
+        )
+        return cls(
+            owner=repository.split("/", 1)[0],
+            repo=repository.split("/", 1)[1],
+            remote=str(remote),
+            base=base_value,
+            head_sha=sha,
+            title=title_value,
+            body=body_value,
+            branch=branch,
+            intent_id=f"github-pr-intent:{digest}",
+            branch_effect_id=branch_effect,
+            push_effect_id=push_effect,
+            pull_request_effect_id=str(root_effect),
+        )
+
+
+GitPushTransport = Callable[[Path, str, str, str], None]
+
+
+class GitHubPullRequestEffectDriver:
+    """Owner-bound branch/push/PR driver over the canonical effect journal."""
+
+    def __init__(
+        self,
+        database: FoundryDatabase,
+        *,
+        owned_root: str | Path,
+        adapter: GitHubWriteAdapter,
+        push_transport: GitPushTransport | None = None,
+    ) -> None:
+        self.database = database
+        self.git = GitConnector(database, owned_root=owned_root)
+        self.adapter = adapter
+        self.push_transport = push_transport or self._default_push
+
+    @staticmethod
+    def _run_git(worktree: Path, *args: str) -> str:
+        result = subprocess.run(
+            ["git", "-C", str(worktree), *args],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=60,
+            check=False,
+        )
+        if result.returncode != 0:
+            raise GitHubWriteTransportError(
+                "git_error", redact_text(result.stderr.strip() or "git command failed")
+            )
+        return result.stdout.strip()
+
+    @classmethod
+    def _default_push(
+        cls, worktree: Path, remote: str, branch: str, head_sha: str,
+    ) -> None:
+        try:
+            result = subprocess.run(
+                [
+                    "git", "-C", str(worktree), "push", remote,
+                    f"{head_sha}:refs/heads/{branch}",
+                ],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=90,
+                check=False,
+            )
+        except subprocess.TimeoutExpired as error:
+            raise TimeoutError("GitHub branch push timed out") from error
+        if result.returncode != 0:
+            raise GitHubWriteTransportError(
+                "push_rejected",
+                redact_text(result.stderr.strip() or "git push failed"),
+            )
+
+    @staticmethod
+    def _blocked(plan: GitHubPullRequestPlan, code: str) -> dict[str, Any]:
+        return {
+            "claimed": "BLOCKED",
+            "performed": False,
+            "intent_id": plan.intent_id,
+            "branch": plan.branch,
+            "effect_id": plan.pull_request_effect_id,
+            "error_code": code,
+            "external_effects": 0,
+        }
+
+    def _stopped(self, stop_path: str | None, mission_id: str | None) -> bool:
+        identities = {"GLOBAL"}
+        if mission_id:
+            identities.add(mission_id)
+        return emergency_stop_reason(
+            self.database, stop_path, identities=identities,
+        ) is not None
+
+    def _ensure_branch(
+        self, plan: GitHubPullRequestPlan, worktree: Path,
+        *, stop_path: str | None, mission_id: str | None,
+    ) -> dict[str, Any]:
+        def perform() -> Mapping[str, Any]:
+            current = self._run_git(
+                worktree, "show-ref", "--verify", "--hash",
+                f"refs/heads/{plan.branch}",
+            ) if self._branch_exists(worktree, plan.branch) else None
+            if current is not None and current != plan.head_sha:
+                raise GitHubWriteError(
+                    "deterministic GitHub effect branch exists at a different head"
+                )
+            if current is None:
+                self._run_git(worktree, "branch", plan.branch, plan.head_sha)
+            observed = self._run_git(worktree, "rev-parse", plan.branch)
+            return {
+                "claimed": "COMPLETED" if observed == plan.head_sha else "FAILED",
+                "performed": current is None,
+                "branch": plan.branch,
+                "head_sha": observed,
+            }
+
+        return execute_fabric_effect(
+            self.database,
+            action_key=plan.branch_effect_id,
+            system_id="git",
+            target_ref=str(worktree),
+            payload_hash=plan.branch_effect_id.removeprefix("effect:"),
+            kind="git.branch",
+            connector_id="conn-git-v5",
+            expected_effects=(f"local branch {plan.branch} at {plan.head_sha}",),
+            request_identity={
+                "intent_id": plan.intent_id,
+                "branch": plan.branch,
+                "head_sha": plan.head_sha,
+            },
+            perform=perform,
+            stop_check=lambda: self._stopped(stop_path, mission_id),
+        )
+
+    @classmethod
+    def _branch_exists(cls, worktree: Path, branch: str) -> bool:
+        result = subprocess.run(
+            ["git", "-C", str(worktree), "show-ref", "--verify", "--quiet",
+             f"refs/heads/{branch}"],
+            capture_output=True,
+            timeout=30,
+            check=False,
+        )
+        return result.returncode == 0
+
+    @staticmethod
+    def _push_receipt(plan: GitHubPullRequestPlan) -> dict[str, Any]:
+        return {
+            "provider_id": f"github:ref:{plan.owner}/{plan.repo}:{plan.branch}",
+            "provider_ref": (
+                f"https://github.com/{plan.owner}/{plan.repo}/tree/{plan.branch}"
+            ),
+            "repository": f"{plan.owner}/{plan.repo}",
+            "branch": plan.branch,
+            "head_sha": plan.head_sha,
+        }
+
+    def _push_readback(self, plan: GitHubPullRequestPlan) -> dict[str, Any]:
+        try:
+            observed = self.git.read_ref(plan.remote, plan.branch)
+        except Exception as error:  # noqa: BLE001 - readback remains UNKNOWN
+            return {
+                "status": "UNKNOWN", "matches": False,
+                "reason": type(error).__name__,
+            }
+        return {
+            "status": "MATCH" if observed == plan.head_sha else "NOT_OBSERVED",
+            "matches": observed == plan.head_sha,
+            "observed_head": observed,
+            "expected_head": plan.head_sha,
+            "source": "git ls-remote",
+        }
+
+    def _finalize_push(
+        self, plan: GitHubPullRequestPlan, *, reconciled: bool,
+    ) -> dict[str, Any] | None:
+        readback = self._push_readback(plan)
+        if readback.get("matches") is not True:
+            return None
+        receipt = self._push_receipt(plan)
+        result = {
+            "claimed": "COMPLETED",
+            "performed": not reconciled,
+            "intent_id": plan.intent_id,
+            "repository": f"{plan.owner}/{plan.repo}",
+            "branch": plan.branch,
+            "remote_head": plan.head_sha,
+            "provider_id": receipt["provider_id"],
+            "provider_ref": receipt["provider_ref"],
+            "readback": readback,
+            "readback_status": "MATCH",
+        }
+        return finalize_verified_effect(
+            self.database,
+            plan.push_effect_id,
+            provider_receipt=receipt,
+            readback=readback,
+            result=result,
+            acceptance_evidence={
+                "intent_id": plan.intent_id,
+                "criterion": "remote branch resolves to exact head SHA",
+            },
+            reconciled=reconciled,
+        )
+
+    def _push(
+        self, plan: GitHubPullRequestPlan, worktree: Path,
+        *, stop_path: str | None, mission_id: str | None,
+    ) -> dict[str, Any]:
+        state = effect_state(self.database, plan.push_effect_id)
+        if state.get("status") == STARTED:
+            freeze_effect(
+                self.database, plan.push_effect_id,
+                reason="interrupted GitHub branch push requires provider readback",
+            )
+            state = effect_state(self.database, plan.push_effect_id)
+        if state.get("status") in {COMPLETED, FROZEN}:
+            reconciled = self._finalize_push(plan, reconciled=True)
+            if reconciled is not None:
+                reconciled.update({"performed": False, "replayed": True})
+                return reconciled
+            return {
+                "claimed": "UNKNOWN",
+                "performed": False,
+                "action_key": plan.push_effect_id,
+                "journal_state": state["status"],
+                "intent_id": plan.intent_id,
+                "branch": plan.branch,
+                "reconciliation_required": True,
+                "error_code": "remote_branch_not_observed",
+            }
+        if state.get("status") == FAILED:
+            return execute_fabric_effect(
+                self.database,
+                action_key=plan.push_effect_id,
+                system_id="github",
+                target_ref=f"{plan.owner}/{plan.repo}:{plan.branch}",
+                payload_hash=plan.push_effect_id.removeprefix("effect:"),
+                kind="git.push",
+                connector_id="conn-git-v5",
+                perform=lambda: {},
+            )
+
+        def perform() -> Mapping[str, Any]:
+            self.push_transport(worktree, plan.remote, plan.branch, plan.head_sha)
+            readback = self._push_readback(plan)
+            receipt = self._push_receipt(plan)
+            if readback.get("matches") is not True:
+                return {
+                    "claimed": "UNKNOWN",
+                    "performed": True,
+                    "intent_id": plan.intent_id,
+                    "provider_id": receipt["provider_id"],
+                    "provider_ref": receipt["provider_ref"],
+                    "readback": readback,
+                    "readback_status": readback.get("status"),
+                    "reconciliation_required": True,
+                    "error_code": "remote_branch_not_observed",
+                }
+            return {
+                "claimed": "COMPLETED",
+                "performed": True,
+                "intent_id": plan.intent_id,
+                "provider_id": receipt["provider_id"],
+                "provider_ref": receipt["provider_ref"],
+                "branch": plan.branch,
+                "remote_head": plan.head_sha,
+                "readback": readback,
+                "readback_status": "MATCH",
+            }
+
+        result = execute_fabric_effect(
+            self.database,
+            action_key=plan.push_effect_id,
+            system_id="github",
+            target_ref=f"{plan.owner}/{plan.repo}:{plan.branch}",
+            payload_hash=plan.push_effect_id.removeprefix("effect:"),
+            kind="git.push",
+            connector_id="conn-git-v5",
+            expected_effects=(f"remote branch {plan.branch} at {plan.head_sha}",),
+            request_identity={
+                "intent_id": plan.intent_id,
+                "repository": f"{plan.owner}/{plan.repo}",
+                "branch": plan.branch,
+                "head_sha": plan.head_sha,
+            },
+            perform=perform,
+            stop_check=lambda: self._stopped(stop_path, mission_id),
+        )
+        if result.get("claimed") == COMPLETED:
+            finalized = self._finalize_push(plan, reconciled=False)
+            if finalized is not None:
+                finalized["performed"] = bool(result.get("performed"))
+                return finalized
+        return result
+
+    @staticmethod
+    def _pr_payload(plan: GitHubPullRequestPlan) -> dict[str, Any]:
+        return {
+            "title": plan.title,
+            "head": plan.branch,
+            "base": plan.base,
+            "body": plan.body,
+        }
+
+    def _finalize_pr(
+        self,
+        plan: GitHubPullRequestPlan,
+        result: Mapping[str, Any],
+        *,
+        reconciled: bool,
+    ) -> dict[str, Any] | None:
+        readback = result.get("readback")
+        if not isinstance(readback, Mapping) or readback.get("matches") is not True:
+            return None
+        provider_id = result.get("provider_id")
+        provider_ref = result.get("provider_ref")
+        if not provider_id or not provider_ref:
+            return None
+        receipt = {
+            "provider_id": provider_id,
+            "provider_ref": provider_ref,
+            "number": result.get("number"),
+            "repository": f"{plan.owner}/{plan.repo}",
+            "branch": plan.branch,
+        }
+        safe_result = {
+            **dict(result),
+            "intent_id": plan.intent_id,
+            "effect_id": plan.pull_request_effect_id,
+        }
+        return finalize_verified_effect(
+            self.database,
+            plan.pull_request_effect_id,
+            provider_receipt=receipt,
+            readback=readback,
+            result=safe_result,
+            acceptance_evidence={
+                "intent_id": plan.intent_id,
+                "criterion": "pull request fields independently match intent",
+            },
+            reconciled=reconciled,
+        )
+
+    def _pull_request(
+        self, plan: GitHubPullRequestPlan,
+        *, stop_path: str | None, mission_id: str | None,
+    ) -> dict[str, Any]:
+        endpoint = f"/repos/{plan.owner}/{plan.repo}/pulls"
+        payload = self._pr_payload(plan)
+        state = effect_state(self.database, plan.pull_request_effect_id)
+        if state.get("status") == STARTED:
+            freeze_effect(
+                self.database, plan.pull_request_effect_id,
+                reason="interrupted GitHub PR dispatch requires provider readback",
+            )
+            state = effect_state(self.database, plan.pull_request_effect_id)
+        if state.get("status") in {COMPLETED, FROZEN}:
+            observed = self.adapter.reconcile_request(
+                "github.pull_request.create", endpoint, payload,
+            )
+            finalized = self._finalize_pr(
+                plan, observed, reconciled=True,
+            )
+            if finalized is not None:
+                finalized.update({"performed": False, "replayed": True})
+                return finalized
+            return {
+                **dict(observed),
+                "claimed": "UNKNOWN",
+                "performed": False,
+                "action_key": plan.pull_request_effect_id,
+                "journal_state": state["status"],
+                "intent_id": plan.intent_id,
+                "reconciliation_required": True,
+            }
+
+        def perform() -> Mapping[str, Any]:
+            result = self.adapter.write(
+                "github.pull_request.create", endpoint, payload,
+            )
+            if (
+                result.get("claimed") == COMPLETED
+                and result.get("readback_status") == "MATCH"
+            ):
+                return result
+            if result.get("claimed") == COMPLETED:
+                return {
+                    **result,
+                    "claimed": "UNKNOWN",
+                    "reconciliation_required": True,
+                    "error_code": "independent_readback_required",
+                }
+            return result
+
+        result = execute_fabric_effect(
+            self.database,
+            action_key=plan.pull_request_effect_id,
+            system_id="github",
+            target_ref=f"{plan.owner}/{plan.repo}",
+            payload_hash=plan.pull_request_effect_id.removeprefix("effect:"),
+            kind="github.pull_request.create",
+            connector_id=self.adapter.spec.connector_id,
+            expected_effects=(
+                f"pull request from {plan.branch} to {plan.base}",
+            ),
+            request_identity={
+                "intent_id": plan.intent_id,
+                "repository": f"{plan.owner}/{plan.repo}",
+                "branch": plan.branch,
+                "base": plan.base,
+                "head_sha": plan.head_sha,
+            },
+            perform=perform,
+            stop_check=lambda: self._stopped(stop_path, mission_id),
+        )
+        if result.get("claimed") == COMPLETED:
+            finalized = self._finalize_pr(plan, result, reconciled=False)
+            if finalized is not None:
+                finalized["performed"] = bool(result.get("performed"))
+                return finalized
+        return result
+
+    def publish(
+        self,
+        *,
+        authorization: GitHubRepositoryAuthorization,
+        worktree: str | Path,
+        owner: str,
+        repo: str,
+        remote: str,
+        base: str,
+        head_sha: str,
+        title: str,
+        body: str = "",
+        effect_id: str | None = None,
+        mission_id: str | None = None,
+        stop_path: str | None = None,
+    ) -> dict[str, Any]:
+        """Create the deterministic branch, push once, and open one PR."""
+
+        plan = GitHubPullRequestPlan.build(
+            owner=owner,
+            repo=repo,
+            remote=remote,
+            base=base,
+            head_sha=head_sha,
+            title=title,
+            body=body,
+            effect_id=effect_id,
+        )
+        refusal = authorization.refusal(
+            repository=f"{plan.owner}/{plan.repo}",
+            remote=plan.remote,
+            base=plan.base,
+        )
+        if refusal:
+            return self._blocked(plan, refusal)
+        push_state = effect_state(self.database, plan.push_effect_id)
+        pr_state = effect_state(self.database, plan.pull_request_effect_id)
+        pending_external = any(
+            state.get("status") in {STARTED, COMPLETED, FROZEN}
+            for state in (push_state, pr_state)
+        )
+        if self._stopped(stop_path, mission_id) and not pending_external:
+            return self._blocked(plan, "stop_requested")
+
+        owned = self.git._owned_worktree(worktree)
+        actual_head = self._run_git(owned, "rev-parse", plan.head_sha)
+        if actual_head != plan.head_sha:
+            raise GitHubWriteError("GitHub effect head is not present in the worktree")
+        stopped_now = self._stopped(stop_path, mission_id)
+        branch_state = effect_state(self.database, plan.branch_effect_id)
+        if stopped_now and pending_external:
+            if branch_state.get("status") != COMPLETED:
+                return self._blocked(plan, "stop_requested")
+            branch = {
+                "claimed": COMPLETED,
+                "performed": False,
+                "replayed": True,
+                "action_key": plan.branch_effect_id,
+                "journal_state": COMPLETED,
+                "branch": plan.branch,
+                "head_sha": plan.head_sha,
+            }
+        else:
+            branch = self._ensure_branch(
+                plan, owned, stop_path=stop_path, mission_id=mission_id,
+            )
+        if branch.get("claimed") != COMPLETED:
+            return {**branch, "stage": "branch", "intent_id": plan.intent_id}
+        if self._stopped(stop_path, mission_id):
+            push_state = effect_state(self.database, plan.push_effect_id)
+            if push_state.get("status") in {STARTED, COMPLETED, FROZEN}:
+                pushed = self._push(
+                    plan, owned, stop_path=stop_path, mission_id=mission_id,
+                )
+            else:
+                return {
+                    **self._blocked(plan, "stop_requested"),
+                    "stage": "before_push",
+                    "branch_effect": branch,
+                }
+        else:
+            pushed = self._push(
+                plan, owned, stop_path=stop_path, mission_id=mission_id,
+            )
+        if pushed.get("claimed") != COMPLETED:
+            return {
+                **pushed,
+                "stage": "push",
+                "branch_effect": branch,
+                "push_effect": pushed,
+            }
+        if self._stopped(stop_path, mission_id):
+            pr_state = effect_state(
+                self.database, plan.pull_request_effect_id,
+            )
+            if pr_state.get("status") in {STARTED, COMPLETED, FROZEN}:
+                reconciled_pr = self._pull_request(
+                    plan, stop_path=stop_path, mission_id=mission_id,
+                )
+                return {
+                    **reconciled_pr,
+                    "stage": "pull_request_reconciliation_under_stop",
+                    "intent_id": plan.intent_id,
+                    "effect_id": plan.pull_request_effect_id,
+                    "branch": plan.branch,
+                    "head_sha": plan.head_sha,
+                    "branch_effect": branch,
+                    "push_effect": pushed,
+                    "pull_request_effect": reconciled_pr,
+                    "external_effects": (
+                        2 if reconciled_pr.get("claimed") == COMPLETED else 1
+                    ),
+                }
+            return {
+                **self._blocked(plan, "stop_requested"),
+                "stage": "before_pull_request",
+                "external_effects": 1,
+                "branch_effect": branch,
+                "push_effect": pushed,
+            }
+        pull_request = self._pull_request(
+            plan, stop_path=stop_path, mission_id=mission_id,
+        )
+        return {
+            **pull_request,
+            "stage": "complete" if pull_request.get("claimed") == COMPLETED else "pull_request",
+            "intent_id": plan.intent_id,
+            "effect_id": plan.pull_request_effect_id,
+            "branch": plan.branch,
+            "head_sha": plan.head_sha,
+            "branch_effect": branch,
+            "push_effect": pushed,
+            "pull_request_effect": pull_request,
+            "external_effects": 2 if pull_request.get("claimed") == COMPLETED else 1,
+        }
+
+
 __all__ = [
+    "GitHubPullRequestEffectDriver",
+    "GitHubPullRequestPlan",
+    "GitHubRepositoryAuthorization",
     "GitHubWriteAdapter",
     "GitHubWriteError",
     "GitHubWriteRequest",
