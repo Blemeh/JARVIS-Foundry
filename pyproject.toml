@@ -25,6 +25,7 @@ web = [
 
 [project.scripts]
 jarvis = "jarvis_foundry.cli.main:main"
+jarvis-adapter-factory = "jarvis_foundry.adapter_factory.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
