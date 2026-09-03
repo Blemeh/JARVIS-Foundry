@@ -6,12 +6,11 @@ This document is the authoritative current-state record. The frozen roadmap
 remains authoritative for sequencing and scope; its execution pointer is
 `docs/roadmap/JARVIS_1_0_EXECUTION_STATE.yaml`.
 
-Last reconciled: 2026-09-02 after isolated V11 Integration Base 2 combined A2
-judgment, A4 restart/replay durability, accepted-outcome learning truth, and
-productionized continuous observation. A3 remains external and unintegrated.
-V10 remains live.
+Last reconciled: 2026-09-03 after isolated V11 overnight convergence of the
+Backend Stack, A3 initiative bridge, Command Center, and A3/A4 proving
+harness. This is a source candidate only; V10 remains live and unchanged.
 
-DOCUMENTATION STATE BASE SHA: `899e2d3affee41d02145514acb9c308db57afaf6`
+DOCUMENTATION STATE BASE SHA: `f7cee034384ac191dfbac9f910dd6f6d3eb520d4`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`.
@@ -30,10 +29,10 @@ v34 live baseline:            historical predecessor retained for migration proo
 V10 STATUS:                   CLOSED
 V10 EXIT GATE:                PASSED
 CURRENT PHASE:                V11_INITIATIVE
-CURRENT GATE:                 A2 / PASSED_CANDIDATE
-EXECUTION STATUS:             V11_INITIATIVE / A2 / PASSED_CANDIDATE
+CURRENT GATE:                 OVERNIGHT_CONVERGENCE / SOURCE_CANDIDATE
+EXECUTION STATUS:             V11_INITIATIVE / OVERNIGHT_CONVERGENCE / SOURCE_CANDIDATE
 V11 STARTED:                  YES (candidate only)
-V11 COMPLETE:                 NO
+V11 COMPLETE:                 NO (A3 real-provider and A4 endurance gates remain)
 V11 PROMOTED/LIVE:            NO
 A2 IMPLEMENTATION SHA:        91c3deaeefb3fc71ffd091ad0f4abc2e2fd8023c
 PRECONVERGENCE SOURCE SHA:    51eb998642fee713458998bd3f44219a76ab670d
@@ -42,6 +41,67 @@ INTEGRATION BASE 2 SOURCE:    899e2d3affee41d02145514acb9c308db57afaf6
 A4 INPUT SHA:                 daae32cb14d6d8882166d30d515daa9d796c6857
 OUTCOME-TRUTH INPUT SHA:      02e62a85a50bd642a1abdc6e415a2215ac5d2689
 ```
+
+## V11 overnight final convergence source candidate
+
+The isolated source candidate is branch
+`candidate/v11-overnight-convergence-20260902` in
+`C:\temp\JARVIS-V11-Overnight-Convergence-20260902`. It starts from exact
+Integration Base 2 SHA `30998ef06d9be73adb30387c10a7fa72ef910d28` and remains
+schema v40. The source freeze immediately before this documentation pin is
+`f7cee034384ac191dfbac9f910dd6f6d3eb520d4` (the final branch SHA includes this
+docs-only reconciliation commit).
+
+Eligible clean input lanes and their source SHAs were:
+
+- Backend Stack: `c8006303fc769cf6d46e22f3cc3203a70bf4aa73`
+- A3 initiative bridge: `630304b7809de85850e53307191f0f054d86ad61`
+- Command Center final: `af1911392915c87d369baa12e5ea02d9c1cf7304`
+- A3/A4 proving harness: `3716294bf7d104f03e1fa2d990b2a28654ada1cb`
+
+Integration was semantic and ordered Backend Stack, A3, Command Center, then
+the proving harness. Documentation-only and historical terminal commits were
+not consumed. The candidate preserves one Executive, scheduler, Fabric Catalog,
+MissionLoop/effects authority, WIP=1, STOP, idempotent effect identity, and
+final-outcome truth.
+
+The autonomous loop is:
+
+`observe -> meaningful signal -> candidate -> dedupe -> research dossier ->
+score/reject -> capability requirements -> project context -> admission ->
+objective -> verification plan -> MissionLoop/Fabric -> isolated build/test ->
+reconciliation -> verification.accepted -> final outcome -> learning ->
+briefing -> WAIT/continue`
+
+The A3 source bridge is integrated into the existing Executive/MissionLoop
+spine, with explicit A3/continuous-observation mutual exclusion and the
+`cap.tests.run` admission requirement. A3's real
+`opencode_go/muse-spark-1.2-contributor` flagship remains
+`PENDING/NOT_TESTED` behind provider/data-training policy; data-training
+consent was not enabled and no external-worker proof is claimed.
+
+The A4 proving tooling is integrated and the clean v40 A2 barrier passed on
+the frozen candidate with six observations, zero candidates/objectives/
+missions/effects/worktrees, `WAIT`, and SQLite quick check `ok`. Full 48-hour,
+fault-injection, and exact-restart proving remains `PENDING/NOT_TESTED`.
+
+Accepted final mission outcomes now feed calibration, World Intelligence, and
+Tier-C memory exactly once by outcome identity. Failed and blocked outcomes
+remain distinct from success learning and are projected as human-readable
+`mission outcome <status>` memory summaries. Command Center autonomy is an
+additive read projection/API/UI surface with candidate-scoped optional payloads;
+it does not create a competing authority. Frontend checks passed: 132 Vitest
+tests, TypeScript build, ESLint, and production Vite build. Twenty-four
+simulated/source-labelled truth screenshots were captured and visually
+inspected across eight routes and three viewports.
+
+One broad Foundry regression was executed exactly once: `2493 passed, 14
+skipped, 3 initial failures`. Two failures were the expected stale
+documentation pin after evidence capture; the third exposed the Tier-C failed
+mission-summary regression and was repaired in `f7cee034`. The repaired failure
+and adjacent outcome/Command Center coverage passed in a focused `20 passed`
+rerun. The post-pin documentation check is required before any readiness
+claim. No promotion, live mutation, or push was performed.
 
 ## Roadmap and execution state
 
