@@ -6,12 +6,13 @@ This document is the authoritative current-state record. The frozen roadmap
 remains authoritative for sequencing and scope; its execution pointer is
 `docs/roadmap/JARVIS_1_0_EXECUTION_STATE.yaml`.
 
-Last reconciled: 2026-09-03 for the isolated V11 A3/A4 exit-proof freeze.
-The A3 bridge is integrated and the candidate-neutral A3/A4 runner is ready;
-real A3, immediate A4, and the 48-hour elapsed gate are still pending at this
-documentation boundary. V10 remains live and unchanged.
+Last reconciled: 2026-09-03 for the isolated V12 final product convergence
+candidate. V12 Endurance, Self-Expansion, and MCP/Effects are integrated and
+disposable A5/A6-style proof passed, but V12 is not activated and its roadmap
+gates are not closed. The execution pointer remains V11 A3/A4,
+`BLOCKED_BY_PROVIDER`; V10 remains live and unchanged.
 
-DOCUMENTATION STATE BASE SHA: `ea6be6ddebe21f95f10021db4b1972b2dcf2c00a`
+DOCUMENTATION STATE BASE SHA: `90ab7da4820666e195c9d7c4bbf46f385d101597`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`.
@@ -22,7 +23,7 @@ V10 PROMOTED PRODUCT SHA:     faa861c67399d5a3755d778224ff65513bd933a1
 V10 CANONICAL LANDING SHA:    faa861c67399d5a3755d778224ff65513bd933a1
 V10 LIVE RELEASE ID:          rel-faa861c67399-5afeb024
 V10 ROADMAP AUTHORITY SHA:    e9b2155bd669887c4778db0b16a4ef7861d2c9ff
-CURRENT/CANDIDATE SCHEMA:     v40 (isolated V11 exit-proof candidate only)
+CURRENT/CANDIDATE SCHEMA:     v40 (isolated V12 source candidate only)
 LIVE SCHEMA:                  v38
 V2 KNOWLEDGE SCHEMA:          v35 (historical additive migration)
 V3 DISCOVERY/BUILDING SCHEMA: v36 (historical additive migration)
@@ -35,6 +36,16 @@ EXECUTION STATUS:             V11_INITIATIVE / A3_A4_EXIT / BLOCKED_BY_PROVIDER
 V11 STARTED:                  YES (candidate only)
 V11 COMPLETE:                 NO (A3 real-provider and A4 endurance gates remain)
 V11 PROMOTED/LIVE:            NO
+V11 LATEST PROOF SHA:         afddb8d5ca3d5c3459a4f5394e84affb92d13738
+V12 STATUS:                   V12_FINAL_SOURCE_CANDIDATE / NOT ACTIVATED
+V12 BRANCH:                   candidate/v12-final-product-convergence-20260903
+V12 SOURCE SHA:               78922410127de74a37b1aa7cdde3ab144f49ea5c
+V12 EVIDENCE SHA:             90ab7da4820666e195c9d7c4bbf46f385d101597
+V12 PROOF SHA-256:            5be3ff13e8082187d7c78e027ade45e30499ecfc30a025a6c97b7fbb9e835677
+V12 A5 DISPOSABLE PROOF:      PASS_BUILD_AHEAD / GATE NOT CLOSED
+V12 A6 DISPOSABLE PROOF:      PASS_BUILD_AHEAD / GATE NOT CLOSED
+V12 FULL CANONICAL SUITE:     PENDING_POST_PIN
+V12 INDEPENDENT VERIFIER:     PENDING_POST_PIN
 A2 IMPLEMENTATION SHA:        91c3deaeefb3fc71ffd091ad0f4abc2e2fd8023c
 PRECONVERGENCE SOURCE SHA:    51eb998642fee713458998bd3f44219a76ab670d
 CONTINUOUS OBSERVATION INPUT: 8004a8c16aceb888db1d1401c3bc67842cb4746f
@@ -46,7 +57,73 @@ SOURCE FREEZE:                f7cee034384ac191dfbac9f910dd6f6d3eb520d4
 A3/A4 HARNESS INPUT:          3716294bf7d104f03e1fa2d990b2a28654ada1cb
 EXIT-PROOF SOURCE SHA:        ea6be6ddebe21f95f10021db4b1972b2dcf2c00a
 TRAINING-TIER POLICY:         OWNER_AUTHORIZED / CANONICAL CONFIG ENABLED
+GMAIL READ/SEND:              DEFERRED_BY_OWNER
+GMAIL OBSERVATION:            DISABLED
 ```
+
+## V12 final product convergence source candidate
+
+The isolated branch `candidate/v12-final-product-convergence-20260903` in
+`C:\temp\JARVIS-V12-Final-Product-Convergence-20260903` starts from exact V11
+proof SHA `afddb8d5ca3d5c3459a4f5394e84affb92d13738`. The source candidate is
+`78922410127de74a37b1aa7cdde3ab144f49ea5c`; refreshed source-bound evidence is
+commit `90ab7da4820666e195c9d7c4bbf46f385d101597`. Schema remains one
+authoritative v40 chain. Neither commit was promoted, deployed, or applied to
+the live database or runtime.
+
+The convergence semantically consumes:
+
+- Endurance final `49b2c2337a0579519d0b782a5a260673079eb398`
+  through implementation `43da572ca0fb24ae82222cdd02c2e23a76bf95f6`.
+- Self-Expansion final `e159437daeca4f5c5008bf0345adfeafae469c66`
+  through source/evidence `ceede0eeb766216765add95525f840f9ac382224`.
+- MCP/Effects final `1d72dbfe7af40e35d37ce20edacc6bfaeb8badd6`
+  through implementation `b730b708451b0399165e8adbdb037150126cc6c1`.
+
+One authority spine is preserved: Executive campaigns remain subordinate to
+the existing Executive; `MissionLoop` remains the mission runtime; the
+existing wake/scheduler seams own continuation; Fabric Catalog is the sole
+writable capability authority; provider registry/router remains canonical;
+`effects.py` plus Fabric execution own external-effect identity and terminal
+truth; and `FabricMcpBackend` is the only MCP runtime.
+
+The disposable integrated proof is
+`evidence/v12-final-product-convergence/proof.json` (SHA-256
+`5be3ff13e8082187d7c78e027ade45e30499ecfc30a025a6c97b7fbb9e835677`).
+A5 proves a real missing capability, failed first trial, verified adaptation,
+READY/PROBATION registration, one wake, restart identity, resumption of the
+same objective, mission completion, rollback, and stale-receipt refusal. A6
+proves bounded parallel children, compatible provider fallback, all-down WAIT,
+provider recovery, deadline/replan, STOP/RESUME, hard-kill restart, ambiguity
+reconciliation before fallback, ALL/ANY joins, and completion. The real
+disposable MCP proof covers stdio, stable projection/reconnect identity,
+read-only and mutating typed calls, canonical effects, and FROZEN
+timeout-after-effect behavior.
+
+Independent review found three convergence defects before this freeze:
+selected MCP capabilities were not reconstructed by the canonical worker
+stack, failed completion-receipt persistence could leave a process-local
+backend and probation registration active, and the A5 proof reported three
+integrity values as literals. Source `7892241...` repairs all three. The worker
+stack now restores completed durable adoptions into one `FabricMcpBackend`,
+owns and closes that backend per cycle, commits adoption verification and the
+completion receipt atomically, disables an unreceipted projection on failure,
+and measures duplicate missions, false successes, and unreconciled accepted
+effects from the ledger. The 19-file convergence matrix passed 248 tests after
+these repairs. The final canonical suite and fresh final verifier are the
+remaining post-pin checks.
+
+All required integrity counters in the refreshed proof are zero: duplicate
+missions, effects, registrations, wakes, resumes, false successes, and
+unreconciled accepted effects. Gmail read and send are
+`DEFERRED_BY_OWNER`; Gmail observation is `DISABLED`. No Gmail authentication,
+probe, send, observation, or credential requirement occurred.
+
+This is build-ahead source evidence only. A5 and A6 are not roadmap gate
+closures because V11 A3/A4 has not passed on a promoted V11 base. V11 exit
+remains `PENDING`, the 48-hour state remains `NOT_STARTED`, production trust
+remains `SUSPENDED`, and the next authorized action remains the real V11 A3
+restart when the provider recovers.
 
 ## V11 A3/A4 exit-proof source candidate
 
@@ -85,14 +162,16 @@ spine, with explicit A3/continuous-observation mutual exclusion and the
 existing canonical `security.allow_data_training_tiers_noninteractive: true`
 policy for unattended proving. The repository authority is enabled through
 `config/worker_routing.yaml`; no bypass or alternate policy mechanism exists.
-The real `opencode_go/muse-spark-1.2-contributor` flagship remains
-`PENDING/NOT_TESTED` until it runs against the final proof SHA.
+The real `opencode_go/muse-spark-1.2-contributor` flagship is
+`BLOCKED_BY_PROVIDER` after its bounded HTTP 500 failures against the final
+V11 proof state.
 
 The A4 proving tooling is integrated and now includes an exact-SHA,
 candidate-neutral real driver, immediate six-point fault campaign, durable
 post-candidate and post-selection recovery, hard-zero duplicate and false-
 success assertions, and the separately guarded `--allow-48h` runner. Full
-fault-injection and elapsed proving remains `PENDING/NOT_TESTED` at this freeze.
+fault-injection remains `NOT_STARTED`, and elapsed 48-hour proving remains
+`NOT_STARTED` at this freeze.
 
 The first real A3 attempt against proof SHA `cb85fa8a4717fbed4866b18d6c745fd3dbd23381`
 correctly ended `BLOCKED`: the observer treated TODO text inside a Python test
@@ -215,7 +294,9 @@ pre-due added zero events; unchanged due input added zero observations,
 candidates, refreshes, or research; one changed revision refreshed one existing
 candidate and ran one research pass; reopen preserved the due cycle; STOP added
 zero events. GitHub/project/World reads were READY, local web was honestly
-unavailable, and Gmail remained `BLOCKED/DEFERRED`.
+unavailable. At that historical lane boundary Gmail was reported
+`BLOCKED/DEFERRED`; binding current policy is `DEFERRED_BY_OWNER`, with
+observation `DISABLED`.
 
 The combined focused set contains 57 tests: A2, continuous observation, A4's
 eight-point durability harness, 11 outcome-learning cases, and migrations.
@@ -239,11 +320,12 @@ flags. It returns before candidate admission, objective creation, MissionLoop,
 effects, worktree creation, or provider writes.
 
 The final unattended proof used real GitHub, curated Playwright web, and
-bounded owner-project reads; World signals were available but idle, and Gmail
-truthfully remained `BLOCKED/DEFERRED`. The cold cycle recorded 10 observations,
-generated 6 raw and 4 unique candidates, suppressed 2 duplicates, researched
-2 eligible finalists, rejected 3 candidates, and retained 1 at the admission
-boundary. It returned `WAIT`. The survivor was
+bounded owner-project reads; World signals were available but idle. At that
+historical lane boundary Gmail was reported `BLOCKED/DEFERRED`; binding current
+policy is `DEFERRED_BY_OWNER`, with observation `DISABLED`. The cold cycle
+recorded 10 observations, generated 6 raw and 4 unique candidates, suppressed
+2 duplicates, researched 2 eligible finalists, rejected 3 candidates, and
+retained 1 at the admission boundary. It returned `WAIT`. The survivor was
 `Review Python 3.14 release notes for JARVIS runtime compatibility`.
 
 Hard truth was zero objective creations, mission creations, mutating effects,
@@ -323,7 +405,8 @@ release-local runtime closes its own web dependencies:
 - Disposable CSV-to-DOCX generation, reopen, and content verification passed.
 - Public GitHub READ passed. Public GitHub WRITE is `NOT_TESTED` and was not
   performed.
-- Gmail remains `BLOCKED/DEFERRED`; no credentials were manufactured.
+- Gmail read and send are `DEFERRED_BY_OWNER`; observation is `DISABLED`; no
+  credentials were manufactured.
 
 The V10 capability spine remains the established World Intelligence ->
 Continuous Executive -> Capability Fabric -> MissionLoop/effects/evidence/
@@ -358,8 +441,10 @@ integrity passed at both ends. Event growth was 25. Health latency max was
 `SUSPENDED` is the correct production trust state. V10 closure proves this
 exact release, its installed capabilities, rollback/control/recovery, and the
 bounded live window. It does not prove V11 endurance, a reboot cycle, provider
-diversity, Gmail, public GitHub write, a live authenticated account, or the
-owner-governed trust gates. Those remain explicitly deferred or not tested.
+diversity, public GitHub write, a live authenticated account, or the
+owner-governed trust gates. Gmail is separately deferred by owner and is not a
+V11-V14 proof blocker. The remaining items are explicitly deferred or not
+tested.
 
 Distributed/multi-machine operation and later roadmap capabilities remain out
 of scope. Rollback is restore-oriented because schema v38 has no reverse
@@ -367,7 +452,9 @@ migration.
 
 ## Evidence and maintenance
 
-The current Integration Base 2 handoff and exact A3 integration map are
+The current V12 convergence handoff is
+`docs/handoffs/V12_FINAL_PRODUCT_CONVERGENCE_20260903.md`. The Integration
+Base 2 handoff and exact A3 integration map are
 `docs/handoffs/V11_INTEGRATION_BASE2_20260902.md`. The pre-convergence handoff
 remains `docs/handoffs/V11_PRECONVERGENCE_20260902.md`; the earlier A2 handoff is
 `docs/handoffs/V11_A2_CANDIDATE_20260902.md`. The compact V10 live-closure record is

@@ -25,10 +25,11 @@ meta:
 observed_repo_state:
   canonical_main: "2905c206fed0461bf3085bc0cb43773be913300a"
   canonical_main_summary: "docs: record V10 live closure and open V11 A2"
-  candidate_source: "ea6be6ddebe21f95f10021db4b1972b2dcf2c00a"
-  candidate_branch: "candidate/v11-exit-proof-20260903"
-  candidate_worktree: "C:\\temp\\JARVIS-V11-Exit-Proof-20260903"
-  current_schema: v40            # isolated V11 exit-proof migrations.SCHEMA_VERSION
+  candidate_source: "78922410127de74a37b1aa7cdde3ab144f49ea5c"
+  candidate_evidence: "90ab7da4820666e195c9d7c4bbf46f385d101597"
+  candidate_branch: "candidate/v12-final-product-convergence-20260903"
+  candidate_worktree: "C:\\temp\\JARVIS-V12-Final-Product-Convergence-20260903"
+  current_schema: v40            # isolated V12 candidate migrations.SCHEMA_VERSION
   live_schema: v38               # live V10 remains unchanged
   live_runtime: "faa861c67399d5a3755d778224ff65513bd933a1 / rel-faa861c67399-5afeb024"
   v9_status: "established and stabilized; represented in canonical source"
@@ -88,6 +89,24 @@ observed_repo_state:
     repaired_proof_outcome: "BLOCKED_BY_PROVIDER; 13 candidates, 12 rejected, one selected; provider HTTP 500 after three retries; zero effects"
     provider_probe: "same canonical opencode_go/muse-spark-1.2-contributor path returned HTTP 500 to an isolated no-tools PROBE_OK request"
     note: "observer, diagnostic-readiness, and schema-evidence defects repaired; provider availability blocks final A3 restart"
+  v12_final_product_convergence:
+    status: V12_FINAL_SOURCE_CANDIDATE_BUILD_AHEAD_NOT_ACTIVATED
+    v11_base: "afddb8d5ca3d5c3459a4f5394e84affb92d13738"
+    source_tip: "78922410127de74a37b1aa7cdde3ab144f49ea5c"
+    evidence_tip: "90ab7da4820666e195c9d7c4bbf46f385d101597"
+    branch: "candidate/v12-final-product-convergence-20260903"
+    worktree: "C:\\temp\\JARVIS-V12-Final-Product-Convergence-20260903"
+    schema: v40
+    proof: "evidence/v12-final-product-convergence/proof.json"
+    proof_sha256: "5be3ff13e8082187d7c78e027ade45e30499ecfc30a025a6c97b7fbb9e835677"
+    endurance_input: "49b2c2337a0579519d0b782a5a260673079eb398 / implementation 43da572ca0fb24ae82222cdd02c2e23a76bf95f6"
+    self_expansion_input: "e159437daeca4f5c5008bf0345adfeafae469c66 / source ceede0eeb766216765add95525f840f9ac382224"
+    mcp_effects_input: "1d72dbfe7af40e35d37ce20edacc6bfaeb8badd6 / implementation b730b708451b0399165e8adbdb037150126cc6c1"
+    a5_disposable: PASS_BUILD_AHEAD_GATE_NOT_CLOSED
+    a6_disposable: PASS_BUILD_AHEAD_GATE_NOT_CLOSED
+    integrity: "zero duplicate missions/effects/registrations/wakes/resumes, zero false successes, zero unreconciled accepted effects"
+    gmail: "read DEFERRED_BY_OWNER; send DEFERRED_BY_OWNER; observation DISABLED"
+    note: "source-only convergence; no promotion, activation, live mutation, V11 gate closure, or 48-hour start"
 
 current_phase: V11_INITIATIVE
 current_gate: A3_A4
@@ -109,18 +128,18 @@ phases:
   V11_INITIATIVE:
     status: A3_BLOCKED_BY_PROVIDER
     gates: [A2, A3, A4]
-    gate_status: { A2: PASSED_CANDIDATE, A3: NOT_TESTED, A4: NOT_TESTED }
+    gate_status: { A2: PASSED_CANDIDATE, A3: BLOCKED_BY_PROVIDER, A4: NOT_STARTED }
     hard_entry: "promoted V10 base + interactive browser"
   V12_ENDURANCE_SELF_EXPANSION:
-    status: NOT_STARTED
+    status: SOURCE_CANDIDATE_BUILD_AHEAD_NOT_ACTIVATED
     gates: [A5, A6]
-    gate_status: { A5: NOT_TESTED, A6: NOT_TESTED }
+    gate_status: { A5: DISPOSABLE_PROOF_PASSED_GATE_NOT_CLOSED, A6: DISPOSABLE_PROOF_PASSED_GATE_NOT_CLOSED }
     hard_entry: "A3/A4 passed on promoted V11 base"
   V13_PERSONAL_OPERATOR:
     status: NOT_STARTED
     gates: [A7]
     gate_status: { A7: NOT_TESTED }
-    hard_entry: "Gmail live read active (first real personal signal stream)"
+    hard_entry: "V12 gate closed; Gmail remains optional and DEFERRED_BY_OWNER"
   V14_JARVIS_1_0:
     status: NOT_STARTED
     gates: [A8]
@@ -128,6 +147,19 @@ phases:
     definition: "72-hour Owner-Absent Campaign, live, on the installed release"
 
 capability_flags:
+  v12_final_product_convergence:
+    state: V12_FINAL_SOURCE_CANDIDATE_NOT_LIVE
+    reason: "one source candidate integrates Endurance, Self-Expansion, MCP, and canonical effects; disposable A5/A6-style proof passed with all integrity counters zero, but V11 hard entry is not met"
+    base: "afddb8d5ca3d5c3459a4f5394e84affb92d13738"
+    source: "78922410127de74a37b1aa7cdde3ab144f49ea5c"
+    evidence: "90ab7da4820666e195c9d7c4bbf46f385d101597"
+    evidence_root: "evidence/v12-final-product-convergence"
+  self_expansion:
+    state: IMPLEMENTED_DISPOSABLE_PROVED_CANDIDATE_NOT_LIVE
+    reason: "real missing-capability loop, failed first trial, adapter factory, independent verification, PROBATION, one wake/resume, restart identity, rollback, and stale-receipt fail-closed behavior passed"
+  campaign_runtime:
+    state: IMPLEMENTED_DISPOSABLE_PROVED_CANDIDATE_NOT_LIVE
+    reason: "bounded parallel children, provider fallback, all-down WAIT, recovery, deadlines, ambiguity reconciliation, STOP/RESUME, restart, joins, and completion passed"
   initiative_exit_proof:
     state: PROOF_READY_PROVIDER_BLOCKED_NOT_LIVE
     reason: "A3 bridge is integrated; exact restart seams, candidate-neutral real driver, immediate A4 evaluator, and canonical training-tier authorization are frozen; the real provider currently returns HTTP 500 and elapsed proof remains pending"
@@ -165,18 +197,21 @@ capability_flags:
     state: BLOCKED_NOT_TESTED
     reason: "no safe owner-authorized authenticated website/session was available for live proof; disposable authenticated proof passed"
   gmail_read:
-    state: BLOCKED_DEFERRED
-    reason: "no real Gmail credentials available as of 2026-09-01"
-    policy: "never blocks V10/V11/V12; HARD ENTRY requirement for V13"
+    state: DEFERRED_BY_OWNER
+    reason: "binding owner policy on 2026-09-03; do not authenticate, probe, observe, or require credentials"
+    policy: "does not block V11, V12, V13, or V14 proof"
   gmail_send:
-    state: NOT_STARTED
-    policy: "V13 exit-path capability under reversibility policy"
+    state: DEFERRED_BY_OWNER
+    policy: "dormant implementation and synthetic fixtures may remain; no real send"
+  gmail_observation:
+    state: DISABLED
+    policy: "do not silently reactivate"
   voice_albanian:
     state: POST_1_0
     policy: "explicit product decision (roadmap decision D10); supersedes older 'planned for V15' notes"
   mcp_client:
-    state: NOT_STARTED
-    policy: "MISSION-PULLED; preferred first self-expansion target in V12; not a gate"
+    state: IMPLEMENTED_DISPOSABLE_PROVED_CANDIDATE_NOT_LIVE
+    policy: "FabricMcpBackend is the only MCP runtime; selected adoptions enter Fabric READY/PROBATION and canonical effects"
   windows_uia:
     state: NOT_STARTED
     policy: "MISSION-PULLED verbs only (V13); recover Phase-4/5 prior art first; no RPA platform"
@@ -194,6 +229,14 @@ capability_authority: >
   Fabric capability or Executive readiness decision. Never two authorities.
 
 update_log:
+  - date: "2026-09-03"
+    change: "V12 final product source candidate semantically integrated Endurance, Self-Expansion, and MCP/Effects on exact V11 proof state; source-bound disposable A5/A6/MCP proof passed with all integrity counters zero; execution pointer remains V11 A3/A4 BLOCKED_BY_PROVIDER"
+    session: "candidate/v12-final-product-convergence-20260903"
+    predecessor_sha: "afddb8d5ca3d5c3459a4f5394e84affb92d13738"
+    source_tip: "78922410127de74a37b1aa7cdde3ab144f49ea5c"
+    evidence_tip: "90ab7da4820666e195c9d7c4bbf46f385d101597"
+    schema: v40
+    evidence_root: "evidence/v12-final-product-convergence"
   - date: "2026-09-03"
     change: "V11 exit-proof source frozen with A3 integrated, canonical owner-authorized training-tier policy, interrupted-cycle durability, and candidate-neutral A3/A4 proving; real A3, immediate A4, and 48-hour elapsed proof remain pending"
     session: "candidate/v11-exit-proof-20260903"
