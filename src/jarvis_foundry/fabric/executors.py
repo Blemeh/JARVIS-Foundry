@@ -1336,6 +1336,7 @@ def mcp_invoke(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, An
                     identities=stop_identities,
                 )
             ),
+            effect_context=request,
         )
     except BaseException as error:  # noqa: BLE001 - preserve effect ambiguity
         from ..mcp_backend import (

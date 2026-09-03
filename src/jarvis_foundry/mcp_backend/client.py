@@ -656,6 +656,7 @@ class McpClientBackend:
         invocation_id: str | None = None,
         timeout_s: float | None = None,
         stop_check: Callable[[], bool] | None = None,
+        effect_context: Mapping[str, Any] | None = None,
     ) -> McpInvocationReceipt:
         descriptor = self.descriptor_for_action(action_kind)
         runtime = self._runtime(descriptor.server_id)
@@ -665,6 +666,24 @@ class McpClientBackend:
                 "MCP invocation timeout must be within (0, 3600] seconds"
             )
         identity = invocation_id or f"mcp-invocation:{uuid.uuid4().hex}"
+        if descriptor.semantic.value != "read":
+            context = dict(effect_context or {})
+            required = {
+                "request_id",
+                "action_kind",
+                "effect_id",
+                "idempotency_key",
+                "effect_class",
+            }
+            if (
+                not required.issubset(context)
+                or context.get("request_id") != identity
+                or context.get("action_kind") != action_kind
+                or context.get("effect_class") == "READ_ONLY"
+            ):
+                raise McpContractError(
+                    "mutating MCP invocation requires canonical Fabric effect context"
+                )
         return self._submit(
             self._invoke(
                 descriptor, dict(arguments), identity, bounded_timeout, stop_check
@@ -691,16 +710,25 @@ class McpClientBackend:
             raise McpToolUnavailable(
                 "MCP resource must be discovered before it is read"
             )
-        raw = await runtime.client.read_resource(uri)
-        payload = raw.model_dump(mode="json", by_alias=True)
-        normalized = normalize_result(
-            {
-                "content": payload.get("contents") or (),
-                "structured_content": None,
-                "is_error": False,
-            },
-            runtime.config.limits,
-        )
+        try:
+            raw = await runtime.client.read_resource(uri)
+            payload = raw.model_dump(mode="json", by_alias=True)
+            normalized = normalize_result(
+                {
+                    "content": payload.get("contents") or (),
+                    "structured_content": None,
+                    "is_error": False,
+                },
+                runtime.config.limits,
+            )
+        except Exception as error:
+            runtime.state = McpSessionState.DEGRADED
+            runtime.checked_at = isoformat()
+            runtime.last_error = redact_text(str(error))[:400]
+            raise McpServerUnavailable(
+                f"MCP server {server_id!r} failed during resource read: "
+                f"{redact_text(str(error))}"
+            ) from error
         normalized.update(
             {
                 "server_id": server_id,

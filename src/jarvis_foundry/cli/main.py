@@ -105,11 +105,23 @@ def _parser() -> argparse.ArgumentParser:
         help="inspect the capability fabric catalog in a disposable home",
     )
     fabric_sub = fabric.add_subparsers(dest="fabric_command", required=True)
-    fabric_sub.add_parser("catalog", parents=[home_option])
+    fabric_catalog = fabric_sub.add_parser("catalog", parents=[home_option])
+    fabric_catalog.add_argument(
+        "--mcp-config",
+        type=Path,
+        default=None,
+        help="MCP YAML config inside the disposable home",
+    )
     fabric_run = fabric_sub.add_parser("run", parents=[home_option])
     fabric_run.add_argument(
         "--workflow", type=Path, required=True,
         help="JSON workflow file inside the disposable home",
+    )
+    fabric_run.add_argument(
+        "--mcp-config",
+        type=Path,
+        default=None,
+        help="MCP YAML config inside the disposable home",
     )
     backup = release_sub.add_parser("backup-db")
     backup.add_argument("--destination", type=Path, required=True)
@@ -284,25 +296,85 @@ def main(argv: list[str] | None = None) -> int:
         database.initialize()
         from ..fabric import catalog_snapshot, seed_builtins
         seed_builtins(database)
-        if getattr(args, "fabric_command", "catalog") == "run":
-            return _fabric_run(args, paths, database)
-        print(json.dumps(catalog_snapshot(database), indent=2))
-        return 0
+        mcp_backend = None
+        mcp_report = None
+        if getattr(args, "mcp_config", None) is not None:
+            try:
+                from ..mcp_backend import FabricMcpBackend, load_mcp_config
+
+                config_path = _disposable_path(
+                    args.mcp_config,
+                    paths.home.resolve(),
+                    label="MCP config",
+                )
+                if not config_path.is_file():
+                    raise ValueError("MCP config file not found")
+                mcp_backend = FabricMcpBackend(database, load_mcp_config(config_path))
+                mcp_report = mcp_backend.connect_all()
+            except (OSError, RuntimeError, ValueError) as error:
+                if mcp_backend is not None:
+                    mcp_backend.close()
+                print(
+                    json.dumps(
+                        {"error": "MCP configuration failed", "detail": str(error)},
+                        indent=2,
+                    )
+                )
+                return 1
+        try:
+            if getattr(args, "fabric_command", "catalog") == "run":
+                return _fabric_run(
+                    args,
+                    paths,
+                    database,
+                    mcp_backend=mcp_backend,
+                    mcp_report=mcp_report,
+                )
+            catalog = catalog_snapshot(database)
+            output = (
+                {"catalog": catalog, "mcp": mcp_report}
+                if mcp_report is not None
+                else catalog
+            )
+            print(json.dumps(output, indent=2))
+            return 0
+        finally:
+            if mcp_backend is not None:
+                mcp_backend.close()
     elif args.command == "release":
         return _release_command(args, paths)
     return 0
 
 
-def _fabric_run(args, paths: FoundryPaths, database: FoundryDatabase) -> int:
+def _disposable_path(value: Path, home: Path, *, label: str) -> Path:
+    path = Path(value)
+    if not path.is_absolute():
+        path = home / path
+    path = path.resolve()
+    try:
+        path.relative_to(home)
+    except ValueError as error:
+        raise ValueError(f"{label} must be inside the disposable home") from error
+    return path
+
+
+def _fabric_run(
+    args,
+    paths: FoundryPaths,
+    database: FoundryDatabase,
+    *,
+    mcp_backend=None,
+    mcp_report=None,
+) -> int:
     from ..fabric import ExecutorContext, TaskIntent, WorkflowStep, run_workflow
 
-    workflow_path = Path(args.workflow)
     home = paths.home.resolve()
-    if not workflow_path.is_absolute():
-        workflow_path = home / workflow_path
-    workflow_path = workflow_path.resolve()
     try:
-        workflow_path.relative_to(home)
+        workflow_path = _disposable_path(
+            args.workflow,
+            home,
+            label="workflow file",
+        )
     except ValueError:
         print(json.dumps({
             "error": "workflow file must be inside the disposable home",
@@ -334,12 +406,18 @@ def _fabric_run(args, paths: FoundryPaths, database: FoundryDatabase) -> int:
             "home": str(home),
         }, indent=2))
         return 1
-    ctx = ExecutorContext(database=database, owned_root=owned)
+    ctx = ExecutorContext(
+        database=database,
+        owned_root=owned,
+        mcp_backend=mcp_backend,
+    )
     intent = TaskIntent(
         task_id=str(spec.get("task_id") or "cli.workflow"),
         required_actions=tuple(step.action_kind for step in steps),
     )
     result = run_workflow(database, ctx, intent, steps)
+    if mcp_report is not None:
+        result["mcp"] = mcp_report
     print(json.dumps(result, indent=2, default=str))
     return 0 if result.get("success") else 1
 

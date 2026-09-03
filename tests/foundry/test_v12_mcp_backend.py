@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import socket
 import subprocess
@@ -15,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import yaml
 
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.effects import COMPLETED, FROZEN, effect_state
@@ -26,12 +28,13 @@ from jarvis_foundry.fabric import (
     observed_readiness,
 )
 from jarvis_foundry.fabric.catalog import capability_metadata
-from jarvis_foundry.fabric.model import Semantic
+from jarvis_foundry.fabric.model import Semantic, UnattendedMode
 from jarvis_foundry.mcp_backend import (
     FabricMcpBackend,
     McpBackendConfig,
     McpConfigurationError,
     McpContractError,
+    McpInvocationCancelled,
     McpOutputLimits,
     McpServerConfig,
     McpServerUnavailable,
@@ -71,6 +74,7 @@ def _config(
         "transport": transport,
         "env": env,
         "request_timeout_s": 4,
+        "default_unattended": "ALLOWED",
         "tools": {
             "echo": {"semantic": "read"},
             "slow_echo": {"semantic": "read"},
@@ -141,6 +145,7 @@ def test_config_is_explicit_conservative_and_transport_safe(tmp_path: Path) -> N
     assert config.policy_for("read").enabled is True
     assert config.policy_for("unknown").enabled is False
     assert config.default_semantic is Semantic.EXTERNAL_EFFECT
+    assert config.default_unattended is UnattendedMode.INTERACTIVE_REQUIRED
     with pytest.raises(McpConfigurationError):
         McpServerConfig(
             server_id="remote",
@@ -258,7 +263,7 @@ def test_real_stdio_discovery_projection_read_resource_disconnect_reconnect(
         assert metadata.provenance["remote_content_authority"] == "DATA_ONLY"
         resources = backend.client.resources("v12-test")
         assert [item.uri for item in resources] == ["jarvis://v12/status"]
-        resource = backend.client.read_resource("v12-test", resources[0].uri)
+        resource = backend.read_resource("v12-test", resources[0].uri)
         assert resource["authority"] == "DATA_ONLY"
         assert resource["result_sha256"]
         disconnected = backend.disconnect_server("v12-test")
@@ -280,6 +285,69 @@ def test_real_stdio_discovery_projection_read_resource_disconnect_reconnect(
         )
     finally:
         backend.close()
+
+
+def test_disposable_fabric_cli_loads_config_projects_and_invokes_real_tool(
+    tmp_path: Path,
+    capfd: pytest.CaptureFixture[str],
+) -> None:
+    from jarvis_foundry.cli.main import main
+
+    home = tmp_path / "cli-home"
+    home.mkdir()
+    action = stable_tool_identity("v12-cli", "echo")[1]
+    (home / "mcp.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "servers": [
+                    {
+                        "server_id": "v12-cli",
+                        "transport": "stdio",
+                        "command": sys.executable,
+                        "args": ["-u", str(SERVER_SCRIPT)],
+                        "env": {"JARVIS_MCP_DISPOSABLE_ROOT": str(home / "disposable")},
+                        "default_unattended": "ALLOWED",
+                        "allowed_tools": ["echo"],
+                        "tools": {"echo": {"semantic": "read"}},
+                    }
+                ]
+            },
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    (home / "workflow.json").write_text(
+        json.dumps(
+            {
+                "task_id": "v12.cli.real",
+                "steps": [
+                    {
+                        "step_id": "echo",
+                        "action_kind": action,
+                        "payload": {"arguments": {"text": "cli", "repeat": 2}},
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    code = main(
+        [
+            "--home",
+            str(home),
+            "fabric",
+            "run",
+            "--workflow",
+            "workflow.json",
+            "--mcp-config",
+            "mcp.yaml",
+        ]
+    )
+    output = json.loads(capfd.readouterr().out)
+    assert code == 0, output
+    assert output["success"] is True
+    assert output["mcp"]["v12-cli"]["health"]["state"] == "READY"
+    assert output["results"][0]["receipt"]["state"] == "VERIFIED"
 
 
 def test_exact_tool_allowlist_projects_disabled_tools_as_degraded(
@@ -377,6 +445,73 @@ def test_invalid_arguments_and_read_timeout_fail_without_effect(tmp_path: Path) 
             for event in database.events(readonly=True)
             if event.payload.get("kind") == slow
         )
+    finally:
+        backend.close()
+
+
+def test_explicit_invocation_cancel_terminates_inflight_read(tmp_path: Path) -> None:
+    backend = FabricMcpBackend(_database(tmp_path), _config(tmp_path))
+    failures: list[BaseException] = []
+    try:
+        backend.connect_server("v12-test")
+        slow = _action(backend, "slow_echo")
+
+        def invoke() -> None:
+            try:
+                backend.client.invoke(
+                    slow,
+                    {"text": "cancel", "delay_ms": 2000},
+                    invocation_id="v12-explicit-cancel",
+                    timeout_s=4,
+                )
+            except BaseException as error:  # noqa: BLE001 - asserted below
+                failures.append(error)
+
+        thread = threading.Thread(target=invoke, daemon=True)
+        thread.start()
+        deadline = time.monotonic() + 2
+        cancelled = False
+        while time.monotonic() < deadline and not cancelled:
+            cancelled = backend.client.cancel("v12-explicit-cancel")
+            if not cancelled:
+                time.sleep(0.01)
+        thread.join(timeout=5)
+        assert cancelled is True
+        assert not thread.is_alive()
+        assert len(failures) == 1
+        assert isinstance(failures[0], McpInvocationCancelled)
+    finally:
+        backend.close()
+
+
+def test_direct_mutating_client_call_is_refused_without_fabric_effect(
+    tmp_path: Path,
+) -> None:
+    backend = FabricMcpBackend(_database(tmp_path), _config(tmp_path))
+    target = tmp_path / "disposable" / "bypass.txt"
+    try:
+        backend.connect_server("v12-test")
+        action = _action(backend, "write_disposable")
+        with pytest.raises(McpContractError, match="canonical Fabric effect context"):
+            backend.client.invoke(
+                action,
+                {"relative_path": "bypass.txt", "content": "forbidden"},
+            )
+        fake_context = {
+            "request_id": "forged-request",
+            "action_kind": action,
+            "effect_id": "effect:forged",
+            "idempotency_key": "idempotency:forged",
+            "effect_class": "REVERSIBLE_LOCAL",
+        }
+        with pytest.raises(McpContractError, match="active canonical effect journal"):
+            backend.invoke_action(
+                action,
+                {"relative_path": "bypass.txt", "content": "forbidden"},
+                invocation_id="forged-request",
+                effect_context=fake_context,
+            )
+        assert not target.exists()
     finally:
         backend.close()
 

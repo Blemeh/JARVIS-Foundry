@@ -8,7 +8,7 @@ from typing import Any, Self
 
 from ..control.redaction import redact_text
 from ..database import FoundryDatabase
-from ..effects import EffectClass, infer_effect_class
+from ..effects import STARTED, EffectClass, effect_state, infer_effect_class
 from ..fabric.catalog import (
     capability_metadata,
     listed_capabilities,
@@ -19,7 +19,7 @@ from ..fabric.contracts import CapabilityMetadata
 from ..fabric.model import CapabilitySpec, Kind, VerifyVerdict
 from .client import McpClientBackend, McpServerUnavailable
 from .config import McpBackendConfig
-from .contracts import McpInvocationReceipt, McpToolDescriptor
+from .contracts import McpContractError, McpInvocationReceipt, McpToolDescriptor
 
 MCP_ADAPTER_VERSION = "1.0.0"
 
@@ -245,6 +245,15 @@ class FabricMcpBackend:
         )
         return health
 
+    def read_resource(self, server_id: str, uri: str) -> dict[str, Any]:
+        """Read one discovered resource and reconcile transport health."""
+
+        try:
+            return self.client.read_resource(server_id, uri)
+        except McpServerUnavailable as error:
+            self._mark_server_unavailable(server_id, str(error))
+            raise
+
     def reconnect_server(
         self, server_id: str
     ) -> tuple[Any, tuple[CapabilitySpec, ...]]:
@@ -263,8 +272,26 @@ class FabricMcpBackend:
         invocation_id: str,
         timeout_s: float | None = None,
         stop_check: Callable[[], bool] | None = None,
+        effect_context: Mapping[str, Any] | None = None,
     ) -> McpInvocationReceipt:
         descriptor = self.client.descriptor_for_action(action_kind)
+        descriptor_effect_class = infer_effect_class(
+            descriptor.action_kind,
+            descriptor.semantic.value,
+            descriptor.server_identity,
+        )
+        if descriptor_effect_class is not EffectClass.READ_ONLY:
+            context = dict(effect_context or {})
+            effect_id = str(context.get("effect_id") or "")
+            journal = effect_state(self.database, effect_id) if effect_id else {}
+            if (
+                journal.get("status") != STARTED
+                or action_kind not in (journal.get("expected_effects") or ())
+                or context.get("effect_class") != descriptor_effect_class.value
+            ):
+                raise McpContractError(
+                    "mutating MCP invocation requires an active canonical effect journal entry"
+                )
         try:
             return self.client.invoke(
                 action_kind,
@@ -272,6 +299,7 @@ class FabricMcpBackend:
                 invocation_id=invocation_id,
                 timeout_s=timeout_s,
                 stop_check=stop_check,
+                effect_context=effect_context,
             )
         except McpServerUnavailable as error:
             self._mark_server_unavailable(descriptor.server_id, str(error))

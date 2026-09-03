@@ -164,7 +164,7 @@ class McpServerConfig:
     shutdown_timeout_s: float = 10.0
     max_concurrent_invocations: int = 4
     default_semantic: Semantic = Semantic.EXTERNAL_EFFECT
-    default_unattended: UnattendedMode = UnattendedMode.ALLOWED
+    default_unattended: UnattendedMode = UnattendedMode.INTERACTIVE_REQUIRED
     allowed_tools: tuple[str, ...] = ()
     disabled_tools: tuple[str, ...] = ()
     tools: Mapping[str, McpToolPolicy] = field(default_factory=dict)
@@ -309,7 +309,10 @@ class McpServerConfig:
                 str(raw.get("default_semantic") or Semantic.EXTERNAL_EFFECT.value)
             ),
             default_unattended=UnattendedMode(
-                str(raw.get("default_unattended") or UnattendedMode.ALLOWED.value)
+                str(
+                    raw.get("default_unattended")
+                    or UnattendedMode.INTERACTIVE_REQUIRED.value
+                )
             ),
             allowed_tools=tuple(raw.get("allowed_tools") or ()),
             disabled_tools=tuple(raw.get("disabled_tools") or ()),

@@ -83,6 +83,7 @@ def main() -> int:
                     "args": ["-u", str(server_script)],
                     "env": {"JARVIS_MCP_DISPOSABLE_ROOT": str(disposable_root)},
                     "request_timeout_s": 5,
+                    "default_unattended": "ALLOWED",
                     "tools": {
                         "echo": {"semantic": "read"},
                         "slow_echo": {"semantic": "read"},
