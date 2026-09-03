@@ -10,7 +10,7 @@ Last reconciled: 2026-09-03 after isolated V11 overnight convergence of the
 Backend Stack, A3 initiative bridge, Command Center, and A3/A4 proving
 harness. This is a source candidate only; V10 remains live and unchanged.
 
-DOCUMENTATION STATE BASE SHA: `f7cee034384ac191dfbac9f910dd6f6d3eb520d4`
+DOCUMENTATION STATE BASE SHA: `2281c865a9674c800a49d2a0d0a9aa3d0ca75b64`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`.
@@ -48,9 +48,9 @@ The isolated source candidate is branch
 `candidate/v11-overnight-convergence-20260902` in
 `C:\temp\JARVIS-V11-Overnight-Convergence-20260902`. It starts from exact
 Integration Base 2 SHA `30998ef06d9be73adb30387c10a7fa72ef910d28` and remains
-schema v40. The source freeze immediately before this documentation pin is
-`f7cee034384ac191dfbac9f910dd6f6d3eb520d4` (the final branch SHA includes this
-docs-only reconciliation commit).
+schema v40. The last source commit in the freeze is
+`f7cee034384ac191dfbac9f910dd6f6d3eb520d4`; the prior documentation pin is
+`2281c865a9674c800a49d2a0d0a9aa3d0ca75b64`.
 
 Eligible clean input lanes and their source SHAs were:
 
@@ -334,8 +334,9 @@ documentation staleness check must remain green.
 
 ## Next authorized action
 
-Integrate the separately running A3 candidate semantically onto Integration
-Base 2, using the exact map in the handoff. Preserve continuous observation's
-due/unchanged/revision contracts, A2's inert boundary, A4 identities/recovery,
-and final-outcome truth. Do not treat this candidate as promotion authority or
-production trust.
+Resolve the owner/provider policy for the A3 real external-worker flagship. If
+authorized and available, run that proof against this frozen exact-SHA source;
+otherwise leave it `PENDING/NOT_TESTED` with data-training consent disabled.
+Then run the guarded 48-hour A3/A4 fault/restart harness against the same SHA.
+Only a later, separate owner-authorized promotion gate may consider live state;
+this candidate is not promotion authority or production trust.
