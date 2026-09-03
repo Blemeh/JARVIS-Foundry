@@ -59,6 +59,8 @@ class ExecutorContext:
     gmail_identity: ProviderIdentity | None = None
     gmail_send_authorization: GmailSendAuthorization | None = None
     doc_transport: Callable[[str], tuple[int, bytes]] | None = None
+    mcp_backend: Any | None = None
+    mcp_mutation_verifier: Callable[[Mapping[str, Any]], Mapping[str, Any]] | None = None
 
     def __post_init__(self) -> None:
         self.owned_root = Path(self.owned_root).expanduser().resolve()
@@ -1287,6 +1289,137 @@ def script_hash_file(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[s
     }
 
 
+def mcp_invoke(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Invoke one discovered MCP tool through its subordinate backend.
+
+    The surrounding Fabric loop supplies canonical request/effect identity.
+    Read-only results become bounded DATA_ONLY observations. Mutating results
+    remain unverified until an independent JARVIS readback callback reconciles
+    them; the MCP server cannot verify its own effect.
+    """
+
+    if ctx.mcp_backend is None:
+        return {
+            "claimed": "BLOCKED",
+            "error_code": "mcp_backend_unavailable",
+            "authority": "DATA_ONLY",
+        }
+    request = payload.get("_adapter_request")
+    if not isinstance(request, Mapping):
+        raise FabricError("MCP invocation requires the canonical adapter request")
+    arguments = payload.get("arguments")
+    if arguments is None:
+        arguments = {}
+    if not isinstance(arguments, Mapping):
+        raise FabricError("MCP invocation arguments must be an object")
+    action_kind = str(request.get("action_kind") or "")
+    if not action_kind.startswith("mcp."):
+        raise FabricError("MCP invocation action identity is invalid")
+    timeout_ms = payload.get("timeout_ms")
+    timeout_s = (
+        float(timeout_ms) / 1000.0
+        if timeout_ms is not None else None
+    )
+    stop_identities = set(request.get("stop_scope") or ())
+    stop_identities.update({"GLOBAL", str(request.get("mission_id") or "")})
+    effect_class = str(request.get("effect_class") or "")
+    try:
+        receipt = ctx.mcp_backend.invoke_action(
+            action_kind,
+            dict(arguments),
+            invocation_id=str(request.get("request_id")),
+            timeout_s=timeout_s,
+            stop_check=lambda: bool(
+                emergency_stop_reason(
+                    ctx.database,
+                    payload.get("stop_path"),
+                    identities=stop_identities,
+                )
+            ),
+        )
+    except BaseException as error:  # noqa: BLE001 - preserve effect ambiguity
+        from ..mcp_backend import (
+            McpBackendError,
+            McpContractError,
+            McpInvocationCancelled,
+            McpInvocationTimeout,
+        )
+
+        if isinstance(error, (McpInvocationTimeout, McpInvocationCancelled)):
+            if effect_class != "READ_ONLY":
+                raise TimeoutError(str(error)) from error
+            return {
+                "claimed": "FAILED",
+                "authority": "DATA_ONLY",
+                "bounded": True,
+                "effect_class": effect_class,
+                "error_code": (
+                    "mcp_cancelled"
+                    if isinstance(error, McpInvocationCancelled) else "mcp_timeout"
+                ),
+            }
+        if isinstance(error, (McpBackendError, McpContractError)) and effect_class == "READ_ONLY":
+            return {
+                "claimed": "FAILED",
+                "authority": "DATA_ONLY",
+                "bounded": True,
+                "effect_class": effect_class,
+                "error_code": type(error).__name__,
+            }
+        raise
+    normalized = receipt.as_dict()
+    result = normalized.get("result") or {}
+    claimed: dict[str, Any] = {
+        "claimed": receipt.outcome,
+        "authority": "DATA_ONLY",
+        "server_id": receipt.server_id,
+        "server_identity": receipt.server_identity,
+        "tool_name": receipt.tool_name,
+        "invocation_id": receipt.invocation_id,
+        "protocol_version": receipt.protocol_version,
+        "session_generation": receipt.session_generation,
+        "arguments_sha256": receipt.arguments_sha256,
+        "result_sha256": receipt.result_sha256,
+        "bounded": True,
+        "truncated": bool(result.get("truncated")),
+        "mcp_receipt": normalized,
+        "effect_id": str(request.get("effect_id") or ""),
+        "effect_class": str(request.get("effect_class") or ""),
+        "idempotency_key": str(request.get("idempotency_key") or ""),
+        "evidence_refs": [
+            f"mcp-server:{receipt.server_identity}",
+            f"mcp-invocation:{receipt.invocation_id}",
+            f"mcp-result:sha256:{receipt.result_sha256}",
+        ],
+    }
+    if receipt.error_code:
+        claimed["error_code"] = receipt.error_code
+    if effect_class == "READ_ONLY":
+        claimed["observation"] = result
+        return claimed
+    claimed.update({"readback_verified": False, "reconciled": False})
+    if receipt.outcome != "COMPLETED" or ctx.mcp_mutation_verifier is None:
+        return claimed
+    verification = ctx.mcp_mutation_verifier({
+        "request": dict(request),
+        "arguments": dict(arguments),
+        "receipt": normalized,
+        "owned_root": str(ctx.owned_root),
+    })
+    if not isinstance(verification, Mapping):
+        raise FabricError("MCP mutation verifier must return an object")
+    claimed["readback_verified"] = verification.get("readback_verified") is True
+    claimed["reconciled"] = verification.get("reconciled") is True
+    if verification.get("after_state_ref"):
+        claimed["after_state_ref"] = str(verification["after_state_ref"])
+    if isinstance(verification.get("readback"), Mapping):
+        claimed["readback"] = dict(verification["readback"])
+    for evidence_ref in verification.get("evidence_refs") or ():
+        if isinstance(evidence_ref, str) and evidence_ref.strip():
+            claimed["evidence_refs"].append(evidence_ref.strip())
+    return claimed
+
+
 HANDLERS: dict[str, Callable[[ExecutorContext, Mapping[str, Any]], dict[str, Any]]] = {
     "file.write": filesystem_write,
     "file.read": filesystem_read,
@@ -1336,7 +1469,7 @@ HANDLERS: dict[str, Callable[[ExecutorContext, Mapping[str, Any]], dict[str, Any
 
 
 def dispatch(ctx: ExecutorContext, action_kind: str, payload: Mapping[str, Any]) -> dict[str, Any]:
-    handler = HANDLERS.get(action_kind)
+    handler = mcp_invoke if action_kind.startswith("mcp.") else HANDLERS.get(action_kind)
     if handler is None:
         raise FabricError(f"no executor for {action_kind}")
     bound = dict(payload)

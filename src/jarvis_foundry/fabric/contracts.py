@@ -367,6 +367,8 @@ def system_id_for_action(action_kind: str, target_ref: str) -> str:
         return "http"
     if action.startswith("git."):
         return "git"
+    if action.startswith("mcp."):
+        return "mcp"
     return "filesystem" if action.startswith(("file.", "artifact.")) else "local"
 
 

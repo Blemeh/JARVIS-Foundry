@@ -714,6 +714,31 @@ def _verify_action(
         if all((path / name).exists() for name in names):
             return VerifyVerdict.MATCH
         return VerifyVerdict.MISMATCH
+    if action_kind.startswith("mcp."):
+        receipt = claimed.get("mcp_receipt")
+        if (
+            claimed_status != "COMPLETED"
+            or claimed.get("authority") != "DATA_ONLY"
+            or claimed.get("bounded") is not True
+            or not claimed.get("server_identity")
+            or not claimed.get("tool_name")
+            or not claimed.get("result_sha256")
+            or not isinstance(receipt, Mapping)
+            or receipt.get("result_sha256") != claimed.get("result_sha256")
+            or receipt.get("authority") != "DATA_ONLY"
+        ):
+            return VerifyVerdict.MISMATCH
+        effect_class = str(claimed.get("effect_class") or "")
+        if effect_class == EffectClass.READ_ONLY.value:
+            return VerifyVerdict.MATCH
+        if (
+            claimed.get("effect_id")
+            and claimed.get("idempotency_key")
+            and claimed.get("readback_verified") is True
+            and claimed.get("reconciled") is True
+        ):
+            return VerifyVerdict.MATCH
+        return VerifyVerdict.UNKNOWN
     if action_kind == "llm.dispatch":
         return VerifyVerdict.UNKNOWN
     return VerifyVerdict.UNKNOWN
