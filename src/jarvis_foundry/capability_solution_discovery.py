@@ -1376,7 +1376,7 @@ def _parse_worktrees(value: str) -> list[dict[str, Any]]:
             continue
         key, _, item = line.partition(" ")
         if key in {"worktree", "HEAD", "branch", "prunable"}:
-            current[key] = item.strip()
+            current[key] = item.strip()[:MAX_TEXT]
     return result
 
 
