@@ -3,7 +3,7 @@
 The source finalist comes from the frozen A2 proof database opened with
 ``mode=ro``.  Web and GitHub connectors perform GET/read operations, local
 project evidence is read directly, and all durable writes are confined to a
-new disposable schema-v39 evidence database under ``--evidence-root``.
+new disposable schema-v40 evidence database under ``--evidence-root``.
 """
 from __future__ import annotations
 
@@ -122,8 +122,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
 
     database = FoundryDatabase(evidence_root / "v11-research-intelligence.db")
     schema = database.initialize()
-    if schema != 39:
-        raise AssertionError(f"expected schema 39, got {schema}")
+    if schema != 40:
+        raise AssertionError(f"expected schema 40, got {schema}")
     started = datetime.now(timezone.utc)
     # Keep deterministic cache transitions while leaving enough wall-clock
     # room for real browser/API reads to precede dossier evaluation time.

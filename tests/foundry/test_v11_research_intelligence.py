@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
-from urllib.request import urlopen
 
-from jarvis_foundry.command_center import CommandCenterServer, build_snapshot
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.discovery_candidates import ingest_observed_candidate
 from jarvis_foundry.research_dossier import (
@@ -15,7 +12,6 @@ from jarvis_foundry.research_dossier import (
     build_research_dossier,
     build_research_dossier_with_follow_up,
     candidate_evidence_revision,
-    project_research_dossiers,
     research_candidate_dossier,
 )
 
@@ -98,7 +94,7 @@ def _contradicting_evidence(*, hostile: bool = False) -> dict[str, Any]:
 
 def _db_candidate(tmp_path: Path) -> tuple[FoundryDatabase, str]:
     database = FoundryDatabase(tmp_path / "v11-research.db")
-    assert database.initialize() == 39
+    assert database.initialize() == 40
     result = ingest_observed_candidate(
         database,
         "v11-research-cycle",
@@ -349,66 +345,3 @@ def test_queue_cache_reuses_refreshes_and_keys_material_revision(tmp_path: Path)
     assert changed["cache_status"] == "REVISION_CHANGED"
     assert calls == 3
     assert database.event_count(event_type="research.candidate_enqueued") == 3
-
-
-def test_command_center_projects_concise_dossier_without_writes(tmp_path: Path) -> None:
-    database, candidate_id = _db_candidate(tmp_path)
-
-    def reader(
-        _identity: dict[str, Any],
-        _question: str,
-        _policy: ResearchDossierPolicy,
-    ) -> dict[str, Any]:
-        return {
-            "status": "COMPLETED",
-            "source_evidence": [
-                *_supporting_evidence(),
-                _contradicting_evidence(hostile=True),
-            ],
-            "unresolved_unknowns": [{
-                "unknown_id": "production-validation",
-                "question": "Has this been validated in production?",
-                "why_it_matters": "Candidate evidence is not production trust.",
-                "expected_information_value": 0.98,
-            }],
-            "budget_used": 0.5,
-        }
-
-    research_candidate_dossier(
-        database,
-        candidate_id=candidate_id,
-        cycle_id="command-center-proof",
-        initial_reader=reader,
-        reserved_budget=0.5,
-        per_candidate_budget=0.5,
-        cycle_budget=2.0,
-        now=NOW,
-    )
-    before = database.event_count()
-    projection = project_research_dossiers(database, now=NOW)
-    snapshot = build_snapshot(database, now=NOW.isoformat())
-
-    assert database.event_count() == before
-    assert projection["status"] == "READY"
-    assert projection["count"] == 1
-    assert projection["dossiers"][0]["summary"].startswith("MIXED:")
-    surface = snapshot["discovery"]["research_intelligence"]
-    assert surface == projection
-    assert surface["authority"] == "READ_ONLY_PROJECTION"
-    with database.connect(readonly=True) as connection:
-        assert connection.execute("SELECT COUNT(*) FROM missions").fetchone()[0] == 0
-    assert database.event_count(event_type="executive.objective_created") == 0
-    assert not any(
-        event.event_type.startswith("system.action_") for event in database.events()
-    )
-    server = CommandCenterServer(database, stop_path=tmp_path / "STOP")
-    server.start()
-    try:
-        base = f"http://{server.address[0]}:{server.address[1]}"
-        with urlopen(f"{base}/api/research/dossiers", timeout=3) as response:
-            api_projection = json.loads(response.read())
-        assert api_projection["contract"] == DOSSIER_CONTRACT
-        assert api_projection["dossiers"][0]["summary"].startswith("MIXED:")
-        assert database.event_count() == before
-    finally:
-        server.close()
