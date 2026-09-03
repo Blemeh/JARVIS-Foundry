@@ -92,7 +92,20 @@ def main(argv: list[str] | None = None) -> int:
         "trial_count": proof.get("trial_count"),
         "duplicate_registrations": proof.get("duplicate_registrations"),
     }, sort_keys=True))
-    passed = proof.get("passed") is True and selected_mcp.get("passed") is True
+    restoration = selected_mcp.get("restoration_failure") or {}
+    passed = (
+        proof.get("passed") is True
+        and selected_mcp.get("passed") is True
+        and restoration.get("readiness") == "DEGRADED"
+        and restoration.get("result_status") == "FAILED"
+        and restoration.get("result_provider") == "fabric"
+        and restoration.get("generic_dispatches") == 0
+        and restoration.get("worker_route_event_delta") == 0
+        and restoration.get("spine_result_count") == 1
+        and restoration.get("spine_claimed") == "BLOCKED"
+        and restoration.get("spine_verified") == "UNKNOWN"
+        and restoration.get("spine_success") is False
+    )
     return 0 if passed else 1
 
 

@@ -61,11 +61,15 @@ from jarvis_foundry.fabric.model import (
     TaskIntent,
     UnattendedMode,
 )
-from jarvis_foundry.mcp_backend import CANONICAL_MCP_RUNTIME, stable_tool_identity
+from jarvis_foundry.mcp_backend import (
+    CANONICAL_MCP_RUNTIME,
+    FabricMcpBackend,
+    stable_tool_identity,
+)
 from jarvis_foundry.mission.verification import accepted_verifications
 from jarvis_foundry.paths import FoundryPaths
 from jarvis_foundry.roles.manifest import ContextManifest
-from jarvis_foundry.roles.results import COMPLETED
+from jarvis_foundry.roles.results import COMPLETED, FAILED
 from jarvis_foundry.runtime._stack import build_worker_stack
 from jarvis_foundry.runtime.config import WorkerRuntimeConfig
 from jarvis_foundry.runtime.worker_loop import run_cycle
@@ -308,6 +312,7 @@ def _mcp_blueprint(
 
 def test_selected_mcp_solution_uses_canonical_backend_and_worker_path(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     database = _database(tmp_path)
     resource_id = "resource-v12-selected-mcp"
@@ -450,6 +455,92 @@ def test_selected_mcp_solution_uses_canonical_backend_and_worker_path(
             if event.payload.get("capability_id") == MCP_MISSING
         ]) == 1
         assert len(_events(restarted_database, MCP_ADOPTION_VERIFIED)) == 1
+
+        def fail_restoration(
+            _backend: FabricMcpBackend,
+            _server_id: str,
+            *,
+            include_disabled: bool = False,
+        ):
+            del include_disabled
+            raise RuntimeError("simulated selected MCP restoration failure")
+
+        monkeypatch.setattr(
+            FabricMcpBackend,
+            "connect_server",
+            fail_restoration,
+        )
+        degraded_stack = build_worker_stack(
+            restarted_database,
+            FoundryPaths(worker_home),
+            WorkerRuntimeConfig(
+                enabled=True,
+                status="ACTIVE",
+                resource_id=resource_id,
+                runtime_state_root=str(
+                    tmp_path / "selected-mcp-worker-state-degraded"
+                ),
+            ),
+            run_id="selected-mcp-worker-degraded",
+        )
+        generic_dispatches: list[object] = []
+
+        def forbid_generic_dispatch(contract):
+            generic_dispatches.append(contract)
+            raise AssertionError(
+                "degraded selected MCP capability must not reach a generic worker"
+            )
+
+        monkeypatch.setattr(
+            degraded_stack.bridge.router,
+            "route",
+            forbid_generic_dispatch,
+        )
+        spine_before = len(_events(restarted_database, "fabric.spine.result"))
+        route_before = len(_events(restarted_database, "worker.route_decided"))
+        try:
+            assert degraded_stack.mcp_backend is None
+            degraded_result = degraded_stack.bridge.dispatch(
+                ContextManifest(
+                    run_id="run-v12-selected-mcp-degraded",
+                    role="builder",
+                    mission_id="mission-v12-selected-mcp-degraded",
+                    step_id="echo",
+                    resource_id=resource_id,
+                    capability=MCP_MISSING,
+                    provider="fabric",
+                    model="local",
+                    isolation_group="v12-selected-mcp-degraded",
+                    instructions=json.dumps(
+                        {"arguments": {"text": "must-not-fallback", "repeat": 1}}
+                    ),
+                ),
+                heartbeat=lambda: None,
+            )
+        finally:
+            degraded_stack.close()
+        restoration_spine = _events(
+            restarted_database,
+            "fabric.spine.result",
+        )[spine_before:]
+        route_delta = (
+            len(_events(restarted_database, "worker.route_decided"))
+            - route_before
+        )
+        assert observed_readiness(
+            restarted_database,
+            MCP_MISSING,
+        ).state is Readiness.DEGRADED
+        assert degraded_result.status == FAILED
+        assert degraded_result.provider == "fabric"
+        assert degraded_result.error_class == "fabric_effect_failed"
+        assert generic_dispatches == []
+        assert route_delta == 0
+        assert len(restoration_spine) == 1
+        assert restoration_spine[0].payload["claimed"] == "BLOCKED"
+        assert restoration_spine[0].payload["verified"] == "UNKNOWN"
+        assert restoration_spine[0].payload["success"] is False
+
         proof_output = os.environ.get("JARVIS_V12_MCP_ADOPTION_PROOF_OUTPUT")
         if proof_output:
             registrations = [
@@ -481,6 +572,18 @@ def test_selected_mcp_solution_uses_canonical_backend_and_worker_path(
                     "provider": result.provider,
                     "fallback_dispatches": 0,
                     "evidence": list(result.evidence),
+                },
+                "restoration_failure": {
+                    "readiness": Readiness.DEGRADED.value,
+                    "result_status": degraded_result.status,
+                    "result_provider": degraded_result.provider,
+                    "result_error_class": degraded_result.error_class,
+                    "generic_dispatches": len(generic_dispatches),
+                    "worker_route_event_delta": route_delta,
+                    "spine_result_count": len(restoration_spine),
+                    "spine_claimed": restoration_spine[0].payload["claimed"],
+                    "spine_verified": restoration_spine[0].payload["verified"],
+                    "spine_success": restoration_spine[0].payload["success"],
                 },
                 "live_mutated": False,
                 "main_or_origin_mutated": False,

@@ -13,7 +13,15 @@ from typing import Any, Callable
 
 from ..roles.adapter import RoleAdapter
 from ..roles.manifest import ContextManifest
-from ..roles.results import COMPLETED, FAILED, RoleResult, VERDICT_FAIL, VERDICT_PASS
+from ..roles.results import (
+    BLOCKED,
+    COMPLETED,
+    FAILED,
+    RoleResult,
+    VERDICT_FAIL,
+    VERDICT_NOT_TESTED,
+    VERDICT_PASS,
+)
 from .catalog import get_spec
 from .executors import HANDLERS, ExecutorContext
 from .loop import seed_builtins, select_capability
@@ -38,6 +46,35 @@ _STRUCTURED_READS = {
     "system.diagnose",
     "system.runtime",
 }
+
+
+def _is_mcp_fabric_only(capability: str, action_kind: str | None = None) -> bool:
+    return (
+        capability.startswith(("mcp.", "cap.mcp."))
+        or bool(action_kind and action_kind.startswith("mcp."))
+    )
+
+
+def _mcp_fabric_blocked(
+    manifest: ContextManifest,
+    *,
+    reason: str,
+) -> RoleResult:
+    return RoleResult(
+        run_id=manifest.run_id,
+        role=manifest.role,
+        status=BLOCKED,
+        provider="fabric",
+        model="local",
+        verdict=VERDICT_NOT_TESTED,
+        evidence=(
+            f"fabric:{manifest.capability}",
+            "verified:UNKNOWN",
+        ),
+        error_class="fabric_capability_unavailable",
+        error_detail=reason,
+        identity_transition_authorized=True,
+    )
 
 
 def resolve_fabric_action(capability: str, database=None) -> str | None:
@@ -133,12 +170,25 @@ def try_fabric_dispatch(
 ) -> RoleResult | None:
     """Run a mapped fabric action or return None so the inner adapter can."""
     action = resolve_fabric_action(manifest.capability, database)
-    if manifest.role not in {"builder", "repair"} or action is None:
+    if manifest.role not in {"builder", "repair"}:
+        return None
+    mcp_fabric_only = _is_mcp_fabric_only(manifest.capability, action)
+    if action is None:
+        if mcp_fabric_only:
+            return _mcp_fabric_blocked(
+                manifest,
+                reason="selected MCP capability is missing from the Fabric catalog",
+            )
         return None
     payload = payload_from_manifest(
         manifest, action, owned_root, structured_only=structured_only,
     )
     if payload is None:
+        if mcp_fabric_only:
+            return _mcp_fabric_blocked(
+                manifest,
+                reason="selected MCP capability requires a structured Fabric payload",
+            )
         return None
     seed_builtins(database)
     selection = select_capability(
@@ -150,7 +200,7 @@ def try_fabric_dispatch(
         ),
         action,
     )
-    if not selection.available:
+    if not selection.available and not action.startswith("mcp."):
         # DEGRADED / VETOED / missing: do not execute, and do not claim
         # the step. The inner Hermes path may still satisfy it.
         return None
@@ -234,6 +284,11 @@ class FabricRoleAdapter:
             self.database, manifest, fallback=self.owned_root,
         )
         if root is None:
+            if _is_mcp_fabric_only(manifest.capability):
+                return _mcp_fabric_blocked(
+                    manifest,
+                    reason="selected MCP capability has no registered resource root",
+                )
             return self.inner.dispatch(manifest, heartbeat=heartbeat)
         result = try_fabric_dispatch(
             self.database, manifest, heartbeat,

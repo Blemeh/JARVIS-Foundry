@@ -225,6 +225,7 @@ def _build_report(
                 selected_mcp["restart_replayed_same_receipt"]
             ),
             "worker_dispatch": selected_mcp["worker_dispatch"],
+            "restoration_failure": selected_mcp["restoration_failure"],
         },
         "a6": {
             "passed": a6["verdict"] == "PASS",
@@ -366,6 +367,19 @@ def main(argv: list[str] | None = None) -> int:
 
     _require(a5.get("passed") is True, "A5 self-expansion proof failed")
     _require(selected_mcp.get("passed") is True, "selected MCP adoption failed")
+    restoration = selected_mcp.get("restoration_failure") or {}
+    _require(
+        restoration.get("readiness") == "DEGRADED"
+        and restoration.get("result_status") == "FAILED"
+        and restoration.get("result_provider") == "fabric"
+        and restoration.get("generic_dispatches") == 0
+        and restoration.get("worker_route_event_delta") == 0
+        and restoration.get("spine_result_count") == 1
+        and restoration.get("spine_claimed") == "BLOCKED"
+        and restoration.get("spine_verified") == "UNKNOWN"
+        and restoration.get("spine_success") is False,
+        "selected MCP restoration failure did not fail closed in Fabric",
+    )
     _require(a6.get("verdict") == "PASS", "A6 endurance proof failed")
     _require(mcp.get("passed") is True, "MCP backend proof failed")
     _require(
