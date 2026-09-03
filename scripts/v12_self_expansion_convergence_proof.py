@@ -25,11 +25,19 @@ def main(argv: list[str] | None = None) -> int:
     env = os.environ.copy()
     env["PYTHONPATH"] = str(ROOT)
     env["JARVIS_V12_PROOF_OUTPUT"] = str(output)
-    pytest_executable = shutil.which("pytest")
-    if not pytest_executable:
-        raise RuntimeError("pytest executable is required for the disposable proof")
+    uv_executable = shutil.which("uv")
+    if not uv_executable:
+        raise RuntimeError("uv is required for the locked disposable proof environment")
     command = [
-        pytest_executable,
+        uv_executable,
+        "run",
+        "--extra",
+        "dev",
+        "--extra",
+        "web",
+        "python",
+        "-m",
+        "pytest",
         "-q",
         "tests/foundry/test_v12_self_expansion_convergence.py",
     ]
