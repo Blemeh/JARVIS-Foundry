@@ -759,12 +759,14 @@ def test_real_disposable_endurance_campaign_script(tmp_path: Path) -> None:
         + os.pathsep
         + environment.get("PYTHONPATH", "")
     )
+    receipt_path = tmp_path / "v12-proof.json"
     result = subprocess.run(
         [
             sys.executable,
             str(script),
             "--mode", "full",
             "--root", str(tmp_path / "real-campaign"),
+            "--output", str(receipt_path),
         ],
         cwd=script.parents[1],
         env=environment,
@@ -774,7 +776,10 @@ def test_real_disposable_endurance_campaign_script(tmp_path: Path) -> None:
     )
     assert result.returncode == 0, result.stderr
     proof = json.loads(result.stdout)
+    assert json.loads(receipt_path.read_text(encoding="utf-8")) == proof
     assert proof["verdict"] == "PASS"
+    assert proof["source"]["schema_version"] == 40
+    assert proof["source"]["activation_authorized"] is False
     assert proof["campaign"]["status"] == "COMPLETED"
     assert proof["campaign"]["accepted_child_count"] == 3
     assert proof["provider_routing"]["fallback_used"] is True

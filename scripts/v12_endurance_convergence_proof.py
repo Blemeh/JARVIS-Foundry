@@ -43,6 +43,7 @@ from jarvis_foundry.executive.campaigns import (
 from jarvis_foundry.executive.continuous import resume_mission_provider_waits
 from jarvis_foundry.mission.loop import BLOCKED_OUTCOME, PASSED, MissionLoop
 from jarvis_foundry.mission.contracts import MissionStepContract, record_step_contract
+from jarvis_foundry.migrations import SCHEMA_VERSION
 from jarvis_foundry.roles.adapter import ProviderFailure
 from jarvis_foundry.roles.results import COMPLETED, RoleResult
 from jarvis_foundry.roles.router import ProviderRouteCandidate, RoleRouter, RoutingRequest
@@ -53,6 +54,10 @@ PROOF_NOW = "2026-09-03T12:00:00Z"
 FUTURE_DEADLINE = "2099-09-03T12:00:00Z"
 CAMPAIGN_ID = "campaign-v12-endurance-disposable"
 OBJECTIVE_ID = "objective-v12-endurance-disposable"
+REPO_ROOT = SOURCE_ROOT.parent
+BASE_V11_SHA = "ae9ac06b6f9174c810b0e658daaf81c7b683ae8b"
+CAMPAIGN_INPUT_SHA = "db685fe0bd0bc22b25a1f717bafdd8612cdfd19d"
+PROVIDER_INPUT_SHA = "eedc4b293daa6400907f3196924514b21a61010c"
 
 CHILDREN = {
     "ambiguous-child": {
@@ -80,6 +85,29 @@ def _open(root: Path) -> FoundryDatabase:
     database = FoundryDatabase(root / "foundry.db")
     database.initialize()
     return database
+
+
+def _git_output(*args: str) -> str:
+    return subprocess.run(
+        ["git", *args],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+
+def _source_identity() -> dict[str, Any]:
+    return {
+        "branch": _git_output("branch", "--show-current"),
+        "implementation_sha": _git_output("rev-parse", "HEAD"),
+        "base_v11_sha": BASE_V11_SHA,
+        "campaign_input_sha": CAMPAIGN_INPUT_SHA,
+        "provider_resilience_input_sha": PROVIDER_INPUT_SHA,
+        "schema_version": SCHEMA_VERSION,
+        "worktree_clean_before_proof": not bool(_git_output("status", "--short")),
+        "activation_authorized": False,
+    }
 
 
 def _append(
@@ -696,6 +724,7 @@ def _run_full(root: Path) -> dict[str, Any]:
     return {
         "schema": "jarvis-v12-endurance-convergence-proof-v1",
         "verdict": "PASS",
+        "source": _source_identity(),
         "root": str(root),
         "live_mutated": False,
         "provider_credentials_used": False,
@@ -801,6 +830,12 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--mode", choices=("full", "hard-kill"), default="full")
     parser.add_argument("--root", type=Path, default=None)
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="also write the complete JSON receipt to this path",
+    )
     args = parser.parse_args(argv)
     root = (
         args.root
@@ -810,7 +845,12 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.mode == "hard-kill":
             return _hard_kill(root)
-        print(json.dumps(_run_full(root), indent=2, sort_keys=True))
+        payload = json.dumps(_run_full(root), indent=2, sort_keys=True) + "\n"
+        if args.output is not None:
+            output = args.output.resolve()
+            output.parent.mkdir(parents=True, exist_ok=True)
+            output.write_text(payload, encoding="utf-8")
+        print(payload, end="")
         return 0
     except Exception as error:  # pragma: no cover - CLI boundary
         print(json.dumps({
