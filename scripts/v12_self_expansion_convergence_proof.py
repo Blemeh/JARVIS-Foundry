@@ -4,8 +4,8 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 
@@ -25,10 +25,11 @@ def main(argv: list[str] | None = None) -> int:
     env = os.environ.copy()
     env["PYTHONPATH"] = str(ROOT)
     env["JARVIS_V12_PROOF_OUTPUT"] = str(output)
+    pytest_executable = shutil.which("pytest")
+    if not pytest_executable:
+        raise RuntimeError("pytest executable is required for the disposable proof")
     command = [
-        sys.executable,
-        "-m",
-        "pytest",
+        pytest_executable,
         "-q",
         "tests/foundry/test_v12_self_expansion_convergence.py",
     ]
