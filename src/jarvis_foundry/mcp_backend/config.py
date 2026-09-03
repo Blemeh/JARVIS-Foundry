@@ -4,6 +4,7 @@ Configuration chooses transport and JARVIS policy.  Remote MCP descriptions,
 annotations, and schemas are untrusted DATA_ONLY inputs and never choose their
 own semantic/effect class.
 """
+
 from __future__ import annotations
 
 import os
@@ -17,6 +18,7 @@ from urllib.parse import urlparse
 
 import yaml
 
+from ..control.redaction import contains_secret_like
 from ..fabric.model import Semantic, UnattendedMode
 
 _IDENTITY = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,127}$")
@@ -39,16 +41,32 @@ class McpOutputLimits:
     max_content_items: int = 32
     max_text_chars: int = 32_000
     max_structured_bytes: int = 64 * 1024
-    max_persisted_bytes: int = 128 * 1024
+    # Existing Fabric effect receipts are capped at 128 KiB; leave headroom
+    # for canonical identity and verification fields around the MCP payload.
+    max_persisted_bytes: int = 96 * 1024
     max_schema_bytes: int = 64 * 1024
     max_schema_depth: int = 24
     max_schema_nodes: int = 2_000
+    max_argument_bytes: int = 256 * 1024
+    max_raw_result_bytes: int = 8 * 1024 * 1024
+    max_discovered_tools: int = 512
+    max_discovered_resources: int = 512
+    max_discovery_pages: int = 128
 
     def __post_init__(self) -> None:
         for name in (
-            "max_content_items", "max_text_chars", "max_structured_bytes",
-            "max_persisted_bytes", "max_schema_bytes", "max_schema_depth",
+            "max_content_items",
+            "max_text_chars",
+            "max_structured_bytes",
+            "max_persisted_bytes",
+            "max_schema_bytes",
+            "max_schema_depth",
             "max_schema_nodes",
+            "max_argument_bytes",
+            "max_raw_result_bytes",
+            "max_discovered_tools",
+            "max_discovered_resources",
+            "max_discovery_pages",
         ):
             value = getattr(self, name)
             if not isinstance(value, int) or isinstance(value, bool) or value < 1:
@@ -73,12 +91,16 @@ class McpToolPolicy:
     def __post_init__(self) -> None:
         if self.semantic is not None and not isinstance(self.semantic, Semantic):
             object.__setattr__(self, "semantic", Semantic(self.semantic))
-        if self.unattended is not None and not isinstance(self.unattended, UnattendedMode):
+        if self.unattended is not None and not isinstance(
+            self.unattended, UnattendedMode
+        ):
             object.__setattr__(self, "unattended", UnattendedMode(self.unattended))
         object.__setattr__(
             self,
             "limitations",
-            tuple(_bounded_text(item, "tool limitation", 500) for item in self.limitations),
+            tuple(
+                _bounded_text(item, "tool limitation", 500) for item in self.limitations
+            ),
         )
 
     @classmethod
@@ -89,7 +111,8 @@ class McpToolPolicy:
             semantic=(Semantic(str(raw["semantic"])) if raw.get("semantic") else None),
             unattended=(
                 UnattendedMode(str(raw["unattended"]))
-                if raw.get("unattended") else None
+                if raw.get("unattended")
+                else None
             ),
             limitations=tuple(raw.get("limitations") or ()),
         )
@@ -139,6 +162,7 @@ class McpServerConfig:
     connect_timeout_s: float = 15.0
     request_timeout_s: float = 60.0
     shutdown_timeout_s: float = 10.0
+    max_concurrent_invocations: int = 4
     default_semantic: Semantic = Semantic.EXTERNAL_EFFECT
     default_unattended: UnattendedMode = UnattendedMode.ALLOWED
     allowed_tools: tuple[str, ...] = ()
@@ -151,7 +175,9 @@ class McpServerConfig:
         if not isinstance(self.transport, McpTransport):
             object.__setattr__(self, "transport", McpTransport(self.transport))
         if not isinstance(self.default_semantic, Semantic):
-            object.__setattr__(self, "default_semantic", Semantic(self.default_semantic))
+            object.__setattr__(
+                self, "default_semantic", Semantic(self.default_semantic)
+            )
         if not isinstance(self.default_unattended, UnattendedMode):
             object.__setattr__(
                 self, "default_unattended", UnattendedMode(self.default_unattended)
@@ -167,15 +193,20 @@ class McpServerConfig:
         for raw_name, policy in dict(self.tools).items():
             name = _bounded_text(raw_name, "tool name", 256)
             normalized_tools[name] = (
-                policy if isinstance(policy, McpToolPolicy)
+                policy
+                if isinstance(policy, McpToolPolicy)
                 else McpToolPolicy.from_mapping(policy)
             )
         object.__setattr__(self, "tools", normalized_tools)
         normalized_env: dict[str, str] = {}
         for key, value in dict(self.env).items():
-            normalized_env[_identity(key, "environment key")] = _bounded_text(
-                value, "environment value", 4096
-            )
+            normalized_key = _identity(key, "environment key")
+            normalized_value = _bounded_text(value, "environment value", 4096)
+            if contains_secret_like(f"{normalized_key}={normalized_value}"):
+                raise McpConfigurationError(
+                    "secret-like stdio environment values must use env_from"
+                )
+            normalized_env[normalized_key] = normalized_value
         object.__setattr__(self, "env", normalized_env)
         normalized_env_from: dict[str, str] = {}
         for child_key, parent_key in dict(self.env_from).items():
@@ -186,21 +217,41 @@ class McpServerConfig:
         normalized_headers: dict[str, str] = {}
         for header, env_name in dict(self.header_env).items():
             if not isinstance(header, str) or not _HEADER.fullmatch(header):
-                raise McpConfigurationError("header_env contains an invalid header name")
-            normalized_headers[header] = _identity(env_name, "header environment reference")
+                raise McpConfigurationError(
+                    "header_env contains an invalid header name"
+                )
+            normalized_headers[header] = _identity(
+                env_name, "header environment reference"
+            )
         object.__setattr__(self, "header_env", normalized_headers)
         for name in ("connect_timeout_s", "request_timeout_s", "shutdown_timeout_s"):
             value = getattr(self, name)
-            if not isinstance(value, (int, float)) or isinstance(value, bool) or value <= 0:
+            if (
+                not isinstance(value, (int, float))
+                or isinstance(value, bool)
+                or value <= 0
+            ):
                 raise McpConfigurationError(f"{name} must be positive")
+        if (
+            not isinstance(self.max_concurrent_invocations, int)
+            or isinstance(self.max_concurrent_invocations, bool)
+            or not 1 <= self.max_concurrent_invocations <= 64
+        ):
+            raise McpConfigurationError(
+                "max_concurrent_invocations must be within 1..64"
+            )
         if not isinstance(self.limits, McpOutputLimits):
-            object.__setattr__(self, "limits", McpOutputLimits.from_mapping(self.limits))
+            object.__setattr__(
+                self, "limits", McpOutputLimits.from_mapping(self.limits)
+            )
         if self.transport is McpTransport.STDIO:
             if not self.command:
                 raise McpConfigurationError("stdio transport requires command")
             _bounded_text(self.command, "command", 2048)
             if self.endpoint is not None or self.header_env:
-                raise McpConfigurationError("stdio transport cannot define HTTP settings")
+                raise McpConfigurationError(
+                    "stdio transport cannot define HTTP settings"
+                )
             if self.cwd is not None:
                 cwd = Path(self.cwd).expanduser()
                 if not cwd.is_absolute():
@@ -208,17 +259,25 @@ class McpServerConfig:
                 object.__setattr__(self, "cwd", str(cwd.resolve()))
         else:
             if not self.endpoint:
-                raise McpConfigurationError("streamable_http transport requires endpoint")
+                raise McpConfigurationError(
+                    "streamable_http transport requires endpoint"
+                )
             parsed = urlparse(self.endpoint)
             if parsed.scheme not in {"http", "https"} or not parsed.hostname:
                 raise McpConfigurationError("endpoint must be an absolute HTTP(S) URL")
+            if parsed.username or parsed.password or parsed.query or parsed.fragment:
+                raise McpConfigurationError(
+                    "endpoint credentials/query/fragment are refused; use header_env"
+                )
             loopback = parsed.hostname.lower() in {"localhost", "127.0.0.1", "::1"}
             if parsed.scheme == "http" and not (loopback or self.allow_insecure_http):
                 raise McpConfigurationError(
                     "plaintext Streamable HTTP is allowed only for loopback unless explicitly enabled"
                 )
             if self.command is not None or self.args or self.cwd is not None:
-                raise McpConfigurationError("streamable_http cannot define stdio settings")
+                raise McpConfigurationError(
+                    "streamable_http cannot define stdio settings"
+                )
 
     @classmethod
     def from_mapping(cls, value: Mapping[str, Any]) -> McpServerConfig:
@@ -227,7 +286,9 @@ class McpServerConfig:
         raw = dict(value)
         tool_values = raw.get("tools") or {}
         if not isinstance(tool_values, Mapping):
-            raise McpConfigurationError("tools must be an object keyed by exact tool name")
+            raise McpConfigurationError(
+                "tools must be an object keyed by exact tool name"
+            )
         return cls(
             server_id=str(raw.get("server_id") or ""),
             transport=McpTransport(str(raw.get("transport") or "")),
@@ -243,6 +304,7 @@ class McpServerConfig:
             connect_timeout_s=float(raw.get("connect_timeout_s", 15.0)),
             request_timeout_s=float(raw.get("request_timeout_s", 60.0)),
             shutdown_timeout_s=float(raw.get("shutdown_timeout_s", 10.0)),
+            max_concurrent_invocations=int(raw.get("max_concurrent_invocations", 4)),
             default_semantic=Semantic(
                 str(raw.get("default_semantic") or Semantic.EXTERNAL_EFFECT.value)
             ),
@@ -298,7 +360,9 @@ class McpServerConfig:
 
     @property
     def credential_refs(self) -> tuple[str, ...]:
-        return tuple(sorted(set(self.env_from.values()) | set(self.header_env.values())))
+        return tuple(
+            sorted(set(self.env_from.values()) | set(self.header_env.values()))
+        )
 
 
 @dataclass(frozen=True, slots=True)

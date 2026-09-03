@@ -1,4 +1,5 @@
 """Persistent official-SDK MCP client sessions on a dedicated asyncio loop."""
+
 from __future__ import annotations
 
 import asyncio
@@ -12,6 +13,7 @@ from types import TracebackType
 from typing import Any, Self
 
 from ..clock import isoformat
+from ..control.redaction import contains_secret_like, redact_text
 from ..events import canonical_json
 from .config import McpBackendConfig, McpServerConfig, McpTransport
 from .contracts import (
@@ -68,6 +70,7 @@ class _SessionRuntime:
     last_error: str | None = None
     discovery_errors: tuple[str, ...] = ()
     invocation_tasks: dict[str, asyncio.Task[Any]] = field(default_factory=dict)
+    invocation_limit: asyncio.Semaphore | None = None
 
     def health(self) -> McpServerHealth:
         return McpServerHealth(
@@ -96,7 +99,7 @@ class McpClientBackend:
 
     def __init__(self, config: McpBackendConfig) -> None:
         self.config = config
-        self._lock = threading.RLock()
+        self._lifecycle_lock = threading.RLock()
         self._loop = asyncio.new_event_loop()
         self._ready = threading.Event()
         self._closed = False
@@ -105,7 +108,8 @@ class McpClientBackend:
                 config=item,
                 state=(
                     McpSessionState.DISCONNECTED
-                    if item.enabled else McpSessionState.DISABLED
+                    if item.enabled
+                    else McpSessionState.DISABLED
                 ),
             )
             for item in config.servers
@@ -127,7 +131,9 @@ class McpClientBackend:
         for task in pending:
             task.cancel()
         if pending:
-            self._loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+            self._loop.run_until_complete(
+                asyncio.gather(*pending, return_exceptions=True)
+            )
         self._loop.close()
 
     @staticmethod
@@ -150,7 +156,9 @@ class McpClientBackend:
             return future.result(timeout=timeout)
         except concurrent.futures.TimeoutError as error:
             future.cancel()
-            raise McpInvocationTimeout("MCP operation exceeded its local deadline") from error
+            raise McpInvocationTimeout(
+                "MCP operation exceeded its local deadline"
+            ) from error
         except concurrent.futures.CancelledError as error:
             raise McpInvocationCancelled("MCP operation was cancelled") from error
 
@@ -173,26 +181,43 @@ class McpClientBackend:
             return Client(params, read_timeout_seconds=config.request_timeout_s), None
         headers = config.resolved_headers()
         if not headers:
-            return Client(str(config.endpoint), read_timeout_seconds=config.request_timeout_s), None
+            return Client(
+                str(config.endpoint), read_timeout_seconds=config.request_timeout_s
+            ), None
         try:
             import httpx2
         except ImportError as error:  # pragma: no cover - SDK dependency guard
-            raise McpDependencyUnavailable("httpx2 is required for authenticated MCP HTTP") from error
+            raise McpDependencyUnavailable(
+                "httpx2 is required for authenticated MCP HTTP"
+            ) from error
         http_client = httpx2.AsyncClient(
             headers=headers,
             follow_redirects=True,
             timeout=httpx2.Timeout(config.request_timeout_s),
         )
         await http_client.__aenter__()
-        transport = streamable_http_client(str(config.endpoint), http_client=http_client)
-        return Client(transport, read_timeout_seconds=config.request_timeout_s), http_client
+        transport = streamable_http_client(
+            str(config.endpoint), http_client=http_client
+        )
+        return Client(
+            transport, read_timeout_seconds=config.request_timeout_s
+        ), http_client
 
-    async def _list_tools(self, runtime: _SessionRuntime) -> tuple[dict[str, McpToolDescriptor], tuple[str, ...]]:
+    async def _list_tools(
+        self, runtime: _SessionRuntime
+    ) -> tuple[dict[str, McpToolDescriptor], tuple[str, ...]]:
         tools: dict[str, McpToolDescriptor] = {}
         errors: list[str] = []
         cursor: str | None = None
+        seen_cursors: set[str] = set()
+        pages = 0
         while True:
-            response = await runtime.client.list_tools(cursor=cursor, cache_mode="reload")
+            pages += 1
+            if pages > runtime.config.limits.max_discovery_pages:
+                raise McpContractError("MCP tool discovery exceeded maximum pages")
+            response = await runtime.client.list_tools(
+                cursor=cursor, cache_mode="reload"
+            )
             for remote in response.tools:
                 try:
                     descriptor = McpToolDescriptor.from_remote(runtime.config, remote)
@@ -203,25 +228,54 @@ class McpClientBackend:
                     errors.append(f"duplicate MCP tool {descriptor.tool_name!r}")
                     continue
                 tools[descriptor.tool_name] = descriptor
+                if len(tools) > runtime.config.limits.max_discovered_tools:
+                    raise McpContractError(
+                        "MCP tool discovery exceeded maximum tool count"
+                    )
             cursor = getattr(response, "next_cursor", None)
             if not cursor:
                 break
+            if cursor in seen_cursors:
+                raise McpContractError(
+                    "MCP tool discovery repeated a pagination cursor"
+                )
+            seen_cursors.add(cursor)
         return tools, tuple(errors)
 
-    async def _list_resources(self, runtime: _SessionRuntime) -> dict[str, McpResourceDescriptor]:
+    async def _list_resources(
+        self, runtime: _SessionRuntime
+    ) -> dict[str, McpResourceDescriptor]:
         capabilities = getattr(runtime.client, "server_capabilities", None)
         if capabilities is None or getattr(capabilities, "resources", None) is None:
             return {}
         resources: dict[str, McpResourceDescriptor] = {}
         cursor: str | None = None
+        seen_cursors: set[str] = set()
+        pages = 0
         while True:
-            response = await runtime.client.list_resources(cursor=cursor, cache_mode="reload")
+            pages += 1
+            if pages > runtime.config.limits.max_discovery_pages:
+                raise McpContractError("MCP resource discovery exceeded maximum pages")
+            response = await runtime.client.list_resources(
+                cursor=cursor, cache_mode="reload"
+            )
             for remote in response.resources:
-                descriptor = McpResourceDescriptor.from_remote(runtime.config.server_id, remote)
+                descriptor = McpResourceDescriptor.from_remote(
+                    runtime.config.server_id, remote
+                )
                 resources[descriptor.uri] = descriptor
+                if len(resources) > runtime.config.limits.max_discovered_resources:
+                    raise McpContractError(
+                        "MCP resource discovery exceeded maximum resource count"
+                    )
             cursor = getattr(response, "next_cursor", None)
             if not cursor:
                 break
+            if cursor in seen_cursors:
+                raise McpContractError(
+                    "MCP resource discovery repeated a pagination cursor"
+                )
+            seen_cursors.add(cursor)
         return resources
 
     async def _connect(self, server_id: str, reconnect: bool) -> McpServerHealth:
@@ -239,7 +293,9 @@ class McpClientBackend:
         http_client = None
         try:
             client, http_client = await self._build_client(runtime)
-            await asyncio.wait_for(client.__aenter__(), runtime.config.connect_timeout_s)
+            await asyncio.wait_for(
+                client.__aenter__(), runtime.config.connect_timeout_s
+            )
             runtime.client = client
             runtime.http_client = http_client
             tools, errors = await asyncio.wait_for(
@@ -250,12 +306,18 @@ class McpClientBackend:
             )
             info = getattr(client, "server_info", None)
             runtime.remote_name = (
-                str(getattr(info, "name", ""))[:256] or None if info is not None else None
+                str(getattr(info, "name", ""))[:256] or None
+                if info is not None
+                else None
             )
             runtime.remote_version = (
-                str(getattr(info, "version", ""))[:128] or None if info is not None else None
+                str(getattr(info, "version", ""))[:128] or None
+                if info is not None
+                else None
             )
-            runtime.protocol_version = str(getattr(client, "protocol_version", "")) or None
+            runtime.protocol_version = (
+                str(getattr(client, "protocol_version", "")) or None
+            )
             runtime.tools = tools
             runtime.resources = resources
             runtime.discovery_errors = errors
@@ -270,36 +332,45 @@ class McpClientBackend:
                 try:
                     await client.__aexit__(type(error), error, error.__traceback__)
                 except Exception as close_error:  # noqa: BLE001 - preserve primary connect error
-                    runtime.last_error = f"client cleanup failed: {close_error}"[:400]
+                    runtime.last_error = redact_text(
+                        f"client cleanup failed: {close_error}"
+                    )[:400]
             if http_client is not None:
                 try:
                     await http_client.__aexit__(type(error), error, error.__traceback__)
                 except Exception as close_error:  # noqa: BLE001 - preserve primary connect error
-                    runtime.last_error = f"HTTP cleanup failed: {close_error}"[:400]
+                    runtime.last_error = redact_text(
+                        f"HTTP cleanup failed: {close_error}"
+                    )[:400]
             runtime.client = None
             runtime.http_client = None
             runtime.state = McpSessionState.DEGRADED
             runtime.checked_at = isoformat()
-            runtime.last_error = str(error)[:400]
+            runtime.last_error = redact_text(str(error))[:400]
             if isinstance(error, (McpBackendError, McpContractError)):
                 raise
             raise McpServerUnavailable(
-                f"MCP server {server_id!r} failed to connect: {error}"
+                f"MCP server {server_id!r} failed to connect: {redact_text(str(error))}"
             ) from error
 
     def connect(self, server_id: str) -> McpServerHealth:
         config = self._runtime(server_id).config
-        return self._submit(
-            self._connect(server_id, False),
-            timeout=config.connect_timeout_s + 2,
-        )
+        with self._lifecycle_lock:
+            return self._submit(
+                self._connect(server_id, False),
+                timeout=(config.connect_timeout_s * 3) + 2,
+            )
 
-    async def _disconnect(self, server_id: str, stopped: bool = False) -> McpServerHealth:
+    async def _disconnect(
+        self, server_id: str, stopped: bool = False
+    ) -> McpServerHealth:
         runtime = self._runtime(server_id)
         for task in tuple(runtime.invocation_tasks.values()):
             task.cancel()
         if runtime.invocation_tasks:
-            await asyncio.gather(*runtime.invocation_tasks.values(), return_exceptions=True)
+            await asyncio.gather(
+                *runtime.invocation_tasks.values(), return_exceptions=True
+            )
         runtime.invocation_tasks.clear()
         client = runtime.client
         http_client = runtime.http_client
@@ -308,14 +379,16 @@ class McpClientBackend:
         if client is not None:
             try:
                 await asyncio.wait_for(
-                    client.__aexit__(None, None, None), runtime.config.shutdown_timeout_s
+                    client.__aexit__(None, None, None),
+                    runtime.config.shutdown_timeout_s,
                 )
             except BaseException as error:  # noqa: BLE001 - shutdown remains best effort
-                runtime.last_error = str(error)[:400]
+                runtime.last_error = redact_text(str(error))[:400]
         if http_client is not None:
             try:
                 await asyncio.wait_for(
-                    http_client.__aexit__(None, None, None), runtime.config.shutdown_timeout_s
+                    http_client.__aexit__(None, None, None),
+                    runtime.config.shutdown_timeout_s,
                 )
             except Exception as error:  # noqa: BLE001 - shutdown remains best effort
                 runtime.last_error = str(error)[:400]
@@ -327,25 +400,31 @@ class McpClientBackend:
 
     def disconnect(self, server_id: str, *, stopped: bool = False) -> McpServerHealth:
         config = self._runtime(server_id).config
-        return self._submit(
-            self._disconnect(server_id, stopped),
-            timeout=config.shutdown_timeout_s + 2,
-        )
+        with self._lifecycle_lock:
+            return self._submit(
+                self._disconnect(server_id, stopped),
+                timeout=(config.shutdown_timeout_s * 2) + 2,
+            )
 
     def reconnect(self, server_id: str) -> McpServerHealth:
         config = self._runtime(server_id).config
-        self.disconnect(server_id)
-        return self._submit(
-            self._connect(server_id, True),
-            timeout=config.connect_timeout_s + 2,
-        )
+        with self._lifecycle_lock:
+            self.disconnect(server_id)
+            return self._submit(
+                self._connect(server_id, True),
+                timeout=(config.connect_timeout_s * 3) + 2,
+            )
 
-    async def _refresh(self, server_id: str) -> tuple[McpServerHealth, tuple[McpToolDescriptor, ...]]:
+    async def _refresh(
+        self, server_id: str
+    ) -> tuple[McpServerHealth, tuple[McpToolDescriptor, ...]]:
         runtime = self._runtime(server_id)
         if runtime.state is not McpSessionState.READY or runtime.client is None:
             raise McpServerUnavailable(f"MCP server {server_id!r} is not connected")
         try:
-            await runtime.client.send_ping()
+            # A cache-bypassing discovery request is the cross-version health
+            # probe. MCP 2026 removed ping; SDK v2 transparently falls back to
+            # the legacy initialize/session flow for older servers.
             tools, errors = await self._list_tools(runtime)
             runtime.resources = await self._list_resources(runtime)
             runtime.tools = tools
@@ -356,21 +435,30 @@ class McpClientBackend:
         except BaseException as error:
             runtime.state = McpSessionState.DEGRADED
             runtime.checked_at = isoformat()
-            runtime.last_error = str(error)[:400]
+            runtime.last_error = redact_text(str(error))[:400]
             raise McpServerUnavailable(
-                f"MCP server {server_id!r} failed readiness check: {error}"
+                f"MCP server {server_id!r} failed readiness check: {redact_text(str(error))}"
             ) from error
 
-    def refresh(self, server_id: str) -> tuple[McpServerHealth, tuple[McpToolDescriptor, ...]]:
+    def refresh(
+        self, server_id: str
+    ) -> tuple[McpServerHealth, tuple[McpToolDescriptor, ...]]:
         config = self._runtime(server_id).config
-        return self._submit(
-            self._refresh(server_id), timeout=config.request_timeout_s + 2
-        )
+        with self._lifecycle_lock:
+            return self._submit(
+                self._refresh(server_id), timeout=(config.request_timeout_s * 2) + 2
+            )
 
-    def tools(self, server_id: str, *, include_disabled: bool = False) -> tuple[McpToolDescriptor, ...]:
+    def tools(
+        self, server_id: str, *, include_disabled: bool = False
+    ) -> tuple[McpToolDescriptor, ...]:
         runtime = self._runtime(server_id)
         result = tuple(runtime.tools[name] for name in sorted(runtime.tools))
-        return result if include_disabled else tuple(item for item in result if item.enabled)
+        return (
+            result
+            if include_disabled
+            else tuple(item for item in result if item.enabled)
+        )
 
     def resources(self, server_id: str) -> tuple[McpResourceDescriptor, ...]:
         runtime = self._runtime(server_id)
@@ -412,20 +500,38 @@ class McpClientBackend:
                 f"MCP tool {descriptor.tool_name!r} is absent or disabled"
             )
         validate_arguments(current.input_schema, arguments)
-        arguments_hash = hashlib.sha256(
-            canonical_json(dict(arguments)).encode("utf-8")
-        ).hexdigest()
+        encoded_arguments = canonical_json(dict(arguments)).encode("utf-8")
+        if len(encoded_arguments) > runtime.config.limits.max_argument_bytes:
+            raise McpContractError("MCP arguments exceed maximum encoded size")
+        if contains_secret_like(encoded_arguments.decode("utf-8")):
+            raise McpContractError(
+                "secret-like MCP arguments are refused; use credential refs"
+            )
+        arguments_hash = hashlib.sha256(encoded_arguments).hexdigest()
         started = isoformat()
+        if runtime.invocation_limit is None:
+            runtime.invocation_limit = asyncio.Semaphore(
+                runtime.config.max_concurrent_invocations
+            )
+        wait_started = asyncio.get_running_loop().time()
+        try:
+            await asyncio.wait_for(runtime.invocation_limit.acquire(), timeout_s)
+        except TimeoutError as error:
+            raise McpInvocationTimeout(
+                f"MCP tool {descriptor.tool_name!r} timed out waiting for a bounded slot"
+            ) from error
+        elapsed_wait = asyncio.get_running_loop().time() - wait_started
+        remaining_timeout = max(0.001, timeout_s - elapsed_wait)
         call_task = asyncio.create_task(
             runtime.client.call_tool(
                 descriptor.tool_name,
                 dict(arguments),
-                read_timeout_seconds=timeout_s,
+                read_timeout_seconds=remaining_timeout,
             ),
             name=f"mcp:{invocation_id}",
         )
         runtime.invocation_tasks[invocation_id] = call_task
-        deadline = asyncio.get_running_loop().time() + timeout_s
+        deadline = asyncio.get_running_loop().time() + remaining_timeout
         try:
             while True:
                 remaining = deadline - asyncio.get_running_loop().time()
@@ -470,8 +576,21 @@ class McpClientBackend:
             raise McpInvocationTimeout(
                 f"MCP tool {descriptor.tool_name!r} exceeded {timeout_s:.3f}s"
             ) from error
+        except McpInvocationCancelled:
+            raise
+        except McpContractError:
+            raise
+        except Exception as error:
+            runtime.state = McpSessionState.DEGRADED
+            runtime.checked_at = isoformat()
+            runtime.last_error = redact_text(str(error))[:400]
+            raise McpServerUnavailable(
+                f"MCP server {descriptor.server_id!r} failed during invocation: "
+                f"{redact_text(str(error))}"
+            ) from error
         finally:
             runtime.invocation_tasks.pop(invocation_id, None)
+            runtime.invocation_limit.release()
 
     def invoke(
         self,
@@ -486,7 +605,9 @@ class McpClientBackend:
         runtime = self._runtime(descriptor.server_id)
         bounded_timeout = float(timeout_s or runtime.config.request_timeout_s)
         if bounded_timeout <= 0 or bounded_timeout > 3600:
-            raise McpContractError("MCP invocation timeout must be within (0, 3600] seconds")
+            raise McpContractError(
+                "MCP invocation timeout must be within (0, 3600] seconds"
+            )
         identity = invocation_id or f"mcp-invocation:{uuid.uuid4().hex}"
         return self._submit(
             self._invoke(
@@ -511,7 +632,9 @@ class McpClientBackend:
         if runtime.state is not McpSessionState.READY or runtime.client is None:
             raise McpServerUnavailable(f"MCP server {server_id!r} is not connected")
         if uri not in runtime.resources:
-            raise McpToolUnavailable("MCP resource must be discovered before it is read")
+            raise McpToolUnavailable(
+                "MCP resource must be discovered before it is read"
+            )
         raw = await runtime.client.read_resource(uri)
         payload = raw.model_dump(mode="json", by_alias=True)
         normalized = normalize_result(
@@ -522,11 +645,13 @@ class McpClientBackend:
             },
             runtime.config.limits,
         )
-        normalized.update({
-            "server_id": server_id,
-            "resource_id": runtime.resources[uri].resource_id,
-            "uri": uri,
-        })
+        normalized.update(
+            {
+                "server_id": server_id,
+                "resource_id": runtime.resources[uri].resource_id,
+                "uri": uri,
+            }
+        )
         return normalized
 
     def read_resource(self, server_id: str, uri: str) -> dict[str, Any]:
@@ -536,20 +661,21 @@ class McpClientBackend:
         )
 
     def close(self) -> None:
-        if self._closed:
-            return
-        for server in self.config.servers:
-            runtime = self._runtime(server.server_id)
-            if runtime.client is not None:
-                try:
-                    self.disconnect(server.server_id)
-                except McpBackendError:
-                    pass
-        self._closed = True
-        self._loop.call_soon_threadsafe(self._loop.stop)
-        self._thread.join(timeout=10)
-        if self._thread.is_alive():
-            raise McpBackendError("MCP event loop did not stop cleanly")
+        with self._lifecycle_lock:
+            if self._closed:
+                return
+            for server in self.config.servers:
+                runtime = self._runtime(server.server_id)
+                if runtime.client is not None:
+                    try:
+                        self.disconnect(server.server_id)
+                    except McpBackendError:
+                        pass
+            self._closed = True
+            self._loop.call_soon_threadsafe(self._loop.stop)
+            self._thread.join(timeout=10)
+            if self._thread.is_alive():
+                raise McpBackendError("MCP event loop did not stop cleanly")
 
     def __enter__(self) -> Self:
         return self

@@ -1,10 +1,12 @@
 """Projection of MCP tools into the single Capability Fabric catalog."""
+
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from types import TracebackType
 from typing import Any, Self
 
+from ..control.redaction import redact_text
 from ..database import FoundryDatabase
 from ..effects import EffectClass, infer_effect_class
 from ..fabric.catalog import (
@@ -22,7 +24,9 @@ from .contracts import McpInvocationReceipt, McpToolDescriptor
 MCP_ADAPTER_VERSION = "1.0.0"
 
 
-def _metadata(descriptor: McpToolDescriptor, config: McpBackendConfig) -> CapabilityMetadata:
+def _metadata(
+    descriptor: McpToolDescriptor, config: McpBackendConfig
+) -> CapabilityMetadata:
     server = config.server(descriptor.server_id)
     effect_class = infer_effect_class(
         descriptor.action_kind,
@@ -143,13 +147,14 @@ class FabricMcpBackend:
         return result
 
     def _mark_server_unavailable(self, server_id: str, note: str) -> None:
+        safe_note = redact_text(note)[:400]
         for capability_id in self._catalog_capabilities(server_id):
             record_outcome(
                 self.database,
                 capability_id,
                 success=False,
                 verified=VerifyVerdict.MISMATCH,
-                note=note,
+                note=safe_note,
             )
 
     def project(self, server_id: str) -> tuple[CapabilitySpec, ...]:
@@ -203,7 +208,9 @@ class FabricMcpBackend:
         report: dict[str, Any] = {}
         for server in self.config.servers:
             if not server.enabled:
-                report[server.server_id] = self.client.health(server.server_id).as_dict()
+                report[server.server_id] = self.client.health(
+                    server.server_id
+                ).as_dict()
                 self._mark_server_unavailable(
                     server.server_id, "MCP server disabled by local JARVIS policy"
                 )
@@ -238,7 +245,9 @@ class FabricMcpBackend:
         )
         return health
 
-    def reconnect_server(self, server_id: str) -> tuple[Any, tuple[CapabilitySpec, ...]]:
+    def reconnect_server(
+        self, server_id: str
+    ) -> tuple[Any, tuple[CapabilitySpec, ...]]:
         try:
             health = self.client.reconnect(server_id)
         except McpServerUnavailable as error:

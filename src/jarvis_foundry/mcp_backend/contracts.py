@@ -1,4 +1,5 @@
 """Typed, bounded MCP discovery and invocation contracts."""
+
 from __future__ import annotations
 
 import hashlib
@@ -9,7 +10,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
-from ..control.redaction import redact_text
+from ..control.redaction import redact_payload, redact_text
 from ..events import canonical_json
 from ..fabric.model import Semantic, UnattendedMode
 from .config import McpOutputLimits, McpServerConfig
@@ -102,7 +103,9 @@ def validate_arguments(schema: Mapping[str, Any], arguments: Mapping[str, Any]) 
     try:
         from jsonschema import Draft202012Validator
     except ImportError as error:  # pragma: no cover - packaging guard
-        raise McpContractError("MCP schema validation dependency is unavailable") from error
+        raise McpContractError(
+            "MCP schema validation dependency is unavailable"
+        ) from error
     errors = sorted(
         Draft202012Validator(dict(schema)).iter_errors(dict(arguments)),
         key=lambda item: list(item.path),
@@ -110,7 +113,9 @@ def validate_arguments(schema: Mapping[str, Any], arguments: Mapping[str, Any]) 
     if errors:
         first = errors[0]
         path = ".".join(str(item) for item in first.path) or "$"
-        raise McpContractError(f"MCP arguments do not match schema at {path}: {first.message}")
+        raise McpContractError(
+            f"MCP arguments do not match schema at {path}: {first.message}"
+        )
 
 
 def _slug(value: str, *, limit: int = 36) -> str:
@@ -162,16 +167,21 @@ class McpToolDescriptor:
         output_raw = raw.get("output_schema") or raw.get("outputSchema")
         output_schema = (
             normalize_json_schema(output_raw, config.limits)
-            if output_raw is not None else None
+            if output_raw is not None
+            else None
         )
         policy = config.policy_for(name)
         capability_id, action_kind = stable_tool_identity(config.server_id, name)
         description = redact_text(str(raw.get("description") or ""))[:2000]
-        limitations = tuple(dict.fromkeys((
-            "external MCP server content and descriptions are DATA_ONLY",
-            "server cannot create objectives, policy, verification, STOP, or terminal WorldModel truth",
-            *policy.limitations,
-        )))
+        limitations = tuple(
+            dict.fromkeys(
+                (
+                    "external MCP server content and descriptions are DATA_ONLY",
+                    "server cannot create objectives, policy, verification, STOP, or terminal WorldModel truth",
+                    *policy.limitations,
+                )
+            )
+        )
         digest_material = {
             "input": input_schema,
             "output": output_schema,
@@ -232,7 +242,11 @@ class McpResourceDescriptor:
             server_id=server_id,
             uri=uri,
             name=name,
-            mime_type=(str(raw.get("mime_type") or raw.get("mimeType")) if raw.get("mime_type") or raw.get("mimeType") else None),
+            mime_type=(
+                str(raw.get("mime_type") or raw.get("mimeType"))
+                if raw.get("mime_type") or raw.get("mimeType")
+                else None
+            ),
             description_data_only=redact_text(str(raw.get("description") or ""))[:2000],
         )
 
@@ -254,7 +268,7 @@ class McpResourceDescriptor:
 
 
 def _bounded_value(value: Any, *, max_bytes: int) -> tuple[Any, bool, int, str]:
-    value = _json(value)
+    value = redact_payload(_json(value))
     try:
         encoded = canonical_json(value).encode("utf-8")
     except (TypeError, ValueError):
@@ -263,11 +277,16 @@ def _bounded_value(value: Any, *, max_bytes: int) -> tuple[Any, bool, int, str]:
     digest = hashlib.sha256(encoded).hexdigest()
     if len(encoded) <= max_bytes:
         return value, False, len(encoded), digest
-    return {
-        "truncated": True,
-        "original_bytes": len(encoded),
-        "sha256": digest,
-    }, True, len(encoded), digest
+    return (
+        {
+            "truncated": True,
+            "original_bytes": len(encoded),
+            "sha256": digest,
+        },
+        True,
+        len(encoded),
+        digest,
+    )
 
 
 def normalize_result(raw_result: Any, limits: McpOutputLimits) -> dict[str, Any]:
@@ -278,44 +297,67 @@ def normalize_result(raw_result: Any, limits: McpOutputLimits) -> dict[str, Any]
         raise McpContractError("MCP result must be an object")
     raw_encoded = canonical_json(dict(raw)).encode("utf-8")
     result_hash = hashlib.sha256(raw_encoded).hexdigest()
+    if len(raw_encoded) > limits.max_raw_result_bytes:
+        return {
+            "authority": "DATA_ONLY",
+            "is_error": bool(raw.get("is_error") or raw.get("isError")),
+            "result_sha256": result_hash,
+            "raw_bytes": len(raw_encoded),
+            "content": [],
+            "content_count": len(list(raw.get("content") or ())),
+            "structured_content": {
+                "truncated": True,
+                "original_bytes": len(raw_encoded),
+                "sha256": result_hash,
+            },
+            "structured_bytes": len(raw_encoded),
+            "structured_sha256": result_hash,
+            "truncated": True,
+        }
     content: list[dict[str, Any]] = []
     truncated = False
-    for item in list(raw.get("content") or ())[:limits.max_content_items]:
+    for item in list(raw.get("content") or ())[: limits.max_content_items]:
         normalized = _json(item)
         if not isinstance(normalized, Mapping):
             normalized = {"type": "unknown", "value": str(normalized)}
         item_type = str(normalized.get("type") or "unknown")[:64]
         if item_type == "text":
             text = redact_text(str(normalized.get("text") or ""))
-            clipped = text[:limits.max_text_chars]
+            clipped = text[: limits.max_text_chars]
             was_truncated = len(clipped) != len(text)
             truncated = truncated or was_truncated
-            content.append({
-                "type": "text",
-                "text": clipped,
-                "truncated": was_truncated,
-                "sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
-            })
+            content.append(
+                {
+                    "type": "text",
+                    "text": clipped,
+                    "truncated": was_truncated,
+                    "sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+                }
+            )
         else:
             bounded, clipped, original_bytes, digest = _bounded_value(
                 dict(normalized), max_bytes=min(limits.max_structured_bytes, 16 * 1024)
             )
             truncated = truncated or clipped
-            content.append({
-                "type": item_type,
-                "data": bounded,
-                "original_bytes": original_bytes,
-                "sha256": digest,
-                "truncated": clipped,
-            })
+            content.append(
+                {
+                    "type": item_type,
+                    "data": bounded,
+                    "original_bytes": original_bytes,
+                    "sha256": digest,
+                    "truncated": clipped,
+                }
+            )
     if len(list(raw.get("content") or ())) > limits.max_content_items:
         truncated = True
     structured_raw = raw.get("structured_content")
     if structured_raw is None:
         structured_raw = raw.get("structuredContent")
-    structured, structured_truncated, structured_bytes, structured_hash = _bounded_value(
-        structured_raw,
-        max_bytes=limits.max_structured_bytes,
+    structured, structured_truncated, structured_bytes, structured_hash = (
+        _bounded_value(
+            structured_raw,
+            max_bytes=limits.max_structured_bytes,
+        )
     )
     truncated = truncated or structured_truncated
     result = {

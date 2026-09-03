@@ -1,4 +1,5 @@
 """Real disposable MCP -> Fabric -> effect/receipt/reconnect proof."""
+
 from __future__ import annotations
 
 import argparse
@@ -72,28 +73,32 @@ def main() -> int:
     database = FoundryDatabase(output_root / "foundry.db")
     database.initialize()
     server_script = Path(__file__).with_name("v12_disposable_mcp_server.py").resolve()
-    config = McpBackendConfig.from_mapping({
-        "servers": [{
-            "server_id": "v12-disposable",
-            "transport": "stdio",
-            "command": sys.executable,
-            "args": ["-u", str(server_script)],
-            "env": {"JARVIS_MCP_DISPOSABLE_ROOT": str(disposable_root)},
-            "request_timeout_s": 5,
-            "tools": {
-                "echo": {"semantic": "read"},
-                "slow_echo": {"semantic": "read"},
-                "write_disposable": {
-                    "semantic": "write",
-                    "limitations": ["disposable proof root only"],
-                },
-                "slow_write_disposable": {
-                    "semantic": "write",
-                    "limitations": ["disposable proof root only"],
-                },
-            },
-        }],
-    })
+    config = McpBackendConfig.from_mapping(
+        {
+            "servers": [
+                {
+                    "server_id": "v12-disposable",
+                    "transport": "stdio",
+                    "command": sys.executable,
+                    "args": ["-u", str(server_script)],
+                    "env": {"JARVIS_MCP_DISPOSABLE_ROOT": str(disposable_root)},
+                    "request_timeout_s": 5,
+                    "tools": {
+                        "echo": {"semantic": "read"},
+                        "slow_echo": {"semantic": "read"},
+                        "write_disposable": {
+                            "semantic": "write",
+                            "limitations": ["disposable proof root only"],
+                        },
+                        "slow_write_disposable": {
+                            "semantic": "write",
+                            "limitations": ["disposable proof root only"],
+                        },
+                    },
+                }
+            ],
+        }
+    )
     report: dict[str, Any] = {
         "proof": "JARVIS_V12_MCP_BACKEND_REAL_SERVER",
         "passed": False,
@@ -122,7 +127,9 @@ def main() -> int:
             echo.action_kind,
             {"arguments": {"text": "jarvis", "repeat": 2}},
         )
-        resources = [item.as_dict() for item in backend.client.resources("v12-disposable")]
+        resources = [
+            item.as_dict() for item in backend.client.resources("v12-disposable")
+        ]
         resource_result = backend.client.read_resource(
             "v12-disposable", "jarvis://v12/status"
         )
@@ -136,7 +143,10 @@ def main() -> int:
         )
         write = by_name["write_disposable"]
         write_payload = {
-            "arguments": {"relative_path": "proof.txt", "content": "canonical effect\n"},
+            "arguments": {
+                "relative_path": "proof.txt",
+                "content": "canonical effect\n",
+            },
             "target_ref": str(disposable_root / "proof.txt"),
             "before_state_ref": "disposable:absent",
         }
@@ -164,23 +174,25 @@ def main() -> int:
         def invoke_until_stop() -> None:
             try:
                 slow_write = by_name["slow_write_disposable"]
-                stop_results.append(execute_action(
-                    database,
-                    context,
-                    _intent("v12.mcp.stop", slow_write.action_kind),
-                    slow_write.action_kind,
-                    {
-                        "arguments": {
-                            "relative_path": stopped_target.name,
-                            "content": "must not land",
-                            "delay_ms": 2000,
+                stop_results.append(
+                    execute_action(
+                        database,
+                        context,
+                        _intent("v12.mcp.stop", slow_write.action_kind),
+                        slow_write.action_kind,
+                        {
+                            "arguments": {
+                                "relative_path": stopped_target.name,
+                                "content": "must not land",
+                                "delay_ms": 2000,
+                            },
+                            "target_ref": str(stopped_target),
+                            "before_state_ref": "disposable:absent",
+                            "stop_path": str(stop_path),
+                            "timeout_ms": 5000,
                         },
-                        "target_ref": str(stopped_target),
-                        "before_state_ref": "disposable:absent",
-                        "stop_path": str(stop_path),
-                        "timeout_ms": 5000,
-                    },
-                ))
+                    )
+                )
             except BaseException as error:  # noqa: BLE001 - proof captures exact failure
                 stop_errors.append(repr(error))
 
@@ -193,7 +205,9 @@ def main() -> int:
         stop_result = stop_results[0] if stop_results else None
         disconnected = backend.disconnect_server("v12-disposable")
         readiness_disconnected = {
-            item.capability_id: observed_readiness(database, item.capability_id).state.value
+            item.capability_id: observed_readiness(
+                database, item.capability_id
+            ).state.value
             for item in projected
         }
         reconnected, projected_after = backend.reconnect_server("v12-disposable")
@@ -202,68 +216,92 @@ def main() -> int:
             for item in backend.client.tools("v12-disposable")
         }
         readiness_reconnected = {
-            item.capability_id: observed_readiness(database, item.capability_id).state.value
+            item.capability_id: observed_readiness(
+                database, item.capability_id
+            ).state.value
             for item in projected_after
         }
         events = list(database.events(readonly=True))
-        report.update({
-            "transport": "stdio",
-            "connected": connected.as_dict(),
-            "projected_capabilities": [item.as_dict() for item in projected],
-            "real_tools": sorted(by_name),
-            "read_invocation": read_result.as_dict(),
-            "resources": resources,
-            "resource_read": resource_result,
-            "timeout": timeout_result.as_dict(),
-            "mutating_invocation": write_result.as_dict(),
-            "mutating_replay": replay_result.as_dict(),
-            "effect_state": write_state,
-            "stop_result": stop_result.as_dict() if stop_result is not None else None,
-            "stop_errors": stop_errors,
-            "stop_target_exists": stopped_target.exists(),
-            "disconnect": disconnected.as_dict(),
-            "readiness_after_disconnect": readiness_disconnected,
-            "reconnect": reconnected.as_dict(),
-            "readiness_after_reconnect": readiness_reconnected,
-            "stable_identities_before": stable_before,
-            "stable_identities_after": stable_after,
-            "event_count": len(events),
-            "effect_event_types": [
-                event.event_type for event in events
-                if str(event.payload.get("action_key") or "") == effect_id
-            ],
-        })
-        report["passed"] = all((
-            connected.state.value == "READY",
-            len(projected) == 4,
-            read_result.success,
-            read_result.receipt.get("state") == "VERIFIED",
-            resource_result.get("authority") == "DATA_ONLY",
-            timeout_result.claimed.value == "FAILED",
-            write_result.success,
-            write_result.receipt.get("state") == "VERIFIED",
-            replay_result.success,
-            write_state.get("status") == COMPLETED,
-            not stop_errors,
-            stop_result is not None and stop_result.claimed.value == "UNKNOWN",
-            stop_result is not None and stop_result.receipt.get("state") == "UNKNOWN",
-            not stopped_target.exists(),
-            disconnected.state.value == "DISCONNECTED",
-            all(value == Readiness.DEGRADED.value for value in readiness_disconnected.values()),
-            reconnected.state.value == "READY",
-            all(value == Readiness.READY.value for value in readiness_reconnected.values()),
-            stable_before == stable_after,
-            (disposable_root / "proof.txt").read_text(encoding="utf-8") == "canonical effect\n",
-        ))
+        report.update(
+            {
+                "transport": "stdio",
+                "connected": connected.as_dict(),
+                "projected_capabilities": [item.as_dict() for item in projected],
+                "real_tools": sorted(by_name),
+                "read_invocation": read_result.as_dict(),
+                "resources": resources,
+                "resource_read": resource_result,
+                "timeout": timeout_result.as_dict(),
+                "mutating_invocation": write_result.as_dict(),
+                "mutating_replay": replay_result.as_dict(),
+                "effect_state": write_state,
+                "stop_result": stop_result.as_dict()
+                if stop_result is not None
+                else None,
+                "stop_errors": stop_errors,
+                "stop_target_exists": stopped_target.exists(),
+                "disconnect": disconnected.as_dict(),
+                "readiness_after_disconnect": readiness_disconnected,
+                "reconnect": reconnected.as_dict(),
+                "readiness_after_reconnect": readiness_reconnected,
+                "stable_identities_before": stable_before,
+                "stable_identities_after": stable_after,
+                "event_count": len(events),
+                "effect_event_types": [
+                    event.event_type
+                    for event in events
+                    if str(event.payload.get("action_key") or "") == effect_id
+                ],
+            }
+        )
+        report["passed"] = all(
+            (
+                connected.state.value == "READY",
+                len(projected) == 4,
+                read_result.success,
+                read_result.receipt.get("state") == "VERIFIED",
+                resource_result.get("authority") == "DATA_ONLY",
+                timeout_result.claimed.value == "FAILED",
+                write_result.success,
+                write_result.receipt.get("state") == "VERIFIED",
+                replay_result.success,
+                write_state.get("status") == COMPLETED,
+                not stop_errors,
+                stop_result is not None and stop_result.claimed.value == "UNKNOWN",
+                stop_result is not None
+                and stop_result.receipt.get("state") == "UNKNOWN",
+                not stopped_target.exists(),
+                disconnected.state.value == "DISCONNECTED",
+                all(
+                    value == Readiness.DEGRADED.value
+                    for value in readiness_disconnected.values()
+                ),
+                reconnected.state.value == "READY",
+                all(
+                    value == Readiness.READY.value
+                    for value in readiness_reconnected.values()
+                ),
+                stable_before == stable_after,
+                (disposable_root / "proof.txt").read_text(encoding="utf-8")
+                == "canonical effect\n",
+            )
+        )
     finally:
         backend.close()
     destination = output_root / "V12_MCP_BACKEND_REAL_PROOF.json"
-    destination.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
-    print(json.dumps({
-        "passed": report["passed"],
-        "evidence": str(destination),
-        "sha256": hashlib.sha256(destination.read_bytes()).hexdigest(),
-    }, sort_keys=True))
+    destination.write_text(
+        json.dumps(report, indent=2, sort_keys=True), encoding="utf-8"
+    )
+    print(
+        json.dumps(
+            {
+                "passed": report["passed"],
+                "evidence": str(destination),
+                "sha256": hashlib.sha256(destination.read_bytes()).hexdigest(),
+            },
+            sort_keys=True,
+        )
+    )
     return 0 if report["passed"] else 1
 
 

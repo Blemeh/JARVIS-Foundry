@@ -4,6 +4,7 @@ It exposes read, slow-read, resource, and bounded local-write surfaces.  The
 write target is locked to JARVIS_MCP_DISPOSABLE_ROOT and is never suitable for
 live data.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -73,7 +74,9 @@ def write_disposable(relative_path: str, content: str) -> dict[str, object]:
     }
 
 
-@SERVER.tool(description="Delayed disposable write used to prove cancellation before effect.")
+@SERVER.tool(
+    description="Delayed disposable write used to prove cancellation before effect."
+)
 async def slow_write_disposable(
     relative_path: str,
     content: str,
@@ -86,6 +89,7 @@ async def slow_write_disposable(
 
 
 if os.environ.get("JARVIS_MCP_EXTRA_TOOL") == "1":
+
     @SERVER.tool(description="Conditionally present tool for discovery-change proof.")
     def extra_echo(text: str) -> dict[str, str]:
         return {"extra": text}
@@ -105,7 +109,9 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--transport", choices=("stdio", "streamable-http"), default="stdio")
+    parser.add_argument(
+        "--transport", choices=("stdio", "streamable-http"), default="stdio"
+    )
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
     parsed = parser.parse_args()

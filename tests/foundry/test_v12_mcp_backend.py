@@ -1,4 +1,5 @@
 """V12 bounded MCP backend and real disposable server proof."""
+
 from __future__ import annotations
 
 import hashlib
@@ -9,6 +10,7 @@ import sys
 import threading
 import time
 from collections.abc import Mapping
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -32,15 +34,19 @@ from jarvis_foundry.mcp_backend import (
     McpContractError,
     McpOutputLimits,
     McpServerConfig,
+    McpServerUnavailable,
     McpSessionState,
     McpTransport,
+    load_mcp_config,
     normalize_json_schema,
     normalize_result,
     stable_tool_identity,
     validate_arguments,
 )
 
-SERVER_SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "v12_disposable_mcp_server.py"
+SERVER_SCRIPT = (
+    Path(__file__).resolve().parents[2] / "scripts" / "v12_disposable_mcp_server.py"
+)
 
 
 def _database(tmp_path: Path) -> FoundryDatabase:
@@ -76,10 +82,12 @@ def _config(
     if limits:
         server["limits"] = dict(limits)
     if transport == "stdio":
-        server.update({
-            "command": sys.executable,
-            "args": ["-u", str(SERVER_SCRIPT)],
-        })
+        server.update(
+            {
+                "command": sys.executable,
+                "args": ["-u", str(SERVER_SCRIPT)],
+            }
+        )
     else:
         server.pop("env")
         server["endpoint"] = endpoint
@@ -107,7 +115,9 @@ def _readback_verifier(root: Path):
         target.relative_to(resolved)
         actual = target.read_text(encoding="utf-8") if target.is_file() else None
         expected = str(arguments["content"])
-        digest = hashlib.sha256(target.read_bytes()).hexdigest() if target.is_file() else ""
+        digest = (
+            hashlib.sha256(target.read_bytes()).hexdigest() if target.is_file() else ""
+        )
         return {
             "readback_verified": actual == expected,
             "reconciled": True,
@@ -144,16 +154,42 @@ def test_config_is_explicit_conservative_and_transport_safe(tmp_path: Path) -> N
             command=sys.executable,
             cwd="relative/path",
         )
+    with pytest.raises(McpConfigurationError):
+        McpServerConfig(
+            server_id="secret",
+            transport=McpTransport.STDIO,
+            command=sys.executable,
+            env={"API_KEY": "do-not-store"},
+        )
+    with pytest.raises(McpConfigurationError):
+        McpServerConfig(
+            server_id="url-secret",
+            transport=McpTransport.STREAMABLE_HTTP,
+            endpoint="https://user:password@example.com/mcp",
+        )
+    path = tmp_path / "mcp.yaml"
+    path.write_text(
+        "servers:\n"
+        "  - server_id: file-config\n"
+        "    transport: stdio\n"
+        f"    command: '{sys.executable}'\n"
+        "    enabled: false\n",
+        encoding="utf-8",
+    )
+    assert load_mcp_config(path).server("file-config").enabled is False
 
 
 def test_schema_normalization_typed_validation_and_stable_identity() -> None:
     limits = McpOutputLimits(max_schema_depth=4, max_schema_nodes=20)
-    schema = normalize_json_schema({
-        "type": "object",
-        "properties": {"count": {"type": "integer", "minimum": 1}},
-        "required": ["count"],
-        "description": "DATA_ONLY",
-    }, limits)
+    schema = normalize_json_schema(
+        {
+            "type": "object",
+            "properties": {"count": {"type": "integer", "minimum": 1}},
+            "required": ["count"],
+            "description": "DATA_ONLY",
+        },
+        limits,
+    )
     validate_arguments(schema, {"count": 2})
     with pytest.raises(McpContractError):
         validate_arguments(schema, {"count": 0})
@@ -168,7 +204,7 @@ def test_output_is_bounded_hashed_and_data_only() -> None:
     result = normalize_result(
         {
             "content": [{"type": "text", "text": "x" * 200}],
-            "structuredContent": {"payload": "y" * 200},
+            "structuredContent": {"payload": "y" * 200, "api_key": "never-persist"},
             "isError": False,
         },
         McpOutputLimits(
@@ -182,9 +218,16 @@ def test_output_is_bounded_hashed_and_data_only() -> None:
     assert result["content"][0]["text"] == "x" * 20
     assert len(result["result_sha256"]) == 64
     assert result["structured_content"]["truncated"] is True
+    small = normalize_result(
+        {"content": [], "structuredContent": {"api_key": "never-persist"}},
+        McpOutputLimits(max_persisted_bytes=4096),
+    )
+    assert small["structured_content"]["api_key"] == "[REDACTED]"
 
 
-def test_real_stdio_discovery_projection_read_resource_disconnect_reconnect(tmp_path: Path) -> None:
+def test_real_stdio_discovery_projection_read_resource_disconnect_reconnect(
+    tmp_path: Path,
+) -> None:
     database = _database(tmp_path)
     backend = FabricMcpBackend(database, _config(tmp_path))
     try:
@@ -238,6 +281,27 @@ def test_real_stdio_discovery_projection_read_resource_disconnect_reconnect(tmp_
         backend.close()
 
 
+def test_exact_tool_allowlist_projects_disabled_tools_as_degraded(
+    tmp_path: Path,
+) -> None:
+    database = _database(tmp_path)
+    base = _config(tmp_path).server("v12-test")
+    config = McpBackendConfig((replace(base, allowed_tools=("echo",)),))
+    backend = FabricMcpBackend(database, config)
+    try:
+        _health, projected = backend.connect_server("v12-test")
+        assert [item.tool_name for item in backend.client.tools("v12-test")] == ["echo"]
+        assert len(backend.client.tools("v12-test", include_disabled=True)) == 4
+        states = {
+            item.action_kind: observed_readiness(database, item.capability_id).state
+            for item in projected
+        }
+        assert states[_action(backend, "echo")] is Readiness.READY
+        assert sum(state is Readiness.DEGRADED for state in states.values()) == 3
+    finally:
+        backend.close()
+
+
 def test_invalid_arguments_and_read_timeout_fail_without_effect(tmp_path: Path) -> None:
     database = _database(tmp_path)
     backend = FabricMcpBackend(database, _config(tmp_path))
@@ -254,6 +318,28 @@ def test_invalid_arguments_and_read_timeout_fail_without_effect(tmp_path: Path) 
         )
         assert invalid.claimed.value == "FAILED"
         assert invalid.receipt["error"]["class"] == "McpContractError"
+        secret = execute_action(
+            database,
+            ctx,
+            _intent("v12.secret", echo),
+            echo,
+            {"arguments": {"text": "token=do-not-forward", "repeat": 1}},
+        )
+        assert secret.claimed.value == "FAILED"
+        assert secret.receipt["error"]["class"] == "McpContractError"
+        remote_failure = execute_action(
+            database,
+            ctx,
+            _intent("v12.remote-failure", echo),
+            echo,
+            {"arguments": {"text": "x", "repeat": 99}},
+        )
+        assert remote_failure.claimed.value == "FAILED"
+        assert remote_failure.claimed_effect["error_code"] == "mcp_tool_error"
+        assert (
+            observed_readiness(database, remote_failure.capability_id).state
+            is Readiness.DEGRADED
+        )
         slow = _action(backend, "slow_echo")
         timed = execute_action(
             database,
@@ -306,11 +392,17 @@ def test_mutation_uses_canonical_effect_readback_and_replay(tmp_path: Path) -> N
         effect_id = first.receipt["effect_id"]
         assert effect_state(database, effect_id)["status"] == COMPLETED
         relevant = [
-            event for event in database.events(readonly=True)
+            event
+            for event in database.events(readonly=True)
             if event.payload.get("action_key") == effect_id
         ]
-        assert sum(event.event_type == "system.action_started" for event in relevant) == 1
-        assert sum(event.event_type == "system.action_completed" for event in relevant) == 1
+        assert (
+            sum(event.event_type == "system.action_started" for event in relevant) == 1
+        )
+        assert (
+            sum(event.event_type == "system.action_completed" for event in relevant)
+            == 1
+        )
     finally:
         backend.close()
 
@@ -360,23 +452,25 @@ def test_stop_cancels_inflight_mutation_and_freezes_effect(tmp_path: Path) -> No
         results: list[Any] = []
 
         def invoke() -> None:
-            results.append(execute_action(
-                database,
-                ctx,
-                _intent("v12.stop", action),
-                action,
-                {
-                    "arguments": {
-                        "relative_path": target.name,
-                        "content": "must not land",
-                        "delay_ms": 1500,
+            results.append(
+                execute_action(
+                    database,
+                    ctx,
+                    _intent("v12.stop", action),
+                    action,
+                    {
+                        "arguments": {
+                            "relative_path": target.name,
+                            "content": "must not land",
+                            "delay_ms": 1500,
+                        },
+                        "target_ref": str(target),
+                        "before_state_ref": "absent",
+                        "stop_path": str(stop_path),
+                        "timeout_ms": 4000,
                     },
-                    "target_ref": str(target),
-                    "before_state_ref": "absent",
-                    "stop_path": str(stop_path),
-                    "timeout_ms": 4000,
-                },
-            ))
+                )
+            )
 
         thread = threading.Thread(target=invoke, daemon=True)
         thread.start()
@@ -395,19 +489,29 @@ def test_stop_cancels_inflight_mutation_and_freezes_effect(tmp_path: Path) -> No
         backend.close()
 
 
-def test_tool_list_change_adds_and_degrades_stable_catalog_entry(tmp_path: Path) -> None:
+def test_tool_list_change_adds_and_degrades_stable_catalog_entry(
+    tmp_path: Path,
+) -> None:
     database = _database(tmp_path)
     first = FabricMcpBackend(database, _config(tmp_path))
     try:
         first.connect_server("v12-test")
-        assert "extra_echo" not in {item.tool_name for item in first.client.tools("v12-test")}
+        assert "extra_echo" not in {
+            item.tool_name for item in first.client.tools("v12-test")
+        }
     finally:
         first.close()
     second = FabricMcpBackend(database, _config(tmp_path, extra_tool=True))
     try:
         second.connect_server("v12-test")
-        extra = next(item for item in second.client.tools("v12-test") if item.tool_name == "extra_echo")
-        assert observed_readiness(database, extra.capability_id).state is Readiness.READY
+        extra = next(
+            item
+            for item in second.client.tools("v12-test")
+            if item.tool_name == "extra_echo"
+        )
+        assert (
+            observed_readiness(database, extra.capability_id).state is Readiness.READY
+        )
         extra_id = extra.capability_id
     finally:
         second.close()
@@ -425,8 +529,7 @@ def _free_port() -> int:
         return int(sock.getsockname()[1])
 
 
-def test_real_streamable_http_transport(tmp_path: Path) -> None:
-    port = _free_port()
+def _start_http_server(tmp_path: Path, port: int) -> subprocess.Popen[bytes]:
     env = os.environ.copy()
     env["JARVIS_MCP_DISPOSABLE_ROOT"] = str(tmp_path / "http-disposable")
     process = subprocess.Popen(
@@ -445,19 +548,36 @@ def test_real_streamable_http_transport(tmp_path: Path) -> None:
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=0.2):
+                return process
+        except OSError:
+            if process.poll() is not None:
+                raise AssertionError("disposable HTTP MCP server exited early")
+            time.sleep(0.05)
+    process.terminate()
+    process.wait(timeout=5)
+    raise AssertionError("disposable HTTP MCP server did not become ready")
+
+
+def _stop_process(process: subprocess.Popen[bytes]) -> None:
+    if process.poll() is not None:
+        return
+    process.terminate()
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait(timeout=5)
+
+
+def test_real_streamable_http_disappearance_and_reconnect(tmp_path: Path) -> None:
+    port = _free_port()
+    process = _start_http_server(tmp_path, port)
     backend: FabricMcpBackend | None = None
     try:
-        deadline = time.monotonic() + 10
-        while time.monotonic() < deadline:
-            try:
-                with socket.create_connection(("127.0.0.1", port), timeout=0.2):
-                    break
-            except OSError:
-                if process.poll() is not None:
-                    raise AssertionError("disposable HTTP MCP server exited early")
-                time.sleep(0.05)
-        else:
-            raise AssertionError("disposable HTTP MCP server did not become ready")
         database = _database(tmp_path)
         backend = FabricMcpBackend(
             database,
@@ -480,12 +600,29 @@ def test_real_streamable_http_transport(tmp_path: Path) -> None:
         )
         assert result.success is True
         assert result.receipt["state"] == "VERIFIED"
+        identities = {
+            item.tool_name: (item.capability_id, item.action_kind)
+            for item in backend.client.tools("v12-test")
+        }
+        _stop_process(process)
+        with pytest.raises(McpServerUnavailable):
+            backend.refresh_server("v12-test")
+        assert all(
+            observed_readiness(database, item.capability_id).state is Readiness.DEGRADED
+            for item in projected
+        )
+        process = _start_http_server(tmp_path, port)
+        recovered, recovered_projection = backend.reconnect_server("v12-test")
+        assert recovered.state is McpSessionState.READY
+        assert identities == {
+            item.tool_name: (item.capability_id, item.action_kind)
+            for item in backend.client.tools("v12-test")
+        }
+        assert all(
+            observed_readiness(database, item.capability_id).state is Readiness.READY
+            for item in recovered_projection
+        )
     finally:
         if backend is not None:
             backend.close()
-        process.terminate()
-        try:
-            process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            process.wait(timeout=5)
+        _stop_process(process)
