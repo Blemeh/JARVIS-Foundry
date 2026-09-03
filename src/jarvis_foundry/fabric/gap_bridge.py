@@ -44,6 +44,7 @@ ATTEMPT_STARTED = EVENT_PREFIX + "attempt_started"
 ATTEMPT_DISPATCHED = EVENT_PREFIX + "attempt_dispatched"
 ATTEMPT_FAILED = EVENT_PREFIX + "attempt_failed"
 BUDGET_EXHAUSTED = EVENT_PREFIX + "budget_exhausted"
+GAP_DEFERRED = EVENT_PREFIX + "deferred_by_open_gap_budget"
 RECURSION_BLOCKED = EVENT_PREFIX + "recursion_blocked"
 ALTERNATE_REPLAN_REQUESTED = EVENT_PREFIX + "alternate_replan_requested"
 ALTERNATE_SELECTED = EVENT_PREFIX + "alternate_selected"
@@ -135,6 +136,8 @@ class ExpansionWorkRequest:
     requirement_set_id: str
     budget: Mapping[str, Any]
     expansion_depth: int
+    attempt_id: str | None = None
+    attempt_ordinal: int | None = None
     authority: str = "CAPABILITY_FABRIC_CATALOG"
 
     def as_dict(self) -> dict[str, Any]:
@@ -149,6 +152,8 @@ class ExpansionWorkRequest:
             "requirement_set_id": self.requirement_set_id,
             "budget": dict(self.budget),
             "expansion_depth": self.expansion_depth,
+            "attempt_id": self.attempt_id,
+            "attempt_ordinal": self.attempt_ordinal,
             "authority": self.authority,
             "solution_search": "PORT_OWNED",
             "isolated_trial": "PORT_OWNED",
@@ -170,6 +175,7 @@ class ExpansionAttempt:
     strategy_id: str
     status: ExpansionAttemptStatus
     started_at: str
+    dispatched_at: str | None = None
     failed_at: str | None = None
     reason_code: str | None = None
     reason: str | None = None
@@ -182,6 +188,7 @@ class ExpansionAttempt:
             "strategy_id": self.strategy_id,
             "status": self.status.value,
             "started_at": self.started_at,
+            "dispatched_at": self.dispatched_at,
             "failed_at": self.failed_at,
             "reason_code": self.reason_code,
             "reason": self.reason,
@@ -408,6 +415,13 @@ def rebuild_gap_state(database: FoundryDatabase) -> dict[str, CapabilityGapState
                 failure_reason=str(payload.get("reason") or "expansion attempt failed"),
                 updated_at=now,
             )
+        elif event.event_type == ATTEMPT_DISPATCHED:
+            attempts = tuple(
+                replace(item, dispatched_at=now)
+                if item.attempt_id == str(payload.get("attempt_id") or "") else item
+                for item in prior.attempts
+            )
+            states[gap_id] = replace(prior, attempts=attempts, updated_at=now)
         elif event.event_type == BUDGET_EXHAUSTED:
             states[gap_id] = replace(
                 prior,
@@ -552,7 +566,10 @@ def _candidate_for_gap(
     return candidate_id
 
 
-def _work_request(state: CapabilityGapState) -> ExpansionWorkRequest:
+def _work_request(
+    state: CapabilityGapState,
+    attempt: ExpansionAttempt | None = None,
+) -> ExpansionWorkRequest:
     if not state.candidate_id:
         raise GapBridgeError(f"gap {state.gap_id} has no candidate linkage")
     work_id = state.work_id or f"expansion-work:{state.gap_id}"
@@ -569,6 +586,8 @@ def _work_request(state: CapabilityGapState) -> ExpansionWorkRequest:
             "max_total_attempts_for_root": state.policy.max_total_attempts_per_objective,
         },
         expansion_depth=state.expansion_depth + 1,
+        attempt_id=attempt.attempt_id if attempt is not None else None,
+        attempt_ordinal=attempt.ordinal if attempt is not None else None,
     )
 
 
@@ -729,10 +748,29 @@ def open_capability_gap(
         if item.root_objective_id == root_id and not item.terminal
     ]
     if len(open_for_root) >= chosen_policy.max_open_gaps_per_objective:
-        raise GapBridgeError(
-            f"root objective {root_id} reached capability-gap budget "
-            f"{chosen_policy.max_open_gaps_per_objective}"
+        # Bound concurrent expansion without aborting the Executive cycle.
+        # The requirement remains in the durable plan and is reconsidered
+        # after an existing gap becomes terminal.
+        _append(
+            database,
+            GAP_DEFERRED,
+            {
+                "gap_id": gap_id,
+                "origin_objective_id": objective_id,
+                "root_objective_id": root_id,
+                "plan_id": plan_id,
+                "step_id": step_id,
+                "required_capability_id": required_capability_id,
+                "max_open_gaps_per_objective": (
+                    chosen_policy.max_open_gaps_per_objective
+                ),
+                "open_gap_ids": sorted(item.gap_id for item in open_for_root),
+                "at": isoformat(),
+            },
+            key=f"{GAP_DEFERRED}:{gap_id}",
+            correlation_id=root_id,
         )
+        return None
 
     candidate_id = _candidate_for_gap(
         database,
@@ -844,54 +882,56 @@ def start_expansion_attempt(
         return state
     if state.status is CapabilityGapStatus.BUDGET_EXHAUSTED:
         return state
-    if state.active_attempt is not None:
-        return state
-    root_attempts = sum(
-        len(item.attempts) for item in rebuild_gap_state(database).values()
-        if item.root_objective_id == state.root_objective_id
-    )
-    ordinal = len(state.attempts) + 1
-    if (
-        ordinal > state.policy.max_attempts_per_gap
-        or root_attempts >= state.policy.max_total_attempts_per_objective
-    ):
+    attempt = state.active_attempt
+    if attempt is None:
+        root_attempts = sum(
+            len(item.attempts) for item in rebuild_gap_state(database).values()
+            if item.root_objective_id == state.root_objective_id
+        )
+        ordinal = len(state.attempts) + 1
+        if (
+            ordinal > state.policy.max_attempts_per_gap
+            or root_attempts >= state.policy.max_total_attempts_per_objective
+        ):
+            _append(
+                database, BUDGET_EXHAUSTED,
+                {
+                    "gap_id": gap_id,
+                    "reason": "bounded expansion attempt budget exhausted",
+                    "attempts_for_gap": len(state.attempts),
+                    "attempts_for_root": root_attempts,
+                    "at": isoformat(),
+                },
+                key=f"{BUDGET_EXHAUSTED}:{gap_id}",
+                correlation_id=state.root_objective_id,
+            )
+            return rebuild_gap_state(database)[gap_id]
+        strategy = str(strategy_id or "").strip()
+        if not strategy or len(strategy) > 256 or any(char.isspace() for char in strategy):
+            raise GapBridgeError("strategy_id must be a bounded identity")
+        attempt_id = stable_attempt_id(gap_id, ordinal)
         _append(
-            database, BUDGET_EXHAUSTED,
+            database, ATTEMPT_STARTED,
             {
                 "gap_id": gap_id,
-                "reason": "bounded expansion attempt budget exhausted",
-                "attempts_for_gap": len(state.attempts),
-                "attempts_for_root": root_attempts,
-                "at": isoformat(),
+                "attempt_id": attempt_id,
+                "ordinal": ordinal,
+                "strategy_id": strategy,
+                "work_id": state.work_id,
+                "started_at": isoformat(),
             },
-            key=f"{BUDGET_EXHAUSTED}:{gap_id}",
+            key=f"{ATTEMPT_STARTED}:{attempt_id}",
             correlation_id=state.root_objective_id,
         )
-        return rebuild_gap_state(database)[gap_id]
-    strategy = str(strategy_id or "").strip()
-    if not strategy or len(strategy) > 256 or any(char.isspace() for char in strategy):
-        raise GapBridgeError("strategy_id must be a bounded identity")
-    attempt_id = stable_attempt_id(gap_id, ordinal)
-    _append(
-        database, ATTEMPT_STARTED,
-        {
-            "gap_id": gap_id,
-            "attempt_id": attempt_id,
-            "ordinal": ordinal,
-            "strategy_id": strategy,
-            "work_id": state.work_id,
-            "started_at": isoformat(),
-        },
-        key=f"{ATTEMPT_STARTED}:{attempt_id}",
-        correlation_id=state.root_objective_id,
-    )
-    state = rebuild_gap_state(database)[gap_id]
-    if port is None:
+        state = rebuild_gap_state(database)[gap_id]
+        attempt = state.active_attempt
+    if port is None or attempt is None or attempt.dispatched_at is not None:
         return state
+    attempt_id = attempt.attempt_id
 
     # STOP is rechecked immediately before the external expansion seam.
     _gate(database, state.origin_objective_id, gap_id, attempt_id)
-    request = _work_request(state)
+    request = _work_request(state, attempt)
     try:
         raw = dict(port.dispatch(request))
     except Exception as error:
@@ -1038,6 +1078,13 @@ def _replan_after_ready(
     if objective is None:
         raise GapBridgeError(f"origin objective disappeared: {state.origin_objective_id}")
     plan = active_plan(database, state.origin_objective_id)
+    remaining_gap_ids = tuple(sorted(
+        item.gap_id
+        for item in rebuild_gap_state(database).values()
+        if item.gap_id != state.gap_id
+        and item.origin_objective_id == state.origin_objective_id
+        and not item.terminal
+    ))
     now = isoformat()
     events: list[Event] = []
     plan_id: str | None = None
@@ -1083,7 +1130,11 @@ def _replan_after_ready(
                 f"executive.plan_updated:{plan.plan_id}:gap-resume:{state.gap_id}"
             ),
         ))
-    if objective.status != "ACTIVE":
+    # A capability wake is per gap.  With multiple required capabilities, the
+    # satisfied gap and its wake become terminal but the objective remains in
+    # WAIT until every sibling gap has cleared.  This prevents a partly-ready
+    # plan from briefly re-entering admission between sequential registrations.
+    if not remaining_gap_ids and objective.status != "ACTIVE":
         events.append(Event.create(
             "executive.objective_status_changed",
             {
@@ -1111,6 +1162,7 @@ def _replan_after_ready(
                 "plan_id": plan_id,
                 "required_capability_id": state.required_capability_id,
                 "effective_state": effective_state,
+                "remaining_gap_ids": list(remaining_gap_ids),
                 "at": now,
             },
             source_type="supervisor", source_id=SOURCE_ID,
@@ -1124,6 +1176,7 @@ def _replan_after_ready(
                 "wake_id": state.wake_id,
                 "required_capability_id": state.required_capability_id,
                 "effective_state": effective_state,
+                "remaining_gap_ids": list(remaining_gap_ids),
                 "at": now,
             },
             source_type="supervisor", source_id=SOURCE_ID,
@@ -1138,6 +1191,7 @@ def _replan_after_ready(
                 "plan_id": plan_id,
                 "required_capability_id": state.required_capability_id,
                 "effective_state": effective_state,
+                "remaining_gap_ids": list(remaining_gap_ids),
                 "at": now,
             },
             source_type="supervisor", source_id=SOURCE_ID,

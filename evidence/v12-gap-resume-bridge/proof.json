@@ -1,0 +1,60 @@
+{
+  "authority": "CAPABILITY_FABRIC_CATALOG",
+  "contract_version": "jarvis.v12.capability-gap-resume.v1",
+  "external_source_text_can_establish_readiness": false,
+  "failure_and_alternate": {
+    "alternate_capability_id": "cap.fake.report.existing",
+    "alternate_state": "ALTERNATE_RESUMED",
+    "failed_attempt_id": "expansion-attempt-834f9b28cec5792f7614c006",
+    "failed_status": "BUDGET_EXHAUSTED",
+    "failure_reason": "disposable isolated verifier mismatch",
+    "gap_id": "cap-gap-b0cb2edbac54f8c544e09a0b",
+    "objective_state": "ACTIVE"
+  },
+  "real_resume": {
+    "attempt_id": "expansion-attempt-4be82b29a17a4ed85384e48b",
+    "candidate_id": "cand-a2-2151baeb7c45",
+    "catalog_after_registration": {
+      "capability_id": "cap.fake.report.render",
+      "claimed_vs_verified": "MATCH",
+      "consecutive_failures": 0,
+      "last_outcome": "SUCCESS",
+      "last_verified_at": "2026-09-03T07:41:38.925003Z",
+      "note": "disposable verifier matched",
+      "state": "READY",
+      "trust_state": "PROBATION"
+    },
+    "catalog_before_registration": "MISSING",
+    "database_quick_check": "ok",
+    "dedupe_event_delta": 0,
+    "effective_resume_state": "PROBATION",
+    "external_claim_authority": "DATA_ONLY",
+    "gap_id": "cap-gap-a0869c553ec728158fc73d89",
+    "mission_id": "mission-1400b3b20018",
+    "mission_state": "COMPLETE",
+    "origin_objective_id": "objective-v12-gap-resume-proof",
+    "reconciliation_consistent": true,
+    "repeat_wake_event_delta": 0,
+    "replan_version": 3,
+    "restart_rebuilt_attempt": true,
+    "resume_events": 1,
+    "stop_event_delta": 0,
+    "verification_passes": 2,
+    "wait_status_before_registration": "WAITING",
+    "wake_events": 1,
+    "wake_id": "wake:objective-v12-gap-resume-proof:cap:cap.fake.report.render:resource-v12-gap-resume-proof",
+    "work_id": "expansion-work:cap-gap-a0869c553ec728158fc73d89",
+    "worker_outcomes": [
+      "PASSED",
+      "PASSED"
+    ]
+  },
+  "recursion_protection": {
+    "attempt_count": 0,
+    "candidate_delta": 0,
+    "gap_id": "cap-gap-b902b86222eebaaf7f0972b1",
+    "status": "RECURSION_BLOCKED"
+  },
+  "scope": "DISPOSABLE_DATABASE_AND_GIT_RESOURCE_NOT_LIVE",
+  "verdict": "V12_GAP_RESUME_BRIDGE_PASS"
+}

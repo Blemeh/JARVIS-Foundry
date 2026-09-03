@@ -24,6 +24,7 @@ from jarvis_foundry.fabric.catalog import (
 )
 from jarvis_foundry.fabric.gap_bridge import (
     ATTEMPT_STARTED,
+    GAP_DEFERRED,
     GAP_OPENED,
     RESUMED,
     RECURSION_BLOCKED,
@@ -209,6 +210,53 @@ def test_restart_probation_registration_wakes_replans_and_resumes_once(
     assert len(reopened.events()) == event_count
 
 
+def test_restart_redelivers_started_but_undispatched_attempt_once(tmp_path: Path) -> None:
+    database = _database(tmp_path)
+    objective_id, _ = _objective_with_gap(database)
+    gap = bridge_missing_plan_capabilities(database, objective_id)[0]
+    started = start_expansion_attempt(
+        database,
+        gap.gap_id,
+        strategy_id="session6.crash-window",
+    )
+    assert started.active_attempt is not None
+    attempt_id = started.active_attempt.attempt_id
+    assert started.active_attempt.dispatched_at is None
+
+    receipts = []
+
+    class RecordingPort:
+        def dispatch(self, request):
+            receipts.append(request.as_dict())
+            return {"status": "ACCEPTED"}
+
+    reopened = FoundryDatabase(database.path)
+    delivered = start_expansion_attempt(
+        reopened,
+        gap.gap_id,
+        strategy_id="ignored-because-attempt-is-durable",
+        port=RecordingPort(),
+    )
+    assert len(receipts) == 1
+    assert receipts[0]["attempt_id"] == attempt_id
+    assert receipts[0]["attempt_ordinal"] == 1
+    assert delivered.active_attempt is not None
+    assert delivered.active_attempt.attempt_id == attempt_id
+    assert delivered.active_attempt.dispatched_at is not None
+    assert len(_events(reopened, ATTEMPT_STARTED)) == 1
+
+    event_count = len(reopened.events())
+    replay = start_expansion_attempt(
+        reopened,
+        gap.gap_id,
+        strategy_id="still-ignored",
+        port=RecordingPort(),
+    )
+    assert replay.active_attempt is not None
+    assert len(receipts) == 1
+    assert len(reopened.events()) == event_count
+
+
 def test_probation_does_not_wake_when_policy_disallows_it(tmp_path: Path) -> None:
     database = _database(tmp_path)
     objective_id, _ = _objective_with_gap(database)
@@ -222,6 +270,90 @@ def test_probation_does_not_wake_when_policy_disallows_it(tmp_path: Path) -> Non
     assert reconcile_ready_gaps(database, capability_id=MISSING) == ()
     assert rebuild_gap_state(database)[gap.gap_id].status is CapabilityGapStatus.EXPANSION_PENDING
     assert rebuild_wake_state(database)[str(gap.wake_id)]["status"] == "ACTIVE"
+    assert rebuild_executive_state(database).objectives[objective_id].status == "WAITING"
+
+
+def test_multiple_gaps_keep_objective_waiting_until_every_capability_is_ready(
+    tmp_path: Path,
+) -> None:
+    database = _database(tmp_path)
+    objective_id = "objective-two-capability-gaps"
+    second_capability = "cap.fake.report.sign"
+    create_objective(
+        database,
+        "Produce and sign the bounded proof artifact",
+        objective_id=objective_id,
+        required_capabilities=(MISSING, second_capability),
+        budget={"max_missions": 1, "max_retries": 0},
+    )
+    build_plan(
+        database,
+        objective_id,
+        (PlanStep(
+            step_id="render-and-sign",
+            objective_id=objective_id,
+            description="Render and sign the proof artifact",
+            required_capabilities=(MISSING, second_capability),
+            output_contract=("signed proof artifact exists",),
+            verification_contract=("signed proof artifact was inspected",),
+        ),),
+    )
+    gaps = bridge_missing_plan_capabilities(database, objective_id)
+    assert {item.required_capability_id for item in gaps} == {
+        MISSING,
+        second_capability,
+    }
+
+    _register_ready(database, MISSING)
+    first = reconcile_ready_gaps(database, capability_id=MISSING)
+    assert len(first) == 1
+    assert first[0].status is CapabilityGapStatus.RESUMED
+    assert rebuild_executive_state(database).objectives[objective_id].status == "WAITING"
+    assert len(_events(database, WAKE_FIRED)) == 1
+
+    _register_ready(database, second_capability)
+    second = reconcile_ready_gaps(database, capability_id=second_capability)
+    assert len(second) == 1
+    assert second[0].status is CapabilityGapStatus.RESUMED
+    assert rebuild_executive_state(database).objectives[objective_id].status == "ACTIVE"
+    assert len(_events(database, WAKE_FIRED)) == 2
+    assert len(_events(database, RESUMED)) == 2
+
+
+def test_open_gap_budget_defers_excess_without_aborting_autonomy(tmp_path: Path) -> None:
+    database = _database(tmp_path)
+    objective_id = "objective-open-gap-budget"
+    second_capability = "cap.fake.report.publish"
+    create_objective(
+        database,
+        "Render and publish one bounded proof",
+        objective_id=objective_id,
+        required_capabilities=(MISSING, second_capability),
+    )
+    build_plan(
+        database,
+        objective_id,
+        (PlanStep(
+            step_id="render-publish",
+            objective_id=objective_id,
+            description="Render and publish the proof",
+            required_capabilities=(MISSING, second_capability),
+        ),),
+    )
+    policy = GapPolicy(max_open_gaps_per_objective=1)
+    first = bridge_missing_plan_capabilities(database, objective_id, policy=policy)
+    assert len(first) == 1
+    assert len(_events(database, GAP_DEFERRED)) == 1
+    assert rebuild_executive_state(database).objectives[objective_id].status == "WAITING"
+
+    _register_ready(database, first[0].required_capability_id)
+    assert len(reconcile_ready_gaps(
+        database, capability_id=first[0].required_capability_id
+    )) == 1
+    second = bridge_missing_plan_capabilities(database, objective_id, policy=policy)
+    active = [item for item in second if not item.terminal]
+    assert len(active) == 1
+    assert active[0].required_capability_id == second_capability
     assert rebuild_executive_state(database).objectives[objective_id].status == "WAITING"
 
 
