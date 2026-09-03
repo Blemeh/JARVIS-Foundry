@@ -17,6 +17,9 @@ from jarvis_foundry.discovery_sources import (
     content_hash,
 )
 from jarvis_foundry.executive.owner_context import seed_owner_context
+from jarvis_foundry.fabric.catalog import record_outcome
+from jarvis_foundry.fabric.loop import seed_builtins
+from jarvis_foundry.fabric.model import VerifyVerdict
 from jarvis_foundry.initiative_a2 import (
     InitiativeA2Bounds,
     run_continuous_observation_cycle,
@@ -44,6 +47,19 @@ def _database(tmp_path) -> FoundryDatabase:
         }],
         standing_rejections=[],
     )
+    seed_builtins(database)
+    for capability_id in (
+        "cap.file.read", "cap.file.write", "cap.git.inspect", "cap.git.diff",
+        "cap.git.commit", "cap.script.run", "cap.tests.run",
+    ):
+        record_outcome(
+            database,
+            capability_id,
+            success=True,
+            verified=VerifyVerdict.MATCH,
+            note="focused continuous-observation Fabric fixture",
+            at="2026-09-02T00:00:00Z",
+        )
     return database
 
 
