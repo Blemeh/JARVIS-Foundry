@@ -582,6 +582,12 @@ def finalize_verified_effect(
             f"effect {action_key} is {state.get('status')} — terminal "
             "provider proof requires a terminal journal state"
         )
+    if state.get("accepted") is True and state.get("terminal_outcome"):
+        recorded = _fabric_effect_result(
+            database, action_key, status=str(state["status"]),
+        )
+        if recorded is not None:
+            return recorded
     receipt = _safe_effect_evidence(
         provider_receipt, field_name="provider_receipt",
     )
@@ -607,12 +613,15 @@ def finalize_verified_effect(
         "action_key": action_key,
         "readback": observed,
     }, "readback", full_payload_key=True)
-    if state.get("status") == FROZEN or reconciled:
-        _append(database, "effect.reconciled", {
-            "action_key": action_key,
-            "provider_claim": observed,
-            "provider_receipt": receipt,
-        }, "reconciled.accepted", full_payload_key=True)
+    recovered_from_ambiguity = bool(
+        state.get("status") == FROZEN or reconciled
+    )
+    _append(database, "effect.reconciled", {
+        "action_key": action_key,
+        "provider_claim": observed,
+        "provider_receipt": receipt,
+        "recovered_from_ambiguity": recovered_from_ambiguity,
+    }, "reconciled.accepted", full_payload_key=True)
     _append(database, "effect.acceptance_recorded", {
         "action_key": action_key,
         "accepted": True,
@@ -624,7 +633,8 @@ def finalize_verified_effect(
         "action_key": action_key,
         "outcome": COMPLETED,
         "accepted": True,
-        "reconciled": bool(state.get("status") == FROZEN or reconciled),
+        "reconciled": True,
+        "recovered_from_ambiguity": recovered_from_ambiguity,
         "provider_id": receipt["provider_id"],
         "provider_ref": receipt["provider_ref"],
         "result": safe_result,
@@ -635,7 +645,8 @@ def finalize_verified_effect(
         "action_key": action_key,
         "journal_state": state["status"],
         "accepted": True,
-        "reconciled": bool(state.get("status") == FROZEN or reconciled),
+        "reconciled": True,
+        "recovered_from_ambiguity": recovered_from_ambiguity,
         "terminal_truth": True,
     }
 
@@ -663,7 +674,7 @@ def execute_fabric_effect(
     This helper supplies the missing durable claim at that seam by reusing
     system_actions and the existing effect events.  It is not a second
     journal: the same STARTED/COMPLETED/FAILED/FROZEN projection and
-    crash-reap rules are used for browser effects.
+    crash-reap rules are used for every Fabric effect.
     """
 
     key = str(action_key)
@@ -678,15 +689,6 @@ def execute_fabric_effect(
             or contains_secret_like(encoded_identity)
         ):
             raise ValueError("Fabric effect request identity is unsafe to persist")
-    if stop_check is not None and stop_check():
-        return {
-            "claimed": "BLOCKED",
-            "action_key": key,
-            "journal_state": "NOT_STARTED",
-            "performed": False,
-            "replayed": False,
-            "error_code": "stop_requested",
-        }
     state = effect_state(database, key)
     if state.get("status") in _TERMINAL:
         recorded = _fabric_effect_result(
@@ -701,6 +703,16 @@ def execute_fabric_effect(
             "performed": False,
             "replayed": True,
             "error_code": "terminal_effect_recorded",
+        }
+    stopped = bool(stop_check is not None and stop_check())
+    if stopped and state.get("status") != STARTED:
+        return {
+            "claimed": "BLOCKED",
+            "action_key": key,
+            "journal_state": "NOT_STARTED",
+            "performed": False,
+            "replayed": False,
+            "error_code": "stop_requested",
         }
     claim_mode, observed = _claim_effect(
         database,
@@ -753,7 +765,7 @@ def execute_fabric_effect(
         _append(database, "effect.frozen", {
             "action_key": key,
             "reason": (
-                "crash between browser action start and completion — "
+                "crash between effect start and completion — "
                 "effect may or may not have landed; no second execution"
             ),
             "connector_id": str(connector_id),
@@ -767,6 +779,29 @@ def execute_fabric_effect(
             "reaped": True,
             "error_code": "crash_reaped",
         }
+
+    # STOP may arrive in the narrow window after the atomic claim. Close the
+    # claim as a deterministic non-effect; never leave it active and never
+    # enter the provider after STOP.
+    if stop_check is not None and stop_check():
+        result = {
+            "claimed": "BLOCKED",
+            "action_key": key,
+            "performed": False,
+            "replayed": False,
+            "error_code": "stop_requested",
+        }
+        _append(database, "system.action_failed", {
+            "action_key": key,
+            "system_id": str(system_id),
+            "target_ref": str(target_ref),
+            "payload_hash": str(payload_hash),
+            "kind": str(kind),
+            "reason": "stop_requested_before_dispatch",
+            "result": result,
+        }, "blocked.stop")
+        result["journal_state"] = FAILED
+        return result
 
     try:
         raw = perform()
@@ -806,7 +841,7 @@ def execute_fabric_effect(
         }, "pending.timeout", full_payload_key=True)
         _append(database, "effect.frozen", {
             "action_key": key,
-            "reason": "browser effect timed out after claim; reconcile before retry",
+            "reason": "effect timed out after claim; reconcile before retry",
             "connector_id": str(connector_id),
             "result": result,
         }, "frozen.timeout", full_payload_key=True)
@@ -868,13 +903,13 @@ def execute_fabric_effect(
             "target_ref": str(target_ref),
             "payload_hash": str(payload_hash),
             "kind": str(kind),
-            "reason": str(result.get("error_code") or "ambiguous_browser_effect"),
+            "reason": str(result.get("error_code") or "ambiguous_effect"),
             "provider_state": "UNKNOWN",
             "result": result,
         }, "pending.ambiguous", full_payload_key=True)
         _append(database, "effect.frozen", {
             "action_key": key,
-            "reason": "browser effect outcome is ambiguous; reconcile before retry",
+            "reason": "effect outcome is ambiguous; reconcile before retry",
             "connector_id": str(connector_id),
             "result": result,
         }, "frozen.ambiguous", full_payload_key=True)

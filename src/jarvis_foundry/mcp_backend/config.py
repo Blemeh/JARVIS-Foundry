@@ -19,7 +19,8 @@ from urllib.parse import urlparse
 import yaml
 
 from ..control.redaction import contains_secret_like
-from ..fabric.model import Semantic, UnattendedMode
+from ..effects import EffectClass
+from ..fabric.model import CapabilityTrust, Semantic, UnattendedMode
 
 _IDENTITY = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,127}$")
 _HEADER = re.compile(r"^[!#$%&'*+.^_`|~0-9A-Za-z-]{1,128}$")
@@ -85,12 +86,17 @@ class McpToolPolicy:
 
     enabled: bool = True
     semantic: Semantic | None = None
+    effect_class: EffectClass | None = None
     unattended: UnattendedMode | None = None
     limitations: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if self.semantic is not None and not isinstance(self.semantic, Semantic):
             object.__setattr__(self, "semantic", Semantic(self.semantic))
+        if self.effect_class is not None and not isinstance(
+            self.effect_class, EffectClass
+        ):
+            object.__setattr__(self, "effect_class", EffectClass(self.effect_class))
         if self.unattended is not None and not isinstance(
             self.unattended, UnattendedMode
         ):
@@ -109,6 +115,10 @@ class McpToolPolicy:
         return cls(
             enabled=bool(raw.get("enabled", True)),
             semantic=(Semantic(str(raw["semantic"])) if raw.get("semantic") else None),
+            effect_class=(
+                EffectClass(str(raw["effect_class"]))
+                if raw.get("effect_class") else None
+            ),
             unattended=(
                 UnattendedMode(str(raw["unattended"]))
                 if raw.get("unattended")
@@ -165,6 +175,7 @@ class McpServerConfig:
     max_concurrent_invocations: int = 4
     default_semantic: Semantic = Semantic.EXTERNAL_EFFECT
     default_unattended: UnattendedMode = UnattendedMode.INTERACTIVE_REQUIRED
+    trust_state: CapabilityTrust = CapabilityTrust.ESTABLISHED
     allowed_tools: tuple[str, ...] = ()
     disabled_tools: tuple[str, ...] = ()
     tools: Mapping[str, McpToolPolicy] = field(default_factory=dict)
@@ -181,6 +192,10 @@ class McpServerConfig:
         if not isinstance(self.default_unattended, UnattendedMode):
             object.__setattr__(
                 self, "default_unattended", UnattendedMode(self.default_unattended)
+            )
+        if not isinstance(self.trust_state, CapabilityTrust):
+            object.__setattr__(
+                self, "trust_state", CapabilityTrust(self.trust_state)
             )
         object.__setattr__(self, "args", _string_tuple(self.args, "args"))
         object.__setattr__(
@@ -314,6 +329,9 @@ class McpServerConfig:
                     or UnattendedMode.INTERACTIVE_REQUIRED.value
                 )
             ),
+            trust_state=CapabilityTrust(
+                str(raw.get("trust_state") or CapabilityTrust.ESTABLISHED.value)
+            ),
             allowed_tools=tuple(raw.get("allowed_tools") or ()),
             disabled_tools=tuple(raw.get("disabled_tools") or ()),
             tools={
@@ -335,6 +353,7 @@ class McpServerConfig:
         return McpToolPolicy(
             enabled=enabled,
             semantic=explicit.semantic or self.default_semantic,
+            effect_class=explicit.effect_class,
             unattended=explicit.unattended or self.default_unattended,
             limitations=explicit.limitations,
         )

@@ -332,7 +332,7 @@ def test_specific_provider_action_is_required_for_generic_provider_write(
     }
 
 
-def test_specific_unregistered_gmail_write_is_reported_missing(tmp_path: Path) -> None:
+def test_specific_registered_gmail_write_is_reported_not_ready(tmp_path: Path) -> None:
     database = _database(tmp_path)
     result = resolve_capability_requirements(
         database,
@@ -345,5 +345,7 @@ def test_specific_unregistered_gmail_write_is_reported_missing(tmp_path: Path) -
     )
 
     assert result.required_capability_ids == ("cap.gmail.send",)
-    assert result.missing_capabilities == ("cap.gmail.send",)
+    assert result.missing_capabilities == ()
+    assert result.blocked_capabilities == ("cap.gmail.send",)
+    assert result.readiness is RequirementReadiness.BLOCKED
     assert result.executable is False

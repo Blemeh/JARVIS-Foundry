@@ -28,7 +28,8 @@ def _metadata(
     descriptor: McpToolDescriptor, config: McpBackendConfig
 ) -> CapabilityMetadata:
     server = config.server(descriptor.server_id)
-    effect_class = infer_effect_class(
+    policy = server.policy_for(descriptor.tool_name)
+    effect_class = policy.effect_class or infer_effect_class(
         descriptor.action_kind,
         descriptor.semantic.value,
         descriptor.server_identity,
@@ -44,6 +45,7 @@ def _metadata(
         input_schema=f"mcp+jsonschema:sha256:{descriptor.schema_sha256}",
         output_schema="jarvis.mcp.bounded-receipt.v1",
         effect_class=effect_class,
+        trust_state=server.trust_state,
         requirements=(descriptor.server_identity,),
         credential_refs=server.credential_refs,
         preconditions=(
@@ -172,6 +174,7 @@ class FabricMcpBackend:
                     spec,
                     note="MCP discovery projection; remote content DATA_ONLY",
                     metadata=metadata,
+                    trust=metadata.trust_state,
                 )
             if descriptor.enabled:
                 record_outcome(
@@ -280,6 +283,10 @@ class FabricMcpBackend:
             descriptor.semantic.value,
             descriptor.server_identity,
         )
+        policy = self.config.server(descriptor.server_id).policy_for(
+            descriptor.tool_name
+        )
+        descriptor_effect_class = policy.effect_class or descriptor_effect_class
         if descriptor_effect_class is not EffectClass.READ_ONLY:
             context = dict(effect_context or {})
             effect_id = str(context.get("effect_id") or "")
@@ -293,7 +300,7 @@ class FabricMcpBackend:
                     "mutating MCP invocation requires an active canonical effect journal entry"
                 )
         try:
-            return self.client.invoke(
+            return self.client._fabric_invoke(
                 action_kind,
                 arguments,
                 invocation_id=invocation_id,

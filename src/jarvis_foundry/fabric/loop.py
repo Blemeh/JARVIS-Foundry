@@ -9,8 +9,8 @@ from ..control.broker import emergency_stop_reason
 from ..database import FoundryDatabase
 from .catalog import (
     capability_metadata,
-    catalog_snapshot,
     capability_trust,
+    catalog_snapshot,
     get_spec,
     observed_readiness,
     record_gap,
@@ -20,7 +20,7 @@ from .catalog import (
     reliability,
     specs_for_action,
 )
-from .executors import ExecutorContext, dispatch
+from .executors import ExecutorContext, dispatch, finalize_mcp_mutation_effect
 from .expansion import acquire_hash_capability
 from .model import (
     ActionResult,
@@ -48,7 +48,7 @@ from .contracts import (
     metadata_for_spec,
     normalize_receipt,
 )
-from ..effects import execute_fabric_effect
+from ..effects import STARTED, effect_state, execute_fabric_effect
 from .providers import route_provider
 
 
@@ -723,19 +723,30 @@ def _verify_action(
             or not claimed.get("server_identity")
             or not claimed.get("tool_name")
             or not claimed.get("result_sha256")
-            or not isinstance(receipt, Mapping)
-            or receipt.get("result_sha256") != claimed.get("result_sha256")
-            or receipt.get("authority") != "DATA_ONLY"
         ):
             return VerifyVerdict.MISMATCH
         effect_class = str(claimed.get("effect_class") or "")
         if effect_class == EffectClass.READ_ONLY.value:
-            return VerifyVerdict.MATCH
+            return VerifyVerdict.MATCH if (
+                isinstance(receipt, Mapping)
+                and receipt.get("result_sha256") == claimed.get("result_sha256")
+                and receipt.get("authority") == "DATA_ONLY"
+            ) else VerifyVerdict.MISMATCH
+        readback = claimed.get("readback")
+        provider_receipt = claimed.get("provider_receipt")
         if (
             claimed.get("effect_id")
             and claimed.get("idempotency_key")
             and claimed.get("readback_verified") is True
             and claimed.get("reconciled") is True
+            and claimed.get("accepted") is True
+            and claimed.get("terminal_truth") is True
+            and isinstance(readback, Mapping)
+            and readback.get("status") == "MATCH"
+            and readback.get("matches") is True
+            and isinstance(provider_receipt, Mapping)
+            and provider_receipt.get("provider_id")
+            and provider_receipt.get("provider_ref")
         ):
             return VerifyVerdict.MATCH
         return VerifyVerdict.UNKNOWN
@@ -858,7 +869,11 @@ def execute_action(
         payload.get("stop_path"),
         identities={"GLOBAL", intent.task_id},
     )
-    if stop:
+    reconciliation_capable = (
+        action_kind in {"github.pull_request.publish", "gmail.send"}
+        or action_kind.startswith("mcp.")
+    )
+    if stop and not reconciliation_capable:
         return ActionResult(
             capability_id="blocked",
             action_kind=action_kind,
@@ -887,16 +902,40 @@ def execute_action(
     metadata = capability_metadata(database, spec.capability_id)
     if metadata is None:
         metadata = metadata_for_spec(spec)
-    # A self-expanded registration is usable for bounded/read-only work while
-    # it is in PROBATION, but it can never cross the irreversible/high-cost
-    # boundary.  This check happens before request/effect creation so a
-    # refusal cannot leave a journal claim or a fabricated outcome behind.
     inferred_metadata = metadata_for_spec(spec)
+    request: AdapterRequest | None = None
+    request = build_adapter_request(
+        mission_id=intent.task_id,
+        workflow_id=workflow_id,
+        step_id=step_id or action_kind,
+        step_version=step_version,
+        attempt=attempt,
+        action_kind=action_kind,
+        payload=payload,
+        spec=spec,
+        metadata=metadata,
+    )
+    if stop and request.effect_class is EffectClass.READ_ONLY:
+        return ActionResult(
+            capability_id=spec.capability_id,
+            action_kind=action_kind,
+            claimed=ClaimOutcome.BLOCKED,
+            verified=VerifyVerdict.UNKNOWN,
+            note=f"STOP active: {stop}",
+        )
+    trust = capability_trust(database, spec.capability_id)
+    prior_effect = effect_state(database, request.effect_id)
     probation_irreversible = (
-        metadata.effect_class is EffectClass.IRREVERSIBLE_OR_HIGH_COST
+        request.effect_class is EffectClass.IRREVERSIBLE_OR_HIGH_COST
+        or metadata.effect_class is EffectClass.IRREVERSIBLE_OR_HIGH_COST
         or inferred_metadata.effect_class is EffectClass.IRREVERSIBLE_OR_HIGH_COST
     )
-    if capability_trust(database, spec.capability_id) is CapabilityTrust.PROBATION and probation_irreversible:
+    if (
+        trust is CapabilityTrust.PROBATION
+        and probation_irreversible
+        and prior_effect.get("status")
+        not in {STARTED, "COMPLETED", "FAILED", "FROZEN"}
+    ):
         record_probation_block(
             database,
             spec.capability_id,
@@ -908,19 +947,8 @@ def execute_action(
             action_kind=action_kind,
             claimed=ClaimOutcome.BLOCKED,
             verified=VerifyVerdict.UNKNOWN,
-            note="PROBATION capability cannot perform irreversible effects",
+            note="PROBATION capability cannot dispatch irreversible external effects",
         )
-    request: AdapterRequest | None = None
-    request = build_adapter_request(
-        mission_id=intent.task_id,
-        workflow_id=workflow_id,
-        step_id=step_id or action_kind,
-        step_version=step_version,
-        attempt=attempt,
-        action_kind=action_kind,
-        payload=payload,
-        spec=spec,
-    )
     execution_payload = dict(payload)
     if request is not None:
         # The selected adapter receives the canonical identity sidecar, never
@@ -1003,6 +1031,13 @@ def execute_action(
         )
     else:
         claimed = perform()
+    if (
+        action_kind.startswith("mcp.")
+        and request.effect_class is not EffectClass.READ_ONLY
+    ):
+        claimed = finalize_mcp_mutation_effect(
+            ctx, execution_payload, claimed,
+        )
     adapter_verification: dict[str, Any] = {}
     if canonical_artifact and claim_override is None:
         verdict, adapter_verification = _verify_canonical_artifact(

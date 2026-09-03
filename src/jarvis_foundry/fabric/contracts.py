@@ -37,13 +37,6 @@ class PostconditionStatus(StrEnum):
     UNKNOWN = "UNKNOWN"
 
 
-class CapabilityTrust(StrEnum):
-    """Execution trust of a catalog entry, separate from observed readiness."""
-
-    ESTABLISHED = "ESTABLISHED"
-    PROBATION = "PROBATION"
-
-
 def _text(value: object, field_name: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ContractError(f"{field_name} must be a non-empty string")
@@ -107,7 +100,6 @@ class CapabilityMetadata:
     recovery: Mapping[str, Any] = field(default_factory=dict)
     world_model: Mapping[str, Any] = field(default_factory=dict)
     provenance: Mapping[str, Any] = field(default_factory=dict)
-    trust_state: CapabilityTrust = CapabilityTrust.ESTABLISHED
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "capability_id", _identity(self.capability_id, "capability_id"))
@@ -190,7 +182,6 @@ class CapabilityMetadata:
                 "provider_deps": list(spec.provider_deps),
                 "limitations": list(spec.limitations),
             },
-            trust_state=CapabilityTrust.ESTABLISHED,
         )
 
     @classmethod
@@ -222,9 +213,6 @@ class CapabilityMetadata:
             recovery=value.get("recovery"),
             world_model=value.get("world_model") or {"verified_terminal_only": True},
             provenance=value.get("provenance"),
-            trust_state=CapabilityTrust(
-                value.get("trust_state") or CapabilityTrust.ESTABLISHED
-            ),
         )
 
     def as_dict(self) -> dict[str, Any]:
@@ -247,7 +235,6 @@ class CapabilityMetadata:
             "recovery": dict(self.recovery),
             "world_model": dict(self.world_model),
             "provenance": dict(self.provenance),
-            "trust_state": self.trust_state.value,
         }
 
 
@@ -355,6 +342,28 @@ def _target_ref(action_kind: str, payload: Mapping[str, Any]) -> str:
     return action_kind
 
 
+_EXECUTION_CONTROL_FIELDS = {
+    "budget",
+    "budget_estimate",
+    "claim_ttl_s",
+    "idempotency_key",
+    "stop_path",
+    "stop_scope",
+    "timeout_ms",
+    "timeout_s",
+}
+
+
+def _effect_input(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Remove runtime controls that cannot change intended effect identity."""
+
+    return {
+        key: value
+        for key, value in payload.items()
+        if key not in _EXECUTION_CONTROL_FIELDS
+    }
+
+
 def system_id_for_action(action_kind: str, target_ref: str) -> str:
     """Return the canonical V5 effect-journal system for a Fabric action."""
 
@@ -430,22 +439,24 @@ class AdapterRequest:
         action_kind: str,
         payload: Mapping[str, Any],
         spec: Any,
+        metadata: CapabilityMetadata | None = None,
     ) -> "AdapterRequest":
-        metadata = metadata_for_spec(spec)
+        descriptor = metadata or metadata_for_spec(spec)
         target = _target_ref(action_kind, payload)
         before_value = payload.get("before_state_ref")
         if before_value is None and payload.get("before_state") is not None:
             before_value = f"before:{_digest(payload.get('before_state'))}"
         before_ref = str(before_value).strip() if before_value is not None and str(before_value).strip() else None
         workflow = str(workflow_id or f"workflow:{mission_id}")
-        input_hash = _digest(dict(payload))
+        effect_input = _effect_input(payload)
+        input_hash = _digest(effect_input)
         effect_id = fabric_effect_id(
             system_id=system_id_for_action(action_kind, target),
             target_ref=target,
             capability_id=str(spec.capability_id),
             capability_version=str(spec.version),
             action_kind=action_kind,
-            input_payload=dict(payload),
+            input_payload=effect_input,
             before_state_ref=before_ref,
         )
         explicit_key = payload.get("idempotency_key")
@@ -471,13 +482,13 @@ class AdapterRequest:
             action_kind=action_kind,
             input_hash=input_hash,
             target_ref=target,
-            effect_class=metadata.effect_class,
+            effect_class=descriptor.effect_class,
             effect_id=effect_id,
             idempotency_key=key,
             before_state_ref=before_ref,
             stop_scope=scope,
             budget=payload.get("budget") or payload.get("budget_estimate") or {},
-            credential_refs=metadata.credential_refs,
+            credential_refs=descriptor.credential_refs,
         )
 
     def to_evidence(self) -> dict[str, Any]:

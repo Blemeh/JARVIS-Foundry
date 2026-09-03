@@ -19,17 +19,19 @@ import pytest
 import yaml
 
 from jarvis_foundry.database import FoundryDatabase
-from jarvis_foundry.effects import COMPLETED, FROZEN, effect_state
+from jarvis_foundry.effects import COMPLETED, FROZEN, EffectClass, effect_state
 from jarvis_foundry.fabric import (
+    CapabilityTrust,
     ExecutorContext,
     Readiness,
     TaskIntent,
     execute_action,
     observed_readiness,
 )
-from jarvis_foundry.fabric.catalog import capability_metadata
+from jarvis_foundry.fabric.catalog import capability_metadata, capability_trust
 from jarvis_foundry.fabric.model import Semantic, UnattendedMode
 from jarvis_foundry.mcp_backend import (
+    CANONICAL_MCP_RUNTIME,
     FabricMcpBackend,
     McpBackendConfig,
     McpConfigurationError,
@@ -44,6 +46,7 @@ from jarvis_foundry.mcp_backend import (
     normalize_json_schema,
     normalize_result,
     stable_tool_identity,
+    selected_solution_mcp_adoption,
     validate_arguments,
 )
 
@@ -80,6 +83,8 @@ def _config(
             "slow_echo": {"semantic": "read"},
             "write_disposable": {"semantic": "write"},
             "slow_write_disposable": {"semantic": "write"},
+            "append_then_delay_disposable": {"semantic": "write"},
+            "error_after_write_disposable": {"semantic": "write"},
             "extra_echo": {"semantic": "read"},
         },
     }
@@ -126,7 +131,19 @@ def _readback_verifier(root: Path):
             "readback_verified": actual == expected,
             "reconciled": True,
             "after_state_ref": f"sha256:{digest}",
-            "readback": {"matches": actual == expected, "sha256": digest},
+            "readback": {
+                "status": "MATCH" if actual == expected else "MISMATCH",
+                "matches": actual == expected,
+                "sha256": digest,
+            },
+            "acceptance_evidence": {
+                "authority": "disposable-filesystem-readback",
+                "sha256": digest,
+            },
+            "provider_receipt": {
+                "provider_id": "mcp:disposable-filesystem",
+                "provider_ref": f"file:sha256:{digest}",
+            },
         }
 
     return verify
@@ -182,6 +199,91 @@ def test_config_is_explicit_conservative_and_transport_safe(tmp_path: Path) -> N
         encoding="utf-8",
     )
     assert load_mcp_config(path).server("file-config").enabled is False
+
+
+def test_selected_solution_adoption_reuses_canonical_backend_and_probation(
+    tmp_path: Path,
+) -> None:
+    descriptor = {
+        "contract_version": "jarvis.v12.selected-solution-adapter.v1",
+        "adapter_id": "adapter.disposable.mcp",
+        "solution_id": "solution.disposable.mcp",
+        "solution_class": "mcp_stdio",
+        "solution_name": "Disposable MCP",
+        "solution_version": "1.0.0",
+        "locator": str(SERVER_SCRIPT),
+        "readiness": {
+            "kind": "mcp_tools_list",
+            "target": sys.executable,
+            "arguments": ["-u", str(SERVER_SCRIPT)],
+            "timeout_ms": 10_000,
+        },
+        "capabilities": [
+            {
+                "capability_id": "cap.selected.disposable.write",
+                "version": "1.0.0",
+                "action_kind": "selected.disposable.write",
+                "semantic": "external_effect",
+                "effect_class": "IRREVERSIBLE_OR_HIGH_COST",
+                "unattended": "ALLOWED",
+                "limitations": ["disposable fixture only"],
+                "timeout_ms": 4000,
+                "invocation": {"target": "write_disposable"},
+            }
+        ],
+        "dependencies": [
+            {
+                "name": "python",
+                "kind": "executable",
+                "version": sys.version.split()[0],
+                "source": sys.executable,
+            }
+        ],
+        "mcp_backend": {
+            "env": {
+                "JARVIS_MCP_DISPOSABLE_ROOT": str(tmp_path / "disposable")
+            }
+        },
+    }
+    adoption = selected_solution_mcp_adoption(descriptor)
+    assert adoption.runtime == CANONICAL_MCP_RUNTIME
+    assert adoption.trust_state is CapabilityTrust.PROBATION
+    assert adoption.as_dict()["second_mcp_runtime"] is False
+    database = _database(tmp_path)
+    backend = adoption.create_backend(database)
+    try:
+        _health, projected = backend.connect_server(
+            adoption.config.servers[0].server_id
+        )
+        write = next(
+            item for item in projected
+            if item.executor.endswith("/write_disposable")
+        )
+        metadata = capability_metadata(database, write.capability_id)
+        assert metadata is not None
+        assert metadata.trust_state is CapabilityTrust.PROBATION
+        assert metadata.effect_class is EffectClass.IRREVERSIBLE_OR_HIGH_COST
+        assert capability_trust(database, write.capability_id) is CapabilityTrust.PROBATION
+        result = execute_action(
+            database,
+            ExecutorContext(database, tmp_path / "owned", mcp_backend=backend),
+            _intent("v12.probation", write.action_kind),
+            write.action_kind,
+            {
+                "arguments": {"relative_path": "blocked.txt", "content": "no"},
+                "target_ref": str(tmp_path / "disposable" / "blocked.txt"),
+            },
+        )
+        assert result.claimed.value == "BLOCKED", result
+        assert "PROBATION" in result.note
+        assert not (tmp_path / "disposable" / "blocked.txt").exists()
+        assert not any(
+            event.event_type == "system.action_started"
+            and event.payload.get("kind") == write.action_kind
+            for event in database.events(readonly=True)
+        )
+    finally:
+        backend.close()
 
 
 def test_schema_normalization_typed_validation_and_stable_identity() -> None:
@@ -240,7 +342,7 @@ def test_real_stdio_discovery_projection_read_resource_disconnect_reconnect(
         assert connected.state is McpSessionState.READY
         assert connected.protocol_version
         assert connected.remote_name_data_only == "jarvis-v12-disposable"
-        assert len(projected) == 4
+        assert len(projected) == 6
         identities = {
             item.tool_name: (item.capability_id, item.action_kind)
             for item in backend.client.tools("v12-test")
@@ -360,13 +462,13 @@ def test_exact_tool_allowlist_projects_disabled_tools_as_degraded(
     try:
         _health, projected = backend.connect_server("v12-test")
         assert [item.tool_name for item in backend.client.tools("v12-test")] == ["echo"]
-        assert len(backend.client.tools("v12-test", include_disabled=True)) == 4
+        assert len(backend.client.tools("v12-test", include_disabled=True)) == 6
         states = {
             item.action_kind: observed_readiness(database, item.capability_id).state
             for item in projected
         }
         assert states[_action(backend, "echo")] is Readiness.READY
-        assert sum(state is Readiness.DEGRADED for state in states.values()) == 3
+        assert sum(state is Readiness.DEGRADED for state in states.values()) == 5
     finally:
         backend.close()
 
@@ -492,7 +594,7 @@ def test_direct_mutating_client_call_is_refused_without_fabric_effect(
     try:
         backend.connect_server("v12-test")
         action = _action(backend, "write_disposable")
-        with pytest.raises(McpContractError, match="canonical Fabric effect context"):
+        with pytest.raises(McpContractError, match="FabricMcpBackend"):
             backend.client.invoke(
                 action,
                 {"relative_path": "bypass.txt", "content": "forbidden"},
@@ -504,6 +606,13 @@ def test_direct_mutating_client_call_is_refused_without_fabric_effect(
             "idempotency_key": "idempotency:forged",
             "effect_class": "REVERSIBLE_LOCAL",
         }
+        with pytest.raises(McpContractError, match="FabricMcpBackend"):
+            backend.client.invoke(
+                action,
+                {"relative_path": "bypass.txt", "content": "forbidden"},
+                invocation_id="forged-request",
+                effect_context=fake_context,
+            )
         with pytest.raises(McpContractError, match="active canonical effect journal"):
             backend.invoke_action(
                 action,
@@ -543,6 +652,8 @@ def test_mutation_uses_canonical_effect_readback_and_replay(tmp_path: Path) -> N
         assert first.success is True
         assert first.receipt["state"] == "VERIFIED"
         assert first.claimed_effect["readback_verified"] is True
+        assert first.claimed_effect["accepted"] is True
+        assert first.claimed_effect["terminal_truth"] is True
         assert replay.success is True
         assert replay.claimed_effect["replayed"] is True
         effect_id = first.receipt["effect_id"]
@@ -559,6 +670,11 @@ def test_mutation_uses_canonical_effect_readback_and_replay(tmp_path: Path) -> N
             sum(event.event_type == "system.action_completed" for event in relevant)
             == 1
         )
+        assert sum(event.event_type == "effect.provider_receipt" for event in relevant) == 1
+        assert sum(event.event_type == "effect.readback_observed" for event in relevant) == 1
+        assert sum(event.event_type == "effect.reconciled" for event in relevant) == 1
+        assert sum(event.event_type == "effect.acceptance_recorded" for event in relevant) == 1
+        assert sum(event.event_type == "effect.terminal_truth" for event in relevant) == 1
     finally:
         backend.close()
 
@@ -582,10 +698,16 @@ def test_mutation_without_independent_readback_never_verifies(tmp_path: Path) ->
                 "before_state_ref": "absent",
             },
         )
-        assert result.claimed.value == "COMPLETED"
+        assert result.claimed.value == "UNKNOWN"
         assert result.verified.value == "UNKNOWN"
         assert result.success is False
         assert result.receipt["state"] == "UNKNOWN"
+        assert effect_state(database, result.receipt["effect_id"])["status"] == FROZEN
+        assert not any(
+            event.event_type == "effect.terminal_truth"
+            and event.payload.get("action_key") == result.receipt["effect_id"]
+            for event in database.events(readonly=True)
+        )
     finally:
         backend.close()
 
@@ -630,7 +752,11 @@ def test_stop_cancels_inflight_mutation_and_freezes_effect(tmp_path: Path) -> No
 
         thread = threading.Thread(target=invoke, daemon=True)
         thread.start()
-        time.sleep(0.2)
+        entered = root / ".slow-write-entered"
+        deadline = time.monotonic() + 4
+        while time.monotonic() < deadline and not entered.is_file():
+            time.sleep(0.01)
+        assert entered.is_file(), "disposable MCP mutation never entered provider"
         stop_path.write_text("test STOP\n", encoding="utf-8")
         thread.join(timeout=8)
         stop_path.unlink(missing_ok=True)
@@ -641,6 +767,105 @@ def test_stop_cancels_inflight_mutation_and_freezes_effect(tmp_path: Path) -> No
         assert result.success is False
         assert effect_state(database, result.receipt["effect_id"])["status"] == FROZEN
         assert target.exists() is False
+    finally:
+        backend.close()
+
+
+def test_timeout_after_landed_mutation_reconciles_under_stop_without_replay(
+    tmp_path: Path,
+) -> None:
+    database = _database(tmp_path)
+    backend = FabricMcpBackend(database, _config(tmp_path))
+    try:
+        backend.connect_server("v12-test")
+        root = tmp_path / "disposable"
+        target = root / "landed-once.txt"
+        context = ExecutorContext(
+            database,
+            tmp_path / "owned",
+            mcp_backend=backend,
+            mcp_mutation_verifier=_readback_verifier(root),
+        )
+        action = _action(backend, "append_then_delay_disposable")
+        payload = {
+            "arguments": {
+                "relative_path": target.name,
+                "content": "exactly once\n",
+                "delay_ms": 1000,
+            },
+            "target_ref": str(target),
+            "before_state_ref": "absent",
+            "timeout_ms": 100,
+        }
+        first = execute_action(
+            database, context, _intent("v12.timeout-landed", action), action, payload,
+        )
+        assert first.success is True
+        assert first.claimed_effect["journal_state"] == FROZEN
+        assert first.claimed_effect["reconciled"] is True
+        assert first.claimed_effect["terminal_truth"] is True
+        assert target.read_text(encoding="utf-8") == "exactly once\n"
+
+        stop_path = tmp_path / "STOP"
+        stop_path.write_text("stop\n", encoding="utf-8")
+        replay = execute_action(
+            database,
+            context,
+            _intent("v12.timeout-landed", action),
+            action,
+            {**payload, "stop_path": str(stop_path)},
+        )
+        assert replay.success is True
+        assert replay.claimed_effect["replayed"] is True
+        assert replay.claimed_effect["performed"] is False
+        assert target.read_text(encoding="utf-8") == "exactly once\n"
+        effect_id = first.receipt["effect_id"]
+        events = [
+            event for event in database.events(readonly=True)
+            if event.payload.get("action_key") == effect_id
+        ]
+        assert sum(event.event_type == "system.action_started" for event in events) == 1
+        assert sum(event.event_type == "effect.frozen" for event in events) == 1
+        assert sum(event.event_type == "effect.terminal_truth" for event in events) == 1
+    finally:
+        backend.close()
+
+
+def test_provider_error_after_mutation_defers_to_independent_readback(
+    tmp_path: Path,
+) -> None:
+    database = _database(tmp_path)
+    backend = FabricMcpBackend(database, _config(tmp_path))
+    try:
+        backend.connect_server("v12-test")
+        root = tmp_path / "disposable"
+        target = root / "provider-error.txt"
+        context = ExecutorContext(
+            database,
+            tmp_path / "owned",
+            mcp_backend=backend,
+            mcp_mutation_verifier=_readback_verifier(root),
+        )
+        action = _action(backend, "error_after_write_disposable")
+        result = execute_action(
+            database,
+            context,
+            _intent("v12.provider-error", action),
+            action,
+            {
+                "arguments": {
+                    "relative_path": target.name,
+                    "content": "readback is authority\n",
+                },
+                "target_ref": str(target),
+                "before_state_ref": "absent",
+            },
+        )
+        assert result.success is True
+        assert result.claimed_effect["journal_state"] == FROZEN
+        assert result.claimed_effect["terminal_truth"] is True
+        assert result.claimed_effect["recovered_from_ambiguity"] is True
+        assert target.read_text(encoding="utf-8") == "readback is authority\n"
     finally:
         backend.close()
 
@@ -745,7 +970,7 @@ def test_real_streamable_http_disappearance_and_reconnect(tmp_path: Path) -> Non
         )
         health, projected = backend.connect_server("v12-test")
         assert health.state is McpSessionState.READY
-        assert len(projected) == 4
+        assert len(projected) == 6
         action = _action(backend, "echo")
         result = execute_action(
             database,

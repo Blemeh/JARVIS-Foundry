@@ -33,10 +33,18 @@ def _verifier(disposable_root: Path):
         try:
             target.relative_to(root)
         except ValueError:
-            return {"readback_verified": False, "reconciled": False}
+            return {
+                "readback_verified": False,
+                "reconciled": False,
+                "readback": {"status": "MISMATCH", "matches": False},
+            }
         expected = str(arguments["content"])
         if not target.is_file():
-            return {"readback_verified": False, "reconciled": True}
+            return {
+                "readback_verified": False,
+                "reconciled": True,
+                "readback": {"status": "NOT_OBSERVED", "matches": False},
+            }
         actual = target.read_text(encoding="utf-8")
         digest = hashlib.sha256(target.read_bytes()).hexdigest()
         return {
@@ -44,11 +52,20 @@ def _verifier(disposable_root: Path):
             "reconciled": True,
             "after_state_ref": f"sha256:{digest}",
             "readback": {
+                "status": "MATCH" if actual == expected else "MISMATCH",
                 "path": str(target),
                 "sha256": digest,
                 "matches": actual == expected,
             },
             "evidence_refs": [f"file:sha256:{digest}"],
+            "acceptance_evidence": {
+                "authority": "disposable-filesystem-readback",
+                "sha256": digest,
+            },
+            "provider_receipt": {
+                "provider_id": "mcp:disposable-filesystem",
+                "provider_ref": f"file:sha256:{digest}",
+            },
         }
 
     return verify
@@ -95,6 +112,14 @@ def main() -> int:
                             "semantic": "write",
                             "limitations": ["disposable proof root only"],
                         },
+                        "append_then_delay_disposable": {
+                            "semantic": "write",
+                            "limitations": ["disposable proof root only"],
+                        },
+                        "error_after_write_disposable": {
+                            "semantic": "write",
+                            "limitations": ["disposable proof root only"],
+                        },
                     },
                 }
             ],
@@ -131,7 +156,7 @@ def main() -> int:
         resources = [
             item.as_dict() for item in backend.client.resources("v12-disposable")
         ]
-        resource_result = backend.client.read_resource(
+        resource_result = backend.read_resource(
             "v12-disposable", "jarvis://v12/status"
         )
         slow = by_name["slow_echo"]
@@ -167,6 +192,40 @@ def main() -> int:
         )
         effect_id = str(write_result.receipt["effect_id"])
         write_state = effect_state(database, effect_id)
+        mutation_resource_readback = backend.read_resource(
+            "v12-disposable", "jarvis://v12/status"
+        )
+        landed = by_name["append_then_delay_disposable"]
+        landed_target = disposable_root / "landed-once.txt"
+        landed_payload = {
+            "arguments": {
+                "relative_path": landed_target.name,
+                "content": "landed exactly once\n",
+                "delay_ms": 1000,
+            },
+            "target_ref": str(landed_target),
+            "before_state_ref": "disposable:absent",
+            "timeout_ms": 100,
+        }
+        landed_result = execute_action(
+            database,
+            context,
+            _intent("v12.mcp.timeout-after-effect", landed.action_kind),
+            landed.action_kind,
+            landed_payload,
+        )
+        landed_effect_id = str(landed_result.receipt["effect_id"])
+        landed_state = effect_state(database, landed_effect_id)
+        reconcile_stop = output_root / "RECONCILE_STOP"
+        reconcile_stop.write_text("reconcile only under STOP\n", encoding="utf-8")
+        landed_replay = execute_action(
+            database,
+            context,
+            _intent("v12.mcp.timeout-after-effect", landed.action_kind),
+            landed.action_kind,
+            {**landed_payload, "stop_path": str(reconcile_stop)},
+        )
+        reconcile_stop.unlink(missing_ok=True)
         stop_path = output_root / "EMERGENCY_STOP"
         stopped_target = disposable_root / "must-not-exist.txt"
         stop_results: list[Any] = []
@@ -199,7 +258,12 @@ def main() -> int:
 
         stop_thread = threading.Thread(target=invoke_until_stop, daemon=True)
         stop_thread.start()
-        time.sleep(0.25)
+        entered = disposable_root / ".slow-write-entered"
+        deadline = time.monotonic() + 4
+        while time.monotonic() < deadline and not entered.is_file():
+            time.sleep(0.01)
+        if not entered.is_file():
+            stop_errors.append("disposable MCP mutation never entered provider")
         stop_path.write_text("V12 disposable STOP proof\n", encoding="utf-8")
         stop_thread.join(timeout=10)
         stop_path.unlink(missing_ok=True)
@@ -223,6 +287,24 @@ def main() -> int:
             for item in projected_after
         }
         events = list(database.events(readonly=True))
+        effect_events = [
+            event for event in events
+            if str(event.payload.get("action_key") or "") == effect_id
+        ]
+        effect_event_types = [event.event_type for event in effect_events]
+        effect_event_counts = {
+            event_type: effect_event_types.count(event_type)
+            for event_type in sorted(set(effect_event_types))
+        }
+        expected_terminal_sequence = [
+            "system.action_started",
+            "system.action_completed",
+            "effect.provider_receipt",
+            "effect.readback_observed",
+            "effect.reconciled",
+            "effect.acceptance_recorded",
+            "effect.terminal_truth",
+        ]
         report.update(
             {
                 "transport": "stdio",
@@ -236,6 +318,13 @@ def main() -> int:
                 "mutating_invocation": write_result.as_dict(),
                 "mutating_replay": replay_result.as_dict(),
                 "effect_state": write_state,
+                "mutation_resource_readback": mutation_resource_readback,
+                "timeout_after_effect": landed_result.as_dict(),
+                "timeout_after_effect_state": landed_state,
+                "timeout_after_effect_replay_under_stop": landed_replay.as_dict(),
+                "timeout_after_effect_target": landed_target.read_text(
+                    encoding="utf-8"
+                ),
                 "stop_result": stop_result.as_dict()
                 if stop_result is not None
                 else None,
@@ -248,17 +337,22 @@ def main() -> int:
                 "stable_identities_before": stable_before,
                 "stable_identities_after": stable_after,
                 "event_count": len(events),
-                "effect_event_types": [
-                    event.event_type
-                    for event in events
-                    if str(event.payload.get("action_key") or "") == effect_id
-                ],
+                "effect_event_types": effect_event_types,
+                "effect_event_counts": effect_event_counts,
+                "expected_terminal_sequence": expected_terminal_sequence,
+                "duplicate_effects": max(
+                    0, effect_event_counts.get("system.action_started", 0) - 1
+                ),
+                "accepted_effect_unverified": not (
+                    write_state.get("accepted") is True
+                    and write_state.get("terminal_outcome") == COMPLETED
+                ),
             }
         )
         report["passed"] = all(
             (
                 connected.state.value == "READY",
-                len(projected) == 4,
+                len(projected) == 6,
                 read_result.success,
                 read_result.receipt.get("state") == "VERIFIED",
                 resource_result.get("authority") == "DATA_ONLY",
@@ -266,7 +360,23 @@ def main() -> int:
                 write_result.success,
                 write_result.receipt.get("state") == "VERIFIED",
                 replay_result.success,
+                replay_result.claimed_effect.get("performed") is False,
+                replay_result.claimed_effect.get("terminal_truth") is True,
                 write_state.get("status") == COMPLETED,
+                write_state.get("accepted") is True,
+                write_state.get("terminal_outcome") == COMPLETED,
+                effect_event_types == expected_terminal_sequence,
+                effect_event_counts.get("system.action_started") == 1,
+                effect_event_counts.get("system.action_completed") == 1,
+                effect_event_counts.get("effect.terminal_truth") == 1,
+                landed_result.success,
+                landed_result.claimed_effect.get("journal_state") == "FROZEN",
+                landed_state.get("accepted") is True,
+                landed_state.get("terminal_outcome") == COMPLETED,
+                landed_replay.success,
+                landed_replay.claimed_effect.get("performed") is False,
+                landed_target.read_text(encoding="utf-8")
+                == "landed exactly once\n",
                 not stop_errors,
                 stop_result is not None and stop_result.claimed.value == "UNKNOWN",
                 stop_result is not None

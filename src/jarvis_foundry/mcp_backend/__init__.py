@@ -1,5 +1,13 @@
 """Bounded MCP client backend behind the existing Capability Fabric."""
 
+from .adoption import (
+    CANONICAL_MCP_RUNTIME,
+    MCP_ADOPTION_SEAM_VERSION,
+    SELECTED_SOLUTION_CONTRACT,
+    SelectedMcpAdoption,
+    selected_solution_mcp_adoption,
+)
+
 from .client import (
     McpBackendError,
     McpClientBackend,
@@ -34,7 +42,10 @@ from .contracts import (
 from .fabric import MCP_ADAPTER_VERSION, FabricMcpBackend
 
 __all__ = [
+    "CANONICAL_MCP_RUNTIME",
     "MCP_ADAPTER_VERSION",
+    "MCP_ADOPTION_SEAM_VERSION",
+    "SELECTED_SOLUTION_CONTRACT",
     "FabricMcpBackend",
     "McpBackendConfig",
     "McpBackendError",
@@ -55,10 +66,12 @@ __all__ = [
     "McpToolPolicy",
     "McpToolUnavailable",
     "McpTransport",
+    "SelectedMcpAdoption",
     "load_mcp_config",
     "normalize_json_schema",
     "normalize_result",
     "stable_server_identity",
     "stable_tool_identity",
+    "selected_solution_mcp_adoption",
     "validate_arguments",
 ]

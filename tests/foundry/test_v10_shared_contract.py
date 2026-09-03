@@ -73,7 +73,24 @@ def test_typed_metadata_and_effect_identity_are_restart_stable(tmp_path: Path) -
         payload=payload,
         spec=spec,
     )
+    controlled_replay = build_adapter_request(
+        mission_id="mission-contract",
+        workflow_id="workflow-contract",
+        step_id="write",
+        step_version=1,
+        attempt=1,
+        action_kind="file.write",
+        payload={
+            **payload,
+            "stop_path": str(tmp_path / "STOP"),
+            "timeout_ms": 50,
+            "claim_ttl_s": 1,
+        },
+        spec=spec,
+    )
     assert first.effect_id == replay.effect_id == retry.effect_id
+    assert controlled_replay.effect_id == first.effect_id
+    assert controlled_replay.input_hash == first.input_hash
     assert first.idempotency_key == replay.idempotency_key == retry.idempotency_key
     assert first.request_id != retry.request_id
     assert "content" not in first.to_evidence()

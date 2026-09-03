@@ -658,6 +658,42 @@ class McpClientBackend:
         stop_check: Callable[[], bool] | None = None,
         effect_context: Mapping[str, Any] | None = None,
     ) -> McpInvocationReceipt:
+        """Invoke a read-only tool directly.
+
+        Mutating tools are deliberately unavailable on the client surface.
+        They may only be entered by :class:`FabricMcpBackend` after it has
+        validated the active canonical effect claim against the database.
+        ``effect_context`` remains accepted for compatibility but can never
+        authorize a mutation here.
+        """
+
+        descriptor = self.descriptor_for_action(action_kind)
+        if descriptor.semantic.value != "read":
+            raise McpContractError(
+                "mutating MCP invocation requires FabricMcpBackend and an "
+                "active canonical effect journal entry"
+            )
+        return self._fabric_invoke(
+            action_kind,
+            arguments,
+            invocation_id=invocation_id,
+            timeout_s=timeout_s,
+            stop_check=stop_check,
+            effect_context=effect_context,
+        )
+
+    def _fabric_invoke(
+        self,
+        action_kind: str,
+        arguments: Mapping[str, Any],
+        *,
+        invocation_id: str | None = None,
+        timeout_s: float | None = None,
+        stop_check: Callable[[], bool] | None = None,
+        effect_context: Mapping[str, Any] | None = None,
+    ) -> McpInvocationReceipt:
+        """Internal dispatch seam; caller must own journal authorization."""
+
         descriptor = self.descriptor_for_action(action_kind)
         runtime = self._runtime(descriptor.server_id)
         bounded_timeout = float(timeout_s or runtime.config.request_timeout_s)

@@ -39,7 +39,13 @@ from ..connectors.github_write import (
     GitPushTransport,
 )
 from ..database import FoundryDatabase
-from ..effects import execute_fabric_effect
+from ..effects import (
+    COMPLETED,
+    FROZEN,
+    effect_state,
+    execute_fabric_effect,
+    finalize_verified_effect,
+)
 from .model import ClaimOutcome, FabricError
 
 
@@ -1367,6 +1373,12 @@ def mcp_invoke(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, An
                 "effect_class": effect_class,
                 "error_code": type(error).__name__,
             }
+        if isinstance(error, McpBackendError) and not isinstance(
+            error, McpContractError
+        ):
+            raise TimeoutError(
+                "MCP mutation provider outcome is unavailable"
+            ) from error
         raise
     normalized = receipt.as_dict()
     result = normalized.get("result") or {}
@@ -1393,32 +1405,255 @@ def mcp_invoke(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, An
             f"mcp-result:sha256:{receipt.result_sha256}",
         ],
     }
+    claimed["provider_receipt"] = {
+        "provider_id": f"mcp:{receipt.server_identity}",
+        "provider_ref": f"mcp-invocation:{receipt.invocation_id}",
+        "server_id": receipt.server_id,
+        "server_identity": receipt.server_identity,
+        "tool_name": receipt.tool_name,
+        "invocation_id": receipt.invocation_id,
+        "protocol_version": receipt.protocol_version,
+        "session_generation": receipt.session_generation,
+        "arguments_sha256": receipt.arguments_sha256,
+        "result_sha256": receipt.result_sha256,
+    }
     if receipt.error_code:
         claimed["error_code"] = receipt.error_code
     if effect_class == "READ_ONLY":
         claimed["observation"] = result
         return claimed
     claimed.update({"readback_verified": False, "reconciled": False})
-    if receipt.outcome != "COMPLETED" or ctx.mcp_mutation_verifier is None:
+    if receipt.outcome != "COMPLETED":
+        claimed.update({
+            "claimed": "UNKNOWN",
+            "ambiguous": True,
+            "error_code": claimed.get("error_code") or "mcp_provider_error_ambiguous",
+        })
         return claimed
-    verification = ctx.mcp_mutation_verifier({
-        "request": dict(request),
-        "arguments": dict(arguments),
-        "receipt": normalized,
-        "owned_root": str(ctx.owned_root),
-    })
+    if ctx.mcp_mutation_verifier is None:
+        claimed.update({
+            "claimed": "UNKNOWN",
+            "ambiguous": True,
+            "error_code": "independent_readback_required",
+        })
+        return claimed
+    try:
+        verification = ctx.mcp_mutation_verifier({
+            "request": dict(request),
+            "arguments": dict(arguments),
+            "receipt": normalized,
+            "owned_root": str(ctx.owned_root),
+            "mode": "post_dispatch_readback",
+        })
+    except Exception as error:  # noqa: BLE001 - ambiguity must fail closed
+        claimed.update({
+            "claimed": "UNKNOWN",
+            "ambiguous": True,
+            "error_code": "mcp_readback_failed",
+            "detail": redact_text(str(error))[:300],
+        })
+        return claimed
     if not isinstance(verification, Mapping):
-        raise FabricError("MCP mutation verifier must return an object")
-    claimed["readback_verified"] = verification.get("readback_verified") is True
-    claimed["reconciled"] = verification.get("reconciled") is True
+        claimed.update({
+            "claimed": "UNKNOWN",
+            "ambiguous": True,
+            "error_code": "mcp_readback_invalid",
+        })
+        return claimed
+    readback = verification.get("readback")
+    accepted = (
+        verification.get("readback_verified") is True
+        and isinstance(readback, Mapping)
+        and readback.get("status") == "MATCH"
+        and readback.get("matches") is True
+    )
+    claimed["readback_verified"] = accepted
+    claimed["reconciled"] = accepted
     if verification.get("after_state_ref"):
         claimed["after_state_ref"] = str(verification["after_state_ref"])
-    if isinstance(verification.get("readback"), Mapping):
-        claimed["readback"] = dict(verification["readback"])
+    if isinstance(readback, Mapping):
+        claimed["readback"] = dict(readback)
+    if isinstance(verification.get("acceptance_evidence"), Mapping):
+        claimed["acceptance_evidence"] = dict(
+            verification["acceptance_evidence"]
+        )
     for evidence_ref in verification.get("evidence_refs") or ():
         if isinstance(evidence_ref, str) and evidence_ref.strip():
             claimed["evidence_refs"].append(evidence_ref.strip())
+    if not accepted:
+        claimed.update({
+            "claimed": "UNKNOWN",
+            "ambiguous": True,
+            "error_code": "mcp_readback_not_accepted",
+        })
     return claimed
+
+
+def _mcp_provider_receipt(
+    claimed: Mapping[str, Any],
+    verification: Mapping[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    for candidate in (
+        claimed.get("provider_receipt"),
+        verification.get("provider_receipt") if verification is not None else None,
+    ):
+        if (
+            isinstance(candidate, Mapping)
+            and candidate.get("provider_id")
+            and candidate.get("provider_ref")
+        ):
+            return dict(candidate)
+    raw = claimed.get("mcp_receipt")
+    if not isinstance(raw, Mapping):
+        return None
+    required = (
+        "server_id", "server_identity", "tool_name", "invocation_id",
+        "protocol_version", "session_generation", "arguments_sha256",
+        "result_sha256",
+    )
+    if any(raw.get(name) in (None, "") for name in required):
+        return None
+    return {
+        "provider_id": f"mcp:{raw['server_identity']}",
+        "provider_ref": f"mcp-invocation:{raw['invocation_id']}",
+        **{name: raw[name] for name in required},
+    }
+
+
+def finalize_mcp_mutation_effect(
+    ctx: ExecutorContext,
+    payload: Mapping[str, Any],
+    claimed: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Accept one MCP mutation only after independent matching readback.
+
+    This runs after the generic effect driver reaches COMPLETED or FROZEN.  It
+    is also safe on replay and under STOP: it can observe/reconcile an existing
+    claim, but it never invokes the MCP provider a second time.
+    """
+
+    request = payload.get("_adapter_request")
+    if not isinstance(request, Mapping):
+        return dict(claimed)
+    if str(request.get("effect_class") or "") == "READ_ONLY":
+        return dict(claimed)
+    action_key = str(request.get("effect_id") or claimed.get("action_key") or "")
+    if not action_key:
+        return dict(claimed)
+    state = effect_state(ctx.database, action_key)
+    if claimed.get("terminal_truth") is True or state.get("accepted") is True:
+        return dict(claimed)
+    if state.get("status") not in {COMPLETED, FROZEN}:
+        return dict(claimed)
+
+    result = dict(claimed)
+    readback = result.get("readback")
+    verification: Mapping[str, Any] | None = None
+    matches = (
+        result.get("readback_verified") is True
+        and isinstance(readback, Mapping)
+        and readback.get("status") == "MATCH"
+        and readback.get("matches") is True
+    )
+    if not matches and ctx.mcp_mutation_verifier is not None:
+        arguments = payload.get("arguments") or {}
+        try:
+            observed = ctx.mcp_mutation_verifier({
+                "request": dict(request),
+                "arguments": dict(arguments) if isinstance(arguments, Mapping) else {},
+                "receipt": dict(result.get("mcp_receipt") or {}),
+                "owned_root": str(ctx.owned_root),
+                "mode": "reconciliation",
+                "effect_state": dict(state),
+            })
+        except Exception as error:  # noqa: BLE001 - preserve UNKNOWN/FROZEN
+            result.update({
+                "claimed": "UNKNOWN",
+                "error_code": "mcp_reconciliation_failed",
+                "detail": redact_text(str(error))[:300],
+            })
+            return result
+        if isinstance(observed, Mapping):
+            verification = observed
+            readback = observed.get("readback")
+            matches = (
+                observed.get("readback_verified") is True
+                and isinstance(readback, Mapping)
+                and readback.get("status") == "MATCH"
+                and readback.get("matches") is True
+            )
+            if isinstance(readback, Mapping):
+                result["readback"] = dict(readback)
+            if observed.get("after_state_ref"):
+                result["after_state_ref"] = str(observed["after_state_ref"])
+            if isinstance(observed.get("acceptance_evidence"), Mapping):
+                result["acceptance_evidence"] = dict(
+                    observed["acceptance_evidence"]
+                )
+            refs = result.setdefault("evidence_refs", [])
+            if isinstance(refs, list):
+                for evidence_ref in observed.get("evidence_refs") or ():
+                    if (
+                        isinstance(evidence_ref, str)
+                        and evidence_ref.strip()
+                        and evidence_ref.strip() not in refs
+                    ):
+                        refs.append(evidence_ref.strip())
+    provider_receipt = _mcp_provider_receipt(result, verification)
+    if not matches or provider_receipt is None or not isinstance(readback, Mapping):
+        result.update({
+            "claimed": "UNKNOWN",
+            "readback_verified": False,
+            "reconciled": False,
+            "error_code": "mcp_reconciliation_required",
+        })
+        return result
+
+    result.update({
+        "claimed": "COMPLETED",
+        "authority": "DATA_ONLY",
+        "bounded": True,
+        "effect_id": action_key,
+        "effect_class": str(request.get("effect_class") or ""),
+        "idempotency_key": str(request.get("idempotency_key") or ""),
+        "readback_verified": True,
+        "reconciled": True,
+        "provider_receipt": provider_receipt,
+    })
+    try:
+        descriptor = ctx.mcp_backend.client.descriptor_for_action(
+            str(request.get("action_kind") or "")
+        )
+    except Exception:  # noqa: BLE001 - readback can still remain unresolved
+        descriptor = None
+    if descriptor is not None:
+        result.setdefault("server_id", descriptor.server_id)
+        result.setdefault("server_identity", descriptor.server_identity)
+        result.setdefault("tool_name", descriptor.tool_name)
+    if isinstance(readback.get("sha256"), str) and readback.get("sha256"):
+        result.setdefault("result_sha256", readback["sha256"])
+    result.setdefault("result_sha256", str(request.get("input_hash") or ""))
+    refs = result.setdefault("evidence_refs", [])
+    if isinstance(refs, list):
+        provider_ref = f"provider:{provider_receipt['provider_ref']}"
+        if provider_ref not in refs:
+            refs.append(provider_ref)
+    acceptance = result.get("acceptance_evidence")
+    if not isinstance(acceptance, Mapping):
+        acceptance = {
+            "authority": "independent_mcp_readback",
+            "effect_id": action_key,
+            "result_sha256": result.get("result_sha256"),
+        }
+    return finalize_verified_effect(
+        ctx.database,
+        action_key,
+        provider_receipt=provider_receipt,
+        readback=dict(readback),
+        result=result,
+        acceptance_evidence=dict(acceptance),
+        reconciled=True,
+    )
 
 
 HANDLERS: dict[str, Callable[[ExecutorContext, Mapping[str, Any]], dict[str, Any]]] = {

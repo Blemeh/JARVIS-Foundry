@@ -84,8 +84,55 @@ async def slow_write_disposable(
 ) -> dict[str, object]:
     if delay_ms < 0 or delay_ms > 10_000:
         raise ValueError("delay_ms must be within 0..10000")
+    (_root() / ".slow-write-entered").write_text(
+        "provider invocation entered\n", encoding="utf-8"
+    )
     await asyncio.sleep(delay_ms / 1000.0)
     return write_disposable(relative_path, content)
+
+
+@SERVER.tool(
+    description="Append once before delaying, for timeout-after-effect reconciliation proof."
+)
+async def append_then_delay_disposable(
+    relative_path: str,
+    content: str,
+    delay_ms: int,
+) -> dict[str, object]:
+    if delay_ms < 0 or delay_ms > 10_000:
+        raise ValueError("delay_ms must be within 0..10000")
+    root = _root()
+    target = (root / relative_path).resolve()
+    try:
+        target.relative_to(root)
+    except ValueError as error:
+        raise ValueError("target escapes disposable root") from error
+    if target == root:
+        raise ValueError("target must be a file below disposable root")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with target.open("a", encoding="utf-8") as stream:
+        stream.write(content)
+    _STATE["write_calls"] += 1
+    digest = hashlib.sha256(target.read_bytes()).hexdigest()
+    result = {
+        "path": str(target),
+        "sha256": digest,
+        "bytes": target.stat().st_size,
+        "call_count": _STATE["write_calls"],
+    }
+    await asyncio.sleep(delay_ms / 1000.0)
+    return result
+
+
+@SERVER.tool(
+    description="Write locally then report an error, for provider-claim/readback proof."
+)
+def error_after_write_disposable(
+    relative_path: str,
+    content: str,
+) -> dict[str, object]:
+    write_disposable(relative_path, content)
+    raise RuntimeError("disposable provider reported an error after the effect")
 
 
 if os.environ.get("JARVIS_MCP_EXTRA_TOOL") == "1":
