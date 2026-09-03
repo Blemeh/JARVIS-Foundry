@@ -69,6 +69,7 @@ class GeneratedWorkerAdapter(WorkerAdapter):
             python_executable=self.python_executable,
             canonical_effect_authorized=bool(envelope.get("canonical_effect_authorized")),
             stop_path=self.stop_path,
+            allowed_root=contract.working_root,
         )
         receipt = result.get("receipt") or {}
         claimed = str((result.get("result") or {}).get("claimed") or "UNKNOWN")

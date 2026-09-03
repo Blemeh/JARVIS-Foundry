@@ -5,6 +5,7 @@ import hashlib
 import json
 import sys
 import threading
+from dataclasses import replace
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -35,7 +36,9 @@ from jarvis_foundry.adapter_factory import (
     validate_schema,
 )
 from jarvis_foundry.effects import EffectClass
-from jarvis_foundry.fabric.model import Semantic, UnattendedMode
+from jarvis_foundry.connectors.contract import ConnectorSpec, validate_connector_spec
+from jarvis_foundry.fabric.contracts import CapabilityMetadata
+from jarvis_foundry.fabric.model import CapabilitySpec, Semantic, UnattendedMode
 from jarvis_foundry.workers.adapters.base import ProviderUnavailable
 from jarvis_foundry.workers.contracts import WorkerStepContract
 
@@ -196,6 +199,13 @@ def test_cli_build_probe_typed_receipt_disable_enable_and_remove(tmp_path: Path)
     assert admission["registration_owner"] == "SESSION_7"
     assert admission["registered"] is False
     assert json.loads((root / "connector-spec.json").read_text())["capabilities"] == {"cap.local.echo": "DISCOVERED"}
+    connector = json.loads((root / "connector-spec.json").read_text())
+    connector.pop("contract_version")
+    connector.pop("registered")
+    assert validate_connector_spec(ConnectorSpec(**connector)) is None
+    fabric = json.loads((root / "fabric-capabilities.json").read_text())["capabilities"][0]
+    assert CapabilitySpec.from_mapping(fabric["spec"]).capability_id == "cap.local.echo"
+    assert CapabilityMetadata.from_mapping(fabric["metadata"]).capability_id == "cap.local.echo"
     assert not list(root.rglob("__pycache__"))
     assert probe_artifact(root)["ready"] is True
 
@@ -344,6 +354,11 @@ def test_schema_tamper_mutating_authority_and_removal_guards(tmp_path: Path) -> 
     with pytest.raises(AdapterFactoryError):
         load_verified_artifact(artifact.root)
 
+    clean = AdapterFactory(tmp_path / "extra-file").build(descriptor)
+    (clean.root / "unmanifested.py").write_text("raise RuntimeError('must never load')\n", encoding="utf-8")
+    with pytest.raises(AdapterFactoryError, match="inventory mismatch"):
+        load_verified_artifact(clean.root)
+
     mutating = CapabilityAdapterContract(
         capability_id="cap.external.write", version="1.0.0", action_kind="external.write",
         semantic=Semantic.EXTERNAL_EFFECT, effect_class=EffectClass.REVERSIBLE_EXTERNAL,
@@ -375,3 +390,52 @@ def test_session_6_solution_kind_alias_is_composed_without_selecting_a_solution(
     loaded = SelectedSolutionDescriptor.from_mapping(raw)
     assert loaded.solution_class is SolutionClass.PYTHON_SDK
     assert loaded.solution_id == descriptor.solution_id
+
+
+def test_path_inputs_are_resolved_only_inside_explicit_owned_root(tmp_path: Path) -> None:
+    descriptor = _cli_descriptor(tmp_path)
+    capability = replace(
+        descriptor.capabilities[0],
+        input_schema={
+            "type": "object", "required": ["path"],
+            "properties": {"path": {"type": "string", "format": "path"}},
+            "additionalProperties": False,
+        },
+        invocation=replace(descriptor.capabilities[0].invocation, arguments=(str(descriptor.locator), "$input.path")),
+        contract_cases=(ContractCase("owned", {"path": "inside.txt"}, {"claimed": "COMPLETED"}),),
+    )
+    bounded = replace(descriptor, adapter_id="adapter.local.path", capabilities=(capability,))
+    artifact = AdapterFactory(tmp_path / "path-artifacts").build(bounded)
+    owned = tmp_path / "owned"
+    owned.mkdir()
+    accepted = invoke_artifact(artifact.root, capability.capability_id, {"path": "inside.txt"}, allowed_root=owned)
+    assert Path(accepted["echo"]) == owned / "inside.txt"
+    missing_root = invoke_artifact(artifact.root, capability.capability_id, {"path": "inside.txt"})
+    assert missing_root["error_code"] == "path_outside_owned_root"
+    escaped = invoke_artifact(artifact.root, capability.capability_id, {"path": "../outside.txt"}, allowed_root=owned)
+    assert escaped["claimed"] == "BLOCKED"
+    assert escaped["error_code"] == "path_outside_owned_root"
+
+
+def test_parent_enforces_timeout_and_cancellation_for_generated_adapter(tmp_path: Path) -> None:
+    descriptor = SelectedSolutionDescriptor(
+        adapter_id="adapter.python.sleep", solution_id="solution.python.time",
+        solution_class=SolutionClass.PYTHON_SDK, solution_name="Python time SDK",
+        solution_version=sys.version.split()[0], locator="time", adapter_shape=AdapterShape.CONNECTOR,
+        readiness=ReadinessProbe(ProbeKind.PYTHON_IMPORT, "time", (), {}),
+        capabilities=(CapabilityAdapterContract(
+            capability_id="cap.time.sleep", version="1.0.0", action_kind="time.sleep.read",
+            semantic=Semantic.READ, effect_class=EffectClass.READ_ONLY,
+            input_schema={"type": "object"}, output_schema=_output_schema("value"),
+            invocation=InvocationMapping(target="time:sleep", arguments=(2,), output={"value": "$raw.value"}),
+            contract_cases=(ContractCase("not-run", {}, {"claimed": "COMPLETED"}),),
+        ),),
+        dependencies=(DependencyDeclaration("time", DependencyKind.PYTHON, "stdlib", "python-runtime", import_name="time"),),
+    )
+    artifact = AdapterFactory(tmp_path / "sleep").build(descriptor)
+    timed_out = invoke_artifact(artifact.root, "cap.time.sleep", {}, timeout_s=0.1)
+    assert timed_out["claimed"] == "UNKNOWN"
+    assert timed_out["error_code"] == "adapter_timeout"
+    cancelled = invoke_artifact(artifact.root, "cap.time.sleep", {}, cancel_check=lambda: True)
+    assert cancelled["claimed"] == "BLOCKED"
+    assert cancelled["error_code"] == "adapter_cancelled"

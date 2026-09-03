@@ -106,6 +106,17 @@ def load_verified_artifact(root_or_manifest: str | Path) -> tuple[Path, dict[str
         candidate = _contained(root / relative, root, "artifact file")
         if not candidate.is_file() or _sha256(candidate) != digest:
             raise AdapterRuntimeError(f"adapter artifact hash mismatch: {relative}")
+    actual = {
+        path.relative_to(root).as_posix()
+        for path in root.rglob("*")
+        if path.is_file() and path.name not in {MANIFEST_FILE, DISABLED_FILE}
+    }
+    if actual != set(files):
+        unexpected = sorted(actual - set(files))
+        missing = sorted(set(files) - actual)
+        raise AdapterRuntimeError(
+            f"adapter artifact inventory mismatch; unexpected={unexpected[:5]} missing={missing[:5]}"
+        )
     descriptor = SelectedSolutionDescriptor.load(descriptor_path)
     if descriptor.descriptor_hash != manifest.get("descriptor_hash"):
         raise AdapterRuntimeError("descriptor identity does not match the artifact manifest")
@@ -241,6 +252,36 @@ def _required_config(descriptor: SelectedSolutionDescriptor, supplied: Mapping[s
     return result
 
 
+def _bounded_path_payload(
+    payload: Mapping[str, Any], schema: Mapping[str, Any], allowed_root: str | Path | None,
+) -> dict[str, Any]:
+    result = dict(payload)
+    path_fields = {
+        name
+        for name, field_schema in (schema.get("properties") or {}).items()
+        if isinstance(field_schema, Mapping) and field_schema.get("format") == "path"
+    }
+    if not path_fields:
+        return result
+    if allowed_root is None:
+        raise AdapterRuntimeError("path inputs require an explicit JARVIS owned root")
+    root = Path(allowed_root).expanduser().resolve(strict=False)
+    for name in path_fields:
+        raw = result.get(name)
+        if raw is None:
+            continue
+        if not isinstance(raw, str) or not raw.strip():
+            raise AdapterRuntimeError(f"path input {name!r} must be non-empty text")
+        candidate = Path(raw).expanduser()
+        candidate = (candidate if candidate.is_absolute() else root / candidate).resolve(strict=False)
+        try:
+            candidate.relative_to(root)
+        except ValueError as error:
+            raise AdapterRuntimeError(f"path input {name!r} escapes the JARVIS owned root") from error
+        result[name] = str(candidate)
+    return result
+
+
 def _expected_matches(observed: Mapping[str, Any], expected: Mapping[str, Any]) -> bool:
     for key, wanted in expected.items():
         if key == "stdout_contains":
@@ -270,6 +311,11 @@ def _safe_http_url(url: str, allowed_origins: Sequence[str]) -> str:
     return url
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # type: ignore[no-untyped-def]
+        return None
+
+
 def _http_call(mapping: InvocationMapping, context: Mapping[str, Any], *, timeout_s: float) -> dict[str, Any]:
     url = str(_resolve(mapping.target, context))
     _safe_http_url(url, mapping.allowed_origins)
@@ -286,7 +332,7 @@ def _http_call(mapping: InvocationMapping, context: Mapping[str, Any], *, timeou
         headers.setdefault("Content-Type", "application/json")
     request = urllib.request.Request(url, data=body, headers=headers, method=method)
     try:
-        with urllib.request.urlopen(request, timeout=timeout_s) as response:
+        with urllib.request.build_opener(_NoRedirect).open(request, timeout=timeout_s) as response:
             raw = response.read(MAX_HTTP_BYTES + 1)
             if len(raw) > MAX_HTTP_BYTES:
                 raise AdapterRuntimeError("HTTP adapter response exceeds the bounded limit")
@@ -538,6 +584,7 @@ def invoke_descriptor(
     adapter_request: Mapping[str, Any] | None = None,
     canonical_effect_authorized: bool = False,
     artifact_root: str | Path = ".",
+    allowed_root: str | Path | None = None,
     reconcile: bool = False,
     prior_result: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -547,6 +594,15 @@ def invoke_descriptor(
         return {
             "claimed": "FAILED", "error_code": "input_schema_mismatch",
             "schema_errors": list(errors), "adapter_id": descriptor.adapter_id,
+            "capability_id": capability.capability_id, "action_kind": capability.action_kind,
+            "adapter_protocol": ADAPTER_PROTOCOL,
+        }
+    try:
+        payload = _bounded_path_payload(payload, capability.input_schema, allowed_root)
+    except AdapterRuntimeError as error:
+        return {
+            "claimed": "BLOCKED", "error_code": "path_outside_owned_root",
+            "detail": str(error), "adapter_id": descriptor.adapter_id,
             "capability_id": capability.capability_id, "action_kind": capability.action_kind,
             "adapter_protocol": ADAPTER_PROTOCOL,
         }
@@ -615,6 +671,7 @@ def child_main(descriptor_path: str | Path, argv: list[str] | None = None) -> in
                 adapter_request=envelope.get("adapter_request") or envelope.get("_adapter_request") or {},
                 canonical_effect_authorized=bool(envelope.get("canonical_effect_authorized") or envelope.get("_canonical_effect_authorized")),
                 artifact_root=root,
+                allowed_root=envelope.get("allowed_root"),
                 reconcile=args.command == "reconcile",
                 prior_result=envelope.get("prior_result") or {},
             )
@@ -749,6 +806,7 @@ def invoke_artifact(
     stop_path: str | Path | None = None,
     reconcile: bool = False,
     prior_result: Mapping[str, Any] | None = None,
+    allowed_root: str | Path | None = None,
 ) -> dict[str, Any]:
     root, manifest, descriptor = load_verified_artifact(root_or_manifest)
     capability = _capability(descriptor, capability_id)
@@ -766,6 +824,7 @@ def invoke_artifact(
         "adapter_request": dict(adapter_request or {}),
         "canonical_effect_authorized": canonical_effect_authorized,
         "prior_result": dict(prior_result or {}),
+        "allowed_root": str(Path(allowed_root).expanduser().resolve()) if allowed_root is not None else None,
     }
     adapter = _contained(root / str(manifest.get("wrapper_path") or "adapter.py"), root, "wrapper")
     command = "reconcile" if reconcile else "execute"
@@ -801,6 +860,7 @@ def invoke_typed_adapter(
     python_executable: str | Path | None = None,
     canonical_effect_authorized: bool = False,
     stop_path: str | Path | None = None,
+    allowed_root: str | Path | None = None,
 ) -> dict[str, Any]:
     """Run a built adapter and emit the canonical ``AdapterReceipt`` shape."""
 
@@ -817,7 +877,7 @@ def invoke_typed_adapter(
         root, capability_id, payload, config=config,
         adapter_request=request.to_evidence(),
         canonical_effect_authorized=canonical_effect_authorized,
-        python_executable=python_executable, stop_path=stop_path,
+        python_executable=python_executable, stop_path=stop_path, allowed_root=allowed_root,
     )
     claimed_text = str(result.get("claimed") or "UNKNOWN")
     try:
@@ -833,6 +893,7 @@ def invoke_typed_adapter(
             readback = invoke_artifact(
                 root, capability_id, payload, config=config,
                 adapter_request=request.to_evidence(), python_executable=python_executable,
+                allowed_root=allowed_root,
             )
             fields = reconciliation.compare_fields
             reconciled = _field_values(result, fields) == _field_values(readback, fields)
@@ -842,6 +903,7 @@ def invoke_typed_adapter(
                 adapter_request=request.to_evidence(),
                 canonical_effect_authorized=canonical_effect_authorized,
                 python_executable=python_executable, reconcile=True, prior_result=result,
+                allowed_root=allowed_root,
             )
             fields = reconciliation.compare_fields
             reconciled = _field_values(result, fields) == _field_values(readback, fields)

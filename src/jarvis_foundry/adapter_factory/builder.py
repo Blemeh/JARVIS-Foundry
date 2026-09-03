@@ -132,6 +132,7 @@ class GeneratedAdapterContractTests(unittest.TestCase):
                 result = invoke_artifact(
                     ROOT, case["capability_id"], materialize(case["payload"]),
                     python_executable=sys.executable,
+                    allowed_root=ROOT,
                 )
                 self.assertTrue(subset(materialize(case["expected"]), result), result)
 
