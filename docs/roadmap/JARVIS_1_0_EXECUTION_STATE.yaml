@@ -20,15 +20,15 @@ meta:
   roadmap_document: "docs/handoffs/JARVIS_FROZEN_MASTER_ROADMAP_TO_1_0_2026-09-01.md"
   roadmap_status: FROZEN
   acceptance_ladder_authoritative: true   # A2-A8 are the only phase gates
-  last_reconciled: "2026-09-02"
+  last_reconciled: "2026-09-03"
 
 observed_repo_state:
   canonical_main: "2905c206fed0461bf3085bc0cb43773be913300a"
   canonical_main_summary: "docs: record V10 live closure and open V11 A2"
-  candidate_source: "899e2d3affee41d02145514acb9c308db57afaf6"
-  candidate_branch: "candidate/v11-integration-base2-20260902"
-  candidate_worktree: "C:\\temp\\JARVIS-V11-Integration-Base2-20260902"
-  current_schema: v40            # isolated Integration Base 2 migrations.SCHEMA_VERSION
+  candidate_source: "6599a206a989222fcc58444500a9f4492c9d75e2"
+  candidate_branch: "candidate/v11-exit-proof-20260903"
+  candidate_worktree: "C:\\temp\\JARVIS-V11-Exit-Proof-20260903"
+  current_schema: v40            # isolated V11 exit-proof migrations.SCHEMA_VERSION
   live_schema: v38               # live V10 remains unchanged
   live_runtime: "faa861c67399d5a3755d778224ff65513bd933a1 / rel-faa861c67399-5afeb024"
   v9_status: "established and stabilized; represented in canonical source"
@@ -67,16 +67,33 @@ observed_repo_state:
     source_tip: "899e2d3affee41d02145514acb9c308db57afaf6"
     schema: v40
     note: "A2+A4+outcome truth+continuous observation; A3 not integrated; broad V11 suite and live proof not run"
+  v11_overnight_convergence:
+    status: SOURCE_CANDIDATE_SUPERSEDED_BY_EXIT_PROOF
+    authoritative_head: "ae9ac06b6f9174c810b0e658daaf81c7b683ae8b"
+    source_freeze: "f7cee034384ac191dfbac9f910dd6f6d3eb520d4"
+    a3_a4_harness_input: "3716294bf7d104f03e1fa2d990b2a28654ada1cb"
+    schema: v40
+    note: "A3 is integrated; prior prose claiming it was absent was stale"
+  v11_exit_proof:
+    status: PROOF_READY_NOT_STARTED
+    authoritative_input: "ae9ac06b6f9174c810b0e658daaf81c7b683ae8b"
+    source_tip: "6599a206a989222fcc58444500a9f4492c9d75e2"
+    branch: "candidate/v11-exit-proof-20260903"
+    worktree: "C:\\temp\\JARVIS-V11-Exit-Proof-20260903"
+    schema: v40
+    training_tier_policy: OWNER_AUTHORIZED_CANONICAL_TRUE
+    note: "real A3, immediate A4, and 48-hour elapsed gate pending against final docs-only proof SHA"
 
 current_phase: V11_INITIATIVE
-current_gate: A2
-status: PASSED_CANDIDATE
-authorized_next_gate: A3
+current_gate: A3_A4
+status: PROOF_READY
+authorized_next_gate: A3_A4
 next_authorized: V11_L3_A3_A4
 authorized_next_gate_definition: >
-  Build the candidate-to-objective bridge only through the existing authority
-  spine and converge A3/A4 in a later isolated session. A2 stopped at the
-  admission boundary and grants no promotion or live-mutation authority.
+  Run one genuine cold A3 flagship and the immediate six-point A4 campaign
+  against one clean exact proof SHA. Only after both pass, start the guarded
+  48-hour runner with --allow-48h against that same SHA. This grants no
+  promotion or live-mutation authority.
 
 phases:
   V10_CLOSE:
@@ -85,7 +102,7 @@ phases:
     gate_status: PASSED
     notes: "exact faa861c promoted and live-validated; rollback, STOP/RESUME, hard-kill recovery, browser packaging, and canonicalization passed"
   V11_INITIATIVE:
-    status: A2_PASSED_CANDIDATE
+    status: A3_A4_PROOF_PENDING
     gates: [A2, A3, A4]
     gate_status: { A2: PASSED_CANDIDATE, A3: NOT_TESTED, A4: NOT_TESTED }
     hard_entry: "promoted V10 base + interactive browser"
@@ -106,6 +123,13 @@ phases:
     definition: "72-hour Owner-Absent Campaign, live, on the installed release"
 
 capability_flags:
+  initiative_exit_proof:
+    state: PROOF_READY_NOT_LIVE
+    reason: "A3 bridge is integrated; exact restart seams, candidate-neutral real driver, immediate A4 evaluator, and canonical training-tier authorization are frozen; real and elapsed proof remain pending"
+    authoritative_input: "ae9ac06b6f9174c810b0e658daaf81c7b683ae8b"
+    source: "6599a206a989222fcc58444500a9f4492c9d75e2"
+    branch: "candidate/v11-exit-proof-20260903"
+    evidence_root: "C:\\temp\\JARVIS-V11-Exit-Proof-20260903-evidence"
   initiative_integration_base2:
     state: READY_FOR_A3_INTEGRATION_NOT_LIVE
     reason: "A2 judgment, due-driven continuous observation, restart/replay durability, and accepted-outcome truth passed focused combined proof; A3 remains external"
@@ -165,6 +189,13 @@ capability_authority: >
   Fabric capability or Executive readiness decision. Never two authorities.
 
 update_log:
+  - date: "2026-09-03"
+    change: "V11 exit-proof source frozen with A3 integrated, canonical owner-authorized training-tier policy, interrupted-cycle durability, and candidate-neutral A3/A4 proving; real A3, immediate A4, and 48-hour elapsed proof remain pending"
+    session: "candidate/v11-exit-proof-20260903"
+    predecessor_sha: "ae9ac06b6f9174c810b0e658daaf81c7b683ae8b"
+    source_tip: "6599a206a989222fcc58444500a9f4492c9d75e2"
+    schema: v40
+    evidence_root: "C:\\temp\\JARVIS-V11-Exit-Proof-20260903-evidence"
   - date: "2026-09-02"
     change: "V11 Integration Base 2 semantically combined pre-convergence A2+A4+accepted-outcome truth with additive schema-v40 continuous observation; due/revision/replay/STOP/restart and zero-execution proof passed; A3 remains external"
     session: "candidate/v11-integration-base2-20260902"

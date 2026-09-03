@@ -6,11 +6,12 @@ This document is the authoritative current-state record. The frozen roadmap
 remains authoritative for sequencing and scope; its execution pointer is
 `docs/roadmap/JARVIS_1_0_EXECUTION_STATE.yaml`.
 
-Last reconciled: 2026-09-03 after isolated V11 overnight convergence of the
-Backend Stack, A3 initiative bridge, Command Center, and A3/A4 proving
-harness. This is a source candidate only; V10 remains live and unchanged.
+Last reconciled: 2026-09-03 for the isolated V11 A3/A4 exit-proof freeze.
+The A3 bridge is integrated and the candidate-neutral A3/A4 runner is ready;
+real A3, immediate A4, and the 48-hour elapsed gate are still pending at this
+documentation boundary. V10 remains live and unchanged.
 
-DOCUMENTATION STATE BASE SHA: `2281c865a9674c800a49d2a0d0a9aa3d0ca75b64`
+DOCUMENTATION STATE BASE SHA: `6599a206a989222fcc58444500a9f4492c9d75e2`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`.
@@ -21,7 +22,7 @@ V10 PROMOTED PRODUCT SHA:     faa861c67399d5a3755d778224ff65513bd933a1
 V10 CANONICAL LANDING SHA:    faa861c67399d5a3755d778224ff65513bd933a1
 V10 LIVE RELEASE ID:          rel-faa861c67399-5afeb024
 V10 ROADMAP AUTHORITY SHA:    e9b2155bd669887c4778db0b16a4ef7861d2c9ff
-CURRENT/CANDIDATE SCHEMA:     v40 (isolated Integration Base 2 candidate only)
+CURRENT/CANDIDATE SCHEMA:     v40 (isolated V11 exit-proof candidate only)
 LIVE SCHEMA:                  v38
 V2 KNOWLEDGE SCHEMA:          v35 (historical additive migration)
 V3 DISCOVERY/BUILDING SCHEMA: v36 (historical additive migration)
@@ -29,8 +30,8 @@ v34 live baseline:            historical predecessor retained for migration proo
 V10 STATUS:                   CLOSED
 V10 EXIT GATE:                PASSED
 CURRENT PHASE:                V11_INITIATIVE
-CURRENT GATE:                 OVERNIGHT_CONVERGENCE / SOURCE_CANDIDATE
-EXECUTION STATUS:             V11_INITIATIVE / OVERNIGHT_CONVERGENCE / SOURCE_CANDIDATE
+CURRENT GATE:                 A3_A4_EXIT / PROOF_READY
+EXECUTION STATUS:             V11_INITIATIVE / A3_A4_EXIT / PROOF_READY
 V11 STARTED:                  YES (candidate only)
 V11 COMPLETE:                 NO (A3 real-provider and A4 endurance gates remain)
 V11 PROMOTED/LIVE:            NO
@@ -40,17 +41,22 @@ CONTINUOUS OBSERVATION INPUT: 8004a8c16aceb888db1d1401c3bc67842cb4746f
 INTEGRATION BASE 2 SOURCE:    899e2d3affee41d02145514acb9c308db57afaf6
 A4 INPUT SHA:                 daae32cb14d6d8882166d30d515daa9d796c6857
 OUTCOME-TRUTH INPUT SHA:      02e62a85a50bd642a1abdc6e415a2215ac5d2689
+AUTHORITATIVE V11 INPUT:      ae9ac06b6f9174c810b0e658daaf81c7b683ae8b
+SOURCE FREEZE:                f7cee034384ac191dfbac9f910dd6f6d3eb520d4
+A3/A4 HARNESS INPUT:          3716294bf7d104f03e1fa2d990b2a28654ada1cb
+EXIT-PROOF SOURCE SHA:        6599a206a989222fcc58444500a9f4492c9d75e2
+TRAINING-TIER POLICY:         OWNER_AUTHORIZED / CANONICAL CONFIG ENABLED
 ```
 
-## V11 overnight final convergence source candidate
+## V11 A3/A4 exit-proof source candidate
 
-The isolated source candidate is branch
-`candidate/v11-overnight-convergence-20260902` in
-`C:\temp\JARVIS-V11-Overnight-Convergence-20260902`. It starts from exact
-Integration Base 2 SHA `30998ef06d9be73adb30387c10a7fa72ef910d28` and remains
-schema v40. The last source commit in the freeze is
-`f7cee034384ac191dfbac9f910dd6f6d3eb520d4`; the prior documentation pin is
-`2281c865a9674c800a49d2a0d0a9aa3d0ca75b64`.
+The isolated proof candidate is branch `candidate/v11-exit-proof-20260903` in
+`C:\temp\JARVIS-V11-Exit-Proof-20260903`. It starts from the exact overnight
+candidate `ae9ac06b6f9174c810b0e658daaf81c7b683ae8b`, retains source freeze
+`f7cee034384ac191dfbac9f910dd6f6d3eb520d4`, and remains schema v40. Exit-proof
+implementation source is `6599a206a989222fcc58444500a9f4492c9d75e2`;
+the final proof SHA is the clean docs-only commit immediately following that
+source, as enforced by `scripts/doc_staleness_check.py`.
 
 Eligible clean input lanes and their source SHAs were:
 
@@ -75,15 +81,18 @@ briefing -> WAIT/continue`
 
 The A3 source bridge is integrated into the existing Executive/MissionLoop
 spine, with explicit A3/continuous-observation mutual exclusion and the
-`cap.tests.run` admission requirement. A3's real
-`opencode_go/muse-spark-1.2-contributor` flagship remains
-`PENDING/NOT_TESTED` behind provider/data-training policy; data-training
-consent was not enabled and no external-worker proof is claimed.
+`cap.tests.run` admission requirement. The owner explicitly authorized the
+existing canonical `security.allow_data_training_tiers_noninteractive: true`
+policy for unattended proving. The repository authority is enabled through
+`config/worker_routing.yaml`; no bypass or alternate policy mechanism exists.
+The real `opencode_go/muse-spark-1.2-contributor` flagship remains
+`PENDING/NOT_TESTED` until it runs against the final proof SHA.
 
-The A4 proving tooling is integrated and the clean v40 A2 barrier passed on
-the frozen candidate with six observations, zero candidates/objectives/
-missions/effects/worktrees, `WAIT`, and SQLite quick check `ok`. Full 48-hour,
-fault-injection, and exact-restart proving remains `PENDING/NOT_TESTED`.
+The A4 proving tooling is integrated and now includes an exact-SHA,
+candidate-neutral real driver, immediate six-point fault campaign, durable
+post-candidate and post-selection recovery, hard-zero duplicate and false-
+success assertions, and the separately guarded `--allow-48h` runner. Full
+fault-injection and elapsed proving remains `PENDING/NOT_TESTED` at this freeze.
 
 Accepted final mission outcomes now feed calibration, World Intelligence, and
 Tier-C memory exactly once by outcome identity. Failed and blocked outcomes
@@ -108,11 +117,13 @@ claim. No promotion, live mutation, or push was performed.
 The frozen authority is
 `docs/handoffs/JARVIS_FROZEN_MASTER_ROADMAP_TO_1_0_2026-09-01.md`.
 `V10_EXIT = PASSED` and `V10 = CLOSED`. The isolated V11 A2 candidate is now
-`PASSED_CANDIDATE`; V11 itself is neither complete nor promoted. The isolated
-Integration Base 2 now carries A2, the A4 durability foundation,
-accepted-outcome truth, and continuous observation together. The next
-authorized scope remains `V11_L3_A3_A4`. A3's candidate-to-objective bridge is
-not present in this candidate and was not implemented by this convergence.
+`PASSED_CANDIDATE`; V11 itself is neither complete nor promoted. The V11
+exit-proof candidate carries A2, continuous observation, the integrated A3
+candidate-to-objective bridge, A4 durability, accepted-outcome truth, and the
+candidate-neutral proving driver together. The next authorized scope is the
+real A3 flagship, immediate A4 campaign, and then the guarded 48-hour run
+against one exact proof SHA. This corrects the stale earlier statement that
+the A3 bridge was absent.
 
 The accepted history contains the V10 convergence line, the semantic
 roadmap/control-tower authority, V10_EXIT sensory completion and audit fixes,
@@ -334,9 +345,9 @@ documentation staleness check must remain green.
 
 ## Next authorized action
 
-Resolve the owner/provider policy for the A3 real external-worker flagship. If
-authorized and available, run that proof against this frozen exact-SHA source;
-otherwise leave it `PENDING/NOT_TESTED` with data-training consent disabled.
-Then run the guarded 48-hour A3/A4 fault/restart harness against the same SHA.
-Only a later, separate owner-authorized promotion gate may consider live state;
-this candidate is not promotion authority or production trust.
+Run the genuine cold A3 flagship against the final clean proof SHA, then the
+immediate six-point A4 campaign. Only after both pass, start the separately
+prepared 48-hour runner with `--allow-48h` against that same SHA. Until the
+elapsed gate completes, V11 exit remains pending. Only a later, separate
+owner-authorized promotion gate may consider live state; this candidate is not
+promotion authority or production trust.
