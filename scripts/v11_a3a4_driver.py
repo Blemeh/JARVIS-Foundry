@@ -430,6 +430,16 @@ def _record_real_signals(
     scan_path = root / "REAL_STATIC_OBSERVATION.json"
     _atomic_json(scan_path, scan_payload)
     scan_hash = _sha_file(scan_path)
+    record_fabric_outcome(
+        database,
+        "cap.system.diagnose",
+        success=bool(findings),
+        verified=VerifyVerdict.MATCH if findings else VerifyVerdict.MISMATCH,
+        note=(
+            f"V11 exit-proof pinned Ruff {RUFF_VERSION} diagnostic; "
+            f"artifact sha256:{scan_hash}"
+        ),
+    )
     store = WorldSignalStore(database)
     required = list(A3AdmissionPolicy().required_fabric_capabilities)
     signal_ids: list[str] = []

@@ -8,11 +8,13 @@ mission, effect, worktree, or provider write.
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import math
 import os
 import re
 import subprocess
+import tokenize
 import tomllib
 from collections import deque
 from dataclasses import dataclass, field, replace
@@ -885,8 +887,24 @@ def read_project_source(
                 continue
             bytes_seen += len(raw)
             text = raw.decode("utf-8", errors="replace")
-            for line_number, line in enumerate(text.splitlines(), start=1):
-                match = re.search(r"\b(TODO|FIXME)\b[:\s-]*(.{1,240})", line, re.IGNORECASE)
+            marker_lines: list[tuple[int, str]]
+            if path.suffix.lower() == ".py":
+                try:
+                    marker_lines = [
+                        (token.start[0], token.string)
+                        for token in tokenize.generate_tokens(io.StringIO(text).readline)
+                        if token.type == tokenize.COMMENT
+                    ]
+                except (IndentationError, tokenize.TokenError):
+                    marker_lines = []
+            else:
+                marker_lines = list(enumerate(text.splitlines(), start=1))
+            for line_number, line in marker_lines:
+                match = re.search(
+                    r"^\s*(?:[#;/*>-]+\s*)?\b(TODO|FIXME)\b[:\s-]+(.{1,240})",
+                    line,
+                    re.IGNORECASE,
+                )
                 if not match:
                     continue
                 note = _bounded_text(redact_text(match.group(2)), 240)

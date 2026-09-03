@@ -175,6 +175,32 @@ def test_project_source_is_bounded_to_explicit_root_and_tracks_todo(tmp_path):
     assert all(str(root) in item.source_ref for item in result.observations)
 
 
+def test_python_tracked_work_uses_comments_not_string_literals(tmp_path):
+    root = tmp_path / "owner-project"
+    root.mkdir()
+    (root / "work.py").write_text(
+        'fixture = "TODO: synthetic interruption text\\n"\n'
+        "# TODO: verify actual restart recovery\n",
+        encoding="utf-8",
+    )
+    (root / "notes.md").write_text(
+        "This prose documents TODO/FIXME evidence without declaring work.\n",
+        encoding="utf-8",
+    )
+    result = read_project_source(SourceSpec(
+        "project", "project", str(root),
+        config={"root": str(root), "project_id": "owner-project", "max_files": 5},
+    ))
+
+    tracked = [
+        item for item in result.observations
+        if item.candidate_type == "tracked_work"
+    ]
+    assert len(tracked) == 1
+    assert "actual restart recovery" in str(tracked[0].proposed_outcome)
+    assert "synthetic interruption text" not in str(tracked[0].proposed_outcome)
+
+
 def test_project_drift_identity_changes_when_tracked_content_changes(tmp_path):
     import subprocess
 
