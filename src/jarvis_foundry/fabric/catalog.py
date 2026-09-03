@@ -15,7 +15,6 @@ from .contracts import CapabilityMetadata, metadata_for_spec
 from .model import (
     CapabilityTrust,
     FAILURE_THRESHOLD,
-    CapabilityTrust,
     CapabilitySpec,
     FabricError,
     GapRecord,
@@ -202,8 +201,14 @@ def register_capability(
             trust = CapabilityTrust(trust)
         except ValueError as error:
             raise FabricError(f"unsupported capability trust: {trust!r}") from error
+    if trust is CapabilityTrust.DISABLED:
+        raise FabricError("a disabled capability cannot be registered as active")
     if trust is CapabilityTrust.PROBATION and spec.supersedes:
         raise FabricError("PROBATION capability cannot supersede an existing catalog registration")
+    # Trust is owned by this one Catalog registration event.  Metadata mirrors
+    # it for older descriptor readers, but callers cannot establish a second
+    # independent trust value.
+    descriptor = replace(descriptor, trust_state=trust)
     stable_registration_id = registration_id or _registration_id(spec, descriptor)
     payload["adapter_metadata"] = descriptor.as_dict()
     existing = capability_registration(database, spec.capability_id)
@@ -431,12 +436,7 @@ def observed_readiness(database: FoundryDatabase, capability_id: str) -> Observe
             state=Readiness.MISSING,
             note="capability is not registered",
         )
-    descriptor = capability_metadata(database, capability_id)
-    trust_state = (
-        descriptor.trust_state
-        if descriptor is not None
-        else CapabilityTrust.ESTABLISHED
-    )
+    trust_state = capability_trust(database, capability_id) or CapabilityTrust.DISABLED
     payload = _latest_outcome(database, capability_id)
     if payload is None:
         return ObservedReadiness(

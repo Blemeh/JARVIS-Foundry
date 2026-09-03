@@ -127,7 +127,7 @@ def _register_ready(
             limitations=("disposable proof only",),
         ),
         note="disposable V12 bridge proof registration",
-        trust_state=trust_state,
+        trust=trust_state,
     )
     record_outcome(
         database,

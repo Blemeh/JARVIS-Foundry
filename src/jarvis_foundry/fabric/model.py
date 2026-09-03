@@ -44,6 +44,7 @@ class CapabilityTrust(StrEnum):
 
     ESTABLISHED = "ESTABLISHED"
     PROBATION = "PROBATION"
+    DISABLED = "DISABLED"
 
 
 class UnattendedMode(StrEnum):

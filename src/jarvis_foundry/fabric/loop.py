@@ -350,9 +350,6 @@ def select_capability(
         if readiness.trust_state is CapabilityTrust.DISABLED:
             skipped.append(f"{spec.capability_id} DISABLED")
             continue
-        if readiness.trust_state is CapabilityTrust.PROBATION:
-            skipped.append(f"{spec.capability_id} PROBATION")
-            continue
         if readiness.state is Readiness.DEGRADED:
             skipped.append(f"{spec.capability_id} DEGRADED")
             continue

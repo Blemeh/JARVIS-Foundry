@@ -118,7 +118,7 @@ def _register_ready(
             limitations=("disposable proof only",),
         ),
         note="disposable V12 proof capability",
-        trust_state=trust_state,
+        trust=trust_state,
     )
     record_outcome(
         database,
