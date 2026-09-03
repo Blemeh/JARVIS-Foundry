@@ -181,8 +181,13 @@ def _record_hybrid_outcome(
             "deduplicated": True,
         }
     store = TierCMemoryStore(db)
+    # Keep the Tier-C summary human-readable while retaining the accepted
+    # final status verbatim.  The phrase "mission outcome <status>" is a
+    # stable lexical seam used by operational projections and older callers;
+    # outcome identity and evidence remain bound through the fields below.
+    summary = f"mission outcome {status.lower()} accepted for mission={mission_id}"
     memory_id = store.record_observation(
-        f"accepted final outcome mission={mission_id} result={status}",
+        summary,
         mission_id=mission_id,
         created_by=source_id,
         source_ids=[f"mission:{mission_id}", f"outcome:{outcome_id}"],
