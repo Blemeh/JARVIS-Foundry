@@ -958,6 +958,45 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
             "updated_at = ? WHERE candidate_id = ?",
             (projected_status, event.event_id, event.recorded_at, candidate_id),
         )
+    elif event.event_type == "initiative.candidate_admitted":
+        candidate_id = str(payload.get("candidate_id") or "")
+        objective_id = str(payload.get("objective_id") or "")
+        if not candidate_id or not objective_id:
+            raise ValueError(
+                "initiative.candidate_admitted requires candidate_id and objective_id")
+        row = connection.execute(
+            "SELECT status FROM candidates WHERE candidate_id = ?",
+            (candidate_id,),
+        ).fetchone()
+        if row is None:
+            raise ValueError(
+                f"initiative.candidate_admitted references unknown candidate {candidate_id}")
+        if str(row[0] or "") not in {"ELIGIBLE", "APPROVED"}:
+            raise ValueError(
+                f"initiative.candidate_admitted requires ELIGIBLE candidate {candidate_id}")
+        connection.execute(
+            "UPDATE candidates SET status = 'APPROVED', last_event_id = ?, "
+            "updated_at = ? WHERE candidate_id = ?",
+            (event.event_id, event.recorded_at, candidate_id),
+        )
+    elif event.event_type == "initiative.candidate_admission_blocked":
+        candidate_id = str(payload.get("candidate_id") or "")
+        if not candidate_id:
+            raise ValueError(
+                "initiative.candidate_admission_blocked requires candidate_id")
+        row = connection.execute(
+            "SELECT status FROM candidates WHERE candidate_id = ?",
+            (candidate_id,),
+        ).fetchone()
+        if row is None:
+            raise ValueError(
+                "initiative.candidate_admission_blocked references unknown "
+                f"candidate {candidate_id}")
+        connection.execute(
+            "UPDATE candidates SET status = 'DEFERRED', last_event_id = ?, "
+            "updated_at = ? WHERE candidate_id = ?",
+            (event.event_id, event.recorded_at, candidate_id),
+        )
     elif event.event_type == "discovery.candidate_scored":
         connection.execute(
             "UPDATE candidates SET status = 'SCORED', last_event_id = ?, "

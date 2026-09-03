@@ -1053,6 +1053,12 @@ def run_cycle(
             source_type="supervisor", source_id=instance_id,
             idempotency_key=f"worker_loop.cycle_started:{loop_id}",
         ))
+        initiative_mission_id: str | None = None
+        # Recover accepted terminal work before optional observation or
+        # admission.  MissionLoop remains the sole execution authority.
+        _recover_v3_terminal(database, loop_id=loop_id,
+                             fault_hook=fault_hook)
+
         # V11 continuous observation is the durable, due-driven successor to
         # the A2 probe. It uses the existing monitor/ResearchQueue/Executive
         # wake path and still returns before objective or mission admission.
@@ -1095,8 +1101,8 @@ def run_cycle(
                 ),
             )
         # V11 A2 is an inert branch at the existing worker scheduling choke
-        # point.  It returns WAIT/IDLE before any contract recovery, mission
-        # selection, objective admission, effect, or provider dispatch.
+        # point.  It returns WAIT/IDLE before mission selection, objective
+        # admission, effect, or provider dispatch.
         if config.initiative_a2_enabled:
             from ..discovery_sources import SourceSpec
             from ..initiative_a2 import InitiativeA2Bounds, run_initiative_a2_cycle
@@ -1119,24 +1125,115 @@ def run_cycle(
                 name: value for name, value in bounds_raw.items()
                 if name in InitiativeA2Bounds.__dataclass_fields__
             }
-            report = run_initiative_a2_cycle(
-                database,
-                cycle_id=f"initiative-{loop_id}",
-                sources=sources,
-                resource_id=config.resource_id,
-                bounds=InitiativeA2Bounds(**allowed_bounds),
-                stop_path=_default_stop_path(paths, config),
-                fault_hook=fault_hook,
+            if config.initiative_a2_enabled:
+                report = run_initiative_a2_cycle(
+                    database,
+                    cycle_id=f"initiative-{loop_id}",
+                    sources=sources,
+                    resource_id=config.resource_id,
+                    bounds=InitiativeA2Bounds(**allowed_bounds),
+                    stop_path=_default_stop_path(paths, config),
+                    fault_hook=fault_hook,
+                )
+                return _waiting_report(
+                    database, loop_id=loop_id, instance_id=instance_id,
+                    reason=(
+                        f"V11 A2 {report['outcome']}: "
+                        f"{report.get('reason') or 'admission boundary reached'}"
+                    ),
+                )
+
+        # A3 owns only the explicit candidate admission boundary. Observation
+        # uses the existing due-driven A2 driver; execution resumes through
+        # the existing Executive -> portfolio -> MissionLoop path below.
+        if config.initiative_a3_enabled:
+            from ..discovery_sources import SourceSpec
+            from ..initiative_a2 import (
+                InitiativeA2Bounds,
+                run_continuous_observation_cycle,
             )
-            return _waiting_report(
-                database, loop_id=loop_id, instance_id=instance_id,
-                reason=(
-                    f"V11 A2 {report['outcome']}: "
-                    f"{report.get('reason') or 'admission boundary reached'}"
-                ),
+            from ..initiative_a3 import (
+                A3AdmissionPolicy,
+                InitiativeAdmissionAuthority,
+                active_initiative_objective,
+                continue_initiative_objective,
             )
-        _recover_v3_terminal(database, loop_id=loop_id,
-                             fault_hook=fault_hook)
+            raw = dict(config.initiative_a3 or {})
+            sources = tuple(SourceSpec(
+                source_id=str(item["source_id"]),
+                source_kind=str(item["source_kind"]),
+                source_identity=str(item["source_identity"]),
+                poll_interval_s=int(item.get("poll_interval_s", 300)),
+                config=dict(item.get("config") or {}),
+                enabled=bool(item.get("enabled", True)),
+            ) for item in (raw.get("sources") or ()) if isinstance(item, dict))
+            if not sources:
+                return _waiting_report(
+                    database, loop_id=loop_id, instance_id=instance_id,
+                    reason="V11 A3 has no configured observation sources",
+                )
+            bounds_raw = dict(raw.get("bounds") or {})
+            allowed_bounds = {
+                name: value for name, value in bounds_raw.items()
+                if name in InitiativeA2Bounds.__dataclass_fields__
+            }
+
+            # Existing mission contracts always run before another observation
+            # or admission pass. This is the normal MissionLoop continuation,
+            # not a new scheduler.
+            initiative_mission_id = _select_contract(database)
+            if initiative_mission_id is None:
+                active_objective = active_initiative_objective(database)
+                if active_objective is not None:
+                    admission = continue_initiative_objective(
+                        database,
+                        active_objective,
+                        cycle_id=f"initiative-executive-{loop_id}",
+                    )
+                else:
+                    report = run_continuous_observation_cycle(
+                        database,
+                        sources=sources,
+                        resource_id=config.resource_id,
+                        capability=config.capability,
+                        bounds=InitiativeA2Bounds(**allowed_bounds),
+                        stop_path=_default_stop_path(paths, config),
+                        fault_hook=fault_hook,
+                    )
+                    decision = report.get("decision")
+                    if getattr(decision, "kind", None) != "SELECT":
+                        return _waiting_report(
+                            database, loop_id=loop_id, instance_id=instance_id,
+                            reason=f"V11 A3 WAIT: {report.get('reason') or 'no eligible candidate'}",
+                        )
+                    policy_raw = dict(raw.get("policy") or {})
+                    if "allowed_action_classes" in policy_raw:
+                        policy_raw["allowed_action_classes"] = frozenset(
+                            str(value) for value in policy_raw["allowed_action_classes"])
+                    allowed_policy = {
+                        name: value for name, value in policy_raw.items()
+                        if name in A3AdmissionPolicy.__dataclass_fields__
+                    }
+                    authority = InitiativeAdmissionAuthority(
+                        database,
+                        worktree_parent=str(raw.get("worktree_parent") or ""),
+                        project_roots=dict(raw.get("project_roots") or {}),
+                        policy=A3AdmissionPolicy(**allowed_policy),
+                        stop_path=_default_stop_path(paths, config),
+                    )
+                    admission = authority.admit(decision)
+                    if admission.admitted and admission.objective_id:
+                        admission = continue_initiative_objective(
+                            database,
+                            admission.objective_id,
+                            cycle_id=f"initiative-executive-{loop_id}",
+                        )
+                initiative_mission_id = admission.mission_id
+                if initiative_mission_id is None:
+                    return _waiting_report(
+                        database, loop_id=loop_id, instance_id=instance_id,
+                        reason=f"V11 A3 {admission.status}: {admission.reason}",
+                    )
         # V3 WP3 single choke point: when discovery.cycle_enabled the
         # unified experimental cycle replaces the split selection path.
         # Flag OFF (default) keeps v3_loop WAIT + executive selection
@@ -1180,7 +1277,7 @@ def run_cycle(
                         source_type="supervisor", source_id=instance_id,
                         idempotency_key=f"worker_loop.executive_authority_sync_blocked:{loop_id}",
                     ))
-            mission_id = _select_contract(database)
+            mission_id = initiative_mission_id or _select_contract(database)
             if mission_id is None and getattr(config, "continuous_enabled", False):
                 mission_id = _maybe_continuous_cycle(database, config, paths=paths, loop_id=loop_id, instance_id=instance_id)
             if mission_id is None and config.executive_autonomy_enabled:
@@ -1345,7 +1442,9 @@ def run_cycle(
                 _record_mission_portfolio_outcome(
                     database, mission_id=mission_id, outcome=outcome,
                     status=portfolio_status, instance_id=instance_id)
-            if learning.get("finalized") and config.executive_autonomy_enabled:
+            if learning.get("finalized") and (
+                config.executive_autonomy_enabled or config.initiative_a3_enabled
+            ):
                 try:
                     from ..executive.autonomy import observe_mission_outcome
                     observe_mission_outcome(database, mission_id)
@@ -1368,6 +1467,27 @@ def run_cycle(
                          "reason": f"{type(error).__name__}: {error}"[:500]},
                         source_type="supervisor", source_id=instance_id,
                         idempotency_key=f"worker_loop.continuous_outcome_observation_blocked:{loop_id}",
+                    ))
+            if learning.get("finalized") and config.initiative_a3_enabled:
+                try:
+                    from ..initiative_a3 import record_terminal_initiative_outcome
+                    record_terminal_initiative_outcome(
+                        database,
+                        mission_id=mission_id,
+                        runtime_outcome=str(terminal or "UNKNOWN"),
+                        verdict_id=getattr(outcome, "verdict_id", None),
+                    )
+                except Exception as error:  # noqa: BLE001 - fail closed; mission truth stays authoritative
+                    database.append(Event.create(
+                        "worker_loop.initiative_outcome_blocked",
+                        {
+                            "loop_id": loop_id,
+                            "mission_id": mission_id,
+                            "reason": f"{type(error).__name__}: {error}"[:500],
+                        },
+                        source_type="supervisor",
+                        source_id=instance_id,
+                        idempotency_key=f"worker_loop.initiative_outcome_blocked:{loop_id}",
                     ))
         # V3 WP-B single authoritative closure seam: when the discovery
         # cycle is enabled, a terminal harmless result is handed to the

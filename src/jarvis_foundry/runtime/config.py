@@ -68,6 +68,11 @@ class WorkerRuntimeConfig:
     # admission-boundary-only while A3 owns objective creation.
     continuous_observation_enabled: bool = False
     continuous_observation: dict[str, Any] = field(default_factory=dict)
+    # V11 A3 consumes the exact A2 contract and may admit one small,
+    # reversible owner-repository objective through the existing Executive.
+    # It remains opt-in and isolated from every legacy selector flag.
+    initiative_a3_enabled: bool = False
+    initiative_a3: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_yaml(
@@ -140,6 +145,9 @@ class WorkerRuntimeConfig:
             continuous_observation_enabled=bool(
                 raw.get("continuous_observation", {}).get("enabled", False)),
             continuous_observation=dict(raw.get("continuous_observation") or {}),
+            initiative_a3_enabled=bool(
+                raw.get("initiative_a3", {}).get("enabled", False)),
+            initiative_a3=dict(raw.get("initiative_a3") or {}),
         )
         cfg.validate()
         return cfg
@@ -184,3 +192,19 @@ class WorkerRuntimeConfig:
                 raise ValueError(
                     "observation/judgment is zero-execution and cannot be combined "
                     f"with execution-capable runtime flags: {', '.join(active)}")
+        if self.initiative_a2_enabled and self.initiative_a3_enabled:
+            raise ValueError("initiative_a2 and initiative_a3 are mutually exclusive")
+        if self.initiative_a3_enabled:
+            competing_flags = {
+                "discovery.cycle_enabled": self.discovery_cycle_enabled,
+                "executive.selection_enabled": self.executive_selection_enabled,
+                "executive.autonomy_enabled": self.executive_autonomy_enabled,
+                "executive.portfolio_selection_enabled": self.portfolio_selection_enabled,
+                "executive.continuous_enabled": self.continuous_enabled,
+            }
+            active = [name for name, enabled in competing_flags.items() if enabled]
+            if active:
+                raise ValueError(
+                    "initiative_a3 owns the bounded admission call into the existing "
+                    "Executive and cannot be combined with competing runtime entry "
+                    f"flags: {', '.join(active)}")
