@@ -528,6 +528,7 @@ def trial_record(database: FoundryDatabase, trial_id: str) -> dict[str, Any] | N
         if event.event_type in status_by_event:
             record["status"] = status_by_event[event.event_type]
         if event.event_type == TRIAL_DISABLED:
+            record["disable"] = payload
             record["status"] = TrialStatus.RESTORED.value if payload.get("restored") else TrialStatus.DISABLED.value
     return record
 
@@ -671,10 +672,15 @@ class CapabilityTrialPipeline:
             elif source_kind in {"stdlib", "python-runtime"}:
                 resolved = importlib.util.find_spec(dependency.name.replace("-", "_")) is not None
             else:
-                # A non-runtime dependency must be content-addressed before
-                # it can enter a disposable trial.  Installation of arbitrary
-                # network packages is intentionally outside this lane.
-                resolved = dependency.sha256 is not None
+                # A non-runtime dependency must be both content-addressed and
+                # importable in the isolated runtime.  Arbitrary network
+                # installation is intentionally outside this lane; a selected
+                # solution that is not already locally available is rejected
+                # instead of being recorded as falsely "resolved".
+                resolved = (
+                    dependency.sha256 is not None
+                    and importlib.util.find_spec(dependency.name.replace("-", "_")) is not None
+                )
             if not resolved:
                 raise TrialError(f"dependency {dependency.name!r} is not available or hash-pinned")
             resolved_dependencies.append({**dependency.as_dict(), "resolved": True})
@@ -822,9 +828,12 @@ class CapabilityTrialPipeline:
         verification: Mapping[str, Any] | None = None
         verification_path: Path | None = None
         verification_hash: str | None = None
+        stage = "selected"
         try:
+            stage = "workspace"
             workspace, manifest, contract_cases, mission, input_records = self._prepare_workspace(descriptor, trial_id)
             manifest_path = workspace / "adapter-manifest.json"
+            stage = "readiness_probe"
             probe = probe_installed_adapter(
                 manifest_path,
                 allowed_root=workspace,
@@ -836,6 +845,7 @@ class CapabilityTrialPipeline:
             _append_trial_event(self.database, TRIAL_PROBE_PASSED, trial_id, {"manifest_path": str(manifest_path), "manifest_sha256": _sha256(manifest_path), "probe_sha256": probe_hash})
 
             contract_reports: list[dict[str, Any]] = []
+            stage = "contracts"
             for case in contract_cases:
                 result = run_installed_adapter(
                     manifest_path,
@@ -851,6 +861,7 @@ class CapabilityTrialPipeline:
                 raise TrialError("one or more capability contract cases failed")
             _append_trial_event(self.database, TRIAL_CONTRACTS_PASSED, trial_id, {"evidence_path": str(workspace / "evidence" / "contract-tests.json"), "evidence_sha256": contract_hash, "case_count": len(contract_reports)})
 
+            stage = "mission"
             mission_result = run_installed_adapter(
                 manifest_path,
                 mission.payload,
@@ -895,6 +906,7 @@ class CapabilityTrialPipeline:
             }
             bundle_path = workspace / "evidence" / "trial-bundle.json"
             bundle_hash = _write_json(bundle_path, bundle)
+            stage = "independent_verifier"
             verification = self._run_verifier(bundle_path)
             verification_path = workspace / "evidence" / "independent-verification.json"
             verification_hash = _write_json(verification_path, verification)
@@ -927,6 +939,7 @@ class CapabilityTrialPipeline:
                     "catalog_before": before_catalog,
                 },
             )
+            stage = "adoption"
             try:
                 register_capability(
                     self.database,
@@ -989,7 +1002,7 @@ class CapabilityTrialPipeline:
                     pass
             rejection = {
                 "decision": "REJECT",
-                "stage": str((trial_record(self.database, trial_id) or {}).get("status") or "trial"),
+                "stage": stage,
                 "reason": redact_text(str(error))[:500],
                 "workspace": str(workspace or self._workspace(trial_id)),
                 "descriptor_hash": descriptor.descriptor_hash,
