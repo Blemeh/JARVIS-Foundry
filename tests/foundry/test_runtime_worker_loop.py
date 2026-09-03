@@ -59,6 +59,28 @@ def test_config_roundtrip(tmp_path):
     assert cfg.role_signals["builder"]["bounded"] is True
 
 
+def test_campaign_runtime_config_is_explicit_and_observation_incompatible(tmp_path):
+    path = tmp_path / "campaign-worker.yaml"
+    path.write_text(
+        "enabled: true\nstatus: ACTIVE\nprovider: opencode_go\n"
+        "model: deepseek-v4-flash\n"
+        "campaign_runtime:\n  enabled: true\n",
+        encoding="utf-8",
+    )
+    cfg = WorkerRuntimeConfig.from_yaml(path)
+    assert cfg.campaign_enabled is True
+    observation = tmp_path / "campaign-observation.yaml"
+    observation.write_text(
+        "enabled: true\nstatus: ACTIVE\nprovider: opencode_go\n"
+        "model: deepseek-v4-flash\n"
+        "campaign_runtime:\n  enabled: true\n"
+        "continuous_observation:\n  enabled: true\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="campaign_runtime"):
+        WorkerRuntimeConfig.from_yaml(observation)
+
+
 def test_relative_runtime_root_moves_outside_live_hermes_profile(tmp_path, monkeypatch):
     local = tmp_path / "local"
     monkeypatch.setenv("LOCALAPPDATA", str(local))
@@ -176,6 +198,40 @@ def test_run_cycle_frozen_when_stop_sentinel(tmp_path):
     assert report["outcome"] == "FROZEN"
     assert any(event.event_type == "worker_loop.frozen"
                for event in database.events())
+
+
+def test_durable_campaign_keeps_worker_guard_after_config_opt_in_is_removed(tmp_path):
+    """A restart/config flip cannot route campaign work through V11 admission."""
+
+    from jarvis_foundry.executive.autonomy import create_objective
+    from jarvis_foundry.executive.campaigns import create_campaign, declare_child_mission
+
+    database = FoundryDatabase(tmp_path / "db.sqlite")
+    database.initialize()
+    create_objective(
+        database,
+        "campaign guard objective",
+        objective_id="objective-campaign-guard",
+        success_criteria=("child acceptance",),
+    )
+    create_campaign(
+        database,
+        "objective-campaign-guard",
+        campaign_id="campaign-guard",
+    )
+    declare_child_mission(database, "campaign-guard", child_id="pending-child")
+
+    # campaign_runtime_enabled intentionally remains False: the durable
+    # campaign.created receipt makes recovery/dispatch policy sticky.
+    report = run_cycle(
+        database,
+        FoundryPaths(tmp_path),
+        WorkerRuntimeConfig(enabled=True),
+        loop_id="campaign-guard-cycle",
+        instance_id="campaign-guard-instance",
+    )
+    assert report["outcome"] == "WAITING"
+    assert report["campaign_resume"]["status"] == "READY"
 
 
 def test_production_yaml_stop_path_matches_cli_sentinel(tmp_path):

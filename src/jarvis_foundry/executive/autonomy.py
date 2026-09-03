@@ -1765,11 +1765,16 @@ def coordinate_objectives(
     controller: str = SUPERVISOR_CONTROLLER,
     available_workers: int = 1,
     resource_capacity: Mapping[str, int] | None = None,
+    excluded_objective_ids: Sequence[str] = (),
 ) -> CoordinationDecision:
     """Resolve cross-objective dependencies, contention and priority inversion."""
     _gate(database, controller)
     state = rebuild_executive_state(database)
-    ranked = rank_objectives(database, controller=controller)
+    excluded = {str(value) for value in excluded_objective_ids}
+    ranked = [
+        row for row in rank_objectives(database, controller=controller)
+        if row.objective_id not in excluded
+    ]
     objective_ids = tuple(row.objective_id for row in ranked)
     conflicts: list[dict[str, Any]] = []
     for index, left in enumerate(ranked):
@@ -2084,6 +2089,7 @@ def run_autonomy_cycle(
     controller: str = SUPERVISOR_CONTROLLER,
     max_new_missions: int = 1,
     stop_path: str | Path | None = None,
+    excluded_objective_ids: Sequence[str] = (),
 ) -> AutonomyCycle:
     """Run one bounded executive pass through existing portfolio and mission authorities."""
     _gate(database, controller, stop_path=stop_path)
@@ -2119,9 +2125,14 @@ def run_autonomy_cycle(
     ))
     sync_owner_goals(database, controller=controller)
     state = rebuild_executive_state(database)
+    excluded = {str(value) for value in excluded_objective_ids}
     plans: list[PlanRecord] = []
     for objective in state.objectives.values():
-        if objective.status in _TERMINAL_OBJECTIVE or active_plan(database, objective.objective_id) is not None:
+        if (
+            objective.objective_id in excluded
+            or objective.status in _TERMINAL_OBJECTIVE
+            or active_plan(database, objective.objective_id) is not None
+        ):
             continue
         step = PlanStep(
             step_id="execute", objective_id=objective.objective_id, description=objective.objective,
@@ -2131,8 +2142,15 @@ def run_autonomy_cycle(
             max_retries=int(_number(objective.budget.get("max_retries"), 1)),
         )
         plans.append(build_plan(database, objective.objective_id, (step,), controller=controller))
-    ranking = tuple(rank_objectives(database, controller=controller))
-    coordination = coordinate_objectives(database, controller=controller)
+    ranking = tuple(
+        row for row in rank_objectives(database, controller=controller)
+        if row.objective_id not in excluded
+    )
+    coordination = coordinate_objectives(
+        database,
+        controller=controller,
+        excluded_objective_ids=tuple(sorted(excluded)),
+    )
     selected_oid = coordination.selected_objective_id or (ranking[0].objective_id if ranking and ranking[0].eligible else None)
     requests: list[dict[str, Any]] = []
     pre_continuation: ContinuationDecision | None = None
@@ -2292,6 +2310,19 @@ def executive_autonomy_snapshot(
     )
     from ..mission.verification import final_outcome_projection
 
+    # V12 campaign state is a subordinate aggregate over this Executive
+    # objective projection.  Keep the owner snapshot read-only and additive;
+    # no campaign event is emitted while rendering it.
+    try:
+        from .campaigns import campaign_snapshot
+        campaign_projection = campaign_snapshot(database)
+    except Exception as error:  # noqa: BLE001 - malformed optional history
+        campaign_projection = {
+            "schema": "v12.campaign-runtime.v1",
+            "campaigns": {},
+            "error": f"campaign projection unavailable: {type(error).__name__}",
+        }
+
     return {
         "objectives": {key: value.to_payload() for key, value in state.objectives.items()},
         "plans": {key: value.to_payload() for key, value in state.plans.items()},
@@ -2307,6 +2338,7 @@ def executive_autonomy_snapshot(
         "latest_cycle": dict(latest_cycle or {}),
         "briefing": briefing.to_payload() if briefing else None,
         "outcome_learning": final_outcome_projection(database, limit=20),
+        "campaigns": campaign_projection,
     }
 
 

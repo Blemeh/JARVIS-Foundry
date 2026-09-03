@@ -205,6 +205,7 @@ class Supervisor:
                 request = None
         if request is not None and request.action == "STOP":
             if self.estop.active():
+                self._propagate_campaign_stop()
                 self._record_resolution(
                     request, status="BLOCKED", phase="blocked_at_start",
                     reason="emergency STOP sentinel is active")
@@ -232,6 +233,7 @@ class Supervisor:
             ))
             return "DEGRADED"
         self._reap_and_recover()
+        self._resume_campaign_runtime()
         reaped_workers = self.workers.reap()
         self._start_generation = max(
             self._start_generation + 1,
@@ -304,6 +306,76 @@ class Supervisor:
                 reason="owner STOP request arrived during startup")
         return "FROZEN" if stop else "RUNNING"
 
+    def _resume_campaign_runtime(self) -> None:
+        """Run the V12 objective resume pass at Supervisor startup.
+
+        Campaigns are opt-in by existence: an untouched V11 database has no
+        ``campaign.created`` events and therefore incurs no new work.  Once a
+        campaign exists, startup recovery is unconditional so a disabled or
+        killed worker process cannot strand its durable waits/checkpoint.
+        """
+
+        try:
+            if self.database.event_count(event_type="campaign.created") == 0:
+                return
+            from ..executive.campaigns import startup_resume_pass
+
+            startup_resume_pass(
+                self.database,
+                stop_path=self.estop.path,
+                resume_id=f"supervisor-start:{self.instance_id}:{self._start_generation + 1}",
+                controller="supervisor",
+            )
+        except Exception as error:  # noqa: BLE001 - startup remains bounded
+            try:
+                self.database.append(Event.create(
+                    "supervisor.degraded",
+                    {
+                        "instance_id": self.instance_id,
+                        "trust_state": "LAB",
+                        "reason": "campaign_resume_failure",
+                        "error_class": type(error).__name__,
+                        "error": str(error)[:300],
+                    },
+                    source_type="supervisor", source_id=self.instance_id,
+                    idempotency_key=(
+                        f"supervisor.degraded:{self.instance_id}:campaign_resume_failure"),
+                ))
+            except Exception:
+                pass
+
+    def _propagate_campaign_stop(self) -> list[str]:
+        """Persist campaign STOP state before workers are frozen or reaped."""
+
+        try:
+            if self.database.event_count(event_type="campaign.created") == 0:
+                return []
+            from ..executive.campaigns import propagate_stop
+
+            return propagate_stop(
+                self.database,
+                stop_path=self.estop.path,
+                controller="supervisor",
+            )
+        except Exception as error:  # noqa: BLE001 - stop remains fail-closed
+            try:
+                self.database.append(Event.create(
+                    "supervisor.degraded",
+                    {
+                        "instance_id": self.instance_id,
+                        "trust_state": "LAB",
+                        "reason": "campaign_stop_propagation_failure",
+                        "error_class": type(error).__name__,
+                        "error": str(error)[:300],
+                    },
+                    source_type="supervisor", source_id=self.instance_id,
+                    idempotency_key=(
+                        f"supervisor.degraded:{self.instance_id}:campaign_stop_propagation_failure"),
+                ))
+            except Exception:
+                pass
+            return []
+
     def heartbeat(self, *, resilience_metrics: Mapping[str, Any] | None = None) -> str:
         if not self.started:
             raise RuntimeError("supervisor has not started")
@@ -362,6 +434,7 @@ class Supervisor:
                 return "STOPPED"
         stop = self.estop.read()
         if stop:
+            self._propagate_campaign_stop()
             self.workers.terminate_all()
             self.database.append(Event.create(
                 "emergency_stop.frozen",
@@ -487,6 +560,8 @@ class Supervisor:
         if self._command_center is not None:
             self._command_center.close()
             self._command_center = None
+        if control_request is not None and control_request.action == "STOP":
+            self._propagate_campaign_stop()
         self.workers.terminate_all()
         pid, identity = current_process_identity()
         self.database.append(Event.create(

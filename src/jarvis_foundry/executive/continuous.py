@@ -58,6 +58,29 @@ def clear_wake(db, wake_id: str, *, controller="supervisor", reason=""):
 def trigger_wake(db, wake_id: str, *, controller="supervisor", reason=""):
     if controller != SUPERVISOR_CONTROLLER: raise PermissionError("wake trigger is Supervisor-owned")
     return _append(db, "executive.wake_triggered", {"wake_id": wake_id, "reason": reason, "triggered_at": isoformat()}, key=f"executive.wake_triggered:{wake_id}:{_hash(reason)}", correlation_id=wake_id)
+def rearm_wake(db, wake_id: str, *, controller="supervisor", reason="", generation: str | None = None):
+    """Return a triggered wake to ACTIVE when its guarded predicate is false.
+
+    A trigger is a durable notification, not proof that a dependent child was
+    released.  Recovery may therefore need to re-arm the same wake after a
+    signal raced with dependency/provider/effect reconciliation.  The receipt
+    is idempotent per trigger generation and remains inside the existing
+    Continuous Executive wake authority.
+    """
+    if controller != SUPERVISOR_CONTROLLER: raise PermissionError("wake rearm is Supervisor-owned")
+    payload = {
+        "wake_id": wake_id,
+        "reason": reason,
+        "rearmed_at": isoformat(),
+        "generation": generation,
+    }
+    return _append(
+        db,
+        "executive.wake_rearmed",
+        payload,
+        key=f"executive.wake_rearmed:{wake_id}:{_hash({'generation': generation, 'reason': reason})}",
+        correlation_id=wake_id,
+    )
 def rebuild_wake_state(db):
     wakes = {}
     for ev in db.events(event_type_prefixes=("executive.wake_",)):
@@ -70,7 +93,16 @@ def rebuild_wake_state(db):
             if wid in wakes: wakes[wid]["status"] = "CLEARED"
         elif typ == "executive.wake_triggered":
             wid = str(p.get("wake_id") or "")
-            if wid in wakes: wakes[wid]["status"] = "TRIGGERED"; wakes[wid]["triggered_at"] = p.get("triggered_at")
+            if wid in wakes:
+                wakes[wid]["status"] = "TRIGGERED"
+                wakes[wid]["triggered_at"] = p.get("triggered_at")
+                wakes[wid]["triggered_event_id"] = ev.event_id
+        elif typ == "executive.wake_rearmed":
+            wid = str(p.get("wake_id") or "")
+            if wid in wakes:
+                wakes[wid]["status"] = "ACTIVE"
+                wakes[wid]["triggered_at"] = None
+                wakes[wid].pop("triggered_event_id", None)
     return wakes
 def is_wake_due(db, wake: dict, now=None, *, state=None):
     from datetime import datetime, timezone
@@ -421,7 +453,15 @@ def blocker_for(db, objective_id: str):
     if state == "BLOCKED": return Blocker(objective_id, "BLOCKED", "dependency or resource blocked", True, "dependency resolves", False)
     return None
 
-def run_continuous_cycle(db, *, cycle_id: str, controller="supervisor", now=None, max_new_missions=1):
+def run_continuous_cycle(
+    db,
+    *,
+    cycle_id: str,
+    controller="supervisor",
+    now=None,
+    max_new_missions=1,
+    excluded_objective_ids=(),
+):
     # One idempotent durable tick: due wakes -> trigger -> autonomy cycle -> materialize
     # Idempotent on cycle_id via autonomy cycle key; wake triggers are idempotent via wake_triggered keys
     if controller != SUPERVISOR_CONTROLLER: raise PermissionError("continuous cycle is Supervisor-owned")
@@ -437,7 +477,12 @@ def run_continuous_cycle(db, *, cycle_id: str, controller="supervisor", now=None
     # Supervisor-owned cycle self-contained across direct invocation and
     # restart; the Worker wrapper may call the helper too, but idempotent wake
     # keys make that replay harmless.
-    parked = auto_wake_for_blocked(db, controller=controller)
+    excluded = {str(value) for value in excluded_objective_ids}
+    parked = auto_wake_for_blocked(
+        db,
+        controller=controller,
+        excluded_objective_ids=excluded,
+    )
     # World Intelligence is advisory input only.  The Executive bridge admits
     # objective-targeted signals as durable wake conditions; it never creates
     # work itself.
@@ -449,7 +494,11 @@ def run_continuous_cycle(db, *, cycle_id: str, controller="supervisor", now=None
     try:
         from ..executive.autonomy import rank_objectives as _rank2, rebuild_executive_state as _reb2
         rows = _rank2(db)
-        top = next((r for r in rows if r.eligible), None)
+        top = next(
+            (r for r in rows
+             if r.eligible and r.objective_id not in excluded),
+            None,
+        )
         if top is not None:
             recent = recent_strategies(db, top.objective_id, limit=3)
             if len(recent) >= 3 and len(set(recent[:3])) == 1:
@@ -466,7 +515,12 @@ def run_continuous_cycle(db, *, cycle_id: str, controller="supervisor", now=None
     # Autonomy phase: delegate to existing authoritative cycle
     from ..executive.autonomy import run_autonomy_cycle as _run_auto
     try:
-        cycle = _run_auto(db, cycle_id=cycle_id, controller=controller)
+        cycle = _run_auto(
+            db,
+            cycle_id=cycle_id,
+            controller=controller,
+            excluded_objective_ids=tuple(sorted(excluded)),
+        )
         return {"cycle_id": cycle_id, "status": cycle.status, "reason": cycle.reason, "triggered_wakes": triggered, "parked_objectives": parked, "autonomy_cycle": cycle.to_payload() if hasattr(cycle, "to_payload") else dict(cycle) if isinstance(cycle, dict) else str(cycle)}
     except Exception as e:
         return {"cycle_id": cycle_id, "status": "BLOCKED", "reason": f"{type(e).__name__}: {e}", "triggered_wakes": triggered, "parked_objectives": parked}
@@ -519,16 +573,24 @@ def stale_wakes(db, stale_after_seconds=3600.0, now=None):
             out.append(w)
     return out
 
-def auto_wake_for_blocked(db, *, controller="supervisor"):
+def auto_wake_for_blocked(
+    db,
+    *,
+    controller="supervisor",
+    excluded_objective_ids=(),
+):
     # Create wakes for currently blocked objectives that have no wake yet
     created=[]
     try:
         from ..executive.autonomy import rebuild_executive_state as _reb, rank_objectives as _rank
         st=_reb(db)
+        excluded = {str(value) for value in excluded_objective_ids}
         wakes=rebuild_wake_state(db)
         active_wake_oids={w.get("objective_id") for w in wakes.values() if w.get("status")=="ACTIVE"}
         for row in _rank(db):
             oid=row.objective_id
+            if oid in excluded:
+                continue
             if row.eligible: continue
             if oid in active_wake_oids: continue
             obj=st.objectives.get(oid)

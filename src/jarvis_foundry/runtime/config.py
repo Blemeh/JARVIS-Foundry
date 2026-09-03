@@ -73,6 +73,17 @@ class WorkerRuntimeConfig:
     # It remains opt-in and isolated from every legacy selector flag.
     initiative_a3_enabled: bool = False
     initiative_a3: dict[str, Any] = field(default_factory=dict)
+    # V12 objective-scale campaign recovery.  Opt-in so existing V11
+    # configurations retain their exact execution path by default.
+    campaign_runtime_enabled: bool = False
+    campaign_runtime: dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def campaign_enabled(self) -> bool:
+        """Canonical opt-in bit, accepting the nested YAML form as well."""
+
+        section = self.campaign_runtime if isinstance(self.campaign_runtime, dict) else {}
+        return bool(self.campaign_runtime_enabled or section.get("enabled", False))
 
     @classmethod
     def from_yaml(
@@ -94,6 +105,8 @@ class WorkerRuntimeConfig:
         raw = yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
         if not isinstance(raw, dict):
             raise ValueError(f"worker runtime config {path} must be a mapping")
+        campaign_raw = raw.get("campaign_runtime")
+        campaign_section = dict(campaign_raw) if isinstance(campaign_raw, dict) else {}
         cfg = cls(
             enabled=bool(raw.get("enabled", False)),
             status=str(raw.get("status", "INACTIVE")),
@@ -148,6 +161,12 @@ class WorkerRuntimeConfig:
             initiative_a3_enabled=bool(
                 raw.get("initiative_a3", {}).get("enabled", False)),
             initiative_a3=dict(raw.get("initiative_a3") or {}),
+            campaign_runtime_enabled=bool(
+                raw.get(
+                    "campaign_runtime_enabled",
+                    campaign_section.get("enabled", False),
+                )),
+            campaign_runtime=campaign_section,
         )
         cfg.validate()
         return cfg
@@ -212,3 +231,8 @@ class WorkerRuntimeConfig:
                     "initiative_a3 owns the bounded admission call into the existing "
                     "Executive and cannot be combined with competing runtime entry "
                     f"flags: {', '.join(active)}")
+        if self.campaign_enabled and (
+                self.initiative_a2_enabled or self.continuous_observation_enabled):
+            raise ValueError(
+                "campaign_runtime is execution-capable and cannot be combined "
+                "with zero-execution observation modes")

@@ -399,6 +399,7 @@ def _maybe_portfolio_select(
     *,
     loop_id: str,
     instance_id: str,
+    excluded_mission_ids: Iterable[str] = (),
 ) -> str | None:
     """V7 portfolio tier: global next-useful-work above candidate selection.
 
@@ -448,6 +449,28 @@ def _maybe_portfolio_select(
             stable_fields=stable,
             source_id=f"worker-loop:{instance_id}",
         )
+        return None
+    excluded = {str(value) for value in excluded_mission_ids}
+    selected_item = dict(decision.selected_item or {})
+    selected_mission_id = str(selected_item.get("mission_id") or "")
+    if selected_mission_id and selected_mission_id in excluded:
+        # A campaign child that is waiting/failed/stopped is still visible to
+        # the portfolio's repair ranking.  Do not let that advisory ranking
+        # retire or otherwise mutate the canonical mission before the
+        # campaign owner has supplied a retry/replan decision.
+        database.append(Event.create(
+            "worker_loop.campaign_dispatch_blocked",
+            {
+                "loop_id": loop_id,
+                "instance_id": instance_id,
+                "mission_id": selected_mission_id,
+                "reason": "portfolio selection was a campaign child awaiting durable release",
+            },
+            source_type="supervisor",
+            source_id=instance_id,
+            idempotency_key=(
+                f"worker_loop.campaign_dispatch_blocked:{loop_id}"),
+        ))
         return None
     payload = decision.to_payload()
     result = materialize_portfolio_selection(
@@ -504,7 +527,15 @@ def _maybe_portfolio_select(
 
 
 
-def _maybe_continuous_cycle(database, config, *, paths, loop_id, instance_id):
+def _maybe_continuous_cycle(
+    database,
+    config,
+    *,
+    paths,
+    loop_id,
+    instance_id,
+    excluded_objective_ids: Iterable[str] = (),
+):
     """V9 Continuous Executive: durable wake-aware cycle (opt-in)."""
     if not getattr(config, "continuous_enabled", False):
         return None
@@ -514,11 +545,20 @@ def _maybe_continuous_cycle(database, config, *, paths, loop_id, instance_id):
         database.append(Event.create("worker_loop.continuous_blocked", {"loop_id": loop_id, "reason": f"import failed: {e}"}, source_type="supervisor", source_id=f"worker-loop:{instance_id}", idempotency_key=f"worker_loop.continuous_blocked:{loop_id}"))
         return None
     try:
-        auto_wake_for_blocked(database, controller="supervisor")
+        auto_wake_for_blocked(
+            database,
+            controller="supervisor",
+            excluded_objective_ids=tuple(excluded_objective_ids),
+        )
     except Exception:
         pass
     try:
-        result = run_continuous_cycle(database, cycle_id=f"continuous:{loop_id}", controller="supervisor")
+        result = run_continuous_cycle(
+            database,
+            cycle_id=f"continuous:{loop_id}",
+            controller="supervisor",
+            excluded_objective_ids=tuple(excluded_objective_ids),
+        )
         # run_continuous_cycle already does wake tick + autonomy cycle; return its mission if any
         ac = result.get("autonomy_cycle") if isinstance(result, dict) else None
         mid = None
@@ -546,6 +586,7 @@ def _maybe_executive_autonomy(
     paths: FoundryPaths,
     loop_id: str,
     instance_id: str,
+    excluded_objective_ids: Iterable[str] = (),
 ) -> str | None:
     """Run the V8 executive pass through the existing V7/mission seams."""
     if not config.executive_autonomy_enabled:
@@ -560,6 +601,7 @@ def _maybe_executive_autonomy(
             capability=config.capability,
             max_new_missions=1,
             stop_path=_default_stop_path(paths, config),
+            excluded_objective_ids=tuple(sorted({str(value) for value in excluded_objective_ids})),
         )
     except Exception as error:  # noqa: BLE001 - fail closed and keep loop alive
         database.append(Event.create(
@@ -919,7 +961,12 @@ def _blocked_contract_report(database: FoundryDatabase, *, loop_id: str,
             "mission_id": mission_id, "reason": reason}
 
 
-def _select_contract(database: FoundryDatabase) -> str | None:
+def _select_contract(
+    database: FoundryDatabase,
+    *,
+    excluded_mission_ids: Iterable[str] = (),
+    preferred_mission_ids: Iterable[str] = (),
+) -> str | None:
     """Select an existing mission that has a durable contract.
 
     Missions without executable authority are excluded from selection rather
@@ -927,7 +974,21 @@ def _select_contract(database: FoundryDatabase) -> str | None:
     returned for the caller to report as BLOCKED, preserving the distinction
     between honest WAITING and a corrupted authoritative record.
     """
-    mission_ids = dispatchable_contract_missions(database)
+    excluded = {str(value) for value in excluded_mission_ids}
+    available = tuple(
+        mission_id for mission_id in dispatchable_contract_missions(database)
+        if str(mission_id) not in excluded
+    )
+    preferred = tuple(
+        str(mission_id) for mission_id in preferred_mission_ids
+        if str(mission_id) in available
+    )
+    # Campaign continuation is a bounded priority hint, not a second
+    # scheduler: the canonical selector still applies owner reprioritization
+    # and deterministic tie-breaking to this ordered candidate set.
+    mission_ids = preferred + tuple(
+        mission_id for mission_id in available if mission_id not in preferred
+    )
     if not mission_ids:
         return None
     return select_dispatchable_mission(database, mission_ids)
@@ -1025,6 +1086,22 @@ def run_cycle(
     estop = EmergencyStop(_default_stop_path(paths, config))
     if estop.active():
         stop = estop.read()
+        campaign_stop: dict[str, Any] | None = None
+        try:
+            if database.event_count(event_type="campaign.created"):
+                from ..executive.campaigns import propagate_stop
+
+                campaign_stop = {
+                    "stopped_campaigns": propagate_stop(
+                        database,
+                        stop_path=_default_stop_path(paths, config),
+                        controller="supervisor",
+                    )
+                }
+        except Exception as error:  # noqa: BLE001 - STOP remains fail-closed
+            campaign_stop = {
+                "error": f"{type(error).__name__}: {error}"[:300],
+            }
         database.append(Event.create(
             "worker_loop.frozen",
             {"instance_id": instance_id, "loop_id": loop_id,
@@ -1033,8 +1110,11 @@ def run_cycle(
             source_type="supervisor", source_id=instance_id,
             idempotency_key=f"worker_loop.frozen:{loop_id}:{instance_id}",
         ))
-        return {"loop_id": loop_id, "outcome": "FROZEN",
-                "reason": "emergency stop is active"}
+        result = {"loop_id": loop_id, "outcome": "FROZEN",
+                  "reason": "emergency stop is active"}
+        if campaign_stop is not None:
+            result["campaign_stop"] = campaign_stop
+        return result
 
     leases = LeaseManager(database)
     try:
@@ -1055,11 +1135,95 @@ def run_cycle(
         ))
         invoke_fault_hook(fault_hook, "post worker_loop.cycle_started")
         initiative_mission_id: str | None = None
-        # Recover accepted terminal work before optional observation or
-        # admission.  MissionLoop remains the sole execution authority.
+        campaign_resume_payload: dict[str, Any] | None = None
+        campaign_blocked_mission_ids: tuple[str, ...] = ()
+        campaign_dispatchable_mission_ids: tuple[str, ...] = ()
+        campaign_objective_ids: tuple[str, ...] = ()
+        # Once a campaign has been durably created, its recovery/dispatch
+        # guard remains active even if a later worker config omits the opt-in
+        # flag.  Otherwise a config flip or stale process would let campaign
+        # children bypass checkpoint, STOP, wait, and join policy.  Untouched
+        # V11 ledgers have no campaign.created receipt and keep the exact old
+        # path.
+        campaign_runtime_active = bool(
+            config.campaign_enabled
+            or database.event_count(event_type="campaign.created") > 0
+        )
+        if campaign_runtime_active:
+            # Campaign recovery is a Supervisor-owned startup seam.  It only
+            # reconciles durable mission/effect/provider truth and re-derives
+            # wakes; dispatch still enters through the existing selector and
+            # MissionLoop below.
+            from ..executive.campaigns import startup_resume_pass
+
+            try:
+                campaign_resume = startup_resume_pass(
+                    database,
+                    stop_path=_default_stop_path(paths, config),
+                    controller="supervisor",
+                    fault_hook=fault_hook,
+                )
+                campaign_resume_payload = campaign_resume.to_payload()
+                campaign_blocked_mission_ids = tuple(
+                    campaign_resume.blocked_mission_ids)
+                campaign_dispatchable_mission_ids = tuple(
+                    campaign_resume.dispatchable_mission_ids)
+                from ..executive.campaigns import rebuild_campaign_state
+
+                campaign_objective_ids = tuple(sorted({
+                    campaign.objective_id
+                    for campaign in rebuild_campaign_state(database).campaigns.values()
+                    if campaign.status not in {"COMPLETED", "CANCELLED"}
+                }))
+                database.append(Event.create(
+                    "worker_loop.campaign_resume_completed",
+                    {
+                        "loop_id": loop_id,
+                        "instance_id": instance_id,
+                        **campaign_resume_payload,
+                    },
+                    source_type="supervisor", source_id=instance_id,
+                    idempotency_key=(
+                        f"worker_loop.campaign_resume_completed:{loop_id}"),
+                ))
+                if campaign_resume.errors:
+                    # Do not dispatch while the enabled campaign aggregate is
+                    # only partially reconstructed.  The next bounded cycle
+                    # can retry after the underlying durable fault is fixed.
+                    return {
+                        "loop_id": loop_id,
+                        "outcome": "BLOCKED",
+                        "reason": campaign_resume.reason,
+                        "campaign_resume": campaign_resume_payload,
+                    }
+            except Exception as error:  # noqa: BLE001 - fail closed
+                campaign_resume_payload = {
+                    "schema": "v12.campaign-runtime.v1",
+                    "status": "BLOCKED",
+                    "reason": f"campaign startup recovery failed: {type(error).__name__}: {error}"[:500],
+                }
+                database.append(Event.create(
+                    "worker_loop.campaign_resume_blocked",
+                    {
+                        "loop_id": loop_id,
+                        "instance_id": instance_id,
+                        **campaign_resume_payload,
+                    },
+                    source_type="supervisor", source_id=instance_id,
+                    idempotency_key=(
+                        f"worker_loop.campaign_resume_blocked:{loop_id}"),
+                ))
+                return {
+                    "loop_id": loop_id,
+                    "outcome": "BLOCKED",
+                    "reason": campaign_resume_payload["reason"],
+                    "campaign_resume": campaign_resume_payload,
+                }
+        # Recover accepted V3 lineage only after the campaign pass has
+        # reconciled in-flight effects and exact child truth.  MissionLoop
+        # remains the sole execution authority in both cases.
         _recover_v3_terminal(database, loop_id=loop_id,
                              fault_hook=fault_hook)
-
         # V11 continuous observation is the durable, due-driven successor to
         # the A2 probe. It uses the existing monitor/ResearchQueue/Executive
         # wake path and still returns before objective or mission admission.
@@ -1246,7 +1410,7 @@ def run_cycle(
         # unified experimental cycle replaces the split selection path.
         # Flag OFF (default) keeps v3_loop WAIT + executive selection
         # exactly as before — no other code changes.
-        if config.discovery_cycle_enabled:
+        if config.discovery_cycle_enabled and not campaign_dispatchable_mission_ids:
             from functools import partial
             from ..v3_cycle import run_discovery_cycle
             from ..v3_loop import observe_for_cycle
@@ -1285,24 +1449,66 @@ def run_cycle(
                         source_type="supervisor", source_id=instance_id,
                         idempotency_key=f"worker_loop.executive_authority_sync_blocked:{loop_id}",
                     ))
-            mission_id = initiative_mission_id or _select_contract(database)
+            preferred_mission_ids = campaign_dispatchable_mission_ids
+            if initiative_mission_id is not None:
+                preferred_mission_ids += (initiative_mission_id,)
+            mission_id = _select_contract(
+                database,
+                excluded_mission_ids=campaign_blocked_mission_ids,
+                preferred_mission_ids=preferred_mission_ids,
+            )
             if mission_id is None and getattr(config, "continuous_enabled", False):
-                mission_id = _maybe_continuous_cycle(database, config, paths=paths, loop_id=loop_id, instance_id=instance_id)
+                mission_id = _maybe_continuous_cycle(
+                    database,
+                    config,
+                    paths=paths,
+                    loop_id=loop_id,
+                    instance_id=instance_id,
+                    excluded_objective_ids=campaign_objective_ids,
+                )
             if mission_id is None and config.executive_autonomy_enabled:
                 mission_id = _maybe_executive_autonomy(
                     database, config, paths=paths,
-                    loop_id=loop_id, instance_id=instance_id)
+                    loop_id=loop_id, instance_id=instance_id,
+                    excluded_objective_ids=campaign_objective_ids)
             if mission_id is None and config.executive_selection_enabled:
                 mission_id = _maybe_executive_select(
                     database, config, loop_id=loop_id, instance_id=instance_id)
             if mission_id is None and config.portfolio_selection_enabled:
                 mission_id = _maybe_portfolio_select(
-                    database, config, loop_id=loop_id, instance_id=instance_id)
+                    database,
+                    config,
+                    loop_id=loop_id,
+                    instance_id=instance_id,
+                    excluded_mission_ids=campaign_blocked_mission_ids,
+                )
+        # Discovery-cycle and other selector branches can also return a
+        # mission.  Apply the campaign guard once at the common choke point so
+        # a blocked child can never bypass STOP/wait/dependency/replan policy.
+        if mission_id is not None and campaign_runtime_active:
+            from ..executive.campaigns import campaign_blocked_mission_ids
+            if str(mission_id) in set(campaign_blocked_mission_ids(database)):
+                database.append(Event.create(
+                    "worker_loop.campaign_dispatch_blocked",
+                    {
+                        "loop_id": loop_id,
+                        "instance_id": instance_id,
+                        "mission_id": str(mission_id),
+                        "reason": "campaign child is waiting, stopped, incomplete, or awaiting replan",
+                    },
+                    source_type="supervisor", source_id=instance_id,
+                    idempotency_key=(
+                        f"worker_loop.campaign_dispatch_blocked:{loop_id}"),
+                ))
+                mission_id = None
         if mission_id is None:
-            return _waiting_report(
+            waiting_report = _waiting_report(
                 database, loop_id=loop_id, instance_id=instance_id,
                 reason="no dispatchable mission has an authoritative executable contract",
             )
+            if campaign_resume_payload is not None:
+                waiting_report["campaign_resume"] = campaign_resume_payload
+            return waiting_report
         _end_waiting_episode(
             database, loop_id=loop_id, instance_id=instance_id)
         try:
@@ -1507,7 +1713,7 @@ def run_cycle(
             reconcile_mission_outcome(
                 database, mission_id=mission_id,
                 source_id=f"worker-loop:{instance_id}")
-        return {
+        result = {
             "loop_id": loop_id,
             "outcome": outcome.outcome,
             "mission_id": mission_id,
@@ -1516,6 +1722,9 @@ def run_cycle(
             "verdict_id": outcome.verdict_id,
             "reason": outcome.reason,
         }
+        if campaign_resume_payload is not None:
+            result["campaign_resume"] = campaign_resume_payload
+        return result
     finally:
         leases.release(LOOP_LEASE_KEY, instance_id)
 
