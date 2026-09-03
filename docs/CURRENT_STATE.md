@@ -11,7 +11,7 @@ The A3 bridge is integrated and the candidate-neutral A3/A4 runner is ready;
 real A3, immediate A4, and the 48-hour elapsed gate are still pending at this
 documentation boundary. V10 remains live and unchanged.
 
-DOCUMENTATION STATE BASE SHA: `6599a206a989222fcc58444500a9f4492c9d75e2`
+DOCUMENTATION STATE BASE SHA: `5f8646289c8d4cdc8ddb27bc688ce9141d8cc973`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`.
@@ -44,7 +44,7 @@ OUTCOME-TRUTH INPUT SHA:      02e62a85a50bd642a1abdc6e415a2215ac5d2689
 AUTHORITATIVE V11 INPUT:      ae9ac06b6f9174c810b0e658daaf81c7b683ae8b
 SOURCE FREEZE:                f7cee034384ac191dfbac9f910dd6f6d3eb520d4
 A3/A4 HARNESS INPUT:          3716294bf7d104f03e1fa2d990b2a28654ada1cb
-EXIT-PROOF SOURCE SHA:        6599a206a989222fcc58444500a9f4492c9d75e2
+EXIT-PROOF SOURCE SHA:        5f8646289c8d4cdc8ddb27bc688ce9141d8cc973
 TRAINING-TIER POLICY:         OWNER_AUTHORIZED / CANONICAL CONFIG ENABLED
 ```
 
@@ -54,7 +54,7 @@ The isolated proof candidate is branch `candidate/v11-exit-proof-20260903` in
 `C:\temp\JARVIS-V11-Exit-Proof-20260903`. It starts from the exact overnight
 candidate `ae9ac06b6f9174c810b0e658daaf81c7b683ae8b`, retains source freeze
 `f7cee034384ac191dfbac9f910dd6f6d3eb520d4`, and remains schema v40. Exit-proof
-implementation source is `6599a206a989222fcc58444500a9f4492c9d75e2`;
+implementation source is `5f8646289c8d4cdc8ddb27bc688ce9141d8cc973`;
 the final proof SHA is the clean docs-only commit immediately following that
 source, as enforced by `scripts/doc_staleness_check.py`.
 
@@ -93,6 +93,14 @@ candidate-neutral real driver, immediate six-point fault campaign, durable
 post-candidate and post-selection recovery, hard-zero duplicate and false-
 success assertions, and the separately guarded `--allow-48h` runner. Full
 fault-injection and elapsed proving remains `PENDING/NOT_TESTED` at this freeze.
+
+The first real A3 attempt against proof SHA `cb85fa8a4717fbed4866b18d6c745fd3dbd23381`
+correctly ended `BLOCKED`: the observer treated TODO text inside a Python test
+fixture string as work, and the real provider returned HTTP 500 after its three
+bounded retries. It created no effect or accepted completion. The observer now
+uses Python comment tokens and anchored markers, and the pinned Ruff receipt
+truthfully establishes `cap.system.diagnose`; all affected proof restarts from
+the new exact SHA.
 
 Accepted final mission outcomes now feed calibration, World Intelligence, and
 Tier-C memory exactly once by outcome identity. Failed and blocked outcomes
