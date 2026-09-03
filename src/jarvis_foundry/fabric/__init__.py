@@ -2,14 +2,19 @@
 
 from .adapter import FabricRoleAdapter, resolve_fabric_action, try_fabric_dispatch
 from .catalog import (
+    capability_registration,
     capability_metadata,
+    capability_trust,
+    catalog_truth_snapshot,
     catalog_snapshot,
+    disable_capability,
     get_spec,
     listed_capabilities,
     observed_readiness,
     record_gap,
     record_outcome,
     register_capability,
+    record_probation_block,
     reliability,
 )
 from .compose import run_workflow
@@ -33,8 +38,15 @@ from .expansion import (
     acquire_hash_capability,
 )
 from .loop import execute_action, run_intent, seed_builtins, select_capability, try_acquire
+from .installed_adapter import (
+    ADAPTER_PROTOCOL,
+    AdapterInvocationError,
+    probe_installed_adapter,
+    run_installed_adapter,
+)
 from .model import (
     ActionResult,
+    CapabilityTrust,
     CapabilitySpec,
     ClaimOutcome,
     GapKind,
@@ -46,14 +58,27 @@ from .model import (
     VerifyVerdict,
     WorkflowStep,
 )
+from .trial import (
+    CapabilityTrialPipeline,
+    DependencyPin,
+    SelectedCapabilitySolution,
+    TrialCase,
+    TrialError,
+    TrialResult,
+    TrialStatus,
+    trial_record,
+)
 from .providers import route_provider, unattended_mode_for
 from .spine import execute_for_spine
 
 __all__ = [
     "ActionResult",
+    "ADAPTER_PROTOCOL",
+    "AdapterInvocationError",
     "AdapterReceipt",
     "AdapterRequest",
     "CapabilitySpec",
+    "CapabilityTrust",
     "CapabilityMetadata",
     "ClaimOutcome",
     "ContractError",
@@ -73,9 +98,20 @@ __all__ = [
     "VerifyVerdict",
     "WorkflowStep",
     "acquire_hash_capability",
+    "CapabilityTrialPipeline",
+    "DependencyPin",
+    "SelectedCapabilitySolution",
+    "TrialCase",
+    "TrialError",
+    "TrialResult",
+    "TrialStatus",
     "build_adapter_request",
+    "capability_registration",
     "capability_metadata",
+    "capability_trust",
+    "catalog_truth_snapshot",
     "catalog_snapshot",
+    "disable_capability",
     "dispatch",
     "execute_action",
     "execute_for_spine",
@@ -86,6 +122,7 @@ __all__ = [
     "observed_readiness",
     "record_gap",
     "record_outcome",
+    "record_probation_block",
     "register_capability",
     "reliability",
     "resolve_fabric_action",
@@ -94,8 +131,11 @@ __all__ = [
     "run_intent",
     "run_workflow",
     "normalize_receipt",
+    "probe_installed_adapter",
+    "run_installed_adapter",
     "seed_builtins",
     "select_capability",
     "try_acquire",
+    "trial_record",
     "unattended_mode_for",
 ]

@@ -31,6 +31,21 @@ class Readiness(StrEnum):
     MISSING = "MISSING"
 
 
+class CapabilityTrust(StrEnum):
+    """Catalog trust for a capability registration.
+
+    ``ESTABLISHED`` is the legacy/default state for capabilities that were
+    already governed by Fabric.  A self-expanded capability is deliberately
+    registered as ``PROBATION`` until a separately authorized promotion
+    decision exists.  Trust is distinct from operational readiness: a
+    probation capability may be READY for a bounded read, while still being
+    forbidden from irreversible effects.
+    """
+
+    ESTABLISHED = "ESTABLISHED"
+    PROBATION = "PROBATION"
+
+
 class UnattendedMode(StrEnum):
     ALLOWED = "ALLOWED"
     INTERACTIVE_REQUIRED = "INTERACTIVE_REQUIRED"

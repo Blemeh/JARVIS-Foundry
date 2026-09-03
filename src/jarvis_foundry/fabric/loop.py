@@ -9,10 +9,13 @@ from ..control.broker import emergency_stop_reason
 from ..database import FoundryDatabase
 from .catalog import (
     catalog_snapshot,
+    capability_metadata,
+    capability_trust,
     get_spec,
     observed_readiness,
     record_gap,
     record_outcome,
+    record_probation_block,
     register_capability,
     reliability,
     specs_for_action,
@@ -21,6 +24,7 @@ from .executors import ExecutorContext, dispatch
 from .expansion import acquire_hash_capability
 from .model import (
     ActionResult,
+    CapabilityTrust,
     CapabilitySpec,
     ClaimOutcome,
     GapKind,
@@ -41,6 +45,7 @@ from .contracts import (
     PostconditionStatus,
     build_adapter_request,
     evaluate_postconditions,
+    metadata_for_spec,
     normalize_receipt,
 )
 from ..effects import execute_fabric_effect
@@ -736,6 +741,30 @@ def execute_action(
             verified=VerifyVerdict.UNKNOWN,
             note="selected capability is missing from the Fabric catalog",
         )
+    metadata = capability_metadata(database, spec.capability_id)
+    if metadata is None:
+        metadata = metadata_for_spec(spec)
+    # A self-expanded registration is usable for bounded/read-only work while
+    # it is in PROBATION, but it can never cross the irreversible/high-cost
+    # boundary.  This check happens before request/effect creation so a
+    # refusal cannot leave a journal claim or a fabricated outcome behind.
+    if (
+        capability_trust(database, spec.capability_id) is CapabilityTrust.PROBATION
+        and metadata.effect_class is EffectClass.IRREVERSIBLE_OR_HIGH_COST
+    ):
+        record_probation_block(
+            database,
+            spec.capability_id,
+            action_kind=action_kind,
+            effect_class=metadata.effect_class.value,
+        )
+        return ActionResult(
+            capability_id=spec.capability_id,
+            action_kind=action_kind,
+            claimed=ClaimOutcome.BLOCKED,
+            verified=VerifyVerdict.UNKNOWN,
+            note="PROBATION capability cannot perform irreversible effects",
+        )
     request: AdapterRequest | None = None
     request = build_adapter_request(
         mission_id=intent.task_id,
@@ -760,6 +789,15 @@ def execute_action(
     def perform() -> Mapping[str, Any]:
         if claim_override is not None:
             return dict(claim_override)
+        if spec.kind is Kind.ADAPTER:
+            from .installed_adapter import run_installed_adapter
+
+            return run_installed_adapter(
+                spec.executor,
+                payload,
+                allowed_root=ctx.owned_root,
+                timeout_s=float(payload.get("adapter_timeout_s") or 120.0),
+            )
         if spec.kind is Kind.SCRIPT:
             from .expansion import load_candidate
 
