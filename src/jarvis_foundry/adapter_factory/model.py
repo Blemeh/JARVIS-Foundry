@@ -39,6 +39,30 @@ class SolutionClass(StrEnum):
     JARVIS_COMPONENT = "jarvis_component"
 
 
+_SOLUTION_CLASS_ALIASES = {
+    "api": SolutionClass.HTTP_API,
+    "cli": SolutionClass.CLI,
+    "http": SolutionClass.HTTP_API,
+    "http_api": SolutionClass.HTTP_API,
+    "jarvis": SolutionClass.JARVIS_COMPONENT,
+    "jarvis_component": SolutionClass.JARVIS_COMPONENT,
+    "mcp": SolutionClass.MCP_STDIO,
+    "mcp_stdio": SolutionClass.MCP_STDIO,
+    "python": SolutionClass.PYTHON_SDK,
+    "python_sdk": SolutionClass.PYTHON_SDK,
+    "sdk": SolutionClass.PYTHON_SDK,
+    "source": SolutionClass.JARVIS_COMPONENT,
+}
+
+
+def _solution_class(value: Any) -> SolutionClass:
+    normalized = str(value or "").strip().lower().replace("-", "_")
+    try:
+        return _SOLUTION_CLASS_ALIASES[normalized]
+    except KeyError as error:
+        raise AdapterFactoryError(f"unsupported solution class {value!r}") from error
+
+
 class AdapterShape(StrEnum):
     CONNECTOR = "connector"
     WORKER = "worker"
@@ -531,7 +555,7 @@ class SelectedSolutionDescriptor:
         return cls(
             adapter_id=value.get("adapter_id"),
             solution_id=value.get("solution_id") or value.get("candidate_id"),
-            solution_class=SolutionClass(value.get("solution_class") or value.get("solution_kind")),
+            solution_class=_solution_class(value.get("solution_class") or value.get("solution_kind")),
             solution_name=value.get("solution_name") or value.get("name"),
             solution_version=str(value.get("solution_version") or value.get("version") or "unknown"),
             locator=value.get("locator"),

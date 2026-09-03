@@ -625,13 +625,22 @@ def child_main(descriptor_path: str | Path, argv: list[str] | None = None) -> in
     return 0
 
 
-def _subprocess_environment() -> dict[str, str]:
+def _subprocess_environment(python_executable: str | Path) -> dict[str, str]:
     env = sanitized_env()
     for name in tuple(env):
         upper = name.upper()
         if upper.endswith(("_API_KEY", "_TOKEN", "_SECRET", "_PASSWORD")):
             env.pop(name, None)
     env["PYTHONNOUSERSITE"] = "1"
+    requested = Path(python_executable).expanduser().resolve()
+    if requested == Path(sys.executable).resolve():
+        # Development/tests must bind children to this exact worktree rather
+        # than an unrelated editable JARVIS installation in the user site.
+        env["PYTHONPATH"] = str(Path(__file__).resolve().parents[2])
+    else:
+        # An explicitly supplied interpreter is an isolated installation;
+        # never let the caller's worktree PYTHONPATH leak into it.
+        env.pop("PYTHONPATH", None)
     return env
 
 
@@ -651,7 +660,7 @@ def _run_adapter_process(
     cancel_check: Callable[[], bool] | None = None,
 ) -> dict[str, Any]:
     kwargs: dict[str, Any] = headless_popen_kwargs(
-        cwd=str(Path(command[1]).resolve().parent), env=_subprocess_environment(),
+        cwd=str(Path(command[1]).resolve().parent), env=_subprocess_environment(command[0]),
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         text=True,
     )

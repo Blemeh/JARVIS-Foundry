@@ -5,11 +5,14 @@ import hashlib
 import inspect
 import json
 import os
+import base64
 import shutil
 import subprocess
 import sys
 import tempfile
+import tomllib
 import venv
+import zipfile
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -331,6 +334,24 @@ class AdapterFactory:
                 "capabilities": fabric_records,
                 "catalog_mutated": False,
             })
+            _write_json(staging / "trial-admission.json", {
+                "contract_version": "jarvis.v12.adapter-trial-admission.v1",
+                "adapter_id": descriptor.adapter_id,
+                "artifact_id": descriptor.artifact_id,
+                "descriptor_hash": descriptor.descriptor_hash,
+                "adapter_manifest": "adapter-manifest.json",
+                "dependencies": [item.as_dict() for item in descriptor.dependencies],
+                "contract_cases": [
+                    {
+                        "capability_id": capability.capability_id,
+                        "cases": [case.as_dict() for case in capability.contract_cases],
+                    }
+                    for capability in descriptor.capabilities
+                ],
+                "requested_trust": "PROBATION",
+                "registration_owner": "SESSION_7",
+                "registered": False,
+            })
             connector_strategy = "none"
             strategies = {item.reconciliation.strategy for item in descriptor.capabilities}
             if "provider_query" in strategies:
@@ -346,7 +367,10 @@ class AdapterFactory:
                 "capabilities": {item.capability_id: "DISCOVERED" for item in descriptor.capabilities},
                 "retry_policy": {"max_attempts": 1, "backoff_s": []},
                 "target_kinds": [descriptor.solution_class.value],
-                "idempotency_strategy": "provider-key" if any(item.effect_class.value.endswith("EXTERNAL") for item in descriptor.capabilities) else "effect-key",
+                "idempotency_strategy": "provider-key" if any(
+                    item.effect_class.value in {"REVERSIBLE_EXTERNAL", "IRREVERSIBLE_OR_HIGH_COST"}
+                    for item in descriptor.capabilities
+                ) else "effect-key",
                 "reconciliation_strategy": connector_strategy,
                 "supports_cancellation": all(item.cancel_supported for item in descriptor.capabilities),
                 "cost_metadata": {},
@@ -377,6 +401,11 @@ class AdapterFactory:
             tests = staging / "tests"
             tests.mkdir(parents=True, exist_ok=True)
             (tests / "test_contract.py").write_text(_generated_contract_tests(descriptor), encoding="utf-8")
+
+            # Parse generated source without leaving untracked bytecode outside
+            # the manifest's exact file inventory.
+            compile((staging / "adapter.py").read_text(encoding="utf-8"), "adapter.py", "exec")
+            compile((tests / "test_contract.py").read_text(encoding="utf-8"), "test_contract.py", "exec")
 
             files = _artifact_files(staging)
             adapter_hash = files["adapter.py"]
@@ -410,11 +439,6 @@ class AdapterFactory:
                 "trust": "UNADOPTED",
             }
             _write_json(staging / MANIFEST_FILE, manifest)
-            # Compile generated source before making the artifact visible.
-            subprocess.run(
-                [sys.executable, "-m", "py_compile", str(staging / "adapter.py"), str(tests / "test_contract.py")],
-                check=True, capture_output=True, text=True, env=sanitized_env(), **headless_run_kwargs(),
-            )
             os.replace(staging, destination)
         except BaseException:
             shutil.rmtree(staging, ignore_errors=True)
@@ -491,6 +515,64 @@ def _venv_python(root: Path) -> Path:
     return root / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
 
 
+def _wheel_member(path: str, data: bytes) -> tuple[str, bytes, str]:
+    digest = base64.urlsafe_b64encode(hashlib.sha256(data).digest()).decode("ascii").rstrip("=")
+    return path, data, f"sha256={digest},{len(data)}"
+
+
+def _build_candidate_wheel(project_root: Path, wheels: Path) -> Path:
+    """Build the exact pure-Python candidate without a global build backend."""
+
+    pyproject = tomllib.loads((project_root / "pyproject.toml").read_text(encoding="utf-8"))
+    project = pyproject.get("project") or {}
+    if project.get("name") != "jarvis-foundry":
+        raise AdapterFactoryError("isolated install requires the JARVIS Foundry project")
+    version = str(project.get("version") or "").strip()
+    if not version:
+        raise AdapterFactoryError("candidate project version is missing")
+    package_root = project_root / "src" / "jarvis_foundry"
+    if not package_root.is_dir():
+        raise AdapterFactoryError("candidate package source is missing")
+    dist_info = f"jarvis_foundry-{version}.dist-info"
+    members: list[tuple[str, bytes, str]] = []
+    for path in sorted(item for item in package_root.rglob("*") if item.is_file()):
+        if path.suffix in {".pyc", ".pyo"} or "__pycache__" in path.parts:
+            continue
+        arcname = (Path("jarvis_foundry") / path.relative_to(package_root)).as_posix()
+        members.append(_wheel_member(arcname, path.read_bytes()))
+    metadata = "\n".join([
+        "Metadata-Version: 2.4", "Name: jarvis-foundry", f"Version: {version}",
+        "Summary: Durable autonomy kernel and independent supervisor for JARVIS Foundry",
+        "Requires-Python: >=3.13", "", "",
+    ]).encode("utf-8")
+    wheel_metadata = "\n".join([
+        "Wheel-Version: 1.0", "Generator: jarvis-adapter-factory",
+        "Root-Is-Purelib: true", "Tag: py3-none-any", "", "",
+    ]).encode("utf-8")
+    entry_points = "\n".join([
+        "[console_scripts]", "jarvis = jarvis_foundry.cli.main:main",
+        "jarvis-adapter-factory = jarvis_foundry.adapter_factory.cli:main", "",
+    ]).encode("utf-8")
+    members.extend([
+        _wheel_member(f"{dist_info}/METADATA", metadata),
+        _wheel_member(f"{dist_info}/WHEEL", wheel_metadata),
+        _wheel_member(f"{dist_info}/entry_points.txt", entry_points),
+        _wheel_member(f"{dist_info}/top_level.txt", b"jarvis_foundry\n"),
+    ])
+    record_path = f"{dist_info}/RECORD"
+    record = "".join(f'{name},"{digest}"\n' for name, _data, digest in members)
+    record += f"{record_path},,\n"
+    members.append((record_path, record.encode("utf-8"), ""))
+    wheel = wheels / f"jarvis_foundry-{version}-py3-none-any.whl"
+    with zipfile.ZipFile(wheel, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+        for name, data, _digest in sorted(members):
+            info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.external_attr = 0o644 << 16
+            archive.writestr(info, data)
+    return wheel
+
+
 def install_isolated_runtime(
     artifact: AdapterBuildArtifact | str | Path,
     *,
@@ -511,17 +593,7 @@ def install_isolated_runtime(
     wheels.mkdir()
     env = sanitized_env()
     try:
-        built = subprocess.run(
-            [sys.executable, "-m", "pip", "wheel", "--no-deps", "--no-build-isolation", "--wheel-dir", str(wheels), str(Path(project_root).resolve())],
-            capture_output=True, text=True, encoding="utf-8", errors="replace",
-            timeout=300, check=False, env=env, **headless_run_kwargs(),
-        )
-        if built.returncode != 0:
-            raise AdapterFactoryError(f"candidate wheel build failed: {built.stderr[-800:]}")
-        wheel_files = sorted(wheels.glob("jarvis_foundry-*.whl"))
-        if len(wheel_files) != 1:
-            raise AdapterFactoryError("candidate wheel build did not produce exactly one wheel")
-        wheel = wheel_files[0]
+        wheel = _build_candidate_wheel(Path(project_root).resolve(), wheels)
         installed = subprocess.run(
             [str(python), "-m", "pip", "install", "--no-deps", str(wheel)],
             capture_output=True, text=True, encoding="utf-8", errors="replace",

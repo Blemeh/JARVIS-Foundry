@@ -192,7 +192,11 @@ def test_cli_build_probe_typed_receipt_disable_enable_and_remove(tmp_path: Path)
     assert loaded.descriptor_hash == descriptor.descriptor_hash
     assert manifest["registered"] is False
     assert json.loads((root / "fabric-capabilities.json").read_text())["catalog_mutated"] is False
+    admission = json.loads((root / "trial-admission.json").read_text())
+    assert admission["registration_owner"] == "SESSION_7"
+    assert admission["registered"] is False
     assert json.loads((root / "connector-spec.json").read_text())["capabilities"] == {"cap.local.echo": "DISCOVERED"}
+    assert not list(root.rglob("__pycache__"))
     assert probe_artifact(root)["ready"] is True
 
     invoked = invoke_typed_adapter(
@@ -359,3 +363,15 @@ def test_schema_tamper_mutating_authority_and_removal_guards(tmp_path: Path) -> 
     refused = invoke_artifact(external.root, "cap.external.write", {"text": "never"})
     assert refused["claimed"] == "BLOCKED"
     assert refused["error_code"] == "canonical_effect_authority_required"
+    assert json.loads((external.root / "connector-spec.json").read_text())["idempotency_strategy"] == "provider-key"
+
+
+def test_session_6_solution_kind_alias_is_composed_without_selecting_a_solution(tmp_path: Path) -> None:
+    descriptor = _cli_descriptor(tmp_path)
+    raw = descriptor.as_dict()
+    raw.pop("solution_class")
+    raw["solution_kind"] = "sdk"
+    raw["candidate_id"] = raw.pop("solution_id")
+    loaded = SelectedSolutionDescriptor.from_mapping(raw)
+    assert loaded.solution_class is SolutionClass.PYTHON_SDK
+    assert loaded.solution_id == descriptor.solution_id
