@@ -1,8 +1,8 @@
 """Bounded GitHub write transport behind the existing ``github_write`` seam.
 
-The read-only GitHub connector remains the authority for research.  This
-module owns only the narrow issue/pull-request REST transport and the
-in-memory request lifecycle needed to make an ambiguous response safe:
+The read-only GitHub connector remains the authority for research. This module
+owns the narrow issue/pull-request REST transport and extends it with an
+owner-bound branch/push/PR driver over the canonical effect journal:
 
 * the effect key is derived from action, target, and canonical payload;
 * the provider id is retained separately from the human URL;
@@ -199,7 +199,12 @@ def gh_api_write_transport(
     stderr = getattr(result, "stderr", b"") or b""
     if result.returncode != 0:
         message = _safe_transport_message(stderr)
-        raise GitHubWriteTransportError(_classify_cli_error(message), message)
+        code = _classify_cli_error(message)
+        raise GitHubWriteTransportError(
+            code,
+            message,
+            ambiguous=code == "transport_error" or code.startswith("http_5"),
+        )
     stdout = getattr(result, "stdout", b"") or b""
     if isinstance(stdout, str):
         stdout = stdout.encode("utf-8")
@@ -506,26 +511,36 @@ class GitHubWriteAdapter:
                 error_code="malformed_response",
             )
         if not 200 <= int(status) < 300:
-            self._pending.pop(key, None)
-            return self._base_result(
+            ambiguous = int(status) >= 500
+            if not ambiguous:
+                self._pending.pop(key, None)
+            result = self._base_result(
                 request,
-                claimed="FAILED",
+                claimed="UNKNOWN" if ambiguous else "FAILED",
                 status=int(status),
                 error_code=f"http_{status}",
                 response_hash=hashlib.sha256(bytes(raw)).hexdigest(),
             )
+            result["reconciliation_required"] = ambiguous
+            return result
         document = self._raw_document(bytes(raw))
         if not isinstance(document, Mapping):
-            self._pending.pop(key, None)
-            return self._base_result(
+            result = self._base_result(
                 request,
-                claimed="FAILED",
+                claimed="UNKNOWN",
                 status=int(status),
                 error_code="malformed_response",
                 response_hash=hashlib.sha256(bytes(raw)).hexdigest(),
             )
+            result["reconciliation_required"] = True
+            return result
         self._pending.pop(key, None)
         result = self._from_document(request, document, status=int(status), raw=bytes(raw))
+        if result.get("error_code") == "missing_provider_id":
+            result["claimed"] = "UNKNOWN"
+            result["reconciliation_required"] = True
+            self._pending[key] = request
+            return result
         if result["claimed"] == "COMPLETED":
             self._completed[key] = dict(result)
         return result
@@ -710,21 +725,31 @@ class GitHubRepositoryAuthorization:
         object.__setattr__(self, "allowed_base_branches", bases)
         object.__setattr__(self, "capability_trust", str(self.capability_trust).upper())
 
-    def refusal(
+    def scope_refusal(
         self, *, repository: str, remote: str, base: str,
     ) -> str | None:
-        if self.capability_trust == "PROBATION":
-            return "probation_capability_irreversible_effect_forbidden"
-        if not self.owner_authorized:
-            return "owner_authorization_required"
-        if not self.dispatch_enabled:
-            return "github_writes_disabled"
         if repository.casefold() != self.repository.casefold():
             return "repository_not_authorized"
         if str(remote) != self.remote:
             return "remote_not_authorized"
         if base not in self.allowed_base_branches:
             return "base_branch_not_authorized"
+        return None
+
+    def refusal(
+        self, *, repository: str, remote: str, base: str,
+    ) -> str | None:
+        scope = self.scope_refusal(
+            repository=repository, remote=remote, base=base,
+        )
+        if scope:
+            return scope
+        if self.capability_trust == "PROBATION":
+            return "probation_capability_irreversible_effect_forbidden"
+        if not self.owner_authorized:
+            return "owner_authorization_required"
+        if not self.dispatch_enabled:
+            return "github_writes_disabled"
         return None
 
 
@@ -744,6 +769,7 @@ class GitHubPullRequestPlan:
     branch_effect_id: str
     push_effect_id: str
     pull_request_effect_id: str
+    authorization_id: str | None = None
 
     @classmethod
     def build(
@@ -757,6 +783,7 @@ class GitHubPullRequestPlan:
         title: str,
         body: str = "",
         effect_id: str | None = None,
+        authorization_id: str | None = None,
     ) -> "GitHubPullRequestPlan":
         repository = f"{str(owner).strip()}/{str(repo).strip()}"
         if not _REPOSITORY.fullmatch(repository):
@@ -826,6 +853,9 @@ class GitHubPullRequestPlan:
             branch_effect_id=branch_effect,
             push_effect_id=push_effect,
             pull_request_effect_id=str(root_effect),
+            authorization_id=(
+                str(authorization_id).strip() if authorization_id else None
+            ),
         )
 
 
@@ -885,9 +915,16 @@ class GitHubPullRequestEffectDriver:
         except subprocess.TimeoutExpired as error:
             raise TimeoutError("GitHub branch push timed out") from error
         if result.returncode != 0:
-            raise GitHubWriteTransportError(
-                "push_rejected",
-                redact_text(result.stderr.strip() or "git push failed"),
+            message = redact_text(result.stderr.strip() or "git push failed")
+            lowered = message.lower()
+            definite_rejection = any(marker in lowered for marker in (
+                "[rejected]", "non-fast-forward", "permission denied",
+                "authentication failed", "repository not found",
+            ))
+            if definite_rejection:
+                raise GitHubWriteTransportError("push_rejected", message)
+            raise TimeoutError(
+                "GitHub branch push ended without a definitive provider response"
             )
 
     @staticmethod
@@ -946,6 +983,7 @@ class GitHubPullRequestEffectDriver:
                 "intent_id": plan.intent_id,
                 "branch": plan.branch,
                 "head_sha": plan.head_sha,
+                "authorization_id": plan.authorization_id,
             },
             perform=perform,
             stop_check=lambda: self._stopped(stop_path, mission_id),
@@ -1018,6 +1056,7 @@ class GitHubPullRequestEffectDriver:
             acceptance_evidence={
                 "intent_id": plan.intent_id,
                 "criterion": "remote branch resolves to exact head SHA",
+                "authorization_id": plan.authorization_id,
             },
             reconciled=reconciled,
         )
@@ -1027,6 +1066,17 @@ class GitHubPullRequestEffectDriver:
         *, stop_path: str | None, mission_id: str | None,
     ) -> dict[str, Any]:
         state = effect_state(self.database, plan.push_effect_id)
+        if state.get("status") == STARTED and state.get("claim_active"):
+            return {
+                "claimed": "UNKNOWN",
+                "performed": False,
+                "action_key": plan.push_effect_id,
+                "journal_state": STARTED,
+                "intent_id": plan.intent_id,
+                "branch": plan.branch,
+                "reconciliation_required": True,
+                "error_code": "effect_claim_active",
+            }
         if state.get("status") == STARTED:
             freeze_effect(
                 self.database, plan.push_effect_id,
@@ -1102,6 +1152,7 @@ class GitHubPullRequestEffectDriver:
                 "repository": f"{plan.owner}/{plan.repo}",
                 "branch": plan.branch,
                 "head_sha": plan.head_sha,
+                "authorization_id": plan.authorization_id,
             },
             perform=perform,
             stop_check=lambda: self._stopped(stop_path, mission_id),
@@ -1157,6 +1208,7 @@ class GitHubPullRequestEffectDriver:
             acceptance_evidence={
                 "intent_id": plan.intent_id,
                 "criterion": "pull request fields independently match intent",
+                "authorization_id": plan.authorization_id,
             },
             reconciled=reconciled,
         )
@@ -1168,6 +1220,16 @@ class GitHubPullRequestEffectDriver:
         endpoint = f"/repos/{plan.owner}/{plan.repo}/pulls"
         payload = self._pr_payload(plan)
         state = effect_state(self.database, plan.pull_request_effect_id)
+        if state.get("status") == STARTED and state.get("claim_active"):
+            return {
+                "claimed": "UNKNOWN",
+                "performed": False,
+                "action_key": plan.pull_request_effect_id,
+                "journal_state": STARTED,
+                "intent_id": plan.intent_id,
+                "reconciliation_required": True,
+                "error_code": "effect_claim_active",
+            }
         if state.get("status") == STARTED:
             freeze_effect(
                 self.database, plan.pull_request_effect_id,
@@ -1267,20 +1329,34 @@ class GitHubPullRequestEffectDriver:
             title=title,
             body=body,
             effect_id=effect_id,
+            authorization_id=authorization.authorization_id,
         )
-        refusal = authorization.refusal(
-            repository=f"{plan.owner}/{plan.repo}",
-            remote=plan.remote,
-            base=plan.base,
-        )
-        if refusal:
-            return self._blocked(plan, refusal)
         push_state = effect_state(self.database, plan.push_effect_id)
         pr_state = effect_state(self.database, plan.pull_request_effect_id)
         pending_external = any(
             state.get("status") in {STARTED, COMPLETED, FROZEN}
             for state in (push_state, pr_state)
         )
+        refusal = (
+            authorization.scope_refusal(
+                repository=f"{plan.owner}/{plan.repo}",
+                remote=plan.remote,
+                base=plan.base,
+            )
+            if pending_external
+            else authorization.refusal(
+                repository=f"{plan.owner}/{plan.repo}",
+                remote=plan.remote,
+                base=plan.base,
+            )
+        )
+        if refusal:
+            return self._blocked(plan, refusal)
+        repository_key = f"{plan.owner}/{plan.repo}".casefold()
+        if not pending_external and not self.adapter.dispatch_enabled:
+            return self._blocked(plan, "github_writes_disabled")
+        if repository_key not in self.adapter.authorized_repositories:
+            return self._blocked(plan, "repository_not_authorized")
         if self._stopped(stop_path, mission_id) and not pending_external:
             return self._blocked(plan, "stop_requested")
 
@@ -1331,10 +1407,30 @@ class GitHubPullRequestEffectDriver:
                 "branch_effect": branch,
                 "push_effect": pushed,
             }
-        if self._stopped(stop_path, mission_id):
-            pr_state = effect_state(
-                self.database, plan.pull_request_effect_id,
+        pr_state = effect_state(self.database, plan.pull_request_effect_id)
+        if pr_state.get("status") not in {STARTED, COMPLETED, FROZEN}:
+            dispatch_refusal = authorization.refusal(
+                repository=f"{plan.owner}/{plan.repo}",
+                remote=plan.remote,
+                base=plan.base,
             )
+            if dispatch_refusal:
+                return {
+                    **self._blocked(plan, dispatch_refusal),
+                    "stage": "before_pull_request",
+                    "external_effects": 1,
+                    "branch_effect": branch,
+                    "push_effect": pushed,
+                }
+            if not self.adapter.dispatch_enabled:
+                return {
+                    **self._blocked(plan, "github_writes_disabled"),
+                    "stage": "before_pull_request",
+                    "external_effects": 1,
+                    "branch_effect": branch,
+                    "push_effect": pushed,
+                }
+        if self._stopped(stop_path, mission_id):
             if pr_state.get("status") in {STARTED, COMPLETED, FROZEN}:
                 reconciled_pr = self._pull_request(
                     plan, stop_path=stop_path, mission_id=mission_id,
@@ -1381,6 +1477,7 @@ __all__ = [
     "GitHubPullRequestEffectDriver",
     "GitHubPullRequestPlan",
     "GitHubRepositoryAuthorization",
+    "GitPushTransport",
     "GitHubWriteAdapter",
     "GitHubWriteError",
     "GitHubWriteRequest",

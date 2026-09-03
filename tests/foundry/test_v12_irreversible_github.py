@@ -73,8 +73,11 @@ def _authorization(
 
 
 class FakeGitHub:
-    def __init__(self, *, ambiguous_create: bool = False) -> None:
+    def __init__(
+        self, *, ambiguous_create: bool = False, response_status: int = 201,
+    ) -> None:
         self.ambiguous_create = ambiguous_create
+        self.response_status = response_status
         self.write_calls = 0
         self.read_calls: list[str] = []
         self.documents: list[dict[str, Any]] = []
@@ -96,6 +99,8 @@ class FakeGitHub:
             raise GitHubWriteTransportError(
                 "timeout", "fixture timeout after provider accepted PR", ambiguous=True,
             )
+        if self.response_status != 201:
+            return self.response_status, b'{"message":"fixture uncertain response"}'
         return 201, json.dumps(document).encode("utf-8")
 
     def read(self, endpoint: str) -> tuple[int, bytes]:
@@ -238,6 +243,13 @@ def test_branch_push_pr_readback_acceptance_and_restart_replay(tmp_path: Path) -
     assert replay["performed"] is False
     assert pushes == provider.write_calls == 1
 
+    database.rebuild_projections()
+    rebuilt = _publish(restarted, _authorization(remote), worktree, remote, head)
+    assert rebuilt["claimed"] == "COMPLETED"
+    assert rebuilt["replayed"] is True
+    assert rebuilt["performed"] is False
+    assert pushes == provider.write_calls == 1
+
 
 def test_stop_after_ambiguous_push_reconciles_without_pr_or_repush(tmp_path: Path) -> None:
     database = _db(tmp_path)
@@ -279,6 +291,22 @@ def test_stop_after_ambiguous_push_reconciles_without_pr_or_repush(tmp_path: Pat
     assert pushes == 1
     assert provider.write_calls == 0
 
+    stop.unlink()
+    revoked = _publish(
+        driver,
+        _authorization(
+            remote, enabled=False, owner_authorized=False, trust="PROBATION",
+        ),
+        worktree,
+        remote,
+        head,
+    )
+    assert revoked["claimed"] == "BLOCKED"
+    assert revoked["stage"] == "before_pull_request"
+    assert revoked["error_code"] == "probation_capability_irreversible_effect_forbidden"
+    assert pushes == 1
+    assert provider.write_calls == 0
+
 
 def test_stop_after_ambiguous_pr_reconciles_and_never_blind_retries(tmp_path: Path) -> None:
     database = _db(tmp_path)
@@ -302,7 +330,9 @@ def test_stop_after_ambiguous_pr_reconciles_and_never_blind_retries(tmp_path: Pa
     )
     reconciled = _publish(
         restarted,
-        _authorization(remote),
+        _authorization(
+            remote, enabled=False, owner_authorized=False, trust="PROBATION",
+        ),
         worktree,
         remote,
         head,
@@ -315,3 +345,24 @@ def test_stop_after_ambiguous_pr_reconciles_and_never_blind_retries(tmp_path: Pa
     assert reconciled["number"] == 41
     assert provider.write_calls == 1
 
+
+def test_github_5xx_after_acceptance_is_unknown_then_reconciled(tmp_path: Path) -> None:
+    database = _db(tmp_path)
+    owned, worktree, remote, head = _repo(tmp_path)
+    provider = FakeGitHub(response_status=503)
+    driver = GitHubPullRequestEffectDriver(
+        database, owned_root=owned, adapter=_adapter(provider),
+    )
+
+    first = _publish(driver, _authorization(remote), worktree, remote, head)
+    assert first["claimed"] == "UNKNOWN"
+    assert first["journal_state"] == "FROZEN"
+    assert first["error_code"] == "http_503"
+    assert provider.write_calls == 1
+
+    reconciled = _publish(driver, _authorization(remote), worktree, remote, head)
+    assert reconciled["claimed"] == "COMPLETED"
+    assert reconciled["reconciled"] is True
+    assert reconciled["performed"] is False
+    assert reconciled["number"] == 41
+    assert provider.write_calls == 1

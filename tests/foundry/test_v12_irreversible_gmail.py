@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import base64
 import json
+import threading
 from email import policy
 from email.parser import BytesParser
 from pathlib import Path
@@ -28,6 +29,7 @@ from jarvis_foundry.events import canonical_json
 OWNER = "owner@example.com"
 TOKEN = "synthetic-v12-token-never-persist"
 SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send"
+READ_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
 
 
 def _db(tmp_path: Path) -> FoundryDatabase:
@@ -36,13 +38,15 @@ def _db(tmp_path: Path) -> FoundryDatabase:
     return database
 
 
-def _credential() -> CredentialHandle:
+def _credential(
+    scopes: tuple[str, ...] = (SEND_SCOPE, READ_SCOPE),
+) -> CredentialHandle:
     return CredentialHandle(
         reference="cred:gmail:v12-fixture",
         provider="gmail",
         account_identity=OWNER,
         auth_type="oauth2",
-        observed_scopes=(SEND_SCOPE,),
+        observed_scopes=scopes,
         state="READY",
         version=1,
     )
@@ -53,7 +57,7 @@ def _identity() -> ProviderIdentity:
         provider="gmail",
         account_identity=OWNER,
         provider_account_id=OWNER,
-        observed_scopes=(SEND_SCOPE,),
+        observed_scopes=(SEND_SCOPE, READ_SCOPE),
         metadata={"fixture": True},
     )
 
@@ -75,8 +79,11 @@ def _authorization(
 
 
 class FakeGmail:
-    def __init__(self, *, ambiguous_send: bool = False) -> None:
+    def __init__(
+        self, *, ambiguous_send: bool = False, readback_error_once: bool = False,
+    ) -> None:
         self.ambiguous_send = ambiguous_send
+        self.readback_error_once = readback_error_once
         self.send_calls = 0
         self.read_calls = 0
         self.messages: dict[str, dict[str, Any]] = {}
@@ -131,6 +138,13 @@ class FakeGmail:
             )
         marker = "/users/me/messages/"
         if marker in url:
+            if self.readback_error_once:
+                self.readback_error_once = False
+                raise GmailApiError(
+                    "fixture readback transport failed",
+                    code="transport_error",
+                    transient=True,
+                )
             provider_id = url.split(marker, 1)[1].split("?", 1)[0]
             item = self.messages.get(provider_id)
             if item is None:
@@ -168,10 +182,11 @@ def _send(
     authorization: GmailSendAuthorization,
     *,
     stop_path: Path | None = None,
+    credential: CredentialHandle | None = None,
 ) -> dict[str, Any]:
     return driver.send(
         authorization=authorization,
-        credential=_credential(),
+        credential=credential or _credential(),
         identity=_identity(),
         recipient=OWNER,
         subject="V12 exact effect",
@@ -217,9 +232,15 @@ def test_disabled_probation_and_stop_refuse_before_claim_or_dispatch(tmp_path: P
         _authorization(),
         stop_path=stop,
     )
+    missing_readback_scope = _send(
+        GmailSendEffectDriver(database, enabled_provider),
+        _authorization(),
+        credential=_credential((SEND_SCOPE,)),
+    )
     assert disabled["error_code"] == "gmail_sends_disabled"
     assert probation["error_code"] == "probation_capability_irreversible_effect_forbidden"
     assert stopped["error_code"] == "stop_requested"
+    assert missing_readback_scope["error_code"] == "readback_scope_not_observed"
     assert transport.send_calls == 0
     assert not [
         event for event in database.events()
@@ -273,6 +294,15 @@ def test_gmail_receipt_readback_acceptance_and_restart_replay(tmp_path: Path) ->
     assert replay_enabled["performed"] is False
     assert transport.send_calls == 1
 
+    database.rebuild_projections()
+    rebuilt = _send(
+        GmailSendEffectDriver(database, provider), _authorization(),
+    )
+    assert rebuilt["claimed"] == "COMPLETED"
+    assert rebuilt["replayed"] is True
+    assert rebuilt["performed"] is False
+    assert transport.send_calls == 1
+
     serialized = canonical_json([event.payload for event in database.events()])
     assert TOKEN not in serialized
     assert "fixture-only owner message" not in serialized
@@ -291,7 +321,13 @@ def test_stop_after_ambiguous_send_reconciles_without_retry(tmp_path: Path) -> N
 
     stop = tmp_path / "STOP"
     stop.write_text("stop", encoding="utf-8")
-    reconciled = _send(driver, _authorization(), stop_path=stop)
+    reconciled = _send(
+        driver,
+        _authorization(
+            enabled=False, owner_authorized=False, trust="PROBATION",
+        ),
+        stop_path=stop,
+    )
     assert reconciled["claimed"] == "COMPLETED"
     assert reconciled["reconciled"] is True
     assert reconciled["replayed"] is True
@@ -317,3 +353,57 @@ def test_missing_or_duplicate_readback_stays_unknown_and_frozen(tmp_path: Path) 
     assert second["duplicate_prevented"] is True
     assert second["reconciliation_required"] is True
     assert transport.send_calls == 1
+
+
+def test_send_receipt_survives_readback_failure_and_reconciles(tmp_path: Path) -> None:
+    database = _db(tmp_path)
+    transport = FakeGmail(readback_error_once=True)
+    driver = GmailSendEffectDriver(database, _provider(transport))
+
+    first = _send(driver, _authorization())
+    assert first["claimed"] == "UNKNOWN"
+    assert first["journal_state"] == "FROZEN"
+    assert first["provider_id"] == "message-v12-1"
+    assert first["receipt"]["provider_ref"] == "gmail:message:message-v12-1"
+    assert first["readback_status"] == "UNKNOWN"
+    assert transport.send_calls == 1
+
+    reconciled = _send(driver, _authorization())
+    assert reconciled["claimed"] == "COMPLETED"
+    assert reconciled["reconciled"] is True
+    assert reconciled["performed"] is False
+    assert transport.send_calls == 1
+
+
+def test_concurrent_workers_share_one_live_claim_and_one_send(tmp_path: Path) -> None:
+    database = _db(tmp_path)
+    entered = threading.Event()
+    release = threading.Event()
+
+    class SlowGmail(FakeGmail):
+        def __call__(self, method, url, headers, body):
+            if method == "POST" and url.endswith("/users/me/messages/send"):
+                entered.set()
+                release.wait(timeout=3)
+            return super().__call__(method, url, headers, body)
+
+    transport = SlowGmail()
+    driver = GmailSendEffectDriver(database, _provider(transport))
+    results: list[dict[str, Any]] = []
+
+    first = threading.Thread(
+        target=lambda: results.append(_send(driver, _authorization())),
+    )
+    first.start()
+    assert entered.wait(timeout=3)
+    competing = _send(driver, _authorization())
+    release.set()
+    first.join(timeout=5)
+
+    assert competing["claimed"] == "UNKNOWN"
+    assert competing["error_code"] == "effect_claim_active"
+    assert competing["performed"] is False
+    assert len(results) == 1
+    assert results[0]["claimed"] == "COMPLETED"
+    assert transport.send_calls == 1
+    assert effect_state(database, results[0]["effect_id"])["status"] == "COMPLETED"

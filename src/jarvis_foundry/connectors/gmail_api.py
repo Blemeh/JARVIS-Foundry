@@ -1,11 +1,12 @@
-"""Narrow Gmail API activation adapter.
+"""Narrow Gmail API activation and owner-only send adapter.
 
 This is the first real-account communication seam, not an OAuth client or a
 mail-sending fleet.  Credential material is supplied only by an explicit
 broker callback; the existing ``CredentialHandle`` remains opaque.  The
-adapter implements account identity and a bounded read probe, plus dry-run
-scope eligibility.  It deliberately has no send method, so an unconfigured
-runtime cannot turn a capability declaration into a live mail effect.
+adapter implements account identity and a bounded read probe, dry-run scope
+eligibility, and the first irreversible send effect. Send remains disabled by
+default, is restricted to the configured owner's own address, and only reaches
+terminal success after provider receipt plus independent readback.
 """
 from __future__ import annotations
 
@@ -109,19 +110,27 @@ class GmailSendAuthorization:
         object.__setattr__(self, "recipient", recipient)
         object.__setattr__(self, "capability_trust", str(self.capability_trust).upper())
 
-    def refusal(self, *, account_identity: str, recipient: str) -> str | None:
-        if self.capability_trust == "PROBATION":
-            return "probation_capability_irreversible_effect_forbidden"
-        if not self.owner_authorized:
-            return "owner_authorization_required"
-        if not self.dispatch_enabled:
-            return "gmail_sends_disabled"
+    def scope_refusal(self, *, account_identity: str, recipient: str) -> str | None:
         if account_identity.casefold() != self.account_identity.casefold():
             return "gmail_account_not_authorized"
         if recipient.casefold() != self.recipient.casefold():
             return "recipient_not_authorized"
         if recipient.casefold() != account_identity.casefold():
             return "recipient_must_be_owner"
+        return None
+
+    def refusal(self, *, account_identity: str, recipient: str) -> str | None:
+        scope = self.scope_refusal(
+            account_identity=account_identity, recipient=recipient,
+        )
+        if scope:
+            return scope
+        if self.capability_trust == "PROBATION":
+            return "probation_capability_irreversible_effect_forbidden"
+        if not self.owner_authorized:
+            return "owner_authorization_required"
+        if not self.dispatch_enabled:
+            return "gmail_sends_disabled"
         return None
 
 
@@ -137,6 +146,7 @@ class GmailSendRequest:
     message_id: str
     effect_id: str
     intent_id: str
+    authorization_id: str | None = None
 
     @classmethod
     def build(
@@ -147,6 +157,7 @@ class GmailSendRequest:
         subject: str,
         body_text: str,
         effect_id: str | None = None,
+        authorization_id: str | None = None,
     ) -> "GmailSendRequest":
         account = str(account_identity).strip()
         target = str(recipient).strip()
@@ -182,6 +193,9 @@ class GmailSendRequest:
             message_id=f"<jarvis-{content_hash[:32]}@effects.local>",
             effect_id=str(stable_effect),
             intent_id=f"gmail-send-intent:{content_hash}",
+            authorization_id=(
+                str(authorization_id).strip() if authorization_id else None
+            ),
         )
 
     def raw_message(self) -> str:
@@ -329,6 +343,37 @@ class GmailApiProvider:
                 code="credential_material_unavailable",
             )
         return token.strip()
+
+    def send_refusal(
+        self,
+        credential: CredentialHandle,
+        identity: ProviderIdentity,
+        request: GmailSendRequest,
+    ) -> str | None:
+        """Return a pre-claim metadata/configuration refusal, if any."""
+
+        if not self.send_enabled:
+            return "gmail_sends_disabled"
+        if request.recipient.casefold() not in self.authorized_recipients:
+            return "recipient_not_authorized"
+        if request.recipient.casefold() != self.account_identity.casefold():
+            return "recipient_must_be_owner"
+        if credential.provider != self.provider or identity.provider != self.provider:
+            return "provider_mismatch"
+        if credential.state != "READY":
+            return "credential_not_ready"
+        if (
+            credential.account_identity.casefold() != self.account_identity.casefold()
+            or identity.account_identity.casefold() != self.account_identity.casefold()
+        ):
+            return "identity_mismatch"
+        if not self._scope_ready(credential.observed_scopes, _SEND_SCOPE_ALIASES):
+            return "send_scope_not_observed"
+        if not self._scope_ready(credential.observed_scopes, _READ_SCOPE_ALIASES):
+            return "readback_scope_not_observed"
+        if self._token_resolver is None:
+            return "credential_material_unavailable"
+        return None
 
     def _path(self, path: str) -> str:
         if not isinstance(path, str) or not path.startswith("/users/me/"):
@@ -544,30 +589,11 @@ class GmailApiProvider:
     ) -> dict[str, Any]:
         """Dispatch one pre-authorized message and immediately read it back."""
 
-        if not self.send_enabled:
+        refusal = self.send_refusal(credential, identity, request)
+        if refusal:
             return {
                 "claimed": "BLOCKED", "performed": False,
-                "error_code": "gmail_sends_disabled",
-            }
-        if request.recipient.casefold() not in self.authorized_recipients:
-            return {
-                "claimed": "BLOCKED", "performed": False,
-                "error_code": "recipient_not_authorized",
-            }
-        if request.recipient.casefold() != self.account_identity.casefold():
-            return {
-                "claimed": "BLOCKED", "performed": False,
-                "error_code": "recipient_must_be_owner",
-            }
-        if identity.account_identity.casefold() != self.account_identity.casefold():
-            return {
-                "claimed": "BLOCKED", "performed": False,
-                "error_code": "identity_mismatch",
-            }
-        if not self._scope_ready(credential.observed_scopes, _SEND_SCOPE_ALIASES):
-            return {
-                "claimed": "BLOCKED", "performed": False,
-                "error_code": "send_scope_not_observed",
+                "error_code": refusal,
             }
         document = self._request(
             credential,
@@ -595,9 +621,18 @@ class GmailApiProvider:
             "message_id": request.message_id,
             "content_hash": request.content_hash,
         }
-        readback = self._readback_document(
-            credential, request, document,
-        )
+        try:
+            readback = self._readback_document(
+                credential, request, document,
+            )
+        except GmailApiError as error:
+            readback = {
+                "status": "UNKNOWN",
+                "matches": False,
+                "reason": f"readback_{error.code}",
+                "provider_id": provider_id,
+                "provider_ref": receipt["provider_ref"],
+            }
         return {
             "claimed": "COMPLETED" if readback.get("matches") else "UNKNOWN",
             "performed": True,
@@ -613,6 +648,10 @@ class GmailApiProvider:
             "readback": readback,
             "readback_status": readback.get("status"),
             "reconciliation_required": readback.get("matches") is not True,
+            "error_code": (
+                None if readback.get("matches") is True
+                else str(readback.get("reason") or "independent_readback_required")
+            ),
             "receipt": receipt,
         }
 
@@ -734,6 +773,7 @@ class GmailSendEffectDriver:
             acceptance_evidence={
                 "intent_id": request.intent_id,
                 "criterion": "provider metadata matches exact owner-only message identity",
+                "authorization_id": request.authorization_id,
             },
             reconciled=reconciled,
         )
@@ -757,15 +797,34 @@ class GmailSendEffectDriver:
             subject=subject,
             body_text=body_text,
             effect_id=effect_id,
+            authorization_id=authorization.authorization_id,
         )
-        refusal = authorization.refusal(
-            account_identity=self.provider.account_identity,
-            recipient=request.recipient,
+        state = effect_state(self.database, request.effect_id)
+        pending_effect = state.get("status") in {STARTED, COMPLETED, FROZEN}
+        refusal = (
+            authorization.scope_refusal(
+                account_identity=self.provider.account_identity,
+                recipient=request.recipient,
+            )
+            if pending_effect
+            else authorization.refusal(
+                account_identity=self.provider.account_identity,
+                recipient=request.recipient,
+            )
         )
         if refusal:
             return self._blocked(request, refusal)
-
-        state = effect_state(self.database, request.effect_id)
+        if state.get("status") == STARTED and state.get("claim_active"):
+            return {
+                "claimed": "UNKNOWN",
+                "performed": False,
+                "intent_id": request.intent_id,
+                "effect_id": request.effect_id,
+                "action_key": request.effect_id,
+                "journal_state": STARTED,
+                "reconciliation_required": True,
+                "error_code": "effect_claim_active",
+            }
         if state.get("status") == STARTED:
             freeze_effect(
                 self.database,
@@ -801,10 +860,11 @@ class GmailSendEffectDriver:
                 "journal_state": state["status"],
                 "reconciliation_required": True,
             }
-        if not self.provider.send_enabled:
-            return self._blocked(request, "gmail_sends_disabled")
-        if request.recipient.casefold() not in self.provider.authorized_recipients:
-            return self._blocked(request, "recipient_not_authorized")
+        provider_refusal = self.provider.send_refusal(
+            credential, identity, request,
+        )
+        if provider_refusal:
+            return self._blocked(request, provider_refusal)
         if self._stopped(stop_path, mission_id):
             return self._blocked(request, "stop_requested")
         if state.get("status") == FAILED:
@@ -825,7 +885,13 @@ class GmailSendEffectDriver:
                     credential, identity, request,
                 )
             except GmailApiError as error:
-                if error.code == "timeout":
+                if (
+                    error.code in {
+                        "timeout", "transport_error", "malformed_response",
+                        "response_too_large", "provider_id_missing",
+                    }
+                    or error.code.startswith("http_5")
+                ):
                     raise TimeoutError(
                         "Gmail send timed out after dispatch"
                     ) from error

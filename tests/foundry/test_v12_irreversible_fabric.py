@@ -40,6 +40,7 @@ from v3_fixtures import make_bare_remote
 
 OWNER_EMAIL = "owner@example.com"
 SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send"
+READ_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
 
 
 def _db(tmp_path: Path) -> FoundryDatabase:
@@ -194,7 +195,7 @@ def test_gmail_send_fabric_path_is_verified_and_replay_safe(tmp_path: Path) -> N
         provider="gmail",
         account_identity=OWNER_EMAIL,
         auth_type="oauth2",
-        observed_scopes=(SEND_SCOPE,),
+        observed_scopes=(SEND_SCOPE, READ_SCOPE),
         state="READY",
         version=1,
     )
@@ -202,7 +203,7 @@ def test_gmail_send_fabric_path_is_verified_and_replay_safe(tmp_path: Path) -> N
         provider="gmail",
         account_identity=OWNER_EMAIL,
         provider_account_id=OWNER_EMAIL,
-        observed_scopes=(SEND_SCOPE,),
+        observed_scopes=(SEND_SCOPE, READ_SCOPE),
     )
     context = ExecutorContext(
         database=database,
@@ -285,4 +286,3 @@ def test_probation_capability_is_blocked_before_executor_or_effect_claim(
     assert result.verified.value == "UNKNOWN"
     assert "PROBATION" in result.note
     assert after == before
-

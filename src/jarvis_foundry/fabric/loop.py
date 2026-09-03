@@ -178,7 +178,7 @@ def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
             capability_id="cap.github.pull_request.publish", version="1.0.0", kind=Kind.CONNECTOR,
             action_kind="github.pull_request.publish", semantic=Semantic.EXTERNAL_EFFECT,
             executor="github_write",
-            unattended=UnattendedMode.INTERACTIVE_REQUIRED,
+            unattended=UnattendedMode.ALLOWED,
             limitations=(
                 "disabled by default; exact owner repository/base/remote authorization required; "
                 "deterministic branch, canonical effect journal, and provider readback required",
@@ -188,7 +188,7 @@ def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
             capability_id="cap.gmail.send", version="1.0.0", kind=Kind.CONNECTOR,
             action_kind="gmail.send", semantic=Semantic.COMMUNICATE,
             executor="gmail_api",
-            unattended=UnattendedMode.INTERACTIVE_REQUIRED,
+            unattended=UnattendedMode.ALLOWED,
             limitations=(
                 "disabled by default; exact owner self-recipient authorization required; "
                 "PROBATION capabilities forbidden; provider readback required",

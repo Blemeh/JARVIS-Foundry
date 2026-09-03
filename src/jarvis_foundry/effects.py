@@ -257,6 +257,16 @@ def effect_state(database: FoundryDatabase,
     if started:
         state["before_state"] = started[-1].get("before_state_capture")
         state["expected_effects"] = started[-1].get("expected_effects")
+        state["claimed_at"] = started[-1].get("claimed_at")
+        state["claim_expires_at"] = started[-1].get("claim_expires_at")
+        try:
+            state["claim_active"] = (
+                state["status"] == STARTED
+                and state["claim_expires_at"] is not None
+                and float(state["claim_expires_at"]) > time.time()
+            )
+        except (TypeError, ValueError):
+            state["claim_active"] = False
     if completed:
         state["after_state"] = completed[-1].get("after_state")
         state["cost"] = completed[-1].get("cost")
