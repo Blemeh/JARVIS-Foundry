@@ -256,6 +256,28 @@ passed. The compact proof is
 `C:\temp\JARVIS-V11-A2-Initiative-20260902-evidence-final4\V11_A2_FLAGSHIP_PROOF.json`
 (SHA-256 `b3eb1709b1a14f37d5964767e762b2fc5456d507e93ca07b1be21ac948817267`).
 
+## V12 capability-solution discovery candidate truth
+
+The isolated branch `candidate/v12-capability-discovery-20260902` in
+`C:\temp\JARVIS-V12-Capability-Discovery-20260902` starts from the exact
+Integration Base 2 SHA `30998ef06d9be73adb30387c10a7fa72ef910d28` and carries
+the V11 capability-requirement input
+`candidate/v11-capability-requirements-20260902` at
+`aac5710248f2df9eda46c59694a0f43e1d71d6e5` semantically. It is a discovery /
+comparison candidate only; it does not change the V11 execution pointer, create
+an objective or mission, install or register a capability, authorize an effect,
+write a provider, mutate live state, or alter main/origin.
+
+The candidate adds durable gap, candidate, search-report, comparison, and
+recommendation contracts. The frozen reuse order is Fabric Catalog, current
+JARVIS source, real Git branch/worktree/commit archaeology, mature external
+solutions through the existing read-only GitHub research connector, and a
+custom-build placeholder last. External material remains `DATA_ONLY` and
+Fabric remains the sole readiness authority. The real proof is
+`evidence/v12-capability-discovery/proof.json`; its verdict and exact candidate
+SHA are recorded in
+`docs/handoffs/V12_CAPABILITY_DISCOVERY_20260902.md`.
+
 ## Live release and rollback authority
 
 ```text
