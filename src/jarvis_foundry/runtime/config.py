@@ -194,6 +194,10 @@ class WorkerRuntimeConfig:
                     f"with execution-capable runtime flags: {', '.join(active)}")
         if self.initiative_a2_enabled and self.initiative_a3_enabled:
             raise ValueError("initiative_a2 and initiative_a3 are mutually exclusive")
+        if self.initiative_a3_enabled and self.continuous_observation_enabled:
+            raise ValueError(
+                "initiative_a3 and continuous_observation are mutually exclusive "
+                "admission-boundary drivers")
         if self.initiative_a3_enabled:
             competing_flags = {
                 "discovery.cycle_enabled": self.discovery_cycle_enabled,
