@@ -16,6 +16,7 @@ from jarvis_foundry.mission.verification import (
     record_verification_outcome,
     start_verification,
 )
+from jarvis_foundry.mission.contracts import MissionStepContract, record_step_contract
 
 
 def _append(database: FoundryDatabase, event_type: str, payload: dict,
@@ -285,6 +286,41 @@ def test_optional_a3_bridge_and_preliminary_pass_stay_distinct(tmp_path):
                    if item["candidate_id"] == "candidate-eligible")
     assert current["current_work"]["final_outcome"]["state"] == "ACCEPTED"
     assert current["current_work"]["final_outcome"]["verification"]["acceptance_event_id"]
+
+
+def test_projection_surfaces_durable_a3_execution_context_and_partial_plan(tmp_path):
+    database = FoundryDatabase(tmp_path / "a3-context.db")
+    database.initialize()
+    _seed(database)
+    _append(database, "project.registered", {
+        "resource_id": "resource-a3", "kind": "git",
+        "root_path": "C:/work/jarvis", "resolved_root": "C:/work/jarvis",
+        "baseline": {"branch": "candidate", "commit": "abc123"},
+        "capabilities": {"read": "READY"}, "readiness_state": "READY",
+    }, "project-registered-a3")
+    _append(database, "mission.created", {
+        "mission_id": "mission-a3-context", "objective": "Verify the selected change",
+        "resource_id": "resource-a3", "state": "PLANNED",
+        "acceptance_criteria": ["focused tests pass"],
+        "next_action": "run independent verifier",
+        "created_from": "candidate:candidate-eligible",
+    }, "mission-a3-context")
+    contract = MissionStepContract(
+        mission_id="mission-a3-context", step_id="step-a3-context", version=1,
+        resource_id="resource-a3", capability="repo.read",
+        target_relative_path="src/check.py", instructions="Inspect the bounded change",
+        expected_effects=("verification evidence",), rollback={"required": True},
+        verification_criteria=("focused tests pass",),
+        expected_artifacts=("verification receipt",), forbidden_paths=(".env",),
+    )
+    record_step_contract(database, contract)
+    projection = build_autonomy_projection(database)
+    current = next(item for item in projection["candidates"] if item["candidate_id"] == "candidate-eligible")
+    work = current["current_work"]
+    assert work["worktree"]["path"] == "C:/work/jarvis"
+    assert work["current_step"]["step_id"] == "step-a3-context"
+    assert work["verification_plan"]["status"] == "PARTIAL"
+    assert work["verification_plan"]["acceptance_criteria"] == ["focused tests pass"]
 
 
 def test_projection_queries_are_read_only_and_limits_are_hard_bounded(tmp_path, monkeypatch):
