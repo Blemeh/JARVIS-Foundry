@@ -5,7 +5,7 @@
       "campaign-v12-endurance-disposable"
     ],
     "wait_ids": [
-      "provider-wait-10a1e779bf937f00e9abeb25"
+      "provider-wait-277bb1303186c0b185ffd7c7"
     ]
   },
   "ambiguous_effect": {
@@ -14,7 +14,7 @@
     "first_outcome": "BLOCKED",
     "reconcile_before_fallback": true,
     "resume_ids": [
-      "provider-wait-6e27c737bee54e8ae01caba8"
+      "provider-wait-63ecdfc54ea31c445ff2e3f0"
     ]
   },
   "campaign": {
@@ -52,9 +52,9 @@
   "joins": {
     "all": {
       "accepted_outcome_ids": [
-        "outcome-a34d2e5fa728f5e3c71ec8d0",
-        "outcome-294d8547cf6ed0435f615c58",
-        "outcome-dff9c1ded9afe9b3426413e8"
+        "outcome-4b2ad479e3cf55833d23db05",
+        "outcome-29fa0bef0b962b4fde2b51c0",
+        "outcome-7156433fc55e377e67544a3d"
       ],
       "child_ids": [
         "ambiguous-child",
@@ -67,7 +67,7 @@
     },
     "any": {
       "accepted_outcome_ids": [
-        "outcome-294d8547cf6ed0435f615c58"
+        "outcome-29fa0bef0b962b4fde2b51c0"
       ],
       "child_ids": [
         "ambiguous-child",
@@ -91,9 +91,9 @@
       "mission-v12-fallback"
     ],
     "isolated_roots": {
-      "ambiguous-child": "C:\\temp\\JARVIS-V12-Endurance-Convergence-20260903-proof-b1844f3\\resources\\ambiguous-child",
-      "fallback-child": "C:\\temp\\JARVIS-V12-Endurance-Convergence-20260903-proof-b1844f3\\resources\\fallback-child",
-      "wait-child": "C:\\temp\\JARVIS-V12-Endurance-Convergence-20260903-proof-b1844f3\\resources\\wait-child"
+      "ambiguous-child": "C:\\temp\\JARVIS-V12-Endurance-Convergence-20260903-proof-e75e313\\resources\\ambiguous-child",
+      "fallback-child": "C:\\temp\\JARVIS-V12-Endurance-Convergence-20260903-proof-e75e313\\resources\\fallback-child",
+      "wait-child": "C:\\temp\\JARVIS-V12-Endurance-Convergence-20260903-proof-e75e313\\resources\\wait-child"
     },
     "limit": 2,
     "logical_overlap_proven": true,
@@ -117,17 +117,17 @@
     "final_outcome": "PASSED",
     "resume_receipts": 1,
     "wait_resume_ids": [
-      "provider-wait-10a1e779bf937f00e9abeb25"
+      "provider-wait-277bb1303186c0b185ffd7c7"
     ]
   },
-  "root": "C:\\temp\\JARVIS-V12-Endurance-Convergence-20260903-proof-b1844f3",
+  "root": "C:\\temp\\JARVIS-V12-Endurance-Convergence-20260903-proof-e75e313",
   "schema": "jarvis-v12-endurance-convergence-proof-v1",
   "source": {
     "activation_authorized": false,
     "base_v11_sha": "ae9ac06b6f9174c810b0e658daaf81c7b683ae8b",
     "branch": "candidate/v12-endurance-convergence-20260903",
     "campaign_input_sha": "db685fe0bd0bc22b25a1f717bafdd8612cdfd19d",
-    "implementation_sha": "b1844f39345e2e7136a0e454938cb7f9b491de1f",
+    "implementation_sha": "e75e31362f78f0f6373ce2b8b28f092db6ee43d3",
     "provider_resilience_input_sha": "eedc4b293daa6400907f3196924514b21a61010c",
     "schema_version": 40,
     "worktree_clean_before_proof": true
