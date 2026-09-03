@@ -2,7 +2,7 @@
   "adapter_action": {
     "claimed": "COMPLETED",
     "readback_matches": true,
-    "receipt_id": "receipt:effect:6f7824a859a9807deee9e9c84a996db93d7092bd5601c15b150198fca2ae5c18:attempt:1",
+    "receipt_id": "receipt:effect:a4b4a2ed6ed13c253fad21fa16b5a6458d0ca9de018a34417c827e87edfb7676:attempt:1",
     "verified": "MATCH"
   },
   "adapter_protocol": "jarvis.capability.adapter.v1",
@@ -14,7 +14,7 @@
   "discovery": {
     "candidate_count": 73,
     "external_results_authority": "DATA_ONLY",
-    "first_failed_candidate_id": "sol-1314118439004e4374066abe",
+    "first_failed_candidate_id": "sol-1610f2d160d6660942afd428",
     "reuse_order": [
       "FABRIC_CATALOG",
       "JARVIS_SOURCE",
@@ -28,7 +28,7 @@
       "JARVIS_GIT",
       "EXTERNAL"
     ],
-    "selected_candidate_id": "sol-6c94f66fd5758a7c8b374020"
+    "selected_candidate_id": "sol-3b530be81722bb3afb7391ce"
   },
   "disposable": true,
   "duplicate_gaps": 0,
@@ -45,7 +45,7 @@
   "live_mutated": false,
   "main_or_origin_mutated": false,
   "mission_final_state": "COMPLETE",
-  "mission_id": "mission-6261fa1bd52f",
+  "mission_id": "mission-daba5f66ed77",
   "mission_pass_verdicts": 2,
   "nested_expansion_count": 0,
   "objective_final_status": "COMPLETED",
@@ -53,7 +53,7 @@
   "passed": true,
   "probation": true,
   "registration_count": 1,
-  "registration_id": "fabric-registration:artifact-trial:f8d29119ac391d509d0e42e2",
+  "registration_id": "fabric-registration:artifact-trial:5396d6f152002efe78207f23",
   "resume_count": 1,
   "rollback": {
     "catalog_after_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -77,7 +77,7 @@
       "tests/foundry/test_v12_self_expansion_convergence.py"
     ],
     "returncode": 0,
-    "stdout": "..                                                                       [100%]"
+    "stdout": "...                                                                      [100%]"
   },
   "selected_mcp_adoption": {
     "action_kind": "mcp.v12-selected-expansion.tool.echo.5fe4ac9d1b46",
@@ -106,7 +106,7 @@
         "receipt:receipt:effect:03eaf278206cce37fc01cc4bfc402be52f80a4e6649f487b6556dccb5ef04e77:attempt:1",
         "effect:effect:03eaf278206cce37fc01cc4bfc402be52f80a4e6649f487b6556dccb5ef04e77"
       ],
-      "inner_dispatches": 0,
+      "fallback_dispatches": 0,
       "provider": "fabric",
       "status": "COMPLETED"
     }
@@ -115,8 +115,8 @@
   "stop_paused_before_bridge_receipt": true,
   "trial_count": 2,
   "trial_ids": [
-    "trial:631a2f34f6565e3bc1e2786d",
-    "trial:f8d29119ac391d509d0e42e2"
+    "trial:7d5b503f6dbd10eeaa89f15c",
+    "trial:5396d6f152002efe78207f23"
   ],
   "unreconciled_accepted_effects": 0,
   "wake_count": 1

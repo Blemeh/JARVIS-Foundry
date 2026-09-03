@@ -25,7 +25,7 @@
       "receipt:receipt:effect:03eaf278206cce37fc01cc4bfc402be52f80a4e6649f487b6556dccb5ef04e77:attempt:1",
       "effect:effect:03eaf278206cce37fc01cc4bfc402be52f80a4e6649f487b6556dccb5ef04e77"
     ],
-    "inner_dispatches": 0,
+    "fallback_dispatches": 0,
     "provider": "fabric",
     "status": "COMPLETED"
   }

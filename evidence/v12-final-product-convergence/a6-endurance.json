@@ -5,7 +5,7 @@
       "campaign-v12-endurance-disposable"
     ],
     "wait_ids": [
-      "provider-wait-f0c505c9d2b426e1d615e01c"
+      "provider-wait-8541a89a00b0b9df86f5a552"
     ]
   },
   "ambiguous_effect": {
@@ -14,7 +14,7 @@
     "first_outcome": "BLOCKED",
     "reconcile_before_fallback": true,
     "resume_ids": [
-      "provider-wait-2b972f73cc0fd3f3f12db0c5"
+      "provider-wait-61e7876a9a16f827358cfc55"
     ]
   },
   "campaign": {
@@ -23,7 +23,7 @@
     "child_requirements": {
       "ambiguous-child": {
         "effect_action_key": "effect:v12:ambiguous",
-        "isolation_key": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\a6-runtime\\resources\\ambiguous-child",
+        "isolation_key": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-7892241\\a6-runtime\\resources\\ambiguous-child",
         "mission_id": "mission-v12-ambiguous",
         "routing_identity": "a8e0760266d98ecebeb059b396eeb444d5ee666391d4c9a48b915e75c566fd76",
         "routing_requirements": {
@@ -55,7 +55,7 @@
       },
       "fallback-child": {
         "effect_action_key": "effect:v12:fallback",
-        "isolation_key": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\a6-runtime\\resources\\fallback-child",
+        "isolation_key": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-7892241\\a6-runtime\\resources\\fallback-child",
         "mission_id": "mission-v12-fallback",
         "routing_identity": "048bc7cee61c1f22046d15ee3802eab7cd0830112017334904994074bb5f12b1",
         "routing_requirements": {
@@ -87,7 +87,7 @@
       },
       "wait-child": {
         "effect_action_key": "effect:v12:wait",
-        "isolation_key": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\a6-runtime\\resources\\wait-child",
+        "isolation_key": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-7892241\\a6-runtime\\resources\\wait-child",
         "mission_id": "mission-v12-wait",
         "routing_identity": "2fdb337b0feedf7607c3c7d1669d6f6c6096481c0c4fcc16c0a7f92c53770878",
         "routing_requirements": {
@@ -154,9 +154,9 @@
   "joins": {
     "all": {
       "accepted_outcome_ids": [
-        "outcome-5b1d5689f37dd2f552841344",
-        "outcome-3d2529d899dade7a1612d75b",
-        "outcome-17862ee9d483aec0b4037a37"
+        "outcome-010fe867b668df3e5d637da8",
+        "outcome-4049b08f5a48d71bf3343794",
+        "outcome-c367b437c0fcde4162bb7eba"
       ],
       "child_ids": [
         "ambiguous-child",
@@ -169,7 +169,7 @@
     },
     "any": {
       "accepted_outcome_ids": [
-        "outcome-3d2529d899dade7a1612d75b"
+        "outcome-4049b08f5a48d71bf3343794"
       ],
       "child_ids": [
         "ambiguous-child",
@@ -193,9 +193,9 @@
       "mission-v12-fallback"
     ],
     "isolated_roots": {
-      "ambiguous-child": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\a6-runtime\\resources\\ambiguous-child",
-      "fallback-child": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\a6-runtime\\resources\\fallback-child",
-      "wait-child": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\a6-runtime\\resources\\wait-child"
+      "ambiguous-child": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-7892241\\a6-runtime\\resources\\ambiguous-child",
+      "fallback-child": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-7892241\\a6-runtime\\resources\\fallback-child",
+      "wait-child": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-7892241\\a6-runtime\\resources\\wait-child"
     },
     "limit": 2,
     "logical_overlap_proven": true,
@@ -220,10 +220,10 @@
     "final_outcome": "PASSED",
     "resume_receipts": 1,
     "wait_resume_ids": [
-      "provider-wait-f0c505c9d2b426e1d615e01c"
+      "provider-wait-8541a89a00b0b9df86f5a552"
     ]
   },
-  "root": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-321dfb4\\a6-runtime",
+  "root": "C:\\temp\\JARVIS-V12-Final-Product-Proof-20260903-7892241\\a6-runtime",
   "schema": "jarvis-v12-endurance-convergence-proof-v1",
   "source": {
     "activation_authorized": false,
@@ -232,7 +232,7 @@
     "campaign_input_sha": "db685fe0bd0bc22b25a1f717bafdd8612cdfd19d",
     "endurance_final_sha": "49b2c2337a0579519d0b782a5a260673079eb398",
     "endurance_implementation_sha": "43da572ca0fb24ae82222cdd02c2e23a76bf95f6",
-    "implementation_sha": "321dfb48165fc76cf4f11a9d8076c1a0700f5e2b",
+    "implementation_sha": "78922410127de74a37b1aa7cdde3ab144f49ea5c",
     "provider_resilience_input_sha": "eedc4b293daa6400907f3196924514b21a61010c",
     "schema_version": 40,
     "worktree_clean_before_proof": true
