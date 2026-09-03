@@ -57,11 +57,21 @@ def _registration_id(spec: CapabilitySpec, metadata: CapabilityMetadata) -> str:
     logical capability registration.
     """
 
+    metadata_payload = metadata.as_dict()
+    # The installed executor is a deployment detail.  Keeping it out of the
+    # derived identity lets the same logical capability be replayed from a
+    # different disposable root; the explicit V12 trial id still binds the
+    # actual adapter manifest when it is adopted.
+    execute = metadata_payload.get("execute")
+    if isinstance(execute, Mapping):
+        execute = dict(execute)
+        execute.pop("executor", None)
+        metadata_payload["execute"] = execute
     identity = {
         "capability_id": spec.capability_id,
         "version": spec.version,
         "action_kind": spec.action_kind,
-        "metadata": metadata.as_dict(),
+        "metadata": metadata_payload,
     }
     return f"fabric-registration:{payload_hash(identity)[:24]}"
 
@@ -110,6 +120,19 @@ def capability_registration(
     """Return the active registration sidecar, or ``None`` when disabled."""
 
     return _active_payloads(database).get(capability_id)
+
+
+def _historical_registration(
+    database: FoundryDatabase,
+    registration_id: str,
+) -> dict[str, Any] | None:
+    """Return the first registration carrying an explicit stable identity."""
+
+    for event in database.events(readonly=True, event_types=(REGISTERED,)):
+        payload = dict(event.payload)
+        if payload.get("registration_id") == registration_id:
+            return payload
+    return None
 
 
 def capability_trust(database: FoundryDatabase, capability_id: str) -> CapabilityTrust | None:
@@ -166,13 +189,31 @@ def register_capability(
         if metadata is not None
         else metadata_for_spec(spec)
     )
+    if registration_id is not None:
+        if not isinstance(registration_id, str) or not registration_id.strip() or any(
+            char.isspace() or ord(char) < 32 for char in registration_id
+        ) or len(registration_id) > 256:
+            raise FabricError("registration_id must be a bounded identity")
+        registration_id = registration_id.strip()
     if not isinstance(trust, CapabilityTrust):
-        trust = CapabilityTrust(trust)
+        try:
+            trust = CapabilityTrust(trust)
+        except ValueError as error:
+            raise FabricError(f"unsupported capability trust: {trust!r}") from error
+    if trust is CapabilityTrust.PROBATION and spec.supersedes:
+        raise FabricError("PROBATION capability cannot supersede an existing catalog registration")
     stable_registration_id = registration_id or _registration_id(spec, descriptor)
     payload["adapter_metadata"] = descriptor.as_dict()
     existing = capability_registration(database, spec.capability_id)
+    historical = _historical_registration(database, stable_registration_id) if registration_id is not None else None
+    if historical is not None and str(historical.get("capability_id")) != spec.capability_id:
+        raise FabricError(
+            f"registration identity {stable_registration_id} is already bound to {historical.get('capability_id')}"
+        )
     if existing is not None and existing.get("registration_id") == stable_registration_id:
         comparable = dict(existing)
+        comparable.setdefault("adapter_metadata", descriptor.as_dict())
+        comparable.setdefault("adoption", {})
         for key in ("note", "enabled"):
             comparable.pop(key, None)
         proposed = dict(payload)
@@ -189,7 +230,11 @@ def register_capability(
         raise FabricError(
             f"registration identity {stable_registration_id} already exists with different content"
         )
-    if existing is not None and existing.get("capability_id") == spec.capability_id:
+    if registration_id is not None and existing is None and historical is not None:
+        raise FabricError(
+            f"registration identity {stable_registration_id} has already been used"
+        )
+    if registration_id is not None and existing is not None and existing.get("capability_id") == spec.capability_id:
         raise FabricError(
             f"capability {spec.capability_id} is already registered; use a new version or disable first"
         )
@@ -291,6 +336,9 @@ def disable_capability(
     edits a second registry; replay simply omits the disabled registration.
     """
 
+    clean_reason = str(reason or "").strip()
+    if not clean_reason:
+        raise FabricError("disable reason is required")
     current = capability_registration(database, capability_id)
     if current is None:
         return {
@@ -304,9 +352,6 @@ def disable_capability(
         raise FabricError(
             f"registration identity mismatch for {capability_id}: expected {active_id}, got {registration_id}"
         )
-    clean_reason = str(reason or "").strip()
-    if not clean_reason:
-        raise FabricError("disable reason is required")
     payload = {
         "capability_id": capability_id,
         "registration_id": active_id,

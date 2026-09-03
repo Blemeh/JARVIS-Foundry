@@ -748,15 +748,17 @@ def execute_action(
     # it is in PROBATION, but it can never cross the irreversible/high-cost
     # boundary.  This check happens before request/effect creation so a
     # refusal cannot leave a journal claim or a fabricated outcome behind.
-    if (
-        capability_trust(database, spec.capability_id) is CapabilityTrust.PROBATION
-        and metadata.effect_class is EffectClass.IRREVERSIBLE_OR_HIGH_COST
-    ):
+    inferred_metadata = metadata_for_spec(spec)
+    probation_irreversible = (
+        metadata.effect_class is EffectClass.IRREVERSIBLE_OR_HIGH_COST
+        or inferred_metadata.effect_class is EffectClass.IRREVERSIBLE_OR_HIGH_COST
+    )
+    if capability_trust(database, spec.capability_id) is CapabilityTrust.PROBATION and probation_irreversible:
         record_probation_block(
             database,
             spec.capability_id,
             action_kind=action_kind,
-            effect_class=metadata.effect_class.value,
+            effect_class=EffectClass.IRREVERSIBLE_OR_HIGH_COST.value,
         )
         return ActionResult(
             capability_id=spec.capability_id,
@@ -794,7 +796,7 @@ def execute_action(
 
             return run_installed_adapter(
                 spec.executor,
-                payload,
+                execution_payload,
                 allowed_root=ctx.owned_root,
                 timeout_s=float(payload.get("adapter_timeout_s") or 120.0),
             )

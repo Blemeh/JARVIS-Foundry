@@ -13,6 +13,7 @@ only catalog mutations are calls to :mod:`jarvis_foundry.fabric.catalog`.
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import json
 import platform
 import shutil
@@ -21,9 +22,8 @@ import sys
 from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any, Mapping
 
-from ..clock import isoformat
 from ..control.redaction import contains_secret_like, redact_text
 from ..database import FoundryDatabase
 from ..events import Event, canonical_json, payload_hash
@@ -35,7 +35,7 @@ from .catalog import (
     record_outcome,
     register_capability,
 )
-from .contracts import CapabilityMetadata, metadata_for_spec
+from .contracts import metadata_for_spec
 from .installed_adapter import ADAPTER_PROTOCOL, probe_installed_adapter, run_installed_adapter
 from .model import (
     CapabilitySpec,
@@ -56,6 +56,7 @@ TRIAL_PROBE_PASSED = TRIAL_EVENT_PREFIX + "probe_passed"
 TRIAL_CONTRACTS_PASSED = TRIAL_EVENT_PREFIX + "contracts_passed"
 TRIAL_MISSION_COMPLETED = TRIAL_EVENT_PREFIX + "mission_completed"
 TRIAL_VERIFIED = TRIAL_EVENT_PREFIX + "verified"
+TRIAL_ADOPTION_DECIDED = TRIAL_EVENT_PREFIX + "adoption_decided"
 TRIAL_ADOPTED = TRIAL_EVENT_PREFIX + "adopted"
 TRIAL_REJECTED = TRIAL_EVENT_PREFIX + "rejected"
 TRIAL_DISABLED = TRIAL_EVENT_PREFIX + "disabled"
@@ -92,6 +93,24 @@ def _identity(value: object, field_name: str) -> str:
     result = _text(value, field_name)
     if any(char.isspace() for char in result) or len(result) > 256:
         raise TrialError(f"{field_name} must be a bounded identity")
+    return result
+
+
+def _segment(value: object, field_name: str) -> str:
+    """Validate an identity that will be used as one workspace path segment."""
+
+    result = _identity(value, field_name)
+    reserved = {"CON", "PRN", "AUX", "NUL"} | {
+        f"COM{index}" for index in range(1, 10)
+    } | {f"LPT{index}" for index in range(1, 10)}
+    if (
+        result in {".", ".."}
+        or len(result) > 120
+        or any(char in result for char in '<>:"/\\|?*')
+        or result.endswith((".", " "))
+        or result.split(".", 1)[0].upper() in reserved
+    ):
+        raise TrialError(f"{field_name} must be a safe workspace segment")
     return result
 
 
@@ -160,7 +179,7 @@ class TrialCase:
     expected: Mapping[str, Any]
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "case_id", _identity(self.case_id, "case_id"))
+        object.__setattr__(self, "case_id", _segment(self.case_id, "case_id"))
         object.__setattr__(self, "payload", _json_safe(self.payload, "case.payload"))
         object.__setattr__(self, "expected", _json_safe(self.expected, "case.expected"))
 
@@ -191,6 +210,7 @@ class SelectedCapabilitySolution:
     config: Mapping[str, Any] = field(default_factory=dict)
     path_fields: tuple[str, ...] = ("path",)
     selection_reason: str = "selected solution descriptor"
+    _source_sha256: str = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "solution_id", _identity(self.solution_id, "solution_id"))
@@ -202,11 +222,14 @@ class SelectedCapabilitySolution:
         if not source.is_file():
             raise TrialError(f"selected solution source is missing: {source}")
         object.__setattr__(self, "source_path", source)
+        object.__setattr__(self, "_source_sha256", hashlib.sha256(source.read_bytes()).hexdigest())
         dependencies = tuple(self.dependencies)
         if not dependencies:
             raise TrialError("selected solution requires a dependency record")
         if any(not isinstance(item, DependencyPin) for item in dependencies):
             raise TrialError("dependencies must be DependencyPin values")
+        if len({item.name.lower() for item in dependencies}) != len(dependencies):
+            raise TrialError("dependency names must be unique")
         object.__setattr__(self, "dependencies", dependencies)
         cases = tuple(self.contract_cases)
         if not cases:
@@ -215,6 +238,8 @@ class SelectedCapabilitySolution:
             raise TrialError("contract_cases must be TrialCase values")
         if not isinstance(self.mission, TrialCase):
             raise TrialError("mission must be a TrialCase")
+        if len({item.case_id for item in cases} | {self.mission.case_id}) != len(cases) + 1:
+            raise TrialError("contract and mission case ids must be unique")
         object.__setattr__(self, "contract_cases", cases)
         object.__setattr__(self, "config", _json_safe(self.config, "config"))
         fields = tuple(_identity(item, "path_field") for item in self.path_fields)
@@ -223,7 +248,7 @@ class SelectedCapabilitySolution:
 
     @property
     def source_sha256(self) -> str:
-        return hashlib.sha256(self.source_path.read_bytes()).hexdigest()
+        return self._source_sha256
 
     @classmethod
     def from_mapping(cls, value: Mapping[str, Any]) -> "SelectedCapabilitySolution":
@@ -231,6 +256,9 @@ class SelectedCapabilitySolution:
 
         if not isinstance(value, Mapping):
             raise TrialError("selected solution descriptor must be an object")
+        declared_protocol = value.get("protocol")
+        if declared_protocol is not None and declared_protocol != TRIAL_PROTOCOL:
+            raise TrialError("selected solution descriptor protocol is unsupported")
         raw_spec = value.get("spec")
         if not isinstance(raw_spec, Mapping):
             raise TrialError("selected solution descriptor requires a spec object")
@@ -240,7 +268,7 @@ class SelectedCapabilitySolution:
         raw_mission = value.get("mission")
         if not isinstance(raw_mission, Mapping):
             raise TrialError("selected solution descriptor requires a mission object")
-        return cls(
+        selected = cls(
             solution_id=str(value.get("solution_id") or ""),
             spec=CapabilitySpec.from_mapping(raw_spec),
             source_path=Path(str(value.get("source_path") or value.get("source") or "")),
@@ -251,12 +279,40 @@ class SelectedCapabilitySolution:
             path_fields=tuple(value.get("path_fields") or ("path",)),
             selection_reason=str(value.get("selection_reason") or "selected solution descriptor"),
         )
+        declared_source_hash = value.get("source_sha256")
+        if declared_source_hash is not None and declared_source_hash != selected.source_sha256:
+            raise TrialError("selected solution source hash does not match the descriptor")
+        declared_descriptor_hash = value.get("descriptor_hash")
+        if declared_descriptor_hash is not None and declared_descriptor_hash != selected.descriptor_hash:
+            raise TrialError("selected solution descriptor hash does not match its contents")
+        declared_registration_id = value.get("registration_id")
+        if declared_registration_id is not None and declared_registration_id != selected.registration_id:
+            raise TrialError("selected solution registration identity does not match its contents")
+        return selected
+
+    @classmethod
+    def from_file(cls, path: str | Path) -> "SelectedCapabilitySolution":
+        """Load a selected-solution descriptor with relative source support."""
+
+        descriptor_path = Path(path).expanduser().resolve()
+        try:
+            value = json.loads(descriptor_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as error:
+            raise TrialError(f"selected solution descriptor is not readable: {descriptor_path}") from error
+        if not isinstance(value, Mapping):
+            raise TrialError("selected solution descriptor file must contain an object")
+        raw = dict(value)
+        source_value = raw.get("source_path") or raw.get("source") or raw.get("source_name")
+        if isinstance(source_value, str) and not Path(source_value).expanduser().is_absolute():
+            raw["source_path"] = str((descriptor_path.parent / source_value).resolve())
+        return cls.from_mapping(raw)
 
     def as_dict(self) -> dict[str, Any]:
         return {
             "protocol": TRIAL_PROTOCOL,
             "solution_id": self.solution_id,
             "spec": self.spec.as_dict(),
+            "source_path": str(self.source_path),
             "source_name": self.source_path.name,
             "source_sha256": self.source_sha256,
             "dependencies": [item.as_dict() for item in self.dependencies],
@@ -269,7 +325,36 @@ class SelectedCapabilitySolution:
 
     @property
     def descriptor_hash(self) -> str:
-        return payload_hash(self.as_dict())
+        def scrub(value: Any) -> Any:
+            if isinstance(value, Mapping):
+                return {str(key): scrub(item) for key, item in value.items()}
+            if isinstance(value, list):
+                return [scrub(item) for item in value]
+            return value
+
+        def scrub_case(case: TrialCase) -> dict[str, Any]:
+            payload = scrub(dict(case.payload))
+            # Input locations belong to a disposable run, not to the logical
+            # selected solution identity.  Expected values and case labels
+            # remain frozen so changing the contract creates a new trial.
+            if isinstance(payload, dict):
+                for field_name in self.path_fields:
+                    if field_name in payload:
+                        payload[field_name] = "<disposable-input>"
+            return {"case_id": case.case_id, "payload": payload, "expected": scrub(dict(case.expected))}
+
+        identity = {
+            "protocol": TRIAL_PROTOCOL,
+            "solution_id": self.solution_id,
+            "spec": {key: value for key, value in self.spec.as_dict().items() if key != "executor"},
+            "source_sha256": self.source_sha256,
+            "dependencies": [item.as_dict() for item in self.dependencies],
+            "contract_cases": [scrub_case(case) for case in self.contract_cases],
+            "mission": scrub_case(self.mission),
+            "config": scrub(dict(self.config)),
+            "path_fields": list(self.path_fields),
+        }
+        return payload_hash(identity)
 
     @property
     def registration_id(self) -> str:
@@ -320,8 +405,13 @@ def _sha256(path: Path) -> str:
 def _write_json(path: Path, value: Mapping[str, Any]) -> str:
     encoded = canonical_json(dict(value)) + "\n"
     path.parent.mkdir(parents=True, exist_ok=True)
+    if path.is_symlink() or path.is_dir():
+        raise TrialError(f"refusing to write unsafe trial file: {path}")
     path.write_text(encoded, encoding="utf-8")
-    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+    # Windows text mode may normalize LF to CRLF.  Hash the bytes that were
+    # actually installed so every manifest/evidence reference is verifiable
+    # on both Windows and POSIX hosts.
+    return _sha256(path)
 
 
 def _subset(expected: Any, actual: Any) -> bool:
@@ -337,6 +427,7 @@ ADAPTER_WRAPPER_SOURCE = '''\
 from __future__ import annotations
 import argparse
 import importlib.util
+import inspect
 import json
 from pathlib import Path
 
@@ -344,25 +435,42 @@ PROTOCOL = "jarvis.capability.adapter.v1"
 
 def _load(manifest_path: Path):
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    solution = (manifest_path.parent / manifest["solution_path"]).resolve()
+    root = manifest_path.parent.resolve()
+    solution = (root / manifest["solution_path"]).resolve()
+    solution.relative_to(root)
     spec = importlib.util.spec_from_file_location("selected_solution", solution)
     if spec is None or spec.loader is None:
         raise RuntimeError("selected solution cannot be loaded")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return manifest, module
+    config = {}
+    config_path = manifest.get("config_path")
+    if config_path:
+        config_file = (root / config_path).resolve()
+        config_file.relative_to(root)
+        config = json.loads(config_file.read_text(encoding="utf-8"))
+    return manifest, module, config
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("command", choices=("probe", "execute"))
     parser.add_argument("--manifest", required=True, type=Path)
     args = parser.parse_args()
-    manifest, module = _load(args.manifest)
+    manifest, module, config = _load(args.manifest)
     if args.command == "probe":
         fn = getattr(module, "readiness_probe", None)
         if not callable(fn):
             raise RuntimeError("selected solution has no readiness_probe()")
-        result = fn()
+        try:
+            parameters = tuple(inspect.signature(fn).parameters.values())
+        except (TypeError, ValueError):
+            parameters = ()
+        if not parameters:
+            result = fn()
+        elif all(item.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD) for item in parameters if item.kind is not inspect.Parameter.VAR_KEYWORD):
+            result = fn(config)
+        else:
+            result = fn(config=config)
     else:
         fn = getattr(module, "run", None)
         if not callable(fn):
@@ -404,6 +512,7 @@ def trial_record(database: FoundryDatabase, trial_id: str) -> dict[str, Any] | N
         TRIAL_CONTRACTS_PASSED: TrialStatus.CONTRACTS_PASSED.value,
         TRIAL_MISSION_COMPLETED: TrialStatus.MISSION_COMPLETED.value,
         TRIAL_VERIFIED: TrialStatus.VERIFIED.value,
+        TRIAL_ADOPTION_DECIDED: TrialStatus.VERIFIED.value,
         TRIAL_ADOPTED: TrialStatus.PROBATION.value,
         TRIAL_REJECTED: TrialStatus.REJECTED.value,
         TRIAL_DISABLED: TrialStatus.DISABLED.value,
@@ -485,8 +594,13 @@ class CapabilityTrialPipeline:
                     # disposable workspace by a future adapter.  It remains
                     # relative and the standard runner enforces containment.
                     continue
-                destination = workspace / "inputs" / case.case_id / candidate.name
-                destination.parent.mkdir(parents=True, exist_ok=True)
+                case_directory = workspace / "inputs" / case.case_id
+                if case_directory.exists() and (case_directory.is_symlink() or not case_directory.is_dir()):
+                    raise TrialError(f"trial input directory {case.case_id!r} is unsafe")
+                case_directory.mkdir(parents=True, exist_ok=True)
+                destination = case_directory / candidate.name
+                if destination.is_symlink() or destination.is_dir():
+                    raise TrialError(f"trial input file {destination.name!r} is unsafe")
                 shutil.copy2(candidate, destination)
                 relative = destination.relative_to(workspace).as_posix()
                 digest = _sha256(destination)
@@ -501,8 +615,16 @@ class CapabilityTrialPipeline:
         trial_id: str,
     ) -> tuple[Path, dict[str, Any], tuple[TrialCase, ...], TrialCase, list[dict[str, str]]]:
         workspace = self._workspace(trial_id)
+        if self.trial_root == Path(self.trial_root.anchor):
+            raise TrialError("trial root must not be a filesystem root")
+        if self.trial_root.exists() and (self.trial_root.is_symlink() or not self.trial_root.is_dir()):
+            raise TrialError("trial root is not a private directory")
         self.trial_root.mkdir(parents=True, exist_ok=True)
+        if workspace.exists() and (workspace.is_symlink() or not workspace.is_dir()):
+            raise TrialError("trial workspace is not a private directory")
         marker = workspace / "trial-marker.json"
+        if marker.is_symlink():
+            raise TrialError("trial workspace marker cannot be a symlink")
         if marker.exists():
             try:
                 existing = json.loads(marker.read_text(encoding="utf-8"))
@@ -519,7 +641,17 @@ class CapabilityTrialPipeline:
                 "source_sha256": descriptor.source_sha256,
             })
         for name in ("solution", "adapter", "evidence", "inputs"):
-            (workspace / name).mkdir(parents=True, exist_ok=True)
+            directory = workspace / name
+            if directory.exists() and (directory.is_symlink() or not directory.is_dir()):
+                raise TrialError(f"trial workspace directory {name!r} is unsafe")
+            directory.mkdir(parents=True, exist_ok=True)
+        for name in (
+            "solution/solution.py", "adapter/adapter.py", "dependency-lock.json",
+            "config.json", "adapter-manifest.json", "capability-descriptor.json",
+        ):
+            target = workspace / name
+            if target.is_symlink() or target.is_dir():
+                raise TrialError(f"trial workspace file {name!r} is unsafe")
         contract_cases, mission, input_records = self._stage_inputs(descriptor, workspace)
         solution = workspace / "solution" / "solution.py"
         if not solution.exists():
@@ -531,11 +663,26 @@ class CapabilityTrialPipeline:
             wrapper.write_text(ADAPTER_WRAPPER_SOURCE, encoding="utf-8")
         wrapper_hash = _sha256(wrapper)
         metadata = metadata_for_spec(descriptor.spec)
+        resolved_dependencies: list[dict[str, Any]] = []
+        for dependency in descriptor.dependencies:
+            source_kind = dependency.source.lower()
+            if dependency.name.lower() in {"python-stdlib", "python-runtime"}:
+                resolved = True
+            elif source_kind in {"stdlib", "python-runtime"}:
+                resolved = importlib.util.find_spec(dependency.name.replace("-", "_")) is not None
+            else:
+                # A non-runtime dependency must be content-addressed before
+                # it can enter a disposable trial.  Installation of arbitrary
+                # network packages is intentionally outside this lane.
+                resolved = dependency.sha256 is not None
+            if not resolved:
+                raise TrialError(f"dependency {dependency.name!r} is not available or hash-pinned")
+            resolved_dependencies.append({**dependency.as_dict(), "resolved": True})
         lock_payload: dict[str, Any] = {
             "protocol": TRIAL_PROTOCOL,
             "solution_id": descriptor.solution_id,
             "source_sha256": descriptor.source_sha256,
-            "dependencies": [item.as_dict() for item in descriptor.dependencies],
+            "dependencies": resolved_dependencies,
             "python": {
                 "implementation": platform.python_implementation(),
                 "version": platform.python_version(),
@@ -551,11 +698,14 @@ class CapabilityTrialPipeline:
             "trial_protocol": TRIAL_PROTOCOL,
             "trial_id": trial_id,
             "solution_id": descriptor.solution_id,
+            "registration_id": descriptor.registration_id,
+            "descriptor_hash": descriptor.descriptor_hash,
             "capability_id": descriptor.spec.capability_id,
             "version": descriptor.spec.version,
             "action_kind": descriptor.spec.action_kind,
             "semantic": descriptor.spec.semantic.value,
             "effect_class": metadata.effect_class.value,
+            "metadata": metadata.as_dict(),
             "solution_path": "solution/solution.py",
             "solution_sha256": descriptor.source_sha256,
             "wrapper_path": "adapter/adapter.py",
@@ -573,6 +723,8 @@ class CapabilityTrialPipeline:
         descriptor_payload = descriptor.as_dict()
         descriptor_payload["trial_id"] = trial_id
         descriptor_payload["registration_id"] = descriptor.registration_id
+        descriptor_payload["descriptor_hash"] = descriptor.descriptor_hash
+        descriptor_payload["metadata"] = metadata.as_dict()
         _write_json(workspace / "capability-descriptor.json", descriptor_payload)
         _append_trial_event(
             self.database,
@@ -634,7 +786,11 @@ class CapabilityTrialPipeline:
             capability_id=descriptor.spec.capability_id,
             registration_id=descriptor.registration_id,
             descriptor_hash=descriptor.descriptor_hash,
-            verification=record.get("verification"),
+            verification=record.get("verification") or (
+                record.get("rejection", {}).get("verification")
+                if isinstance(record.get("rejection"), Mapping)
+                else None
+            ),
             catalog=catalog_truth_snapshot(self.database),
             rejection=record.get("rejection"),
             disable=record.get("disable"),
@@ -663,10 +819,17 @@ class CapabilityTrialPipeline:
         )
         workspace: Path | None = None
         registered = False
+        verification: Mapping[str, Any] | None = None
+        verification_path: Path | None = None
+        verification_hash: str | None = None
         try:
             workspace, manifest, contract_cases, mission, input_records = self._prepare_workspace(descriptor, trial_id)
             manifest_path = workspace / "adapter-manifest.json"
-            probe = probe_installed_adapter(manifest_path, allowed_root=workspace)
+            probe = probe_installed_adapter(
+                manifest_path,
+                allowed_root=workspace,
+                python_executable=self.python_executable,
+            )
             probe_hash = _write_json(workspace / "evidence" / "readiness-probe.json", probe)
             if probe.get("claimed") not in {"COMPLETED", None} or probe.get("ready") is not True or probe.get("protocol") != ADAPTER_PROTOCOL:
                 raise TrialError("readiness probe did not establish the standard adapter contract")
@@ -674,7 +837,12 @@ class CapabilityTrialPipeline:
 
             contract_reports: list[dict[str, Any]] = []
             for case in contract_cases:
-                result = run_installed_adapter(manifest_path, case.payload, allowed_root=workspace)
+                result = run_installed_adapter(
+                    manifest_path,
+                    case.payload,
+                    allowed_root=workspace,
+                    python_executable=self.python_executable,
+                )
                 result_hash = payload_hash(result)
                 contract_reports.append({"case_id": case.case_id, "payload": dict(case.payload), "expected": dict(case.expected), "result": result, "result_sha256": result_hash})
             contract_report = {"protocol": TRIAL_PROTOCOL, "cases": contract_reports}
@@ -683,22 +851,41 @@ class CapabilityTrialPipeline:
                 raise TrialError("one or more capability contract cases failed")
             _append_trial_event(self.database, TRIAL_CONTRACTS_PASSED, trial_id, {"evidence_path": str(workspace / "evidence" / "contract-tests.json"), "evidence_sha256": contract_hash, "case_count": len(contract_reports)})
 
-            mission_result = run_installed_adapter(manifest_path, mission.payload, allowed_root=workspace)
+            mission_result = run_installed_adapter(
+                manifest_path,
+                mission.payload,
+                allowed_root=workspace,
+                python_executable=self.python_executable,
+            )
             mission_record = {"case_id": mission.case_id, "payload": dict(mission.payload), "expected": dict(mission.expected), "result": mission_result, "result_sha256": payload_hash(mission_result)}
             mission_hash = _write_json(workspace / "evidence" / "trial-mission.json", mission_record)
             if mission_result.get("claimed") != "COMPLETED":
                 raise TrialError("realistic trial mission did not complete")
             _append_trial_event(self.database, TRIAL_MISSION_COMPLETED, trial_id, {"evidence_path": str(workspace / "evidence" / "trial-mission.json"), "evidence_sha256": mission_hash})
 
+            try:
+                descriptor_payload = json.loads(
+                    (workspace / "capability-descriptor.json").read_text(encoding="utf-8")
+                )
+            except (OSError, ValueError) as error:
+                raise TrialError("installed capability descriptor is unreadable") from error
+            if not isinstance(descriptor_payload, dict):
+                raise TrialError("installed capability descriptor is not an object")
             bundle = {
                 "protocol": "jarvis.capability.trial.bundle.v1",
                 "trial_id": trial_id,
                 "registration_id": descriptor.registration_id,
                 "descriptor_hash": descriptor.descriptor_hash,
                 "workspace": str(workspace),
+                "descriptor_path": str(workspace / "capability-descriptor.json"),
+                "descriptor_sha256": _sha256(workspace / "capability-descriptor.json"),
+                "descriptor": descriptor_payload,
                 "manifest_path": str(manifest_path),
                 "manifest_sha256": _sha256(manifest_path),
                 "manifest": manifest,
+                "config_path": str(workspace / "config.json"),
+                "config_sha256": _sha256(workspace / "config.json"),
+                "config": dict(descriptor.config),
                 "dependency_lock_path": str(workspace / "dependency-lock.json"),
                 "dependency_lock_sha256": _sha256(workspace / "dependency-lock.json"),
                 "probe": probe,
@@ -717,9 +904,29 @@ class CapabilityTrialPipeline:
                 raise TrialError(canonical_json(rejection))
             _append_trial_event(self.database, TRIAL_VERIFIED, trial_id, {"verification_id": verification_id, "verifier_id": verification.get("verifier_id"), "verification_path": str(verification_path), "verification_sha256": verification_hash, "bundle_sha256": bundle_hash})
 
-            before_catalog = catalog_truth_snapshot(self.database)
+            prior_record = trial_record(self.database, trial_id) or {}
+            stored_before = prior_record.get("catalog_before")
+            before_catalog = (
+                dict(stored_before)
+                if isinstance(stored_before, Mapping)
+                and stored_before.get("sha256") == prior_record.get("catalog_before_sha256")
+                else catalog_truth_snapshot(self.database)
+            )
             installed_spec = replace(descriptor.spec, executor=str(manifest_path))
             metadata = metadata_for_spec(installed_spec)
+            _append_trial_event(
+                self.database,
+                TRIAL_ADOPTION_DECIDED,
+                trial_id,
+                {
+                    "decision": "ADOPT_PROBATION",
+                    "reason": "independent verifier PASS; bounded trust policy applies",
+                    "verification_id": verification_id,
+                    "registration_id": descriptor.registration_id,
+                    "catalog_before_sha256": before_catalog["sha256"],
+                    "catalog_before": before_catalog,
+                },
+            )
             try:
                 register_capability(
                     self.database,
@@ -768,17 +975,34 @@ class CapabilityTrialPipeline:
                 catalog=after_catalog,
             )
         except Exception as error:
-            if registered:
+            current_registration = capability_registration(self.database, descriptor.spec.capability_id)
+            owned_registration = (
+                isinstance(current_registration, Mapping)
+                and current_registration.get("registration_id") == descriptor.registration_id
+                and isinstance(current_registration.get("adoption"), Mapping)
+                and current_registration["adoption"].get("trial_id") == trial_id
+            )
+            if registered or owned_registration:
                 try:
                     disable_capability(self.database, descriptor.spec.capability_id, registration_id=descriptor.registration_id, reason="failed trial finalization")
                 except Exception:
                     pass
             rejection = {
+                "decision": "REJECT",
                 "stage": str((trial_record(self.database, trial_id) or {}).get("status") or "trial"),
                 "reason": redact_text(str(error))[:500],
                 "workspace": str(workspace or self._workspace(trial_id)),
                 "descriptor_hash": descriptor.descriptor_hash,
             }
+            if verification is not None:
+                rejection.update({
+                    "verification_id": f"verification:{trial_id}",
+                    "verification_path": str(verification_path) if verification_path is not None else None,
+                    "verification_sha256": verification_hash,
+                    "verdict": verification.get("verdict"),
+                    "verifier_id": verification.get("verifier_id"),
+                    "verification": dict(verification),
+                })
             _append_trial_event(self.database, TRIAL_REJECTED, trial_id, {"rejection": rejection, "workspace": rejection["workspace"], "descriptor_hash": descriptor.descriptor_hash})
             return TrialResult(
                 trial_id=trial_id,
@@ -787,9 +1011,20 @@ class CapabilityTrialPipeline:
                 capability_id=descriptor.spec.capability_id,
                 registration_id=descriptor.registration_id,
                 descriptor_hash=descriptor.descriptor_hash,
+                verification=verification,
                 rejection=rejection,
                 catalog=catalog_truth_snapshot(self.database),
             )
+
+    def run_descriptor(self, descriptor: Mapping[str, Any] | str | Path) -> TrialResult:
+        """Run a descriptor object or descriptor JSON file through the same path."""
+
+        selected = (
+            SelectedCapabilitySolution.from_file(descriptor)
+            if isinstance(descriptor, (str, Path))
+            else SelectedCapabilitySolution.from_mapping(descriptor)
+        )
+        return self.run(selected)
 
     def disable(self, descriptor: SelectedCapabilitySolution) -> TrialResult:
         trial_id = self._trial_id(descriptor)

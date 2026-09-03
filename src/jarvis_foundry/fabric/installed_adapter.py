@@ -33,7 +33,10 @@ def _sha256(path: Path) -> str:
 
 
 def _manifest(path: Path) -> tuple[dict[str, Any], Path]:
-    resolved = path.expanduser().resolve()
+    candidate_manifest = path.expanduser()
+    if candidate_manifest.is_symlink():
+        raise AdapterInvocationError("adapter manifest cannot be a symlink")
+    resolved = candidate_manifest.resolve()
     if not resolved.is_file():
         raise AdapterInvocationError(f"adapter manifest is missing: {resolved}")
     try:
@@ -46,8 +49,12 @@ def _manifest(path: Path) -> tuple[dict[str, Any], Path]:
     solution_rel = raw.get("solution_path")
     if not isinstance(wrapper_rel, str) or not isinstance(solution_rel, str):
         raise AdapterInvocationError("adapter manifest paths are required")
-    wrapper = (resolved.parent / wrapper_rel).resolve()
-    solution = (resolved.parent / solution_rel).resolve()
+    wrapper_candidate = resolved.parent / wrapper_rel
+    solution_candidate = resolved.parent / solution_rel
+    if wrapper_candidate.is_symlink() or solution_candidate.is_symlink():
+        raise AdapterInvocationError("adapter manifest references a symlinked file")
+    wrapper = wrapper_candidate.resolve()
+    solution = solution_candidate.resolve()
     try:
         wrapper.relative_to(resolved.parent.resolve())
         solution.relative_to(resolved.parent.resolve())
@@ -59,6 +66,38 @@ def _manifest(path: Path) -> tuple[dict[str, Any], Path]:
         raise AdapterInvocationError("adapter wrapper hash does not match manifest")
     if raw.get("solution_sha256") != _sha256(solution):
         raise AdapterInvocationError("installed solution hash does not match manifest")
+    lock_rel = raw.get("dependency_lock_path")
+    if lock_rel is not None:
+        if not isinstance(lock_rel, str) or not lock_rel.strip():
+            raise AdapterInvocationError("adapter dependency lock path is malformed")
+        lock_candidate = resolved.parent / lock_rel
+        if lock_candidate.is_symlink():
+            raise AdapterInvocationError("adapter dependency lock cannot be a symlink")
+        lock = lock_candidate.resolve()
+        try:
+            lock.relative_to(resolved.parent.resolve())
+        except ValueError as error:
+            raise AdapterInvocationError("adapter dependency lock escapes its workspace") from error
+        if not lock.is_file():
+            raise AdapterInvocationError("adapter manifest references a missing dependency lock")
+        if raw.get("dependency_lock_sha256") != _sha256(lock):
+            raise AdapterInvocationError("adapter dependency lock hash does not match manifest")
+    config_rel = raw.get("config_path")
+    if config_rel is not None:
+        if not isinstance(config_rel, str) or not config_rel.strip():
+            raise AdapterInvocationError("adapter config path is malformed")
+        config_candidate = resolved.parent / config_rel
+        if config_candidate.is_symlink():
+            raise AdapterInvocationError("adapter config cannot be a symlink")
+        config = config_candidate.resolve()
+        try:
+            config.relative_to(resolved.parent.resolve())
+        except ValueError as error:
+            raise AdapterInvocationError("adapter config path escapes its workspace") from error
+        if not config.is_file():
+            raise AdapterInvocationError("adapter manifest references a missing config")
+        if raw.get("config_sha256") != _sha256(config):
+            raise AdapterInvocationError("adapter config hash does not match manifest")
     return raw, resolved
 
 
@@ -91,7 +130,10 @@ def _normalize_payload(
     manifest: Mapping[str, Any],
     allowed_root: Path,
 ) -> dict[str, Any]:
-    normalized = json.loads(json.dumps(dict(payload)))
+    try:
+        normalized = json.loads(json.dumps(dict(payload)))
+    except (TypeError, ValueError) as error:
+        raise AdapterInvocationError("adapter payload must contain JSON-safe values") from error
     path_fields = manifest.get("path_fields") or []
     if not isinstance(path_fields, list) or any(not isinstance(item, str) for item in path_fields):
         raise AdapterInvocationError("adapter manifest path_fields is malformed")
@@ -107,6 +149,20 @@ def _normalize_payload(
     return normalized
 
 
+def _load_config(manifest: Mapping[str, Any], manifest_path: Path) -> dict[str, Any]:
+    config_rel = manifest.get("config_path")
+    if config_rel is None:
+        return {}
+    config_path = (manifest_path.parent / str(config_rel)).resolve()
+    try:
+        value = json.loads(config_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        raise AdapterInvocationError("adapter config is not valid JSON") from error
+    if not isinstance(value, dict):
+        raise AdapterInvocationError("adapter config must be a JSON object")
+    return value
+
+
 def _invoke(
     manifest_path: Path,
     *,
@@ -114,15 +170,23 @@ def _invoke(
     payload: Mapping[str, Any] | None,
     allowed_root: Path,
     timeout_s: float,
+    python_executable: str | Path | None = None,
 ) -> dict[str, Any]:
     manifest, resolved_manifest = _manifest(manifest_path)
     root = allowed_root.expanduser().resolve()
     if not root.is_dir():
         raise AdapterInvocationError(f"allowed adapter root is missing: {root}")
     normalized = _normalize_payload(payload or {}, manifest=manifest, allowed_root=root)
+    if command == "execute":
+        # Configuration is installed and hash-bound with the manifest.  It is
+        # data crossing the adapter boundary, never a second policy authority.
+        normalized["_config"] = _load_config(manifest, resolved_manifest)
     wrapper = (resolved_manifest.parent / str(manifest["wrapper_path"])).resolve()
+    executable = Path(python_executable or sys.executable).expanduser().resolve()
+    if not executable.is_file():
+        raise AdapterInvocationError(f"adapter runtime is missing: {executable}")
     command_line = [
-        sys.executable,
+        str(executable),
         "-I",
         str(wrapper),
         command,
@@ -201,12 +265,14 @@ def probe_installed_adapter(
     *,
     allowed_root: str | Path,
     timeout_s: float = 30.0,
+    python_executable: str | Path | None = None,
 ) -> dict[str, Any]:
     """Run the adapter's readiness probe in a clean subprocess."""
 
     return _invoke(
         Path(manifest_path), command="probe", payload=None,
         allowed_root=Path(allowed_root), timeout_s=timeout_s,
+        python_executable=python_executable,
     )
 
 
@@ -216,12 +282,14 @@ def run_installed_adapter(
     *,
     allowed_root: str | Path,
     timeout_s: float = 120.0,
+    python_executable: str | Path | None = None,
 ) -> dict[str, Any]:
     """Execute one bounded adapter call with path containment and hashes."""
 
     return _invoke(
         Path(manifest_path), command="execute", payload=payload,
         allowed_root=Path(allowed_root), timeout_s=timeout_s,
+        python_executable=python_executable,
     )
 
 
