@@ -223,6 +223,7 @@ class PlanStep:
     description: str
     dependencies: tuple[str, ...] = ()
     required_capabilities: tuple[str, ...] = ()
+    probation_capabilities: tuple[str, ...] = ()
     resource_id: str | None = None
     output_contract: tuple[str, ...] = ()
     verification_contract: tuple[str, ...] = ()
@@ -238,6 +239,7 @@ class PlanStep:
             "step_id": self.step_id, "objective_id": self.objective_id,
             "description": self.description, "dependencies": list(self.dependencies),
             "required_capabilities": list(self.required_capabilities),
+            "probation_capabilities": list(self.probation_capabilities),
             "resource_id": self.resource_id, "output_contract": list(self.output_contract),
             "verification_contract": list(self.verification_contract), "fallback": self.fallback,
             "status": self.status, "mission_id": self.mission_id, "retries": self.retries,
@@ -250,6 +252,7 @@ class PlanStep:
             step_id=str(p.get("step_id") or ""), objective_id=str(p.get("objective_id") or ""),
             description=str(p.get("description") or ""), dependencies=_tuple(p.get("dependencies")),
             required_capabilities=_tuple(p.get("required_capabilities")),
+            probation_capabilities=_tuple(p.get("probation_capabilities")),
             resource_id=str(p["resource_id"]) if p.get("resource_id") else None,
             output_contract=_tuple(p.get("output_contract")),
             verification_contract=_tuple(p.get("verification_contract")),
@@ -953,6 +956,7 @@ def build_plan(
                 description=str(data.get("description") or data.get("objective") or ""),
                 dependencies=_tuple(data.get("dependencies")),
                 required_capabilities=_tuple(data.get("required_capabilities") or objective.required_capabilities),
+                probation_capabilities=_tuple(data.get("probation_capabilities")),
                 resource_id=str(data["resource_id"]) if data.get("resource_id") else objective.resource_id,
                 output_contract=_tuple(data.get("output_contract")), verification_contract=_tuple(data.get("verification_contract")),
                 fallback=str(data["fallback"]) if data.get("fallback") else None,
@@ -1060,6 +1064,8 @@ def _provider_observation_blockers(
 def _fabric_capability_blockers(
     database: FoundryDatabase,
     capability: str,
+    *,
+    allow_probation: bool = False,
 ) -> tuple[str, ...]:
     """Read Fabric capability readiness from the single catalog authority."""
 
@@ -1072,6 +1078,11 @@ def _fabric_capability_blockers(
     blockers: list[str] = []
     if readiness.state.value != "READY":
         blockers.append(f"capability:{capability}:{readiness.state.value}")
+    trust_state = readiness.trust_state.value
+    if trust_state == "DISABLED":
+        blockers.append(f"capability:{capability}:DISABLED")
+    elif trust_state == "PROBATION" and not allow_probation:
+        blockers.append(f"capability:{capability}:PROBATION")
     for provider_id in spec.provider_deps:
         blockers.extend(_provider_observation_blockers(database, provider_id))
     return tuple(dict.fromkeys(blockers))
@@ -1147,9 +1158,17 @@ def _capability_blockers(database: FoundryDatabase, step: PlanStep, *, resource_
         # Do not let the legacy portfolio or capability registry override it.
         if get_spec(database, capability) is not None:
             readiness = observed_readiness(database, capability)
+            allow_probation = capability in step.probation_capabilities
             if readiness.state.value != "READY":
                 blockers.append(f"{capability}:{readiness.state.value}")
-            blockers.extend(_fabric_capability_blockers(database, capability))
+            trust_state = readiness.trust_state.value
+            if trust_state == "DISABLED":
+                blockers.append(f"{capability}:DISABLED")
+            elif trust_state == "PROBATION" and not allow_probation:
+                blockers.append(f"{capability}:PROBATION")
+            blockers.extend(_fabric_capability_blockers(
+                database, capability, allow_probation=allow_probation,
+            ))
             continue
         readiness = capability_readiness(database, resource_id=str(resource), capability=capability)
         if not readiness.get("ready", False) or str(readiness.get("state") or "UNKNOWN") in {"UNREGISTERED", "UNKNOWN"}:
@@ -1224,6 +1243,7 @@ def generate_missions_for_objective(
             evidence_refs=step.evidence_refs, provenance={**objective.provenance, "objective_id": objective_id, "plan_id": plan.plan_id, "step_id": step.step_id},
             metadata={"executive_objective_id": objective_id, "executive_plan_id": plan.plan_id,
                       "executive_step_id": step.step_id, "required_capabilities": list(step.required_capabilities),
+                      "probation_capabilities": list(step.probation_capabilities),
                       "goal_id": objective.provenance.get("directive_id"),
                       "success_criteria": list(objective.success_criteria),
                       "constraints": list(objective.constraints),
@@ -2116,6 +2136,14 @@ def run_autonomy_cycle(
             # rerun and risk a conflicting append under the same idempotency
             # key; surface the failure for the Supervisor to reconcile.
             raise RuntimeError("recorded autonomy cycle payload is invalid") from error
+    # V12 bridge reconciliation is a bounded Supervisor pass over durable
+    # gaps.  It does not infer readiness: the Fabric Catalog is re-read and a
+    # prior wake/replan receipt makes replay a no-op.
+    from ..fabric.gap_bridge import (
+        bridge_missing_plan_capabilities,
+        reconcile_ready_gaps,
+    )
+    reconcile_ready_gaps(database)
     reconcile_terminal_mission_outcomes(database, controller=controller)
     operational_proposals = tuple(propose_operational_followups(
         database,
@@ -2142,6 +2170,15 @@ def run_autonomy_cycle(
             max_retries=int(_number(objective.budget.get("max_retries"), 1)),
         )
         plans.append(build_plan(database, objective.objective_id, (step,), controller=controller))
+    # Planner-owned, structured ``cap.*`` requirements that the canonical
+    # Catalog confirms missing enter the durable gap/WAIT/expansion bridge.
+    # Legacy resource capability ids stay on their existing compatibility
+    # path and cannot be misclassified as Fabric gaps.
+    current = rebuild_executive_state(database)
+    for objective in current.objectives.values():
+        if objective.status in _TERMINAL_OBJECTIVE:
+            continue
+        bridge_missing_plan_capabilities(database, objective.objective_id)
     ranking = tuple(
         row for row in rank_objectives(database, controller=controller)
         if row.objective_id not in excluded

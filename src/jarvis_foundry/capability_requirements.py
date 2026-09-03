@@ -64,6 +64,7 @@ class CapabilityReadinessEvidence:
     requirement_kind: str
     state: str
     unattended: str
+    trust_state: str
     usable: bool
     blocker: str | None
     version: str | None = None
@@ -88,6 +89,7 @@ class CapabilityReadinessEvidence:
             "requirement_kind": self.requirement_kind,
             "state": self.state,
             "unattended": self.unattended,
+            "trust_state": self.trust_state,
             "usable": self.usable,
             "blocker": self.blocker,
             "version": self.version,
@@ -896,6 +898,7 @@ def _capability_evidence(
             requirement_kind=requirement_kind,
             state="MISSING",
             unattended="UNKNOWN",
+            trust_state="UNKNOWN",
             usable=False,
             blocker="CAPABILITY_MISSING",
             note="capability is not registered in the Fabric Catalog",
@@ -910,12 +913,15 @@ def _capability_evidence(
     readiness = row.get("readiness") or {}
     state = str(readiness.get("state") or "UNKNOWN")
     unattended_state = str(spec.get("unattended") or "UNKNOWN")
+    trust_state = str(readiness.get("trust_state") or "ESTABLISHED")
     usable = state == "READY" and (
         not unattended or unattended_state == "ALLOWED"
-    )
+    ) and trust_state == "ESTABLISHED"
     blocker: str | None = None
     if state != "READY":
         blocker = f"CAPABILITY_{state}"
+    elif trust_state != "ESTABLISHED":
+        blocker = f"CAPABILITY_{trust_state}"
     elif unattended and unattended_state != "ALLOWED":
         blocker = (
             "INTERACTIVE_REQUIRED"
@@ -933,6 +939,7 @@ def _capability_evidence(
         requirement_kind=requirement_kind,
         state=state,
         unattended=unattended_state,
+        trust_state=trust_state,
         usable=usable,
         blocker=blocker,
         version=str(spec.get("version")) if spec.get("version") is not None else None,
@@ -1033,6 +1040,7 @@ def _evaluate_plan(
             "capability_id": item.capability_id,
             "state": item.state,
             "unattended": item.unattended,
+            "trust_state": item.trust_state,
             "evidence": {
                 "last_verified_at": item.last_verified_at,
                 "last_outcome": item.last_outcome,

@@ -205,6 +205,7 @@ class ObservedReadiness:
     consecutive_failures: int = 0
     note: str = ""
     claimed_vs_verified: VerifyVerdict = VerifyVerdict.UNKNOWN
+    trust_state: CapabilityTrust = CapabilityTrust.ESTABLISHED
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "capability_id", _identity(self.capability_id, "capability_id"))
@@ -214,6 +215,8 @@ class ObservedReadiness:
             object.__setattr__(
                 self, "claimed_vs_verified", VerifyVerdict(self.claimed_vs_verified)
             )
+        if not isinstance(self.trust_state, CapabilityTrust):
+            object.__setattr__(self, "trust_state", CapabilityTrust(self.trust_state))
         if self.consecutive_failures < 0:
             raise FabricError("consecutive_failures cannot be negative")
         if self.state is Readiness.READY:
@@ -224,10 +227,12 @@ class ObservedReadiness:
         if self.state is Readiness.UNKNOWN and self.last_outcome == "SUCCESS":
             raise FabricError("UNKNOWN cannot carry a SUCCESS outcome")
 
-    def selectable(self, *, unattended: bool) -> bool:
+    def selectable(self, *, unattended: bool, allow_probation: bool = False) -> bool:
         if self.state is not Readiness.READY:
             return False
-        return True
+        if self.trust_state is CapabilityTrust.DISABLED:
+            return False
+        return self.trust_state is CapabilityTrust.ESTABLISHED or allow_probation
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -238,6 +243,7 @@ class ObservedReadiness:
             "consecutive_failures": self.consecutive_failures,
             "note": self.note,
             "claimed_vs_verified": self.claimed_vs_verified.value,
+            "trust_state": self.trust_state.value,
         }
 
 

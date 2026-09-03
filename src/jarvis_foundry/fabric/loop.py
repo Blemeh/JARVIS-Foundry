@@ -26,6 +26,7 @@ from .model import (
     ActionResult,
     CapabilityTrust,
     CapabilitySpec,
+    CapabilityTrust,
     ClaimOutcome,
     GapKind,
     GapRecord,
@@ -311,8 +312,10 @@ def _rank(spec: CapabilitySpec, readiness, stats: Mapping[str, int]) -> tuple:
         Readiness.MISSING: 5,
     }
     unattended_rank = 0 if spec.unattended is UnattendedMode.ALLOWED else 1
+    trust_rank = 0 if readiness.trust_state is CapabilityTrust.ESTABLISHED else 1
     return (
         state_rank.get(readiness.state, 9),
+        trust_rank,
         unattended_rank,
         -int(stats.get("successes") or 0),
         int(stats.get("failures") or 0),
@@ -344,6 +347,12 @@ def select_capability(
     skipped: list[str] = []
     for spec in specs:
         readiness = observed_readiness(database, spec.capability_id)
+        if readiness.trust_state is CapabilityTrust.DISABLED:
+            skipped.append(f"{spec.capability_id} DISABLED")
+            continue
+        if readiness.trust_state is CapabilityTrust.PROBATION:
+            skipped.append(f"{spec.capability_id} PROBATION")
+            continue
         if readiness.state is Readiness.DEGRADED:
             skipped.append(f"{spec.capability_id} DEGRADED")
             continue

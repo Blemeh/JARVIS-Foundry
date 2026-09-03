@@ -5,6 +5,7 @@ readiness. A restart rebuilds state from append-only fabric events.
 """
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any, Mapping
 
 from ..clock import isoformat
@@ -14,6 +15,7 @@ from .contracts import CapabilityMetadata, metadata_for_spec
 from .model import (
     CapabilityTrust,
     FAILURE_THRESHOLD,
+    CapabilityTrust,
     CapabilitySpec,
     FabricError,
     GapRecord,
@@ -429,12 +431,19 @@ def observed_readiness(database: FoundryDatabase, capability_id: str) -> Observe
             state=Readiness.MISSING,
             note="capability is not registered",
         )
+    descriptor = capability_metadata(database, capability_id)
+    trust_state = (
+        descriptor.trust_state
+        if descriptor is not None
+        else CapabilityTrust.ESTABLISHED
+    )
     payload = _latest_outcome(database, capability_id)
     if payload is None:
         return ObservedReadiness(
             capability_id=capability_id,
             state=Readiness.UNKNOWN,
             note="registered but never verified",
+            trust_state=trust_state,
         )
     return ObservedReadiness(
         capability_id=capability_id,
@@ -444,6 +453,7 @@ def observed_readiness(database: FoundryDatabase, capability_id: str) -> Observe
         consecutive_failures=int(payload.get("consecutive_failures") or 0),
         note=str(payload.get("note") or ""),
         claimed_vs_verified=VerifyVerdict(payload.get("verified") or "UNKNOWN"),
+        trust_state=trust_state,
     )
 
 

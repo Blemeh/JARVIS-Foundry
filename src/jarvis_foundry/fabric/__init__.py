@@ -48,6 +48,7 @@ from .model import (
     ActionResult,
     CapabilityTrust,
     CapabilitySpec,
+    CapabilityTrust,
     ClaimOutcome,
     GapKind,
     GapRecord,

@@ -21,6 +21,7 @@ from ..effects import (
     infer_effect_class,
 )
 from ..events import canonical_json
+from .model import CapabilityTrust
 
 
 CONTRACT_VERSION = "jarvis.v10.adapter.v1"
@@ -98,6 +99,7 @@ class CapabilityMetadata:
     recovery: Mapping[str, Any] = field(default_factory=dict)
     world_model: Mapping[str, Any] = field(default_factory=dict)
     provenance: Mapping[str, Any] = field(default_factory=dict)
+    trust_state: CapabilityTrust = CapabilityTrust.ESTABLISHED
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "capability_id", _identity(self.capability_id, "capability_id"))
@@ -106,6 +108,8 @@ class CapabilityMetadata:
         object.__setattr__(self, "output_schema", _text(self.output_schema, "output_schema"))
         if not isinstance(self.effect_class, EffectClass):
             object.__setattr__(self, "effect_class", EffectClass(self.effect_class))
+        if not isinstance(self.trust_state, CapabilityTrust):
+            object.__setattr__(self, "trust_state", CapabilityTrust(self.trust_state))
         object.__setattr__(self, "requirements", _tuple_text(self.requirements, "requirements"))
         object.__setattr__(self, "credential_refs", _tuple_text(self.credential_refs, "credential_refs"))
         object.__setattr__(self, "preconditions", _tuple_text(self.preconditions, "preconditions"))
@@ -177,6 +181,7 @@ class CapabilityMetadata:
                 "provider_deps": list(spec.provider_deps),
                 "limitations": list(spec.limitations),
             },
+            trust_state=CapabilityTrust.ESTABLISHED,
         )
 
     @classmethod
@@ -203,6 +208,9 @@ class CapabilityMetadata:
             recovery=value.get("recovery"),
             world_model=value.get("world_model") or {"verified_terminal_only": True},
             provenance=value.get("provenance"),
+            trust_state=CapabilityTrust(
+                value.get("trust_state") or CapabilityTrust.ESTABLISHED
+            ),
         )
 
     def as_dict(self) -> dict[str, Any]:
@@ -224,6 +232,7 @@ class CapabilityMetadata:
             "recovery": dict(self.recovery),
             "world_model": dict(self.world_model),
             "provenance": dict(self.provenance),
+            "trust_state": self.trust_state.value,
         }
 
 

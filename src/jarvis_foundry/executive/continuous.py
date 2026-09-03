@@ -1100,11 +1100,20 @@ def on_mission_outcome(db, mission_id: str, *, controller="supervisor"):
         return {"error": f"{type(e).__name__}: {e}"}
 
 def on_capability_changed(db, *, controller="supervisor"):
+    reconciled = ()
+    from ..fabric.gap_bridge import GapBridgeStopped, reconcile_ready_gaps
+    try:
+        reconciled = reconcile_ready_gaps(db)
+    except GapBridgeStopped:
+        # STOP permits no bridge mutation; the durable gap is reconciled on a
+        # later Supervisor tick after RESUME.
+        return ()
     try:
         auto_wake_for_blocked(db, controller=controller)
     except Exception:
         pass
     tick_wakes(db, controller=controller)
+    return reconciled
 
 def on_owner_directive(db, *, controller="supervisor"):
     # Sync goals then tick owner wakes
