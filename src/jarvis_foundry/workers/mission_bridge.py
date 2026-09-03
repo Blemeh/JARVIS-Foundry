@@ -57,6 +57,8 @@ class HybridWorkerRoleAdapter:
         stop_path: str | Path | None = None,
         vault_root: str | Path | None = None,
         use_fabric: bool = False,
+        mcp_backend=None,
+        mcp_mutation_verifier=None,
     ) -> None:
         self.database = database
         self.router = router
@@ -72,6 +74,8 @@ class HybridWorkerRoleAdapter:
         # Structured fabric effects on the canonical worker path. Lab
         # scripted Hermes stays off this so fault-injection adapters still run.
         self.use_fabric = bool(use_fabric)
+        self.mcp_backend = mcp_backend
+        self.mcp_mutation_verifier = mcp_mutation_verifier
 
     def _signals_for(self, manifest: ContextManifest) -> dict[str, Any]:
         signals = dict(self.role_signals.get(manifest.role, self.task_signals))
@@ -151,6 +155,8 @@ class HybridWorkerRoleAdapter:
                 self.database, manifest, heartbeat,
                 owned_root=root,
                 structured_only=True,
+                mcp_backend=self.mcp_backend,
+                mcp_mutation_verifier=self.mcp_mutation_verifier,
             )
             if fabric_result is not None:
                 return fabric_result

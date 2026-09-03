@@ -1646,15 +1646,21 @@ def _safe_effect_status(database: FoundryDatabase, effect_key: str) -> str:
     """Read an effect projection without converting missing truth to a crash."""
 
     try:
-        status = str(
-            effect_state(database, effect_key).get("status") or "UNKNOWN"
-        ).upper()
+        projected = effect_state(database, effect_key)
+        status = str(projected.get("status") or "UNKNOWN").upper()
+        if (
+            projected.get("accepted") is True
+            and projected.get("reconciled") is True
+            and str(projected.get("terminal_outcome") or "").upper()
+            == "COMPLETED"
+        ):
+            status = "COMPLETED"
     except Exception:  # noqa: BLE001 - an absent effect is durable UNKNOWN truth
         status = "UNKNOWN"
     # The legacy system_actions projection retains FROZEN after an additive
     # provider reconciliation.  Campaign joins must consume the complete
-    # event truth: a later positive effect.reconciled receipt resolves that
-    # ambiguity, while any still-later mismatch/freeze wins again.
+    # event truth. A reconciliation observation alone is not acceptance:
+    # campaign joins wait for the canonical terminal-truth receipt.
     for event in database.events(
         readonly=True,
         event_type_prefixes=("system.action_", "effect."),
@@ -1671,8 +1677,16 @@ def _safe_effect_status(database: FoundryDatabase, effect_key: str) -> str:
             "effect.frozen", "effect.reconcile_mismatch", "effect.compensated",
         }:
             status = "FROZEN"
-        elif event.event_type == "effect.reconciled":
-            status = "COMPLETED"
+        elif event.event_type == "effect.terminal_truth":
+            if (
+                event.payload.get("accepted") is True
+                and event.payload.get("reconciled") is True
+                and str(event.payload.get("outcome") or "").upper()
+                == "COMPLETED"
+            ):
+                status = "COMPLETED"
+            else:
+                status = "FROZEN"
     return status
 
 

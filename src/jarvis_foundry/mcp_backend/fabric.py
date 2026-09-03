@@ -159,11 +159,15 @@ class FabricMcpBackend:
                 note=safe_note,
             )
 
-    def project(self, server_id: str) -> tuple[CapabilitySpec, ...]:
+    def project(
+        self, server_id: str, *, include_disabled: bool = True
+    ) -> tuple[CapabilitySpec, ...]:
         prior = self._catalog_capabilities(server_id)
         projected: list[CapabilitySpec] = []
         current_ids: set[str] = set()
-        for descriptor in self.client.tools(server_id, include_disabled=True):
+        for descriptor in self.client.tools(
+            server_id, include_disabled=include_disabled
+        ):
             spec = _spec(descriptor)
             metadata = _metadata(descriptor, self.config)
             current_ids.add(spec.capability_id)
@@ -203,9 +207,13 @@ class FabricMcpBackend:
             )
         return tuple(sorted(projected, key=lambda item: item.capability_id))
 
-    def connect_server(self, server_id: str) -> tuple[Any, tuple[CapabilitySpec, ...]]:
+    def connect_server(
+        self, server_id: str, *, include_disabled: bool = True
+    ) -> tuple[Any, tuple[CapabilitySpec, ...]]:
         health = self.client.connect(server_id)
-        return health, self.project(server_id)
+        return health, self.project(
+            server_id, include_disabled=include_disabled
+        )
 
     def connect_all(self) -> dict[str, Any]:
         report: dict[str, Any] = {}

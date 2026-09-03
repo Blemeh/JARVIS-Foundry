@@ -2176,7 +2176,10 @@ def run_autonomy_cycle(
     # path and cannot be misclassified as Fabric gaps.
     current = rebuild_executive_state(database)
     for objective in current.objectives.values():
-        if objective.status in _TERMINAL_OBJECTIVE:
+        if (
+            objective.objective_id in excluded
+            or objective.status in _TERMINAL_OBJECTIVE
+        ):
             continue
         bridge_missing_plan_capabilities(database, objective.objective_id)
     ranking = tuple(

@@ -21,10 +21,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
     output = args.output.expanduser().resolve()
+    selected_mcp_output = output.with_name("selected-mcp-adoption.json")
     output.parent.mkdir(parents=True, exist_ok=True)
     env = os.environ.copy()
     env["PYTHONPATH"] = str(ROOT)
     env["JARVIS_V12_PROOF_OUTPUT"] = str(output)
+    env["JARVIS_V12_MCP_ADOPTION_PROOF_OUTPUT"] = str(selected_mcp_output)
     uv_executable = shutil.which("uv")
     if not uv_executable:
         raise RuntimeError("uv is required for the locked disposable proof environment")
@@ -52,7 +54,11 @@ def main(argv: list[str] | None = None) -> int:
         timeout=900,
         check=False,
     )
-    if result.returncode != 0 or not output.is_file():
+    if (
+        result.returncode != 0
+        or not output.is_file()
+        or not selected_mcp_output.is_file()
+    ):
         failure = {
             "contract_version": "jarvis.v12.self-expansion-proof.v1",
             "passed": False,
@@ -69,6 +75,8 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({"passed": False, "proof": str(output)}, sort_keys=True))
         return 1
     proof = json.loads(output.read_text(encoding="utf-8"))
+    selected_mcp = json.loads(selected_mcp_output.read_text(encoding="utf-8"))
+    proof["selected_mcp_adoption"] = selected_mcp
     proof["runner"] = {
         "command": command,
         "returncode": result.returncode,
@@ -84,7 +92,8 @@ def main(argv: list[str] | None = None) -> int:
         "trial_count": proof.get("trial_count"),
         "duplicate_registrations": proof.get("duplicate_registrations"),
     }, sort_keys=True))
-    return 0 if proof.get("passed") is True else 1
+    passed = proof.get("passed") is True and selected_mcp.get("passed") is True
+    return 0 if passed else 1
 
 
 if __name__ == "__main__":

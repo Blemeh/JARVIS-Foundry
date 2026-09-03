@@ -45,7 +45,7 @@ from jarvis_foundry.executive.campaigns import (
     startup_resume_pass,
 )
 from jarvis_foundry.executive.continuous import rebuild_wake_state, trigger_wake
-from jarvis_foundry.effects import effect_state
+from jarvis_foundry.effects import effect_state, finalize_verified_effect
 from jarvis_foundry.mission.verification import record_final_outcome
 
 
@@ -528,6 +528,97 @@ def test_partial_effect_is_frozen_before_join(tmp_path: Path) -> None:
     assert database.event_count(event_type="system.action_started") == 1
 
 
+def test_reconciliation_alone_cannot_release_join_without_terminal_truth(
+    tmp_path: Path,
+) -> None:
+    database = _database(tmp_path)
+    mission_id = "mission-effect-terminal-truth"
+    outcome_id = _accepted_mission(database, mission_id)
+    effect_key = "effect:v12:terminal-truth"
+    create_campaign(
+        database,
+        "objective-v12",
+        campaign_id="campaign-effect-terminal-truth",
+    )
+    declare_child_mission(
+        database,
+        "campaign-effect-terminal-truth",
+        child_id="effect-terminal-child",
+        mission_id=mission_id,
+    )
+    bind_child_effect(database, "effect-terminal-child", effect_key)
+    _append(
+        database,
+        "system.action_started",
+        {
+            "action_key": effect_key,
+            "system_id": "system-v12",
+            "target_ref": "file:/tmp/v12-terminal-truth",
+            "payload_hash": "hash-v12-terminal-truth",
+            "kind": "file_write",
+        },
+        "system.action_started:effect:v12:terminal-truth",
+    )
+    _append(
+        database,
+        "effect.frozen",
+        {
+            "action_key": effect_key,
+            "reason": "provider outcome was initially ambiguous",
+        },
+        "effect.frozen:effect:v12:terminal-truth",
+    )
+    _append(
+        database,
+        "effect.reconciled",
+        {
+            "action_key": effect_key,
+            "provider_claim": {"status": "MATCH", "matches": True},
+        },
+        "effect.reconciled:effect:v12:terminal-truth",
+    )
+
+    before = evaluate_joins(database, "campaign-effect-terminal-truth")
+    child = rebuild_campaign_state(database).children["effect-terminal-child"]
+    assert before["completed"] is False
+    assert child.status == "WAITING"
+    assert child.acceptance_outcome_id is None
+    assert database.event_count(event_type="effect.terminal_truth") == 0
+
+    finalized = finalize_verified_effect(
+        database,
+        effect_key,
+        provider_receipt={
+            "provider_id": "disposable-v12-provider",
+            "provider_ref": "disposable:v12:terminal-truth",
+        },
+        readback={
+            "status": "MATCH",
+            "matches": True,
+            "sha256": "a" * 64,
+        },
+        result={
+            "claimed": "COMPLETED",
+            "path": "disposable:v12:terminal-truth",
+        },
+        acceptance_evidence={
+            "authority": "independent-disposable-readback",
+            "outcome_id": outcome_id,
+        },
+        reconciled=True,
+    )
+    assert finalized["terminal_truth"] is True
+    after = evaluate_joins(database, "campaign-effect-terminal-truth")
+    assert after["completed"] is True
+    assert (
+        rebuild_campaign_state(database)
+        .children["effect-terminal-child"]
+        .acceptance_outcome_id
+        == outcome_id
+    )
+    assert database.event_count(event_type="effect.terminal_truth") == 1
+
+
 def test_missing_effect_projection_is_durable_unknown_wait(tmp_path: Path) -> None:
     """A missing effect row parks the child without breaking checkpointing."""
 
@@ -798,16 +889,36 @@ def test_retry_reservation_is_atomic_and_external_reopen_does_not_consume_budget
 
 def test_campaign_objective_is_not_replaced_by_autonomy_admission(tmp_path: Path) -> None:
     database = _database(tmp_path)
-    create_campaign(database, "objective-v12", campaign_id="campaign-admission-boundary")
+    excluded_objective_id = "objective-v12-excluded-gap"
+    create_objective(
+        database,
+        "Campaign-owned objective with a deliberately missing capability",
+        objective_id=excluded_objective_id,
+        required_capabilities=("cap.campaign.excluded.fixture",),
+        success_criteria=("campaign owns admission",),
+    )
+    create_campaign(
+        database,
+        excluded_objective_id,
+        campaign_id="campaign-admission-boundary",
+    )
     cycle = run_autonomy_cycle(
         database,
         cycle_id="campaign-admission-boundary-cycle",
-        excluded_objective_ids=("objective-v12",),
+        excluded_objective_ids=("objective-v12", excluded_objective_id),
     )
     assert cycle.objective_id is None
     assert not any(
         event.event_type == "executive.mission_requested"
-        and event.payload.get("objective_id") == "objective-v12"
+        and event.payload.get("objective_id") in {
+            "objective-v12",
+            excluded_objective_id,
+        }
+        for event in database.events()
+    )
+    assert not any(
+        event.event_type == "fabric.capability_gap.opened"
+        and event.payload.get("origin_objective_id") == excluded_objective_id
         for event in database.events()
     )
 

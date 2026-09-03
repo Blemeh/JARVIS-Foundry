@@ -109,18 +109,56 @@ def _workload(tmp_path: Path) -> Path:
 
 def _cycle_args(db: FoundryDatabase, tmp_path: Path,
                 risk: str = "R1",
+                baseline_command=SLOW,
                 candidate_command=FAST,
                 build_command=BUILD_OK,
+                improvement_id: str | None = None,
                 ) -> dict[str, object]:
     return {
-        "improvement_id": _improvement(db, risk=risk),
+        "improvement_id": improvement_id or _improvement(db, risk=risk),
         "source_commit": "c" * 40,
         "workload_dir": _workload(tmp_path),
-        "baseline_command": SLOW,
+        "baseline_command": baseline_command,
         "candidate_command": candidate_command,
         "build_command": build_command,
         "controller": CONTROLLER,
     }
+
+
+def _error_rate_improvement(db: FoundryDatabase) -> str:
+    return record_improvement(
+        db,
+        problem="representative workload baseline fails every case",
+        evidence_refs=["var/evidence/v6-s11/error-rate-observation.txt"],
+        provenance={
+            "source": "v6-s11 deterministic cycle replay probe",
+            "observed_at": "2026-09-03T00:00:00Z",
+        },
+        hypothesis="the candidate restores successful case execution",
+        expected_mechanism="the candidate command exits successfully for every case",
+        baseline_metric={
+            "name": "error_rate",
+            "value": 1.0,
+            "unit": "ratio",
+            "source": "v6-s11-error-rate-observation.txt",
+        },
+        mmi={"minimum_delta": 0.5, "direction": "decrease", "unit": "ratio"},
+        guardrails={
+            "correctness": "suite green",
+            "safety": "no live mutation",
+            "cost": "no paid calls",
+            "latency": "no regression",
+        },
+        workload={
+            "ref": "tests/foundry",
+            "hash": "139f26833c9690b521460664f6ab9de0f0cbdbb61b9d547850004bf4c44dafef",
+        },
+        observation={"requirement": "2 identical replay cycles", "cycles": 2},
+        declared_risk="R1",
+        surfaces=["tests/foundry"],
+        budget={"max_cost_usd": 0.0, "capability_scope": ["pytest"]},
+        reversibility={"plan": "git revert", "rollback_threshold": "5m"},
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -269,7 +307,14 @@ def test_second_identical_cycle_promotes(db: FoundryDatabase,
     SAME DB both promote — the arena transitions are namespaced per
     cycle (transition_id), so the second cycle's slot moves re-apply
     instead of deduping against the first (state-diverged no-op)."""
-    args = _cycle_args(db, tmp_path, risk="R1")
+    args = _cycle_args(
+        db,
+        tmp_path,
+        risk="R1",
+        baseline_command=BROKEN,
+        candidate_command=FAST,
+        improvement_id=_error_rate_improvement(db),
+    )
     first = run_cycle(db, **args)  # type: ignore[arg-type]
     assert first["outcome"] == "promoted"
     second = run_cycle(db, **args)  # type: ignore[arg-type]

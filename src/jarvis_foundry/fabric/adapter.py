@@ -14,6 +14,7 @@ from typing import Any, Callable
 from ..roles.adapter import RoleAdapter
 from ..roles.manifest import ContextManifest
 from ..roles.results import COMPLETED, FAILED, RoleResult, VERDICT_FAIL, VERDICT_PASS
+from .catalog import get_spec
 from .executors import HANDLERS, ExecutorContext
 from .loop import seed_builtins, select_capability
 from .model import FabricError, TaskIntent
@@ -39,10 +40,19 @@ _STRUCTURED_READS = {
 }
 
 
-def resolve_fabric_action(capability: str) -> str | None:
+def resolve_fabric_action(capability: str, database=None) -> str | None:
     if capability in HANDLERS:
         return capability
-    return V5_TO_FABRIC.get(capability)
+    if capability.startswith("mcp."):
+        return capability
+    mapped = V5_TO_FABRIC.get(capability)
+    if mapped is not None:
+        return mapped
+    if database is not None and capability.startswith("cap."):
+        spec = get_spec(database, capability)
+        if spec is not None:
+            return spec.action_kind
+    return None
 
 
 def _json_object(text: str) -> dict[str, Any] | None:
@@ -118,9 +128,11 @@ def try_fabric_dispatch(
     *,
     owned_root: Path,
     structured_only: bool = False,
+    mcp_backend=None,
+    mcp_mutation_verifier=None,
 ) -> RoleResult | None:
     """Run a mapped fabric action or return None so the inner adapter can."""
-    action = resolve_fabric_action(manifest.capability)
+    action = resolve_fabric_action(manifest.capability, database)
     if manifest.role not in {"builder", "repair"} or action is None:
         return None
     payload = payload_from_manifest(
@@ -143,7 +155,12 @@ def try_fabric_dispatch(
         # the step. The inner Hermes path may still satisfy it.
         return None
     heartbeat()
-    ctx = ExecutorContext(database=database, owned_root=owned_root)
+    ctx = ExecutorContext(
+        database=database,
+        owned_root=owned_root,
+        mcp_backend=mcp_backend,
+        mcp_mutation_verifier=mcp_mutation_verifier,
+    )
     try:
         receipt = execute_for_spine(
             database,
@@ -202,11 +219,15 @@ class FabricRoleAdapter:
         owned_root: str | Path,
         inner: RoleAdapter,
         structured_only: bool = False,
+        mcp_backend=None,
+        mcp_mutation_verifier=None,
     ) -> None:
         self.database = database
         self.owned_root = Path(owned_root).expanduser().resolve()
         self.inner = inner
         self.structured_only = structured_only
+        self.mcp_backend = mcp_backend
+        self.mcp_mutation_verifier = mcp_mutation_verifier
 
     def dispatch(self, manifest: ContextManifest, *, heartbeat) -> RoleResult:
         root = owned_root_for_manifest(
@@ -218,6 +239,8 @@ class FabricRoleAdapter:
             self.database, manifest, heartbeat,
             owned_root=root,
             structured_only=self.structured_only,
+            mcp_backend=self.mcp_backend,
+            mcp_mutation_verifier=self.mcp_mutation_verifier,
         )
         if result is None:
             return self.inner.dispatch(manifest, heartbeat=heartbeat)

@@ -328,7 +328,7 @@ def test_bounded_rotation_enable_disable_ttl_and_secret_guard(tmp_path) -> None:
     sources = [_source(f"watch-{index}", interval=1) for index in range(3)]
     bounds = InitiativeA2Bounds(
         source_limit=2, research_candidate_limit=0,
-        research_budget_per_cycle=1.0, candidate_ttl_hours=0.001,
+        research_budget_per_cycle=1.0, candidate_ttl_hours=24.0,
         do_nothing_score=0.20,
     )
     base = datetime.now(timezone.utc).replace(microsecond=0)
@@ -351,26 +351,6 @@ def test_bounded_rotation_enable_disable_ttl_and_secret_guard(tmp_path) -> None:
     assert disabled["readiness_state"] == "DISABLED"
     assert disabled["next_due_at"] is None
 
-    # Once TTL is due, unchanged source input still enters judgment and lands
-    # as durable STALE rejection history without another research pass.
-    run_continuous_observation_cycle(
-        database,
-        sources=[sources[0], sources[1], SourceSpec(
-            sources[2].source_id, sources[2].source_kind,
-            sources[2].source_identity, sources[2].poll_interval_s,
-            sources[2].config, False,
-        )],
-        bounds=bounds, now=base + timedelta(seconds=5),
-        source_readers={"project": reader}, research_reader=_research,
-    )
-    with database.connect(readonly=True) as connection:
-        stale = connection.execute(
-            "SELECT COUNT(*) FROM candidate_judgments "
-            "WHERE outcome = 'REJECTED' AND reason_code = 'STALE'"
-        ).fetchone()[0]
-    assert stale >= 1
-    assert _forbidden_counts(database)["objectives"] == 0
-
     with pytest.raises(ValueError, match="must reference, not persist"):
         run_continuous_observation_cycle(
             database,
@@ -378,6 +358,74 @@ def test_bounded_rotation_enable_disable_ttl_and_secret_guard(tmp_path) -> None:
             now=base + timedelta(seconds=10),
             source_readers={"project": reader},
         )
+
+
+def test_candidate_ttl_rejection_uses_a_deterministic_clock(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    database = _database(tmp_path)
+    source = _source("ttl-watch", interval=1)
+    base = datetime(2026, 9, 3, 12, 0, 0, tzinfo=timezone.utc)
+    clock = {"now": base}
+
+    class FrozenDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            value = clock["now"]
+            if tz is None:
+                return value.replace(tzinfo=None)
+            return value.astimezone(tz)
+
+    monkeypatch.setattr(
+        "jarvis_foundry.executive.scoring.datetime",
+        FrozenDateTime,
+    )
+
+    def reader(spec, _stop):
+        return SourceReadResult(
+            "READY",
+            (_observation(spec.source_id, "stable-revision"),),
+        )
+
+    bounds = InitiativeA2Bounds(
+        source_limit=1,
+        research_candidate_limit=0,
+        research_budget_per_cycle=1.0,
+        candidate_ttl_hours=0.001,
+        do_nothing_score=0.20,
+    )
+    run_continuous_observation_cycle(
+        database,
+        sources=[source],
+        bounds=bounds,
+        now=base,
+        source_readers={"project": reader},
+        research_reader=_research,
+    )
+    with database.connect(readonly=True) as connection:
+        first_stale = int(connection.execute(
+            "SELECT COUNT(*) FROM candidate_judgments "
+            "WHERE outcome = 'REJECTED' AND reason_code = 'STALE'"
+        ).fetchone()[0])
+    assert first_stale == 0
+
+    clock["now"] = base + timedelta(seconds=5)
+    run_continuous_observation_cycle(
+        database,
+        sources=[source],
+        bounds=bounds,
+        now=clock["now"],
+        source_readers={"project": reader},
+        research_reader=_research,
+    )
+    with database.connect(readonly=True) as connection:
+        stale = int(connection.execute(
+            "SELECT COUNT(*) FROM candidate_judgments "
+            "WHERE outcome = 'REJECTED' AND reason_code = 'STALE'"
+        ).fetchone()[0])
+    assert stale == 1
+    assert _forbidden_counts(database)["objectives"] == 0
 
 
 def test_existing_worker_choke_point_and_flag_exclusion(tmp_path) -> None:

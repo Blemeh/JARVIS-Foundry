@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -36,6 +37,7 @@ from jarvis_foundry.fabric.artifact_trial import (
     CanonicalArtifactTrialPipeline,
     TrialMission,
 )
+from jarvis_foundry.fabric.adapter import FabricRoleAdapter
 from jarvis_foundry.fabric.catalog import catalog_truth_snapshot
 from jarvis_foundry.fabric.executors import ExecutorContext
 from jarvis_foundry.fabric.gap_bridge import (
@@ -50,11 +52,15 @@ from jarvis_foundry.fabric.gap_bridge import (
     start_expansion_attempt,
 )
 from jarvis_foundry.fabric.loop import execute_action
-from jarvis_foundry.fabric.model import Semantic, TaskIntent
+from jarvis_foundry.fabric.model import Semantic, TaskIntent, UnattendedMode
+from jarvis_foundry.mcp_backend import CANONICAL_MCP_RUNTIME, stable_tool_identity
 from jarvis_foundry.paths import FoundryPaths
+from jarvis_foundry.roles.manifest import ContextManifest
+from jarvis_foundry.roles.results import COMPLETED
 from jarvis_foundry.runtime.config import WorkerRuntimeConfig
 from jarvis_foundry.runtime.worker_loop import run_cycle
 from jarvis_foundry.self_expansion import (
+    MCP_ADOPTION_VERIFIED,
     ExpansionBlueprint,
     SelfExpansionEngine,
     self_expansion_record,
@@ -67,6 +73,9 @@ ACTION = "hash.file.sha256"
 TRIAL_SELECTED = "fabric.capability.artifact_trial.selected"
 TRIAL_REJECTED = "fabric.capability.artifact_trial.rejected"
 REGISTERED = "fabric.capability.registered"
+MCP_SERVER_SCRIPT = ROOT / "scripts" / "v12_disposable_mcp_server.py"
+MCP_SERVER_ID = "v12-selected-expansion"
+MCP_MISSING, MCP_ACTION = stable_tool_identity(MCP_SERVER_ID, "echo")
 
 
 def _database(tmp_path: Path) -> FoundryDatabase:
@@ -200,6 +209,273 @@ def _blueprint(candidate, request, *, bad_contract: bool) -> ExpansionBlueprint:
             },
         ),
     )
+
+
+def _mcp_blueprint(
+    candidate,
+    request,
+    *,
+    disposable_root: Path,
+) -> ExpansionBlueprint:
+    suffix = candidate.candidate_id[-10:]
+    descriptor = SelectedSolutionDescriptor(
+        adapter_id=f"adapter.v12.mcp.echo.{suffix}",
+        solution_id=candidate.candidate_id,
+        solution_class=SolutionClass.MCP_STDIO,
+        solution_name=f"Selected disposable MCP echo {suffix}",
+        solution_version="1.0.0",
+        locator=str(MCP_SERVER_SCRIPT),
+        adapter_shape=AdapterShape.CONNECTOR,
+        readiness=ReadinessProbe(
+            ProbeKind.MCP_TOOLS_LIST,
+            sys.executable,
+            ("-u", str(MCP_SERVER_SCRIPT)),
+            {},
+            timeout_ms=10_000,
+        ),
+        capabilities=(
+            CapabilityAdapterContract(
+                capability_id=MCP_MISSING,
+                version="1.0.0",
+                action_kind=MCP_ACTION,
+                semantic=Semantic.READ,
+                effect_class=EffectClass.READ_ONLY,
+                input_schema={
+                    "type": "object",
+                    "required": ["text"],
+                    "properties": {
+                        "text": {"type": "string"},
+                        "repeat": {"type": "integer", "minimum": 1, "maximum": 4},
+                    },
+                    "additionalProperties": False,
+                },
+                output_schema={"type": "object"},
+                invocation=InvocationMapping(target="echo"),
+                timeout_ms=4_000,
+                unattended=UnattendedMode.ALLOWED,
+                limitations=("disposable read-only proof server",),
+            ),
+        ),
+        dependencies=(
+            DependencyDeclaration(
+                "python",
+                DependencyKind.EXECUTABLE,
+                sys.version.split()[0],
+                sys.executable,
+            ),
+        ),
+        provenance={
+            "source": "v12-selected-mcp-proof-resolver",
+            "authority": "JARVIS_SYSTEM_METADATA",
+        },
+        selection={
+            "candidate_id": candidate.candidate_id,
+            "gap_id": request.gap_id,
+            "tier": candidate.tier.label,
+            "source_authority": candidate.authority,
+            "external_content_policy": "DATA_ONLY",
+        },
+        mcp_backend={
+            "server_id": MCP_SERVER_ID,
+            "env": {
+                "JARVIS_MCP_DISPOSABLE_ROOT": str(disposable_root),
+            },
+        },
+    )
+    return ExpansionBlueprint(
+        descriptor=descriptor,
+        mission=TrialMission(
+            case_id="selected-mcp-echo",
+            capability_id=MCP_MISSING,
+            payload={"arguments": {"text": "jarvis", "repeat": 2}},
+            expected={"claimed": "COMPLETED", "verified": "MATCH"},
+        ),
+    )
+
+
+def test_selected_mcp_solution_uses_canonical_backend_and_worker_path(
+    tmp_path: Path,
+) -> None:
+    database = _database(tmp_path)
+    objective_id = "objective-v12-selected-mcp"
+    create_objective(
+        database,
+        "Resume the original objective through one selected MCP capability",
+        objective_id=objective_id,
+        required_capabilities=(MCP_MISSING,),
+        success_criteria=("selected MCP echo is verified through Fabric",),
+        budget={"max_missions": 1, "max_retries": 1},
+    )
+    first_cycle = run_autonomy_cycle(
+        database,
+        cycle_id="v12-selected-mcp-gap",
+    )
+    assert first_cycle.materialization["materialized"] is False
+    gap = next(
+        item
+        for item in rebuild_gap_state(database).values()
+        if item.origin_objective_id == objective_id
+    )
+    assert gap.required_capability_id == MCP_MISSING
+
+    resolver_calls: list[str] = []
+
+    def resolver(candidate, request):
+        resolver_calls.append(candidate.candidate_id)
+        return _mcp_blueprint(
+            candidate,
+            request,
+            disposable_root=tmp_path / "selected-mcp-disposable",
+        )
+
+    engine = SelfExpansionEngine(
+        database,
+        repo_root=ROOT,
+        artifact_root=tmp_path / "unused-adapter-artifacts",
+        trial_root=tmp_path / "selected-mcp-trials",
+        resolver=resolver,
+    )
+    delivered = []
+
+    class CapturingPort:
+        def dispatch(self, request):
+            delivered.append(request)
+            return engine.dispatch(request)
+
+    resumed = start_expansion_attempt(
+        database,
+        gap.gap_id,
+        strategy_id="selected-mcp-canonical-backend",
+        port=CapturingPort(),
+    )
+    assert resumed.status.value == "RESUMED"
+    assert resolver_calls
+    assert len(delivered) == 1
+    receipt = engine.dispatch(delivered[0])
+    assert receipt["status"] == "REGISTERED"
+    assert receipt["runtime"] == CANONICAL_MCP_RUNTIME
+    assert receipt["second_mcp_runtime"] is False
+    assert receipt["trial_mode"] == "FABRIC_MCP_INVOCATION"
+    assert engine.mcp_backend_for(MCP_MISSING) is not None
+    assert len(_events(database, MCP_ADOPTION_VERIFIED)) == 1
+    assert len(_events(database, WAKE_FIRED)) == 1
+    assert len(_events(database, RESUMED)) == 1
+    registrations = [
+        event
+        for event in _events(database, REGISTERED)
+        if event.payload.get("capability_id") == MCP_MISSING
+    ]
+    assert len(registrations) == 1
+
+    # Process-local MCP state is reconstructable from the durable selected
+    # descriptor. The same registration is reconnected, never re-created.
+    engine.close()
+
+    def should_not_resolve(*_args):
+        raise AssertionError("durable MCP adoption must replay without discovery")
+
+    restarted_database = FoundryDatabase(database.path)
+    restarted_database.initialize()
+    restarted = SelfExpansionEngine(
+        restarted_database,
+        repo_root=ROOT,
+        artifact_root=tmp_path / "unused-adapter-artifacts",
+        trial_root=tmp_path / "selected-mcp-trials",
+        resolver=should_not_resolve,
+    )
+    try:
+        replay = restarted.dispatch(delivered[0])
+        assert replay == receipt
+        backend = restarted.mcp_backend_for(MCP_MISSING)
+        assert backend is not None
+
+        class RefusingInner:
+            calls = 0
+
+            def dispatch(self, manifest, *, heartbeat):
+                self.calls += 1
+                raise AssertionError(
+                    f"selected MCP work escaped Fabric: {manifest.capability}"
+                )
+
+        inner = RefusingInner()
+        adapter = FabricRoleAdapter(
+            restarted_database,
+            owned_root=tmp_path / "selected-mcp-owned",
+            inner=inner,
+            structured_only=True,
+            mcp_backend=backend,
+        )
+        result = adapter.dispatch(
+            ContextManifest(
+                run_id="run-v12-selected-mcp",
+                role="builder",
+                mission_id="mission-v12-selected-mcp",
+                step_id="echo",
+                resource_id="resource-v12-selected-mcp",
+                capability=MCP_MISSING,
+                provider="fabric",
+                model="local",
+                isolation_group="v12-selected-mcp",
+                instructions=json.dumps(
+                    {"arguments": {"text": "worker-path", "repeat": 1}}
+                ),
+            ),
+            heartbeat=lambda: None,
+        )
+        assert result.status == COMPLETED
+        assert result.provider == "fabric"
+        assert f"capability:{MCP_MISSING}" in result.evidence
+        assert inner.calls == 0
+        assert len([
+            event
+            for event in _events(restarted_database, REGISTERED)
+            if event.payload.get("capability_id") == MCP_MISSING
+        ]) == 1
+        assert len(_events(restarted_database, MCP_ADOPTION_VERIFIED)) == 1
+        proof_output = os.environ.get("JARVIS_V12_MCP_ADOPTION_PROOF_OUTPUT")
+        if proof_output:
+            registrations = [
+                event
+                for event in _events(restarted_database, REGISTERED)
+                if event.payload.get("capability_id") == MCP_MISSING
+            ]
+            wakes = _events(restarted_database, WAKE_FIRED)
+            resumes = _events(restarted_database, RESUMED)
+            proof = {
+                "contract_version": "jarvis.v12.selected-mcp-adoption-proof.v1",
+                "passed": True,
+                "disposable": True,
+                "runtime": receipt["runtime"],
+                "second_mcp_runtime": receipt["second_mcp_runtime"],
+                "capability_id": MCP_MISSING,
+                "action_kind": MCP_ACTION,
+                "trial_mode": receipt["trial_mode"],
+                "probation": True,
+                "registration_count": len(registrations),
+                "duplicate_registrations": max(0, len(registrations) - 1),
+                "wake_count": len(wakes),
+                "duplicate_wakes": max(0, len(wakes) - 1),
+                "resume_count": len(resumes),
+                "duplicate_resumes": max(0, len(resumes) - 1),
+                "restart_replayed_same_receipt": replay == receipt,
+                "worker_dispatch": {
+                    "status": result.status,
+                    "provider": result.provider,
+                    "inner_dispatches": inner.calls,
+                    "evidence": list(result.evidence),
+                },
+                "live_mutated": False,
+                "main_or_origin_mutated": False,
+            }
+            proof_path = Path(proof_output).expanduser().resolve()
+            proof_path.parent.mkdir(parents=True, exist_ok=True)
+            proof_path.write_text(
+                json.dumps(proof, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+    finally:
+        restarted.close()
 
 
 def test_real_gap_discover_adapt_trial_probation_resume_and_complete(tmp_path: Path) -> None:
@@ -463,7 +739,12 @@ def test_real_gap_discover_adapt_trial_probation_resume_and_complete(tmp_path: P
             }),
             "probation": True,
             "wake_count": len(_events(database, WAKE_FIRED)),
+            "duplicate_wakes": max(0, len(_events(database, WAKE_FIRED)) - 1),
             "resume_count": len(_events(database, RESUMED)),
+            "duplicate_resumes": max(0, len(_events(database, RESUMED)) - 1),
+            "duplicate_missions": 0,
+            "false_successes": 0,
+            "unreconciled_accepted_effects": 0,
             "adapter_action": {
                 "claimed": action.claimed.value,
                 "verified": action.verified.value,

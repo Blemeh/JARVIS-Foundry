@@ -491,6 +491,7 @@ class SelectedSolutionDescriptor:
     provenance: Mapping[str, Any] = field(default_factory=dict)
     selection: Mapping[str, Any] = field(default_factory=dict)
     disable_reason: str = "adapter disabled before probation adoption"
+    mcp_backend: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "adapter_id", _identity(self.adapter_id, "adapter_id"))
@@ -516,6 +517,13 @@ class SelectedSolutionDescriptor:
         object.__setattr__(self, "provenance", _mapping(self.provenance, "provenance"))
         object.__setattr__(self, "selection", _mapping(self.selection, "selection"))
         object.__setattr__(self, "disable_reason", _text(self.disable_reason, "disable_reason", limit=512))
+        object.__setattr__(
+            self, "mcp_backend", _mapping(self.mcp_backend, "mcp_backend")
+        )
+        if self.solution_class is not SolutionClass.MCP_STDIO and self.mcp_backend:
+            raise AdapterFactoryError(
+                "mcp_backend settings are valid only for MCP solutions"
+            )
 
     @property
     def descriptor_hash(self) -> str:
@@ -526,7 +534,7 @@ class SelectedSolutionDescriptor:
         return f"{self.adapter_id}-{self.descriptor_hash[:16]}"
 
     def as_dict(self) -> dict[str, Any]:
-        return {
+        result = {
             "contract_version": DESCRIPTOR_VERSION,
             "adapter_protocol": ADAPTER_PROTOCOL,
             "adapter_id": self.adapter_id,
@@ -544,6 +552,9 @@ class SelectedSolutionDescriptor:
             "selection": dict(self.selection),
             "disable_reason": self.disable_reason,
         }
+        if self.mcp_backend:
+            result["mcp_backend"] = dict(self.mcp_backend)
+        return result
 
     @classmethod
     def from_mapping(cls, value: Mapping[str, Any]) -> "SelectedSolutionDescriptor":
@@ -571,6 +582,7 @@ class SelectedSolutionDescriptor:
                 if value.get(key) is not None
             },
             disable_reason=str(value.get("disable_reason") or "adapter disabled before probation adoption"),
+            mcp_backend=value.get("mcp_backend") or {},
         )
 
     @classmethod

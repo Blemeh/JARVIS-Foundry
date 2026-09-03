@@ -26,7 +26,7 @@ if str(SOURCE_ROOT) not in sys.path:
 from jarvis_foundry.control.capabilities import set_capability_state
 from jarvis_foundry.control.registration import inspect_git_resource, registration_event
 from jarvis_foundry.database import FoundryDatabase
-from jarvis_foundry.effects import execute_fabric_effect, reconcile_effect
+from jarvis_foundry.effects import execute_fabric_effect, finalize_verified_effect
 from jarvis_foundry.events import Event
 from jarvis_foundry.executive.autonomy import create_objective, rebuild_executive_state
 from jarvis_foundry.executive.campaigns import (
@@ -55,9 +55,11 @@ FUTURE_DEADLINE = "2099-09-03T12:00:00Z"
 CAMPAIGN_ID = "campaign-v12-endurance-disposable"
 OBJECTIVE_ID = "objective-v12-endurance-disposable"
 REPO_ROOT = SOURCE_ROOT.parent
-BASE_V11_SHA = "ae9ac06b6f9174c810b0e658daaf81c7b683ae8b"
+BASE_V11_SHA = "afddb8d5ca3d5c3459a4f5394e84affb92d13738"
 CAMPAIGN_INPUT_SHA = "db685fe0bd0bc22b25a1f717bafdd8612cdfd19d"
 PROVIDER_INPUT_SHA = "eedc4b293daa6400907f3196924514b21a61010c"
+ENDURANCE_FINAL_SHA = "49b2c2337a0579519d0b782a5a260673079eb398"
+ENDURANCE_IMPLEMENTATION_SHA = "43da572ca0fb24ae82222cdd02c2e23a76bf95f6"
 
 CHILDREN = {
     "ambiguous-child": {
@@ -102,6 +104,8 @@ def _source_identity() -> dict[str, Any]:
         "branch": _git_output("branch", "--show-current"),
         "implementation_sha": _git_output("rev-parse", "HEAD"),
         "base_v11_sha": BASE_V11_SHA,
+        "endurance_final_sha": ENDURANCE_FINAL_SHA,
+        "endurance_implementation_sha": ENDURANCE_IMPLEMENTATION_SHA,
         "campaign_input_sha": CAMPAIGN_INPUT_SHA,
         "provider_resilience_input_sha": PROVIDER_INPUT_SHA,
         "schema_version": SCHEMA_VERSION,
@@ -568,13 +572,28 @@ def _run_full(root: Path) -> dict[str, Any]:
         manifest.provider == "ambiguous-alternate"
         for manifest in ambiguous_adapter.received
     )
-    reconcile_effect(
+    finalize_verified_effect(
         database,
         str(CHILDREN["ambiguous-child"]["effect"]),
-        provider_state={
+        provider_receipt={
+            "provider_id": "ambiguous-primary",
+            "provider_ref": "disposable-ambiguous-effect-confirmed",
+        },
+        readback={
+            "status": "MATCH",
+            "matches": True,
+            "exists": True,
+        },
+        result={
+            "claimed": "COMPLETED",
             "exists": True,
             "provider_ref": "disposable-ambiguous-effect-confirmed",
         },
+        acceptance_evidence={
+            "authority": "disposable-local-readback",
+            "target": str(root_map["ambiguous-child"] / "result.txt"),
+        },
+        reconciled=True,
     )
     ambiguous_resumed = resume_mission_provider_waits(database)
     ambiguous_second = ambiguous_loop.run_step(**_step(
@@ -721,6 +740,23 @@ def _run_full(root: Path) -> dict[str, Any]:
         database, "mission.provider_wait_resumed", "wait_id"
     )
     snapshot = campaign_snapshot(database, CAMPAIGN_ID)["campaigns"][CAMPAIGN_ID]
+    succeeded_children = sum(
+        child.status == "SUCCEEDED"
+        for child in state.children.values()
+        if child.campaign_id == CAMPAIGN_ID
+    )
+    accepted_effect_ids = {
+        str(event.payload.get("action_key"))
+        for event in events
+        if event.event_type == "effect.acceptance_recorded"
+        and event.payload.get("action_key")
+    }
+    terminal_effect_ids = {
+        str(event.payload.get("action_key"))
+        for event in events
+        if event.event_type == "effect.terminal_truth"
+        and event.payload.get("action_key")
+    }
     return {
         "schema": "jarvis-v12-endurance-convergence-proof-v1",
         "verdict": "PASS",
@@ -829,6 +865,14 @@ def _run_full(root: Path) -> dict[str, Any]:
             "missions": mission_duplicates,
             "effects": effect_duplicates,
             "continuations": continuation_duplicates,
+        },
+        "integrity": {
+            "false_successes": max(
+                0, succeeded_children - snapshot["accepted_child_count"]
+            ),
+            "unreconciled_accepted_effects": len(
+                accepted_effect_ids - terminal_effect_ids
+            ),
         },
         "event_count": database.event_count(),
         "objective_status": rebuild_executive_state(database).objectives[
