@@ -20,6 +20,11 @@ from jarvis_foundry.runtime.provider_registry import (
     ProviderReadiness,
     record_provider_readiness,
 )
+from jarvis_foundry.runtime.config import WorkerRuntimeConfig
+from jarvis_foundry.runtime.provider_config import (
+    ProviderSettings,
+    load_provider_settings_pool,
+)
 from jarvis_foundry.workers.adapters.fakes import ScriptedWorkerAdapter
 from jarvis_foundry.workers.adapters.registry import WorkerRegistry
 from jarvis_foundry.workers.contracts import WORKER_HERMES
@@ -209,6 +214,77 @@ def test_primary_healthy_routes_normally(tmp_path):
     )
     assert result.status == COMPLETED, result.to_payload()
     assert [item.provider for item in adapter.received] == ["provider-a"]
+
+
+def test_machine_provider_pool_extends_existing_primary_boundary(tmp_path):
+    path = tmp_path / "provider.yaml"
+    path.write_text(
+        "provider: opencode_go\n"
+        "model: muse-spark-1.2-contributor\n"
+        "base_url: https://opencode.ai/zen/go/v1\n"
+        "api_key: primary-test-key\n"
+        "providers:\n"
+        "  - provider: opencode_zen\n"
+        "    model: x-preview-f-free\n"
+        "    base_url: https://opencode.ai/zen/v1\n"
+        "    api_key: fallback-test-key\n",
+        encoding="utf-8",
+    )
+    pool = load_provider_settings_pool(config_path=path)
+    assert pool.primary.provider == "opencode_go"
+    assert pool.identities() == (
+        ("opencode_go", "muse-spark-1.2-contributor"),
+        ("opencode_zen", "x-preview-f-free"),
+    )
+
+
+def test_profile_cannot_enable_noninteractive_training_policy(tmp_path):
+    from jarvis_foundry.runtime._stack import _provider_candidates
+
+    db = database(tmp_path)
+    settings = ProviderSettings(
+        provider="opencode_go",
+        model="muse-spark-1.2-contributor",
+        base_url="https://opencode.ai/zen/go/v1",
+        api_key="disposable-test-key",
+        source="test",
+    )
+    config = WorkerRuntimeConfig(
+        provider="opencode_go",
+        model="muse-spark-1.2-contributor",
+        provider_settings=settings,
+        provider_settings_pool=(settings,),
+        provider_resilience_enabled=True,
+        hermes={},
+        provider_resilience={
+            "enabled": True,
+            "profiles": {
+                "opencode_go": {
+                    "readiness": "READY",
+                    "evidence_refs": ["disposable-policy-probe"],
+                    # Even a profile assertion cannot bypass the existing
+                    # Hermes owner-consent authority.
+                    "data_use_classification": "NO_TRAINING",
+                },
+            },
+        },
+    )
+    candidates = _provider_candidates(db, config)
+    assert candidates[0].noninteractive_allowed is False
+    adapter = ProviderScript()
+    result = RoleDispatcher(
+        db, RoleRouter(provider_settings=settings), adapter,
+        provider_candidates=candidates,
+    ).dispatch(
+        role="builder", mission_id="policy-mission",
+        resource_id="policy-resource", capability="write",
+        step_id="policy-step", run_id="policy-run",
+        instructions="must remain blocked without owner consent",
+    )
+    assert result.error_class == "provider_policy_blocked"
+    assert adapter.received == []
+    assert config.hermes.get(
+        "allow_data_training_tiers_noninteractive") is not True
 
 
 def test_outage_and_rate_limit_take_one_compatible_alternate(tmp_path):

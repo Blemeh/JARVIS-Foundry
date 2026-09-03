@@ -363,28 +363,20 @@ class RoleDispatcher:
             if action_key in resolved:
                 continue
             try:
-                from ..effects import COMPLETED as EFFECT_COMPLETED
-                from ..effects import FAILED as EFFECT_FAILED
-                from ..effects import effect_state
-
-                state = effect_state(self.database, action_key)
-                status = str(state.get("status") or "")
                 reconciled = any(
                     event.event_type == "effect.reconciled"
                     and str(event.payload.get("action_key") or "") == action_key
                     for event in self.database.events(readonly=True)
                 )
                 if reconciled:
-                    status = "RECONCILED"
-                if status in {EFFECT_COMPLETED, EFFECT_FAILED, "RECONCILED"}:
                     self._append("provider.effect_reconciled", {
                         "run_id": run_id,
                         "provider": provider,
                         "effect_action_key": action_key,
-                        "status": status,
-                        "replayed": bool(state.get("replayed")),
+                        "status": "RECONCILED",
                     }, idempotency_key=(
-                        f"provider.effect_reconciled:{run_id}:{action_key}:{status}"))
+                        f"provider.effect_reconciled:{run_id}:"
+                        f"{action_key}:RECONCILED"))
                     continue
             except Exception:
                 pass
