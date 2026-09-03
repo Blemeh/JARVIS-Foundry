@@ -19,7 +19,7 @@ const managePreview = process.env.VERIFY_MANAGE_PREVIEW !== "0"
 
 const routes = [
   { path: "/", slug: "overview", heading: "What should JARVIS move next?" },
-  { path: "/executive", slug: "executive", heading: "Executive" },
+  { path: "/executive", slug: "executive", heading: "Autonomous Executive" },
   { path: "/missions", slug: "missions", heading: "Mission Vectors" },
   {
     path: "/missions/M-HYB-014",
