@@ -436,9 +436,6 @@ def _source_digest_projection(
                      if source["observations"] == 0 and source["candidates"] == 0]
     candidate_signals = _bounded_list(digest_payload.get("candidate_worthy_signals"))
     if not candidate_signals:
-        candidate_signals = [item for item in changes
-                             if isinstance(item, dict) and item.get("candidate_worthy")][:MAX_DETAIL_ITEMS]
-    if not candidate_signals:
         candidate_signals = [
             item
             for detail in event_details.values()
@@ -446,6 +443,9 @@ def _source_digest_projection(
             for item in _bounded_list(detail.get("candidate_worthy_signals"))
             if isinstance(item, dict)
         ][:MAX_DETAIL_ITEMS]
+    if not candidate_signals:
+        candidate_signals = [item for item in changes
+                             if isinstance(item, dict) and item.get("candidate_worthy")][:MAX_DETAIL_ITEMS]
     noise_suppressed = digest_payload.get("noise_suppressed")
     if not isinstance(noise_suppressed, int):
         noise_values = [int(detail.get("noise_suppressed") or 0) for detail in event_details.values()]

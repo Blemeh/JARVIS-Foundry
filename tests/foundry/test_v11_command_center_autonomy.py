@@ -234,6 +234,33 @@ def test_projection_keeps_optional_research_capability_and_context_contracts_dur
     assert contextual["project_context"]["context_gaps"] == ["CI evidence unavailable"]
 
 
+def test_source_digest_uses_recorded_meaningful_changes_only(tmp_path):
+    database = FoundryDatabase(tmp_path / "digest.db")
+    database.initialize()
+    _seed(database)
+    _append(database, "initiative.source_recorded", {
+        "cycle_id": "cycle-1", "source_id": "source-project-refresh",
+        "source_kind": "project", "source_identity": "JARVIS-Foundry",
+        "status": "READY", "observations_recorded": 1,
+        "candidates_recorded": 1, "content_hash": "b" * 64,
+        "meaningful_change": True, "noise_suppressed": 2,
+        "meaningful_observations": [{
+            "source_identity": "repo://JARVIS-Foundry",
+            "change_type": "UPDATED", "changed_fields": ["status"],
+            "candidate_worthy": True,
+        }],
+        "candidate_worthy_signals": [{"signal": "status changed", "candidate_worthy": True}],
+        "next_due_at": "2026-09-02T10:00:00Z",
+    }, "source-project-refresh")
+    projection = build_autonomy_projection(database)
+    digest = projection["source_digest"]
+    assert digest["meaningful_changes"][0]["change_type"] == "UPDATED"
+    assert digest["candidate_worthy_signals"][0]["signal"] == "status changed"
+    assert digest["noise_suppressed"] == 2
+    project = next(item for item in projection["sources"] if item["source_kind"] == "project")
+    assert project["last_meaningful_change"]
+
+
 def test_projection_empty_state_is_honest(tmp_path):
     database = FoundryDatabase(tmp_path / "empty.db")
     database.initialize()
