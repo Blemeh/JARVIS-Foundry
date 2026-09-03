@@ -115,6 +115,24 @@ def _descriptor_identity_hash(descriptor: Mapping[str, Any]) -> str | None:
     return hashlib.sha256(_canonical(identity).encode("utf-8")).hexdigest()
 
 
+def _registration_identity(descriptor: Mapping[str, Any]) -> str | None:
+    """Recompute the stable trial registration id without importing Foundry."""
+
+    try:
+        identity = {
+            "solution_id": descriptor["solution_id"],
+            "capability_id": descriptor["spec"]["capability_id"],
+            "version": descriptor["spec"]["version"],
+            "action_kind": descriptor["spec"]["action_kind"],
+            "source_sha256": descriptor["source_sha256"],
+            "descriptor_hash": descriptor["descriptor_hash"],
+        }
+    except (KeyError, TypeError):
+        return None
+    digest = hashlib.sha256(_canonical(identity).encode("utf-8")).hexdigest()[:24]
+    return f"fabric-registration:trial:{digest}"
+
+
 def _descriptor_case_projection(value: Mapping[str, Any], path_fields: list[str]) -> dict[str, Any] | None:
     if not all(key in value for key in ("case_id", "payload", "expected")):
         return None
@@ -174,6 +192,7 @@ def verify_bundle(bundle_path: str | Path) -> dict[str, Any]:
         marker.get("protocol") == "jarvis.capability.trial.v1"
         and marker.get("trial_id") == bundle.get("trial_id")
         and marker.get("descriptor_hash") == bundle.get("descriptor_hash")
+        and marker.get("registration_id") == bundle.get("registration_id")
         and marker.get("source_sha256") == marker_source_hash,
         "workspace marker is missing or bound to another trial",
     ))
@@ -272,6 +291,12 @@ def verify_bundle(bundle_path: str | Path) -> dict[str, Any]:
             descriptor.get("descriptor_hash") == _descriptor_identity_hash(descriptor),
             "descriptor hash does not match its canonical identity",
         ))
+        criteria.append(_criterion(
+            "registration-id-self-consistent",
+            descriptor.get("registration_id") == bundle.get("registration_id")
+            and descriptor.get("registration_id") == _registration_identity(descriptor),
+            "registration identity does not match the frozen descriptor",
+        ))
         descriptor_metadata = descriptor.get("metadata")
         manifest_metadata = manifest.get("metadata")
         criteria.append(_criterion(
@@ -340,6 +365,7 @@ def verify_bundle(bundle_path: str | Path) -> dict[str, Any]:
             "dependency-lock-bound",
             lock.get("protocol") == "jarvis.capability.trial.v1"
             and isinstance(embedded_descriptor, Mapping)
+            and lock.get("descriptor_hash") == bundle.get("descriptor_hash")
             and lock.get("solution_id") == embedded_descriptor.get("solution_id")
             and lock.get("source_sha256") == manifest.get("solution_sha256")
             and isinstance(descriptor_dependencies, list)

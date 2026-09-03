@@ -211,6 +211,8 @@ class SelectedCapabilitySolution:
     path_fields: tuple[str, ...] = ("path",)
     selection_reason: str = "selected solution descriptor"
     _source_sha256: str = field(init=False, repr=False)
+    _descriptor_hash_value: str = field(init=False, repr=False)
+    _registration_id_value: str = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "solution_id", _identity(self.solution_id, "solution_id"))
@@ -245,6 +247,8 @@ class SelectedCapabilitySolution:
         fields = tuple(_identity(item, "path_field") for item in self.path_fields)
         object.__setattr__(self, "path_fields", fields)
         object.__setattr__(self, "selection_reason", _text(self.selection_reason, "selection_reason"))
+        object.__setattr__(self, "_descriptor_hash_value", self._compute_descriptor_hash())
+        object.__setattr__(self, "_registration_id_value", self._compute_registration_id())
 
     @property
     def source_sha256(self) -> str:
@@ -321,10 +325,11 @@ class SelectedCapabilitySolution:
             "config": dict(self.config),
             "path_fields": list(self.path_fields),
             "selection_reason": self.selection_reason,
+            "descriptor_hash": self.descriptor_hash,
+            "registration_id": self.registration_id,
         }
 
-    @property
-    def descriptor_hash(self) -> str:
+    def _compute_descriptor_hash(self) -> str:
         def scrub(value: Any) -> Any:
             if isinstance(value, Mapping):
                 return {str(key): scrub(item) for key, item in value.items()}
@@ -356,17 +361,24 @@ class SelectedCapabilitySolution:
         }
         return payload_hash(identity)
 
-    @property
-    def registration_id(self) -> str:
+    def _compute_registration_id(self) -> str:
         identity = {
             "solution_id": self.solution_id,
             "capability_id": self.spec.capability_id,
             "version": self.spec.version,
             "action_kind": self.spec.action_kind,
             "source_sha256": self.source_sha256,
-            "descriptor_hash": self.descriptor_hash,
+            "descriptor_hash": self._descriptor_hash_value,
         }
         return f"fabric-registration:trial:{payload_hash(identity)[:24]}"
+
+    @property
+    def descriptor_hash(self) -> str:
+        return self._descriptor_hash_value
+
+    @property
+    def registration_id(self) -> str:
+        return self._registration_id_value
 
 
 @dataclass(frozen=True, slots=True)
@@ -639,6 +651,7 @@ class CapabilityTrialPipeline:
                 "protocol": TRIAL_PROTOCOL,
                 "trial_id": trial_id,
                 "descriptor_hash": descriptor.descriptor_hash,
+                "registration_id": descriptor.registration_id,
                 "source_sha256": descriptor.source_sha256,
             })
         for name in ("solution", "adapter", "evidence", "inputs"):
@@ -687,6 +700,7 @@ class CapabilityTrialPipeline:
         lock_payload: dict[str, Any] = {
             "protocol": TRIAL_PROTOCOL,
             "solution_id": descriptor.solution_id,
+            "descriptor_hash": descriptor.descriptor_hash,
             "source_sha256": descriptor.source_sha256,
             "dependencies": resolved_dependencies,
             "python": {

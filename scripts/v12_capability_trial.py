@@ -86,7 +86,10 @@ def run(evidence_root: Path) -> dict[str, object]:
     evidence_root.mkdir(parents=True, exist_ok=True)
     run_root = evidence_root / "run"
     suffix = 1
-    while (run_root / "disposable.sqlite").exists():
+    # Never recycle a partially populated disposable run.  A previous process
+    # may have stopped before SQLite was initialized, yet its workspace marker
+    # and evidence files would still be identity-bound.
+    while run_root.exists():
         suffix += 1
         run_root = evidence_root / f"run-{suffix}"
     run_root.mkdir(parents=True, exist_ok=True)
@@ -111,6 +114,7 @@ def run(evidence_root: Path) -> dict[str, object]:
     )
     replay = pipeline.run(descriptor)
     disabled = pipeline.disable(descriptor)
+    disable_replay = pipeline.disable(descriptor)
     reopened = FoundryDatabase(database.path)
     # Capture restoration before the separate irreversible-gate probe adds
     # its own intentionally disposable catalog entry.
@@ -173,6 +177,11 @@ def run(evidence_root: Path) -> dict[str, object]:
         "replay": {"status": replay.status, "registration_id": replay.registration_id},
         "rollback_disable": {
             "status": disabled.status,
+            "replay_status": disable_replay.status,
+            "disabled_event_count": sum(
+                event.event_type == "fabric.capability.trial.disabled"
+                for event in database.events()
+            ),
             "restored": bool(disabled.disable and disabled.disable.get("restored")),
             "catalog_after_sha256": active_after_disable["sha256"],
             "capability_present_after_disable": get_spec(reopened, descriptor.spec.capability_id) is not None,

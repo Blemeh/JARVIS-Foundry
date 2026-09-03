@@ -253,8 +253,22 @@ def _invoke(
     encoded_result = json.dumps(result, sort_keys=True, separators=(",", ":"))
     if contains_secret_like(encoded_result):
         raise AdapterInvocationError("adapter result contains secret-like material")
+    for field, expected in (
+        ("protocol", ADAPTER_PROTOCOL),
+        ("capability_id", manifest.get("capability_id")),
+        ("action_kind", manifest.get("action_kind")),
+    ):
+        if result.get(field) not in (None, expected):
+            return {
+                "claimed": "FAILED",
+                "error_code": f"adapter_{field}_mismatch",
+                "performed": False,
+            }
     result.setdefault("claimed", "COMPLETED" if command == "execute" else "COMPLETED")
     result.setdefault("performed", command == "execute")
+    result["protocol"] = ADAPTER_PROTOCOL
+    result["capability_id"] = manifest.get("capability_id")
+    result["action_kind"] = manifest.get("action_kind")
     result["adapter_protocol"] = ADAPTER_PROTOCOL
     result["adapter_manifest_sha256"] = _sha256(resolved_manifest)
     return result
