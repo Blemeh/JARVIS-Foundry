@@ -23,6 +23,12 @@ from jarvis_foundry.chief_of_staff import (
 )
 from jarvis_foundry.command_center import build_snapshot
 from jarvis_foundry.database import FoundryDatabase
+from jarvis_foundry.discovery_sources import (
+    SourceObservation,
+    SourceReadResult,
+    SourceSpec,
+    content_hash,
+)
 from jarvis_foundry.events import Event, canonical_json
 from jarvis_foundry.executive.autonomy import (
     create_objective,
@@ -35,6 +41,10 @@ from jarvis_foundry.executive.campaigns import (
 from jarvis_foundry.executive.continuous import (
     rebuild_wake_state,
     tick_wakes,
+)
+from jarvis_foundry.initiative_a2 import (
+    InitiativeA2Bounds,
+    run_continuous_observation_cycle,
 )
 from jarvis_foundry.owner_context import (
     ContextProvenance,
@@ -60,6 +70,96 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 JARVIS_ORDER = "directive:standing-jarvis-blocked"
 LEADGEN_ORDER = "directive:standing-leadgen-recovery"
 OPERATOR_ORDER = "directive:standing-operator-clean"
+RUNTIME_SOURCE_IDENTITY = "project:jarvis:v13-runtime"
+RUNTIME_OBSERVATION_IDENTITY = "project:jarvis:reliability-regression"
+PRIORITY_FACTOR_NAMES = {
+    "owner_priority",
+    "strategic_value",
+    "urgency",
+    "deadline",
+    "blockers",
+    "dependency_leverage",
+    "information_gain",
+    "cost",
+    "risk",
+    "reversibility",
+    "confidence",
+    "opportunity_cost",
+    "staleness",
+}
+
+
+def _runtime_source_spec() -> SourceSpec:
+    return SourceSpec(
+        "v13-project-watch",
+        "project",
+        RUNTIME_SOURCE_IDENTITY,
+        1,
+        config={
+            "chief_of_staff": {
+                "enabled": True,
+                "change_type": "BLOCKED",
+                "summary": (
+                    "The JARVIS project is blocked by a bounded "
+                    "reliability regression"
+                ),
+                "program_id": "program:personal-operator",
+                "objective_id": "objective-jarvis-v13",
+                "situation_state": "BLOCKED",
+                "health": "GREEN",
+                "next_action": "review the admitted candidate",
+                "owner_priority": 0.95,
+                "strategic_value": 0.95,
+                "urgency": 0.30,
+                "deadline": 0.25,
+                "blocking_value": 0.90,
+                "dependency_leverage": 0.85,
+                "information_gain": 0.80,
+                "cost": 0.20,
+                "risk": 0.45,
+                "reversible": True,
+                "reversibility": 1.0,
+                "confidence": 0.92,
+                "opportunity_cost": 0.15,
+                "staleness": 0.10,
+                "candidate_type": "project_reliability",
+                "expected_outcome": (
+                    "The focused V13 reliability proof passes"
+                ),
+            },
+        },
+    )
+
+
+def _runtime_observation() -> SourceObservation:
+    payload = {
+        "summary": "The bounded reliability test is failing",
+        "state": "BLOCKED",
+        "revision": "regression-1",
+    }
+    return SourceObservation(
+        "project",
+        RUNTIME_OBSERVATION_IDENTITY,
+        "evidence:v13-runtime-reliability-log",
+        payload,
+        content_hash(payload),
+        proposed_outcome=(
+            "Investigate and repair the bounded reliability regression"
+        ),
+        target_project="jarvis",
+        alias_key="jarvis:bounded-reliability-regression",
+        candidate_type="project_reliability",
+        confidence=0.92,
+    )
+
+
+def _runtime_source_reader(
+    _spec: SourceSpec,
+    stop_check,
+) -> SourceReadResult:
+    if stop_check():
+        return SourceReadResult("BLOCKED", reason="owner stop active")
+    return SourceReadResult("READY", (_runtime_observation(),))
 
 
 def _git(*args: str, check: bool = True) -> str:
@@ -569,6 +669,24 @@ def run_proof(
         },
         expected_orders=(LEADGEN_ORDER,),
     )
+    quiet_recovery_resolved = consider(
+        "leadgen_quiet_wait_resolved",
+        {
+            "change_id": "change-leadgen-recoverable-resolved",
+            "project_id": "leadgen",
+            "program_id": "program:revenue-quality",
+            "change_type": "PROJECT_UPDATE",
+            "summary": "The local LeadGen retry completed successfully",
+            "occurred_at": "2026-09-04T09:15:00Z",
+            "situation_state": "ACTIVE",
+            "evidence_refs": ["evidence:leadgen-retry-complete"],
+            "attributes": {
+                "resolved_wait_ids": [quiet_recovery.wait_id],
+                "resolution_reason": "the bounded local retry completed",
+            },
+        },
+        expected_orders=(),
+    )
     hygiene_wait = consider(
         "operatoros_standing_order_trigger",
         {
@@ -673,6 +791,48 @@ def run_proof(
         },
         expected_orders=(),
     )
+    temporary_owner_decision = consider(
+        "operatoros_temporary_owner_decision",
+        {
+            "change_id": "change-operatoros-temporary-owner-decision",
+            "project_id": "operatoros",
+            "program_id": "program:operator-systems",
+            "change_type": "OWNER_DECISION",
+            "summary": (
+                "The owner must choose whether to retain an obsolete "
+                "planning archive"
+            ),
+            "occurred_at": "2026-09-04T09:45:00Z",
+            "evidence_refs": ["evidence:operatoros-archive-options"],
+            "attributes": {
+                "owner_decision_needed": True,
+                "owner_decision_reason": (
+                    "archive retention is an owner policy decision"
+                ),
+            },
+        },
+        expected_orders=(),
+    )
+    temporary_owner_decision_resolved = consider(
+        "operatoros_temporary_owner_decision_resolved",
+        {
+            "change_id": "change-operatoros-temporary-owner-decision-resolved",
+            "project_id": "operatoros",
+            "program_id": "program:operator-systems",
+            "change_type": "PROJECT_UPDATE",
+            "summary": "The owner selected the archive retention policy",
+            "occurred_at": "2026-09-04T09:46:00Z",
+            "situation_state": "ACTIVE",
+            "evidence_refs": ["evidence:operatoros-archive-decision"],
+            "attributes": {
+                "resolved_owner_attention_ids": [
+                    temporary_owner_decision.owner_attention_id,
+                ],
+                "resolution_reason": "the owner selected retention",
+            },
+        },
+        expected_orders=(),
+    )
     owner_decision = consider(
         "leadgen_material_owner_decision",
         {
@@ -733,8 +893,8 @@ def run_proof(
         "triggered_wake_ids": triggered_wakes,
         "event_delta": database.event_count() - before_unlock,
     })
-    continuation_change = {
-        "change_id": "change-jarvis-after-dependency",
+    control_probe_change = {
+        "change_id": "change-jarvis-control-probe",
         "project_id": "jarvis",
         "program_id": "program:personal-operator",
         "objective_id": "objective-jarvis-v13",
@@ -748,11 +908,12 @@ def run_proof(
         "evidence_refs": ["evidence:jarvis-dependency-wake"],
         "attributes": {
             "proposed_objective": (
-                "Investigate and repair the bounded V13 reliability blocker"
+                "Investigate the bounded V13 transaction-control probe"
             ),
-            "expected_outcome": "The focused V13 reliability proof passes",
+            "expected_outcome": "No candidate crosses an active owner control",
             "candidate_type": "project_reliability",
             "value": 0.95,
+            "strategic_value": 0.95,
             "urgency": 0.30,
             "confidence": 0.92,
             "reversible": True,
@@ -762,22 +923,178 @@ def run_proof(
             "next_action": "review the admitted candidate",
         },
     }
-    continuation = consider(
-        "jarvis_continuation_routes_candidate",
-        continuation_change,
-        expected_orders=(JARVIS_ORDER,),
+
+    late_guard_calls = {"count": 0}
+
+    def inject_late_stop(point: str) -> None:
+        if point != "candidate_transaction_guard":
+            return
+        late_guard_calls["count"] += 1
+        if late_guard_calls["count"] == 2:
+            stop_path.write_text(
+                "owner stop injected at the final candidate guard\n",
+                encoding="utf-8",
+            )
+
+    before_late_stop = database.event_count()
+    candidates_before_late_stop = _table_count(database, "candidates")
+    routes_before_late_stop = _event_count(
+        database,
+        "chief_of_staff.candidate_routed",
     )
-    continuation_replay = consider(
-        "jarvis_continuation_replay",
-        continuation_change,
-        expected_orders=(JARVIS_ORDER,),
+    late_stop = ChiefOfStaffService(
+        database,
+        stop_path=stop_path,
+        fault_hook=inject_late_stop,
+    ).consider(
+        {
+            **control_probe_change,
+            "change_id": "change-jarvis-late-transaction-stop",
+            "occurred_at": "2026-09-04T10:05:00Z",
+        },
+        now=now,
+    )
+    cycles.append({
+        "ordinal": len(cycles) + 1,
+        "name": "owner_stop_at_final_candidate_guard",
+        "kind": "CHIEF_OF_STAFF_CONSIDER",
+        "input": {
+            **control_probe_change,
+            "change_id": "change-jarvis-late-transaction-stop",
+            "occurred_at": "2026-09-04T10:05:00Z",
+        },
+        "expected_standing_order_ids": [],
+        "result": late_stop.as_dict(),
+        "candidate_guard_calls": late_guard_calls["count"],
+        "candidates_before": candidates_before_late_stop,
+        "candidates_after": _table_count(database, "candidates"),
+        "candidate_routes_before": routes_before_late_stop,
+        "candidate_routes_after": _event_count(
+            database,
+            "chief_of_staff.candidate_routed",
+        ),
+        "event_delta": database.event_count() - before_late_stop,
+    })
+    if stop_path.exists():
+        stop_path.unlink()
+
+    observation_bounds = InitiativeA2Bounds(
+        source_limit=1,
+        candidate_limit=1,
+        research_candidate_limit=0,
+        research_budget_per_candidate=0.0,
+        research_budget_per_cycle=0.0,
+    )
+    runtime_chief_before = _prefix_count(database, "chief_of_staff.")
+    runtime_before = database.event_count()
+    runtime_first = run_continuous_observation_cycle(
+        database,
+        sources=[_runtime_source_spec()],
+        bounds=observation_bounds,
+        source_readers={"project": _runtime_source_reader},
+        now="2026-09-04T10:10:00Z",
+    )
+    runtime_first_chief_delta = (
+        _prefix_count(database, "chief_of_staff.")
+        - runtime_chief_before
+    )
+    cycles.append({
+        "ordinal": len(cycles) + 1,
+        "name": "jarvis_runtime_observation_routes_candidate",
+        "kind": "CONTINUOUS_OBSERVATION",
+        "cycle_id": runtime_first.get("cycle_id"),
+        "outcome": runtime_first.get("outcome"),
+        "cycles_dispatched": runtime_first.get("cycles_dispatched"),
+        "metrics": dict(runtime_first.get("metrics") or {}),
+        "chief_event_delta": runtime_first_chief_delta,
+        "event_delta": database.event_count() - runtime_before,
+    })
+    runtime_replay_chief_before = _prefix_count(
+        database,
+        "chief_of_staff.",
+    )
+    runtime_replay_before = database.event_count()
+    runtime_replay = run_continuous_observation_cycle(
+        database,
+        sources=[_runtime_source_spec()],
+        bounds=observation_bounds,
+        source_readers={"project": _runtime_source_reader},
+        now="2026-09-04T10:10:01Z",
+    )
+    runtime_replay_chief_delta = (
+        _prefix_count(database, "chief_of_staff.")
+        - runtime_replay_chief_before
+    )
+    cycles.append({
+        "ordinal": len(cycles) + 1,
+        "name": "jarvis_runtime_observation_replay",
+        "kind": "CONTINUOUS_OBSERVATION",
+        "cycle_id": runtime_replay.get("cycle_id"),
+        "outcome": runtime_replay.get("outcome"),
+        "cycles_dispatched": runtime_replay.get("cycles_dispatched"),
+        "metrics": dict(runtime_replay.get("metrics") or {}),
+        "chief_event_delta": runtime_replay_chief_delta,
+        "event_delta": database.event_count() - runtime_replay_before,
+    })
+
+    runtime_change_events = [
+        event
+        for event in database.events(
+            event_types=("chief_of_staff.change_observed",),
+        )
+        if (
+            isinstance(event.payload.get("change"), dict)
+            and str(event.payload["change"].get("change_id") or "").startswith(
+                "cos-source-",
+            )
+            and event.payload["change"].get("project_id") == "jarvis"
+        )
+    ]
+    runtime_change_id = (
+        str(runtime_change_events[0].payload["change"]["change_id"])
+        if len(runtime_change_events) == 1
+        else ""
+    )
+    runtime_source_events = [
+        event
+        for event in database.events(
+            event_types=("initiative.source_recorded",),
+        )
+        if event.payload.get("cycle_id") == runtime_first.get("cycle_id")
+    ]
+    runtime_replay_source_events = [
+        event
+        for event in database.events(
+            event_types=("initiative.source_recorded",),
+        )
+        if event.payload.get("cycle_id") == runtime_replay.get("cycle_id")
+    ]
+    runtime_source_payload = (
+        dict(runtime_source_events[-1].payload)
+        if runtime_source_events else {}
+    )
+    runtime_replay_source_payload = (
+        dict(runtime_replay_source_events[-1].payload)
+        if runtime_replay_source_events else {}
+    )
+    runtime_considered = list(
+        runtime_source_payload.get("chief_of_staff_results") or (),
+    )
+    runtime_replay_considered = list(
+        runtime_replay_source_payload.get("chief_of_staff_results") or (),
+    )
+    runtime_candidate_id = (
+        str(runtime_considered[0].get("candidate_id") or "")
+        if len(runtime_considered) == 1
+        and isinstance(runtime_considered[0], dict)
+        else ""
     )
 
     stop_path.write_text("owner stop proof\n", encoding="utf-8")
     stopped = consider(
         "owner_stop_zero_write",
         {
-            **continuation_change,
+            **control_probe_change,
             "change_id": "change-jarvis-stop",
             "occurred_at": "2026-09-04T10:20:00Z",
         },
@@ -796,7 +1113,7 @@ def run_proof(
     vetoed = consider(
         "owner_veto_zero_write",
         {
-            **continuation_change,
+            **control_probe_change,
             "change_id": "change-jarvis-veto",
             "occurred_at": "2026-09-04T10:30:00Z",
         },
@@ -884,6 +1201,8 @@ def run_proof(
     final_operator = _find_project(direct_projection, "operatoros")
     leadgen_priority = _priority(priority_before_revocation, "leadgen")
     operator_priority = _priority(priority_before_revocation, "operatoros")
+    final_jarvis_priority = _priority(direct_projection, "jarvis")
+    final_leadgen_priority = _priority(direct_projection, "leadgen")
     final_operator_priority = _priority(direct_projection, "operatoros")
     matched_attention_items = [
         item
@@ -900,6 +1219,111 @@ def run_proof(
             for attention in matched_attention_items
         }
     ]
+    attention_events = database.events(
+        event_types=("chief_of_staff.owner_attention_required",),
+    )
+    temporary_attention_event = next(
+        (
+            event
+            for event in attention_events
+            if event.payload.get("attention_id")
+            == temporary_owner_decision.owner_attention_id
+        ),
+        None,
+    )
+    owner_attention_event = next(
+        (
+            event
+            for event in attention_events
+            if event.payload.get("attention_id")
+            == owner_decision.owner_attention_id
+        ),
+        None,
+    )
+    resolved_queue_attention = [
+        item
+        for item in command_center["decision_queue"]["history"]
+        if (
+            temporary_attention_event is not None
+            and item.get("source_event_id")
+            == temporary_attention_event.event_id
+            and item.get("status") == "RESOLVED"
+        )
+    ]
+    open_queue_attention = [
+        item
+        for item in command_center["decision_queue"]["open"]
+        if (
+            owner_attention_event is not None
+            and item.get("source_event_id") == owner_attention_event.event_id
+        )
+    ]
+    item_state_events = database.events(
+        event_types=("chief_of_staff.item_state_changed",),
+    )
+    quiet_wait_resolved = any(
+        event.payload.get("item_kind") == "WAIT"
+        and event.payload.get("item_id") == quiet_recovery.wait_id
+        and event.payload.get("to_state") == "RESOLVED"
+        for event in item_state_events
+    )
+    temporary_attention_resolved = any(
+        event.payload.get("item_kind") == "OWNER_ATTENTION"
+        and event.payload.get("item_id")
+        == temporary_owner_decision.owner_attention_id
+        and event.payload.get("to_state") == "RESOLVED"
+        for event in item_state_events
+    )
+    runtime_world_events = [
+        event
+        for event in database.events(
+            event_types=("world.observation_recorded",),
+        )
+        if (
+            isinstance(event.payload.get("provenance"), dict)
+            and event.payload["provenance"].get("source_identity")
+            == RUNTIME_OBSERVATION_IDENTITY
+        )
+    ]
+    runtime_world_event_id = (
+        runtime_world_events[0].event_id
+        if len(runtime_world_events) == 1
+        else ""
+    )
+    runtime_change_event = (
+        runtime_change_events[0]
+        if len(runtime_change_events) == 1
+        else None
+    )
+    runtime_change_source_refs = (
+        set(
+            runtime_change_event.payload["change"].get(
+                "source_event_refs",
+            ) or (),
+        )
+        if runtime_change_event is not None
+        else set()
+    )
+    runtime_route_events = [
+        event
+        for event in database.events(
+            event_types=("chief_of_staff.candidate_routed",),
+        )
+        if event.payload.get("change_id") == runtime_change_id
+    ]
+    low_value_rejection_events = [
+        event
+        for event in database.events(
+            event_types=("chief_of_staff.recommendation_rejected",),
+        )
+        if event.payload.get("change_id")
+        == "change-operatoros-urgent-cosmetic"
+    ]
+    priority_cutoff_event_id = (
+        low_value_rejection_events[0].event_id
+        if len(low_value_rejection_events) == 1
+        else ""
+    )
     standing_order_mismatches = [
         cycle["name"]
         for cycle in cycles
@@ -907,6 +1331,17 @@ def run_proof(
         and sorted(cycle["result"]["standing_order_ids"])
         != sorted(cycle["expected_standing_order_ids"])
     ]
+    for cycle_name, results in (
+        ("jarvis_runtime_observation_routes_candidate", runtime_considered),
+        ("jarvis_runtime_observation_replay", runtime_replay_considered),
+    ):
+        if (
+            len(results) != 1
+            or not isinstance(results[0], dict)
+            or sorted(results[0].get("standing_order_ids") or ())
+            != [JARVIS_ORDER]
+        ):
+            standing_order_mismatches.append(cycle_name)
     counts = {
         "ledger_events": database.event_count(),
         "projects": len(direct_projection["projects"]),
@@ -925,6 +1360,13 @@ def run_proof(
         "owner_attention": _event_count(
             database, "chief_of_staff.owner_attention_required",
         ),
+        "item_state_changes": _event_count(
+            database, "chief_of_staff.item_state_changed",
+        ),
+        "world_observations": _table_count(
+            database,
+            "world_observations",
+        ),
         "candidates": _table_count(database, "candidates"),
         "objective_created": _event_count(
             database, "executive.objective_created",
@@ -937,7 +1379,8 @@ def run_proof(
             database, "executive.wake_triggered",
         ),
         "effect_events": _prefix_count(database, "effect."),
-        "decision_queue_matches": len(queue_attention),
+        "decision_queue_open_matches": len(open_queue_attention),
+        "decision_queue_resolved_matches": len(resolved_queue_attention),
         "false_standing_order_triggers": len(standing_order_mismatches),
     }
     source_attestations = {
@@ -961,8 +1404,12 @@ def run_proof(
         "04_blocked_project_and_active_dependency_wait_observed": (
             initial_jarvis["status"] == "BLOCKED"
             and initial_jarvis["health"] == "RED"
-            and dependency_wait.wait_id in active_wakes
-            and active_wakes[dependency_wait.wait_id]["status"] == "ACTIVE"
+            and dependency_wait.wait_id
+            and dependency_wait.canonical_wake_id in active_wakes
+            and dependency_wait.wait_id not in active_wakes
+            and active_wakes[
+                dependency_wait.canonical_wake_id
+            ]["status"] == "ACTIVE"
         ),
         "05_strategic_value_beats_raw_urgency": (
             leadgen_priority["score"] > operator_priority["score"]
@@ -984,8 +1431,11 @@ def run_proof(
         "07_quiet_recovery_does_not_interrupt_owner": (
             quiet_recovery.status == "WAITING"
             and quiet_recovery.standing_order_ids == (LEADGEN_ORDER,)
+            and quiet_recovery.canonical_wake_id is None
+            and quiet_recovery_resolved.status == "PROJECT_STATE_UPDATED"
+            and quiet_wait_resolved
             and owner_decision.owner_attention_id
-            and len(direct_projection["owner_attention"]) == 1
+            and counts["decision_queue_open_matches"] == 1
         ),
         "08_low_value_urgent_work_is_rejected": (
             low_value.status == "REJECTED"
@@ -999,37 +1449,82 @@ def run_proof(
         ),
         "10_material_owner_decision_uses_existing_queue": (
             owner_decision.status == "OWNER_ATTENTION_REQUIRED"
-            and counts["owner_attention"] == 1
-            and counts["decision_queue_matches"] == 1
+            and temporary_owner_decision.status
+            == "OWNER_ATTENTION_REQUIRED"
+            and temporary_owner_decision_resolved.status
+            == "PROJECT_STATE_UPDATED"
+            and temporary_attention_resolved
+            and counts["owner_attention"] == 2
+            and counts["item_state_changes"] == 2
+            and counts["decision_queue_open_matches"] == 1
+            and counts["decision_queue_resolved_matches"] == 1
         ),
-        "11_intentional_idle_is_healthy_and_unranked": (
+        "11_intentional_idle_is_healthy_and_zero_priority": (
             intentional_idle.status == "WAITING"
             and final_operator["status"] == "IDLE"
             and final_operator["health"] == "GREEN"
             and final_operator_priority["score"] == 0.0
         ),
-        "12_wait_wake_unlock_and_continuation": (
+        "12_wait_wake_unlock_and_runtime_continuation": (
             dependency_replay.wait_id == dependency_wait.wait_id
+            and dependency_replay.canonical_wake_id
+            == dependency_wait.canonical_wake_id
             and cycles[1]["event_delta"] == 0
-            and triggered_wakes == [dependency_wait.wait_id]
-            and final_wakes[dependency_wait.wait_id]["status"] == "TRIGGERED"
-            and continuation.status
+            and triggered_wakes == [dependency_wait.canonical_wake_id]
+            and final_wakes[
+                dependency_wait.canonical_wake_id
+            ]["status"] == "TRIGGERED"
+            and len(runtime_considered) == 1
+            and runtime_considered[0]["status"]
             == "ROUTED_TO_EXISTING_CANDIDATE_PATH"
             and final_jarvis["waiting_condition"] is None
             and final_jarvis["status"] == "ACTIVE"
         ),
-        "13_one_candidate_and_zero_delta_replay": (
-            counts["candidates"] == 1
-            and counts["candidate_routed"] == 1
-            and continuation.candidate_id == continuation_replay.candidate_id
-            and continuation_replay.duplicate is True
-            and next(
-                cycle["event_delta"]
-                for cycle in cycles
-                if cycle["name"] == "jarvis_continuation_replay"
+        "13_runtime_ingress_one_candidate_and_idempotent_replay": (
+            len(runtime_world_events) == 1
+            and len(runtime_change_events) == 1
+            and runtime_world_event_id in runtime_change_source_refs
+            and len(runtime_route_events) == 1
+            and runtime_first.get("cycles_dispatched") == 1
+            and runtime_first.get("metrics", {}).get("unique_candidates") == 1
+            and runtime_first.get("metrics", {}).get(
+                "raw_candidates_generated",
+            ) == 1
+            and runtime_replay.get("cycles_dispatched") == 1
+            and runtime_replay.get("metrics", {}).get(
+                "raw_candidates_generated",
+            ) == 1
+            and runtime_replay.get("metrics", {}).get(
+                "unique_candidates",
             ) == 0
+            and runtime_replay_chief_delta == 0
+            and counts["candidates"] == 1
+            and counts["candidate_routed"] == 1
+            and runtime_candidate_id
+            and len(runtime_replay_considered) == 1
+            and runtime_replay_considered[0]["candidate_id"]
+            == runtime_candidate_id
+            and runtime_replay_considered[0]["duplicate"] is True
         ),
-        "14_stop_and_veto_each_add_zero_service_events": (
+        "14_late_owner_stop_blocks_final_candidate_insert": (
+            late_guard_calls["count"] == 2
+            and late_stop.status == "BLOCKED_BY_OWNER_CONTROL"
+            and late_stop.standing_order_ids == ()
+            and late_stop.proposal is not None
+            and late_stop.proposal.standing_order_ids == (JARVIS_ORDER,)
+            and candidates_before_late_stop == 0
+            and next(
+                cycle["candidates_after"]
+                for cycle in cycles
+                if cycle["name"] == "owner_stop_at_final_candidate_guard"
+            ) == 0
+            and next(
+                cycle["candidate_routes_after"]
+                for cycle in cycles
+                if cycle["name"] == "owner_stop_at_final_candidate_guard"
+            ) == routes_before_late_stop == 0
+        ),
+        "15_pre_call_stop_and_veto_add_zero_service_events": (
             stopped.status == "BLOCKED_BY_OWNER_CONTROL"
             and vetoed.status == "BLOCKED_BY_OWNER_CONTROL"
             and next(
@@ -1043,28 +1538,28 @@ def run_proof(
                 if cycle["name"] == "owner_veto_zero_write"
             ) == 0
         ),
-        "15_no_false_standing_order_triggers": (
+        "16_no_false_standing_order_triggers": (
             not standing_order_mismatches
         ),
-        "16_no_second_objective_mission_or_effect_authority": (
+        "17_no_second_objective_mission_or_effect_authority": (
             counts["objective_created"] == fixture_counts["objective_created"]
             and counts["mission_created"] == fixture_counts["mission_created"]
             and counts["effect_events"] == fixture_counts["effect_events"] == 0
         ),
-        "17_command_center_packet_match_and_gets_are_read_only": (
+        "18_command_center_packet_match_and_gets_are_read_only": (
             command_center_projection == direct_projection
             and packet["chief_of_staff"] == direct_projection
             and bool(packet["content_digest"])
             and after_reads == before_reads
         ),
-        "18_restart_and_projection_rebuild_are_identical": (
+        "19_restart_and_projection_rebuild_are_identical": (
             direct_projection
             == reopened_projection
             == fresh_process_projection
             == rebuilt_projection
         ),
-        "19_briefing_has_source_backed_decision_and_next_actions": (
-            len(matched_attention_items) == 1
+        "20_briefing_has_source_backed_decisions_and_next_actions": (
+            len(matched_attention_items) == 2
             and bool(packet["source_refs"])
             and any(
                 item.get("project_id") == "jarvis"
@@ -1072,14 +1567,36 @@ def run_proof(
             )
             and final_leadgen["owner_decision_needed"] is True
         ),
-        "20_event_integrity_quick_check_and_reconciliation": (
+        "21_all_priority_factors_and_unknowns_are_explicit": (
+            set(final_jarvis_priority["factors"]) == PRIORITY_FACTOR_NAMES
+            and final_jarvis_priority["unknown_factors"] == []
+            and final_jarvis_priority["factors"]["cost"]["raw_value"] == 0.20
+            and final_jarvis_priority["factors"]["cost"][
+                "normalized_value"
+            ] == 0.80
+            and final_jarvis_priority["factors"]["opportunity_cost"][
+                "raw_value"
+            ] == 0.15
+            and final_jarvis_priority["factors"]["opportunity_cost"][
+                "normalized_value"
+            ] == 0.85
+            and set(final_leadgen_priority["factors"])
+            == PRIORITY_FACTOR_NAMES
+            and bool(final_leadgen_priority["unknown_factors"])
+            and all(
+                final_leadgen_priority["factors"][name]["raw_value"]
+                == "UNKNOWN"
+                for name in final_leadgen_priority["unknown_factors"]
+            )
+        ),
+        "22_event_integrity_quick_check_and_reconciliation": (
             database.verify_event_integrity() == database.event_count()
             and database.quick_check() == "ok"
             and reconcile(database, readonly=True).consistent
         ),
     }
     result = {
-        "contract": "jarvis.v13.chief-of-staff-proof.v1",
+        "contract": "jarvis.v13.chief-of-staff-proof.v2",
         "generated_at": now,
         "scope": "DISPOSABLE_SCHEMA_V40_DATABASE_ONLY",
         "live_mutated": False,
@@ -1114,10 +1631,26 @@ def run_proof(
             "standing_order_mismatches": standing_order_mismatches,
             "triggered_wake_ids": triggered_wakes,
             "final_wakes": final_wakes,
-            "candidate_id": continuation.candidate_id,
+            "semantic_dependency_wait_id": dependency_wait.wait_id,
+            "canonical_dependency_wake_id": (
+                dependency_wait.canonical_wake_id
+            ),
+            "quiet_recovery_wait_id": quiet_recovery.wait_id,
+            "temporary_owner_attention_id": (
+                temporary_owner_decision.owner_attention_id
+            ),
+            "candidate_id": runtime_candidate_id,
+            "runtime_change_id": runtime_change_id,
+            "runtime_world_event_id": runtime_world_event_id,
+            "runtime_first_cycle_id": runtime_first.get("cycle_id"),
+            "runtime_replay_cycle_id": runtime_replay.get("cycle_id"),
+            "priority_cutoff_event_id": priority_cutoff_event_id,
             "owner_attention_id": owner_decision.owner_attention_id,
-            "decision_queue_source_event_ids": [
-                item["source_event_id"] for item in queue_attention
+            "decision_queue_open_source_event_ids": [
+                item["source_event_id"] for item in open_queue_attention
+            ],
+            "decision_queue_resolved_source_event_ids": [
+                item["source_event_id"] for item in resolved_queue_attention
             ],
             "briefing_content_digest": packet["content_digest"],
             "briefing_source_refs": packet["source_refs"],

@@ -26,12 +26,19 @@ from jarvis_foundry.command_center import build_snapshot
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.events import canonical_json
 from jarvis_foundry.executive.continuous import rebuild_wake_state
-from jarvis_foundry.owner_context import project_standing_orders
+from jarvis_foundry.owner_context import (
+    ContextScope,
+    compile_standing_order,
+    project_standing_orders,
+)
 from jarvis_foundry.owner_controls import OwnerControlService, sign_command
 from jarvis_foundry.reconcile import reconcile
 
 
 BASE_SHA = "7f153851517b5529dd1e582725a0c2a6d96ddc9b"
+V12_FINAL_CANDIDATE = "51d2cfcce1be847fd252d1c857105f09f5f2c0e4"
+OWNER_CONTEXT_SOURCE = "41dfcd285e3fb407237a43b9c2caba47d9d6ab1b"
+OWNER_CONTEXT_FINAL = "ca3e9adb6a559f507253bdf7b70854424bc8b35d"
 EXPECTED_BRANCH = "candidate/v13-chief-of-staff-20260903"
 INITIAL_MAIN_SHA = "2905c206fed0461bf3085bc0cb43773be913300a"
 SECRET = b"v13-chief-of-staff-proof-secret"
@@ -41,17 +48,36 @@ PROOF_SCRIPT = REPO_ROOT / "scripts" / "v13_chief_of_staff_proof.py"
 JARVIS_ORDER = "directive:standing-jarvis-blocked"
 LEADGEN_ORDER = "directive:standing-leadgen-recovery"
 OPERATOR_ORDER = "directive:standing-operator-clean"
+RUNTIME_OBSERVATION_IDENTITY = "project:jarvis:reliability-regression"
+PRIORITY_FACTOR_NAMES = {
+    "owner_priority",
+    "strategic_value",
+    "urgency",
+    "deadline",
+    "blockers",
+    "dependency_leverage",
+    "information_gain",
+    "cost",
+    "risk",
+    "reversibility",
+    "confidence",
+    "opportunity_cost",
+    "staleness",
+}
 
-EXPECTED_CHANGE_IDS = {
+EXPECTED_DIRECT_CHANGE_IDS = {
     "change-jarvis-dependency-wait",
     "change-leadgen-recoverable",
+    "change-leadgen-recoverable-resolved",
     "change-operatoros-dirty",
     "change-operatoros-urgent-cosmetic",
     "change-operatoros-after-revoke",
     "change-leadgen-adjacent-opportunity",
+    "change-operatoros-temporary-owner-decision",
+    "change-operatoros-temporary-owner-decision-resolved",
     "change-leadgen-owner-decision",
     "change-operatoros-intentional-idle",
-    "change-jarvis-after-dependency",
+    "change-jarvis-late-transaction-stop",
 }
 
 
@@ -276,10 +302,33 @@ def _has_outcome(
     )
 
 
+def _revoke_proof_veto(
+    database: FoundryDatabase,
+    *,
+    nonce: str,
+) -> None:
+    controls = OwnerControlService(database, secret=SECRET)
+    text = "Independent verifier revokes the disposable veto on its copy"
+    controls.apply(
+        "REVOKE",
+        target="v13-proof-veto",
+        exact_text=text,
+        nonce=nonce,
+        signature=sign_command(
+            SECRET,
+            "REVOKE",
+            "v13-proof-veto",
+            text,
+            nonce,
+        ),
+    )
+
+
 def _replay_on_backup(
     database: FoundryDatabase,
     *,
     observed: Mapping[str, Any],
+    runtime_change_id: str,
     now: str,
 ) -> dict[str, Any]:
     with tempfile.TemporaryDirectory(
@@ -288,22 +337,19 @@ def _replay_on_backup(
         root = Path(raw)
         clone_path = database.backup_to(root / "foundry.db")
         clone = FoundryDatabase(clone_path)
-        controls = OwnerControlService(clone, secret=SECRET)
-        text = "Independent verifier revokes the disposable veto on its copy"
-        controls.apply(
-            "REVOKE",
-            target="v13-proof-veto",
-            exact_text=text,
+        _revoke_proof_veto(
+            clone,
             nonce="verifier-revoke-v13-proof-veto",
-            signature=sign_command(
-                SECRET,
-                "REVOKE",
-                "v13-proof-veto",
-                text,
-                "verifier-revoke-v13-proof-veto",
-            ),
         )
-        source_event = observed["change-jarvis-after-dependency"]
+        source_event = observed.get(runtime_change_id)
+        if source_event is None:
+            return {
+                "event_delta": -1,
+                "candidate_count": _table_count(clone, "candidates"),
+                "status": "RUNTIME_CHANGE_MISSING",
+                "duplicate": False,
+                "candidate_id": None,
+            }
         change = dict(source_event.payload["change"])
         change.pop("contract", None)
         change.pop("schema", None)
@@ -319,6 +365,143 @@ def _replay_on_backup(
             "status": result.status,
             "duplicate": result.duplicate,
             "candidate_id": result.candidate_id,
+        }
+
+
+def _projection_through_event(
+    database: FoundryDatabase,
+    *,
+    event_id: str,
+    now: str,
+) -> dict[str, Any]:
+    if not event_id:
+        return {}
+    with tempfile.TemporaryDirectory(
+        prefix="jarvis-v13-chief-verifier-cutoff-",
+    ) as raw:
+        clone_path = database.backup_to(Path(raw) / "foundry.db")
+        clone = FoundryDatabase(clone_path)
+        with clone.transaction() as connection:
+            row = connection.execute(
+                "SELECT sequence FROM events WHERE event_id = ?",
+                (event_id,),
+            ).fetchone()
+            if row is None:
+                return {}
+            connection.execute(
+                "DELETE FROM events WHERE sequence > ?",
+                (int(row["sequence"]),),
+            )
+        clone.rebuild_projections()
+        return project_chief_of_staff(clone, now=now).as_dict()
+
+
+def _late_stop_on_backup(
+    database: FoundryDatabase,
+    *,
+    now: str,
+) -> dict[str, Any]:
+    with tempfile.TemporaryDirectory(
+        prefix="jarvis-v13-chief-verifier-late-stop-",
+    ) as raw:
+        root = Path(raw)
+        clone_path = database.backup_to(root / "foundry.db")
+        clone = FoundryDatabase(clone_path)
+        _revoke_proof_veto(
+            clone,
+            nonce="verifier-late-stop-revoke-veto",
+        )
+        controls = OwnerControlService(clone, secret=SECRET)
+        directive_id = "verifier-standing-blocked"
+        text = "If a project becomes blocked, investigate it."
+        draft = compile_standing_order(
+            text,
+            scope=ContextScope(project_ids=("verifier-project",)),
+        )
+        metadata = draft.as_metadata()
+        controls.apply(
+            "STANDING_ORDER",
+            target="verifier-project",
+            exact_text=text,
+            nonce=directive_id,
+            signature=sign_command(
+                SECRET,
+                "STANDING_ORDER",
+                "verifier-project",
+                text,
+                directive_id,
+                metadata=metadata,
+            ),
+            directive_id=directive_id,
+            metadata=metadata,
+        )
+        stop_path = root / "EMERGENCY_STOP"
+        guard_calls = {"count": 0}
+
+        def inject(point: str) -> None:
+            if point != "candidate_transaction_guard":
+                return
+            guard_calls["count"] += 1
+            if guard_calls["count"] == 2:
+                stop_path.write_text(
+                    "independent verifier late stop\n",
+                    encoding="utf-8",
+                )
+
+        candidates_before = _table_count(clone, "candidates")
+        routes_before = _event_count(
+            clone,
+            "chief_of_staff.candidate_routed",
+        )
+        before = clone.event_count()
+        result = ChiefOfStaffService(
+            clone,
+            stop_path=stop_path,
+            fault_hook=inject,
+        ).consider(
+            {
+                "change_id": "verifier-change-late-stop",
+                "project_id": "verifier-project",
+                "change_type": "BLOCKED",
+                "summary": (
+                    "The verifier project is blocked by a bounded failure"
+                ),
+                "occurred_at": "2026-09-04T11:00:00Z",
+                "situation_state": "BLOCKED",
+                "evidence_refs": ["verifier:evidence:late-stop"],
+                "attributes": {
+                    "proposed_objective": (
+                        "Investigate the verifier transaction boundary"
+                    ),
+                    "expected_outcome": (
+                        "No candidate crosses the late owner stop"
+                    ),
+                    "value": 0.95,
+                    "strategic_value": 0.95,
+                    "urgency": 0.30,
+                    "confidence": 0.95,
+                    "reversible": True,
+                },
+            },
+            now=now,
+        )
+        return {
+            "guard_calls": guard_calls["count"],
+            "event_delta": clone.event_count() - before,
+            "status": result.status,
+            "result_standing_order_ids": list(result.standing_order_ids),
+            "proposal_standing_order_ids": (
+                list(result.proposal.standing_order_ids)
+                if result.proposal is not None
+                else []
+            ),
+            "candidates_before": candidates_before,
+            "candidates_after": _table_count(clone, "candidates"),
+            "routes_before": routes_before,
+            "routes_after": _event_count(
+                clone,
+                "chief_of_staff.candidate_routed",
+            ),
         }
 
 
@@ -345,7 +528,7 @@ def verify_proof(
         findings.append("full-suite JUnit is not green")
     if not database_path.is_file():
         return {
-            "contract": "jarvis.v13.chief-of-staff-independent-verifier.v1",
+            "contract": "jarvis.v13.chief-of-staff-independent-verifier.v2",
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "proof": str(proof_path),
             "database": str(database_path),
@@ -364,7 +547,113 @@ def verify_proof(
     packet_projection = snapshot["briefing_packet"]["chief_of_staff"]
     after_reads = database.event_count()
     observed, outcomes = _event_outcomes(database)
-    replay = _replay_on_backup(database, observed=observed, now=now)
+    runtime_change_ids = sorted(
+        change_id
+        for change_id in observed
+        if change_id.startswith("cos-source-")
+    )
+    runtime_change_id = (
+        runtime_change_ids[0]
+        if len(runtime_change_ids) == 1
+        else ""
+    )
+    runtime_change_event = observed.get(runtime_change_id)
+    runtime_change_source_refs = (
+        set(
+            runtime_change_event.payload["change"].get(
+                "source_event_refs",
+            ) or (),
+        )
+        if runtime_change_event is not None
+        else set()
+    )
+    runtime_world_events = [
+        event
+        for event in database.events(
+            event_types=("world.observation_recorded",),
+        )
+        if (
+            isinstance(event.payload.get("provenance"), dict)
+            and event.payload["provenance"].get("source_identity")
+            == RUNTIME_OBSERVATION_IDENTITY
+        )
+    ]
+    runtime_world_event_id = (
+        runtime_world_events[0].event_id
+        if len(runtime_world_events) == 1
+        else ""
+    )
+    runtime_route_events = [
+        event
+        for event in outcomes.get(runtime_change_id, ())
+        if event.event_type == "chief_of_staff.candidate_routed"
+    ]
+    runtime_candidate_id = (
+        str(runtime_route_events[0].payload.get("candidate_id") or "")
+        if len(runtime_route_events) == 1
+        else ""
+    )
+    runtime_source_results: list[dict[str, Any]] = []
+    runtime_cycle_ids: list[str] = []
+    for event in database.events(
+        event_types=("initiative.source_recorded",),
+    ):
+        payload = event.payload if isinstance(event.payload, dict) else {}
+        for result in payload.get("chief_of_staff_results") or ():
+            if (
+                isinstance(result, dict)
+                and result.get("change_id") == runtime_change_id
+            ):
+                runtime_source_results.append(dict(result))
+                runtime_cycle_ids.append(str(payload.get("cycle_id") or ""))
+    cycle_metrics_by_id = {
+        str(event.payload.get("cycle_id") or ""): dict(
+            event.payload.get("metrics") or {},
+        )
+        for event in database.events(
+            event_types=("initiative.cycle_completed",),
+        )
+    }
+    runtime_cycle_metrics = [
+        cycle_metrics_by_id.get(cycle_id, {})
+        for cycle_id in runtime_cycle_ids
+    ]
+    low_value_rejection_events = [
+        event
+        for event in outcomes.get(
+            "change-operatoros-urgent-cosmetic",
+            (),
+        )
+        if event.event_type
+        == "chief_of_staff.recommendation_rejected"
+    ]
+    priority_cutoff_event_id = (
+        low_value_rejection_events[0].event_id
+        if len(low_value_rejection_events) == 1
+        else ""
+    )
+    historical_projection = _projection_through_event(
+        database,
+        event_id=priority_cutoff_event_id,
+        now=now,
+    )
+    historical_leadgen_priority = (
+        _priority(historical_projection, "leadgen")
+        if historical_projection
+        else {}
+    )
+    historical_operator_priority = (
+        _priority(historical_projection, "operatoros")
+        if historical_projection
+        else {}
+    )
+    replay = _replay_on_backup(
+        database,
+        observed=observed,
+        runtime_change_id=runtime_change_id,
+        now=now,
+    )
+    late_stop_probe = _late_stop_on_backup(database, now=now)
 
     with tempfile.TemporaryDirectory(
         prefix="jarvis-v13-chief-verifier-rebuild-",
@@ -446,6 +735,113 @@ def verify_proof(
     priority_jarvis = _priority(direct_projection, "jarvis")
     priority_leadgen = _priority(direct_projection, "leadgen")
     priority_operator = _priority(direct_projection, "operatoros")
+    dependency_wait_events = [
+        event
+        for event in outcomes.get("change-jarvis-dependency-wait", ())
+        if event.event_type == "chief_of_staff.wait_recorded"
+    ]
+    semantic_dependency_wait_id = (
+        str(dependency_wait_events[0].payload.get("wait_id") or "")
+        if len(dependency_wait_events) == 1
+        else ""
+    )
+    recorded_canonical_wake_id = (
+        str(
+            dependency_wait_events[0].payload.get(
+                "canonical_wake_id",
+            ) or "",
+        )
+        if len(dependency_wait_events) == 1
+        else ""
+    )
+    quiet_wait_events = [
+        event
+        for event in outcomes.get("change-leadgen-recoverable", ())
+        if event.event_type == "chief_of_staff.wait_recorded"
+    ]
+    quiet_wait_id = (
+        str(quiet_wait_events[0].payload.get("wait_id") or "")
+        if len(quiet_wait_events) == 1
+        else ""
+    )
+    quiet_wait_resolutions = [
+        event
+        for event in outcomes.get(
+            "change-leadgen-recoverable-resolved",
+            (),
+        )
+        if (
+            event.event_type == "chief_of_staff.item_state_changed"
+            and event.payload.get("item_kind") == "WAIT"
+            and event.payload.get("item_id") == quiet_wait_id
+            and event.payload.get("to_state") == "RESOLVED"
+        )
+    ]
+    temporary_attention_events = [
+        event
+        for event in outcomes.get(
+            "change-operatoros-temporary-owner-decision",
+            (),
+        )
+        if event.event_type
+        == "chief_of_staff.owner_attention_required"
+    ]
+    temporary_attention_id = (
+        str(
+            temporary_attention_events[0].payload.get(
+                "attention_id",
+            ) or "",
+        )
+        if len(temporary_attention_events) == 1
+        else ""
+    )
+    temporary_attention_resolutions = [
+        event
+        for event in outcomes.get(
+            "change-operatoros-temporary-owner-decision-resolved",
+            (),
+        )
+        if (
+            event.event_type == "chief_of_staff.item_state_changed"
+            and event.payload.get("item_kind") == "OWNER_ATTENTION"
+            and event.payload.get("item_id") == temporary_attention_id
+            and event.payload.get("to_state") == "RESOLVED"
+        )
+    ]
+    final_attention_events = [
+        event
+        for event in outcomes.get("change-leadgen-owner-decision", ())
+        if event.event_type
+        == "chief_of_staff.owner_attention_required"
+    ]
+    final_attention_source_id = (
+        final_attention_events[0].event_id
+        if len(final_attention_events) == 1
+        else ""
+    )
+    temporary_attention_source_id = (
+        temporary_attention_events[0].event_id
+        if len(temporary_attention_events) == 1
+        else ""
+    )
+    open_queue_matches = [
+        item
+        for item in snapshot["decision_queue"]["open"]
+        if item.get("source_event_id") == final_attention_source_id
+    ]
+    resolved_queue_matches = [
+        item
+        for item in snapshot["decision_queue"]["history"]
+        if (
+            item.get("source_event_id") == temporary_attention_source_id
+            and item.get("status") == "RESOLVED"
+        )
+    ]
+    observation_wakes = [
+        wake
+        for wake in wakes.values()
+        if wake.get("objective_id") == "system:continuous-observation"
+    ]
     recomputed_counts = {
         "ledger_events": database.event_count(),
         "projects": len(direct_projection["projects"]),
@@ -464,6 +860,13 @@ def verify_proof(
         "owner_attention": _event_count(
             database, "chief_of_staff.owner_attention_required",
         ),
+        "item_state_changes": _event_count(
+            database, "chief_of_staff.item_state_changed",
+        ),
+        "world_observations": _table_count(
+            database,
+            "world_observations",
+        ),
         "candidates": _table_count(database, "candidates"),
         "objective_created": _event_count(
             database, "executive.objective_created",
@@ -476,18 +879,9 @@ def verify_proof(
             database, "executive.wake_triggered",
         ),
         "effect_events": _prefix_count(database, "effect."),
-        "decision_queue_matches": sum(
-            1
-            for item in snapshot["decision_queue"]["open"]
-            if item.get("source_event_id")
-            in {
-                event.event_id
-                for event in outcomes[
-                    "change-leadgen-owner-decision"
-                ]
-                if event.event_type
-                == "chief_of_staff.owner_attention_required"
-            }
+        "decision_queue_open_matches": len(open_queue_matches),
+        "decision_queue_resolved_matches": len(
+            resolved_queue_matches,
         ),
         "false_standing_order_triggers": 0,
     }
@@ -511,20 +905,30 @@ def verify_proof(
     expected_standing_orders = {
         "change-jarvis-dependency-wait": [JARVIS_ORDER],
         "change-leadgen-recoverable": [LEADGEN_ORDER],
+        "change-leadgen-recoverable-resolved": [],
         "change-operatoros-dirty": [OPERATOR_ORDER],
         "change-operatoros-urgent-cosmetic": [],
+        "change-operatoros-after-revoke": [],
+        "change-leadgen-adjacent-opportunity": [],
+        "change-operatoros-temporary-owner-decision": [],
+        "change-operatoros-temporary-owner-decision-resolved": [],
         "change-operatoros-intentional-idle": [],
         "change-leadgen-owner-decision": [],
-        "change-jarvis-after-dependency": [JARVIS_ORDER],
+        "change-jarvis-late-transaction-stop": [],
+        runtime_change_id: [JARVIS_ORDER],
     }
     historical_order_matches = {
-        change_id: _payload_standing_orders(outcomes[change_id])
+        change_id: _payload_standing_orders(outcomes.get(change_id, []))
         for change_id in expected_standing_orders
+        if change_id
     }
     false_trigger_names = [
         change_id
         for change_id, expected in expected_standing_orders.items()
-        if historical_order_matches[change_id] != expected
+        if (
+            not change_id
+            or historical_order_matches.get(change_id) != expected
+        )
     ]
     recomputed_counts["false_standing_order_triggers"] = len(
         false_trigger_names,
@@ -547,8 +951,27 @@ def verify_proof(
     proof_checks = (
         proof.get("checks") if isinstance(proof.get("checks"), dict) else {}
     )
+    proof_inputs = (
+        proof.get("inputs") if isinstance(proof.get("inputs"), dict) else {}
+    )
     checks = {
         "database_exists": True,
+        "proof_contract_and_scope": (
+            proof.get("contract") == "jarvis.v13.chief-of-staff-proof.v2"
+            and proof.get("scope")
+            == "DISPOSABLE_SCHEMA_V40_DATABASE_ONLY"
+            and proof.get("live_mutated") is False
+            and proof.get("main_or_origin_mutated") is False
+        ),
+        "mission_inputs_are_exact": (
+            proof_inputs.get("v12_final_candidate")
+            == V12_FINAL_CANDIDATE
+            and proof_inputs.get("v12_source") == BASE_SHA
+            and proof_inputs.get("owner_context_final")
+            == OWNER_CONTEXT_FINAL
+            and proof_inputs.get("owner_context_source")
+            == OWNER_CONTEXT_SOURCE
+        ),
         "schema_v40": _schema(database) == 40,
         "event_integrity": (
             database.verify_event_integrity() == database.event_count()
@@ -578,16 +1001,20 @@ def verify_proof(
             and operatoros["intentional_idle"] is True
         ),
         "strategic_priority_not_raw_urgency": (
-            priority_jarvis["rank"] < priority_operator["rank"]
-            and priority_leadgen["rank"] < priority_operator["rank"]
-            and priority_operator["factors"]["urgency"][
+            bool(historical_leadgen_priority)
+            and bool(historical_operator_priority)
+            and historical_leadgen_priority["score"]
+            > historical_operator_priority["score"]
+            and historical_leadgen_priority["factors"][
+                "strategic_value"
+            ]["normalized_value"]
+            > historical_operator_priority["factors"][
+                "strategic_value"
+            ]["normalized_value"]
+            and historical_operator_priority["factors"]["urgency"][
                 "normalized_value"
             ] == 1.0
-            and _has_outcome(
-                outcomes,
-                "change-operatoros-urgent-cosmetic",
-                "chief_of_staff.recommendation_rejected",
-            )
+            and len(low_value_rejection_events) == 1
         ),
         "standing_order_history_is_exact": (
             not false_trigger_names
@@ -595,11 +1022,13 @@ def verify_proof(
             and OPERATOR_ORDER not in active_order_ids
         ),
         "observed_change_set_is_exact": (
-            set(observed) == EXPECTED_CHANGE_IDS
+            len(runtime_change_ids) == 1
+            and set(observed)
+            == EXPECTED_DIRECT_CHANGE_IDS | {runtime_change_id}
             and "change-jarvis-stop" not in observed
             and "change-jarvis-veto" not in observed
         ),
-        "quiet_recovery_has_no_attention": (
+        "quiet_recovery_resolves_without_attention": (
             _has_outcome(
                 outcomes,
                 "change-leadgen-recoverable",
@@ -610,6 +1039,9 @@ def verify_proof(
                 "change-leadgen-recoverable",
                 "chief_of_staff.owner_attention_required",
             )
+            and len(quiet_wait_events) == 1
+            and not quiet_wait_events[0].payload.get("canonical_wake_id")
+            and len(quiet_wait_resolutions) == 1
         ),
         "revoked_order_and_adjacent_opportunity_wait": (
             _has_outcome(
@@ -633,27 +1065,93 @@ def verify_proof(
                 "chief_of_staff.candidate_routed",
             )
         ),
-        "one_real_owner_decision": (
-            recomputed_counts["owner_attention"] == 1
-            and recomputed_counts["decision_queue_matches"] == 1
+        "owner_attention_open_and_resolved_lifecycle": (
+            recomputed_counts["owner_attention"] == 2
+            and recomputed_counts["item_state_changes"] == 2
+            and len(temporary_attention_events) == 1
+            and len(temporary_attention_resolutions) == 1
+            and len(final_attention_events) == 1
+            and recomputed_counts["decision_queue_open_matches"] == 1
+            and recomputed_counts["decision_queue_resolved_matches"] == 1
+            and leadgen["owner_decision_needed"] is True
         ),
-        "one_candidate_no_duplicates": (
-            recomputed_counts["candidates"] == 1
+        "runtime_observation_routes_one_candidate_idempotently": (
+            len(runtime_world_events) == 1
+            and runtime_world_event_id in runtime_change_source_refs
+            and len(runtime_route_events) == 1
+            and len(runtime_source_results) == 2
+            and len(runtime_cycle_metrics) == 2
+            and runtime_source_results[0].get("status")
+            == "ROUTED_TO_EXISTING_CANDIDATE_PATH"
+            and runtime_source_results[0].get("duplicate") is False
+            and runtime_source_results[0].get("candidate_id")
+            == runtime_candidate_id
+            and runtime_source_results[1].get("candidate_id")
+            == runtime_candidate_id
+            and runtime_source_results[1].get("duplicate") is True
+            and runtime_cycle_metrics[0].get("raw_candidates_generated") == 1
+            and runtime_cycle_metrics[0].get("unique_candidates") == 1
+            and runtime_cycle_metrics[1].get("raw_candidates_generated") == 1
+            and runtime_cycle_metrics[1].get("unique_candidates") == 0
+            and recomputed_counts["world_observations"] == 1
+            and recomputed_counts["candidates"] == 1
             and recomputed_counts["candidate_routed"] == 1
             and replay["event_delta"] == 0
             and replay["candidate_count"] == 1
             and replay["duplicate"] is True
         ),
-        "wait_wake_and_continuation": (
-            canonical_wake_id in wakes
+        "wait_wake_and_runtime_continuation": (
+            len(dependency_wait_events) == 1
+            and semantic_dependency_wait_id
+            and semantic_dependency_wait_id != canonical_wake_id
+            and recorded_canonical_wake_id == canonical_wake_id
+            and canonical_wake_id in wakes
             and wakes[canonical_wake_id]["status"] == "TRIGGERED"
-            and recomputed_counts["wake_created"] == 1
-            and recomputed_counts["wake_triggered"] == 1
-            and _has_outcome(
-                outcomes,
-                "change-jarvis-after-dependency",
-                "chief_of_staff.candidate_routed",
+            and len(observation_wakes) == 3
+            and sum(
+                wake.get("status") == "TRIGGERED"
+                for wake in observation_wakes
+            ) == 2
+            and sum(
+                wake.get("status") == "ACTIVE"
+                for wake in observation_wakes
+            ) == 1
+            and recomputed_counts["wake_created"] == 4
+            and recomputed_counts["wake_triggered"] == 3
+            and len(runtime_route_events) == 1
+        ),
+        "all_priority_factors_and_unknowns_are_explicit": (
+            set(priority_jarvis["factors"]) == PRIORITY_FACTOR_NAMES
+            and priority_jarvis["unknown_factors"] == []
+            and priority_jarvis["factors"]["cost"]["raw_value"] == 0.20
+            and priority_jarvis["factors"]["cost"][
+                "normalized_value"
+            ] == 0.80
+            and priority_jarvis["factors"]["opportunity_cost"][
+                "raw_value"
+            ] == 0.15
+            and priority_jarvis["factors"]["opportunity_cost"][
+                "normalized_value"
+            ] == 0.85
+            and set(priority_leadgen["factors"]) == PRIORITY_FACTOR_NAMES
+            and bool(priority_leadgen["unknown_factors"])
+            and all(
+                priority_leadgen["factors"][name]["raw_value"]
+                == "UNKNOWN"
+                for name in priority_leadgen["unknown_factors"]
             )
+            and set(priority_operator["factors"]) == PRIORITY_FACTOR_NAMES
+        ),
+        "late_owner_stop_blocks_final_candidate_insert": (
+            late_stop_probe["guard_calls"] == 2
+            and late_stop_probe["status"] == "BLOCKED_BY_OWNER_CONTROL"
+            and late_stop_probe["result_standing_order_ids"] == []
+            and late_stop_probe["proposal_standing_order_ids"]
+            == ["directive:verifier-standing-blocked"]
+            and late_stop_probe["candidates_before"]
+            == late_stop_probe["candidates_after"]
+            and late_stop_probe["routes_before"]
+            == late_stop_probe["routes_after"]
         ),
         "no_second_operational_authority": (
             recomputed_counts["objective_created"] == 2
@@ -725,7 +1223,7 @@ def verify_proof(
         if not passed:
             findings.append(name)
     return {
-        "contract": "jarvis.v13.chief-of-staff-independent-verifier.v1",
+        "contract": "jarvis.v13.chief-of-staff-independent-verifier.v2",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "role": "fresh-independent-verifier-process",
         "scope": "DISPOSABLE_DATABASE_AND_SOURCE_IDENTITY",
@@ -740,6 +1238,10 @@ def verify_proof(
         "historical_standing_order_matches": historical_order_matches,
         "false_standing_order_triggers": false_trigger_names,
         "replay_on_backup": replay,
+        "late_stop_on_backup": late_stop_probe,
+        "runtime_change_id": runtime_change_id,
+        "runtime_cycle_ids": runtime_cycle_ids,
+        "priority_cutoff_event_id": priority_cutoff_event_id,
         "full_suite": junit,
         "verdict": "PASS" if not findings else "FAIL",
     }
