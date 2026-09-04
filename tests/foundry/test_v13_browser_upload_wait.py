@@ -16,6 +16,7 @@ from jarvis_foundry.connectors.web_research import (
     PlaywrightBrowserConnector,
 )
 from jarvis_foundry.database import FoundryDatabase
+from jarvis_foundry.effects import effect_state
 from jarvis_foundry.fabric.executors import ExecutorContext
 from jarvis_foundry.fabric.loop import execute_action, seed_builtins
 from jarvis_foundry.fabric.model import TaskIntent
@@ -508,6 +509,65 @@ def test_fabric_upload_reconciles_frozen_effect_under_stop_without_second_post(
     assert first.observed["journal_state"] == "FROZEN"
     assert server.upload_count == 1
 
+    reconcile_payload = {
+        "url": f"{site}/upload",
+        "target_ref": f"{site}/upload",
+        "original_effect_id": action_key,
+        "original_action": "upload",
+        "readback_target": payload["readback_target"],
+        "allowed_hosts": ("127.0.0.1",),
+        "allow_insecure_localhost": True,
+        "stop_path": str(stop_path),
+    }
+    wrong_resource = execute_action(
+        database,
+        context,
+        TaskIntent(
+            task_id="mission.v13.browser.upload.wrong-resource",
+            required_actions=("browser.web.reconcile",),
+            unattended=True,
+        ),
+        "browser.web.reconcile",
+        {
+            **reconcile_payload,
+            "url": f"{site}/wait",
+            "target_ref": f"{site}/wait",
+        },
+        workflow_id="workflow.v13.upload.ambiguous",
+        step_id="reconcile-wrong-resource",
+    )
+    wrong_postcondition = execute_action(
+        database,
+        context,
+        TaskIntent(
+            task_id="mission.v13.browser.upload.wrong-postcondition",
+            required_actions=("browser.web.reconcile",),
+            unattended=True,
+        ),
+        "browser.web.reconcile",
+        {
+            **reconcile_payload,
+            "readback_target": {
+                **payload["readback_target"],
+                "name": "Ready after delay",
+            },
+        },
+        workflow_id="workflow.v13.upload.ambiguous",
+        step_id="reconcile-wrong-postcondition",
+    )
+
+    assert wrong_resource.claimed.value == "BLOCKED"
+    assert wrong_resource.observed["error_code"] == "effect_identity_mismatch"
+    assert wrong_postcondition.claimed.value == "BLOCKED"
+    assert (
+        wrong_postcondition.observed["error_code"]
+        == "effect_identity_mismatch"
+    )
+    still_frozen = effect_state(database, action_key)
+    assert still_frozen["status"] == "FROZEN"
+    assert still_frozen.get("accepted") is not True
+    assert server.upload_count == 1
+
     reconciled = execute_action(
         database,
         context,
@@ -517,16 +577,7 @@ def test_fabric_upload_reconciles_frozen_effect_under_stop_without_second_post(
             unattended=True,
         ),
         "browser.web.reconcile",
-        {
-            "url": f"{site}/upload",
-            "target_ref": f"{site}/upload",
-            "original_effect_id": action_key,
-            "original_action": "upload",
-            "readback_target": payload["readback_target"],
-            "allowed_hosts": ("127.0.0.1",),
-            "allow_insecure_localhost": True,
-            "stop_path": str(stop_path),
-        },
+        reconcile_payload,
         workflow_id="workflow.v13.upload.ambiguous",
         step_id="reconcile",
     )
@@ -535,6 +586,8 @@ def test_fabric_upload_reconciles_frozen_effect_under_stop_without_second_post(
     assert reconciled.observed["accepted"] is True
     assert reconciled.observed["terminal_truth"] is True
     assert reconciled.observed["recovered_from_ambiguity"] is True
+    assert reconciled.observed["provider_ref"] == f"{site}/upload"
+    assert reconciled.observed["readback"]["provider_ref"] == f"{site}/upload"
     assert server.upload_count == 1
 
     server.stop_path = None
@@ -552,6 +605,7 @@ def test_fabric_upload_reconciles_frozen_effect_under_stop_without_second_post(
     assert replay.success is True
     assert replay.observed["replayed"] is True
     assert replay.observed["performed"] is False
+    assert replay.observed["provider_ref"] == f"{site}/upload"
     assert server.upload_count == 1
     assert server.upload_bytes == UPLOAD_BYTES
 

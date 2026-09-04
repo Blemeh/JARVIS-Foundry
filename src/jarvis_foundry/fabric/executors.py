@@ -657,6 +657,42 @@ def _browser_attempt_payload(
     return result
 
 
+def _browser_reconciliation_target(
+    value: object,
+) -> dict[str, Any] | None:
+    """Canonicalize one explicit browser postcondition for durable identity."""
+
+    if not isinstance(value, Mapping):
+        return None
+    role = value.get("role")
+    name = value.get("name")
+    if (
+        not isinstance(role, str)
+        or not role.strip()
+        or not isinstance(name, str)
+        or not name.strip()
+    ):
+        return None
+    timeout_value = value.get("timeout_ms")
+    if isinstance(timeout_value, bool):
+        return None
+    try:
+        timeout_ms = (
+            int(timeout_value)
+            if timeout_value is not None
+            else None
+        )
+    except (TypeError, ValueError):
+        return None
+    return {
+        "role": role.strip(),
+        "name": name.strip(),
+        "wait_state": str(value.get("wait_state") or "visible"),
+        "timeout_ms": timeout_ms,
+        "expected_value": value.get("expected_value"),
+    }
+
+
 def browser_read(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
     """Read one bounded page through the existing Playwright substrate."""
 
@@ -832,6 +868,9 @@ def browser_execute(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
         "download_target": payload.get("download_target"),
         "upload_source": payload.get("upload_source"),
         "readback_target": payload.get("readback_target"),
+        "reconciliation_target": _browser_reconciliation_target(
+            payload.get("readback_target")
+        ),
         "authority": "DATA_ONLY",
     }
     stop_check = _browser_stop_check(ctx, payload)
@@ -1057,6 +1096,30 @@ def browser_reconcile(
         }
     before = state.get("before_state")
     before = before if isinstance(before, Mapping) else {}
+    recorded_url = before.get("url")
+    if not isinstance(recorded_url, str) or not recorded_url:
+        return {
+            "claimed": "UNKNOWN",
+            "error_code": "original_effect_evidence_missing",
+            "authority": "DATA_ONLY",
+            "original_effect_id": action_key,
+        }
+    if str(row["target_ref"]) != recorded_url:
+        return {
+            "claimed": "BLOCKED",
+            "error_code": "effect_identity_mismatch",
+            "authority": "DATA_ONLY",
+            "original_effect_id": action_key,
+        }
+    for field_name in ("url", "target_ref"):
+        supplied = payload.get(field_name)
+        if supplied is not None and str(supplied) != recorded_url:
+            return {
+                "claimed": "BLOCKED",
+                "error_code": "effect_identity_mismatch",
+                "authority": "DATA_ONLY",
+                "original_effect_id": action_key,
+            }
     original_action = str(
         payload.get("original_action") or before.get("action") or ""
     )
@@ -1074,9 +1137,14 @@ def browser_reconcile(
             "authority": "DATA_ONLY",
             "original_effect_id": action_key,
         }
+    recorded_final_url = str(
+        recorded.get("final_url")
+        or recorded.get("provider_ref")
+        or recorded_url
+    )
 
     provider_id = "conn-playwright-v10"
-    provider_ref = str(row["target_ref"])
+    provider_ref = recorded_final_url
     browser_readback: dict[str, Any]
     reconciled_result = dict(recorded)
 
@@ -1117,15 +1185,27 @@ def browser_reconcile(
             "authority": "DATA_ONLY",
         }
     else:
-        postcondition = payload.get("readback_target")
-        if not isinstance(postcondition, Mapping):
+        expected_before = _browser_reconciliation_target(
+            before.get("reconciliation_target")
+            or before.get("readback_target")
+        )
+        postcondition = _browser_reconciliation_target(
+            payload.get("readback_target")
+        )
+        if postcondition is None:
             return {
                 "claimed": "BLOCKED",
                 "error_code": "reconciliation_postcondition_required",
                 "authority": "DATA_ONLY",
                 "original_effect_id": action_key,
             }
-        expected_before = before.get("readback_target")
+        if expected_before is None or postcondition != expected_before:
+            return {
+                "claimed": "BLOCKED",
+                "error_code": "effect_identity_mismatch",
+                "authority": "DATA_ONLY",
+                "original_effect_id": action_key,
+            }
         if original_action == "upload":
             upload = recorded.get("upload")
             recorded_precondition = (
@@ -1134,12 +1214,7 @@ def browser_reconcile(
                 else None
             )
             if (
-                not isinstance(expected_before, Mapping)
-                or expected_before.get("role") != postcondition.get("role")
-                or expected_before.get("name") != postcondition.get("name")
-                or expected_before.get("wait_state")
-                != str(postcondition.get("wait_state") or "visible")
-                or not isinstance(recorded_precondition, Mapping)
+                not isinstance(recorded_precondition, Mapping)
                 or recorded_precondition.get("matched") is not False
                 or recorded_precondition.get("role")
                 != postcondition.get("role")
@@ -1164,7 +1239,6 @@ def browser_reconcile(
                     "authority": "DATA_ONLY",
                     "original_effect_id": action_key,
                 }
-        url = str(payload.get("url") or row["target_ref"])
         try:
             connector = _browser_connector(payload)
             provider_id = connector.spec.connector_id
@@ -1172,7 +1246,7 @@ def browser_reconcile(
                 stop_check=None,
                 **_browser_session_kwargs(payload),
             ) as session:
-                capture = session.navigate(url)
+                capture = session.navigate(recorded_url)
                 if not capture.success:
                     return _browser_attempt_payload(
                         capture.attempt,
@@ -1183,12 +1257,23 @@ def browser_reconcile(
                         "claimed": "UNKNOWN",
                         "original_effect_id": action_key,
                     }
+                if (
+                    capture.page is None
+                    or capture.page.final_url != recorded_final_url
+                ):
+                    return {
+                        "claimed": "BLOCKED",
+                        "error_code": "effect_identity_mismatch",
+                        "authority": "DATA_ONLY",
+                        "original_effect_id": action_key,
+                    }
                 attempt = session.reconcile(
                     role=str(postcondition.get("role") or ""),
                     name=str(postcondition.get("name") or ""),
+                    expected_value=postcondition.get("expected_value"),
+                    readback_action=original_action,
                     target_id=str(
-                        postcondition.get("target_id")
-                        or f"reconcile-{action_key[-24:]}"
+                        f"reconcile-{action_key[-24:]}"
                     ),
                     wait_state=str(
                         postcondition.get("wait_state") or "visible"
@@ -1224,7 +1309,15 @@ def browser_reconcile(
                 "original_effect_id": action_key,
             }
         browser_readback = dict(result.get("readback") or {})
-        provider_ref = str(result.get("final_url") or row["target_ref"])
+        provider_ref = str(result.get("final_url") or "")
+        if provider_ref != recorded_final_url:
+            return {
+                "claimed": "BLOCKED",
+                "error_code": "effect_identity_mismatch",
+                "authority": "DATA_ONLY",
+                "original_effect_id": action_key,
+                "readback": browser_readback,
+            }
         if original_action == "upload":
             upload = dict(reconciled_result["upload"])
             upload["postcondition"] = {
@@ -1278,7 +1371,7 @@ def browser_reconcile(
         readback=readback,
         result=reconciled_result,
         acceptance_evidence={
-            "authority": "browser_exact_postcondition",
+            "authority": "browser_exact_resource_postcondition",
             "receipt_sha256": provider_receipt["receipt_sha256"],
         },
         reconciled=True,

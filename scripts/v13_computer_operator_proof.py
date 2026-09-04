@@ -1302,20 +1302,60 @@ def main() -> int:
             database=restarted_database,
             owned_root=owned_root,
         )
-        upload_reconcile = _run_action(
+        reconcile_payload = {
+            "url": f"{site}/",
+            "target_ref": f"{site}/",
+            "original_effect_id": upload_effect_id,
+            "original_action": "upload",
+            "readback_target": upload_payload["readback_target"],
+            "allowed_hosts": ("127.0.0.1",),
+            "allow_insecure_localhost": True,
+            "stop_path": str(stop_path),
+        }
+        wrong_resource_reconcile = _run_action(
             restarted_database,
             restarted_context,
             "browser.web.reconcile",
             {
-                "url": f"{site}/",
-                "target_ref": f"{site}/",
-                "original_effect_id": upload_effect_id,
-                "original_action": "upload",
-                "readback_target": upload_payload["readback_target"],
-                "allowed_hosts": ("127.0.0.1",),
-                "allow_insecure_localhost": True,
-                "stop_path": str(stop_path),
+                **reconcile_payload,
+                "url": f"{site}/drift",
+                "target_ref": f"{site}/drift",
             },
+            name="browser-upload-reconcile-wrong-resource",
+            step_id="browser_upload_reconcile_wrong_resource",
+        )
+        wrong_postcondition_reconcile = _run_action(
+            restarted_database,
+            restarted_context,
+            "browser.web.reconcile",
+            {
+                **reconcile_payload,
+                "readback_target": {
+                    **upload_payload["readback_target"],
+                    "name": "Ready after delay",
+                },
+            },
+            name="browser-upload-reconcile-wrong-postcondition",
+            step_id="browser_upload_reconcile_wrong_postcondition",
+        )
+        still_frozen = effect_state(restarted_database, upload_effect_id)
+        _require(
+            wrong_resource_reconcile.claimed.value == "BLOCKED"
+            and wrong_resource_reconcile.observed.get("error_code")
+            == "effect_identity_mismatch"
+            and wrong_postcondition_reconcile.claimed.value == "BLOCKED"
+            and wrong_postcondition_reconcile.observed.get("error_code")
+            == "effect_identity_mismatch"
+            and still_frozen.get("status") == FROZEN
+            and still_frozen.get("accepted") is not True
+            and server.upload_count == 1,
+            "browser reconciliation accepted substituted effect identity",
+        )
+        upload_reconcile = _run_action(
+            restarted_database,
+            restarted_context,
+            "browser.web.reconcile",
+            reconcile_payload,
             name="browser-upload-reconcile-after-runtime-restart",
             step_id="browser_upload_reconcile",
         )
@@ -1324,6 +1364,9 @@ def main() -> int:
             upload_reconcile.observed.get("accepted") is True
             and upload_reconcile.observed.get("terminal_truth") is True
             and upload_reconcile.observed.get("recovered_from_ambiguity") is True
+            and upload_reconcile.observed.get("provider_ref") == f"{site}/"
+            and upload_reconcile.observed.get("readback", {}).get("provider_ref")
+            == f"{site}/"
             and server.upload_count == 1,
             "browser reconciliation did not establish one durable terminal truth",
         )
@@ -1350,7 +1393,11 @@ def main() -> int:
             unattended=False,
         )
         _require_success(upload_replay, "browser upload replay")
-        _require(server.upload_count == 1, "upload request duplicated")
+        _require(
+            upload_replay.observed.get("provider_ref") == f"{site}/"
+            and server.upload_count == 1,
+            "browser upload replay lost resource identity or duplicated request",
+        )
         _require(
             server.upload_bytes == final_text.encode("utf-8"),
             "uploaded bytes differ from final artifact",
@@ -1367,6 +1414,12 @@ def main() -> int:
         )
         results["browser_upload"] = {
             "ambiguous": _action_summary(upload),
+            "wrong_resource_reconcile": _action_summary(
+                wrong_resource_reconcile
+            ),
+            "wrong_postcondition_reconcile": _action_summary(
+                wrong_postcondition_reconcile
+            ),
             "reconciled": _action_summary(upload_reconcile),
             "replay": _action_summary(upload_replay),
             "server_request_count": server.upload_count,

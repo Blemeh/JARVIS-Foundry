@@ -2188,6 +2188,7 @@ class PlaywrightBrowserSession:
         role: str | None = None,
         name: str | None = None,
         expected_value: Any = None,
+        action: str | None = None,
     ) -> dict[str, Any]:
         """Read bounded page state for independent action reconciliation."""
 
@@ -2224,13 +2225,15 @@ class PlaywrightBrowserSession:
                 "target_visible": locator.is_visible(),
                 "target_enabled": locator.is_enabled(),
             })
-            action = target.action if target is not None else ""
-            if action == "fill":
+            readback_action = target.action if target is not None else str(
+                action or ""
+            )
+            if readback_action == "fill":
                 current = locator.input_value(timeout=self.connector.timeout_ms)
                 result["value_sha256"] = _sha256_text(current)
                 if isinstance(expected_value, str):
                     result["verified"] = result["verified"] and current == expected_value
-            elif action == "select":
+            elif readback_action == "select":
                 selected = locator.evaluate(
                     "element => Array.from(element.selectedOptions || []).map(option => option.value)"
                 )
@@ -2249,7 +2252,7 @@ class PlaywrightBrowserSession:
                     result["verified"] = (
                         result["verified"] and selected_values == expected
                     )
-            elif action == "check" and isinstance(expected_value, bool):
+            elif readback_action == "check" and isinstance(expected_value, bool):
                 result["checked"] = locator.is_checked()
                 result["verified"] = (
                     result["verified"] and result["checked"] == expected_value
@@ -2895,6 +2898,7 @@ class PlaywrightBrowserSession:
         timeout_ms: int | None = None,
         effect_id: str | None = None,
         idempotency_key: str | None = None,
+        readback_action: str | None = None,
     ) -> ConnectorAttempt:
         """Re-read one stable effect; this method never repeats the action."""
 
@@ -2915,6 +2919,7 @@ class PlaywrightBrowserSession:
             if target else {"role": role, "name": name},
             "expected_value": expected_value,
             "wait_state": wait_state,
+            "readback_action": readback_action,
         })
         status = self.session_status()
         if status.state == "EXPIRED":
@@ -2937,15 +2942,24 @@ class PlaywrightBrowserSession:
             )
             wait_after = dict(wait_attempt.after_state or {})
             rb = dict(wait_after.get("readback") or {})
+            current_url = str(
+                wait_after.get("final_url")
+                or (
+                    self._last_identity.final_url
+                    if self._last_identity is not None
+                    else ""
+                )
+                or self.site_origin
+                or "https://browser.invalid"
+            )
+            rb.setdefault("final_url", _safe_url_ref(current_url))
+            rb.setdefault("page_revision", wait_after.get("page_revision"))
+            rb.setdefault("structural_hash", wait_after.get("structural_hash"))
             rb["matched"] = wait_attempt.outcome == "COMPLETED"
             if wait_attempt.outcome != "COMPLETED":
                 return self.connector._attempt(
                     action_kind="browser.web.execute",
-                    url=str(
-                        wait_after.get("final_url")
-                        or self.site_origin
-                        or "https://browser.invalid"
-                    ),
+                    url=current_url,
                     idempotency_key=key,
                     payload_hash=request_hash,
                     outcome="UNKNOWN",
@@ -2961,12 +2975,26 @@ class PlaywrightBrowserSession:
                         "reconciled": False,
                     },
                 )
+            if expected_value is not None:
+                value_readback = self.readback(
+                    role=role,
+                    name=name,
+                    expected_value=expected_value,
+                    action=readback_action,
+                )
+                wait_verified = bool(rb.get("verified"))
+                rb.update(value_readback)
+                rb["verified"] = (
+                    wait_verified and value_readback.get("verified") is True
+                )
+                rb["matched"] = rb["verified"]
         else:
             rb = self.readback(
                 target=target,
                 role=role,
                 name=name,
                 expected_value=expected_value,
+                action=readback_action,
             )
             rb["matched"] = bool(rb.get("verified"))
         outcome = "COMPLETED" if rb.get("verified") else "UNKNOWN"
