@@ -632,6 +632,7 @@ def _browser_attempt_payload(
         "action": after.get("action") or before.get("action"),
         "readback": after.get("readback"),
         "readback_verified": bool(after.get("readback_verified")),
+        "download": after.get("download"),
         "session": status,
         "session_persisted": session_persisted,
         "authority": "DATA_ONLY",
@@ -735,6 +736,27 @@ def browser_execute(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
     role = str(payload.get("role") or "")
     name = str(payload.get("name") or "")
     action = str(payload.get("action") or "click")
+    if "download_root" in payload:
+        return {
+            "claimed": "BLOCKED",
+            "error_code": "download_policy_override_refused",
+            "authority": "DATA_ONLY",
+        }
+    if action == "download":
+        if payload.get("allow_downloads") is not True:
+            return {
+                "claimed": "BLOCKED",
+                "error_code": "download_not_authorized",
+                "authority": "DATA_ONLY",
+            }
+        if not isinstance(payload.get("download_target"), str) or not str(
+            payload["download_target"]
+        ).strip():
+            return {
+                "claimed": "FAILED",
+                "error_code": "download_target_required",
+                "authority": "DATA_ONLY",
+            }
     browser_identity = {
         "url": url,
         "target_id": target_id,
@@ -742,6 +764,7 @@ def browser_execute(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
         "name": name,
         "action": action,
         "value": payload.get("value"),
+        "download_target": payload.get("download_target"),
     }
     fallback_hash = hashlib.sha256(
         json.dumps(browser_identity, sort_keys=True, default=str).encode("utf-8")
@@ -766,6 +789,7 @@ def browser_execute(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
         "role": role,
         "name": name,
         "action": action,
+        "download_target": payload.get("download_target"),
         "authority": "DATA_ONLY",
     }
     stop_check = _browser_stop_check(ctx, payload)
@@ -789,9 +813,18 @@ def browser_execute(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
     def perform() -> Mapping[str, Any]:
         nonlocal persisted
         try:
+            session_kwargs = _browser_session_kwargs(payload)
+            if action == "download":
+                session_kwargs.update({
+                    "allow_downloads": True,
+                    "download_root": ctx.owned_root,
+                    "max_download_bytes": int(
+                        payload.get("max_download_bytes") or 32 * 1024 * 1024
+                    ),
+                })
             with connector.session(
                 stop_check=stop_check,
-                **_browser_session_kwargs(payload),
+                **session_kwargs,
             ) as session:
                 capture = session.navigate(url)
                 if not capture.success:
@@ -831,6 +864,11 @@ def browser_execute(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
                     readback_target=(
                         payload.get("readback_target")
                         if isinstance(payload.get("readback_target"), Mapping)
+                        else None
+                    ),
+                    download_target=(
+                        str(payload["download_target"])
+                        if action == "download"
                         else None
                     ),
                 )

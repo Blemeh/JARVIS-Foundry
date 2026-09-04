@@ -20,6 +20,7 @@ import json
 import os
 import re
 import sys
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
@@ -46,6 +47,7 @@ MAX_REDIRECTS = 5
 MAX_SESSION_STATE_BYTES = 8 * 1024 * 1024
 MAX_SESSION_METADATA_BYTES = 16 * 1024
 MAX_ACTION_REQUESTS = 8
+MAX_DOWNLOAD_BYTES = 32 * 1024 * 1024
 _LOCAL_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
 _IDENTITY = re.compile(r"^[A-Za-z][A-Za-z0-9_.:/-]*$")
 _OPAQUE_REFERENCE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/-]{2,255}$")
@@ -480,6 +482,9 @@ class PlaywrightBrowserConnector:
         persist_session: bool = True,
         allowed_action_methods: Sequence[str] = ("POST",),
         max_action_requests: int = MAX_ACTION_REQUESTS,
+        allow_downloads: bool = False,
+        download_root: str | Path | None = None,
+        max_download_bytes: int = MAX_DOWNLOAD_BYTES,
     ) -> "PlaywrightBrowserSession":
         return PlaywrightBrowserSession(
             self,
@@ -503,6 +508,9 @@ class PlaywrightBrowserConnector:
             persist_session=persist_session,
             allowed_action_methods=allowed_action_methods,
             max_action_requests=max_action_requests,
+            allow_downloads=allow_downloads,
+            download_root=download_root,
+            max_download_bytes=max_download_bytes,
         )
 
     def read(
@@ -768,6 +776,9 @@ class PlaywrightBrowserSession:
         persist_session: bool,
         allowed_action_methods: Sequence[str],
         max_action_requests: int,
+        allow_downloads: bool,
+        download_root: str | Path | None,
+        max_download_bytes: int,
     ) -> None:
         self.connector = connector
         self.stop_check = stop_check
@@ -803,6 +814,34 @@ class PlaywrightBrowserSession:
         self.persist_session = persist_session
         self.allowed_action_methods = tuple(dict.fromkeys(methods))
         self.max_action_requests = max_action_requests
+        if not isinstance(allow_downloads, bool):
+            raise WebResearchError("allow_downloads must be boolean")
+        if (
+            not isinstance(max_download_bytes, int)
+            or isinstance(max_download_bytes, bool)
+            or max_download_bytes < 1
+            or max_download_bytes > MAX_DOWNLOAD_BYTES
+        ):
+            raise WebResearchError(
+                f"max_download_bytes must be within [1, {MAX_DOWNLOAD_BYTES}]"
+            )
+        if allow_downloads and download_root is None:
+            raise WebResearchError(
+                "download_root is required when downloads are enabled"
+            )
+        if not allow_downloads and download_root is not None:
+            raise WebResearchError(
+                "download_root cannot be supplied when downloads are disabled"
+            )
+        self.allow_downloads = allow_downloads
+        self.download_root = (
+            Path(download_root).expanduser().resolve()
+            if download_root is not None
+            else None
+        )
+        if self.download_root is not None and not self.download_root.is_dir():
+            raise WebResearchError("download_root must be an existing directory")
+        self.max_download_bytes = max_download_bytes
         if session_state_path is not None:
             state_path = Path(session_state_path).expanduser().resolve(strict=False)
             self.session_state_path: Path | None = state_path
@@ -841,6 +880,7 @@ class PlaywrightBrowserSession:
         self._action_in_progress = False
         self._action_request_count = 0
         self._action_request_seen = False
+        self._download_in_progress = False
         self._reauth_attempted = False
         self._reauth_in_progress = False
 
@@ -976,7 +1016,9 @@ class PlaywrightBrowserSession:
             self._playwright = sync_playwright().start()
             browser_type = getattr(self._playwright, self.connector.browser_name)
             self._browser = browser_type.launch(headless=self.connector.headless)
-            context_kwargs: dict[str, Any] = {"accept_downloads": False}
+            context_kwargs: dict[str, Any] = {
+                "accept_downloads": self.allow_downloads,
+            }
             if self._state_usable and self.session_state_path is not None:
                 context_kwargs["storage_state"] = str(self.session_state_path)
             try:
@@ -991,7 +1033,9 @@ class PlaywrightBrowserSession:
                 self._restored = False
                 self._can_persist = False
                 self._state_reason = "session_state_restore_failed"
-                self._context = self._browser.new_context(accept_downloads=False)
+                self._context = self._browser.new_context(
+                    accept_downloads=self.allow_downloads,
+                )
             self.page = self._context.new_page()
             self.page.set_default_timeout(self.connector.timeout_ms)
             self.page.route("**/*", self._route)
@@ -1040,6 +1084,27 @@ class PlaywrightBrowserSession:
             route.abort()
             return
         method = str(request.method).upper()
+        if self._download_in_progress:
+            if method not in {"GET", "HEAD"}:
+                self._route_error = "download_method_blocked"
+                route.abort()
+                return
+            try:
+                self.connector._validate_url(
+                    request.url,
+                    allowed_hosts=self.allowed_hosts,
+                    expected_host=self._initial_host,
+                )
+            except WebResearchError:
+                self._route_error = "action_origin_blocked"
+                route.abort()
+                return
+            self._action_request_count += 1
+            self._action_request_seen = True
+            if self._action_request_count > self.max_action_requests:
+                self._route_error = "action_request_limit"
+                route.abort()
+                return
         if method not in {"GET", "HEAD", "OPTIONS"}:
             if not self._action_in_progress:
                 self._route_error = "mutating_request_blocked"
@@ -1541,9 +1606,12 @@ class PlaywrightBrowserSession:
         name = name.strip()
         if any(ord(char) < 0x20 for char in name) or contains_secret_like(name):
             raise BrowserTargetError("target name contains unsafe material")
-        if action not in {"click", "fill", "input", "select", "check", "submit"}:
+        if action not in {
+            "click", "fill", "input", "select", "check", "submit", "download",
+        }:
             raise BrowserTargetError(
-                "only bounded click, fill, select, check, and submit actions are supported"
+                "only bounded click, fill, select, check, submit, and download "
+                "actions are supported"
             )
         if action == "input":
             action = "fill"
@@ -1574,6 +1642,140 @@ class PlaywrightBrowserSession:
         if value is None:
             return None
         return _safe_opaque_reference(value, field_name)
+
+    def _download_destination(
+        self, value: str | Path | None,
+    ) -> tuple[Path, str]:
+        if not self.allow_downloads or self.download_root is None:
+            raise BrowserTargetError("downloads are not enabled for this session")
+        if not isinstance(value, (str, Path)) or not str(value).strip():
+            raise BrowserTargetError("download_target is required")
+        if "\x00" in str(value):
+            raise BrowserTargetError("download_target contains a NUL")
+        relative = Path(value)
+        if relative.is_absolute() or relative.anchor:
+            raise BrowserTargetError("download_target must be relative")
+        if any(part == ".." for part in relative.parts):
+            raise BrowserTargetError("download_target escapes the owned root")
+        unresolved = self.download_root / relative
+        current = self.download_root
+        for part in relative.parts[:-1]:
+            current /= part
+            if current.exists() and current.is_symlink():
+                raise BrowserTargetError(
+                    "download_target crosses a symbolic link"
+                )
+        destination = unresolved.resolve(strict=False)
+        try:
+            bounded_ref = destination.relative_to(self.download_root)
+        except ValueError as error:
+            raise BrowserTargetError(
+                "download_target escapes the owned root"
+            ) from error
+        if destination == self.download_root:
+            raise BrowserTargetError("download_target must name a file")
+        if destination.exists() or destination.is_symlink():
+            raise BrowserTargetError(
+                "download_target already exists; overwrite is refused"
+            )
+        return destination, bounded_ref.as_posix()
+
+    def _publish_download(
+        self,
+        download: Any,
+        *,
+        destination: Path,
+        target_ref: str,
+    ) -> dict[str, Any]:
+        suggested = str(download.suggested_filename or "")
+        failure = download.failure()
+        if failure:
+            raise WebResearchError("download provider reported failure")
+        source_value = download.path()
+        if not source_value:
+            raise WebResearchError("download source path is unavailable")
+        source = Path(source_value)
+        if not source.is_file() or source.is_symlink():
+            raise WebResearchError("download source is not a regular file")
+        announced_size = source.stat().st_size
+        if announced_size > self.max_download_bytes:
+            raise WebResearchError("download exceeds the byte limit")
+
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        resolved_parent = destination.parent.resolve(strict=True)
+        assert self.download_root is not None
+        try:
+            resolved_parent.relative_to(self.download_root)
+        except ValueError as error:
+            raise WebResearchError(
+                "download parent escaped the owned root"
+            ) from error
+        if destination.exists() or destination.is_symlink():
+            raise WebResearchError(
+                "download target appeared before publish"
+            )
+
+        temporary: str | None = None
+        digest = hashlib.sha256()
+        total = 0
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="wb",
+                dir=destination.parent,
+                prefix=f".{destination.name}.",
+                suffix=".download",
+                delete=False,
+            ) as output:
+                temporary = output.name
+                with source.open("rb") as downloaded:
+                    while True:
+                        chunk = downloaded.read(1024 * 1024)
+                        if not chunk:
+                            break
+                        total += len(chunk)
+                        if total > self.max_download_bytes:
+                            raise WebResearchError(
+                                "download exceeds the byte limit"
+                            )
+                        output.write(chunk)
+                        digest.update(chunk)
+                output.flush()
+                os.fsync(output.fileno())
+            os.link(temporary, destination)
+            os.unlink(temporary)
+            temporary = None
+            readback = destination.read_bytes()
+            readback_hash = _sha256_bytes(readback)
+            if len(readback) != total or readback_hash != digest.hexdigest():
+                raise WebResearchError("download readback mismatch")
+        finally:
+            if temporary is not None:
+                try:
+                    os.unlink(temporary)
+                except OSError:
+                    pass
+            try:
+                download.delete()
+            except Exception:
+                pass
+
+        return {
+            "target_ref": target_ref,
+            "path": str(destination),
+            "size_bytes": total,
+            "sha256": digest.hexdigest(),
+            "suggested_filename_sha256": (
+                _sha256_text(suggested) if suggested else None
+            ),
+            "suggested_filename_length": len(suggested),
+            "readback": {
+                "exists": True,
+                "size_bytes": len(readback),
+                "sha256": readback_hash,
+                "matches": True,
+                "status": "MATCH",
+            },
+        }
 
     def _readback_locator(
         self,
@@ -1684,6 +1886,7 @@ class PlaywrightBrowserSession:
         effect_id: str | None = None,
         idempotency_key: str | None = None,
         readback_target: Mapping[str, Any] | None = None,
+        download_target: str | Path | None = None,
     ) -> ConnectorAttempt:
         if self.page is None:
             raise BrowserTargetError("browser session is not open")
@@ -1696,6 +1899,18 @@ class PlaywrightBrowserSession:
                 'action': target.action,
             })}"
         )
+        download_destination: Path | None = None
+        download_ref: str | None = None
+        if target.action == "download":
+            if value is not None:
+                raise BrowserTargetError("download does not accept a value")
+            download_destination, download_ref = self._download_destination(
+                download_target
+            )
+        elif download_target is not None:
+            raise BrowserTargetError(
+                "download_target is valid only for a download action"
+            )
         if target.action == "fill":
             if not isinstance(value, str) or len(value) > 4096:
                 raise BrowserTargetError("fill value must be bounded text")
@@ -1723,10 +1938,13 @@ class PlaywrightBrowserSession:
         request_hash = _digest({
             "target": target.to_evidence(),
             "value": value,
+            "download_target": download_ref,
             "effect_id": effect_id,
             "idempotency_key": key,
         })
         before = target.to_evidence()
+        if download_ref is not None:
+            before["download_target"] = download_ref
         if stop_check is not None and stop_check():
             return self.connector._attempt(
                 action_kind="browser.web.execute", url=target.final_url,
@@ -1789,6 +2007,8 @@ class PlaywrightBrowserSession:
         self._action_in_progress = True
         self._action_request_count = 0
         self._action_request_seen = False
+        download_started = False
+        download_evidence: dict[str, Any] | None = None
         try:
             if target.action in {"click", "submit"}:
                 locator.click(timeout=self.connector.timeout_ms)
@@ -1801,6 +2021,31 @@ class PlaywrightBrowserSession:
                     locator.check(timeout=self.connector.timeout_ms)
                 else:
                     locator.uncheck(timeout=self.connector.timeout_ms)
+            elif target.action == "download":
+                assert download_destination is not None
+                assert download_ref is not None
+                download_started = True
+                self._download_in_progress = True
+                with self.page.expect_download(
+                    timeout=self.connector.timeout_ms,
+                ) as download_info:
+                    locator.click(timeout=self.connector.timeout_ms)
+                # Attachment transfers are not consistently exposed through
+                # page routing. A yielded Download object is direct provider
+                # evidence that the request/effect boundary was crossed.
+                self._action_request_seen = True
+                self._action_request_count = max(
+                    1, self._action_request_count,
+                )
+                if stop_check is not None and stop_check():
+                    raise WebResearchError(
+                        "STOP became active after the download started"
+                    )
+                download_evidence = self._publish_download(
+                    download_info.value,
+                    destination=download_destination,
+                    target_ref=download_ref,
+                )
             else:  # pragma: no cover - discover_target normalizes before this point
                 raise BrowserTargetError("unsupported browser action")
         except Exception as error:
@@ -1818,7 +2063,14 @@ class PlaywrightBrowserSession:
                 )
             elif self._action_request_seen:
                 outcome = "UNKNOWN"
-                code = "action_ambiguous"
+                code = (
+                    "download_ambiguous"
+                    if target.action == "download"
+                    else "action_ambiguous"
+                )
+            elif download_started:
+                outcome = "UNKNOWN"
+                code = "download_ambiguous"
             elif self._route_error:
                 outcome = "UNKNOWN"
                 code = self._route_error
@@ -1859,6 +2111,45 @@ class PlaywrightBrowserSession:
             )
         finally:
             self._action_in_progress = False
+            self._download_in_progress = False
+        if target.action == "download":
+            assert download_evidence is not None
+            after = {
+                "final_url": _safe_url_ref(target.final_url),
+                "page_revision": target.page_revision,
+                "structural_hash": target.structural_hash,
+                "target_id": target.target_id,
+                "action": target.action,
+                "effect_id": effect_id,
+                "idempotency_key": key,
+                "action_request_count": self._action_request_count,
+                "action_request_seen": self._action_request_seen,
+                "download": download_evidence,
+                "readback": download_evidence["readback"],
+                "readback_verified": True,
+            }
+            if stop_check is not None and stop_check():
+                return self.connector._attempt(
+                    action_kind="browser.web.execute",
+                    url=target.final_url,
+                    idempotency_key=key,
+                    payload_hash=request_hash,
+                    outcome="UNKNOWN",
+                    error_code="stop_after_effect",
+                    before_state=before,
+                    after_state=after,
+                )
+            return self.connector._attempt(
+                action_kind="browser.web.execute",
+                url=target.final_url,
+                idempotency_key=key,
+                payload_hash=request_hash,
+                outcome="COMPLETED",
+                before_state=before,
+                after_state=after,
+                provider_ref=target.final_url,
+                reconciled=True,
+            )
         try:
             after_url, after_revision, after_structure_hash = self._current_revision()
         except Exception as error:

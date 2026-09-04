@@ -230,7 +230,8 @@ def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
             executor="browser",
             unattended=UnattendedMode.INTERACTIVE_REQUIRED,
             limitations=(
-                "owner-authorized bounded click/fill/select/check/submit only; "
+                "owner-authorized bounded click/fill/select/check/submit/download only; "
+                "downloads require explicit opt-in and owned-root destination; "
                 "effect journal and readback required; no destructive/public actions",
             ),
         ),
@@ -702,6 +703,38 @@ def _verify_action(
             not (payload is not None and payload.get("require_authenticated"))
             or session.get("state") == "AUTHENTICATED"
         )
+        if payload is not None and payload.get("action") == "download":
+            download = claimed.get("download")
+            if not isinstance(download, Mapping):
+                return VerifyVerdict.MISMATCH
+            path_value = download.get("path")
+            expected_hash = download.get("sha256")
+            expected_size = download.get("size_bytes")
+            if (
+                claimed_status != "COMPLETED"
+                or claimed.get("authority") != "DATA_ONLY"
+                or claimed.get("readback_verified") is not True
+                or claimed.get("reconciled") is not True
+                or not isinstance(path_value, str)
+                or not isinstance(expected_hash, str)
+                or not isinstance(expected_size, int)
+                or not auth_ok
+            ):
+                return VerifyVerdict.MISMATCH
+            try:
+                path = Path(path_value).expanduser().resolve(strict=True)
+                path.relative_to(owned_root)
+                content = path.read_bytes()
+            except (OSError, ValueError):
+                return VerifyVerdict.MISMATCH
+            from hashlib import sha256
+
+            return (
+                VerifyVerdict.MATCH
+                if len(content) == expected_size
+                and sha256(content).hexdigest() == expected_hash
+                else VerifyVerdict.MISMATCH
+            )
         if (
             claimed_status == "COMPLETED"
             and claimed.get("authority") == "DATA_ONLY"
