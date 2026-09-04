@@ -566,16 +566,55 @@ class _UIAutomationBackend:
         except Exception:  # noqa: BLE001 - stale UIA element
             return ()
 
+    @staticmethod
+    def _top_level_window_handles(pid: int) -> tuple[int, ...]:
+        import ctypes
+        from ctypes import wintypes
+
+        user32 = ctypes.WinDLL("user32", use_last_error=True)
+        callback_type = ctypes.WINFUNCTYPE(
+            wintypes.BOOL,
+            wintypes.HWND,
+            wintypes.LPARAM,
+        )
+        user32.EnumWindows.argtypes = [callback_type, wintypes.LPARAM]
+        user32.EnumWindows.restype = wintypes.BOOL
+        user32.GetWindowThreadProcessId.argtypes = [
+            wintypes.HWND,
+            ctypes.POINTER(wintypes.DWORD),
+        ]
+        user32.GetWindowThreadProcessId.restype = wintypes.DWORD
+        handles: list[int] = []
+
+        @callback_type
+        def collect(hwnd: int, _parameter: int) -> bool:
+            process_id = wintypes.DWORD()
+            user32.GetWindowThreadProcessId(
+                hwnd,
+                ctypes.byref(process_id),
+            )
+            if int(process_id.value) == pid:
+                handles.append(int(hwnd))
+            return True
+
+        if not user32.EnumWindows(collect, 0):
+            raise ctypes.WinError(ctypes.get_last_error())
+        return tuple(handles)
+
     def list_windows(self, pid: int) -> Sequence[BackendWindow]:
         try:
-            children = self._auto.GetRootControl().GetChildren()
+            handles = self._top_level_window_handles(pid)
         except Exception as error:  # noqa: BLE001 - backend boundary
             raise WindowsOperatorUnavailable(
                 "uiautomation_unavailable",
                 f"could not enumerate top-level windows: {type(error).__name__}",
             ) from error
         windows: list[BackendWindow] = []
-        for control in children:
+        for hwnd in handles:
+            try:
+                control = self._auto.ControlFromHandle(hwnd)
+            except Exception:  # noqa: BLE001 - inaccessible native window
+                continue
             if int(self._property(control, "ProcessId", 0) or 0) != pid:
                 continue
             class_name = str(self._property(control, "ClassName", "") or "")
@@ -588,9 +627,7 @@ class _UIAutomationBackend:
             windows.append(
                 BackendWindow(
                     ref=control,
-                    hwnd=int(
-                        self._property(control, "NativeWindowHandle", 0) or 0
-                    ),
+                    hwnd=hwnd,
                     title=str(self._property(control, "Name", "") or ""),
                     class_name=class_name,
                     automation_id=str(

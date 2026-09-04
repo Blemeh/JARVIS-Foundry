@@ -21,6 +21,7 @@ from jarvis_foundry.connectors.windows_operator import (
     TargetMatchError,
     WindowSelector,
     WindowsOperatorProvider,
+    _UIAutomationBackend,
 )
 
 
@@ -248,6 +249,79 @@ def _window(
             automation_id="EditorMain",
         )
     ).identity
+
+
+def test_live_backend_discovers_owned_dialogs_from_native_handles(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _PatternIds:
+        WindowPattern = "window"
+
+    class _WindowPattern:
+        def __init__(self, modal: bool) -> None:
+            self.IsModal = modal
+
+    class _RawControl:
+        def __init__(
+            self,
+            hwnd: int,
+            title: str,
+            class_name: str,
+            automation_id: str,
+            *,
+            modal: bool,
+        ) -> None:
+            self.ProcessId = 4242
+            self.NativeWindowHandle = hwnd
+            self.Name = title
+            self.ClassName = class_name
+            self.AutomationId = automation_id
+            self.IsEnabled = True
+            self.IsOffscreen = False
+            self._modal = modal
+
+        def GetRuntimeId(self) -> tuple[int, int]:
+            return (42, self.NativeWindowHandle)
+
+        def GetPattern(self, pattern_id: str) -> _WindowPattern | None:
+            if pattern_id == "window":
+                return _WindowPattern(self._modal)
+            return None
+
+    controls = {
+        100: _RawControl(
+            100,
+            "Editor",
+            "EditorWindow",
+            "EditorMain",
+            modal=False,
+        ),
+        200: _RawControl(
+            200,
+            "Unexpected",
+            "#32770",
+            "",
+            modal=True,
+        ),
+    }
+
+    class _Automation:
+        PatternId = _PatternIds()
+
+        @staticmethod
+        def ControlFromHandle(hwnd: int) -> _RawControl:
+            return controls[hwnd]
+
+    monkeypatch.setattr(
+        _UIAutomationBackend,
+        "_top_level_window_handles",
+        staticmethod(lambda pid: (100, 200) if pid == 4242 else ()),
+    )
+    windows = _UIAutomationBackend(_Automation()).list_windows(4242)
+
+    assert [window.hwnd for window in windows] == [100, 200]
+    assert windows[0].is_dialog is False
+    assert windows[1].is_dialog is True
 
 
 def test_fake_backend_keeps_uiautomation_lazy_and_evidence_json_safe(
