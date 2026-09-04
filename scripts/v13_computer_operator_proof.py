@@ -18,7 +18,10 @@ SOURCE_ROOT = ROOT / "src"
 if str(SOURCE_ROOT) not in sys.path:
     sys.path.insert(0, str(SOURCE_ROOT))
 
-from jarvis_foundry.connectors.personal_operator import PersonalOperatorConnector
+from jarvis_foundry.connectors.personal_operator import (
+    PersonalOperatorConnector,
+    _terminate_windows_exact,
+)
 from jarvis_foundry.connectors.web_research import PlaywrightBrowserConnector
 from jarvis_foundry.connectors.windows_operator import (
     ControlCondition,
@@ -46,6 +49,11 @@ from jarvis_foundry.operations.procedure import (
     load_procedure,
     reconcile_step,
     start_step,
+)
+from jarvis_foundry.platform.windows_subprocess import pid_alive
+from jarvis_foundry.supervisor.worker import (
+    list_process_tree,
+    process_creation_identity,
 )
 
 
@@ -135,6 +143,9 @@ class _ProofHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802 - stdlib protocol name
         if self.path == "/":
+            with self.server.lock:
+                uploaded = self.server.upload_count > 0
+                drift_completed = self.server.drift_count > 0
             body = b"""<!doctype html>
 <title>JARVIS V13 local proof</title>
 <h1>Local report</h1>
@@ -142,8 +153,14 @@ class _ProofHandler(BaseHTTPRequestHandler):
   Download local report
 </a>
 <input id="upload" type="file" aria-label="Upload edited report">
-<div id="uploaded" role="status" aria-label="Upload complete" hidden>
+<div id="uploaded" role="status" aria-label="Upload complete"__UPLOAD_HIDDEN__>
   Upload complete
+</div>
+<button id="drift-action" aria-label="Run drift action">
+  Run drift action
+</button>
+<div id="drift-complete" role="status" aria-label="Drift action complete"__DRIFT_HIDDEN__>
+  Drift action complete
 </div>
 <div id="ready" role="status" aria-label="Ready after delay" hidden>
   Ready after delay
@@ -163,7 +180,17 @@ document.querySelector("#upload").addEventListener("change", async event => {
     document.querySelector("#uploaded").hidden = false;
   }
 });
-</script>"""
+document.querySelector("#drift-action").addEventListener("click", async () => {
+  const response = await fetch("/drift", {method: "POST"});
+  if (response.ok) {
+    document.querySelector("#drift-complete").hidden = false;
+  }
+});
+</script>""".replace(
+                b"__UPLOAD_HIDDEN__", b"" if uploaded else b" hidden"
+            ).replace(
+                b"__DRIFT_HIDDEN__", b"" if drift_completed else b" hidden"
+            )
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
@@ -186,6 +213,16 @@ document.querySelector("#upload").addEventListener("change", async event => {
         self.send_error(404)
 
     def do_POST(self) -> None:  # noqa: N802 - stdlib protocol name
+        if self.path == "/drift":
+            with self.server.lock:
+                self.server.drift_count += 1
+            body = b"ok"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
         if self.path != "/upload":
             self.send_error(404)
             return
@@ -194,6 +231,12 @@ document.querySelector("#upload").addEventListener("change", async event => {
         with self.server.lock:
             self.server.upload_count += 1
             self.server.upload_bytes = content
+        if self.server.stop_path is not None:
+            self.server.stop_path.write_text(
+                "owner stop after upload\n", encoding="utf-8"
+            )
+        if self.server.upload_delay_s:
+            time.sleep(self.server.upload_delay_s)
         body = b"ok"
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
@@ -213,6 +256,9 @@ class _ProofServer(ThreadingHTTPServer):
         self.download_count = 0
         self.upload_count = 0
         self.upload_bytes = b""
+        self.upload_delay_s = 0.0
+        self.stop_path: Path | None = None
+        self.drift_count = 0
 
 
 def _intent(action_kind: str, name: str, *, unattended: bool = True) -> TaskIntent:
@@ -343,6 +389,66 @@ def _wait_for_window(
     raise ProofFailure(f"window {title!r} was not observed: {last_error}")
 
 
+def _same_process_generation(identity: Mapping[str, Any]) -> bool:
+    pid = int(identity.get("pid") or 0)
+    if pid <= 0 or not pid_alive(pid):
+        return False
+    current = process_creation_identity(pid)
+    return (
+        current.get("create_time") == identity.get("create_time")
+        and str(current.get("exe") or "").casefold()
+        == str(identity.get("exe") or "").casefold()
+    )
+
+
+def _browser_root_identity(
+    session: Any,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    browser = session._browser
+    _require(browser is not None, "browser process was not launched")
+    transport = browser._impl_obj._connection._transport
+    driver_process = getattr(transport, "_proc", None)
+    driver_pid = int(getattr(driver_process, "pid", 0) or 0)
+    _require(driver_pid > 0, "Playwright driver PID was unavailable")
+    descendants = [
+        pid for pid in list_process_tree(driver_pid) if pid != driver_pid
+    ]
+    identities = [
+        process_creation_identity(pid)
+        for pid in descendants
+    ]
+    browser_identities = [
+        identity
+        for identity in identities
+        if any(
+            token in Path(str(identity.get("exe") or "")).name.casefold()
+            for token in ("chrome", "firefox", "webkit")
+        )
+        and identity.get("create_time") is not None
+    ]
+    _require(browser_identities, "owned browser process identity was unavailable")
+    owned_set = set(descendants)
+    root = max(
+        browser_identities,
+        key=lambda identity: len(
+            owned_set.intersection(
+                list_process_tree(int(identity["pid"]))
+            )
+        ),
+    )
+    root_tree = set(list_process_tree(int(root["pid"])))
+    tree = [
+        identity
+        for identity in browser_identities
+        if int(identity["pid"]) in root_tree
+    ]
+    _require(
+        all(_same_process_generation(identity) for identity in tree),
+        "browser process tree changed before the crash probe",
+    )
+    return root, tree
+
+
 def _browser_restart_probe(site: str) -> dict[str, Any]:
     connector = PlaywrightBrowserConnector(
         timeout_ms=5_000,
@@ -357,9 +463,37 @@ def _browser_restart_probe(site: str) -> dict[str, Any]:
         session.__enter__()
         before = session.navigate(f"{site}/")
         _require(before.success, "browser crash probe could not navigate")
-        assert session._browser is not None
-        session._browser.close()
-        crashed = session.navigate(f"{site}/")
+        browser_root, browser_tree = _browser_root_identity(session)
+        terminated, termination_readback, termination_error = (
+            _terminate_windows_exact(
+                {
+                    "pid": browser_root["pid"],
+                    "creation_identity": browser_root,
+                },
+                grace_seconds=1,
+            )
+        )
+        _require(
+            terminated and termination_error is None,
+            f"exact browser termination failed: {termination_error}",
+        )
+        deadline = time.monotonic() + 5
+        while (
+            any(_same_process_generation(item) for item in browser_tree)
+            and time.monotonic() < deadline
+        ):
+            time.sleep(0.05)
+        _require(
+            not any(_same_process_generation(item) for item in browser_tree),
+            "captured browser process generation survived exact root termination",
+        )
+        crashed = session.wait_for_target(
+            target_id="ready-after-browser-crash",
+            role="status",
+            name="Ready after delay",
+            state="visible",
+            timeout_ms=5_000,
+        )
     finally:
         try:
             session.__exit__(None, None, None)
@@ -367,15 +501,105 @@ def _browser_restart_probe(site: str) -> dict[str, Any]:
             cleanup_error = type(error).__name__
     with connector.session() as recovered_session:
         recovered = recovered_session.navigate(f"{site}/")
-    _require(recovered.success, "fresh browser session did not recover")
+        recovered_wait = recovered_session.wait_for_target(
+            target_id="ready-after-browser-restart",
+            role="status",
+            name="Ready after delay",
+            state="visible",
+            timeout_ms=5_000,
+        )
+    _require(
+        recovered.success and recovered_wait.outcome == "COMPLETED",
+        "fresh browser session did not recover",
+    )
+    _require(
+        crashed.outcome == "FAILED"
+        and crashed.error_code == "browser_wait_failed",
+        f"browser process loss was not classified as a read failure: {crashed}",
+    )
     return {
         "health": health,
-        "after_forced_close": {
-            "outcome": crashed.attempt.outcome,
-            "error_code": crashed.attempt.error_code,
+        "terminated_process": {
+            "pid": browser_root["pid"],
+            "create_time": browser_root["create_time"],
+            "exe": browser_root["exe"],
+            "captured_tree_size": len(browser_tree),
+            "termination_readback": termination_readback,
+        },
+        "after_process_loss": {
+            "outcome": crashed.outcome,
+            "error_code": crashed.error_code,
         },
         "cleanup_error": cleanup_error,
-        "fresh_session_recovered": recovered.success,
+        "fresh_session_recovered": True,
+        "fresh_session_wait_verified": recovered_wait.reconciled,
+    }
+
+
+def _browser_target_drift_probe(
+    site: str,
+    server: "_ProofServer",
+) -> dict[str, Any]:
+    connector = PlaywrightBrowserConnector(
+        timeout_ms=5_000,
+        allowed_hosts=("127.0.0.1",),
+        allow_insecure_localhost=True,
+    )
+    with connector.session() as session:
+        capture = session.navigate(f"{site}/")
+        _require(capture.success, "target-drift probe could not navigate")
+        stale_target = session.discover_target(
+            target_id="drift-action-before-mutation",
+            role="button",
+            name="Run drift action",
+            action="click",
+        )
+        assert session.page is not None
+        session.page.locator("#drift-action").evaluate(
+            "element => element.setAttribute('aria-label', 'Run recovered action')"
+        )
+        stale = session.execute(
+            stale_target,
+            readback_target={
+                "role": "status",
+                "name": "Drift action complete",
+            },
+        )
+        _require(
+            stale.outcome == "UNKNOWN"
+            and stale.error_code == "target_drift"
+            and server.drift_count == 0,
+            f"stale browser target was not blocked before effect: {stale}",
+        )
+        recovered_target = session.discover_target(
+            target_id="drift-action-after-mutation",
+            role="button",
+            name="Run recovered action",
+            action="click",
+        )
+        recovered = session.execute(
+            recovered_target,
+            readback_target={
+                "role": "status",
+                "name": "Drift action complete",
+            },
+        )
+    _require(
+        recovered.outcome == "COMPLETED"
+        and recovered.reconciled
+        and server.drift_count == 1,
+        f"rediscovered browser target did not complete exactly once: {recovered}",
+    )
+    return {
+        "stale_attempt": {
+            "outcome": stale.outcome,
+            "error_code": stale.error_code,
+        },
+        "recovered_attempt": {
+            "outcome": recovered.outcome,
+            "reconciled": recovered.reconciled,
+        },
+        "server_request_count": server.drift_count,
     }
 
 
@@ -513,6 +737,10 @@ def main() -> int:
     stop_path = output_root / "EMERGENCY_STOP"
     try:
         results["browser_restart"] = _browser_restart_probe(site)
+        results["browser_target_drift"] = _browser_target_drift_probe(
+            site,
+            server,
+        )
 
         _record_start(
             database,
@@ -1035,7 +1263,10 @@ def main() -> int:
             },
             "allowed_hosts": ("127.0.0.1",),
             "allow_insecure_localhost": True,
+            "stop_path": str(stop_path),
         }
+        server.stop_path = stop_path
+        server.upload_delay_s = 0.25
         upload = _run_action(
             database,
             context,
@@ -1045,10 +1276,62 @@ def main() -> int:
             step_id="browser_upload",
             unattended=False,
         )
-        _require_success(upload, "browser upload")
+        upload_effect_id = str(upload.observed["action_key"])
+        upload_frozen = effect_state(database, upload_effect_id)
+        _require(
+            upload.claimed.value == "UNKNOWN"
+            and upload.verified.value == "UNKNOWN"
+            and upload.observed.get("journal_state") == FROZEN
+            and upload_frozen.get("status") == FROZEN
+            and server.upload_count == 1,
+            f"browser upload ambiguity was not frozen: {_action_summary(upload)}",
+        )
+        restarted_database = FoundryDatabase(output_root / "foundry.db")
+        restarted_context = ExecutorContext(
+            database=restarted_database,
+            owned_root=owned_root,
+        )
+        upload_reconcile = _run_action(
+            restarted_database,
+            restarted_context,
+            "browser.web.reconcile",
+            {
+                "url": f"{site}/",
+                "target_ref": f"{site}/",
+                "original_effect_id": upload_effect_id,
+                "original_action": "upload",
+                "readback_target": upload_payload["readback_target"],
+                "allowed_hosts": ("127.0.0.1",),
+                "allow_insecure_localhost": True,
+                "stop_path": str(stop_path),
+            },
+            name="browser-upload-reconcile-after-runtime-restart",
+            step_id="browser_upload_reconcile",
+        )
+        _require_success(upload_reconcile, "browser upload reconciliation")
+        _require(
+            upload_reconcile.observed.get("accepted") is True
+            and upload_reconcile.observed.get("terminal_truth") is True
+            and upload_reconcile.observed.get("recovered_from_ambiguity") is True
+            and server.upload_count == 1,
+            "browser reconciliation did not establish one durable terminal truth",
+        )
+        upload_reconciled_state = effect_state(
+            restarted_database,
+            upload_effect_id,
+        )
+        _require(
+            upload_reconciled_state.get("status") == FROZEN
+            and upload_reconciled_state.get("accepted") is True
+            and upload_reconciled_state.get("terminal_outcome") == "COMPLETED",
+            f"browser effect did not reconcile: {upload_reconciled_state}",
+        )
+        server.stop_path = None
+        server.upload_delay_s = 0.0
+        stop_path.unlink(missing_ok=True)
         upload_replay = _run_action(
-            database,
-            context,
+            restarted_database,
+            restarted_context,
             "browser.web.execute",
             upload_payload,
             name="browser-upload",
@@ -1067,15 +1350,18 @@ def main() -> int:
             {
                 "ref": "downloads/report.csv",
                 "hash": final_hash,
-                "effect_id": upload.receipt["effect_id"],
+                "effect_id": upload_effect_id,
                 "server_upload_count": server.upload_count,
             },
         )
         results["browser_upload"] = {
-            "first": _action_summary(upload),
+            "ambiguous": _action_summary(upload),
+            "reconciled": _action_summary(upload_reconcile),
             "replay": _action_summary(upload_replay),
             "server_request_count": server.upload_count,
             "sha256": _sha256_bytes(server.upload_bytes),
+            "effect_state": upload_reconciled_state,
+            "runtime_restart_reconstructed_effect": True,
         }
 
         procedure = load_procedure(
@@ -1157,6 +1443,22 @@ def main() -> int:
             restarted_provider,
             restarted_title,
         )
+        stale_after_restart = restarted_provider.perform(
+            OperatorAction(
+                action_id="stale-window-after-app-restart",
+                kind="click",
+                window=main_window.identity,
+                control=ControlSelector(automation_id="SaveButton"),
+                readback_control=ControlSelector(automation_id="SavedStatus"),
+                condition=ControlCondition("control_exists", True),
+                timeout_s=1,
+            )
+        )
+        _require(
+            stale_after_restart.outcome == "FAILED"
+            and stale_after_restart.error_code == "process_identity_mismatch",
+            "stale pre-restart window identity was accepted by the new process",
+        )
         restarted_close = _run_action(
             database,
             context,
@@ -1178,6 +1480,8 @@ def main() -> int:
             "crash": crash.to_dict(),
             "old_process_after_restart": durable_old,
             "new_process": restarted_window.identity.process.to_dict(),
+            "stale_identity_refused": stale_after_restart.to_dict(),
+            "logical_id_policy": "immutable per process generation",
             "close": _action_summary(restarted_close),
             "decoy_survived": True,
         }
@@ -1203,9 +1507,13 @@ def main() -> int:
         )
 
         report = {
-            "contract_version": "jarvis.v13.computer-operator-proof.v1",
+            "contract_version": "jarvis.v13.computer-operator-proof.v2",
             "verdict": "PASS",
-            "final_status": "V13_COMPUTER_OPERATOR_READY",
+            "final_status": "REAL_PROOF_PASS",
+            "readiness_scope": (
+                "journey and fault proof only; release readiness is decided "
+                "after all test and independent-verifier gates"
+            ),
             "source": {**source_before, **source_after},
             "fixture": fixture,
             "authority_spine": {
@@ -1246,6 +1554,10 @@ def main() -> int:
                 "download_requests": server.download_count,
                 "upload_requests": server.upload_count,
                 "browser_wait_verified": True,
+                "browser_process_loss_observed": True,
+                "browser_target_drift_recovered": True,
+                "browser_stop_after_effect_frozen": True,
+                "browser_ambiguity_reconciled_after_runtime_restart": True,
                 "native_save_dispatches": 1,
                 "wrong_window_blocked": True,
                 "unexpected_dialog_classified": True,

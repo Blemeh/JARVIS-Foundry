@@ -479,6 +479,11 @@ def test_text_and_selection_actions_are_read_back(
             window=_window(provider),
             control=control,
             value=value,
+            condition=(
+                ControlCondition("value", expected_value)
+                if kind == "type"
+                else None
+            ),
         )
     )
 
@@ -492,6 +497,54 @@ def test_text_and_selection_actions_are_read_back(
         assert receipt.after is not None
         assert receipt.after.selected is expected_selected
     json.dumps(receipt.to_dict())
+
+
+def test_type_requires_explicit_final_value_before_dispatch(
+    process: ProcessIdentity,
+    backend: _FakeBackend,
+) -> None:
+    provider = _provider(process, backend)
+
+    with pytest.raises(
+        ValueError, match="explicit final value condition"
+    ):
+        OperatorAction(
+            action_id="type-without-final-state",
+            kind="type",
+            window=_window(provider),
+            control=ControlSelector(automation_id="DocumentText"),
+            value=" world",
+        )
+
+    assert backend.mutations == []
+
+
+def test_type_reconciliation_uses_declared_final_value_without_retyping(
+    process: ProcessIdentity,
+    backend: _FakeBackend,
+) -> None:
+    provider = _provider(process, backend)
+    action = OperatorAction(
+        action_id="type-with-final-state",
+        kind="type",
+        window=_window(provider),
+        control=ControlSelector(automation_id="DocumentText"),
+        value=" world",
+        condition=ControlCondition("value", "hello world"),
+    )
+
+    backend.type_text(
+        backend.list_controls(backend.list_windows(process.pid)[0])[0],
+        " world",
+        timeout_s=1.0,
+    )
+    reconciled = provider.reconcile(action)
+
+    assert reconciled.outcome == "COMPLETED"
+    assert reconciled.reconciled is True
+    assert reconciled.after is not None
+    assert reconciled.after.value == "hello world"
+    assert backend.mutations == [("type", "text", " world")]
 
 
 def test_click_without_semantic_readback_is_refused_before_dispatch(

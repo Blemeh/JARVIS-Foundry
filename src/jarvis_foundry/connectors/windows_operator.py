@@ -334,6 +334,17 @@ class OperatorAction:
                 raise ValueError(f"{self.kind} requires text")
             if len(self.value) > 4096:
                 raise ValueError("text must be at most 4096 characters")
+        if (
+            self.kind == "type"
+            and (
+                self.condition is None
+                or self.condition.field != "value"
+                or not isinstance(self.condition.expected, str)
+            )
+        ):
+            raise ValueError(
+                "type requires an explicit final value condition"
+            )
         if self.kind in {"wait", "assert"} and self.condition is None:
             raise ValueError(f"{self.kind} requires a condition")
         if (
@@ -1238,8 +1249,6 @@ class WindowsOperatorProvider:
             return action.condition
         if action.kind == "replace_text":
             return ControlCondition("value", action.value)
-        if action.kind == "type" and isinstance(before.value, str):
-            return ControlCondition("value", before.value + (action.value or ""))
         if action.kind == "select":
             return ControlCondition("selected", True)
         return None

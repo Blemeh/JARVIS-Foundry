@@ -780,6 +780,21 @@ def browser_execute(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
                 "error_code": "upload_source_required",
                 "authority": "DATA_ONLY",
             }
+        readback_target = payload.get("readback_target")
+        if (
+            not isinstance(readback_target, Mapping)
+            or not isinstance(readback_target.get("role"), str)
+            or not str(readback_target["role"]).strip()
+            or not isinstance(readback_target.get("name"), str)
+            or not str(readback_target["name"]).strip()
+            or str(readback_target.get("wait_state") or "visible")
+            not in {"attached", "visible", "enabled"}
+        ):
+            return {
+                "claimed": "BLOCKED",
+                "error_code": "upload_postcondition_required",
+                "authority": "DATA_ONLY",
+            }
     browser_identity = {
         "url": url,
         "target_id": target_id,
@@ -789,6 +804,7 @@ def browser_execute(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
         "value": payload.get("value"),
         "download_target": payload.get("download_target"),
         "upload_source": payload.get("upload_source"),
+        "readback_target": payload.get("readback_target"),
     }
     fallback_hash = hashlib.sha256(
         json.dumps(browser_identity, sort_keys=True, default=str).encode("utf-8")
@@ -815,6 +831,7 @@ def browser_execute(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
         "action": action,
         "download_target": payload.get("download_target"),
         "upload_source": payload.get("upload_source"),
+        "readback_target": payload.get("readback_target"),
         "authority": "DATA_ONLY",
     }
     stop_check = _browser_stop_check(ctx, payload)
@@ -955,6 +972,324 @@ def browser_execute(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
         stop_check=stop_check,
         claim_ttl_s=float(payload.get("claim_ttl_s") or 300.0),
     )
+
+
+def _browser_effect_row(
+    database: FoundryDatabase,
+    action_key: str,
+) -> Mapping[str, Any] | None:
+    with database.connect(readonly=True) as connection:
+        row = connection.execute(
+            "SELECT action_key, system_id, target_ref, payload_hash, kind, status "
+            "FROM system_actions WHERE action_key = ?",
+            (action_key,),
+        ).fetchone()
+    if row is None:
+        return None
+    return {
+        "action_key": str(row[0]),
+        "system_id": str(row[1]),
+        "target_ref": str(row[2]),
+        "payload_hash": str(row[3]),
+        "kind": str(row[4]),
+        "status": str(row[5]),
+    }
+
+
+def _browser_recorded_result(
+    database: FoundryDatabase,
+    action_key: str,
+) -> dict[str, Any] | None:
+    with database.connect(readonly=True) as connection:
+        rows = connection.execute(
+            "SELECT event_type, payload_json FROM events "
+            "WHERE event_type IN "
+            "('effect.terminal_truth', 'effect.frozen', "
+            "'system.action_completed', 'system.action_failed') "
+            "AND json_extract(payload_json, '$.action_key') = ? "
+            "ORDER BY sequence DESC",
+            (action_key,),
+        ).fetchall()
+    for _event_type, payload_json in rows:
+        payload = json.loads(payload_json)
+        result = payload.get("result")
+        if isinstance(result, Mapping):
+            return dict(result)
+    return None
+
+
+def browser_reconcile(
+    ctx: ExecutorContext,
+    payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Reconcile one terminal browser effect without repeating the action."""
+
+    from ..connectors.web_research import BrowserTargetError, WebResearchError
+
+    action_key = str(
+        payload.get("original_effect_id") or payload.get("effect_id") or ""
+    ).strip()
+    if not action_key:
+        return {
+            "claimed": "BLOCKED",
+            "error_code": "original_effect_id_required",
+            "authority": "DATA_ONLY",
+        }
+    row = _browser_effect_row(ctx.database, action_key)
+    if row is None:
+        return {
+            "claimed": "BLOCKED",
+            "error_code": "effect_not_found",
+            "authority": "DATA_ONLY",
+        }
+    if row["system_id"] != "browser" or row["kind"] != "browser.web.execute":
+        return {
+            "claimed": "BLOCKED",
+            "error_code": "effect_identity_mismatch",
+            "authority": "DATA_ONLY",
+        }
+    state = effect_state(ctx.database, action_key)
+    if state.get("status") not in {COMPLETED, "FAILED", FROZEN}:
+        return {
+            "claimed": "BLOCKED",
+            "error_code": "effect_not_terminal",
+            "authority": "DATA_ONLY",
+        }
+    before = state.get("before_state")
+    before = before if isinstance(before, Mapping) else {}
+    original_action = str(
+        payload.get("original_action") or before.get("action") or ""
+    )
+    if original_action != str(before.get("action") or original_action):
+        return {
+            "claimed": "BLOCKED",
+            "error_code": "effect_identity_mismatch",
+            "authority": "DATA_ONLY",
+        }
+    recorded = _browser_recorded_result(ctx.database, action_key)
+    if recorded is None:
+        return {
+            "claimed": "UNKNOWN",
+            "error_code": "original_effect_evidence_missing",
+            "authority": "DATA_ONLY",
+            "original_effect_id": action_key,
+        }
+
+    provider_id = "conn-playwright-v10"
+    provider_ref = str(row["target_ref"])
+    browser_readback: dict[str, Any]
+    reconciled_result = dict(recorded)
+
+    if original_action == "download":
+        download = recorded.get("download")
+        if not isinstance(download, Mapping):
+            return {
+                "claimed": "UNKNOWN",
+                "error_code": "download_evidence_missing",
+                "authority": "DATA_ONLY",
+                "original_effect_id": action_key,
+            }
+        path_value = download.get("path")
+        expected_hash = download.get("sha256")
+        expected_size = download.get("size_bytes")
+        try:
+            path = Path(str(path_value)).expanduser().resolve(strict=True)
+            path.relative_to(ctx.owned_root)
+            content = path.read_bytes()
+        except (OSError, ValueError):
+            content = b""
+            path = None
+        matches = (
+            path is not None
+            and isinstance(expected_hash, str)
+            and isinstance(expected_size, int)
+            and len(content) == expected_size
+            and hashlib.sha256(content).hexdigest() == expected_hash
+        )
+        browser_readback = {
+            "verified": matches,
+            "matched": matches,
+            "download_path": str(path) if path is not None else None,
+            "sha256": (
+                hashlib.sha256(content).hexdigest() if path is not None else None
+            ),
+            "size_bytes": len(content) if path is not None else None,
+            "authority": "DATA_ONLY",
+        }
+    else:
+        postcondition = payload.get("readback_target")
+        if not isinstance(postcondition, Mapping):
+            return {
+                "claimed": "BLOCKED",
+                "error_code": "reconciliation_postcondition_required",
+                "authority": "DATA_ONLY",
+                "original_effect_id": action_key,
+            }
+        expected_before = before.get("readback_target")
+        if original_action == "upload":
+            upload = recorded.get("upload")
+            recorded_precondition = (
+                upload.get("precondition")
+                if isinstance(upload, Mapping)
+                else None
+            )
+            if (
+                not isinstance(expected_before, Mapping)
+                or expected_before.get("role") != postcondition.get("role")
+                or expected_before.get("name") != postcondition.get("name")
+                or expected_before.get("wait_state")
+                != str(postcondition.get("wait_state") or "visible")
+                or not isinstance(recorded_precondition, Mapping)
+                or recorded_precondition.get("matched") is not False
+                or recorded_precondition.get("role")
+                != postcondition.get("role")
+                or recorded_precondition.get("name")
+                != postcondition.get("name")
+                or recorded_precondition.get("wait_state")
+                != str(postcondition.get("wait_state") or "visible")
+            ):
+                return {
+                    "claimed": "BLOCKED",
+                    "error_code": "effect_identity_mismatch",
+                    "authority": "DATA_ONLY",
+                    "original_effect_id": action_key,
+                }
+            if (
+                not isinstance(upload, Mapping)
+                or not isinstance(recorded_precondition, Mapping)
+            ):
+                return {
+                    "claimed": "UNKNOWN",
+                    "error_code": "upload_evidence_missing",
+                    "authority": "DATA_ONLY",
+                    "original_effect_id": action_key,
+                }
+        url = str(payload.get("url") or row["target_ref"])
+        try:
+            connector = _browser_connector(payload)
+            provider_id = connector.spec.connector_id
+            with connector.session(
+                stop_check=None,
+                **_browser_session_kwargs(payload),
+            ) as session:
+                capture = session.navigate(url)
+                if not capture.success:
+                    return _browser_attempt_payload(
+                        capture.attempt,
+                        page=capture.page,
+                        session=session,
+                        effect_id=action_key,
+                    ) | {
+                        "claimed": "UNKNOWN",
+                        "original_effect_id": action_key,
+                    }
+                attempt = session.reconcile(
+                    role=str(postcondition.get("role") or ""),
+                    name=str(postcondition.get("name") or ""),
+                    target_id=str(
+                        postcondition.get("target_id")
+                        or f"reconcile-{action_key[-24:]}"
+                    ),
+                    wait_state=str(
+                        postcondition.get("wait_state") or "visible"
+                    ),
+                    timeout_ms=int(
+                        postcondition.get("timeout_ms")
+                        or connector.timeout_ms
+                    ),
+                    effect_id=action_key,
+                    idempotency_key=str(
+                        payload.get("idempotency_key")
+                        or f"browser-reconcile:{action_key}"
+                    ),
+                )
+                result = _browser_attempt_payload(
+                    attempt,
+                    page=capture.page,
+                    session=session,
+                    effect_id=action_key,
+                )
+        except (
+            BrowserTargetError,
+            ImportError,
+            WebResearchError,
+            TypeError,
+            ValueError,
+        ) as error:
+            return {
+                "claimed": "UNKNOWN",
+                "error_code": "browser_reconciliation_failed",
+                "detail": redact_text(str(error))[:300],
+                "authority": "DATA_ONLY",
+                "original_effect_id": action_key,
+            }
+        browser_readback = dict(result.get("readback") or {})
+        provider_ref = str(result.get("final_url") or row["target_ref"])
+        if original_action == "upload":
+            upload = dict(reconciled_result["upload"])
+            upload["postcondition"] = {
+                **browser_readback,
+                "matched": bool(browser_readback.get("matched")),
+            }
+            reconciled_result["upload"] = upload
+
+    if (
+        browser_readback.get("verified") is not True
+        or browser_readback.get("matched") is not True
+    ):
+        return {
+            "claimed": "UNKNOWN",
+            "error_code": "reconciliation_not_verified",
+            "authority": "DATA_ONLY",
+            "original_effect_id": action_key,
+            "readback": browser_readback,
+        }
+
+    reconciled_result.update({
+        "claimed": "COMPLETED",
+        "provider_ref": provider_ref,
+        "readback_verified": True,
+        "reconciled": True,
+        "authority": "DATA_ONLY",
+        "error_code": None,
+    })
+    provider_receipt = {
+        "provider_id": provider_id,
+        "provider_ref": provider_ref,
+        "receipt_sha256": hashlib.sha256(
+            json.dumps(
+                browser_readback,
+                ensure_ascii=True,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest(),
+    }
+    readback = {
+        "status": "MATCH",
+        "matches": True,
+        "provider_ref": provider_ref,
+        "browser_readback": browser_readback,
+    }
+    accepted = finalize_verified_effect(
+        ctx.database,
+        action_key,
+        provider_receipt=provider_receipt,
+        readback=readback,
+        result=reconciled_result,
+        acceptance_evidence={
+            "authority": "browser_exact_postcondition",
+            "receipt_sha256": provider_receipt["receipt_sha256"],
+        },
+        reconciled=True,
+    )
+    return {
+        **accepted,
+        "claimed": "COMPLETED",
+        "original_effect_id": action_key,
+        "readback": readback,
+        "authority": "DATA_ONLY",
+    }
 
 
 def browser_wait(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -1890,6 +2225,7 @@ HANDLERS: dict[str, Callable[[ExecutorContext, Mapping[str, Any]], dict[str, Any
     "http.doc.read": http_doc_read,
     "browser.web.read": browser_read,
     "browser.web.wait": browser_wait,
+    "browser.web.reconcile": browser_reconcile,
     "browser.web.execute": browser_execute,
     "system.diagnose": system_diagnose,
     "system.runtime": system_runtime,

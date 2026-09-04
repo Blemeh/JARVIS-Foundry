@@ -6,6 +6,8 @@ actions to Fabric. It owns no planning, scheduling, policy, or effect journal.
 from __future__ import annotations
 
 import hashlib
+import time
+from pathlib import Path
 from typing import Any, Mapping
 
 from ..connectors.personal_operator import (
@@ -53,6 +55,14 @@ COMPUTER_OPERATOR_ACTIONS = frozenset({
     "desktop.control.assert",
     "desktop.action.reconcile",
 })
+PERSONAL_OPERATOR_SHARED_CAPABILITY_IDS = frozenset({
+    "cap.local.process.launch",
+    "cap.local.process.inspect",
+    "cap.local.process.close",
+    "cap.desktop.open",
+    "cap.desktop.focus",
+    "cap.desktop.close",
+})
 
 _UI_ACTION_KINDS = {
     "desktop.control.click": "click",
@@ -83,7 +93,7 @@ def computer_operator_specs() -> tuple[CapabilitySpec, ...]:
     return (
         CapabilitySpec(
             capability_id="cap.local.process.launch",
-            version="1.0.0",
+            version="1.1.0",
             kind=Kind.TOOL,
             action_kind="local.process.launch",
             semantic=Semantic.EXECUTE,
@@ -95,7 +105,7 @@ def computer_operator_specs() -> tuple[CapabilitySpec, ...]:
         ),
         CapabilitySpec(
             capability_id="cap.local.process.inspect",
-            version="1.0.0",
+            version="1.1.0",
             kind=Kind.TOOL,
             action_kind="local.process.inspect",
             semantic=Semantic.READ,
@@ -115,7 +125,7 @@ def computer_operator_specs() -> tuple[CapabilitySpec, ...]:
         ),
         CapabilitySpec(
             capability_id="cap.local.process.close",
-            version="1.0.0",
+            version="1.1.0",
             kind=Kind.TOOL,
             action_kind="local.process.close",
             semantic=Semantic.EXECUTE,
@@ -125,7 +135,7 @@ def computer_operator_specs() -> tuple[CapabilitySpec, ...]:
         ),
         CapabilitySpec(
             capability_id="cap.desktop.open",
-            version="1.0.0",
+            version="1.1.0",
             kind=Kind.TOOL,
             action_kind="desktop.open",
             semantic=Semantic.EXECUTE,
@@ -135,7 +145,7 @@ def computer_operator_specs() -> tuple[CapabilitySpec, ...]:
         ),
         CapabilitySpec(
             capability_id="cap.desktop.focus",
-            version="1.0.0",
+            version="1.1.0",
             kind=Kind.TOOL,
             action_kind="desktop.focus",
             semantic=Semantic.EXECUTE,
@@ -145,7 +155,7 @@ def computer_operator_specs() -> tuple[CapabilitySpec, ...]:
         ),
         CapabilitySpec(
             capability_id="cap.desktop.close",
-            version="1.0.0",
+            version="1.1.0",
             kind=Kind.TOOL,
             action_kind="desktop.close",
             semantic=Semantic.EXECUTE,
@@ -205,7 +215,9 @@ def computer_operator_specs() -> tuple[CapabilitySpec, ...]:
             semantic=Semantic.EXECUTE,
             executor="computer_operator",
             unattended=allowed,
-            limitations=("verified exact-control focus; bounded text; hash readback",),
+            limitations=(
+                "verified exact-control focus; bounded text; explicit final-value readback",
+            ),
         ),
         CapabilitySpec(
             capability_id="cap.desktop.control.select",
@@ -371,6 +383,100 @@ def _context_connector(ctx: Any) -> PersonalOperatorConnector:
     )
     ctx.operator_connector = connector
     return connector
+
+
+def _stop_active(ctx: Any, payload: Mapping[str, Any]) -> bool:
+    identities = {"GLOBAL"}
+    request = payload.get("_adapter_request")
+    if isinstance(request, Mapping):
+        identities.update(
+            str(item)
+            for item in request.get("stop_scope") or ()
+            if str(item).strip()
+        )
+        if request.get("mission_id"):
+            identities.add(str(request["mission_id"]))
+    return bool(
+        emergency_stop_reason(
+            ctx.database,
+            payload.get("stop_path"),
+            identities=identities,
+        )
+    )
+
+
+def _wait_for_owned_window(
+    ctx: Any,
+    payload: Mapping[str, Any],
+    process_id: str,
+) -> Mapping[str, Any]:
+    timeout_s = _timeout_seconds(payload)
+    if timeout_s <= 0 or timeout_s > 60:
+        raise ValueError("timeout must be within (0, 60] seconds")
+    deadline = time.monotonic() + timeout_s
+    connector = _context_connector(ctx)
+    last: Mapping[str, Any] = {}
+    while True:
+        if _stop_active(ctx, payload):
+            return {
+                "status": "UNKNOWN",
+                "error": {
+                    "classification": "stop_after_possible_effect",
+                    "message": "STOP became active after desktop launch",
+                },
+            }
+        last = connector.observe_process_window(process_id)
+        if last.get("status") == "COMPLETED":
+            return last
+        error = last.get("error")
+        classification = (
+            str(error.get("classification") or "")
+            if isinstance(error, Mapping)
+            else ""
+        )
+        if classification != "window_not_found" or time.monotonic() >= deadline:
+            return last
+        time.sleep(min(0.05, max(0.0, deadline - time.monotonic())))
+
+
+def _opened_target_matches(
+    ctx: Any,
+    payload: Mapping[str, Any],
+    record: Mapping[str, Any],
+) -> bool:
+    opened = record.get("opened_identity")
+    if not isinstance(opened, Mapping):
+        return False
+    target_ref = payload.get("target") or payload.get("path")
+    if not isinstance(target_ref, str) or not target_ref.strip():
+        return False
+    root = Path(ctx.owned_root).resolve()
+    target = Path(target_ref)
+    target = (
+        target.expanduser().resolve(strict=False)
+        if target.is_absolute()
+        else (root / target).resolve(strict=False)
+    )
+    try:
+        target.relative_to(root)
+    except ValueError:
+        return False
+    if target.is_symlink() or not target.exists():
+        return False
+    if opened.get("path") != str(target):
+        return False
+    args = record.get("args")
+    if not isinstance(args, list) or not args or args[-1] != str(target):
+        return False
+    if target.is_file():
+        content = target.read_bytes()
+        return (
+            opened.get("kind") == "file"
+            and opened.get("size_bytes") == len(content)
+            and opened.get("sha256")
+            == f"sha256:{hashlib.sha256(content).hexdigest()}"
+        )
+    return target.is_dir() and opened.get("kind") == "directory"
 
 
 def _record_identity(record: Mapping[str, Any]) -> ProcessIdentity:
@@ -638,7 +744,36 @@ def dispatch_computer_operator(
                 idempotency_key=_required_text(payload, "idempotency_key"),
                 show_window=bool(payload.get("show_window", True)),
             )
-            return _personal_result(action_kind, receipt)
+            result = _personal_result(action_kind, receipt)
+            if result.get("claimed") != "COMPLETED":
+                return result
+            process_id = _required_text(payload, "process_id")
+            window = _wait_for_owned_window(ctx, payload, process_id)
+            if window.get("status") != "COMPLETED":
+                error = window.get("error")
+                classification = (
+                    str(error.get("classification") or "")
+                    if isinstance(error, Mapping)
+                    else ""
+                )
+                return {
+                    **result,
+                    "claimed": "UNKNOWN",
+                    "performed": True,
+                    "error_code": (
+                        "window_postcondition_timeout"
+                        if classification == "window_not_found"
+                        else classification or "window_postcondition_failed"
+                    ),
+                    "window_observation": dict(window),
+                    "readback_verified": False,
+                }
+            return {
+                **result,
+                "window_observation": dict(window),
+                "readback_verified": True,
+                "reconciled": True,
+            }
         if action_kind == "desktop.focus":
             return _personal_result(
                 action_kind,
@@ -736,12 +871,7 @@ def verify_computer_operator(
     payload = payload or {}
     try:
         connector = _context_connector(ctx)
-        if action_kind in {
-            "local.process.launch",
-            "local.process.inspect",
-            "desktop.open",
-            "desktop.focus",
-        }:
+        if action_kind in {"local.process.launch", "local.process.inspect"}:
             observed = connector.inspect_process(
                 _required_text(payload, "process_id", "target")
             )
@@ -752,15 +882,49 @@ def verify_computer_operator(
             )
             if not running:
                 return VerifyVerdict.MISMATCH
-            if action_kind == "desktop.focus":
-                readback = claimed.get("readback") or {}
-                if (
-                    not readback.get("window_handle")
-                    or readback.get("foreground_window")
-                    != readback.get("window_handle")
-                ):
-                    return VerifyVerdict.MISMATCH
             return VerifyVerdict.MATCH
+        if action_kind == "desktop.open":
+            process_id = _required_text(payload, "process_id", "target")
+            observed = connector.inspect_process(process_id)
+            running = (
+                observed.get("status") == "COMPLETED"
+                and (observed.get("result") or {}).get("state") == "running"
+                and (observed.get("result") or {}).get("matches") is True
+            )
+            if not running:
+                return VerifyVerdict.MISMATCH
+            record = connector.get_validated_process_record(process_id)
+            if (
+                record.get("operation") != "desktop.open"
+                or not _opened_target_matches(ctx, payload, record)
+            ):
+                return VerifyVerdict.MISMATCH
+            claimed_window = claimed.get("window_observation")
+            fresh_window = connector.observe_process_window(process_id)
+            if (
+                not isinstance(claimed_window, Mapping)
+                or fresh_window.get("status") != "COMPLETED"
+                or (fresh_window.get("result") or {}).get("window_handle")
+                != (claimed_window.get("result") or {}).get("window_handle")
+            ):
+                return VerifyVerdict.MISMATCH
+            return VerifyVerdict.MATCH
+        if action_kind == "desktop.focus":
+            process_id = _required_text(payload, "process_id", "target")
+            observed = connector.inspect_process(process_id)
+            fresh_window = connector.observe_process_window(process_id)
+            readback = claimed.get("readback") or {}
+            return (
+                VerifyVerdict.MATCH
+                if observed.get("status") == "COMPLETED"
+                and (observed.get("result") or {}).get("state") == "running"
+                and (observed.get("result") or {}).get("matches") is True
+                and fresh_window.get("status") == "COMPLETED"
+                and (fresh_window.get("result") or {}).get("focused") is True
+                and (fresh_window.get("result") or {}).get("window_handle")
+                == readback.get("window_handle")
+                else VerifyVerdict.MISMATCH
+            )
         if action_kind in {"local.process.close", "desktop.close"}:
             observed = connector.inspect_process(
                 _required_text(payload, "process_id", "target")
@@ -829,6 +993,7 @@ def verify_computer_operator(
 
 __all__ = [
     "COMPUTER_OPERATOR_ACTIONS",
+    "PERSONAL_OPERATOR_SHARED_CAPABILITY_IDS",
     "computer_operator_specs",
     "dispatch_computer_operator",
     "verify_computer_operator",

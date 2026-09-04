@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import hashlib
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -13,8 +14,11 @@ from jarvis_foundry.connectors.windows_operator import (
 )
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.effects import FROZEN, effect_state
+from jarvis_foundry.fabric.catalog import get_spec, register_capability
 from jarvis_foundry.fabric.computer_operator import (
     COMPUTER_OPERATOR_ACTIONS,
+    PERSONAL_OPERATOR_SHARED_CAPABILITY_IDS,
+    computer_operator_specs,
     dispatch_computer_operator,
 )
 from jarvis_foundry.fabric.contracts import system_id_for_action
@@ -34,6 +38,8 @@ class _ControlState:
 
 class _FakeConnector:
     def __init__(self) -> None:
+        self.focused = True
+        self.steal_focus_after_focus = False
         self.record = {
             "process_id": "editor-main",
             "pid": 4242,
@@ -43,6 +49,8 @@ class _FakeConnector:
                 "exe": r"C:\Apps\Editor.exe",
             },
             "executable": r"C:\Apps\Editor.exe",
+            "args": [],
+            "operation": "process.launch",
         }
 
     def get_validated_process_record(self, process_id: str) -> dict[str, Any]:
@@ -62,6 +70,82 @@ class _FakeConnector:
             "readback": {"alive": True},
         }
 
+    def observe_process_window(self, process_id: str) -> dict[str, Any]:
+        self.get_validated_process_record(process_id)
+        return {
+            "status": "COMPLETED",
+            "result": {
+                "process_id": process_id,
+                "window_handle": 100,
+                "focused": self.focused,
+            },
+            "readback": {
+                "alive": True,
+                "window_handle": 100,
+                "visible_window_count": 1,
+                "foreground_window": 100 if self.focused else 999,
+            },
+        }
+
+    def desktop_open(
+        self,
+        process_id: str,
+        _application: str,
+        target: str,
+        *,
+        args: Any,
+        cwd: str,
+        idempotency_key: str,
+        show_window: bool,
+    ) -> dict[str, Any]:
+        path = Path(target).resolve()
+        content = path.read_bytes()
+        opened_identity = {
+            "ref": path.name,
+            "path": str(path),
+            "exists": True,
+            "kind": "file",
+            "size_bytes": len(content),
+            "sha256": f"sha256:{hashlib.sha256(content).hexdigest()}",
+        }
+        self.record.update({
+            "process_id": process_id,
+            "args": [*list(args), str(path)],
+            "cwd": cwd,
+            "operation": "desktop.open",
+            "opened_identity": opened_identity,
+            "show_window": show_window,
+        })
+        return {
+            "status": "COMPLETED",
+            "operation": "desktop.open",
+            "request_id": idempotency_key,
+            "target_identity": dict(self.record),
+            "source_identity": opened_identity,
+            "result": {
+                "process_id": process_id,
+                "state": "running",
+                "matches": True,
+            },
+            "readback": {"alive": True},
+        }
+
+    def focus_process(self, process_id: str) -> dict[str, Any]:
+        self.get_validated_process_record(process_id)
+        receipt = {
+            "status": "COMPLETED",
+            "operation": "desktop.focus",
+            "result": {"process_id": process_id, "focused": True},
+            "readback": {
+                "alive": True,
+                "window_handle": 100,
+                "foreground_window": 100,
+            },
+        }
+        if self.steal_focus_after_focus:
+            self.focused = False
+        return receipt
+
 
 class _FakeBackend:
     def __init__(self) -> None:
@@ -72,6 +156,7 @@ class _FakeBackend:
         )
         self.control = _ControlState()
         self.mutations: list[str] = []
+        self.type_calls: list[str] = []
         self.fail_after_set = False
 
     def process_snapshot(self, pid: int) -> ProcessSnapshot | None:
@@ -130,7 +215,9 @@ class _FakeBackend:
     def type_text(
         self, control: BackendControl, value: str, *, timeout_s: float,
     ) -> None:
-        raise AssertionError("type was not expected")
+        assert timeout_s > 0
+        self.type_calls.append(value)
+        self.control.value += value
 
     def select(
         self,
@@ -153,11 +240,12 @@ def _context(
     tmp_path: Path,
     database: FoundryDatabase,
     backend: _FakeBackend,
+    connector: _FakeConnector | None = None,
 ) -> ExecutorContext:
     return ExecutorContext(
         database=database,
         owned_root=tmp_path / "owned",
-        operator_connector=_FakeConnector(),
+        operator_connector=connector or _FakeConnector(),
         windows_operator_backend=backend,
     )
 
@@ -214,6 +302,145 @@ def test_v13_specs_are_additive_and_use_one_computer_system(
         == "computer"
     )
     assert system_id_for_action("local.process.launch", "editor-main") == "computer"
+
+
+def test_shared_personal_operator_ids_converge_to_one_computer_authority(
+    tmp_path: Path,
+) -> None:
+    database = FoundryDatabase(tmp_path / "foundry.db")
+    database.initialize()
+    shared = tuple(
+        spec
+        for spec in computer_operator_specs()
+        if spec.capability_id in PERSONAL_OPERATOR_SHARED_CAPABILITY_IDS
+    )
+    for spec in shared:
+        register_capability(
+            database,
+            replace(
+                spec,
+                version="1.0.0",
+                executor="personal_operator",
+            ),
+            note="Personal Operator input seed",
+        )
+
+    seed_builtins(database)
+
+    for spec in shared:
+        active = get_spec(database, spec.capability_id)
+        assert active is not None
+        assert active.executor == "computer_operator"
+        assert active.action_kind == spec.action_kind
+
+    for spec in shared:
+        if get_spec(database, spec.capability_id) is None:
+            register_capability(
+                database,
+                replace(spec, executor="personal_operator"),
+                note="late Personal Operator seed",
+            )
+    assert all(
+        get_spec(database, spec.capability_id).executor == "computer_operator"
+        for spec in shared
+    )
+
+
+def test_desktop_open_verifies_owned_target_and_live_window(
+    tmp_path: Path,
+) -> None:
+    database = _database(tmp_path)
+    backend = _FakeBackend()
+    connector = _FakeConnector()
+    context = _context(tmp_path, database, backend, connector)
+    target = context.owned_root / "report.txt"
+    target.write_text("owned report\n", encoding="utf-8")
+
+    result = execute_action(
+        database,
+        context,
+        _intent("desktop.open", "open"),
+        "desktop.open",
+        {
+            "process_id": "editor-main",
+            "application": r"C:\Apps\Editor.exe",
+            "target": str(target),
+            "cwd": ".",
+            "show_window": True,
+            "timeout_s": 1,
+        },
+    )
+
+    assert result.success is True
+    assert result.verified is VerifyVerdict.MATCH
+    assert result.observed["readback_verified"] is True
+    assert (
+        result.observed["window_observation"]["result"]["window_handle"]
+        == 100
+    )
+
+
+def test_desktop_focus_verifier_rejects_focus_stolen_after_dispatch(
+    tmp_path: Path,
+) -> None:
+    database = _database(tmp_path)
+    backend = _FakeBackend()
+    connector = _FakeConnector()
+    connector.steal_focus_after_focus = True
+    context = _context(tmp_path, database, backend, connector)
+
+    result = execute_action(
+        database,
+        context,
+        _intent("desktop.focus", "focus-stolen"),
+        "desktop.focus",
+        {"process_id": "editor-main"},
+    )
+
+    assert result.claimed is ClaimOutcome.COMPLETED
+    assert result.verified is VerifyVerdict.MISMATCH
+    assert result.success is False
+
+
+def test_fabric_type_requires_and_reconciles_declared_final_value(
+    tmp_path: Path,
+) -> None:
+    database = _database(tmp_path)
+    backend = _FakeBackend()
+    context = _context(tmp_path, database, backend)
+    window = _observe_window(database, context)
+    base = {
+        "process_id": "editor-main",
+        "target": "editor-main/DocumentText",
+        "window": window,
+        "control": {"automation_id": "DocumentText"},
+        "value": " typed",
+        "timeout_s": 1,
+    }
+
+    refused = execute_action(
+        database,
+        context,
+        _intent("desktop.control.type", "type-refused"),
+        "desktop.control.type",
+        base,
+    )
+    completed = execute_action(
+        database,
+        context,
+        _intent("desktop.control.type", "type-complete"),
+        "desktop.control.type",
+        {
+            **base,
+            "condition": {"field": "value", "expected": "before typed"},
+        },
+    )
+
+    assert refused.claimed is ClaimOutcome.FAILED
+    assert refused.observed["error_code"] == "operator_contract_error"
+    assert completed.success is True
+    assert completed.verified is VerifyVerdict.MATCH
+    assert backend.type_calls == [" typed"]
 
 
 def test_exact_ui_mutation_is_journaled_once_and_replayed_without_redispatch(

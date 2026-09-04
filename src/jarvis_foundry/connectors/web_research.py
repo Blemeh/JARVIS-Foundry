@@ -2285,6 +2285,8 @@ class PlaywrightBrowserSession:
         upload_path: Path | None = None
         upload_ref: str | None = None
         upload_source_evidence: dict[str, Any] | None = None
+        upload_postcondition: dict[str, Any] | None = None
+        upload_precondition: dict[str, Any] | None = None
         if target.action == "download":
             if value is not None:
                 raise BrowserTargetError("download does not accept a value")
@@ -2294,6 +2296,46 @@ class PlaywrightBrowserSession:
         elif target.action == "upload":
             if value is not None:
                 raise BrowserTargetError("upload does not accept a value")
+            if not isinstance(readback_target, Mapping):
+                raise BrowserTargetError(
+                    "upload requires an exact acknowledgement postcondition"
+                )
+            post_role = _safe_identity(
+                readback_target.get("role"), "readback role"
+            )
+            post_name_value = readback_target.get("name")
+            if (
+                not isinstance(post_name_value, str)
+                or not post_name_value.strip()
+                or len(post_name_value.strip()) > MAX_TARGET_NAME_LENGTH
+            ):
+                raise BrowserTargetError(
+                    "upload acknowledgement name is required and bounded"
+                )
+            post_name = post_name_value.strip()
+            if (
+                any(ord(char) < 0x20 for char in post_name)
+                or contains_secret_like(post_name)
+            ):
+                raise BrowserTargetError(
+                    "upload acknowledgement name contains unsafe material"
+                )
+            post_state = str(
+                readback_target.get("wait_state") or "visible"
+            )
+            if post_state not in {"attached", "visible", "enabled"}:
+                raise BrowserTargetError(
+                    "upload acknowledgement must become attached, visible, or enabled"
+                )
+            upload_postcondition = {
+                "role": post_role,
+                "name": post_name,
+                "wait_state": post_state,
+                "timeout_ms": int(
+                    readback_target.get("timeout_ms")
+                    or self.connector.timeout_ms
+                ),
+            }
             upload_path, upload_ref, upload_source_evidence = (
                 self._upload_source(upload_source)
             )
@@ -2334,6 +2376,7 @@ class PlaywrightBrowserSession:
             "value": value,
             "download_target": download_ref,
             "upload_source": upload_ref,
+            "readback_target": upload_postcondition,
             "effect_id": effect_id,
             "idempotency_key": key,
         })
@@ -2400,6 +2443,62 @@ class PlaywrightBrowserSession:
                 outcome="UNKNOWN", error_code="target_drift",
                 before_state=before,
             )
+        if upload_postcondition is not None:
+            acknowledgement = self.page.get_by_role(
+                upload_postcondition["role"],
+                name=upload_postcondition["name"],
+                exact=True,
+            )
+            acknowledgement_count = acknowledgement.count()
+            if acknowledgement_count > 1:
+                raise BrowserTargetError(
+                    "upload acknowledgement target is ambiguous"
+                )
+            acknowledgement_visible = (
+                acknowledgement.is_visible()
+                if acknowledgement_count == 1
+                else None
+            )
+            acknowledgement_enabled = (
+                acknowledgement.is_enabled()
+                if acknowledgement_count == 1
+                else None
+            )
+            post_state = upload_postcondition["wait_state"]
+            matched_before = (
+                (post_state == "attached" and acknowledgement_count == 1)
+                or (
+                    post_state == "visible"
+                    and acknowledgement_count == 1
+                    and acknowledgement_visible is True
+                )
+                or (
+                    post_state == "enabled"
+                    and acknowledgement_count == 1
+                    and acknowledgement_enabled is True
+                )
+            )
+            upload_precondition = {
+                "matched": matched_before,
+                "role": upload_postcondition["role"],
+                "name": upload_postcondition["name"],
+                "target_count": acknowledgement_count,
+                "target_visible": acknowledgement_visible,
+                "target_enabled": acknowledgement_enabled,
+                "wait_state": post_state,
+                "authority": "DATA_ONLY",
+            }
+            before["upload_postcondition"] = upload_precondition
+            if matched_before:
+                return self.connector._attempt(
+                    action_kind="browser.web.execute",
+                    url=final_url,
+                    idempotency_key=key,
+                    payload_hash=request_hash,
+                    outcome="FAILED",
+                    error_code="upload_postcondition_already_satisfied",
+                    before_state=before,
+                )
         self._route_error = None
         self._action_in_progress = True
         self._action_request_count = 0
@@ -2472,8 +2571,9 @@ class PlaywrightBrowserSession:
                 upload_evidence = {
                     **upload_source_evidence,
                     "readback": upload_readback,
+                    "precondition": upload_precondition,
                 }
-                if readback_target is not None:
+                if upload_postcondition is not None:
                     wait_attempt = self.wait_for_target(
                         target_id=(
                             "readback-"
@@ -2482,15 +2582,10 @@ class PlaywrightBrowserSession:
                                 "target_id": target.target_id,
                             })[:24]
                         ),
-                        role=str(readback_target.get("role") or ""),
-                        name=str(readback_target.get("name") or ""),
-                        state=str(
-                            readback_target.get("wait_state") or "visible"
-                        ),
-                        timeout_ms=int(
-                            readback_target.get("timeout_ms")
-                            or self.connector.timeout_ms
-                        ),
+                        role=upload_postcondition["role"],
+                        name=upload_postcondition["name"],
+                        state=upload_postcondition["wait_state"],
+                        timeout_ms=upload_postcondition["timeout_ms"],
                         stop_check=stop_check,
                     )
                     if wait_attempt.outcome != "COMPLETED":
@@ -2502,9 +2597,12 @@ class PlaywrightBrowserSession:
                         raise WebResearchError(
                             "upload postcondition was not observed"
                         )
-                    upload_evidence["postcondition"] = dict(
-                        wait_attempt.after_state or {}
-                    ).get("readback")
+                    upload_evidence["postcondition"] = {
+                        **dict(wait_attempt.after_state or {}).get(
+                            "readback", {}
+                        ),
+                        "matched": True,
+                    }
             else:  # pragma: no cover - discover_target normalizes before this point
                 raise BrowserTargetError("unsupported browser action")
         except Exception as error:
@@ -2787,6 +2885,9 @@ class PlaywrightBrowserSession:
         role: str | None = None,
         name: str | None = None,
         expected_value: Any = None,
+        target_id: str | None = None,
+        wait_state: str | None = None,
+        timeout_ms: int | None = None,
         effect_id: str | None = None,
         idempotency_key: str | None = None,
     ) -> ConnectorAttempt:
@@ -2799,6 +2900,7 @@ class PlaywrightBrowserSession:
                 'target_id': target.target_id if target else None,
                 'role': role,
                 'name': name,
+                'wait_state': wait_state,
             })}"
         )
         request_hash = _digest({
@@ -2807,6 +2909,7 @@ class PlaywrightBrowserSession:
             "target": target.to_evidence()
             if target else {"role": role, "name": name},
             "expected_value": expected_value,
+            "wait_state": wait_state,
         })
         status = self.session_status()
         if status.state == "EXPIRED":
@@ -2817,9 +2920,50 @@ class PlaywrightBrowserSession:
                 outcome="UNKNOWN", error_code="session_expired",
                 after_state={"session": status.to_evidence()},
             )
-        rb = self.readback(
-            target=target, role=role, name=name, expected_value=expected_value,
-        )
+        if wait_state is not None:
+            wait_attempt = self.wait_for_target(
+                target_id=target_id or f"reconcile-{effect_id[-24:]}",
+                role=str(role or ""),
+                name=str(name or ""),
+                state=wait_state,
+                timeout_ms=timeout_ms,
+                stop_check=lambda: False,
+                idempotency_key=key,
+            )
+            wait_after = dict(wait_attempt.after_state or {})
+            rb = dict(wait_after.get("readback") or {})
+            rb["matched"] = wait_attempt.outcome == "COMPLETED"
+            if wait_attempt.outcome != "COMPLETED":
+                return self.connector._attempt(
+                    action_kind="browser.web.execute",
+                    url=str(
+                        wait_after.get("final_url")
+                        or self.site_origin
+                        or "https://browser.invalid"
+                    ),
+                    idempotency_key=key,
+                    payload_hash=request_hash,
+                    outcome="UNKNOWN",
+                    error_code=str(
+                        wait_attempt.error_code
+                        or "reconciliation_not_verified"
+                    ),
+                    after_state={
+                        "readback": rb,
+                        "readback_verified": False,
+                        "effect_id": effect_id,
+                        "idempotency_key": key,
+                        "reconciled": False,
+                    },
+                )
+        else:
+            rb = self.readback(
+                target=target,
+                role=role,
+                name=name,
+                expected_value=expected_value,
+            )
+            rb["matched"] = bool(rb.get("verified"))
         outcome = "COMPLETED" if rb.get("verified") else "UNKNOWN"
         return self.connector._attempt(
             action_kind="browser.web.execute",
@@ -2830,7 +2974,13 @@ class PlaywrightBrowserSession:
                 rb.get("error_code") or "reconciliation_not_verified"
             ),
             after_state={
-                **rb,
+                "final_url": rb.get("final_url"),
+                "page_revision": rb.get("page_revision"),
+                "structural_hash": rb.get("structural_hash"),
+                "target_id": target_id,
+                "action": "reconcile",
+                "readback": rb,
+                "readback_verified": outcome == "COMPLETED",
                 "effect_id": effect_id,
                 "idempotency_key": key,
                 "reconciled": outcome == "COMPLETED",

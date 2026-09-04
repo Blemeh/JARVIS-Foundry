@@ -29,10 +29,15 @@ class _UploadHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802 - stdlib protocol name
         if self.path == "/upload":
+            with self.server.lock:
+                uploaded = (
+                    self.server.upload_count > 0
+                    or self.server.precompleted
+                )
             body = b"""<!doctype html>
 <title>V13 upload</title>
 <input id="upload" type="file" aria-label="Upload report">
-<div id="complete" role="status" aria-label="Upload complete" hidden>
+<div id="complete" role="status" aria-label="Upload complete"__HIDDEN__>
   Upload complete
 </div>
 <script>
@@ -47,7 +52,9 @@ document.querySelector("#upload").addEventListener("change", async event => {
     document.querySelector("#complete").hidden = false;
   }
 });
-</script>"""
+</script>""".replace(
+                b"__HIDDEN__", b"" if uploaded else b" hidden"
+            )
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
@@ -82,6 +89,10 @@ setTimeout(() => {
         with self.server.lock:
             self.server.upload_count += 1
             self.server.upload_bytes = content
+        if self.server.stop_path is not None:
+            self.server.stop_path.write_text(
+                "owner stop after upload\n", encoding="utf-8"
+            )
         if self.server.upload_delay_s:
             time.sleep(self.server.upload_delay_s)
         body = b"ok"
@@ -102,6 +113,8 @@ class _UploadServer(ThreadingHTTPServer):
         self.upload_count = 0
         self.upload_bytes = b""
         self.upload_delay_s = 0.0
+        self.stop_path: Path | None = None
+        self.precompleted = False
 
 
 @pytest.fixture()
@@ -151,7 +164,15 @@ def test_upload_requires_opt_in_and_refuses_escape_before_selection(
     with browser.session() as session:
         target = _upload_target(session, site)
         with pytest.raises(BrowserTargetError, match="not enabled"):
-            session.execute(target, upload_source="report.csv")
+            session.execute(
+                target,
+                upload_source="report.csv",
+                readback_target={
+                    "role": "status",
+                    "name": "Upload complete",
+                    "wait_state": "visible",
+                },
+            )
 
     with browser.session(
         allow_uploads=True,
@@ -159,8 +180,51 @@ def test_upload_requires_opt_in_and_refuses_escape_before_selection(
     ) as session:
         target = _upload_target(session, site)
         with pytest.raises(BrowserTargetError, match="escapes"):
-            session.execute(target, upload_source="../report.csv")
+            session.execute(
+                target,
+                upload_source="../report.csv",
+                readback_target={
+                    "role": "status",
+                    "name": "Upload complete",
+                    "wait_state": "visible",
+                },
+            )
 
+    assert server.upload_count == 0
+
+
+def test_upload_requires_unsatisfied_acknowledgement_before_selection(
+    browser: PlaywrightBrowserConnector,
+    disposable_upload_site: Any,
+    tmp_path: Path,
+) -> None:
+    server, site = disposable_upload_site
+    source = tmp_path / "report.csv"
+    source.write_bytes(UPLOAD_BYTES)
+    with browser.session(
+        allow_uploads=True,
+        upload_root=tmp_path,
+    ) as session:
+        target = _upload_target(session, site)
+        with pytest.raises(
+            BrowserTargetError, match="acknowledgement postcondition"
+        ):
+            session.execute(target, upload_source="report.csv")
+
+        server.precompleted = True
+        target = _upload_target(session, site)
+        attempted = session.execute(
+            target,
+            upload_source="report.csv",
+            readback_target={
+                "role": "status",
+                "name": "Upload complete",
+                "wait_state": "visible",
+            },
+        )
+
+    assert attempted.outcome == "FAILED", attempted
+    assert attempted.error_code == "upload_postcondition_already_satisfied"
     assert server.upload_count == 0
 
 
@@ -356,6 +420,112 @@ def test_fabric_upload_replays_without_a_second_post(
     assert server.upload_bytes == UPLOAD_BYTES
 
 
+def test_fabric_upload_reconciles_frozen_effect_under_stop_without_second_post(
+    browser: PlaywrightBrowserConnector,
+    disposable_upload_site: Any,
+    tmp_path: Path,
+) -> None:
+    server, site = disposable_upload_site
+    database = FoundryDatabase(tmp_path / "foundry.db")
+    database.initialize()
+    seed_builtins(database)
+    owned_root = tmp_path / "owned"
+    owned_root.mkdir()
+    source = owned_root / "uploads" / "report.csv"
+    source.parent.mkdir()
+    source.write_bytes(UPLOAD_BYTES)
+    stop_path = tmp_path / "EMERGENCY_STOP"
+    server.stop_path = stop_path
+    context = ExecutorContext(database=database, owned_root=owned_root)
+    execute_intent = TaskIntent(
+        task_id="mission.v13.browser.upload.ambiguous",
+        required_actions=("browser.web.execute",),
+        unattended=False,
+    )
+    payload = {
+        "url": f"{site}/upload",
+        "target_ref": f"{site}/upload",
+        "target_id": "upload-report",
+        "role": "button",
+        "name": "Upload report",
+        "action": "upload",
+        "allow_uploads": True,
+        "upload_source": "uploads/report.csv",
+        "max_upload_bytes": 1024,
+        "readback_target": {
+            "role": "status",
+            "name": "Upload complete",
+            "wait_state": "visible",
+            "timeout_ms": 5_000,
+        },
+        "allowed_hosts": ("127.0.0.1",),
+        "allow_insecure_localhost": True,
+        "stop_path": str(stop_path),
+    }
+
+    first = execute_action(
+        database,
+        context,
+        execute_intent,
+        "browser.web.execute",
+        payload,
+        workflow_id="workflow.v13.upload.ambiguous",
+        step_id="upload",
+    )
+    action_key = str(first.observed["action_key"])
+
+    assert first.claimed.value == "UNKNOWN"
+    assert first.observed["journal_state"] == "FROZEN"
+    assert server.upload_count == 1
+
+    reconciled = execute_action(
+        database,
+        context,
+        TaskIntent(
+            task_id="mission.v13.browser.upload.reconcile",
+            required_actions=("browser.web.reconcile",),
+            unattended=True,
+        ),
+        "browser.web.reconcile",
+        {
+            "url": f"{site}/upload",
+            "target_ref": f"{site}/upload",
+            "original_effect_id": action_key,
+            "original_action": "upload",
+            "readback_target": payload["readback_target"],
+            "allowed_hosts": ("127.0.0.1",),
+            "allow_insecure_localhost": True,
+            "stop_path": str(stop_path),
+        },
+        workflow_id="workflow.v13.upload.ambiguous",
+        step_id="reconcile",
+    )
+
+    assert reconciled.success is True
+    assert reconciled.observed["accepted"] is True
+    assert reconciled.observed["terminal_truth"] is True
+    assert reconciled.observed["recovered_from_ambiguity"] is True
+    assert server.upload_count == 1
+
+    server.stop_path = None
+    stop_path.unlink()
+    replay = execute_action(
+        database,
+        context,
+        execute_intent,
+        "browser.web.execute",
+        payload,
+        workflow_id="workflow.v13.upload.ambiguous",
+        step_id="upload",
+    )
+
+    assert replay.success is True
+    assert replay.observed["replayed"] is True
+    assert replay.observed["performed"] is False
+    assert server.upload_count == 1
+    assert server.upload_bytes == UPLOAD_BYTES
+
+
 def test_fabric_wait_is_read_only_and_verified(
     browser: PlaywrightBrowserConnector,
     disposable_upload_site: Any,
@@ -421,6 +591,14 @@ def test_upload_over_limit_fails_before_page_or_network_effect(
     ) as session:
         target = _upload_target(session, site)
         with pytest.raises(BrowserTargetError, match="byte limit"):
-            session.execute(target, upload_source="too-large.bin")
+            session.execute(
+                target,
+                upload_source="too-large.bin",
+                readback_target={
+                    "role": "status",
+                    "name": "Upload complete",
+                    "wait_state": "visible",
+                },
+            )
 
     assert server.upload_count == 0

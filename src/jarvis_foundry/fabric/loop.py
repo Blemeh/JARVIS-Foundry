@@ -51,6 +51,7 @@ from .contracts import (
 from ..effects import STARTED, effect_state, execute_fabric_effect
 from .providers import route_provider
 from .computer_operator import (
+    PERSONAL_OPERATOR_SHARED_CAPABILITY_IDS,
     computer_operator_specs,
     verify_computer_operator,
 )
@@ -234,6 +235,16 @@ def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
             ),
         ),
         CapabilitySpec(
+            capability_id="cap.browser.web.reconcile", version="1.0.0",
+            kind=Kind.CONNECTOR, action_kind="browser.web.reconcile",
+            semantic=Semantic.READ, executor="browser",
+            unattended=UnattendedMode.ALLOWED,
+            limitations=(
+                "read-only exact browser postcondition reconciliation; "
+                "finalizes one original terminal effect without redispatch",
+            ),
+        ),
+        CapabilitySpec(
             capability_id="cap.browser.web.execute", version="1.0.0", kind=Kind.CONNECTOR,
             action_kind="browser.web.execute", semantic=Semantic.EXTERNAL_EFFECT,
             executor="browser",
@@ -341,8 +352,36 @@ def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
     builtins = (*builtins, *computer_specs, *personal_specs)
     registered = []
     for spec in builtins:
-        if get_spec(database, spec.capability_id) is None:
-            register_capability(database, spec, note="builtin seed")
+        existing = get_spec(database, spec.capability_id)
+        canonical_operator_override = (
+            spec.capability_id in PERSONAL_OPERATOR_SHARED_CAPABILITY_IDS
+            and (
+                existing is None
+                or existing.executor != spec.executor
+                or existing.action_kind != spec.action_kind
+            )
+        )
+        if existing is None or canonical_operator_override:
+            register_capability(
+                database,
+                spec,
+                note=(
+                    "canonical computer operator authority"
+                    if canonical_operator_override
+                    else "builtin seed"
+                ),
+                adoption=(
+                    {
+                        "source_sha": (
+                            "db4ad1d11af14a666ad5b1b6b1be0059d6950da1"
+                        ),
+                        "authority": "computer_operator",
+                        "reason": "shared Personal Operator capability convergence",
+                    }
+                    if canonical_operator_override
+                    else None
+                ),
+            )
         registered.append(spec)
     return tuple(registered)
 
@@ -722,6 +761,21 @@ def _verify_action(
         ):
             return VerifyVerdict.MATCH
         return VerifyVerdict.MISMATCH
+    if action_kind == "browser.web.reconcile":
+        readback = claimed.get("readback")
+        if (
+            claimed_status == "COMPLETED"
+            and claimed.get("authority") == "DATA_ONLY"
+            and claimed.get("original_effect_id")
+            and claimed.get("accepted") is True
+            and claimed.get("terminal_truth") is True
+            and claimed.get("reconciled") is True
+            and isinstance(readback, Mapping)
+            and readback.get("status") == "MATCH"
+            and readback.get("matches") is True
+        ):
+            return VerifyVerdict.MATCH
+        return VerifyVerdict.MISMATCH
     if action_kind == "browser.web.execute":
         session = claimed.get("session") or {}
         auth_ok = (
@@ -762,6 +816,12 @@ def _verify_action(
             )
         if payload is not None and payload.get("action") == "upload":
             upload = claimed.get("upload")
+            postcondition = upload.get("postcondition") if isinstance(
+                upload, Mapping
+            ) else None
+            precondition = upload.get("precondition") if isinstance(
+                upload, Mapping
+            ) else None
             if not isinstance(upload, Mapping):
                 return VerifyVerdict.MISMATCH
             source_ref = upload.get("source_ref")
@@ -779,6 +839,11 @@ def _verify_action(
                 or not isinstance(readback, Mapping)
                 or readback.get("verified") is not True
                 or readback.get("selected_count") != 1
+                or not isinstance(precondition, Mapping)
+                or precondition.get("matched") is not False
+                or not isinstance(postcondition, Mapping)
+                or postcondition.get("verified") is not True
+                or postcondition.get("matched") is not True
                 or not auth_ok
             ):
                 return VerifyVerdict.MISMATCH
@@ -1036,6 +1101,7 @@ def execute_action(
         action_kind in {"github.pull_request.publish", "gmail.send"}
         or action_kind.startswith("mcp.")
         or action_kind in {
+            "browser.web.reconcile",
             "local.process.reconcile",
             "desktop.action.reconcile",
         }

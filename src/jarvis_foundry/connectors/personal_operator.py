@@ -2370,6 +2370,111 @@ class PersonalOperatorConnector:
         except PersonalOperatorError as error:
             return self._error_receipt(operation, error)
 
+    def observe_process_window(self, process_id: str) -> dict[str, Any]:
+        """Read one owned process window and foreground state without mutation."""
+
+        operation = "desktop.window.observe"
+        try:
+            logical_id = self._validate_process_id(process_id)
+            if os.name != "nt":
+                raise PersonalOperatorError(
+                    "unsupported_platform",
+                    "window observation is available only on Windows",
+                )
+            with self._lock:
+                registry = self._load_process_registry()
+                record = registry.get(logical_id)
+                if record is None:
+                    raise PersonalOperatorError(
+                        "process_not_registered",
+                        "process_id is not registry-owned",
+                    )
+                matches, process_readback = self._record_matches_process(record)
+                if not matches:
+                    classification = (
+                        "process_identity_mismatch"
+                        if process_readback["alive"]
+                        else "process_exited"
+                    )
+                    raise PersonalOperatorError(
+                        classification,
+                        "window observation requires a live exact registry-owned process",
+                    )
+
+                import ctypes
+                from ctypes import wintypes
+
+                user32 = ctypes.WinDLL("user32", use_last_error=True)
+                handles: list[int] = []
+                callback_type = ctypes.WINFUNCTYPE(
+                    wintypes.BOOL, wintypes.HWND, wintypes.LPARAM
+                )
+                user32.EnumWindows.argtypes = [
+                    callback_type,
+                    wintypes.LPARAM,
+                ]
+                user32.EnumWindows.restype = wintypes.BOOL
+                user32.GetWindowThreadProcessId.argtypes = [
+                    wintypes.HWND,
+                    ctypes.POINTER(wintypes.DWORD),
+                ]
+                user32.GetWindowThreadProcessId.restype = wintypes.DWORD
+                user32.IsWindowVisible.argtypes = [wintypes.HWND]
+                user32.IsWindowVisible.restype = wintypes.BOOL
+                user32.GetForegroundWindow.argtypes = []
+                user32.GetForegroundWindow.restype = wintypes.HWND
+
+                def _collect(hwnd: int, _lparam: int) -> bool:
+                    owner_pid = wintypes.DWORD()
+                    user32.GetWindowThreadProcessId(
+                        hwnd, ctypes.byref(owner_pid)
+                    )
+                    if (
+                        int(owner_pid.value) == int(record["pid"])
+                        and user32.IsWindowVisible(hwnd)
+                    ):
+                        handles.append(int(hwnd))
+                    return True
+
+                callback = callback_type(_collect)
+                if not user32.EnumWindows(callback, 0):
+                    raise PersonalOperatorError(
+                        "window_observation_failed",
+                        "Windows could not enumerate top-level windows",
+                    )
+                if not handles:
+                    raise PersonalOperatorError(
+                        "window_not_found",
+                        "owned process has no visible top-level window",
+                    )
+                if len(handles) != 1:
+                    raise PersonalOperatorError(
+                        "window_ambiguous",
+                        "owned process has multiple visible top-level windows",
+                    )
+                hwnd = handles[0]
+                foreground = int(user32.GetForegroundWindow() or 0)
+                readback = {
+                    **process_readback,
+                    "window_handle": hwnd,
+                    "visible_window_count": 1,
+                    "foreground_window": foreground,
+                }
+                return self._receipt(
+                    operation,
+                    before=record,
+                    target_identity=record,
+                    result={
+                        "process_id": logical_id,
+                        "window_handle": hwnd,
+                        "focused": foreground == hwnd,
+                    },
+                    readback=readback,
+                    reconciled=True,
+                )
+        except PersonalOperatorError as error:
+            return self._error_receipt(operation, error)
+
 
 __all__ = [
     "InjectedOperatorFailure",
