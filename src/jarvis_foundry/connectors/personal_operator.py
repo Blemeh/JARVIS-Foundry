@@ -2280,6 +2280,11 @@ class PersonalOperatorConnector:
                         "window_not_found",
                         "owned process has no visible top-level window",
                     )
+                if len(handles) != 1:
+                    raise PersonalOperatorError(
+                        "window_ambiguous",
+                        "owned process has multiple visible top-level windows",
+                    )
                 hwnd = handles[0]
                 foreground_before = int(user32.GetForegroundWindow() or 0)
                 user32.ShowWindow(hwnd, 9)  # SW_RESTORE
