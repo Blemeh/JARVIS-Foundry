@@ -633,6 +633,8 @@ def _browser_attempt_payload(
         "readback": after.get("readback"),
         "readback_verified": bool(after.get("readback_verified")),
         "download": after.get("download"),
+        "upload": after.get("upload"),
+        "wait_state": after.get("wait_state") or before.get("wait_state"),
         "session": status,
         "session_persisted": session_persisted,
         "authority": "DATA_ONLY",
@@ -742,6 +744,12 @@ def browser_execute(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
             "error_code": "download_policy_override_refused",
             "authority": "DATA_ONLY",
         }
+    if "upload_root" in payload:
+        return {
+            "claimed": "BLOCKED",
+            "error_code": "upload_policy_override_refused",
+            "authority": "DATA_ONLY",
+        }
     if action == "download":
         if payload.get("allow_downloads") is not True:
             return {
@@ -757,6 +765,21 @@ def browser_execute(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
                 "error_code": "download_target_required",
                 "authority": "DATA_ONLY",
             }
+    if action == "upload":
+        if payload.get("allow_uploads") is not True:
+            return {
+                "claimed": "BLOCKED",
+                "error_code": "upload_not_authorized",
+                "authority": "DATA_ONLY",
+            }
+        if not isinstance(payload.get("upload_source"), str) or not str(
+            payload["upload_source"]
+        ).strip():
+            return {
+                "claimed": "FAILED",
+                "error_code": "upload_source_required",
+                "authority": "DATA_ONLY",
+            }
     browser_identity = {
         "url": url,
         "target_id": target_id,
@@ -765,6 +788,7 @@ def browser_execute(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
         "action": action,
         "value": payload.get("value"),
         "download_target": payload.get("download_target"),
+        "upload_source": payload.get("upload_source"),
     }
     fallback_hash = hashlib.sha256(
         json.dumps(browser_identity, sort_keys=True, default=str).encode("utf-8")
@@ -790,6 +814,7 @@ def browser_execute(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
         "name": name,
         "action": action,
         "download_target": payload.get("download_target"),
+        "upload_source": payload.get("upload_source"),
         "authority": "DATA_ONLY",
     }
     stop_check = _browser_stop_check(ctx, payload)
@@ -820,6 +845,14 @@ def browser_execute(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
                     "download_root": ctx.owned_root,
                     "max_download_bytes": int(
                         payload.get("max_download_bytes") or 32 * 1024 * 1024
+                    ),
+                })
+            if action == "upload":
+                session_kwargs.update({
+                    "allow_uploads": True,
+                    "upload_root": ctx.owned_root,
+                    "max_upload_bytes": int(
+                        payload.get("max_upload_bytes") or 32 * 1024 * 1024
                     ),
                 })
             with connector.session(
@@ -871,6 +904,11 @@ def browser_execute(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
                         if action == "download"
                         else None
                     ),
+                    upload_source=(
+                        str(payload["upload_source"])
+                        if action == "upload"
+                        else None
+                    ),
                 )
                 result = _browser_attempt_payload(
                     attempt,
@@ -917,6 +955,78 @@ def browser_execute(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
         stop_check=stop_check,
         claim_ttl_s=float(payload.get("claim_ttl_s") or 300.0),
     )
+
+
+def browser_wait(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Wait for one exact browser state through the canonical Playwright runtime."""
+
+    from ..connectors.web_research import BrowserTargetError, WebResearchError
+
+    identity = payload.get("_adapter_request")
+    identity = identity if isinstance(identity, Mapping) else {}
+    url = str(payload.get("url") or payload.get("target_ref") or "")
+    stop_check = _browser_stop_check(ctx, payload)
+    try:
+        connector = _browser_connector(payload)
+        with connector.session(
+            stop_check=stop_check,
+            **_browser_session_kwargs(payload),
+        ) as session:
+            capture = session.navigate(url)
+            if not capture.success:
+                return _browser_attempt_payload(
+                    capture.attempt,
+                    page=capture.page,
+                    session=session,
+                )
+            if bool(payload.get("require_authenticated")):
+                if payload.get("auth_marker") is None:
+                    return {
+                        "claimed": "BLOCKED",
+                        "error_code": "auth_marker_required",
+                        "session": session.session_status().to_evidence(),
+                        "authority": "DATA_ONLY",
+                    }
+                auth = session.ensure_authenticated()
+                if not auth.authenticated:
+                    return {
+                        "claimed": "BLOCKED",
+                        "error_code": (
+                            "session_expired"
+                            if auth.state == "EXPIRED"
+                            else "session_not_authenticated"
+                        ),
+                        "session": auth.to_evidence(),
+                        "authority": "DATA_ONLY",
+                    }
+            attempt = session.wait_for_target(
+                target_id=str(payload.get("target_id") or ""),
+                role=str(payload.get("role") or ""),
+                name=str(payload.get("name") or ""),
+                state=str(payload.get("wait_state") or "visible"),
+                timeout_ms=int(
+                    payload.get("timeout_ms") or connector.timeout_ms
+                ),
+                stop_check=stop_check,
+                idempotency_key=str(
+                    identity.get("idempotency_key")
+                    or payload.get("idempotency_key")
+                    or ""
+                )
+                or None,
+            )
+            return _browser_attempt_payload(
+                attempt,
+                page=capture.page,
+                session=session,
+            )
+    except (BrowserTargetError, ImportError, WebResearchError, TypeError, ValueError) as error:
+        return {
+            "claimed": "FAILED",
+            "error_code": "browser_configuration_error",
+            "detail": redact_text(str(error))[:300],
+            "authority": "DATA_ONLY",
+        }
 
 
 def http_read(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -1779,6 +1889,7 @@ HANDLERS: dict[str, Callable[[ExecutorContext, Mapping[str, Any]], dict[str, Any
     "http.write": http_write,
     "http.doc.read": http_doc_read,
     "browser.web.read": browser_read,
+    "browser.web.wait": browser_wait,
     "browser.web.execute": browser_execute,
     "system.diagnose": system_diagnose,
     "system.runtime": system_runtime,

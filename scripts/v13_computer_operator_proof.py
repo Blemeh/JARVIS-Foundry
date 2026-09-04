@@ -135,11 +135,35 @@ class _ProofHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802 - stdlib protocol name
         if self.path == "/":
-            body = (
-                b"<!doctype html><title>JARVIS V13 local proof</title>"
-                b'<h1>Local report</h1><a href="/download" download '
-                b'aria-label="Download local report">Download local report</a>'
-            )
+            body = b"""<!doctype html>
+<title>JARVIS V13 local proof</title>
+<h1>Local report</h1>
+<a href="/download" download aria-label="Download local report">
+  Download local report
+</a>
+<input id="upload" type="file" aria-label="Upload edited report">
+<div id="uploaded" role="status" aria-label="Upload complete" hidden>
+  Upload complete
+</div>
+<div id="ready" role="status" aria-label="Ready after delay" hidden>
+  Ready after delay
+</div>
+<script>
+setTimeout(() => {
+  document.querySelector("#ready").hidden = false;
+}, 250);
+document.querySelector("#upload").addEventListener("change", async event => {
+  const file = event.target.files[0];
+  const response = await fetch("/upload", {
+    method: "POST",
+    headers: {"Content-Type": "application/octet-stream"},
+    body: await file.arrayBuffer()
+  });
+  if (response.ok) {
+    document.querySelector("#uploaded").hidden = false;
+  }
+});
+</script>"""
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
@@ -161,6 +185,22 @@ class _ProofHandler(BaseHTTPRequestHandler):
             return
         self.send_error(404)
 
+    def do_POST(self) -> None:  # noqa: N802 - stdlib protocol name
+        if self.path != "/upload":
+            self.send_error(404)
+            return
+        length = int(self.headers.get("Content-Length", "0"))
+        content = self.rfile.read(length)
+        with self.server.lock:
+            self.server.upload_count += 1
+            self.server.upload_bytes = content
+        body = b"ok"
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def log_message(self, *_args: object) -> None:
         return
 
@@ -169,7 +209,10 @@ class _ProofServer(ThreadingHTTPServer):
     def __init__(self, source_path: Path) -> None:
         super().__init__(("127.0.0.1", 0), _ProofHandler)
         self.source_path = source_path
+        self.lock = threading.Lock()
         self.download_count = 0
+        self.upload_count = 0
+        self.upload_bytes = b""
 
 
 def _intent(action_kind: str, name: str, *, unattended: bool = True) -> TaskIntent:
@@ -339,6 +382,7 @@ def _browser_restart_probe(site: str) -> dict[str, Any]:
 def _plan() -> ProcedurePlan:
     step_data = (
         ("source_read", "file.read", "source/report.csv"),
+        ("browser_wait", "browser.web.wait", "Ready after delay"),
         ("browser_download", "browser.web.execute", "downloads/report.csv"),
         ("download_inspect", "file.read", "downloads/report.csv"),
         ("app_open", "desktop.open", "fixture-main"),
@@ -346,6 +390,7 @@ def _plan() -> ProcedurePlan:
         ("edit_text", "desktop.control.replace_text", "DocumentText"),
         ("save_reconcile", "desktop.control.click", "SaveButton"),
         ("final_readback", "file.read", "downloads/report.csv"),
+        ("browser_upload", "browser.web.execute", "downloads/report.csv"),
     )
     return ProcedurePlan(
         procedure_id="procedure.v13.real-computer-operator",
@@ -358,6 +403,7 @@ def _plan() -> ProcedurePlan:
         ),
         capabilities=(
             "file.read",
+            "browser.web.wait",
             "browser.web.execute",
             "desktop.open",
             "desktop.control.inspect",
@@ -494,6 +540,41 @@ def main() -> int:
         )
         results["source_read"] = _action_summary(source_read)
 
+        _record_start(
+            database,
+            "browser_wait",
+            {"ref": f"{site}/", "state": "loading"},
+        )
+        browser_wait = _run_action(
+            database,
+            context,
+            "browser.web.wait",
+            {
+                "url": f"{site}/",
+                "target_ref": f"{site}/",
+                "target_id": "ready-after-delay",
+                "role": "status",
+                "name": "Ready after delay",
+                "wait_state": "visible",
+                "timeout_ms": 5_000,
+                "allowed_hosts": ("127.0.0.1",),
+                "allow_insecure_localhost": True,
+            },
+            name="browser-wait",
+            step_id="browser_wait",
+        )
+        _require_success(browser_wait, "browser wait")
+        _require(
+            browser_wait.observed.get("readback_verified") is True,
+            "browser wait lacked verified readback",
+        )
+        _record_complete(
+            database,
+            "browser_wait",
+            {"ref": "Ready after delay", "state": "visible"},
+        )
+        results["browser_wait"] = _action_summary(browser_wait)
+
         download_path = owned_root / "downloads" / "report.csv"
         _record_start(
             database,
@@ -535,12 +616,13 @@ def main() -> int:
         _require_success(download_replay, "browser download replay")
         _require(server.download_count == 1, "download request duplicated")
         _require(download_path.read_bytes() == source_bytes, "download bytes differ")
+        download_original_hash = _sha256_file(download_path)
         _record_complete(
             database,
             "browser_download",
             {
                 "ref": "downloads/report.csv",
-                "hash": _sha256_file(download_path),
+                "hash": download_original_hash,
                 "effect_id": download.receipt["effect_id"],
             },
         )
@@ -548,7 +630,7 @@ def main() -> int:
             "first": _action_summary(download),
             "replay": _action_summary(download_replay),
             "server_request_count": server.download_count,
-            "sha256": _sha256_file(download_path),
+            "sha256": download_original_hash,
         }
 
         _record_start(
@@ -930,6 +1012,72 @@ def main() -> int:
         )
         results["final_readback"] = _action_summary(final_read)
 
+        _record_start(
+            database,
+            "browser_upload",
+            {"ref": "downloads/report.csv", "hash": final_hash},
+        )
+        upload_payload = {
+            "url": f"{site}/",
+            "target_ref": f"{site}/",
+            "target_id": "upload-edited-report",
+            "role": "button",
+            "name": "Upload edited report",
+            "action": "upload",
+            "allow_uploads": True,
+            "upload_source": "downloads/report.csv",
+            "max_upload_bytes": 1024,
+            "readback_target": {
+                "role": "status",
+                "name": "Upload complete",
+                "wait_state": "visible",
+                "timeout_ms": 5_000,
+            },
+            "allowed_hosts": ("127.0.0.1",),
+            "allow_insecure_localhost": True,
+        }
+        upload = _run_action(
+            database,
+            context,
+            "browser.web.execute",
+            upload_payload,
+            name="browser-upload",
+            step_id="browser_upload",
+            unattended=False,
+        )
+        _require_success(upload, "browser upload")
+        upload_replay = _run_action(
+            database,
+            context,
+            "browser.web.execute",
+            upload_payload,
+            name="browser-upload",
+            step_id="browser_upload",
+            unattended=False,
+        )
+        _require_success(upload_replay, "browser upload replay")
+        _require(server.upload_count == 1, "upload request duplicated")
+        _require(
+            server.upload_bytes == final_text.encode("utf-8"),
+            "uploaded bytes differ from final artifact",
+        )
+        _record_complete(
+            database,
+            "browser_upload",
+            {
+                "ref": "downloads/report.csv",
+                "hash": final_hash,
+                "effect_id": upload.receipt["effect_id"],
+                "server_upload_count": server.upload_count,
+            },
+        )
+        results["browser_upload"] = {
+            "first": _action_summary(upload),
+            "replay": _action_summary(upload_replay),
+            "server_request_count": server.upload_count,
+            "sha256": _sha256_bytes(server.upload_bytes),
+        }
+
         procedure = load_procedure(
             database,
             "procedure.v13.real-computer-operator",
@@ -1088,13 +1236,16 @@ def main() -> int:
                     "canonical procedure/effect ledger",
                 ],
                 "source_sha256": _sha256_file(source_path),
-                "download_sha256": _sha256_file(download_path),
+                "download_sha256": download_original_hash,
                 "final_sha256": final_hash,
+                "uploaded_sha256": _sha256_bytes(server.upload_bytes),
                 "final_size_bytes": len(final_text.encode("utf-8")),
             },
             "results": results,
             "integrity": {
                 "download_requests": server.download_count,
+                "upload_requests": server.upload_count,
+                "browser_wait_verified": True,
                 "native_save_dispatches": 1,
                 "wrong_window_blocked": True,
                 "unexpected_dialog_classified": True,
@@ -1114,7 +1265,7 @@ def main() -> int:
             "known_limitations": [
                 "Windows UI Automation requires accessible application controls",
                 "blind coordinate fallback is intentionally absent",
-                "downloads are bounded to one explicit owned-root target",
+                "browser file transfers require explicit owned-root paths",
                 "public external mutation was not exercised",
             ],
         }

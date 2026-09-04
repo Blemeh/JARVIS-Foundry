@@ -21,6 +21,7 @@ import os
 import re
 import sys
 import tempfile
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
@@ -48,6 +49,7 @@ MAX_SESSION_STATE_BYTES = 8 * 1024 * 1024
 MAX_SESSION_METADATA_BYTES = 16 * 1024
 MAX_ACTION_REQUESTS = 8
 MAX_DOWNLOAD_BYTES = 32 * 1024 * 1024
+MAX_UPLOAD_BYTES = 32 * 1024 * 1024
 _LOCAL_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
 _IDENTITY = re.compile(r"^[A-Za-z][A-Za-z0-9_.:/-]*$")
 _OPAQUE_REFERENCE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/-]{2,255}$")
@@ -354,8 +356,16 @@ class PlaywrightBrowserConnector:
         connector_id="conn-browser-playwright-v10",
         kind="browser_web",
         version="1.0.0",
-        actions={"browser.web.read": "read", "browser.web.execute": "execute"},
-        capabilities={"web_read": "PROBING", "web_execute": "PROBING"},
+        actions={
+            "browser.web.read": "read",
+            "browser.web.wait": "read",
+            "browser.web.execute": "execute",
+        },
+        capabilities={
+            "web_read": "PROBING",
+            "web_wait": "PROBING",
+            "web_execute": "PROBING",
+        },
         retry_policy={"max_attempts": 1, "backoff_s": [0]},
         target_kinds=("https_url", "browser_page", "browser_target"),
         idempotency_strategy="provider-key",
@@ -485,6 +495,9 @@ class PlaywrightBrowserConnector:
         allow_downloads: bool = False,
         download_root: str | Path | None = None,
         max_download_bytes: int = MAX_DOWNLOAD_BYTES,
+        allow_uploads: bool = False,
+        upload_root: str | Path | None = None,
+        max_upload_bytes: int = MAX_UPLOAD_BYTES,
     ) -> "PlaywrightBrowserSession":
         return PlaywrightBrowserSession(
             self,
@@ -511,6 +524,9 @@ class PlaywrightBrowserConnector:
             allow_downloads=allow_downloads,
             download_root=download_root,
             max_download_bytes=max_download_bytes,
+            allow_uploads=allow_uploads,
+            upload_root=upload_root,
+            max_upload_bytes=max_upload_bytes,
         )
 
     def read(
@@ -779,6 +795,9 @@ class PlaywrightBrowserSession:
         allow_downloads: bool,
         download_root: str | Path | None,
         max_download_bytes: int,
+        allow_uploads: bool,
+        upload_root: str | Path | None,
+        max_upload_bytes: int,
     ) -> None:
         self.connector = connector
         self.stop_check = stop_check
@@ -842,6 +861,34 @@ class PlaywrightBrowserSession:
         if self.download_root is not None and not self.download_root.is_dir():
             raise WebResearchError("download_root must be an existing directory")
         self.max_download_bytes = max_download_bytes
+        if not isinstance(allow_uploads, bool):
+            raise WebResearchError("allow_uploads must be boolean")
+        if (
+            not isinstance(max_upload_bytes, int)
+            or isinstance(max_upload_bytes, bool)
+            or max_upload_bytes < 1
+            or max_upload_bytes > MAX_UPLOAD_BYTES
+        ):
+            raise WebResearchError(
+                f"max_upload_bytes must be within [1, {MAX_UPLOAD_BYTES}]"
+            )
+        if allow_uploads and upload_root is None:
+            raise WebResearchError(
+                "upload_root is required when uploads are enabled"
+            )
+        if not allow_uploads and upload_root is not None:
+            raise WebResearchError(
+                "upload_root cannot be supplied when uploads are disabled"
+            )
+        self.allow_uploads = allow_uploads
+        self.upload_root = (
+            Path(upload_root).expanduser().resolve()
+            if upload_root is not None
+            else None
+        )
+        if self.upload_root is not None and not self.upload_root.is_dir():
+            raise WebResearchError("upload_root must be an existing directory")
+        self.max_upload_bytes = max_upload_bytes
         if session_state_path is not None:
             state_path = Path(session_state_path).expanduser().resolve(strict=False)
             self.session_state_path: Path | None = state_path
@@ -1589,6 +1636,228 @@ class PlaywrightBrowserSession:
         })
         return final_url, revision, structural_hash
 
+    def wait_for_target(
+        self,
+        *,
+        target_id: str,
+        role: str,
+        name: str,
+        state: str = "visible",
+        timeout_ms: int | None = None,
+        stop_check: Callable[[], bool] | None = None,
+        idempotency_key: str | None = None,
+    ) -> ConnectorAttempt:
+        """Wait for one exact accessibility target without mutating the page."""
+
+        if self.page is None or self._last_identity is None:
+            raise BrowserTargetError("navigate before waiting for a target")
+        target_id = _safe_identity(target_id, "target_id")
+        role = _safe_identity(role, "role")
+        if (
+            not isinstance(name, str)
+            or not name.strip()
+            or len(name.strip()) > MAX_TARGET_NAME_LENGTH
+        ):
+            raise BrowserTargetError("target name is required and bounded")
+        name = name.strip()
+        if any(ord(char) < 0x20 for char in name) or contains_secret_like(name):
+            raise BrowserTargetError("target name contains unsafe material")
+        allowed_states = {
+            "attached",
+            "detached",
+            "visible",
+            "hidden",
+            "enabled",
+            "disabled",
+        }
+        if state not in allowed_states:
+            raise BrowserTargetError(
+                f"wait state must be one of {sorted(allowed_states)}"
+            )
+        effective_timeout = (
+            self.connector.timeout_ms if timeout_ms is None else timeout_ms
+        )
+        if (
+            not isinstance(effective_timeout, int)
+            or isinstance(effective_timeout, bool)
+            or effective_timeout < 100
+            or effective_timeout > 120_000
+        ):
+            raise BrowserTargetError(
+                "wait timeout_ms must be between 100 and 120000"
+            )
+        stop_check = stop_check or self.stop_check
+        key = self._action_reference(
+            idempotency_key, "idempotency_key"
+        ) or f"browser-wait:{_digest({
+            'document_id': self._last_identity.document_id,
+            'target_id': target_id,
+            'role': role,
+            'name': name,
+            'state': state,
+        })}"
+        request_hash = _digest({
+            "action": "wait",
+            "document_id": self._last_identity.document_id,
+            "target_id": target_id,
+            "role": role,
+            "name": name,
+            "state": state,
+            "timeout_ms": effective_timeout,
+        })
+        before = {
+            "final_url": _safe_url_ref(self._last_identity.final_url),
+            "document_id": self._last_identity.document_id,
+            "page_revision": self._last_identity.page_revision,
+            "target_id": target_id,
+            "role": role,
+            "name": name,
+            "action": "wait",
+            "wait_state": state,
+        }
+        deadline = time.monotonic() + (effective_timeout / 1000.0)
+        last_count = 0
+        last_visible: bool | None = None
+        last_enabled: bool | None = None
+        while True:
+            if stop_check is not None and stop_check():
+                return self.connector._attempt(
+                    action_kind="browser.web.wait",
+                    url=self._last_identity.final_url,
+                    idempotency_key=key,
+                    payload_hash=request_hash,
+                    outcome="CANCELLED",
+                    error_code="stop_requested",
+                    before_state=before,
+                )
+            try:
+                locator = self.page.get_by_role(role, name=name, exact=True)
+                last_count = locator.count()
+                if last_count > 1:
+                    return self.connector._attempt(
+                        action_kind="browser.web.wait",
+                        url=self._last_identity.final_url,
+                        idempotency_key=key,
+                        payload_hash=request_hash,
+                        outcome="FAILED",
+                        error_code="target_ambiguous",
+                        before_state=before,
+                        after_state={"target_count": last_count},
+                    )
+                last_visible = (
+                    locator.is_visible() if last_count == 1 else None
+                )
+                last_enabled = (
+                    locator.is_enabled() if last_count == 1 else None
+                )
+                matched = (
+                    (state == "attached" and last_count == 1)
+                    or (state == "detached" and last_count == 0)
+                    or (
+                        state == "visible"
+                        and last_count == 1
+                        and last_visible is True
+                    )
+                    or (
+                        state == "hidden"
+                        and (
+                            last_count == 0
+                            or last_visible is False
+                        )
+                    )
+                    or (
+                        state == "enabled"
+                        and last_count == 1
+                        and last_enabled is True
+                    )
+                    or (
+                        state == "disabled"
+                        and last_count == 1
+                        and last_enabled is False
+                    )
+                )
+                if matched:
+                    final_url, revision, structural_hash = (
+                        self._current_revision()
+                    )
+                    readback = {
+                        "verified": True,
+                        "target_count": last_count,
+                        "target_visible": last_visible,
+                        "target_enabled": last_enabled,
+                        "wait_state": state,
+                        "authority": "DATA_ONLY",
+                    }
+                    return self.connector._attempt(
+                        action_kind="browser.web.wait",
+                        url=final_url,
+                        idempotency_key=key,
+                        payload_hash=request_hash,
+                        outcome="COMPLETED",
+                        before_state=before,
+                        after_state={
+                            "final_url": _safe_url_ref(final_url),
+                            "page_revision": revision,
+                            "structural_hash": structural_hash,
+                            "target_id": target_id,
+                            "action": "wait",
+                            "wait_state": state,
+                            "readback": readback,
+                            "readback_verified": True,
+                        },
+                        provider_ref=final_url,
+                        reconciled=True,
+                    )
+            except Exception as error:
+                return self.connector._attempt(
+                    action_kind="browser.web.wait",
+                    url=self._last_identity.final_url,
+                    idempotency_key=key,
+                    payload_hash=request_hash,
+                    outcome="FAILED",
+                    error_code="browser_wait_failed",
+                    before_state=before,
+                    after_state={
+                        "detail": redact_text(str(error))[:300],
+                        "target_count": last_count,
+                    },
+                )
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return self.connector._attempt(
+                    action_kind="browser.web.wait",
+                    url=self._last_identity.final_url,
+                    idempotency_key=key,
+                    payload_hash=request_hash,
+                    outcome="FAILED",
+                    error_code="wait_timeout",
+                    before_state=before,
+                    after_state={
+                        "target_count": last_count,
+                        "target_visible": last_visible,
+                        "target_enabled": last_enabled,
+                        "wait_state": state,
+                    },
+                )
+            try:
+                self.page.wait_for_timeout(
+                    min(50, max(1, int(remaining * 1000)))
+                )
+            except Exception as error:
+                return self.connector._attempt(
+                    action_kind="browser.web.wait",
+                    url=self._last_identity.final_url,
+                    idempotency_key=key,
+                    payload_hash=request_hash,
+                    outcome="FAILED",
+                    error_code="browser_wait_failed",
+                    before_state=before,
+                    after_state={
+                        "detail": redact_text(str(error))[:300],
+                        "target_count": last_count,
+                    },
+                )
+
     def discover_target(
         self,
         *,
@@ -1607,11 +1876,18 @@ class PlaywrightBrowserSession:
         if any(ord(char) < 0x20 for char in name) or contains_secret_like(name):
             raise BrowserTargetError("target name contains unsafe material")
         if action not in {
-            "click", "fill", "input", "select", "check", "submit", "download",
+            "click",
+            "fill",
+            "input",
+            "select",
+            "check",
+            "submit",
+            "download",
+            "upload",
         }:
             raise BrowserTargetError(
-                "only bounded click, fill, select, check, submit, and download "
-                "actions are supported"
+                "only bounded click, fill, select, check, submit, download, "
+                "and upload actions are supported"
             )
         if action == "input":
             action = "fill"
@@ -1679,6 +1955,110 @@ class PlaywrightBrowserSession:
                 "download_target already exists; overwrite is refused"
             )
         return destination, bounded_ref.as_posix()
+
+    def _upload_source(
+        self, value: str | Path | None,
+    ) -> tuple[Path, str, dict[str, Any]]:
+        if not self.allow_uploads or self.upload_root is None:
+            raise BrowserTargetError("uploads are not enabled for this session")
+        if not isinstance(value, (str, Path)) or not str(value).strip():
+            raise BrowserTargetError("upload_source is required")
+        if "\x00" in str(value):
+            raise BrowserTargetError("upload_source contains a NUL")
+        relative = Path(value)
+        if relative.is_absolute() or relative.anchor:
+            raise BrowserTargetError("upload_source must be relative")
+        if any(part == ".." for part in relative.parts):
+            raise BrowserTargetError("upload_source escapes the owned root")
+        current = self.upload_root
+        for part in relative.parts:
+            current /= part
+            if current.exists() and current.is_symlink():
+                raise BrowserTargetError(
+                    "upload_source crosses a symbolic link"
+                )
+        try:
+            source = (self.upload_root / relative).resolve(strict=True)
+            bounded_ref = source.relative_to(self.upload_root)
+        except (OSError, ValueError) as error:
+            raise BrowserTargetError(
+                "upload_source is missing or escapes the owned root"
+            ) from error
+        if not source.is_file() or source.is_symlink():
+            raise BrowserTargetError(
+                "upload_source must be a regular file"
+            )
+        try:
+            announced_size = source.stat().st_size
+        except OSError as error:
+            raise BrowserTargetError(
+                "upload_source could not be inspected"
+            ) from error
+        if announced_size > self.max_upload_bytes:
+            raise BrowserTargetError("upload exceeds the byte limit")
+        try:
+            content = source.read_bytes()
+        except OSError as error:
+            raise BrowserTargetError(
+                "upload_source could not be read"
+            ) from error
+        if len(content) != announced_size:
+            raise BrowserTargetError(
+                "upload_source changed during inspection"
+            )
+        source_ref = bounded_ref.as_posix()
+        return source, source_ref, {
+            "source_ref": source_ref,
+            "size_bytes": len(content),
+            "sha256": _sha256_bytes(content),
+            "source_name_sha256": _sha256_text(source.name),
+            "source_name_length": len(source.name),
+        }
+
+    @staticmethod
+    def _upload_readback(
+        locator: Any,
+        expected: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        files = locator.evaluate(
+            """
+            async element => Promise.all(
+                Array.from(element.files || []).map(async file => {
+                    const bytes = await file.arrayBuffer();
+                    const digest = await crypto.subtle.digest("SHA-256", bytes);
+                    const hex = Array.from(new Uint8Array(digest))
+                        .map(value => value.toString(16).padStart(2, "0"))
+                        .join("");
+                    return {name: file.name, size_bytes: file.size, sha256: hex};
+                })
+            )
+            """
+        )
+        rows = files if isinstance(files, list) else []
+        safe_rows = [
+            {
+                "size_bytes": int(row.get("size_bytes") or 0),
+                "sha256": str(row.get("sha256") or ""),
+                "name_sha256": _sha256_text(str(row.get("name") or "")),
+                "name_length": len(str(row.get("name") or "")),
+            }
+            for row in rows
+            if isinstance(row, Mapping)
+        ]
+        matches = (
+            len(safe_rows) == 1
+            and safe_rows[0]["size_bytes"] == expected.get("size_bytes")
+            and safe_rows[0]["sha256"] == expected.get("sha256")
+            and safe_rows[0]["name_sha256"]
+            == expected.get("source_name_sha256")
+        )
+        return {
+            "verified": matches,
+            "selected_count": len(safe_rows),
+            "files": safe_rows,
+            "status": "MATCH" if matches else "MISMATCH",
+            "authority": "DATA_ONLY",
+        }
 
     def _publish_download(
         self,
@@ -1887,6 +2267,7 @@ class PlaywrightBrowserSession:
         idempotency_key: str | None = None,
         readback_target: Mapping[str, Any] | None = None,
         download_target: str | Path | None = None,
+        upload_source: str | Path | None = None,
     ) -> ConnectorAttempt:
         if self.page is None:
             raise BrowserTargetError("browser session is not open")
@@ -1901,15 +2282,28 @@ class PlaywrightBrowserSession:
         )
         download_destination: Path | None = None
         download_ref: str | None = None
+        upload_path: Path | None = None
+        upload_ref: str | None = None
+        upload_source_evidence: dict[str, Any] | None = None
         if target.action == "download":
             if value is not None:
                 raise BrowserTargetError("download does not accept a value")
             download_destination, download_ref = self._download_destination(
                 download_target
             )
-        elif download_target is not None:
+        elif target.action == "upload":
+            if value is not None:
+                raise BrowserTargetError("upload does not accept a value")
+            upload_path, upload_ref, upload_source_evidence = (
+                self._upload_source(upload_source)
+            )
+        if target.action != "download" and download_target is not None:
             raise BrowserTargetError(
                 "download_target is valid only for a download action"
+            )
+        if target.action != "upload" and upload_source is not None:
+            raise BrowserTargetError(
+                "upload_source is valid only for an upload action"
             )
         if target.action == "fill":
             if not isinstance(value, str) or len(value) > 4096:
@@ -1939,12 +2333,15 @@ class PlaywrightBrowserSession:
             "target": target.to_evidence(),
             "value": value,
             "download_target": download_ref,
+            "upload_source": upload_ref,
             "effect_id": effect_id,
             "idempotency_key": key,
         })
         before = target.to_evidence()
         if download_ref is not None:
             before["download_target"] = download_ref
+        if upload_source_evidence is not None:
+            before["upload"] = upload_source_evidence
         if stop_check is not None and stop_check():
             return self.connector._attempt(
                 action_kind="browser.web.execute", url=target.final_url,
@@ -2009,6 +2406,8 @@ class PlaywrightBrowserSession:
         self._action_request_seen = False
         download_started = False
         download_evidence: dict[str, Any] | None = None
+        upload_started = False
+        upload_evidence: dict[str, Any] | None = None
         try:
             if target.action in {"click", "submit"}:
                 locator.click(timeout=self.connector.timeout_ms)
@@ -2046,6 +2445,66 @@ class PlaywrightBrowserSession:
                     destination=download_destination,
                     target_ref=download_ref,
                 )
+            elif target.action == "upload":
+                assert upload_path is not None
+                assert upload_source_evidence is not None
+                upload_started = True
+                locator.set_input_files(
+                    str(upload_path),
+                    timeout=self.connector.timeout_ms,
+                )
+                upload_readback = self._upload_readback(
+                    locator,
+                    upload_source_evidence,
+                )
+                if not upload_readback["verified"]:
+                    raise WebResearchError("upload readback mismatch")
+                source_after = upload_path.read_bytes()
+                if (
+                    len(source_after)
+                    != upload_source_evidence["size_bytes"]
+                    or _sha256_bytes(source_after)
+                    != upload_source_evidence["sha256"]
+                ):
+                    raise WebResearchError(
+                        "upload source changed after dispatch"
+                    )
+                upload_evidence = {
+                    **upload_source_evidence,
+                    "readback": upload_readback,
+                }
+                if readback_target is not None:
+                    wait_attempt = self.wait_for_target(
+                        target_id=(
+                            "readback-"
+                            + _digest({
+                                "effect_id": effect_id,
+                                "target_id": target.target_id,
+                            })[:24]
+                        ),
+                        role=str(readback_target.get("role") or ""),
+                        name=str(readback_target.get("name") or ""),
+                        state=str(
+                            readback_target.get("wait_state") or "visible"
+                        ),
+                        timeout_ms=int(
+                            readback_target.get("timeout_ms")
+                            or self.connector.timeout_ms
+                        ),
+                        stop_check=stop_check,
+                    )
+                    if wait_attempt.outcome != "COMPLETED":
+                        if wait_attempt.error_code == "stop_requested":
+                            self._route_error = "stop_requested"
+                            raise WebResearchError(
+                                "STOP became active after upload dispatch"
+                            )
+                        raise WebResearchError(
+                            "upload postcondition was not observed"
+                        )
+                    upload_evidence["postcondition"] = dict(
+                        wait_attempt.after_state or {}
+                    ).get("readback")
             else:  # pragma: no cover - discover_target normalizes before this point
                 raise BrowserTargetError("unsupported browser action")
         except Exception as error:
@@ -2053,8 +2512,13 @@ class PlaywrightBrowserSession:
 
             self._action_in_progress = False
             if self._route_error == "stop_requested":
-                outcome = "UNKNOWN" if self._action_request_seen else "CANCELLED"
-                code = "stop_after_effect" if self._action_request_seen else "stop_requested"
+                effect_possible = (
+                    self._action_request_seen
+                    or download_started
+                    or upload_started
+                )
+                outcome = "UNKNOWN" if effect_possible else "CANCELLED"
+                code = "stop_after_effect" if effect_possible else "stop_requested"
             elif isinstance(error, PlaywrightTimeoutError):
                 outcome = "UNKNOWN"
                 code = (
@@ -2066,11 +2530,16 @@ class PlaywrightBrowserSession:
                 code = (
                     "download_ambiguous"
                     if target.action == "download"
+                    else "upload_ambiguous"
+                    if target.action == "upload"
                     else "action_ambiguous"
                 )
             elif download_started:
                 outcome = "UNKNOWN"
                 code = "download_ambiguous"
+            elif upload_started:
+                outcome = "UNKNOWN"
+                code = "upload_ambiguous"
             elif self._route_error:
                 outcome = "UNKNOWN"
                 code = self._route_error
@@ -2084,6 +2553,8 @@ class PlaywrightBrowserSession:
                 "effect_id": effect_id,
                 "idempotency_key": key,
             }
+            if upload_evidence is not None:
+                after_state["upload"] = upload_evidence
             try:
                 if readback_target is not None:
                     after_state["readback"] = self.readback(
@@ -2148,6 +2619,62 @@ class PlaywrightBrowserSession:
                 before_state=before,
                 after_state=after,
                 provider_ref=target.final_url,
+                reconciled=True,
+            )
+        if target.action == "upload":
+            assert upload_evidence is not None
+            try:
+                after_url, after_revision, after_structure_hash = (
+                    self._current_revision()
+                )
+            except Exception as error:
+                return self.connector._attempt(
+                    action_kind="browser.web.execute",
+                    url=target.final_url,
+                    idempotency_key=key,
+                    payload_hash=request_hash,
+                    outcome="UNKNOWN",
+                    error_code="page_snapshot_unavailable_after_action",
+                    before_state=before,
+                    after_state={
+                        "detail": redact_text(str(error))[:300],
+                        "upload": upload_evidence,
+                    },
+                )
+            after = {
+                "final_url": _safe_url_ref(after_url),
+                "page_revision": after_revision,
+                "structural_hash": after_structure_hash,
+                "target_id": target.target_id,
+                "action": target.action,
+                "effect_id": effect_id,
+                "idempotency_key": key,
+                "action_request_count": self._action_request_count,
+                "action_request_seen": self._action_request_seen,
+                "upload": upload_evidence,
+                "readback": upload_evidence["readback"],
+                "readback_verified": True,
+            }
+            if stop_check is not None and stop_check():
+                return self.connector._attempt(
+                    action_kind="browser.web.execute",
+                    url=after_url,
+                    idempotency_key=key,
+                    payload_hash=request_hash,
+                    outcome="UNKNOWN",
+                    error_code="stop_after_effect",
+                    before_state=before,
+                    after_state=after,
+                )
+            return self.connector._attempt(
+                action_kind="browser.web.execute",
+                url=after_url,
+                idempotency_key=key,
+                payload_hash=request_hash,
+                outcome="COMPLETED",
+                before_state=before,
+                after_state=after,
+                provider_ref=after_url,
                 reconciled=True,
             )
         try:

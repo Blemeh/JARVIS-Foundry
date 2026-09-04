@@ -45,6 +45,7 @@ _STRUCTURED_READS = {
     "git.log",
     "system.diagnose",
     "system.runtime",
+    "browser.web.wait",
 }
 
 

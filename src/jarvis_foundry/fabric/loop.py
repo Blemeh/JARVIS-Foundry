@@ -225,13 +225,22 @@ def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
             ),
         ),
         CapabilitySpec(
+            capability_id="cap.browser.web.wait", version="1.0.0", kind=Kind.CONNECTOR,
+            action_kind="browser.web.wait", semantic=Semantic.READ, executor="browser",
+            unattended=UnattendedMode.ALLOWED,
+            limitations=(
+                "one bounded Playwright page; exact accessibility target; "
+                "STOP-aware observation only",
+            ),
+        ),
+        CapabilitySpec(
             capability_id="cap.browser.web.execute", version="1.0.0", kind=Kind.CONNECTOR,
             action_kind="browser.web.execute", semantic=Semantic.EXTERNAL_EFFECT,
             executor="browser",
             unattended=UnattendedMode.INTERACTIVE_REQUIRED,
             limitations=(
-                "owner-authorized bounded click/fill/select/check/submit/download only; "
-                "downloads require explicit opt-in and owned-root destination; "
+                "owner-authorized bounded click/fill/select/check/submit/download/upload only; "
+                "file transfer requires explicit opt-in and owned-root paths; "
                 "effect journal and readback required; no destructive/public actions",
             ),
         ),
@@ -697,6 +706,22 @@ def _verify_action(
                 )
             return VerifyVerdict.MATCH
         return VerifyVerdict.MISMATCH
+    if action_kind == "browser.web.wait":
+        readback = claimed.get("readback")
+        if (
+            claimed_status == "COMPLETED"
+            and claimed.get("authority") == "DATA_ONLY"
+            and claimed.get("action") == "wait"
+            and claimed.get("target_id")
+            and claimed.get("page_revision")
+            and claimed.get("readback_verified") is True
+            and claimed.get("reconciled") is True
+            and isinstance(readback, Mapping)
+            and readback.get("verified") is True
+            and readback.get("wait_state") == claimed.get("wait_state")
+        ):
+            return VerifyVerdict.MATCH
+        return VerifyVerdict.MISMATCH
     if action_kind == "browser.web.execute":
         session = claimed.get("session") or {}
         auth_ok = (
@@ -733,6 +758,60 @@ def _verify_action(
                 VerifyVerdict.MATCH
                 if len(content) == expected_size
                 and sha256(content).hexdigest() == expected_hash
+                else VerifyVerdict.MISMATCH
+            )
+        if payload is not None and payload.get("action") == "upload":
+            upload = claimed.get("upload")
+            if not isinstance(upload, Mapping):
+                return VerifyVerdict.MISMATCH
+            source_ref = upload.get("source_ref")
+            expected_hash = upload.get("sha256")
+            expected_size = upload.get("size_bytes")
+            readback = upload.get("readback")
+            if (
+                claimed_status != "COMPLETED"
+                or claimed.get("authority") != "DATA_ONLY"
+                or claimed.get("readback_verified") is not True
+                or claimed.get("reconciled") is not True
+                or not isinstance(source_ref, str)
+                or not isinstance(expected_hash, str)
+                or not isinstance(expected_size, int)
+                or not isinstance(readback, Mapping)
+                or readback.get("verified") is not True
+                or readback.get("selected_count") != 1
+                or not auth_ok
+            ):
+                return VerifyVerdict.MISMATCH
+            try:
+                relative = Path(source_ref)
+                current = owned_root
+                for part in relative.parts:
+                    current /= part
+                    if current.exists() and current.is_symlink():
+                        return VerifyVerdict.MISMATCH
+                path = (owned_root / relative).resolve(strict=True)
+                path.relative_to(owned_root)
+                if not path.is_file():
+                    return VerifyVerdict.MISMATCH
+                content = path.read_bytes()
+            except (OSError, ValueError):
+                return VerifyVerdict.MISMATCH
+            from hashlib import sha256
+
+            files = readback.get("files")
+            browser_file = (
+                files[0]
+                if isinstance(files, list)
+                and len(files) == 1
+                and isinstance(files[0], Mapping)
+                else {}
+            )
+            return (
+                VerifyVerdict.MATCH
+                if len(content) == expected_size
+                and sha256(content).hexdigest() == expected_hash
+                and browser_file.get("size_bytes") == expected_size
+                and browser_file.get("sha256") == expected_hash
                 else VerifyVerdict.MISMATCH
             )
         if (

@@ -94,6 +94,7 @@ def test_v10_a_specs_are_versioned_and_bounded() -> None:
     assert validate_connector_spec(TrafilaturaExtractor.spec) is None
     assert PlaywrightBrowserConnector.spec.actions == {
         "browser.web.read": "read",
+        "browser.web.wait": "read",
         "browser.web.execute": "execute",
     }
     assert TrafilaturaExtractor.spec.actions == {
