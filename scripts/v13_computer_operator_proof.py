@@ -73,6 +73,10 @@ def _sha256_file(path: Path) -> str:
     return _sha256_bytes(path.read_bytes())
 
 
+def _filesystem_content_hash(path: Path) -> str:
+    return f"sha256:{_sha256_file(path)}"
+
+
 def _git(*args: str) -> str:
     result = subprocess.run(
         ["git", *args],
@@ -479,7 +483,8 @@ def main() -> int:
         )
         _require_success(source_read, "source read")
         _require(
-            source_read.observed.get("content_hash") == _sha256_file(source_path),
+            source_read.observed.get("content_hash")
+            == _filesystem_content_hash(source_path),
             "source read hash mismatch",
         )
         _record_complete(
@@ -561,7 +566,8 @@ def main() -> int:
         )
         _require_success(download_read, "download inspect")
         _require(
-            download_read.observed.get("content_hash") == _sha256_file(download_path),
+            download_read.observed.get("content_hash")
+            == _filesystem_content_hash(download_path),
             "download inspect hash mismatch",
         )
         _record_complete(
@@ -913,7 +919,8 @@ def main() -> int:
         _require_success(final_read, "final readback")
         _require(
             final_read.observed.get("text") == final_text
-            and final_read.observed.get("content_hash") == final_hash,
+            and final_read.observed.get("content_hash")
+            == _filesystem_content_hash(download_path),
             "final artifact readback did not match the edited value",
         )
         _record_complete(
