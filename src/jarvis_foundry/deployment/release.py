@@ -32,6 +32,7 @@ from .layout import (
 
 RELEASE_BROWSER_ASSET_DIR = ".pw"
 RELEASE_WEB_EXTRA = "web"
+COMMAND_CENTER_NPM_INSTALL_TIMEOUT_SECONDS = 600
 
 LAUNCHER_CMD_TEXT = """@echo off
 setlocal EnableExtensions
@@ -634,8 +635,18 @@ def _build_command_center_bundle(
         if "Path" in _npm_env:
             _npm_env["Path"] = _npm_env["PATH"]
         installed = subprocess.run(
-            [*_npm_cmd, "ci"], cwd=build_root,
-            capture_output=True, text=True, timeout=300, check=False,
+            [
+                *_npm_cmd,
+                "ci",
+                "--prefer-offline",
+                "--no-audit",
+                "--no-fund",
+            ],
+            cwd=build_root,
+            capture_output=True,
+            text=True,
+            timeout=COMMAND_CENTER_NPM_INSTALL_TIMEOUT_SECONDS,
+            check=False,
             env=_npm_env)
         if installed.returncode != 0:
             raise ReleaseError(
