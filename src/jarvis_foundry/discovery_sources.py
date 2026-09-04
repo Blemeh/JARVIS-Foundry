@@ -107,6 +107,25 @@ _CHIEF_ATTRIBUTE_FIELDS = (
     "wait_kind",
     "waiting_condition",
 )
+_CHIEF_CHANGE_FIELDS = (
+    "change_type",
+    "evidence_refs",
+    "goal_id",
+    "objective_id",
+    "occurred_at",
+    "program_id",
+    "proposed_objective",
+    "severity",
+    "situation_state",
+    "summary",
+)
+_CHIEF_MAPPABLE_FIELDS = frozenset({
+    *_CHIEF_ATTRIBUTE_FIELDS,
+    *_CHIEF_CHANGE_FIELDS,
+})
+_CHIEF_FIELD_PATH = re.compile(
+    r"^[A-Za-z_][A-Za-z0-9_-]*(?:\.[A-Za-z_][A-Za-z0-9_-]*)*$",
+)
 
 
 def _utc(value: datetime | str | None = None) -> datetime:
@@ -1298,6 +1317,62 @@ def _chief_configuration(spec: SourceSpec) -> dict[str, Any] | None:
     return dict(value)
 
 
+def _chief_field_map(
+    configuration: Mapping[str, Any],
+) -> dict[str, str]:
+    raw = configuration.get("field_map")
+    if raw is None:
+        return {}
+    if not isinstance(raw, Mapping):
+        raise ValueError("chief_of_staff.field_map must be a mapping")
+    result: dict[str, str] = {}
+    for target, source in raw.items():
+        canonical = str(target or "").strip()
+        path = str(source or "").strip()
+        if canonical not in _CHIEF_MAPPABLE_FIELDS:
+            raise ValueError(
+                f"unsupported chief_of_staff field_map target {canonical!r}",
+            )
+        if not _CHIEF_FIELD_PATH.fullmatch(path):
+            raise ValueError(
+                f"invalid chief_of_staff field_map path {path!r}",
+            )
+        result[canonical] = path
+    return result
+
+
+def _mapped_payload_values(
+    payload: Mapping[str, Any],
+    configuration: Mapping[str, Any],
+) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for target, path in _chief_field_map(configuration).items():
+        value: Any = payload
+        found = True
+        for segment in path.split("."):
+            if not isinstance(value, Mapping) or segment not in value:
+                found = False
+                break
+            value = value[segment]
+        if found:
+            result[target] = value
+    return result
+
+
+def _chief_occurred_at(
+    *values: Any,
+    fallback: Any,
+) -> str:
+    for value in values:
+        if value is None or not str(value).strip():
+            continue
+        try:
+            return _iso(_utc(str(value)))
+        except (TypeError, ValueError, OverflowError):
+            continue
+    return str(fallback)
+
+
 def _chief_change_id(
     spec: SourceSpec,
     item: SourceObservation,
@@ -1317,6 +1392,7 @@ def _chief_change_id(
             "severity",
             "situation_state",
             "summary",
+            "field_map",
             *_CHIEF_ATTRIBUTE_FIELDS,
         )
         if key in configuration
@@ -1362,8 +1438,10 @@ def _chief_project_change(
         if isinstance(payload.get("observation_intelligence"), Mapping)
         else {}
     )
+    mapped = _mapped_payload_values(payload, configuration)
     change_type = _bounded_text(
-        configuration.get("change_type")
+        mapped.get("change_type")
+        or configuration.get("change_type")
         or payload.get("change_type")
         or payload.get("state")
         or payload.get("status")
@@ -1373,7 +1451,8 @@ def _chief_project_change(
         80,
     ).upper()
     summary = _bounded_text(
-        configuration.get("summary")
+        mapped.get("summary")
+        or configuration.get("summary")
         or payload.get("summary")
         or payload.get("title")
         or payload.get("description")
@@ -1386,8 +1465,14 @@ def _chief_project_change(
         for key in _CHIEF_ATTRIBUTE_FIELDS
         if key in configuration
     }
+    attributes.update({
+        key: mapped[key]
+        for key in _CHIEF_ATTRIBUTE_FIELDS
+        if key in mapped
+    })
     proposed_objective = (
-        configuration.get("proposed_objective")
+        mapped.get("proposed_objective")
+        or configuration.get("proposed_objective")
         or item.proposed_outcome
     )
     if proposed_objective:
@@ -1426,27 +1511,47 @@ def _chief_project_change(
         if value is not None
     }
     configured_evidence = configuration.get("evidence_refs")
-    evidence_refs = (
-        [configured_evidence]
-        if isinstance(configured_evidence, str)
-        else list(configured_evidence or ())
-    )
+    mapped_evidence = mapped.get("evidence_refs")
+    evidence_refs: list[Any] = []
+    for value in (configured_evidence, mapped_evidence):
+        if isinstance(value, str):
+            evidence_refs.append(value)
+        elif isinstance(value, Sequence):
+            evidence_refs.extend(value)
     evidence_refs.append(item.source_ref)
     return {
         "change_id": _chief_change_id(spec, item, configuration),
         "project_id": item.target_project,
         "change_type": change_type,
         "summary": summary,
-        "occurred_at": str(stored["observed_at"]),
-        "goal_id": configuration.get("goal_id"),
-        "program_id": configuration.get("program_id"),
-        "objective_id": configuration.get("objective_id"),
+        "occurred_at": _chief_occurred_at(
+            mapped.get("occurred_at"),
+            payload.get("occurred_at"),
+            payload.get("changed_at"),
+            payload.get("updated_at"),
+            payload.get("timestamp"),
+            fallback=stored["observed_at"],
+        ),
+        "goal_id": mapped.get("goal_id", configuration.get("goal_id")),
+        "program_id": mapped.get(
+            "program_id",
+            configuration.get("program_id"),
+        ),
+        "objective_id": mapped.get(
+            "objective_id",
+            configuration.get("objective_id"),
+        ),
         "situation_state": (
-            configuration.get("situation_state")
+            mapped.get("situation_state")
+            or configuration.get("situation_state")
             or payload.get("state")
             or payload.get("status")
         ),
-        "severity": configuration.get("severity") or payload.get("severity"),
+        "severity": (
+            mapped.get("severity")
+            or configuration.get("severity")
+            or payload.get("severity")
+        ),
         "source_event_refs": [stored["last_event_id"]],
         "evidence_refs": list(dict.fromkeys(
             str(ref).strip()

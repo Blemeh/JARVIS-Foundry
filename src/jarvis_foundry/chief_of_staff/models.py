@@ -13,6 +13,7 @@ CHIEF_OF_STAFF_SCHEMA_VERSION = 40
 UNKNOWN = "UNKNOWN"
 
 FrozenItems = tuple[tuple[str, Any], ...]
+_FROZEN_SEQUENCE_TAG = "__jarvis_chief_sequence_v1__"
 
 
 def _text(value: Any, *, name: str) -> str:
@@ -55,7 +56,10 @@ def _freeze(value: Any) -> Any:
             for key, item in sorted(value.items(), key=lambda pair: str(pair[0]))
         )
     if isinstance(value, (list, tuple)):
-        return tuple(_freeze(item) for item in value)
+        return (
+            _FROZEN_SEQUENCE_TAG,
+            tuple(_freeze(item) for item in value),
+        )
     if isinstance(value, set):
         return tuple(sorted((_freeze(item) for item in value), key=repr))
     if value is None or isinstance(value, (str, int, float, bool)):
@@ -65,6 +69,12 @@ def _freeze(value: Any) -> Any:
 
 def _thaw(value: Any) -> Any:
     if isinstance(value, tuple):
+        if (
+            len(value) == 2
+            and value[0] == _FROZEN_SEQUENCE_TAG
+            and isinstance(value[1], tuple)
+        ):
+            return [_thaw(item) for item in value[1]]
         if all(
             isinstance(item, tuple)
             and len(item) == 2

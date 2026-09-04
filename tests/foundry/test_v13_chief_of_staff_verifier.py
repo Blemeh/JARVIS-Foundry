@@ -31,6 +31,10 @@ def test_independent_verifier_recomputes_truth_and_rejects_tampering(
     assert all(verified["checks"].values())
     assert verified["replay_on_backup"]["event_delta"] == 0
     assert verified["runtime_change_id"].startswith("cos-source-")
+    assert len(verified["runtime_lifecycle_change_ids"]) == 3
+    assert len(verified["runtime_lifecycle_world_event_ids"]) == 3
+    assert verified["runtime_lifecycle_wait_id"].startswith("cos-wait-")
+    assert verified["authenticated_owner_factor_event_id"]
     assert verified["late_stop_on_backup"]["guard_calls"] == 2
     assert verified["late_stop_on_backup"]["status"] == (
         "BLOCKED_BY_OWNER_CONTROL"
@@ -40,6 +44,8 @@ def test_independent_verifier_recomputes_truth_and_rejects_tampering(
         verified["recomputed_counts"]["decision_queue_resolved_matches"]
         == 1
     )
+    assert verified["recomputed_counts"]["item_state_changes"] == 3
+    assert verified["recomputed_counts"]["world_observations"] == 4
 
     tampered = json.loads(proof_path.read_text(encoding="utf-8"))
     tampered["counts"]["candidates"] = 2

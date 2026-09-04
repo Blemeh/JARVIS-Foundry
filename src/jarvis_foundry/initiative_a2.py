@@ -765,7 +765,9 @@ def run_initiative_a2_cycle(
                     observed.get("raw_candidates") or 0,
                 ),
                 "unique_candidates": 0,
-                "candidate_duplicates_suppressed": 0,
+                "candidate_duplicates_suppressed": int(
+                    observed.get("duplicates_suppressed") or 0,
+                ),
                 "candidates_refreshed": 0,
                 "meaningful_source_changes": 0,
                 "candidates_researched": 0,

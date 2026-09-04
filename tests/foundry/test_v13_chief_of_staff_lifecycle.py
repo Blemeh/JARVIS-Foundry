@@ -131,6 +131,7 @@ def _record_priority(
     value: float,
     effective_at: str,
     authority: str = "REPOSITORY_AUTHORITY",
+    attributes: dict | None = None,
 ) -> str:
     text = f"Owner priority {value}"
     record = OwnerContextStore(database).record(
@@ -155,7 +156,10 @@ def _record_priority(
         observed_at=effective_at,
         effective_at=effective_at,
         priority=value,
-        attributes={"value": value},
+        attributes={
+            "value": value,
+            **(attributes or {}),
+        },
     )
     return record.source_event_id
 
@@ -534,6 +538,7 @@ def test_priority_factor_authority_and_semantic_time_select_current_values(
         value=90,
         effective_at="2026-09-04T07:00:00Z",
         authority="AUTHENTICATED_OWNER",
+        attributes={"strategic_value": 0.85},
     )
     current_owner_source = _record_priority(
         database,
@@ -541,6 +546,7 @@ def test_priority_factor_authority_and_semantic_time_select_current_values(
         value=20,
         effective_at="2026-09-04T10:00:00Z",
         authority="AUTHENTICATED_OWNER",
+        attributes={"strategic_value": 0.65},
     )
     _record_priority(
         database,
@@ -582,9 +588,170 @@ def test_priority_factor_authority_and_semantic_time_select_current_values(
     assert factors["owner_priority"].raw_value == pytest.approx(0.2)
     assert current_owner_source in factors["owner_priority"].evidence_refs
     assert old_owner_source not in factors["owner_priority"].evidence_refs
-    assert factors["strategic_value"].raw_value == pytest.approx(0.2)
-    assert current_chief.event_id in factors["strategic_value"].evidence_refs
+    assert factors["strategic_value"].raw_value == pytest.approx(0.65)
+    assert current_owner_source in factors[
+        "strategic_value"
+    ].evidence_refs
+    assert current_chief.event_id not in factors[
+        "strategic_value"
+    ].evidence_refs
     assert historical_chief.event_id not in factors["strategic_value"].evidence_refs
+
+
+def test_project_state_and_lists_use_semantic_snapshots(
+    tmp_path: Path,
+) -> None:
+    database = _database(tmp_path)
+    current = _append_change(
+        database,
+        change_id="change-current-project-state",
+        project_id="jarvis",
+        attributes={
+            "status": "ACTIVE",
+            "health": "GREEN",
+            "next_action": "continue current work",
+            "blockers": [],
+            "dependencies": [],
+        },
+        occurred_at="2026-09-04T09:30:00Z",
+    )
+    historical = _append_change(
+        database,
+        change_id="change-late-historical-project-state",
+        project_id="jarvis",
+        attributes={
+            "status": "BLOCKED",
+            "health": "RED",
+            "next_action": "repeat obsolete work",
+            "blockers": ["obsolete blocker"],
+            "dependencies": ["obsolete dependency"],
+        },
+        occurred_at="2026-09-04T10:00:00+02:00",
+    )
+
+    project = project_chief_of_staff(database, now=NOW).project("jarvis")
+
+    assert project is not None
+    assert project.status == "ACTIVE"
+    assert project.health == "GREEN"
+    assert project.next_likely_action == "continue current work"
+    assert project.blockers == ()
+    assert project.dependencies == ()
+    assert project.last_meaningful_activity == "2026-09-04T09:30:00Z"
+    assert current.event_id in project.source_event_refs
+    assert historical.event_id in project.source_event_refs
+
+
+def test_item_transitions_require_current_semantic_time(
+    tmp_path: Path,
+) -> None:
+    database = _database(tmp_path)
+    wait_id = "cos-wait-semantic-order"
+    attention_id = "cos-attention-semantic-order"
+    _append_event(
+        database,
+        "chief_of_staff.wait_recorded",
+        {
+            "wait_id": wait_id,
+            "project_id": "jarvis",
+            "reason": "current wait",
+            "source_event_refs": ["source:current-wait"],
+        },
+        key=f"chief_of_staff.wait_recorded:{wait_id}",
+        occurred_at="2026-09-04T10:00:00Z",
+    )
+    _append_event(
+        database,
+        "chief_of_staff.owner_attention_required",
+        {
+            "attention_id": attention_id,
+            "project_id": "jarvis",
+            "category": "OWNER_DECISION",
+            "summary": "Current owner decision",
+            "reason": "current decision is unresolved",
+            "source_event_refs": ["source:current-attention"],
+        },
+        key=f"chief_of_staff.owner_attention_required:{attention_id}",
+        occurred_at="2026-09-04T10:00:00Z",
+    )
+    for item_kind, item_id in (
+        ("WAIT", wait_id),
+        ("OWNER_ATTENTION", attention_id),
+    ):
+        _append_event(
+            database,
+            "chief_of_staff.item_state_changed",
+            {
+                "project_id": "jarvis",
+                "item_kind": item_kind,
+                "item_id": item_id,
+                "from_state": "OPEN",
+                "to_state": "RESOLVED",
+                "reason": "late-arriving historical resolution",
+            },
+            key=f"historical-resolution:{item_kind}:{item_id}",
+            occurred_at="2026-09-04T09:00:00Z",
+        )
+
+    historical_projection = project_chief_of_staff(database, now=NOW)
+    historical_project = historical_projection.project("jarvis")
+    historical_attention = next(
+        item
+        for item in historical_projection.owner_attention
+        if item.attention_id == attention_id
+    )
+
+    assert historical_project is not None
+    assert historical_project.waiting_condition == "current wait"
+    assert historical_project.owner_decision_needed is True
+    assert historical_attention.status == "OPEN"
+
+    _append_change(
+        database,
+        change_id="change-current-active-state",
+        project_id="jarvis",
+        attributes={"status": "ACTIVE"},
+        occurred_at="2026-09-04T10:30:00Z",
+    )
+    active_projection = project_chief_of_staff(database, now=NOW)
+    active_project = active_projection.project("jarvis")
+
+    assert active_project is not None
+    assert active_project.waiting_condition is None
+    assert active_project.status == "WAITING_ON_OWNER"
+    assert active_project.owner_decision_needed is True
+
+    for item_kind, item_id in (
+        ("WAIT", wait_id),
+        ("OWNER_ATTENTION", attention_id),
+    ):
+        _append_event(
+            database,
+            "chief_of_staff.item_state_changed",
+            {
+                "project_id": "jarvis",
+                "item_kind": item_kind,
+                "item_id": item_id,
+                "from_state": "OPEN",
+                "to_state": "RESOLVED",
+                "reason": "current resolution",
+            },
+            key=f"current-resolution:{item_kind}:{item_id}",
+            occurred_at="2026-09-04T11:00:00Z",
+        )
+
+    current_projection = project_chief_of_staff(database, now=NOW)
+    current_project = current_projection.project("jarvis")
+    current_attention = next(
+        item
+        for item in current_projection.owner_attention
+        if item.attention_id == attention_id
+    )
+
+    assert current_project is not None
+    assert current_project.waiting_condition is None
+    assert current_project.owner_decision_needed is False
+    assert current_attention.status == "RESOLVED"
 
 
 def test_current_objective_is_semantic_fallback_when_project_factors_absent(

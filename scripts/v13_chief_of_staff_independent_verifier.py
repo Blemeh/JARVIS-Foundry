@@ -49,6 +49,24 @@ JARVIS_ORDER = "directive:standing-jarvis-blocked"
 LEADGEN_ORDER = "directive:standing-leadgen-recovery"
 OPERATOR_ORDER = "directive:standing-operator-clean"
 RUNTIME_OBSERVATION_IDENTITY = "project:jarvis:reliability-regression"
+RUNTIME_LIFECYCLE_OBSERVATION_IDENTITY = (
+    "project:leadgen:recoverable-runtime"
+)
+RUNTIME_MAPPED_FACTOR_EXPECTATIONS = {
+    "owner_priority": 0.95,
+    "strategic_value": 0.95,
+    "urgency": 0.30,
+    "deadline": 0.25,
+    "blocking_value": 0.90,
+    "dependency_leverage": 0.85,
+    "information_gain": 0.80,
+    "cost": 0.20,
+    "risk": 0.45,
+    "reversibility": 1.0,
+    "confidence": 0.92,
+    "opportunity_cost": 0.15,
+    "staleness": 0.10,
+}
 PRIORITY_FACTOR_NAMES = {
     "owner_priority",
     "strategic_value",
@@ -547,37 +565,120 @@ def verify_proof(
     packet_projection = snapshot["briefing_packet"]["chief_of_staff"]
     after_reads = database.event_count()
     observed, outcomes = _event_outcomes(database)
-    runtime_change_ids = sorted(
+    source_change_ids = sorted(
         change_id
         for change_id in observed
         if change_id.startswith("cos-source-")
     )
-    runtime_change_id = (
-        runtime_change_ids[0]
-        if len(runtime_change_ids) == 1
-        else ""
-    )
-    runtime_change_event = observed.get(runtime_change_id)
-    runtime_change_source_refs = (
-        set(
-            runtime_change_event.payload["change"].get(
-                "source_event_refs",
-            ) or (),
-        )
-        if runtime_change_event is not None
-        else set()
+    world_events = database.events(
+        event_types=("world.observation_recorded",),
     )
     runtime_world_events = [
         event
-        for event in database.events(
-            event_types=("world.observation_recorded",),
-        )
+        for event in world_events
         if (
             isinstance(event.payload.get("provenance"), dict)
             and event.payload["provenance"].get("source_identity")
             == RUNTIME_OBSERVATION_IDENTITY
         )
     ]
+    runtime_world_event_ids = {
+        event.event_id for event in runtime_world_events
+    }
+    runtime_lifecycle_world_events = [
+        event
+        for event in world_events
+        if (
+            isinstance(event.payload.get("provenance"), dict)
+            and event.payload["provenance"].get("source_identity")
+            == RUNTIME_LIFECYCLE_OBSERVATION_IDENTITY
+        )
+    ]
+    runtime_lifecycle_world_event_ids = {
+        event.event_id for event in runtime_lifecycle_world_events
+    }
+    source_change_refs = {
+        change_id: set(
+            observed[change_id].payload["change"].get(
+                "source_event_refs",
+            ) or (),
+        )
+        for change_id in source_change_ids
+    }
+    runtime_change_ids = [
+        change_id
+        for change_id in source_change_ids
+        if source_change_refs[change_id].intersection(
+            runtime_world_event_ids,
+        )
+    ]
+    runtime_change_id = (
+        runtime_change_ids[0]
+        if len(runtime_change_ids) == 1
+        else ""
+    )
+    runtime_change_event = observed.get(runtime_change_id)
+    runtime_change_payload = (
+        dict(runtime_change_event.payload.get("change") or {})
+        if runtime_change_event is not None
+        else {}
+    )
+    runtime_change_attributes = (
+        dict(runtime_change_payload.get("attributes") or {})
+        if isinstance(runtime_change_payload.get("attributes"), dict)
+        else {}
+    )
+    runtime_change_source_refs = source_change_refs.get(
+        runtime_change_id,
+        set(),
+    )
+    runtime_lifecycle_change_ids = sorted(
+        (
+            change_id
+            for change_id in source_change_ids
+            if source_change_refs[change_id].intersection(
+                runtime_lifecycle_world_event_ids,
+            )
+        ),
+        key=lambda change_id: (
+            str(
+                observed[change_id].payload["change"].get(
+                    "occurred_at",
+                ) or "",
+            ),
+            change_id,
+        ),
+    )
+    runtime_lifecycle_change_by_time = {
+        str(
+            observed[change_id].payload["change"].get(
+                "occurred_at",
+            ) or "",
+        ): change_id
+        for change_id in runtime_lifecycle_change_ids
+    }
+    runtime_lifecycle_historical_change_id = (
+        runtime_lifecycle_change_by_time.get(
+            "2026-09-04T10:10:30Z",
+            "",
+        )
+    )
+    runtime_lifecycle_wait_change_id = (
+        runtime_lifecycle_change_by_time.get(
+            "2026-09-04T10:11:00Z",
+            "",
+        )
+    )
+    runtime_lifecycle_resolution_change_id = (
+        runtime_lifecycle_change_by_time.get(
+            "2026-09-04T10:12:00Z",
+            "",
+        )
+    )
+    runtime_lifecycle_change_source_refs = {
+        change_id: source_change_refs.get(change_id, set())
+        for change_id in runtime_lifecycle_change_ids
+    }
     runtime_world_event_id = (
         runtime_world_events[0].event_id
         if len(runtime_world_events) == 1
@@ -593,6 +694,40 @@ def verify_proof(
         if len(runtime_route_events) == 1
         else ""
     )
+    runtime_lifecycle_wait_events = [
+        event
+        for event in outcomes.get(
+            runtime_lifecycle_wait_change_id,
+            (),
+        )
+        if event.event_type == "chief_of_staff.wait_recorded"
+    ]
+    runtime_lifecycle_wait_id = (
+        str(runtime_lifecycle_wait_events[0].payload.get("wait_id") or "")
+        if len(runtime_lifecycle_wait_events) == 1
+        else ""
+    )
+    runtime_lifecycle_resolution_events = [
+        event
+        for event in outcomes.get(
+            runtime_lifecycle_resolution_change_id,
+            (),
+        )
+        if (
+            event.event_type == "chief_of_staff.item_state_changed"
+            and event.payload.get("item_kind") == "WAIT"
+            and event.payload.get("item_id") == runtime_lifecycle_wait_id
+            and event.payload.get("to_state") == "RESOLVED"
+        )
+    ]
+    runtime_lifecycle_historical_wait_events = [
+        event
+        for event in outcomes.get(
+            runtime_lifecycle_historical_change_id,
+            (),
+        )
+        if event.event_type == "chief_of_staff.wait_recorded"
+    ]
     runtime_source_results: list[dict[str, Any]] = []
     runtime_cycle_ids: list[str] = []
     for event in database.events(
@@ -618,6 +753,28 @@ def verify_proof(
         cycle_metrics_by_id.get(cycle_id, {})
         for cycle_id in runtime_cycle_ids
     ]
+    authenticated_owner_factor_events = [
+        event
+        for event in database.events(
+            event_types=("owner_context.item_recorded",),
+        )
+        if (
+            isinstance(event.payload.get("provenance"), dict)
+            and event.payload["provenance"].get("authority")
+            == "AUTHENTICATED_OWNER"
+            and isinstance(event.payload.get("scope"), dict)
+            and "jarvis"
+            in (event.payload["scope"].get("project_ids") or ())
+            and isinstance(event.payload.get("attributes"), dict)
+            and event.payload["attributes"].get("strategic_value")
+            == 0.88
+        )
+    ]
+    authenticated_owner_factor_event_id = (
+        authenticated_owner_factor_events[0].event_id
+        if len(authenticated_owner_factor_events) == 1
+        else ""
+    )
     low_value_rejection_events = [
         event
         for event in outcomes.get(
@@ -916,6 +1073,9 @@ def verify_proof(
         "change-leadgen-owner-decision": [],
         "change-jarvis-late-transaction-stop": [],
         runtime_change_id: [JARVIS_ORDER],
+        runtime_lifecycle_wait_change_id: [LEADGEN_ORDER],
+        runtime_lifecycle_resolution_change_id: [],
+        runtime_lifecycle_historical_change_id: [],
     }
     historical_order_matches = {
         change_id: _payload_standing_orders(outcomes.get(change_id, []))
@@ -1022,9 +1182,15 @@ def verify_proof(
             and OPERATOR_ORDER not in active_order_ids
         ),
         "observed_change_set_is_exact": (
-            len(runtime_change_ids) == 1
+            len(source_change_ids) == 4
+            and len(runtime_change_ids) == 1
+            and len(runtime_lifecycle_change_ids) == 3
             and set(observed)
-            == EXPECTED_DIRECT_CHANGE_IDS | {runtime_change_id}
+            == (
+                EXPECTED_DIRECT_CHANGE_IDS
+                | {runtime_change_id}
+                | set(runtime_lifecycle_change_ids)
+            )
             and "change-jarvis-stop" not in observed
             and "change-jarvis-veto" not in observed
         ),
@@ -1067,7 +1233,7 @@ def verify_proof(
         ),
         "owner_attention_open_and_resolved_lifecycle": (
             recomputed_counts["owner_attention"] == 2
-            and recomputed_counts["item_state_changes"] == 2
+            and recomputed_counts["item_state_changes"] == 3
             and len(temporary_attention_events) == 1
             and len(temporary_attention_resolutions) == 1
             and len(final_attention_events) == 1
@@ -1093,12 +1259,55 @@ def verify_proof(
             and runtime_cycle_metrics[0].get("unique_candidates") == 1
             and runtime_cycle_metrics[1].get("raw_candidates_generated") == 1
             and runtime_cycle_metrics[1].get("unique_candidates") == 0
-            and recomputed_counts["world_observations"] == 1
+            and runtime_cycle_metrics[1].get(
+                "candidate_duplicates_suppressed",
+            ) == 1
+            and recomputed_counts["world_observations"] == 4
             and recomputed_counts["candidates"] == 1
             and recomputed_counts["candidate_routed"] == 1
             and replay["event_delta"] == 0
             and replay["candidate_count"] == 1
             and replay["duplicate"] is True
+        ),
+        "runtime_payload_mapping_and_lifecycle_are_current": (
+            runtime_change_payload.get("occurred_at")
+            == "2026-09-04T10:10:00Z"
+            and all(
+                runtime_change_attributes.get(name) == expected
+                for name, expected
+                in RUNTIME_MAPPED_FACTOR_EXPECTATIONS.items()
+            )
+            and len(runtime_lifecycle_world_events) == 3
+            and len(runtime_lifecycle_change_ids) == 3
+            and all(
+                len(
+                    runtime_lifecycle_change_source_refs.get(
+                        change_id,
+                        set(),
+                    ).intersection(runtime_lifecycle_world_event_ids)
+                ) == 1
+                for change_id in runtime_lifecycle_change_ids
+            )
+            and runtime_lifecycle_world_event_ids
+            == set().union(
+                *runtime_lifecycle_change_source_refs.values(),
+            ).intersection(runtime_lifecycle_world_event_ids)
+            and set(runtime_lifecycle_change_by_time)
+            == {
+                "2026-09-04T10:10:30Z",
+                "2026-09-04T10:11:00Z",
+                "2026-09-04T10:12:00Z",
+            }
+            and len(runtime_lifecycle_wait_events) == 1
+            and runtime_lifecycle_wait_id
+            and len(runtime_lifecycle_resolution_events) == 1
+            and len(runtime_lifecycle_historical_wait_events) == 1
+            and leadgen["waiting_condition"] is None
+            and leadgen["blockers"] == []
+            and leadgen["dependencies"] == []
+            and priority_leadgen["factors"]["strategic_value"][
+                "raw_value"
+            ] == 0.78
         ),
         "wait_wake_and_runtime_continuation": (
             len(dependency_wait_events) == 1
@@ -1123,6 +1332,19 @@ def verify_proof(
         "all_priority_factors_and_unknowns_are_explicit": (
             set(priority_jarvis["factors"]) == PRIORITY_FACTOR_NAMES
             and priority_jarvis["unknown_factors"] == []
+            and priority_jarvis["factors"]["strategic_value"][
+                "raw_value"
+            ] == 0.88
+            and authenticated_owner_factor_event_id
+            in priority_jarvis["factors"]["strategic_value"][
+                "evidence_refs"
+            ]
+            and runtime_change_event is not None
+            and runtime_change_event.event_id
+            not in priority_jarvis["factors"]["strategic_value"][
+                "evidence_refs"
+            ]
+            and runtime_change_attributes.get("strategic_value") == 0.95
             and priority_jarvis["factors"]["cost"]["raw_value"] == 0.20
             and priority_jarvis["factors"]["cost"][
                 "normalized_value"
@@ -1241,6 +1463,14 @@ def verify_proof(
         "late_stop_on_backup": late_stop_probe,
         "runtime_change_id": runtime_change_id,
         "runtime_cycle_ids": runtime_cycle_ids,
+        "runtime_lifecycle_change_ids": runtime_lifecycle_change_ids,
+        "runtime_lifecycle_world_event_ids": sorted(
+            runtime_lifecycle_world_event_ids,
+        ),
+        "runtime_lifecycle_wait_id": runtime_lifecycle_wait_id,
+        "authenticated_owner_factor_event_id": (
+            authenticated_owner_factor_event_id
+        ),
         "priority_cutoff_event_id": priority_cutoff_event_id,
         "full_suite": junit,
         "verdict": "PASS" if not findings else "FAIL",

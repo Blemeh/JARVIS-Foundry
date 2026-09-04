@@ -854,10 +854,229 @@ def test_continuous_project_observation_routes_through_chief_once(
     assert replay["cycles_dispatched"] == 1
     assert replay["metrics"]["raw_candidates_generated"] == 1
     assert replay["metrics"]["unique_candidates"] == 0
+    assert replay["metrics"]["candidate_duplicates_suppressed"] == 1
     assert _event_count(database, "chief_of_staff.") == chief_events_after_first
     assert _event_count(database, "executive.objective_") == 0
     assert _event_count(database, "mission.") == 0
     assert _event_count(database, "effect.") == 0
+
+
+def test_runtime_field_map_carries_dynamic_state_factors_and_lifecycle(
+    tmp_path: Path,
+) -> None:
+    database = _database(tmp_path)
+    field_map = {
+        "change_type": "change_type",
+        "summary": "summary",
+        "occurred_at": "changed_at",
+        "situation_state": "state",
+        "health": "health",
+        "owner_priority": "owner_priority",
+        "strategic_value": "strategic_value",
+        "urgency": "urgency",
+        "deadline": "deadline",
+        "blocking_value": "blocking_value",
+        "blockers": "blockers",
+        "dependencies": "dependencies",
+        "dependency_leverage": "dependency_leverage",
+        "information_gain": "information_gain",
+        "cost": "cost",
+        "risk": "risk",
+        "reversibility": "reversibility",
+        "confidence": "confidence",
+        "opportunity_cost": "opportunity_cost",
+        "staleness": "staleness",
+        "recoverable": "recoverable",
+        "waiting_condition": "waiting_condition",
+        "resolved_wait_ids": "resolved_wait_ids",
+        "resolution_reason": "resolution_reason",
+        "owner_decision_needed": "owner_decision_needed",
+        "owner_decision_reason": "owner_decision_reason",
+        "resolved_owner_attention_ids": (
+            "resolved_owner_attention_ids"
+        ),
+    }
+    spec = SourceSpec(
+        "v13-dynamic-project-watch",
+        "project",
+        "project:jarvis:dynamic-runtime",
+        1,
+        config={
+            "chief_of_staff": {
+                "enabled": True,
+                "field_map": field_map,
+            },
+        },
+    )
+    current: dict[str, dict] = {"payload": {}}
+
+    def reader(_spec, stop_check):
+        assert stop_check() is False
+        payload = current["payload"]
+        observation = SourceObservation(
+            "project",
+            "project:jarvis:dynamic-lifecycle",
+            "evidence:v13-dynamic-lifecycle",
+            payload,
+            content_hash(payload),
+            target_project="jarvis",
+            candidate_on="never",
+        )
+        return SourceReadResult("READY", (observation,))
+
+    def observe(cycle_id: str, payload: dict, now: str) -> dict:
+        current["payload"] = payload
+        _start_source_cycle(database, cycle_id)
+        return run_source_observation_cycle(
+            database,
+            cycle_id,
+            [spec],
+            candidate_limit=1,
+            readers={"project": reader},
+            now=now,
+        )
+
+    waiting = observe(
+        "v13-dynamic-wait",
+        {
+            "change_type": "RECOVERABLE_ERROR",
+            "summary": "Wait for a bounded dynamic dependency",
+            "changed_at": "2026-09-04T09:00:00Z",
+            "state": "WAITING",
+            "recoverable": True,
+            "waiting_condition": "wait for dynamic dependency evidence",
+            "blockers": ["dynamic dependency is incomplete"],
+            "dependencies": ["dynamic-dependency"],
+        },
+        "2026-09-04T11:00:00Z",
+    )["sources"][0]["chief_of_staff_results"][0]
+    assert waiting["status"] == "WAITING"
+    assert waiting["wait_id"]
+
+    current_values = {
+        "change_type": "PROJECT_UPDATE",
+        "summary": "Dynamic dependency evidence is complete",
+        "changed_at": "2026-09-04T10:00:00Z",
+        "state": "ACTIVE",
+        "health": "GREEN",
+        "owner_priority": 0.91,
+        "strategic_value": 0.82,
+        "urgency": 0.33,
+        "deadline": 0.44,
+        "blocking_value": 0.12,
+        "blockers": [],
+        "dependencies": [],
+        "dependency_leverage": 0.73,
+        "information_gain": 0.64,
+        "cost": 0.21,
+        "risk": 0.18,
+        "reversibility": 0.95,
+        "confidence": 0.88,
+        "opportunity_cost": 0.16,
+        "staleness": 0.07,
+        "resolved_wait_ids": [waiting["wait_id"]],
+        "resolution_reason": "dynamic dependency completed",
+    }
+    resolved_wait = observe(
+        "v13-dynamic-wait-resolved",
+        current_values,
+        "2026-09-04T11:00:01Z",
+    )["sources"][0]["chief_of_staff_results"][0]
+    assert resolved_wait["status"] == "PROJECT_STATE_UPDATED"
+
+    historical = observe(
+        "v13-dynamic-late-history",
+        {
+            "change_type": "RECOVERABLE_ERROR",
+            "summary": "Late historical dependency record",
+            "changed_at": "2026-09-04T08:00:00Z",
+            "state": "BLOCKED",
+            "health": "RED",
+            "recoverable": True,
+            "waiting_condition": "historical wait must not resurrect",
+            "strategic_value": 0.99,
+            "blockers": ["historical blocker"],
+            "dependencies": ["historical-dependency"],
+        },
+        "2026-09-04T11:00:02Z",
+    )["sources"][0]["chief_of_staff_results"][0]
+    assert historical["status"] == "WAITING"
+
+    attention = observe(
+        "v13-dynamic-owner-attention",
+        {
+            "change_type": "OWNER_DECISION",
+            "summary": "Choose the bounded dynamic option",
+            "changed_at": "2026-09-04T10:05:00Z",
+            "owner_decision_needed": True,
+            "owner_decision_reason": "the source cannot derive the choice",
+        },
+        "2026-09-04T11:00:03Z",
+    )["sources"][0]["chief_of_staff_results"][0]
+    assert attention["status"] == "OWNER_ATTENTION_REQUIRED"
+    assert attention["owner_attention_id"]
+
+    resolved_attention = observe(
+        "v13-dynamic-owner-attention-resolved",
+        {
+            "change_type": "PROJECT_UPDATE",
+            "summary": "The bounded dynamic option was selected",
+            "changed_at": "2026-09-04T10:06:00Z",
+            "state": "ACTIVE",
+            "resolved_owner_attention_ids": [
+                attention["owner_attention_id"],
+            ],
+            "resolution_reason": "the owner selected the option",
+        },
+        "2026-09-04T11:00:04Z",
+    )["sources"][0]["chief_of_staff_results"][0]
+    assert resolved_attention["status"] == "PROJECT_STATE_UPDATED"
+
+    projection = project_chief_of_staff(database, now=NOW)
+    project = projection.project("jarvis")
+    priority = next(
+        item
+        for item in projection.priorities
+        if item.project_id == "jarvis"
+    )
+    factors = {item.name: item for item in priority.factors}
+    active_change = next(
+        event
+        for event in database.events(
+            event_types=("chief_of_staff.change_observed",),
+        )
+        if event.payload["change"]["summary"]
+        == current_values["summary"]
+    )
+
+    assert project is not None
+    assert project.status == "ACTIVE"
+    assert project.health == "GREEN"
+    assert project.waiting_condition is None
+    assert project.owner_decision_needed is False
+    assert project.owner_attention_ids == ()
+    assert project.blockers == ()
+    assert project.dependencies == ()
+    assert set(factors) == {
+        "owner_priority",
+        "strategic_value",
+        "urgency",
+        "deadline",
+        "blockers",
+        "dependency_leverage",
+        "information_gain",
+        "cost",
+        "risk",
+        "reversibility",
+        "confidence",
+        "opportunity_cost",
+        "staleness",
+    }
+    assert factors["strategic_value"].raw_value == pytest.approx(0.82)
+    assert factors["strategic_value"].raw_value != pytest.approx(0.99)
+    assert active_change.payload["change"]["occurred_at"] == (
+        "2026-09-04T10:00:00Z"
+    )
 
 
 def test_unchanged_replay_repairs_missing_chief_receipt(

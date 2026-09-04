@@ -33,6 +33,13 @@ _TERMINAL_OBJECTIVE_STATES = frozenset({
     "CANCELLED",
     "SUSPENDED",
 })
+_NON_WAITING_PROJECT_STATES = frozenset({
+    "ACTIVE",
+    "COMPLETED",
+    "EXECUTING",
+    "PLANNED",
+    "READY",
+})
 _PRIORITY_WEIGHTS = {
     "owner_priority": 0.19,
     "strategic_value": 0.12,
@@ -59,10 +66,10 @@ _OWNER_PRIORITY_AUTHORITY_PRECEDENCE = {
     _FACTOR_AUTHORITY_OBJECTIVE: 10,
 }
 _PROJECT_FACTOR_AUTHORITY_PRECEDENCE = {
+    _FACTOR_AUTHORITY_OWNER_AUTHENTICATED: 50,
     _FACTOR_AUTHORITY_CHIEF: 40,
-    _FACTOR_AUTHORITY_OWNER_AUTHENTICATED: 30,
-    _FACTOR_AUTHORITY_OWNER_CURRENT: 20,
-    _FACTOR_AUTHORITY_OBJECTIVE: 10,
+    _FACTOR_AUTHORITY_OWNER_CURRENT: 30,
+    _FACTOR_AUTHORITY_OBJECTIVE: 20,
 }
 
 
@@ -209,6 +216,7 @@ def _new_project(project_id: str, title: str | None = None) -> dict[str, Any]:
         "dependencies": [],
         "recent_changes": [],
         "last_meaningful_activity": None,
+        "last_meaningful_activity_order": (),
         "next_likely_action": None,
         "waiting_condition": None,
         "owner_decision_needed": False,
@@ -220,6 +228,9 @@ def _new_project(project_id: str, title: str | None = None) -> dict[str, Any]:
             "WAIT": {},
             "OWNER_ATTENTION": {},
         },
+        "owner_attention_orders": {},
+        "chief_current_fields": {},
+        "chief_list_snapshots": {},
         "source_event_refs": [],
         "evidence_refs": [],
         "unknown_fields": set(),
@@ -246,6 +257,25 @@ def _append_unique(target: list[str], *values: Any) -> None:
         normalized = str(value or "").strip()
         if normalized and normalized not in target:
             target.append(normalized)
+
+
+def _set_semantic_snapshot(
+    project: dict[str, Any],
+    bucket: str,
+    name: str,
+    value: Any,
+    *,
+    order_key: Iterable[Any],
+) -> None:
+    order = tuple(order_key)
+    snapshots = project[bucket]
+    current = snapshots.get(name)
+    if current is not None and order < current["order_key"]:
+        return
+    snapshots[name] = {
+        "value": value,
+        "order_key": order,
+    }
 
 
 def _set_priority_disposition(
@@ -795,6 +825,12 @@ def project_chief_of_staff(
             *(payload.get("source_event_refs") or ()),
             *(payload.get("evidence_refs") or ()),
         ))
+        event_semantic_order = _semantic_order_key(
+            event.occurred_at,
+            event.recorded_at,
+            event_order[0],
+            event.event_id,
+        )
         if event.event_type == "chief_of_staff.item_state_changed":
             item_kind = str(payload.get("item_kind") or "").upper()
             item_id = str(payload.get("item_id") or "").strip()
@@ -805,6 +841,14 @@ def project_chief_of_staff(
                 and item_id
                 and to_state in _TERMINAL_ITEM_STATES
             ):
+                current = project["item_state_changes"][item_kind].get(
+                    item_id,
+                )
+                if (
+                    current is not None
+                    and event_semantic_order < current["order_key"]
+                ):
+                    continue
                 project["item_state_changes"][item_kind][item_id] = {
                     "status": to_state,
                     "reason": _bounded_text(payload.get("reason")),
@@ -813,7 +857,7 @@ def project_chief_of_staff(
                     "evidence_refs": _strings(
                         payload.get("evidence_refs") or (),
                     ),
-                    "order_key": event_order,
+                    "order_key": event_semantic_order,
                 }
             continue
         if event.event_type == "chief_of_staff.change_observed":
@@ -834,10 +878,11 @@ def project_chief_of_staff(
                 order_key=factor_order,
             )
             if (
-                project["last_meaningful_activity"] is None
-                or activity > project["last_meaningful_activity"]
+                not project["last_meaningful_activity_order"]
+                or factor_order > project["last_meaningful_activity_order"]
             ):
                 project["last_meaningful_activity"] = activity
+                project["last_meaningful_activity_order"] = factor_order
             attributes = change_payload.get("attributes")
             values = attributes if isinstance(attributes, dict) else {}
             state = str(
@@ -846,12 +891,28 @@ def project_chief_of_staff(
                 or ""
             ).upper()
             if state:
-                project["status"] = state
-            if values.get("health"):
-                project["health"] = str(values["health"]).upper()
-            if values.get("next_action"):
-                project["next_likely_action"] = _bounded_text(
-                    values["next_action"],
+                _set_semantic_snapshot(
+                    project,
+                    "chief_current_fields",
+                    "status",
+                    state,
+                    order_key=factor_order,
+                )
+            if "health" in values:
+                _set_semantic_snapshot(
+                    project,
+                    "chief_current_fields",
+                    "health",
+                    str(values.get("health") or UNKNOWN).upper(),
+                    order_key=factor_order,
+                )
+            if "next_action" in values:
+                _set_semantic_snapshot(
+                    project,
+                    "chief_current_fields",
+                    "next_likely_action",
+                    _bounded_text(values.get("next_action")) or None,
+                    order_key=factor_order,
                 )
             _apply_explicit_factors(
                 project,
@@ -873,12 +934,28 @@ def project_chief_of_staff(
                     authority=_FACTOR_AUTHORITY_CHIEF,
                     order_key=factor_order,
                 )
-            blockers = values.get("blockers")
-            if isinstance(blockers, (list, tuple)):
-                _append_unique(project["blockers"], *blockers)
-            dependencies = values.get("dependencies")
-            if isinstance(dependencies, (list, tuple)):
-                _append_unique(project["dependencies"], *dependencies)
+            for field in ("blockers", "dependencies"):
+                if field not in values:
+                    continue
+                raw_values = values.get(field)
+                snapshot_values = (
+                    _strings(raw_values)
+                    if (
+                        isinstance(raw_values, Iterable)
+                        and not isinstance(
+                            raw_values,
+                            (str, bytes, Mapping),
+                        )
+                    )
+                    else _strings((raw_values,))
+                )
+                _set_semantic_snapshot(
+                    project,
+                    "chief_list_snapshots",
+                    field,
+                    snapshot_values,
+                    order_key=factor_order,
+                )
             entry = BriefingEntry(
                 entry_id=f"cos-brief-{_hash(event.event_id)}",
                 project_id=project_id,
@@ -897,7 +974,13 @@ def project_chief_of_staff(
             )
             if objective:
                 _append_unique(project["jarvis_handled_work"], objective)
-                project["next_likely_action"] = objective
+                _set_semantic_snapshot(
+                    project,
+                    "chief_current_fields",
+                    "next_likely_action",
+                    objective,
+                    order_key=event_semantic_order,
+                )
             entry = BriefingEntry(
                 entry_id=f"cos-brief-{_hash(event.event_id)}",
                 project_id=project_id,
@@ -938,6 +1021,12 @@ def project_chief_of_staff(
             wait_reason = _bounded_text(
                 payload.get("reason") or payload.get("condition"),
             )
+            current_wait = project["semantic_waits"].get(wait_id)
+            if (
+                current_wait is not None
+                and event_semantic_order < current_wait["order_key"]
+            ):
+                continue
             project["semantic_waits"][wait_id] = {
                 "wait_id": wait_id,
                 "occurred_at": event.occurred_at,
@@ -951,6 +1040,7 @@ def project_chief_of_staff(
                 "evidence_refs": _strings(
                     payload.get("evidence_refs") or (),
                 ),
+                "order_key": event_semantic_order,
             }
             entry = BriefingEntry(
                 entry_id=f"cos-brief-{_hash(event.event_id)}",
@@ -986,9 +1076,26 @@ def project_chief_of_staff(
                 )),
                 evidence_refs=_strings(payload.get("evidence_refs") or ()),
             )
+            current_attention_order = project[
+                "owner_attention_orders"
+            ].get(attention_id)
+            if (
+                current_attention_order is not None
+                and event_semantic_order < current_attention_order
+            ):
+                continue
             attention[attention_id] = item
+            project["owner_attention_orders"][
+                attention_id
+            ] = event_semantic_order
             project["owner_attention_ids"].add(attention_id)
             project["owner_decision_needed"] = True
+
+    for project in projects.values():
+        for field, snapshot in project["chief_current_fields"].items():
+            project[field] = snapshot["value"]
+        for field, snapshot in project["chief_list_snapshots"].items():
+            _append_unique(project[field], *snapshot["value"])
 
     (
         objective_refs,
@@ -1167,6 +1274,19 @@ def project_chief_of_staff(
                 not wake_id
                 and transition is not None
                 and transition["status"] in _TERMINAL_ITEM_STATES
+                and transition["order_key"] >= semantic_wait["order_key"]
+            ):
+                continue
+            current_status = project["chief_current_fields"].get("status")
+            if (
+                not wake_id
+                and current_status is not None
+                and current_status["value"] in _NON_WAITING_PROJECT_STATES
+                and current_status["order_key"] > semantic_wait["order_key"]
+                and (
+                    transition is None
+                    or current_status["order_key"] > transition["order_key"]
+                )
             ):
                 continue
             unresolved_waits.append(semantic_wait)
@@ -1178,7 +1298,7 @@ def project_chief_of_staff(
             latest_wait = max(
                 unresolved_waits,
                 key=lambda item: (
-                    str(item.get("occurred_at") or ""),
+                    tuple(item.get("order_key") or ()),
                     str(item.get("wait_id") or ""),
                 ),
             )
@@ -1196,7 +1316,15 @@ def project_chief_of_staff(
                 attention_id,
             )
             item = attention.get(attention_id)
-            if transition is None or item is None:
+            attention_order = project["owner_attention_orders"].get(
+                attention_id,
+                (),
+            )
+            if (
+                transition is None
+                or item is None
+                or transition["order_key"] < attention_order
+            ):
                 continue
             attention[attention_id] = replace(
                 item,
@@ -1237,14 +1365,21 @@ def project_chief_of_staff(
             *mission_refs.get(mission_id, ()),
         )
         activity = str(row.get("updated_at") or "")
+        activity_order = _semantic_order_key(
+            activity,
+            row.get("last_event_id"),
+            mission_id,
+        )
         if (
             activity
             and (
-                project["last_meaningful_activity"] is None
-                or activity > project["last_meaningful_activity"]
+                not project["last_meaningful_activity_order"]
+                or activity_order
+                > project["last_meaningful_activity_order"]
             )
         ):
             project["last_meaningful_activity"] = activity
+            project["last_meaningful_activity_order"] = activity_order
         state = str(row.get("state") or "").upper()
         if state in {"FAILED", "BLOCKED", "UNKNOWN"}:
             _append_unique(project["blockers"], f"mission {mission_id} is {state}")
