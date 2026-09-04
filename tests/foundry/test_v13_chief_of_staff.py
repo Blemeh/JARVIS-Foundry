@@ -852,6 +852,7 @@ def test_continuous_project_observation_routes_through_chief_once(
     assert _event_count(database, "chief_of_staff.change_observed") == 1
     assert _event_count(database, "chief_of_staff.candidate_routed") == 1
     assert replay["cycles_dispatched"] == 1
+    assert replay["metrics"]["raw_candidates_generated"] == 1
     assert replay["metrics"]["unique_candidates"] == 0
     assert _event_count(database, "chief_of_staff.") == chief_events_after_first
     assert _event_count(database, "executive.objective_") == 0
