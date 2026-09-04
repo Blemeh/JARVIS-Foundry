@@ -301,6 +301,36 @@ def test_wait_observes_delayed_state_and_honors_stop(
     assert stopped.error_code == "stop_requested"
 
 
+def test_discovery_binds_to_current_revision_after_verified_wait(
+    browser: PlaywrightBrowserConnector,
+    disposable_upload_site: Any,
+) -> None:
+    _server, site = disposable_upload_site
+    with browser.session() as session:
+        capture = session.navigate(f"{site}/wait")
+        assert capture.success
+        waited = session.wait_for_target(
+            target_id="ready-before-discovery",
+            role="status",
+            name="Ready after delay",
+            state="visible",
+            timeout_ms=5_000,
+        )
+        target = session.discover_target(
+            target_id="current-ready-target",
+            role="status",
+            name="Ready after delay",
+            action="click",
+        )
+        clicked = session.execute(target)
+
+    assert waited.outcome == "COMPLETED"
+    assert target.page_revision == waited.after_state["page_revision"]
+    assert target.page_revision != capture.page.page_revision
+    assert clicked.outcome == "COMPLETED"
+    assert clicked.reconciled is True
+
+
 def test_wait_classifies_browser_crash_as_read_failure(
     browser: PlaywrightBrowserConnector,
     disposable_upload_site: Any,

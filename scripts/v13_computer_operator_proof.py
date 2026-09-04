@@ -548,6 +548,17 @@ def _browser_target_drift_probe(
     with connector.session() as session:
         capture = session.navigate(f"{site}/")
         _require(capture.success, "target-drift probe could not navigate")
+        ready = session.wait_for_target(
+            target_id="ready-before-target-drift",
+            role="status",
+            name="Ready after delay",
+            state="visible",
+            timeout_ms=5_000,
+        )
+        _require(
+            ready.outcome == "COMPLETED",
+            "target-drift page did not reach a stable precondition",
+        )
         stale_target = session.discover_target(
             target_id="drift-action-before-mutation",
             role="button",

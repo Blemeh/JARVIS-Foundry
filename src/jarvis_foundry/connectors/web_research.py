@@ -1900,15 +1900,20 @@ class PlaywrightBrowserSession:
             raise BrowserTargetError("target is not visible")
         if not locator.is_enabled():
             raise BrowserTargetError("target is disabled")
+        final_url, page_revision, structural_hash = self._current_revision()
+        if final_url != self._last_identity.final_url:
+            raise BrowserTargetError(
+                "page navigated outside the bounded navigation authority"
+            )
         return PlaywrightTarget(
             target_id=target_id,
             locator={"role": role, "name": name},
             action=action,
             version=1,
-            structural_hash=self._last_identity.structural_hash,
+            structural_hash=structural_hash,
             document_id=self._last_identity.document_id,
-            final_url=self._last_identity.final_url,
-            page_revision=self._last_identity.page_revision,
+            final_url=final_url,
+            page_revision=page_revision,
             role=role,
             name=name,
         )
