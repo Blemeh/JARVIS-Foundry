@@ -488,10 +488,14 @@ def test_existing_objective_dependency_wait_uses_canonical_wake_and_unlocks(
         _valuable_change("change-after-dependency"),
         now=NOW,
     )
+    resumed_project = service.snapshot(now=NOW).project("jarvis")
 
     assert triggered == [waiting.wait_id]
     assert rebuild_wake_state(database)[waiting.wait_id]["status"] == "TRIGGERED"
     assert continued.status == "ROUTED_TO_EXISTING_CANDIDATE_PATH"
+    assert resumed_project is not None
+    assert resumed_project.waiting_condition is None
+    assert resumed_project.status == "ACTIVE"
 
 
 def test_material_owner_decision_is_attention_not_execution(

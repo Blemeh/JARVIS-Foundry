@@ -137,6 +137,7 @@ def _new_project(project_id: str, title: str | None = None) -> dict[str, Any]:
         "owner_attention_ids": set(),
         "jarvis_handled_work": [],
         "intentional_idle": False,
+        "semantic_waits": [],
         "source_event_refs": [],
         "evidence_refs": [],
         "unknown_fields": set(),
@@ -555,10 +556,6 @@ def project_chief_of_staff(
                 project["next_likely_action"] = _bounded_text(
                     values["next_action"],
                 )
-            if values.get("waiting_condition"):
-                project["waiting_condition"] = _bounded_text(
-                    values["waiting_condition"],
-                )
             if values.get("intentional_idle") is True:
                 project["intentional_idle"] = True
             for name, key in (
@@ -617,16 +614,24 @@ def project_chief_of_staff(
             )
             briefing[entry.entry_id] = entry
         elif event.event_type == "chief_of_staff.wait_recorded":
-            project["waiting_condition"] = _bounded_text(
+            wait_reason = _bounded_text(
                 payload.get("reason") or payload.get("condition"),
             )
+            project["semantic_waits"].append({
+                "occurred_at": event.occurred_at,
+                "reason": wait_reason,
+                "canonical_wake_id": (
+                    str(payload["canonical_wake_id"])
+                    if payload.get("canonical_wake_id") else None
+                ),
+            })
             if payload.get("intentional_idle") is True:
                 project["intentional_idle"] = True
             entry = BriefingEntry(
                 entry_id=f"cos-brief-{_hash(event.event_id)}",
                 project_id=project_id,
                 category="WAIT",
-                summary=project["waiting_condition"] or "project is waiting",
+                summary=wait_reason or "project is waiting",
                 occurred_at=event.occurred_at,
                 source_event_refs=(event.event_id,),
                 evidence_refs=_strings(payload.get("evidence_refs") or ()),
@@ -792,6 +797,27 @@ def project_chief_of_staff(
             project["source_event_refs"],
             wake.get("last_event_id"),
         )
+    for project in projects.values():
+        unresolved_waits = []
+        for semantic_wait in project["semantic_waits"]:
+            wake_id = semantic_wait.get("canonical_wake_id")
+            wake_status = str(
+                wakes.get(str(wake_id), {}).get("status") or "",
+            ).upper()
+            if wake_id and wake_status in {"TRIGGERED", "CLEARED"}:
+                continue
+            unresolved_waits.append(semantic_wait)
+        if unresolved_waits:
+            latest_wait = max(
+                unresolved_waits,
+                key=lambda item: (
+                    str(item.get("occurred_at") or ""),
+                    str(item.get("canonical_wake_id") or ""),
+                ),
+            )
+            project["waiting_condition"] = _bounded_text(
+                latest_wait.get("reason") or "project is waiting",
+            )
 
     mission_projects: dict[str, str] = {}
     for project_id, project in projects.items():
