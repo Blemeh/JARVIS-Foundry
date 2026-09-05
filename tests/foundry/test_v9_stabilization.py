@@ -12,6 +12,8 @@ from jarvis_foundry.command_center import CommandCenterServer, build_snapshot
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.events import Event
 from jarvis_foundry.executive.continuous import continuous_snapshot
+from jarvis_foundry.fabric import CapabilitySpec, catalog_snapshot, register_capability
+from jarvis_foundry.fabric.model import Kind, Semantic
 from jarvis_foundry.migrations import SCHEMA_VERSION
 
 
@@ -124,6 +126,49 @@ def test_snapshot_exposes_schema_and_trust_truth(
     assert snapshot["health"]["schema"]["package"] == SCHEMA_VERSION
     assert snapshot["health"]["trust_state"] == "SUSPENDED"
     assert snapshot["release_identity"]["current"] is None
+
+
+def test_capability_catalog_projection_is_read_only_and_authoritative(
+    db: FoundryDatabase, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    register_capability(db, CapabilitySpec(
+        capability_id="cap.test.observe",
+        version="1.0.0",
+        kind=Kind.TOOL,
+        action_kind="test.observe",
+        semantic=Semantic.READ,
+        executor="test observer",
+    ))
+    readonly_flags: list[bool] = []
+    connect = db.connect
+
+    def traced_connect(*, readonly: bool = False):
+        readonly_flags.append(readonly)
+        return connect(readonly=readonly)
+
+    monkeypatch.setattr(db, "connect", traced_connect)
+    before = db.event_count()
+    with db.read_snapshot():
+        projection = catalog_snapshot(db)
+    after = db.event_count()
+
+    assert projection["count"] == 1
+    assert projection["capabilities"][0]["spec"]["capability_id"] == "cap.test.observe"
+    assert projection["capabilities"][0]["readiness"]["state"] == "UNKNOWN"
+    assert projection["capabilities"][0]["readiness"]["trust_state"] == "ESTABLISHED"
+    assert after == before
+    assert readonly_flags and all(readonly_flags)
+
+
+def test_snapshot_exposes_capability_fabric_without_inventing_readiness(
+    db: FoundryDatabase,
+) -> None:
+    snapshot = build_snapshot(db)
+    surface = snapshot["capability_fabric"]
+    assert surface["authority"] == "CAPABILITY_FABRIC_CATALOG"
+    assert surface["source"] == "fabric.catalog.catalog_snapshot"
+    assert surface["status"] == "EMPTY"
+    assert surface["count"] == 0
 
 
 def test_heartbeat_does_not_invalidate_product_cache_but_updates_runtime_head(

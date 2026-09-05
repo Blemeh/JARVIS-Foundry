@@ -415,17 +415,16 @@ def get_spec(database: FoundryDatabase, capability_id: str) -> CapabilitySpec | 
 
 
 def _latest_outcome(database: FoundryDatabase, capability_id: str) -> dict[str, Any] | None:
-    with database.connect() as connection:
-        row = connection.execute(
-            "SELECT payload_json FROM events WHERE event_type = ? AND "
-            "json_extract(payload_json, '$.capability_id') = ? "
-            "ORDER BY sequence DESC LIMIT 1",
-            (OUTCOME, capability_id),
-        ).fetchone()
-    if row is None:
-        return None
-    import json
-    return json.loads(row[0])
+    event = next((
+        event
+        for event in database.events(
+            event_types=(OUTCOME,),
+            newest_first=True,
+            readonly=True,
+        )
+        if str(event.payload.get("capability_id")) == capability_id
+    ), None)
+    return event.payload if event is not None else None
 
 
 def observed_readiness(database: FoundryDatabase, capability_id: str) -> ObservedReadiness:

@@ -496,6 +496,7 @@ def test_existing_non_discovery_consumers_unchanged(db):
                 "effect_truth",
                 "evolution_truth",
                 "portfolio",
+                "capability_fabric",
                 "vault",
             }
     assert set(legacy_keys) == expected

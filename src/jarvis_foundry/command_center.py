@@ -1853,6 +1853,25 @@ def _build_snapshot(
             "error": f"{type(_wi_err).__name__}: {_wi_err}",
         }
 
+    try:
+        from .fabric.catalog import catalog_snapshot
+        fabric_catalog = catalog_snapshot(database)
+        capability_fabric = {
+            "status": "AVAILABLE" if fabric_catalog["count"] else "EMPTY",
+            "authority": "CAPABILITY_FABRIC_CATALOG",
+            "source": "fabric.catalog.catalog_snapshot",
+            **fabric_catalog,
+        }
+    except Exception as error:  # noqa: BLE001 - read model fails closed
+        capability_fabric = {
+            "status": "UNAVAILABLE",
+            "authority": "CAPABILITY_FABRIC_CATALOG",
+            "source": "fabric.catalog.catalog_snapshot",
+            "reason": f"{type(error).__name__}: {error}",
+            "capabilities": [],
+            "count": 0,
+        }
+
     snapshot_payload = {
         "generated_at": generated_at,
         "source_of_truth": {"kind": "append_only_event_ledger", "ledger_head_sequence": event_count, "event_count": event_count},
@@ -1932,6 +1951,7 @@ def _build_snapshot(
         "executive": executive_projection,
         "portfolio": portfolio_projection,
         "discovery": discovery_surface,
+        "capability_fabric": capability_fabric,
     }
     # Keep the pre-V9 top-level snapshot shape byte-compatible for databases
     # with no World Intelligence records.  Once the advisory world layer has
