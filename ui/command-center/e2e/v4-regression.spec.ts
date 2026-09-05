@@ -13,7 +13,7 @@ async function assertNoOverflow(page: import("@playwright/test").Page) {
   expect(overflow).toBeLessThanOrEqual(1);
 }
 
-test("GOD MODE homepage at 1120 shows nav rail and telemetry bar", async ({ page }, testInfo) => {
+test("remastered homepage at 1120 shows compact navigation and command dock", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1120, height: 900 });
   await page.goto("/");
   await page.waitForTimeout(500);
@@ -22,33 +22,33 @@ test("GOD MODE homepage at 1120 shows nav rail and telemetry bar", async ({ page
     const el = document.querySelector(".nav-rail-shell") as HTMLElement;
     return el ? el.getBoundingClientRect().width : 0;
   });
-  expect(railWidth).toBeCloseTo(64, 2);
+  expect(railWidth).toBeCloseTo(78, 2);
 
-  await expect(page.locator(".telemetry-bar")).toBeVisible();
-  await expect(page.locator(".jarvis-os-hero")).toBeVisible();
+  await expect(page.locator(".commandbar")).toBeVisible();
+  await expect(page.locator(".rm-focus-field")).toBeVisible();
   await expect(page.locator("[data-jarvis-core-state]")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Command JARVIS" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Hybrid Worker Activation" })).toBeVisible();
 
   await assertNoOverflow(page);
   await page.screenshot({ path: capturePath(testInfo, "command-deck-1120x900.png"), fullPage: false });
 });
 
-test("GOD MODE homepage at 700 shows stacked layout and core", async ({ page }, testInfo) => {
+test("remastered homepage at 700 shows stacked focus and Nucleus", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 700, height: 900 });
   await page.goto("/");
   await page.waitForTimeout(500);
 
   await expect(page.locator(".nav-rail-shell")).toBeHidden();
   await expect(page.locator("[data-jarvis-core-state]")).toBeVisible();
-  await expect(page.locator(".jarvis-core-label").first()).toContainText("JARVIS");
-  await expect(page.locator(".op-thread").first()).toBeVisible();
-  await expect(page.locator(".intel-stream-item").first()).toBeVisible();
+  await expect(page.locator(".jarvis-nucleus__state").first()).toContainText("EXECUTING");
+  await expect(page.locator(".rm-lifecycle")).toBeVisible();
+  await expect(page.locator(".rm-attention")).toBeVisible();
 
   await assertNoOverflow(page);
   await page.screenshot({ path: capturePath(testInfo, "command-deck-700x900.png"), fullPage: false });
 });
 
-test("GOD MODE visual components at desktop 1600", async ({ page }, testInfo) => {
+test("remastered visual system at desktop 1600", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1600, height: 900 });
   await page.goto("/");
   await page.waitForTimeout(500);
@@ -61,21 +61,33 @@ test("GOD MODE visual components at desktop 1600", async ({ page }, testInfo) =>
 
   await expect(page.locator(".jarvis-os")).toBeVisible();
   await expect(page.locator("[data-jarvis-core-state]")).toBeVisible();
-  await expect(page.locator(".intelligence-rail")).toBeVisible();
-  await expect(page.locator(".telemetry-bar-item").first()).toBeVisible();
-  await expect(page.locator(".owner-command-form")).toBeVisible();
+  await expect(page.locator(".rm-lifecycle")).toBeVisible();
+  await expect(page.locator(".rm-today")).toBeVisible();
+  await expect(page.locator(".commandbar-form")).toBeVisible();
 
   await assertNoOverflow(page);
   await page.screenshot({ path: capturePath(testInfo, "command-deck-1600x900.png"), fullPage: false });
 });
 
-test("GOD MODE route headings are present", async ({ page }) => {
+test("remastered IA and legacy forensic route headings are present", async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 900 });
 
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Command JARVIS" })).toBeVisible();
-  await expect(page.getByText("Active operations")).toBeVisible();
-  await expect(page.getByText("Intelligence stream")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Hybrid Worker Activation" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Today" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "What happens next" })).toBeVisible();
+
+  await page.goto("/work");
+  await expect(page.getByRole("heading", { name: "Work", exact: true })).toBeVisible();
+
+  await page.goto("/world");
+  await expect(page.getByRole("heading", { name: "World", exact: true })).toBeVisible();
+
+  await page.goto("/capabilities");
+  await expect(page.getByRole("heading", { name: "Capabilities", exact: true })).toBeVisible();
+
+  await page.goto("/you");
+  await expect(page.getByRole("heading", { name: "You", exact: true })).toBeVisible();
 
   await page.goto("/operations");
   await expect(page.getByRole("heading", { name: "Operations" })).toBeVisible();

@@ -18,7 +18,13 @@ const outPath = join(evidenceDir, "PRODUCT_VERIFY_RESULT.json")
 const managePreview = process.env.VERIFY_MANAGE_PREVIEW !== "0"
 
 const routes = [
-  { path: "/", slug: "overview", heading: "What should JARVIS move next?" },
+  { path: "/", slug: "overview", heading: "Hybrid Worker Activation", emptyHeading: "No active focus is recorded" },
+  { path: "/work", slug: "work", heading: "Work" },
+  { path: "/world", slug: "world", heading: "World" },
+  { path: "/capabilities", slug: "capabilities", heading: "Capabilities" },
+  { path: "/you", slug: "you", heading: "You" },
+  { path: "/activity", slug: "activity", heading: "Evidence Spine" },
+  { path: "/settings", slug: "settings", heading: "Settings" },
   { path: "/executive", slug: "executive", heading: "Autonomous Executive" },
   { path: "/missions", slug: "missions", heading: "Mission Vectors" },
   {
@@ -176,7 +182,7 @@ try {
             }
           }
           if (scenario === "STREAM_DISCONNECTED") {
-            await page.getByRole("status", { name: /Stream disconnected/i }).waitFor({ state: "visible", timeout: 5_000 })
+            await page.locator(".topbar-disconnect").getByText("Updates paused", { exact: true }).waitFor({ state: "visible", timeout: 5_000 })
           }
           if (consoleErrors.length > 0) {
             pushFailure({ label, kind: "console", detail: consoleErrors.join(" | ") })

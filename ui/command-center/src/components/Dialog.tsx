@@ -8,9 +8,18 @@ interface DialogProps {
   children: ReactNode;
   footer?: ReactNode;
   labelledBy?: string;
+  variant?: "default" | "focus";
 }
 
-export function Dialog({ open, title, onClose, children, footer, labelledBy }: DialogProps) {
+export function Dialog({
+  open,
+  title,
+  onClose,
+  children,
+  footer,
+  labelledBy,
+  variant = "default",
+}: DialogProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -54,7 +63,7 @@ export function Dialog({ open, title, onClose, children, footer, labelledBy }: D
 
   return (
     <div
-      className="dialog-overlay"
+      className={`dialog-overlay ${variant === "focus" ? "dialog-overlay--focus" : ""}`}
       role="presentation"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -62,7 +71,7 @@ export function Dialog({ open, title, onClose, children, footer, labelledBy }: D
     >
       <div
         ref={ref}
-        className="dialog"
+        className={`dialog ${variant === "focus" ? "dialog--focus" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={labelledBy ?? "dialog-title"}

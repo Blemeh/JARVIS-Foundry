@@ -20,15 +20,15 @@ const matrixRoutes: MatrixRoute[] = [
   {
     path: "/",
     slug: "overview",
-    assertVisible: async (page) => {
-      await expect(page.getByRole("heading", { name: "What should JARVIS move next?" })).toBeVisible()
+    assertVisible: async (page, scenario) => {
+      await expect(page.getByRole("heading", { name: scenario === "EMPTY_STATE" ? "No active focus is recorded" : "Hybrid Worker Activation" })).toBeVisible()
     },
   },
   {
     path: "/executive",
     slug: "executive",
     assertVisible: async (page) => {
-      await expect(page.getByRole("heading", { name: "Executive", exact: true })).toBeVisible()
+      await expect(page.getByRole("heading", { name: "Autonomous Executive", exact: true })).toBeVisible()
     },
   },
   {
@@ -211,10 +211,10 @@ for (const scenario of extendedScenarios) {
   test(`matrix extended scenario ${scenario} surfaces honest state`, async ({ page }) => {
     const errors = await attachConsoleGuard(page, scenario)
     await page.goto(`/?scenario=${scenario}`)
-    await expect(page.getByRole("heading", { name: "What should JARVIS move next?" })).toBeVisible()
+    await expect(page.getByRole("heading", { name: "Hybrid Worker Activation" })).toBeVisible()
     await expect(page.locator(".data-source-pill")).toContainText("SIMULATED")
     if (scenario === "STREAM_DISCONNECTED") {
-      await expect(page.getByRole("status", { name: /Stream disconnected/i })).toBeVisible()
+      await expect(page.locator(".topbar-disconnect").getByText("Updates paused", { exact: true })).toBeVisible()
     }
     if (scenario === "PROVIDER_DEGRADED") {
       await page.goto(`/systems?scenario=${scenario}`)

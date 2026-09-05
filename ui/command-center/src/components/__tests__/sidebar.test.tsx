@@ -14,8 +14,11 @@ describe("NavRail", () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByText("JARVIS")).toBeInTheDocument()
-    expect(screen.getByText("Timeline")).toBeInTheDocument()
-    expect(screen.getByText("Missions")).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "JARVIS" })).toHaveAttribute("href", "/")
+    expect(screen.getByRole("link", { name: "WORK" })).toHaveAttribute("href", "/work")
+    expect(screen.getByRole("link", { name: "WORLD" })).toHaveAttribute("href", "/world")
+    expect(screen.getByRole("link", { name: "CAPABILITIES" })).toHaveAttribute("href", "/capabilities")
+    expect(screen.getByRole("link", { name: "YOU" })).toHaveAttribute("href", "/you")
+    expect(screen.getByRole("link", { name: "Timeline" })).toHaveAttribute("href", "/timeline")
   })
 })

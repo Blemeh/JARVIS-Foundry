@@ -36,17 +36,37 @@ test("renders the source-backed autonomous loop across Command Center surfaces",
   expect(snapshot.source_of_truth).toBeTruthy()
 
   await page.goto("/")
-  await expect(page.getByRole("heading", { name: "What should JARVIS move next?" })).toBeVisible()
-  await expect(page.locator(".data-source-pill")).toContainText(/LIVE|DEGRADED/)
-  for (const label of ["Runtime", "Trust", "Active mission", "Health", "Alerts"]) {
-    await expect(page.getByText(label, { exact: true }).first()).toBeVisible()
-  }
+  await expect(page.getByRole("main").getByRole("heading", { level: 1 }).first()).toBeVisible()
+  await expect(page.locator(".data-source-pill")).toContainText("LIVE")
+  await expect(page.locator("[data-jarvis-core-state]")).toBeVisible()
+  await expect(page.getByRole("region", { name: "Today" })).toBeVisible()
+  await expect(page.getByRole("region", { name: "Recently completed" }).locator(`a[href="/missions/${missionId}"]`)).toBeVisible()
+  await expect(page.getByRole("region", { name: "Discovered" })).toBeVisible()
+  await expect(page.getByRole("region", { name: "What happens next" })).toBeVisible()
+  await expect(page.getByRole("region", { name: "Persistent JARVIS command surface" })).toBeVisible()
   const overviewText = await page.locator("body").innerText()
   expect(overviewText).not.toContain("Complete roadmap V4 without touching live state")
   expect(overviewText).not.toContain("VERIFIER_RUN_1142")
   expect(overviewText).not.toContain("8F9A.22C")
   const overviewCapture = capturePath("live-overview-1600x1280.png")
   if (overviewCapture) await page.screenshot({ path: overviewCapture, fullPage: false })
+
+  await page.goto("/work?status=completed")
+  await expect(page.getByRole("heading", { name: "Work", exact: true })).toBeVisible()
+  await expect(page.locator(`a[href="/missions/${missionId}"]`)).toBeVisible()
+
+  await page.goto("/world")
+  await expect(page.getByRole("heading", { name: "World", exact: true })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Awareness field" })).toBeVisible()
+
+  await page.goto("/capabilities")
+  await expect(page.getByRole("heading", { name: "Capabilities", exact: true })).toBeVisible()
+  await expect(page.getByText("Gmail remains deferred by owner", { exact: true })).toBeVisible()
+  await expect(page.getByText("DEFERRED_BY_OWNER", { exact: true })).toBeVisible()
+
+  await page.goto("/you")
+  await expect(page.getByRole("heading", { name: "You", exact: true })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Owner authority remains human" })).toBeVisible()
 
   await page.goto(`/missions/${encodeURIComponent(missionId)}`)
   const pipeline = page.locator(".md-pipeline")
@@ -61,9 +81,10 @@ test("renders the source-backed autonomous loop across Command Center surfaces",
   if (missionCapture) await page.screenshot({ path: missionCapture, fullPage: false })
 
   await page.goto("/executive")
-  await expect(page.getByText("What happened", { exact: true })).toBeVisible()
-  await expect(page.getByText("What matters", { exact: true })).toBeVisible()
-  await expect(page.getByText("Owner action", { exact: true })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Autonomous Executive", exact: true })).toBeVisible()
+  await expect(page.getByRole("region", { name: "Executive overview" })).toBeVisible()
+  await expect(page.getByRole("region", { name: "Autonomous activity" })).toBeVisible()
+  await expect(page.getByText(/^Owner action:/).first()).toBeVisible()
   const executiveCapture = capturePath("live-executive-1600x1280.png")
   if (executiveCapture) await page.screenshot({ path: executiveCapture, fullPage: false })
 

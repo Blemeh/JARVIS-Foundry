@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 const sections = [
-  { path: "/", name: "Overview", heading: "What should JARVIS move next?" },
+  { path: "/", name: "Overview", heading: "Hybrid Worker Activation" },
   { path: "/missions", name: "Missions", heading: "Mission Vectors" },
   { path: "/missions/M-HYB-014", name: "Mission Detail", heading: "Hybrid Worker Activation" },
   { path: "/agents", name: "Agents", heading: "Specialist Fleet" },
@@ -85,7 +85,7 @@ test("Emergency STOP simulates without touching the network or real runtime", as
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByText("SIMULATED STOP - UI CANDIDATE")).toBeVisible();
   await expect(dialog.getByText("NO PRODUCTION SIDE EFFECT")).toBeVisible();
-  await expect(page.getByText(/STOP simulation active/i).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: /STOP simulation active/i }).first()).toBeVisible();
   expect(requests).toEqual([]);
   expect(errors).toEqual([]);
 });

@@ -14,6 +14,7 @@ import "./styles/v4.css";
 import "./styles/god-mode.css";
 import "./styles/autonomy.css";
 import "./components/jarvis-core/jarvis-core.css";
+import "./styles/remaster.css";
 import { App } from "./App";
 import { CommandCenterProvider } from "./context/CommandCenterContext";
 

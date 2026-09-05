@@ -1,352 +1,244 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Check, History, Keyboard, Search, Terminal } from "lucide-react";
+import { ArrowRight, Check, CircleAlert, Command, Search, Send, Sparkles } from "lucide-react";
 import { useCommandCenter } from "../context/CommandCenterContext";
 import type { SearchResultItem, SearchResults } from "../lib/contracts";
 import { agentRunToWorker } from "../lib/cohesion";
 import { sourceModeLabel } from "../lib/sourceMode";
+import { StopControl } from "./EmergencyStop";
 
 const groupOrder: { key: keyof SearchResults; label: string }[] = [
-  { key: "missions", label: "Missions" },
+  { key: "missions", label: "Work" },
   { key: "agents", label: "Agents" },
   { key: "evidence", label: "Evidence" },
   { key: "systems", label: "Systems" },
   { key: "memory", label: "Memory" },
-  { key: "timeline", label: "Timeline" },
+  { key: "timeline", label: "Activity" },
 ];
 
-interface Intent {
-  label: string;
-  to: string;
-}
+interface Intent { label: string; to: string }
 
-function parseIntent(raw: string): Intent | null {
+function parseCommandIntent(raw: string): Intent | null {
   const s = raw.trim().toLowerCase();
   if (!s) return null;
+  const destinations: Array<[RegExp, string, string]> = [
+    [/^(?:open|show|go to)\s+(?:jarvis|home|focus)$/, "Open current focus", "/"],
+    [/^(?:open|show|go to)\s+work$/, "Open work", "/work"],
+    [/^(?:open|show|go to)\s+world$/, "Open world", "/world"],
+    [/^(?:open|show|go to)\s+capabilities$/, "Open capabilities", "/capabilities"],
+    [/^(?:open|show|go to)\s+(?:you|owner)$/, "Open owner context", "/you"],
+    [/^(?:open|show|go to)\s+(?:activity|timeline)$/, "Open activity", "/activity"],
+    [/^(?:open|show|go to)\s+evidence$/, "Open evidence", "/evidence"],
+  ];
+  for (const [pattern, label, to] of destinations) if (pattern.test(s)) return { label, to };
 
-  const missionMatch = s.match(/(?:show|open|view|go to|navigate to)?\s*(?:mission(?:s)?)\s+([a-z]{1,3}-[a-z0-9-]+)/i);
-  if (missionMatch) return { label: `Open mission ${missionMatch[1].toUpperCase()}`, to: `/missions/${missionMatch[1].toUpperCase()}` };
-
-  const agentMatch = s.match(/(?:show|open|view)\s+(?:agent|worker)\s*([a-z]{1,4}-[a-z0-9-]+|a-\d+)/i);
-  if (agentMatch) {
-    const id = agentMatch[1].toUpperCase();
-    const workerId = agentRunToWorker[id] ?? id;
-    return { label: `Open agent ${id}`, to: `/agents/${workerId}` };
+  const mission = s.match(/(?:show|open|view)?\s*missions?\s+([a-z]{1,4}-[a-z0-9-]+)/i);
+  if (mission) return { label: `Open mission ${mission[1].toUpperCase()}`, to: `/missions/${mission[1].toUpperCase()}` };
+  const agent = s.match(/(?:show|open|view)\s+(?:agent|worker)\s*([a-z]{1,4}-[a-z0-9-]+|a-\d+)/i);
+  if (agent) {
+    const id = agent[1].toUpperCase();
+    return { label: `Open agent ${id}`, to: `/agents/${agentRunToWorker[id] ?? id}` };
   }
-
-  const evidenceMatch = s.match(/(?:show|open|view)\s+evidence\s*([a-z]{2,3}-[a-z0-9-]+)/i);
-  if (evidenceMatch) return { label: `Open evidence ${evidenceMatch[1].toUpperCase()}`, to: `/evidence/${evidenceMatch[1].toUpperCase()}` };
-
-  const memoryMatch = s.match(/(?:show|open|view)\s+memory\s*([a-z]{1,3}-[a-z0-9]+)/i);
-  if (memoryMatch) return { label: `Open memory ${memoryMatch[1]}`, to: `/memory/${memoryMatch[1]}` };
-
-  const systemMatch = s.match(/(?:show|open|view)\s+system\s+([a-z-]+)/i);
-  if (systemMatch) {
-    const name = systemMatch[1].toLowerCase();
-    const map: Record<string, string> = {
-      supervisor: "SYS-SUPERVISOR",
-      gateway: "SYS-GATEWAY",
-      hermes: "SYS-HERMES-WORKER",
-      memory: "SYS-MEMORY",
-      ledger: "SYS-LEDGER",
-      stop: "SYS-STOP",
-      verification: "SYS-VERIFICATION",
-      routing: "SYS-ROUTING",
-      workers: "SYS-WORKERS",
-      worker: "SYS-WORKERS",
-      connectors: "SYS-CONNECTORS",
-      evidence: "SYS-EVIDENCE",
-      foundry: "SYS-FOUNDRY",
-    };
-    const id = map[name] ?? `SYS-${name.toUpperCase()}`;
-    return { label: `Open system ${id}`, to: `/systems/${id}` };
-  }
-
-  if (/show\s+failed\s+verification/.test(s)) return { label: "Failed verification results", to: "/evidence?verdict=FAILED" };
-  if (/show\s+degraded\s+systems/.test(s)) return { label: "Degraded systems", to: "/systems?health=degraded" };
-  if (/show\s+evidence\s+for\s+mission\s+([a-z]{1,3}-[a-z0-9-]+)/i.test(s)) {
-    const m = s.match(/show\s+evidence\s+for\s+mission\s+([a-z]{1,3}-[a-z0-9-]+)/i)!;
-    return { label: `Evidence for ${m[1].toUpperCase()}`, to: `/evidence?mission=${m[1].toUpperCase()}` };
-  }
-  if (/timeline\s+for\s+([a-z]{1,3}-[a-z0-9-]+)/i.test(s)) {
-    const m = s.match(/timeline\s+for\s+([a-z]{1,3}-[a-z0-9-]+)/i)!;
-    return { label: `Timeline for ${m[1].toUpperCase()}`, to: `/timeline?mission=${m[1].toUpperCase()}` };
-  }
-  if (/show\s+blocked\s+missions/.test(s)) return { label: "Blocked missions", to: "/missions?status=blocked" };
-  if (/show\s+active\s+agents/.test(s)) return { label: "Active agents", to: "/agents?status=active" };
-  if (/show\s+(supervisor|stop\b|hermes\b|gateway\b|ledger\b)/.test(s)) {
-    const name = s.match(/show\s+(supervisor|stop\b|hermes\b|gateway\b|ledger\b)/)![1];
-    const map: Record<string, string> = {
-      supervisor: "SYS-SUPERVISOR",
-      stop: "SYS-STOP",
-      hermes: "SYS-HERMES-WORKER",
-      gateway: "SYS-GATEWAY",
-      ledger: "SYS-LEDGER",
-    };
-    return { label: `Open system ${map[name]}`, to: `/systems/${map[name]}` };
-  }
-  if (/notifications|alerts|exceptions/.test(s)) return { label: "Notification center", to: "/notifications" };
+  const evidence = s.match(/(?:show|open|view)\s+evidence\s*([a-z]{2,4}-[a-z0-9-]+)/i);
+  if (evidence) return { label: `Open evidence ${evidence[1].toUpperCase()}`, to: `/evidence/${evidence[1].toUpperCase()}` };
+  if (/failed\s+verification/.test(s)) return { label: "Show failed verification", to: "/evidence?verdict=FAILED" };
+  if (/blocked\s+(?:work|missions)/.test(s)) return { label: "Show blocked work", to: "/work?status=blocked" };
+  if (/degraded\s+systems/.test(s)) return { label: "Show degraded systems", to: "/systems?health=degraded" };
   return null;
 }
 
+const delegationModes = [
+  { label: "Tell me", detail: "Explain & advise" },
+  { label: "Prepare", detail: "Draft, do not act" },
+  { label: "Handle", detail: "Execute in scope" },
+  { label: "Watch", detail: "Monitor & alert" },
+] as const;
+type DelegationMode = (typeof delegationModes)[number]["label"];
+
+function delegationBody(raw: string): string {
+  const trimmed = raw.trimStart();
+  const currentPrefix = delegationModes.find((item) =>
+    trimmed.toLowerCase().startsWith(`${item.label.toLowerCase()}:`));
+  return currentPrefix ? trimmed.slice(currentPrefix.label.length + 1).trimStart() : trimmed;
+}
+
+function delegatedGoal(mode: DelegationMode, raw: string): string {
+  const body = delegationBody(raw).trim();
+  return body ? `${mode}: ${body}` : "";
+}
+
+const modePlaceholders: Record<DelegationMode, string> = {
+  "Tell me": "Ask JARVIS for a direct briefing…",
+  Prepare: "Describe the outcome to prepare — no external action…",
+  Handle: "Delegate an outcome within current authority…",
+  Watch: "Name what JARVIS should monitor and report…",
+};
+
 export function CommandBar() {
-  const { client, stopActive, sourceMode } = useCommandCenter();
+  const { client, stopActive, sourceMode, mutationsEnabled } = useCommandCenter();
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState("");
   const [results, setResults] = useState<SearchResults | null>(null);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [history, setHistory] = useState<string[]>([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
-  const [status, setStatus] = useState<string | null>(null);
-  const [helpOpen, setHelpOpen] = useState(false);
+  const [status, setStatus] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  const [sending, setSending] = useState(false);
+  const [mode, setMode] = useState<DelegationMode>("Tell me");
 
   const flat = useMemo(() => {
     if (!results) return [] as { item: SearchResultItem; group: string }[];
-    return groupOrder.flatMap((g) =>
-      results[g.key].map((item) => ({ item, group: g.label })),
-    );
+    return groupOrder.flatMap((group) => results[group.key].map((item) => ({ item, group: group.label })));
   }, [results]);
+  const commandBody = delegationBody(value);
+  const intent = parseCommandIntent(commandBody);
 
   useEffect(() => {
-    if (!value.trim()) return;
+    const query = delegationBody(value).trim();
+    if (!query) return;
     let cancelled = false;
-    void client.search(value).then((r) => {
-      if (!cancelled) setResults(r);
-    });
-    return () => {
-      cancelled = true;
-    };
+    void client.search(query).then((next) => { if (!cancelled) setResults(next); });
+    return () => { cancelled = true; };
   }, [value, client]);
 
   useEffect(() => {
-    const onKey = (e: globalThis.KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      const typing =
-        target instanceof HTMLInputElement ||
-        target instanceof HTMLTextAreaElement ||
-        target instanceof HTMLSelectElement ||
-        target?.isContentEditable;
-      if (typing) return;
-      if (e.key === "/") {
-        e.preventDefault();
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      const target = event.target as HTMLElement;
+      const typing = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target?.isContentEditable;
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
         inputRef.current?.focus();
-      } else if (e.key === "?") {
-        e.preventDefault();
-        setHelpOpen((v) => !v);
-      } else if (e.key === "g") {
-        const done = (letter: string) => {
-          const map: Record<string, string> = { m: "/missions", a: "/agents", e: "/evidence", t: "/timeline", s: "/systems" };
-          if (map[letter]) navigate(map[letter]);
-        };
-        const handler = (ev: globalThis.KeyboardEvent) => {
-          document.removeEventListener("keydown", handler);
-          if (!ev.ctrlKey && !ev.metaKey && !ev.altKey) done(ev.key.toLowerCase());
-        };
-        document.addEventListener("keydown", handler);
-        window.setTimeout(() => document.removeEventListener("keydown", handler), 600);
+      } else if (!typing && event.key === "/") {
+        event.preventDefault();
+        inputRef.current?.focus();
       }
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [navigate]);
+  }, []);
 
+  const clearSoon = () => window.setTimeout(() => setStatus(null), 5200);
   const navigateTo = (to: string, label: string) => {
-    setStatus(`LOCAL NAVIGATION - opened ${label}. No runtime command executed.`);
-    window.setTimeout(() => setStatus(null), 4200);
+    setStatus({ kind: "ok", text: `${label} · local navigation` });
+    setValue(""); setResults(null); setActiveIndex(-1); navigate(to); clearSoon();
+  };
+
+  const selectMode = (nextMode: DelegationMode) => {
+    const body = delegationBody(value);
+    setMode(nextMode);
+    setValue(body.trim() ? `${nextMode}: ${body}` : "");
     setResults(null);
     setActiveIndex(-1);
-    setValue("");
-    navigate(to);
+    window.requestAnimationFrame(() => inputRef.current?.focus());
   };
 
-  const submit = (e?: FormEvent) => {
-    e?.preventDefault();
-    const cmd = value.trim();
-    if (!cmd) return;
-    setHistory((h) => [cmd, ...h].slice(0, 8));
-    setHistoryIndex(-1);
-    const intent = parseIntent(cmd);
-    if (intent) {
-      navigateTo(intent.to, intent.label);
-      return;
+  const submit = async (event?: FormEvent) => {
+    event?.preventDefault();
+    const body = delegationBody(value).trim();
+    const command = delegatedGoal(mode, value);
+    if (!command || sending) return;
+    setHistory((current) => [command, ...current.filter((entry) => entry !== command)].slice(0, 6));
+    const parsed = parseCommandIntent(body);
+    if (parsed) { navigateTo(parsed.to, parsed.label); return; }
+    if (!mutationsEnabled || stopActive) {
+      setStatus({ kind: "error", text: `Command held · ${stopActive ? "STOP is active" : `${sourceModeLabel(sourceMode)} source is not writable`}` });
+      clearSoon(); return;
     }
-    if (cmd === "help") {
-      setHelpOpen(true);
-      setValue("");
-      return;
-    }
-    setValue("");
-    setStatus(`LOCAL ONLY - "${cmd}" captured in this candidate. No runtime invocation.`);
-    window.setTimeout(() => setStatus(null), 4200);
-  };
-
-  const onKeyDown = (e: ReactKeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Escape") {
-      setResults(null);
-      setHelpOpen(false);
-      inputRef.current?.blur();
-      return;
-    }
-    if (e.key === "ArrowDown" && flat.length > 0) {
-      e.preventDefault();
-      setActiveIndex((i) => (i + 1) % flat.length);
-    } else if (e.key === "ArrowUp" && flat.length > 0) {
-      e.preventDefault();
-      setActiveIndex((i) => (i <= 0 ? flat.length - 1 : i - 1));
-    } else if (e.key === "Enter") {
-      if (activeIndex >= 0 && flat[activeIndex]) {
-        e.preventDefault();
-        navigateTo(flat[activeIndex].item.to, flat[activeIndex].item.label);
+    setSending(true);
+    try {
+      const result = await client.submitOwnerGoal(command);
+      if (result.accepted) {
+        setValue(""); setResults(null);
+        setStatus({ kind: "ok", text: `Durable owner goal accepted${result.directiveId ? ` · ${result.directiveId}` : ""}` });
+      } else {
+        setStatus({ kind: "error", text: result.error ?? "Owner goal rejected" });
       }
-    } else if (e.key === "ArrowUp" && history.length > 0) {
-      e.preventDefault();
-      const next = Math.min(historyIndex + 1, history.length - 1);
-      setHistoryIndex(next);
-      setValue(history[next]);
-    } else if (e.key === "ArrowDown" && historyIndex >= 0) {
-      e.preventDefault();
-      const next = historyIndex - 1;
-      setHistoryIndex(next);
-      setValue(next >= 0 ? history[next] : "");
+    } catch (error) {
+      setStatus({ kind: "error", text: error instanceof Error ? error.message : String(error) });
+    } finally {
+      setSending(false); clearSoon();
     }
   };
 
-  const intent = parseIntent(value);
+  const onKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Escape") { setResults(null); inputRef.current?.blur(); return; }
+    if (event.key === "ArrowDown" && flat.length > 0) { event.preventDefault(); setActiveIndex((index) => (index + 1) % flat.length); }
+    if (event.key === "ArrowUp" && flat.length > 0) { event.preventDefault(); setActiveIndex((index) => index <= 0 ? flat.length - 1 : index - 1); }
+    if (event.key === "Enter" && activeIndex >= 0 && flat[activeIndex]) {
+      event.preventDefault(); navigateTo(flat[activeIndex].item.to, flat[activeIndex].item.label);
+    }
+  };
 
   return (
-    <div className="commandbar" role="region" aria-label="Command surface">
-      <div className="commandbar-inner">
-        <Terminal size={18} className="commandbar-icon" aria-hidden="true" />
-        <form className="commandbar-form" onSubmit={submit} aria-label={`${sourceModeLabel(sourceMode)} command and search`}>
-          <Search size={14} className="commandbar-search-icon" aria-hidden="true" />
-          <input
-            ref={inputRef}
-            className="commandbar-input"
-            value={value}
-            onChange={(e) => {
-              const v = e.target.value;
-              setValue(v);
-              if (!v.trim()) {
-                setResults(null);
-                setActiveIndex(-1);
-              }
-            }}
-            onKeyDown={onKeyDown}
-            placeholder={
-              stopActive
-                ? `Search frozen during ${sourceModeLabel(sourceMode)} STOP...`
-                : "Search missions, agents, evidence, systems... or press /"
-            }
-            aria-label={`Command and search input (${sourceModeLabel(sourceMode)})`}
-            aria-expanded={flat.length > 0 || intent !== null}
-            role="combobox"
-            aria-controls="command-results"
-            aria-autocomplete="list"
-          />
+    <div className="commandbar" role="region" aria-label="Persistent JARVIS command surface">
+      <div className="commandbar-modes" aria-label="Delegation level">
+        <span className="commandbar-modes-label">Delegate</span>
+        {delegationModes.map((item) => (
           <button
-            type="submit"
-            className="btn btn-ghost commandbar-execute"
-            disabled={stopActive}
-            title={stopActive ? `Mutation-like commands are frozen during ${sourceModeLabel(sourceMode)} STOP` : "Execute (local navigation only)"}
+            key={item.label}
+            type="button"
+            className={`commandbar-mode ${mode === item.label ? "is-active" : ""}`}
+            aria-pressed={mode === item.label}
+            title={`${item.label}: ${item.detail}`}
+            onClick={() => selectMode(item.label)}
           >
-            Execute
+            <strong>{item.label}</strong>
+            <small>{item.detail}</small>
           </button>
-        </form>
-        <div className="commandbar-side">
-          {status ? (
-            <span className="commandbar-status" role="status">
-              <Check size={12} aria-hidden="true" />
-              {status}
-            </span>
-          ) : (
-            <>
-              <span className="commandbar-suggest-label">
-                <History size={12} aria-hidden="true" />
-                {history.length > 0 ? `History ${history.length}` : "Try:"}
-              </span>
-              {["show mission M-HYB-014", "show failed verification", "show degraded systems"].map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  className="commandbar-suggest"
-                  onClick={() => setValue(s)}
-                >
-                  {s}
-                </button>
-              ))}
-              <button
-                type="button"
-                className="commandbar-help-btn"
-                aria-label="Keyboard shortcuts"
-                aria-expanded={helpOpen}
-                onClick={() => setHelpOpen((v) => !v)}
-              >
-                <Keyboard size={14} aria-hidden="true" />
-              </button>
-            </>
-          )}
-        </div>
+        ))}
       </div>
+      <form className="commandbar-form" onSubmit={(event) => void submit(event)}>
+        <label className="commandbar-mobile-mode">
+          <span>Delegation mode</span>
+          <select
+            value={mode}
+            aria-label="Delegation mode"
+            onChange={(event) => selectMode(event.target.value as DelegationMode)}
+          >
+            {delegationModes.map((item) => <option key={item.label} value={item.label}>{item.label}</option>)}
+          </select>
+        </label>
+        <Sparkles size={16} className="commandbar-icon" aria-hidden="true" />
+        <input
+          ref={inputRef}
+          className="commandbar-input"
+          value={value}
+          onChange={(event) => { const next = event.target.value; setValue(next); setActiveIndex(-1); if (!next.trim()) setResults(null); }}
+          onKeyDown={onKeyDown}
+          placeholder={stopActive ? "STOP active — inspect or resume before directing work" : modePlaceholders[mode]}
+          aria-label={`Direct JARVIS or search — ${mode} mode (${sourceModeLabel(sourceMode)})`}
+          aria-expanded={Boolean(value && (intent || flat.length))}
+          aria-controls="command-results"
+          role="combobox"
+          aria-autocomplete="list"
+        />
+        <span className="commandbar-shortcut" aria-hidden="true"><Command size={11} />K</span>
+        <button type="submit" className="commandbar-send" disabled={!commandBody.trim() || sending || stopActive} aria-label="Send command">
+          {sending ? <span className="commandbar-sending" /> : <Send size={15} aria-hidden="true" />}
+        </button>
+      </form>
+      <StopControl compact label="Emergency STOP" />
 
-      {flat.length > 0 || intent ? (
-        <div className="command-results" id="command-results" role="listbox" aria-label="Search results">
+      {status ? (
+        <div className={`commandbar-status commandbar-status--${status.kind}`} role="status">
+          {status.kind === "ok" ? <Check size={13} aria-hidden="true" /> : <CircleAlert size={13} aria-hidden="true" />}{status.text}
+        </div>
+      ) : null}
+      {value && (intent || flat.length > 0) ? (
+        <div className="command-results" id="command-results" role="listbox" aria-label="Command matches">
           {intent ? (
-            <button type="button" className="command-intent" role="option" aria-selected={activeIndex === -1} onClick={() => navigateTo(intent!.to, intent!.label)} onMouseEnter={() => setActiveIndex(-1)}>
-              <ArrowRight size={13} aria-hidden="true" />
-              <span className="t-label">Navigate</span>
-              <span className="t-mono">{intent.label}</span>
+            <button type="button" className="command-intent" role="option" aria-selected="false" onClick={() => navigateTo(intent.to, intent.label)}>
+              <ArrowRight size={14} aria-hidden="true" /><span>{intent.label}</span><small>Navigate</small>
             </button>
           ) : null}
-          {groupOrder.map((g) => {
-            const items = results?.[g.key] ?? [];
-            if (items.length === 0) return null;
-            return (
-              <div key={g.key} className="command-group">
-                <span className="t-label command-group-label">{g.label}</span>
-                {items.map((item) => {
-                  const idx = flat.findIndex((f) => f.item.id === item.id && f.item.kind === item.kind);
-                  return (
-                    <button
-                      key={`${item.kind}-${item.id}`}
-                      type="button"
-                      className={`command-result ${activeIndex === idx ? "command-result-active" : ""}`}
-                      role="option"
-                      aria-selected={activeIndex === idx}
-                      onClick={() => navigateTo(item.to, item.label)}
-                      onMouseEnter={() => setActiveIndex(idx)}
-                    >
-                      <span className="t-mono command-result-id">{item.id}</span>
-                      <span className="command-result-main">
-                        <span className="command-result-label">{item.label}</span>
-                        <span className="t-mono command-result-sub">{item.sublabel}</span>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            );
-          })}
-          {flat.length === 0 && !intent ? (
-            <div className="command-empty">
-              <span className="t-mono text-dim">No {sourceModeLabel(sourceMode).toLowerCase()} objects match "{value}".</span>
-            </div>
-          ) : null}
+          {flat.slice(0, 8).map(({ item, group }, index) => (
+            <button key={`${item.kind}-${item.id}`} type="button" className={`command-result ${activeIndex === index ? "command-result-active" : ""}`} role="option" aria-selected={activeIndex === index} onClick={() => navigateTo(item.to, item.label)} onMouseEnter={() => setActiveIndex(index)}>
+              <Search size={13} aria-hidden="true" /><span><strong>{item.label}</strong><small>{group} · {item.sublabel}</small></span>
+            </button>
+          ))}
         </div>
       ) : null}
-
-      {helpOpen ? (
-        <div className="command-help" role="dialog" aria-label="Keyboard shortcuts">
-          <span className="t-label command-help-title">Shortcuts</span>
-          <ul className="command-help-list">
-            <li><span className="kbd">/</span><span className="t-mono">Focus search / command</span></li>
-            <li><span className="kbd">g</span><span className="t-mono">then <span className="kbd">m</span> missions · <span className="kbd">a</span> agents · <span className="kbd">e</span> evidence · <span className="kbd">t</span> timeline · <span className="kbd">s</span> systems</span></li>
-            <li><span className="kbd">?</span><span className="t-mono">Toggle this help</span></li>
-            <li><span className="kbd">Esc</span><span className="t-mono">Close dialogs / search</span></li>
-          </ul>
-          <span className="t-mono text-dim command-help-note">Navigation is local. No live JARVIS command is ever invoked.</span>
-        </div>
-      ) : null}
+      {!value && history.length > 0 ? <span className="commandbar-history" title={history.join(" · ")}>Last: {history[0]}</span> : null}
     </div>
   );
 }

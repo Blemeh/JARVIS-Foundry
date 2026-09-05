@@ -1,11 +1,11 @@
 import { test, expect } from "@playwright/test";
 
-test("cinematic JARVIS core renders on overview with state label", async ({ page }) => {
+test("stateful JARVIS Nucleus renders on overview with state label", async ({ page }) => {
   await page.goto("/");
   const core = page.locator("[data-jarvis-core-state]").first();
   await expect(core).toBeVisible();
-  await expect(page.locator(".jarvis-core-label").first()).toContainText("JARVIS");
-  await expect(core).toHaveAttribute("data-jarvis-core-state", /^(HEALTHY_IDLE|ACTIVE_MISSION|VERIFYING|DEGRADED|STOPPED|DISCONNECTED)$/);
+  await expect(page.locator(".jarvis-nucleus__state").first()).toBeVisible();
+  await expect(core).toHaveAttribute("data-jarvis-core-state", /^(waiting|observing|planning|researching|executing|verifying|recovering|blocked|needs_owner|stopped|unknown)$/);
 });
 
 test("deep-linked mission detail keeps cinematic shell and STOP control", async ({ page }) => {
@@ -16,21 +16,22 @@ test("deep-linked mission detail keeps cinematic shell and STOP control", async 
 
 test("STOP scenario shifts core to stopped state", async ({ page }) => {
   await page.goto("/?scenario=STOP_ACTIVE");
-  await expect(page.locator('[data-jarvis-core-state="STOPPED"]')).toBeVisible();
+  await expect(page.locator('[data-jarvis-core-state="stopped"]')).toBeVisible();
 });
 
-test("stream disconnected scenario shifts core state", async ({ page }) => {
+test("stream disconnected scenario exposes paused updates without inventing a core state", async ({ page }) => {
   await page.goto("/?scenario=STREAM_DISCONNECTED");
-  await expect(page.locator('[data-jarvis-core-state="DISCONNECTED"]')).toBeVisible();
+  await expect(page.getByRole("banner").getByText("Updates paused", { exact: true })).toBeVisible();
+  await expect(page.locator("[data-jarvis-core-state]")).toBeVisible();
 });
 
 test("responsive nav reaches key routes", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
-  await page.locator(".mobile-nav").getByRole("link", { name: "Missions", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Mission Vectors" })).toBeVisible();
+  await page.locator(".mobile-nav").getByRole("link", { name: "Work", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Work", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Open all sections" }).click({ force: true });
-  await page.getByRole("dialog", { name: "Navigation" }).getByRole("link", { name: "Evidence", exact: true }).click();
+  await page.getByRole("dialog", { name: "Navigation" }).getByRole("link", { name: "EVIDENCE", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Evidence Ledger" })).toBeVisible();
 });
 

@@ -1,15 +1,14 @@
 import { test, expect } from "@playwright/test"
 
 const primaryRoutes = [
-  { path: "/", nav: "Overview", heading: "What should JARVIS move next?" },
-  { path: "/executive", nav: "Executive", heading: "Executive" },
-  { path: "/missions", nav: "Missions", heading: "Mission Vectors" },
-  { path: "/agents", nav: "Agents", heading: "Specialist Fleet" },
-  { path: "/evidence", nav: "Evidence", heading: "Evidence Ledger" },
-  { path: "/memory", nav: "Memory", heading: "Knowledge Graph" },
-  { path: "/systems", nav: "Systems", heading: "Telemetry" },
-  { path: "/timeline", nav: "Timeline", heading: "Evidence Spine" },
-  { path: "/notifications", nav: "Notifications", heading: "Notification / Exception Center" },
+  { path: "/", nav: "JARVIS", heading: "Hybrid Worker Activation" },
+  { path: "/work", nav: "WORK", heading: "Work" },
+  { path: "/world", nav: "WORLD", heading: "World" },
+  { path: "/capabilities", nav: "CAPABILITIES", heading: "Capabilities" },
+  { path: "/you", nav: "YOU", heading: "You" },
+  { path: "/activity", nav: "ACTIVITY", heading: "Evidence Spine" },
+  { path: "/evidence", nav: "EVIDENCE", heading: "Evidence Ledger" },
+  { path: "/settings", nav: "SETTINGS", heading: "Settings" },
 ]
 
 test.describe("owner workflow navigation", () => {
@@ -19,7 +18,7 @@ test.describe("owner workflow navigation", () => {
       await expect(page.getByRole("heading", { name: route.heading, exact: true })).toBeVisible()
       await expect(page.locator(".data-source-pill")).toContainText("SIMULATED")
       const nav = page.getByRole("navigation", { name: "Primary" })
-      await expect(nav.getByRole("link", { name: route.nav })).toHaveAttribute("aria-current", "page")
+      await expect(nav.getByRole("link", { name: route.nav, exact: true })).toHaveAttribute("aria-current", "page")
     })
   }
 

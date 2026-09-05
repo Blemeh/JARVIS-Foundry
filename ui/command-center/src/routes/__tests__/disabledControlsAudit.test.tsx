@@ -1,11 +1,13 @@
 import { render, screen, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { MemoryRouter, Route, Routes } from "react-router-dom"
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { CommandCenterProvider } from "../../context/CommandCenterContext"
-import { Overview } from "../Overview"
+import { MockJarvisClient } from "../../lib/mockClient"
 import { Evidence } from "../Evidence"
 import { Agents } from "../Agents"
 import { MissionDetail } from "../MissionDetail"
+import { CommandBar } from "../../components/CommandBar"
 
 function renderRoute(path: string, routePath: string, element: React.ReactNode) {
   return render(
@@ -44,6 +46,8 @@ const disabledControlExpectations = [
 ] as const
 
 describe("disabled control audit (simulated mode)", () => {
+  afterEach(() => vi.restoreAllMocks())
+
   for (const control of disabledControlExpectations) {
     it(`${control.path} exposes honest control semantics for ${control.label}`, async () => {
       const routeElement =
@@ -65,12 +69,42 @@ describe("disabled control audit (simulated mode)", () => {
     })
   }
 
-  it("overview command surface accepts owner input in simulated mode", async () => {
-    renderRoute("/", "*", <Overview />)
-    const input = await screen.findByPlaceholderText(/Tell JARVIS what you want/i)
+  it("persistent command dock accepts owner input in simulated mode", async () => {
+    renderRoute("/", "*", <CommandBar />)
+    const input = await screen.findByRole("combobox", { name: /Direct JARVIS/i })
     expect(input).toBeEnabled()
-    const submit = screen.getByRole("button", { name: /Submit objective/i })
+    const submit = screen.getByRole("button", { name: /Send command/i })
     expect(submit).toBeDisabled()
+  })
+
+  it("encodes the default Tell me mode in the submitted owner goal", async () => {
+    const submitOwnerGoal = vi
+      .spyOn(MockJarvisClient.prototype, "submitOwnerGoal")
+      .mockResolvedValue({ accepted: false, error: "simulated rejection" })
+    const user = userEvent.setup()
+    renderRoute("/", "*", <CommandBar />)
+
+    const input = await screen.findByRole("combobox", { name: /Direct JARVIS/i })
+    await user.type(input, "Summarize retry risk")
+    await user.click(screen.getByRole("button", { name: /Send command/i }))
+
+    await waitFor(() => expect(submitOwnerGoal).toHaveBeenCalledWith("Tell me: Summarize retry risk"))
+  })
+
+  it("keeps the selected delegation mode aligned after free text is entered", async () => {
+    const submitOwnerGoal = vi
+      .spyOn(MockJarvisClient.prototype, "submitOwnerGoal")
+      .mockResolvedValue({ accepted: false, error: "simulated rejection" })
+    const user = userEvent.setup()
+    renderRoute("/", "*", <CommandBar />)
+
+    const input = await screen.findByRole("combobox", { name: /Direct JARVIS/i })
+    await user.type(input, "Track provider recovery")
+    await user.click(screen.getByRole("button", { name: /Watch/i }))
+    expect(input).toHaveValue("Watch: Track provider recovery")
+    await user.click(screen.getByRole("button", { name: /Send command/i }))
+
+    await waitFor(() => expect(submitOwnerGoal).toHaveBeenCalledWith("Watch: Track provider recovery"))
   })
 
   it("mission halt explains simulated-only contract when enabled", async () => {

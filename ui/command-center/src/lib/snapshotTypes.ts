@@ -68,6 +68,23 @@ export interface FoundrySnapshot {
   briefing_packet?: Record<string, unknown>;
   /** Additive §3.13 projection; absent on backends older than its landing. */
   discovery?: unknown;
+  /** Additive V9 world-model read projection; absent when no durable state exists. */
+  world_intelligence?: Record<string, unknown>;
+  /** Additive, read-only projection of the canonical Capability Fabric catalog. */
+  capability_fabric?: {
+    status?: string;
+    authority?: string;
+    source?: string;
+    reason?: string;
+    count?: number;
+    capabilities?: Array<{
+      spec?: Record<string, unknown>;
+      metadata?: Record<string, unknown> | null;
+      readiness?: Record<string, unknown>;
+    }>;
+  };
+  /** Additive portfolio hierarchy; older ledgers may omit it. */
+  portfolio?: Record<string, unknown>;
   /** Indexed Obsidian vault files (ACTIVE rows from vault_files). */
   vault?: {
     files?: FoundryVaultFile[];

@@ -22,6 +22,11 @@ const SystemDetail = lazy(() => import("./routes/SystemDetail").then((m) => ({ d
 const Notifications = lazy(() => import("./routes/Notifications").then((m) => ({ default: m.Notifications })));
 const OwnerManagement = lazy(() => import("./routes/OwnerManagement").then((m) => ({ default: m.OwnerManagement })));
 const OperationsHub = lazy(() => import("./routes/OperationsHub").then((m) => ({ default: m.OperationsHub })));
+const Work = lazy(() => import("./routes/Work").then((m) => ({ default: m.Work })));
+const World = lazy(() => import("./routes/World").then((m) => ({ default: m.World })));
+const Capabilities = lazy(() => import("./routes/Capabilities").then((m) => ({ default: m.Capabilities })));
+const You = lazy(() => import("./routes/You").then((m) => ({ default: m.You })));
+const Settings = lazy(() => import("./routes/Settings").then((m) => ({ default: m.Settings })));
 
 function RouteSuspense({ children }: { children: ReactNode }) {
   return (
@@ -44,6 +49,12 @@ export function App() {
       <Routes>
         <Route element={<AppShell />}>
           <Route path="/" element={<RouteSuspense><Overview /></RouteSuspense>} />
+          <Route path="/work" element={<RouteSuspense><Work /></RouteSuspense>} />
+          <Route path="/world" element={<RouteSuspense><World /></RouteSuspense>} />
+          <Route path="/capabilities" element={<RouteSuspense><Capabilities /></RouteSuspense>} />
+          <Route path="/you" element={<RouteSuspense><You /></RouteSuspense>} />
+          <Route path="/activity" element={<RouteSuspense><Timeline /></RouteSuspense>} />
+          <Route path="/settings" element={<RouteSuspense><Settings /></RouteSuspense>} />
           <Route path="/operations" element={<RouteSuspense><OperationsHub /></RouteSuspense>} />
           <Route path="/missions" element={<RouteSuspense><Missions /></RouteSuspense>} />
           <Route path="/missions/:missionId" element={<RouteSuspense><MissionDetail /></RouteSuspense>} />

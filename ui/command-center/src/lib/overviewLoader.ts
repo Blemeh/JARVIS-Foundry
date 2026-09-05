@@ -1,5 +1,6 @@
 import type {
   EvidenceArtifact,
+  AutonomyProjection,
   JarvisClient,
   Mission,
   OwnerAttentionRecord,
@@ -37,6 +38,34 @@ export type OverviewData = {
   obsidianVault: ObsidianVaultFile[]
   ownerSurface: OwnerControlSurface | null
   operationalIntelligence?: OperationalIntelligenceSurface | null
+  autonomy: AutonomyProjection
+  worldIntelligence: Record<string, unknown> | null
+  capabilityFabric: NonNullable<import("./snapshotTypes").FoundrySnapshot["capability_fabric"]> | null
+}
+
+function unavailableAutonomy(reason: string): AutonomyProjection {
+  const unavailable = { value: null, status: "UNAVAILABLE" as const }
+  return {
+    schema: "v11.command-center-autonomy.v1",
+    status: "UNAVAILABLE",
+    reason,
+    generated_at: new Date(0).toISOString(),
+    executive: {
+      state: "UNAVAILABLE",
+      cycle_id: null,
+      stage: null,
+      last_observation_cycle: null,
+      next_wake: null,
+      wait_reason: null,
+      active_wip: unavailable,
+    },
+    funnel: {},
+    candidates: [],
+    sources: [],
+    timeline: [],
+    current_work: null,
+    limits: {},
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -120,7 +149,11 @@ function normalizeOperationalIntelligence(value: unknown): OperationalIntelligen
 /** One snapshot round-trip for live mode; parallel mock calls for simulated mode. */
 export async function loadOverviewData(client: JarvisClient): Promise<OverviewData> {
   if (client instanceof RealJarvisRuntimeAdapter) {
-      const snapshot = await client.fetchSnapshot()
+      const [snapshot, autonomy] = await Promise.all([
+        client.fetchSnapshot(),
+        client.getAutonomy().catch((error: unknown) =>
+          unavailableAutonomy(error instanceof Error ? error.message : String(error))),
+      ])
       const ownerSurface = mapOwnerControlSurface(snapshot)
       const discovery = isRecord(snapshot.discovery) ? snapshot.discovery : null
       const operationalRaw = discovery?.operational_intelligence
@@ -136,6 +169,9 @@ export async function loadOverviewData(client: JarvisClient): Promise<OverviewDa
       obsidianVault: mapObsidianVault(snapshot),
       ownerSurface,
         operationalIntelligence: normalizeOperationalIntelligence(operationalRaw),
+        autonomy,
+        worldIntelligence: isRecord(snapshot.world_intelligence) ? snapshot.world_intelligence : null,
+        capabilityFabric: snapshot.capability_fabric ?? null,
     }
   }
 
@@ -149,6 +185,7 @@ export async function loadOverviewData(client: JarvisClient): Promise<OverviewDa
     executive,
     ownerSurface,
     obsidianVault,
+    autonomy,
   ] = await Promise.all([
     client.listMissions(),
     client.getSystemOverview(),
@@ -159,6 +196,8 @@ export async function loadOverviewData(client: JarvisClient): Promise<OverviewDa
     client.getExecutive().catch(() => null),
     client.getOwnerControlSurface?.().catch(() => null) ?? Promise.resolve(null),
     client.getObsidianVault(),
+    client.getAutonomy().catch((error: unknown) =>
+      unavailableAutonomy(error instanceof Error ? error.message : String(error))),
   ])
 
   return {
@@ -173,5 +212,8 @@ export async function loadOverviewData(client: JarvisClient): Promise<OverviewDa
     obsidianVault,
     ownerSurface,
     operationalIntelligence: null,
+    autonomy,
+    worldIntelligence: null,
+    capabilityFabric: null,
   }
 }

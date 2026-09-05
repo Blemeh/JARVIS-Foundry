@@ -1,0 +1,72 @@
+import { Link } from "react-router-dom";
+import { ArrowRight, Ban, CircleUserRound, Compass, KeyRound, Scale, SlidersHorizontal } from "lucide-react";
+import { ErrorState, LoadingState } from "../components/states";
+import { useCommandCenter } from "../context/CommandCenterContext";
+import { useRouteQuery } from "../hooks/useRouteQuery";
+import type { OwnerControlSurface } from "../lib/contracts";
+import { sourceModeLabel } from "../lib/sourceMode";
+
+function field(record: Record<string, unknown>, names: string[]): string {
+  for (const name of names) {
+    const value = record[name];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "Record detail unavailable";
+}
+
+function OwnerRecords({ title, rows, empty }: { title: string; rows: Record<string, unknown>[]; empty: string }) {
+  return <section className="rm-owner-records"><h2>{title}</h2>{rows.length ? <div>{rows.slice(0, 8).map((row, index) => {
+    const id = field(row, ["directive_id", "event_id", "id"]);
+    return <article key={`${id}-${index}`}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{field(row, ["exact_text", "objective", "reason", "summary", "command_type"])}</strong><small>{field(row, ["command_type", "status", "source", "directive_id"])}</small></div></article>;
+  })}</div> : <p>{empty}</p>}</section>;
+}
+
+function YouContent({ surface }: { surface: OwnerControlSurface | null }) {
+  const { sourceMode } = useCommandCenter();
+  const waiting = surface?.decisionQueue.open ?? [];
+  return (
+    <div className="shell-content rm-page rm-you">
+      <header className="rm-page-head">
+        <div><h1>You</h1><p>The durable relationship boundary between the owner and JARVIS: direction, constraints, vetoes, and consequential decisions.</p></div>
+        <div className="rm-page-source"><span>{sourceModeLabel(sourceMode)}</span><small>{surface ? `runtime ${surface.runtimeState}` : "owner projection unavailable"}</small></div>
+      </header>
+
+      <section className="rm-owner-relationship">
+        <div className="rm-owner-avatar"><CircleUserRound size={42} aria-hidden="true" /></div>
+        <div><h2>Owner authority remains human</h2><p>JARVIS may observe, reason, prepare, act within granted authority, verify, recover, and learn. Goals, constraints, vetoes, pause, redirect, and STOP remain yours.</p></div>
+        <div className="rm-owner-state"><span>{surface ? (surface.stopped ? "STOPPED" : surface.paused ? "PAUSED" : surface.runtimeState) : "UNKNOWN"}</span><small>{surface?.stateReason ?? "Canonical owner state not available"}</small></div>
+      </section>
+
+      {!surface ? <div className="rm-owner-unavailable"><Compass size={20} /><div><strong>Owner history is unavailable from this source</strong><p>No simulated goals or preferences are substituted. Connect a canonical runtime projection to inspect durable directives.</p></div></div> : null}
+
+      <div className="rm-owner-grid">
+        <OwnerRecords title="Goals and priorities" rows={surface?.goals ?? []} empty={surface ? "No active goal is recorded." : "UNAVAILABLE"} />
+        <OwnerRecords title="Standing constraints" rows={surface?.constraints ?? []} empty={surface ? "No standing constraint is recorded." : "UNAVAILABLE"} />
+        <OwnerRecords title="Vetoes" rows={surface?.vetoes ?? []} empty={surface ? "No active veto is recorded." : "UNAVAILABLE"} />
+        <OwnerRecords title="Redirects and reprioritizations" rows={[...(surface?.redirects ?? []), ...(surface?.reprioritizations ?? [])]} empty={surface ? "No redirect is recorded." : "UNAVAILABLE"} />
+      </div>
+
+      <section className="rm-owner-waiting" aria-labelledby="owner-waiting-title">
+        <div className="rm-section-heading"><h2 id="owner-waiting-title">Waiting on you</h2><span>{surface ? waiting.length : "—"}</span></div>
+        {waiting.length ? waiting.map((item) => <article key={item.queue_id}>
+          <Scale size={17} /><div><strong>{item.summary ?? item.classification}</strong><p>{item.consequence ?? "Consequence not recorded."}</p><small>{item.classification} · {item.opened_at ?? "time unknown"}</small></div>
+          {item.mission_id ? <Link to={`/missions/${item.mission_id}`}>Review <ArrowRight size={14} /></Link> : <Link to="/owner">Inspect <ArrowRight size={14} /></Link>}
+        </article>) : <p>{surface ? "No consequential owner decision is open." : "Decision queue unavailable."}</p>}
+      </section>
+
+      <div className="rm-owner-seams">
+        <section><SlidersHorizontal size={17} /><div><h2>Preferences</h2><p>NOT YET INTEGRATED</p><small>No canonical preference contract is published.</small></div></section>
+        <section><KeyRound size={17} /><div><h2>Permissions</h2><p>NOT YET INTEGRATED</p><small>Capability grants stay in their existing authority systems.</small></div></section>
+        <section><Ban size={17} /><div><h2>Decisions and veto history</h2><p>{surface ? `${surface.directiveHistory.length} durable directives` : "UNAVAILABLE"}</p><small>Open the forensic owner ledger for complete history.</small></div><Link to="/owner">Open ledger <ArrowRight size={14} /></Link></section>
+      </div>
+    </div>
+  );
+}
+
+export function You() {
+  const { client, version, sourceMode, connection } = useCommandCenter();
+  const query = useRouteQuery<OwnerControlSurface | null>(() => client.getOwnerControlSurface ? client.getOwnerControlSurface().catch(() => null) : Promise.resolve(null), [client, version]);
+  if (query.status === "loading") return <div className="shell-content"><LoadingState label="Loading owner context" /></div>;
+  if (query.status === "error") return <div className="shell-content"><ErrorState label="Owner context unavailable" detail={connection.error ?? `Source ${sourceModeLabel(sourceMode)} did not return owner context.`} onRetry={query.reload} /></div>;
+  return <YouContent surface={query.data} />;
+}

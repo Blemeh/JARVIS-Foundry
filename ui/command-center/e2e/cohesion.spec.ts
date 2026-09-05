@@ -9,19 +9,26 @@ async function collectErrors(page: Page) {
   return errors;
 }
 
+async function navigateWithinApp(page: Page, name: string) {
+  if (name === "Overview") {
+    await page.getByRole("link", { name: "JARVIS", exact: true }).click();
+    return;
+  }
+  if (name === "Notifications") {
+    await page.getByRole("button", { name: /Notifications, \d+ unread/ }).click();
+    await page.getByRole("dialog", { name: "Notification center" }).getByRole("link", { name: "View all" }).click();
+    return;
+  }
+  await page
+    .getByRole("list", { name: "Legacy system destinations" })
+    .getByRole("link", { name, exact: true })
+    .evaluate((element) => (element as HTMLElement).click());
+}
+
 test("JOURNEY A + event consistency: verification failure through repair to pass", async ({ page }) => {
   const errors = await collectErrors(page);
   const navLink = (name: string) => ({
-    click: async () => {
-      const section = name === "Overview" ? "JARVIS" : name === "Notifications" || name === "Timeline" || name === "Systems" ? "SYSTEMS" : "OPERATIONS";
-      if (name === "Overview" || name === "Systems") {
-        await page.getByRole("link", { name: section, exact: true }).click();
-        return;
-      }
-      const item = page.locator(".nav-rail-item").filter({ has: page.getByRole("link", { name: section, exact: true }) }).first();
-      await item.hover();
-      await item.getByRole("menuitem", { name, exact: true }).click();
-    },
+    click: () => navigateWithinApp(page, name),
   });
   await page.goto("/notifications");
   await expect(page.getByRole("heading", { name: "Notification / Exception Center" })).toBeVisible();
@@ -71,16 +78,7 @@ test("JOURNEY A + event consistency: verification failure through repair to pass
 test("JOURNEY B: worker crash propagates and recovery reconciles", async ({ page }) => {
   const errors = await collectErrors(page);
   const navLink = (name: string) => ({
-    click: async () => {
-      const section = name === "Overview" ? "JARVIS" : name === "Notifications" || name === "Timeline" || name === "Systems" ? "SYSTEMS" : "OPERATIONS";
-      if (name === "Overview" || name === "Systems") {
-        await page.getByRole("link", { name: section, exact: true }).click();
-        return;
-      }
-      const item = page.locator(".nav-rail-item").filter({ has: page.getByRole("link", { name: section, exact: true }) }).first();
-      await item.hover();
-      await item.getByRole("menuitem", { name, exact: true }).click();
-    },
+    click: () => navigateWithinApp(page, name),
   });
   await page.goto("/?scenario=WORKER_CRASH");
   await page.getByRole("button", { name: /Notifications, \d+ unread/ }).click();
@@ -150,23 +148,14 @@ test("JOURNEY C: evidence provenance is traceable end to end", async ({ page }) 
 test("JOURNEY D: simulated STOP propagates everywhere and resume restores", async ({ page }) => {
   const errors = await collectErrors(page);
   const navLink = (name: string) => ({
-    click: async () => {
-      const section = name === "Overview" ? "JARVIS" : name === "Notifications" || name === "Timeline" || name === "Systems" ? "SYSTEMS" : "OPERATIONS";
-      if (name === "Overview" || name === "Systems") {
-        await page.getByRole("link", { name: section, exact: true }).click();
-        return;
-      }
-      const item = page.locator(".nav-rail-item").filter({ has: page.getByRole("link", { name: section, exact: true }) }).first();
-      await item.hover();
-      await item.getByRole("menuitem", { name, exact: true }).click();
-    },
+    click: () => navigateWithinApp(page, name),
   });
   await page.goto("/");
   await page.getByRole("button", { name: /Emergency STOP/i }).first().click();
   await page.getByRole("button", { name: "Simulate STOP" }).click();
   await expect(page.getByText("SIMULATED STOP - UI CANDIDATE").first()).toBeVisible();
-  await expect(page.getByText("Suspended", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Execute" })).toBeDisabled();
+  await expect(page.getByText(/Trust SUSPENDED/i)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Send command" })).toBeDisabled();
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: /Notifications, \d+ unread/ }).click();
   await expect(page.getByRole("button", { name: /Simulate/ })).toBeDisabled();
@@ -234,7 +223,7 @@ test("JOURNEY F: mission context filters persist across surfaces and back", asyn
   await page.goto("/missions/M-HYB-014");
   await page.locator(".md-hub-link").filter({ hasText: "Timeline" }).click();
   await expect(page).toHaveURL(/\/timeline\?mission=M-HYB-014/);
-  await expect(page.getByText("Mission M-HYB-014").first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Clear context Mission M-HYB-014" })).toBeVisible();
   await expect(page.getByText("Verification gate V-2 prepared")).toBeVisible();
   await expect(page.getByText("Provider degradation detected")).toHaveCount(0);
 
@@ -294,8 +283,10 @@ test("keyboard-first navigation works without text-input hijack", async ({ page 
   await expect(page.getByRole("combobox")).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("combobox")).not.toBeFocused();
-  await page.keyboard.press("g");
-  await page.keyboard.press("m");
-  await expect(page).toHaveURL(/\/missions$/);
-  await expect(page.getByRole("heading", { name: "Mission Vectors" })).toBeVisible();
+  await page.keyboard.press("Control+k");
+  await expect(page.getByRole("combobox")).toBeFocused();
+  await page.getByRole("combobox").fill("open work");
+  await page.getByRole("option", { name: "Open work Navigate" }).click();
+  await expect(page).toHaveURL(/\/work$/);
+  await expect(page.getByRole("heading", { name: "Work", exact: true })).toBeVisible();
 });

@@ -4,7 +4,6 @@ import { X } from "lucide-react";
 import { NavRail, NavRailContent } from "./NavRail";
 import { TopStatusBar } from "./TopStatusBar";
 import { CommandBar } from "./CommandBar";
-import { TelemetryBar } from "./TelemetryBar";
 import { MobileNav } from "./MobileNav";
 import { EmergencyStopDialog } from "./EmergencyStop";
 import { StopBanner } from "./StopBanner";
@@ -13,6 +12,12 @@ import { useDocumentTitle } from "../hooks/useDocumentTitle";
 
 const routeTitles: Record<string, string> = {
   "/": "JARVIS",
+  "/work": "Work",
+  "/world": "World",
+  "/capabilities": "Capabilities",
+  "/you": "You",
+  "/activity": "Activity",
+  "/settings": "Settings",
   "/operations": "Operations",
   "/executive": "Autonomy",
   "/discovery": "Discovery",
@@ -43,7 +48,7 @@ export function AppShell() {
   }, []);
 
   return (
-    <div className="app-shell app-shell--god">
+    <div className="app-shell app-shell--god" data-page={pageTitle.toLowerCase()}>
       <a className="skip-link" href="#main-content">
         Skip to content
       </a>
@@ -56,7 +61,6 @@ export function AppShell() {
         </RoutedOutletBoundary>
       </main>
       <CommandBar />
-      <TelemetryBar />
       <MobileNav onOpenDrawer={() => setMobileOpen(true)} />
       {mobileOpen ? (
         <div className="mobile-drawer-layer" role="presentation" onMouseDown={(e) => e.target === e.currentTarget && setMobileOpen(false)}>
@@ -69,7 +73,7 @@ export function AppShell() {
             >
               <X size={18} />
             </button>
-            <NavRailContent variant="drawer" />
+            <NavRailContent variant="drawer" onNavigate={() => setMobileOpen(false)} />
           </div>
         </div>
       ) : null}

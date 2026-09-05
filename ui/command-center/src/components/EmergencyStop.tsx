@@ -101,7 +101,7 @@ export function StopControl({ compact = false, label = "Emergency STOP" }: { com
       aria-label={stopActive ? (sourceMode === "SIMULATED" ? "STOP simulation active. Open Emergency STOP control." : "STOP active. Open Emergency STOP control.") : label}
     >
       <AlertOctagon size={compact ? 15 : 16} aria-hidden="true" />
-      <span>{stopActive ? (sourceMode === "SIMULATED" ? "STOP simulation active" : "STOP ACTIVE") : label}</span>
+      <span>{compact ? (stopActive ? "STOP ACTIVE" : label) : stopActive ? (sourceMode === "SIMULATED" ? "STOP simulation active" : "STOP ACTIVE") : label}</span>
     </button>
   );
 }

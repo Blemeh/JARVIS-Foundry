@@ -1,4 +1,5 @@
-import { Clock, Database, Menu, OctagonX, ShieldQuestion, Wifi, WifiOff } from "lucide-react";
+import { Activity, Clock, Database, Menu, ShieldQuestion, WifiOff } from "lucide-react";
+import { useLocation } from "react-router-dom";
 import { useClock } from "../lib/useClock";
 import { useCommandCenter } from "../context/CommandCenterContext";
 import { useRouteQuery } from "../hooks/useRouteQuery";
@@ -7,8 +8,20 @@ import { TrustDialog } from "./TrustDialog";
 import { NotificationBell } from "./NotificationBell";
 import { sourceModeLabel } from "../lib/sourceMode";
 
+const routeNames: Record<string, string> = {
+  "/": "Current focus",
+  "/work": "Work",
+  "/world": "World",
+  "/capabilities": "Capabilities",
+  "/you": "You",
+  "/activity": "Activity",
+  "/evidence": "Evidence",
+  "/settings": "Settings",
+};
+
 export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
   const clock = useClock();
+  const location = useLocation();
   const {
     stopActive,
     trustDialogOpen,
@@ -19,146 +32,59 @@ export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
     trustSummary,
     trustSummaryStatus,
     connection,
-    reconnectStream,
     client,
     version,
   } = useCommandCenter();
-
   const schemaQuery = useRouteQuery(() => client.getSystemOverview(), [client, version]);
-  const schemaValue = schemaQuery.data?.schema;
-  const schemaLabel = schemaValue == null ? "UNKNOWN" : String(schemaValue);
-
-  // Keep source mode and trust state separate.  Source mode tells the owner
-  // where this projection came from; trust state tells them whether its
-  // claims have a canonical proof.  Neither is silently promoted to LIVE.
-  const trustStateLabel = stopActive
+  const schemaLabel = schemaQuery.data?.schema == null ? "UNKNOWN" : String(schemaQuery.data.schema);
+  const basePath = `/${location.pathname.split("/").filter(Boolean)[0] ?? ""}`;
+  const page = routeNames[location.pathname] ?? routeNames[basePath] ?? "System view";
+  const trustState = stopActive
     ? "SUSPENDED"
     : trustSummaryStatus === "ready" && trustSummary
-      ? trustSummary.state?.toUpperCase() ?? "UNKNOWN"
-      : trustSummaryStatus === "error"
-        ? "UNAVAILABLE"
-        : "LOADING";
-
-  const sourcePillClass =
-    sourceMode === "LIVE"
-      ? "data-source-live topbar-god-pill--live"
-      : sourceMode === "SIMULATED"
-        ? "topbar-god-pill--caution"
-        : sourceMode === "DEGRADED" || sourceMode === "UNKNOWN"
-          ? "data-source-degraded topbar-god-pill--caution"
-          : "data-source-disconnected topbar-god-pill--critical";
-
-  const neuralState = stopActive
-    ? "SUSPENDED"
-    : !streamConnected
-      ? "WAIT"
-      : sourceMode === "LIVE"
-        ? "LIVE"
-        : sourceMode === "SIMULATED"
-          ? "SIM"
-          : "GATED";
-
-  const neuralClass = stopActive
-    ? "neural-link-suspended"
-    : neuralState === "LIVE"
-      ? "neural-link-live"
-      : neuralState === "SIM"
-        ? "neural-link-sim"
-        : "";
-
-  const trustClass =
-    stopActive || trustStateLabel === "UNAVAILABLE" || trustStateLabel === "SUSPENDED"
-      ? "topbar-god-pill--critical"
-      : trustStateLabel === "PROVEN"
-        ? "topbar-god-pill--nominal"
-        : "topbar-god-pill--caution";
-
-  const schemaVersion = schemaLabel;
+      ? trustSummary.state.toUpperCase()
+      : trustSummaryStatus === "error" ? "UNAVAILABLE" : "LOADING";
+  const source = sourceModeLabel(sourceMode);
+  const operational = streamConnected && !stopActive && (sourceMode === "LIVE" || sourceMode === "SIMULATED");
 
   return (
     <>
       <header className="topbar topbar--god" role="banner">
         <div className="topbar-left">
           <button type="button" className="icon-btn mobile-menu-btn" aria-label="Open navigation" onClick={onOpenMobileNav}>
-            <Menu size={18} />
+            <Menu size={18} aria-hidden="true" />
           </button>
-          <div className="topbar-brand-block">
-            <p className="topbar-brand-title">J.A.R.V.I.S.</p>
-            <p className="topbar-brand-sub">Autonomous intelligence system</p>
+          <div className="topbar-context">
+            <span className={`topbar-state-dot ${operational ? "is-operational" : "is-gated"}`} aria-hidden="true" />
+            <div>
+              <p className="topbar-brand-title">J.A.R.V.I.S.</p>
+              <p className="topbar-brand-sub">{page}</p>
+            </div>
           </div>
         </div>
         <div className="topbar-right topbar-god-meta">
-          <NotificationBell />
-          <span
-            className={`topbar-god-pill data-source-pill ${sourcePillClass}`}
-            title={connection.error ?? `Data source: ${sourceModeLabel(sourceMode)}`}
-          >
-            {sourceMode === "DISCONNECTED" ? <WifiOff size={11} aria-hidden="true" /> : <Database size={11} aria-hidden="true" />}
-            <span>DATA SOURCE: {sourceModeLabel(sourceMode)}</span>
+          {!streamConnected ? <span className="topbar-disconnect"><WifiOff size={13} aria-hidden="true" />Updates paused</span> : null}
+          <span className="topbar-source data-source-pill" title={connection.error ?? `Data source: ${source}`}>
+            <Database size={13} aria-hidden="true" />
+            <span>DATA SOURCE: {source}</span>
           </span>
-          <span
-            className={`topbar-god-pill neural-link-pill ${neuralClass}`}
-            title={`Neural Link state: ${neuralState}. This is an interface status, not voice capability.`}
-          >
-            <Wifi size={11} aria-hidden="true" />
-            <span>NEURAL LINK</span>
-            <span className="neural-link-state">{neuralState}</span>
-          </span>
-          {!streamConnected ? (
-            <span
-              className="topbar-stream-chip"
-              role="status"
-              title={
-                sourceMode === "SIMULATED"
-                  ? "Simulated event stream disconnected; refresh or run NORMAL_OPERATION to reconnect."
-                  : "Canonical event stream disconnected; live updates paused until reconnect."
-              }
-            >
-              <WifiOff size={11} aria-hidden="true" />
-              <span className="t-label">Stream disconnected</span>
-              {sourceMode === "SIMULATED" ? (
-                <button
-                  type="button"
-                  className="topbar-stream-reconnect"
-                  onClick={() => void reconnectStream()}
-                  aria-label="Reconnect simulated event stream"
-                >
-                  Reconnect
-                </button>
-              ) : null}
-            </span>
-          ) : null}
-          {stopActive ? (
-            <span
-              className="topbar-stop-chip"
-              title={
-                sourceMode === "LIVE"
-                  ? "STOP active in canonical runtime"
-                  : sourceMode === "SIMULATED"
-                    ? "SIMULATED STOP - UI CANDIDATE"
-                    : `STOP state ${sourceModeLabel(sourceMode)}; runtime state unavailable`
-              }
-            >
-              <OctagonX size={11} aria-hidden="true" />
-              <span className="t-label">Suspended</span>
-            </span>
-          ) : null}
-          <span className="topbar-god-pill topbar-schema-pill" title="Active schema version">
-            Schema {schemaVersion}
-          </span>
+          <span className="topbar-schema" title="Active schema version">Schema {schemaLabel}</span>
           <button
             type="button"
-            className={`topbar-god-pill trust-pill ${trustClass}`}
+            className={`topbar-trust trust-pill topbar-trust--${trustState.toLowerCase()}`}
             onClick={openTrustDialog}
-            aria-label={`Trust state ${trustStateLabel}. Open trust explanation.`}
-            title={trustSummary ? `Trust state ${trustStateLabel}; health ${trustSummary.health}.` : "Trust state is not available."}
+            aria-label={`Trust state ${trustState}. Open trust explanation.`}
           >
-            <ShieldQuestion size={13} aria-hidden="true" />
-            <span>Trust {trustStateLabel}</span>
+            <ShieldQuestion size={14} aria-hidden="true" />
+            <span>Trust {trustState}</span>
           </button>
+          <NotificationBell />
           <span className="topbar-clock" aria-label={`Local time ${clock.time}`}>
-            <Clock size={14} aria-hidden="true" />
+            <Clock size={13} aria-hidden="true" />
             <span className="t-num topbar-clock-time">{clock.time}</span>
+          </span>
+          <span className="topbar-runtime" aria-label={`Runtime ${stopActive ? "stopped" : operational ? "operational" : "gated"}`}>
+            <Activity size={13} aria-hidden="true" />{stopActive ? "Stopped" : operational ? "Operational" : "Gated"}
           </span>
           <StopControl compact />
         </div>
