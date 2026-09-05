@@ -13,14 +13,11 @@ from ..control.broker import emergency_stop_reason, matching_veto_reason
 from ..database import FoundryDatabase
 from ..events import Event, canonical_json
 from ..executive.autonomy import (
-    PlanStep,
     active_plan,
     bind_mission_to_step,
-    build_plan,
     rebuild_executive_state,
 )
 from ..executive.campaigns import (
-    create_campaign,
     declare_child_mission,
     rebuild_campaign_state,
     record_child_state,
@@ -46,6 +43,9 @@ _READY_CAPABILITY_STATES = frozenset({"READY", "ACTIVE"})
 _TERMINAL_OBJECTIVE_STATES = frozenset(
     {"BLOCKED", "CANCELLED", "COMPLETED", "FAILED", "SUSPENDED"}
 )
+_NONEXECUTABLE_STEP_STATES = frozenset(
+    {"BLOCKED", "CANCELLED", "COMPLETED", "FAILED"}
+)
 _MUTATING_SEMANTICS = frozenset(
     {Semantic.WRITE, Semantic.COMMUNICATE, Semantic.EXTERNAL_EFFECT}
 )
@@ -53,6 +53,46 @@ _MUTATING_SEMANTICS = frozenset(
 
 class GeneralWorkMaterializationError(ValueError):
     """The plan cannot safely enter the existing execution spine."""
+
+
+@dataclass(frozen=True, slots=True)
+class _ExecutiveBinding:
+    plan_id: str
+    step_id: str
+    resource_id: str
+    required_capabilities: tuple[str, ...]
+    output_contract: tuple[str, ...]
+    verification_contract: tuple[str, ...]
+    mission_id: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class GeneralWorkCampaignContract:
+    """Immutable campaign shape proposed for Executive authorization."""
+
+    campaign_id: str
+    objective_id: str
+    executive_plan_id: str
+    executive_step_id: str
+    deadline: str | None
+    max_parallel_children: int
+    retry_budget: dict[str, float]
+    join_conditions: dict[str, dict[str, Any]]
+    metadata: dict[str, Any]
+
+    def create_kwargs(self) -> dict[str, Any]:
+        return {
+            "campaign_id": self.campaign_id,
+            "deadline": self.deadline,
+            "max_replans": 0,
+            "max_parallel_children": self.max_parallel_children,
+            "retry_budget": dict(self.retry_budget),
+            "join_conditions": {
+                key: dict(value)
+                for key, value in self.join_conditions.items()
+            },
+            "metadata": dict(self.metadata),
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,6 +120,7 @@ class GeneralWorkMaterialization:
     plan_id: str
     plan_hash: str
     executive_plan_id: str
+    executive_step_id: str
     campaign_id: str
     steps: tuple[MaterializedStep, ...]
     verifier: MaterializedStep
@@ -97,6 +138,7 @@ class GeneralWorkMaterialization:
             "plan_id": self.plan_id,
             "plan_hash": self.plan_hash,
             "executive_plan_id": self.executive_plan_id,
+            "executive_step_id": self.executive_step_id,
             "campaign_id": self.campaign_id,
             "steps": [step.to_payload() for step in self.steps],
             "verifier": self.verifier.to_payload(),
@@ -186,6 +228,79 @@ def _resource_binding(
         for capability_id, state in raw_capabilities.items()
     }
     return root, capabilities
+
+
+def _executive_binding(
+    database: FoundryDatabase,
+    plan: GeneralWorkPlan,
+    *,
+    executive_step_id: str | None,
+) -> _ExecutiveBinding:
+    active = active_plan(database, plan.objective_id)
+    if active is None:
+        raise GeneralWorkMaterializationError(
+            "General Work requires an existing Executive-authored active plan"
+        )
+    completed = {
+        step.step_id
+        for step in active.steps
+        if step.status == "COMPLETED"
+    }
+    candidates = [
+        step
+        for step in active.steps
+        if step.status not in _NONEXECUTABLE_STEP_STATES
+        and all(dependency in completed for dependency in step.dependencies)
+        and (step.resource_id or plan.resource_id) == plan.resource_id
+    ]
+    if executive_step_id is not None:
+        requested = str(executive_step_id).strip()
+        selected = next(
+            (step for step in active.steps if step.step_id == requested),
+            None,
+        )
+        if selected is None:
+            raise GeneralWorkMaterializationError(
+                f"Executive plan does not contain step {requested!r}"
+            )
+        if selected not in candidates:
+            raise GeneralWorkMaterializationError(
+                f"Executive step is not ready for General Work: {requested}"
+            )
+    elif len(candidates) == 1:
+        selected = candidates[0]
+    elif not candidates:
+        raise GeneralWorkMaterializationError(
+            "Executive plan has no ready step for General Work"
+        )
+    else:
+        raise GeneralWorkMaterializationError(
+            "executive_step_id is required when multiple Executive steps are ready"
+        )
+    if not selected.verification_contract:
+        raise GeneralWorkMaterializationError(
+            "Executive step must define a verification contract"
+        )
+    declared_outputs = {
+        _relative_ref(value, "Executive output contract")
+        for value in selected.output_contract
+    }
+    requested_outputs = {item.path for item in plan.deliverables}
+    missing_outputs = sorted(requested_outputs.difference(declared_outputs))
+    if missing_outputs:
+        raise GeneralWorkMaterializationError(
+            "General Work deliverables are absent from the Executive output "
+            f"contract: {missing_outputs}"
+        )
+    return _ExecutiveBinding(
+        plan_id=active.plan_id,
+        step_id=selected.step_id,
+        resource_id=selected.resource_id or plan.resource_id,
+        required_capabilities=tuple(selected.required_capabilities),
+        output_contract=tuple(selected.output_contract),
+        verification_contract=tuple(selected.verification_contract),
+        mission_id=selected.mission_id,
+    )
 
 
 def _assert_no_symlink_path(root: Path, relative_path: str, field_name: str) -> Path:
@@ -467,6 +582,7 @@ def _criteria_for_step(
 
 def _runtime_identities(
     plan: GeneralWorkPlan,
+    executive_step_id: str,
 ) -> tuple[
     dict[str, tuple[str, str, str]],
     tuple[str, str, str],
@@ -486,11 +602,10 @@ def _runtime_identities(
             f"mission-{runtime_step}",
             f"child-{runtime_step}",
         )
-    verifier_step = f"gw-{prefix}-verify"
     return identities, (
-        verifier_step,
-        f"mission-{verifier_step}",
-        f"child-{verifier_step}",
+        executive_step_id,
+        f"mission-gw-{prefix}-verify",
+        f"child-gw-{prefix}-verify",
     )
 
 
@@ -587,6 +702,7 @@ def _release_mission(
 def _materialized_event_payload(
     plan: GeneralWorkPlan,
     executive_plan_id: str,
+    executive_step_id: str,
     steps: Sequence[MaterializedStep],
     verifier: MaterializedStep,
 ) -> dict[str, Any]:
@@ -597,6 +713,7 @@ def _materialized_event_payload(
         "objective_id": plan.objective_id,
         "resource_id": plan.resource_id,
         "executive_plan_id": executive_plan_id,
+        "executive_step_id": executive_step_id,
         "campaign_id": plan.campaign_id,
         "steps": [step.to_payload() for step in steps],
         "verifier": verifier.to_payload(),
@@ -611,32 +728,34 @@ def _delivery_artifact_refs(plan: GeneralWorkPlan) -> tuple[str, ...]:
     )
 
 
-def _campaign_contract(
+def general_work_campaign_contract(
     database: FoundryDatabase,
     plan: GeneralWorkPlan,
-    materialized_steps: Sequence[MaterializedStep],
-    verifier: MaterializedStep,
-) -> tuple[
-    str | None,
-    int,
-    dict[str, float],
-    dict[str, dict[str, Any]],
-    dict[str, Any],
-]:
+    *,
+    executive_step_id: str | None = None,
+) -> GeneralWorkCampaignContract:
+    """Return the exact campaign contract the Executive may authorize."""
+
+    binding = _executive_binding(
+        database,
+        plan,
+        executive_step_id=executive_step_id,
+    )
+    identities, verifier_identity = _runtime_identities(
+        plan,
+        binding.step_id,
+    )
     objective = rebuild_executive_state(database).objectives[plan.objective_id]
     all_children = [
-        *(step.child_id for step in materialized_steps),
-        verifier.child_id,
+        *(identities[step.step_id][2] for step in plan.steps),
+        verifier_identity[2],
     ]
     join_id = f"general-work-all:{plan.plan_hash[:24]}"
-    step_by_id = {step.step_id: step for step in plan.steps}
     retry_budget = {
-        materialized.runtime_step_id: float(
-            step_by_id[materialized.source_step_id].max_retries
-        )
-        for materialized in materialized_steps
+        identities[step.step_id][0]: float(step.max_retries)
+        for step in plan.steps
     }
-    retry_budget[verifier.runtime_step_id] = 0.0
+    retry_budget[binding.step_id] = 0.0
     retry_budget["total"] = float(sum(retry_budget.values()))
     max_parallel = max(
         1,
@@ -654,35 +773,39 @@ def _campaign_contract(
         "plan_id": plan.plan_id,
         "plan_hash": plan.plan_hash,
         "delivery_root": plan.delivery_root,
+        "executive_plan_id": binding.plan_id,
+        "executive_step_id": binding.step_id,
     }
-    return (
-        objective.deadline,
-        max_parallel,
-        retry_budget,
-        join_conditions,
-        metadata,
+    return GeneralWorkCampaignContract(
+        campaign_id=plan.campaign_id,
+        objective_id=plan.objective_id,
+        executive_plan_id=binding.plan_id,
+        executive_step_id=binding.step_id,
+        deadline=objective.deadline,
+        max_parallel_children=max_parallel,
+        retry_budget=retry_budget,
+        join_conditions=join_conditions,
+        metadata=metadata,
     )
 
 
 def _assert_campaign_replay_compatible(
     database: FoundryDatabase,
-    plan: GeneralWorkPlan,
-    *,
-    deadline: str | None,
-    max_parallel: int,
-    retry_budget: Mapping[str, float],
-    join_conditions: Mapping[str, Mapping[str, Any]],
-    metadata: Mapping[str, Any],
+    contract: GeneralWorkCampaignContract,
 ) -> None:
-    prior = rebuild_campaign_state(database).campaigns.get(plan.campaign_id)
+    prior = rebuild_campaign_state(database).campaigns.get(
+        contract.campaign_id
+    )
     if prior is None:
-        return
+        raise GeneralWorkMaterializationError(
+            "General Work requires an existing Executive-authorized campaign"
+        )
     if (
-        prior.objective_id != plan.objective_id
-        or prior.deadline != deadline
+        prior.objective_id != contract.objective_id
+        or prior.deadline != contract.deadline
         or prior.max_replans != 0
-        or prior.max_parallel_children != max_parallel
-        or prior.retry_budget != dict(retry_budget)
+        or prior.max_parallel_children != contract.max_parallel_children
+        or prior.retry_budget != contract.retry_budget
         or prior.join_conditions
         != {
             key: {
@@ -690,13 +813,13 @@ def _assert_campaign_replay_compatible(
                 "mode": str(value["mode"]).upper(),
                 "required": bool(value["required"]),
             }
-            for key, value in join_conditions.items()
+            for key, value in contract.join_conditions.items()
         }
-        or prior.metadata != dict(metadata)
+        or prior.metadata != contract.metadata
     ):
         raise GeneralWorkMaterializationError(
             "campaign id already names a different immutable contract: "
-            f"{plan.campaign_id}"
+            f"{contract.campaign_id}"
         )
 
 
@@ -766,10 +889,11 @@ def materialize_general_work_plan(
     database: FoundryDatabase,
     plan: GeneralWorkPlan,
     *,
+    executive_step_id: str | None = None,
     stop_path: str | Path | None = None,
     fault_hook: Callable[[str], None] | None = None,
 ) -> GeneralWorkMaterialization:
-    """Bind a General Work plan to Executive, Campaign, Mission, and Fabric."""
+    """Bind work to an existing Executive plan step and campaign."""
 
     if plan.ambiguities:
         raise GeneralWorkMaterializationError(
@@ -779,7 +903,21 @@ def materialize_general_work_plan(
     root, resource_capabilities = _resource_binding(database, plan)
     _verify_sources(root, plan.sources)
 
-    identities, verifier_identity = _runtime_identities(plan)
+    binding = _executive_binding(
+        database,
+        plan,
+        executive_step_id=executive_step_id,
+    )
+    campaign_contract = general_work_campaign_contract(
+        database,
+        plan,
+        executive_step_id=binding.step_id,
+    )
+    _assert_campaign_replay_compatible(database, campaign_contract)
+    identities, verifier_identity = _runtime_identities(
+        plan,
+        binding.step_id,
+    )
     step_by_id = {step.step_id: step for step in plan.steps}
     ordered_step_ids = [
         step_id
@@ -838,37 +976,22 @@ def materialize_general_work_plan(
         target_relative_path=plan.delivery_root,
     )
 
-    executive_plan_id = f"executive-general-work:{plan.plan_hash}"
-    prior_active = active_plan(database, plan.objective_id)
-    if (
-        prior_active is not None
-        and prior_active.plan_id != executive_plan_id
-    ):
+    if binding.mission_id not in {None, verifier.mission_id}:
         raise GeneralWorkMaterializationError(
-            "objective already has a different active executable plan"
+            "Executive step is already bound to a different mission"
         )
-
-    (
-        campaign_deadline,
-        max_parallel,
-        retry_budget,
-        join_conditions,
-        campaign_metadata,
-    ) = _campaign_contract(
-        database,
-        plan,
-        materialized_steps,
-        verifier,
+    required_capabilities = {
+        *(step.capability_id for step in materialized_steps),
+        verifier.capability_id,
+    }
+    undeclared = sorted(
+        required_capabilities.difference(binding.required_capabilities)
     )
-    _assert_campaign_replay_compatible(
-        database,
-        plan,
-        deadline=campaign_deadline,
-        max_parallel=max_parallel,
-        retry_budget=retry_budget,
-        join_conditions=join_conditions,
-        metadata=campaign_metadata,
-    )
+    if undeclared:
+        raise GeneralWorkMaterializationError(
+            "General Work capabilities are absent from the Executive step: "
+            f"{undeclared}"
+        )
     effective_stop_path = (
         Path(stop_path)
         if stop_path is not None
@@ -876,7 +999,7 @@ def materialize_general_work_plan(
     )
     control_identities = _materialization_control_identities(
         plan,
-        executive_plan_id,
+        binding.plan_id,
         materialized_steps,
         verifier,
     )
@@ -897,86 +1020,8 @@ def materialize_general_work_plan(
     )
     invoke_fault_hook(fault_hook, "post general_work.plan_claimed")
     assert_owner_controls_clear()
-
-    executive_steps = []
-    for materialized in materialized_steps:
-        source_step = step_by_id[materialized.source_step_id]
-        output_paths = tuple(
-            deliverable_by_id[output_id].path
-            for output_id in source_step.output_ids
-        )
-        executive_steps.append(
-            PlanStep(
-                step_id=materialized.runtime_step_id,
-                objective_id=plan.objective_id,
-                description=source_step.description,
-                dependencies=tuple(
-                    identities[dependency][0]
-                    for dependency in source_step.dependencies
-                ),
-                required_capabilities=(materialized.capability_id,),
-                resource_id=plan.resource_id,
-                output_contract=(
-                    output_paths
-                    or (f"receipt:{source_step.action_kind}",)
-                ),
-                verification_contract=_criteria_for_step(plan, source_step),
-                fallback="bounded retry, then WAIT or BLOCKED with evidence",
-                max_retries=source_step.max_retries,
-            )
-        )
-    executive_steps.append(
-        PlanStep(
-            step_id=verifier.runtime_step_id,
-            objective_id=plan.objective_id,
-            description="Verify the complete General Work package",
-            dependencies=tuple(
-                materialized.runtime_step_id
-                for materialized in materialized_steps
-            ),
-            required_capabilities=(verifier.capability_id,),
-            resource_id=plan.resource_id,
-            output_contract=tuple(
-                deliverable.path for deliverable in plan.deliverables
-            ),
-            verification_contract=(
-                "all source identities remain unchanged",
-                "all required artifact assertions pass",
-                "all required consistency assertions pass",
-                "all required visual checks pass",
-            ),
-            fallback="repair only the failed producer, then re-verify",
-            max_retries=0,
-        )
-    )
-    build_plan(
-        database,
-        plan.objective_id,
-        executive_steps,
-        plan_id=executive_plan_id,
-        source_id="v13-general-work",
-    )
-    active = active_plan(database, plan.objective_id)
-    if active is None or active.plan_id != executive_plan_id:
-        raise GeneralWorkMaterializationError(
-            "General Work Executive plan is not the active plan"
-        )
-    invoke_fault_hook(fault_hook, "post general_work.executive_plan")
-    assert_owner_controls_clear()
-
-    join_id = next(iter(join_conditions))
-    create_campaign(
-        database,
-        plan.objective_id,
-        campaign_id=plan.campaign_id,
-        max_replans=0,
-        max_parallel_children=max_parallel,
-        retry_budget=retry_budget,
-        join_conditions=join_conditions,
-        metadata=campaign_metadata,
-        stop_path=effective_stop_path,
-    )
-    invoke_fault_hook(fault_hook, "post general_work.campaign")
+    join_id = next(iter(campaign_contract.join_conditions))
+    invoke_fault_hook(fault_hook, "post general_work.campaign_authority")
     assert_owner_controls_clear()
 
     materialized_by_source = {
@@ -1001,12 +1046,6 @@ def materialize_general_work_plan(
             control_guard=assert_owner_controls_clear,
         )
         assert_owner_controls_clear()
-        bind_mission_to_step(
-            database,
-            plan.objective_id,
-            materialized.runtime_step_id,
-            materialized.mission_id,
-        )
         contract = MissionStepContract(
             mission_id=materialized.mission_id,
             step_id=materialized.runtime_step_id,
@@ -1177,7 +1216,8 @@ def materialize_general_work_plan(
 
     event_payload = _materialized_event_payload(
         plan,
-        executive_plan_id,
+        binding.plan_id,
+        binding.step_id,
         materialized_steps,
         verifier,
     )
@@ -1197,7 +1237,8 @@ def materialize_general_work_plan(
     return GeneralWorkMaterialization(
         plan_id=plan.plan_id,
         plan_hash=plan.plan_hash,
-        executive_plan_id=executive_plan_id,
+        executive_plan_id=binding.plan_id,
+        executive_step_id=binding.step_id,
         campaign_id=plan.campaign_id,
         steps=tuple(materialized_steps),
         verifier=verifier,
@@ -1210,8 +1251,10 @@ def materialize_general_work_plan(
 __all__ = [
     "MATERIALIZATION_SCHEMA",
     "MATERIALIZED_EVENT",
+    "GeneralWorkCampaignContract",
     "GeneralWorkMaterialization",
     "GeneralWorkMaterializationError",
     "MaterializedStep",
+    "general_work_campaign_contract",
     "materialize_general_work_plan",
 ]

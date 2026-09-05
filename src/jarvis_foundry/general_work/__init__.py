@@ -23,9 +23,11 @@ from .ledger import (
 from .materialization import (
     MATERIALIZATION_SCHEMA,
     MATERIALIZED_EVENT,
+    GeneralWorkCampaignContract,
     GeneralWorkMaterialization,
     GeneralWorkMaterializationError,
     MaterializedStep,
+    general_work_campaign_contract,
     materialize_general_work_plan,
 )
 from .planner import (
@@ -63,6 +65,7 @@ __all__ = [
     "DeliverableSpec",
     "GeneralWorkModelError",
     "GeneralWorkLedgerError",
+    "GeneralWorkCampaignContract",
     "GeneralWorkMaterialization",
     "GeneralWorkMaterializationError",
     "GeneralWorkPlan",
@@ -78,6 +81,7 @@ __all__ = [
     "MaterializedStep",
     "SourceIdentity",
     "WorkStep",
+    "general_work_campaign_contract",
     "load_recorded_plan",
     "materialize_general_work_plan",
     "create_general_work_work_package",

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib
 import json
 from dataclasses import replace
 from pathlib import Path, PurePosixPath
@@ -34,6 +35,7 @@ from jarvis_foundry.general_work import (
     GeneralWorkRequest,
     SourceIdentity,
     WorkStep,
+    general_work_campaign_contract,
     materialize_general_work_plan,
     verify_recorded_package,
 )
@@ -41,6 +43,13 @@ from jarvis_foundry.mission.contracts import latest_contract
 from jarvis_foundry.mission.loop import BLOCKED_OUTCOME, MissionLoop, PASSED
 from jarvis_foundry.roles.adapter import FakeHermesAdapter
 from jarvis_foundry.roles.router import RoleRouter
+
+
+EXECUTIVE_PLAN_ID = "executive-general-work-plan"
+EXECUTIVE_STEP_ID = "executive-general-work-step"
+MATERIALIZATION_MODULE = importlib.import_module(
+    "jarvis_foundry.general_work.materialization"
+)
 
 
 def _sha256(path: Path) -> str:
@@ -184,14 +193,75 @@ def _plan(root: Path, *, ambiguities: tuple[str, ...] = ()) -> GeneralWorkPlan:
     )
 
 
+def _authorize_executive_plan(
+    database: FoundryDatabase,
+    plan: GeneralWorkPlan,
+) -> None:
+    required_capabilities = tuple(dict.fromkeys((
+        *(f"cap.{step.action_kind}" for step in plan.steps),
+        "cap.general_work.verify",
+    )))
+    build_plan(
+        database,
+        plan.objective_id,
+        (
+            {
+                "step_id": EXECUTIVE_STEP_ID,
+                "description": plan.desired_outcome,
+                "resource_id": plan.resource_id,
+                "required_capabilities": required_capabilities,
+                "output_contract": tuple(
+                    deliverable.path for deliverable in plan.deliverables
+                ),
+                "verification_contract": (
+                    "the complete General Work package passes verification",
+                ),
+            },
+        ),
+        plan_id=EXECUTIVE_PLAN_ID,
+        source_id="v13-general-work-executive-test",
+    )
+
+
+def _authorize_general_work(
+    database: FoundryDatabase,
+    plan: GeneralWorkPlan,
+) -> None:
+    _authorize_executive_plan(database, plan)
+    contract = general_work_campaign_contract(
+        database,
+        plan,
+        executive_step_id=EXECUTIVE_STEP_ID,
+    )
+    create_campaign(
+        database,
+        plan.objective_id,
+        **contract.create_kwargs(),
+    )
+
+
+def _materialize(
+    database: FoundryDatabase,
+    plan: GeneralWorkPlan,
+    **kwargs: object,
+):
+    _authorize_general_work(database, plan)
+    return materialize_general_work_plan(
+        database,
+        plan,
+        executive_step_id=EXECUTIVE_STEP_ID,
+        **kwargs,
+    )
+
+
 def test_materialization_builds_one_existing_spine_dag_and_replays(
     tmp_path: Path,
 ) -> None:
     database, root = _database_and_root(tmp_path)
     plan = _plan(root)
 
-    first = materialize_general_work_plan(database, plan)
-    replay = materialize_general_work_plan(database, plan)
+    first = _materialize(database, plan)
+    replay = _materialize(database, plan)
 
     assert first.inserted is True
     assert replay.replayed is True
@@ -200,6 +270,12 @@ def test_materialization_builds_one_existing_spine_dag_and_replays(
     assert database.event_count(event_type="general_work.plan_materialized") == 1
     executive = rebuild_executive_state(database)
     assert first.executive_plan_id in executive.plans
+    assert first.executive_plan_id == EXECUTIVE_PLAN_ID
+    assert first.executive_step_id == EXECUTIVE_STEP_ID
+    assert database.event_count(event_type="executive.plan_created") == 1
+    assert {
+        step.step_id for step in executive.plans[EXECUTIVE_PLAN_ID].steps
+    } == {EXECUTIVE_STEP_ID}
     campaign = rebuild_campaign_state(database)
     children = {
         child.child_id: child
@@ -241,7 +317,7 @@ def test_restart_after_partial_materialization_releases_no_half_built_mission(
             raise RuntimeError("deliberate materialization interruption")
 
     with pytest.raises(RuntimeError, match="deliberate"):
-        materialize_general_work_plan(
+        _materialize(
             database,
             plan,
             fault_hook=interrupt,
@@ -251,7 +327,7 @@ def test_restart_after_partial_materialization_releases_no_half_built_mission(
     assert database.event_count(event_type="general_work.plan_recorded") == 1
     assert database.event_count(event_type="general_work.target_claimed") == 2
 
-    resumed = materialize_general_work_plan(database, plan)
+    resumed = _materialize(database, plan)
 
     assert resumed.inserted is True
     assert set(campaign_dispatchable_mission_ids(database)) == {
@@ -268,14 +344,14 @@ def test_stop_after_campaign_boundary_blocks_later_materialization_and_replays(
     stop_path = tmp_path / "STOP"
 
     def stop_after_campaign(point: str) -> None:
-        if point == "post general_work.campaign":
+        if point == "post general_work.campaign_authority":
             stop_path.write_text("owner stop at campaign boundary\n", encoding="utf-8")
 
     with pytest.raises(
         GeneralWorkMaterializationError,
         match="materialization is stopped",
     ):
-        materialize_general_work_plan(
+        _materialize(
             database,
             plan,
             stop_path=stop_path,
@@ -292,7 +368,7 @@ def test_stop_after_campaign_boundary_blocks_later_materialization_and_replays(
     assert campaign_dispatchable_mission_ids(database) == ()
 
     stop_path.unlink()
-    resumed = materialize_general_work_plan(
+    resumed = _materialize(
         database,
         plan,
         stop_path=stop_path,
@@ -323,7 +399,7 @@ def test_stale_source_and_ambiguity_fail_before_output_claims(
         GeneralWorkMaterializationError,
         match="source identity is stale",
     ):
-        materialize_general_work_plan(database, plan)
+        _materialize(database, plan)
 
     assert database.event_count(event_type="general_work.plan_recorded") == 0
     assert database.event_count(event_type="general_work.target_claimed") == 0
@@ -333,7 +409,11 @@ def test_stale_source_and_ambiguity_fail_before_output_claims(
         GeneralWorkMaterializationError,
         match="unresolved ambiguities",
     ):
-        materialize_general_work_plan(database, fresh)
+        materialize_general_work_plan(
+            database,
+            fresh,
+            executive_step_id=EXECUTIVE_STEP_ID,
+        )
     assert database.event_count(event_type="general_work.plan_recorded") == 0
 
 
@@ -345,6 +425,7 @@ def test_stop_and_veto_fail_before_any_materialization_claim(
     database, root = _database_and_root(tmp_path)
     plan = _plan(root)
     stop_path = tmp_path / "STOP"
+    _authorize_general_work(database, plan)
     if control_kind == "marker":
         stop_path.write_text("owner stop\n", encoding="utf-8")
     else:
@@ -373,13 +454,14 @@ def test_stop_and_veto_fail_before_any_materialization_claim(
         materialize_general_work_plan(
             database,
             plan,
+            executive_step_id=EXECUTIVE_STEP_ID,
             stop_path=stop_path,
         )
 
     assert database.event_count(event_type="general_work.plan_recorded") == 0
     assert database.event_count(event_type="general_work.target_claimed") == 0
-    assert database.event_count(event_type="plan.created") == 0
-    assert database.event_count(event_type="campaign.created") == 0
+    assert database.event_count(event_type="executive.plan_created") == 1
+    assert database.event_count(event_type="campaign.created") == 1
     assert database.event_count(event_type="mission.created") == 0
 
 
@@ -388,6 +470,7 @@ def test_existing_campaign_contract_conflict_fails_before_output_claims(
 ) -> None:
     database, root = _database_and_root(tmp_path)
     plan = _plan(root)
+    _authorize_executive_plan(database, plan)
     create_campaign(
         database,
         plan.objective_id,
@@ -399,15 +482,58 @@ def test_existing_campaign_contract_conflict_fails_before_output_claims(
         GeneralWorkMaterializationError,
         match="different immutable contract",
     ):
-        materialize_general_work_plan(database, plan)
+        materialize_general_work_plan(
+            database,
+            plan,
+            executive_step_id=EXECUTIVE_STEP_ID,
+        )
 
     assert database.event_count(event_type="general_work.plan_recorded") == 0
     assert database.event_count(event_type="general_work.target_claimed") == 0
-    assert database.event_count(event_type="plan.created") == 0
+    assert database.event_count(event_type="executive.plan_created") == 1
     assert database.event_count(event_type="mission.created") == 0
 
 
-def test_payload_lineage_and_existing_executive_plan_fail_closed(
+def test_materialization_requires_executive_plan_and_campaign_before_claims(
+    tmp_path: Path,
+) -> None:
+    database, root = _database_and_root(tmp_path)
+    plan = _plan(root)
+
+    with pytest.raises(
+        GeneralWorkMaterializationError,
+        match="existing Executive-authored active plan",
+    ):
+        materialize_general_work_plan(database, plan)
+
+    assert database.event_count(event_type="general_work.plan_recorded") == 0
+    assert database.event_count(event_type="executive.plan_created") == 0
+    assert database.event_count(event_type="campaign.created") == 0
+
+    _authorize_executive_plan(database, plan)
+    with pytest.raises(
+        GeneralWorkMaterializationError,
+        match="existing Executive-authorized campaign",
+    ):
+        materialize_general_work_plan(
+            database,
+            plan,
+            executive_step_id=EXECUTIVE_STEP_ID,
+        )
+
+    assert database.event_count(event_type="general_work.plan_recorded") == 0
+    assert database.event_count(event_type="campaign.created") == 0
+
+
+def test_materialization_has_no_executive_planner_authority() -> None:
+    source = Path(MATERIALIZATION_MODULE.__file__).read_text(encoding="utf-8")
+
+    assert "PlanStep" not in source
+    assert "build_plan(" not in source
+    assert "create_campaign(" not in source
+
+
+def test_payload_lineage_and_unknown_executive_step_fail_closed(
     tmp_path: Path,
 ) -> None:
     database, root = _database_and_root(tmp_path)
@@ -426,30 +552,27 @@ def test_payload_lineage_and_existing_executive_plan_fail_closed(
         steps=(bad_step, plan.steps[1]),
     )
 
+    _authorize_general_work(database, bad_plan)
     with pytest.raises(
         GeneralWorkMaterializationError,
         match="outside declared lineage",
     ):
-        materialize_general_work_plan(database, bad_plan)
+        materialize_general_work_plan(
+            database,
+            bad_plan,
+            executive_step_id=EXECUTIVE_STEP_ID,
+        )
     assert database.event_count(event_type="general_work.plan_recorded") == 0
 
-    build_plan(
-        database,
-        plan.objective_id,
-        (
-            {
-                "step_id": "existing-work",
-                "description": "Existing owner-authorized work",
-                "resource_id": plan.resource_id,
-            },
-        ),
-        plan_id="existing-executive-plan",
-    )
     with pytest.raises(
         GeneralWorkMaterializationError,
-        match="different active executable plan",
+        match="does not contain step",
     ):
-        materialize_general_work_plan(database, plan)
+        materialize_general_work_plan(
+            database,
+            plan,
+            executive_step_id="not-executive-authored",
+        )
     assert database.event_count(event_type="general_work.plan_recorded") == 0
 
 
@@ -458,7 +581,7 @@ def test_materialized_plan_runs_through_mission_loop_and_fresh_verifier(
 ) -> None:
     database, root = _database_and_root(tmp_path)
     plan = _plan(root)
-    materialized = materialize_general_work_plan(database, plan)
+    materialized = _materialize(database, plan)
     inner = FakeHermesAdapter(working_root=root)
     adapter = FabricRoleAdapter(
         database,
@@ -520,7 +643,7 @@ def test_local_general_work_fabric_respects_denied_provider(
 ) -> None:
     database, root = _database_and_root(tmp_path)
     plan = _plan(root)
-    materialized = materialize_general_work_plan(database, plan)
+    materialized = _materialize(database, plan)
     first = materialized.steps[0]
     contract = latest_contract(
         database,
@@ -566,7 +689,7 @@ def test_materialized_campaign_stops_before_effect_and_resumes_exact_step(
     database, root = _database_and_root(tmp_path)
     plan = _plan(root)
     stop_path = tmp_path / "STOP"
-    materialized = materialize_general_work_plan(
+    materialized = _materialize(
         database,
         plan,
         stop_path=stop_path,
@@ -630,7 +753,7 @@ def test_materialized_campaign_preserves_time_wait_until_due(
     database, root = _database_and_root(tmp_path)
     plan = _plan(root)
     stop_path = tmp_path / "STOP"
-    materialized = materialize_general_work_plan(
+    materialized = _materialize(
         database,
         plan,
         stop_path=stop_path,
@@ -702,7 +825,7 @@ def test_generated_intermediate_uses_producer_lineage_not_original_hash(
             sort_by=("Account",),
         )
     ).plan
-    materialized = materialize_general_work_plan(database, plan)
+    materialized = _materialize(database, plan)
     workbook_step = next(
         step
         for step in materialized.steps
@@ -793,7 +916,7 @@ def test_planner_package_runs_through_existing_spine_and_repairs_stale_output(
     )
     stale_output = root / Path(*PurePosixPath(pdf.path).parts)
 
-    materialized = materialize_general_work_plan(
+    materialized = _materialize(
         database,
         plan,
         stop_path=tmp_path / "STOP",

@@ -20,8 +20,8 @@ from jarvis_foundry.control.registration import (
 )
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.events import Event
-from jarvis_foundry.executive.autonomy import create_objective
-from jarvis_foundry.executive.campaigns import startup_resume_pass
+from jarvis_foundry.executive.autonomy import build_plan, create_objective
+from jarvis_foundry.executive.campaigns import create_campaign, startup_resume_pass
 from jarvis_foundry.fabric.adapter import (
     FabricRoleAdapter,
     resolve_general_work_dispatch,
@@ -35,6 +35,7 @@ from jarvis_foundry.general_work import (
     SourceIdentity,
     WorkStep,
     create_general_work_work_package,
+    general_work_campaign_contract,
     general_work_work_package_id,
     materialize_general_work_plan,
 )
@@ -52,6 +53,8 @@ from jarvis_foundry.workforce.worktrees import WorktreeManager
 
 PLAN_ID = "general-work-workforce-integration"
 SOURCE_STEP_ID = "copy-owner-source"
+EXECUTIVE_PLAN_ID = "executive-general-work-workforce"
+EXECUTIVE_STEP_ID = "executive-general-work-workforce-step"
 
 
 @dataclass(frozen=True)
@@ -193,6 +196,45 @@ def _register_general_work_resource(
     )
 
 
+def _authorize_general_work(
+    database: FoundryDatabase,
+    plan: GeneralWorkPlan,
+) -> None:
+    build_plan(
+        database,
+        plan.objective_id,
+        (
+            {
+                "step_id": EXECUTIVE_STEP_ID,
+                "description": plan.desired_outcome,
+                "resource_id": plan.resource_id,
+                "required_capabilities": (
+                    "cap.file.copy",
+                    "cap.general_work.verify",
+                ),
+                "output_contract": tuple(
+                    deliverable.path for deliverable in plan.deliverables
+                ),
+                "verification_contract": (
+                    "the General Work package passes fresh verification",
+                ),
+            },
+        ),
+        plan_id=EXECUTIVE_PLAN_ID,
+        source_id="v13-general-work-workforce-executive-test",
+    )
+    contract = general_work_campaign_contract(
+        database,
+        plan,
+        executive_step_id=EXECUTIVE_STEP_ID,
+    )
+    create_campaign(
+        database,
+        plan.objective_id,
+        **contract.create_kwargs(),
+    )
+
+
 def _materialized_lane(
     tmp_path: Path,
     *,
@@ -256,7 +298,12 @@ def _materialized_lane(
         success_criteria=("the copied owner source is independently verified",),
     )
     plan = _plan(root, resource_id)
-    materialized = materialize_general_work_plan(database, plan)
+    _authorize_general_work(database, plan)
+    materialized = materialize_general_work_plan(
+        database,
+        plan,
+        executive_step_id=EXECUTIVE_STEP_ID,
+    )
     first = materialized.steps[0]
     contract = latest_contract(
         database,

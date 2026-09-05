@@ -36,11 +36,13 @@ from jarvis_foundry.connectors.local_artifacts import LocalArtifactConnector
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.events import Event, canonical_json
 from jarvis_foundry.executive.autonomy import (
+    build_plan,
     create_objective,
     rebuild_executive_state,
 )
 from jarvis_foundry.executive.campaigns import (
     campaign_dispatchable_mission_ids,
+    create_campaign,
     rebuild_campaign_state,
     record_child_state,
     resume_campaign,
@@ -52,6 +54,7 @@ from jarvis_foundry.general_work import (
     GeneralWorkPlan,
     GeneralWorkPlanner,
     GeneralWorkRequest,
+    general_work_campaign_contract,
     load_recorded_plan,
     materialize_general_work_plan,
     verify_recorded_package,
@@ -138,13 +141,20 @@ def _git(*args: str, check: bool = True) -> str:
     return result.stdout.strip()
 
 
-def _source_identity(*, allow_dirty: bool) -> dict[str, Any]:
+def _source_identity(
+    *,
+    allow_dirty: bool,
+    expected_branch: str = BRANCH,
+) -> dict[str, Any]:
     source_sha = _git("rev-parse", "HEAD")
     branch = _git("branch", "--show-current")
     merge_base = _git("merge-base", BASE_SHA, source_sha)
     status = _git("status", "--short")
     _git("cat-file", "-e", f"{PERSONAL_OPERATOR_INPUT_SHA}^{{commit}}")
-    _require(branch == BRANCH, f"unexpected branch: {branch}")
+    _require(
+        branch == expected_branch,
+        f"unexpected branch: {branch}; expected {expected_branch}",
+    )
     _require(
         merge_base == BASE_SHA,
         f"candidate is not based on exact V12 source {BASE_SHA}",
@@ -207,6 +217,52 @@ def _database_path(assignment_root: Path) -> Path:
 
 def _open_database(assignment_root: Path) -> FoundryDatabase:
     return FoundryDatabase(_database_path(assignment_root))
+
+
+def _executive_step_id(plan: GeneralWorkPlan) -> str:
+    return f"executive-general-work:{plan.plan_hash[:24]}"
+
+
+def _authorize_general_work(
+    database: FoundryDatabase,
+    plan: GeneralWorkPlan,
+) -> str:
+    step_id = _executive_step_id(plan)
+    required_capabilities = tuple(dict.fromkeys((
+        *(f"cap.{step.action_kind}" for step in plan.steps),
+        "cap.general_work.verify",
+    )))
+    build_plan(
+        database,
+        plan.objective_id,
+        (
+            {
+                "step_id": step_id,
+                "description": plan.desired_outcome,
+                "resource_id": plan.resource_id,
+                "required_capabilities": required_capabilities,
+                "output_contract": tuple(
+                    deliverable.path for deliverable in plan.deliverables
+                ),
+                "verification_contract": (
+                    "the complete General Work package passes fresh verification",
+                ),
+            },
+        ),
+        plan_id=f"executive-general-work:{plan.plan_hash}",
+        source_id="v13-general-work-engine-proof-executive",
+    )
+    contract = general_work_campaign_contract(
+        database,
+        plan,
+        executive_step_id=step_id,
+    )
+    create_campaign(
+        database,
+        plan.objective_id,
+        **contract.create_kwargs(),
+    )
+    return step_id
 
 
 def _initialize_assignment(
@@ -962,9 +1018,11 @@ def _prepare_standard_assignment(
         resource_id=resource_id,
     )
     stop_path = assignment_root / "EMERGENCY_STOP"
+    executive_step_id = _authorize_general_work(database, plan)
     materialized = materialize_general_work_plan(
         database,
         plan,
+        executive_step_id=executive_step_id,
         stop_path=stop_path,
     )
     controls: dict[str, Any] = {}
@@ -1012,6 +1070,7 @@ def _prepare_assignment_c(proof_root: Path) -> dict[str, Any]:
     )
     plan_path = assignment_root / "plan.json"
     _write_json(plan_path, plan.to_payload())
+    _authorize_general_work(database, plan)
     command = [
         sys.executable,
         str(Path(__file__).resolve()),
@@ -1044,6 +1103,7 @@ def _prepare_assignment_c(proof_root: Path) -> dict[str, Any]:
     materialized = materialize_general_work_plan(
         database,
         plan,
+        executive_step_id=_executive_step_id(plan),
         stop_path=stop_path,
     )
     _require(
@@ -1151,10 +1211,18 @@ def _prepare_assignment_c(proof_root: Path) -> dict[str, Any]:
     )
 
 
-def _prepare(proof_root: Path, *, allow_dirty: bool) -> dict[str, Any]:
+def _prepare(
+    proof_root: Path,
+    *,
+    allow_dirty: bool,
+    expected_branch: str = BRANCH,
+) -> dict[str, Any]:
     _assert_disposable_root(proof_root)
     _require(not proof_root.exists(), f"proof root already exists: {proof_root}")
-    source = _source_identity(allow_dirty=allow_dirty)
+    source = _source_identity(
+        allow_dirty=allow_dirty,
+        expected_branch=expected_branch,
+    )
     proof_root.mkdir(parents=True)
     assignments = {
         "A": _prepare_standard_assignment(
@@ -1230,6 +1298,7 @@ def _c_kill(proof_root: Path) -> int:
     materialize_general_work_plan(
         database,
         plan,
+        executive_step_id=_executive_step_id(plan),
         stop_path=assignment_root / "EMERGENCY_STOP",
         fault_hook=hard_exit,
     )
@@ -1476,6 +1545,7 @@ def _finalize(proof_root: Path) -> dict[str, Any]:
         materialized = materialize_general_work_plan(
             database,
             plan,
+            executive_step_id=_executive_step_id(plan),
             stop_path=assignment_root / "EMERGENCY_STOP",
         )
         _require(
@@ -1751,11 +1821,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--review-manifest", type=Path)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--allow-dirty", action="store_true")
+    parser.add_argument("--expected-branch", default=BRANCH)
     args = parser.parse_args(argv)
     proof_root = args.root.expanduser().resolve()
 
     if args.mode == "prepare":
-        payload = _prepare(proof_root, allow_dirty=args.allow_dirty)
+        payload = _prepare(
+            proof_root,
+            allow_dirty=args.allow_dirty,
+            expected_branch=args.expected_branch,
+        )
     elif args.mode == "c-kill":
         return _c_kill(proof_root)
     elif args.mode == "attest-visual":
