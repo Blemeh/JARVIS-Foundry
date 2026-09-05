@@ -372,6 +372,10 @@ def system_id_for_action(action_kind: str, target_ref: str) -> str:
         return "github"
     if action.startswith("gmail."):
         return "gmail"
+    if action.startswith("browser."):
+        return "browser"
+    if action.startswith(("local.process.", "desktop.")):
+        return "computer"
     if action.startswith("http.") or target_ref.startswith(("http://", "https://")):
         return "http"
     if action.startswith("git."):

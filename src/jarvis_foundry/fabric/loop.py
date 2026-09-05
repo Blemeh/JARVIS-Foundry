@@ -50,6 +50,10 @@ from .contracts import (
 )
 from ..effects import STARTED, effect_state, execute_fabric_effect
 from .providers import route_provider
+from .computer_operator import (
+    computer_operator_specs,
+    verify_computer_operator,
+)
 
 
 def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
@@ -313,9 +317,18 @@ def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
             limitations=("contributor-tier Hermes requires noninteractive consent",),
         ),
     )
+    computer_specs = computer_operator_specs()
+    computer_capability_ids = {
+        spec.capability_id for spec in computer_specs
+    }
     from .personal_operator import personal_operator_specs
 
-    builtins = (*builtins, *personal_operator_specs())
+    personal_specs = tuple(
+        spec
+        for spec in personal_operator_specs()
+        if spec.capability_id not in computer_capability_ids
+    )
+    builtins = (*builtins, *computer_specs, *personal_specs)
     registered = []
     for spec in builtins:
         if get_spec(database, spec.capability_id) is None:
@@ -436,6 +449,11 @@ def _verify_action(
         # Honest failure is not a lying claim. Keep the capability retryable
         # until consecutive failures trip DEGRADED.
         return VerifyVerdict.MATCH
+    computer_verdict = verify_computer_operator(
+        action_kind, claimed, payload, executor_context,
+    )
+    if computer_verdict is not None:
+        return computer_verdict
 
     source_roots = (
         executor_context.artifact_source_roots
@@ -905,6 +923,10 @@ def execute_action(
     reconciliation_capable = (
         action_kind in {"github.pull_request.publish", "gmail.send"}
         or action_kind.startswith("mcp.")
+        or action_kind in {
+            "local.process.reconcile",
+            "desktop.action.reconcile",
+        }
     )
     if stop and not reconciliation_capable:
         return ActionResult(
@@ -948,7 +970,11 @@ def execute_action(
         spec=spec,
         metadata=metadata,
     )
-    if stop and request.effect_class is EffectClass.READ_ONLY:
+    if (
+        stop
+        and request.effect_class is EffectClass.READ_ONLY
+        and not reconciliation_capable
+    ):
         return ActionResult(
             capability_id=spec.capability_id,
             action_kind=action_kind,
@@ -1150,7 +1176,10 @@ def run_intent(
             if acquired.get("status") == "REGISTERED":
                 result = execute_action(database, ctx, intent, action, payloads.get(action, {}))
         results.append(result)
-        if not result.success and result.claimed is not ClaimOutcome.BLOCKED:
+        # Only a definite pre-effect failure may select another provider.
+        # COMPLETED-but-unverified and UNKNOWN may already have mutated the
+        # target, so falling through would create a second logical effect.
+        if result.claimed is ClaimOutcome.FAILED:
             fallbacks = select_capability(database, intent, action).fallbacks
             if fallbacks:
                 alt_intent = TaskIntent(
