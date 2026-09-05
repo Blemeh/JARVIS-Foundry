@@ -169,7 +169,12 @@ def _source_identity() -> dict[str, Any]:
     }
 
 
-def run_proof(output_root: Path, *, now: str = NOW) -> dict[str, Any]:
+def run_proof(
+    output_root: Path,
+    *,
+    now: str = NOW,
+    expected_branch: str = EXPECTED_BRANCH,
+) -> dict[str, Any]:
     proof_root = output_root.resolve() / f"run-{uuid.uuid4().hex[:10]}"
     proof_root.mkdir(parents=True, exist_ok=False)
     database = FoundryDatabase(proof_root / "foundry.db")
@@ -491,7 +496,7 @@ def run_proof(output_root: Path, *, now: str = NOW) -> dict[str, Any]:
     }
     source = _source_identity()
     source_attestations = {
-        "branch_matches_candidate": source["branch"] == EXPECTED_BRANCH,
+        "branch_matches_candidate": source["branch"] == expected_branch,
         "base_is_exact_merge_base": source["merge_base"] == BASE_SHA,
         "worktree_is_clean": source["dirty"] is False,
         "source_is_reachable_from_head": subprocess.run(
@@ -547,6 +552,7 @@ def main() -> int:
     parser.add_argument("--output-root", type=Path)
     parser.add_argument("--snapshot-db", type=Path)
     parser.add_argument("--now", default=NOW)
+    parser.add_argument("--expected-branch", default=EXPECTED_BRANCH)
     args = parser.parse_args()
     if args.snapshot_db is not None:
         print(json.dumps(
@@ -556,7 +562,11 @@ def main() -> int:
         return 0
     if args.output_root is None:
         parser.error("--output-root is required")
-    result = run_proof(args.output_root, now=args.now)
+    result = run_proof(
+        args.output_root,
+        now=args.now,
+        expected_branch=args.expected_branch,
+    )
     print(json.dumps({
         "passed": result["passed"],
         "proof_path": result["proof_path"],

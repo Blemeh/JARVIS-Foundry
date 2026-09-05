@@ -130,7 +130,12 @@ def _git(repo_root: Path, *args: str) -> str:
     return completed.stdout.strip()
 
 
-def _source_state(repo_root: Path, expected_source_sha: str) -> dict[str, Any]:
+def _source_state(
+    repo_root: Path,
+    expected_source_sha: str,
+    *,
+    expected_branch: str = BRANCH,
+) -> dict[str, Any]:
     head = _git(repo_root, "rev-parse", "HEAD")
     branch = _git(repo_root, "branch", "--show-current")
     status = _git(
@@ -145,8 +150,10 @@ def _source_state(repo_root: Path, expected_source_sha: str) -> dict[str, Any]:
         )
     if head == BASE_SHA:
         raise RuntimeError("proof source must be a committed V13 descendant")
-    if branch != BRANCH:
-        raise RuntimeError(f"proof branch mismatch: {branch!r}, expected {BRANCH!r}")
+    if branch != expected_branch:
+        raise RuntimeError(
+            f"proof branch mismatch: {branch!r}, expected {expected_branch!r}"
+        )
     ancestor = subprocess.run(
         ["git", "-C", str(repo_root), "merge-base", "--is-ancestor", BASE_SHA, head],
         stdin=subprocess.DEVNULL,
@@ -347,7 +354,11 @@ def _run_independent(
 def run(args: argparse.Namespace) -> dict[str, Any]:
     started_at = _now()
     repo_root = Path(__file__).resolve().parents[1]
-    source_state = _source_state(repo_root, args.source_sha)
+    source_state = _source_state(
+        repo_root,
+        args.source_sha,
+        expected_branch=args.expected_branch,
+    )
     proof_root = args.root.expanduser().resolve()
     evidence_root = args.evidence_dir.expanduser().resolve()
     if proof_root.exists():
@@ -1069,7 +1080,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     "path": "source-state.json",
                     "expected_values": {
                         "/head": source_state["head"],
-                        "/branch": BRANCH,
+                        "/branch": source_state["branch"],
                         "/base_sha": BASE_SHA,
                         "/tree_sha": source_state["tree_sha"],
                         "/clean_at_start": True,
@@ -1488,6 +1499,7 @@ def _args() -> argparse.Namespace:
     parser.add_argument("--root", type=Path, required=True)
     parser.add_argument("--evidence-dir", type=Path, required=True)
     parser.add_argument("--source-sha", required=True)
+    parser.add_argument("--expected-branch", default=BRANCH)
     return parser.parse_args()
 
 
