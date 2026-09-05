@@ -1,8 +1,9 @@
-"""Minimal repository-provenanced owner context for V11 A2 judgment.
+"""Owner-context compatibility bridge for V11 scoring.
 
-This module is deliberately not an owner model.  It stores a small, explicit
-seed in the existing Tier-C core blocks and returns it as advisory scoring
-context.  Owner directives, STOP, vetoes, and the ledger remain authoritative.
+The V11 repository seed remains byte-compatible. V13 durable owner-context
+records are projected from the ledger and merged into the same small advisory
+shape for existing scoring callers. Owner directives, STOP, vetoes, and the
+ledger remain authoritative.
 """
 from __future__ import annotations
 
@@ -101,7 +102,7 @@ def seed_owner_context(
 
 
 def load_owner_context(database: FoundryDatabase) -> dict[str, Any]:
-    """Read validated seed items; malformed Tier-C data degrades to warnings."""
+    """Read legacy seeds plus current durable V13 scoring context."""
 
     registry = CoreMemoryRegistry(database)
     result: dict[str, Any] = {
@@ -122,6 +123,53 @@ def load_owner_context(database: FoundryDatabase) -> dict[str, Any]:
             result[kind] = [OwnerContextItem.from_mapping(row).as_dict() for row in raw]
         except (TypeError, ValueError, json.JSONDecodeError) as error:
             result["warnings"].append(f"{label}:{type(error).__name__}")
+    try:
+        from ..owner_context import project_owner_context
+
+        projection = project_owner_context(database)
+        mappings = {
+            "goals": {"GOAL"},
+            "projects": {"PROGRAM", "PROJECT", "ACTIVE_OBJECTIVE"},
+            "standing_rejections": {"CONSTRAINT", "VETO", "REJECTED_APPROACH"},
+        }
+        added = 0
+        for output_kind, record_kinds in mappings.items():
+            existing = {
+                (
+                    str(item.get("text") or ""),
+                    str(item.get("source_ref") or ""),
+                    str(item.get("source_hash") or ""),
+                )
+                for item in result[output_kind]
+                if isinstance(item, dict)
+            }
+            for record in projection.current:
+                if record.kind not in record_kinds:
+                    continue
+                item = {
+                    "text": record.text,
+                    "source_ref": record.provenance.source_ref,
+                    "source_hash": record.provenance.content_hash,
+                }
+                identity = (
+                    item["text"], item["source_ref"], item["source_hash"],
+                )
+                if identity in existing:
+                    continue
+                result[output_kind].append(item)
+                existing.add(identity)
+                added += 1
+        result["warnings"].extend(projection.warnings)
+        if added:
+            result["authority"] = (
+                "ADVISORY_OWNER_CONTEXT_V1_WITH_LEGACY_TIER_C"
+            )
+    except Exception as error:
+        # The compatibility read must never let advisory context break the
+        # existing V11 judgment path.
+        result["warnings"].append(
+            f"durable_owner_context:{type(error).__name__}",
+        )
     return result
 
 

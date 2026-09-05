@@ -36,7 +36,7 @@ class OwnerCommandError(ValueError):
 _COMMANDS = frozenset({
     "GOAL", "CONSTRAINT", "ADD_CONSTRAINT", "VETO_ACTION", "STOP_MISSION", "STOP_EVERYTHING",
     "PAUSE", "RESUME", "REVOKE", "CANCEL_MISSION", "GATE_REEVALUATE",
-    "REPRIORITIZE", "REDIRECT", "RESTART_RECOVERY",
+    "REPRIORITIZE", "REDIRECT", "RESTART_RECOVERY", "STANDING_ORDER",
 })
 
 
@@ -328,6 +328,15 @@ class OwnerControlService:
             expires_at=expires_at,
             metadata=metadata,
         )
+        if command_type == "STANDING_ORDER":
+            from .owner_context import validate_standing_order_metadata
+
+            try:
+                validate_standing_order_metadata(
+                    exact_text, metadata, target=target,
+                )
+            except ValueError as error:
+                raise OwnerCommandError(str(error)) from error
         if command_type == "REVOKE":
             if not isinstance(target, str) or not target.strip():
                 raise OwnerCommandError("REVOKE requires target directive_id")
