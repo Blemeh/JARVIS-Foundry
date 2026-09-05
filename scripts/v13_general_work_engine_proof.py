@@ -602,13 +602,13 @@ def _plan_a(
             resource_id=resource_id,
             desired_outcome=(
                 "Prepare a verified renewal package with an editable workbook, "
-                "written report, printable copy, and presentation"
+                "written report, and printable copy"
             ),
             source_paths=(
                 "inputs/renewals.csv",
                 "inputs/renewals.json",
             ),
-            requested_formats=("xlsx", "docx", "pdf", "pptx"),
+            requested_formats=("xlsx", "docx", "pdf"),
             output_stem="renewal-portfolio",
             title="Renewal Portfolio Review",
             column_aliases={
@@ -1257,7 +1257,7 @@ def _prepare(
         expected_by_format[fmt] = expected_by_format.get(fmt, 0) + 1
     _require(
         expected_by_format
-        == {"docx": 4, "pdf": 3, "pptx": 1, "xlsx": 3},
+        == {"docx": 4, "pdf": 3, "xlsx": 3},
         f"unexpected visual artifact inventory: {expected_by_format}",
     )
     state = {
@@ -1782,9 +1782,13 @@ def _finalize(proof_root: Path) -> dict[str, Any]:
         "gmail": state["gmail"],
         "known_limitations": [
             (
-                "Local OOXML generation uses the inherited python-docx, "
-                "openpyxl, and python-pptx connectors; visual acceptance is "
-                "therefore required and hash-bound."
+                "Local artifact generation uses the inherited python-docx, "
+                "openpyxl, and PDF connectors; visual acceptance is therefore "
+                "required and hash-bound."
+            ),
+            (
+                "PowerPoint deliverables were excluded from this proof by "
+                "owner direction."
             ),
             (
                 "The engine is bounded to the registered local resource root "
