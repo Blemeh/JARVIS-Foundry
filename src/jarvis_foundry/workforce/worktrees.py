@@ -525,11 +525,16 @@ class WorktreeManager:
                 "branch": package.branch_name,
                 "base_sha": package.source_sha,
             }
-            for capability in (
+            ready_capabilities = [
                 "write_registered_worktree_files",
                 "run_registered_local_commands",
                 "git_local_commit",
-            ):
+            ]
+            from ..fabric.catalog import get_spec
+
+            if get_spec(self.database, package.capability) is not None:
+                ready_capabilities.append(package.capability)
+            for capability in dict.fromkeys(ready_capabilities):
                 self._before_external_effect(
                     package,
                     mutex_key=mutex_key,

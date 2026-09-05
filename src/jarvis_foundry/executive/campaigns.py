@@ -2230,6 +2230,13 @@ def reconcile_campaign_children(
             }
             if effect_statuses & {"STARTED", "FROZEN", "UNKNOWN"}:
                 continue
+        if (
+            child.status == "WAITING"
+            and child.wait_kind not in {None, "DEPENDENCY"}
+            and target in {"READY", "RUNNING", "UNKNOWN", "WAITING"}
+        ):
+            # Specialized waits are released only by their durable wake.
+            continue
         # A mission can report READY/COMPLETE while its sibling dependency is
         # still unresolved.  Preserve the dependency wait until accepted
         # sibling truth is present; selector exclusion is defense in depth.

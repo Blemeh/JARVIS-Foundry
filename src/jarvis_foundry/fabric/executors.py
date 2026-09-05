@@ -48,6 +48,7 @@ from ..effects import (
     execute_fabric_effect,
     finalize_verified_effect,
 )
+from .general_work import dispatch_general_work
 from .model import ClaimOutcome, FabricError
 
 
@@ -2387,28 +2388,45 @@ HANDLERS: dict[str, Callable[[ExecutorContext, Mapping[str, Any]], dict[str, Any
 }
 
 
-def dispatch(ctx: ExecutorContext, action_kind: str, payload: Mapping[str, Any]) -> dict[str, Any]:
+def dispatch(
+    ctx: ExecutorContext,
+    action_kind: str,
+    payload: Mapping[str, Any],
+    *,
+    route_owner: str | None = None,
+) -> dict[str, Any]:
     handler = mcp_invoke if action_kind.startswith("mcp.") else HANDLERS.get(action_kind)
     bound = dict(payload)
     if action_kind.startswith("github.") and action_kind.endswith(".read"):
         bound.setdefault("action", action_kind)
     if handler is None:
         from .computer_operator import dispatch_computer_operator
+        from .personal_operator import (
+            PERSONAL_OPERATOR_ACTIONS,
+            dispatch_personal_operator,
+        )
 
         result = dispatch_computer_operator(ctx, action_kind, bound)
         if result is None:
-            from .personal_operator import dispatch_personal_operator
-
-            result = dispatch_personal_operator(
-                ctx.owned_root,
-                action_kind,
-                bound,
-                executable_allowlist=ctx.operator_executable_allowlist,
-                environment_allowlist=ctx.operator_environment_allowlist,
-                artifact_source_roots=ctx.artifact_source_roots,
-            )
-            if result is None:
-                raise FabricError(f"no executor for {action_kind}")
+            if (
+                route_owner == "personal_operator"
+                or (
+                    route_owner is None
+                    and action_kind in PERSONAL_OPERATOR_ACTIONS
+                )
+            ):
+                result = dispatch_personal_operator(
+                    ctx.owned_root,
+                    action_kind,
+                    bound,
+                    executable_allowlist=ctx.operator_executable_allowlist,
+                    environment_allowlist=ctx.operator_environment_allowlist,
+                    artifact_source_roots=ctx.artifact_source_roots,
+                )
+            else:
+                result = dispatch_general_work(ctx, action_kind, bound)
+        if result is None:
+            raise FabricError(f"no executor for {action_kind}")
     else:
         result = handler(ctx, bound)
     if "claimed" not in result:

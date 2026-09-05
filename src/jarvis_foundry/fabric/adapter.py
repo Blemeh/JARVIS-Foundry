@@ -8,9 +8,14 @@ and returns a structured RoleResult. It is not a second mission loop.
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Callable
 
+from ..effects import FAILED as EFFECT_FAILED
+from ..effects import FROZEN, effect_state, finalize_verified_effect
+from ..events import Event
 from ..roles.adapter import RoleAdapter
 from ..roles.manifest import ContextManifest
 from ..roles.results import (
@@ -24,6 +29,14 @@ from ..roles.results import (
 )
 from .catalog import get_spec
 from .executors import HANDLERS, ExecutorContext
+from .contracts import build_adapter_request, metadata_for_spec
+from .general_work import (
+    ARTIFACT_ACTIONS,
+    FILE_TRANSFER_ACTIONS,
+    GENERAL_WORK_ACTIONS,
+    RECONCILABLE_ACTIONS,
+    inspect_general_work_reconciliation,
+)
 from .loop import seed_builtins, select_capability
 from .model import FabricError, TaskIntent
 from .spine import execute_for_spine
@@ -78,6 +91,26 @@ def _mcp_fabric_blocked(
     )
 
 
+def _fabric_reconciliation_blocked(
+    manifest: ContextManifest,
+    *,
+    action: str,
+    reason: str,
+) -> RoleResult:
+    return RoleResult(
+        run_id=manifest.run_id,
+        role=manifest.role,
+        status=BLOCKED,
+        provider="fabric",
+        model="local",
+        verdict=VERDICT_NOT_TESTED,
+        evidence=(f"fabric:{action}", "verified:UNKNOWN"),
+        error_class="fabric_effect_reconciliation_required",
+        error_detail=reason,
+        identity_transition_authorized=True,
+    )
+
+
 def resolve_fabric_action(capability: str, database=None) -> str | None:
     if capability in HANDLERS:
         return capability
@@ -91,6 +124,48 @@ def resolve_fabric_action(capability: str, database=None) -> str | None:
         if spec is not None:
             return spec.action_kind
     return None
+
+
+def resolve_general_work_dispatch(
+    database,
+    *,
+    role: str,
+    mission_id: str,
+    step_id: str | None,
+    capability: str,
+) -> tuple[str, str, str | None] | None:
+    """Resolve exact local General Work authority, including verifier replay."""
+
+    from ..mission.contracts import latest_contract
+
+    contract = latest_contract(
+        database,
+        mission_id,
+        step_id=step_id,
+        allow_invalid=False,
+    )
+    contract_owned = (
+        contract is not None and contract.source == "v13-general-work"
+    )
+    compatibility_owned = mission_id.startswith("mission-general-work-")
+    if not contract_owned and not compatibility_owned:
+        return None
+    if contract_owned and role != "verifier" and capability != contract.capability:
+        return None
+    resolved_capability = (
+        contract.capability if contract_owned else capability
+    )
+    action = resolve_fabric_action(resolved_capability, database)
+    instructions = None
+    if (
+        contract_owned
+        and role == "verifier"
+        and capability == "verification"
+    ):
+        instructions = contract.instructions
+    if action not in GENERAL_WORK_ACTIONS:
+        return None
+    return action, resolved_capability, instructions
 
 
 def _json_object(text: str) -> dict[str, Any] | None:
@@ -170,8 +245,31 @@ def try_fabric_dispatch(
     mcp_mutation_verifier=None,
 ) -> RoleResult | None:
     """Run a mapped fabric action or return None so the inner adapter can."""
+    dispatch_manifest = manifest
     action = resolve_fabric_action(manifest.capability, database)
-    if manifest.role not in {"builder", "repair"}:
+    resolved_capability = manifest.capability
+    general_work = resolve_general_work_dispatch(
+        database,
+        role=manifest.role,
+        mission_id=manifest.mission_id,
+        step_id=manifest.step_id,
+        capability=manifest.capability,
+    )
+    if general_work is not None:
+        action, resolved_capability, instructions = general_work
+        dispatch_manifest = replace(
+            manifest,
+            capability=resolved_capability,
+            instructions=(
+                instructions
+                if instructions is not None
+                else manifest.instructions
+            ),
+        )
+    role_allowed = manifest.role in {"builder", "repair"} or (
+        manifest.role == "verifier" and action in GENERAL_WORK_ACTIONS
+    )
+    if not role_allowed:
         return None
     mcp_fabric_only = _is_mcp_fabric_only(manifest.capability, action)
     if action is None:
@@ -182,7 +280,10 @@ def try_fabric_dispatch(
             )
         return None
     payload = payload_from_manifest(
-        manifest, action, owned_root, structured_only=structured_only,
+        dispatch_manifest,
+        action,
+        owned_root,
+        structured_only=structured_only,
     )
     if payload is None:
         if mcp_fabric_only:
@@ -191,6 +292,219 @@ def try_fabric_dispatch(
                 reason="selected MCP capability requires a structured Fabric payload",
             )
         return None
+    if manifest.role == "verifier" and action in ARTIFACT_ACTIONS:
+        probe_ctx = ExecutorContext(
+            database=database,
+            owned_root=owned_root,
+            mcp_backend=mcp_backend,
+            mcp_mutation_verifier=mcp_mutation_verifier,
+        )
+        observation = inspect_general_work_reconciliation(
+            probe_ctx,
+            action,
+            payload,
+        )
+        matches = observation.get("matches") is True
+        artifact_sha256 = str(
+            observation.get("artifact_sha256") or "unavailable"
+        )
+        database.append(
+            Event.create(
+                "general_work.artifact_verification_observed",
+                {
+                    "mission_id": manifest.mission_id,
+                    "step_id": manifest.step_id,
+                    "run_id": manifest.run_id,
+                    "action_kind": action,
+                    "status": observation.get("status"),
+                    "matches": matches,
+                    "target_ref": observation.get("target_ref"),
+                    "artifact_sha256": observation.get("artifact_sha256"),
+                    "reason": observation.get("reason"),
+                },
+                source_type="verifier",
+                source_id="v13-general-work",
+                correlation_id=manifest.mission_id,
+                idempotency_key=(
+                    "general_work.artifact_verification_observed:"
+                    f"{manifest.run_id}:{artifact_sha256}"
+                ),
+            )
+        )
+        return RoleResult(
+            run_id=manifest.run_id,
+            role=manifest.role,
+            status=COMPLETED,
+            provider="fabric",
+            model="local",
+            verdict=VERDICT_PASS if matches else VERDICT_FAIL,
+            evidence=(
+                f"fabric:{action}",
+                "verification:independent-readback",
+                f"verified:{observation.get('status')}",
+                f"artifact-sha256:{artifact_sha256}",
+            ),
+            error_class=(
+                None if matches else "artifact_verification_mismatch"
+            ),
+            error_detail=(
+                None
+                if matches
+                else str(
+                    observation.get("reason")
+                    or "format-aware artifact readback did not match"
+                )
+            ),
+            identity_transition_authorized=True,
+        )
+    original_effect_id: str | None = None
+    repair_reconciliation: dict[str, Any] | None = None
+    if manifest.role == "repair" and action in RECONCILABLE_ACTIONS:
+        spec = get_spec(database, resolved_capability)
+        if spec is None:
+            return None
+        original_request = build_adapter_request(
+            mission_id=manifest.mission_id,
+            workflow_id=f"workflow:{manifest.mission_id}",
+            step_id=str(manifest.step_id or "step"),
+            step_version=1,
+            attempt=manifest.attempt,
+            action_kind=action,
+            payload=payload,
+            spec=spec,
+            metadata=metadata_for_spec(spec),
+        )
+        original_effect_id = original_request.effect_id
+        prior_effect = effect_state(database, original_effect_id)
+        if prior_effect.get("status") == FROZEN:
+            reconciliation_payload = dict(payload)
+            if action in FILE_TRANSFER_ACTIONS:
+                recorded_identity = prior_effect.get("request_identity")
+                expected_identity = original_request.to_evidence()
+                identity_fields = (
+                    "effect_id",
+                    "idempotency_key",
+                    "action_kind",
+                    "input_hash",
+                    "target_ref",
+                )
+                if (
+                    not isinstance(recorded_identity, Mapping)
+                    or any(
+                        recorded_identity.get(field)
+                        != expected_identity.get(field)
+                        for field in identity_fields
+                    )
+                ):
+                    repair_reconciliation = {
+                        "status": "IDENTITY_MISMATCH",
+                        "matches": False,
+                        "target_ref": payload.get("target"),
+                        "reason": (
+                            "frozen file effect request identity does not match "
+                            "the repair request"
+                        ),
+                    }
+                else:
+                    reconciliation_payload.setdefault(
+                        "idempotency_key",
+                        original_request.idempotency_key,
+                    )
+            if repair_reconciliation is None:
+                probe_ctx = ExecutorContext(
+                    database=database,
+                    owned_root=owned_root,
+                    mcp_backend=mcp_backend,
+                    mcp_mutation_verifier=mcp_mutation_verifier,
+                )
+                repair_reconciliation = inspect_general_work_reconciliation(
+                    probe_ctx,
+                    action,
+                    reconciliation_payload,
+                )
+            if repair_reconciliation.get("matches") is True:
+                claim = repair_reconciliation.get("claim")
+                if not isinstance(claim, dict):
+                    return _mcp_fabric_blocked(
+                        manifest,
+                        reason="General Work reconciliation produced no claim",
+                    )
+                finalize_verified_effect(
+                    database,
+                    original_effect_id,
+                    provider_receipt={
+                        "provider_id": "filesystem",
+                        "provider_ref": str(
+                            repair_reconciliation.get("target_ref")
+                            or payload.get("target")
+                            or ""
+                        ),
+                    },
+                    readback={
+                        "status": "MATCH",
+                        "matches": True,
+                        "artifact_sha256": repair_reconciliation.get(
+                            "artifact_sha256"
+                        ),
+                        "details": repair_reconciliation.get("readback"),
+                    },
+                    result=claim,
+                    acceptance_evidence={
+                        "authority": "general_work.independent_readback",
+                        "mission_id": manifest.mission_id,
+                        "step_id": manifest.step_id,
+                    },
+                    reconciled=True,
+                )
+            else:
+                database.append(
+                    Event.create(
+                        "general_work.effect_reconciliation_observed",
+                        {
+                            "mission_id": manifest.mission_id,
+                            "step_id": manifest.step_id,
+                            "action_kind": action,
+                            "effect_id": original_effect_id,
+                            "status": repair_reconciliation.get("status"),
+                            "target_ref": repair_reconciliation.get(
+                                "target_ref"
+                            ),
+                            "artifact_sha256": repair_reconciliation.get(
+                                "artifact_sha256"
+                            ),
+                        },
+                        source_type="supervisor",
+                        source_id="v13-general-work",
+                        correlation_id=manifest.mission_id,
+                        idempotency_key=(
+                            "general_work.effect_reconciliation_observed:"
+                            f"{original_effect_id}:{manifest.attempt}"
+                        ),
+                    )
+                )
+                if action in FILE_TRANSFER_ACTIONS:
+                    return _fabric_reconciliation_blocked(
+                        manifest,
+                        action=action,
+                        reason=str(
+                            repair_reconciliation.get("reason")
+                            or "frozen file effect did not match current readback"
+                        ),
+                    )
+        if (
+            action in ARTIFACT_ACTIONS
+            and prior_effect.get("status") in {EFFECT_FAILED, FROZEN}
+            and not (
+            repair_reconciliation
+            and repair_reconciliation.get("matches") is True
+            )
+        ):
+            payload = {
+                **payload,
+                "repair_existing": True,
+                "repair_attempt": manifest.attempt,
+                "repair_of_effect_id": original_effect_id,
+            }
     seed_builtins(database)
     selection = select_capability(
         database,
@@ -221,6 +535,9 @@ def try_fabric_dispatch(
             action_kind=action,
             payload=payload,
             workflow_id=f"workflow:{manifest.mission_id}",
+            attempt=manifest.attempt,
+            result_scope=f"{manifest.role}:{manifest.run_id}",
+            route_owner="general_work" if general_work is not None else None,
         )
     except FabricError as error:
         # An attempted fabric effect must not also run Hermes.
@@ -237,6 +554,32 @@ def try_fabric_dispatch(
             identity_transition_authorized=True,
         )
     success = bool(receipt.get("success"))
+    if (
+        success
+        and original_effect_id is not None
+        and payload.get("repair_existing") is True
+    ):
+        database.append(
+            Event.create(
+                "general_work.output_repaired",
+                {
+                    "mission_id": manifest.mission_id,
+                    "step_id": manifest.step_id,
+                    "action_kind": action,
+                    "repair_attempt": manifest.attempt,
+                    "repaired_effect_id": original_effect_id,
+                    "repair_effect_id": receipt.get("effect_id"),
+                    "target_ref": payload.get("target"),
+                },
+                source_type="supervisor",
+                source_id="v13-general-work",
+                correlation_id=manifest.mission_id,
+                idempotency_key=(
+                    "general_work.output_repaired:"
+                    f"{original_effect_id}:{manifest.attempt}"
+                ),
+            )
+        )
     return RoleResult(
         run_id=manifest.run_id,
         role=manifest.role,

@@ -339,17 +339,19 @@ def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
         ),
     )
     computer_specs = computer_operator_specs()
-    computer_capability_ids = {
-        spec.capability_id for spec in computer_specs
-    }
+    computer_capability_ids = {spec.capability_id for spec in computer_specs}
+    from .general_work import general_work_specs
     from .personal_operator import personal_operator_specs
 
+    general_specs = general_work_specs()
+    general_capability_ids = {spec.capability_id for spec in general_specs}
+    owned_capability_ids = computer_capability_ids | general_capability_ids
     personal_specs = tuple(
         spec
         for spec in personal_operator_specs()
-        if spec.capability_id not in computer_capability_ids
+        if spec.capability_id not in owned_capability_ids
     )
-    builtins = (*builtins, *computer_specs, *personal_specs)
+    builtins = (*builtins, *computer_specs, *general_specs, *personal_specs)
     registered = []
     for spec in builtins:
         existing = get_spec(database, spec.capability_id)
@@ -488,6 +490,7 @@ def _verify_action(
     owned_root: Path,
     payload: Mapping[str, Any] | None = None,
     executor_context: ExecutorContext | None = None,
+    route_owner: str | None = None,
 ) -> VerifyVerdict:
     claimed_status = str(claimed.get("claimed") or "UNKNOWN")
     if claimed_status == "UNKNOWN":
@@ -504,11 +507,67 @@ def _verify_action(
     if computer_verdict is not None:
         return computer_verdict
 
+    verification_context: Any = executor_context
+    if verification_context is None:
+        from types import SimpleNamespace
+
+        verification_context = SimpleNamespace(
+            owned_root=owned_root,
+            artifact_source_roots=(),
+        )
     source_roots = (
         executor_context.artifact_source_roots
         if executor_context is not None
         else ()
     )
+
+    def personal_operator_verdict() -> VerifyVerdict | None:
+        from .personal_operator import verify_personal_operator
+
+        return verify_personal_operator(
+            action_kind,
+            claimed,
+            owned_root,
+            payload,
+            executable_allowlist=(
+                executor_context.operator_executable_allowlist
+                if executor_context is not None
+                else ()
+            ),
+            environment_allowlist=(
+                executor_context.operator_environment_allowlist
+                if executor_context is not None
+                else ()
+            ),
+            artifact_source_roots=source_roots,
+        )
+
+    from .personal_operator import PERSONAL_OPERATOR_ACTIONS
+
+    prefer_personal_operator = (
+        route_owner == "personal_operator"
+        or (
+            route_owner is None
+            and action_kind in PERSONAL_OPERATOR_ACTIONS
+        )
+    )
+    if prefer_personal_operator:
+        verdict = personal_operator_verdict()
+        if verdict is not None:
+            return verdict
+        if route_owner == "personal_operator":
+            return VerifyVerdict.UNKNOWN
+
+    from .general_work import verify_general_work_action
+
+    general_work_verdict = verify_general_work_action(
+        verification_context,
+        action_kind,
+        claimed,
+        payload,
+    )
+    if general_work_verdict is not None:
+        return general_work_verdict
 
     def artifact_connector():
         from ..connectors.local_artifacts import LocalArtifactConnector
@@ -950,27 +1009,9 @@ def _verify_action(
             return VerifyVerdict.MATCH
         return VerifyVerdict.UNKNOWN
 
-    from .personal_operator import verify_personal_operator
-
-    personal_operator_verdict = verify_personal_operator(
-        action_kind,
-        claimed,
-        owned_root,
-        payload,
-        executable_allowlist=(
-            executor_context.operator_executable_allowlist
-            if executor_context is not None
-            else ()
-        ),
-        environment_allowlist=(
-            executor_context.operator_environment_allowlist
-            if executor_context is not None
-            else ()
-        ),
-        artifact_source_roots=source_roots,
-    )
-    if personal_operator_verdict is not None:
-        return personal_operator_verdict
+    personal_verdict = personal_operator_verdict()
+    if personal_verdict is not None:
+        return personal_verdict
     if action_kind == "llm.dispatch":
         return VerifyVerdict.UNKNOWN
     return VerifyVerdict.UNKNOWN
@@ -982,6 +1023,7 @@ def _verify_with_postconditions(
     owned_root: Path,
     payload: Mapping[str, Any] | None = None,
     executor_context: ExecutorContext | None = None,
+    route_owner: str | None = None,
 ) -> tuple[VerifyVerdict, tuple[Any, ...]]:
     """Run the existing action verifier plus declared postconditions."""
 
@@ -991,6 +1033,7 @@ def _verify_with_postconditions(
         owned_root,
         payload,
         executor_context,
+        route_owner,
     )
     results = evaluate_postconditions(
         claimed,
@@ -1091,7 +1134,14 @@ def execute_action(
     step_id: str | None = None,
     step_version: int = 1,
     attempt: int = 1,
+    route_owner: str | None = None,
 ) -> ActionResult:
+    if route_owner not in {None, "general_work", "personal_operator"}:
+        raise FabricError(f"unsupported Fabric route owner: {route_owner}")
+    if route_owner is None:
+        normalized_task_id = intent.task_id.lower().replace("_", "-")
+        if normalized_task_id.startswith("general-work."):
+            route_owner = "general_work"
     stop = emergency_stop_reason(
         database,
         payload.get("stop_path"),
@@ -1236,7 +1286,12 @@ def execute_action(
             module = load_candidate(Path(spec.executor))
             digest = module.run(str(path))
             return {"claimed": "COMPLETED", "path": str(path), "sha256": digest}
-        return dispatch(ctx, action_kind, execution_payload)
+        return dispatch(
+            ctx,
+            action_kind,
+            execution_payload,
+            route_owner=route_owner,
+        )
 
     if canonical_effect_required:
         stop_identities = set(request.stop_scope)
@@ -1298,6 +1353,7 @@ def execute_action(
             ctx.owned_root,
             payload,
             ctx,
+            route_owner,
         )
     claimed_outcome = ClaimOutcome(str(claimed.get("claimed") or "UNKNOWN"))
     if claimed_outcome is ClaimOutcome.COMPLETED and verdict is VerifyVerdict.MISMATCH:

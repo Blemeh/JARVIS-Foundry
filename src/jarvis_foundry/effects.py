@@ -259,6 +259,7 @@ def effect_state(database: FoundryDatabase,
         state["expected_effects"] = started[-1].get("expected_effects")
         state["claimed_at"] = started[-1].get("claimed_at")
         state["claim_expires_at"] = started[-1].get("claim_expires_at")
+        state["request_identity"] = started[-1].get("request_identity")
         try:
             state["claim_active"] = (
                 state["status"] == STARTED

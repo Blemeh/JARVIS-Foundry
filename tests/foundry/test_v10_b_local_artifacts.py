@@ -501,6 +501,36 @@ def test_ooxml_package_path_traversal_is_rejected_before_parser(tmp_path: Path) 
     assert not (tmp_path / "outside.txt").exists()
 
 
+def test_artifact_paths_reject_ntfs_streams_before_read_or_write(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "owned"
+    root.mkdir()
+    source = _journey_source(root)
+    stream = Path(f"{source}:hidden.csv")
+    stream.write_text("Status,Amount\nhidden,999\n", encoding="utf-8")
+    connector = LocalArtifactConnector(root)
+
+    with pytest.raises(
+        ArtifactValidationError,
+        match="cannot contain a drive or stream",
+    ):
+        connector.capture("input.csv:hidden.csv")
+
+    parsed = connector.parse("input.csv")
+    with pytest.raises(
+        ArtifactValidationError,
+        match="cannot contain a drive or stream",
+    ):
+        connector.create_xlsx(
+            parsed,
+            target_ref="out.xlsx:hidden-stream",
+            idempotency_key="artifact:stream-target",
+        )
+
+    assert not (root / "out.xlsx").exists()
+
+
 def test_core_library_versions_are_visible_for_lane_evidence() -> None:
     versions = installed_library_versions()
     assert tuple(versions) == CORE_DISTRIBUTIONS

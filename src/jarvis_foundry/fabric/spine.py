@@ -29,6 +29,8 @@ def execute_for_spine(
     workflow_id: str | None = None,
     step_version: int = 1,
     attempt: int = 1,
+    result_scope: str | None = None,
+    route_owner: str | None = None,
 ) -> dict[str, Any]:
     """Run one fabric action and journal an evidence receipt for the spine."""
     seed_builtins(database)
@@ -47,6 +49,7 @@ def execute_for_spine(
         step_id=step_id,
         step_version=step_version,
         attempt=attempt,
+        route_owner=route_owner,
     )
     receipt = dict(result.receipt)
     if not receipt:
@@ -79,12 +82,19 @@ def execute_for_spine(
         "action_kind": action_kind,
         "payload": dict(payload),
     })
+    scope_suffix = (
+        f":scope:{payload_hash({'result_scope': result_scope})[:16]}"
+        if result_scope
+        else ""
+    )
     database.append(Event.create(
         SPINE_RESULT,
         receipt,
         source_type="supervisor",
         source_id=source_id,
         correlation_id=mission_id,
-        idempotency_key=f"{SPINE_RESULT}:{mission_id}:{step_id}:{stable_key}",
+        idempotency_key=(
+            f"{SPINE_RESULT}:{mission_id}:{step_id}:{stable_key}{scope_suffix}"
+        ),
     ))
     return receipt

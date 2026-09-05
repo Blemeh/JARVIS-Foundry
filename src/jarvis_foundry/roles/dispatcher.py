@@ -2827,7 +2827,70 @@ class RoleDispatcher:
                 )
 
         decision = None
-        if candidates:
+        from ..fabric.adapter import resolve_general_work_dispatch
+
+        local_fabric = resolve_general_work_dispatch(
+            self.database,
+            role=role,
+            mission_id=mission_id,
+            step_id=step_id,
+            capability=capability,
+        )
+        if local_fabric is not None:
+            local_action, local_capability, _instructions = local_fabric
+            local_candidate = ProviderRouteCandidate(
+                provider="fabric",
+                model="local",
+                capabilities=tuple(dict.fromkeys((
+                    *effective_request.required_capabilities,
+                    *config.required_capabilities,
+                    local_capability,
+                ))),
+                task_classes=("*",),
+                tool_support=tuple(effective_request.required_tools),
+                context_window_tokens=12_000,
+                latency_ms=0.0,
+                reliability=1.0,
+                cost_usd=0.0,
+                health="READY",
+                auth_state="READY",
+                availability="AVAILABLE",
+                readiness="READY",
+                data_use_classification="LOCAL_ONLY",
+                noninteractive_allowed=True,
+                evidence_refs=(
+                    f"fabric:{local_action}",
+                    f"capability:{local_capability}",
+                ),
+            )
+            route_request = (
+                replace(effective_request, max_cost_usd=None)
+                if workforce_cost_telemetry_required
+                else effective_request
+            )
+            decision = self.router.route(
+                route_request,
+                (local_candidate,),
+                role=role,
+            )
+            self._append("provider.route_decided", {
+                "run_id": run_id,
+                "mission_id": mission_id,
+                "step_id": step_id,
+                "role": role,
+                "attempt_generation": attempt_generation,
+                "routing_request": (
+                    routing_request.to_dict() if routing_request is not None else None
+                ),
+                "effective_routing_request": effective_request.to_dict(),
+                **lineage,
+                **decision.to_dict(),
+            }, idempotency_key=(
+                f"provider.route_decided:{run_id}:{attempt_generation}:{attempt}:"
+                f"{decision.status}:{decision.failure_class or 'selected'}"))
+            chain_candidates = tuple(decision.attempted)
+            route_failure = decision.failure_class
+        elif candidates:
             if provider_override and not self.provider_override_allows_fallback:
                 candidates = tuple(
                     item for item in candidates
@@ -2933,7 +2996,7 @@ class RoleDispatcher:
             self._fail_run(run_id, error_class, detail)
             return result
 
-        if not legacy_chain and not candidates:
+        if local_fabric is None and not legacy_chain and not candidates:
             self._fail_run(run_id, "provider_unavailable", f"no providers configured for role {role}")
             return RoleResult(
                 run_id=run_id, role=role, status=BLOCKED, provider="", model="",

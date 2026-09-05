@@ -15,6 +15,7 @@ import io
 import importlib.metadata
 import json
 import math
+import re
 import textwrap
 import warnings
 import zipfile
@@ -285,6 +286,35 @@ def _set_xlsx_value(cell: Any, value: Any, *, formula: bool = False) -> None:
         cell.data_type = "s"
 
 
+def _xlsx_display_value(value: Any, *, numeric_column: bool) -> Any:
+    """Normalize mixed numeric columns without coercing identifier-like text."""
+    if not numeric_column or not isinstance(value, str) or value != value.strip():
+        return value
+    if not re.fullmatch(r"-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?", value):
+        return value
+    unsigned = value.removeprefix("-")
+    integer_part = unsigned.split(".", 1)[0]
+    if len(integer_part) > 1 and integer_part.startswith("0"):
+        return value
+    numeric = Decimal(value)
+    if numeric == numeric.to_integral_value():
+        return int(numeric)
+    converted = float(numeric)
+    return converted if math.isfinite(converted) else value
+
+
+def _xlsx_numeric_columns(table: TableData) -> frozenset[int]:
+    return frozenset(
+        column_index
+        for column_index in range(table.column_count)
+        if any(
+            isinstance(row[column_index], (int, float, Decimal))
+            and not isinstance(row[column_index], bool)
+            for row in table.rows
+        )
+    )
+
+
 def _make_table(
     rows: Sequence[Sequence[Any]],
     limits: ArtifactLimits,
@@ -400,6 +430,7 @@ class LocalArtifactConnector:
 
     SUPPORTED_FORMATS = frozenset({
         "pdf", "docx", "xlsx", "xlsm", "csv", "tsv", "json", "pptx",
+        "txt", "md",
         "png", "jpg", "jpeg", "bmp", "gif", "tif", "tiff", "webp",
     })
     IMAGE_FORMATS = frozenset({
@@ -412,10 +443,14 @@ class LocalArtifactConnector:
         limits: ArtifactLimits | None = None,
         *,
         source_roots: Sequence[str | Path] | None = None,
+        repair_existing: bool = False,
     ) -> None:
         self.root = Path(root).expanduser().resolve()
         self.root.mkdir(parents=True, exist_ok=True)
         self.limits = limits or ArtifactLimits()
+        if not isinstance(repair_existing, bool):
+            raise ArtifactValidationError("repair_existing must be boolean")
+        self.repair_existing = repair_existing
         if isinstance(source_roots, (str, bytes, Path)):
             raise ArtifactValidationError("source_roots must be a sequence of directories")
         roots: list[Path] = [self.root]
@@ -440,10 +475,28 @@ class LocalArtifactConnector:
         except ValueError:
             return None
 
+    @staticmethod
+    def _validate_path_reference(candidate: Path) -> None:
+        if candidate.drive and not candidate.is_absolute():
+            raise ArtifactValidationError(
+                "artifact path cannot be drive-relative"
+            )
+        parts = candidate.parts
+        start = (
+            1
+            if candidate.anchor and parts and parts[0] == candidate.anchor
+            else 0
+        )
+        if any(":" in part for part in parts[start:]):
+            raise ArtifactValidationError(
+                "artifact path components cannot contain a drive or stream"
+            )
+
     def _resolve(self, ref: str, *, output: bool = False) -> tuple[Path, str]:
         if not isinstance(ref, str) or not ref.strip():
             raise ArtifactValidationError("artifact path must be a non-empty string")
         candidate = Path(ref)
+        self._validate_path_reference(candidate)
         resolved = (
             candidate.expanduser().resolve()
             if candidate.is_absolute()
@@ -552,6 +605,8 @@ class LocalArtifactConnector:
             )
         if receipt.format == "pptx":
             return self._parse_pptx(receipt, data)
+        if receipt.format in {"txt", "md"}:
+            return self._parse_text(receipt, data)
         if receipt.format in self.IMAGE_FORMATS:
             return self._parse_image(receipt, data)
         raise ArtifactValidationError(f"no parser for {receipt.format}")
@@ -777,6 +832,32 @@ class LocalArtifactConnector:
                 "json_type": json_type,
                 "keys": sorted(keys),
                 "value": _json_safe(value),
+            },
+        )
+
+    def _parse_text(
+        self,
+        source: SourceReceipt,
+        data: bytes,
+    ) -> ParsedArtifact:
+        try:
+            text = data.decode("utf-8-sig")
+        except UnicodeDecodeError as error:
+            raise ArtifactParseError(
+                f"text parser rejected {source.source_ref}: {error}"
+            ) from error
+        if len(text) > self.limits.max_text_chars:
+            raise ArtifactValidationError("text source exceeds max_text_chars")
+        lines = text.splitlines()
+        return ParsedArtifact(
+            source=source,
+            kind="text",
+            details={
+                "text": text,
+                "text_chars": len(text),
+                "text_sha256": _sha256(text.encode("utf-8")),
+                "line_count": len(lines),
+                "nonempty_line_count": sum(bool(line.strip()) for line in lines),
             },
         )
 
@@ -1297,6 +1378,41 @@ class LocalArtifactConnector:
         self._captured_bytes(receipt)
         return receipt
 
+    def _source_receipts(
+        self,
+        sources: Sequence[ParsedArtifact | SourceReceipt | str | Path],
+    ) -> tuple[SourceReceipt, ...]:
+        if isinstance(sources, (str, bytes)) or not isinstance(sources, Sequence):
+            raise ArtifactValidationError("sources must be a sequence")
+        receipts = tuple(self._any_source_receipt(source) for source in sources)
+        if not receipts:
+            raise ArtifactValidationError("sources must be non-empty")
+        if len(receipts) > self.limits.max_columns:
+            raise ArtifactValidationError("source count exceeds operation bound")
+        refs = [receipt.source_ref.casefold() for receipt in receipts]
+        if len(set(refs)) != len(refs):
+            raise ArtifactValidationError("sources cannot contain duplicates")
+        return receipts
+
+    @staticmethod
+    def _lineage_hash(receipts: Sequence[SourceReceipt]) -> str:
+        payload = [
+            {
+                "source_ref": receipt.source_ref,
+                "sha256": receipt.sha256,
+                "size_bytes": receipt.size_bytes,
+            }
+            for receipt in receipts
+        ]
+        return _sha256(
+            json.dumps(
+                payload,
+                ensure_ascii=True,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        )
+
     @staticmethod
     def _canonical_zip(data: bytes) -> bytes:
         """Normalize OOXML package metadata so retries have stable bytes."""
@@ -1351,9 +1467,54 @@ class LocalArtifactConnector:
             raise ArtifactValidationError(
                 f"output exceeds max_source_bytes ({self.limits.max_source_bytes})"
             )
+        path, relative = self._resolve(target_ref, output=True)
+        desired_hash = _sha256(data)
+        preserved: dict[str, Any] | None = None
+        overwrite = False
+        if self.repair_existing and path.is_file():
+            prior = path.read_bytes()
+            prior_hash = _sha256(prior)
+            if prior_hash != desired_hash:
+                repair_token = hashlib.sha256(
+                    f"{relative}:{prior_hash}".encode("utf-8")
+                ).hexdigest()[:20]
+                backup_ref = (
+                    PurePosixPath(".jarvis-general-work")
+                    / "repairs"
+                    / repair_token
+                    / f"{path.name}.{prior_hash[:16]}.bak"
+                ).as_posix()
+                try:
+                    backup_attempt = self.filesystem.request_bytes(
+                        backup_ref,
+                        prior,
+                        idempotency_key=(
+                            f"{idempotency_key}:preserve:{prior_hash}"
+                        ),
+                        overwrite=False,
+                    )
+                except FilesystemConnectorError as error:
+                    raise ArtifactWriteError(
+                        f"prior output preservation failed: {error}"
+                    ) from error
+                if backup_attempt.outcome != "COMPLETED":
+                    raise ArtifactWriteError(
+                        "prior output preservation "
+                        f"{backup_attempt.outcome}: "
+                        f"{backup_attempt.error_code or 'unknown'}"
+                    )
+                preserved = {
+                    "target_ref": relative,
+                    "sha256": prior_hash,
+                    "backup_ref": backup_ref,
+                }
+                overwrite = True
         try:
             attempt = self.filesystem.request_bytes(
-                target_ref, data, idempotency_key=idempotency_key, overwrite=False
+                relative,
+                data,
+                idempotency_key=idempotency_key,
+                overwrite=overwrite,
             )
         except FilesystemConnectorError as error:
             raise ArtifactWriteError(str(error)) from error
@@ -1361,11 +1522,13 @@ class LocalArtifactConnector:
             raise ArtifactWriteError(
                 f"output write {attempt.outcome}: {attempt.error_code or 'unknown'}"
             )
-        path, relative = self._resolve(target_ref, output=True)
         actual = path.read_bytes()
         output_hash = _sha256(actual)
-        if output_hash != _sha256(data):
+        if output_hash != desired_hash:
             raise ArtifactWriteError("output hash changed during write")
+        bounded_readback = dict(readback)
+        if preserved is not None:
+            bounded_readback["preserved_prior_output"] = preserved
         return OutputReceipt(
             target_ref=relative,
             path=str(path),
@@ -1374,8 +1537,8 @@ class LocalArtifactConnector:
             size_bytes=len(actual),
             source_sha256=source_sha256,
             idempotency_key=idempotency_key,
-            readback=readback,
-            reconciled=attempt.reconciled,
+            readback=bounded_readback,
+            reconciled=attempt.reconciled or preserved is not None,
             replayed=attempt.replayed,
         )
 
@@ -1387,6 +1550,26 @@ class LocalArtifactConnector:
         if len(value) > 31 or any(character in value for character in r"[]:*?/\\"):
             raise ArtifactValidationError("sheet_name is not valid for Excel")
         return value
+
+    @staticmethod
+    def xlsx_rendered_table(table: TableData) -> TableData:
+        """Return the exact table values written to a newly created workbook."""
+        if not isinstance(table, TableData):
+            raise ArtifactSchemaError("XLSX rendering requires TableData")
+        numeric_columns = _xlsx_numeric_columns(table)
+        return TableData(
+            headers=table.headers,
+            rows=tuple(
+                tuple(
+                    _xlsx_display_value(
+                        value,
+                        numeric_column=column_index in numeric_columns,
+                    )
+                    for column_index, value in enumerate(row)
+                )
+                for row in table.rows
+            ),
+        )
 
     def _style_worksheet(self, worksheet: Any, *, header_row: int = 1) -> None:
         from openpyxl.styles import Alignment, Font, PatternFill
@@ -1420,7 +1603,11 @@ class LocalArtifactConnector:
                 if isinstance(cell.value, (int, float)) and not isinstance(
                     cell.value, bool
                 ):
-                    cell.number_format = "#,##0.00"
+                    cell.number_format = (
+                        "#,##0"
+                        if isinstance(cell.value, int) or cell.value.is_integer()
+                        else "#,##0.##"
+                    )
         for column_index in range(1, worksheet.max_column + 1):
             values = [
                 "" if cell.value is None else str(cell.value)
@@ -1430,6 +1617,346 @@ class LocalArtifactConnector:
             ]
             width = min(40, max(10, max((len(value) for value in values), default=0) + 2))
             worksheet.column_dimensions[get_column_letter(column_index)].width = width
+
+    def compose_tables(
+        self,
+        parsed_sources: Sequence[ParsedArtifact],
+        *,
+        column_aliases: Mapping[str, str] | None = None,
+        select_columns: Sequence[str] | None = None,
+        deduplicate_by: Sequence[str] = (),
+        sort_by: Sequence[str] = (),
+        source_column: str | None = None,
+        trim_strings: bool = True,
+    ) -> tuple[TableData, dict[str, Any]]:
+        """Compose compatible captured tables with explicit normalization."""
+
+        if (
+            isinstance(parsed_sources, (str, bytes))
+            or not isinstance(parsed_sources, Sequence)
+            or not parsed_sources
+        ):
+            raise ArtifactValidationError(
+                "parsed_sources must be a non-empty sequence"
+            )
+        if not isinstance(trim_strings, bool):
+            raise ArtifactValidationError("trim_strings must be boolean")
+        aliases = dict(column_aliases or {})
+        if any(
+            not isinstance(key, str)
+            or not key.strip()
+            or not isinstance(value, str)
+            or not value.strip()
+            for key, value in aliases.items()
+        ):
+            raise ArtifactValidationError(
+                "column_aliases require non-empty string names"
+            )
+        alias_by_fold = {
+            key.strip().casefold(): value.strip()
+            for key, value in aliases.items()
+        }
+        if isinstance(select_columns, (str, bytes)):
+            raise ArtifactValidationError("select_columns must be a sequence")
+        if isinstance(deduplicate_by, (str, bytes)):
+            raise ArtifactValidationError("deduplicate_by must be a sequence")
+        if isinstance(sort_by, (str, bytes)):
+            raise ArtifactValidationError("sort_by must be a sequence")
+        selected = tuple(str(value).strip() for value in (select_columns or ()))
+        dedupe = tuple(str(value).strip() for value in deduplicate_by)
+        sorting = tuple(str(value).strip() for value in sort_by)
+        if any(not value for value in (*selected, *dedupe, *sorting)):
+            raise ArtifactValidationError(
+                "column selections must use non-empty names"
+            )
+        if source_column is not None:
+            if not isinstance(source_column, str) or not source_column.strip():
+                raise ArtifactValidationError(
+                    "source_column must be non-empty text"
+                )
+            source_column = source_column.strip()
+
+        normalized: list[tuple[ParsedArtifact, tuple[str, ...]]] = []
+        union: list[str] = []
+        seen_union: set[str] = set()
+        for parsed in parsed_sources:
+            if not isinstance(parsed, ParsedArtifact) or parsed.table is None:
+                raise ArtifactSchemaError(
+                    "table composition requires only tabular sources"
+                )
+            headers = tuple(
+                alias_by_fold.get(header.strip().casefold(), header.strip())
+                for header in parsed.table.headers
+            )
+            if len({header.casefold() for header in headers}) != len(headers):
+                raise ArtifactSchemaError(
+                    f"column aliases collide for {parsed.source.source_ref}"
+                )
+            normalized.append((parsed, headers))
+            for header in headers:
+                folded = header.casefold()
+                if folded not in seen_union:
+                    seen_union.add(folded)
+                    union.append(header)
+        columns = selected or tuple(union)
+        if source_column is not None and source_column.casefold() in {
+            column.casefold() for column in columns
+        }:
+            raise ArtifactSchemaError(
+                "source_column collides with an output column"
+            )
+        output_headers = (
+            (*columns, source_column) if source_column is not None else columns
+        )
+        if not output_headers:
+            raise ArtifactSchemaError(
+                "table composition requires at least one output column"
+            )
+        if len(output_headers) > self.limits.max_columns:
+            raise ArtifactSchemaError("composed table exceeds max_columns")
+        available = {header.casefold(): header for header in union}
+        unknown = [
+            column
+            for column in (*columns, *dedupe, *sorting)
+            if column.casefold() not in available
+        ]
+        if unknown:
+            raise ArtifactSchemaError(
+                f"table composition references unknown columns: {unknown!r}"
+            )
+        canonical = {
+            column.casefold(): column
+            for column in columns
+        }
+        output_rows: list[tuple[Any, ...]] = []
+        for parsed, headers in normalized:
+            for source_row in parsed.table.rows:
+                row = {
+                    canonical_header.casefold(): value
+                    for canonical_header, value in zip(headers, source_row)
+                }
+                values: list[Any] = []
+                for column in columns:
+                    value = row.get(column.casefold())
+                    if trim_strings and isinstance(value, str):
+                        value = value.strip()
+                    values.append(value)
+                if not any(value not in (None, "") for value in values):
+                    continue
+                if source_column is not None:
+                    values.append(parsed.source.source_ref)
+                output_rows.append(tuple(_json_safe(value) for value in values))
+                if len(output_rows) > self.limits.max_rows:
+                    raise ArtifactSchemaError("composed table exceeds max_rows")
+                if len(output_rows) * len(output_headers) > self.limits.max_cells:
+                    raise ArtifactSchemaError("composed table exceeds max_cells")
+
+        if dedupe:
+            dedupe_indexes = [
+                next(
+                    index
+                    for index, header in enumerate(output_headers)
+                    if header.casefold() == column.casefold()
+                )
+                for column in dedupe
+            ]
+            unique_rows: list[tuple[Any, ...]] = []
+            seen_keys: set[tuple[str, ...]] = set()
+            for row in output_rows:
+                key = tuple(
+                    json.dumps(
+                        _json_safe(row[index]),
+                        ensure_ascii=True,
+                        sort_keys=True,
+                        separators=(",", ":"),
+                    )
+                    for index in dedupe_indexes
+                )
+                if key in seen_keys:
+                    continue
+                seen_keys.add(key)
+                unique_rows.append(row)
+            output_rows = unique_rows
+        if sorting:
+            sort_indexes = [
+                next(
+                    index
+                    for index, header in enumerate(output_headers)
+                    if header.casefold() == column.casefold()
+                )
+                for column in sorting
+            ]
+            output_rows.sort(
+                key=lambda row: tuple(
+                    (row[index] is None, str(row[index] or "").casefold())
+                    for index in sort_indexes
+                )
+            )
+        table = TableData(
+            headers=tuple(output_headers),
+            rows=tuple(output_rows),
+        )
+        details = {
+            "source_refs": [
+                parsed.source.source_ref for parsed, _headers in normalized
+            ],
+            "column_aliases": dict(sorted(aliases.items())),
+            "selected_columns": list(columns),
+            "deduplicate_by": list(dedupe),
+            "sort_by": list(sorting),
+            "source_column": source_column,
+            "trim_strings": trim_strings,
+            "row_count": table.row_count,
+            "column_count": table.column_count,
+        }
+        return table, details
+
+    def merge_tables(
+        self,
+        parsed_sources: Sequence[ParsedArtifact],
+        *,
+        target_ref: str,
+        idempotency_key: str,
+        column_aliases: Mapping[str, str] | None = None,
+        select_columns: Sequence[str] | None = None,
+        deduplicate_by: Sequence[str] = (),
+        sort_by: Sequence[str] = (),
+        source_column: str | None = None,
+        trim_strings: bool = True,
+        fault_after_write: bool = False,
+    ) -> OutputReceipt:
+        """Write one deterministic normalized table from captured sources."""
+
+        receipts = self._source_receipts(
+            tuple(parsed.source for parsed in parsed_sources)
+        )
+        table, transformation = self.compose_tables(
+            parsed_sources,
+            column_aliases=column_aliases,
+            select_columns=select_columns,
+            deduplicate_by=deduplicate_by,
+            sort_by=sort_by,
+            source_column=source_column,
+            trim_strings=trim_strings,
+        )
+        _, relative, fmt = self._ensure_new_target(target_ref, receipts[0])
+        if fmt not in {"csv", "tsv", "json", "xlsx"}:
+            raise ArtifactValidationError(
+                "merged table target must use .csv, .tsv, .json, or .xlsx"
+            )
+        for receipt in receipts:
+            self._assert_source_current(receipt)
+        if fmt in {"csv", "tsv"}:
+            delimiter = "\t" if fmt == "tsv" else ","
+            output = io.StringIO(newline="")
+            writer = csv.writer(output, delimiter=delimiter, lineterminator="\n")
+            writer.writerow(table.headers)
+            writer.writerows(table.rows)
+            data = output.getvalue().encode("utf-8")
+        elif fmt == "json":
+            records = [
+                {
+                    header: _json_safe(row[index])
+                    for index, header in enumerate(table.headers)
+                }
+                for row in table.rows
+            ]
+            data = (
+                json.dumps(
+                    {"records": records},
+                    ensure_ascii=True,
+                    indent=2,
+                    sort_keys=False,
+                )
+                + "\n"
+            ).encode("utf-8")
+        else:
+            try:
+                from openpyxl import Workbook
+
+                workbook = Workbook()
+                workbook.properties.created = datetime(2000, 1, 1)
+                workbook.properties.modified = datetime(2000, 1, 1)
+                worksheet = workbook.active
+                worksheet.title = "Data"
+                for row_index, row in enumerate(
+                    (table.headers, *table.rows),
+                    start=1,
+                ):
+                    for column_index, value in enumerate(row, start=1):
+                        _set_xlsx_value(
+                            worksheet.cell(row_index, column_index),
+                            value,
+                        )
+                self._style_worksheet(worksheet)
+                output = io.BytesIO()
+                workbook.save(output)
+                workbook.close()
+                data = self._canonical_zip(output.getvalue())
+            except Exception as error:  # noqa: BLE001 - workbook boundary
+                raise ArtifactWriteError(
+                    f"openpyxl merged table creation failed: {error}"
+                ) from error
+        lineage_hash = self._lineage_hash(receipts)
+        written = self._write_output(
+            data,
+            target_ref=relative,
+            source_sha256=lineage_hash,
+            idempotency_key=idempotency_key,
+            format=fmt,
+            readback={},
+        )
+        if fault_after_write:
+            raise InjectedArtifactFailure(
+                "injected failure after merged table creation before verification",
+                evidence=_post_write_evidence(written),
+            )
+        for receipt in receipts:
+            self._assert_source_current(receipt)
+        parsed_output = self.parse(
+            relative,
+            expected_columns=table.headers,
+            allow_formulas=fmt == "xlsx",
+        )
+        expected_rows = table.rows
+        if fmt in {"csv", "tsv"}:
+            expected_rows = tuple(
+                tuple("" if value is None else str(value) for value in row)
+                for row in table.rows
+            )
+        verified = (
+            parsed_output.table is not None
+            and parsed_output.table.headers == table.headers
+            and parsed_output.table.rows == expected_rows
+        )
+        readback = {
+            "verified": verified,
+            "target_ref": relative,
+            "sha256": written.sha256,
+            "source_refs": [receipt.source_ref for receipt in receipts],
+            "source_sha256s": [receipt.sha256 for receipt in receipts],
+            "lineage_hash": lineage_hash,
+            "row_count": table.row_count,
+            "column_count": table.column_count,
+            "transformation": transformation,
+        }
+        if not verified:
+            raise ArtifactPostWriteError(
+                "merged table readback differs from requested composition",
+                evidence=_post_write_evidence(written, readback),
+            )
+        return OutputReceipt(
+            target_ref=written.target_ref,
+            path=written.path,
+            format=written.format,
+            sha256=written.sha256,
+            size_bytes=written.size_bytes,
+            source_sha256=written.source_sha256,
+            idempotency_key=written.idempotency_key,
+            readback=readback,
+            reconciled=written.reconciled,
+            replayed=written.replayed,
+        )
 
     def _verify_xlsx(
         self,
@@ -1537,15 +2064,14 @@ class LocalArtifactConnector:
             workbook.properties.modified = datetime(2000, 1, 1)
             worksheet = workbook.active
             worksheet.title = sheet_name
+            rendered_table = self.xlsx_rendered_table(parsed.table)
             for row_index, row in enumerate(
-                (parsed.table.headers, *parsed.table.rows), start=1
+                (rendered_table.headers, *rendered_table.rows), start=1
             ):
                 for column_index, value in enumerate(row, start=1):
                     cell = worksheet.cell(row_index, column_index)
                     _set_xlsx_value(cell, value)
-                    expected_cells[
-                        cell.coordinate
-                    ] = value
+                    expected_cells[cell.coordinate] = value
             for cell_ref in sorted(formula_map):
                 if not isinstance(cell_ref, str):
                     raise ArtifactValidationError(
@@ -2153,6 +2679,353 @@ class LocalArtifactConnector:
             readback=readback, reconciled=written.reconciled, replayed=written.replayed,
         )
 
+    def create_docx_document(
+        self,
+        *,
+        title: str,
+        opening: Sequence[str],
+        sections: Sequence[Mapping[str, Any]],
+        target_ref: str,
+        idempotency_key: str,
+        sources: Sequence[ParsedArtifact | SourceReceipt | str | Path] = (),
+        required_values: Sequence[str] = (),
+        fault_after_write: bool = False,
+    ) -> OutputReceipt:
+        """Create one structured source-preserving document package."""
+
+        if not isinstance(title, str) or not title.strip():
+            raise ArtifactValidationError("DOCX title must be non-empty text")
+        if isinstance(opening, (str, bytes)) or not isinstance(opening, Sequence):
+            raise ArtifactValidationError("DOCX opening must be a sequence")
+        if isinstance(sections, (str, bytes)) or not isinstance(sections, Sequence):
+            raise ArtifactValidationError("DOCX sections must be a sequence")
+        if isinstance(required_values, (str, bytes)):
+            raise ArtifactValidationError("required_values must be a sequence")
+        if not all(isinstance(value, str) for value in opening):
+            raise ArtifactValidationError("DOCX opening paragraphs must be text")
+        if not all(isinstance(value, str) for value in required_values):
+            raise ArtifactValidationError("DOCX required values must be text")
+        if not all(isinstance(section, Mapping) for section in sections):
+            raise ArtifactValidationError("DOCX sections must be objects")
+        receipts = self._source_receipts(sources) if sources else ()
+        source_for_target = receipts[0] if receipts else None
+        _, relative, fmt = self._ensure_new_target(
+            target_ref,
+            source_for_target,
+        )
+        if fmt != "docx":
+            raise ArtifactValidationError("DOCX target must use .docx")
+        if any(
+            receipt.source_ref.casefold() == relative.casefold()
+            for receipt in receipts
+        ):
+            raise ArtifactValidationError("DOCX target must differ from every source")
+
+        normalized_sections: list[dict[str, Any]] = []
+        text_count = len(title)
+        table_rows = 0
+        table_cells = 0
+        generated_values: list[str] = [title.strip()]
+        for paragraph in opening:
+            text_count += len(paragraph)
+            if paragraph:
+                generated_values.append(paragraph)
+        for index, section in enumerate(sections, start=1):
+            heading = section.get("heading")
+            if not isinstance(heading, str) or not heading.strip():
+                raise ArtifactValidationError(
+                    f"DOCX section {index} heading must be non-empty text"
+                )
+            paragraphs = section.get("paragraphs") or ()
+            bullets = section.get("bullets") or ()
+            table = section.get("table")
+            if isinstance(paragraphs, (str, bytes)) or not isinstance(
+                paragraphs, Sequence
+            ):
+                raise ArtifactValidationError(
+                    f"DOCX section {index} paragraphs must be a sequence"
+                )
+            if isinstance(bullets, (str, bytes)) or not isinstance(
+                bullets, Sequence
+            ):
+                raise ArtifactValidationError(
+                    f"DOCX section {index} bullets must be a sequence"
+                )
+            if not all(isinstance(value, str) for value in (*paragraphs, *bullets)):
+                raise ArtifactValidationError(
+                    f"DOCX section {index} content must be text"
+                )
+            normalized_table = None
+            if table is not None:
+                if not isinstance(table, Mapping):
+                    raise ArtifactValidationError(
+                        f"DOCX section {index} table must be an object"
+                    )
+                headers = table.get("headers")
+                rows = table.get("rows")
+                if (
+                    isinstance(headers, (str, bytes))
+                    or not isinstance(headers, Sequence)
+                    or not headers
+                    or not all(isinstance(value, str) and value for value in headers)
+                ):
+                    raise ArtifactValidationError(
+                        f"DOCX section {index} table headers are invalid"
+                    )
+                if (
+                    isinstance(rows, (str, bytes))
+                    or not isinstance(rows, Sequence)
+                    or not all(
+                        isinstance(row, Sequence)
+                        and not isinstance(row, (str, bytes))
+                        for row in rows
+                    )
+                ):
+                    raise ArtifactValidationError(
+                        f"DOCX section {index} table rows are invalid"
+                    )
+                normalized_rows = [list(row) for row in rows]
+                if any(len(row) != len(headers) for row in normalized_rows):
+                    raise ArtifactValidationError(
+                        f"DOCX section {index} table row width is invalid"
+                    )
+                table_rows += len(normalized_rows) + 1
+                table_cells += (len(normalized_rows) + 1) * len(headers)
+                normalized_table = {
+                    "headers": list(headers),
+                    "rows": normalized_rows,
+                }
+                for value in [*headers, *[item for row in normalized_rows for item in row]]:
+                    text_count += len(str(value))
+            text_count += len(heading) + sum(
+                len(value) for value in (*paragraphs, *bullets)
+            )
+            generated_values.extend(
+                [
+                    heading.strip(),
+                    *[value for value in paragraphs if value],
+                    *[value for value in bullets if value],
+                ]
+            )
+            normalized_sections.append(
+                {
+                    "heading": heading.strip(),
+                    "paragraphs": list(paragraphs),
+                    "bullets": list(bullets),
+                    "table": normalized_table,
+                }
+            )
+        if text_count > self.limits.max_text_chars:
+            raise ArtifactValidationError("DOCX content exceeds max_text_chars")
+        if table_rows > self.limits.max_docx_table_rows:
+            raise ArtifactValidationError("DOCX tables exceed row bound")
+        if table_cells > self.limits.max_docx_table_cells:
+            raise ArtifactValidationError("DOCX tables exceed cell bound")
+        if len(normalized_sections) > self.limits.max_docx_paragraphs:
+            raise ArtifactValidationError("DOCX sections exceed operation bound")
+        for receipt in receipts:
+            self._assert_source_current(receipt)
+
+        try:
+            from docx import Document
+            from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
+            from docx.enum.text import WD_ALIGN_PARAGRAPH
+            from docx.oxml import OxmlElement
+            from docx.oxml.ns import qn
+            from docx.shared import Inches, Pt, RGBColor
+
+            def set_cell_shading(cell: Any, color: str) -> None:
+                properties = cell._tc.get_or_add_tcPr()
+                shading = properties.find(qn("w:shd"))
+                if shading is None:
+                    shading = OxmlElement("w:shd")
+                    properties.append(shading)
+                shading.set(qn("w:fill"), color)
+
+            def set_cell_frame(cell: Any) -> None:
+                properties = cell._tc.get_or_add_tcPr()
+                borders = properties.find(qn("w:tcBorders"))
+                if borders is None:
+                    borders = OxmlElement("w:tcBorders")
+                    properties.append(borders)
+                for edge in ("top", "left", "bottom", "right", "insideH", "insideV"):
+                    element = borders.find(qn(f"w:{edge}"))
+                    if element is None:
+                        element = OxmlElement(f"w:{edge}")
+                        borders.append(element)
+                    element.set(qn("w:val"), "single")
+                    element.set(qn("w:sz"), "4")
+                    element.set(qn("w:color"), "D9D9D9")
+                margins = properties.find(qn("w:tcMar"))
+                if margins is None:
+                    margins = OxmlElement("w:tcMar")
+                    properties.append(margins)
+                for edge in ("top", "left", "bottom", "right"):
+                    element = margins.find(qn(f"w:{edge}"))
+                    if element is None:
+                        element = OxmlElement(f"w:{edge}")
+                        margins.append(element)
+                    element.set(qn("w:w"), "100")
+                    element.set(qn("w:type"), "dxa")
+
+            def style_table(table: Any) -> None:
+                table.autofit = True
+                header_row = table.rows[0]
+                header_properties = header_row._tr.get_or_add_trPr()
+                repeat = OxmlElement("w:tblHeader")
+                repeat.set(qn("w:val"), "true")
+                header_properties.append(repeat)
+                for row_index, row in enumerate(table.rows):
+                    for cell in row.cells:
+                        set_cell_frame(cell)
+                        cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+                        if row_index == 0:
+                            set_cell_shading(cell, "1F4E78")
+                        elif row_index % 2 == 0:
+                            set_cell_shading(cell, "EAF2F8")
+                        for paragraph in cell.paragraphs:
+                            paragraph.paragraph_format.space_after = Pt(0)
+                            for run in paragraph.runs:
+                                run.font.name = "Aptos"
+                                run.font.size = Pt(9.5)
+                                if row_index == 0:
+                                    run.font.bold = True
+                                    run.font.color.rgb = RGBColor(255, 255, 255)
+
+            document = Document()
+            document.core_properties.created = datetime(2000, 1, 1)
+            document.core_properties.modified = datetime(2000, 1, 1)
+            document.core_properties.title = title.strip()
+            document.core_properties.author = "JARVIS Foundry"
+            section = document.sections[0]
+            section.page_width = Inches(8.5)
+            section.page_height = Inches(11)
+            section.top_margin = Inches(0.75)
+            section.bottom_margin = Inches(0.75)
+            section.left_margin = Inches(0.8)
+            section.right_margin = Inches(0.8)
+            normal = document.styles["Normal"]
+            normal.font.name = "Aptos"
+            normal.font.size = Pt(11)
+            for style_name in ("Title", "Heading 1", "Heading 2"):
+                style = document.styles[style_name]
+                style.font.name = "Aptos Display"
+                style.font.color.rgb = RGBColor(0, 0, 0)
+            document.styles["Title"].font.size = Pt(24)
+            document.styles["Heading 1"].font.size = Pt(16)
+            document.styles["Heading 2"].font.size = Pt(13)
+
+            title_paragraph = document.add_paragraph(style="Title")
+            title_paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            title_paragraph.add_run(title.strip())
+            for paragraph_text in opening:
+                paragraph = document.add_paragraph(paragraph_text)
+                paragraph.paragraph_format.space_after = Pt(8)
+
+            if receipts:
+                document.add_heading("Source lineage", level=1)
+                lineage = document.add_table(rows=1, cols=3)
+                lineage.rows[0].cells[0].text = "Source"
+                lineage.rows[0].cells[1].text = "Format"
+                lineage.rows[0].cells[2].text = "SHA 256"
+                for receipt in receipts:
+                    cells = lineage.add_row().cells
+                    cells[0].text = receipt.source_ref
+                    cells[1].text = receipt.format.upper()
+                    cells[2].text = receipt.sha256
+                style_table(lineage)
+
+            for item in normalized_sections:
+                document.add_heading(item["heading"], level=1)
+                for paragraph_text in item["paragraphs"]:
+                    paragraph = document.add_paragraph(paragraph_text)
+                    paragraph.paragraph_format.space_after = Pt(8)
+                for bullet in item["bullets"]:
+                    paragraph = document.add_paragraph(
+                        bullet,
+                        style="List Bullet",
+                    )
+                    paragraph.paragraph_format.space_after = Pt(4)
+                table_spec = item["table"]
+                if table_spec is not None:
+                    table = document.add_table(
+                        rows=1,
+                        cols=len(table_spec["headers"]),
+                    )
+                    for column, header in enumerate(table_spec["headers"]):
+                        table.rows[0].cells[column].text = str(header)
+                    for source_row in table_spec["rows"]:
+                        cells = table.add_row().cells
+                        for column, value in enumerate(source_row):
+                            cells[column].text = "" if value is None else str(value)
+                    style_table(table)
+                    document.add_paragraph()
+
+            output = io.BytesIO()
+            document.save(output)
+            data = self._canonical_zip(output.getvalue())
+        except ArtifactValidationError:
+            raise
+        except Exception as error:  # noqa: BLE001 - document boundary
+            raise ArtifactWriteError(
+                f"python-docx document creation failed: {error}"
+            ) from error
+
+        lineage_hash = self._lineage_hash(receipts) if receipts else None
+        written = self._write_output(
+            data,
+            target_ref=relative,
+            source_sha256=lineage_hash,
+            idempotency_key=idempotency_key,
+            format="docx",
+            readback={},
+        )
+        if fault_after_write:
+            raise InjectedArtifactFailure(
+                "injected failure after DOCX creation before verification",
+                evidence=_post_write_evidence(written),
+            )
+        for receipt in receipts:
+            self._assert_source_current(receipt)
+        required = tuple(
+            dict.fromkeys(
+                [
+                    *required_values,
+                    *generated_values,
+                    *[receipt.sha256 for receipt in receipts],
+                ]
+            )
+        )
+        readback = self.verify_docx(
+            relative,
+            expected_sha256=written.sha256,
+            required_values=required,
+        )
+        readback["source_refs"] = [
+            receipt.source_ref for receipt in receipts
+        ]
+        readback["source_sha256s"] = [
+            receipt.sha256 for receipt in receipts
+        ]
+        readback["lineage_hash"] = lineage_hash
+        if not readback.get("verified"):
+            raise ArtifactPostWriteError(
+                "DOCX readback differs from requested document",
+                evidence=_post_write_evidence(written, readback),
+            )
+        return OutputReceipt(
+            target_ref=written.target_ref,
+            path=written.path,
+            format=written.format,
+            sha256=written.sha256,
+            size_bytes=written.size_bytes,
+            source_sha256=written.source_sha256,
+            idempotency_key=written.idempotency_key,
+            readback=readback,
+            reconciled=written.reconciled,
+            replayed=written.replayed,
+        )
+
     def reconcile_docx(
         self,
         target_ref: str,
@@ -2204,7 +3077,12 @@ class LocalArtifactConnector:
             raise
         except Exception as error:  # noqa: BLE001 - PDF boundary
             raise ArtifactParseError(f"pypdf readback failed: {error}") from error
-        missing = [value for value in required_text if str(value) not in text]
+        normalized_text = " ".join(text.split())
+        missing = [
+            value
+            for value in required_text
+            if " ".join(str(value).split()) not in normalized_text
+        ]
         count_matches = (
             expected_page_count is None or page_count == expected_page_count
         )
@@ -2297,13 +3175,35 @@ class LocalArtifactConnector:
                         break_on_hyphens=False,
                     )
                     lines.extend(wrapped or [""])
-                if len(lines) > 46:
+                fitted_lines: list[str] = []
+                max_line_width = page_width - 108
+                for line in lines:
+                    remaining = line
+                    if not remaining:
+                        fitted_lines.append("")
+                        continue
+                    while stringWidth(remaining, "Helvetica", 10) > max_line_width:
+                        low = 1
+                        high = len(remaining)
+                        while low < high:
+                            midpoint = (low + high + 1) // 2
+                            if (
+                                stringWidth(
+                                    remaining[:midpoint], "Helvetica", 10
+                                )
+                                <= max_line_width
+                            ):
+                                low = midpoint
+                            else:
+                                high = midpoint - 1
+                        fitted_lines.append(remaining[:low])
+                        remaining = remaining[low:]
+                    fitted_lines.append(remaining)
+                if len(fitted_lines) > 46:
                     raise ArtifactValidationError(
                         "PDF page text exceeds single-page layout bound"
                     )
-                for line in lines:
-                    while line and stringWidth(line, "Helvetica", 10) > page_width - 108:
-                        line = line[:-1]
+                for line in fitted_lines:
                     text_object.textLine(line)
                 pdf.drawText(text_object)
                 pdf.showPage()
@@ -2773,11 +3673,29 @@ class LocalArtifactConnector:
                         required_text.append(line)
         elif layout_name == "title_and_content":
             if slide.shapes.title is not None:
-                slide.shapes.title.text = title
+                title_shape = slide.shapes.title
+                title_shape.left = Inches(0.7)
+                title_shape.top = Inches(0.45)
+                title_shape.width = Inches(8.6)
+                title_shape.height = Inches(0.75)
+                title_shape.text_frame.clear()
+                title_shape.text_frame.word_wrap = True
+                title_paragraph = title_shape.text_frame.paragraphs[0]
+                title_paragraph.text = title
+                title_paragraph.alignment = PP_ALIGN.CENTER
+                title_paragraph.font.name = "Aptos Display"
+                title_paragraph.font.size = Pt(28)
+                title_paragraph.font.bold = True
+                title_paragraph.font.color.rgb = RGBColor(31, 78, 120)
                 if title:
                     required_text.append(title)
             body = slide.placeholders[1]
-            body.text = ""
+            body.left = Inches(0.7)
+            body.top = Inches(1.55)
+            body.width = Inches(8.6)
+            body.height = Inches(4.9)
+            body.text_frame.clear()
+            body.text_frame.word_wrap = True
             for index, line in enumerate(body_lines):
                 paragraph = (
                     body.text_frame.paragraphs[0]
@@ -2916,7 +3834,12 @@ class LocalArtifactConnector:
             subject = str(presentation.core_properties.subject or "")
         except Exception as error:  # noqa: BLE001 - presentation boundary
             raise ArtifactParseError(f"python-pptx readback failed: {error}") from error
-        missing = [value for value in required_text if str(value) not in text]
+        normalized_text = " ".join(text.split())
+        missing = [
+            value
+            for value in required_text
+            if " ".join(str(value).split()) not in normalized_text
+        ]
         slide_count = len(presentation.slides)
         slide_matches = (
             expected_slide_count is None or slide_count == expected_slide_count
