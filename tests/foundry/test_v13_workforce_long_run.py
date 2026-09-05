@@ -166,8 +166,10 @@ def test_v13_workforce_long_run_proof(
         == PROOF_SCHEMA
         == "jarvis.workforce.long-run-proof.v2"
     )
-    assert report.proof_date == PROOF_DATE == "2026-09-04"
-    assert report.duration_seconds < 240
+    assert report.proof_date == PROOF_DATE == "2026-09-05"
+    # The behavioral waits remain bounded at 12/75 seconds. This outer
+    # wall-clock guard includes Windows process, Git, and antivirus overhead.
+    assert report.duration_seconds < 300
 
     assert report.overlap["peak_concurrency"] >= 2
     assert len(report.overlap["live_run_ids"]) == 2

@@ -20,6 +20,7 @@ from jarvis_foundry.fabric import (
     run_workflow,
 )
 from jarvis_foundry.fabric.adapter import FabricRoleAdapter
+from jarvis_foundry.fabric.catalog import get_spec, listed_capabilities
 from jarvis_foundry.fabric.loop import execute_action, seed_builtins
 from jarvis_foundry.fabric.model import ClaimOutcome, VerifyVerdict
 from jarvis_foundry.roles.adapter import FakeHermesAdapter
@@ -34,6 +35,24 @@ def _database(tmp_path: Path) -> FoundryDatabase:
 
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def test_builtin_seed_preserves_one_authority_per_operator_concern(
+    tmp_path: Path,
+) -> None:
+    database = _database(tmp_path)
+
+    seed_builtins(database)
+    specs = listed_capabilities(database)
+
+    assert get_spec(database, "cap.file.inspect").executor == "general_work_files"
+    assert get_spec(database, "cap.file.replace").executor == "filesystem"
+    assert get_spec(database, "cap.file.safe_edit") is None
+    assert get_spec(database, "cap.local.process.launch").executor == (
+        "computer_operator"
+    )
+    assert sum(spec.action_kind == "file.replace" for spec in specs) == 1
+    assert all(spec.action_kind != "file.safe_edit" for spec in specs)
 
 
 def test_table_transform_and_xlsx_creation_use_canonical_fabric(

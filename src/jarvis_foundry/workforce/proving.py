@@ -56,7 +56,7 @@ from .state import (
     transition_work_package,
 )
 
-PROOF_DATE = "2026-09-04"
+PROOF_DATE = "2026-09-05"
 PROOF_SCHEMA = "jarvis.workforce.long-run-proof.v2"
 PROOF_NOW = f"{PROOF_DATE}T23:59:59Z"
 
