@@ -10,12 +10,18 @@ from jarvis_foundry.briefing_items import project_briefing_items
 from jarvis_foundry.command_center import build_snapshot
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.events import Event
-from jarvis_foundry.executive.autonomy import create_objective
+from jarvis_foundry.executive.autonomy import (
+    create_objective,
+    set_objective_status,
+)
 from jarvis_foundry.executive.campaigns import (
     create_campaign,
     declare_child_mission,
 )
-from jarvis_foundry.executive.continuous import rebuild_wake_state
+from jarvis_foundry.executive.continuous import (
+    rebuild_wake_state,
+    tick_wakes,
+)
 from jarvis_foundry.owner_context import (
     ContextProvenance,
     ContextScope,
@@ -422,6 +428,70 @@ def test_recoverable_wait_is_quiet_and_creates_no_wake(
     assert projection.owner_attention == ()
     assert rebuild_wake_state(database) == {}
     assert _event_count(database, "executive.wake_") == 0
+
+
+def test_existing_objective_dependency_wait_uses_canonical_wake_and_unlocks(
+    tmp_path: Path,
+) -> None:
+    database = _database(tmp_path)
+    _standing_order(database)
+    create_objective(
+        database,
+        "Dependency prerequisite",
+        objective_id="objective-dependency",
+        provenance={"project_id": "jarvis"},
+    )
+    create_objective(
+        database,
+        "Continue after dependency",
+        objective_id="objective-waiting",
+        provenance={"project_id": "jarvis"},
+    )
+    service = ChiefOfStaffService(database)
+    waiting_change = {
+        "change_id": "change-dependency-wait",
+        "project_id": "jarvis",
+        "objective_id": "objective-waiting",
+        "change_type": "DEPENDENCY_WAIT",
+        "summary": "The project is waiting for its prerequisite objective",
+        "occurred_at": "2026-09-04T09:00:00Z",
+        "evidence_refs": ["evidence:dependency-edge"],
+        "attributes": {
+            "recoverable": True,
+            "wait_kind": "DEPENDENCY",
+            "dependency_id": "objective-dependency",
+            "waiting_condition": "wait for objective-dependency",
+        },
+    }
+
+    waiting = service.consider(waiting_change, now=NOW)
+    before_replay = database.event_count()
+    replay = service.consider(waiting_change, now=NOW)
+    wakes = rebuild_wake_state(database)
+
+    assert waiting.status == "WAITING"
+    assert waiting.wait_id in wakes
+    assert replay.wait_id == waiting.wait_id
+    assert database.event_count() == before_replay
+    assert len(wakes) == 1
+    assert wakes[waiting.wait_id]["kind"] == "WAIT_FOR_DEPENDENCY"
+
+    set_objective_status(
+        database,
+        "objective-dependency",
+        "COMPLETED",
+        reason="dependency proof completed",
+        evidence_refs=("evidence:dependency-complete",),
+    )
+    triggered = tick_wakes(database)
+    continued = service.consider(
+        _valuable_change("change-after-dependency"),
+        now=NOW,
+    )
+
+    assert triggered == [waiting.wait_id]
+    assert rebuild_wake_state(database)[waiting.wait_id]["status"] == "TRIGGERED"
+    assert continued.status == "ROUTED_TO_EXISTING_CANDIDATE_PATH"
 
 
 def test_material_owner_decision_is_attention_not_execution(

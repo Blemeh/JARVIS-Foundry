@@ -214,6 +214,105 @@ def _rejection_reason(
     return None
 
 
+def _schedule_existing_objective_wait(
+    database: FoundryDatabase,
+    change: ProjectChange,
+    attributes: Mapping[str, Any],
+    *,
+    stop_path: Path | None,
+) -> str | None:
+    if not change.objective_id:
+        return None
+    from ..control.broker import emergency_stop_reason, matching_veto_reason
+
+    identities = {
+        "GLOBAL",
+        "executive",
+        "objectives",
+        change.project_id,
+        change.objective_id,
+    }
+    if (
+        emergency_stop_reason(database, stop_path, identities=identities)
+        or matching_veto_reason(database, identities)
+    ):
+        return None
+    from ..executive.autonomy import rebuild_executive_state
+
+    if change.objective_id not in rebuild_executive_state(database).objectives:
+        return None
+    from ..executive.continuous import (
+        schedule_wait_for_capability,
+        schedule_wait_for_dependency,
+        schedule_wait_for_owner,
+        schedule_wait_for_provider,
+        schedule_wait_for_resource,
+        schedule_wait_for_signal,
+        schedule_wait_until,
+    )
+
+    kind = str(attributes.get("wait_kind") or "").upper()
+    reason = _bounded(
+        attributes.get("waiting_condition") or change.summary,
+    )
+    wake: Mapping[str, Any] | None = None
+    if kind == "DEPENDENCY" and attributes.get("dependency_id"):
+        wake = schedule_wait_for_dependency(
+            database,
+            change.objective_id,
+            dependency_id=str(attributes["dependency_id"]),
+            reason=reason,
+        )
+    elif kind == "PROVIDER" and attributes.get("provider_id"):
+        wake = schedule_wait_for_provider(
+            database,
+            change.objective_id,
+            provider_id=str(attributes["provider_id"]),
+            reason=reason,
+        )
+    elif kind == "OWNER":
+        wake = schedule_wait_for_owner(
+            database,
+            change.objective_id,
+            signal=str(attributes.get("signal") or "owner_directive"),
+            reason=reason,
+        )
+    elif kind == "TIME" and attributes.get("not_before"):
+        wake = schedule_wait_until(
+            database,
+            change.objective_id,
+            not_before=str(attributes["not_before"]),
+            reason=reason,
+        )
+    elif kind == "SIGNAL" and attributes.get("signal"):
+        wake = schedule_wait_for_signal(
+            database,
+            change.objective_id,
+            signal=str(attributes["signal"]),
+            reason=reason,
+        )
+    elif kind == "RESOURCE" and attributes.get("resource_id"):
+        wake = schedule_wait_for_resource(
+            database,
+            change.objective_id,
+            resource_id=str(attributes["resource_id"]),
+            reason=reason,
+        )
+    elif kind == "CAPABILITY" and attributes.get("capability"):
+        wake = schedule_wait_for_capability(
+            database,
+            change.objective_id,
+            capability=str(attributes["capability"]),
+            resource_id=(
+                str(attributes["resource_id"])
+                if attributes.get("resource_id") else None
+            ),
+            reason=reason,
+        )
+    wake_id = wake.get("wake_id") if isinstance(wake, Mapping) else None
+    return str(wake_id) if wake_id else None
+
+
 class ChiefOfStaffService:
     """Record semantic receipts and route only inert observed candidates."""
 
@@ -379,12 +478,18 @@ class ChiefOfStaffService:
             )
             wait_id = None
             if status == "WAITING":
-                wait_id = f"cos-wait-{_hash(change.change_id)}"
+                canonical_wake_id = _schedule_existing_objective_wait(
+                    self.database,
+                    change,
+                    attributes,
+                    stop_path=self.stop_path,
+                )
+                semantic_wait_id = f"cos-wait-{_hash(change.change_id)}"
                 _append(
                     self.database,
                     "chief_of_staff.wait_recorded",
                     {
-                        "wait_id": wait_id,
+                        "wait_id": semantic_wait_id,
                         "project_id": change.project_id,
                         "objective_id": change.objective_id,
                         "kind": "SEMANTIC_WAIT",
@@ -397,12 +502,14 @@ class ChiefOfStaffService:
                         ),
                         "source_event_refs": list(source_refs),
                         "evidence_refs": list(change.evidence_refs),
-                        "wake_created": False,
+                        "wake_created": canonical_wake_id is not None,
+                        "canonical_wake_id": canonical_wake_id,
                     },
-                    key=f"chief_of_staff.wait_recorded:{wait_id}",
+                    key=f"chief_of_staff.wait_recorded:{semantic_wait_id}",
                     occurred_at=change.occurred_at,
                     causation_id=change_event_ref,
                 )
+                wait_id = canonical_wake_id or semantic_wait_id
             return ConsiderResult(
                 change_id=change.change_id,
                 project_id=change.project_id,
@@ -418,12 +525,18 @@ class ChiefOfStaffService:
 
         proactive_authorized = bool(standing_order_ids)
         if not proactive_authorized:
-            wait_id = f"cos-wait-{_hash(change.change_id)}"
+            canonical_wake_id = _schedule_existing_objective_wait(
+                self.database,
+                change,
+                attributes,
+                stop_path=self.stop_path,
+            )
+            semantic_wait_id = f"cos-wait-{_hash(change.change_id)}"
             _append(
                 self.database,
                 "chief_of_staff.wait_recorded",
                 {
-                    "wait_id": wait_id,
+                    "wait_id": semantic_wait_id,
                     "project_id": change.project_id,
                     "objective_id": change.objective_id,
                     "kind": "SEMANTIC_WAIT",
@@ -434,9 +547,10 @@ class ChiefOfStaffService:
                     "intentional_idle": False,
                     "source_event_refs": list(source_refs),
                     "evidence_refs": list(change.evidence_refs),
-                    "wake_created": False,
+                    "wake_created": canonical_wake_id is not None,
+                    "canonical_wake_id": canonical_wake_id,
                 },
-                key=f"chief_of_staff.wait_recorded:{wait_id}",
+                key=f"chief_of_staff.wait_recorded:{semantic_wait_id}",
                 occurred_at=change.occurred_at,
                 causation_id=change_event_ref,
             )
@@ -448,7 +562,7 @@ class ChiefOfStaffService:
                 recorded=recorded,
                 proposal=proposal,
                 rejection_reason="PROACTIVE_AUTHORITY_NOT_ESTABLISHED",
-                wait_id=wait_id,
+                wait_id=canonical_wake_id or semantic_wait_id,
                 standing_order_ids=standing_order_ids,
                 source_event_refs=source_refs,
             )
