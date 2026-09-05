@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import hashlib
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Callable, Mapping, Sequence
 
 from ..database import FoundryDatabase
 from ..discovery_candidates import ingest_observed_candidate
@@ -40,6 +40,20 @@ _RECOVERABLE_CHANGE_TYPES = frozenset({
     "WAITING",
 })
 _JUNK_CHANGE_TYPES = frozenset({"JUNK", "NOISE", "SPAM"})
+_TERMINAL_ITEM_STATES = frozenset({"RESOLVED", "SUPERSEDED", "REVOKED"})
+
+
+class _CandidateIngressDenied(RuntimeError):
+    def __init__(
+        self,
+        status: str,
+        reason: str,
+        standing_order_ids: Sequence[str] = (),
+    ) -> None:
+        super().__init__(reason)
+        self.status = status
+        self.reason = reason
+        self.standing_order_ids = tuple(str(item) for item in standing_order_ids)
 
 
 def _hash(value: Mapping[str, Any] | str, *, length: int = 24) -> str:
@@ -129,6 +143,124 @@ def _matched_ids(evaluation: Mapping[str, Any]) -> tuple[str, ...]:
         for item in evaluation.get("matched", ())
         if isinstance(item, Mapping) and item.get("standing_order_id")
     )
+
+
+def _strings(value: Any) -> tuple[str, ...]:
+    if value is None:
+        return ()
+    values = (value,) if isinstance(value, str) else value
+    if not isinstance(values, Sequence):
+        return ()
+    return tuple(dict.fromkeys(
+        str(item).strip()
+        for item in values
+        if str(item).strip()
+    ))
+
+
+def _assert_candidate_ingress_authorized(
+    evaluation: Mapping[str, Any],
+    *,
+    initially_authorized_by: Sequence[str],
+) -> None:
+    current_ids = _matched_ids(evaluation)
+    status = str(evaluation.get("status") or "UNKNOWN")
+    if status in _CONTROL_BLOCKS:
+        raise _CandidateIngressDenied(
+            status,
+            _bounded(
+                evaluation.get("owner_control_reason")
+                or "owner control now blocks candidate ingress",
+            ),
+            current_ids,
+        )
+    retired = sorted(set(initially_authorized_by) - set(current_ids))
+    if retired:
+        raise _CandidateIngressDenied(
+            "WAITING",
+            "standing order authorization retired before candidate ingress: "
+            + ", ".join(retired),
+            current_ids,
+        )
+    if not current_ids:
+        raise _CandidateIngressDenied(
+            "WAITING",
+            "proactive authority is no longer established",
+            current_ids,
+        )
+
+
+def _item_state_changes(
+    change: ProjectChange,
+    attributes: Mapping[str, Any],
+) -> tuple[tuple[str, str, str], ...]:
+    changes: list[tuple[str, str, str]] = []
+    for state, prefix in (
+        ("RESOLVED", "resolved"),
+        ("SUPERSEDED", "superseded"),
+        ("REVOKED", "revoked"),
+    ):
+        for item_kind, suffix in (
+            ("WAIT", "wait_ids"),
+            ("OWNER_ATTENTION", "owner_attention_ids"),
+        ):
+            for item_id in _strings(attributes.get(f"{prefix}_{suffix}")):
+                changes.append((item_kind, item_id, state))
+    generic = attributes.get("item_state_changes")
+    if isinstance(generic, Sequence) and not isinstance(generic, (str, bytes)):
+        for item in generic:
+            if not isinstance(item, Mapping):
+                continue
+            item_kind = str(item.get("item_kind") or "").strip().upper()
+            item_id = str(item.get("item_id") or "").strip()
+            to_state = str(item.get("to_state") or "").strip().upper()
+            if (
+                item_kind in {"WAIT", "OWNER_ATTENTION"}
+                and item_id
+                and to_state in _TERMINAL_ITEM_STATES
+            ):
+                changes.append((item_kind, item_id, to_state))
+    return tuple(dict.fromkeys(changes))
+
+
+def _record_item_state_changes(
+    database: FoundryDatabase,
+    change: ProjectChange,
+    attributes: Mapping[str, Any],
+    *,
+    change_event_ref: str,
+    source_refs: Sequence[str],
+) -> tuple[str, ...]:
+    event_refs: list[str] = []
+    reason = _bounded(
+        attributes.get("resolution_reason")
+        or attributes.get("state_change_reason")
+        or change.summary,
+    )
+    for item_kind, item_id, to_state in _item_state_changes(change, attributes):
+        event_ref, _ = _append(
+            database,
+            "chief_of_staff.item_state_changed",
+            {
+                "project_id": change.project_id,
+                "item_kind": item_kind,
+                "item_id": item_id,
+                "from_state": "OPEN",
+                "to_state": to_state,
+                "reason": reason,
+                "change_id": change.change_id,
+                "source_event_refs": list(source_refs),
+                "evidence_refs": list(change.evidence_refs),
+            },
+            key=(
+                "chief_of_staff.item_state_changed:"
+                f"{item_kind}:{item_id}:{to_state}:{change.change_id}"
+            ),
+            occurred_at=change.occurred_at,
+            causation_id=change_event_ref,
+        )
+        event_refs.append(event_ref)
+    return tuple(event_refs)
 
 
 def _proposal(
@@ -321,9 +453,15 @@ class ChiefOfStaffService:
         database: FoundryDatabase,
         *,
         stop_path: str | Path | None = None,
+        fault_hook: Callable[[str], None] | None = None,
     ) -> None:
         self.database = database
         self.stop_path = Path(stop_path) if stop_path is not None else None
+        self.fault_hook = fault_hook
+
+    def _fault(self, point: str) -> None:
+        if self.fault_hook is not None:
+            self.fault_hook(point)
 
     def snapshot(self, *, now: str | None = None):
         return project_chief_of_staff(self.database, now=now)
@@ -333,6 +471,8 @@ class ChiefOfStaffService:
         value: ProjectChange | Mapping[str, Any],
         *,
         now: str | None = None,
+        candidate_creation_allowed: bool = True,
+        candidate_cycle_id: str | None = None,
     ) -> ConsiderResult:
         change = ProjectChange.from_mapping(value)
         attributes = thaw_mapping(change.attributes)
@@ -388,6 +528,37 @@ class ChiefOfStaffService:
             change_event_ref,
             *change.source_event_refs,
         )))
+        state_change_refs = _record_item_state_changes(
+            self.database,
+            change,
+            attributes,
+            change_event_ref=change_event_ref,
+            source_refs=source_refs,
+        )
+        if (
+            state_change_refs
+            and not (
+                attributes.get("proposed_objective")
+                or attributes.get("next_action")
+                or attributes.get("owner_decision_needed") is True
+                or change.change_type in _ATTENTION_CHANGE_TYPES
+                or change.change_type in _RECOVERABLE_CHANGE_TYPES
+                or attributes.get("recoverable") is True
+                or attributes.get("intentional_idle") is True
+            )
+        ):
+            return ConsiderResult(
+                change_id=change.change_id,
+                project_id=change.project_id,
+                status="PROJECT_STATE_UPDATED",
+                change_event_ref=change_event_ref,
+                recorded=recorded,
+                standing_order_ids=standing_order_ids,
+                source_event_refs=tuple(dict.fromkeys((
+                    *source_refs,
+                    *state_change_refs,
+                ))),
+            )
 
         contradicted, contradiction_refs = _project_has_contradiction(
             self.database,
@@ -415,6 +586,7 @@ class ChiefOfStaffService:
                 {
                     "attention_id": attention_id,
                     "project_id": change.project_id,
+                    "change_id": change.change_id,
                     "objective_id": change.objective_id,
                     "category": str(
                         attributes.get("attention_category")
@@ -476,7 +648,8 @@ class ChiefOfStaffService:
                 )
                 else "REJECTED"
             )
-            wait_id = None
+            semantic_wait_id = None
+            canonical_wake_id = None
             if status == "WAITING":
                 canonical_wake_id = _schedule_existing_objective_wait(
                     self.database,
@@ -491,6 +664,7 @@ class ChiefOfStaffService:
                     {
                         "wait_id": semantic_wait_id,
                         "project_id": change.project_id,
+                        "change_id": change.change_id,
                         "objective_id": change.objective_id,
                         "kind": "SEMANTIC_WAIT",
                         "reason": _bounded(
@@ -509,7 +683,6 @@ class ChiefOfStaffService:
                     occurred_at=change.occurred_at,
                     causation_id=change_event_ref,
                 )
-                wait_id = canonical_wake_id or semantic_wait_id
             return ConsiderResult(
                 change_id=change.change_id,
                 project_id=change.project_id,
@@ -518,7 +691,8 @@ class ChiefOfStaffService:
                 recorded=recorded,
                 proposal=proposal,
                 rejection_reason=rejection,
-                wait_id=wait_id,
+                wait_id=semantic_wait_id,
+                canonical_wake_id=canonical_wake_id,
                 standing_order_ids=standing_order_ids,
                 source_event_refs=source_refs,
             )
@@ -538,6 +712,7 @@ class ChiefOfStaffService:
                 {
                     "wait_id": semantic_wait_id,
                     "project_id": change.project_id,
+                    "change_id": change.change_id,
                     "objective_id": change.objective_id,
                     "kind": "SEMANTIC_WAIT",
                     "reason": (
@@ -562,7 +737,8 @@ class ChiefOfStaffService:
                 recorded=recorded,
                 proposal=proposal,
                 rejection_reason="PROACTIVE_AUTHORITY_NOT_ESTABLISHED",
-                wait_id=canonical_wake_id or semantic_wait_id,
+                wait_id=semantic_wait_id,
+                canonical_wake_id=canonical_wake_id,
                 standing_order_ids=standing_order_ids,
                 source_event_refs=source_refs,
             )
@@ -577,42 +753,114 @@ class ChiefOfStaffService:
         digest = hashlib.sha256(
             canonical_json(material).encode("utf-8"),
         ).hexdigest()
-        result = ingest_observed_candidate(
+        evaluator = StandingOrderEvaluator(
             self.database,
-            f"chief-of-staff-observation:{change.project_id}",
-            observation_id=f"cos-observation-{_hash(change.change_id)}",
-            source_kind="CHIEF_OF_STAFF",
-            source_identity=(
-                f"chief-of-staff:{change.project_id}:{change.change_id}"
-            ),
-            content_hash=f"sha256:{digest}",
-            objective=proposal.objective,
-            source_ref=(
-                proposal.evidence_refs[0]
-                if proposal.evidence_refs else None
-            ),
-            observed_at=change.occurred_at,
-            authority="DATA_ONLY",
-            target_project=change.project_id,
-            alias_key=str(
-                attributes.get("alias_key")
-                or f"{change.project_id}:{proposal.objective}"
-            ),
-            evidence=[{
-                "change_id": change.change_id,
-                "project_id": change.project_id,
-                "source_event_refs": list(source_refs),
-                "evidence_refs": list(proposal.evidence_refs),
-                "standing_order_ids": list(standing_order_ids),
-                "authority": "DATA_ONLY",
-            }],
-            candidate_type=proposal.candidate_type,
-            expected_outcome=proposal.expected_outcome,
-            confidence=proposal.confidence,
-            expires_at=(
-                str(attributes["expires_at"])
-                if attributes.get("expires_at") else None
-            ),
+            stop_path=self.stop_path,
+        )
+        self._fault("before_candidate_ingress")
+        latest_evaluation = evaluator.evaluate(query)
+        try:
+            _assert_candidate_ingress_authorized(
+                latest_evaluation,
+                initially_authorized_by=standing_order_ids,
+            )
+        except _CandidateIngressDenied as denied:
+            return ConsiderResult(
+                change_id=change.change_id,
+                project_id=change.project_id,
+                status=denied.status,
+                change_event_ref=change_event_ref,
+                recorded=recorded,
+                proposal=proposal,
+                rejection_reason=denied.reason,
+                standing_order_ids=denied.standing_order_ids,
+                source_event_refs=source_refs,
+            )
+        self._fault("before_candidate_transaction")
+
+        guarded_evaluation: dict[str, Any] = {}
+
+        def candidate_guard() -> None:
+            self._fault("candidate_transaction_guard")
+            current = evaluator.evaluate(query)
+            guarded_evaluation.update(current)
+            _assert_candidate_ingress_authorized(
+                current,
+                initially_authorized_by=standing_order_ids,
+            )
+
+        try:
+            result = ingest_observed_candidate(
+                self.database,
+                f"chief-of-staff-observation:{change.project_id}",
+                observation_id=f"cos-observation-{_hash(change.change_id)}",
+                source_kind="CHIEF_OF_STAFF",
+                source_identity=(
+                    f"chief-of-staff:{change.project_id}:{change.change_id}"
+                ),
+                content_hash=f"sha256:{digest}",
+                objective=proposal.objective,
+                source_ref=(
+                    proposal.evidence_refs[0]
+                    if proposal.evidence_refs else None
+                ),
+                observed_at=change.occurred_at,
+                authority="DATA_ONLY",
+                target_project=change.project_id,
+                alias_key=str(
+                    attributes.get("alias_key")
+                    or f"{change.project_id}:{proposal.objective}"
+                ),
+                evidence=[{
+                    "change_id": change.change_id,
+                    "project_id": change.project_id,
+                    "source_event_refs": list(source_refs),
+                    "evidence_refs": list(proposal.evidence_refs),
+                    "standing_order_ids": list(standing_order_ids),
+                    "authority": "DATA_ONLY",
+                }],
+                candidate_type=proposal.candidate_type,
+                expected_outcome=proposal.expected_outcome,
+                confidence=proposal.confidence,
+                expires_at=(
+                    str(attributes["expires_at"])
+                    if attributes.get("expires_at") else None
+                ),
+                prewrite_guard=candidate_guard,
+                allow_create=candidate_creation_allowed,
+                observation_cycle_id=candidate_cycle_id,
+            )
+        except _CandidateIngressDenied as denied:
+            return ConsiderResult(
+                change_id=change.change_id,
+                project_id=change.project_id,
+                status=denied.status,
+                change_event_ref=change_event_ref,
+                recorded=recorded,
+                proposal=proposal,
+                rejection_reason=denied.reason,
+                standing_order_ids=denied.standing_order_ids,
+                source_event_refs=source_refs,
+            )
+        if result.get("creation_blocked"):
+            return ConsiderResult(
+                change_id=change.change_id,
+                project_id=change.project_id,
+                status="CANDIDATE_LIMIT_REACHED",
+                change_event_ref=change_event_ref,
+                recorded=recorded,
+                proposal=proposal,
+                rejection_reason="CANDIDATE_LIMIT_REACHED",
+                standing_order_ids=(
+                    _matched_ids(guarded_evaluation)
+                    if guarded_evaluation else standing_order_ids
+                ),
+                source_event_refs=source_refs,
+            )
+        self._fault("after_candidate_ingress")
+        routed_standing_order_ids = (
+            _matched_ids(guarded_evaluation)
+            if guarded_evaluation else standing_order_ids
         )
         candidate_id = (
             str(result["candidate_id"])
@@ -626,7 +874,7 @@ class ChiefOfStaffService:
                 "change_id": change.change_id,
                 "candidate_id": candidate_id,
                 "proposal": proposal.as_dict(),
-                "standing_order_ids": list(standing_order_ids),
+                "standing_order_ids": list(routed_standing_order_ids),
                 "source_event_refs": list(source_refs),
                 "evidence_refs": list(proposal.evidence_refs),
                 "authority": "EXISTING_CANDIDATE_INGRESS",
@@ -648,9 +896,8 @@ class ChiefOfStaffService:
             ),
             duplicate=(
                 not bool(result.get("created"))
-                or not recorded
             ),
-            standing_order_ids=standing_order_ids,
+            standing_order_ids=routed_standing_order_ids,
             source_event_refs=source_refs,
         )
 

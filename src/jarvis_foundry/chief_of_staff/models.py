@@ -368,7 +368,7 @@ class PriorityFactor:
 @dataclass(frozen=True, slots=True)
 class ProjectPriority:
     project_id: str
-    rank: int
+    rank: int | None
     score: float
     factors: tuple[PriorityFactor, ...]
     unknown_factors: tuple[str, ...] = ()
@@ -379,7 +379,7 @@ class ProjectPriority:
     def as_dict(self) -> dict[str, Any]:
         return {
             "project_id": self.project_id,
-            "rank": self.rank,
+            "rank": self.rank if self.rank is not None else UNKNOWN,
             "score": self.score,
             "factors": {
                 factor.name: factor.as_dict()
@@ -468,6 +468,7 @@ class ConsiderResult:
     rejection_reason: str | None = None
     owner_attention_id: str | None = None
     wait_id: str | None = None
+    canonical_wake_id: str | None = None
     standing_order_ids: tuple[str, ...] = ()
     source_event_refs: tuple[str, ...] = ()
 
@@ -485,6 +486,7 @@ class ConsiderResult:
             "rejection_reason": self.rejection_reason,
             "owner_attention_id": self.owner_attention_id,
             "wait_id": self.wait_id,
+            "canonical_wake_id": self.canonical_wake_id,
             "standing_order_ids": list(self.standing_order_ids),
             "source_event_refs": list(self.source_event_refs),
         }

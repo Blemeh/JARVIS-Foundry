@@ -19,7 +19,7 @@ import hashlib
 import math
 import sqlite3
 import uuid
-from typing import Any, Mapping
+from typing import Any, Callable, Mapping
 
 from .database import FoundryDatabase
 from .events import Event, canonical_json
@@ -123,6 +123,9 @@ def ingest_observed_candidate(
     confidence: float | None = None,
     expires_at: str | None = None,
     trusted_requirements: Mapping[str, Any] | None = None,
+    prewrite_guard: Callable[[], None] | None = None,
+    allow_create: bool = True,
+    observation_cycle_id: str | None = None,
 ) -> dict[str, Any]:
     """Ingest one A2 observation without crossing the admission boundary.
 
@@ -190,6 +193,8 @@ def ingest_observed_candidate(
     ).hexdigest()[:24]
 
     with db.transaction() as connection:
+        if prewrite_guard is not None:
+            prewrite_guard()
         covering_candidate, covering_status, covering_mission = \
             _candidate_covering_identity(
                 connection,
@@ -251,6 +256,8 @@ def ingest_observed_candidate(
                         f"{content_hash[7:]}"
                     ),
                 ))
+            if prewrite_guard is not None:
+                prewrite_guard()
             _results = db.append_events_on_connection(connection, events)
             return {
                 "candidate_id": candidate_id,
@@ -260,6 +267,17 @@ def ingest_observed_candidate(
                 "history_status": covering_status,
                 "source_linked": bool(_results[0][1]),
                 "refreshed": len(_results) > 1 and bool(_results[1][1]),
+            }
+
+        if not allow_create:
+            return {
+                "candidate_id": None,
+                "created": False,
+                "duplicate_of": None,
+                "fingerprint": fingerprint,
+                "history_status": "CANDIDATE_LIMIT_REACHED",
+                "source_linked": False,
+                "creation_blocked": True,
             }
 
         bounded_confidence = None if confidence is None else max(
@@ -303,6 +321,10 @@ def ingest_observed_candidate(
             "provenance_hash": provenance_hash,
             "expires_at": expires_at,
         }
+        if observation_cycle_id:
+            payload["observation_cycle_id"] = str(
+                observation_cycle_id,
+            ).strip()
         events = [
             Event.create(
                 "discovery.candidate_generated",
@@ -321,6 +343,8 @@ def ingest_observed_candidate(
                 ),
             ),
         ]
+        if prewrite_guard is not None:
+            prewrite_guard()
         results = db.append_events_on_connection(connection, events)
     return {
         "candidate_id": candidate_id,

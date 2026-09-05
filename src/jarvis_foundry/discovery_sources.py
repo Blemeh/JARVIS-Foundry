@@ -26,6 +26,7 @@ from urllib.parse import quote, urlsplit
 from .connectors.github_research import GitHubResearchConnector
 from .connectors.web_research import PlaywrightBrowserConnector, TrafilaturaExtractor
 from .control.broker import emergency_stop_reason
+from .chief_of_staff import ChiefOfStaffService
 from .control.redaction import redact_text
 from .database import FoundryDatabase
 from .discovery_candidates import ingest_observed_candidate
@@ -60,6 +61,52 @@ _TRUSTED_WORLD_AUTHORITIES = frozenset({
     "OWNER_STATEMENT", "VERIFIED_EVIDENCE", "VERIFIER_RESULT",
     "SYSTEM_OBSERVATION", "REPOSITORY_AUTHORITY",
 })
+_CHIEF_ATTRIBUTE_FIELDS = (
+    "attention_category",
+    "blocking_value",
+    "blockers",
+    "capability",
+    "confidence",
+    "cost",
+    "deadline",
+    "dependencies",
+    "dependency_id",
+    "dependency_leverage",
+    "expected_outcome",
+    "expires_at",
+    "health",
+    "information_gain",
+    "intentional_idle",
+    "item_state_changes",
+    "junk",
+    "next_action",
+    "not_before",
+    "opportunity_cost",
+    "owner_priority",
+    "owner_decision_needed",
+    "owner_decision_reason",
+    "provider_id",
+    "recoverable",
+    "resolution_reason",
+    "resolved_owner_attention_ids",
+    "resolved_wait_ids",
+    "resource_id",
+    "revoked_owner_attention_ids",
+    "revoked_wait_ids",
+    "reversibility",
+    "reversible",
+    "risk",
+    "signal",
+    "staleness",
+    "state_change_reason",
+    "strategic_value",
+    "superseded_owner_attention_ids",
+    "superseded_wait_ids",
+    "urgency",
+    "value",
+    "wait_kind",
+    "waiting_condition",
+)
 
 
 def _utc(value: datetime | str | None = None) -> datetime:
@@ -1162,24 +1209,252 @@ def _existing_source_payload(db: FoundryDatabase, key: str) -> dict[str, Any] | 
     return json.loads(row[0]) if row else None
 
 
+def _chief_event_count(db: FoundryDatabase) -> int:
+    with db.connect(readonly=True) as connection:
+        row = connection.execute(
+            "SELECT COUNT(*) FROM events "
+            "WHERE event_type LIKE 'chief_of_staff.%'",
+        ).fetchone()
+    return int(row[0]) if row is not None else 0
+
+
+def _cycle_created_candidate_ids(
+    db: FoundryDatabase,
+    cycle_id: str,
+) -> set[str]:
+    with db.connect(readonly=True) as connection:
+        rows = connection.execute(
+            "SELECT DISTINCT "
+            "json_extract(payload_json, '$.candidate_id') AS candidate_id "
+            "FROM events "
+            "WHERE event_type = 'discovery.candidate_generated' "
+            "AND json_valid(payload_json) "
+            "AND json_extract(payload_json, '$.observation_cycle_id') = ?",
+            (cycle_id,),
+        ).fetchall()
+    return {
+        str(row["candidate_id"])
+        for row in rows
+        if row["candidate_id"]
+    }
+
+
 def _previous_source_observation(
     db: FoundryDatabase, item: SourceObservation,
 ) -> tuple[dict[str, Any], dict[str, Any]] | None:
     with db.connect(readonly=True) as connection:
-        rows = connection.execute(
+        row = connection.execute(
             "SELECT payload_json, provenance_json FROM world_observations "
-            "WHERE source_kind = ? ORDER BY observed_at DESC LIMIT 500",
-            (item.source_kind,),
-        ).fetchall()
-    for row in rows:
-        try:
-            payload = json.loads(row[0] or "{}")
-            provenance = json.loads(row[1] or "{}")
-        except (TypeError, ValueError):
-            continue
-        if provenance.get("source_identity") == item.source_identity:
-            return payload, provenance
-    return None
+            "WHERE source_kind = ? "
+            "AND json_valid(provenance_json) "
+            "AND json_extract(provenance_json, '$.source_identity') = ? "
+            "ORDER BY observed_at DESC LIMIT 1",
+            (item.source_kind, item.source_identity),
+        ).fetchone()
+    if row is None:
+        return None
+    try:
+        payload = json.loads(row["payload_json"] or "{}")
+        provenance = json.loads(row["provenance_json"] or "{}")
+    except (TypeError, ValueError):
+        return None
+    return payload, provenance
+
+
+def _stored_source_observation(
+    db: FoundryDatabase,
+    item: SourceObservation,
+) -> dict[str, Any] | None:
+    with db.connect(readonly=True) as connection:
+        row = connection.execute(
+            "SELECT observation_id, observed_at, payload_json, provenance_json, "
+            "last_event_id FROM world_observations "
+            "WHERE source_kind = ? "
+            "AND json_valid(provenance_json) "
+            "AND json_extract(provenance_json, '$.source_identity') = ? "
+            "ORDER BY observed_at DESC LIMIT 1",
+            (item.source_kind, item.source_identity),
+        ).fetchone()
+    if row is None:
+        return None
+    try:
+        payload = json.loads(row["payload_json"] or "{}")
+        provenance = json.loads(row["provenance_json"] or "{}")
+    except (TypeError, ValueError):
+        return None
+    return {
+        "observation_id": str(row["observation_id"]),
+        "observed_at": str(row["observed_at"]),
+        "payload": payload,
+        "provenance": provenance,
+        "last_event_id": str(row["last_event_id"]),
+    }
+
+
+def _chief_configuration(spec: SourceSpec) -> dict[str, Any] | None:
+    value = spec.config.get("chief_of_staff")
+    if not isinstance(value, Mapping) or value.get("enabled") is not True:
+        return None
+    return dict(value)
+
+
+def _chief_change_id(
+    spec: SourceSpec,
+    item: SourceObservation,
+    configuration: Mapping[str, Any],
+) -> str:
+    settings = {
+        key: configuration[key]
+        for key in (
+            "change_type",
+            "candidate_type",
+            "alias_key",
+            "evidence_refs",
+            "goal_id",
+            "program_id",
+            "objective_id",
+            "proposed_objective",
+            "severity",
+            "situation_state",
+            "summary",
+            *_CHIEF_ATTRIBUTE_FIELDS,
+        )
+        if key in configuration
+    }
+    material = {
+        "contract": "jarvis.source-observation-to-chief.v1",
+        "source_kind": item.source_kind,
+        "source_identity": item.source_identity,
+        "semantic_content_hash": item.content_hash,
+        "target_project": item.target_project,
+        "proposed_outcome": item.proposed_outcome,
+        "item_routing": {
+            "alias_key": item.alias_key,
+            "candidate_on": item.candidate_on,
+            "candidate_type": item.candidate_type,
+            "confidence": item.confidence,
+            "expires_at": item.expires_at,
+            "opportunity_key": item.opportunity_key,
+            "source_ref": item.source_ref,
+        },
+        "settings": settings,
+    }
+    return "cos-source-" + hashlib.sha256(
+        canonical_json(material).encode("utf-8"),
+    ).hexdigest()[:32]
+
+
+def _chief_project_change(
+    spec: SourceSpec,
+    item: SourceObservation,
+    configuration: Mapping[str, Any],
+    *,
+    assessment: Mapping[str, Any],
+    stored: Mapping[str, Any],
+) -> dict[str, Any]:
+    payload = (
+        dict(stored.get("payload") or {})
+        if isinstance(stored.get("payload"), Mapping)
+        else dict(item.payload)
+    )
+    intelligence = (
+        dict(payload.get("observation_intelligence") or {})
+        if isinstance(payload.get("observation_intelligence"), Mapping)
+        else {}
+    )
+    change_type = _bounded_text(
+        configuration.get("change_type")
+        or payload.get("change_type")
+        or payload.get("state")
+        or payload.get("status")
+        or assessment.get("change_type")
+        or intelligence.get("change_type")
+        or "OBSERVED",
+        80,
+    ).upper()
+    summary = _bounded_text(
+        configuration.get("summary")
+        or payload.get("summary")
+        or payload.get("title")
+        or payload.get("description")
+        or item.proposed_outcome
+        or f"Observed project change from {item.source_identity}",
+        500,
+    )
+    attributes = {
+        key: configuration[key]
+        for key in _CHIEF_ATTRIBUTE_FIELDS
+        if key in configuration
+    }
+    proposed_objective = (
+        configuration.get("proposed_objective")
+        or item.proposed_outcome
+    )
+    if proposed_objective:
+        attributes["proposed_objective"] = _bounded_text(
+            proposed_objective,
+            500,
+        )
+    if "value" not in attributes and "strategic_value" in attributes:
+        attributes["value"] = attributes["strategic_value"]
+    attributes.setdefault(
+        "expected_outcome",
+        configuration.get("expected_outcome") or item.proposed_outcome,
+    )
+    attributes.setdefault(
+        "candidate_type",
+        configuration.get("candidate_type") or item.candidate_type,
+    )
+    attributes.setdefault(
+        "confidence",
+        configuration.get("confidence")
+        if "confidence" in configuration else item.confidence,
+    )
+    attributes.setdefault(
+        "alias_key",
+        configuration.get("alias_key")
+        or item.alias_key
+        or item.opportunity_key,
+    )
+    attributes.setdefault(
+        "expires_at",
+        configuration.get("expires_at") or item.expires_at,
+    )
+    attributes = {
+        key: value
+        for key, value in attributes.items()
+        if value is not None
+    }
+    configured_evidence = configuration.get("evidence_refs")
+    evidence_refs = (
+        [configured_evidence]
+        if isinstance(configured_evidence, str)
+        else list(configured_evidence or ())
+    )
+    evidence_refs.append(item.source_ref)
+    return {
+        "change_id": _chief_change_id(spec, item, configuration),
+        "project_id": item.target_project,
+        "change_type": change_type,
+        "summary": summary,
+        "occurred_at": str(stored["observed_at"]),
+        "goal_id": configuration.get("goal_id"),
+        "program_id": configuration.get("program_id"),
+        "objective_id": configuration.get("objective_id"),
+        "situation_state": (
+            configuration.get("situation_state")
+            or payload.get("state")
+            or payload.get("status")
+        ),
+        "severity": configuration.get("severity") or payload.get("severity"),
+        "source_event_refs": [stored["last_event_id"]],
+        "evidence_refs": list(dict.fromkeys(
+            str(ref).strip()
+            for ref in evidence_refs
+            if str(ref).strip()
+        )),
+        "attributes": attributes,
+    }
 
 
 def _prepare_observation(
@@ -1310,18 +1585,48 @@ def run_source_observation_cycle(
     if not math.isfinite(candidate_ttl_hours) or not 0 < candidate_ttl_hours <= 2160:
         raise ValueError("candidate_ttl_hours must be finite and between 0 and 2160")
     default_expiry = _iso(current + timedelta(hours=candidate_ttl_hours))
-    remaining = candidate_limit
+    ordered_sources = sorted(sources, key=lambda value: value.source_id)
+    event_keys = {
+        spec.source_id: (
+            f"initiative.source_recorded:{cycle_id}:{spec.source_id}"
+        )
+        for spec in ordered_sources
+    }
+    existing_source_payloads = {
+        spec.source_id: _existing_source_payload(
+            db,
+            event_keys[spec.source_id],
+        )
+        for spec in ordered_sources
+    }
+    completed_candidates = sum(
+        int(payload.get("candidates_recorded") or 0)
+        for payload in existing_source_payloads.values()
+        if payload is not None
+    )
+    durable_cycle_candidates = len(
+        _cycle_created_candidate_ids(db, cycle_id),
+    )
+    remaining = max(
+        0,
+        candidate_limit - max(
+            completed_candidates,
+            durable_cycle_candidates,
+        ),
+    )
+    created_this_run = 0
     source_results: list[dict[str, Any]] = []
     reader_map = dict(readers or {})
+    chief_service = ChiefOfStaffService(db, stop_path=stop_path)
 
-    for spec in sorted(sources, key=lambda value: value.source_id):
+    for spec in ordered_sources:
         if stop_check():
             break
         source_run_id = "isr-" + hashlib.sha256(
             f"{cycle_id}|{spec.source_id}".encode("utf-8")
         ).hexdigest()[:24]
-        event_key = f"initiative.source_recorded:{cycle_id}:{spec.source_id}"
-        existing = _existing_source_payload(db, event_key)
+        event_key = event_keys[spec.source_id]
+        existing = existing_source_payloads[spec.source_id]
         if existing is not None:
             source_results.append(existing)
             continue
@@ -1363,17 +1668,83 @@ def run_source_observation_cycle(
             result = SourceReadResult("UNKNOWN", reason=f"{type(error).__name__}: {_bounded_text(error, 240)}")
 
         recorded = created = raw_candidates = duplicates = refreshed = 0
+        chief_repaired = 0
         noise_suppressed = unchanged_items = 0
         meaningful_signals: list[dict[str, Any]] = []
+        chief_results: list[dict[str, Any]] = []
         hashes: list[str] = []
         for item in result.observations[:100]:
             if stop_check():
                 break
             hashes.append(item.content_hash)
             prepared, assessment = _prepare_observation(db, item)
+            chief_configuration = _chief_configuration(spec)
             if prepared is None:
                 unchanged_items += 1
                 noise_suppressed += int(bool(assessment.get("noise_suppressed")))
+                stored = (
+                    _stored_source_observation(db, item)
+                    if chief_configuration is not None else None
+                )
+                stored_intelligence = (
+                    dict(stored["payload"].get("observation_intelligence") or {})
+                    if (
+                        stored is not None
+                        and isinstance(stored.get("payload"), Mapping)
+                        and isinstance(
+                            stored["payload"].get("observation_intelligence"),
+                            Mapping,
+                        )
+                    )
+                    else {}
+                )
+                candidate_worthy = bool(
+                    stored_intelligence.get("significance", {}).get(
+                        "candidate_worthy",
+                    )
+                    if isinstance(
+                        stored_intelligence.get("significance"),
+                        Mapping,
+                    )
+                    else False
+                )
+                if (
+                    chief_configuration is not None
+                    and item.target_project
+                    and stored is not None
+                    and (
+                        not item.proposed_outcome
+                        or candidate_worthy
+                    )
+                ):
+                    change = _chief_project_change(
+                        spec,
+                        item,
+                        chief_configuration,
+                        assessment=assessment,
+                        stored=stored,
+                    )
+                    chief_events_before = _chief_event_count(db)
+                    considered = chief_service.consider(
+                        change,
+                        now=observed_at,
+                        candidate_creation_allowed=remaining > 0,
+                        candidate_cycle_id=cycle_id,
+                    )
+                    raw_candidates += int(considered.proposal is not None)
+                    chief_results.append(considered.as_dict())
+                    chief_repaired += int(
+                        _chief_event_count(db) > chief_events_before,
+                    )
+                    if considered.candidate_id:
+                        was_created = not considered.duplicate
+                        created += int(was_created)
+                        created_this_run += int(was_created)
+                        duplicates += int(not was_created)
+                        remaining = max(
+                            0,
+                            remaining - int(was_created),
+                        )
                 continue
             observation_recorded = _record_observation(
                 db, prepared, observed_at, expires_at=default_expiry,
@@ -1381,10 +1752,53 @@ def run_source_observation_cycle(
             recorded += int(observation_recorded)
             if observation_recorded:
                 meaningful_signals.append(assessment)
-            # Stable observation identity is the change gate. An unchanged
-            # source never relinks, refreshes, or regenerates candidate work.
-            if (observation_recorded and item.proposed_outcome
-                    and assessment.get("candidate_worthy") and remaining > 0):
+            # Stable observation identity gates the world record. Chief
+            # replay remains idempotent so partial downstream receipts can
+            # converge after a crash without recording the source again.
+            if (
+                observation_recorded
+                and chief_configuration is not None
+                and item.target_project
+                and (
+                    not item.proposed_outcome
+                    or assessment.get("candidate_worthy")
+                )
+            ):
+                stored = _stored_source_observation(db, item)
+                if stored is None:
+                    raise RuntimeError(
+                        "durable world observation missing after append",
+                    )
+                change = _chief_project_change(
+                    spec,
+                    item,
+                    chief_configuration,
+                    assessment=assessment,
+                    stored=stored,
+                )
+                considered = chief_service.consider(
+                    change,
+                    now=observed_at,
+                    candidate_creation_allowed=remaining > 0,
+                    candidate_cycle_id=cycle_id,
+                )
+                raw_candidates += int(considered.proposal is not None)
+                chief_results.append(considered.as_dict())
+                if considered.candidate_id:
+                    was_created = not considered.duplicate
+                    created += int(was_created)
+                    created_this_run += int(was_created)
+                    duplicates += int(not was_created)
+                    remaining = max(
+                        0,
+                        remaining - int(was_created),
+                    )
+            elif (
+                observation_recorded
+                and item.proposed_outcome
+                and assessment.get("candidate_worthy")
+                and remaining > 0
+            ):
                 raw_candidates += 1
                 ingested = ingest_observed_candidate(
                     db, mission_id, observation_id=prepared.observation_id,
@@ -1426,11 +1840,14 @@ def run_source_observation_cycle(
                         "required_capabilities": list(
                             spec.config.get("required_capabilities") or ()),
                     }],
+                    observation_cycle_id=cycle_id,
                 )
-                created += int(bool(ingested["created"]))
+                was_created = bool(ingested["created"])
+                created += int(was_created)
+                created_this_run += int(was_created)
                 duplicates += int(not bool(ingested["created"]))
                 refreshed += int(bool(ingested.get("refreshed")))
-                remaining -= int(bool(ingested["created"]))
+                remaining = max(0, remaining - int(was_created))
         aggregate_hash = content_hash(sorted(hashes))
         failure = result.status in {"BLOCKED", "UNKNOWN"}
         prior_failures = int(monitor_row.get("consecutive_failures") or 0)
@@ -1469,6 +1886,8 @@ def run_source_observation_cycle(
             ][:30],
             "unchanged_items": unchanged_items,
             "noise_suppressed": noise_suppressed,
+            "chief_of_staff_results": chief_results[:30],
+            "chief_of_staff_repairs": chief_repaired,
             "consecutive_failures": consecutive_failures,
             "backoff_seconds": delay_s if failure else 0,
             "reason": result.reason or None, "next_due_at": next_due_at,
@@ -1525,7 +1944,7 @@ def run_source_observation_cycle(
         "sources": source_results,
         "source_digest": digest,
         "observations_recorded": sum(int(item.get("observations_recorded", 0)) for item in source_results),
-        "candidates_created": candidate_limit - remaining,
+        "candidates_created": created_this_run,
         "raw_candidates": sum(int(item.get("raw_candidates", 0)) for item in source_results),
         "duplicates_suppressed": sum(int(item.get("duplicates_suppressed", 0)) for item in source_results),
         "candidates_refreshed": sum(int(item.get("candidates_refreshed", 0)) for item in source_results),

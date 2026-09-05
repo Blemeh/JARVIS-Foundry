@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+from dataclasses import replace
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import pytest
+
+import jarvis_foundry.chief_of_staff.service as chief_service_module
 from jarvis_foundry.chief_of_staff import (
     ChiefOfStaffService,
     project_chief_of_staff,
@@ -9,6 +14,13 @@ from jarvis_foundry.chief_of_staff import (
 from jarvis_foundry.briefing_items import project_briefing_items
 from jarvis_foundry.command_center import build_snapshot
 from jarvis_foundry.database import FoundryDatabase
+from jarvis_foundry.discovery_sources import (
+    SourceObservation,
+    SourceReadResult,
+    SourceSpec,
+    content_hash,
+    run_source_observation_cycle,
+)
 from jarvis_foundry.events import Event
 from jarvis_foundry.executive.autonomy import (
     create_objective,
@@ -29,6 +41,11 @@ from jarvis_foundry.owner_context import (
     compile_standing_order,
 )
 from jarvis_foundry.owner_controls import OwnerControlService, sign_command
+from jarvis_foundry.world_model.observations import WorldObservationStore
+from jarvis_foundry.initiative_a2 import (
+    InitiativeA2Bounds,
+    run_continuous_observation_cycle,
+)
 
 
 NOW = "2026-09-04T12:00:00Z"
@@ -470,11 +487,14 @@ def test_existing_objective_dependency_wait_uses_canonical_wake_and_unlocks(
     wakes = rebuild_wake_state(database)
 
     assert waiting.status == "WAITING"
-    assert waiting.wait_id in wakes
+    assert waiting.wait_id
+    assert waiting.canonical_wake_id in wakes
+    assert waiting.wait_id not in wakes
     assert replay.wait_id == waiting.wait_id
+    assert replay.canonical_wake_id == waiting.canonical_wake_id
     assert database.event_count() == before_replay
     assert len(wakes) == 1
-    assert wakes[waiting.wait_id]["kind"] == "WAIT_FOR_DEPENDENCY"
+    assert wakes[waiting.canonical_wake_id]["kind"] == "WAIT_FOR_DEPENDENCY"
 
     set_objective_status(
         database,
@@ -490,8 +510,10 @@ def test_existing_objective_dependency_wait_uses_canonical_wake_and_unlocks(
     )
     resumed_project = service.snapshot(now=NOW).project("jarvis")
 
-    assert triggered == [waiting.wait_id]
-    assert rebuild_wake_state(database)[waiting.wait_id]["status"] == "TRIGGERED"
+    assert triggered == [waiting.canonical_wake_id]
+    assert rebuild_wake_state(database)[
+        waiting.canonical_wake_id
+    ]["status"] == "TRIGGERED"
     assert continued.status == "ROUTED_TO_EXISTING_CANDIDATE_PATH"
     assert resumed_project is not None
     assert resumed_project.waiting_condition is None
@@ -718,3 +740,787 @@ def test_owner_attention_uses_existing_briefing_and_decision_queue_rules(
         for item in packet["decision_required"]
     )
     assert database.event_count() == before
+
+
+def _chief_source_spec(
+    *,
+    interval: int = 1,
+    chief_overrides: dict | None = None,
+) -> SourceSpec:
+    chief_configuration = {
+        "enabled": True,
+        "change_type": "BLOCKED",
+        "summary": (
+            "The JARVIS project is blocked by a reliability regression"
+        ),
+        "value": 0.95,
+        "strategic_value": 0.95,
+        "urgency": 0.35,
+        "deadline": 0.25,
+        "blocking_value": 0.90,
+        "dependency_leverage": 0.85,
+        "information_gain": 0.80,
+        "cost": 0.20,
+        "risk": 0.30,
+        "reversible": True,
+        "reversibility": 1.0,
+        "confidence": 0.90,
+        "opportunity_cost": 0.15,
+        "staleness": 0.10,
+    }
+    chief_configuration.update(chief_overrides or {})
+    return SourceSpec(
+        "v13-project-watch",
+        "project",
+        "project:jarvis:v13-runtime",
+        interval,
+        config={"chief_of_staff": chief_configuration},
+    )
+
+
+def _chief_source_observation() -> SourceObservation:
+    payload = {
+        "summary": "The bounded reliability test is failing",
+        "state": "BLOCKED",
+        "revision": "regression-1",
+    }
+    return SourceObservation(
+        "project",
+        "project:jarvis:reliability-regression",
+        "evidence:v13-runtime-reliability-log",
+        payload,
+        content_hash(payload),
+        proposed_outcome=(
+            "Investigate and repair the bounded reliability regression"
+        ),
+        target_project="jarvis",
+        alias_key="jarvis:bounded-reliability-regression",
+        candidate_type="project_reliability",
+        confidence=0.90,
+    )
+
+
+def _chief_source_reader(_spec, stop_check):
+    assert stop_check() is False
+    return SourceReadResult("READY", (_chief_source_observation(),))
+
+
+def _start_source_cycle(database: FoundryDatabase, cycle_id: str) -> None:
+    database.append(Event.create(
+        "initiative.cycle_started",
+        {"cycle_id": cycle_id, "status": "RUNNING"},
+        source_type="test",
+        source_id="v13-chief-runtime-test",
+        idempotency_key=f"initiative.cycle_started:{cycle_id}",
+    ))
+
+
+def test_continuous_project_observation_routes_through_chief_once(
+    tmp_path: Path,
+) -> None:
+    database = _database(tmp_path)
+    _standing_order(database)
+    bounds = InitiativeA2Bounds(
+        source_limit=1,
+        candidate_limit=2,
+        research_candidate_limit=0,
+        research_budget_per_candidate=0.0,
+        research_budget_per_cycle=0.0,
+    )
+    current = datetime(2026, 9, 4, 12, 0, tzinfo=timezone.utc)
+
+    first = run_continuous_observation_cycle(
+        database,
+        sources=[_chief_source_spec()],
+        bounds=bounds,
+        source_readers={"project": _chief_source_reader},
+        now=current,
+    )
+    chief_events_after_first = _event_count(database, "chief_of_staff.")
+    replay = run_continuous_observation_cycle(
+        database,
+        sources=[_chief_source_spec()],
+        bounds=bounds,
+        source_readers={"project": _chief_source_reader},
+        now=current + timedelta(seconds=1),
+    )
+
+    assert first["cycles_dispatched"] == 1
+    assert first["metrics"]["unique_candidates"] == 1
+    assert database.count("world_observations") == 1
+    assert database.count("candidates") == 1
+    assert _event_count(database, "chief_of_staff.change_observed") == 1
+    assert _event_count(database, "chief_of_staff.candidate_routed") == 1
+    assert replay["cycles_dispatched"] == 1
+    assert replay["metrics"]["unique_candidates"] == 0
+    assert _event_count(database, "chief_of_staff.") == chief_events_after_first
+    assert _event_count(database, "executive.objective_") == 0
+    assert _event_count(database, "mission.") == 0
+    assert _event_count(database, "effect.") == 0
+
+
+def test_unchanged_replay_repairs_missing_chief_receipt(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database = _database(tmp_path)
+    _standing_order(database)
+    cycle_id = "v13-runtime-repair-observation"
+    _start_source_cycle(database, cycle_id)
+    original = ChiefOfStaffService.consider
+    calls = {"count": 0}
+
+    def fail_once(self, value, *, now=None, **kwargs):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            raise RuntimeError("fault after durable world observation")
+        return original(self, value, now=now, **kwargs)
+
+    monkeypatch.setattr(ChiefOfStaffService, "consider", fail_once)
+    with pytest.raises(
+        RuntimeError,
+        match="fault after durable world observation",
+    ):
+        run_source_observation_cycle(
+            database,
+            cycle_id,
+            [_chief_source_spec()],
+            readers={"project": _chief_source_reader},
+            now=NOW,
+        )
+
+    assert database.count("world_observations") == 1
+    assert _event_count(database, "chief_of_staff.") == 0
+
+    repaired = run_source_observation_cycle(
+        database,
+        cycle_id,
+        [_chief_source_spec()],
+        readers={"project": _chief_source_reader},
+        now=NOW,
+    )
+
+    assert repaired["sources"][0]["chief_of_staff_repairs"] == 1
+    assert repaired["candidates_created"] == 1
+    assert _event_count(database, "chief_of_staff.change_observed") == 1
+    assert _event_count(database, "chief_of_staff.candidate_routed") == 1
+    assert database.count("candidates") == 1
+
+
+@pytest.mark.parametrize("control_kind", ("stop", "veto", "revoke"))
+def test_late_stop_veto_and_revocation_block_transactional_ingress(
+    tmp_path: Path,
+    control_kind: str,
+) -> None:
+    case_root = tmp_path / control_kind
+    case_root.mkdir()
+    database = _database(case_root)
+    controls = _standing_order(database)
+    stop_path = case_root / "EMERGENCY_STOP"
+    injected = {"done": False}
+    points: list[str] = []
+
+    def inject(point: str) -> None:
+        points.append(point)
+        if point != "before_candidate_transaction" or injected["done"]:
+            return
+        injected["done"] = True
+        if control_kind == "stop":
+            stop_path.write_text("late owner stop\n", encoding="utf-8")
+            return
+        if control_kind == "veto":
+            text = "Veto the late project investigation"
+            controls.apply(
+                "VETO_ACTION",
+                target="jarvis",
+                exact_text=text,
+                nonce="late-veto",
+                signature=sign_command(
+                    SECRET,
+                    "VETO_ACTION",
+                    "jarvis",
+                    text,
+                    "late-veto",
+                ),
+                directive_id="late-veto",
+            )
+            return
+        text = "Revoke investigation authority before candidate commit"
+        controls.apply(
+            "REVOKE",
+            target="standing-investigate",
+            exact_text=text,
+            nonce="late-revoke",
+            signature=sign_command(
+                SECRET,
+                "REVOKE",
+                "standing-investigate",
+                text,
+                "late-revoke",
+            ),
+        )
+
+    result = ChiefOfStaffService(
+        database,
+        stop_path=stop_path,
+        fault_hook=inject,
+    ).consider(
+        _valuable_change(f"change-late-{control_kind}"),
+        now=NOW,
+    )
+
+    assert injected["done"] is True
+    assert "candidate_transaction_guard" in points
+    assert result.status == (
+        "WAITING" if control_kind == "revoke"
+        else "BLOCKED_BY_OWNER_CONTROL"
+    )
+    assert database.count("candidates") == 0
+    assert _event_count(database, "chief_of_staff.candidate_routed") == 0
+    assert _event_count(database, "executive.objective_") == 0
+    assert _event_count(database, "mission.") == 0
+    assert _event_count(database, "effect.") == 0
+
+
+def test_candidate_commit_before_route_receipt_is_replay_repaired(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database = _database(tmp_path)
+    _standing_order(database)
+    cycle_id = "v13-runtime-repair-route"
+    _start_source_cycle(database, cycle_id)
+    original_fault = ChiefOfStaffService._fault
+    raised = {"done": False}
+    second_payload = {
+        "summary": "A second bounded reliability test is failing",
+        "state": "BLOCKED",
+        "revision": "regression-2",
+    }
+    second_observation = replace(
+        _chief_source_observation(),
+        source_identity="project:jarvis:second-reliability-regression",
+        source_ref="evidence:v13-runtime-second-reliability-log",
+        payload=second_payload,
+        content_hash=content_hash(second_payload),
+        alias_key="jarvis:second-bounded-reliability-regression",
+    )
+
+    def two_candidate_reader(_spec, stop_check):
+        assert stop_check() is False
+        return SourceReadResult(
+            "READY",
+            (_chief_source_observation(), second_observation),
+        )
+
+    def fail_after_candidate(self, point: str) -> None:
+        if point == "after_candidate_ingress" and not raised["done"]:
+            raised["done"] = True
+            raise RuntimeError("fault after candidate commit")
+        original_fault(self, point)
+
+    monkeypatch.setattr(
+        ChiefOfStaffService,
+        "_fault",
+        fail_after_candidate,
+    )
+    with pytest.raises(RuntimeError, match="fault after candidate commit"):
+        run_source_observation_cycle(
+            database,
+            cycle_id,
+            [_chief_source_spec()],
+            candidate_limit=1,
+            readers={"project": two_candidate_reader},
+            now=NOW,
+        )
+
+    assert database.count("world_observations") == 1
+    assert database.count("candidates") == 1
+    assert _event_count(database, "chief_of_staff.change_observed") == 1
+    assert _event_count(database, "chief_of_staff.candidate_routed") == 0
+
+    repaired = run_source_observation_cycle(
+        database,
+        cycle_id,
+        [_chief_source_spec()],
+        candidate_limit=1,
+        readers={"project": two_candidate_reader},
+        now=NOW,
+    )
+
+    assert repaired["sources"][0]["chief_of_staff_repairs"] == 1
+    assert repaired["candidates_created"] == 0
+    assert repaired["duplicates_suppressed"] == 1
+    assert repaired["sources"][0]["chief_of_staff_results"][1]["status"] == (
+        "CANDIDATE_LIMIT_REACHED"
+    )
+    assert database.count("world_observations") == 2
+    assert database.count("candidates") == 1
+    assert _event_count(database, "chief_of_staff.change_observed") == 2
+    assert _event_count(database, "chief_of_staff.candidate_routed") == 1
+
+
+def test_owner_control_is_rechecked_immediately_before_candidate_insert(
+    tmp_path: Path,
+) -> None:
+    database = _database(tmp_path)
+    _standing_order(database)
+    stop_path = tmp_path / "EMERGENCY_STOP"
+    guard_calls = {"count": 0}
+
+    def stop_on_preinsert_guard(point: str) -> None:
+        if point != "candidate_transaction_guard":
+            return
+        guard_calls["count"] += 1
+        if guard_calls["count"] == 2:
+            stop_path.write_text("owner stopped candidate ingress\n", encoding="utf-8")
+
+    result = ChiefOfStaffService(
+        database,
+        stop_path=stop_path,
+        fault_hook=stop_on_preinsert_guard,
+    ).consider(
+        _valuable_change("change-stop-at-preinsert"),
+        now=NOW,
+    )
+
+    assert guard_calls["count"] == 2
+    assert result.status == "BLOCKED_BY_OWNER_CONTROL"
+    assert database.count("candidates") == 0
+    assert _event_count(database, "chief_of_staff.candidate_routed") == 0
+
+
+@pytest.mark.parametrize(
+    "configured_objective",
+    (False, True),
+    ids=("standing-order-objective", "configured-objective"),
+)
+def test_chief_derived_candidates_share_the_cycle_candidate_limit(
+    tmp_path: Path,
+    configured_objective: bool,
+) -> None:
+    database = _database(tmp_path)
+    _standing_order(database)
+    cycle_id = (
+        "v13-standing-order-limit"
+        if not configured_objective
+        else "v13-configured-objective-limit"
+    )
+    _start_source_cycle(database, cycle_id)
+    overrides = (
+        {
+            "proposed_objective": (
+                "Investigate the configured project reliability regression"
+            ),
+        }
+        if configured_objective else {}
+    )
+    spec = _chief_source_spec(chief_overrides=overrides)
+    observations = []
+    for suffix in ("one", "two"):
+        payload = {
+            "summary": f"Bounded reliability signal {suffix}",
+            "state": "BLOCKED",
+            "revision": suffix,
+        }
+        observations.append(replace(
+            _chief_source_observation(),
+            source_identity=f"project:jarvis:limit-{suffix}",
+            source_ref=f"evidence:v13-limit-{suffix}",
+            payload=payload,
+            content_hash=content_hash(payload),
+            proposed_outcome=None,
+            alias_key=f"jarvis:limit-{suffix}",
+        ))
+
+    def reader(_spec, stop_check):
+        assert stop_check() is False
+        return SourceReadResult("READY", tuple(observations))
+
+    result = run_source_observation_cycle(
+        database,
+        cycle_id,
+        [spec],
+        candidate_limit=1,
+        readers={"project": reader},
+        now=NOW,
+    )
+
+    statuses = [
+        item["status"]
+        for item in result["sources"][0]["chief_of_staff_results"]
+    ]
+    assert result["sources"][0]["raw_candidates"] == 2
+    assert result["candidates_created"] == 1
+    assert database.count("candidates") == 1
+    assert statuses == [
+        "ROUTED_TO_EXISTING_CANDIDATE_PATH",
+        "CANDIDATE_LIMIT_REACHED",
+    ]
+
+
+def test_partial_rejection_replay_adds_missing_wait_receipt(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database = _database(tmp_path)
+    _standing_order(database)
+    cycle_id = "v13-partial-rejection-wait-repair"
+    _start_source_cycle(database, cycle_id)
+    spec = _chief_source_spec(chief_overrides={
+        "value": 0.20,
+        "strategic_value": 0.20,
+    })
+    original_schedule = chief_service_module._schedule_existing_objective_wait
+    raised = {"done": False}
+
+    def fail_once(*args, **kwargs):
+        if not raised["done"]:
+            raised["done"] = True
+            raise RuntimeError("fault after recommendation rejection")
+        return original_schedule(*args, **kwargs)
+
+    monkeypatch.setattr(
+        chief_service_module,
+        "_schedule_existing_objective_wait",
+        fail_once,
+    )
+    with pytest.raises(
+        RuntimeError,
+        match="fault after recommendation rejection",
+    ):
+        run_source_observation_cycle(
+            database,
+            cycle_id,
+            [spec],
+            candidate_limit=1,
+            readers={"project": _chief_source_reader},
+            now=NOW,
+        )
+
+    assert _event_count(
+        database,
+        "chief_of_staff.recommendation_rejected",
+    ) == 1
+    assert _event_count(database, "chief_of_staff.wait_recorded") == 0
+
+    repaired = run_source_observation_cycle(
+        database,
+        cycle_id,
+        [spec],
+        candidate_limit=1,
+        readers={"project": _chief_source_reader},
+        now=NOW,
+    )
+
+    assert repaired["sources"][0]["chief_of_staff_repairs"] == 1
+    assert repaired["sources"][0]["chief_of_staff_results"][0]["status"] == (
+        "WAITING"
+    )
+    assert repaired["candidates_created"] == 0
+    assert _event_count(database, "chief_of_staff.wait_recorded") == 1
+
+
+def test_partial_multi_item_lifecycle_replay_finishes_every_transition(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database = _database(tmp_path)
+    cycle_id = "v13-partial-multi-item-repair"
+    _start_source_cycle(database, cycle_id)
+    spec = _chief_source_spec(chief_overrides={
+        "change_type": "PROJECT_UPDATE",
+        "resolved_wait_ids": ["wait-one", "wait-two"],
+        "resolution_reason": "both dependency waits are complete",
+    })
+    observation = replace(
+        _chief_source_observation(),
+        proposed_outcome=None,
+    )
+    original_append = chief_service_module._append
+    state_calls = {"count": 0}
+    raised = {"done": False}
+
+    def fail_second_state_change(
+        database_arg,
+        event_type,
+        payload,
+        **kwargs,
+    ):
+        if event_type == "chief_of_staff.item_state_changed":
+            state_calls["count"] += 1
+            if state_calls["count"] == 2 and not raised["done"]:
+                raised["done"] = True
+                raise RuntimeError("fault between lifecycle transitions")
+        return original_append(
+            database_arg,
+            event_type,
+            payload,
+            **kwargs,
+        )
+
+    def reader(_spec, stop_check):
+        assert stop_check() is False
+        return SourceReadResult("READY", (observation,))
+
+    monkeypatch.setattr(
+        chief_service_module,
+        "_append",
+        fail_second_state_change,
+    )
+    with pytest.raises(
+        RuntimeError,
+        match="fault between lifecycle transitions",
+    ):
+        run_source_observation_cycle(
+            database,
+            cycle_id,
+            [spec],
+            candidate_limit=1,
+            readers={"project": reader},
+            now=NOW,
+        )
+
+    assert _event_count(
+        database,
+        "chief_of_staff.item_state_changed",
+    ) == 1
+
+    repaired = run_source_observation_cycle(
+        database,
+        cycle_id,
+        [spec],
+        candidate_limit=1,
+        readers={"project": reader},
+        now=NOW,
+    )
+
+    assert repaired["sources"][0]["chief_of_staff_repairs"] == 1
+    assert repaired["sources"][0]["chief_of_staff_results"][0]["status"] == (
+        "PROJECT_STATE_UPDATED"
+    )
+    assert _event_count(
+        database,
+        "chief_of_staff.item_state_changed",
+    ) == 2
+    assert database.count("candidates") == 0
+
+
+def test_change_receipt_replay_does_not_mark_new_candidate_duplicate(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database = _database(tmp_path)
+    _standing_order(database)
+    cycle_id = "v13-change-receipt-before-candidate"
+    _start_source_cycle(database, cycle_id)
+    original_fault = ChiefOfStaffService._fault
+    raised = {"done": False}
+
+    def fail_before_candidate(self, point: str) -> None:
+        if point == "before_candidate_ingress" and not raised["done"]:
+            raised["done"] = True
+            raise RuntimeError("fault after change receipt")
+        original_fault(self, point)
+
+    monkeypatch.setattr(
+        ChiefOfStaffService,
+        "_fault",
+        fail_before_candidate,
+    )
+    with pytest.raises(RuntimeError, match="fault after change receipt"):
+        run_source_observation_cycle(
+            database,
+            cycle_id,
+            [_chief_source_spec()],
+            candidate_limit=1,
+            readers={"project": _chief_source_reader},
+            now=NOW,
+        )
+
+    assert _event_count(database, "chief_of_staff.change_observed") == 1
+    assert database.count("candidates") == 0
+
+    repaired = run_source_observation_cycle(
+        database,
+        cycle_id,
+        [_chief_source_spec()],
+        candidate_limit=1,
+        readers={"project": _chief_source_reader},
+        now=NOW,
+    )
+    considered = repaired["sources"][0]["chief_of_staff_results"][0]
+
+    assert considered["duplicate"] is False
+    assert repaired["candidates_created"] == 1
+    assert repaired["duplicates_suppressed"] == 0
+    assert database.count("candidates") == 1
+
+
+@pytest.mark.parametrize(
+    ("field", "initial", "corrected"),
+    (
+        ("alias_key", "jarvis:alias-old", "jarvis:alias-corrected"),
+        ("candidate_type", "reliability-old", "reliability-corrected"),
+        ("confidence", 0.70, 0.90),
+        (
+            "expires_at",
+            "2026-09-05T12:00:00Z",
+            "2026-09-06T12:00:00Z",
+        ),
+    ),
+)
+def test_corrected_item_routing_inputs_get_a_new_change_identity(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    field: str,
+    initial,
+    corrected,
+) -> None:
+    database = _database(tmp_path)
+    _standing_order(database)
+    cycle_id = f"v13-routing-identity-{field}"
+    _start_source_cycle(database, cycle_id)
+    spec = _chief_source_spec()
+    if field == "confidence":
+        chief_configuration = dict(spec.config["chief_of_staff"])
+        chief_configuration.pop("confidence")
+        spec = replace(
+            spec,
+            config={"chief_of_staff": chief_configuration},
+        )
+    current = {
+        "observation": replace(
+            _chief_source_observation(),
+            **{field: initial},
+        ),
+    }
+    original_fault = ChiefOfStaffService._fault
+    raised = {"done": False}
+
+    def reader(_spec, stop_check):
+        assert stop_check() is False
+        return SourceReadResult("READY", (current["observation"],))
+
+    def fail_before_candidate(self, point: str) -> None:
+        if point == "before_candidate_ingress" and not raised["done"]:
+            raised["done"] = True
+            raise RuntimeError("fault before corrected routing replay")
+        original_fault(self, point)
+
+    monkeypatch.setattr(
+        ChiefOfStaffService,
+        "_fault",
+        fail_before_candidate,
+    )
+    with pytest.raises(
+        RuntimeError,
+        match="fault before corrected routing replay",
+    ):
+        run_source_observation_cycle(
+            database,
+            cycle_id,
+            [spec],
+            candidate_limit=1,
+            readers={"project": reader},
+            now=NOW,
+        )
+
+    current["observation"] = replace(
+        current["observation"],
+        **{field: corrected},
+    )
+    repaired = run_source_observation_cycle(
+        database,
+        cycle_id,
+        [spec],
+        candidate_limit=1,
+        readers={"project": reader},
+        now=NOW,
+    )
+    change_events = database.events(
+        event_types=("chief_of_staff.change_observed",),
+    )
+    change_ids = {
+        str(event.payload["change"]["change_id"])
+        for event in change_events
+    }
+
+    assert repaired["candidates_created"] == 1
+    assert database.count("candidates") == 1
+    assert len(change_events) == 2
+    assert len(change_ids) == 2
+    assert _event_count(database, "chief_of_staff.candidate_routed") == 1
+
+
+def test_unchanged_replay_finds_identity_beyond_recent_500_observations(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database = _database(tmp_path)
+    _standing_order(database)
+    cycle_id = "v13-runtime-deep-history-repair"
+    _start_source_cycle(database, cycle_id)
+    original = ChiefOfStaffService.consider
+    calls = {"count": 0}
+
+    def fail_once(self, value, *, now=None, **kwargs):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            raise RuntimeError("fault before deep-history Chief receipt")
+        return original(self, value, now=now, **kwargs)
+
+    monkeypatch.setattr(ChiefOfStaffService, "consider", fail_once)
+    with pytest.raises(
+        RuntimeError,
+        match="fault before deep-history Chief receipt",
+    ):
+        run_source_observation_cycle(
+            database,
+            cycle_id,
+            [_chief_source_spec()],
+            readers={"project": _chief_source_reader},
+            now=NOW,
+        )
+
+    assert database.count("world_observations") == 1
+    assert _event_count(database, "chief_of_staff.") == 0
+
+    store = WorldObservationStore(database)
+    base = datetime(2026, 9, 4, 12, 1, tzinfo=timezone.utc)
+    for index in range(501):
+        source_identity = f"project:filler:{index:03d}"
+        payload = {"summary": f"Unrelated filler observation {index}"}
+        store.record(
+            "project",
+            f"evidence:v13-filler-{index:03d}",
+            payload,
+            observation_id=f"v13-filler-{index:03d}",
+            observed_at=(
+                base + timedelta(seconds=index)
+            ).isoformat().replace("+00:00", "Z"),
+            provenance={
+                "authority": "REPOSITORY_AUTHORITY",
+                "content_hash": content_hash(payload),
+                "semantic_content_hash": content_hash(payload),
+                "source_identity": source_identity,
+            },
+            source_id="v13-deep-history-fixture",
+            idempotency_key=f"world.observation_recorded:v13-filler-{index:03d}",
+        )
+
+    repaired = run_source_observation_cycle(
+        database,
+        cycle_id,
+        [_chief_source_spec()],
+        readers={"project": _chief_source_reader},
+        now=NOW,
+    )
+
+    assert repaired["sources"][0]["chief_of_staff_repairs"] == 1
+    assert repaired["sources"][0]["raw_candidates"] == 1
+    assert repaired["candidates_created"] == 1
+    assert database.count("world_observations") == 502
+    assert database.count("candidates") == 1
+    assert _event_count(database, "chief_of_staff.change_observed") == 1
+    assert _event_count(database, "chief_of_staff.candidate_routed") == 1

@@ -4,11 +4,20 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from .briefing_items import BriefingItem, project_briefing_items
+from .briefing_items import BriefingItem, event_to_item, project_briefing_items
 from .database import FoundryDatabase
 from .owner_directives import owner_directive_snapshot
 
 QUEUE_VERSION = "1.0"
+_TERMINAL_ATTENTION_STATES = frozenset({
+    "RESOLVED",
+    "SUPERSEDED",
+    "REVOKED",
+})
+_CHIEF_ATTENTION_EVENT_TYPES = (
+    "chief_of_staff.owner_attention_required",
+    "chief_of_staff.item_state_changed",
+)
 
 
 def _classification(item: BriefingItem, *, unknown_directive: bool = False) -> str:
@@ -68,9 +77,18 @@ def build_owner_attention_queue(
             )
         )
     )
+    chief_attention_events = database.events(
+        readonly=True,
+        event_types=_CHIEF_ATTENTION_EVENT_TYPES,
+    )
     event_by_id = {event.event_id: event for event in events}
+    event_by_id.update({
+        event.event_id: event
+        for event in chief_attention_events
+    })
     directive_status: dict[str, tuple[str, str]] = {}
     decision_status: dict[str, tuple[str, str]] = {}
+    attention_status: dict[str, tuple[str, str]] = {}
     for event in events:
         payload = event.payload if isinstance(event.payload, dict) else {}
         if event.event_type == "owner_directive.revoked":
@@ -85,6 +103,19 @@ def build_owner_attention_queue(
             decision_id = payload.get("decision_id")
             if isinstance(decision_id, str):
                 decision_status[decision_id] = ("RESOLVED", event.event_id)
+    for event in chief_attention_events:
+        if event.event_type == "chief_of_staff.item_state_changed":
+            payload = event.payload if isinstance(event.payload, dict) else {}
+            item_id = payload.get("item_id")
+            to_state = str(payload.get("to_state") or "").upper()
+            if (
+                str(payload.get("item_kind") or "").upper()
+                == "OWNER_ATTENTION"
+                and isinstance(item_id, str)
+                and item_id
+                and to_state in _TERMINAL_ATTENTION_STATES
+            ):
+                attention_status[item_id] = (to_state, event.event_id)
 
     owner_snapshot = owner_directive_snapshot(database, now=now)
     unknown_ids = {
@@ -99,6 +130,20 @@ def build_owner_attention_queue(
         limit=max(1, int(limit) * 4),
         max_scan=10000,
     )
+    source_event_ids = {
+        item.source_event_id
+        for item in items
+    }
+    for chief_sequence, event in enumerate(chief_attention_events, start=1):
+        if (
+            event.event_type != "chief_of_staff.owner_attention_required"
+            or event.event_id in source_event_ids
+        ):
+            continue
+        item = event_to_item(event, chief_sequence, now=now)
+        if item is not None:
+            items.append(item)
+            source_event_ids.add(event.event_id)
     records: list[dict[str, Any]] = []
     for item in items:
         event = event_by_id.get(item.source_event_id)
@@ -117,6 +162,13 @@ def build_owner_attention_queue(
             status, resolution_event_id = directive_status[item.entity_id]
         elif item.entity_kind == "decision" and item.entity_id in decision_status:
             status, resolution_event_id = decision_status[item.entity_id]
+        elif (
+            event is not None
+            and event.event_type == "chief_of_staff.owner_attention_required"
+        ):
+            attention_id = event_payload.get("attention_id")
+            if isinstance(attention_id, str) and attention_id in attention_status:
+                status, resolution_event_id = attention_status[attention_id]
         payload = event_payload
         record = {
             "queue_version": QUEUE_VERSION,

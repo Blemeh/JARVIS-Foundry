@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 from collections import defaultdict
+from dataclasses import replace
 from datetime import datetime, timezone
 from typing import Any, Iterable, Mapping
 
@@ -25,6 +26,44 @@ from .models import (
 
 
 CHIEF_OF_STAFF_EVENT_PREFIX = "chief_of_staff."
+_TERMINAL_ITEM_STATES = frozenset({"RESOLVED", "SUPERSEDED", "REVOKED"})
+_TERMINAL_OBJECTIVE_STATES = frozenset({
+    "COMPLETED",
+    "FAILED",
+    "CANCELLED",
+    "SUSPENDED",
+})
+_PRIORITY_WEIGHTS = {
+    "owner_priority": 0.19,
+    "strategic_value": 0.12,
+    "urgency": 0.10,
+    "deadline": 0.12,
+    "blockers": 0.04,
+    "dependency_leverage": 0.09,
+    "information_gain": 0.10,
+    "cost": 0.08,
+    "risk": 0.05,
+    "reversibility": 0.02,
+    "confidence": 0.02,
+    "opportunity_cost": 0.04,
+    "staleness": 0.03,
+}
+_FACTOR_AUTHORITY_OWNER_AUTHENTICATED = "OWNER_CONTEXT_AUTHENTICATED"
+_FACTOR_AUTHORITY_OWNER_CURRENT = "OWNER_CONTEXT_CURRENT"
+_FACTOR_AUTHORITY_CHIEF = "CHIEF_PROJECT"
+_FACTOR_AUTHORITY_OBJECTIVE = "CURRENT_OBJECTIVE"
+_OWNER_PRIORITY_AUTHORITY_PRECEDENCE = {
+    _FACTOR_AUTHORITY_OWNER_AUTHENTICATED: 40,
+    _FACTOR_AUTHORITY_OWNER_CURRENT: 30,
+    _FACTOR_AUTHORITY_CHIEF: 20,
+    _FACTOR_AUTHORITY_OBJECTIVE: 10,
+}
+_PROJECT_FACTOR_AUTHORITY_PRECEDENCE = {
+    _FACTOR_AUTHORITY_CHIEF: 40,
+    _FACTOR_AUTHORITY_OWNER_AUTHENTICATED: 30,
+    _FACTOR_AUTHORITY_OWNER_CURRENT: 20,
+    _FACTOR_AUTHORITY_OBJECTIVE: 10,
+}
 
 
 def _strings(values: Iterable[Any]) -> tuple[str, ...]:
@@ -73,6 +112,45 @@ def _timestamp(value: Any) -> datetime | None:
     except (TypeError, ValueError, OverflowError):
         return None
     return result if result.tzinfo else result.replace(tzinfo=timezone.utc)
+
+
+def _semantic_order_key(
+    value: Any,
+    *tie_breakers: Any,
+) -> tuple[Any, ...]:
+    observed = _timestamp(value)
+    timestamp = (
+        observed.astimezone(timezone.utc).timestamp()
+        if observed is not None
+        else float("-inf")
+    )
+    return (
+        timestamp,
+        *(str(part or "") for part in tie_breakers),
+    )
+
+
+def _deadline_pressure(value: Any, now: str) -> float | None:
+    numeric = _priority_value(value)
+    if numeric is not None:
+        return numeric
+    deadline = _timestamp(value)
+    current = _timestamp(now)
+    if deadline is None or current is None:
+        return None
+    seconds = (deadline - current).total_seconds()
+    if seconds <= 0:
+        return 1.0
+    return max(0.0, min(1.0, 1.0 - seconds / (14 * 86400.0)))
+
+
+def _staleness_pressure(value: Any, now: str) -> float | None:
+    observed = _timestamp(value)
+    current = _timestamp(now)
+    if observed is None or current is None:
+        return None
+    age_seconds = max(0.0, (current - observed).total_seconds())
+    return max(0.0, min(1.0, age_seconds / (7 * 86400.0)))
 
 
 def _hash(value: str, *, length: int = 20) -> str:
@@ -137,18 +215,17 @@ def _new_project(project_id: str, title: str | None = None) -> dict[str, Any]:
         "owner_attention_ids": set(),
         "jarvis_handled_work": [],
         "intentional_idle": False,
-        "semantic_waits": [],
+        "semantic_waits": {},
+        "item_state_changes": {
+            "WAIT": {},
+            "OWNER_ATTENTION": {},
+        },
         "source_event_refs": [],
         "evidence_refs": [],
         "unknown_fields": set(),
-        "factors": {
-            "owner_priority": None,
-            "strategic_value": None,
-            "urgency": None,
-            "blocking_value": None,
-            "risk": None,
-        },
-        "factor_evidence": defaultdict(list),
+        "factor_sources": defaultdict(dict),
+        "priority_disposition": None,
+        "priority_disposition_order": (),
     }
 
 
@@ -171,19 +248,131 @@ def _append_unique(target: list[str], *values: Any) -> None:
             target.append(normalized)
 
 
+def _set_priority_disposition(
+    project: dict[str, Any],
+    value: Any,
+    *,
+    order_key: Iterable[Any],
+) -> None:
+    order = tuple(order_key)
+    current = tuple(project["priority_disposition_order"])
+    if current and order < current:
+        return
+    normalized = str(value or "").strip().upper()
+    project["priority_disposition"] = normalized or None
+    project["priority_disposition_order"] = order
+
+
 def _set_factor(
     project: dict[str, Any],
     name: str,
     value: Any,
     evidence_refs: Iterable[Any] = (),
+    *,
+    source_key: str,
+    authority: str,
+    order_key: Iterable[Any] = (),
+    invert: bool = False,
 ) -> None:
-    normalized = _priority_value(value)
-    if normalized is None:
+    if name not in _PRIORITY_WEIGHTS:
         return
-    current = project["factors"].get(name)
-    if current is None or normalized > current:
-        project["factors"][name] = normalized
-    _append_unique(project["factor_evidence"][name], *evidence_refs)
+    order = tuple(order_key)
+    sources = project["factor_sources"][name]
+    current = sources.get(source_key)
+    if current is not None and order < current["order_key"]:
+        return
+    raw = _priority_value(value)
+    if raw is None:
+        sources.pop(source_key, None)
+        return
+    sources[source_key] = {
+        "source_key": source_key,
+        "authority": authority,
+        "raw_value": raw,
+        "normalized_value": round(1.0 - raw, 6) if invert else raw,
+        "evidence_refs": _strings(evidence_refs),
+        "order_key": order,
+    }
+
+
+def _first_present(
+    values: Mapping[str, Any],
+    names: Iterable[str],
+) -> tuple[bool, Any]:
+    for name in names:
+        if name in values:
+            return True, values[name]
+    return False, None
+
+
+def _apply_explicit_factors(
+    project: dict[str, Any],
+    values: Mapping[str, Any],
+    evidence_refs: Iterable[Any],
+    *,
+    source_key: str,
+    authority: str,
+    order_key: Iterable[Any],
+    now: str,
+    allow_value_alias: bool = False,
+) -> None:
+    aliases = {
+        "owner_priority": ("owner_priority",),
+        "strategic_value": (
+            ("strategic_value", "value")
+            if allow_value_alias
+            else ("strategic_value",)
+        ),
+        "urgency": ("urgency",),
+        "deadline": ("deadline",),
+        "blockers": ("blocking_value", "blocker_value", "blockers"),
+        "dependency_leverage": ("dependency_leverage",),
+        "information_gain": ("information_gain",),
+        "cost": ("cost",),
+        "risk": ("risk",),
+        "reversibility": ("reversibility", "reversible"),
+        "confidence": ("confidence",),
+        "opportunity_cost": ("opportunity_cost",),
+        "staleness": ("staleness",),
+    }
+    for name, keys in aliases.items():
+        present, value = _first_present(values, keys)
+        if not present:
+            continue
+        if name == "deadline":
+            value = _deadline_pressure(value, now)
+        _set_factor(
+            project,
+            name,
+            value,
+            evidence_refs,
+            source_key=source_key,
+            authority=authority,
+            order_key=order_key,
+            invert=name in {"cost", "opportunity_cost"},
+        )
+
+
+def _selected_factor(
+    project: Mapping[str, Any],
+    name: str,
+) -> Mapping[str, Any] | None:
+    sources = project["factor_sources"].get(name, {})
+    if not sources:
+        return None
+    precedence = (
+        _OWNER_PRIORITY_AUTHORITY_PRECEDENCE
+        if name == "owner_priority"
+        else _PROJECT_FACTOR_AUTHORITY_PRECEDENCE
+    )
+    return max(
+        sources.values(),
+        key=lambda observation: (
+            precedence.get(observation["authority"], 0),
+            observation["order_key"],
+            observation["source_key"],
+        ),
+    )
 
 
 def _project_from_objective(
@@ -312,42 +501,69 @@ def _priority_projection(
     projects: list[ProjectState],
     mutable: Mapping[str, dict[str, Any]],
 ) -> tuple[ProjectPriority, ...]:
-    weights = {
-        "owner_priority": 0.30,
-        "strategic_value": 0.30,
-        "urgency": 0.15,
-        "blocking_value": 0.15,
-        "risk": 0.10,
-    }
-    unranked: list[tuple[str, float, tuple[PriorityFactor, ...], tuple[str, ...], tuple[str, ...], bool, tuple[str, ...]]] = []
+    unranked: list[
+        tuple[
+            str,
+            float,
+            tuple[PriorityFactor, ...],
+            tuple[str, ...],
+            tuple[str, ...],
+            bool,
+            bool,
+            tuple[str, ...],
+        ]
+    ] = []
     for state in projects:
         source = mutable[state.project_id]
         factors: list[PriorityFactor] = []
         unknown: list[str] = []
         rationale: list[str] = []
         score = 0.0
-        for name, weight in weights.items():
-            value = source["factors"].get(name)
-            if value is None:
+        for name, weight in _PRIORITY_WEIGHTS.items():
+            observation = _selected_factor(source, name)
+            if observation is None:
                 unknown.append(name)
+                raw_value = None
+                normalized_value = None
+                evidence_refs = ()
                 contribution = 0.0
             else:
-                contribution = round(value * weight, 6)
+                raw_value = observation["raw_value"]
+                normalized_value = observation["normalized_value"]
+                evidence_refs = observation["evidence_refs"]
+                scored_value = normalized_value
+                if (
+                    name == "urgency"
+                    and observation["source_key"] == "chief"
+                    and source["priority_disposition"]
+                    == "LOW_STRATEGIC_VALUE"
+                ):
+                    scored_value = 0.0
+                    rationale.append(
+                        "chief urgency excluded after LOW_STRATEGIC_VALUE",
+                    )
+                contribution = round(scored_value * weight, 6)
                 score += contribution
-                rationale.append(f"{name}={value:.2f}")
+                rationale.append(f"{name}={normalized_value:.2f}")
             factors.append(PriorityFactor(
                 name=name,
-                raw_value=value,
-                normalized_value=value,
+                raw_value=raw_value,
+                normalized_value=normalized_value,
                 weight=weight,
                 contribution=contribution,
-                evidence_refs=_strings(source["factor_evidence"].get(name, ())),
+                evidence_refs=evidence_refs,
             ))
         if state.intentional_idle or state.status == "COMPLETED":
             score = 0.0
             rationale.append(
                 "deliberate idle" if state.intentional_idle else "project complete",
             )
+        rankable = (
+            any(factor.known for factor in factors)
+            or state.intentional_idle
+        )
+        if not rankable:
+            rationale.append("priority rank unknown: no evidence-backed factors")
         unranked.append((
             state.project_id,
             round(score, 6),
@@ -355,30 +571,41 @@ def _priority_projection(
             tuple(unknown),
             tuple(rationale),
             state.intentional_idle,
+            rankable,
             state.source_event_refs,
         ))
-    unranked.sort(key=lambda value: (-value[1], value[0]))
-    return tuple(
-        ProjectPriority(
+    unranked.sort(key=lambda value: (
+        not value[6],
+        -value[1],
+        value[0],
+    ))
+    priorities: list[ProjectPriority] = []
+    next_rank = 0
+    for (
+        project_id,
+        score,
+        factors,
+        unknown,
+        rationale,
+        deliberate_idle,
+        rankable,
+        refs,
+    ) in unranked:
+        rank = None
+        if rankable:
+            next_rank += 1
+            rank = next_rank
+        priorities.append(ProjectPriority(
             project_id=project_id,
-            rank=index,
+            rank=rank,
             score=score,
             factors=factors,
             unknown_factors=unknown,
             rationale=rationale,
             deliberate_idle=deliberate_idle,
             source_event_refs=refs,
-        )
-        for index, (
-            project_id,
-            score,
-            factors,
-            unknown,
-            rationale,
-            deliberate_idle,
-            refs,
-        ) in enumerate(unranked, start=1)
-    )
+        ))
+    return tuple(priorities)
 
 
 def project_chief_of_staff(
@@ -440,20 +667,50 @@ def project_chief_of_staff(
             project = _ensure(projects, project_id)
             _append_unique(project["source_event_refs"], record.source_event_id)
             _append_unique(project["evidence_refs"], *record.provenance.evidence_refs)
+            record_refs = (
+                record.source_event_id,
+                *record.provenance.evidence_refs,
+            )
+            record_authority = (
+                _FACTOR_AUTHORITY_OWNER_AUTHENTICATED
+                if record.provenance.authority == "AUTHENTICATED_OWNER"
+                else _FACTOR_AUTHORITY_OWNER_CURRENT
+            )
+            record_order = _semantic_order_key(
+                record.effective_at,
+                record.updated_at,
+                record.recorded_at,
+                record.context_id,
+            )
+            _apply_explicit_factors(
+                project,
+                record.attributes,
+                record_refs,
+                source_key=record_authority,
+                authority=record_authority,
+                order_key=record_order,
+                now=generated_at,
+            )
             if record.kind == "ACTIVE_OBJECTIVE":
                 project["objective_ids"].add(_record_objective_id(record))
                 _set_factor(
                     project,
                     "owner_priority",
                     record.priority,
-                    (record.source_event_id,),
+                    record_refs,
+                    source_key=record_authority,
+                    authority=record_authority,
+                    order_key=record_order,
                 )
             elif record.kind == "PRIORITY":
                 _set_factor(
                     project,
                     "owner_priority",
                     record.attributes.get("value", record.priority),
-                    (record.source_event_id,),
+                    record_refs,
+                    source_key=record_authority,
+                    authority=record_authority,
+                    order_key=record_order,
                 )
             elif record.kind == "UNRESOLVED_ITEM":
                 _append_unique(project["blockers"], record.text)
@@ -509,7 +766,7 @@ def project_chief_of_staff(
         readonly=True,
         event_type_prefixes=(CHIEF_OF_STAFF_EVENT_PREFIX,),
     )
-    for event in chief_events:
+    for chief_sequence, event in enumerate(chief_events, start=1):
         payload = event.payload if isinstance(event.payload, dict) else {}
         change = payload.get("change")
         change_payload = change if isinstance(change, dict) else payload
@@ -530,11 +787,51 @@ def project_chief_of_staff(
             *(payload.get("evidence_refs") or ()),
         ):
             _append_unique(project["evidence_refs"], ref)
+        event_order = (f"{chief_sequence:020d}",)
+        event_refs = _strings((
+            event.event_id,
+            *(change_payload.get("source_event_refs") or ()),
+            *(change_payload.get("evidence_refs") or ()),
+            *(payload.get("source_event_refs") or ()),
+            *(payload.get("evidence_refs") or ()),
+        ))
+        if event.event_type == "chief_of_staff.item_state_changed":
+            item_kind = str(payload.get("item_kind") or "").upper()
+            item_id = str(payload.get("item_id") or "").strip()
+            from_state = str(payload.get("from_state") or "").upper()
+            to_state = str(payload.get("to_state") or "").upper()
+            if (
+                item_kind in {"WAIT", "OWNER_ATTENTION"}
+                and item_id
+                and to_state in _TERMINAL_ITEM_STATES
+            ):
+                project["item_state_changes"][item_kind][item_id] = {
+                    "status": to_state,
+                    "reason": _bounded_text(payload.get("reason")),
+                    "change_id": str(payload.get("change_id") or ""),
+                    "source_event_refs": event_refs,
+                    "evidence_refs": _strings(
+                        payload.get("evidence_refs") or (),
+                    ),
+                    "order_key": event_order,
+                }
+            continue
         if event.event_type == "chief_of_staff.change_observed":
             summary = _bounded_text(change_payload.get("summary"))
             _append_unique(project["recent_changes"], summary)
             activity = str(
                 change_payload.get("occurred_at") or event.occurred_at
+            )
+            factor_order = _semantic_order_key(
+                activity,
+                event.recorded_at,
+                event_order[0],
+                event.event_id,
+            )
+            _set_priority_disposition(
+                project,
+                None,
+                order_key=factor_order,
             )
             if (
                 project["last_meaningful_activity"] is None
@@ -556,15 +853,26 @@ def project_chief_of_staff(
                 project["next_likely_action"] = _bounded_text(
                     values["next_action"],
                 )
-            if values.get("intentional_idle") is True:
-                project["intentional_idle"] = True
-            for name, key in (
-                ("strategic_value", "value"),
-                ("urgency", "urgency"),
-                ("blocking_value", "blocking_value"),
-                ("risk", "risk"),
-            ):
-                _set_factor(project, name, values.get(key), (event.event_id,))
+            _apply_explicit_factors(
+                project,
+                values,
+                event_refs,
+                source_key="chief",
+                authority=_FACTOR_AUTHORITY_CHIEF,
+                order_key=factor_order,
+                now=generated_at,
+                allow_value_alias=True,
+            )
+            if "staleness" not in values:
+                _set_factor(
+                    project,
+                    "staleness",
+                    _staleness_pressure(activity, generated_at),
+                    event_refs,
+                    source_key="chief",
+                    authority=_FACTOR_AUTHORITY_CHIEF,
+                    order_key=factor_order,
+                )
             blockers = values.get("blockers")
             if isinstance(blockers, (list, tuple)):
                 _append_unique(project["blockers"], *blockers)
@@ -601,6 +909,16 @@ def project_chief_of_staff(
             )
             briefing[entry.entry_id] = entry
         elif event.event_type == "chief_of_staff.recommendation_rejected":
+            _set_priority_disposition(
+                project,
+                payload.get("reason"),
+                order_key=_semantic_order_key(
+                    event.occurred_at,
+                    event.recorded_at,
+                    event_order[0],
+                    event.event_id,
+                ),
+            )
             entry = BriefingEntry(
                 entry_id=f"cos-brief-{_hash(event.event_id)}",
                 project_id=project_id,
@@ -614,19 +932,26 @@ def project_chief_of_staff(
             )
             briefing[entry.entry_id] = entry
         elif event.event_type == "chief_of_staff.wait_recorded":
+            wait_id = str(payload.get("wait_id") or "").strip()
+            if not wait_id:
+                continue
             wait_reason = _bounded_text(
                 payload.get("reason") or payload.get("condition"),
             )
-            project["semantic_waits"].append({
+            project["semantic_waits"][wait_id] = {
+                "wait_id": wait_id,
                 "occurred_at": event.occurred_at,
                 "reason": wait_reason,
+                "intentional_idle": payload.get("intentional_idle") is True,
                 "canonical_wake_id": (
                     str(payload["canonical_wake_id"])
                     if payload.get("canonical_wake_id") else None
                 ),
-            })
-            if payload.get("intentional_idle") is True:
-                project["intentional_idle"] = True
+                "source_event_refs": event_refs,
+                "evidence_refs": _strings(
+                    payload.get("evidence_refs") or (),
+                ),
+            }
             entry = BriefingEntry(
                 entry_id=f"cos-brief-{_hash(event.event_id)}",
                 project_id=project_id,
@@ -675,6 +1000,19 @@ def project_chief_of_staff(
         _event_reference_maps(database)
     )
     executive = rebuild_executive_state(database)
+    current_objectives = {
+        objective_id: objective
+        for objective_id, objective in executive.objectives.items()
+        if objective.status not in _TERMINAL_OBJECTIVE_STATES
+    }
+    objective_descendants = {
+        objective_id: 0
+        for objective_id in current_objectives
+    }
+    for objective in current_objectives.values():
+        for dependency_id in objective.dependencies:
+            if dependency_id in objective_descendants:
+                objective_descendants[dependency_id] += 1
     objective_projects: dict[str, str] = {}
     for objective in executive.objectives.values():
         project_id = _project_from_objective(
@@ -691,30 +1029,47 @@ def project_chief_of_staff(
         _append_unique(project["dependencies"], *objective.dependencies)
         project["progress_values"].append(objective.progress)
         project["progress_status"] = objective.status
-        _set_factor(
-            project,
-            "strategic_value",
-            objective.expected_impact,
-            objective_refs.get(objective.objective_id, ()),
-        )
-        _set_factor(
-            project,
-            "urgency",
-            objective.urgency,
-            objective_refs.get(objective.objective_id, ()),
-        )
-        _set_factor(
-            project,
-            "blocking_value",
-            objective.blocking_value,
-            objective_refs.get(objective.objective_id, ()),
-        )
-        _set_factor(
-            project,
-            "risk",
-            objective.risk,
-            objective_refs.get(objective.objective_id, ()),
-        )
+        if objective.objective_id in current_objectives:
+            factor_refs = objective_refs.get(objective.objective_id, ())
+            factor_source = f"objective:{objective.objective_id}"
+            factor_order = _semantic_order_key(
+                objective.updated_at,
+                f"{objective.version:020d}",
+                objective.objective_id,
+            )
+            objective_factors = {
+                "owner_priority": _number(objective.priority / 3.0),
+                "strategic_value": objective.expected_impact,
+                "urgency": _number((objective.urgency + 1.0) / 2.0),
+                "deadline": _deadline_pressure(
+                    objective.deadline,
+                    generated_at,
+                ),
+                "blockers": objective.blocking_value,
+                "dependency_leverage": _number(
+                    objective_descendants.get(objective.objective_id, 0)
+                    / max(1, len(current_objectives)),
+                ),
+                "risk": objective.risk,
+                "reversibility": objective.reversibility,
+                "confidence": objective.confidence,
+                "opportunity_cost": objective.opportunity_cost,
+                "staleness": _staleness_pressure(
+                    objective.updated_at,
+                    generated_at,
+                ),
+            }
+            for factor_name, factor_value in objective_factors.items():
+                _set_factor(
+                    project,
+                    factor_name,
+                    factor_value,
+                    factor_refs,
+                    source_key=factor_source,
+                    authority=_FACTOR_AUTHORITY_OBJECTIVE,
+                    order_key=factor_order,
+                    invert=factor_name == "opportunity_cost",
+                )
         _append_unique(
             project["source_event_refs"],
             *objective_refs.get(objective.objective_id, ()),
@@ -799,25 +1154,73 @@ def project_chief_of_staff(
         )
     for project in projects.values():
         unresolved_waits = []
-        for semantic_wait in project["semantic_waits"]:
+        for semantic_wait in project["semantic_waits"].values():
+            wait_id = str(semantic_wait.get("wait_id") or "")
             wake_id = semantic_wait.get("canonical_wake_id")
             wake_status = str(
                 wakes.get(str(wake_id), {}).get("status") or "",
             ).upper()
             if wake_id and wake_status in {"TRIGGERED", "CLEARED"}:
                 continue
+            transition = project["item_state_changes"]["WAIT"].get(wait_id)
+            if (
+                not wake_id
+                and transition is not None
+                and transition["status"] in _TERMINAL_ITEM_STATES
+            ):
+                continue
             unresolved_waits.append(semantic_wait)
+        project["intentional_idle"] = any(
+            wait.get("intentional_idle") is True
+            for wait in unresolved_waits
+        )
         if unresolved_waits:
             latest_wait = max(
                 unresolved_waits,
                 key=lambda item: (
                     str(item.get("occurred_at") or ""),
-                    str(item.get("canonical_wake_id") or ""),
+                    str(item.get("wait_id") or ""),
                 ),
             )
             project["waiting_condition"] = _bounded_text(
                 latest_wait.get("reason") or "project is waiting",
             )
+        elif (
+            project["waiting_condition"] is None
+            and project["status"] in {"WAITING", "IDLE"}
+        ):
+            project["status"] = UNKNOWN
+
+        for attention_id in tuple(project["owner_attention_ids"]):
+            transition = project["item_state_changes"]["OWNER_ATTENTION"].get(
+                attention_id,
+            )
+            item = attention.get(attention_id)
+            if transition is None or item is None:
+                continue
+            attention[attention_id] = replace(
+                item,
+                status=transition["status"],
+                source_event_refs=_strings((
+                    *item.source_event_refs,
+                    *transition["source_event_refs"],
+                )),
+                evidence_refs=_strings((
+                    *item.evidence_refs,
+                    *transition["evidence_refs"],
+                )),
+            )
+        project["owner_attention_ids"] = {
+            attention_id
+            for attention_id in project["owner_attention_ids"]
+            if (
+                attention_id in attention
+                and attention[attention_id].status == "OPEN"
+            )
+        }
+        project["owner_decision_needed"] = bool(
+            project["owner_attention_ids"],
+        )
 
     mission_projects: dict[str, str] = {}
     for project_id, project in projects.items():
