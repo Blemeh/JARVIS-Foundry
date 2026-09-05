@@ -8,8 +8,9 @@ export function canResume(
   live: boolean,
   sourceMode: ResolvedSourceMode,
   targetDirectiveId: string | null = null,
+  sourceCurrent = true,
 ): boolean {
-  return !live || sourceMode === "LIVE" && Boolean(targetDirectiveId);
+  return !live || sourceCurrent && isCanonicalSource(sourceMode) && Boolean(targetDirectiveId);
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -18,7 +19,7 @@ export function canActivateStop(live: boolean, sourceMode: ResolvedSourceMode): 
 }
 
 export function EmergencyStopDialog() {
-  const { stopDialogOpen, closeStopDialog, stopActive, stopActivatedAt, resumeTargetId, activateStop, resetStop, mode, sourceMode } =
+  const { stopDialogOpen, closeStopDialog, stopActive, stopActivatedAt, resumeTargetId, activateStop, resetStop, mode, sourceMode, streamConnected } =
     useCommandCenter();
 
   const live = mode === "live";
@@ -40,7 +41,7 @@ export function EmergencyStopDialog() {
               type="button"
               className="btn"
               onClick={resetStop}
-              disabled={!canResume(live, sourceMode, resumeTargetId)}
+              disabled={!canResume(live, sourceMode, resumeTargetId, streamConnected)}
               title={live && resumeTargetId ? `Revoke ${resumeTargetId}` : undefined}
             >
               <RotateCcw size={14} />

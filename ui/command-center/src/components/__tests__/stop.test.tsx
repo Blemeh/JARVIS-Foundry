@@ -14,10 +14,11 @@ function renderStop() {
 }
 
 describe("Emergency STOP", () => {
-  it("requires fresh live truth and one exact hold identity for Resume", () => {
+  it("requires current canonical truth and one exact hold identity for Resume", () => {
     expect(canResume(true, "LIVE", "directive-stop-1")).toBe(true);
     expect(canResume(true, "LIVE")).toBe(false);
-    expect(canResume(true, "DEGRADED", "directive-stop-1")).toBe(false);
+    expect(canResume(true, "DEGRADED", "directive-stop-1")).toBe(true);
+    expect(canResume(true, "DEGRADED", "directive-stop-1", false)).toBe(false);
     expect(canResume(true, "DISCONNECTED")).toBe(false);
     expect(canResume(false, "SIMULATED")).toBe(true);
     expect(canActivateStop(true, "LIVE")).toBe(true);
