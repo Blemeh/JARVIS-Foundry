@@ -99,6 +99,9 @@ def build_briefing_packet(
     outcome_learning = autonomy.get("outcome_learning") if isinstance(
         autonomy.get("outcome_learning"), dict
     ) else {}
+    chief_of_staff = executive.get("chief_of_staff") if isinstance(
+        executive.get("chief_of_staff"), dict
+    ) else {}
     # Operational follow-ups are a read-only extension of the packet. They
     # never become owner approvals or execution commands.
     for followup in operational.get("followups") or []:
@@ -129,6 +132,68 @@ def build_briefing_packet(
                 "reason": unknown.get("reason", "UNKNOWN"),
                 "evidence_refs": unknown.get("evidence_refs", []),
             })
+    existing_decision_sources = {
+        str(item.get("source_event_id"))
+        for item in decision_required
+        if isinstance(item, dict) and item.get("source_event_id")
+    }
+    for item in chief_of_staff.get("owner_attention") or []:
+        if not isinstance(item, dict) or item.get("status") != "OPEN":
+            continue
+        item_sources = [
+            str(value)
+            for value in item.get("source_event_refs") or []
+            if str(value)
+        ]
+        if existing_decision_sources.intersection(item_sources):
+            continue
+        decision_required.append({
+            "attention_id": item.get("attention_id"),
+            "project_id": item.get("project_id"),
+            "classification": item.get("category", "DECISION_REQUIRED"),
+            "status": "OPEN",
+            "summary": item.get("summary"),
+            "consequence": item.get("reason"),
+            "evidence_refs": item.get("evidence_refs", []),
+            "source_event_refs": item_sources,
+        })
+        source_refs.extend(item_sources)
+        source_refs.extend(
+            str(value)
+            for value in item.get("evidence_refs") or []
+            if str(value)
+        )
+    for project in chief_of_staff.get("projects") or []:
+        if not isinstance(project, dict):
+            continue
+        source_refs.extend(
+            str(value)
+            for value in project.get("source_event_refs") or []
+            if str(value)
+        )
+        source_refs.extend(
+            str(value)
+            for value in project.get("evidence_refs") or []
+            if str(value)
+        )
+        next_action = project.get("next_likely_action")
+        if next_action:
+            next_actions.append({
+                "project_id": project.get("project_id"),
+                "action": next_action,
+                "status": "EVIDENCED",
+                "source_event_refs": project.get("source_event_refs", []),
+            })
+        unknown_fields = project.get("unknown_fields")
+        if isinstance(unknown_fields, list) and unknown_fields:
+            uncertainty.append({
+                "kind": "chief_of_staff_project_unknowns",
+                "project_id": project.get("project_id"),
+                "reason": "project truth retains fields without authoritative evidence",
+                "unknown_fields": unknown_fields,
+                "evidence_refs": project.get("evidence_refs", []),
+            })
+    source_refs = list(dict.fromkeys(source_refs))
     external_status = "UNKNOWN" if not snapshot.get("source_of_truth") else "NOT_IMPLEMENTED"
     packet = {
         "schema": PACKET_SCHEMA,
@@ -142,6 +207,7 @@ def build_briefing_packet(
         "evolution_truth": dict(snapshot.get("evolution_truth") or {}),
         "operational_intelligence": dict(operational),
         "autonomy_briefing": dict(outcome_learning),
+        "chief_of_staff": dict(chief_of_staff),
         "decision_required": decision_required,
         "source_refs": source_refs,
         "next_action_summary": next_actions,
@@ -158,6 +224,7 @@ def build_briefing_packet(
         "source_refs": source_refs, "uncertainty": uncertainty,
         "operational_intelligence": operational,
         "autonomy_briefing": outcome_learning,
+        "chief_of_staff": chief_of_staff,
     }).encode("utf-8")).hexdigest()
     return packet
 

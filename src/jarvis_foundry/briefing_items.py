@@ -134,6 +134,15 @@ def _payload_summary(event: Event) -> str:
 
 def _entity(event: Event) -> tuple[str | None, str | None, str | None]:
     payload = event.payload if isinstance(event.payload, dict) else {}
+    if str(event.event_type or "").startswith("chief_of_staff."):
+        project_id = payload.get("project_id")
+        if isinstance(project_id, str) and project_id.strip():
+            mission_id = payload.get("mission_id")
+            return (
+                "project",
+                project_id.strip(),
+                mission_id if isinstance(mission_id, str) else None,
+            )
     for key, kind in (
         ("mission_id", "mission"),
         ("decision_id", "decision"),
@@ -157,6 +166,16 @@ def _entity(event: Event) -> tuple[str | None, str | None, str | None]:
 def _rule(event: Event) -> tuple[str, int, str]:
     event_type = str(event.event_type or "")
     payload = event.payload if isinstance(event.payload, dict) else {}
+    if event_type == "chief_of_staff.owner_attention_required":
+        return "PROJECT", 5, "DECISION_REQUIRED"
+    if event_type.startswith("chief_of_staff."):
+        if event_type == "chief_of_staff.candidate_routed":
+            return "PROJECT", 3, "INFORM"
+        if event_type == "chief_of_staff.recommendation_rejected":
+            return "PROJECT", 2, "INFORM"
+        if event_type == "chief_of_staff.wait_recorded":
+            return "PROJECT", 2, "INFORM"
+        return "PROJECT", 2, "INFORM"
     if event_type in {"owner_directive.recorded", "owner_directive.revoked", "owner_directive.superseded"}:
         command = str(payload.get("command_type") or "")
         if command in {"STOP_EVERYTHING", "PAUSE", "VETO_ACTION", "STOP_MISSION"}:
@@ -241,6 +260,11 @@ def _evidence_refs(event: Event) -> tuple[str, ...]:
     raw = payload.get("evidence_refs")
     if isinstance(raw, list):
         for value in raw:
+            if isinstance(value, str) and value and value not in refs:
+                refs.append(value)
+    source_refs = payload.get("source_event_refs")
+    if isinstance(source_refs, list):
+        for value in source_refs:
             if isinstance(value, str) and value and value not in refs:
                 refs.append(value)
     return tuple(refs[:12])

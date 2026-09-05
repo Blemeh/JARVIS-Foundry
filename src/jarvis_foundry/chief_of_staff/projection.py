@@ -226,17 +226,20 @@ def _event_reference_maps(
     dict[str, list[str]],
     dict[str, list[str]],
     dict[str, list[str]],
+    dict[str, str],
 ]:
     objective_refs: dict[str, list[str]] = defaultdict(list)
     campaign_refs: dict[str, list[str]] = defaultdict(list)
     mission_refs: dict[str, list[str]] = defaultdict(list)
     action_refs: dict[str, list[str]] = defaultdict(list)
+    action_missions: dict[str, str] = {}
     events = database.events(
         readonly=True,
         event_type_prefixes=(
             "executive.",
             "campaign.",
             "mission.",
+            "action.",
             "system.action_",
             "effect.",
         ),
@@ -254,8 +257,18 @@ def _event_reference_maps(
         for key in ("action_id", "action_key", "effect_ticket_id"):
             value = payload.get(key)
             if isinstance(value, str) and value.strip():
-                _append_unique(action_refs[value.strip()], event.event_id)
-    return objective_refs, campaign_refs, mission_refs, action_refs
+                action_id = value.strip()
+                _append_unique(action_refs[action_id], event.event_id)
+                mission_id = payload.get("mission_id")
+                if isinstance(mission_id, str) and mission_id.strip():
+                    action_missions[action_id] = mission_id.strip()
+    return (
+        objective_refs,
+        campaign_refs,
+        mission_refs,
+        action_refs,
+        action_missions,
+    )
 
 
 def _attention_from_context(
@@ -647,7 +660,13 @@ def project_chief_of_staff(
             project["owner_attention_ids"].add(attention_id)
             project["owner_decision_needed"] = True
 
-    objective_refs, campaign_refs, mission_refs, action_refs = (
+    (
+        objective_refs,
+        campaign_refs,
+        mission_refs,
+        action_refs,
+        action_missions,
+    ) = (
         _event_reference_maps(database)
     )
     executive = rebuild_executive_state(database)
@@ -723,6 +742,8 @@ def project_chief_of_staff(
         for child in children:
             if child.mission_id:
                 project["mission_ids"].add(child.mission_id)
+                for action_id in child.effect_keys:
+                    action_missions.setdefault(action_id, child.mission_id)
             project["action_ids"].update(child.effect_keys)
             if child.status == "SUCCEEDED":
                 completed_children += 1
@@ -776,27 +797,17 @@ def project_chief_of_staff(
     for project_id, project in projects.items():
         for mission_id in project["mission_ids"]:
             mission_projects[str(mission_id)] = project_id
-    with database.connect(readonly=True) as connection:
-        mission_rows = connection.execute(
-            "SELECT mission_id, state, last_event_id, updated_at "
-            "FROM missions ORDER BY updated_at"
-        ).fetchall()
-        action_rows = connection.execute(
-            "SELECT action_id, mission_id, decision, last_event_id "
-            "FROM action_decisions ORDER BY updated_at"
-        ).fetchall()
-    for row in mission_rows:
-        mission_id = str(row["mission_id"])
-        project_id = mission_projects.get(mission_id)
-        if project_id is None:
+    for mission_id, project_id in sorted(mission_projects.items()):
+        row = database.row("missions", "mission_id", mission_id)
+        if row is None:
             continue
         project = projects[project_id]
         _append_unique(
             project["source_event_refs"],
-            row["last_event_id"],
+            row.get("last_event_id"),
             *mission_refs.get(mission_id, ()),
         )
-        activity = str(row["updated_at"] or "")
+        activity = str(row.get("updated_at") or "")
         if (
             activity
             and (
@@ -805,20 +816,17 @@ def project_chief_of_staff(
             )
         ):
             project["last_meaningful_activity"] = activity
-        state = str(row["state"] or "").upper()
+        state = str(row.get("state") or "").upper()
         if state in {"FAILED", "BLOCKED", "UNKNOWN"}:
             _append_unique(project["blockers"], f"mission {mission_id} is {state}")
-    for row in action_rows:
-        mission_id = str(row["mission_id"])
+    for action_id, mission_id in sorted(action_missions.items()):
         project_id = mission_projects.get(mission_id)
         if project_id is None:
             continue
-        action_id = str(row["action_id"])
         project = projects[project_id]
         project["action_ids"].add(action_id)
         _append_unique(
             project["source_event_refs"],
-            row["last_event_id"],
             *action_refs.get(action_id, ()),
         )
 
@@ -923,14 +931,7 @@ def project_chief_of_staff(
                     _strings(mission_refs.get(mission_id, ()) or link_refs),
                 ))
         for action_id in sorted(project["action_ids"]):
-            action_mission = next(
-                (
-                    str(row["mission_id"])
-                    for row in action_rows
-                    if str(row["action_id"]) == action_id
-                ),
-                None,
-            )
+            action_mission = action_missions.get(action_id)
             if action_mission:
                 links.append(HierarchyLink(
                     "MISSION",

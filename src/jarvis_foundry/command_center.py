@@ -1791,6 +1791,29 @@ def _build_snapshot(
     except Exception as error:  # noqa: BLE001 - read model fails closed
         continuous_projection = {"status": "UNKNOWN", "reason": f"{type(error).__name__}: {error}", "wake_state": {}, "exec_states": {}, "due_wakes": []}
     executive_projection["continuous"] = continuous_projection
+    # V13 Chief of Staff is a read-only semantic subprojection. It can expose
+    # project truth here, but candidate admission, wakes, campaigns, missions,
+    # effects, and verification remain with their established authorities.
+    try:
+        from .chief_of_staff import chief_of_staff_read_projection
+        chief_of_staff_projection = chief_of_staff_read_projection(
+            database,
+            now=generated_at,
+        )
+    except Exception as error:  # noqa: BLE001 - read model fails closed
+        chief_of_staff_projection = {
+            "contract": "jarvis.chief-of-staff.v1",
+            "schema": 40,
+            "generated_at": generated_at,
+            "status": "UNKNOWN",
+            "reason": f"{type(error).__name__}: {error}",
+            "projects": [],
+            "priorities": [],
+            "owner_attention": [],
+            "briefing": [],
+            "source_event_refs": [],
+        }
+    executive_projection["chief_of_staff"] = chief_of_staff_projection
     postv7_projection = _postv7_projection(
         database,
         portfolio=portfolio_projection,
