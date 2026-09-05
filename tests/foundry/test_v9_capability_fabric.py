@@ -145,6 +145,65 @@ def test_preferred_failure_falls_back_to_alternate(tmp_path: Path) -> None:
     assert (ctx.owned_root / "ok.txt").read_text(encoding="utf-8") == "alt"
 
 
+def test_degraded_capability_replays_existing_canonical_effect(
+    tmp_path: Path,
+) -> None:
+    database = _db(tmp_path)
+    ctx = _ctx(tmp_path, database)
+    seed_builtins(database)
+    payload = {"target": "once.txt", "content": "performed once\n"}
+    first = execute_action(
+        database,
+        ctx,
+        _intent("file.write"),
+        "file.write",
+        payload,
+        workflow_id="campaign:degraded-replay",
+        step_id="step:write-once",
+    )
+    assert first.success is True
+    assert first.observed["performed"] is True
+    effect_id = first.receipt["effect_id"]
+
+    record_outcome(
+        database,
+        first.capability_id,
+        success=False,
+        verified=VerifyVerdict.MISMATCH,
+        note="later health evidence degraded the capability",
+    )
+    assert (
+        observed_readiness(database, first.capability_id).state
+        is Readiness.DEGRADED
+    )
+    starts_before = database.event_count(event_type="system.action_started")
+
+    restarted = FoundryDatabase(database.path)
+    replay = execute_action(
+        restarted,
+        ExecutorContext(
+            database=restarted,
+            owned_root=ctx.owned_root,
+        ),
+        _intent("file.write"),
+        "file.write",
+        payload,
+        workflow_id="campaign:degraded-replay",
+        step_id="step:write-once",
+    )
+
+    assert replay.success is True
+    assert replay.receipt["effect_id"] == effect_id
+    assert replay.observed["performed"] is False
+    assert replay.observed["replayed"] is True
+    assert restarted.event_count(
+        event_type="system.action_started",
+    ) == starts_before
+    assert (ctx.owned_root / "once.txt").read_text(
+        encoding="utf-8",
+    ) == "performed once\n"
+
+
 def test_missing_capability_detected_then_built_and_used(tmp_path: Path) -> None:
     database = _db(tmp_path)
     ctx = _ctx(tmp_path, database)

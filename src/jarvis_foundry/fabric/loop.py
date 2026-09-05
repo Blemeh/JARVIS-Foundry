@@ -27,6 +27,7 @@ from .model import (
     CapabilityTrust,
     CapabilitySpec,
     ClaimOutcome,
+    FabricError,
     GapKind,
     GapRecord,
     GapStatus,
@@ -48,7 +49,14 @@ from .contracts import (
     metadata_for_spec,
     normalize_receipt,
 )
-from ..effects import STARTED, effect_state, execute_fabric_effect
+from ..effects import (
+    COMPLETED,
+    FAILED,
+    FROZEN,
+    STARTED,
+    effect_state,
+    execute_fabric_effect,
+)
 from .providers import route_provider
 from .computer_operator import (
     PERSONAL_OPERATOR_SHARED_CAPABILITY_IDS,
@@ -1122,6 +1130,79 @@ def _verify_canonical_artifact(
         }
 
 
+_SPECIALIZED_EFFECT_ACTIONS = frozenset({
+    "git.push",
+    "browser.web.execute",
+    "github.pull_request.publish",
+    "gmail.send",
+})
+_RECOVERABLE_EFFECT_STATES = frozenset({
+    STARTED,
+    COMPLETED,
+    FAILED,
+    FROZEN,
+})
+
+
+def _requires_canonical_effect(
+    request: AdapterRequest,
+    action_kind: str,
+) -> bool:
+    return (
+        request.effect_class is not EffectClass.READ_ONLY
+        and action_kind not in _SPECIALIZED_EFFECT_ACTIONS
+    )
+
+
+def _existing_canonical_effect_binding(
+    database: FoundryDatabase,
+    intent: TaskIntent,
+    action_kind: str,
+    payload: Mapping[str, Any],
+    *,
+    workflow_id: str | None,
+    step_id: str | None,
+    step_version: int,
+    attempt: int,
+) -> tuple[CapabilitySpec, AdapterRequest] | None:
+    """Resolve an exact prior effect before current readiness admission.
+
+    Capability readiness governs new dispatch. It must not hide a journaled
+    effect that now needs idempotent replay, crash reaping, or reconciliation.
+    """
+
+    matches: list[tuple[CapabilitySpec, AdapterRequest]] = []
+    for spec in specs_for_action(database, action_kind):
+        metadata = capability_metadata(database, spec.capability_id)
+        if metadata is None:
+            metadata = metadata_for_spec(spec)
+        try:
+            request = build_adapter_request(
+                mission_id=intent.task_id,
+                workflow_id=workflow_id,
+                step_id=step_id or action_kind,
+                step_version=step_version,
+                attempt=attempt,
+                action_kind=action_kind,
+                payload=payload,
+                spec=spec,
+                metadata=metadata,
+            )
+        except (KeyError, TypeError, ValueError):
+            continue
+        if not _requires_canonical_effect(request, action_kind):
+            continue
+        state = effect_state(database, request.effect_id)
+        if state.get("status") in _RECOVERABLE_EFFECT_STATES:
+            matches.append((spec, request))
+    if len(matches) > 1:
+        raise FabricError(
+            "multiple canonical prior effects match this action; "
+            "refusing ambiguous replay"
+        )
+    return matches[0] if matches else None
+
+
 def execute_action(
     database: FoundryDatabase,
     ctx: ExecutorContext,
@@ -1142,6 +1223,16 @@ def execute_action(
         normalized_task_id = intent.task_id.lower().replace("_", "-")
         if normalized_task_id.startswith("general-work."):
             route_owner = "general_work"
+    existing_effect = _existing_canonical_effect_binding(
+        database,
+        intent,
+        action_kind,
+        payload,
+        workflow_id=workflow_id,
+        step_id=step_id,
+        step_version=step_version,
+        attempt=attempt,
+    )
     stop = emergency_stop_reason(
         database,
         payload.get("stop_path"),
@@ -1156,7 +1247,7 @@ def execute_action(
             "desktop.action.reconcile",
         }
     )
-    if stop and not reconciliation_capable:
+    if stop and not reconciliation_capable and existing_effect is None:
         return ActionResult(
             capability_id="blocked",
             action_kind=action_kind,
@@ -1164,40 +1255,51 @@ def execute_action(
             verified=VerifyVerdict.UNKNOWN,
             note=f"STOP active: {stop}",
         )
-    selection = select_capability(database, intent, action_kind)
-    if not selection.available:
-        return ActionResult(
-            capability_id="missing",
+    request: AdapterRequest | None = None
+    if existing_effect is None:
+        selection = select_capability(database, intent, action_kind)
+        if not selection.available:
+            return ActionResult(
+                capability_id="missing",
+                action_kind=action_kind,
+                claimed=ClaimOutcome.BLOCKED,
+                verified=VerifyVerdict.UNKNOWN,
+                note=selection.reason,
+            )
+        spec = get_spec(database, selection.capability_id)
+        if spec is None:
+            return ActionResult(
+                capability_id=selection.capability_id or "missing",
+                action_kind=action_kind,
+                claimed=ClaimOutcome.BLOCKED,
+                verified=VerifyVerdict.UNKNOWN,
+                note="selected capability is missing from the Fabric catalog",
+            )
+    else:
+        spec, request = existing_effect
+        selection = Selection(
+            task_id=intent.task_id,
             action_kind=action_kind,
-            claimed=ClaimOutcome.BLOCKED,
-            verified=VerifyVerdict.UNKNOWN,
-            note=selection.reason,
-        )
-    spec = get_spec(database, selection.capability_id)
-    if spec is None:
-        return ActionResult(
-            capability_id=selection.capability_id or "missing",
-            action_kind=action_kind,
-            claimed=ClaimOutcome.BLOCKED,
-            verified=VerifyVerdict.UNKNOWN,
-            note="selected capability is missing from the Fabric catalog",
+            capability_id=spec.capability_id,
+            fallbacks=(),
+            reason="reconciling existing canonical effect",
         )
     metadata = capability_metadata(database, spec.capability_id)
     if metadata is None:
         metadata = metadata_for_spec(spec)
     inferred_metadata = metadata_for_spec(spec)
-    request: AdapterRequest | None = None
-    request = build_adapter_request(
-        mission_id=intent.task_id,
-        workflow_id=workflow_id,
-        step_id=step_id or action_kind,
-        step_version=step_version,
-        attempt=attempt,
-        action_kind=action_kind,
-        payload=payload,
-        spec=spec,
-        metadata=metadata,
-    )
+    if request is None:
+        request = build_adapter_request(
+            mission_id=intent.task_id,
+            workflow_id=workflow_id,
+            step_id=step_id or action_kind,
+            step_version=step_version,
+            attempt=attempt,
+            action_kind=action_kind,
+            payload=payload,
+            spec=spec,
+            metadata=metadata,
+        )
     if (
         stop
         and request.effect_class is EffectClass.READ_ONLY
@@ -1248,14 +1350,9 @@ def execute_action(
         execution_payload.setdefault("idempotency_key", request.idempotency_key)
     # The existing Fabric effect journal remains the sole authority for every
     # mutating adapter invocation. Read-only adapters need no effect claim.
-    canonical_effect_required = (
-        request.effect_class is not EffectClass.READ_ONLY
-        and action_kind not in {
-            "git.push",
-            "browser.web.execute",
-            "github.pull_request.publish",
-            "gmail.send",
-        }
+    canonical_effect_required = _requires_canonical_effect(
+        request,
+        action_kind,
     )
     canonical_artifact = bool(
         spec.kind is Kind.ADAPTER and metadata.execute.get("artifact_id")
